@@ -14,10 +14,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // AppliesTo checks the subtype and then rules out the source, which
 // is why it can't reuse the Glorious Anthem predicate (the Anthem
 // isn't a creature, so it never had to exclude itself).
+//
+// No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "a7ec13c6-7ade-433a-b5a2-047854eef486",
-		Name:     "Corsair Captain",
+		OracleID:     "a7ec13c6-7ade-433a-b5a2-047854eef486",
+		Name:         "Corsair Captain",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Corsair Captain — create a Treasure", Do(CreateToken{
 				Template: TreasureToken(),

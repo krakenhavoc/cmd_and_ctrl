@@ -1,13 +1,13 @@
 package lobby
 
 import (
-	"errors"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -132,17 +132,22 @@ func devSpawnCard(c Config, w http.ResponseWriter, r *http.Request) error {
 	}
 
 	template := deck.ToGameCard(card, body.Commander)
-	ids, err := c.Lobby.SpawnCards(gameID, playerID, zone, template, count)
+	// Actor names the spawner in the game-log line ADR 0075 added.
+	// Everything else about this route is unchanged: no AllowSpawn
+	// check, no undo entry, still 404 outside a dev deployment.
+	var actor uuid.UUID
+	if p, ok := auth.PrincipalFromContext(r.Context()); ok {
+		actor = p.PlayerID
+	}
+	ids, err := c.Lobby.Spawn(gameID, SpawnOptions{
+		Actor:      actor,
+		Controller: playerID,
+		Zone:       zone,
+		Template:   template,
+		Count:      count,
+	})
 	if err != nil {
-		switch {
-		case errors.Is(err, game.ErrDevSpawnCount):
-			return httpError(http.StatusBadRequest, err.Error())
-		case errors.Is(err, game.ErrDevZoneUnsupported):
-			return httpError(http.StatusBadRequest, err.Error())
-		case errors.Is(err, game.ErrPlayerNotFound):
-			return ErrPlayerNotInGame
-		}
-		return err
+		return spawnHTTPError(err)
 	}
 
 	out := make([]string, 0, len(ids))

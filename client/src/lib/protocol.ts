@@ -97,6 +97,12 @@ export type ActionType =
   // entry, one broadcast, however wide the board.
   | "declare_attackers"
   | "declare_blocker"
+  // Set-shaped block declaration (#750). Not a batching convenience:
+  // a block COUNT (menace's minimum of two) is a property of the whole
+  // declaration, so a two-creature menace block is legal only as a
+  // pair and the single verb refuses either half of it. All or
+  // nothing — a refused set stores none of itself.
+  | "declare_blockers"
   | "discard_selection"
   | "draw_card"
   | "end_vote"
@@ -112,6 +118,13 @@ export type ActionType =
   | "set_initiative"
   | "set_monarch"
   | "set_promise"
+  // ADR 0075 §2.3. The params object IS a settings patch — only the
+  // fields present are applied. Host or admin only, and deliberately
+  // not undoable.
+  | "set_table_settings"
+  // Deprecated since S35: a one-field alias for set_table_settings
+  // that cannot select an unlimited budget (a negative limit clamps
+  // to 0). Kept so an old client and the gamecli scripts still work.
   | "set_undo_limit"
   | "shuffle_library"
   | "special_action"
@@ -458,7 +471,19 @@ export type LogKind =
   | "scry"
   | "surveil"
   | "saga_chapter"
-  | "class_level";
+  | "class_level"
+  // ADR 0075 §2.3: the host or the admin changed a table setting.
+  // `label` is the setting's key ("undo_limit", "allow_spawn") and
+  // `choice` its new value as text; `seat` is the host, or NoSeat when
+  // the server admin made the change. The only kind that is about the
+  // rules rather than about the game.
+  | "settings"
+  // ADR 0075 §2.4: the host or the admin put cards or tokens on the
+  // table from nowhere. `label` is the card or token name, `amount`
+  // the count, `new_zone` where they went and `target_seat` whose
+  // zone it was. A spawn into a hidden zone names the zone and NOT
+  // the card, so `label` is absent there for everyone.
+  | "spawn";
 
 // LogEvent mirrors `protocol.LogEvent` — one line of the public game
 // log. `text` is the rendered, already-redacted sentence; the
@@ -520,6 +545,13 @@ export interface LogEvent {
   // `counters` one. Redacted with the card's name exactly as `choice`
   // is: both price or characterise the card the line no longer names.
   label?: string;
+  // ADR 0075 §2.4: the actor held the table when they took this
+  // action. Set only on `spawn` entries, and stamped by the room
+  // rather than the projection — the host is a room property, so the
+  // engine cannot know it. Absent on a spawn by a non-host (the dev
+  // route lets anyone at a preview table spawn) and on one by the
+  // admin, who has no seat.
+  actor_is_host?: boolean;
   // The rendered line. Already redacted for this viewer: a card the
   // viewer may not identify reads as "a card".
   text: string;
@@ -993,6 +1025,9 @@ export interface PlayerView {
   is_bot?: boolean;
   bot_tier?: string;
   bot_deck?: string;
+  // Table host (ADR 0075 §2.1), visible to every viewer. The host may
+  // change table settings alongside the server admin.
+  is_host?: boolean;
   // Per-commander cast count for the Commander tax (S13.1, CR
   // 903.8). Keyed by commander instance UUID. Drives the "+N tax"
   // indicator next to the commander tile.

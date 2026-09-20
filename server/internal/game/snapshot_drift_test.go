@@ -166,6 +166,7 @@ var gameFields = plan(
 
 	"ScopedStatics", dropped, "StaticAbility is two closures; counted in ContinuationCensus.ScopedStatics",
 	"TurnScopedReplacements", dropped, "ReplacementEffect is three closures; counted in ContinuationCensus.TurnScopedReplacements",
+	"TurnScopedBlockRules", dropped, "BlockRule is two closures; counted in ContinuationCensus.TurnScopedBlockRules",
 	"testReplacements", dropped, "test-only injection slot; production has no path to it",
 	"replacementsAppliedThisEvent", dropped, "non-empty between actions only for an event paused on a replacement prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone deep-copies it for undo (#808)",
 	"nextReplacementEventID", dropped, "mints keys for the map above, which restores empty",
@@ -181,6 +182,12 @@ var cardFields = plan(
 	"Name", carried, "",
 	"ScryfallID", carried, "",
 	"OracleID", carried, "",
+	// #521: the synthetic catalog key a TOKEN carries instead of an
+	// oracle ID. Carried for the same reason GrantedAbilities is — it
+	// is a catalog KEY, not a closure, and it is the whole of what
+	// makes a token's abilities findable on the other side of a
+	// restore. Drop it and a Treasure comes back a blank artifact.
+	"TokenKey", carried, "",
 	"TypeLine", carried, "",
 	"Power", carried, "",
 	"Toughness", carried, "",
@@ -243,6 +250,11 @@ var cardFields = plan(
 	// #683: carried — a restore that dropped it would let a 0/0 that
 	// lost its last counter survive the next state-based check.
 	"LostLastCounter", carried, "",
+	// Printed data, carried with Toughness for the same reason
+	// VariableToughness is, one sign the other way: a restore that
+	// dropped it would leave a living weapon Germ on the battlefield
+	// as a 0/0 nothing can kill.
+	"PrintedPTKnown", carried, "",
 	// #683: printed data, carried with Toughness — a restore that
 	// dropped it would let a `*` creature die to the toughness check
 	// the first time it lost its last counter. Carried, and backfilled
@@ -305,7 +317,7 @@ var cardFields = plan(
 	"StartingDefense", carried, "",
 	"ProtectorPlayerID", carried, "",
 
-	"ManaAbilities", rebuilt, "closures; re-looked-up from the catalog by oracle ID, or censused when the card has none (a true token)",
+	"ManaAbilities", rebuilt, "closures; re-looked-up from the catalog by oracle ID, or by TokenKey for a token (#521), and censused only when the catalog cannot return them",
 	"ActivatedAbilities", rebuilt, "same as ManaAbilities",
 	"effective", rebuilt, "layer-engine characteristic cache; restore forces a recompute",
 )

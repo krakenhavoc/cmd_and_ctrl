@@ -66,6 +66,7 @@ func TestCyclingCardsDeclareAHandAbility(t *testing.T) {
 	}{
 		{"Raffine's Tower", raffinesTowerOracle, "{3}"},
 		{"Ketria Triome", ketriaTriomeOracle, "{3}"},
+		{"Indatha Triome", indathaTriomeOracle, "{3}"},
 		{"Marauding Mako", maraudingMakoOracle, "{2}"},
 		{"Scrounging Skyray", scroungingSkyrayOracle, "{2}"},
 		{"Magmakin Artillerist", magmakinArtilleristOracl, "{1}{R}"},

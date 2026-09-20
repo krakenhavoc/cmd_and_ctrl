@@ -67,13 +67,15 @@ import "github.com/google/uuid"
 //     combat and no more than one creature can block each combat"
 //     (Silent Arbiter) are COUNT restrictions over the whole
 //     declaration, not over one permanent. They are reachable from
-//     here without disturbing anything in this file: the engine
-//     already validates a block COUNT when the block declaration is
-//     locked in (BlockerCountValid, for menace) and DeclareAttackers
-//     already receives the whole attacking set in one call, which is
-//     the batch a count rule needs. The count limit belongs beside
-//     BlockerCountValid as a set-shaped predicate, with this file's
-//     per-permanent bits left alone.
+//     here without disturbing anything in this file: DeclareBlockers
+//     already receives a whole block declaration in one call and
+//     REFUSES an illegal COUNT before storing it (block_declaration.go,
+//     #750), and DeclareAttackers already receives the whole attacking
+//     set in one call, which is the batch a count rule needs. The
+//     block half is one more set check in
+//     checkBlockDeclarationLocked — BlockRule.Limit, which ADR 0045's
+//     addendum Decision 12 leaves unbuilt until Silent Arbiter ships
+//     — with this file's per-permanent bits left alone.
 //   - Goad's "can't attack you or a planeswalker you control" is
 //     CONDITIONAL on the other side of the pairing. It is not a
 //     property of one permanent, so it is not a bit: its home is

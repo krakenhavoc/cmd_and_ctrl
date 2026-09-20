@@ -22,11 +22,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     never receives its source, and in a singleton format the name
 //     is the creature. A token copy of the Wight could not be fed to
 //     it either.
-//   - The layer engine recomputes on battlefield and counter events,
-//     not on graveyard traffic, so a creature card milled or
-//     discarded into the graveyard grows the Wight at the next
-//     battlefield event rather than at once (Tarmogoyf's posture). A
-//     creature dying is a battlefield event and counts immediately.
+//
+// It also carried the graveyard-staleness simplification until
+// #1117 — the layer engine recomputed on battlefield and counter
+// events, not on graveyard traffic, so a creature card milled or
+// discarded grew the Wight at the next battlefield event rather than
+// at once. A graveyard crossing now bumps the layer version itself.
 func init() {
 	Register(Spec{
 		OracleID:        "4507df69-6bf7-43d6-a609-c032b61835d5",
@@ -35,7 +36,6 @@ func init() {
 		PrintedKeywords: []string{"vigilance"},
 		Caveats: []string{
 			"A second copy or token copy of Wight of the Reliquary can't be sacrificed to its own ability.",
-			"Its size catches up with a milled or discarded creature card at the next change on the battlefield, not immediately.",
 		},
 		Static: []game.StaticAbility{{
 			Layer:    game.Layer7PT,

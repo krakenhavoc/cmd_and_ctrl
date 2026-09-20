@@ -152,3 +152,85 @@ func TestBreechesIgnoresNonPirates(t *testing.T) {
 		t.Errorf("a non-Pirate attacker should not trigger Breeches")
 	}
 }
+
+// Breeches prints "deal damage", not "deal combat damage" — unlike
+// Ragavan, a Pirate's noncombat damage (an ability, not an attack)
+// should trigger it too.
+func TestBreechesTriggersOnNoncombatPirateDamage(t *testing.T) {
+	g := newCatalogGame(t)
+	me, victim := g.Seats[0], g.Seats[1]
+	loot := stackLibrary(victim, "Safe", "Instant", "{U}")
+	pushCatalogPermanent(g, me.ID, "Breeches, Brazen Plunderer",
+		"Legendary Creature — Goblin Pirate", breechesOracle, false)
+	pirate := pushCatalogPermanent(g, me.ID, "Corsair", "Creature — Human Pirate", "", false)
+
+	g.WithWriteLock(func() { _ = g.DealDamageToPlayerForEffect(pirate, victim.ID, 1) })
+	passPriorityAroundTable(t, g)
+
+	if !g.Exile.Contains(loot) {
+		t.Errorf("noncombat damage from a Pirate you control should still trigger Breeches")
+	}
+}
+
+// "exile the top card of EACH of those opponents' libraries": two
+// Pirates hitting two DIFFERENT opponents in the same damage batch
+// should exile from both, not just one.
+func TestBreechesExilesFromEachOpponentDamagedInOneBatch(t *testing.T) {
+	g := newCatalogGame(t)
+	me, v1, v2 := g.Seats[0], g.Seats[1], g.Seats[2]
+	loot1 := stackLibrary(v1, "Safe One", "Instant", "{U}")
+	loot2 := stackLibrary(v2, "Safe Two", "Instant", "{U}")
+	pushCatalogPermanent(g, me.ID, "Breeches, Brazen Plunderer",
+		"Legendary Creature — Goblin Pirate", breechesOracle, false)
+	p1 := pushCatalogPermanent(g, me.ID, "Corsair", "Creature — Human Pirate", "", false)
+	p2 := pushCatalogPermanent(g, me.ID, "Corsair", "Creature — Human Pirate", "", false)
+
+	g.WithWriteLock(func() {
+		_ = g.DealDamageToPlayerForEffect(p1, v1.ID, 1)
+		_ = g.DealDamageToPlayerForEffect(p2, v2.ID, 1)
+	})
+	passPriorityAroundTable(t, g)
+
+	if !g.Exile.Contains(loot1) {
+		t.Errorf("opponent 1's top card should have been exiled")
+	}
+	if !g.Exile.Contains(loot2) {
+		t.Errorf("opponent 2's top card should have been exiled")
+	}
+}
+
+// Two Pirates hitting the SAME opponent in one batch collapse to one
+// trigger (CR 603.2c, #784) and so exile exactly one card, not two.
+func TestBreechesCollapsesTwoPiratesHittingTheSameOpponent(t *testing.T) {
+	g := newCatalogGame(t)
+	me, victim := g.Seats[0], g.Seats[1]
+	victim.Library.Cards = nil
+	// Pushed bottom-to-top, so "Top Card" ends up on top.
+	victim.Library.PushTop(game.Card{
+		InstanceID: uuid.New(), Name: "Second Card", TypeLine: "Instant",
+		Owner: victim.ID, Controller: victim.ID,
+	})
+	top := uuid.New()
+	victim.Library.PushTop(game.Card{
+		InstanceID: top, Name: "Top Card", TypeLine: "Instant",
+		Owner: victim.ID, Controller: victim.ID,
+	})
+	before := victim.Library.Size()
+	pushCatalogPermanent(g, me.ID, "Breeches, Brazen Plunderer",
+		"Legendary Creature — Goblin Pirate", breechesOracle, false)
+	p1 := pushCatalogPermanent(g, me.ID, "Corsair", "Creature — Human Pirate", "", false)
+	p2 := pushCatalogPermanent(g, me.ID, "Corsair", "Creature — Human Pirate", "", false)
+
+	g.WithWriteLock(func() {
+		_ = g.DealDamageToPlayerForEffect(p1, victim.ID, 1)
+		_ = g.DealDamageToPlayerForEffect(p2, victim.ID, 1)
+	})
+	passPriorityAroundTable(t, g)
+
+	if exiled := before - victim.Library.Size(); exiled != 1 {
+		t.Errorf("two Pirates hitting the same opponent exiled %d cards, want exactly 1", exiled)
+	}
+	if !g.Exile.Contains(top) {
+		t.Errorf("the one exiled card should be the top of the library")
+	}
+}

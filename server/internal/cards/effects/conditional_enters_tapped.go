@@ -92,6 +92,30 @@ func otherLandsAtLeast(n int) func(*game.Game, *game.Card) bool {
 	}
 }
 
+// otherLandsWithSubtypeAtLeast is the sanctuary-land condition:
+// "unless you control three or more other Islands". The count reads
+// EFFECTIVE subtypes (game.Card.HasSubtype), so a land another
+// layer-4 effect made an Island counts and a Blood Moon-ed nonbasic
+// does not — the same rule the intrinsic mana ability follows
+// (CR 305.6).
+//
+// `subtype` is matched case-insensitively by HasSubtype, so pass it
+// the way the rest of the catalog does ("island").
+func otherLandsWithSubtypeAtLeast(subtype string, n int) func(*game.Game, *game.Card) bool {
+	return func(g *game.Game, src *game.Card) bool {
+		count := 0
+		for _, c := range g.Battlefield.Cards {
+			if c.InstanceID == src.InstanceID || c.Controller != src.Controller {
+				continue
+			}
+			if c.IsLand() && c.HasSubtype(subtype) {
+				count++
+			}
+		}
+		return count >= n
+	}
+}
+
 // dualManaAbility is the pipe-syntax "{T}: Add {X} or {Y}" every
 // two-colour land in this batch carries. Two separate one-colour
 // abilities would also work but would clutter the activation menu

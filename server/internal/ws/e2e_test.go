@@ -183,6 +183,17 @@ func (n *normalizer) card(c protocol.CardView) protocol.CardView {
 // needed to bind a specific seat.
 func newE2EServer(t *testing.T) (string, *game.Game, func()) {
 	t.Helper()
+	wsURL, g, _, cleanup := newE2EServerWithRoom(t)
+	return wsURL, g, cleanup
+}
+
+// newE2EServerWithRoom is newE2EServer plus the Room, for the tests
+// that need to reach past the wire — today the table-settings gates
+// (ADR 0075 §2.3), which ask the room who hosts and therefore need a
+// way to say so. The lobby designates a host in production; there is
+// no lobby here.
+func newE2EServerWithRoom(t *testing.T) (string, *game.Game, *Room, func()) {
+	t.Helper()
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 
 	g := game.NewGame()
@@ -208,7 +219,7 @@ func newE2EServer(t *testing.T) (string, *game.Game, func()) {
 	mux.HandleFunc("GET /ws", hub.ServeWS)
 	srv := httptest.NewServer(mux)
 	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws"
-	return wsURL, g, srv.Close
+	return wsURL, g, room, srv.Close
 }
 
 // dialAs opens a WS connection bound to the given player ID. Passing
@@ -673,15 +684,19 @@ func TestUnlimitedUndoBudgetNeverRefuses(t *testing.T) {
 	}
 }
 
-// TestSetUndoLimitRefreshesAllSeats covers the in-game admin path:
-// any seated player can dial the undo budget up via set_undo_limit
-// and every player's UndosRemaining updates to the new limit
+// TestSetUndoLimitRefreshesAllSeats covers the in-game host path: the
+// HOST dials the undo budget up via the deprecated set_undo_limit
+// alias and every player's UndosRemaining updates to the new limit
 // immediately.
+//
+// "Any seated player" until S35 — ADR 0075 §2.3 narrowed it, and
+// TestSetUndoLimitRefusedForNonHost is the other half of the change.
 func TestSetUndoLimitRefreshesAllSeats(t *testing.T) {
-	wsURL, g, cleanup := newE2EServer(t)
+	wsURL, g, room, cleanup := newE2EServerWithRoom(t)
 	defer cleanup()
 
 	playerA := g.Seats[0].ID
+	room.SetHost(playerA)
 	connA := dialAs(t, wsURL, playerA)
 	defer connA.Close()
 	readNextFrame(t, connA) // initial

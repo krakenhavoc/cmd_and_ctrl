@@ -25,11 +25,14 @@ fields are in [docs/protocol.md](protocol.md).
 > [the model endpoint](#the-model-endpoint) for the one environment
 > variable that turns them on.
 >
-> **What is not live yet: improvisation.** The mechanism described
-> [below](#improvisation-and-why-an-undo-is-free) shipped and is
-> tested. No tier implements it yet, though, so no bot improvises in a
-> game today. [#686](https://github.com/krakenhavoc/cmd_and_ctrl/issues/686)
-> builds it for `assisted` and `strong`.
+> **Improvisation is live on the model tiers.** An `assisted` or
+> `strong` bot that casts a card the rules engine cannot run will
+> apply the card's text **by hand**, announce it in chat, and leave it
+> undoable by any player for free — see
+> [below](#improvisation-and-why-an-undo-is-free) for exactly when,
+> and for the one environment variable that turns it off. `random` and
+> `heuristic` never improvise: neither has a model, and reading a
+> card's oracle text is the whole job.
 
 ---
 
@@ -129,6 +132,26 @@ first release so the wire shape never changes as policies land.
 table does not feel precognitive. `MaxThink` is a hard deadline, not a
 target — on expiry the runner takes the fallback answer and logs the
 miss. **The table never waits on a model.**
+
+**The table's own pace setting overrides both, per decision.** ADR
+0075's host controls add a `bot_pace` table setting —
+`fast` / `normal` / `slow` — and the runner re-reads it before every
+single decision a bot makes, not once when the seat was added, so a
+host changing it mid-game is live on the bot's very next move:
+
+| Table pace | `MinThink` | `MaxThink` |
+|---|---|---|
+| `fast` | 0 | 2s |
+| `normal` (default) | 700ms | 2s |
+| `slow` | 2s | 8s |
+
+`strong`'s longer 5s deadline is never shortened by the table pace —
+a `fast` table still gives a model-backed seat its full budget, and
+`MaxThink` is always the larger of the table's preset and the tier's
+own deadline. Only `slow` (8s) lengthens it further. A game whose
+settings were never given a pace (an old snapshot, or a raw `Game`
+built outside the normal lobby path) behaves exactly as before this
+setting existed.
 
 Those `MaxThink` figures are sized for a hosted model. A model running
 on your own hardware is usually slower than either, so the deadline is
@@ -277,6 +300,7 @@ server picks the local one when both are set.
 | `CMDCTRL_BOT_MODEL` | The model id to ask for. **Required for a local endpoint** — it is the name your server serves, e.g. what you `ollama pull`ed. |
 | `CMDCTRL_BOT_FRONTIER_MODEL` | The model for escalated windows. Defaults to `CMDCTRL_BOT_MODEL`; one model in both slots is a supported configuration, and escalation then changes how a window is asked, not which model answers it (see [Known limitations](#known-limitations)). |
 | `CMDCTRL_BOT_MAX_THINK` | The model tiers' hard deadline, as a Go duration. Defaults to 20s with a local endpoint. |
+| `CMDCTRL_BOT_IMPROVISE` | `0` turns [improvisation](#improvisation-and-why-an-undo-is-free) off. On by default for the model tiers. |
 | `CMDCTRL_ANTHROPIC_API_KEY` | The hosted alternative. `CMDCTRL_ANTHROPIC_ENDPOINT` overrides the URL. |
 
 **Thinking is turned off on the local transport, and that is a
@@ -506,25 +530,72 @@ how well the catalog supports it.
 
 ## Improvisation, and why an undo is free
 
-> **Not live yet.** Everything in this section is built into the
-> runner and covered by tests: the bundle, the validated announcement,
-> the replay tag and the free undo. But improvising is something a
-> policy has to opt into, through `aiseat.Improviser`, and none of the
-> four shipped tiers does. **No bot improvises in a game today.** A bot
-> picks only from its legal moves. The section describes how
-> improvisation will behave once
-> [#686](https://github.com/krakenhavoc/cmd_and_ctrl/issues/686) gives
-> `assisted` and `strong` an implementation.
+> **Which tiers.** `assisted` and `strong` only. `random` and
+> `heuristic` never improvise — neither has a model, and reading a
+> card's oracle text is the whole job — and a model tier with no
+> endpoint configured does not either. Turn it off everywhere with
+> `CMDCTRL_BOT_IMPROVISE=0`; a bot then casts an uncatalogued card,
+> the card does nothing, and it is yours to apply by hand, which is
+> what every tier did before
+> [#686](https://github.com/krakenhavoc/cmd_and_ctrl/issues/686).
 
 The catalog is a few hundred cards, and a bot's deck is drawn entirely
 from it — but a card can be registered without every clause of it
-being implemented. When the line a bot wants needs an effect the
-engine cannot execute, **the bot will be allowed to do it by hand**, with
-the same four sandbox verbs you have: `move_card`, `change_life`,
-`add_counter`, `mark_damage`.
+being implemented. When a bot casts a card the engine cannot run,
+**the bot applies the text by hand**, with the same four sandbox verbs
+you have: `move_card`, `change_life`, `add_counter`, `mark_damage`.
 
-Three things make that safe, and all three are enforced in code rather
-than left to the policy:
+### When it happens, exactly
+
+**After the spell resolves, never instead of casting it.** The bot
+casts the card through the ordinary move list, the engine charges the
+mana, the spell resolves and does nothing, and *then* the bot applies
+the text. That order is the point: the four sandbox verbs cannot tap a
+land, so a bot that moved the card out of its own hand and applied the
+effect would have cast it for free.
+
+It fires **once per card**, at the moment that card leaves the stack,
+and only when all of these hold:
+
+- the bot cast it itself,
+- it was a *spell* on the stack, not an ability,
+- the card is one the engine will not run (the same `manual` mark the
+  deck-upload summary and the stack overlay show you),
+- the bot's own decklist has the card's oracle text, and
+- the bot does not owe a prompt — a bot answering "pay {2} or
+  sacrifice" answers it, it does not wander off.
+
+Nothing else triggers it. In particular an **unimplemented permanent's
+triggered or activated abilities are never improvised**: there is no
+way to tell from the board that a trigger should have fired, and the
+condition would recur every turn. A bot also never improvises somebody
+*else's* card.
+
+**It is capped.** At most **8 improvisation model calls per bot seat
+per game**, and at most one per card. A bot that hits the cap says so
+in the server log and leaves the rest of its uncatalogued cards alone.
+Between the two limits, the worst case is a known number rather than
+"however many cards it draws".
+
+**It can decline, and often will.** The model is told that answering
+with nothing is a correct answer, and it is the right one whenever the
+card cannot be done faithfully with four verbs. "Search your library"
+is the common case: a bot cannot see any library's contents, so it
+cannot pick a card out of one, and the honest answer is to leave that
+clause out and say so.
+
+**If the attempt is refused, the table is told that too.** A bundle
+the server will not apply — a verb outside the four, a card that does
+not exist, anything that fails validation — is dropped whole, and a
+chat line names the card and says nothing was changed. That line is
+the useful half: the card is sitting in a graveyard having done
+nothing, and now you know to do it by hand yourself.
+
+### What makes it safe
+
+Three things, and all three are enforced in code rather than left to
+the policy — which matters more here than anywhere else in the bot,
+because the thing writing the bundle is a language model:
 
 **It is one bundle, all or nothing.** Every verb in an improvisation
 runs under a single hold of the room lock and commits as one `seq`,
@@ -579,6 +650,22 @@ has to, since improvised removal reaches an opponent's board and an
 improvised drain reaches their life total. Improvisation is the one
 path on which a bot acts with admin authority, which is exactly why
 the verb list is closed and the announcement is validated first.
+
+### What it cannot see, and the one case to watch
+
+The model writing the bundle is handed **the seat's own filtered view
+and nothing else** — the same bytes a human in that seat receives —
+plus the card's oracle text out of the bot's own decklist. It cannot
+see your hand, it cannot see any library, and it has no handle that
+could reach either.
+
+The case worth knowing about: **a countered spell also leaves the
+stack**, and from a filtered view that looks much like one that
+resolved. The model is shown the board and told to answer with nothing
+if the spell did not really resolve, which catches the obvious cases —
+but if a bot ever improvises a card you countered, that is the
+mechanism, and the recourse is the one every improvisation has: read
+the line, undo it, free.
 
 ---
 
@@ -667,6 +754,100 @@ turn it on.
 
 Whole-game tests have the same knob under `AISEAT_DECISION_LOG=<dir>`,
 which is how the position corpus gets harvested.
+
+A decision log also carries **one extra line at the end of each
+game**: the spend record, `{"kind":"spend", ...}`. Every other line is
+a decision window and has no `kind` at all. `decisionlog.Scan` hands
+out the windows and skips the rest, so a reader that was counting
+decisions counts the same number it always did; `decisionlog.ScanAll`
+is the way in when you want the spend line.
+
+---
+
+## Per-game model spend (#735)
+
+**Where to read it:** the server logs one line per bot game, at INFO,
+when the table's last bot seat exits.
+
+```
+bot model spend for the game game=6a1f… seats=4 tiers="assisted x2, heuristic x2"
+  calls=228 decision_calls=226 improv_calls=2
+  input_tokens=87743 output_tokens=2736 cache_read_tokens=0 cache_write_tokens=0
+  cached_prompt_tokens=0 model_time=41.2s
+  per_seat="assisted 113c/1i 43811in/1368out; assisted 113c/1i 43932in/1368out; heuristic 0c/0i 0in/0out; heuristic 0c/0i 0in/0out"
+```
+
+It is emitted for **every** bot game, including the ones that spent
+nothing. "This table cost nothing" is a measurement, and a line that
+appeared only when there was a bill could not be told from a line that
+failed to be written.
+
+Three surfaces, same numbers:
+
+| Surface | What it is for |
+|---|---|
+| The log line above | The operator's answer to "what did last night cost". One line per game, no configuration. |
+| `aiseat.Runner.Stats().Spend` | One seat, live, while it plays. It is in `summary.json` for every `boteval arena` run, and in the arena's per-policy totals. |
+| The decision log's `kind:"spend"` record | The machine-readable per-game copy: every seat, split by purpose, written just before the file closes. Needs `CMDCTRL_BOT_DECISION_LOG`. |
+
+**Deciding and improvising are counted apart and never averaged
+together.** They are two different calls with two different caps: a
+decision asks for one integer against a prompt-cached prefix, and
+[improvisation](#improvisation-and-why-an-undo-is-free) asks for a
+whole bundle written from oracle text, with `MaxTokens` an order of
+magnitude larger and a hard cap of eight calls per seat per game. A
+single tokens-per-call number over the two would describe neither.
+`Spend.Total()` adds them when what you want is the bill.
+
+**A call that failed is still spend.** Timeouts, malformed replies and
+out-of-range answers are all counted, because they were all billed.
+That is the number that makes a too-slow self-hosted model visible:
+read it next to `ModelTimeouts` in the funnel stats.
+
+**What the tokens are.** `input_tokens` / `output_tokens` are the
+provider's own usage fields as the transport reported them, not an
+estimate — a provider that reports none leaves them at zero, which is
+a measurement that could not be taken rather than a call that was
+free. `cache_read_tokens` and `cache_write_tokens` are Anthropic's
+explicit prompt-cache breakpoints; `cached_prompt_tokens` is a local
+server's own prefix-cache hit count (Ollama's
+`prompt_tokens_details.cached_tokens`), which is an optimisation
+nobody is charged for and is deliberately not added to the other two.
+
+### S31 exit criterion 4
+
+> "Per-game model spend is measured and recorded, not estimated."
+
+**The measurement path is built and proven end to end against the fake
+client; the NUMBER is pending a keyed run.** Every deployment so far
+has run a local model (Ollama), which reports tokens but has no bill,
+and there is no API key in CI — so the figure that belongs in [ADR
+0033](decisions/0033-ai-bot-seat.md) §5 in place of its
+order-of-magnitude estimate cannot be taken here. What is settled is
+that there is now one place to read it from, for any game, with no
+extra flags.
+
+To take it, point a seat at a keyed endpoint and play:
+
+```bash
+CMDCTRL_ANTHROPIC_API_KEY=sk-… \
+  ./server/bin/boteval arena --seats assisted,heuristic,heuristic,heuristic \
+    --decks izzet-aggro,simic-ramp,esper-control,mono-black-aristocrats \
+    --games 4 --seed 1 --rotate --out ./arena-out
+```
+
+and read `spend` off each seat in `summary.json`, or run a server with
+`CMDCTRL_BOT_DECISION_LOG` set and read the `kind:"spend"` line of
+each game file. Record the model ids with the numbers: a spend figure
+without the model that produced it is not a measurement of anything.
+Four-bot and one-human-plus-three-bots tables are both wanted — a
+human at the table changes how many windows a bot sees.
+
+The reference point to check the result against is ADR 0033 §5's
+estimate of "cents per game", and the two facts that are already
+measured: Layer A absorbs ~90% of windows, and ~60–70% of the
+survivors escalate to the frontier model rather than the ~20% the ADR
+guessed.
 
 ---
 
@@ -1134,6 +1315,44 @@ The sort is stable, so equal scores keep the engine's order and two
 enumerations of one board produce the same move list — which is what
 makes a decision log replayable.
 
+### A wrapper forwards what it wraps (#1060)
+
+Both hooks are **optional Policy extensions**, found by type assertion
+on the policy the runner holds — and an assertion that answers false
+is indistinguishable from a policy with no opinion. No error, no log
+line, no failing test: the feature simply does not happen.
+
+That is exactly what happened. Every shipped tier is the heuristic
+inside a wrapper (`rules.Filter` for `heuristic`, `model.Policy` for
+`assisted` and `strong`), neither wrapper forwarded either hook, and
+both orderings were dead on every seat the lobby could create — for a
+month, while the pin tests went on passing against a bare
+`heuristic.New()` that no seat is ever given.
+
+The fix is one mechanism rather than two forwarding methods. A wrapper
+declares **what it wraps**, once:
+
+```go
+func (f *Filter) Unwrap() aiseat.Policy { return f.Inner }
+```
+
+and every lookup goes through `aiseat.Capability[T]`, which walks that
+chain outward-in and takes the **outermost** implementer. Outward-in
+is the whole of the semantics, and it is right in both directions: a
+wrapper that implements an extension itself means to override it
+(`rules.Filter` is a `Tracer`, and Layer A's own verdict is the one
+that must be reported), and one that does not means to be transparent.
+An optional interface added next year is forwarded by every wrapper
+without anybody editing one.
+
+`tiers/tiers.go` holds a compile-time assertion that each layer it
+assembles is an `aiseat.Unwrapper`, so adding a wrapper to a tier
+without teaching it the chain is a build failure rather than a feature
+that quietly stops happening. The runtime half is
+`TestEveryShippedTierForwardsItsOptionalHooks`, which builds every
+tier through the factory and asks it everything the runner and the
+enumerator will ask it.
+
 ## Never offered a banned cast (#760)
 
 The announce-time cast gate (`game.CastGateLocked`) is called once per
@@ -1164,6 +1383,15 @@ never negotiate.
 **No learning across games, and no opponent modelling.** Bots are
 stateless between games. The one played you last night remembers
 nothing about it.
+
+**Improvisation does one clause at a time, and only a spell's.** It
+fires when a spell the bot cast resolves into silence, and never for
+an unimplemented permanent's triggers or activated abilities — so a
+bot running an enchantment the engine will not honour plays as if the
+enchantment were a blank piece of card for the rest of the game. That
+is deliberate: a trigger that should have fired leaves no trace on the
+board for anything to notice, and the alternative is a rate limit
+pretending to be a rule.
 
 **A card in a hidden or unordered zone has no value to the
 evaluation.** `score.go` prices the battlefield and the seats; a card
@@ -1282,3 +1510,15 @@ stands, a bot runner holds on an activation of that permanent exactly
 as it holds on a pass. The table comes to rest at the threshold with
 the notice naming the ability, which is [ADR 0055
 §5](decisions/0055-loop-breaker.md)'s outcome for a bot-only table.
+
+**A real loop stops a bot-only table outright — and that is unreachable
+today.** When a trigger or activation loop's shortcuts run out (the
+second ask offers only "stop here"), autopass stays suspended and no
+bot seat has a move that keeps the loop going, so the room's commit
+sequence simply stops with the notice naming the ability and count
+still in the game state — the table does not finish and it does not
+spin forever ([ADR 0055](decisions/0055-loop-breaker.md) §5). No pair
+of abilities in the catalog loops today, so no whole-game bot test
+exercises this path; it stays on this list because it is what the
+engine does the day a looping pair is added, and that is where it
+will first show up.

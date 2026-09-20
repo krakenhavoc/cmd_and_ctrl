@@ -480,3 +480,83 @@ func SetsBasicLandType(applies func(target *game.Card, g *game.Game, source *gam
 		},
 	}
 }
+
+// SetAttachedBasePTPer is SetAttachedBasePT with the value COUNTED
+// from the game state on every recompute rather than printed —
+// Aettir and Priwen's "base power and toughness X/X, where X is your
+// life total".
+//
+// Same layer and sub-layer as its fixed sibling, and for the same
+// reason: 7b SETS, so counters and anthems still land on top of the
+// result in 7c and 7d. A card that set the base in 7c would fight
+// the anthems instead of being modified by them, and a +1/+1 counter
+// on the host would vanish.
+//
+// `value` runs inside a layer recompute where the caller may hold
+// only the read lock, so it must read g.Battlefield / g.Seats
+// directly rather than through a locking accessor — the same
+// contract PumpAttachedPer's `count` carries.
+//
+// "Your" is the ATTACHMENT's controller (CR 109.5), which is what
+// `source` is for: a stolen Aettir sizes its host off whoever holds
+// the Equipment now, not off the creature's controller.
+func SetAttachedBasePTPer(value func(g *game.Game, source *game.Card) (power, toughness int)) game.StaticAbility {
+	return game.StaticAbility{
+		Layer:                 game.Layer7PT,
+		SubLayer:              game.SubLayer7B_Set,
+		ContinuesAfterRemoval: true,
+		AppliesTo:             AttachedToSource,
+		Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
+			p, t := value(g, source)
+			c.Power = p
+			c.Toughness = t
+		},
+	}
+}
+
+// --- moving an EXISTING Equipment onto a creature (#1107) --------
+//
+// Brass Squire's activated ability and Magnetic Theft's spell say the
+// same sentence: "Attach target Equipment [...] to target creature
+// [...]". Neither is an equip ability — the Equipment being moved is
+// not the source, so AttachSourceToTarget doesn't apply — and both are
+// the ADR 0065 two-slot positional shape (Bite Down's shape, ported to
+// an attachment): clause 0 names the Equipment, clause 1 the creature
+// it lands on, read back positionally rather than by predicate, since
+// nothing else distinguishes the two slots once both narrow to "a
+// permanent".
+
+// TwoSlotAttachTargets builds that clause pair. `equipmentPreds` /
+// `creaturePreds` narrow each half exactly as printed — YouControl()
+// on both for Brass Squire's "Equipment you control" / "creature you
+// control", nothing for Magnetic Theft's unrestricted "target
+// Equipment" / "target creature", which is why control of the
+// Equipment never changes (AttachClauseTargets only ever writes the
+// AttachedTo link, never Controller).
+func TwoSlotAttachTargets(equipmentLabel string, equipmentPreds []CardPredicate, creatureLabel string, creaturePreds []CardPredicate) *game.TargetSpec {
+	return Clauses(
+		TargetPermanent(equipmentLabel, append([]CardPredicate{HasSubtype("Equipment")}, equipmentPreds...)...),
+		TargetCreature(creatureLabel, creaturePreds...),
+	)
+}
+
+// AttachClauseTargets is the resolution both cards share: attach
+// clause 0's Equipment to clause 1's creature. Each clause is
+// re-checked independently (CR 608.2b) — a target that left in
+// response leaves nothing to attach, which AttachForEffect already
+// treats as a quiet no-op (CR 701.3b) rather than an error, so this
+// does too: there is no such thing as attaching nothing to a creature
+// or an Equipment to nobody, so either miss is the whole ability
+// doing as much as it can, which here is nothing.
+func AttachClauseTargets(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	equip, ok := ctx.ClauseTarget(0)
+	if !ok {
+		return nil
+	}
+	host, ok := ctx.ClauseTarget(1)
+	if !ok {
+		return nil
+	}
+	return g.AttachForEffect(equip.ID, host)
+}

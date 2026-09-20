@@ -567,6 +567,40 @@ func (c CounterTarget) Apply(ctx *Context) error {
 	return ctx.Game.CounterTargetForEffect(c.StackID)
 }
 
+// CounterAllMatching counters every spell on the stack matching
+// Match — the "change 'target' in its text to 'each'" an overloaded
+// counterspell applies to its own printed "counter target spell"
+// (CR 702.96, Counterflux).
+//
+// The set is snapshotted once, before anything is countered — CR
+// 608.2's "objects as they existed when the spell began resolving" —
+// so a spell that leaves the stack as a side effect of an earlier
+// counter in the same sweep is neither double-counted nor able to
+// dodge by leaving mid-resolution, and nothing that arrives after the
+// sweep began is swept up with it.
+type CounterAllMatching struct {
+	Match CardPredicate
+}
+
+func (c CounterAllMatching) Apply(ctx *Context) error {
+	if c.Match == nil || ctx.Game.Stack == nil {
+		return nil
+	}
+	caster := ctx.Controller()
+	var ids []uuid.UUID
+	for _, card := range ctx.Game.Stack.Cards {
+		if c.Match(ctx.Game, caster, card) {
+			ids = append(ids, card.InstanceID)
+		}
+	}
+	for _, id := range ids {
+		if err := (CounterTarget{StackID: id}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // AddCounter places (or removes, via negative N) N `Kind` counters
 // on `Target`. Target can be in any zone — the primitive does not
 // gate on card type. Used by The Wandering Emperor's OnETB hook

@@ -31,10 +31,17 @@ import (
 //     with no counters at all is not a legal choice and gets nothing.
 //     Kinds are snapshotted before any counter is placed, so a
 //     replacement that adds a NEW kind mid-loop can't cascade.
-//   - The counters go through AddCounterForEffect, not a raw map
+//   - The counters go through AddCounterByForEffect, not a raw map
 //     write, so the CR 614 replacement pipeline sees them: Doubling
 //     Season doubles a proliferated counter exactly as it doubles any
-//     other, which is the paper interaction.
+//     other, which is the paper interaction. Since ADR 0056 that is
+//     true of the PLAYER half too — poison and energy used to be a bare
+//     map write with no window, no event and no layer bump; see
+//     player_counters.go.
+//   - The PROLIFERATING PLAYER is the placer on every counter it
+//     places, on permanents and on players alike (CR 701.34: "GIVE
+//     each another counter"). That is what makes Vorinclex halve an
+//     opponent's proliferate onto your creature and double your own.
 
 // applyProliferateLocked gives each named permanent and each named
 // player one additional counter of every kind they already have —
@@ -49,14 +56,14 @@ import (
 // have moved underneath it.
 //
 // Caller must hold g.mu (it is an effect-time helper).
-func (g *Game) applyProliferateLocked(cardIDs []uuid.UUID, playerIDs []uuid.UUID) error {
+func (g *Game) applyProliferateLocked(placer uuid.UUID, cardIDs []uuid.UUID, playerIDs []uuid.UUID) error {
 	for _, id := range cardIDs {
 		c, ok := g.LookupCardForEffect(id)
 		if !ok {
 			continue
 		}
 		for _, kind := range sortedCounterKinds(c.Counters) {
-			if err := g.AddCounterForEffect(id, kind, 1); err != nil {
+			if err := g.AddCounterByForEffect(placer, id, kind, 1); err != nil {
 				return err
 			}
 		}
@@ -67,7 +74,7 @@ func (g *Game) applyProliferateLocked(cardIDs []uuid.UUID, playerIDs []uuid.UUID
 			continue
 		}
 		for _, kind := range sortedCounterKinds(p.Counters) {
-			if err := g.AddPlayerCounterForEffect(id, kind, 1); err != nil {
+			if err := g.AddPlayerCounterByForEffect(placer, id, kind, 1); err != nil {
 				return err
 			}
 		}
@@ -94,47 +101,4 @@ func sortedCounterKinds(counters map[string]int) []string {
 	}
 	sort.Strings(out)
 	return out
-}
-
-// AddPlayerCounterForEffect is the effect-time counterpart of
-// AddPlayerCounter: it adjusts a player-level counter (poison,
-// energy, experience, rad) from inside a resolving effect, where the
-// caller already holds the write lock.
-//
-// Two deliberate differences from the public mutator:
-//
-//   - It does not run state checks. Effects resolve inside
-//     resolveTopOfStackLocked, which pairs with runStateChecks at the
-//     surrounding priority boundary — the same contract
-//     DealDamageToPlayerForEffect documents. A player proliferated to
-//     ten poison therefore loses at that boundary, not mid-effect.
-//   - It emits no event beyond the legacy field mirroring, matching
-//     AddPlayerCounter. Player counters have no replacement pipeline
-//     of their own yet (RepEventCounter is card-targeted), so a
-//     Doubling-Season-for-poison card would need that first.
-//
-// Caller must hold g.mu.
-func (g *Game) AddPlayerCounterForEffect(playerID uuid.UUID, name string, delta int) error {
-	if name == "" {
-		return ErrInvalidParam
-	}
-	if delta == 0 {
-		return nil
-	}
-	p := g.playerByIDLocked(playerID)
-	if p == nil {
-		return ErrPlayerNotFound
-	}
-	next := p.Counters[name] + delta
-	if next < 0 {
-		next = 0
-	}
-	setPlayerCounterLocked(p, name, next)
-	switch name {
-	case CounterPoison:
-		p.Poison = next
-	case CounterEnergy:
-		p.Energy = next
-	}
-	return nil
 }

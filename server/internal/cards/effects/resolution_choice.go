@@ -251,3 +251,19 @@ func (s SacrificeChoice) Apply(ctx *Context) error {
 	})
 	return nil
 }
+
+// PermanentsControlledBy lists every permanent a player controls, in
+// battlefield order — the candidate set behind a bare "sacrifice a
+// permanent" (Read the Runes), which unlike the nonland clause above
+// includes lands.
+//
+// Caller must hold g.mu — it is an effect-time read.
+func PermanentsControlledBy(g *game.Game, playerID uuid.UUID) []uuid.UUID {
+	var out []uuid.UUID
+	for _, c := range g.Battlefield.Cards {
+		if c.Controller == playerID {
+			out = append(out, c.InstanceID)
+		}
+	}
+	return out
+}

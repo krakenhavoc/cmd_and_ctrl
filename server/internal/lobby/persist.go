@@ -72,11 +72,19 @@ func seatRecords(seats []SeatInfo) []SeatRecord {
 	out := make([]SeatRecord, 0, len(seats))
 	for _, s := range seats {
 		rec := SeatRecord{
-			Seat:             s.Seat,
-			PlayerID:         s.PlayerID,
-			GuestName:        s.Name,
-			DeckName:         s.DeckName,
-			PendingDiscordID: s.DiscordID,
+			Seat:      s.Seat,
+			PlayerID:  s.PlayerID,
+			UserID:    s.UserID,
+			GuestName: s.Name,
+			DeckID:    s.DeckID,
+			DeckName:  s.DeckName,
+		}
+		// A Discord seat with no users row yet (no database when it
+		// was claimed, or a seat imported from lobby/*.json) waits on
+		// its snowflake. A linked seat never does: the two columns are
+		// never both set.
+		if s.UserID == "" {
+			rec.PendingDiscordID = s.DiscordID
 		}
 		if s.IsBot {
 			rec.BotTier = s.BotTier
@@ -99,6 +107,10 @@ func gameRecordLocked(entry *gameEntry) GameRecord {
 		EndedAt:    entry.endedAt,
 		ArchivedAt: entry.meta.ArchivedAt,
 		WinnerSeat: entry.winnerSeat,
+		// ADR 0075 §2.1. syncHostLocked keeps HostPlayerID equal to the
+		// room's effective host before any write that matters.
+		HostPlayerID:  entry.meta.HostPlayerID,
+		HostDiscordID: entry.meta.HostDiscordID,
 	}
 	return rec
 }
@@ -128,6 +140,10 @@ func (l *Lobby) persistGameLocked(entry *gameEntry) {
 	}
 }
 
+// persistGameLocked is also how the host columns (ADR 0075 §2.1) are
+// written: by syncHostLocked when hosting moves, and by Join /
+// TransferHost when a pending named host is spent.
+//
 // syncStateLocked copies the engine's lifecycle state onto the entry
 // and, when it moved, onto the games row: started_at on the first
 // sight of active, ended_at and winner_seat on the first sight of
@@ -293,11 +309,16 @@ func (l *Lobby) RestoreFromDisk(log *slog.Logger) int {
 			continue
 		}
 
+		// The host rides the games row, not the engine snapshot; hand it
+		// back to the room so is_host and the host gates survive the
+		// restart (ADR 0075 §2.1).
+		o.Room.SetHost(entry.meta.HostPlayerID)
 		l.mu.Lock()
 		l.games[o.GameID] = entry
 		// The engine is authoritative for lifecycle state; the row can
 		// be stale if the process died between the two writes.
 		l.syncStateLocked(entry)
+		l.syncHostLocked(entry)
 		// Bot seats do not come back on their own. The seat itself is
 		// carried — Player.IsBot / BotTier ride the engine snapshot
 		// and seats.bot_tier rides the row — but the runner was a
@@ -356,13 +377,25 @@ func (l *Lobby) loadEntry(id uuid.UUID, room *ws.Room) (*gameEntry, error) {
 		Players:    make([]SeatInfo, 0, len(seats)),
 		State:      rec.State,
 		ArchivedAt: rec.ArchivedAt,
+		// The host (ADR 0075 §2.1). RestoreFromDisk hands it back to
+		// the room, which decides whether it still stands.
+		HostPlayerID:  rec.HostPlayerID,
+		HostDiscordID: rec.HostDiscordID,
+		// CreatedBy (#1098): rec.CreatedBy is "" for an admin-created
+		// or file-imported game (Nil, matching CreateWith), and a
+		// stored UUID otherwise. A row somehow holding something
+		// unparseable falls back to Nil — "no creator" is the safe
+		// reading, not a load failure.
+		CreatedBy: parseUUIDOrNil(rec.CreatedBy),
 	}
 	for _, s := range seats {
 		info := SeatInfo{
 			PlayerID:  s.PlayerID,
 			Name:      s.GuestName,
 			Seat:      s.Seat,
+			DeckID:    s.DeckID,
 			DeckName:  s.DeckName,
+			UserID:    s.UserID,
 			DiscordID: s.PendingDiscordID,
 			IsBot:     s.BotTier != "",
 			BotTier:   s.BotTier,

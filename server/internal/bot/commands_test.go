@@ -63,20 +63,25 @@ func TestStringOption(t *testing.T) {
 
 func TestCommandDefinitions(t *testing.T) {
 	defs := commandDefinitions()
-	if len(defs) != 2 {
-		t.Fatalf("want 2 definitions, got %d", len(defs))
+	if len(defs) != 3 {
+		t.Fatalf("want 3 definitions, got %d", len(defs))
 	}
-	names := []string{defs[0].Name, defs[1].Name}
-	if !contains(names, CmdInvite) || !contains(names, CmdGames) {
+	names := make([]string, len(defs))
+	for i, d := range defs {
+		names[i] = d.Name
+	}
+	if !contains(names, CmdInvite) || !contains(names, CmdGames) || !contains(names, CmdEnd) {
 		t.Errorf("missing expected command names: %v", names)
 	}
 	// /cc-invite must have an optional string "name" option so
 	// users can type /cc-invite friday-commander.
-	var invite *discordgo.ApplicationCommand
+	var invite, end *discordgo.ApplicationCommand
 	for _, d := range defs {
-		if d.Name == CmdInvite {
+		switch d.Name {
+		case CmdInvite:
 			invite = d
-			break
+		case CmdEnd:
+			end = d
 		}
 	}
 	if invite == nil {
@@ -84,6 +89,13 @@ func TestCommandDefinitions(t *testing.T) {
 	}
 	if len(invite.Options) != 1 || invite.Options[0].Required {
 		t.Errorf("invite should have one optional option, got %+v", invite.Options)
+	}
+	// /cc-end must have a required, autocompleting "game" option.
+	if end == nil {
+		t.Fatal("missing end command")
+	}
+	if len(end.Options) != 1 || !end.Options[0].Required || !end.Options[0].Autocomplete {
+		t.Errorf("end should have one required, autocompleting option, got %+v", end.Options)
 	}
 }
 
@@ -218,7 +230,7 @@ func TestHandleInvite_Success(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	c := NewServerClient(ts.URL, "admin")
-	meta, err := c.CreateGame(context.Background(), "friday")
+	meta, err := c.CreateGame(context.Background(), "friday", "")
 	if err != nil {
 		t.Fatalf("CreateGame: %v", err)
 	}
@@ -243,4 +255,45 @@ func contains(haystack []string, needle string) bool {
 		}
 	}
 	return false
+}
+
+func TestInviteNamesTheInvokerAsHost(t *testing.T) {
+	var got map[string]string
+	mux := http.NewServeMux()
+	mux.HandleFunc("/admin/login", func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]string{"token": "session"})
+	})
+	mux.HandleFunc("/games", func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&got)
+		w.WriteHeader(http.StatusCreated)
+		_ = json.NewEncoder(w).Encode(lobby.GameMeta{ID: uuid.New(), Name: got["name"], InviteToken: "tok", State: "lobby"})
+	})
+	ts := httptest.NewServer(mux)
+	t.Cleanup(ts.Close)
+
+	h := NewHandler(Config{GuildIDs: []string{"g1"}}, NewServerClient(ts.URL, "admin"), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	i := &discordgo.InteractionCreate{Interaction: &discordgo.Interaction{
+		Type:    discordgo.InteractionApplicationCommand,
+		GuildID: "g1",
+		Member:  &discordgo.Member{User: &discordgo.User{ID: "424242"}},
+	}}
+	name, _, err := h.createInviteGame(context.Background(), i, discordgo.ApplicationCommandInteractionData{Name: CmdInvite})
+	if err != nil {
+		t.Fatalf("createInviteGame: %v", err)
+	}
+	if got["host_discord_id"] != "424242" {
+		t.Errorf("host_discord_id = %q, want the invoker 424242 (body %v)", got["host_discord_id"], got)
+	}
+	if got["name"] != name || name == "" {
+		t.Errorf("name = %q, sent %q", name, got["name"])
+	}
+
+	// A DM interaction carries the user on User, not Member.
+	dm := &discordgo.InteractionCreate{Interaction: &discordgo.Interaction{User: &discordgo.User{ID: "7"}}}
+	if id := invokerID(dm); id != "7" {
+		t.Errorf("DM invoker = %q, want 7", id)
+	}
+	if id := invokerID(&discordgo.InteractionCreate{Interaction: &discordgo.Interaction{}}); id != "" {
+		t.Errorf("no user: invoker = %q", id)
+	}
 }

@@ -132,6 +132,88 @@ func kills(a, b *protocol.CardView) bool {
 	return a.Power >= effectiveToughness(b)
 }
 
+// blockMove reads one KindBlock move as "this attacker, blocked by
+// these creatures": one pair for declare_blocker, the whole group for
+// declare_blockers (#750). Returns a nil attacker for a move whose
+// cards are not on the board the bot can see.
+func (st *state) blockMove(m legal.Move) (*protocol.CardView, []*protocol.CardView) {
+	var pairs []blockParams
+	if m.Type == legal.TypeDeclareBlockers {
+		pairs = decode[blocksParams](m.Params).Blocks
+	} else {
+		pairs = []blockParams{decode[blockParams](m.Params)}
+	}
+	if len(pairs) == 0 {
+		return nil, nil
+	}
+	atk := st.bf[pairs[0].Attacker]
+	if atk == nil {
+		return nil, nil
+	}
+	blockers := make([]*protocol.CardView, 0, len(pairs))
+	for _, bp := range pairs {
+		blk := st.bf[bp.Blocker]
+		// A group is all-or-nothing to the engine, so it is
+		// all-or-nothing to the score too.
+		if blk == nil || bp.Attacker != pairs[0].Attacker {
+			return nil, nil
+		}
+		blockers = append(blockers, blk)
+	}
+	return atk, blockers
+}
+
+// killedBy reports whether these blockers together kill the attacker:
+// any one of them alone under the ordinary rule, or their combined
+// power once it reaches the attacker's toughness (CR 510.1c — a
+// blocked creature is dealt damage by every creature blocking it).
+func killedBy(blockers []*protocol.CardView, atk *protocol.CardView) bool {
+	total := 0
+	for _, blk := range blockers {
+		if kills(blk, atk) {
+			return true
+		}
+		if blk.Power > 0 {
+			total += blk.Power
+		}
+	}
+	if hasKeyword(atk, "indestructible") {
+		return false
+	}
+	return total >= effectiveToughness(atk)
+}
+
+// losses is the blockers the attacker's damage can kill, cheapest
+// first — the attacker's controller divides its damage as it likes
+// (CR 510.1a), so an estimate has to assume it spends that damage as
+// badly for the defender as it can. A deathtoucher needs one point
+// each, which is why lethal is asked of `kills` rather than of raw
+// power.
+func (st *state) losses(atk *protocol.CardView, blockers []*protocol.CardView) []*protocol.CardView {
+	order := make([]*protocol.CardView, len(blockers))
+	copy(order, blockers)
+	sort.SliceStable(order, func(i, j int) bool {
+		return st.w.CombatValue(order[i]) < st.w.CombatValue(order[j])
+	})
+	power := atk.Power
+	var out []*protocol.CardView
+	for _, blk := range order {
+		if !kills(atk, blk) {
+			continue
+		}
+		need := effectiveToughness(blk)
+		if hasKeyword(atk, "deathtouch") {
+			need = 1
+		}
+		if need > power {
+			break
+		}
+		power -= need
+		out = append(out, blk)
+	}
+	return out
+}
+
 // --- attacks -------------------------------------------------------
 
 // decideAttack picks one attacker to declare, or reports that the bot
@@ -520,13 +602,20 @@ func (p *Policy) decideBlock(st *state, moves []legal.Move) (aiseat.Decision, bo
 		if moves[i].Kind != legal.KindBlock {
 			continue
 		}
-		bp := decode[blockParams](moves[i].Params)
-		atk, blk := st.bf[bp.Attacker], st.bf[bp.Blocker]
-		if atk == nil || blk == nil {
+		// #750: a block move is either one pair (declare_blocker) or
+		// a whole group (declare_blockers) that is legal only
+		// together, such as the two creatures a menace attacker
+		// takes. Both are scored as ONE block of one attacker by the
+		// creatures named, which is what they are.
+		atk, blockers := st.blockMove(moves[i])
+		if atk == nil || len(blockers) == 0 {
 			continue
 		}
 		v := 0.0
 		reason := "trade"
+		if len(blockers) > 1 {
+			reason = "menace block"
+		}
 		if !blocked[atk.InstanceID] {
 			saved := float64(atk.Power) * st.w.MarginalLife(life)
 			if desperate {
@@ -538,10 +627,13 @@ func (p *Policy) decideBlock(st *state, moves []legal.Move) (aiseat.Decision, bo
 			// Ganging up only pays if it changes the outcome.
 			reason = "gang block"
 		}
-		if kills(blk, atk) {
+		if killedBy(blockers, atk) {
 			v += st.w.CombatValue(atk)
 		}
-		if kills(atk, blk) {
+		// The attacker assigns its damage among the blockers, so the
+		// group loses whichever of them that damage can kill. Cheapest
+		// first: a defender who must lose someone loses the least.
+		for _, blk := range st.losses(atk, blockers) {
 			v -= st.w.CombatValue(blk)
 			if hasKeyword(atk, "deathtouch") {
 				// A deathtoucher eats whatever blocks it; do not

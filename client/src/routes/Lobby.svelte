@@ -6,11 +6,15 @@
     createGame,
     deleteGame,
     fetchBotOptions,
+    fetchTableSettings,
     listGames,
     logout as apiLogout,
+    logoutEverywhere as apiLogoutEverywhere,
     mintSeatReclaim,
     removeBotSeat,
     replayURL,
+    patchTableSettings,
+    rotateInvite,
     startGame,
     unarchiveGame,
     type BotOptions,
@@ -19,11 +23,17 @@
     type SeatInfo,
   } from "../lib/api";
   import { inviteURL, reclaimURL, spectatorInviteURL, navigate } from "../lib/router";
-  import { session, LobbyApiError } from "../lib/session";
+  import { canSignOutEverywhere, session, LobbyApiError } from "../lib/session";
+  import { signedInUserID } from "../lib/myGames";
   import { openSettings } from "../lib/settings";
   import { seatColor } from "../lib/colors";
   import { avatarURL } from "../lib/api";
+  import { canInviteTablemates } from "../lib/tablemates";
+  import type { TableSettingsView } from "../lib/protocol";
+  import type { TableSettingsPatch } from "../lib/tableSettings";
   import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
+  import TableSettingsPanel from "../lib/components/TableSettingsPanel.svelte";
+  import TablematePicker from "../lib/components/TablematePicker.svelte";
   import Icon from "../lib/components/Icon.svelte";
 
   // Lobby is the admin + player landing page. Admins see a create-
@@ -79,6 +89,63 @@
     if (g.state !== "lobby" || !botsOfferable) return false;
     if ($session?.principal.role === "admin") return true;
     return mySeat(g) !== null;
+  }
+
+  // --- table settings (ADR 0075 §2.5) -----------------------------
+  //
+  // The lobby half of the settings panel. Only the manager is offered
+  // it here, and that is a LIMITATION rather than a decision: the
+  // settings are public (every viewer gets them on the game view),
+  // but the lobby's HTTP surface has only a write — PATCH — so the
+  // read below is an empty patch and inherits the write's gate. At
+  // the table, where the snapshot carries them, everyone sees the
+  // same panel read-only. A `GET /games/{id}/settings` would close
+  // the gap; it is server work and belongs in its own change.
+  let settingsFor = $state<string | null>(null);
+  let tableSettings = $state<TableSettingsView | null>(null);
+  let settingsBusy = $state(false);
+  let settingsError = $state<string | null>(null);
+
+  function canManageTableFor(g: GameMeta): boolean {
+    return isAdmin || mySeat(g)?.is_host === true;
+  }
+
+  async function openTableSettings(gameID: string): Promise<void> {
+    settingsFor = gameID;
+    tableSettings = null;
+    settingsError = null;
+    settingsBusy = true;
+    try {
+      tableSettings = await fetchTableSettings(gameID);
+    } catch (e) {
+      settingsError = e instanceof Error ? e.message : String(e);
+    } finally {
+      settingsBusy = false;
+    }
+  }
+
+  async function applyTableSettings(gameID: string, patch: TableSettingsPatch): Promise<void> {
+    settingsBusy = true;
+    settingsError = null;
+    try {
+      // The response is the WHOLE settings object after the patch, so
+      // the panel re-renders from the server's answer rather than
+      // from what it hoped it had set.
+      tableSettings = await patchTableSettings(gameID, patch);
+    } catch (e) {
+      settingsError = e instanceof Error ? e.message : String(e);
+    } finally {
+      settingsBusy = false;
+    }
+  }
+
+  // canRotateInvites: admin, or the table's own creator (#1098).
+  // g.is_creator is computed server-side per viewer — see
+  // redactMetaFor in server/internal/lobby/http.go — so this mirrors
+  // the server's CanRotateInvites without ever seeing a raw creator
+  // id; the endpoint stays authoritative either way.
+  function canRotateInvites(g: GameMeta): boolean {
+    return isAdmin || g.is_creator === true;
   }
 
   function openBotPicker(gameID: string): void {
@@ -278,7 +345,11 @@
   async function copyInvite(id: string): Promise<void> {
     const token = recentInvites.get(id);
     if (!token) {
-      error = "no invite token cached for this game — re-open as admin to recover";
+      // Can't happen from the UI — the button that calls this only
+      // renders once a token is cached — but a stale token dropping
+      // out from under a click is not a wall we need to hit. "New
+      // link" (onRotateInvite below) is the actual way back in.
+      error = "no invite token cached for this game — use “new link” to mint one";
       return;
     }
     await copyToClipboard(inviteURL(id, token), `${id}:invite`);
@@ -287,10 +358,62 @@
   async function copySpectatorInvite(id: string): Promise<void> {
     const token = recentSpectatorInvites.get(id);
     if (!token) {
-      error = "no spectator invite cached for this game — re-open as admin to recover";
+      error = "no spectator invite cached for this game — use “new link” to mint one";
       return;
     }
     await copyToClipboard(spectatorInviteURL(id, token), `${id}:spectator`);
+  }
+
+  // --- admin: rotating a lost or compromised invite ----------------
+  //
+  // Only the process that minted a game can show its invite
+  // plaintext (ADR 0051 decision 4) — after a restart there is no way
+  // to recover a lost link for a table that's still running, and
+  // "re-open as admin" (the old hint) never actually worked. Rotating
+  // is the real fix: it revokes the current invite of one kind and
+  // mints a replacement, which works whether or not this process ever
+  // held the old plaintext. The trade the UI has to be honest about:
+  // the OLD link of that kind stops working the instant this
+  // succeeds, so it asks first.
+  type InviteKind = "player" | "spectator";
+  let confirmRotate = $state<{ gameID: string; kind: InviteKind } | null>(null);
+  let rotateBusy = $state<string | null>(null); // `${gameID}:${kind}`
+  let rotateError = $state<{ gameID: string; message: string } | null>(null);
+  // The freshly-minted link, shown once so the admin can copy or send
+  // it — mirrors the seat-reclaim panel below.
+  let rotated = $state<{ gameID: string; kind: InviteKind; url: string } | null>(null);
+
+  function inviteKindLabel(kind: InviteKind): string {
+    return kind === "player" ? "player invite" : "spectator link";
+  }
+
+  async function onRotateInvite(gameID: string, kind: InviteKind): Promise<void> {
+    const key = `${gameID}:${kind}`;
+    rotateBusy = key;
+    rotateError = null;
+    try {
+      const res = await rotateInvite(gameID, kind);
+      const url =
+        kind === "player" ? inviteURL(gameID, res.token) : spectatorInviteURL(gameID, res.token);
+      if (kind === "player") recentInvites.set(gameID, res.token);
+      else recentSpectatorInvites.set(gameID, res.token);
+      rotated = { gameID, kind, url };
+      confirmRotate = null;
+      // Forces the "copy invite" / "spectator link" buttons (which
+      // key off recentInvites/recentSpectatorInvites, not reactive
+      // state) to notice the map changed — same trick onCreate uses.
+      await refresh();
+    } catch (err) {
+      rotateError = {
+        gameID,
+        message:
+          err instanceof LobbyApiError
+            ? err.message
+            : `could not mint a new ${inviteKindLabel(kind)}`,
+      };
+    } finally {
+      rotateBusy = null;
+    }
   }
 
   function openGame(id: string): void {
@@ -300,6 +423,20 @@
   async function logout(): Promise<void> {
     await apiLogout();
     navigate("#/login");
+  }
+
+  // Sign out everywhere (ADR 0051 decision 6): every browser this
+  // Discord account is signed in on, this one included. Offered only
+  // for a session tied to a user; a failure stays on the page so the
+  // player knows their other browsers are still signed in.
+  async function logoutEverywhere(): Promise<void> {
+    error = "";
+    try {
+      await apiLogoutEverywhere();
+      navigate("#/login");
+    } catch (err) {
+      error = err instanceof LobbyApiError ? err.message : "could not sign out everywhere";
+    }
   }
 
   // mySeat returns the seat this user occupies in game g, or null if
@@ -410,6 +547,10 @@
       {/if}
       <b>{$session?.principal.role}</b>
     </span>
+    {#if signedInUserID($session)}
+      <!-- ADR 0051 decision 4: every table this person has sat at. -->
+      <button class="ghost" onclick={() => navigate("#/my-games")}>my games</button>
+    {/if}
     <button
       class="ibtn"
       title="settings (press , from anywhere)"
@@ -417,6 +558,13 @@
       onclick={() => openSettings()}><Icon name="gear" size={17} /></button
     >
     <button class="ghost" onclick={logout}>log out</button>
+    {#if canSignOutEverywhere($session)}
+      <button
+        class="ghost"
+        title="sign out of every browser signed in with this Discord account"
+        onclick={logoutEverywhere}>log out everywhere</button
+      >
+    {/if}
   </header>
 
   <div class="head">
@@ -488,6 +636,49 @@
                     {:else}
                       <Icon name="link" size={13} /> Spectator link
                     {/if}
+                  </button>
+                {/if}
+                {#if canRotateInvites(g)}
+                  <!-- Replaces the old "re-open as admin to recover"
+                       hint, which never actually worked (the invite
+                       plaintext only ever lived in the memory of the
+                       process that minted it — see docs/lobby.md).
+                       This mints a real replacement. Admin or the
+                       table's own creator (#1098); see
+                       canRotateInvites above. -->
+                  <button
+                    class="ghost"
+                    title="mint a new player invite — the current one stops working immediately"
+                    disabled={rotateBusy !== null}
+                    onclick={() => (confirmRotate = { gameID: g.id, kind: "player" })}
+                  >
+                    <Icon name="undo" size={13} />
+                    {rotateBusy === `${g.id}:player` ? "…" : "new invite link"}
+                  </button>
+                  <button
+                    class="ghost"
+                    title="mint a new spectator link — the current one stops working immediately"
+                    disabled={rotateBusy !== null}
+                    onclick={() => (confirmRotate = { gameID: g.id, kind: "spectator" })}
+                  >
+                    <Icon name="undo" size={13} />
+                    {rotateBusy === `${g.id}:spectator` ? "…" : "new spectator link"}
+                  </button>
+                {/if}
+                {#if canManageTableFor(g)}
+                  <!-- ADR 0075 §2.5. Offered to the host and the admin
+                       because this page can only READ the settings
+                       through the write route (see openTableSettings).
+                       -->
+                  <button
+                    class="ghost"
+                    class:on={settingsFor === g.id}
+                    aria-expanded={settingsFor === g.id}
+                    title="undos, starting life, commander damage, bot speed, spawning"
+                    onclick={() =>
+                      settingsFor === g.id ? (settingsFor = null) : openTableSettings(g.id)}
+                  >
+                    <Icon name="gear" size={13} /> table settings
                   </button>
                 {/if}
                 <!-- Mirror the server's downloadReplay gate: admins may
@@ -569,6 +760,9 @@
                     <div class="sname">
                       seat {p.seat + 1}: {seatName(p)}
                       {#if p.is_bot}<b class="botchip">bot</b>{/if}
+                      {#if p.is_host}<b title="Table host: may manage the table alongside the admin"
+                          >host</b
+                        >{/if}
                       {#if p.player_id === $session?.playerID}<b>you</b>{/if}
                     </div>
                     {#if p.is_bot}
@@ -629,6 +823,25 @@
             {/each}
           </ul>
 
+          {#if settingsFor === g.id}
+            <div class="tsettings">
+              {#if tableSettings}
+                <TableSettingsPanel
+                  settings={tableSettings}
+                  canManage={canManageTableFor(g)}
+                  gameState={g.state}
+                  busy={settingsBusy}
+                  error={settingsError}
+                  onpatch={(patch) => applyTableSettings(g.id, patch)}
+                />
+              {:else if settingsBusy}
+                <p class="muted">loading settings…</p>
+              {:else}
+                <p class="error">{settingsError ?? "couldn't load this table's settings"}</p>
+              {/if}
+            </div>
+          {/if}
+
           {#if confirming?.id === g.id}
             <div class="confirm" class:danger={confirming.kind === "delete"} role="alert">
               {#if confirming.kind === "archive"}
@@ -662,6 +875,71 @@
                 </button>
               </div>
             </div>
+          {/if}
+
+          {#if confirmRotate?.gameID === g.id}
+            <div class="confirm" role="alert">
+              <p>
+                <strong>Mint a new {inviteKindLabel(confirmRotate.kind)}?</strong>
+                The current {inviteKindLabel(confirmRotate.kind)} link stops working the moment this happens
+                — anyone still holding it will need the new one.
+              </p>
+              <div class="confirm-actions">
+                <button
+                  class="primary"
+                  disabled={rotateBusy !== null}
+                  onclick={() => onRotateInvite(g.id, confirmRotate!.kind)}
+                >
+                  {rotateBusy === `${g.id}:${confirmRotate.kind}` ? "minting…" : "mint new link"}
+                </button>
+                <button
+                  class="ghost"
+                  disabled={rotateBusy !== null}
+                  onclick={() => (confirmRotate = null)}
+                >
+                  cancel
+                </button>
+              </div>
+            </div>
+          {/if}
+
+          {#if rotated?.gameID === g.id}
+            <div class="reclaim">
+              <div class="rhead">
+                <span class="panel-h">new {inviteKindLabel(rotated.kind)}</span>
+                <button
+                  class="ghost"
+                  aria-label="dismiss the new link"
+                  onclick={() => (rotated = null)}><Icon name="x" size={12} /></button
+                >
+              </div>
+              <input
+                class="rurl"
+                type="text"
+                readonly
+                value={rotated.url}
+                aria-label={`new ${inviteKindLabel(rotated.kind)}`}
+                onfocus={(e) => e.currentTarget.select()}
+              />
+              <div class="ractions">
+                <button
+                  class:on={copied === `${g.id}:rotated`}
+                  onclick={() => copyToClipboard(rotated!.url, `${g.id}:rotated`)}
+                >
+                  {#if copied === `${g.id}:rotated`}
+                    <Icon name="check" size={13} /> Link copied
+                  {:else}
+                    <Icon name="link" size={13} /> copy new link
+                  {/if}
+                </button>
+              </div>
+              <p class="hint warn">
+                The old {inviteKindLabel(rotated.kind)} link no longer works. Send this one out instead.
+              </p>
+            </div>
+          {/if}
+          {#if rotateError?.gameID === g.id}
+            <div class="bot-error">{rotateError.message}</div>
           {/if}
 
           {#if reclaim?.gameID === g.id}
@@ -750,6 +1028,15 @@
             </div>
           {:else if botError}
             <div class="bot-error">{botError}</div>
+          {/if}
+
+          {#if g.state === "lobby" && canInviteTablemates($session, $session?.gameID, g.id)}
+            <details class="invite-picker">
+              <summary>
+                <span class="panel-h">invite a tablemate</span>
+              </summary>
+              <TablematePicker gameID={g.id} />
+            </details>
           {/if}
 
           {#if seat && g.state === "lobby" && $session?.playerID}
@@ -1291,6 +1578,15 @@
   }
 
   /* --- admin table management ------------------------------------ */
+  /* Same card-inset shell as .confirm, so a disclosure inside a table
+     card reads the same whether it is a settings panel or a
+     confirmation. */
+  .tsettings {
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    padding: 12px 14px;
+    background: var(--surface-sunken);
+  }
   .confirm {
     border: 1px solid var(--border-strong);
     border-radius: 10px;
@@ -1470,10 +1766,15 @@
     flex: 1 0 100%;
   }
 
-  .deck-upload {
+  /* The invite picker wears the deck panel's disclosure exactly, so
+     a game card reads as one stack of panels rather than two
+     unrelated controls (ADR 0051 decision 8, S34 sub-PR 6). */
+  .deck-upload,
+  .invite-picker {
     border-top: 1px solid var(--border);
     padding-top: 12px;
   }
+  .invite-picker summary,
   .deck-upload summary {
     cursor: pointer;
     list-style: none;
@@ -1481,9 +1782,11 @@
     align-items: center;
     gap: 12px;
   }
+  .invite-picker summary::-webkit-details-marker,
   .deck-upload summary::-webkit-details-marker {
     display: none;
   }
+  .invite-picker summary::before,
   .deck-upload summary::before {
     content: "";
     width: 6px;
@@ -1493,9 +1796,11 @@
     transform: rotate(-45deg);
     transition: transform 120ms var(--ease);
   }
+  .invite-picker[open] summary::before,
   .deck-upload[open] summary::before {
     transform: rotate(45deg);
   }
+  .invite-picker summary:hover .panel-h,
   .deck-upload summary:hover .panel-h {
     color: var(--fg);
   }

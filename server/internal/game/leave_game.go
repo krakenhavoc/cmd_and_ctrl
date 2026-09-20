@@ -109,6 +109,13 @@ func (g *Game) leaveGameObjectsLocked(playerID uuid.UUID) {
 	// stops priority from passing, so the state-check loop is exactly
 	// what does NOT run while one is open.
 	g.pruneSacrificeChoicesLocked()
+	// #1045: removeObjectsOwnedByLocked takes the departed player's
+	// cards out of every zone directly — no zone move, so the exit
+	// prune never sees them — and a survivor's choose-cards prompt can
+	// have been naming them (Thoughtseize's pick at the hand that has
+	// just left). reassignChoiceLocked prunes the prompts that CHANGE
+	// HANDS; this is the rest of them.
+	g.pruneCardSetChoicesLocked()
 	g.pruneStaleZoneChangeChoicesLocked()
 }
 

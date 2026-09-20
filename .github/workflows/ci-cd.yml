@@ -69,7 +69,7 @@ jobs:
       # Note the Scryfall cache below is NOT affected and stays on: its
       # path is inside the workspace, not $HOME.
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: "1.22"
           cache: false
@@ -126,6 +126,21 @@ jobs:
         # golangci-lint v1.64.8 via `go run` (see server/Makefile): the
         # repo's .golangci.yml, with errcheck and unparam excluded in
         # test files. Wired in by #582 once the tree was clean under it.
+        #
+        # GOTOOLCHAIN=auto is load-bearing and belongs to THIS step
+        # only. setup-go v6 exports GOTOOLCHAIN=local for the whole job
+        # (v5 left Go's own `auto` default in place), and golangci-lint
+        # v1.64.8 requires go >= 1.23 while the job is pinned to the
+        # 1.22 that go.mod supports. Under `local` the `go run` above
+        # refuses outright:
+        #   go: ...golangci-lint@v1.64.8 requires go >= 1.23.0
+        #   (running go 1.22.12; GOTOOLCHAIN=local)
+        # Under `auto` it fetches the toolchain the TOOL needs and
+        # leaves the toolchain the SERVER builds and tests with alone,
+        # which is what v5 was silently doing. Scoped to the step so
+        # gofmt, vet, test and build cannot quietly drift off 1.22.
+        env:
+          GOTOOLCHAIN: auto
         run: make lint
 
       - name: Server — test
@@ -632,11 +647,14 @@ jobs:
       # configure PRODUCTION with the preview's callback and send every
       # production sign-in to the dev box. Unset now warns and skips instead.
       #
-      # The bot's variables (CMDCTRL_DISCORD_BOT_TOKEN, _APP_ID, _GUILD_IDS)
-      # are deliberately NOT set here. The bot is a separate unit reading a
-      # separate file as a separate user (EnvironmentFile=${BOT_ENV_FILE},
-      # User=cmdctrl-bot); "Sync bot env" below writes them there, on
-      # production only.
+      # The bot's variables (_APP_ID, _GUILD_IDS) are deliberately NOT set
+      # here. The bot is a separate unit reading a separate file as a
+      # separate user (EnvironmentFile=${BOT_ENV_FILE}, User=cmdctrl-bot);
+      # "Sync bot env" below writes them there, on production only.
+      # CMDCTRL_DISCORD_BOT_TOKEN is the one value BOTH units need -- the
+      # server since S34 sub-PR 6 -- and it has its own step below rather
+      # than joining this loop, because it is production-only and these
+      # three are not.
       - name: Sync server env (Discord sign-in)
         env:
           CMDCTRL_DISCORD_CLIENT_ID: ${{ secrets.CMDCTRL_DISCORD_CLIENT_ID }}
@@ -672,6 +690,37 @@ jobs:
           if [ "${missing}" -gt 0 ]; then
             echo "::notice::${missing} of 3 Discord sign-in values unset -- /auth/discord/start will return 503 and the client will hide the sign-in button."
           fi
+
+      # ADR 0051 decision 5's DM invites (#613, S34 sub-PR 6): the SERVER
+      # now reads the bot token too, for POST /games/{id}/invites/dm. It is
+      # the same Actions secret the bot's own env file gets below, written
+      # to a second place -- the two units run as different users off
+      # different EnvironmentFiles, so neither can read the other's copy, and
+      # rotating the secret still updates both on the next deploy.
+      #
+      # PRODUCTION ONLY, matching "Sync bot env": one Discord application,
+      # and a preview box DMing real people from the same bot identity is
+      # exactly the double-send the bot's prod-only rule exists to prevent.
+      # The develop deployment therefore has no token, which is a supported
+      # state -- the route answers 503 naming the variable, every other route
+      # is unchanged, and the server says which it is once at boot. It never
+      # fails open.
+      #
+      # Unset secret: skipped with a ::notice::, same as "Sync bot env", so
+      # main keeps deploying green before DM invites are wanted. The value
+      # travels over stdin, never ssh argv, exactly as above.
+      - name: Sync server env (Discord DM invites)
+        if: env.IS_DEV != 'true'
+        env:
+          CMDCTRL_DISCORD_BOT_TOKEN: ${{ secrets.CMDCTRL_DISCORD_BOT_TOKEN }}
+        run: |
+          if [ -z "${CMDCTRL_DISCORD_BOT_TOKEN}" ]; then
+            echo "::notice::CMDCTRL_DISCORD_BOT_TOKEN secret not set; POST /games/{id}/invites/dm will return 503 and every other route is unaffected."
+            exit 0
+          fi
+          printf '%s' "${CMDCTRL_DISCORD_BOT_TOKEN}" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+            "sudo ${DEPLOY_ROOT}/scripts/set-server-env.sh CMDCTRL_DISCORD_BOT_TOKEN ${ENV_FILE}"
+          echo "set CMDCTRL_DISCORD_BOT_TOKEN"
 
       # Production only -- see "Deploy bot binary". Provisions the bot's env
       # file the way the server's is provisioned: Actions is the source of
@@ -710,14 +759,30 @@ jobs:
       # travel over stdin, never ssh argv, exactly as in "Sync server env
       # (Discord sign-in)".
       #
-      # Deliberately NOT written to ${ENV_FILE}: no server code reads the bot
-      # token yet. ADR 0051 Decision 5's DM invites (#613) will add it there.
+      # CMDCTRL_DISCORD_BOT_TOKEN is ALSO written to ${ENV_FILE}, by "Sync
+      # server env (Discord DM invites)" above: since S34 sub-PR 6 the server
+      # reads it too, for ADR 0051 Decision 5's POST /games/{id}/invites/dm
+      # (#613). Two files, not one shared file -- the two units run as
+      # different users off different EnvironmentFiles, and the server cannot
+      # read root:cmdctrl-bot 0640. Both copies come from the same secret on
+      # the same deploy, so a rotation updates both.
+      #
+      # CMDCTRL_DISCORD_ADMIN_USER_IDS and CMDCTRL_DISCORD_ADMIN_ROLE_IDS
+      # (#614) are written the same way as CMDCTRL_DISCORD_GUILD_IDS above
+      # -- comma-separated snowflakes, production only -- but they are
+      # OPTIONAL: unlike the four keys below, an unset admin variable is
+      # not a misconfiguration to warn about. /cc-end's own refusal
+      # message covers that case (server/internal/bot/config.go
+      # Config.IsAdmin), so this step only writes what's set and stays
+      # silent otherwise; see the loop after the required keys below.
       - name: Sync bot env
         if: env.IS_DEV != 'true'
         env:
           CMDCTRL_DISCORD_BOT_TOKEN: ${{ secrets.CMDCTRL_DISCORD_BOT_TOKEN }}
           CMDCTRL_DISCORD_APP_ID: ${{ vars.CMDCTRL_DISCORD_APP_ID }}
           CMDCTRL_DISCORD_GUILD_IDS: ${{ vars.CMDCTRL_DISCORD_GUILD_IDS }}
+          CMDCTRL_DISCORD_ADMIN_USER_IDS: ${{ vars.CMDCTRL_DISCORD_ADMIN_USER_IDS }}
+          CMDCTRL_DISCORD_ADMIN_ROLE_IDS: ${{ vars.CMDCTRL_DISCORD_ADMIN_ROLE_IDS }}
         run: |
           if [ "${BOT_TOKEN_SET}" != "true" ]; then
             echo "::notice::CMDCTRL_DISCORD_BOT_TOKEN secret not set; skipping bot env sync (the bot stays unconfigured)."
@@ -763,6 +828,23 @@ jobs:
             if [ -z "${VALUE}" ]; then
               echo "::warning::${KEY} is not configured; skipping."
               missing=$((missing + 1))
+              continue
+            fi
+            printf '%s' "${VALUE}" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+              "sudo ${DEPLOY_ROOT}/scripts/set-server-env.sh ${KEY} ${BOT_ENV_FILE}"
+            echo "set ${KEY}"
+          done
+
+          # CMDCTRL_DISCORD_ADMIN_USER_IDS / _ROLE_IDS (#614) are optional --
+          # unset is a valid, supported state (/cc-end then refuses every
+          # caller with its own ephemeral message; it never fails open) --
+          # so this loop writes whichever are set and says nothing for the
+          # ones that aren't. It does not add to `missing`: that counter
+          # feeds the "bot will refuse to start" notice below, and the bot
+          # starts fine with no configured admins.
+          for KEY in CMDCTRL_DISCORD_ADMIN_USER_IDS CMDCTRL_DISCORD_ADMIN_ROLE_IDS; do
+            VALUE="${!KEY}"
+            if [ -z "${VALUE}" ]; then
               continue
             fi
             printf '%s' "${VALUE}" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \

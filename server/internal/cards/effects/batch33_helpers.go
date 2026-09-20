@@ -240,10 +240,16 @@ func b33OpponentsNontokenCreatureDied(ev game.Event, source *game.Card, g *game.
 
 // b33YouPutMinusCountersOnACreature is Nest of Scarabs' condition:
 // the event placed one or more -1/-1 counters on a creature, and the
-// player resolving the effect that placed them is the source's
-// controller — b11ResolvingController's reading of "whenever YOU put".
-// The count of counters placed rides the event's delta, read again by
-// the body.
+// player who PUT them is the source's controller —
+// b11CounterPlacerOf's reading of "whenever YOU put", which is the
+// placement's own actor when it named one and the resolving player
+// otherwise. The count of counters placed rides the event's delta,
+// read again by the body.
+//
+// ADR 0056 makes this load-bearing: -1/-1 counters from a wither or
+// infect source are put by the SOURCE'S CONTROLLER (CR 120.3d), and
+// combat damage happens inside no resolution at all, so the old
+// fallback credited whoever had resolved anything most recently.
 func b33YouPutMinusCountersOnACreature(ev game.Event, source *game.Card, g *game.Game) bool {
 	if b33CountersPlacedDelta(ev, game.CounterMinusOne, g) <= 0 {
 		return false
@@ -252,7 +258,7 @@ func b33YouPutMinusCountersOnACreature(ev game.Event, source *game.Card, g *game
 	if !ok || !c.IsCreature() || !onBattlefield(g, ev.Target) {
 		return false
 	}
-	return b11ResolvingController(g) == source.Controller
+	return b11CounterPlacerOf(ev, g) == source.Controller
 }
 
 // b33CreatureCardMilledIntoYourGraveyard is Sidisi's condition before

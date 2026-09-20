@@ -7,7 +7,8 @@
 #     where the author usually has a deliberate layout. The one struct
 #     whose padding matters, game.Card, is guarded by
 #     TestCardHasNoInteriorPadding (internal/game/card_layout_test.go)
-#     instead (#35).
+#     instead (#35), which also recurses into struct-valued fields
+#     Card embeds by value, such as AttachedTo and Provenance (#633).
 #   - shadow — too many false positives on common idioms.
 run:
   timeout: 3m
@@ -25,6 +26,16 @@ linters:
     - misspell
     - unconvert
     - unparam
+
+linters-settings:
+  misspell:
+    # "Compleat" and its family are Phyrexian spellings printed on real
+    # cards (Staff of Compleation, Elesh Norn, Mother of Machines). The
+    # card name is data, not prose, so misspell must not "correct" it.
+    ignore-words:
+      - compleation
+      - compleat
+      - compleated
 
 issues:
   exclude-use-default: false

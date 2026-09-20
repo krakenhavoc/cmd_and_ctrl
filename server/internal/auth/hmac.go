@@ -70,7 +70,8 @@ var ErrSessionKeyTooShort = fmt.Errorf("auth: session key must be at least %d by
 // token held elsewhere. ADR 0051 decision 6 brings bounded revocation
 // back per user, by comparing IssuedAt against
 // users.sessions_invalid_before, which is why every token carries its
-// issue time.
+// issue time. That check is WithRevocation, which wraps this type; the
+// HMAC authenticator itself stays stateless and knows nothing of it.
 type HMACAuthenticator struct {
 	key []byte
 	now func() time.Time // injected so tests can control expiry

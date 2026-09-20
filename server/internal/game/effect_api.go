@@ -1516,6 +1516,22 @@ func (g *Game) counterAbilityLocked(abilityID uuid.UUID) error {
 // Hardened Scales like the public AddCounter path. Caller must
 // already hold g.mu.
 func (g *Game) AddCounterForEffect(cardID uuid.UUID, name string, delta int) error {
+	return g.AddCounterByForEffect(uuid.Nil, cardID, name, delta)
+}
+
+// AddCounterByForEffect is AddCounterForEffect with the CR 120.3d
+// placer named: `placer` is the player who PUTS the counters, which is
+// the proliferating player for CR 701.34 and the damage source's
+// controller for an ADR 0056 damage result.
+//
+// It rides the window on ReplacementEvent.CounterPlacer and lands on
+// the emitted EventCounterPlaced as Actor, so "if YOU would put" and
+// "whenever YOU put" read a fact instead of guessing from the last
+// resolution. uuid.Nil means unknown and is what the plain spelling
+// above passes; a reader falls back to its own heuristic then.
+//
+// Caller must already hold g.mu.
+func (g *Game) AddCounterByForEffect(placer, cardID uuid.UUID, name string, delta int) error {
 	if delta == 0 {
 		return nil
 	}
@@ -1527,6 +1543,7 @@ func (g *Game) AddCounterForEffect(cardID uuid.UUID, name string, delta int) err
 		CounterTarget: cardID,
 		CounterName:   name,
 		CounterDelta:  delta,
+		CounterPlacer: placer,
 	}
 	out, err := g.applyReplacementsLocked(ev)
 	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
@@ -1542,7 +1559,7 @@ func (g *Game) AddCounterForEffect(cardID uuid.UUID, name string, delta int) err
 	if out == nil || out.Canceled {
 		return nil
 	}
-	return g.applyCounterLocked(out.CounterTarget, out.CounterName, out.CounterDelta)
+	return g.applyResolvedCounterLocked(out)
 }
 
 // ReturnFromGraveyardForEffect moves a card from a player's
@@ -2916,5 +2933,33 @@ func (g *Game) addManaSlotsLocked(
 			ManaAmounts:  copyManaAmounts(slot.Amounts),
 		})
 	}
+	return nil
+}
+
+// SetMaxHandSizeForEffect is SetMaxHandSize's lock-free twin, for a
+// SPELL that grants "you have no maximum hand size for the rest of
+// the game" (Finale of Revelation) rather than a permanent's static
+// ability (Reliquary Tower's Spec.NoMaxHandSize, which is derived
+// from the battlefield at cleanup and lapses the moment the
+// permanent does — wrong for a effect that has to outlive the spell
+// that granted it, and outlive every permanent on the board).
+//
+// Writes the same Player.MaxHandSize field SetMaxHandSize does, and
+// EffectiveMaxHandSizeLocked checks it FIRST, before consulting the
+// battlefield — so this is a permanent per-player grant with no
+// battlefield dependency, exactly as the printed clause reads.
+//
+// `value` is clamped to NoMaxHandSize (-1) for "no cap"; any other
+// negative value is rejected with ErrInvalidParam. Caller must hold
+// g.mu.
+func (g *Game) SetMaxHandSizeForEffect(playerID uuid.UUID, value int) error {
+	if value < NoMaxHandSize {
+		return ErrInvalidParam
+	}
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	p.MaxHandSize = value
 	return nil
 }

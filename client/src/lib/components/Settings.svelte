@@ -476,6 +476,66 @@
             </fieldset>
           {:else if activeTab === "display"}
             <h3>Display</h3>
+
+            <!-- #956 / ADR 0077. First row in the tab on purpose: this
+                 is the one a player goes looking for after an upgrade
+                 changed what their opponents look like. -->
+            <label class="slider-row">
+              <span>Opponent boards</span>
+              <select
+                value={$settings.display.opponentDetail}
+                onchange={(e) =>
+                  change("display", "opponentDetail", e.currentTarget.value as "summary" | "full")}
+              >
+                <option value="summary">Summary (default)</option>
+                <option value="full">Full boards</option>
+              </select>
+              {#if isFresh("display.opponentDetail")}<span class="saved">✓</span>{/if}
+            </label>
+            <p class="help">
+              Summary draws each opponent as a read-out — life, the mana they could still tap by
+              colour, one pip per creature with its power and toughness — and expands that player to
+              a full board when you need to click a card there: targeting a spell, declaring
+              blockers, or clicking their avatar to pin them open. Full boards draws every opponent
+              as cards all the time, which is how the table used to work; at four players that means
+              90px cards, which is where this started.
+            </p>
+
+            <label>
+              <input
+                type="checkbox"
+                checked={$settings.display.expandActivePlayer}
+                onchange={(e) => change("display", "expandActivePlayer", e.currentTarget.checked)}
+              />
+              Expand the active player's board on their turn
+              {#if isFresh("display.expandActivePlayer")}<span class="saved">✓ saved</span>{/if}
+            </label>
+            <p class="help">
+              Only does anything while opponent boards are summaries. Off means a board expands only
+              from something you did — a targeting prompt, block or attack mode, or pinning a seat.
+              It changes on a turn boundary either way, so it can't move the table under a click you
+              have already started.
+            </p>
+
+            <label class="slider-row">
+              <span>Expand style <span class="experimental">experimental</span></span>
+              <select
+                value={$settings.display.expandStyle}
+                onchange={(e) =>
+                  change("display", "expandStyle", e.currentTarget.value as "reflow" | "overlay")}
+              >
+                <option value="reflow">Reflow (default)</option>
+                <option value="overlay">Overlay</option>
+              </select>
+              {#if isFresh("display.expandStyle")}<span class="saved">✓</span>{/if}
+            </label>
+            <p class="help">
+              How an expanding board makes room. Reflow gives it a bigger share of the table and
+              shrinks the others; Overlay floats it on top. Both ship so they can be compared in a
+              real game — <strong>one of them will be removed</strong>, along with this setting,
+              once it is clear which feels better. Worth flipping mid-game to see the difference.
+            </p>
+
             <label class="slider-row disabled">
               <span>Theme</span>
               <select disabled value="dark">
@@ -520,7 +580,8 @@
             </label>
             <p class="help">
               Quadrant keeps the around-the-table seating. Row seats the opponents in turn order
-              across the top and gives your board the full width.
+              across the top and gives your board the full width. At three players the two are the
+              same — you need the whole bottom row there either way.
             </p>
 
             <label class="slider-row">
@@ -1180,6 +1241,23 @@
   .danger-help strong {
     color: var(--gold-strong);
     letter-spacing: 0.03em;
+  }
+  /* An option that exists only to be compared against another one.
+     Flagged in the UI as well as in the code, because a setting that
+     is going to disappear should not look permanent. */
+  .experimental {
+    margin-left: 6px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    border: 1px solid var(--gold);
+    background: var(--gold-soft);
+    color: var(--gold-strong);
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 600;
+    vertical-align: middle;
   }
   .saved {
     color: var(--mint);

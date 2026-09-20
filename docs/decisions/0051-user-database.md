@@ -502,6 +502,327 @@ open, or did something differently from how they read.
   (`CMDCTRL_IDENTITY_TTL`) is not in any sub-PR's scope yet. Identity
   sessions still use `CMDCTRL_SESSION_TTL`.
 
+### Implementation notes — sub-PR 7 (per-user revocation, identity TTL)
+
+Decision 6 in full, and decision 3's identity TTL, which sub-PR 2 left
+unclaimed.
+
+- **Where the check lives.** `auth.WithRevocation(inner,
+  list)` wraps the HMAC authenticator (or the in-memory one). Its
+  `Validate` runs the inner check first, so a bad signature or an
+  expiry is reported as such. It then refuses a principal with a
+  non-zero `UserID` whose `IssuedAt` is **at or before** that user's
+  watermark, with the new sentinel `auth.ErrRevokedCredential`. The
+  middleware answers `401 "session revoked"`. `auth` defines only the
+  one-method `RevocationList` interface and has no database import.
+  `users.Revocations` implements it. `main` wraps the authenticator
+  before anything else takes a reference to it, so the lobby routes,
+  `POST /join`'s optional session and the WS upgrade authorizer all
+  validate through the same wrapper. Issue and Revoke pass through, so
+  a single token's `Revoke` stays advisory.
+- **"At or before", not "before".** The request that revokes carries a
+  token issued earlier, and a token minted in the same millisecond as
+  the revocation is refused rather than let through on a tie. The only
+  cost is that a sign-in in that same millisecond has to sign in again.
+- **The cache.** `users.NewRevocations` reads every non-zero
+  `sessions_invalid_before` once at boot. A failed read stops the
+  boot, because booting without the watermarks would accept revoked
+  sessions. After that, `Revoked` is a map lookup under a read lock,
+  and a user not in the map has watermark 0. That is also true of any
+  user created after boot, since the column defaults to 0. The request
+  path never touches SQLite: not a WS frame, not a WS upgrade, not an
+  HTTP request. `RevokeAll` writes the row
+  (`MAX(sessions_invalid_before, now)`, so it never moves back) and
+  then replaces the cache entry with the value written. The write is
+  the only event that can change the answer, so the cache is
+  invalidated exactly when it goes stale. A failed write leaves the
+  cache alone and the route returns 500. This is sound because the
+  server is the database's only writer (decision 1) and `RevokeAll` is
+  the only code that writes the column. A hand-run `UPDATE` on a live
+  server is not seen until the next restart.
+- **Open WebSockets are closed.** A token is validated once, at the
+  upgrade, so revocation alone would leave an open socket playing on.
+  `ws.Binding` now carries the session's `UserID` and `IssuedAt`, which
+  the lobby's `WSAuthorizer` fills in from the principal. The new
+  `Hub.EvictUserSessions(user, before)` closes every socket of that
+  user opened with a session issued at or before the watermark, the
+  same rule as `Validate`. It sends close `1000 "session revoked"`,
+  which is terminal on the client (ADR 0044 decision 2), so the client
+  does not redial with a dead token. It is the same shape as
+  `EvictGame`: one scan of the client map under the read lock, which
+  holds a playgroup's sockets. Both revocation routes call it, and the
+  admin route reports how many sockets it closed.
+- **Routes.** `POST /logout/everywhere` sits beside `POST /logout`.
+  Unlike `/logout` it needs a valid session: it acts on the caller's
+  own `UserID` and has no way to name another user. A session with no
+  user is refused with 403, and `/logout` is the sign-out for those.
+  It returns 204 and clears the cookie. The admin route is
+  `POST /admin/users/{id}/revoke-sessions`. It is named for what it
+  does, because "remove" is revocation only here. No row is deleted,
+  and the user can sign in with Discord again straight away. Keeping
+  someone out for good would need a flag checked at sign-in, and that
+  is not part of this decision. `/logout/*` was added to
+  `deploy/Caddyfile`'s `@api` matcher, since Caddy's `/logout` matches
+  that exact path only. `/logout` was also missing from the Vite dev
+  proxy and has been added. The service worker's prefix match already
+  covered both.
+- **With no database** there is no revocation list. The authenticator
+  is not wrapped, sessions carry no `UserID`, logout-everywhere answers
+  403 because the session has no user, and the admin route answers 503.
+  Everything else behaves as it did before this ADR.
+- **Identity TTL.** `CMDCTRL_IDENTITY_TTL` is a Go duration, default
+  `720h`, and invalid or `<= 0` fails the boot. It applies only to the
+  `RoleIdentified` session the Discord callback mints on the login
+  page, through `lobby.Config.IdentityTTL`. Seat sessions keep
+  `CMDCTRL_SESSION_TTL`, including those minted from an identity
+  session by `POST /join` or by the callback's invite flow, and so do
+  spectator and admin sessions. The session cookie's `Expires` follows
+  the token.
+- **The client did not drop long sessions at 12 hours, but it did at
+  about 23 days.** It stores whatever `expires_at` the server hands it.
+  Its expiry timer, though, clamped the `setTimeout` delay to 2·10⁹ ms
+  (the API overflows past 2³¹−1 ms) and then cleared the session when
+  the clamped timer fired. A 30-day session would have been discarded
+  on day 23. The timer now re-arms for the remainder when the session
+  is still good. The callback's `#/oauth-complete` fragment now
+  carries `user_id`, and the client's principal keeps it. Its presence
+  is what shows "log out everywhere" in the lobby header and "sign out
+  everywhere" on the login page's signed-in card. That card also gains
+  a plain "sign out", since a 30-day identity session needs a way out
+  before it joins a table.
+
+### Implementation notes — sub-PR 4 (my games, seat linking, Discord link)
+
+**Decided: a seated guest can link Discord mid-game.** This was the
+question the #59 carry-over left open (#607). A guest who holds a
+seat, at a table in any state, can sign in with Discord from the
+in-game menu and become that seat's user. The proof is the guest's
+own live `player` session for the seat, and the callback checks it
+(below). This is not the deferred "guest-to-user upgrade": that one is
+about claiming a *past* guest seat after the session is gone, and it
+still has no proof to offer. A seat linked while its session is alive
+needs none beyond the session.
+
+- **No migration.** Migration 0002 already has `seats.user_id`,
+  `seats.pending_discord_id` and an index on each. 0005 stays unused
+  by this sub-PR.
+- **`seats.user_id` rides the in-memory seat.** `SeatInfo` gained a
+  server-only `UserID` (`json:"-"`). `ReplaceSeats` rewrites a table's
+  whole seat list on every seat mutation, so a `user_id` written to the
+  row alone would be undone by the next deck upload.
+  `persistSeatsLocked` writes it from memory like every other column,
+  and `loadEntry` reads it back after a restart. `pending_discord_id`
+  is written only for a Discord seat with no user, so the two columns
+  are never both set.
+- **Every claim by a signed-in person writes it.** The Discord invite
+  callback, `POST /join` with an identity session, and now `POST
+  /games/{id}/join`. That last one used to ignore any session. It now
+  seats an `identified` session, or a `player` session with a
+  `UserID`, as that person, and ignores the typed name, as `POST /join`
+  does. Without this, a signed-in user who clicked an invite link sat
+  down as a guest and the client replaced their identity session with
+  a guest one. Every other session joins by name as before.
+- **One seat per person per table.** A second claim by the same user
+  is a 409 (`ErrAlreadySeated`), at join and at link. Reclaim by user
+  answers "the seat whose `user_id` is yours", and two such seats
+  would make that a guess.
+- **Pending seats link at every sign-in**, not only the first. It is
+  one indexed `UPDATE seats SET user_id = ?, pending_discord_id = NULL
+  WHERE pending_discord_id = ?` in a transaction, idempotent, and it
+  also covers seats claimed later on a deployment that had no database
+  at the time. The lobby holds its mutex across the row update and the
+  same change to every live table's in-memory seats, so no seat write
+  can land in between and undo it. A failure is logged and the sign-in
+  goes ahead; the seats keep their pending id for next time.
+- **Reclaim by user is `POST /me/games/{id}/session`**, a new route
+  beside #520's ticket route, not an extension of it. The ticket route
+  is unauthenticated by design (its caller has no session) and the
+  user route is the opposite. Folding them together would give one
+  handler two authentication models. The caller is an `identified`
+  session or a `player` session with a `UserID`, and the result is the
+  same `sessionResponse` as a ticket redemption. Guests keep the
+  ticket.
+- **`GET /me/games`** returns times in milliseconds, the unit the
+  table stores. That differs from `GameMeta.created_at` (RFC 3339) on
+  purpose: this is a new, row-shaped response. A live table's state
+  and times come from the engine, as `GET /games` reads them. `rejoin`
+  (the path to the route above) is present only for a table that is
+  live in this process and not archived. Other seats are labelled
+  with the user's current `display_name` where they have one.
+- **`GET /auth/discord/link`** reuses the state store: `StateEntry`
+  gained `LinkPlayerID`, `StartLink` parks `(game, player)`, and the
+  callback branches on `Link()`. The CSRF binding is new. The callback
+  requires the request's session **cookie** (not `?token=` or a
+  bearer header) to be the player session for the parked seat, and
+  checks it *before* exchanging the code. Without it, a link started by
+  one person and finished by another would put the finisher's Discord
+  account on the starter's seat. The link goes through the room
+  (`SetDiscordIdentity` under `ApplyExternal`), so the broadcast that
+  follows carries the new name and avatar to every seat at once. It
+  also lands in the replay. A seat can be relinked to a different
+  account; bot seats and archived tables are refused.
+- **The oauth-complete fragment carries `user_id`** whenever the
+  sign-in recorded a person, so the client knows to offer "My games"
+  without another round trip. The client reads a principal's
+  `user_id` as "signed in" only when it is non-nil. `uuid.UUID` has no
+  `omitempty`, so a guest's principal spells it as the nil uuid.
+
+### Implementation notes — sub-PR 5 (deck library)
+
+Recorded where the code settled a detail decision 7 left open, or did
+something differently from how it reads.
+
+- **`seats.deck_id` becomes a real foreign key.** Migration 0002 left
+  it a plain TEXT column with a comment that nothing would write it
+  until `decks` existed; migration 0003's rebuild carried that forward
+  unchanged for the same reason. Migration 0005 creates `decks` and
+  rebuilds `seats` a second time (same procedure as 0003: temp table,
+  copy every row, drop, rename, recreate indexes, `foreign_keys` off
+  for the rebuild with `PRAGMA foreign_key_check` before commit) so
+  `deck_id REFERENCES decks(id)`. Nothing had ever written a value
+  into the column, so there was nothing for the check to trip over.
+  Also adds `CREATE INDEX decks_owner_id ON decks (owner_id)`, for
+  `GET /me/decks` and the update rule below.
+- **Only a pasted or Moxfield-JSON upload is saved to the library.** A
+  pre-built catalog pick (`POST /games/{id}/decks`'s `deck` field) is
+  never saved — it already has its own id system in `internal/decks`
+  and is not "what the player pasted". Neither is a `format: "url"`
+  request: `source` there is a link, and decision 7's whole point is
+  re-parsing *stored text*, not making a network call at seat time.
+  Both still install normally; they just never create a `decks` row.
+  This narrows decision 7's "for a signed-in user it additionally
+  creates or updates a decks row" from every upload to the subset that
+  is actually a paste.
+- **The update rule is same owner, same name.** A caller's existing
+  deck with the same `name` is overwritten in place (source, commanders,
+  card_count, updated_at; the id and created_at do not move); anything
+  else inserts a new row. `name` comes from the parsed deck (Moxfield
+  carries one); a plain-text paste has none — `deck.ParseText` has
+  nowhere to put one — so the fallback is the first commander's name.
+  Two plain-text decks on the same commander with no other name
+  collide under this rule, same as two identically-named Moxfield
+  exports would; a player who wants both kept renames one, which is
+  the same thing they would already do to tell two decks apart in
+  Moxfield's own library.
+- **A library save is best-effort.** `SetDeck` has already installed
+  the parsed cards on the seat by the time the library write runs. A
+  failed `decks` upsert, or a failed write of the seat's `deck_id`
+  afterwards, is logged (`c.Log`, nil-safe like `logReplayWarning`) and
+  does not fail the request — telling the player their upload failed
+  when the deck is actually sitting on their seat would be worse than
+  a library row they can produce again with one more paste.
+- **`POST /games/{id}/decks/{deck_id}` takes no body and no
+  `player_id`.** Unlike the upload route, a `player` session already
+  names exactly one seat, so there is nothing to disambiguate; the
+  seat is always the caller's own. `RoleAdmin` is refused outright
+  (403) rather than allowed "any seat" the way it is on the upload
+  route — the check that matters here is deck ownership
+  (`principal.UserID == decks.owner_id`), and an admin session never
+  has a `UserID` (decision 2), so letting it through the role gate
+  would only move the 403 one line later.
+- **`seats.deck_id` is set on both the library-save path and the
+  seat-from-library path, and cleared (set to `""`, i.e. `NULL`) on
+  every other outcome** — a guest, a catalog pick, a URL import, or a
+  save that failed. `Lobby.SetSeatDeckID` is a new method rather than
+  a parameter on `SetDeck`, since `SetDeck` mutates the engine and is
+  shared by every deck-install caller, while a library id is pure
+  lobby bookkeeping only the two new HTTP handlers know about.
+  `SeatInfo.DeckID` carries it in memory and through `ReplaceSeats` /
+  `LoadGame` for restart survival, but is not on the wire
+  (`json:"-"`) — nothing in the client reads it yet.
+- **`Principal.UserID` (and every other `uuid.UUID` field on
+  `Principal`) is never actually omitted by its `omitempty` tag.**
+  `encoding/json` only treats an array as empty when its length is
+  zero; `uuid.UUID` is `[16]byte`, always length 16, so a zero
+  `Principal.UserID` serialises as the literal string
+  `"00000000-0000-0000-0000-000000000000"` rather than being left out
+  of the response — confirmed against `GET /me`'s actual JSON, not
+  assumed. This sub-PR is the first client code to branch on
+  `principal.user_id`, so it is the one that has to know: the client
+  compares against that literal zero-UUID string
+  (`client/src/lib/myDecks.ts`'s `isSignedIn`), not against
+  "falsy"/`undefined`. Pre-existing on every other `uuid.UUID` field
+  on `Principal` (`admin_id`, `game_id`, `player_id`); not something
+  this sub-PR changed, just the first place it needed to be handled
+  correctly.
+
+### Implementation notes — sub-PR 6 (tablemates, invite picker, DM invites)
+
+Recorded where the code settled a detail decisions 5 and 8 left open,
+or did something differently from how they read.
+
+- **The tablemates query lives on the lobby store, not the users
+  store.** It is a self-join of `seats` (decision 8's SQL, verbatim,
+  plus the display columns the picker needs) and `seats` is the lobby's
+  table, so `Store.Tablemates` sits beside `SeatsOfUser`. Both
+  implementations exist, as for every other `Store` method: the memory
+  store has no `users` table, so a tablemate's label there is the name
+  stored on the seat, the same compromise `SeatsOfUser` already makes.
+- **Recency is `games.created_at` of the most recent shared table.**
+  Not `started_at` or `ended_at`: both are NULL on a table that never
+  started, and a lobby you both sat in yesterday is a better
+  suggestion than a game you finished a year ago. The join onto
+  `users` is an INNER join — `seats.user_id` is a foreign key
+  (migration 0003), so a non-NULL value always has a row, and an inner
+  join keeps a corrupted id out of the picker rather than offering a
+  nameless entry the DM route could not resolve.
+- **`GET /me/tablemates` never puts a Discord snowflake on the wire.**
+  A tablemate is offered by *our* user id; `POST
+  /games/{id}/invites/dm` takes that id and resolves the snowflake
+  server-side through a new `users.Store.DiscordSubject`. (The
+  `avatar_url` path contains one, but that is the path the client
+  already loads every seat's avatar from.)
+- **A Discord snowflake IS accepted in the DM route's body, for an
+  admin session only.** Decision 5 says the route takes a `user_id`
+  and stops there. `/cc-invite-dm @user` (#613) holds a mention and
+  nothing else, and its target may never have signed in here, so there
+  would be no user id to send. Accepting `discord_id` from every
+  caller would make this "DM any Discord user who shares a server with
+  the bot", which is a spam primitive; restricted to the admin
+  credential the bot already holds, it is the bot's own path and
+  nothing more. A non-admin who sends it gets 403.
+- **A missing invite plaintext is a 409, not a rotation.** Only the
+  process that minted an invite holds its plaintext, so a table
+  recovered from the database after a restart has a hash and no link.
+  The route could call `Lobby.RotateInvite` (#1038) and always
+  succeed; it does not. Rotating silently revokes the link the table
+  has already pasted into a channel, which is a startling side effect
+  of "DM this to Alice". The 409 names `POST /games/{id}/invites/rotate`
+  and says what rotating costs, so the replacement is minted
+  deliberately.
+- **The route is rate-limited twice, and per CALLER is the new half.**
+  `ratelimit.Limiter.Middleware` keys on the client IP, which is right
+  for a credential being brute-forced and wrong for a route whose cost
+  is per person: without `CMDCTRL_TRUST_FORWARDED` every caller behind
+  the reverse proxy shares one bucket, so one tab could spend the
+  whole table's allowance. A new `perCallerLimit` middleware (inside
+  `auth.Middleware`, which is what puts the principal in context) adds
+  a bucket keyed on the caller's user, seat or admin role: ~1 DM / 10 s
+  with a burst of 3. Both have to allow the request.
+- **The bot token needs an origin as well.** The DM carries a link,
+  and the server had no notion of its own public URL outside the
+  bug-report store. `Config.InviteBaseURL` reuses the same pair
+  (`CMDCTRL_PUBLIC_BASE_URL`, falling back to `CMDCTRL_CLIENT_BASE_URL`)
+  and the same no-default rule, for the same reason: a wrong origin
+  produces a DM full of dead links. Either value missing is the 503.
+  The URL shape is the bot's `buildInviteURL` shape exactly, so a
+  player who has clicked one has clicked both.
+- **Discord's own error text is never forwarded, and the token never
+  leaves the Authorization header.** `discord.Bot.SendDM` maps 401 /
+  403 / 404 / 429 onto sentinels with our own wording (403 is "shares
+  no server with the bot, or has DMs closed" — the API does not
+  distinguish the two), reads `retry_after` out of a 429 and nothing
+  else out of any body. Messages are sent with `allowed_mentions:
+  {parse: []}` and the inviter's and table's names are flattened, so a
+  display name cannot forge a second line or ping anybody.
+- **The client picker is mounted on the lobby's game card**, beside
+  the deck panel and wearing its disclosure, and only for a session
+  that would pass the server's gate. `tablemates.canInviteTablemates`
+  is deliberately *more conservative* than `lobby.canInviteDM` in one
+  case: `games.created_by` is not on the wire, so an unseated creator
+  is not offered the button even though the route would serve them.
+  Showing a button that 403s is the worse failure.
+
 ## Consequences
 
 - The server gains its first stateful dependency beyond the
@@ -554,6 +875,9 @@ open, or did something differently from how they read.
 - **Spectator accounts** — spectator sessions stay token-only.
 - **Guest-to-user upgrade** — claiming a past guest seat after signing
   in. Needs a proof the guest seat can offer, which today it cannot.
+  A guest seat whose session is still live *can* be linked, mid-game
+  included (`GET /auth/discord/link`, sub-PR 4 notes above). What stays
+  deferred is the seat whose session is gone.
 
 ## Alternatives considered
 

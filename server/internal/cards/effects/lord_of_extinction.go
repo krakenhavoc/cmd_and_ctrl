@@ -24,21 +24,20 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // effect DEFINES the body, and a body the engine computed is not a
 // stand-in (Characteristic.PTDefined, game.Card.ToughnessIsKnown).
 //
-// DECLARED SIMPLIFICATION, Wight of the Reliquary's: the layer
-// cache is invalidated by battlefield motion, counters, attachments,
-// taps and turn changes, not by a card reaching a graveyard from a
-// hand, a library or the stack — so a mill, a discard, or an instant
-// resolving shows on the Lord's size at the next recompute rather
-// than at once. A creature dying is a battlefield exit and counts
-// immediately. The late read runs both ways (a graveyard that
-// shrank to an exile shows late too), and never invents a card that
-// is not there.
+// This carried a declared simplification until #1117: the layer cache
+// was invalidated by battlefield motion, counters, attachments, taps
+// and turn changes, not by a card reaching a graveyard from a hand, a
+// library or the stack — so a mill, a discard or an instant resolving
+// showed on the Lord's size at the next recompute rather than at
+// once, while a creature DYING (a battlefield exit) counted
+// immediately, which is what made the gap so hard to see. A graveyard
+// crossing now bumps the layer version on its own, with no flag for
+// this card to declare, and the caveat is gone.
 func init() {
 	Register(Spec{
 		OracleID:     "ea5e3401-bd6c-47bb-a52a-8eec5f09455d",
 		Name:         "Lord of Extinction",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Its size catches up with a milled, discarded or resolved card reaching a graveyard at the next change on the battlefield, not immediately."},
+		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{{
 			Layer:    game.Layer7PT,
 			SubLayer: game.SubLayer7A_CDA,

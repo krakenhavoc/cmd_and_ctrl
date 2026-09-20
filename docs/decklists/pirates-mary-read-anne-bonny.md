@@ -32,9 +32,12 @@ Already in the catalog from earlier sprints: Sol Ring, Counterspell.
 | Big Score | same cost, plus two Treasures for the artifact payoffs above |
 | Unexpected Windfall | the same card at a different price; the deck runs both |
 
-Read the Runes stays blocked: its cost is per-card-drawn and offers a
-choice between discarding and sacrificing, which is a different shape
-from a fixed "discard a card".
+Read the Runes stayed blocked here, and the reason was wrong twice
+over: nothing it does is a cast cost at all, and the per-card choice
+is not a cost shape. It all happens on resolution, and a repetition
+that offers two branches is Torment of Hailfire's option-pick chain
+(#568) pointed at its own controller. **Shipped, `full`,** with
+#1112.
 
 ## Done (batch 3 — impulse exile)
 
@@ -51,7 +54,9 @@ didn't build:
   combat damage and, at four chorus counters, lets you cast the
   *discarded* card for free — cast-from-graveyard with an alternative
   cost, which is a different mechanic (and closer to S29's
-  alternative cast paths).
+  alternative cast paths). **Shipped, `full`,** with #1112: ADR 0066's
+  `game.CastPermission` names the one discarded card object at {0},
+  the same per-instance grant cascade, madness and suspend use.
 - **Coin of Mastery** is not impulse exile either — it's an
   enters-with-counters replacement plus a Treasure ability. Both
   halves are already expressible; it was mis-filed.
@@ -180,10 +185,18 @@ noting that Doubling Season already wants the same hook.
 for each card you've discarded this turn"). Same shape as
 `Game.SpellsCastThisTurn`, which already exists for cast counting.
 
-**Sagas / chapter counters** — 2 cards: Fable of the Mirror-Breaker,
-Brass's Tunnel-Grinder.
+~~**Sagas / chapter counters**~~ — **done** (S27 for the lore-counter
+lifecycle, #343 for the transforming half). Fable of the Mirror-Breaker
+ships with `caveats`: all three chapters run, including chapter III's
+"exile this Saga, then return it transformed" and the back face's
+Kiki-Jiki ability, but its chapter I token is a plain 2/2 because a
+non-copy token has no catalog key to hang a trigger off (#521).
+Brass's Tunnel-Grinder still waits, on **discover** and **descend**
+rather than on Sagas.
 
 **Class enchantments with levels** — 1 card: Cool but Rude.
+**Unblocked and shipped, `full`,** with #1112: ADR 0071 (#757) built
+the levels, and all three of its lines needed nothing else.
 
 **Coin flips and spell copying** — 2 cards: Breeches, the Blastmaker
 and Echocasting Symposium (which also wants Paradigm).
@@ -230,11 +243,15 @@ Same totals everywhere here **except** Malcolm and Breeches, where
 two Pirates hitting the *same* opponent produces two payouts instead
 of one.
 
-**Not in the local Scryfall snapshot** — Ojer Axonil and Storm the
-Vault, both double-faced; the importer matches on exact face name and
-these need the `card_faces` path. (Fable of the Mirror-Breaker is
-also DFC.) Note that the dump's `last-refresh` stamp understates the
-data's real coverage — check the sets, not the stamp.
+~~**Not in the local Scryfall snapshot**~~ — **wrong when written, and
+corrected here.** Ojer Axonil, Storm the Vault and Fable of the
+Mirror-Breaker are all in the dump; what was missing was the
+`card_faces` path, which ADR 0034 built and #343 finished. Storm the
+Vault // Vault of Catlacan (`full`) and Fable of the Mirror-Breaker //
+Reflection of Kiki-Jiki (`caveats`) both ship; Ojer Axonil is claimed
+by #1107. The note stands as a reminder that the dump's
+`last-refresh` stamp understates the data's real coverage — check the
+sets, not the stamp.
 
 ## Suggested order
 

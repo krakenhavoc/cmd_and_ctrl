@@ -104,9 +104,13 @@ const (
 const MaxImprovSteps = 12
 
 // Improvisation errors. Every one of them means the bundle was
-// REFUSED — nothing dispatched, nothing announced, nothing logged to
+// REFUSED — nothing dispatched, nothing committed, nothing logged to
 // the replay. A refused improvisation is not a failed one: the runner
 // carries on and the policy takes an ordinary legal move instead.
+//
+// The table IS told, unless the refusal is ErrImprovNoCard: since
+// #686 a refusal that can name its card posts a bot_improvisation line
+// saying nothing happened. See RefusalAnnouncement.
 var (
 	ErrImprovNoCard   = errors.New("aiseat: improvisation must name the card")
 	ErrImprovNoEffect = errors.New("aiseat: improvisation must state the intended effect")
@@ -129,8 +133,18 @@ var (
 // with its own validation and its own mandatory disclosure.
 //
 // Returning false is the overwhelmingly common answer.
+//
+// ctx carries the runner's hard think deadline, the same one Decide
+// gets (ADR 0033 §10, and the 2026-09-19 amendment to §8). It is a
+// parameter rather than an ambient assumption because the production
+// implementation makes a network call: a hook with no deadline on the
+// runner's own goroutine is a hook that can hold the table, and the
+// table never waits on a bot. An implementation that overruns it
+// simply does not improvise — there is nothing to fall back to and
+// nothing that needs one, because not improvising is the normal
+// answer.
 type Improviser interface {
-	Improvise(in Input) (Improvisation, bool)
+	Improvise(ctx context.Context, in Input) (Improvisation, bool)
 }
 
 // Announcer posts a server-originated chat line. Satisfied by
@@ -224,6 +238,42 @@ func (im Improvisation) Announcement() string {
 	return head + suffix
 }
 
+// RefusalAnnouncement is the chat line for a bundle this runner would
+// not apply. ADR 0033 §8, amended 2026-09-19 (#686).
+//
+// §8's refusal was silent, and silence is the failure the whole
+// section exists to avoid. The opening paragraph of this file says it:
+// a bot that quietly skips a card it cannot run is worse than one that
+// improvises, because the table cannot tell the difference between a
+// bot choosing not to cast and a bot that could not. A refusal is that
+// same ambiguity one step further in — the bot DID try, and the table
+// has even more reason to be told, because the card is now sitting in
+// a graveyard having done nothing and a human can still apply it by
+// hand.
+//
+// It deliberately does not promise what the seat will do next. The
+// runner asks the policy for an ordinary move immediately afterwards
+// and that move is frequently not a pass, so a line claiming one
+// would be false about half the time.
+//
+// Empty when the improvisation cannot name its card: there is no
+// truthful line to post about a bundle that will not say what it is.
+func (im Improvisation) RefusalAnnouncement() string {
+	card := strings.TrimSpace(im.Card)
+	if card == "" {
+		return ""
+	}
+	const suffix = ": the rules engine can't run this card and my attempt to apply it by hand was refused, so nothing was changed — the card's text did not happen."
+	if room := protocol.MaxChatTextLen - len(suffix); len(card) > room {
+		cut := room
+		for cut > 0 && !utf8.RuneStart(card[cut]) {
+			cut--
+		}
+		card = card[:cut]
+	}
+	return card + suffix
+}
+
 // improvise consults an Improviser policy and, if it wants one,
 // validates, applies and announces the bundle. Returns true when an
 // improvisation was applied, which tells the runner's act-loop to
@@ -232,22 +282,38 @@ func (im Improvisation) Announcement() string {
 // Mirrors concede's shape deliberately: both are things a policy
 // expresses outside Decision, both go through the room, both are
 // logged.
-func (r *Runner) improvise(ctx context.Context, in Input, started time.Time) bool {
-	p, ok := r.policy.(Improviser)
+//
+// minThink and maxThink are this decision window's pacing
+// (runner.pacingNow, not necessarily r.cfg's own values) — the same
+// pair the runner's own decide/pace calls use for this window.
+func (r *Runner) improvise(ctx context.Context, in Input, started time.Time, minThink, maxThink time.Duration) bool {
+	p, ok := Capability[Improviser](r.policy)
 	if !ok {
 		return false
 	}
-	im, want := p.Improvise(in)
+	// The policy gets the runner's own hard deadline. Improvisation
+	// is a decision the table is waiting on exactly like any other,
+	// and the production improviser dials a model inside this call.
+	ictx, cancel := context.WithTimeout(ctx, maxThink)
+	im, want := p.Improvise(ictx, in)
+	cancel()
 	if !want {
 		return false
 	}
 	if err := im.Validate(); err != nil {
-		// Refused, not applied. The policy gets no board change and
-		// no announcement; it will be asked for an ordinary move
-		// next. Logged at Warn because a policy trying to improvise
-		// something it may not is worth seeing.
+		// Refused, not applied. The policy gets no board change; it
+		// will be asked for an ordinary move next. Logged at Warn
+		// because a policy trying to improvise something it may not
+		// is worth seeing.
+		//
+		// The table is told, when there is something truthful to tell
+		// it — see RefusalAnnouncement. A bundle that could not name
+		// its card is the one refusal that stays silent.
 		r.improvRefused.Add(1)
 		r.log.Warn("bot improvisation refused", "err", err, "card", im.Card)
+		if line := im.RefusalAnnouncement(); line != "" {
+			r.announce(protocol.ChatKindBotImprovisation, line, im.Reason)
+		}
 		return false
 	}
 	if ctx.Err() != nil {
@@ -284,7 +350,7 @@ func (r *Runner) improvise(ctx context.Context, in Input, started time.Time) boo
 		})
 	}
 
-	r.pace(ctx, started)
+	r.pace(ctx, started, minThink)
 	if ctx.Err() != nil {
 		return false
 	}

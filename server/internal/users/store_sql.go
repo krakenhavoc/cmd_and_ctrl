@@ -152,6 +152,47 @@ func (s *SQLStore) Get(ctx context.Context, id uuid.UUID) (User, error) {
 	return getUser(ctx, s.db, id.String())
 }
 
+// DiscordSubject implements Store: one indexed read of the identities
+// row for this user's Discord login.
+func (s *SQLStore) DiscordSubject(ctx context.Context, id uuid.UUID) (string, error) {
+	var subject string
+	err := s.db.QueryRowContext(ctx,
+		`SELECT subject FROM identities WHERE provider = ? AND user_id = ?`,
+		ProviderDiscord, id.String()).Scan(&subject)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", ErrNotFound
+	}
+	if err != nil {
+		return "", fmt.Errorf("users: discord subject for %s: %w", id, err)
+	}
+	return subject, nil
+}
+
+// UserIDForDiscord implements Store: a plain lookup on identities by
+// (provider, subject), the same row upsertDiscord's own existence
+// check reads. ErrNotFound for no match — an unknown snowflake or one
+// that never signed in.
+func (s *SQLStore) UserIDForDiscord(ctx context.Context, discordID string) (uuid.UUID, error) {
+	if discordID == "" {
+		return uuid.Nil, ErrNotFound
+	}
+	var userID string
+	err := s.db.QueryRowContext(ctx,
+		`SELECT user_id FROM identities WHERE provider = ? AND subject = ?`,
+		ProviderDiscord, discordID).Scan(&userID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return uuid.Nil, ErrNotFound
+	}
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("users: find identity: %w", err)
+	}
+	id, err := uuid.Parse(userID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("users: identity user_id is not a uuid: %w", err)
+	}
+	return id, nil
+}
+
 // RefreshToken opens the stored refresh token for a Discord identity.
 // ok is false when none is stored (no key at the time, or never
 // returned). An error means a token is stored but cannot be opened —

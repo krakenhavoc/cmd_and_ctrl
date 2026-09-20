@@ -649,6 +649,72 @@ departed payer is still settled by the departure table's `dropDecline`
 column (CR 800.4f), and a bot seat answers the upkeep prompt through
 the ordinary pay-unless policy.
 
+**Amendment (2026-09-19, #1045): a prompt that blocks the table must
+keep an answer the resolver would accept, or be withdrawn — and for
+the choose-cards family that prune is ONE function keyed by zone.**
+
+Every amendment above is about which prompts halt the cursor. This one
+is the obligation that comes with halting it: a blocking prompt whose
+answers have all become illegal holds the table forever, which is the
+#544 wedge arriving from the other direction.
+
+`PendingChoiceChooseCards` froze its candidate list when the effect
+asked and re-checked each pick against the LIVE zone on submit
+(`checkChooseCardsPicksLocked`), with nothing in between. So a discard
+prompt whose hand was wheeled away, exiled by madness or bounced to a
+library while it was open had no legal answer left and could not be
+discharged — and since #1027 its RUN leg never settled either, so the
+rest of the printed instruction (Syphon Mind's draw, Archon of
+Cruelty's last three clauses) never ran. `pruneSacrificeChoicesLocked`
+had had the equivalent prune since S17; `choose_cards` never grew one.
+
+`Game.pruneCardSetChoicesLocked` (`server/internal/game/pending_choice.go`)
+is that prune, and it is **keyed by `chooseCardsFrame.zone` rather than
+by the verb**. A discard is a pick over the discarding seat's own HAND,
+Thoughtseize's is one over somebody else's, Skullwinder's names a
+GRAVEYARD and Genesis Wave's a LIBRARY — and "is this candidate still
+there" has one answer for all of them, so it is one function and not a
+`pruneDiscardChoicesLocked` beside a `pruneGraveyardChoicesLocked`. It
+asks the SUBMIT path's own question
+(`pickStillInPickZoneLocked`, shared with the resolver) so the offered
+list and the accepted list cannot drift, and the bounds move with the
+list (`setCardSetCandidates`, shared with the departure prune in
+`reassignChoiceLocked`) because a floor no remaining set can reach is
+the same wedge one card later — CR 701.8a's "as many as you can",
+spelled arithmetically.
+
+An emptied prompt goes out through `dropChoiceLocked`, so the departure
+table's second column runs and a prompt that is one leg of a run
+settles it with "nothing discarded" (#1016's `dropDefault`,
+[ADR 0013](0013-replacement-effects.md) §5y item 5). A pick that is no
+run's leg has no continuation to run — the table's existing answer for
+the kind, unwidened here.
+
+Three call sites, the ones `pruneSacrificeChoicesLocked` already had:
+the shared exit primitive (`zone_route.go`), the battlefield-leave
+resume (`mutations.go`) and the departure sweep (`leave_game.go`),
+because a queued choice stops priority from passing and the state-check
+loop is exactly what does NOT run while one is open.
+
+**What is deliberately not swept.** `untap_choice` carries the same
+payload (`isCardSetPickKind`) and is left alone: its continuation is
+the rest of the untap step, its departure row is `dropDiscard`, so a
+withdrawal would end the question by stranding the step — and CR 502.3's
+determination is about the active player's own permanents during their
+own untap step, where nothing has priority to move them. A pick with no
+zone on its frame is left alone too: it re-checks nothing on submit, so
+there is no live list for the engine to be right about.
+
+**The reachability, stated.** No catalog card empties a hand under
+another player's open discard prompt today, and the same is true of the
+graveyard and library picks; this is the wedge closed before a card
+reaches it, which is what #1027 asked for when it filed the hole rather
+than living with it. The remaining uncovered door is a card LEAVING a
+hand or library for the BATTLEFIELD, which does not go through the exit
+primitive (`battlefield_put.go`'s batch and `mutations.go`'s inline
+entry branch) — no prompt family can reach it today, and it is named
+here rather than swept blind.
+
 ## Out of scope (explicit deferrals)
 
 - **Treasure's sac-for-mana** is inert until S21 ships sacrifice

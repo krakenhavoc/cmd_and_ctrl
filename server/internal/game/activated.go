@@ -37,6 +37,35 @@ type AbilityCost struct {
 	// creature source — enforces summoning sickness (CR 302.6).
 	Tap bool
 
+	// TapOthers taps OTHER untapped permanents the activator
+	// controls — Earthcraft's "tap an untapped creature you
+	// control", Heritage Druid's three Elves, the station ability's
+	// "tap another untapped creature you control" (CR 702.184a).
+	// Nil means no such component. See TapOthersCost in
+	// tap_others_cost.go, whose field name ADR 0071 §2 fixed.
+	//
+	// The activator names the permanents in
+	// ActivateAbilityParams.TapIDs at announce, beside the crew and
+	// sacrifice picks. Three rules are enforced in
+	// ActivateCatalogAbility rather than asked of each card:
+	//
+	//	CR 302.6 / 602.5a  this is NOT the {T} symbol, so summoning
+	//	                   sickness does not apply and a creature
+	//	                   that arrived this turn may pay.
+	//	CR 118.3           a permanent already tapped cannot pay,
+	//	                   and the source cannot pay twice: when Tap
+	//	                   is also set, naming the source here is
+	//	                   refused rather than silently half-paid.
+	//	CR 601.2h          the named permanents are kept out of the
+	//	                   auto-tapper's reach, so one creature
+	//	                   cannot both pay this cost and tap for the
+	//	                   mana component of the same cost.
+	//
+	// Paid with the ability already on the stack, like the convoke
+	// taps on the cast path, so a "becomes tapped" payoff
+	// (Opposition into a tap-watcher) resolves above it.
+	TapOthers *TapOthersCost
+
 	// SacrificeSelf sacrifices the source as part of the cost.
 	SacrificeSelf bool
 
@@ -432,9 +461,15 @@ func ActivatedAbilitiesForCard(c Card) []ActivatedAbilityShape {
 	if len(c.ActivatedAbilities) > 0 {
 		return c.ActivatedAbilities
 	}
-	if CatalogActivatedAbilities == nil || c.OracleID == "" {
+	if CatalogActivatedAbilities == nil {
 		return nil
 	}
+	// #521: the guard used to be `c.OracleID == ""` as well, which
+	// made a token unreachable here by construction. A token now has
+	// a catalog key of its own, so the question is the one the key
+	// already answers — an object with no entry has the empty key,
+	// whether because it is uncatalogued or because CR 708.2a has
+	// silenced it.
 	key := CatalogAbilityKey(c)
 	if key == "" {
 		return nil
@@ -468,6 +503,16 @@ type ActivateAbilityParams struct {
 	// matters is that their total effective power clears the crew
 	// number (CR 702.122a).
 	CrewIDs []uuid.UUID
+
+	// TapIDs names the permanents tapped to pay a TapOthers cost
+	// (#758): exactly the clause's Count, each once, each untapped
+	// and controlled by the activator, and never the source when
+	// the clause prints "another". Their order does not matter.
+	//
+	// On the wire as `tap_ids`, the same name the cast path's
+	// convoke taps ride under (CastSpellParams.TapIDs) — the same
+	// question, asked of an activation instead of a cast.
+	TapIDs []uuid.UUID
 
 	// CounterSourceIDs names the permanents a RemoveCounters cost
 	// removes from (#625). Exactly one for the "from a planeswalker
@@ -755,6 +800,28 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	if err != nil {
 		return err
 	}
+	// #758: the tap-another component. Validated here with every
+	// other cost and paid at the foot of the announce, so a refusal
+	// leaves the board entirely untapped (ADR 0020 §3).
+	if err := g.validateTapOthersCostLocked(playerID, cardID, ab.Cost.TapOthers, params.TapIDs); err != nil {
+		return err
+	}
+	// CR 118.3: the source can only be tapped once. A cost that
+	// prints both {T} and "tap N untapped permanents you control"
+	// (Jaspera Sentinel) has already spent the source on the {T},
+	// so naming it again would pay one of the N with a permanent
+	// that is about to be tapped anyway — an underpaid cost. The
+	// component itself cannot see this: ExcludeSource is the
+	// printed word "another", and this is the interaction between
+	// two components of one cost, which only the activation path
+	// holds both halves of.
+	if ab.Cost.Tap && !ab.Cost.TapOthers.Empty() {
+		for _, id := range params.TapIDs {
+			if id == cardID {
+				return ErrInvalidParam
+			}
+		}
+	}
 	counters, err := g.validateCounterRemovalCostLocked(playerID, cardID, ab.Cost, CounterCostPayment{
 		SourceIDs: params.CounterSourceIDs,
 		Counts:    params.CounterCounts,
@@ -833,6 +900,18 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		var excluded map[uuid.UUID]bool
 		if ab.Cost.Tap {
 			excluded = map[uuid.UUID]bool{cardID: true}
+		}
+		// #758, the same rule one component over: a permanent named
+		// to pay the TapOthers half is already spent, so the
+		// auto-tapper must not also tap it for mana. Without this
+		// the payment below would find it tapped and skip it, and
+		// the cost would be paid with one permanent fewer than the
+		// clause prints (CR 118.3).
+		for _, id := range params.TapIDs {
+			if excluded == nil {
+				excluded = make(map[uuid.UUID]bool, len(params.TapIDs))
+			}
+			excluded[id] = true
 		}
 		spent, err := g.payAbilityManaCostLocked(p, cardID, source.Name, ab.Cost.Mana, params, ManaSpendForAbility(*source), excluded)
 		if err != nil {
@@ -985,6 +1064,15 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	// spell or ability" (Monk Gyatso) — the clause names abilities as
 	// well as spells, so the activated path has to emit too.
 	g.emitBecameTargetLocked(playerID, cardID, itemID, params.Targets)
+	// #758: the tap-another component's board half, paid HERE
+	// rather than in the payment block above and for the reason the
+	// cast path pays its convoke taps after the spell is on the
+	// stack — a "whenever a permanent becomes tapped" payoff
+	// (Opposition feeding a tap-watcher) has to sit ABOVE this
+	// ability and resolve first (ADR 0020 §4, CR 603.3b). Every
+	// named permanent was validated before anything was paid, so
+	// there is nothing left that can fail.
+	g.payTapOthersCostLocked(playerID, params.TapIDs)
 	// The cost may have queued dies-triggers (a sacrifice outlet
 	// feeding Blood Artist). Drain them so they sit ABOVE the
 	// ability on the stack, which is where paying a cost puts them.

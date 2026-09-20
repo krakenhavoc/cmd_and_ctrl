@@ -341,6 +341,68 @@ func TestFarseekSkipsForest(t *testing.T) {
 	}
 }
 
+// Farseek's real clause is a land TYPE test, not a "basic" test — it
+// must fetch a shockland exactly as paper does.
+func TestFarseekFetchesShockland(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	shrineID := pushLibraryCardForTest(caster, game.Card{
+		Name: "Godless Shrine", TypeLine: "Land — Plains Swamp",
+	})
+
+	castCatalogSpell(t, g, "Farseek", "Sorcery", farseekOracle, nil)
+	passPriorityAroundTable(t, g)
+
+	if !g.Battlefield.Contains(shrineID) {
+		t.Fatal("Farseek did not fetch Godless Shrine, a Plains Swamp")
+	}
+	fetched, _ := battlefieldCard(g, shrineID)
+	if !fetched.Tapped {
+		t.Error("Farseek's land must enter tapped")
+	}
+}
+
+// A triome carries three of the named types at once; it must still
+// be a legal find.
+func TestFarseekFetchesTriome(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	triomeID := pushLibraryCardForTest(caster, game.Card{
+		Name: "Indatha Triome", TypeLine: "Land — Plains Swamp Forest",
+	})
+
+	castCatalogSpell(t, g, "Farseek", "Sorcery", farseekOracle, nil)
+	passPriorityAroundTable(t, g)
+
+	if !g.Battlefield.Contains(triomeID) {
+		t.Fatal("Farseek did not fetch Indatha Triome")
+	}
+}
+
+// Wastes prints none of the four named land types and a plain Forest
+// is the one type explicitly excluded — neither is a legal find, so
+// the search comes up empty rather than fetching either.
+func TestFarseekCannotFetchWastesOrForest(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	wastesID := pushLibraryCardForTest(caster, game.Card{
+		Name: "Wastes", TypeLine: "Basic Land",
+	})
+	forestID := pushLibraryCardForTest(caster, game.Card{
+		Name: "Forest", TypeLine: "Basic Land — Forest",
+	})
+
+	castCatalogSpell(t, g, "Farseek", "Sorcery", farseekOracle, nil)
+	passPriorityAroundTable(t, g)
+
+	if g.Battlefield.Contains(wastesID) {
+		t.Error("Farseek fetched a Wastes, which prints none of the four named types")
+	}
+	if g.Battlefield.Contains(forestID) {
+		t.Error("Farseek fetched a Forest, which it may not")
+	}
+}
+
 func TestKodamasReachSplitsFieldAndHand(t *testing.T) {
 	g := newCatalogGame(t)
 	caster := g.Seats[0]

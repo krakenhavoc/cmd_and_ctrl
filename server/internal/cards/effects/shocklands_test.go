@@ -400,3 +400,161 @@ func TestShocklandEveryMemberEntersTappedOnDecline(t *testing.T) {
 		})
 	}
 }
+
+// TestWhichShocklandEntrySitesOfferThePayment is the CAVEAT, held
+// against the engine (#1051).
+//
+// The caveat used to read "put onto the battlefield by another spell
+// always enters tapped", and that stopped being true at #478: the
+// effect-side entries that go through
+// enterBattlefieldThroughPipelineLocked are entryResumable, so the
+// biggest "another spell" there is — a SEARCH, which is every
+// fetchland, Farseek, Circuitous Route and Expedition Map — pauses the
+// entry and asks. What survives is the entry site that runs the CR 614
+// pipeline with NO resume behind it:
+// putOntoBattlefieldFromZoneLocked, the hand / library "put onto the
+// battlefield" batch (server/internal/game/battlefield_put.go:94),
+// whose simultaneity a per-card resume would break. There the engine
+// takes the un-paid branch — weaker than printed, never stronger.
+//
+// One table over the entry SITES rather than a test per card, because
+// what the caveat claims is a DIFFERENCE: either half asserted alone
+// would keep passing if the other moved, and it is the boundary
+// between them that the caveat's words have to track.
+//
+// The search row is deliberately thin. What it pins is that this
+// family is asked at all; the search's own side of the pause —
+// nothing moves while the question is open, EventSearchLibrary and
+// the shuffle wait for the answer — is
+// TestFetchedShocklandOffersItsPaymentAndTheSearchWaits
+// (search_chooser_test.go), and is not copied here.
+func TestWhichShocklandEntrySitesOfferThePayment(t *testing.T) {
+	for _, tc := range []struct {
+		site       string
+		wantPrompt bool
+		enter      func(t *testing.T, g *game.Game, me *game.Player) uuid.UUID
+	}{
+		{
+			// A fetchland cracking for it, Farseek, a Circuitous
+			// Route: the search path, entryResumable since #478.
+			site:       "fetched by a search",
+			wantPrompt: true,
+			enter: func(t *testing.T, g *game.Game, me *game.Player) uuid.UUID {
+				t.Helper()
+				id := pushLibraryCardForTest(me, game.Card{
+					Name:     "Steam Vents",
+					TypeLine: "Land — Island Mountain",
+					OracleID: steamVentsOracle,
+				})
+				g.WithWriteLock(func() {
+					if err := g.SearchLibraryForEffectWithOptions(me.ID,
+						func(c game.Card) bool { return c.Name == "Steam Vents" },
+						game.ZoneBattlefield, 1, false, false, false); err != nil {
+						t.Fatalf("SearchLibraryForEffectWithOptions: %v", err)
+					}
+				})
+				return id
+			},
+		},
+		{
+			// Warp World, Genesis Wave, Coiling Oracle: the library
+			// half of the batch that cannot resume.
+			site:       "put from the library",
+			wantPrompt: false,
+			enter: func(t *testing.T, g *game.Game, me *game.Player) uuid.UUID {
+				t.Helper()
+				id := pushLibraryCardForTest(me, game.Card{
+					Name:     "Blood Crypt",
+					TypeLine: "Land — Swamp Mountain",
+					OracleID: bloodCryptOracle,
+				})
+				g.WithWriteLock(func() {
+					if _, err := g.PutCardsFromLibraryOntoBattlefieldForEffect(
+						[]uuid.UUID{id}, game.LibraryEntryOptions{Controller: me.ID},
+					); err != nil {
+						t.Fatalf("PutCardsFromLibraryOntoBattlefieldForEffect: %v", err)
+					}
+				})
+				return id
+			},
+		},
+		{
+			// Arboreal Grazer: the hand half of the same batch, and
+			// not a land drop.
+			site:       "put from the hand",
+			wantPrompt: false,
+			enter: func(t *testing.T, g *game.Game, me *game.Player) uuid.UUID {
+				t.Helper()
+				id := uuid.New()
+				me.Hand.PushTop(game.Card{
+					InstanceID: id,
+					Name:       "Hallowed Fountain",
+					TypeLine:   "Land — Plains Island",
+					OracleID:   hallowedFountainOracle,
+					Owner:      me.ID,
+					Controller: me.ID,
+				})
+				g.WithWriteLock(func() {
+					if _, err := g.PutFromHandOntoBattlefieldForEffect(
+						id, game.HandEntryOptions{Controller: me.ID},
+					); err != nil {
+						t.Fatalf("PutFromHandOntoBattlefieldForEffect: %v", err)
+					}
+				})
+				return id
+			},
+		},
+	} {
+		t.Run(tc.site, func(t *testing.T) {
+			g := newCatalogGame(t)
+			me := g.Seats[g.Turn.ActiveSeat]
+			lifeBefore := me.Life
+
+			id := tc.enter(t, g, me)
+
+			prompt := entryPayLifeChoiceFor(g, me.ID)
+			switch {
+			case tc.wantPrompt && prompt == nil:
+				t.Fatal("no pay-life prompt: this entry site is entryResumable, so the " +
+					"land's own replacement is allowed to ask")
+			case !tc.wantPrompt && prompt != nil:
+				t.Fatal("prompted on an entry the engine cannot resume; pausing there would " +
+					"strand the card in its old zone")
+			}
+
+			wantLife, wantTapped := lifeBefore, true
+			if tc.wantPrompt {
+				if prompt.PayCost != "2 life" {
+					t.Errorf("prompt cost label: got %q, want %q", prompt.PayCost, "2 life")
+				}
+				// The ENTRY is what is being replaced, so nothing has
+				// entered while the question is open.
+				if _, ok := battlefieldCard(g, id); ok {
+					t.Error("the land entered before the choice was made")
+				}
+				answerEntryPayLife(t, g, me.ID, true)
+				wantLife, wantTapped = lifeBefore-2, false
+			}
+
+			card, ok := battlefieldCard(g, id)
+			if !ok {
+				t.Fatal("the land is not on the battlefield")
+			}
+			if card.Tapped != wantTapped {
+				t.Errorf("tapped = %v, want %v", card.Tapped, wantTapped)
+			}
+			if me.Life != wantLife {
+				t.Errorf("life: got %d, want %d", me.Life, wantLife)
+			}
+			// The whole cycle's discriminator, at every site: the
+			// entry is what the replacement acts on, so nothing is
+			// ever tapped or untapped after the fact.
+			if n := tapEventsFor(g, id); n != 0 {
+				t.Errorf("%d tap events; the land should have ENTERED as it is", n)
+			}
+			if n := untapEventsFor(g, id); n != 0 {
+				t.Errorf("%d untap events; there was no tapped window to undo", n)
+			}
+		})
+	}
+}

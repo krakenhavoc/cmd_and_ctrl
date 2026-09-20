@@ -6,6 +6,7 @@ import {
   listGames,
   mintSeatReclaim,
   redeemSeatReclaim,
+  rotateInvite,
   unarchiveGame,
 } from "./api";
 import { LobbyApiError, currentSession, setSession } from "./session";
@@ -167,5 +168,52 @@ describe("seat reclaim", () => {
     stubFetch({ status: 401, body: { error: "lobby: invalid or expired reclaim link" } });
     await expect(redeemSeatReclaim(GAME, "nope")).rejects.toBeInstanceOf(LobbyApiError);
     expect(currentSession()?.token).toBe("admin-tok");
+  });
+});
+
+// #1038: replacing the "re-open as admin to recover" lobby hint (which
+// never actually worked — the invite plaintext only ever lives in the
+// memory of the process that minted it) with a real "new link" control
+// that revokes the current invite of one kind and mints its
+// replacement. Covers the wire contract the Lobby.svelte control below
+// depends on, the same way this file already covers archive and
+// seat-reclaim rather than rendering the route.
+describe("invite rotation", () => {
+  it("posts the requested kind and carries the admin session", async () => {
+    stubFetch({ body: { kind: "player", token: "fresh-token" } });
+    const res = await rotateInvite(GAME, "player");
+    expect(calls[0]).toMatchObject({
+      url: `/games/${GAME}/invites/rotate`,
+      method: "POST",
+      body: { kind: "player" },
+    });
+    expect(res).toEqual({ kind: "player", token: "fresh-token" });
+  });
+
+  it("rotates the spectator kind on the same route with a different body", async () => {
+    stubFetch({ body: { kind: "spectator", token: "fresh-spectator-token" } });
+    await rotateInvite(GAME, "spectator");
+    expect(calls[0]).toMatchObject({
+      url: `/games/${GAME}/invites/rotate`,
+      method: "POST",
+      body: { kind: "spectator" },
+    });
+  });
+
+  it("surfaces a non-admin refusal rather than swallowing it", async () => {
+    stubFetch({ status: 403, body: { error: "lobby: caller is not an admin" } });
+    await expect(rotateInvite(GAME, "player")).rejects.toThrow("lobby: caller is not an admin");
+  });
+
+  it("surfaces a bad kind as the server described it", async () => {
+    stubFetch({
+      status: 400,
+      body: { error: 'kind must be "player" or "spectator"' },
+    });
+    // @ts-expect-error — exercising the server's validation, not the
+    // client's type system.
+    await expect(rotateInvite(GAME, "banana")).rejects.toThrow(
+      'kind must be "player" or "spectator"',
+    );
   });
 });

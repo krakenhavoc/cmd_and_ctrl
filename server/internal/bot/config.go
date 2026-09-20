@@ -15,6 +15,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/bwmarrin/discordgo"
 )
 
 // Default endpoints. The bot runs on the same VPS as the server
@@ -62,6 +64,22 @@ type Config struct {
 	//   {ClientBaseURL}/#/games/{uuid}/join?t={invite_token}
 	// Defaults to the prod VPS origin.
 	ClientBaseURL string
+
+	// AdminUserIDs and AdminRoleIDs together define who may run
+	// /cc-end: a Discord user on AdminUserIDs, or a guild member
+	// holding a role on AdminRoleIDs. Both optional and both
+	// comma-separated snowflakes, same shape as GuildIDs.
+	//
+	// This is the "admin" half of issue #614's "host or admin"
+	// check. If both lists are empty AND the game being ended has no
+	// creator, /cc-end refuses every caller rather than failing open;
+	// see Config.IsAdmin. The "host" half — the game's own creator,
+	// now that games.created_by exists (#1044, #1098) — is not a
+	// Config field: it is per-game, so it is answered by the server
+	// (GET /games/{id}/creator) and combined with IsAdmin in
+	// Handler.mayEnd (end.go), not by this Config alone.
+	AdminUserIDs []string
+	AdminRoleIDs []string
 }
 
 // ConfigFromEnv reads the CMDCTRL_* env vars. Missing optional
@@ -75,6 +93,8 @@ func ConfigFromEnv() Config {
 		ServerBaseURL: orDefault(os.Getenv("CMDCTRL_SERVER_BASE_URL"), defaultServerBaseURL),
 		AdminToken:    strings.TrimSpace(os.Getenv("CMDCTRL_ADMIN_TOKEN")),
 		ClientBaseURL: orDefault(os.Getenv("CMDCTRL_CLIENT_BASE_URL"), defaultClientBaseURL),
+		AdminUserIDs:  splitGuildIDs(os.Getenv("CMDCTRL_DISCORD_ADMIN_USER_IDS")),
+		AdminRoleIDs:  splitGuildIDs(os.Getenv("CMDCTRL_DISCORD_ADMIN_ROLE_IDS")),
 	}
 }
 
@@ -120,7 +140,42 @@ func (c Config) Redacted() map[string]any {
 		"client_base_url": c.ClientBaseURL,
 		"bot_token":       fmt.Sprintf("<%d chars>", len(c.BotToken)),
 		"admin_token":     fmt.Sprintf("<%d chars>", len(c.AdminToken)),
+		"admin_user_ids":  c.AdminUserIDs,
+		"admin_role_ids":  c.AdminRoleIDs,
 	}
+}
+
+// IsAdmin reports whether the interaction's invoker is authorized to
+// run /cc-end: a Discord user on AdminUserIDs, or a guild member
+// holding a role on AdminRoleIDs. An empty configuration (both lists
+// empty) never authorizes anyone — see the AdminUserIDs/AdminRoleIDs
+// doc comment.
+func (c Config) IsAdmin(i *discordgo.Interaction) bool {
+	userID, roles := interactionInvoker(i)
+	if userID == "" {
+		return false
+	}
+	for _, id := range c.AdminUserIDs {
+		if id == userID {
+			return true
+		}
+	}
+	for _, role := range roles {
+		for _, allowed := range c.AdminRoleIDs {
+			if role == allowed {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// HasAdmins reports whether any admin (user or role) is configured
+// at all. Used to distinguish "you specifically are not an admin"
+// from "nobody is configured as an admin yet" in the refusal
+// message /cc-end gives an unauthorized caller.
+func (c Config) HasAdmins() bool {
+	return len(c.AdminUserIDs) > 0 || len(c.AdminRoleIDs) > 0
 }
 
 // GuildAllowed reports whether the given guild ID is in the

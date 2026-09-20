@@ -24,16 +24,23 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // a free body every time a land enters, which is why it is a staple
 // of aristocrat decks and why the "you may" (CR 603.5) matters: a
 // player holding it back for a sacrifice outlet declines.
+//
+// The conditional haste was a declared simplification until #1117:
+// its AppliesTo reads an OPPONENT'S life total, and a life change was
+// not one of the events that dropped the layer engine's cached
+// resolution, so the grant would have switched on and off a beat
+// late. LifeGatedKeyword declares the dependency, which is what makes
+// the grant honest — and the direction it was wrong in mattered, since
+// "late off" is a creature attacking after the opponent it was keyed
+// on went back above 10.
 func init() {
 	Register(Spec{
 		OracleID:     "e97f9c2b-b41e-4f36-9245-77c0ac125647",
 		Name:         "Bloodghast",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Its conditional haste is omitted: a static keyed on an opponent's life total goes stale, because a life-total change does not invalidate the layer cache (the \"Layer invalidation on hand / life / attack / graveyard state\" seam). Bloodghast is always summoning-sick on the turn it returns.",
-		},
+		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
 			RestrictSelf(game.CantBlock),
+			LifeGatedKeyword(SelfWhileAnOpponentsLifeAtMost(10), "haste"),
 		},
 		Triggered: []game.TriggeredAbility{
 			Optional(InGraveyard(Landfall(

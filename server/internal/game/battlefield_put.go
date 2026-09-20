@@ -310,6 +310,17 @@ func (g *Game) putOntoBattlefieldFromZoneLocked(ids []uuid.UUID, from ZoneKind, 
 	}()
 	var firstErr error
 	for _, p := range batch {
+		// NO entryResumable, and this is THE site the flag's doc
+		// comment and the shockland / MDFC-land caveats name: the
+		// three phases run every card's pipeline against the
+		// pre-entry board and then move them together, and a per-card
+		// resume would finish one card's entry after the others had
+		// landed, which is the simultaneity this function exists for.
+		// So an effect that would pause here (a pay-life entry
+		// choice, a Clone pick) takes the un-paid branch instead —
+		// weaker than printed, never stronger. See
+		// ReplacementEvent.entryResumable and
+		// offerEntryLifePaymentLocked.
 		ev := &ReplacementEvent{
 			Kind:         RepEventMove,
 			Actor:        p.controller,

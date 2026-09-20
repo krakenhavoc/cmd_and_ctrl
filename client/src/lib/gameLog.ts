@@ -92,6 +92,13 @@ const LOG_TONE: Record<LogKind, string> = {
   surveil: "tone-quiet",
   saga_chapter: "tone-resolve",
   class_level: "tone-resolve",
+  // ADR 0075 §2.3. Not a beat of the game but a change to the rules
+  // it is being played under, which is why it is toned like a step —
+  // the spine of the log, not a whisper in it.
+  settings: "tone-step",
+  // A spawn is not a play. It reads like one on the board, which is
+  // exactly why the line has to stand out from the turn around it.
+  spawn: "tone-cast",
 };
 
 export function logTone(kind: LogKind): string {

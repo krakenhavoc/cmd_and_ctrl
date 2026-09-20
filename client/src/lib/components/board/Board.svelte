@@ -27,10 +27,20 @@
     GameView,
     LegalTargetsView,
     ManaAbilityView,
+    PlayerView,
     ZoneView,
   } from "../../protocol";
   import { seatPlacements, type SeatPosition } from "../../cardTypes";
   import PlayerPanel from "./PlayerPanel.svelte";
+  import SeatSummary from "./SeatSummary.svelte";
+  import {
+    decideSeatRendering,
+    legalDefenderIDs,
+    nextPinnedSeat,
+    seatControlsLegalTarget,
+    seatHasAttackersOn,
+    type SeatDecision,
+  } from "../../expansion";
   import { settings } from "../../settings";
   import HoverZoomOverlay from "./HoverZoomOverlay.svelte";
   // CommanderDamageTooltip was folded into HoverZoomOverlay — the
@@ -119,6 +129,12 @@
     onSelectCombatCard: (cardID: string) => void;
     onDeclareAttack: (targetPlayerID: string) => void;
     onDeclareBlock: (attackerCardID: string) => void;
+    // #519: connectionBanner.ts's actionsDisabled(status), computed by
+    // Game.svelte and handed down rather than recomputed here — Board
+    // has no socket of its own to ask. Dims the table and turns every
+    // card affordance into a no-op instead of a click that silently
+    // goes nowhere while the connection is down.
+    disabled?: boolean;
     // Priority controls forwarded to the self-panel's PhaseDisplay.
     autopassEnabled?: boolean;
     // #628: the CR 726 loop-breaker banner line, empty when quiet.
@@ -146,6 +162,7 @@
     onSelectCombatCard,
     onDeclareAttack,
     onDeclareBlock,
+    disabled = false,
     autopassEnabled,
     loopNotice = "",
     onPassPriority,
@@ -153,6 +170,18 @@
     attention,
     beatsPrimeKey,
   }: Props = $props();
+
+  // #519: every action this component initiates funnels through here
+  // rather than through `sendAction` directly, so a card, an ability
+  // row or a context-menu entry stops being clickable the instant the
+  // socket goes down — instead of dispatching into a queue nothing is
+  // reading. `sendAction` itself still refuses offline sends on its
+  // own (see connectionBanner.ts's offlineSendMessage), so a call that
+  // slips past this guard is surfaced, not swallowed.
+  const guardedSendAction: ActionSender = (type, params, player) => {
+    if (disabled) return;
+    sendAction(type, params, player);
+  };
 
   // Spectators have no perspective — there's no "self" seat to anchor
   // the around-the-table rotation. Use a uniform grid for them with
@@ -221,7 +250,7 @@
   const initiativeID = $derived(view.initiative ?? null);
 
   function handleTapToggle(card: CardView): void {
-    sendAction(card.tapped ? "untap" : "tap", { instance_id: card.instance_id });
+    guardedSendAction(card.tapped ? "untap" : "tap", { instance_id: card.instance_id });
   }
 
   // The cast flow is a chain of announce-time prompts, each handing
@@ -620,7 +649,7 @@
     if (beginTargetingForModes(card, modes, choices)) return;
     const params: Record<string, unknown> = { instance_id: card.instance_id, modes };
     applyCastChoices(params, choices);
-    sendAction("cast_spell", params, viewerID ?? undefined);
+    guardedSendAction("cast_spell", params, viewerID ?? undefined);
   }
 
   // continueCast is the post-cost half of the cast flow: pick modes
@@ -658,7 +687,7 @@
     }
     const params: Record<string, unknown> = { instance_id: card.instance_id };
     applyCastChoices(params, choices);
-    sendAction("cast_spell", params, viewerID ?? undefined);
+    guardedSendAction("cast_spell", params, viewerID ?? undefined);
   }
 
   // completeTargetedCast fires cast_spell with the resolved target
@@ -706,7 +735,11 @@
       // S20 sub-PR 2: answering a triggered ability's pick_target
       // prompt. The store clears when the next snapshot no longer
       // carries the choice (see the effect below).
-      sendAction("resolve_choice", { choice_id: state.choiceID, targets }, viewerID ?? undefined);
+      guardedSendAction(
+        "resolve_choice",
+        { choice_id: state.choiceID, targets },
+        viewerID ?? undefined,
+      );
       targeting.set(null);
       return;
     }
@@ -731,7 +764,7 @@
       if (state.ability.phyrexianLife) params.phyrexian_life = state.ability.phyrexianLife;
       if (state.modes !== undefined) params.modes = state.modes;
       abilityDiscardIDs = [];
-      sendAction("activate_ability", params, viewerID ?? undefined);
+      guardedSendAction("activate_ability", params, viewerID ?? undefined);
       targeting.set(null);
       return;
     }
@@ -740,7 +773,7 @@
     // #764: a modal activated ability sends its modes beside its
     // targets (CR 602.2b) — handled in the ability branch above.
     applyCastChoices(params, state.choices);
-    sendAction("cast_spell", params, viewerID ?? undefined);
+    guardedSendAction("cast_spell", params, viewerID ?? undefined);
     cancelTargeting();
   }
 
@@ -991,7 +1024,7 @@
     counter: CounterPayment,
     sacrificeIDs?: string[],
   ): void {
-    sendAction(
+    guardedSendAction(
       "activate_mana_ability",
       {
         card_id: card.instance_id,
@@ -1017,7 +1050,7 @@
       return;
     }
     const params = { card_id: card.instance_id, ability_index: activate.index };
-    sendAction("activate_mana_ability", params, card.controller);
+    guardedSendAction("activate_mana_ability", params, card.controller);
   }
 
   function confirmSacrifice(instanceIDs: string[]): void {
@@ -1113,7 +1146,7 @@
     if (phyrexianLife) params.phyrexian_life = phyrexianLife;
     if (modes !== undefined) params.modes = modes;
     abilityDiscardIDs = [];
-    sendAction("activate_ability", params, viewerID ?? undefined);
+    guardedSendAction("activate_ability", params, viewerID ?? undefined);
   }
 
   // #916: the activation's Phyrexian stepper — the same modal the
@@ -1229,7 +1262,7 @@
 
   function handleDrawCard(): void {
     if (!viewerID) return;
-    sendAction("draw_card", undefined, viewerID);
+    guardedSendAction("draw_card", undefined, viewerID);
   }
 
   function handleTargetPlayer(targetPlayerID: string): void {
@@ -1257,6 +1290,52 @@
     return true;
   }
 
+  // ---- Opponent summaries (ADR 0077) --------------------------------
+  //
+  // Which opponents render as SeatSummary read-outs and which as full
+  // PlayerPanels. The decision itself lives in lib/expansion.ts and is
+  // unit-tested; Board's job is only to gather the per-seat facts and
+  // to own the one piece of state the decision cannot derive — the pin.
+  //
+  // The pin lives HERE rather than in a store because it is per-table
+  // view state with no reason to outlive the component: a summary
+  // pinned open in one game should not still be pinned when the next
+  // game mounts.
+  let pinnedSeatID = $state<string | null>(null);
+
+  // Seats the viewer may declare an attack against. Computed once per
+  // snapshot rather than per seat, because it reads the whole turn.
+  const defenderIDs = $derived(legalDefenderIDs(view, viewerID));
+
+  // A pin naming a seat that is no longer at the table (conceded,
+  // eliminated and removed, or a different game entirely) would hold a
+  // panel open for a player who is not there — and, worse, would be
+  // unclearable, because the control that clears it lives on the
+  // panel. Dropping it here keeps the invariant "a pin always has a
+  // seat" without needing an effect to watch for departures.
+  const pinned = $derived(
+    pinnedSeatID && view.seats.some((s) => s.id === pinnedSeatID) ? pinnedSeatID : null,
+  );
+
+  function renderingFor(seat: PlayerView, pos: SeatPosition | null): SeatDecision {
+    const controlled = cardsByController.get(seat.id) ?? [];
+    return decideSeatRendering(
+      {
+        isSelf: pos === "self",
+        isPinned: pinned === seat.id,
+        isActiveSeat: seat.id === activeSeatID,
+        controlsLegalTarget: seatControlsLegalTarget($targeting, seat.id, controlled),
+        hasAttackersOnViewer: seatHasAttackersOn(viewerID, controlled),
+        isLegalDefender: defenderIDs.has(seat.id),
+      },
+      { spectator: isSpectator, combatMode },
+      {
+        opponentDetail: $settings.display.opponentDetail,
+        expandActivePlayer: $settings.display.expandActivePlayer,
+      },
+    );
+  }
+
   // The four quadrant positions. Iteration order doesn't matter for
   // CSS Grid (each panel sets its own grid-area), but kept stable
   // here so Svelte's keyed each-block reuses DOM across snapshots.
@@ -1272,6 +1351,8 @@
 <div
   class="board"
   class:spectator={isSpectator}
+  class:board-disabled={disabled}
+  aria-disabled={disabled}
   data-opp-count={opponentCount}
   data-seat-count={view.seats.length}
   bind:this={boardEl}
@@ -1280,40 +1361,77 @@
     {#each positions as pos (pos)}
       {@const seat = placements[pos]}
       {#if seat}
+        {@const decision = renderingFor(seat, pos)}
         <div class="slot" data-pos={pos} style:grid-area={pos}>
-          <PlayerPanel
-            {seat}
-            isSelf={pos === "self"}
-            flipped={$settings.display.tableLayout === "row"
-              ? pos !== "self"
-              : pos === "across" || pos === "across_next"}
-            isActive={seat.id === activeSeatID}
-            hasPriority={seat.id === prioritySeatID}
-            {viewerID}
-            {isAdmin}
-            {sendAction}
-            isMonarch={seat.id === monarchID}
-            isInitiative={seat.id === initiativeID}
-            {view}
-            controlledCards={cardsByController.get(seat.id) ?? []}
-            exile={exileForOwner(seat.id)}
-            {combatMode}
-            {selectedCombatCardID}
-            {onSelectCombatCard}
-            {onDeclareAttack}
-            {onDeclareBlock}
-            onTapToggle={handleTapToggle}
-            onPlayCard={handlePlayCard}
-            onDrawCard={handleDrawCard}
-            onTargetPlayer={handleTargetPlayer}
-            onTargetCard={handleTargetCard}
-            {autopassEnabled}
-            {loopNotice}
-            {onPassPriority}
-            {onToggleAutopass}
-            onActivateAbility={handleActivateAbility}
-            onManaAbilityCost={handleManaAbilityCost}
-          />
+          {#if decision.rendering === "summary"}
+            <SeatSummary
+              {seat}
+              {view}
+              {viewerID}
+              controlledCards={cardsByController.get(seat.id) ?? []}
+              isActive={seat.id === activeSeatID}
+              hasPriority={seat.id === prioritySeatID}
+              isMonarch={seat.id === monarchID}
+              isInitiative={seat.id === initiativeID}
+              sendAction={guardedSendAction}
+              {combatMode}
+              {selectedCombatCardID}
+              {onDeclareAttack}
+              {onDeclareBlock}
+              onTargetPlayer={handleTargetPlayer}
+              onTargetCard={handleTargetCard}
+              onExpand={() => (pinnedSeatID = nextPinnedSeat(pinned, seat.id))}
+            />
+          {:else}
+            {#if decision.reason === "pinned"}
+              <!-- The only way back. A pin is the one expansion the
+                   viewer has to undo by hand — every other reason
+                   clears itself when the prompt closes or the turn
+                   moves on — and PlayerPanel has nowhere to put the
+                   control, so it lives on the slot instead. -->
+              <button
+                class="unpin"
+                type="button"
+                aria-label={`Collapse ${seat.name}'s board back to a summary`}
+                onclick={() => (pinnedSeatID = null)}
+              >
+                ⤡
+              </button>
+            {/if}
+            <PlayerPanel
+              {seat}
+              isSelf={pos === "self"}
+              flipped={$settings.display.tableLayout === "row" || opponentCount === 2
+                ? pos !== "self"
+                : pos === "across" || pos === "across_next"}
+              isActive={seat.id === activeSeatID}
+              hasPriority={seat.id === prioritySeatID}
+              {viewerID}
+              {isAdmin}
+              sendAction={guardedSendAction}
+              isMonarch={seat.id === monarchID}
+              isInitiative={seat.id === initiativeID}
+              {view}
+              controlledCards={cardsByController.get(seat.id) ?? []}
+              exile={exileForOwner(seat.id)}
+              {combatMode}
+              {selectedCombatCardID}
+              {onSelectCombatCard}
+              {onDeclareAttack}
+              {onDeclareBlock}
+              onTapToggle={handleTapToggle}
+              onPlayCard={handlePlayCard}
+              onDrawCard={handleDrawCard}
+              onTargetPlayer={handleTargetPlayer}
+              onTargetCard={handleTargetCard}
+              {autopassEnabled}
+              {loopNotice}
+              {onPassPriority}
+              {onToggleAutopass}
+              onActivateAbility={handleActivateAbility}
+              onManaAbilityCost={handleManaAbilityCost}
+            />
+          {/if}
         </div>
       {/if}
     {/each}
@@ -1328,7 +1446,7 @@
           hasPriority={seat.id === prioritySeatID}
           {viewerID}
           {isAdmin}
-          {sendAction}
+          sendAction={guardedSendAction}
           isMonarch={seat.id === monarchID}
           isInitiative={seat.id === initiativeID}
           {view}
@@ -1368,14 +1486,14 @@
       splitSecondActive={view.split_second_active === true}
       onCounter={(item) => {
         const verb = item.kind === "spell" ? "counter_spell" : "counter_ability";
-        sendAction(verb, { instance_id: item.id });
+        guardedSendAction(verb, { instance_id: item.id });
       }}
       onTargetStackItem={(item) => completeTargetedCast("card", item.id)}
       onPass={onPassPriority}
     />
     {@render attention?.()}
   </div>
-  <VotingPanel {view} {viewerID} {sendAction} />
+  <VotingPanel {view} {viewerID} sendAction={guardedSendAction} />
   <SacrificeCostModal
     source={sacrificePrompt?.card ?? null}
     label={sacrificePrompt?.ability.sacrifice_label ?? "a permanent"}
@@ -1540,7 +1658,7 @@
       {viewerID}
       zoneKind={$zoneBrowser.zoneKind}
       ownerSeat={{ id: $zoneBrowser.ownerID, name: $zoneBrowser.ownerName }}
-      {sendAction}
+      sendAction={guardedSendAction}
       onClose={closeZoneBrowser}
       onTargetCard={handleTargetCard}
       onCastCard={handlePlayCard}
@@ -1552,7 +1670,7 @@
       {viewerID}
       {isAdmin}
       open={$cardMenu}
-      {sendAction}
+      sendAction={guardedSendAction}
       onActivate={handleMenuActivate}
       onClose={closeCardMenu}
     />
@@ -1590,9 +1708,49 @@
     mix-blend-mode: overlay;
     opacity: 0.5;
   }
+  /* #519: the board stays rendered and stays the last-known state
+     (see ConnectionBanner.svelte's non-goals) — this only says so.
+     Dimming + grayscale is a look, not the guard; guardedSendAction
+     above is what actually stops a card action from going anywhere
+     while the socket is down. Cards, panels and the stack all dim
+     together rather than one at a time, so nothing looks selectively
+     broken. */
+  .board-disabled {
+    filter: grayscale(0.45) brightness(0.82);
+    cursor: not-allowed;
+  }
+  .board-disabled .slot {
+    pointer-events: none;
+  }
   .slot {
     min-height: 0;
     min-width: 0;
+    /* Anchors .unpin. Nothing else in a slot is positioned, so this
+       costs nothing until a seat is pinned. */
+    position: relative;
+  }
+
+  /* The collapse control on a pinned panel. Sits above the panel's own
+     chrome (PlayerPanel's rail is z-index 3) but under the attention
+     strip (40) and the hover zoom, because a prompt covering this
+     button is strictly better than this button covering a prompt. */
+  .unpin {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    z-index: 10;
+    padding: 3px 6px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--fg-dim);
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .unpin:hover {
+    color: var(--fg);
+    border-color: var(--border-strong);
   }
 
   /* The attention strip. Fixed-width column, grows downward, capped
@@ -1641,12 +1799,19 @@
   .board[data-opp-count="2"] {
     grid-template-columns: 1fr 1fr;
     grid-template-rows: minmax(0, 0.7fr) minmax(0, 1.3fr);
-    /* "across" spans the full top row so the across player feels
-       primary the same way they do in a 2-player game. The bottom
-       splits between next (left) and self (right). */
+    /* #956 — with two opponents there is no fourth quadrant to fill,
+       so the old "across on top, next beside self" split spent half
+       the bottom row on an opponent. A half-width self panel clips
+       the hand fan horizontally (--card-h floors at 168px, so the
+       cards do not shrink to fit), which is what the reporter hit.
+       Both opponents now share the top row and self spans the full
+       width below. This makes the quadrant and row layouts identical
+       at three players, which is intended: there is no third
+       arrangement worth having here. `next` is in the top row so it
+       renders flipped — see the markup above. */
     grid-template-areas:
-      "across across"
-      "next   self";
+      "next   across"
+      "self   self";
   }
   .board[data-opp-count="3"] {
     grid-template-columns: 1fr 1fr;
@@ -1665,14 +1830,19 @@
      every opponent sits in the top row in turn order, left to right,
      and the self panel takes the full width below. All opponents
      are `flipped` (hand at the top edge). */
+  /* grid-template-rows is restated in both rules rather than
+     inherited from the quadrant rules above: they match the same
+     element, so editing one silently changed the other. */
   :global(:root[data-table-layout="row"]) .board[data-opp-count="2"] {
     grid-template-columns: 1fr 1fr;
+    grid-template-rows: minmax(0, 0.7fr) minmax(0, 1.3fr);
     grid-template-areas:
       "next across"
       "self self";
   }
   :global(:root[data-table-layout="row"]) .board[data-opp-count="3"] {
     grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: minmax(0, 0.7fr) minmax(0, 1.3fr);
     grid-template-areas:
       "next across across_next"
       "self self   self";

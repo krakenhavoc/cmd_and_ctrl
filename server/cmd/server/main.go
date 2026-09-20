@@ -20,6 +20,11 @@
 //	                        create games and list the whole lobby.
 //	CMDCTRL_SESSION_TTL   — session lifetime, Go duration string (e.g. 12h).
 //	                        Default 12h.
+//	CMDCTRL_IDENTITY_TTL  — lifetime of the identity-only session a Discord
+//	                        sign-in mints (ADR 0051 decision 3), Go
+//	                        duration. Default 720h (30 days). Seat,
+//	                        spectator and admin sessions keep
+//	                        CMDCTRL_SESSION_TTL.
 //	CMDCTRL_SESSION_KEY   — HMAC-SHA256 key that signs session tokens, at
 //	                        least 32 bytes, distinct from the admin token.
 //	                        Set: sessions survive a restart. Unset: sessions
@@ -87,6 +92,13 @@
 //	                             hosted model, 20s when a local endpoint is
 //	                             configured, because a model that overruns
 //	                             the deadline plays the heuristic's move.
+//	CMDCTRL_BOT_IMPROVISE      — "0" / "off" / "false" turns ADR 0033 §8
+//	                             improvisation OFF for the model tiers, which
+//	                             have it on by default. With it off, a bot
+//	                             that casts a card the engine cannot run
+//	                             leaves it having done nothing, for a human
+//	                             to apply by hand — which is what every tier
+//	                             did before #686.
 //	CMDCTRL_BOT_DECISION_LOG   — directory for the per-game bot decision log
 //	                             (prompt, reply, ranking, fallback per
 //	                             window). Empty (the default) is OFF. The
@@ -120,14 +132,18 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/bugstore"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 
-	// Blank import: effects/wire.go's init() populates the S14
-	// EffectResolver / ETBEffectHook / IsCatalogCard callbacks on
-	// the game package. Without this import the catalog stays cold
-	// and every card falls through to manual sandbox resolution.
-	_ "github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	// effects/wire.go's init() populates the S14 EffectResolver /
+	// ETBEffectHook / IsCatalogCard callbacks on the game package.
+	// Without this import the catalog stays cold and every card falls
+	// through to manual sandbox resolution. Named since S35: the
+	// table spawner needs the token templates (ADR 0075 §2.4), and
+	// this is the one place that knows both the catalog and the
+	// lobby's config.
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/catalog"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/db"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decklibrary"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -248,6 +264,26 @@ func main() {
 	// the user's id. Without a database there is nowhere to put them,
 	// and sign-in mints a session with a zero UserID, as before.
 	userStore := newUserStore(log, database)
+	// Decks (ADR 0051 decision 7, S34 sub-PR 5): a signed-in player's
+	// saved decklists. Without a database there is nowhere to put
+	// them, and every principal already carries a zero UserID (see
+	// newUserStore above), so nothing ever calls this store.
+	deckLibrary := newDeckLibraryStore(database)
+
+	// Per-user revocation (ADR 0051 decision 6, S34 sub-PR 7). Every
+	// watermark is read once here; from then on the authenticator
+	// answers "has this user revoked this session?" from memory, on
+	// every HTTP request and WS upgrade, and the only writes go through
+	// revocations itself (logout-everywhere, the admin route), which
+	// update the cache as they write. Wrapped BEFORE anything takes a
+	// reference to authenticator, so the hub's WS authorizer and the
+	// lobby routes all see the same checked one. With no database there
+	// is nothing to check: sessions carry no UserID, the authenticator
+	// is left as it is, and the two revocation routes answer 503.
+	revocations := newRevocations(ctx, log, userStore)
+	if revocations != nil {
+		authenticator = auth.WithRevocation(authenticator, revocations)
+	}
 
 	hub := ws.NewHub(log)
 	hub.SetManager(mgr)
@@ -383,6 +419,21 @@ func main() {
 		log.Info("discord oauth disabled — set CMDCTRL_DISCORD_CLIENT_ID/SECRET/REDIRECT_URI to enable")
 	}
 
+	// The bot token the server itself uses for direct-message invites
+	// (ADR 0051 decision 5, S34 sub-PR 6). Separate from the gateway
+	// bot's own copy in /etc/cmd_and_ctrl/bot.env: this one is read
+	// from the SERVER's env file, and nothing else on the server reads
+	// it. Unset is a supported state and must never fall open — the
+	// route answers 503 naming the variable, every other route is
+	// unchanged — so it is said once here, at boot, either way.
+	discordBot := discord.BotFromEnv(os.Getenv)
+	if discordBot.Enabled() {
+		log.Info("discord DM invites enabled", "env", discord.BotTokenEnv)
+	} else {
+		log.Info("discord DM invites disabled — POST /games/{id}/invites/dm returns 503; set "+
+			discord.BotTokenEnv+" to enable", "env", discord.BotTokenEnv)
+	}
+
 	// Avatar cache lives under the same data dir as the scryfall
 	// index and replay dumps. Empty DataDir disables the cache —
 	// the /avatars endpoint will then 503 and the client falls
@@ -425,6 +476,13 @@ func main() {
 	if publicBase == "" {
 		publicBase = os.Getenv("CMDCTRL_CLIENT_BASE_URL")
 	}
+	// The same origin is what a DM invite's link is built against. A
+	// bot token with nowhere to point it still cannot send: the route
+	// 503s naming this variable rather than DMing a broken link.
+	if discordBot.Enabled() && publicBase == "" {
+		log.Warn("discord DM invites cannot send — set CMDCTRL_PUBLIC_BASE_URL (or CMDCTRL_CLIENT_BASE_URL) " +
+			"so the invite link has an origin; POST /games/{id}/invites/dm returns 503 until then")
+	}
 	bugStore := bugstore.New(bugDir, publicBase)
 	if bugStore.Enabled() {
 		if bugStore.AttachmentsEnabled() {
@@ -445,18 +503,28 @@ func main() {
 	}
 
 	mux.Handle("/", lobby.Handler(lobby.Config{
-		Lobby:             l,
-		Auth:              authenticator,
-		AdminToken:        cfg.AdminToken,
-		SessionTTL:        cfg.SessionTTL,
-		Env:               cfg.Env,
-		Features:          cfg.Features,
-		Cards:             cardIdx,
-		Evictor:           hub,
-		Discord:           discordCfg,
+		Lobby:       l,
+		Auth:        authenticator,
+		AdminToken:  cfg.AdminToken,
+		SessionTTL:  cfg.SessionTTL,
+		IdentityTTL: cfg.IdentityTTL,
+		Env:         cfg.Env,
+		Features:    cfg.Features,
+		Cards:       cardIdx,
+		Tokens:      effects.Tokens(),
+		Evictor:     hub,
+		Discord:     discordCfg,
+		DiscordBot:  discordBot,
+		// The DM invite's link is built against the same public origin
+		// bug-report attachments use, and for the same reason there is
+		// no default: a wrong origin produces a DM full of dead links.
+		InviteBaseURL:     publicBase,
 		DiscordStateStore: discord.NewStateStore(),
 		DiscordAvatars:    avatarCache,
 		Users:             userStore,
+		Revocations:       lobbyRevoker(revocations),
+		SessionEvictor:    hub,
+		DeckLibrary:       deckLibrary,
 		BugReporter:       bugReporter,
 		BugStore:          bugStore,
 		Log:               log,
@@ -518,7 +586,12 @@ type config struct {
 	DataDir    string
 	AdminToken string
 	SessionTTL time.Duration
-	SeedDemo   bool
+	// IdentityTTL is the lifetime of the identity-only session a
+	// Discord sign-in mints (CMDCTRL_IDENTITY_TTL, ADR 0051 decision
+	// 3). Default 720h. Seat, spectator and admin sessions keep
+	// SessionTTL.
+	IdentityTTL time.Duration
+	SeedDemo    bool
 	// AllowedOrigins is the cross-origin hostname allow-list passed to
 	// the hub's WebSocket CheckOrigin. Same-origin is always allowed
 	// (no config needed). Set CMDCTRL_ALLOWED_ORIGINS to a comma-
@@ -536,6 +609,11 @@ type config struct {
 	// needs at least BotModel, and the two may name the same model.
 	BotModel         string
 	BotFrontierModel string
+	// BotNoImprovise turns ADR 0033 §8 improvisation off for the
+	// model tiers (CMDCTRL_BOT_IMPROVISE=0). Spelled as a negative
+	// because the default is on: the zero config is the shipped
+	// behaviour.
+	BotNoImprovise bool
 	// BotDecisionLog is the directory the per-game bot decision log
 	// is written to (CMDCTRL_BOT_DECISION_LOG). Empty is off, which
 	// is the default: the file holds every bot seat's view of one
@@ -573,9 +651,11 @@ func loadConfig(log *slog.Logger) config {
 		AdminToken:       os.Getenv("CMDCTRL_ADMIN_TOKEN"),
 		SeedDemo:         os.Getenv("CMDCTRL_SEED_DEMO") == "1",
 		SessionTTL:       12 * time.Hour,
+		IdentityTTL:      720 * time.Hour,
 		BotDecisionLog:   strings.TrimSpace(os.Getenv("CMDCTRL_BOT_DECISION_LOG")),
 		BotModel:         strings.TrimSpace(os.Getenv("CMDCTRL_BOT_MODEL")),
 		BotFrontierModel: strings.TrimSpace(os.Getenv("CMDCTRL_BOT_FRONTIER_MODEL")),
+		BotNoImprovise:   isOff(os.Getenv("CMDCTRL_BOT_IMPROVISE")),
 		DBBackupInterval: db.DefaultBackupInterval,
 		Env:              env,
 		Features:         appenv.LoadFeatures(env),
@@ -644,6 +724,19 @@ func loadConfig(log *slog.Logger) config {
 			os.Exit(1)
 		}
 		c.SessionTTL = d
+	}
+
+	if raw := os.Getenv("CMDCTRL_IDENTITY_TTL"); raw != "" {
+		d, err := time.ParseDuration(raw)
+		if err != nil {
+			log.Error("CMDCTRL_IDENTITY_TTL invalid", "value", raw, "err", err)
+			os.Exit(1)
+		}
+		if d <= 0 {
+			log.Error("CMDCTRL_IDENTITY_TTL must be positive", "value", raw)
+			os.Exit(1)
+		}
+		c.IdentityTTL = d
 	}
 
 	// CMDCTRL_DATA_DIR: honour an explicit empty string (disables
@@ -720,11 +813,63 @@ func newUserStore(log *slog.Logger, database *db.DB) users.Store {
 	return users.NewSQLStore(database, sealer)
 }
 
+// newRevocations loads the per-user revocation watermarks (ADR 0051
+// decision 6) when there is a user database, and exits if they cannot
+// be read: booting without them would accept sessions their users have
+// revoked. Returns nil with no database.
+func newRevocations(ctx context.Context, log *slog.Logger, store users.Store) *users.Revocations {
+	sq, ok := store.(*users.SQLStore)
+	if !ok {
+		log.Info("no user database; per-user session revocation (logout everywhere) is unavailable")
+		return nil
+	}
+	r, err := users.NewRevocations(ctx, sq)
+	if err != nil {
+		log.Error("session revocation list could not be loaded", "err", err)
+		os.Exit(1)
+	}
+	return r
+}
+
+// lobbyRevoker keeps a nil *users.Revocations a nil interface, so the
+// lobby's "no database" check (Config.Revocations == nil) sees it.
+func lobbyRevoker(r *users.Revocations) lobby.SessionRevoker {
+	if r == nil {
+		return nil
+	}
+	return r
+}
+
+// newDeckLibraryStore builds the deck-library store (ADR 0051
+// decision 7, S34 sub-PR 5). No database means no library — the same
+// shape as newUserStore, and the same reason: without a users table
+// nothing ever carries a non-zero UserID to own a deck.
+func newDeckLibraryStore(database *db.DB) decklibrary.Store {
+	if database == nil {
+		return decklibrary.NoStore{}
+	}
+	return decklibrary.NewSQLStore(database)
+}
+
 func envOr(key, dflt string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
 	}
 	return dflt
+}
+
+// isOff reads a falsey environment value for a setting that is ON by
+// default, so an empty variable keeps the default. The vocabulary is
+// the one model.NewOpenAIClient already uses for
+// CMDCTRL_OPENAI_SEND_THINK; anything else — including "1", "true" and
+// a typo — leaves the setting on, which is the safe direction for a
+// switch whose off position removes a feature.
+func isOff(raw string) bool {
+	switch strings.TrimSpace(strings.ToLower(raw)) {
+	case "0", "false", "no", "off":
+		return true
+	}
+	return false
 }
 
 // botModelDefaults are the pacing decisions that depend on WHICH
@@ -799,10 +944,21 @@ func botFactory(log *slog.Logger, cfg config, idx *cards.Index) *tiers.Factory {
 			"model", models.Routine)
 	}
 
+	// ADR 0033 §8, amended for #686. Worth a boot line either way: on
+	// is a bot that will occasionally change the board with a model's
+	// judgement rather than the engine's, and off is a table that
+	// will see uncatalogued cards do nothing at all.
+	if cfg.BotNoImprovise {
+		log.Info("bot improvisation is OFF (CMDCTRL_BOT_IMPROVISE); a bot that casts a card the engine cannot run will leave it having done nothing, for a human to apply by hand")
+	} else if client != nil {
+		log.Info("bot improvisation is on for the model tiers: an uncatalogued spell a bot casts is applied by hand, announced in chat, and undoable by any player for free. Set CMDCTRL_BOT_IMPROVISE=0 to turn it off.")
+	}
+
 	f := tiers.NewFactory(tiers.FactoryOptions{
-		Client:   client,
-		Models:   models,
-		MaxThink: maxThink,
+		Client:      client,
+		Models:      models,
+		MaxThink:    maxThink,
+		NoImprovise: cfg.BotNoImprovise,
 		DeckProfile: func(deckID string) (model.DeckProfile, bool) {
 			return deckprofile.Build(idx, deckID)
 		},

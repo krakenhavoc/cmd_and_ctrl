@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
@@ -20,6 +21,9 @@ import (
 // stub Discord; tests can swap behaviours by overriding its
 // handler before calling /callback.
 type discordStub struct {
+	// mu guards the fields the handlers read and write, for tests that
+	// change the stub between requests (setUser, tokenWasCalled).
+	mu          sync.Mutex
 	srv         *httptest.Server
 	tokenCalled bool
 	userCalled  bool
@@ -27,6 +31,23 @@ type discordStub struct {
 	tokenBody   string
 	userStatus  int
 	userBody    string
+}
+
+// setUser changes the Discord account /users/@me reports.
+func (s *discordStub) setUser(body string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.userBody = body
+}
+
+// tokenWasCalled reports whether the token endpoint was hit since the
+// last call, and resets the flag.
+func (s *discordStub) tokenWasCalled() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	called := s.tokenCalled
+	s.tokenCalled = false
+	return called
 }
 
 func newDiscordTestStack(t *testing.T) (*httptest.Server, *Lobby, *discordStub, *discord.StateStore) {
@@ -48,12 +69,16 @@ func newDiscordTestStackWith(t *testing.T, configure func(*Config)) (*httptest.S
 	}
 	stubMux := http.NewServeMux()
 	stubMux.HandleFunc("/oauth2/token", func(w http.ResponseWriter, _ *http.Request) {
+		stub.mu.Lock()
+		defer stub.mu.Unlock()
 		stub.tokenCalled = true
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(stub.tokenStatus)
 		_, _ = w.Write([]byte(stub.tokenBody))
 	})
 	stubMux.HandleFunc("/users/@me", func(w http.ResponseWriter, _ *http.Request) {
+		stub.mu.Lock()
+		defer stub.mu.Unlock()
 		stub.userCalled = true
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(stub.userStatus)

@@ -21,6 +21,13 @@ import (
 // pair minted at join time — it cannot spy on a different game. A
 // RoleAdmin principal is permitted to bind to any game but must
 // supply ?player= explicitly; omitting it yields a spectator view.
+//
+// Every binding also carries the session's UserID and IssuedAt, so a
+// logout-everywhere or an admin revoke can close the sockets that
+// session opened (ws.Hub.EvictUserSessions, ADR 0051 decision 6). The
+// revocation check itself is not here: it is in Auth, which main wraps
+// with auth.WithRevocation, so a revoked token fails Validate below
+// like an expired one.
 type WSAuthorizer struct {
 	Auth auth.Authenticator
 }
@@ -55,7 +62,7 @@ func (a *WSAuthorizer) AuthorizeUpgrade(r *http.Request) (ws.Binding, error) {
 		if requestedGame != uuid.Nil && requestedGame != p.GameID {
 			return ws.Binding{}, ws.StatusError(http.StatusForbidden, "session is not for this game")
 		}
-		return ws.Binding{GameID: p.GameID, PlayerID: p.PlayerID}, nil
+		return ws.Binding{GameID: p.GameID, PlayerID: p.PlayerID, UserID: p.UserID, IssuedAt: p.IssuedAt}, nil
 
 	case auth.RoleAdmin:
 		// Admins bind to whatever game they asked for. ?player= is
@@ -73,7 +80,7 @@ func (a *WSAuthorizer) AuthorizeUpgrade(r *http.Request) (ws.Binding, error) {
 			}
 			playerID = id
 		}
-		return ws.Binding{GameID: requestedGame, PlayerID: playerID}, nil
+		return ws.Binding{GameID: requestedGame, PlayerID: playerID, UserID: p.UserID, IssuedAt: p.IssuedAt, Admin: true}, nil
 
 	case auth.RoleSpectator:
 		// Spectator sessions are minted bound to one game (no player).
@@ -85,7 +92,7 @@ func (a *WSAuthorizer) AuthorizeUpgrade(r *http.Request) (ws.Binding, error) {
 		if requestedGame != uuid.Nil && requestedGame != p.GameID {
 			return ws.Binding{}, ws.StatusError(http.StatusForbidden, "session is not for this game")
 		}
-		return ws.Binding{GameID: p.GameID, ReadOnly: true}, nil
+		return ws.Binding{GameID: p.GameID, ReadOnly: true, UserID: p.UserID, IssuedAt: p.IssuedAt}, nil
 
 	case auth.RoleIdentified:
 		// A Discord sign-in that hasn't claimed a seat yet: no game,

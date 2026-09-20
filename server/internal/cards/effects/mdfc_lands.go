@@ -45,8 +45,16 @@ import (
 // resolution, the library search, the exile return and the
 // reanimation, so a fetched or blinked MDFC land back is asked too.
 // The one entry that still takes the un-paid branch is
-// putOntoBattlefieldFromZoneLocked's batch (see shocklands.go):
-// weaker than printed, never stronger.
+// putOntoBattlefieldFromZoneLocked's batch (see shocklands.go, and
+// server/internal/game/battlefield_put.go:313 for the event built
+// without the flag): weaker than printed, never stronger.
+//
+// The caveat below says that narrower thing since #1051. It used to
+// say "by another spell", which #478 made an overstatement — a search
+// is a spell, and a fetched back face is prompted. The shocklands'
+// caveat is the same sentence with 2 life for 3, and
+// TestWhichShocklandEntrySitesOfferThePayment holds both halves of it
+// against the engine for the whole family.
 
 // mdfcLandLifeCost is what every pay-life MDFC land back charges.
 // All fifteen ask for the same number; naming it keeps the prompt
@@ -113,7 +121,7 @@ func registerMDFCLandBacks(rows []mdfcLandBack, reps func(back string) []game.Re
 			OracleID:      game.CatalogKeyForFace(row.oracleID, 1),
 			Name:          row.back,
 			Completeness:  CompletenessCaveats,
-			Caveats:       []string{"A back face put onto the battlefield by another spell always enters tapped — the chance to pay 3 life is only offered when you play it as a land."},
+			Caveats:       []string{"A back face a spell PUTS onto the battlefield out of a hand or library — Genesis Wave, Coiling Oracle, Arboreal Grazer — always enters tapped. Playing it as a land, or fetching it with a search (a fetchland, Farseek), does offer the 3 life."},
 			Replacements:  reps(row.back),
 			ManaAbilities: []ManaAbility{backManaAbility(row.colors)},
 		})

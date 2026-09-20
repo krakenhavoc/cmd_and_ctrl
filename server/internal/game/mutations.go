@@ -3954,6 +3954,10 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 	// passing, so the state-check loop is exactly what does NOT run
 	// while such a prompt is outstanding. No-op when none is queued.
 	g.pruneSacrificeChoicesLocked()
+	// #1045: and any choose-cards prompt that still offers it — a
+	// "choose two permanents" whose candidates are leaving one at a
+	// time — for the same reason again.
+	g.pruneCardSetChoicesLocked()
 	// #605: and any sibling prompt still asking about a move of THIS
 	// card off the battlefield it has now left is unanswerable, for
 	// the same reason and at the same moment.
@@ -4664,6 +4668,14 @@ type ManaAbilityParams struct {
 	CounterCounts    []int
 	CounterKind      string
 	CounterKinds     []string
+
+	// TapIDs names the permanents paying a TapOthers component
+	// (#758), with exactly the meaning
+	// ActivateAbilityParams.TapIDs gives them — one component, one
+	// payment shape, whichever ability kind carries it. Empty for
+	// every mana ability that does not print the clause, which is
+	// all of them but Springleaf Drum's family.
+	TapIDs []uuid.UUID
 }
 
 func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, params ManaAbilityParams) error {
@@ -4776,6 +4788,26 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	if !g.canPlaceCounterLocked(playerID, cardID, ab.AddCounter) {
 		return ErrCantPayCounterCost
 	}
+	// #758: the tap-another component, validated by the SAME
+	// function the CR 602 activated path uses, for the same reason
+	// the counter components are — Springleaf Drum's "tap an
+	// untapped creature you control" and Earthcraft's are one cost
+	// shape with two owners.
+	if err := g.validateTapOthersCostLocked(playerID, cardID, ab.TapOthers, params.TapIDs); err != nil {
+		return err
+	}
+	// CR 118.3, as on the activated path: a cost that prints both
+	// {T} and "tap another untapped creature you control" (Jaspera
+	// Sentinel) has already spent the source, so naming it here
+	// would pay one of the N with a permanent that is tapping
+	// anyway.
+	if ab.TapCost && !ab.TapOthers.Empty() {
+		for _, id := range params.TapIDs {
+			if id == cardID {
+				return ErrInvalidParam
+			}
+		}
+	}
 	// A mana component in the cost — the Signet cycle's "{1}, {T}",
 	// Cabal Coffers' "{2}, {T}". Parsed and checked here, spent
 	// below with everything else, so an unaffordable Signet fails
@@ -4847,6 +4879,17 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		tappedForMana = *card
 		g.EmitEvent(Event{Kind: EventTapCard, Actor: playerID, CardID: cardID})
 	}
+	// #758: the tap-another half, after the source's own {T} and
+	// before the life and the sacrifices — the same component order
+	// the CR 602 path pays in, and before the sacrifices for the
+	// same reason: a sacrifice moves cards and would take a named
+	// permanent off the battlefield before it could be tapped.
+	//
+	// There is no "after the ability is on the stack" here to
+	// respect: a mana ability never uses the stack (CR 605.3b), so
+	// whatever the taps trigger is drained by the state-check pass
+	// on the way out with everything else this activation queued.
+	g.payTapOthersCostLocked(playerID, params.TapIDs)
 	// Life after tap, before sacrifice — the same component order
 	// ActivateCatalogAbility pays an AbilityCost in (mana → tap →
 	// life → sacrifice). It matters only for the event log, since
@@ -6091,75 +6134,29 @@ func (g *Game) DeclareAttackers(decls []AttackDeclaration) ([]uuid.UUID, error) 
 }
 
 // DeclareBlocker marks a battlefield card as blocking a specific
-// declared attacker. Gated by the declare_blockers step. Both IDs
-// must exist on the battlefield, and the blocker must be a
-// creature.
+// declared attacker: exactly a one-entry DeclareBlockers
+// (block_declaration.go), which is where the rules live. Gated by the
+// declare_blockers step. Both IDs must exist on the battlefield, and
+// the blocker must be a creature.
 //
 // Returns ErrWrongStep outside the declare_blockers step,
-// ErrNotACreature for a non-creature blocker, ErrCardNotFound
-// when either card is missing from the battlefield, and a
+// ErrNotACreature for a non-creature blocker, ErrCardNotFound when
+// either card is missing from the battlefield, and a
 // *BlockRefusedError (which wraps ErrIllegalBlock) for a pair
 // BlockPairRefusalLocked refuses. Idempotent on the same pair.
+//
+// #750: it can now also refuse for a block COUNT. One creature is not
+// a legal block on a menace attacker (CR 702.111b), and this verb has
+// no second entry to make it one, so the refusal is
+// too_few_blockers and the caller must send both blockers in one
+// DeclareBlockers. That is the whole point: the engine used to accept
+// the lone block here and undo it later, after the defender had been
+// told it was good.
 //
 // The attacker need not currently have AttackingTarget set — the
 // sandbox accepts pre-emptive blocker declarations.
 func (g *Game) DeclareBlocker(blockerID, attackerID uuid.UUID) error {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	if g.State != StateActive {
-		return ErrGameNotActive
-	}
-	if g.Turn.Step != StepDeclareBlockers {
-		return ErrWrongStep
-	}
-	// Layers must be fresh so HasKeyword reads the current effective
-	// characteristic (flying granted by an anthem this turn, or a
-	// land Urborg made a Swamp, has to be visible to
-	// BlockPairRefusalLocked below).
-	g.RecomputeLayersIfStaleLocked()
-	// Verify the attacker exists on the battlefield. Without this the
-	// blocker would silently point at a non-existent attacker ID.
-	var attacker *Card
-	for i := range g.Battlefield.Cards {
-		if g.Battlefield.Cards[i].InstanceID == attackerID {
-			attacker = &g.Battlefield.Cards[i]
-			break
-		}
-	}
-	if attacker == nil {
-		return ErrCardNotFound
-	}
-	for i := range g.Battlefield.Cards {
-		if g.Battlefield.Cards[i].InstanceID == blockerID {
-			blocker := &g.Battlefield.Cards[i]
-			if !blocker.IsCreature() {
-				return ErrNotACreature
-			}
-			// CR 509.1b: restrictions and evasion keywords (flying,
-			// landwalk) restrict which creatures can be declared as
-			// blockers. BlockPairRefusalLocked is the single pair
-			// check the enumerator and the #328 signal also read;
-			// protection (#662) and block rules (#750) land there.
-			// Menace is a block COUNT and is not checked here.
-			if r := g.BlockPairRefusalLocked(attacker, blocker); !r.Legal() {
-				return g.blockRefusedErrorLocked(attacker, blocker, r)
-			}
-			// #830: the verb STAGES the pairing and announces
-			// nothing. CR 509.1 declares blockers as one turn-based
-			// action, so the events — EventBlock per pair, one
-			// EventBecomesBlocked per blocked attacker — are emitted
-			// by commitBlockDeclarationLocked when the declaration is
-			// locked in, at the first priority boundary of the step.
-			// The sandbox lets a defender re-point a blocker at a
-			// different attacker before then; that is one decision
-			// being revised, and the attacker the blocker left must
-			// never have become blocked at all.
-			blocker.BlockingTarget = attackerID
-			blocker.AttackingTarget = uuid.Nil
-			return nil
-		}
-	}
-	return ErrCardNotFound
+	return g.DeclareBlockers([]BlockDeclaration{{Blocker: blockerID, Attacker: attackerID}})
 }
 
 // ResolveCombatDamage applies the regular combat damage step's damage.
@@ -6998,13 +6995,33 @@ func (g *Game) AddCounter(cardID uuid.UUID, name string, delta int) error {
 	if out == nil || out.Canceled {
 		return nil
 	}
-	return g.applyCounterLocked(out.CounterTarget, out.CounterName, out.CounterDelta)
+	return g.applyResolvedCounterLocked(out)
 }
 
 // applyCounterLocked is the actual counter-map mutation, extracted
 // from AddCounter so the replacement pipeline and the AddCounterForEffect
-// helper can share the body. Caller must hold g.mu.
+// helper can share the body.
+//
+// The placement names NO PLACER and no source. That is the right answer
+// for every caller that reaches this spelling — a paid cost, a
+// rules-driven removal, the CR 704.5q cancel, a sandbox edit — none of
+// which is a player putting counters on something (ADR 0056
+// Decision 5). A caller that DOES know calls applyCounterByLocked.
+//
+// Caller must hold g.mu.
 func (g *Game) applyCounterLocked(cardID uuid.UUID, name string, delta int) error {
+	return g.applyCounterByLocked(cardID, name, delta, uuid.Nil, uuid.Nil)
+}
+
+// applyCounterByLocked is applyCounterLocked with the CR 120.3d placer
+// and the source card named: `placer` is who PUTS the counters and
+// `source` the card whose effect or damage placed them. Both ride onto
+// the emitted EventCounterPlaced as Actor and Source, which is how
+// "whenever YOU put one or more counters" (Nest of Scarabs, Exemplar of
+// Light) stops meaning "whoever resolved anything most recently".
+//
+// Caller must hold g.mu.
+func (g *Game) applyCounterByLocked(cardID uuid.UUID, name string, delta int, placer, source uuid.UUID) error {
 	if name == "" {
 		return ErrInvalidParam
 	}
@@ -7042,6 +7059,8 @@ func (g *Game) applyCounterLocked(cardID uuid.UUID, name string, delta int) erro
 				Target: cardID,
 				Label:  name,
 				Amount: newAmount,
+				Actor:  placer,
+				Source: source,
 			})
 			return nil
 		}
@@ -7251,10 +7270,18 @@ func (g *Game) SetPoison(playerID uuid.UUID, amount int) error {
 	if amount < 0 {
 		amount = 0
 	}
+	before := p.Counters[CounterPoison]
 	p.Poison = amount
 	// S13.2: keep the unified Counters map in sync so the SBA loop
 	// reads the same value the legacy SetPoison action wrote.
 	setPlayerCounterLocked(p, CounterPoison, amount)
+	// ADR 0056 Decision 5: the sandbox verbs SKIP the replacement
+	// window — this is SET semantics and there is nothing for a
+	// replacement to say about "make the total 7" — but they still owe
+	// the table the event and the layer bump that rides it, so a
+	// "corrupted" static switches on in the same action that sets the
+	// poison. No placer: a hand-edit is nobody putting counters.
+	g.emitPlayerCounterDeltaLocked(playerID, CounterPoison, before, amount, uuid.Nil, uuid.Nil)
 	g.runStateChecksLocked()
 	return nil
 }
@@ -7273,6 +7300,14 @@ func (g *Game) SetPoison(playerID uuid.UUID, amount int) error {
 //
 // Drives the SBA loop after the mutation so 10+ poison or 0 life
 // (via energy-cost cards in the future) immediately apply.
+//
+// Emits EventPlayerCounterPlaced with the delta that landed, which
+// bumps the layer version (ADR 0056 Decision 5). Like set_poison it
+// does NOT open the CR 614 counter window: a manual board fix is not a
+// player putting counters, and the two verbs are the "make the board
+// say this" controls. The effect-time path
+// (AddPlayerCounterByForEffect) is the one that goes through the
+// window.
 //
 // Caller must NOT hold g.mu — this method takes the write lock.
 //
@@ -7301,12 +7336,11 @@ func (g *Game) AddPlayerCounter(playerID uuid.UUID, name string, delta int) erro
 	setPlayerCounterLocked(p, name, next)
 	// Mirror to legacy single-int fields so SetPoison / SetEnergy
 	// callers continue to read consistent state.
-	switch name {
-	case CounterPoison:
-		p.Poison = next
-	case CounterEnergy:
-		p.Energy = next
-	}
+	mirrorLegacyPlayerCounterLocked(p, name, next)
+	// ADR 0056 Decision 5, the same reason as SetPoison above: the
+	// sandbox verb skips the window and still emits, so the event and
+	// the layer bump do not depend on WHICH way a counter arrived.
+	g.emitPlayerCounterDeltaLocked(playerID, name, cur, next, uuid.Nil, uuid.Nil)
 	g.runStateChecksLocked()
 	return nil
 }

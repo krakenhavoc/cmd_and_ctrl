@@ -8,11 +8,26 @@
   import { seatColor } from "../lib/colors";
   import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
   import BugReportModal from "../lib/components/BugReportModal.svelte";
-  import { fetchBugReportConfig } from "../lib/api";
+  import { discordAuthEnabled, discordLinkHref, fetchBugReportConfig } from "../lib/api";
+  import { canLinkDiscord, linkDiscordLabel, signedInUserID } from "../lib/myGames";
   import { castPreviewParamsFromPayload } from "../lib/castPreview";
+  import {
+    canManageTable,
+    canSpawn,
+    formatUndoCount,
+    hasUndoBudget,
+    isUnlimitedUndo,
+    spawningVisible,
+    tableSettingsOf,
+    type TableSettingsPatch,
+  } from "../lib/tableSettings";
+  import TableSettingsPanel from "../lib/components/TableSettingsPanel.svelte";
+  import CardSpawner from "../lib/components/CardSpawner.svelte";
   import { cardImageURL } from "../lib/cardImage";
   import { cardArt } from "../lib/cardArt";
   import Board from "../lib/components/board/Board.svelte";
+  import ConnectionBanner from "../lib/components/ConnectionBanner.svelte";
+  import { actionsDisabled } from "../lib/connectionBanner";
   import DiscardPromptModal from "../lib/components/board/DiscardPromptModal.svelte";
   import ChoicePromptModal from "../lib/components/board/ChoicePromptModal.svelte";
   import AutoTapPreviewModal from "../lib/components/board/AutoTapPreviewModal.svelte";
@@ -82,7 +97,7 @@
   // their improvisations over it, and an announcement nobody can see
   // is not an announcement. BotFeed renders those lines and nothing
   // else. A full chat panel, when it returns, subsumes it.
-  const { status, snapshot, lastSeq, lastError, log, chat } = client;
+  const { status, snapshot, lastSeq, lastError, log, chat, reconnectAttempt } = client;
 
   $effect(() => {
     client.disconnect();
@@ -165,6 +180,18 @@
     void fetchBugReportConfig().then((cfg) => {
       bugReportAvailable = cfg.enabled;
       bugReportAttachments = cfg.attachments;
+    });
+  });
+
+  // "Link Discord" (S34 sub-PR 4, from S12.5 #59): a seated player can
+  // attach a Discord account to the seat they hold, mid-game included —
+  // a guest who signs in becomes that seat's user, and the table sees
+  // the new name and avatar at once. Offered only when the server has
+  // Discord configured, probed once like the bug-report config.
+  let discordEnabled = $state(false);
+  onMount(() => {
+    void discordAuthEnabled().then((on) => {
+      discordEnabled = on;
     });
   });
 
@@ -609,6 +636,41 @@
   );
 
   const isAdmin = $derived(sess?.principal.role === "admin");
+  // ADR 0075 §2.1: the table's settings belong to its host and to the
+  // server admin. The server enforces it; this is what greys the
+  // control rather than offering a click that returns an error frame.
+  const canManage = $derived(canManageTable(sess?.principal.role, viewerSeat));
+  // The table's undo budget, and whether it is unlimited. Read off
+  // GameView.undo_limit, which mirrors settings.undo_limit.
+  const undoLimit = $derived(view?.undo_limit ?? 1);
+  const undoUnlimited = $derived(isUnlimitedUndo(undoLimit));
+  // Whether THIS viewer may press undo now. Not the same question as
+  // the limit: an admin bypasses the budget, and an unlimited table
+  // reports -1 remaining on every seat.
+  const canSpendUndo = $derived(hasUndoBudget(viewerSeat, isAdmin));
+  // The table's house rules (ADR 0075 §2.2). Public — every viewer,
+  // spectators included, gets the same object — so this is read
+  // without any permission check. `canManage` decides who may TURN a
+  // knob, never who may see one.
+  const tableSettings = $derived(tableSettingsOf(view));
+  // Both gates the spawn route checks. Offering the entry on only one
+  // of them produces a button whose 403 explains a rule we could have
+  // shown instead.
+  const spawnAvailable = $derived(canSpawn(sess?.principal.role, viewerSeat, tableSettings));
+  // The badge, on the other hand, is for the OPPONENTS: a Treasure
+  // that came from nowhere is indistinguishable from a real one, and
+  // the table's answer is that everyone can see the switch is on.
+  const spawningOn = $derived(spawningVisible(tableSettings));
+  let tableSettingsOpen = $state(false);
+  let spawnerOpen = $state(false);
+  // In game the patch rides the socket, not HTTP. A refusal comes
+  // back as an error frame and lands in the "rejected" toast every
+  // other rejected action uses, so the panel is not given an error of
+  // its own to render — two places saying the same thing is how they
+  // end up saying different things.
+  function patchTableSettingsOverSocket(patch: TableSettingsPatch): void {
+    client.sendAction("set_table_settings", undefined, patch);
+  }
   // Spectator sessions (S11) are read-only — the server rejects every
   // action frame with bad_request, so the toolbar / mulligan / deck-
   // import / quick-action surfaces all hide here too. Bound by role,
@@ -682,9 +744,7 @@
   // undo restores tap state and declarations together. That is why
   // this button is here rather than only in the ⋯ menu.
   const canUndoDeclaration = $derived(
-    canDeclareAttackers &&
-      attackPlan.declared.length > 0 &&
-      (isAdmin || (viewerSeat?.undos_remaining ?? 0) > 0),
+    canDeclareAttackers && attackPlan.declared.length > 0 && canSpendUndo,
   );
   function undoDeclaration(): void {
     client.sendAction("undo");
@@ -800,7 +860,10 @@
       passLegal: hasPassMove(view),
       // Admin undo bypasses the caller / budget gates, same as the
       // ⋯ menu's Undo row.
-      undosRemaining: isAdmin ? null : (viewerSeat?.undos_remaining ?? 0),
+      // null means "no budget gate": an admin bypasses it, and so
+      // does an unlimited table, whose seats report -1 remaining —
+      // a number the shortcut's `<= 0` test would read as exhausted.
+      undosRemaining: isAdmin || undoUnlimited ? null : (viewerSeat?.undos_remaining ?? 0),
       attackAllEligible: canDeclareAttackers ? attackPlan.eligible.length : 0,
       attackAllDefenders: canDeclareAttackers ? attackPlan.defenders.length : 0,
     });
@@ -837,6 +900,18 @@
       <span
         class="tag tag-spectator"
         title="read-only — your action frames are rejected by the server">spectating</span
+      >
+    {/if}
+    <!-- ADR 0075 §2.5: shown to EVERY viewer while the switch is on,
+         which is the whole point of it. A spawned Treasure is
+         indistinguishable from a drawn one; what the table gets
+         instead is this, plus a named line in the game log for every
+         use. -->
+    {#if spawningOn}
+      <span
+        class="tag tag-spawn"
+        title="the host can put cards and tokens on this table — every spawn is named in the game log"
+        >spawning on</span
       >
     {/if}
     <span class={`status status-${$status}`} title={`seq ${$lastSeq}`}>
@@ -939,37 +1014,21 @@
                 class="mi"
                 role="menuitem"
                 onclick={() => viaMenu(() => client.sendAction("undo"))}
-                disabled={!isAdmin && (viewerSeat?.undos_remaining ?? 0) <= 0}
+                disabled={!canSpendUndo}
                 title={(isAdmin
                   ? "rewind the most recent action (admin — bypasses caller / budget gates)"
-                  : (viewerSeat?.undos_remaining ?? 0) <= 0
-                    ? "no undos remaining this turn (refreshes on your next untap)"
-                    : `undo your most recent action — ${viewerSeat?.undos_remaining ?? 0} left this turn`) +
+                  : undoUnlimited
+                    ? "undo your most recent action — this table has no undo limit"
+                    : !canSpendUndo
+                      ? "no undos remaining this turn (refreshes on your next untap)"
+                      : `undo your most recent action — ${formatUndoCount(viewerSeat?.undos_remaining)} left this turn`) +
                   keyHint(keys.undo)}
               >
                 <Icon name="undo" size={15} /> Undo
                 {#if !isAdmin && viewerSeat}
-                  <span class="mi-r">{viewerSeat.undos_remaining ?? 0} left</span>
+                  <span class="mi-r">{formatUndoCount(viewerSeat.undos_remaining)} left</span>
                 {/if}
               </button>
-              <label
-                class="mi mi-row"
-                title="per-player undo budget refreshed each turn (any seat may change)"
-              >
-                <span class="mi-indent">Undo limit</span>
-                <input
-                  type="number"
-                  min="0"
-                  max="20"
-                  value={view?.undo_limit ?? 1}
-                  onchange={(e) => {
-                    const next = Number((e.currentTarget as HTMLInputElement).value);
-                    if (Number.isFinite(next) && next >= 0) {
-                      client.sendAction("set_undo_limit", undefined, { limit: next });
-                    }
-                  }}
-                />
-              </label>
               <button
                 class="mi"
                 role="menuitem"
@@ -979,6 +1038,42 @@
               </button>
               <div class="sep"></div>
               <div class="menu-h">Table</div>
+              <!-- ADR 0075 §2.5. Open to everyone, because the
+                   settings are public on purpose: how many take-backs
+                   this table allows, and whether a Treasure can
+                   appear from nowhere, are not the host's private
+                   business. The panel disables its own controls for
+                   anyone who is not the host or the admin. It
+                   replaced the stop-gap "Undo limit" row that sub-PR
+                   3 left in the Sandbox section — one setting, one
+                   control. -->
+              <button
+                class="mi"
+                role="menuitem"
+                onclick={() => viaMenu(() => (tableSettingsOpen = true))}
+                title={canManage
+                  ? "the table's house rules — undos, life, commander damage, bot speed, spawning"
+                  : "the table's house rules (only the host can change them)"}
+              >
+                <Icon name="gear" size={15} /> Table settings…
+                {#if !canManage}<span class="mi-r">view</span>{/if}
+              </button>
+              {#if spawnAvailable}
+                <!-- Both of the server's gates, checked together: the
+                     host or admin, AND the table's spawn switch. The
+                     entry is absent rather than disabled when the
+                     switch is off — an always-visible control for a
+                     feature most tables never turn on is clutter, and
+                     the switch itself is one entry above. -->
+                <button
+                  class="mi"
+                  role="menuitem"
+                  onclick={() => viaMenu(() => (spawnerOpen = true))}
+                  title="put a card or a token on the table — announced in the game log, and undoable"
+                >
+                  <Icon name="spark" size={15} /> Spawn a card or token…
+                </button>
+              {/if}
               {#if bugReportAvailable}
                 <button
                   class="mi"
@@ -990,6 +1085,29 @@
                        only says "bug" is an entry nobody uses to ask
                        for a feature. -->
                   <Icon name="bug" size={15} /> Report a bug or idea
+                </button>
+              {/if}
+              {#if canLinkDiscord( { role: sess?.principal.role, discordEnabled, isBotSeat: Boolean(viewerSeat?.is_bot) }, )}
+                <!-- A navigation, not a fetch: the server answers with a
+                     302 to Discord's consent screen and comes back to
+                     this table with the seat linked. -->
+                <a
+                  class="mi"
+                  role="menuitem"
+                  href={discordLinkHref(gameID)}
+                  title="sign in with Discord and put your Discord name and avatar on this seat"
+                >
+                  <Icon name="link" size={15} />
+                  {linkDiscordLabel(Boolean(viewerSeat?.discord_id))}
+                </a>
+              {/if}
+              {#if signedInUserID(sess)}
+                <button
+                  class="mi"
+                  role="menuitem"
+                  onclick={() => viaMenu(() => navigate("#/my-games"))}
+                >
+                  <Icon name="library" size={15} /> My games
                 </button>
               {/if}
               <button class="mi" role="menuitem" onclick={() => viaMenu(back)}>
@@ -1119,6 +1237,12 @@
     <GameLogPanel {view} {viewerID} onClose={() => (showGameLog = false)} />
   {/if}
 
+  <ConnectionBanner
+    status={$status}
+    attempt={$reconnectAttempt}
+    onRetry={() => client.retryNow()}
+  />
+
   <div class="play-area">
     {#if view}
       <!-- #720 / #266: Svelte 5's error boundary around the table.
@@ -1137,6 +1261,7 @@
           {viewerID}
           {isAdmin}
           {sendAction}
+          disabled={actionsDisabled($status)}
           {combatMode}
           {selectedCombatCardID}
           onSelectCombatCard={handleSelectCombatCard}
@@ -1445,6 +1570,50 @@
     <p class="muted centered">waiting for snapshot…</p>
   {/if}
 
+  {#if tableSettingsOpen}
+    <ModalLayer />
+    <div
+      class="prompt-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="table-settings-title"
+    >
+      <div class="prompt-modal table-settings-modal">
+        <h2 id="table-settings-title">
+          Table settings
+          <span class="prompt-src" aria-hidden="true">house rules for this table</span>
+        </h2>
+        <TableSettingsPanel
+          settings={tableSettings}
+          {canManage}
+          gameState={gameEnded ? "ended" : "active"}
+          onpatch={patchTableSettingsOverSocket}
+        />
+        <div class="confirm-actions">
+          <button onclick={() => (tableSettingsOpen = false)}>Done</button>
+        </div>
+      </div>
+    </div>
+  {/if}
+
+  {#if spawnerOpen}
+    <ModalLayer />
+    <div class="prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="spawner-title">
+      <div class="prompt-modal spawner-modal">
+        <h2 id="spawner-title">
+          Spawn
+          <span class="prompt-src" aria-hidden="true">announced in the game log</span>
+        </h2>
+        <div class="spawner-host">
+          <CardSpawner {gameID} snapshot={view} managed />
+        </div>
+        <div class="confirm-actions">
+          <button onclick={() => (spawnerOpen = false)}>Done</button>
+        </div>
+      </div>
+    </div>
+  {/if}
+
   {#if bugReportOpen}
     <BugReportModal
       {gameID}
@@ -1464,6 +1633,8 @@
       cancelTargeting();
       menuOpen = false;
       concedeConfirm = false;
+      tableSettingsOpen = false;
+      spawnerOpen = false;
     }
     // S20 sub-PR 5: Enter confirms a multi-target pick list (no-op
     // for single-target prompts and when fewer than min are picked).
@@ -1608,6 +1779,37 @@
     background: var(--danger);
     box-shadow: 0 0 8px var(--danger);
   }
+  /* The table-settings and spawner dialogs reuse .prompt-modal, so
+     they only need their own width and, for the spawner, a body that
+     can scroll: the card list is long and the modal must not push the
+     Done button off the bottom of a laptop screen. */
+  .table-settings-modal {
+    width: min(34rem, 92vw);
+    text-align: left;
+  }
+  .spawner-modal {
+    width: min(46rem, 94vw);
+    text-align: left;
+  }
+  .spawner-host {
+    height: min(24rem, 55vh);
+    min-height: 0;
+    border: 1px solid var(--border, #273049);
+    border-radius: var(--radius, 8px);
+    overflow: hidden;
+  }
+  .tag-spawn {
+    background: rgba(255, 208, 122, 0.14);
+    color: var(--gold, #ffd07a);
+    border: 1px solid rgba(255, 208, 122, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 0.7em;
+    font-weight: 700;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-family: var(--font-mono);
+  }
   .tag-spectator {
     background: rgba(176, 138, 255, 0.15);
     color: var(--magenta);
@@ -1695,6 +1897,11 @@
     box-shadow: none;
     box-sizing: border-box;
   }
+  /* "Link Discord" is a navigation, so it is a link styled as a row. */
+  a.mi {
+    text-decoration: none;
+    box-sizing: border-box;
+  }
   .mi:hover:not(:disabled) {
     background: rgba(255, 255, 255, 0.06);
     border-color: transparent;
@@ -1731,10 +1938,6 @@
     padding: 0 8px;
     font-size: 11.5px;
     border-radius: 6px;
-  }
-  .mi-indent {
-    margin-left: 25px;
-    color: var(--fg-muted);
   }
   .sep {
     height: 1px;

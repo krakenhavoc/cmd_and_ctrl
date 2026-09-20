@@ -171,7 +171,21 @@ type Final struct {
 // reader that wants to replay a window needs Input; a reader that
 // only wants to count needs neither.
 type Record struct {
-	V          int    `json:"v"`
+	V int `json:"v"`
+	// Kind is what this line IS. Empty — the overwhelmingly common
+	// case, and every line written before #735 — is one decision
+	// window, and every field below describes it. KindSpend is the
+	// one end-of-game record: Game and Spend are set and the rest is
+	// zero.
+	//
+	// It is a field on the one Record type rather than a second type
+	// with its own scanner because a JSONL file with two shapes in it
+	// is read by one pass either way, and the alternative — a reader
+	// that unmarshals into the wrong struct and gets a valid-looking
+	// record of zeroes — is the failure mode that would actually
+	// happen. Scan skips every non-empty Kind for exactly that
+	// reason; ScanAll is the way in.
+	Kind       string `json:"kind,omitempty"`
 	Game       string `json:"game"`
 	Seat       string `json:"seat"`
 	SeatIndex  int    `json:"seat_index"`
@@ -194,7 +208,26 @@ type Record struct {
 	// first record that carries this hash — see the package doc.
 	SystemHash string  `json:"system_hash,omitempty"`
 	LatencyMS  float64 `json:"latency_ms"`
+
+	// Spend is set on the KindSpend record and nowhere else: every
+	// bot seat at this table, what each one cost in model calls and
+	// tokens, split into deciding and improvising (#735).
+	//
+	// It is a record of its own rather than a field on every window
+	// because it is answered ONCE, when the game is over and the
+	// numbers are final, and because the improvisation half never
+	// crosses a decision window at all — the improvise path is
+	// deliberately not observed (see aiseat.Config.Observer), so
+	// summing the per-window usage in this file would silently
+	// undercount every seat that improvised.
+	Spend *aiseat.GameSpend `json:"spend,omitempty"`
 }
+
+// Record kinds. Empty is a decision window; see Record.Kind.
+const (
+	// KindSpend is the one end-of-game model-spend record (#735).
+	KindSpend = "spend"
+)
 
 // Escalated reports whether this window left Layer A — the windows a
 // model tier is actually judged on, and the ones worth a full record.
@@ -520,6 +553,55 @@ func (g *GameLog) Observe(ev aiseat.DecisionEvent) {
 	}
 }
 
+// Compile-time assertion: a game log takes the spend record.
+var _ aiseat.SpendObserver = (*GameLog)(nil)
+
+// ObserveSpend writes the game's one model-spend record (#735).
+//
+// The Manager calls it once, after every runner has exited and before
+// Close, so the line lands last in the file and the numbers in it are
+// final. It rides the same queue as a decision record — which means
+// it is dropped rather than blocking, exactly as they are — and that
+// is the right trade even for a record there is only one of: this is
+// a diagnostic file, and a bot seat must never wait on it.
+//
+// It is written for a game that spent NOTHING too. A file whose spend
+// line appears only when there was a bill cannot be told from a file
+// whose spend line was dropped, and "this table cost nothing" is the
+// answer for every `random` and `heuristic` table there is.
+func (g *GameLog) ObserveSpend(gs aiseat.GameSpend) {
+	rec := Record{
+		V:    RecordVersion,
+		Kind: KindSpend,
+		Game: gs.Game.String(),
+		// A spend record names no seat and no window; -1 keeps
+		// SeatIndex from reading as "seat 0" to a counter that does
+		// not check Kind.
+		SeatIndex:  -1,
+		ActiveSeat: -1,
+		Priority:   -1,
+		Spend:      &gs,
+	}
+	line, err := json.Marshal(rec)
+	if err != nil {
+		g.drop(&g.dropped.err, "bot decision log: the spend record would not marshal; it was dropped")
+		return
+	}
+	line = append(line, '\n')
+
+	g.sendMu.RLock()
+	defer g.sendMu.RUnlock()
+	if g.sendsShut {
+		g.drop(&g.dropped.queue, "")
+		return
+	}
+	select {
+	case g.queue <- line:
+	default:
+		g.drop(&g.dropped.queue, "bot decision log cannot keep up with the table; the game's spend record was DROPPED")
+	}
+}
+
 // drop counts one lost record and logs at most one WARN per game.
 func (g *GameLog) drop(counter *int64, warn string) {
 	g.mu.Lock()
@@ -642,11 +724,29 @@ func (g *GameLog) Close() error {
 
 // --- reading ---------------------------------------------------------
 
-// Scan reads a decision log and calls fn for each record, in order.
-// A `.gz` suffix is decompressed on the way through, so an archived
-// log reads the same as a live one. fn returning an error stops the
-// scan and Scan returns it.
+// Scan reads a decision log and calls fn for each DECISION record, in
+// order. A `.gz` suffix is decompressed on the way through, so an
+// archived log reads the same as a live one. fn returning an error
+// stops the scan and Scan returns it.
+//
+// Records that are not decision windows — the one end-of-game spend
+// record (#735), and whatever a later version adds beside it — are
+// skipped, so a reader that counts windows, harvests positions or
+// replays a game keeps counting exactly what it counted before. Use
+// ScanAll to see every line.
 func Scan(path string, fn func(Record) error) error {
+	return ScanAll(path, func(rec Record) error {
+		if rec.Kind != "" {
+			return nil
+		}
+		return fn(rec)
+	})
+}
+
+// ScanAll is Scan without the filter: every line in the file,
+// decision windows and the per-game spend record alike, in order.
+// Check Record.Kind to tell them apart.
+func ScanAll(path string, fn func(Record) error) error {
 	f, err := os.Open(path)
 	if err != nil {
 		return err

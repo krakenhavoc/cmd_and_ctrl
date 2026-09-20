@@ -8,9 +8,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/lobby"
 )
@@ -28,6 +31,12 @@ const defaultRequestTimeout = 5 * time.Second
 var (
 	ErrServerUnreachable = errors.New("game server is not reachable")
 	ErrUnauthorized      = errors.New("bot is not authorized against the game server")
+	// ErrGameNotFound is returned by GetGame and ArchiveGame on a 404
+	// — either the ID is wrong or the game was deleted (not merely
+	// archived: GET /games/{id} and POST /games/{id}/archive both
+	// still find an archived game, since neither is the listing
+	// endpoint that filters them out).
+	ErrGameNotFound = errors.New("game not found")
 )
 
 // ServerClient is the bot's view of the game server over
@@ -173,9 +182,15 @@ func (c *ServerClient) doAuthorized(ctx context.Context, do func(token string) (
 
 // CreateGame calls POST /games with the cached admin session
 // (re-logging in once on a 401). The returned GameMeta carries the
-// invite token the bot posts back to Discord.
-func (c *ServerClient) CreateGame(ctx context.Context, name string) (lobby.GameMeta, error) {
-	body, err := json.Marshal(map[string]string{"name": name})
+// invite token the bot posts back to Discord. hostDiscordID, when
+// non-empty, names the table host (ADR 0075 §2.1): the server binds
+// hosting to that Discord user's seat once they claim one.
+func (c *ServerClient) CreateGame(ctx context.Context, name, hostDiscordID string) (lobby.GameMeta, error) {
+	req := map[string]string{"name": name}
+	if hostDiscordID != "" {
+		req["host_discord_id"] = hostDiscordID
+	}
+	body, err := json.Marshal(req)
 	if err != nil {
 		return lobby.GameMeta{}, err
 	}
@@ -248,6 +263,131 @@ func (c *ServerClient) ListGames(ctx context.Context) ([]lobby.GameMeta, error) 
 		return nil, fmt.Errorf("decode list: %w", err)
 	}
 	return lr.Games, nil
+}
+
+// GetGame calls GET /games/{id} with the cached admin session
+// (re-logging in once on a 401). Unlike ListGames, this reaches
+// archived games too — Lobby.Get does not filter them the way
+// Lobby.List does — which is what lets /cc-end tell "already
+// archived" apart from "no such game" before it asks for
+// confirmation.
+func (c *ServerClient) GetGame(ctx context.Context, id uuid.UUID) (lobby.GameMeta, error) {
+	resp, err := c.doAuthorized(ctx, func(token string) (*http.Response, error) {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/games/"+id.String(), nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Authorization", "Bearer "+token)
+		resp, err := c.http.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrServerUnreachable, err)
+		}
+		return resp, nil
+	})
+	if err != nil {
+		return lobby.GameMeta{}, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return lobby.GameMeta{}, ErrUnauthorized
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		return lobby.GameMeta{}, ErrGameNotFound
+	}
+	if resp.StatusCode != http.StatusOK {
+		return lobby.GameMeta{}, statusErr(resp)
+	}
+
+	var meta lobby.GameMeta
+	if err := json.NewDecoder(resp.Body).Decode(&meta); err != nil {
+		return lobby.GameMeta{}, fmt.Errorf("decode game: %w", err)
+	}
+	return meta, nil
+}
+
+// IsCreator calls GET /games/{id}/creator?discord_id=<discordID> with
+// the cached admin session (re-logging in once on a 401) — the
+// server-side half of #1098's /cc-end host check: does discordID
+// match the Discord user who created this game. The server never
+// says who the creator actually is; only whether this one snowflake
+// matches. ErrGameNotFound on a 404, same as GetGame and ArchiveGame.
+func (c *ServerClient) IsCreator(ctx context.Context, id uuid.UUID, discordID string) (bool, error) {
+	resp, err := c.doAuthorized(ctx, func(token string) (*http.Response, error) {
+		u := c.baseURL + "/games/" + id.String() + "/creator?discord_id=" + url.QueryEscape(discordID)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Authorization", "Bearer "+token)
+		resp, err := c.http.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrServerUnreachable, err)
+		}
+		return resp, nil
+	})
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return false, ErrUnauthorized
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		return false, ErrGameNotFound
+	}
+	if resp.StatusCode != http.StatusOK {
+		return false, statusErr(resp)
+	}
+
+	var body struct {
+		IsCreator bool `json:"is_creator"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		return false, fmt.Errorf("decode creator check: %w", err)
+	}
+	return body.IsCreator, nil
+}
+
+// ArchiveGame calls POST /games/{id}/archive with the cached admin
+// session (re-logging in once on a 401). The route is idempotent
+// server-side (lobby.Lobby.SetArchived): archiving an
+// already-archived game still returns 200 with the same
+// archived_at, rather than an error.
+func (c *ServerClient) ArchiveGame(ctx context.Context, id uuid.UUID) (lobby.GameMeta, error) {
+	resp, err := c.doAuthorized(ctx, func(token string) (*http.Response, error) {
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/games/"+id.String()+"/archive", nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Authorization", "Bearer "+token)
+		resp, err := c.http.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrServerUnreachable, err)
+		}
+		return resp, nil
+	})
+	if err != nil {
+		return lobby.GameMeta{}, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return lobby.GameMeta{}, ErrUnauthorized
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		return lobby.GameMeta{}, ErrGameNotFound
+	}
+	if resp.StatusCode != http.StatusOK {
+		return lobby.GameMeta{}, statusErr(resp)
+	}
+
+	var meta lobby.GameMeta
+	if err := json.NewDecoder(resp.Body).Decode(&meta); err != nil {
+		return lobby.GameMeta{}, fmt.Errorf("decode game: %w", err)
+	}
+	return meta, nil
 }
 
 // statusErr builds an informative error for an unexpected

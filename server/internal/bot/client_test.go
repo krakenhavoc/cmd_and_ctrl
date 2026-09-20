@@ -32,6 +32,20 @@ type fakeServer struct {
 	listStatus int
 	listMeta   []lobby.GameMeta
 
+	getStatus int
+	getMeta   lobby.GameMeta
+
+	archiveStatus int
+	archiveMeta   lobby.GameMeta
+
+	// creatorStatus/creatorIsCreator drive GET /games/{id}/creator
+	// (#1098). gotCreatorDiscordIDs records the ?discord_id= query
+	// value seen on each call, so tests can confirm the invoker's
+	// snowflake — not someone else's — was asked about.
+	creatorStatus        int
+	creatorIsCreator     bool
+	gotCreatorDiscordIDs []string
+
 	// requireBearer, when non-empty, makes /games reject any other
 	// Authorization value with 401 — lets the token-cache tests
 	// simulate a server-side session expiry / rotation.
@@ -43,20 +57,63 @@ type fakeServer struct {
 func newFakeServer(t *testing.T) (*fakeServer, *ServerClient) {
 	t.Helper()
 	fs := &fakeServer{
-		t:            t,
-		loginStatus:  http.StatusOK,
-		loginToken:   "session-token",
-		createStatus: http.StatusCreated,
-		listStatus:   http.StatusOK,
+		t:             t,
+		loginStatus:   http.StatusOK,
+		loginToken:    "session-token",
+		createStatus:  http.StatusCreated,
+		listStatus:    http.StatusOK,
+		getStatus:     http.StatusOK,
+		archiveStatus: http.StatusOK,
+		creatorStatus: http.StatusOK,
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/admin/login", fs.handleLogin)
 	mux.HandleFunc("/games", fs.handleGames)
+	mux.HandleFunc("GET /games/{id}", fs.handleGetGame)
+	mux.HandleFunc("POST /games/{id}/archive", fs.handleArchiveGame)
+	mux.HandleFunc("GET /games/{id}/creator", fs.handleIsCreator)
 	ts := httptest.NewServer(mux)
 	t.Cleanup(ts.Close)
 
 	c := NewServerClient(ts.URL, "admin-secret").WithHTTPClient(&http.Client{Timeout: 2 * time.Second})
 	return fs, c
+}
+
+func (fs *fakeServer) handleIsCreator(w http.ResponseWriter, r *http.Request) {
+	fs.gotAuthHeaders = append(fs.gotAuthHeaders, r.Header.Get("Authorization"))
+	if fs.requireBearer != "" && r.Header.Get("Authorization") != "Bearer "+fs.requireBearer {
+		http.Error(w, "stale session", http.StatusUnauthorized)
+		return
+	}
+	fs.gotCreatorDiscordIDs = append(fs.gotCreatorDiscordIDs, r.URL.Query().Get("discord_id"))
+	w.WriteHeader(fs.creatorStatus)
+	if fs.creatorStatus == http.StatusOK {
+		_ = json.NewEncoder(w).Encode(map[string]bool{"is_creator": fs.creatorIsCreator})
+	}
+}
+
+func (fs *fakeServer) handleGetGame(w http.ResponseWriter, r *http.Request) {
+	fs.gotAuthHeaders = append(fs.gotAuthHeaders, r.Header.Get("Authorization"))
+	if fs.requireBearer != "" && r.Header.Get("Authorization") != "Bearer "+fs.requireBearer {
+		http.Error(w, "stale session", http.StatusUnauthorized)
+		return
+	}
+	w.WriteHeader(fs.getStatus)
+	if fs.getStatus == http.StatusOK {
+		_ = json.NewEncoder(w).Encode(fs.getMeta)
+	}
+}
+
+func (fs *fakeServer) handleArchiveGame(w http.ResponseWriter, r *http.Request) {
+	fs.gotAuthHeaders = append(fs.gotAuthHeaders, r.Header.Get("Authorization"))
+	if fs.requireBearer != "" && r.Header.Get("Authorization") != "Bearer "+fs.requireBearer {
+		http.Error(w, "stale session", http.StatusUnauthorized)
+		return
+	}
+	w.WriteHeader(fs.archiveStatus)
+	if fs.archiveStatus == http.StatusOK {
+		_ = json.NewEncoder(w).Encode(fs.archiveMeta)
+	}
 }
 
 func (fs *fakeServer) handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -154,7 +211,7 @@ func TestCreateGame_Success(t *testing.T) {
 		InviteToken: "invite-xyz",
 		State:       "lobby",
 	}
-	meta, err := c.CreateGame(context.Background(), "friday-commander")
+	meta, err := c.CreateGame(context.Background(), "friday-commander", "")
 	if err != nil {
 		t.Fatalf("CreateGame: %v", err)
 	}
@@ -176,7 +233,7 @@ func TestCreateGame_MissingInviteToken(t *testing.T) {
 	fs, c := newFakeServer(t)
 	// Token-less response — something's wrong on the server side.
 	fs.createMeta = lobby.GameMeta{ID: uuid.New(), Name: "x", State: "lobby"}
-	_, err := c.CreateGame(context.Background(), "x")
+	_, err := c.CreateGame(context.Background(), "x", "")
 	if err == nil || !strings.Contains(err.Error(), "missing invite_token") {
 		t.Errorf("want missing-invite-token error, got %v", err)
 	}
@@ -185,7 +242,7 @@ func TestCreateGame_MissingInviteToken(t *testing.T) {
 func TestCreateGame_Unauthorized(t *testing.T) {
 	fs, c := newFakeServer(t)
 	fs.createStatus = http.StatusUnauthorized
-	_, err := c.CreateGame(context.Background(), "x")
+	_, err := c.CreateGame(context.Background(), "x", "")
 	if !errors.Is(err, ErrUnauthorized) {
 		t.Errorf("want ErrUnauthorized, got %v", err)
 	}
@@ -194,7 +251,7 @@ func TestCreateGame_Unauthorized(t *testing.T) {
 func TestCreateGame_ServerError(t *testing.T) {
 	fs, c := newFakeServer(t)
 	fs.createStatus = http.StatusInternalServerError
-	_, err := c.CreateGame(context.Background(), "x")
+	_, err := c.CreateGame(context.Background(), "x", "")
 	if err == nil || !strings.Contains(err.Error(), "500") {
 		t.Errorf("want 500-carrying error, got %v", err)
 	}
@@ -227,6 +284,147 @@ func TestListGames_Unauthorized(t *testing.T) {
 	}
 }
 
+func TestGetGame_Success(t *testing.T) {
+	fs, c := newFakeServer(t)
+	id := uuid.New()
+	archivedAt := time.Now().UTC()
+	fs.getMeta = lobby.GameMeta{ID: id, Name: "friday", State: "lobby", ArchivedAt: &archivedAt}
+
+	meta, err := c.GetGame(context.Background(), id)
+	if err != nil {
+		t.Fatalf("GetGame: %v", err)
+	}
+	if meta.ID != id || meta.Name != "friday" {
+		t.Errorf("meta: got %+v", meta)
+	}
+	// GetGame must surface ArchivedAt — this is how /cc-end tells an
+	// already-archived game apart from an active one; ListGames
+	// would have filtered it out entirely.
+	if !meta.Archived() {
+		t.Error("expected Archived() == true; GetGame must not lose archived_at")
+	}
+}
+
+func TestGetGame_NotFound(t *testing.T) {
+	fs, c := newFakeServer(t)
+	fs.getStatus = http.StatusNotFound
+	_, err := c.GetGame(context.Background(), uuid.New())
+	if !errors.Is(err, ErrGameNotFound) {
+		t.Errorf("want ErrGameNotFound, got %v", err)
+	}
+}
+
+func TestGetGame_Unauthorized(t *testing.T) {
+	fs, c := newFakeServer(t)
+	fs.getStatus = http.StatusUnauthorized
+	_, err := c.GetGame(context.Background(), uuid.New())
+	if !errors.Is(err, ErrUnauthorized) {
+		t.Errorf("want ErrUnauthorized, got %v", err)
+	}
+}
+
+func TestGetGame_ServerError(t *testing.T) {
+	fs, c := newFakeServer(t)
+	fs.getStatus = http.StatusInternalServerError
+	_, err := c.GetGame(context.Background(), uuid.New())
+	if err == nil || !strings.Contains(err.Error(), "500") {
+		t.Errorf("want 500-carrying error, got %v", err)
+	}
+}
+
+func TestArchiveGame_Success(t *testing.T) {
+	fs, c := newFakeServer(t)
+	id := uuid.New()
+	archivedAt := time.Now().UTC()
+	fs.archiveMeta = lobby.GameMeta{ID: id, Name: "friday", ArchivedAt: &archivedAt}
+
+	meta, err := c.ArchiveGame(context.Background(), id)
+	if err != nil {
+		t.Fatalf("ArchiveGame: %v", err)
+	}
+	if !meta.Archived() {
+		t.Error("expected the returned meta to carry archived_at")
+	}
+	if got := fs.gotAuthHeaders[len(fs.gotAuthHeaders)-1]; got != "Bearer session-token" {
+		t.Errorf("auth header: got %q", got)
+	}
+}
+
+func TestArchiveGame_NotFound(t *testing.T) {
+	fs, c := newFakeServer(t)
+	fs.archiveStatus = http.StatusNotFound
+	_, err := c.ArchiveGame(context.Background(), uuid.New())
+	if !errors.Is(err, ErrGameNotFound) {
+		t.Errorf("want ErrGameNotFound, got %v", err)
+	}
+}
+
+func TestArchiveGame_Unauthorized(t *testing.T) {
+	fs, c := newFakeServer(t)
+	fs.archiveStatus = http.StatusUnauthorized
+	_, err := c.ArchiveGame(context.Background(), uuid.New())
+	if !errors.Is(err, ErrUnauthorized) {
+		t.Errorf("want ErrUnauthorized, got %v", err)
+	}
+}
+
+func TestArchiveGame_ServerError(t *testing.T) {
+	fs, c := newFakeServer(t)
+	fs.archiveStatus = http.StatusInternalServerError
+	_, err := c.ArchiveGame(context.Background(), uuid.New())
+	if err == nil || !strings.Contains(err.Error(), "500") {
+		t.Errorf("want 500-carrying error, got %v", err)
+	}
+}
+
+func TestIsCreator_True(t *testing.T) {
+	fs, c := newFakeServer(t)
+	fs.creatorIsCreator = true
+	id := uuid.New()
+
+	got, err := c.IsCreator(context.Background(), id, "discord-42")
+	if err != nil {
+		t.Fatalf("IsCreator: %v", err)
+	}
+	if !got {
+		t.Error("want true")
+	}
+	if len(fs.gotCreatorDiscordIDs) != 1 || fs.gotCreatorDiscordIDs[0] != "discord-42" {
+		t.Errorf("discord_id sent to server: got %v, want [discord-42]", fs.gotCreatorDiscordIDs)
+	}
+}
+
+func TestIsCreator_False(t *testing.T) {
+	fs, c := newFakeServer(t)
+	fs.creatorIsCreator = false
+
+	got, err := c.IsCreator(context.Background(), uuid.New(), "discord-42")
+	if err != nil {
+		t.Fatalf("IsCreator: %v", err)
+	}
+	if got {
+		t.Error("want false")
+	}
+}
+
+func TestIsCreator_NotFound(t *testing.T) {
+	fs, c := newFakeServer(t)
+	fs.creatorStatus = http.StatusNotFound
+	_, err := c.IsCreator(context.Background(), uuid.New(), "discord-42")
+	if !errors.Is(err, ErrGameNotFound) {
+		t.Errorf("want ErrGameNotFound, got %v", err)
+	}
+}
+
+func TestIsCreator_Unauthorized(t *testing.T) {
+	fs, c := newFakeServer(t)
+	fs.creatorStatus = http.StatusUnauthorized
+	_, err := c.IsCreator(context.Background(), uuid.New(), "discord-42")
+	if !errors.Is(err, ErrUnauthorized) {
+		t.Errorf("want ErrUnauthorized, got %v", err)
+	}
+}
+
 func TestNewServerClient_TrimsTrailingSlash(t *testing.T) {
 	c := NewServerClient("http://example:9000/", "tok")
 	if c.baseURL != "http://example:9000" {
@@ -247,7 +445,7 @@ func TestSessionTokenCachedAcrossCommands(t *testing.T) {
 	if _, err := c.ListGames(context.Background()); err != nil {
 		t.Fatalf("ListGames #2: %v", err)
 	}
-	if _, err := c.CreateGame(context.Background(), "FNM"); err != nil {
+	if _, err := c.CreateGame(context.Background(), "FNM", ""); err != nil {
 		t.Fatalf("CreateGame: %v", err)
 	}
 	if fs.loginCalls != 1 {

@@ -21,3 +21,13 @@ func SwapEndpointsForTesting(token, user string) func() {
 		userEndpoint = origUser
 	}
 }
+
+// SwapBotAPIBaseForTesting overrides the REST root the bot's DM calls
+// use and returns a function that restores the original. Intended for
+// tests in other packages (lobby's DM-invite test drives the route
+// against an httptest.Server standing in for Discord).
+func SwapBotAPIBaseForTesting(base string) func() {
+	orig := botAPIBase
+	botAPIBase = base
+	return func() { botAPIBase = orig }
+}

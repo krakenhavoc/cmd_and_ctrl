@@ -76,9 +76,9 @@ planned just-in-time from the S12 pain-point triage.
 | Post-S30 | Rolling deck-driven catalog growth                                   | 7     | TBD at S30 retro                                               | rolling    | not started |
 | S31      | AI bot seat (legal-move enumeration + tiered policy)                 | 8     | [#89](https://github.com/krakenhavoc/cmd_and_ctrl/issues/89)   | 2027-09-26 | **done**    |
 | S32      | Playtest stabilisation, round 1                                      | 6     | [#277](https://github.com/krakenhavoc/cmd_and_ctrl/issues/277) | —          | partial     |
-| S33      | Surviving a deploy: reconnect, resume, and schema safety             | 6     | [#515](https://github.com/krakenhavoc/cmd_and_ctrl/issues/515) | 2027-10-10 | planned     |
-| S34      | Persistent user database: people, their games, and their decks       | 6     | [#607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/607) | —          | planned     |
-| S35      | Playtest stabilisation, round 2                                      | 6     | [#734](https://github.com/krakenhavoc/cmd_and_ctrl/issues/734)  | —          | planned     |
+| S33      | Surviving a deploy: reconnect, resume, and schema safety             | 6     | [#515](https://github.com/krakenhavoc/cmd_and_ctrl/issues/515) | 2027-10-10 | partial     |
+| S34      | Persistent user database: people, their games, and their decks       | 6     | [#607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/607) | —          | partial     |
+| S35      | Playtest stabilisation, round 2                                      | 6     | [#734](https://github.com/krakenhavoc/cmd_and_ctrl/issues/734)  | —          | partial     |
 
 ### How to read the status column
 
@@ -514,7 +514,7 @@ Every "out of scope" deferral from the initial planning pass is pulled into this
 - [x] New top-level directory `bot/` or a cmd under `server/cmd/bot/` — picked `server/cmd/bot/` + `server/internal/bot/` in ADR 0004 (shared module, separate binary). Go, using `bwmarrin/discordgo`. Allow-list gate via `CMDCTRL_DISCORD_GUILD_IDS`.
 - [x] Slash command `/cc-invite [name]` — calls server `POST /games` with admin credentials (bot holds `CMDCTRL_ADMIN_TOKEN` via env), posts the invite link back to the channel (channel-visible embed; ephemeral-toggle deferred).
 - [ ] Slash command `/cc-invite-dm @user [name]` — deferred (needs invite-side pre-bind of DiscordID; not in MVP).
-- [x] Slash command `/cc-games` — ephemeral list of active/lobby games (invite tokens already stripped by `Lobby.List`). `/cc-end <id>` deferred (destructive, wants confirmation UX).
+- [x] Slash command `/cc-games` — ephemeral list of active/lobby games (invite tokens already stripped by `Lobby.List`). `/cc-end <id>` deferred (destructive, wants confirmation UX) — shipped as an S34 follow-up, [#614](https://github.com/krakenhavoc/cmd_and_ctrl/issues/614).
 - [x] Bot deploys as a second systemd unit on the same VPS (S12 infra). Unit at `deploy/cmd-and-ctrl-bot.service`; env file separate from the server's (ADR 0004 §6).
 
 **Rich Presence:**
@@ -2222,7 +2222,7 @@ Nothing is now blocked on #280. Sub-PR 5's deck list was the only thing that eve
 
 **The wiring gap is closed** (updated 2026-09-16, verified against `develop` at `688bc3b`). This paragraph used to warn that sub-PRs 5–8 shipped their packages but not their wiring ([#501](https://github.com/krakenhavoc/cmd_and_ctrl/issues/501), verified against `b555289`). That is no longer true. [#512](https://github.com/krakenhavoc/cmd_and_ctrl/pull/512) serves the four curated decks (`main.go` wires `BotDecks: botDeckCatalog{}`; the `placeholder-mono-red` stand-in is out of the picker). [#514](https://github.com/krakenhavoc/cmd_and_ctrl/pull/514) injects `tiers.Factory` through `Manager.SetPolicyFactory`, so all four tiers are seatable from the lobby: `random` and `heuristic` everywhere, and `assisted` and `strong` when a model endpoint is configured. Without an endpoint those two report `available:false` with a reason, and a request for one is a 422. The measurements below still come from tests that build the policies directly, but they now describe the policies a lobby seat runs. Two of #501's points are still open, and neither blocks a lobby bot:
 
-- **No production `aiseat.Improviser`.** Sub-PR 8's path is live in the runner and tested, but no shipped tier implements the hook, so no bot improvises in play. [#686](https://github.com/krakenhavoc/cmd_and_ctrl/issues/686) builds one for `assisted` and `strong`.
+- ~~**No production `aiseat.Improviser`.**~~ **Closed by [#686](https://github.com/krakenhavoc/cmd_and_ctrl/issues/686) (2026-09-19):** `*model.Policy` implements the hook, so `assisted` and `strong` improvise. One improvisation per card instance, at the moment a spell the seat cast leaves the stack having resolved into silence — never instead of casting it, because the four verbs cannot pay a mana cost. Capped at 8 model calls per seat per game; `CMDCTRL_BOT_IMPROVISE=0` turns it off. See ADR 0033 §8's 2026-09-19 amendment.
 - **Two tier registries still carry the same four names.** `aiseat.Tier` and its `tierCatalog` serve the API; `tiers.Tier` builds the policies. `tiers.Factory` bridges them. Keeping that bridge is #501's call to make.
 
 ### Sub-PR 0 — public game log
@@ -2344,7 +2344,7 @@ contract alone cannot express them:
 
 ### Sub-PR 8 — improvisation, announced
 
-- [x] When the chosen line needs an effect the catalog cannot execute, the bot may use `move_card` / `change_life` / `add_counter` / `mark_damage`, emitted as one bundle. `aiseat.Improviser` is the opt-in policy hook (out of band for the same reason `Conceder` is: a `Decision` names an INDEX into the closed move list, and improvising is by definition doing something that list does not contain). The four verbs are an allow-list — a bundle carrying `concede` or `discard_selection` is refused. *(Update 2026-09-16: the tick is for the mechanism. No shipped tier implements `aiseat.Improviser`, so no bot improvises in play yet. The owner decided to build one for `assisted` and `strong`, tracked in [#686](https://github.com/krakenhavoc/cmd_and_ctrl/issues/686).)*
+- [x] When the chosen line needs an effect the catalog cannot execute, the bot may use `move_card` / `change_life` / `add_counter` / `mark_damage`, emitted as one bundle. `aiseat.Improviser` is the opt-in policy hook (out of band for the same reason `Conceder` is: a `Decision` names an INDEX into the closed move list, and improvising is by definition doing something that list does not contain). The four verbs are an allow-list — a bundle carrying `concede` or `discard_selection` is refused. *(Update 2026-09-16: the tick is for the mechanism. No shipped tier implements `aiseat.Improviser`, so no bot improvises in play yet. The owner decided to build one for `assisted` and `strong`, tracked in [#686](https://github.com/krakenhavoc/cmd_and_ctrl/issues/686). **Update 2026-09-19: #686 landed** — `*model.Policy` is the implementation, the hook now takes a context so the runner's `MaxThink` bounds it, and a refused bundle is announced instead of dropped in silence.)*
 - [x] Chat line naming the card, the intended effect, and that it was improvised. Enforced in code, not left to the policy: `Improvisation.Validate` refuses a bundle that will not name its card and its effect, **before** anything is dispatched
 - [x] Replay-log tag so bot improvisations are greppable — `SnapshotPayload.annotation` with `tag: "bot_improvisation"`, written inside the same commit as the bundle. Replay-only; no WS frame carries one
 - [x] Setting: "show bot reasoning" surfaces `Decision.Reason` in chat. `settings.gameplay.showBotReasoning` (schema v9), server side gated by `aiseat.Config.Narrate`
@@ -2362,8 +2362,8 @@ contract alone cannot express them:
 - [x] Enumerator agrees with `timing.ts` across a table-driven state matrix, both directions (sub-PR 2: `internal/legal/testdata/timing_agreement.json`, asserted from Go and from vitest against one hand-written expectation table)
 - [x] Visibility: policy `Input.View` byte-identical to a human view at that seat; import test enforces the type gate. `aiseat/visibility_test.go` ([#513](https://github.com/krakenhavoc/cmd_and_ctrl/pull/513)): `TestBotInputViewIsByteIdenticalToTheHumanView`, plus seat-specific and hidden-information scans. The type gate is `aiseat/heuristic/imports_test.go` ([#432](https://github.com/krakenhavoc/cmd_and_ctrl/pull/432))
 - [x] Four `random` bots play to a winner across 20 consecutive unattended runs — no deadlocks, no illegal actions, replays captured. `TestFourRandomBotsPlayToAWinner` ([#513](https://github.com/krakenhavoc/cmd_and_ctrl/pull/513)) runs nightly with `AISEAT_RANDOM_GAMES=20` in its own step without `-race`. It asserts zero engine-refused moves, apart from the documented combat step race. A passing game's replay is deleted; a failing one is uploaded
-- [x] Four `heuristic` bots play to a winner within 50 turns — 20/20 seeds, 13–20 turns each (`AISEAT_HEURISTIC_GAMES=20`). *(Update 2026-09-16: that 20/20 was a manual run, not a standing gate. The nightly never sets `AISEAT_HEURISTIC_GAMES`, so it plays the default 3 seeds inside the `-race` step, with literal 120s wall-clock and 5s stall budgets. A 20-game nightly gate is tracked in [#685](https://github.com/krakenhavoc/cmd_and_ctrl/issues/685).)*
-- [x] Zero engine-rejected actions across a 100-game randomized run — and across 60 four-`heuristic` and 60 mixed games through the same soak harness (`AISEAT_SOAK_POLICY=heuristic|mixed`). *(Update 2026-09-16: also manual runs. No workflow sets `AISEAT_SOAK_GAMES`, so `TestRandomBotSoak` never runs in CI. The standing zero-rejection check is the nightly random-20 above. The catalog soak does not check rejections. A 100-game nightly soak is tracked in [#685](https://github.com/krakenhavoc/cmd_and_ctrl/issues/685).)*
+- [x] Four `heuristic` bots play to a winner within 50 turns — 20/20 seeds, 13–20 turns each (`AISEAT_HEURISTIC_GAMES=20`). *(Update 2026-09-16: that 20/20 was a manual run, not a standing gate. Update 2026-09-19, [#685](https://github.com/krakenhavoc/cmd_and_ctrl/issues/685): it is a standing gate now. The nightly's `bot-soak` job sets `AISEAT_HEURISTIC_GAMES=20` and runs it without `-race`, `-skip`ped out of the `-race` step so it is not played twice. Seeds 101..120 are fixed in the test, so a regression is unambiguous; 20/20 in 112s re-measured on the day the job landed. The 120s wall clock and the 5s stall are defaults now rather than literals — `AISEAT_WALLCLOCK` raises the first, `AISEAT_STALL` sets the second, and the job passes 300s and 30s.)*
+- [x] Zero engine-rejected actions across a 100-game randomized run — and across 60 four-`heuristic` and 60 mixed games through the same soak harness (`AISEAT_SOAK_POLICY=heuristic|mixed`). *(Update 2026-09-16: also manual runs. Update 2026-09-19, [#685](https://github.com/krakenhavoc/cmd_and_ctrl/issues/685): the 100-game random run is a standing gate. The `bot-soak` job sets `AISEAT_SOAK_GAMES=100` with a base seed derived from the UTC date, so each night fuzzes a disjoint hundred tables and the seeds are printed whether the run is red or green; 100/100 in 679s re-measured on the day it landed. The heuristic and mixed soak policies are still hand runs — the nightly's heuristic coverage is the 20-game gate above. The catalog soak still does not check rejections.)*
 - [x] `heuristic` beats `random` head-to-head: 40/40 decided games, alternating seats
 - [x] Heuristic decision latency: p50 8.5µs, p99 52µs, max 276µs over 2,715 decisions — four orders of magnitude inside the 2s `MaxThink`. The nightly asserts p99 < 50ms against the bare `heuristic.New()`, not the production `heuristic` tier, which also has the Layer A filter. Nothing computes percentiles in production, and no admin surface can read them; that is [#505](https://github.com/krakenhavoc/cmd_and_ctrl/issues/505)
 - [x] Model-outage drill: Layer C hard-fails, game completes on Layer B, no frozen table. `TestModelOutageDrill` — the endpoint answers 25 calls and then fails forever, the four-bot game plays to a single survivor, the runner's own fallback counter stays at zero, and 2,382 of 2,407 windows were answered without a usable model. A sibling proves the other half of §10: a model that never answers costs its budget and hands over, and the runner still never force-passes
@@ -2381,7 +2381,7 @@ contract alone cannot express them:
 **Where they stand**, verified against `develop` at `688bc3b` on 2026-09-16. The owner's decisions are recorded on [#89](https://github.com/krakenhavoc/cmd_and_ctrl/issues/89). These six criteria are ADR 0033's rewrite. #89's issue body still carries the original heuristic-only list, and when the #89 decisions say "exit criteria 2 and 4" they mean that list: 20 heuristic games, and a 100-game randomized regression. Both appear in this section as the Tests lines above.
 
 - **(1) is met.** [#427](https://github.com/krakenhavoc/cmd_and_ctrl/pull/427) added the seat, the BOT chip and the Start gate. [#512](https://github.com/krakenhavoc/cmd_and_ctrl/pull/512) serves the four curated decks, and [#514](https://github.com/krakenhavoc/cmd_and_ctrl/pull/514) wires all four tiers. The model tiers are seatable when the deployment configures an endpoint. One gap remains: the chip's tooltip shows the deck ID, not the archetype ([#688](https://github.com/krakenhavoc/cmd_and_ctrl/issues/688)).
-- **(2) is met.** Four `random` bots play 20 unattended games to a winner every night, with replays captured on failure (#513). `TestManagerPlaysALobbySeatedTable` plays a table seated through the lobby. The nightly on `main` was red for several nights on that test's budget ([#600](https://github.com/krakenhavoc/cmd_and_ctrl/issues/600)). The fix, #606, reached `main` in the [#700](https://github.com/krakenhavoc/cmd_and_ctrl/pull/700) promotion, and #600 closes once `main`'s nightly is green. The heuristic-20 and 100-game soaks are manual runs today; making them standing nightly gates is [#685](https://github.com/krakenhavoc/cmd_and_ctrl/issues/685), tracked there and not done. The catalog soak, which deals decks from the catalog rather than the curated four, still finds enumerator bugs, such as [#619](https://github.com/krakenhavoc/cmd_and_ctrl/issues/619). Those are tracked one by one.
+- **(2) is met.** Four `random` bots play 20 unattended games to a winner every night, with replays captured on failure (#513). `TestManagerPlaysALobbySeatedTable` plays a table seated through the lobby. The nightly on `main` was red for several nights on that test's budget ([#600](https://github.com/krakenhavoc/cmd_and_ctrl/issues/600)). The fix, #606, reached `main` in the [#700](https://github.com/krakenhavoc/cmd_and_ctrl/pull/700) promotion, and #600 closes once `main`'s nightly is green. The heuristic-20 and 100-game soaks were manual runs until 2026-09-19; [#685](https://github.com/krakenhavoc/cmd_and_ctrl/issues/685) made them the nightly's `bot-soak` job, so criteria 2 and 4 of #89's ORIGINAL list are now continuously checked rather than recorded. A red night opens or comments on one standing issue (`bug`, `tech-debt`) instead of filing one per night, and the job uploads both `go test -v` logs, seeds included, on green runs too. The catalog soak, which deals decks from the catalog rather than the curated four, still finds enumerator bugs, such as [#619](https://github.com/krakenhavoc/cmd_and_ctrl/issues/619). Those are tracked one by one.
 - **(3) is met.** On 2026-09-16 the owner played a human-vs-`assisted` game and saw every behaviour this criterion names: land drops, profitable casts, profitable attacks, and removal on the biggest threat. The bot also conceded only when the game was hopeless.
 - **(4) is half met.** Layer A absorbs 91.3%, well past the 80% floor. Per-game model spend is still not measured: that needs a game against a hosted endpoint, and there is no key in CI, as [ADR 0033](decisions/0033-ai-bot-seat.md) §5's update says. #514's local OpenAI-compatible transport has no per-call bill to measure. *Decided 2026-09-16 (owner):* the spend half is split out to [#735](https://github.com/krakenhavoc/cmd_and_ctrl/issues/735), to be measured once a keyed endpoint is used, and S31 is recorded **done**. #89 closes.
 - **(5) is met.** `TestModelOutageDrill` kills the endpoint mid-game and the table plays on to a single survivor. Since #514 that fallback path is the one a lobby `assisted` or `strong` seat runs.
@@ -2393,7 +2393,7 @@ contract alone cannot express them:
 
 S31's core has shipped. What remains is tracked outside this section:
 
-- [#685](https://github.com/krakenhavoc/cmd_and_ctrl/issues/685) — heuristic-20 and 100-game random soak as standing nightly gates, with env-overridable budgets
+- ~~[#685](https://github.com/krakenhavoc/cmd_and_ctrl/issues/685) — heuristic-20 and 100-game random soak as standing nightly gates, with env-overridable budgets~~ — **done** (2026-09-19). The `bot-soak` job in `.github/workflows/e2e-nightly.yml`, without `-race`, with `AISEAT_STALL` / `AISEAT_WALLCLOCK` reaching every bot-table budget in the package for the first time
 - [#686](https://github.com/krakenhavoc/cmd_and_ctrl/issues/686) — a production `aiseat.Improviser` for `assisted` and `strong` (closes out [#501](https://github.com/krakenhavoc/cmd_and_ctrl/issues/501))
 - [#687](https://github.com/krakenhavoc/cmd_and_ctrl/issues/687) — threat-ordered target expansion inside `MaxExpansionPerSource` (ADR 0033 §1)
 - [#688](https://github.com/krakenhavoc/cmd_and_ctrl/issues/688) — the BOT chip tooltip shows the archetype, not the deck ID
@@ -2586,5 +2586,174 @@ The parallel track: no dependency on the reconnect chain, and the item that deci
 - **Reaping abandoned restore points** — they accumulate and re-`ERROR` on every boot forever. Adjacent, separate.
 
 Also found during the audit and filed separately, not sprint scope: [#525](https://github.com/krakenhavoc/cmd_and_ctrl/issues/525) — `pruneOrphanMeta` deletes the lobby metadata of an abandoned game, so ADR 0041's documented roll-back recovery destroys the game (and its replay log) rather than returning it.
+
+---
+
+## S34 — Persistent user database: people, their games, and their decks
+
+**Phase:** 6 · **Goal:** give the server a notion of a *person* — an account that outlives one game, "my games" across every table, a deck library, and the off-site backup that makes losing the data disk survivable rather than catastrophic. Design per [ADR 0051](decisions/0051-user-database.md), tracking issue [#607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/607).
+
+The server has only ever had seats. A session bound one socket to one game and one player ID; two games played by the same four friends shared no row, no key, no file. None of "show me my games", "invite the people I usually play with", "stay signed in" or "keep my decks" could be answered. ADR 0051 adds one SQLite file at `<dataDir>/db/cmdctrl.sqlite`, WAL mode, the server its only writer, opened and migrated before `RestoreFromDisk` runs. Sessions stay stateless — S33's HMAC-signed `Principal` ([#517](https://github.com/krakenhavoc/cmd_and_ctrl/issues/517) / [#1029](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1029)) gains exactly one field, `UserID`, so the credential shape changes once rather than twice. The engine's own files (`restore/`, `replays/`, `games/`) and the Scryfall/image/avatar caches stay on disk, untouched; only the lobby's bookkeeping — games, seats, invites — and the new `users`, `identities` and `decks` tables move into the database.
+
+### Sub-PR 0 — ADR 0051, sprint docs, tracking issue
+
+- [x] `docs/decisions/0051-user-database.md` — the eight decisions, with rejected alternatives ([#608](https://github.com/krakenhavoc/cmd_and_ctrl/pull/608))
+- [x] This section and the S34 index row — the deliverable #1030's author and later agents each found missing (this PR)
+- [x] Tracking issue [#607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/607), whose checklist and 2026-09-19 status comment are the sub-PR map this section follows
+
+### Sub-PR 1 — `internal/db`: open, WAL, migrations runner, `VACUUM INTO` backup timer
+
+- [x] `internal/db`: `modernc.org/sqlite` (pure Go, no cgo), WAL, `foreign_keys` on, file mode `0600`; numbered SQL migrations embedded and applied in a transaction at boot, recorded in `schema_migrations`, forward-only — a database newer than the binary's embedded migrations refuses to boot (`ErrSchemaTooNew`) ([#1030](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1030))
+- [x] `VACUUM INTO` backup sweep on `CMDCTRL_DB_BACKUP_INTERVAL` (default `1h`), writing `db/cmdctrl.backup.sqlite` beside the live file ([#1030](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1030))
+- [x] Fix: each backup had a context deadline equal to the loop interval, so a short interval cancelled every backup before it finished; a fixed 10-minute bound replaces it ([#1040](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1040))
+- [x] Fix: the loop waited a full interval before its *first* backup, so a fresh host or one just restarted had no consistent copy for up to an hour; it now writes one at start and keeps its interval after ([#1050](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1050))
+- [x] Off-node backup prerequisite (ADR 0051 decision 1): nightly restic to a per-host Cloudflare R2 bucket, credentials and the restore runbook shipped from this repo's CD ([#1041](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1041), closing [#1031](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1031)); the two buckets themselves came from [HomeLab#59](https://github.com/krakenhavoc/HomeLab/pull/59)
+
+### Sub-PR 2 — `users` + `identities`
+
+- [x] Migration 0003: `users`, `identities`; rebuilds `games`, `seats` and `invites` so `created_by` / `user_id` become real foreign keys ([#1044](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1044))
+- [x] OAuth callback upserts the user and identity before it claims a seat; `Principal.UserID` lands as the single field decision 3 asked S33's [#517](https://github.com/krakenhavoc/cmd_and_ctrl/issues/517) to carry
+- [x] Discord refresh token encrypted at rest, AES-256-GCM under `CMDCTRL_IDENTITY_KEY`; an absent key discards the refresh token rather than storing it in the clear
+- [x] `games.created_by` / `invites.created_by` taken from the creating principal's `UserID` (NULL for an admin session)
+
+### Sub-PR 3 — `games` / `seats` / `invites` replace `lobby/*.json`
+
+- [x] Migration 0002: the three tables from ADR 0051 decision 4, plus `seats.pending_discord_id`; a `Store` seam behind `SQLStore` (real database) and an in-memory store (no `CMDCTRL_DATA_DIR`) ([#1034](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1034))
+- [x] Invites stored as a SHA-256 hash of the token; the "no short-circuit" scan `FindByInvite` needed against a plaintext list is gone
+- [x] Boot-time importer: each `lobby/<id>.json` becomes a `games` row, its `SeatInfo` entries become `seats` rows, its two tokens become hashed `invites` rows; the file is renamed `.json.imported`, never deleted
+
+### Sub-PR 4 — `GET /me/games` and seat linking
+
+- [x] `GET /me/games` — a signed-in user's seats, newest first, live and ended, with a `rejoin` path while the table is open and no invite tokens in the response ([#1059](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1059))
+- [x] `POST /me/games/{id}/session` — reclaim by user, alongside (not folded into) [#520](https://github.com/krakenhavoc/cmd_and_ctrl/issues/520)'s unauthenticated ticket route for guests
+- [x] `seats.user_id` written on every claim by a signed-in person (invite callback, `POST /join`, `POST /games/{id}/join`); pending seats link to a new user at every Discord sign-in, not only the first
+- [x] `GET /auth/discord/link`, carried over from #59: a seated player links or re-links Discord without leaving the game, including a seated **guest** mid-game — decided and recorded in ADR 0051
+
+### Sub-PR 5 — deck library
+
+- [x] Migration 0004: `decks` (owner, source text, commanders, card count); rebuilds `seats` a second time so `deck_id` becomes a real foreign key ([#1061](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1061))
+- [x] A pasted or Moxfield-JSON upload from a signed-in caller additionally saves to the library (same owner + same name updates in place); a catalog pick or a `url` import never does
+- [x] `POST /games/{id}/decks/{deck_id}` seats a library deck without re-pasting, re-validated against the current catalog at seat time
+- [x] `GET /me/decks` lists a caller's library, newest first
+
+### Sub-PR 6 — tablemates, invite picker, DM invites
+
+**Open — the only sub-PR left.** [#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613) (the `/cc-invite-dm` slash command) is a thin client of this sub-PR's route and follows it.
+
+- [ ] Tablemates query (ADR 0051 decision 8): people who share a `seats` row with the caller, recency-ordered, offered as suggestions when inviting
+- [ ] Invite picker UI over that query
+- [ ] `POST /games/{id}/invites/dm` — the server sends the DM itself over Discord REST with a bot token; the gateway bot does not open the DM
+- [ ] [#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613) — `/cc-invite-dm @user`, a thin client of the route above
+
+### Sub-PR 7 — `sessions_invalid_before`: logout-everywhere, admin remove-user
+
+- [x] `auth.WithRevocation` wraps the session authenticator; a principal with a `UserID` whose token was issued **at or before** `users.sessions_invalid_before` is refused, `401 "session revoked"` ([#1056](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1056))
+- [x] Watermarks cached in memory at boot and updated in place on write, so no request, WS upgrade or WS frame touches SQLite on the hot path
+- [x] `Hub.EvictUserSessions` closes a revoked user's open sockets with terminal `1000 "session revoked"`
+- [x] `POST /logout/everywhere` (caller's own user) and `POST /admin/users/{id}/revoke-sessions` (admin, any user); no row is deleted, the person can sign in again
+- [x] `CMDCTRL_IDENTITY_TTL` (default 30 days) for the `identified` session; fixed the client's expiry timer, which would have dropped a 30-day session at ~23 days by clamping `setTimeout` and never re-arming
+
+### Out of scope (explicit handoffs)
+
+- **The rest of sub-PR 6** — tablemates, the invite picker and `POST /games/{id}/invites/dm` — and [#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613), the slash command that calls it once it ships.
+- **[#1098](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1098) — the host, not just an admin.** `games.created_by` now exists, but invite rotation ([#1057](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1057), closing [#1038](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1038)) and `/cc-end` ([#1058](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1058), closing [#614](https://github.com/krakenhavoc/cmd_and_ctrl/issues/614)) both shipped admin-only, each with its own `TODO(#1044)`. Letting a game's creator do either without an admin token is #1098, still open.
+- **Collapsing `player` sessions into `identified`** — one durable credential per person, the `seats` table answering "which seat is yours" at upgrade time. Deferred in ADR 0051 until S33 and S34 have both settled.
+- **A second identity provider** (Microsoft Entra External ID) — the `identities` table is shaped for it; not adopted now. See ADR 0051's Deferred section for the reversal triggers.
+- **Explicit friends list, stats/ratings, spectator accounts, guest-to-user upgrade for a seat whose session is already gone** — all named and deferred in ADR 0051.
+
+### Risks / gotchas
+
+- **The off-node backup was a merge prerequisite, not a nice-to-have.** ADR 0051 decision 1 blocked sub-PR 2 (`users`/`identities`) on it explicitly: losing `cmdctrl.sqlite` loses every account, deck and invite, where losing a restore point (S33) costs one game. [#1041](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1041) shipped nightly restic backups to Cloudflare R2 on both hosts before sub-PR 2 merged; the two buckets came from [HomeLab#59](https://github.com/krakenhavoc/HomeLab/pull/59).
+- **Two backup-timing bugs surfaced standing that up.** [#1040](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1040): `RunBackupLoop` gave each `VACUUM INTO` a deadline equal to the loop interval, so a short interval cancelled every backup before it finished (caught by a CI race failure at a 20ms test interval; in production it would have meant a warning on every tick and no file ever written). [#1050](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1050): the loop waited a full interval — default 1h — before its first backup, so a fresh host or one just restarted had no consistent copy to hand the nightly job; found running the first off-site backup on the dev host, whose restic run logged `skipping db/cmdctrl.backup.sqlite (not present)`. Both fixed before the backup was relied on.
+- **Invite tokens exist as hashes once the process that minted them has restarted.** Decision 4's SHA-256-at-rest closes the timing-oracle concern ADR 0050 raised, but the plaintext link now lives only in that process's memory. A lost link cannot be shown again after a restart — only re-minted. That gap is [#1038](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1038), closed by [#1057](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1057)'s `POST /games/{id}/invites/rotate`.
+- **SQLite's `PRAGMA foreign_keys = OFF` is a silent no-op inside a transaction.** Migration 0003 rebuilds `games`/`seats`/`invites` to add real foreign keys, and SQLite's documented table-rebuild procedure needs enforcement off — left on, `DROP TABLE games` fires `ON DELETE CASCADE` and deletes every seat and invite with it. The migration runner now pins one connection, sets `PRAGMA foreign_keys = OFF` before `BEGIN`, runs `PRAGMA foreign_key_check` inside the transaction before commit (a violation rolls the migration back), and restores enforcement before the connection returns to the pool. This applies to every migration, not only 0003.
+- **The deploy that carried HMAC sessions logs everyone out once.** The old in-memory tokens carry no signature, so the first deploy after S33's [#1029](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1029) reached production invalidated every live session; every deploy since carries a signed session straight through.
+
+### Exit criteria
+
+1. A signed-in person sees every game they have sat in, live or ended, from any device, at `GET /me/games` — no invite link needed. **Met** (sub-PR 4).
+2. A pasted or Moxfield deck a signed-in person uploads is kept, and can be reseated without re-pasting. **Met** (sub-PR 5).
+3. A Discord sign-in survives a restart and can be revoked, everywhere, by the person or an admin. **Met** (sub-PRs 2 and 7).
+4. Losing the data disk does not lose every account: a nightly off-site backup exists on both hosts and a restore has been rehearsed. **Met** — [#1041](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1041); restore rehearsed on the dev host 2026-09-19, evidence on [#1031](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1031).
+5. Inviting the people you usually play with is a picker over people you've shared a table with, not a pasted link. **Not met** — sub-PR 6.
+
+### Status
+
+**In production** since promotion [#1053](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1053), deployed 2026-09-19 14:06 UTC: the database (sub-PR 1), the lobby importer (13 files imported, none skipped, 11 games restored), users and identities (sub-PR 2), games/seats/invites with hashed tokens (sub-PR 3), S33's HMAC sessions, and the nightly off-site backup — prod stores 1.90 GiB as 56.8 MiB, dev 1.37 GiB as 29.7 MiB, both to Cloudflare R2 via restic.
+
+**On `develop`, not yet promoted:** sub-PR 4 ([#1059](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1059), my games / seat linking / Discord link), sub-PR 5 ([#1061](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1061), deck library), sub-PR 6 ([#1113](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1113), tablemates, the invite picker and `POST /games/{id}/invites/dm`), and sub-PR 7 ([#1056](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1056), per-user revocation and the 30-day identity session).
+
+**Every sub-PR is built.** What is left of the sprint's own scope is the follow-on [#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613), the `/cc-invite-dm` slash command that calls sub-PR 6's route, and it depends on [#249](https://github.com/krakenhavoc/cmd_and_ctrl/issues/249) provisioning the bot. Two owner checks can only be made against production after the next promotion: a DM actually arriving (the server's `CMDCTRL_DISCORD_BOT_TOKEN` is written on a `main` deploy only), and `/cc-end` once an admin allowlist is set.
+
+---
+
+## S35 — Playtest stabilisation, round 2
+
+**Phase:** 6 · **Goal:** turn the in-app bug reports from the games since S32 into closed issues or named decisions. Tracking issue [#734](https://github.com/krakenhavoc/cmd_and_ctrl/issues/734).
+
+S32's exit criterion 6 said the reports from the 2026-09-11 and 2026-09-14 games would become the next sprint. That number went to S33 ([#515](https://github.com/krakenhavoc/cmd_and_ctrl/issues/515), surviving a deploy) and S34 ([#607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/607), the user database), so they become S35. #734 was built on 2026-09-16 from the [#534](https://github.com/krakenhavoc/cmd_and_ctrl/issues/534) triage and the 18 open `[in-app]` issues, each re-checked against `origin/develop` that day. **Lanes are split so parallel agents don't collide**: *engine rules* is `internal/game`, *cards* is `internal/cards/effects` one file per card, *autopass and stops* is `Game.svelte` and `priorityStops.ts`, *client UX* is the rest of `client/`. This is a tracker sprint, not a design one: most of its items are a verdict, not a feature.
+
+### Engine rules
+
+- [x] **[#540](https://github.com/krakenhavoc/cmd_and_ctrl/issues/540) — a mana creature tapped the turn it entered.** The auto-tapper checked summoning sickness in neither the planner nor the executor, so paying by auto-tap tapped a sick creature that `ActivateManaAbility` would have refused. Fixed in [#896](https://github.com/krakenhavoc/cmd_and_ctrl/pull/896) (`66f2162a`), CR 302.6
+- [x] **[#596](https://github.com/krakenhavoc/cmd_and_ctrl/issues/596) — a bounced token stayed in hand as a card.** `internal/game` had no token concept on zone moves: `IsToken` lived only in `cards/effects` and there was no CR 704.5d state-based action. Both now exist — `game.Card.IsToken()` and `game/token_existence.go` — in [#898](https://github.com/krakenhavoc/cmd_and_ctrl/pull/898) (`9996c815`). Found when a bot's Cyclonic Rift bounced a Bird token
+- [x] **[#375](https://github.com/krakenhavoc/cmd_and_ctrl/issues/375) — the monarch didn't move on combat damage and gave no end-step draw.** `SetMonarch` only assigned a marker. The monarch is now two triggered abilities rather than a marker, in [#899](https://github.com/krakenhavoc/cmd_and_ctrl/pull/899) (`49379165`), with a follow-up test in [#908](https://github.com/krakenhavoc/cmd_and_ctrl/pull/908) pinning that the eliminated-monarch probe cannot be the departed seat's hand
+- [x] **[#500](https://github.com/krakenhavoc/cmd_and_ctrl/issues/500) — land drops per turn weren't enforced.** #734 put this to the owner as "keep the sandbox posture and close, or enforce it". **The decision was to enforce**, with a raisable limit so Exploration and Azusa have something to raise: [#900](https://github.com/krakenhavoc/cmd_and_ctrl/pull/900) (`a4d6e7e6`)
+- [ ] **[#343](https://github.com/krakenhavoc/cmd_and_ctrl/issues/343) — Aang, Swift Savior can't transform.** ADR 0034 step 5, the transform verb. **Left this sprint:** it now carries the S46 milestone ("Permanents that change what they are"), where the verb is the sprint rather than one report in it
+
+### Autopass and stops
+
+- [x] **[#526](https://github.com/krakenhavoc/cmd_and_ctrl/issues/526) — smart autopass ran through a manual stop.** The `$manualStops.has(step)` check sat inside `if (!autopass)`, so the toggle beat the one-time stop. A manual one-time stop now beats the toggle, in [#904](https://github.com/krakenhavoc/cmd_and_ctrl/pull/904) (`f561f7fe`), without regressing [#599](https://github.com/krakenhavoc/cmd_and_ctrl/issues/599)'s declare-attackers window
+
+### Cards
+
+- [x] Close [#533](https://github.com/krakenhavoc/cmd_and_ctrl/issues/533) as a duplicate of [#333](https://github.com/krakenhavoc/cmd_and_ctrl/issues/333) — done. Its public body also carried a live-format session token, which is [#721](https://github.com/krakenhavoc/cmd_and_ctrl/issues/721)
+- [x] **Five trigger reports triaged to a verdict each** in [#1018](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1018) (`fb24372f`), which **fixes no bug and lands the evidence**. Four — [#373](https://github.com/krakenhavoc/cmd_and_ctrl/issues/373) The Mighty Thor, [#369](https://github.com/krakenhavoc/cmd_and_ctrl/issues/369) Monument to Endurance, [#366](https://github.com/krakenhavoc/cmd_and_ctrl/issues/366) Brass's Tunnel-Grinder, [#508](https://github.com/krakenhavoc/cmd_and_ctrl/issues/508) Ambrosia Whiteheart — are one fact: the card has no registered `Spec`, so there was no trigger to fail to fire. Each is now pinned in `TestImporterStampsNeedsEffect` and `TestNeedsCatalogEffectCatchesRealRules` so the `manual` chip cannot quietly stop flagging them. The fifth, [#370](https://github.com/krakenhavoc/cmd_and_ctrl/issues/370) Mary Read and Anne Bonny, was real and was already fixed by [#797](https://github.com/krakenhavoc/cmd_and_ctrl/pull/797): the Vehicle arm worked, but the discard answer returned without running state checks, so the Treasure trigger sat on `PendingTriggers` in exactly the snapshot the reporter was looking at. Measured against `e5fc440d`, the build the game came from, and pinned by `TestIssue370MaryReadVehicleDiscardMakesATappedTreasure`
+- [ ] **Cards whose blocker has lifted:** [#321](https://github.com/krakenhavoc/cmd_and_ctrl/issues/321) Enduring Curiosity and [#339](https://github.com/krakenhavoc/cmd_and_ctrl/issues/339) Ty Lee (verify the untap hook, which now runs through one path in `game/untap.go`). Both still open and still absent from the catalog
+- [ ] **Cards that wait on a primitive**, each to be placed on [`docs/decklists/card-coverage-roadmap.md`](decklists/card-coverage-roadmap.md) with its blocker named: [#332](https://github.com/krakenhavoc/cmd_and_ctrl/issues/332) Lotus Field (same-colour mana), [#333](https://github.com/krakenhavoc/cmd_and_ctrl/issues/333) Fortune Teller's Talent (Class levels), [#337](https://github.com/krakenhavoc/cmd_and_ctrl/issues/337) The Seriema (station), [#324](https://github.com/krakenhavoc/cmd_and_ctrl/issues/324) Anticausal Vestige ([#654](https://github.com/krakenhavoc/cmd_and_ctrl/issues/654)). **Only Monument to Endurance is on the roadmap today**; the other placements are outstanding
+- [ ] **[#1127](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1127) — 21 token templates declare no colour where the printed token is coloured**, plus two other mismatches. Found by [ADR 0078](decisions/0078-token-art.md)'s matching rule and split out of it as a rules bug on its own terms: colour is read by removal, lords, protection, cost reduction and devotion regardless of art. Per-card review, not a bulk edit — a caller may have wanted "colorless" and should move key rather than have its key change underneath it
+- [ ] Sweep [ADR 0037](decisions/0037-unimplemented-card-signal.md) and [ADR 0027](decisions/0027-attack-triggers.md) for the blockers #534 found expired. #1018 landed a dated amendment to ADR 0027 as part of #373's verdict
+
+### Client UX
+
+- [x] **#508 follow-up — does the ADR 0037 `manual` chip show for an uncatalogued card with an ETB?** It does, and #1018 pinned it: `NeedsCatalogEffect` is the only thing between a player and filing that report again, and all four of the no-`Spec` cards are now in `TestNeedsCatalogEffectCatchesRealRules` so a change to the line scanner cannot quietly un-flag them
+
+### Token art
+
+Not on #734 — added to this sprint on 2026-09-19 with [ADR 0078](decisions/0078-token-art.md). It spans the lanes above (`internal/cards`, `internal/game`, `internal/protocol`, `client/`), so it is listed apart from them rather than inside one.
+
+- [ ] **[#1115](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1115) — tokens have no art.** A token renders as its name on a grey card-shaped div because it is created with an empty `ScryfallID`. The dump already holds 2,957 `layout:"token"` records with full `image_uris`, `GET /cards/{id}/image` already serves them, and the service worker already caches that URL shape; the missing piece is choosing an id. [ADR 0078](decisions/0078-token-art.md) resolves a printing at runtime by a fixed rule, stamps it on the existing `Card.ScryfallID` at token creation so it survives restore and replay, and adds `is_token` to `CardView`. The rule is a seam a later per-player or per-game art override sits in front of, which is why it is a rule and not an id pinned per template
+- [ ] ADR 0078 is **Proposed** and awaiting the owner's approval; no resolver, server or client change ships until it is accepted. Its sub-PR 0 is this section, the ADR and the AGENTS.md §3 range line
+
+### Also shipped under the S35 name
+
+Work that carries `Sprint: S35` in its commit trailer and is not on #734's checklist:
+
+- **[ADR 0075](decisions/0075-table-settings-and-host-controls.md) — table settings and host controls** (`cca3e1b1`), and its implementation: `Game.Settings` replacing `UndoLimit` (sub-PR 1, [#1042](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1042)), `HostPlayerID`, host transfer, auto-pass and `CanManageTable` (sub-PR 2, [#1043](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1043)), the `PATCH` route, `set_table_settings` and log narration ([#1110](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1110)), and the bot runner following the table's `BotPace` ([#1104](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1104)), the production spawner with token templates, the log line and the free undo entry (sub-PR 4, [#1111](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1111)), and the client surfaces — the settings panel in the lobby and in game, the host crown, the spawner's Tokens tab and the “spawning on” badge (sub-PR 5, [#1150](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1150))
+- **CI: `actions/setup-go` bumped to v6**, off the deprecated Node 20 runtime ([#1109](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1109), against [#474](https://github.com/krakenhavoc/cmd_and_ctrl/issues/474), which is still open)
+
+### Exit criteria
+
+1. **Partly met.** Every report in #734's table is closed, a duplicate, closed by an owner decision, or moved onto the coverage roadmap with its blocker named. Six card reports are still open (#321, #324, #332, #333, #337, #339) and only one of the roadmap placements has been made, so no report is *unexplained* but several have no landed next step yet
+2. **Met.** #540, #596 and #526 are each closed by a merged PR with a regression test — #896, #898 and #904
+3. **Met.** #375 is closed by #899, with a test, plus the #908 follow-up
+4. **Not met.** Of the unblocked cards, #373 and #508 closed as coverage gaps with pins rather than catalog entries (#1018), and #321 and #339 are still open and still absent
+5. **Not met.** One real **4-player** game on the result. This box has carried from S12 through S32 criterion 6 and is still not on record
+6. **Open.** The sprint index on `main` matches issue state: this section and the S35 index row go to `develop` first, and the criterion names `main`
+
+### Status
+
+**Partial.** Load-bearing work has shipped under the S35 name — the token-existence SBA (#596), the autopass stop fix (#526), and ADR 0075's table settings and host controls with its four PRs — while exit criteria 1, 4, 5 and 6 are demonstrably unmet. By [the status legend](#how-to-read-the-status-column) that makes the row `partial` rather than `planned`, and the `planned` row is the one that does real damage when it is stale: it is read as "this mechanic is unbuilt".
+
+**What is still open**, each with its issue:
+
+- **Six card reports:** [#321](https://github.com/krakenhavoc/cmd_and_ctrl/issues/321), [#324](https://github.com/krakenhavoc/cmd_and_ctrl/issues/324), [#332](https://github.com/krakenhavoc/cmd_and_ctrl/issues/332), [#333](https://github.com/krakenhavoc/cmd_and_ctrl/issues/333), [#337](https://github.com/krakenhavoc/cmd_and_ctrl/issues/337), [#339](https://github.com/krakenhavoc/cmd_and_ctrl/issues/339) — four waiting on a primitive, two whose blocker has lifted
+- **Token art:** [#1115](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1115) with [ADR 0078](decisions/0078-token-art.md), Proposed
+- **Token colours:** [#1127](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1127), independent of the art work in both directions
+- **The 4-player table**, carried from S12 through S32 and now here
+
+**Left this sprint:** [#343](https://github.com/krakenhavoc/cmd_and_ctrl/issues/343), the transform verb, moved to S46. The five non-report engine items #534 raised and #734 left to the owner were taken into later sprints rather than this one: [#492](https://github.com/krakenhavoc/cmd_and_ctrl/issues/492) into S37, [#489](https://github.com/krakenhavoc/cmd_and_ctrl/issues/489), [#478](https://github.com/krakenhavoc/cmd_and_ctrl/issues/478) and [#360](https://github.com/krakenhavoc/cmd_and_ctrl/issues/360) into S39; [#482](https://github.com/krakenhavoc/cmd_and_ctrl/issues/482) is closed with no milestone.
+
+**Explicitly not in this sprint**, per #734: S33's deploy survival ([#515](https://github.com/krakenhavoc/cmd_and_ctrl/issues/515)), S34's user database ([#607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/607)), store and boundary hardening ([#720](https://github.com/krakenhavoc/cmd_and_ctrl/issues/720)), token redaction in bug reports ([#721](https://github.com/krakenhavoc/cmd_and_ctrl/issues/721)), `pruneOrphanMeta` ([#525](https://github.com/krakenhavoc/cmd_and_ctrl/issues/525)), adventure cards ([#719](https://github.com/krakenhavoc/cmd_and_ctrl/issues/719)), and catalog growth beyond the reported cards.
 
 ---

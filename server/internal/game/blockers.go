@@ -71,13 +71,15 @@ func BlockerEligible(b *Card, seat uuid.UUID) bool {
 // auto-passing the window costs the player nothing and is the right
 // behaviour.
 //
-// Menace is deliberately not folded in. CanBlockLocked is per-pair, while
-// menace is a block-COUNT rule the engine enforces when the
-// declaration is locked in (BlockerCountValid), so a defender holding exactly one
-// eligible creature against a lone menace attacker is reported as
-// owing a decision they cannot actually act on. That errs toward
-// stopping, which is the safe direction for this signal: a spurious
-// stop costs a click, a spurious skip costs the game.
+// Block COUNTS are folded in (#750, ADR 0045 addendum Decision 14).
+// The signal asks the same option generator the legal-move enumerator
+// asks — BlockOptionsLocked — so "this seat has a legal block" means
+// the same thing to both, and to the verb that would accept it. A
+// defender whose only untapped creature faces a lone menace attacker
+// has no legal block and no longer owes a decision: the window can be
+// auto-passed because there is nothing in it for them. This used to
+// err deliberately toward stopping, because a per-pair check could
+// not see a count; now it does not have to guess.
 //
 // Goes through ReadSnapshot rather than taking the read lock
 // directly, because the layer refresh it needs is a WRITE (see
@@ -103,41 +105,17 @@ func (g *Game) seatOwesBlockDecisionLocked(seat uuid.UUID) bool {
 	if seat == uuid.Nil {
 		return false
 	}
-	// Attackers pointed at this seat. Collected first so the blocker
-	// scan below can stop at the first legal pairing.
+	// One legal block is all it takes, so the generator is asked to
+	// stop at the first one it finds rather than build the whole
+	// option set for an answer this throws away — it runs on every
+	// snapshot, for every seat.
 	//
-	// S27: "pointed at this seat" is no longer a bare id comparison.
-	// An attack on a planeswalker names the PLANESWALKER, and its
-	// controller is the one who may block (CR 509.1a); an attack on a
-	// battle names the battle, and its PROTECTOR blocks. Comparing
-	// AttackingTarget to the seat directly would have told a player
-	// under a full planeswalker assault that they owed no block
-	// decision — and #328's auto-pass guard reads exactly this
-	// function, so it would have passed the window for them.
-	var attackers []*Card
-	for i := range g.Battlefield.Cards {
-		if g.Battlefield.Cards[i].AttackingTarget == uuid.Nil {
-			continue
-		}
-		if g.defendingPlayerForAttackLocked(g.Battlefield.Cards[i].AttackingTarget) == seat {
-			attackers = append(attackers, &g.Battlefield.Cards[i])
-		}
-	}
-	if len(attackers) == 0 {
-		return false
-	}
-	for i := range g.Battlefield.Cards {
-		b := &g.Battlefield.Cards[i]
-		if !BlockerEligible(b, seat) {
-			continue
-		}
-		for _, a := range attackers {
-			if g.CanBlockLocked(a, b) {
-				return true
-			}
-		}
-	}
-	return false
+	// S27's planeswalker and battle cases live inside the generator:
+	// "attacking this seat" is the DEFENDING player of the attack, not
+	// a bare id comparison, which is what kept a player under a full
+	// planeswalker assault from being told they owed no block
+	// decision.
+	return len(g.blockOptionsLocked(seat, 1, 1)) > 0
 }
 
 // SeatsOwingBlockDecisionLocked returns the seat INDICES that owe a
@@ -237,12 +215,16 @@ func (g *Game) commitBlockDeclarationLocked() {
 	if !g.blockDeclarationPendingLocked() {
 		return
 	}
-	// Pass 0: refuse an illegal declaration (CR 509.1b). Menace is a
-	// block-COUNT rule, so it can only be judged on the COMPLETE
-	// declaration, which is what the lock-in is (CR 509.1). This is
-	// the only place it is judged — the damage steps never ask again
-	// (#715).
-	g.revertIllegalBlockCountsLocked()
+	// There is no legality pass here any more (#750, ADR 0045
+	// addendum Decision 13). The block COUNTS this used to close out
+	// — menace's minimum, and the maxima #750's block rules add — are
+	// refused by DeclareBlockers when the declaration is made, so
+	// every block that reaches the lock-in is already legal and the
+	// lock-in has nothing to undo. That ordering is the fix: reverting
+	// here meant the defender was told a lone block on a menace
+	// attacker was good and only found out otherwise when the arrow
+	// vanished.
+	//
 	// Pass 1: the per-pair blocks. "Whenever this creature blocks"
 	// (CR 509.3a) and "becomes blocked by a creature" read these, and
 	// so does the public game log.
@@ -311,51 +293,6 @@ func (g *Game) commitBlockDeclarationLocked() {
 func (g *Game) clearBlockStateLocked() {
 	g.announcedBlocks = nil
 	g.blockedAttackers = nil
-}
-
-// revertIllegalBlockCountsLocked is the CR 509.1b close-out for the
-// block-COUNT rules — menace today (CR 702.111b), and whatever else
-// BlockerCountValid grows. An attacker blocked by too few creatures
-// has those blocks reverted (the blockers stop blocking; the attacker
-// is left unblocked), which is this engine's reading of "the
-// declaration is illegal": the sandbox declares blockers one pair at a
-// time, so the only moment the count can be judged is when the
-// declaration is complete.
-//
-// Judged ONCE. An attacker already in blockedAttackers is skipped —
-// it was blocked by a legal declaration, and legality is never
-// re-evaluated (CR 509.1h: a blocker that leaves afterwards does not
-// un-block it; #715: the damage steps used to re-run this check on
-// the live battlefield and reverted a menace block when one of its
-// two blockers died).
-//
-// Caller must hold g.mu, with fresh layers — HasKeyword reads the
-// effective characteristic.
-func (g *Game) revertIllegalBlockCountsLocked() {
-	byAttacker := map[uuid.UUID][]int{}
-	for i := range g.Battlefield.Cards {
-		c := &g.Battlefield.Cards[i]
-		if c.BlockingTarget == uuid.Nil || g.blockedAttackers[c.BlockingTarget] {
-			continue
-		}
-		byAttacker[c.BlockingTarget] = append(byAttacker[c.BlockingTarget], i)
-	}
-	for atkID, idxs := range byAttacker {
-		atk := findBattlefieldCard(g, atkID)
-		if atk == nil {
-			continue
-		}
-		blockers := make([]*Card, 0, len(idxs))
-		for _, i := range idxs {
-			blockers = append(blockers, &g.Battlefield.Cards[i])
-		}
-		if BlockerCountValid(atk, blockers) {
-			continue
-		}
-		for _, b := range blockers {
-			b.BlockingTarget = uuid.Nil
-		}
-	}
 }
 
 // attackerBlockedLocked reports whether the attacker is blocked

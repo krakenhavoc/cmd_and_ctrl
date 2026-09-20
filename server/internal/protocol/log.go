@@ -40,6 +40,7 @@ package protocol
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -188,6 +189,36 @@ const (
 	// (CR 716.2); `Amount` is the new level. A level is not a
 	// counter, so LogCounters cannot say it.
 	LogClassLevel LogKind = "class_level"
+	// LogSettings — a table setting changed (ADR 0075 §2.3). `Label`
+	// is the setting's key ("undo_limit", "allow_spawn") and `Choice`
+	// its NEW value as text; the old value is deliberately not on the
+	// wire, because the sentence the table needs is "undos are 3 now",
+	// not a diff.
+	//
+	// The one log kind that is not about the game: it is about the
+	// rules the game is being played under, which is exactly why it
+	// has to be written down. A budget that quietly halved mid-game is
+	// the argument this line exists to prevent.
+	LogSettings LogKind = "settings"
+	// LogSpawn — the host or the admin put cards or tokens onto the
+	// table from nowhere (ADR 0075 §2.4). `Label` is the card or
+	// token name, `Amount` the count, `NewZone` where they went and
+	// `TargetSeat` whose zone it was. This line is the ONLY thing
+	// that tells the table a Treasure was handed out rather than
+	// earned, which is the condition the feature ships under; a
+	// spawn into a hidden zone names the zone and not the card.
+	LogSpawn LogKind = "spawn"
+	// LogTransform — a permanent was turned over to its other face
+	// (CR 701.27a). `Label` is the name of the face it turned FROM,
+	// which is the only place that name survives: the card's own name
+	// is already the new face by the time the entry is projected.
+	//
+	// Narrated rather than silent, unlike the other board-state
+	// changes: a card physically turning over is the clearest case
+	// there is of a thing a player announces out loud, and a reader
+	// scrolling back wants to know WHEN it happened, which the board
+	// alone cannot say. Added in S46 (ADR 0079, #343).
+	LogTransform LogKind = "transform"
 )
 
 // The three choose-a-value kinds are separate rather than one "chose
@@ -320,6 +351,20 @@ type LogEvent struct {
 	// saying "+1/+1" under a card it no longer names would put back
 	// what the CardView filter took away.
 	Label string `json:"label,omitempty"`
+	// ActorIsHost marks an entry whose actor held the table (ADR
+	// 0075 §2.1) when they took it. Set only on the kinds where the
+	// authority is the point — today LogSpawn, where "who put this
+	// Treasure here" and "were they allowed to" are the same
+	// question.
+	//
+	// Stamped by the ROOM, not by the projection: the host is a
+	// property of the room, not of the engine, so publicLogOf cannot
+	// know it. See StampHostOnLog, which the room calls on the same
+	// view it stamps PlayerView.IsHost on. An entry from a table with
+	// no host, or from a spawner who is not the host (the dev route
+	// lets anyone at a preview table spawn), is left false — which is
+	// the honest answer, not a missing one.
+	ActorIsHost bool `json:"actor_is_host,omitempty"`
 	// Text is the rendered, human-readable line. Always present.
 	Text string `json:"text"`
 
@@ -680,6 +725,19 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		}
 		return base, true
 
+	case game.EventSettingsChanged:
+		// ADR 0075 §2.3: every change is logged, because the settings
+		// are the rules the table agreed to play under and a change to
+		// them is a thing announced out loud. One event per field that
+		// actually moved, so one line per field.
+		//
+		// Actor is uuid.Nil for the server admin — Seat is NoSeat and
+		// the sentence says "The admin" rather than naming a seat.
+		base.Kind = LogSettings
+		base.Label = ev.Label
+		base.Choice = ev.SettingNew
+		return base, true
+
 	case game.EventSpecialAction:
 		// CR 116.2. The card's motion out of a hand is told by its
 		// LogZone line — and that line cannot say WHICH action it was,
@@ -690,6 +748,29 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Kind = LogSpecialAction
 		base.CardID = uuidStringOrEmpty(ev.CardID)
 		base.Label = ev.Label
+		return base, true
+
+	case game.EventSpawned:
+		// ADR 0075 §2.4. The whole justification for allowing a
+		// production spawn is that the table can see it happen: a
+		// spawned Treasure is indistinguishable from an earned one on
+		// the board, and this line is the difference.
+		base.Kind = LogSpawn
+		base.Amount = ev.Amount
+		base.NewZone = string(ev.NewZone)
+		if seat := seatOf(ev.Target); seat != NoSeat {
+			base.TargetSeat = &seat
+		}
+		// A spawn into a hand or a library names the ZONE and not the
+		// card, for the same reason a hand → library move carries no
+		// card reference at all: the name is hidden information about
+		// a hidden zone, and the entry redaction downstream cannot
+		// reach it — this entry has no CardID for the knower
+		// predicate to key on. Dropped here, at build time, so it is
+		// dropped for everyone including the spawner.
+		if !hiddenZone(ev.NewZone) {
+			base.Label = ev.Label
+		}
 		return base, true
 
 	case game.EventCycle:
@@ -765,6 +846,15 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Kind = LogClassLevel
 		base.CardID = uuidStringOrEmpty(ev.CardID)
 		base.Amount = ev.Amount
+		return base, true
+
+	case game.EventTransform:
+		// CR 701.27a. Not a zone move (CR 712.18), so no LogZone entry
+		// says it — this is the only line the table gets, and without
+		// it a permanent silently becomes a different card.
+		base.Kind = LogTransform
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.Label = ev.Label
 		return base, true
 
 	default:
@@ -1150,8 +1240,173 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 			return fmt.Sprintf("%s gained a level", card)
 		}
 		return fmt.Sprintf("%s became level %d", card, e.Amount)
+	case LogSettings:
+		return renderSettingsText(e)
+	case LogSpawn:
+		return renderSpawnText(e, target)
+	case LogTransform:
+		// The card name is the face it turned INTO — viewOfCard reads
+		// the active face — and Label is the one it turned from. Label
+		// is cleared with the name on a redacted entry, so the fallback
+		// is the line a viewer who may not identify the card reads.
+		if e.Label == "" {
+			return fmt.Sprintf("%s transformed", card)
+		}
+		return fmt.Sprintf("%s transformed into %s", e.Label, card)
 	default:
 		return card
+	}
+}
+
+// renderSettingsText words a table-settings change the way the host
+// would say it out loud (ADR 0075 §2.3): "Luke (host) set undos to 3
+// per turn", "Luke (host) allowed spawning".
+//
+// The "(host)" is not read off the view — the log is projected inside
+// ViewOfGame, before Room.stampHostLocked decides which seat wears the
+// crown, so it is not available here. It is instead true BY
+// CONSTRUCTION: the only two paths to EventSettingsChanged are the
+// PATCH route and the set_table_settings action, and both refuse
+// anyone who is not the host or the admin. An admin change has no seat
+// at all (Actor is uuid.Nil), and says so.
+//
+// A key the table does not know about renders generically rather than
+// being dropped: a setting nobody can name still changed, and a line
+// that says so is better than a silence. The default arm is what a
+// future field gets for free until someone gives it a sentence.
+func renderSettingsText(e LogEvent) string {
+	who := nameOr(e.actorName, "someone")
+	if e.Seat == NoSeat {
+		who = "The admin"
+	} else {
+		who += " (host)"
+	}
+	switch e.Label {
+	case game.SettingUndoLimit:
+		switch e.Choice {
+		case strconv.Itoa(game.UndoUnlimited):
+			return fmt.Sprintf("%s made undos unlimited", who)
+		case "0":
+			return fmt.Sprintf("%s turned undos off", who)
+		case "1":
+			return fmt.Sprintf("%s set undos to 1 per turn", who)
+		}
+		return fmt.Sprintf("%s set undos to %s per turn", who, e.Choice)
+	case game.SettingUndoScope:
+		if e.Choice == string(game.UndoScopeHostAny) {
+			return fmt.Sprintf("%s may now undo anyone's action", who)
+		}
+		return fmt.Sprintf("%s limited undo to each player's own actions", who)
+	case game.SettingStartingLife:
+		return fmt.Sprintf("%s set starting life to %s", who, e.Choice)
+	case game.SettingCommanderDamage:
+		return fmt.Sprintf("%s set lethal commander damage to %s", who, e.Choice)
+	case game.SettingBotPace:
+		return fmt.Sprintf("%s set the bots' pace to %s", who, e.Choice)
+	case game.SettingAllowSpawn:
+		if e.Choice == "true" {
+			return fmt.Sprintf("%s allowed spawning", who)
+		}
+		return fmt.Sprintf("%s disallowed spawning", who)
+	}
+	if e.Label == "" {
+		return fmt.Sprintf("%s changed a table setting", who)
+	}
+	return fmt.Sprintf("%s set %s to %s", who, e.Label, nameOr(e.Choice, "its default"))
+}
+
+// renderSpawnText words a spawn (ADR 0075 §2.4): who did it, under
+// what authority, what arrived, how many, and whose zone it landed
+// in — "Luke (host) spawned 2 × Treasure onto Ana's battlefield."
+//
+// An empty Label is a spawn into a hidden zone, which names the zone
+// and not the card by construction (see projectEvent). An unseated
+// actor is the server admin: a spawn has exactly two authorised
+// callers on a production table, so "someone" — renderLogText's
+// fallback for an actorless entry — would be a worse answer than the
+// one we have.
+func renderSpawnText(e LogEvent, target string) string {
+	who := e.actorName
+	switch {
+	case who == "":
+		who = "The admin"
+	case e.ActorIsHost:
+		who += " (host)"
+	}
+
+	what := "a card"
+	switch {
+	case e.Label != "" && e.Amount > 1:
+		what = fmt.Sprintf("%d × %s", e.Amount, e.Label)
+	case e.Label != "":
+		what = e.Label
+	case e.Amount > 1:
+		what = fmt.Sprintf("%d cards", e.Amount)
+	}
+
+	switch game.ZoneKind(e.NewZone) {
+	case game.ZoneBattlefield:
+		return fmt.Sprintf("%s spawned %s onto %s's battlefield", who, what, target)
+	case game.ZoneExile:
+		// Exile is shared (ZoneRef.Owner is nil for it), so there is
+		// no "whose" to name.
+		return fmt.Sprintf("%s spawned %s into exile", who, what)
+	default:
+		return fmt.Sprintf("%s spawned %s into %s's %s", who, what, target, spawnZoneWord(e.NewZone))
+	}
+}
+
+// spawnZoneWord is prettyZone without the article, because a spawn
+// line puts a possessive in front of it ("Ana's graveyard", not
+// "Ana's the graveyard").
+func spawnZoneWord(z string) string {
+	switch game.ZoneKind(z) {
+	case game.ZoneHand:
+		return "hand"
+	case game.ZoneGraveyard:
+		return "graveyard"
+	case game.ZoneLibrary:
+		return "library"
+	case game.ZoneCommand:
+		return "command zone"
+	default:
+		return "zone"
+	}
+}
+
+// StampHostOnLog marks the log entries whose actor is the seat this
+// view flags as host, and re-renders their text.
+//
+// It is a second pass rather than part of publicLogOf because the
+// host lives on the ROOM (ws/host.go) and the projection only has the
+// engine. ws.Room.stampHostLocked calls it immediately after it
+// stamps PlayerView.IsHost, on the same view, so the two can never
+// disagree about who held the table.
+//
+// Only LogSpawn entries are touched: the marker is there to say a
+// spawn was authorised, and putting "(host)" on every line a host
+// happened to produce would make it noise rather than a signal.
+func StampHostOnLog(v *GameView) {
+	if v == nil {
+		return
+	}
+	host := NoSeat
+	for i, s := range v.Seats {
+		if s.IsHost {
+			host = i
+			break
+		}
+	}
+	if host == NoSeat {
+		return
+	}
+	for i := range v.Log {
+		e := &v.Log[i]
+		if e.Kind != LogSpawn || e.Seat != host {
+			continue
+		}
+		e.ActorIsHost = true
+		e.Text = renderLogText(*e, e.cardName, e.targetName)
 	}
 }
 

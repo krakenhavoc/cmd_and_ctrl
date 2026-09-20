@@ -30,8 +30,12 @@ import (
 // the decision must describe the same instant, and a bot seat still
 // costs exactly one view per decision.
 func (r *Runner) enumerationOrder() (legal.Options, Input) {
-	orderer, wantsOrder := r.policy.(TargetOrderer)
-	pricer, wantsFuel := r.policy.(CostFuelPricer)
+	// Capability, not a bare type assertion on r.policy: every
+	// shipped tier is a policy inside a wrapper, and a wrapper that
+	// did not forward these turned both hooks off on every seat the
+	// lobby could create (#1060). See aiseat/capability.go.
+	orderer, wantsOrder := Capability[TargetOrderer](r.policy)
+	pricer, wantsFuel := Capability[CostFuelPricer](r.policy)
 	if !wantsOrder && !wantsFuel {
 		return legal.Options{}, Input{}
 	}
@@ -47,7 +51,7 @@ func (r *Runner) enumerationOrder() (legal.Options, Input) {
 }
 
 func (r *Runner) concede(ctx context.Context, in Input) bool {
-	c, ok := r.policy.(Conceder)
+	c, ok := Capability[Conceder](r.policy)
 	if !ok || !c.ShouldConcede(in) {
 		return false
 	}

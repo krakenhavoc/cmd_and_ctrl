@@ -19,7 +19,41 @@ on:
     # 08:30 UTC = 01:30 PT / 04:30 ET — quiet window, avoids colliding
     # with the hourly Scryfall mirror refresh and most push traffic.
     - cron: "30 8 * * *"
+  # The inputs are the bot-soak job's knobs (#685), and every one of
+  # them has a default that is what the schedule uses, so a hand run
+  # with nothing filled in is the nightly. They exist for the two things
+  # a hand run is for: shrinking the job while checking the wiring
+  # (soak_games: 2), and replaying a night that went red
+  # (soak_seed: <the seed the artifact printed>).
+  #
+  # `inputs` is empty on a schedule, so every consumer below reads
+  # `inputs.x || '<default>'` rather than trusting the default here.
   workflow_dispatch:
+    inputs:
+      heuristic_games:
+        description: "Four-heuristic games to a winner (S31 exit criterion 2)"
+        required: false
+        default: "20"
+      soak_games:
+        description: "Randomised soak games (S31 exit criterion 4)"
+        required: false
+        default: "100"
+      soak_policy:
+        description: "What fills the soak's seats: random | heuristic | mixed"
+        required: false
+        default: "random"
+      soak_seed:
+        description: "Soak base seed. Empty = derived from today's UTC date"
+        required: false
+        default: ""
+      stall:
+        description: "AISEAT_STALL — no-sequence-movement budget per game"
+        required: false
+        default: "30s"
+      wallclock:
+        description: "AISEAT_WALLCLOCK — wall-clock backstop per game"
+        required: false
+        default: "300s"
 
 # One e2e run per ref; a newer merge supersedes an in-flight run.
 # Safe to cancel (unlike ci-cd.yml's deploy) — nothing here mutates
@@ -62,28 +96,33 @@ jobs:
       # persists on a self-hosted runner and actions/cache untarring
       # over Go's read-only module cache fails on every run.
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: "1.22"
           cache: false
 
       - name: Bot whole-game tests
         working-directory: server
-        # -skip the twenty-game random run; the step below owns it.
-        # Splitting it out costs a second `go test` invocation and buys
-        # the difference between 24 minutes and 4: one four-bot random
-        # game is ~8s, and ~70s under -race. Twenty of them do not fit
-        # in this step's budget, and buying the race detector for them
-        # is the wrong thing to spend it on — the runner-goroutine
-        # concurrency it would be watching is the same code path every
-        # other whole-game test in this step drives under -race, on
-        # the same rooms, with the same observers. The fuzzing value of
-        # twenty random tables is in the ENGINE states they reach, and
-        # the detector adds nothing to that.
+        # -skip the twenty-game random run and, since #685, the
+        # twenty-game heuristic run: the step below owns the first and
+        # the `bot-soak` job owns the second, and neither should be
+        # played twice a night.
+        #
+        # Splitting the random one out costs a second `go test`
+        # invocation and buys the difference between 24 minutes and 4:
+        # one four-bot random game is ~8s, and ~70s under -race. Twenty
+        # of them do not fit in this step's budget, and buying the race
+        # detector for them is the wrong thing to spend it on — the
+        # runner-goroutine concurrency it would be watching is the same
+        # code path every other whole-game test in this step drives
+        # under -race, on the same rooms, with the same observers. The
+        # fuzzing value of twenty random tables is in the ENGINE states
+        # they reach, and the detector adds nothing to that. The
+        # heuristic twenty are skipped on exactly that argument.
         #
         # Measured 2026-09-14, this step with the -skip in place:
         # internal/aiseat 336s under -race on a contended machine.
-        run: go test ./internal/aiseat/... -race -timeout 30m -skip TestFourRandomBotsPlayToAWinner
+        run: go test ./internal/aiseat/... -race -timeout 30m -skip 'TestFourRandomBotsPlayToAWinner|TestFourHeuristicBotsPlayToAWinner'
 
       # S31's four-`random`-bots exit criterion: twenty consecutive
       # unattended games to a winner, no deadlocks, no illegal actions,
@@ -161,6 +200,264 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  # S31's two standing gates that nothing ran (#685, #89 exit criteria
+  # 2 and 4 of the ORIGINAL list — see docs/sprints.md § S31):
+  #
+  #   2. four `heuristic` bots to a winner within 50 turns, 20 runs
+  #   4. a 100-game randomised run with zero engine-rejected actions
+  #
+  # Both numbers were true on the afternoon somebody typed them into
+  # the sprint doc and never again: the nightly played the heuristic
+  # test's default 3 seeds, and no workflow has ever set
+  # AISEAT_SOAK_GAMES, so `TestRandomBotSoak` had run in CI exactly
+  # zero times. A criterion nothing runs is a claim, not a gate.
+  #
+  # Its own job rather than two more steps on `bot-games`: that job is
+  # already ~10 minutes of whole games under -race plus the catalog
+  # soak's Scryfall download, this adds ~15, and one red step there
+  # would hide the other three. Separate jobs also mean this one can
+  # own its budgets (below) without loosening anything `bot-games`
+  # asserts.
+  #
+  # NO -race, deliberately, for the reason the random-table step
+  # already records: what these two buy is the ENGINE states 120 four-
+  # bot tables reach, and the runner-goroutine concurrency the detector
+  # would watch is the same code every whole-game test in `bot-games`
+  # drives under -race. -race also costs roughly 8x here (one random
+  # game is ~8s, ~70s under it), which turns a 15-minute job into two
+  # hours on a runner shared with CI.
+  #
+  # NOTHING here needs the network or a model key. The improviser and
+  # the model tiers are out of scope by construction: the seats are
+  # filled by `heuristic.New()` and `aiseat.NewRandomPolicy`, both of
+  # which decide in microseconds against the local engine.
+  bot-soak:
+    runs-on: self-hosted
+    # Measured 2026-09-19 on an idle 24-core developer machine: the
+    # heuristic gate 112s for 20 games, the soak 679s for 100. 100
+    # minutes is ~8x that, and it is deliberately ABOVE the two
+    # `go test -timeout` values below (30m + 60m): a Go timeout prints
+    # every goroutine's stack into the artifact, a job timeout kills
+    # the upload.
+    timeout-minutes: 100
+    env:
+      AISEAT_GAME_TESTS: "1"
+      # The budgets, and the whole reason #685 asked for them before
+      # the steps: every bot-table test used to carry literals tuned on
+      # an idle machine, and on the shared self-hosted runner those
+      # literals failed three PRs that had touched nothing near the bot
+      # seat (#418, #431, #434) and then the nightly itself (#600).
+      # A loaded runner should make this job slow, not red.
+      #
+      # 30s without the room's sequence moving is a deadlocked table by
+      # any reading — the soak's own default is 3s — and 300s of wall
+      # clock per game is ~40x the ~8s a game actually takes.
+      AISEAT_STALL: ${{ inputs.stall || '30s' }}
+      AISEAT_WALLCLOCK: ${{ inputs.wallclock || '300s' }}
+      SOAK_LOGS: ${{ github.workspace }}/bot-soak-logs
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      # cache: false for the same reason as every other job here: $HOME
+      # persists on a self-hosted runner and actions/cache untarring
+      # over Go's read-only module cache fails on every run.
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.22"
+          cache: false
+
+      # Verbatim from ci-cd.yml (#942, #892). This job is a second
+      # ~15-minute `go test` on the same shared runner whose disk
+      # filled mid-test three branches in a row on 2026-09-18, and a
+      # soak that dies on ENOSPC files a bug about the engine.
+      - name: Free runner disk
+        shell: bash
+        run: |
+          df -h / /tmp | sed 's/^/before: /'
+          rm -rf /tmp/go-build* 2>/dev/null || true
+          avail_kb=$(df --output=avail -k / | tail -1 | tr -d ' ')
+          if [ "${avail_kb:-0}" -lt 15728640 ]; then
+            echo "under 15 GB free: dropping the Go build and test caches"
+            go clean -cache -testcache
+          fi
+          if command -v docker >/dev/null 2>&1; then
+            docker system prune -f >/dev/null 2>&1 || true
+          fi
+          df -h / /tmp | sed 's/^/after: /'
+
+      # Every game in this job is seeded, and every seed is printed, so
+      # a failure is replayable from the artifact alone.
+      #
+      # The heuristic gate's seeds are fixed in the test (101..120), so
+      # it plays the same twenty tables every night and a regression
+      # there is unambiguous. The soak's base seed is derived from the
+      # UTC date instead, the way the catalog soak's is (#601): a fixed
+      # soak seed would fuzz the same hundred tables for ever and stop
+      # finding anything after the first green night. The x1000 is what
+      # keeps consecutive nights disjoint — game i uses base+i, so two
+      # nights 1 apart would otherwise overlap in 99 of 100 games.
+      - name: Pick the soak's base seed
+        id: seed
+        shell: bash
+        run: |
+          set -eu
+          seed="${SEED_INPUT}"
+          if [ -z "${seed}" ]; then
+            seed="$(date -u +%Y%m%d)000"
+          fi
+          echo "seed=${seed}" >> "$GITHUB_OUTPUT"
+          echo "soak base seed: ${seed} (games use base+0 .. base+n-1)"
+        env:
+          SEED_INPUT: ${{ inputs.soak_seed }}
+
+      # S31 exit criterion 2. 20/20 to a single survivor inside 50
+      # turns, zero engine-refused moves, zero runner fallbacks — the
+      # heuristic policy is the fallback, so needing one is a bug.
+      #
+      # tee, not just the step log: the artifact is the thing a failure
+      # is read out of the next morning, and `-v` puts the per-seed
+      # line (state, turns, winner, lives, applied/passes/rejected) in
+      # it for green games too, which is what makes a red one
+      # comparable.
+      - name: Heuristic gate — four heuristic bots to a winner, 20 games
+        working-directory: server
+        env:
+          AISEAT_HEURISTIC_GAMES: ${{ inputs.heuristic_games || '20' }}
+        run: |
+          set -euo pipefail
+          mkdir -p "${SOAK_LOGS}"
+          go test ./internal/aiseat/ -run TestFourHeuristicBotsPlayToAWinner \
+            -v -timeout 30m 2>&1 | tee "${SOAK_LOGS}/heuristic-games.log"
+
+      # S31 exit criterion 4. The two gates are independent, so a red
+      # heuristic run must not hide the soak: !cancelled() runs this
+      # whatever the step above did, and both report.
+      #
+      # A stall fails the game with the board printed (turn, step,
+      # priority holder, pending choices, every seat) and the exact
+      # command to replay that one table. That dump lands in the
+      # artifact through the same tee.
+      - name: Random soak — 100 games, zero engine-rejected actions
+        if: ${{ !cancelled() }}
+        working-directory: server
+        env:
+          AISEAT_SOAK_GAMES: ${{ inputs.soak_games || '100' }}
+          AISEAT_SOAK_POLICY: ${{ inputs.soak_policy || 'random' }}
+          AISEAT_SOAK_SEED: ${{ steps.seed.outputs.seed }}
+        run: |
+          set -euo pipefail
+          mkdir -p "${SOAK_LOGS}"
+          go test ./internal/aiseat/ -run TestRandomBotSoak \
+            -v -timeout 60m 2>&1 | tee "${SOAK_LOGS}/random-soak.log"
+
+      # Uploaded on green too, and that is the point: the log carries
+      # the seeds and the per-game result line, so the night a game
+      # goes red you can diff it against the night before.
+      #
+      # These are the decision LOGS of the run, not AISEAT_DECISION_LOG.
+      # That variable writes every policy window with its full board
+      # view — 100-250 MiB per game, so 120 games is 12-30 GB — and this
+      # job shares a disk with CI (#892). If a position corpus is ever
+      # wanted from the nightly it needs its own job, its own retention
+      # and `AISEAT_DECISION_LOG_MODE=escalated`.
+      - name: Upload soak decision logs and stall dumps
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: bot-soak-logs
+          path: bot-soak-logs/
+          if-no-files-found: warn
+          retention-days: 14
+
+  # One standing issue, not one per night.
+  #
+  # A nightly that files a fresh issue every morning trains everyone to
+  # close them unread, and a nightly that files nothing is a gate
+  # nobody is told about. So: find the open issue with this exact
+  # title and comment on it, or open it if there is none. Closing it is
+  # how you say "handled"; the next red night opens a fresh one.
+  #
+  # Scheduled runs only. A workflow_dispatch against a branch is
+  # somebody checking their own work and is expected to go red.
+  soak-tracker:
+    needs: [bot-soak]
+    if: ${{ failure() && github.event_name == 'schedule' }}
+    runs-on: self-hosted
+    permissions:
+      issues: write
+    steps:
+      # curl is the house style for talking to the API from a workflow
+      # (see issue-triage.yml, which explains why: no gh, no
+      # actions/github-script, self-hosted runners). That file also says
+      # "no jq", because its writes are idempotent and need no
+      # read-modify-write. This one does need one — "comment if it
+      # exists, else create" — and jq is already a hard dependency of
+      # this workflow through scripts/scryfall-refresh.sh.
+      - name: Open or update the standing soak-failure issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          API: ${{ github.api_url }}/repos/${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SHA: ${{ github.sha }}
+          TITLE: "Nightly bot soak is red (S31 standing gates)"
+        run: |
+          set -euo pipefail
+
+          api() {
+            curl -sS \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "$@"
+          }
+
+          # Exact title match over the label pair, not the search API:
+          # search is a separate, eventually-consistent index, and a
+          # stale answer here means a duplicate issue.
+          existing=$(api "${API}/issues?state=open&labels=bug,tech-debt&per_page=100" \
+            | jq -r --arg t "${TITLE}" '[.[] | select(.title == $t)] | .[0].number // empty')
+
+          # printf rather than a heredoc: a heredoc inside a YAML block
+          # scalar keeps the block's indentation, and four indented
+          # lines are a Markdown code fence nobody meant to write.
+          body=$(printf '%s\n' \
+            'The nightly `bot-soak` job failed: the heuristic-20 gate, the' \
+            '100-game randomised soak, or both. These are S31 exit criteria' \
+            '2 and 4 (docs/sprints.md § S31), and they are gates rather than' \
+            'claims only while this job is green.' \
+            '' \
+            "- Run: ${RUN_URL}" \
+            "- Commit: \`${SHA}\`" \
+            '' \
+            'The `bot-soak-logs` artifact on that run holds both `go test -v`' \
+            'logs. Every game is seeded and every seed is printed, including' \
+            'on a green night, and a stalled table prints the exact command' \
+            'that replays it.' \
+            '' \
+            'This is one standing issue rather than one per night: a later' \
+            'red night comments here instead of filing again. Close it once' \
+            'the nightly is green, and the next failure opens a fresh one.')
+
+          if [ -n "${existing}" ]; then
+            payload=$(jq -n --arg b "${body}" '{body: $b}')
+            code=$(api -o /dev/null -w '%{http_code}' -X POST -d "${payload}" \
+              "${API}/issues/${existing}/comments")
+            case "${code}" in
+              201) echo "commented on #${existing}" ;;
+              *) echo "::error::commenting on #${existing} failed with HTTP ${code}"; exit 1 ;;
+            esac
+          else
+            payload=$(jq -n --arg t "${TITLE}" --arg b "${body}" \
+              '{title: $t, body: $b, labels: ["bug", "tech-debt"]}')
+            code=$(api -o /dev/null -w '%{http_code}' -X POST -d "${payload}" "${API}/issues")
+            case "${code}" in
+              201) echo "opened the standing soak-failure issue" ;;
+              *) echo "::error::opening the soak-failure issue failed with HTTP ${code}"; exit 1 ;;
+            esac
+          fi
+
   playwright:
     runs-on: self-hosted
     env:
@@ -181,7 +478,7 @@ jobs:
       # Note the Scryfall cache below is NOT affected and stays on: its
       # path is inside the workspace, not $HOME.
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: "1.22"
           cache: false

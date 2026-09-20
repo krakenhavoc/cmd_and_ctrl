@@ -43,8 +43,11 @@ type User struct {
 	AvatarURL  string
 	CreatedAt  time.Time
 	LastSeenAt time.Time
-	// SessionsInvalidBefore is decision 6's revocation watermark.
-	// Stored from this sub-PR; nothing reads it until sub-PR 7.
+	// SessionsInvalidBefore is decision 6's revocation watermark: a
+	// session for this user issued at or before it is refused. Zero
+	// until the user first signs out everywhere or is removed by an
+	// admin. The request path reads it through Revocations, never
+	// through Get; see there.
 	SessionsInvalidBefore time.Time
 }
 
@@ -64,6 +67,24 @@ type Store interface {
 	UpsertFromDiscord(ctx context.Context, profile discord.User, refreshToken, scopes string) (User, error)
 	// Get reads one user. ErrNotFound if there is none.
 	Get(ctx context.Context, id uuid.UUID) (User, error)
+	// DiscordSubject is the Discord snowflake of a user's Discord
+	// identity — identities.subject for provider = "discord" (ADR 0051
+	// decision 2). It is what the DM-invite route needs to address a
+	// person on Discord, and the only place our user id is turned back
+	// into a snowflake. ErrNotFound when there is no such user, or
+	// when the user has no Discord identity (which cannot happen while
+	// Discord is the only provider, but will once there is a second).
+	//
+	// It is never part of a response body: a tablemate is offered by
+	// OUR id, and the snowflake is resolved server-side.
+	DiscordSubject(ctx context.Context, id uuid.UUID) (string, error)
+	// UserIDForDiscord looks up the user linked to a Discord
+	// snowflake (identities.provider = "discord", .subject =
+	// discordID). ErrNotFound if no identity row matches — an unknown
+	// snowflake, or one that never signed in. Added for #1098's
+	// /cc-end host check: given the Discord user who ran the command,
+	// which users(id) — if any — does games.created_by need to equal.
+	UserIDForDiscord(ctx context.Context, discordID string) (uuid.UUID, error)
 }
 
 // NoStore is the Store for a deployment with no database. Every
@@ -79,6 +100,19 @@ func (NoStore) UpsertFromDiscord(context.Context, discord.User, string, string) 
 // Get always reports ErrNotFound: there are no users without a store.
 func (NoStore) Get(context.Context, uuid.UUID) (User, error) {
 	return User{}, ErrNotFound
+}
+
+// DiscordSubject always reports ErrNotFound, for the same reason Get
+// does: with no database there are no users to resolve.
+func (NoStore) DiscordSubject(context.Context, uuid.UUID) (string, error) {
+	return "", ErrNotFound
+}
+
+// UserIDForDiscord always reports ErrNotFound: there is nothing to
+// look up without a store. Callers (the #1098 host check) treat that
+// as "no", not as an error — see gameCreator's doc comment.
+func (NoStore) UserIDForDiscord(context.Context, string) (uuid.UUID, error) {
+	return uuid.Nil, ErrNotFound
 }
 
 // AvatarPath is the same-origin path the client loads a Discord

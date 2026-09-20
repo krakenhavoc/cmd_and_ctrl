@@ -104,10 +104,22 @@ type Hub struct {
 // rejected with bad_request. Admin spectators (admin session, no
 // `?player=`) keep ReadOnly = false because admins legitimately
 // need to mutate state on a player's behalf.
+//
+// UserID and IssuedAt identify the session behind the connection, for
+// EvictUserSessions (ADR 0051 decision 6). The hub does not interpret
+// them otherwise. UserID is uuid.Nil for admin, spectator and guest
+// sessions, which can never be evicted that way.
 type Binding struct {
 	GameID   uuid.UUID
 	PlayerID uuid.UUID
 	ReadOnly bool
+	UserID   uuid.UUID
+	IssuedAt time.Time
+	// Admin marks a connection authenticated as the server admin
+	// (auth.RoleAdmin). An admin may bind to a player's seat, so
+	// PlayerID alone cannot tell an admin from that player; the table
+	// host gates (ADR 0075, Room.CanManageTable) need the difference.
+	Admin bool
 }
 
 // UpgradeAuthorizer validates an incoming WebSocket upgrade and
@@ -352,6 +364,9 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 		gameID:   gameID,
 		playerID: playerID,
 		readOnly: binding.ReadOnly,
+		admin:    binding.Admin,
+		userID:   binding.UserID,
+		issuedAt: binding.IssuedAt,
 	}
 
 	// Pre-stage the initial snapshot into the client's send channel
@@ -670,6 +685,38 @@ type Client struct {
 	// because admins need to drive state on a player's behalf. Added
 	// in S11.
 	readOnly bool
+
+	// admin marks a connection authenticated as the server admin,
+	// copied from Binding.Admin at upgrade time. PlayerID alone cannot
+	// say it: an admin may bind to a seat with `?player=`, and then
+	// looks exactly like that player. The host gates (ADR 0075 §2.1,
+	// Room.CanManageTable) are the readers — nothing else on the hub
+	// asks, because readOnly already covers "may this connection
+	// mutate at all". Added in S35 (#1032).
+	admin bool
+
+	// userID and issuedAt are the session this connection was opened
+	// with, copied from Binding. Read only by EvictUserSessions; the
+	// hub makes no other decision on them.
+	userID   uuid.UUID
+	issuedAt time.Time
+}
+
+// binding reconstructs the Binding this connection was upgraded with,
+// for the gates that ask Room a question about the whole connection
+// rather than about one field of it (Room.CanManageTable). Keeping the
+// reassembly in one place is what stops a caller building a Binding by
+// hand and forgetting Admin — the field whose absence would silently
+// turn a host gate into "any seat".
+func (c *Client) binding() Binding {
+	return Binding{
+		GameID:   c.gameID,
+		PlayerID: c.playerID,
+		ReadOnly: c.readOnly,
+		Admin:    c.admin,
+		UserID:   c.userID,
+		IssuedAt: c.issuedAt,
+	}
 }
 
 func (c *Client) readPump() {
@@ -882,6 +929,37 @@ func (c *Client) handleAction(frame protocol.Frame) {
 	// spectator — gated branches let those through unchanged.
 	action.Caller = c.playerID
 
+	// ADR 0075 §2.3: the table's rules belong to the table's host (and
+	// the server admin), not to whoever thinks of it first. Both verbs
+	// that change them are gated here rather than in actions.Dispatch,
+	// because Dispatch sees only a *game.Game and a caller ID — it
+	// cannot tell the admin from the seat they are bound to, and it
+	// has no handle on the room that knows who hosts.
+	if isTableSettingsAction(action.Type) {
+		if !room.CanManageTable(c.binding()) {
+			c.sendError(frame.ID, protocol.CodeBadRequest,
+				"only the table host or the server admin may change table settings")
+			return
+		}
+		// …and NOT through Apply: a settings change is not a play, so
+		// it mints no undo entry. Otherwise lowering the undo limit
+		// could be taken back with the undo it was meant to stop, and
+		// a later undo would rewind the table to before the change.
+		// (Game.RestoreFrom already carries Settings forward for the
+		// same reason.)
+		view, seq, err := room.ApplyExternal(func() error {
+			return actions.Dispatch(room.Game, action)
+		})
+		if err != nil {
+			code, msg := classifyActionError(err)
+			c.sendError(frame.ID, code, msg)
+			return
+		}
+		c.hub.broadcastToRoom(room.Game.ID, seq, view)
+		c.log.Debug("table settings changed", "type", payload.Type, "seq", seq)
+		return
+	}
+
 	view, seq, err := room.Apply(c.playerID, func() error {
 		return actions.Dispatch(room.Game, action)
 	})
@@ -921,6 +999,15 @@ func (c *Client) handleAction(frame protocol.Frame) {
 	}
 	c.hub.broadcastToRoom(room.Game.ID, seq, view)
 	c.log.Debug("action dispatched", "type", payload.Type, "seq", seq)
+}
+
+// isTableSettingsAction reports whether an action type changes
+// Game.Settings (ADR 0075 §2.3). The two members share one gate and
+// one non-undoable apply path; set_undo_limit is the deprecated
+// one-field alias for set_table_settings, so treating it any
+// differently would leave the old verb as the way around the new gate.
+func isTableSettingsAction(t actions.Type) bool {
+	return t == actions.TypeSetTableSettings || t == actions.TypeSetUndoLimit
 }
 
 // classifyActionError maps a dispatch-time error from the game or
@@ -1182,14 +1269,70 @@ func (h *Hub) EvictGame(gameID uuid.UUID) int {
 	return len(victims)
 }
 
+// SessionRevokedReason is the close-frame reason EvictUserSessions
+// sends, with code 1000. 1000 is terminal on the client (ADR 0044
+// decision 2), which is right: redialling would present the same
+// revoked token and be refused.
+const SessionRevokedReason = "session revoked"
+
+// EvictUserSessions closes every connection opened with a session of
+// userID issued at or before before — the same rule the authenticator
+// applies to a revoked token (ADR 0051 decision 6). The lobby calls it
+// after a logout-everywhere or an admin revoke, so a revoked session
+// does not keep playing on a socket it opened while it was still good.
+// Returns the number of connections closed.
+//
+// uuid.Nil matches nothing: sessions with no user are not revocable.
+// Cleanup is the same as EvictGame's: close the socket and let the read
+// pump's deferred unregister drain it.
+func (h *Hub) EvictUserSessions(userID uuid.UUID, before time.Time) int {
+	if userID == uuid.Nil {
+		return 0
+	}
+	h.mu.RLock()
+	victims := make([]*Client, 0)
+	for c := range h.clients {
+		if c.userID == userID && !c.issuedAt.After(before) {
+			victims = append(victims, c)
+		}
+	}
+	h.mu.RUnlock()
+
+	for _, c := range victims {
+		_ = c.conn.WriteControl(
+			websocket.CloseMessage,
+			websocket.FormatCloseMessage(websocket.CloseNormalClosure, SessionRevokedReason),
+			time.Now().Add(writeWait),
+		)
+		_ = c.conn.Close()
+	}
+	return len(victims)
+}
+
+// closeGracePeriod bounds how long Shutdown waits, per client, after a
+// successful close-frame write before it forces the connection shut.
+//
+// #518: WriteControl returning nil only means the kernel accepted the
+// close frame's bytes — it says nothing about whether they reached the
+// peer before the FIN (or RST) that an immediately following Close()
+// sends on the same socket. Racing those two is exactly what let a
+// client observe 1001 on one deploy and 1006 (abnormal closure) on the
+// next of the same binary. Waiting here — for the peer's own close
+// response to land (which unblocks readPump and closes the connection
+// first, making our own Close a no-op) or for closeGracePeriod to
+// elapse, whichever is sooner — gives the write time to actually leave
+// the process before we would otherwise sever it ourselves.
+const closeGracePeriod = 250 * time.Millisecond
+
 // Shutdown marks the hub as closed (so new registrations are rejected),
 // closes every connected client, and waits for their read/write pumps
 // to exit, or ctx to cancel — whichever comes first. With zero clients,
 // this returns essentially immediately. Safe to call once.
 //
-// The per-client WriteControl + Close loop honours ctx: if the caller's
-// deadline elapses mid-loop we stop cleanly rather than burning through
-// writeWait-many seconds on every dead client.
+// Each client is closed on its own goroutine so one slow write (or one
+// client waiting out its closeGracePeriod) cannot delay the rest; ctx
+// still bounds the whole operation, both here and in the final wait on
+// h.wg below.
 func (h *Hub) Shutdown(ctx context.Context) {
 	h.mu.Lock()
 	h.closed = true
@@ -1199,17 +1342,19 @@ func (h *Hub) Shutdown(ctx context.Context) {
 	}
 	h.mu.Unlock()
 
+	var wg sync.WaitGroup
 	for _, c := range clients {
 		if ctx.Err() != nil {
 			break
 		}
-		_ = c.conn.WriteControl(
-			websocket.CloseMessage,
-			websocket.FormatCloseMessage(websocket.CloseGoingAway, "server shutting down"),
-			time.Now().Add(writeWait),
-		)
-		_ = c.conn.Close()
+		c := c
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			h.closeAndDrop(ctx, c)
+		}()
 	}
+	wg.Wait()
 
 	done := make(chan struct{})
 	go func() {
@@ -1220,4 +1365,29 @@ func (h *Hub) Shutdown(ctx context.Context) {
 	case <-done:
 	case <-ctx.Done():
 	}
+}
+
+// closeAndDrop sends c the shutdown close frame and only then drops the
+// connection. If the write itself fails, the peer is already gone (or
+// the pipe is broken) and there is nothing left to flush, so it closes
+// immediately. Otherwise it gives the write closeGracePeriod — or less,
+// if ctx is shorter — to actually reach the peer before Close tears the
+// socket down. c's own readPump typically wins this race in practice
+// (the peer's close response, or its read erroring out, makes readPump
+// call Close first), and Close is safe to call more than once.
+func (h *Hub) closeAndDrop(ctx context.Context, c *Client) {
+	err := c.conn.WriteControl(
+		websocket.CloseMessage,
+		websocket.FormatCloseMessage(websocket.CloseGoingAway, "server shutting down"),
+		time.Now().Add(writeWait),
+	)
+	if err == nil {
+		timer := time.NewTimer(closeGracePeriod)
+		defer timer.Stop()
+		select {
+		case <-timer.C:
+		case <-ctx.Done():
+		}
+	}
+	_ = c.conn.Close()
 }

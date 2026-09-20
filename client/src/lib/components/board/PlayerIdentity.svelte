@@ -18,6 +18,7 @@
   import { targeting, isLegalPlayerTarget, isPicked } from "../../targeting";
   import { settings } from "../../settings";
   import { emptyLifeTracker, lifePopupView, trackLife, type LifePopupView } from "../../lifePopup";
+  import { botDeckNames, botDeckLabel, ensureBotDeckNamesLoaded } from "../../botDeckNames";
   import ManaPoolPips from "./ManaPoolPips.svelte";
   import Icon from "../Icon.svelte";
 
@@ -101,10 +102,19 @@
   // on.
   const isBot = $derived(seat.is_bot === true);
   const botLabel = $derived(seat.bot_tier ? `bot · ${seat.bot_tier}` : "bot");
+  // #688: PlayerView only carries the curated deck's ID (e.g.
+  // "esper-control"); the display name comes from GET /bot/options,
+  // resolved and cached client-side by botDeckNames.ts. An ID the
+  // catalog doesn't recognize (a pasted custom decklist, or a deck
+  // retired since the seat was made) falls back to the raw ID rather
+  // than rendering nothing.
+  $effect(() => {
+    if (isBot) void ensureBotDeckNamesLoaded();
+  });
   const botTitle = $derived(
     [
       seat.bot_tier ? `${seat.bot_tier} tier` : null,
-      seat.bot_deck ? `deck: ${seat.bot_deck}` : null,
+      seat.bot_deck ? `deck: ${botDeckLabel(seat.bot_deck, $botDeckNames)}` : null,
     ]
       .filter(Boolean)
       .join(" — ") || "a bot plays this seat",
@@ -188,6 +198,21 @@
   style:--seat-color={seatColor(seat.seat)}
 >
   <span class="name" title={displayLabel}>{displayLabel}</span>
+  <!-- ADR 0075 §2.1: the table's host, visible to everyone. It is a
+       seat ROLE — who may change the house rules and spawn — and is
+       unrelated to the monarch, whose crown sits in the marker column
+       on the avatar row. Hence a chip next to the name, where the BOT
+       chip lives, rather than a second crown: two crowns on one seat
+       meaning two different things is exactly the confusion to avoid,
+       and the glyph is kept small and paired with the word. -->
+  {#if seat.is_host}
+    <span
+      class="tag host"
+      title="Table host — sets this table's house rules, alongside the server admin"
+    >
+      <Icon name="crown" size={9} /> host
+    </span>
+  {/if}
   {#if isBot}
     <span class="tag bot" title={botTitle}>{botThinking ? "thinking…" : botLabel}</span>
   {/if}
@@ -883,6 +908,16 @@
   .tag.elim {
     color: var(--danger);
     border-color: rgba(255, 122, 122, 0.4);
+  }
+  .tag.host {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-top: 0;
+    margin-bottom: 2px;
+    color: var(--gold, #ffd07a);
+    border-color: rgba(255, 208, 122, 0.4);
+    background: rgba(255, 208, 122, 0.12);
   }
   .tag.bot {
     margin-top: 0;

@@ -72,11 +72,26 @@ func fuelPrices(t *testing.T, v protocol.GameView, seat int, ids ...string) map[
 // second hook: without it the runner's type assertion would silently
 // answer false after a signature change and the ordering would quietly
 // stop happening, which is the failure the hook exists to prevent.
+//
+// It asks the question TWICE, and the second one is the one that
+// matters. A bare heuristic.New() is a policy no seat is ever given:
+// the lobby seats what tiers.Factory builds, which is this policy
+// inside a rules.Filter or a model.Policy. This test passed for a
+// month while every shipped tier answered false one layer up — #1060
+// — so it now asks the factory as well, exactly the way the runner
+// asks (aiseat.Capability, through the wrapper chain).
 func TestTheHeuristicIsACostFuelPricer(t *testing.T) {
 	if _, ok := any(heuristic.New()).(aiseat.CostFuelPricer); !ok {
 		t.Fatal("the heuristic is no longer an aiseat.CostFuelPricer; " +
 			"legal.Options.OrderCostFuel would go unset and every escape would eat " +
 			"the oldest cards in the graveyard again (#1013)")
+	}
+	for _, tier := range seatedTiers() {
+		p := factoryPolicy(t, tier)
+		if _, ok := aiseat.Capability[aiseat.CostFuelPricer](p); !ok {
+			t.Errorf("the %s seat the lobby builds (%T) is not an aiseat.CostFuelPricer; "+
+				"legal.Options.OrderCostFuel goes unset on every table (#1060)", tier, p)
+		}
 	}
 }
 

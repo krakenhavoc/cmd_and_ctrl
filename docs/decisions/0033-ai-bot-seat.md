@@ -4,6 +4,7 @@
 **Amended:** 2026-09-16 · S31 closeout: accepted as built. §6's no-endpoint tiers are refused, not downgraded (#514), the §7 deck path is corrected, §10's field names are corrected, and the loop guard is descoped (see the amendment at the end) · 2026-09-19 · §1's threat ordering is built as an injected hook and the "choose target" move is refused (#687), and the enumerator casts from every zone at every payable price (#673)
 **Amended:** 2026-09-19 · #986: a colour prompt's answers are ordered by the card's declared `ColorPurpose`, by one function in `legal` that the enumerator and the wire projection both call (see the amendment at the end)
 **Amended:** 2026-09-19 · #1013: a bot chooses WHICH cards an alternative cost eats — the payments are priced through a second injected hook and the cap rises to three (see the amendment at the end)
+**Amended:** 2026-09-19 · #1060 / #735: an optional Policy extension survives being wrapped — a wrapper declares what it wraps and the lookup walks the chain — and a game's model spend is one record, split into deciding and improvising (see the amendment at the end)
 **Supersedes:** the architecture section of [S31](../sprints.md#s31--ai-bot-seat-legal-move-enumeration--tiered-policy) (heuristic-only, gated behind S27–S30).
 **Depends on:** [ADR 0010](0010-card-effect-catalog.md) (effect specs), [ADR 0019](0019-structured-targeting.md) (target specs), [ADR 0020](0020-activated-abilities.md).
 
@@ -321,6 +322,13 @@ reaching for a cheaper model.
 > every failure — and the funnel's shape is what the numbers above
 > describe. Exit criterion 4's "per-game model spend is measured and
 > recorded, not estimated" remains open until a key exists.
+>
+> **Update, 2026-09-19 (#735).** There is now somewhere for that
+> number to appear. A game reports ONE spend record when its bots are
+> done — per seat, split into deciding and improvising — on the
+> runner's `Stats`, as the game's admin log line, and in the decision
+> log. The MEASUREMENT still waits on a keyed endpoint; the path no
+> longer does. See the #1060 / #735 amendment at the foot of this ADR.
 
 ### 6. Tiers are the difficulty slider
 
@@ -600,9 +608,17 @@ sections above:
   `aiseat.Improviser`, though, so no bot improvises yet. The owner
   decided to build one for the model tiers, tracked in
   [#686](https://github.com/krakenhavoc/cmd_and_ctrl/issues/686).
+  **Closed 2026-09-19:** `*model.Policy` implements the hook, so
+  `assisted` and `strong` improvise. See the #686 amendment at the
+  foot of this ADR for the windows, the prompt, the budget and the
+  failure posture.
 - **§5's per-game model spend is still unmeasured.** That update's
   last paragraph still stands. Absorption is measured at ~90%, but
-  measuring spend needs a game against a hosted endpoint.
+  measuring spend needs a game against a hosted endpoint. Split out
+  as [#735](https://github.com/krakenhavoc/cmd_and_ctrl/issues/735).
+  **Half-closed 2026-09-19:** the measurement is built and reported
+  once per game; the number still needs a key. See the #1060 / #735
+  amendment at the foot of this ADR.
 - **Rejected alternative "Local model on the homelab".** #514 made a
   self-hosted OpenAI-compatible endpoint an operator option beside the
   hosted one. The transport is a deployment setting, and nothing in
@@ -978,3 +994,333 @@ No change to the notification model, the channel, or `Room`. The
 edge-trigger, the non-blocking send and the "re-read, trust no payload"
 rule are all exactly as decided. The only thing that moved is which
 goroutine registers.
+
+## Amendment (2026-09-19, #686): §8's improviser is built, for the model tiers
+
+§8 specified improvisation and S31 sub-PR 8 built the path — the
+bundle, the validated announcement, the replay tag, the free undo.
+What it did not build was anybody to walk it: no shipped tier
+implemented `aiseat.Improviser`, so §8 described a feature no game
+ever reached. #686 supplies the missing half. Here is what it decides,
+because none of it follows from §8 on its own.
+
+### The window: a spell of this seat's own that the engine did not run
+
+**Improvisation fires once per card instance, at the moment that
+instance leaves the stack**, and only when all of the following hold:
+
+1. the seat itself cast it (`StackItemView.Controller` is this seat),
+2. the card was on the stack as a CARD — it is in
+   `GameView.Stack.Cards` — which is what confines this to spells and
+   excludes an ability whose source sits on the battlefield,
+3. its `CardView.Unimplemented` bit is set: the card prints rules the
+   engine will not carry out (`game.Unimplemented`, i.e.
+   `NeedsEffect && !IsAutoCard`, the same signal the deck-upload
+   summary and the stack's `manual` chip are built on),
+4. the seat's own deck profile has oracle text for it, and
+5. the seat owes no pending choice.
+
+That is the shape the issue calls "a castable card with no catalog
+spec". It is deliberately expressed **after** the cast rather than
+instead of it, and that is the load-bearing decision in this
+amendment:
+
+> **The bot pays for the card through the engine, exactly like a
+> human.** The four sandbox verbs cannot tap a land. An improvisation
+> that moved the card from hand to graveyard itself and then applied
+> the effect would be a free spell — the one thing worse at this table
+> than a bot that quietly skips a card. So the ordinary funnel casts
+> the card through the ordinary move list, the engine charges the
+> mana, the spell resolves into silence, and the improviser then
+> supplies the text the engine could not run. This is the sequence a
+> human on this server already performs by hand, and improvisation is
+> defined as doing what a human does.
+
+**Windows that deliberately do NOT trigger it**, each for its own
+reason:
+
+- **An unimplemented permanent's ongoing, triggered or activated
+  abilities.** There is no wire signal for "this trigger should have
+  fired", the timing is unknowable from a filtered view, and the
+  condition recurs — so the cap on this would be a rate limit rather
+  than a rule. One improvisation per card instance, at resolution, is
+  a bound the table can check against the card.
+- **Any card an opponent controls.** A bot improvises its OWN spell's
+  text. An improvisation reaching an opponent's board is a consequence
+  of the bot's card (that is why §8 grants the nil caller); it is
+  never the bot correcting somebody else's.
+- **A window in which the seat owes a pending choice** (#1000's
+  `OwedInStep`, #1016's `GuardsStackItem`, and every other
+  `PendingChoices` entry addressed to this seat). Those prompts halt
+  the table and are answered through the move list. Improvisation is
+  never a way out of a prompt.
+- **`random` and `heuristic`.** Neither has a model, and a rule-based
+  policy cannot read oracle text. They keep §8's old behaviour, which
+  is that nothing improvises.
+- **A seat with no model transport.** `assisted` and `strong` are
+  already reported unavailable without one (`Factory.TierStatus`); a
+  seat that loses its transport mid-game falls back exactly as Layer C
+  does — no improvisation, no announcement.
+
+### The prompt: the card's oracle text and the seat's own filtered view
+
+The static, cache-marked half is a primer naming the four verbs with
+their exact wire params, the twelve-step cap, and the answer shape.
+The per-call half is:
+
+- the card — name, mana cost, type line, **oracle text** — read from
+  the seat's `DeckProfile`, which is configuration the seat was
+  constructed with, not something read off the board;
+- where the card is now (its owner's graveyard, or the battlefield);
+- the board as `aiseat.Input.View` renders it, **annotated with the
+  instance IDs and player IDs the bundle is allowed to name**.
+
+It is the same hidden-information guarantee as Layer C and for the
+same structural reason: `aiseat/model` may not import `internal/game`,
+and every byte of this prompt comes from the seat's own filtered
+`protocol.GameView` plus its own decklist. Nothing in this package can
+reach an opponent's hand, so nothing it sends to a model can leak one.
+The IDs are new in a prompt and are not new information: every one of
+them is already on the wire to this seat.
+
+### The verb list stays closed, and stays enforced in one place
+
+The model is told `move_card`, `change_life`, `add_counter`,
+`mark_damage` and nothing else, and a bundle naming anything else is
+**not filtered out in the model package**. It is handed up and refused
+by `Improvisation.Validate` — the rail §8 already built and the tests
+already pin. One enforcement point, on the path every improviser must
+cross, is worth more than a second copy of the allow-list in the one
+policy that happens to exist today.
+
+What the model package does check before handing a bundle up is only
+what it can check better than the rail: that the reply was JSON, that
+it had a step list, and that the step list was not empty. An **empty
+step list is a first-class answer** — it is how the model says "this
+spell did not actually resolve" (it was countered, its target is gone)
+— and it produces no bundle, no announcement and no change.
+
+### Model, budget, and a hard cap per game
+
+- **Model.** The tier's FRONTIER profile, not the routine one. Writing
+  a bundle from oracle text is the hardest thing a seat is ever asked
+  to do and the rarest; spending the cheap model on it to save a
+  fraction of a cent on a handful of calls per game is a false
+  economy. `strong` raises its effort exactly as it raises the
+  frontier model's.
+- **Budget.** The same arithmetic as a decision, because it is the
+  same table waiting: the runner now imposes `Config.MaxThink` on the
+  `Improvise` call (it previously imposed nothing, because nothing
+  implemented the interface), and the funnel's `Reserve` /
+  `MinBudget` / `MaxCall` clamp inside it. A call that overruns is a
+  dropped improvisation, never a late one. `MaxTokens` is larger than
+  a decision's — a bundle is a paragraph, an index is a number.
+- **A hard per-game cap.** `MaxImprovCalls`, default 8, counted per
+  seat for the life of the seat, on CALLS rather than on applied
+  bundles: the cap exists to bound spend, and a call that failed cost
+  the same as one that worked. Together with one-shot-per-instance it
+  is a closed bound on what improvisation can cost a game, which is
+  what [#735](https://github.com/krakenhavoc/cmd_and_ctrl/issues/735)
+  needs to measure against. `Improvise: false`
+  (`CMDCTRL_BOT_IMPROVISE=0`) turns the whole thing off.
+
+### Failure posture: dropped, and the table is told it was dropped
+
+A bundle that fails `Improvisation.Validate` is dropped — nothing
+dispatched, nothing committed — and **the table gets a
+`bot_improvisation` chat line saying so**, naming the card and saying
+that nothing was changed. That is new. §8's refusal was silent, and
+silence is the failure this whole section exists to avoid: the table
+cannot tell a bot that chose not to act from a bot that could not, and
+"could not, and here is the card it was about" is exactly the
+information a player needs to apply the card by hand themselves.
+
+Two refusals stay silent, and both are deliberate:
+
+- **A bundle that cannot name its card.** There is no truthful line to
+  post. `TestUnannouncedImprovisationIsRefused` pins it.
+- **A bundle that `Room.ApplyBundle` rolled back.** It passed
+  validation and the engine refused a step, so the board is exactly as
+  the policy found it and the announcement would be about a bundle
+  that never existed. `TestImprovisationBundleIsAtomic` pins it.
+
+Everything upstream of a bundle — a model outage, a timeout, a reply
+that is not JSON, an empty step list — is likewise silent, because
+nothing was attempted against the board. It is counted
+(`Stats.ByImprov`) and logged.
+
+### One interface change
+
+`Improviser.Improvise` now takes a `context.Context`. It could not
+stay without one: it is called on the runner's goroutine, before the
+decision, and the only production implementation makes a network call.
+§10 says the table never waits on a bot, and a hook with no deadline
+cannot honour that. No production type implemented the old signature,
+so nothing but one test fixture moved.
+
+## Amendment (2026-09-19, #1060, #735): optional hooks survive a wrapper, and a game's spend is one record
+
+*Amends §1's two ordering hooks, §5's cost argument, and §6's tier
+table. Nothing here changes what a tier IS; it changes what a tier
+built by the factory can be asked for, and what a finished game
+reports about itself.*
+
+### An optional Policy extension has to survive being wrapped (#1060)
+
+§1's threat ordering (#687) and its fuel pricing (#1013) were both
+built, both tested, and **dead on every seat the lobby could create**,
+for a month. So was nothing else, but only by luck: the same hole was
+one wrapper away from swallowing `Conceder` and `Improviser` too.
+
+The mechanism of the defect is worth recording, because it is a
+property of the design rather than a typo. A `Policy` is two required
+methods and a growing set of OPTIONAL interfaces — `Conceder`,
+`Tracer`, `TargetOrderer`, `CostFuelPricer`, `Improviser`, and now
+`Spender` — which the runner and the enumerator find by type
+assertion. A type assertion that answers false is indistinguishable
+from a policy with no opinion: no error, no log line, no failing test,
+and the feature silently does not happen. Every shipped tier is a
+policy inside a WRAPPER (§6: `heuristic` is a `rules.Filter` around
+the heuristic, `assisted` and `strong` are a `model.Policy` over it),
+and a wrapper forwards whichever optional interfaces its author
+remembered. The pin tests asserted against a bare `heuristic.New()` —
+a policy no seat is ever given — so they passed throughout.
+
+**Decision: a wrapper declares what it WRAPS, once, and the lookup
+walks the chain.**
+
+```go
+func (f *Filter) Unwrap() aiseat.Policy { return f.Inner }
+```
+
+`aiseat.Capability[T]` walks that chain outward-in and returns the
+outermost implementer, and every assertion site in the runner, the
+enumeration path and the position suite goes through it. Outward-in is
+the whole of the semantics and is right in both directions: a wrapper
+that implements an extension itself means to OVERRIDE it (`rules.Filter`
+is a `Tracer`, and Layer A's own verdict is the one that must reach the
+decision log, or §5's absorption rate comes out of the file wrong), and
+a wrapper that does not implement it means to be transparent.
+
+**The alternative was a capability struct the factory fills in once**,
+and it was rejected for one reason: it has to be edited every time an
+optional interface is added, which is precisely the omission being
+fixed. A chain covers the interface written next year with no edit to
+any wrapper.
+
+The assembly point still carries the guarantee, because that is where
+a new layer gets added: `tiers/tiers.go` holds a compile-time
+assertion that every wrapper it assembles is an `aiseat.Unwrapper`, so
+adding one that hides its inner policy is a build failure. The runtime
+half is a table test over `tiers.All()` that builds each tier THROUGH
+THE FACTORY and asks it everything the runner will ask it — the test
+whose absence was the actual bug.
+
+`DecisionObserver` was checked and is not affected: it is a `Config`
+field the Manager sets, never an assertion on a policy.
+
+### A game's model spend is one record, read when the bots are done (#735)
+
+§5's cost argument is an estimate — "~30–50 real decisions per bot per
+game, ~20% escalating, cents per game" — and its escalation half has
+already been measured wrong by a factor of three. S31's exit criterion
+4 asks for the other half to be measured rather than estimated, and it
+never was.
+
+The numbers existed and were unreachable: `model.Policy` has counted
+its own tokens since sub-PR 7 and its improvisation tokens since #686,
+but those counters live inside one policy object that only the seat's
+own runner holds, the improvisation half never crosses a decision
+window (the improvise path is deliberately unobserved — §8), and
+nothing anywhere added four seats together.
+
+**Decision: one `GameSpend` per game, built when every runner has
+exited, on three surfaces.** `aiseat.Runner.Stats().Spend` for one
+seat while it plays; one INFO line — the game's admin summary — when
+the table's bots are done; and one `kind:"spend"` record written into
+the decision log just before it closes, for a tool. All three are the
+same projection, so there is one definition of what a game cost.
+
+Three things this decides that do not follow from §5 on their own:
+
+- **Deciding and improvising are counted apart and never averaged.**
+  §8's amendment bounds improvisation separately on purpose
+  (`MaxImprovCalls`, 8 per seat per game) so that it can be reasoned
+  about on its own; a decision call is an integer against a cached
+  prefix and an improvisation call is a paragraph with an order of
+  magnitude more `MaxTokens`. `Spend.Total()` adds them for the one
+  question — the bill — that wants them added.
+- **An attempted call is spend, however it ended.** Timeouts,
+  malformed replies and out-of-range answers are all counted, because
+  they were all billed. A measurement that counted only the useful
+  calls would flatter exactly the deployment that most needs the
+  warning: a self-hosted model missing its deadline on every window.
+- **A table that spent nothing still gets its line.** A record that
+  appeared only when there was a bill could not be told from one that
+  failed to be written, and "the free tiers are free" is the other
+  half of §5's argument.
+
+**The number is still pending a keyed run.** Every deployment so far
+runs a local model, which has no bill, and CI has no key, so the
+figure that replaces §5's estimate cannot be taken here. What is
+settled is the path: measured against `model.FakeClient` over whole
+four-seat games, every call attributed to one seat and one purpose and
+counted exactly once. `docs/bot.md` § "Per-game model spend" says how
+to take the measurement and what to record with it. Exit criterion 4
+stays open on
+[#735](https://github.com/krakenhavoc/cmd_and_ctrl/issues/735) until
+somebody runs it against a key.
+
+## Amendment (2026-09-19, #685): S31's bot-table criteria are nightly jobs, and their budgets are one pair of knobs
+
+Two of S31's exit criteria — four `heuristic` bots to a winner within
+50 turns over 20 consecutive runs, and zero engine-rejected actions
+across a 100-game randomised run — were recorded in `docs/sprints.md`
+as met. Neither was running anywhere. The nightly played the heuristic
+test's default 3 seeds, and no workflow had ever set
+`AISEAT_SOAK_GAMES`, so `TestRandomBotSoak` had executed in CI exactly
+zero times. Both numbers were true on the afternoon somebody typed
+them and unverified every day since.
+
+They are now the `bot-soak` job in `.github/workflows/e2e-nightly.yml`,
+on the same nightly schedule and the same self-hosted runner as
+`bot-games`, and both tests are `-skip`ped out of that job's `-race`
+step so nothing is played twice.
+
+**No `-race` on this job**, on the argument §5's measurement already
+rests on and the random-table step already records: what these 120
+tables buy is the *engine* states they reach, and the runner-goroutine
+concurrency the detector would watch is the same code every whole-game
+test in `bot-games` drives under `-race`, on the same rooms, with the
+same observers. `-race` costs roughly 8x here, which is the difference
+between a 15-minute job and a two-hour one on a runner shared with CI.
+
+**No network and no model key.** The seats are `heuristic.New()` and
+`aiseat.NewRandomPolicy`. §5's funnel, the model tiers and the
+improviser are all out of scope for this job by construction, which is
+what lets it be a standing gate at all: §5's update already records
+that there is no key in CI.
+
+**Every game is seeded and every seed is printed, including on a green
+night.** The heuristic gate's seeds are fixed in the test (101..120),
+so it plays the same twenty tables every night and a regression there
+is unambiguous. The soak's base seed is derived from the UTC date, the
+way `TestCatalogSoak`'s is: a fixed soak seed would fuzz the same
+hundred tables for ever and stop finding anything after the first
+green night.
+
+**The budgets.** Every bot-table test in `internal/aiseat` used to
+carry a literal stall detector and a literal wall clock, tuned on an
+idle machine. That shape failed three PRs that had touched nothing
+near the bot seat (#418, #431, #434) and then the nightly itself
+(#600). `AISEAT_STALL` and `AISEAT_WALLCLOCK` now reach all of them —
+`playGame` / `playGameIn`, and `TestRandomBotSoak` — alongside the
+three tests that already read them. `AISEAT_WALLCLOCK` is a **floor**
+on the harness's per-test wall clock rather than a replacement,
+because those numbers describe the game being played (120s for a
+50-turn table) and an environment variable may raise patience and must
+never cut it. A loaded runner should make this job slow, not red.
+
+**A red night opens or comments on one standing issue** (`bug`,
+`tech-debt`), scheduled runs only. One issue per night trains everyone
+to close them unread; no issue at all is a gate nobody is told about.

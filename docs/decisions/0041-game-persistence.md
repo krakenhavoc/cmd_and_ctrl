@@ -9,6 +9,13 @@ never redials, and there is no seq-based resync; the session dies with
 the process, and the "re-authenticate through your invite link"
 recovery does not exist for a started game. Every decision in this ADR
 stands; 0044 builds the return path they assumed was already there.
+**Amended by:** #521 (S33 sub-PR 5) — the first item of Phase 3 has
+landed. Token templates carry a synthetic catalog key
+(`token:treasure`, `token:food`, …) and their abilities are registered
+in the catalog, so the "intrinsic token abilities" row of Decision 4's
+table is empty and a Treasure on the battlefield no longer blocks every
+restore point. The snapshot schema is **v5**; see the addendum at the
+end.
 **Amended by:** [ADR 0054](0054-dice-rolls-and-coin-flips.md) Decision 3
 (#744) — Decision 3 below no longer describes the code. The RNG is a
 32-byte secret key plus per-turn stream counters, not a PCG position;
@@ -200,7 +207,7 @@ Parts of a live game are Go function pointers, not data:
 | `PendingChoice`'s six resume frames | a paused game holds the rest of the effect as a continuation |
 | `ScopedStatic.Ability` | Giant Growth's +3/+3 |
 | `TurnScopedReplacements` | Fog |
-| `Card.ManaAbilities` / `ActivatedAbilities` on a true token | Treasure, Food, Clue, Blood *are* their ability |
+| ~~`Card.ManaAbilities` / `ActivatedAbilities` on a true token~~ | **Closed by #521** — a token template is a catalog entry under its own key, so its abilities are re-derived like a printed card's. What remains in this row is an ability stamped onto ONE instance at runtime with no entry behind it, which is rare and still censused |
 
 Some are re-derivable, because the closure was looked up from the card
 catalog by oracle ID in the first place and the catalog is **code the
@@ -231,7 +238,8 @@ Two honest consequences:
   battlefield — a Treasure — makes every subsequent state uncleanable
   until it is spent. That is the strongest argument for prioritising
   phase 3, and the census labels make it diagnosable rather than
-  mysterious.
+  mysterious. **(#521: no longer true of tokens, which was the worst
+  case of it. The point stands for the continuations still listed.)**
 - As continuations become data-driven, each census counter drops to a
   permanent zero and the rewind distance shrinks to nothing. No
   redesign is needed to get there.
@@ -314,7 +322,46 @@ left at the bottom. Naming those closures and looking them up from a
 registry at restore is the same move `EffectResolver` already makes for
 spells.
 
-Priority order, by how often each blocks a restore point: intrinsic
-token abilities (a Treasure blocks every subsequent capture), then
-`TurnScopedStatics`/`Replacements`, then ability `StackItem.Effect`,
-then the resume frames.
+Priority order, by how often each blocks a restore point: ~~intrinsic
+token abilities (a Treasure blocks every subsequent capture)~~ **(done,
+#521)**, then `TurnScopedStatics`/`Replacements`, then ability
+`StackItem.Effect`, then the resume frames.
+
+## Addendum — token catalog keys and schema v5 (#521)
+
+A token has no printing and therefore no oracle ID, and every catalog
+hook keys on one. That is the whole reason a Treasure's four fields of
+plain data had to ride on the instance as a closure-bearing
+`ManaAbilityShape`, and the census counted it as an unserialisable
+continuation — so the predicate was really asking *"is there an oracle
+ID to look up?"* rather than *"is anything unserialisable actually
+here?"*.
+
+The fix is the shape emblems (ADR 0064) and granted ability bundles
+(CR 707.9a, #665) already use: a synthetic key in a namespace of its
+own — `game.TokenKey("treasure")` → `token:treasure` — filed in the
+same def map cards are filed in, resolved by the same `CatalogLookup`.
+A Scryfall oracle ID is a UUID and contains no colon, so the namespaces
+cannot collide. `Card.TokenKey` carries it; `CatalogKey` prefers a real
+oracle ID and reads it only when there is none, which is what keeps CR
+707.2's token *copy* resolving to the card it copied. The census now
+asks the registry whether it can return the abilities an object is
+holding, so an ability stamped onto one instance at runtime is still
+counted — the counter became accurate, not unreachable.
+
+It fixed a second bug one zone over, for free: `stampActivatedAbilities`
+skipped any card with no oracle ID, so **every** token's activated
+abilities were dropped on the way to the client. Food, Clue, Blood and
+the Lander reached the table inert.
+
+**Schema v5.** The new `tokenKey` on a card is additive and zero-values
+correctly for an old file. The bump is for the other direction, exactly
+as v2's was for emblems: before this change a board holding a live
+token was never written as a restore point at all, so no file a v4
+binary could be handed contained one. Afterwards they are the normal
+output, and a v4 binary reading one would drop the key and restore
+those tokens as blank artifacts — a Treasure that no longer taps for
+mana, silently. There is no per-field way to say "refuse this file if
+you do not know what a token key is", so the version is it, and the
+cost is the one v2 accepted: a pre-#521 binary refuses every post-#521
+restore point rather than restoring one wrong.

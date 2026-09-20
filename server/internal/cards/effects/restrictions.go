@@ -116,3 +116,21 @@ func (r RestrictUntilEOT) Apply(ctx *Context) error {
 		ctx.Game.UntilEndOfTurnDuration())
 	return nil
 }
+
+// RestrictAttachedWhile is "During your turn, equipped creature can't
+// be blocked" (Bilbo's Ring) — the restriction-bit sibling of
+// GrantToAttachedWhile. The Aura/Equipment relation still gates
+// through AttachedToSource, `cond` adds the printed condition on top
+// (read fresh on every recompute, same as GrantToAttachedWhile's),
+// and both must hold for the bits to apply.
+func RestrictAttachedWhile(cond func(host *game.Card, g *game.Game, source *game.Card) bool, r game.Restriction) game.StaticAbility {
+	return game.StaticAbility{
+		Layer: game.Layer6Ability,
+		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
+			return AttachedToSource(target, g, source) && cond(target, g, source)
+		},
+		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+			c.Restrictions |= r
+		},
+	}
+}

@@ -529,6 +529,11 @@ func Play(ctx context.Context, cfg Config, seed uint64, order []int) (GameResult
 	// window would write into a closed file. Close drains the
 	// writer, so the stats read after it are final.
 	if gameLog != nil {
+		// #735's one record per game, written here for the same
+		// reason the server's Manager writes it: every seat has
+		// exited, so the numbers are final, and it has to land
+		// before the file is closed.
+		gameLog.ObserveSpend(aiseat.SpendOfRunners(g.ID, runners))
 		if err := gameLog.Close(); err != nil {
 			cfg.Log.Error("botarena: closing the decision log", "err", err)
 		}

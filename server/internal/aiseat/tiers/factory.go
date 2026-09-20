@@ -63,6 +63,10 @@ type FactoryOptions struct {
 	// DeckProfile resolves SeatSpec.Deck for the model tiers. Nil
 	// means no seat gets a decklist in its prompt.
 	DeckProfile DeckProfileFunc
+	// NoImprovise turns ADR 0033 §8 improvisation off for every seat
+	// this factory builds (CMDCTRL_BOT_IMPROVISE=0). The model tiers
+	// have it on by default since #686.
+	NoImprovise bool
 	// Meter is the shared Layer A absorption meter. Nil allocates
 	// one, so Factory.Meter is always readable.
 	Meter *rules.Meter
@@ -146,10 +150,11 @@ func (f *Factory) NewPolicy(seat aiseat.SeatSpec) (aiseat.Policy, error) {
 		return nil, fmt.Errorf("%w: %q: %s", aiseat.ErrTierUnavailable, tier, st.Reason)
 	}
 	opt := Options{
-		Meter:    f.opt.Meter,
-		Client:   f.opt.Client,
-		Models:   f.opt.Models,
-		MaxThink: f.opt.MaxThink,
+		Meter:       f.opt.Meter,
+		Client:      f.opt.Client,
+		Models:      f.opt.Models,
+		MaxThink:    f.opt.MaxThink,
+		NoImprovise: f.opt.NoImprovise,
 	}
 	if tier.NeedsModel() && f.opt.DeckProfile != nil && seat.Deck != "" {
 		if profile, ok := f.opt.DeckProfile(seat.Deck); ok {

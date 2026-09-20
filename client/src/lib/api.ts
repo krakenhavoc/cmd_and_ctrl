@@ -14,7 +14,12 @@ import {
 } from "./bugReport";
 import { redactSecrets } from "./redact";
 import type { PrebuiltDecksResponse } from "./prebuiltDecks";
+import type { MyGame } from "./myGames";
+import type { MyDecksResponse } from "./myDecks";
+import type { InviteDMResponse, Tablemate } from "./tablemates";
 import type { AutoTapCastParams } from "./castPreview";
+import type { TableSettingsPatch, SpawnZone } from "./tableSettings";
+import type { TableSettingsView } from "./protocol";
 
 // Re-export the violation shape so consumers of api.ts don't also
 // have to import from session.ts. ApiViolation is the canonical
@@ -40,6 +45,20 @@ export interface GameMeta {
   // /games?archived=1 instead. Nothing is deleted — unarchiving puts
   // it back, replay and all.
   archived_at?: string;
+  // Table host (ADR 0075 §2.1): the seat that may manage the table
+  // alongside the admin. The zero UUID when nobody hosts. Mirrored per
+  // seat by SeatInfo.is_host.
+  host_player_id?: string;
+  // True when the signed-in caller viewing this response is the one
+  // who created the table (games.created_by — ADR 0051 decision 2,
+  // #1098). Computed per-viewer server-side; the raw creator identity
+  // is never sent, so this is the only way the client learns "is this
+  // my table" and it can never learn who created someone else's.
+  // Distinct from is_host (SeatInfo) and host_player_id above — the
+  // creator need not be seated, and a seated host need not be the
+  // creator. Lets the creator rotate their own table's invites, same
+  // as the admin.
+  is_creator?: boolean;
 }
 
 export interface SeatInfo {
@@ -60,6 +79,8 @@ export interface SeatInfo {
   is_bot?: boolean;
   bot_tier?: string;
   bot_deck?: string;
+  // True on the table host's seat (ADR 0075 §2.1). Never on a bot.
+  is_host?: boolean;
 }
 
 // BotTierInfo mirrors aiseat.TierInfo. Every declared tier is listed,
@@ -369,6 +390,32 @@ export async function redeemSeatReclaim(gameID: string, ticket: string): Promise
   return s;
 }
 
+// RotateInviteResponse mirrors lobby.rotateInviteResponse. `token` is
+// the new plaintext, handed back once — the same rule `createGame`
+// and `mintSeatReclaim` follow. There is no way to see the OLD token
+// again; it stops working the moment this call returns.
+export interface RotateInviteResponse {
+  kind: "player" | "spectator";
+  token: string;
+}
+
+// rotateInvite (the game's creator or the admin — #1098) revokes a
+// game's current invite of one kind and mints its replacement. Use
+// when the link that was already shared is lost — most often because the
+// process that could still show it in plaintext has restarted (ADR
+// 0051 decision 4) — or when it should simply stop working. The old
+// link of that kind is dead as soon as this resolves.
+export async function rotateInvite(
+  gameID: string,
+  kind: "player" | "spectator",
+): Promise<RotateInviteResponse> {
+  const res = await authFetch(`/games/${gameID}/invites/rotate`, {
+    method: "POST",
+    body: JSON.stringify({ kind }),
+  });
+  return (await res.json()) as RotateInviteResponse;
+}
+
 export async function startGame(id: string): Promise<GameMeta> {
   const res = await authFetch(`/games/${id}/start`, { method: "POST" });
   return (await res.json()) as GameMeta;
@@ -468,6 +515,32 @@ export async function installPrebuiltDeck(
   return (await res.json()) as UploadDeckResponse;
 }
 
+// fetchMyDecks reads the signed-in caller's deck library (ADR 0051
+// decision 7, S34 sub-PR 5, GET /me/decks). 401s for anyone without a
+// user_id (a guest, an admin, or — on a deployment with no database —
+// everyone); callers should gate on myDecks.isSignedIn(principal.
+// user_id) before calling this rather than relying on the 401 alone,
+// since a picker that flashes and then disappears reads as broken.
+export async function fetchMyDecks(): Promise<MyDecksResponse> {
+  const res = await authFetch("/me/decks");
+  return (await res.json()) as MyDecksResponse;
+}
+
+// seatLibraryDeck installs a deck already in the caller's library
+// (POST /games/{id}/decks/{deck_id}) without re-pasting it. No body:
+// unlike uploadDeck/installPrebuiltDeck, a player session already
+// names exactly one seat, so there is no player_id to send. Same
+// response shape and the same 422-with-violations failure shape as
+// uploadDeck — the stored decklist is re-parsed and re-validated
+// against the current catalog at seat time, so a card that stopped
+// resolving since it was saved surfaces exactly like an upload would.
+export async function seatLibraryDeck(gameID: string, deckID: string): Promise<UploadDeckResponse> {
+  const res = await authFetch(`/games/${gameID}/decks/${encodeURIComponent(deckID)}`, {
+    method: "POST",
+  });
+  return (await res.json()) as UploadDeckResponse;
+}
+
 // avatarURL builds the cached-Discord-avatar URL for a (discord_id,
 // avatar_hash) pair. Returns null when either value is missing so
 // callers can use it as a render gate:
@@ -514,6 +587,78 @@ export async function discordAuthEnabled(): Promise<boolean> {
 // only a real navigation lands the user on the consent screen.
 export function discordLoginHref(): string {
   return "/auth/discord/start";
+}
+
+// discordLinkHref starts the link round-trip for a seated player (GET
+// /auth/discord/link, S34 sub-PR 4): Discord's consent screen, then back
+// to the same seat, now carrying the account. A navigation, like the
+// other two, and it relies on the session COOKIE — the server binds the
+// round-trip to the browser whose cookie holds the seat. `game` is the
+// table this page is showing; the server refuses the link if the
+// cookie's seat is at a different one.
+export function discordLinkHref(gameID: string): string {
+  return `/auth/discord/link?game=${encodeURIComponent(gameID)}`;
+}
+
+// fetchMyGames is GET /me/games: every seat the signed-in person holds,
+// newest first. A 401 (a guest or admin session) clears the session via
+// authFetch, which is right: the page is only linked for signed-in
+// users, so reaching it otherwise means the session went stale.
+export async function fetchMyGames(): Promise<MyGame[]> {
+  const res = await authFetch("/me/games");
+  const body = (await res.json()) as { games?: MyGame[] };
+  return body.games ?? [];
+}
+
+// rejoinMyGame trades the signed-in session for a player session on the
+// caller's own seat at an open table (POST /me/games/{id}/session, ADR
+// 0051 decision 3) and installs it. `path` is the game's `rejoin` field
+// from GET /me/games; the server's route is authoritative, so the client
+// follows it rather than rebuilding it.
+export async function rejoinMyGame(path: string): Promise<Session> {
+  const res = await authFetch(path, { method: "POST" });
+  const body = (await res.json()) as SessionResponse;
+  const s: Session = {
+    token: body.token,
+    expiresAt: body.expires_at,
+    principal: body.principal,
+    playerID: body.player_id,
+    gameID: body.game?.id,
+  };
+  setSession(s);
+  return s;
+}
+
+// fetchTablemates reads the people the signed-in caller has shared a
+// table with (ADR 0051 decision 8, S34 sub-PR 6, GET /me/tablemates),
+// most recently shared table first. 401s for anyone without a user_id,
+// exactly as GET /me/decks does; callers should gate on
+// tablemates.canInviteTablemates first rather than rely on the 401,
+// since a picker that flashes and disappears reads as broken.
+export async function fetchTablemates(): Promise<Tablemate[]> {
+  const res = await authFetch("/me/tablemates");
+  const body = (await res.json()) as { tablemates?: Tablemate[] };
+  return body.tablemates ?? [];
+}
+
+// sendInviteDM asks the server to DM one person the game's EXISTING
+// player invite link (POST /games/{id}/invites/dm, ADR 0051 decision
+// 5). Nothing new is minted, so a link already shared in a channel
+// keeps working. The target is named by OUR user id — the one
+// fetchTablemates returns — and the server resolves the Discord
+// account; the client never handles a snowflake.
+//
+// The failures worth showing the player, all as LobbyApiError.message:
+// 403 (not seated at this table), 422 (the target shares no Discord
+// server with the bot, or has DMs closed), 429 (too many invites, from
+// us or from Discord), 503 (this deployment has no bot token) and 409
+// (this server no longer holds the table's link — rotate it first).
+export async function sendInviteDM(gameID: string, userID: string): Promise<InviteDMResponse> {
+  const res = await authFetch(`/games/${encodeURIComponent(gameID)}/invites/dm`, {
+    method: "POST",
+    body: JSON.stringify({ user_id: userID }),
+  });
+  return (await res.json()) as InviteDMResponse;
 }
 
 // BugReportConfig mirrors the JSON from GET /bugreport/config.
@@ -744,6 +889,39 @@ export async function logout(): Promise<void> {
   setSession(null);
 }
 
+// logoutEverywhere withdraws every session the signed-in user holds,
+// in every browser, and then drops this one (POST /logout/everywhere,
+// ADR 0051 decision 6). Only meaningful when canSignOutEverywhere is
+// true: the server refuses a session with no user.
+//
+// Unlike logout, a failure is reported: the user asked for their
+// OTHER browsers to be signed out, and clearing the local session
+// quietly would tell them that happened when it may not have. The
+// local session is still dropped on success and on a 401, since a 401
+// means this session is already dead (revoked from another browser,
+// or expired). It bypasses authFetch for the same reason logout does:
+// a 401 here is an answer, not a reason to throw "session expired".
+export async function logoutEverywhere(): Promise<void> {
+  const s = currentSession();
+  const res = await fetch("/logout/everywhere", {
+    method: "POST",
+    headers: s?.token ? { Authorization: `Bearer ${s.token}` } : {},
+    credentials: "same-origin",
+  });
+  if (res.ok || res.status === 401) {
+    setSession(null);
+    return;
+  }
+  let message = `${res.status} ${res.statusText}`;
+  try {
+    const body = (await res.json()) as { error?: string };
+    if (body.error) message = body.error;
+  } catch {
+    // not JSON — keep the status line
+  }
+  throw new LobbyApiError(res.status, message);
+}
+
 // --- develop-environment card spawner (ADR 0023) ---------------------
 //
 // These call routes that exist only on a dev deployment. In
@@ -830,4 +1008,135 @@ export async function fetchReplay(gameID: string): Promise<string> {
   const res = await authFetch(`/games/${encodeURIComponent(gameID)}/replay`, { method: "GET" });
   if (res.status === 204) return "";
   return await res.text();
+}
+
+// --- table settings + the production spawner (ADR 0075) --------------
+//
+// These are NOT the dev routes above. They exist in production, they
+// are gated on being the table's host (or the admin) rather than on
+// the deployment, and the spawn half additionally needs the table to
+// have switched `allow_spawn` on. A refusal from either gate is a 403
+// carrying a sentence the panel shows verbatim — "you are not the
+// host" and "this table has spawning switched off" are different
+// problems with different fixes, and flattening them into "forbidden"
+// would send a host to ask the admin for a permission they already
+// have.
+
+interface TableSettingsResponse {
+  settings: TableSettingsView;
+}
+
+// patchTableSettings applies a PARTIAL update and returns the whole
+// settings object as it stands afterwards, including the fields the
+// patch left alone. Host or admin only (403 otherwise); 400 for a
+// value out of range, 422 for a starting-life change after the game
+// started.
+export async function patchTableSettings(
+  gameID: string,
+  patch: TableSettingsPatch,
+): Promise<TableSettingsView> {
+  const res = await authFetch(`/games/${encodeURIComponent(gameID)}/settings`, {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  });
+  return ((await res.json()) as TableSettingsResponse).settings;
+}
+
+// fetchTableSettings reads a table's settings from the LOBBY page,
+// where there is no socket to carry them.
+//
+// It is an empty patch, because the lobby has no GET: the settings
+// are public over the game view (protocol.GameView.settings), and the
+// HTTP surface only ever needed a write. An empty patch changes
+// nothing and logs nothing — the engine emits one event per field
+// that ACTUALLY changed — but it is still a commit, so this is called
+// when the panel opens and not on every lobby refresh.
+//
+// It inherits the write's gate, so a non-manager gets a 403 rather
+// than a read. That is the one place the lobby panel falls short of
+// "everyone sees it read-only": at the table, where GameView carries
+// the settings to every viewer, it does not.
+export async function fetchTableSettings(gameID: string): Promise<TableSettingsView> {
+  return await patchTableSettings(gameID, {});
+}
+
+export interface SpawnRequest {
+  // Exactly one of these three names what to make, checked in this
+  // order by the server: token wins over scryfallID wins over name.
+  token?: string;
+  scryfallID?: string;
+  name?: string;
+  playerID: string;
+  zone: SpawnZone;
+  count?: number;
+  commander?: boolean;
+}
+
+export interface SpawnResult {
+  spawned: string[];
+  name: string;
+  zone: string;
+  count: number;
+  scryfall_id?: string;
+  // True when a token template was made. The client needs it to read
+  // an absent scryfall_id as "a token has no printing" rather than as
+  // a failure.
+  token?: boolean;
+}
+
+// spawnOnTable puts cards or tokens onto a live table. Errors
+// propagate as LobbyApiError so the panel renders the server's own
+// message.
+export async function spawnOnTable(gameID: string, req: SpawnRequest): Promise<SpawnResult> {
+  const res = await authFetch(`/games/${encodeURIComponent(gameID)}/spawn`, {
+    method: "POST",
+    body: JSON.stringify({
+      token: req.token,
+      scryfall_id: req.scryfallID,
+      name: req.name,
+      player_id: req.playerID,
+      zone: req.zone,
+      count: req.count,
+      commander: req.commander,
+    }),
+  });
+  return (await res.json()) as SpawnResult;
+}
+
+// searchSpawnCards is searchDevCards for the production spawner: the
+// same Scryfall index read, through a route that exists outside a dev
+// deployment. Same swallow-everything posture, and for the same
+// reason — it runs on a debounce as someone types.
+export async function searchSpawnCards(
+  gameID: string,
+  q: string,
+  signal?: AbortSignal,
+): Promise<DevCardResult[]> {
+  try {
+    const res = await authFetch(
+      `/games/${encodeURIComponent(gameID)}/spawn/cards?q=${encodeURIComponent(q)}`,
+      { method: "GET", signal },
+    );
+    const body = (await res.json()) as { cards?: DevCardResult[] };
+    return body.cards ?? [];
+  } catch {
+    return [];
+  }
+}
+
+// fetchSpawnTokens lists the token template keys the spawn route
+// accepts ("Treasure", "1/1 white Soldier"). Swallows failure into an
+// empty list: the Tokens tab then renders its empty state, which is
+// the honest answer for a server built without token templates (503)
+// as much as for a network blip.
+export async function fetchSpawnTokens(gameID: string): Promise<string[]> {
+  try {
+    const res = await authFetch(`/games/${encodeURIComponent(gameID)}/spawn/tokens`, {
+      method: "GET",
+    });
+    const body = (await res.json()) as { tokens?: string[] };
+    return body.tokens ?? [];
+  } catch {
+    return [];
+  }
 }

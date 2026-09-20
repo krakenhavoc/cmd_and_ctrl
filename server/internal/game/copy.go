@@ -83,6 +83,18 @@ type PrintedValues struct {
 	// the thing it copied rather than looking like it.
 	OracleID string
 
+	// TokenKey is the OTHER catalog identity — a token template's
+	// synthetic key (#521, game/token_key.go). Copied for exactly the
+	// reason OracleID is: it is what the ability hooks key on, so a
+	// copy of a Treasure token is a Treasure that still sacrifices
+	// for mana.
+	//
+	// Empty for every printed card, which is what makes CR 707.2's
+	// ordinary direction fall out: a token copying a card takes that
+	// card's oracle ID and this blank, and CatalogKey prefers the
+	// oracle ID. The two are never both set on one object.
+	TokenKey string
+
 	// ScryfallID is the printing identity, which is what the client
 	// resolves card art from. Copied so a Clone of Llanowar Elves
 	// shows Llanowar Elves.
@@ -119,6 +131,12 @@ type PrintedValues struct {
 	// the 0 is a stand-in too.
 	VariableToughness bool
 
+	// PrintedPTKnown travels for the same reason VariableToughness
+	// does, one sign the other way: a token copy of a living weapon
+	// Germ copies a real printed 0/0, so it copies the bit that says
+	// the 0 is real and dies to CR 704.5f like the original.
+	PrintedPTKnown bool
+
 	// Layout / Faces / ActiveFace are ADR 0034's multi-face data.
 	// Copied wholesale: copying the front face of a transform card
 	// gives a permanent that can still transform, which is right,
@@ -144,6 +162,7 @@ type PrintedValues struct {
 func CopiableValuesOf(src Card) PrintedValues {
 	return PrintedValues{
 		OracleID:          src.OracleID,
+		TokenKey:          src.TokenKey,
 		ScryfallID:        src.ScryfallID,
 		Name:              src.Name,
 		TypeLine:          src.TypeLine,
@@ -156,6 +175,7 @@ func CopiableValuesOf(src Card) PrintedValues {
 		Power:             src.Power,
 		Toughness:         src.Toughness,
 		VariableToughness: src.VariableToughness,
+		PrintedPTKnown:    src.PrintedPTKnown,
 		StartingLoyalty:   src.StartingLoyalty,
 		Layout:            src.Layout,
 		Faces:             copyFaceSlice(src.Faces),
@@ -474,6 +494,7 @@ func (c *Card) applyCopy(v PrintedValues, src Card) {
 func (c *Card) setPrintedValues(v PrintedValues) {
 	v = v.Clone()
 	c.OracleID = v.OracleID
+	c.TokenKey = v.TokenKey
 	c.ScryfallID = v.ScryfallID
 	c.Name = v.Name
 	c.TypeLine = v.TypeLine
@@ -486,6 +507,7 @@ func (c *Card) setPrintedValues(v PrintedValues) {
 	c.Power = v.Power
 	c.Toughness = v.Toughness
 	c.VariableToughness = v.VariableToughness
+	c.PrintedPTKnown = v.PrintedPTKnown
 	c.StartingLoyalty = v.StartingLoyalty
 	c.Layout = v.Layout
 	c.Faces = v.Faces
@@ -512,6 +534,7 @@ func (c *Card) restorePrintedSelf() {
 	}
 	v := c.PrintedSelf.Clone()
 	c.OracleID = v.OracleID
+	c.TokenKey = v.TokenKey
 	c.ScryfallID = v.ScryfallID
 	c.Name = v.Name
 	c.TypeLine = v.TypeLine
@@ -528,6 +551,7 @@ func (c *Card) restorePrintedSelf() {
 	c.Power = v.Power
 	c.Toughness = v.Toughness
 	c.VariableToughness = v.VariableToughness
+	c.PrintedPTKnown = v.PrintedPTKnown
 	c.StartingLoyalty = v.StartingLoyalty
 	c.Layout = v.Layout
 	c.Faces = v.Faces

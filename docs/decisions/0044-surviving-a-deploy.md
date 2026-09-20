@@ -149,6 +149,16 @@ token, generated on each host by CD). `Revoke` is advisory. The
 credential also carries `UserID` and a millisecond `IssuedAt`, for
 [ADR 0051](0051-user-database.md) decisions 3 and 6.
 
+*Bounded revocation, S34 sub-PR 7 ([ADR 0051](0051-user-database.md)
+decision 6):* a session with a `UserID` can now be withdrawn.
+`auth.WithRevocation` wraps this authenticator and refuses a token
+issued at or before `users.sessions_invalid_before`, which
+`POST /logout/everywhere` and `POST /admin/users/{id}/revoke-sessions`
+set. The user's open sockets are closed with `1000 "session revoked"`,
+a second sender of the terminal code in the decision 2 table.
+Sessions with no user (admin, guest, spectator) keep the advisory
+`Revoke` described here.
+
 ## Decision 4 — Seat reclaim is the backstop, not the mechanism
 
 With decision 3 the common case is that the stored token still

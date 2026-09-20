@@ -22,43 +22,47 @@ import (
 // event; a removal (negative delta) is not a placement and is left
 // alone.
 //
-// "If YOU would put" is narrower than Hardened Scales' passive
-// "would be put", and the pipeline carries no actor, so who is
-// putting is read the way All Will Be One reads it
-// (b13ResolutionInProgressBy): the player whose spell or ability is
-// resolving. A placement outside any resolution — a loyalty cost, a
-// Saga's lore counter, a permanent entering with counters — is the
-// permanent's controller's (CR 606.4, 714.3), and counts. An
-// opponent's effect putting counters on Lae'zel's controller's
-// creature does not, as printed; a placement of the controller's own
-// that happens to follow an opponent's resolution without a boundary
-// between them is missed — weaker, never stronger.
+// "OR ON YOURSELF" is live since ADR 0056 Decision 5: counters on a
+// player go through the same CR 614 window as counters on a permanent
+// (game.ReplacementEvent.CounterPlayer), so the experience counter and
+// the energy land at one more, and the poison an opponent's infect
+// creature gives Lae'zel's controller does NOT — because that is the
+// opponent putting it, not "you".
+//
+// "If YOU would put" is narrower than Hardened Scales' passive "would
+// be put", and who is putting is now a fact on the event
+// (game.ReplacementEvent.CounterPlacer): the source's controller for a
+// CR 120.3d damage result, the proliferating player for CR 701.34.
+// When the event names no placer, the old reading stands — the player
+// whose spell or ability is resolving (b13ResolutionInProgressBy), the
+// way All Will Be One reads it — and a placement outside any
+// resolution (a loyalty cost, a Saga's lore counter, a permanent
+// entering with counters) is the permanent's controller's (CR 606.4,
+// 714.3) and counts. A placement of the controller's own that happens
+// to follow an opponent's resolution without a boundary between them
+// is still missed — weaker, never stronger, and now confined to the
+// placements that name nobody.
 //
 // Choose a Background is a deck-construction rule (CR 702.124), not
 // an in-game effect; the deck importer's business.
 //
-// Sandbox simplification, declared: counters put on the CONTROLLER
-// (poison, experience, energy) are not increased — player counters
-// do not go through the replacement pipeline, so there is nothing
-// for the card to replace. Weaker than printed, never stronger.
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "c066f921-e349-45d1-8ec3-0955d10bbf19",
 		Name:         "Lae'zel, Vlaakith's Champion",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Counters put on you (poison, experience, energy) aren't increased — only counters on your creatures and planeswalkers are."},
+		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{{
 			Watches: []game.EventKind{game.EventCounterPlaced},
 			AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
 				if ev.Kind != game.RepEventCounter || ev.CounterDelta <= 0 {
 					return false
 				}
-				target, ok := g.LookupCardForEffect(ev.CounterTarget)
-				if !ok || target.Controller != src.Controller {
+				if !laezelTargetIsYours(ev, g, src.Controller) {
 					return false
 				}
-				if !target.IsCreature() && !target.IsPlaneswalker() {
-					return false
+				if by := ev.CounterPlacer; by != uuid.Nil {
+					return by == src.Controller
 				}
 				by := b13ResolutionInProgressBy(g)
 				return by == src.Controller || by == uuid.Nil
@@ -73,4 +77,24 @@ func init() {
 			Label: "Lae'zel, Vlaakith's Champion: one more counter",
 		}},
 	})
+}
+
+// laezelTargetIsYours is the card's "on a creature or planeswalker you
+// control or on yourself": a player counter going on Lae'zel's own
+// controller, or a card counter going on a creature or planeswalker
+// they control.
+//
+// The player arm reads ev.CounterPlayer rather than looking the ID up
+// as a card, which is the whole reason the two IDs are separate fields
+// on the event — a player UUID handed to LookupCardForEffect finds
+// nothing, which is how this clause was silently dead before ADR 0056.
+func laezelTargetIsYours(ev *game.ReplacementEvent, g *game.Game, you uuid.UUID) bool {
+	if ev.CounterPlayer != uuid.Nil {
+		return ev.CounterPlayer == you
+	}
+	target, ok := g.LookupCardForEffect(ev.CounterTarget)
+	if !ok || target.Controller != you {
+		return false
+	}
+	return target.IsCreature() || target.IsPlaneswalker()
 }

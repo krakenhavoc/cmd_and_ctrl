@@ -1,3 +1,16 @@
+// Package aiseat runs a bot in a seat: a goroutine that watches a
+// ws.Room, asks a Policy which legal move to make whenever the seat
+// has a decision, and dispatches it through the same action path a
+// WebSocket client uses. ADR 0033 §2–§3.
+//
+// The hidden-information guarantee is structural: a Policy receives
+// an Input built only from the seat's filtered protocol.GameView and
+// the legal.Move list, never a *game.Game. Real policies (heuristic,
+// model-backed) land in subpackages under aiseat/ that are forbidden
+// from importing internal/game. That ban is enforced by
+// TestPolicyPackagesDoNotImportGame in aiseat/heuristic — it walks
+// every package under aiseat/ rather than just its own, so a policy
+// written later is covered without its author having to know.
 package model
 
 import (
@@ -83,6 +96,26 @@ type Config struct {
 	// the frontier model. This is the `strong` tier.
 	AlwaysEscalate bool
 
+	// Improvise turns ADR 0033 §8 improvisation on for this seat: an
+	// uncatalogued spell of the seat's own that resolves into silence
+	// is applied by hand, through a validated, announced, undoable
+	// bundle. See improvise.go. On for the model tiers by default;
+	// `false` is a complete, supported seat that simply never
+	// improvises — which is what every tier did before #686.
+	Improvise bool
+	// Improv is the model profile an improvisation call uses. The
+	// FRONTIER model, not the routine one: writing a bundle from
+	// oracle text is the hardest thing a seat is ever asked to do and
+	// the rarest, and MaxTokens is larger because a bundle is a
+	// paragraph where a decision is a number. Empty ID takes
+	// Frontier.ID.
+	Improv ModelProfile
+	// MaxImprovCalls is the hard per-game, per-seat cap on
+	// improvisation model calls — the thing that makes improvisation
+	// spend bounded rather than merely rare. Zero takes
+	// defaultMaxImprovCalls.
+	MaxImprovCalls int
+
 	// Reserve is held back from the runner's deadline so that a
 	// model call which runs long still leaves time to return Layer
 	// B's answer and dispatch it. ADR 0033 §10: the table never
@@ -145,6 +178,11 @@ func DefaultConfig() Config {
 		// that lands after the deadline is worth exactly as much as
 		// no answer at all.
 		Frontier: ModelProfile{ID: "claude-opus-5", Effort: "low", MaxTokens: 256},
+		// ADR 0033 §8 (amended 2026-09-19, #686). The frontier model,
+		// with room for a bundle rather than an index.
+		Improvise:      true,
+		Improv:         ModelProfile{ID: "claude-opus-5", Effort: "low", MaxTokens: 1024},
+		MaxImprovCalls: defaultMaxImprovCalls,
 
 		MaxCandidates:   24,
 		MaxZoneCards:    24,
@@ -181,6 +219,7 @@ func StrongConfig() Config {
 	c.MaxCandidates = 40
 	c.MaxZoneCards = 40
 	c.Frontier.Effort = "medium"
+	c.Improv.Effort = "medium"
 	c.MaxCall = 4 * time.Second
 	return c
 }
@@ -225,6 +264,15 @@ func (c Config) withDefaults() Config {
 	if c.RecordsKept <= 0 {
 		c.RecordsKept = 256
 	}
+	if c.Improv.ID == "" {
+		c.Improv.ID = c.Frontier.ID
+	}
+	if c.Improv.MaxTokens <= 0 {
+		c.Improv.MaxTokens = 1024
+	}
+	if c.MaxImprovCalls <= 0 {
+		c.MaxImprovCalls = defaultMaxImprovCalls
+	}
 	if c.Log == nil {
 		c.Log = slog.Default()
 	}
@@ -245,16 +293,30 @@ type Policy struct {
 	cfg    Config
 	static []Block
 	rec    *recorder
+	// improv is ADR 0033 §8's tracker: which of this seat's own
+	// uncatalogued spells have crossed the stack. See improvise.go.
+	improv *improvTracker
+	// deckIndex is cfg.Deck.Cards by lowercased name, which is how
+	// the improviser gets a card's oracle text. Built once: the
+	// profile is configuration and does not change for the life of
+	// the seat.
+	deckIndex map[string]DeckCard
 }
 
 // New returns a funnel policy. cfg.Client may be nil, in which case
 // this is Layer A + Layer B wearing the tier's name.
 func New(cfg Config) *Policy {
 	cfg = cfg.withDefaults()
+	idx := make(map[string]DeckCard, len(cfg.Deck.Cards))
+	for _, c := range cfg.Deck.Cards {
+		idx[strings.ToLower(strings.TrimSpace(c.Name))] = c
+	}
 	return &Policy{
-		cfg:    cfg,
-		static: cfg.Deck.staticBlocks(),
-		rec:    newRecorder(cfg.RecordsKept),
+		cfg:       cfg,
+		static:    cfg.Deck.staticBlocks(),
+		rec:       newRecorder(cfg.RecordsKept),
+		improv:    newImprovTracker(),
+		deckIndex: idx,
 	}
 }
 
@@ -267,12 +329,89 @@ func (p *Policy) Stats() Stats { return p.rec.snapshot() }
 // Records returns the retained per-decision records, oldest first.
 func (p *Policy) Records() []DecisionRecord { return p.rec.records() }
 
+// Compile-time assertion: the funnel reports its own spend (#735).
+var _ aiseat.Spender = (*Policy)(nil)
+
+// Spend is what this seat has cost so far, split into the two
+// purposes a funnel dials a model for: deciding a window, and writing
+// an improvisation bundle (ADR 0033 §5 and §8).
+//
+// It is the SAME counters Stats already publishes, projected into the
+// package-neutral shape the runner, the decision log and the admin
+// summary all read — see aiseat/spend.go. It is a projection rather
+// than a second tally on purpose: two counters for one fact drift,
+// and the one that drifts is always the one somebody is quoting.
+//
+// Safe to call while the seat plays; the recorder has its own lock.
+func (p *Policy) Spend() aiseat.Spend {
+	st := p.rec.snapshot()
+	return aiseat.Spend{
+		Decision: aiseat.PurposeSpend{
+			Calls:   st.ModelCalls,
+			Usage:   traceUsage(st.Usage),
+			Latency: st.ModelLatency,
+		},
+		Improvisation: aiseat.PurposeSpend{
+			Calls:   st.ImprovCalls,
+			Usage:   traceUsage(st.ImprovUsage),
+			Latency: st.ImprovLatency,
+		},
+	}
+}
+
+// Compile-time assertion: the funnel reports its own layer/escalation
+// counters (#505 part 2).
+var _ aiseat.PolicyStatser = (*Policy)(nil)
+
+// PolicyStats projects the funnel's per-decision instrumentation into
+// the package-neutral shape aiseat.Runner.PolicyStats reads — see
+// aiseat/stats_accessor.go. Same reasoning as Spend just above: a
+// projection of the counters Stats already publishes, not a second
+// tally that could drift from it.
+//
+// Safe to call while the seat plays; the recorder has its own lock.
+func (p *Policy) PolicyStats() aiseat.PolicyStats {
+	st := p.rec.snapshot()
+	return aiseat.PolicyStats{
+		Windows:         st.Windows,
+		ByLayer:         st.ByLayer,
+		ByEscalation:    st.ByEscalation,
+		ByFallback:      st.ByFallback,
+		Escalated:       st.Escalated,
+		ModelCalls:      st.ModelCalls,
+		ModelTimeouts:   st.ModelTimeouts,
+		Usage:           traceUsage(st.Usage),
+		ModelLatency:    st.ModelLatency,
+		MaxModelLatency: st.MaxModelLatency,
+		ByImprov:        st.ByImprov,
+		ImprovCalls:     st.ImprovCalls,
+		ImprovUsage:     traceUsage(st.ImprovUsage),
+		ImprovLatency:   st.ImprovLatency,
+	}
+}
+
+// Unwrap is Layer B, the policy underneath the funnel.
+//
+// It is what keeps every OPTIONAL Policy extension alive through this
+// wrapper — #687's TargetOrderer, #1013's CostFuelPricer, and the one
+// written next year — without the funnel having to name any of them.
+// aiseat.Capability walks the chain and takes the outermost
+// implementer, so an extension the funnel DOES implement (Tracer,
+// Conceder, Improviser, Spender) is still the funnel's own. See
+// aiseat/capability.go, and #1060 for what the absence of this cost:
+// the `assisted` and `strong` seats ordered no targets and priced no
+// fuel for a month, on every table the lobby could build.
+func (p *Policy) Unwrap() aiseat.Policy { return p.cfg.Fallback }
+
+// Compile-time assertion: the funnel says what it wraps.
+var _ aiseat.Unwrapper = (*Policy)(nil)
+
 // ShouldConcede forwards to Layer B. Conceding is a judgement about
 // the position and the heuristic already makes it conservatively; a
 // model call to decide whether to scoop would be the most expensive
 // possible way to answer the question least often asked.
 func (p *Policy) ShouldConcede(in aiseat.Input) bool {
-	c, ok := p.cfg.Fallback.(aiseat.Conceder)
+	c, ok := aiseat.Capability[aiseat.Conceder](p.cfg.Fallback)
 	return ok && c.ShouldConcede(in)
 }
 
@@ -324,7 +463,7 @@ func (p *Policy) decideTraced(ctx context.Context, in aiseat.Input) (aiseat.Deci
 
 	// --- Layer B ---------------------------------------------------
 	var cands []heuristic.Candidate
-	if r, ok := p.cfg.Fallback.(ranker); ok {
+	if r, ok := aiseat.Capability[ranker](p.cfg.Fallback); ok {
 		cands = r.Rank(ctx, in)
 	}
 	tr.Candidates = traceCandidates(cands)
@@ -474,7 +613,7 @@ func (p *Policy) BuildRequest(ctx context.Context, in aiseat.Input) (Request, []
 		return Request{}, nil, v
 	}
 	var cands []heuristic.Candidate
-	if r, ok := p.cfg.Fallback.(ranker); ok {
+	if r, ok := aiseat.Capability[ranker](p.cfg.Fallback); ok {
 		cands = r.Rank(ctx, in)
 	}
 	fallback := 0

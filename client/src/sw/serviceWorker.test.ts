@@ -72,6 +72,10 @@ describe("service worker routing", () => {
     "/healthz",
     "/me",
     "/logout",
+    // Sign out everywhere (ADR 0051 decision 6): Caddy needs /logout/*
+    // as its own entry, the worker's prefix match already covers it.
+    "/logout/everywhere",
+    "/admin/users/7f3c/revoke-sessions",
     // /config and /dev land with PR #260; denying them early is free.
     "/config",
     "/dev",

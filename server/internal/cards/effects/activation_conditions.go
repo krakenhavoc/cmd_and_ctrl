@@ -187,3 +187,70 @@ func MatchColor(color string) func(game.Card) bool {
 func MatchLegendaryCreature(c game.Card) bool {
 	return c.IsCreature() && c.IsLegendary()
 }
+
+// AllConditions is the AND of several activation conditions, for a
+// card that prints two of them in one sentence — Vivi Ornitier's
+// "Activate only during your turn and only once each turn".
+//
+// Every condition must hold. An empty list is true, which is the
+// identity an unconditional ability already has. The conditions are
+// asked in the order given and the walk stops at the first false, so
+// a cheap gate (whose turn is it) can be written before an expensive
+// one (a walk of this turn's events).
+func AllConditions(conds ...ActivationCondition) ActivationCondition {
+	return func(g *game.Game, controller, source uuid.UUID) bool {
+		for _, cond := range conds {
+			if cond != nil && !cond(g, controller, source) {
+				return false
+			}
+		}
+		return true
+	}
+}
+
+// SourceIsAttacking — "Activate only if this creature is attacking"
+// (Glint-Horn Buccaneer). Reads Card.AttackingTarget directly: a
+// non-nil target means DeclareAttacker has marked the permanent an
+// attacker and it hasn't left combat since (ClearCombat and a zone
+// exit both clear the field).
+func SourceIsAttacking() ActivationCondition {
+	return func(g *game.Game, _, source uuid.UUID) bool {
+		c, ok := g.LookupCardForEffect(source)
+		return ok && c.AttackingTarget != uuid.Nil
+	}
+}
+
+// DuringYourUpkeep — "Activate only during your upkeep" (Magus of the
+// Mirror). Both halves are load-bearing: the step is the upkeep AND
+// the activator is the active player, so an opponent's upkeep is not
+// a window. Not a sorcery-speed gate — the upkeep is not a main
+// phase, and SorcerySpeed would forbid exactly the step the card
+// opens.
+func DuringYourUpkeep() ActivationCondition {
+	return func(g *game.Game, controller, _ uuid.UUID) bool {
+		return g.Turn.Step == game.StepUpkeep && IsYourTurn(g, controller)
+	}
+}
+
+// OncePerTurnActivation — "Activate only once each turn" (CR 602.1b)
+// on an ordinary activated ability with no cost component of its own
+// to carry the limit (a loyalty ability gets its once-per-turn from
+// LoyaltyCost; this is for everything else — Beledros Witherbloom's
+// "Pay 10 life: Untap all lands you control").
+//
+// Reads Game.ResolvedThisTurn(source, label): the per-OBJECT (CR
+// 400.7) count of how many times THIS ability has resolved this
+// turn, the same tally every other once-per-turn gate in the catalog
+// reads (b15ResolvedThisTurn, Teval's Judgment). Since the Condition
+// runs at announce — before any cost is paid, and the enumerator
+// consults the same closure — a second attempt this turn is never
+// offered rather than paid for and then doing nothing.
+//
+// label must equal the ability's own Label exactly, the same
+// contract ResolvedThisTurn already keeps for every other reader of
+// the per-object tally.
+func OncePerTurnActivation(label string) ActivationCondition {
+	return func(g *game.Game, _, source uuid.UUID) bool {
+		return g.ResolvedThisTurn(source, label) == 0
+	}
+}

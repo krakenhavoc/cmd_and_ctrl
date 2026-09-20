@@ -90,7 +90,6 @@ var silentEventKinds = map[string]string{
 	"EventEffectError":             silentServerDiagnostic,
 	"EventCostWarning":             silentServerDiagnostic,
 	"EventLoopSuspected":           "GameView.loop_notice is the table's copy of this one, and it is a live control rather than history (#628)",
-	"EventSettingsChanged":         "TEMPORARY: ADR 0075 sub-PR 3 (#1032) gives it a LogKind and the \"Luke (host) set undos to 3\" line; until then GameView.settings shows every viewer the current value",
 	"EventPendingChoiceDropped":    silentServerDiagnostic,
 	"EventPendingChoiceReassigned": silentServerDiagnostic,
 	// #1017 / #812 declared this silence when it added the kind, and
@@ -115,6 +114,24 @@ var silentEventKinds = map[string]string{
 
 	// --- hidden-zone work ----------------------------------------------
 	"EventSearchLibrary": "the number of matches is itself hidden information about a hidden zone (see the search_library prompt's redaction)",
+
+	// --- waiting on the PR that writes the line ------------------------
+	// The same posture as EventSettingsChanged above, and the same
+	// shape of promise: the kind lands with the engine seam, the line
+	// lands with the client PR that has somewhere to put it.
+	//
+	// ADR 0056 Decision 6 specifies it exactly — "Alice got 3 poison
+	// counters (7/10)", one entry per placement with a positive delta,
+	// the total in brackets — and puts it in PR 3 with the N/10 poison
+	// chip and the damage-result suffixes it has to read alongside.
+	// Writing half of it here would mean a LogKind and a protocol.ts
+	// shape that PR 3 immediately rewrites.
+	//
+	// Until then PlayerView.poison carries the number to every viewer
+	// on every frame, which is what the table has read since S10; what
+	// is missing is the HISTORY, and that is what makes this a
+	// temporary silence rather than a permanent one.
+	"EventPlayerCounterPlaced": "TEMPORARY: ADR 0056 Decision 6 gives it the `poison` line (\"Alice got 3 poison counters (7/10)\") in the client PR; until then PlayerView.poison shows every viewer the current total",
 }
 
 // TestEveryEventKindIsNarratedOrDeliberatelySilent is the mechanism.

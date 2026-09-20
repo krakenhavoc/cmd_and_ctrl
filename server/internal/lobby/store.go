@@ -79,25 +79,35 @@ type GameRecord struct {
 	EndedAt    *time.Time
 	ArchivedAt *time.Time
 	WinnerSeat *int
+	// HostPlayerID is the table host's seat (ADR 0075 §2.1, migration
+	// 0004); uuid.Nil (NULL) when nobody hosts. Mutable.
+	HostPlayerID uuid.UUID
+	// HostDiscordID is a named host still waiting to claim a seat;
+	// "" (NULL) once bound, transferred, or never named. Mutable.
+	HostDiscordID string
 }
 
 // SeatRecord is one seats row.
 type SeatRecord struct {
 	Seat     int
 	PlayerID uuid.UUID
-	// UserID is users(id), a foreign key from migration 0003. Always
-	// "" until sub-PR 4 links seats to the people sitting in them.
+	// UserID is users(id), a foreign key from migration 0003: the
+	// signed-in person holding the seat (sub-PR 4). "" for a guest, a
+	// bot, or a Discord seat still waiting on PendingDiscordID.
 	UserID string
 	// GuestName is the seat label (SeatInfo.Name). Every seat carries
 	// one until a signed-in seat can take its name from users.
 	GuestName string
 	BotTier   string // "" for a human seat
-	// DeckID is decks(id) once sub-PR 5 lands. Always "" today.
+	// DeckID is decks(id) — set when the seat's cards came from the
+	// player's library (ADR 0051 decision 7, S34 sub-PR 5), "" for a
+	// guest's upload, an ad-hoc paste, or a pre-built catalog deck.
 	DeckID   string
 	DeckName string
 	// PendingDiscordID is the snowflake of a seat claimed through
 	// Discord, waiting for a users row to link to (ADR 0051,
-	// "Migration").
+	// "Migration"). Never set alongside UserID: the next sign-in with
+	// this snowflake moves it into UserID (LinkPendingSeats).
 	PendingDiscordID string
 }
 
@@ -132,7 +142,8 @@ type Store interface {
 	// CreateGame inserts a game and its invites atomically.
 	CreateGame(ctx context.Context, g GameRecord, invites []InviteRecord) error
 	// UpdateGame rewrites a game's mutable columns: name, state,
-	// started_at, ended_at, archived_at, winner_seat.
+	// started_at, ended_at, archived_at, winner_seat, host_player_id,
+	// host_discord_id.
 	UpdateGame(ctx context.Context, g GameRecord) error
 	// ReplaceSeats makes seats the game's complete seat list.
 	ReplaceSeats(ctx context.Context, gameID uuid.UUID, seats []SeatRecord) error
@@ -151,10 +162,55 @@ type Store interface {
 	// RevokeInvite stamps revoked_at on one invite. ErrStoreNotFound
 	// if there is none.
 	RevokeInvite(ctx context.Context, hash InviteHash, at time.Time) error
+	// RotateInvite replaces every still-live invite of kind for gameID
+	// with newInvite, atomically: the old one(s) are revoked and the
+	// new one is inserted in one transaction, so a mid-rotation
+	// failure never leaves a game with no live invite of that kind.
+	// There is normally at most one live invite per (game, kind), but
+	// this revokes by (game, kind) rather than by hash on purpose —
+	// see Lobby.RotateInvite for why a hash isn't always available to
+	// the caller. newInvite.GameID and newInvite.Kind must agree with
+	// gameID and kind. ErrStoreNotFound if the game does not exist.
+	RotateInvite(ctx context.Context, gameID uuid.UUID, kind InviteKind, newInvite InviteRecord, at time.Time) error
 	// Durable reports whether what is written survives the process.
 	// RestoreFromDisk refuses to pair engine restore points with a
 	// store that cannot have their metadata.
 	Durable() bool
+
+	// LinkPendingSeats links every seat waiting on discordID
+	// (seats.pending_discord_id) to userID and clears the pending id,
+	// in one transaction (ADR 0051 "Migration" step 3). Idempotent: a
+	// second call finds nothing left to link. Returns how many seats
+	// it linked.
+	LinkPendingSeats(ctx context.Context, discordID, userID string) (int, error)
+	// SeatsOfUser lists every seat whose user_id is userID, with its
+	// game and the other seats at that table, newest game first
+	// (ADR 0051 decision 4, "My games"). Ended and archived games are
+	// included.
+	SeatsOfUser(ctx context.Context, userID string) ([]UserSeatRecord, error)
+	// Tablemates lists the people userID has shared a table with —
+	// ADR 0051 decision 8's self-join of seats — most recently shared
+	// table first. The caller is excluded, and so is every seat with
+	// no user (a guest, a bot, a Discord seat still pending). See
+	// tablemates.go.
+	Tablemates(ctx context.Context, userID string) ([]TablemateRecord, error)
+}
+
+// UserSeatRecord is one row of "My games": a seat a user holds, the
+// game it is in, and who else sat there.
+type UserSeatRecord struct {
+	Game   GameRecord
+	Seat   int
+	Others []OtherSeatRecord // ordered by seat
+}
+
+// OtherSeatRecord is another seat at a UserSeatRecord's table.
+type OtherSeatRecord struct {
+	Seat int
+	// Name is the seat's label: the linked user's current display
+	// name when the seat has one, else the name stored on the seat.
+	Name string
+	Bot  bool
 }
 
 // memoryStore is the no-database Store. See the file comment.
@@ -273,5 +329,25 @@ func (s *memoryStore) RevokeInvite(_ context.Context, hash InviteHash, at time.T
 	at = at.UTC()
 	inv.RevokedAt = &at
 	s.invites[hash] = inv
+	return nil
+}
+
+func (s *memoryStore) RotateInvite(_ context.Context, gameID uuid.UUID, kind InviteKind, newInvite InviteRecord, at time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, ok := s.games[gameID]; !ok {
+		return ErrStoreNotFound
+	}
+	if _, ok := s.invites[newInvite.Hash]; ok {
+		return errors.New("lobby store: invite already exists")
+	}
+	at = at.UTC()
+	for h, inv := range s.invites {
+		if inv.GameID == gameID && inv.Kind == kind && inv.RevokedAt == nil {
+			inv.RevokedAt = &at
+			s.invites[h] = inv
+		}
+	}
+	s.invites[newInvite.Hash] = newInvite
 	return nil
 }

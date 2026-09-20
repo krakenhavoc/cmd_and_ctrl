@@ -43,17 +43,24 @@ import (
 //
 // # Declared simplifications
 //
-//   - "Waterbend {8}: Transform Aang" is NOT implemented. Transform
-//     is a face change on a permanent already on the battlefield —
-//     SetFace(1) plus a layer-staleness mark — and it needs a
-//     `transform` action verb the protocol does not have yet. ADR
-//     0034 sequences it as its own PR, deliberately, because CR 712
-//     hygiene (counters, damage, auras and the CR 613 timestamp all
-//     surviving the flip) is the interesting part and not this one.
-//     The back face's data is imported and on the wire; only the
-//     verb is missing. This is the remaining half of #343.
-//   - The back face's attack trigger is likewise unwired, for the
-//     same reason: nothing can reach face 1 yet.
+//   - "Waterbend {8}: Transform Aang" is NOT implemented, and since
+//     S46 the reason has changed. The TRANSFORM half is built —
+//     ADR 0079 shipped `Game.TransformPermanentForEffect` and
+//     `effects.TransformThis`, with the CR 712.18 hygiene (counters,
+//     damage, attachments and the CR 613.7 timestamp all surviving
+//     the flip) that ADR 0034 sequenced as its own PR. What is left
+//     is the COST: waterbend on an ACTIVATED ability has no shape.
+//     `Spec.TapCost` carries convoke and waterbend for a SPELL (S22);
+//     `AbilityCost` has no tap-other component, which is the open
+//     seam AGENTS.md §7 names and #758 tracks. Writing the ability
+//     with the cost omitted would make it a free transform — #259's
+//     mistake exactly — so the CLAUSE stays out until the component
+//     exists.
+//   - The back face's attack trigger is unwired for a consequence of
+//     that, not for its own reason: face 1 is reachable by the verb
+//     now, but nothing on THIS card can reach it, so a "#1" entry
+//     would be a trigger no game could fire. It lands in the same PR
+//     as the waterbend cost.
 //
 // # The ETB clause
 //

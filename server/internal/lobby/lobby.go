@@ -43,7 +43,7 @@ var (
 	// ticket. Unarchive first; the state is all still there.
 	ErrGameArchived = errors.New("lobby: game is archived")
 
-	// ErrGameNotActiveForSpawn is returned by SpawnCards when the
+	// ErrGameNotActiveForSpawn is returned by Spawn when the
 	// game has not started (or has ended). Dev-only path.
 	ErrGameNotActiveForSpawn = errors.New("lobby: game must be active to spawn cards")
 
@@ -52,6 +52,14 @@ var (
 	// ErrUnknownBotTier is returned when a bot is added with a tier
 	// the host doesn't offer.
 	ErrUnknownBotTier = errors.New("lobby: unknown bot tier")
+
+	// ErrInvalidInviteKind is returned by RotateInvite for a kind
+	// other than InvitePlayer or InviteSpectator.
+	ErrInvalidInviteKind = errors.New("lobby: invalid invite kind")
+	// ErrAlreadySeated is returned when a signed-in person claims, or
+	// links Discord to, a second seat at a table where they already
+	// hold one. One person, one seat per table (ADR 0051 sub-PR 4).
+	ErrAlreadySeated = errors.New("lobby: you already hold a seat at this table")
 )
 
 // GameMeta is the lobby-facing projection of a game. It holds the
@@ -81,6 +89,37 @@ type GameMeta struct {
 	// it (RoomManager.Delete reaps the snapshot, the replay log and
 	// the restore point). See docs/lobby.md.
 	ArchivedAt *time.Time `json:"archived_at,omitempty"`
+
+	// HostPlayerID is the seat that hosts the table (ADR 0075 §2.1):
+	// it may manage the table alongside the server admin. The zero
+	// UUID means no host yet (nobody human has sat down) or none left.
+	// It is the room's effective host mirrored here — see host.go and
+	// ws/host.go for who hosts and how it passes on.
+	HostPlayerID uuid.UUID `json:"host_player_id,omitempty"`
+
+	// HostDiscordID is a named host still waiting to sit down: the
+	// Discord user POST /games was told should host (the /cc-invite
+	// invoker). Cleared once that identity claims a seat, or by an
+	// explicit transfer. Persisted with the meta but never served:
+	// copyMeta, which every outbound meta passes through, blanks it.
+	HostDiscordID string `json:"host_discord_id,omitempty"`
+
+	// CreatedBy is games.created_by (ADR 0051 decision 2): the
+	// users(id) of whoever called POST /games while signed in, or
+	// uuid.Nil for an admin-created or file-imported game. Never
+	// serialized — the raw UserID is not this table's business to
+	// hand any caller. redactMetaFor turns it into the per-viewer
+	// IsCreator bit below and every outbound path goes through it.
+	// Distinct from HostPlayerID (ADR 0075 §2.1): the creator need
+	// not be seated, and a seated host need not be the creator.
+	CreatedBy uuid.UUID `json:"-"`
+	// IsCreator reports, for THIS response's viewer only, whether
+	// they created the game (#1098). Computed by redactMetaFor from
+	// CreatedBy and the requesting principal's UserID; never the raw
+	// creator identity, so one caller can never learn who created
+	// somebody else's table. Omitted (false) for every response that
+	// does not go through redactMetaFor.
+	IsCreator bool `json:"is_creator,omitempty"`
 }
 
 // Archived reports whether the table has been retired from the
@@ -124,6 +163,29 @@ type SeatInfo struct {
 	IsBot   bool   `json:"is_bot,omitempty"`
 	BotTier string `json:"bot_tier,omitempty"`
 	BotDeck string `json:"bot_deck,omitempty"`
+
+	// IsHost marks the table host (ADR 0075 §2.1). Never true on a bot
+	// seat. Mirrors GameMeta.HostPlayerID.
+	IsHost bool `json:"is_host,omitempty"`
+
+	// UserID is the users row of the signed-in person holding the seat
+	// (seats.user_id, ADR 0051 sub-PR 4), or "" for a guest, a bot,
+	// and a Discord seat still waiting for its person to sign in again
+	// (seats.pending_discord_id). Server-side only: it is the proof
+	// behind "My games" and user seat reclaim, and it never goes on
+	// the wire — the other seats have no use for it.
+	UserID string `json:"-"`
+
+	// DeckID is the library deck (decks(id), ADR 0051 decision 7, S34
+	// sub-PR 5) this seat's cards came from, or "" when they did not:
+	// a guest's upload, a signed-in player's ad-hoc paste that wasn't
+	// saved (format "url"), or a pre-built catalog deck (which has its
+	// own id system — see uploadDeckResponse.DeckID — and is never a
+	// decks(id) row). Not exposed over JSON: nothing on the client
+	// reads it yet, and seats.deck_id existing as a real foreign key
+	// (migration 0005) is the reason it must never be set to anything
+	// other than a genuine decks(id) or "".
+	DeckID string `json:"-"`
 }
 
 // BotHost runs bot seats. Satisfied by *aiseat.Manager; an interface
@@ -309,7 +371,7 @@ func (l *Lobby) resolveInvite(want uuid.UUID, invite string) (InviteRecord, erro
 // Create records no creator (games.created_by NULL); it is CreateBy
 // with a zero user.
 func (l *Lobby) Create(name string) (GameMeta, error) {
-	return l.CreateBy(name, uuid.Nil)
+	return l.CreateWith(name, uuid.Nil, "")
 }
 
 // CreateBy is Create with the creating user recorded (ADR 0051
@@ -319,6 +381,15 @@ func (l *Lobby) Create(name string) (GameMeta, error) {
 // a users row: the column is a foreign key, and a user that does not
 // exist fails the create.
 func (l *Lobby) CreateBy(name string, createdBy uuid.UUID) (GameMeta, error) {
+	return l.CreateWith(name, createdBy, "")
+}
+
+// CreateWith is the full create: CreateBy plus an optional named host.
+// hostDiscordID, when non-empty, is the Discord user who should host
+// the table once they claim a seat (ADR 0075 §2.1); until they do,
+// the first human seat hosts. It is stored on the games row
+// (host_discord_id) and never served.
+func (l *Lobby) CreateWith(name string, createdBy uuid.UUID, hostDiscordID string) (GameMeta, error) {
 	name = trimToLimit(name, 80)
 	if name == "" {
 		return GameMeta{}, ErrEmptyName
@@ -346,6 +417,8 @@ func (l *Lobby) CreateBy(name string, createdBy uuid.UUID) (GameMeta, error) {
 		SpectatorInvite: specInvite,
 		Players:         []SeatInfo{},
 		State:           string(g.State),
+		HostDiscordID:   trimToLimit(hostDiscordID, 32),
+		CreatedBy:       createdBy,
 	}
 
 	// The invites are minted here and nowhere else, and they are
@@ -358,11 +431,12 @@ func (l *Lobby) CreateBy(name string, createdBy uuid.UUID) (GameMeta, error) {
 	}
 	ctx, cancel := storeCtx()
 	err = l.store.CreateGame(ctx, GameRecord{
-		ID:        g.ID,
-		Name:      name,
-		CreatedBy: creator,
-		State:     string(g.State),
-		CreatedAt: created,
+		ID:            g.ID,
+		Name:          name,
+		CreatedBy:     creator,
+		State:         string(g.State),
+		CreatedAt:     created,
+		HostDiscordID: meta.HostDiscordID,
 	}, []InviteRecord{
 		{Hash: playerHash, GameID: g.ID, Kind: InvitePlayer, CreatedBy: creator, CreatedAt: created},
 		{Hash: specHash, GameID: g.ID, Kind: InviteSpectator, CreatedBy: creator, CreatedAt: created},
@@ -382,6 +456,74 @@ func (l *Lobby) CreateBy(name string, createdBy uuid.UUID) (GameMeta, error) {
 	l.mu.Unlock()
 
 	return copyMeta(meta), nil
+}
+
+// RotateInvite replaces a game's invite of the given kind: the
+// current invite of that kind is revoked and a new one is minted,
+// hashed and stored — atomically, via Store.RotateInvite — and the
+// in-memory plaintext on this process's entry is updated so GET
+// /games/{id} keeps showing a usable link without a restart.
+//
+// This is the escape hatch ADR 0051 decision 4 left open. Create's
+// plaintext tokens live only in the memory of the process that
+// minted them (see the comment there), so a link lost after a
+// restart could never be shown again — the game just sat there with
+// an invite nobody could read. Rotating needs nothing from the OLD
+// token to do this: Store.RotateInvite revokes by (game, kind), not
+// by hash, which is exactly what makes it work when the old
+// plaintext is gone. The trade is that the old link — wherever it
+// was already shared — stops working the moment this returns.
+//
+// The new plaintext is returned once, like Create's and
+// MintReclaim's; it is not retrievable again after this call except
+// from this same process's memory, and not at all after this process
+// restarts.
+//
+// Held under l.mu for the whole call, like every other lobby
+// mutation, so two concurrent rotations of the same kind serialize
+// (the second sees the first's replacement as "current" and revokes
+// that one instead), and a Join/Spectate/Preview racing a rotation
+// resolves against the invite as it stood strictly before or
+// strictly after this call, never a half-updated state.
+func (l *Lobby) RotateInvite(id uuid.UUID, kind InviteKind) (string, GameMeta, error) {
+	if kind != InvitePlayer && kind != InviteSpectator {
+		return "", GameMeta{}, ErrInvalidInviteKind
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	entry, ok := l.games[id]
+	if !ok {
+		return "", GameMeta{}, ErrGameNotFound
+	}
+
+	newToken, err := token.Random(16)
+	if err != nil {
+		return "", GameMeta{}, err
+	}
+	newHash, _ := hashInvite(newToken)
+	now := time.Now().UTC()
+
+	ctx, cancel := storeCtx()
+	err = l.store.RotateInvite(ctx, id, kind, InviteRecord{
+		Hash: newHash, GameID: id, Kind: kind, CreatedAt: now,
+	}, now)
+	cancel()
+	if err != nil {
+		// Mirrors Create: an invite that never reached the store
+		// cannot be redeemed at all, even in this process, since
+		// resolveInvite always checks the store — so the in-memory
+		// plaintext must not be updated on this path.
+		return "", GameMeta{}, err
+	}
+
+	switch kind {
+	case InvitePlayer:
+		entry.meta.InviteToken = newToken
+	case InviteSpectator:
+		entry.meta.SpectatorInvite = newToken
+	}
+	return newToken, copyMeta(entry.meta), nil
 }
 
 // Join claims a seat in game `id` on behalf of `playerName`, guarded
@@ -429,6 +571,19 @@ func (d DiscordIdentity) DisplayName() string {
 // Non-populated identity is indistinguishable from the legacy
 // Join path.
 func (l *Lobby) JoinWithIdentity(id uuid.UUID, invite, playerName string, identity DiscordIdentity) (GameMeta, uuid.UUID, error) {
+	return l.JoinAs(id, invite, playerName, identity, uuid.Nil)
+}
+
+// JoinAs is JoinWithIdentity for a signed-in person: userID is the
+// users row of the principal claiming the seat, written to
+// seats.user_id (ADR 0051 sub-PR 4). uuid.Nil is a guest, exactly
+// JoinWithIdentity.
+//
+// A person holds at most one seat per table. A second claim by the
+// same user is ErrAlreadySeated: seat reclaim by user (POST
+// /me/games/{id}/session) finds "the seat whose user_id is theirs",
+// and two of them would make that a guess.
+func (l *Lobby) JoinAs(id uuid.UUID, invite, playerName string, identity DiscordIdentity, userID uuid.UUID) (GameMeta, uuid.UUID, error) {
 	// Fall back to the Discord display name when the caller didn't
 	// pass an explicit override. This is the path the OAuth
 	// callback takes — the user never typed a name.
@@ -468,6 +623,11 @@ func (l *Lobby) JoinWithIdentity(id uuid.UUID, invite, playerName string, identi
 	if len(entry.meta.Players) >= game.MaxPlayers {
 		return GameMeta{}, uuid.Nil, ErrGameFull
 	}
+	if userID != uuid.Nil {
+		if _, taken := seatOfUser(entry.meta.Players, userID); taken {
+			return GameMeta{}, uuid.Nil, ErrAlreadySeated
+		}
+	}
 
 	// Placeholder deck: one commander + one filler so the library
 	// isn't empty on Start. Real deck import is S05.
@@ -477,12 +637,22 @@ func (l *Lobby) JoinWithIdentity(id uuid.UUID, invite, playerName string, identi
 	}
 	var p *game.Player
 	var err error
+	bindNamedHost := false
 	broadcast, err = l.applyLocked(id, entry, func() error {
 		added, addErr := entry.room.Game.AddPlayer(playerName, deck)
 		if addErr != nil {
 			return addErr
 		}
 		p = added
+		// ADR 0075 §2.1: the named host takes the table when they sit
+		// down; otherwise the first human to join hosts. Set inside
+		// the apply so this commit's capture already carries is_host.
+		if identity.Populated() && entry.meta.HostDiscordID != "" && identity.ID == entry.meta.HostDiscordID {
+			entry.room.SetHost(p.ID)
+			bindNamedHost = true
+		} else if entry.room.HostPlayerID() == uuid.Nil {
+			entry.room.SetHost(p.ID)
+		}
 		if identity.Populated() {
 			// Mirror the identity onto the game.Player so it flows
 			// through PlayerView to the client without the snapshot
@@ -524,8 +694,16 @@ func (l *Lobby) JoinWithIdentity(id uuid.UUID, invite, playerName string, identi
 		seat.DiscordAvatarHash = identity.AvatarHash
 		seat.DisplayName = identity.DisplayName()
 	}
+	if userID != uuid.Nil {
+		seat.UserID = userID.String()
+	}
 	entry.meta.Players = append(entry.meta.Players, seat)
 	l.persistSeatsLocked(entry)
+	if bindNamedHost {
+		entry.meta.HostDiscordID = ""
+		l.persistGameLocked(entry)
+	}
+	l.syncHostLocked(entry)
 
 	// Return a copy so callers can't mutate internal state via the
 	// returned meta. (json.Marshal would copy anyway, but defense in
@@ -586,6 +764,7 @@ func (l *Lobby) Preview(id uuid.UUID, invite string) (GameMeta, PreviewKind, err
 	if !ok {
 		return GameMeta{}, "", ErrGameNotFound
 	}
+	l.syncHostLocked(entry)
 	rec, err := l.resolveInvite(id, invite)
 	if err != nil {
 		return GameMeta{}, "", err
@@ -603,6 +782,7 @@ func (l *Lobby) Preview(id uuid.UUID, invite string) (GameMeta, PreviewKind, err
 	m.State = string(entry.room.Game.CurrentState())
 	m.InviteToken = ""
 	m.SpectatorInvite = ""
+	m.HostPlayerID = uuid.Nil
 	for i := range m.Players {
 		m.Players[i].PlayerID = uuid.Nil
 		m.Players[i].DiscordID = ""
@@ -708,49 +888,33 @@ func (l *Lobby) SetDeck(gameID, playerID uuid.UUID, deckName string, cards []gam
 	return copyMeta(entry.meta), nil
 }
 
-// SpawnCards inserts n copies of template into a zone for the
-// develop environment's card spawner (ADR 0023). Mirrors SetDeck:
-// mutate under the room so seq bumps and the replay stream records
-// it, then broadcast after releasing l.mu.
+// SetSeatDeckID records which library deck (ADR 0051 decision 7, S34
+// sub-PR 5) a seat's cards came from, alongside the deck contents
+// SetDeck installs. Callers pass "" to clear it — an ad-hoc paste, a
+// guest's upload, or a switch to a pre-built catalog deck has no
+// library row behind it, and a stale id left over from a seat's
+// previous deck would be worse than none.
 //
-// Routing this through applyLocked rather than poking Game directly
-// is what makes a spawn behave like every other mutation — it lands
-// in the replay, so a bug found with a spawned board is still
-// reproducible from the recording.
-//
-// Requires an active game: spawning into a lobby-state game would be
-// undone by Start dealing opening hands, which reads as the feature
-// being broken rather than misused.
-func (l *Lobby) SpawnCards(gameID, playerID uuid.UUID, zone game.ZoneKind, template game.Card, n int) ([]uuid.UUID, error) {
-	// Registered before the lock defer so it runs after l.mu is
-	// released — see applyLocked.
-	var broadcast func()
-	defer func() {
-		if broadcast != nil {
-			broadcast()
-		}
-	}()
+// Deliberately separate from SetDeck rather than a parameter on it:
+// SetDeck mutates the engine (ReplaceDeck) and is shared with every
+// deck-install caller; a library id is purely lobby bookkeeping that
+// only the HTTP layer's two deck-library routes know about.
+func (l *Lobby) SetSeatDeckID(gameID, playerID uuid.UUID, deckID string) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
 	entry, ok := l.games[gameID]
 	if !ok {
-		return nil, ErrGameNotFound
+		return ErrGameNotFound
 	}
-	if entry.room.Game.CurrentState() != game.StateActive {
-		return nil, ErrGameNotActiveForSpawn
+	for i := range entry.meta.Players {
+		if entry.meta.Players[i].PlayerID == playerID {
+			entry.meta.Players[i].DeckID = deckID
+			l.persistSeatsLocked(entry)
+			return nil
+		}
 	}
-
-	var ids []uuid.UUID
-	var err error
-	if broadcast, err = l.applyLocked(gameID, entry, func() error {
-		var innerErr error
-		ids, innerErr = entry.room.Game.SpawnCardsForDev(playerID, zone, template, n)
-		return innerErr
-	}); err != nil {
-		return nil, err
-	}
-	return ids, nil
+	return ErrPlayerNotInGame
 }
 
 // Start transitions the game from lobby to active. Fails if fewer
@@ -980,9 +1144,29 @@ func (l *Lobby) Get(id uuid.UUID) (GameMeta, error) {
 	if !ok {
 		return GameMeta{}, ErrGameNotFound
 	}
+	l.syncHostLocked(entry)
 	// Live-state read — see the note in List.
 	l.syncStateLocked(entry)
 	return copyMeta(entry.meta), nil
+}
+
+// CreatedBy returns games.created_by for a live game: the users(id)
+// of the person who created it, or "" for an admin-created game (an
+// admin session is a server credential, not a person — decision 2).
+// ErrGameNotFound when the table is not live in this process.
+//
+// It exists for the DM-invite route's "seated in, or the creator of,
+// the game" rule (ADR 0051 decision 5). GameMeta deliberately does
+// not carry the creator: it is the lobby's own bookkeeping and has
+// never been on the wire.
+func (l *Lobby) CreatedBy(id uuid.UUID) (string, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	entry, ok := l.games[id]
+	if !ok {
+		return "", ErrGameNotFound
+	}
+	return entry.createdBy, nil
 }
 
 // LookupGame returns the live *game.Game pointer for id, or
@@ -1030,6 +1214,7 @@ func (l *Lobby) list(archived bool) []GameMeta {
 		// affordances (replay download); a transition seen here is
 		// also written to the games row.
 		l.syncStateLocked(e)
+		l.syncHostLocked(e)
 		m := copyMeta(e.meta)
 		m.InviteToken = ""
 		m.SpectatorInvite = ""
@@ -1168,6 +1353,9 @@ func copyMeta(m GameMeta) GameMeta {
 		at := *m.ArchivedAt
 		out.ArchivedAt = &at
 	}
+	// A pending named host is a Discord ID for somebody who may not
+	// be at the table yet; nobody reading the meta needs it.
+	out.HostDiscordID = ""
 	return out
 }
 
@@ -1204,4 +1392,20 @@ func trimToLimit(s string, limit int) string {
 
 func isSpace(b byte) bool {
 	return b == ' ' || b == '\t' || b == '\r' || b == '\n'
+}
+
+// parseUUIDOrNil parses s as a UUID, or returns uuid.Nil for an empty
+// or unparseable string. Used for GameRecord.CreatedBy and its kin,
+// where "" already means Nil by convention (CreateWith writes it that
+// way) and a row that somehow holds garbage should read as "no
+// creator" rather than fail the load.
+func parseUUIDOrNil(s string) uuid.UUID {
+	if s == "" {
+		return uuid.Nil
+	}
+	id, err := uuid.Parse(s)
+	if err != nil {
+		return uuid.Nil
+	}
+	return id
 }

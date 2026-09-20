@@ -1,7 +1,7 @@
 // Command cmd_and_ctrl-bot is the S12.5 Discord slash-command bot.
 // It runs as a second systemd unit next to the game server and
-// exposes /cc-invite + /cc-games against an allow-listed set of
-// guilds. Invite posting is done by calling back into the game
+// exposes /cc-invite + /cc-games + /cc-end against an allow-listed
+// set of guilds. Every command works by calling back into the game
 // server's admin HTTP API over loopback — the bot never mutates
 // game state directly.
 //

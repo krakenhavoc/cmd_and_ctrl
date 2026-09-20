@@ -704,6 +704,15 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 		// the state-check loop does not run while a choice is queued.
 		g.pruneSacrificeChoicesLocked()
 	}
+	// #1045: and any choose-cards prompt that still OFFERS this card
+	// as a candidate is offering a card that is no longer in the zone
+	// its answer is re-checked against — a discard prompt whose hand
+	// was wheeled away, a graveyard pick that has been exiled. Also
+	// unconditional, and for the same reason: the hand and the
+	// graveyard strand a prompt exactly as the battlefield does. First
+	// of the two, so the drop's own continuation (a run leg settling
+	// with nothing) runs before anything the stale-move prune starts.
+	g.pruneCardSetChoicesLocked()
 	// #605: a card that has just landed invalidates any OTHER queued
 	// prompt still asking about a move of the same card out of the
 	// zone it has now left. Unconditional — an exit from the stack or

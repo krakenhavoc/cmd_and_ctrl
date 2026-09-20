@@ -72,7 +72,45 @@ export interface Settings {
     // the around-the-table seating (next seat bottom-left, the two
     // across-table seats on top); "row" puts every opponent in turn
     // order across the top and gives your panel the full width.
+    //
+    // #956 note: at THREE players the two are now identical — the
+    // viewer needs the whole bottom row there, and there is no third
+    // arrangement worth having. This setting only distinguishes the
+    // 4-player table.
     tableLayout: "row" | "quadrant";
+    // How an opponent's board is drawn. "summary" (the default)
+    // renders a dense read-out — life, untapped mana by colour,
+    // creature pips carrying P/T — and expands that seat to a full
+    // board when an interaction needs card-level clicks. "full"
+    // keeps every opponent rendered as cards at all times, which is
+    // how the table worked before.
+    //
+    // The summary exists because card size is a share of panel
+    // height with a clamp() floor (the #858 ramp): past the floor a
+    // small panel stops shrinking its cards and starts clipping them,
+    // which is #956. A representation that degrades by CHANGING
+    // rather than SCALING has no floor to hit. See seatSummary.ts.
+    opponentDetail: "summary" | "full";
+    // Expand the active player's panel for the duration of their
+    // turn. On by default: it changes on a turn boundary, so it
+    // cannot land mid-click the way a "something interesting
+    // happened" trigger would. Off means a seat only ever expands
+    // from something the viewer did — a targeting prompt, block or
+    // attack mode, or clicking an avatar to pin it.
+    expandActivePlayer: boolean;
+    // TEMPORARY. Which mechanism an expanding panel uses.
+    //
+    // "reflow" gives the expanded seat a larger grid share and
+    // shrinks the summaries, keeping every panel in one plane so
+    // CombatArrows can measure both endpoints against boardEl.
+    // "overlay" floats the expanded panel over the table, which
+    // animates far more easily but puts one arrow endpoint across a
+    // z-index boundary.
+    //
+    // Both ship so they can be compared in a real game. ONE OF THEM
+    // IS GOING TO BE DELETED along with this setting once that
+    // comparison has an answer — don't build anything else on it.
+    expandStyle: "reflow" | "overlay";
     // Hover preview delay in milliseconds, 0..1000. S11 hover
     // preview reads this as its activation threshold.
     hoverDelayMs: number;
@@ -184,7 +222,7 @@ export interface Settings {
   };
 }
 
-export const SETTINGS_VERSION = 10;
+export const SETTINGS_VERSION = 11;
 const STORAGE_KEY = "cmdctrl.settings.v1";
 const LEGACY_MUTED_KEY = "cmdctrl.muted";
 
@@ -253,6 +291,18 @@ export function defaultSettings(): Settings {
       cardSize: "medium",
       handLayout: "fan",
       tableLayout: "quadrant",
+      // v11 default: summary. The full-card rendering clips at small
+      // panel sizes and has no headroom left to shrink into (#956),
+      // so the dense read-out is the one that works at every table
+      // size. "full" is the escape hatch, not the baseline.
+      opponentDetail: "summary",
+      // v11 default: on. Expanding the active player is the one
+      // automatic expansion that cannot surprise you mid-click,
+      // because it happens on a turn boundary.
+      expandActivePlayer: true,
+      // v11 default: reflow — it keeps combat arrows in one plane.
+      // Temporary; see the field comment.
+      expandStyle: "reflow",
       hoverDelayMs: 300,
       showOpponentHandCount: true,
     },
@@ -431,6 +481,27 @@ function migrate(raw: unknown): Settings {
   // what survives. It also drops an override that has become equal to
   // the current default, so a row the user "changed" back to the
   // shipped value stops being pinned.
+  //
+  // v10 → v11 (#956 follow-up): display.opponentDetail,
+  // display.expandActivePlayer and display.expandStyle. The shallow
+  // merge fills all three from defaults for any v10 blob, which is
+  // the usual story — but be clear about what that means here,
+  // because it is not what the previous nine migrations did.
+  //
+  // opponentDetail defaults to "summary", so an existing player's
+  // opponents CHANGE APPEARANCE on upgrade without them touching
+  // anything. Every earlier migration in this chain changed how the
+  // client behaved; this is the first that changes what the table
+  // looks like. It is deliberate — the full-card rendering clips at
+  // small panel sizes and has nowhere left to shrink (#956) — and
+  // "full" restores the old look exactly, but a player who opens
+  // Settings after upgrading is looking for this row, so it sits at
+  // the top of the Display tab rather than the bottom.
+  //
+  // expandStyle is temporary and disappears with one of the two
+  // expansion mechanisms; a stored value for it is expected to stop
+  // being honoured, which is fine because the shallow merge will
+  // simply drop an unknown field at v12.
   merged.shortcuts = {
     enabled: merged.shortcuts?.enabled !== false,
     bindings: sanitizeOverrides(merged.shortcuts?.bindings),

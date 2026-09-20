@@ -62,6 +62,20 @@ describe("settings", () => {
     expect(s.gameplay.confirmExit).toBe(true);
   });
 
+  // #956 / ADR 0077. Pinned as its own test rather than folded into
+  // the shape check above, because these three are the defaults that
+  // decide what a new player's table LOOKS like, and the ADR's
+  // consequences section is written assuming exactly these values.
+  // If one of them flips, that document is wrong and should move with
+  // the code.
+  it("defaults an opponent's board to the summary rendering", async () => {
+    const { defaultSettings } = await freshModule();
+    const d = defaultSettings();
+    expect(d.display.opponentDetail).toBe("summary");
+    expect(d.display.expandActivePlayer).toBe(true);
+    expect(d.display.expandStyle).toBe("reflow");
+  });
+
   it("absorbs the legacy cmdctrl.muted=1 key on first load", async () => {
     localStorage.setItem("cmdctrl.muted", "1");
     const { settings } = await freshModule();
@@ -181,6 +195,54 @@ describe("settings", () => {
     );
     const { settings } = await freshModule();
     expect(get(settings).shortcuts.bindings).toEqual({});
+  });
+
+  // #956 / ADR 0077. Unlike the eight migrations before it, this one
+  // changes what the table LOOKS like for a user who has touched
+  // nothing: opponentDetail arrives as "summary" and their opponents
+  // stop being drawn as cards. The test says so explicitly so nobody
+  // later "fixes" the default thinking it was an oversight.
+  it("v10 → v11 seeds the opponent-detail settings without disturbing stored choices", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({
+        __version: 10,
+        display: { cardSize: "large", tableLayout: "row", showOpponentHandCount: false },
+        gameplay: { adminOverrides: true },
+        shortcuts: { enabled: true, bindings: { undo: "z" } },
+      }),
+    );
+    const { settings, SETTINGS_VERSION } = await freshModule();
+    const s = get(settings);
+    expect(s.__version).toBe(SETTINGS_VERSION);
+    // The three new fields arrive at their defaults.
+    expect(s.display.opponentDetail).toBe("summary");
+    expect(s.display.expandActivePlayer).toBe(true);
+    expect(s.display.expandStyle).toBe("reflow");
+    // Everything the user had actually chosen is untouched.
+    expect(s.display.cardSize).toBe("large");
+    expect(s.display.tableLayout).toBe("row");
+    expect(s.display.showOpponentHandCount).toBe(false);
+    expect(s.gameplay.adminOverrides).toBe(true);
+    expect(s.shortcuts.bindings).toEqual({ undo: "z" });
+  });
+
+  it("v11 keeps an explicit opponentDetail: full across a load", async () => {
+    // The escape hatch has to survive a reload, or a player who
+    // deliberately went back to full boards gets summaries again on
+    // next launch — which would read as the setting not working.
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({
+        __version: 11,
+        display: { opponentDetail: "full", expandActivePlayer: false, expandStyle: "overlay" },
+      }),
+    );
+    const { settings } = await freshModule();
+    const s = get(settings);
+    expect(s.display.opponentDetail).toBe("full");
+    expect(s.display.expandActivePlayer).toBe(false);
+    expect(s.display.expandStyle).toBe("overlay");
   });
 
   it("falls back to defaults when stored blob is corrupt", async () => {

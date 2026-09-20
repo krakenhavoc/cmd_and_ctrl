@@ -616,13 +616,45 @@ func TestCensusCountsEveryContinuationKind(t *testing.T) {
 			expect: func(c ContinuationCensus) int { return c.TurnScopedReplacements },
 		},
 		{
-			name: "intrinsic abilities with no oracle id",
+			// #521 changed what this counter means, not whether it
+			// exists. It used to fire on "has an instance ability and
+			// no oracle ID", which caught every Treasure on every
+			// board; it now fires on "has an instance ability the
+			// catalog cannot hand back", which is the thing restore
+			// would actually lose. The fixture is a card with NO
+			// catalog identity of either kind — no oracle ID and no
+			// token key — carrying a closure-bearing ability that
+			// nothing can look up. That is still a continuation and
+			// must still be counted.
+			name: "instance ability the catalog cannot re-derive",
 			set: func(g *Game) {
 				g.Battlefield.PushTop(Card{
 					InstanceID:    uuid.New(),
-					Name:          "Treasure",
-					TypeLine:      "Token Artifact — Treasure",
+					Name:          "Unregistered Contraption",
+					TypeLine:      "Artifact",
 					ManaAbilities: []ManaAbilityShape{{TapCost: true, Produced: "{C}"}},
+				})
+			},
+			expect: func(c ContinuationCensus) int { return c.IntrinsicAbilityCards },
+		},
+		{
+			// The other half of the same counter, and the one #521
+			// could most easily have made unreachable: an ability
+			// stamped onto ONE instance at runtime, on a card that
+			// does have an oracle ID. The catalog answers for the
+			// key and does not know about this ability, so restore
+			// would bring the card back without it — censused.
+			name: "instance ability the card's catalog entry does not declare",
+			set: func(g *Game) {
+				g.Battlefield.PushTop(Card{
+					InstanceID: uuid.New(),
+					Name:       "Catalogued Card With An Extra Ability",
+					TypeLine:   "Artifact",
+					OracleID:   "oracle-with-no-abilities",
+					ActivatedAbilities: []ActivatedAbilityShape{{
+						Label:  "{T}: do something the catalog never heard of",
+						Effect: func(*Game, *StackItem) error { return nil },
+					}},
 				})
 			},
 			expect: func(c ContinuationCensus) int { return c.IntrinsicAbilityCards },

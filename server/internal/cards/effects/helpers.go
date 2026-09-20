@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"strings"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -135,6 +137,33 @@ func containsFoldASCII(haystack, needle string) bool {
 // Caller must hold g.mu.
 func combatDamageToPlayerBy(ev game.Event, controller uuid.UUID, g *game.Game) bool {
 	if ev.Kind != game.EventDealDamage || !ev.Combat || ev.Amount <= 0 {
+		return false
+	}
+	if p := g.PlayerByIDForEffect(ev.Target); p == nil {
+		return false
+	}
+	src, ok := g.LookupCardForEffect(ev.Source)
+	return ok && src.IsCreature() && src.Controller == controller
+}
+
+// damageToPlayerBy is combatDamageToPlayerBy without the CR 603
+// combat-damage restriction. It exists for the printed text that
+// says "deal damage" with no "combat" in it — Breeches, Brazen
+// Plunderer and Malcolm, Keen-Eyed Navigator both print "Whenever
+// one or more Pirates you control deal damage to your opponents",
+// unlike Bident of Thassa, Coastal Piracy and every other caller of
+// combatDamageToPlayerBy, which all print "combat damage" and must
+// keep reading it that way.
+//
+// A SIBLING, not a broadened combatDamageToPlayerBy: AGENTS.md's
+// shared-file rule is append a function, never change an existing
+// one's behaviour, and every existing caller of
+// combatDamageToPlayerBy would silently widen if the combat check
+// were dropped from it instead.
+//
+// Caller must hold g.mu.
+func damageToPlayerBy(ev game.Event, controller uuid.UUID, g *game.Game) bool {
+	if ev.Kind != game.EventDealDamage || ev.Amount <= 0 {
 		return false
 	}
 	if p := g.PlayerByIDForEffect(ev.Target); p == nil {
@@ -331,6 +360,28 @@ func IsBasicLandExcept(subtype string) func(game.Card) bool {
 	}
 }
 
+// IsLandWithAnySubtype is "a <A>, <B>, or <C> card" — any land
+// carrying ANY of the named land subtypes, basic or not. Composes
+// IsLandWithSubtype rather than re-scanning the type line, so it
+// admits Hallowed Fountain and Indatha Triome (Plains Swamp Forest)
+// exactly the way a fetchland's two-name landWithEitherSubtype does;
+// this is that same shape generalised past two names.
+//
+// Farseek's "a Plains, Island, Swamp, or Mountain card" is this
+// predicate over those four names — a land TYPE test, not a "basic"
+// test, so it also excludes Wastes, which prints none of the four.
+func IsLandWithAnySubtype(subtypes ...string) func(game.Card) bool {
+	want := append([]string(nil), subtypes...)
+	return func(c game.Card) bool {
+		for _, s := range want {
+			if IsLandWithSubtype(s)(c) {
+				return true
+			}
+		}
+		return false
+	}
+}
+
 // controllerOfTarget resolves the controller of a targeted card, for
 // the "its controller …" clause on Beast Within / Generous Gift /
 // Nature's Claim. Returns ok=false when the target has left the
@@ -359,6 +410,23 @@ func destroyChosenPermanent(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	return DestroyTarget{Target: item.Targets[0].ID}.Apply(NewContext(g, item))
+}
+
+// destroyFirstLegalCardTarget is the whole Effect of an activated
+// ability whose printed text is "Destroy target [permanent]." — it
+// re-checks legality through ctx.LegalTargets() (CR 608.2b) rather
+// than trusting item.Targets[0] blindly, which matters for an
+// activation whose target could leave the battlefield in response.
+// Hopeful Initiate's and Staff of Compleation's destroy activations
+// share this exact shape.
+func destroyFirstLegalCardTarget(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, ref := range ctx.LegalTargets() {
+		if ref.Kind == game.TargetCard {
+			return DestroyTarget{Target: ref.ID}.Apply(ctx)
+		}
+	}
+	return nil
 }
 
 // targetOpponentLosesAndYouGain is "target opponent loses n life and
@@ -547,4 +615,141 @@ func damageToFirstTarget(amount int) func(item *game.StackItem, ctx *Context) er
 			Amount: amount,
 		}.Apply(ctx)
 	}
+}
+
+// EachLandIsAlso is "each land is a <basic land type> in addition to
+// its other land types" — Urborg's sentence with the type as an
+// argument, which is Yavimaya, Cradle of Growth.
+//
+// One layer-4 static, and an APPEND rather than a set: "in addition
+// to" takes nothing away, so an Island keeps {U} and keeps its printed
+// ability in slot 0. The intrinsic mana ability for the added type is
+// not declared here — game.ManaAbilitiesForCard derives it from the
+// EFFECTIVE subtypes (CR 305.6), which is the whole reason the
+// sentence does anything.
+//
+// "Each land" is every land on the battlefield under every player's
+// control, the source included. IsLand is read through the effective
+// view on purpose: a permanent another layer-4 effect made a land is
+// one, and CR 613.8a then makes this depend on that effect rather
+// than race it by timestamp (ADR 0067).
+//
+// Contrast SetsBasicLandType, which is CR 305.7's REPLACEMENT (Magus
+// of the Moon, Blood Moon) and takes the land's own rules text with
+// it.
+// putCounterOnSourceWhileOnBattlefield is the ability effect body
+// behind "…: Put a[n] <kind> counter on this permanent" (Tekuthal,
+// Inquiry Dominus; Solphim, Mayhem Dominus): a no-op if something
+// killed the source before the ability resolves, otherwise a counter
+// on the source itself. Both cards pair it with b24KeywordCounterGrant
+// so the counter carries CR 122.1e's keyword.
+func putCounterOnSourceWhileOnBattlefield(kind string, n int) Effect {
+	return func(g *game.Game, item *game.StackItem) error {
+		if !b15OnBattlefield(g, item.SourceCardID) {
+			return nil
+		}
+		return AddCounter{Target: item.SourceCardID, Kind: kind, N: n}.
+			Apply(NewContext(g, item))
+	}
+}
+
+func EachLandIsAlso(subtype string) game.StaticAbility {
+	return game.StaticAbility{
+		Layer: game.Layer4Type,
+		AppliesTo: func(target *game.Card, _ *game.Game, _ *game.Card) bool {
+			return target.IsLand()
+		},
+		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+			for _, st := range c.Subtypes {
+				if strings.EqualFold(st, subtype) {
+					return
+				}
+			}
+			c.Subtypes = append(c.Subtypes, subtype)
+		},
+	}
+}
+
+// permanentsControlledByMatching lists the permanents `playerID`
+// controls that satisfy `pred`, in battlefield order — the candidate
+// set behind "sacrifice an artifact of your choice" and its
+// relatives.
+//
+// The fixed-predicate versions that predate it (landsControlledByPlayer,
+// creaturesControlledByPlayer, NonlandPermanentsControlledBy) stay as
+// they are; this is the shape for a clause whose filter is an ordinary
+// CardPredicate, so the card file writes Artifact() rather than another
+// battlefield loop.
+//
+// Caller must hold g.mu — it is an effect-time read.
+func permanentsControlledByMatching(g *game.Game, playerID uuid.UUID, pred CardPredicate) []uuid.UUID {
+	if g == nil || playerID == uuid.Nil {
+		return nil
+	}
+	var out []uuid.UUID
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if c.Controller != playerID {
+			continue
+		}
+		if pred != nil && !pred(g, playerID, c) {
+			continue
+		}
+		out = append(out, c.InstanceID)
+	}
+	return out
+}
+
+// spellManaValueForEffect is "that spell's mana value" for a card that
+// may or may not still be findable: zero when it is in no zone at all,
+// and otherwise the CR 202.3e read that counts {X} only while the card
+// is on the stack (#788).
+//
+// Caller must hold g.mu.
+func spellManaValueForEffect(g *game.Game, cardID uuid.UUID) int {
+	c, ok := g.LookupCardForEffect(cardID)
+	if !ok {
+		return 0
+	}
+	mv, _ := g.ManaValueForEffect(c)
+	return mv
+}
+
+// firstLegalPlayerTarget returns the first still-legal player slot on
+// the item being resolved, or false when there is none. The CR 608.2b
+// read for every single-player-target card: a target that became
+// illegal in response is skipped, and a card whose only target is
+// gone does nothing rather than erroring.
+func firstLegalPlayerTarget(ctx *Context) (uuid.UUID, bool) {
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind == game.TargetPlayer {
+			return t.ID, true
+		}
+	}
+	return uuid.Nil, false
+}
+
+// notACreature strips the Creature card type, and the creature
+// subtypes that rode on it (CR 205.1b), from a characteristic being
+// built in layer 4.
+//
+// Shared by every "as long as <condition>, this isn't a creature"
+// clause — The Warring Triad's graveyard gate, impending's time
+// counters — because the second half is the half that gets forgotten.
+// Dropping Creature and leaving the subtypes behind leaves a God or an
+// Avatar Horror that is not a creature, which reads as a bug on the
+// card and, under a Maskwood Nexus, is one: the permanent would still
+// be every creature type while not being a creature at all (#670).
+//
+// It does NOT touch power and toughness. A characteristic with no
+// Creature type has no P/T that anything reads, and layer 7 runs
+// after layer 4 in any case.
+func notACreature(c *game.Characteristic) {
+	kept := make([]string, 0, len(c.Types))
+	for _, t := range c.Types {
+		if t != "Creature" {
+			kept = append(kept, t)
+		}
+	}
+	c.Types = kept
+	c.SetSubtypes(nil)
 }

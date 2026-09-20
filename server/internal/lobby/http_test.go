@@ -815,6 +815,170 @@ func TestDeleteGameAdminOnly(t *testing.T) {
 	resp.Body.Close()
 }
 
+// --- POST /games/{id}/invites/rotate (#1038) ------------------------
+
+// adminGame is a small test helper: logs in as admin and creates a
+// game, returning the admin session and the created meta.
+func adminGame(t *testing.T, srv *httptest.Server, name string) (sessionResponse, GameMeta) {
+	t.Helper()
+	resp := postJSON(t, srv, "/admin/login", "", adminLoginRequest{Token: "shared-admin-token"})
+	var admin sessionResponse
+	_ = json.NewDecoder(resp.Body).Decode(&admin)
+	resp.Body.Close()
+
+	resp = postJSON(t, srv, "/games", admin.Token, createGameRequest{Name: name})
+	var meta GameMeta
+	_ = json.NewDecoder(resp.Body).Decode(&meta)
+	resp.Body.Close()
+	return admin, meta
+}
+
+func TestRotateInviteRequiresAdmin(t *testing.T) {
+	srv, _, _ := newTestHTTPStack(t)
+	admin, meta := adminGame(t, srv, "Rotate auth")
+
+	resp := postJSON(t, srv, "/games/"+meta.ID.String()+"/join", "",
+		joinRequest{InviteToken: meta.InviteToken, Name: "Alice"})
+	var playerSess sessionResponse
+	_ = json.NewDecoder(resp.Body).Decode(&playerSess)
+	resp.Body.Close()
+
+	// No credential → 401.
+	resp = postJSON(t, srv, "/games/"+meta.ID.String()+"/invites/rotate", "",
+		rotateInviteRequest{Kind: "player"})
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("anon rotate: got %d, want 401", resp.StatusCode)
+	}
+	resp.Body.Close()
+
+	// A seated player is not the admin → 403.
+	resp = postJSON(t, srv, "/games/"+meta.ID.String()+"/invites/rotate", playerSess.Token,
+		rotateInviteRequest{Kind: "player"})
+	if resp.StatusCode != http.StatusForbidden {
+		t.Errorf("player rotate: got %d, want 403", resp.StatusCode)
+	}
+	resp.Body.Close()
+
+	// Admin → 200.
+	resp = postJSON(t, srv, "/games/"+meta.ID.String()+"/invites/rotate", admin.Token,
+		rotateInviteRequest{Kind: "player"})
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("admin rotate: got %d, want 200", resp.StatusCode)
+	}
+	resp.Body.Close()
+}
+
+// TestRotateInviteOldTokenRefusedNewAccepted is the core behaviour
+// #1038 asks for: the response hands back a working replacement, and
+// the link that was already shared stops working immediately.
+func TestRotateInviteOldTokenRefusedNewAccepted(t *testing.T) {
+	srv, _, _ := newTestHTTPStack(t)
+	admin, meta := adminGame(t, srv, "Rotate happy path")
+	oldToken := meta.InviteToken
+
+	resp := postJSON(t, srv, "/games/"+meta.ID.String()+"/invites/rotate", admin.Token,
+		rotateInviteRequest{Kind: "player"})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("rotate status: got %d, want 200", resp.StatusCode)
+	}
+	var rotated rotateInviteResponse
+	_ = json.NewDecoder(resp.Body).Decode(&rotated)
+	resp.Body.Close()
+	if rotated.Kind != "player" {
+		t.Errorf("response kind = %q, want %q", rotated.Kind, "player")
+	}
+	if rotated.Token == "" || rotated.Token == oldToken {
+		t.Fatalf("rotate returned an unusable token: %q (old %q)", rotated.Token, oldToken)
+	}
+
+	// Old token: refused.
+	resp = postJSON(t, srv, "/games/"+meta.ID.String()+"/join", "",
+		joinRequest{InviteToken: oldToken, Name: "Alice"})
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("join with old token: got %d, want 401", resp.StatusCode)
+	}
+	resp.Body.Close()
+
+	// New token: accepted.
+	resp = postJSON(t, srv, "/games/"+meta.ID.String()+"/join", "",
+		joinRequest{InviteToken: rotated.Token, Name: "Alice"})
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("join with rotated token: got %d, want 200", resp.StatusCode)
+	}
+	resp.Body.Close()
+}
+
+// TestRotateInviteLeavesOtherKindWorking mirrors the lobby-level test
+// at the HTTP layer: rotating the player invite must not disturb the
+// spectator invite minted alongside it.
+func TestRotateInviteHTTPLeavesOtherKindWorking(t *testing.T) {
+	srv, _, _ := newTestHTTPStack(t)
+	admin, meta := adminGame(t, srv, "Rotate one kind")
+
+	resp := postJSON(t, srv, "/games/"+meta.ID.String()+"/invites/rotate", admin.Token,
+		rotateInviteRequest{Kind: "player"})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("rotate status: got %d, want 200", resp.StatusCode)
+	}
+	resp.Body.Close()
+
+	resp = postJSON(t, srv, "/games/"+meta.ID.String()+"/spectate", "",
+		spectateRequest{InviteToken: meta.SpectatorInvite, Name: "watcher"})
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("spectate with untouched invite: got %d, want 200", resp.StatusCode)
+	}
+	resp.Body.Close()
+}
+
+func TestRotateInviteBadKind(t *testing.T) {
+	srv, _, _ := newTestHTTPStack(t)
+	admin, meta := adminGame(t, srv, "Rotate bad kind")
+
+	resp := postJSON(t, srv, "/games/"+meta.ID.String()+"/invites/rotate", admin.Token,
+		rotateInviteRequest{Kind: "banana"})
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("bad kind status: got %d, want 400", resp.StatusCode)
+	}
+	resp.Body.Close()
+}
+
+func TestRotateInviteHTTPUnknownGame(t *testing.T) {
+	srv, _, _ := newTestHTTPStack(t)
+	admin, _ := adminGame(t, srv, "Rotate unknown game")
+
+	resp := postJSON(t, srv, "/games/"+uuid.New().String()+"/invites/rotate", admin.Token,
+		rotateInviteRequest{Kind: "player"})
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("unknown game status: got %d, want 404", resp.StatusCode)
+	}
+	resp.Body.Close()
+}
+
+// TestRotateInviteRateLimited proves the route rides the shared
+// join/spectate/preview bucket rather than being unmetered just
+// because it also requires admin auth.
+func TestRotateInviteRateLimited(t *testing.T) {
+	t.Setenv("CMDCTRL_DEV_RELAX_RATE_LIMITS", "")
+	srv, _, _ := newTestHTTPStack(t)
+	admin, meta := adminGame(t, srv, "Rotate rate limit")
+
+	throttled := false
+	for i := 0; i < 8; i++ {
+		resp := postJSON(t, srv, "/games/"+meta.ID.String()+"/invites/rotate", admin.Token,
+			rotateInviteRequest{Kind: "player"})
+		if resp.StatusCode == http.StatusTooManyRequests {
+			throttled = true
+		}
+		resp.Body.Close()
+		if throttled {
+			break
+		}
+	}
+	if !throttled {
+		t.Error("8 rapid rotations never hit 429; rotate is not rate-limited")
+	}
+}
+
 func TestLogoutRevokesSession(t *testing.T) {
 	srv, _, a := newTestHTTPStack(t)
 

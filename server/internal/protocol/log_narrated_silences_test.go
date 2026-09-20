@@ -533,3 +533,28 @@ func TestLogNarratesAClassLevel(t *testing.T) {
 	}
 	assertNoUUID(t, entry.Text)
 }
+
+// TestLogNarratesATransform — CR 701.27a (ADR 0079, #343). A transform
+// is not a zone change, so no LogZone entry says it: this is the only
+// line the table gets, and without it a permanent silently becomes a
+// different card. The name in the line is the face it turned INTO,
+// because viewOfCard reads the active face; `label` carries the one it
+// turned from, which is the only place that name still exists.
+func TestLogNarratesATransform(t *testing.T) {
+	g := buildActiveGame(t)
+	owner := g.Seats[0]
+	vault := battlefieldCard(t, g, "Vault of Catlacan", "Legendary Land", owner.ID)
+
+	g.WithWriteLock(func() {
+		g.EmitEvent(game.Event{
+			Kind: game.EventTransform, Actor: owner.ID,
+			CardID: vault, Amount: 1, Label: "Storm the Vault",
+		})
+	})
+
+	entry := findLog(t, ViewOfGame(g).Log, LogTransform)
+	if want := "Storm the Vault transformed into Vault of Catlacan"; entry.Text != want {
+		t.Errorf("text: got %q, want %q", entry.Text, want)
+	}
+	assertNoUUID(t, entry.Text)
+}

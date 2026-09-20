@@ -84,6 +84,17 @@ enough to claim a seat and mint a RolePlayer session.
 Sets the `cmdctrl_session` cookie. Subsequent calls to `/ws?game=<id>`
 automatically bind to this seat.
 
+The session is **optional** here too (S34 sub-PR 4,
+[ADR 0051](decisions/0051-user-database.md)). When the request carries
+a signed-in person's session, that person takes the seat as
+themselves: the seat gets the session's Discord name and avatar,
+`seats.user_id` is their users row, `name` in the body is ignored, and
+the minted principal carries `user_id` and the `discord_*` fields. A
+signed-in session is an `identified` one, or a `player` one with a
+non-nil `user_id` (the same person at their next table). Any other
+session, and a credential that no longer validates, joins by `name`
+exactly as before.
+
 **Errors**
 
 | Status | Reason |
@@ -91,7 +102,7 @@ automatically bind to this seat.
 | 400 | empty name |
 | 401 | invite token did not match |
 | 404 | game not found |
-| 409 | game already started, or game full |
+| 409 | game already started, game full, or the signed-in person already holds a seat at this table |
 
 ---
 
@@ -143,7 +154,13 @@ own it can do nothing else — the WS authorizer refuses it outright.
 |---|---|
 | 400 | empty name on the anonymous path |
 | 401 | no live table has that invite code (an archived one reads the same way) |
-| 409 | game already started, game full, or a session that already belongs to a table |
+| 409 | game already started, game full, a session that already belongs to a table, or the signed-in person already holds a seat at this table |
+
+Since S34 sub-PR 4 a seat claimed on the Discord path records its
+person in `seats.user_id`. One person holds at most one seat per
+table, because reclaiming a seat by user
+([`POST /me/games/{id}/session`](#post-megamesidsession)) looks up
+"the seat whose `user_id` is yours".
 
 ---
 
@@ -193,8 +210,14 @@ Create a new game.
 **Request**
 
 ```json
-{ "name": "Friday Night Magic" }
+{ "name": "Friday Night Magic", "host_discord_id": "123456789012345678" }
 ```
+
+`host_discord_id` is optional. It names the table host by Discord user ID
+([ADR 0075 §2.1](decisions/0075-table-settings-and-host-controls.md)). The
+Discord bot's `/cc-invite` sends the user who ran it. The ID is held on the
+table, unserved, until that Discord identity claims a seat through the OAuth
+join. That seat then becomes host. See [The table host](#the-table-host).
 
 **Response 201**
 
@@ -222,6 +245,275 @@ again (see `GET /games/{id}`).
 | 403 | session is not RoleAdmin |
 | 400 | empty name |
 
+### The table host
+
+Every table has at most one **host**: the seat that may manage the table
+(settings, and later spawning) alongside the server admin
+([ADR 0075 §2.1](decisions/0075-table-settings-and-host-controls.md)).
+
+- **A named host** (`host_discord_id` on `POST /games`) hosts as soon as that
+  Discord identity claims a seat.
+- **Otherwise the first human seat to join hosts.** When the named host has
+  not arrived yet, the first human hosts in the meantime and hands over when
+  they sit down.
+- **A bot seat never hosts.** A table with only bots has no host.
+- **Transfer**: `POST /games/{id}/host` (below).
+- **What hosting lets you do**: change the table's settings, through
+  `PATCH /games/{id}/settings` (below) or the `set_table_settings` WebSocket
+  action. The deprecated `set_undo_limit` action is gated the same way.
+- **The host leaving passes it on.** When the host concedes or loses
+  ([ADR 0060](decisions/0060-leaving-the-game.md)), hosting passes to the
+  next human seat in turn order, skipping bots and departed seats and
+  wrapping around the table. If no human is left, nobody hosts and only the
+  admin can manage the table. The pass is permanent: an undo that brings the
+  old host back does not hand the table back.
+
+`GameMeta.host_player_id` is the host's player ID. When there is no host it
+is the zero UUID (`00000000-0000-0000-0000-000000000000`). Each seat in
+`players` carries `is_host: true` on the host's seat, and the game view's
+`PlayerView.is_host` matches it ([protocol.md](protocol.md)). Both the host
+and a pending named host are stored on the game's `games` row, in the
+`host_player_id` and `host_discord_id` columns added by migration 0004. They
+survive a restart, and a pass that happened while the server was up is
+written to the row as soon as the lobby sees it.
+
+"Host or admin" is one predicate, `lobby.CanManageTable(principal, meta)`.
+It is true for `RoleAdmin`, or for a `RolePlayer` session bound to this game
+whose `player_id` is `host_player_id`. It is false for spectators, unseated
+Discord sign-ins, other seats, and the host of a different table.
+
+**Not the same thing as the game's creator.** `games.created_by` (ADR
+0051 decision 2) is whoever called `POST /games` while signed in, and
+is a *different* predicate, `lobby.CanRotateInvites` — used only by
+`POST /games/{id}/invites/rotate` and the Discord bot's `/cc-end` host
+check, below. A table's creator need not ever sit down (no seat, no
+`is_host`), and a seated host need not be the creator — the first
+human to join hosts by default regardless of who created the table.
+
+### `POST /games/{id}/host`
+
+Transfer hosting to another seat. Host or admin only.
+
+**Request**
+
+```json
+{ "player_id": "<uuid of the new host>" }
+```
+
+**Response 200**: the updated `GameMeta`, with `host_player_id` and the
+`is_host` flags moved. Connected clients get a fresh snapshot with the new
+`is_host`.
+
+An explicit transfer also clears a pending named host, so a late `/cc-invite`
+claimant does not take the table back.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 400 | missing or malformed `player_id` |
+| 401 | unauthenticated |
+| 403 | caller is neither the host of this table nor the admin |
+| 404 | game not found |
+| 422 | `player_id` is not a seat at this table, is a bot, or has left the game |
+
+### `PATCH /games/{id}/settings`
+
+Change the table's settings
+([ADR 0075 §2.3](decisions/0075-table-settings-and-host-controls.md)). **Host
+or admin only** — the same `CanManageTable` predicate the transfer route
+uses. Valid in the lobby **and** on a live game: a host sitting on the lobby
+page of a running table should not have to open the board to turn undos back
+on. The WebSocket twin is the `set_table_settings` action
+([protocol.md](protocol.md)), which takes the identical body.
+
+**Request** — a *partial*. Only the fields present are applied; a field left
+out is untouched, which is why this is a `PATCH` and not a `PUT`.
+
+```json
+{
+  "undo_limit": 3,
+  "undo_scope": "own",
+  "starting_life": 40,
+  "commander_damage": 21,
+  "bot_pace": "normal",
+  "allow_spawn": false
+}
+```
+
+| Field | Range | Effect |
+|---|---|---|
+| `undo_limit` | `-1` and up | Per-player per-turn undo budget. `-1` is unlimited (never debited, shown as ∞), `0` turns undo off. Takes effect immediately and refreshes every seat's `undos_remaining`. |
+| `undo_scope` | `"own"` \| `"host_any"` | Whose entries a seat may take back. |
+| `starting_life` | 1..999 | Each seat's life at `start`. In the lobby it also rewrites the already-seated players' totals. **Rejected once the game is active.** |
+| `commander_damage` | 1..99 | Damage from one commander that loses the game. Read at the next state-based action check, so lowering it can lose somebody the game at that check. |
+| `bot_pace` | `"fast"` \| `"normal"` \| `"slow"` | AI seat pacing preset. |
+| `allow_spawn` | bool | Whether the host and admin may spawn cards and tokens on a live table. |
+
+The **whole patch is validated first**, so a patch with one bad field changes
+nothing — including the good fields beside it.
+
+**Response 200** — the table's settings *after* the patch, whole, so the
+client can render its panel from the answer instead of waiting for the
+WebSocket broadcast:
+
+```json
+{
+  "settings": {
+    "undo_limit": 3,
+    "undo_scope": "own",
+    "starting_life": 40,
+    "commander_damage": 21,
+    "bot_pace": "normal",
+    "allow_spawn": false
+  }
+}
+```
+
+Every connected client also gets a fresh snapshot carrying the new
+`settings`, and the game log gains one `settings` line per field that
+actually changed ("Luke (host) set undos to 3 per turn"). A settings change
+is **not undoable** — it pushes no undo entry, and a later `undo` carries the
+settings forward rather than rolling them back.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 400 | malformed body, or a value outside its range (`undo_limit` below `-1`, `starting_life` outside 1..999, `commander_damage` outside 1..99, an unknown `undo_scope` or `bot_pace`) |
+| 401 | unauthenticated |
+| 403 | caller is neither the host of this table nor the admin |
+| 404 | game not found |
+| 422 | `starting_life` changed after the game started — the value has already been applied; use the life controls to adjust totals |
+
+### `POST /games/{id}/spawn`
+
+Put cards or tokens onto a **live** table from nowhere
+([ADR 0075 §2.4](decisions/0075-table-settings-and-host-controls.md), which amends
+[ADR 0023](decisions/0023-develop-environment.md)). This is the production
+spawner and is **not** behind the dev-feature gate — the dev route
+`POST /games/{id}/dev/spawn` still exists, unchanged, with its own dev-only,
+anyone-at-the-table semantics.
+
+Two gates, both required:
+
+1. **`CanManageTable`** — the caller is the table host or the server admin.
+2. **`Settings.allow_spawn`** — the table has switched spawning on. It is
+   **off by default** and changed through the table-settings surface.
+
+A refusal says **which** gate fired, because they are different problems with
+different fixes: "you are not the host" sends the caller to ask the host, and
+"this table has spawning off" sends the host to the settings panel.
+
+Every spawn is **announced in the public game log** ("Luke (host) spawned
+2 × Treasure onto Ana's battlefield" — see `spawn` in
+[protocol.md](protocol.md)) and is **undoable** with the ordinary undo,
+attributed to the spawner and flagged free, so repairing a typo does not cost
+the host their per-turn take-back. A battlefield spawn emits `EventETB`, so
+enters-the-battlefield triggers fire and the spawn can put abilities on the
+stack; that is the point of the feature.
+
+**Request**
+
+```json
+{
+  "name": "Sol Ring",
+  "player_id": "<uuid of the seat that will own and control the cards>",
+  "zone": "battlefield",
+  "count": 2,
+  "commander": false
+}
+```
+
+Exactly one of three identifies what to make, checked in this order:
+
+| Field | What it names |
+|---|---|
+| `token` | a token template key, exactly as `GET /games/{id}/spawn/tokens` lists it (`"Treasure"`, `"1/1 white Soldier"`) |
+| `scryfall_id` | an indexed Scryfall printing — what the client pins after a `GET /games/{id}/spawn/cards` search |
+| `name` | a card name, resolved against the same index |
+
+`zone` is one of `battlefield`, `hand`, `graveyard`, `exile`, `library`,
+`command` (never `stack`). `count` defaults to 1 and is capped at 20.
+`commander` stamps the card as a commander and is ignored for a token.
+
+**Tokens may only be spawned onto the battlefield.** CR 704.5d removes a token
+from every other zone at the next state-based action check, so spawning one
+into a hand would appear to work and then silently undo itself. Tokens go
+through the same `CreateToken` primitive the card catalog uses, so a spawned
+Treasure taps and sacrifices for mana like a real one.
+
+**Response 200**
+
+```json
+{
+  "spawned": ["<instance uuid>", "..."],
+  "name": "Treasure",
+  "zone": "battlefield",
+  "count": 2,
+  "token": true
+}
+```
+
+`scryfall_id` echoes the printing that was resolved, and is absent for a token
+(a token has no Scryfall printing — that is why the dev spawner could never
+make one).
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 400 | malformed `player_id`; unknown or missing `zone`; `count` outside 1..20; a token into a zone other than the battlefield; no card or token identifier |
+| 401 | unauthenticated |
+| 403 | caller is neither the host of this table nor the admin |
+| 403 | the table has `allow_spawn` off (message: "spawning is switched off for this table") |
+| 403 | `player_id` is not a seat at this table |
+| 404 | game not found; no such card in the index; no such token template |
+| 409 | the game has not started (spawning into a lobby-state game would be erased by `Start` dealing opening hands) |
+| 503 | card index not loaded, or the server was built without token templates |
+
+### `GET /games/{id}/spawn/cards`
+
+Search the Scryfall index for the spawn picker: `?q=<text>&limit=<n>` (capped
+at 40), same response shape as the dev spawner's `GET /dev/cards`, so one
+client component serves both.
+
+It exists as its own route because `/dev/cards` is behind `requireDevFeature`
+and 404s in production, which would leave the production spawner with a name
+field and no way to find a name. Gated like the spawn itself, and scoped to a
+game for the same proxy-prefix reason as the token list below.
+
+**Response 200**
+
+```json
+{ "cards": [{ "id": "<scryfall uuid>", "name": "Sol Ring", "type_line": "Artifact", "mana_cost": "{1}", "set": "lea" }] }
+```
+
+**Errors**: 401 unauthenticated · 403 not the host or admin · 404 game not
+found · 503 card index not loaded.
+
+### `GET /games/{id}/spawn/tokens`
+
+The token template keys the `token` field of a spawn request accepts, sorted.
+Gated exactly like the spawn itself, so the picker is not offered to a seat
+that cannot use it.
+
+The answer is the same for every table; it is scoped to a game only so that it
+rides the `/games` prefix, which `deploy/Caddyfile`'s `@api` matcher, the Vite
+proxy and the service worker's `API_PATH` already carry. A new top-level prefix
+would have to be added to all three or it would 404 in production only.
+
+**Response 200**
+
+```json
+{ "tokens": ["0/1 colorless Eldrazi Spawn", "1/1 white Soldier", "Treasure", "..."] }
+```
+
+Two families share one list: the plain templates from
+`server/internal/cards/effects/tokens_table.go`, keyed the way a card prints
+them, and the behaviour tokens from `tokens.go` (Treasure, Gold, Food, Clue,
+Blood, Powerstone), keyed by name because that is how a card prints those.
+
 ### `GET /games`
 
 List the **active** games known to the lobby. Invite tokens are
@@ -241,12 +533,24 @@ games pile up.
       "id": "<uuid>",
       "name": "FNM",
       "created_at": "2026-04-13T20:00:00Z",
-      "players": [{ "player_id": "<uuid>", "name": "Alice", "seat": 0 }],
-      "state": "lobby"
+      "players": [{ "player_id": "<uuid>", "name": "Alice", "seat": 0, "is_host": true }],
+      "state": "lobby",
+      "host_player_id": "<uuid>",
+      "is_creator": true
     }
   ]
 }
 ```
+
+`is_creator` ([#1098](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1098))
+is computed per **viewer**, not stored: `true` only when the
+requesting principal's `UserID` equals this game's `created_by`, and
+omitted (`false`) otherwise — including for every other caller
+looking at the same game. The raw `created_by` never reaches the
+wire. It is what the lobby UI's rotate-invite buttons check (see
+`POST /games/{id}/invites/rotate` above); a table's creator need not
+even be seated at it, so this can be `true` on a game where `mySeat`
+finds nothing.
 
 ### `GET /games/{id}`
 
@@ -402,6 +706,84 @@ Violation codes (stable strings, keyable by the client):
 - `sideboard_not_supported_in_commander` — **warning only**, delivered
   under `warnings` on both success and 422 responses (the server
   ignores the sideboard either way)
+
+### The deck library (ADR 0051 decision 7, S34 sub-PR 5)
+
+A signed-in caller — a `player` or `identified` session whose
+principal carries a non-zero `user_id` (ADR 0051 decision 3) — gets a
+saved copy of every deck they paste, so it can be seated again without
+re-pasting.
+
+**`POST /games/{id}/decks` saves or updates a library row.** Unchanged
+for a guest (no `user_id`): still installs the deck on the seat and
+nothing else. For a signed-in caller it *additionally*:
+
+- Creates or updates a `decks` row for **`format: "text"` or
+  `"moxfield"` requests only** — not a `deck` (pre-built catalog) pick,
+  which has its own id system and is never a library row, and not
+  `format: "url"`, whose `source` is a link rather than the decklist
+  text the library re-parses later. A URL-based import still installs
+  the deck on the seat; it is just never saved to the library.
+- Sets the seat's `deck_id` to the saved deck. Any other outcome
+  (a guest, a catalog pick, a URL import, or a failed save) leaves the
+  seat's `deck_id` empty, clearing a previous one if there was one.
+
+**The update rule:** a caller's existing deck with the **same name**
+is updated in place — `source_text`, `source_format`, `commanders`,
+`card_count` and `updated_at` all overwrite the stored row, the
+`decks.id` does not change, and no duplicate row is created. Anything
+else (a new name, or no existing deck by that name) inserts a new row.
+`name` is the parsed deck's name (Moxfield exports carry one); a
+plain-text paste has none (`ParseText` has nowhere to put one), so it
+falls back to the deck's first commander's name. Two different
+plain-text pastes with the same commander and no other name therefore
+collide under this rule — rename one to keep both, the same as two
+Moxfield exports named identically would.
+
+A save (or setting the seat's `deck_id`) that fails for its own
+reasons (a transient store error) is logged and does **not** fail the
+upload — the deck is already installed on the seat by that point.
+
+**`GET /games/{id}/decks`'s response is unchanged** by any of this —
+`deck_id` in the response still means the pre-built catalog id, per
+`uploadDeckResponse` above. The library deck's own id isn't echoed
+there; find it via `GET /me/decks`.
+
+### `POST /games/{id}/decks/{deck_id}`
+
+Seat a deck already in the caller's library, without re-pasting it.
+`{deck_id}` is one of `GET /me/decks`' ids. No request body.
+
+Only a `player` session already seated in this game may call it
+(`session.game_id` must match the path), for their own seat — there is
+no `player_id` field, unlike `POST /games/{id}/decks`, because a
+`player` session already names exactly one seat. Admin sessions are
+refused outright (403): the check that matters is deck ownership, and
+an admin session never has a `user_id` to own a deck with (ADR 0051
+decision 2), so admin access here could never do anything but fail
+ownership one step later anyway.
+
+The stored `source_text` is re-parsed through the same
+parse → resolve → validate pipeline an upload takes, against the
+catalog **this server has loaded right now** — not the catalog at save
+time — so a card that stopped resolving (a rename, a ban, a dump that
+dropped it) surfaces as the same 422 violation list an upload would
+give, rather than silently installing something that changed.
+
+**Response 200** — the same shape as `POST /games/{id}/decks`
+(`uploadDeckResponse`), with `deck_id` echoing the library deck's id
+(not a pre-built catalog id, though the field is the same one).
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 400 | invalid `deck_id` in the path |
+| 403 | caller is not a `player` session seated in this game, or the deck belongs to someone else |
+| 404 | game not found, or no such deck id |
+| 422 | the stored deck no longer validates against the current catalog — same violation shape as an upload |
+| 429 | too many requests — shares `/decks`' rate bucket |
+| 503 | card index not loaded, or no deck library configured on this deployment |
 
 ### `GET /decks`
 
@@ -737,10 +1119,523 @@ The client turns `ticket` into `#/games/{id}/reclaim?t=<ticket>`.
 | 422 | that seat is a bot, not a disconnected player |
 | 429 | too many outstanding tickets |
 
+### `POST /games/{id}/invites/rotate` *(creator or admin)*
+
+Revoke a game's current invite of one **kind** and mint its
+replacement, atomically. This is the fix for the gap `GET
+/games/{id}` documents above: only the process that minted a game can
+show its invite plaintext, so a link lost after a restart could not
+be recovered before this route existed — the table just sat there
+with an invite nobody could read or reissue (#1038, [ADR
+0051](decisions/0051-user-database.md) decision 4).
+
+Rotating needs nothing from the OLD token. `Store.RotateInvite`
+revokes every still-live invite of the requested kind for the game by
+`(game_id, kind)`, not by hash, and inserts the new one in the same
+transaction — which is exactly what makes this work when the old
+plaintext is gone from every process's memory, restart or not.
+
+**Creator or admin** ([#1098](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1098),
+closing out the `TODO(#1044)` this used to carry, now that
+`games.created_by` exists). The route itself is session-gated for any
+authenticated role; `lobby.CanRotateInvites(principal, meta)` decides
+inside the handler — true for `RoleAdmin`, or for a principal whose
+`UserID` equals `meta.CreatedBy`. A guest (no `UserID`), a different
+signed-in user, or the creator of a *different* game is refused. This
+"creator" is `games.created_by` — whoever called `POST /games` while
+signed in — which is a different concept from [the table
+host](#the-table-host): the creator need not ever sit down, and a
+seated host need not be the creator. The lobby UI's rotate buttons
+follow the server's `is_creator` field on `GameMeta` (below), the
+same "computed per-viewer, never the raw identity" pattern
+`redactMetaFor` already uses for invite tokens.
+
+**Request**
+
+```json
+{ "kind": "player" }
+```
+
+`kind` is `"player"` or `"spectator"`. Only the invite of that kind is
+touched — rotating the player invite leaves the spectator invite (and
+vice versa) working exactly as it did before.
+
+**The old link of that kind stops working the instant this returns.**
+Anyone still holding it gets the same 401 an unknown or expired token
+gets from `/join` or `/spectate`. Send the new one to whoever needs
+it; there is no way to see the old one again.
+
+**Response 200**
+
+```json
+{ "kind": "player", "token": "<16-byte base64url>" }
+```
+
+`token` is the new plaintext, returned **once** — the same rule
+`POST /games` and the seat-reclaim ticket follow. The lobby UI turns
+it into a link the same way it does for `POST /games`'s
+`invite_token` / `spectator_invite`. Also updates `GameMeta` in this
+process's memory, so a subsequent `GET /games/{id}` keeps showing a
+usable link — until the next restart, same as any other invite.
+
+Rate-limited in the same bucket as `/join`, `/spectate` and
+`/games/{id}/preview`: it mints and revokes the exact credential
+those routes brute-force, even though the auth gate already keeps a
+stranger from calling it at all.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 400 | `kind` is neither `"player"` nor `"spectator"` |
+| 401 | unauthenticated |
+| 403 | caller is neither the game's creator nor the admin |
+| 404 | game not found |
+| 429 | rate-limited |
+
+### `POST /games/{id}/invites/dm`
+
+Send one person this table's invite link as a Discord direct message
+([ADR 0051](decisions/0051-user-database.md) decision 5, S34 sub-PR
+6). The server opens the DM itself, with a bot token and two plain
+REST calls — `POST /users/@me/channels` then `POST
+/channels/{id}/messages`. The gateway bot binary is not involved. The
+`/cc-invite-dm` slash command ([#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613))
+is a thin client of this route, so there is exactly one place that
+builds and sends an invite DM.
+
+**Nothing is minted.** The DM carries the game's *current* player
+invite, the same link `GET /games/{id}` shows. A link already pasted
+into a channel keeps working, and sending a DM does not rotate
+anything.
+
+**Who may call it:** someone seated at this table, the person who
+created it (`games.created_by`), or the admin. Everyone else gets
+**403** — a spectator, a player at a different table, and a signed-in
+stranger alike. "Seated" is satisfied by a `player` session bound to
+this game, or by any session whose `user_id` holds a seat here (the
+same person signed in in another tab).
+
+**Request**
+
+```json
+{ "user_id": "<uuid from GET /me/tablemates>" }
+```
+
+`user_id` is **our** user id, never a Discord snowflake. The server
+resolves the Discord account from `identities` itself, so a snowflake
+appears on the wire in neither direction.
+
+`discord_id` is accepted as an alternative — a raw Discord snowflake,
+exactly one of the two fields — but **only for an admin session**. It
+exists for #613's `/cc-invite-dm @user`, which holds a mention and
+nothing else: its target may never have signed in here, so there is no
+user id to send. Letting every caller pass one would turn this route
+into "DM any Discord user who shares a server with the bot", which is
+a spam primitive; restricted to the admin credential the bot already
+holds, it is the bot's own path and nothing more. A non-admin who
+sends `discord_id` gets **403**.
+
+**Response 200**
+
+```json
+{ "sent": true, "user_id": "<uuid>", "display_name": "Bob" }
+```
+
+The response carries no snowflake and no invite token: the caller
+learns that the DM was sent, not what was in it.
+
+**Rate-limited twice**, and a request has to satisfy both: the client-IP
+bucket every invite-adjacent route rides (`/join`, `/spectate`,
+`/games/{id}/preview`, `/invites/rotate`), and a **per-caller** bucket
+of ~1 DM / 10 s with a burst of 3, keyed on the caller's user (or
+their seat, or the admin credential). The per-caller bucket is the one
+decision 5 asks for: every accepted call costs two outbound Discord
+writes and lands an unsolicited DM in somebody's inbox, and behind a
+reverse proxy the IP bucket is shared by the whole table.
+
+**Configuration.** The route needs `CMDCTRL_DISCORD_BOT_TOKEN` on the
+**server's** env file (`/etc/cmd_and_ctrl/env`), not only the bot's,
+and an origin to build the link against (`CMDCTRL_PUBLIC_BASE_URL`,
+falling back to `CMDCTRL_CLIENT_BASE_URL`). Either one missing is a
+**503 naming the variable**; it never falls open, every other route is
+unaffected, and the server says which state it is in once at boot. CD
+writes the token on **production only** — one Discord application, and
+a preview box DMing real people from the same identity is the
+double-send the bot's prod-only rule already exists to prevent.
+
+**The invite plaintext can be missing.** Only the process that minted
+an invite holds its plaintext (see `GET /games/{id}`), so a table
+recovered from the database after a restart has a hash and no link.
+This route then answers **409** and points at
+[`POST /games/{id}/invites/rotate`](#post-gamesidinvitesrotate)
+rather than rotating by itself: rotating would silently revoke the
+link the table has already shared, which is a startling side effect of
+"DM this to Alice". Mint the replacement deliberately, then send it.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 400 | neither or both of `user_id` / `discord_id`, or `user_id` is not a uuid |
+| 401 | unauthenticated |
+| 403 | not seated here, not the creator, not the admin — or `discord_id` from a non-admin |
+| 404 | no such game, no such user, or Discord has no user with that id |
+| 409 | this process no longer holds the table's invite plaintext (rotate first) |
+| 422 | the target has no Discord identity here, or Discord refused the DM (no shared server / DMs closed) |
+| 429 | rate-limited, by us or by Discord |
+| 502 | Discord rejected this server's bot credentials, or failed for another reason |
+| 503 | `CMDCTRL_DISCORD_BOT_TOKEN` or the invite origin is not configured |
+
+### `GET /games/{id}/creator` *(admin only)*
+
+The Discord bot's `/cc-end` host check ([#1098](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1098)):
+does the Discord user named by `?discord_id=<snowflake>` match this
+game's creator. The bot calls the server with its own admin
+credentials (same as every other bot call — see
+[AGENTS.md](../AGENTS.md)), so the server has to tell it *whether*
+the Discord user who ran the slash command created the table; this
+route answers exactly that and nothing more.
+
+It deliberately never says who the creator actually is — only
+whether one named snowflake matches — so an admin token that guesses
+wrong (or is compromised) never learns a game's creator identity from
+this route, and nobody who isn't already an admin can call it at all.
+`GET /games/{id}` does not carry the creator's raw identity either
+(see `is_creator` below); this endpoint exists so the bot's one
+actual question can be answered without that identity ever leaving
+the server.
+
+**Request**: `?discord_id=<snowflake>`, required.
+
+**Response 200**
+
+```json
+{ "is_creator": true }
+```
+
+A game with no creator (`games.created_by` is `NULL` — admin-created,
+or restored from a pre-ADR-0051 file import) always answers
+`is_creator: false`, for every `discord_id` — there is nothing to
+match, so the bot's `CMDCTRL_DISCORD_ADMIN_USER_IDS` /
+`CMDCTRL_DISCORD_ADMIN_ROLE_IDS` allowlists stay the only route for
+those games. An unresolvable `discord_id` (no linked `identities` row
+— including every deployment with no user database) answers `false`
+the same way rather than erroring, for the same "never fail open, and
+never fail closed with something other than a clean refusal" reason
+the allowlists already follow.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 400 | missing `discord_id` |
+| 401 | unauthenticated |
+| 403 | caller is not an admin |
+| 404 | game not found |
+
 ### `GET /me`
 
 Echo the principal attached to the request. Used by the client for
 bootstrap — "am I still logged in, and as what?"
+
+### `GET /me/games`
+
+"My games" ([ADR 0051](decisions/0051-user-database.md) decision 4,
+S34 sub-PR 4): every seat the caller's user holds, joined with its
+game, **newest game first**. Ended and archived games are included,
+as is a finished game whose table did not survive a restart; the
+`games` and `seats` rows are the record.
+
+Needs a signed-in person: an `identified` session, or a `player`
+session with a non-nil `user_id`. A caller with no credential at all
+gets **401**; an authenticated caller who is not a person gets **403**
+— a guest seat's session, an admin, a spectator, and everyone on a
+deployment with no database (there are no users).
+
+The split matters to the client, not to the server (#1154): the SPA's
+`authFetch` clears the session on **any** 401, so answering 401 to a
+valid admin session logged the admin out of any page that happened to
+fetch one of these routes. 403 says the true thing — you are
+authenticated, you are just not a person.
+
+**Response 200**
+
+```json
+{
+  "games": [
+    {
+      "id": "<game uuid>",
+      "name": "Friday Night Commander",
+      "state": "ended",
+      "seat": 1,
+      "winner_seat": 1,
+      "created_at": 1789820000000,
+      "started_at": 1789820300000,
+      "ended_at": 1789825000000,
+      "archived_at": null,
+      "others": [
+        { "seat": 0, "name": "Bob" },
+        { "seat": 2, "name": "Ghoul", "bot": true }
+      ],
+      "rejoin": "/me/games/<game uuid>/session"
+    }
+  ]
+}
+```
+
+- Every time is **Unix milliseconds** (the unit the tables store), and
+  a time that has not happened is `null`. `winner_seat` is `null` until
+  the engine reports a winner.
+- `seat` is the caller's seat. `others` is every other seat in seat
+  order. A seat's `name` is its user's current display name when it
+  has one, so a friend who renamed themselves on Discord reads
+  correctly on old games, and otherwise the name stored on the seat.
+- For a table live in this process, `state`, the times and
+  `winner_seat` come from the engine, as `GET /games` reads them.
+- `rejoin` is present only while the table is still open: live in this
+  process and not archived. It is the path to POST for a seat session.
+- No invite token appears anywhere in the response.
+
+### `POST /me/games/{id}/session`
+
+Seat reclaim by user ([ADR 0051](decisions/0051-user-database.md)
+decision 3). A signed-in person gets a fresh `player` session for
+**their own** seat at a live table, without the invite link and
+without an admin-minted ticket. `seats.user_id` is the proof, and only
+a Discord sign-in writes it. The ticket route
+([`POST /games/{id}/reclaim`](#post-gamesidreclaim)) stays the backstop
+for guests, who have no identity to prove.
+
+Same caller rule as `GET /me/games`. No body.
+
+**Response 200**: the `sessionResponse` shape `/join` returns, cookie
+included. The principal is bound to the seat's `(game_id, player_id)`
+and carries the caller's `user_id` and the seat's Discord identity.
+Both invite tokens are stripped from the embedded `game`.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 401 | no session at all |
+| 403 | authenticated but not a signed-in person (see `GET /me/games`) |
+| 403 | the caller holds no seat at this table |
+| 404 | the table is not live in this process |
+| 409 | the table has been archived |
+
+---
+
+### `GET /me/tablemates` (ADR 0051 decision 8, S34 sub-PR 6)
+
+The people the caller has shared a table with, **most recently shared
+table first** — the list the invite picker offers. Decision 8's whole
+design: a self-join of `seats`, not a `friendships` table. There are
+no friend requests and no acceptance; if an explicit list is ever
+wanted it is one table on top of this and changes nothing here.
+
+Same caller rule as `GET /me/games` and `GET /me/decks`: a signed-in
+person — an `identified` session, or a `player` session with a
+non-nil `user_id`. No credential is **401**; every other caller is
+**403**, including a guest's seat session, an admin (a credential, not
+a person) and everyone on a deployment with no database.
+
+Excluded, always: the caller themselves, and any seat with no user — a
+guest, a bot, or a Discord seat still waiting on its `users` row.
+
+**Response 200**
+
+```json
+{
+  "tablemates": [
+    {
+      "user_id": "<uuid>",
+      "display_name": "Bob",
+      "avatar_url": "/avatars/<snowflake>/<hash>.png",
+      "last_played_at": 1789820000000
+    }
+  ]
+}
+```
+
+- `user_id` is **our** id. A Discord snowflake is never an identifier
+  here: `POST /games/{id}/invites/dm` takes this id and resolves the
+  Discord account server-side.
+- `display_name` is the tablemate's *current* name, so a friend who
+  renamed themselves on Discord reads correctly on old games too.
+- `avatar_url` is the same-origin path the client already loads every
+  seat's avatar from, and is absent for an account with no avatar.
+- `last_played_at` is Unix milliseconds (the unit the tables store, as
+  `GET /me/games` uses): when the most recent shared table was
+  **created**. Deliberately `created_at` rather than `started_at` or
+  `ended_at` — those are null on a table that never started, and a
+  lobby you both sat in yesterday is a better suggestion than a game
+  you finished a year ago.
+
+### `GET /me/decks` (ADR 0051 decision 7, S34 sub-PR 5)
+
+The caller's deck library — see "The deck library" under
+`POST /games/{id}/decks` above for how a row gets there and the update
+rule. Newest updated first.
+
+**401** for any principal with no `user_id` — a guest's `player`
+session, an admin session, or an `identified` session on a deployment
+with no database — not only for a missing credential. There is
+nothing partial to show: a `user_id`-less principal owns no decks by
+construction.
+
+**Response 200**
+
+```json
+{
+  "decks": [
+    {
+      "id": "<uuid>",
+      "name": "Atraxa Superfriends",
+      "commanders": ["Atraxa, Praetors' Voice"],
+      "card_count": 100,
+      "updated_at": "2026-09-19T08:00:00Z"
+    }
+  ]
+}
+```
+
+`source_text` and `source_format` are not included here — this is the
+picker's list, not the re-seat payload; seating reads them server-side
+via `POST /games/{id}/decks/{deck_id}`.
+
+## Signing out
+
+Session lifetimes: the identity session a Discord sign-in mints from
+the login page lasts `CMDCTRL_IDENTITY_TTL` (30 days by default). Every
+other session (seat, spectator, admin) lasts `CMDCTRL_SESSION_TTL`
+(12 hours by default). See
+[ADR 0051](decisions/0051-user-database.md) decision 3.
+
+### `POST /logout`
+
+No credential required. Clears the session cookie and asks the
+authenticator to revoke the presented token. Under HMAC sessions that
+revoke is advisory ([ADR 0044](decisions/0044-surviving-a-deploy.md)
+decision 3): a copy of the token held elsewhere stays valid until it
+expires. Always **204**.
+
+### `POST /logout/everywhere`
+
+Requires a session **with a user**: a Discord sign-in, or a seat
+claimed from one. Withdraws every session that user holds, in every
+browser, including the caller's. It sets `users.sessions_invalid_before`
+to now, closes the user's open game WebSockets, and clears the cookie
+([ADR 0051](decisions/0051-user-database.md) decision 6). From then on,
+any token of theirs issued at or before that instant fails with
+`401 {"error":"session revoked"}`, on every route and on the WS upgrade.
+A new Discord sign-in works straight away.
+
+The route only acts on the caller's own user. There is no way to name
+another one.
+
+**Response 204**, with a `Set-Cookie` that evicts the session cookie.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 401 | no session, or one that is already expired or revoked |
+| 403 | the session has no user: admin, guest or spectator, or any session on a server with no database. `POST /logout` is their sign-out |
+| 404 | the user row no longer exists |
+| 503 | the server has a user session but no revocation list (not a production configuration) |
+
+### `POST /admin/users/{id}/revoke-sessions` *(admin only)*
+
+ADR 0051's "admin remove-user". It does what the name says and nothing
+more: the same revocation as `/logout/everywhere`, for the user `{id}`.
+Every row stays: the user, identities, seats, games and decks. The
+person can sign in with Discord again. Admin sessions have no user and
+are unaffected, including the caller's.
+
+**Response 200**
+
+```json
+{
+  "user_id": "<uuid>",
+  "sessions_invalid_before": "2026-09-19T12:00:00.123Z",
+  "sockets_closed": 2
+}
+```
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 400 | `{id}` is not a uuid, or is the zero uuid |
+| 401 | no session |
+| 403 | caller is not an admin |
+| 404 | no such user |
+| 503 | no user database (`CMDCTRL_DATA_DIR` empty) |
+
+---
+
+## Discord sign-in (S12.5, ADR 0004 / 0050 / 0051)
+
+`GET /auth/discord/start` and `GET /auth/discord/callback` are the
+OAuth round-trip ([ADR 0004](decisions/0004-discord-identity.md),
+[ADR 0050](decisions/0050-discord-login-identity.md)). Since S34 the
+callback also:
+
+- records the person in `users` / `identities`
+  ([ADR 0051](decisions/0051-user-database.md) decision 2), and puts
+  `user_id` in the `#/oauth-complete?…` fragment when it did (absent
+  on a deployment with no database);
+- links every seat waiting on this Discord account's snowflake
+  (`seats.pending_discord_id`, set on seats imported from
+  `lobby/*.json` and on seats claimed while there was no database) to
+  that user, and clears the pending id. One transaction, idempotent,
+  on every sign-in. A failure is logged and the sign-in goes ahead;
+  the next sign-in tries again.
+
+### `GET /auth/discord/link`
+
+Link Discord to a seat you already hold (S34 sub-PR 4, carried over
+from S12.5 [#59](https://github.com/krakenhavoc/cmd_and_ctrl/issues/59)).
+A navigation from the in-game menu: the server answers **302** to
+Discord's consent screen, and the callback comes back to the same
+seat. Works in any game state. A guest who signs in mid-game becomes
+that seat's user, and a seat already linked to one Discord account can
+be moved to another.
+
+Needs a `player` session (401 without a session, 403 for any other
+role). Optional `?game=<uuid>`: when present it must be the session's
+own game (409 otherwise), so a browser whose cookie was replaced by a
+join in another tab cannot link the wrong seat.
+
+What the callback then does:
+
+1. **Checks the browser.** The state parks `(game, player)`, and the
+   callback requires the request's session **cookie** to be the player
+   session for that same seat before it exchanges the code. Anything
+   else is a **403**. This is the CSRF binding: without it, a link
+   started by one person could be finished by another who is sent the
+   consent URL, and their Discord account would end up on your seat.
+2. Records the person and links pending seats, as for every sign-in.
+3. Puts the identity on the seat: `display_name`, `discord_id` and
+   `discord_avatar_hash` on the seat and on the engine's player, and
+   `seats.user_id`. The seat's typed `name` is kept. The change goes
+   through the room, so every client at the table gets a state
+   broadcast carrying the new name and avatar straight away.
+4. Mints a new `player` session for the same seat, now carrying
+   `user_id` and the `discord_*` fields, sets the cookie, and
+   redirects to `/#/oauth-complete?token=…&game=…&player_id=…&user_id=…`.
+
+**Errors** (as JSON, like the other callback errors)
+
+| Status | Reason |
+|---|---|
+| 401 | no session on `/link` |
+| 403 | not a player session on `/link`; on the callback, the cookie is not the seat's own session |
+| 404 | the table is not live in this process |
+| 409 | `?game=` names another table; the table is archived; or the Discord account already holds a different seat at this table |
+| 422 | the seat is a bot |
+| 503 | Discord is not configured on this server |
 
 ---
 
