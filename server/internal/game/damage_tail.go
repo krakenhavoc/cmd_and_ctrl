@@ -528,11 +528,14 @@ func (g *Game) applyResolvedDamageToPlayerLocked(ev *ReplacementEvent, t *damage
 	}
 	// The event is emitted before the life change on the non-combat
 	// path so the log reads "damage dealt → life changed"; the combat
-	// path has always changed life first. Both orders are kept as they
+	// path has always changed life first. #1117's layer invalidation
+	// rides the WRITE on both, never the event, precisely because the
+	// two orders differ — see invalidateLayersForLifeChangeLocked. Both orders are kept as they
 	// were, because a listener on EventDealDamage can read life totals
 	// and the two paths' existing tests pin what it sees.
 	if t.combat {
 		p.ChangeLife(-ev.DamageAmount)
+		g.invalidateLayersForLifeChangeLocked()
 		// CR 903.10a: combat damage from a commander accrues toward
 		// the 21-damage loss SBA.
 		if t.commanderSource != uuid.Nil {
@@ -542,6 +545,7 @@ func (g *Game) applyResolvedDamageToPlayerLocked(ev *ReplacementEvent, t *damage
 	} else {
 		g.emitDealDamageLocked(ev, t)
 		p.ChangeLife(-ev.DamageAmount)
+		g.invalidateLayersForLifeChangeLocked()
 	}
 	g.creditLifelinkLocked(t, ev.DamageSource, ev.DamageAmount)
 	return ev.DamageAmount, nil
