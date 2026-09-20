@@ -45,7 +45,7 @@ import (
 //
 //   - "Waterbend {8}: Transform Aang" is NOT implemented, and since
 //     S46 the reason has changed. The TRANSFORM half is built —
-//     ADR 0078 shipped `Game.TransformPermanentForEffect` and
+//     ADR 0079 shipped `Game.TransformPermanentForEffect` and
 //     `effects.TransformThis`, with the CR 712.18 hygiene (counters,
 //     damage, attachments and the CR 613.7 timestamp all surviving
 //     the flip) that ADR 0034 sequenced as its own PR. What is left

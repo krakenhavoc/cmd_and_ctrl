@@ -11,7 +11,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	III — Exile this Saga, then return it to the battlefield
 //	      transformed under your control.
 //
-// The proof of ADR 0078's SECOND verb, and the reason there are two.
+// The proof of ADR 0079's SECOND verb, and the reason there are two.
 // Chapter III is not a transform: it is an exile and a return, so the
 // permanent that comes back is a new object (CR 400.7) with a new
 // InstanceID, no lore counters, a fresh CR 613.7 timestamp and

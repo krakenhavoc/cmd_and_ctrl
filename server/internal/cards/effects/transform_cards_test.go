@@ -9,7 +9,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-// transform_cards_test.go — the two #1112 cards that prove ADR 0078's
+// transform_cards_test.go — the two #1112 cards that prove ADR 0079's
 // two verbs, end to end on real imported cards.
 //
 // # Why these go through deck.ToGameCard

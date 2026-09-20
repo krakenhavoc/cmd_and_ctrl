@@ -5,7 +5,7 @@ package effects
 //
 // The BACK face of Storm the Vault, registered under
 // "<oracle_id>#1" — game.CatalogKey appends the active face index, so
-// the moment ADR 0078's verb flips the permanent this entry is the one
+// the moment ADR 0079's verb flips the permanent this entry is the one
 // the engine reads and the front face's trigger pair stops applying.
 // Nothing had to be built for that; it is what the "#N" key is for.
 //

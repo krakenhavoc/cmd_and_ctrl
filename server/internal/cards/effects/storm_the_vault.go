@@ -7,7 +7,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // beginning of your end step, if you control five or more artifacts,
 // transform Storm the Vault."
 //
-// The front half of the simplest possible proof of ADR 0078's in-place
+// The front half of the simplest possible proof of ADR 0079's in-place
 // transform verb: a Legendary Enchantment that becomes a Legendary
 // Land without going anywhere. Its back face is vault_of_catlacan.go,
 // registered under "<oracle_id>#1".
@@ -27,7 +27,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     resolves. A Treasure sacrificed in response to the trigger stops
 //     the transform, and that is the printed card.
 //
-// No simplification. The transform itself is the ADR 0078 verb: the
+// No simplification. The transform itself is the ADR 0079 verb: the
 // permanent keeps its place, its timestamp and anything attached to
 // it, and becomes a land in the same instant.
 func init() {

@@ -12,7 +12,7 @@ import (
 //
 // The BACK face of Fable of the Mirror-Breaker, registered under
 // "<oracle_id>#1". It reaches the battlefield only through chapter
-// III's exile-and-return (ADR 0078's second verb), and because the
+// III's exile-and-return (ADR 0079's second verb), and because the
 // returning permanent is a NEW object it is summoning sick that turn —
 // so the {T} in this cost cannot be paid until the following one,
 // which is what the printed card does.
