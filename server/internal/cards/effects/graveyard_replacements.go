@@ -47,6 +47,26 @@ type GraveyardBecomesExile struct {
 	// owner of its own.
 	OpponentsOnly bool
 
+	// NotControlledByYou restricts the effect to cards the source's
+	// controller does NOT control — Valgavoth, Terror Eater's "if a
+	// card YOU DIDN'T CONTROL would be put into an opponent's
+	// graveyard". False leaves the family exactly as it was.
+	//
+	// It is a separate question from OpponentsOnly, and Valgavoth
+	// asks both. The graveyard is always the card's OWNER's, so
+	// OpponentsOnly alone would eat a creature you stole from an
+	// opponent and then lost — which its owner's graveyard would
+	// receive, but which you controlled. That is stronger than
+	// printed, and stronger is the direction a simplification may
+	// never go.
+	//
+	// Read off the card as it still sits in the zone it is leaving,
+	// which is what makes the battlefield case work: control is only
+	// ever different from ownership on the battlefield (Card.Controller
+	// equals Owner everywhere else), and the CR 614 window runs before
+	// the move.
+	NotControlledByYou bool
+
 	// Label is the CR 616 prompt header, shown when this and another
 	// replacement both apply to the same move.
 	Label string
@@ -64,7 +84,7 @@ func (r GraveyardBecomesExile) Build() game.ReplacementEffect {
 		// Megrim and the rest of the family still see it; only the
 		// destination changes.
 		Watches: []game.EventKind{game.EventZoneMove, game.EventDiscardCard},
-		AppliesTo: func(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) bool {
+		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
 			if ev.Kind != game.RepEventMove && ev.Kind != game.RepEventDiscard {
 				return false
 			}
@@ -73,6 +93,12 @@ func (r GraveyardBecomesExile) Build() game.ReplacementEffect {
 			}
 			if r.OpponentsOnly && (ev.NewZoneOwner == uuid.Nil || ev.NewZoneOwner == src.Controller) {
 				return false
+			}
+			if r.NotControlledByYou {
+				moving, ok := g.LookupCardForEffect(ev.CardID)
+				if !ok || moving.Controller == src.Controller {
+					return false
+				}
 			}
 			return true
 		},
