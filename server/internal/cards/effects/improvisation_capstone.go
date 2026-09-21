@@ -37,6 +37,17 @@ import (
 // exile, instead …" — never reached exile, so it is not one of the
 // cards the second sentence is about, and it is not granted.
 //
+// THE RUNNING TOTAL DOES NOT GET THAT RIGHT, and the second caveat
+// below says so (#1158). `Until` is answered in millPlanLocked
+// against the cards that come OFF the library, before the CR 614
+// window has said where any of them went, which is what lets the plan
+// be a flat list of IDs the batch body can proceed around. So the
+// diverted commander's mana value still counts toward the 4 and can
+// end the run one card short — the same limitation Helm of Obedience
+// declares in its own words, on the same line of the same helper. The
+// SECOND sentence stays right either way, because it reads the landed
+// list; it is only the FIRST sentence's arithmetic that is generous.
+//
 // # The permission is per-object, and exactly what is printed
 //
 // Each exiled card gets its own ADR 0066 grant, stamped against that
@@ -89,6 +100,7 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
 			"Paradigm isn't implemented — the spell goes to your graveyard and never offers you the repeating copies it promises.",
+			"If a card the run turns up never reaches exile — a commander whose owner takes the command zone instead (CR 903.9) — its mana value still counts toward the total of 4 and can end the run early, and it isn't one of the cards you may cast.",
 		},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			controller, source := item.Controller, item.SourceCardID

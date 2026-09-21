@@ -127,12 +127,15 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		if ab.Condition != nil && !ab.Condition(g, e.seat, source.InstanceID) {
 			continue
 		}
-		// CR 606: a loyalty ability needs a planeswalker, one
-		// activation per turn, and enough counters to pay a −N.
-		// Mirrors ActivateCatalogAbility so a policy never
-		// proposes a move the engine will bounce.
+		// CR 606.3 / 606.5: a loyalty ability of a PERMANENT you
+		// control, one activation per turn, and enough counters to
+		// pay a −N. Mirrors ActivateCatalogAbility so a policy never
+		// proposes a move the engine will bounce — including the
+		// IsPlaneswalker test both sides dropped in #1157, because
+		// CR 606 asks about the permanent and its cost symbol, not
+		// about the card type.
 		if ab.Cost.Loyalty != nil {
-			if !source.IsPlaneswalker() || g.LoyaltyActivatedThisTurn[source.InstanceID] {
+			if g.LoyaltyActivatedThisTurn[source.InstanceID] {
 				continue
 			}
 			if n := *ab.Cost.Loyalty; n < 0 && source.Counters[game.CounterLoyalty] < -n {
