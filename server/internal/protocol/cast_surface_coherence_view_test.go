@@ -93,12 +93,21 @@ func graveyardCard(p *game.Player, name, oracle string) uuid.UUID {
 // cardInSeatZone finds one card in one projected zone.
 func cardInSeatZone(t *testing.T, z ZoneView, id uuid.UUID) *CardView {
 	t.Helper()
+	if c := findInZone(z, id); c != nil {
+		return c
+	}
+	t.Fatalf("card %s missing from the %s view", id, z.Kind)
+	return nil
+}
+
+// findInZone is cardInSeatZone for a card that may legitimately be
+// absent — a pile a given viewer may not see into.
+func findInZone(z ZoneView, id uuid.UUID) *CardView {
 	for i := range z.Cards {
 		if z.Cards[i].InstanceID == id.String() {
 			return &z.Cards[i]
 		}
 	}
-	t.Fatalf("card %s missing from the %s view", id, z.Kind)
 	return nil
 }
 
@@ -496,6 +505,12 @@ func TestViewAndEnumeratorOfferTheSamePrices(t *testing.T) {
 	seeded[esc.String()+"@graveyard"] = seededCast{"escape card in the graveyard", me.ID, "graveyard"}
 	plain := graveyardCard(me, "Coherence Plain", "")
 	seeded[plain.String()+"@graveyard"] = seededCast{"plain card in the graveyard", me.ID, "graveyard"}
+	// #1055: known to the whole table, so the per-viewer assertion at
+	// the bottom is answered by the STAMP and not by the redaction a
+	// non-knower would get anyway.
+	for _, id := range []uuid.UUID{fb, esc, plain} {
+		knownToEveryone(g, me.Graveyard, id)
+	}
 	graveyardCard(me, "Coherence Filler A", "")
 	graveyardCard(me, "Coherence Filler B", "")
 
@@ -561,6 +576,50 @@ func TestViewAndEnumeratorOfferTheSamePrices(t *testing.T) {
 		if !sameStrings(got.sorted(), want.sorted()) {
 			t.Errorf("%s: view offers %v, the enumerator offers %v",
 				row.label, got.sorted(), want.sorted())
+		}
+	}
+
+	// #1055: the property is PER VIEWER, and the loop above only ever
+	// asked it of the seat the moves were enumerated for. A cast
+	// surface is a statement about a player — "may YOU cast this from
+	// here" — so the same fixture, projected for a seat that holds
+	// none of these casts, must mark none of them.
+	//
+	// The enumerator cannot be the other half of this comparison: a
+	// seat without priority gets no move list at all, so two empty
+	// lists would agree about nothing. The assertion is the view's own
+	// bit, against the seat it is being built for.
+	other := g.Seats[(g.Turn.ActiveSeat+2)%len(g.Seats)]
+	vOther := ViewOfGameFor(g, other.ID.String())
+	for key, row := range seeded {
+		if row.zone == "hand" || row.seat == other.ID {
+			// A hand is not a public zone, so there is no bystander
+			// copy to ask about; a pile this seat owns is their own
+			// answer and belongs in the loop above.
+			continue
+		}
+		id, err := uuid.Parse(key[:36])
+		if err != nil {
+			t.Fatalf("%s: bad id %q", row.label, key[:36])
+		}
+		zv := zoneViewOf(t, vOther, row.seat, row.zone)
+		c := findInZone(zv, id)
+		if c == nil {
+			// A foreign library top this seat may not look at is
+			// dropped from their projection wholesale, which is a
+			// stronger answer than an unset bit.
+			continue
+		}
+		if !c.KnownByYou {
+			t.Errorf("%s: the fixture hid the card from the bystander, so the bit below "+
+				"would be cleared by the redaction rather than by the stamp", row.label)
+		}
+		if c.CastableHere {
+			t.Errorf("%s: castable_here is set for a seat that cannot cast it — "+
+				"the bit is the VIEWER's answer, not the pile owner's (#1055)", row.label)
+		}
+		if c.LegalTargets != nil {
+			t.Errorf("%s: a bystander got one seat's legal target set: %+v", row.label, c.LegalTargets)
 		}
 	}
 }
