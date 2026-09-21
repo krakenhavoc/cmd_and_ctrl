@@ -2,6 +2,7 @@ package protocol
 
 import (
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"sort"
 	"testing"
@@ -222,29 +223,19 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		NoUntap:             &NoUntapView{Static: true, Next: []string{"next-player"}},
 		Auto:                true,
 		Unimplemented:       true,
-		TargetMode:          "creature",
-		LegalTargets:        lt,
-		Clauses:             []LegalTargetsView{*lt, *lt},
-		Modes:               &ModeSpecView{Prompt: "Choose one", Min: 1, Max: 1, Options: []ModeOptionView{{Label: "mode"}}},
-		AdditionalCost:      &AdditionalCostView{DiscardCards: 1},
-		AlternativeCosts:    []AlternativeCostView{{Key: "overload", Label: "Overload {6}{U}"}},
-		// #1012: the flag that says the printed cost is not one of
-		// the prices this cast may claim. Redacted with the offer
-		// list it is only meaningful beside.
-		AlternativeCostRequired: true,
-		TapCost:                 &TapCostView{Key: "convoke", Options: lt},
-		TargetCostNotes:         []string{"This spell costs {1} more to cast for each target beyond the first."},
-		PhyrexianSymbols:        1,
-		CastableHere:            true,
-		OptionalCosts:           []OptionalCostView{{Index: 0, Key: "kicker", Label: "Kicker {4}", ManaCost: "{4}", MaxTimes: 1}},
-		ExilePlay:               &ExilePlayView{Player: owner, CostOverride: "{1}{U}"},
-		ActivatedAbilities:      []ActivatedAbilityView{{Index: 0, Label: "{T}: Draw", LoyaltyCost: &one}},
-		HandAbilities:           []ActivatedAbilityView{{Index: 0, Label: "Cycling {2}", DiscardSelf: true, ManaCost: "{2}"}},
-		SpecialActions:          []SpecialActionView{{Kind: "foretell", Label: "Foretell {2}", Cost: "{2}", Available: true}},
-		SummoningSick:           true,
-		LoyaltyActivated:        true,
-		ClassLevel:              3,
-		Solved:                  true,
+		// #992: the announce surface is one embedded block now, on
+		// CardView and on every castable CardFaceView alike. The
+		// reflection guard below recurses into it, so a field added
+		// here is still a field this table has to place.
+		CastSurfaceView:    everyFieldCastSurface(lt),
+		ExilePlay:          &ExilePlayView{Player: owner, CostOverride: "{1}{U}"},
+		ActivatedAbilities: []ActivatedAbilityView{{Index: 0, Label: "{T}: Draw", LoyaltyCost: &one}},
+		HandAbilities:      []ActivatedAbilityView{{Index: 0, Label: "Cycling {2}", DiscardSelf: true, ManaCost: "{2}"}},
+		SpecialActions:     []SpecialActionView{{Kind: "foretell", Label: "Foretell {2}", Cost: "{2}", Available: true}},
+		SummoningSick:      true,
+		LoyaltyActivated:   true,
+		ClassLevel:         3,
+		Solved:             true,
 		// #781. Deliberately NOT added to redactedCardKeys: both are
 		// public on a card the viewer can see and both are stripped
 		// from one they cannot, because "Elf" names Cavern of Souls
@@ -257,8 +248,40 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		Abilities:     []string{"flying"},
 		Restrictions:  []string{"cant_block"},
 		Layout:        "modal_dfc",
-		Faces:         []CardFaceView{{Name: "Hidden Name"}, {Name: "Hidden Back"}},
-		ActiveFace:    1,
+		// #992: both faces carry the per-face announce block, so the
+		// redaction table covers a face's `legal_targets` as well as
+		// the card's — a back face's target clause names the card
+		// just as loudly as its mana cost does.
+		Faces: []CardFaceView{
+			{Name: "Hidden Name", TypeLine: "Sorcery", ManaCost: "{6}{U}", OracleText: "Front text", Power: 1, Toughness: 1, Image: "/cards/scryfall/image?face=0", CastSurfaceView: everyFieldCastSurface(lt)},
+			{Name: "Hidden Back", TypeLine: "Land", ManaCost: "{1}{U}", OracleText: "Back text", Power: 2, Toughness: 2, Image: "/cards/scryfall/image?face=1", CastSurfaceView: everyFieldCastSurface(lt)},
+		},
+		ActiveFace: 1,
+	}
+}
+
+// everyFieldCastSurface is everyFieldCardView's announce block, with
+// every field of CastSurfaceView non-zero. One constructor, because
+// the block is carried twice on the wire now — by the card, for the
+// face that is up, and by each castable face (#992) — and the
+// redaction table has to see both filled.
+func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
+	return CastSurfaceView{
+		TargetMode:       "creature",
+		LegalTargets:     lt,
+		Clauses:          []LegalTargetsView{*lt, *lt},
+		Modes:            &ModeSpecView{Prompt: "Choose one", Min: 1, Max: 1, Options: []ModeOptionView{{Label: "mode"}}},
+		AdditionalCost:   &AdditionalCostView{DiscardCards: 1},
+		AlternativeCosts: []AlternativeCostView{{Key: "overload", Label: "Overload {6}{U}"}},
+		// #1012: the flag that says the printed cost is not one of
+		// the prices this cast may claim. Redacted with the offer
+		// list it is only meaningful beside.
+		AlternativeCostRequired: true,
+		TapCost:                 &TapCostView{Key: "convoke", Options: lt},
+		TargetCostNotes:         []string{"This spell costs {1} more to cast for each target beyond the first."},
+		PhyrexianSymbols:        1,
+		CastableHere:            true,
+		OptionalCosts:           []OptionalCostView{{Index: 0, Key: "kicker", Label: "Kicker {4}", ManaCost: "{4}", MaxTimes: 1}},
 		// ADR 0073 §7: the cast gate's stamp. Redacted like the rest
 		// of the cost surface — a legendary-sorcery clause says more
 		// about a face-down card than its mana cost does.
@@ -266,16 +289,40 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 	}
 }
 
+// assertEveryExportedFieldSet fails when any exported field of `v` is
+// left at its zero value, RECURSING into embedded structs — which is
+// what keeps the guard honest now that the announce surface is one
+// embedded CastSurfaceView (#992) rather than thirteen fields listed
+// in line. Without the recursion a field added to that block would be
+// covered by "the embedded struct is non-zero" and could leak past
+// the allowlist table without the table noticing, which is exactly
+// what this guard was written to prevent.
+func assertEveryExportedFieldSet(t *testing.T, path string, v reflect.Value) {
+	t.Helper()
+	for i := 0; i < v.NumField(); i++ {
+		f := v.Type().Field(i)
+		if !f.IsExported() {
+			continue
+		}
+		if f.Anonymous && f.Type.Kind() == reflect.Struct {
+			assertEveryExportedFieldSet(t, path+"."+f.Name, v.Field(i))
+			continue
+		}
+		if v.Field(i).IsZero() {
+			t.Fatalf("everyFieldCardView leaves %s.%s zero; set it so the allowlist check covers it", path, f.Name)
+		}
+	}
+}
+
 func TestRedactionZoneByViewer(t *testing.T) {
 	ownerID, oppID := uuid.NewString(), uuid.NewString()
 
 	probe := everyFieldCardView(ownerID, nil)
-	pv := reflect.ValueOf(probe)
-	for i := 0; i < pv.NumField(); i++ {
-		f := pv.Type().Field(i)
-		if f.IsExported() && pv.Field(i).IsZero() {
-			t.Fatalf("everyFieldCardView leaves CardView.%s zero; set it so the allowlist check covers it", f.Name)
-		}
+	assertEveryExportedFieldSet(t, "CardView", reflect.ValueOf(probe))
+	// #992: and the per-face block, which the walk above cannot
+	// reach — `Faces` is a non-zero slice whatever is inside it.
+	for i, f := range probe.Faces {
+		assertEveryExportedFieldSet(t, fmt.Sprintf("CardView.Faces[%d]", i), reflect.ValueOf(f))
 	}
 
 	type outcome int

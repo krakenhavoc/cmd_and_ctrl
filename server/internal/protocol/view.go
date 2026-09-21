@@ -1225,162 +1225,12 @@ type CardView struct {
 	// panel and the stack, not as a permanent board badge, which on
 	// a real battlefield would be most of the cards on the table.
 	Unimplemented bool `json:"unimplemented,omitempty"`
-	// TargetMode tells the client what kind of target to prompt
-	// for at cast time. See effects.Spec.TargetMode for the enum.
-	// Empty when the card takes no announce-time targets (either
-	// not a catalog card, or a catalog card with no targeting
-	// prompt — e.g. Pyroclasm, Wrath of God). Added in S14 sub-PR 4.
-	TargetMode string `json:"target_mode,omitempty"`
-	// LegalTargets is the S20 structured-targeting answer for a card
-	// its controller could cast right now: the players and card IDs
-	// the card's TargetSpec accepts against the current board. Only
-	// present on cards in the viewer's own hand / command zone (an
-	// opponent's hand card never carries it). Absent for cards
-	// without a TargetSpec — those keep the S13.1 free-form picker
-	// keyed off target_mode alone. An empty-but-present entry means
-	// "no legal target right now", which the client treats as
-	// uncastable. Added in S20 sub-PR 1.
-	LegalTargets *LegalTargetsView `json:"legal_targets,omitempty"`
-	// Clauses is every clause of a MULTI-clause target statement, in
-	// printed order, each with its own legal set, count and printed
-	// wording — Bite Down's "target creature you control" then
-	// "target creature or planeswalker you don't control". Absent for
-	// the single-clause card that is nearly every card, where
-	// legal_targets alone says everything. The client walks the
-	// clauses one prompt at a time. Added by #764 (ADR 0065 §7).
-	Clauses []LegalTargetsView `json:"clauses,omitempty"`
-	// Modes is the S20 sub-PR 4 modal-spell clause for a card in the
-	// viewer's own hand / command zone: the prompt, how many options
-	// to pick, and each option's label plus — for targeted options —
-	// its target mode and legal set right now. Absent for non-modal
-	// cards and stripped from opponents' hands. The client shows a
-	// mode picker between the X prompt and targeting.
-	Modes *ModeSpecView `json:"modes,omitempty"`
-	// AdditionalCost is the S21 sub-PR 5 "As an additional cost to
-	// cast this spell, …" clause for a card in the viewer's own
-	// hand / command zone. Absent for the overwhelming majority of
-	// cards, which have none. The client must collect the payment
-	// before firing cast_spell — the server rejects a cast that
-	// arrives without it.
-	AdditionalCost *AdditionalCostView `json:"additional_cost,omitempty"`
-	// AlternativeCosts are the S22 "you may cast this spell for its
-	// overload / evoke / cleave cost" offers for a card in the
-	// viewer's own hand / command zone. Absent for the overwhelming
-	// majority of cards. Optional, unlike AdditionalCost: the client
-	// offers them alongside "pay the printed cost", and a cast that
-	// names none is the ordinary case.
-	AlternativeCosts []AlternativeCostView `json:"alternative_costs,omitempty"`
-	// AlternativeCostRequired says the PRINTED mana cost is NOT one
-	// of the prices this cast may claim out of the zone the card is
-	// in right now, so the caster must name one of
-	// `alternative_costs` — a Faithless Looting in the graveyard is
-	// castable at its flashback cost and at nothing else (CR 702.34b,
-	// rule 3 of validateCastPathLocked), and a card a permission
-	// PRICES is the same shape (rule 4).
-	//
-	// Absent — every hand cast, every command-zone cast, and a
-	// Gravecrawler whose graveyard permission carries no price —
-	// means the printed cost is on the menu as usual.
-	//
-	// Shipped as a flag rather than as a nil-keyed entry in
-	// `alternative_costs` (#1012) because the entry would break every
-	// client that walks that list, and because the two questions are
-	// genuinely different: the list is what you may pay INSTEAD, this
-	// is whether the cost in the corner is still on the table. The
-	// engine answers both out of one list — game.CastOffersForLocked,
-	// where a nil entry IS the printed cost — so the picker and the
-	// bot's move list cannot disagree.
-	//
-	// Stamped and stripped with `alternative_costs`, which it is only
-	// meaningful beside.
-	AlternativeCostRequired bool `json:"alternative_cost_required,omitempty"`
-	// TapCost is the S22 convoke / waterbend clause for a card in the
-	// viewer's own hand / command zone: which of your untapped
-	// permanents may be tapped to help pay, and how many. Absent for
-	// the overwhelming majority of cards. Optional like the
-	// alternative costs — tapping nothing is always a legal cast.
-	TapCost *TapCostView `json:"tap_cost,omitempty"`
-	// PhyrexianSymbols is how many symbols in the cost this card is
-	// being offered at carry CR 107.4's "or 2 life" option — {U/P}
-	// on Gitaxian Probe, {B/P}{B/P} on Dismember, {G/W/P} on a
-	// compleated planeswalker. It is the CEILING on the
-	// `phyrexian_life` the client may send with the cast, and the
-	// only reason the client knows to offer the stepper at all
-	// (#916).
-	//
-	// Shipped as a COUNT rather than left to the client, for the
-	// reason `demands_x` is: a client that re-derived it would be a
-	// second parser of the mana-cost syntax, and the two would drift
-	// the day a new symbol family is printed — which is exactly what
-	// #787 was. It counts the effective cast cost, so a commander
-	// tax or a cost modifier cannot change it and does not.
-	// `alternative_costs[i].phyrexian_symbols` answers the same
-	// question for an offer that replaces the printed cost.
-	//
-	// Stamped with the other cast clauses on cards in the viewer's
-	// own hand, command zone and castable graveyard, and stripped
-	// with them. Absent — which is nearly every card — means there
-	// is no life half to offer.
-	PhyrexianSymbols int `json:"phyrexian_symbols,omitempty"`
-	// TargetCostNotes are the printed clauses of this card's own cost
-	// modifiers whose price depends on its targets — Fireball's "This
-	// spell costs {1} more to cast for each target beyond the first",
-	// strive — for a card in the viewer's own hand / command zone /
-	// castable graveyard. The X picker opens before targeting and its
-	// readout is priced at one target, so it shows these clauses
-	// under the readout instead of a surcharge it cannot know yet
-	// (ADR 0048 addendum, open question 2). Absent for nearly every
-	// card. Added for #746.
-	TargetCostNotes []string `json:"target_cost_notes,omitempty"`
-	// CastableHere is the S29 "this card can be cast from the zone
-	// you are looking at it in" bit, for the zones where that is not
-	// already implied by the surface: the graveyard, today. Hand and
-	// command-zone cards never carry it — every card in a hand is a
-	// cast candidate, and the command zone has its own button.
-	//
-	// It is the flag the zone browser keys its cast button off, the
-	// way exile keys its impulse button off `exile_play`. The cost
-	// to pay rides `alternative_costs`, already filtered to the
-	// offers claimable from this zone — so a Faithless Looting in
-	// the graveyard carries flashback and nothing else, while the
-	// same card in hand carries neither.
-	//
-	// DERIVED, since #1015, from exactly two things and in exactly
-	// one place (castStampsFor): the prices this cast may claim out
-	// of this zone (game.CastOffersForLocked) and the ADR 0073 §7
-	// cast gate. An empty price list is a real "no" — a card whose
-	// only path out of the graveyard is an escape cost the caster
-	// cannot pay is not a cast surface, and marking one rendered a
-	// button the announce path refused with ErrCastCostRequired.
-	//
-	// PER VIEWER, and it means "YOU may cast this from here" (#1055).
-	// Not "the pile's owner may": it is stamped only on the frame of
-	// a seat that may actually make the cast — the pile's owner for a
-	// printed flashback or escape, the holder of a CastPermission over
-	// the card for a granted one, both of them on their own frames
-	// when both are true — and is absent for everybody else,
-	// spectators included.
-	//
-	// It was public until #1055, and that is the surface the S48 #891
-	// pass is about: the field's NAME is a statement about the viewer
-	// and its VALUE was a statement about somebody else, so both
-	// client readers had to pair it with `exile_play` to work out
-	// which of the two they were holding. They read the bit alone now.
-	//
-	// What stays public is the half that is a fact about the CARD IN
-	// THIS ZONE rather than about a player — `alternative_costs` and
-	// `alternative_cost_required`, `modes`, `additional_cost`,
-	// `optional_costs`, `tap_cost`, `target_cost_notes`,
-	// `phyrexian_symbols` and `cant_cast` — because a card in a
-	// graveyard is a card every player may pick up and read
-	// (castStamps.applyPublicTo).
-	CastableHere bool `json:"castable_here,omitempty"`
-	// OptionalCosts are the "you may pay an additional cost" offers
-	// this card makes (CR 601.2b, ADR 0073) — kicker, multikicker,
-	// buyback. Absent for nearly every card. Stamped alongside
-	// `alternative_costs`, because the client asks both questions in
-	// one modal.
-	OptionalCosts []OptionalCostView `json:"optional_costs,omitempty"`
+	// CastSurfaceView is the announce surface of the card AS THE FACE
+	// IT IS SHOWING. Embedded rather than listed, so `target_mode`,
+	// `legal_targets` and the rest keep the names and the JSON keys
+	// they have always had while CardFaceView carries the identical
+	// block for a face that is NOT up (#992).
+	CastSurfaceView
 	// ExilePlay is the S21 sub-PR 6 impulse-exile grant. Present
 	// only while the card is in exile with a live permission;
 	// absent — which is nearly always — the card is inert exile.
@@ -1390,24 +1240,6 @@ type CardView struct {
 	// information, so present on every viewer's copy). Absent off
 	// the battlefield and for cards with none. Added in S21 sub-PR 2.
 	ActivatedAbilities []ActivatedAbilityView `json:"activated_abilities,omitempty"`
-	// CantCast is the printed clause that stops this card being cast
-	// from the zone it is in right now (CR 101.2, ADR 0073 §7) —
-	// "Each player can't cast more than one spell each turn", "Cast
-	// this spell only if you control a legendary creature or
-	// planeswalker". Absent, which is nearly always, means nothing
-	// refuses the cast.
-	//
-	// The STAMP of the one gate function CastSpell and the bot
-	// enumerator both call, so the client can grey the card and say
-	// why from server data rather than from a rule it reimplemented.
-	// A card carrying it is never castable: the client must not
-	// dispatch cast_spell for it, and the server would refuse.
-	//
-	// Public, like `castable_here`: a Rule of Law on the battlefield
-	// is visible to everyone, so the fact that it is stopping a cast
-	// is not hidden information. Cleared with the other announce
-	// hints on the non-knower redaction.
-	CantCast string `json:"cant_cast,omitempty"`
 	// HandAbilities are the CR 602 activated abilities this card
 	// offers while it is IN HAND — cycling and typecycling today
 	// (CR 702.29a/e), and whatever else declares
@@ -1585,6 +1417,212 @@ type NoUntapView struct {
 	Next   []string `json:"next,omitempty"`
 }
 
+// CastSurfaceView is the announce-time cast surface of ONE CASTABLE
+// OBJECT: everything the cast chain asks about before cast_spell goes
+// out, for one specific half of one specific card out of one specific
+// zone.
+//
+// It exists because a card can be TWO castable objects (ADR 0034). A
+// modal DFC's faces are independently playable (CR 712.12a) and an
+// adventure card's are too (CR 715.3), and the two halves have
+// different catalog entries, different costs and different target
+// clauses — Bonecrusher Giant targets nothing and Stomp deals 2 damage
+// to any target. Until #992 the wire carried exactly one of these
+// blocks, for the face that happened to be UP, and the client's
+// `cardAsFace` had to CLEAR it when the player picked the other half
+// because the front's answers are actively wrong attached to the back.
+// Clearing it is why a targeted Adventure half reached cast_spell with
+// no target picker ever opening.
+//
+// One type, embedded in both CardView (the face that is up) and
+// CardFaceView (every castable face, including that one), so the wire
+// key is `legal_targets` in both places and the client reads one
+// shape. One writer too: castStamps embeds it, which is what keeps
+// "the answer for a face" and "the answer for the card" from being two
+// computations that can drift.
+//
+// The PER-VIEWER / PUBLIC split is ADR 0066's (#1055, #1167) and it
+// applies per face exactly as it does per card: `castable_here`,
+// `legal_targets` and `clauses` answer "what may YOU announce" and
+// ride castStamps into one seat's frame, and everything else is a fact
+// about the card in this zone that every viewer may read.
+type CastSurfaceView struct {
+	// TargetMode tells the client what kind of target to prompt
+	// for at cast time. See effects.Spec.TargetMode for the enum.
+	// Empty when the card takes no announce-time targets (either
+	// not a catalog card, or a catalog card with no targeting
+	// prompt — e.g. Pyroclasm, Wrath of God). Added in S14 sub-PR 4.
+	TargetMode string `json:"target_mode,omitempty"`
+	// LegalTargets is the S20 structured-targeting answer for a card
+	// its controller could cast right now: the players and card IDs
+	// the card's TargetSpec accepts against the current board. Only
+	// present on cards in the viewer's own hand / command zone (an
+	// opponent's hand card never carries it). Absent for cards
+	// without a TargetSpec — those keep the S13.1 free-form picker
+	// keyed off target_mode alone. An empty-but-present entry means
+	// "no legal target right now", which the client treats as
+	// uncastable. Added in S20 sub-PR 1.
+	LegalTargets *LegalTargetsView `json:"legal_targets,omitempty"`
+	// Clauses is every clause of a MULTI-clause target statement, in
+	// printed order, each with its own legal set, count and printed
+	// wording — Bite Down's "target creature you control" then
+	// "target creature or planeswalker you don't control". Absent for
+	// the single-clause card that is nearly every card, where
+	// legal_targets alone says everything. The client walks the
+	// clauses one prompt at a time. Added by #764 (ADR 0065 §7).
+	Clauses []LegalTargetsView `json:"clauses,omitempty"`
+	// Modes is the S20 sub-PR 4 modal-spell clause for a card in the
+	// viewer's own hand / command zone: the prompt, how many options
+	// to pick, and each option's label plus — for targeted options —
+	// its target mode and legal set right now. Absent for non-modal
+	// cards and stripped from opponents' hands. The client shows a
+	// mode picker between the X prompt and targeting.
+	Modes *ModeSpecView `json:"modes,omitempty"`
+	// AdditionalCost is the S21 sub-PR 5 "As an additional cost to
+	// cast this spell, …" clause for a card in the viewer's own
+	// hand / command zone. Absent for the overwhelming majority of
+	// cards, which have none. The client must collect the payment
+	// before firing cast_spell — the server rejects a cast that
+	// arrives without it.
+	AdditionalCost *AdditionalCostView `json:"additional_cost,omitempty"`
+	// AlternativeCosts are the S22 "you may cast this spell for its
+	// overload / evoke / cleave cost" offers for a card in the
+	// viewer's own hand / command zone. Absent for the overwhelming
+	// majority of cards. Optional, unlike AdditionalCost: the client
+	// offers them alongside "pay the printed cost", and a cast that
+	// names none is the ordinary case.
+	AlternativeCosts []AlternativeCostView `json:"alternative_costs,omitempty"`
+	// AlternativeCostRequired says the PRINTED mana cost is NOT one
+	// of the prices this cast may claim out of the zone the card is
+	// in right now, so the caster must name one of
+	// `alternative_costs` — a Faithless Looting in the graveyard is
+	// castable at its flashback cost and at nothing else (CR 702.34b,
+	// rule 3 of validateCastPathLocked), and a card a permission
+	// PRICES is the same shape (rule 4).
+	//
+	// Absent — every hand cast, every command-zone cast, and a
+	// Gravecrawler whose graveyard permission carries no price —
+	// means the printed cost is on the menu as usual.
+	//
+	// Shipped as a flag rather than as a nil-keyed entry in
+	// `alternative_costs` (#1012) because the entry would break every
+	// client that walks that list, and because the two questions are
+	// genuinely different: the list is what you may pay INSTEAD, this
+	// is whether the cost in the corner is still on the table. The
+	// engine answers both out of one list — game.CastOffersForLocked,
+	// where a nil entry IS the printed cost — so the picker and the
+	// bot's move list cannot disagree.
+	//
+	// Stamped and stripped with `alternative_costs`, which it is only
+	// meaningful beside.
+	AlternativeCostRequired bool `json:"alternative_cost_required,omitempty"`
+	// TapCost is the S22 convoke / waterbend clause for a card in the
+	// viewer's own hand / command zone: which of your untapped
+	// permanents may be tapped to help pay, and how many. Absent for
+	// the overwhelming majority of cards. Optional like the
+	// alternative costs — tapping nothing is always a legal cast.
+	TapCost *TapCostView `json:"tap_cost,omitempty"`
+	// PhyrexianSymbols is how many symbols in the cost this card is
+	// being offered at carry CR 107.4's "or 2 life" option — {U/P}
+	// on Gitaxian Probe, {B/P}{B/P} on Dismember, {G/W/P} on a
+	// compleated planeswalker. It is the CEILING on the
+	// `phyrexian_life` the client may send with the cast, and the
+	// only reason the client knows to offer the stepper at all
+	// (#916).
+	//
+	// Shipped as a COUNT rather than left to the client, for the
+	// reason `demands_x` is: a client that re-derived it would be a
+	// second parser of the mana-cost syntax, and the two would drift
+	// the day a new symbol family is printed — which is exactly what
+	// #787 was. It counts the effective cast cost, so a commander
+	// tax or a cost modifier cannot change it and does not.
+	// `alternative_costs[i].phyrexian_symbols` answers the same
+	// question for an offer that replaces the printed cost.
+	//
+	// Stamped with the other cast clauses on cards in the viewer's
+	// own hand, command zone and castable graveyard, and stripped
+	// with them. Absent — which is nearly every card — means there
+	// is no life half to offer.
+	PhyrexianSymbols int `json:"phyrexian_symbols,omitempty"`
+	// TargetCostNotes are the printed clauses of this card's own cost
+	// modifiers whose price depends on its targets — Fireball's "This
+	// spell costs {1} more to cast for each target beyond the first",
+	// strive — for a card in the viewer's own hand / command zone /
+	// castable graveyard. The X picker opens before targeting and its
+	// readout is priced at one target, so it shows these clauses
+	// under the readout instead of a surcharge it cannot know yet
+	// (ADR 0048 addendum, open question 2). Absent for nearly every
+	// card. Added for #746.
+	TargetCostNotes []string `json:"target_cost_notes,omitempty"`
+	// CastableHere is the S29 "this card can be cast from the zone
+	// you are looking at it in" bit, for the zones where that is not
+	// already implied by the surface: the graveyard, today. Hand and
+	// command-zone cards never carry it — every card in a hand is a
+	// cast candidate, and the command zone has its own button.
+	//
+	// It is the flag the zone browser keys its cast button off, the
+	// way exile keys its impulse button off `exile_play`. The cost
+	// to pay rides `alternative_costs`, already filtered to the
+	// offers claimable from this zone — so a Faithless Looting in
+	// the graveyard carries flashback and nothing else, while the
+	// same card in hand carries neither.
+	//
+	// DERIVED, since #1015, from exactly two things and in exactly
+	// one place (castStampsFor): the prices this cast may claim out
+	// of this zone (game.CastOffersForLocked) and the ADR 0073 §7
+	// cast gate. An empty price list is a real "no" — a card whose
+	// only path out of the graveyard is an escape cost the caster
+	// cannot pay is not a cast surface, and marking one rendered a
+	// button the announce path refused with ErrCastCostRequired.
+	//
+	// PER VIEWER, and it means "YOU may cast this from here" (#1055).
+	// Not "the pile's owner may": it is stamped only on the frame of
+	// a seat that may actually make the cast — the pile's owner for a
+	// printed flashback or escape, the holder of a CastPermission over
+	// the card for a granted one, both of them on their own frames
+	// when both are true — and is absent for everybody else,
+	// spectators included.
+	//
+	// It was public until #1055, and that is the surface the S48 #891
+	// pass is about: the field's NAME is a statement about the viewer
+	// and its VALUE was a statement about somebody else, so both
+	// client readers had to pair it with `exile_play` to work out
+	// which of the two they were holding. They read the bit alone now.
+	//
+	// What stays public is the half that is a fact about the CARD IN
+	// THIS ZONE rather than about a player — `alternative_costs` and
+	// `alternative_cost_required`, `modes`, `additional_cost`,
+	// `optional_costs`, `tap_cost`, `target_cost_notes`,
+	// `phyrexian_symbols` and `cant_cast` — because a card in a
+	// graveyard is a card every player may pick up and read
+	// (castStamps.applyPublicTo).
+	CastableHere bool `json:"castable_here,omitempty"`
+	// OptionalCosts are the "you may pay an additional cost" offers
+	// this card makes (CR 601.2b, ADR 0073) — kicker, multikicker,
+	// buyback. Absent for nearly every card. Stamped alongside
+	// `alternative_costs`, because the client asks both questions in
+	// one modal.
+	OptionalCosts []OptionalCostView `json:"optional_costs,omitempty"`
+	// CantCast is the printed clause that stops this card being cast
+	// from the zone it is in right now (CR 101.2, ADR 0073 §7) —
+	// "Each player can't cast more than one spell each turn", "Cast
+	// this spell only if you control a legendary creature or
+	// planeswalker". Absent, which is nearly always, means nothing
+	// refuses the cast.
+	//
+	// The STAMP of the one gate function CastSpell and the bot
+	// enumerator both call, so the client can grey the card and say
+	// why from server data rather than from a rule it reimplemented.
+	// A card carrying it is never castable: the client must not
+	// dispatch cast_spell for it, and the server would refuse.
+	//
+	// Public, like `castable_here`: a Rule of Law on the battlefield
+	// is visible to everyone, so the fact that it is stopping a cast
+	// is not hidden information. Cleared with the other announce
+	// hints on the non-knower redaction.
+	CantCast string `json:"cant_cast,omitempty"`
+}
+
 // CardFaceView is one printed face on the wire (ADR 0034). Enough
 // to render a picker row and a hover panel: what it is called, what
 // it costs, what it is, and where its art lives.
@@ -1606,6 +1644,33 @@ type CardFaceView struct {
 	// parameter, and empty for a card with no Scryfall ID
 	// (fixtures, the demo seed).
 	Image string `json:"image,omitempty"`
+
+	// CastSurfaceView is the announce surface of a cast of THIS face
+	// out of the zone the card is sitting in (#992) — the same field
+	// names, the same JSON keys and the same per-viewer split as the
+	// block CardView carries for the face that is up.
+	//
+	// Present only on a face the card actually offers a cast of:
+	// game.CastableFaces, narrowed by a grant that names faces
+	// (CR 715.4's Adventure permission opens the creature and no
+	// other). So it is two blocks for a modal DFC and an adventure
+	// card, one for a transform card's front, and nothing at all for
+	// the ~33,000 single-faced oracle IDs, which carry no `faces` on
+	// the wire to hang it off.
+	//
+	// The client's face picker swaps this in when the player chooses
+	// the half — `cardAsFace` — instead of clearing what the front
+	// published, which is what left a targeted Adventure half with no
+	// target picker.
+	CastSurfaceView
+
+	// castOffers is this FACE's per-viewer answers, keyed by seat,
+	// exactly as CardView.castOffers is for the card. Unexported and
+	// never serialised: applyCastStampsFor promotes the viewer's own
+	// entry into the exported block above and drops the rest, which
+	// is what keeps one seat's legal target set off another seat's
+	// frame for a face as well as for a card.
+	castOffers map[string]castStamps
 }
 
 // ManaAbilityView is the wire shape of one activated mana ability
@@ -2381,9 +2446,10 @@ func stampLegalTargets(g *game.Game, seats []PlayerView, anyGrant bool) {
 					// about the CARD IN THIS ZONE — its price list, its
 					// modes, the clause refusing the cast — which every
 					// player may read off a card in a public zone.
-					s := castStampsFor(g, caster, c, c.oracleID, zone.kind, grant)
+					s := castStampsFor(g, caster, c, activeFace(c), zone.kind, grant)
 					s.applyPublicTo(c)
 					c.stampsFor(caster, s)
+					stampCastableFaces(g, caster, c, zone.kind, grant, true)
 					continue
 				}
 				// Hand and the command zone, by the same rule
@@ -2409,9 +2475,16 @@ func stampLegalTargets(g *game.Game, seats []PlayerView, anyGrant bool) {
 				// `castable_here` was never part of this: castStampsFor
 				// only ever sets it for a graveyard or a library top,
 				// so a hand card has never carried one.
-				s := castStampsFor(g, caster, c, c.oracleID, zone.kind, nil)
+				s := castStampsFor(g, caster, c, activeFace(c), zone.kind, nil)
 				s.applyPublicTo(c)
 				c.stampsFor(caster, s)
+				// #992: and the halves this hand card is NOT showing.
+				// A hand is where an adventure card and a modal DFC
+				// are actually cast from, so this is the walk the face
+				// picker reads — and it is one extra face for those
+				// two layouts and zero for every other card in the
+				// game.
+				stampCastableFaces(g, caster, c, zone.kind, nil, true)
 			}
 		}
 	}
@@ -2474,18 +2547,14 @@ func castHoldersOf(g *game.Game, seats []PlayerView, skip uuid.UUID, card game.C
 // in, which is what makes applyTo safe to run over a card that was
 // stamped publicly first.
 type castStamps struct {
-	LegalTargets            *LegalTargetsView
-	Clauses                 []LegalTargetsView
-	Modes                   *ModeSpecView
-	AdditionalCost          *AdditionalCostView
-	OptionalCosts           []OptionalCostView
-	TapCost                 *TapCostView
-	AlternativeCosts        []AlternativeCostView
-	AlternativeCostRequired bool
-	TargetCostNotes         []string
-	PhyrexianSymbols        int
-	CantCast                string
-	CastableHere            bool
+	// CastSurfaceView is THE field list, and it is the wire's own
+	// (#992). It used to be spelled out here a second time, which was
+	// the drift this type existed to end one level down: a stamp
+	// added to castStampsFor without a field here was a stamp that
+	// never reached the holder. Embedding the wire block instead
+	// means applyTo and applyToFace are each one assignment and
+	// neither can forget a field.
+	CastSurfaceView
 
 	// ExilePlay is the grant these stamps were computed under, for a
 	// card in a zone a permission opens. `exile_play` is PUBLIC —
@@ -2502,21 +2571,21 @@ type castStamps struct {
 // writer per card per zone, so "the holder has no modes" must clear a
 // public answer that did.
 func (s castStamps) applyTo(c *CardView) {
-	c.LegalTargets = s.LegalTargets
-	c.Clauses = s.Clauses
-	c.Modes = s.Modes
-	c.AdditionalCost = s.AdditionalCost
-	c.OptionalCosts = s.OptionalCosts
-	c.TapCost = s.TapCost
-	c.AlternativeCosts = s.AlternativeCosts
-	c.AlternativeCostRequired = s.AlternativeCostRequired
-	c.TargetCostNotes = s.TargetCostNotes
-	c.PhyrexianSymbols = s.PhyrexianSymbols
-	c.CantCast = s.CantCast
-	c.CastableHere = s.CastableHere
+	c.CastSurfaceView = s.CastSurfaceView
 	if s.ExilePlay != nil {
 		c.ExilePlay = s.ExilePlay
 	}
+}
+
+// applyToFace is applyTo for ONE PRINTED FACE of the card (#992) —
+// the same answer written to the same field names, one level down.
+//
+// No ExilePlay half: a grant is a permission over an OBJECT, not over
+// a face of one, so `exile_play` stays on the card where both client
+// readers already look for it. The face a grant NAMES is expressed by
+// which faces carry a block at all.
+func (s castStamps) applyToFace(f *CardFaceView) {
+	f.CastSurfaceView = s.CastSurfaceView
 }
 
 // applyPublicTo writes the half of one seat's answer that EVERY viewer
@@ -2550,11 +2619,25 @@ func (s castStamps) applyTo(c *CardView) {
 // A seat with an answer of its own gets all three back wholesale when
 // FilterViewFor promotes their entry.
 func (s castStamps) applyPublicTo(c *CardView) {
-	pub := s
-	pub.CastableHere = false
-	pub.LegalTargets = nil
-	pub.Clauses = nil
-	pub.applyTo(c)
+	s.public().applyTo(c)
+}
+
+// applyPublicToFace is applyPublicTo one level down (#992): the same
+// split, applied to a face's block. A face's legal target set is one
+// seat's answer for exactly the reason the card's is.
+func (s castStamps) applyPublicToFace(f *CardFaceView) {
+	s.public().applyToFace(f)
+}
+
+// public is the half of one seat's answer that EVERY viewer
+// legitimately sees — the three per-viewer fields dropped, and nothing
+// else touched. One place, so the card's split and the face's cannot
+// disagree about which fields those three are.
+func (s castStamps) public() castStamps {
+	s.CastableHere = false
+	s.LegalTargets = nil
+	s.Clauses = nil
+	return s
 }
 
 // stampsFor files one seat's answer on the card for FilterViewFor to
@@ -2566,6 +2649,90 @@ func (c *CardView) stampsFor(seat uuid.UUID, s castStamps) {
 		c.castOffers = make(map[string]castStamps, 1)
 	}
 	c.castOffers[seat.String()] = s
+}
+
+// castFace names the printed half ONE cast surface is computed for
+// (#992): its index on the card, the catalog key that half registers
+// under (ADR 0034's "<oracle_id>#N") and the mana cost it prints.
+//
+// It is one parameter rather than three because the three always
+// travel together and getting two of them from one face and the third
+// from another is the bug it exists to prevent: Stomp's target clause
+// priced against Bonecrusher Giant's {2}{R} would count the wrong
+// Phyrexian symbols and size the wrong convoke budget.
+type castFace struct {
+	index    int
+	key      string
+	manaCost string
+}
+
+// activeFace is the castFace for the half the view is SHOWING — every
+// stamp that existed before #992. A pile's cards are front-up (CR
+// 712.8, MoveCard), so for all of them this is face 0 and the key is
+// the bare oracle ID, exactly as the pre-#992 call sites passed.
+func activeFace(c *CardView) castFace {
+	return castFace{
+		index:    c.ActiveFace,
+		key:      game.CatalogKeyForFace(c.oracleID, c.ActiveFace),
+		manaCost: c.ManaCost,
+	}
+}
+
+// castFaceOf is activeFace for a face the card is NOT showing, read
+// off the projected face list.
+func castFaceOf(c *CardView, i int) castFace {
+	return castFace{
+		index:    i,
+		key:      game.CatalogKeyForFace(c.oracleID, i),
+		manaCost: c.Faces[i].ManaCost,
+	}
+}
+
+// stampCastableFaces files one caster's answer for every face of a
+// multi-face card that a cast may actually choose, and returns
+// nothing for the ~33,000 single-faced oracle IDs, which carry no
+// `faces` on the wire at all (#992).
+//
+// `public` also writes the half every viewer sees. True for the piles
+// stampLegalTargets walks on their OWNER's behalf — a graveyard, a
+// library top, a hand, a command zone — and false for a foreign
+// holder's stamps, where nothing about the answer is public because
+// the seat it was computed for is not the seat the pile belongs to.
+//
+// The face list is game.CastableFacesUnder, which is the same answer
+// the bot enumerator walks (legal/cast.go): both halves of a modal
+// DFC and of an adventure card, the front alone of a transform card,
+// and exactly the faces a grant names when one does. A view that
+// offered a face the enumerator does not would be a picker row
+// CastSpell refuses with ErrInvalidFace.
+//
+// Caller must hold g.mu.
+func stampCastableFaces(g *game.Game, caster uuid.UUID, c *CardView, kind game.ZoneKind, grant *game.CastPermission, public bool) {
+	if len(c.Faces) < 2 {
+		return
+	}
+	live, ok := liveCardForView(g, c)
+	if !ok {
+		return
+	}
+	for _, i := range game.CastableFacesUnder(live, grant, caster) {
+		if i < 0 || i >= len(c.Faces) {
+			continue
+		}
+		s := castStampsFor(g, caster, c, castFaceOf(c, i), kind, grant)
+		if public {
+			s.applyPublicToFace(&c.Faces[i])
+		}
+		c.Faces[i].stampsFor(caster, s)
+	}
+}
+
+// stampsFor is CardView.stampsFor for one printed face (#992).
+func (f *CardFaceView) stampsFor(seat uuid.UUID, s castStamps) {
+	if f.castOffers == nil {
+		f.castOffers = make(map[string]castStamps, 1)
+	}
+	f.castOffers[seat.String()] = s
 }
 
 // castStampsFor fills the announce-time clauses ONE card offers ONE
@@ -2601,7 +2768,8 @@ func (c *CardView) stampsFor(seat uuid.UUID, s castStamps) {
 // though resolveAlternativeCostLocked would have accepted it.
 //
 // Caller must hold g.mu.
-func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, key string, kind game.ZoneKind, grant *game.CastPermission) castStamps {
+func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind game.ZoneKind, grant *game.CastPermission) castStamps {
+	key := f.key
 	// #662 / #979: the source of a SPELL is the spell itself, so every
 	// legal-target stamp below names the card rather than only its
 	// caster — a creature with protection from red is off the picker
@@ -2614,16 +2782,29 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, key string, kind
 	// it (ADR 0034): a permission that names a face opens that face
 	// and no other, so the gate below and the price list further down
 	// both judge the half being cast rather than the one the pile
-	// happens to be showing. `key` is that face's catalog key, which
-	// the caller has already resolved.
+	// happens to be showing. `f` names that half — its index, its
+	// catalog key and its printed cost — which the caller has already
+	// resolved.
+	//
+	// SetFace before grantedFace, and both: #992 prices a face the
+	// card is NOT showing, which is the other direction from a grant
+	// naming one, and a grant that names a face still wins. SetFace
+	// to the face already up is a no-op, so this is the same call the
+	// pre-#992 line made for every stamp that has ever existed.
 	//
 	// A card the lookup cannot find is in no zone at all, which a
 	// zone walk cannot produce; it stamps no gate and no offers
 	// rather than guessing at either.
 	live, haveLive := liveCardForView(g, c)
 	if haveLive {
+		live.SetFace(f.index)
 		live = grantedFace(live, grant)
 	}
+	// S14: the announce-time target kind, read off the catalog entry
+	// of the half being cast. Stamped HERE since #992 rather than
+	// only in viewOfCard, because viewOfCard knows one face — the one
+	// that is up — and a face picker needs the answer for the other.
+	out.TargetMode = game.TargetModeFor(key)
 	if ms := game.ModeSpecFor(key); ms != nil {
 		out.Modes = viewOfModeSpec(g, src, ms)
 	}
@@ -2650,7 +2831,7 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, key string, kind
 	// because the caster pays it first, and the count of a "X target
 	// creatures" clause depends on what they paid.
 	if tc := game.TapPermanentsCostFor(key); !tc.Empty() {
-		out.TapCost = viewOfTapCost(g, caster, c, tc)
+		out.TapCost = viewOfTapCost(g, caster, f.manaCost, tc)
 	}
 	// #746: the printed clauses of a per-target price, for the X
 	// picker's note.
@@ -2676,7 +2857,7 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, key string, kind
 	// modifiers add generic, so the two agree today, and reading the
 	// effective one keeps them agreeing if that ever stops being
 	// true.
-	out.PhyrexianSymbols = phyrexianSymbolsIn(c.ManaCost)
+	out.PhyrexianSymbols = phyrexianSymbolsIn(f.manaCost)
 	spec := game.TargetSpecFor(key)
 	// #1012: THE list of CR 118.9 prices this cast may claim out of
 	// this zone, from the one function that answers the question for
@@ -2694,7 +2875,7 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, key string, kind
 	if haveLive {
 		offers = g.CastOffersForLocked(caster, live, kind, grant)
 	}
-	out.AlternativeCosts = viewOfAlternativeCosts(g, caster, src, c, spec, offers)
+	out.AlternativeCosts = viewOfAlternativeCosts(g, caster, src, c.InstanceID, f.manaCost, spec, offers)
 	// #1012: and the wire says so when the printed cost is not one of
 	// them. `castable_here` is one bit and means "you may cast this
 	// from here", never "you may cast this from here for the cost in
@@ -2827,7 +3008,7 @@ func viewOfLegalTargets(lt game.LegalTargets, spec *game.TargetSpec) *LegalTarge
 // the real budget at announce and rejects an over-tap there.
 //
 // Caller must hold g.mu.
-func viewOfTapCost(g *game.Game, caster uuid.UUID, c *CardView, tc *game.TapPermanentsCost) *TapCostView {
+func viewOfTapCost(g *game.Game, caster uuid.UUID, manaCost string, tc *game.TapPermanentsCost) *TapCostView {
 	v := &TapCostView{
 		Key:         tc.Key,
 		Label:       tc.Label,
@@ -2843,7 +3024,7 @@ func viewOfTapCost(g *game.Game, caster uuid.UUID, c *CardView, tc *game.TapPerm
 	opts.Players = nil
 	opts.Min, opts.Max, opts.CountFromX = 0, 0, false
 	v.Options = opts
-	v.Max = game.TapPermanentsBudgetFor(tc, c.ManaCost, 0)
+	v.Max = game.TapPermanentsBudgetFor(tc, manaCost, 0)
 	return v
 }
 
@@ -2871,8 +3052,7 @@ func viewOfTapCost(g *game.Game, caster uuid.UUID, c *CardView, tc *game.TapPerm
 // one looks on the wire. The nil entry in that list is the printed
 // mana cost, which is not an alternative cost and is projected as
 // `alternative_cost_required` instead.
-func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, card *CardView, base *game.TargetSpec, offers []*game.AlternativeCost) []AlternativeCostView {
-	self := card.InstanceID
+func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, self, printedCost string, base *game.TargetSpec, offers []*game.AlternativeCost) []AlternativeCostView {
 	// A nil result rather than a present-and-empty one: `absent`
 	// is what the field means for a card with no offers, and every
 	// card in every cast surface reaches this function since #1012.
@@ -2902,7 +3082,7 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 			// cascade's {0}, airbend's {2} — never reaches this
 			// function; `exile_play.x_locked_at_zero` is where the
 			// same predicate answers for those.
-			XLockedAtZero: game.CastCost{Printed: card.ManaCost, Paid: ac.ManaCost}.LocksXAtZero(),
+			XLockedAtZero: game.CastCost{Printed: printedCost, Paid: ac.ManaCost}.LocksXAtZero(),
 			// #916: the offer replaces the mana cost, so it replaces
 			// the "or 2 life" count the client's stepper is bounded
 			// by.
@@ -4330,16 +4510,57 @@ func redactZone(z ZoneView, isKnower func(CardView) bool) ZoneView {
 func applyCastStampsFor(z ZoneView, viewerID string) ZoneView {
 	for i := range z.Cards {
 		c := &z.Cards[i]
-		if c.castOffers == nil {
-			continue
+		mine := viewerID != "" && c.KnownByYou
+		if c.castOffers != nil {
+			stamps, ok := c.castOffers[viewerID]
+			c.castOffers = nil
+			if ok && mine {
+				stamps.applyTo(c)
+			}
 		}
-		stamps, ok := c.castOffers[viewerID]
-		c.castOffers = nil
-		if ok && viewerID != "" && c.KnownByYou {
-			stamps.applyTo(c)
-		}
+		applyFaceCastStampsFor(c, viewerID, mine)
 	}
 	return z
+}
+
+// applyFaceCastStampsFor is applyCastStampsFor's per-face half (#992):
+// the same promotion, over the blocks CardFaceView carries for the
+// halves the card is not showing.
+//
+// It COPIES the face slice before touching it, and that is the whole
+// reason this is a function rather than four lines inside the loop
+// above. redactCardForViewer copies the CardView by value, so nilling
+// the card's own `castOffers` map pointer is local to this viewer's
+// frame — but `Faces` is a slice header, and every viewer's copy
+// shares one backing array with the unfiltered GameView. Writing one
+// seat's answer into it in place would hand that answer to every
+// later FilterViewFor call, which is the bug this whole pass is
+// about, arriving through the back door.
+//
+// One allocation per multi-face card per viewer, and none at all for
+// a single-faced card or one whose faces carry no stamps.
+func applyFaceCastStampsFor(c *CardView, viewerID string, mine bool) {
+	stamped := false
+	for i := range c.Faces {
+		if c.Faces[i].castOffers != nil {
+			stamped = true
+			break
+		}
+	}
+	if !stamped {
+		return
+	}
+	faces := make([]CardFaceView, len(c.Faces))
+	copy(faces, c.Faces)
+	for i := range faces {
+		f := &faces[i]
+		stamps, ok := f.castOffers[viewerID]
+		f.castOffers = nil
+		if ok && mine {
+			stamps.applyToFace(f)
+		}
+	}
+	c.Faces = faces
 }
 
 // redactCardForViewer applies the S13.5 visibility rule to a single
@@ -4718,13 +4939,22 @@ func viewOfCard(c game.Card) CardView {
 		FaceDownKind:        string(c.FaceDownKind),
 		Auto:                game.IsAutoCard(game.CatalogKey(c)),
 		Unimplemented:       game.Unimplemented(c),
-		TargetMode:          game.TargetModeFor(game.CatalogKey(c)),
-		oracleID:            c.OracleID,
-		ManaCost:            c.ManaCost,
-		ManaAbilities:       viewOfManaAbilities(c),
-		SummoningSick:       game.HasSummoningSickness(&c),
-		Abilities:           viewOfAbilityBadges(eff),
-		Restrictions:        eff.Restrictions.Names(),
+		// #992: `target_mode` is the one announce field this
+		// function stamps, because it is a pure catalog read and
+		// every zone wants it — a spell on the stack renders its
+		// target clause too. The cast-surface zones overwrite it
+		// through castStamps a moment later with the same answer for
+		// the same face; the difference is that they can answer for
+		// a face the card is NOT showing and this cannot.
+		CastSurfaceView: CastSurfaceView{
+			TargetMode: game.TargetModeFor(game.CatalogKey(c)),
+		},
+		oracleID:      c.OracleID,
+		ManaCost:      c.ManaCost,
+		ManaAbilities: viewOfManaAbilities(c),
+		SummoningSick: game.HasSummoningSickness(&c),
+		Abilities:     viewOfAbilityBadges(eff),
+		Restrictions:  eff.Restrictions.Names(),
 		// #781. Straight off the card, with no zone gate and no
 		// catalog lookup: both are cleared on every battlefield exit
 		// (game/zone.go, game/entry_tail.go), so "non-empty" already
@@ -4862,9 +5092,23 @@ func stampGrantedPermissions(g *game.Game, seats []PlayerView, zone *ZoneView, l
 		// must read theirs or it will render the wrong cost and the
 		// wrong face (ADR 0034).
 		for _, h := range castHoldersOf(g, seats, skip, card, kind) {
-			stamps := castStampsFor(g, h.seat, v, game.CatalogKey(grantedFace(card, h.grant)), kind, h.grant)
+			granted := grantedFace(card, h.grant)
+			stamps := castStampsFor(g, h.seat, v, castFace{
+				index:    granted.ActiveFace,
+				key:      game.CatalogKey(granted),
+				manaCost: granted.ManaCost,
+			}, kind, h.grant)
 			stamps.ExilePlay = exilePlayViewOf(card, h.grant)
 			v.stampsFor(h.seat, stamps)
+			// #992: and per face, for the grant that leaves the
+			// choice open. An adventure card impulse-exiled by
+			// Ragavan is the shape — CastableFacesUnder returns both
+			// halves, because the grant names none — and without this
+			// the client's picker would open on the pile's front face
+			// with the back's announce data missing. Not public: a
+			// foreign holder's answer is theirs alone, exactly as the
+			// card-level stamps above are.
+			stampCastableFaces(g, h.seat, v, kind, h.grant, false)
 		}
 	}
 }

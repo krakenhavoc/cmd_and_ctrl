@@ -203,11 +203,13 @@ func (e *enumerator) castMovesFromZone(c game.Card, kind game.ZoneKind, from str
 	// defeated Siege's back, CR 715.4's "cast the creature from
 	// exile"), which is the same rule faceForCastLocked applies — so
 	// the enumerator cannot offer a half the announce path refuses.
-	faces := c.CastableFaces()
-	if granted, ok := perm.GrantsFaces(e.seat); ok {
-		faces = granted
-	}
-	for _, face := range faces {
+	//
+	// #992: through game.CastableFacesUnder, which is the same pair of
+	// rules the VIEW now walks to publish per-face announce data. Two
+	// copies of "the card's layout, unless a grant names faces" is a
+	// picker row the enumerator would not offer, or the other way
+	// round.
+	for _, face := range game.CastableFacesUnder(c, perm, e.seat) {
 		// The face is materialised onto a COPY, exactly as CastSpell
 		// does, so all the type, cost and catalog reads below see the
 		// chosen half without any of them learning about faces.
