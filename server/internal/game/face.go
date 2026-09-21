@@ -229,6 +229,29 @@ func (c Card) CastableFaces() []int {
 	return []int{0}
 }
 
+// CastableFacesUnder is CastableFaces narrowed by a permission that
+// names faces: the halves a cast of this card BY THIS PLAYER may
+// actually choose between, right now.
+//
+// Two rules, and they are faceForCastLocked's, read from the other
+// end. The card's own layout decides when the grant says nothing —
+// every cast from hand, the graveyard and the command zone — and a
+// grant that NAMES faces opens those and no other: a defeated Siege's
+// back, CR 715.4's "cast the creature from exile".
+//
+// The legal-move enumerator and the view both walk this (legal/cast.go,
+// protocol.stampCastableFaces) rather than each spelling the pair out,
+// because a face one offers and the other does not is either a bot
+// move the announce path refuses or a picker row with nothing behind
+// it — and until #992 the view did not walk faces at all, which is
+// the second of those.
+func CastableFacesUnder(c Card, perm *CastPermission, player uuid.UUID) []int {
+	if faces, ok := perm.GrantsFaces(player); ok {
+		return faces
+	}
+	return c.CastableFaces()
+}
+
 // faceCastable reports whether face i is a legal announce-time choice
 // for this card. Face 0 is always legal — that is the single-faced
 // case and the default for every parameter that arrives unset.

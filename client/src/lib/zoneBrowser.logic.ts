@@ -160,10 +160,12 @@ export function grantedFaceIndex(grant: ExilePlayView | null): number | undefine
 export function grantedFace(card: CardView, grant: ExilePlayView | null): CardView {
   const i = grantedFaceIndex(grant);
   // A grant naming the face that is ALREADY up returns the card
-  // untouched rather than round-tripping it through cardAsFace, which
-  // clears the announce-prompt fields the server computed for exactly
-  // that face. CR 715.4's Adventure grant is this case — face 0, on a
-  // card exile is already showing front-up (CR 712.8).
+  // untouched, which since #992 is an economy rather than a
+  // correctness rule: cardAsFace swaps a face's announce block in
+  // instead of clearing the card's, and for the face that is up the
+  // two blocks are the same answer. CR 715.4's Adventure grant is
+  // this case — face 0, on a card exile is already showing front-up
+  // (CR 712.8).
   if (i === undefined || i === (card.active_face ?? 0)) return card;
   return cardAsFace(card, i);
 }

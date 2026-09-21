@@ -9,7 +9,7 @@
  * once a different face is chosen?
  */
 
-import type { CardView } from "./protocol";
+import type { CardView, CastSurfaceView } from "./protocol";
 
 /** Scryfall's layout for a modal double-faced card. */
 export const LAYOUT_MODAL_DFC = "modal_dfc";
@@ -50,34 +50,76 @@ export function needsFacePicker(card: CardView): boolean {
 }
 
 /**
+ * castSurfaceOf lifts one object's announce block out as a complete
+ * key set — every key PRESENT, `undefined` included — so spreading it
+ * over a CardView REPLACES that card's block rather than merging into
+ * it.
+ *
+ * The distinction is the whole bug. `{...card, ...face}` would only
+ * overwrite the keys the face happens to carry, so a face that
+ * announces nothing would leave the front's `legal_targets` in place
+ * — which is worse than clearing them, because the picker would open
+ * on the wrong half's targets instead of not opening at all.
+ *
+ * `satisfies Record<keyof CastSurfaceView, unknown>` is what keeps
+ * the list exhaustive: a field added to CastSurfaceView and forgotten
+ * here is a type error rather than a field that quietly keeps the
+ * front face's value. It is `satisfies` rather than a mapped
+ * `{[K]-?: …}` annotation because `-?` strips `undefined` out of the
+ * property types as well as the optionality, which is exactly the
+ * value this has to be able to carry.
+ */
+export function castSurfaceOf(s: CastSurfaceView) {
+  return {
+    target_mode: s.target_mode,
+    legal_targets: s.legal_targets,
+    clauses: s.clauses,
+    modes: s.modes,
+    additional_cost: s.additional_cost,
+    alternative_costs: s.alternative_costs,
+    alternative_cost_required: s.alternative_cost_required,
+    optional_costs: s.optional_costs,
+    cant_cast: s.cant_cast,
+    tap_cost: s.tap_cost,
+    target_cost_notes: s.target_cost_notes,
+    phyrexian_symbols: s.phyrexian_symbols,
+    castable_here: s.castable_here,
+  } satisfies Record<keyof CastSurfaceView, unknown>;
+}
+
+/**
  * cardAsFace returns a view of `card` as though face `i` were the
- * one up: the printed fields swapped for that face's, and
- * `active_face` moved so cardImageURL and every downstream type
- * check follow.
+ * one up: the printed fields swapped for that face's, `active_face`
+ * moved so cardImageURL and every downstream type check follow, and
+ * the announce block swapped for THAT FACE's (#992).
  *
- * The announce-prompt fields are CLEARED rather than carried over,
- * and that is the important half. `modes`, `additional_cost`,
- * `alternative_costs`, `alternative_cost_required`, `tap_cost`,
- * `hand_abilities`, `legal_targets` and `target_mode`
- * are all computed server-side from the catalog spec of the face
- * that was active when the view was built — face 0. They describe
- * the FRONT half's rules and would be actively wrong attached to the
- * back. Dropping them means a back face currently announces with no
- * prompts, which is correct for all 60 land backs (a land has no
- * announce decisions at all) and honest for the 40 spell backs,
- * whose specs are not written yet. When they are, the server will
- * need to publish per-face prompt data and this is the function that
- * will consume it.
+ * The announce block is the important half, and until #992 it was
+ * CLEARED here rather than swapped. `modes`, `additional_cost`,
+ * `alternative_costs`, `tap_cost`, `legal_targets`, `target_mode` and
+ * the rest were computed server-side from the catalog spec of the
+ * face that was active when the view was built — face 0 — so they
+ * describe the FRONT half's rules and are actively wrong attached to
+ * the back. Dropping them was correct while the only non-zero
+ * castable faces were the sixty MDFC lands (a land has no announce
+ * decisions) and forty spell backs with no specs written.
  *
- * #719 made that "when" concrete without changing it. An adventure
- * card's Adventure half is a real castable face with a real Spec, and
- * most printed ones target — Stomp, Petty Theft, Swift End. Casting
- * such a half from this client would announce with no target picker,
- * so the catalog ships the adventure half of Foulmire Knight (no
- * target, no mode, no X) and a targeted one waits on the server
- * publishing `target_mode` and `legal_targets` per castable face. An
- * UNCATALOGUED adventure card is unaffected: it has no announce data
- * on either face and resolves by hand, which is the sandbox promise.
+ * #719 ended that. An adventure card's Adventure half is a real
+ * castable face with a real Spec and most printed ones TARGET —
+ * Stomp, Petty Theft, Swift End — so casting one from this client
+ * announced with no target picker at all, and the server refused it.
+ * The server publishes the announce data per castable face now
+ * (protocol.CardFaceView), and this is the function that consumes it,
+ * exactly as this docblock used to promise.
+ *
+ * A face the card offers no cast of carries no block, and the swap
+ * then clears — which is the old behaviour, kept for the case it was
+ * always right for: a transform card's back, or a half a grant does
+ * not open.
+ *
+ * `hand_abilities` is still cleared rather than swapped. Cycling is
+ * an ability of the CARD IN HAND (CR 702.29a) rather than of a face
+ * being cast, the server stamps it per card, and a face swap has
+ * nothing face-specific to put in its place.
  */
 export function cardAsFace(card: CardView, i: number): CardView {
   const face = card.faces?.[i];
@@ -90,22 +132,7 @@ export function cardAsFace(card: CardView, i: number): CardView {
     power: face.power,
     toughness: face.toughness,
     active_face: i,
-    modes: undefined,
-    additional_cost: undefined,
-    alternative_costs: undefined,
-    // #1012: it qualifies the offer list above, and a face swap that
-    // kept it would leave the picker saying "you must claim one of
-    // these" over an empty list.
-    alternative_cost_required: undefined,
-    tap_cost: undefined,
+    ...castSurfaceOf(face),
     hand_abilities: undefined,
-    legal_targets: undefined,
-    target_mode: undefined,
-    // #1055: `castable_here` is the viewer's own "you may cast this
-    // from here", and the server computed it for the face the grant
-    // NAMES. A face swap that kept the bit while clearing every offer
-    // beside it is #1015's button with nothing behind it, one face
-    // over: the picker would open on an empty price list.
-    castable_here: undefined,
   };
 }

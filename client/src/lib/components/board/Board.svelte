@@ -561,15 +561,19 @@
     facePromptCard = null;
     facePromptZone = undefined;
     if (!card) return;
-    if (face <= 0) {
-      afterFace(card, fromZone ? { fromZone } : {});
-      return;
-    }
     // Run the rest of the chain against the CHOSEN face, so the
-    // prompts and the cast-timing checks see its type line and cost
-    // rather than the front's. cardAsFace drops the announce-prompt
-    // fields, which describe face 0's catalog spec and would be
-    // wrong here — see the note on cardAsFace.
+    // prompts and the cast-timing checks see its type line, its cost
+    // and — since #992 — its own announce data: the cost picker, the
+    // mode picker and the TARGET picker all read the block the server
+    // published for this half. Casting Stomp opens a target picker
+    // here; before #992 cardAsFace cleared the front's answers and
+    // put nothing back, so the chain fell through to an announce the
+    // server refused.
+    //
+    // Face 0 goes through it too. cardAsFace swaps rather than clears
+    // now, and face 0's block is the same answer the card's top-level
+    // block carries, so the special case the old code needed is gone
+    // — and one path is one path.
     afterFace(cardAsFace(card, face), fromZone ? { face, fromZone } : { face });
   }
 
@@ -607,9 +611,10 @@
   // Which is why the gate is "defined", not "greater than zero". A
   // CR 715.4 grant names face 0, and a `face > 0` test read that as
   // "no face given" and re-opened the picker on a cast with exactly
-  // one legal half. Face 0 skips cardAsFace all the same: the card
-  // already IS its front face here, and cardAsFace would strip the
-  // announce-prompt fields the server computed for it.
+  // one legal half. Face 0 goes through cardAsFace like any other
+  // since #992: the function swaps a face's announce block in rather
+  // than clearing the card's, and face 0's block is the same answer
+  // the card already carries.
   //
   // The face picker's confirm re-enters at afterFace with its own
   // choices object, so the zone has to be seeded here rather than at
@@ -617,8 +622,7 @@
   // lose it.
   function handlePlayCard(card: CardView, fromZone?: CastSourceZone, face?: number): void {
     if (face !== undefined) {
-      const played = face > 0 ? cardAsFace(card, face) : card;
-      afterFace(played, fromZone ? { face, fromZone } : { face });
+      afterFace(cardAsFace(card, face), fromZone ? { face, fromZone } : { face });
       return;
     }
     if (needsFacePicker(card)) {

@@ -603,6 +603,53 @@ func TestLegalTargetsStampedForOwnerOnly(t *testing.T) {
 			t.Errorf("opponent's view of a revealed hand card must not carry legal_targets")
 		}
 	}
+
+	// #1166: the COMMAND zone, by the same rule and with none of the
+	// cover. A hand's opponent copy is filtered by keepKnownInHandZone
+	// and most of its cards are not known at all; the command zone is
+	// PUBLIC — every seated player is a knower of every card in it —
+	// so the zone owner's announce surface reached the whole table
+	// with nothing in the way. CR 903.4's permission to cast a
+	// commander from there belongs to one seat, and so does the target
+	// set of that cast.
+	cmdr := game.NewCard("Targeting Commander", me.ID)
+	cmdr.TypeLine = "Legendary Creature — Avatar"
+	cmdr.OracleID = oracle
+	cmdr.IsCommander = true
+	for _, p := range g.Seats {
+		if cmdr.KnownBy == nil {
+			cmdr.KnownBy = map[uuid.UUID]bool{}
+		}
+		cmdr.KnownBy[p.ID] = true
+	}
+	me.Command.PushTop(cmdr)
+
+	ownCmd := handCardByID(t, ViewOfGameFor(g, me.ID.String()).Seats[0].Command, cmdr.InstanceID)
+	if ownCmd.LegalTargets == nil || len(ownCmd.LegalTargets.Cards) != 1 {
+		t.Errorf("the command zone's owner lost their own legal target set: %+v", ownCmd.LegalTargets)
+	}
+	theirCmd := handCardByID(t, ViewOfGameFor(g, opp.ID.String()).Seats[0].Command, cmdr.InstanceID)
+	if !theirCmd.KnownByYou {
+		t.Fatalf("the fixture hid the commander from the opponent, so the assertion below " +
+			"would be answered by the redaction rather than by the stamp")
+	}
+	if theirCmd.LegalTargets != nil {
+		t.Errorf("another seat's command zone carries its owner's legal target set: %+v", theirCmd.LegalTargets)
+	}
+}
+
+// handCardByID finds one card in a projected zone, failing the test
+// when it is absent — the zone-agnostic lookup the tests in this file
+// were each repeating inline.
+func handCardByID(t *testing.T, z ZoneView, id uuid.UUID) CardView {
+	t.Helper()
+	for _, c := range z.Cards {
+		if c.InstanceID == id.String() {
+			return c
+		}
+	}
+	t.Fatalf("card %s missing from the %s view", id, z.Kind)
+	return CardView{}
 }
 
 // TestModesStampedForOwnerOnly — S20 sub-PR 4: a modal hand card

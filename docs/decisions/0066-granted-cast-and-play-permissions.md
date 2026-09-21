@@ -1118,3 +1118,54 @@ Additive on the wire in the `omitempty` direction that is safe — the
 field goes out on fewer frames, never on more — so a reader that
 already falls back to `false` for an absent bit needs no change and
 `v` does not move.
+
+---
+
+## Amendment (2026-09-21, #1166): the hand and the command zone take the same path
+
+The amendment above split the announce surface into a public half and
+three per-viewer fields, and applied it to the two zones that could
+carry a foreign holder's answer — the graveyard and the library top.
+It left the hand and the command zone on the pre-#1055 path: one
+`castStampsFor` call whose whole answer, `legal_targets` included, went
+straight into the exported fields, with no per-viewer promotion at all.
+
+That was two live leaks of one seat's answer, of very different sizes.
+
+**The command zone, with nothing in the way.** It is public — every
+seated player is a knower of every card in it — and `FilterViewFor` ran
+no strip over it whatsoever. A commander with a target clause put its
+OWNER's legal target set on all four frames, for a cast CR 903.4 gives
+exactly one seat.
+
+**A revealed hand card, with a hand-rolled strip in the way.**
+`keepKnownInHandZone` had been clearing `legal_targets` and `clauses`
+by hand since S20, so the leak was covered — by a second list of
+fields, in a second place, which is precisely the drift `castStamps`
+was created to end. Those two lines are gone and the hand is routed
+through `applyCastStampsFor` like every other cast surface.
+
+**What `keepKnownInHandZone` still does, and why that is not the same
+thing.** It also drops `modes`, `alternative_costs`,
+`alternative_cost_required`, `tap_cost`, `phyrexian_symbols` and
+`target_cost_notes` from a revealed card on a non-owner's frame. That
+is not the per-viewer split — those fields ARE facts about the card —
+it is the documented scope of the fields, which say "the viewer's own
+hand". A hand is not a public zone the way a graveyard is: a revealed
+card is one card the viewer has been shown, not a pile they may read.
+The two narrowings are independent and both stay.
+
+**`castable_here` was never involved.** `castStampsFor`'s switch only
+ever sets it for `ZoneGraveyard` and `ZoneLibrary` — every card in a
+hand or a command zone is a cast candidate, and an always-true flag
+would be noise the client had to ignore — so neither zone has ever
+carried one.
+
+The "wide blast radius" this was deferred for did not materialise:
+no test read its own hand's announce fields off an unfiltered
+`ViewOfGame`. `stampCastOffers` was left with one caller, which was
+this one, so its body and its history moved onto `castStampsFor` and
+every zone now calls the same function.
+
+Nothing moves on the wire in the direction that breaks a reader: the
+fields go out on fewer frames, never on more.

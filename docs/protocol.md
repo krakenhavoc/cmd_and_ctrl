@@ -1146,10 +1146,69 @@ longer take the viewer's or the owner's seat. `exile_play` keeps its
 own job — it is public, it names the seat the permission was granted
 to, and the impulse button reads it for the grant's face, cost and
 label — but it is no longer part of ANSWERING whether this viewer may
-cast. A face swap (`cardAsFace`) clears `castable_here` with the rest
-of the announce surface: the server computed it for the face the grant
-names, and keeping it beside a cleared offer list is #1015's button
-with nothing behind it.
+cast. A face swap (`cardAsFace`) replaces `castable_here` with the
+chosen face's own, along with the rest of the announce surface — see
+the per-face section below.
+
+**The hand and the command zone answer per viewer too (#1166,
+2026-09-21).** The same narrowing, on the two zones #1055 left alone.
+The command zone is PUBLIC — every seated player is a knower of every
+card in it — and nothing stripped it, so a commander with a target
+clause put its owner's `legal_targets` on all four frames for a cast
+CR 903.4 gives one seat. A REVEALED hand card (Thoughtseize, Telepathy)
+is the same shape with a narrower audience. Both are routed through the
+same per-viewer promotion every other cast surface uses now, so
+`legal_targets` and `clauses` reach the hand or command zone's OWNER
+and nobody else. `castable_here` was never involved: the server only
+ever sets it for a graveyard or a library top, because every card in a
+hand or a command zone is a cast candidate and an always-true flag
+would be noise. A hand is still not a public zone, so a revealed card
+also drops `modes`, `alternative_costs`, `tap_cost`,
+`phyrexian_symbols` and `target_cost_notes` on a non-owner's frame,
+which is the documented scope of those fields and unchanged.
+
+## Announce data per castable face (#992, 2026-09-21)
+
+**`faces[i]` carries the same announce block `CardView` does.** A card
+can be TWO castable objects (ADR 0034): a modal DFC's faces are
+independently playable (CR 712.12a), and CR 715.3 lets an adventure
+card's caster choose the creature or the Adventure. The wire carried
+exactly one announce block — for the face that is UP, which for a card
+in hand is always face 0 — so a client that let the player pick the
+other half had to CLEAR it, because the front's answers are actively
+wrong attached to the back. A targeted Adventure half (Stomp, Petty
+Theft, Swift End) therefore reached `cast_spell` with no target picker
+ever opening.
+
+Each entry of `faces` now carries, with the same keys and the same
+meanings they have on the card: `target_mode`, `legal_targets`,
+`clauses`, `modes`, `additional_cost`, `optional_costs`, `tap_cost`,
+`alternative_costs`, `alternative_cost_required`, `target_cost_notes`,
+`phyrexian_symbols`, `cant_cast` and `castable_here`.
+
+- **Only on a face a cast may actually choose.** That is
+  `game.CastableFaces` — both halves of a modal DFC and of an adventure
+  card, the front alone of a transform card — narrowed by a grant that
+  NAMES faces, because CR 715.4's Adventure permission opens the
+  creature and no other. On every other face the fields are simply
+  absent, which reads correctly as "this half announces nothing". A
+  single-faced card ships no `faces` at all, so this costs the ~33,000
+  ordinary oracle IDs nothing.
+- **The per-viewer split travels down with it.** `castable_here`,
+  `legal_targets` and `clauses` answer "what may YOU announce" for a
+  face exactly as for a card, so they reach one seat's frame; the rest
+  of the block is public on a public zone under the same rule as above.
+- **`exile_play` stays on the CARD.** A permission is granted over an
+  object, not over a face of one; which face it opens is expressed by
+  `exile_play.faces` and by which faces carry a block at all.
+- **For a client.** `cardAsFace(card, i)` swaps `faces[i]`'s block in
+  rather than clearing the card's, and the rest of the cast chain is
+  unchanged — it reads `target_mode` and `legal_targets` off the card
+  it was handed, which after a face pick is the face. `hand_abilities`
+  is still cleared rather than swapped: cycling is an ability of the
+  CARD IN HAND (CR 702.29a), not of a face being cast.
+
+Additive: a reader that ignores the new keys behaves exactly as it did.
 
 - **`alternative_costs` is `game.CastOffersForLocked`'s answer**, the
   same list the bot enumerator walks and `cast_spell` validates against
