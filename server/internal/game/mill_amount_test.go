@@ -226,13 +226,11 @@ func TestAnUnboundedUntilMillOpensNoAmountWindow(t *testing.T) {
 		g.RegisterReplacementForTest(millAmountReplacement(them.ID, func(n int) int { fired++; return n * 2 }, "twice"))
 	})
 
-	stop := 0
 	var got []uuid.UUID
 	g.WithWriteLock(func() {
 		var err error
-		got, err = g.MillToZoneForEffect(p.ID, 0, ZoneGraveyard, func(Card) bool {
-			stop++
-			return stop == 2
+		got, err = g.MillToZoneForEffect(p.ID, 0, ZoneGraveyard, func(landed []Card) bool {
+			return len(landed) == 2
 		})
 		if err != nil {
 			t.Fatalf("MillToZoneForEffect: %v", err)

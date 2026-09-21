@@ -965,12 +965,19 @@ func (g *Game) MillNForEffect(playerID uuid.UUID, n int) error {
 // yet; that is what MillToZoneThenForEffect is for, and a caller that
 // reads the slice should use it.
 //
-// `until`, when non-nil, is consulted for each card as it comes off
-// the library and stops the mill AFTER the first card it accepts;
-// that is Helm of Obedience's "mills cards until a creature card is
-// put into their graveyard" — the card that ends it still moves. With
-// `until` set, n <= 0 means "no limit but the library", so an
-// unbounded mill is expressible without inventing a sentinel.
+// `until`, when non-nil, is consulted with the cards that have LANDED
+// in `dest` so far, in order, after each one arrives, and stops the
+// mill on the first list it accepts; that is Helm of Obedience's
+// "mills cards until a creature card is put into their graveyard" —
+// the card that ends it still moves. With `until` set, n <= 0 means
+// "no limit but the library", so an unbounded mill is expressible
+// without inventing a sentinel.
+//
+// #1159: it reads what ARRIVED, not what came off the library, so a
+// card the CR 614 window diverted (a commander taking the command
+// zone) does not end the run. Taking the whole landed list rather
+// than one card is what keeps the predicate PURE, which an undo
+// across the CR 903.9 prompt needs — see millStopForLocked.
 //
 // Running the library out stops the run, with no error and NO loss.
 // CR 701.17b: a player instructed to mill more cards than their
@@ -1004,7 +1011,7 @@ func (g *Game) MillNForEffect(playerID uuid.UUID, n int) error {
 // reason a caller that reads the list should use the Then form.
 //
 // Caller must hold g.mu.
-func (g *Game) MillToZoneForEffect(playerID uuid.UUID, n int, dest ZoneKind, until func(Card) bool) ([]uuid.UUID, error) {
+func (g *Game) MillToZoneForEffect(playerID uuid.UUID, n int, dest ZoneKind, until func([]Card) bool) ([]uuid.UUID, error) {
 	return g.millThroughReplacementsLocked(playerID, n, dest, until, nil)
 }
 
@@ -1045,7 +1052,7 @@ func (g *Game) MillToZoneThenForEffect(
 	playerID uuid.UUID,
 	n int,
 	dest ZoneKind,
-	until func(Card) bool,
+	until func([]Card) bool,
 	then func(g *Game, milled []uuid.UUID) error,
 ) error {
 	if then == nil {
@@ -1059,7 +1066,7 @@ func (g *Game) MillToZoneThenForEffect(
 	return err
 }
 
-// millPlanLocked validates a mill and chooses the cards it will move,
+// millPlanLocked validates a mill and chooses the cards it MAY move,
 // top of the library first. Shared by both forms above, so they cannot
 // disagree about what a mill of n is.
 //
@@ -1075,18 +1082,30 @@ func (g *Game) MillToZoneThenForEffect(
 // what CR 701.17a's simultaneous mill wants and the only version that
 // does not silently shorten the mill when a commander is in the way.
 //
-// `until` is answered here too, against the same pre-move copies the
-// old loop consulted: it reads the card that came off the library, not
-// where that card ended up, so the run it ends is the same run whether
-// it is measured before the first move or after the last. That is what
-// lets the plan be a plain list of IDs — which is what the batch body
-// takes — and it is also the one thing Helm of Obedience's caveat is
-// about: a commander whose owner takes the command zone was never put
-// into a graveyard, so by CR 701.17a's letter the run should continue,
-// and it stops instead.
+// #1159: `until` is NOT answered here, and that is the fix. It used to
+// be, against the pre-move copies — which read the card that came off
+// the library rather than where that card ended up, so a card the
+// CR 614 window diverted (a commander taking the command zone, "if a
+// card would be put into a graveyard from anywhere, exile it instead")
+// ended the run without ever arriving. CR 400.7's reading, which
+// landedInZoneLocked already holds for the `Then` continuation, is
+// that such a card was never put into that graveyard, so it is not one
+// of the cards the "until" clause counts and the run carries on.
+//
+// So an `until` run plans its whole CANDIDATE set here — every card
+// the bound allows, the library for an unbounded one — and the run is
+// ended in the routing loop instead, by the stop predicate
+// routeAllThenUntilLocked and routeAllLandedUntilLocked take. The plan
+// is still a flat list of IDs chosen before anything moves, so #529's
+// paused-leg behaviour is untouched: a leg waiting on CR 903.9 has not
+// landed, does not end the run, and the batch proceeds around it.
+//
+// The returned cards are the pre-move copies, in library order (top
+// first) — the caller needs them to answer `until` about the ones that
+// land, and they are the same copies the old loop asked.
 //
 // Caller must hold g.mu.
-func (g *Game) millPlanLocked(playerID uuid.UUID, n int, dest ZoneKind, until func(Card) bool) ([]uuid.UUID, error) {
+func (g *Game) millPlanLocked(playerID uuid.UUID, n int, dest ZoneKind, until func([]Card) bool) ([]Card, error) {
 	p := g.playerByIDLocked(playerID)
 	if p == nil {
 		return nil, ErrPlayerNotFound
@@ -1103,15 +1122,50 @@ func (g *Game) millPlanLocked(playerID uuid.UUID, n int, dest ZoneKind, until fu
 	if unbounded || want > avail {
 		want = avail
 	}
-	ids := make([]uuid.UUID, 0, want)
+	plan := make([]Card, 0, want)
 	for i := 0; i < want; i++ {
-		c := p.Library.Cards[avail-1-i]
-		ids = append(ids, c.InstanceID)
-		if until != nil && until(c) {
-			break
-		}
+		plan = append(plan, p.Library.Cards[avail-1-i])
 	}
-	return ids, nil
+	return plan, nil
+}
+
+// millStopForLocked turns a mill's `until` clause into the stop
+// predicate the routing loops take: given the IDs that have LANDED so
+// far, in order, does the run end here?
+//
+// #1159. The lookup is over the plan's pre-move copies, which is the
+// same object `until` was always asked about — only the WHEN and the
+// WHICH have changed: after the move, and only for the cards that
+// arrived.
+//
+// Pure, and deliberately so. It reads nothing but its argument and the
+// immutable plan, so an undo that rewinds into an open CR 903.9 prompt
+// and replays the answer asks the same question and gets the same
+// answer. That is also why MillToZone.Until is typed as a function of
+// the whole landed list rather than of one card: a predicate
+// accumulating state across legs (Improvisation Capstone's running
+// mana-value total) would be consumed by the first run and wrong on
+// the replay.
+//
+// Returns nil when there is no `until`, which is the signal the loops
+// read as "no early stop".
+func millStopForLocked(plan []Card, until func([]Card) bool) func([]uuid.UUID) bool {
+	if until == nil {
+		return nil
+	}
+	byID := make(map[uuid.UUID]Card, len(plan))
+	for _, c := range plan {
+		byID[c.InstanceID] = c
+	}
+	return func(landed []uuid.UUID) bool {
+		cards := make([]Card, 0, len(landed))
+		for _, id := range landed {
+			if c, ok := byID[id]; ok {
+				cards = append(cards, c)
+			}
+		}
+		return len(cards) > 0 && until(cards)
+	}
 }
 
 // DestroyPermanentForEffect destroys a battlefield permanent

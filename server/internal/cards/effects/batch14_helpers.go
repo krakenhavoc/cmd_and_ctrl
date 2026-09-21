@@ -345,7 +345,7 @@ func b14MillUntilLand(ctx *Context, player uuid.UUID) error {
 	// run is milled too.
 	return MillToZone{
 		Player: player,
-		Until:  func(c game.Card) bool { return c.IsLand() },
+		Until:  UntilCard(func(c game.Card) bool { return c.IsLand() }),
 	}.Apply(ctx)
 }
 

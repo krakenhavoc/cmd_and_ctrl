@@ -49,7 +49,7 @@ func TestMillMoreThanTheLibraryHoldsDoesNotLose(t *testing.T) {
 func TestUnboundedMillUntilThatNeverMatchesDoesNotLose(t *testing.T) {
 	g := newActiveGameWithSeats(t, 3)
 	p := g.Seats[1]
-	never := func(Card) bool { return false }
+	never := func([]Card) bool { return false }
 	runOutAndCheck(t, g, p, func() error {
 		_, err := g.MillToZoneForEffect(p.ID, 0, ZoneGraveyard, never)
 		return err
@@ -61,7 +61,7 @@ func TestUnboundedMillUntilThatNeverMatchesDoesNotLose(t *testing.T) {
 func TestBoundedMillUntilPastTheLibraryDoesNotLose(t *testing.T) {
 	g := newActiveGameWithSeats(t, 3)
 	p := g.Seats[1]
-	never := func(Card) bool { return false }
+	never := func([]Card) bool { return false }
 	runOutAndCheck(t, g, p, func() error {
 		_, err := g.MillToZoneForEffect(p.ID, p.Library.Size()+5, ZoneGraveyard, never)
 		return err

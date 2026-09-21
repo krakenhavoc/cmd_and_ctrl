@@ -1113,10 +1113,26 @@ type MillToZone struct {
 	// ZoneExile. Anything else is rejected rather than guessed at.
 	To game.ZoneKind
 
-	// Until, when set, ends the run after the first card it returns
-	// true for. With Until set, N <= 0 means "no limit but the
+	// Until, when set, ends the run after the first LANDED list it
+	// returns true for. With Until set, N <= 0 means "no limit but the
 	// library", which is how an unbounded mill is written.
-	Until func(c game.Card) bool
+	//
+	// `landed` is the cards that have actually reached To so far, top
+	// of the library first, and it is never empty when the clause is
+	// asked. #1159: a card the CR 614 window sent somewhere else — a
+	// commander taking the command zone (CR 903.9), "if a card would
+	// be put into a graveyard from anywhere, exile it instead" — was
+	// never put into To, so it is not in the list and does not end the
+	// run. Same reading as Then's `milled`, because it is the same
+	// rule (CR 400.7).
+	//
+	// Write it as a question about the WHOLE list, not as an
+	// accumulator over successive calls: the engine may ask it again
+	// for the same prefix when an undo replays the answer to a CR
+	// 903.9 prompt, and a closure counting as it goes would be wrong
+	// the second time. UntilCard and UntilTotalManaValue below are the
+	// two shapes the catalog needs; reach for them first.
+	Until func(landed []game.Card) bool
 
 	// Then is the "for each card milled this way" clause, and `milled`
 	// holds the instance IDs that actually reached To, in library
@@ -1172,6 +1188,38 @@ func (m MillToZone) Apply(ctx *Context) error {
 		func(g *game.Game, milled []uuid.UUID) error {
 			return m.Then(NewContext(g, item), milled)
 		})
+}
+
+// UntilCard is MillToZone.Until for the common clause: the run ends on
+// the card that arrived, judged on its own — "until a creature card is
+// put into their graveyard", "until they reveal a land card".
+//
+// Pure by construction: it reads only the last entry of the list it is
+// handed, so replaying it over the same prefix gives the same answer.
+// See MillToZone.Until for why that matters.
+func UntilCard(pred func(c game.Card) bool) func([]game.Card) bool {
+	return func(landed []game.Card) bool {
+		return len(landed) > 0 && pred(landed[len(landed)-1])
+	}
+}
+
+// UntilTotalManaValue is MillToZone.Until for the running-total
+// clause: the run ends once the cards that LANDED total `threshold`
+// mana value or more — "until you exile cards with total mana value 4
+// or greater" (Improvisation Capstone, Echocasting Symposium).
+//
+// The total is recomputed from the whole landed list every time rather
+// than accumulated across calls, which is what makes it pure and what
+// makes a card the CR 614 window diverted contribute nothing: it never
+// arrived, so it is not in the list (#1159).
+func UntilTotalManaValue(threshold int) func([]game.Card) bool {
+	return func(landed []game.Card) bool {
+		total := 0
+		for _, c := range landed {
+			total += c.ManaValue()
+		}
+		return total >= threshold
+	}
 }
 
 // ExileTopFaceDown is "exile the top N cards of your library face

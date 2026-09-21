@@ -31,6 +31,19 @@ import (
 // Diffing the graveyard afterwards would be wrong the moment
 // anything else put a card there in the same resolution.
 //
+// #1159 made that clause read what ARRIVED, so the caveat this card
+// carried from the day it shipped is gone: a milled commander whose
+// owner takes the command zone was never put into the graveyard
+// (CR 400.7), so it does not end the run and the Helm keeps milling
+// until a creature card really is put there. What is left of the
+// caveat is the OTHER half of the printed sentence — "or X cards have
+// been put into their graveyard this way" — where X still bounds the
+// cards the run takes off the library rather than the cards that
+// arrive. Fixing that means making the bound itself landed-counted,
+// which is a change to the mill AMOUNT (CR 701.13b counts cards
+// moved, and it is the number Bruvac the Grandiloquent doubles) and
+// not to the clause; it is filed rather than smuggled in here.
+//
 // "One of them" needs no prompt. The run stops AT the first creature
 // card, so there is never more than one to choose from — the plural
 // in the oracle text is there for the rules, not for the player.
@@ -52,7 +65,7 @@ func init() {
 		Name:         "Helm of Obedience",
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
-			"If the creature card milled is a commander and its owner puts it into the command zone instead (CR 903.9), the Helm stops milling rather than continuing until a creature card really is put into the graveyard, and nothing is reanimated.",
+			"X counts the cards the run takes off the library rather than the cards that reach the graveyard, so a card a replacement diverts on the way (a commander whose owner takes the command zone, CR 903.9) still uses up one of the X. The creature-card half of the clause is exact.",
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{X}, {T}: Target opponent mills until a creature card or X cards are in their graveyard; reanimate it.",
@@ -79,7 +92,11 @@ func helmOfObedienceMill(g *game.Game, item *game.StackItem) error {
 	return MillToZone{
 		Player: victim,
 		N:      ctx.X(),
-		Until:  func(c game.Card) bool { return c.IsCreature() },
+		// #1159: answered against what reached the graveyard, so a
+		// commander whose owner takes the command zone does not end
+		// the run — the Helm keeps milling until a creature card
+		// really is put there, which is what the card says.
+		Until: UntilCard(func(c game.Card) bool { return c.IsCreature() }),
 		// #893: the reanimation reads what was PUT INTO THE GRAVEYARD,
 		// so it runs from the continuation. A milled commander stops to
 		// answer CR 903.9 and the creature card to reanimate is not
