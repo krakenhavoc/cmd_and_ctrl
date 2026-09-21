@@ -897,3 +897,104 @@ prompt data" (client/src/lib/faces.ts) coming due.
 and Omens — "shuffle it into its owner's library instead of exiling
 it", which is the same branch with a different destination and no
 grant.
+
+---
+
+## Amendment (2026-09-21, #992): the announce surface is published per castable face
+
+The amendment above ended by naming the one thing a targeted Adventure
+half was blocked on: *"the view publishes `target_mode` and
+`legal_targets` for the face that is UP, so a human client asked to
+cast face 1 has no picker to open. That is `cardAsFace`'s 'when they
+are, the server will need to publish per-face prompt data' coming
+due."* This is that.
+
+### The wire shape: one block, carried twice
+
+§6 gave `CardFaceView` four fields — name, type line, mana cost, image
+— and called `faces` *"purely additive: it feeds the picker and the
+hover overlay"*. It feeds the CAST now. The thirteen announce fields
+come out of `CardView` into an embedded `CastSurfaceView`, and
+`CardFaceView` embeds the same struct, so `faces[1].target_mode` is
+spelled and means exactly what `target_mode` does:
+
+```go
+type CastSurfaceView struct {
+	TargetMode              string
+	LegalTargets            *LegalTargetsView
+	Clauses                 []LegalTargetsView
+	Modes                   *ModeSpecView
+	AdditionalCost          *AdditionalCostView
+	OptionalCosts           []OptionalCostView
+	TapCost                 *TapCostView
+	AlternativeCosts        []AlternativeCostView
+	AlternativeCostRequired bool
+	TargetCostNotes         []string
+	PhyrexianSymbols        int
+	CantCast                string
+	CastableHere            bool
+}
+
+type CardView struct     { …; CastSurfaceView; … }
+type CardFaceView struct { …; CastSurfaceView; … }
+```
+
+Embedded rather than nested under a `cast` key, and embedded in BOTH
+rather than listed twice, for the reason §6 gave for keeping the flat
+fields meaning "the active face's": the client change stays small
+because nothing renames. `castStamps` embeds it too, which is what
+makes `applyTo` and `applyToFace` one assignment each — the field list
+exists once in the whole server.
+
+### Which faces carry one
+
+`game.CastableFacesUnder(card, grant, seat)`: the card's own
+`CastableFaces`, narrowed by a grant that NAMES faces. That is the
+same pair of rules `faceForCastLocked` applies at announce and the
+legal-move enumerator applies when it builds its move list — and
+`legal/cast.go` now calls this function rather than spelling the pair
+out a second time. A view that offered a face the enumerator does not
+would be a picker row `CastSpell` refuses with `ErrInvalidFace`.
+
+So it is two blocks for a modal DFC and an adventure card, one for a
+transform card's front, one for a CR 715.4 grant (the creature half
+and no other), and none at all for the ~33,000 single-faced oracle
+IDs, which carry no `faces` on the wire to hang a block off. The cost
+is one extra `castStampsFor` call per multi-face card per cast surface.
+
+### The per-viewer split travels down with it
+
+ADR 0066's 2026-09-21 amendment (#1055) split the announce surface into
+a public half — facts about the card in this zone — and three fields
+that answer "what may YOU announce": `castable_here`, `legal_targets`
+and `clauses`. That split applies per FACE for the same reason it
+applies per card: hexproof, shroud, protection and "target opponent"
+narrow a target set by who is asking, whichever half is being cast. So
+`CardFaceView` carries its own `castOffers` map and `applyCastStampsFor`
+promotes the viewer's entry per face.
+
+One trap worth recording, because it is invisible in a diff:
+`FilterViewFor` runs once per viewer over ONE `GameView`, `Faces` is a
+slice header every frame shares with it, and promoting a seat's answer
+in place would hand that answer to every frame built afterwards. The
+face slice is copied before any per-viewer write.
+
+### Two things now read off the face rather than the card
+
+`castStampsFor` prices a half the card may not be showing, so the
+printed MANA COST it reads is the face's — which corrects the
+Phyrexian-symbol ceiling (CR 107.4), the convoke budget and CR 107.3b's
+X lock for a granted back face (a defeated Siege), all three of which
+used to be counted against the front's cost. And `target_mode` is
+stamped by the same walk rather than only by `viewOfCard`, which knows
+one face by construction.
+
+### Consequence for the catalog
+
+A TARGETED Adventure half is no longer blocked. **Bonecrusher Giant //
+Stomp** ships as the proof, with Stomp's "damage can't be prevented
+this turn" declared as a caveat (the same one Banefire carries, for the
+same missing shape). Petty Theft and Swift End need nothing further
+from this ADR.
+
+**Still outstanding after this:** split fusing, and Omens.

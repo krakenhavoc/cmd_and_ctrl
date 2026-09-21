@@ -3059,15 +3059,17 @@ live in. See
 The creature's entry is usually a bare `Completeness` declaration plus
 its `PrintedKeywords` — without it the whole card wears the
 "unimplemented" badge in hand, because the Adventure's text makes
-`NeedsCatalogEffect` true for the card. **One thing is still missing,
-and it decides which adventure cards are worth writing:** the view
-publishes `target_mode` and `legal_targets` for the face that is UP, so
-a human client asked to cast face 1 has no target picker. An Adventure
-half that TARGETS (Stomp, Petty Theft, Swift End) is therefore blocked
-on per-face announce data, while one that does not (Profane Insight,
-Fertile Footsteps, Heart's Desire) ships today. The bot enumerator is
-already face-correct, and an uncatalogued adventure card is unaffected
-— it has no announce data on either face and resolves by hand.
+`NeedsCatalogEffect` true for the card. **A TARGETED Adventure half is
+no longer blocked** (#992): the view publishes the whole announce
+surface — `target_mode`, `legal_targets`, `clauses`, the modes and the
+price list — per castable face, and the client's face picker swaps the
+chosen half's block in, so Stomp, Petty Theft and Swift End open a
+target picker like any other spell. See
+[bonecrusher_giant.go](server/internal/cards/effects/bonecrusher_giant.go).
+Nothing about a card file changes for it: write the Adventure half's
+`Targets` exactly as you would on a single-faced instant, under the
+`"#1"` key. An uncatalogued adventure card is still unaffected — it has
+no announce data on either face and resolves by hand.
 
 **The window is a `game.Duration`** (#945,
 [ADR 0063](docs/decisions/0063-durations-and-control.md)) — the same
