@@ -1163,9 +1163,8 @@ and nobody else. `castable_here` was never involved: the server only
 ever sets it for a graveyard or a library top, because every card in a
 hand or a command zone is a cast candidate and an always-true flag
 would be noise. A hand is still not a public zone, so a revealed card
-also drops `modes`, `alternative_costs`, `tap_cost`,
-`phyrexian_symbols` and `target_cost_notes` on a non-owner's frame,
-which is the documented scope of those fields and unchanged.
+also drops the cost-shaped announce fields on a non-owner's frame —
+see the section below, which is where that rule now lives.
 
 ## Announce data per castable face (#992, 2026-09-21)
 
@@ -1221,6 +1220,66 @@ Additive: a reader that ignores the new keys behaves exactly as it did.
   construction. A granted key the card also prints is dropped rather
   than listed twice, which is the precedence
   `resolveAlternativeCostLocked` applies at announce.
+
+## A hand's public announce half, and the face that opens a zone (#1169, #1171, 2026-09-21)
+
+Two narrowings on `CardView` and `faces[i]`, both in the `omitempty`
+direction that is safe — a field goes out on fewer frames, never on
+more — so `v` does not move.
+
+**A revealed hand card carries four announce fields and no more
+(#1169).** A hand is not a public zone the way a graveyard is: a
+revealed card (Thoughtseize, Telepathy) is ONE card the viewer has
+been shown, not a pile they may read. What a non-owner gets on it is
+`target_mode`, `additional_cost`, `optional_costs` and `cant_cast` —
+the fields that are not cost-shaped: a printed prompt shape, two
+printed clauses whose pickers read the public battlefield, and a Rule
+of Law everybody can see on the battlefield anyway. Everything else in
+the announce block — `modes`, `alternative_costs`,
+`alternative_cost_required`, `tap_cost`, `phyrexian_symbols`,
+`target_cost_notes`, plus the three that were never public anywhere —
+reaches the hand's OWNER and nobody else.
+
+That is what the wire already did for the card, with two gaps this
+closes:
+
+- **`faces[i]` is narrowed the same way.** #992 publishes the announce
+  block per castable face; the hand's narrowing was a list of field
+  names in the per-viewer filter and never reached a face at all, so a
+  knower of a revealed adventure card or modal DFC read its owner's
+  whole per-face price list. An offer with a pitch cost (Force of
+  Will's "exile a blue card from your hand") carries `pay_options`,
+  which is a list of instance IDs out of the hand the viewer was shown
+  exactly one card of.
+- **`optional_costs` stays, deliberately.** It was never in that list —
+  it was added after it (ADR 0073) and nobody updated it — and it is
+  printed text with a public picker, so it is allowlisted rather than
+  quietly dropped.
+
+The rule is an ALLOWLIST now, in the one function that knows the field
+list (`castStamps.publicIn`), so an announce field added to the wire
+tomorrow is private in a hand until somebody decides otherwise. A
+client reading these fields off somebody else's hand card should not:
+they describe a cast only that seat may announce.
+
+**`castable_here` and the price list answer for every castable FACE
+(#1171).** "Which zones does this card's own text open" is asked of
+every face a cast may choose — `game.CardCastableFromAnyFace`, the
+predicate the bot's legal-move enumerator reads — and no longer of the
+card's bare `oracle_id`, which is face 0's catalog entry (ADR 0034
+keys a back face `<oracle_id>#N`).
+
+Nothing on the wire changes for a single-faced card, or for any card
+in the catalog today. It changes for the first card whose BACK face
+prints flashback, escape or a Gravecrawler-shaped permission: such a
+card was a legal move the server would have accepted and a card with
+no announce stamps at all on the wire — no `castable_here`, no price
+list, no target clause. **For a client:** the answer for a multi-face
+card is the union over the card's block and its `faces[i]` blocks —
+the front half of a card whose BACK opens the graveyard is not a cast
+surface and the back half is, so a zone browser that reads the card's
+`castable_here` alone will not offer a cast the server would accept.
+This client's does, and that half is filed as #1173.
 
 ## Schema evolution rules
 
