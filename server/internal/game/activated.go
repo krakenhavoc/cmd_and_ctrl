@@ -761,21 +761,34 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		return ErrInvalidParam
 	}
 	if ab.Cost.Loyalty != nil {
-		// CR 606.2: loyalty abilities live on planeswalkers. The
-		// controller check above already covers "a planeswalker you
-		// control".
-		if !source.IsPlaneswalker() {
-			return ErrNotAPlaneswalker
-		}
-		// CR 606.3: once per turn per planeswalker. The flag was
-		// S13.1's and only the sandbox action consulted it; this is
-		// the path that matters now.
+		// CR 606.3 / 606.5 say PERMANENT, not planeswalker, and that
+		// wording is load-bearing rather than loose: a loyalty ability
+		// is defined by its cost symbol (CR 606.1), and a permanent can
+		// carry one without being a planeswalker — the printed case is
+		// a planeswalker that a type-setting effect has stopped being
+		// one while keeping its abilities (Song of the Dryads on a
+		// Teferi), and the catalog can print the same shape on anything.
+		// This used to refuse with ErrNotAPlaneswalker on top of the
+		// controller check above, which asked a question CR 606 does not.
+		// #1157 is what sent us looking: The Aetherspark is a
+		// Legendary Artifact Planeswalker — Equipment, so it passed the
+		// gate and the gate was never the report's cause, but a gate
+		// that only happens not to fire is still a rule the engine has
+		// wrong. The SANDBOX ActivateLoyalty verb keeps its own
+		// IsPlaneswalker check (mutations.go): that one INVENTS a
+		// loyalty ability for a card the catalog cannot read, and its
+		// whole premise is the planeswalker row it is offered from.
+		//
+		// CR 606.3: once per turn per permanent. The flag was S13.1's
+		// and only the sandbox action consulted it; this is the path
+		// that matters now.
 		if g.LoyaltyActivatedThisTurn[cardID] {
 			return ErrLoyaltyAlreadyActivated
 		}
-		// CR 606.6: you can't activate a −N ability with fewer than
+		// CR 606.5: you can't activate a −N ability with fewer than
 		// N loyalty counters. Paying down to exactly 0 is legal and
-		// the 704.5i SBA sweeps the walker afterwards.
+		// the 704.5i SBA sweeps the permanent afterwards — when it is
+		// a planeswalker, which is the one place that rule does ask.
 		if n := *ab.Cost.Loyalty; n < 0 && source.Counters[CounterLoyalty] < -n {
 			return ErrInsufficientLoyalty
 		}
