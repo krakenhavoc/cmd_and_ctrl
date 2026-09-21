@@ -129,7 +129,7 @@
   // graveyard today; the gate lives in zoneBrowser.logic.ts so
   // vitest can exercise it without a renderer.
   const castableFor = (card: CardView) =>
-    castableFromZone(card, zoneKind, viewerID, ownerSeat.id) && onCastCard !== undefined;
+    castableFromZone(card, zoneKind) && onCastCard !== undefined;
 
   // The label is the printed clause when the card offers exactly one
   // way in ("Flashback {2}{R}"), so the button reads like the card.

@@ -298,11 +298,29 @@ func TestTwoHoldersEachSeeTheirOwnGraveyardCastStamps(t *testing.T) {
 		t.Errorf("second holder offers = %v, want [escape flashback]", got)
 	}
 
-	// And a bystander gets the public answer — the owner's — and no
-	// trace of the private one.
+	// And a bystander gets what is public about the CARD — the prices
+	// claimable out of this zone, which is printed on a card in a
+	// public zone — and no seat's answer to "may YOU cast it".
+	//
+	// #1055: that bit used to be public too, and so it said "yes" on
+	// three frames for a cast one seat could make. The name is
+	// `castable_here`, not `castable_here_by_its_owner`, and both
+	// client readers had to pair it with `exile_play` to find out
+	// which of the two it meant.
 	other := cardInSeatZone(t, ViewOfGameFor(g, bystander.ID.String()).Seats[0].Graveyard, id)
 	if got := keysOf(other.AlternativeCosts); !sameStrings(got, []string{"flashback"}) {
 		t.Errorf("bystander offers = %v, want the public [flashback]", got)
+	}
+	if other.CastableHere {
+		t.Errorf("a bystander is told they may cast a card out of somebody else's graveyard (#1055)")
+	}
+	if other.LegalTargets != nil {
+		t.Errorf("a bystander got one seat's legal target set: %+v", other.LegalTargets)
+	}
+	// And the spectator, who is the same case with no seat at all.
+	spectator := cardInSeatZone(t, FilterViewFor(ViewOfGame(g), "").Seats[0].Graveyard, id)
+	if spectator.CastableHere {
+		t.Errorf("a spectator, who has no seat to cast from, is told the card is a cast surface")
 	}
 }
 

@@ -34,7 +34,7 @@ func init() {
 			}
 			return CreateToken{
 				Controller: controller,
-				Template:   TokenCard("1/1 colorless Human"),
+				Template:   TokenCard("1/1 white Human"),
 				N:          1,
 			}.Apply(ctx)
 		},

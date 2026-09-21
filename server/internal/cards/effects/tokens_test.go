@@ -18,10 +18,10 @@ func TestTokenTemplatesCarryTheirKeywords(t *testing.T) {
 		tmpl  game.Card
 		wants []string
 	}{
-		{"Spirit", TokenCard("1/1 colorless Spirit with flying"), []string{"flying"}},
+		{"Spirit", TokenCard("1/1 white Spirit with flying"), []string{"flying"}},
 		{"Faerie Rogue", FaerieRogueToken(), []string{"flying"}},
-		{"Bird", TokenCard("2/2 colorless Bird with flying"), []string{"flying"}},
-		{"Samurai", TokenCard("2/2 colorless Samurai with vigilance"), []string{"vigilance"}},
+		{"Bird", TokenCard("2/2 blue Bird with flying"), []string{"flying"}},
+		{"Samurai", TokenCard("2/2 white Samurai with vigilance"), []string{"vigilance"}},
 		{"Wurm (deathtouch half)", PhyrexianWurmDeathtouchToken(), []string{"deathtouch"}},
 		{"Wurm (lifelink half)", PhyrexianWurmLifelinkToken(), []string{"lifelink"}},
 	}

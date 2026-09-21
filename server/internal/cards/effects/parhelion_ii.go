@@ -24,8 +24,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "24d22bcb-8a77-4c47-a508-6f4bc093c1d0",
 		Name:            "Parhelion II",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"The Angel token is created colorless instead of white, so anything that cares about a creature's color doesn't see it."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying", "first strike", "vigilance"},
 		Activated: []ActivatedAbility{{
 			Label:  "Crew 4",
@@ -42,7 +41,7 @@ func init() {
 				return game.NewTriggeredItem(source, "Parhelion II — two attacking 4/4 Angels",
 					func(g *game.Game, item *game.StackItem) error {
 						return g.CreateTokensAttackingForEffect(
-							item.Controller, TokenCard("4/4 colorless Angel with flying and vigilance"), 2, defender)
+							item.Controller, TokenCard("4/4 white Angel with flying and vigilance"), 2, defender)
 					})
 			},
 		}},

@@ -8,11 +8,11 @@ import type { CardView } from "./protocol";
 // into a wrong button or a wrong payload if they drift:
 //
 //   - castableFromZone decides whether the zone browser offers a
-//     cast at all. `castable_here` is PUBLIC (the graveyard is a
-//     public zone), so the ownership check here is load-bearing
-//     rather than a duplicate of the server's — without it the
-//     browser paints a button on an opponent's card that the server
-//     answers with "card not found".
+//     cast at all. Since #1055 `castable_here` is the VIEWER's own
+//     answer, so this gate is the bit and the zone and nothing else;
+//     the ownership check it used to carry existed only because the
+//     bit was public and meant the pile owner's answer, and it is the
+//     server that answers "whose" now.
 //   - applyCastChoices is the single place that knows the wire
 //     names, and `from_zone` is the one that decides which pile the
 //     server reaches into.
@@ -29,42 +29,36 @@ function inYard(extras: Partial<CardView> = {}): CardView {
 }
 
 describe("castableFromZone — who gets the graveyard cast button", () => {
-  it("offers the cast to the graveyard's owner when the server marked the card", () => {
-    expect(castableFromZone(inYard({ castable_here: true }), "graveyard", "me", "me")).toBe(true);
+  it("offers the cast when the server marked the card for THIS frame", () => {
+    expect(castableFromZone(inYard({ castable_here: true }), "graveyard")).toBe(true);
   });
 
-  it("withholds it from everyone else, even though the bit is public", () => {
-    const card = inYard({ castable_here: true });
-    expect(castableFromZone(card, "graveyard", "them", "me")).toBe(false);
-    expect(castableFromZone(card, "graveyard", null, "me")).toBe(false);
+  // #1055. A permission names an OBJECT, so a card in an opponent's
+  // graveyard is castable by the seat that holds one — Wrexial's "cast
+  // target instant or sorcery card from that player's graveyard". That
+  // used to need a second gate here, "or `exile_play` names me",
+  // because the bit was public and meant the pile owner. The server
+  // stamps it per seat now, so the same one-field read answers both
+  // shapes: the owner's own flashback, and a holder's grant over
+  // somebody else's pile.
+  it("does not care whose pile it is — the bit already does", () => {
+    const granted = inYard({ owner: "them", castable_here: true, exile_play: { player: "me" } });
+    expect(castableFromZone(granted, "graveyard")).toBe(true);
   });
 
-  // #1022 / #1037. A permission names an OBJECT, so a card in an
-  // opponent's graveyard is castable by the seat that holds one —
-  // Wrexial's "cast target instant or sorcery card from that player's
-  // graveyard". The server computes that holder's own offers, targets
-  // and gate for their frame alone and names them in the public
-  // `exile_play`; the ownership gate above would have dropped the
-  // button on the floor.
-  it("offers it to a seat the grant names, in somebody else's graveyard", () => {
-    const granted = inYard({ castable_here: true, exile_play: { player: "them" } });
-    expect(castableFromZone(granted, "graveyard", "them", "me")).toBe(true);
-    // The pile's owner keeps their own answer, and a third seat gets
-    // neither: the stamps on their frame are the owner's public ones.
-    expect(castableFromZone(granted, "graveyard", "me", "me")).toBe(true);
-    expect(castableFromZone(granted, "graveyard", "third", "me")).toBe(false);
-  });
-
+  // The bystander's frame: the card, the public grant naming somebody
+  // else, and no bit. `exile_play` must not put a button back.
   it("withholds it from a card the server did not mark", () => {
-    expect(castableFromZone(inYard(), "graveyard", "me", "me")).toBe(false);
-    expect(castableFromZone(inYard({ castable_here: false }), "graveyard", "me", "me")).toBe(false);
+    expect(castableFromZone(inYard(), "graveyard")).toBe(false);
+    expect(castableFromZone(inYard({ castable_here: false }), "graveyard")).toBe(false);
+    expect(castableFromZone(inYard({ exile_play: { player: "them" } }), "graveyard")).toBe(false);
   });
 
   it("is graveyard-only — exile keeps its own grant-keyed button", () => {
     const card = inYard({ castable_here: true });
-    expect(castableFromZone(card, "exile", "me", "me")).toBe(false);
-    expect(castableFromZone(card, "command", "me", "me")).toBe(false);
-    expect(castableFromZone(card, "stack", "me", "me")).toBe(false);
+    expect(castableFromZone(card, "exile")).toBe(false);
+    expect(castableFromZone(card, "command")).toBe(false);
+    expect(castableFromZone(card, "stack")).toBe(false);
   });
 });
 

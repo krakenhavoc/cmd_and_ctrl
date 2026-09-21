@@ -817,9 +817,10 @@ Four additive changes, none of them breaking (`v` unchanged):
   card now include GRANTED permissions**, not only the ones a card's
   own text prints (ADR 0066). A card Snapcaster Mage gave flashback to
   renders the same cast affordance a Faithless Looting does, with the
-  synthesised offer in its picker. The stamp is about the zone's OWNER
-  — **except when somebody else holds the permission**, which is
-  #1022 below.
+  synthesised offer in its picker. The offer list is computed for the
+  zone's OWNER and is public; `castable_here` is the VIEWER's own
+  answer (#1055), which covers both the owner's printed cast and the
+  case where somebody else holds the permission (#1022 below).
 - **An opponent's `library.cards` may now carry exactly one card** —
   the top one, when "play with the top card of your library revealed"
   (Oracle of Mul Daya, Courser of Kruphix) is in force and the viewer
@@ -889,12 +890,23 @@ per viewer already, so nothing on the wire had to grow: the server
 computes each holder's answer, files it under their seat, and
 `FilterViewFor` promotes exactly one.
 
-- **The exported fields carry the answer that is PUBLIC.** For a
-  graveyard or a library that is the pile OWNER's own cast out of their
-  own pile — every printed flashback card in every graveyard — and for
-  exile there is no owner, so nothing is public there but the grant.
+- **The exported fields carry the answer that is PUBLIC.** Since #1055
+  that is the half which is a fact about the CARD IN THIS ZONE rather
+  than about a player: `alternative_costs`, `alternative_cost_required`,
+  `modes`, `additional_cost`, `optional_costs`, `tap_cost`,
+  `target_cost_notes`, `phyrexian_symbols` and `cant_cast`, computed for
+  the pile's owner over public state, because a card in a graveyard is
+  a card every player may pick up and read. For exile there is no owner,
+  so nothing is public there but the grant.
 - **A holder's answer replaces it, on their frame only.** Every field
   in the list above travels together, `castable_here` included.
+- **`castable_here`, `legal_targets` and `clauses` are never in the
+  public half** (#1055). All three answer "what may YOU announce" — the
+  first one says so in its name, and the other two are narrowed by
+  hexproof, shroud, protection and "target opponent", so one seat's set
+  is not another's to read. A viewer with no answer of their own gets
+  the card, its public price list, the public `exile_play`, and no cast
+  surface.
 - **`exile_play` is resolved for the viewer.** It stays PUBLIC and
   still names a seat, but a viewer who holds a permission over the card
   gets THEIR OWN grant rather than whichever live one came first — its
@@ -906,12 +918,13 @@ computes each holder's answer, files it under their seat, and
   cannot read the card keeps nothing.
 
 **Reading `castable_here` on a card in somebody else's pile.** The bit
-is public and it is the PILE OWNER's answer, so "the server marked it"
-is not "I may cast it". The pair to read is the bit AND whether
-`exile_play` names this viewer: the owner of the pile, or the seat a
-grant names, gets the button and nobody else does. Both client readers
-(`castableFromZone` for the zone browser, `libraryTopPlayable` for the
-library top) ask exactly that.
+is YOURS (#1055). "The server marked it" IS "I may cast it", in every
+pile and for every viewer, so both client readers (`castableFromZone`
+for the zone browser, `libraryTopPlayable` for the library top) are
+`card.castable_here === true` and nothing else. Until #1055 it was
+public and carried the pile OWNER's answer, and each reader had to
+pair it with "or `exile_play` names me" to find out which of the two
+it was holding.
 
 The engine reaches the same card through the same permission. CastSpell's
 `from_zone: "graveyard"` resolves to the caster's own pile and, when the
@@ -1015,9 +1028,11 @@ readable by every client that ignores them.
   and the bot enumerator both call, so a card carrying it is one the
   server WILL refuse: grey it and show the clause rather than
   dispatching `cast_spell` and surfacing a toast. `castable_here` is
-  cleared alongside it. PUBLIC, like `castable_here` — a Rule of Law
-  on the battlefield is visible to everyone — and cleared with the
-  rest of the cost surface on the non-knower redaction, because a
+  cleared alongside it. PUBLIC — a Rule of Law on the battlefield is
+  visible to everyone, and the clause is printed on a card in a public
+  zone — which since #1055 `castable_here` is NOT: the clause is a fact
+  about the card, the bit is an answer about you. Cleared with the rest
+  of the cost surface on the non-knower redaction, because a
   legendary-sorcery clause says more about a face-down card than its
   mana cost does.
 
@@ -1081,8 +1096,60 @@ as it did.
   covers the #978 gate case as a special case of the same sentence.
 
   Unchanged: it is never set on a hand or command-zone card (both are
-  cast surfaces for everything in them), exile keys its button off
-  `exile_play`, and the bit stays PUBLIC.
+  cast surfaces for everything in them), and exile keys its button off
+  `exile_play`. The bit was still PUBLIC after #1015; #1055 below is
+  where it stopped being.
+
+## `castable_here` is the viewer's own answer (#1055, 2026-09-21)
+
+One narrowing on `CardView`, additive in the `omitempty` sense — the
+field goes out on FEWER frames, never on more, so a reader that already
+falls back to `false` for an absent bit needs no change and `v` does
+not move.
+
+**`castable_here` now means "YOU may cast this from here", on every
+frame.** It is stamped only for a seat that may actually make the cast
+— the pile's owner for a printed flashback or escape, the holder of a
+`CastPermission` over the card for a granted one, both of them on their
+own frames when both are true — and is absent for everybody else,
+spectators and admins included.
+
+It used to be public and to carry the PILE OWNER's answer, which is two
+different sentences depending on the card: "the owner may cast this",
+which is not a statement about the viewer at all, and "YOU may cast
+this" on a card the viewer held a grant over. Both client readers
+therefore had to read a PAIR — the bit, and whether the (also public)
+`exile_play` named this viewer — to answer the only question they
+actually had. That is the S48 [#891](https://github.com/krakenhavoc/cmd_and_ctrl/issues/891)
+shape: a field whose NAME is a statement about the viewer and whose
+VALUE was a statement about somebody else.
+
+**What stays public, and why.** The line is "is this a fact about the
+card in this zone, or about a player". A card in a graveyard, or on top
+of a revealed library, is a card every player may pick up and read, so
+what it prints stays on every viewer's copy: `alternative_costs` and
+`alternative_cost_required`, `modes`, `additional_cost`,
+`optional_costs`, `tap_cost`, `target_cost_notes`, `phyrexian_symbols`
+and `cant_cast`. They are computed for the pile's owner, over public
+state — an escape offer is priced by the size of a graveyard everybody
+can count.
+
+`legal_targets` and `clauses` go with `castable_here` instead: hexproof,
+shroud, protection and "target opponent" all narrow a target set by WHO
+IS ASKING, so one seat's list is not another's to read. The server has
+said exactly that about a spectator since #978; this is the same
+sentence applied to the bystander a public stamp used to reach.
+
+**For a client.** Both readers collapse to the bit:
+`castableFromZone(card, zoneKind)` and `libraryTopPlayable(zone)` no
+longer take the viewer's or the owner's seat. `exile_play` keeps its
+own job — it is public, it names the seat the permission was granted
+to, and the impulse button reads it for the grant's face, cost and
+label — but it is no longer part of ANSWERING whether this viewer may
+cast. A face swap (`cardAsFace`) clears `castable_here` with the rest
+of the announce surface: the server computed it for the face the grant
+names, and keeping it beside a cleared offer list is #1015's button
+with nothing behind it.
 
 - **`alternative_costs` is `game.CastOffersForLocked`'s answer**, the
   same list the bot enumerator walks and `cast_spell` validates against

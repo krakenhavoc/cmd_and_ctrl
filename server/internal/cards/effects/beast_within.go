@@ -23,8 +23,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "7735eeba-693b-47e2-bd51-414379cf1016",
 		Name:         "Beast Within",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The Beast token is created colorless instead of green, so anything that cares about a creature's color doesn't see it."},
+		Completeness: CompletenessFull,
 		Targets:      TargetPermanent("target permanent"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
@@ -40,7 +39,7 @@ func init() {
 			}
 			return CreateToken{
 				Controller: controller,
-				Template:   TokenCard("3/3 colorless Beast"),
+				Template:   TokenCard("3/3 green Beast"),
 				N:          1,
 			}.Apply(ctx)
 		},

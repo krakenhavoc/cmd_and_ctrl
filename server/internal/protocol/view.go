@@ -1353,9 +1353,27 @@ type CardView struct {
 	// cannot pay is not a cast surface, and marking one rendered a
 	// button the announce path refused with ErrCastCostRequired.
 	//
-	// Public, like `activated_abilities`: the graveyard is a public
-	// zone and a flashback cost is printed on the card, so the bit
-	// is stamped on every viewer's copy rather than only the owner's.
+	// PER VIEWER, and it means "YOU may cast this from here" (#1055).
+	// Not "the pile's owner may": it is stamped only on the frame of
+	// a seat that may actually make the cast — the pile's owner for a
+	// printed flashback or escape, the holder of a CastPermission over
+	// the card for a granted one, both of them on their own frames
+	// when both are true — and is absent for everybody else,
+	// spectators included.
+	//
+	// It was public until #1055, and that is the surface the S48 #891
+	// pass is about: the field's NAME is a statement about the viewer
+	// and its VALUE was a statement about somebody else, so both
+	// client readers had to pair it with `exile_play` to work out
+	// which of the two they were holding. They read the bit alone now.
+	//
+	// What stays public is the half that is a fact about the CARD IN
+	// THIS ZONE rather than about a player — `alternative_costs` and
+	// `alternative_cost_required`, `modes`, `additional_cost`,
+	// `optional_costs`, `tap_cost`, `target_cost_notes`,
+	// `phyrexian_symbols` and `cant_cast` — because a card in a
+	// graveyard is a card every player may pick up and read
+	// (castStamps.applyPublicTo).
 	CastableHere bool `json:"castable_here,omitempty"`
 	// OptionalCosts are the "you may pay an additional cost" offers
 	// this card makes (CR 601.2b, ADR 0073) — kicker, multikicker,
@@ -2263,14 +2281,17 @@ func capLegalMoves(moves []LegalMoveView) []LegalMoveView {
 // ones that pass. The library is a surface for exactly one card, its
 // top, and only under a permission (S42, CR 401.5).
 //
-// EVERY ANSWER HERE IS PUBLIC, and that is the whole scope of this
-// pass since #1037: the seat it asks about is the seat that owns the
-// pile, and "may the owner cast this out of their own graveyard" has
-// one answer for every viewer (a printed flashback cost is printed on
-// a card in a public zone). A permission somebody ELSE holds over a
-// card sitting here is that seat's private answer, and
-// stampGrantedPermissions files it under their seat — including when
-// the owner may cast the card too, which is the case a single holder
+// THE SEAT THIS PASS ASKS ABOUT IS THE SEAT THAT OWNS THE PILE, and
+// since #1055 its answer is split rather than published whole. The
+// PUBLIC half — the prices claimable out of this zone, the modes, the
+// printed clause that refuses the cast — is a fact about a card in a
+// public zone and goes on every viewer's copy. The half that answers
+// "may YOU cast this" (`castable_here`) and "what may YOU target"
+// (`legal_targets`, `clauses`) is filed under the owner's own seat and
+// reaches their frame alone, exactly as a foreign holder's does. A
+// permission somebody ELSE holds over a card sitting here is stamped
+// by stampGrantedPermissions under their seat — including when the
+// owner may cast the card too, which is the case a single holder
 // could not express.
 //
 // EXILE IS NOT HERE, and could not be: it is a shared top-level zone
@@ -2347,9 +2368,22 @@ func stampLegalTargets(g *game.Game, seats []PlayerView, anyGrant bool) {
 						continue
 					}
 					// `castable_here` is NOT set here (#1015):
-					// stampCastOffers derives it from the price list and the
-					// cast gate, in the one place both are known.
-					stampCastOffers(g, caster, c, c.oracleID, zone.kind, grant)
+					// castStampsFor derives it from the price list and
+					// the cast gate, in the one place both are known.
+					//
+					// #1055: and it is filed for the OWNER rather than
+					// written to the public fields. The owner's answer
+					// to "may you cast this" is still computed here and
+					// is still the only one this pass knows, but it is
+					// a statement about a PLAYER, so it reaches that
+					// player's frame alone (applyCastStampsFor). What
+					// stays public is the half that is a statement
+					// about the CARD IN THIS ZONE — its price list, its
+					// modes, the clause refusing the cast — which every
+					// player may read off a card in a public zone.
+					s := castStampsFor(g, caster, c, c.oracleID, zone.kind, grant)
+					s.applyPublicTo(c)
+					c.stampsFor(caster, s)
 					continue
 				}
 				stampCastOffers(g, caster, c, c.oracleID, zone.kind, nil)
@@ -2492,6 +2526,44 @@ func (s castStamps) applyTo(c *CardView) {
 	if s.ExilePlay != nil {
 		c.ExilePlay = s.ExilePlay
 	}
+}
+
+// applyPublicTo writes the half of one seat's answer that EVERY viewer
+// legitimately sees, and leaves the rest to applyCastStampsFor (#1055).
+//
+// The line is "is this a fact about the card in this zone, or about a
+// player". A card in a graveyard or on top of a revealed library is a
+// card every player may read in paper, so what it prints — the prices
+// claimable out of this zone, the modes it chooses among, its
+// additional and optional costs, its convoke clause, its Phyrexian
+// symbols, and the printed clause that refuses the cast (a Rule of Law
+// on the battlefield is on the battlefield) — is public, and the pile
+// owner is simply the seat the view computes it for.
+//
+// Three fields are not:
+//
+//   - CastableHere answers "may YOU cast this from here". It has as
+//     many answers as there are seats — the owner's printed flashback,
+//     a Wrexial holder's grant over the same card, and "no" for
+//     everyone else — and shipping one seat's as a public bit is the
+//     surface #1055 is about: the name says "castable here" and the
+//     value meant "castable here by somebody else", so both client
+//     readers had to pair it with `exile_play` to find out which.
+//   - LegalTargets and Clauses are the same kind of answer one step
+//     further in: hexproof, shroud, protection and "target opponent"
+//     all narrow a target set by WHO IS ASKING, so seat A's list is
+//     not seat B's to read. applyCastStampsFor has said so about a
+//     spectator since #978; this is the same sentence applied to the
+//     bystander a public stamp used to reach.
+//
+// A seat with an answer of its own gets all three back wholesale when
+// FilterViewFor promotes their entry.
+func (s castStamps) applyPublicTo(c *CardView) {
+	pub := s
+	pub.CastableHere = false
+	pub.LegalTargets = nil
+	pub.Clauses = nil
+	pub.applyTo(c)
 }
 
 // stampsFor files one seat's answer on the card for FilterViewFor to
@@ -4192,12 +4264,19 @@ func redactZone(z ZoneView, isKnower func(CardView) bool) ZoneView {
 // viewer's own seat was offered into the exported fields, and drops
 // everybody else's (#978, #1022, #1037).
 //
-// The exported fields arrive carrying the PUBLIC answer — the zone
-// owner's own cast out of their own pile, which is every printed
-// flashback card in every graveyard and nothing at all in exile — and
-// a seat with a private answer overwrites it wholesale. A seat with
-// none keeps the public one, which is what a bystander is entitled to
-// see: the card, the public `exile_play`, and no picker.
+// The exported fields arrive carrying the PUBLIC half of the zone
+// owner's answer — the prices a cast out of this pile may claim, the
+// modes, the clause that refuses it, all of it printed on a card in a
+// public zone (castStamps.applyPublicTo) — and a seat with an answer
+// of its own overwrites the lot wholesale. A seat with none keeps the
+// public half, which is what a bystander is entitled to see: the card,
+// its printed price list, the public `exile_play`, and no cast
+// surface.
+//
+// `castable_here`, `legal_targets` and `clauses` are never in that
+// public half (#1055). All three answer "what may YOU announce", the
+// first one in its very name, and one seat's answer shipped to the
+// whole table is the surface #891 is about.
 //
 // The empty viewerID — spectator, admin, replay reader — gets nothing
 // private, for the reason legalMovesFor gives: a legal target set is

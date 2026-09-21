@@ -56,7 +56,7 @@ func init() {
 		OracleID:     "0c7f18d5-36cb-4bc6-a358-443b97666215",
 		Name:         "The Wandering Emperor",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"You can't activate her abilities at instant speed on the turn she enters.", "The Samurai token is created colorless instead of white, so anything that cares about a creature's color doesn't see it."},
+		Caveats:      []string{"You can't activate her abilities at instant speed on the turn she enters."},
 		// The fallback for tokens, fixtures and the dev spawner;
 		// an imported deck reads printed loyalty (ADR 0032 §1).
 		StartingLoyalty: 3,
@@ -68,7 +68,7 @@ func init() {
 					ctx := NewContext(g, item)
 					return CreateToken{
 						Controller: ctx.Controller(),
-						Template:   TokenCard("2/2 colorless Samurai with vigilance"),
+						Template:   TokenCard("2/2 white Samurai with vigilance"),
 						N:          1,
 					}.Apply(ctx)
 				},

@@ -51,7 +51,7 @@ func init() {
 			On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return source.IsAttachedTo(ev.CardID)
 			}, "Staff of Titania — create a 1/1 green Forest Dryad",
-				Do(CreateToken{Template: TokenCard("1/1 green Dryad"), N: 1})),
+				Do(CreateToken{Template: TokenCard("1/1 green Forest Dryad"), N: 1})),
 		},
 		Activated: []ActivatedAbility{
 			EquipAbility("{3}"),

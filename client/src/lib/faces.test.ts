@@ -108,6 +108,10 @@ describe("cardAsFace", () => {
       // #660: a hand ability is face-0's spec too — a back face that
       // still offered "Cycling {3}" would offer the front's ability.
       hand_abilities: [{ index: 0, label: "Cycling {3}", discard_self: true }],
+      // #1055: the cast-surface bit is the viewer's own answer for the
+      // face the grant NAMES, so it belongs to face 0's spec as much
+      // as the offer list beside it does.
+      castable_here: true,
     };
     const back = cardAsFace(withPrompts, 1);
     expect(back.target_mode).toBeUndefined();
@@ -117,6 +121,9 @@ describe("cardAsFace", () => {
     expect(back.hand_abilities).toBeUndefined();
     expect(back.legal_targets).toBeUndefined();
     expect(back.modes).toBeUndefined();
+    // Kept, it would be a cast button over an empty price list —
+    // #1015's "nothing behind it", one face over.
+    expect(back.castable_here).toBeUndefined();
   });
 
   it("returns the card untouched for a face it does not have", () => {

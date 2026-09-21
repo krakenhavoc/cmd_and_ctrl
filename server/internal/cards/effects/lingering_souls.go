@@ -21,14 +21,13 @@ func init() {
 	Register(Spec{
 		OracleID:         "0b8c3337-04dd-4798-8203-6d8b8cfb936b",
 		Name:             "Lingering Souls",
-		Completeness:     CompletenessCaveats,
-		Caveats:          []string{"The Spirit tokens are created colorless instead of white, so anything that cares about a creature's color doesn't see them."},
+		Completeness:     CompletenessFull,
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{Flashback("{1}{B}")},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return CreateToken{
 				Controller: item.Controller,
-				Template:   TokenCard("1/1 colorless Spirit with flying"),
+				Template:   TokenCard("1/1 white Spirit with flying"),
 				N:          2,
 			}.Apply(ctx)
 		},

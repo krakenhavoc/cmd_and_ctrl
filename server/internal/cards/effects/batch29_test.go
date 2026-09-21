@@ -500,7 +500,7 @@ func TestB29DazzlingAngelGainsOnOtherCreaturesEntering(t *testing.T) {
 	if me.Life != start+1 {
 		t.Errorf("a creature entering: life %d, want %d", me.Life, start+1)
 	}
-	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("1/1 colorless Spirit with flying"), 2) })
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("1/1 white Spirit with flying"), 2) })
 	passPriorityAroundTable(t, g)
 	if me.Life != start+3 {
 		t.Errorf("two tokens: life %d, want %d", me.Life, start+3)
