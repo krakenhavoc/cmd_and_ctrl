@@ -1346,7 +1346,7 @@ type CardView struct {
 	// same card in hand carries neither.
 	//
 	// DERIVED, since #1015, from exactly two things and in exactly
-	// one place (stampCastOffers): the prices this cast may claim out
+	// one place (castStampsFor): the prices this cast may claim out
 	// of this zone (game.CastOffersForLocked) and the ADR 0073 §7
 	// cast gate. An empty price list is a real "no" — a card whose
 	// only path out of the graveyard is an escape cost the caster
@@ -2268,7 +2268,7 @@ func capLegalMoves(moves []LegalMoveView) []LegalMoveView {
 
 // stampLegalTargets walks the PER-SEAT cast surfaces — hand, the
 // command zone, the graveyard and the top of the library — and calls
-// stampCastOffers for each card the seat that owns the zone could
+// castStampsFor for each card the seat that owns the zone could
 // cast from it. Runs under the read lock ViewOfGame already holds;
 // the per-viewer filter strips the fields from opponents' hands.
 //
@@ -2297,7 +2297,7 @@ func capLegalMoves(moves []LegalMoveView) []LegalMoveView {
 // EXILE IS NOT HERE, and could not be: it is a shared top-level zone
 // with no seat to hang a per-seat walk off, so every one of its
 // answers is private and stampGrantedPermissions files them all
-// (#978). All of them call the same stampCastOffers, so the answer
+// (#978). All of them call the same castStampsFor, so the answer
 // cannot differ by zone.
 func stampLegalTargets(g *game.Game, seats []PlayerView, anyGrant bool) {
 	for si := range seats {
@@ -2386,7 +2386,32 @@ func stampLegalTargets(g *game.Game, seats []PlayerView, anyGrant bool) {
 					c.stampsFor(caster, s)
 					continue
 				}
-				stampCastOffers(g, caster, c, c.oracleID, zone.kind, nil)
+				// Hand and the command zone, by the same rule
+				// (#1166). They took the pre-#1055 path until now —
+				// one call that wrote the ZONE OWNER's whole announce
+				// surface, `legal_targets` included, straight into the
+				// exported fields — and that was invisible for almost
+				// every card, because an opponent's hand is full of
+				// cards they are not a knower of and
+				// redactCardForViewer clears the lot.
+				//
+				// It stops being invisible for a REVEALED one. A
+				// Thoughtseize or a Telepathy makes the viewer a
+				// knower, keepKnownInHandZone keeps the card, and
+				// their copy then carried the hand owner's legal
+				// target set for a spell only that seat may cast — the
+				// #891 shape one zone over from the graveyard #1055
+				// fixed. A target set is narrowed by hexproof, shroud,
+				// protection and "target opponent", so seat A's list
+				// is not seat B's to read, wherever the card is
+				// sitting.
+				//
+				// `castable_here` was never part of this: castStampsFor
+				// only ever sets it for a graveyard or a library top,
+				// so a hand card has never carried one.
+				s := castStampsFor(g, caster, c, c.oracleID, zone.kind, nil)
+				s.applyPublicTo(c)
+				c.stampsFor(caster, s)
 			}
 		}
 	}
@@ -2435,40 +2460,6 @@ func castHoldersOf(g *game.Game, seats []PlayerView, skip uuid.UUID, card game.C
 		}
 	}
 	return out
-}
-
-// stampCastOffers fills the announce-time clauses ONE card offers ONE
-// caster out of ONE zone: the modes, the additional cost, the tap
-// cost, the X notes, the alternative costs and the legal target set.
-//
-// The one body, called once per zone (#978). It used to be inlined in
-// stampLegalTargets' innermost loop, which walked hand, command, the
-// graveyard and the library top — and so an exiled card that a
-// CastPermission let its owner cast carried `target_mode` and
-// `mana_cost` and nothing else, and the client's cast chain had to
-// guess. Exile is a SHARED zone, so it could not simply be added to
-// that per-seat loop; stampGrantedPermissions calls this instead, for
-// the holder the engine named.
-//
-// `key` is the catalog key to read the card's clauses off, rather
-// than the card's bare oracle ID, because a permission can name a
-// FACE (ADR 0034): a defeated Siege's back face is a different entry
-// with different modes and a different target clause, and the exile
-// pile is showing the front.
-//
-// `grant` is the CastPermission that opens this zone for this caster,
-// or nil. It is NOT a price: since #1012 the price question has one
-// answer for the whole engine — game.CastOffersForLocked — and this
-// function reads it rather than building a second list. The view used
-// to stamp the grant's offer first and let a printed offer for the
-// same zone overwrite the WHOLE slice, so a Gravecrawler in the
-// graveyard under an Underworld Breach showed only what the card
-// prints and the Breach's escape offer was gone from the picker even
-// though resolveAlternativeCostLocked would have accepted it.
-//
-// Caller must hold g.mu.
-func stampCastOffers(g *game.Game, caster uuid.UUID, c *CardView, key string, kind game.ZoneKind, grant *game.CastPermission) {
-	castStampsFor(g, caster, c, key, kind, grant).applyTo(c)
 }
 
 // castStamps is the announce-time cast surface ONE seat is offered on
@@ -2577,9 +2568,39 @@ func (c *CardView) stampsFor(seat uuid.UUID, s castStamps) {
 	c.castOffers[seat.String()] = s
 }
 
-// castStampsFor is stampCastOffers' body: it answers for one caster
-// and RETURNS the answer rather than writing it, so the same
-// computation serves the public stamp and each foreign holder's.
+// castStampsFor fills the announce-time clauses ONE card offers ONE
+// caster out of ONE zone: the target mode, the modes, the additional
+// cost, the tap cost, the X notes, the alternative costs and the legal
+// target set. It RETURNS the answer rather than writing it, so the
+// same computation serves the public stamp, the zone owner's own and
+// each foreign holder's.
+//
+// The one body, called once per zone (#978). It used to be inlined in
+// stampLegalTargets' innermost loop, which walked hand, command, the
+// graveyard and the library top — and so an exiled card that a
+// CastPermission let its owner cast carried `target_mode` and
+// `mana_cost` and nothing else, and the client's cast chain had to
+// guess. Exile is a SHARED zone, so it could not simply be added to
+// that per-seat loop; stampGrantedPermissions calls this instead, for
+// the holder the engine named.
+//
+// `key` is the catalog key to read the card's clauses off, rather
+// than the card's bare oracle ID, because a permission can name a
+// FACE (ADR 0034): a defeated Siege's back face is a different entry
+// with different modes and a different target clause, and the exile
+// pile is showing the front.
+//
+// `grant` is the CastPermission that opens this zone for this caster,
+// or nil. It is NOT a price: since #1012 the price question has one
+// answer for the whole engine — game.CastOffersForLocked — and this
+// function reads it rather than building a second list. The view used
+// to stamp the grant's offer first and let a printed offer for the
+// same zone overwrite the WHOLE slice, so a Gravecrawler in the
+// graveyard under an Underworld Breach showed only what the card
+// prints and the Breach's escape offer was gone from the picker even
+// though resolveAlternativeCostLocked would have accepted it.
+//
+// Caller must hold g.mu.
 func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, key string, kind game.ZoneKind, grant *game.CastPermission) castStamps {
 	// #662 / #979: the source of a SPELL is the spell itself, so every
 	// legal-target stamp below names the card rather than only its
@@ -3995,14 +4016,26 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// zone-default heuristic) for opponents, but the per-card
 		// pass below covers all visible zones uniformly.
 		out.Library = applyCastStampsFor(redactZone(p.Library, isKnower), viewerID)
-		out.Hand = redactZone(p.Hand, isKnower)
+		// #1166: and the hand, for the reason the graveyard is
+		// promoted below. A hand card's announce surface is the HAND
+		// OWNER's answer, and a card another seat is a knower of —
+		// Thoughtseize, Telepathy, a reveal — reaches that seat's
+		// frame with keepKnownInHandZone. Until this line it reached
+		// them carrying the owner's `legal_targets`, which hexproof,
+		// shroud, protection and "target opponent" all narrow by who
+		// is asking.
+		out.Hand = applyCastStampsFor(redactZone(p.Hand, isKnower), viewerID)
 		// #1022: a graveyard is public, but a cast permission over one
 		// of its cards held by ANOTHER seat is that seat's answer, so
 		// the stamps it produced come off for everybody else — the
 		// pass exile has ridden since #978, now on the one per-seat
 		// zone that can carry a foreign holder's stamps.
 		out.Graveyard = applyCastStampsFor(redactZone(p.Graveyard, isKnower), viewerID)
-		out.Command = redactZone(p.Command, isKnower)
+		// #1166: the command zone is public and CR 903.4's permission
+		// is its owner's alone, so the same split applies — the
+		// commander's price list is a fact about the card, and the
+		// legal targets of a cast only that seat may make are not.
+		out.Command = applyCastStampsFor(redactZone(p.Command, isKnower), viewerID)
 		// Opponent hand: strip only UNREVEALED cards (seated-viewer
 		// path — Thoughtseize-style reveals survive via KnownBy);
 		// wholesale-hide for spectator / admin (viewerID empty)
@@ -4595,14 +4628,22 @@ func keepKnownInHandZone(z ZoneView) ZoneView {
 	}
 	for _, c := range z.Cards {
 		if c.KnownByYou {
-			// S20: legal targets are computed from the OWNER's point
-			// of view and only meaningful to them. S22 folds the
-			// alternative-cost offers in for the same reason — they
-			// carry their own legal sets.
-			c.LegalTargets = nil
-			// #764: the per-clause sets are the same information,
-			// clause by clause, and go with it.
-			c.Clauses = nil
+			// `legal_targets` and `clauses` used to be cleared here
+			// by hand (S20, #764). They are not any more, and nothing
+			// was given up: since #1166 the hand is routed through
+			// applyCastStampsFor like every other cast surface, so
+			// the owner's answer to "what may YOU target" reaches the
+			// owner's frame alone and is already gone by the time a
+			// knower's copy gets here. One strip, in the one place
+			// that knows whose answer it is holding — a second list
+			// here was the drift #1055's castStamps existed to end.
+			//
+			// What stays is a narrowing of a different kind: these
+			// fields are documented as "the viewer's own hand", a
+			// HAND is not a public zone the way a graveyard is, and
+			// applyCastStampsFor keeps the PUBLIC half of the owner's
+			// answer on the card. Dropping them here is what keeps
+			// that scope true for a revealed card.
 			c.Modes = nil
 			c.AlternativeCosts = nil
 			c.AlternativeCostRequired = false
@@ -4896,7 +4937,7 @@ func cantCastReason(err error) string {
 // wrong price for one it would allow.
 //
 // The FACE a permission names (ADR 0034) is applied by the caller and
-// by stampCastOffers, not here: the permission is found by instance,
+// by castStampsFor, not here: the permission is found by instance,
 // and which half of the card it opens is a question about the price
 // and the clauses rather than about whether a cast is allowed.
 //

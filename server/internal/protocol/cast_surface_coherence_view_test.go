@@ -63,6 +63,41 @@ func withAltCostsByOracle(t *testing.T, costs map[string][]game.AlternativeCost)
 	t.Cleanup(func() { game.CatalogAlternativeCosts = prev })
 }
 
+// withTargetSpecsByOracle stubs the target clause of one or more
+// oracle IDs, chaining to whatever the catalog already answered — the
+// same shape withAltCostsByOracle has, and chaining because the
+// fixture's own Lightning Bolt has a real clause this must not blank.
+func withTargetSpecsByOracle(t *testing.T, specs map[string]func() *game.TargetSpec) {
+	t.Helper()
+	prev := game.CatalogTargetSpec
+	game.CatalogTargetSpec = func(id string) *game.TargetSpec {
+		if s, ok := specs[id]; ok {
+			return s()
+		}
+		if prev != nil {
+			return prev(id)
+		}
+		return nil
+	}
+	t.Cleanup(func() { game.CatalogTargetSpec = prev })
+}
+
+// targetACreature is the narrowest clause that is non-empty on the
+// coherence fixture's board: one creature, anywhere on the
+// battlefield. Narrowed per seat by nothing here — which is the
+// point. The assertion #1166 adds is about WHOSE answer reaches
+// whose frame, not about how small the answer is.
+func targetACreature() *game.TargetSpec {
+	return &game.TargetSpec{
+		Mode:  "creature",
+		Zones: []game.ZoneKind{game.ZoneBattlefield},
+		CardOK: func(_ *game.Game, _ uuid.UUID, c game.Card, _ game.ZoneKind) bool {
+			return c.IsCreature()
+		},
+		Min: 1, Max: 1,
+	}
+}
+
 // escapeCost is the offer #1015 is about: claimable only from the
 // graveyard, and only when `n` OTHER cards are sitting under it
 // (CR 702.138a).
@@ -477,6 +512,7 @@ func TestViewAndEnumeratorOfferTheSamePrices(t *testing.T) {
 	const (
 		oracleFlashback = "test-coherence-flashback"
 		oracleEscape    = "test-coherence-escape"
+		oracleRevealed  = "test-coherence-revealed-in-hand"
 	)
 	g := busyTable(t, 1)
 	me := g.Seats[g.Turn.ActiveSeat]
@@ -490,6 +526,12 @@ func TestViewAndEnumeratorOfferTheSamePrices(t *testing.T) {
 			{Key: "flashback", Label: "Flashback {1}{R}", ManaCost: "{1}{R}", FromZone: game.ZoneGraveyard},
 		},
 		oracleEscape: {escapeCost("{R}", 2)},
+	})
+	// #1166: the one seeded card with a target clause, so the
+	// per-viewer half of the assertion below is answered by a stamp
+	// rather than by a field nothing filled.
+	withTargetSpecsByOracle(t, map[string]func() *game.TargetSpec{
+		oracleRevealed: targetACreature,
 	})
 
 	// instance ID + "@" + zone -> which row it is, for the failure
@@ -524,6 +566,22 @@ func TestViewAndEnumeratorOfferTheSamePrices(t *testing.T) {
 	me.Hand.PushTop(inHand)
 	seeded[inHand.InstanceID.String()+"@hand"] = seededCast{"flashback card in hand", me.ID, "hand"}
 
+	// #1166: and a REVEALED card in the same hand, with a target
+	// clause. A Thoughtseize or a Telepathy makes another seat a
+	// knower, keepKnownInHandZone keeps the card on their frame, and
+	// until #1166 their copy carried the HAND OWNER's legal target
+	// set — the #891 shape #1055 took off the graveyard, one zone
+	// over. Seeded here rather than in a parallel test because this
+	// is already the fixture that asks "whose answer is this", and a
+	// hand is the last cast surface that was not asked.
+	revealed := game.NewCard("Coherence Revealed", me.ID)
+	revealed.TypeLine = "Instant"
+	revealed.ManaCost = "{R}"
+	revealed.OracleID = oracleRevealed
+	me.Hand.PushTop(revealed)
+	knownToEveryone(g, me.Hand, revealed.InstanceID)
+	seeded[revealed.InstanceID.String()+"@hand"] = seededCast{"revealed targeted card in hand", me.ID, "hand"}
+
 	// #1035: ANOTHER seat's library top, under a Xanathar-shaped grant
 	// this seat holds. It is the same property on a pile that is not
 	// this seat's — and the row that would have been silently vacuous
@@ -556,6 +614,16 @@ func TestViewAndEnumeratorOfferTheSamePrices(t *testing.T) {
 	}
 
 	v := ViewOfGameFor(g, me.ID.String())
+
+	// #1166, the owner's half: routing the hand through
+	// applyCastStampsFor must not cost the hand's owner their own
+	// clause. Asserted before the bystander loop, so a fix that
+	// simply stopped stamping hands at all fails here rather than
+	// passing everything below.
+	own := cardInSeatZone(t, zoneViewOf(t, v, me.ID, "hand"), revealed.InstanceID)
+	if own.LegalTargets == nil || len(own.LegalTargets.Cards) == 0 {
+		t.Errorf("the hand's owner lost their own legal target set: %+v", own.LegalTargets)
+	}
 
 	for key, row := range seeded {
 		id, zone := key[:36], key[37:]
@@ -592,12 +660,17 @@ func TestViewAndEnumeratorOfferTheSamePrices(t *testing.T) {
 	other := g.Seats[(g.Turn.ActiveSeat+2)%len(g.Seats)]
 	vOther := ViewOfGameFor(g, other.ID.String())
 	for key, row := range seeded {
-		if row.zone == "hand" || row.seat == other.ID {
-			// A hand is not a public zone, so there is no bystander
-			// copy to ask about; a pile this seat owns is their own
-			// answer and belongs in the loop above.
+		if row.seat == other.ID {
+			// A pile this seat owns is their own answer and belongs
+			// in the loop above.
 			continue
 		}
+		// #1166: the hand is no longer skipped. An UNREVEALED hand
+		// card is dropped from the bystander's frame wholesale by
+		// keepKnownInHandZone and falls out at the findInZone check
+		// below, which is the stronger answer; a REVEALED one is
+		// kept, is known to this seat, and is exactly the copy that
+		// used to carry its owner's clause.
 		id, err := uuid.Parse(key[:36])
 		if err != nil {
 			t.Fatalf("%s: bad id %q", row.label, key[:36])
