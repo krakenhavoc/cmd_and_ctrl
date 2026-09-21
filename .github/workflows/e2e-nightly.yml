@@ -534,6 +534,20 @@ jobs:
           CMDCTRL_SCRYFALL_DUMP: ${{ github.workspace }}/data/scryfall/default-cards.json
         run: go test ./internal/decks/ -run RealDump -v
 
+      # Token templates against the printed token cards (#1127, ADR
+      # 0078 decision 8). A template's name, type line, P/T and colours
+      # ARE the token's characteristics, and a row that matches no
+      # printing is usually a row that is wrong: 21 of them declared no
+      # colour where every printing of that token is coloured, which is
+      # a rules bug (protection, lords, "destroy target white
+      # creature", devotion) and not a cosmetic one. Same job for the
+      # same reason as the step above — it is where the dump is.
+      - name: Token templates — match against the real Scryfall dump
+        working-directory: server
+        env:
+          CMDCTRL_SCRYFALL_DUMP: ${{ github.workspace }}/data/scryfall/default-cards.json
+        run: go test ./internal/cards/effects/ -run RealDumpEveryTokenTemplate -v
+
       - name: Client — npm ci
         working-directory: client
         run: npm ci
