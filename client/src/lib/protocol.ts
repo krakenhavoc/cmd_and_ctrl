@@ -1484,10 +1484,155 @@ export interface LegalTargetsView {
 }
 
 /**
- * One printed face of a multi-face card (ADR 0034). Enough to render
- * a picker row and a hover panel.
+ * CastSurfaceView is the announce surface of ONE CASTABLE OBJECT:
+ * everything the cast chain asks about before `cast_spell` goes out,
+ * for one half of one card out of one zone.
+ *
+ * It is carried twice (#992). `CardView` extends it for the face that
+ * is UP, which is what every reader in this client has always read.
+ * `CardFaceView` extends it for each face a cast may CHOOSE — both
+ * halves of a modal DFC (CR 712.12a) and of an adventure card
+ * (CR 715.3) — so `cardAsFace` can swap the block in when the player
+ * picks a half instead of clearing what the front published. Clearing
+ * it is why casting Stomp from this client never opened a target
+ * picker.
+ *
+ * Same field names, same wire keys, both places: the picker, the X
+ * stepper, the cost modal and the targeting flow read one shape and
+ * do not know which of the two they were handed.
  */
-export interface CardFaceView {
+export interface CastSurfaceView {
+  // target_mode tells the cast-click flow what to prompt for at
+  // announce time. Empty/absent ⇒ cast immediately with no target.
+  // See client/src/lib/targeting.ts for the full enum.
+  target_mode?: string;
+  // S20: for a card in the viewer's own hand / command zone with a
+  // structured TargetSpec — the players and card instance IDs its
+  // target slot accepts right now. Absent for free-form cards. Both
+  // lists empty = no legal target = not castable right now.
+  legal_targets?: LegalTargetsView;
+  // #764: every clause of a MULTI-clause target statement, in
+  // printed order, each with its own legal set, count and printed
+  // wording — Bite Down's "target creature you control" then "target
+  // creature or planeswalker you don't control". Absent for the
+  // single-clause card that is nearly every card. The picker walks
+  // them one prompt at a time.
+  clauses?: LegalTargetsView[];
+  // S20 sub-PR 4: for a modal card in the viewer's own hand — the
+  // "Choose one" clause. Each option carries its label and, when it
+  // targets, its own target_mode + legal set. The cast flow shows a
+  // mode picker before targeting. Absent for non-modal cards and on
+  // opponents' hands.
+  modes?: ModeSpecView;
+  // S21 sub-PR 5: for a card in the viewer's own hand with an
+  // additional cost ("As an additional cost to cast this spell,
+  // discard a card"). The cast flow collects the payment before
+  // firing cast_spell. Absent for the vast majority of cards.
+  additional_cost?: AdditionalCostView;
+  // S22: for a card in the viewer's own hand that offers a cost paid
+  // INSTEAD of its mana cost — overload, evoke, cleave. The cast flow
+  // opens a picker before every other prompt, because the choice
+  // changes what the rest of them ask. Absent for nearly every card.
+  alternative_costs?: AlternativeCostView[];
+  // #1012: the PRINTED mana cost is not one of the prices this cast
+  // may claim out of the zone the card is in, so the caster must name
+  // one of `alternative_costs`. A Faithless Looting in the graveyard
+  // is castable at its flashback cost and at nothing else; a card a
+  // permission PRICES is the same shape.
+  //
+  // Absent — every hand cast, every command-zone cast, and a
+  // Gravecrawler whose graveyard permission carries no price — means
+  // the printed cost is on the menu as usual. `castable_here` is one
+  // bit and says only that a cast is possible from here; this is the
+  // other half of the sentence, and the client must not infer it from
+  // the shape of the offer list.
+  alternative_cost_required?: boolean;
+  // ADR 0073 (#664): the "you may pay an additional cost" offers this
+  // card makes — kicker, multikicker, buyback. Rendered inside the
+  // same picker the alternative costs open, because CR 601.2b
+  // announces them together. Absent for nearly every card.
+  optional_costs?: OptionalCostView[];
+  // #760 (ADR 0073 §7): the printed clause that stops this card being
+  // cast from the zone it is in right now — "Each player can't cast
+  // more than one spell each turn", "Cast this spell only if you
+  // control a legendary creature or planeswalker". Absent, which is
+  // nearly always, means nothing refuses the cast.
+  //
+  // The server's own cast gate answered this, so a card carrying it
+  // is one the server WILL refuse: grey it and show the clause rather
+  // than dispatching cast_spell and surfacing a toast.
+  cant_cast?: string;
+  // S22: for a card in the viewer's own hand that lets you tap your
+  // own permanents to help pay — convoke and waterbend. The cast
+  // flow opens a picker after X and before targeting. Absent for
+  // nearly every card.
+  tap_cost?: TapCostView;
+  // #746 (ADR 0048 addendum): the printed clauses of this card's own
+  // cost modifiers whose price depends on its targets — Fireball's
+  // "This spell costs {1} more to cast for each target beyond the
+  // first", strive. The X picker opens before targeting and its
+  // affordability readout is priced at one target, so it shows these
+  // clauses under the readout. Absent for nearly every card and on
+  // opponents' cards the viewer cannot read.
+  target_cost_notes?: string[];
+  // CR 107.4 (#916): how many symbols in the printed cost carry the
+  // "or 2 life" option — 1 for Gitaxian Probe's "{U/P}", 2 for
+  // Dismember's "{1}{B/P}{B/P}", 1 for a compleated planeswalker. The
+  // cast flow opens a "pay N with life" stepper bounded by it and by
+  // the caster's life total, and sends the answer as `phyrexian_life`.
+  // Stamped with the other cast clauses on the viewer's own castable
+  // cards and absent everywhere else, so its presence IS the question
+  // "is there a life half to offer here".
+  phyrexian_symbols?: number;
+  // S29: set on a card sitting in a zone its own text opens as a
+  // cast source — a flashback card in the graveyard. The zone
+  // browser keys its cast button off this, the way exile keys its
+  // impulse button off `exile_play`. Never set on hand or
+  // command-zone cards: those surfaces are cast surfaces for
+  // everything in them. The cost to pay rides `alternative_costs`,
+  // already filtered to the offers claimable from this zone.
+  //
+  // #1015: the server derives it from that offer list and its own
+  // cast gate — "nothing refuses this cast, and at least one price is
+  // claimable". An escape card in a graveyard too small to pay for it
+  // is NOT castable here, and used to render a button with no offer
+  // behind it. Whether the printed cost is one of those prices is
+  // `alternative_cost_required`, not this bit.
+  //
+  // WHOSE ANSWER IT IS: yours, always (#1055). The bit is stamped
+  // only on the frame of a seat that may actually make the cast — the
+  // pile's owner for a printed flashback, the holder of a permission
+  // over the card for a granted one, both of them on their own frames
+  // when both are true — and is absent on everybody else's copy of the
+  // same card, spectators included.
+  //
+  // It was public until #1055, and it meant the PILE OWNER's answer,
+  // so a reader had to pair it with `exile_play` to find out which of
+  // the two it was holding. Both readers — zoneBrowser.logic and
+  // libraryTop — now ask the bit alone. What is still public is the
+  // half that is a fact about the CARD rather than about a player:
+  // `alternative_costs`, `alternative_cost_required`, `modes`,
+  // `additional_cost`, `optional_costs`, `tap_cost`,
+  // `target_cost_notes`, `phyrexian_symbols` and `cant_cast`, because
+  // a card in a graveyard is a card every player may read.
+  castable_here?: boolean;
+}
+
+/**
+ * One printed face of a multi-face card (ADR 0034). Enough to render
+ * a picker row and a hover panel — and, since #992, enough to CAST:
+ * it extends CastSurfaceView, so a face the card offers a cast of
+ * carries the same announce block the card carries for the face that
+ * is up.
+ *
+ * The block is present only on a face a cast may actually choose:
+ * both halves of a modal DFC and of an adventure card, the front
+ * alone of a transform card, and exactly the faces a grant names when
+ * one does (CR 715.4's Adventure permission opens the creature and no
+ * other). On every other face the fields are simply absent, which
+ * reads correctly as "this half announces nothing".
+ */
+export interface CardFaceView extends CastSurfaceView {
   name: string;
   type_line?: string;
   mana_cost?: string;
@@ -1503,7 +1648,7 @@ export interface NoUntapView {
   next?: string[];
 }
 
-export interface CardView {
+export interface CardView extends CastSurfaceView {
   instance_id: string;
   /**
    * The ACTIVE face's name. For the ~33,000 single-faced oracle IDs
@@ -1643,120 +1788,10 @@ export interface CardView {
   // Most of a real battlefield would carry one, and a badge on
   // everything is a badge nobody reads.
   unimplemented?: boolean;
-  // target_mode tells the cast-click flow what to prompt for at
-  // announce time. Empty/absent ⇒ cast immediately with no target.
-  // See client/src/lib/targeting.ts for the full enum.
-  target_mode?: string;
-  // S20: for a card in the viewer's own hand / command zone with a
-  // structured TargetSpec — the players and card instance IDs its
-  // target slot accepts right now. Absent for free-form cards. Both
-  // lists empty = no legal target = not castable right now.
-  legal_targets?: LegalTargetsView;
-  // #764: every clause of a MULTI-clause target statement, in
-  // printed order, each with its own legal set, count and printed
-  // wording — Bite Down's "target creature you control" then "target
-  // creature or planeswalker you don't control". Absent for the
-  // single-clause card that is nearly every card. The picker walks
-  // them one prompt at a time.
-  clauses?: LegalTargetsView[];
-  // S20 sub-PR 4: for a modal card in the viewer's own hand — the
-  // "Choose one" clause. Each option carries its label and, when it
-  // targets, its own target_mode + legal set. The cast flow shows a
-  // mode picker before targeting. Absent for non-modal cards and on
-  // opponents' hands.
-  modes?: ModeSpecView;
-  // S21 sub-PR 5: for a card in the viewer's own hand with an
-  // additional cost ("As an additional cost to cast this spell,
-  // discard a card"). The cast flow collects the payment before
-  // firing cast_spell. Absent for the vast majority of cards.
-  additional_cost?: AdditionalCostView;
-  // S22: for a card in the viewer's own hand that offers a cost paid
-  // INSTEAD of its mana cost — overload, evoke, cleave. The cast flow
-  // opens a picker before every other prompt, because the choice
-  // changes what the rest of them ask. Absent for nearly every card.
-  alternative_costs?: AlternativeCostView[];
-  // #1012: the PRINTED mana cost is not one of the prices this cast
-  // may claim out of the zone the card is in, so the caster must name
-  // one of `alternative_costs`. A Faithless Looting in the graveyard
-  // is castable at its flashback cost and at nothing else; a card a
-  // permission PRICES is the same shape.
-  //
-  // Absent — every hand cast, every command-zone cast, and a
-  // Gravecrawler whose graveyard permission carries no price — means
-  // the printed cost is on the menu as usual. `castable_here` is one
-  // bit and says only that a cast is possible from here; this is the
-  // other half of the sentence, and the client must not infer it from
-  // the shape of the offer list.
-  alternative_cost_required?: boolean;
-  // ADR 0073 (#664): the "you may pay an additional cost" offers this
-  // card makes — kicker, multikicker, buyback. Rendered inside the
-  // same picker the alternative costs open, because CR 601.2b
-  // announces them together. Absent for nearly every card.
-  optional_costs?: OptionalCostView[];
-  // #760 (ADR 0073 §7): the printed clause that stops this card being
-  // cast from the zone it is in right now — "Each player can't cast
-  // more than one spell each turn", "Cast this spell only if you
-  // control a legendary creature or planeswalker". Absent, which is
-  // nearly always, means nothing refuses the cast.
-  //
-  // The server's own cast gate answered this, so a card carrying it
-  // is one the server WILL refuse: grey it and show the clause rather
-  // than dispatching cast_spell and surfacing a toast.
-  cant_cast?: string;
-  // S22: for a card in the viewer's own hand that lets you tap your
-  // own permanents to help pay — convoke and waterbend. The cast
-  // flow opens a picker after X and before targeting. Absent for
-  // nearly every card.
-  tap_cost?: TapCostView;
-  // #746 (ADR 0048 addendum): the printed clauses of this card's own
-  // cost modifiers whose price depends on its targets — Fireball's
-  // "This spell costs {1} more to cast for each target beyond the
-  // first", strive. The X picker opens before targeting and its
-  // affordability readout is priced at one target, so it shows these
-  // clauses under the readout. Absent for nearly every card and on
-  // opponents' cards the viewer cannot read.
-  target_cost_notes?: string[];
-  // CR 107.4 (#916): how many symbols in the printed cost carry the
-  // "or 2 life" option — 1 for Gitaxian Probe's "{U/P}", 2 for
-  // Dismember's "{1}{B/P}{B/P}", 1 for a compleated planeswalker. The
-  // cast flow opens a "pay N with life" stepper bounded by it and by
-  // the caster's life total, and sends the answer as `phyrexian_life`.
-  // Stamped with the other cast clauses on the viewer's own castable
-  // cards and absent everywhere else, so its presence IS the question
-  // "is there a life half to offer here".
-  phyrexian_symbols?: number;
-  // S29: set on a card sitting in a zone its own text opens as a
-  // cast source — a flashback card in the graveyard. The zone
-  // browser keys its cast button off this, the way exile keys its
-  // impulse button off `exile_play`. Never set on hand or
-  // command-zone cards: those surfaces are cast surfaces for
-  // everything in them. The cost to pay rides `alternative_costs`,
-  // already filtered to the offers claimable from this zone.
-  //
-  // #1015: the server derives it from that offer list and its own
-  // cast gate — "nothing refuses this cast, and at least one price is
-  // claimable". An escape card in a graveyard too small to pay for it
-  // is NOT castable here, and used to render a button with no offer
-  // behind it. Whether the printed cost is one of those prices is
-  // `alternative_cost_required`, not this bit.
-  //
-  // WHOSE ANSWER IT IS: yours, always (#1055). The bit is stamped
-  // only on the frame of a seat that may actually make the cast — the
-  // pile's owner for a printed flashback, the holder of a permission
-  // over the card for a granted one, both of them on their own frames
-  // when both are true — and is absent on everybody else's copy of the
-  // same card, spectators included.
-  //
-  // It was public until #1055, and it meant the PILE OWNER's answer,
-  // so a reader had to pair it with `exile_play` to find out which of
-  // the two it was holding. Both readers — zoneBrowser.logic and
-  // libraryTop — now ask the bit alone. What is still public is the
-  // half that is a fact about the CARD rather than about a player:
-  // `alternative_costs`, `alternative_cost_required`, `modes`,
-  // `additional_cost`, `optional_costs`, `tap_cost`,
-  // `target_cost_notes`, `phyrexian_symbols` and `cant_cast`, because
-  // a card in a graveyard is a card every player may read.
-  castable_here?: boolean;
+  // #992: the announce surface of the face that is UP. Inherited
+  // from CastSurfaceView, so every existing `card.legal_targets`
+  // read is unchanged and `cardAsFace` has an identically shaped
+  // block on each face to swap in.
   // S21 sub-PR 6: present on a card in exile that someone may play
   // this turn — and, since ADR 0066, on a card in a graveyard or on a
   // library top that a permission opens. Absent for ordinary exile,
