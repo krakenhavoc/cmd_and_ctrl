@@ -1740,14 +1740,22 @@ export interface CardView {
   // behind it. Whether the printed cost is one of those prices is
   // `alternative_cost_required`, not this bit.
   //
-  // WHOSE ANSWER IT IS depends on the pile (#1022, #1035). On a
-  // graveyard or a library it is the PILE OWNER's and it is public —
-  // a flashback cost is printed on a card in a public zone — so a
-  // reader looking at somebody else's pile must not take it as their
-  // own. It is YOUR answer when `exile_play` names you: the server
-  // computes the holder's own offers, targets and gate and ships them
-  // to that seat alone. zoneBrowser.logic and libraryTop are the two
-  // readers, and both ask the same question.
+  // WHOSE ANSWER IT IS: yours, always (#1055). The bit is stamped
+  // only on the frame of a seat that may actually make the cast — the
+  // pile's owner for a printed flashback, the holder of a permission
+  // over the card for a granted one, both of them on their own frames
+  // when both are true — and is absent on everybody else's copy of the
+  // same card, spectators included.
+  //
+  // It was public until #1055, and it meant the PILE OWNER's answer,
+  // so a reader had to pair it with `exile_play` to find out which of
+  // the two it was holding. Both readers — zoneBrowser.logic and
+  // libraryTop — now ask the bit alone. What is still public is the
+  // half that is a fact about the CARD rather than about a player:
+  // `alternative_costs`, `alternative_cost_required`, `modes`,
+  // `additional_cost`, `optional_costs`, `tap_cost`,
+  // `target_cost_notes`, `phyrexian_symbols` and `cant_cast`, because
+  // a card in a graveyard is a card every player may read.
   castable_here?: boolean;
   // S21 sub-PR 6: present on a card in exile that someone may play
   // this turn — and, since ADR 0066, on a card in a graveyard or on a

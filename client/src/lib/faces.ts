@@ -101,5 +101,11 @@ export function cardAsFace(card: CardView, i: number): CardView {
     hand_abilities: undefined,
     legal_targets: undefined,
     target_mode: undefined,
+    // #1055: `castable_here` is the viewer's own "you may cast this
+    // from here", and the server computed it for the face the grant
+    // NAMES. A face swap that kept the bit while clearing every offer
+    // beside it is #1015's button with nothing behind it, one face
+    // over: the picker would open on an empty price list.
+    castable_here: undefined,
   };
 }

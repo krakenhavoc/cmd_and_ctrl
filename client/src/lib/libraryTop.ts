@@ -36,29 +36,21 @@ export function visibleLibraryTop(zone: ZoneView | undefined): CardView | null {
 // stamps from the same permission the cast path validates with, so the
 // client can never render a button `cast_spell` would refuse.
 //
-// `ownerID` and `viewerID` are the second gate, and they are about
-// WHOSE answer the bit is (#1035). A library is a per-seat pile, so
-// `castable_here` on its top card is its owner's answer and it is
-// public: two seats at a table with Oracles of Mul Daya both see the
-// other's revealed top card marked playable, and only one of them may
-// play it. A cast permission over ANOTHER seat's library top —
-// Xanathar, Guild Kingpin's "you may play the top card of their
-// library" — is the case that makes the gate more than an ownership
-// check: the server computes that holder's own stamps for their frame
-// alone and names them in the public `exile_play`, exactly as it does
-// for a foreign graveyard cast, so the viewer who holds the grant gets
-// the button and the rest of the table does not.
-export function libraryTopPlayable(
-  zone: ZoneView | undefined,
-  viewerID?: string | null,
-  ownerID?: string,
-): boolean {
+// One question, one field (#1055). Until then the bit was the LIBRARY
+// OWNER's answer and it was public, so this function took the viewer's
+// and the owner's seat as a second gate: two seats at a table with
+// Oracles of Mul Daya both saw the other's revealed top card marked
+// playable, and only one of them could play it. Xanathar, Guild
+// Kingpin's "you may play the top card of their library" is the case
+// that made the gate more than an ownership check, and it is now the
+// case the SERVER answers — it computes that holder's own stamps for
+// their frame alone, so the viewer who holds the grant gets the bit
+// and the rest of the table does not.
+//
+// Visibility is still a separate question, and visibleLibraryTop's
+// note says why: Oracle of Mul Daya reveals the top card to the whole
+// table while opening only lands.
+export function libraryTopPlayable(zone: ZoneView | undefined): boolean {
   const top = visibleLibraryTop(zone);
-  if (top === null || top.castable_here !== true) return false;
-  // Called with no seats to compare — the pre-#1035 signature, and
-  // every caller looking at the viewer's OWN library. The bit is that
-  // library owner's answer, which is this viewer's.
-  if (viewerID === undefined || ownerID === undefined) return true;
-  if (!viewerID) return false;
-  return viewerID === ownerID || top.exile_play?.player === viewerID;
+  return top !== null && top.castable_here === true;
 }

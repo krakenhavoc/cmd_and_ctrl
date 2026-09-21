@@ -184,33 +184,28 @@ export function grantedFace(card: CardView, grant: ExilePlayView | null): CardVi
 // castableFromZone reports whether the viewer may cast `card` out of
 // the zone the browser is showing.
 //
-// Two gates, and the second one is not redundant with the server's.
-// `castable_here` on a card in a per-seat pile is the PILE OWNER's
-// answer and it is public — the graveyard is a public zone and a
-// flashback cost is printed on the card, so an opponent's snapshot
-// carries the bit too. Without a second gate the browser would offer
-// a button on someone else's graveyard card that the server then
-// refuses with ErrCardNotFound, which reads to the player as a bug
-// rather than as a rule.
+// ONE gate, because `castable_here` is the viewer's own answer since
+// #1055. It used to be the PILE OWNER's and it used to be public, so
+// this function needed a second gate — "you own the pile, or
+// `exile_play` names you" — to stop the browser offering a button on
+// someone else's graveyard card that the server then refused with
+// ErrCardNotFound, which reads to the player as a bug rather than as a
+// rule. That pair-read was the bug #1055 fixed at the source: the
+// field's name is a statement about the viewer, and now so is its
+// value.
 //
-// The second gate is "or the grant names ME" (#1022, #1035, #1037). A
-// permission is a statement about an OBJECT, not about a pile —
-// Wrexial's "cast target instant or sorcery card from that player's
+// A permission is still a statement about an OBJECT, not about a pile
+// — Wrexial's "cast target instant or sorcery card from that player's
 // graveyard" — so a card in an opponent's pile IS castable by its
-// holder, and the server stamps that holder's own offers, targets and
-// gate on their frame and nobody else's. `exile_play` is how it says
-// whose: it is public, it names the seat, and since #1037 a viewer who
-// holds a grant over the card gets THEIR OWN rather than whichever
-// live permission came first. Reading it here is what turns the
-// server's per-holder stamp into a button.
-export function castableFromZone(
-  card: CardView,
-  zoneKind: BrowsableZone,
-  viewerID: string | null,
-  ownerID: string,
-): boolean {
+// holder. The server computes that holder's own offers, targets and
+// gate and stamps them, the bit included, on their frame and nobody
+// else's. Reading the bit alone is reading exactly that.
+//
+// `exile_play` keeps its own job: it is public, it names the seat that
+// granted the permission, and the impulse button above reads it for
+// the grant's face and label. It is no longer part of ANSWERING
+// whether this viewer may cast.
+export function castableFromZone(card: CardView, zoneKind: BrowsableZone): boolean {
   if (zoneKind !== "graveyard") return false;
-  if (!viewerID) return false;
-  if (viewerID !== ownerID && card.exile_play?.player !== viewerID) return false;
   return card.castable_here === true;
 }
