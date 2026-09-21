@@ -1115,7 +1115,25 @@ type MillToZone struct {
 
 	// Until, when set, ends the run after the first LANDED list it
 	// returns true for. With Until set, N <= 0 means "no limit but the
-	// library", which is how an unbounded mill is written.
+	// library", which is how an unbounded mill is written — and, since
+	// #1161, how a run whose only bound is a landed COUNT is written
+	// too: "until a creature card or X cards have been put into their
+	// graveyard this way, whichever comes first" is ONE predicate with
+	// both conditions in it, UntilAny(UntilCard(…), UntilCount(x)).
+	//
+	// A landed count is not N. N is the mill AMOUNT the instruction
+	// names (CR 701.13b), the number Bruvac the Grandiloquent doubles,
+	// and it would be spent on a card a replacement diverted on the
+	// way; a bound that counts arrivals is the clause, and a card the
+	// CR 614 window sent elsewhere costs it nothing.
+	//
+	// A run with an Until is always SEQUENCED, whatever Then says: the
+	// clause is about cards that have arrived, so the mill waits for
+	// each one rather than routing every leg on one line (Apply picks
+	// the form). Nothing is lost by it — the fire-and-forget form's
+	// returned list is discarded here anyway — and what it buys is a
+	// run that cannot walk past a leg paused on CR 903.9 and keep
+	// milling.
 	//
 	// `landed` is the cards that have actually reached To so far, top
 	// of the library first, and it is never empty when the clause is
@@ -1171,13 +1189,20 @@ func (m MillToZone) Apply(ctx *Context) error {
 	if player == uuid.Nil {
 		player = ctx.Controller()
 	}
-	if m.Then == nil {
-		// Nothing is waiting on the list, so the mill stays
-		// fire-and-forget: every card is routed on this line and a
-		// commander's CR 903.9 prompt lands its own card later without
-		// holding the rest of the mill up.
-		_, err := ctx.Game.MillToZoneForEffect(player, m.N, dest, m.Until)
+	if m.Then == nil && m.Until == nil {
+		// Nothing is waiting on the list and nothing is watching what
+		// lands, so the mill stays fire-and-forget: every card is
+		// routed on this line and a commander's CR 903.9 prompt lands
+		// its own card later without holding the rest of the mill up.
+		_, err := ctx.Game.MillToZoneForEffect(player, m.N, dest)
 		return err
+	}
+	if m.Then == nil {
+		// An Until with nothing hanging off it still SEQUENCES (#1161):
+		// the clause is answered about cards that have arrived, and
+		// only the continuation form waits for them. The returned list
+		// this form gives up was discarded on the line above anyway.
+		return ctx.Game.MillToZoneThenForEffect(player, m.N, dest, m.Until, nil)
 	}
 	// The context is rebuilt inside the continuation from the live
 	// *Game, the contract massEffect.apply explains: an undo restores
@@ -1200,6 +1225,54 @@ func (m MillToZone) Apply(ctx *Context) error {
 func UntilCard(pred func(c game.Card) bool) func([]game.Card) bool {
 	return func(landed []game.Card) bool {
 		return len(landed) > 0 && pred(landed[len(landed)-1])
+	}
+}
+
+// UntilCount is MillToZone.Until for the COUNT clause: the run ends
+// once `n` cards have landed — Helm of Obedience's "or X cards have
+// been put into their graveyard this way".
+//
+// #1161, and the reason it is a clause rather than MillToZone.N. N is
+// the mill AMOUNT: CR 701.13b counts the cards the instruction moves,
+// so a card a replacement diverts on the way to the graveyard (a
+// commander taking the command zone, Rest in Peace's "exile it
+// instead") spends one of it without ever arriving — and it is the
+// number a mill-amount replacement doubles. This bound counts
+// ARRIVALS, exactly as the rest of the same sentence does, which is
+// what makes Helm mill a whole library under Rest in Peace and what
+// makes a diverted card cost it nothing.
+//
+// Pure: it reads the length of the list it is handed and nothing else,
+// so replaying it over the same prefix gives the same answer.
+//
+// n <= 0 never ends the run. A card that prints a bound of zero prints
+// no run at all, and "stop before you start" is better expressed by
+// not milling.
+func UntilCount(n int) func([]game.Card) bool {
+	return func(landed []game.Card) bool {
+		return n > 0 && len(landed) >= n
+	}
+}
+
+// UntilAny is "whichever comes first": the run ends as soon as ANY of
+// the clauses accepts the landed list.
+//
+// Helm of Obedience is the card — "until a creature card OR X cards
+// have been put into their graveyard this way, whichever comes first"
+// is two stop conditions on one list, and the engine takes ONE
+// predicate, so the card composes them here rather than the mill
+// growing a second clause field (#1161).
+//
+// Pure as long as its parts are, which is the property MillToZone.Until
+// requires of all of them.
+func UntilAny(clauses ...func([]game.Card) bool) func([]game.Card) bool {
+	return func(landed []game.Card) bool {
+		for _, clause := range clauses {
+			if clause != nil && clause(landed) {
+				return true
+			}
+		}
+		return false
 	}
 }
 

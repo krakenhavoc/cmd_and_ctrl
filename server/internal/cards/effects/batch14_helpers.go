@@ -343,6 +343,11 @@ func b14MillUntilLand(ctx *Context, player uuid.UUID) error {
 	// N: 0 with an Until is "no limit but the library", which is the
 	// whole of "until they reveal a land card" — the card that ends the
 	// run is milled too.
+	//
+	// #1161: an Until run SEQUENCES, so a milled commander's CR 903.9
+	// prompt holds the rest of this seat's run until it is answered and
+	// the land that ends the run is the land that ARRIVED. The other
+	// seats' runs are unaffected — each is its own instruction.
 	return MillToZone{
 		Player: player,
 		Until:  UntilCard(func(c game.Card) bool { return c.IsLand() }),

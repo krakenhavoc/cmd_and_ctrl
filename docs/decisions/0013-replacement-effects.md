@@ -1116,7 +1116,11 @@ caveat Helm of Obedience carries, rewritten to say so.
 > off the library, not the cards that arrive. That is the mill AMOUNT
 > (CR 701.13b counts cards moved, and it is the number Bruvac the
 > Grandiloquent doubles), not the clause, and it is filed rather than
-> folded in here.
+> folded in here. *(Closed 2026-09-21 by
+> [#1161](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1161),
+> §5z: the bound is not the amount, it is the rest of the same clause,
+> and the fire-and-forget form's trade named in the paragraph above is
+> gone because that form no longer takes an `until` at all.)*
 
 **4. The two forms differ in one thing, and #529 chose it.** A paused
 mill must not re-read the top of the library, and the plan-up-front
@@ -2685,6 +2689,99 @@ graveyard and the library picks alike. See
 [ADR 0018](0018-triggers-on-the-stack.md) §6's 2026-09-19 amendment;
 the withdrawal settles the leg through this section's `dropDefault`,
 unchanged.)*
+
+### 5z. Amendment, 2026-09-21: a run's BOUND counts arrivals too, and only the form that WAITS may carry a clause
+
+*Amendment, 2026-09-21, branch
+`fix/1161-1069-helm-x-bound-and-entry-door-prune`.
+Closes [#1161](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1161).
+§5l's #1159 amendment fixed one half of Helm of Obedience's printed
+sentence and filed the other half as "a change to a different rule";
+this is that half, and the different rule turned out to be the same
+one.*
+
+**1. The sentence has one verb and two stop conditions.** *"Target
+opponent mills a card, then repeats this process until a creature card
+OR X CARDS have been put into their graveyard this way, whichever comes
+first."* "Put into their graveyard this way" governs both halves, so
+both are CR 400.7 questions about the object that ARRIVED — §5l's
+reading, applied to the whole clause rather than to the first half of
+it. Written out, it is one predicate over the landed list with both
+conditions in it:
+
+```go
+Until: UntilAny(
+    UntilCard(func(c game.Card) bool { return c.IsCreature() }),
+    UntilCount(ctx.X()),
+),
+```
+
+`effects.UntilCount` and `effects.UntilAny` are the two new shapes
+(`primitives.go`), beside `UntilCard` and `UntilTotalManaValue`. Both
+are pure in the sense §5l requires — `UntilCount` reads a length,
+`UntilAny` is as pure as its parts — so an undo that rewinds into an
+open CR 903.9 prompt replays the same answer.
+
+**2. A BOUND is not an AMOUNT, and this is the line between them.**
+#1159 declined to move X because moving it looked like a change to the
+mill amount. It is the opposite: X was only ever *modelled* as the
+amount, and that model is what made the two disagree.
+
+| | the AMOUNT (CR 701.13b) | the BOUND (this clause) |
+| --- | --- | --- |
+| what it counts | cards the instruction MOVES off the library | cards that are PUT INTO the named zone |
+| a diverted card | spends one (it was milled) | costs it nothing (it never arrived) |
+| written as | `MillToZone.N` | a condition inside `MillToZone.Until` |
+| replaceable | yes — `RepEventMill`, Bruvac the Grandiloquent | no — the run names no number at all |
+
+So Helm asks for an unbounded run (`N` left 0 with an `Until`) and
+stops itself. Three consequences, all of them the card as printed:
+a milled commander that takes the command zone no longer spends one of
+the X; under Rest in Peace or Leyline of the Void nothing is ever put
+into that graveyard, so the run mills the whole library (the famous
+combo, falling out of the reading rather than special-cased); and
+Bruvac doubles mills and not bounds — X=2 is two cards with him on the
+battlefield exactly as it is without, which `millAmountIsReplaceable`
+already said of an unbounded run before this amendment existed. Paper
+doubles each one-card repetition instead and can overshoot the bound by
+a card; the engine models the run as ONE instruction, which is the
+same modelling decision §5s made for a keyword action with a count.
+
+**3. The over-mill #1161 named is closed BY CONSTRUCTION.** The issue's
+own warning: a landed-count bound plus the fire-and-forget loop is a
+run that walks the whole library, because a leg paused on CR 903.9 has
+not landed when that loop asks and the loop does not wait for it. The
+answer is not a check inside the mill. `MillToZoneForEffect` — the form
+that does not wait — no longer takes an `until` parameter, so the
+combination cannot be written:
+
+| entry point | takes `until` | why |
+| --- | --- | --- |
+| `MillToZoneThenForEffect` | yes | it sequences: each leg from the previous one's continuation, so a clause about arrivals has arrivals to read |
+| `MillToZoneForEffect` | no | it routes every leg on one line and cannot answer "has it landed yet" |
+
+`routeAllLandedUntilLocked` is deleted with it and
+`routeAllLandedPerLegLocked` is the fire-and-forget loop again, with no
+`stop` to hand it. #1159's "standing trade" paragraph — the
+fire-and-forget run that ends one card late — describes a combination
+that no longer exists.
+
+**4. What that changes in the catalog.** `MillToZone.Apply` picks the
+sequencing form whenever `Until` is set, whatever `Then` says; the
+fire-and-forget return value it gives up was discarded on that line
+anyway. Two cards were writing an `until` run with nothing hanging off
+it — `b14MillUntilLand` (Consuming Aberration) and
+`b27ExileTopUntilTotalManaValue` (Tasha's Hideous Laughter) — and both
+get the exact version: a commander's prompt now holds the rest of THAT
+SEAT's run instead of being walked past, and the card that ends the run
+is the card that arrived. Every other mill in the catalog names a
+number and is untouched.
+
+**5. Helm of Obedience is `CompletenessFull`.** Both halves of the
+clause read what arrived, the reanimation already read it (§5l item 5),
+and there is no printed clause left unmodelled. `helm_x_bound_test.go`
+pins the three boards where the two readings disagree: the diverted
+commander, Rest in Peace, and Bruvac.
 
 ### 6. Six pipeline integration points (five mutations + step transition)
 

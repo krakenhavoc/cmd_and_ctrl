@@ -713,7 +713,66 @@ than living with it. The remaining uncovered door is a card LEAVING a
 hand or library for the BATTLEFIELD, which does not go through the exit
 primitive (`battlefield_put.go`'s batch and `mutations.go`'s inline
 entry branch) — no prompt family can reach it today, and it is named
-here rather than swept blind.
+here rather than swept blind. *(Closed 2026-09-21 by
+[#1069](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1069); see
+the amendment below.)*
+
+**Amendment (2026-09-21, #1069): the entry door is watched too, through
+ONE funnel rather than three sprinklings.**
+
+The paragraph above named the door and left it open. This is the same
+prune at it, and the only judgement in the change is where the call
+goes.
+
+**1. Why the exits could not cover it.** `routeDestinationLocked`
+refuses a battlefield or stack destination outright — *"not an exit,
+the entry path owns these"* — so `executeZoneRouteLocked` never runs
+for an arrival, and a graveyard pick whose candidate is reanimated
+under the open prompt, or a hand pick whose candidate a Warp World-style
+effect puts onto the battlefield, kept offering a card
+`checkChooseCardsPicksLocked` would refuse. Zone-keyed as the prune is
+(#1045), the question is identical to the discard's: the candidate is
+not in the zone the answer is re-checked against. Only the mover
+differs.
+
+**2. One funnel.** The entry side has three landings and no shared
+finisher: `executeEntryToBattlefieldLocked` (every resumable entry —
+the land play, stack resolution, a search, an exile return, a
+reanimation, a token), `putOntoBattlefieldFromZoneLocked` (the hand /
+library batch and manifest) and `moveCardByRefLocked`'s inline branch
+(the sandbox move into the battlefield **or the stack**). The last two
+are the two sites that are deliberately not resumable
+(`ReplacementEvent.entryResumable`), which is exactly why they cannot
+be folded into the first. So the prune gets one named home,
+`Game.pruneChoicesAfterArrivalLocked` in `battlefield_entry.go`, that
+all three call — the shape `battlefieldExitLocked` already has on the
+other side, where a landing added later is covered by the rule rather
+than by a code review.
+
+It takes no card ID: the prune re-reads every open pick against the
+live board, so one call answers for a whole batch of arrivals, which is
+why the batch site calls it once after phase 3 rather than once per
+card. And it runs LAST in each landing — after the zone move, the ETB
+event and the AsEnters hook — for `executeZoneRouteLocked`'s ordering
+reason: a withdrawal settles a run leg, and that continuation is the
+rest of somebody's printed instruction.
+
+**3. No double-run.** By the refusal in item 1, not by a flag: an entry
+cannot reach the exit primitive's prune block, so the new call adds a
+door rather than doubling one. `entry_prune_test.go` pins that as a
+fact about `routeDestinationLocked` alongside the two shapes the issue
+named.
+
+**4. What is deliberately still not swept, and it is now the only one.**
+`pruneSacrificeChoicesLocked` needs no entry door at all — an entry only
+ADDS permanents, so it can invalidate no option on an open sacrifice
+prompt. `pruneStaleZoneChangeChoicesLocked` is a different matter: an
+entry DOES empty a hand slot or take a card out of a graveyard, so a
+queued prompt about moving that same card out of that zone is as stale
+as it would be after an exit. It is not called here because #1069
+scoped one prune at one door, and because nothing in the catalog queues
+such a pair today. Named here rather than swept blind — the posture
+#1045 took towards this door, one issue earlier.
 
 ## Out of scope (explicit deferrals)
 

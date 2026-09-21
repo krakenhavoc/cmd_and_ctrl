@@ -3522,6 +3522,14 @@ func (g *Game) pruneSacrificeChoicesLocked() {
 // reason: a queued choice stops priority from passing, so the
 // state-check loop is exactly what does NOT run while one is open.
 //
+// And at a fourth site those three do not reach (#1069): the ENTRY
+// side, through pruneChoicesAfterArrivalLocked. Those three are exits
+// and a departure, and a card that leaves a hand, a library or a
+// graveyard FOR THE BATTLEFIELD takes none of them — a candidate
+// reanimated or put onto the battlefield under an open prompt left the
+// pick's zone exactly as a discarded one does. See
+// battlefield_entry.go for the three landings that share that door.
+//
 // THE WHOLE QUEUE IS EXAMINED BEFORE ANY PROMPT IS DROPPED, which is
 // pruneStaleZoneChangeChoicesLocked's shape and its reason: a drop runs
 // the kind's drop action, a run leg settling runs the rest of the

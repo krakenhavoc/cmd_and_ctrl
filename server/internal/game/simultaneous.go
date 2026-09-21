@@ -628,29 +628,7 @@ func (g *Game) routeAllLocked(r zoneRoute, ids []uuid.UUID) int {
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) routeAllLandedLocked(r zoneRoute, ids []uuid.UUID) []uuid.UUID {
-	return g.routeAllLandedUntilLocked(r, ids, nil)
-}
-
-// routeAllLandedUntilLocked is routeAllThenUntilLocked's fire-and-forget
-// twin: the same early stop, on the same question, in the loop that
-// cannot pause.
-//
-// #1159. The difference from the sequencing form is what a leg PAUSED
-// on the CR 903.9 prompt means. Here nothing waits for the answer, so
-// such a leg has not landed when `stop` is asked and the run carries
-// on past it — which is #529's "proceed AROUND the paused card" and is
-// why the mill's plan is a flat list of IDs in the first place. If the
-// owner later declines the command zone the card reaches the graveyard
-// after the run already moved on, so the run is one card long rather
-// than ending there. That is the fire-and-forget form's standing trade
-// (its returned list has always had it) and it is strictly better than
-// what it replaces, which ended the run on a card that never arrived
-// at all. A card that must be exact about where the run stops uses the
-// Then form, as Helm of Obedience and Improvisation Capstone do.
-//
-// Caller must hold g.mu in write mode.
-func (g *Game) routeAllLandedUntilLocked(r zoneRoute, ids []uuid.UUID, stop func(landed []uuid.UUID) bool) []uuid.UUID {
-	return g.routeAllLandedPerLegUntilLocked(ids, func(uuid.UUID) zoneRoute { return r }, stop)
+	return g.routeAllLandedPerLegLocked(ids, func(uuid.UUID) zoneRoute { return r })
 }
 
 // routeAllLandedPerLegLocked is that body with the route chosen PER
@@ -669,20 +647,18 @@ func (g *Game) routeAllLandedUntilLocked(r zoneRoute, ids []uuid.UUID, stop func
 // Everything else about the batch is unchanged: the pre-move copies
 // are published once for the whole loop, and nothing here can pause.
 //
-// Caller must hold g.mu in write mode.
-func (g *Game) routeAllLandedPerLegLocked(ids []uuid.UUID, routeFor func(uuid.UUID) zoneRoute) []uuid.UUID {
-	return g.routeAllLandedPerLegUntilLocked(ids, routeFor, nil)
-}
-
-// routeAllLandedPerLegUntilLocked is that body with the #1159 early
-// stop. `stop` is nil for every caller but the mill's `until` run.
+// There is NO early stop on this loop, and since #1161 there is no way
+// to ask for one. #1159 gave it the mill's `until` predicate and #1161
+// took it back: a run that ends on what ARRIVED has to wait for each
+// leg to arrive, and this loop is the one that does not wait — a leg
+// paused on the CR 903.9 prompt has not landed when the loop asks, so
+// the run walks past it. With a landed-COUNT bound (Helm of Obedience
+// at X) that walk is the whole library. The clause therefore lives on
+// routeAllThenUntilLocked alone, which sequences, and this loop cannot
+// be handed one.
 //
 // Caller must hold g.mu in write mode.
-func (g *Game) routeAllLandedPerLegUntilLocked(
-	ids []uuid.UUID,
-	routeFor func(uuid.UUID) zoneRoute,
-	stop func(landed []uuid.UUID) bool,
-) []uuid.UUID {
+func (g *Game) routeAllLandedPerLegLocked(ids []uuid.UUID, routeFor func(uuid.UUID) zoneRoute) []uuid.UUID {
 	if len(ids) == 0 {
 		return nil
 	}
@@ -698,9 +674,6 @@ func (g *Game) routeAllLandedPerLegUntilLocked(
 		}
 		if g.routeLegLandedLocked(r, id) {
 			landed = append(landed, id)
-			if stop != nil && stop(landed) {
-				break
-			}
 		}
 	}
 	return landed

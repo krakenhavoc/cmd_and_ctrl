@@ -939,7 +939,7 @@ func (g *Game) LoseTheGameForEffect(playerID uuid.UUID) error {
 // fewer than n mills what it has (CR 701.17b) and nobody loses for
 // it — see MillToZoneForEffect.
 func (g *Game) MillNForEffect(playerID uuid.UUID, n int) error {
-	_, err := g.MillToZoneForEffect(playerID, n, ZoneGraveyard, nil)
+	_, err := g.MillToZoneForEffect(playerID, n, ZoneGraveyard)
 	return err
 }
 
@@ -965,27 +965,26 @@ func (g *Game) MillNForEffect(playerID uuid.UUID, n int) error {
 // yet; that is what MillToZoneThenForEffect is for, and a caller that
 // reads the slice should use it.
 //
-// `until`, when non-nil, is consulted with the cards that have LANDED
-// in `dest` so far, in order, after each one arrives, and stops the
-// mill on the first list it accepts; that is Helm of Obedience's
-// "mills cards until a creature card is put into their graveyard" —
-// the card that ends it still moves. With `until` set, n <= 0 means
-// "no limit but the library", so an unbounded mill is expressible
-// without inventing a sentinel.
-//
-// #1159: it reads what ARRIVED, not what came off the library, so a
-// card the CR 614 window diverted (a commander taking the command
-// zone) does not end the run. Taking the whole landed list rather
-// than one card is what keeps the predicate PURE, which an undo
-// across the CR 903.9 prompt needs — see millStopForLocked.
+// There is NO `until` clause on this form, and #1161 took the
+// parameter away rather than documenting a rule about it. A run that
+// ends on what LANDED has to wait for each leg to land, and this form
+// is the one that does not wait: a leg paused on the CR 903.9 prompt
+// has not arrived when the loop asks, so the run walks past it. With
+// a "stop after the first creature card" that costs one card; with
+// Helm of Obedience's "or X cards", where the bound itself counts
+// arrivals (#1161), it costs the whole library. So the clause lives
+// on MillToZoneThenForEffect alone, which sequences, and the bad
+// combination is not a rule the mill enforces — it is a function
+// signature that cannot spell it.
 //
 // Running the library out stops the run, with no error and NO loss.
 // CR 701.17b: a player instructed to mill more cards than their
 // library holds "mill[s] as many as possible", and only an attempt to
 // DRAW from an empty library loses the game (CR 704.5b, CR 121.4).
-// The same holds for "exile the top N cards" and for an `until` run
-// that never finds its card — both simply end when the library does,
-// exactly as ExileTopFaceDownForEffect stops on an empty library.
+// The same holds for "exile the top N cards" and for the Then form's
+// `until` run that never finds its card — both simply end when the
+// library does, exactly as ExileTopFaceDownForEffect stops on an
+// empty library.
 // (#767: this used to set the empty-draw flag, then named
 // LosesAtNextSBA, so Glimpse the Unthinkable on a nine-card library
 // eliminated its target.)
@@ -1011,8 +1010,8 @@ func (g *Game) MillNForEffect(playerID uuid.UUID, n int) error {
 // reason a caller that reads the list should use the Then form.
 //
 // Caller must hold g.mu.
-func (g *Game) MillToZoneForEffect(playerID uuid.UUID, n int, dest ZoneKind, until func([]Card) bool) ([]uuid.UUID, error) {
-	return g.millThroughReplacementsLocked(playerID, n, dest, until, nil)
+func (g *Game) MillToZoneForEffect(playerID uuid.UUID, n int, dest ZoneKind) ([]uuid.UUID, error) {
+	return g.millThroughReplacementsLocked(playerID, n, dest, nil, nil)
 }
 
 // MillToZoneThenForEffect is the CONTINUATION form: mill exactly what
@@ -1046,6 +1045,30 @@ func (g *Game) MillToZoneForEffect(playerID uuid.UUID, n int, dest ZoneKind, unt
 // resume of one leg, or from the amount window's resume — and it runs
 // with an empty list when the mill was replaced away entirely, because
 // a caller sequencing work behind it has to be told even then.
+//
+// # The `until` clause lives HERE, and only here (#1161)
+//
+// `until`, when non-nil, is consulted with the cards that have LANDED
+// in `dest` so far, in order, after each one arrives, and ends the run
+// on the first list it accepts — Helm of Obedience's "until a creature
+// card OR X CARDS have been put into their graveyard this way,
+// whichever comes first", which is ONE predicate over the landed list
+// with both conditions in it (effects.UntilAny of effects.UntilCard
+// and effects.UntilCount). The card that ends the run still moves.
+//
+// With `until` set, n <= 0 means "no limit but the library", which is
+// how an unbounded run and a run whose only bound is a landed COUNT
+// are both written. A landed count is not a mill AMOUNT: CR 701.13b's
+// number is the one the instruction names and the one Bruvac the
+// Grandiloquent doubles, and a run that names no number has nothing
+// for the RepEventMill window to replace (mill.go).
+//
+// Why the clause is on the sequencing form and nowhere else: it is
+// answered about cards that have ARRIVED, and only this form waits for
+// them. The fire-and-forget loop walks past a leg paused on CR 903.9,
+// which with a landed-count bound would mill the whole library while
+// the prompts piled up. MillToZoneForEffect therefore takes no `until`
+// at all — the combination is unspellable rather than guarded against.
 //
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) MillToZoneThenForEffect(
@@ -1095,7 +1118,8 @@ func (g *Game) MillToZoneThenForEffect(
 // So an `until` run plans its whole CANDIDATE set here — every card
 // the bound allows, the library for an unbounded one — and the run is
 // ended in the routing loop instead, by the stop predicate
-// routeAllThenUntilLocked and routeAllLandedUntilLocked take. The plan
+// routeAllThenUntilLocked takes — the sequencing loop, which is the
+// only one a clause can reach since #1161. The plan
 // is still a flat list of IDs chosen before anything moves, so #529's
 // paused-leg behaviour is untouched: a leg waiting on CR 903.9 has not
 // landed, does not end the run, and the batch proceeds around it.

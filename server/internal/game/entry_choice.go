@@ -449,5 +449,14 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) (entered uu
 	if ev.stackItem != nil {
 		g.queueAltCostEntryTriggerLocked(moved, ev.stackItem)
 	}
+	// #1069: the card has left the zone it came from, and an open
+	// choose_cards prompt that still offers it there is offering an
+	// answer its own resolver would refuse — a graveyard pick whose
+	// candidate this reanimation just took. The entry side's one prune
+	// door (battlefield_entry.go). Last, and before the deferred entry
+	// tail for the reason executeZoneRouteLocked runs its route tail
+	// after its prunes: a withdrawal settles a run leg, and that
+	// continuation is the rest of somebody's card.
+	g.pruneChoicesAfterArrivalLocked()
 	return entered, nil
 }
