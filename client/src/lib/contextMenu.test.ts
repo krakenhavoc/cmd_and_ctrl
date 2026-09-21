@@ -365,7 +365,9 @@ describe("buildMenuSections — combat", () => {
     expect(sectionIDs(sections)).toContain("combat");
     expect(itemById(sections, "combat-attack-b")?.action).toEqual({
       type: "declare_attacker",
-      params: { attacker: "c1", target: "b" },
+      // ADR 0080 (#1063): auto_tap rides every attack payload so the
+      // CR 508.1a tax can reach the lands. Inert without a tax.
+      params: { attacker: "c1", target: "b", auto_tap: true },
     });
     expect(itemById(sections, "combat-attack-a")).toBeUndefined();
   });
@@ -405,6 +407,7 @@ describe("buildMenuSections — combat", () => {
           { attacker: "c1", target: "c" },
           { attacker: "c2", target: "c" },
         ],
+        auto_tap: true,
       },
     });
     // Never the controller's own seat.
