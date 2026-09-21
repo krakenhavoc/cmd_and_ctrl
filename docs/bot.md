@@ -1364,6 +1364,44 @@ predicates exist to prevent. The view's `cant_cast` stamp is the third
 reader of the same answer, so the human client greys exactly what the
 bot is not offered.
 
+## Never offered an attack it cannot pay for (#1063)
+
+The same shape, one step over. Propaganda, Ghostly Prison and Sphere of
+Safety make attacking their controller cost mana at CR 508.1a
+([ADR 0080](decisions/0080-attack-taxes.md)), and an attack tax is the
+first thing that can make a DECLARATION fail for want of it.
+
+`legal/combat.go`'s attack arm prices every candidate through
+`game.PriceAttackDeclarationForEffect` — the SAME function the
+declaration verbs charge with — and drops the move when neither the
+seat's mana pool nor the auto-tapper can cover it. A move that is
+offered on the strength of the tapper carries `auto_tap` in its params,
+because `Move.Params` is exactly the payload that performs the move.
+
+Two things follow that are worth stating:
+
+- **The policy weighs the price, it does not merely tolerate it.**
+  `MoveCost.mana` carries the cost string onto the wire (a policy may
+  not import `internal/game`, ADR 0033 §3, and an attack has no printed
+  cost to read off the CardView), and `attackValue` subtracts its mana
+  value times `Config.AttackTaxPenalty` — 0.30 by default, so one point
+  of tax is worth about one point of power getting through. A bot with
+  two lands and a 1/1 passes rather than spending its turn for two
+  damage. `LethalBonus` still dwarfs the term, so a lethal swing
+  happens at any price the seat can pay.
+- **Per-creature enumeration composes with a per-declaration charge.**
+  The enumerator offers one move per (attacker, target) pair and the
+  engine charges one declaration verb call at a time, so three separate
+  attacks under Propaganda pay {2} three times — the same {6} one bulk
+  `declare_attackers` pays. After each declaration the seat's mana has
+  shrunk and the next enumeration prices the next attack against what
+  is left, so a bot cannot strand itself mid-swing.
+
+The human client reads the same price from
+`turn.attack_targets[].tax` and labels its attack controls with it, so
+what the bot is refused and what a person is warned about come from one
+number.
+
 ## Known limitations
 
 Stated plainly, because most of them are design decisions rather than
