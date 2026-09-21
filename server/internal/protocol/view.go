@@ -2425,11 +2425,35 @@ func stampLegalTargets(g *game.Game, seats []PlayerView, anyGrant bool) {
 					// by stampGrantedPermissions, which already walks
 					// these piles asking whose permission covers each
 					// card (#1022, #1037).
-					var grant *game.CastPermission
-					if anyGrant && zone.live != nil && ci < len(zone.live.Cards) {
-						grant = grantedCast(g, caster, zone.live.Cards[ci], zone.kind)
+					//
+					// Both questions are asked of the ENGINE's card
+					// rather than of the projection (#1171). viewOfZone
+					// builds a pile card-for-card and in order — the
+					// alignment stampGrantedPermissions already relies
+					// on — so the live card is the one beside it, and
+					// reading it is what lets the gate below ask about
+					// a FACE the pile is not showing.
+					var live *game.Card
+					if zone.live != nil && ci < len(zone.live.Cards) {
+						live = &zone.live.Cards[ci]
 					}
-					if grant == nil && !game.CardCastableFromZone(c.oracleID, zone.kind) {
+					var grant *game.CastPermission
+					if anyGrant && live != nil {
+						grant = grantedCast(g, caster, *live, zone.kind)
+					}
+					// #1171: EVERY face a cast may choose, through the
+					// one predicate the bot enumerator reads
+					// (game.CardCastableFromAnyFace). This used to ask
+					// `c.oracleID`, which is the BARE oracle ID and so
+					// resolves to face 0's catalog entry whatever the
+					// card's other halves declare — while
+					// legal/cast.go asked every face. A card whose BACK
+					// face prints flashback was therefore a legal move
+					// for a bot and a card with no announce stamps at
+					// all on the wire: no `castable_here`, no price
+					// list, no target clause, and no cast button behind
+					// a cast CastSpell would have accepted.
+					if grant == nil && (live == nil || !game.CardCastableFromAnyFace(*live, zone.kind)) {
 						continue
 					}
 					// `castable_here` is NOT set here (#1015):

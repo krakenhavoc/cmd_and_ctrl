@@ -187,7 +187,14 @@ func (e *enumerator) castMovesFromZone(c game.Card, kind game.ZoneKind, from str
 		// (#1035). In another seat's pile the permission is the whole
 		// answer, which is also what CastSpell's zone lookup enforces
 		// — castSourceZoneLocked finds the card there only under one.
-		if perm == nil && !(mine && castableFromZoneAnyFace(c, kind)) {
+		// #1171: game.CardCastableFromAnyFace, which is the same
+		// predicate the VIEW asks now. One question per face rather
+		// than one for the card — an MDFC's halves are separate
+		// catalog entries and only the back may print flashback — and
+		// until #1171 the view asked it of face 0 alone, so a card
+		// this loop offered a bot reached the frame with no announce
+		// stamps at all.
+		if perm == nil && !(mine && game.CardCastableFromAnyFace(c, kind)) {
 			return
 		}
 	}
@@ -231,21 +238,6 @@ func (e *enumerator) castMovesFromZone(c game.Card, kind game.ZoneKind, from str
 			e.castMovesForCard(card, from, speed, perm, offer)
 		}
 	}
-}
-
-// castableFromZoneAnyFace reports whether ANY castable face of the
-// card declares `kind` a cast surface. One question per face rather
-// than one for the card, because an MDFC's halves are separate
-// catalog entries and only the back may print flashback.
-func castableFromZoneAnyFace(c game.Card, kind game.ZoneKind) bool {
-	for _, face := range c.CastableFaces() {
-		probe := c
-		probe.SetFace(face)
-		if game.CardCastableFromZone(game.CatalogKey(probe), kind) {
-			return true
-		}
-	}
-	return false
 }
 
 // landPlayMove emits the one move for playing a land out of `kind`,
