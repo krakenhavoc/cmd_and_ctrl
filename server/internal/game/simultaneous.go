@@ -522,7 +522,38 @@ func tuckRoute(opts TuckOptions) zoneRoute {
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) routeAllThenLocked(r zoneRoute, ids []uuid.UUID, then func(g *Game, landed []uuid.UUID) error) error {
-	return g.routeEachStepLocked(r, g.simultaneousExitSnapshotLocked(ids), ids, nil, then)
+	return g.routeAllThenUntilLocked(r, ids, nil, then)
+}
+
+// routeAllThenUntilLocked is the same batch with an EARLY STOP: after
+// each leg that lands, `stop` is asked about the landed list so far,
+// and the first time it says yes the rest of `ids` is dropped and
+// `then` runs with what landed.
+//
+// #1159. The mill's "until" run is the caller: "mills cards until a
+// creature card is put into their graveyard" ends on the card that
+// ARRIVED, not on the card that came off the library, so the verdict
+// belongs here — after routeLegLandedLocked has answered CR 400.7 —
+// rather than in the plan. A leg the CR 614 window diverted (a
+// commander taking the command zone, "exile it instead") did not
+// land, is not in the list, and does not end the run.
+//
+// `stop` is handed the landed list rather than the one card, and that
+// is the whole of what makes it replay-safe: `landed` is carried
+// forward BY VALUE through the continuations, so an undo across the
+// CR 903.9 prompt and a second answer ask `stop` the same question
+// with the same argument. A stateful predicate accumulating across
+// legs would not have that property — see MillToZone.Until, which is
+// typed as a function of the landed list for exactly this reason.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) routeAllThenUntilLocked(
+	r zoneRoute,
+	ids []uuid.UUID,
+	stop func(landed []uuid.UUID) bool,
+	then func(g *Game, landed []uuid.UUID) error,
+) error {
+	return g.routeEachStepLocked(r, g.simultaneousExitSnapshotLocked(ids), ids, nil, stop, then)
 }
 
 // routeEachStepLocked routes the head of `ids` and continues with the
@@ -534,6 +565,7 @@ func (g *Game) routeEachStepLocked(
 	r zoneRoute,
 	batch []Card,
 	ids, landed []uuid.UUID,
+	stop func(landed []uuid.UUID) bool,
 	then func(g *Game, landed []uuid.UUID) error,
 ) error {
 	// A leg with nothing to do is skipped rather than routed, and is
@@ -552,13 +584,20 @@ func (g *Game) routeEachStepLocked(
 	next, rest := ids[0], ids[1:]
 	return g.routeLegLocked(r, next, batch, func(g *Game) error {
 		out := landed
+		remaining := rest
 		if g.routeLegLandedLocked(r, next) {
 			// A fresh slice rather than an append in place: two runs of
 			// the same continuation (an undo, then the same answer
 			// again) must not see each other's entry.
 			out = append(append(make([]uuid.UUID, 0, len(landed)+1), landed...), next)
+			if stop != nil && stop(out) {
+				// #1159: the run ended on a card that ARRIVED. A local
+				// rather than clearing `rest`, so a replayed
+				// continuation still sees the tail it was given.
+				remaining = nil
+			}
 		}
-		return g.routeEachStepLocked(r, batch, rest, out, then)
+		return g.routeEachStepLocked(r, batch, remaining, out, stop, then)
 	})
 }
 
@@ -589,7 +628,29 @@ func (g *Game) routeAllLocked(r zoneRoute, ids []uuid.UUID) int {
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) routeAllLandedLocked(r zoneRoute, ids []uuid.UUID) []uuid.UUID {
-	return g.routeAllLandedPerLegLocked(ids, func(uuid.UUID) zoneRoute { return r })
+	return g.routeAllLandedUntilLocked(r, ids, nil)
+}
+
+// routeAllLandedUntilLocked is routeAllThenUntilLocked's fire-and-forget
+// twin: the same early stop, on the same question, in the loop that
+// cannot pause.
+//
+// #1159. The difference from the sequencing form is what a leg PAUSED
+// on the CR 903.9 prompt means. Here nothing waits for the answer, so
+// such a leg has not landed when `stop` is asked and the run carries
+// on past it — which is #529's "proceed AROUND the paused card" and is
+// why the mill's plan is a flat list of IDs in the first place. If the
+// owner later declines the command zone the card reaches the graveyard
+// after the run already moved on, so the run is one card long rather
+// than ending there. That is the fire-and-forget form's standing trade
+// (its returned list has always had it) and it is strictly better than
+// what it replaces, which ended the run on a card that never arrived
+// at all. A card that must be exact about where the run stops uses the
+// Then form, as Helm of Obedience and Improvisation Capstone do.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) routeAllLandedUntilLocked(r zoneRoute, ids []uuid.UUID, stop func(landed []uuid.UUID) bool) []uuid.UUID {
+	return g.routeAllLandedPerLegUntilLocked(ids, func(uuid.UUID) zoneRoute { return r }, stop)
 }
 
 // routeAllLandedPerLegLocked is that body with the route chosen PER
@@ -610,6 +671,18 @@ func (g *Game) routeAllLandedLocked(r zoneRoute, ids []uuid.UUID) []uuid.UUID {
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) routeAllLandedPerLegLocked(ids []uuid.UUID, routeFor func(uuid.UUID) zoneRoute) []uuid.UUID {
+	return g.routeAllLandedPerLegUntilLocked(ids, routeFor, nil)
+}
+
+// routeAllLandedPerLegUntilLocked is that body with the #1159 early
+// stop. `stop` is nil for every caller but the mill's `until` run.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) routeAllLandedPerLegUntilLocked(
+	ids []uuid.UUID,
+	routeFor func(uuid.UUID) zoneRoute,
+	stop func(landed []uuid.UUID) bool,
+) []uuid.UUID {
 	if len(ids) == 0 {
 		return nil
 	}
@@ -625,6 +698,9 @@ func (g *Game) routeAllLandedPerLegLocked(ids []uuid.UUID, routeFor func(uuid.UU
 		}
 		if g.routeLegLandedLocked(r, id) {
 			landed = append(landed, id)
+			if stop != nil && stop(landed) {
+				break
+			}
 		}
 	}
 	return landed

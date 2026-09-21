@@ -72,6 +72,31 @@ import (
 // contract CreateTokensForEffect's empty ID slice and
 // ScryThenForEffect's zero already carry, and the reason #893's doc
 // already told a caller that reads the list to use the Then form.
+//
+// # Where an "until" run ends (#1159)
+//
+// On the card that ARRIVED in dest, not on the card that came off the
+// library. The clause is CR 400.7's, the same reading the landed list
+// already gives the Then continuation: a commander whose owner takes
+// the command zone was never put into that graveyard, so it is not one
+// of the cards "until a creature card is put into their graveyard"
+// counts, and the run carries on.
+//
+// The planning stays where #529 put it — the whole candidate set is
+// chosen top-down before anything moves, so a leg paused on CR 903.9
+// does not stall the run and does not shorten it. What moved is the
+// VERDICT: millPlanLocked no longer truncates the plan, and the clause
+// rides the routing loop as a stop predicate
+// (routeAllLandedUntilLocked, routeAllThenUntilLocked) consulted only
+// for legs that landed.
+//
+// The clause is therefore typed as a function of the whole LANDED LIST
+// rather than of one card. That is not decoration: the loops carry the
+// landed list forward by value across a pause, so a predicate over it
+// is pure and an undo that rewinds into an open prompt asks the same
+// question and gets the same answer. A per-card predicate accumulating
+// state (Improvisation Capstone's running mana-value total) would be
+// consumed by the first run and wrong on the replay.
 
 // millTail is what a mill instruction still owes once the amount
 // settles — the mill's sibling of zoneRoute, tokenTail and
@@ -88,12 +113,24 @@ type millTail struct {
 	// this way" against (CR 400.7, ADR 0013 §5l).
 	dest ZoneKind
 
-	// until, when non-nil, stops the run AFTER the first card it
-	// accepts — Helm of Obedience's "until a creature card is put into
-	// their graveyard". It is answered against the cards as they come
-	// off the library, inside millPlanLocked, which is what lets the
-	// plan be a plain list of IDs.
-	until func(Card) bool
+	// until, when non-nil, stops the run AFTER the first card that
+	// LANDS in dest and makes it true — Helm of Obedience's "until a
+	// creature card is put into their graveyard".
+	//
+	// #1159: it is answered in the ROUTING loop, against the cards
+	// that arrived (CR 400.7, landedInZoneLocked), not in
+	// millPlanLocked against the cards that came off the library. A
+	// card the CR 614 window diverted was never put into that
+	// graveyard, so it is not one of the cards the clause counts and
+	// the run carries on past it. The plan is still a flat list of IDs
+	// chosen before anything moves, so the batch body still proceeds
+	// AROUND a leg paused on CR 903.9 (#529).
+	//
+	// It takes the whole landed list rather than one card so that it
+	// is pure: an undo that rewinds into an open prompt replays the
+	// answer and must ask the same question. millStopForLocked binds
+	// it to the plan's pre-move copies.
+	until func([]Card) bool
 
 	// then is the continuation form's callback, run with the cards
 	// that LANDED in dest. nil for the fire-and-forget form, whose
@@ -116,7 +153,7 @@ func (g *Game) millThroughReplacementsLocked(
 	playerID uuid.UUID,
 	n int,
 	dest ZoneKind,
-	until func(Card) bool,
+	until func([]Card) bool,
 	then func(g *Game, milled []uuid.UUID) error,
 ) ([]uuid.UUID, error) {
 	// The up-front errors, asked before the window rather than inside
@@ -200,16 +237,24 @@ func (g *Game) applyResolvedMillLocked(ev *ReplacementEvent) ([]uuid.UUID, error
 		// to be told.
 		return nil, g.abandonMillLocked(ev)
 	}
-	ids, err := g.millPlanLocked(ev.MillPlayer, ev.MillCount, tail.dest, tail.until)
+	plan, err := g.millPlanLocked(ev.MillPlayer, ev.MillCount, tail.dest, tail.until)
 	if err != nil {
 		return nil, err
 	}
+	ids := make([]uuid.UUID, 0, len(plan))
+	for _, c := range plan {
+		ids = append(ids, c.InstanceID)
+	}
+	// #1159: an `until` clause ends the run on a card that ARRIVED, so
+	// it rides the routing loop as a stop predicate rather than
+	// truncating the plan. nil when there is no clause.
+	stop := millStopForLocked(plan, tail.until)
 	r := millRoute(ev.MillPlayer, tail.dest)
 	if tail.then == nil {
 		// Fire-and-forget: every leg is routed on this line and one
 		// that pauses on CR 903.9 lands later without holding the rest
 		// of the mill up (#529).
-		return g.routeAllLandedLocked(r, ids), nil
+		return g.routeAllLandedUntilLocked(r, ids, stop), nil
 	}
 	// Cleared THROUGH the pointer, for the reason the token and
 	// keyword-action tails are: a continuation that re-enters the
@@ -218,7 +263,7 @@ func (g *Game) applyResolvedMillLocked(ev *ReplacementEvent) ([]uuid.UUID, error
 	// cloneReplacementResume gives it).
 	then := tail.then
 	tail.then = nil
-	return nil, g.routeAllThenLocked(r, ids, then)
+	return nil, g.routeAllThenUntilLocked(r, ids, stop, then)
 }
 
 // abandonMillLocked is the terminal outcome of a mill that moved

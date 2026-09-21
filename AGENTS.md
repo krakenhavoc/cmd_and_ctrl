@@ -1726,12 +1726,40 @@ Restrictions are checked **at declaration only** (CR 508.1c, 509.1b).
 A creature pacified after attackers were declared keeps attacking.
 
 [ADR 0045](docs/decisions/0045-combat-restrictions.md) has the
-taxonomy, including what the vocabulary deliberately cannot say
-(Propaganda's attack cost; Silent Arbiter's and Crawlspace's count
-limits, which belong beside `Game.blockerBoundsLocked` as set-shaped
-predicates rather than as bits — one more entry in
-`checkBlockDeclarationLocked`, the validator `DeclareBlockers` runs
-over a whole declaration before it stores any of it).
+taxonomy, including what the vocabulary deliberately cannot say:
+Silent Arbiter's and Crawlspace's count limits, which belong beside
+`Game.blockerBoundsLocked` as set-shaped predicates rather than as
+bits — one more entry in `checkBlockDeclarationLocked`, the validator
+`DeclareBlockers` runs over a whole declaration before it stores any
+of it.
+
+**Propaganda's attack cost used to be on that list and is not any
+more** ([ADR 0080](docs/decisions/0080-attack-taxes.md), #1063). A
+price is not a prohibition, so it is not a bit:
+
+```go
+AttackTaxes: []game.AttackTax{
+    AttackTax("{2}", "Creatures can't attack you unless their controller pays {2} …"),
+    // …or the count-scaled form, and the planeswalker clause:
+    ProtectingPlaneswalkers(AttackTaxCounting(enchantmentsYouControl, "… {X}, where X is …")),
+},
+```
+
+The "you" is **structural** — a tax protects its own controller and
+nothing a card file writes can widen it to another seat. `ManaCost`
+returns a cost STRING for ONE attacking creature; the engine asks it
+once per attacker and concatenates, so three attackers into Propaganda
+is `{2}{2}{2}`. `AttackTaxScope`'s zero value is the narrow "you", so a
+card that forgets `ProtectingPlaneswalkers` under-taxes rather than
+over-taxes.
+
+**The engine charges it; you do not.** `Game.PriceAttackDeclaration`
+is the one pricer, `DeclareAttackerWith` / `DeclareAttackersWith` pay
+it at CR 508.1a before anything is staged, ALL OR NOTHING, and
+`internal/legal` calls the same pricer so an unaffordable attack is
+never offered (#544). It pays through the same
+`payAbilityManaCostLocked` an activated ability uses, so `ManaTrigger`
+fires for the taps and nothing about mana is duplicated.
 
 ### Attaching, and an ability whose source has gone (#812)
 

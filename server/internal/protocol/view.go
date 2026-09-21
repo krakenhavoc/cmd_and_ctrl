@@ -2025,6 +2025,26 @@ type TurnView struct {
 type AttackTargetView struct {
 	Kind string `json:"kind"`
 	ID   string `json:"id"`
+
+	// Tax is what ONE creature pays to attack this target under
+	// CR 508.1a — "{2}" against a seat with Propaganda out, "{2}{2}"
+	// against one with Propaganda and Ghostly Prison, "" when
+	// attacking it is free. ADR 0080 (#1063).
+	//
+	// Priced by the engine for the ACTIVE seat, per creature, so the
+	// client labels the control without re-deriving a rule — #429's
+	// line, the one ADR 0045 §6 repeats: nothing in the client
+	// re-derives who can attack, and nothing here re-derives what it
+	// costs. A declaration's real price is this once per attacking
+	// creature, concatenated.
+	//
+	// It is a per-target flat rate, which is exactly what every
+	// printed card in the family charges. A hypothetical tax that
+	// priced one creature differently from another would make this
+	// field a lie, and the enumerator's per-move MoveCost.Mana — which
+	// IS per creature — is the honest reading for a client that needs
+	// one. The field would go then, rather than grow a caveat.
+	Tax string `json:"tax,omitempty"`
 }
 
 // ViewOfGameFor builds a per-viewer wire snapshot. Same shape as
@@ -3122,12 +3142,50 @@ func stampCombatTargets(g *game.Game, view *GameView) {
 	if active == nil {
 		return
 	}
+	// ADR 0080: the per-creature attack tax, priced against a
+	// REPRESENTATIVE attacker rather than a real one, because the
+	// field is about the target and the printed family charges the
+	// same for every creature. Any creature the active seat controls
+	// answers the question; the first one is used so the answer is
+	// stable frame to frame.
+	probe := attackTaxProbe(g, active.ID)
 	for _, t := range g.AttackTargetsForEffect(active.ID) {
-		view.Turn.AttackTargets = append(view.Turn.AttackTargets, AttackTargetView{
+		row := AttackTargetView{
 			Kind: string(t.Kind),
 			ID:   t.ID.String(),
-		})
+		}
+		if probe != uuid.Nil {
+			row.Tax = g.PriceAttackDeclarationForEffect([]game.AttackDeclaration{{
+				Attacker: probe,
+				Target:   t.ID,
+			}}).Cost
+		}
+		view.Turn.AttackTargets = append(view.Turn.AttackTargets, row)
 	}
+}
+
+// attackTaxProbe picks the creature the attack-tax preview is priced
+// against: the active seat's first battlefield creature, or uuid.Nil
+// when it controls none (in which case there is nothing to declare and
+// no price to show).
+//
+// A probe rather than a per-creature matrix because AttackTargetView
+// is a per-TARGET row and every printed attack tax charges the same
+// for every creature. The enumerator's MoveCost.Mana is the per-move
+// answer for a consumer that needs one.
+//
+// Caller holds g's read lock.
+func attackTaxProbe(g *game.Game, seat uuid.UUID) uuid.UUID {
+	if g.Battlefield == nil {
+		return uuid.Nil
+	}
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.Controller == seat && c.IsCreature() {
+			return c.InstanceID
+		}
+	}
+	return uuid.Nil
 }
 
 // stampNoUntap projects the untap-step state that needs the game handle.

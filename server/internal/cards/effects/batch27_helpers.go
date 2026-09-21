@@ -346,14 +346,10 @@ func b27ExileTopUntilTotalManaValue(ctx *Context, player uuid.UUID, threshold in
 	if ctx.PlayerByID(player) == nil {
 		return nil
 	}
-	total := 0
 	return MillToZone{
 		Player: player,
 		To:     game.ZoneExile,
-		Until: func(c game.Card) bool {
-			total += c.ManaValue()
-			return total >= threshold
-		},
+		Until:  UntilTotalManaValue(threshold),
 	}.Apply(ctx)
 }
 

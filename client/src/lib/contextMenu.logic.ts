@@ -20,7 +20,14 @@
 // caller that wants a two-option "yes / no" menu builds one section
 // with two action items and reuses the component verbatim.
 
-import { attackAllLabel, attackAllParams, planAttackAll, seatLabel } from "./attackAll";
+import {
+  attackAllLabel,
+  attackAllParams,
+  attackAllTaxLabel,
+  attackTaxOn,
+  planAttackAll,
+  seatLabel,
+} from "./attackAll";
 import { attackTargetHint, permanentAttackTargets } from "./attackTargets";
 import { isCreature, isLand, isPlaneswalker } from "./cardTypes";
 import { counterCostBlocked } from "./counterCost";
@@ -771,9 +778,15 @@ function combatItems(view: GameView, card: CardView): MenuItem[] {
         ...defenders.map((s) => ({
           id: `combat-attack-${s.id}`,
           label: s.display_name || s.name,
+          // ADR 0080 (#1063): the seat's CR 508.1a attack tax, stated
+          // on the control that charges it. Read off the server's
+          // price, never derived.
+          hint: attackTaxOn(view, s.id) ? `costs ${attackTaxOn(view, s.id)}` : undefined,
           action: {
             type: "declare_attacker" as ActionType,
-            params: { attacker: card.instance_id, target: s.id },
+            // auto_tap: the tax may need lands tapped for it. Inert
+            // at a table with no attack tax on it.
+            params: { attacker: card.instance_id, target: s.id, auto_tap: true },
           },
         })),
         // S27: planeswalkers and battles are attackable too
@@ -786,7 +799,7 @@ function combatItems(view: GameView, card: CardView): MenuItem[] {
           hint: attackTargetHint(view, t),
           action: {
             type: "declare_attacker" as ActionType,
-            params: { attacker: card.instance_id, target: t.id },
+            params: { attacker: card.instance_id, target: t.id, auto_tap: true },
           },
         })),
       ],
@@ -819,7 +832,12 @@ function combatItems(view: GameView, card: CardView): MenuItem[] {
             {
               id: `combat-attack-all-${s.id}`,
               label: seatLabel(s),
-              hint: attackAllLabel(plan, s),
+              // ADR 0080: the tax clause joins the count, so the
+              // price is on the control that commits to it rather
+              // than in a rejection toast afterwards.
+              hint: [attackAllLabel(plan, s), attackAllTaxLabel(view, plan, s.id)]
+                .filter(Boolean)
+                .join(" · "),
               action: { type: "declare_attackers" as ActionType, params },
             },
           ];

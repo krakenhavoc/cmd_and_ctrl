@@ -470,6 +470,20 @@ type Spec struct {
 	// cost. Nil for nearly every card.
 	SelfCostModifiers []game.CostModifier
 
+	// AttackTaxes is the CR 508.1a attack tax: "creatures can't attack
+	// you unless their controller pays {2} for each creature they
+	// control that's attacking you" — Propaganda, Ghostly Prison,
+	// Windborn Muse, Sphere of Safety. ADR 0080.
+	//
+	// A static on the DEFENDER's side, read when the attacking player
+	// declares and charged as one announce-time payment on the whole
+	// declaration. The "you" is the permanent's own controller and is
+	// structural, so a card cannot accidentally tax the table.
+	//
+	// Build the entries with AttackTax / AttackTaxCounting in
+	// attack_tax.go. Nil for nearly every card.
+	AttackTaxes []game.AttackTax
+
 	// CastableZones is the S29 "you may cast this card from
 	// somewhere other than your hand" declaration (CR 601.2, and
 	// every keyword in CR 702 that grants an alternative cast

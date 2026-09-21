@@ -9,6 +9,14 @@ import (
 type attackParams struct {
 	Attacker string `json:"attacker"`
 	Target   string `json:"target"`
+
+	// AutoTap lets the declaration tap lands for the CR 508.1a attack
+	// tax (ADR 0080). Set only when the seat's pool alone cannot cover
+	// the tax but the tapper can, exactly as the cast arm sets it —
+	// the Move doc's promise is that Params is EXACTLY the payload
+	// that performs the move, so a move offered on the strength of the
+	// tapper has to carry permission to use it.
+	AutoTap bool `json:"auto_tap,omitempty"`
 }
 
 type blockParams struct {
@@ -70,13 +78,48 @@ func (e *enumerator) combatMoves() {
 			// seats. Enumerating only players would have left the bot
 			// unable to see a lethal swing at a planeswalker.
 			for _, t := range g.AttackTargetsForEffect(e.seat) {
+				// ADR 0080 / #1063: the CR 508.1a attack tax. Priced
+				// through the SAME function the engine charges
+				// (PriceAttackDeclarationForEffect), so the price the
+				// bot is offered and the price it is charged cannot
+				// disagree, and dropped outright when the seat cannot
+				// pay it — the #544 rule, that a bot is never offered
+				// a move the engine refuses.
+				//
+				// Priced per (attacker, target) pair because that is
+				// the granularity the move declares: the engine
+				// charges one declaration verb call at a time, so
+				// three separate attacks under Propaganda pay {2}
+				// three times, and each re-enumeration prices the next
+				// one against the mana the last one left.
+				price := g.PriceAttackDeclarationForEffect([]game.AttackDeclaration{{
+					Attacker: c.InstanceID,
+					Target:   t.ID,
+				}})
+				autoTap := false
+				if !price.IsFree() {
+					if !e.p.ManaPool.CanPayFor(price.Total, 0, game.ManaSpendContext{}) {
+						// Only the tapper can cover it, so the move
+						// has to say so — and if the tapper cannot
+						// either, the move is not offered at all.
+						if _, ok := e.g.AutoTapForCostForEffectExcluding(e.seat, price.Total, 0, nil); !ok {
+							continue
+						}
+						autoTap = true
+					}
+				}
 				e.add(Move{
 					Type:   TypeDeclareAttacker,
 					Player: e.seat,
 					Kind:   KindAttack,
-					Label:  "Attack " + attackTargetLabel(g, t) + " with " + c.Name,
+					Label:  attackMoveLabel(g, t, c.Name, price),
 					Source: c.InstanceID,
-					Params: mustJSON(attackParams{Attacker: c.InstanceID.String(), Target: t.ID.String()}),
+					Cost:   withAttackTax(nil, price.Cost),
+					Params: mustJSON(attackParams{
+						Attacker: c.InstanceID.String(),
+						Target:   t.ID.String(),
+						AutoTap:  autoTap,
+					}),
 				})
 			}
 		}
@@ -198,6 +241,34 @@ func joinNames(names []string) string {
 
 // attackTargetLabel renders an attack target for the move's human
 // label: a seat's name, or a permanent's card name.
+// attackMoveLabel is the move's human line, with the CR 508.1a tax
+// named when there is one. A bot's decision log and the client's move
+// list both read it, and "Attack Alice with Bear" reads as free
+// whether it is or not.
+func attackMoveLabel(g *game.Game, t game.AttackTargetRef, attacker string, price game.AttackTaxPrice) string {
+	label := "Attack " + attackTargetLabel(g, t) + " with " + attacker
+	if price.IsFree() {
+		return label
+	}
+	return label + " (pays " + price.Cost + ")"
+}
+
+// withAttackTax adds the CR 508.1a mana price to a (possibly nil)
+// MoveCost, returning a fresh value so no two moves share one — the
+// contract withCounterPrice has, for the same reason.
+func withAttackTax(c *MoveCost, mana string) *MoveCost {
+	if mana == "" {
+		return c
+	}
+	out := MoveCost{}
+	if c != nil {
+		out = *c
+		out.Counters = append([]CounterPrice(nil), c.Counters...)
+	}
+	out.Mana = mana
+	return &out
+}
+
 func attackTargetLabel(g *game.Game, t game.AttackTargetRef) string {
 	if t.Kind == game.AttackTargetPlayer {
 		for _, p := range g.Seats {

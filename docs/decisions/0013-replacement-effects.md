@@ -1077,6 +1077,47 @@ the command zone was never put into a graveyard, so by CR 701.17a's
 letter the Helm should keep milling, and it stops instead. That is the
 caveat Helm of Obedience carries, rewritten to say so.
 
+> **Amendment (2026-09-21, [#1159](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1159)): §3 was wrong, and
+> the deviation it declared was the bug.** "Exact" was the claim that
+> answering `until` before the first move is card-for-card identical
+> to answering it after the last, and it is not: a card the CR 614
+> window diverts comes off the library and never arrives, so the two
+> readings disagree on exactly the case §3 shipped as a caveat. CR
+> 400.7 — the reading `landedInZoneLocked` already gives the `Then`
+> continuation, §5l — says the clause counts the object that ARRIVED.
+>
+> What changed: `millPlanLocked` still chooses the whole candidate set
+> up front, top-down, before anything moves, so #529's paused-leg
+> behaviour and the flat list of IDs are untouched. It no longer
+> TRUNCATES that list. The verdict moved into the routing loop, as a
+> stop predicate `routeAllThenUntilLocked` and
+> `routeAllLandedUntilLocked` consult only for legs that landed.
+>
+> The clause is now typed as a function of the whole landed list,
+> `func([]Card) bool`, rather than of one card. The loops carry that
+> list forward by value across a pause (§5b), so a predicate over it
+> is pure and an undo that rewinds into an open CR 903.9 prompt asks
+> the same question twice and gets the same answer. A per-card
+> predicate accumulating state across legs — Improvisation Capstone's
+> running mana-value total — would be consumed by the first run and
+> wrong on the replay, which is the reason for the shape and not a
+> stylistic preference. `effects.UntilCard` and
+> `effects.UntilTotalManaValue` are the two catalog shapes.
+>
+> The fire-and-forget form keeps §4's trade in one more place: a leg
+> paused on CR 903.9 has not landed when the loop asks, so the run
+> carries on past it rather than waiting. A card that must be exact
+> about where the run ends uses the `Then` form, which both Helm of
+> Obedience and Improvisation Capstone do.
+>
+> Helm of Obedience's "until" caveat and Improvisation Capstone's
+> diverted-card caveat both come off. What Helm still declares is the
+> OTHER half of its printed sentence: X bounds the cards the run takes
+> off the library, not the cards that arrive. That is the mill AMOUNT
+> (CR 701.13b counts cards moved, and it is the number Bruvac the
+> Grandiloquent doubles), not the clause, and it is filed rather than
+> folded in here.
+
 **4. The two forms differ in one thing, and #529 chose it.** A paused
 mill must not re-read the top of the library, and the plan-up-front
 answers that for both forms. What the FIRE-AND-FORGET form keeps is

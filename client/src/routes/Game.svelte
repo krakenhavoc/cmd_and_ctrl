@@ -50,6 +50,8 @@
   import {
     attackAllLabel,
     attackAllParams,
+    attackAllTaxLabel,
+    attackTaxOn,
     blockedSummary,
     planAttackAll,
     seatLabel,
@@ -700,6 +702,10 @@
     client.sendAction("declare_attacker", undefined, {
       attacker: combatSelection.cardID,
       target: targetPlayerID,
+      // ADR 0080 (#1063): the CR 508.1a attack tax may need lands
+      // tapped. Inert at a table with no attack tax on it, and the
+      // price is already shown on the seat control this came from.
+      auto_tap: true,
     });
     combatSelection = null;
     play("attack");
@@ -734,6 +740,17 @@
     combatSelection = null;
     client.sendAction("declare_attackers", undefined, params);
     play("attack");
+  }
+
+  // ADR 0080 (#1063): the button's tooltip names the CR 508.1a price
+  // as well as the count, so the cost of a wide swing under
+  // Propaganda is legible before the click rather than arriving as a
+  // rejection toast. The price is the server's; nothing here derives
+  // it (#429).
+  function attackAllTitle(opp: PlayerView): string {
+    return [attackAllLabel(attackPlan, opp), attackAllTaxLabel(view, attackPlan, opp.id)]
+      .filter(Boolean)
+      .join(" · ");
   }
 
   // The inverse of a wide declaration is undo, not a bulk "unattack":
@@ -1326,11 +1343,15 @@
                     <button
                       type="button"
                       class="primary att-btn"
-                      title={attackAllLabel(attackPlan, attackPlan.defenders[0]) +
-                        keyHint(keys.attackAll)}
+                      title={attackAllTitle(attackPlan.defenders[0]) + keyHint(keys.attackAll)}
                       onclick={() => attackAllAt(attackPlan.defenders[0].id)}
                     >
                       {attackAllLabel(attackPlan, attackPlan.defenders[0])}
+                      {#if attackAllTaxLabel(view, attackPlan, attackPlan.defenders[0].id)}
+                        <span class="muted"
+                          >· {attackAllTaxLabel(view, attackPlan, attackPlan.defenders[0].id)}</span
+                        >
+                      {/if}
                     </button>
                   {:else}
                     <!-- Multi-opponent: one button per seat rather than a
@@ -1341,11 +1362,14 @@
                       <button
                         type="button"
                         class="att-btn opp-btn"
-                        title={attackAllLabel(attackPlan, opp)}
+                        title={attackAllTitle(opp)}
                         onclick={() => attackAllAt(opp.id)}
                       >
                         <span class="seat-dot" style="background:{seatColor(opp.seat)}"></span>
                         {seatLabel(opp)}
+                        {#if attackTaxOn(view, opp.id)}
+                          <span class="muted">{attackTaxOn(view, opp.id)}</span>
+                        {/if}
                       </button>
                     {/each}
                   {/if}

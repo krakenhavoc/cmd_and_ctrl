@@ -78,7 +78,12 @@ type CardDef struct {
 	// addendum §11), read by SelfCostModifiersFor for the spell being
 	// priced and never from the battlefield.
 	SelfCostModifiers []CostModifier
-	CastableZones     []ZoneKind
+	// AttackTaxes are the "creatures can't attack you unless their
+	// controller pays {N}" statics this permanent contributes
+	// (CR 508.1a, ADR 0080) — Propaganda, Ghostly Prison, Windborn
+	// Muse. Read from the battlefield through AttackTaxesForCard.
+	AttackTaxes   []AttackTax
+	CastableZones []ZoneKind
 
 	// SpecialActions are the CR 116.2 special actions the card offers
 	// from its owner's hand — foretell (CR 702.143a) and suspend
@@ -306,6 +311,12 @@ func init() {
 	CatalogCostModifiers = func(key string) []CostModifier {
 		if d := catalogDef(key); d != nil {
 			return d.CostModifiers
+		}
+		return nil
+	}
+	CatalogAttackTaxes = func(key string) []AttackTax {
+		if d := catalogDef(key); d != nil {
+			return d.AttackTaxes
 		}
 		return nil
 	}

@@ -296,21 +296,22 @@ func TestIssue1158CapstoneResolvesOffMalcolmAtFlashSpeed(t *testing.T) {
 	}
 }
 
-// TestIssue1158CapstoneCountsACardTheWindowDivertedIsTheDeclaredCAVEAT
-// pins the one real defect the #1158 reproduction turned up, which is
-// NOT what the report describes and is not new: MillToZone's `until`
-// predicate is answered in millPlanLocked against the cards that came
-// OFF the library, before the CR 614 window has said where any of
-// them went. A commander whose owner takes the command zone never
-// reached exile, so CR 400.7 says it is not one of the cards "you
-// exile" and the run should carry on — and it stops instead, one card
-// short and granting nothing.
+// TestIssue1158CapstoneCarriesOnPastACardTheWindowDiverted is the
+// pinned caveat of #1158 with its verdict flipped by #1159.
 //
-// Helm of Obedience declares the same limitation in its own words and
-// millPlanLocked's doc comment names it. The Capstone did not declare
-// it; it does now. Pinned here so the day the mill reads the landed
-// truth, this test fails and both caveats come off together.
-func TestIssue1158CapstoneCountsACardTheWindowDivertedIsTheDeclaredCaveat(t *testing.T) {
+// The defect the #1158 reproduction turned up — not what that report
+// described — was that MillToZone's `until` predicate was answered in
+// millPlanLocked against the cards that came OFF the library, before
+// the CR 614 window had said where any of them went. A commander
+// whose owner takes the command zone never reached exile, so CR 400.7
+// says it is not one of the cards "you exile", and the run stopped on
+// it anyway: one card short, granting nothing.
+//
+// #1159 moved the verdict into the routing loop, where the landed
+// outcome is known. This test now asserts the rules answer on both
+// lines, and the caveats it used to hold in place — the Capstone's
+// and the "until" half of Helm of Obedience's — are gone.
+func TestIssue1158CapstoneCarriesOnPastACardTheWindowDiverted(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	cmd := improvisationCapstoneCard("Pirate Commander", "Legendary Creature — Pirate", "{2}{U}{R}")
@@ -333,16 +334,16 @@ func TestIssue1158CapstoneCountsACardTheWindowDivertedIsTheDeclaredCaveat(t *tes
 	if !me.Command.Contains(ids[0]) {
 		t.Fatal("the commander did not take the command zone")
 	}
-	// THE CAVEAT: the commander's mana value 4 satisfied the run even
-	// though nothing was exiled, so the second card stays in the
-	// library and no card is granted. The rules answer is the
-	// opposite on both lines.
-	if g.Exile.Contains(ids[1]) {
-		t.Error("the run continued past a diverted card — the caveat on Improvisation Capstone is stale, remove it")
+	// #1159 flipped this. The commander was never put into exile
+	// (CR 400.7), so its mana value 4 counts toward nothing, the run
+	// carries on to the Wurm, and the Wurm's mana value 6 takes the
+	// total over the printed 4 on its own.
+	if !g.Exile.Contains(ids[1]) {
+		t.Error("the run stopped on a card the CR 614 window diverted; it should have carried on to the next card")
 	}
 	g.ReadSnapshot(func() {
-		if len(me.CastPermissions) != 0 {
-			t.Errorf("grants held: %d, want 0 while the caveat stands", len(me.CastPermissions))
+		if len(me.CastPermissions) != 1 {
+			t.Errorf("grants held: %d, want 1 — the card that really reached exile", len(me.CastPermissions))
 		}
 	})
 }

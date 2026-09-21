@@ -416,6 +416,13 @@ export interface MoveCost {
   // permanent — often not the move's source (Heart of Kiran's crew
   // paid with a planeswalker's loyalty).
   counters?: { card_id: string; counter: string; n: number }[];
+  // ADR 0080 (#1063): a cost string the move charges that `params`
+  // cannot name — today exactly one thing, the CR 508.1a attack tax
+  // on a declare_attacker move ("{2}" for an attack into Propaganda).
+  // A cast's mana is its printed cost and lives on the CardView; an
+  // attack has no printed cost, so without this a consumer prices an
+  // attack under Ghostly Prison exactly like a free one.
+  mana?: string;
 }
 
 // LogKind mirrors `protocol.LogKind` server-side. Coarser than the
@@ -1971,6 +1978,17 @@ export interface ManaAbilityView {
 export interface AttackTargetView {
   kind: "player" | "planeswalker" | "battle";
   id: string;
+  // ADR 0080 (#1063): the CR 508.1a price ONE creature pays to attack
+  // this target — "{2}" against a seat with Propaganda out, "{2}{2}"
+  // against one with Propaganda and Ghostly Prison, absent when
+  // attacking it is free. A declaration's real price is this once per
+  // attacking creature.
+  //
+  // READ IT, DON'T DERIVE IT. The server prices it for the active
+  // seat through the same function the engine charges with; nothing
+  // in the client re-derives what an attack costs, for the same
+  // reason nothing re-derives who may attack (#429, ADR 0045 §6).
+  tax?: string;
 }
 
 export interface TurnView {

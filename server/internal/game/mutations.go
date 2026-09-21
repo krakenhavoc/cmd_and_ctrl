@@ -5945,6 +5945,20 @@ func (g *Game) stackHasItemsLocked() bool {
 // announces once, naming the defender it ends on, instead of the one
 // it was first declared against. See attackers.go.
 func (g *Game) DeclareAttacker(attackerID, targetPlayerID uuid.UUID) error {
+	return g.DeclareAttackerWith(attackerID, targetPlayerID, DeclareAttackersParams{})
+}
+
+// DeclareAttackerWith is DeclareAttacker with the CR 508.1a payment
+// posture named (ADR 0080, #1063) — whether the attack tax may tap
+// lands, which lands are locked, and how many Phyrexian symbols are
+// being paid with life.
+//
+// A twin rather than a changed signature because DeclareAttacker has
+// 190 call sites and every one of them is at a table with no attack
+// tax on it, where the zero value costs nothing and does nothing. The
+// zero value is also the STRICT posture — pay from the pool, refuse if
+// short — so a caller that forgets the params cannot waive a tax.
+func (g *Game) DeclareAttackerWith(attackerID, targetPlayerID uuid.UUID, params DeclareAttackersParams) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
@@ -5994,6 +6008,22 @@ func (g *Game) DeclareAttacker(attackerID, targetPlayerID uuid.UUID) error {
 			// Pacifism a blank. See restrictions.go.
 			if !CanAttack(card) {
 				return ErrCantAttack
+			}
+			// CR 508.1a, ADR 0080: the attack tax. Priced against the
+			// one attack this verb declares, and paid BEFORE anything
+			// is staged, so a refusal leaves the creature untapped,
+			// undeclared and the board exactly as it was.
+			//
+			// This verb is deliberately lax about ELIGIBILITY for the
+			// sandbox's hand-forcing, and the tax is not eligibility.
+			// A free declaration under Propaganda is the card played
+			// as a blank, which is the #259 direction the roadmap
+			// refuses — and it is also what the enumerator would then
+			// be offering, since it emits this verb (#544).
+			decl := []AttackDeclaration{{Attacker: attackerID, Target: targetPlayerID}}
+			price := g.priceAttackDeclarationLocked(decl)
+			if err := g.payAttackTaxLocked(card.Controller, price, params); err != nil {
+				return err
 			}
 			// #859: staging, not announcing. A creature is declared
 			// as an attacker once (CR 508.1), and the sandbox lets a
@@ -6072,7 +6102,26 @@ type AttackDeclaration struct {
 // the room layer neither records an undo entry nor broadcasts a
 // snapshot for a no-op. Caller authorization (does this seat control
 // these creatures) is enforced one layer up, in actions.Dispatch.
+//
+// ADR 0080 adds the one exception to "skip what doesn't fit": the
+// CR 508.1a attack tax is ALL OR NOTHING. See DeclareAttackersWith.
 func (g *Game) DeclareAttackers(decls []AttackDeclaration) ([]uuid.UUID, error) {
+	return g.DeclareAttackersWith(decls, DeclareAttackersParams{})
+}
+
+// DeclareAttackersWith is DeclareAttackers with the CR 508.1a payment
+// posture named (ADR 0080, #1063).
+//
+// The tax is priced against the ELIGIBLE set — what this verb would
+// actually declare after skipping tapped, sick and restricted entries
+// — and paid as ONE payment before any creature is staged. If it
+// cannot be paid in full, nothing is declared and an
+// *AttackTaxUnpaidError comes back: a partially paid declaration is
+// not a legal declaration, and which attacks to drop when the seat can
+// afford only some of them is the player's choice, made by submitting
+// a smaller set. That is the one place this verb is not "skip what
+// doesn't fit", and it has to be.
+func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAttackersParams) ([]uuid.UUID, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
@@ -6086,8 +6135,22 @@ func (g *Game) DeclareAttackers(decls []AttackDeclaration) ([]uuid.UUID, error) 
 	// has to be judged on the granted keyword, not the printed one.
 	g.RecomputeLayersIfStaleLocked()
 
-	declared := make([]uuid.UUID, 0, len(decls))
-
+	// ADR 0080 split what used to be one loop into two passes. The
+	// first decides WHICH entries are declarations; the second stages
+	// them. The CR 508.1a payment goes between, because it is priced
+	// against the eligible set (charging for an attack that gets
+	// skipped would be wrong) and because an unpayable tax must leave
+	// nothing staged (a half-declared swing is not a declaration).
+	eligible := make([]AttackDeclaration, 0, len(decls))
+	// The eligible entries grouped by whose creatures they are, in
+	// first-seen order. Almost always ONE group: authorization one
+	// layer up refuses a batch mixing seats for every caller but an
+	// admin session, which the sandbox lets drive another seat's
+	// board. Grouping rather than assuming one payer means an admin's
+	// mixed batch charges each seat its own share instead of billing
+	// the first one for everybody's attacks.
+	payers := make([]uuid.UUID, 0, 1)
+	byPayer := make(map[uuid.UUID][]AttackDeclaration, 1)
 	for _, d := range decls {
 		card := findBattlefieldCard(g, d.Attacker)
 		if card == nil {
@@ -6110,6 +6173,46 @@ func (g *Game) DeclareAttackers(decls []AttackDeclaration) ([]uuid.UUID, error) 
 		// which is what the bare controller comparison used to cover
 		// for the player-only case.
 		if g.canAttackTargetLocked(card.Controller, d.Target) != nil {
+			continue
+		}
+		eligible = append(eligible, d)
+		if _, seen := byPayer[card.Controller]; !seen {
+			payers = append(payers, card.Controller)
+		}
+		byPayer[card.Controller] = append(byPayer[card.Controller], d)
+	}
+	if len(eligible) == 0 {
+		return nil, ErrNoLegalAttackers
+	}
+	// CR 508.1a, before anything is staged and before the CR 508.1f
+	// taps: the declaration's attack tax, all or nothing.
+	//
+	// Priced for every payer BEFORE any of them is charged, so a
+	// mixed batch whose second seat cannot pay does not leave the
+	// first seat's mana spent on a declaration that never happened.
+	// That pre-check is exact rather than optimistic: the seats' mana
+	// pools and untapped permanents are disjoint, so nothing one
+	// payment does can change what another can afford.
+	prices := make([]AttackTaxPrice, len(payers))
+	for i, p := range payers {
+		prices[i] = g.priceAttackDeclarationLocked(byPayer[p])
+		if err := g.attackTaxAffordableLocked(p, prices[i], params); err != nil {
+			return nil, err
+		}
+	}
+	for i, p := range payers {
+		if err := g.payAttackTaxLocked(p, prices[i], params); err != nil {
+			return nil, err
+		}
+	}
+
+	declared := make([]uuid.UUID, 0, len(eligible))
+	for _, d := range eligible {
+		card := findBattlefieldCard(g, d.Attacker)
+		if card == nil {
+			// Unreachable: nothing between the passes moves a
+			// permanent. Skipped rather than dereferenced, because a
+			// nil here would take the whole declaration down with it.
 			continue
 		}
 		card.AttackingTarget = d.Target

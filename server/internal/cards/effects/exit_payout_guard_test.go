@@ -800,7 +800,7 @@ func untilALand(ctx *Context, player uuid.UUID) error {
 func untilALand(ctx *Context, player uuid.UUID) error {
 	return MillToZone{
 		Player: player,
-		Until:  func(c game.Card) bool { return c.IsLand() },
+		Until:  UntilCard(func(c game.Card) bool { return c.IsLand() }),
 		Then: func(ctx *Context, milled []uuid.UUID) error {
 			return DrawCards{N: len(milled)}.Apply(ctx)
 		},

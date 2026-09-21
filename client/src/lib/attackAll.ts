@@ -121,6 +121,13 @@ export function planAttackAll(
 // `Record<string, unknown>` params slot without a cast.
 export type AttackAllParams = {
   attackers: { attacker: string; target: string }[];
+  // ADR 0080 (#1063): let the server tap lands for the CR 508.1a
+  // attack tax when the mana pool alone cannot cover it. Always sent,
+  // for the reason the cast chain sends it after its preview — a
+  // declaration the player has confirmed at a price they were shown
+  // should not then fail because the mana is in lands rather than in
+  // the pool. It is inert at a table with no attack tax on it.
+  auto_tap: true;
 };
 
 // attackAllParams builds the action payload aiming every eligible
@@ -137,7 +144,46 @@ export function attackAllParams(
       attacker: c.instance_id,
       target: defenderSeatID,
     })),
+    auto_tap: true,
   };
+}
+
+// attackTaxOn is the CR 508.1a price of attacking one seat, read off
+// the turn's server-priced attack_targets (ADR 0080, #1063). "" when
+// attacking it is free, or when the field is absent — an older server,
+// or a step that is not declare_attackers.
+//
+// PER CREATURE. The wire field is a per-target flat rate because every
+// printed attack tax charges the same for every creature; a whole
+// declaration pays it once per attacker, which is what
+// attackAllTaxLabel spells out.
+export function attackTaxOn(view: GameView | null | undefined, defenderSeatID: string): string {
+  const row = view?.turn?.attack_targets?.find(
+    (t) => t.kind === "player" && t.id === defenderSeatID,
+  );
+  return row?.tax ?? "";
+}
+
+// attackAllTaxLabel is the clause the attack-all control appends when
+// the target taxes attacks: "costs {2} each, {2}{2}{2} for all 3".
+// Empty when the attack is free, so the caller drops the clause rather
+// than printing a stray separator.
+//
+// The TOTAL is not re-derived from the per-creature string — it is
+// that string repeated, which is exactly what the server charges and
+// concatenates (three attackers into Propaganda is "{2}{2}{2}"). No
+// arithmetic here means no way for the client to disagree with the
+// price it is about to commit the player to.
+export function attackAllTaxLabel(
+  view: GameView | null | undefined,
+  plan: AttackAllPlan,
+  defenderSeatID: string,
+): string {
+  const each = attackTaxOn(view, defenderSeatID);
+  if (!each) return "";
+  const n = plan.eligible.length;
+  if (n <= 1) return `costs ${each}`;
+  return `costs ${each} each, ${each.repeat(n)} for all ${n}`;
 }
 
 // blockedSummary renders the "why not everything" hint: counts by

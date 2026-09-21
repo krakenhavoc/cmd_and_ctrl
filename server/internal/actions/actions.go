@@ -165,6 +165,43 @@ var ErrMissingParams = errors.New("actions: missing required params")
 // payload before it reaches the game lock.
 const MaxBulkAttackers = 256
 
+// attackTaxParams is the payment posture both declaration verbs carry
+// for the CR 508.1a attack tax (ADR 0080, #1063) — the same trio
+// cast_spell, activate_ability and special_action already send.
+//
+// Embedded in each verb's params struct rather than written twice, so
+// the two actions cannot drift on what `auto_tap` means. Every field
+// is absent from a payload built before the tax existed and inert at a
+// table with no tax on it.
+//
+// There is deliberately no `strict`: an attack tax waived on paper is
+// Propaganda as a blank. See game.payAttackTaxLocked.
+type attackTaxParams struct {
+	AutoTap       bool     `json:"auto_tap,omitempty"`
+	LockedSources []string `json:"locked_sources,omitempty"`
+	PhyrexianLife int      `json:"phyrexian_life,omitempty"`
+}
+
+// decode turns the wire form into the engine's params, naming the
+// action in any parse error the way every other verb does.
+func (p attackTaxParams) decode(action string) (game.DeclareAttackersParams, error) {
+	out := game.DeclareAttackersParams{
+		AutoTap:       p.AutoTap,
+		PhyrexianLife: p.PhyrexianLife,
+	}
+	if len(p.LockedSources) > 0 {
+		out.LockedSources = make([]uuid.UUID, 0, len(p.LockedSources))
+		for i, raw := range p.LockedSources {
+			id, err := uuid.Parse(raw)
+			if err != nil {
+				return game.DeclareAttackersParams{}, fmt.Errorf("%s locked_sources[%d]: %w", action, i, err)
+			}
+			out.LockedSources = append(out.LockedSources, id)
+		}
+	}
+	return out, nil
+}
+
 // ErrEmptyAttackerSet is returned when declare_attackers arrives with
 // an empty `attackers` list. "Attack with nobody" is the default
 // state of the step, not an action — a player who wants it passes
@@ -720,6 +757,7 @@ func Dispatch(g *game.Game, a Action) error {
 		var p struct {
 			Attacker string `json:"attacker"`
 			Target   string `json:"target"`
+			attackTaxParams
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -735,7 +773,11 @@ func Dispatch(g *game.Game, a Action) error {
 		if err := requireCardController(g, a.Caller, attackerID); err != nil {
 			return err
 		}
-		return g.DeclareAttacker(attackerID, targetID)
+		declParams, err := p.attackTaxParams.decode("declare_attacker")
+		if err != nil {
+			return err
+		}
+		return g.DeclareAttackerWith(attackerID, targetID, declParams)
 
 	case TypeDeclareAttackers:
 		var p struct {
@@ -743,6 +785,7 @@ func Dispatch(g *game.Game, a Action) error {
 				Attacker string `json:"attacker"`
 				Target   string `json:"target"`
 			} `json:"attackers"`
+			attackTaxParams
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -773,7 +816,11 @@ func Dispatch(g *game.Game, a Action) error {
 			}
 			decls = append(decls, game.AttackDeclaration{Attacker: attackerID, Target: targetID})
 		}
-		_, err := g.DeclareAttackers(decls)
+		declParams, err := p.attackTaxParams.decode("declare_attackers")
+		if err != nil {
+			return err
+		}
+		_, err = g.DeclareAttackersWith(decls, declParams)
 		return err
 
 	case TypeDeclareBlocker:
