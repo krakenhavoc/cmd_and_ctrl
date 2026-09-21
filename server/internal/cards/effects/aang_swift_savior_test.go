@@ -18,8 +18,6 @@ import (
 // costless colourless 0/0 — which is #343's other symptom and what
 // the face model fixes.
 
-const aangSwiftSaviorOracle = "cbf09050-39d0-463b-96db-9e22011ae0d8"
-
 // aangSwiftSaviorCard is the card as deck.toGameCard now imports it:
 // per-face printed data with face 0 materialised. The point of
 // building it this way rather than stamping the flat fields is that
@@ -148,7 +146,9 @@ func TestAangSwiftSaviorDeclinedAirbendsNothing(t *testing.T) {
 
 // TestAangSwiftSaviorSpecKeysOnFaceZero pins the catalog key: the
 // front face takes the BARE oracle ID, so this spec is found the
-// same way every single-faced spec is.
+// same way every single-faced spec is. Since ADR 0079 the back face
+// is reachable too (aang_and_la_oceans_fury.go), through the
+// Waterbend {8} ability's TransformThis rather than an entry.
 func TestAangSwiftSaviorSpecKeysOnFaceZero(t *testing.T) {
 	c := aangSwiftSaviorCard(uuid.New())
 	key := game.CatalogKey(c)
@@ -163,12 +163,104 @@ func TestAangSwiftSaviorSpecKeysOnFaceZero(t *testing.T) {
 		t.Errorf("%d triggered abilities, want 1 (the ETB airbend)",
 			len(spec.Triggered))
 	}
-	// The back face has no spec — its attack trigger is unreachable
-	// until a transform verb exists, and registering an inert one
-	// would advertise rules that never run.
+	if len(spec.Activated) != 1 {
+		t.Errorf("%d activated abilities, want 1 (Waterbend {8}: Transform Aang)",
+			len(spec.Activated))
+	}
 	c.SetFace(1)
-	if Has(game.CatalogKey(c)) {
-		t.Errorf("a spec is registered under %q; the back face has no "+
-			"reachable rules yet", game.CatalogKey(c))
+	backKey := game.CatalogKey(c)
+	if backKey != aangSwiftSaviorOracle+"#1" {
+		t.Fatalf("back-face key = %q, want the oracle ID plus #1", backKey)
+	}
+	backSpec, ok := Lookup(backKey)
+	if !ok {
+		t.Fatal("no spec registered for Aang and La, Ocean's Fury")
+	}
+	if len(backSpec.Triggered) != 1 {
+		t.Errorf("%d triggered abilities on the back face, want 1 (the attack trigger)",
+			len(backSpec.Triggered))
+	}
+}
+
+// TestAangTransformsThroughWaterbend is the Waterbend {8} ability's
+// card-level proof: paying the flat mana cost (the declared
+// simplification — no tap-artifacts-and-creatures discount) flips
+// Aang onto Aang and La, Ocean's Fury IN PLACE (CR 712.18 — same
+// object, ADR 0079's first verb, not the Sagas' exile-and-return).
+func TestAangTransformsThroughWaterbend(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	aang := aangSwiftSaviorCard(me.ID)
+	me.Hand.PushTop(aang)
+	if err := g.CastSpell(me.ID, aang.InstanceID, game.CastSpellParams{}); err != nil {
+		t.Fatalf("CastSpell: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	// Decline the ETB airbend; it isn't what this test is about.
+	answerLatestTriggerPrompt(t, g, me.ID, false)
+	passPriorityAroundTable(t, g)
+
+	if err := g.ActivateCatalogAbility(me.ID, aang.InstanceID, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatalf("ActivateCatalogAbility (Waterbend): %v", err)
+	}
+	passPriorityAroundTable(t, g)
+
+	card := battlefieldCardFor(g, aang.InstanceID)
+	if card == nil {
+		t.Fatal("Aang left the battlefield — TransformThis is not a zone change")
+	}
+	if card.ActiveFace != 1 {
+		t.Fatalf("ActiveFace = %d, want the back face", card.ActiveFace)
+	}
+	if card.Name != "Aang and La, Ocean's Fury" {
+		t.Errorf("name = %q, want Aang and La, Ocean's Fury", card.Name)
+	}
+	if !card.IsCreature() || card.Power != 5 || card.Toughness != 5 {
+		t.Errorf("P/T = %d/%d, want 5/5", card.Power, card.Toughness)
+	}
+}
+
+// TestAangAndLaCountersEachTappedCreatureOnAttack is the back face's
+// own ability, reachable only because the transform above works:
+// "Whenever Aang and La attack, put a +1/+1 counter on each tapped
+// creature you control." Aang and La has no vigilance, so by the time
+// the trigger RESOLVES it is tapped from attacking and is itself one
+// of the "each tapped creature" the effect counts.
+func TestAangAndLaCountersEachTappedCreatureOnAttack(t *testing.T) {
+	g := newCatalogGame(t)
+	seat := g.Turn.ActiveSeat
+	me := g.Seats[seat]
+	opp := g.Seats[(seat+1)%len(g.Seats)]
+
+	aang := aangSwiftSaviorCard(me.ID)
+	aang.SetFace(1)
+	g.Battlefield.PushTop(aang)
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == aang.InstanceID {
+				g.Battlefield.Cards[i].SummonedThisTurn = false
+			}
+		}
+	})
+	tapped := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Tapped Friend", TypeLine: "Creature — Bear",
+		Owner: me.ID, Controller: me.ID, Power: 2, Toughness: 2, Tapped: true,
+	})
+	untapped := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Untapped Friend", TypeLine: "Creature — Bear",
+		Owner: me.ID, Controller: me.ID, Power: 2, Toughness: 2,
+	})
+
+	declareAttack(t, g, opp.ID, aang.InstanceID)
+	passPriorityAroundTable(t, g)
+
+	if got := countersOn(g, tapped, "+1/+1"); got != 1 {
+		t.Errorf("the already-tapped creature has %d +1/+1 counters, want 1", got)
+	}
+	if got := countersOn(g, untapped, "+1/+1"); got != 0 {
+		t.Errorf("the untapped creature has %d +1/+1 counters, want 0", got)
+	}
+	if got := countersOn(g, aang.InstanceID, "+1/+1"); got != 1 {
+		t.Errorf("Aang and La (tapped from attacking) has %d +1/+1 counters, want 1", got)
 	}
 }

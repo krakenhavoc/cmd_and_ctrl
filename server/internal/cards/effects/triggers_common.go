@@ -221,6 +221,18 @@ func ThisAttacked(ev game.Event, source *game.Card, _ game.Characteristic, _ *ga
 	return attackDeclared(ev, source)
 }
 
+// YouCastYourSecondSpellEachTurn — "Whenever you cast your second
+// spell each turn" (Breeches, the Blastmaker; Avatar Yangchen). The
+// cast path bumps the per-turn tally BEFORE it emits EventCast, so a
+// total of exactly two means "this is the second" — the same clock
+// Maelstrom Nexus reads for "first".
+func YouCastYourSecondSpellEachTurn(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
+		return false
+	}
+	return g.CastTallyFor(ev.Actor).Total == 2
+}
+
 // YouCast — you cast a spell matching `spell` (nil for any spell).
 // The predicate is the same CardPredicate the target clauses use, so
 // "whenever you cast a noncreature spell" is YouCast(Noncreature()).

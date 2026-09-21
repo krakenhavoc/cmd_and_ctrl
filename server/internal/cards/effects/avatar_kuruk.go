@@ -1,0 +1,60 @@
+package effects
+
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+// Avatar Kuruk — Legendary Creature — Avatar, 4/3 (colorless):
+//
+//	"Whenever you cast a spell, create a 1/1 colorless Spirit creature
+//	 token with 'This token can't block or be blocked by non-Spirit
+//	 creatures.'
+//	 Exhaust — Waterbend {20}: Take an extra turn after this one.
+//	 (While paying a waterbend cost, you can tap your artifacts and
+//	 creatures to help. Each one pays for {1}. Activate each exhaust
+//	 ability only once.)"
+//
+// The BACK face of The Legend of Kuruk ("<oracle_id>#1", ADR 0034),
+// reached only through chapter III's exile-and-return
+// (the_legend_of_kuruk.go). Because that verb makes a NEW object
+// (CR 400.7), Avatar Kuruk is always summoning sick the turn it
+// arrives — printed and correct, not a gap.
+//
+// SANDBOX SIMPLIFICATIONS, and this is why the card is not Full:
+//
+//   - The Spirit token's own clause — "can't block or be blocked by
+//     non-Spirit creatures" — is not implemented. A token that isn't a
+//     copy has no oracle ID, so game.CatalogKey answers the empty
+//     string for it and no static or triggered ability can be hung
+//     off it: the "Triggered and static abilities on non-copy tokens"
+//     seam (#521), the same gap Fable of the Mirror-Breaker's Goblin
+//     Shaman token ships against. The token itself — a 1/1 colorless
+//     Spirit — is created in full; only its restriction text is
+//     missing, which is weaker than printed (#259).
+//   - "Exhaust — Waterbend {20}: Take an extra turn after this one."
+//     is not registered at all, for two independent reasons, either
+//     one enough on its own: extra turns have no primitive anywhere in
+//     this engine (Turn.IsNewTurn compares seats and Turn.Number
+//     counts rounds, not turns — the "Extra turns primitive" seam,
+//     docs/engine-seams.md, #753), and waterbend on an ACTIVATED
+//     ability has no cost shape (AbilityCost prices tap-this /
+//     sacrifice-self / sacrifice-other / mana / life; Spec.TapCost
+//     prices a SPELL, not an ability — see aang_swift_savior.go's own
+//     Waterbend {8}, which ships because "take an extra turn" isn't
+//     the effect it's paying for). An ability that costs mana and
+//     does nothing when activated would not be a weaker card, it
+//     would be a broken one, so it stays off entirely rather than
+//     half-shipped.
+func init() {
+	Register(Spec{
+		OracleID:     theLegendOfKurukOracleID + "#1",
+		Name:         "Avatar Kuruk",
+		Completeness: CompletenessCaveats,
+		Caveats: []string{
+			"The Spirit token doesn't have its \"can't block or be blocked by non-Spirit creatures\" ability — a token that isn't a copy has no way to carry one.",
+			"\"Exhaust — Waterbend {20}: Take an extra turn after this one\" isn't implemented — extra turns don't exist in the engine yet.",
+		},
+		Triggered: []game.TriggeredAbility{
+			WheneverYouCast(nil, "Avatar Kuruk — create a 1/1 colorless Spirit",
+				Do(CreateToken{Template: TokenCard("1/1 colorless Spirit"), N: 1})),
+		},
+	})
+}
