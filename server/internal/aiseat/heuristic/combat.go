@@ -278,6 +278,19 @@ func (p *Policy) decideAttack(st *state, moves []legal.Move) (aiseat.Decision, b
 		}
 		declared, declaredPower := declaredAgainst(st, ap.Target)
 		v, reason := p.attackValue(st, atk, def, declared, declaredPower)
+		// ADR 0080 / #1063: the CR 508.1a attack tax. The enumerator
+		// has already dropped every attack this seat cannot pay for,
+		// so what is left to decide is whether the attack is WORTH
+		// the mana — a 1/1 into Ghostly Prison spends the turn's two
+		// lands for two damage, and the bot should usually pass.
+		//
+		// Read off MoveCost.Mana rather than re-derived: a policy may
+		// not import internal/game (ADR 0033 §3), and the tax is
+		// nowhere else on the wire.
+		if tax := attackTaxValue(moves[i]); tax > 0 {
+			v -= float64(tax) * p.cfg.AttackTaxPenalty
+			reason += fmt.Sprintf(" (pays %d)", tax)
+		}
 		if push[ap.Target] {
 			v += p.cfg.LethalBonus
 			reason = "all-in for the kill"
@@ -447,6 +460,21 @@ func (p *Policy) attackValue(st *state, atk *protocol.CardView, def *SeatEval, d
 		return damage, "blockers can't profit"
 	}
 	return damage - worst, "blocked at a loss"
+}
+
+// attackTaxValue is what this attack move charges at CR 508.1a, as a
+// mana value. Zero for every move at a table with no attack tax on it,
+// which is the overwhelming majority (ADR 0080, #1063).
+//
+// The X is zero because an attack tax never carries {X}: a card whose
+// price scales renders the count as a generic number before the cost
+// string leaves the engine (Sphere of Safety's "{3}"), for exactly
+// this reason — a declaration has nowhere to announce an X.
+func attackTaxValue(mv legal.Move) int {
+	if mv.Cost == nil || mv.Cost.Mana == "" {
+		return 0
+	}
+	return manaValue(mv.Cost.Mana, 0)
 }
 
 // couldBlock is the evasion check the defender has to beat. The
