@@ -1043,3 +1043,78 @@ which is what turns the server's per-holder stamp into a button at all.
 Additive on the wire (`v` unchanged), and in the direction the last two
 amendments already went: a card that carried one seat's stamps now
 carries each holder's own, on their own frame.
+
+## Amendment (2026-09-21, #1055): `castable_here` is the viewer's own answer
+
+The amendment above ended with a sentence that was a bug report as much
+as a decision: **"`castable_here` is the pile owner's answer, or
+yours."** One bit, two meanings, chosen by which card you are looking
+at — the pile owner's on most, the viewer's own on a card the viewer
+holds a grant over — and both client readers had to pair it with the
+(also public) `exile_play` to find out which one they were holding.
+That is the [#891](https://github.com/krakenhavoc/cmd_and_ctrl/issues/891)
+shape exactly: the field's NAME is a statement about the viewer and its
+VALUE was a statement about somebody else.
+
+**The bit is now per viewer, everywhere.** It is stamped for a seat
+that may actually make the cast — the pile's owner for a printed
+flashback or escape, a `CastPermission` holder for a granted one, both
+of them on their own frames when both are true — and is absent on every
+other copy of the same card, spectators and admins included.
+
+### The split is "about the card" versus "about a player"
+
+`stampLegalTargets` still computes the pile owner's answer, once per
+card per zone, because that is the only seat a per-seat walk knows
+about. What changed is where it goes: `castStamps.applyPublicTo` writes
+the half every viewer legitimately sees to the exported fields, and
+`CardView.stampsFor` files the WHOLE answer under the owner's own seat,
+exactly as `stampGrantedPermissions` already did for a foreign holder.
+`applyCastStampsFor` then promotes one seat's entry as before — the
+owner's is simply one more entry in the map now, rather than a public
+default nobody could opt out of.
+
+**Public**, because a card in a graveyard or on top of a revealed
+library is a card every player may pick up and read, and because every
+one of these is computed over public state: `alternative_costs` and
+`alternative_cost_required`, `modes`, `additional_cost`,
+`optional_costs`, `tap_cost`, `target_cost_notes`, `phyrexian_symbols`,
+`cant_cast`. An escape offer is priced by the size of a graveyard
+everybody can count; a Rule of Law is on the battlefield.
+
+**Per viewer**, because each answers "what may YOU announce":
+
+- `castable_here` — the field this amendment is about.
+- `legal_targets` and `clauses` — narrowed by hexproof, shroud,
+  protection and "target opponent", so seat A's list is not seat B's to
+  read. `applyCastStampsFor` has said that about a SPECTATOR since
+  #978 ("a legal target set is not a view of the board, it is a view of
+  what one specific player may announce"); this is the same sentence
+  applied to the bystander a public stamp used to reach.
+
+They travel together, and they have to: a bit whose offers were
+stripped is #1015's button with nothing behind it, and offers beside a
+bit that is false are a price list for a cast this viewer cannot make.
+Keeping the price list public and the bit private is the only split
+where neither half lies.
+
+### What it buys, and what it costs
+
+Both client readers lose their second gate and become one field read:
+`castableFromZone(card, zoneKind)` and `libraryTopPlayable(zone)` no
+longer take the viewer's or the owner's seat, and `docs/protocol.md`
+loses the paragraph that explained the pair-read. `cardAsFace` clears
+`castable_here` with the rest of the announce surface, because the
+server computed it for the face the grant names.
+
+The cost is that a bystander can no longer see that a card in somebody
+else's graveyard is castable BY THEM. Nothing in the client rendered
+that, and nothing should: it is the other seat's affordance, it is
+visible to them, and a spectator who wants to know whether a flashback
+is live can read the card's public price list exactly as a player at a
+paper table would.
+
+Additive on the wire in the `omitempty` direction that is safe — the
+field goes out on fewer frames, never on more — so a reader that
+already falls back to `false` for an absent bit needs no change and
+`v` does not move.
