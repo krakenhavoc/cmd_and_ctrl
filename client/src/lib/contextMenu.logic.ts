@@ -30,6 +30,7 @@ import {
   canActivateLoyalty,
   canActivateSorcerySpeedAbility,
   canPayLoyaltyCost,
+  hasSatisfiableTargets,
   loyaltyOf,
 } from "./timing";
 import {
@@ -364,7 +365,10 @@ interface AbilityCost {
   sacrifice_label?: string;
   // #747: min / max are the sacrifice count (sacrificeCost.ts).
   sacrifice_options?: { players?: string[]; cards?: string[]; min?: number; max?: number };
-  legal_targets?: { players?: string[]; cards?: string[] };
+  // #1157: `min` is part of the clause and not decoration. "Up to one
+  // target creature you control" is min 0, and a clause with min 0 is
+  // satisfied by an empty candidate list — see hasSatisfiableTargets.
+  legal_targets?: { players?: string[]; cards?: string[]; min?: number };
   // Present, at any value including 0, on a planeswalker's loyalty
   // ability. Mana abilities never carry it.
   loyalty_cost?: number;
@@ -473,10 +477,14 @@ export function abilityBlocked(
   // legal and pointless (it would just tap the source), so the row is
   // greyed with the reason rather than hidden.
   if (a.adds_no_mana) return NO_COMMANDER_IDENTITY;
-  if (a.legal_targets) {
-    const n = (a.legal_targets.players?.length ?? 0) + (a.legal_targets.cards?.length ?? 0);
-    if (n === 0) return "no legal target";
-  }
+  // CR 601.2c, through the same predicate the cast path uses (#1157).
+  // Not "is the list empty": a clause needs `min` candidates, and an
+  // "up to N" clause needs none. Before this the row for The
+  // Aetherspark's "+1: … up to one target creature you control" was
+  // greyed on a board with no creature on it, an activation the engine
+  // accepts and internal/legal hands to bots — #544's defect with the
+  // sign flipped, withholding a move rather than offering a dead one.
+  if (!hasSatisfiableTargets(a.legal_targets)) return "no legal target";
   return "";
 }
 

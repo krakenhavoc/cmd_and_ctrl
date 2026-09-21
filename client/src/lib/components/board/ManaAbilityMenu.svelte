@@ -15,6 +15,7 @@
   import { counterCostBlocked, type CounterCostShape } from "../../counterCost";
   import { ACTIVATION_CONDITION_UNMET, NO_COMMANDER_IDENTITY } from "../../contextMenu.logic";
   import { sacrificeShortfall } from "../../sacrificeCost";
+  import { hasSatisfiableTargets } from "../../timing";
   import ModalLayer from "../ModalLayer.svelte";
 
   interface Props {
@@ -68,7 +69,9 @@
     tap_cost?: boolean;
     sacrifice_label?: string;
     sacrifice_options?: { players?: string[]; cards?: string[]; min?: number; max?: number };
-    legal_targets?: { players?: string[]; cards?: string[] };
+    // #1157: `min` carries the clause's count, and an "up to N" clause
+    // (min 0) is satisfied by an empty candidate list.
+    legal_targets?: { players?: string[]; cards?: string[]; min?: number };
     // Never set on a ManaAbilityView — mana abilities don't use the
     // stack and have no timing restriction (CR 605.1a) — so the arm
     // below is inert for the first list and live for the second.
@@ -96,10 +99,11 @@
     // #625: a "remove N counters" cost with nothing that can pay it.
     const counters = counterCostBlocked(a);
     if (counters) return counters;
-    if (a.legal_targets) {
-      const n = (a.legal_targets.players?.length ?? 0) + (a.legal_targets.cards?.length ?? 0);
-      if (n === 0) return "no legal target";
-    }
+    // #1157: CR 601.2c through the shared predicate — a clause needs
+    // `min` candidates, and "up to N" needs none. The same one-line
+    // copy of this test lived here and in contextMenu.logic.ts, and
+    // both stopped at "the list is empty".
+    if (!hasSatisfiableTargets(a.legal_targets)) return "no legal target";
     return "";
   }
 

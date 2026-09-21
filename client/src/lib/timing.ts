@@ -154,7 +154,17 @@ export function isMainPhase(snap: GameView | null | undefined): boolean {
 // legal candidates on the board to be announced (CR 601.2c). An
 // absent clause is trivially satisfiable — the spell targets
 // nothing, which is always fine; "up to N" (min 0) likewise.
-function hasSatisfiableTargets(lt: LegalTargetsView | undefined): boolean {
+//
+// Exported since #1157 because the ABILITY rows needed it too and had
+// their own copy that stopped at "the list is empty". A clause's
+// count is the whole question — an empty list is a refusal at min 1
+// and a shrug at min 0 — and The Aetherspark's "+1: Attach The
+// Aetherspark to up to one target creature you control" is the report
+// that proved one client can hold both answers at once: the cast path
+// read `min`, the ability path did not, so a loyalty ability the
+// engine accepts and the enumerator offers to a BOT was greyed out
+// for the human who owned it.
+export function hasSatisfiableTargets(lt: LegalTargetsView | undefined): boolean {
   if (!lt) return true;
   const n = (lt.players?.length ?? 0) + (lt.cards?.length ?? 0);
   return n >= (lt.min ?? 1);

@@ -226,6 +226,85 @@ describe("loyalty abilities in the card menu", () => {
   });
 });
 
+// --- #1157: "up to one target" is satisfied by no target ----------
+//
+// "[in-app] Aetherspark abilities are not functioning — Aetherspark
+// shows it has loyalty abilities but they are non-functioning (all
+// grayed out)."
+//
+// The Aetherspark's +1 reads "Attach The Aetherspark to up to one
+// target creature you control. Put a +1/+1 counter on that creature."
+// — min 0, and declining is a complete, legal activation that still
+// ticks the loyalty up. The server agrees twice over:
+// ActivateCatalogAbility accepts the activation with no targets, and
+// internal/legal enumerates it as a move for a bot. Only the human's
+// menu refused it, because abilityBlocked asked "is the candidate
+// list empty" instead of "does it hold `min` candidates" — so on a
+// board with no creature to attach to, the one ability a 4-loyalty
+// Aetherspark can actually pay for was greyed, and its −5 and −10
+// were correctly greyed beside it. All three greyed out.
+describe("an 'up to N' target clause with nothing to point at (#1157)", () => {
+  function aetherspark(targets: { cards?: string[]; min?: number }): CardView {
+    return {
+      instance_id: "spark",
+      name: "The Aetherspark",
+      owner: "a",
+      controller: "a",
+      type_line: "Legendary Artifact Planeswalker — Equipment",
+      counters: { loyalty: 4 },
+      activated_abilities: [
+        {
+          index: 0,
+          label: "+1: Attach The Aetherspark to up to one target creature you control.",
+          loyalty_cost: 1,
+          sorcery_speed: true,
+          legal_targets: { cards: targets.cards ?? [], min: targets.min ?? 0, max: 1 },
+        },
+        { index: 1, label: "−5: Draw two cards.", loyalty_cost: -5, sorcery_speed: true },
+      ],
+    };
+  }
+
+  it("offers the +1 with no legal creature on the board", () => {
+    const spark = aetherspark({ cards: [], min: 0 });
+    const item = itemIn(
+      buildMenuSections(view({ battlefield: [spark] }), spark, "a", false),
+      "ability-0",
+    );
+    expect(item?.disabled).toBeFalsy();
+    expect(item?.hint).toBeUndefined();
+  });
+
+  it("offers the +1 when a creature IS there", () => {
+    const spark = aetherspark({ cards: ["bear"], min: 0 });
+    const item = itemIn(
+      buildMenuSections(view({ battlefield: [spark] }), spark, "a", false),
+      "ability-0",
+    );
+    expect(item?.disabled).toBeFalsy();
+  });
+
+  it("still greys a REQUIRED target clause with nothing to point at (CR 601.2c)", () => {
+    const spark = aetherspark({ cards: [], min: 1 });
+    const item = itemIn(
+      buildMenuSections(view({ battlefield: [spark] }), spark, "a", false),
+      "ability-0",
+    );
+    expect(item?.disabled).toBe(true);
+    expect(item?.hint).toBe("no legal target");
+  });
+
+  it("leaves the −5 correctly greyed at four loyalty (CR 606.6)", () => {
+    const spark = aetherspark({ cards: [], min: 0 });
+    const item = itemIn(
+      buildMenuSections(view({ battlefield: [spark] }), spark, "a", false),
+      "ability-1",
+    );
+    expect(item?.disabled).toBe(true);
+    expect(item?.hint).toMatch(/loyalty/i);
+  });
+});
+
 // --- S31: the sorcery_speed flag nothing read ---------------------
 //
 // `ActivatedAbilityView.sorcery_speed` has ridden the wire since S21
