@@ -23,7 +23,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // key, exactly as they do for a printed card.
 
 // FaerieRogueToken is kept as a function because a card passes it as a value; the data lives in tokens_table.go.
-func FaerieRogueToken() game.Card { return TokenCard("1/1 colorless Faerie Rogue with flying") }
+func FaerieRogueToken() game.Card { return TokenCard("1/1 black Faerie Rogue with flying") }
 
 // EldraziSpawnToken returns a template for Awakening Zone's 0/1
 // colorless Eldrazi Spawn token with "Sacrifice this creature: Add

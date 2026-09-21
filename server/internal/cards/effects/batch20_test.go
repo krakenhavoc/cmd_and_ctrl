@@ -341,7 +341,7 @@ func TestB20GrindingStationMillsThreeAndMayUntapWhenAnArtifactEnters(t *testing.
 		t.Error("the Station untaps when an artifact enters")
 	}
 	// A nonartifact entering is silent.
-	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("3/3 colorless Beast"), 1) })
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("3/3 green Beast"), 1) })
 	if b18TriggerPromptCount(g, me.ID) != 0 {
 		t.Error("a Beast is not an artifact")
 	}
@@ -617,7 +617,7 @@ func TestB20VerdantSunsAvatarGainsToughnessForItselfAndYourCreatures(t *testing.
 		t.Fatalf("its own entry: life %d → %d, want +5", life, me.Life)
 	}
 	// "Another creature you control": a 3/3 token.
-	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("3/3 colorless Beast"), 1) })
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("3/3 green Beast"), 1) })
 	passPriorityAroundTable(t, g)
 	if me.Life != life+8 {
 		t.Errorf("a 3/3 entering: life %d → %d, want +8", life, me.Life)
@@ -635,7 +635,7 @@ func TestB20VerdantSunsAvatarGainsToughnessForItselfAndYourCreatures(t *testing.
 	}
 	// An opponent's creature and a noncreature are silent.
 	g.WithWriteLock(func() {
-		_ = g.CreateTokenForEffect(opp.ID, TokenCard("3/3 colorless Beast"), 1)
+		_ = g.CreateTokenForEffect(opp.ID, TokenCard("3/3 green Beast"), 1)
 		_ = g.CreateTokenForEffect(me.ID, TreasureToken(), 1)
 	})
 	passPriorityAroundTable(t, g)

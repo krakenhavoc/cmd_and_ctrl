@@ -88,7 +88,7 @@ func init() {
 			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.Actor == source.Controller && ev.OldZone == game.ZoneExile
 			}, "Appa, Steadfast Guardian — create a 1/1 Ally", Do(CreateToken{
-				Template: TokenCard("1/1 colorless Ally"),
+				Template: TokenCard("1/1 white Ally"),
 				N:        1,
 			})),
 		},

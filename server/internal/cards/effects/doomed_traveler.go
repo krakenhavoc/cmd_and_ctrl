@@ -19,11 +19,10 @@ func init() {
 	Register(Spec{
 		OracleID:     "a30907c0-fbde-4fd3-a8c7-f304305fcea7",
 		Name:         "Doomed Traveler",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The Spirit token is created colorless instead of white, so anything that cares about a creature's color doesn't see it."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisDies("Doomed Traveler — create a 1/1 Spirit", Do(CreateToken{
-				Template: TokenCard("1/1 colorless Spirit with flying"),
+				Template: TokenCard("1/1 white Spirit with flying"),
 				N:        1,
 			})),
 		},

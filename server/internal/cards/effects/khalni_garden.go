@@ -26,7 +26,7 @@ func init() {
 			Label:    "Add {G}",
 		}},
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Khalni Garden — create a 0/1 green Plant", Do(CreateToken{Template: TokenCard("0/1 colorless Plant"), N: 1})),
+			WhenThisEnters("Khalni Garden — create a 0/1 green Plant", Do(CreateToken{Template: TokenCard("0/1 green Plant"), N: 1})),
 		},
 	})
 }

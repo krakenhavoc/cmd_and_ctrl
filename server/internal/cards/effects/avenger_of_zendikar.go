@@ -35,7 +35,7 @@ func init() {
 				}
 				return CreateToken{
 					Controller: item.Controller,
-					Template:   TokenCard("0/1 colorless Plant"),
+					Template:   TokenCard("0/1 green Plant"),
 					N:          n,
 				}.Apply(NewContext(g, item))
 			}),

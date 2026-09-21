@@ -26,8 +26,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "58934f6d-1aa2-414c-85c6-955a1e26d675",
 		Name:         "The First Iroan Games",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The Human Soldier token is created colorless instead of white, so anything that cares about a creature's color doesn't see it."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			ChapterTrigger(1, "The First Iroan Games — I: create a 1/1 Human Soldier", iroanSoldier),
 			ChapterTriggerTargeting(2, "The First Iroan Games — II: three +1/+1 counters",
@@ -43,7 +42,7 @@ func init() {
 func iroanSoldier(g *game.Game, item *game.StackItem) error {
 	return CreateToken{
 		Controller: item.Controller,
-		Template:   TokenCard("1/1 colorless Human Soldier"),
+		Template:   TokenCard("1/1 white Human Soldier"),
 		N:          1,
 	}.Apply(NewContext(g, item))
 }
