@@ -6142,7 +6142,15 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 	// skipped would be wrong) and because an unpayable tax must leave
 	// nothing staged (a half-declared swing is not a declaration).
 	eligible := make([]AttackDeclaration, 0, len(decls))
-	payer := uuid.Nil
+	// The eligible entries grouped by whose creatures they are, in
+	// first-seen order. Almost always ONE group: authorization one
+	// layer up refuses a batch mixing seats for every caller but an
+	// admin session, which the sandbox lets drive another seat's
+	// board. Grouping rather than assuming one payer means an admin's
+	// mixed batch charges each seat its own share instead of billing
+	// the first one for everybody's attacks.
+	payers := make([]uuid.UUID, 0, 1)
+	byPayer := make(map[uuid.UUID][]AttackDeclaration, 1)
 	for _, d := range decls {
 		card := findBattlefieldCard(g, d.Attacker)
 		if card == nil {
@@ -6168,22 +6176,34 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 			continue
 		}
 		eligible = append(eligible, d)
-		// Whose declaration this is. Authorization one layer up
-		// already refuses a batch mixing seats, so the first
-		// eligible entry's controller is the whole batch's.
-		if payer == uuid.Nil {
-			payer = card.Controller
+		if _, seen := byPayer[card.Controller]; !seen {
+			payers = append(payers, card.Controller)
 		}
+		byPayer[card.Controller] = append(byPayer[card.Controller], d)
 	}
 	if len(eligible) == 0 {
 		return nil, ErrNoLegalAttackers
 	}
 	// CR 508.1a, before anything is staged and before the CR 508.1f
-	// taps: the declaration's attack tax, as one payment, all or
-	// nothing.
-	price := g.priceAttackDeclarationLocked(eligible)
-	if err := g.payAttackTaxLocked(payer, price, params); err != nil {
-		return nil, err
+	// taps: the declaration's attack tax, all or nothing.
+	//
+	// Priced for every payer BEFORE any of them is charged, so a
+	// mixed batch whose second seat cannot pay does not leave the
+	// first seat's mana spent on a declaration that never happened.
+	// That pre-check is exact rather than optimistic: the seats' mana
+	// pools and untapped permanents are disjoint, so nothing one
+	// payment does can change what another can afford.
+	prices := make([]AttackTaxPrice, len(payers))
+	for i, p := range payers {
+		prices[i] = g.priceAttackDeclarationLocked(byPayer[p])
+		if err := g.attackTaxAffordableLocked(p, prices[i], params); err != nil {
+			return nil, err
+		}
+	}
+	for i, p := range payers {
+		if err := g.payAttackTaxLocked(p, prices[i], params); err != nil {
+			return nil, err
+		}
 	}
 
 	declared := make([]uuid.UUID, 0, len(eligible))

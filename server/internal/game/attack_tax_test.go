@@ -139,6 +139,52 @@ func TestABulkDeclarationRefusesTheWholeSwingWhenTheTaxIsOnlyPartlyAffordable(t 
 	}
 }
 
+// A bulk declaration mixing two seats' creatures — which only an admin
+// session can submit, since authorization refuses one for every other
+// caller — charges each seat its own share, and refuses the whole
+// declaration without spending anything if either of them is short.
+func TestAMixedSeatBatchChargesEachControllerAndRefusesWhole(t *testing.T) {
+	withCatalogAttackTaxes(t, func(key string) []AttackTax {
+		if key == propagandaTestOracle {
+			return []AttackTax{flatTax("{2}")}
+		}
+		return nil
+	})
+	g := newActiveGameWithSeats(t, 3)
+	mine := pushKeywordCreature(t, g, g.Seats[0], 2, 2)
+	theirs := pushKeywordCreature(t, g, g.Seats[1], 2, 2)
+	pushTaxEnchantment(g, g.Seats[2], "Propaganda", propagandaTestOracle)
+	advanceIntoStep(t, g, StepDeclareAttackers)
+
+	batch := []AttackDeclaration{
+		{Attacker: mine, Target: g.Seats[2].ID},
+		{Attacker: theirs, Target: g.Seats[2].ID},
+	}
+	// Seat 0 can pay, seat 1 cannot: the whole declaration is refused
+	// and seat 0's mana is untouched, rather than spent on a swing
+	// that never happened.
+	addMana(g.Seats[0], 2)
+	if _, err := g.DeclareAttackers(batch); !errors.Is(err, ErrAttackTaxUnpaid) {
+		t.Fatalf("a mixed batch whose second seat is short: %v, want ErrAttackTaxUnpaid", err)
+	}
+	if n := len(g.Seats[0].ManaPool); n != 2 {
+		t.Errorf("seat 0's pool = %d, want 2 — nothing is charged when the declaration is refused", n)
+	}
+
+	// With both able to pay, each is charged its OWN {2} rather than
+	// one of them being billed for both attacks.
+	addMana(g.Seats[1], 2)
+	if _, err := g.DeclareAttackers(batch); err != nil {
+		t.Fatalf("a mixed batch both seats can pay: %v", err)
+	}
+	if n := len(g.Seats[0].ManaPool); n != 0 {
+		t.Errorf("seat 0's pool = %d, want 0", n)
+	}
+	if n := len(g.Seats[1].ManaPool); n != 0 {
+		t.Errorf("seat 1's pool = %d, want 0 — each controller pays for its own creature", n)
+	}
+}
+
 // --- two taxes stack -----------------------------------------------
 
 func TestTwoAttackTaxesOnOneDefenderStack(t *testing.T) {

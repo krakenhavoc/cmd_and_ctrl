@@ -343,7 +343,10 @@ func (g *Game) PriceAttackDeclarationForEffect(decls []AttackDeclaration) Attack
 // Caller must hold g.mu.
 func (g *Game) priceAttackDeclarationLocked(decls []AttackDeclaration) AttackTaxPrice {
 	var out AttackTaxPrice
-	if len(decls) == 0 {
+	if len(decls) == 0 || CatalogAttackTaxes == nil {
+		// No catalog wired is every hand-built test board, and the
+		// early-out keeps the battlefield walk below off a path that
+		// runs once per (creature, target) pair in the enumerator.
 		return out
 	}
 	var b strings.Builder
@@ -412,6 +415,55 @@ func (g *Game) priceAttackDeclarationLocked(decls []AttackDeclaration) AttackTax
 	// judged.
 	out.Total, _ = ParseCost(out.Cost)
 	return out
+}
+
+// attackTaxAffordableLocked reports whether `payer` could pay `price`
+// right now, without paying it: the mana pool first, then the
+// auto-tapper when `params` allows it.
+//
+// Exactly `legal.enumerator.canPayExcluding`'s test, which is the
+// point — the enumerator decides what to OFFER with it and this
+// decides what to accept, so the two cannot disagree (#544).
+//
+// It exists for one caller: a bulk declaration that mixes seats (only
+// an admin session can submit one) has to know every payer can pay
+// BEFORE it charges any of them, or a refusal leaves the first seat's
+// mana spent on a declaration that never happened. The check is exact
+// rather than optimistic because the seats' pools and untapped
+// permanents are disjoint.
+//
+// Caller must hold g.mu.
+func (g *Game) attackTaxAffordableLocked(payer uuid.UUID, price AttackTaxPrice, params DeclareAttackersParams) error {
+	if price.IsFree() {
+		return nil
+	}
+	p := g.playerByIDLocked(payer)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	cost, err := ParseCost(price.Cost)
+	if err != nil {
+		return &AttackTaxUnpaidError{Cost: price.Cost, Err: ErrUnparseableCost}
+	}
+	// The Phyrexian symbols the player said they would pay with life
+	// leave the mana cost first, exactly as the payer strikes them.
+	cost, _ = PhyrexianLifePlan(cost, p.ManaPool, ManaSpendContext{}, params.PhyrexianLife)
+	if p.ManaPool.CanPayFor(cost, 0, ManaSpendContext{}) {
+		return nil
+	}
+	if params.AutoTap {
+		excluded := make(map[uuid.UUID]bool, len(params.LockedSources))
+		for _, id := range params.LockedSources {
+			excluded[id] = true
+		}
+		if _, ok := g.autoTapLocked(payer, cost, 0, excluded); ok {
+			return nil
+		}
+	}
+	return &AttackTaxUnpaidError{
+		Cost: price.Cost,
+		Err:  &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, 0, ManaSpendContext{})},
+	}
 }
 
 // payAttackTaxLocked charges `price` to `payer` as part of declaring
