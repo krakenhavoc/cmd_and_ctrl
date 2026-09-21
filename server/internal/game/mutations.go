@@ -4563,6 +4563,16 @@ func (g *Game) moveCardByRefLocked(src, dst ZoneRef, cardID uuid.UUID, asCommand
 			}
 		}
 	}
+	// #1069: the entry side's prune door (battlefield_entry.go). This
+	// is the one landing that also serves the STACK, and the prune does
+	// not care which of the two it was: the question is whether a card
+	// an open choose_cards prompt still offers is in the zone that
+	// prompt picks from, and this move has just taken it out of one.
+	// The exit half of this function reaches the same prune through
+	// executeZoneRouteLocked, which refuses a battlefield or stack
+	// destination (routeDestinationLocked), so no move can run it
+	// twice.
+	g.pruneChoicesAfterArrivalLocked()
 	// A sandbox move is a special action: the mover keeps priority
 	// afterwards (CR 116.3), and CR 117.5 puts SBAs + the APNAP
 	// trigger drain at that boundary. Without this, a catalog
