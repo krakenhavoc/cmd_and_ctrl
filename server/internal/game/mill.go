@@ -86,9 +86,33 @@ import (
 // chosen top-down before anything moves, so a leg paused on CR 903.9
 // does not stall the run and does not shorten it. What moved is the
 // VERDICT: millPlanLocked no longer truncates the plan, and the clause
-// rides the routing loop as a stop predicate
-// (routeAllLandedUntilLocked, routeAllThenUntilLocked) consulted only
-// for legs that landed.
+// rides the routing loop as a stop predicate (routeAllThenUntilLocked)
+// consulted only for legs that landed.
+//
+// # And where its BOUND ends it (#1161)
+//
+// In the same predicate. "Until a creature card or X cards have been
+// put into their graveyard this way, whichever comes first" is one
+// sentence with two stop conditions, and both of them count ARRIVALS
+// — so X is not the mill's amount, it is the other half of the clause
+// (effects.UntilAny(UntilCard(...), UntilCount(x))). Helm of Obedience
+// names no number at all now: it asks for an unbounded run and stops
+// itself, which is why a diverted card no longer uses up one of the X
+// and why under Rest in Peace the Helm mills the whole library.
+//
+// The amount and the bound are different rules and this is the line
+// between them. CR 701.13b's number is the one the INSTRUCTION names
+// — "mill three" — and it is the number a mill-amount replacement
+// doubles; a run with a landed-count bound names none, so there is
+// nothing for the CR 614 window on the amount to replace, exactly as
+// millAmountIsReplaceable already said of an unbounded run.
+//
+// The over-mill this could have been is closed by construction rather
+// than by a check: a landed-count bound only ends the run when the
+// engine WAITS for each leg to land, and the fire-and-forget entry
+// point does not wait — so it no longer takes an `until` at all
+// (MillToZoneForEffect), and the stop predicate exists only on the
+// path that sequences.
 //
 // The clause is therefore typed as a function of the whole LANDED LIST
 // rather than of one card. That is not decoration: the loops carry the
@@ -115,7 +139,15 @@ type millTail struct {
 
 	// until, when non-nil, stops the run AFTER the first card that
 	// LANDS in dest and makes it true — Helm of Obedience's "until a
-	// creature card is put into their graveyard".
+	// creature card or X cards have been put into their graveyard this
+	// way, whichever comes first", where BOTH halves are conditions on
+	// the landed list (#1161).
+	//
+	// It is never set without `then`: MillToZoneForEffect, the form
+	// that does not wait for a leg to land, has no `until` parameter
+	// (#1161). So the stop predicate below is built for the sequencing
+	// loop only, and the fire-and-forget loop has no early stop to get
+	// wrong.
 	//
 	// #1159: it is answered in the ROUTING loop, against the cards
 	// that arrived (CR 400.7, landedInZoneLocked), not in
@@ -245,17 +277,21 @@ func (g *Game) applyResolvedMillLocked(ev *ReplacementEvent) ([]uuid.UUID, error
 	for _, c := range plan {
 		ids = append(ids, c.InstanceID)
 	}
-	// #1159: an `until` clause ends the run on a card that ARRIVED, so
-	// it rides the routing loop as a stop predicate rather than
-	// truncating the plan. nil when there is no clause.
-	stop := millStopForLocked(plan, tail.until)
 	r := millRoute(ev.MillPlayer, tail.dest)
 	if tail.then == nil {
 		// Fire-and-forget: every leg is routed on this line and one
 		// that pauses on CR 903.9 lands later without holding the rest
-		// of the mill up (#529).
-		return g.routeAllLandedUntilLocked(r, ids, stop), nil
+		// of the mill up (#529). It carries no `until` — the entry
+		// point that reaches here cannot express one (#1161) — so
+		// there is no early stop on this line and nothing that could
+		// walk the library waiting for an arrival.
+		return g.routeAllLandedLocked(r, ids), nil
 	}
+	// #1159: an `until` clause ends the run on a card that ARRIVED, so
+	// it rides the routing loop as a stop predicate rather than
+	// truncating the plan. #1161: the bound is in the same predicate.
+	// nil when there is no clause.
+	stop := millStopForLocked(plan, tail.until)
 	// Cleared THROUGH the pointer, for the reason the token and
 	// keyword-action tails are: a continuation that re-enters the
 	// pipeline on the same tail value must not run itself twice, and an

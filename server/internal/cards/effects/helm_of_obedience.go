@@ -31,18 +31,36 @@ import (
 // Diffing the graveyard afterwards would be wrong the moment
 // anything else put a card there in the same resolution.
 //
-// #1159 made that clause read what ARRIVED, so the caveat this card
-// carried from the day it shipped is gone: a milled commander whose
-// owner takes the command zone was never put into the graveyard
-// (CR 400.7), so it does not end the run and the Helm keeps milling
-// until a creature card really is put there. What is left of the
-// caveat is the OTHER half of the printed sentence — "or X cards have
-// been put into their graveyard this way" — where X still bounds the
-// cards the run takes off the library rather than the cards that
-// arrive. Fixing that means making the bound itself landed-counted,
-// which is a change to the mill AMOUNT (CR 701.13b counts cards
-// moved, and it is the number Bruvac the Grandiloquent doubles) and
-// not to the clause; it is filed rather than smuggled in here.
+// # Both halves of the sentence count ARRIVALS (#1159, #1161)
+//
+// "Until a creature card OR X CARDS have been put into their
+// graveyard this way, whichever comes first" is one clause with two
+// stop conditions and the same verb governing both — "put into their
+// graveyard this way", CR 400.7's arrived object. #1159 fixed the
+// creature half; this is the other half, and it is written as what it
+// is: UntilAny(UntilCard(creature), UntilCount(X)) over the cards
+// that landed.
+//
+// So the Helm asks for an UNBOUNDED mill and stops itself. X is not
+// the mill's amount, and that is the whole of the fix:
+//
+//   - a card the CR 614 window diverts costs the run nothing. A
+//     milled commander whose owner takes the command zone was never
+//     put into that graveyard, so it neither ends the run nor uses up
+//     one of the X, and the Helm mills another card in its place.
+//   - under Rest in Peace or Leyline of the Void NOTHING is ever put
+//     into that graveyard, so the run never reaches X and the Helm
+//     mills the victim's whole library. That is the famous combo, and
+//     it falls out of the reading rather than being special-cased.
+//   - nothing the run takes off the library is a mill AMOUNT any
+//     more. CR 701.13b's number is the one an instruction names, and
+//     an "until" run names none, so a mill-amount replacement has
+//     nothing to double (game/mill.go, millAmountIsReplaceable):
+//     Bruvac the Grandiloquent doubles mills, not bounds, and X=2 is
+//     two cards with him on the battlefield exactly as it is without.
+//     Paper doubles each one-card repetition instead, which can
+//     overshoot the bound by a card; the engine models the run as one
+//     instruction and stops on the number the card prints.
 //
 // "One of them" needs no prompt. The run stops AT the first creature
 // card, so there is never more than one to choose from — the plural
@@ -63,10 +81,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "16cadebf-c484-41f8-9e38-5c2c528f5b54",
 		Name:         "Helm of Obedience",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"X counts the cards the run takes off the library rather than the cards that reach the graveyard, so a card a replacement diverts on the way (a commander whose owner takes the command zone, CR 903.9) still uses up one of the X. The creature-card half of the clause is exact.",
-		},
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{X}, {T}: Target opponent mills until a creature card or X cards are in their graveyard; reanimate it.",
 			Cost:    Plus(ManaCost("{X}"), TapCost(), MinX(1)),
@@ -91,12 +106,20 @@ func helmOfObedienceMill(g *game.Game, item *game.StackItem) error {
 	// clause needs no second check in the effect.
 	return MillToZone{
 		Player: victim,
-		N:      ctx.X(),
-		// #1159: answered against what reached the graveyard, so a
-		// commander whose owner takes the command zone does not end
-		// the run — the Helm keeps milling until a creature card
-		// really is put there, which is what the card says.
-		Until: UntilCard(func(c game.Card) bool { return c.IsCreature() }),
+		// No N: the bound is the other half of the CLAUSE, not the
+		// mill's amount (#1161). N <= 0 with an Until is "no limit but
+		// the library", and the library is exactly how far this runs
+		// when a replacement keeps every card out of the graveyard.
+		//
+		// #1159 / #1161: both conditions are answered against what
+		// reached the graveyard, so a commander whose owner takes the
+		// command zone neither ends the run nor spends one of the X —
+		// the Helm mills another card in its place, which is what the
+		// card says.
+		Until: UntilAny(
+			UntilCard(func(c game.Card) bool { return c.IsCreature() }),
+			UntilCount(ctx.X()),
+		),
 		// #893: the reanimation reads what was PUT INTO THE GRAVEYARD,
 		// so it runs from the continuation. A milled commander stops to
 		// answer CR 903.9 and the creature card to reanimate is not

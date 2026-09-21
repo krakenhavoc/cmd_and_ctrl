@@ -45,7 +45,7 @@ func millOne(t *testing.T, g *game.Game, p *game.Player) uuid.UUID {
 	}
 	id := top.InstanceID
 	g.WithWriteLock(func() {
-		if _, err := g.MillToZoneForEffect(p.ID, 1, game.ZoneGraveyard, nil); err != nil {
+		if _, err := g.MillToZoneForEffect(p.ID, 1, game.ZoneGraveyard); err != nil {
 			t.Fatalf("MillToZoneForEffect: %v", err)
 		}
 	})

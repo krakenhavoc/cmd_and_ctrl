@@ -80,7 +80,7 @@ func millN(t *testing.T, g *Game, p *Player, n int) []uuid.UUID {
 	var got []uuid.UUID
 	g.WithWriteLock(func() {
 		var err error
-		got, err = g.MillToZoneForEffect(p.ID, n, ZoneGraveyard, nil)
+		got, err = g.MillToZoneForEffect(p.ID, n, ZoneGraveyard)
 		if err != nil {
 			t.Fatalf("MillToZoneForEffect: %v", err)
 		}
@@ -200,7 +200,7 @@ func TestAnExileOfTheTopCardsIsNotAMill(t *testing.T) {
 	var got []uuid.UUID
 	g.WithWriteLock(func() {
 		var err error
-		got, err = g.MillToZoneForEffect(p.ID, 2, ZoneExile, nil)
+		got, err = g.MillToZoneForEffect(p.ID, 2, ZoneExile)
 		if err != nil {
 			t.Fatalf("MillToZoneForEffect: %v", err)
 		}
@@ -228,12 +228,14 @@ func TestAnUnboundedUntilMillOpensNoAmountWindow(t *testing.T) {
 
 	var got []uuid.UUID
 	g.WithWriteLock(func() {
-		var err error
-		got, err = g.MillToZoneForEffect(p.ID, 0, ZoneGraveyard, func(landed []Card) bool {
+		err := g.MillToZoneThenForEffect(p.ID, 0, ZoneGraveyard, func(landed []Card) bool {
 			return len(landed) == 2
+		}, func(_ *Game, milled []uuid.UUID) error {
+			got = milled
+			return nil
 		})
 		if err != nil {
-			t.Fatalf("MillToZoneForEffect: %v", err)
+			t.Fatalf("MillToZoneThenForEffect: %v", err)
 		}
 	})
 
