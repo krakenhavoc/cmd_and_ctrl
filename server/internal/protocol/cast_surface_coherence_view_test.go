@@ -125,6 +125,29 @@ func graveyardCard(p *game.Player, name, oracle string) uuid.UUID {
 	return id
 }
 
+// multiFaceGraveyardCard seeds one MULTI-FACE card into a seat's
+// graveyard, front face up (CR 712.8, MoveCard), each half's catalog
+// entry keyed the way ADR 0034 keys them: the bare oracle ID for the
+// front and "<oracle_id>#1" for the back.
+//
+// A modal DFC, because its halves are independently castable
+// (CR 712.12a) — which is what makes "the BACK face opens the
+// graveyard" something a cast can act on. Built from a test spec
+// rather than seeded from the catalog because no catalog card
+// declares it yet: #1171 is latent, and a fixture is how a latent
+// divergence gets pinned before the first printing makes it live.
+func multiFaceGraveyardCard(p *game.Player, oracle string, faces []game.Face) uuid.UUID {
+	c := game.NewCard(faces[0].Name, p.ID)
+	c.OracleID = oracle
+	c.Layout = game.LayoutModalDFC
+	c.Faces = faces
+	c.SetFace(0)
+	c.KnownBy = map[uuid.UUID]bool{p.ID: true}
+	id := c.InstanceID
+	p.Graveyard.PushTop(c)
+	return id
+}
+
 // cardInSeatZone finds one card in one projected zone.
 func cardInSeatZone(t *testing.T, z ZoneView, id uuid.UUID) *CardView {
 	t.Helper()
@@ -461,16 +484,33 @@ func enumeratedPrices(t *testing.T, g *game.Game, seat uuid.UUID) map[string]cas
 // graveyard card is a cast surface only when `castable_here` says so,
 // a hand card always is, and `alternative_cost_required` says whether
 // the printed cost is on the menu.
+//
+// ACROSS THE CASTABLE FACES as well as the card (#1171, #992). The
+// card's own block describes the face that is UP, and a pile is
+// front-up (CR 712.8) — so a card whose BACK face alone opens the
+// zone has a front that is no cast surface and a back that is, and
+// the union over the blocks is what the client's face picker reads.
+// It is the shape of the other side of this comparison too: the
+// enumerator walks game.CastableFacesUnder and files every face's
+// moves under the one instance.
 func viewPrices(c *CardView, zone string) castPrices {
-	surface := zone == "hand" || zone == "command" || c.CastableHere
-	if !surface {
-		return castPrices{keys: map[string]bool{}}
+	out := castPrices{keys: map[string]bool{}}
+	add := func(s CastSurfaceView) {
+		if zone != "hand" && zone != "command" && !s.CastableHere {
+			return
+		}
+		if !s.AlternativeCostRequired {
+			out.printed = true
+		}
+		for _, o := range s.AlternativeCosts {
+			out.keys[o.Key] = true
+		}
 	}
-	keys := map[string]bool{}
-	for _, o := range c.AlternativeCosts {
-		keys[o.Key] = true
+	add(c.CastSurfaceView)
+	for _, f := range c.Faces {
+		add(f.CastSurfaceView)
 	}
-	return castPrices{printed: !c.AlternativeCostRequired, keys: keys}
+	return out
 }
 
 // seededCast is one row of the coherence fixture: a card, the zone it
@@ -513,12 +553,20 @@ func TestViewAndEnumeratorOfferTheSamePrices(t *testing.T) {
 		oracleFlashback = "test-coherence-flashback"
 		oracleEscape    = "test-coherence-escape"
 		oracleRevealed  = "test-coherence-revealed-in-hand"
+		// #1171: a MULTI-FACE card, and everything it declares it
+		// declares on the BACK — the half the pile is not showing.
+		oracleBackFace = "test-coherence-back-face-flashback"
 	)
 	g := busyTable(t, 1)
 	me := g.Seats[g.Turn.ActiveSeat]
 	withCastableZones(t, map[string][]game.ZoneKind{
 		oracleFlashback: {game.ZoneGraveyard},
 		oracleEscape:    {game.ZoneGraveyard},
+		// #1171: THE BACK FACE's entry and not the card's. The front
+		// half declares nothing, so a reader that asks the bare
+		// oracle ID — which is face 0's catalog key — is told this
+		// card does not open the graveyard at all.
+		oracleBackFace + "#1": {game.ZoneGraveyard},
 	})
 	withAltCostsByOracle(t, map[string][]game.AlternativeCost{
 		oracleFlashback: {
@@ -526,6 +574,12 @@ func TestViewAndEnumeratorOfferTheSamePrices(t *testing.T) {
 			{Key: "flashback", Label: "Flashback {1}{R}", ManaCost: "{1}{R}", FromZone: game.ZoneGraveyard},
 		},
 		oracleEscape: {escapeCost("{R}", 2)},
+		// #1171: priced on the back face too, so the row below pins
+		// the PRICE LIST of a face the pile is not showing and not
+		// merely the bit above it.
+		oracleBackFace + "#1": {
+			{Key: "flashback", Label: "Flashback {1}{R}", ManaCost: "{1}{R}", FromZone: game.ZoneGraveyard},
+		},
 	})
 	// #1166: the one seeded card with a target clause, so the
 	// per-viewer half of the assertion below is answered by a stamp
@@ -555,6 +609,26 @@ func TestViewAndEnumeratorOfferTheSamePrices(t *testing.T) {
 	}
 	graveyardCard(me, "Coherence Filler A", "")
 	graveyardCard(me, "Coherence Filler B", "")
+
+	// #1171: a modal DFC whose BACK face alone opens — and prices —
+	// the graveyard. The row this fixture could not have: every other
+	// seeded card is single-faced, so "which zones does this card
+	// open" was never asked of a card with more than one answer.
+	//
+	// The enumerator has always asked it of every castable face
+	// (game.CardCastableFromAnyFace); the view asked it of the bare
+	// oracle ID, which resolves to face 0's entry. So this card was a
+	// legal move for a bot and a card with NO announce stamps at all
+	// on the wire — no `castable_here`, no price list, no target
+	// clause, and a zone browser with no button behind a cast
+	// CastSpell would have accepted. Silent, because the two answers
+	// were never compared for a multi-face card until this row.
+	mdfc := multiFaceGraveyardCard(me, oracleBackFace, []game.Face{
+		{Name: "Coherence Front", TypeLine: "Creature — Bear", ManaCost: "{1}{R}", Power: 2, Toughness: 2},
+		{Name: "Coherence Back", TypeLine: "Instant", ManaCost: "{1}{R}"},
+	})
+	knownToEveryone(g, me.Graveyard, mdfc)
+	seeded[mdfc.String()+"@graveyard"] = seededCast{"modal DFC whose back face prices the graveyard", me.ID, "graveyard"}
 
 	// And the same flashback card in hand, where the printed cost IS
 	// claimable and only the unbound offer shows.
@@ -610,6 +684,13 @@ func TestViewAndEnumeratorOfferTheSamePrices(t *testing.T) {
 	// before the loop below checks that the view says the same.
 	if got := moves[fb.String()+"@graveyard"]; got.printed || !got.keys["flashback"] {
 		t.Fatalf("fixture: the enumerator offers %v (printed=%v) for the graveyard flashback card, want [flashback] only",
+			got.sorted(), got.printed)
+	}
+	// #1171 non-vacuity: the enumerator really does offer the BACK
+	// face's flashback out of the graveyard, so the loop below is
+	// comparing the view against a non-empty answer.
+	if got := moves[mdfc.String()+"@graveyard"]; got.printed || !got.keys["flashback"] {
+		t.Fatalf("fixture: the enumerator offers %v (printed=%v) for the back-face flashback card, want [flashback] only",
 			got.sorted(), got.printed)
 	}
 
@@ -693,6 +774,19 @@ func TestViewAndEnumeratorOfferTheSamePrices(t *testing.T) {
 		}
 		if c.LegalTargets != nil {
 			t.Errorf("%s: a bystander got one seat's legal target set: %+v", row.label, c.LegalTargets)
+		}
+		// #992 / #1171: and per face, because the multi-face row is
+		// the one whose answer lives there. The per-viewer split
+		// travels down to a face's block exactly as it does to a
+		// card's, so a bystander reads neither.
+		for i := range c.Faces {
+			if c.Faces[i].CastableHere {
+				t.Errorf("%s: faces[%d].castable_here is set for a seat that cannot cast it", row.label, i)
+			}
+			if c.Faces[i].LegalTargets != nil {
+				t.Errorf("%s: a bystander got one seat's per-face legal target set: %+v",
+					row.label, c.Faces[i].LegalTargets)
+			}
 		}
 	}
 }

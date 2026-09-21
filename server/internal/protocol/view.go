@@ -2425,11 +2425,35 @@ func stampLegalTargets(g *game.Game, seats []PlayerView, anyGrant bool) {
 					// by stampGrantedPermissions, which already walks
 					// these piles asking whose permission covers each
 					// card (#1022, #1037).
-					var grant *game.CastPermission
-					if anyGrant && zone.live != nil && ci < len(zone.live.Cards) {
-						grant = grantedCast(g, caster, zone.live.Cards[ci], zone.kind)
+					//
+					// Both questions are asked of the ENGINE's card
+					// rather than of the projection (#1171). viewOfZone
+					// builds a pile card-for-card and in order — the
+					// alignment stampGrantedPermissions already relies
+					// on — so the live card is the one beside it, and
+					// reading it is what lets the gate below ask about
+					// a FACE the pile is not showing.
+					var live *game.Card
+					if zone.live != nil && ci < len(zone.live.Cards) {
+						live = &zone.live.Cards[ci]
 					}
-					if grant == nil && !game.CardCastableFromZone(c.oracleID, zone.kind) {
+					var grant *game.CastPermission
+					if anyGrant && live != nil {
+						grant = grantedCast(g, caster, *live, zone.kind)
+					}
+					// #1171: EVERY face a cast may choose, through the
+					// one predicate the bot enumerator reads
+					// (game.CardCastableFromAnyFace). This used to ask
+					// `c.oracleID`, which is the BARE oracle ID and so
+					// resolves to face 0's catalog entry whatever the
+					// card's other halves declare — while
+					// legal/cast.go asked every face. A card whose BACK
+					// face prints flashback was therefore a legal move
+					// for a bot and a card with no announce stamps at
+					// all on the wire: no `castable_here`, no price
+					// list, no target clause, and no cast button behind
+					// a cast CastSpell would have accepted.
+					if grant == nil && (live == nil || !game.CardCastableFromAnyFace(*live, zone.kind)) {
 						continue
 					}
 					// `castable_here` is NOT set here (#1015):
@@ -2447,7 +2471,7 @@ func stampLegalTargets(g *game.Game, seats []PlayerView, anyGrant bool) {
 					// modes, the clause refusing the cast — which every
 					// player may read off a card in a public zone.
 					s := castStampsFor(g, caster, c, activeFace(c), zone.kind, grant)
-					s.applyPublicTo(c)
+					s.applyPublicTo(c, zone.kind)
 					c.stampsFor(caster, s)
 					stampCastableFaces(g, caster, c, zone.kind, grant, true)
 					continue
@@ -2476,7 +2500,7 @@ func stampLegalTargets(g *game.Game, seats []PlayerView, anyGrant bool) {
 				// only ever sets it for a graveyard or a library top,
 				// so a hand card has never carried one.
 				s := castStampsFor(g, caster, c, activeFace(c), zone.kind, nil)
-				s.applyPublicTo(c)
+				s.applyPublicTo(c, zone.kind)
 				c.stampsFor(caster, s)
 				// #992: and the halves this hand card is NOT showing.
 				// A hand is where an adventure card and a modal DFC
@@ -2618,26 +2642,88 @@ func (s castStamps) applyToFace(f *CardFaceView) {
 //
 // A seat with an answer of its own gets all three back wholesale when
 // FilterViewFor promotes their entry.
-func (s castStamps) applyPublicTo(c *CardView) {
-	s.public().applyTo(c)
+//
+// A HAND's public half is narrower than a graveyard's, and `kind` is
+// how this function knows (#1169) — see publicIn.
+func (s castStamps) applyPublicTo(c *CardView, kind game.ZoneKind) {
+	s.publicIn(kind).applyTo(c)
 }
 
 // applyPublicToFace is applyPublicTo one level down (#992): the same
 // split, applied to a face's block. A face's legal target set is one
-// seat's answer for exactly the reason the card's is.
-func (s castStamps) applyPublicToFace(f *CardFaceView) {
-	s.public().applyToFace(f)
+// seat's answer for exactly the reason the card's is, and a face of a
+// card in a HAND is as unreadable as the card is (#1169).
+func (s castStamps) applyPublicToFace(f *CardFaceView, kind game.ZoneKind) {
+	s.publicIn(kind).applyToFace(f)
 }
 
-// public is the half of one seat's answer that EVERY viewer
-// legitimately sees — the three per-viewer fields dropped, and nothing
-// else touched. One place, so the card's split and the face's cannot
-// disagree about which fields those three are.
-func (s castStamps) public() castStamps {
+// publicIn is the half of one seat's answer that EVERY viewer of a
+// card in `kind` legitimately sees. One place, so the card's split and
+// the face's cannot disagree about which fields those are.
+//
+// THREE FIELDS ARE NEVER PUBLIC, in any zone: `castable_here`,
+// `legal_targets` and `clauses` each answer "what may YOU announce"
+// (#1055).
+//
+// A HAND IS NOT A PUBLIC ZONE the way a graveyard is, and that is the
+// zone-publicity half (#1169). A revealed card — Thoughtseize,
+// Telepathy — is ONE card the viewer has been shown, not a pile they
+// may read, and the cost-shaped announce fields are documented as
+// "the viewer's own hand". One of them is also a live leak of the
+// rest of that hand: an offer with a pitch cost (Force of Will's
+// "exile a blue card from your hand") carries `pay_options`, which is
+// a list of instance IDs out of the hand the viewer was shown exactly
+// one card of.
+//
+// keepKnownInHandZone used to clear these from a hand-rolled list of
+// field names in the per-viewer filter, which is the second list in a
+// second place that castStamps exists to end — and being a list of
+// what to REMOVE it had gone stale twice over: it never covered
+// `optional_costs` (ADR 0073), and since #992 it never covered the
+// per-face blocks at all, so a revealed adventure card handed a
+// knower its owner's whole per-face price list. handPublicCastSurface
+// is an ALLOWLIST instead, so a field added to CastSurfaceView
+// tomorrow is private in a hand until somebody says otherwise.
+func (s castStamps) publicIn(kind game.ZoneKind) castStamps {
 	s.CastableHere = false
 	s.LegalTargets = nil
 	s.Clauses = nil
+	if kind == game.ZoneHand {
+		s.CastSurfaceView = handPublicCastSurface(s.CastSurfaceView)
+	}
 	return s
+}
+
+// handPublicCastSurface is the announce surface of a card in a HAND
+// that a viewer who is not its owner may read (#1169).
+//
+// Written as an allowlist — a fresh block carrying the fields that
+// stay, rather than a list of the fields that go — because the
+// question a new announce field has to answer is "may somebody who
+// was SHOWN this card read it", and the safe default for a field
+// nobody has thought about is no. The four that stay are the three
+// the line has always kept plus `target_mode`, and they are the ones
+// that are not cost-shaped:
+//
+//   - `target_mode` is the shape of the card's target prompt, which
+//     is its printed text — and it is already public on a revealed
+//     card's FACES (#992), so clearing it here would have made the
+//     card and its faces disagree.
+//   - `additional_cost` and `optional_costs` are printed clauses
+//     whose pickers read the battlefield, which is public.
+//   - `cant_cast` is a Rule of Law on the battlefield, visible to
+//     everybody in exactly the same words.
+//
+// The list of Go field names is pinned by the reflection guard in
+// face_down_view_test.go, which fails on a field of CastSurfaceView
+// this function has not placed.
+func handPublicCastSurface(s CastSurfaceView) CastSurfaceView {
+	return CastSurfaceView{
+		TargetMode:     s.TargetMode,
+		AdditionalCost: s.AdditionalCost,
+		OptionalCosts:  s.OptionalCosts,
+		CantCast:       s.CantCast,
+	}
 }
 
 // stampsFor files one seat's answer on the card for FilterViewFor to
@@ -2721,7 +2807,7 @@ func stampCastableFaces(g *game.Game, caster uuid.UUID, c *CardView, kind game.Z
 		}
 		s := castStampsFor(g, caster, c, castFaceOf(c, i), kind, grant)
 		if public {
-			s.applyPublicToFace(&c.Faces[i])
+			s.applyPublicToFace(&c.Faces[i], kind)
 		}
 		c.Faces[i].stampsFor(caster, s)
 	}
@@ -4847,36 +4933,30 @@ func keepKnownInHandZone(z ZoneView) ZoneView {
 		Count: z.Count,
 		Cards: []CardView{},
 	}
+	// NO CAST-SURFACE FIELD LIST HERE, and that is the point (#1169).
+	// This function drops the cards this viewer is not a knower of and
+	// nothing else.
+	//
+	// It used to clear six announce fields by name — the narrowing
+	// that keeps "the viewer's own hand" true for a revealed card,
+	// because a hand is not a public zone the way a graveyard is —
+	// and that was a second list of cast-surface fields in a second
+	// place, which is precisely the drift castStamps was created to
+	// end. The narrowing itself was right and is unchanged; it is
+	// stamped now rather than un-stamped here, by
+	// castStamps.publicIn, which is the one function that knows the
+	// field list. A field added to CastSurfaceView tomorrow cannot
+	// reach a knower's copy of somebody else's hand card by being
+	// forgotten here, because there is nothing here to forget.
+	//
+	// (`legal_targets` and `clauses` went the same way one issue
+	// earlier: since #1166 the hand is routed through
+	// applyCastStampsFor like every other cast surface, so the
+	// owner's answer to "what may YOU target" reaches the owner's
+	// frame alone and is already gone by the time a knower's copy
+	// gets here.)
 	for _, c := range z.Cards {
 		if c.KnownByYou {
-			// `legal_targets` and `clauses` used to be cleared here
-			// by hand (S20, #764). They are not any more, and nothing
-			// was given up: since #1166 the hand is routed through
-			// applyCastStampsFor like every other cast surface, so
-			// the owner's answer to "what may YOU target" reaches the
-			// owner's frame alone and is already gone by the time a
-			// knower's copy gets here. One strip, in the one place
-			// that knows whose answer it is holding — a second list
-			// here was the drift #1055's castStamps existed to end.
-			//
-			// What stays is a narrowing of a different kind: these
-			// fields are documented as "the viewer's own hand", a
-			// HAND is not a public zone the way a graveyard is, and
-			// applyCastStampsFor keeps the PUBLIC half of the owner's
-			// answer on the card. Dropping them here is what keeps
-			// that scope true for a revealed card.
-			c.Modes = nil
-			c.AlternativeCosts = nil
-			c.AlternativeCostRequired = false
-			c.TapCost = nil
-			// #916: stamped for the owner's cost prompts with the
-			// other cast clauses, so it goes with them.
-			c.PhyrexianSymbols = 0
-			// #746: stamped for the owner's X picker with the other
-			// cast clauses, so it goes with them. Printed text, so
-			// nothing leaks; this keeps the field's documented scope
-			// ("the viewer's own hand") true.
-			c.TargetCostNotes = nil
 			out.Cards = append(out.Cards, c)
 		}
 	}

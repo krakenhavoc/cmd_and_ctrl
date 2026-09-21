@@ -1169,3 +1169,98 @@ every zone now calls the same function.
 
 Nothing moves on the wire in the direction that breaks a reader: the
 fields go out on fewer frames, never on more.
+
+---
+
+## Note (2026-09-21, #1171 / #1169): the zone question is asked of every face, and the hand's public half is an allowlist
+
+Two coherence items out of #1170, both of the S48 #891 shape — a
+surface that says one thing and means another — and neither changes a
+decision above. They change WHERE two rules live.
+
+### "Does this card open this zone" is one predicate (#1171)
+
+The rule was already written down: a cast out of a non-hand zone needs
+either a permission or the CARD's own declaration
+(`validateCastPathLocked` rule 2, `CastableZonesFor`). It was being
+asked twice, of different faces.
+
+The bot's legal-move enumerator asked it of EVERY castable face,
+because an MDFC's halves are separate catalog entries (ADR 0034's
+`<oracle_id>#N`) and only the back may print flashback. The view asked
+it of `CardView.oracleID` — the BARE oracle ID, which resolves to face
+0's entry whatever the other halves declare — so a card whose back
+face opened the graveyard was enumerated as a legal move for a bot and
+stamped with nothing at all: no `castable_here`, no price list, no
+target clause, and a zone browser with no button behind a cast
+`CastSpell` would have accepted. Silent, and latent: no catalog card
+declares it today, and the view's coherence fixture (#1024) seeded
+only single-faced cards, so the two answers were never compared for a
+card that has more than one.
+
+`game.CardCastableFromAnyFace` is that question, once, read by
+`legal/cast.go` and by `protocol.stampLegalTargets`. It is the same
+move #992 made one question over — `game.CastableFacesUnder` is the
+one answer to "which faces may a cast choose" — and for the same
+reason: a face one side offers and the other does not is either a bot
+move the announce path refuses or a picker row with nothing behind it.
+
+The fixture has a modal DFC whose back face declares AND prices the
+graveyard now, and `viewPrices` reads the union over the card's block
+and its `faces[i]` blocks, which is the shape the enumerator's per-face
+walk produces on the other side of the comparison.
+
+### A hand's public half is narrower, and it is an allowlist (#1169)
+
+The #1166 amendment above left `keepKnownInHandZone` clearing six
+announce fields from a hand-rolled list of field names. That narrowing
+is right — a hand is not a public zone the way a graveyard is, and a
+revealed card is one card the viewer has been SHOWN, not a pile they
+may read — but a list in the per-viewer filter is a second list of
+cast-surface fields in a second place, which is the drift `castStamps`
+exists to end. Being a list of what to REMOVE, it had already gone
+stale twice: it never covered `optional_costs` (added by ADR 0073
+after it), and since #992 it never covered the per-face blocks at all,
+so a knower of a revealed adventure card read its owner's whole
+per-face price list — including an offer's `pay_options`, which for a
+pitch cost is a list of instance IDs out of the hand the viewer was
+shown exactly one card of.
+
+Shape (1) of the issue, the conservative one: `castStamps.publicIn`
+takes the zone kind, and a HAND's public half is narrower than a
+graveyard's. `keepKnownInHandZone` goes back to being purely "drop the
+cards this viewer is not a knower of" and carries no field list at
+all.
+
+The narrowing is written as an ALLOWLIST (`handPublicCastSurface`) —
+the four fields that stay, rather than the six that go — because the
+question a new announce field has to answer is "may somebody who was
+shown this card read it", and the safe default for a field nobody has
+thought about is no. What stays is what is not cost-shaped:
+`target_mode` (the printed prompt shape, and already public on a
+revealed card's faces since #992), `additional_cost` and
+`optional_costs` (printed clauses whose pickers read the public
+battlefield), and `cant_cast` (a Rule of Law on the battlefield, which
+everybody can see).
+
+A reflection guard in `face_down_view_test.go` places every field of
+`CastSurfaceView` on one side of that line and fails on one nobody has
+placed, in the shape the redaction allowlist beside it already uses.
+
+Nothing moves on the wire in the direction that breaks a reader: the
+fields go out on fewer frames, never on more.
+
+### What is NOT in these two
+
+`modes` and `alternative_costs[i]` carry a `legal_targets` of their
+own, computed for the seat the stamp was built for, and those ride the
+PUBLIC half on a public pile — so a bystander reads the pile owner's
+per-mode legal target set off a modal card in a graveyard. That is the
+#1055 sentence one level down inside a nested view, it needs a
+decision about nested per-viewer data rather than a field move. Filed
+as #1172.
+
+The CLIENT half of #1171 is filed as #1173: the zone browser's cast
+gate reads the card's `castable_here`, which for a pile is face 0's
+answer, so it will not offer the cast a back face opens even though
+the frame now carries one on `faces[i]`.

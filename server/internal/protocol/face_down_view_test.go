@@ -596,3 +596,200 @@ func TestFaceVisibleTracksTheViewersRule(t *testing.T) {
 		})
 	}
 }
+
+// --- #1169: the hand's public half is an allowlist -------------------
+//
+// A hand is not a public zone the way a graveyard is: a revealed card
+// (Thoughtseize, Telepathy) is ONE card the viewer has been shown, not
+// a pile they may read. `keepKnownInHandZone` used to keep that true
+// by clearing six announce fields from a list of field NAMES, which
+// is a second list in a second place — the drift `castStamps` exists
+// to end — and being a list of what to REMOVE it had gone stale
+// twice: it never covered `optional_costs`, and since #992 it never
+// covered the per-face blocks at all.
+//
+// The narrowing lives in `castStamps.publicIn` now, as an allowlist,
+// and this is the guard on it: every field of CastSurfaceView has to
+// be PLACED in the table below, so a field added to the block is a
+// decision somebody makes rather than one nobody notices.
+
+// castSurfaceScope is how far one announce field travels: never off
+// the asking seat's frame, out to every viewer of a PUBLIC pile, or
+// out to a viewer who has merely been shown one card in a hand.
+type castSurfaceScope int
+
+const (
+	// surfacePrivate answers "what may YOU announce" and reaches the
+	// asking seat's frame alone, in every zone (#1055).
+	surfacePrivate castSurfaceScope = iota
+	// surfacePublicPile is a fact about the card in a PUBLIC zone —
+	// a graveyard, a library top, the command zone, exile — which
+	// every player may pick up and read there, and which a viewer
+	// shown one card of a HAND may not.
+	surfacePublicPile
+	// surfacePublicAnywhere survives even on a revealed hand card.
+	surfacePublicAnywhere
+)
+
+// castSurfaceScopes places every field of CastSurfaceView. A field
+// missing from this table fails the guard below rather than defaulting
+// to anything: "which viewers may read this" is the question a new
+// announce field has to answer, and the answer belongs beside the
+// other twelve.
+var castSurfaceScopes = map[string]castSurfaceScope{
+	// #1055: the three that answer "what may YOU announce".
+	"CastableHere": surfacePrivate,
+	"LegalTargets": surfacePrivate,
+	"Clauses":      surfacePrivate,
+	// #1169: cost-shaped facts about the card. Public on a public
+	// pile — an escape offer is priced by a graveyard everybody can
+	// count — and not on a hand card the viewer was shown one of.
+	// `alternative_costs` is also a live leak of the REST of that
+	// hand: a pitch offer (Force of Will) carries `pay_options`,
+	// which is a list of instance IDs out of it.
+	"Modes":                   surfacePublicPile,
+	"AlternativeCosts":        surfacePublicPile,
+	"AlternativeCostRequired": surfacePublicPile,
+	"TapCost":                 surfacePublicPile,
+	"PhyrexianSymbols":        surfacePublicPile,
+	"TargetCostNotes":         surfacePublicPile,
+	// #1169: and the four that are not cost-shaped. `target_mode` is
+	// the card's printed prompt shape and is already public on a
+	// revealed card's FACES (#992); `additional_cost` and
+	// `optional_costs` are printed clauses whose pickers read the
+	// public battlefield; `cant_cast` is a Rule of Law on the
+	// battlefield, visible to everybody in the same words.
+	"TargetMode":     surfacePublicAnywhere,
+	"AdditionalCost": surfacePublicAnywhere,
+	"OptionalCosts":  surfacePublicAnywhere,
+	"CantCast":       surfacePublicAnywhere,
+}
+
+// survivesIn reports whether a field of this scope is still set after
+// the public strip for `kind`.
+func (s castSurfaceScope) survivesIn(kind game.ZoneKind) bool {
+	switch s {
+	case surfacePublicAnywhere:
+		return true
+	case surfacePublicPile:
+		return kind != game.ZoneHand
+	default:
+		return false
+	}
+}
+
+// TestHandPublicCastSurfaceIsAnAllowlist is the #1169 guard, and it is
+// the reflection shape TestRedactionZoneByViewer above uses one field
+// list over: every field of the block, placed by a table, checked
+// against what the strip actually leaves behind.
+//
+// It fails three ways, and each is a thing that went wrong before:
+// a field nobody placed (the list went stale), a field the hand strip
+// keeps that the table says it should not (a leak), and a field the
+// strip clears that the table says is public (a regression on a
+// public pile, where the same function does the stripping).
+func TestHandPublicCastSurfaceIsAnAllowlist(t *testing.T) {
+	lt := &LegalTargetsView{Cards: []string{"target"}, Min: 1, Max: 1}
+	full := everyFieldCastSurface(lt)
+	assertEveryExportedFieldSet(t, "CastSurfaceView", reflect.ValueOf(full))
+
+	typ := reflect.TypeOf(CastSurfaceView{})
+	for i := 0; i < typ.NumField(); i++ {
+		if _, ok := castSurfaceScopes[typ.Field(i).Name]; !ok {
+			t.Fatalf("CastSurfaceView.%s is not placed in castSurfaceScopes: say whether a viewer "+
+				"shown one card of somebody else's HAND may read it, and whether a bystander at a "+
+				"public pile may", typ.Field(i).Name)
+		}
+	}
+
+	// A HAND and a GRAVEYARD, through the one function that knows the
+	// field list. The graveyard column is not decoration: it is what
+	// stops the hand's narrowing being applied to the piles a card in
+	// them is genuinely public in.
+	for _, kind := range []game.ZoneKind{game.ZoneHand, game.ZoneGraveyard} {
+		got := reflect.ValueOf(castStamps{CastSurfaceView: full}.publicIn(kind).CastSurfaceView)
+		for i := 0; i < typ.NumField(); i++ {
+			name := typ.Field(i).Name
+			want := castSurfaceScopes[name].survivesIn(kind)
+			if set := !got.Field(i).IsZero(); set != want {
+				t.Errorf("%s: %s set=%v, want %v", kind, name, set, want)
+			}
+		}
+	}
+}
+
+// And end to end, which is the half a unit test over publicIn cannot
+// answer: the fields the table calls pile-public must actually be gone
+// from a NON-OWNER's copy of a revealed hand card — on the card and on
+// its FACES, which is where the old hand-rolled list never reached.
+//
+// The adventure fixture from per_face_announce_view_test.go, because a
+// revealed multi-face card is the case that was live: #992 publishes a
+// price list per castable face, `keepKnownInHandZone` cleared the
+// CARD's fields by name and nothing else, so a knower of one revealed
+// adventure card read its owner's whole per-face offer list.
+func TestRevealedHandCardAndItsFacesDropThePileOnlyFields(t *testing.T) {
+	withFaceCatalog(t)
+	withAltCostsByOracle(t, map[string][]game.AlternativeCost{
+		adventureOracle:        {{Key: "overload", Label: "Overload {4}{R}", ManaCost: "{4}{R}", ClearsTargets: true}},
+		adventureOracle + "#1": {{Key: "evoke", Label: "Evoke {R}", ManaCost: "{R}"}},
+	})
+	g := buildActiveGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+
+	bear := game.NewCard("Bear", opp.ID)
+	bear.TypeLine = "Creature — Bear"
+	g.Battlefield.PushTop(bear)
+
+	// Revealed: the opponent is a knower, so the card survives
+	// keepKnownInHandZone and the assertions below are answered by
+	// the stamp rather than by the redaction of a card nobody sees.
+	c := adventureCard(me.ID, me.ID, opp.ID)
+	id := c.InstanceID
+	me.Hand.PushTop(c)
+
+	ownHand := ViewOfGameFor(g, me.ID.String()).Seats[0].Hand
+	own := cardInSeatZone(t, ownHand, id)
+	ownBack := faceOf(t, ownHand, id, 1)
+	// Non-vacuity, both levels: the owner is offered a price list on
+	// the card and a different one on the Adventure half.
+	if keys := keysOf(own.AlternativeCosts); !sameStrings(keys, []string{"overload"}) {
+		t.Fatalf("the hand's owner lost their own offers: %v", keys)
+	}
+	if keys := keysOf(ownBack.AlternativeCosts); !sameStrings(keys, []string{"evoke"}) {
+		t.Fatalf("the hand's owner lost the Adventure half's offers: %v", keys)
+	}
+
+	theirHand := ViewOfGameFor(g, opp.ID.String()).Seats[0].Hand
+	theirs := cardInSeatZone(t, theirHand, id)
+	if !theirs.KnownByYou {
+		t.Fatalf("the fixture hid the card from the knower; every assertion below would be vacuous")
+	}
+	if len(theirs.Faces) != 2 {
+		t.Fatalf("the knower's copy ships %d faces, want both halves", len(theirs.Faces))
+	}
+	for _, probe := range []struct {
+		label string
+		got   CastSurfaceView
+	}{
+		{"the card", theirs.CastSurfaceView},
+		{"faces[0]", theirs.Faces[0].CastSurfaceView},
+		{"faces[1]", theirs.Faces[1].CastSurfaceView},
+	} {
+		v := reflect.ValueOf(probe.got)
+		typ := v.Type()
+		for i := 0; i < typ.NumField(); i++ {
+			name := typ.Field(i).Name
+			if castSurfaceScopes[name].survivesIn(game.ZoneHand) || v.Field(i).IsZero() {
+				continue
+			}
+			t.Errorf("a knower of a revealed hand card read %s.%s off it: %+v",
+				probe.label, name, v.Field(i).Interface())
+		}
+	}
+	// And the allowlisted half really is still there, or the check
+	// above would pass on a card that lost everything.
+	if theirs.Faces[1].TargetMode != "any" {
+		t.Errorf("faces[1].target_mode = %q on a revealed card, want the public \"any\"", theirs.Faces[1].TargetMode)
+	}
+}

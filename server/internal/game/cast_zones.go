@@ -99,6 +99,50 @@ func CardCastableFromZone(oracleID string, zone ZoneKind) bool {
 	return false
 }
 
+// CardCastableFromAnyFace is CardCastableFromZone asked of EVERY face
+// a cast of this card may choose, rather than of the half the pile
+// happens to be showing.
+//
+// One question per face, because an MDFC's halves are SEPARATE
+// catalog entries (ADR 0034's "<oracle_id>#N") and only the back may
+// print flashback: a card whose back face opens the graveyard has a
+// front face whose entry declares nothing, so face 0's answer is "no"
+// about a card whose own text says yes.
+//
+// THE ONE PREDICATE, read by the legal-move enumerator (legal/cast.go)
+// and by the view (protocol.stampLegalTargets) rather than each
+// spelling the walk out — #1171, where the enumerator asked every face
+// and the view asked face 0. The two disagreeing is silent by
+// construction: the enumerator offers a bot a cast, the view stamps
+// the card with no `castable_here`, no price list and no target
+// clause, and the zone browser draws no button behind a cast
+// CastSpell would have accepted.
+//
+// CastableFaces rather than CastableFacesUnder, because both callers
+// ask this only when NO permission covers the card. A grant opens its
+// zone itself and names its own faces (validateCastPathLocked rule 4,
+// faceForCastLocked), so it is a different question with a different
+// answer and neither caller reaches here holding one.
+func CardCastableFromAnyFace(c Card, zone ZoneKind) bool {
+	// The single-faced fast path, which is ~33,000 of the oracle IDs
+	// in the game and every card in a typical graveyard: one catalog
+	// key, no face walk and no slice.
+	if len(c.Faces) < 2 {
+		return CardCastableFromZone(CatalogKey(c), zone)
+	}
+	for _, face := range c.CastableFaces() {
+		// Materialised onto a COPY, exactly as CastSpell and the
+		// enumerator do it, so CatalogKey reads the chosen half
+		// without this function learning how a face becomes a key.
+		probe := c
+		probe.SetFace(face)
+		if CardCastableFromZone(CatalogKey(probe), zone) {
+			return true
+		}
+	}
+	return false
+}
+
 // castZoneFromWire maps the cast_spell action's `from_zone` string
 // onto a ZoneKind. The empty string is hand, which is how every
 // pre-S21 client spells "out of my hand" and how the Board's whole
