@@ -84,9 +84,15 @@ func TestConvokeOptionsOfferAShroudedCreatureYouControl(t *testing.T) {
 	march.OracleID = marchOfTheMultitudesOracle
 	march.ManaCost = "{X}{G}{W}{W}"
 	march.TypeLine = "Instant"
+	// #1169: known to its owner, and read off the OWNER's frame. A
+	// hand card's convoke clause is the hand owner's own answer —
+	// it is stamped for them and promoted onto their frame — so the
+	// unfiltered view this used to read is the one frame nobody
+	// receives.
+	march.KnownBy = map[uuid.UUID]bool{me: true}
 	g.Seats[0].Hand.PushTop(march)
 
-	v := ViewOfGame(g)
+	v := ViewOfGameFor(g, me.String())
 	var hand *CardView
 	for i := range v.Seats[0].Hand.Cards {
 		if v.Seats[0].Hand.Cards[i].InstanceID == march.InstanceID.String() {
