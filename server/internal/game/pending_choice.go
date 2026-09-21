@@ -1563,8 +1563,50 @@ func (g *Game) ResolveOptionalReplacement(choiceID, chooserID uuid.UUID, apply b
 		g.clearReplacementEventLocked(ev.ID)
 		return err
 	}
-	defer g.clearReplacementEventLocked(ev.ID)
-	return g.finishSettledReplacementLocked(ev, out)
+	return g.finishReplacementResumeLocked(ev, out)
+}
+
+// finishReplacementResumeLocked is the tail the two CR 614 / CR 616
+// RESUME paths share: land the settled event, forget its bookkeeping,
+// and then run the state checks the paused caller never got to run.
+//
+// That last line is the whole reason this is a helper (#1156). On the
+// unpaused path the caller of the mutation runs them — moveCardByRefLocked
+// calls runStateChecksLocked the moment routeCardToZoneLocked comes back
+// unpaused, the SBA loop re-enters itself, resolveTopOfStackLocked has its
+// own boundary. A prompt splits that in half: the caller returns with
+// "nothing has moved, the resume lands the card", and the resume then
+// landed the card and returned to the action layer with nobody left to
+// look at the board. CR 117.5 puts the state-based-action pass and the
+// APNAP trigger drain at the boundary where a player would next receive
+// priority, and answering a replacement prompt is exactly such a
+// boundary — the same one every other Resolve* entry point in this file
+// already honours.
+//
+// What that cost, before this existed: a commander with an Aura on it
+// left the battlefield, the CR 903.9 "put it in the command zone
+// instead?" prompt paused the move, and the answer landed the commander
+// in the command zone while the Aura sat on the battlefield attached to
+// a card that is no longer there — CR 704.5m never re-checked, and the
+// client drew the orphan in the enchantments row. Since #539 made the
+// CR 903.9 window open on every exit "from anywhere", this is the
+// ordinary way a commander leaves, not a corner.
+//
+// Not run on the two early returns above: errReplacementPending means
+// another prompt is open and its own resume owns the boundary, and a
+// stale resume frame moved nothing at all.
+//
+// Caller must hold g.mu.
+func (g *Game) finishReplacementResumeLocked(ev, out *ReplacementEvent) error {
+	err := func() error {
+		defer g.clearReplacementEventLocked(ev.ID)
+		return g.finishSettledReplacementLocked(ev, out)
+	}()
+	if err != nil {
+		return err
+	}
+	g.runStateChecksLocked()
+	return nil
 }
 
 // queueReplacementOrderPromptLocked queues a CR 616 order-choose
@@ -1860,9 +1902,10 @@ func (g *Game) ResolveReplacementOrder(choiceID, chooserID uuid.UUID, ordered []
 	// Apply-loop settled. Dispatch the underlying mutation per
 	// ev.Kind using the (possibly mutated) event payload. Added in
 	// S17 sub-PR 3 so Doubling Season + Hardened Scales actually
-	// land counters after the CR 616 prompt resolves.
-	defer g.clearReplacementEventLocked(ev.ID)
-	return g.finishSettledReplacementLocked(ev, out)
+	// land counters after the CR 616 prompt resolves. Through the
+	// shared resume tail since #1156, so the CR 117.5 boundary this
+	// answer is happens here too and not only on the CR 614 half.
+	return g.finishReplacementResumeLocked(ev, out)
 }
 
 // applyResolvedReplacementEventLocked runs the underlying
