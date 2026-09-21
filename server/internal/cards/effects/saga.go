@@ -77,6 +77,19 @@ func ChapterTriggerTargeting(n int, label string, targets *game.TargetSpec, effe
 	return t
 }
 
+// ChapterExileAndReturnTransformed is "Exile this Saga, then return it
+// to the battlefield transformed under your control" (ADR 0079's
+// second verb, CR 712.14a) — the shared body of every transforming
+// Saga's final chapter (Fable of the Mirror-Breaker and the four
+// Avatar Legend Sagas). One function instead of one copy per card,
+// since the printed sentence never varies.
+func ChapterExileAndReturnTransformed(g *game.Game, item *game.StackItem) error {
+	return ExileAndReturnTransformed{
+		Target:     item.SourceCardID,
+		Controller: item.Controller,
+	}.Apply(NewContext(g, item))
+}
+
 // SagaChapterLabel builds the conventional stack label for a
 // chapter: "History of Benalia — I: create a Knight". Card files may
 // write their own; this keeps the common case consistent across the

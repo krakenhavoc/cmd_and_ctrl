@@ -272,6 +272,19 @@ func (e ExileTarget) Apply(ctx *Context) error {
 	})
 }
 
+// ExileFirstTarget is "exile target <whatever>" with no trailing
+// clause: the item's first target if it is a card, or nothing at all
+// (CR 608.2b — a target gone by resolution does nothing). Named
+// because Haywire Mite, Soul-Guide Lantern and The Legend of Yangchen
+// all resolve to exactly this body; call it rather than writing the
+// same four lines again.
+func ExileFirstTarget(g *game.Game, item *game.StackItem) error {
+	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+		return nil
+	}
+	return ExileTarget{Target: item.Targets[0].ID}.Apply(NewContext(g, item))
+}
+
 // ExileThenIfItWas is "Exile target card from a graveyard. If it was
 // a creature card, <clause>" — Cling to Dust, Scavenging Ooze and
 // Deluge of the Dead, and the ONE body all three now share (#911).

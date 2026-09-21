@@ -54,12 +54,7 @@ func init() {
 						func(discarded int) int { return discarded })(NewContext(g, item))
 				}),
 			ChapterTrigger(3, "Fable of the Mirror-Breaker — exile it, then return it transformed",
-				func(g *game.Game, item *game.StackItem) error {
-					return ExileAndReturnTransformed{
-						Target:     item.SourceCardID,
-						Controller: item.Controller,
-					}.Apply(NewContext(g, item))
-				}),
+				ChapterExileAndReturnTransformed),
 		},
 	})
 }
