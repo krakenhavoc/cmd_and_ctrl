@@ -57,11 +57,12 @@ import "github.com/google/uuid"
 //
 //   - "can't attack unless its controller pays {2}" (Propaganda,
 //     Ghostly Prison, Norn's Annex) is a COST to attack, not a
-//     prohibition. A bit cannot carry a cost, and the declaration
-//     path has no payment step to hang one on. It wants an
-//     attack-cost pipeline shaped like the cast-cost one, keyed on
-//     the DEFENDING player rather than on the attacker — a per-seat
-//     table consulted at declaration, not a bit here.
+//     prohibition, and it is SHIPPED — in attack_tax.go, not here
+//     (ADR 0080, #1063). A bit cannot carry a cost, and the shape it
+//     wanted was the one this note predicted: an attack-cost pipeline
+//     keyed on the DEFENDING player rather than on the attacker,
+//     consulted by the declaration verbs at CR 508.1a. Nothing about
+//     the five bits changed to make room for it.
 //   - "no more than one creature can attack you each combat"
 //     (Crawlspace) and "no more than one creature can attack each
 //     combat and no more than one creature can block each combat"

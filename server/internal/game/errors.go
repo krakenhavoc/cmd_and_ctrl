@@ -370,6 +370,25 @@ var (
 	// what is, in the end, a no-op. Added in S31 for #318.
 	ErrNoLegalAttackers = errors.New("game: no creature in the declaration is able to attack")
 
+	// ErrAttackTaxUnpaid is returned by the declaration verbs when the
+	// attacking player cannot pay the CR 508.1a cost of the
+	// declaration they submitted — Propaganda's "{2} for each creature
+	// they control that's attacking you". ADR 0080, #1063.
+	//
+	// The error actually returned is an *AttackTaxUnpaidError carrying
+	// the price and the payer's reason for failing it (the missing
+	// symbols, usually), so the client's toast says what to tap rather
+	// than "invalid parameter"; callers doing
+	// errors.Is(err, ErrAttackTaxUnpaid) still match. Same shape
+	// InsufficientManaError and CantCastError have, for the same
+	// reason.
+	//
+	// ALL OR NOTHING: nothing is staged, no creature is tapped and no
+	// EventAttack fires. A player who can afford part of the swing
+	// submits a smaller declaration — the choice of which attacks to
+	// drop is theirs, and the engine must not make it for them.
+	ErrAttackTaxUnpaid = errors.New("game: the attack tax for this declaration was not paid")
+
 	// ErrEmptyBlockerSet is returned by DeclareBlockers for a
 	// declaration with no entries. "Block with nobody" is the default
 	// state of the step, not an action — a defender who wants it
