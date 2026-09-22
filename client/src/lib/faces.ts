@@ -136,3 +136,57 @@ export function cardAsFace(card: CardView, i: number): CardView {
     hand_abilities: undefined,
   };
 }
+
+/**
+ * castableFaces returns the views of `card` a cast may choose
+ * between: `cardAsFace(card, i)` for every index `needsFacePicker`
+ * would open a picker over, or `[card]` — the card exactly as handed
+ * in — for every card that offers no such choice, single-faced,
+ * transform and split alike.
+ *
+ * This is the ONE walk (#1173, #1168): both bugs were the same
+ * mistake in two files, reading a multi-face card's own top-level
+ * block for a question that is really "does ANY face answer yes".
+ * That block is the face that HAPPENS TO BE UP — always face 0, for a
+ * card in hand or a front-up graveyard pile (CR 712.8) — and answering
+ * from it alone silently drops every other face's answer. Sharing this
+ * enumeration is what keeps `castableFromZone` (zoneBrowser.logic.ts)
+ * and `canCastFromHand`'s announce gates (timing.ts) from drifting
+ * into two different opinions about which faces a cast may choose.
+ *
+ * Collapses to `[card]` for the ~33,000 ordinary single-faced oracle
+ * IDs, and for a transform or split card, exactly as `needsFacePicker`
+ * does — cardAsFace(card, 0) is already the same answer `card` is
+ * (see its own docblock), so returning `[card]` rather than
+ * `[cardAsFace(card, 0)]` for those costs nothing.
+ */
+export function castableFaces(card: CardView): CardView[] {
+  if (!needsFacePicker(card)) return [card];
+  return card.faces!.map((_, i) => cardAsFace(card, i));
+}
+
+/**
+ * castableFaceIndex picks which of `castableFaces(card)` a caller
+ * should treat as the default — the face picker's initial highlight,
+ * chief among callers — by running `isCastable` over them in printed
+ * order and returning the first index it accepts.
+ *
+ * `isCastable` is supplied by the caller rather than fixed here
+ * because "castable" means a different thing to each of the two bugs
+ * this shares its enumeration with: a graveyard permission answers
+ * from `castable_here`, a hand cast from whether the face's own
+ * target clause has anything to point at. Neither reader belongs in
+ * faces.ts — the graveyard one already lives beside `castable_here`'s
+ * other reader in zoneBrowser.logic.ts, and the hand one beside
+ * `hasSatisfiableTargets` in timing.ts — so this stays a leaf module
+ * neither needs to import.
+ *
+ * Falls back to 0 — the server's own default for a cast with no
+ * `face` at all — when no face satisfies `isCastable`, which includes
+ * every single-faced card: `castableFaces` returns just `[card]` for
+ * those, and `card` is exactly what `isCastable` is asked about.
+ */
+export function castableFaceIndex(card: CardView, isCastable: (face: CardView) => boolean): number {
+  const i = castableFaces(card).findIndex(isCastable);
+  return i === -1 ? 0 : i;
+}

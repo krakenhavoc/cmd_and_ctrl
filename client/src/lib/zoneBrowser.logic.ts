@@ -4,7 +4,7 @@
 // renderer (the client is node-only at test time). The component
 // delegates all derivations here so there's no behavioural drift.
 
-import { cardAsFace } from "./faces";
+import { cardAsFace, castableFaces } from "./faces";
 import type { CardView, ExilePlayView, GameView } from "./protocol";
 import type { BrowsableZone } from "./zoneBrowser";
 
@@ -207,7 +207,20 @@ export function grantedFace(card: CardView, grant: ExilePlayView | null): CardVi
 // granted the permission, and the impulse button above reads it for
 // the grant's face and label. It is no longer part of ANSWERING
 // whether this viewer may cast.
+//
+// #1173: the answer is the UNION over the card's block and its
+// castable `faces[i]` blocks, not the card's alone. #1171 made the
+// server ask "does this card's own text open this zone" of every
+// castable face rather than of the card's bare (face 0) oracle ID, so
+// a card whose BACK face prints flashback, escape or a Gravecrawler-
+// shaped permission is stamped with `castable_here` on `faces[1]` and
+// `false` on the card — casting the FRONT half out of the graveyard is
+// genuinely not legal. Reading the card alone answered face 0's
+// question for every face; `castableFaces` (faces.ts) is the shared
+// walk that also backs canCastFromHand's face-aware gates (#1168), so
+// the two readers can't drift into different opinions about which
+// faces a cast may choose.
 export function castableFromZone(card: CardView, zoneKind: BrowsableZone): boolean {
   if (zoneKind !== "graveyard") return false;
-  return card.castable_here === true;
+  return castableFaces(card).some((f) => f.castable_here === true);
 }

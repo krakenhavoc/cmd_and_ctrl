@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { cardAsFace, needsFacePicker } from "./faces";
+import { cardAsFace, castableFaceIndex, castableFaces, needsFacePicker } from "./faces";
 import { cardImageURL, scryfallImageURL } from "./cardImage";
 import { applyCastChoices } from "./targeting";
 import type { CardView } from "./protocol";
@@ -212,6 +212,65 @@ describe("cardAsFace", () => {
     const c = bears();
     expect(cardAsFace(c, 1)).toBe(c);
     expect(cardAsFace(seaGate(), 7).name).toBe("Sea Gate Restoration");
+  });
+});
+
+// castableFaces / castableFaceIndex — #1173, #1168. The ONE walk both
+// bugs share: reading a multi-face card's own top-level block answers
+// for face 0 alone, and #1171 / #992 mean that is no longer the whole
+// story for a card whose OTHER face is the one that carries the
+// permission or the announce data in question.
+describe("castableFaces", () => {
+  it("is just the card for a single-faced card", () => {
+    const c = bears();
+    expect(castableFaces(c)).toEqual([c]);
+  });
+
+  it("is just the card for a transform card, whose back isn't independently castable", () => {
+    const jace = { ...seaGate(), layout: "transform" };
+    expect(castableFaces(jace)).toEqual([jace]);
+  });
+
+  it("is every face, materialised, for a modal DFC or an adventure card", () => {
+    const faces = castableFaces(seaGate());
+    expect(faces.map((f) => f.name)).toEqual(["Sea Gate Restoration", "Sea Gate, Reborn"]);
+    expect(faces[0].active_face).toBe(0);
+    expect(faces[1].active_face).toBe(1);
+
+    const stomp = castableFaces({ ...bonecrusher(), layout: "adventure" });
+    expect(stomp.map((f) => f.name)).toEqual(["Bonecrusher Giant", "Stomp"]);
+    expect(stomp[1].target_mode).toBe("any");
+  });
+});
+
+describe("castableFaceIndex", () => {
+  it("picks the first face the test accepts, in printed order", () => {
+    const faces = seaGate();
+    expect(castableFaceIndex(faces, (f) => f.name === "Sea Gate, Reborn")).toBe(1);
+  });
+
+  it("falls back to 0 when no face satisfies the test", () => {
+    expect(castableFaceIndex(seaGate(), () => false)).toBe(0);
+  });
+
+  it("is 0 for a single-faced card regardless of the test", () => {
+    // castableFaces collapses to [card], so the only thing the test
+    // can be asked about IS the card, and a miss falls back to 0
+    // exactly as it does for a multi-face card with no match.
+    expect(castableFaceIndex(bears(), () => false)).toBe(0);
+    expect(castableFaceIndex(bears(), () => true)).toBe(0);
+  });
+
+  it("finds a back face's castable_here (#1173's shape)", () => {
+    const card: CardView = {
+      ...seaGate(),
+      castable_here: false,
+      faces: [
+        { name: "Sea Gate Restoration", type_line: "Sorcery", castable_here: false },
+        { name: "Sea Gate, Reborn", type_line: "Land", castable_here: true },
+      ],
+    };
+    expect(castableFaceIndex(card, (f) => f.castable_here === true)).toBe(1);
   });
 });
 
