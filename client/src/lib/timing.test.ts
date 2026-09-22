@@ -363,6 +363,84 @@ describe("canCastFromHand — denial reasons", () => {
   });
 });
 
+// #1168: the target / mode / additional-cost gates used to read the
+// card's own top-level block, which is face 0's — always the ACTIVE
+// face for a card in hand. A modal DFC whose FRONT targets and can't,
+// or an adventure card whose CREATURE half targets and can't, denied
+// with "No legal target" even when the other half needs no target at
+// all. The verdict is still the server's "no" here (moves is [] in
+// every case below, same as the single-face suite above) — a face's
+// local pass can't speak for mana or timing, which stay the server's
+// alone (see this file's docblock) — but the REASON must stop blaming
+// a target clause a castable face doesn't have.
+//
+// Every fixture below mirrors its front face at the TOP level too,
+// exactly as the server stamps it (cardAsFace's docblock: "for the
+// face that is up the two blocks are the same answer") — which is
+// what makes these tests sensitive to the fix: the OLD code read that
+// top-level mirror directly and never looked at `faces` at all.
+describe("canCastFromHand — a multi-face card's OTHER half (#1168)", () => {
+  function frontTargetsBackDoesNot(): CardView {
+    return card("Twin Path", "Instant", {
+      layout: "modal_dfc",
+      legal_targets: { cards: [] },
+      faces: [
+        { name: "Twin Path", type_line: "Instant", legal_targets: { cards: [] } },
+        { name: "Twin Path's Reverse", type_line: "Instant" },
+      ],
+    });
+  }
+
+  it("a modal DFC whose front targets and whose back does not isn't denied for the front's target", () => {
+    const s = snap({ moves: [passMove] });
+    expect(canCastFromHand(frontTargetsBackDoesNot(), s, "p0").reason).toBe(
+      "Can't play this right now",
+    );
+  });
+
+  function creatureTargetsAdventureDoesNot(): CardView {
+    return card("Ambush Wolf", "Creature — Wolf", {
+      layout: "adventure",
+      legal_targets: { cards: [] },
+      faces: [
+        { name: "Ambush Wolf", type_line: "Creature — Wolf", legal_targets: { cards: [] } },
+        {
+          name: "Pounce",
+          type_line: "Instant — Adventure",
+          legal_targets: { cards: ["bear"], min: 1 },
+        },
+      ],
+    });
+  }
+
+  it("an adventure card whose Adventure half is the only castable one isn't denied for the creature's target", () => {
+    const s = snap({ moves: [passMove] });
+    expect(canCastFromHand(creatureTargetsAdventureDoesNot(), s, "p0").reason).toBe(
+      "Can't play this right now",
+    );
+  });
+
+  it("a card castable on no face stays greyed, and the reason names which half it's about", () => {
+    const bothBlocked = card("Twin Path", "Instant", {
+      layout: "modal_dfc",
+      legal_targets: { cards: [] },
+      faces: [
+        { name: "Twin Path", type_line: "Instant", legal_targets: { cards: [] } },
+        { name: "Twin Path's Reverse", type_line: "Instant", legal_targets: { cards: [], min: 2 } },
+      ],
+    });
+    const s = snap({ moves: [passMove] });
+    const got = canCastFromHand(bothBlocked, s, "p0");
+    expect(got.legal).toBe(false);
+    expect(got.reason).toBe("Twin Path: No legal target");
+  });
+
+  // The single-face cases are unchanged: none of the fixtures in the
+  // "denial reasons" and "verdict" suites above carry `faces`, so
+  // `castableFaces` collapses to `[card]` and `named()` never
+  // prefixes — every reason there reads exactly as it did before.
+});
+
 // The compatibility half. A frame with no move list is NO
 // INFORMATION, not a refusal — an older server, or simply a frame
 // where this seat owes no decision. Greying the hand on those would

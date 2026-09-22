@@ -36,6 +36,7 @@
 // canPassPriority (no callers at all, in or out of production).
 
 import type { CardView, GameView, LegalMoveView, LegalTargetsView } from "./protocol";
+import { castableFaces } from "./faces";
 import { sacrificeCount } from "./sacrificeCost";
 import { printedCostClaimable } from "./targeting";
 
@@ -185,6 +186,21 @@ export function hasSatisfiableTargets(lt: LegalTargetsView | undefined): boolean
 // none of them can flip a verdict the server disagrees with: they run
 // only to explain a "no" the server already gave, or to explain a
 // missing move list.
+//
+// #1168: the target / mode / additional-cost branches walk EVERY
+// castable face (`castableFaces`, faces.ts) rather than reading the
+// card's own top-level block — which is the face that HAPPENS TO BE
+// UP, always face 0 for a card in hand. A modal DFC or an adventure
+// card whose front half has a target clause with nothing legal to
+// point at used to deny with "No legal target" even when the back
+// or the Adventure half needs no target at all; a gate now denies
+// only when EVERY castable face fails IT specifically, so a face that
+// answers yes on its own terms stops a denial that was really about
+// its sibling. This still can't flip the verdict itself — a single
+// face's local pass says nothing about mana or timing, which stay the
+// server's alone — only which of these branches, if any, has
+// something to say. `named()` below prefixes the blocked face's own
+// name once there is more than one to name.
 export function canCastFromHand(
   card: CardView,
   snap: GameView | null | undefined,
@@ -211,6 +227,16 @@ export function canCastFromHand(
   if (!hasPriority(snap, viewerID)) return deny("Not your priority");
   if (snap.split_second_active) return deny("Split second on the stack");
 
+  // #1168: every face a cast may choose, materialised — `[card]` for
+  // the ~33,000 ordinary single-faced oracle IDs, which makes every
+  // gate below read identically to the single-face version it
+  // replaces. `named` prefixes a denial with the blocked face's own
+  // name, but only once there is more than one candidate to name —
+  // a single-faced denial reads exactly as it always has.
+  const faces = castableFaces(card);
+  const named = (face: CardView, reason: string): string =>
+    faces.length > 1 ? `${face.name}: ${reason}` : reason;
+
   // A targeted spell with nothing legal to point at can't be cast
   // (CR 601.2c). A clause needs at least `min` legal candidates —
   // "two target creatures" with one creature out is uncastable; "up
@@ -224,37 +250,50 @@ export function canCastFromHand(
   // says which (`alternative_cost_required`); the client used to
   // assume the printed clause was always on the table, which reads a
   // flashback-only cast at the wrong price.
-  if (card.legal_targets) {
-    const printedCounts = printedCostClaimable(card) && hasSatisfiableTargets(card.legal_targets);
-    const castableSomehow =
+  const targetOK = (face: CardView): boolean => {
+    if (!face.legal_targets) return true;
+    const printedCounts = printedCostClaimable(face) && hasSatisfiableTargets(face.legal_targets);
+    return (
       printedCounts ||
-      (card.alternative_costs ?? []).some((a) => hasSatisfiableTargets(a.legal_targets));
-    if (!castableSomehow) {
-      const min = card.legal_targets.min ?? 1;
-      return deny(min > 1 ? `Needs ${min} legal targets` : "No legal target");
-    }
+      (face.alternative_costs ?? []).some((a) => hasSatisfiableTargets(a.legal_targets))
+    );
+  };
+  if (!faces.some(targetOK)) {
+    const blocked = faces.find((f) => !targetOK(f)) ?? card;
+    const min = blocked.legal_targets?.min ?? 1;
+    return deny(named(blocked, min > 1 ? `Needs ${min} legal targets` : "No legal target"));
   }
   // A modal spell needs enough castable options to meet its minimum —
   // untargeted options always count, targeted ones only with a legal
   // target.
-  if (card.modes && card.modes.options.length > 0) {
-    const castable = card.modes.options.filter((o) => {
+  const modesOK = (face: CardView): boolean => {
+    if (!face.modes || face.modes.options.length === 0) return true;
+    const castable = face.modes.options.filter((o) => {
       if (!o.legal_targets) return true;
       const n = (o.legal_targets.players?.length ?? 0) + (o.legal_targets.cards?.length ?? 0);
       return n >= (o.legal_targets.min ?? 1);
     }).length;
-    if (castable < card.modes.min) return deny("No castable mode");
+    return castable >= face.modes.min;
+  };
+  if (!faces.some(modesOK)) {
+    const blocked = faces.find((f) => !modesOK(f)) ?? card;
+    return deny(named(blocked, "No castable mode"));
   }
   // An additional cost you can't pay makes the spell uncastable
   // (CR 601.2h). "Discard a card" with an empty hand is the whole
   // case — the spell itself doesn't count, since it's on the stack by
-  // the time costs are paid.
-  const discards = card.additional_cost?.discard_cards ?? 0;
-  if (discards > 0) {
-    const hand = snap.seats.find((s) => s.id === viewerID)?.hand.cards ?? [];
-    const payable = hand.filter((c) => c.instance_id !== card.instance_id).length;
-    if (payable < discards)
-      return deny(discards > 1 ? `Needs ${discards} cards to discard` : "No card to discard");
+  // the time costs are paid. `payable` is the same for every face —
+  // it's the viewer's hand, not the card's — so it's computed once.
+  const hand = snap.seats.find((s) => s.id === viewerID)?.hand.cards ?? [];
+  const payable = hand.filter((c) => c.instance_id !== card.instance_id).length;
+  const discardOK = (face: CardView): boolean =>
+    payable >= (face.additional_cost?.discard_cards ?? 0);
+  if (!faces.some(discardOK)) {
+    const blocked = faces.find((f) => !discardOK(f)) ?? card;
+    const discards = blocked.additional_cost?.discard_cards ?? 0;
+    return deny(
+      named(blocked, discards > 1 ? `Needs ${discards} cards to discard` : "No card to discard"),
+    );
   }
   // Same rule for a sacrifice clause. The server has already filtered
   // the options to permanents this caster controls, so an empty list
@@ -262,13 +301,17 @@ export function canCastFromHand(
   // board is uncastable, not a failed click.
   // #747: "sacrifice two creatures" with one creature is the same
   // verdict, and the reason says how many.
-  const sacrificeOptions = card.additional_cost?.sacrifice_options;
-  if (sacrificeOptions) {
-    const have = sacrificeOptions.cards?.length ?? 0;
-    const need = sacrificeCount(sacrificeOptions);
-    if (have < need) {
-      return deny(need > 1 ? `Needs ${need} permanents to sacrifice` : "Nothing to sacrifice");
-    }
+  const sacrificeOK = (face: CardView): boolean => {
+    const opts = face.additional_cost?.sacrifice_options;
+    if (!opts) return true;
+    return (opts.cards?.length ?? 0) >= sacrificeCount(opts);
+  };
+  if (!faces.some(sacrificeOK)) {
+    const blocked = faces.find((f) => !sacrificeOK(f)) ?? card;
+    const need = sacrificeCount(blocked.additional_cost?.sacrifice_options);
+    return deny(
+      named(blocked, need > 1 ? `Needs ${need} permanents to sacrifice` : "Nothing to sacrifice"),
+    );
   }
 
   // Nothing card-specific to say. The seat holds priority and the
