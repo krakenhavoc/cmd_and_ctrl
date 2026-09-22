@@ -63,9 +63,10 @@ import (
 //
 // It exists because a catalog entry is static and cannot name a seat
 // — the same reason `standingCastPermissionsLocked` zeroes
-// `ZoneOwner` on the way out. The derivation expands it against the
-// battlefield and stamps `CastTiming.Player`; a STORED statement is
-// granted to one player by name and carries the zero value.
+// `ZoneOwner` on the way out. `castTimingAffects` expands it against
+// the source's controller and the player asking, which is the whole
+// of what it means and the one place that decides; a STORED
+// statement names its player outright and carries the zero value.
 type CastTimingAffects string
 
 const (
