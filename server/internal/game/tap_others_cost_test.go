@@ -699,11 +699,11 @@ func TestTapOthersManaAbilityIsNeverAutoTapped(t *testing.T) {
 	g := newActiveGame(t)
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	if a := g.autoTapAbilityFor(uuid.New(), uuid.New(), springleafDrumAbility()); a != nil {
+	if a := g.autoTapAbilityFor(uuid.New(), Card{InstanceID: uuid.New()}, springleafDrumAbility()); a != nil {
 		t.Errorf("the auto-tapper planned a tap-others mana ability: %+v", a)
 	}
 	plain := []ManaAbilityShape{{TapCost: true, Produced: "{G}", Label: "{T}: Add {G}"}}
-	if a := g.autoTapAbilityFor(uuid.New(), uuid.New(), plain); a == nil {
+	if a := g.autoTapAbilityFor(uuid.New(), Card{InstanceID: uuid.New()}, plain); a == nil {
 		t.Error("test setup: an ordinary {T} mana ability should still be plannable")
 	}
 }

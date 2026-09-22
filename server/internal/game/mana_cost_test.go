@@ -177,3 +177,81 @@ func TestParseCostErrors(t *testing.T) {
 		})
 	}
 }
+
+// TestParsedCostStringRoundTrips is #1190's renderer: the view stamps
+// what AbilityManaCostForEffect / ManaAbilityManaCostForEffect
+// actually charge by turning their ParsedCost back into a string, and
+// this table is the inverse of TestParseCostTable's shapes — for
+// every one of them, ParseCost(s).String() must be byte-identical to
+// s, or the row the player sees would drift from the printed grammar
+// the moment a modifier's arithmetic reproduced a shape ParseCost
+// itself accepts.
+//
+// {0} is the one input the table does not round-trip: it parses to
+// the same zero Generic an absent generic component does (mana_cost.go's
+// own note on ParseCost), so there is nothing left after parsing to
+// tell String the symbol was ever there. That loss is pre-existing
+// and out of #1190's scope, which is the {S} one.
+func TestParsedCostStringRoundTrips(t *testing.T) {
+	cases := []string{
+		"",
+		"{3}",
+		"{10}",
+		"{W}",
+		"{U}",
+		"{B}",
+		"{R}",
+		"{G}",
+		"{C}",
+		"{1}{R}",
+		"{2}{W}{W}",
+		"{2}{W}{U}{B}{R}{G}",
+		"{X}",
+		"{X}{R}",
+		"{X}{X}",
+		"{W/U}",
+		"{B/R}",
+		"{W/P}",
+		"{1}{W/P}{W/P}",
+		"{G/W/P}",
+		"{1}{G}{G/W/P}{W}",
+		"{2/W}",
+		// Snow (#1190): the whole point of the fix. {S} and {C} parse
+		// to the same Options set (ColorRequirement{Options:{"C"}}),
+		// so without a per-symbol Snow bit a mixed cost like this one
+		// would print two "{C}"s and silently turn a snow-mana
+		// ability into a plain colorless one.
+		"{S}",
+		"{1}{S}",
+		"{1}{S}{C}",
+		"{C}{S}",
+	}
+	for _, s := range cases {
+		t.Run(s, func(t *testing.T) {
+			parsed, err := ParseCost(s)
+			if err != nil {
+				t.Fatalf("ParseCost(%q): unexpected error: %v", s, err)
+			}
+			if got := parsed.String(); got != s {
+				t.Errorf("ParseCost(%q).String() = %q, want %q (round trip broken)", s, got, s)
+			}
+		})
+	}
+}
+
+// TestParsedCostStringZero pins the one documented non-round-trip and
+// the empty-cost case String shares no braces with — a mana ability
+// whose only cost component is {T} must render "", not "{0}" or a
+// stray brace pair.
+func TestParsedCostStringZero(t *testing.T) {
+	if got := (ParsedCost{}).String(); got != "" {
+		t.Errorf("the zero ParsedCost renders %q, want \"\"", got)
+	}
+	zero, err := ParseCost("{0}")
+	if err != nil {
+		t.Fatalf("ParseCost(%q): %v", "{0}", err)
+	}
+	if got := zero.String(); got != "" {
+		t.Errorf(`ParseCost("{0}").String() = %q, want "" — {0} and no generic component parse to the same cost`, got)
+	}
+}

@@ -630,8 +630,10 @@ func (g *Game) abilityCostQueryLocked(activator uuid.UUID, source Card, zone Zon
 //  2. internal/legal, which decides whether the seat can afford the
 //     move it is about to offer — a bot offered an activation the
 //     engine then refuses for want of mana is #544 exactly;
-//  3. a test, and in time the ability view, which today still
-//     publishes the PRINTED cost (see Boom Scholar's caveat).
+//  3. the ability view (#1190), rendered through ParsedCost.String()
+//     into ActivatedAbilityView.ChargedManaCost, so the row the
+//     player clicks and the number the engine takes are the same
+//     string.
 //
 // Errors exactly where the cast path errors: an unparseable printed
 // cost, or a modifier that returns a nonsensical amount. It does not
@@ -652,6 +654,79 @@ func (g *Game) AbilityManaCostForEffect(activator uuid.UUID, source Card, zone Z
 		return base, nil
 	}
 	return g.applyCostModifiersLocked(base, g.abilityCostQueryLocked(activator, source, zone, ab))
+}
+
+// manaAbilityCostQueryLocked builds the CostQuery for one activation of
+// the CR 605 mana ability `ab` on `source` by `activator` — the mana
+// twin of abilityCostQueryLocked (#1191), for the same reason: the
+// manual activation path, the legal-move enumerator and the
+// auto-tapper's planner must ask the board the same shaped question
+// about the same click.
+//
+// Mana: true is the one difference from a CR 602 query — #1193's
+// AbilityCostSubject.Mana, always false until this file set it,
+// existing for exactly this so a predicate written before today (or
+// tomorrow) says which kind of activation it means rather than being
+// silently widened.
+//
+// A mana ability is always a battlefield permanent's — ManaAbilitiesForCard
+// never reads a hand card — so FromZone is always the battlefield,
+// unlike abilityCostQueryLocked's, which a caller passes in for #660's
+// sake.
+//
+// Caller must hold g.mu.
+func (g *Game) manaAbilityCostQueryLocked(activator uuid.UUID, source Card, ab ManaAbilityShape) CostQuery {
+	return CostQuery{
+		Game:       g,
+		Card:       source,
+		Controller: activator,
+		FromZone:   ZoneBattlefield,
+		Ability: &AbilityCostSubject{
+			Label:   ab.Label,
+			Exhaust: ab.Exhaust,
+			Mana:    true,
+		},
+	}
+}
+
+// ManaAbilityManaCostForEffect is AbilityManaCostForEffect's twin for a
+// CR 605 mana ability (#1191): the printed mana component of `ab`'s
+// own activation cost — the Signet cycle's "{1}, {T}", Loot, the
+// Pathfinder's exhaust "{G}, {T}" — priced through every
+// activation-scoped cost modifier on the battlefield in CR 601.2f
+// order.
+//
+// CR 605.1a makes a mana ability an activated ability, so Boom
+// Scholar's "Exhaust abilities of other permanents you control cost
+// {2} less to activate" reaches Loot's mana ability exactly as it
+// reaches a CR 602 one — through the SAME activeCostModifiersLocked
+// partition (CostModifier.Activations against CostQuery.Ability's
+// nil-ness), unchanged by this function. Nothing about the order, the
+// generic floor or the negative-amount refusal is mana-specific;
+// what was missing was a query to hand the pass, which this builds.
+//
+// Three readers, mirroring AbilityManaCostForEffect's:
+// ActivateManaAbility, which pays this and no other number; the
+// legal-move enumerator's manaMoves, so a bot is never offered a mana
+// activation the engine then refuses for want of mana (#544); and the
+// auto-tapper (autoTapAbilityFor / materializePlanLocked), which must
+// know a discounted mana component from a printed one before it can
+// decide whether a source is plannable.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) ManaAbilityManaCostForEffect(activator uuid.UUID, source Card, ab ManaAbilityShape) (ParsedCost, error) {
+	base, err := ParseCost(ab.ManaCost)
+	if err != nil {
+		return ParsedCost{}, err
+	}
+	if ab.ManaCost == "" {
+		// Nothing to discount and nothing to tax, exactly as the CR
+		// 602 early return: a tap-only mana ability is not made of
+		// mana, so the pass has no subject and the battlefield walk
+		// never runs for the ordinary land or Sol Ring.
+		return base, nil
+	}
+	return g.applyCostModifiersLocked(base, g.manaAbilityCostQueryLocked(activator, source, ab))
 }
 
 // ApplyCostModifiers is the read-locked public surface: price `base`

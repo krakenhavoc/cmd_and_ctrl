@@ -1326,6 +1326,16 @@ export interface ActivatedAbilityView {
   tap_cost?: boolean;
   sacrifice_self?: boolean;
   mana_cost?: string;
+  // #1190: what the engine will actually charge for mana_cost right
+  // now, after every CR 601.2f cost modifier on the battlefield —
+  // Boom Scholar's "Exhaust abilities of other permanents you control
+  // cost {2} less to activate" turns a printed `{3}{R}` into a
+  // charged `{1}{R}`. Present whenever mana_cost is, and EQUAL to it
+  // when no modifier reaches this ability, which is nearly every
+  // ability in the game. Prefer this field for the row's own display;
+  // show mana_cost as a tooltip only when the two differ (see
+  // chargedCostNote in contextMenu.logic.ts).
+  charged_mana_cost?: string;
   life_cost?: number;
   sorcery_speed?: boolean;
   // #743: true while the ability's activation condition (CR 602.1b —
@@ -1996,6 +2006,13 @@ export interface ManaAbilityView {
   // life_cost. The server never auto-taps into a mana ability, so the
   // player has to float this mana before the entry will fire.
   mana_cost?: string;
+  // #1191, #1190: ActivatedAbilityView.charged_mana_cost for a mana
+  // ability — CR 605.1a makes a mana ability an activated ability, so
+  // Boom Scholar's discount reaches Loot, the Pathfinder's "{G}, {T}"
+  // exactly as it reaches a CR 602 ability, and the row says so
+  // through the same field. Present whenever mana_cost is, equal to
+  // it absent a modifier.
+  charged_mana_cost?: string;
   // #743: true while the mana ability's activation condition is false
   // — Temple of the False God with four lands, Mox Opal without
   // metalcraft. Same flag and meaning as ActivatedAbilityView's.

@@ -851,8 +851,16 @@ func (e *enumerator) manaMoves() {
 			// — the activation path deliberately does not auto-tap
 			// into a mana ability, so a Signet with an empty pool is
 			// not a legal move.
+			//
+			// #1191: the PRICED cost, not the printed one — the same
+			// function ActivateManaAbility pays through, so Boom
+			// Scholar's "{2} less to activate" reaching Loot, the
+			// Pathfinder's mana half is visible to the policy as an
+			// activation it can now afford, mirroring the CR 602 arm
+			// above (#544, sign reversed: pricing at the printed cost
+			// would silently hide a legal move).
 			if ab.ManaCost != "" {
-				cost, err := game.ParseCost(ab.ManaCost)
+				cost, err := g.ManaAbilityManaCostForEffect(e.seat, *source, ab)
 				if err != nil || !e.p.ManaPool.CanPayFor(cost, 0, game.ManaSpendForAbility(*source)) {
 					continue
 				}

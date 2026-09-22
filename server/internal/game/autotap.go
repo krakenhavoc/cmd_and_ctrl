@@ -258,7 +258,7 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 		if !CanActivateManaAbilities(&c) {
 			continue
 		}
-		picked := g.autoTapAbilityFor(controller, c.InstanceID, ManaAbilitiesForCard(c))
+		picked := g.autoTapAbilityFor(controller, c, ManaAbilitiesForCard(c))
 		if picked == nil {
 			continue
 		}
@@ -448,7 +448,12 @@ func appendTapSource(out []tapSource, cardID uuid.UUID, slots []ProducedManaEntr
 //   - a MANA cost is recursive (the Signet cycle, Cabal Coffers): the
 //     planner would have to solve a second cost to fund the first,
 //     and the activation path deliberately refuses to auto-tap into a
-//     mana ability anyway. Signets stay hand-activated;
+//     mana ability anyway. Signets stay hand-activated — unless a
+//     CR 601.2f modifier prices the component away to nothing (#1191:
+//     Boom Scholar's exhaust discount reaches Loot, the Pathfinder's
+//     "{G}, {T}"), in which case there is no second cost left to
+//     solve and the source is plannable exactly as if it had never
+//     printed one;
 //
 //   - RESTRICTED output is a decision, not a resource (Ancient
 //     Ziggurat, Eldrazi Temple, Delighted Halfling's coloured half).
@@ -481,8 +486,14 @@ func appendTapSource(out []tapSource, cardID uuid.UUID, slots []ProducedManaEntr
 // S15's other standing limitation is unchanged: one ability per card,
 // because a tapSource that offered two would let the solver tap the
 // same permanent twice.
+//
+// `source` is the permanent itself, not just its ID (#1191): pricing
+// a ManaCost component through the CR 601.2f pass needs a Card to
+// build the CostQuery from, exactly as abilityCostQueryLocked does for
+// a CR 602 ability.
+//
 // Caller must hold g.mu.
-func (g *Game) autoTapAbilityFor(asker, source uuid.UUID, abilities []ManaAbilityShape) *ManaAbilityShape {
+func (g *Game) autoTapAbilityFor(asker uuid.UUID, source Card, abilities []ManaAbilityShape) *ManaAbilityShape {
 	for i := range abilities {
 		a := abilities[i]
 		if !a.TapCost || a.SacrificeCost {
@@ -494,14 +505,29 @@ func (g *Game) autoTapAbilityFor(asker, source uuid.UUID, abilities []ManaAbilit
 		// so planning it would strand whatever the plan had already
 		// tapped, which is the failure mode every check around this
 		// one exists to prevent.
-		if g.ManaAbilityExhausted(asker, source, a) {
+		if g.ManaAbilityExhausted(asker, source.InstanceID, a) {
 			continue
 		}
 		if a.LifeCost > 0 || a.Rider != nil {
 			continue
 		}
-		if a.ManaCost != "" || len(a.Restrictions) > 0 || a.RestrictionsFunc != nil {
+		if len(a.Restrictions) > 0 || a.RestrictionsFunc != nil {
 			continue
+		}
+		if a.ManaCost != "" {
+			// #1191: priced rather than read off the printed string —
+			// see the file header's MANA-cost bullet. Spending the
+			// controller's floated mana on THIS activation is still a
+			// decision the planner cannot make, so anything left to
+			// pay after the CR 601.2f pass still drops the source; an
+			// unparseable cost or a modifier error is the same
+			// refusal a printed cost would have given the activation
+			// path, so it is treated as "still owes something" rather
+			// than plannable.
+			priced, err := g.ManaAbilityManaCostForEffect(asker, source, a)
+			if err != nil || !priced.Empty() {
+				continue
+			}
 		}
 		// #789: a cost that PUTS a counter on the source spends a
 		// resource the player never agreed to spend, exactly as a

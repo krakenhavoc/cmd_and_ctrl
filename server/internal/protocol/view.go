@@ -1842,8 +1842,31 @@ type ActivatedAbilityView struct {
 	TapCost       bool   `json:"tap_cost,omitempty"`
 	SacrificeSelf bool   `json:"sacrifice_self,omitempty"`
 	ManaCost      string `json:"mana_cost,omitempty"`
-	LifeCost      int    `json:"life_cost,omitempty"`
-	SorcerySpeed  bool   `json:"sorcery_speed,omitempty"`
+	// ChargedManaCost is what the engine actually charges for
+	// ManaCost's mana component right now, after every CR 601.2f cost
+	// modifier on the battlefield (#1190) — Boom Scholar's "Exhaust
+	// abilities of other permanents you control cost {2} less to
+	// activate" turns a printed `{3}{R}` into a charged `{1}{R}`.
+	// Rendered from the same ParsedCost AbilityManaCostForEffect
+	// charges (ParsedCost.String()), so the row and the payment can
+	// never disagree the way ManaCost alone could once a discount
+	// applied. EQUAL to ManaCost when no modifier reaches this
+	// ability — the client always prefers this field and shows
+	// ManaCost as a tooltip only when the two differ.
+	//
+	// A POINTER for the reason LoyaltyCost below is one: a discount
+	// that empties the component out completely renders "", which is
+	// a real answer ("this ability now costs nothing") that
+	// `omitempty` on a plain string would erase, indistinguishable
+	// from the printed cost could not be priced at all. Nil is that
+	// second case — an unparseable printed string, or a modifier that
+	// itself errors — in which case the row falls back to ManaCost
+	// exactly as a pre-#1190 client would. Absent whenever ManaCost
+	// is empty; a cost with no mana component is not made of mana, so
+	// there is nothing for this field to price.
+	ChargedManaCost *string `json:"charged_mana_cost,omitempty"`
+	LifeCost        int     `json:"life_cost,omitempty"`
+	SorcerySpeed    bool    `json:"sorcery_speed,omitempty"`
 	// ConditionUnmet is true when the ability carries an activation
 	// condition (CR 602.1b — "Activate only if an opponent controls
 	// four or more lands", "Activate only during your turn") and that
@@ -2084,6 +2107,18 @@ type ManaAbilityView struct {
 	// fired against mana the player has already produced.
 	// Added in the S32 mana-pipeline pass (#352).
 	ManaCost string `json:"mana_cost,omitempty"`
+	// ChargedManaCost is ActivatedAbilityView.ChargedManaCost for a
+	// mana ability (#1191, #1190): CR 605.1a makes a mana ability an
+	// activated ability, so Boom Scholar's discount reaches Loot, the
+	// Pathfinder's "{G}, {T}" exactly as it reaches a CR 602 ability,
+	// and the row says so through the same field name, the same
+	// pointer-for-a-real-empty-answer shape, and the same rule: equal
+	// to ManaCost absent a modifier, what the client shows in place of
+	// ManaCost with ManaCost itself as the tooltip when they differ,
+	// and nil (never a bare "") when the printed cost could not be
+	// priced at all. Stamped by stampManaChargedCost, the pass with a
+	// game handle.
+	ChargedManaCost *string `json:"charged_mana_cost,omitempty"`
 	// CounterCostView is the counter half of the activation cost —
 	// Vivid Creek's charge counter, Ramos's five +1/+1 counters,
 	// Mage-Ring Network's "any number of storage counters" (#789).
@@ -3529,6 +3564,7 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 		stampManaConditions(g, card, controller, c.ManaAbilities)
 		stampManaIdentity(g, card, controller, c.ManaAbilities)
 		stampManaCounterCosts(g, card, controller, c.ManaAbilities)
+		stampManaChargedCost(g, card, controller, c.ManaAbilities)
 	}
 }
 
@@ -3641,6 +3677,32 @@ func stampManaIdentity(g *game.Game, card game.Card, controller uuid.UUID, views
 			continue
 		}
 		views[i].AddsNoMana = game.ManaAbilityAddsNoMana(g, controller, card.InstanceID, raw[i])
+	}
+}
+
+// stampManaChargedCost sets ManaAbilityView.ChargedManaCost for every
+// mana ability whose own activation cost has a mana component (#1191,
+// #1190): CR 605.1a makes a mana ability an activated ability, so the
+// CR 601.2f pass — and the row that shows what it charges — reaches
+// the Signet cycle's "{1}, {T}" and Loot, the Pathfinder's exhaust
+// "{G}, {T}" exactly as it reaches a CR 602 ability. Split from
+// viewOfManaAbilities for the reason the conditions and the identity
+// are — that projection has no game handle. Left nil on a pricing
+// error, exactly as the activated-ability row does, so the client
+// falls back to ManaCost rather than showing a stale charge; a
+// discount that empties the component out completely still stamps a
+// pointer to "", which is a real answer and not the same as nil (see
+// ManaAbilityView.ChargedManaCost). Caller must hold g's read lock.
+func stampManaChargedCost(g *game.Game, card game.Card, controller uuid.UUID, views []ManaAbilityView) {
+	raw := game.ManaAbilitiesForCard(card)
+	for i := range views {
+		if i >= len(raw) || raw[i].ManaCost == "" {
+			continue
+		}
+		if charged, err := g.ManaAbilityManaCostForEffect(controller, card, raw[i]); err == nil {
+			s := charged.String()
+			views[i].ChargedManaCost = &s
+		}
 	}
 }
 
@@ -5685,6 +5747,19 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		}
 		// #917 / #916: the "or 2 life" half of the announcement.
 		v.PhyrexianSymbols = phyrexianSymbolsIn(a.Cost.Mana)
+		// #1190: the row shows what AbilityManaCostForEffect actually
+		// charges, not the printed string alone — `caster` is the
+		// permanent's controller here, the same activator the
+		// activation path prices for. Left nil (falls back to
+		// ManaCost) on a pricing error rather than guessing; a card
+		// with no cost modifier reaching it renders byte-identical to
+		// ManaCost, which is nearly every ability in the catalog.
+		if a.Cost.Mana != "" {
+			if charged, err := g.AbilityManaCostForEffect(caster, c, zone, a); err == nil {
+				s := charged.String()
+				v.ChargedManaCost = &s
+			}
+		}
 		if dc := a.Cost.DiscardCards; dc != nil && dc.N > 0 {
 			v.DiscardCostN = dc.N
 			v.DiscardCostLabel = dc.Label

@@ -1485,7 +1485,7 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 		if card == nil || card.Tapped {
 			continue
 		}
-		ab := g.autoTapAbilityFor(p.ID, cardID, ManaAbilitiesForCard(*card))
+		ab := g.autoTapAbilityFor(p.ID, *card, ManaAbilitiesForCard(*card))
 		if ab == nil {
 			continue
 		}
@@ -4863,22 +4863,32 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		}
 	}
 	// A mana component in the cost — the Signet cycle's "{1}, {T}",
-	// Cabal Coffers' "{2}, {T}". Parsed and checked here, spent
+	// Cabal Coffers' "{2}, {T}". Priced and checked here, spent
 	// below with everything else, so an unaffordable Signet fails
 	// with the source still untapped.
+	//
+	// #1191: priced through the CR 601.2f pass rather than parsed
+	// straight off the shape — CR 605.1a makes a mana ability an
+	// activated ability, so "Exhaust abilities of other permanents you
+	// control cost {2} less to activate" (Boom Scholar) reaches Loot,
+	// the Pathfinder's mana half exactly as it reaches a CR 602
+	// ability. The same pricer the view and the legal-move enumerator
+	// read, so a board with no activation-scoped modifier on it costs
+	// nothing extra: ManaAbilityManaCostForEffect returns the printed
+	// cost unchanged and walks nothing.
 	//
 	// Deliberately no auto-tap. A mana ability resolves with no
 	// priority window (CR 605.3b), and tapping three lands to feed a
 	// Signet is a decision with consequences the planner cannot
-	// weigh — the player floats the {1} first, which is how the card
+	// weigh — the player floats the mana first, which is how the card
 	// is played on paper anyway.
 	var manaCost ParsedCost
 	if ab.ManaCost != "" {
-		parsed, perr := ParseCost(ab.ManaCost)
+		priced, perr := g.ManaAbilityManaCostForEffect(playerID, *card, ab)
 		if perr != nil {
 			return ErrInvalidParam
 		}
-		manaCost = parsed
+		manaCost = priced
 		// The mana pays an ACTIVATION (CR 602.2b), and the source
 		// permanent's own characteristics are what a restricted
 		// token is tested against — Eldrazi Temple mana can fund a
@@ -4932,7 +4942,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		// token pay for something it was never cleared for.
 		spent, ok := p.ManaPool.SpendManaFor(manaCost, 0, ManaSpendForAbility(*card))
 		if !ok {
-			return &InsufficientManaError{Missing: []string{ab.ManaCost}}
+			return &InsufficientManaError{Missing: []string{manaCost.String()}}
 		}
 		paid.Mana = spent
 		g.EmitEvent(manaSpentEvent(playerID, cardID, spent))
