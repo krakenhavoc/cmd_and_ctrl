@@ -200,6 +200,19 @@ func (p CastProvenance) Escaped() bool {
 // only on the record so a catalog reader can say `c.Escaped()`.
 func (c Card) Escaped() bool { return c.Provenance.Escaped() }
 
+// ManaSpentToCast is what paid for the spell that became this
+// permanent (CR 400.7d), as the same view a resolving spell reads off
+// its own stack item.
+//
+// On Card for the reason Escaped is: an intervening-if (CR 603.4) is
+// handed the permanent and nothing else — "when this creature enters,
+// IF mana from a Treasure was spent to cast it" is checked in a
+// trigger's AppliesTo, where `source *Card` is all there is.
+//
+// The zero view for a permanent that was not cast, which answers every
+// question the weaker way.
+func (c Card) ManaSpentToCast() ManaSpent { return c.Provenance.Spent() }
+
 // CastProvenanceForEffect returns what the permanent with this ID
 // remembers about the spell it came from, or the zero record when the
 // card is not on the battlefield.
