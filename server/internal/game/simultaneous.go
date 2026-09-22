@@ -521,39 +521,19 @@ func tuckRoute(opts TuckOptions) zoneRoute {
 // board leave with it on either side of a prompt.
 //
 // Caller must hold g.mu in write mode.
-func (g *Game) routeAllThenLocked(r zoneRoute, ids []uuid.UUID, then func(g *Game, landed []uuid.UUID) error) error {
-	return g.routeAllThenUntilLocked(r, ids, nil, then)
-}
-
-// routeAllThenUntilLocked is the same batch with an EARLY STOP: after
-// each leg that lands, `stop` is asked about the landed list so far,
-// and the first time it says yes the rest of `ids` is dropped and
-// `then` runs with what landed.
-//
-// #1159. The mill's "until" run is the caller: "mills cards until a
-// creature card is put into their graveyard" ends on the card that
-// ARRIVED, not on the card that came off the library, so the verdict
-// belongs here — after routeLegLandedLocked has answered CR 400.7 —
-// rather than in the plan. A leg the CR 614 window diverted (a
-// commander taking the command zone, "exile it instead") did not
-// land, is not in the list, and does not end the run.
-//
-// `stop` is handed the landed list rather than the one card, and that
-// is the whole of what makes it replay-safe: `landed` is carried
-// forward BY VALUE through the continuations, so an undo across the
-// CR 903.9 prompt and a second answer ask `stop` the same question
-// with the same argument. A stateful predicate accumulating across
-// legs would not have that property — see MillToZone.Until, which is
-// typed as a function of the landed list for exactly this reason.
+// There is NO early stop on it, and since #1176 there is nowhere in
+// the engine that wants one. #1159 gave this loop the mill's `until`
+// predicate, because a run that ends "until a creature card is put
+// into their graveyard" ends on the card that ARRIVED and only this
+// loop knows which legs arrived. #1176 took it back, because a run is
+// not one instruction with an early exit: it is a SEQUENCE of one-card
+// mill instructions, each with its own CR 614 window on its own
+// amount, and its verdict is asked between repetitions rather than
+// between legs (millUntilRunLocked). A batch is a batch again.
 //
 // Caller must hold g.mu in write mode.
-func (g *Game) routeAllThenUntilLocked(
-	r zoneRoute,
-	ids []uuid.UUID,
-	stop func(landed []uuid.UUID) bool,
-	then func(g *Game, landed []uuid.UUID) error,
-) error {
-	return g.routeEachStepLocked(r, g.simultaneousExitSnapshotLocked(ids), ids, nil, stop, then)
+func (g *Game) routeAllThenLocked(r zoneRoute, ids []uuid.UUID, then func(g *Game, landed []uuid.UUID) error) error {
+	return g.routeEachStepLocked(r, g.simultaneousExitSnapshotLocked(ids), ids, nil, then)
 }
 
 // routeEachStepLocked routes the head of `ids` and continues with the
@@ -565,7 +545,6 @@ func (g *Game) routeEachStepLocked(
 	r zoneRoute,
 	batch []Card,
 	ids, landed []uuid.UUID,
-	stop func(landed []uuid.UUID) bool,
 	then func(g *Game, landed []uuid.UUID) error,
 ) error {
 	// A leg with nothing to do is skipped rather than routed, and is
@@ -584,20 +563,13 @@ func (g *Game) routeEachStepLocked(
 	next, rest := ids[0], ids[1:]
 	return g.routeLegLocked(r, next, batch, func(g *Game) error {
 		out := landed
-		remaining := rest
 		if g.routeLegLandedLocked(r, next) {
 			// A fresh slice rather than an append in place: two runs of
 			// the same continuation (an undo, then the same answer
 			// again) must not see each other's entry.
 			out = append(append(make([]uuid.UUID, 0, len(landed)+1), landed...), next)
-			if stop != nil && stop(out) {
-				// #1159: the run ended on a card that ARRIVED. A local
-				// rather than clearing `rest`, so a replayed
-				// continuation still sees the tail it was given.
-				remaining = nil
-			}
 		}
-		return g.routeEachStepLocked(r, batch, remaining, out, stop, then)
+		return g.routeEachStepLocked(r, batch, rest, out, then)
 	})
 }
 
@@ -653,9 +625,9 @@ func (g *Game) routeAllLandedLocked(r zoneRoute, ids []uuid.UUID) []uuid.UUID {
 // leg to arrive, and this loop is the one that does not wait — a leg
 // paused on the CR 903.9 prompt has not landed when the loop asks, so
 // the run walks past it. With a landed-COUNT bound (Helm of Obedience
-// at X) that walk is the whole library. The clause therefore lives on
-// routeAllThenUntilLocked alone, which sequences, and this loop cannot
-// be handed one.
+// at X) that walk is the whole library. #1176 kept the property and
+// moved the verdict further out still: an `until` run is a loop over
+// one-card mill instructions, so NO routing loop is handed a clause.
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) routeAllLandedPerLegLocked(ids []uuid.UUID, routeFor func(uuid.UUID) zoneRoute) []uuid.UUID {

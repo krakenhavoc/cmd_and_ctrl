@@ -348,6 +348,11 @@ func b14MillUntilLand(ctx *Context, player uuid.UUID) error {
 	// prompt holds the rest of this seat's run until it is answered and
 	// the land that ends the run is the land that ARRIVED. The other
 	// seats' runs are unaffected — each is its own instruction.
+	//
+	// #1176: and the run REPEATS a one-card mill, so a mill-amount
+	// replacement (Bruvac the Grandiloquent under an opponent's
+	// control) doubles each repetition and the land that ends it can
+	// arrive beside a second card.
 	return MillToZone{
 		Player: player,
 		Until:  UntilCard(func(c game.Card) bool { return c.IsLand() }),

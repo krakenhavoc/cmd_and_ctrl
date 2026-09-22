@@ -52,19 +52,33 @@ import (
 //     into that graveyard, so the run never reaches X and the Helm
 //     mills the victim's whole library. That is the famous combo, and
 //     it falls out of the reading rather than being special-cased.
-//   - nothing the run takes off the library is a mill AMOUNT any
-//     more. CR 701.13b's number is the one an instruction names, and
-//     an "until" run names none, so a mill-amount replacement has
-//     nothing to double (game/mill.go, millAmountIsReplaceable):
-//     Bruvac the Grandiloquent doubles mills, not bounds, and X=2 is
-//     two cards with him on the battlefield exactly as it is without.
-//     Paper doubles each one-card repetition instead, which can
-//     overshoot the bound by a card; the engine models the run as one
-//     instruction and stops on the number the card prints.
+//   - the BOUND is not a mill amount, so no mill-amount replacement
+//     doubles it. CR 701.13b's number is the one an instruction names,
+//     and "until X cards have been put into their graveyard this way"
+//     names none — Bruvac the Grandiloquent doubles mills, not bounds
+//     (game/mill.go, millAmountIsReplaceable).
 //
-// "One of them" needs no prompt. The run stops AT the first creature
-// card, so there is never more than one to choose from — the plural
-// in the oracle text is there for the rules, not for the player.
+// # But the run REPEATS an instruction (#1176)
+//
+// "Target opponent MILLS A CARD, then repeats this process until …"
+// gives one instruction and repeats it, so each repetition is its own
+// one-card mill and a mill-amount replacement replaces each of them.
+// With Bruvac the Grandiloquent on the battlefield the Helm mills two
+// cards at a time and the clause is asked between repetitions, which
+// can overshoot the bound by a card: X=3 mills FOUR, which is the
+// paper number (and X=2 mills two, because the first doubled
+// repetition already reaches the bound — the board where the two
+// readings agree).
+//
+// The engine used to model the whole run as ONE instruction that named
+// no number. That got the bound right and the amount invisible, and
+// X=3 with Bruvac milled three.
+//
+// "One of them" needs no prompt when the run ends normally: it stops
+// on the first repetition that lands a creature card, and an ordinary
+// repetition is one card. A DOUBLED repetition can land two creature
+// cards at once, and then the plural in the oracle text is a real
+// choice — so the card asks, with a one-of pick, and only then.
 //
 // The sacrifice is at RESOLUTION, not part of the cost: the Helm is
 // still on the battlefield while the mill happens, and an opponent
@@ -127,15 +141,14 @@ func helmOfObedienceMill(g *game.Game, item *game.StackItem) error {
 		// that prompt still open, find nothing, and drop its own second
 		// half on the floor.
 		Then: func(ctx *Context, milled []uuid.UUID) error {
-			var creature uuid.UUID
+			var creatures []uuid.UUID
 			for _, id := range milled {
 				c, ok := ctx.Game.LookupCardForEffect(id)
 				if ok && c.IsCreature() {
-					creature = id
-					break
+					creatures = append(creatures, id)
 				}
 			}
-			if creature == uuid.Nil {
+			if len(creatures) == 0 {
 				return nil
 			}
 			// "sacrifice this artifact AND put one of them onto the
@@ -144,11 +157,57 @@ func helmOfObedienceMill(g *game.Game, item *game.StackItem) error {
 			if err := (SacrificePermanent{Target: item.SourceCardID}).Apply(ctx); err != nil {
 				return err
 			}
-			return ReturnFromGraveyard{
-				Target:     creature,
-				Dest:       game.ZoneBattlefield,
-				Controller: item.Controller,
-			}.Apply(ctx)
+			return helmReanimateOneOfThem(ctx, item, victim, creatures)
 		},
 	}.Apply(ctx)
+}
+
+// helmReanimateOneOfThem is "put one of them onto the battlefield
+// under your control" (#1176).
+//
+// One creature card needs no prompt and is the normal case: the run
+// ends on the first repetition that lands one, and an ordinary
+// repetition mills exactly one card. It takes TWO to make the plural
+// real, which needs a mill-amount replacement (Bruvac the
+// Grandiloquent) doubling the repetition that found the first of them
+// — and then the choice is the controller's, so the card asks rather
+// than taking whichever came off the top.
+//
+// The pick is from the VICTIM's graveyard and the chooser is the
+// Helm's controller, which is what FromPlayer is for. Min 1: the
+// printed sentence is not optional once a creature card is there.
+//
+// The continuation rebuilds its Context from the game the resolver
+// hands back, the contract every queued continuation follows — an undo
+// restores a different *Game, and a closure holding the old one would
+// reanimate into a game nobody is looking at.
+func helmReanimateOneOfThem(ctx *Context, item *game.StackItem, victim uuid.UUID, creatures []uuid.UUID) error {
+	if len(creatures) == 1 {
+		return ReturnFromGraveyard{
+			Target:     creatures[0],
+			Dest:       game.ZoneBattlefield,
+			Controller: item.Controller,
+		}.Apply(ctx)
+	}
+	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+		Chooser:    item.Controller,
+		FromPlayer: victim,
+		Source:     item.SourceCardID,
+		Question:   "Helm of Obedience — put one of the milled creature cards onto the battlefield under your control",
+		Cards:      creatures,
+		Min:        1,
+		Max:        1,
+		Zone:       game.ZoneGraveyard,
+		Then: func(g *game.Game, picked []uuid.UUID) error {
+			if len(picked) == 0 {
+				return nil
+			}
+			return ReturnFromGraveyard{
+				Target:     picked[0],
+				Dest:       game.ZoneBattlefield,
+				Controller: item.Controller,
+			}.Apply(NewContext(g, item))
+		},
+	})
+	return nil
 }

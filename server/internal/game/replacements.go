@@ -538,10 +538,15 @@ type ReplacementEvent struct {
 	MillCount int
 
 	// mill is the mill's tail: what the instruction still owes once the
-	// window settles — the destination it named, its `until` predicate,
-	// and the caller's continuation. Set by the two entry points in
-	// effect_api.go and read only by applyResolvedMillLocked, which
-	// both the inline path and the CR 616 resume go through.
+	// window settles — the destination it named and the caller's
+	// continuation. Set by the two entry points in effect_api.go and
+	// read only by applyResolvedMillLocked, which both the inline path
+	// and the CR 616 resume go through.
+	//
+	// #1176: no `until` rides here. A run is a SEQUENCE of one-card
+	// mill instructions, so what reaches this event is always one
+	// instruction with one amount, and the run's clause lives in
+	// millUntilRunLocked between repetitions.
 	//
 	// Unexported engine plumbing — the catalog never sets or reads it.
 	// See mill.go.
