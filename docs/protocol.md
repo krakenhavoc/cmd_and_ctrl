@@ -1466,6 +1466,53 @@ gap Boom Scholar shipped as two declared caveats while #1184 closed.
   `ParseCost(s).String() == s` for every shape `ParseCost` accepts,
   snow included.
 
+## `castable_here` answers CR 307.1 too (#1195, 2026-09-22)
+
+No new field, no field removed, `v` unmoved. What changed is the third
+input to one bit.
+
+Since #1015 `castable_here` has been "no `cant_cast` and at least one
+claimable price", derived in one place. It said nothing about TIMING,
+and the announce path always has: a sorcery in a graveyard under a
+flashback grant is refused with `ErrSorcerySpeedRequired` in an
+opponent's end step, and a bot is offered no move for it. The bit
+therefore went out `true` on frames where the button behind it did not
+work, and `false` on a board where a Vedalken Orrery had opened the
+cast.
+
+It is now the same bit plus `game.CastTimingOpenLocked` — the one
+CR 307.1 read `CastSpell` and the bot enumerator already share (#1195,
+[ADR 0066](decisions/0066-granted-cast-and-play-permissions.md)'s
+2026-09-22 amendment). That predicate folds the card's own timing
+(instant, or flash), the granted permission's `Timing` override, the
+per-player "you may cast spells as though they had flash" grants
+(Vedalken Orrery, Leyline of Anticipation, Emergence Zone) and, last,
+the per-player restrictions (Teferi, Time Raveler), because CR 101.2
+says "can't" beats "can".
+
+**For a client.** Two things follow, and both are things a client
+should have been doing anyway:
+
+- **`castable_here` is a right-NOW bit, not a property of the card.**
+  It already moved with the graveyard's size (#1015) and with the
+  viewer (#1055); it now also moves with the step and with the board.
+  A client that caches it across frames will render a stale button.
+  Every snapshot carries the current answer.
+- **It is still not a reason.** `cant_cast` is the printed clause that
+  BANS a cast ("Each player can't cast more than one spell each
+  turn") and is what a toast should quote. "Not at this timing" is an
+  ordinary state of nearly every sorcery on nearly every frame, so it
+  is a `false` here and never a clause there — the two are separate
+  reads for that reason, and folding the second into `cant_cast` would
+  have put a refusal clause on half the cards in play.
+
+Unchanged: the bit is never set on a hand or command-zone card, exile
+keys its button off `exile_play`, and the per-viewer narrowing of
+#1055 stands — each holder's stamp is computed for that holder, so two
+seats that disagree about timing are told different things about the
+same card, which is what the rules say.
+
+
 ## Schema evolution rules
 
 - **Breaking changes** bump `v` and require updating both server and client
