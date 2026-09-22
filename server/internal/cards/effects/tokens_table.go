@@ -128,6 +128,7 @@ var tokenTable = map[string]game.Card{
 	"10/10 colorless Eldrazi":                       {Name: "Eldrazi", TypeLine: "Token Creature — Eldrazi", Power: 10, Toughness: 10},
 	"2/1 red Elemental with trample and haste":      {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 2, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"trample", "haste"}},
 	"2/1 white and black Inkling with flying":       {Name: "Inkling", TypeLine: "Token Creature — Inkling", Power: 2, Toughness: 1, Colors: []string{"W", "B"}, Keywords: []string{"flying"}},
+	"2/2 black Rogue":                               {Name: "Rogue", TypeLine: "Token Creature — Rogue", Power: 2, Toughness: 2, Colors: []string{"B"}},
 	"2/2 black Zombie":                              {Name: "Zombie", TypeLine: "Token Creature — Zombie", Power: 2, Toughness: 2, Colors: []string{"B"}},
 	"2/2 black Zombie Druid":                        {Name: "Zombie Druid", TypeLine: "Token Creature — Zombie Druid", Power: 2, Toughness: 2, Colors: []string{"B"}},
 	"2/2 blue Bird with flying":                     {Name: "Bird", TypeLine: "Token Creature — Bird", Power: 2, Toughness: 2, Colors: []string{"U"}, Keywords: []string{"flying"}},
