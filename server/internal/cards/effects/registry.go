@@ -652,7 +652,7 @@ func checkOneExhaustAbility(name, kind string, i int, label string, exhaust bool
 // bare "protection" for.
 func checkPlayerKeywords(spec Spec) {
 	for i, kw := range spec.PlayerKeywords {
-		if kw == "hexproof" {
+		if kw == game.KeywordHexproof {
 			continue
 		}
 		if _, ok := game.ParseProtectionQuality(kw); ok {
@@ -660,6 +660,6 @@ func checkPlayerKeywords(spec Spec) {
 		}
 		panic(fmt.Sprintf("effects.Register: %q PlayerKeywords[%d] = %q is not a player ability the engine honours — "+
 			"use %q or a \"protection from <quality>\" token the closed grammar parses (ADR 0072, #1197)",
-			spec.Name, i, kw, "hexproof"))
+			spec.Name, i, kw, game.KeywordHexproof))
 	}
 }

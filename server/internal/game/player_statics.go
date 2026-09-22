@@ -56,6 +56,12 @@ import "github.com/google/uuid"
 // construction: both read legalTargetsLocked, which is the targeting
 // consumer. Neither learns the rule, so neither can disagree with it.
 
+// KeywordHexproof is CR 702.11's token. Named here because it is now
+// read from two packages and spelled in card files, and a typo in a
+// hand-written token grants nothing at all — the same argument
+// ProtectionFromChosenPlayer carries in protection.go.
+const KeywordHexproof = "hexproof"
+
 // PlayerStatic is ONE ability a player has, with the duration it has
 // it for. The player-level twin of ScopedStatic, and deliberately
 // much less: no closure, no layer, no timestamp.
@@ -290,28 +296,49 @@ func (g *Game) PlayerProtectedFromLocked(p *Player, src *Characteristic) (Protec
 // existence problem, which the walk that wraps this reports
 // separately.
 //
+// ONE WALK, and the source snapshot built at most once inside it.
+// This is the hottest reader of the three: the targeting enumeration
+// asks it once per seat, and the view asks the enumeration once per
+// card a viewer could cast. Nearly every seat in nearly every game
+// has no abilities at all, so the walk ends immediately and
+// src.Characteristics() — which copies a Characteristic — is never
+// reached.
+//
 // Caller must hold g.mu (read or write).
 func (g *Game) canPlayerBeTargetedByLocked(p *Player, src TargetSource) bool {
 	if p == nil {
 		return true
 	}
-	// The cheap pre-test first: nearly every seat in nearly every game
-	// has nothing at all, and the source snapshot is not free.
-	has := false
-	g.playerAbilityTokensLocked(p, func(string) bool {
-		has = true
-		return false
-	})
-	if !has {
+	var (
+		chars     *Characteristic
+		charsRead bool
+		allowed   = true
+	)
+	g.playerAbilityTokensLocked(p, func(tok string) bool {
+		if tok == KeywordHexproof {
+			// CR 702.11d asks WHO, and only who.
+			if p.ID != src.Controller {
+				allowed = false
+				return false
+			}
+			return true
+		}
+		q, ok := ParseProtectionQuality(tok)
+		if !ok {
+			return true
+		}
+		if !charsRead {
+			chars, charsRead = src.Characteristics(), true
+		}
+		// No bindProtectionQuality here for the same reason
+		// PlayerProtectedFromLocked has none — see its comment.
+		if q.Matches(chars) {
+			allowed = false
+			return false
+		}
 		return true
-	}
-	if g.PlayerHasKeywordLocked(p, "hexproof") && p.ID != src.Controller {
-		return false
-	}
-	if _, refused := g.PlayerProtectedFromLocked(p, src.Characteristics()); refused {
-		return false
-	}
-	return true
+	})
+	return allowed
 }
 
 // CanPlayerBeTargetedByForEffect is the *ForEffect surface over the

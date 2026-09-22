@@ -36,8 +36,11 @@ import (
 // card files and a typo in any of them would silently grant nothing.
 const ProtectionFromEverything = "protection from everything"
 
-// KeywordHexproof is CR 702.11d's token, for the same reason.
-const KeywordHexproof = "hexproof"
+// KeywordHexproof is CR 702.11d's token, re-exported from the engine
+// so a card file spells it once and the compiler checks it. The
+// constant itself lives in game/player_statics.go, beside the reader
+// that compares against it.
+const KeywordHexproof = game.KeywordHexproof
 
 // GainPlayerKeyword is "you gain <ability> until <duration>" — the
 // GRANTED half of a player-level ability.
