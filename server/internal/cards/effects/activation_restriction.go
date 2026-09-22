@@ -92,6 +92,68 @@ func OpponentsSourcesCantActivate(label string, match CardPredicate, exemptMana 
 	}
 }
 
+// ChosenNameCantActivate is Pithing Needle, Phyrexian Revoker and
+// Sorcerous Spyglass: "Activated abilities of sources with the chosen
+// name can't be activated unless they're mana abilities."
+//
+// SOURCES, not permanents — the clause reaches a card in any zone
+// whose ability functions from there, which since #660 is a real case
+// (a Ketria Triome's cycling from hand). So no zone test, unlike
+// OpponentsSourcesCantActivate above, whose clause says "creatures
+// your opponents control".
+//
+// The name is read LIVE off the restricting permanent, never captured
+// at Register time: two Needles name two different cards, and the
+// field is per instance.
+//
+// An unchosen name — the window between the permanent entering and
+// its controller answering the prompt — matches nothing, which is the
+// safe direction and the same one an empty NamedTribe takes.
+//
+// The comparison is game.CardNameMatches, which asks every FACE (CR
+// 201.2b) case-insensitively. A card file must never compare
+// q.Card.Name itself: Card.Name is the ACTIVE face's name, so a
+// transformed permanent would stop matching the name it was named by.
+func ChosenNameCantActivate(label string, exemptMana bool) game.ActivationRestriction {
+	return game.ActivationRestriction{
+		Label: label,
+		Forbids: func(q game.ActivationQuery) bool {
+			if exemptMana && q.Ability.Mana {
+				return false
+			}
+			named := q.Source.ChosenName
+			if named == "" {
+				return false
+			}
+			return game.CardNameMatches(q.Card, named)
+		},
+	}
+}
+
+// ChooseCardNameAsEnters builds the `Spec.AsEnters` for a permanent
+// whose text opens "As this permanent enters, choose a card name"
+// (CR 614.12) — Pithing Needle, Phyrexian Revoker, Sorcerous
+// Spyglass, Meddling Mage, Nevermore.
+//
+// `label` is the prompt header, normally the card's name.
+//
+// The prompt is queued rather than resolved: nothing happens until
+// the controller answers, and until then the permanent's ChosenName
+// is empty and every restriction that reads it applies to nothing.
+// See game/choose_card_name.go for why this is an enter hook and not
+// a CR 614 replacement, and for what that costs.
+//
+// It lives here rather than beside ChooseCreatureTypeAsEnters in
+// tribal.go because a chosen NAME has nothing to do with tribes and
+// everything to do with the restriction above it — the one clause in
+// the catalog that reads the answer.
+func ChooseCardNameAsEnters(label string) func(*game.Card, *Context) error {
+	return func(card *game.Card, ctx *Context) error {
+		ctx.Game.QueueCardNameChoiceForEffect(card.Controller, card.InstanceID, label)
+		return nil
+	}
+}
+
 // matchActivationSource runs a card predicate against the OBJECT
 // whose ability is being activated.
 //

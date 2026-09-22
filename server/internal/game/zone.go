@@ -237,6 +237,12 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// nobody — which is also what stops the protection reader
 		// having to ask what zone it is in.
 		c.ChosenPlayer = uuid.Nil
+		// #1210 / CR 614.12: and so does the chosen card NAME. A
+		// Pithing Needle that is bounced and recast names a card
+		// again, and one in a graveyard restricts nobody — which is
+		// also what stops the restriction reader having to ask what
+		// zone the Needle is in.
+		c.ChosenName = ""
 		// #653 / #664, CR 400.7: how the SPELL was cast is a fact
 		// about the permanent that spell became, and CR 400.7d's
 		// licence to read it back ends with that permanent. A Phlage

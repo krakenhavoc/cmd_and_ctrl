@@ -1332,6 +1332,13 @@ func Dispatch(g *game.Game, a Action) error {
 			// engine validates and normalises it. Routed by presence,
 			// like Color above.
 			CreatureType string `json:"creature_type"`
+			// CardName answers a PendingChoiceCardName ("as this
+			// enters, choose a card name", CR 614.12, #1210). Free
+			// text — CR 201.2 lets a player name any card name, so
+			// there is no vocabulary to check it against and the
+			// engine validates only its shape. Routed by presence,
+			// like CreatureType and Color above.
+			CardName string `json:"card_name"`
 			// Graveyard answers a PendingChoiceSurveil (CR 701.25)
 			// alongside TopOrder: the looked-at cards going to the
 			// chooser's graveyard. Its PRESENCE is what distinguishes
@@ -1405,6 +1412,13 @@ func Dispatch(g *game.Game, a Action) error {
 		}
 		if p.CreatureType != "" {
 			return g.ResolveCreatureTypeChoice(choiceID, a.Player, p.CreatureType)
+		}
+		// #1210, CR 614.12: "as this enters, choose a card name".
+		// Routed by presence like the two above; a non-empty
+		// card_name identifies the answer, and ResolveCardNameChoice
+		// refuses it against any other kind.
+		if p.CardName != "" {
+			return g.ResolveCardNameChoice(choiceID, a.Player, p.CardName)
 		}
 		// The scry family — scry, surveil, "look at the top N and put
 		// them back in any order" — routes on the CHOICE'S KIND, not

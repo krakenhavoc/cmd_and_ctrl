@@ -173,6 +173,12 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	PendingChoiceEntryPayLife:    true,
 	PendingChoiceCopyTarget:      true,
 	PendingChoiceCreatureType:    true,
+	// #1210, CR 614.12. "As this enters, choose a card name" — the
+	// as-enters family's fourth member, blocking for the reason the
+	// other three block: the permanent is on the battlefield with the
+	// answer outstanding, and a table that could walk past the
+	// question would be answering it by doing.
+	PendingChoiceCardName: true,
 	// #568. "Choose one of the following", addressed to any seat —
 	// Torment of Hailfire's three-way question, and the second half
 	// of a Fact or Fiction pile split. It blocks for the reason every

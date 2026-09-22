@@ -490,6 +490,40 @@ type Card struct {
 	// Added for #980; see ADR 0072 §7.
 	ChosenPlayer uuid.UUID
 
+	// ChosenName is the CARD NAME chosen for this permanent by an "as
+	// this enters, choose a card name" instruction (CR 614.12) —
+	// Pithing Needle, Phyrexian Revoker, Sorcerous Spyglass, Meddling
+	// Mage, Nevermore. Empty means no name has been chosen, which is
+	// both "this card has no such instruction" and the window between
+	// the permanent entering and its controller answering the prompt.
+	//
+	// FREE TEXT, and that is the one way it differs from its three
+	// siblings. NamedTribe is validated against CR 205.3m's 345-word
+	// vocabulary and ChosenColor against five letters; CR 201.2 lets
+	// a player name ANY card name, including one in no deck at the
+	// table and one this server has never seen, so there is nothing
+	// to validate against. ResolveCardNameChoice checks the SHAPE
+	// (trimmed, non-empty, length-capped) and nothing else.
+	//
+	// Same lifecycle as NamedTribe, ChosenColor and ChosenPlayer: per
+	// INSTANCE (two Needles name two different cards), carried by the
+	// snapshot and by clone, and cleared when the permanent leaves
+	// the battlefield (CR 400.7) — a Needle that is bounced and
+	// recast names again.
+	//
+	// NOT a copiable value (CR 706.2), and that falls out of where it
+	// lives rather than out of a rule anybody has to remember:
+	// CopiableValuesOf projects printed characteristics and never
+	// looks here, so a Clone of a Pithing Needle names its own card
+	// as IT enters.
+	//
+	// Compare it with CardNameMatches, never with ==: the comparison
+	// asks every FACE (CR 201.2b) and is case-insensitive on trimmed
+	// strings. Read it with ChosenNameOf; written by
+	// ResolveCardNameChoice and by nothing else. Added for #1210; see
+	// choose_card_name.go.
+	ChosenName string
+
 	// Provenance is what this permanent remembers about the SPELL it
 	// came from — CR 400.7d, "an ability of a permanent can reference
 	// information about the spell that became that permanent as it

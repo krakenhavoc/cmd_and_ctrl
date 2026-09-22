@@ -482,6 +482,13 @@ type cardSnapshot struct {
 	// say what went. Old snapshots have no key and their zero uuid
 	// reads correctly as "nobody chosen".
 	ChosenPlayer uuid.UUID `json:"chosenPlayer,omitempty"`
+	// ChosenName is the CR 614.12 "as this enters, choose a card
+	// name" answer (#1210). Carried for ChosenPlayer's reason and one
+	// more: it is free text, so there is not even a vocabulary a
+	// restore could have re-derived it from — a Pithing Needle that
+	// came back with an empty name would silently stop restricting
+	// the card it was played to stop.
+	ChosenName string `json:"chosenName,omitempty"`
 	// Provenance is CR 400.7d: what the spell that became this
 	// permanent was cast for — the alternative cost (#653) and the
 	// optional additional costs (#664, ADR 0073 §5), in one record.
@@ -1155,6 +1162,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Provenance:               c.Provenance.Clone(),
 		ChosenColor:              c.ChosenColor,
 		ChosenPlayer:             c.ChosenPlayer,
+		ChosenName:               c.ChosenName,
 		ClassLevel:               c.ClassLevel,
 		Solved:                   c.Solved,
 		StartingDefense:          c.StartingDefense,
@@ -1714,6 +1722,7 @@ func restoreCard(c *cardSnapshot) Card {
 		Provenance:               c.Provenance.Clone(),
 		ChosenColor:              c.ChosenColor,
 		ChosenPlayer:             c.ChosenPlayer,
+		ChosenName:               c.ChosenName,
 		ClassLevel:               c.ClassLevel,
 		Solved:                   c.Solved,
 		StartingDefense:          c.StartingDefense,

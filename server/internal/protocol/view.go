@@ -260,6 +260,19 @@ type PendingChoiceView struct {
 	// for every such prompt and the server can always rebuild it.
 	TypeOptions []string `json:"type_options,omitempty"`
 
+	// NameOptions populates the #1210 "choose_card_name" kind: the
+	// distinct card names visible in a PUBLIC zone right now — the
+	// battlefield, every graveyard, the stack.
+	//
+	// A SUGGESTION LIST, never a legal set, and that is the whole
+	// difference from TypeOptions above. CR 201.2 lets a player name
+	// any card name at all, so the client renders this as a filter
+	// list beside a free-text box and the server accepts whatever
+	// comes back. Public zones only, because this goes to every
+	// viewer the prompt reaches and a convenience list is not worth
+	// a hidden-information leak.
+	NameOptions []string `json:"name_options,omitempty"`
+
 	// ReplacementOptions populates the S17 "replacement_order" kind:
 	// one entry per applicable CR 614 replacement effect the
 	// chooser is ordering. The client renders a drag-reorder list
@@ -1390,6 +1403,19 @@ type CardView struct {
 	// CR 708.2 gives a face-down permanent no such choice to report.
 	ChosenColor string `json:"chosen_color,omitempty"`
 	NamedTribe  string `json:"named_tribe,omitempty"`
+	// ChosenName is the same family's third answer (#1210): the CARD
+	// NAME this permanent's "as this enters, choose a card name"
+	// instruction was answered with — Pithing Needle, Phyrexian
+	// Revoker, Sorcerous Spyglass. Absent when the permanent asks no
+	// such question and in the window before it is answered.
+	//
+	// Public and cleared by the non-knower redaction for exactly the
+	// reasons above, and with one more that makes it the loudest of
+	// the three: a Needle that did not say what it named would leave
+	// the table guessing why an ability is greyed out, and the greyed
+	// row's `cant_activate` clause is printed text that says "the
+	// chosen name" without saying which.
+	ChosenName string `json:"chosen_name,omitempty"`
 	// ManaCost is the printed casting cost as Scryfall returns it —
 	// "{1}{R}", "{W/U}", "{X}{B}{B}", etc. Empty for lands and for
 	// placeholder / demo-seed cards. Rendered by the client as a
@@ -4158,6 +4184,14 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		if c.Kind == game.PendingChoiceCreatureType {
 			v.TypeOptions = append([]string(nil), game.AllCreatureTypes...)
 		}
+		// PendingChoiceCardName — #1210. There is no vocabulary to
+		// send (CR 201.2 admits any card name), so what goes on the
+		// wire is a SUGGESTION list rebuilt from the public zones.
+		// We are already inside ViewOfGame's ReadSnapshot, which is
+		// what the Locked suffix means.
+		if c.Kind == game.PendingChoiceCardName {
+			v.NameOptions = g.PublicCardNamesLocked()
+		}
 		// PendingChoiceReplacementOrder — S17 sub-PR 2. Emit the
 		// ordered list of replacement-effect IDs with a human-
 		// readable label + source-card ID (empty for engine
@@ -5153,6 +5187,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// true left to say.
 	out.ChosenColor = ""
 	out.NamedTribe = ""
+	out.ChosenName = ""
 	return stampFaceDownPublicBody(out, c)
 }
 
@@ -5389,6 +5424,7 @@ func viewOfCard(c game.Card) CardView {
 		// answered". This is the one place either is projected.
 		ChosenColor: c.ChosenColor,
 		NamedTribe:  c.NamedTribe,
+		ChosenName:  c.ChosenName,
 		knowers:     knowers,
 		Layout:      c.Layout,
 		Faces:       viewOfFaces(c),

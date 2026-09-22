@@ -60,6 +60,10 @@ type choiceParams struct {
 	// empty string sent on every other kind would be read as "this is
 	// a creature-type answer".
 	CreatureType string `json:"creature_type,omitempty"`
+	// CardName answers a choose_card_name prompt (CR 614.12, #1210).
+	// omitempty for CreatureType's reason: the dispatcher routes on
+	// its PRESENCE.
+	CardName string `json:"card_name,omitempty"`
 }
 
 type assignParam struct {
@@ -666,6 +670,31 @@ func (e *enumerator) choiceMoves() bool {
 				e.addAlwaysLegalChoice(c, reason+": "+t, p)
 			}
 
+		case game.PendingChoiceCardName:
+			// #1210, CR 614.12. "As this enters, choose a card name"
+			// — Pithing Needle, Phyrexian Revoker, Sorcerous
+			// Spyglass. There is NO legal set (CR 201.2 admits any
+			// card name at all), so this is not "offer the legal
+			// answers, capped" the way the creature-type case is; it
+			// is "offer the answers worth taking".
+			//
+			// Those are the names on the OPPONENTS' battlefield that
+			// actually have an activated ability, most threatening
+			// first, which is what a player points a Needle at. Read
+			// off public zones only, so the labels leak nothing.
+			//
+			// Every answer is always legal: ResolveCardNameChoice
+			// accepts any non-empty name and treats a departed source
+			// as "nowhere to land", not an error. A board with
+			// nothing worth naming still gets one answer, so the seat
+			// is never handed an empty list — the wedge this case
+			// exists to end.
+			for _, n := range e.cardNameAnswers(c) {
+				p := base()
+				p.CardName = n
+				e.addAlwaysLegalChoice(c, reason+": "+n, p)
+			}
+
 		case game.PendingChoiceLoopShortcut:
 			// #804, CR 726. "<card> — <ability> has resolved N times
 			// this turn. Resolve it K more times, then stop?" The
@@ -1092,4 +1121,67 @@ func (e *enumerator) creatureTypeAnswers() []string {
 		return []string{creatureTypeFallback}
 	}
 	return types
+}
+
+// cardNameAnswersCap bounds the card names offered for one
+// choose_card_name prompt. Small for the reason the creature-type cap
+// is small, and smaller: the list is a judgement call ("what is worth
+// naming") rather than a vocabulary, and a random policy taking the
+// first offer should be taking a good one.
+const cardNameAnswersCap = 5
+
+// cardNameFallback answers a card-name prompt on a board with nothing
+// worth naming. CR 201.2 accepts any card name, and a Needle that
+// named the card it is stapled to restricts nothing — which is the
+// honest answer to "there was nothing to point this at" and keeps the
+// list non-empty, so the prompt can always be cleared.
+const cardNameFallback = "Pithing Needle"
+
+// cardNameAnswers ranks the card names worth naming for a
+// choose_card_name prompt (#1210): the names on OPPONENTS'
+// battlefields that actually have an activated ability, because that
+// is the only thing a Pithing Needle or a Phyrexian Revoker does
+// anything about.
+//
+// Ordered by how many such permanents carry the name (a table with
+// two copies of one thing is saying something) and then
+// alphabetically, so the list is stable across calls.
+//
+// PUBLIC zones only, and the battlefield is the only one that matters
+// — a name in a hand is hidden, and a name in a graveyard has no
+// ability anybody can activate.
+func (e *enumerator) cardNameAnswers(c *game.PendingChoice) []string {
+	chooser := e.seat
+	if c != nil && c.Chooser != uuid.Nil {
+		chooser = c.Chooser
+	}
+	counts := map[string]int{}
+	for i := range e.g.Battlefield.Cards {
+		card := &e.g.Battlefield.Cards[i]
+		if card.Controller == chooser || card.FaceDown || card.Name == "" {
+			continue
+		}
+		if len(game.ActivatedAbilitiesForCard(*card)) == 0 &&
+			len(game.ManaAbilitiesForCard(*card)) == 0 {
+			continue
+		}
+		counts[card.Name]++
+	}
+	names := make([]string, 0, len(counts))
+	for n := range counts {
+		names = append(names, n)
+	}
+	sort.Slice(names, func(i, j int) bool {
+		if counts[names[i]] != counts[names[j]] {
+			return counts[names[i]] > counts[names[j]]
+		}
+		return names[i] < names[j]
+	})
+	if len(names) > cardNameAnswersCap {
+		names = names[:cardNameAnswersCap]
+	}
+	if len(names) == 0 {
+		return []string{cardNameFallback}
+	}
+	return names
 }
