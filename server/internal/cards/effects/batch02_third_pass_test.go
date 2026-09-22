@@ -513,12 +513,34 @@ func TestB02cUntimelyMalfunctionDestroysTargetArtifact(t *testing.T) {
 	}
 }
 
+func TestB02cUntimelyMalfunctionChangesTheTargetOfASingleTargetSpell(t *testing.T) {
+	g := newCatalogGame(t)
+	me, victimA, victimB := g.Seats[0].ID, g.Seats[1].ID, g.Seats[2].ID
+	bolt := castCatalogSpell(t, g, "Lightning Bolt", "Instant", lightningBoltOracle,
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: victimA}})
+	b02cCastModalSpell(t, g, "Untimely Malfunction", "Instant", b02cUntimelyMalfunctionOracle,
+		[]int{1}, []game.TargetRef{{Kind: game.TargetCard, ID: bolt}})
+	passPriorityAroundTable(t, g)
+
+	prompt := latestRetarget(g, me)
+	if prompt == nil {
+		t.Fatalf("Untimely Malfunction's retarget mode opened no prompt: %+v", g.PendingChoices)
+	}
+	if err := g.ResolveRetarget(prompt.ID, me,
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: victimB}}); err != nil {
+		t.Fatalf("ResolveRetarget: %v", err)
+	}
+	if got := g.StackMeta[bolt].Targets; len(got) == 0 || got[0].ID != victimB {
+		t.Fatalf("the Bolt's target did not move: %+v", got)
+	}
+}
+
 func TestB02cUntimelyMalfunctionPreventsBlocking(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	blocker := pushVanillaCreature(g, me.ID, "Their Blocker", 2, 2)
 	b02cCastModalSpell(t, g, "Untimely Malfunction", "Instant", b02cUntimelyMalfunctionOracle,
-		[]int{1}, []game.TargetRef{{Kind: game.TargetCard, ID: blocker}})
+		[]int{2}, []game.TargetRef{{Kind: game.TargetCard, ID: blocker}})
 	passPriorityAroundTable(t, g)
 	c, ok := g.LookupCardForEffect(blocker)
 	if !ok || !game.Restricted(&c, game.CantBlock) {
