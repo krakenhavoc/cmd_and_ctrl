@@ -107,6 +107,13 @@
     // creatures toward the table centre) instead of rotating 180°,
     // so text and card art stay upright.
     flipped?: boolean;
+    // #1071: a spectator seat (Board's "uniform grid" path — every
+    // seat isSelf=false, none flipped). The 200px opponent ceiling
+    // exists so an opponent panel doesn't rival the viewer's own —
+    // a spectator has no panel of their own for it to defer to, so
+    // that reason doesn't apply and the ceiling can match self's.
+    // See .panel.opponent.spectator below.
+    spectator?: boolean;
   }
 
   const {
@@ -139,6 +146,7 @@
     onActivateAbility,
     onManaAbilityCost,
     flipped = false,
+    spectator = false,
   }: Props = $props();
 
   // The seat's commander, wherever it is right now: the command zone
@@ -331,6 +339,7 @@
   class:self={isSelf}
   class:opponent={!isSelf}
   class:flipped
+  class:spectator
   role="region"
   aria-label={isSelf ? "your board" : `${seat.name} board`}
 >
@@ -460,7 +469,12 @@
        compact rows override them with --card-w-sm / --card-h-sm.
        --thumb-w / --thumb-h size the pile thumbnails in the rail. */
     container-type: size;
-    --card-h: clamp(168px, calc((42cqh - 30px) * var(--card-scale, 1)), 240px);
+    /* --card-h-max is the clamp's ceiling, pulled into its own token
+       (#1071) so a variant below can raise it without restating the
+       floor and slope — which would drift the two out of step the
+       next time either changes. */
+    --card-h-max: 240px;
+    --card-h: clamp(168px, calc((42cqh - 30px) * var(--card-scale, 1)), var(--card-h-max));
     --card-w: calc(var(--card-h) * 5 / 7);
     --card-h-sm: clamp(123px, calc(var(--card-h) * 0.74), 178px);
     --card-w-sm: calc(var(--card-h-sm) * 5 / 7);
@@ -495,19 +509,39 @@
   .panel.opponent {
     /* Upright opponent (the "next" seat) gets the medium scale — it
        has the tall row to itself. Scales by --card-scale-opponent
-       (settings) with a gentler curve than self. */
-    --card-h: clamp(123px, calc((43cqh - 31px) * var(--card-scale-opponent, 1)), 200px);
+       (settings) with a gentler curve than self. The 200px ceiling
+       (vs. self's 240px) is deliberate: an opponent panel shares the
+       screen with the viewer's own and shouldn't rival it. */
+    --card-h-max: 200px;
+    --card-h: clamp(123px, calc((43cqh - 31px) * var(--card-scale-opponent, 1)), var(--card-h-max));
     --card-h-sm: clamp(90px, calc(var(--card-h) * 0.74), 148px);
     --thumb-w: calc(36px * var(--card-scale-opponent, 1));
     --thumb-h: calc(50px * var(--card-scale-opponent, 1));
     --avatar-size-base: 72px;
     --rail-w: 104px;
   }
+  /* #1071: a spectator has no panel of their own for an opponent
+     panel to defer to, so the reason for the 200px ceiling above
+     doesn't apply — every seat is equal, and the ceiling can match
+     self's. This rule and .panel.opponent live in the same
+     stylesheet (same Svelte scope hash on both), so there is no
+     cross-component cascade tie to reason about — one extra class
+     over .panel.opponent is ordinary CSS specificity. The floor and
+     slope are untouched, so nothing changes below ~1340px of panel
+     height. Board never sets `flipped` on a spectator panel today
+     (every spectator seat mounts isSelf=false with no `flipped`), so
+     .panel.opponent.flipped below never competes with this rule in
+     practice — the dedicated four-class rule after it is what keeps
+     that true even if a spectator panel ever does gain `flipped`. */
+  .panel.opponent.spectator {
+    --card-h-max: 240px;
+  }
   .panel.opponent.flipped {
     /* Across-table seats: one more size down (the top row is the
        short one), rows reversed so the hand hugs the top edge and
        creatures face the centre of the table. */
-    --card-h: clamp(90px, calc((43cqh - 31px) * var(--card-scale-opponent, 1)), 168px);
+    --card-h-max: 168px;
+    --card-h: clamp(90px, calc((43cqh - 31px) * var(--card-scale-opponent, 1)), var(--card-h-max));
     --card-h-sm: clamp(67px, calc(var(--card-h) * 0.74), 124px);
     --thumb-w: calc(32px * var(--card-scale-opponent, 1));
     --thumb-h: calc(45px * var(--card-scale-opponent, 1));
@@ -517,6 +551,15 @@
       "bottom    rail"
       "middle    rail"
       "creatures rail";
+  }
+  /* Defensive only — unreachable today (see above), kept so a future
+     spectator panel that gains `flipped` still gets the raised
+     ceiling instead of silently falling back to 168px. Four classes
+     beats both .panel.opponent.flipped (three) and
+     .panel.opponent.spectator (three) outright, so this can never
+     lose to either regardless of source order. */
+  .panel.opponent.flipped.spectator {
+    --card-h-max: 240px;
   }
   .grid-creatures {
     grid-area: creatures;
