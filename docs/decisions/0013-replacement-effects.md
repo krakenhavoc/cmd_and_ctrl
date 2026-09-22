@@ -1120,7 +1120,10 @@ caveat Helm of Obedience carries, rewritten to say so.
 > [#1161](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1161),
 > §5z: the bound is not the amount, it is the rest of the same clause,
 > and the fire-and-forget form's trade named in the paragraph above is
-> gone because that form no longer takes an `until` at all.)*
+> gone because that form no longer takes an `until` at all. §5aa then
+> made each repetition of the run its own one-card mill instruction, so
+> a mill-amount replacement doubles the repetitions without touching
+> the bound.)*
 
 **4. The two forms differ in one thing, and #529 chose it.** A paused
 mill must not re-read the top of the library, and the plan-up-front
@@ -2741,11 +2744,22 @@ the X; under Rest in Peace or Leyline of the Void nothing is ever put
 into that graveyard, so the run mills the whole library (the famous
 combo, falling out of the reading rather than special-cased); and
 Bruvac doubles mills and not bounds — X=2 is two cards with him on the
-battlefield exactly as it is without, which `millAmountIsReplaceable`
-already said of an unbounded run before this amendment existed. Paper
-doubles each one-card repetition instead and can overshoot the bound by
-a card; the engine models the run as ONE instruction, which is the
-same modelling decision §5s made for a keyword action with a count.
+battlefield exactly as it is without.
+
+~~Paper doubles each one-card repetition instead and can overshoot the
+bound by a card; the engine models the run as ONE instruction, which is
+the same modelling decision §5s made for a keyword action with a
+count.~~ ***Superseded 2026-09-22 by
+[#1176](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1176),
+§5aa:*** *the run is a SEQUENCE of one-card mill instructions, each
+with its own `RepEventMill` window, so Bruvac does double each
+repetition and X=3 mills four cards as it does in paper. The row of the
+table above still holds as written — the BOUND names no number and
+nothing replaces it — and the `millAmountIsReplaceable` reading it
+rests on is untouched; what changed is that a repetition is an
+instruction and it names `1`. X=2 still mills two, because the first
+doubled repetition already reaches the bound, which is why the board
+this amendment measured did not show the gap.*
 
 **3. The over-mill #1161 named is closed BY CONSTRUCTION.** The issue's
 own warning: a landed-count bound plus the fire-and-forget loop is a
@@ -2782,6 +2796,94 @@ clause read what arrived, the reanimation already read it (§5l item 5),
 and there is no printed clause left unmodelled. `helm_x_bound_test.go`
 pins the three boards where the two readings disagree: the diverted
 commander, Rest in Peace, and Bruvac.
+
+### 5aa. Amendment, 2026-09-22: a run REPEATS an instruction, so a mill-amount replacement replaces each repetition
+
+*Amendment, 2026-09-22, branch
+`feat/1181-1176-exhaust-and-until-run-repetitions`.
+Closes [#1176](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1176),
+filed from #1177 while §5z was being written. It supersedes one
+paragraph of §5z item 2 and nothing else: the line between an AMOUNT
+and a BOUND stands, and so does every consequence §5z drew from it.*
+
+**1. "Mills a card, then repeats this process" is a loop over
+instructions.** Helm of Obedience gives ONE instruction — "target
+opponent mills a card" — and the rest of the sentence repeats it. §5z
+modelled the whole run as one instruction that named no number, which
+made the bound safe from a mill-amount replacement (right) and made the
+AMOUNT invisible (wrong): there was no number for Bruvac the
+Grandiloquent to double, and the engine milled three cards where paper
+mills four.
+
+The rulings are unambiguous — each repetition is a separate mill, a
+mill-amount replacement applies to each of them, and the stop condition
+is checked after each replaced mill, which can overshoot the bound:
+
+| board | paper | engine before | engine now |
+| --- | --- | --- | --- |
+| Helm X=1, Bruvac out | 2 | 1 | 2 |
+| Helm X=2, Bruvac out | 2 | 2 | 2 |
+| Helm X=3, Bruvac out | 4 | 3 | 4 |
+
+X=2 is why the gap survived §5z: it is the one small board where the
+two readings agree on the total, and it is the board §5z's test
+measured.
+
+**2. The shape: `millUntilRunLocked`, one repetition at a time.** An
+`until` clause no longer rides the mill's tail at all. It makes the
+call a RUN (`game.millRun`), and each repetition is an ordinary
+one-card mill through the very same entry point — the same CR 614
+window on its own amount, the same `millPlanLocked`, the same
+sequencing routing loop. Nothing about a repetition knows it is part of
+a run.
+
+| | before (§5z) | now |
+| --- | --- | --- |
+| the instruction | the whole run, naming no number | one repetition, naming `1` |
+| `RepEventMill` windows | none for the run | one per repetition |
+| where the clause is asked | inside the routing loop, after each LEG | between repetitions, with everything that has landed |
+| what carries it | `millTail.until` | `millRun.until` |
+
+`millTail` keeps only the destination and the caller's continuation.
+`millStopForLocked` and `routeAllThenUntilLocked` are deleted, and
+`routeEachStepLocked` loses its `stop` parameter: a batch is a batch
+again.
+
+**3. The over-mill is still closed by construction, and more of it.**
+§5z item 3's property — a run that ends on what ARRIVED may only be
+carried by the form that WAITS — is unchanged and strengthened.
+`MillToZoneForEffect` still takes no `until`, every repetition still
+goes through `MillToZoneThenForEffect`'s sequencing body, and the next
+repetition is started FROM the previous one's continuation, so a leg
+paused on the CR 903.9 prompt holds the whole run rather than being
+walked past. What is new is that no routing loop can be handed a clause
+either, because the verdict is not inside one.
+
+**4. The clause is still about ARRIVALS, and still pure.** `millRun`
+values are immutable: a repetition's continuation builds a FRESH run
+with a fresh landed slice rather than appending in place, and the
+pre-move card copies the clause reads are taken ONCE, from the library
+as the run began. So an undo that rewinds into an open CR 903.9 prompt
+and replays the answer asks the clause the same question and gets the
+same answer — §5l's property, kept at the new boundary.
+
+**5. "Put ONE OF THEM onto the battlefield" became a real choice.**
+Helm's doc comment said a prompt was unnecessary because the run stops
+AT the first creature card, so there is never more than one to choose
+from. That was true of a one-card repetition and is not true of a
+doubled one: two creature cards can now land together. The card asks —
+a one-of `ChooseCardsPrompt` over the victim's graveyard, answered by
+the Helm's controller, raised ONLY when there is more than one — so the
+common case is still promptless and the card stays
+`CompletenessFull`.
+
+**6. What else it reaches.** Every `until` run in the catalog, which is
+three: `b14MillUntilLand` (Consuming Aberration) and Helm of Obedience
+into a graveyard, where the per-repetition window is the point, and
+`b27ExileTopUntilTotalManaValue` / Improvisation Capstone into EXILE,
+where no window opens at all because exiling the top N is not a mill
+(CR 701.13a). Every other mill in the catalog names a number and is
+untouched.
 
 ### 6. Six pipeline integration points (five mutations + step transition)
 
