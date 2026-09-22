@@ -518,6 +518,94 @@ func WheneverYouActivateAnExhaustAbility(label string, effect Effect) game.Trigg
 	return OnAny(theTwoActivationKinds, AllOf(ByYou, AnExhaustAbility), label, effect)
 }
 
+// WheneverAnOpponentActivates — "Whenever an opponent activates an
+// ability of <thing> [that isn't a mana ability], …" (#1210,
+// ADR 0018's note of 2026-09-22): Harsh Mentor, Runic Armasaur.
+//
+// ONE declaration shape for the whole clause family, and the three
+// arguments are the three ways printed cards differ.
+//
+//   - WHOSE. Always ByAnOpponent, on Event.Actor — the ACTIVATOR, not
+//     the source's controller, because that is what the cards print
+//     and the two differ exactly where it matters (an ability
+//     activated from a permanent somebody else controls).
+//   - WHICH ABILITIES. `includeMana` picks the watched KINDS:
+//     EventActivateAbility alone, or both it and
+//     EventManaAbilityActivated. "…if it isn't a mana ability" is
+//     therefore not a predicate a card file writes and can forget —
+//     it is the absence of a kind from Watches, decided at the only
+//     place that knows (CR 605.1a: a mana ability never reaches the
+//     stack and carries its own event kind precisely so a watcher can
+//     tell the difference).
+//   - OF WHAT. `of` runs against the ability's SOURCE object, looked
+//     up live on the battlefield: "an ability of an artifact,
+//     creature, or land on the battlefield" (Harsh Mentor), "of a
+//     creature or land" (Runic Armasaur). Nil is "any source", the
+//     plain "whenever an opponent activates an ability" clause. A
+//     source that is no longer on the battlefield — a Lotus Petal
+//     that sacrificed itself to its own cost — matches nothing, which
+//     is the printed reading of "on the battlefield" and the safe
+//     direction for a clause that does not print it.
+//
+// `build` receives the ACTIVATOR (Event.Actor) and returns the
+// effect: "this creature deals 2 damage to THAT PLAYER". It does not
+// target — the clause says "that player", so hexproof and "can't be
+// the target of" do nothing about it and CR 608.2b re-checks nothing
+// — and it is captured in the Build closure the way Ob Nixilis, the
+// Hate-Twisted captures a drawer.
+//
+// Compose Optional() over the result for a "you may" (Runic
+// Armasaur), exactly as with any other trigger.
+func WheneverAnOpponentActivates(label string, of CardPredicate, includeMana bool, build func(activator uuid.UUID) Effect) game.TriggeredAbility {
+	kinds := []game.EventKind{game.EventActivateAbility}
+	if includeMana {
+		kinds = theTwoActivationKinds
+	}
+	return game.TriggeredAbility{
+		Watches: kinds,
+		Key:     label,
+		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			if ev.Actor == uuid.Nil || ev.Actor == source.Controller {
+				return false
+			}
+			return activationSourceMatches(g, ev, of)
+		},
+		Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
+			activator := ev.Actor
+			return game.NewTriggeredItem(source, label, build(activator))
+		},
+	}
+}
+
+// activationSourceMatches runs `of` against the object whose ability
+// was activated, as it stands on the battlefield NOW.
+//
+// The event carries the source's ID and not a snapshot of it, so a
+// source that has left — a Lotus Petal sacrificed to its own cost, a
+// creature that died in response — matches nothing. Both printed
+// cards say "on the battlefield" or name permanent types, so that is
+// the reading, and it is the one that cannot over-trigger.
+//
+// A nil predicate skips the lookup entirely: "whenever an opponent
+// activates an ability" asks nothing about the source and must not
+// start caring whether it is still there.
+func activationSourceMatches(g *game.Game, ev game.Event, of CardPredicate) bool {
+	if of == nil {
+		return true
+	}
+	if g == nil || g.Battlefield == nil {
+		return false
+	}
+	for i := range g.Battlefield.Cards {
+		c := g.Battlefield.Cards[i]
+		if c.InstanceID != ev.CardID {
+			continue
+		}
+		return of(g, ev.Actor, c)
+	}
+	return false
+}
+
 // --- where the ability watches from (CR 113.6, #925) ----------------
 
 // InGraveyard makes a trigger watch from its owner's GRAVEYARD
