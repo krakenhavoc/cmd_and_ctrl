@@ -302,6 +302,45 @@
     pickCreatureType(filteredTypes[0]);
   }
 
+  // #1210 choose_card_name branch — "as this permanent enters, choose
+  // a card name" (CR 614.12): Pithing Needle, Phyrexian Revoker,
+  // Sorcerous Spyglass.
+  //
+  // The one prompt in the engine with NO legal set. CR 201.2 lets a
+  // player name any card name at all, so `name_options` is a
+  // SUGGESTION list — the names visible in public zones — and the
+  // text box is the real answer. That is why this is not a second
+  // copy of the creature-type picker despite looking like one: there,
+  // typing filters a closed vocabulary and Enter takes the top match;
+  // here, Enter submits WHAT WAS TYPED, because a name the list does
+  // not have is an ordinary answer and guessing over the player would
+  // be the bug.
+  const isCardNamePick = $derived(active?.kind === "choose_card_name");
+  const nameOptions = $derived<string[]>(active?.name_options ?? []);
+  let nameFilter = $state("");
+  const filteredNames = $derived.by(() => {
+    const q = nameFilter.trim().toLowerCase();
+    if (!q) return nameOptions;
+    const starts = nameOptions.filter((n) => n.toLowerCase().startsWith(q));
+    const contains = nameOptions.filter(
+      (n) => !n.toLowerCase().startsWith(q) && n.toLowerCase().includes(q),
+    );
+    return [...starts, ...contains];
+  });
+
+  function pickCardName(name: string): void {
+    const trimmed = name.trim();
+    if (!active || !viewerID || !trimmed) return;
+    nameFilter = "";
+    answer({ card_name: trimmed });
+  }
+
+  function onNameFilterKey(e: KeyboardEvent): void {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    pickCardName(nameFilter);
+  }
+
   // S17 replacement_order branch — CR 616 affected-player-chooses-
   // order prompt. Click a row to append it to the `ordered` array;
   // click a row already in the array to remove it (later rows
@@ -1014,6 +1053,42 @@
           {:else}
             <p class="prompt-hint warn">No creature type matches “{typeFilter}”.</p>
           {/each}
+        </div>
+      {:else if isCardNamePick}
+        <h2 id="choice-title">
+          {active.reason || "Choose a card name"}
+          <span class="prompt-src" aria-hidden="true">as this enters · CR 614.12</span>
+        </h2>
+        <p class="prompt-hint">
+          Any card name is legal — type one. The suggestions are the cards everyone can currently
+          see.
+        </p>
+        <!-- svelte-ignore a11y_autofocus -->
+        <input
+          class="type-filter"
+          type="text"
+          autofocus
+          placeholder="Name a card…"
+          aria-label="Name a card"
+          bind:value={nameFilter}
+          onkeydown={onNameFilterKey}
+        />
+        <div class="type-list">
+          {#each filteredNames as n (n)}
+            <button type="button" class="type-pick" onclick={() => pickCardName(n)}>{n}</button>
+          {:else}
+            <p class="prompt-hint">No visible card matches — press Enter to name it anyway.</p>
+          {/each}
+        </div>
+        <div class="prompt-foot">
+          <button
+            type="button"
+            class="primary"
+            disabled={nameFilter.trim() === ""}
+            onclick={() => pickCardName(nameFilter)}
+          >
+            Name “{nameFilter.trim() || "…"}”
+          </button>
         </div>
       {:else if isOptionalReplacement}
         <h2 id="choice-title">

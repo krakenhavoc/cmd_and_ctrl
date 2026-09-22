@@ -657,6 +657,16 @@ export interface PendingChoiceView {
     // 205.3m vocabulary for the picker to filter; answered with
     // resolve_choice { creature_type: "Elf" }.
     | "choose_creature_type"
+    // #1210: "as this permanent enters, choose a card name" (CR
+    // 614.12) — Pithing Needle, Phyrexian Revoker, Sorcerous
+    // Spyglass. Answered with resolve_choice { card_name: "Sol Ring" }.
+    //
+    // UNLIKE choose_creature_type there is no legal set: CR 201.2
+    // admits any card name at all, so name_options is a SUGGESTION
+    // list (the names visible in public zones) and the picker is a
+    // filter over it beside a free-text box. The server accepts
+    // whatever comes back, trimmed and non-empty.
+    | "choose_card_name"
     // #74 chained choices: the general two-way prompt, "do A, or do
     // B." Answered with the shared yes/no {choice_id, apply} payload —
     // apply=true takes the accept branch. accept_label / decline_label
@@ -758,6 +768,12 @@ export interface PendingChoiceView {
   // 205.3m vocabulary is ~345 entries), so the picker filters it
   // rather than rendering it whole.
   type_options?: string[];
+  // #1210: populated for kind "choose_card_name" — the distinct card
+  // names visible in a PUBLIC zone (the battlefield, every graveyard,
+  // the stack), sorted. A SUGGESTION list and not a legal set: the
+  // picker filters it and also offers a free-text box, because CR
+  // 201.2 lets a player name a card nobody at the table is holding.
+  name_options?: string[];
   // S17: populated for kind "replacement_order" — the CR 616
   // affected-player-chooses-order prompt. Client renders a drag-
   // reorder list of these entries and submits the IDs in the
