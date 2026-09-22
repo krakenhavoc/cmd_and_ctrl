@@ -7441,11 +7441,6 @@ func (g *Game) SetGoaded(cardID, by uuid.UUID) error {
 	return ErrCardNotFound
 }
 
-// SetPoison sets a player's poison counter total. 10 is loss in MTG
-// (state-based action, deferred to S13+). amount is clamped at 0 from
-// below; there's no upper clamp because some cards / formats deal
-// arbitrary poison. Replaces (not increments) — clients send the new
-// total so two stale tabs don't double-count.
 // SetDiscordIdentity stamps the S12.5 OAuth identity metadata
 // onto the given seat. Called by the lobby's JoinWithIdentity
 // immediately after AddPlayer so the fields are in place before
@@ -7521,6 +7516,11 @@ func (g *Game) RemovePlayer(playerID uuid.UUID) error {
 	return nil
 }
 
+// SetPoison sets a player's poison counter total. 10 is loss in MTG
+// (state-based action, deferred to S13+). amount is clamped at 0 from
+// below; there's no upper clamp because some cards / formats deal
+// arbitrary poison. Replaces (not increments) — clients send the new
+// total so two stale tabs don't double-count.
 func (g *Game) SetPoison(playerID uuid.UUID, amount int) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()

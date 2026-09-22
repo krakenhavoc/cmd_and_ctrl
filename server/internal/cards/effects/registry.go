@@ -175,6 +175,13 @@ func Register(spec Spec) {
 				panic(fmt.Sprintf("effects.Register: %q declares an unparseable optional cost %q: %v", spec.Name, oc.ManaCost, err))
 			}
 		}
+		// #1224: an AdditionalCost in OptionalCosts carries the same
+		// Sacrifice *TargetSpec the mandatory slot does (Constant Mists'
+		// "Buyback—Sacrifice a land"), and it reaches
+		// validateAdditionalCostLocked through the same plan and the same
+		// flat sacrifice_ids walk — so every shape the guard refuses on
+		// the mandatory slot below is refusable here too.
+		checkSacrificeClause(spec.Name, fmt.Sprintf("optional cost %q", oc.Key), oc.Sacrifice)
 		if oc.Empty() {
 			panic(fmt.Sprintf("effects.Register: %q optional cost %q demands nothing", spec.Name, oc.Key))
 		}

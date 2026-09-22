@@ -461,6 +461,16 @@ func TestRegisterRejectsVariableSacrificeClauses(t *testing.T) {
 		{"additional cost site", Spec{OracleID: "sac-guard-spell", Name: "sac-guard-spell", AdditionalCost: &game.AdditionalCost{
 			Sacrifice: sacrificeSpec("any number of creatures", Creature()).WithCount(0, 0),
 		}}, "additional cost"},
+		// #1224: an AdditionalCost in OptionalCosts carries the same
+		// Sacrifice clause the mandatory slot does (Constant Mists'
+		// "Buyback—Sacrifice a land"), so the same guard has to catch a
+		// variable count there too.
+		{"optional cost site", Spec{OracleID: "sac-guard-optional", Name: "sac-guard-optional", OptionalCosts: []game.AdditionalCost{{
+			Optional:  true,
+			Key:       game.BuybackKey,
+			Label:     "Buyback—Sacrifice any number of creatures",
+			Sacrifice: sacrificeSpec("any number of creatures", Creature()).WithCount(0, 0),
+		}}}, "optional cost"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -469,6 +479,32 @@ func TestRegisterRejectsVariableSacrificeClauses(t *testing.T) {
 				t.Error("a refused spec was registered anyway")
 			}
 		})
+	}
+}
+
+// TestRegisterAcceptsFixedOptionalSacrificeClause is the positive
+// control for #1224's guard: a well-formed optional sacrifice clause
+// (fixed count of one, exactly what BuybackSacrifice / KickerSacrifice
+// build) must still register cleanly. The catalog already proves this
+// live — Constant Mists and Gatekeeper of Malakir register at package
+// init and their own tests cast them — but this pins it directly
+// against the guard so a future change to checkSacrificeClause cannot
+// start refusing every optional sacrifice cost and have nothing catch
+// it here.
+func TestRegisterAcceptsFixedOptionalSacrificeClause(t *testing.T) {
+	spec := Spec{
+		OracleID: "sac-guard-optional-good",
+		Name:     "sac-guard-optional-good",
+		OptionalCosts: []game.AdditionalCost{{
+			Optional:  true,
+			Key:       game.BuybackKey,
+			Label:     "Buyback—Sacrifice a land",
+			Sacrifice: sacrificeSpec("a land", Land()),
+		}},
+	}
+	Register(spec)
+	if !Has(spec.OracleID) {
+		t.Error("a legal optional sacrifice clause was refused")
 	}
 }
 
