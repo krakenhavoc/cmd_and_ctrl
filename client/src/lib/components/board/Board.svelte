@@ -1446,6 +1446,7 @@
         <PlayerPanel
           {seat}
           isSelf={false}
+          spectator={true}
           isActive={seat.id === activeSeatID}
           hasPriority={seat.id === prioritySeatID}
           {viewerID}
