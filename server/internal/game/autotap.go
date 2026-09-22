@@ -383,6 +383,11 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 	restrictions := g.activeUntapStepRestrictionsLocked()
 	p := g.playerByIDLocked(controller)
 	identity := commanderIdentityFor(g, p)
+	// #1222: does anything on this board replace a mana production?
+	// Asked ONCE, because the answer is no on ~every board and the
+	// pricing below is a gather per colour per slot per source. See
+	// producesManaReplacementsExistLocked.
+	priceProduction := g.producesManaReplacementsExistLocked()
 	for _, c := range g.Battlefield.Cards {
 		if c.Controller != controller || c.Tapped {
 			continue
@@ -478,10 +483,35 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 		if len(slots) == 0 {
 			continue
 		}
+		// #1222: what this source will REALLY make. "If you tap a
+		// permanent for mana, it produces twice as much of that mana
+		// instead" (Mana Reflection) is a CR 614 replacement, so a
+		// planner that booked the printed amount would tap two lands
+		// where a Mana-Reflected one pays — and, worse, would read a
+		// payable cast as unpayable in strict mode. Priced through the
+		// same gathered AppliesTo / Replace pairs the executor runs, so
+		// the two halves of the tapper cannot disagree about what a
+		// source produces, which is the rule this whole function is
+		// built around.
+		//
+		// BEFORE the #1212 wish below, because this is the branch that
+		// can still drop the source: a permanent the window leaves with
+		// nothing to add is not a mana source, wished-for or not.
+		if priceProduction {
+			slots = g.priceProducedSlotsLocked(controller, c.InstanceID, slots)
+			if len(slots) == 0 {
+				// The window replaces this source's production away
+				// entirely. Tapping a land for no mana is worse than
+				// not tapping it — the CR 903.4f posture, one line up.
+				continue
+			}
+		}
 		// #1212: the wish, answered off the same snapshot the mana
 		// this permanent produces will carry (manaSourceKindsOf), so
 		// the planner and the record can never disagree about what
-		// this source is.
+		// this source is. The AMOUNT it produces is priced above and
+		// the KINDS it produces are unaffected by that — CR 106.12b
+		// replaces how much mana is produced, not what produced it.
 		wanted := prefer != 0 && manaSourceKindsOf(c).HasAny(prefer)
 		out = appendTapSource(out, c.InstanceID, slots,
 			untapStepRestrictedBy(&c, g, restrictions) || c.hasNextUntapSkipFor(controller),

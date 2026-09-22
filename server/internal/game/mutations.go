@@ -136,6 +136,12 @@ func (g *Game) drawCardLocked(playerID uuid.UUID) error {
 		Kind:       RepEventDraw,
 		Actor:      playerID,
 		DrawPlayer: playerID,
+		// #1222: the amount. Always ONE here — CR 121.2 makes "draw
+		// three cards" three individual card draws, and DrawNForEffect
+		// loops through this function — so a draw-amount replacement
+		// (Thought Reflection, Alhammarret's Archive) doubles EACH of
+		// them rather than the instruction.
+		DrawCount: 1,
 	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {
@@ -155,7 +161,46 @@ func (g *Game) drawCardLocked(playerID uuid.UUID) error {
 		// Draw canceled by replacement.
 		return nil
 	}
-	return g.actuallyDrawCardLocked(out.DrawPlayer)
+	return g.actuallyDrawCardsLocked(out.DrawPlayer, out.DrawCount)
+}
+
+// actuallyDrawCardsLocked performs the N individual card draws a
+// settled RepEventDraw asks for (CR 121.2: "if a player is instructed
+// to draw multiple cards, that player performs that many individual
+// card draws"). N is one for every draw in the game today and more
+// only under a draw-amount replacement — Thought Reflection,
+// Alhammarret's Archive (#1222).
+//
+// One at a time is not decoration. Every per-card payoff in the
+// catalog reads EventDrawCard (Nekusar, Sheoldred, Consecrated Sphinx,
+// Fate Unraveler), so a doubled draw has to emit one per card or they
+// all fire once for two cards. The CR 614 window is NOT re-opened for
+// the extra cards: they are the same event, and its once-per-event
+// tracking (CR 614.5) covers all of them — which is also what stops a
+// doubler from doubling its own output forever.
+//
+// Stops on the first empty library, returning ErrZoneEmpty with
+// AttemptedEmptyDraw already set, exactly as one draw does: DrawCard's
+// wire behaviour and DrawNForEffect's partial-draw contract both key
+// on that error.
+//
+// A non-positive count draws one. The honest spelling of "no draw" is
+// ev.Cancel(), which the pipeline above has already handled, so a zero
+// here is a hand-built event's zero value rather than anybody's
+// decision — and a draw that silently vanished would be the worse
+// answer.
+//
+// Caller must hold g.mu.
+func (g *Game) actuallyDrawCardsLocked(playerID uuid.UUID, n int) error {
+	if n <= 0 {
+		n = 1
+	}
+	for i := 0; i < n; i++ {
+		if err := g.actuallyDrawCardLocked(playerID); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // actuallyDrawCardLocked is the post-replacement draw body —
@@ -1654,8 +1699,23 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 		// planner declines, so the executor declines it too rather
 		// than guessing which one the plan meant.
 		oneColorIdx := oneColorSlot(slots)
-		if oneColorIdx == oneColorSlotUnplannable ||
-			(oneColorIdx >= 0 && !colorOffered(slots[oneColorIdx].Options, planned.OneColor)) {
+		if oneColorIdx == oneColorSlotUnplannable {
+			continue
+		}
+		// #1222: a slot that is a one-pick only AFTER the CR 614 window
+		// has multiplied it. Under Mana Reflection a Birds of Paradise
+		// mints two of the chosen colour, so the planner priced its
+		// printed "{W|U|B|R|G}" as a "two mana of any one color" pick
+		// and booked a colour for it (plannedTap.OneColor) — and the
+		// printed slot list, which is what the executor produces from,
+		// cannot see that. Honour the booking rather than re-deriving
+		// it greedily, which is exactly what plannedTap.OneColor exists
+		// for: one activation of such a source is ONE pick, and the two
+		// halves of the tapper must not reach different answers.
+		if oneColorIdx == oneColorSlotNone && planned.OneColor != "" {
+			oneColorIdx = firstSlotOffering(slots, planned.OneColor)
+		}
+		if oneColorIdx >= 0 && !colorOffered(slots[oneColorIdx].Options, planned.OneColor) {
 			continue
 		}
 		// #789: the counters come off as part of the same payment as
@@ -1752,43 +1812,52 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 				continue
 			}
 			// #742: a one-colour-N-mana slot adds all N of the picked
-			// colour, in one activation.
-			for k := 0; k < slot.AmountFor(color); k++ {
-				// Restrictions ride here too. autoTapAbilityFor
-				// already refuses restricted abilities, so this is
-				// belt-and-braces — but "the auto-tapper is the one
-				// path that mints unrestricted copies of restricted
-				// mana" is precisely the bug #259 warns about, and one
-				// line is cheaper than trusting a filter two files
-				// away.
-				p.ManaPool.AddMana(ManaToken{
-					Color:        color,
-					Source:       cardID,
-					Restrictions: restrictionsFor(g, ab, p.ID, cardID),
-					// #1212: what the source WAS, snapshotted off the
-					// copy taken before the tap — the same copy the
-					// triggered mana abilities below use, so the two
-					// can never disagree about the permanent they
-					// describe.
-					//
-					// #1215 made that copy LOAD-BEARING here rather
-					// than merely consistent. This line used to be
-					// able to say "the auto-tapper never plans a
-					// sacrifice cost, so the permanent is still
-					// here"; it no longer can. The plan's own
-					// sacrifice runs between the tap and this mint,
-					// so by now a planned Treasure is in a graveyard
-					// and a Treasure TOKEN has ceased to exist
-					// (CR 111.7). Reading `tappedForMana` is what
-					// makes "if mana from a Treasure was spent"
-					// answerable on the auto-tap path at all —
-					// exactly the reason ActivateManaAbility takes
-					// its own snapshot before paying.
-					SourceKinds: manaSourceKindsOf(tappedForMana),
-				})
-				g.EmitEvent(Event{Kind: EventManaAdded, Actor: p.ID, Source: cardID, Colors: []string{color}})
-				addedColors = append(addedColors, color)
-			}
+			// colour, in one activation. #1222: through the one
+			// production body, which opens the CR 106.12b window on the
+			// amount and books whatever surplus it adds against the
+			// requirements this cast still owes — the plan already
+			// priced the same window, so the ledger and the pool agree.
+			//
+			// Restrictions ride here too. autoTapAbilityFor already
+			// refuses restricted abilities, so this is belt-and-braces
+			// — but "the auto-tapper is the one path that mints
+			// unrestricted copies of restricted mana" is precisely the
+			// bug #259 warns about, and one line is cheaper than
+			// trusting a filter two files away.
+			addedColors = append(addedColors, g.produceManaLocked(
+				p, cardID,
+				repeatColor(color, slot.AmountFor(color)),
+				restrictionsFor(g, ab, p.ID, cardID),
+				// #1212: what the source WAS, snapshotted off the copy
+				// taken before the tap — the same copy the triggered
+				// mana abilities below use, so the two can never
+				// disagree about the permanent they describe.
+				//
+				// #1215 made that copy LOAD-BEARING here rather than
+				// merely consistent. This line used to be able to say
+				// "the auto-tapper never plans a sacrifice cost, so the
+				// permanent is still here"; it no longer can. The
+				// plan's own sacrifice runs between the tap and this
+				// mint, so by now a planned Treasure is in a graveyard
+				// and a Treasure TOKEN has ceased to exist (CR 111.7).
+				// Reading `tappedForMana` is what makes "if mana from a
+				// Treasure was spent" answerable on the auto-tap path
+				// at all — exactly the reason ActivateManaAbility takes
+				// its own snapshot before paying.
+				//
+				// #1222: every mana the CR 614 window ADDS carries the
+				// same snapshot, because CR 106.12b replaces how much
+				// mana is produced and not what produced it — a doubled
+				// Treasure is two Treasure mana.
+				manaSourceKindsOf(tappedForMana),
+				// Every planned source owes a {T} (autoTapAbilityFor
+				// refuses an ability without one, #1215's sacrifice of
+				// the source included), and this executor set
+				// card.Tapped above, so every production here is a tap
+				// for mana (CR 106.12a).
+				true,
+				&pending,
+			)...)
 		}
 		// #763, CR 605.1b / 605.4a: the third and last production
 		// site. `pending` goes in, so a trigger whose output is a
@@ -5322,20 +5391,21 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		// still prompts, with one button, because the player is
 		// choosing a colour the card told them to choose.
 		if len(slot.Options) == 1 {
-			// Single-color slot — straight into the pool, carrying
-			// the ability's spend restrictions (Eldrazi Temple's
-			// "colorless Eldrazi only"). Copy the slice: the token
-			// outlives this call and clone.go deep-copies it, so
-			// aliasing the catalog's backing array would let an undo
-			// reach a shared one.
-			p.ManaPool.AddMana(ManaToken{
-				Color:        options[0],
-				Source:       cardID,
-				Restrictions: restrictionsFor(g, &ab, playerID, cardID),
-				SourceKinds:  srcKinds,
-			})
-			g.EmitEvent(Event{Kind: EventManaAdded, Actor: playerID, Source: cardID, Colors: []string{options[0]}})
-			addedColors = append(addedColors, options[0])
+			// Single-color slot — through the one production body,
+			// which opens the CR 106.12b window on the amount (#1222)
+			// and then mints one token per mana it settles on,
+			// carrying the ability's spend restrictions (Eldrazi
+			// Temple's "colorless Eldrazi only") and #1212's snapshot
+			// of what the source was. A Mana Reflection board makes
+			// this Forest two {G}, both of them still Forest mana.
+			addedColors = append(addedColors, g.produceManaLocked(
+				p, cardID,
+				[]string{options[0]},
+				restrictionsFor(g, &ab, playerID, cardID),
+				srcKinds,
+				ab.TapCost,
+				nil,
+			)...)
 			continue
 		}
 		// Multi-option slot — see manaPickOptions above.

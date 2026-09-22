@@ -1136,29 +1136,26 @@ func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) er
 	if v, ok := choice.ManaAmounts[color]; ok {
 		n = v
 	}
-	colors := make([]string, 0, n)
-	for k := 0; k < n; k++ {
-		p.ManaPool.AddMana(ManaToken{
-			Color:  color,
-			Source: choice.Source,
-			// The choice carried the ability's restrictions here so
-			// the minted token gets them (#352). copyRestrictions
-			// because the choice is about to be dequeued and the
-			// token outlives it.
-			Restrictions: copyRestrictions(choice.ManaRestrictions),
-			// #1212: the snapshot the choice carried, for the same
-			// reason — a value, so nothing to copy.
-			SourceKinds: choice.ManaSourceKinds,
-		})
-		g.EmitEvent(Event{
-			Kind:   EventManaAdded,
-			Actor:  chooserID,
-			Source: choice.Source,
-			Colors: []string{color},
-		})
-		colors = append(colors, color)
-	}
 	tapped := choice.ManaTapped
+	// #1222: through the one production body, which opens the
+	// CR 106.12b window on the amount. This is the ONLY place a
+	// Birds-of-Paradise-style source's colour is known, so it is the
+	// only place Mana Reflection can double it — the same reason
+	// ADR 0074 §3 fires the triggered mana abilities from here. The
+	// choice carried the ability's restrictions so the minted tokens
+	// get them (#352); copyRestrictions because the choice is about to
+	// be dequeued and the tokens outlive it.
+	colors := g.produceManaLocked(
+		p, choice.Source,
+		repeatColor(color, n),
+		copyRestrictions(choice.ManaRestrictions),
+		// #1212: the snapshot the CHOICE carried, not a live lookup —
+		// the source may have been sacrificed to pay for the ability
+		// whose colour is being answered here.
+		choice.ManaSourceKinds,
+		tapped,
+		nil,
+	)
 	source := choice.Source
 	g.dequeueChoiceLocked(idx)
 	// #763, CR 605.1b / 605.4a: the second of the three production
@@ -1757,6 +1754,19 @@ func affectedPlayerForEvent(ev *ReplacementEvent, applicable []activeReplacement
 		if ev.StepTransitionSeat >= 0 && ev.StepTransitionSeat < len(g.Seats) {
 			return g.Seats[ev.StepTransitionSeat].ID
 		}
+	case RepEventProduceMana:
+		// #1222. CR 106.12b: the mana is produced for a player, and
+		// that player is the affected one whoever controls the
+		// replacements — the same reading the mill arm above takes.
+		//
+		// The prompt it would order is never actually put to them: a
+		// production sets mustSettleNow (CR 605.3a), so the apply-loop
+		// applies the gathered order inline. The arm is still the
+		// honest answer to "who would be asked", it is what the
+		// eliminated-chooser branch reads before the mustSettleNow one,
+		// and it is the value a future production replacement that CAN
+		// pause would need.
+		return ev.ManaPlayer
 	case RepEventKeywordAction:
 		// #976. The affected player of a keyword action is the player
 		// TAKING it — the one who proliferates, the one who scrys —
@@ -1996,7 +2006,21 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		g.runStateChecksLocked()
 		return nil
 	case RepEventDraw:
-		return g.actuallyDrawCardLocked(ev.DrawPlayer)
+		// #1222: with the count the window settled on. CR 121.2 makes
+		// those N one individual card draw each, so a paused draw and
+		// an unpaused one cannot drift apart.
+		return g.actuallyDrawCardsLocked(ev.DrawPlayer, ev.DrawCount)
+	case RepEventProduceMana:
+		// #1222: unreachable, and that is the decision rather than an
+		// oversight. A production sets mustSettleNow (CR 605.3a — a
+		// mana ability resolves as one indivisible step with no
+		// priority window inside it, and the auto-tapper may raise no
+		// prompt at all), so no event of this kind ever queues a
+		// prompt and nothing ever resumes one. If one somehow did, the
+		// mana it was carrying has already gone into the pool
+		// unreplaced (replaceProducedManaLocked's error branch), so
+		// adding it here would double it.
+		return nil
 	case RepEventLife:
 		// #482: a life change carries everything its resume needs on
 		// the event itself — the player, the settled delta and the
@@ -2314,12 +2338,17 @@ func (g *Game) finishSettledReplacementLocked(ev, out *ReplacementEvent) error {
 		// The one kind whose cancellation is not nothing — see the
 		// doc comment above.
 		return g.applyResolvedReplacementEventLocked(ev)
-	case RepEventDraw, RepEventCounter:
-		// Nothing is sequenced behind either: a cancelled draw and a
-		// cancelled counter placement simply do not happen, and neither
-		// entry point carries a continuation, so there is nobody to
-		// tell. A draw tail or a counter tail, if one is ever added,
-		// belongs here.
+	case RepEventDraw, RepEventCounter, RepEventProduceMana:
+		// Nothing is sequenced behind any of the three: a cancelled
+		// draw, a cancelled counter placement and a production replaced
+		// away simply do not happen, and no entry point carries a
+		// continuation, so there is nobody to tell. A draw tail or a
+		// counter tail, if one is ever added, belongs here.
+		//
+		// #1222: a production additionally cannot even reach this
+		// function — it sets mustSettleNow, so it never pauses and
+		// nothing resumes it. The arm is the written answer #982 asks
+		// for rather than a fall-through, and it is right either way.
 		return nil
 	}
 	return nil

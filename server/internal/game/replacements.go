@@ -21,7 +21,9 @@ import (
 // effect from firing twice on one event.
 //
 // Pipeline entry points (in mutations.go + game.go):
-//   - drawCardLocked → RepEventDraw
+//   - drawCardLocked → RepEventDraw (carries DrawCount, #1222)
+//   - produceManaLocked → RepEventProduceMana (CR 106.12b, #1222;
+//     produce_mana.go, reached from all four production sites)
 //   - MoveCardByIDAsCommander → RepEventMove (carries EntersTapped,
 //     EntersWithCounters, asCommanderMove breadcrumb)
 //   - routeCardToZoneLocked → RepEventMove, or RepEventDiscard when the
@@ -45,7 +47,8 @@ import (
 // ReplacementEventKind narrows the meaningful fields on a
 // ReplacementEvent. Values:
 //
-//	"draw"         — RepEventDraw    — DrawPlayer
+//	"draw"         — RepEventDraw    — DrawPlayer, DrawCount (CR 121.2)
+//	"produce_mana" — RepEventProduceMana — ManaPlayer, ManaSource, ManaColors (CR 106.12b)
 //	"move"         — RepEventMove    — CardID, OldZone, NewZone, NewZoneOwner, EntersTapped, EntersWithCounters, asCommanderMove
 //	"discard"      — RepEventDiscard — CardID, DiscardPlayer, DiscardCause, NewZone, NewZoneOwner (CR 701.8)
 //	"counter"      — RepEventCounter — CounterTarget OR CounterPlayer,
@@ -133,6 +136,35 @@ const (
 	// nothing, and the unbounded `until` run — Helm of Obedience — names
 	// no number to double).
 	RepEventMill ReplacementEventKind = "mill"
+
+	// RepEventProduceMana is one MANA PRODUCTION (CR 106.12b), opened
+	// once per batch of mana an object is about to put into a pool and
+	// before any of it is there — the fourth member of the
+	// count-carrying family after RepEventCreateTokens,
+	// RepEventKeywordAction and RepEventMill, and opened for the same
+	// reason: "if a permanent you control would produce one or more
+	// mana, it produces twice as much of that mana instead" (Mana
+	// Reflection, Nyxbloom Ancient) replaces the AMOUNT, not the
+	// spending of it.
+	//
+	// It carries COLOURS rather than a bare count, because "twice as
+	// much of THAT mana" names the mana that was going to be produced:
+	// a Forest doubles into {G}{G} and a Sol Ring into {C}{C}{C}{C}.
+	// The colour has to be settled before the window opens, which is
+	// why a multi-option slot (Birds of Paradise) opens it from
+	// ResolveManaChoice — the one moment the produced colour is known
+	// — and not at the activation. See produce_mana.go and ADR 0013
+	// §5ab.
+	//
+	// It is the one kind that can NEVER pause. CR 605.3a makes
+	// activating a mana ability one indivisible step with no stack and
+	// no priority window inside it, and the auto-tapper's contract is
+	// "no further player decisions", so every event of this kind sets
+	// mustSettleNow and the CR 616.1 ordering prompt is applied in
+	// gather order instead. That is a declared simplification and it is
+	// unobservable for every printed card on the row: both of them
+	// multiply, and multiplication commutes.
+	RepEventProduceMana ReplacementEventKind = "produce_mana"
 
 	RepEventStepTransition ReplacementEventKind = "step"
 )
@@ -231,6 +263,92 @@ type ReplacementEvent struct {
 	// (redirect, "if you would draw, opponent mills instead" style)
 	// or Cancel (skip the draw entirely).
 	DrawPlayer uuid.UUID
+
+	// DrawCount is HOW MANY cards this draw instruction draws, and the
+	// one field a draw-amount replacement rewrites: Thought Reflection
+	// and Alhammarret's Archive are `ev.DrawCount *= 2`.
+	//
+	// The base is always ONE. CR 121.2 makes "draw three cards" three
+	// individual card draws, so DrawNForEffect loops and each
+	// repetition opens its own window — which is what makes a doubler
+	// double EACH of them (a Thought Reflection on "draw three" draws
+	// six) and what makes a redirect (Notion Thief) able to take one
+	// card of three rather than all or nothing.
+	//
+	// What the settled count does NOT do is re-open the window. The N
+	// cards of a replaced draw are performed one at a time
+	// (actuallyDrawCardsLocked, so every per-card payoff — Nekusar,
+	// Sheoldred, Consecrated Sphinx — still fires per card) but they
+	// are ONE event, CR 614.5's once-per-event tracking covering all
+	// of them. Two Thought Reflections therefore draw FOUR, not three:
+	// the second one multiplies the count the first left, through the
+	// ordinary CR 616.1 apply-loop, exactly as two mill doublers do.
+	//
+	// A hand-built event that leaves it zero draws one card, because
+	// the honest spelling of "no draw" is ev.Cancel() and a silent
+	// zero would be a draw that vanished. See ADR 0013 §5ab.
+	DrawCount int
+
+	// --- RepEventProduceMana fields ---
+
+	// ManaPlayer is the player whose pool the mana is about to reach —
+	// the controller of the ability, or the player a resolving spell
+	// adds it for. Actor carries the same value; this is the name the
+	// rules use, and it is the CR 616.1 affected player.
+	ManaPlayer uuid.UUID
+
+	// ManaSource is the OBJECT producing the mana (CR 106.12b names
+	// the object, not the ability): the permanent whose mana ability
+	// was activated, or the spell that said "Add {B}{B}{B}". Source
+	// carries the same value; this is the name a replacement's
+	// AppliesTo reads, because "if a PERMANENT you control would
+	// produce" is a question about the object and is false for a
+	// spell.
+	ManaSource uuid.UUID
+
+	// ManaColors is the mana about to be produced, one entry per mana,
+	// in the order it would reach the pool — and the one field a
+	// mana-production replacement rewrites. "Twice as much of that
+	// mana" is MultiplyMana(2), which repeats each entry.
+	//
+	// Colours rather than a count because the printed cards say "twice
+	// as much of THAT mana": a doubled Forest is {G}{G} and a doubled
+	// Sol Ring {C}{C}{C}{C}, and a count alone could not say which.
+	// Every entry is a settled colour — a pipe slot has already been
+	// answered by the time the window opens, which is why the pick
+	// path opens it and the activation does not.
+	//
+	// An empty list after a replacement is the same outcome as
+	// ev.Cancel(): no mana is produced.
+	ManaColors []string
+
+	// ManaFromTap says this production is part of TAPPING A PERMANENT
+	// FOR MANA (CR 106.12a) — a mana ability with a {T} in its cost —
+	// as opposed to a spell's "Add {B}{B}{B}", a mana ability with no
+	// tap, or a triggered mana ability's own output.
+	//
+	// It is the printed condition on both cards this event was built
+	// for: Mana Reflection and Nyxbloom Ancient say "if you TAP a
+	// permanent for mana, it produces twice/three times as much of
+	// that mana instead", so a Dark Ritual is not doubled and neither
+	// is Wild Growth's extra {G} — the enchantment was not tapped.
+	//
+	// The same bit PendingChoice.ManaTapped carries for the triggered
+	// mana abilities (ADR 0074 §3), read off the same two places and
+	// for the same reason: it is a fact about how the mana came to be
+	// produced, and nothing downstream could reconstruct it.
+	ManaFromTap bool
+
+	// What is deliberately NOT on this event is the SPEND RESTRICTION
+	// the minted tokens carry (Eldrazi Temple's "colorless Eldrazi
+	// only", Ancient Ziggurat's creature spells). It is a parameter of
+	// produceManaLocked instead, because CR 106.12b replaces HOW MUCH
+	// mana is produced and nothing in the rules lets a replacement
+	// change what the produced mana may be spent on — so putting it
+	// here would be offering the catalog a rewrite the rules do not
+	// have. The replaced tokens still carry it, which is what keeps a
+	// doubled Ziggurat from putting unrestricted mana in the pool
+	// (#259).
 
 	// --- RepEventMove fields ---
 
@@ -745,6 +863,37 @@ type ReplacementEvent struct {
 // ev.Canceled skip the underlying mutation and the post-event
 // EmitEvent.
 func (ev *ReplacementEvent) Cancel() { ev.Canceled = true }
+
+// MultiplyMana rewrites a RepEventProduceMana to produce n times as
+// much of the same mana (CR 106.12b) — Mana Reflection's two,
+// Nyxbloom Ancient's three.
+//
+// Each entry is repeated in place, so the multiplied production is
+// still "that mana": a doubled {G} is {G}{G} and a doubled {C}{C} is
+// {C}{C}{C}{C}. A factor of one is a no-op and a factor of zero or
+// less produces nothing, which is the same outcome as ev.Cancel() and
+// is the honest answer for a card that ever prints it.
+//
+// It is a method rather than a card-side loop because the whole family
+// is one arithmetic operation on one field, and because a card that
+// reached for `ev.ManaColors = ...` could silently change the COLOURS
+// as well as the amount — which CR 106.12b does not license.
+func (ev *ReplacementEvent) MultiplyMana(n int) {
+	if ev == nil || ev.Kind != RepEventProduceMana || n == 1 {
+		return
+	}
+	if n <= 0 {
+		ev.ManaColors = nil
+		return
+	}
+	out := make([]string, 0, len(ev.ManaColors)*n)
+	for _, c := range ev.ManaColors {
+		for k := 0; k < n; k++ {
+			out = append(out, c)
+		}
+	}
+	ev.ManaColors = out
+}
 
 // AddCounterAtETB appends a counter-entry directive applied before
 // EventETB fires. Only meaningful on RepEventMove with
@@ -1821,6 +1970,16 @@ func eventKindMatches(watches []EventKind, kind ReplacementEventKind) bool {
 		// The sentinel spelling is for a family with no twin at all
 		// (EventStepTransition, EventKeywordAction).
 		want = EventMill
+	case RepEventProduceMana:
+		// CR 106.12b. EventManaAdded is the post-event twin and it
+		// fires per MANA, after the token is in the pool, while this
+		// window is one per production and opens before any of it is
+		// there. Reusing the key rather than minting a sentinel is what
+		// RepEventMill already does with EventMill, and for the same
+		// reason: an EventKind means "the production" in a
+		// ReplacementEffect.Watches and "a mana was added" in a
+		// TriggeredAbility.Watches, and no code reads one as the other.
+		want = EventManaAdded
 	case RepEventCounter:
 		want = EventCounterPlaced
 	case RepEventLife:
