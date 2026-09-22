@@ -19,6 +19,7 @@
   import { settings } from "../../settings";
   import { emptyLifeTracker, lifePopupView, trackLife, type LifePopupView } from "../../lifePopup";
   import { botDeckNames, botDeckLabel, ensureBotDeckNamesLoaded } from "../../botDeckNames";
+  import { playerKeywordBadges } from "../../playerKeywordBadges";
   import ManaPoolPips from "./ManaPoolPips.svelte";
   import Icon from "../Icon.svelte";
 
@@ -92,6 +93,11 @@
     return null;
   });
   const displayLabel = $derived(seat.display_name ?? seat.name);
+
+  // #1201: hexproof / protection-on-a-player badges (CR 702.11d, CR
+  // 702.16i). See playerKeywordBadges.ts for the token → badge
+  // mapping; this component only renders what it returns.
+  const keywordBadges = $derived(playerKeywordBadges(seat.keywords));
 
   // --- bot seats (S31, ADR 0033) ---------------------------------
   //
@@ -262,36 +268,61 @@
 
       <!-- Life overlay sits on the bottom arc of the avatar circle. On
            self we expose ± chips flanking the number; on opponents it
-           reads as a static chip. -->
-      {#if isSelf}
-        <span class="life-chip">
-          <button
-            type="button"
-            class="life-btn dec"
-            title="-1 life"
-            aria-label="lose 1 life"
-            onclick={(e) => {
-              e.stopPropagation();
-              changeLife(-1);
-            }}>−</button
-          >
-          <span class="life">{seat.life}</span>
-          <button
-            type="button"
-            class="life-btn inc"
-            title="+1 life"
-            aria-label="gain 1 life"
-            onclick={(e) => {
-              e.stopPropagation();
-              changeLife(1);
-            }}>+</button
-          >
-        </span>
-      {:else}
-        <span class="life-chip readonly">
-          <span class="life">{seat.life}</span>
-        </span>
-      {/if}
+           reads as a static chip. The keyword badges (#1201) sit
+           beside it in the same row, rather than overlaying the
+           avatar a second time. -->
+      <div class="life-row">
+        {#if isSelf}
+          <span class="life-chip">
+            <button
+              type="button"
+              class="life-btn dec"
+              title="-1 life"
+              aria-label="lose 1 life"
+              onclick={(e) => {
+                e.stopPropagation();
+                changeLife(-1);
+              }}>−</button
+            >
+            <span class="life">{seat.life}</span>
+            <button
+              type="button"
+              class="life-btn inc"
+              title="+1 life"
+              aria-label="gain 1 life"
+              onclick={(e) => {
+                e.stopPropagation();
+                changeLife(1);
+              }}>+</button
+            >
+          </span>
+        {:else}
+          <span class="life-chip readonly">
+            <span class="life">{seat.life}</span>
+          </span>
+        {/if}
+        {#if keywordBadges.length > 0}
+          <div class="seat-keywords" aria-label="keywords">
+            {#each keywordBadges as badge (badge.key)}
+              <span
+                class="kw-badge"
+                class:kw-icon={!!badge.icon}
+                class:kw-text={!badge.icon}
+                class:kw-protection={badge.kind === "protection"}
+                title={badge.title}
+                aria-label={badge.title}
+              >
+                {#if badge.icon}
+                  <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+                  {@html badge.icon}
+                {:else}
+                  {badge.short}
+                {/if}
+              </span>
+            {/each}
+          </div>
+        {/if}
+      </div>
 
       <!-- Every life change the frame brought, oldest at the top, so
            two combat damage steps read as two numbers. Collapses to
@@ -608,14 +639,24 @@
     filter: grayscale(0.6);
   }
 
-  /* Life chip overlays the bottom third of the avatar circle. Ellipse
-     backdrop sits flush with the circle's lower arc so the number reads
-     as part of the identity disc rather than a floating badge. */
-  .life-chip {
+  /* Life row overlays the bottom third of the avatar circle: the life
+     chip itself, plus (#1201) any keyword badges beside it. Anchored
+     as a row rather than each child positioning itself, so the
+     badges sit flush against the chip instead of needing their own
+     copy of this math. */
+  .life-row {
     position: absolute;
     left: 50%;
     bottom: -6px;
     transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  /* Ellipse backdrop sits flush with the circle's lower arc so the
+     number reads as part of the identity disc rather than a floating
+     badge. */
+  .life-chip {
     display: inline-flex;
     align-items: center;
     gap: 2px;
@@ -629,6 +670,56 @@
   }
   .life-chip.readonly {
     padding: 2px 10px;
+  }
+  /* #1201: a seat's hexproof / protection badges, in the same visual
+     language as the card protection badge (#979,
+     KeywordBadgeRow.svelte) — same shell, same icon for hexproof,
+     same shield tint for protection. Not a shared component: the
+     card row is absolutely positioned across a card's bottom edge,
+     which has nothing to do with sitting beside a life chip, so only
+     the class names and their declarations are reused here. */
+  .seat-keywords {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+  .kw-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 3px;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    line-height: 1;
+  }
+  .kw-badge.kw-icon {
+    width: 14px;
+    height: 14px;
+    padding: 1px;
+  }
+  .kw-badge.kw-icon :global(svg) {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  .kw-badge.kw-text {
+    padding: 1px 3px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+    min-width: 14px;
+    text-align: center;
+  }
+  /* Protection is a shield rather than an ability the seat uses, so
+     it reads as a different thing — same tint KeywordBadgeRow gives
+     a card's protection badge. */
+  .kw-badge.kw-protection {
+    background: rgba(24, 48, 92, 0.85);
+    border-color: rgba(160, 200, 255, 0.45);
   }
   .life {
     font-weight: 800;

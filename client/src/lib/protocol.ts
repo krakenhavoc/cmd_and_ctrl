@@ -1112,6 +1112,30 @@ export interface PlayerView {
   // The board shows these as chips beside the player identity, with
   // `text` as the hover. Public: every seat sees every emblem.
   emblems?: EmblemView[];
+  // #1197/#1201 (CR 702.11d, CR 702.16i): the abilities this SEAT has
+  // right now — bare engine tokens, "hexproof" or a general
+  // "protection from <quality>" ("protection from everything" is the
+  // only quality a catalogued card grants a player today — Teferi's
+  // Protection, The One Ring, Leyline of Sanctity, Aegis of the
+  // Gods). Derived grants (a controlled Leyline) come first, then
+  // ones granted for a duration (Teferi's Protection).
+  //
+  // EFFECTIVE, like max_hand_size and land_drops_per_turn — computed
+  // on every projection, not read off stored state. PUBLIC and
+  // unredacted, like emblems: protection and hexproof on a seat are
+  // facts about the board, and `legal_targets` already excludes a
+  // protected seat for a viewer who could not otherwise tell why.
+  // Absent for a seat with none, which is nearly every seat.
+  //
+  // Unlike CardView.protection, the wire does NOT parse the quality
+  // into a structured ProtectionView here — there is exactly one
+  // production quality today, so a second structured field for one
+  // value wasn't worth shipping (server/internal/protocol/view.go).
+  // playerKeywordBadges.ts title-cases the parsed quality itself
+  // rather than switching on today's two spellings, so a future card
+  // granting a player some other quality reaches a badge without a
+  // wire change.
+  keywords?: string[];
 }
 
 // One emblem (CR 114). `label` is the board name ("Elspeth, Sun's
