@@ -3559,6 +3559,22 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 			continue
 		}
 		c.ActivatedAbilities = viewOfActivatedAbilities(g, card, controller, game.ZoneBattlefield)
+		// ADR 0082 decision 9: a FACE-DOWN permanent carries its
+		// CR 116.2g "turn face up" row, from the same projection the
+		// hand's foretell and suspend rows come from and with the
+		// same server-computed `available`.
+		//
+		// The "you" is the CONTROLLER (CR 708.6), and it leaks
+		// nothing: the row quotes the morph cost, which names the
+		// card, and redactCardForViewer clears special_actions for
+		// every non-knower — of which a face-down permanent has all
+		// but one (CR 708.5).
+		//
+		// Every other permanent on the board gets a nil list: the
+		// offer is derived from the face-down kind, so
+		// SpecialActionsOfferedByCard answers nothing for a face-up
+		// permanent, and the declared kinds are hand keywords.
+		c.SpecialActions = viewOfSpecialActions(g, card, controller)
 		c.LoyaltyActivated = g.LoyaltyActivatedThisTurn[instanceID]
 		stampManaSacrificeOptions(g, card, controller, c.ManaAbilities)
 		stampManaConditions(g, card, controller, c.ManaAbilities)
@@ -3612,8 +3628,15 @@ func stampHandAbilities(g *game.Game, seats []PlayerView) {
 }
 
 // viewOfSpecialActions projects the CR 116.2 special actions a card
-// in its owner's hand offers, with the engine's own per-kind timing
-// answer stamped on each (ADR 0062 Decision 4).
+// offers, with the engine's own per-kind timing answer stamped on
+// each (ADR 0062 Decision 4).
+//
+// Two callers and two "you": a card in its owner's HAND, where the
+// foretell and suspend rows live, and a face-down BATTLEFIELD
+// permanent, where the turn-face-up row does and the "you" is its
+// controller (CR 708.6, ADR 0082 decision 9). One projection for
+// both, off one engine accessor, so a row the client can see is a row
+// the engine would accept.
 //
 // A kind the engine cannot carry out is not projected at all: the
 // client must never show a row the server would refuse.
@@ -3621,7 +3644,7 @@ func stampHandAbilities(g *game.Game, seats []PlayerView) {
 // Runs under the read lock ViewOfGame already holds.
 func viewOfSpecialActions(g *game.Game, card game.Card, owner uuid.UUID) []SpecialActionView {
 	var out []SpecialActionView
-	for _, sa := range game.SpecialActionsFor(game.CatalogKey(card)) {
+	for _, sa := range game.SpecialActionsOfferedByCard(card) {
 		if !game.SpecialActionKindBuilt(sa.Kind) {
 			continue
 		}

@@ -955,15 +955,22 @@ function moveItems(card: CardView, location: CardLocation): MenuItem[] {
   return items;
 }
 
-// specialActionItems is the CR 116.2 special-action rows on a card in
-// the viewer's own hand — "Foretell {2}", "Suspend 1—{R}" (#658,
-// #659, ADR 0062 Decision 4).
+// specialActionItems is the CR 116.2 special-action rows on one card —
+// "Foretell {2}" and "Suspend 1—{R}" in the viewer's own hand (#658,
+// #659, ADR 0062 Decision 4), "Turn face up {1}{U}" on a face-down
+// permanent they control (#1194, ADR 0082).
 //
 // A row fires the `special_action` verb DIRECTLY, with no targeting
-// or cost picker in between, because neither kind has a choice to
-// make: the whole payload is the card and the kind, and the server
-// finds the mana with auto_tap the way every other menu payment
-// does.
+// or cost picker in between, because no kind has a choice to make:
+// the whole payload is the card and the kind, and the server finds
+// the mana with auto_tap the way every other menu payment does.
+//
+// `actor` is WHO takes the action, and it is not the same player for
+// every kind: the hand keywords are the owner's (CR 702.143a — a hand
+// holds only its owner's cards), and turning a permanent face up is
+// its CONTROLLER's (CR 708.6), so a stolen morph is turned up by the
+// thief. The caller knows the zone, so it passes the answer rather
+// than this function guessing it from two fields.
 //
 // `available` is the SERVER's per-kind timing answer, never
 // re-derived here. The rule the client would get wrong is split
@@ -971,7 +978,7 @@ function moveItems(card: CardView, location: CardLocation): MenuItem[] {
 // not (CR 702.62c) — and a row that disagreed with the engine would
 // be a rejection toast. An unavailable row is greyed rather than
 // dropped, so a player can still see the card has the keyword.
-function specialActionItems(card: CardView): MenuItem[] {
+function specialActionItems(card: CardView, actor: string): MenuItem[] {
   return (card.special_actions ?? []).map((sa) => ({
     id: `special-${sa.kind}`,
     label: sa.label || sa.kind,
@@ -980,7 +987,7 @@ function specialActionItems(card: CardView): MenuItem[] {
     action: {
       type: "special_action" as ActionType,
       params: { card_id: card.instance_id, kind: sa.kind, strict: true, auto_tap: true },
-      player: card.owner,
+      player: actor,
     },
   }));
 }
@@ -1000,6 +1007,20 @@ export function buildMenuSections(
 
   const sections: MenuSection[] = [];
   if (location.zone === "battlefield") {
+    // ADR 0082 decision 9: a FACE-DOWN permanent carries its CR 116.2g
+    // "Turn face up {1}{U}" row here, above its abilities — which is
+    // also where it reads, because while the permanent is face down it
+    // has no abilities at all (CR 708.2a) and this is the only thing
+    // its controller can do with it.
+    //
+    // Same rows, same rule, same verb as the hand's foretell and
+    // suspend below: the server decides what is offered and whether it
+    // is available, and every other permanent on the board arrives
+    // with an empty list.
+    const special = specialActionItems(card, card.controller || card.owner);
+    if (special.length > 0) {
+      sections.push({ id: "special_actions", label: "special actions", items: special });
+    }
     const abilities = abilityItems(card, view, viewerID);
     if (abilities.length > 0) {
       sections.push({ id: "abilities", label: "abilities", items: abilities });
@@ -1025,7 +1046,7 @@ export function buildMenuSections(
     // card's menu, above "move to". They are only ever present on the
     // viewer's own hand — the server strips `special_actions` from
     // every other seat's, as it strips `hand_abilities`.
-    const special = specialActionItems(card);
+    const special = specialActionItems(card, card.owner);
     if (special.length > 0) {
       sections.push({ id: "special_actions", label: "special actions", items: special });
     }

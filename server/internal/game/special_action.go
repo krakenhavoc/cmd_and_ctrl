@@ -138,6 +138,27 @@ func SpecialActionsFor(oracleID string) []SpecialAction {
 	return CatalogSpecialActions(oracleID)
 }
 
+// SpecialActionsOfferedByCard is every CR 116.2 special action this
+// card offers right now — the list form of SpecialActionOffered, and
+// what the wire projection and the legal-move enumerator walk.
+//
+// It is the ONE place the two sources are joined: the DECLARED
+// keywords out of the catalog (foretell, suspend), and the DERIVED
+// turn-face-up offer, which is nowhere in the catalog and cannot be
+// (ADR 0082 decision 5). A caller that walked SpecialActionsFor alone
+// would silently never offer a morph its way back up.
+//
+// Order is derived-first, which is also cheapest-to-decide-first: the
+// derived offer exists only for a face-down permanent, and a
+// face-down permanent's catalog entry is empty.
+func SpecialActionsOfferedByCard(c Card) []SpecialAction {
+	var out []SpecialAction
+	if up := TurnFaceUpOffer(c); up != nil {
+		out = append(out, *up)
+	}
+	return append(out, SpecialActionsFor(CatalogKey(c))...)
+}
+
 // SpecialActionOffered returns this card's offer of `kind`, or nil
 // when the card does not offer it. THE accessor: the engine, the
 // legal-move enumerator and the wire projection all ask through it,

@@ -200,6 +200,55 @@ describe("buildMenuSections — battlefield", () => {
     expect(ids).toEqual(["state", "counters", "damage", "move", "extras"]);
   });
 
+  // #1194 / ADR 0082 decision 9. A face-down permanent's only menu
+  // row is the CR 116.2g one — while it is face down it has no
+  // abilities at all (CR 708.2a) — and the server decides both that
+  // the row exists and whether it is available.
+  it("offers turn face up on a face-down permanent it controls", () => {
+    const morph = card("m1", "a", {
+      name: "",
+      type_line: "Creature",
+      face_down: true,
+      face_down_kind: "morphed",
+      special_actions: [
+        { kind: "turn_face_up", label: "Turn face up {1}{U}", cost: "{1}{U}", available: true },
+      ],
+    });
+    const v2 = view([seat("a", "Alice")], { battlefield: [morph] });
+    const sections = buildMenuSections(v2, morph, "a", false);
+    expect(sectionIDs(sections)[0]).toBe("special_actions");
+    const row = itemById(sections, "special-turn_face_up");
+    expect(row?.label).toBe("Turn face up {1}{U}");
+    expect(row?.disabled).toBeFalsy();
+    expect(row?.action).toEqual({
+      type: "special_action",
+      params: { card_id: "m1", kind: "turn_face_up", strict: true, auto_tap: true },
+      player: "a",
+    });
+  });
+
+  // CR 708.6 says the CONTROLLER turns it face up, so a stolen morph
+  // is turned up by the thief — the one kind whose actor is not the
+  // card's owner.
+  it("sends a stolen morph's turn-face-up as its controller", () => {
+    const stolen: CardView = {
+      ...card("m2", "b"),
+      controller: "a",
+      face_down: true,
+      face_down_kind: "morphed",
+      special_actions: [
+        { kind: "turn_face_up", label: "Turn face up {2}", cost: "{2}", available: true },
+      ],
+    };
+    const v2 = view([seat("a", "Alice"), seat("b", "Bob")], { battlefield: [stolen] });
+    const sections = buildMenuSections(v2, stolen, "a", false);
+    expect(itemById(sections, "special-turn_face_up")?.action?.player).toBe("a");
+  });
+
+  it("gives an ordinary permanent no special-action section", () => {
+    expect(sectionIDs(buildMenuSections(v, c, "a", false))).not.toContain("special_actions");
+  });
+
   it("disables the no-op half of the tap toggle", () => {
     const sections = buildMenuSections(v, c, "a", false);
     expect(itemById(sections, "tap")?.disabled).toBe(true);

@@ -290,6 +290,21 @@ func (e *enumerator) landPlayMove(card game.Card, kind game.ZoneKind, from strin
 // prices with different consequences, exactly as a kicked and an
 // unkicked cast are (ADR 0073 §9).
 func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool, perm *game.CastPermission, offer *game.AlternativeCost) {
+	// CR 708.4, ADR 0082 decision 2: a cast that claims a face-down
+	// offer announces a 2/2 CREATURE SPELL with no name and no text,
+	// and the engine stamps that onto its own copy of the card before
+	// any announce gate reads it. The enumerator's walk is the same
+	// walk and has to see the same object, or it offers a morph the
+	// modes, targets and optional costs of the card underneath —
+	// every one of which CastSpell would then reject.
+	//
+	// One line, and the timing falls out of it: the stamped copy is a
+	// creature that is not an instant and has no flash, so the
+	// sorcery-speed gate below demands a sorcery-speed window for a
+	// face-down cast without a rule of its own.
+	if offer != nil && offer.FaceDown != nil {
+		card.SetFaceDown(offer.FaceDown.Kind)
+	}
 	// ADR 0073 §9: a card with optional additional costs is several
 	// casts, not one — an unkicked Burst Lightning and a kicked one
 	// are different moves at different prices with different effects,
