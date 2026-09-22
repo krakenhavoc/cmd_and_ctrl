@@ -911,37 +911,31 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 			return err
 		}
 	}
-	// Sorcery-speed gate. Lands are special-action-fast (CR 305 is
-	// "you may play a land during your main phase if the stack is
-	// empty"); they're handled implicitly by the same gate below.
-	// Instants bypass the gate entirely. Flash (CR 702.8) lets any
-	// card be cast as though it had the timing of an instant — so
-	// off-battlefield HasKeyword (backed by CatalogPrintedKeywords
-	// from S18 sub-PR 2) lifts the sorcery-speed restriction for
-	// hand-resident Ambush Viper and the like. Anything else
-	// (sorceries, permanents that aren't instants and don't have
-	// flash) needs sorcery speed.
+	// Timing (CR 307.1). ONE read, in cast_timing.go, shared with the
+	// bot enumerator and the view so the three cannot disagree about
+	// when a cast is open (#1195, ADR 0066's 2026-09-22 amendment).
 	//
-	// ADR 0066: a granted permission does NOT open this gate unless it
-	// says so. Bolas's Citadel does not make a sorcery on top of your
-	// library castable on an opponent's turn, and Underworld Breach
-	// does not make a sorcery in your graveyard an instant. A
-	// permission that says otherwise (madness's "ignore timing",
-	// #657) sets TimingFlash and is read here rather than in a second
-	// branch bolted on later.
-	requiresSorcerySpeed := !card.IsInstant() && !card.IsLand() && !HasKeyword(&card, "flash")
-	if grant != nil {
-		switch grant.Timing {
-		case TimingFlash:
-			requiresSorcerySpeed = false
-		case TimingSorcery:
-			requiresSorcerySpeed = true
-		}
-	}
-	if card.IsLand() || requiresSorcerySpeed {
+	// It folds four things in CR 101.2's order: the card's own timing
+	// (instant, or flash — CR 702.8 — which off-battlefield
+	// HasKeyword answers from CatalogPrintedKeywords), the granted
+	// permission's override (ADR 0066 Decision 6: Bolas's Citadel
+	// does NOT make a sorcery on top of your library castable on an
+	// opponent's turn; madness's TimingFlash does), the per-player
+	// grants (Vedalken Orrery, Leyline of Anticipation, Emergence
+	// Zone) and, last, the per-player restrictions (Teferi, Time
+	// Raveler), because "can't" beats "can".
+	//
+	// LANDS KEEP THEIR OWN BRANCH. Playing a land is a special action
+	// (CR 116.2a) and not a cast, so no timing STATEMENT reaches it —
+	// an Orrery does not open a land drop and a Dosan does not close
+	// one. CR 305's "during your main phase, when the stack is empty"
+	// is the whole of its window.
+	if card.IsLand() {
 		if !g.sorcerySpeedOpenLocked(playerID) {
 			return ErrSorcerySpeedRequired
 		}
+	} else if !g.CastTimingOpenLocked(playerID, card, src.Kind, grant) {
+		return ErrSorcerySpeedRequired
 	}
 	// Lands skip the stack entirely (CR 305). Move the card to the
 	// battlefield and stamp the controller — same shape as PlayCard.

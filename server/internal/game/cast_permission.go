@@ -102,8 +102,20 @@ const (
 
 	// TimingSorcery forces sorcery speed even on an instant — the
 	// "only any time you could cast a sorcery" clause several
-	// graveyard permissions print.
+	// graveyard permissions print, and the one Teferi, Time Raveler
+	// imposes on each opponent (#1195).
 	TimingSorcery GrantTiming = "sorcery"
+
+	// TimingYourTurnOnly is "you can cast spells only during your
+	// turn" (Dosan the Falling Leaf), and it is NOT TimingSorcery:
+	// Dosan leaves you every instant-speed window on your own turn
+	// and takes away the rest, so the two cannot share a value.
+	//
+	// No CastPermission declares it — it is the per-PLAYER
+	// restriction's spelling (cast_timing.go), carried on this enum
+	// rather than on a second one so the engine has ONE timing
+	// vocabulary. Exactly the posture TimingFlash was added under.
+	TimingYourTurnOnly GrantTiming = "your_turn"
 )
 
 // PermissionCardRef is one card OBJECT a ScopeCards permission names:
@@ -141,6 +153,18 @@ type PermissionFilter struct {
 	// sorcery card in your graveyard".
 	InstantOrSorceryOnly bool `json:"instantOrSorceryOnly,omitempty"`
 
+	// NoncreatureOnly is the half of "noncreature spells" nothing in
+	// ADR 0066 needed and a timing statement does (#1195) — Borne
+	// Upon a Wind's sibling clause, and the shape a "you may cast
+	// noncreature spells as though they had flash" card wants.
+	NoncreatureOnly bool `json:"noncreatureOnly,omitempty"`
+
+	// SorceryOnly is Teferi, Time Raveler's +1: "you may cast SORCERY
+	// spells as though they had flash" (#1195). Narrower than
+	// InstantOrSorceryOnly, which would also open an instant that
+	// needs no opening.
+	SorceryOnly bool `json:"sorceryOnly,omitempty"`
+
 	// FromChosenType marks a filter whose creature type is the one
 	// named as the SOURCE permanent entered (CR 614.12, S26's
 	// Card.NamedTribe) — Realmwalker. The catalog declares the flag;
@@ -167,6 +191,12 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.InstantOrSorceryOnly && !c.IsInstant() && !c.IsSorcery() {
+		return false
+	}
+	if f.NoncreatureOnly && c.IsCreature() {
+		return false
+	}
+	if f.SorceryOnly && !c.IsSorcery() {
 		return false
 	}
 	if f.CreatureType != "" && !cardHasCreatureType(c, f.CreatureType) {

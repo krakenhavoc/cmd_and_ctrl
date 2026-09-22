@@ -238,6 +238,19 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q activation restriction %q forbids nothing", spec.Name, r.Label))
 		}
 	}
+	// #1195: the same bargain for a timing statement. TimingNormal is
+	// the zero value and says nothing, so a Spec slot carrying one is
+	// a card file that meant to say something and did not — and the
+	// failure would be silent, because the read ignores it. The Label
+	// is what the log prints.
+	for i, ct := range spec.CastTimings {
+		if ct.Timing == game.TimingNormal {
+			panic(fmt.Sprintf("effects.Register: %q cast timing %d says nothing — set TimingFlash, TimingSorcery or TimingYourTurnOnly", spec.Name, i))
+		}
+		if ct.Label == "" {
+			panic(fmt.Sprintf("effects.Register: %q cast timing %d has no printed Label", spec.Name, i))
+		}
+	}
 	// ADR 0048 addendum §11: no printed card sets a floor on its own
 	// cost, and an untested kind should not be declarable. A mana Unit
 	// belongs on an increase only (open question 3), and carries only

@@ -172,6 +172,19 @@ type CardDef struct {
 	// player.
 	CastPermissions []CastPermission
 
+	// CastTimings are the per-player cast-timing statements this
+	// permanent makes while it is on the battlefield (#1195) —
+	// Vedalken Orrery's "you may cast spells as though they had
+	// flash", Teferi, Time Raveler's "each opponent can cast spells
+	// only any time they could cast a sorcery". Read through
+	// CatalogCastTimings; see cast_timing.go.
+	//
+	// Derived on every query rather than written onto a player, for
+	// the reason CastPermissions gives one field up. A statement that
+	// OUTLIVES its source (Emergence Zone's "this turn") is not here:
+	// it is granted by an effect and stored on the player.
+	CastTimings []CastTimingRule
+
 	// LibraryTopVisible is how far this permanent makes its
 	// controller's top library card visible (CR 401.5) — "you may look
 	// at the top card of your library any time" is LibraryTopOwner,
@@ -424,6 +437,12 @@ func init() {
 	CatalogCastPermissions = func(key string) []CastPermission {
 		if d := catalogDef(key); d != nil {
 			return d.CastPermissions
+		}
+		return nil
+	}
+	CatalogCastTimings = func(key string) []CastTimingRule {
+		if d := catalogDef(key); d != nil {
+			return d.CastTimings
 		}
 		return nil
 	}

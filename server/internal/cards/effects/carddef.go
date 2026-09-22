@@ -79,6 +79,7 @@ func buildDef(spec Spec) *game.CardDef {
 		AdditionalLandPlays:        spec.AdditionalLandPlays,
 		XMatters:                   spec.XMatters,
 		CastPermissions:            standingCastPermissions(spec.CastPermissions),
+		CastTimings:                spec.CastTimings,
 		LibraryTopVisible:          spec.LibraryTopVisible,
 		CastCondition:              spec.CastCondition,
 		CastConditionLabel:         spec.CastConditionLabel,
