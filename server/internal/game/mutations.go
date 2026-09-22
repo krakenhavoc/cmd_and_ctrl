@@ -1485,7 +1485,7 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 		if card == nil || card.Tapped {
 			continue
 		}
-		ab := g.autoTapAbilityFor(cardID, ManaAbilitiesForCard(*card))
+		ab := g.autoTapAbilityFor(p.ID, cardID, ManaAbilitiesForCard(*card))
 		if ab == nil {
 			continue
 		}
@@ -1592,7 +1592,19 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 		// board.
 		tappedForMana := *card
 		g.EmitEvent(Event{Kind: EventTapCard, Actor: p.ID, CardID: cardID})
-		g.EmitEvent(Event{Kind: EventManaAbilityActivated, Actor: p.ID, Source: cardID})
+		// #1184: the same two stamps the CR 602 announcement carries,
+		// so "whenever you activate an exhaust ability" sees Loot, the
+		// Pathfinder's exhaust MANA ability through the auto-tapper as
+		// well as through a click. The auto-tapper really does
+		// activate the ability (CR 605.3a), which is why #1183 made it
+		// write the record here.
+		g.EmitEvent(Event{
+			Kind:    EventManaAbilityActivated,
+			Actor:   p.ID,
+			Source:  cardID,
+			Label:   ab.Label,
+			Exhaust: ab.Exhaust,
+		})
 		var addedColors []string
 		for si, slot := range slots {
 			var color string
@@ -4767,7 +4779,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	// rather than as ungated, because that is the answer that will
 	// still be true tomorrow.
 	activationKey := g.activationTallyKeyLocked(cardID, ab.Label)
-	if g.ManaAbilityExhausted(cardID, ab) {
+	if g.ManaAbilityExhausted(playerID, cardID, ab) {
 		return ErrAbilityExhausted
 	}
 	// "Activate only if you control five or more lands" (Temple of
@@ -5008,6 +5020,13 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		Kind:   EventManaAbilityActivated,
 		Actor:  playerID,
 		Source: cardID,
+		// #1184: the ability's identity and its exhaust bit, the same
+		// two stamps ActivateCatalogAbility's EventActivateAbility
+		// carries. A mana ability is an activated ability (CR 605.1a),
+		// so "whenever you activate an exhaust ability" watches this
+		// kind too — it just never used the stack to get here.
+		Label:   ab.Label,
+		Exhaust: ab.Exhaust,
 	})
 	// Materialise the produced mana. An ability with a ProducedFunc
 	// computes its output now, from the board as it stands AFTER the

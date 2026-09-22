@@ -589,6 +589,20 @@ func checkExhaustAbilities(spec Spec) {
 	for i, a := range spec.ManaAbilities {
 		checkOneExhaustAbility(spec.Name, "mana ability", i, a.Label, a.Exhaust, seen)
 	}
+	// #1184: the permission that suspends the gate. A nil Applies
+	// would grant it to every player at every moment, which no card
+	// prints and which nothing downstream could tell apart from a
+	// card whose condition simply happened to hold — so it is a boot
+	// panic rather than a silent grant. A blank Label is the same
+	// argument as the one above: it is what a log line names.
+	for i, p := range spec.ExhaustPermissions {
+		if p.Applies == nil {
+			panic(fmt.Sprintf("effects.Register: %q exhaust permission %d has no Applies — it would suspend the gate for every player, always", spec.Name, i))
+		}
+		if p.Label == "" {
+			panic(fmt.Sprintf("effects.Register: %q exhaust permission %d has no Label — the label is the printed clause", spec.Name, i))
+		}
+	}
 }
 
 // checkOneExhaustAbility is the body of the three checks above, for

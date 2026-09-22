@@ -131,7 +131,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// reader ActivateCatalogAbility and the view use, so a policy
 		// is never offered an exhaust ability this object has already
 		// spent (#544).
-		if g.AbilityExhausted(source.InstanceID, ab) {
+		if g.AbilityExhausted(e.seat, source.InstanceID, ab) {
 			continue
 		}
 		// CR 606.3 / 606.5: a loyalty ability of a PERMANENT you
@@ -189,7 +189,14 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		xValue := 0
 		phyrexianLife := 0
 		if ab.Cost.Mana != "" {
-			cost, err := game.ParseCost(ab.Cost.Mana)
+			// #1184: the PRICED cost, not the printed one — the same
+			// function ActivateCatalogAbility pays through, so a Boom
+			// Scholar's "{2} less to activate" is visible to the
+			// policy as an activation it can now afford rather than
+			// one it is never offered. #544's rule with the sign the
+			// other way round: an enumerator that priced at the
+			// printed cost would silently hide legal moves.
+			cost, err := g.AbilityManaCostForEffect(e.seat, *source, zone, ab)
 			if err != nil {
 				continue
 			}
@@ -812,7 +819,7 @@ func (e *enumerator) manaMoves() {
 			// checks it, and through the same one reader — #544's
 			// rule is that a bot is never offered a move the engine
 			// refuses.
-			if g.ManaAbilityExhausted(source.InstanceID, ab) {
+			if g.ManaAbilityExhausted(e.seat, source.InstanceID, ab) {
 				continue
 			}
 			// #352: the activation gate first, exactly as

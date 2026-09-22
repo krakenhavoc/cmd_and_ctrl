@@ -1511,3 +1511,159 @@ a mana cost, a spent Loot is already refused.
 
 Unchanged from the addendum above: the cards that read the record from
 OUTSIDE (#1184) and Avatar Kuruk's extra turn (#753).
+
+## Note (2026-09-22, #1184): the three seams that read the record from outside
+
+The addendum above built the record and one reader, and listed the
+cards that read it from OUTSIDE the ability that owns it as still out
+of scope. They are in scope now, and the point of writing them down
+together is that they were never one gap: **three different
+mechanisms wear one keyword.**
+
+### 1. The activation event (Rangers' Refueler, Afterburner Expert)
+
+*"Whenever you activate an exhaust ability, …"* is a trigger over an
+ANNOUNCEMENT, and before this there was no announcement to watch.
+`ActivateCatalogAbility` emitted `EventTrigger` — the "an item reached
+`PendingTriggers`" breadcrumb, shared with triggered abilities — and
+`triggerHarvester.OnEvent` returns immediately on that kind, by
+design: a trigger that fires further triggers does so at resolution,
+so re-entering the harvest at announce would only spam. Even if it had
+not, the event carried no ability identity at all.
+
+`EventActivateAbility` is that announcement said in a kind anything
+may watch. It carries:
+
+- `Label` — the ability's printed label, which is the same string the
+  activation record is keyed by, so an event and a record entry name
+  the same thing;
+- `Exhaust` — the keyword bit, read off the shape at the announce.
+
+The bit is on the EVENT rather than looked up by each watcher, and
+that is not convenience. By the time a watcher runs, a `SacrificeSelf`
+or `DiscardSelf` cost may have ended the object, and an ADR 0071
+designation gate may have renumbered or removed the ability; the
+announcement is the only moment the fact is reliably knowable.
+
+`EventManaAbilityActivated` gained the same two stamps, at both of its
+write sites (the click and the auto-tapper's executor), because
+CR 605.1a makes a mana ability an activated ability and Loot, the
+Pathfinder prints an exhaust one. Two kinds and not one, because the
+two paths differ in what a watcher may assume: a mana ability used no
+stack and granted nobody priority.
+
+**Deliberately wider than the two cards.** The open *"Whenever an
+opponent activates an ability"* row on
+[docs/engine-seams.md](../engine-seams.md) (Harsh Mentor, Runic
+Armasaur) is the same event with `ByAnOpponent` in place of `ByYou`
+and no exhaust test. That row closes on this shape rather than on a
+second one, and the seam doc now says so.
+
+### 2. The permission (Elvish Refueler)
+
+*"During your turn, as long as you haven't activated an exhaust
+ability this turn, you may activate exhaust abilities as though they
+haven't been activated."*
+
+This is why `Game.AbilityExhausted` and `Game.ManaAbilityExhausted`
+now take the **asking player**. A permission is not a fact about the
+object: the record still says the ability was activated, and every
+opponent still reads it that way. So the question stopped being "is
+this spent" and became "is this spent FOR YOU", and every reader had
+to start naming the asker — the activation path the activator,
+`internal/legal` the seat it is enumerating for, the view the
+controller whose menu it is stamping, the auto-tapper the tapping
+player, `ProducibleManaLocked` the permanent's controller. That is the
+same set the addendum above pointed at one reader so they could not
+disagree; they still read one reader, it takes one more argument.
+
+**Not an entry point that clears the record**, which was the obvious
+alternative and is wrong twice over. The permission is continuous
+while its conditions hold, so there is no moment to run a clear AT;
+and a clear would be visible to every player and would survive the
+Refueler dying, which "as though" never does (CR 609.4 — an effect
+that lets you do something as though a rule were different changes
+nothing else).
+
+Keeping the record honest is also what makes the card self-limiting
+with no code: activating under the permission WRITES the record a
+second time, and the second activation is itself an exhaust ability
+activated this turn, so the printed condition goes false on its own.
+One extra activation per turn, on your turn, is the whole card.
+
+`Game.ExhaustAbilitiesActivatedThisTurn(player)` is the counter that
+condition reads, and it is an `EventsThisTurn` scan rather than a
+`PlayerTurnTally` field: this is a FILTERED question (whose
+activation, and was it an exhaust one) that no counter carries, and
+`Game.Activations` is keyed by object rather than by player so it
+cannot answer "you". It runs only when a permission is already on the
+battlefield, because the gate consults the record first and the
+permission only if the record said "spent".
+
+The card side is `Spec.ExhaustPermissions` + `game.ExhaustPermission`,
+a battlefield static with the ADR 0071 designation gate and the
+CR 613.1f ability-removal key, read through one accessor
+(`ExhaustPermissionsForCard`). `effects.Register` panics at boot on a
+nil `Applies` — it would grant the permission to every player at every
+moment, which no card prints — and on a blank `Label`.
+
+### 3. The priced activation (Boom Scholar)
+
+*"Exhaust abilities of other permanents you control cost {2} less to
+activate."* The CR 601.2f pass already existed with its ordering, its
+generic floor and its negative-amount refusal; what it could not do
+was look at the ABILITY. `CostQuery` already carried the SOURCE
+permanent, so "of other permanents you control" was expressible.
+
+Two fields close it:
+
+- `CostQuery.Ability` (`AbilityCostSubject`: the label, the exhaust
+  bit, and a `Mana` flag that is always false today so a predicate
+  written now says which kind it means);
+- `CostModifier.Activations`, which **partitions** the board's
+  modifiers into the ones that price casts and the ones that price
+  activations.
+
+The partition is not bookkeeping. Sphere of Resistance's `AppliesTo`
+is nil, meaning "every spell"; without the partition every `{T}`
+ability in the game would have started costing `{1}` more the day
+`CostQuery.Ability` appeared. A modifier prices casts or activations
+and never both, because every printed clause in either family says
+which it means. The self-modifier slot is skipped entirely for an
+activation query: "this SPELL costs {1} less to cast" (CR 113.6d) is
+about the card as a spell on the stack, not about a permanent's
+ability.
+
+`Game.AbilityManaCostForEffect` is the one function three readers
+share: the payment path pays it, `internal/legal` checks affordability
+against it, and a test reads it. That is #544's rule with the sign
+reversed — an enumerator pricing at the printed cost would silently
+HIDE legal moves rather than offer illegal ones.
+`payAbilityManaCostLocked` therefore takes a `ParsedCost` now; the
+attack tax (CR 508.1a is a cost to attack) and the special-action path
+(CR 116.2 is not an activation) parse their own strings and stay
+unpriced.
+
+### Cards
+
+**Rangers' Refueler**, **Afterburner Expert** and **Elvish Refueler**
+ship `full`. Rangers' Refueler's animation prints no duration
+(CR 611.2a), so it is `BecomeArtifactCreature` —
+`BecomeCreatureUntilEOT`'s body with `IndefiniteDuration`, factored
+out rather than flagged — and it is not the crew ability beside it.
+Afterburner Expert's trigger is `InGraveyard`, which REPLACES the zone
+list (#925): a battlefield copy of "return this card from your
+graveyard" would have nothing to return, and "you" there is the OWNER
+(CR 108.4).
+
+**Boom Scholar** ships `caveats`, two of them: the ability's row in
+the menu still lists the printed cost (the engine charges the
+discounted one — the wire's `ActivatedAbilityView.mana_cost` is the
+printed string and nothing renders a `ParsedCost` back), and mana
+abilities are not priced through the activation pass.
+
+### Still out of scope
+
+Avatar Kuruk's extra turn (#753), unchanged. Two new, both narrow:
+the ability view's printed-cost display, and running the CR 601.2f
+pass over a MANA ability's cost.

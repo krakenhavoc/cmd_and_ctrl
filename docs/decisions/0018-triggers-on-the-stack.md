@@ -1695,3 +1695,36 @@ intentionally selects the last creature because its Oracle text says so.
 Delayed-return payloads carry their own slices; none of these paths overwrites
 a single per-source linked-card slot. The doubled Angel regression independently
 targets two creatures and requires both to return.
+
+### Note (2026-09-22, #1184): a trigger can watch an ACTIVATION now
+
+`triggerHarvester.OnEvent` returns immediately on `EventTrigger`, and
+that early return is still right: `EventTrigger` is the "an item
+reached `PendingTriggers`" breadcrumb, a trigger that fires further
+triggers does so at RESOLUTION, and re-entering the harvest at
+announce would spam. The cost of it was that nothing could watch an
+activation at all, because `ActivateCatalogAbility` announced with
+that kind and no other — and with no ability identity on the event
+either.
+
+`EventActivateAbility` (`game/events.go`) is the announcement said in
+a kind the harvest walks like any other. It carries the ability's
+`Label` — the same string the activation record is keyed by — and an
+`Exhaust` bit, both stamped at the announce because by the time a
+watcher runs the source may be gone (a `SacrificeSelf` cost) and the
+ability list may have been renumbered.
+`EventManaAbilityActivated` carries the same two stamps, so a watcher
+that means "any activated ability" (CR 605.1a) watches both kinds:
+`effects.WheneverYouActivateAnExhaustAbility` does exactly that.
+
+Nothing else about the harvest changes. The trigger goes on the stack
+ABOVE the ability that made it and resolves first (CR 603.3b), the
+zone wrappers work as they do for any other event — Afterburner
+Expert's is `InGraveyard` — and the public log stays silent on the new
+kind for the reason it is silent on `EventTrigger`: the LogResolve of
+the ability it becomes already says it.
+
+See [ADR 0020](0020-activated-abilities.md)'s note of the same date
+for the other two seams the same issue opened, and
+[docs/engine-seams.md](../engine-seams.md) for the "whenever an
+opponent activates an ability" row that closes on this event next.

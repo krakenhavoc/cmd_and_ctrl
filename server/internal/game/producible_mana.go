@@ -133,7 +133,7 @@ func (g *Game) ProducibleManaLocked(c Card) []string {
 		// declared narrowing rather than an oversight — see the
 		// "Exhaust is the one restriction this asks about" section
 		// above.
-		if g.ManaAbilityExhausted(c.InstanceID, ab) {
+		if g.ManaAbilityExhausted(c.Controller, c.InstanceID, ab) {
 			continue
 		}
 		// #789: an ability whose output depends on what its cost paid

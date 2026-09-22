@@ -643,6 +643,26 @@ func damageToFirstTarget(amount int) func(item *game.StackItem, ctx *Context) er
 // killed the source before the ability resolves, otherwise a counter
 // on the source itself. Both cards pair it with b24KeywordCounterGrant
 // so the counter carries CR 122.1e's keyword.
+// plusOneCountersOnThis is "Put N +1/+1 counters on this creature" —
+// the body most of the exhaust cards print (Prowcatcher Specialist,
+// Greenbelt Guardian, Afterburner Expert, Elvish Refueler, Boom
+// Scholar) and a common one outside them.
+//
+// Unlike putCounterOnSourceWhileOnBattlefield beside it, it does NOT
+// check that the source is still on the battlefield: AddCounter is a
+// no-op on a card that has gone, and the two cards that read that
+// check pair it with a keyword-counter grant that would not be. Keep
+// them separate rather than merging them into one flagged helper.
+func plusOneCountersOnThis(n int) Effect {
+	return func(g *game.Game, item *game.StackItem) error {
+		return AddCounter{
+			Target: item.SourceCardID,
+			Kind:   game.CounterPlusOne,
+			N:      n,
+		}.Apply(NewContext(g, item))
+	}
+}
+
 func putCounterOnSourceWhileOnBattlefield(kind string, n int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		if !b15OnBattlefield(g, item.SourceCardID) {

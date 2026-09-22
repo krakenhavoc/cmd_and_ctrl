@@ -250,7 +250,15 @@ func (g *Game) PerformSpecialAction(playerID, cardID uuid.UUID, kind SpecialActi
 	// either ("spend this mana only to cast creature spells") cannot
 	// pay for it. Conservative in the direction #259 requires.
 	if sa.Cost != "" {
-		if _, err := g.payAbilityManaCostLocked(p, cardID, card.Name, sa.Cost, ActivateAbilityParams{
+		// #1184: the helper takes a parsed cost now. A special action
+		// is not an activation (CR 116.2), so nothing prices it
+		// through the CR 601.2f pass — it parses its printed string
+		// and pays that, exactly as before.
+		saCost, perr := ParseCost(sa.Cost)
+		if perr != nil {
+			return ErrInvalidParam
+		}
+		if _, err := g.payAbilityManaCostLocked(p, cardID, card.Name, saCost, ActivateAbilityParams{
 			Strict:  params.Strict,
 			AutoTap: params.AutoTap,
 		}, ManaSpendContext{}, nil); err != nil {

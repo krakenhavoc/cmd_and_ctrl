@@ -71,7 +71,15 @@ var silentEventKinds = map[string]string{
 	"EventBecomesTarget":  "the cast or activation line already named the spell; targeting is announce-time bookkeeping the stack view carries",
 	"EventBecomesBlocked": "the LogBlock entry for the blocker is the same fact from the other side",
 	"EventTrigger":        "a trigger reaching the stack is told by the LogResolve of the ability it becomes",
-	"EventKeywordAction":  silentImpliedByAnotherLine,
+	// #1184: the same argument as the row above, for the other half of
+	// the same announcement. An activation reaching the stack is told
+	// by the LogResolve of the ability it becomes, and the stack view
+	// carries it in the meantime; a second line at the announce would
+	// say the same thing twice about one click. The kind exists so
+	// TRIGGERS can watch an activation, not so the log can narrate
+	// one.
+	"EventActivateAbility": "an activation reaching the stack is told by the LogResolve of the ability it becomes",
+	"EventKeywordAction":   silentImpliedByAnotherLine,
 
 	// --- the step spine ----------------------------------------------
 	"EventStepTransition":     silentStepSpine,
