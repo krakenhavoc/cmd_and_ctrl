@@ -109,6 +109,35 @@ func (g *Game) AutoTapForCostForEffectExcluding(
 	return plan.cardIDs(), ok
 }
 
+// AutoTapForCostPreferringExcluding is AutoTapForCostExcluding with
+// the spell's own SOURCE WISH (#1212): a card whose printed text
+// reads which mana paid for it ("if mana from a Treasure was spent to
+// cast it") would rather the plan tapped a source it can read back.
+//
+// The wish is an ORDERING HINT and never a filter — see
+// autoTapPreferringLocked. It exists on the exported surface for one
+// caller, the /autotap preview endpoint: the preview's plan is what
+// the client actually taps, so a preview that ignored the wish would
+// hand the player a payment the engine's own auto-tapper would not
+// have made, and Hired Hexblade would draw a card through one route
+// and not the other.
+func (g *Game) AutoTapForCostPreferringExcluding(
+	controller uuid.UUID,
+	cost ParsedCost,
+	xValue int,
+	excluded map[uuid.UUID]bool,
+	prefer ManaSourceKinds,
+) ([]uuid.UUID, bool) {
+	var (
+		plan tapPlan
+		ok   bool
+	)
+	g.ReadSnapshot(func() {
+		plan, ok = g.autoTapPreferringLocked(controller, cost, xValue, excluded, prefer)
+	})
+	return plan.cardIDs(), ok
+}
+
 // plannedTap is one entry of an auto-tap plan: the permanent to tap,
 // and — for a "N mana of any one color" source (#779) — the ONE
 // colour the solver booked it for.
@@ -174,7 +203,46 @@ func (g *Game) autoTapLocked(
 	xValue int,
 	excluded map[uuid.UUID]bool,
 ) (tapPlan, bool) {
-	sources := gatherTapSources(g, controller, excluded)
+	return g.autoTapPreferringLocked(controller, cost, xValue, excluded, 0)
+}
+
+// autoTapPreferringLocked is autoTapLocked with the announcement's
+// SOURCE WISH (#1212): the kinds of mana source this cast would
+// rather be paid with, because its own text reads them back.
+//
+// THE WISH IS AN ORDERING HINT, NOT A RULE, and the bound is the
+// whole design. It reaches exactly two comparators — the candidate
+// sort below and orderUnusedByGenericPreference — as a tiebreak
+// applied AFTER Frozen and BEFORE the existing criteria. It does not
+// touch gatherTapSources's candidate set, so:
+//
+//   - The SOURCES are identical with and without a wish. A cost that
+//     was payable stays payable and one that was not stays not, which
+//     is what lets internal/legal's enumerator keep calling the
+//     wishless autoTapLocked for its bool and never offer a cast the
+//     gate refuses.
+//   - It can never make a "spend a Treasure" card uncastable because
+//     no Treasure is out. Hired Hexblade off two Swamps is an
+//     ordinary 2/2 that draws no card, which is the printed
+//     behaviour.
+//
+// The one honest caveat is the one the Frozen ordering already
+// carries: solveColored shares an AutoTapBudget, so reordering can in
+// principle change which plan a pathological board finds first. It
+// cannot change whether one exists within an exhausted budget, since
+// the search space is the same set.
+//
+// A zero wish is every ordinary cast and every caller that has no
+// card in hand, and compares equal for everything — so the sorts are
+// byte-identical to what they were before this existed.
+func (g *Game) autoTapPreferringLocked(
+	controller uuid.UUID,
+	cost ParsedCost,
+	xValue int,
+	excluded map[uuid.UUID]bool,
+	prefer ManaSourceKinds,
+) (tapPlan, bool) {
+	sources := gatherTapSources(g, controller, excluded, prefer)
 	if len(sources) == 0 && (len(cost.Required) > 0 || cost.Generic+cost.XSlots*xValue > 0) {
 		return nil, false
 	}
@@ -185,6 +253,15 @@ func (g *Game) autoTapLocked(
 	sort.SliceStable(sources, func(i, j int) bool {
 		if sources[i].Frozen != sources[j].Frozen {
 			return !sources[i].Frozen
+		}
+		// #1212: a source the spell can read back comes first among
+		// equally usable ones. Above restrictiveness rather than
+		// below it, because the point is to get the wished source
+		// INTO the plan at all; the solver backtracks, so preferring
+		// a less restricted source here costs a little search and
+		// never an answer.
+		if sources[i].Wanted != sources[j].Wanted {
+			return sources[i].Wanted
 		}
 		return restrictivenessScore(sources[i]) < restrictivenessScore(sources[j])
 	})
@@ -226,6 +303,16 @@ type tapSource struct {
 	//
 	// Empty on every ordinary source.
 	OneColor string
+
+	// Wanted marks a source whose kinds satisfy the announcement's
+	// wish (#1212) — a Treasure, when the spell being cast reads "if
+	// mana from a Treasure was spent to cast it".
+	//
+	// A preference and nothing more: it reorders two comparators and
+	// is not consulted anywhere a source could be dropped. False on
+	// every source of every ordinary cast, which is nearly all of
+	// them.
+	Wanted bool
 }
 
 // gatherTapSources walks the battlefield and collects every tap-
@@ -234,7 +321,7 @@ type tapSource struct {
 // abilities contributes only its first tap-cost ability for S15;
 // multi-ability mana sources (Mox Diamond, City of Brass with
 // activations) need a richer model that lands in a later sprint.
-func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool) []tapSource {
+func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool, prefer ManaSourceKinds) []tapSource {
 	if g.Battlefield == nil {
 		return nil
 	}
@@ -337,8 +424,13 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 		if len(slots) == 0 {
 			continue
 		}
+		// #1212: the wish, answered off the same snapshot the mana
+		// this permanent produces will carry (manaSourceKindsOf), so
+		// the planner and the record can never disagree about what
+		// this source is.
+		wanted := prefer != 0 && manaSourceKindsOf(c).HasAny(prefer)
 		out = appendTapSource(out, c.InstanceID, slots,
-			untapStepRestrictedBy(&c, g, restrictions) || c.hasNextUntapSkipFor(controller))
+			untapStepRestrictedBy(&c, g, restrictions) || c.hasNextUntapSkipFor(controller), wanted)
 	}
 	return out
 }
@@ -397,11 +489,11 @@ func oneColorSlot(slots []ProducedManaEntry) int {
 // booked for {U}{U} leaves its third slot in the spare tally, which
 // recruitGeneric spends on the generic half of the same cost, and
 // anything still left floats (CR 106.4).
-func appendTapSource(out []tapSource, cardID uuid.UUID, slots []ProducedManaEntry, frozen bool) []tapSource {
+func appendTapSource(out []tapSource, cardID uuid.UUID, slots []ProducedManaEntry, frozen, wanted bool) []tapSource {
 	idx := oneColorSlot(slots)
 	switch idx {
 	case oneColorSlotNone:
-		return append(out, tapSource{CardID: cardID, Slots: slots, Frozen: frozen})
+		return append(out, tapSource{CardID: cardID, Slots: slots, Frozen: frozen, Wanted: wanted})
 	case oneColorSlotUnplannable:
 		return out
 	}
@@ -419,7 +511,7 @@ func appendTapSource(out []tapSource, cardID uuid.UUID, slots []ProducedManaEntr
 			variant = append(variant, ProducedManaEntry{Options: []string{color}})
 		}
 		variant = append(variant, slots[idx+1:]...)
-		out = append(out, tapSource{CardID: cardID, Slots: variant, Frozen: frozen, OneColor: color})
+		out = append(out, tapSource{CardID: cardID, Slots: variant, Frozen: frozen, OneColor: color, Wanted: wanted})
 	}
 	return out
 }
@@ -796,6 +888,7 @@ func orderUnusedByGenericPreference(sources []tapSource, used []bool) []int {
 	type rank struct {
 		idx     int
 		frozen  bool
+		wanted  bool
 		tier    int // 0 = colorless-only, 1 = any-color, 2 = monocolored
 		slotCnt int
 	}
@@ -805,11 +898,20 @@ func orderUnusedByGenericPreference(sources []tapSource, used []bool) []int {
 			continue
 		}
 		t := tierForGeneric(s)
-		out = append(out, rank{idx: i, frozen: s.Frozen, tier: t, slotCnt: len(s.Slots)})
+		out = append(out, rank{idx: i, frozen: s.Frozen, wanted: s.Wanted, tier: t, slotCnt: len(s.Slots)})
 	}
 	sort.SliceStable(out, func(a, b int) bool {
 		if out[a].frozen != out[b].frozen {
 			return !out[a].frozen
+		}
+		// #1212: this is where the wish actually bites. A Treasure is
+		// an any-colour source (tier 1) and a Sol Ring is colourless
+		// (tier 0), so without the hint a Hired Hexblade's generic
+		// pip is always paid by the Sol Ring and the card never
+		// draws. Above the tier, because the tier is exactly the
+		// preference being overridden.
+		if out[a].wanted != out[b].wanted {
+			return out[a].wanted
 		}
 		if out[a].tier != out[b].tier {
 			return out[a].tier < out[b].tier

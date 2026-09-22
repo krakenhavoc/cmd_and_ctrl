@@ -347,6 +347,22 @@ type PendingChoice struct {
 	// S32 mana-pipeline pass (#352).
 	ManaRestrictions []string
 
+	// ManaSourceKinds is what the permanent producing this mana WAS
+	// at the moment the pick was queued — snow, Treasure, creature,
+	// land, artifact, enchantment (#1212, mana_source.go).
+	//
+	// Here for exactly the reason ManaRestrictions is, and the case
+	// is sharper: a Treasure's mana ability sacrifices the Treasure,
+	// so by the time the colour pick is answered the source is gone
+	// and a Treasure TOKEN has ceased to exist (CR 111.7). The one
+	// source that eighteen printed cards ask about is the one source
+	// a resolve-time lookup could never answer, so the fact travels
+	// on the choice.
+	//
+	// A plain value, so the clone and the snapshot carry it with the
+	// rest of the struct.
+	ManaSourceKinds ManaSourceKinds
+
 	// ManaAmounts is how many mana a PendingChoiceMana adds for each
 	// colour in ColorOptions — "{T}: Add three mana of any one color"
 	// (Gilded Lotus) is ONE pick minting three tokens, and Nyx Lotus's
@@ -1130,6 +1146,9 @@ func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) er
 			// because the choice is about to be dequeued and the
 			// token outlives it.
 			Restrictions: copyRestrictions(choice.ManaRestrictions),
+			// #1212: the snapshot the choice carried, for the same
+			// reason — a value, so nothing to copy.
+			SourceKinds: choice.ManaSourceKinds,
 		})
 		g.EmitEvent(Event{
 			Kind:   EventManaAdded,

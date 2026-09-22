@@ -526,6 +526,7 @@ var pendingChoiceFields = plan(
 	// clone.go:135 — so the snapshot must carry it too, or a restored
 	// game would let the player spend restricted mana on anything.
 	"ManaRestrictions", carried, "",
+	"ManaSourceKinds", carried, "",
 	// #742: how many tokens each colour of a one-pick-N-mana choice
 	// mints (Gilded Lotus). Without it a restored pick adds one.
 	"ManaAmounts", carried, "",

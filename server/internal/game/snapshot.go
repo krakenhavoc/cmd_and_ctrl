@@ -617,6 +617,7 @@ type pendingChoiceSnapshot struct {
 	ColorOptions         []string               `json:"colorOptions,omitempty"`
 	ColorPurpose         ColorPurpose           `json:"colorPurpose,omitempty"`
 	ManaRestrictions     []string               `json:"manaRestrictions,omitempty"`
+	ManaSourceKinds      ManaSourceKinds        `json:"manaSourceKinds,omitempty"`
 	ManaAmounts          map[string]int         `json:"manaAmounts,omitempty"`
 	ManaTapped           bool                   `json:"manaTapped,omitempty"`
 	ReplacementEffectIDs []ReplacementEffectID  `json:"replacementEffectIds,omitempty"`
@@ -1361,6 +1362,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		ColorOptions:         copyStrings(c.ColorOptions),
 		ColorPurpose:         c.ColorPurpose,
 		ManaRestrictions:     copyStrings(c.ManaRestrictions),
+		ManaSourceKinds:      c.ManaSourceKinds,
 		ManaAmounts:          copyManaAmounts(c.ManaAmounts),
 		ManaTapped:           c.ManaTapped,
 		ReplacementEffectIDs: copyReplacementEffectIDs(c.ReplacementEffectIDs),
@@ -1941,6 +1943,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		ColorOptions:         copyStrings(c.ColorOptions),
 		ColorPurpose:         c.ColorPurpose,
 		ManaRestrictions:     copyStrings(c.ManaRestrictions),
+		ManaSourceKinds:      c.ManaSourceKinds,
 		ManaAmounts:          copyManaAmounts(c.ManaAmounts),
 		ManaTapped:           c.ManaTapped,
 		ReplacementEffectIDs: copyReplacementEffectIDs(c.ReplacementEffectIDs),
