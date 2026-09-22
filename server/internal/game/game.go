@@ -202,6 +202,15 @@ type Game struct {
 	// (#586).
 	TurnTally TurnTally
 
+	// Activations counts what has been ACTIVATED — CR 602.2b's
+	// announcement — per (object, printed ability), in two scopes at
+	// once: `Ever`, which is never reset and is what exhaust reads,
+	// and `Turn`, which is emptied on the turn advance beside
+	// TurnTally. Written at the one place a non-mana activation is
+	// paid for (ActivateCatalogAbility). See activation_tally.go
+	// (#1181).
+	Activations ActivationTally
+
 	// LoopNotice is the CR 726 loop breaker's flag: set when the
 	// same triggered ability has resolved LoopThreshold times this
 	// turn with no player decision in between, nil otherwise. While

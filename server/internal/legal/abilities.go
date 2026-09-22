@@ -127,6 +127,13 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		if ab.Condition != nil && !ab.Condition(g, e.seat, source.InstanceID) {
 			continue
 		}
+		// #1181: "Activate each exhaust ability only once". Same
+		// reader ActivateCatalogAbility and the view use, so a policy
+		// is never offered an exhaust ability this object has already
+		// spent (#544).
+		if g.AbilityExhausted(source.InstanceID, ab) {
+			continue
+		}
 		// CR 606.3 / 606.5: a loyalty ability of a PERMANENT you
 		// control, one activation per turn, and enough counters to
 		// pay a −N. Mirrors ActivateCatalogAbility so a policy never

@@ -423,6 +423,41 @@ type ActivatedAbilityShape struct {
 	// See designations.go and ADR 0071.
 	ActiveWhen Designation
 
+	// Exhaust marks an EXHAUST ability (#1181):
+	//
+	//	Exhaust — {4}: Earthbend 4.
+	//	(Activate each exhaust ability only once.)
+	//
+	// One declarative bit and no per-card logic, exactly as Cycling
+	// above is: the keyword IS the rule, and a card that wrote its own
+	// "have I done this yet" check would be writing a rule the engine
+	// has to enforce in three places anyway.
+	//
+	// What the bit buys, all of it in game.AbilityExhausted:
+	//
+	//   - per ABILITY, not per source. A card with three exhaust
+	//     abilities (Loot, the Pathfinder) may activate each of them
+	//     once, and activating the first must not lock the other two —
+	//     which is why the record is keyed by the ability's label and
+	//     not by the permanent.
+	//   - for the whole GAME, not the turn. Game.Activations.Ever is
+	//     never reset (activation_tally.go).
+	//   - spent at the ANNOUNCE. An exhaust ability countered on the
+	//     stack, or fizzled for want of a target, has been activated.
+	//   - CR 400.7 all the way down: a flicker refreshes it, a phase-
+	//     out would not, and a copy of the permanent has its own
+	//     (CR 707.2).
+	//
+	// It is NOT Condition and NOT ActiveWhen. An exhausted ability is
+	// still printed on the permanent and still enumerated by the card
+	// — the view ships `exhausted` and greys the row, and
+	// ActivateCatalogAbility refuses with ErrAbilityExhausted — where
+	// a designation gate would make it absent entirely. A card that
+	// prints BOTH (Bitter Work's "Exhaust — {4}: Earthbend 4. Activate
+	// only during your turn.") sets this and Condition, and the two
+	// are checked in that order.
+	Exhaust bool
+
 	// Effect runs at resolution against the live game. Same contract
 	// as TriggeredAbility's stack items: never capture a *Card,
 	// read what you need off the item and the game.
@@ -712,6 +747,17 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	// carries the restriction, so a card can't forget it.
 	if (ab.SorcerySpeed || ab.Cost.Loyalty != nil) && !g.sorcerySpeedOpenLocked(playerID) {
 		return ErrSorcerySpeedRequired
+	}
+	// #1181: "Activate each exhaust ability only once". The key is
+	// taken HERE, before anything is paid, because a cost that moves
+	// the source (SacrificeSelf, DiscardSelf) ends the object and
+	// carries Card.ObjectEpoch with it — a key built at the announce
+	// would be written against an object that never had the ability.
+	// The same key is read now and written below, so the gate and the
+	// record cannot address different things.
+	activationKey := g.activationTallyKeyLocked(cardID, ab.Label)
+	if g.AbilityExhausted(cardID, ab) {
+		return ErrAbilityExhausted
 	}
 	// CR 602.1b / 602.5: the ability's "Activate only if …" and
 	// "Activate only during …" instructions (#743). A player can't
@@ -1066,6 +1112,13 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	// decision, and clearing its own run was what kept the breaker
 	// from ever seeing it. See notePlayerActivationLocked.
 	g.notePlayerActivationLocked(TallyKey(cardID, ab.Label))
+	// #1181: the activation record, in both scopes, written at the
+	// ANNOUNCE and not at resolution — an exhaust ability countered on
+	// the stack is still spent (CR 602.2b: activating an ability is
+	// one indivisible step, and it has now finished). The key was
+	// taken above, before the costs ran, so a sacrifice-this cost has
+	// not moved the object out from under it.
+	g.noteAbilityActivationLocked(activationKey)
 	g.EmitEvent(Event{
 		Kind:   EventTrigger,
 		Actor:  playerID,

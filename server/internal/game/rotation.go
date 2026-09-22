@@ -251,6 +251,11 @@ func (g *Game) onTurnBeganLocked() {
 		g.DrawnThisTurn = nil
 	}
 	g.resetTurnTallyLocked()
+	// #1181: the per-turn half of the activation record dies with the
+	// turn it counted. The game-lifetime half does not — "activate
+	// each exhaust ability only once" is a claim about the whole game,
+	// which is the reason the two scopes are separate maps.
+	g.resetActivationTurnTallyLocked()
 }
 
 // advancePastEliminatedLocked moves play on after a player has left

@@ -109,6 +109,7 @@ func (g *Game) cloneLocked() *Game {
 		}
 	}
 	out.TurnTally = cloneTurnTally(g.TurnTally)
+	out.Activations = cloneActivationTally(g.Activations)
 	if len(g.DrawnThisTurn) > 0 {
 		out.DrawnThisTurn = make(map[uuid.UUID][]uuid.UUID, len(g.DrawnThisTurn))
 		for k, v := range g.DrawnThisTurn {
@@ -815,6 +816,11 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.ExtraLandDropsThisTurn = src.ExtraLandDropsThisTurn
 	g.DrawnThisTurn = src.DrawnThisTurn
 	g.TurnTally = src.TurnTally
+	// #1181: the activation record rewinds with the rest of the
+	// per-turn state. An undo that kept an exhaust spent would take
+	// the ability away for the whole game on the strength of an
+	// activation that no longer happened.
+	g.Activations = src.Activations
 	// #628's loop breaker, missed by this list when it landed: the
 	// clone carries the notice (cloneLocked, above) and the persisted
 	// snapshot carries it, but the undo path did not put it back, so

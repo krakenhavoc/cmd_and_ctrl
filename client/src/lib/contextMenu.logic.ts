@@ -386,6 +386,9 @@ interface AbilityCost {
   // #743: the ability's "Activate only if …" condition is false right
   // now. Carried by both mana and activated abilities.
   condition_unmet?: boolean;
+  // #1181: an exhaust ability this permanent has already used.
+  // Activated abilities only — a mana ability never carries it.
+  exhausted?: boolean;
   // #844: a "in your commander's color identity" mana ability with no
   // identity to narrow to. Mana abilities only.
   adds_no_mana?: boolean;
@@ -416,6 +419,13 @@ interface AbilityCost {
 // condition_unmet flag is set (#743). Exported so ManaAbilityMenu's
 // popover says the same thing as the context menu.
 export const ACTIVATION_CONDITION_UNMET = "activation condition not met";
+
+// ABILITY_EXHAUSTED is the hint on a row the server marked exhausted
+// (#1181): "Activate each exhaust ability only once", and this object
+// already has. Its own string rather than ACTIVATION_CONDITION_UNMET
+// because the two recover differently — a condition may hold again
+// next turn, an exhaust only if the permanent becomes a new object.
+export const ABILITY_EXHAUSTED = "already activated (exhaust)";
 
 // NO_COMMANDER_IDENTITY is the hint on a mana row the server marked
 // adds_no_mana (#844, CR 903.4f): "any color in your commander's color
@@ -478,6 +488,10 @@ export function abilityBlocked(
   // is false. After the timing arms, which is the order the server
   // checks in, so a sorcery-speed row keeps its more specific reason.
   // The row's label already prints the clause, so the reason doesn't.
+  // #1181: an exhaust ability already spent. Before condition_unmet,
+  // because Bitter Work prints both and "already activated" is the one
+  // that will still be true tomorrow.
+  if (a.exhausted) return ABILITY_EXHAUSTED;
   if (a.condition_unmet) return ACTIVATION_CONDITION_UNMET;
   // #844, CR 903.4f: the server says this mana ability would add
   // nothing — no commander, or a colourless one. Activating it is

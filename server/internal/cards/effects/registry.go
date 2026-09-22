@@ -2,6 +2,7 @@ package effects
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -50,6 +51,7 @@ func Register(spec Spec) {
 		}
 	}
 	checkFlatClauses(spec.Name, spec.Targets)
+	checkExhaustAbilities(spec)
 	for _, a := range spec.Activated {
 		checkFlatClauses(spec.Name, a.Targets)
 		if a.Modes != nil {
@@ -547,5 +549,47 @@ func checkFlatClauses(name string, spec *game.TargetSpec) {
 		if len(spec.Rest[i].Rest) > 0 {
 			panic(fmt.Sprintf("effects.Register: %q target clause %d nests further clauses — the list is flat; build it with Clauses(...)", name, i+1))
 		}
+	}
+}
+
+// checkExhaustAbilities holds the exhaust declaration to the two
+// things the engine's record needs from it (#1181).
+//
+// The record is keyed by (object, ability LABEL) — see
+// game/activation_tally.go on why the label and not the index — so a
+// blank label is unaddressable and two exhaust abilities sharing one
+// label would share one use between them. Loot, the Pathfinder prints
+// three exhaust abilities on one card and each of them is separately
+// activatable; a copy-paste that gave two of them the same label would
+// silently take one away, which is exactly the class of bug a boot
+// panic is cheap insurance against.
+//
+// The third check is the other direction: an activated ability whose
+// label says "exhaust" and does not set the bit gets no gate at all
+// and is repeatable forever. Nothing else in an activated ability's
+// label mentions the word — the cards that talk ABOUT exhaust
+// abilities (Rangers' Refueler's trigger, Boom Scholar's cost
+// modifier, Elvish Refueler's static) say so somewhere other than an
+// ActivatedAbility.Label.
+func checkExhaustAbilities(spec Spec) {
+	seen := make(map[string]bool, len(spec.Activated))
+	for i, a := range spec.Activated {
+		mentions := strings.Contains(strings.ToLower(a.Label), "exhaust")
+		if a.Exhaust && !mentions {
+			panic(fmt.Sprintf("effects.Register: %q activated ability %d sets Exhaust but its label does not print the keyword — the label is what the player reads", spec.Name, i))
+		}
+		if mentions && !a.Exhaust {
+			panic(fmt.Sprintf("effects.Register: %q activated ability %d prints \"Exhaust\" and does not set Exhaust: true — without the bit it can be activated every turn", spec.Name, i))
+		}
+		if !a.Exhaust {
+			continue
+		}
+		if a.Label == "" {
+			panic(fmt.Sprintf("effects.Register: %q activated ability %d is an exhaust ability with no Label — the label is the record's key", spec.Name, i))
+		}
+		if seen[a.Label] {
+			panic(fmt.Sprintf("effects.Register: %q declares two exhaust abilities labelled %q — they would share one use", spec.Name, a.Label))
+		}
+		seen[a.Label] = true
 	}
 }
