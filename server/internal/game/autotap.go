@@ -258,7 +258,7 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 		if !CanActivateManaAbilities(&c) {
 			continue
 		}
-		picked := g.autoTapAbilityFor(c.InstanceID, ManaAbilitiesForCard(c))
+		picked := g.autoTapAbilityFor(controller, c.InstanceID, ManaAbilitiesForCard(c))
 		if picked == nil {
 			continue
 		}
@@ -482,7 +482,7 @@ func appendTapSource(out []tapSource, cardID uuid.UUID, slots []ProducedManaEntr
 // because a tapSource that offered two would let the solver tap the
 // same permanent twice.
 // Caller must hold g.mu.
-func (g *Game) autoTapAbilityFor(source uuid.UUID, abilities []ManaAbilityShape) *ManaAbilityShape {
+func (g *Game) autoTapAbilityFor(asker, source uuid.UUID, abilities []ManaAbilityShape) *ManaAbilityShape {
 	for i := range abilities {
 		a := abilities[i]
 		if !a.TapCost || a.SacrificeCost {
@@ -494,7 +494,7 @@ func (g *Game) autoTapAbilityFor(source uuid.UUID, abilities []ManaAbilityShape)
 		// so planning it would strand whatever the plan had already
 		// tapped, which is the failure mode every check around this
 		// one exists to prevent.
-		if g.ManaAbilityExhausted(source, a) {
+		if g.ManaAbilityExhausted(asker, source, a) {
 			continue
 		}
 		if a.LifeCost > 0 || a.Rider != nil {

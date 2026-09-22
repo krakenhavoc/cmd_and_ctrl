@@ -3595,7 +3595,7 @@ func stampManaConditions(g *game.Game, card game.Card, controller uuid.UUID, vie
 		// turn; an exhaust only if the permanent becomes a new
 		// object). The one reader the engine, the enumerator and the
 		// auto-tapper all use.
-		views[i].Exhausted = g.ManaAbilityExhausted(card.InstanceID, raw[i])
+		views[i].Exhausted = g.ManaAbilityExhausted(controller, card.InstanceID, raw[i])
 		if raw[i].Condition == nil {
 			continue
 		}
@@ -5642,7 +5642,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		}
 		// #1181: the same reader ActivateCatalogAbility refuses on and
 		// internal/legal drops the move for.
-		if g.AbilityExhausted(c.InstanceID, a) {
+		if g.AbilityExhausted(caster, c.InstanceID, a) {
 			v.Exhausted = true
 		}
 		if a.Cost.SacrificeOther != nil {

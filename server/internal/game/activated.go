@@ -756,7 +756,7 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	// The same key is read now and written below, so the gate and the
 	// record cannot address different things.
 	activationKey := g.activationTallyKeyLocked(cardID, ab.Label)
-	if g.AbilityExhausted(cardID, ab) {
+	if g.AbilityExhausted(playerID, cardID, ab) {
 		return ErrAbilityExhausted
 	}
 	// CR 602.1b / 602.5: the ability's "Activate only if …" and
@@ -972,7 +972,18 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 			}
 			excluded[id] = true
 		}
-		spent, err := g.payAbilityManaCostLocked(p, cardID, source.Name, ab.Cost.Mana, params, ManaSpendForAbility(*source), excluded)
+		// #1184: the CR 601.2f pass over the ability's mana component
+		// — "Exhaust abilities of other permanents you control cost
+		// {2} less to activate" (Boom Scholar). The same function the
+		// legal-move enumerator prices with, so a bot is never
+		// offered an activation the engine then refuses for want of
+		// mana. A board with no activation-scoped modifier on it
+		// returns the printed cost and walks nothing.
+		manaCost, err := g.AbilityManaCostForEffect(playerID, *source, srcZone, ab)
+		if err != nil {
+			return ErrInvalidParam
+		}
+		spent, err := g.payAbilityManaCostLocked(p, cardID, source.Name, manaCost, params, ManaSpendForAbility(*source), excluded)
 		if err != nil {
 			return err
 		}
@@ -1124,6 +1135,28 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		Actor:  playerID,
 		Source: cardID,
 		CardID: cardID,
+	})
+	// #1184: the same announcement, said in a kind anything may
+	// WATCH. The EventTrigger above is the loop breaker's and the
+	// turn tally's breadcrumb and the harvester returns on it
+	// immediately (triggers.go), so "whenever you activate an exhaust
+	// ability" had nothing to hang on; this event carries the
+	// ability's identity — its label, the key the activation record
+	// uses — and the exhaust bit, read off the shape rather than
+	// re-derived later from a source a SacrificeSelf cost has already
+	// ended.
+	//
+	// Emitted AFTER the record is written, so a watcher that reads
+	// Game.Activations back sees this activation counted, and after
+	// the item is on StackMeta, so the ability a trigger will sit
+	// above already exists.
+	g.EmitEvent(Event{
+		Kind:    EventActivateAbility,
+		Actor:   playerID,
+		Source:  cardID,
+		CardID:  cardID,
+		Label:   ab.Label,
+		Exhaust: ab.Exhaust,
 	})
 	// CR 602.2b / 115.7: the ability's targets were chosen as it was
 	// put on the stack. S22, for "whenever ~ becomes the target of a
@@ -1293,12 +1326,14 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 // colour of mana spent" ability would read it the same way — and
 // Jeweled Amulet's "spend this mana only to cast" rider will, when
 // the rider half lands.
-func (g *Game) payAbilityManaCostLocked(p *Player, sourceID uuid.UUID, sourceName, costStr string, params ActivateAbilityParams, spendCtx ManaSpendContext, excluded map[uuid.UUID]bool) (PaidCost, error) {
+// `cost` arrives already parsed and already priced through the
+// CR 601.2f pass (#1184: AbilityManaCostForEffect), because the
+// number an activation pays and the number the legal-move enumerator
+// checks affordability against have to be computed by one function,
+// and that function needs the source card and the ability shape this
+// one no longer has.
+func (g *Game) payAbilityManaCostLocked(p *Player, sourceID uuid.UUID, sourceName string, cost ParsedCost, params ActivateAbilityParams, spendCtx ManaSpendContext, excluded map[uuid.UUID]bool) (PaidCost, error) {
 	var paid PaidCost
-	cost, err := ParseCost(costStr)
-	if err != nil {
-		return paid, ErrInvalidParam
-	}
 	// CR 107.4f / CR 602.2b (#917): the Phyrexian symbols the
 	// activator announced they are paying with life leave the mana
 	// cost here, through the SAME helper the cast path runs, and the

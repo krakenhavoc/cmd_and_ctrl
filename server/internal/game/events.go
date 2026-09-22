@@ -430,6 +430,40 @@ const (
 	// creation without having to poll PendingTriggers.
 	EventTrigger EventKind = "trigger"
 
+	// EventActivateAbility — a player ACTIVATED an activated ability
+	// (CR 602.2b), announced onto the stack. Actor is the activator,
+	// Source and CardID are the permanent (or, since #660, the hand
+	// card) whose ability it is, Label is the ability's printed label
+	// — the same string the activation record is keyed by — and
+	// Exhaust says whether the ability prints the exhaust keyword.
+	//
+	// A SECOND event beside the EventTrigger the announce has always
+	// emitted, rather than fields bolted onto that one, and the
+	// difference is the whole reason it exists (#1184): EventTrigger
+	// is the "an item reached PendingTriggers" breadcrumb, shared by
+	// triggered abilities, and triggerHarvester.OnEvent returns
+	// immediately on it so that a trigger firing further triggers does
+	// not re-enter the harvest. Nothing can watch it, by design. This
+	// kind is the ANNOUNCEMENT, it carries the ability's identity, and
+	// the harvester walks it like any other event.
+	//
+	// It is deliberately wider than the two cards that asked for it.
+	// "Whenever you activate an exhaust ability" (Rangers' Refueler,
+	// Afterburner Expert) reads Actor and Exhaust; the still-open
+	// "whenever an OPPONENT activates an ability" watch (Harsh Mentor,
+	// Runic Armasaur — docs/engine-seams.md) needs exactly this event
+	// with ByAnOpponent in place of ByYou and no Exhaust test, so that
+	// row closes on this shape rather than on a second one.
+	//
+	// CR 605's mana abilities take the other path and keep the other
+	// kind: EventManaAbilityActivated carries the same Label and
+	// Exhaust stamps (#1183 gave that path the same record), so a
+	// watcher that means "any activated ability" watches both kinds.
+	// Two kinds and not one because the two paths differ in what a
+	// watcher may assume — a mana ability used no stack and granted
+	// nobody priority.
+	EventActivateAbility EventKind = "activate_ability"
+
 	// EventEffectError — an effect primitive (S14 catalog) failed
 	// to apply. Caller logs + keeps moving; the event is the
 	// debugging breadcrumb. ErrorMsg carries the reason.
@@ -953,6 +987,19 @@ type Event struct {
 	// a downstream prompt is answered). "Whenever ~ deals combat
 	// damage to a player" triggers read both. Added in S19 sub-PR 7.
 	Combat bool `json:"combat,omitempty"`
+
+	// Exhaust marks an EventActivateAbility or
+	// EventManaAbilityActivated whose ability prints the exhaust
+	// keyword — "Activate each exhaust ability only once" (#1181,
+	// #1183). False on every other event, and on the ordinary
+	// activations that are nearly all of them.
+	//
+	// A bit on the event rather than a lookup a watcher does for
+	// itself, because by the time a watcher runs the ability's source
+	// may be gone (a SacrificeSelf cost) and its ability list may have
+	// been renumbered or removed; the announcement is the only moment
+	// the fact is reliably knowable. Added for #1184.
+	Exhaust bool `json:"exhaust,omitempty"`
 
 	// CombatStep names which combat damage step dealt a combat
 	// EventDealDamage: CombatStepFirstStrike or CombatStepRegular

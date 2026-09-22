@@ -470,6 +470,29 @@ type Spec struct {
 	// cost. Nil for nearly every card.
 	SelfCostModifiers []game.CostModifier
 
+	// ExhaustPermissions is "you may activate exhaust abilities as
+	// though they haven't been activated" (#1184, CR 609.4) — Elvish
+	// Refueler, the one printed card that reads the exhaust record and
+	// then tells one player to ignore it.
+	//
+	// Build the entries with MayActivateExhaustAbilitiesAgain in
+	// exhaust_permission.go; the predicate is the printed condition
+	// and nothing else:
+	//
+	//	ExhaustPermissions: []game.ExhaustPermission{
+	//	    MayActivateExhaustAbilitiesAgain(
+	//	        "During your turn, as long as you haven't activated an "+
+	//	            "exhaust ability this turn, you may activate exhaust "+
+	//	            "abilities as though they haven't been activated.",
+	//	        DuringTheControllersTurn(), ControllerHasActivatedNoExhaustAbilityThisTurn()),
+	//	},
+	//
+	// It suspends the GATE and nothing else: the ability still costs
+	// what it costs, still checks its Condition, and activating it
+	// still writes the record. Read from the battlefield only
+	// (CR 113.6). Nil for every other card.
+	ExhaustPermissions []game.ExhaustPermission
+
 	// AttackTaxes is the CR 508.1a attack tax: "creatures can't attack
 	// you unless their controller pays {2} for each creature they
 	// control that's attacking you" — Propaganda, Ghostly Prison,

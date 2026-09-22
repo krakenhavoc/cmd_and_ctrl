@@ -171,9 +171,17 @@ func (g *Game) ActivatedThisTurn(source uuid.UUID, label string) int {
 // False for every ability that is not an exhaust ability, which is all
 // of them but the marked ones.
 //
+// `asker` is the player the question is being answered FOR — the
+// activator, the seat the enumerator is working on, the controller
+// whose menu the view is stamping (#1184). It matters because a
+// permission can suspend the gate for one player and nobody else; see
+// exhaust_permission.go on why that could not be a fact about the
+// object. uuid.Nil is legal and means "nobody in particular", which
+// reads the record straight.
+//
 // Caller must hold g.mu.
-func (g *Game) AbilityExhausted(source uuid.UUID, ab ActivatedAbilityShape) bool {
-	return g.exhaustedLocked(source, ab.Exhaust, ab.Label)
+func (g *Game) AbilityExhausted(asker, source uuid.UUID, ab ActivatedAbilityShape) bool {
+	return g.exhaustedLocked(asker, source, ab.Exhaust, ab.Label)
 }
 
 // ManaAbilityExhausted is AbilityExhausted for the OTHER ability kind
@@ -200,8 +208,8 @@ func (g *Game) AbilityExhausted(source uuid.UUID, ab ActivatedAbilityShape) bool
 // function (exhaustedLocked), which is the part that must not drift.
 //
 // Caller must hold g.mu.
-func (g *Game) ManaAbilityExhausted(source uuid.UUID, ab ManaAbilityShape) bool {
-	return g.exhaustedLocked(source, ab.Exhaust, ab.Label)
+func (g *Game) ManaAbilityExhausted(asker, source uuid.UUID, ab ManaAbilityShape) bool {
+	return g.exhaustedLocked(asker, source, ab.Exhaust, ab.Label)
 }
 
 // exhaustedLocked is the rule itself: an ability that prints the
@@ -213,12 +221,21 @@ func (g *Game) ManaAbilityExhausted(source uuid.UUID, ab ManaAbilityShape) bool 
 // of them but the marked ones, and it is the FIRST test so that the
 // ordinary permanent costs nothing but a bool read.
 //
+// #1184 adds the third clause, and its ORDER is the point: the record
+// is read first and the permission only afterwards, so an ability
+// nobody has spent never walks the battlefield looking for a
+// permission it does not need, and a permission can only ever turn a
+// "yes" into a "no" — never the other way.
+//
 // Caller must hold g.mu.
-func (g *Game) exhaustedLocked(source uuid.UUID, exhaust bool, label string) bool {
+func (g *Game) exhaustedLocked(asker, source uuid.UUID, exhaust bool, label string) bool {
 	if !exhaust {
 		return false
 	}
-	return g.ActivatedThisGame(source, label) > 0
+	if g.ActivatedThisGame(source, label) == 0 {
+		return false
+	}
+	return !g.exhaustPermittedLocked(asker)
 }
 
 // resetActivationTurnTallyLocked empties the per-turn half and leaves

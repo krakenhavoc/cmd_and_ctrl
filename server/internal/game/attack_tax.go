@@ -511,7 +511,17 @@ func (g *Game) payAttackTaxLocked(payer uuid.UUID, price AttackTaxPrice, params 
 	for _, id := range params.LockedSources {
 		excluded[id] = true
 	}
-	_, err := g.payAbilityManaCostLocked(p, source, label, price.Cost, ActivateAbilityParams{
+	// #1184: the helper takes a parsed cost now, because an activated
+	// ability's is priced through the CR 601.2f pass before it gets
+	// there. An attack tax is NOT (CR 508.1a is a cost to attack, not
+	// a cost to activate, and no printed modifier touches it), so it
+	// parses its own string and hands the number over unpriced —
+	// which is exactly what it did before.
+	taxCost, perr := ParseCost(price.Cost)
+	if perr != nil {
+		return &AttackTaxUnpaidError{Cost: price.Cost, Err: ErrInvalidParam}
+	}
+	_, err := g.payAbilityManaCostLocked(p, source, label, taxCost, ActivateAbilityParams{
 		Strict:        true,
 		AutoTap:       params.AutoTap,
 		PhyrexianLife: params.PhyrexianLife,

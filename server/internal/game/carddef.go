@@ -78,6 +78,11 @@ type CardDef struct {
 	// addendum §11), read by SelfCostModifiersFor for the spell being
 	// priced and never from the battlefield.
 	SelfCostModifiers []CostModifier
+	// ExhaustPermissions are the "you may activate exhaust abilities
+	// as though they haven't been activated" statics this permanent
+	// contributes (#1184) — Elvish Refueler. Read from the
+	// battlefield through ExhaustPermissionsForCard.
+	ExhaustPermissions []ExhaustPermission
 	// AttackTaxes are the "creatures can't attack you unless their
 	// controller pays {N}" statics this permanent contributes
 	// (CR 508.1a, ADR 0080) — Propaganda, Ghostly Prison, Windborn
@@ -311,6 +316,12 @@ func init() {
 	CatalogCostModifiers = func(key string) []CostModifier {
 		if d := catalogDef(key); d != nil {
 			return d.CostModifiers
+		}
+		return nil
+	}
+	CatalogExhaustPermissions = func(key string) []ExhaustPermission {
+		if d := catalogDef(key); d != nil {
+			return d.ExhaustPermissions
 		}
 		return nil
 	}

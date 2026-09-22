@@ -180,7 +180,7 @@ func TestAnExhaustManaAbilityDoesNotLockTheOtherManaAbility(t *testing.T) {
 	// spent ability and lands on the one behind it, which is what a
 	// per-SOURCE check outside the picker would have got wrong.
 	g.mu.Lock()
-	picked := g.autoTapAbilityFor(src, ManaAbilitiesForCard(*g.findCardByIDLocked(src)))
+	picked := g.autoTapAbilityFor(g.Seats[0].ID, src, ManaAbilitiesForCard(*g.findCardByIDLocked(src)))
 	g.mu.Unlock()
 	if picked == nil || picked.Label != plainManaLabel {
 		t.Errorf("autoTapAbilityFor picked %+v, want the repeatable ability behind the spent one", picked)
