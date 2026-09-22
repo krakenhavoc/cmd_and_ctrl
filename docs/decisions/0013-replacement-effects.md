@@ -7,6 +7,7 @@
 **Amended:** 2026-09-17 · Branch `fix/815-847-replacement-outcomes` — §5a's "never collapsed" limit now holds on the multi-effect order paths too, see [§5h](#5h-amendment-2026-09-17-a-may-inside-a-chosen-order-is-still-a-question)
 **Amended:** 2026-09-17 · Branch `fix/815-847-replacement-outcomes` — §5d's landed-outcome rule now decides the destruction COUNT as well, see [§5i](#5i-amendment-2026-09-17-destroyed-this-way-counts-what-was-destroyed)
 **Amended:** 2026-09-19 · Branch `feat/1027-1026-discard-continuation-and-springbloom` — §5x's run is shared with the prompted DISCARD, and §5g's "no continuation form" note is closed, see [§5y](#5y-amendment-2026-09-19-a-prompted-discard-is-the-same-run-and-both-verbs-share-one-body)
+**Amended:** 2026-09-22 · Branch `feat/amount-replacements` — §13's deferred `RepEventManaProduced` is answered and the draw event grows a COUNT, see [§5ab](#5ab-amendment-2026-09-22-the-last-two-amount-replacements--mana-produced-and-cards-drawn)
 
 ## Context
 
@@ -3064,6 +3065,210 @@ shape:
   `ContinuationCensus.ChoiceResumeFrames`.
 
 
+### 5ab. Amendment, 2026-09-22: the last two amount replacements — mana produced and cards drawn
+
+*Status: Accepted. Issue [#1222](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1222),
+seam rows "Mana-production replacement event" and "Draw-replacement count"
+(`docs/engine-seams.md`), tracker S39 [#882](https://github.com/krakenhavoc/cmd_and_ctrl/issues/882).*
+
+#### Context
+
+The CR 614 surface has grown one amount-carrying event at a time —
+`RepEventCreateTokens` (ADR 0061 decision 1), `RepEventKeywordAction`
+(§5s), `RepEventMill` (§5u, §5aa) — and each of them was the same gap
+read off a different card: a mutation that a printed replacement wants to
+change the NUMBER of, reaching the board with no event that names the
+number. Two were left on the registry, and they are the last two:
+
+> "If you tap a permanent for mana, it produces twice as much of that
+> mana instead."  — Mana Reflection; Nyxbloom Ancient's is three
+
+> "If you would draw a card, draw two cards instead."  — Thought
+> Reflection; Alhammarret's Archive, with an "except the first" clause
+
+The draw half is the narrower one. `RepEventDraw` has existed since S17
+and Notion Thief has been rewriting its DRAWING PLAYER since S20; what
+there was no room on the event for is HOW MANY.
+
+The mana half had no event at all, and §13 of this ADR is where it was
+last looked at: sub-PR 6 named `RepEventManaProduced` as a "seventh
+integration point outside the core S17 scope" and deferred it. Four
+production sites have grown since (ADR 0074 §3 lists three of them, and
+#742's pick is the fourth), so the deferral was the right call then and
+the shape is clearer now.
+
+#### Decision 1 — `RepEventProduceMana` carries COLOURS, not a count
+
+CR 106.12b replaces the mana an object produces, and both printed cards
+say "twice as much of **that** mana". A bare count could not say which
+mana: a doubled Forest is `{G}{G}` and a doubled Sol Ring is
+`{C}{C}{C}{C}`. So the event carries `ManaColors []string`, one entry per
+mana, in the order it would reach the pool, and `MultiplyMana(n)` is the
+whole arithmetic — a method on the event rather than a card-side loop,
+because a card reaching for the slice directly could change the COLOURS,
+which CR 106.12b does not license.
+
+The event also carries `ManaFromTap`, and it is the printed CONDITION
+rather than a convenience: both cards say "if you **tap** a permanent for
+mana" (CR 106.12a), so a resolving spell's `Add {B}{B}{B}`, a mana
+ability with no `{T}`, and a triggered mana ability's own output
+(Wild Growth's extra `{G}`, which comes from the Aura) are all
+productions and none of them is doubled. It is the same bit
+`PendingChoice.ManaTapped` already carries for ADR 0074 §3's triggers,
+read at the same two places.
+
+**One body, four sites.** `produceManaLocked` (`produce_mana.go`) is now
+the only place in the engine that mints a `ManaToken` and emits
+`EventManaAdded`:
+
+| site | what it produces | window opens |
+|---|---|---|
+| `ActivateManaAbility` | a printed single-colour slot | at the activation |
+| `ResolveManaChoice` | a pipe slot's answered pick | at the PICK |
+| `materializePlanLocked` | the auto-tap executor's own taps | at the tap |
+| `addManaSlotsLocked` | a spell's `Add …`, and #763's triggers | at the add, `ManaFromTap` false |
+
+The pick is the interesting row. A multi-option slot has no settled
+colour at the activation, so it opens no window there; the window opens
+when the pick is answered, which is the only moment a Birds of Paradise's
+colour exists — ADR 0074 §3 fires the triggered mana abilities from the
+same place for the same reason. The consequence is the one the card
+wants: a doubled Birds is still ONE pick minting two of the chosen
+colour, so it cannot pay `{W}{U}`.
+
+#### Decision 2 — A production can never pause, and that is a rule
+
+Every `RepEventProduceMana` sets `mustSettleNow`. For the two halves of
+#793's cost line that flag is a cost argument; here it is CR 605.3a:
+activating a mana ability is a single indivisible step with no stack and
+no priority window inside it, so there is no point between paying the
+cost and producing the mana at which anybody can be asked anything. The
+auto-tapper adds a second, independent reason — its contract is "no
+further player decisions required", and a prompt raised halfway through
+`materializePlanLocked` strands a half-tapped board mid-cast.
+
+What that costs is the CR 616.1 ordering choice when two production
+replacements share a window; the apply-loop applies the gathered order
+inline instead, one effect per pass. It is unobservable for both printed
+cards — ×2 then ×3 is ×6 in either order — and it is stated here rather
+than discovered later, because a future production replacement that is
+NOT a multiplication would make it observable.
+
+**What that buys is no tail.** A mill, a token creation and a keyword
+action each carry one because their window can pause and the resume has
+to finish what the caller asked for. A window that cannot pause owes
+nothing across a boundary that does not exist, so all three of #982's
+"what does this kind owe" switches say *nothing, and here is why*.
+
+#### Decision 3 — The auto-tap PLANNER prices through the same predicate
+
+A Mana Reflection board pays more per land, so a planner that booked the
+printed amount would tap two lands where one pays — and, worse, would
+read a payable cast as unpayable in strict mode, which is the failure
+#779 and #273 are both about. The planner cannot open a real window: it
+runs under a read lock inside `ReadSnapshot` and must not write the
+once-per-event map.
+
+So `producedManaPreviewLocked` walks the SAME gathered `AppliesTo` /
+`Replace` pairs against a scratch event, with its own applied set
+standing in for the map. One predicate, two readers. It is sound only
+because a replacement of this kind rewrites the event and nothing else —
+which is the contract written on `ManaColors`, and the reason the preview
+skips anything that would ask its controller a question (there is nobody
+to ask while planning, and the real window skips them too under
+`mustSettleNow`).
+
+`priceProducedSlotsLocked` then expresses the answer in the grammar the
+planner already has: a doubled single-option slot becomes two slots of
+that colour (what `ParseProducedMana` already does for `{G2}`), and a
+doubled multi-option slot becomes one slot with per-option `Amounts` —
+#779's "N mana of any one color", which `appendTapSource` already expands
+into one candidate per colour. That is what makes a doubled Birds unable
+to pay `{W}{U}` in the PLAN as well as in the pool.
+
+The EXECUTOR does not price. It produces from the printed slots and lets
+the real window apply the amount; pricing there too would multiply twice.
+What it takes from the plan is the booked COLOUR — `plannedTap.OneColor`,
+which the printed slot list cannot show as a pick — and `firstSlotOffering`
+is how it finds the slot that colour was booked for.
+
+Both halves are gated on `producesManaReplacementsExistLocked`, one
+battlefield walk asking only the watch key, because on ~every board the
+answer is no and the pricing pass is a gather per colour per slot.
+
+#### Decision 4 — `DrawCount` is per INSTRUCTION, and its base is always one
+
+CR 121.2: "if a player is instructed to draw multiple cards, that player
+performs that many individual card draws". `DrawNForEffect` has always
+looped through `drawCardLocked`, so a "draw three" is already three
+events — and that is what makes the count's base one and makes a doubler
+double EACH of them. A Thought Reflection on Divination draws four.
+
+The cards the settled count asks for are then drawn one at a time
+(`actuallyDrawCardsLocked`), because every per-card payoff in the catalog
+reads `EventDrawCard` — Nekusar, Sheoldred, Consecrated Sphinx, Fate
+Unraveler — and a doubled draw that emitted one event would fire them
+once for two cards.
+
+**The window is NOT re-opened for the extra cards.** They are one event,
+and CR 614.5's once-per-event tracking covers all of them. That is what
+stops a doubler from doubling its own output forever, and it is what
+makes two Thought Reflections draw FOUR rather than three: the second
+multiplies the count the first left, through the ordinary CR 616.1
+apply-loop, exactly as two mill doublers do.
+
+**The declared consequence**, and it is the one place this is weaker than
+paper: a CANCEL-style draw replacement sharing the window with a doubler
+takes the whole doubled draw rather than one card of it. Dredge in paper
+replaces a single card draw, so against "draw two" it applies to one of
+the two; here the affected player orders the two replacements and a
+dredge ordered second eats both. Nothing in the catalog is affected —
+no dredge card is catalogued, and Notion Thief redirects rather than
+cancels, so it composes exactly as printed — and the fix, if a dredge
+card is ever written, is to re-open the per-card window with the
+once-per-event map carried across, which is the shape §5aa gave a mill
+run.
+
+#### Decision 5 — "Except the first one you draw in each of your draw steps"
+
+Alhammarret's Archive prints it and so does Notion Thief, and the engine
+keeps no per-draw-step draw tally. Both read it as "except ANY draw
+during that player's own draw step", and the Archive ships the same
+`caveats` line Notion Thief does. The direction is the same in both
+files even though the cards point opposite ways: the Thief steals one
+card fewer, the Archive gives its controller one card fewer. Weaker for
+the replacement's controller, never stronger.
+
+`drawnInOwnDrawStep` (`cards/effects/draw_replacements.go`) is now the
+one copy of the predicate, and Notion Thief's inline version is gone.
+Closing it properly is a per-draw-step tally on the player — the other
+half of the "Draw-replacement count" row, which Teferi's Ageless Insight
+also waits on.
+
+#### Consequences
+
+- The "Mana-production replacement event" and "Draw-replacement count"
+  rows close. Mana Reflection, Nyxbloom Ancient and Thought Reflection
+  ship `full`; Alhammarret's Archive ships with decision 5's caveat, and
+  its life half needed no engine work at all (#482's window, shared with
+  Rhox Faithmender through the new `life_replacements.go`).
+- §13's deferred `RepEventManaProduced` is answered, seventeen sprints
+  later and with four production sites instead of one.
+- `produceManaLocked` is a real unification: five copies of
+  "`AddMana` then `EmitEvent(EventManaAdded)`" became one, which is also
+  why the doubled tokens keep their spend restrictions (#259) without
+  anybody remembering to copy that line.
+- The CR 616.1 ordering prompt is now reachable on a DRAW for the first
+  time from the catalog: a Thought Reflection beside an Alhammarret's
+  Archive asks the drawer to order two replacements that agree. That is
+  the printed behaviour and the same cost §5a already accepted for two
+  different token doublers.
+- One more `ReplacementEventKind`, so the five switches #982 enumerates
+  are five arms longer. Three of them say "nothing is owed", which is a
+  written decision rather than a fall-through — and the back-out for the
+  fourth (`affectedPlayerForEvent`) is the gate test failing by name.
+
+
 ### 6. Six pipeline integration points (five mutations + step transition)
 
 The core five mutations named in the sprint plan are the rules-
@@ -3336,6 +3541,17 @@ sub-PR 6:
 
 Scope decision deferred to sub-PR 6 PR-open time with an explicit
 user prompt. Either outcome is tracked (§Consequences below).
+
+**Deferred, then closed 2026-09-22 by
+[§5ab](#5ab-amendment-2026-09-22-the-last-two-amount-replacements--mana-produced-and-cards-drawn)
+(#1222).** S17 held the clauses; the event landed seventeen sprints later
+as `RepEventProduceMana`, and by then there were FOUR production sites
+rather than the one this section imagined — which is why the deferral was
+right. Mycosynth Lattice's own two clauses are still not written: "lands
+tap for any color" is a layer-4 grant on the mana ability rather than a
+replacement of the amount, and "no land's mana ability adds non-colorless"
+is a COLOUR rewrite, which decision 1 of §5ab deliberately does not offer
+the catalog.
 
 ## Out of scope (explicit deferrals)
 
