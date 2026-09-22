@@ -753,3 +753,86 @@ at all.
   it), and "no" is an ANSWER rather than the absence of one — running
   it on a drop would be `dropDecline`'s claim, not this one's. The row
   is worth revisiting with the first cross-table confirm.
+
+## Amendment — 2026-09-22: three resolution-time picks take their rows (#1214)
+
+**Status:** Accepted · 2026-09-22 · S36 — Tables that wedge: the engine's
+dead ends
+**Issue:** [#1214](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1214)
+**Related:** [ADR 0018](0018-triggers-on-the-stack.md)'s amendment of the
+same date (what the three kinds are), [#1006](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1006)
+(`dropDefault`), [#1019](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1019)
+/ [#1027](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1027) (the
+run the action reaches through)
+
+#1214 added three `PendingChoiceKind`s — `reveal_pick`,
+`their_permanents`, `own_permanents` — and the never-reassign table
+above gains three rows. Nothing about the mechanism changes; what is
+worth recording is which column each one lands in and why, because two
+of the three are the first prompts the engine has ever queued that are
+about another player's material **by construction** rather than by a
+field a card happened to set.
+
+| Kind | Reassigned? | Drop action | Why |
+|---|---|---|---|
+| `reveal_pick` | **yes** | `dropDefault` | CR 800.4g, and its second sentence besides: the cards are the CONTROLLER's, revealed off their library, and the choice was to be made by an opponent — so another opponent makes it if there is one. Gifts Ungiven does not stop being a spell because the opponent it named conceded. |
+| `their_permanents` | **yes** | `dropDefault` | CR 800.4g — the permanents belong to a seat that is not the chooser. The candidate prune already drops exactly the ones leaving with the departed seat. |
+| `own_permanents` | no | `dropDefault` | The chooser IS the permanents' controller, so the whole pool is material CR 800.4a takes out of the game in the same breath. Scapeshift asking which of YOUR lands you sacrifice has nothing left to ask once you are gone. |
+
+**The `choose_cards` row above now reads differently, and the change is
+a fix.** It was justified by "a pile split's first half, over cards the
+splitter does not own" — and that half is a `reveal_pick` since #1214,
+which is what it always was. The `choose_cards` row keeps
+`{reassign: true}` on its own merits (Thoughtseize-shaped picks over
+another player's pool), but the pile split is no longer what it rests
+on.
+
+**And the pile split's first leg stops losing its card.** Its drop was
+a `dropDefault` that found no run and no option frame on the prompt and
+so ran nothing — Fact or Fiction putting neither pile anywhere, which
+is the exact failure the #1006 amendment above names and fixes ONE LEG
+FURTHER ALONG. Both legs are now covered: the first is one leg of a run
+and settles with nothing separated (the controller still takes a pile),
+the second is the `option_pick` #1006 already covered.
+
+**Why all three take `dropDefault` and none takes `dropDecline`.** None
+of them is a cost or a choice about whether to pay one, so CR 800.4f's
+"that cost is not paid" has nothing to say about them; what the rule
+that ends the question leaves behind is simply the rest of the card.
+Each is one LEG of a RUN, so the action reaches `settleRunLegLocked`
+through `PendingChoice.promptRun` — the branch
+`defaultDroppedChoiceLocked` takes on the run link rather than on the
+kind (#1027) — and the three kinds needed **no new code at all** in the
+sweep, the performer, or the two gates. That was the test of whether
+#1027's "branch on the prompt, not on its kind" was the right shape, and
+it held: the first three kinds added after it cost the departure
+machinery one map row each.
+
+### Consequences
+
+**Good**
+
+- The three rows in `docs/engine-seams.md` close on a table that had
+  already been made ready for them. Adding a kind is now: one row in
+  `choiceGateDecisions`, one in `choiceDepartureDecisions`, one case in
+  `legal.choiceMoves` — and two tests fail until all three exist.
+- `reassignChoiceLocked`'s candidate prune is one `isCardSetPickKind`
+  arm instead of a `choose_cards` case, so the next kind carrying that
+  payload inherits the prune rather than silently missing it.
+
+**Tradeoffs**
+
+- **A reassigned `their_permanents` prompt keeps its question, not its
+  reason.** CR 800.4g hands the choice to another player and the card
+  still does what it printed — but "you choose from among the permanents
+  that player controls" is a decision a card gave to a specific seat for
+  a reason, and the inheritor may be the player whose board is on offer.
+  The rule says what it says; the alternative (drop it) loses the rest
+  of the instruction for every OTHER seat the run asked, which is the
+  larger wrong.
+- **`own_permanents`' drop is silent.** It touches no material and
+  takes no branch, which is `dropDefault`'s whole shape, so a departure
+  mid-Scapeshift searches for zero lands and says nothing about why.
+  The `EventPendingChoiceDropped` breadcrumb is still emitted by the
+  prune paths; the departure sweep's own drop is not narrated, and that
+  is unchanged from every other kind.

@@ -889,6 +889,122 @@ one does not have. The `pickStillInPickZoneLocked` re-check on submit
 still refuses a stale pick, so the worst an un-pruned list can do is cost
 one rejected click.
 
+**Amendment (2026-09-22, #1214): three resolution-time picks over
+cards and permanents — one payload, three kinds, one continuation.**
+
+The #568 amendment above built the one resolution-time question the
+queue could not ask ("choose one of the following", addressed to any
+seat) and said a pile split needs no kind at all because it is two
+chained prompts. Three rows of `docs/engine-seams.md` were the
+questions it did not build, and all three are about CARDS or
+PERMANENTS rather than about a labelled branch:
+
+- **an opponent picks from a set you revealed** — Gifts Ungiven
+  ("target opponent chooses two of those cards"), Intuition;
+- **a non-owner chooses among another player's permanents** — Tragic
+  Arrogance ("for each player, you choose from among the permanents
+  that player controls …"). `PendingChoiceSacrifice` is queued
+  `{Chooser: playerID, FromPlayer: playerID}` at its one queue site and
+  `ResolveSacrificeChoice` refuses anything else, so nothing could
+  point a permanent pick across the table;
+- **"choose N of your own permanents", at resolution** — Scapeshift's
+  "sacrifice any number of lands". The existing sacrifice prompt is a
+  fixed count asked one permanent at a time, which cannot say "any
+  number" and cannot be read for a total.
+
+**One payload.** All three carry the choose-cards payload —
+`ChooseCards`, `ChooseMin`, `ChooseMax` and a `chooseCardsFrame` — so
+`isCardSetPickKind` (`chained_choice.go`) admits them, beside
+`choose_cards`, CR 502.3's `untap_choice` and #1198's
+`entry_reveal_from_hand` (the amendment above), and every rule about the
+payload is written once and asks it:
+`checkChooseCardsPicksLocked` (bounds, candidates, duplicates, the
+live-zone re-check and #1017's set-level `Validate`),
+`ChooseCardsPickLegalLocked` (the enumerator's window onto that),
+`setCardSetCandidates`, and both prunes that keep an open prompt honest
+as the board moves under it. `reassignChoiceLocked`'s candidate prune
+became one `isCardSetPickKind` arm in the same pass, replacing the
+`PendingChoiceChooseCards` case that was the same five lines.
+
+**Three kinds, and each difference is observable.** The test surveil
+had to pass to be a kind rather than a flag on scry:
+
+| | `reveal_pick` | `their_permanents` | `own_permanents` |
+|---|---|---|---|
+| the pool | cards the card REVEALED (CR 701.20) | another seat's battlefield | the chooser's own battlefield |
+| what a non-chooser sees | the cards and the bounds — the reveal is public | the cards and the bounds — the battlefield is public | the same |
+| how a bot should read it | rank the pool by what matters (`Options.OrderTargets`) | the same | rank by what the seat would miss LEAST (`Options.OrderCostFuel`) |
+| CR 800.4g | reassigned | reassigned | never — it is the chooser's own material |
+
+A `choose_cards` over the same IDs would be wrong on every row.
+`filterPendingChoices` withholds even a choose_cards prompt's BOUNDS
+from a non-chooser, because its pool is usually a hand; running a
+public reveal through that would hide from the table a fact it watched
+happen. And a policy handed one ordering hook where the other was
+wanted keeps its worst land and hands an opponent their bomb — the
+mistake `Options.OrderCostFuel` exists as a separate type to prevent.
+
+**One continuation: they are RUNS.** Every one of the three is queued
+through `runPromptsLocked` (`prompt_run.go`), the shape #1019 built for
+a prompted sacrifice and #1027 generalised for a prompted discard. That
+is not reuse for its own sake — Tragic Arrogance is ONE printed
+instruction asked as one prompt per player, and its "then each player
+sacrifices all other nonland permanents they control" may not run until
+the last of them is answered. It also settles the drop path for free:
+each prompt is one LEG, so `dropDefault` reaches `settleRunLegLocked`
+through `PendingChoice.promptRun` — the branch
+`defaultDroppedChoiceLocked` already takes on the RUN LINK rather than
+on the kind (#1027) — and none of the three needed a case of its own
+anywhere. See ADR 0060's amendment of the same date for the departure
+rows.
+
+**Which kind a leg is queued as is decided in one line.**
+`PermanentsPickedThenForEffect` asks whether the leg's subject IS the
+chooser: yes is an `own_permanents`, anything else is a
+`their_permanents`. Tragic Arrogance walks every player including its
+own controller, so one printed sentence is both kinds and the card says
+nothing about either.
+
+**A pile split still needs no kind of its own — but its first leg now
+has a name.** `QueuePileSplitForEffect` is unchanged in shape: a pick
+addressed to the splitter, chained to an `option_pick` addressed back
+to the controller. What changed is that the first leg is a
+`reveal_pick` rather than a `choose_cards`, which is what it always
+was — "an opponent picks from a set you revealed" is the sentence Fact
+or Fiction prints. Two things follow. The prompt stops hiding its
+bounds from the rest of the table. And it fixes a hole the #1006
+amendment to ADR 0060 left one leg upstream of where it was looking: a
+splitter who left AFTER the question went up hit a `dropDefault` that
+found no run and no option frame on the prompt, ran nothing, and Fact
+or Fiction put neither pile anywhere — the exact failure that amendment
+names. It is now one leg of a run, so the withdrawal settles with
+nothing separated and the controller still takes a pile.
+
+**All three block the table**, for `option_pick`'s reason stated once:
+the effect that asked is paused mid-resolution and its continuation is
+the rest of the card. `their_permanents` is the one worth naming out
+loud, because it LOOKS like `pay_unless`'s background question — a
+prompt addressed to somebody who is not the permanents' controller —
+and is not: nothing about a Rhystic tax is holding a spell
+half-resolved.
+
+**Narrated.** `EventCardsChosen` → `LogChooseCards`, for the reason
+#1023 gave a chosen colour a line: a decision the table watched
+somebody make is a decision the history has to carry. Without it the
+only trace of Tragic Arrogance is a column of sacrifices with nobody's
+name on them.
+
+**Out of scope, stated.** The seam rows keep two cards each that this
+does not reach, and both are a second axis rather than a deeper version
+of this one. The Legend of Yangchen's chapter I ("starting with you,
+each player chooses up to one permanent … from among permanents your
+opponents control") needs several players choosing from ONE SHARED
+POOL, with each answer narrowing the next — a run over one pool, not a
+run over one pool each. Gluntch, the Bestower needs two target players
+before the pick and a different effect per seat. Neither is blocked on a
+kind any more; both are card work plus a sequencing shape, and they
+stay on their rows.
+
 ## Out of scope (explicit deferrals)
 
 - **Treasure's sac-for-mana** is inert until S21 ships sacrifice
