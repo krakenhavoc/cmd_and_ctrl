@@ -214,22 +214,37 @@ func TestAnExileOfTheTopCardsIsNotAMill(t *testing.T) {
 	}
 }
 
-// An unbounded `until` run — Helm of Obedience's "mills until a
-// creature card is put into their graveyard" — names no number, so
-// there is nothing for a doubler to double.
-func TestAnUnboundedUntilMillOpensNoAmountWindow(t *testing.T) {
+// An `until` run opens ONE amount window PER REPETITION (#1176).
+//
+// This used to assert the opposite — that a run names no number and so
+// opens no window at all — and the engine really did behave that way.
+// It was the wrong model: "mills a card, then repeats this process
+// until …" gives a one-card mill instruction and repeats it, and a
+// mill-amount replacement replaces each of them. The bound is still
+// not a number anybody can double (TestBruvacDoublesAMillAmountAndNotHelmsBound
+// in the catalog tests pins that), but the repetitions are.
+//
+// Three cards land here rather than two: the clause wants two, the
+// first repetition is doubled to two and reaches it, and the run stops
+// with both of them in the graveyard.
+func TestAnUntilRunOpensOneAmountWindowPerRepetition(t *testing.T) {
 	g := newActiveGame(t)
 	p, them := g.Seats[0], g.Seats[1]
 	fired := 0
+	var sawCounts []int
 	g.WithWriteLock(func() {
 		stockLibrary(p, 6)
-		g.RegisterReplacementForTest(millAmountReplacement(them.ID, func(n int) int { fired++; return n * 2 }, "twice"))
+		g.RegisterReplacementForTest(millAmountReplacement(them.ID, func(n int) int {
+			fired++
+			sawCounts = append(sawCounts, n)
+			return n * 2
+		}, "twice"))
 	})
 
 	var got []uuid.UUID
 	g.WithWriteLock(func() {
 		err := g.MillToZoneThenForEffect(p.ID, 0, ZoneGraveyard, func(landed []Card) bool {
-			return len(landed) == 2
+			return len(landed) >= 2
 		}, func(_ *Game, milled []uuid.UUID) error {
 			got = milled
 			return nil
@@ -239,11 +254,81 @@ func TestAnUnboundedUntilMillOpensNoAmountWindow(t *testing.T) {
 		}
 	})
 
-	if fired != 0 {
-		t.Errorf("the mill replacement fired %d times on an unbounded until-run", fired)
+	if fired != 1 {
+		t.Errorf("the mill replacement fired %d times, want 1 — one repetition reached the "+
+			"clause, and each repetition is its own instruction", fired)
+	}
+	for i, n := range sawCounts {
+		if n != 1 {
+			t.Errorf("repetition %d asked the window about a mill of %d, want 1 — the printed "+
+				"instruction is \"mills a card\"", i, n)
+		}
 	}
 	if len(got) != 2 {
-		t.Errorf("the until-run milled %d cards, want the 2 its predicate allowed", len(got))
+		t.Errorf("the until-run milled %d cards, want 2 — one repetition, doubled", len(got))
+	}
+	if len(p.Graveyard.Cards) != 2 {
+		t.Errorf("graveyard holds %d, want 2", len(p.Graveyard.Cards))
+	}
+}
+
+// The same run with NOTHING watching still mills one card per
+// repetition, so a clause that wants two cards gets exactly two.
+func TestAnUntilRunWithNoReplacementMillsOneCardPerRepetition(t *testing.T) {
+	g := newActiveGame(t)
+	p := g.Seats[0]
+	g.WithWriteLock(func() { stockLibrary(p, 6) })
+
+	var got []uuid.UUID
+	g.WithWriteLock(func() {
+		err := g.MillToZoneThenForEffect(p.ID, 0, ZoneGraveyard, func(landed []Card) bool {
+			return len(landed) >= 2
+		}, func(_ *Game, milled []uuid.UUID) error {
+			got = milled
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("MillToZoneThenForEffect: %v", err)
+		}
+	})
+
+	if len(got) != 2 {
+		t.Errorf("the until-run milled %d cards, want 2", len(got))
+	}
+	if len(p.Library.Cards) != 4 {
+		t.Errorf("library holds %d, want 4 — the run takes one card per repetition", len(p.Library.Cards))
+	}
+}
+
+// A run whose clause never accepts ends at the bottom of the library,
+// with no error and no loss (CR 701.13b) — and it does so one
+// repetition at a time rather than planning the whole library up
+// front.
+func TestAnUntilRunThatNeverStopsEndsAtTheBottomOfTheLibrary(t *testing.T) {
+	g := newActiveGame(t)
+	p := g.Seats[0]
+	g.WithWriteLock(func() { stockLibrary(p, 5) })
+
+	var got []uuid.UUID
+	g.WithWriteLock(func() {
+		err := g.MillToZoneThenForEffect(p.ID, 0, ZoneGraveyard, func([]Card) bool { return false },
+			func(_ *Game, milled []uuid.UUID) error {
+				got = milled
+				return nil
+			})
+		if err != nil {
+			t.Fatalf("MillToZoneThenForEffect: %v", err)
+		}
+	})
+
+	if len(got) != 5 {
+		t.Errorf("milled %d cards, want the whole 5-card library", len(got))
+	}
+	if len(p.Library.Cards) != 0 {
+		t.Errorf("library holds %d, want 0", len(p.Library.Cards))
+	}
+	if p.Eliminated {
+		t.Error("running a library out with a mill is not a loss (CR 701.13b)")
 	}
 }
 
@@ -500,5 +585,96 @@ func TestTheAmountWindowRunsBeforeThePerCardOne(t *testing.T) {
 	}
 	if len(p.Graveyard.Cards) != 3 {
 		t.Errorf("graveyard holds %d, want 3", len(p.Graveyard.Cards))
+	}
+}
+
+// An `until` run whose every repetition is replaced away TERMINATES.
+//
+// The termination guard, and the one hazard the per-repetition model
+// introduced (#1176): a repetition is a real instruction now, so
+// CR 614.10's null replacement can cancel it, and a run that asked for
+// a repetition which moves nothing would ask for it forever. The old
+// model could not reach this — a run named no number, so it opened no
+// amount window and nothing could cancel it.
+//
+// The run ends with an empty landed list, the library untouched, and
+// the caller's continuation run exactly once.
+func TestAnUntilRunEndsWhenEveryRepetitionIsReplacedAway(t *testing.T) {
+	g := newActiveGame(t)
+	p := g.Seats[0]
+	g.WithWriteLock(func() {
+		stockLibrary(p, 6)
+		g.RegisterReplacementForTest(millCancelReplacement("no mill"))
+	})
+
+	calls := 0
+	var got []uuid.UUID
+	g.WithWriteLock(func() {
+		err := g.MillToZoneThenForEffect(p.ID, 0, ZoneGraveyard, func([]Card) bool { return false },
+			func(_ *Game, milled []uuid.UUID) error {
+				calls++
+				got = milled
+				return nil
+			})
+		if err != nil {
+			t.Fatalf("MillToZoneThenForEffect: %v", err)
+		}
+	})
+
+	if calls != 1 {
+		t.Errorf("the continuation ran %d times, want exactly 1", calls)
+	}
+	if len(got) != 0 {
+		t.Errorf("%d cards landed, want none", len(got))
+	}
+	if len(p.Library.Cards) != 6 {
+		t.Errorf("library holds %d, want the untouched 6", len(p.Library.Cards))
+	}
+	if len(p.Graveyard.Cards) != 0 {
+		t.Errorf("graveyard holds %d, want none", len(p.Graveyard.Cards))
+	}
+}
+
+// The guard measures the library's DEPTH, not the landed list, so a run
+// that lands NOTHING because every card is being diverted still walks
+// the whole library — Helm of Obedience under Rest in Peace, which is
+// the famous combo and must not be mistaken for a stalled run.
+func TestAnUntilRunThatLandsNothingStillWalksTheLibrary(t *testing.T) {
+	g := newActiveGame(t)
+	p := g.Seats[0]
+	g.WithWriteLock(func() {
+		stockLibrary(p, 5)
+		// Every card on its way to the graveyard is exiled instead —
+		// Rest in Peace's clause, as a test injection.
+		g.RegisterReplacementForTest(ReplacementEffect{
+			Watches: []EventKind{EventZoneMove},
+			AppliesTo: func(ev *ReplacementEvent, _ *Game, _ *Card) bool {
+				return ev.Kind == RepEventMove && ev.NewZone == ZoneGraveyard
+			},
+			Replace: func(ev *ReplacementEvent, _ *Game, _ *Card) error {
+				ev.NewZone = ZoneExile
+				return nil
+			},
+			Label: "exile it instead",
+		})
+	})
+
+	var got []uuid.UUID
+	g.WithWriteLock(func() {
+		err := g.MillToZoneThenForEffect(p.ID, 0, ZoneGraveyard, func([]Card) bool { return false },
+			func(_ *Game, milled []uuid.UUID) error {
+				got = milled
+				return nil
+			})
+		if err != nil {
+			t.Fatalf("MillToZoneThenForEffect: %v", err)
+		}
+	})
+
+	if len(got) != 0 {
+		t.Errorf("%d cards landed in the graveyard, want none — every one was exiled instead", len(got))
+	}
+	if len(p.Library.Cards) != 0 {
+		t.Errorf("library holds %d, want 0 — landing nothing is not the same as moving nothing", len(p.Library.Cards))
 	}
 }

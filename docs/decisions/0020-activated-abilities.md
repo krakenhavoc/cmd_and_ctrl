@@ -1169,3 +1169,184 @@ is already wired end to end.
 - **A counter cost as an ADDITIONAL cost to cast a spell.** The component
   lives on `AbilityCost`; `AdditionalCost` has its own shape.
 - **A prohibition to refuse against.** §23.
+
+## Addendum (2026-09-22): exhaust, and the activation tally (#1181)
+
+**Status:** Accepted · 2026-09-22 · tracked on
+[#1181](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1181). This
+status covers this section only; every decision above stays accepted
+and unchanged.
+
+### Context
+
+Exhaust is an activated-ability modifier printed on 41 cards across
+`dft`, `tla`, `tle`, `fra`, `ytdm` and `yecl`:
+
+> **Exhaust — {4}: Earthbend 4.** *(Activate each exhaust ability only
+> once.)*
+
+The engine had a shape for the ability and none for the "only once".
+Two things already on `Game` look as though they should answer it and
+neither does:
+
+- `ActivatedAbilityShape.Condition` (the #743 addendum above) is the
+  right GATE and the wrong question. A condition is a predicate over
+  the board; "have I already done this" is a fact about the past, and
+  nothing recorded it.
+- `TurnTally` (#586, `game/turn_tally.go`) counts what a source's
+  abilities **resolved** or **triggered** this turn. Both halves are
+  wrong for exhaust. An exhaust ability countered on the stack is
+  still spent, so the count has to be of ANNOUNCEMENTS; and exhaust
+  never refreshes, while `TurnTally` is emptied on every turn advance
+  by construction.
+
+The seam doc's [Per-source activations-this-turn
+count](../engine-seams.md) row (Quirion Ranger, Wirewood Symbiote,
+boast) wants the same missing number in a different scope. That is why
+this is one record and not two.
+
+### Decision 1: one record, `Game.Activations`, with two scopes
+
+`game/activation_tally.go`:
+
+```go
+type ActivationTally struct {
+    Ever map[string]int `json:"ever,omitempty"` // whole game, never reset
+    Turn map[string]int `json:"turn,omitempty"` // emptied on the turn advance
+}
+```
+
+Both maps are keyed by `ObjectTallyKey(source, Card.ObjectEpoch,
+label)` — the key `ResolvedThisTurn` and `TriggeredThisTurn` already
+use. `Ever` is what exhaust reads (`ActivatedThisGame`); `Turn` is
+what "Activate only once each turn" and boast will read
+(`ActivatedThisTurn`) when their cards are written, and it is here now
+because the two are one write at one call site.
+
+Written in ONE place: `ActivateCatalogAbility`, beside
+`notePlayerActivationLocked`, at the announce. Read in three, all
+through one function — `Game.AbilityExhausted(source, shape)`.
+
+**Mana abilities are deliberately not counted.** They take the other
+entry point (`ActivateManaAbility`, CR 605.3a — no stack, no
+priority), so `effects.ManaAbility` carries no `Exhaust` field and the
+combination is unspellable rather than silently ignored. One printed
+card wants it — **Loot, the Pathfinder**'s "Exhaust — {G}, {T}: Add
+three mana of any one color" — and is not in the catalog for that
+reason.
+
+### Decision 2: the key is the object and the ability's LABEL
+
+Per ABILITY, because a card may print three exhaust abilities (Loot,
+the Pathfinder) and each is activatable once; per OBJECT, because
+CR 400.7 says a permanent that changed zones is a new object with no
+memory of its previous existence.
+
+The label rather than the ability's index: the index is a position in
+`ActivatedAbilitiesForCard`'s FILTERED list, and an
+[ADR 0071](0071-designations-that-switch-abilities-on.md) designation
+switching an ability on renumbers everything behind it. A label is
+what the card printed. `effects.Register` refuses an exhaust ability
+with a blank label, two exhaust abilities on one card sharing a label,
+and a label that prints "Exhaust" without the bit (or the bit without
+the word) — all at boot.
+
+Three printed consequences fall out of the key rather than being
+coded:
+
+| board | answer | why |
+| --- | --- | --- |
+| flicker the permanent | its exhausts are available again | exile and return is two epoch bumps |
+| phase it out | they would not be | phasing is not a zone change (CR 702.25f) and must not bump the epoch when it is built |
+| copy it | the copy has its own | a new instance is a new key (CR 707.2: what a permanent has done is not copiable) |
+
+Phasing is not modelled in this engine. The rule the day it is: **a
+phase-out does not bump `Card.ObjectEpoch`.**
+
+Nothing is deleted at the battlefield exit, for the reason
+`battlefield_exit.go` already gives about `TurnTally`'s per-ability
+counts: the epoch IS the forgetting, so the old object's entries are
+unreachable rather than absent.
+
+### Decision 3: the card side is one bit
+
+`ActivatedAbilityShape.Exhaust bool` / `effects.ActivatedAbility.Exhaust`,
+carried through `activatedShapes`. No per-card logic, no per-card
+condition closure, exactly as `Cycling` is one bit.
+
+It is **not** `Condition` and **not** `ActiveWhen`:
+
+- a `Condition` is CR 602.1b and may be true again tomorrow; the view
+  says `condition_unmet` and the client says "activation condition not
+  met";
+- an `ActiveWhen` designation means the ability is not on the
+  permanent at all, so it is absent from `ActivatedAbilitiesForCard`;
+- an exhausted ability is still printed and still shown, greyed, with
+  a different reason — it is never available again for this object.
+
+A card that prints both sets both. **Bitter Work** ("Exhaust — {4}:
+Earthbend 4. Activate only during your turn.") is the card, and the
+order in `ActivateCatalogAbility` is timing → exhaust → condition, so
+a second activation on your own turn is refused as exhausted rather
+than as badly timed.
+
+### Decision 4: one reader, three refusals
+
+`Game.AbilityExhausted` is read by:
+
+1. `ActivateCatalogAbility` — refuses with `ErrAbilityExhausted`,
+   after the timing check and before X, targets and every cost, so
+   nothing is paid;
+2. `legal.activatedMoves` — does not enumerate the move;
+3. `protocol.viewOfActivatedAbilities` — stamps `exhausted` on
+   `ActivatedAbilityView`, and the client greys the row with
+   "already activated (exhaust)".
+
+That is #544's rule expressed as a property of there being one reader
+rather than three copies of a rule that agree today.
+
+`ErrAbilityExhausted` is its own error and `exhausted` its own wire
+flag, both because the recovery differs: a condition can hold again on
+the next turn, an exhaust only if the permanent becomes a new object.
+
+### Consequences
+
+- `Game.Activations` is classified `carried` in the snapshot plan
+  (#1020's `snapshot_drift_test.go`), so the round-trip property test
+  enforces it. It has to be: "have I used this yet" is game state a
+  player can lose a game over, and a restore that dropped it would
+  hand every exhaust ability on the board back.
+- It rewinds with `Clone` / `RestoreFrom` for the mirror reason — an
+  undo that kept the activation would take an ability away for the
+  rest of the game on the strength of something that no longer
+  happened.
+- `Ever` is never flushed, so it grows by one entry per ability ever
+  activated. That is the cost of "for the whole game" and it is
+  bounded by the length of the game.
+
+### Cards
+
+**Prowcatcher Specialist** (the keyword and nothing else),
+**Greenbelt Guardian** (an exhaust ability beside a repeatable one —
+the per-ability proof on a printed card), **Bitter Work** (exhaust and
+a printed condition, over earthbend) and **Ba Sing Se** (an earthbend
+activation that is deliberately NOT exhaust: it prints "Activate only
+as a sorcery" and repeats every turn). All four `full`.
+
+### Still out of scope
+
+- **The mana-ability half** ([#1183](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1183)). Loot, the Pathfinder (Decision 1). The auto-tapper is the reader with no non-mana counterpart: CR 106.7's "could produce" has to start answering no for a spent exhaust mana ability, or a cast prices itself on mana it cannot get.
+- **Cards that read the record from outside** ([#1184](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1184)). Rangers' Refueler and
+  Afterburner Expert ("Whenever you activate an exhaust ability, …")
+  want an event or a watch, not this map; Elvish Refueler ("you may
+  activate exhaust abilities as though they haven't been activated")
+  wants a permission that overrides the gate; Boom Scholar ("Exhaust
+  abilities of other permanents you control cost {2} less") wants a
+  `CostModifier` that can see the bit. None is built.
+- **The per-turn row itself.** `ActivatedThisTurn` exists and has no
+  reader: Quirion Ranger, Wirewood Symbiote, Varragoth, Broadside
+  Bombardiers and boast are one `Condition` each away and are not in
+  this PR.
+- **Avatar Kuruk**'s "Exhaust — Waterbend {20}: Take an extra turn
+  after this one" still waits on extra turns (#753) and on the
+  waterbend cost, neither of which is this seam.

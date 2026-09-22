@@ -846,7 +846,18 @@ type ActivatedAbility struct {
 	// Distinct from Condition: a Condition greys an ability the
 	// permanent HAS, a gate means it is not there at all.
 	ActiveWhen game.Designation
-	Effect     func(g *game.Game, item *game.StackItem) error
+	// Exhaust marks an exhaust ability — "Exhaust — {4}: Earthbend 4.
+	// (Activate each exhaust ability only once.)" One bit, no card
+	// logic: the engine keys the record by (object, this ability's
+	// Label) and refuses a second activation itself. See
+	// game.ActivatedAbilityShape.Exhaust and ADR 0020's exhaust
+	// addendum (#1181).
+	//
+	// ManaAbility deliberately has no twin of this field: the mana
+	// path does not write the activation record, so the combination
+	// is unspellable rather than silently ignored.
+	Exhaust bool
+	Effect  func(g *game.Game, item *game.StackItem) error
 }
 
 // ManaAbility is one mana-producing activated ability on a permanent.

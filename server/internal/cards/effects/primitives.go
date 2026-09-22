@@ -1140,6 +1140,17 @@ type MillToZone struct {
 	// way; a bound that counts arrivals is the clause, and a card the
 	// CR 614 window sent elsewhere costs it nothing.
 	//
+	// #1176: a run with an Until is a REPEATED one-card mill, not one
+	// mill of many cards — "mills a card, then repeats this process
+	// until …" gives one instruction and repeats it. Each repetition
+	// opens its own CR 614 window on its own amount, so a mill-amount
+	// replacement doubles each of them (Helm of Obedience at X=3 with
+	// Bruvac out mills four cards, as in paper), and the clause is
+	// asked BETWEEN repetitions, with everything that has landed. With
+	// Until set, N > 0 caps the number of REPETITIONS; no card in the
+	// catalog uses it, because a bound a card prints is a clause
+	// (UntilCount).
+	//
 	// A run with an Until is always SEQUENCED, whatever Then says: the
 	// clause is about cards that have arrived, so the mill waits for
 	// each one rather than routing every leg on one line (Apply picks

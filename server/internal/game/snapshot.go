@@ -221,6 +221,12 @@ type GameSnapshot struct {
 	DrawnThisTurn            map[uuid.UUID][]uuid.UUID `json:"drawnThisTurn,omitempty"`
 	TurnTally                TurnTally                 `json:"turnTally"`
 
+	// Activations is the per-(object, ability) activation record
+	// (#1181). Carried because its game-lifetime half IS game state a
+	// player can lose on: a restore that forgot it would hand every
+	// exhaust ability on the board back.
+	Activations ActivationTally `json:"activations,omitempty"`
+
 	// LoopNotice / LoopThreshold are the CR 726 loop breaker (#628).
 	// Both carried: a restore that dropped the notice would resume a
 	// table into a live loop with automatic passing back on, and one
@@ -897,6 +903,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	s.ExtraLandDropsThisTurn = copyIntMap(g.ExtraLandDropsThisTurn)
 	s.DrawnThisTurn = copyUUIDListMap(g.DrawnThisTurn)
 	s.TurnTally = cloneTurnTally(g.TurnTally)
+	s.Activations = cloneActivationTally(g.Activations)
 	s.LoopNotice = cloneLoopNotice(g.LoopNotice)
 	s.LoopThreshold = g.LoopThreshold
 	s.DiscardPending = copyIntMap(g.DiscardPending)
@@ -1534,6 +1541,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.LoyaltyActivatedThisTurn = copyBoolMap(s.LoyaltyActivatedThisTurn)
 	g.SpellsCastThisTurn = copyTallyMap(s.SpellsCastThisTurn)
 	g.TurnTally = cloneTurnTally(s.TurnTally)
+	g.Activations = cloneActivationTally(s.Activations)
 	g.LoopNotice = cloneLoopNotice(s.LoopNotice)
 	g.LoopThreshold = s.LoopThreshold
 	g.LandsPlayedThisTurn = copyIntMap(s.LandsPlayedThisTurn)

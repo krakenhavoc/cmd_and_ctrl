@@ -346,6 +346,11 @@ func b27DealDamageWithExcess(ctx *Context, target uuid.UUID, amount int) (int, e
 // #1161: the run SEQUENCES, so a commander that pauses on CR 903.9
 // holds the rest of this seat's run rather than being walked past, and
 // the total counts the cards that really reached exile.
+//
+// #1176 makes each repetition its own instruction, which changes
+// nothing here: exiling the top card of a library is not a mill
+// (CR 701.13a), so no repetition opens a mill-amount window and
+// nothing can double one.
 func b27ExileTopUntilTotalManaValue(ctx *Context, player uuid.UUID, threshold int) error {
 	if ctx.PlayerByID(player) == nil {
 		return nil

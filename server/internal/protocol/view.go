@@ -1795,6 +1795,16 @@ type ActivatedAbilityView struct {
 	// SorcerySpeed; the server refuses the activation with
 	// ErrConditionNotMet either way. ADR 0020's #743 addendum.
 	ConditionUnmet bool `json:"condition_unmet,omitempty"`
+	// Exhausted is true when this is an exhaust ability ("Activate
+	// each exhaust ability only once") that this object has already
+	// activated, so the engine will refuse it for the rest of the
+	// game (#1181). Its own flag rather than ConditionUnmet because
+	// the two recover differently and the client says so: a condition
+	// may be true again next turn, an exhaust never is until the
+	// permanent becomes a new object (CR 400.7 — a flicker, not an
+	// untap). The client greys the row the same way; the server
+	// refuses with ErrAbilityExhausted either way.
+	Exhausted bool `json:"exhausted,omitempty"`
 	// LoyaltyCost is the loyalty component of a planeswalker's
 	// loyalty ability: +N / 0 / −N (CR 606.4). A POINTER because [0]
 	// is a real printed cost and `omitempty` would erase it — the
@@ -5466,6 +5476,11 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		// controller here (stampActivatedAbilities).
 		if a.Condition != nil && !a.Condition(g, caster, c.InstanceID) {
 			v.ConditionUnmet = true
+		}
+		// #1181: the same reader ActivateCatalogAbility refuses on and
+		// internal/legal drops the move for.
+		if g.AbilityExhausted(c.InstanceID, a) {
+			v.Exhausted = true
 		}
 		if a.Cost.SacrificeOther != nil {
 			v.SacrificeLabel = a.Cost.SacrificeOther.Label

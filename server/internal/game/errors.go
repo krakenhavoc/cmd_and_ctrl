@@ -318,6 +318,16 @@ var (
 	// untouched. Added in the S32 mana-pipeline pass (#352).
 	ErrConditionNotMet = errors.New("game: ability's activation condition is not met")
 
+	// ErrAbilityExhausted is returned by ActivateCatalogAbility when
+	// an exhaust ability has already been activated by this object
+	// ("Activate each exhaust ability only once", #1181). Its own
+	// error rather than ErrConditionNotMet because the two do not
+	// recover the same way: a condition can become true again on the
+	// next turn, and this one never does until the permanent becomes
+	// a new object (CR 400.7). Checked after the timing check and
+	// before the printed condition, so nothing is paid.
+	ErrAbilityExhausted = errors.New("game: this exhaust ability has already been activated")
+
 	// ErrDefender is returned by DeclareAttacker when the creature
 	// has the defender keyword (CR 702.3). Added in S18 sub-PR 2.
 	ErrDefender = errors.New("game: creature has defender and cannot attack")

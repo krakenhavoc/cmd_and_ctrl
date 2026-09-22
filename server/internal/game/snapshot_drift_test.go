@@ -101,6 +101,12 @@ var gameFields = plan(
 	// wrong candidate set, and the cards it names are still in hand.
 	"DrawnThisTurn", carried, "",
 	"TurnTally", carried, "",
+	// #1181: what has been ACTIVATED, per (object, printed ability),
+	// in both scopes. Carried for a stronger reason than the per-turn
+	// tallies: the game-lifetime half never refreshes, so a restore
+	// that dropped it would give every exhaust ability on the board a
+	// second use.
+	"Activations", carried, "",
 	// #628 CR 726 loop breaker. Carried for the same reason the
 	// per-turn tallies are: a restore mid-loop that forgot the notice
 	// would come back with automatic passing live again, and the

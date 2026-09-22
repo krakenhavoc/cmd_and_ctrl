@@ -109,6 +109,7 @@ func (g *Game) cloneLocked() *Game {
 		}
 	}
 	out.TurnTally = cloneTurnTally(g.TurnTally)
+	out.Activations = cloneActivationTally(g.Activations)
 	if len(g.DrawnThisTurn) > 0 {
 		out.DrawnThisTurn = make(map[uuid.UUID][]uuid.UUID, len(g.DrawnThisTurn))
 		for k, v := range g.DrawnThisTurn {
@@ -722,12 +723,11 @@ func cloneReplacementResume(f *replacementResumeFrame) *replacementResumeFrame {
 		if f.ev.mill != nil {
 			// #569, the same reason as the two above: the mill's
 			// continuation is cleared THROUGH the pointer as it runs,
-			// and the REST of what the tail carries — the destination
-			// and the `until` predicate — is what applyResolvedMillLocked
-			// is still reading. Its own copy, so a live run cannot
-			// consume the snapshot's continuation and an
-			// undone-then-redone answer mills the same cards and
-			// reports the same list.
+			// and the REST of what the tail carries — the destination —
+			// is what applyResolvedMillLocked is still reading. Its own
+			// copy, so a live run cannot consume the snapshot's
+			// continuation and an undone-then-redone answer mills the
+			// same cards and reports the same list.
 			t := *f.ev.mill
 			ev.mill = &t
 		}
@@ -815,6 +815,11 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.ExtraLandDropsThisTurn = src.ExtraLandDropsThisTurn
 	g.DrawnThisTurn = src.DrawnThisTurn
 	g.TurnTally = src.TurnTally
+	// #1181: the activation record rewinds with the rest of the
+	// per-turn state. An undo that kept an exhaust spent would take
+	// the ability away for the whole game on the strength of an
+	// activation that no longer happened.
+	g.Activations = src.Activations
 	// #628's loop breaker, missed by this list when it landed: the
 	// clone carries the notice (cloneLocked, above) and the persisted
 	// snapshot carries it, but the undo path did not put it back, so

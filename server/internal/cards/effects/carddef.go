@@ -38,6 +38,7 @@ func activatedShapes(in []ActivatedAbility) []game.ActivatedAbilityShape {
 			Cycling:      a.Cycling,
 			Condition:    a.Condition,
 			ActiveWhen:   a.ActiveWhen,
+			Exhaust:      a.Exhaust,
 			Effect:       a.Effect,
 		}
 	}

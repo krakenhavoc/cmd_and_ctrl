@@ -1324,6 +1324,12 @@ export interface ActivatedAbilityView {
   // permanent's controller; the menu greys the row like
   // sorcery_speed, and the server refuses the activation regardless.
   condition_unmet?: boolean;
+  // #1181: true when this is an exhaust ability ("Activate each
+  // exhaust ability only once") that this permanent has already
+  // activated. Absent otherwise. Unlike condition_unmet it does not
+  // come back: only a new object (CR 400.7 — a flicker, not an untap)
+  // clears it, which is why the menu says something different.
+  exhausted?: boolean;
   // loyalty_cost is the +N / 0 / −N of a planeswalker's loyalty
   // ability (CR 606.4). Its PRESENCE, not its value, is what marks
   // the ability as a loyalty ability — 0 is a real printed cost —
