@@ -579,3 +579,30 @@ Out, and named so the next issue does not have to rediscover them:
   checked where they always were. Folding them into the gate would have made
   every restriction walk the battlefield to answer a question layer 6 already
   answered.
+
+## Note (2026-09-22, #1195): the timing read sits BESIDE the gate, not inside it
+
+§7 lists three callers of `CastGateLocked`. A fourth question is asked at the
+same three places and is deliberately **not** folded into that function:
+CR 307.1's "may this player begin to cast this card right now", answered by
+`game.CastTimingOpenLocked` (`server/internal/game/cast_timing.go`,
+[ADR 0066](0066-granted-cast-and-play-permissions.md)'s 2026-09-22
+amendment).
+
+The two stay apart because they are different answers to the player.
+`CastGateLocked` says a cast is **banned** — Rule of Law, Grafdigger's Cage,
+a legendary sorcery with no legend out — and the wire spells that
+`cant_cast`, a printed clause the client renders as a refusal.
+`CastTimingOpenLocked` says a cast is not open **yet**, which is the ordinary
+state of every sorcery in every hand on somebody else's turn. Folding the
+second into the first would put a `cant_cast` clause on half the cards in
+play and make the field meaningless.
+
+What they share is the placement, and that is the part worth copying: one
+function, called by `CastSpell` before any cost is paid, by
+`legal.castMovesPayingOptional` so a bot is never offered a cast the engine
+refuses, and by `protocol.castStampsFor` so `castable_here` is the engine's
+answer rather than a rule the client reimplemented. §8's "bans with a
+duration are out" is also still true of the gate — the duration-carrying
+statements this note points at are timing statements, not bans, and they
+carry ADR 0063's `game.Duration`.
