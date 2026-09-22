@@ -55,6 +55,24 @@ describe("castableFromZone — who gets the graveyard cast button", () => {
     expect(castableFromZone(inYard({ exile_play: { player: "them" } }), "graveyard")).toBe(false);
   });
 
+  // #1185. `castableFromZone` never reads `cant_cast` itself — the
+  // docs/protocol.md contract is that `castable_here` already folds it
+  // in ("no cant_cast && at least one claimable price"), so a graveyard
+  // card blocked by its own printed clause never gets a true bit to
+  // read here in the first place. This pins that contract at the one
+  // boundary #1185 audited, rather than leaving it implicit.
+  it("a cant_cast clause never reaches this gate as a true bit", () => {
+    expect(
+      castableFromZone(inYard({ cant_cast: "Cast this spell only during combat" }), "graveyard"),
+    ).toBe(false);
+    expect(
+      castableFromZone(
+        inYard({ cant_cast: "Cast this spell only during combat", castable_here: false }),
+        "graveyard",
+      ),
+    ).toBe(false);
+  });
+
   it("is graveyard-only — exile keeps its own grant-keyed button", () => {
     const card = inYard({ castable_here: true });
     expect(castableFromZone(card, "exile")).toBe(false);

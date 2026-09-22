@@ -350,6 +350,30 @@ describe("canCastFromHand — denial reasons", () => {
     expect(canCastFromHand(c, s, "p0").reason).toBe("No card to discard");
   });
 
+  // #1185: `castIsForbidden` (targeting.ts) had no caller — a card
+  // refused by its own printed `cant_cast` clause fell through to the
+  // generic fallbacks below instead of naming its own reason.
+  it("a cant_cast clause denies with the printed clause itself", () => {
+    const c = card("Bolt", "Instant", {
+      cant_cast: "Each player can't cast more than one spell each turn",
+    });
+    const s = snap({ moves: [passMove] });
+    const got = canCastFromHand(c, s, "p0");
+    expect(got.legal).toBe(false);
+    expect(got.reason).toBe("Each player can't cast more than one spell each turn");
+  });
+
+  it("cant_cast is checked before target / mode / cost, since it refuses outright", () => {
+    const c = card("Doom Blade", "Instant", {
+      cant_cast: "Cast this spell only if you control a legendary creature or planeswalker",
+      legal_targets: { cards: [] },
+    });
+    const s = snap({ moves: [passMove] });
+    expect(canCastFromHand(c, s, "p0").reason).toBe(
+      "Cast this spell only if you control a legendary creature or planeswalker",
+    );
+  });
+
   it("falls back to the sorcery-speed window as the hint", () => {
     const wrath = card("Wrath", "Sorcery");
     const s = snap({ step: "declare_attackers", moves: [passMove] });
@@ -439,6 +463,52 @@ describe("canCastFromHand — a multi-face card's OTHER half (#1168)", () => {
   // "denial reasons" and "verdict" suites above carry `faces`, so
   // `castableFaces` collapses to `[card]` and `named()` never
   // prefixes — every reason there reads exactly as it did before.
+
+  // #1185: `cant_cast` lives on `CastSurfaceView`, so it travels with
+  // the rest of the per-face block `cardAsFace` swaps in — a face
+  // whose own printed clause refuses it is named, not the card's front.
+  it("a modal DFC whose back face is the one cant_cast blocks is named for that face", () => {
+    const c = card("Twin Path", "Instant", {
+      layout: "modal_dfc",
+      faces: [
+        { name: "Twin Path", type_line: "Instant" },
+        {
+          name: "Twin Path's Reverse",
+          type_line: "Instant",
+          cant_cast: "Cast this spell only during combat",
+        },
+      ],
+    });
+    const s = snap({ moves: [passMove] });
+    // The FRONT face has no cant_cast, so it alone rescues the card —
+    // the verdict here is the generic fallback (the server's move
+    // list still says no), not the back's own clause, exactly as
+    // #1168's own "front targets, back doesn't" case reads.
+    expect(canCastFromHand(c, s, "p0").reason).toBe("Can't play this right now");
+  });
+
+  it("a card refused by cant_cast on every castable face names the first blocked one", () => {
+    const c = card("Twin Path", "Instant", {
+      layout: "modal_dfc",
+      cant_cast: "Cast this spell only during combat",
+      faces: [
+        {
+          name: "Twin Path",
+          type_line: "Instant",
+          cant_cast: "Cast this spell only during combat",
+        },
+        {
+          name: "Twin Path's Reverse",
+          type_line: "Instant",
+          cant_cast: "Cast this spell only if you control a legendary creature",
+        },
+      ],
+    });
+    const s = snap({ moves: [passMove] });
+    const got = canCastFromHand(c, s, "p0");
+    expect(got.legal).toBe(false);
+    expect(got.reason).toBe("Twin Path: Cast this spell only during combat");
+  });
 });
 
 // The compatibility half. A frame with no move list is NO
