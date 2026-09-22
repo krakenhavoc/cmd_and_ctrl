@@ -1827,6 +1827,15 @@ one constructor and no engine change at all — which was the claim
 `Optional(…)` composes as it does with every other trigger, which is
 the whole of Runic Armasaur's "you may draw a card".
 
+One engine line did change, and a back-out is what found it:
+`EventManaAbilityActivated` set `Source` but not `CardID`, so a
+source predicate looking the ability's object up by `CardID` matched
+nothing on the mana path — a silent miss, not an error. Both emit
+sites (the hand click and the auto-tapper's executor, CR 605.3a) now
+carry the same stamps `EventActivateAbility` always has, which is
+what #1184 intended when it said a watcher can read the same fields
+off either kind.
+
 **Cards:** Harsh Mentor and Runic Armasaur, both `full`.
 
 What stays open on this family, and is a different row: a watch on an
