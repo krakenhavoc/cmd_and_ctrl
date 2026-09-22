@@ -192,21 +192,81 @@ func TestUginEyeOfTheStormsZeroAddsThreeColorless(t *testing.T) {
 	}
 }
 
-// TestUginEyeOfTheStormsDeclaresItsMissingUltimate: the −11 is not
-// registered, and the card says so rather than shipping two
-// abilities and pretending the third was never printed.
-func TestUginEyeOfTheStormsDeclaresItsMissingUltimate(t *testing.T) {
+// TestUginEyeOfTheStormsIsFull: #1230 closed the search-to-exile seam,
+// so all three loyalty abilities are registered and nothing is
+// declared as a caveat.
+func TestUginEyeOfTheStormsIsFull(t *testing.T) {
 	spec, ok := Lookup(uginEyeOfTheStormsOracle)
 	if !ok {
 		t.Fatal("Ugin, Eye of the Storms is not registered")
 	}
-	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
-		t.Errorf("the missing ultimate must be declared: %+v", spec.Caveats)
+	if spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Errorf("Completeness = %v, Caveats = %+v, want Full and none", spec.Completeness, spec.Caveats)
 	}
-	if len(spec.Activated) != 2 {
-		t.Errorf("%d loyalty abilities, want the +2 and the 0 only", len(spec.Activated))
+	if len(spec.Activated) != 3 {
+		t.Errorf("%d loyalty abilities, want the +2, the 0 and the −11", len(spec.Activated))
 	}
 	if spec.StartingLoyalty != 0 {
 		t.Error("starting loyalty is printed card data (ADR 0032) and must not be set here")
+	}
+}
+
+// TestUginEyeOfTheStormsMinusElevenExilesAndGrantsFreeCast: the −11
+// searches for any number of colorless nonland cards, exiles them
+// (proving #1230's search-to-exile destination), shuffles, and grants
+// a free cast on everything it found until end of turn.
+func TestUginEyeOfTheStormsMinusElevenExilesAndGrantsFreeCast(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	ugin := pushCatalogWalker(g, me.ID, "Ugin, Eye of the Storms", uginEyeOfTheStormsOracle, 11)
+	toMain(t, g)
+
+	colorless := pushLibraryCardForTest(me, game.Card{
+		Name: "Colorless Artifact", TypeLine: "Artifact",
+		ManaCost: "{3}",
+	})
+	colored := pushLibraryCardForTest(me, game.Card{
+		Name: "Colored Sorcery", TypeLine: "Sorcery",
+		ManaCost: "{1}{R}", Colors: []string{"R"},
+	})
+	colorlessLand := pushLibraryCardForTest(me, game.Card{
+		Name: "Colorless Land", TypeLine: "Land",
+	})
+
+	if err := g.ActivateCatalogAbility(me.ID, ugin, 2, game.ActivateAbilityParams{Strict: true}); err != nil {
+		t.Fatalf("−11: %v", err)
+	}
+	if loyaltyCount(g, ugin) != 0 {
+		t.Errorf("loyalty = %d, want 0 — announced at 11, paid 11", loyaltyCount(g, ugin))
+	}
+	passPriorityAroundTable(t, g)
+
+	c := searchChoiceFor(g, me.ID)
+	if c == nil {
+		t.Fatal("no search prompt after the −11")
+	}
+	if !hasID(c.SearchCards, colorless) {
+		t.Fatalf("search offers %v, want it to include the colorless nonland card %v", c.SearchCards, colorless)
+	}
+	if hasID(c.SearchCards, colored) {
+		t.Error("a colored card is never a legal match")
+	}
+	if hasID(c.SearchCards, colorlessLand) {
+		t.Error("a colorless LAND is never a legal match — nonland only")
+	}
+	if err := g.ResolveSearchLibrary(c.ID, me.ID, []uuid.UUID{colorless}); err != nil {
+		t.Fatalf("ResolveSearchLibrary: %v", err)
+	}
+	if !inExile(g, colorless) {
+		t.Error("the chosen colorless nonland card should be exiled")
+	}
+	if !me.Library.Contains(colored) {
+		t.Error("a colored card is never a legal match")
+	}
+	if !me.Library.Contains(colorlessLand) {
+		t.Error("a colorless LAND is never a legal match — nonland only")
+	}
+	if perm := g.CastPermissionOnCardByIDForEffect(colorless); perm == nil || perm.Cost != "{0}" {
+		t.Errorf("the exiled card should carry a {0} cast permission, got %+v", perm)
 	}
 }

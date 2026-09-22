@@ -2109,8 +2109,11 @@ func TestDeviousCoverUpCountersAndShufflesGraveyardCards(t *testing.T) {
 
 	passPriorityAroundTable(t, g)
 
-	if !opponent.Graveyard.Contains(shockID) {
-		t.Error("countered Shock should land in its owner's graveyard (the caveated, non-exile path)")
+	if !g.Exile.Contains(shockID) {
+		t.Error("countered Shock should be exiled instead of going to its owner's graveyard (#1230)")
+	}
+	if opponent.Graveyard.Contains(shockID) {
+		t.Error("the exile clause replaces the graveyard, so Shock must not also land there")
 	}
 	if caster.Graveyard.Contains(gy1) || caster.Graveyard.Contains(gy2) {
 		t.Error("the chosen graveyard cards should have left the graveyard")

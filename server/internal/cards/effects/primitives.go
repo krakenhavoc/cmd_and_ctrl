@@ -572,12 +572,38 @@ func (u UntapTarget) Apply(ctx *Context) error {
 // spell items to their owner's graveyard by default; ability items
 // cease to exist. `StackID` is the StackItem.ID (equal to the
 // card's InstanceID for spells, a synthetic UUID for abilities).
+//
+// Dest overrides a countered SPELL's destination (#1230) — Devious
+// Cover-Up's "exile it instead of putting it into its owner's
+// graveyard" is Dest: game.ZoneRef{Kind: game.ZoneExile}; Remand's
+// hand and Memory Lapse's library top are the same shape with a
+// different Kind. The zero value (Dest.Kind == "") keeps the historic
+// graveyard default. Meaningless for a countered ABILITY, which
+// CR 701.6b simply ceases to exist wherever it was.
 type CounterTarget struct {
 	StackID uuid.UUID
+	Dest    game.ZoneRef
 }
 
 func (c CounterTarget) Apply(ctx *Context) error {
-	return ctx.Game.CounterTargetForEffect(c.StackID)
+	if c.Dest.Kind == "" {
+		return ctx.Game.CounterTargetForEffect(c.StackID)
+	}
+	return ctx.Game.CounterTargetToZoneForEffect(c.StackID, c.Dest)
+}
+
+// ReturnSpellToHand returns a spell on the stack to its owner's hand
+// WITHOUT countering it (CR 701.6 does not apply): a spell printed
+// "can't be countered" is unaffected, and nothing watching "whenever
+// a spell is countered" fires. CounterTarget's sibling rather than a
+// mode of it — Reprieve, and the second half of Narset's Reversal
+// once CopySpell has made the copy.
+type ReturnSpellToHand struct {
+	StackID uuid.UUID
+}
+
+func (r ReturnSpellToHand) Apply(ctx *Context) error {
+	return ctx.Game.ReturnSpellToHandForEffect(r.StackID)
 }
 
 // CounterAllMatching counters every spell on the stack matching
@@ -725,6 +751,21 @@ type SearchLibrary struct {
 	// is placed after the shuffle, which is what makes the clause
 	// mean anything.
 	ToTop bool
+	// LibraryOwner is the seat whose library is actually searched,
+	// when that is not Player (#1230) — Bribery's "search TARGET
+	// OPPONENT's library", where the caster (Player) chooses and the
+	// found card enters under the caster's control, but the pile
+	// scanned and shuffled is the named opponent's. Zero means "the
+	// same as Player", which is every search before Bribery.
+	LibraryOwner uuid.UUID
+	// Unbounded is "search your library for ANY NUMBER of … cards"
+	// (Ugin, Eye of the Storms) — a real choice from zero up to every
+	// match, never a forced take-all. Limit is ignored when set.
+	Unbounded bool
+	// FaceDown exiles the taken cards face down (CR 406.3a) when
+	// Dest is game.ZoneExile. The zero value, game.FaceDownNone, is
+	// an ordinary face-up exile.
+	FaceDown game.FaceDownKind
 }
 
 func (s SearchLibrary) Apply(ctx *Context) error {
@@ -746,6 +787,9 @@ func (s SearchLibrary) Apply(ctx *Context) error {
 		Validate:      s.Validate,
 		Then:          s.Then,
 		ToTop:         s.ToTop,
+		LibraryOwner:  s.LibraryOwner,
+		Unbounded:     s.Unbounded,
+		FaceDown:      s.FaceDown,
 	})
 }
 
