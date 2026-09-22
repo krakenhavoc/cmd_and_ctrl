@@ -267,12 +267,21 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 // redaction table has to see both filled.
 func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 	return CastSurfaceView{
-		TargetMode:       "creature",
-		LegalTargets:     lt,
-		Clauses:          []LegalTargetsView{*lt, *lt},
-		Modes:            &ModeSpecView{Prompt: "Choose one", Min: 1, Max: 1, Options: []ModeOptionView{{Label: "mode"}}},
-		AdditionalCost:   &AdditionalCostView{DiscardCards: 1},
-		AlternativeCosts: []AlternativeCostView{{Key: "overload", Label: "Overload {6}{U}"}},
+		TargetMode:   "creature",
+		LegalTargets: lt,
+		Clauses:      []LegalTargetsView{*lt, *lt},
+		// #1172: the nested blocks carry every field of their own too,
+		// so the nested half of the allowlist guard below is checking
+		// a strip rather than a struct that was empty anyway.
+		Modes: &ModeSpecView{Prompt: "Choose one", Min: 1, Max: 1, Options: []ModeOptionView{{
+			Label: "mode", TargetMode: "creature", LegalTargets: lt, Clauses: []LegalTargetsView{*lt, *lt},
+		}}},
+		AdditionalCost: &AdditionalCostView{DiscardCards: 1},
+		AlternativeCosts: []AlternativeCostView{{
+			Key: "overload", Label: "Overload {6}{U}", ManaCost: "{6}{U}", Life: 1, PayLabel: "a blue card",
+			TargetMode: "creature", LegalTargets: lt, PayOptions: lt,
+			XLockedAtZero: true, PhyrexianSymbols: 1,
+		}},
 		// #1012: the flag that says the printed cost is not one of
 		// the prices this cast may claim. Redacted with the offer
 		// list it is only meaningful beside.
@@ -678,6 +687,50 @@ func (s castSurfaceScope) survivesIn(kind game.ZoneKind) bool {
 	}
 }
 
+// --- #1172: the same question one level down -------------------------
+//
+// `modes` and `alternative_costs` are surfacePublicPile above — the
+// card's printed text, which a bystander reads off a graveyard — and
+// each carries board-derived lists of its own that are the ASKING
+// SEAT's answer. The two tables below place every field of the nested
+// blocks on the same line the outer one is placed on, so a field added
+// to either is a decision somebody makes rather than one nobody
+// notices.
+//
+// The rule that decides a row: does this field come off the PRINTED
+// CARD (public with its parent) or off the BOARD for one player
+// (surfacePrivate, and gone from the public projection).
+var modeOptionScopes = map[string]castSurfaceScope{
+	// Printed text: the bullet and the shape of its prompt.
+	"Label":      surfacePublicPile,
+	"TargetMode": surfacePublicPile,
+	// #1172: the legal sets. Narrowed by hexproof, shroud, protection
+	// and "target opponent", so seat A's is not seat B's to read.
+	"LegalTargets": surfacePrivate,
+	"Clauses":      surfacePrivate,
+}
+
+var alternativeCostScopes = map[string]castSurfaceScope{
+	// Printed price: what the offer is called, what it charges, and
+	// the two derived facts about the COST string (CR 107.3b's X lock,
+	// CR 107.4's symbol count).
+	"Key":              surfacePublicPile,
+	"Label":            surfacePublicPile,
+	"ManaCost":         surfacePublicPile,
+	"Life":             surfacePublicPile,
+	"PayLabel":         surfacePublicPile,
+	"TargetMode":       surfacePublicPile,
+	"XLockedAtZero":    surfacePublicPile,
+	"PhyrexianSymbols": surfacePublicPile,
+	// #1172: the two board-derived lists. `legal_targets` is the
+	// clause this offer leaves the spell with, resolved for the asking
+	// seat; `pay_options` is "the blue cards in YOUR hand", "the cards
+	// in YOUR graveyard" — not a target list (a cost does not target,
+	// CR 601.2h) but one seat's all the same.
+	"LegalTargets": surfacePrivate,
+	"PayOptions":   surfacePrivate,
+}
+
 // TestHandPublicCastSurfaceIsAnAllowlist is the #1169 guard, and it is
 // the reflection shape TestRedactionZoneByViewer above uses one field
 // list over: every field of the block, placed by a table, checked
@@ -702,18 +755,85 @@ func TestHandPublicCastSurfaceIsAnAllowlist(t *testing.T) {
 		}
 	}
 
+	// #1172: and every field of the two NESTED blocks, placed the same
+	// way. A field nobody has placed fails here rather than defaulting
+	// to public, which is the direction that leaks.
+	for name, typ := range map[string]reflect.Type{
+		"ModeOptionView":      reflect.TypeOf(ModeOptionView{}),
+		"AlternativeCostView": reflect.TypeOf(AlternativeCostView{}),
+	} {
+		table := modeOptionScopes
+		if name == "AlternativeCostView" {
+			table = alternativeCostScopes
+		}
+		for i := 0; i < typ.NumField(); i++ {
+			if _, ok := table[typ.Field(i).Name]; !ok {
+				t.Fatalf("%s.%s is not placed: say whether it comes off the PRINTED CARD (public "+
+					"with its parent on a pile) or off the board for one player (#1172)",
+					name, typ.Field(i).Name)
+			}
+		}
+	}
+
 	// A HAND and a GRAVEYARD, through the one function that knows the
 	// field list. The graveyard column is not decoration: it is what
 	// stops the hand's narrowing being applied to the piles a card in
 	// them is genuinely public in.
 	for _, kind := range []game.ZoneKind{game.ZoneHand, game.ZoneGraveyard} {
-		got := reflect.ValueOf(castStamps{CastSurfaceView: full}.publicIn(kind).CastSurfaceView)
+		public := castStamps{CastSurfaceView: full}.publicIn(kind).CastSurfaceView
+		got := reflect.ValueOf(public)
 		for i := 0; i < typ.NumField(); i++ {
 			name := typ.Field(i).Name
 			want := castSurfaceScopes[name].survivesIn(kind)
 			if set := !got.Field(i).IsZero(); set != want {
 				t.Errorf("%s: %s set=%v, want %v", kind, name, set, want)
 			}
+		}
+		// #1172: the nested half. On a HAND the parents are gone
+		// altogether, so there is nothing to walk; on a public pile
+		// they survive and each nested field has to land where its
+		// table put it.
+		if kind == game.ZoneHand {
+			if public.Modes != nil || public.AlternativeCosts != nil {
+				t.Errorf("hand: the parents of the nested blocks survived the strip")
+			}
+			continue
+		}
+		if public.Modes == nil || len(public.Modes.Options) != 1 {
+			t.Fatalf("%s: `modes` did not survive the public strip; the nested check below is vacuous", kind)
+		}
+		assertNestedScopes(t, kind, "modes[0]", reflect.ValueOf(public.Modes.Options[0]), modeOptionScopes)
+		if len(public.AlternativeCosts) != 1 {
+			t.Fatalf("%s: `alternative_costs` did not survive the public strip", kind)
+		}
+		assertNestedScopes(t, kind, "alternative_costs[0]",
+			reflect.ValueOf(public.AlternativeCosts[0]), alternativeCostScopes)
+
+		// And the copy is a COPY: blanking the public projection in
+		// place would take the nested sets off the asking seat's own
+		// answer as well, because the two come out of ONE
+		// castStampsFor call and share the pointer and the slice
+		// header.
+		if full.Modes.Options[0].LegalTargets == nil || full.Modes.Options[0].Clauses == nil {
+			t.Errorf("%s: the public strip reached through into the seat's own `modes`", kind)
+		}
+		if full.AlternativeCosts[0].LegalTargets == nil || full.AlternativeCosts[0].PayOptions == nil {
+			t.Errorf("%s: the public strip reached through into the seat's own `alternative_costs`", kind)
+		}
+	}
+}
+
+// assertNestedScopes checks one nested block against its table: a
+// surfacePrivate field must be gone from the public projection and
+// every other field must still be there (#1172).
+func assertNestedScopes(t *testing.T, kind game.ZoneKind, path string, v reflect.Value, table map[string]castSurfaceScope) {
+	t.Helper()
+	typ := v.Type()
+	for i := 0; i < typ.NumField(); i++ {
+		name := typ.Field(i).Name
+		want := table[name].survivesIn(kind)
+		if set := !v.Field(i).IsZero(); set != want {
+			t.Errorf("%s: %s.%s set=%v, want %v", kind, path, name, set, want)
 		}
 	}
 }

@@ -258,7 +258,7 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 		if !CanActivateManaAbilities(&c) {
 			continue
 		}
-		picked := autoTapAbilityFor(ManaAbilitiesForCard(c))
+		picked := g.autoTapAbilityFor(c.InstanceID, ManaAbilitiesForCard(c))
 		if picked == nil {
 			continue
 		}
@@ -417,20 +417,39 @@ func appendTapSource(out []tapSource, cardID uuid.UUID, slots []ProducedManaEntr
 // (materializePlanLocked) so the two can never disagree about which
 // ability index a planned card is going to be tapped for.
 //
-// Six exclusions, all for the same reason — the auto-tapper's
+// A METHOD since #1183, because one of the exclusions is a fact about
+// the game rather than about the ability shape: an exhaust ability
+// this OBJECT has already activated is not a mana source. Putting it
+// here rather than beside the sickness and gate checks at the two call
+// sites is the point — a card with two mana abilities whose FIRST is a
+// spent exhaust still auto-taps the second, which a per-source check
+// outside the picker would have got wrong.
+//
+// Seven exclusions, all for the same reason — the auto-tapper's
 // contract is "no further player decisions and no hidden costs":
 //
+//   - a SPENT EXHAUST ability cannot be activated at all (#1183), and
+//     the planner must not book mana the executor would then refuse to
+//     mint. It is the strongest of the exclusions: the others are the
+//     planner declining a decision it may not make, this one is the
+//     rule;
+//
 //   - a sacrifice cost needs a permanent named (S15's original note);
+//
 //   - a cost that ADDS a counter spends a resource the player never
 //     agreed to spend, like a life cost (#789);
+//
 //   - a life cost spends a resource the player never agreed to spend
 //     (Mana Confluence);
+//
 //   - a rider spends one too, one the player can't decline (Ancient
 //     Tomb's 2 damage);
+//
 //   - a MANA cost is recursive (the Signet cycle, Cabal Coffers): the
 //     planner would have to solve a second cost to fund the first,
 //     and the activation path deliberately refuses to auto-tap into a
 //     mana ability anyway. Signets stay hand-activated;
+//
 //   - RESTRICTED output is a decision, not a resource (Ancient
 //     Ziggurat, Eldrazi Temple, Delighted Halfling's coloured half).
 //     Spending a restricted token on the cast in front of you may be
@@ -462,10 +481,20 @@ func appendTapSource(out []tapSource, cardID uuid.UUID, slots []ProducedManaEntr
 // S15's other standing limitation is unchanged: one ability per card,
 // because a tapSource that offered two would let the solver tap the
 // same permanent twice.
-func autoTapAbilityFor(abilities []ManaAbilityShape) *ManaAbilityShape {
+// Caller must hold g.mu.
+func (g *Game) autoTapAbilityFor(source uuid.UUID, abilities []ManaAbilityShape) *ManaAbilityShape {
 	for i := range abilities {
 		a := abilities[i]
 		if !a.TapCost || a.SacrificeCost {
+			continue
+		}
+		// #1183: "Activate each exhaust ability only once", and this
+		// object has. Not a decision the planner is declining — the
+		// activation path would refuse it with ErrAbilityExhausted,
+		// so planning it would strand whatever the plan had already
+		// tapped, which is the failure mode every check around this
+		// one exists to prevent.
+		if g.ManaAbilityExhausted(source, a) {
 			continue
 		}
 		if a.LifeCost > 0 || a.Rider != nil {

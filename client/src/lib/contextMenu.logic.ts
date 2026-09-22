@@ -387,7 +387,10 @@ interface AbilityCost {
   // now. Carried by both mana and activated abilities.
   condition_unmet?: boolean;
   // #1181: an exhaust ability this permanent has already used.
-  // Activated abilities only — a mana ability never carries it.
+  // #1183: and a MANA ability too — Loot, the Pathfinder's "Exhaust —
+  // {G}, {T}: Add three mana of any one color". The server ships one
+  // flag under one name for both ability kinds, which is why this
+  // predicate needed no sibling.
   exhausted?: boolean;
   // #844: a "in your commander's color identity" mana ability with no
   // identity to narrow to. Mana abilities only.

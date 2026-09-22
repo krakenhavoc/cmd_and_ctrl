@@ -277,3 +277,214 @@ func TestBaSingSeEarthbendsEveryTurnBecauseItIsNotExhaust(t *testing.T) {
 		t.Errorf("+1/+1 counters on the second land = %d, want 2", got)
 	}
 }
+
+// --- Loot, the Pathfinder --------------------------------------------
+//
+// #1183's proof card, and the reason the mana half exists: three
+// exhaust abilities on one permanent, and the FIRST of them is a mana
+// ability (CR 605.1a), which takes ActivateManaAbility rather than
+// ActivateCatalogAbility and had no activation record at all until
+// #1183.
+
+const lootThePathfinderOracle = "68c7e459-0932-4644-a3c0-9a1eae1db7a3"
+
+// pushLoot seeds Loot with its printed body. Haste is printed, so the
+// {T} costs are payable the turn it lands — and `sick: false` here
+// keeps the test about exhaust rather than about CR 302.6.
+func pushLoot(g *game.Game, owner uuid.UUID) uuid.UUID {
+	return pushCatalogPermanent(g, owner, "Loot, the Pathfinder",
+		"Legendary Creature — Beast Noble", lootThePathfinderOracle, false)
+}
+
+// untapForExhaustTest puts a permanent back untapped without a turn
+// boundary, so the refusals below are about the record and not about
+// the {T} every one of Loot's abilities costs.
+func untapForExhaustTest(g *game.Game, id uuid.UUID) {
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == id {
+				g.Battlefield.Cards[i].Tapped = false
+			}
+		}
+	})
+}
+
+// TestLootDeclaresThreeExhaustAbilitiesAcrossBothAbilityKinds is the
+// declaration, and it is the half the boot-time checks in Register
+// guard: three labels, all printing the keyword, all distinct — one on
+// the mana list and two on the activated one.
+func TestLootDeclaresThreeExhaustAbilitiesAcrossBothAbilityKinds(t *testing.T) {
+	mana := game.ManaAbilitiesForCard(game.Card{OracleID: lootThePathfinderOracle})
+	if len(mana) != 1 {
+		t.Fatalf("mana abilities = %d, want 1", len(mana))
+	}
+	if !mana[0].Exhaust {
+		t.Error("the mana ability is not declared as an exhaust ability")
+	}
+	activated := game.ActivatedAbilitiesForCard(game.Card{OracleID: lootThePathfinderOracle})
+	if len(activated) != 2 {
+		t.Fatalf("activated abilities = %d, want 2", len(activated))
+	}
+	seen := map[string]bool{mana[0].Label: true}
+	for i, a := range activated {
+		if !a.Exhaust {
+			t.Errorf("activated ability %d is not declared as an exhaust ability", i)
+		}
+		if seen[a.Label] {
+			t.Errorf("ability %d shares a label with another exhaust ability: %q — they would "+
+				"share one use, because the record is keyed by the label", i, a.Label)
+		}
+		seen[a.Label] = true
+	}
+}
+
+// TestLootsManaAbilityExhaustsAfterOneActivation is the headline of
+// #1183 on the printed card: the mana ability adds three of one colour
+// once, and is refused for the rest of the game — untapped or not.
+func TestLootsManaAbilityExhaustsAfterOneActivation(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	loot := pushLoot(g, me.ID)
+
+	fillPoolColored(me, "G", 1)
+	if err := g.ActivateManaAbility(me.ID, loot, 0, game.ManaAbilityParams{}); err != nil {
+		t.Fatalf("the mana ability: %v", err)
+	}
+	pick := pendingOfKind(g, game.PendingChoiceMana)
+	if pick == nil || len(pick.ColorOptions) != 5 || pick.ManaAmounts["U"] != 3 {
+		t.Fatalf("pick = %+v, want one five-colour pick of three (#742)", pick)
+	}
+	if err := g.ResolveManaChoice(pick.ID, me.ID, "U"); err != nil {
+		t.Fatalf("ResolveManaChoice: %v", err)
+	}
+	if got := poolColors(me); len(got) != 3 {
+		t.Fatalf("pool = %v, want three {U}", got)
+	}
+
+	// Untapped again and paid for again: the only thing left refusing
+	// it is the record.
+	untapForExhaustTest(g, loot)
+	me.ManaPool = nil
+	fillPoolColored(me, "G", 1)
+	err := g.ActivateManaAbility(me.ID, loot, 0, game.ManaAbilityParams{})
+	if !errors.Is(err, game.ErrAbilityExhausted) {
+		t.Fatalf("second activation: %v, want ErrAbilityExhausted", err)
+	}
+	if got := poolColors(me); len(got) != 1 || got[0] != "G" {
+		t.Errorf("pool = %v, want the untouched {G} — a refused activation pays nothing", got)
+	}
+}
+
+// TestLootsThreeExhaustAbilitiesAreIndependent is the whole reason the
+// record is keyed by the ability's LABEL: spending one of Loot's three
+// must leave the other two, ACROSS the two ability kinds — the mana
+// path and the CR 602 path write to the same key space on the same
+// object, and a key that named only the permanent would take all three
+// away at once.
+func TestLootsThreeExhaustAbilitiesAreIndependent(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	loot := pushLoot(g, me.ID)
+
+	// 1. The mana ability.
+	fillPoolColored(me, "G", 1)
+	if err := g.ActivateManaAbility(me.ID, loot, 0, game.ManaAbilityParams{}); err != nil {
+		t.Fatalf("the mana ability: %v", err)
+	}
+	if pick := pendingOfKind(g, game.PendingChoiceMana); pick != nil {
+		if err := g.ResolveManaChoice(pick.ID, me.ID, "U"); err != nil {
+			t.Fatalf("ResolveManaChoice: %v", err)
+		}
+	}
+	untapForExhaustTest(g, loot)
+
+	// 2. The draw, paid out of the {U}{U}{U} the mana ability just
+	// made — which is also the printed combo.
+	before := me.Hand.Size()
+	if err := g.ActivateCatalogAbility(me.ID, loot, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatalf("the draw ability: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if got := me.Hand.Size() - before; got != 3 {
+		t.Fatalf("drew %d cards, want 3", got)
+	}
+	untapForExhaustTest(g, loot)
+
+	// 3. The damage, at the opponent.
+	life := lifeOf(g, opp.ID)
+	fillPoolColored(me, "R", 1)
+	if err := g.ActivateCatalogAbility(me.ID, loot, 1, game.ActivateAbilityParams{
+		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}},
+	}); err != nil {
+		t.Fatalf("the damage ability: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if got := life - lifeOf(g, opp.ID); got != 3 {
+		t.Errorf("dealt %d damage, want 3", got)
+	}
+
+	// And now all three are gone, each for its own reason and none for
+	// another's.
+	untapForExhaustTest(g, loot)
+	me.ManaPool = nil
+	fillPoolColored(me, "G", 1)
+	fillPoolColored(me, "U", 1)
+	fillPoolColored(me, "R", 1)
+	if err := g.ActivateManaAbility(me.ID, loot, 0, game.ManaAbilityParams{}); !errors.Is(err, game.ErrAbilityExhausted) {
+		t.Errorf("the mana ability again: %v, want ErrAbilityExhausted", err)
+	}
+	if err := g.ActivateCatalogAbility(me.ID, loot, 0, game.ActivateAbilityParams{}); !errors.Is(err, game.ErrAbilityExhausted) {
+		t.Errorf("the draw ability again: %v, want ErrAbilityExhausted", err)
+	}
+	if err := g.ActivateCatalogAbility(me.ID, loot, 1, game.ActivateAbilityParams{
+		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}},
+	}); !errors.Is(err, game.ErrAbilityExhausted) {
+		t.Errorf("the damage ability again: %v, want ErrAbilityExhausted", err)
+	}
+}
+
+// TestASpentLootIsNotAManaSourceForTheAutoTapper is the #1183
+// consequence that has no counterpart on the CR 602 path: "could this
+// permanent produce {U}" has to start answering no, or a cast is
+// priced on mana the board cannot make.
+func TestASpentLootIsNotAManaSourceForTheAutoTapper(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	loot := pushLoot(g, me.ID)
+
+	// Non-vacuity: before it is spent, Loot could produce all five
+	// colours — the Scryfall `produced_mana` of the printed card.
+	if got := producibleFor(t, g, loot); len(got) != 5 {
+		t.Fatalf("ProducibleManaLocked = %v before the ability is spent, want all five colours", got)
+	}
+
+	fillPoolColored(me, "G", 1)
+	if err := g.ActivateManaAbility(me.ID, loot, 0, game.ManaAbilityParams{}); err != nil {
+		t.Fatalf("the mana ability: %v", err)
+	}
+	if pick := pendingOfKind(g, game.PendingChoiceMana); pick != nil {
+		if err := g.ResolveManaChoice(pick.ID, me.ID, "U"); err != nil {
+			t.Fatalf("ResolveManaChoice: %v", err)
+		}
+	}
+	untapForExhaustTest(g, loot)
+
+	if got := producibleFor(t, g, loot); len(got) != 0 {
+		t.Errorf("ProducibleManaLocked = %v for a spent Loot, want nothing — a Reflecting Pool "+
+			"next to it must not derive a colour the board can never make again (#1183)", got)
+	}
+}
+
+// producibleFor asks CR 106.7 of one permanent.
+func producibleFor(t *testing.T, g *game.Game, id uuid.UUID) []string {
+	t.Helper()
+	var out []string
+	g.ReadSnapshot(func() {
+		for _, c := range g.BattlefieldCardsForEffect() {
+			if c.InstanceID == id {
+				out = g.ProducibleManaLocked(c)
+			}
+		}
+	})
+	return out
+}

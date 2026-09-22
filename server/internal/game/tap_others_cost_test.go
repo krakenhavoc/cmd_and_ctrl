@@ -692,11 +692,18 @@ func TestTapOthersManaAbilityRefusesAndTapsNothing(t *testing.T) {
 // the planner has no way to weigh that (the same bar a life cost
 // fails).
 func TestTapOthersManaAbilityIsNeverAutoTapped(t *testing.T) {
-	if a := autoTapAbilityFor(springleafDrumAbility()); a != nil {
+	// #1183: the picker is a method now — one of its exclusions is a
+	// fact about the game (a spent exhaust ability), not about the
+	// shape. Nothing here activates anything, so the record is empty
+	// and every exclusion under test is still the shape's.
+	g := newActiveGame(t)
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if a := g.autoTapAbilityFor(uuid.New(), springleafDrumAbility()); a != nil {
 		t.Errorf("the auto-tapper planned a tap-others mana ability: %+v", a)
 	}
 	plain := []ManaAbilityShape{{TapCost: true, Produced: "{G}", Label: "{T}: Add {G}"}}
-	if a := autoTapAbilityFor(plain); a == nil {
+	if a := g.autoTapAbilityFor(uuid.New(), plain); a == nil {
 		t.Error("test setup: an ordinary {T} mana ability should still be plannable")
 	}
 }

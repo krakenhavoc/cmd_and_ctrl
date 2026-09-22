@@ -53,6 +53,33 @@ import (
 // there would defeat both the chosen-colour read and the recursion
 // guard.
 //
+// # Exhaust is the one restriction this asks about (#1183)
+//
+// The second bullet above says costs and timing are not asked about: a
+// tapped Island still offers {U}, a Temple of the False God its
+// controller could not activate still offers {C}, a Condition that is
+// false today is irrelevant. A SPENT EXHAUST ability is the one
+// exception, and it is deliberate.
+//
+// Read strictly, CR 106.7 would count it: "Activate each exhaust
+// ability only once" is an activation restriction of the same family
+// as a Condition, and the rule asks what the ability WOULD produce if
+// it were to resolve. Counting it is the stronger-than-printed
+// direction for the reader that matters — a cast priced on a
+// Reflecting Pool that is deriving a colour from a Loot, the
+// Pathfinder whose exhaust is already gone is a cast the auto-tapper
+// cannot actually pay for, and the executor would tap the Pool for
+// nothing on the way to it. So this answers no, which is one colour
+// short in exactly the direction the recursion guard below is already
+// short in, and it keeps the CR 106.7 reader and the auto-tapper (which
+// refuses the same ability through autoTapAbilityFor) saying the same
+// thing about the same permanent.
+//
+// The narrowing is worth one sentence out loud because it is the only
+// place in this file that a card can be "could produce nothing" for a
+// reason that is not about its output: ADR 0020's exhaust addendum
+// (#1183) is where the decision lives.
+//
 // # The recursion guard
 //
 // An ability that reads OTHER permanents' producible mana is skipped
@@ -98,6 +125,15 @@ func (g *Game) ProducibleManaLocked(c Card) []string {
 	seen := map[string]bool{}
 	for _, ab := range abilities {
 		if ab.DerivesFromOtherSources {
+			continue
+		}
+		// #1183: a SPENT exhaust ability. The one place this function
+		// looks past "if the ability were to resolve" at something
+		// that stops it being activated, and it is a deliberate,
+		// declared narrowing rather than an oversight — see the
+		// "Exhaust is the one restriction this asks about" section
+		// above.
+		if g.ManaAbilityExhausted(c.InstanceID, ab) {
 			continue
 		}
 		// #789: an ability whose output depends on what its cost paid

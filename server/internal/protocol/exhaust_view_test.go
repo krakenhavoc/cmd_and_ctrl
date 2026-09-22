@@ -11,17 +11,22 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-// exhaust_view_test.go — the wire half of #1181. `exhausted` is
-// present on an activated ability exactly while this OBJECT has
+// exhaust_view_test.go — the wire half of #1181, and of #1183.
+// `exhausted` is present on an ability exactly while this OBJECT has
 // already activated it, and never on any other ability of the same
-// permanent.
+// permanent — on an activated ability (#1181) and, since #1183, on a
+// MANA ability, under the same wire name so the client's row logic is
+// one structural predicate for both kinds.
 //
 // It matters that the row is still THERE. An exhausted ability is
 // still printed on the permanent, so the menu greys it and says why,
 // the way it greys condition_unmet — unlike an ADR 0071 designation
 // gate, which makes the ability absent from the view entirely.
 
-const greenbeltGuardianOracle = "2d8aa053-289d-40d9-baa7-9bd1c5b8e957"
+const (
+	greenbeltGuardianOracle = "2d8aa053-289d-40d9-baa7-9bd1c5b8e957"
+	lootThePathfinderOracle = "68c7e459-0932-4644-a3c0-9a1eae1db7a3"
+)
 
 func TestExhaustedIsStampedPerAbilityAndOnlyOnTheSpentOne(t *testing.T) {
 	g := buildActiveGame(t)
@@ -110,5 +115,62 @@ func TestExhaustedFollowsTheObjectAndNotTheCard(t *testing.T) {
 	}
 	if conditionCardView(t, g, second).ActivatedAbilities[1].Exhausted {
 		t.Error("the other Elf was stamped too — the record is per object")
+	}
+}
+
+// TestExhaustedIsStampedOnAManaAbilityToo is #1183's wire half, on
+// Loot, the Pathfinder: the flag is the SAME key on ManaAbilityView,
+// stamped by the same one reader, so the client's greyed row and the
+// engine's refusal cannot disagree — and the two other exhaust
+// abilities on the same permanent are untouched, because the record is
+// keyed by the ability's label.
+func TestExhaustedIsStampedOnAManaAbilityToo(t *testing.T) {
+	g := buildActiveGame(t)
+	me := g.Seats[0]
+	loot := game.NewCard("Loot, the Pathfinder", me.ID)
+	loot.TypeLine = "Legendary Creature — Beast Noble"
+	loot.OracleID = lootThePathfinderOracle
+	loot.Controller = me.ID
+	loot.Power, loot.Toughness = 2, 4
+	g.Battlefield.PushTop(loot)
+
+	c := conditionCardView(t, g, loot.InstanceID)
+	if len(c.ManaAbilities) != 1 || len(c.ActivatedAbilities) != 2 {
+		t.Fatalf("got %d mana / %d activated abilities, want 1 / 2",
+			len(c.ManaAbilities), len(c.ActivatedAbilities))
+	}
+	if c.ManaAbilities[0].Exhausted {
+		t.Error("the mana ability is exhausted before anything was activated")
+	}
+	raw, err := json.Marshal(c)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if strings.Contains(string(raw), "exhausted") {
+		t.Errorf("an unspent exhaust ability must leave the flag off the wire: %s", raw)
+	}
+
+	me.ManaPool.AddMana(game.ManaToken{Color: "G"})
+	if err := g.ActivateManaAbility(me.ID, loot.InstanceID, 0, game.ManaAbilityParams{}); err != nil {
+		t.Fatalf("activate the exhaust mana ability: %v", err)
+	}
+
+	c = conditionCardView(t, g, loot.InstanceID)
+	if len(c.ManaAbilities) != 1 {
+		t.Fatalf("got %d mana abilities after the activation, want 1 — an exhausted ability is "+
+			"greyed, not removed", len(c.ManaAbilities))
+	}
+	if !c.ManaAbilities[0].Exhausted {
+		t.Error("the spent exhaust mana ability is not stamped exhausted")
+	}
+	for i, a := range c.ActivatedAbilities {
+		if a.Exhausted {
+			t.Errorf("activated ability %d was stamped too — the record is per ability, and the "+
+				"mana ability's label is not theirs", i)
+		}
+	}
+	raw, _ = json.Marshal(c)
+	if got := strings.Count(string(raw), `"exhausted":true`); got != 1 {
+		t.Errorf("exhausted on the wire %d times, want exactly 1: %s", got, raw)
 	}
 }

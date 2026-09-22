@@ -1989,6 +1989,18 @@ export interface ManaAbilityView {
   // — Temple of the False God with four lands, Mox Opal without
   // metalcraft. Same flag and meaning as ActivatedAbilityView's.
   condition_unmet?: boolean;
+  // #1183: an exhaust MANA ability ("Activate each exhaust ability
+  // only once") this permanent has already used — Loot, the
+  // Pathfinder's "Exhaust — {G}, {T}: Add three mana of any one
+  // color". Same flag, same name and same meaning as
+  // ActivatedAbilityView's, which is why `abilityBlocked` greys both
+  // kinds of row with one predicate and one string. Absent for every
+  // other mana ability, which is all of them.
+  //
+  // It recovers differently from `condition_unmet`: a condition may
+  // hold again next turn, an exhaust only if the permanent becomes a
+  // new object (CR 400.7 — a flicker, not an untap).
+  exhausted?: boolean;
   // #844, CR 903.4f: the ability says "any color in your commander's
   // color identity" (Command Tower, Arcane Signet, Commander's Sphere,
   // Path of Ancestry) and the controller has no commander, or one

@@ -391,6 +391,32 @@ type ManaAbilityShape struct {
 	Produced string
 	Label    string
 
+	// Exhaust marks an EXHAUST mana ability (#1183):
+	//
+	//	Exhaust — {G}, {T}: Add three mana of any one color.
+	//	(Activate each exhaust ability only once.)
+	//
+	// The twin of ActivatedAbilityShape.Exhaust, reading the same
+	// record through the same key, and one declarative bit for the
+	// same reason: the keyword IS the rule. Loot, the Pathfinder is
+	// the one printed card, and prints it three times — once on a mana
+	// ability and twice on ordinary ones.
+	//
+	// Keyed by the LABEL (activation_tally.go), so a mana ability that
+	// sets this must have one; effects.Register refuses a blank label
+	// and a duplicate at boot, across BOTH ability lists, because the
+	// two share one key space on one object.
+	//
+	// The extra reader a mana ability has is the AUTO-TAPPER. A spent
+	// exhaust ability is not a mana source — gatherTapSources will not
+	// plan it and materializePlanLocked will not tap it — because a
+	// planner that spent one behind the player's back would be taking
+	// the ability away to pay for something the player was not asked
+	// about. ProducibleManaLocked answers CR 106.7 the same way, so a
+	// Reflecting Pool is not priced on mana the spent source can never
+	// make again.
+	Exhaust bool
+
 	// Rider is the post-production half of a mana ability whose
 	// oracle text continues past the "Add …" clause — the painland
 	// cycle's "This land deals 1 damage to you", Ancient Tomb's 2.

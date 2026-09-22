@@ -553,7 +553,8 @@ func checkFlatClauses(name string, spec *game.TargetSpec) {
 }
 
 // checkExhaustAbilities holds the exhaust declaration to the two
-// things the engine's record needs from it (#1181).
+// things the engine's record needs from it (#1181), over BOTH ability
+// lists (#1183).
 //
 // The record is keyed by (object, ability LABEL) — see
 // game/activation_tally.go on why the label and not the index — so a
@@ -564,32 +565,51 @@ func checkFlatClauses(name string, spec *game.TargetSpec) {
 // silently take one away, which is exactly the class of bug a boot
 // panic is cheap insurance against.
 //
-// The third check is the other direction: an activated ability whose
-// label says "exhaust" and does not set the bit gets no gate at all
-// and is repeatable forever. Nothing else in an activated ability's
-// label mentions the word — the cards that talk ABOUT exhaust
-// abilities (Rangers' Refueler's trigger, Boom Scholar's cost
-// modifier, Elvish Refueler's static) say so somewhere other than an
-// ActivatedAbility.Label.
+// ONE `seen` set across the two lists, and that is the #1183 half: a
+// mana ability and an activated ability on the same card write to the
+// same key space on the same object, so Loot's "Exhaust — {G}, {T}:
+// Add three mana of any one color" and a hypothetical activated
+// ability with the same label would share one use across the two
+// kinds. Two per-list sets would not have caught it.
+//
+// The third check is the other direction: an ability whose label says
+// "exhaust" and does not set the bit gets no gate at all and is
+// repeatable forever. Nothing else in an ability label mentions the
+// word — the cards that talk ABOUT exhaust abilities (Rangers'
+// Refueler's trigger, Boom Scholar's cost modifier, Elvish Refueler's
+// static) say so somewhere other than an ability Label.
 func checkExhaustAbilities(spec Spec) {
-	seen := make(map[string]bool, len(spec.Activated))
+	seen := make(map[string]bool, len(spec.Activated)+len(spec.ManaAbilities))
 	for i, a := range spec.Activated {
-		mentions := strings.Contains(strings.ToLower(a.Label), "exhaust")
-		if a.Exhaust && !mentions {
-			panic(fmt.Sprintf("effects.Register: %q activated ability %d sets Exhaust but its label does not print the keyword — the label is what the player reads", spec.Name, i))
-		}
-		if mentions && !a.Exhaust {
-			panic(fmt.Sprintf("effects.Register: %q activated ability %d prints \"Exhaust\" and does not set Exhaust: true — without the bit it can be activated every turn", spec.Name, i))
-		}
-		if !a.Exhaust {
-			continue
-		}
-		if a.Label == "" {
-			panic(fmt.Sprintf("effects.Register: %q activated ability %d is an exhaust ability with no Label — the label is the record's key", spec.Name, i))
-		}
-		if seen[a.Label] {
-			panic(fmt.Sprintf("effects.Register: %q declares two exhaust abilities labelled %q — they would share one use", spec.Name, a.Label))
-		}
-		seen[a.Label] = true
+		checkOneExhaustAbility(spec.Name, "activated ability", i, a.Label, a.Exhaust, seen)
 	}
+	// #1183: the mana half. A mana ability takes the other entry
+	// point (ActivateManaAbility, CR 605.3a) and the same record, so
+	// it answers to the same three rules.
+	for i, a := range spec.ManaAbilities {
+		checkOneExhaustAbility(spec.Name, "mana ability", i, a.Label, a.Exhaust, seen)
+	}
+}
+
+// checkOneExhaustAbility is the body of the three checks above, for
+// one ability of either kind. `seen` is shared across the kinds
+// because the record's key space is.
+func checkOneExhaustAbility(name, kind string, i int, label string, exhaust bool, seen map[string]bool) {
+	mentions := strings.Contains(strings.ToLower(label), "exhaust")
+	if exhaust && !mentions {
+		panic(fmt.Sprintf("effects.Register: %q %s %d sets Exhaust but its label does not print the keyword — the label is what the player reads", name, kind, i))
+	}
+	if mentions && !exhaust {
+		panic(fmt.Sprintf("effects.Register: %q %s %d prints \"Exhaust\" and does not set Exhaust: true — without the bit it can be activated every turn", name, kind, i))
+	}
+	if !exhaust {
+		return
+	}
+	if label == "" {
+		panic(fmt.Sprintf("effects.Register: %q %s %d is an exhaust ability with no Label — the label is the record's key", name, kind, i))
+	}
+	if seen[label] {
+		panic(fmt.Sprintf("effects.Register: %q declares two exhaust abilities labelled %q — they would share one use", name, label))
+	}
+	seen[label] = true
 }

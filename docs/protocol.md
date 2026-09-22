@@ -1283,6 +1283,55 @@ This client's does (#1173, via the shared `castableFaces` walk in
 `client/src/lib/faces.ts`), and hands the face picker the face the
 union answered yes on rather than defaulting it to the front.
 
+## A public announce field's nested legal sets are still per viewer (#1172, 2026-09-22)
+
+One more narrowing, one level in, in the same safe direction — fields
+go out on fewer frames, never on more — so `v` does not move.
+
+`modes` and `alternative_costs` stay PUBLIC on a public pile, for the
+reason the #1055 section gives: a card in a graveyard or on a revealed
+library top is a card every player may pick up and read, and "choose
+two of three" and "Overload {4}{R}" are what it prints. Each of them
+carried board-derived lists of its own, computed for the seat the stamp
+was built for and shipped inside the public field to everybody:
+
+| field | what it is | who it now reaches |
+| --- | --- | --- |
+| `modes[i].legal_targets` | the bullet's legal set right now | the asking seat |
+| `modes[i].clauses` | the bullet's per-clause legal sets (#764) | the asking seat |
+| `alternative_costs[i].legal_targets` | the clause the spell has when this price is paid | the asking seat |
+| `alternative_costs[i].pay_options` | the cards that can pay the cost's card-shaped half | the asking seat |
+| everything else in both blocks | printed text: prompt, min / max, labels, `target_mode`, keys, costs, `x_locked_at_zero`, `phyrexian_symbols` | every viewer of the pile |
+
+The rule that decides a row is the #1055 rule one level down: **does
+this field come off the printed CARD, or off the board for one
+PLAYER.** Hexproof, shroud, protection and "target opponent" narrow a
+target set by who is asking, and "a blue card in your hand" / "the
+cards in your graveyard" name one seat's cards — so a bystander reading
+either was reading the pile owner's answer out of a field whose name
+says it is theirs, which is the S48 [#891](https://github.com/krakenhavoc/cmd_and_ctrl/issues/891)
+shape.
+
+**The nested fields ride the same per-seat split as the top-level
+ones.** There is no new mechanism and nothing new on the wire: the
+public projection (`castStamps.publicIn`) copies the two blocks and
+drops the four lists, and `FilterViewFor` promotes the asking seat's
+whole `CastSurfaceView` — nested lists included — over the top. The
+copy is load-bearing: the public half and the seat's own half come out
+of ONE `castStampsFor` call and share the pointer and the slice header,
+so blanking in place would take the sets off the owner's frame too.
+`faces[i]` is narrowed identically, because a face's block is the same
+type. In a HAND the parents are dropped wholesale already (#1169), so
+nothing nested survives there either.
+
+**For a client.** Nothing to change, and that is the point: every
+reader takes a `CardView` out of the viewer's own snapshot, so
+`modes[i].legal_targets` was already the viewer's own answer whenever
+the viewer was the caster. A reader that finds a targeted-looking
+bullet with no `legal_targets` must treat it as a bullet it cannot
+open a picker for — never as a free-form prompt over the whole board —
+which is what `beginForModes` already does.
+
 ## Schema evolution rules
 
 - **Breaking changes** bump `v` and require updating both server and client

@@ -136,10 +136,10 @@ registry disagree.
 
 | Measured | Count |
 |---|---:|
-| Registry keys (`len(effects.All())`) | **2179** |
-| — whole cards (bare `oracle_id`) | **2105** |
+| Registry keys (`len(effects.All())`) | **2180** |
+| — whole cards (bare `oracle_id`) | **2106** |
 | — back faces (`<oracle_id>#1`) | 74 |
-| Declared `full` | 1702 |
+| Declared `full` | 1703 |
 | Declared `caveats` | 416 |
 | Declared `unreviewed` | 61 |
 
