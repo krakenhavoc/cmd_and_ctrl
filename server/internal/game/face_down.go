@@ -84,6 +84,37 @@ func (k FaceDownKind) HasWard() bool {
 	return k == FaceDownDisguised || k == FaceDownCloaked
 }
 
+// CatalogFaceDownWard builds the ward {2} a DISGUISED (CR 702.168a)
+// or CLOAKED (CR 701.58a) object has — the one ability a CR 708.2
+// object does have.
+//
+// A hook rather than a value, for the boundary reason ADR 0069
+// decision 3 gave and ADR 0082 decision 8 restates: ward is a
+// CR 702.21a TRIGGERED ABILITY, not a token in `canonicalKeywords`
+// (that table is closed, and a bare token has nowhere to put the
+// cost), it is built by `effects.Ward`, and `effects` is a package
+// `game` cannot import. So it arrives the way every other catalog
+// fact does — a function variable the effects package sets at init.
+//
+// Nil in a game-package test, which is why every reader goes through
+// faceDownWardLocked rather than calling this.
+var CatalogFaceDownWard func() []TriggeredAbility
+
+// faceDownWardLocked is the ward a face-down object has right now: the
+// disguise and cloak rows of the kind table, and nothing for the other
+// four kinds or for any face-up card in the game.
+//
+// It is the FIRST thing TriggersForCard answers, before the catalog
+// read, because the catalog read is precisely what CR 708.2a silences:
+// this ability belongs to the face-down STATE and not to the card
+// underneath, so a disguised Sheoldred has ward {2} and nothing else.
+func faceDownWardLocked(c Card) []TriggeredAbility {
+	if !c.FaceDown || !c.FaceDownKind.HasWard() || CatalogFaceDownWard == nil {
+		return nil
+	}
+	return CatalogFaceDownWard()
+}
+
 // FaceDownCast is the CR 708 half of morph (CR 702.37b), megamorph
 // (CR 702.109a) and disguise (CR 702.168a): the keyword's permission
 // to cast the card FACE DOWN, and the price of turning the permanent
