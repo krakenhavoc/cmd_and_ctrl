@@ -40,7 +40,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // source at all and the hint cannot reach one. Declared anyway,
 // because the declaration is about the CARD and is right whether or
 // not the planner can act on it. Cracking the Treasure by hand — which
-// is the only way to spend it today — works.
+// is the only way to spend it today — works. Filed as #1215.
 func init() {
 	Register(Spec{
 		OracleID:      "f3a0f155-05d8-465c-b0ef-35aa12e93013",

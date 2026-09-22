@@ -539,7 +539,11 @@ func appendTapSource(out []tapSource, cardID uuid.UUID, slots []ProducedManaEntr
 //     planner declining a decision it may not make, this one is the
 //     rule;
 //
-//   - a sacrifice cost needs a permanent named (S15's original note);
+//   - a sacrifice cost needs a permanent named (S15's original note).
+//     TRUE of SacrificeOther and not of SacrificeCost, which eats the
+//     SOURCE and needs no decision at all — so a board of Treasures
+//     currently reads as unpayable, and #1212's source wish cannot
+//     reach the family it was built for. Filed as #1215;
 //
 //   - a cost that ADDS a counter spends a resource the player never
 //     agreed to spend, like a life cost (#789);

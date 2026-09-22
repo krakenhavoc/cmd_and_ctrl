@@ -403,8 +403,8 @@ SACRIFICE-cost mana ability outright — `autoTapAbilityFor`'s first line is
 does not revisit. **A Treasure is therefore not an auto-tap source at all**, and
 no ordering hint can reach one. Treasure mana is floated by hand, the record
 reads the same either way, and the hint bites today only on sources without a
-sacrifice cost (a mana creature for Inga and Esika, a snow land). Filed
-separately.
+sacrifice cost (a mana creature for Inga and Esika, a snow land). Filed as
+[#1215](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1215).
 
 ### A6. There is no "if snow mana was spent" card
 
@@ -440,5 +440,5 @@ draws no card. Pinned by
   Fixer print "if mana from a Treasure was spent to activate this ability". The
   tokens carry the kinds there already; nothing reads them, and the catalog
   declaration is per card rather than per ability.
-- **The auto-tapper planning a sacrifice-cost source.** A5.
+- **The auto-tapper planning a sacrifice-cost source.** A5, [#1215](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1215).
 - **Enforcing `{S}`.** A6.
