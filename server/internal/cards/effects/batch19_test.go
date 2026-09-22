@@ -673,8 +673,10 @@ func TestB19WeaverOfHarmonyBuffsOtherEnchantmentCreatures(t *testing.T) {
 		t.Error("not itself, not a plain creature, not an opponent's")
 	}
 	_ = shrine
-	if spec, _ := Lookup(b19WeaverOfHarmonyOracle); spec.Completeness != CompletenessCaveats || len(spec.Activated) != 0 {
-		t.Error("the omitted copy ability must be declared")
+	// #1223 built the ability-copy seam the Weaver was waiting on, so
+	// the copy activation is there and the caveat is gone.
+	if spec, _ := Lookup(b19WeaverOfHarmonyOracle); spec.Completeness != CompletenessFull || len(spec.Activated) != 1 {
+		t.Error("the copy ability ships with #1223")
 	}
 }
 
