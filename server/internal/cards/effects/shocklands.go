@@ -3,8 +3,6 @@ package effects
 import (
 	"fmt"
 
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -80,11 +78,12 @@ import (
 // by the replacement pipeline before the permanent moves, so the
 // answer decides how it ENTERS.
 //
-// The Controller hook names the payer: the player performing the
-// play (ev.Actor, which the land path stamps) is the shockland case;
-// the card's own controller / owner is the fallback for an entry
-// driven by something else, such as an effect putting the land onto
-// the battlefield.
+// The Controller hook names the payer — EnteringPermanentChooser
+// (helpers.go), shared with the copy selector and the reveal-lands:
+// the player performing the play (ev.Actor, which the land path
+// stamps) is the shockland case; the card's own controller / owner is
+// the fallback for an entry driven by something else, such as an
+// effect putting the land onto the battlefield.
 func EntersTappedUnlessYouPayLife(name string, life int) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches:         []game.EventKind{game.EventZoneMove},
@@ -97,18 +96,7 @@ func EntersTappedUnlessYouPayLife(name string, life int) game.ReplacementEffect 
 				ev.NewZone == game.ZoneBattlefield &&
 				src != nil && ev.CardID == src.InstanceID
 		},
-		Controller: func(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
-			if ev != nil && ev.Actor != uuid.Nil {
-				return ev.Actor
-			}
-			if src == nil {
-				return uuid.Nil
-			}
-			if src.Controller != uuid.Nil {
-				return src.Controller
-			}
-			return src.Owner
-		},
+		Controller: EnteringPermanentChooser,
 		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
 			ev.EntersTapped = true
 			return nil

@@ -183,8 +183,17 @@
   // sentence, and that the candidates are public permanents rather
   // than somebody's hand.
   const isUntapChoice = $derived(active?.kind === "untap_choice");
-  // The two kinds that share the bounded card-set grid.
-  const isCardSetPick = $derived(isChooseCards || isUntapChoice);
+
+  // #1198 entry_reveal_from_hand — CR 614.1c's "as this land enters,
+  // you may reveal an Island or Swamp card from your hand. If you
+  // don't, it enters tapped." Same payload, same bounds and the same
+  // picker; what differs is that the land is NOT on the battlefield
+  // yet (the answer decides how it enters) and that revealing costs
+  // nothing — the card stays in hand, so the floor of zero is a real
+  // bluff rather than a formality.
+  const isEntryReveal = $derived(active?.kind === "entry_reveal_from_hand");
+  // The three kinds that share the bounded card-set grid.
+  const isCardSetPick = $derived(isChooseCards || isUntapChoice || isEntryReveal);
 
   // How many cards this prompt accepts, and how few it will settle
   // for. Search and copy are the two that move the floor off the
@@ -1316,6 +1325,9 @@
           {:else if isUntapChoice}
             {active.reason || "Untap step — choose which permanents untap"}
             <span class="prompt-src" aria-hidden="true">untap · CR 502.3</span>
+          {:else if isEntryReveal}
+            {active.reason || "Reveal a card from your hand?"}
+            <span class="prompt-src" aria-hidden="true">reveal · CR 614</span>
           {:else if isChooseCards}
             {active.reason || "Choose cards"}
             <span class="prompt-src" aria-hidden="true">choose</span>
@@ -1348,6 +1360,10 @@
             {/if}
             Nothing else on your board is affected — everything that could untap without a decision already
             has.
+          {:else if isEntryReveal}
+            Show {pickMax === 1 ? "one of these" : `up to ${pickMax} of these`} to the table and it enters
+            untapped. Revealing costs nothing — the card stays in your hand — but everyone gets to see
+            it, and you may show nothing instead.
           {:else if isChooseCards}
             {#if pickMin === pickMax}
               Pick {pickMax} of these.
@@ -1401,6 +1417,8 @@
               {selected.size === 0 ? "Enter as itself" : "Enter as a copy"}
             {:else if isUntapChoice}
               Untap
+            {:else if isEntryReveal}
+              {selected.size === 0 ? "Reveal nothing" : "Reveal"}
             {:else if isChooseCards}
               Choose
             {:else}

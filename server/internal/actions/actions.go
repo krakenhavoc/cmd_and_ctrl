@@ -1614,6 +1614,14 @@ func Dispatch(g *game.Game, a Action) error {
 				// line above — a board of nothing but "you may choose
 				// not to untap" permanents accepts the empty answer.
 				return g.ResolveUntapChoice(choiceID, a.Player, ids)
+			case game.PendingChoiceEntryRevealFromHand:
+				// #1198, CR 614.1c: "as this land enters, you may
+				// reveal an Island or Swamp card from your hand". The
+				// third kind on this payload, and the floor is zero
+				// by design — an EMPTY list is the decline that makes
+				// the land enter tapped, so it is routed here ahead
+				// of the count guards like the two above it.
+				return g.ResolveEntryRevealFromHand(choiceID, a.Player, ids)
 			case game.PendingChoiceCopyTarget:
 				// "You may have this enter as a copy of ..." — an
 				// EMPTY list is the decline, exactly as it is for

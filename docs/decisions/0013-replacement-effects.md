@@ -2904,6 +2904,166 @@ where no window opens at all because exiling the top N is not a mill
 (CR 701.13a). Every other mill in the catalog names a number and is
 untouched.
 
+### 5z. Amendment, 2026-09-22: a CARD choice inside an entry replacement, and the third card-set pick
+
+*Status: Accepted. Issue #1198, seam row "Reveal-from-hand entry choice"
+(`docs/engine-seams.md`), tracker S39 #882.*
+
+#### Context
+
+The entry pipeline could stop and ask three questions, and all three are
+yes/no-shaped: a CR 614.10 "may" (`Optional`, §5h), a shockland's
+"you may pay 2 life" (`EntryLifeCost`, `entry_choice.go`) and a copy
+selector's "enter as a copy of what?" (`CopySelector`, §5o). None of them
+can express the one sentence twelve catalog-waiting cards print:
+
+> "As this land enters, you may reveal an Island or Swamp card from your
+> hand. If you don't, this land enters tapped."   — Choked Estuary, ×10
+
+The census filed the family in batch 02 under its own name — *"A card
+choice inside a replacement effect"*
+(`docs/decklists/card-coverage-roadmap.md:418`) — and the diagnosis there
+is still the right one: **the replacement pipeline is synchronous with no
+per-card prompt**. `Optional` is a bare yes/no and cannot name a card;
+`CopySelector` names a card but only a permanent on the battlefield, and
+its answer rewrites the entering object rather than a player's hand.
+
+The shape is `EntryLifeCost`'s exactly, with the payment swapped: the
+player is offered a way to AVOID the replacement, declining is what makes
+it fire, and the decision happens before the permanent moves. What is new
+is that the answer is a set of CARDS in a hidden zone.
+
+#### Decision 1 — A fourth branch on the apply-loop, not a fourth pipeline
+
+`ReplacementEffect.EntryHandReveal *EntryHandReveal` joins `Optional`,
+`EntryLifeCost` and `CopySelector` as a branch in
+`applyReplacementsLocked`'s single-applicable arm
+(`server/internal/game/replacements.go`), and joins `asksItsOwnQuestion`,
+so the two windows that cannot put a question to anybody —
+`ev.mustSettleNow` and a CR 616 ordering whose affected player has left —
+skip it un-applied exactly as they skip the other three. That is the
+weaker branch of the card ("you didn't reveal"), which is the posture
+every un-prompted path in this ADR already takes.
+
+Everything else it reuses: `entryChoicePlayerLocked` (the pay-life file's
+"who does this entry ask", renamed off `entryLifePayerLocked` because the
+rule was never about life), the `replacementResumeFrame`, and
+`finishSettledReplacementLocked` as the one finisher. In particular a
+prompt that is taken away when its chooser leaves the game settles the
+paused entry through `finishDroppedReplacementLocked` →
+`abandonZoneRouteLocked` with no new code, which is §5j's rule holding.
+
+**The guards are `EntryLifeCost`'s, one for one**, and for its reasons:
+
+| Guard | Why | Outcome |
+|---|---|---|
+| `!ev.entryResumable` | pausing an entry with no resume strands the card in its old zone (§5o) | replacement applies, unprompted |
+| no matching card in hand | a question whose only answer is "no" is worse than not asking | replacement applies |
+| chooser has left | CR 800.4a | replacement applies |
+
+The second is the one that differs in kind from pay-life's "can they
+afford it": an empty hand is not a refusal, it is the absence of the
+question. The observable result is the same in both files — weaker than
+printed, never stronger.
+
+#### Decision 2 — One new prompt kind, carrying the choose-cards payload
+
+`PendingChoiceEntryRevealFromHand` (`entry_reveal.go`) is the **third**
+member of `isCardSetPickKind`, after `choose_cards` (#74) and #826's
+`untap_choice`. It carries `ChooseCards` / `ChooseMin` / `ChooseMax` and a
+`chooseCardsFrame{zone: ZoneHand}`, so `checkChooseCardsPicksLocked`
+(#1017) — bounds, candidacy, duplicates, the live-zone re-check and the
+set-level `Validate` hook — is the ONE copy of "would this answer be
+accepted", shared with the submit path and with
+`ChooseCardsPickLegalLocked` in the enumerator.
+
+It is a separate KIND rather than a `choose_cards` with a replacement
+frame on it, for `untap_choice`'s three reasons with the third again
+deciding:
+
+- **The continuation is not a card's next sentence, it is a paused
+  ENTRY.** `resolveCardSetPick` dequeues and runs `frame.then`; this kind
+  has to re-enter `applyReplacementsLocked` and then
+  `finishSettledReplacementLocked`, which is the replacement pipeline's
+  resume contract and not the chain's.
+- **The sentence is different.** "Choose cards" is not "reveal a card to
+  keep this untapped", and the kind is what the client renders from.
+- **The SIGN is inverted for a bot.** The heuristic's `choose_cards`
+  branch scores an answer by what it does NOT name (#798) — naming a card
+  there is giving it up. A card named here is REVEALED and stays in hand;
+  it is not spent, so #1028's fuel pricer is not the hint either. Scored
+  through the choose_cards branch, "reveal nothing" would beat "reveal",
+  and every one of the ten lands would enter tapped forever.
+
+**Declining is a real answer**, not a second prompt: the floor is zero,
+which makes "reveal nothing" the enumerator's `AlwaysLegal` answer and
+means this prompt can never be the #544 wedge even with every candidate
+gone from the hand. For the same reason it is deliberately NOT swept by
+`pruneCardSetChoicesLocked` — `untap_choice`'s exemption for
+`untap_choice`'s reason, plus one of its own: the prune DROPS an emptied
+prompt, and dropping this one would strand the entry it is pausing.
+
+#### Decision 3 — Revealing is `RevealForEffect`, and the table reads it in the log
+
+The answer is not applied by hand. `RevealForEffect` (`reveal.go`) makes
+every seated player a knower of each named card and announces the run as
+grouped `EventRevealCards` — so the picker is the owner's alone
+(`filterPendingChoices` drops both options AND bounds from every other
+seat, `choose_cards`' redaction, because the COUNT of matches in a hand is
+itself hidden information) and the other seats learn what was shown
+afterwards, through the log, which is exactly CR 701.20's "entitled to
+remember". Nothing moves: a reveal is not a zone change (CR 701.20b), so
+the card is still in hand when the land finishes entering.
+
+#### Decision 4 — The clause, and what is NOT in it
+
+Card side is one constructor in the land vocabulary, beside
+`EntersTappedUnlessYouPayLife` and `SelfEntersTappedUnless`:
+
+```go
+EntersTappedUnlessYouRevealFromHand(name, "an Island or Swamp card",
+    Or(IsLandWithSubtype("island"), IsLandWithSubtype("swamp")))
+```
+
+`EntryHandReveal` carries `Matches func(game.Card) bool` (a function of
+the card, no `*Game` — `ChooseCardsPrompt.Validate`'s rule, for its
+reason: the predicate runs under the write lock on submit and under the
+READ lock inside `legal.EnumerateFor`), `Min` / `Max`, the prompt
+`Question`, and an optional `Then(g, revealed)` continuation.
+
+Deliberately absent, and each with a card that proves it is a different
+shape:
+
+- **Exile** ("imprint"). Chrome Mox is already `CompletenessFull`
+  (`server/internal/cards/effects/chrome_mox.go`) and must stay where it
+  is: it prints *"When this artifact enters"*, so its imprint is an
+  ordinary ETB TRIGGER on the stack — #578's distinction, and observable,
+  because a Mox flickered in response to its own trigger imprints
+  nothing. No card in the catalog or on the seam row exiles from hand as
+  part of a CR 614 entry, so an exile branch would ship a bot
+  sign-inversion with nothing to prove it. `Then` is the door.
+- **Discard.** Mox Diamond, and discarding is a COST — its own seam row
+  (`docs/engine-seams.md:76`).
+- **A conditional "if you don't"**. Temple of the Dragon Queen prints
+  *"unless you revealed a Dragon card this way **or you control a
+  Dragon**"* and a second CR 614.12 clause (choose a colour) besides. Two
+  clauses on one entry is a question this amendment does not answer.
+
+#### Consequences
+
+- The ten reveal-lands ship from one clause, one file, one row each.
+- `entryLifePayerLocked` is `entryChoicePlayerLocked`; nothing else in
+  `entry_choice.go` moves.
+- A third card-set-pick kind means three places now read
+  `isCardSetPickKind` rather than two. That is the intended direction:
+  the alternative was a fourth copy of the bounds-and-candidates
+  validation, which is the pair that drifts.
+- A game with this prompt open writes no restore point, like every other
+  continuation-bearing prompt: the choice holds two frames
+  (`replacementResume` and `chooseCardsResume`) and both are counted in
+  `ContinuationCensus.ChoiceResumeFrames`.
+
+
 ### 6. Six pipeline integration points (five mutations + step transition)
 
 The core five mutations named in the sprint plan are the rules-

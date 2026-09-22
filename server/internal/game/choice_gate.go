@@ -195,6 +195,13 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	// (Deny-by-default would have said the same; the row is here
 	// because the gate demands every kind be classified out loud.)
 	PendingChoiceUntapChoice: true,
+	// #1198, CR 614.1c. "As this land enters, you may reveal an
+	// Island or Swamp card from your hand." It blocks for
+	// entry_pay_life's reason rather than choose_cards': the
+	// permanent is mid-entry and the whole CR 614 pipeline is
+	// suspended on the answer, so a table that could walk past the
+	// question would be answering it by entering.
+	PendingChoiceEntryRevealFromHand: true,
 }
 
 // ChoiceBlocksTable is THE question "does an unanswered prompt of this

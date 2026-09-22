@@ -812,6 +812,27 @@ type ReplacementEffect struct {
 	// See entry_choice.go. Added with the shockland cycle.
 	EntryLifeCost int
 
+	// EntryHandReveal, when non-nil, makes this a "you may reveal
+	// <a card matching this> from your hand; if you don't,
+	// <replacement>" effect — the ten reveal-lands, Choked Estuary
+	// and its cycle. The apply-loop queues a
+	// PendingChoiceEntryRevealFromHand pick and bails; revealing
+	// means Replace NEVER runs, declining (or having nothing that
+	// matches) means it does.
+	//
+	// EntryLifeCost's inversion with a CARD where the shockland has
+	// a number, which is why it is not Optional either. A reveal is
+	// not a cost and not a zone change (CR 701.20b): the named card
+	// is still in hand afterwards. A player with no matching card is
+	// not prompted and the replacement applies — the absence of the
+	// question, not a refusal of it.
+	//
+	// Takes precedence over Optional, which is meaningless alongside
+	// it. No printed card combines it with EntryLifeCost or
+	// CopySelector. See entry_reveal.go and ADR 0013 §5z. Added with
+	// the reveal-land cycle (#1198).
+	EntryHandReveal *EntryHandReveal
+
 	// CopySelector, when non-nil, makes this an "as this permanent
 	// enters, you may have it enter as a copy of X" effect (CR
 	// 707.2) — Clone, Phyrexian Metamorph, Spark Double, Sakashima
@@ -1172,6 +1193,19 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 			}
 			continue
 		}
+		if chosen.effect.EntryHandReveal != nil {
+			// "As this enters, you may reveal an Island or Swamp
+			// card from your hand." The same shape one line up with
+			// a card where the shockland has a number: the prompt
+			// and its three apply-it-inline cases live in
+			// entry_reveal.go, a queued prompt bails and an inline
+			// apply falls through to the next iteration (#1198,
+			// ADR 0013 §5z).
+			if g.offerEntryHandRevealLocked(ev, chosen) {
+				return ev, errReplacementPending
+			}
+			continue
+		}
 		if chosen.effect.Optional {
 			// CR 614.10 "may" — owner decides each time. Queue a
 			// yes/no prompt; the resume path either fires Replace
@@ -1289,7 +1323,8 @@ func sameModification(applicable []activeReplacement) bool {
 
 // asksItsOwnQuestion reports whether firing this effect puts a
 // question to a player before it changes anything — a CR 614.10
-// "may", a shockland's pay-life, a copy selector.
+// "may", a shockland's pay-life, a reveal-land's pick from hand, a
+// copy selector.
 //
 // Every caller here is deciding whether to skip the CR 616 ordering
 // prompt and apply the gathered effects inline. Such an effect can
@@ -1301,7 +1336,7 @@ func sameModification(applicable []activeReplacement) bool {
 // prompt; the guard is here so a future one fails loudly by prompting
 // rather than quietly by deciding.
 func asksItsOwnQuestion(e ReplacementEffect) bool {
-	return e.Optional || e.EntryLifeCost > 0 || e.CopySelector != nil
+	return e.Optional || e.EntryLifeCost > 0 || e.EntryHandReveal != nil || e.CopySelector != nil
 }
 
 // applyFirstGatheredLocked fires the FIRST gathered replacement and
@@ -1344,7 +1379,8 @@ func (g *Game) applyFirstGatheredLocked(ev *ReplacementEvent, applicable []activ
 
 // skipQuestionsLocked drops the gathered replacements that would ask
 // their controller a question — a CR 614.10 "may", a shockland's
-// pay-life, a copy selector — marking each applied so the apply-loop
+// pay-life, a reveal-land's pick from hand, a copy selector —
+// marking each applied so the apply-loop
 // does not gather it again, and returns the rest in gather order.
 //
 // Two windows use it, and both are windows in which the question

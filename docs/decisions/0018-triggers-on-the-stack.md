@@ -830,6 +830,65 @@ battlefield, and no card does. This is the wedge closed before a card
 reaches it, which is the posture #1027, #1045 and #1069 each took in
 turn.
 
+**Amendment (2026-09-22, #1198): a card-set pick can be welded to the
+ENTRY pipeline, and the three tables say so one row each.**
+
+§6's four tables — the gate (`choiceGateDecisions`), the departure rule
+(`choiceDepartureDecisions`), the enumerator's `choiceMoves` and the
+heuristic's `valueOfChoice` — are the whole contract for a new
+`PendingChoiceKind`, and two tests refuse a kind that skips one
+(`TestEveryChoiceKindIsClassifiedAndEnumerated`,
+`TestEveryChoiceKindHasAReassignmentDecision`).
+`entry_reveal_from_hand` (#1198, "as this land enters, you may reveal an
+Island or Swamp card from your hand"; see
+[ADR 0013](0013-replacement-effects.md) §5z for the pipeline half) is the
+third kind to carry the `choose_cards` PAYLOAD after #826's
+`untap_choice`, and the first to carry it welded to a PAUSED EVENT rather
+than to a resolving effect. Its four rows, and the one thing each says
+that is not obvious:
+
+- **Gate: blocks.** For `entry_pay_life`'s reason rather than
+  `choose_cards`': the permanent is mid-entry and the whole CR 614
+  pipeline is suspended on the answer. A table that could walk past the
+  question would be answering it by entering.
+- **Departure: `{}` — dropped, and the drop does nothing**, which is
+  `entry_pay_life`'s row verbatim and for its argument. The prompt is
+  never reassigned (CR 800.4f: the reveal is the "unless" of the departed
+  player's own entering permanent, which CR 800.4a takes out of the game
+  in the same breath), and the paused event is not left dangling by the
+  empty second column: the frame rides `PendingChoice.replacementResume`,
+  so `dropChoicesForPlayerLocked` hands it to
+  `finishDroppedReplacementLocked` → `abandonZoneRouteLocked` with no row
+  of its own. **`dropDefault` would be wrong here**, not merely
+  unnecessary: this kind's continuation is not a card's next sentence, it
+  is a replacement event, and settling it twice — once through the drop
+  action and once through the frame — is the double-resume the second
+  column exists to avoid.
+- **Enumerated: on the `choose_cards` / `untap_choice` branch**, a third
+  verb and nothing else. The bounds ride on the choice, every set is run
+  past `ChooseCardsPickLegalLocked`, and the floor is zero — so "reveal
+  nothing" is the `AlwaysLegal` answer and no board can leave this seat
+  with an empty move list.
+- **Scored: its own branch, not `choose_cards`'.** The sign is the whole
+  decision (#798). A card named to a `choose_cards` prompt over a bot's
+  own hand is a card GIVEN UP, so that branch scores an answer by what it
+  keeps; a card named here is revealed and stays in hand, so naming one
+  costs nothing and buys an untapped land. #1028's fuel pricer is not the
+  hint either — fuel prices a card SPENT to a cost, and a reveal spends
+  nothing. Scored on the `untap_choice` side of the ledger: more is
+  better, and the count settles itself.
+
+**And one sweep it is deliberately outside.** `pruneCardSetChoicesLocked`
+is not extended to it, for `untap_choice`'s reason plus one of its own:
+the prune DROPS a prompt whose candidates have all gone, and dropping
+this one would end the question by stranding the entry it is pausing.
+It cannot need the prune either — its floor is zero, so a candidate list
+emptied under it still has an answer the resolver accepts, which is the
+property `untap_choice` does not have and `choose_cards` with a floor of
+one does not have. The `pickStillInPickZoneLocked` re-check on submit
+still refuses a stale pick, so the worst an un-pruned list can do is cost
+one rejected click.
+
 ## Out of scope (explicit deferrals)
 
 - **Treasure's sac-for-mana** is inert until S21 ships sacrifice

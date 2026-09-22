@@ -3997,7 +3997,17 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// What it does NOT share is the redaction below: its
 		// candidates are tapped permanents on the battlefield, which
 		// every seat can already see.
-		if c.Kind == game.PendingChoiceChooseCards || c.Kind == game.PendingChoiceUntapChoice {
+		//
+		// #1198's entry_reveal_from_hand (CR 614.1c) carries it too,
+		// and IS redacted below with choose_cards: its candidates are
+		// cards in the revealer's own hand, and which of them match
+		// "an Island or Swamp card" is the hidden information the
+		// prompt is about. The other seats learn what was shown after
+		// the answer, through the reveal's own log line, which is the
+		// order CR 701.20 puts them in.
+		if c.Kind == game.PendingChoiceChooseCards ||
+			c.Kind == game.PendingChoiceUntapChoice ||
+			c.Kind == game.PendingChoiceEntryRevealFromHand {
 			v.ChooseMin = c.ChooseMin
 			v.ChooseMax = c.ChooseMax
 			v.Options = make([]CardView, 0, len(c.ChooseCards))
@@ -4705,7 +4715,14 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 		// the BOUNDS would still say "2 of 3" about a hidden zone, so
 		// they go too — a non-chooser learns that a choice is open and
 		// who owes it, and nothing about its contents.
-		if c.Kind == string(game.PendingChoiceChooseCards) && c.Chooser != viewerID {
+		// #1198's entry_reveal_from_hand is the same pool and the
+		// same rule: the candidates are the revealer's own hand, and
+		// the COUNT of the ones that match the land's clause is
+		// itself information about it. Every seat sees that the
+		// prompt is open and whose it is; what was actually revealed
+		// reaches them afterwards as an EventRevealCards run.
+		if (c.Kind == string(game.PendingChoiceChooseCards) ||
+			c.Kind == string(game.PendingChoiceEntryRevealFromHand)) && c.Chooser != viewerID {
 			out[i].Options = nil
 			out[i].ChooseMin = 0
 			out[i].ChooseMax = 0

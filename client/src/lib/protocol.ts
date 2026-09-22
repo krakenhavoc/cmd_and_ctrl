@@ -685,6 +685,19 @@ export interface PendingChoiceView {
     // reach every seat: the candidates are tapped permanents on the
     // battlefield, which everyone can already see.
     | "untap_choice"
+    // #1198 CR 614.1c: "as this land enters, you may reveal an Island
+    // or Swamp card from your hand. If you don't, it enters tapped."
+    // The permanent is halfway onto the battlefield while this is
+    // open — the answer decides HOW it enters, so the land is still in
+    // hand and nothing has triggered. Same {choice_id, card_ids}
+    // payload, the same choose_min / choose_max bounds and the same
+    // picker as choose_cards, and — like choose_cards, unlike
+    // untap_choice — options and bounds reach the CHOOSER ONLY: which
+    // cards in a hand match the land's clause is exactly the hidden
+    // information the question is about. An EMPTY list is the decline,
+    // and it is always a legal answer. What was revealed reaches the
+    // other seats afterwards, as an ordinary reveal in the log.
+    | "entry_reveal_from_hand"
     // #742: "choose a color" (CR 105.4) — as a permanent enters
     // (Coldsteel Heart, the Thriving lands; the answer is remembered on
     // the permanent) or while a spell resolves (Wash Out). color_options
@@ -811,11 +824,12 @@ export interface PendingChoiceView {
   // life. The label already says it; this is the number, for anything
   // that needs to reason about the price rather than print it.
   life_cost?: number;
-  // #74: populated for kinds "choose_cards" and "untap_choice" — how
-  // few and how many of `options` the chooser must pick. Absent for
-  // every other kind, and (for choose_cards only) absent for
-  // non-chooser viewers, who are not told the size of a choice over
-  // someone else's hidden cards.
+  // #74: populated for kinds "choose_cards", "untap_choice" and
+  // "entry_reveal_from_hand" — how few and how many of `options` the
+  // chooser must pick. Absent for every other kind, and (for the two
+  // kinds whose candidates are cards in a hand — choose_cards and
+  // entry_reveal_from_hand) absent for non-chooser viewers, who are
+  // not told the size of a choice over someone else's hidden cards.
   choose_min?: number;
   choose_max?: number;
   // CR 603.2d: when this is a trigger_prompt or pick_target choice,

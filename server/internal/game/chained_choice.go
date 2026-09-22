@@ -110,11 +110,22 @@ const PendingChoiceChooseCards PendingChoiceKind = "choose_cards"
 
 // isCardSetPickKind reports whether a prompt carries the choose-cards
 // payload — ChooseCards / ChooseMin / ChooseMax and a chooseCardsFrame.
-// Two kinds do: this one, and CR 502.3's untap_choice (ADR 0070
-// Decision 2), which shares the shape and differs only in what the
-// player is being asked and how a bot scores the answer.
+// Three kinds do: this one, CR 502.3's untap_choice (ADR 0070
+// Decision 2), and #1198's entry_reveal_from_hand (ADR 0013 §5z),
+// each of which shares the shape and differs only in what the player
+// is being asked and how a bot scores the answer.
+//
+// What they share is exactly checkChooseCardsPicksLocked — one copy
+// of the bounds, the candidacy, the duplicates, the live-zone
+// re-check and the set-level Validate hook. What they do NOT share is
+// the resolver: entry_reveal_from_hand's continuation is a paused
+// replacement event rather than a card's next sentence, so it settles
+// through its own ResolveEntryRevealFromHand instead of
+// resolveCardSetPick.
 func isCardSetPickKind(kind PendingChoiceKind) bool {
-	return kind == PendingChoiceChooseCards || kind == PendingChoiceUntapChoice
+	return kind == PendingChoiceChooseCards ||
+		kind == PendingChoiceUntapChoice ||
+		kind == PendingChoiceEntryRevealFromHand
 }
 
 // confirmFrame is the continuation pair behind a PendingChoiceConfirm.

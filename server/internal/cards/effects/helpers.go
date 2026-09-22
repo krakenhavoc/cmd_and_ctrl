@@ -773,3 +773,33 @@ func notACreature(c *game.Characteristic) {
 	c.Types = kept
 	c.SetSubtypes(nil)
 }
+
+// EnteringPermanentChooser is the `Controller` hook every entry
+// replacement that asks its own question shares: WHO is asked.
+//
+// One copy rather than three (#1198). The clone gate found the same
+// sixteen lines in `EntersAsCopyOf` (copy_effects.go, CR 707.2's
+// "enter as a copy of…?"), `EntersTappedUnlessYouPayLife`
+// (shocklands.go) and `EntersTappedUnlessYouRevealFromHand`
+// (reveal_lands.go), and it is the same RULE in all three rather than
+// merely the same text: the question belongs to whoever is putting
+// the permanent onto the battlefield.
+//
+// `ev.Actor` first, because the battlefield-entry path stamps
+// Card.Controller only AFTER the replacement pipeline has run — so at
+// this point src.Controller is whatever the card carried in the zone
+// it is leaving, and the Actor is the one field guaranteed correct.
+// The card's own controller, then its owner, are the fallbacks for an
+// entry driven by something that stamped no actor.
+func EnteringPermanentChooser(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
+	if ev != nil && ev.Actor != uuid.Nil {
+		return ev.Actor
+	}
+	if src == nil {
+		return uuid.Nil
+	}
+	if src.Controller != uuid.Nil {
+		return src.Controller
+	}
+	return src.Owner
+}

@@ -437,6 +437,44 @@ Permanents that *cannot* untap — held by a "doesn't untap" static or a
 options. A chosen permanent with a stun counter still spends the
 counter instead of untapping (CR 122.1d).
 
+### `entry_reveal_from_hand` — a card choice inside an entry replacement (#1198, CR 614.1c)
+
+`pending_choices` may carry `kind: "entry_reveal_from_hand"`. It is the
+reveal-land cycle's own sentence, asked as the permanent enters:
+
+> "As this land enters, you may reveal an Island or Swamp card from
+> your hand. If you don't, this land enters tapped."   — Choked Estuary
+
+It carries and is answered exactly like `choose_cards`: `options[]` are
+the cards in the revealer's hand that the land's clause admits,
+`choose_min` / `choose_max` bound the pick (always `0` / `1` for every
+printed card today), and `resolve_choice { choice_id, card_ids }` names
+what is revealed. **An empty `card_ids` is the decline**, and it is
+always accepted — the floor is zero, so this prompt can never be left
+without a legal answer.
+
+Three things are worth saying out loud:
+
+- **The permanent has not entered.** The CR 614 pipeline is suspended
+  on the answer, so while the prompt is open the land is still in its
+  owner's hand, nothing is on the battlefield, and no ETB trigger has
+  fired. The answer decides HOW it enters — untapped if something was
+  revealed, tapped if not — rather than fixing it up afterwards. Like
+  every prompt that pauses an entry, it blocks the table:
+  `advance_step`, `pass_priority` and `pass_turn` are refused while it
+  is open.
+- **The options and the bounds reach the CHOOSER ONLY**, exactly as
+  `choose_cards`' do and unlike `untap_choice`'s. The candidates are
+  cards in a hand, and HOW MANY of them match the land's clause is
+  itself information about that hand. Other seats see that a choice is
+  open and whose it is, and nothing else.
+- **What was revealed arrives afterwards, as an ordinary reveal.** The
+  answer produces the same grouped reveal frame any other reveal does
+  (CR 701.20): every seat becomes entitled to read that card for as
+  long as it stays where it is. Nothing moves — a reveal is not a zone
+  change (CR 701.20b) — so the card is still in hand when the land has
+  finished entering.
+
 ### `chat` (both directions) — added in S07
 
 A chat message addressed to every client bound to the same game.
