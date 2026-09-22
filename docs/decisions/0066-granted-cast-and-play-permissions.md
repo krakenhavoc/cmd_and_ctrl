@@ -1264,3 +1264,101 @@ The CLIENT half of #1171 is filed as #1173: the zone browser's cast
 gate reads the card's `castable_here`, which for a pile is face 0's
 answer, so it will not offer the cast a back face opens even though
 the frame now carries one on `faces[i]`.
+
+## Note (2026-09-22, #1172): the nested legal sets ride the same per-seat split
+
+The note above ended by filing the one thing it did not fix: `modes`
+and `alternative_costs` stay PUBLIC on a public pile and each carries a
+`legal_targets` of its own, computed for the seat the stamp was built
+for. A modal card in a graveyard shipped the pile owner's per-mode
+legal set to every viewer.
+
+### The shape, and why it is not either of the two the issue named
+
+#1172 named two candidate shapes and neither is what landed:
+
+1. *"The nested sets go private"* — described as a deep copy of two
+   view structs on every public stamp, and "the public half stops
+   being one assignment". The first half is right and is the cost
+   paid; the second is not. `applyPublicTo` was already
+   `publicIn(kind).applyTo(c)`, and `publicIn` was already the one
+   function that knows which fields are which (#1169). Adding two
+   lines to it keeps one place, and the promotion on the other side
+   stays exactly one assignment of the whole `CastSurfaceView`, which
+   is what hands a seat its nested sets back without a second
+   mechanism.
+2. *"The whole field goes private"* — refused, for the reason the
+   issue gives: `modes` is the printed text of a modal card and a
+   bystander at a paper table reads it off the graveyard.
+
+So: **the nested per-viewer fields ride the same per-seat `castStamps`
+/ `castOffers` split as the top-level ones.** The public projection
+carries the mode's and the offer's static facts; each viewer's frame
+gets its own nested lists, promoted with the block around them. It is
+#1170's move one level further in — an embedded `CastSurfaceView` per
+face is how the split travels down to a face, and this is how it
+travels down to a field inside one.
+
+### Which fields, and the rule that decides
+
+Four, and they are the four that are computed from the BOARD for one
+seat rather than read off the card:
+
+- `modes[i].legal_targets` and `modes[i].clauses` — narrowed by
+  hexproof, shroud, protection and "target opponent" exactly as the
+  card's own clause is.
+- `alternative_costs[i].legal_targets` — the clause the spell has when
+  this price is paid, resolved against the board through the same
+  `LegalTargetsForEffect`.
+- `alternative_costs[i].pay_options` — NOT a target list (a cost does
+  not target, CR 601.2h) but a list of instance IDs picked out by "you
+  control" / "your hand" / "your graveyard", so it answers "what may
+  YOU pay". #1169 already called it out as the live leak inside a
+  revealed hand card's offer list, where the whole offer list is
+  dropped; this is the same sentence on a public pile, where the offer
+  stays and the list does not.
+
+Everything else in both blocks is printed text — the prompt, the
+counts, the labels, `target_mode`, the offer's key, mana cost, life,
+pay label, CR 107.3b's X lock and CR 107.4's Phyrexian count — and
+stays public with its parent. The rule, stated once: **does this field
+come off the printed CARD, or off the board for one PLAYER.**
+
+### The copy is load-bearing
+
+`publicIn` takes its stamp by value, but `Modes` is a POINTER and
+`AlternativeCosts` a slice header, and the public projection and the
+asking seat's own answer come out of ONE `castStampsFor` call
+(`stampLegalTargets` stamps publicly and then files the same value for
+the seat). Blanking through the pointer would take the nested sets off
+the OWNER's frame as well as off the bystander's. That is
+`applyFaceCastStampsFor`'s bug — a shared backing array written in
+place — arriving one level further in, and `publicModeSpec` /
+`publicAlternativeCosts` copy for the same reason. One allocation per
+modal card and per priced card per public stamp, and none for a card
+that is neither.
+
+### The guard
+
+`face_down_view_test.go`'s `castSurfaceScopes` table places every field
+of `CastSurfaceView` on the public / private line and fails on a field
+nobody has placed. Two more tables do the same for `ModeOptionView` and
+`AlternativeCostView`, so a field added to a nested block is a decision
+somebody makes rather than one nobody notices — and the same test
+asserts that the public strip did not reach through into the seat's own
+copy.
+
+The #1024 coherence fixture gains a modal card in a graveyard and a
+modal clause on the modal DFC's back face, so the bystander loop asks
+the nested question per card and per face; the owner's half of the same
+fixture asserts all four lists survive the promotion.
+
+### Consequences
+
+Nothing on the wire moves in the direction that breaks a reader: four
+fields go out on fewer frames and never on more, so `v` does not move
+and a client that ignores them behaves as it did. Every client reader
+of the nested sets takes a `CardView` out of the viewer's own snapshot,
+so all of them were already reading their own frame; the one behaviour
+worth pinning — that a targeted-looking bullet arriving with no legal
+set opens no picker rather than a free-form prompt — now has a test.

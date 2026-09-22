@@ -30,25 +30,22 @@ import (
 // Giant // Stomp in miniature.
 const adventureOracle = "view-per-face-adventure"
 
-// withFaceCatalog stubs the target clause and target mode of the
-// ADVENTURE half only — key "<oracle>#1" — so a stamp that reads the
-// card's bare oracle ID for face 1 shows up as an empty answer rather
-// than as the front's.
+// withFaceCatalog stubs the target clause, target mode and MODAL
+// clause of the ADVENTURE half only — key "<oracle>#1" — so a stamp
+// that reads the card's bare oracle ID for face 1 shows up as an empty
+// answer rather than as the front's.
+//
+// The modal half is #1172's: `modes` is a public field that carries a
+// legal set per targeted bullet, so a face's block has the nested
+// split to pin as well as the top-level one.
 func withFaceCatalog(t *testing.T) {
 	t.Helper()
-	prevSpec, prevMode := game.CatalogTargetSpec, game.CatalogTargetMode
+	prevSpec, prevMode, prevModes := game.CatalogTargetSpec, game.CatalogTargetMode, game.CatalogModeSpec
 	game.CatalogTargetSpec = func(id string) *game.TargetSpec {
 		if id != adventureOracle+"#1" {
 			return nil
 		}
-		return &game.TargetSpec{
-			Mode:  "any",
-			Zones: []game.ZoneKind{game.ZoneBattlefield},
-			CardOK: func(_ *game.Game, _ uuid.UUID, c game.Card, _ game.ZoneKind) bool {
-				return c.IsCreature()
-			},
-			Min: 1, Max: 1,
-		}
+		return adventureClause()
 	}
 	game.CatalogTargetMode = func(id string) string {
 		if id == adventureOracle+"#1" {
@@ -56,7 +53,36 @@ func withFaceCatalog(t *testing.T) {
 		}
 		return ""
 	}
-	t.Cleanup(func() { game.CatalogTargetSpec, game.CatalogTargetMode = prevSpec, prevMode })
+	game.CatalogModeSpec = func(id string) *game.ModeSpec {
+		if id != adventureOracle+"#1" {
+			return nil
+		}
+		return &game.ModeSpec{
+			Prompt: "Choose one —",
+			Min:    1, Max: 1,
+			Options: []game.ModeOption{
+				{Label: "Fixture Stomp deals 2 damage to target creature.", Targets: adventureClause()},
+				{Label: "Draw a card."},
+			},
+		}
+	}
+	t.Cleanup(func() {
+		game.CatalogTargetSpec, game.CatalogTargetMode, game.CatalogModeSpec = prevSpec, prevMode, prevModes
+	})
+}
+
+// adventureClause is the Adventure half's target clause: one creature
+// on the battlefield. A fresh value per call, because the mode option
+// and the face's own clause must not share one.
+func adventureClause() *game.TargetSpec {
+	return &game.TargetSpec{
+		Mode:  "any",
+		Zones: []game.ZoneKind{game.ZoneBattlefield},
+		CardOK: func(_ *game.Game, _ uuid.UUID, c game.Card, _ game.ZoneKind) bool {
+			return c.IsCreature()
+		},
+		Min: 1, Max: 1,
+	}
 }
 
 // adventureCard is the fixture card, front face up, known to the
@@ -187,10 +213,27 @@ func TestPerFaceLegalTargetsAreTheViewersOwn(t *testing.T) {
 	if mine.LegalTargets == nil {
 		t.Fatalf("the hand's owner lost their own per-face legal target set")
 	}
+	// #1172: and the NESTED one, on the same face. The owner keeps it
+	// because the promotion assigns the whole block.
+	if mine.Modes == nil {
+		t.Fatalf("the hand's owner lost the Adventure half's `modes`; the nested assertions are vacuous")
+	}
+	if lt := mine.Modes.Options[0].LegalTargets; lt == nil || len(lt.Cards) != 1 {
+		t.Errorf("the hand's owner lost their own per-face NESTED legal target set: %+v", lt)
+	}
 
 	theirs := faceOf(t, ViewOfGameFor(g, opp.ID.String()).Seats[0].Hand, id, 1)
 	if theirs.LegalTargets != nil {
 		t.Errorf("a knower of a revealed hand card got its OWNER's per-face legal target set: %+v", theirs.LegalTargets)
+	}
+	// #1169 + #1172: in a HAND the parent goes too, so there is no
+	// surviving `modes` for a nested set to ride in on. Asserted on
+	// the parent AND on the nested field, because the two are
+	// different failures — a hand that kept `modes` would be the
+	// #1169 regression, and a `modes` that kept its legal sets on a
+	// public pile is the #1172 one.
+	if theirs.Modes != nil {
+		t.Errorf("a knower of a revealed hand card got its owner's per-face `modes`: %+v", theirs.Modes)
 	}
 	// `target_mode` is printed text about the card and stays, the way
 	// it does on the card's own block — it is what a player reading a
@@ -302,6 +345,12 @@ func TestAFacelessGrantOpensEveryFaceForTheHolderAlone(t *testing.T) {
 		t.Errorf("the grant holder cannot see the Adventure half's clause: mode %q targets %+v",
 			holder.TargetMode, holder.LegalTargets)
 	}
+	// #1172: including the nested set inside the public `modes`
+	// field, which the promotion hands over with the rest of the
+	// block.
+	if holder.Modes == nil || holder.Modes.Options[0].LegalTargets == nil {
+		t.Errorf("the grant holder cannot see the Adventure half's nested legal targets: %+v", holder.Modes)
+	}
 
 	// Exile has no owner, so NOTHING about a holder's answer is
 	// public there (#978) — a bystander gets the printed face list
@@ -309,6 +358,12 @@ func TestAFacelessGrantOpensEveryFaceForTheHolderAlone(t *testing.T) {
 	bystander := faceOf(t, ViewOfGameFor(g, opp.ID.String()).Exile, id, 1)
 	if bystander.TargetMode != "" || bystander.LegalTargets != nil {
 		t.Errorf("a bystander got the holder's per-face announce block: %+v", bystander)
+	}
+	// #1172: and no nested one either — asserted separately from the
+	// block above, because a nested set is what survived a strip of
+	// the fields around it for the whole of #1169.
+	if bystander.Modes != nil {
+		t.Errorf("a bystander got the holder's per-face `modes`: %+v", bystander.Modes)
 	}
 }
 

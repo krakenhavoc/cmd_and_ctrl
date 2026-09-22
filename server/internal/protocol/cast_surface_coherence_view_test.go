@@ -2,6 +2,7 @@ package protocol
 
 import (
 	"encoding/json"
+	"fmt"
 	"sort"
 	"testing"
 
@@ -95,6 +96,45 @@ func targetACreature() *game.TargetSpec {
 			return c.IsCreature()
 		},
 		Min: 1, Max: 1,
+	}
+}
+
+// withModeSpecsByOracle stubs the modal clause of one or more oracle
+// IDs, chaining like the two stubs above (#1172).
+func withModeSpecsByOracle(t *testing.T, specs map[string]func() *game.ModeSpec) {
+	t.Helper()
+	prev := game.CatalogModeSpec
+	game.CatalogModeSpec = func(id string) *game.ModeSpec {
+		if s, ok := specs[id]; ok {
+			return s()
+		}
+		if prev != nil {
+			return prev(id)
+		}
+		return nil
+	}
+	t.Cleanup(func() { game.CatalogModeSpec = prev })
+}
+
+// chooseOneTargetedMode is the modal clause #1172 is about: a "choose
+// one" whose bullets TARGET, so each option carries a legal set
+// computed for the seat the stamp was built for. The second bullet has
+// two clauses, which is what puts a nested `clauses` on the wire
+// beside the nested `legal_targets`.
+func chooseOneTargetedMode() *game.ModeSpec {
+	twoClauses := targetACreature()
+	twoClauses.Label = "target creature"
+	second := targetACreature()
+	second.Label = "a second target creature"
+	twoClauses.Rest = []game.TargetClause{*second}
+	return &game.ModeSpec{
+		Prompt: "Choose one —",
+		Min:    1, Max: 1,
+		Options: []game.ModeOption{
+			{Label: "Destroy target creature.", Targets: targetACreature()},
+			{Label: "Tap target creature and a second target creature.", Targets: twoClauses},
+			{Label: "Draw a card."},
+		},
 	}
 }
 
@@ -556,6 +596,10 @@ func TestViewAndEnumeratorOfferTheSamePrices(t *testing.T) {
 		// #1171: a MULTI-FACE card, and everything it declares it
 		// declares on the BACK — the half the pile is not showing.
 		oracleBackFace = "test-coherence-back-face-flashback"
+		// #1172: a MODAL card in a graveyard. `modes` is public there
+		// — it is the card's printed text — and until #1172 the legal
+		// sets inside it were the pile OWNER's answer on every frame.
+		oracleModal = "test-coherence-modal-flashback"
 	)
 	g := busyTable(t, 1)
 	me := g.Seats[g.Turn.ActiveSeat]
@@ -567,6 +611,7 @@ func TestViewAndEnumeratorOfferTheSamePrices(t *testing.T) {
 		// oracle ID — which is face 0's catalog key — is told this
 		// card does not open the graveyard at all.
 		oracleBackFace + "#1": {game.ZoneGraveyard},
+		oracleModal:           {game.ZoneGraveyard},
 	})
 	withAltCostsByOracle(t, map[string][]game.AlternativeCost{
 		oracleFlashback: {
@@ -580,12 +625,28 @@ func TestViewAndEnumeratorOfferTheSamePrices(t *testing.T) {
 		oracleBackFace + "#1": {
 			{Key: "flashback", Label: "Flashback {1}{R}", ManaCost: "{1}{R}", FromZone: game.ZoneGraveyard},
 		},
+		// #1172: an offer with a target clause of its own AND a
+		// card-shaped pay clause, so `alternative_costs[i]` carries
+		// both nested lists on a PUBLIC pile.
+		oracleModal: {escapeCost("{R}", 2)},
 	})
 	// #1166: the one seeded card with a target clause, so the
 	// per-viewer half of the assertion below is answered by a stamp
 	// rather than by a field nothing filled.
+	//
+	// #1172 adds the modal card's, which is also what gives its
+	// escape offer a `legal_targets` to carry: an offer that leaves
+	// the spell's clause alone is projected with the card's own.
 	withTargetSpecsByOracle(t, map[string]func() *game.TargetSpec{
 		oracleRevealed: targetACreature,
+		oracleModal:    targetACreature,
+	})
+	// #1172: the modal clause itself, on the graveyard card and on
+	// the modal DFC's BACK face — the per-card and the per-face halves
+	// of the same nested split.
+	withModeSpecsByOracle(t, map[string]func() *game.ModeSpec{
+		oracleModal:           chooseOneTargetedMode,
+		oracleBackFace + "#1": chooseOneTargetedMode,
 	})
 
 	// instance ID + "@" + zone -> which row it is, for the failure
@@ -601,10 +662,18 @@ func TestViewAndEnumeratorOfferTheSamePrices(t *testing.T) {
 	seeded[esc.String()+"@graveyard"] = seededCast{"escape card in the graveyard", me.ID, "graveyard"}
 	plain := graveyardCard(me, "Coherence Plain", "")
 	seeded[plain.String()+"@graveyard"] = seededCast{"plain card in the graveyard", me.ID, "graveyard"}
+	// #1172: a MODAL card in the same pile. `modes` is public there,
+	// and it carries a legal set per targeted bullet plus a nested
+	// `clauses` on the two-clause one; its escape offer carries a
+	// `legal_targets` and a `pay_options`. Four nested lists on one
+	// card, all of them the pile owner's answer, all of them public
+	// until this issue.
+	modal := graveyardCard(me, "Coherence Modal", oracleModal)
+	seeded[modal.String()+"@graveyard"] = seededCast{"modal card in the graveyard", me.ID, "graveyard"}
 	// #1055: known to the whole table, so the per-viewer assertion at
 	// the bottom is answered by the STAMP and not by the redaction a
 	// non-knower would get anyway.
-	for _, id := range []uuid.UUID{fb, esc, plain} {
+	for _, id := range []uuid.UUID{fb, esc, plain, modal} {
 		knownToEveryone(g, me.Graveyard, id)
 	}
 	graveyardCard(me, "Coherence Filler A", "")
@@ -706,6 +775,23 @@ func TestViewAndEnumeratorOfferTheSamePrices(t *testing.T) {
 		t.Errorf("the hand's owner lost their own legal target set: %+v", own.LegalTargets)
 	}
 
+	// #1172, the owner's half of the NESTED split, and the
+	// non-vacuity for the bystander loop below: the pile's owner keeps
+	// every nested list the stamp computed for them, on the card and
+	// on the face that carries the modal clause.
+	ownModal := cardInSeatZone(t, zoneViewOf(t, v, me.ID, "graveyard"), modal)
+	assertNestedTargetsPresent(t, "the graveyard's owner", ownModal.CastSurfaceView)
+	ownMDFC := cardInSeatZone(t, zoneViewOf(t, v, me.ID, "graveyard"), mdfc)
+	if len(ownMDFC.Faces) != 2 {
+		t.Fatalf("the modal DFC ships %d faces, want both halves", len(ownMDFC.Faces))
+	}
+	if ownMDFC.Faces[1].Modes == nil {
+		t.Fatalf("the owner's faces[1] carries no `modes`; the per-face nested assertions are vacuous")
+	}
+	if lt := ownMDFC.Faces[1].Modes.Options[0].LegalTargets; lt == nil || len(lt.Cards) == 0 {
+		t.Errorf("the owner lost their own per-face nested legal target set: %+v", lt)
+	}
+
 	for key, row := range seeded {
 		id, zone := key[:36], key[37:]
 		parsed, err := uuid.Parse(id)
@@ -775,6 +861,10 @@ func TestViewAndEnumeratorOfferTheSamePrices(t *testing.T) {
 		if c.LegalTargets != nil {
 			t.Errorf("%s: a bystander got one seat's legal target set: %+v", row.label, c.LegalTargets)
 		}
+		// #1172: and one level in, where `modes` and
+		// `alternative_costs` legitimately survive on a public pile
+		// and their legal sets do not.
+		assertNoNestedTargets(t, row.label, "", c.CastSurfaceView)
 		// #992 / #1171: and per face, because the multi-face row is
 		// the one whose answer lives there. The per-viewer split
 		// travels down to a face's block exactly as it does to a
@@ -787,6 +877,62 @@ func TestViewAndEnumeratorOfferTheSamePrices(t *testing.T) {
 				t.Errorf("%s: a bystander got one seat's per-face legal target set: %+v",
 					row.label, c.Faces[i].LegalTargets)
 			}
+			assertNoNestedTargets(t, row.label, fmt.Sprintf("faces[%d].", i), c.Faces[i].CastSurfaceView)
+		}
+	}
+}
+
+// assertNestedTargetsPresent is the non-vacuity half of #1172: the
+// seat the stamp was built for really is handed all four nested lists,
+// so an assertion that a bystander has none is about the strip and not
+// about a fixture that never filled them.
+func assertNestedTargetsPresent(t *testing.T, who string, s CastSurfaceView) {
+	t.Helper()
+	if s.Modes == nil || len(s.Modes.Options) < 2 {
+		t.Fatalf("%s: `modes` is absent or too short: %+v", who, s.Modes)
+	}
+	if lt := s.Modes.Options[0].LegalTargets; lt == nil || len(lt.Cards) == 0 {
+		t.Errorf("%s: lost modes[0].legal_targets: %+v", who, lt)
+	}
+	if len(s.Modes.Options[1].Clauses) < 2 {
+		t.Errorf("%s: lost modes[1].clauses: %+v", who, s.Modes.Options[1].Clauses)
+	}
+	if len(s.AlternativeCosts) == 0 {
+		t.Fatalf("%s: no offers at all, so the nested offer assertions are vacuous", who)
+	}
+	if lt := s.AlternativeCosts[0].LegalTargets; lt == nil || len(lt.Cards) == 0 {
+		t.Errorf("%s: lost alternative_costs[0].legal_targets: %+v", who, lt)
+	}
+	if po := s.AlternativeCosts[0].PayOptions; po == nil || len(po.Cards) == 0 {
+		t.Errorf("%s: lost alternative_costs[0].pay_options: %+v", who, po)
+	}
+}
+
+// assertNoNestedTargets is the bystander half: `modes` and
+// `alternative_costs` may survive — they are the card's printed text
+// and its printed prices — and every legal set inside them must be
+// gone (#1172).
+func assertNoNestedTargets(t *testing.T, label, path string, s CastSurfaceView) {
+	t.Helper()
+	if s.Modes != nil {
+		for i, o := range s.Modes.Options {
+			if o.LegalTargets != nil {
+				t.Errorf("%s: a bystander got %smodes[%d].legal_targets — one seat's answer inside a "+
+					"public field (#1172): %+v", label, path, i, o.LegalTargets)
+			}
+			if o.Clauses != nil {
+				t.Errorf("%s: a bystander got %smodes[%d].clauses: %+v", label, path, i, o.Clauses)
+			}
+		}
+	}
+	for i, o := range s.AlternativeCosts {
+		if o.LegalTargets != nil {
+			t.Errorf("%s: a bystander got %salternative_costs[%d].legal_targets: %+v",
+				label, path, i, o.LegalTargets)
+		}
+		if o.PayOptions != nil {
+			t.Errorf("%s: a bystander got %salternative_costs[%d].pay_options: %+v",
+				label, path, i, o.PayOptions)
 		}
 	}
 }

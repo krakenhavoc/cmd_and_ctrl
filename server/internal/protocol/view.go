@@ -457,11 +457,23 @@ type ModeOptionView struct {
 	// TargetMode / LegalTargets mirror CardView.target_mode /
 	// legal_targets for the option's FIRST target clause; both absent
 	// for untargeted options.
+	//
+	// And they mirror their per-viewer scope too (#1172). `modes` is
+	// public on a public pile — it is the card's printed text — but
+	// `legal_targets` inside it is the ASKING SEAT's answer, for the
+	// reason the card's own is: hexproof, shroud, protection and
+	// "target opponent" narrow a target set by who is asking. It rides
+	// castStamps into one seat's frame and is absent for everybody
+	// else, bystanders and spectators included, while `target_mode` —
+	// the printed prompt shape — stays public beside `label`.
 	TargetMode   string            `json:"target_mode,omitempty"`
 	LegalTargets *LegalTargetsView `json:"legal_targets,omitempty"`
 	// Clauses is every clause of the option's statement when it has
 	// more than one, in printed order. Absent for the one-clause
 	// bullet that is nearly every bullet. Added by #764.
+	//
+	// Per viewer with `legal_targets`, and for the same reason
+	// (#1172): each entry is a legal set.
 	Clauses []LegalTargetsView `json:"clauses,omitempty"`
 }
 
@@ -560,6 +572,13 @@ type AlternativeCostView struct {
 	// paying the cost leaves the spell with no targets at all
 	// (overload), which is why the client can key off their presence
 	// rather than reasoning about the rewrite itself.
+	//
+	// `legal_targets` is PER VIEWER (#1172), like every other legal
+	// set on this surface: the offer itself is a printed price and
+	// stays public on a public pile, but the clause it leaves the
+	// spell with is resolved against the board for the seat the stamp
+	// was built for. `target_mode` is the printed shape of that clause
+	// and stays public with the rest of the offer.
 	TargetMode   string            `json:"target_mode,omitempty"`
 	LegalTargets *LegalTargetsView `json:"legal_targets,omitempty"`
 
@@ -582,6 +601,14 @@ type AlternativeCostView struct {
 	// Like the additional cost's sacrifice_options this is NOT a
 	// target list: a cost does not target (CR 601.2h), so hexproof
 	// and shroud never narrow it.
+	//
+	// PER VIEWER all the same (#1172). The list is picked out by "you
+	// control" / "your hand" / "your graveyard" predicates, so it
+	// answers "what may YOU pay" and is the asking seat's answer even
+	// though nothing about targeting narrowed it. #1169 said as much
+	// about a hand, where the whole offer list is dropped for a viewer
+	// who was merely shown one card; this is the same sentence on a
+	// public pile, where the offer stays and the list does not.
 	PayOptions *LegalTargetsView `json:"pay_options,omitempty"`
 
 	// PayLabel is the picker's prompt copy for PayOptions ("a blue
@@ -1477,6 +1504,11 @@ type CastSurfaceView struct {
 	// its target mode and legal set right now. Absent for non-modal
 	// cards and stripped from opponents' hands. The client shows a
 	// mode picker between the X prompt and targeting.
+	//
+	// The field is PUBLIC on a public pile — "choose two of three" is
+	// printed on the card, and a bystander reads it off a graveyard in
+	// paper — but the legal sets INSIDE it are not (#1172). See
+	// ModeOptionView.LegalTargets and castStamps.publicIn.
 	Modes *ModeSpecView `json:"modes,omitempty"`
 	// AdditionalCost is the S21 sub-PR 5 "As an additional cost to
 	// cast this spell, …" clause for a card in the viewer's own
@@ -1596,6 +1628,11 @@ type CastSurfaceView struct {
 	// `phyrexian_symbols` and `cant_cast` — because a card in a
 	// graveyard is a card every player may pick up and read
 	// (castStamps.applyPublicTo).
+	//
+	// Two of those carry per-viewer lists one level down and those go
+	// with this bit rather than with their parents (#1172):
+	// `modes[i].legal_targets`, `modes[i].clauses` and
+	// `alternative_costs[i].legal_targets` / `.pay_options`.
 	CastableHere bool `json:"castable_here,omitempty"`
 	// OptionalCosts are the "you may pay an additional cost" offers
 	// this card makes (CR 601.2b, ADR 0073) — kicker, multikicker,
@@ -2650,6 +2687,11 @@ func (s castStamps) applyToFace(f *CardFaceView) {
 //     spectator since #978; this is the same sentence applied to the
 //     bystander a public stamp used to reach.
 //
+// And the same sentence again inside the two public fields that carry
+// legal sets of their own — `modes[i]` and `alternative_costs[i]`
+// (#1172). The field stays, the lists inside it do not; publicIn
+// spells out which is which.
+//
 // A seat with an answer of its own gets all three back wholesale when
 // FilterViewFor promotes their entry.
 //
@@ -2694,14 +2736,102 @@ func (s castStamps) applyPublicToFace(f *CardFaceView, kind game.ZoneKind) {
 // knower its owner's whole per-face price list. handPublicCastSurface
 // is an ALLOWLIST instead, so a field added to CastSurfaceView
 // tomorrow is private in a hand until somebody says otherwise.
+//
+// THE SAME LINE RUNS ONE LEVEL DOWN (#1172). `modes` and
+// `alternative_costs` stay public on a pile because they are what the
+// CARD PRINTS — "choose two of three", "Overload {4}{R}" — and a
+// bystander at a paper table reads them off a graveyard card. Each of
+// them also carries board-derived lists computed for the seat the
+// stamp was built for, and those are one seat's answer for exactly the
+// reason the top-level `legal_targets` is: hexproof, shroud,
+// protection and "target opponent" narrow a target set by who is
+// asking, and "a blue card in YOUR hand" names one seat's cards. So
+// the nested per-viewer fields ride the SAME per-seat castStamps /
+// castOffers split as the top-level ones — the public projection keeps
+// the mode's and the offer's static facts, the asking seat's frame
+// gets the lists — and the rule that decides which is which is "does
+// this field come off the printed card, or off the board for one
+// player".
 func (s castStamps) publicIn(kind game.ZoneKind) castStamps {
 	s.CastableHere = false
 	s.LegalTargets = nil
 	s.Clauses = nil
+	s.Modes = publicModeSpec(s.Modes)
+	s.AlternativeCosts = publicAlternativeCosts(s.AlternativeCosts)
 	if kind == game.ZoneHand {
 		s.CastSurfaceView = handPublicCastSurface(s.CastSurfaceView)
 	}
 	return s
+}
+
+// publicModeSpec is the half of a modal card's clause every viewer of
+// a public pile may read (#1172): the prompt, how many options to
+// pick, whether they repeat, and each option's printed label and
+// target-prompt shape. Each option's `legal_targets` and `clauses` are
+// left to the per-seat stamp, which is where the same two fields live
+// one level up.
+//
+// It COPIES rather than blanking in place, and that is the whole
+// reason it is a function rather than two lines in publicIn. A
+// castStamps is passed by value, but `Modes` is a POINTER and
+// `Options` a slice header, both shared with the stamp stampsFor files
+// for the asking seat — the public projection and that seat's answer
+// come from ONE castStampsFor call (stampLegalTargets). Blanking
+// through the pointer would take the nested sets off the owner's own
+// frame as well as off the bystander's, which is the bug
+// applyFaceCastStampsFor copies the face slice to avoid, arriving one
+// level further in.
+//
+// One allocation per modal card per public stamp, and none at all for
+// the overwhelming majority of cards, which are not modal.
+func publicModeSpec(ms *ModeSpecView) *ModeSpecView {
+	if ms == nil {
+		return nil
+	}
+	out := *ms
+	out.Options = make([]ModeOptionView, len(ms.Options))
+	for i, o := range ms.Options {
+		o.LegalTargets = nil
+		o.Clauses = nil
+		out.Options[i] = o
+	}
+	return &out
+}
+
+// publicAlternativeCosts is publicModeSpec for the offer list (#1172):
+// every price the cast may claim out of this zone, with each offer's
+// printed half — key, label, mana cost, life, the pay clause's copy,
+// CR 107.3b's X lock and CR 107.4's Phyrexian count — and without the
+// two lists that are one seat's.
+//
+//   - `legal_targets` is the target clause the spell has WHEN THIS
+//     COST IS PAID, resolved against the board through
+//     LegalTargetsForEffect. Cleave's wider clause narrowed by
+//     hexproof is the asking seat's answer, exactly as the card's own
+//     clause is.
+//   - `pay_options` is the card-shaped half of the cost: the blue
+//     cards in the CASTER's hand for a pitch cost, the Islands THEY
+//     control for Daze, the cards in THEIR graveyard for escape. Not
+//     a target list — a cost does not target (CR 601.2h) — but a list
+//     of instance IDs picked out by "you control" / "your hand" /
+//     "your graveyard" predicates, so it answers "what may YOU pay"
+//     and belongs on the asking seat's frame. #1169 already said so
+//     about a hand, where the whole offer list is dropped; this is
+//     the same sentence on a public pile, where it is not.
+//
+// Copies for the reason publicModeSpec does: the slice header is
+// shared with the seat's own stamp.
+func publicAlternativeCosts(offers []AlternativeCostView) []AlternativeCostView {
+	if len(offers) == 0 {
+		return nil
+	}
+	out := make([]AlternativeCostView, len(offers))
+	for i, o := range offers {
+		o.LegalTargets = nil
+		o.PayOptions = nil
+		out[i] = o
+	}
+	return out
 }
 
 // handPublicCastSurface is the announce surface of a card in a HAND
@@ -4585,7 +4715,11 @@ func redactZone(z ZoneView, isKnower func(CardView) bool) ZoneView {
 // `castable_here`, `legal_targets` and `clauses` are never in that
 // public half (#1055). All three answer "what may YOU announce", the
 // first one in its very name, and one seat's answer shipped to the
-// whole table is the surface #891 is about.
+// whole table is the surface #891 is about. Nor are the legal sets
+// nested inside `modes` and `alternative_costs`, whose parents DO stay
+// public (#1172) — the promotion below is one assignment of the whole
+// CastSurfaceView, so a seat with an answer of its own gets the nested
+// lists back with the top-level ones and nobody else gets either.
 //
 // The empty viewerID — spectator, admin, replay reader — gets nothing
 // private, for the reason legalMovesFor gives: a legal target set is

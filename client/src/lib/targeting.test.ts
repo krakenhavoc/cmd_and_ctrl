@@ -174,6 +174,41 @@ describe("modal targeting", () => {
     expect(beginForModes(charm, [2])).toBe(false);
     expect(get(targeting)).toBe(null);
   });
+
+  // #1172: `modes` is PUBLIC on a public pile — it is the card's
+  // printed text — and since #1172 the legal sets inside it are not.
+  // A bystander's frame therefore carries the bullets with no
+  // `legal_targets` and no `clauses` at all, and this pins that the
+  // picker reads the frame it was handed rather than assuming a
+  // targeted bullet always arrives with a set: it opens nothing,
+  // exactly as it does for a genuinely untargeted bullet, instead of
+  // falling back to a free-form prompt over the whole board.
+  //
+  // Nothing about the reader had to change — frames are per viewer,
+  // and the only frame that offers this cast is the one the server
+  // promoted the sets into. The test is the statement that this stays
+  // true.
+  it("a mode block stripped of its nested legal sets opens no picker (#1172)", () => {
+    const bystander = {
+      instance_id: "c-charm",
+      name: "Fixture Charm",
+      modes: {
+        prompt: "Choose one",
+        min: 1,
+        max: 1,
+        options: [
+          // The same two bullets the owner's frame carries, with the
+          // per-viewer half gone: label and target_mode are printed
+          // text and stay.
+          { label: "Exile target player's graveyard.", target_mode: "player" },
+          { label: "Destroy target artifact.", target_mode: "permanent" },
+        ],
+      },
+    } as unknown as CardView;
+    expect(isModal(bystander)).toBe(true);
+    expect(beginForModes(bystander, [0])).toBe(false);
+    expect(get(targeting)).toBe(null);
+  });
 });
 
 // --- #764: per-mode targets, repeated modes, multi-clause walks ----
