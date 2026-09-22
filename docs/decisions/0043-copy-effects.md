@@ -531,3 +531,151 @@ snapshot taken when the copy was created and the original may be gone.
 
 See [ADR 0019's 2026-09-22 amendment](0019-structured-targeting.md)
 for the gate itself.
+
+## Amendment 2026-09-22 — copying an ABILITY on the stack (CR 707.10, CR 707.10a) · Accepted · S45
+
+Issue [#1223](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1223).
+"Still not covered", above, named copying an ability as a different
+shape. It is not a different shape. It is the same rule with one
+branch at the end, and this amendment is mostly the argument for why
+almost nothing had to be written.
+
+### What CR 707.10 actually distinguishes
+
+Nothing in CR 707.10 is about spells. It says a copy of a spell or
+ability is a new object with the original's characteristics and "any
+choices made when casting or activating it" — modes, targets, X, the
+value of a divided division, whether an optional additional cost was
+paid — and CR 707.10a adds that the copy is created rather than cast,
+activated or triggered.
+
+The engine had all of that already, for spells. What it did not have
+was somewhere to PUT an ability copy, because `createSpellCopyLocked`
+pushes a `Card` into the stack zone and an ability has none: its
+source permanent stays on the battlefield and the item is a `StackMeta`
+entry alone.
+
+### Decision 12. One copy path, one branch, and the branch is the last step
+
+`copySpellFrame` is now `copyFrame`, `copySpellResume` is `copyResume`,
+and `resolveCopySpellTargetsLocked` is `resolveCopyTargetsLocked`.
+Everything before the final step — `offerCopyTargetsLocked`'s decision
+whether to prompt at all, the CR 707.10c "you may choose new targets"
+prompt, the submit gate, the #809 refresh that re-reads a frozen legal
+set, the CR 800.4 departure rule — is written once and serves both
+shapes. The ONE branch is `createCopyLocked`, on `item.Kind`:
+
+```go
+if item.Kind == StackItemSpell {
+        g.createSpellCopyLocked(src, item, controller, targets)
+        return
+}
+g.createAbilityCopyLocked(item, controller, targets)
+```
+
+The frame needed no new field. It already carried `src Card`, and for
+an ability that is the SOURCE PERMANENT — which is the object
+CR 702.16b tests targeting legality against, exactly as the copied
+spell is for a spell copy. Nothing between the prompt and the branch
+has to know which kind it is holding.
+
+**#1196's gate comes along for free, and that is the payoff.** The
+amendment above put `retargetCheckLocked` with `RetargetChooseNew`
+into the copy's submit half, because CR 707.10c is CR 115.7c by
+reference. That submit half is now the SHARED one, so an ability copy
+is checked by the CR 115.7 gate without a line of its own: a target
+the chooser left alone may stay even if it has become illegal, and the
+NUMBER of targets cannot change, for a copied ability exactly as for a
+copied spell. Neither amendment had to know about the other — the
+shape is what made them compose.
+
+`Game.CopyAbilityForEffect(itemID, controller, mayChooseNewTargets)` is
+the entry point. `itemID` is a STACK ITEM id and not a card id, and
+that is the whole reason `Event.StackItemID` exists: a permanent can
+have several of its abilities on the stack at once, so naming the card
+cannot say which one.
+
+### Decision 13. CR 707.10a is said by omission, not by a flag
+
+`createAbilityCopyLocked` emits no `EventActivateAbility` and no
+`EventTrigger`. That is the same discipline `CopySpellForEffect`
+already applies to `EventCast`, and for the same reason: a
+"don't fire" flag is a thing every future watcher has to be taught to
+read, while an event that was never emitted is a thing nothing can
+see. Two bugs fall out of it for free — Rings of Brighthearth does not
+trigger off its own copy, so the loop terminates, and a "whenever an
+opponent activates an ability" watch cannot count one activation
+twice.
+
+A mana ability is unreachable for the same structural reason rather
+than by a check: CR 605.3b keeps it off the stack entirely, so there
+is no item id to hand in, and `CopyAbilityForEffect` answers
+`ErrCardNotFound`. Rings of Brighthearth's printed "if it isn't a mana
+ability" needs no predicate — it watches `EventActivateAbility`, and a
+mana ability announces `EventManaAbilityActivated`.
+
+### Decision 14. What travels, and the one judgement call
+
+The copy carries the characteristics and the choices: kind, source,
+label, `Effect`, the `targetSpec` and `modeSpec` the CR 608.2b
+re-check reads, targets, modes, `XValue`, `Distribution`, the CR
+603.12 reflexive `Payload`, and — the second half of #1223 —
+`StackItem.Trigger`, the triggering event.
+
+It does NOT carry `DoubledBy` (CR 603.2d attribution is about an extra
+INSTANCE, not a copy), `Ordered` (a copy is put straight on the stack,
+not through the APNAP queue), or any of the cast-time fields
+(`HoldPriority`, `CastFromZone`, `AltCost`, `Foretold`, `FaceDown`,
+`AltCostExiles`, `SplitSecond`), none of which is meaningful on an
+ability item.
+
+**The judgement call is `PaidCost`.** A spell copy carries only
+`OptionalCosts` and zeroes the rest. An ability copy carries the whole
+record MINUS the mana (`copiedPaidCost`): counters removed, counters
+added, life paid, optional costs. The argument is the split #761 and
+#789 already drew. The mana half is about a PAYMENT, and no payment
+was made — the Dawnglow Infusion ruling, and `NoManaSpent()` being
+true of a copy is right. The other fields are read back at resolution
+as facts about the ANNOUNCEMENT, the way `XValue` is ("for each
+counter removed this way"), and a copy that zeroed them would silently
+resolve those clauses for nothing. `OnPaper` stays false alongside the
+empty mana slice: a copy's record is KNOWN, and known to be nothing.
+
+### Decision 15. Targeting an ability is `TargetSpec.Abilities`, on the card `TargetRefKind`
+
+ADR 0065 listed "targeting an ABILITY on the stack" as open because
+the stack ZONE holds spell cards. `TargetSpec.Abilities` opens the
+`StackMeta` walk beside the zone walk, and `AbilityOK` narrows it
+("target TRIGGERED ability you control"). The enumeration is ordered
+by `Seq`, which is the order `resolveTopAbilityLocked` already uses,
+so the picker's list is the stack's order and two runs of one game
+cannot disagree.
+
+**A chosen ability rides an ordinary `TargetRef{Kind: TargetCard}`
+whose ID is the stack item's**, not a fifth `TargetRefKind`. The wire
+projection, the client picker, `internal/legal`'s enumerator and the
+CR 608.2b re-check all key on "a uuid that has to still be there",
+which is exactly as true of an item as of a card; a new kind would
+have had to be taught to every one of them to say the same thing. The
+two id spaces do overlap by design — a spell item's id IS its card's
+instance id — so the ability branch excludes `StackItemSpell` and a
+clause that admits both still resolves each ref to exactly one thing.
+
+The CR 702 keyword gate is deliberately not applied to an ability
+candidate. An ability on the stack is neither a permanent nor a
+player, so nothing about it can have hexproof, shroud or protection,
+and running the check would be asking a question with no subject.
+
+### Cards
+
+Strionic Resonator, Lithoform Engine and Rings of Brighthearth ship
+`full`; Weaver of Harmony's copy activation came off its caveat at the
+same time ("from an enchantment source" is `AbilityFromSource`).
+
+### Still not covered
+
+Peter Parker's Camera (#395) and Gogo, Master of Mimicry (#396) copy
+on a different axis again and are still open. A copy of an ability
+whose source has left is judged against a source-less `TargetSource`
+for its re-target prompt, which is the declared limitation ADR 0072 §2
+already records for the CR 608.2b re-check.
