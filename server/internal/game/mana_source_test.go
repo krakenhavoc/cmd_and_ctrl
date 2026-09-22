@@ -575,3 +575,89 @@ func TestACopyOfASpellInheritsTheKickerButNotTheManaSpent(t *testing.T) {
 		t.Error("the copy lost the KICKER, which CR 707.10b does copy")
 	}
 }
+
+// --- every mint site, not just the ones a card walks ----------------
+//
+// manaSourceKindsOf is only the single decider if every place that
+// mints a token calls it. Four of the five are walked by the tests
+// above through ActivateManaAbility and ResolveManaChoice; these two
+// are the ones a card never reaches directly, and they are exactly
+// the ones a future mint site is likeliest to be added beside.
+//
+// A grep would go stale. These do not.
+
+// The AUTO-TAP EXECUTOR mints its own tokens (materializePlanLocked)
+// rather than going through ActivateManaAbility, so it stamps the
+// kinds itself, off the copy it takes before the tap.
+func TestTheAutoTapExecutorStampsTheSourceKinds(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	snow := pushSnowIslandFor(g, me)
+
+	cost, err := ParseCost("{U}")
+	if err != nil {
+		t.Fatalf("ParseCost: %v", err)
+	}
+	g.WithWriteLock(func() {
+		plan, ok := g.autoTapLocked(me.ID, cost, 0, nil)
+		if !ok {
+			t.Fatal("no plan for {U} off a Snow-Covered Island")
+		}
+		g.materializePlanLocked(me, plan, cost)
+	})
+
+	tok, ok := tokenFrom(me, snow)
+	if !ok {
+		t.Fatalf("the auto-tap executor minted nothing: %+v", me.ManaPool)
+	}
+	if !tok.SourceKinds.Has(ManaSourceSnow) || !tok.SourceKinds.Has(ManaSourceLand) {
+		t.Errorf("token = %+v, want the snow and land bits — the executor is a mint site too", tok)
+	}
+}
+
+// The EFFECT-DRIVEN add (AddManaForEffect, and #763's triggered mana
+// abilities through the same body) records the kinds of its source
+// when that source is a permanent — Wild Growth's host is a land, and
+// "mana from a land was spent" has to be able to see it.
+func TestAnEffectDrivenAddStampsTheSourceKinds(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	snow := pushSnowIslandFor(g, me)
+
+	g.WithWriteLock(func() {
+		if err := g.AddManaForEffect(me.ID, snow, "{U}"); err != nil {
+			t.Fatalf("AddManaForEffect: %v", err)
+		}
+	})
+	tok, ok := tokenFrom(me, snow)
+	if !ok {
+		t.Fatalf("AddManaForEffect minted nothing: %+v", me.ManaPool)
+	}
+	if !tok.SourceKinds.Has(ManaSourceSnow) {
+		t.Errorf("token = %+v, want the snow bit", tok)
+	}
+}
+
+// ...and records NOTHING when the source is not a permanent. A
+// resolving Dark Ritual is not a permanent's ability (CR 605.1a), so
+// "mana from an artifact was spent" is false for its {B}{B}{B} even
+// when the Ritual itself is an artifact somewhere. Zero is the honest
+// answer and the weaker one.
+func TestAnEffectDrivenAddFromANonPermanentRecordsNoKinds(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	ritual := uuid.New()
+
+	g.WithWriteLock(func() {
+		if err := g.AddManaForEffect(me.ID, ritual, "{B}{B}{B}"); err != nil {
+			t.Fatalf("AddManaForEffect: %v", err)
+		}
+	})
+	tok, ok := tokenFrom(me, ritual)
+	if !ok {
+		t.Fatalf("AddManaForEffect minted nothing: %+v", me.ManaPool)
+	}
+	if tok.SourceKinds != 0 {
+		t.Errorf("token = %+v, want no kinds at all for a source that is not on the battlefield", tok)
+	}
+}
