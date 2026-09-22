@@ -53,14 +53,42 @@ func morphCreature() game.Card {
 	}
 }
 
+// withCastTargetMode wires the S13.1 free-form announce-time target
+// prompt for one card.
+//
+// It stands in here for EVERY clause the card prints: the cast walk
+// reads the target mode, the target spec, the modes and the optional
+// costs through one `CatalogKey(card)`, so a walk that reads the card
+// face up gets all four wrong at once and this is the one of them the
+// walk refuses outright on (a card the catalog marks targeted the
+// S13.1 way is not enumerable at all). CR 708.2a says a face-down
+// spell has none of them.
+func withCastTargetMode(t *testing.T, oracle, mode string) {
+	t.Helper()
+	prev := game.CatalogTargetMode
+	game.CatalogTargetMode = func(id string) string {
+		if id == oracle {
+			return mode
+		}
+		return ""
+	}
+	t.Cleanup(func() { game.CatalogTargetMode = prev })
+}
+
 // TestTheFaceDownCastIsOfferedBesideThePrintedOne: a morph creature is
 // two casts, not one — {1}{U} face up and {3} face down — and every
 // one of them is a move the dispatcher accepts.
+//
+// The card also prints an announce-time target clause, which is what
+// makes the face-down half load-bearing: face up it is unenumerable
+// the S13.1 way, and face down there is no clause at all, so a walk
+// that failed to stamp the state would offer exactly nothing here.
 func TestTheFaceDownCastIsOfferedBesideThePrintedOne(t *testing.T) {
 	g := newTable(t)
 	active := g.Seats[g.Turn.ActiveSeat]
 	clearHand(active)
 	withMorphCast(t, "{1}{U}")
+	withCastTargetMode(t, morphMovesOracle, "creature")
 	card := handCard(active, morphCreature())
 	advanceTo(t, g, game.StepPrecombatMain)
 	for i := 0; i < 4; i++ {
@@ -80,8 +108,13 @@ func TestTheFaceDownCastIsOfferedBesideThePrintedOne(t *testing.T) {
 	if faceDown != 1 {
 		t.Errorf("face-down casts offered = %d, want 1 — got %v", faceDown, labels(casts))
 	}
-	if faceUp != 1 {
-		t.Errorf("printed casts offered = %d, want 1 — got %v", faceUp, labels(casts))
+	// The printed cast is the one the S13.1 target mode makes
+	// unenumerable: the engine would demand a target and nothing says
+	// which are legal, so the walk declines to offer it. Asserted so
+	// this test says what it is really holding — the face-down cast
+	// survives a clause the face-up cast does not.
+	if faceUp != 0 {
+		t.Errorf("printed casts offered = %d, want 0 (an S13.1 target mode with no spec) — got %v", faceUp, labels(casts))
 	}
 	// The soundness half: the engine accepts every move offered.
 	dispatchAll(t, g, active.ID, moves)
