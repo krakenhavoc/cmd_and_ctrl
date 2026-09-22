@@ -235,6 +235,11 @@ type castTimingVerdict struct {
 }
 
 func (v *castTimingVerdict) fold(t CastTimingRule, card Card, zone ZoneKind) {
+	// A statement that says nothing is skipped before the filter runs
+	// — a half-written card file costs a comparison, not a card walk.
+	if !t.Grants() && !t.Restricts() {
+		return
+	}
 	if !t.CoversCast(card, zone) {
 		return
 	}
