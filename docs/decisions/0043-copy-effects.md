@@ -509,3 +509,25 @@ and no printed card in the catalog reaches it. X is not re-derived
 for the token: the copy's `XValue` reaches its `OnResolve`, but a
 creature whose printed P/T is defined by X has no characteristic-
 defining ability in this engine to read it back.
+
+## Amendment (2026-09-22, #1196): the copy's re-target is checked by the CR 115.7 gate
+
+"You may choose new targets for the copy" is CR 707.10c, and CR 707.10c
+is CR 115.7c by reference — the same sentence Deflecting Swat prints.
+`resolveCopySpellTargetsLocked` used to check the answer with
+`validateTargetsLocked`, the **announce** gate, which is stricter than
+the rule in one direction and looser in another: it refused a target
+the player left alone that had since become illegal (CR 115.7c allows
+exactly that), and it accepted a different NUMBER of targets than the
+original was announced with (CR 115.7 never changes the count).
+
+It now calls `game.retargetCheckLocked` with `RetargetChooseNew` and
+the copied item's targets as the "old" list — the same check the
+stack-item retarget entry point runs. What stays separate is the
+APPLICATION: a retarget rewrites `StackItem.Targets` in place, while a
+copy still builds a new object from the answer
+(`createSpellCopyLocked`), because the copy's characteristics are a
+snapshot taken when the copy was created and the original may be gone.
+
+See [ADR 0019's 2026-09-22 amendment](0019-structured-targeting.md)
+for the gate itself.
