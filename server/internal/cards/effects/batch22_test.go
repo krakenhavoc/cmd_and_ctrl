@@ -45,6 +45,9 @@ const (
 	b22IorethOracle             = "af6e4c3e-0276-4f72-9a70-25868fe8bba5"
 	b22AethericAmplifierOracle  = "295cd8e1-0830-46c1-9957-556afd4bcee6"
 	b22GodEternalOketraOracle   = "3b03358d-f87e-4939-afc9-5ee3f044146a"
+	// #1210: a declared skip for "no ability-activated event", which
+	// #1184 built and #1210's watch shape put to use.
+	b22HarshMentorOracle = "168336e2-d795-4b75-bf21-ce128b0dd7b0"
 )
 
 // b22Lives snapshots every seat's life total.
@@ -123,9 +126,10 @@ func TestBatch22CardsAreRegistered(t *testing.T) {
 		b22IorethOracle:             "Ioreth of the Healing House",
 		b22AethericAmplifierOracle:  "Aetheric Amplifier",
 		b22GodEternalOketraOracle:   "God-Eternal Oketra",
+		b22HarshMentorOracle:        "Harsh Mentor",
 	}
-	if len(want) != 29 {
-		t.Fatalf("the batch registers 28 cards plus Whelming Wave, the table lists %d", len(want))
+	if len(want) != 30 {
+		t.Fatalf("the batch registers 29 cards plus Whelming Wave, the table lists %d", len(want))
 	}
 	for oracle, name := range want {
 		spec, ok := Lookup(oracle)
@@ -137,13 +141,14 @@ func TestBatch22CardsAreRegistered(t *testing.T) {
 			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
 		}
 	}
-	// The five declared skips must NOT be registered — each has a
-	// cost or a trigger the engine cannot express, and a spec would
-	// ship the card stronger than printed.
+	// The four remaining declared skips must NOT be registered —
+	// each has a cost or a trigger the engine cannot express, and a
+	// spec would ship the card stronger than printed. Harsh Mentor
+	// came off this list with #1210's opponent-activation watch and
+	// is in `want` above.
 	for _, skipped := range []string{
 		"119d719d-e965-45b4-9bc9-ac03211b10c2", // Survival of the Fittest — discard-a-card cost
 		"e38e3723-05f5-4a51-8364-1cda19f9cc49", // Steelbane Hydra — remove-a-counter cost
-		"168336e2-d795-4b75-bf21-ce128b0dd7b0", // Harsh Mentor — no ability-activated event
 		"ade898df-14a5-460b-94f6-1f3f74d3ff95", // Odric, Master Tactician — choose the blocks
 		"da46786e-28df-4638-ab3d-121011d2f150", // Master Transmuter — return-an-artifact cost
 	} {
