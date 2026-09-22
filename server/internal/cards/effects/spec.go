@@ -728,6 +728,27 @@ type Spec struct {
 	// cannot play, and every printed card carries both halves.
 	CastPermissions []game.CastPermission
 
+	// CastTimings declares the per-player cast-TIMING statements this
+	// permanent makes while it is on the battlefield (#1195, ADR 0066's
+	// 2026-09-22 amendment) — "you may cast spells as though they had
+	// flash" (Vedalken Orrery, Leyline of Anticipation), "you may cast
+	// creature spells as though they had flash" (Yeva), "each opponent
+	// can cast spells only any time they could cast a sorcery" (Teferi,
+	// Time Raveler).
+	//
+	// Build one with CastAsThoughFlash / OpponentsCastAtSorcerySpeed
+	// and friends in cast_timing.go rather than by hand: the
+	// constructors carry the Affects clause and the printed label,
+	// which are the two halves a card file gets wrong.
+	//
+	// The window is forced to "while the source remains" for the
+	// reason CastPermissions above is: a permanent's static ability is
+	// re-derived from the battlefield on every query, so two Orreries
+	// compose and one leaving cannot revoke the other's. A statement
+	// that OUTLIVES its source — Emergence Zone's "this turn", Teferi's
+	// +1 — is granted by an EFFECT instead, with GrantCastTiming.
+	CastTimings []game.CastTimingRule
+
 	// LibraryTopVisible declares the printed clause that makes this
 	// permanent's controller's top library card visible (CR 401.5) —
 	// game.LibraryTopOwner for "you may look at the top card of your

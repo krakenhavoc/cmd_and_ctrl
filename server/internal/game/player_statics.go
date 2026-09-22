@@ -86,7 +86,35 @@ type PlayerStatic struct {
 	// is the direction protection.go's closed grammar already errs
 	// in. Build protection tokens with the constants and constructors
 	// in protection.go, never by hand.
+	//
+	// EMPTY on a timing statement (see Timing below), which is what
+	// keeps one out of playerAbilityTokensLocked's answer.
 	Keyword string `json:"keyword"`
+
+	// Timing is a granted cast-TIMING statement — "you may cast
+	// spells this turn as though they had flash" (Emergence Zone),
+	// "until your next turn, you may cast sorcery spells as though
+	// they had flash" (Teferi, Time Raveler's +1). CR 307.1 and
+	// CR 702.8; #1195, cast_timing.go.
+	//
+	// The zero value (`Timing.Timing == TimingNormal`) says nothing
+	// and is what every ability grant carries, so the two kinds of
+	// entry are told apart by the payload rather than by a
+	// discriminator field.
+	//
+	// It is HERE rather than in a registry of its own because a
+	// granted timing statement and a granted "you have hexproof" are
+	// the same kind of thing — an ability a PLAYER has for a CR 611.2
+	// duration — and a second player-level slice would have meant two
+	// sweeps, two clones, two snapshot fields and two readings of one
+	// Duration. #1195 shipped its own for a day and folded it onto
+	// this one. Its READER is castTimingVerdictLocked, not
+	// playerAbilityTokensLocked: a timing statement is not a token
+	// and has no protection quality to parse.
+	//
+	// Plain data, like everything else here — CastTimingRule is
+	// flags, two strings and a zone.
+	Timing CastTimingRule `json:"timing,omitzero"`
 
 	// Source is the card that granted it, for the log and for the
 	// view's attribution. Never read by any rule: a granted ability
@@ -188,6 +216,13 @@ func (g *Game) playerAbilityTokensLocked(p *Player, fn func(token string) bool) 
 		}
 	}
 	for _, s := range p.Statics {
+		// #1195: an entry carrying a cast-timing statement is not an
+		// ability token and has no keyword to offer. Skipped before
+		// the duration is read, because the cheapest way to not be
+		// this walk's business is to say so first.
+		if s.Keyword == "" {
+			continue
+		}
 		if g.durationExpiredLocked(s.Duration, false) {
 			continue
 		}

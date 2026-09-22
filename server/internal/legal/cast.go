@@ -235,7 +235,7 @@ func (e *enumerator) castMovesFromZone(c game.Card, kind game.ZoneKind, from str
 			if offer != nil && offer.Life > 0 && e.p.Life <= offer.Life {
 				continue
 			}
-			e.castMovesForCard(card, from, speed, perm, offer)
+			e.castMovesForCard(card, from, kind, perm, offer)
 		}
 	}
 }
@@ -289,7 +289,7 @@ func (e *enumerator) landPlayMove(card game.Card, kind game.ZoneKind, from strin
 // flashed-back Faithless Looting and a hard-cast one are different
 // prices with different consequences, exactly as a kicked and an
 // unkicked cast are (ADR 0073 §9).
-func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool, perm *game.CastPermission, offer *game.AlternativeCost) {
+func (e *enumerator) castMovesForCard(card game.Card, from string, kind game.ZoneKind, perm *game.CastPermission, offer *game.AlternativeCost) {
 	// CR 708.4, ADR 0082 decision 2: a cast that claims a face-down
 	// offer announces a 2/2 CREATURE SPELL with no name and no text,
 	// and the engine stamps that onto its own copy of the card before
@@ -305,6 +305,29 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool, p
 	if offer != nil && offer.FaceDown != nil {
 		card.SetFaceDown(offer.FaceDown.Kind)
 	}
+	// Timing (CR 307.1 / 702.8), #1195: THE engine's own read, the
+	// same one CastSpell calls and the view stamps `castable_here`
+	// from — so a bot is never offered a cast the engine will refuse
+	// for timing, and never denied one a Vedalken Orrery opens. It
+	// folds the card's own timing, the permission's ADR 0066
+	// override, the per-player grants and, last, the per-player
+	// restrictions (CR 101.2).
+	//
+	// BELOW THE FACE-DOWN STAMP, and that placement is load-bearing:
+	// CR 708.4 makes a face-down cast a 2/2 creature spell with no
+	// name and no text whatever the card underneath is, so a morphed
+	// INSTANT is sorcery-speed. Asked above the offer loop — where
+	// #1195 first put it, before ADR 0082 existed — it would read the
+	// face-up card and offer a bot a morph at instant speed that
+	// CastSpell refuses. The engine reads the same stamped copy at
+	// the same point, which is what keeps the two answers identical.
+	//
+	// Once per (card, face, offer) rather than once per announced set
+	// of optional costs: nothing in ADR 0073's optional half can
+	// change a timing answer.
+	if !e.g.CastTimingOpenLocked(e.seat, card, kind, perm) {
+		return
+	}
 	// ADR 0073 §9: a card with optional additional costs is several
 	// casts, not one — an unkicked Burst Lightning and a kicked one
 	// are different moves at different prices with different effects,
@@ -316,7 +339,7 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool, p
 	// which is every card in the catalog before #664 — so this loop
 	// runs exactly once for them and the enumeration is unchanged.
 	for _, chosen := range optionalCostSets(game.OptionalCostsFor(game.CatalogKey(card)), e.opts.MaxExpansionPerSource) {
-		e.castMovesPayingOptional(card, from, speed, perm, offer, chosen)
+		e.castMovesPayingOptional(card, from, perm, offer, chosen)
 	}
 }
 
@@ -466,7 +489,7 @@ func costPaymentDemands(mandatory *game.AdditionalCost, optional []game.Addition
 // castMovesPayingOptional is castMovesForCard for ONE announced set
 // of optional additional costs — the unkicked cast, or the kicked
 // one. `chosen` is nil for every card that offers none.
-func (e *enumerator) castMovesPayingOptional(card game.Card, from string, speed bool, perm *game.CastPermission, offer *game.AlternativeCost, chosen []int) {
+func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *game.CastPermission, offer *game.AlternativeCost, chosen []int) {
 	g, p := e.g, e.p
 	// #662: the spell IS its own source (CR 702.16b), so every legal
 	// set below is computed against the card's colour and type. An
@@ -475,22 +498,12 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, speed 
 	// the move — the #347 / #544 failure mode.
 	castSrc := game.SourceObject(e.seat, &card)
 
-	// Timing (CR 307.1 / 702.8): instants and flash any time the seat
-	// holds priority; everything else needs the sorcery-speed window.
-	// ADR 0066: a granted permission may say otherwise, and the engine
-	// reads the same field in the same order, so the two cannot drift.
-	requiresSorcerySpeed := !card.IsInstant() && !game.HasKeyword(&card, "flash")
-	if perm != nil {
-		switch perm.Timing {
-		case game.TimingFlash:
-			requiresSorcerySpeed = false
-		case game.TimingSorcery:
-			requiresSorcerySpeed = true
-		}
-	}
-	if requiresSorcerySpeed && !speed {
-		return
-	}
+	// Timing is NOT re-asked here. It was a copy of the engine's
+	// three lines until #1195 — `!card.IsInstant() &&
+	// !HasKeyword(&card, "flash")` plus the permission's override —
+	// and it is now one call to game.CastTimingOpenLocked, made once
+	// per (card, face) by castMovesFromZone above. Nothing about the
+	// offer or the announced optional costs can change the answer.
 
 	// The clause this cast announces under, which is the offer's
 	// business as much as the card's: overload DELETES the target

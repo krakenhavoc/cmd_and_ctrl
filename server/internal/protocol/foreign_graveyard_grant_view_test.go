@@ -201,6 +201,7 @@ func TestViewAndEnumeratorAgreeOnAForeignGraveyardCast(t *testing.T) {
 // unwritten while every caller scoped the question to its own pile.
 func TestAStandingGraveyardGrantStopsAtItsHoldersOwnYard(t *testing.T) {
 	g := buildActiveGame(t)
+	castWindowOpen(t, g)
 	const oracle = "test-view-standing-breach"
 	withStandingPermission(t, oracle, game.CastPermission{
 		Zone:       game.ZoneGraveyard,
@@ -272,8 +273,17 @@ func TestTwoHoldersEachSeeTheirOwnGraveyardCastStamps(t *testing.T) {
 	knownToEveryone(g, owner.Graveyard, id)
 	// The SECOND permission, held by another seat, with its own key so
 	// the two answers are told apart by what they offer.
+	//
+	// TimingFlash, since #1195, and it is what makes this fixture a
+	// test of the per-holder STAMP rather than of the turn order: the
+	// seeded card is a sorcery and the holder is not the active seat,
+	// so without the ADR 0066 override `castable_here` would be false
+	// for them on CR 307.1 grounds and the assertion below would pass
+	// for the wrong reason. A grant that says "cast it as though it
+	// had flash" is the shape madness and cascade already use.
 	grantOverCard(t, g, holder.ID, id, game.CastPermission{
 		Zone: game.ZoneGraveyard, Scope: game.ScopeCards, AltCostKey: "escape",
+		Timing: game.TimingFlash,
 	})
 
 	// The owner: their own printed flashback, and no sight of the

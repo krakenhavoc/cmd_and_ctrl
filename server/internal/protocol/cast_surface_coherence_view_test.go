@@ -153,6 +153,24 @@ func escapeCost(mana string, n int) game.AlternativeCost {
 	}
 }
 
+// castWindowOpen puts a buildActiveGame fixture in the window a
+// SORCERY can actually be cast in: precombat main, empty stack, and
+// seat 0 — the seat every fixture below casts as — active.
+//
+// buildActiveGame stops at the untap step, which did not matter while
+// `castable_here` answered "is this zone a cast surface at a price you
+// can pay". Since #1195 it also answers CR 307.1, out of the same
+// game.CastTimingOpenLocked the announce path and the bot enumerator
+// read — so a fixture that seeds a sorcery in a graveyard and asserts
+// the bit has to be somewhere the cast is open. That the seven tests
+// touched by this needed it is the divergence the issue is about:
+// each of them marked a cast surface the announce path would have
+// refused with ErrSorcerySpeedRequired.
+func castWindowOpen(t *testing.T, g *game.Game) {
+	t.Helper()
+	advanceTo(t, g, game.StepPrecombatMain)
+}
+
 // graveyardCard seeds one known card into a seat's graveyard.
 func graveyardCard(p *game.Player, name, oracle string) uuid.UUID {
 	c := game.NewCard(name, p.ID)
@@ -239,6 +257,7 @@ func TestCastableHereClearedWhenTheOnlyZoneBoundOfferIsUnpayable(t *testing.T) {
 	const oracle = "test-view-escape"
 	g := buildActiveGame(t)
 	me := g.Seats[0]
+	castWindowOpen(t, g)
 	me.Graveyard.Cards = nil
 	withCastableZones(t, map[string][]game.ZoneKind{oracle: {game.ZoneGraveyard}})
 	withAltCostsByOracle(t, map[string][]game.AlternativeCost{oracle: {escapeCost("{R}", 2)}})
@@ -282,6 +301,7 @@ func TestCastableHereSurvivesAnUnpayableOfferWhenThePrintedCostIsClaimable(t *te
 	const oracle = "test-view-priced-but-not-declared"
 	g := buildActiveGame(t)
 	me := g.Seats[0]
+	castWindowOpen(t, g)
 	me.Graveyard.Cards = nil
 	// The card prices the graveyard and does NOT declare it, so the
 	// permission is the whole reason the cast is legal.
@@ -317,6 +337,7 @@ func TestCastableHereOnACardThatOpensItsZoneAtNoPrice(t *testing.T) {
 	const oracle = "test-view-gravecrawler"
 	g := buildActiveGame(t)
 	me := g.Seats[0]
+	castWindowOpen(t, g)
 	me.Graveyard.Cards = nil
 	withCastableZones(t, map[string][]game.ZoneKind{oracle: {game.ZoneGraveyard}})
 	withAltCostsByOracle(t, map[string][]game.AlternativeCost{oracle: nil})
@@ -342,6 +363,7 @@ func TestCastableHereClearedWhenTheCardsOwnPriceIsOwedAndUnpayable(t *testing.T)
 	const oracle = "test-view-declared-and-priced"
 	g := buildActiveGame(t)
 	me := g.Seats[0]
+	castWindowOpen(t, g)
 	me.Graveyard.Cards = nil
 	withCastableZones(t, map[string][]game.ZoneKind{oracle: {game.ZoneGraveyard}})
 	withAltCostsByOracle(t, map[string][]game.AlternativeCost{oracle: {escapeCost("{B}", 5)}})
@@ -364,6 +386,7 @@ func TestGrantedOfferSurvivesAlongsideThePrintedSet(t *testing.T) {
 	const oracle = "test-view-flashback-under-breach"
 	g := buildActiveGame(t)
 	me := g.Seats[0]
+	castWindowOpen(t, g)
 	me.Graveyard.Cards = nil
 	withCastableZones(t, map[string][]game.ZoneKind{oracle: {game.ZoneGraveyard}})
 	withAltCostsByOracle(t, map[string][]game.AlternativeCost{oracle: {
@@ -400,6 +423,7 @@ func TestPrintedCostClaimableFromHandAndNotFromTheGraveyard(t *testing.T) {
 	const oracle = "test-view-two-zones"
 	g := buildActiveGame(t)
 	me := g.Seats[0]
+	castWindowOpen(t, g)
 	me.Graveyard.Cards = nil
 	withCastableZones(t, map[string][]game.ZoneKind{oracle: {game.ZoneGraveyard}})
 	withAltCostsByOracle(t, map[string][]game.AlternativeCost{oracle: {

@@ -3260,9 +3260,21 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// the client had to ignore. Exile keys its button off `exile_play`
 	// instead, whose per-viewer stamps this bit — public since S29 —
 	// is not part of.
+	//
+	// #1195: and the THIRD input, game.CastTimingOpenLocked — the one
+	// CR 307.1 read CastSpell and the bot enumerator also call. Until
+	// it was added, a flashback SORCERY in a graveyard was marked a
+	// cast surface in an opponent's end step and the announce path
+	// refused it with ErrSorcerySpeedRequired; a Vedalken Orrery on
+	// the board was invisible to this bit in the other direction. The
+	// predicate folds the card's own timing, the permission's ADR 0066
+	// override, the per-player grants and the per-player restrictions
+	// in CR 101.2's order, so the client cannot render a cast button
+	// out of a rule it reimplemented.
 	switch kind {
 	case game.ZoneGraveyard, game.ZoneLibrary:
-		out.CastableHere = out.CantCast == "" && len(offers) > 0
+		out.CastableHere = out.CantCast == "" && len(offers) > 0 &&
+			haveLive && g.CastTimingOpenLocked(caster, live, kind, grant)
 	}
 	if spec == nil {
 		return out

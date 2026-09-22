@@ -1362,3 +1362,154 @@ of the nested sets takes a `CardView` out of the viewer's own snapshot,
 so all of them were already reading their own frame; the one behaviour
 worth pinning — that a targeted-looking bullet arriving with no legal
 set opens no picker rather than a free-form prompt — now has a test.
+
+## Amendment — 2026-09-22 (#1195): the timing rule is per PLAYER, and CR 307.1 is asked in one place
+
+Decision 6 above put a timing rule on a permission — `CastPermission.Timing`,
+one of `TimingNormal` / `TimingFlash` / `TimingSorcery`, read next to
+`HasKeyword(&card, "flash")` in `CastSpell` — and that is the right shape for
+a grant that opens ONE cast of ONE object: madness (#657) and suspend's free
+cast (#659) are both exactly that. It is the wrong shape for the sentence
+Vedalken Orrery prints. "You may cast spells as though they had flash" names
+no card, names no zone, and outlives no particular object; it is a statement
+about a PLAYER. So is its inverse, which the same seam blocks from the other
+side: "each opponent can cast spells only any time they could cast a sorcery".
+
+`docs/engine-seams.md`'s row **Per-player "cast as though it had flash"** is
+nine recorded cards; the audit puts 15 of 21 behind it. This amendment builds
+it, and the shape it builds is the one this ADR already uses twice.
+
+### 1. `CastTiming` is a per-player statement, and it reuses three vocabularies
+
+```go
+type CastTiming struct {
+    Player   uuid.UUID
+    Timing   GrantTiming      // TimingFlash, TimingSorcery, TimingYourTurnOnly
+    Filter   PermissionFilter // the zero filter is "spells"
+    FromZone ZoneKind         // zero is "from anywhere"
+    Duration Duration
+    Affects  CastTimingAffects
+    Source, SourceName, Label
+}
+```
+
+Nothing here is new vocabulary, and that is deliberate:
+
+- **`GrantTiming`** is Decision 6's own enum, gaining one value.
+  `TimingYourTurnOnly` is "you can cast spells only during your turn"
+  (Dosan the Falling Leaf), which is **not** `TimingSorcery` — Dosan leaves
+  you every instant-speed window on your own turn and takes away the rest.
+  No `CastPermission` declares it, exactly as nothing declared `TimingFlash`
+  when this ADR reserved it.
+- **`PermissionFilter`** is Decision 1's, gaining `NoncreatureOnly` and
+  `SorceryOnly`. A timing statement narrows by card type the same way a
+  standing permission does ("you may cast CREATURE spells as though they had
+  flash", Yeva), and a second flag struct saying `CreatureOnly` again would
+  be two spellings of one predicate.
+- **`Duration`** is ADR 0063's, unchanged. Emergence Zone is
+  `UntilEndOfTurn`, Teferi's +1 is `UntilYourNextTurn`, and a derived
+  statement is `WhileInZone` — the same three `CastPermission.Duration`
+  carries, swept by the same `durationExpiredLocked`.
+
+`Affects` is the one field with no precedent, and it exists because a
+catalog entry is static and cannot name a seat: `TimingAffectsYou` (the
+source's controller — Orrery, Leyline, Yeva), `TimingAffectsEachOpponent`
+(Teferi, Time Raveler; Teferi, Mage of Zhalfir) and `TimingAffectsEachPlayer`
+(Dosan). The derivation expands it against the battlefield and stamps
+`Player`; a STORED statement is granted to a player by name and carries
+`TimingAffectsYou` by construction.
+
+### 2. Two homes, and they are the two this ADR already has
+
+**Derived, never stored** for a statement whose duration is a permanent's
+presence: `Spec.CastTimings` → `CardDef.CastTimings` → `CatalogCastTimings`,
+walked per query through **`CatalogAbilityKey`** — so a Vedalken Orrery under
+a CR 613.1f ability-removing effect stops granting, two Orreries compose, and
+one leaving cannot revoke the other's grant. Exactly Decision 1's third home
+and exactly `standingCastPermissionsLocked`'s argument.
+
+**Stored on the player** (`Player.CastTimings`) for a statement that outlives
+its source: Emergence Zone sacrifices itself and the permission lasts the
+turn; Teferi's +1 resolves and the planeswalker may die. Granted by
+`GrantCastTimingForEffect`, swept at the same two moments
+`sweepCastPermissionsLocked` runs (cleanup, and the beginning of a turn), by
+the same expiry function. Cloned and snapshotted beside `CastPermissions`,
+for the same reason: who may cast when is not derivable from the board.
+
+### 3. ONE read, and CR 101.2 decides the order inside it
+
+```go
+func (g *Game) CastTimingOpenLocked(playerID uuid.UUID, card Card,
+    zone ZoneKind, perm *CastPermission) bool
+```
+
+"May this player begin to cast this card, out of this zone, right now?"
+(CR 307.1). Four steps, in this order, and the order IS the rules:
+
+1. **The card.** An instant, or a card with flash (CR 702.8), is
+   instant-speed. This is the `HasKeyword(&card, "flash")` read that used to
+   sit inline in `CastSpell`.
+2. **The permission** (Decision 6, unchanged). `TimingFlash` opens it,
+   `TimingSorcery` shuts it. Madness and suspend reach the window through
+   this branch exactly as before.
+3. **The per-player GRANTS.** Any live `TimingFlash` statement naming this
+   player and covering this card and zone opens the window.
+4. **The per-player RESTRICTIONS, last, because CR 101.2 says "can't" beats
+   "can".** A `TimingSorcery` statement shuts the window whatever step 3
+   said; a `TimingYourTurnOnly` statement refuses the cast outright when it
+   is not this player's turn. An opponent's Vedalken Orrery does not get them
+   past your Teferi, and that falls out of the placement rather than needing
+   a rule of its own.
+
+Then: a shut window means `sorcerySpeedOpenLocked` must be open.
+
+**A land play is not here.** CR 305.1 and CR 116.2a make playing a land a
+special action, not a cast, and every card in this row writes about casting
+SPELLS. `CastSpell`'s land branch keeps its own `sorcerySpeedOpenLocked`
+check beside this call, which is the same split `CastGateLocked` documents
+for the same reason: a Dosan that stopped a land play would be a rule nobody
+printed.
+
+### 4. Three callers, which is the whole point
+
+The same three ADR 0073 §7 names for the cast gate, and for the same reason
+— the read sits BESIDE the gate rather than inside it, because "you cannot
+cast this" and "you cannot cast this **yet**" are different answers and the
+client greys them differently:
+
+- **`CastSpell`** (`mutations.go`), replacing the inline
+  `requiresSorcerySpeed` computation. Refuses with `ErrSorcerySpeedRequired`,
+  unchanged.
+- **`legal.castMovesPayingOptional`** (`legal/cast.go`), replacing its copy
+  of the same three lines, so a bot is never offered a cast the engine will
+  refuse for timing — and never denied one an Orrery opens.
+- **`protocol.castStampsFor`** (`view.go`), where `castable_here` gains its
+  third input. #1015 derived that bit from two things (a claimable price, and
+  the cast gate); it is now three, and the third is this predicate. A
+  flashback sorcery in a graveyard is a cast surface on your main phase and
+  not in an opponent's end step — which is what the announce path has always
+  answered and what the wire did not say.
+
+### 5. Out of scope, stated
+
+- **Activated abilities.** Several of these cards print an "activate
+  abilities only as a sorcery" clause beside the cast clause (Grand
+  Abolisher, Teferi, Mage of Zhalfir's sibling family).
+  `ActivatedAbility.SorcerySpeed` (`activated.go:337`) is a per-ABILITY flag
+  read by `activated.go:713`, and a per-player statement about activations
+  would want the same two homes and the same one read this amendment builds
+  for casts. It is a sibling, not a part: nothing in this row is blocked on
+  it, and a card that prints both gets the cast half and a caveat.
+- **A per-spell COUNT.** Winding Canyons is "until end of turn, you may cast
+  **a** creature spell as though it had flash" — one spell, not a window.
+  There is no allowance for the read to consult (the same gap
+  `CastTally` fills for Rule of Law and does not fill here), and a duration
+  that expired on use would be a sixth `DurationKind` with one user.
+  Caveated.
+- **"As though it had flash" said of ONE named card.** Every card on the row
+  says it of a player. A per-object version is `CastPermission.Timing`, which
+  already exists and is untouched.
+- **The wire does not grow a field.** `castable_here` already means "you may
+  cast this from here", and "not at this timing" is a reason it is false, not
+  a second bit. A client that wants to distinguish "banned" from "not yet"
+  already has `cant_cast` for the first.
