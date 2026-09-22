@@ -297,6 +297,30 @@ type Player struct {
 	// moved on, is already refused by CastPermissionActiveForEffect
 	// and NamesCard.
 	CastPermissions []CastPermission
+
+	// Statics are the abilities this PLAYER has that were GRANTED
+	// for a duration — "you gain protection from everything until
+	// your next turn" (Teferi's Protection, The One Ring). CR 702.16i
+	// and CR 702.11d; ADR 0072's 2026-09-22 amendment, #1197.
+	//
+	// The ability slice docs/engine-seams.md said a Player did not
+	// carry, and modelled on CastPermissions directly above: plain
+	// data with no closure, carrying a CR 611.2 Duration, swept
+	// through the same durationExpiredLocked, cloned by value and
+	// mirrored into the snapshot rather than rebuilt.
+	//
+	// DERIVED abilities are NOT here. A permanent's printed "you have
+	// hexproof" (Leyline of Sanctity, Aegis of the Gods) is read off
+	// the battlefield on every query, so two of them compose and one
+	// leaving cannot revoke the other's grant — the same argument
+	// CastPermissions makes about STANDING permissions, and
+	// land_drops.go about Exploration.
+	//
+	// Swept at the cleanup step and at the beginning of a turn for
+	// hygiene only (sweepPlayerStaticsLocked): an entry whose
+	// duration has run out is already refused by the reader.
+	// See player_statics.go.
+	Statics []PlayerStatic
 }
 
 // newPlayer constructs a player with empty zones and their starting

@@ -379,6 +379,14 @@ var playerFields = plan(
 	// (Underworld Breach, Bolas's Citadel) are not in this slice at
 	// all — they are re-derived from the battlefield on every query.
 	"CastPermissions", carried, "",
+	// #1197 granted player abilities ("you gain protection from
+	// everything until your next turn"). Carried for the same reason
+	// and by the same mechanism as the line above: plain data with no
+	// closure, so PlayerSnapshot holds the engine type directly. The
+	// DERIVED half — Leyline of Sanctity's "you have hexproof" — is
+	// not in this slice at all and needs nothing, because it comes
+	// back with the battlefield.
+	"Statics", carried, "",
 )
 
 // scopedStaticFields classifies game.ScopedStatic — the floating

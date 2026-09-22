@@ -381,6 +381,17 @@ type playerSnapshot struct {
 	// closures, which is what lets it be mirrored rather than
 	// rebuilt.
 	CastPermissions []CastPermission `json:"castPermissions,omitempty"`
+	// Statics are the abilities this PLAYER was granted for a
+	// duration — "you gain protection from everything until your next
+	// turn" (#1197, CR 702.16i). Carried for the same reason
+	// CastPermissions is: not derivable from the board, and pure data
+	// by construction, so it is mirrored rather than rebuilt. A file
+	// written before #1197 has none, which restores as a player with
+	// no granted abilities — the right reading, because no game
+	// written before the field existed had one. The DERIVED half
+	// (Leyline of Sanctity's "you have hexproof") is not here and
+	// needs nothing: it comes back with the battlefield.
+	Statics []PlayerStatic `json:"statics,omitempty"`
 }
 
 type zoneSnapshot struct {
@@ -1199,6 +1210,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		}
 	}
 	out.CastPermissions = cloneCastPermissions(p.CastPermissions)
+	out.Statics = clonePlayerStatics(p.Statics)
 	return out
 }
 
@@ -1810,6 +1822,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		}
 	}
 	out.CastPermissions = cloneCastPermissions(p.CastPermissions)
+	out.Statics = clonePlayerStatics(p.Statics)
 	return out
 }
 

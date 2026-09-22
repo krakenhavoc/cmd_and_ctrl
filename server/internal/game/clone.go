@@ -547,6 +547,13 @@ func clonePlayer(p *Player) *Player {
 	// a point where the permission was still owed must restore it
 	// intact, with its own Cards backing array.
 	out.CastPermissions = cloneCastPermissions(p.CastPermissions)
+	// #1197: granted player abilities, the same reasoning one more
+	// time. A PlayerStatic has no reference-typed field at all, so a
+	// fresh backing array IS the whole copy — what must not be shared
+	// is the array, because sweepPlayerStaticsLocked replaces the
+	// slice rather than compacting it, precisely so an undo snapshot
+	// taken mid-turn still holds the grants that were live then.
+	out.Statics = clonePlayerStatics(p.Statics)
 	return out
 }
 

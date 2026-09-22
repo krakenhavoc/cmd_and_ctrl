@@ -382,6 +382,14 @@ func (g *Game) specMatchesLocked(src TargetSource, spec *TargetSpec, targeting b
 			if p == nil || p.Eliminated {
 				continue
 			}
+			// CR 702.11d / CR 702.16i, #1197: the player half of the
+			// same keyword gate CanBeTargetedBy applies to a card, on
+			// the same `targeting` switch — a cost payment that names
+			// a player is not targeting and must not be refused by a
+			// hexproof the payer has.
+			if targeting && !g.canPlayerBeTargetedByLocked(p, src) {
+				continue
+			}
 			if spec.PlayerOK != nil && !spec.PlayerOK(g, src.Controller, p) {
 				continue
 			}
@@ -546,6 +554,15 @@ func (g *Game) specMatchLocked(src TargetSource, spec *TargetSpec, ref TargetRef
 		}
 		p := g.playerByIDLocked(ref.ID)
 		if p == nil || p.Eliminated {
+			return false
+		}
+		// CR 702.11d / CR 702.16i, #1197. The same function the
+		// enumeration above runs, at announce (CR 601.2c) and again
+		// at resolution (CR 608.2b) — which is why a player who
+		// gains hexproof in response to a spell already on the stack
+		// makes it fizzle without anything else being taught the
+		// rule, exactly as a creature that gains it does.
+		if targeting && !g.canPlayerBeTargetedByLocked(p, src) {
 			return false
 		}
 		return spec.PlayerOK == nil || spec.PlayerOK(g, src.Controller, p)

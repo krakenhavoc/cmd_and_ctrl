@@ -609,6 +609,38 @@ type Spec struct {
 	// Issue #338.
 	NoMaxHandSize bool
 
+	// PlayerKeywords declares a printed static that gives this
+	// permanent's CONTROLLER an ability — "You have hexproof"
+	// (Leyline of Sanctity, Aegis of the Gods), "You have protection
+	// from everything" if a permanent ever prints it. True while the
+	// permanent is on the battlefield and nowhere else.
+	//
+	//	PlayerKeywords: []string{"hexproof"},
+	//
+	// Engine ability TOKENS, in the vocabulary keywords.go and
+	// protection.go already parse — a protection token is built with
+	// game.ProtectionFromColor or spelled with the constants in
+	// protection.go, never by hand, for the reason that file gives: a
+	// token the closed grammar cannot parse grants nothing at all, so
+	// a typo ships a card that looks finished and does nothing.
+	//
+	// NOT a `Static` entry, for exactly the reason NoMaxHandSize
+	// above is not: game.StaticAbility's Apply takes a
+	// *Characteristic and a target *Card, and a player is neither.
+	// The engine derives the answer instead — it asks the battlefield
+	// on every query, through the game.CatalogPlayerKeywords hook —
+	// so two Leylines compose and one of them leaving cannot revoke
+	// the other's grant. The GRANTED half of the same rule, "you gain
+	// protection from everything until your next turn", is stored
+	// instead and lives on game.Player.Statics.
+	//
+	// Three consumers read it and there is no fourth: targeting
+	// (CR 702.11d / 702.16i), the CR 702.16e damage built-in, and
+	// the CR 702.16c attachment check for an "enchant player" Aura.
+	//
+	// Issue #1197, ADR 0072's 2026-09-22 amendment.
+	PlayerKeywords []string
+
 	// WantsDistinctColors declares a spell that READS the colours of
 	// the mana that paid for it: converge (CR 702.86 — Painful
 	// Truths, Bring to Light) and sunburst (CR 702.44 — Etched

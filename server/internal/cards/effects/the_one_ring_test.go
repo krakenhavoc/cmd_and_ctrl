@@ -79,17 +79,20 @@ func TestTheOneRingWithNoBurdenCountersCostsNoLife(t *testing.T) {
 	}
 }
 
-// TestTheOneRingIsIndestructibleAndCaveatsItsProtection pins the two
-// halves of the keyword line: indestructible is declared and read
-// back off the effective characteristics, and the protection clause
-// is published as a caveat rather than silently dropped.
-func TestTheOneRingIsIndestructibleAndCaveatsItsProtection(t *testing.T) {
+// TestTheOneRingIsIndestructibleAndComplete pins the keyword line and
+// the completeness claim. The card carried a caveat naming the
+// missing "protection from everything until your next turn" clause
+// from S40 until #1197 gave a PLAYER an ability slice; now every
+// clause is implemented, so the caveat is gone and the card is
+// CompletenessFull. The protection itself is proved in
+// the_one_ring_shield_test.go.
+func TestTheOneRingIsIndestructibleAndComplete(t *testing.T) {
 	spec, ok := Lookup(theOneRingOracle)
 	if !ok {
 		t.Fatalf("The One Ring is not registered")
 	}
-	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) == 0 {
-		t.Errorf("The One Ring must ship with its protection caveat: %+v", spec)
+	if spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Errorf("every clause of The One Ring is implemented since #1197: %+v", spec)
 	}
 	g := newCatalogGame(t)
 	me := g.Seats[0]
