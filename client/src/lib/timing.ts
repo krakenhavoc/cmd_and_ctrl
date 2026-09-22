@@ -38,7 +38,7 @@
 import type { CardView, GameView, LegalMoveView, LegalTargetsView } from "./protocol";
 import { castableFaces } from "./faces";
 import { sacrificeCount } from "./sacrificeCost";
-import { printedCostClaimable } from "./targeting";
+import { castIsForbidden, printedCostClaimable } from "./targeting";
 
 // Legality is a predicate result: legal=true means "the action
 // would succeed if dispatched right now"; legal=false carries a
@@ -236,6 +236,22 @@ export function canCastFromHand(
   const faces = castableFaces(card);
   const named = (face: CardView, reason: string): string =>
     faces.length > 1 ? `${face.name}: ${reason}` : reason;
+
+  // #1185: a `cant_cast` clause (ADR 0073 §7, #760) refuses the cast
+  // outright — "Each player can't cast more than one spell each turn",
+  // "Cast this spell only if you control a legendary creature or
+  // planeswalker" — regardless of targets, modes or cost, so it is
+  // checked before any of those. `castIsForbidden` already existed
+  // (targeting.ts) and read exactly this field, but nothing called it:
+  // the reason fell through every branch below to the generic sorcery-
+  // speed hint instead of the card's own printed clause. Walked per
+  // face, like every other gate here (#1168) — a card refused on every
+  // castable face is denied with the first blocked face's own clause.
+  const cantCastOK = (face: CardView): boolean => !castIsForbidden(face);
+  if (!faces.some(cantCastOK)) {
+    const blocked = faces.find((f) => !cantCastOK(f)) ?? card;
+    return deny(named(blocked, blocked.cant_cast || "Can't cast this card"));
+  }
 
   // A targeted spell with nothing legal to point at can't be cast
   // (CR 601.2c). A clause needs at least `min` legal candidates —

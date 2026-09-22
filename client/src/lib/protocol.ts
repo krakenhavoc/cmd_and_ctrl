@@ -22,6 +22,13 @@ export const ErrorCode = {
   // sentence to show verbatim, `reason` the stable token and `card_id`
   // the blocker. The client never re-derives the rule.
   IllegalBlock: "illegal_block",
+  // #1063 (ADR 0080): a declare_attacker / declare_attackers refused
+  // for want of the CR 508.1a attack tax. `reason` carries the whole
+  // declaration's price as a cost string ("{2}{2}"), not a
+  // BlockRefusalReason token — see ErrorPayload.reason. `missing` is
+  // the symbols the pool and the tapper together could not cover.
+  // No `card_id`: the refusal is about the declaration, not one card.
+  AttackTaxUnpaid: "attack_tax_unpaid",
 } as const;
 
 export type ErrorCodeValue = (typeof ErrorCode)[keyof typeof ErrorCode];
@@ -54,7 +61,11 @@ export interface ErrorPayload {
   card_id?: string;
   // #705: why a block was refused, populated when
   // code === "illegal_block". One of BlockRefusalReason.
-  reason?: BlockRefusalReason;
+  // #1063: also carries the attack tax's whole price as a plain cost
+  // string ("{2}{2}") when code === "attack_tax_unpaid" — a second
+  // shape on the same key, not a second field, because the server's
+  // ErrorPayload.Reason is a bare string on the wire either way.
+  reason?: BlockRefusalReason | string;
 }
 
 // BlockRefusalReason mirrors game.BlockReason (server/internal/game/

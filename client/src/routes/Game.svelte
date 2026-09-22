@@ -31,6 +31,7 @@
   import DiscardPromptModal from "../lib/components/board/DiscardPromptModal.svelte";
   import ChoicePromptModal from "../lib/components/board/ChoicePromptModal.svelte";
   import AutoTapPreviewModal from "../lib/components/board/AutoTapPreviewModal.svelte";
+  import AttackDeclarationModal from "../lib/components/board/AttackDeclarationModal.svelte";
   import TargetingBanner from "../lib/components/board/TargetingBanner.svelte";
   import GameLogPanel from "../lib/components/board/GameLogPanel.svelte";
   import RevealBanner from "../lib/components/board/RevealBanner.svelte";
@@ -734,10 +735,20 @@
   );
   const attackBlockedHint = $derived(blockedSummary(attackPlan.blocked));
 
+  // #1162: the last seat an "attack with all" click aimed at, so a
+  // refusal can be correlated back to which target's declaration it
+  // was — attack_tax_unpaid carries no card_id (ADR 0080: the refusal
+  // is about the whole declaration, not one creature) and no target
+  // either, so this is the same optimistic-stash shape
+  // lastCastByCardID uses for a cast retry, sized down to "the one
+  // bulk attack that can be in flight at a time."
+  let lastAttackAllAttempt = $state<string | null>(null);
+
   function attackAllAt(defenderSeatID: string): void {
     const params = attackAllParams(attackPlan, defenderSeatID);
     if (!params) return;
     combatSelection = null;
+    lastAttackAllAttempt = defenderSeatID;
     client.sendAction("declare_attackers", undefined, params);
     play("attack");
   }
@@ -751,6 +762,57 @@
     return [attackAllLabel(attackPlan, opp), attackAllTaxLabel(view, attackPlan, opp.id)]
       .filter(Boolean)
       .join(" · ");
+  }
+
+  // #1162: the attack-tax subset + lock-a-land picker
+  // (AttackDeclarationModal.svelte). `attackPickerDefenderID` doubles
+  // as open/closed, matching autoTapCardID's own convention.
+  //
+  // Opens two ways: reactively, when an "attack with all" click comes
+  // back `attack_tax_unpaid` (a swing the seat can only partly
+  // afford), and proactively, from the "choose attackers…" link
+  // beside a taxed target — a seat that already knows it can't afford
+  // everything shouldn't have to click the full button and wait for
+  // the rejection first.
+  let attackPickerDefenderID = $state<string | null>(null);
+
+  // attackTaxRefusalDefenderID is non-null exactly when the LAST
+  // "attack with all" attempt is the thing $lastError is currently
+  // complaining about — a derived read rather than an effect that
+  // writes its own dependency, so there is nothing here to loop.
+  const attackTaxRefusalDefenderID = $derived.by(() => {
+    const err = $lastError;
+    if (!err || err.code !== "attack_tax_unpaid" || !lastAttackAllAttempt) return null;
+    return lastAttackAllAttempt;
+  });
+
+  function openAttackPicker(defenderSeatID: string): void {
+    attackPickerDefenderID = defenderSeatID;
+  }
+  function openAttackPickerFromRefusal(): void {
+    if (!attackTaxRefusalDefenderID) return;
+    attackPickerDefenderID = attackTaxRefusalDefenderID;
+    client.lastError.set(null);
+  }
+  function dismissAttackTaxRefusal(): void {
+    client.lastError.set(null);
+  }
+  function confirmAttackPicker(attackerIDs: string[], lockedSources: string[]): void {
+    const defenderSeatID = attackPickerDefenderID;
+    attackPickerDefenderID = null;
+    if (!defenderSeatID) return;
+    const params = attackAllParams(attackPlan, defenderSeatID, {
+      only: attackerIDs,
+      lockedSources,
+    });
+    if (!params) return;
+    combatSelection = null;
+    lastAttackAllAttempt = defenderSeatID;
+    client.sendAction("declare_attackers", undefined, params);
+    play("attack");
+  }
+  function cancelAttackPicker(): void {
+    attackPickerDefenderID = null;
   }
 
   // The inverse of a wide declaration is undo, not a bulk "unattack":
@@ -1353,6 +1415,20 @@
                         >
                       {/if}
                     </button>
+                    {#if attackTaxOn(view, attackPlan.defenders[0].id)}
+                      <!-- #1162: the seat can only afford SOME of a wide
+                           swing under a tax — offered up front rather
+                           than only after the full-batch button is
+                           refused. -->
+                      <button
+                        type="button"
+                        class="ghost att-btn"
+                        title="pick which attackers to send, and lock a land against the auto-tapper"
+                        onclick={() => openAttackPicker(attackPlan.defenders[0].id)}
+                      >
+                        Choose attackers…
+                      </button>
+                    {/if}
                   {:else}
                     <!-- Multi-opponent: one button per seat rather than a
                          bare "attack all", so the control always says who
@@ -1371,6 +1447,17 @@
                           <span class="muted">{attackTaxOn(view, opp.id)}</span>
                         {/if}
                       </button>
+                      {#if attackTaxOn(view, opp.id)}
+                        <button
+                          type="button"
+                          class="ghost att-btn"
+                          title={`pick which attackers to send at ${seatLabel(opp)}, and lock a land against the auto-tapper`}
+                          onclick={() => openAttackPicker(opp.id)}
+                          aria-label={`Choose attackers against ${seatLabel(opp)}`}
+                        >
+                          <Icon name="more" size={12} />
+                        </button>
+                      {/if}
                     {/each}
                   {/if}
                 {/if}
@@ -1456,6 +1543,37 @@
                   type="button"
                   class="ghost att-close"
                   onclick={dismissManaOverride}
+                  aria-label="dismiss"
+                >
+                  <Icon name="x" size={12} />
+                </button>
+              </div>
+            {:else if attackTaxRefusalDefenderID}
+              <!-- #1162: a wide swing refused for want of the CR 508.1a
+                   attack tax (ADR 0080) offers the subset picker
+                   instead of leaving the player to work out a smaller
+                   number and declare it one creature at a time. -->
+              <div class="att toast attack-tax-override" role="alert" aria-live="polite">
+                <span class="att-label gold">attack tax</span>
+                <span class="att-text">
+                  <strong>
+                    {#if $lastError?.reason}
+                      Attacking with all of them costs {$lastError.reason} and you can't pay it
+                    {:else}
+                      You can't pay to attack with all of them
+                    {/if}
+                  </strong>
+                  {#if $lastError?.missing && $lastError.missing.length > 0}
+                    <span class="muted">· missing {$lastError.missing.join(" ")}</span>
+                  {/if}
+                </span>
+                <button type="button" class="primary att-btn" onclick={openAttackPickerFromRefusal}>
+                  Choose attackers…
+                </button>
+                <button
+                  type="button"
+                  class="ghost att-close"
+                  onclick={dismissAttackTaxRefusal}
                   aria-label="dismiss"
                 >
                   <Icon name="x" size={12} />
@@ -1586,6 +1704,13 @@
         castParams={autoTapCastParams}
         onConfirm={confirmAutoTap}
         onCancel={cancelAutoTap}
+      />
+      <AttackDeclarationModal
+        {view}
+        {viewerID}
+        defenderSeatID={attackPickerDefenderID}
+        onConfirm={confirmAttackPicker}
+        onCancel={cancelAttackPicker}
       />
     {/if}
   </div>
@@ -2171,6 +2296,7 @@
   }
   .combat-hint,
   .mana-override,
+  .attack-tax-override,
   .game-end {
     border-color: rgba(217, 180, 92, 0.45);
   }
