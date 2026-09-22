@@ -131,6 +131,16 @@ import (
 //	Helm X=2 + Bruvac   2 cards (the first repetition reaches the bound)
 //	Helm X=3 + Bruvac   4 cards (2 + 2)
 //
+// One thing the loop needs that a single instruction did not: a
+// TERMINATION guard. A repetition is a real instruction, so it can be
+// replaced away — CR 614.10's null replacement cancels a mill, and a
+// replacement that halves an amount turns a mill of one into a mill of
+// none — and a run that asks for a repetition which moves nothing would
+// ask for it forever. millRun.stalled ends the run when a repetition
+// leaves the library no shorter than it found it. The measure is the
+// library's DEPTH and not the landed list, because a run under Rest in
+// Peace lands nothing and is still making progress.
+//
 // #1177's structure survives it and is strengthened. The over-mill it
 // closed by construction — a landed-count bound only ends a run when
 // the engine WAITS for each leg to land, and the fire-and-forget entry
@@ -341,6 +351,10 @@ func (g *Game) millUntilRunLocked(run *millRun) error {
 			run.before[c.InstanceID] = c
 		}
 	}
+	// How deep the library was before this repetition. A repetition
+	// that does not shorten it made NO PROGRESS, and repeating it would
+	// make none either — see millRun.stalled.
+	depth := len(p.Library.Cards)
 	// One repetition IS an ordinary one-card mill: the same entry, the
 	// same CR 614 window on its amount, the same plan, the same
 	// sequencing routing loop. Nothing about a repetition knows it is
@@ -348,12 +362,42 @@ func (g *Game) millUntilRunLocked(run *millRun) error {
 	_, err := g.millThroughReplacementsLocked(run.player, 1, run.dest, nil,
 		func(g *Game, milled []uuid.UUID) error {
 			next := run.next(milled)
-			if next.stops() {
+			if next.stops() || next.stalled(g, depth) {
 				return next.finish(g)
 			}
 			return g.millUntilRunLocked(next)
 		})
 	return err
+}
+
+// stalled reports whether the repetition that just finished left the
+// library no shorter than `depth` — and so whether the run has to end
+// whatever its clause says.
+//
+// It is the termination guard, and it is needed because a repetition is
+// a real instruction now and a real instruction can be replaced away.
+// CR 614.10's null replacement cancels a mill outright; a replacement
+// that HALVES an amount turns a mill of one into a mill of none. Either
+// way the library is where it was, the clause is where it was, and a
+// run without this check would ask for the same repetition forever.
+// The old model could not reach it: a run named no number, so it opened
+// no amount window and nothing could replace it to nothing.
+//
+// The measure is the library's DEPTH rather than the landed list,
+// because a run under Rest in Peace lands nothing at all and is still
+// making progress — that is the famous Helm combo, and it must still
+// end at the bottom of the library rather than here.
+//
+// A card put BACK on the library by the same repetition (a "put it on
+// top of your library instead" replacement) reads as no progress and
+// ends the run. That is the conservative answer on purpose: the
+// alternative is a run that mills the same card forever.
+func (r *millRun) stalled(g *Game, depth int) bool {
+	p := g.playerByIDLocked(r.player)
+	if p == nil {
+		return true
+	}
+	return len(p.Library.Cards) >= depth
 }
 
 // next is the run one repetition further on, as a NEW value with a new

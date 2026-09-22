@@ -587,3 +587,94 @@ func TestTheAmountWindowRunsBeforeThePerCardOne(t *testing.T) {
 		t.Errorf("graveyard holds %d, want 3", len(p.Graveyard.Cards))
 	}
 }
+
+// An `until` run whose every repetition is replaced away TERMINATES.
+//
+// The termination guard, and the one hazard the per-repetition model
+// introduced (#1176): a repetition is a real instruction now, so
+// CR 614.10's null replacement can cancel it, and a run that asked for
+// a repetition which moves nothing would ask for it forever. The old
+// model could not reach this — a run named no number, so it opened no
+// amount window and nothing could cancel it.
+//
+// The run ends with an empty landed list, the library untouched, and
+// the caller's continuation run exactly once.
+func TestAnUntilRunEndsWhenEveryRepetitionIsReplacedAway(t *testing.T) {
+	g := newActiveGame(t)
+	p := g.Seats[0]
+	g.WithWriteLock(func() {
+		stockLibrary(p, 6)
+		g.RegisterReplacementForTest(millCancelReplacement("no mill"))
+	})
+
+	calls := 0
+	var got []uuid.UUID
+	g.WithWriteLock(func() {
+		err := g.MillToZoneThenForEffect(p.ID, 0, ZoneGraveyard, func([]Card) bool { return false },
+			func(_ *Game, milled []uuid.UUID) error {
+				calls++
+				got = milled
+				return nil
+			})
+		if err != nil {
+			t.Fatalf("MillToZoneThenForEffect: %v", err)
+		}
+	})
+
+	if calls != 1 {
+		t.Errorf("the continuation ran %d times, want exactly 1", calls)
+	}
+	if len(got) != 0 {
+		t.Errorf("%d cards landed, want none", len(got))
+	}
+	if len(p.Library.Cards) != 6 {
+		t.Errorf("library holds %d, want the untouched 6", len(p.Library.Cards))
+	}
+	if len(p.Graveyard.Cards) != 0 {
+		t.Errorf("graveyard holds %d, want none", len(p.Graveyard.Cards))
+	}
+}
+
+// The guard measures the library's DEPTH, not the landed list, so a run
+// that lands NOTHING because every card is being diverted still walks
+// the whole library — Helm of Obedience under Rest in Peace, which is
+// the famous combo and must not be mistaken for a stalled run.
+func TestAnUntilRunThatLandsNothingStillWalksTheLibrary(t *testing.T) {
+	g := newActiveGame(t)
+	p := g.Seats[0]
+	g.WithWriteLock(func() {
+		stockLibrary(p, 5)
+		// Every card on its way to the graveyard is exiled instead —
+		// Rest in Peace's clause, as a test injection.
+		g.RegisterReplacementForTest(ReplacementEffect{
+			Watches: []EventKind{EventZoneMove},
+			AppliesTo: func(ev *ReplacementEvent, _ *Game, _ *Card) bool {
+				return ev.Kind == RepEventMove && ev.NewZone == ZoneGraveyard
+			},
+			Replace: func(ev *ReplacementEvent, _ *Game, _ *Card) error {
+				ev.NewZone = ZoneExile
+				return nil
+			},
+			Label: "exile it instead",
+		})
+	})
+
+	var got []uuid.UUID
+	g.WithWriteLock(func() {
+		err := g.MillToZoneThenForEffect(p.ID, 0, ZoneGraveyard, func([]Card) bool { return false },
+			func(_ *Game, milled []uuid.UUID) error {
+				got = milled
+				return nil
+			})
+		if err != nil {
+			t.Fatalf("MillToZoneThenForEffect: %v", err)
+		}
+	})
+
+	if len(got) != 0 {
+		t.Errorf("%d cards landed in the graveyard, want none — every one was exiled instead", len(got))
+	}
+	if len(p.Library.Cards) != 0 {
+		t.Errorf("library holds %d, want 0 — landing nothing is not the same as moving nothing", len(p.Library.Cards))
+	}
+}
