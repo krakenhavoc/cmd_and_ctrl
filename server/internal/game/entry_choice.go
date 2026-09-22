@@ -376,7 +376,25 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) (entered uu
 		}
 		break
 	}
-	g.markCardKnownInZoneLocked(g.Battlefield, entered)
+	if ev.FaceDown != FaceDownNone {
+		// CR 708.5, ADR 0082 decision 3: a FACE-DOWN entry — a
+		// manifest, or a spell cast face down — lands as a CR 708.2
+		// object whose CONTROLLER is its only knower. This REPLACES
+		// the public marking below rather than adding to it: the
+		// battlefield is a public zone and this is not a public
+		// object.
+		//
+		// It runs before the provenance stamp and well before
+		// EventETB, so CatalogKey has already gone silent by the time
+		// fireETBHookLocked reads it — a face-down permanent runs no
+		// ETB trigger and no "as enters" hook, which is CR 708.2a
+		// falling out rather than a special case. `moved` is stamped
+		// too because that copy is what the ETB hook is keyed on.
+		g.applyFaceDownLandingLocked(g.Battlefield, entered, ev.FaceDown)
+		moved.SetFaceDown(ev.FaceDown)
+	} else {
+		g.markCardKnownInZoneLocked(g.Battlefield, entered)
+	}
 	// CR 400.7d (#653, #664): what the spell that became this
 	// permanent was cast for — the alternative cost AND the optional
 	// additional costs, one record. Before the copy and the counters,

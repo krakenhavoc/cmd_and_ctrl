@@ -200,6 +200,19 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		// otherwise read the stale characteristic off the card it was
 		// just told about.
 		g.layerVersion.Add(1)
+	case EventTurnedFaceUp:
+		// ADR 0082 / CR 708.6: the twin of the transform arm above,
+		// and for the same reason. A permanent turning face up
+		// changes its PRINTED characteristics wholesale — the CR
+		// 708.2 body (a nameless 2/2 with no text) is replaced by the
+		// real card at layer 0 — without the permanent going
+		// anywhere, so no zone move, counter, attach or tap
+		// invalidation stands in for it.
+		//
+		// The card's own effective cache is nilled at the mutation
+		// site (turnFaceUpLocked) rather than here, for the window
+		// between the two, exactly as the transform arm explains.
+		g.layerVersion.Add(1)
 	case EventControlChanged:
 		// #990: who controls a permanent is an AppliesTo input for
 		// every "creatures you control" static and for every

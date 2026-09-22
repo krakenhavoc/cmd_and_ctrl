@@ -265,6 +265,27 @@ type StackItem struct {
 	// that MoveCard's unconditional ClearFaceDown. Added for #658.
 	Foretold bool
 
+	// FaceDown is the CR 708.2 state a spell CAST FACE DOWN
+	// (CR 708.4) resolves into — FaceDownMorphed for a morph or a
+	// megamorph, FaceDownDisguised for a disguise, and the zero value
+	// for every other spell in the game.
+	//
+	// It rides the item because the permanent is a different object
+	// from the spell (CR 400.7) and MoveCard clears the face-down
+	// state on every zone change (ADR 0069 decision 5) — so "it was
+	// cast face down, therefore it enters face down" has to be
+	// carried across the move rather than read off the card on the
+	// far side of it. Stack resolution seeds it onto the entry event
+	// and the ONE entry finisher applies it, which is how the CR 614
+	// window, the pause-and-resume and the undo path come free.
+	//
+	// Distinct from `AltCost == "morph"` for the reason Foretold is
+	// distinct from `AltCost == "foretell"`: the fact is about the
+	// OBJECT, and an effect that cast a card face down some other way
+	// would still produce a face-down permanent. Added for #1194
+	// (ADR 0082 decision 3).
+	FaceDown FaceDownKind
+
 	// AltCostExiles is CR 702.34a's flashback clause as a FACT about
 	// this stack object: "exile this card instead of putting it
 	// anywhere else any time it would leave the stack".

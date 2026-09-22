@@ -445,6 +445,11 @@ var stackItemFields = plan(
 	// stack, and the fact cannot be recomputed — the card turned face
 	// up as it was cast, so the object it was read from is gone.
 	"Foretold", carried, "",
+	// CR 708.4 (#1194, ADR 0082). Carried: a restore that lost it
+	// would resolve a morph on the stack into a face-UP creature,
+	// revealing the card to the table and handing it back every
+	// ability CR 708.2a says it does not have.
+	"FaceDown", carried, "",
 	// CR 702.34a / CR 400.7g (ADR 0066). Carried for the reason
 	// IsCopy is: a restore that lost it would route a flashed-back
 	// spell to a graveyard instead of exile, and a card Snapcaster

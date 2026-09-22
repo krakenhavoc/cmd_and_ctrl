@@ -8,32 +8,41 @@ import (
 //
 // A special action is a game action a player takes WITHOUT using the
 // stack and without passing priority. CR 116.2 lists seven of them;
-// two are keywords on a card in a player's hand:
+// three are built here:
 //
-//	foretell  CR 116.2h, 702.143a  pay {2}, exile the card face down
-//	suspend   CR 116.2f, 702.62a   pay the suspend cost, exile it with
-//	                               N time counters
+//	foretell      CR 116.2h, 702.143a  pay {2}, exile the card face down
+//	suspend       CR 116.2f, 702.62a   pay the suspend cost, exile it with
+//	                                   N time counters
+//	turn_face_up  CR 116.2g, 708.6     pay a face-down permanent's morph
+//	                                   cost and turn it face up
 //
 // ONE VERB, not one per keyword. The rules group these precisely
 // because their contract is identical — no stack, no announce, no
 // response window, no targets — and four handlers would be four
 // copies of `requirePriorityHolder`, four param blocks and four
-// enumerator cases for a difference that is two fields wide (when,
-// and what it costs). That difference is the per-kind TIMING TABLE
-// below and the per-kind `perform` switch at the bottom of
-// PerformSpecialAction, and nothing else in the engine forks.
+// enumerator cases for a difference that is three fields wide (where
+// the card is, when the window is open, and what it costs). That
+// difference is three per-kind tables — specialActionZone, the TIMING
+// TABLE below, and the `perform` switch at the bottom — and nothing
+// else in the engine forks. ADR 0082 decision 6 added the zone table
+// when turn_face_up arrived, which is the first kind whose card is
+// not in a hand at all; the claim held.
 //
 // # The timing table
 //
-//	kind      rule                 window
-//	foretell  CR 702.143a, 116.2h  any time you have priority during
-//	                               YOUR turn; LEGAL under split second
-//	                               (CR 702.61b)
-//	suspend   CR 702.62a, 116.2f   any time you could begin to CAST the
-//	                               card — sorcery timing for a sorcery,
-//	                               instant timing for an instant — and
-//	                               therefore NOT legal under split
-//	                               second
+//	kind          rule                 window
+//	foretell      CR 702.143a, 116.2h  any time you have priority during
+//	                                   YOUR turn; LEGAL under split second
+//	                                   (CR 702.61b)
+//	suspend       CR 702.62a, 116.2f   any time you could begin to CAST the
+//	                                   card — sorcery timing for a sorcery,
+//	                                   instant timing for an instant — and
+//	                                   therefore NOT legal under split
+//	                                   second
+//	turn_face_up  CR 702.37c, 116.2g   any time you have priority, on any
+//	                                   turn, with anything on the stack;
+//	                                   LEGAL under split second, for the
+//	                                   same reason foretell is
 //
 // The split-second asymmetry is the one thing in this file that is
 // easy to get wrong and invisible when you do. CR 702.61b stops
@@ -58,6 +67,15 @@ const (
 	// suspend cost and exile a card from your hand with N time
 	// counters on it.
 	SpecialActionSuspend SpecialActionKind = "suspend"
+
+	// SpecialActionTurnFaceUp is CR 116.2g / CR 708.6 — pay a
+	// face-down permanent's morph cost and turn it face up.
+	//
+	// The first kind that is not a hand keyword: its card is on the
+	// BATTLEFIELD, and the actor is its CONTROLLER rather than its
+	// owner (CR 708.5). That is one more per-kind table
+	// (specialActionZone) and nothing else — see ADR 0082 decision 6.
+	SpecialActionTurnFaceUp SpecialActionKind = "turn_face_up"
 )
 
 // SpecialAction is one CR 116.2 special action a card offers, as the
@@ -89,8 +107,20 @@ type SpecialAction struct {
 	// — the N of "Suspend N—cost" (CR 702.62a). Zero for foretell.
 	Counters int
 
+	// FaceUpCounter is megamorph's "turn it face up, then put a +1/+1
+	// counter on it" (CR 702.109b) — the one thing turning a
+	// permanent face up does beyond turning it face up. False for
+	// plain morph, for disguise, and for every other kind.
+	//
+	// It rides the OFFER rather than being re-derived by the
+	// performer, because TurnFaceUpOffer is the one place the
+	// per-kind rule is written down and the performer must not open a
+	// second door onto the card under a face-down object (ADR 0082
+	// decision 4).
+	FaceUpCounter bool
+
 	// Label is the menu row and the log line: "Foretell {2}",
-	// "Suspend 1—{R}".
+	// "Suspend 1—{R}", "Turn face up {1}{U}".
 	Label string
 }
 
@@ -108,12 +138,25 @@ func SpecialActionsFor(oracleID string) []SpecialAction {
 	return CatalogSpecialActions(oracleID)
 }
 
-// SpecialActionOffered returns the card's declaration of `kind`, or
-// nil when the card does not offer it.
+// SpecialActionOffered returns this card's offer of `kind`, or nil
+// when the card does not offer it. THE accessor: the engine, the
+// legal-move enumerator and the wire projection all ask through it,
+// so no two of them can disagree about what a card offers.
 //
-// Reads the catalog through CatalogKey, so a face-down object offers
-// nothing (CR 708.2a) for free.
+// Two sources, and which one answers is the kind's business:
+//
+//   - DECLARED — foretell and suspend are printed keywords, read out
+//     of the catalog through CatalogKey, so a face-down object offers
+//     neither (CR 708.2a) for free.
+//   - DERIVED — turn_face_up is nowhere in the catalog and cannot be
+//     (a manifested Mountain has no declaration and must not be
+//     turnable; a manifested Grizzly Bears has none and must be). It
+//     is a function of the face-down kind and the card underneath —
+//     TurnFaceUpOffer, ADR 0082 decision 5.
 func SpecialActionOffered(c Card, kind SpecialActionKind) *SpecialAction {
+	if kind == SpecialActionTurnFaceUp {
+		return TurnFaceUpOffer(c)
+	}
 	for _, sa := range SpecialActionsFor(CatalogKey(c)) {
 		if sa.Kind == kind {
 			out := sa
@@ -121,6 +164,26 @@ func SpecialActionOffered(c Card, kind SpecialActionKind) *SpecialAction {
 		}
 	}
 	return nil
+}
+
+// specialActionZone is WHERE the card a kind acts on lives:
+//
+//	foretell, suspend  the actor's HAND  CR 702.143a, CR 702.62a
+//	turn_face_up       the BATTLEFIELD   CR 708.6
+//
+// The third per-kind table, beside the timing table and the performer
+// switch, and the only thing a kind that is not a hand keyword
+// forks — ADR 0062 Decision 4's "one verb" survives intact.
+//
+// The empty zone is a kind the engine does not carry out.
+func specialActionZone(kind SpecialActionKind) ZoneKind {
+	switch kind {
+	case SpecialActionForetell, SpecialActionSuspend:
+		return ZoneHand
+	case SpecialActionTurnFaceUp:
+		return ZoneBattlefield
+	}
+	return ""
 }
 
 // SpecialActionParams is the announce-time payload. A special action
@@ -174,6 +237,24 @@ func (g *Game) SpecialActionTimingOKLocked(playerID uuid.UUID, card Card, kind S
 			return true
 		}
 		return g.sorcerySpeedOpenLocked(playerID)
+
+	case SpecialActionTurnFaceUp:
+		// CR 702.37c / CR 708.6: "any time you have priority". No
+		// turn restriction, no sorcery-speed gate, no empty-stack
+		// requirement — turning a Willbender face up in response to
+		// the spell it will redirect is the whole point of the card.
+		//
+		// LEGAL UNDER SPLIT SECOND, and this is the second row of
+		// this table whose entire content is that asymmetry:
+		// CR 702.61b stops players CASTING spells and ACTIVATING
+		// abilities that are not mana abilities, and a special action
+		// is neither.
+		//
+		// Priority is the dispatcher's requirePriorityHolder, and
+		// whether the permanent is face down and the actor's to turn
+		// is SpecialActionOffered's answer and PerformSpecialAction's
+		// re-check. Nothing left for the window itself to say.
+		return true
 	}
 	return false
 }
@@ -201,24 +282,17 @@ func (g *Game) PerformSpecialAction(playerID, cardID uuid.UUID, kind SpecialActi
 	if p == nil {
 		return ErrPlayerNotFound
 	}
-	// Both kinds act on a card in its owner's hand (CR 702.143a,
-	// CR 702.62a). A hand in this engine holds only its owner's
-	// cards, so finding it there is the whole of the "is this yours"
-	// check (CR 108.4).
-	if p.Hand == nil {
-		return ErrCardNotFound
-	}
-	var card Card
-	found := false
-	for _, c := range p.Hand.Cards {
-		if c.InstanceID == cardID {
-			card = c
-			found = true
-			break
-		}
-	}
-	if !found {
-		return ErrCardNotFound
+	// WHERE the card is, is the kind's business (specialActionZone).
+	// Foretell and suspend act on a card in its owner's HAND
+	// (CR 702.143a, CR 702.62a), and a hand in this engine holds only
+	// its owner's cards, so finding it there is the whole of the "is
+	// this yours" check (CR 108.4). Turning face up acts on a
+	// BATTLEFIELD permanent, which holds everybody's cards, so that
+	// arm checks CONTROL instead — CR 708.6 names the controller, and
+	// a stolen morph is turned up by the thief.
+	card, err := g.specialActionCardLocked(p, cardID, kind)
+	if err != nil {
+		return err
 	}
 	// The layers decide whether a card is an instant for suspend's
 	// window, and whether it has flash. Fast-path no-op when nothing
@@ -292,8 +366,47 @@ func specialActionPerformer(kind SpecialActionKind) func(*Game, *Player, uuid.UU
 		return (*Game).foretellLocked
 	case SpecialActionSuspend:
 		return (*Game).suspendLocked
+	case SpecialActionTurnFaceUp:
+		return (*Game).turnFaceUpLocked
 	}
 	return nil
+}
+
+// specialActionCardLocked finds the card a special action would be
+// taken on, in the zone its kind names, and refuses it when the actor
+// has no claim to it.
+//
+// Caller must hold g.mu.
+func (g *Game) specialActionCardLocked(p *Player, cardID uuid.UUID, kind SpecialActionKind) (Card, error) {
+	switch specialActionZone(kind) {
+	case ZoneHand:
+		if p.Hand == nil {
+			return Card{}, ErrCardNotFound
+		}
+		for _, c := range p.Hand.Cards {
+			if c.InstanceID == cardID {
+				return c, nil
+			}
+		}
+	case ZoneBattlefield:
+		if g.Battlefield == nil {
+			return Card{}, ErrCardNotFound
+		}
+		for _, c := range g.Battlefield.Cards {
+			if c.InstanceID != cardID {
+				continue
+			}
+			// CR 708.6: the CONTROLLER turns it face up. Anyone else
+			// is told the card is not there rather than that it is
+			// not theirs — a face-down permanent's identity is not
+			// theirs to probe.
+			if c.Controller != p.ID {
+				return Card{}, ErrCardNotFound
+			}
+			return c, nil
+		}
+	}
+	return Card{}, ErrCardNotFound
 }
 
 // SpecialActionKindBuilt reports whether the engine can carry out

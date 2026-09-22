@@ -97,6 +97,43 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q offers %q from %s but does not list that zone in CastableZones",
 				spec.Name, ac.Key, ac.FromZone))
 		}
+		if ac.FaceDown == nil {
+			continue
+		}
+		// ADR 0082, CR 708.4: the face-down cast. Three boot checks,
+		// each for a shape that compiles and then behaves as
+		// something the card does not print.
+		//
+		// A kind that is not a CR 708.2 object state would cast the
+		// card into an EXILE state on the stack — an object with no
+		// characteristics at all, which the resolution has no
+		// meaning for.
+		if !ac.FaceDown.Kind.IsPermanentState() {
+			panic(fmt.Sprintf("effects.Register: %q offers %q with face-down kind %q, which is not a CR 708.2 object state — build it with Morph / Megamorph / Disguise",
+				spec.Name, ac.Key, ac.FaceDown.Kind))
+		}
+		// The face-up cost is the half of the keyword the CARD
+		// prints, and the only place the engine can read it from
+		// once the permanent is face down and has no text
+		// (ADR 0082 decision 4). An unparseable one refuses at boot
+		// rather than at the moment a player tries to turn a
+		// permanent up they can no longer turn up.
+		if ac.FaceDown.FaceUpCost != "" {
+			if _, err := game.ParseCost(ac.FaceDown.FaceUpCost); err != nil {
+				panic(fmt.Sprintf("effects.Register: %q offers %q with an unparseable face-up cost %q: %v",
+					spec.Name, ac.Key, ac.FaceDown.FaceUpCost, err))
+			}
+		}
+		// A face-down cast has no targets, no modes and no
+		// additional costs, because the object it produces has no
+		// text (CR 708.2a) — CastSpell stamps the state before every
+		// one of those gates reads the catalog. An offer that
+		// declared a target clause anyway would be a card file
+		// expecting a clause the announce path can never reach.
+		if ac.Targets != nil || ac.ClearsTargets {
+			panic(fmt.Sprintf("effects.Register: %q offers %q with a target clause — a spell cast face down has no text and no targets (CR 708.2a)",
+				spec.Name, ac.Key))
+		}
 	}
 	// #659: a card may not declare exile castable. S29 allowed it "for
 	// the shape suspend and foretell will use"; they do not use it and

@@ -125,7 +125,11 @@ func TestUnknownSpecialActionKindIsNeverLegal(t *testing.T) {
 	g := newActiveGame(t)
 	p := g.Seats[0]
 	card := seedHandCard(p, "Anything", "oracle-x", "Instant", "{U}")
-	if g.SpecialActionTimingOKLocked(p.ID, card, SpecialActionKind("turn_face_up")) {
+	// A kind the table has never heard of. `turn_face_up` used to
+	// stand here, and stopped being the example the day #1194 built
+	// it (ADR 0082) — the property under test is the permissive
+	// default, not any particular unbuilt keyword.
+	if g.SpecialActionTimingOKLocked(p.ID, card, SpecialActionKind("bestow_nonsense")) {
 		t.Error("an unbuilt kind is legal: the timing table has a permissive default")
 	}
 }
@@ -175,11 +179,18 @@ func TestSpecialActionOnlyReachesYourOwnHand(t *testing.T) {
 // projection both ask before they let a kind reach a player, and
 // PerformSpecialAction asks it before charging.
 //
-// Each kind's own test file asserts that ITS kind is built; what
-// belongs here is the other half — a kind the ADR designs and nothing
-// implements must never reach a hand.
+// Each kind's own test file asserts that ITS kind behaves; what
+// belongs here is the other half — a kind nothing implements must
+// never reach a player.
 func TestADesignedButUnbuiltKindIsNotOffered(t *testing.T) {
-	if SpecialActionKindBuilt(SpecialActionKind("turn_face_up")) {
-		t.Error("turn_face_up is designed (CR 116.2g, #95), not built")
+	if SpecialActionKindBuilt(SpecialActionKind("bestow_nonsense")) {
+		t.Error("a kind with no performer is offered")
+	}
+	// The three kinds that ARE built, so this test fails loudly if a
+	// performer is ever deleted rather than only when one is added.
+	for _, kind := range []SpecialActionKind{SpecialActionForetell, SpecialActionSuspend, SpecialActionTurnFaceUp} {
+		if !SpecialActionKindBuilt(kind) {
+			t.Errorf("%s has no performer", kind)
+		}
 	}
 }
