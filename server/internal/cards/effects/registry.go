@@ -398,6 +398,16 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q ability %d has {X} in its mana cost %q AND sacrifices X permanents — one announced X cannot pay both",
 				spec.Name, i, ab.Cost.Mana))
 		}
+		// #1221: the same rule one zone over. ExileSelf is scavenge's
+		// and embalm's "Exile this card from YOUR GRAVEYARD"
+		// (CR 702.96a, CR 702.128a), so an ability that declares it
+		// without declaring the graveyard could never pay it — and
+		// would look complete on the catalog page while refusing
+		// every activation.
+		if ab.Cost.ExileSelf && !zoneDeclared(ab.Zones, game.ZoneGraveyard) {
+			panic(fmt.Sprintf("effects.Register: %q ability %d declares an exile-this cost but does not function from the graveyard — build it with Scavenge / Embalm / Eternalize",
+				spec.Name, i))
+		}
 		if ab.Cost.MinX > 0 && !ab.Cost.DemandsX() {
 			panic(fmt.Sprintf("effects.Register: %q ability %d sets MinX %d but its cost %q has no {X} — a floor on a variable that cannot vary makes the ability unactivatable",
 				spec.Name, i, ab.Cost.MinX, ab.Cost.Mana))

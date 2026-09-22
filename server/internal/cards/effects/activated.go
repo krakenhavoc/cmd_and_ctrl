@@ -190,6 +190,13 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.ReturnToHand != nil {
 			out.ReturnToHand = c.ReturnToHand
 		}
+		// #1221: and the graveyard half, for the same reason — a
+		// composed "{5}{W}{W}, Exile this card from your graveyard"
+		// that dropped its exile would let an embalm ability mint a
+		// token every turn off one card.
+		if c.ExileSelf {
+			out.ExileSelf = true
+		}
 	}
 	return out
 }
@@ -226,6 +233,14 @@ func ReturnNToHand(n int, label string, preds ...CardPredicate) game.AbilityCost
 		Label:  label,
 	}}
 }
+
+// ExileThis is scavenge's and embalm's "Exile this card from your
+// graveyard" cost component (CR 702.96a, CR 702.128a). Like
+// DiscardThis it only means anything on an ability that functions
+// from the zone it names, and Register refuses it anywhere but the
+// graveyard — build the ability with Scavenge / Embalm / Eternalize
+// rather than composing this by hand.
+func ExileThis() game.AbilityCost { return game.AbilityCost{ExileSelf: true} }
 
 // DiscardThis is cycling's "Discard this card" cost component
 // (CR 702.29a). It only means anything on an ability that functions

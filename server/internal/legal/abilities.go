@@ -58,7 +58,7 @@ type activateParams struct {
 // (untapped + not summoning sick for creatures), sacrifice costs
 // payable, life cost payable, mana cost affordable, targets legal.
 func (e *enumerator) activatedMoves() {
-	g, p := e.g, e.p
+	g := e.g
 	if g.SplitSecondActive {
 		return
 	}
@@ -81,20 +81,73 @@ func (e *enumerator) activatedMoves() {
 		}
 		e.abilityMovesForSource(source, game.ZoneBattlefield, speed, restricted)
 	}
-	// #660: the seat's OWN hand. Cycling is an ordinary CR 602
-	// activation whose ability functions from hand (CR 702.29a), so
-	// it goes through the same body below rather than through a
-	// second enumerator — the zone predicate is the only thing that
-	// differs, which is the whole point of ADR 0062 Decision 1.
+	// #660, widened by #1221: every OTHER zone an ability can
+	// function from. Cycling is an ordinary CR 602 activation whose
+	// ability functions from hand (CR 702.29a), unearth is one whose
+	// ability functions from a graveyard (CR 702.82a), and both go
+	// through the same body below rather than through a second
+	// enumerator — the zone predicate is the only thing that differs,
+	// which is the whole point of ADR 0062 Decision 1.
 	//
 	// No CanActivateAbilities call: layer 6 removes a PERMANENT's
 	// abilities, and ActivateCatalogAbility does not ask it off the
 	// battlefield either. Offering a move the engine refuses, and
 	// withholding one it would accept, are both #544.
-	if p != nil && p.Hand != nil {
-		for i := range p.Hand.Cards {
-			e.abilityMovesForSource(&p.Hand.Cards[i], game.ZoneHand, speed, restricted)
+	for _, zone := range e.abilityZones() {
+		if zone.z == nil {
+			continue
 		}
+		for i := range zone.z.Cards {
+			src := &zone.z.Cards[i]
+			// CR 108.4: off the battlefield and the stack the card's
+			// OWNER is the "you" of its printed text, and that is the
+			// check ActivateCatalogAbility makes. Free for the
+			// per-seat piles, which hold only their owner's cards,
+			// and the whole of the answer for exile, which is one
+			// shared pile holding everybody's.
+			if src.Owner != e.seat {
+				continue
+			}
+			e.abilityMovesForSource(src, zone.kind, speed, restricted)
+		}
+	}
+}
+
+// abilityZone is one non-battlefield pile the activation walk visits,
+// with the ZoneKind an ability's declaration is written in.
+type abilityZone struct {
+	z    *game.Zone
+	kind game.ZoneKind
+}
+
+// abilityZones are the places a CR 602 activation can come out of
+// besides the battlefield, in the order the moves are emitted. The
+// activation sibling of castZones (cast.go, #1014), and deliberately
+// shaped the same way: one walk, the zone a card is in deciding
+// nothing but which declarations match it.
+//
+// Four piles rather than five. The LIBRARY is missing, and that is a
+// rule rather than an omission: CR 401.2 makes a library hidden, no
+// printed ability functions from one, and an enumerator that walked
+// it would be reading cards the seat is not entitled to see in order
+// to answer a question whose answer is always "nothing". If a card
+// ever prints such an ability, this is the one line it needs — plus
+// CR 401.5's trim to the top card, which the cast walk already shows
+// how to write.
+//
+// Exile is the seat's own cards in the one shared pile, filtered by
+// the caller: g.Exile holds every seat's exiled cards, and CR 108.4
+// gives each of them to its owner.
+func (e *enumerator) abilityZones() []abilityZone {
+	g, p := e.g, e.p
+	if p == nil {
+		return nil
+	}
+	return []abilityZone{
+		{p.Hand, game.ZoneHand},
+		{p.Graveyard, game.ZoneGraveyard},
+		{p.Command, game.ZoneCommand},
+		{g.Exile, game.ZoneExile},
 	}
 }
 

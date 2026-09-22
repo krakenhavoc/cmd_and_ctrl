@@ -135,3 +135,43 @@ func TestAllReturnsSnapshot(t *testing.T) {
 		t.Errorf("mutating All() leaked back: before=%d, after=%d", before, after)
 	}
 }
+
+// TestRegisterExileSelfOffTheGraveyardPanics pins #1221's boot check:
+// scavenge's and embalm's "Exile this card from YOUR GRAVEYARD" can
+// only be paid by a card in a graveyard, so an ability that declares
+// the component without declaring the zone could never be activated
+// — and would look complete on the catalog page while refusing every
+// activation. The symmetric check DiscardSelf has had since #660.
+func TestRegisterExileSelfOffTheGraveyardPanics(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("an exile-this cost off the graveyard did not panic")
+		}
+	}()
+	Register(Spec{
+		OracleID: "test-registry-exile-self-zone",
+		Name:     "Misplaced Scavenge",
+		Activated: []ActivatedAbility{{
+			Label: "{1}, Exile this card: do nothing",
+			Cost:  Plus(ManaCost("{1}"), ExileThis()),
+			Zones: []game.ZoneKind{game.ZoneHand},
+		}},
+	})
+}
+
+// And the other side of the same bound: with the graveyard declared
+// it registers.
+func TestRegisterExileSelfFromTheGraveyardIsFine(t *testing.T) {
+	registerForTest(t, Spec{
+		OracleID: "test-registry-exile-self-ok",
+		Name:     "Proper Scavenge",
+		Activated: []ActivatedAbility{{
+			Label: "{1}, Exile this card from your graveyard: do nothing",
+			Cost:  Plus(ManaCost("{1}"), ExileThis()),
+			Zones: []game.ZoneKind{game.ZoneGraveyard},
+		}},
+	})
+	if !Has("test-registry-exile-self-ok") {
+		t.Error("a graveyard exile-this ability did not register")
+	}
+}

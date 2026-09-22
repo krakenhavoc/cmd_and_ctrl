@@ -9,7 +9,7 @@ import (
 )
 
 // hand_ability_view_test.go — the wire half of #660 (ADR 0062
-// Decision 5). A hand card's abilities ride `hand_abilities`, a
+// Decision 5). A hand card's abilities ride `zone_abilities`, a
 // permanent's ride `activated_abilities`, neither list leaks the
 // other's rows, and the whole thing is stripped from a hand the
 // viewer cannot see.
@@ -45,17 +45,17 @@ func handCardView(t *testing.T, v GameView, seat int, id uuid.UUID) CardView {
 	return CardView{}
 }
 
-func TestHandAbilitiesAreProjectedForTheOwner(t *testing.T) {
+func TestZoneAbilitiesAreProjectedForTheOwner(t *testing.T) {
 	g := buildActiveGame(t)
 	me := g.Seats[0]
 	id := seatCyclingHandCard(g, me.ID, me.Hand)
 
 	v := FilterViewFor(ViewOfGame(g), me.ID.String())
 	c := handCardView(t, v, 0, id)
-	if len(c.HandAbilities) != 1 {
-		t.Fatalf("hand_abilities = %+v, want the one cycling row", c.HandAbilities)
+	if len(c.ZoneAbilities) != 1 {
+		t.Fatalf("zone_abilities = %+v, want the one cycling row", c.ZoneAbilities)
 	}
-	ha := c.HandAbilities[0]
+	ha := c.ZoneAbilities[0]
 	if ha.Index != 0 || ha.Label != "Cycling {2}" || ha.ManaCost != "{2}" || !ha.DiscardSelf {
 		t.Errorf("hand ability = %+v, want index 0 / Cycling {2} / {2} / discard_self", ha)
 	}
@@ -94,8 +94,8 @@ func TestCyclingIsNotProjectedOnABattlefieldPermanent(t *testing.T) {
 		if len(c.ActivatedAbilities) != 0 {
 			t.Errorf("activated_abilities = %+v on the battlefield, want none", c.ActivatedAbilities)
 		}
-		if len(c.HandAbilities) != 0 {
-			t.Errorf("hand_abilities = %+v on the battlefield, want none", c.HandAbilities)
+		if len(c.ZoneAbilities) != 0 {
+			t.Errorf("zone_abilities = %+v on the battlefield, want none", c.ZoneAbilities)
 		}
 		return
 	}
@@ -105,7 +105,7 @@ func TestCyclingIsNotProjectedOnABattlefieldPermanent(t *testing.T) {
 // A hand is not public. An opponent's view of the same card carries no
 // hand abilities — the row would quote the card as loudly as its mana
 // cost does.
-func TestHandAbilitiesAreStrippedForOtherSeats(t *testing.T) {
+func TestZoneAbilitiesAreStrippedForOtherSeats(t *testing.T) {
 	g := buildActiveGame(t)
 	me, them := g.Seats[0], g.Seats[1]
 	id := seatCyclingHandCard(g, me.ID, me.Hand)
@@ -115,8 +115,8 @@ func TestHandAbilitiesAreStrippedForOtherSeats(t *testing.T) {
 		if c.InstanceID != id.String() {
 			continue
 		}
-		if len(c.HandAbilities) != 0 {
-			t.Errorf("an opponent sees hand_abilities %+v", c.HandAbilities)
+		if len(c.ZoneAbilities) != 0 {
+			t.Errorf("an opponent sees zone_abilities %+v", c.ZoneAbilities)
 		}
 	}
 }

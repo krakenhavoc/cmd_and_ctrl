@@ -1303,28 +1303,43 @@ type CardView struct {
 	// information, so present on every viewer's copy). Absent off
 	// the battlefield and for cards with none. Added in S21 sub-PR 2.
 	ActivatedAbilities []ActivatedAbilityView `json:"activated_abilities,omitempty"`
-	// HandAbilities are the CR 602 activated abilities this card
-	// offers while it is IN HAND — cycling and typecycling today
-	// (CR 702.29a/e), and whatever else declares
-	// ActivatedAbilityShape.Zones = {hand} later. Absent for every
-	// card that prints none, which is nearly all of them.
+	// ZoneAbilities are the CR 602 activated abilities this card
+	// offers from the NON-BATTLEFIELD zone it is sitting in — the
+	// hand (cycling and typecycling, CR 702.29a/e), a graveyard
+	// (unearth CR 702.82a, scavenge CR 702.96a, embalm CR 702.128a),
+	// exile, the command zone. Whatever `ActivatedAbilityShape.Zones`
+	// names. Absent for every card that prints none, which is nearly
+	// all of them.
+	//
+	// It was `hand_abilities` through #660, when the hand was the only
+	// zone the field existed for; #1221 opened the other three and
+	// renamed it rather than adding `graveyard_abilities` beside it.
+	// One field is the point: the engine has ONE activation path with
+	// a zone dimension (ADR 0062 Decision 1), so the wire has one row
+	// list and the client has one reader.
 	//
 	// A separate field from ActivatedAbilities rather than a reuse,
 	// and ADR 0062 Decision 5 says why: the two lists are disjoint by
 	// construction, but they are read by different UI (a permanent's
-	// menu versus a hand card's popover beside "cast"), and a client
-	// that has not been taught about this field shows nothing rather
-	// than showing a cycling row on a battlefield permanent.
+	// menu versus a hand card's popover or the zone browser's row),
+	// and a client that has not been taught about this field shows
+	// nothing rather than showing a cycling row on a battlefield
+	// permanent.
 	//
-	// UNLIKE ActivatedAbilities, this is NOT public: a hand is not.
-	// It is stamped for every seat's own hand and FilterViewFor
-	// strips other seats' hands wholesale, as it already does for
-	// their contents.
+	// UNLIKE ActivatedAbilities, this is NOT public, and since #1221
+	// that is enforced rather than inherited. Through #660 it rode
+	// the hand's own secrecy — FilterViewFor strips other seats'
+	// hands wholesale. A GRAVEYARD is public, so the same trick would
+	// have shipped one seat's answer to the whole table: the rows
+	// carry `legal_targets` and `clauses`, which hexproof, shroud and
+	// "target opponent" narrow BY WHO IS ASKING (#1055). So the list
+	// rides castOffers like every other per-seat announce answer and
+	// reaches exactly the seat whose card it is.
 	//
 	// `index` is the ability's index in the card's FULL ability
 	// list, so the client sends the same activate_ability payload it
-	// sends for a permanent. Added for #660.
-	HandAbilities []ActivatedAbilityView `json:"hand_abilities,omitempty"`
+	// sends for a permanent. Added for #660, widened by #1221.
+	ZoneAbilities []ActivatedAbilityView `json:"zone_abilities,omitempty"`
 	// SpecialActions are the CR 116.2 special actions this card
 	// offers while it is IN HAND — "Foretell {2}" (CR 702.143a),
 	// "Suspend 1—{R}" (CR 702.62a). Each entry is a menu row the
@@ -1338,7 +1353,7 @@ type CardView struct {
 	// getting split second backwards. ADR 0062 Decision 4.
 	//
 	// Not public, and stripped by the same redaction that strips
-	// hand_abilities: "Suspend 4—{U}" names Ancestral Vision.
+	// zone_abilities: "Suspend 4—{U}" names Ancestral Vision.
 	SpecialActions []SpecialActionView `json:"special_actions,omitempty"`
 	// SummoningSick reports CR 302.6 sickness: the permanent is a
 	// creature, it entered this turn and it has no haste, so it
@@ -1977,6 +1992,15 @@ type ActivatedAbilityView struct {
 	// chip, and there is nothing to collect — the source IS the
 	// payment, so no `discard_ids` is sent for it.
 	DiscardSelf bool `json:"discard_self,omitempty"`
+	// ExileSelf is scavenge's and embalm's "Exile this card from your
+	// graveyard" cost component (CR 702.96a / CR 702.128a, #1221).
+	// DiscardSelf's sibling one zone over, and advisory for exactly
+	// the same reason: the source IS the payment, so there is nothing
+	// to collect and nothing on the payload. The keyword's own label
+	// spells the clause out, so like `discard_self` this has no
+	// renderer of its own today — it is here so a client that wants
+	// to mark the row does not have to parse the label for it.
+	ExileSelf bool `json:"exile_self,omitempty"`
 	// DiscardCostN / Label / Options describe a "Discard N cards"
 	// cost component (#660): Fauna Shaman's "Discard a creature
 	// card", Cryptbreaker's "Discard a card". DiscardCostN is the
@@ -2439,7 +2463,7 @@ func ViewOfGame(g *game.Game) GameView {
 		}
 		stampLibraryTop(g, view.Seats)
 		stampActivatedAbilities(g, &view.Battlefield)
-		stampHandAbilities(g, view.Seats)
+		stampZoneAbilities(g, view.Seats, &view.Exile)
 		stampCombatTargets(g, &view)
 		stampNoUntap(g, &view.Battlefield)
 		view.legalBySeat = enumerateLegalMoves(g)
@@ -2800,6 +2824,28 @@ type castStamps struct {
 	// because the public one names whichever live permission came
 	// first and two seats may hold two.
 	ExilePlay *ExilePlayView
+
+	// ZoneAbilities is the seat's CR 602 activation rows for this
+	// card in this zone (#1221) — cycling out of a hand, unearth out
+	// of a graveyard, whatever ActivatedAbilityShape.Zones names.
+	//
+	// It rides this per-seat carrier rather than the exported field
+	// for the reason `castable_here` and `legal_targets` do, and it
+	// is the same sentence one surface over: an ability row answers
+	// "what may YOU announce about this card, from here", and its
+	// target sets are narrowed by hexproof, shroud and "target
+	// opponent" — one seat's list is not another's to read (#1055).
+	// Through #660 the field was written publicly and the HAND's own
+	// secrecy hid it; a graveyard is public, so the hand's rows moved
+	// here with the graveyard's rather than leaving two lifecycles.
+	//
+	// Never in publicIn's half: a bystander reads the card's printed
+	// text off the pile in paper and gets the ability from there.
+	// Written by stampZoneAbilities, which merges into whatever
+	// castStampsFor already filed for this seat rather than replacing
+	// it — the two passes answer different questions about the same
+	// card.
+	ZoneAbilities []ActivatedAbilityView
 }
 
 // applyTo writes one seat's answer onto the card they will receive.
@@ -2811,6 +2857,12 @@ func (s castStamps) applyTo(c *CardView) {
 	if s.ExilePlay != nil {
 		c.ExilePlay = s.ExilePlay
 	}
+	// #1221: wholesale, zero value included, for the reason the
+	// surface above is — this seat's answer is the whole answer, and
+	// "you have no rows here" has to clear anything a public pass
+	// wrote. Nothing writes it publicly today; assigning rather than
+	// guarding on nil is what keeps that true if something ever does.
+	c.ZoneAbilities = s.ZoneAbilities
 }
 
 // applyToFace is applyTo for ONE PRINTED FACE of the card (#992) —
@@ -2921,6 +2973,10 @@ func (s castStamps) publicIn(kind game.ZoneKind) castStamps {
 	s.CastableHere = false
 	s.LegalTargets = nil
 	s.Clauses = nil
+	// #1221: an activation row is the same kind of answer as
+	// `castable_here` — "what may YOU announce from here" — and it
+	// carries legal sets of its own. None of it is public.
+	s.ZoneAbilities = nil
 	s.Modes = publicModeSpec(s.Modes)
 	s.AlternativeCosts = publicAlternativeCosts(s.AlternativeCosts)
 	if kind == game.ZoneHand {
@@ -3040,6 +3096,37 @@ func (c *CardView) stampsFor(seat uuid.UUID, s castStamps) {
 		c.castOffers = make(map[string]castStamps, 1)
 	}
 	c.castOffers[seat.String()] = s
+}
+
+// stampZoneAbilitiesFor files one seat's CR 602 activation rows for
+// this card in this zone (#1221), MERGING into whatever answer that
+// seat already has rather than replacing it.
+//
+// Merging is the whole reason this is not a stampsFor call. The two
+// passes that write a seat's entry answer different questions about
+// one card — stampLegalTargets and stampGrantedPermissions say what
+// the seat may CAST out of this pile, this says what it may ACTIVATE
+// there — and they run in that order over the same map. A plain
+// stampsFor here would hand a flashback card's own announce surface
+// back as a zero value the moment the card also printed a graveyard
+// ability, which is the #544 failure mode arriving through the view
+// instead of the enumerator.
+//
+// Empty rows file nothing: the overwhelming majority of cards in a
+// graveyard print no ability that functions there, and an entry per
+// card per seat would be one map allocation per graveyard card per
+// frame for an answer that is always nil.
+func (c *CardView) stampZoneAbilitiesFor(seat uuid.UUID, rows []ActivatedAbilityView) {
+	if len(rows) == 0 {
+		return
+	}
+	if c.castOffers == nil {
+		c.castOffers = make(map[string]castStamps, 1)
+	}
+	key := seat.String()
+	s := c.castOffers[key]
+	s.ZoneAbilities = rows
+	c.castOffers[key] = s
 }
 
 // castFace names the printed half ONE cast surface is computed for
@@ -3685,24 +3772,43 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 	}
 }
 
-// stampHandAbilities fills CardView.HandAbilities for every card in
-// every seat's own hand — the CR 602 abilities that function from
-// there (CR 113.6), which today means cycling and typecycling
-// (CR 702.29). #660 / ADR 0062 Decision 5.
+// stampZoneAbilities fills CardView.ZoneAbilities for every card in
+// every NON-BATTLEFIELD zone an ability can function from (CR 113.6):
+// a seat's own hand (cycling and typecycling, CR 702.29), their own
+// graveyard (unearth CR 702.82a, scavenge CR 702.96a, embalm
+// CR 702.128a), their command zone, and their cards in exile.
+// #660 / ADR 0062 Decision 5, widened by #1221.
+//
+// The view's half of the same walk the legal enumerator makes
+// (legal.enumerator.abilityZones) and the activation path accepts, so
+// the rows a client can see, the moves a bot is offered and the
+// activations the engine allows are one answer computed three times
+// from one predicate rather than three answers (#544). The LIBRARY is
+// missing from all three for the same reason: it is hidden, and no
+// printed ability functions from one.
 //
 // Mirrors stampActivatedAbilities and is split from viewOfCard for
 // the same reason: the cost projections (which cards in hand could
 // pay a discard clause, which targets are legal) need a game handle,
 // and viewOfCard has one card.
 //
-// The "you" is the hand's OWNER, not a controller: a card in a hand
-// has no controller (CR 108.4), and every hand in this engine holds
-// only its owner's cards. Unlike a permanent's abilities these are
-// not public, and they do not have to be stripped here — FilterViewFor
-// already blanks another seat's hand wholesale.
+// The "you" is the card's OWNER, not a controller: a card outside the
+// battlefield and the stack has no controller (CR 108.4), which is
+// the same rule ActivateCatalogAbility reads off Card.Owner. For the
+// per-seat piles that is the seat; for exile, the one shared pile
+// holding every seat's cards, it is read off the card.
+//
+// The rows go to that seat ALONE, through castOffers (#1055): a
+// graveyard is public but an ability row is not, because its target
+// sets are narrowed by who is asking. Through #660 they were written
+// to the exported field and the hand's own secrecy did the hiding;
+// that stops working the moment the pile is one everybody can read.
+// SpecialActions stays on the exported field and stays hand-only —
+// foretell and suspend are announced out of a hand and nowhere else,
+// so the zone redaction that has always hidden them still does.
 //
 // Runs under the read lock ViewOfGame already holds.
-func stampHandAbilities(g *game.Game, seats []PlayerView) {
+func stampZoneAbilities(g *game.Game, seats []PlayerView, exile *ZoneView) {
 	for si := range seats {
 		seat := &seats[si]
 		owner, err := uuid.Parse(seat.ID)
@@ -3711,21 +3817,70 @@ func stampHandAbilities(g *game.Game, seats []PlayerView) {
 		}
 		for ci := range seat.Hand.Cards {
 			c := &seat.Hand.Cards[ci]
-			if c.oracleID == "" {
-				continue
-			}
-			instanceID, err := uuid.Parse(c.InstanceID)
-			if err != nil {
-				continue
-			}
-			card, ok := g.LookupCardForEffect(instanceID)
+			card, ok := liveCardForAbilityRows(g, c)
 			if !ok {
 				continue
 			}
-			c.HandAbilities = viewOfActivatedAbilities(g, card, owner, game.ZoneHand)
+			c.stampZoneAbilitiesFor(owner, viewOfActivatedAbilities(g, card, owner, game.ZoneHand))
 			c.SpecialActions = viewOfSpecialActions(g, card, owner)
 		}
+		stampZoneAbilitiesInPile(g, &seat.Graveyard, game.ZoneGraveyard, owner)
+		stampZoneAbilitiesInPile(g, &seat.Command, game.ZoneCommand, owner)
 	}
+	// Exile last, and with no seat of its own: it is one shared pile
+	// and each card's owner is its "you" (CR 108.4), so the walk reads
+	// the owner off the card rather than off the loop.
+	stampZoneAbilitiesInPile(g, exile, game.ZoneExile, uuid.Nil)
+}
+
+// stampZoneAbilitiesInPile is stampZoneAbilities' per-pile body.
+//
+// `owner` is the seat every card in the pile belongs to, or uuid.Nil
+// for a shared pile whose cards belong to different seats — exile is
+// the one such pile, and passing Nil is what makes the walk read
+// CardView.Owner instead of assuming one.
+//
+// Runs under the read lock ViewOfGame already holds.
+func stampZoneAbilitiesInPile(g *game.Game, zone *ZoneView, kind game.ZoneKind, owner uuid.UUID) {
+	if zone == nil {
+		return
+	}
+	for ci := range zone.Cards {
+		c := &zone.Cards[ci]
+		you := owner
+		if you == uuid.Nil {
+			parsed, err := uuid.Parse(c.Owner)
+			if err != nil {
+				continue
+			}
+			you = parsed
+		}
+		card, ok := liveCardForAbilityRows(g, c)
+		if !ok {
+			continue
+		}
+		c.stampZoneAbilitiesFor(you, viewOfActivatedAbilities(g, card, you, kind))
+	}
+}
+
+// liveCardForAbilityRows resolves a projected card back to the
+// engine's own Card so the ability rows can be computed off it, and
+// declines the ones that could not have any.
+//
+// The empty oracle ID is the fast negative and the correctness one at
+// once: a card with no catalog key has no catalog abilities to
+// project, and since ADR 0069 an object CR 708.2a has silenced has
+// the empty key too — so a face-down card in exile offers no rows
+// without this function knowing what face-down means.
+func liveCardForAbilityRows(g *game.Game, c *CardView) (game.Card, bool) {
+	if c.oracleID == "" {
+		return game.Card{}, false
+	}
+	instanceID, err := uuid.Parse(c.InstanceID)
+	if err != nil {
+		return game.Card{}, false
+	}
+	return g.LookupCardForEffect(instanceID)
 }
 
 // viewOfSpecialActions projects the CR 116.2 special actions a card
@@ -5211,7 +5366,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// mana cost — "Cycling {3}" on an opponent's face-down hand card
 	// would name the Triome. It is also the only ability list on the
 	// wire that is not public information in the first place.
-	out.HandAbilities = nil
+	out.ZoneAbilities = nil
 	// #658 / #659: "Foretell {1}{U}" and "Suspend 4—{U}" quote the
 	// card exactly as a hand ability does, and are hidden for the
 	// same reason.
@@ -5901,6 +6056,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			TapCost:       a.Cost.Tap,
 			SacrificeSelf: a.Cost.SacrificeSelf,
 			DiscardSelf:   a.Cost.DiscardSelf,
+			ExileSelf:     a.Cost.ExileSelf,
 			ManaCost:      a.Cost.Mana,
 			LifeCost:      a.Cost.Life,
 			SorcerySpeed:  a.SorcerySpeed,

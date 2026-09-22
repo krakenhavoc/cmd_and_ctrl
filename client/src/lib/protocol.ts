@@ -1480,6 +1480,11 @@ export interface ActivatedAbilityView {
   // `discard_ids`; exactly `discard_cost_n` options means there is
   // nothing to ask and the client skips its picker.
   discard_self?: boolean;
+  // #1221: scavenge's and embalm's "Exile this card from your
+  // graveyard" (CR 702.96a / CR 702.128a) — `discard_self` one zone
+  // over, advisory for the same reason and sending nothing for the
+  // same reason: the source IS the payment.
+  exile_self?: boolean;
   discard_cost_n?: number;
   discard_cost_label?: string;
   discard_cost_options?: string[];
@@ -1945,13 +1950,13 @@ export interface CardView extends CastSurfaceView {
   // server strips this from every seat but the hand's owner. `index`
   // is the ability's index in the card's FULL list, so the same
   // activate_ability payload works for both.
-  hand_abilities?: ActivatedAbilityView[];
+  zone_abilities?: ActivatedAbilityView[];
   // #658 / #659: CR 116.2 special actions this card offers while it
   // is IN HAND — "Foretell {2}", "Suspend 1—{R}". Not abilities and
   // not casts: they use no stack and there is nothing to respond to,
   // so a row fires `special_action` directly with no picker in
   // between. Hidden from every seat but the hand's owner, like
-  // `hand_abilities`.
+  // `zone_abilities`.
   special_actions?: SpecialActionView[];
   // S21 sub-PR 2: CR 302.6 summoning sickness — entered this turn
   // without haste, so it can't attack or pay a {T} cost.
