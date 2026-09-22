@@ -26,37 +26,40 @@ import (
 // read Selvala, Heart of the Wilds' mana ability and Return of the
 // Wildspeaker's draw mode already share (b42GreatestPowerControlledBy).
 //
-// SANDBOX SIMPLIFICATION, and it is why this face is not Full:
-// chapter II ships only "that land becomes an Island in addition to
-// its other types". Earthbend itself — "target land you control
-// becomes a 0/0 creature with haste that's still a land, put X +1/+1
-// counters on it, and when it dies or is exiled return it to the
-// battlefield tapped" — is a keyword action this engine has no shape
-// for: turning a land into an animated creature with a delayed
-// return-on-death/exile trigger, on top of the counters, is more
-// machinery than any existing primitive composes. Nothing in the
-// catalog does it yet — filed as #1178, since no card had needed the
-// shape before this one — so a land you choose still becomes an
-// Island — the clause the sentence's OWN text states independently
-// of the earthbend
-// — but never becomes a creature, gets no counters, and is not
-// returned if it leaves. Weaker than printed (#259): the chosen land
-// is real, useful mana fixing, and never a combat threat it would be
-// on paper.
+// CHAPTER II IS TWO CLAUSES ABOUT ONE LAND, and since #1178 both of
+// them ship. "Earthbend X" is the keyword action (earthbend.go,
+// game/earthbend.go) with X counted at resolution over the
+// controller's hand; "that land becomes an Island in addition to its
+// other types" is the sentence's own independent clause, a second
+// layer-4 type add on the same target.
+//
+// THE TWO CLAUSES ARE TWO CONTINUOUS EFFECTS, not one. They are both
+// layer 4 and both indefinite, but they have different lifetimes:
+// earthbend's animation is pinned to the object (CR 400.7 — a land
+// that dies and comes back tapped is a new object and is not animated
+// any more), and the Island clause is pinned the same way for the same
+// reason, so the returning land is a plain land again. Registering
+// them separately is also what makes the earthbend one line: the
+// keyword action owns its four parts and this card owns its fifth
+// sentence.
+//
+// The Island matters beyond flavour when X is small — a 0/0 with no
+// counters dies to the toughness state-based action and comes back
+// tapped, and what you kept is a land that taps for {U}.
+//
+// It also ships this face at Full (#1179 registered it with the
+// earthbend caveat; #1178 cleared it).
 func init() {
 	Register(Spec{
 		OracleID:     theLegendOfKyoshiOracleID,
 		Name:         "The Legend of Kyoshi",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Earthbend isn't implemented — the chosen land becomes an Island but is never animated into a 0/0 creature, gets no +1/+1 counters, and isn't returned to the battlefield if it dies or is exiled.",
-		},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			ChapterTrigger(1, "The Legend of Kyoshi — draw cards equal to the greatest power among creatures you control",
 				kyoshiChapterOneDraw),
-			ChapterTriggerTargeting(2, "The Legend of Kyoshi — that land becomes an Island in addition to its other types",
-				TargetPermanent("target land you control", And(Land(), YouControl())),
-				kyoshiChapterTwoBecomesIsland),
+			ChapterTriggerTargeting(2, "The Legend of Kyoshi — earthbend X, and that land becomes an Island in addition to its other types",
+				EarthbendTargets(),
+				kyoshiChapterTwo),
 			ChapterTrigger(3, "The Legend of Kyoshi — exile it, then return it transformed",
 				ChapterExileAndReturnTransformed),
 		},
@@ -76,18 +79,39 @@ func kyoshiChapterOneDraw(g *game.Game, item *game.StackItem) error {
 	return DrawCards{Player: item.Controller, N: n}.Apply(ctx)
 }
 
-// kyoshiChapterTwoBecomesIsland is the declared slice of Earthbend
-// this card ships: the chosen land gains the Island subtype for as
-// long as it remains that object (CR 611.2a — no duration is printed,
-// so the effect is indefinite; CR 611.2c pins it to the one permanent
-// targeted, so a land that leaves and returns is a new object this
-// effect no longer follows).
-func kyoshiChapterTwoBecomesIsland(g *game.Game, item *game.StackItem) error {
-	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+// kyoshiChapterTwo is the chapter's two clauses over one land, in
+// printed order: "Earthbend X, where X is the number of cards in your
+// hand. That land becomes an Island in addition to its other types."
+//
+// X is counted at RESOLUTION, over the hand the controller has when
+// the chapter trigger resolves — so a discard outlet in response
+// shrinks it and a draw grows it. Zero is legal: an empty hand
+// earthbends 0, which animates the land into a 0/0 that dies to the
+// toughness SBA and comes back tapped, and the Island below is what
+// the chapter leaves behind.
+func kyoshiChapterTwo(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	target := FirstLegalBattlefieldTarget(ctx)
+	if target == uuid.Nil {
 		return nil
 	}
-	ctx := NewContext(g, item)
-	target := item.Targets[0].ID
+	hand := 0
+	if p := g.PlayerByIDForEffect(item.Controller); p != nil {
+		hand = p.Hand.Size()
+	}
+	if err := (Earthbend{Target: target, N: hand}).Apply(ctx); err != nil {
+		return err
+	}
+	return kyoshiChapterTwoBecomesIsland(ctx, target)
+}
+
+// kyoshiChapterTwoBecomesIsland is the chapter's second clause: the
+// chosen land gains the Island subtype for as long as it remains that
+// object (CR 611.2a — no duration is printed, so the effect is
+// indefinite; CR 611.2c pins it to the one permanent targeted, so a
+// land that leaves and returns is a new object this effect no longer
+// follows).
+func kyoshiChapterTwoBecomesIsland(ctx *Context, target uuid.UUID) error {
 	applies := SnapshotAffected(ctx, func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 		return c.InstanceID == target
 	})

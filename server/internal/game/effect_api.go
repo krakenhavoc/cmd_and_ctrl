@@ -1678,9 +1678,65 @@ func (g *Game) ReturnFromGraveyardForEffect(cardID uuid.UUID, dest ZoneKind) err
 //
 // Caller must hold g.mu.
 func (g *Game) ReturnFromGraveyardUnderControlForEffect(cardID uuid.UUID, dest ZoneKind, controller uuid.UUID) error {
+	_, err := g.returnFromGraveyardLocked(cardID, dest, controller, false)
+	return err
+}
+
+// ReturnToBattlefieldForEffect is "return it to the battlefield"
+// (optionally TAPPED) said of a card whose zone the effect does not
+// know — which is exactly what a delayed trigger keyed on "when it
+// dies or is exiled" is holding (#1178, earthbend.go).
+//
+// It dispatches on where the card actually is. Exile and a graveyard
+// are the two zones such a trigger can find it in, and each already
+// has its own entry point with its own CR 400.7 bookkeeping — the
+// exile return re-mints the instance ID, the graveyard return leaves
+// it and relies on the re-minted battlefield-entry stamp — so this is
+// a ROUTER over the two, not a fourth entry primitive. Anywhere else
+// (a hand, a library, the battlefield already) is ErrCardNotFound:
+// the object the effect named is not where it was left, which is the
+// CR 608.2b posture and the caller's to swallow.
+//
+// `controller` uuid.Nil means "under its owner's control", which is
+// what a return naming no controller gets (CR 400.3).
+//
+// Returns the entering permanent's ID, or uuid.Nil when nothing
+// entered — the entry pipeline can cancel or redirect the move, and it
+// can PAUSE, in which case the entry completes from the resume and
+// nothing is reported here.
+//
+// Caller must hold g.mu.
+func (g *Game) ReturnToBattlefieldForEffect(cardID, controller uuid.UUID, tapped bool) (uuid.UUID, error) {
+	src := g.findCardZoneLocked(cardID)
+	if src == nil {
+		return uuid.Nil, ErrCardNotFound
+	}
+	switch src.Kind {
+	case ZoneExile:
+		return g.ReturnFromExileToBattlefieldForEffect(cardID, controller, tapped)
+	case ZoneGraveyard:
+		return g.returnFromGraveyardLocked(cardID, ZoneBattlefield, controller, tapped)
+	}
+	return uuid.Nil, ErrCardNotFound
+}
+
+// returnFromGraveyardLocked is the shared body of the two graveyard
+// entry points above, plus the `tapped` clause neither of the older
+// spellings could state.
+//
+// `tapped` rides onto the CR 614 event rather than being OR-ed in
+// afterwards, for the reason SearchLibrarySpec.TappedOnEntry and
+// ReturnFromExileToBattlefieldForEffect both give: a resume reads
+// ev.EntersTapped and has no idea what effect sent the card, so a
+// return that paused on an entry prompt would otherwise come back
+// untapped. It is meaningless for a hand or library destination and
+// ignored there.
+//
+// Caller must hold g.mu.
+func (g *Game) returnFromGraveyardLocked(cardID uuid.UUID, dest ZoneKind, controller uuid.UUID, tapped bool) (uuid.UUID, error) {
 	src := g.findCardZoneLocked(cardID)
 	if src == nil || src.Kind != ZoneGraveyard {
-		return ErrCardNotFound
+		return uuid.Nil, ErrCardNotFound
 	}
 	// Identify the graveyard's owner so we can route to the same
 	// player's hand / library. (Graveyards are per-player; Zone.Owner
@@ -1688,7 +1744,7 @@ func (g *Game) ReturnFromGraveyardUnderControlForEffect(cardID uuid.UUID, dest Z
 	ownerID := src.Owner
 	owner := g.playerByIDLocked(ownerID)
 	if owner == nil {
-		return ErrPlayerNotFound
+		return uuid.Nil, ErrPlayerNotFound
 	}
 	var destZone *Zone
 	switch dest {
@@ -1699,7 +1755,7 @@ func (g *Game) ReturnFromGraveyardUnderControlForEffect(cardID uuid.UUID, dest Z
 	case ZoneBattlefield:
 		destZone = g.Battlefield
 	default:
-		return ErrZoneNotFound
+		return uuid.Nil, ErrZoneNotFound
 	}
 	if destZone.Kind == ZoneBattlefield {
 		newController := controller
@@ -1733,20 +1789,25 @@ func (g *Game) ReturnFromGraveyardUnderControlForEffect(cardID uuid.UUID, dest Z
 		// resumable now, through the same finisher the unpaused path
 		// runs, so nothing moves until the answer arrives and then the
 		// permanent enters exactly as it would have.
-		_, err := g.enterBattlefieldThroughPipelineLocked(&ReplacementEvent{
+		//
+		// #1178: and the effect's own "return it TAPPED" clause rides
+		// the event for the third reason in that list — a resume reads
+		// ev.EntersTapped and nothing else knows what asked for the
+		// return.
+		return g.enterBattlefieldThroughPipelineLocked(&ReplacementEvent{
 			Kind:           RepEventMove,
 			Actor:          newController,
 			CardID:         cardID,
 			OldZone:        ZoneGraveyard,
 			NewZone:        ZoneBattlefield,
+			EntersTapped:   tapped,
 			entryResumable: true,
 		})
-		return err
 	}
 	// A hand or library destination is not an entry: no pipeline, no
-	// ETB, nothing to pause on.
+	// ETB, nothing to pause on, and nothing for `tapped` to mean.
 	if _, err := MoveCard(src, destZone, cardID); err != nil {
-		return err
+		return uuid.Nil, err
 	}
 	g.markCardKnownInZoneLocked(destZone, cardID)
 	g.EmitEvent(Event{
@@ -1756,7 +1817,7 @@ func (g *Game) ReturnFromGraveyardUnderControlForEffect(cardID uuid.UUID, dest Z
 		OldZone: ZoneGraveyard,
 		NewZone: destZone.Kind,
 	})
-	return nil
+	return uuid.Nil, nil
 }
 
 // SearchLibrarySpec is the full description of one "search your

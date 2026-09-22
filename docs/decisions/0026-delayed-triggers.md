@@ -308,6 +308,44 @@ reused rather than re-implemented: one `dispatchTriggerLocked`, so
 there is one place the CR 603.3d drop, the CR 608.2b re-check and the
 APNAP drain can be got right.
 
+## Amendment, 2026-09-21: an event-conditioned trigger may watch an OBJECT, and may outlive the turn (#1178)
+
+The 2026-09-18 amendment above built `DelayedTrigger.On` for one shape
+— "when you next CAST an instant or sorcery spell **this turn**" — and
+stamped `UntilEndOfTurn` on any event-conditioned trigger that named no
+duration, "because every printed one says *this turn*". Earthbend is
+the first that does not.
+
+> *When it dies or is exiled, return it to the battlefield tapped.*
+
+Three things follow, and all three are recorded in full in
+[ADR 0081](0081-earthbend-and-object-keyed-delayed-triggers.md)
+Decision 5; what belongs here is what changed about **this** slot:
+
+1. **The condition watches an OBJECT, not an actor.** `AppliesTo` reads
+   the trigger's own `Cards` payload and matches `EventLTB` whose
+   `CardID` is that object and whose `NewZone` is a graveyard or exile.
+   `NewZone` is where the card ACTUALLY went, after the CR 614 window
+   on the move settled, so a replacement that exiles a dying permanent
+   still satisfies "dies **or is exiled**".
+2. **It can carry a non-turn duration.** `Duration` is `Indefinite`
+   pinned to the object (ADR 0063's `Game.PinnedTo`), so the trigger is
+   owed for as long as the permanent stands and is swept by
+   `clearExpiredDelayedTriggersLocked` the moment the permanent leaves
+   by a route the condition does not name. The pin is the garbage
+   collector, not the rule — the rule is CR 400.7, which makes the
+   returning card a new object the trigger no longer names.
+3. **Identity may be DERIVED.** `DelayedTrigger.ID` is minted when left
+   `uuid.Nil`, and a caller that must not queue two triggers about the
+   same object can compute one instead — earthbend hashes
+   `{instance, EnteredBattlefieldAt}`. No schema change, and the queue
+   stays plain data that clones and snapshots by value.
+
+Everything §2-4 promised still holds, for the reason the 2026-09-18
+amendment gives: the dispatch is still `dispatchTriggerLocked`, so the
+CR 603.5 "you may", the CR 603.3d drop, the CR 608.2b re-check and the
+APNAP drain are the harvester's and not a second copy.
+
 ## What this deliberately does not do
 
 - **No extra steps.** Y'shtola's "there is an additional end step

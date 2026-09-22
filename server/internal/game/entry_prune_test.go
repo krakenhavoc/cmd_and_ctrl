@@ -181,11 +181,128 @@ func TestASandboxMoveOntoTheBattlefieldPrunesTheSameWay(t *testing.T) {
 	assertTableIsFree(t, g)
 }
 
+// --- #1175: the second prune the entry funnel owes -------------------
+//
+// pruneStaleZoneChangeChoicesLocked drops a queued prompt asking about
+// a move of a card OUT of a zone the card has since left (#605). An
+// ENTRY empties a hand slot or lifts a card out of a graveyard exactly
+// as an exit does, and #1069 took only the card-set prune through the
+// new door. The two shapes below are the gap and its idempotency.
+
+// stalableGraveyardExit starts a CR 903.9-pausing exile of a commander
+// sitting in `owner`'s GRAVEYARD and returns the route's continuation
+// counter. OldZone is the graveyard rather than the battlefield, which
+// is what makes an arrival ON the battlefield able to strand it:
+// pausedZoneChangeStaleLocked's last line asks whether the card is
+// still in the zone the paused move would leave.
+func stalableGraveyardExit(t *testing.T, g *Game, owner *Player, cardID uuid.UUID) *int {
+	t.Helper()
+	ran := 0
+	g.mu.Lock()
+	paused, err := g.routeCardToZoneLocked(zoneRoute{
+		CardID: cardID,
+		Dst:    ZoneExile,
+		Actor:  owner.ID,
+		then:   func(*Game) error { ran++; return nil },
+	})
+	g.mu.Unlock()
+	if err != nil {
+		t.Fatalf("routeCardToZoneLocked: %v", err)
+	}
+	if !paused {
+		t.Fatal("setup: the CR 903.9 prompt did not pause the exile out of the graveyard")
+	}
+	if ran != 0 {
+		t.Fatalf("setup: a paused route is not terminal, but its continuation ran %d times", ran)
+	}
+	return &ran
+}
+
+// TestAnArrivalPrunesAStaleMoveOutOfTheGraveyard is #1175's shape: a
+// commander's CR 903.9 prompt is open over a move OUT of its owner's
+// graveyard, and the card is reanimated while the question hangs. The
+// exile it asks about can never happen — the card is not in the
+// graveyard any more — so the prompt is as stale as one whose card was
+// exiled by somebody else, and before #1175 only the exile ran the
+// prune.
+//
+// The withdrawal is terminal for the route it takes away (#865), so
+// the route's continuation runs: a batch sequenced through it carries
+// on rather than stalling behind a question nobody can answer.
+func TestAnArrivalPrunesAStaleMoveOutOfTheGraveyard(t *testing.T) {
+	g := newActiveGame(t)
+	owner := g.Seats[0]
+	g.WithWriteLock(func() { owner.Graveyard.Cards = nil })
+	cmdID := seatCommander(t, owner.Graveyard, owner)
+
+	ran := stalableGraveyardExit(t, g, owner, cmdID)
+	prompt := expectCommanderPrompt(t, g, owner)
+
+	// The arrival: somebody reanimates the commander under the open
+	// question. This is the door #1069 opened and #1175 widens.
+	g.WithWriteLock(func() {
+		if err := g.ReturnFromGraveyardUnderControlForEffect(cmdID, ZoneBattlefield, owner.ID); err != nil {
+			t.Fatalf("ReturnFromGraveyardUnderControlForEffect: %v", err)
+		}
+	})
+
+	if !g.Battlefield.Contains(cmdID) {
+		t.Fatal("setup: the reanimated commander is not on the battlefield")
+	}
+	if findChoice(g, prompt.ID) != nil {
+		t.Error(`the CR 903.9 prompt survives a graveyard its card has left FOR THE BATTLEFIELD.
+An entry empties a graveyard slot exactly as an exit does, and the exile the prompt
+asks about can never happen — pruneStaleZoneChangeChoicesLocked has to run at the
+entry door too (#1175).`)
+	}
+	if *ran != 1 {
+		t.Errorf("the abandoned route's continuation ran %d times, want 1 — a withdrawal is "+
+			"terminal for the route it takes away (#865)", *ran)
+	}
+	assertTableIsFree(t, g)
+}
+
+// TestTheArrivalFunnelIsIdempotent is the other half of "no double-run".
+// The structural fact that an entry cannot reach the exit primitive's
+// prune block is pinned by the test below; this pins the hazard the
+// stale-move prune brings that the card-set prune did not — its
+// terminal outcome is a ROUTE continuation (abandonZoneRouteLocked),
+// so a funnel that ran twice over one arrival would run somebody's
+// printed instruction twice.
+//
+// It cannot: the prune re-reads the live queue, and the withdrawn
+// prompt is no longer in it to be found a second time.
+func TestTheArrivalFunnelIsIdempotent(t *testing.T) {
+	g := newActiveGame(t)
+	owner := g.Seats[0]
+	g.WithWriteLock(func() { owner.Graveyard.Cards = nil })
+	cmdID := seatCommander(t, owner.Graveyard, owner)
+
+	ran := stalableGraveyardExit(t, g, owner, cmdID)
+	expectCommanderPrompt(t, g, owner)
+
+	g.WithWriteLock(func() {
+		if err := g.ReturnFromGraveyardUnderControlForEffect(cmdID, ZoneBattlefield, owner.ID); err != nil {
+			t.Fatalf("ReturnFromGraveyardUnderControlForEffect: %v", err)
+		}
+		// Two more calls by hand, standing in for a landing that
+		// funnelled twice: neither may re-abandon a route already gone.
+		g.pruneChoicesAfterArrivalLocked()
+		g.pruneChoicesAfterArrivalLocked()
+	})
+
+	if *ran != 1 {
+		t.Errorf("the abandoned route's continuation ran %d times over three funnel calls, want 1", *ran)
+	}
+	assertTableIsFree(t, g)
+}
+
 // TestAnEntryCannotRunTheExitPrimitivesPruneToo is the "no double-run"
-// half of #1069, and it is a structural fact rather than a count: the
-// exit primitive's prune block cannot fire for an entry, because
+// half of #1069 — and of #1175, which added the second prune to the
+// same funnel. It is a structural fact rather than a count: the exit
+// primitive's prune block cannot fire for an entry, because
 // routeDestinationLocked refuses the two destinations the entry path
-// owns. So the new call at the entry landings adds a door, it does not
+// owns. So the new calls at the entry landings add a door, they do not
 // double one.
 func TestAnEntryCannotRunTheExitPrimitivesPruneToo(t *testing.T) {
 	g := newActiveGame(t)
