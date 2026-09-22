@@ -675,3 +675,37 @@ unrelated event invalidated the cache. The deltas are emitted after
 `lastResolvedVersion` is stored, so the bump schedules the next pass
 rather than re-entering the current one, and that pass produces no
 further delta.
+
+## Amendment (2026-09-21, #1178): the pin has a second client, and a grant with no stated duration is not an until-EOT grant
+
+Two things earthbend taught this model, recorded here because both are
+about the DURATION rather than about the keyword
+([ADR 0081](0081-earthbend-and-object-keyed-delayed-triggers.md) has
+the verb).
+
+**1. `Duration.Pinned` now also garbage-collects a DELAYED TRIGGER.**
+Decision 6 introduced the pin for a control change — "an effect that
+moves one permanent has nothing left to do once that permanent is
+gone" — and its only client was `ScopedStatic`. `DelayedTrigger` has
+carried a `*Duration` since #663 and only ever an `UntilEndOfTurn`
+one. Earthbend's "when it dies or is exiled, return it to the
+battlefield tapped" is owed indefinitely and is satisfiable only by
+the object it names, so it is `IndefiniteDuration()` through
+`Game.PinnedTo`: `durationExpiredLocked` checks the pin first for
+every kind, so `clearExpiredDelayedTriggersLocked` drops the entry the
+first sweep after the land leaves by any other route. One expiry
+function, two registries, unchanged.
+
+**2. "No stated duration" is a real answer for a KEYWORD GRANT, not
+just for a control change or a type change.** Every keyword grant in
+the catalog was `GrantKeywordUntilEOT`, which made "until end of turn"
+look like the default rather than a printed clause. Earthbend's haste
+has no printed duration at all (CR 611.2a), and it shares the
+animation's `Duration` value and its CR 613.7 timestamp because it is
+the same printed sentence — which is what makes "the haste and the
+animation end together" a fact about the data rather than two
+registrations that happen to agree. The card-side vocabulary of
+Decision 7 needs nothing new: `StaticForDuration` +
+`game.IndefiniteDuration()` already said this, and the engine-side
+earthbend uses `registerScopedStaticLocked` directly so all three
+halves take one timestamp.
