@@ -606,3 +606,36 @@ answer rather than a rule the client reimplemented. §8's "bans with a
 duration are out" is also still true of the gate — the duration-carrying
 statements this note points at are timing statements, not bans, and they
 carry ADR 0063's `game.Duration`.
+
+---
+
+## Note (2026-09-22, [#1212](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1212)): the mana joined the optional costs on `Card.Provenance`
+
+The note above folded `Card.PaidOptionalCosts` into `Card.Provenance` and gave
+the argument: an entering permanent's own trigger cannot reach the stack item, so
+"when this enters, **if it was kicked**" has nothing to read unless the resolution
+path writes the fact down, and *how was the spell that became this permanent
+cast?* is one question CR 400.7d asks once.
+
+The same argument reached the mana a fortnight later. "When this creature enters,
+**if mana from a Treasure was spent to cast it**" (Hired Hexblade) and "…**if
+`{R}` was spent to cast it**" (Gruul Scrapper) are the identical shape with a
+different clause, and `StackItem.Paid.Mana` died on the stack exactly as
+`Paid.OptionalCosts` used to. So `CastProvenance` gained `Mana []ManaToken` and
+`ManaOnPaper bool`, stamped in the same `stampCastProvenanceLocked`, three lines
+from `OptionalCosts`, cleared in the same two places, carried by the same clone
+and snapshot. **Nothing about §5 changes**; it has a sibling now.
+
+Two consequences for this ADR's own record, both small:
+
+- `PaidCost.ManaSpent()` — the token slice — is `PaidCost.ManaTokens()`.
+  `ManaSpent` is now the name of the VIEW both homes hand out
+  (`game.ManaSpent`, ADR 0068's 2026-09-22 amendment §A2), and the six colour
+  accessors on `PaidCost` delegate to it rather than reimplementing it.
+- `stampCastProvenanceLocked`'s "nothing to say, leave it zero" branch is
+  narrower: a cast that spent any mana, or that the engine waived, now says so.
+  Only a genuinely free cast from hand still falls through, and the zero record
+  is what "no mana was spent to cast it" reads.
+
+§5's readers are untouched in shape — `CardKickedTimes`, `CardPaidOptionalCost`
+and `ctx.WasKicked()` take the same arguments and answer the same questions.

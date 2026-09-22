@@ -267,3 +267,178 @@ for zero cards.
    checklist offered. Rejected in favour of §3's single invariant: five
    cards choosing individually is five chances to choose wrong, and the two
    directions happen to agree.
+
+## Amendment (2026-09-22, [#1212](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1212)): the source snapshot, and the entry-side read
+
+This ADR's **Out of scope** said:
+
+> **A source-type snapshot on the token.** A sacrificed Treasure is gone by
+> resolution (Kalain, Rain of Riches). `ManaToken.Source` is recorded, which is
+> enough for every reader shipped here; snapshotting the source's types belongs
+> with the riders.
+
+It does not belong with the riders. A rider needs a FIRE POINT after a payment,
+which is still open; a card that asks "*if mana from a Treasure was spent to cast
+it*" needs only the fact, and there are more of those than of every mechanic in
+this ADR's table put together. A scan of the Scryfall dump finds **107 cards**
+whose oracle text contains "was spent"; **23** of them read a SOURCE rather than
+a colour or a count, eighteen of those spell it *Treasure*.
+
+Two other things in the original are corrected below.
+
+### A1. The kinds are snapshotted at MINT, not looked up at read
+
+`ManaToken` gains `SourceKinds ManaSourceKinds` — a six-bit set (snow, Treasure,
+creature, land, artifact, enchantment) read off the producing permanent's
+EFFECTIVE characteristics (`mana_source.go`).
+
+It has to be taken at mint, and that is not a preference. A Treasure's mana
+ability **sacrifices the Treasure as part of its own cost**: in
+`ActivateManaAbility` the sacrifice is paid, `card` is set to nil, and only then
+is the mana minted. By the time any reader asks, the permanent is in a graveyard
+— and a Treasure TOKEN has ceased to exist entirely (CR 111.7), so even the
+graveyard has nothing. The one source that eighteen printed cards ask about is
+the one source a lookup through `ManaToken.Source` can never answer.
+
+The snapshot therefore rides **`PendingChoice.ManaSourceKinds`** as well,
+because a Treasure's five-colour slot queues a pick that is answered after the
+Treasure is gone. That is the same argument `ManaRestrictions` already won on
+this struct, one card family sharper.
+
+ONE decider, four call sites, mirroring `restrictionsFor`: `manaSourceKindsOf`
+is the only thing in the engine that classifies a mana source, and
+`manaSourceKindsLocked` is it for a caller holding an ID.
+
+Rejected: a copy of the source `Card` on the token. It is a second object for
+the clone, the snapshot and the undo stack to carry, and it goes stale in a
+different way — the question is never "what is that permanent now", it is "what
+was it when it made this mana". A bitset answers exactly that in two bytes.
+
+### A2. `ManaSpent` is one vocabulary with two homes
+
+§7's read surfaces were six accessors on `PaidCost`, which was right while every
+reader was a spell reading its own stack item. The largest un-shipped family here
+is an **enters trigger**, and by the time one resolves the item is gone:
+
+	"When this creature enters, if mana from a Treasure was spent to
+	 cast it, you draw a card and you lose 1 life."   Hired Hexblade
+	"…if {R} was spent to cast it, it gains haste…"   Gruul Scrapper
+	"…sacrifice it unless {U} was spent to cast it."  Azorius Herald
+
+Two homes for one fact is the moment a vocabulary either gets written down or
+gets duplicated. So the questions move onto a **view**, `game.ManaSpent`
+(`mana_spent.go`): `Known`, `Total`, `Count(symbol)`, `Colors`, `ColorCount`,
+`None`, `CountFrom(kinds)`, `From(kinds)`, `FromTreasure`, `Snow`, `Tokens`.
+Unexported fields, no JSON, built on demand. `PaidCost.Spent()` and
+`CastProvenance.Spent()` both hand it out, and §3's rule — unknown is never the
+stronger answer — is enforced once, inside it, instead of six times.
+
+`PaidCost`'s existing accessors are unchanged in name and behaviour and now
+delegate to the view. The one rename: `PaidCost.ManaSpent()` (the token slice) is
+`PaidCost.ManaTokens()`, because `ManaSpent` is now the name of the answer.
+
+### A3. `Card.Provenance` carries the mana (CR 400.7d)
+
+`CastProvenance` gains `Mana []ManaToken` and `ManaOnPaper bool`, stamped in the
+same `stampCastProvenanceLocked`, at the same one entry finisher, three lines
+from the optional costs #719 folded in for the identical reason. `cast_provenance.go`'s
+header said the mana was NOT carried "because nothing reads it after entry"; that
+paragraph is struck, and the field it predicted ("a sibling of AltCost on this
+struct rather than a second record") is what shipped.
+
+It is the same tokens rather than a summary, so the view above works unchanged on
+either home. Cleared on CR 400.7 with the rest of the record, deep-copied by
+`Clone`, classified `carried`.
+
+`ManaOnPaper` comes too. Without it a waived payment and a genuinely free cast
+are the same empty slice on the permanent, and §3's distinction — the whole
+reason `OnPaper` exists — would survive the stack and die at the battlefield.
+
+### A4. §8 was overtaken: sunburst rides the entry pipeline now
+
+§8 shipped sunburst as an OnResolve a beat before the permanent lands, and said
+reconsidering it "means giving the entry pipeline a narrow read of the record;
+that is a follow-up, not this ADR". [#1002/#1011](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1011)
+is that follow-up and it landed: `EntryCountersFromCast` declares the clause, and
+`castCountsFor` reads `item.Paid.ColorsSpentCount()` off the resolving item
+inside the CR 614 window. The caveat sentence §8 asked for is gone from those
+cards.
+
+`CastCounts` keeps reading the ONE record and never a count of its own —
+`castCountsFor` is the single reader, `entry_counters.go`. Worth restating
+because the temptation when the source kinds arrived was to give `CastCounts` a
+`FromTreasure` bool; it does not need one, because the only card that would use
+it (Marut's "*a Treasure token for each mana from a Treasure spent to cast it*")
+creates tokens rather than entering with counters.
+
+### A5. The auto-tapper's wish is an ordering HINT, and §5's declared limit stands
+
+§5 declared: "**the AUTO-TAPPER does not spread colours**… spreading the PLAN is
+a planner change with its own search-space cost, and it is out of scope here."
+The source wish is the smallest thing that is not that.
+
+`Spec.WantsManaFrom` declares the kinds a card reads back. It reaches exactly two
+comparators — the candidate sort in `autoTapPreferringLocked` and
+`orderUnusedByGenericPreference` — as a tiebreak applied **after Frozen and
+before every existing criterion**. It never touches `gatherTapSources`'s
+candidate set. So:
+
+- the SOURCES are identical with and without a wish, and a cost that was payable
+  stays payable. That is what lets `internal/legal`'s enumerator keep calling the
+  wishless `autoTapLocked` for its bool and never offer a cast the gate refuses;
+- a "spend a Treasure" card is never made uncastable by having no Treasure out.
+
+The honest caveat is the one the Frozen ordering already carries: `solveColored`
+shares an `AutoTapBudget`, so reordering can change which plan a pathological
+board finds first. It cannot change whether one exists over the same set.
+
+The `/autotap` preview endpoint takes the wish too
+(`AutoTapForCostPreferringExcluding`), because the preview's plan is what the
+client actually taps: without it a card previewed through the UI and the same
+card cast with `AutoTap` set would spend different mana.
+
+**DECLARED LIMIT, and it is a large one.** The auto-tapper refuses every
+SACRIFICE-cost mana ability outright — `autoTapAbilityFor`'s first line is
+`if !a.TapCost || a.SacrificeCost { continue }`, an S15 decision this amendment
+does not revisit. **A Treasure is therefore not an auto-tap source at all**, and
+no ordering hint can reach one. Treasure mana is floated by hand, the record
+reads the same either way, and the hint bites today only on sources without a
+sacrifice cost (a mana creature for Inga and Esika, a snow land). Filed
+separately.
+
+### A6. There is no "if snow mana was spent" card
+
+The row this work came from asked for one. A scan of the dump for `snow mana` in
+oracle text returns **zero** cards: snow reaches a payment as the `{S}` COST
+symbol (CR 107.4g), and `ParsedCost.HasSnow` is still informational
+(`mana_cost.go:39`). `ManaSpent.Snow()` ships anyway — it is one bit of the same
+snapshot and the `{S}` work has nowhere else to read from — and is documented as
+having no catalog reader today rather than left as a silent hook.
+
+### A7. §4 restated, because #1212's readers are the first to make it bite
+
+A copy of a spell records a real zero for the mana AND inherits the kicker, and
+the two halves of CR 707.10 point different ways on purpose. CR 707.10b copies
+"the choices made when casting", which is the modes, X, and whether an optional
+additional cost was paid; WHICH MANA PAID is not one of them — mana is not an
+object, nothing was spent to cast the copy, and the ruling under CR 707.10 on
+Dawnglow Infusion says so. It is not a characteristic either, so CR 707.2 does
+not reach it.
+
+So: **a copy inherits the kicker and not the mana.** A copied Hired Hexblade
+draws no card. Pinned by
+`TestACopyOfASpellInheritsTheKickerButNotTheManaSpent`.
+
+### Still out of scope
+
+- **Spend riders.** Unchanged from the original: "when that mana is spent"
+  (Pyromancer's Goggles, Scaled Nurturer), entry riders (Biophagus, Opal Palace),
+  haste grants (Hall of the Bandit Lord) and per-spell "can't be countered"
+  (Cavern of Souls, Delighted Halfling) need a fire point after a payment as well
+  as this snapshot. The seams row stays open for them.
+- **Source kinds read off an ACTIVATION's record.** Forsworn Paladin and Jetmir's
+  Fixer print "if mana from a Treasure was spent to activate this ability". The
+  tokens carry the kinds there already; nothing reads them, and the catalog
+  declaration is per card rather than per ability.
+- **The auto-tapper planning a sacrifice-cost source.** A5.
+- **Enforcing `{S}`.** A6.
