@@ -1787,3 +1787,61 @@ See [ADR 0020](0020-activated-abilities.md)'s note of the same date
 for the other two seams the same issue opened, and
 [docs/engine-seams.md](../engine-seams.md) for the "whenever an
 opponent activates an ability" row that closes on this event next.
+
+### Note (2026-09-22, #1210): the opponent-activation watch, on that same event
+
+The note above ends by pointing at the `docs/engine-seams.md` row that
+"closes on this event next". This is that row, closed, and it needed
+one constructor and no engine change at all — which was the claim
+#1184 made when it built the event wider than its two cards.
+
+`effects.WheneverAnOpponentActivates(label, of, includeMana, build)`
+(`cards/effects/triggers_common.go`) is the one declaration shape:
+
+- **Whose activation.** `ByAnOpponent` on `Event.Actor`, the same
+  predicate "whenever an opponent draws a card" uses. The ACTOR and
+  not the source's controller, because that is what the cards print
+  ("whenever an opponent activates an ability") and because the two
+  differ exactly where it matters — an ability activated from a
+  permanent somebody else controls.
+- **Which abilities.** `includeMana` picks the watched kinds:
+  `EventActivateAbility` alone, or both it and
+  `EventManaAbilityActivated`. "…if it isn't a mana ability" is
+  therefore not a predicate a card writes and can forget — it is the
+  absence of a kind from `Watches`, decided once, at the only place
+  that knows (CR 605.1a: a mana ability never reaches the stack and
+  has its own event kind precisely so a watcher can tell).
+- **Of what.** `of CardPredicate` runs against the ability's SOURCE
+  object, looked up live on the battlefield — "an ability of an
+  artifact, creature, or land **on the battlefield**" (Harsh Mentor),
+  "of a creature or land" (Runic Armasaur). A nil predicate is "any
+  source", which is the plain "whenever an opponent activates an
+  ability" clause.
+- **"That player."** `build func(activator uuid.UUID) Effect` is
+  handed `Event.Actor`, captured in the `Build` closure the way Ob
+  Nixilis, the Hate-Twisted captures a drawer. It does NOT target:
+  Harsh Mentor's 2 damage goes to the activator with no target
+  chosen, so hexproof and "can't be the target of" do nothing about
+  it, and CR 608.2b re-checks nothing at resolution.
+
+`Optional(…)` composes as it does with every other trigger, which is
+the whole of Runic Armasaur's "you may draw a card".
+
+One engine line did change, and a back-out is what found it:
+`EventManaAbilityActivated` set `Source` but not `CardID`, so a
+source predicate looking the ability's object up by `CardID` matched
+nothing on the mana path — a silent miss, not an error. Both emit
+sites (the hand click and the auto-tapper's executor, CR 605.3a) now
+carry the same stamps `EventActivateAbility` always has, which is
+what #1184 intended when it said a watcher can read the same fields
+off either kind.
+
+**Cards:** Harsh Mentor and Runic Armasaur, both `full`.
+
+What stays open on this family, and is a different row: a watch on an
+ability's activation whose TARGET clause reads the triggering event
+(`docs/engine-seams.md`, "Trigger/target clause reading the triggering
+event's data"). A `Build` closure can capture an event field and hand
+it to a non-targeted effect — that is what this note's `build`
+argument is — but `TriggeredAbility.Targets` is a static `TargetSpec`
+evaluated by the harvester and cannot see the event at all.

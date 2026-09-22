@@ -1647,9 +1647,16 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 		// activate the ability (CR 605.3a), which is why #1183 made it
 		// write the record here.
 		g.EmitEvent(Event{
-			Kind:    EventManaAbilityActivated,
-			Actor:   p.ID,
-			Source:  cardID,
+			Kind:   EventManaAbilityActivated,
+			Actor:  p.ID,
+			Source: cardID,
+			// #1210: CardID as well as Source, so the two activation
+			// kinds carry the SAME stamps and a watcher that looks up
+			// the ability's source object does not have to know which
+			// kind it is holding. EventActivateAbility has always set
+			// both; this one set only Source, which made a source
+			// predicate silently match nothing on the mana path.
+			CardID:  cardID,
 			Label:   ab.Label,
 			Exhaust: ab.Exhaust,
 		})
@@ -4819,6 +4826,16 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	ab := abilities[abilityIdx]
 	// --- gate ----------------------------------------------------
 	//
+	// #1210, CR 602.5a: the board-wide "can't be activated" gate, the
+	// same one ActivateCatalogAbility calls and the same placement —
+	// before anything is validated or paid. ActivationAbility.Mana is
+	// true here and the RESTRICTION decides what that means: Pithing
+	// Needle exempts mana abilities, Cursed Totem does not. See
+	// activation_gate.go on why the exemption is not a property of
+	// this call site.
+	if err := g.ActivationGateLocked(playerID, *card, ZoneBattlefield, ActivationAbility{Label: ab.Label, Mana: true}); err != nil {
+		return err
+	}
 	// #1183: "Activate each exhaust ability only once", the mana
 	// half of #1181. The key is taken HERE, before anything is
 	// validated or paid, for the reason activationTallyKeyLocked
@@ -5085,6 +5102,9 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		Kind:   EventManaAbilityActivated,
 		Actor:  playerID,
 		Source: cardID,
+		// #1210: the same CardID stamp EventActivateAbility carries —
+		// see the auto-tapper's emit above.
+		CardID: cardID,
 		// #1184: the ability's identity and its exhaust bit, the same
 		// two stamps ActivateCatalogAbility's EventActivateAbility
 		// carries. A mana ability is an activated ability (CR 605.1a),

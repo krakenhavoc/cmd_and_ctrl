@@ -83,6 +83,7 @@ func buildDef(spec Spec) *game.CardDef {
 		CastCondition:              spec.CastCondition,
 		CastConditionLabel:         spec.CastConditionLabel,
 		CastRestrictions:           spec.CastRestrictions,
+		ActivationRestrictions:     spec.ActivationRestrictions,
 	}
 	if spec.Battle != nil {
 		d.BattleDefense = spec.Battle.Defense

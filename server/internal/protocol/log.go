@@ -147,6 +147,12 @@ const (
 	// prompt (CR 614.12): Cavern of Souls, Door of Destinies.
 	// `Choice` is the type as the engine canonicalised it ("Elf").
 	LogChooseType LogKind = "choose_type"
+	// LogChooseName — a player answered an "as this enters, choose a
+	// card name" prompt (CR 614.12): Pithing Needle, Phyrexian
+	// Revoker, Sorcerous Spyglass. `Choice` is the name as the player
+	// typed it, trimmed and otherwise untouched — CR 201.2 admits any
+	// card name, so there is no canonical spelling to report (#1210).
+	LogChooseName LogKind = "choose_name"
 	// LogChoosePlayer — a player answered an "as this enters, choose
 	// a player" prompt (CR 614.12): True-Name Nemesis. The answer is
 	// a SEAT, so it rides TargetSeat like every other player
@@ -694,6 +700,12 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Choice = ev.Label
 		return base, true
 
+	case game.EventCardNameChosen:
+		base.Kind = LogChooseName
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.Choice = ev.Label
+		return base, true
+
 	case game.EventPlayerChosen:
 		base.Kind = LogChoosePlayer
 		base.CardID = uuidStringOrEmpty(ev.CardID)
@@ -1201,6 +1213,8 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		return fmt.Sprintf("%s chose %s for %s", actor, nameOr(game.ColorName(e.Choice), "a color"), card)
 	case LogChooseType:
 		return fmt.Sprintf("%s chose %s for %s", actor, nameOr(e.Choice, "a creature type"), card)
+	case LogChooseName:
+		return fmt.Sprintf("%s named %s for %s", actor, nameOr(e.Choice, "a card"), card)
 	case LogChoosePlayer:
 		// `target` is already the seat name here (or "a player"): a
 		// chosen player never rides Target, so the card branch above

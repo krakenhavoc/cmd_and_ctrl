@@ -568,6 +568,7 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	PendingChoiceMayCast:       {},
 	PendingChoiceCopyTarget:    {},
 	PendingChoiceCreatureType:  {},
+	PendingChoiceCardName:      {},
 	PendingChoiceColor:         {},
 	// The attacker whose damage is being assigned was theirs, and it
 	// left with them.

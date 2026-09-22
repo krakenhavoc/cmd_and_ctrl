@@ -243,6 +243,7 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		// is the thing that proves it.
 		ChosenColor:   "G",
 		NamedTribe:    "Elf",
+		ChosenName:    "Sol Ring",
 		ManaCost:      "{2}{U}",
 		ManaAbilities: []ManaAbilityView{{Index: 0, Label: "Add {U}"}},
 		Abilities:     []string{"flying"},

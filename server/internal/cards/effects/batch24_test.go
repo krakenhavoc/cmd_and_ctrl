@@ -16,31 +16,35 @@ import (
 // ones are b24-prefixed.
 
 const (
-	b24MariOracle                  = "5f1fdc23-9af0-41a1-aeba-7288f9642734"
-	b24DebtToTheDeathlessOracle    = "6130f22d-7901-4f9f-b777-27bb0dacc063"
-	b24NaturesWillOracle           = "9837287b-d821-4655-8f01-93fc6c7f0ecc"
-	b24AgnaQelaOracle              = "22d0a848-2126-48f0-9050-38daaf93b1d0"
-	b24IndulgentAristocratOracle   = "c7054a2d-2e7b-4487-8fc3-f6a47a716fd3"
-	b24MerchantScrollOracle        = "86cebe2a-95e7-4f22-99cc-e805aeaf347e"
-	b24SpineOfIshSahOracle         = "02f062f5-8012-4440-ac12-49fc49822106"
-	b24GoblinChieftainAlreadyOID   = "368b4052-174e-4458-a6e6-eaf8093aa0fe"
-	b24WitchOfTheMoorsOracle       = "7ad97dd9-1342-4ed4-bea9-1bb21d748e04"
-	b24BugenhagenOracle            = "4228dd75-1fdd-48dc-9259-b841b2e46c64"
-	b24KaervekOracle               = "c7b72d38-0aa0-4e17-9dd5-9276d7cb21ec"
-	b24ScourForScrapOracle         = "da422b3e-1092-47ad-97d6-a7a3ef060a53"
-	b24AjanisWelcomeOracle         = "4a782bf9-4051-4613-8852-33b0d85a0edd"
-	b24MegrimOracle                = "633ad9e2-9f55-4a1c-9248-661ad4b0e1dc"
-	b24SceneOfTheCrimeOracle       = "ba11a517-1dbd-4797-9f5e-46ce0f6c77c0"
-	b24SoulsFireOracle             = "62d7ed6e-c386-477e-b155-982c3790f842"
-	b24AjanisPridemateOracle       = "95e94dea-5ac0-4d6f-adec-ca147aee861f"
-	b24LichKnightsConquestOracle   = "b0e533dd-baf2-482a-b9e1-872eb5e47439"
-	b24VraskaJoinsUpOracle         = "c91b0dd5-4c63-49a5-95bf-c342b6ff2076"
-	b24ChulaneOracle               = "ebf7ce9b-9e5e-4557-9e28-76556997f0ee"
-	b24BloodSeekerOracle           = "41087db6-34c4-4e2b-9f54-5e4488ca9c0b"
-	b24BurglarRatOracle            = "2f807301-37df-4724-871a-08e3512b07b3"
-	b24FinalPartingOracle          = "a5852994-d816-4e62-8a03-254223714544"
-	b24WillOfTheAbzanOracle        = "1ae29791-aa7c-4050-bf72-dd0f739b11b8"
-	b24MoltenTributaryOracle       = "58c592ed-20fc-481b-909b-2315567e5f20"
+	b24MariOracle                = "5f1fdc23-9af0-41a1-aeba-7288f9642734"
+	b24DebtToTheDeathlessOracle  = "6130f22d-7901-4f9f-b777-27bb0dacc063"
+	b24NaturesWillOracle         = "9837287b-d821-4655-8f01-93fc6c7f0ecc"
+	b24AgnaQelaOracle            = "22d0a848-2126-48f0-9050-38daaf93b1d0"
+	b24IndulgentAristocratOracle = "c7054a2d-2e7b-4487-8fc3-f6a47a716fd3"
+	b24MerchantScrollOracle      = "86cebe2a-95e7-4f22-99cc-e805aeaf347e"
+	b24SpineOfIshSahOracle       = "02f062f5-8012-4440-ac12-49fc49822106"
+	b24GoblinChieftainAlreadyOID = "368b4052-174e-4458-a6e6-eaf8093aa0fe"
+	b24WitchOfTheMoorsOracle     = "7ad97dd9-1342-4ed4-bea9-1bb21d748e04"
+	b24BugenhagenOracle          = "4228dd75-1fdd-48dc-9259-b841b2e46c64"
+	b24KaervekOracle             = "c7b72d38-0aa0-4e17-9dd5-9276d7cb21ec"
+	b24ScourForScrapOracle       = "da422b3e-1092-47ad-97d6-a7a3ef060a53"
+	b24AjanisWelcomeOracle       = "4a782bf9-4051-4613-8852-33b0d85a0edd"
+	b24MegrimOracle              = "633ad9e2-9f55-4a1c-9248-661ad4b0e1dc"
+	b24SceneOfTheCrimeOracle     = "ba11a517-1dbd-4797-9f5e-46ce0f6c77c0"
+	b24SoulsFireOracle           = "62d7ed6e-c386-477e-b155-982c3790f842"
+	b24AjanisPridemateOracle     = "95e94dea-5ac0-4d6f-adec-ca147aee861f"
+	b24LichKnightsConquestOracle = "b0e533dd-baf2-482a-b9e1-872eb5e47439"
+	b24VraskaJoinsUpOracle       = "c91b0dd5-4c63-49a5-95bf-c342b6ff2076"
+	b24ChulaneOracle             = "ebf7ce9b-9e5e-4557-9e28-76556997f0ee"
+	b24BloodSeekerOracle         = "41087db6-34c4-4e2b-9f54-5e4488ca9c0b"
+	b24BurglarRatOracle          = "2f807301-37df-4724-871a-08e3512b07b3"
+	b24FinalPartingOracle        = "a5852994-d816-4e62-8a03-254223714544"
+	b24WillOfTheAbzanOracle      = "1ae29791-aa7c-4050-bf72-dd0f739b11b8"
+	b24MoltenTributaryOracle     = "58c592ed-20fc-481b-909b-2315567e5f20"
+	// #1210: both were declared skips for "no activation gate", the
+	// gate landed, so they move up into `want`.
+	b24LinvalaOracle               = "88dadc31-dfac-41b3-bf2a-65fa89e3c16d"
+	b24CursedTotemOracle           = "6225a704-430a-4f56-ad87-0e8d87f285f5"
 	b24ThroneOfTheGodPharaohOracle = "ea750169-1f6f-40c2-96e9-55719e103a63"
 	b24WrathfulRaptorsOracle       = "1ba92b64-d821-4c24-aed6-fc90d0c63c10"
 	b24EfficientConstructionOracle = "5af48f87-7b94-44de-90e3-91f10ced00d3"
@@ -111,9 +115,11 @@ func TestBatch24CardsAreRegistered(t *testing.T) {
 		b24TectonicHazardOracle:        "Tectonic Hazard",
 		b24DwynenOracle:                "Dwynen, Gilt-Leaf Daen",
 		b24YshtolaNightsBlessedOracle:  "Y'shtola, Night's Blessed",
+		b24LinvalaOracle:               "Linvala, Keeper of Silence",
+		b24CursedTotemOracle:           "Cursed Totem",
 	}
-	if len(want) != 31 {
-		t.Fatalf("the batch registers 30 cards plus Goblin Chieftain, the table lists %d", len(want))
+	if len(want) != 33 {
+		t.Fatalf("the batch registers 32 cards plus Goblin Chieftain, the table lists %d", len(want))
 	}
 	for oracle, name := range want {
 		spec, ok := Lookup(oracle)
@@ -125,16 +131,16 @@ func TestBatch24CardsAreRegistered(t *testing.T) {
 			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
 		}
 	}
-	// The nine declared skips must NOT be registered — each needs a
-	// trigger mode, a cost or a gate the engine cannot express, and
-	// a spec would ship the card stronger than printed.
+	// The seven remaining declared skips must NOT be registered —
+	// each needs a trigger mode, a cost or a gate the engine cannot
+	// express, and a spec would ship the card stronger than printed.
+	// Linvala and Cursed Totem came off this list with #1210's
+	// activation gate and are in `want` above.
 	for _, skipped := range []string{
 		"3f8e5ff1-af89-427e-924c-19a44f9a3788", // Retreat to Kazandu — modal trigger
 		"1690a782-9e54-4231-9a72-abae5ed7050c", // Dread Presence — modal trigger
 		"5d8acafe-c13e-43ca-a89e-0cfd12d95662", // Titan of Industry — modal ETB, two targeted modes
 		"451e8ece-7389-4d52-8bc9-450cb5e53e6a", // Ascend from Avernus — a spell exiling itself as it resolves
-		"88dadc31-dfac-41b3-bf2a-65fa89e3c16d", // Linvala, Keeper of Silence — no activation gate
-		"6225a704-430a-4f56-ad87-0e8d87f285f5", // Cursed Totem — no activation gate
 		"10c31317-71e8-42e0-85e0-3e64bd0c3dd3", // Vat of Rebirth — remove-counters cost
 		"be6155de-c5b2-415c-ad83-142f9926462a", // Khalni Heart Expedition — remove-counters cost
 		"152e7e91-4eda-4e72-a9fb-bd5cb2e68239", // Survivors' Encampment — tap-another-creature cost
