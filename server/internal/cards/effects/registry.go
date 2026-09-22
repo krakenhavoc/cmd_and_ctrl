@@ -52,6 +52,7 @@ func Register(spec Spec) {
 	}
 	checkFlatClauses(spec.Name, spec.Targets)
 	checkExhaustAbilities(spec)
+	checkPlayerKeywords(spec)
 	for _, a := range spec.Activated {
 		checkFlatClauses(spec.Name, a.Targets)
 		if a.Modes != nil {
@@ -626,4 +627,39 @@ func checkOneExhaustAbility(name, kind string, i int, label string, exhaust bool
 		panic(fmt.Sprintf("effects.Register: %q declares two exhaust abilities labelled %q — they would share one use", name, label))
 	}
 	seen[label] = true
+}
+
+// checkPlayerKeywords guards Spec.PlayerKeywords (#1197): every entry
+// must be a token the engine actually honours on a PLAYER.
+//
+// A boot panic rather than a silent no-op, for the reason
+// protection.go gives about its closed grammar: a token nothing can
+// parse grants NOTHING, so a card with a typo in it ships looking
+// finished and doing nothing at all, and the badge would promise a
+// rule the engine does not enforce. The grammar is closed, so the
+// list of what a player may be granted is short and checkable.
+//
+// Two shapes are accepted, and they are exactly the two the three
+// consumers read:
+//
+//   - "hexproof" (CR 702.11d), the bare token;
+//   - any "protection from <quality>" the closed grammar parses
+//     (CR 702.16i) — "protection from everything" is the only one a
+//     catalogued card prints, but the grammar is the grammar.
+//
+// Shroud is refused: no card prints shroud on a player, and a token
+// with no card behind it is what game.CanonicalKeywords refuses a
+// bare "protection" for.
+func checkPlayerKeywords(spec Spec) {
+	for i, kw := range spec.PlayerKeywords {
+		if kw == "hexproof" {
+			continue
+		}
+		if _, ok := game.ParseProtectionQuality(kw); ok {
+			continue
+		}
+		panic(fmt.Sprintf("effects.Register: %q PlayerKeywords[%d] = %q is not a player ability the engine honours — "+
+			"use %q or a \"protection from <quality>\" token the closed grammar parses (ADR 0072, #1197)",
+			spec.Name, i, kw, "hexproof"))
+	}
 }

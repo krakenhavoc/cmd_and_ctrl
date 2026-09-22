@@ -74,6 +74,7 @@ func buildDef(spec Spec) *game.CardDef {
 		UntapOptOuts:               spec.UntapOptOuts,
 		CantBeCountered:            spec.CantBeCountered,
 		NoMaxHandSize:              spec.NoMaxHandSize,
+		PlayerKeywords:             spec.PlayerKeywords,
 		WantsDistinctColors:        spec.WantsDistinctColors,
 		AdditionalLandPlays:        spec.AdditionalLandPlays,
 		XMatters:                   spec.XMatters,

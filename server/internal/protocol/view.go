@@ -949,6 +949,29 @@ type PlayerView struct {
 	// field alone - the same posture as delayed_triggers and
 	// life_history. Added in S40 (#623, ADR 0064).
 	Emblems []EmblemView `json:"emblems,omitempty"`
+
+	// Keywords are the abilities this PLAYER has right now
+	// (CR 702.11d, CR 702.16i) — engine tokens, "hexproof" or
+	// "protection from everything". Derived grants from a controlled
+	// permanent (Leyline of Sanctity, Aegis of the Gods) first, then
+	// the ones granted for a duration (Teferi's Protection, The One
+	// Ring). Absent for every seat that has none, which is nearly
+	// every seat in nearly every game.
+	//
+	// EFFECTIVE, like max_hand_size and land_drops_per_turn above:
+	// the derived half is not written anywhere on the engine's
+	// Player, so this is computed on every projection.
+	//
+	// PUBLIC and unredacted. Protection and hexproof are facts about
+	// the board that every player at the table can see, and the
+	// targeting rule they drive is already visible through
+	// legal_targets — a viewer who could see the refusal but not its
+	// reason is strictly worse off. Same posture as emblems.
+	//
+	// The client has no badge for this yet (#1197 names the follow-up);
+	// the field ships with the rule so the badge is a client-only
+	// change when it comes. Added in S40 (#1197, ADR 0072).
+	Keywords []string `json:"keywords,omitempty"`
 }
 
 // EmblemView is one emblem on the wire (CR 114). Label is what the
@@ -4317,6 +4340,7 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		LandsPlayedThisTurn: g.LandsPlayedThisTurnFor(p.ID),
 		ManaPool:            manaPool,
 		Emblems:             emblems,
+		Keywords:            g.PlayerAbilitiesForEffect(p),
 	}
 }
 

@@ -163,6 +163,12 @@ func (g *Game) registerScopedStaticLocked(ability StaticAbility, sourceID uuid.U
 // Caller must hold g.mu.
 func (g *Game) ClearEndOfTurnScopedStaticsLocked() {
 	g.sweepScopedStaticsLocked(true)
+	// #1197: granted PLAYER abilities ride the same schedule. They
+	// are not continuous effects over objects and so are not in the
+	// registry above, but they carry the same Duration and are ended
+	// by the same durationExpiredLocked, and a second schedule would
+	// be a second thing to keep in step. See player_statics.go.
+	g.sweepPlayerStaticsLocked(true)
 }
 
 // ClearExpiredScopedStaticsLocked is the ordinary sweep: it drops
@@ -175,6 +181,9 @@ func (g *Game) ClearEndOfTurnScopedStaticsLocked() {
 // Caller must hold g.mu.
 func (g *Game) ClearExpiredScopedStaticsLocked() {
 	g.sweepScopedStaticsLocked(false)
+	// #1197, as above: the "until your next turn" boundary is exactly
+	// where Teferi's Protection and The One Ring's shield end.
+	g.sweepPlayerStaticsLocked(false)
 }
 
 // sweepScopedStaticsLocked drops expired entries and bumps the layer

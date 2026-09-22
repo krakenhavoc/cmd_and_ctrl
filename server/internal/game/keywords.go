@@ -204,10 +204,14 @@ const KeywordChangeling = "changeling"
 // ability fallback — which reads the card's own printed Keywords —
 // would wrongly protect it there.
 //
-// Players are not covered: hexproof and protection on a PLAYER
-// (Leyline of Sanctity, Teferi's Protection) have no home yet,
-// because Player carries no keyword slice. TargetPlayer refs pass
-// this gate by not reaching it.
+// Players are not covered HERE, and since #1197 that is a split
+// rather than a gap: hexproof and protection on a PLAYER (Leyline of
+// Sanctity, Teferi's Protection) are answered by
+// canPlayerBeTargetedByLocked in player_statics.go, at the same two
+// targeting call sites and on the same `targeting` switch. A
+// TargetPlayer ref goes there; a TargetCard ref comes here. Two
+// stores, because a player has no Characteristic and no layer — one
+// rule, because both read the same protection grammar.
 //
 // nil card returns true: a caller that has lost the card has an
 // existence problem, not a targeting one, and the zone walk that

@@ -118,6 +118,14 @@ type CardDef struct {
 
 	CantBeCountered bool
 	NoMaxHandSize   bool
+	// PlayerKeywords are the abilities this permanent's printed
+	// static gives its CONTROLLER — "You have hexproof" (Leyline of
+	// Sanctity, Aegis of the Gods). Engine ability tokens, in the
+	// vocabulary protection.go and keywords.go already parse. Read
+	// from the battlefield through CatalogAbilityKey, never from a
+	// card's own zone; see game.CatalogPlayerKeywords and ADR 0072's
+	// 2026-09-22 amendment (#1197).
+	PlayerKeywords []string
 	// Emblem is the presentation half of an EMBLEM's catalog entry
 	// (CR 114) — its board label and its printed ability text. Set
 	// only on an emblem's own def, the one effects.Register files
@@ -380,6 +388,12 @@ func init() {
 	CatalogNoMaxHandSize = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.NoMaxHandSize
+	}
+	CatalogPlayerKeywords = func(key string) []string {
+		if d := catalogDef(key); d != nil {
+			return d.PlayerKeywords
+		}
+		return nil
 	}
 	CatalogWantsDistinctColors = func(key string) bool {
 		d := catalogDef(key)

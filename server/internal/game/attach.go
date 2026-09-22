@@ -344,6 +344,25 @@ func (g *Game) attachmentLegalLocked(c *Card) bool {
 			}
 		}
 	}
+	// CR 702.16i's attachment half: the host may be a PLAYER, and a
+	// player with protection from everything can't be enchanted by an
+	// Aura (#1197, ADR 0072's 2026-09-22 amendment). "Enchant player"
+	// is Curse of Opulence's clause and the reason Card.AttachedTo is
+	// a TargetRef rather than a card ID at all.
+	//
+	// Equipment and Fortifications never reach this: CR 301.5c and
+	// CR 301.6c both attach only to a permanent, so a player host is
+	// always an Aura's.
+	//
+	// The test is against the ATTACHMENT, not against its controller,
+	// for the same reason the permanent branch above is.
+	if c.AttachedTo.Kind == TargetPlayer {
+		if host := g.playerByIDLocked(c.AttachedTo.ID); host != nil {
+			if _, refused := g.PlayerProtectedFromLocked(host, SourceCharacteristics(c)); refused {
+				return false
+			}
+		}
+	}
 	if c.IsAura() {
 		if spec := TargetSpecFor(CatalogKey(*c)); spec != nil {
 			return g.specMatchLocked(SourceChooser(c.Controller), spec, c.AttachedTo, false)
