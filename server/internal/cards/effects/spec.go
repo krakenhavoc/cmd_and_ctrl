@@ -875,6 +875,29 @@ type ManaAbility struct {
 	Produced string
 	Label    string
 
+	// Exhaust marks an exhaust mana ability — "Exhaust — {G}, {T}:
+	// Add three mana of any one color. (Activate each exhaust ability
+	// only once.)" (#1183). The twin of ActivatedAbility.Exhaust, and
+	// one declarative bit for the same reason: the keyword IS the
+	// rule, and a card that wrote its own "have I done this yet"
+	// check would be writing a rule the engine enforces in five
+	// places anyway.
+	//
+	// Loot, the Pathfinder is the one printed card that wants it, and
+	// prints exhaust three times — once here and twice on ordinary
+	// activated abilities, which is exactly why the record is keyed by
+	// the ability's LABEL and not by the permanent.
+	//
+	// Register enforces the same two rules it enforces on the
+	// activated list, ACROSS BOTH LISTS: the label must print the
+	// keyword (and a label that prints it must set the bit), and no
+	// two exhaust abilities on one card may share a label — they would
+	// share one use.
+	//
+	// See game.ManaAbilityShape.Exhaust and ADR 0020's exhaust
+	// addendum.
+	Exhaust bool
+
 	// Rider is everything the oracle text says AFTER the "Add …"
 	// clause, as one callback: the painland cycle's "This land deals
 	// 1 damage to you", Ancient Tomb's "deals 2 damage to you". It

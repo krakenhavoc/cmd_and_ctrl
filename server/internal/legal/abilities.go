@@ -807,6 +807,14 @@ func (e *enumerator) manaMoves() {
 		}
 		abilities := game.ManaAbilitiesForCard(*source)
 		for idx, ab := range abilities {
+			// #1183: "Activate each exhaust ability only once", and
+			// this object has. First, exactly as ActivateManaAbility
+			// checks it, and through the same one reader — #544's
+			// rule is that a bot is never offered a move the engine
+			// refuses.
+			if g.ManaAbilityExhausted(source.InstanceID, ab) {
+				continue
+			}
 			// #352: the activation gate first, exactly as
 			// ActivateManaAbility checks it — Temple of the False
 			// God is not a move with four lands out.

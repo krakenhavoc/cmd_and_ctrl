@@ -153,6 +153,7 @@ func buildDef(spec Spec) *game.CardDef {
 				AddCounter:                a.Cost.AddCounter,
 				Produced:                  a.Produced,
 				Label:                     a.Label,
+				Exhaust:                   a.Exhaust,
 				Rider:                     a.Rider,
 				NarrowToCommanderIdentity: a.NarrowToCommanderIdentity,
 				Condition:                 a.Condition,

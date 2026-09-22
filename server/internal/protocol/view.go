@@ -2076,6 +2076,24 @@ type ManaAbilityView struct {
 	// stampActivatedAbilities (the pass with a game handle). Added
 	// with #743 on the owner's decision to grey both kinds of row.
 	ConditionUnmet bool `json:"condition_unmet,omitempty"`
+	// Exhausted is ActivatedAbilityView.Exhausted for a mana ability
+	// (#1183): an exhaust ability ("Activate each exhaust ability
+	// only once") this object has already activated, so the engine
+	// refuses it for the rest of this object's life. Loot, the
+	// Pathfinder's "Exhaust — {G}, {T}: Add three mana of any one
+	// color" is the one printed card.
+	//
+	// The SAME key and the same wire name the activated view uses, so
+	// the client's row logic is one structural predicate for both
+	// ability kinds and its ABILITY_EXHAUSTED string needed no
+	// sibling. Absent for every other mana ability, which is all of
+	// them.
+	//
+	// It is also the one greyed-row reason on a mana ability that the
+	// AUTO-TAPPER honours: a spent exhaust source is not planned and
+	// not counted as producible (CR 106.7), so the row being greyed
+	// and the cast being priced agree.
+	Exhausted bool `json:"exhausted,omitempty"`
 	// AddsNoMana is CR 903.4f (#844): this ability's printed text
 	// says "any color in your commander's color identity" and the
 	// controller has no commander, or a commander whose colour
@@ -3567,7 +3585,18 @@ func viewOfSpecialActions(g *game.Game, card game.Card, owner uuid.UUID) []Speci
 func stampManaConditions(g *game.Game, card game.Card, controller uuid.UUID, views []ManaAbilityView) {
 	raw := game.ManaAbilitiesForCard(card)
 	for i := range views {
-		if i >= len(raw) || raw[i].Condition == nil {
+		if i >= len(raw) {
+			continue
+		}
+		// #1183: the exhaust flag, stamped beside the condition
+		// because the client reads them off the same row and greys
+		// with the same code — and separately from it, because the
+		// two recover differently (a condition may hold again next
+		// turn; an exhaust only if the permanent becomes a new
+		// object). The one reader the engine, the enumerator and the
+		// auto-tapper all use.
+		views[i].Exhausted = g.ManaAbilityExhausted(card.InstanceID, raw[i])
+		if raw[i].Condition == nil {
 			continue
 		}
 		views[i].ConditionUnmet = !raw[i].Condition(g, controller, card.InstanceID)

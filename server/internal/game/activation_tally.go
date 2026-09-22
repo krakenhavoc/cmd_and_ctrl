@@ -66,14 +66,28 @@ import "github.com/google/uuid"
 // turn boundary either — that is what "for the whole game" means, and
 // the cost is one map entry per ability ever activated.
 //
-// # What it does not count yet
+// # Mana abilities write here too (#1183)
 //
-// Mana abilities. They take the other entry point (ActivateManaAbility,
-// CR 605.3a — no stack, no priority) and nothing writes here from it,
-// so ManaAbility carries no Exhaust marker and the combination is
-// unspellable rather than silently ignored. One printed card wants it
-// — Loot, the Pathfinder's "Exhaust — {G}, {T}: Add three mana of any
-// one color" — and it is named in ADR 0020's exhaust addendum.
+// They take the other entry point — ActivateManaAbility, CR 605.3a: no
+// stack, no priority, no announcement to hang a record on — so #1181
+// left them out and `effects.ManaAbility` carried no Exhaust marker at
+// all. Loot, the Pathfinder prints "Exhaust — {G}, {T}: Add three mana
+// of any one color" beside two ordinary exhaust abilities, so the
+// combination had to become spellable.
+//
+// TWO write sites for one activation kind, which is one more than the
+// CR 602 path needs and is the whole difficulty:
+//
+//   - ActivateManaAbility, the hand click, beside the same gate;
+//   - materializePlanLocked, the AUTO-TAPPER's executor, which taps a
+//     permanent and mints its mana directly rather than routing
+//     through ActivateManaAbility. A plan that spent an exhaust
+//     ability without recording it would hand the player the ability
+//     back, and the planner refuses to plan an exhausted one for the
+//     same reason it refuses a gated or a sick source.
+//
+// Both take the key with g.activationTallyKeyLocked before anything is
+// paid, for the reason spelled out below.
 
 // ActivationTally counts activations of one printed ability of one
 // object, in the two scopes the rules ask about.
@@ -159,10 +173,52 @@ func (g *Game) ActivatedThisTurn(source uuid.UUID, label string) int {
 //
 // Caller must hold g.mu.
 func (g *Game) AbilityExhausted(source uuid.UUID, ab ActivatedAbilityShape) bool {
-	if !ab.Exhaust {
+	return g.exhaustedLocked(source, ab.Exhaust, ab.Label)
+}
+
+// ManaAbilityExhausted is AbilityExhausted for the OTHER ability kind
+// (#1183). The same record, the same key, the same sentence — and one
+// more reader than its twin has, because a mana ability can be spent
+// by the auto-tapper as well as by a click:
+//
+//  1. ActivateManaAbility — refuses with ErrAbilityExhausted before
+//     any cost is validated, so a second click taps nothing;
+//  2. legal.manaMoves — does not enumerate the move;
+//  3. protocol's ManaAbilityView — stamps `exhausted`, and the client
+//     greys the row with the string it already has;
+//  4. the AUTO-TAPPER, both halves. gatherTapSources will not plan a
+//     spent ability as a mana source (through autoTapAbilityFor, the
+//     one picker the planner and the executor share) and
+//     materializePlanLocked re-asks before it taps, exactly as it
+//     re-asks the gate and the counter cost — a plan can arrive stale;
+//  5. ProducibleManaLocked — CR 106.7's "could produce", so a
+//     Reflecting Pool next to a spent Loot is not priced on mana Loot
+//     can never make again.
+//
+// The shapes are two structs and not one because the two ability kinds
+// are two structs everywhere else in the engine; the PREDICATE is one
+// function (exhaustedLocked), which is the part that must not drift.
+//
+// Caller must hold g.mu.
+func (g *Game) ManaAbilityExhausted(source uuid.UUID, ab ManaAbilityShape) bool {
+	return g.exhaustedLocked(source, ab.Exhaust, ab.Label)
+}
+
+// exhaustedLocked is the rule itself: an ability that prints the
+// keyword and whose (object, label) key has been written once is spent
+// for the rest of this object's life. "Activate each exhaust ability
+// only once" — one is already too many.
+//
+// False for every ability that is not an exhaust ability, which is all
+// of them but the marked ones, and it is the FIRST test so that the
+// ordinary permanent costs nothing but a bool read.
+//
+// Caller must hold g.mu.
+func (g *Game) exhaustedLocked(source uuid.UUID, exhaust bool, label string) bool {
+	if !exhaust {
 		return false
 	}
-	return g.ActivatedThisGame(source, ab.Label) > 0
+	return g.ActivatedThisGame(source, label) > 0
 }
 
 // resetActivationTurnTallyLocked empties the per-turn half and leaves

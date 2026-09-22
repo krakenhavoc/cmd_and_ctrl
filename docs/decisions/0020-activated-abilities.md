@@ -1335,7 +1335,7 @@ as a sorcery" and repeats every turn). All four `full`.
 
 ### Still out of scope
 
-- **The mana-ability half** ([#1183](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1183)). Loot, the Pathfinder (Decision 1). The auto-tapper is the reader with no non-mana counterpart: CR 106.7's "could produce" has to start answering no for a spent exhaust mana ability, or a cast prices itself on mana it cannot get.
+- **The mana-ability half.** ~~([#1183](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1183))~~ **Closed** — see the note of 2026-09-22 below.
 - **Cards that read the record from outside** ([#1184](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1184)). Rangers' Refueler and
   Afterburner Expert ("Whenever you activate an exhaust ability, …")
   want an event or a watch, not this map; Elvish Refueler ("you may
@@ -1350,3 +1350,164 @@ as a sorcery" and repeats every turn). All four `full`.
 - **Avatar Kuruk**'s "Exhaust — Waterbend {20}: Take an extra turn
   after this one" still waits on extra turns (#753) and on the
   waterbend cost, neither of which is this seam.
+
+## Note (2026-09-22, #1183): the mana half, and the two write sites
+
+**Status:** Accepted · 2026-09-22 · tracked on
+[#1183](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1183). This
+note closes the first bullet of "Still out of scope" above; every
+decision in the addendum stays accepted and unchanged.
+
+### Context
+
+Decision 1 above says mana abilities are deliberately not counted:
+they take the other entry point (`ActivateManaAbility`, CR 605.3a — no
+stack, no priority, no announcement to hang a record on), so
+`effects.ManaAbility` carried no `Exhaust` field and the combination
+was **unspellable** rather than silently ignored. One printed card
+wants it, and it is a Commander card people play:
+
+> **Loot, the Pathfinder** — `{2}{G}{U}{R}`, Legendary Creature —
+> Beast Noble, 2/4
+> Double strike, vigilance, haste
+> **Exhaust — {G}, {T}: Add three mana of any one color.**
+> Exhaust — {U}, {T}: Draw three cards.
+> Exhaust — {R}, {T}: Loot deals 3 damage to any target.
+
+It is also the printed example Decision 2 is shaped for — three
+exhaust abilities on one card, each activatable once — so it is the
+card most worth reaching.
+
+### Decision 1: the card side is the same bit, twice
+
+`ManaAbilityShape.Exhaust` / `effects.ManaAbility.Exhaust`, carried
+through `buildDef`'s mana projection. No new record, no new key, no
+per-card logic — the twin of `ActivatedAbilityShape.Exhaust`.
+
+The PREDICATE is one function and the two public readers are thin:
+
+```go
+func (g *Game) AbilityExhausted(source uuid.UUID, ab ActivatedAbilityShape) bool
+func (g *Game) ManaAbilityExhausted(source uuid.UUID, ab ManaAbilityShape) bool
+// both -> g.exhaustedLocked(source, ab.Exhaust, ab.Label)
+```
+
+Two entry points rather than one generic one because the two ability
+kinds are two structs everywhere else in the engine; what must not
+drift is the rule, and the rule is written once.
+
+`effects.Register`'s boot checks now run over **both** ability lists
+with **one** `seen` set. That shared set is the point: a mana ability
+and an activated ability on the same card write to the same key space
+on the same object, so two exhaust abilities that shared a label
+across the kinds would share one use, and two per-list sets would not
+have caught it.
+
+### Decision 2: TWO write sites, because the auto-tapper spends abilities
+
+The CR 602 path has one write site (`ActivateCatalogAbility`). The
+mana path has two, and this is the whole reason #1183 is its own issue
+rather than a line in #1181:
+
+1. **`ActivateManaAbility`** — the hand click. The key is taken before
+   anything is validated or paid (a Lotus Petal-shaped sacrifice cost
+   ends the object and carries `Card.ObjectEpoch` with it), the gate
+   is read from it immediately, and the record is written at the point
+   every gate has passed and the first payment is about to be made.
+   CR 605.3a makes the activation one indivisible step with no
+   priority window inside it, so there is no later "announcement
+   finished" to hang the write on — and an activation that begins
+   paying has happened. That is #1181's "an exhaust ability countered
+   on the stack is still spent", spelled for a path with no stack.
+2. **`materializePlanLocked`** — the AUTO-TAPPER's executor, which
+   taps a permanent and mints its mana **directly** rather than
+   routing through `ActivateManaAbility`. A plan that spent an exhaust
+   ability without recording it would hand the player the ability
+   straight back.
+
+Both writes are **unconditional**, exactly as the CR 602 one is:
+`Ever` is what exhaust reads and `Turn` is the per-turn count the
+"Activate only once each turn" cards will read, and both are one write
+at one call site.
+
+### Decision 3: five readers, and the planner is one of them
+
+`Game.ManaAbilityExhausted` is read by:
+
+1. `ActivateManaAbility` — refuses with `ErrAbilityExhausted` before
+   any cost is validated, so a second click taps nothing;
+2. `legal.manaMoves` — does not enumerate the move;
+3. `protocol`'s `ManaAbilityView` — stamps `exhausted`, under the SAME
+   wire name the activated view uses, so the client's row predicate is
+   structural and `ABILITY_EXHAUSTED` needed no sibling string;
+4. the **auto-tapper**, both halves, through the one picker the
+   planner (`gatherTapSources`) and the executor
+   (`materializePlanLocked`) share. `autoTapAbilityFor` became a
+   method for this: one of its exclusions is now a fact about the game
+   rather than about the ability shape. Putting it inside the picker
+   rather than beside the sickness and gate checks at the two call
+   sites is deliberate — a card whose FIRST mana ability is a spent
+   exhaust still auto-taps the second, which a per-source check
+   outside the picker would have got wrong;
+5. `ProducibleManaLocked` — CR 106.7's "could produce".
+
+### Decision 4: CR 106.7 answers no, and that is a declared narrowing
+
+`producible_mana.go`'s own docblock says costs and timing are not
+asked about: a tapped Island still offers `{U}`, a Temple of the False
+God its controller cannot activate still offers `{C}`, a false
+`Condition` is irrelevant. Read strictly, "Activate each exhaust
+ability only once" is an activation restriction of that same family,
+so CR 106.7 would still count a spent exhaust ability.
+
+**It answers no anyway**, and the reason is the direction of the
+error. The readers of CR 106.7 are Exotic Orchard, Reflecting Pool and
+Fellwar Stone, and their answers price casts: a Pool deriving a colour
+from a Loot whose exhaust is already gone is a colour the auto-tapper
+cannot actually produce, and the executor would tap the Pool for
+nothing on the way to a cast it cannot pay. Answering no is one colour
+short — the WEAKER-than-printed direction, which is the same direction
+the recursion guard in that file is already short in — and it keeps
+CR 106.7 and the auto-tapper saying the same thing about the same
+permanent.
+
+It is the only place in that file where a permanent can be "could
+produce nothing" for a reason that is not about its output, and it is
+written down there as well as here.
+
+### Consequences
+
+- The activation record now covers **every** activation the engine
+  performs. `ActivatedThisTurn` consequently has a mana-side number
+  too, which the "Activate only once each turn" seam row can read when
+  its cards are written.
+- Nothing about the snapshot changes: `Game.Activations` was already
+  `carried` (#1020) and already rewound with `Clone` / `RestoreFrom`.
+  The mana path writes to the same maps, which the tests re-assert on
+  this path because it writes its own record and could have got the
+  key wrong on its own.
+- Nothing on the wire moves in a breaking direction: `exhausted` is
+  one more `omitempty` flag on `ManaAbilityView`, absent for every
+  mana ability but a spent exhaust one.
+
+### Cards
+
+**Loot, the Pathfinder**, `full`. Its second and third abilities are
+ordinary activated abilities on existing primitives (draw three; three
+damage to any target), and "Add three mana of any one color" is
+`OneColorOfAmount(3)` — ONE colour pick that adds three tokens (#742),
+not three independent picks.
+
+The auto-tapper never plans Loot's mana ability, and that is **not** a
+simplification of exhaust: a mana ability with a MANA component in its
+cost (`{G}` here) is excluded from planning outright, because the
+planner would have to solve a second cost to fund the first
+(`autoTapAbilityFor`, unchanged since S32). The player floats the `{G}`
+and clicks, which is how the card is played on paper. The exhaust
+refusal sits in that same picker, so the day a planner learns to fund
+a mana cost, a spent Loot is already refused.
+
+### Still out of scope
+
+Unchanged from the addendum above: the cards that read the record from
+OUTSIDE (#1184) and Avatar Kuruk's extra turn (#753).

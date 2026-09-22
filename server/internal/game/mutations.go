@@ -1485,7 +1485,7 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 		if card == nil || card.Tapped {
 			continue
 		}
-		ab := autoTapAbilityFor(ManaAbilitiesForCard(*card))
+		ab := g.autoTapAbilityFor(cardID, ManaAbilitiesForCard(*card))
 		if ab == nil {
 			continue
 		}
@@ -1570,6 +1570,20 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 				continue
 			}
 		}
+		// #1183: the SECOND write site for a mana activation, and the
+		// one with no counterpart on the CR 602 path. This executor
+		// taps the permanent and mints its mana directly rather than
+		// routing through ActivateManaAbility, so the record that path
+		// writes does not cover it — a plan that spent an exhaust
+		// ability without recording it would hand the player the
+		// ability straight back on the next cast.
+		//
+		// Written HERE, at the last point before the permanent is
+		// committed and after every re-asked gate above: the tap IS
+		// the payment, and nothing below this line can decline the
+		// activation. autoTapAbilityFor has already refused a spent
+		// ability, so this only ever writes a first use.
+		g.noteAbilityActivationLocked(g.activationTallyKeyLocked(cardID, ab.Label))
 		card.Tapped = true
 		// #763: the permanent as it was when it was tapped for mana,
 		// for the triggered mana abilities fired below. Copied for the
@@ -4738,6 +4752,24 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	ab := abilities[abilityIdx]
 	// --- gate ----------------------------------------------------
 	//
+	// #1183: "Activate each exhaust ability only once", the mana
+	// half of #1181. The key is taken HERE, before anything is
+	// validated or paid, for the reason activationTallyKeyLocked
+	// gives: a cost that moves the source (a Lotus Petal's sacrifice,
+	// a self-bounce) ends the object and carries Card.ObjectEpoch
+	// with it, so a key built after the payment would be written
+	// against an object that never had the ability. The same key is
+	// read now and written at the bottom, so the gate and the record
+	// cannot address different things.
+	//
+	// Before the Condition, which is the order ActivateCatalogAbility
+	// checks in: a card that prints both is refused as exhausted
+	// rather than as ungated, because that is the answer that will
+	// still be true tomorrow.
+	activationKey := g.activationTallyKeyLocked(cardID, ab.Label)
+	if g.ManaAbilityExhausted(cardID, ab) {
+		return ErrAbilityExhausted
+	}
 	// "Activate only if you control five or more lands" (Temple of
 	// the False God), "…three or more artifacts" (Mox Opal). CR
 	// 602.5: an activation restriction is checked before anything
@@ -4859,6 +4891,21 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	// "Add {C} for each storage counter removed this way" knows how
 	// many came off.
 	paid := PaidCost{}
+
+	// #1183: the activation record, in both scopes, written HERE —
+	// the moment every gate and every cost has been checked and the
+	// first payment is about to be made. CR 605.3a makes activating a
+	// mana ability one indivisible step with no stack and no priority
+	// window inside it, so there is no later "announcement finished"
+	// to hang this on, and an activation that begins paying has
+	// happened. That is the mana-ability spelling of #1181's "an
+	// exhaust ability countered on the stack is still spent".
+	//
+	// Unconditional, exactly as ActivateCatalogAbility's write is:
+	// `Ever` is what exhaust reads and `Turn` is the per-turn count
+	// the "Activate only once each turn" cards will read, and both are
+	// one write at one call site.
+	g.noteAbilityActivationLocked(activationKey)
 
 	// --- pay ----------------------------------------------------
 	//
