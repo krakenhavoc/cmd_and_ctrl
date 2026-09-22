@@ -56,22 +56,9 @@ func EntersAsCopyOf(
 				ev.NewZone == game.ZoneBattlefield &&
 				src != nil && ev.CardID == src.InstanceID
 		},
-		Controller: func(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
-			// The player who cast it chooses. ev.Actor is the
-			// announce-time controller the resolution path stamps;
-			// the card's own controller / owner is the fallback for
-			// an entry driven by something else.
-			if ev != nil && ev.Actor != uuid.Nil {
-				return ev.Actor
-			}
-			if src == nil {
-				return uuid.Nil
-			}
-			if src.Controller != uuid.Nil {
-				return src.Controller
-			}
-			return src.Owner
-		},
+		// The player who cast it chooses (helpers.go, shared with the
+		// two entry replacements that ask their own question).
+		Controller: EnteringPermanentChooser,
 		CopySelector: &game.CopySelector{
 			Candidates: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) []uuid.UUID {
 				controller := uuid.Nil

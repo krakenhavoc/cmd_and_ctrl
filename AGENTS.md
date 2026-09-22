@@ -2866,6 +2866,37 @@ the ten-Temple cycle in `temples.go` combines all three (enters tapped,
 an ETB scry trigger on the stack, pipe-syntax dual) and is written as a loop over a table, since
 ten near-identical files is ten places to fix one mistake.
 
+**"…unless" and "if you don't": a conditional tapland is one of three
+clauses, and picking the wrong one is the usual mistake.** All three
+are entry replacements on `Spec.Replacements`; what differs is WHO
+decides and WHAT the decision costs:
+
+| Printed text | Clause | Who decides |
+|---|---|---|
+| "enters tapped unless you control a Swamp" (checkland, battle land, bond land) | `SelfEntersTappedUnless(cond)` ([tapland_helpers.go](server/internal/cards/effects/tapland_helpers.go)) | nobody — the board does |
+| "you may pay 2 life. If you don't, it enters tapped" (shockland) | `EntersTappedUnlessYouPayLife(name, 2)` ([shocklands.go](server/internal/cards/effects/shocklands.go)) | the player, for life |
+| "you may reveal an Island or Swamp card from your hand. If you don't, it enters tapped" (reveal-land) | `EntersTappedUnlessYouRevealFromHand(name, clause, matches)` ([reveal_lands.go](server/internal/cards/effects/reveal_lands.go)) | the player, for nothing |
+
+A CONDITION goes in `AppliesTo`, never inside `Replace`, so a land that
+meets it contributes no applicable replacement at all — otherwise CR
+616 asks the controller to order an effect that was always going to do
+nothing. A DECISION is the opposite: the replacement is always
+applicable and the question lives inside it, because a player may
+decline even when they could say yes (bluffing an empty hand is a real
+play, and the shockland at 20 life may still not want to pay).
+
+The reveal clause is `game.EntryHandReveal{Matches, Min, Max, Question,
+Then}` (#1198, [ADR 0013](docs/decisions/0013-replacement-effects.md)
+§5z). `Matches` is a `func(game.Card) bool` over a card in HAND, so it
+reads printed characteristics — `IsLandWithSubtype("island")` and
+friends — and it must not take a `*Game` (it runs under the read lock
+inside the bot enumerator as well as under the write lock on submit).
+Revealing costs nothing and moves nothing (CR 701.20b): the card stays
+in hand, the whole table becomes entitled to read it, and the engine
+does the reveal itself. Do not write a prompt in the card file —
+there is no per-card prompt code in this family, the same way there is
+none in the shockland one.
+
 **An alternative cast cost (S22):** "you may cast this spell for its
 <keyword> cost **rather than** its mana cost" (CR 118.9) goes in
 `Spec.AlternativeCosts`, built from the constructors in
