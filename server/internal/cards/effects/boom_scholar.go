@@ -38,15 +38,21 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // gain it, and a Vehicle counts whether or not it is currently
 // animated — "creatures AND Vehicles" is the printed answer to
 // exactly that question.
+//
+// BOTH DECLARED CAVEATS ARE CLEARED. #1207 fixed their root causes —
+// ActivatedAbilityView / ManaAbilityView now stamp ChargedManaCost
+// alongside the printed cost, and Game.ManaAbilityManaCostForEffect
+// runs the same CR 601.2f pass over a CR 605 mana ability's own cost
+// — without this file changing at all: the CostModifier below already
+// read q.Ability.Exhaust and "another permanent you control", and
+// once CostQuery.Ability.Mana stopped being permanently false, both
+// clauses simply started reaching a mana ability too. See
+// boom_scholar_test.go for the closing proof.
 func init() {
 	Register(Spec{
 		OracleID:     "48296cc0-0141-47c6-9ec8-ada6171fee6f",
 		Name:         "Boom Scholar",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The discount applies when you activate the ability, but the ability's row in the menu still lists the printed cost.",
-			"Abilities that make mana aren't discounted.",
-		},
+		Completeness: CompletenessFull,
 		CostModifiers: []game.CostModifier{
 			ActivationCostsLess(2,
 				"Exhaust abilities of other permanents you control cost {2} less to activate.",
