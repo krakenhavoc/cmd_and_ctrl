@@ -237,6 +237,34 @@ type StaticAbility struct {
 	// gated-off static is never gathered, never sorted into a bucket
 	// and never applied. See designations.go and ADR 0071.
 	ActiveWhen Designation
+
+	// Zones is WHERE this static functions from (CR 113.6, #1221).
+	// Nil means the BATTLEFIELD, which is every static written
+	// before this field existed and nearly every static there will
+	// ever be.
+	//
+	// The sibling of ActivatedAbilityShape.Zones (ADR 0062
+	// Decision 1) and TriggeredAbility.Zones (#925), with the same
+	// shape and the same default for the same reason: the dimension
+	// is per-DECLARATION, because a card may print one ability that
+	// works in a graveyard beside one that works on the battlefield.
+	//
+	// `{ZoneGraveyard}` is the Judgment incarnations — "As long as
+	// Anger is in your graveyard and you control a Mountain,
+	// creatures you control have haste" (CR 113.6c). A static that
+	// declares the graveyard does NOT also apply from the
+	// battlefield, exactly as a cycling ability does not also work
+	// on one: the declared list IS the list, and Anger's printed
+	// haste on the battlefield is a separate keyword on the card.
+	//
+	// Read by activeStaticAbilitiesLocked, which gathers the
+	// battlefield walk and one narrow declared-zone walk
+	// (static_zones.go) behind a boot-time index, so a table with
+	// no such card in any graveyard pays one map lookup.
+	//
+	// effects.Register refuses a zone the gather does not walk, so a
+	// declaration the engine would silently ignore fails at boot.
+	Zones []ZoneKind
 }
 
 // staticContinuousEffect is the internal `ContinuousEffect` adapter
@@ -342,6 +370,13 @@ func (g *Game) activeStaticAbilitiesLocked() []ContinuousEffect {
 	// zone. One more source list into the same gather, never a second
 	// pass — see emblem.go.
 	out = append(out, g.emblemContinuousEffectsLocked()...)
+	// #1221 / CR 113.6c: statics that function from a zone other than
+	// the battlefield — the Judgment incarnations' "as long as this
+	// card is in your graveyard". One more source list into the same
+	// gather, never a second pass, and behind a boot-time index so a
+	// table with no such card pays one slice read. See
+	// static_zones.go.
+	out = append(out, g.declaredZoneStaticsLocked()...)
 	if g.Battlefield == nil || CatalogStaticAbilities == nil {
 		return out
 	}
@@ -375,6 +410,17 @@ func (g *Game) activeStaticAbilitiesLocked() []ContinuousEffect {
 			ts = src.AttachedAt
 		}
 		for _, ab := range abilities {
+			// #1221 / CR 113.6: a static that declares another zone
+			// does not ALSO apply from the battlefield. The declared
+			// list IS the list — Anger's anthem is a graveyard clause
+			// and its own haste is a separate printed keyword, so a
+			// battlefield Anger giving the team haste would be the
+			// card saying something it does not. One comparison per
+			// ability, and the same predicate the declared-zone
+			// gather asks.
+			if !StaticFunctionsFromZone(ab, ZoneBattlefield) {
+				continue
+			}
 			out = append(out, staticContinuousEffect{
 				ability:   ab,
 				source:    src,
