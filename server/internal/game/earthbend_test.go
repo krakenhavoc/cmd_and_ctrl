@@ -573,6 +573,44 @@ func TestABouncedEarthbentLandIsNotReturned(t *testing.T) {
 	}
 }
 
+// TestAReturnWhoseLandHasMovedOnIsSilent is the CR 608.2b posture on
+// the trigger's own effect: the land dies, and somebody reanimates it
+// out of the graveyard before the return resolves. The object the
+// trigger names is not where it was left, so the return does NOTHING
+// — silently. An instruction that legally does nothing is a
+// resolution, not a card that threw, and an EventEffectError here
+// would fail a catalog soak over a perfectly legal board.
+func TestAReturnWhoseLandHasMovedOnIsSilent(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	land := earthbendTestLand(t, g, me, "Forest")
+
+	earthbend(t, g, me, land, 3)
+	g.WithWriteLock(func() {
+		if err := g.DestroyPermanentForEffect(land); err != nil {
+			t.Fatalf("DestroyPermanentForEffect: %v", err)
+		}
+		// The trigger is on the stack now, and the land is in the
+		// graveyard. Take it out from under the trigger.
+		if err := g.ReturnFromGraveyardUnderControlForEffect(land, ZoneBattlefield, me.ID); err != nil {
+			t.Fatalf("ReturnFromGraveyardUnderControlForEffect: %v", err)
+		}
+	})
+	base := len(g.Events)
+	settleStack(t, g)
+
+	if countBattlefieldNamed(g, "Forest") != 1 {
+		t.Errorf("%d Forests on the battlefield, want 1 — the return must not double the land",
+			countBattlefieldNamed(g, "Forest"))
+	}
+	for _, ev := range g.Events[base:] {
+		if ev.Kind == EventEffectError {
+			t.Errorf("the return errored on a land that had moved on: %q", ev.ErrorMsg)
+		}
+	}
+	assertTableIsFree(t, g)
+}
+
 // --- the keyword-action window ---------------------------------------
 
 // TestTheKeywordActionWindowCanRewriteEarthbendsCount is what makes

@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"errors"
+
+	"github.com/google/uuid"
+)
 
 // earthbend.go — the CR 701 keyword action Earthbend N (#1178).
 //
@@ -365,10 +369,14 @@ func earthbendReturnMatches(ev Event, dt *DelayedTrigger, _ *Game) bool {
 // Targets, the way every delayed trigger's payload does.
 //
 // A card that is no longer in a graveyard or in exile is skipped
-// silently — CR 608.2b's posture and `returnExiledCardsToOwners`'s
-// contract. That covers the second trigger of a doubled return, a
-// land somebody reanimated first, and a land whose graveyard was
-// exiled wholesale.
+// SILENTLY — CR 608.2b's posture and `returnExiledCardsToOwners`'s
+// contract — which is why `ErrCardNotFound` is swallowed here and
+// nothing else is. That covers a land somebody reanimated out of the
+// graveyard first, a land whose graveyard was exiled wholesale, and
+// (if a future per-instance queue ever schedules two) the second
+// trigger of a doubled return. An instruction that legally does
+// nothing is a resolution, not a card that threw: an EventEffectError
+// here would fail a catalog soak over a board that is perfectly legal.
 //
 // Caller holds g.mu (it runs as a stack item's Effect).
 func returnEarthbentLandTapped(g *Game, item *StackItem) error {
@@ -376,7 +384,8 @@ func returnEarthbentLandTapped(g *Game, item *StackItem) error {
 		if t.Kind != TargetCard || t.ID == uuid.Nil {
 			continue
 		}
-		if _, err := g.ReturnToBattlefieldForEffect(t.ID, uuid.Nil, true); err != nil {
+		_, err := g.ReturnToBattlefieldForEffect(t.ID, uuid.Nil, true)
+		if err != nil && !errors.Is(err, ErrCardNotFound) {
 			return err
 		}
 	}
