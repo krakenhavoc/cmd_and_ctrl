@@ -585,12 +585,12 @@ what `CanonicalKeywords` refuses a bare "protection" for.
 
 ### A4. What this does NOT build, stated the way §10 states things
 
-- **Phasing (CR 702.26)** — not modelled anywhere in this engine
-  (`activation_tally.go` says so and has since S38). Teferi's
+- **Phasing (CR 702.26), #1199** — not modelled anywhere in this
+  engine (`activation_tally.go` says so and has since S38). Teferi's
   Protection's "all permanents you control phase out" ships as a
   caveat, not as a half-built phase. It is the larger half of that
   card and it is a seam of its own.
-- **"Your life total can't change"** — a replacement effect with a
+- **"Your life total can't change", #1200** — a replacement effect with a
   duration longer than end of turn. `TurnScopedReplacements` has no
   duration field at all, which ADR 0063 Decision 8 states as
   deliberate ("no card needs a longer-lived replacement yet"). This
@@ -602,9 +602,9 @@ what `CanonicalKeywords` refuses a bare "protection" for.
 - **A player losing an ability.** CR 613 layer 6 can strip a
   permanent's abilities; there is no equivalent for a player and no
   card asks for one.
-- **The client badge.** The wire carries a player's tokens
+- **The client badge, #1201.** The wire carries a player's tokens
   (`PlayerView.keywords`); rendering a chip beside the life total is
-  a client change filed separately.
+  a client-only change.
 
 ### A5. Consequences
 
