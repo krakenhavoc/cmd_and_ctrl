@@ -101,8 +101,14 @@ const SYMBOL = /\{([^}]+)\}/g;
  *
  * `cant_activate_mana` is a card-level restriction rather than an
  * ability-level one, so it is checked here.
+ *
+ * Exported since #1162: the attack-tax picker's lock-a-land row list
+ * (AttackDeclarationModal.svelte) reads the same "is this a live
+ * source right now" question this module already answers for the
+ * opponent-panel mana count, rather than a second copy of the
+ * abilityBlocked read.
  */
-function usableManaAbilities(c: CardView): NonNullable<CardView["mana_abilities"]> {
+export function usableManaAbilities(c: CardView): NonNullable<CardView["mana_abilities"]> {
   if (c.restrictions?.includes("cant_activate_mana")) return [];
   if (c.restrictions?.includes("cant_activate")) return [];
   const tapped = c.tapped === true;

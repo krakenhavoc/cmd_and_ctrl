@@ -128,24 +128,58 @@ export type AttackAllParams = {
   // should not then fail because the mana is in lands rather than in
   // the pool. It is inert at a table with no attack tax on it.
   auto_tap: true;
+  // #1162: permanents the auto-tapper must not reach for when paying
+  // the tax — the attack-tax picker's lock-a-land toggle
+  // (AttackDeclarationModal.svelte), the declaration-shaped sibling
+  // of the cast modal's `locked_sources`. Omitted rather than sent
+  // empty, matching every other caller of this field on the wire.
+  locked_sources?: string[];
 };
 
+// AttackAllOptions narrows a declaration built from an AttackAllPlan.
+// Both fields are additive over the "attack with everything" default:
+// omitting `only` keeps every eligible creature, and omitting
+// `lockedSources` keeps the auto-tapper unrestricted.
+export interface AttackAllOptions {
+  // #1162: restrict the declaration to exactly these instance IDs
+  // rather than every eligible creature — the attack-tax picker's
+  // chosen subset, offered when "attack with all" is refused for want
+  // of the CR 508.1a tax (ADR 0080) and the player has to choose which
+  // attacks to pay for instead. An ID the plan no longer considers
+  // eligible (a stale selection after a snapshot changed the board) is
+  // dropped rather than sent, the same silent-skip posture
+  // declare_attackers itself takes on the server.
+  only?: readonly string[];
+  // #1162: locked sources for the same declaration, carried straight
+  // through to AttackAllParams.locked_sources.
+  lockedSources?: readonly string[];
+}
+
 // attackAllParams builds the action payload aiming every eligible
-// creature at one named seat. Returns null when there is nothing to
-// send, so callers never fire an empty batch the server would reject.
+// creature — or, with `opts.only`, an explicit subset of them — at one
+// named seat. Returns null when there is nothing to send, so callers
+// never fire an empty batch the server would reject.
 export function attackAllParams(
   plan: AttackAllPlan,
   defenderSeatID: string,
+  opts: AttackAllOptions = {},
 ): AttackAllParams | null {
-  if (plan.eligible.length === 0) return null;
   if (!plan.defenders.some((s) => s.id === defenderSeatID)) return null;
-  return {
-    attackers: plan.eligible.map((c) => ({
+  const attackers = opts.only
+    ? plan.eligible.filter((c) => opts.only!.includes(c.instance_id))
+    : plan.eligible;
+  if (attackers.length === 0) return null;
+  const params: AttackAllParams = {
+    attackers: attackers.map((c) => ({
       attacker: c.instance_id,
       target: defenderSeatID,
     })),
     auto_tap: true,
   };
+  if (opts.lockedSources && opts.lockedSources.length > 0) {
+    params.locked_sources = [...opts.lockedSources];
+  }
+  return params;
 }
 
 // attackTaxOn is the CR 508.1a price of attacking one seat, read off
@@ -164,26 +198,33 @@ export function attackTaxOn(view: GameView | null | undefined, defenderSeatID: s
   return row?.tax ?? "";
 }
 
-// attackAllTaxLabel is the clause the attack-all control appends when
-// the target taxes attacks: "costs {2} each, {2}{2}{2} for all 3".
-// Empty when the attack is free, so the caller drops the clause rather
-// than printing a stray separator.
+// attackTaxLabelForCount is attackAllTaxLabel's arithmetic,
+// parameterised by an arbitrary attacker count rather than
+// `plan.eligible.length` — factored out for #1162's subset picker,
+// whose running total changes as the player checks attackers on and
+// off rather than always naming the whole eligible set.
 //
 // The TOTAL is not re-derived from the per-creature string — it is
 // that string repeated, which is exactly what the server charges and
 // concatenates (three attackers into Propaganda is "{2}{2}{2}"). No
 // arithmetic here means no way for the client to disagree with the
 // price it is about to commit the player to.
+export function attackTaxLabelForCount(each: string, n: number): string {
+  if (!each || n <= 0) return "";
+  if (n === 1) return `costs ${each}`;
+  return `costs ${each} each, ${each.repeat(n)} for all ${n}`;
+}
+
+// attackAllTaxLabel is the clause the attack-all control appends when
+// the target taxes attacks: "costs {2} each, {2}{2}{2} for all 3".
+// Empty when the attack is free, so the caller drops the clause rather
+// than printing a stray separator.
 export function attackAllTaxLabel(
   view: GameView | null | undefined,
   plan: AttackAllPlan,
   defenderSeatID: string,
 ): string {
-  const each = attackTaxOn(view, defenderSeatID);
-  if (!each) return "";
-  const n = plan.eligible.length;
-  if (n <= 1) return `costs ${each}`;
-  return `costs ${each} each, ${each.repeat(n)} for all ${n}`;
+  return attackTaxLabelForCount(attackTaxOn(view, defenderSeatID), plan.eligible.length);
 }
 
 // blockedSummary renders the "why not everything" hint: counts by
