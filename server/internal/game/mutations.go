@@ -1514,6 +1514,18 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 // one activation of such a source is one pick and a second greedy
 // walk could reach a different answer than the solver did.
 //
+// #1215: a source whose cost eats it (a Treasure, a Lotus Petal) is
+// SACRIFICED here, in the component order ActivateManaAbility pays in
+// — counters, then the tap, then the sacrifice, then the mana — and
+// the sacrifice's legality is re-asked for the same reason the gate,
+// the sickness and the counter cost are: a plan can arrive stale. The
+// dies-triggers it queues are NOT drained here. Every caller drains
+// them the moment a player would next receive priority (CastSpell,
+// ActivateCatalogAbility and the special-action verb each end with
+// runStateChecksLocked), which is what puts a Blood Artist trigger
+// ABOVE the spell the Treasure was cracked to cast rather than under
+// it.
+//
 // Skips PendingChoiceMana entirely — the auto-tapper's contract
 // is "no further player decisions required". Caller must hold
 // g.mu and have validated the plan via autoTapLocked.
@@ -1530,6 +1542,17 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 			}
 		}
 		if card == nil || card.Tapped {
+			continue
+		}
+		// #1215: control, re-asked here because the plan may be
+		// stale. gatherTapSources only ever offers the payer's own
+		// permanents, and a source that has changed hands since is
+		// not one of them — tapping it would be somebody else's
+		// permanent spent on this cast, and CR 701.21a says a
+		// sacrifice cost can only eat what you control, so the
+		// component this function now pays makes the re-check load-
+		// bearing rather than tidy.
+		if card.Controller != p.ID {
 			continue
 		}
 		ab := g.autoTapAbilityFor(p.ID, *card, ManaAbilitiesForCard(*card))
@@ -1563,6 +1586,19 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 		// cannot charge would be the strand this whole function
 		// avoids.
 		if !manaCounterCostPlannable(card, ab) {
+			continue
+		}
+		// #1215: the sacrifice-self component, resolved to the
+		// concrete list BEFORE anything is paid and by the SAME
+		// validator all three cost sites share, so the auto-tapper
+		// cannot grow a second opinion about what a sacrifice cost
+		// eats. SacrificeOther is nil by construction —
+		// autoTapAbilityFor refuses a source that carries one — which
+		// is why no SacrificeIDs are named and none can be demanded.
+		sacrifices, serr := g.validateSacrificeCostLocked(p.ID, cardID, AbilityCost{
+			SacrificeSelf: ab.SacrificeCost,
+		}, nil)
+		if serr != nil {
 			continue
 		}
 		counterPaid := PaidCost{}
@@ -1639,6 +1675,28 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 		// board.
 		tappedForMana := *card
 		g.EmitEvent(Event{Kind: EventTapCard, Actor: p.ID, CardID: cardID})
+		// #1215: the sacrifice, AFTER the tap and BEFORE the mana —
+		// the component order ActivateManaAbility pays in, and for
+		// the same reason: the tap has to happen while the permanent
+		// is still on the battlefield, and the mana lands in the pool
+		// after the whole cost is paid because CR 605.3b makes the
+		// payment and the production one atomic step.
+		//
+		// A failed payment leaves the source tapped and mints nothing.
+		// That is the honest answer rather than a tidy one: the tap
+		// has already been emitted and a "whenever this becomes
+		// tapped" trigger has already seen it, so unwinding it here
+		// would be rewriting history a watcher has read.
+		//
+		// From here on `card` is DANGLING when the cost ate the
+		// source — the battlefield slice it points into has been
+		// rewritten. Nothing below reads it: the mana half works off
+		// cardID, ab and tappedForMana.
+		if len(sacrifices) > 0 {
+			if err := g.payCostSacrificesLocked(sacrifices); err != nil {
+				continue
+			}
+		}
 		// #1184: the same two stamps the CR 602 announcement carries,
 		// so "whenever you activate an exhaust ability" sees Loot, the
 		// Pathfinder's exhaust MANA ability through the auto-tapper as
@@ -1693,12 +1751,24 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 					Source:       cardID,
 					Restrictions: restrictionsFor(g, ab, p.ID, cardID),
 					// #1212: what the source WAS, snapshotted off the
-					// copy taken before the tap. The auto-tapper never
-					// plans a sacrifice cost (autoTapAbilityFor
-					// refuses one), so the permanent is still here —
-					// but it is read off the same copy the triggered
-					// mana abilities below use, so the two can never
-					// disagree about the permanent they describe.
+					// copy taken before the tap — the same copy the
+					// triggered mana abilities below use, so the two
+					// can never disagree about the permanent they
+					// describe.
+					//
+					// #1215 made that copy LOAD-BEARING here rather
+					// than merely consistent. This line used to be
+					// able to say "the auto-tapper never plans a
+					// sacrifice cost, so the permanent is still
+					// here"; it no longer can. The plan's own
+					// sacrifice runs between the tap and this mint,
+					// so by now a planned Treasure is in a graveyard
+					// and a Treasure TOKEN has ceased to exist
+					// (CR 111.7). Reading `tappedForMana` is what
+					// makes "if mana from a Treasure was spent"
+					// answerable on the auto-tap path at all —
+					// exactly the reason ActivateManaAbility takes
+					// its own snapshot before paying.
 					SourceKinds: manaSourceKindsOf(tappedForMana),
 				})
 				g.EmitEvent(Event{Kind: EventManaAdded, Actor: p.ID, Source: cardID, Colors: []string{color}})

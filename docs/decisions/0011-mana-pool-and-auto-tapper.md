@@ -250,7 +250,9 @@ catalog-bound behaviour without importing the real catalog.
 - Mana abilities are tap-cost-only in S15. Sacrifice-cost
   abilities (Lotus Petal) are explicitly rejected; the spec
   exists but the activation path returns `ErrInvalidParam` so
-  a future Lotus Petal entry fails loudly.
+  a future Lotus Petal entry fails loudly. *(Superseded: the
+  activation path since S21 sub-PR 1, the PLANNER by the
+  2026-09-22 amendment below.)*
 - The auto-tap-preview lock UI is **modal-internal** — clicking
   a battlefield land before opening the modal does not pre-lock
   it. A "battlefield-level lock mode" is plausible follow-up
@@ -287,3 +289,135 @@ catalog-bound behaviour without importing the real catalog.
 - **S19 (triggered abilities)** picks up "whenever you tap a
   land for mana" triggers — the EventManaAbilityActivated +
   EventManaAdded event log is the integration point.
+
+---
+
+## Amendment (2026-09-22, #1215): the planner may pay a cost that eats the source, and pays it last
+
+Decision 11's third bullet said "sacrifice-cost abilities are explicitly
+rejected". The ACTIVATION half of that stopped being true in S21 sub-PR 1,
+which made a Treasure, a Lotus Petal and an Eldrazi Spawn really crack for
+mana. The PLANNER half stayed, as one line at the top of `autoTapAbilityFor`:
+
+```go
+if !a.TapCost || a.SacrificeCost {
+    continue
+}
+```
+
+That folds two unlike clauses into one exclusion.
+`ManaAbilityShape.SacrificeOther` — Ashnod's Altar's "Sacrifice a creature" —
+asks WHICH permanent dies, and naming one is a decision the auto-tapper's
+standing contract ("no further player decisions and no hidden costs") forbids
+it to make. `ManaAbilityShape.SacrificeCost` eats the SOURCE: it names nothing,
+asks nothing, and `ActivateManaAbility` pays it off the source's own ID. The
+half that asks nothing was excluded with the half that asks, and the result was
+the #273 failure shape on the commonest token in the format — three Treasures
+and no untapped lands read as unpayable to the cast preview, to the strict cast
+gate and to the legal-move enumerator, so no bot ever cracked a Treasure to
+cast anything.
+
+**What changed.**
+
+1. **The exclusion splits.** `a.SacrificeOther != nil` still drops the source;
+   `a.SacrificeCost` alone does not. `!a.TapCost` stays: a `tapPlan` is a list
+   of permanents to TAP, so a sacrifice-ONLY ability (a Gold token, an Eldrazi
+   Spawn or Scion) has no slot in the plan's shape yet and is still hand-
+   activated. That gap is named rather than closed here.
+
+2. **The executor pays it, in the activation's component order.**
+   `materializePlanLocked` resolves the sacrifice through the same
+   `validateSacrificeCostLocked` all three cost sites share, then pays it with
+   `payCostSacrificesLocked` AFTER the tap and BEFORE the mana — the order
+   `ActivateManaAbility` uses, and for its reasons: the tap has to happen while
+   the permanent is still on the battlefield, and CR 605.3b makes the payment
+   and the production one atomic step. The payment is re-validated at
+   materialisation the way the gate, the summoning sickness and the counter
+   cost already are, because a plan can arrive stale; and the source's
+   CONTROLLER is re-checked for the first time, because CR 701.21a lets you
+   sacrifice only what you control and a stale plan could otherwise have eaten
+   a permanent that changed hands.
+
+3. **The dies-triggers are NOT drained inside the executor.** Every caller
+   already drains at the point a player would next receive priority —
+   `CastSpell`, `ActivateCatalogAbility` and the special-action verb each end
+   with `runStateChecksLocked`. That is what puts a Blood Artist trigger ABOVE
+   the spell the Treasure was cracked to cast rather than under it; draining
+   mid-announcement would have put it under.
+
+4. **A self-sacrificing source is the LAST resort.** A new outermost key,
+   `tapSource.Sacrifices`, sorts such a source behind every ordinary source in
+   the coloured pass (`autoTapLocked`'s sort) and behind even a frozen one in
+   the generic recruiter (`orderUnusedByGenericPreference`). Cracking a
+   Treasure to pay a generic pip a basic could have paid spends a resource the
+   player never agreed to spend, which is the bar the life-cost and
+   counter-adding exclusions are held to — and a Treasure is a five-colour
+   source, so without the key the any-colour generic tier would have recruited
+   it AHEAD of the untapped Mountain beside it. Behind Frozen rather than in
+   front of it, because a permanent that misses one untap comes back and a
+   cracked Treasure does not.
+
+Decision 8 is otherwise unchanged: a plan failure still returns
+`*InsufficientManaError` before anything is tapped, and the whole pass is still
+one write lock. What IS new under that lock is a battlefield exit — the
+auto-tap payment can now destroy a permanent — so the undo stack's pre-mutation
+clone is load-bearing for a case it never used to cover, and
+`internal/ws/undo_sacrificed_mana_source_test.go` holds it.
+
+The `/autotap` preview endpoint (`writeAutoTapPreview` →
+`AutoTapForCostExcluding`) and the legal-move enumerator
+(`legal.canPayExcluding` → `AutoTapForCostForEffectExcluding`) flip with the
+planner and needed no code of their own, which is the point of their being one
+solver with three readers.
+
+**Still open**, named here rather than discovered later:
+
+- A mana ability whose cost is a sacrifice with NO `{T}` (Gold, Eldrazi Spawn,
+  Eldrazi Scion) is still not plannable. `tapPlan` models "permanents to tap",
+  and a sacrifice-only source needs the plan to say "and this one is only
+  cracked" — including for a source that is already tapped, which
+  `gatherTapSources` skips today.
+- ~~The ordering hint ADR 0068's 2026-09-22 amendment declares
+  (`Spec.WantsManaFrom`, `tapSource.Wanted`) has to compose with the
+  last-resort tier once it lands.~~ **Closed in this same PR**, which rebased
+  onto #1212 — see the composition note below.
+
+### The composition with #1212's source wish
+
+#1212 landed first and gave the planner a SOURCE WISH: a card whose text reads
+which mana paid for it (`Spec.WantsManaFrom` → `tapSource.Wanted`) prefers a
+source it can read back. Its own header declared that hint **inert**, because
+`autoTapAbilityFor` refused every sacrifice-cost ability and so a Treasure — the
+source eighteen printed cards ask about — was never a candidate.
+
+This PR makes it live, and the two features then meet on exactly one kind of
+permanent: a Treasure is both the commonest WISHED source and a
+self-sacrificing one. So the order of the two keys is the whole of the
+composition, and it is:
+
+```
+Wanted → Sacrifices → Frozen → (restrictiveness | tier, slotCnt)
+```
+
+**The wish is read first**, in both comparators. Two reasons, and the first is
+decisive: a wish ranked under the tier is a wish that never fires, because the
+tier's whole job is to route around the exact source the wish names — the hint
+would have gone straight from "inert because a Treasure cannot be planned" to
+"inert because a planned Treasure is always avoided". And #1212 originally
+placed `Wanted` *below* `Frozen`; raising it above is the consistent completion
+rather than a second decision, since a wish allowed to beat "this permanent
+will be DESTROYED" must also beat "this permanent misses one untap", which is
+strictly the cheaper of the two.
+
+One sentence for the whole order: **the card being cast gets the source it asks
+for, and where it asks for nothing the planner spends the cheapest thing on the
+board.** Hired Hexblade auto-taps the Treasure and draws; an ordinary creature
+on the same board takes the lands and the Treasure survives.
+
+One consequence worth naming, because #1212's code comment asserted the
+opposite: `materializePlanLocked`'s `SourceKinds: manaSourceKindsOf(tappedForMana)`
+used to be justified with "the auto-tapper never plans a sacrifice cost, so the
+permanent is still here". It no longer is — the plan's own sacrifice runs
+between the tap and the mint — so the pre-tap copy is now load-bearing on the
+auto-tap path exactly as it always was on `ActivateManaAbility`'s. The code was
+already right; only its reason changed.

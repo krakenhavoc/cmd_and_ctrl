@@ -34,13 +34,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // so one check is the whole of it.
 //
 // WantsManaFrom is the auto-tapper's ordering hint: a card that reads
-// Treasure mana would rather be paid with some. DECLARED INERT for
-// now — `autoTapAbilityFor` refuses every sacrifice-cost mana ability
-// (`!a.TapCost || a.SacrificeCost`), so a Treasure is not an auto-tap
-// source at all and the hint cannot reach one. Declared anyway,
-// because the declaration is about the CARD and is right whether or
-// not the planner can act on it. Cracking the Treasure by hand — which
-// is the only way to spend it today — works. Filed as #1215.
+// Treasure mana would rather be paid with some. It was DECLARED INERT
+// when this card shipped — `autoTapAbilityFor` refused every
+// sacrifice-cost mana ability (`!a.TapCost || a.SacrificeCost`), so a
+// Treasure was not an auto-tap source at all and the hint could not
+// reach one. Declared anyway, because the declaration is about the
+// CARD and was right whether or not the planner could act on it.
+//
+// #1215 made it live. The planner now plans a cost that eats its own
+// source, and it reads this wish BEFORE the last-resort tier that
+// otherwise protects a Treasure from being cracked for a pip a land
+// could pay — so "auto-tap & cast" on this card reaches for the
+// Treasure on purpose, and the Hexblade draws. Cracking it by hand
+// still works and always did.
 func init() {
 	Register(Spec{
 		OracleID:      "f3a0f155-05d8-465c-b0ef-35aa12e93013",
