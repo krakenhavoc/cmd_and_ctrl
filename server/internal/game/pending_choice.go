@@ -417,6 +417,25 @@ type PendingChoice struct {
 	// prompt or picks accumulate.
 	PickTargetMin, PickTargetMax int
 
+	// RetargetItem / RetargetPolicy / RetargetOptional /
+	// RetargetSlot / RetargetReason are the whole of a
+	// PendingChoiceRetarget (#1196, CR 115.7): which stack item is
+	// being redirected, under which printed sentence, whether
+	// declining is allowed, which of the item's target slots this
+	// prompt is asking about, and the card's own header text for the
+	// rest of the walk.
+	//
+	// DATA rather than a resume frame, and that is the whole point:
+	// the object being rewritten is already on the stack, so the
+	// answer needs no closure and the snapshot can carry the prompt
+	// intact. The legal set rides the PickTarget* fields above, since
+	// the QUESTION is the same one those were built for.
+	RetargetItem     uuid.UUID
+	RetargetPolicy   RetargetPolicy
+	RetargetOptional bool
+	RetargetSlot     int
+	RetargetReason   string
+
 	// pickTargetResume is the server-only continuation for a
 	// PendingChoicePickTarget: the captured event / source / LKI,
 	// the Build closure, and the spec the pick is validated against

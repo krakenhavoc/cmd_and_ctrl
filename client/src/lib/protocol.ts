@@ -605,6 +605,14 @@ export interface PendingChoiceView {
     | "pay_unless"
     | "trigger_order"
     | "pick_target"
+    // #1196, CR 115.7: "choose the new target for …" — Deflecting
+    // Swat, Bolt Bend, Misdirection, Imp's Mischief. Carries the same
+    // `pick_target` legal-target payload and is answered on the board
+    // the same way; the KIND is what tells the server the answer
+    // rewrites an item already on the stack. A prompt whose `min` is
+    // 0 is a printed "you may", and the banner's Done button submits
+    // the empty list to decline.
+    | "retarget"
     // S21: "each player sacrifices a creature of their choice"
     // (Grave Pact, Fleshbag Marauder). Answered with the generic
     // {choice_id, card_ids} payload — one entry — and rendered by the

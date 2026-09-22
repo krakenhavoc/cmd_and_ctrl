@@ -475,6 +475,47 @@ Three things are worth saying out loud:
   change (CR 701.20b) — so the card is still in hand when the land has
   finished entering.
 
+### `retarget` — changing a spell's or ability's target (#1196, CR 115.7)
+
+`pending_choices` may carry `kind: "retarget"`. It is the prompt behind
+Deflecting Swat's "you may choose new targets for target spell or
+ability" and Bolt Bend's / Misdirection's / Imp's Mischief's "change
+the target of target spell with a single target": one target SLOT of an
+item already on the stack, offered to the retargeting effect's
+controller.
+
+It carries and is answered exactly like `pick_target` — `pick_target:
+{players, cards, min, max}` with the legal alternatives, answered with
+`resolve_choice { choice_id, targets }` — so the client's board picker
+answers it with no second surface. The `kind` is what tells the server
+the answer rewrites an item on the stack rather than building a new
+one.
+
+Three things differ from `pick_target`:
+
+- **The target already in the slot is never among the alternatives.**
+  CR 115.7a: a target can be changed only to *another* legal target.
+  A slot with no alternative opens no prompt at all and stays where it
+  is.
+- **`min` is 0 for a printed "you may"**, and the empty list
+  (`targets: []`) is the decline. `min` is 1 for a mandatory "change
+  the target" that has somewhere to go, and a decline comes back
+  `bad_request`.
+- **Legality is judged for the ITEM, not for the chooser.** The
+  alternatives are the targets the redirected spell could legally have
+  chosen — its controller's point of view, its own colour and type for
+  protection — while the prompt is addressed to whoever cast the
+  redirect. That includes the PLAYER half of the keyword gate
+  (CR 702.11d / CR 702.16i, #1197): a seat with hexproof is not among
+  the alternatives offered to an opponent's spell, and a seat with
+  protection from red is not among a red spell's.
+
+A "choose new targets" prompt over a multi-target spell is a WALK: one
+prompt per slot, in announce order, each answerable or declinable on
+its own. Everything else about the announcement survives the walk — the
+modes, X, the cost that was paid, and the division of damage, which
+moves with the slot rather than staying on the old target's id.
+
 ### `chat` (both directions) — added in S07
 
 A chat message addressed to every client bound to the same game.

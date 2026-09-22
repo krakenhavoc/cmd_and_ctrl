@@ -1228,9 +1228,15 @@
     // one from a server-computed set) and the banner's confirm sends
     // the same payload. The server routes by the choice's kind, so
     // the client needs no second component and no second code path.
+    // #1196: the CR 115.7 retarget is the fourth — same question
+    // shape, same picker, and the server routes the answer on the
+    // kind.
     const mine = (view.pending_choices ?? []).find(
       (c) =>
-        (c.kind === "pick_target" || c.kind === "legend_rule" || c.kind === "choose_protector") &&
+        (c.kind === "pick_target" ||
+          c.kind === "legend_rule" ||
+          c.kind === "choose_protector" ||
+          c.kind === "retarget") &&
         c.chooser === viewerID,
     );
     const cur = $targeting;
@@ -1243,7 +1249,9 @@
             ? "Legend rule"
             : mine.kind === "choose_protector"
               ? "Battle"
-              : "Triggered ability",
+              : mine.kind === "retarget"
+                ? "Retarget"
+                : "Triggered ability",
         owner: viewerID ?? "",
         controller: viewerID ?? "",
       };
@@ -1256,6 +1264,9 @@
   function findCardAnywhere(id: string | undefined): CardView | undefined {
     if (!id) return undefined;
     for (const c of view.battlefield.cards) if (c.instance_id === id) return c;
+    // #1196: a retarget prompt's source is the spell that is
+    // resolving — still on the stack when the prompt opens.
+    for (const c of view.stack.cards ?? []) if (c.instance_id === id) return c;
     for (const c of view.exile?.cards ?? []) if (c.instance_id === id) return c;
     for (const s of view.seats) {
       for (const c of s.graveyard?.cards ?? []) if (c.instance_id === id) return c;

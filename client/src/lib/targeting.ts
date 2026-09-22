@@ -162,6 +162,12 @@ export interface TargetingState {
   // cast_spell, and the prompt can't be cancelled — the trigger
   // needs a target.
   choiceID?: string;
+  // #1196: which KIND of pending choice `choiceID` names, so the
+  // banner can say what is being asked. A pick_target is a trigger
+  // waiting for its target; a retarget is a spell already on the
+  // stack being pointed somewhere else, and "Deflecting Swat
+  // triggered" would be the wrong sentence for it.
+  choiceKind?: string;
   // CR 603.2d: attribution for an additional trigger awaiting its
   // target. The server supplies the public doubler metadata.
   doubledBy?: string;
@@ -808,6 +814,7 @@ export function beginChoice(choice: PendingChoiceView, card: CardView): void {
   targeting.set(
     openWalk(card, stepsFor("any", pt, undefined, 0), {
       choiceID: choice.id,
+      choiceKind: choice.kind,
       label: choice.reason,
       doubledBy: choice.doubled_by,
       doubledByName: choice.doubled_by_name,

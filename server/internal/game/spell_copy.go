@@ -302,6 +302,16 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 // spell's own clause — the same spec the original was announced
 // under — then creates the copy on top of the stack.
 //
+// #1196: the check is the CR 115.7 one (retargetCheckLocked), not the
+// announce gate. "You may choose new targets for the copy" is CR
+// 707.10c, and CR 707.10c is CR 115.7c by reference — so a target the
+// player LEFT ALONE may stay even if it has since become illegal,
+// and the NUMBER of targets may not change. validateTargetsLocked
+// had both backwards: it refused the first and allowed the second.
+// What is still this file's own is the APPLICATION — a copy builds a
+// new object rather than rewriting one, because its characteristics
+// are a snapshot and the original may be gone.
+//
 // Caller must hold g.mu and must have located the choice at `idx`.
 func (g *Game) resolveCopySpellTargetsLocked(idx int, cf *copySpellFrame, targets []TargetRef) error {
 	for _, t := range targets {
@@ -313,9 +323,13 @@ func (g *Game) resolveCopySpellTargetsLocked(idx int, cf *copySpellFrame, target
 	// between the prompt and the answer, and the copy's
 	// characteristics are the original's as they were (CR 707.10).
 	// cf.src is the value copy the frame kept for exactly this.
-	if err := g.validateTargetsLocked(SourceSnapshot(cf.controller, SourceCharacteristics(&cf.src)), cf.spec, targets); err != nil {
+	src := SourceSnapshot(cf.controller, SourceCharacteristics(&cf.src))
+	steps := AnnouncedClauses(cf.spec, nil, nil)
+	stamped := assignAnnouncedSlots(steps, targets)
+	if err := g.retargetCheckLocked(src, steps, cf.item.Targets, stamped, RetargetChooseNew); err != nil {
 		return err
 	}
+	targets = stamped
 	g.dequeueChoiceLocked(idx)
 	item := cf.item
 	g.createSpellCopyLocked(cf.src, &item, cf.controller, targets)

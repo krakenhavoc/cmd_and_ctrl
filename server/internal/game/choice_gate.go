@@ -157,7 +157,13 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	// answer.
 	PendingChoiceModePick: true,
 
-	PendingChoicePickTarget:      true,
+	PendingChoicePickTarget: true,
+	// #1196, CR 115.7. The retargeting spell is mid-resolution and
+	// the item it is redirecting is still on the stack waiting to
+	// find out what it points at; a table that could walk past the
+	// question would resolve the redirected spell at its old target,
+	// which is the question answered by doing.
+	PendingChoiceRetarget:        true,
 	PendingChoiceSacrifice:       true,
 	PendingChoiceScry:            true,
 	PendingChoiceSurveil:         true,

@@ -5,6 +5,7 @@ import {
   advance,
   allPicks,
   begin,
+  beginChoice,
   beginForAbility,
   beginForModes,
   cancel,
@@ -23,7 +24,7 @@ import {
   legalTargetCount,
   targeting,
 } from "./targeting";
-import type { ActivatedAbilityView, CardView } from "./protocol";
+import type { ActivatedAbilityView, CardView, PendingChoiceView } from "./protocol";
 
 function card(extras: Partial<CardView> = {}): CardView {
   return { instance_id: "spell", name: "Spell", owner: "p0", controller: "p0", ...extras };
@@ -462,5 +463,70 @@ describe("multi-pick targeting", () => {
     setConfirmHandler(null);
     confirm();
     expect(fired).toBe(1);
+  });
+});
+
+// #1196, CR 115.7 — the retarget prompt. It reuses the pick_target
+// payload and the board picker, so what needs pinning on the client
+// is the two things that differ: the prompt knows which KIND it is
+// (the banner says "click a new target", not "triggered"), and an
+// OPTIONAL one (min 0) is confirmable with nothing picked, which is
+// how "you may leave the target unchanged" is answered.
+describe("retarget prompt — #1196", () => {
+  it("carries the choice kind so the banner can say what is being asked", () => {
+    beginChoice(
+      {
+        id: "choice-retarget",
+        kind: "retarget",
+        chooser: "p0",
+        reason: "Deflecting Swat — choose a new target",
+        pick_target: { players: ["p1", "p2"], cards: [], min: 0, max: 1 },
+      } as unknown as PendingChoiceView,
+      card({ instance_id: "swat", name: "Deflecting Swat" }),
+    );
+    const t = get(targeting)!;
+    expect(t.choiceID).toBe("choice-retarget");
+    expect(t.choiceKind).toBe("retarget");
+    expect(isLegalPlayerTarget(t, "p2")).toBe(true);
+    expect(isLegalPlayerTarget(t, "p0")).toBe(false);
+    cancel();
+    // A prompt is not cancellable — the server is waiting.
+    expect(get(targeting)).not.toBeNull();
+    targeting.set(null);
+  });
+
+  it("a you-may retarget is confirmable with nothing picked", () => {
+    beginChoice(
+      {
+        id: "choice-may",
+        kind: "retarget",
+        chooser: "p0",
+        reason: "Deflecting Swat — choose a new target",
+        pick_target: { players: ["p1"], cards: [], min: 0, max: 1 },
+      } as unknown as PendingChoiceView,
+      card({ instance_id: "swat", name: "Deflecting Swat" }),
+    );
+    const t = get(targeting)!;
+    expect(isMultiPick(t)).toBe(true);
+    expect(canConfirm(t)).toBe(true);
+    expect(allPicks(t)).toEqual([]);
+    targeting.set(null);
+  });
+
+  it("a mandatory retarget needs a pick before it can be confirmed", () => {
+    beginChoice(
+      {
+        id: "choice-must",
+        kind: "retarget",
+        chooser: "p0",
+        reason: "Bolt Bend — change the target",
+        pick_target: { players: ["p1"], cards: [], min: 1, max: 1 },
+      } as unknown as PendingChoiceView,
+      card({ instance_id: "bend", name: "Bolt Bend" }),
+    );
+    const t = get(targeting)!;
+    expect(canConfirm(t)).toBe(false);
+    expect(canConfirm(togglePick(t, { kind: "player", id: "p1" }))).toBe(true);
+    targeting.set(null);
   });
 });

@@ -271,6 +271,37 @@ func (e *enumerator) choiceMoves() bool {
 				e.addChoice(c, reason+targetLabel(g, set), p)
 			}
 
+		// #1196 CR 115.7: "choose the new target for …". One slot of
+		// an item already on the stack, so the answer is one ref (or
+		// none, when the prompt allows declining) and never a
+		// combination — which is why it is its own case rather than
+		// another kind on the pick_target one above.
+		//
+		// Ordered through #1014's Options.OrderTargets, and the
+		// DECLINE comes first when it is legal: a bot that has to
+		// choose between moving a removal spell and leaving it where
+		// it is should have "leave it" in the list at all, and it is
+		// also the answer that always terminates.
+		case game.PendingChoiceRetarget:
+			cands := make([]game.TargetRef, 0, len(c.PickTargetPlayers)+len(c.PickTargetCards))
+			for _, id := range c.PickTargetPlayers {
+				cands = append(cands, game.TargetRef{Kind: game.TargetPlayer, ID: id})
+			}
+			for _, id := range c.PickTargetCards {
+				cands = append(cands, game.TargetRef{Kind: game.TargetCard, ID: id})
+			}
+			e.orderCandidates(cands)
+			if c.PickTargetMin == 0 {
+				p := base()
+				p.Targets = []targetWire{}
+				e.addChoice(c, reason+": leave the target unchanged", p)
+			}
+			for _, t := range cands {
+				p := base()
+				p.Targets = wireTargets([]game.TargetRef{t})
+				e.addChoice(c, reason+targetLabel(g, []game.TargetRef{t}), p)
+			}
+
 		// #764 CR 603.3c: a modal trigger's mode, chosen as the
 		// ability is put on the stack. Every legal selection, bounded
 		// by MaxExpansionPerSource and ordered by ADR 0065 §6 — the
