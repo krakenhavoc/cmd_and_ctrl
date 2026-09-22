@@ -639,3 +639,147 @@ Two consequences for this ADR's own record, both small:
 
 §5's readers are untouched in shape — `CardKickedTimes`, `CardPaidOptionalCost`
 and `ctx.WasKicked()` take the same arguments and answer the same questions.
+
+---
+
+## Amendment (2026-09-22, #1213): three more cost components
+
+**Sprint:** S44 — mana and cost components. Tracker [#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887).
+
+Three rows of [engine-seams.md](../engine-seams.md) were the same gap wearing
+three hats — a **cost component** the vocabulary could not express:
+
+| Row | Cards waiting | What was missing |
+|---|---|---|
+| Return-a-permanent-to-hand cost component | Quirion Ranger, Master Transmuter, Wirewood Symbiote | `AbilityCost` has no "return a permanent you control to its owner's hand" |
+| Variable-count sacrifice cost | Radiant Lotus, Grim Hireling | the sacrifice clause is a fixed count; `Register` refuses `Min != Max` and `CountFromX` |
+| Discard cost on a non-activated-ability surface | Mox Diamond, Skirge Familiar | `ManaAbilityCost` has no discard component |
+
+They land together because they are one vocabulary. This ADR owns it: §1 said
+an optional cost is `AdditionalCost` with a flag rather than a type of its own
+*"for the reason ADR 0021 gave the sacrifice component"*, and the same
+reasoning decides all three below. Nothing already decided here changes.
+
+### Decision 1 — a return-to-hand cost is `TapOthersCost` one verb over
+
+`game.ReturnToHandCost` (`server/internal/game/return_cost.go`) is
+`TapOthersCost`'s shape exactly: `Count`, a `Filter` reusing the `TargetSpec`
+vocabulary, `ExcludeSource` for the printed word "another", and a `Label` that
+reads like the card. One options walk, one payability predicate, one
+validator, one payer — the #544 invariant `counter_cost.go` and
+`tap_others_cost.go` already keep, so the engine, the protocol view's picker
+and the legal-move enumerator cannot disagree about which permanent pays.
+
+Not a new kind of thing, and deliberately not folded into an existing one:
+
+- **Not `SacrificeOther` with a destination.** A sacrifice is
+  `sacrificePermanentLocked` — `EventSacrifice`, a dies-trigger, a CR 701.17a
+  reading. A return is an ordinary battlefield exit to a hand. Sharing the
+  field would have made every existing reader of a sacrifice clause ask "but
+  where does it go".
+- **Not `BounceToHandForEffect`.** That is the EFFECT verb (Azorius Chancery's
+  trigger, Chain of Vapor). Paying a cost is not an effect, and the difference
+  is observable: CR 601.2h / 602.2b pay an announcement's costs as **one
+  indivisible step**, so the move may not stop on a CR 903.9 prompt with the
+  ability half announced. The payer therefore sets `zoneRoute.MustSettleNow`
+  — the same bit, for the same reason, that the cost discard sets (`zone_route.go`,
+  "a discard paid as a COST"). A commander returned to its owner's hand as a
+  cost goes to the hand without asking; CR 903.9 is a *may*, and a cost that
+  cannot ask falls back to the ordinary result.
+
+Paid with the sacrifices, BEFORE the stack item is built, so a leaves-the-
+battlefield trigger queued by the payment is drained by the closing
+`runStateChecksLocked` and sits **above** the ability (CR 603.3b) — the order
+`payCostSacrificesLocked` already establishes. The source may be a legal pick
+when the filter admits it (Master Transmuter is an artifact and may return
+itself), so the activation path drops its `source` pointer after the payment
+exactly as it does after a sacrifice.
+
+The component is declared on `AbilityCost` only. `AdditionalCost` and
+`ManaAbilityCost` do **not** get a slot: no printed card pays a cast or a mana
+ability with one, and ADR 0021's rule — a component earns its slot when a card
+prints it — is the same rule that kept kicker out of this ADR's predecessor
+for two sprints. `AbilityCost.Crew` and `ManaAbilityShape.AddCounter` show
+both sides of that line; this one is on the "wait for the card" side.
+
+### Decision 2 — a variable sacrifice count is an ANNOUNCEMENT, not a clause shape
+
+`SacrificeCostCount` reads the count off the clause (#747: `Min == Max == N`).
+The two printed variable forms are read off the ANNOUNCEMENT instead, and
+`sacrifice_cost.go` grows one function that says which:
+
+```go
+SacrificeCostBounds(spec, x) (lo, hi int)   // hi == 0 means "no printed ceiling"
+```
+
+- **"Sacrifice one or more artifacts"** (Radiant Lotus) is `Min = 1`,
+  `Max = 0`: a floor with no ceiling, settled by how many the activator names.
+- **"Sacrifice X Treasures"** (Grim Hireling) is `CountFromX`: the bounds are
+  the announced X on both sides, so naming a different number is a refused
+  announcement rather than a cheap one.
+
+`CountFromX` on a cost clause makes `AbilityCost.DemandsX()` true even when the
+mana component has no `{X}` slot. That is the one sentence of `activated.go`
+this amendment rewrites — *"X lives in the MANA component and nowhere else"* —
+and it rewrites it the way the cast path already reads: `AdditionalCost.PayLifeX`
+and waterbend's `TapPermanentsCost` are both an X outside the printed mana cost,
+and Grim Hireling is the same thing on an ability. `XSlots()` is untouched and
+still counts mana symbols only, so a `CountFromX` sacrifice adds **no generic
+demand** — Grim Hireling's `{B}` stays `{B}` at every X.
+
+**The count is recorded, not recomputed.** `PaidCost.Sacrificed` is how many
+permanents the component actually took. Radiant Lotus's "three mana … for each
+artifact sacrificed this way" is read at resolution, by which time the
+artifacts are in graveyards and nothing on the board could count them — the
+identical argument `CountersRemoved` was added under (#789), which is why it is
+the same record and the neighbouring field rather than a second mechanism.
+`Context.Sacrificed()` is the reader.
+
+`effects.Register`'s guard narrows rather than disappears. Still refused, at
+boot: a floor below one (a cost that can be paid with nothing is free),
+`Max` below `Min` when a ceiling is printed, `AllowSame` (one permanent cannot
+pay two sacrifices), `Players`, and — new — `CountFromX` **on a mana ability**,
+which has no X to announce (CR 605.3b: there is no stack item to carry one).
+
+**Last-known information is out of scope and stays on the row.** An effect that
+reads the sacrificed permanents themselves ("the sacrificed creature's power")
+needs LKI of a list, not a count; neither card on the row asks for it.
+
+### Decision 3 — the discard component is declared once and owned by both ability kinds
+
+`effects.ManaAbilityCost.DiscardCards *game.DiscardCost` is the component #660
+put on `AbilityCost`, with the same validator and the same payer. This is not a
+new decision so much as the fourth application of one already made three times
+in this file's neighbourhood — `SacrificeOther`, `RemoveCounters`, `AddCounter`
+and `TapOthers` are each one struct with two owners, for the stated reason that
+"a card that printed it on a mana ability and on a CR 602 ability would be
+paying one clause two ways otherwise".
+
+It pays through `discardCardsLocked` with `DiscardCauseCost`: `EventDiscardCard`
+fires once per card, the CR 614 window runs over the exit, madness sees it
+(CR 702.35a), and CR 601.2h's indivisible step is expressed by `MustSettleNow`
+on the route rather than by a second loop that knows not to prompt. There is no
+new discard door, which is the whole point of having one.
+
+**The auto-tapper never plans it.** `autoTapAbilityFor` already declines a life
+cost, an add-a-counter cost and a tap-others cost on the same ground: the
+planner spends no resource the player was not asked about, and which card to
+pitch is a decision, not an inference. A hand-clicked Skirge Familiar is a mana
+source; an auto-tapped one is not.
+
+### What this does NOT decide
+
+- **Mox Diamond.** Its discard is inside an entry REPLACEMENT — "you may
+  discard a land card instead" — which is a card choice inside a replacement
+  effect, a prompt seam rather than a cost component. It stays on the
+  *Reveal-from-hand entry choice* row with the six reveal-lands.
+- **Quirion Ranger and Wirewood Symbiote.** Both print "Activate only once each
+  turn", and the engine counts an ability's RESOLUTIONS and TRIGGERS this turn
+  (`TurnTally`) but not its ACTIVATIONS. Registering them without it would ship
+  both cards stronger than printed (#259), so they stay on the
+  *Per-source activations-this-turn count* row, which the return row already
+  cross-references.
+- **A variable TAP-others count.** "Tap X untapped artifacts you control"
+  (Secluded Starforge) is the same announcement question one component over.
+  #758 stated it out of scope and that row stays open; nothing here narrows it,
+  and `SacrificeCostBounds` is the shape it should copy when it lands.
