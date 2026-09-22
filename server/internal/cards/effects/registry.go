@@ -219,6 +219,18 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q cast restriction %q forbids nothing", spec.Name, r.Label))
 		}
 	}
+	// #1210, ADR 0073's amendment of 2026-09-22: the same two checks
+	// for the activation twin, and for the same reason — the Label is
+	// what the greyed ability row shows the player, and a restriction
+	// with no Forbids claims to refuse and refuses nothing.
+	for i, r := range spec.ActivationRestrictions {
+		if r.Label == "" {
+			panic(fmt.Sprintf("effects.Register: %q activation restriction %d has no printed Label — the refusal carries it to the client", spec.Name, i))
+		}
+		if r.Forbids == nil {
+			panic(fmt.Sprintf("effects.Register: %q activation restriction %q forbids nothing", spec.Name, r.Label))
+		}
+	}
 	// ADR 0048 addendum §11: no printed card sets a floor on its own
 	// cost, and an untested kind should not be declarable. A mana Unit
 	// belongs on an increase only (open question 3), and carries only

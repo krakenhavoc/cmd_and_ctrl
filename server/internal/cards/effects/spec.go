@@ -401,6 +401,24 @@ type Spec struct {
 	// Build with the constructors in cast_restriction.go.
 	CastRestrictions []game.CastRestriction
 
+	// ActivationRestrictions are the "can't be activated" statics
+	// this PERMANENT imposes on other objects' activated abilities
+	// (CR 602.5a) — Cursed Totem's "activated abilities of creatures
+	// can't be activated", Linvala's "…of creatures your opponents
+	// control…", Collector Ouphe's "…of artifacts…", Pithing
+	// Needle's "…of sources with the chosen name … unless they're
+	// mana abilities".
+	//
+	// Read from the BATTLEFIELD through CatalogAbilityKey, like a
+	// cast restriction and for the same reasons: a permanent that
+	// has lost its abilities stops restricting, one whose
+	// designation gate is unsatisfied is not there at all, and
+	// nothing is stored so the source leaving lifts the restriction
+	// on the next query. Build with the constructors in
+	// activation_restriction.go. #1210, ADR 0073's amendment of
+	// 2026-09-22.
+	ActivationRestrictions []game.ActivationRestriction
+
 	// TapCost is the S22 "tap permanents you control to help pay"
 	// cost component — convoke (CR 702.51) and waterbend, which are
 	// the same mechanic under two names. Unlike the other cost slots

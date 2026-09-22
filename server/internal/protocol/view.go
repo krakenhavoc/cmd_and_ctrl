@@ -1888,6 +1888,29 @@ type ActivatedAbilityView struct {
 	// untap). The client greys the row the same way; the server
 	// refuses with ErrAbilityExhausted either way.
 	Exhausted bool `json:"exhausted,omitempty"`
+	// CantActivate is the printed clause of a board-wide "can't be
+	// activated" static that refuses THIS ability right now (CR
+	// 602.5a, #1210) — "Activated abilities of creatures can't be
+	// activated" (Cursed Totem), "…of sources with the chosen name …
+	// unless they're mana abilities" (Pithing Needle). Absent, which
+	// is nearly always, means nothing refuses it.
+	//
+	// The STAMP of the one gate function ActivateCatalogAbility and
+	// the bot enumerator both call, so the client greys the row and
+	// says why from server data rather than from a rule it
+	// reimplemented — `cant_cast`'s shape, one level down, because a
+	// restriction on activating is a fact about an ability and not
+	// about the card.
+	//
+	// Distinct from CardView.Restrictions' `cant_activate` token,
+	// which is the per-PERMANENT Arrest bit and says nothing about
+	// which ability or why. Distinct from ConditionUnmet and
+	// Exhausted for the reason those two are distinct from each
+	// other: the three recover differently and the client says so —
+	// a condition may hold again next turn, an exhaust never does
+	// until the object is new, and a restriction ends when somebody
+	// kills the artifact.
+	CantActivate string `json:"cant_activate,omitempty"`
 	// LoyaltyCost is the loyalty component of a planeswalker's
 	// loyalty ability: +N / 0 / −N (CR 606.4). A POINTER because [0]
 	// is a real printed cost and `omitempty` would erase it — the
@@ -2164,6 +2187,19 @@ type ManaAbilityView struct {
 	// every other ability, which is all but four cards. Stamped by
 	// stampManaIdentity, the pass with a game handle.
 	AddsNoMana bool `json:"adds_no_mana,omitempty"`
+	// CantActivate is ActivatedAbilityView.CantActivate for a mana
+	// ability (#1210): the printed clause of a board-wide "can't be
+	// activated" static that refuses this one. Cursed Totem's
+	// "activated abilities of creatures can't be activated" does not
+	// exempt mana abilities and reaches this row; Pithing Needle's
+	// does exempt them and never will. Absent for every other mana
+	// ability, which is all of them.
+	//
+	// The SAME key and the same wire name the activated view uses, so
+	// the client's greyed-row logic is one structural predicate for
+	// both ability kinds. Stamped by stampManaConditions, the pass
+	// with a game handle.
+	CantActivate string `json:"cant_activate,omitempty"`
 	// Restrictions are the "spend this mana only on …" tags the
 	// produced tokens will carry — Ancient Ziggurat, Eldrazi
 	// Temple, the coloured half of Delighted Halfling. Present so
@@ -3666,9 +3702,21 @@ func viewOfSpecialActions(g *game.Game, card game.Card, owner uuid.UUID) []Speci
 // g's read lock.
 func stampManaConditions(g *game.Game, card game.Card, controller uuid.UUID, views []ManaAbilityView) {
 	raw := game.ManaAbilitiesForCard(card)
+	// #1210: the board-wide "can't be activated" fast negative, taken
+	// once per card rather than once per row.
+	restricted := g.AnyActivationRestrictionsForEffect()
 	for i := range views {
 		if i >= len(raw) {
 			continue
+		}
+		// #1210, CR 602.5a: the board-wide gate's reason, from the
+		// one function the engine, the enumerator and the auto-tapper
+		// all call. Mana: true, and the RESTRICTION decides what that
+		// means — Cursed Totem reaches a Birds of Paradise's {G},
+		// Pithing Needle never does.
+		if restricted {
+			views[i].CantActivate = g.CantActivateReasonLocked(controller, card, game.ZoneBattlefield,
+				game.ActivationAbility{Label: raw[i].Label, Mana: true})
 		}
 		// #1183: the exhaust flag, stamped beside the condition
 		// because the client reads them off the same row and greys
@@ -5738,6 +5786,9 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 	// permanent, or since #660 the hand card whose cycling ability
 	// this is — so the protection check has the source it needs.
 	abilitySrc := game.SourceObject(caster, &c)
+	// #1210: the board-wide "can't be activated" fast negative, taken
+	// once per card rather than once per ability row.
+	restricted := g.AnyActivationRestrictionsForEffect()
 	var out []ActivatedAbilityView
 	for i, a := range raw {
 		if !game.AbilityFunctionsFromZone(a, zone) {
@@ -5770,6 +5821,14 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		// internal/legal drops the move for.
 		if g.AbilityExhausted(caster, c.InstanceID, a) {
 			v.Exhausted = true
+		}
+		// #1210, CR 602.5a: the board-wide "can't be activated"
+		// gate's reason, from the one function the engine and the
+		// enumerator call. Behind the fast negative taken once for
+		// the whole card, because almost no board restricts anything.
+		if restricted {
+			v.CantActivate = g.CantActivateReasonLocked(caster, c, zone,
+				game.ActivationAbility{Label: a.Label})
 		}
 		if a.Cost.SacrificeOther != nil {
 			v.SacrificeLabel = a.Cost.SacrificeOther.Label

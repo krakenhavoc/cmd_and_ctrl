@@ -740,6 +740,24 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	if !AbilityFunctionsFromZone(ab, srcZone) {
 		return ErrActivationZoneNotAllowed
 	}
+	// #1210, CR 602.5a / CR 101.2: the board-wide "can't be
+	// activated" gate — Cursed Totem, Linvala, Collector Ouphe,
+	// Pithing Needle. ONE function, four callers; see
+	// activation_gate.go.
+	//
+	// After the zone check, so the ability judged is the one the view
+	// and the enumerator published, and BEFORE the timing check, X,
+	// the targets and every cost — a refused activation costs
+	// nothing. Before timing because "can't be activated" is the
+	// answer that will still be true next turn where
+	// ErrSorcerySpeedRequired will not; that order is ours, not the
+	// rules'.
+	//
+	// Separate from CanActivateAbilities above, which is the
+	// per-PERMANENT Arrest bit layer 6 already answered.
+	if err := g.ActivationGateLocked(playerID, *source, srcZone, ActivationAbility{Label: ab.Label}); err != nil {
+		return err
+	}
 
 	// --- timing -------------------------------------------------
 	// CR 606.3: a loyalty ability is sorcery-speed whether or not

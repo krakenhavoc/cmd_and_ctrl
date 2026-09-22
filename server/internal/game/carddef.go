@@ -115,6 +115,12 @@ type CardDef struct {
 	// Cage, Rakdos). Read from the battlefield through
 	// CatalogAbilityKey, never from a card's own zone.
 	CastRestrictions []CastRestriction
+	// ActivationRestrictions are the "can't be activated" statics
+	// this PERMANENT imposes on other objects' activated abilities
+	// (Cursed Totem, Linvala, Collector Ouphe, Pithing Needle). Read
+	// from the battlefield through CatalogAbilityKey, never from a
+	// card's own zone. #1210, ADR 0073's amendment of 2026-09-22.
+	ActivationRestrictions []ActivationRestriction
 
 	CantBeCountered bool
 	NoMaxHandSize   bool
@@ -330,6 +336,12 @@ func init() {
 	CatalogExhaustPermissions = func(key string) []ExhaustPermission {
 		if d := catalogDef(key); d != nil {
 			return d.ExhaustPermissions
+		}
+		return nil
+	}
+	CatalogActivationRestrictions = func(key string) []ActivationRestriction {
+		if d := catalogDef(key); d != nil {
+			return d.ActivationRestrictions
 		}
 		return nil
 	}

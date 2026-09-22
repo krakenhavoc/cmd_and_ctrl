@@ -59,6 +59,10 @@ func (e *enumerator) activatedMoves() {
 		return
 	}
 	speed := sorcerySpeedOpen(g, e.seat)
+	// #1210: the board-wide fast negative, taken ONCE for the whole
+	// pass. Almost no game has a Cursed Totem in it, and without this
+	// every ability row would walk the battlefield to be told so.
+	restricted := g.AnyActivationRestrictionsForEffect()
 	for i := range g.Battlefield.Cards {
 		source := &g.Battlefield.Cards[i]
 		if source.Controller != e.seat {
@@ -71,7 +75,7 @@ func (e *enumerator) activatedMoves() {
 		if !game.CanActivateAbilities(source) {
 			continue
 		}
-		e.abilityMovesForSource(source, game.ZoneBattlefield, speed)
+		e.abilityMovesForSource(source, game.ZoneBattlefield, speed, restricted)
 	}
 	// #660: the seat's OWN hand. Cycling is an ordinary CR 602
 	// activation whose ability functions from hand (CR 702.29a), so
@@ -85,7 +89,7 @@ func (e *enumerator) activatedMoves() {
 	// withholding one it would accept, are both #544.
 	if p != nil && p.Hand != nil {
 		for i := range p.Hand.Cards {
-			e.abilityMovesForSource(&p.Hand.Cards[i], game.ZoneHand, speed)
+			e.abilityMovesForSource(&p.Hand.Cards[i], game.ZoneHand, speed, restricted)
 		}
 	}
 }
@@ -101,7 +105,7 @@ func (e *enumerator) activatedMoves() {
 // the one accessor every consumer reads through — so a designation-
 // gated ability (ADR 0071) is absent here exactly as it is absent from
 // the activation path and the wire.
-func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind, speed bool) {
+func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind, speed, restricted bool) {
 	g, p := e.g, e.p
 	abilities := game.ActivatedAbilitiesForCard(*source)
 	// #662: an activated ability's source is the permanent — or, since
@@ -115,6 +119,18 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// hand card's battlefield abilities are never offered and
 		// a permanent's cycling never is either.
 		if !game.AbilityFunctionsFromZone(ab, zone) {
+			continue
+		}
+		// #1210, CR 602.5a: the board-wide "can't be activated"
+		// gate — Cursed Totem, Linvala, Collector Ouphe, Pithing
+		// Needle. The SAME function ActivateCatalogAbility calls,
+		// in the same place relative to the zone and timing checks,
+		// so a policy is never offered an activation the engine
+		// refuses (#544). Behind the board-wide fast negative the
+		// caller took once: nothing restricts anything in almost
+		// every game, and the walk is otherwise per ability.
+		if restricted && g.ActivationGateLocked(e.seat, *source, zone,
+			game.ActivationAbility{Label: ab.Label}) != nil {
 			continue
 		}
 		if (ab.SorcerySpeed || ab.Cost.Loyalty != nil) && !speed {
@@ -801,6 +817,9 @@ type manaParams struct {
 // split second (CR 702.61b).
 func (e *enumerator) manaMoves() {
 	g := e.g
+	// #1210: the board-wide "can't be activated" fast negative, taken
+	// once for the whole pass, exactly as activatedMoves takes it.
+	restricted := g.AnyActivationRestrictionsForEffect()
 	for i := range g.Battlefield.Cards {
 		source := &g.Battlefield.Cards[i]
 		if source.Controller != e.seat {
@@ -820,6 +839,15 @@ func (e *enumerator) manaMoves() {
 			// rule is that a bot is never offered a move the engine
 			// refuses.
 			if g.ManaAbilityExhausted(e.seat, source.InstanceID, ab) {
+				continue
+			}
+			// #1210, CR 602.5a: the board-wide "can't be activated"
+			// gate. Cursed Totem does NOT exempt mana abilities, so a
+			// Birds of Paradise under one is not a move — the same
+			// function ActivateManaAbility calls, with Mana: true, so
+			// the restriction decides and not this call site (#544).
+			if restricted && g.ActivationGateLocked(e.seat, *source, game.ZoneBattlefield,
+				game.ActivationAbility{Label: ab.Label, Mana: true}) != nil {
 				continue
 			}
 			// #352: the activation gate first, exactly as

@@ -271,6 +271,19 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 		if manaTapBlockedBySickness(&c, picked) {
 			continue
 		}
+		// #1210, CR 602.5a: the board-wide "can't be activated"
+		// gate — Cursed Totem does not exempt mana abilities, so a
+		// Birds of Paradise under one is not a mana source. THE
+		// caller the cast gate has no equivalent of: the auto-tapper
+		// never goes through ActivateManaAbility at all
+		// (materializePlanLocked taps the permanent and mints its
+		// mana directly), so this is not the usual "planning it would
+		// produce a plan the executor refuses" — without it the plan
+		// would SUCCEED and produce mana the rule forbids.
+		if g.ActivationGateLocked(controller, c, ZoneBattlefield,
+			ActivationAbility{Label: picked.Label, Mana: true}) != nil {
+			continue
+		}
 		// S32 (#352): a gated ability is only a source while its
 		// gate holds. Temple of the False God with four lands out
 		// is not a mana source, and planning it would produce a
