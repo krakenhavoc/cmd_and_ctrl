@@ -81,6 +81,10 @@ const LOG_TONE: Record<LogKind, string> = {
   choose_color: "tone-quiet",
   choose_type: "tone-quiet",
   choose_player: "tone-quiet",
+  // #1214: a resolution-time pick over cards or permanents. Quiet for
+  // the same reason — the choice itself moves nothing, and whatever
+  // the card then does to what was chosen has its own line.
+  choose_cards: "tone-quiet",
   // #1021. A control change is a swing in the game and reads like a
   // removal spell; the rest are beats of a turn a player narrates
   // without raising their voice.

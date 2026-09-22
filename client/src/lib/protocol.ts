@@ -473,6 +473,13 @@ export type LogKind =
   | "choose_color"
   | "choose_type"
   | "choose_player"
+  // #1214: a player answered one of the three resolution-time picks
+  // (CR 608.2) — an opponent choosing from a revealed set, a seat
+  // choosing among another player's permanents, a seat choosing N of
+  // its own. `amount` is how many cards were chosen and is always
+  // there; `card_id` names the one card for a single-card pick and is
+  // absent for any other count; `target` is the card that ASKED.
+  | "choose_cards"
   // #1021: six silences the log kept until they were written down.
   // `control` names two seats — `seat` gained control, `target_seat`
   // lost it (CR 613.1b). `special_action` carries the printed action
@@ -708,6 +715,29 @@ export interface PendingChoiceView {
     // and it is always a legal answer. What was revealed reaches the
     // other seats afterwards, as an ordinary reveal in the log.
     | "entry_reveal_from_hand"
+    // #1214 CR 608.2 / CR 701.20: an opponent picks from a set you
+    // revealed — "target opponent chooses two of those cards" (Gifts
+    // Ungiven), and the first leg of a Fact or Fiction pile split.
+    // Same {choice_id, card_ids} payload and the same choose_min /
+    // choose_max bounds as choose_cards, and the same picker renders
+    // it. UNLIKE choose_cards the options and the bounds reach every
+    // seat: the card REVEALED them, and that reveal is the only thing
+    // entitling the chooser to look at cards out of somebody else's
+    // library at all.
+    | "reveal_pick"
+    // #1214: a seat choosing among the permanents somebody ELSE
+    // controls — "for each player, you choose from among the
+    // permanents that player controls …" (Tragic Arrogance). NOT
+    // targeting: hexproof and shroud do not apply, because nothing is
+    // targeted. Public like untap_choice; the candidates are
+    // battlefield permanents. `from_player` is whose board is on
+    // offer, which is not the chooser.
+    | "their_permanents"
+    // #1214: "choose N of your own permanents", made on resolution —
+    // Scapeshift's "sacrifice any number of lands". The untargeted
+    // sibling of a target clause, and the one of the three whose floor
+    // is routinely zero.
+    | "own_permanents"
     // #742: "choose a color" (CR 105.4) — as a permanent enters
     // (Coldsteel Heart, the Thriving lands; the answer is remembered on
     // the permanent) or while a spell resolves (Wash Out). color_options
@@ -840,11 +870,12 @@ export interface PendingChoiceView {
   // life. The label already says it; this is the number, for anything
   // that needs to reason about the price rather than print it.
   life_cost?: number;
-  // #74: populated for kinds "choose_cards", "untap_choice" and
-  // "entry_reveal_from_hand" — how few and how many of `options` the
-  // chooser must pick. Absent for every other kind, and (for the two
-  // kinds whose candidates are cards in a hand — choose_cards and
-  // entry_reveal_from_hand) absent for non-chooser viewers, who are
+  // #74: populated for kinds "choose_cards", "untap_choice",
+  // "entry_reveal_from_hand" and #1214's three resolution-time picks
+  // ("reveal_pick", "their_permanents", "own_permanents") — how few
+  // and how many of `options` the chooser must pick. Absent for every
+  // other kind, and (for the two kinds whose candidates are cards in a
+  // hand — choose_cards and entry_reveal_from_hand) absent for
   // not told the size of a choice over someone else's hidden cards.
   choose_min?: number;
   choose_max?: number;
