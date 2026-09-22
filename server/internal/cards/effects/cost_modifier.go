@@ -226,6 +226,12 @@ func ArtifactOrEnchantmentSpell() CostPredicate {
 	return func(q game.CostQuery) bool { return q.Card.IsArtifact() || q.Card.IsEnchantment() }
 }
 
+// ArtifactSpell passes on an artifact spell — Foundry Inspector,
+// Semblance Anvil.
+func ArtifactSpell() CostPredicate {
+	return func(q game.CostQuery) bool { return q.Card.IsArtifact() }
+}
+
 // ColoredSpell passes on a spell that IS the given colour — "BLUE
 // spells you cast cost {1} less to cast" (The Water Crystal). `color`
 // is a single-letter code, "W" / "U" / "B" / "R" / "G", the spelling

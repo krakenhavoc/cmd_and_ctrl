@@ -92,6 +92,37 @@ func OpponentsSourcesCantActivate(label string, match CardPredicate, exemptMana 
 	}
 }
 
+// OpponentsSourcesCantActivateDuringYourTurn is Grand Abolisher's
+// activation half: "During your turn, your opponents can't ...
+// activate abilities of artifacts, creatures, or enchantments."
+//
+// OpponentsSourcesCantActivate with the turn added, the same way
+// OpponentsCantCastDuringYourTurn (cast_restriction.go) adds it to
+// OpponentsCantCast. Both halves are read off the SOURCE's
+// controller: the "your" in "your opponents" and the "your" in
+// "your turn", so a stolen Grand Abolisher locks the table out on
+// its new controller's turn instead.
+func OpponentsSourcesCantActivateDuringYourTurn(label string, match CardPredicate, exemptMana bool) game.ActivationRestriction {
+	return game.ActivationRestriction{
+		Label: label,
+		Forbids: func(q game.ActivationQuery) bool {
+			if exemptMana && q.Ability.Mana {
+				return false
+			}
+			if q.FromZone != game.ZoneBattlefield {
+				return false
+			}
+			if q.Card.Controller == q.Source.Controller {
+				return false
+			}
+			if !isActivePlayer(q.Game, q.Source.Controller) {
+				return false
+			}
+			return matchActivationSource(q, match)
+		},
+	}
+}
+
 // ChosenNameCantActivate is Pithing Needle, Phyrexian Revoker and
 // Sorcerous Spyglass: "Activated abilities of sources with the chosen
 // name can't be activated unless they're mana abilities."
