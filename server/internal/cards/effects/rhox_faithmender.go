@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Rhox Faithmender — Creature — Rhino Monk {3}{W}, 1/5 (EDHREC rank
 // 1620):
@@ -40,19 +36,12 @@ func init() {
 		Name:            "Rhox Faithmender",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"lifelink"},
-		Replacements: []game.ReplacementEffect{{
-			Watches: []game.EventKind{game.EventChangeLife},
-			AppliesTo: func(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) bool {
-				return ev.Kind == game.RepEventLife && ev.LifeDelta > 0 && ev.LifePlayer == src.Controller
-			},
-			Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
-				ev.LifeDelta *= 2
-				return nil
-			},
-			Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
-				return src.Controller
-			},
-			Label: "Rhox Faithmender: gain twice that much life",
-		}},
+		Replacements: []game.ReplacementEffect{
+			// #1222: shared with Alhammarret's Archive, which prints
+			// the same sentence. This was an inline clause while it was
+			// the only one; life_replacements.go is where the family
+			// lives now.
+			YouGainTwiceThatMuchLife("Rhox Faithmender: gain twice that much life"),
+		},
 	})
 }
