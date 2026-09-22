@@ -256,22 +256,55 @@ type AbilityCost struct {
 	// activates an ability in one indivisible step, so a cost may
 	// not stop to ask the server a question mid-announce.
 	DiscardCards *DiscardCost
+
+	// ReturnToHand returns permanents the activator controls to their
+	// OWNERS' hands as part of the cost (#1213) — Quirion Ranger's
+	// "Return a Forest you control to its owner's hand", Master
+	// Transmuter's artifact, Meloku the Clouded Mirror's land. Nil
+	// means no such component. See ReturnToHandCost in
+	// return_cost.go.
+	//
+	// The activator names the permanents in
+	// ActivateAbilityParams.ReturnIDs at announce, beside the
+	// sacrifice, tap and crew picks. Two rules ride along and are
+	// enforced in ActivateCatalogAbility rather than asked of each
+	// card:
+	//
+	//	CR 118.3   a board that cannot produce Count matches cannot
+	//	           activate the ability at all.
+	//	CR 601.2h  the move settles without a prompt, so a commander
+	//	           returned this way is not offered the command zone
+	//	           mid-announce — payReturnToHandCostLocked says why.
+	//
+	// Paid with the sacrifices, BEFORE the ability is on the stack,
+	// so the leaves-the-battlefield triggers it queues are drained
+	// above the ability (CR 603.3b). The source may be a legal pick
+	// when the filter admits it, which is why the activation path
+	// drops its `source` pointer afterwards exactly as it does after
+	// a sacrifice.
+	ReturnToHand *ReturnToHandCost
 }
 
 // DemandsX reports whether the ability's mana component contains
 // {X}, and is therefore an ability the activator announces a value
 // for at CR 602.2b.
 //
-// X lives in the MANA component and nowhere else. A spell can grow
-// an X outside its printed cost (Toxic Deluge's "pay X life" rides
-// AdditionalCost.PayLifeX, waterbend's rides TapPermanentsCost), so
-// the cast path has three places to ask. An ability has one, and
-// keeping it that way is what lets every consumer — the view, the
-// enumerator, the client — derive "does this prompt for X" from the
-// cost string rather than from a flag a card file could forget to
-// set.
+// X used to live in the MANA component and nowhere else. #1213 added
+// the second place, and it is the same second place the cast path has
+// always had: a spell grows an X outside its printed cost with Toxic
+// Deluge's "pay X life" (AdditionalCost.PayLifeX) and with waterbend
+// (TapPermanentsCost), and Grim Hireling's "{B}, Sacrifice X
+// Treasures" is that on an ability. So the question is asked of the
+// COST rather than of the cost string, and every consumer — the view,
+// the enumerator, the client — still derives "does this prompt for X"
+// from the declared components rather than from a flag a card file
+// could forget to set.
+//
+// XSlots is deliberately NOT widened with it: a sacrifice clause's X
+// buys permanents, not generic mana, so Grim Hireling's {B} stays {B}
+// at every announced X.
 func (c AbilityCost) DemandsX() bool {
-	return c.XSlots() > 0
+	return c.XSlots() > 0 || SacrificeCountFromX(c.SacrificeOther)
 }
 
 // XSlots is how many {X} tokens the mana component carries. Usually
@@ -582,6 +615,17 @@ type ActivateAbilityParams struct {
 	// additional discard cost rides CastSpellParams.DiscardIDs.
 	DiscardIDs []uuid.UUID
 
+	// ReturnIDs names the permanents paid to a ReturnToHand cost
+	// (#1213): exactly the clause's Count, each once, each on the
+	// battlefield under the activator's control and each matched by
+	// the clause. Their order does not matter — each takes its own
+	// route to its OWNER's hand.
+	//
+	// On the wire as `return_ids`, beside `sacrifice_ids` and
+	// `tap_ids`: the same announce-time cost pause the client
+	// already opens for those, not a new one.
+	ReturnIDs []uuid.UUID
+
 	// CounterKind is the kind a "remove a counter" cost of ANY kind
 	// removes (Fain, the Broker), chosen at announce with the
 	// permanent. Optional for a cost that prints its kind — if sent,
@@ -869,7 +913,7 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 			return ErrSummoningSick
 		}
 	}
-	sacrifices, err := g.validateSacrificeCostLocked(playerID, cardID, ab.Cost, params.SacrificeIDs)
+	sacrifices, err := g.validateSacrificeCostLocked(playerID, cardID, ab.Cost, params.SacrificeIDs, params.XValue)
 	if err != nil {
 		return err
 	}
@@ -898,6 +942,12 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 				return ErrInvalidParam
 			}
 		}
+	}
+	// #1213: the return-to-hand component. Validated here with every
+	// other cost and paid with the sacrifices below, so a refusal
+	// leaves the board entirely untouched (ADR 0020 §3).
+	if err := g.validateReturnToHandCostLocked(playerID, cardID, ab.Cost.ReturnToHand, params.ReturnIDs); err != nil {
+		return err
 	}
 	counters, err := g.validateCounterRemovalCostLocked(playerID, cardID, ab.Cost, CounterCostPayment{
 		SourceIDs: params.CounterSourceIDs,
@@ -1074,6 +1124,20 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	// Sacrifices last: they move cards, which invalidates `source`.
 	// One payment is one simultaneous exit (#747, CR 603.10a).
 	if err := g.payCostSacrificesLocked(sacrifices); err != nil {
+		return err
+	}
+	// #1213: how many this announcement actually sacrificed, recorded
+	// before the permanents are unreachable. Radiant Lotus's "for each
+	// artifact sacrificed this way" reads it at resolution through
+	// Context.Sacrificed().
+	paid.Sacrificed = len(sacrifices)
+	// #1213: the return-to-hand component, beside the sacrifices and
+	// for the same reason — it moves cards, so it goes after every
+	// component that needs the source still on the battlefield, and
+	// before the stack item is built so the leaves-triggers it queues
+	// are drained ABOVE the ability by the closing state-check pass
+	// (CR 603.3b).
+	if err := g.payReturnToHandCostLocked(playerID, cardID, params.ReturnIDs); err != nil {
 		return err
 	}
 	source = nil
@@ -1279,7 +1343,14 @@ func (g *Game) validateCrewCostLocked(playerID uuid.UUID, cost AbilityCost, chos
 // the source too. Any failure refuses the whole payment with nothing
 // moved; all three cost sites (an activated ability, a mana ability,
 // an additional cost to cast) share this one check.
-func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost AbilityCost, chosen []uuid.UUID) ([]uuid.UUID, error) {
+//
+// #1213: `x` is the value announced with the activation or the cast,
+// and the count is read through SacrificeCostBounds rather than off
+// the clause — so "Sacrifice one or more artifacts" accepts any number
+// at or above its floor, and "Sacrifice X Treasures" accepts exactly
+// the X that was announced. A FIXED clause reads exactly as it did and
+// ignores `x` entirely; pass 0 from a site that has no X to announce.
+func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost AbilityCost, chosen []uuid.UUID, x int) ([]uuid.UUID, error) {
 	var out []uuid.UUID
 	if cost.SacrificeSelf {
 		out = append(out, sourceID)
@@ -1290,7 +1361,10 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 		}
 		return out, nil
 	}
-	if len(chosen) != SacrificeCostCount(cost.SacrificeOther) {
+	// #1213: one predicate, shared with the view's picker bounds and
+	// the enumerator's payment walk, so none of the three can offer
+	// or accept a count the others refuse (#544).
+	if !SacrificeCountLegal(cost.SacrificeOther, x, len(chosen)) {
 		return nil, ErrInvalidParam
 	}
 	seen := make(map[uuid.UUID]bool, len(chosen))

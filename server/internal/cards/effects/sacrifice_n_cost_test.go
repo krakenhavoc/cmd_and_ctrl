@@ -431,19 +431,23 @@ func TestRegisterRejectsVariableSacrificeClauses(t *testing.T) {
 			Label: "x", Cost: game.AbilityCost{SacrificeOther: spec}, Effect: noop,
 		}}}
 	}
+	fromX := func(label string) *game.TargetSpec {
+		s := sacrificeSpec(label, Creature())
+		s.CountFromX = true
+		return s
+	}
 	cases := []struct {
 		name string
 		spec Spec
 		want string
 	}{
-		{"min differs from max", ability("sac-guard-range", sacrificeSpec("one or two", Creature()).WithCount(1, 2)), "fixed count"},
-		{"one or more", ability("sac-guard-any", sacrificeSpec("one or more", Creature()).WithCount(1, 0)), "fixed count"},
-		{"count zero", ability("sac-guard-zero", sacrificeSpec("none", Creature()).WithCount(0, 0)), "fixed count"},
-		{"count from X", ability("sac-guard-x", func() *game.TargetSpec {
-			s := sacrificeSpec("X creatures", Creature())
-			s.CountFromX = true
-			return s
-		}()), "from X"},
+		{"count zero", ability("sac-guard-zero", sacrificeSpec("none", Creature()).WithCount(0, 0)), "at least one"},
+		{"ceiling below floor", ability("sac-guard-inverted", sacrificeSpec("three to two", Creature()).WithCount(3, 2)), "ceiling is below the floor"},
+		{"count from X beside an {X} mana cost", Spec{OracleID: "sac-guard-two-x", Name: "sac-guard-two-x", Activated: []ActivatedAbility{{
+			Label:  "x",
+			Cost:   game.AbilityCost{Mana: "{X}{B}", SacrificeOther: fromX("X creatures")},
+			Effect: noop,
+		}}}, "one announced X cannot pay both"},
 		{"allow same", ability("sac-guard-same", func() *game.TargetSpec {
 			s := sacrificeSpec("two creatures", Creature()).WithCount(2, 2)
 			s.AllowSame = true
@@ -454,12 +458,12 @@ func TestRegisterRejectsVariableSacrificeClauses(t *testing.T) {
 			s.Players = true
 			return s
 		}()), "admits players"},
-		{"mana ability site", Spec{OracleID: "sac-guard-mana", Name: "sac-guard-mana", ManaAbilities: []ManaAbility{{
-			Cost:     ManaAbilityCost{SacrificeOther: sacrificeSpec("one or more", Creature()).WithCount(1, 0)},
+		{"count from X on a mana ability", Spec{OracleID: "sac-guard-mana-x", Name: "sac-guard-mana-x", ManaAbilities: []ManaAbility{{
+			Cost:     ManaAbilityCost{SacrificeOther: fromX("X creatures")},
 			Produced: "{C}",
-		}}}, "mana ability 0"},
-		{"additional cost site", Spec{OracleID: "sac-guard-spell", Name: "sac-guard-spell", AdditionalCost: &game.AdditionalCost{
-			Sacrifice: sacrificeSpec("any number of creatures", Creature()).WithCount(0, 0),
+		}}}, "no X to announce"},
+		{"variable count on a cast", Spec{OracleID: "sac-guard-spell", Name: "sac-guard-spell", AdditionalCost: &game.AdditionalCost{
+			Sacrifice: sacrificeSpec("one or more creatures", Creature()).WithCount(1, 0),
 		}}, "additional cost"},
 		// #1224: an AdditionalCost in OptionalCosts carries the same
 		// Sacrifice clause the mandatory slot does (Constant Mists'
@@ -471,6 +475,9 @@ func TestRegisterRejectsVariableSacrificeClauses(t *testing.T) {
 			Label:     "Buyback—Sacrifice any number of creatures",
 			Sacrifice: sacrificeSpec("any number of creatures", Creature()).WithCount(0, 0),
 		}}}, "optional cost"},
+		{"count from X on a cast", Spec{OracleID: "sac-guard-spell-x", Name: "sac-guard-spell-x", AdditionalCost: &game.AdditionalCost{
+			Sacrifice: fromX("X creatures"),
+		}}, "no X to announce"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -505,6 +512,86 @@ func TestRegisterAcceptsFixedOptionalSacrificeClause(t *testing.T) {
 	Register(spec)
 	if !Has(spec.OracleID) {
 		t.Error("a legal optional sacrifice clause was refused")
+	}
+}
+
+// #1213 narrowed the guard above: the two printed VARIABLE shapes are
+// declarable now, on the surfaces that can announce them. This is the
+// other side of the same contract, and it is a test rather than a
+// comment because "#747 refuses this" was true for a year and the
+// panic message still says which shapes are mistakes.
+func TestRegisterAcceptsAnnouncedSacrificeCounts(t *testing.T) {
+	noop := func(*game.Game, *game.StackItem) error { return nil }
+	ability := func(id string, spec *game.TargetSpec) Spec {
+		return Spec{OracleID: id, Name: id, Activated: []ActivatedAbility{{
+			Label: "x", Cost: game.AbilityCost{SacrificeOther: spec}, Effect: noop,
+		}}}
+	}
+	fromX := func(label string) *game.TargetSpec {
+		s := sacrificeSpec(label, Creature())
+		s.CountFromX = true
+		return s
+	}
+	cases := []struct {
+		name string
+		spec Spec
+	}{
+		{"one or more on an activated ability", ability("sac-ok-open", sacrificeSpec("one or more creatures", Creature()).WithCount(1, 0))},
+		{"a printed range", ability("sac-ok-range", sacrificeSpec("one or two creatures", Creature()).WithCount(1, 2))},
+		{"count from X on an activated ability", ability("sac-ok-x", fromX("X creatures"))},
+		{"one or more on a mana ability", Spec{OracleID: "sac-ok-mana-open", Name: "sac-ok-mana-open", ManaAbilities: []ManaAbility{{
+			Cost:     ManaAbilityCost{SacrificeOther: sacrificeSpec("one or more creatures", Creature()).WithCount(1, 0)},
+			Produced: "{C}",
+		}}}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			registerForTest(t, tc.spec)
+			if !Has(tc.spec.OracleID) {
+				t.Fatal("a legal variable-count clause was not registered")
+			}
+		})
+	}
+}
+
+// The bounds a variable clause reads are the WHOLE of the design, so
+// they are pinned here beside the guard rather than left to the cards.
+func TestSacrificeCostBoundsReadTheAnnouncement(t *testing.T) {
+	fixed := sacrificeSpec("two creatures", Creature()).WithCount(2, 2)
+	open := sacrificeSpec("one or more creatures", Creature()).WithCount(1, 0)
+	fromX := sacrificeSpec("X creatures", Creature())
+	fromX.CountFromX = true
+
+	cases := []struct {
+		name     string
+		spec     *game.TargetSpec
+		x        int
+		lo, hi   int
+		legal    []int
+		notLegal []int
+	}{
+		{"fixed", fixed, 0, 2, 2, []int{2}, []int{0, 1, 3}},
+		{"open", open, 0, 1, 0, []int{1, 2, 7}, []int{0}},
+		{"from X at 3", fromX, 3, 3, 3, []int{3}, []int{0, 2, 4}},
+		{"from X at 0", fromX, 0, 0, 0, []int{0}, []int{1}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			lo, hi := game.SacrificeCostBounds(tc.spec, tc.x)
+			if lo != tc.lo || hi != tc.hi {
+				t.Fatalf("bounds = %d/%d, want %d/%d", lo, hi, tc.lo, tc.hi)
+			}
+			for _, n := range tc.legal {
+				if !game.SacrificeCountLegal(tc.spec, tc.x, n) {
+					t.Errorf("naming %d is refused, want accepted", n)
+				}
+			}
+			for _, n := range tc.notLegal {
+				if game.SacrificeCountLegal(tc.spec, tc.x, n) {
+					t.Errorf("naming %d is accepted, want refused", n)
+				}
+			}
+		})
 	}
 }
 

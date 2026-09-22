@@ -50,10 +50,51 @@ func SacrificeAPermanent() game.AbilityCost {
 // takes SacrificeN(...).SacrificeOther, the way it takes
 // SacrificeACreature().SacrificeOther.
 //
-// Variable counts ("Sacrifice X Treasures", "one or more") have no
-// shape: Register refuses a clause whose Min and Max differ.
+// The VARIABLE counts are SacrificeOneOrMore and SacrificeX below
+// (#1213); this constructor is the fixed one and Register refuses a
+// count below one here.
 func SacrificeN(n int, label string, preds ...CardPredicate) game.AbilityCost {
 	return game.AbilityCost{SacrificeOther: sacrificeSpec(label, preds...).WithCount(n, n)}
+}
+
+// SacrificeOneOrMore is "Sacrifice one or more <permanents>" —
+// Radiant Lotus's "{T}, Sacrifice one or more artifacts" is
+//
+//	SacrificeOneOrMore("one or more artifacts", Artifact())
+//
+// The activator names how many at announce (CR 602.2b); the floor is
+// one and there is no printed ceiling, so the board is the only
+// bound. The effect reads how many were paid back with
+// ctx.Sacrificed(), never by counting the board — by resolution the
+// permanents are in graveyards.
+//
+// Only an ACTIVATED or MANA ability may carry it. A cast's payment
+// lists are walked in plan order and need a fixed width, so
+// Register refuses a variable clause in AdditionalCost.
+func SacrificeOneOrMore(label string, preds ...CardPredicate) game.AbilityCost {
+	return game.AbilityCost{SacrificeOther: sacrificeSpec(label, preds...).WithCount(1, 0)}
+}
+
+// SacrificeX is "Sacrifice X <permanents>" — Grim Hireling's "{B},
+// Sacrifice X Treasures" is
+//
+//	SacrificeX("X Treasures", HasSubtype("Treasure"))
+//
+// The count is the X announced with the activation (CR 602.2b), which
+// the effect reads back with ctx.X() exactly as an {X} mana cost's is.
+// The clause's own Min and Max are ignored, the way a CountFromX
+// TARGET clause's are.
+//
+// It makes the ability demand an X even when the mana component has
+// none — Grim Hireling prints {B} — so Register refuses a cost that
+// ALSO puts {X} in its mana cost: one announced number cannot pay
+// both. And it needs a stack item to carry the announcement, so
+// Register refuses it on a mana ability (CR 605.3b) and on a cast's
+// additional cost.
+func SacrificeX(label string, preds ...CardPredicate) game.AbilityCost {
+	spec := sacrificeSpec(label, preds...)
+	spec.CountFromX = true
+	return game.AbilityCost{SacrificeOther: spec}
 }
 
 // ManaCost is a printed mana component, "{1}{B}". An {X} in the
@@ -142,8 +183,48 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.DiscardCards != nil {
 			out.DiscardCards = c.DiscardCards
 		}
+		// #1213: the same reasoning again — a composed "{1}, Return a
+		// land you control to its owner's hand" that dropped the
+		// return would be a free token every turn, which is Meloku
+		// far stronger than printed.
+		if c.ReturnToHand != nil {
+			out.ReturnToHand = c.ReturnToHand
+		}
 	}
 	return out
+}
+
+// ReturnAPermanentToHand is "Return a <permanent> you control to its
+// owner's hand" as a COST (#1213) — Quirion Ranger's
+//
+//	ReturnAPermanentToHand("a Forest you control", HasSubtype("Forest"))
+//
+// Master Transmuter's artifact, Meloku the Clouded Mirror's land. The
+// label is the clause as printed, without the verb; the client shows
+// it in the picker, and the activator names the permanent at announce
+// (CR 602.2b).
+//
+// The source itself is a legal pick when the predicates admit it —
+// Master Transmuter is an artifact you control and returning herself
+// is a real line — so a clause that means "another" says so with a
+// predicate, exactly as a sacrifice clause does.
+//
+// This is the COST, not the effect. "Return target creature to its
+// owner's hand" on the right of the colon is BounceToHand.
+func ReturnAPermanentToHand(label string, preds ...CardPredicate) game.AbilityCost {
+	return ReturnNToHand(1, label, preds...)
+}
+
+// ReturnNToHand is ReturnAPermanentToHand with a count. No printed
+// card returns more than one today; the parameter exists because the
+// count belongs to the clause rather than to the constructor, which is
+// the lesson #747 wrote into SacrificeN.
+func ReturnNToHand(n int, label string, preds ...CardPredicate) game.AbilityCost {
+	return game.AbilityCost{ReturnToHand: &game.ReturnToHandCost{
+		Count:  n,
+		Filter: TargetPermanent(label, preds...),
+		Label:  label,
+	}}
 }
 
 // DiscardThis is cycling's "Discard this card" cost component

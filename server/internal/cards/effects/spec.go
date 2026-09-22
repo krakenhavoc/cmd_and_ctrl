@@ -1248,6 +1248,27 @@ type ManaAbilityCost struct {
 	// component is declared once and owned by both ability kinds.
 	// Build it with AddCounterToThis(kind, n).AddCounter.
 	AddCounter *game.CounterAddCost
+
+	// DiscardCards is a "discard N cards" component of the
+	// activation cost (#1213) — Skirge Familiar's "Discard a card:
+	// Add {B}", the shape `ManaAbilityCost` was missing while
+	// `AbilityCost` grew one with #660.
+	//
+	// Build it with the SAME constructors an activated ability's
+	// cost uses, reading the component off the returned AbilityCost:
+	//
+	//	DiscardACard().DiscardCards
+	//	DiscardCardsMatching(1, "a land card", isLand).DiscardCards
+	//
+	// One game.DiscardCost with two owners, so the validator, the
+	// candidate walk, the enumerator, the view and the client's
+	// picker are each written once — the same "one clause
+	// vocabulary" reasoning SacrificeOther and RemoveCounters above
+	// were built on.
+	//
+	// The auto-tapper never plans a source that has one: which card
+	// to pitch is a decision, and the planner makes none.
+	DiscardCards *game.DiscardCost
 }
 
 // ZeroUUID is an alias for uuid.Nil. Mostly used in tests to

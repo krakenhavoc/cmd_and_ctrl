@@ -275,6 +275,33 @@ type ManaAbilityShape struct {
 	// an ability that has one.
 	AddCounter *CounterAddCost
 
+	// DiscardCards is a "discard N cards" component of the activation
+	// cost — Skirge Familiar's "Discard a card: Add {B}" (#1213).
+	//
+	// The SAME game.DiscardCost an activated ability's cost carries
+	// (#660), with the same options walk, the same validator and the
+	// same payer, for the reason SacrificeOther, RemoveCounters and
+	// TapOthers above are each one struct with two owners: a clause
+	// declared twice is a clause that can be paid two ways.
+	//
+	// It pays through the ONE discard door (discardCardsLocked with
+	// DiscardCauseCost), so EventDiscardCard fires once per card, the
+	// CR 614 window runs over the exit and madness (CR 702.35a) sees
+	// it — without any of them learning that mana abilities exist.
+	// CR 601.2h's indivisible step is expressed by
+	// zoneRoute.MustSettleNow, as it is for every other cost discard.
+	//
+	// The activator names the cards in ManaAbilityParams.DiscardIDs.
+	// There is no DiscardSelf twin: that component discards the
+	// SOURCE (cycling, CR 702.29a) and a mana ability's source is a
+	// permanent, which is not in a hand to discard.
+	//
+	// The AUTO-TAPPER never plans an ability that has one, the same
+	// bar the life cost and the tap-others cost fail: which card to
+	// pitch is a decision, and the planner makes none. A hand-clicked
+	// Skirge Familiar is a mana source; an auto-tapped one is not.
+	DiscardCards *DiscardCost
+
 	// ProducedForPaid computes the produced-mana string from what
 	// the cost actually PAID, for an ability whose output the
 	// printed text derives from the payment rather than from the

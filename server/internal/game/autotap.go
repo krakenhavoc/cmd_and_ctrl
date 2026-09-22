@@ -656,6 +656,14 @@ func (g *Game) autoTapAbilityFor(asker uuid.UUID, source Card, abilities []ManaA
 		if !a.TapOthers.Empty() {
 			continue
 		}
+		// #1213: a discard cost, on the same ground one zone over —
+		// auto-tapping Skirge Familiar would pitch a card the player
+		// never offered, and WHICH card is a decision the planner
+		// makes none of. A hand-clicked Skirge Familiar is a mana
+		// source; an auto-tapped one is not.
+		if a.DiscardCards != nil {
+			continue
+		}
 		return &a
 	}
 	return nil

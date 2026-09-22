@@ -92,6 +92,20 @@ func (c *Context) CountersRemoved() int {
 	return c.Paid().CountersRemoved
 }
 
+// Sacrificed is how many permanents the announcement's cost
+// sacrificed — "for each artifact sacrificed this way" (Radiant
+// Lotus). A fact about the ANNOUNCEMENT, read back the way X and
+// CountersRemoved are: by resolution the permanents are in
+// graveyards, so nothing here could recompute it. Added in #1213.
+//
+// For an ability whose clause prints a fixed count this is simply
+// that number; the reason it exists is the VARIABLE count
+// ("sacrifice one or more", "sacrifice X"), where the card itself
+// cannot say.
+func (c *Context) Sacrificed() int {
+	return c.Paid().Sacrificed
+}
+
 // ManaSpent is what the payment for THIS stack item can be asked
 // about: Colors(), Count("R"), Total(), FromTreasure(), Snow() and
 // the rest of game.ManaSpent's vocabulary.

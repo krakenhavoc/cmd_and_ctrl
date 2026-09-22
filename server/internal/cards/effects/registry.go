@@ -181,7 +181,11 @@ func Register(spec Spec) {
 		// validateAdditionalCostLocked through the same plan and the same
 		// flat sacrifice_ids walk — so every shape the guard refuses on
 		// the mandatory slot below is refusable here too.
-		checkSacrificeClause(spec.Name, fmt.Sprintf("optional cost %q", oc.Key), oc.Sacrifice)
+		// #1213: an optional cost is a CAST cost, so neither variable
+		// shape has a shape here — the flat payment lists are walked
+		// in plan order and need a fixed width, exactly as the
+		// mandatory slot above.
+		checkSacrificeClause(spec.Name, fmt.Sprintf("optional cost %q", oc.Key), oc.Sacrifice, false, false)
 		if oc.Empty() {
 			panic(fmt.Sprintf("effects.Register: %q optional cost %q demands nothing", spec.Name, oc.Key))
 		}
@@ -353,7 +357,8 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q ability %d sets a negative MinX %d", spec.Name, i, ab.Cost.MinX))
 		}
 		checkCounterCost(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.RemoveCounters, ab.Cost.AddCounter)
-		checkSacrificeClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.SacrificeOther)
+		checkSacrificeClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.SacrificeOther, true, true)
+		checkReturnClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ReturnToHand)
 		// #660: a discard clause that discards nothing would make
 		// the ability free, the way a zero-counter cost would.
 		if dc := ab.Cost.DiscardCards; dc != nil && dc.N <= 0 {
@@ -383,13 +388,26 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q ability %d declares a discard-this cost but does not function from the hand — build it with Cycling / Typecycling",
 				spec.Name, i))
 		}
+		// #1213: two claimants on one announced X. A cost whose mana
+		// component carries {X} AND whose sacrifice clause counts
+		// from X would have to spend one number on both, and the
+		// engine would silently take whichever the first reader
+		// asked for. The same refusal ADR 0021 §3 makes for
+		// PayLifeX, one component over; no printed card does it.
+		if ab.Cost.XSlots() > 0 && game.SacrificeCountFromX(ab.Cost.SacrificeOther) {
+			panic(fmt.Sprintf("effects.Register: %q ability %d has {X} in its mana cost %q AND sacrifices X permanents — one announced X cannot pay both",
+				spec.Name, i, ab.Cost.Mana))
+		}
 		if ab.Cost.MinX > 0 && !ab.Cost.DemandsX() {
 			panic(fmt.Sprintf("effects.Register: %q ability %d sets MinX %d but its cost %q has no {X} — a floor on a variable that cannot vary makes the ability unactivatable",
 				spec.Name, i, ab.Cost.MinX, ab.Cost.Mana))
 		}
 	}
 	for i, ma := range spec.ManaAbilities {
-		checkSacrificeClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.SacrificeOther)
+		// #1213: `false` — a mana ability has no stack item and no
+		// announced X (CR 605.3b), so a "Sacrifice X …" clause there
+		// has nothing to read its count from.
+		checkSacrificeClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.SacrificeOther, true, false)
 		// #789: the counter components are one declaration with two
 		// owners, so they are checked by one function in both places.
 		checkCounterCost(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.RemoveCounters, ma.Cost.AddCounter)
@@ -401,7 +419,7 @@ func Register(spec Spec) {
 		}
 	}
 	if spec.AdditionalCost != nil {
-		checkSacrificeClause(spec.Name, "additional cost", spec.AdditionalCost.Sacrifice)
+		checkSacrificeClause(spec.Name, "additional cost", spec.AdditionalCost.Sacrifice, false, false)
 	}
 	// #801: a replacement's per-instance ReplacementEffectID packs the
 	// source's battlefield index and its slot in this slice into one
@@ -473,15 +491,28 @@ func checkTriggerZones(card, what string, triggers []game.TriggeredAbility) {
 	}
 }
 
-// checkSacrificeClause is #747's registration guard (ADR 0020
-// addendum §12). A sacrifice clause's Min == Max is the number of
-// permanents the cost sacrifices, so the only shape the engine pays
-// is a fixed count of at least one. Every form that would quietly
-// read as something else panics at boot instead:
+// checkSacrificeClause is #747's registration guard, narrowed by
+// #1213 (ADR 0020 addendum §12, ADR 0073's 2026-09-22 amendment).
 //
-//   - Min != Max, or Min < 1: a variable count ("one or more", "any
-//     number") has no announced count and no record of what was paid.
-//   - CountFromX: "Sacrifice X Treasures" needs the same.
+// #747 accepted exactly one shape — a FIXED count of at least one,
+// written Min == Max == N — because a variable count had no announced
+// count and no record of what was paid. Both exist now
+// (SacrificeCostBounds and PaidCost.Sacrificed), so two more shapes
+// are legal:
+//
+//   - an OPEN count, Min ≥ 1 with Max 0: "Sacrifice one or more
+//     artifacts" (Radiant Lotus). The activator names how many.
+//   - CountFromX: "Sacrifice X Treasures" (Grim Hireling). The
+//     announced X is the count on both sides.
+//
+// Everything still refused is a card-file mistake that would ship the
+// card as something it does not print:
+//
+//   - a floor below one: a cost that can be paid with nothing is free.
+//   - a ceiling below the floor.
+//   - CountFromX where there is no X to announce — `allowX` is false
+//     for a mana ability, which has no stack item to carry one
+//     (CR 605.3b).
 //   - AllowSame: one permanent cannot pay two sacrifices.
 //   - Players: a player is not a permanent.
 //
@@ -543,20 +574,58 @@ func checkCounterCost(card, where string, rc *game.CounterRemovalCost, ac *game.
 	}
 }
 
-func checkSacrificeClause(card, where string, spec *game.TargetSpec) {
+func checkSacrificeClause(card, where string, spec *game.TargetSpec, allowOpen, allowX bool) {
 	if spec == nil {
 		return
 	}
 	switch {
-	case spec.Min != spec.Max || spec.Min < 1:
-		panic(fmt.Sprintf("effects.Register: %q %s sacrifices %d to %d permanents — a sacrifice cost is a fixed count of at least one (SacrificeN); variable counts have no shape yet (#747)",
+	case spec.CountFromX && !allowX:
+		panic(fmt.Sprintf("effects.Register: %q %s sacrifices X permanents, but there is no X to announce here (CR 605.3b / the flat cast payment list, #1213)", card, where))
+	case game.SacrificeCostVariable(spec) && !spec.CountFromX && !allowOpen:
+		panic(fmt.Sprintf("effects.Register: %q %s sacrifices %d to %d permanents, but a variable count has no shape here — a cast's payment lists are walked in plan order and need a fixed width (#1213)",
 			card, where, spec.Min, spec.Max))
-	case spec.CountFromX:
-		panic(fmt.Sprintf("effects.Register: %q %s sacrifices X permanents — a sacrifice count from X has no shape yet (#747)", card, where))
+	case !spec.CountFromX && spec.Min < 1:
+		panic(fmt.Sprintf("effects.Register: %q %s sacrifices %d to %d permanents — a sacrifice cost pays at least one, so its floor is at least one (SacrificeN, SacrificeOneOrMore)",
+			card, where, spec.Min, spec.Max))
+	case !spec.CountFromX && spec.Max != 0 && spec.Max < spec.Min:
+		panic(fmt.Sprintf("effects.Register: %q %s sacrifices %d to %d permanents — the ceiling is below the floor",
+			card, where, spec.Min, spec.Max))
 	case spec.AllowSame:
 		panic(fmt.Sprintf("effects.Register: %q %s lets one permanent pay a sacrifice twice (AllowSame)", card, where))
 	case spec.Players:
 		panic(fmt.Sprintf("effects.Register: %q %s admits players — a sacrifice clause matches permanents only", card, where))
+	}
+}
+
+// checkReturnClause is #1213's registration guard for the
+// return-to-hand cost component, and it is checkSacrificeClause's
+// shape one verb over: a fixed count of at least one, over a clause
+// that matches permanents.
+//
+// Refused at boot, each naming a card-file mistake:
+//
+//   - a count below one, or no clause at all: the component would
+//     demand nothing and the ability would be free.
+//   - a variable count: "Return X permanents you control" is not
+//     printed, and it would need the announce path
+//     SacrificeCostBounds uses.
+//   - AllowSame: one permanent cannot pay two returns.
+//   - Players: a player is not a permanent.
+func checkReturnClause(card, where string, rc *game.ReturnToHandCost) {
+	if rc == nil {
+		return
+	}
+	if rc.Count < 1 || rc.Filter == nil {
+		panic(fmt.Sprintf("effects.Register: %q %s returns %d permanents to hand — a return cost returns at least one and needs its clause (ReturnAPermanentToHand)",
+			card, where, rc.Count))
+	}
+	switch {
+	case rc.Filter.CountFromX:
+		panic(fmt.Sprintf("effects.Register: %q %s returns X permanents to hand — a variable return count has no shape (#1213)", card, where))
+	case rc.Filter.AllowSame:
+		panic(fmt.Sprintf("effects.Register: %q %s lets one permanent pay a return twice (AllowSame)", card, where))
+	case rc.Filter.Players:
+		panic(fmt.Sprintf("effects.Register: %q %s admits players — a return clause matches permanents only", card, where))
 	}
 }
 

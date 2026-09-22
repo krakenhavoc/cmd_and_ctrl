@@ -79,6 +79,25 @@ type PaidCost struct {
 	// with neither.
 	LifePaid int
 
+	// Sacrificed is how many permanents a sacrifice component
+	// actually took — the source when the cost sacrificed it, and the
+	// permanents the clause named (#1213).
+	//
+	// It exists for the VARIABLE count: Radiant Lotus's "three mana of
+	// the chosen color for each artifact sacrificed this way" is read
+	// at resolution, by which time the artifacts are in graveyards and
+	// nothing on the board could count them. Exactly the argument
+	// CountersRemoved was added under (#789), which is why it is the
+	// neighbouring field of the same record rather than a second
+	// mechanism.
+	//
+	// Recorded for a FIXED cost too, where it is simply the printed
+	// number. "The engine charged N" and "the card prints N" are
+	// different facts, and a record that only spoke up for the
+	// interesting case would make every reader ask which it was
+	// looking at.
+	Sacrificed int
+
 	// OptionalCosts is which of the card's optional additional costs
 	// the caster chose to pay (CR 601.2b), as positions in the card's
 	// OptionalCosts slice, ascending. A cost paid N times appears N
@@ -188,7 +207,7 @@ func (p PaidCost) Known() bool { return !p.OnPaper }
 func (p PaidCost) IsZero() bool {
 	return len(p.Mana) == 0 && !p.OnPaper &&
 		p.CountersRemoved == 0 && p.CountersAdded == 0 && p.LifePaid == 0 &&
-		len(p.OptionalCosts) == 0
+		p.Sacrificed == 0 && len(p.OptionalCosts) == 0
 }
 
 // clonePaidCost deep-copies the record. The ManaToken slice is
