@@ -369,6 +369,13 @@ export function damageAction(card: CardView, delta: number): MenuAction {
 // identically-shaped local type in ManaAbilityMenu.svelte.
 interface AbilityCost {
   tap_cost?: boolean;
+  // #1190: mana_cost is the PRINTED mana component and
+  // charged_mana_cost what the engine actually charges right now,
+  // after every CR 601.2f cost modifier on the battlefield — see
+  // chargedManaCostNote below. Both mana and activated abilities
+  // carry the pair under the same two names.
+  mana_cost?: string;
+  charged_mana_cost?: string;
   sacrifice_label?: string;
   // #747: min / max are the sacrifice count (sacrificeCost.ts).
   sacrifice_options?: { players?: string[]; cards?: string[]; min?: number; max?: number };
@@ -435,6 +442,40 @@ export const ABILITY_EXHAUSTED = "already activated (exhaust)";
 // identity" with no commander, or a colourless one, adds nothing.
 // Exported for the same reason.
 export const NO_COMMANDER_IDENTITY = "adds no mana: no commander color identity";
+
+// chargedManaCostNote is the tooltip fragment for a row whose
+// charged_mana_cost differs from its printed mana_cost (#1190) — a
+// Boom Scholar-style discount reaching this permanent's ability.
+// "" when there is nothing to say: no mana component at all, the
+// server didn't price one (a redacted or pre-#1190 view — undefined,
+// never a bare ""), or the two already agree, which is nearly every
+// ability in the game. Exported so ManaAbilityMenu's chip and this
+// menu's hint read the same words.
+//
+// `charged_mana_cost === undefined` and `charged_mana_cost === ""`
+// are different answers and this reads them differently: undefined is
+// "not priced" (mana_cost is what the row shows), and "" is "priced
+// to nothing" — a real discount worth naming, not a value to treat as
+// falsy. A plain `!a.charged_mana_cost` check would conflate the two
+// and go silent on the most dramatic discount there is.
+export function chargedManaCostNote(a: AbilityCost): string {
+  if (!a.mana_cost || a.charged_mana_cost === undefined || a.charged_mana_cost === a.mana_cost) {
+    return "";
+  }
+  return `printed cost ${a.mana_cost}`;
+}
+
+// chargedManaCostLabel is what a mana-cost chip displays: the charged
+// cost when the server priced one, the printed cost when it did not
+// (undefined — a redacted or pre-#1190 view), and "free" for the real,
+// distinct case of a discount that emptied the component out
+// completely (charged_mana_cost === ""). `a.charged_mana_cost ||
+// a.mana_cost` alone would treat that empty string as falsy and show
+// the STALE printed cost instead — the one discount worth naming most.
+export function chargedManaCostLabel(a: AbilityCost): string {
+  if (a.charged_mana_cost === undefined) return a.mana_cost ?? "";
+  return a.charged_mana_cost || "free";
+}
 
 // abilityBlocked returns the reason an ability can't be activated
 // right now, or "" when it can. Advisory only — the server re-checks
@@ -548,10 +589,13 @@ function abilityItems(card: CardView, view: GameView, viewerID: string | null): 
     // Mana abilities never carry a loyalty cost, so the context is
     // inert for them — passed anyway to keep one call shape.
     const blocked = manaRestricted || abilityBlocked(a, tapped, sick, loyalty);
+    // #1190: a discount note when the engine charges less than the
+    // printed cost — shown only on an unblocked row, so a "why is
+    // this greyed" reason never loses to a price note.
     items.push({
       id: `mana-${a.index}`,
       label: a.label || a.produced || "add mana",
-      hint: blocked || undefined,
+      hint: blocked || chargedManaCostNote(a) || undefined,
       disabled: !!blocked,
       activate: { kind: "mana", index: a.index },
     });
@@ -566,7 +610,7 @@ function abilityItems(card: CardView, view: GameView, viewerID: string | null): 
     items.push({
       id: `ability-${a.index}`,
       label: a.label || "activate",
-      hint: blocked || undefined,
+      hint: blocked || chargedManaCostNote(a) || undefined,
       disabled: !!blocked,
       activate: { kind: "ability", index: a.index },
     });

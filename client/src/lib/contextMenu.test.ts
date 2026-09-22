@@ -310,6 +310,56 @@ describe("buildMenuSections — battlefield", () => {
     expect(itemById(sections, "mana-0")?.hint).toBe("summoning sickness");
   });
 
+  // #1190: a discounted ability's row shows the charged cost where the
+  // wire used to carry only the printed one, baked into `label`
+  // freehand. The row itself never re-renders the cost — that stays
+  // free text the catalog author wrote — but the hint says what the
+  // engine will actually take, with the printed cost named, whenever
+  // charged_mana_cost differs from mana_cost.
+  it("hints the printed cost on an ability the engine discounts", () => {
+    const discounted = card("c11", "a", {
+      activated_abilities: [
+        {
+          index: 0,
+          label: "{3}{R}: Do a thing.",
+          mana_cost: "{3}{R}",
+          charged_mana_cost: "{1}{R}",
+        },
+      ],
+      mana_abilities: [
+        {
+          index: 0,
+          label: "{3}, {T}: Add {C}{C}{C}.",
+          tap_cost: true,
+          mana_cost: "{3}",
+          charged_mana_cost: "{1}",
+        },
+      ],
+    });
+    const v2 = view([seat("a", "Alice")], { battlefield: [discounted] });
+    const sections = buildMenuSections(v2, discounted, "a", false);
+    expect(itemById(sections, "ability-0")?.hint).toBe("printed cost {3}{R}");
+    expect(itemById(sections, "ability-0")?.disabled).toBe(false);
+    expect(itemById(sections, "mana-0")?.hint).toBe("printed cost {3}");
+    expect(itemById(sections, "mana-0")?.disabled).toBe(false);
+  });
+
+  it("is silent about the cost on an undiscounted ability", () => {
+    const plain = card("c12", "a", {
+      activated_abilities: [
+        {
+          index: 0,
+          label: "{3}{R}: Do a thing.",
+          mana_cost: "{3}{R}",
+          charged_mana_cost: "{3}{R}",
+        },
+      ],
+    });
+    const v2 = view([seat("a", "Alice")], { battlefield: [plain] });
+    const sections = buildMenuSections(v2, plain, "a", false);
+    expect(itemById(sections, "ability-0")?.hint).toBeUndefined();
+  });
+
   // --- S24 restrictions --------------------------------------------
   //
   // "Its activated abilities can't be activated" (Arrest, Faith's
