@@ -353,6 +353,15 @@ func TestMyDecksAuth(t *testing.T) {
 	if _, err := st.library.Upsert(context.Background(), alice, "Older", "text", "x", []string{"A"}, 100); err != nil {
 		t.Fatalf("Upsert: %v", err)
 	}
+	// SQLStore truncates updated_at to the MILLISECOND and the listing
+	// breaks a tie with `ORDER BY updated_at DESC, id` — a random UUID.
+	// Two upserts inside one millisecond therefore come back in an
+	// arbitrary order, and this assertion is about which is newer. The
+	// sleep is what makes "Newer" actually newer; the flake it removes
+	// was latent (it surfaced when an unrelated package's init got
+	// slower) and the store-side gap it papers over is filed
+	// separately.
+	time.Sleep(2 * time.Millisecond)
 	if _, err := st.library.Upsert(context.Background(), alice, "Newer", "text", "y", []string{"B"}, 99); err != nil {
 		t.Fatalf("Upsert: %v", err)
 	}
