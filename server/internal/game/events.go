@@ -576,8 +576,19 @@ const (
 	EventBeginDrawStep EventKind = "begin_draw_step"
 
 	// EventManaAbilityActivated — a mana-producing ability fired.
-	// Actor = controller, Source = the permanent that produced the
-	// mana. S15 sub-PR 2.
+	// Actor = controller, Source and CardID = the permanent that
+	// produced the mana, Label = the ability's printed label and
+	// Exhaust = whether it prints the exhaust keyword (#1183). S15
+	// sub-PR 2.
+	//
+	// CardID joined Source in #1210 so the two activation kinds carry
+	// the SAME stamps: a watcher that looks up the ability's source
+	// object (effects.WheneverAnOpponentActivates' `of` predicate)
+	// must not have to know which kind it is holding, and reading a
+	// uuid.Nil CardID matched nothing at all — a silent miss rather
+	// than an error. Both emit sites set it: the hand click and the
+	// AUTO-TAPPER's executor, which activates the ability too
+	// (CR 605.3a).
 	EventManaAbilityActivated EventKind = "mana_ability_activated"
 
 	// EventManaAdded — one mana token landed in a player's pool.

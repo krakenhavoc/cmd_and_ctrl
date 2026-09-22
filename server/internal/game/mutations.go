@@ -1647,9 +1647,16 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 		// activate the ability (CR 605.3a), which is why #1183 made it
 		// write the record here.
 		g.EmitEvent(Event{
-			Kind:    EventManaAbilityActivated,
-			Actor:   p.ID,
-			Source:  cardID,
+			Kind:   EventManaAbilityActivated,
+			Actor:  p.ID,
+			Source: cardID,
+			// #1210: CardID as well as Source, so the two activation
+			// kinds carry the SAME stamps and a watcher that looks up
+			// the ability's source object does not have to know which
+			// kind it is holding. EventActivateAbility has always set
+			// both; this one set only Source, which made a source
+			// predicate silently match nothing on the mana path.
+			CardID:  cardID,
 			Label:   ab.Label,
 			Exhaust: ab.Exhaust,
 		})
@@ -5095,6 +5102,9 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		Kind:   EventManaAbilityActivated,
 		Actor:  playerID,
 		Source: cardID,
+		// #1210: the same CardID stamp EventActivateAbility carries —
+		// see the auto-tapper's emit above.
+		CardID: cardID,
 		// #1184: the ability's identity and its exhaust bit, the same
 		// two stamps ActivateCatalogAbility's EventActivateAbility
 		// carries. A mana ability is an activated ability (CR 605.1a),
