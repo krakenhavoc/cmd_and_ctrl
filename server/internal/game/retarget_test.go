@@ -659,3 +659,64 @@ func TestCopyRetargetUsesTheSharedCR115Check(t *testing.T) {
 		t.Errorf("copy targets = %+v, want the original's", copied.Targets)
 	}
 }
+
+// #1197 landed a day before this seam, and the two meet here: the
+// PLAYER half of the keyword gate lives inside specMatchLocked /
+// specMatchesLocked, which is what legalTargetsLocked and
+// targetLegalLocked call — so a retarget inherits it with no line of
+// its own. This is the test that says so, because "inherited" is a
+// claim about code the retarget does not contain.
+//
+// CR 702.11b's asymmetry rides along: hexproof refuses an OPPONENT's
+// spell, so what is measured is the gate for the ITEM's controller,
+// not for the seat working the redirect.
+func TestRetargetInheritsThePlayerKeywordGate(t *testing.T) {
+	g := newActiveGameWithSeats(t, 3)
+	retargetSpecs(t)
+	advanceTo(t, g, StepPrecombatMain)
+	me, victimA, victimB := g.Seats[0], g.Seats[1], g.Seats[2]
+
+	item := castTargeted(t, g, me, retargetBoltOracle,
+		[]TargetRef{{Kind: TargetPlayer, ID: victimA.ID}})
+
+	g.WithWriteLock(func() {
+		g.GrantPlayerStaticForEffect(victimB.ID, "hexproof",
+			"Test — hexproof", uuid.Nil, IndefiniteDuration())
+		if err := g.OfferRetargetForEffect(RetargetOffer{
+			ItemID: item.ID, Chooser: victimA.ID, Policy: RetargetChooseNew, Optional: true,
+		}); err != nil {
+			t.Fatalf("OfferRetargetForEffect: %v", err)
+		}
+	})
+	prompt := findRetargetPrompt(g, victimA.ID)
+	if prompt == nil {
+		t.Fatal("no retarget prompt")
+	}
+	if hasUUID(prompt.PickTargetPlayers, victimB.ID) {
+		t.Error("a hexproof seat reached the retarget picker for an opponent's spell")
+	}
+	// The spell's own controller is still a legal destination: CR
+	// 702.11b is about opponents, and nobody here has hexproof but B.
+	if !hasUUID(prompt.PickTargetPlayers, me.ID) {
+		t.Errorf("the spell's controller should still be an alternative: %v", prompt.PickTargetPlayers)
+	}
+	if err := g.ResolveRetarget(prompt.ID, victimA.ID,
+		[]TargetRef{{Kind: TargetPlayer, ID: victimB.ID}}); err != ErrIllegalTarget {
+		t.Fatalf("hexproof seat, hand-sent: got %v, want ErrIllegalTarget", err)
+	}
+
+	// Protection from everything is the other quality on the same
+	// slot, and it is refused by the same gate — including for the
+	// spell's OWN controller, which is where it differs from hexproof.
+	g.WithWriteLock(func() {
+		g.GrantPlayerStaticForEffect(me.ID, "protection from everything",
+			"Test — protection from everything", uuid.Nil, IndefiniteDuration())
+	})
+	if err := g.ResolveRetarget(prompt.ID, victimA.ID,
+		[]TargetRef{{Kind: TargetPlayer, ID: me.ID}}); err != ErrIllegalTarget {
+		t.Fatalf("protected seat, hand-sent: got %v, want ErrIllegalTarget", err)
+	}
+	if got := g.StackMeta[item.ID].Targets; len(got) != 1 || got[0].ID != victimA.ID {
+		t.Errorf("a refused retarget must not move the target: %+v", got)
+	}
+}
