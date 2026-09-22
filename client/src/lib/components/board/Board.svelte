@@ -90,7 +90,7 @@
   } from "../../targeting";
   import { suggestedAbilityX as suggestedAbilityXFor } from "../../abilityX";
   import { castPreviewParams } from "../../castPreview";
-  import { orderSacrificeOptions, sacrificeCount } from "../../sacrificeCost";
+  import { orderSacrificeOptions, sacrificeCount, sacrificeRange } from "../../sacrificeCost";
   import XCostModal from "./XCostModal.svelte";
   import SacrificeCostModal from "./SacrificeCostModal.svelte";
   import CrewCostModal from "./CrewCostModal.svelte";
@@ -759,6 +759,8 @@
         // targeting step, and ride the one activate_ability with the
         // rest of the cost.
         discard_ids: abilityDiscardIDs,
+        // #1213: same announcement, same message.
+        return_ids: abilityReturnIDs,
         ...state.ability.counter,
         targets,
       };
@@ -768,6 +770,8 @@
       if (state.ability.phyrexianLife) params.phyrexian_life = state.ability.phyrexianLife;
       if (state.modes !== undefined) params.modes = state.modes;
       abilityDiscardIDs = [];
+      abilityReturnIDs = [];
+      abilitySacrificeX = undefined;
       guardedSendAction("activate_ability", params, viewerID ?? undefined);
       targeting.set(null);
       return;
@@ -804,6 +808,37 @@
     if (!p) return [];
     return orderSacrificeOptions(view.battlefield.cards, p.ability.sacrifice_options?.cards);
   });
+
+  // #1213: the bounds the picker enforces. A fixed clause is N..N and
+  // behaves exactly as it did; an open count ("sacrifice one or more
+  // artifacts") is a floor with no ceiling, and a clause whose count
+  // is the announced X has no printed bounds at all — the number
+  // picked becomes the x_value.
+  const sacrificeBounds = $derived(sacrificeRange(sacrificePrompt?.ability.sacrifice_options));
+
+  // #1213: "Return a permanent you control to its owner's hand" as a
+  // COST (Quirion Ranger, Master Transmuter, Meloku). The same picker
+  // the sacrifice cost uses, one verb over, so there is one component
+  // and one "Choose for me" rather than two. Carried on the side like
+  // the discard picks, because the announce chain already takes eight
+  // arguments.
+  let abilityReturnPrompt = $state<{
+    card: CardView;
+    ability: ActivatedAbilityView;
+  } | null>(null);
+  let abilityReturnIDs: string[] = [];
+
+  const abilityReturnOptions = $derived.by(() => {
+    const p = abilityReturnPrompt;
+    if (!p) return [];
+    return orderSacrificeOptions(view.battlefield.cards, p.ability.return_options?.cards);
+  });
+
+  // #1213: the X a "Sacrifice X Treasures" clause announces. It is
+  // the SIZE of the payment rather than a number the player types, so
+  // the X stepper is skipped for such an ability — asking twice could
+  // only produce an announcement the server refuses.
+  let abilitySacrificeX: number | undefined;
 
   // S27: a Vehicle's crew cost. Its own prompt rather than a reuse of
   // the sacrifice picker because crew is a many-pick with a POWER
@@ -912,6 +947,23 @@
     discardIDs: string[],
   ): void {
     abilityDiscardIDs = discardIDs;
+    // #1213: the return-to-hand pick, in the same place the sacrifice
+    // pick sits — both are announce-time cost choices (CR 602.2b) and
+    // both name permanents. Skipped when the board offers exactly the
+    // permanents the clause demands, for the reason the discard
+    // picker is: a modal with one possible answer is a worse version
+    // of no modal.
+    if (ability.return_options) {
+      const options = ability.return_options.cards ?? [];
+      const need = ability.return_options.max ?? ability.return_options.min ?? 1;
+      if (options.length > need) {
+        abilityReturnPrompt = { card, ability };
+        return;
+      }
+      abilityReturnIDs = options;
+    } else {
+      abilityReturnIDs = [];
+    }
     if (ability.sacrifice_options) {
       sacrificePrompt = { kind: "ability", card, ability };
       return;
@@ -928,6 +980,24 @@
     abilityDiscardPrompt = null;
     if (!p) return;
     afterAbilityDiscardCost(p.card, p.ability, ids);
+  }
+
+  // #1213: the return pick answered. The discard picks are already on
+  // the side, so the chain resumes at the sacrifice picker.
+  function confirmAbilityReturnCost(ids: string[]): void {
+    const p = abilityReturnPrompt;
+    abilityReturnPrompt = null;
+    if (!p) return;
+    abilityReturnIDs = ids;
+    if (p.ability.sacrifice_options) {
+      sacrificePrompt = { kind: "ability", card: p.card, ability: p.ability };
+      return;
+    }
+    if (p.ability.crew_cost) {
+      crewPrompt = { card: p.card, ability: p.ability };
+      return;
+    }
+    askCounterCost(p.card, p.ability, [], []);
   }
 
   function askCounterCost(
@@ -997,11 +1067,53 @@
   // board-wide. Sacrifice first, then counters — the order the engine
   // validates and pays them in.
   function handleManaAbilityCost(card: CardView, ability: ManaAbilityView): void {
+    // #1213: the discard pick first, as the CR 602 chain asks its own
+    // — it is the cost most likely to make a player back out — and
+    // skipped when the hand holds exactly what the clause demands.
+    if (ability.discard_cost_n) {
+      const options = ability.discard_cost_options ?? [];
+      if (options.length > ability.discard_cost_n) {
+        manaDiscardPrompt = { card, ability };
+        return;
+      }
+      manaDiscardIDs = options;
+    } else {
+      manaDiscardIDs = [];
+    }
     if (ability.sacrifice_options) {
       sacrificePrompt = { kind: "mana", card, ability };
       return;
     }
     askManaCounterCost(card, ability);
+  }
+
+  // #1213: the mana-ability half of #660's discard picker. The same
+  // modal, the same wire field, a different action to end in —
+  // Skirge Familiar's "Discard a card: Add {B}".
+  let manaDiscardPrompt = $state<{
+    card: CardView;
+    ability: ManaAbilityView;
+  } | null>(null);
+  let manaDiscardIDs: string[] = [];
+
+  const manaDiscardOptions = $derived.by(() => {
+    const p = manaDiscardPrompt;
+    if (!p || !viewerID) return [];
+    const ids = new Set(p.ability.discard_cost_options ?? []);
+    const me = view.seats.find((s) => s.id === viewerID);
+    return (me?.hand.cards ?? []).filter((c) => ids.has(c.instance_id));
+  });
+
+  function confirmManaDiscardCost(ids: string[]): void {
+    const p = manaDiscardPrompt;
+    manaDiscardPrompt = null;
+    if (!p) return;
+    manaDiscardIDs = ids;
+    if (p.ability.sacrifice_options) {
+      sacrificePrompt = { kind: "mana", card: p.card, ability: p.ability };
+      return;
+    }
+    askManaCounterCost(p.card, p.ability);
   }
 
   // askManaCounterCost is askCounterCost's mana-ability twin: the same
@@ -1034,10 +1146,14 @@
         card_id: card.instance_id,
         ability_index: ability.index,
         ...(sacrificeIDs && sacrificeIDs.length > 0 ? { sacrifice_ids: sacrificeIDs } : {}),
+        // #1213: omitted when empty, so every payload a client sent
+        // before this field existed is byte-for-byte unchanged.
+        ...(manaDiscardIDs.length > 0 ? { discard_ids: manaDiscardIDs } : {}),
         ...counter,
       },
       viewerID ?? undefined,
     );
+    manaDiscardIDs = [];
   }
 
   // #170: an ability row picked from the admin context menu. Same two
@@ -1049,7 +1165,10 @@
       return;
     }
     const ability = (card.mana_abilities ?? []).find((a) => a.index === activate.index);
-    if (ability && (ability.sacrifice_options || counterCostNeedsPrompt(ability))) {
+    if (
+      ability &&
+      (ability.sacrifice_options || ability.discard_cost_n || counterCostNeedsPrompt(ability))
+    ) {
       handleManaAbilityCost(card, ability);
       return;
     }
@@ -1078,6 +1197,10 @@
       );
       return;
     }
+    // #1213: "Sacrifice X Treasures" announces its count AS the X
+    // (CR 602.2b), so the payment the player just made is the
+    // announcement and the X stepper has nothing left to ask.
+    abilitySacrificeX = p.ability.sacrifice_options?.count_from_x ? instanceIDs.length : undefined;
     askCounterCost(p.card, p.ability, instanceIDs, []);
   }
 
@@ -1098,8 +1221,13 @@
     // that name cards and before the targeting step — the same
     // position it holds in a cast's prompt chain.
     if (ability.demands_x && xValue === undefined) {
-      xAbilityPrompt = { card, ability, sacrificeIDs, crewIDs, counter };
-      return;
+      // #1213: unless the sacrifice payment already answered it.
+      if (abilitySacrificeX !== undefined) {
+        xValue = abilitySacrificeX;
+      } else {
+        xAbilityPrompt = { card, ability, sacrificeIDs, crewIDs, counter };
+        return;
+      }
     }
     // CR 107.4f / CR 602.2b (#917, #916): the ability's Phyrexian
     // symbols. Same question the cast chain asks, in the same place —
@@ -1143,6 +1271,9 @@
       sacrifice_ids: sacrificeIDs,
       crew_ids: crewIDs,
       discard_ids: abilityDiscardIDs,
+      // #1213: the return-to-hand picks, made at announce with the
+      // rest of the cost and sent in the one activate_ability.
+      return_ids: abilityReturnIDs,
       ...counter,
     };
     if (xValue !== undefined) params.x_value = xValue;
@@ -1150,6 +1281,8 @@
     if (phyrexianLife) params.phyrexian_life = phyrexianLife;
     if (modes !== undefined) params.modes = modes;
     abilityDiscardIDs = [];
+    abilityReturnIDs = [];
+    abilitySacrificeX = undefined;
     guardedSendAction("activate_ability", params, viewerID ?? undefined);
   }
 
@@ -1514,7 +1647,8 @@
     source={sacrificePrompt?.card ?? null}
     label={sacrificePrompt?.ability.sacrifice_label ?? "a permanent"}
     options={sacrificeOptions}
-    count={sacrificeCount(sacrificePrompt?.ability.sacrifice_options)}
+    count={sacrificeBounds.max}
+    min={sacrificeBounds.min}
     onConfirm={confirmSacrifice}
     onCancel={() => (sacrificePrompt = null)}
   />
@@ -1578,6 +1712,33 @@
     onCancel={() => {
       abilityDiscardPrompt = null;
       abilityDiscardIDs = [];
+    }}
+  />
+  <!-- #1213: the mana-ability half of the discard picker (Skirge
+       Familiar). Same modal, same wire field, a different action. -->
+  <DiscardCostModal
+    card={manaDiscardPrompt?.card ?? null}
+    options={manaDiscardOptions}
+    need={manaDiscardPrompt?.ability.discard_cost_n}
+    label={manaDiscardPrompt?.ability.discard_cost_label}
+    onConfirm={confirmManaDiscardCost}
+    onCancel={() => {
+      manaDiscardPrompt = null;
+      manaDiscardIDs = [];
+    }}
+  />
+  <!-- #1213: "Return a permanent you control to its owner's hand" as
+       a cost. The sacrifice picker with a different verb. -->
+  <SacrificeCostModal
+    source={abilityReturnPrompt?.card ?? null}
+    label={abilityReturnPrompt?.ability.return_label ?? "a permanent you control"}
+    options={abilityReturnOptions}
+    count={abilityReturnPrompt?.ability.return_options?.max ?? 1}
+    verb="Return"
+    onConfirm={confirmAbilityReturnCost}
+    onCancel={() => {
+      abilityReturnPrompt = null;
+      abilityReturnIDs = [];
     }}
   />
   <SacrificeCostModal

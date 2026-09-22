@@ -4,13 +4,18 @@ import { abilityBlocked } from "./contextMenu.logic";
 import type { CardView } from "./protocol";
 import {
   canConfirmSacrifice,
+  canConfirmSacrificeRange,
   chooseForMeState,
   chooseSacrificeForMe,
   keepAvailablePicks,
   orderSacrificeOptions,
+  sacrificeCeiling,
   sacrificeCount,
+  sacrificeRange,
+  sacrificeRangeShortfall,
   sacrificeShortfall,
   toggleSacrificePick,
+  toggleSacrificePickInRange,
 } from "./sacrificeCost";
 
 // #747: a sacrifice cost of N permanents. The count is the view's
@@ -141,5 +146,94 @@ describe("abilityBlocked for a sacrifice-N cost", () => {
   it("keeps the one-permanent reason", () => {
     const bombardment = { sacrifice_label: "a creature", sacrifice_options: { cards: [] } };
     expect(abilityBlocked(bombardment, false, false)).toBe("nothing to sacrifice (a creature)");
+  });
+});
+
+// --- #1213: a count the activator announces --------------------------
+
+describe("sacrificeRange", () => {
+  it("reads a fixed clause as N..N, which is what every caller had before", () => {
+    expect(sacrificeRange({ min: 2, max: 2 })).toEqual({ min: 2, max: 2 });
+    expect(sacrificeRange({ min: 1, max: 1 })).toEqual({ min: 1, max: 1 });
+  });
+
+  it("reads an open count as a floor with no ceiling", () => {
+    // "Sacrifice one or more artifacts" — Radiant Lotus.
+    expect(sacrificeRange({ min: 1, max: 0 })).toEqual({ min: 1, max: 0 });
+  });
+
+  it("reads a count-from-X clause as at least one, unbounded", () => {
+    // "Sacrifice X Treasures" — Grim Hireling. min / max say nothing;
+    // the number picked becomes the x_value.
+    expect(sacrificeRange({ min: 0, max: 0, count_from_x: true })).toEqual({ min: 1, max: 0 });
+  });
+
+  it("reads a view with no bounds at all as the one-permanent clause", () => {
+    expect(sacrificeRange(undefined)).toEqual({ min: 1, max: 1 });
+    expect(sacrificeRange({})).toEqual({ min: 1, max: 1 });
+  });
+});
+
+describe("sacrificeCeiling", () => {
+  it("is the printed ceiling when there is one", () => {
+    expect(sacrificeCeiling({ min: 2, max: 2 }, 9)).toBe(2);
+  });
+
+  it("is the board when there is not", () => {
+    expect(sacrificeCeiling({ min: 1, max: 0 }, 4)).toBe(4);
+  });
+});
+
+describe("canConfirmSacrificeRange", () => {
+  it("wants exactly N for a fixed clause", () => {
+    const fixed = { min: 2, max: 2 };
+    expect(canConfirmSacrificeRange(["a"], fixed, 5)).toBe(false);
+    expect(canConfirmSacrificeRange(["a", "b"], fixed, 5)).toBe(true);
+    expect(canConfirmSacrificeRange(["a", "b", "c"], fixed, 5)).toBe(false);
+  });
+
+  it("wants at least the floor for an open clause, and no more than the board", () => {
+    const open = { min: 1, max: 0 };
+    expect(canConfirmSacrificeRange([], open, 3)).toBe(false);
+    expect(canConfirmSacrificeRange(["a"], open, 3)).toBe(true);
+    expect(canConfirmSacrificeRange(["a", "b", "c"], open, 3)).toBe(true);
+    expect(canConfirmSacrificeRange(["a", "b", "c", "d"], open, 3)).toBe(false);
+  });
+
+  it("refuses a duplicate pick, which would pay one cost twice", () => {
+    expect(canConfirmSacrificeRange(["a", "a"], { min: 2, max: 2 }, 5)).toBe(false);
+  });
+});
+
+describe("toggleSacrificePickInRange", () => {
+  it("replaces the pick when the ceiling is one", () => {
+    expect(toggleSacrificePickInRange(["a"], "b", 1)).toEqual(["b"]);
+  });
+
+  it("adds up to the ceiling and removes on a second click", () => {
+    expect(toggleSacrificePickInRange(["a"], "b", 3)).toEqual(["a", "b"]);
+    expect(toggleSacrificePickInRange(["a", "b"], "a", 3)).toEqual(["b"]);
+    expect(toggleSacrificePickInRange(["a", "b"], "c", 2)).toEqual(["a", "b"]);
+  });
+});
+
+describe("sacrificeRangeShortfall", () => {
+  it("reads the FLOOR, so an open clause is payable at one permanent", () => {
+    expect(sacrificeRangeShortfall({ cards: ["a"], min: 1, max: 0 }, "one or more artifacts")).toBe(
+      "",
+    );
+    expect(sacrificeRangeShortfall({ cards: [], min: 1, max: 0 }, "one or more artifacts")).toBe(
+      "nothing to sacrifice (one or more artifacts)",
+    );
+  });
+
+  it("names what is missing for a fixed clause of more than one", () => {
+    expect(sacrificeRangeShortfall({ cards: ["a"], min: 3, max: 3 }, "three Foods")).toBe(
+      "needs three Foods (you have 1)",
+    );
+  });
+
+  it("says nothing with no clause at all", () => {
+    expect(sacrificeRangeShortfall(undefined, "a creature")).toBe("");
   });
 });

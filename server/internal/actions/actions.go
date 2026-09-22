@@ -1125,6 +1125,12 @@ func Dispatch(g *game.Game, a Action) error {
 			// ability (CR 602.2b). Cycling's "Discard this card"
 			// needs none: the source IS the payment.
 			DiscardIDs []string `json:"discard_ids,omitempty"`
+			// #1213 — return_ids names the permanents paid to a
+			// "Return a permanent you control to its owner's hand"
+			// cost (Quirion Ranger, Master Transmuter, Meloku).
+			// Exactly the clause's count, each once, each on the
+			// battlefield under the activator's control.
+			ReturnIDs []string `json:"return_ids,omitempty"`
 			// CR 107.4f / CR 602.2b (#917) — how many of the mana
 			// component's Phyrexian symbols are being paid with 2
 			// life each instead of mana (Birthing Pod's {1}{G/P}).
@@ -1182,6 +1188,14 @@ func Dispatch(g *game.Game, a Action) error {
 				}
 				discardIDs = append(discardIDs, id)
 			}
+			returnIDs := make([]uuid.UUID, 0, len(p.ReturnIDs))
+			for _, raw := range p.ReturnIDs {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("activate_ability return_ids: %w", err)
+				}
+				returnIDs = append(returnIDs, id)
+			}
 			refs := make([]game.TargetRef, 0, len(p.Targets))
 			for _, t := range p.Targets {
 				ref, err := t.toRef()
@@ -1198,6 +1212,7 @@ func Dispatch(g *game.Game, a Action) error {
 				CounterKind:      p.CounterKind,
 				CounterKinds:     p.CounterKinds,
 				DiscardIDs:       discardIDs,
+				ReturnIDs:        returnIDs,
 				Targets:          refs,
 				// #764, CR 602.2b: a modal activated ability announces
 				// its modes with its targets, in one indivisible step.
@@ -1707,6 +1722,12 @@ func Dispatch(g *game.Game, a Action) error {
 			CounterCounts    []int    `json:"counter_counts,omitempty"`
 			CounterKind      string   `json:"counter_kind,omitempty"`
 			CounterKinds     []string `json:"counter_kinds,omitempty"`
+			// #1213 — discard_ids names the cards paid to a discard
+			// cost on a MANA ability (Skirge Familiar's "Discard a
+			// card: Add {B}"). Same field name and shape as
+			// activate_ability's, so the client reuses one picker
+			// for both ability kinds.
+			DiscardIDs []string `json:"discard_ids,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -1731,12 +1752,21 @@ func Dispatch(g *game.Game, a Action) error {
 			}
 			manaCounterIDs = append(manaCounterIDs, id)
 		}
+		manaDiscardIDs := make([]uuid.UUID, 0, len(p.DiscardIDs))
+		for _, raw := range p.DiscardIDs {
+			id, err := uuid.Parse(raw)
+			if err != nil {
+				return fmt.Errorf("activate_mana_ability discard_ids: %w", err)
+			}
+			manaDiscardIDs = append(manaDiscardIDs, id)
+		}
 		return g.ActivateManaAbility(a.Player, cardID, p.AbilityIndex, game.ManaAbilityParams{
 			SacrificeIDs:     sacIDs,
 			CounterSourceIDs: manaCounterIDs,
 			CounterCounts:    p.CounterCounts,
 			CounterKind:      p.CounterKind,
 			CounterKinds:     p.CounterKinds,
+			DiscardIDs:       manaDiscardIDs,
 		})
 
 	case TypeSetMaxHandSize:

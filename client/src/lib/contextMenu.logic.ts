@@ -32,7 +32,7 @@ import { attackTargetHint, permanentAttackTargets } from "./attackTargets";
 import { isCreature, isLand, isPlaneswalker } from "./cardTypes";
 import { counterCostBlocked } from "./counterCost";
 import type { ActionType, CardView, GameView } from "./protocol";
-import { sacrificeShortfall } from "./sacrificeCost";
+import { sacrificeRangeShortfall } from "./sacrificeCost";
 import {
   canActivateLoyalty,
   canActivateSorcerySpeedAbility,
@@ -378,7 +378,23 @@ interface AbilityCost {
   charged_mana_cost?: string;
   sacrifice_label?: string;
   // #747: min / max are the sacrifice count (sacrificeCost.ts).
-  sacrifice_options?: { players?: string[]; cards?: string[]; min?: number; max?: number };
+  // #1213: and they may now differ — an open count ("one or more") is
+  // min 1 with no ceiling, and count_from_x means the count IS the
+  // announced X.
+  sacrifice_options?: {
+    players?: string[];
+    cards?: string[];
+    min?: number;
+    max?: number;
+    count_from_x?: boolean;
+  };
+  // #1213: a return-to-hand cost. The row is greyed when nothing the
+  // clause admits is on the board, for the same reason a sacrifice
+  // cost with no candidates greys one — CR 118.3 refuses the
+  // activation, and finding out at the click is worse than seeing it
+  // before.
+  return_label?: string;
+  return_options?: { players?: string[]; cards?: string[]; min?: number; max?: number };
   // #1157: `min` is part of the clause and not decoration. "Up to one
   // target creature you control" is min 0, and a clause with min 0 is
   // satisfied by an empty candidate list — see hasSatisfiableTargets.
@@ -490,8 +506,17 @@ export function abilityBlocked(
   if (a.tap_cost && sick) return "summoning sickness";
   // #747: fewer options than the clause's count, not just none —
   // "needs three Foods (you have 2)".
-  const sacrifice = sacrificeShortfall(a.sacrifice_options, a.sacrifice_label ?? "a permanent");
+  const sacrifice = sacrificeRangeShortfall(
+    a.sacrifice_options,
+    a.sacrifice_label ?? "a permanent",
+  );
   if (sacrifice) return sacrifice;
+  // #1213: the same question one verb over. The clause's count is 1
+  // on every printed card, so an empty option list is the whole of
+  // "this cannot be paid".
+  if (a.return_options && (a.return_options.cards?.length ?? 0) < (a.return_options.min ?? 1)) {
+    return `nothing to return (${a.return_label ?? "a permanent you control"})`;
+  }
   // CR 702.122a: a crew cost with no untapped creature to pay it is
   // unpayable. Only the empty case is judged here — whether the
   // creatures that DO exist add up to the crew number is arithmetic

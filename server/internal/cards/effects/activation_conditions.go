@@ -238,19 +238,33 @@ func DuringYourUpkeep() ActivationCondition {
 // LoyaltyCost; this is for everything else — Beledros Witherbloom's
 // "Pay 10 life: Untap all lands you control").
 //
-// Reads Game.ResolvedThisTurn(source, label): the per-OBJECT (CR
-// 400.7) count of how many times THIS ability has resolved this
-// turn, the same tally every other once-per-turn gate in the catalog
-// reads (b15ResolvedThisTurn, Teval's Judgment). Since the Condition
-// runs at announce — before any cost is paid, and the enumerator
-// consults the same closure — a second attempt this turn is never
-// offered rather than paid for and then doing nothing.
+// Reads Game.ActivatedThisTurn(source, label): the per-OBJECT (CR
+// 400.7) count of how many times THIS ability has been ACTIVATED this
+// turn. Since the Condition runs at announce — before any cost is
+// paid, and the enumerator and the view consult the same closure — a
+// second attempt this turn is never offered rather than paid for and
+// then doing nothing.
 //
-// label must equal the ability's own Label exactly, the same
-// contract ResolvedThisTurn already keeps for every other reader of
-// the per-object tally.
+// #1213 moved it off ResolvedThisTurn. The rule counts announcements
+// (CR 602.1b, "Activate only once each turn"), and the two tallies
+// disagree in both directions on a printed line:
+//
+//   - two activations held on the stack at once both RESOLVE later, so
+//     a resolution count let the second one be announced — stronger
+//     than printed, the #259 direction;
+//   - an activation countered or fizzled never resolves, so a
+//     resolution count handed the player a second use of an ability
+//     they had already spent.
+//
+// The activation tally (activation_tally.go, #1181/#1183) is written
+// at the announce on both activation paths, which is exactly where the
+// rule is read.
+//
+// label must equal the ability's own Label exactly, the same contract
+// ActivatedThisTurn keeps for every other reader of the per-object
+// tally.
 func OncePerTurnActivation(label string) ActivationCondition {
 	return func(g *game.Game, _, source uuid.UUID) bool {
-		return g.ResolvedThisTurn(source, label) == 0
+		return g.ActivatedThisTurn(source, label) == 0
 	}
 }

@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Magewright's Stone — Artifact {2} (EDHREC rank 2890):
 //
 //	"{1}, {T}: Untap target creature that has an activated ability
@@ -30,15 +28,7 @@ func init() {
 			Label:   "{1}, {T}: Untap target creature that has an activated ability with {T} in its cost.",
 			Cost:    Plus(ManaCost("{1}"), TapCost()),
 			Targets: TargetCreature("target creature that has an activated ability with {T} in its cost", b27HasTapAbility()),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				for _, t := range ctx.LegalTargets() {
-					if t.Kind == game.TargetCard {
-						return UntapTarget{Target: t.ID}.Apply(ctx)
-					}
-				}
-				return nil
-			},
+			Effect:  untapTheTarget,
 		}},
 	})
 }

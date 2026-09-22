@@ -1294,6 +1294,44 @@ as a mistake. It also closes #673's declared gap — a non-hand cast
 still costs no card in HAND, and what it really spends is now the
 alternative cost's own price rather than nothing.
 
+### A cost whose COUNT the activator announces (#1213)
+
+"Sacrifice one or more artifacts" (Radiant Lotus) and "Sacrifice X
+Treasures" (Grim Hireling) are the third variable in a cost, after the
+card-shaped payment above and multikicker's repeat. Unlike either, what
+varies is a NUMBER the activator names at announce, and every value of
+it is the same ability with the same target at a different size.
+
+**Up to THREE counts are enumerated per ability** —
+`legal.maxEnumeratedVariableCounts`, beside `maxEnumeratedCostPayments`
+and `maxEnumeratedRepeats` and for the same reason: [ADR
+0033](decisions/0033-ai-bot-seat.md) §1's corollary that a variable in
+a cost must not become an arity of the target/mode cross product. An
+open count over a ten-artifact board is ten counts, and a budget spent
+ten ways there would never reach a second target.
+
+The counts offered are the SMALLEST ones — the clause's floor and the
+two above it. Small is the conservative direction for a cost: it spends
+the least board, and a policy that wants more can take the biggest of
+the three. Inside each payment the permanents are already ordered
+cheapest-to-keep first, by the same `Options.OrderCostFuel` hook the
+card-shaped payments use, then by
+`game.SacrificePaymentOrderForEffect`'s policy-neutral tie-break
+(tokens, then lower mana value, then the ability's own source last). So
+the counts NEST: a bot asked to sacrifice three eats the same two it
+would have eaten to sacrifice two.
+
+For a `CountFromX` clause the announced X IS the count, so the move's
+`x_value` is the size of the payment it carries rather than a value
+solved from the mana cost — and `effects.Register` refuses a cost that
+also puts `{X}` in its mana component, because one announced number
+cannot pay both.
+
+The RETURN-to-hand component (`return_ids`) has no count to vary: every
+printed clause returns exactly one permanent, and the enumerator offers
+one move per candidate, cheapest-to-keep first, out of the ordinary
+`MaxExpansionPerSource` budget.
+
 ## Ordering target expansion by threat (#687)
 
 `legal.Options.MaxExpansionPerSource` is spent in candidate order, so

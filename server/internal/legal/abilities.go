@@ -38,7 +38,11 @@ type activateParams struct {
 	// Cycling's "Discard this card" sends none — the source is the
 	// payment.
 	DiscardIDs []string `json:"discard_ids,omitempty"`
-	XValue     int      `json:"x_value,omitempty"`
+	// #1213: the permanents paid to a "Return a permanent you
+	// control to its owner's hand" cost. Omitted for every ability
+	// that does not print the clause.
+	ReturnIDs []string `json:"return_ids,omitempty"`
+	XValue    int      `json:"x_value,omitempty"`
 	// #917, CR 107.4f: how many of the mana component's Phyrexian
 	// symbols this activation pays with 2 life each. Omitted for
 	// every ability that prints none, which is nearly all of them.
@@ -263,8 +267,27 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		sacrificeSets := [][]uuid.UUID{nil}
 		if ab.Cost.SacrificeOther != nil {
 			pool := e.sacrificePool(source.InstanceID, ab.Cost.SacrificeSelf, ab.Cost.SacrificeOther)
-			sacrificeSets = e.sacrificePayments(pool, ab.Cost.SacrificeOther, source.InstanceID)
+			// #1213: a VARIABLE count is an announcement, so the
+			// enumerator offers a bounded ladder of counts rather
+			// than one payment — see variableSacrificePayments.
+			if game.SacrificeCostVariable(ab.Cost.SacrificeOther) {
+				sacrificeSets = e.variableSacrificePayments(pool, ab.Cost.SacrificeOther, source.InstanceID)
+			} else {
+				sacrificeSets = e.sacrificePayments(pool, ab.Cost.SacrificeOther, source.InstanceID)
+			}
 			if len(sacrificeSets) == 0 {
+				continue
+			}
+		}
+		// #1213: a "Return a permanent you control to its owner's
+		// hand" cost. One move per candidate, cheapest-to-keep first
+		// and then in payment order, so a capped budget spends itself
+		// on the permanent the seat misses least. Nothing payable
+		// means no move at all — #544.
+		returnSets := [][]uuid.UUID{nil}
+		if rc := ab.Cost.ReturnToHand; !rc.Empty() {
+			returnSets = e.returnPayments(g.ReturnToHandOptionsForEffect(e.seat, source.InstanceID, rc), rc, source.InstanceID)
+			if len(returnSets) == 0 {
 				continue
 			}
 		}
@@ -346,59 +369,186 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		for _, ann := range announcements {
 			targets := ann.targets
 			for _, sacs := range sacrificeSets {
-				for _, cc := range counterChoices {
-					if budget <= 0 {
-						break
+				// #1213: "Sacrifice X Treasures" announces its count
+				// as X (CR 602.2b), so the move's x_value IS the
+				// payment it carries. Register refuses a cost that
+				// also puts {X} in its mana component, so there is
+				// never a second claimant on this number.
+				xValue := xValue
+				if game.SacrificeCountFromX(ab.Cost.SacrificeOther) {
+					xValue = len(sacs)
+				}
+				for _, rets := range returnSets {
+					for _, cc := range counterChoices {
+						if budget <= 0 {
+							break
+						}
+						budget--
+						label := source.Name + ": " + ab.Label
+						if xValue > 0 {
+							label += fmt.Sprintf(" for X=%d", xValue)
+						}
+						if phyrexianLife > 0 {
+							label += fmt.Sprintf(" paying %d life for Phyrexian mana",
+								phyrexianLife*game.PhyrexianLifePerSymbol)
+						}
+						label += sacrificeLabel(g, sacs)
+						label += returnLabel(g, rets)
+						label += cc.label(g)
+						label += targetLabel(g, targets)
+						// #74: the life on the Move is what the
+						// controller pays at announce, so the
+						// Phyrexian half counts — a policy that saw
+						// only the printed component would read a
+						// four-life activation as free.
+						cost := moveCost(ab.Cost.Life+phyrexianLife*game.PhyrexianLifePerSymbol, loyalty)
+						for _, price := range cc.prices() {
+							cost = withCounterPrice(cost, price)
+						}
+						e.add(Move{
+							Type:   TypeActivateAbility,
+							Player: e.seat,
+							Kind:   KindActivate,
+							Label:  label,
+							Source: source.InstanceID,
+							Cost:   cost,
+							Params: mustJSON(activateParams{
+								SourceCardID:     source.InstanceID.String(),
+								AbilityIndex:     idx,
+								Targets:          wireTargets(targets),
+								Modes:            ann.modes,
+								SacrificeIDs:     idStrings(sacs),
+								CrewIDs:          idStrings(crewIDs),
+								CounterSourceIDs: cc.wireIDs(),
+								CounterCounts:    cc.wireCounts(),
+								CounterKind:      cc.wireKind(),
+								CounterKinds:     cc.wireKinds(),
+								DiscardIDs:       idStrings(discardIDs),
+								ReturnIDs:        idStrings(rets),
+								XValue:           xValue,
+								PhyrexianLife:    phyrexianLife,
+								Strict:           true,
+								AutoTap:          true,
+							}),
+						})
 					}
-					budget--
-					label := source.Name + ": " + ab.Label
-					if xValue > 0 {
-						label += fmt.Sprintf(" for X=%d", xValue)
-					}
-					if phyrexianLife > 0 {
-						label += fmt.Sprintf(" paying %d life for Phyrexian mana",
-							phyrexianLife*game.PhyrexianLifePerSymbol)
-					}
-					label += cc.label(g)
-					label += targetLabel(g, targets)
-					// #74: the life on the Move is what the
-					// controller pays at announce, so the
-					// Phyrexian half counts — a policy that saw
-					// only the printed component would read a
-					// four-life activation as free.
-					cost := moveCost(ab.Cost.Life+phyrexianLife*game.PhyrexianLifePerSymbol, loyalty)
-					for _, price := range cc.prices() {
-						cost = withCounterPrice(cost, price)
-					}
-					e.add(Move{
-						Type:   TypeActivateAbility,
-						Player: e.seat,
-						Kind:   KindActivate,
-						Label:  label,
-						Source: source.InstanceID,
-						Cost:   cost,
-						Params: mustJSON(activateParams{
-							SourceCardID:     source.InstanceID.String(),
-							AbilityIndex:     idx,
-							Targets:          wireTargets(targets),
-							Modes:            ann.modes,
-							SacrificeIDs:     idStrings(sacs),
-							CrewIDs:          idStrings(crewIDs),
-							CounterSourceIDs: cc.wireIDs(),
-							CounterCounts:    cc.wireCounts(),
-							CounterKind:      cc.wireKind(),
-							CounterKinds:     cc.wireKinds(),
-							DiscardIDs:       idStrings(discardIDs),
-							XValue:           xValue,
-							PhyrexianLife:    phyrexianLife,
-							Strict:           true,
-							AutoTap:          true,
-						}),
-					})
 				}
 			}
 		}
 	}
+}
+
+// maxEnumeratedVariableCounts caps how many different COUNTS the
+// enumerator offers for one variable-count cost — "Sacrifice one or
+// more artifacts" (Radiant Lotus), "Sacrifice X Treasures" (Grim
+// Hireling). Not a rule; a policy, documented in docs/bot.md beside
+// maxEnumeratedCostPayments and maxEnumeratedRepeats.
+//
+// THREE, and the reason is maxEnumeratedCostPayments' corollary
+// (ADR 0033 §1) rather than squeamishness about combinatorics: a
+// variable in a COST must not become an arity of the target/mode cross
+// product. An open count over a ten-artifact board is ten counts, each
+// of them the same ability with the same target at a different size,
+// and a budget spent ten ways here would never reach a second target.
+//
+// The counts offered are the SMALLEST ones: the floor, and the next
+// two above it. Small is the conservative direction for a cost — it
+// spends the least board — and the permanents inside each payment are
+// already the cheapest the seat's own policy can name
+// (cheapestFuelFirst), so payment number one is the best answer the
+// policy has and the next two are that answer paying more.
+const maxEnumeratedVariableCounts = 3
+
+// variableSacrificePayments turns a VARIABLE sacrifice clause's
+// candidate pool into the payments the enumerator offers (#1213).
+//
+// One payment per COUNT, from the clause's floor upward, capped at
+// maxEnumeratedVariableCounts and at what the board can actually pay.
+// Each payment is a prefix of one order: the seat's own fuel price
+// first (cheapestFuelFirst — what is this permanent worth to KEEP),
+// then game.SacrificePaymentOrderForEffect's policy-neutral tie-break
+// (tokens, then lower mana value, then the source last). So the counts
+// nest, and a bot asked to sacrifice three eats the same two it would
+// have eaten to sacrifice two.
+//
+// The floor is at least ONE even for "Sacrifice X", whose printed
+// floor is zero: an announcement of X=0 sacrifices nothing and does
+// nothing, which is #810's "a move whose whole effect is X is not
+// worth offering at X=0" one component over.
+//
+// Nil when the board cannot reach the floor, so the ability is not
+// offered at all (#544).
+func (e *enumerator) variableSacrificePayments(pool []uuid.UUID, spec *game.TargetSpec, sourceID uuid.UUID) [][]uuid.UUID {
+	lo, _ := game.SacrificeCostBounds(spec, 0)
+	if lo < 1 {
+		lo = 1
+	}
+	if len(pool) < lo {
+		return nil
+	}
+	ordered := e.g.SacrificePaymentOrderForEffect(e.cheapestFuelFirst(pool), sourceID)
+	var out [][]uuid.UUID
+	for n := lo; n <= len(ordered) && len(out) < maxEnumeratedVariableCounts; n++ {
+		// The engine validates the count with the same predicate, so
+		// a payment offered here is one the announce path accepts.
+		// For a CountFromX clause the announced X IS the count, which
+		// is why both arguments are n.
+		if !game.SacrificeCountLegal(spec, n, n) {
+			break
+		}
+		out = append(out, ordered[:n])
+	}
+	return out
+}
+
+// returnPayments turns a return-to-hand clause's candidate pool into
+// the payments the enumerator offers (#1213) — one move per candidate
+// for the one-permanent clause every printed card has, and the first
+// Count of the order for a hypothetical larger one.
+//
+// The order is cheapestFuelFirst then SacrificePaymentOrderForEffect,
+// the same two-stage order the sacrifice payments use, because the
+// question is the same one: which permanent does this seat miss least.
+// A capped budget therefore returns the token before the bomb.
+//
+// Nil when the pool cannot reach the clause's count, so the ability is
+// not offered at all (#544) — which is CR 118.3 read through the
+// enumerator.
+func (e *enumerator) returnPayments(pool []uuid.UUID, rc *game.ReturnToHandCost, sourceID uuid.UUID) [][]uuid.UUID {
+	if rc.Empty() || len(pool) < rc.Count {
+		return nil
+	}
+	ordered := e.g.SacrificePaymentOrderForEffect(e.cheapestFuelFirst(pool), sourceID)
+	if rc.Count > 1 {
+		return [][]uuid.UUID{ordered[:rc.Count]}
+	}
+	return combinations(ordered, 1, 1, e.opts.MaxExpansionPerSource)
+}
+
+// sacrificeLabel names what a payment eats, so two moves that differ
+// only in which permanent paid read differently in a log or a trace.
+// Empty for a payment of nothing.
+func sacrificeLabel(g *game.Game, ids []uuid.UUID) string {
+	if len(ids) == 0 {
+		return ""
+	}
+	names := make([]string, len(ids))
+	for i, id := range ids {
+		names[i] = cardName(g, id)
+	}
+	return " (sacrificing " + strings.Join(names, ", ") + ")"
+}
+
+// returnLabel is sacrificeLabel one verb over (#1213).
+func returnLabel(g *game.Game, ids []uuid.UUID) string {
+	if len(ids) == 0 {
+		return ""
+	}
+	names := make([]string, len(ids))
+	for i, id := range ids {
+		names[i] = cardName(g, id)
+	}
+	return " (returning " + strings.Join(names, ", ") + ")"
 }
 
 // affordablePayment solves an activated ability's mana component for
@@ -807,6 +957,12 @@ type manaParams struct {
 	CounterCounts    []int    `json:"counter_counts,omitempty"`
 	CounterKind      string   `json:"counter_kind,omitempty"`
 	CounterKinds     []string `json:"counter_kinds,omitempty"`
+	// #1213: a mana ability's discard cost is paid with exactly the
+	// field an activated ability's is, for the same reason the
+	// counter fields above share theirs — Skirge Familiar's
+	// "Discard a card: Add {B}" is #660's component with a second
+	// owner, not a second component.
+	DiscardIDs []string `json:"discard_ids,omitempty"`
 }
 
 // manaMoves enumerates mana abilities on the seat's permanents.
@@ -896,10 +1052,33 @@ func (e *enumerator) manaMoves() {
 			sacrificeSets := [][]uuid.UUID{nil}
 			if ab.SacrificeOther != nil {
 				pool := e.sacrificePool(source.InstanceID, ab.SacrificeCost, ab.SacrificeOther)
-				sacrificeSets = e.sacrificePayments(pool, ab.SacrificeOther, source.InstanceID)
+				// #1213: the same two-way split the CR 602 path makes.
+				// A mana ability announces no X, so only the OPEN form
+				// can reach here (effects.Register refuses CountFromX
+				// on a mana ability).
+				if game.SacrificeCostVariable(ab.SacrificeOther) {
+					sacrificeSets = e.variableSacrificePayments(pool, ab.SacrificeOther, source.InstanceID)
+				} else {
+					sacrificeSets = e.sacrificePayments(pool, ab.SacrificeOther, source.InstanceID)
+				}
 				if len(sacrificeSets) == 0 {
 					continue
 				}
+			}
+			// #1213: a "Discard N cards" cost on a mana ability
+			// (Skirge Familiar). Solved exactly as the activated
+			// path solves its own — ONE payment, the cheapest set in
+			// hand order, rather than one move per subset of the
+			// hand. Nothing payable means no move at all (#544), and
+			// the walk is the engine's own so an offered payment is
+			// one ActivateManaAbility accepts.
+			var manaDiscardIDs []uuid.UUID
+			if dc := ab.DiscardCards; dc != nil && dc.N > 0 {
+				opts := g.DiscardCostOptionsForEffect(e.seat, source.InstanceID, dc)
+				if len(opts) < dc.N {
+					continue
+				}
+				manaDiscardIDs = opts[:dc.N]
 			}
 			// #789: the counter components, enumerated by the SAME
 			// functions the activated path uses, because it is the
@@ -922,13 +1101,7 @@ func (e *enumerator) manaMoves() {
 					if ab.Label == "" {
 						label = source.Name + ": add " + ab.Produced
 					}
-					if len(sacs) > 0 {
-						names := make([]string, len(sacs))
-						for i, id := range sacs {
-							names[i] = cardName(g, id)
-						}
-						label += " (sacrificing " + strings.Join(names, ", ") + ")"
-					}
+					label += sacrificeLabel(g, sacs)
 					label += cc.label(g)
 					// Mana Confluence's "Pay 1 life" is the same
 					// invisible cost an activated ability's is (#74),
@@ -953,6 +1126,7 @@ func (e *enumerator) manaMoves() {
 							CounterCounts:    cc.wireCounts(),
 							CounterKind:      cc.wireKind(),
 							CounterKinds:     cc.wireKinds(),
+							DiscardIDs:       idStrings(manaDiscardIDs),
 						}),
 					})
 				}

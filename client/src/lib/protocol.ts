@@ -1457,6 +1457,18 @@ export interface ActivatedAbilityView {
   // then lower mana value, then the source. See sacrificeCost.ts.
   sacrifice_label?: string;
   sacrifice_options?: LegalTargetsView;
+  // #1213: a "Return a permanent you control to its owner's hand"
+  // cost (Quirion Ranger's Forest, Master Transmuter's artifact,
+  // Meloku's land). `return_label` is the clause as printed and
+  // `return_options` the permanents that could pay it right now, in
+  // the same payment order sacrifice_options uses — so one picker
+  // serves both. min / max are the clause's count (1 on every printed
+  // card). A TAPPED permanent is a legal pick, and so is the ability's
+  // own source when the clause admits it. The picks ride
+  // activate_ability as `return_ids`; an absent or empty list means
+  // the cost cannot be paid (CR 118.3) and the server refuses.
+  return_label?: string;
+  return_options?: LegalTargetsView;
   // #660: the discard cost components (CR 702.29a and the general
   // "Discard a creature card" clause). `discard_self` is cycling's
   // "Discard this card" — advisory only, there is nothing to pick,
@@ -2088,6 +2100,15 @@ export interface ManaAbilityView {
   // on ActivatedAbilityView.
   sacrifice_label?: string;
   sacrifice_options?: LegalTargetsView;
+  // #1213: a "Discard N cards" component on a MANA ability — Skirge
+  // Familiar's "Discard a card: Add {B}". Exactly the three fields
+  // ActivatedAbilityView carries under exactly the same names,
+  // because it is the same component with a second owner: the count,
+  // the clause as printed, and the cards in hand that could pay it
+  // right now. The picks ride activate_mana_ability as `discard_ids`.
+  discard_cost_n?: number;
+  discard_cost_label?: string;
+  discard_cost_options?: string[];
   // S22: a "Pay N life" component of the activation cost — Mana
   // Confluence's "{T}, Pay 1 life:". Advisory only; the server does
   // the real CR 119.4 check. A damage RIDER ("This land deals 1

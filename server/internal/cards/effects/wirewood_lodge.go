@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Wirewood Lodge — Land (EDHREC rank 2392):
 //
 //	"{T}: Add {C}.
@@ -27,15 +25,7 @@ func init() {
 			Label:   "{G}, {T}: Untap target Elf.",
 			Cost:    Plus(ManaCost("{G}"), TapCost()),
 			Targets: TargetPermanent("target Elf", Subtype("Elf")),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				for _, t := range ctx.LegalTargets() {
-					if t.Kind == game.TargetCard {
-						return UntapTarget{Target: t.ID}.Apply(ctx)
-					}
-				}
-				return nil
-			},
+			Effect:  untapTheTarget,
 		}},
 	})
 }

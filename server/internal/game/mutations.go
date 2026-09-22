@@ -1178,7 +1178,14 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		// ascending order by castCostPayments' own walk, so two
 		// clients that announce the same multikicker in different
 		// orders produce the same record.
-		Paid: paidWithOptionalCosts(paid, costPlan),
+		// #1213: and how many permanents the additional cost
+		// sacrificed, for the third time the same reason — by
+		// resolution they are in graveyards. A cast's clause is
+		// always a printed count (effects.Register refuses a variable
+		// one on a cast), so this is never news here; it is recorded
+		// anyway so a reader of PaidCost.Sacrificed never has to ask
+		// which kind of announcement it is looking at.
+		Paid: paidWithSacrifices(paidWithOptionalCosts(paid, costPlan), len(params.SacrificeIDs)),
 		Seq:  g.nextStackSeqLocked(),
 		// S20: remember the clause the targets were validated under so
 		// the resolution re-check and per-slot effect checks use it.
@@ -4851,6 +4858,14 @@ type ManaAbilityParams struct {
 	// every mana ability that does not print the clause, which is
 	// all of them but Springleaf Drum's family.
 	TapIDs []uuid.UUID
+
+	// DiscardIDs names the cards paying a DiscardCards component
+	// (#1213), with exactly the meaning ActivateAbilityParams.DiscardIDs
+	// gives them — one component, one payment shape, whichever
+	// ability kind carries it. Skirge Familiar's "Discard a card: Add
+	// {B}" is the only printed one; every other mana ability sends
+	// none.
+	DiscardIDs []uuid.UUID
 }
 
 func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, params ManaAbilityParams) error {
@@ -4961,10 +4976,15 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 			return ErrSummoningSick
 		}
 	}
+	// #1213: a mana ability announces no X (CR 605.3b — there is no
+	// stack item to carry one), so the announced value is 0 and
+	// effects.Register refuses a CountFromX sacrifice clause here at
+	// boot. An OPEN count ("sacrifice one or more") still works, and
+	// reads its floor and ceiling off the clause alone.
 	sacrifices, err := g.validateSacrificeCostLocked(playerID, cardID, AbilityCost{
 		SacrificeSelf:  ab.SacrificeCost,
 		SacrificeOther: ab.SacrificeOther,
-	}, params.SacrificeIDs)
+	}, params.SacrificeIDs, 0)
 	if err != nil {
 		return err
 	}
@@ -4997,6 +5017,18 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	// untapped creature you control" and Earthcraft's are one cost
 	// shape with two owners.
 	if err := g.validateTapOthersCostLocked(playerID, cardID, ab.TapOthers, params.TapIDs); err != nil {
+		return err
+	}
+	// #1213: the discard component, validated by the SAME function
+	// the CR 602 activated path uses — Skirge Familiar's "Discard a
+	// card" and Cryptbreaker's are one cost shape with two owners.
+	// The source is a permanent, so the zone passed is the
+	// battlefield and the DiscardSelf branch can never fire here
+	// (effects.ManaAbilityCost has no such field to set).
+	discards, err := g.validateDiscardCostLocked(playerID, cardID, ZoneBattlefield, AbilityCost{
+		DiscardCards: ab.DiscardCards,
+	}, params.DiscardIDs)
+	if err != nil {
 		return err
 	}
 	// CR 118.3, as on the activated path: a cost that prints both
@@ -5177,6 +5209,27 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		// Artist feeding off an Altar). Drain them on the way out, so
 		// the mana is already in the pool when they resolve — which
 		// is what makes an Altar plus a payoff a real engine.
+		needStateChecks = true
+	}
+	paid.Sacrificed = len(sacrifices)
+	// #1213: the discard component, LAST — it moves cards out of the
+	// hand, and it goes through the ONE discard helper with cause
+	// cost, so EventDiscardCard still fires per card, the CR 614
+	// window still runs over the exit and madness still sees it. A
+	// mana ability resolves immediately (CR 605.3b), so the discard
+	// may not pause any more than a spell's cost discard may:
+	// MustSettleNow is the route's, not this call site's.
+	if len(discards) > 0 {
+		if err := g.discardCardsLocked(playerID, discards, discardOptions{
+			cause:  DiscardCauseCost,
+			source: cardID,
+		}); err != nil {
+			return err
+		}
+		// A discard can queue "whenever you discard a card" triggers
+		// (Marauding Mako) and a madness exile, for the same reason a
+		// sacrifice queues dies-triggers: drain them on the way out,
+		// with the mana already in the pool.
 		needStateChecks = true
 	}
 	defer func() {

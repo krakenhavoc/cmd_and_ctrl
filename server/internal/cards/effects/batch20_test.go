@@ -138,9 +138,13 @@ func TestBatch20CardsAreRegistered(t *testing.T) {
 		b20WallOfBlossomsOracle:       "Wall of Blossoms",
 		b20ManabarbsOracle:            "Manabarbs",
 		b20BrokenBondOracle:           "Broken Bond",
+		// #1213 closed the return-a-Forest cost and gave the
+		// once-each-turn gate a tally to read, so the batch's second
+		// declared skip is a registered card now.
+		"3ecaefc8-ead2-47a3-a7ea-b030faab65a7": "Quirion Ranger",
 	}
-	if len(want) != 27 {
-		t.Fatalf("the batch registers 27 cards, the table lists %d", len(want))
+	if len(want) != 28 {
+		t.Fatalf("the batch registers 28 cards, the table lists %d", len(want))
 	}
 	for oracle, name := range want {
 		spec, ok := Lookup(oracle)
@@ -152,13 +156,16 @@ func TestBatch20CardsAreRegistered(t *testing.T) {
 			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
 		}
 	}
-	// The two declared skips must NOT be registered: Arboreal Grazer
-	// (the put-a-land-from-hand prompt) and Quirion Ranger (a
-	// return-a-Forest cost). A spec for either would ship the card
-	// stronger than printed.
+	// The remaining declared skip must NOT be registered: Arboreal
+	// Grazer's put-a-land-from-hand prompt. A spec for it would ship
+	// the card stronger than printed.
+	//
+	// Quirion Ranger LEFT this list in #1213: her return-a-Forest cost
+	// is a component now and her "Activate only once each turn" reads
+	// the activation tally, so nothing about her is stronger than
+	// printed any more.
 	for _, skipped := range []string{
 		"d18a0815-59d3-4667-b52b-9acda741215e", // Arboreal Grazer
-		"3ecaefc8-ead2-47a3-a7ea-b030faab65a7", // Quirion Ranger
 	} {
 		if _, ok := Lookup(skipped); ok {
 			t.Errorf("%s is a declared skip and must not be registered", skipped)

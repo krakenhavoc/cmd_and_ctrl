@@ -1997,6 +1997,23 @@ type ActivatedAbilityView struct {
 	DiscardCostN       int      `json:"discard_cost_n,omitempty"`
 	DiscardCostLabel   string   `json:"discard_cost_label,omitempty"`
 	DiscardCostOptions []string `json:"discard_cost_options,omitempty"`
+	// ReturnLabel / ReturnOptions describe a "Return a permanent you
+	// control to its owner's hand" cost component (#1213) — Quirion
+	// Ranger's Forest, Master Transmuter's artifact, Meloku's land.
+	// Absent when the cost has no return component.
+	//
+	// ReturnOptions is a LegalTargetsView whose min and max are both
+	// the clause's count, exactly as SacrificeOptions' are, and whose
+	// cards are the permanents that could pay right now in payment
+	// order — so the client reuses the sacrifice picker and its
+	// "Choose for me" button fills with what a bot would have paid.
+	// The chosen permanents go back as `return_ids`.
+	//
+	// It is NOT a target list: returning a permanent to pay a cost
+	// does not target it (CR 601.2h), so a hexproof permanent you
+	// control is on this list.
+	ReturnLabel   string            `json:"return_label,omitempty"`
+	ReturnOptions *LegalTargetsView `json:"return_options,omitempty"`
 	// DemandsX marks an ability whose mana component contains {X}
 	// (Helm of Obedience, Treasure Vault, Soothsaying). The client
 	// opens its X picker before the targeting step and sends the
@@ -2175,6 +2192,16 @@ type ManaAbilityView struct {
 	// client's picker, its greyed-row reason and its payload builder
 	// are each written once.
 	CounterCostView
+	// DiscardCostN / Label / Options describe a "Discard N cards"
+	// cost component on a MANA ability (#1213) — Skirge Familiar's
+	// "Discard a card: Add {B}". Exactly the three fields and exactly
+	// the wire names ActivatedAbilityView carries them under, so the
+	// client's discard picker is one component for both ability
+	// kinds, and the chosen cards go back as `discard_ids` either
+	// way. Absent for every other mana ability, which is all of them.
+	DiscardCostN       int      `json:"discard_cost_n,omitempty"`
+	DiscardCostLabel   string   `json:"discard_cost_label,omitempty"`
+	DiscardCostOptions []string `json:"discard_cost_options,omitempty"`
 	// ConditionUnmet is ActivatedAbilityView.ConditionUnmet for a
 	// mana ability: true while the ability's "Activate only if …"
 	// condition is false — Temple of the False God with four lands,
@@ -3964,21 +3991,34 @@ func livePlayer(g *game.Game, id uuid.UUID) bool {
 	return false
 }
 
-// stampManaSacrificeOptions fills the sacrifice clause on a
-// permanent's MANA abilities (Ashnod's Altar, Phyrexian Altar).
+// stampManaSacrificeOptions fills the card-shaped cost clauses on a
+// permanent's MANA abilities: the sacrifice clause (Ashnod's Altar,
+// Phyrexian Altar) and, since #1213, the discard clause (Skirge
+// Familiar).
 //
 // Split from viewOfManaAbilities because that runs while building the
 // base card view, which has no game handle — computing a legal set
 // needs one. Same division the activated abilities already use, and
-// the same list: sacrificeCostOptions.
+// the same two lists: sacrificeCostOptions and
+// DiscardCostOptionsForEffect.
 func stampManaSacrificeOptions(g *game.Game, card game.Card, controller uuid.UUID, views []ManaAbilityView) {
 	raw := game.ManaAbilitiesForCard(card)
 	for i := range views {
-		if i >= len(raw) || raw[i].SacrificeOther == nil {
+		if i >= len(raw) {
 			continue
 		}
-		views[i].SacrificeLabel = raw[i].SacrificeOther.Label
-		views[i].SacrificeOptions = sacrificeCostOptions(g, controller, raw[i].SacrificeOther, card.InstanceID, raw[i].SacrificeCost)
+		if raw[i].SacrificeOther != nil {
+			views[i].SacrificeLabel = raw[i].SacrificeOther.Label
+			views[i].SacrificeOptions = sacrificeCostOptions(g, controller, raw[i].SacrificeOther, card.InstanceID, raw[i].SacrificeCost)
+		}
+		// #1213: the same three fields the activated view carries,
+		// off the same walk, so the client's picker is one component
+		// for both ability kinds.
+		if dc := raw[i].DiscardCards; dc != nil && dc.N > 0 {
+			views[i].DiscardCostN = dc.N
+			views[i].DiscardCostLabel = dc.Label
+			views[i].DiscardCostOptions = cardIDStrings(g.DiscardCostOptionsForEffect(controller, card.InstanceID, dc))
+		}
 	}
 }
 
@@ -5925,6 +5965,12 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			v.DiscardCostLabel = dc.Label
 			v.DiscardCostOptions = cardIDStrings(g.DiscardCostOptionsForEffect(caster, c.InstanceID, dc))
 		}
+		// #1213: the return-to-hand component, stamped from the same
+		// walk the engine validates against.
+		if rc := a.Cost.ReturnToHand; !rc.Empty() {
+			v.ReturnLabel = rc.Label
+			v.ReturnOptions = returnCostOptions(g, caster, c.InstanceID, rc)
+		}
 		if a.Targets != nil {
 			v.TargetMode = a.Targets.Mode
 			// #662: an activated ability's source is the permanent
@@ -6096,8 +6142,37 @@ func sacrificeCostOptions(g *game.Game, controller uuid.UUID, spec *game.TargetS
 			ids = append(ids, id)
 		}
 	}
-	n := game.SacrificeCostCount(spec)
-	out := &LegalTargetsView{Min: n, Max: n}
+	// #1213: the bounds come from the one function the announce path
+	// validates against and the enumerator pays from, so the picker
+	// cannot enforce a count the engine refuses (#544). A VARIABLE
+	// clause ships its real bounds — "one or more" is min 1 with max
+	// 0 (LegalTargetsView's "unbounded"), and "Sacrifice X" ships
+	// CountFromX so the client knows the count is the X it is about
+	// to announce rather than a number it picks.
+	lo, hi := game.SacrificeCostBounds(spec, 0)
+	out := &LegalTargetsView{Min: lo, Max: hi, CountFromX: spec != nil && spec.CountFromX}
+	for _, id := range g.SacrificePaymentOrderForEffect(ids, sourceID) {
+		out.Cards = append(out.Cards, id.String())
+	}
+	return out
+}
+
+// returnCostOptions is sacrificeCostOptions one verb over (#1213):
+// the permanents that could pay a return-to-hand cost right now, in
+// the same payment order, with the same min / max convention — so the
+// client reuses one picker and its "Choose for me" button fills with
+// what the legal enumerator would have paid.
+//
+// The walk is the engine's own (ReturnToHandOptionsForEffect), so an
+// option offered here is one validateReturnToHandCostLocked accepts.
+//
+// Caller must hold g.mu.
+func returnCostOptions(g *game.Game, controller, sourceID uuid.UUID, rc *game.ReturnToHandCost) *LegalTargetsView {
+	if rc.Empty() {
+		return nil
+	}
+	ids := g.ReturnToHandOptionsForEffect(controller, sourceID, rc)
+	out := &LegalTargetsView{Min: rc.Count, Max: rc.Count}
 	for _, id := range g.SacrificePaymentOrderForEffect(ids, sourceID) {
 		out.Cards = append(out.Cards, id.String())
 	}
