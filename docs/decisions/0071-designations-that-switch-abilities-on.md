@@ -513,3 +513,149 @@ own graveyard (CR 113.6c — Anger, Wonder, Brawn), are the other half
 of #1221 and are NOT in this addendum. They land next, against this
 record, and the rule they will follow is the one above: the zone is a
 second dimension read at the same point, not a second designation.
+
+---
+
+## Addendum (2026-09-22): statics that function from a graveyard (#1221)
+
+**Status:** Accepted · 2026-09-22 · tracked on
+[#1221](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1221). The
+other half of the same issue; the addendum above is the activated
+half's record and is unchanged. This status covers this section only.
+
+### Context
+
+The addendum above said the zone is a second dimension read at the
+point Decision 1 put the designation gate, and that the STATIC half
+would land next against this record. It has.
+
+`Game.activeStaticAbilitiesLocked` gathered from three sources —
+floating scoped effects, emblems, and a walk of `g.Battlefield` — so a
+static printed on a card in a GRAVEYARD was never gathered, never
+sorted into a bucket and never applied. CR 113.6c is the clause four
+printed cards quote:
+
+> **Anger** — "As long as this card is in your graveyard and you
+> control a Mountain, creatures you control have haste."
+
+with Wonder, Brawn and Valor the same sentence in the other colours.
+The engine-seams row "Statics read from a non-battlefield zone" is
+those three plus Valor, and the neighbouring "Layer invalidation" row
+had already named Wonder as unblocked on ITS axis and still blocked on
+this one.
+
+### Decision: `StaticAbility.Zones`, gathered by one narrow walk behind a boot-time index
+
+The field is `ActivatedAbilityShape.Zones`' and `TriggeredAbility.Zones`'
+sibling, with the same shape, the same nil default and the same
+per-DECLARATION scope:
+
+```go
+Zones []ZoneKind   // nil means the battlefield
+
+func StaticZones(s StaticAbility) []ZoneKind
+func StaticFunctionsFromZone(s StaticAbility, zone ZoneKind) bool
+func StaticZoneUnsupported(zone ZoneKind) string
+```
+
+`game/static_zones.go`, and it is `trigger_zones.go` (#925) one
+consumer over — deliberately, down to the index:
+
+- **`supportedStaticZones` is the graveyard and nothing else.** A zone
+  the gather does not walk would be a declaration the engine silently
+  ignored, so `effects.Register` refuses the rest at boot with the
+  reason. The hand is the obvious next one and is one entry plus one
+  line in `zonesOfKindLocked`'s existing switch on the day a card
+  needs it.
+- **The index is built once, at `effects.Register`.** A blanket "walk
+  every graveyard on every recompute" would be a real cost on a
+  four-player table with sixty cards in the yards, paid by every table
+  whether or not anything in any deck functions from there.
+  `staticZones.zones()` answers "which zones does ANY registered card
+  declare a static from" — nil for almost every game, and the whole
+  walk is then one slice read — and `declares(oracleKey)` lets a
+  walked zone skip the catalog lookup for every card that does not.
+- **The battlefield walk gains one comparison per ability.** That is
+  what keeps a declared zone from ALSO applying on the battlefield: a
+  battlefield Anger is a 2/2 with its own printed haste and no anthem,
+  which is what the card says and why it prints the keyword as a
+  separate line.
+- **The gather goes through `StaticAbilitiesForCard`**, not the raw
+  `CatalogStaticAbilities` hook. This is the second place an object
+  becomes statics, and Decision 1's whole point is that there is one
+  such place per slot: a parallel read here would apply a Case's
+  "Solved —" static off a Case in a graveyard, where CR 400.7 has
+  already taken the designation away.
+
+### Three details of the bound source, each a rule rather than a choice
+
+1. **`Controller = Owner` on the bound copy.** CR 108.4: a card
+   outside the battlefield and the stack has no controller, so
+   "creatures YOU control" is its OWNER's. An Anger milled out of an
+   opponent's library helps that opponent. Word for word what
+   `harvestFromDeclaredZone` does for triggers and
+   `ActivateCatalogAbility` does for activations.
+
+2. **`live` is false.** The flag exists for one thing — CR 613.1f
+   ability-removal silencing — and nothing on the board can silence a
+   card in a graveyard, because Darksteel Mutation applies to a
+   permanent. Saying so at the bind is what keeps `applyBucketLocked`
+   from asking.
+
+3. **The timestamp is the source's last battlefield entry**, which is
+   when it died for the card this exists for and zero for one milled
+   straight out of a library. CR 613.7 wants the time the object
+   entered the zone it is in and no field records that. It is
+   unobservable for this whole family — every incarnation is a
+   layer-6 keyword GRANT, and grants commute — so the choice was
+   between an approximation and a new `Card` field that the snapshot,
+   the clone and the drift guard would all carry for a number nothing
+   can read. **Stated rather than hidden:** a graveyard static that
+   SET a characteristic would need the real thing, and there is none
+   in print that the catalog wants.
+
+### Layer invalidation: already paid, and now observable
+
+Decision 1's "Layer invalidation" note says a designation change must
+bump `layerVersion` or a gated static goes stale. The zone dimension
+owes the same debt and #1117 had already paid it for the graveyard:
+the zone-keyed condition in `layerVersionBump.OnEvent` is deliberately
+NOT gated on a flag, so **any** event whose `OldZone` / `NewZone`
+crosses a graveyard boundary bumps — arrivals and departures alike —
+and a battlefield crossing bumps on the other arm. A creature dying,
+a card milled, a card discarded and a graveyard exiled are therefore
+all covered, with no new bump and no new flag.
+
+What #1221 adds is a test. Before this addendum the widening was
+justified by a family of ten battlefield statics that READ a graveyard
+and could not have declared a flag they predate; now there is a static
+whose SOURCE is in one, and "the cached resolution survived the
+graveyard arrival" is a one-line assertion instead of an argument.
+
+### Cards
+
+Anger, Wonder, Brawn and Valor, all four, all `full`. One constructor
+(`effects.incarnationAnthem(keyword, land)`) because the four differ
+in two strings and nothing else, and four card files because
+one-file-per-card is what keeps `git blame` honest.
+
+The clause's other half — "and you control a Mountain" — reads a basic
+land TYPE and not the basic supertype, so a Sacred Foundry turns Anger
+on. It walks `g.Battlefield.Cards` directly rather than through
+`BattlefieldCardsForEffect`, which copies the pile: this runs inside
+`AppliesTo`, once per candidate creature per recompute, and a copy per
+call would make the pass quadratic in the board.
+
+### Still out of scope
+
+- **Yixlid Jailer** ("cards in graveyards lose all abilities") is NOT
+  this row and never was: it is a battlefield static ABOUT graveyards,
+  and what it wants is the ability-suppression seam.
+- **"As long as this card is in your hand" statics.** No catalog card
+  asks yet, and `supportedStaticZones` refuses the zone at boot until
+  one does.
+- **A graveyard static that SETS a characteristic**, for the timestamp
+  reason above.
+- **Mana abilities and replacement effects still have no zone field**,
+  unchanged from Decision 1 note 3 — and the mana half now has a
+  card asking (#1228).
