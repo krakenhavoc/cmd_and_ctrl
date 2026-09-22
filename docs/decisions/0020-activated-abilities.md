@@ -1335,8 +1335,8 @@ as a sorcery" and repeats every turn). All four `full`.
 
 ### Still out of scope
 
-- **The mana-ability half.** Loot, the Pathfinder (Decision 1).
-- **Cards that read the record from outside.** Rangers' Refueler and
+- **The mana-ability half** ([#1183](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1183)). Loot, the Pathfinder (Decision 1). The auto-tapper is the reader with no non-mana counterpart: CR 106.7's "could produce" has to start answering no for a spent exhaust mana ability, or a cast prices itself on mana it cannot get.
+- **Cards that read the record from outside** ([#1184](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1184)). Rangers' Refueler and
   Afterburner Expert ("Whenever you activate an exhaust ability, …")
   want an event or a watch, not this map; Elvish Refueler ("you may
   activate exhaust abilities as though they haven't been activated")
