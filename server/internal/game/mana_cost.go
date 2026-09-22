@@ -3,6 +3,7 @@ package game
 import (
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 // mana_cost.go parses Scryfall-style mana-cost strings into a ParsedCost
@@ -86,15 +87,28 @@ type ParsedCost struct {
 //	{W/P}    Options {"W"}      Phyrexian
 //	{W/U/P}  Options {"W","U"}  Phyrexian
 //	{2/W}    Options {"W"}      NumericAlt 2
+//	{S}      Options {"C"}      Snow
 //
 // The validator and auto-tapper do not read NumericAlt — they pay the
 // coloured half — but the mana value does (CR 202.3f,
 // ColorRequirement.ManaValue).
+//
+// Snow (#1190) marks a requirement that was printed as the snow symbol
+// {S} rather than plain colorless {C} — the two parse to the same
+// Options set (S15 pays a snow symbol like any colorless one), so
+// without a per-symbol tag a cost carrying both ("{S}{C}") would have
+// two indistinguishable ColorRequirement{Options:{"C"}} entries and
+// String could not say which was which. ParsedCost.HasSnow stays a
+// cost-level "at least one" bit for its existing informational
+// readers; Snow is what String reads to print the right glyph back.
 type ColorRequirement struct {
 	Options       []string
 	Phyrexian     bool
 	NumericAlt    int
 	HasNumericAlt bool
+	// Snow marks a requirement parsed from {S} rather than {C}. See
+	// the type doc above.
+	Snow bool
 }
 
 // ManaValue is what one coloured-mana slot contributes to a mana
@@ -107,6 +121,87 @@ func (r ColorRequirement) ManaValue() int {
 		return r.NumericAlt
 	}
 	return 1
+}
+
+// String renders one colored-mana slot back into its Scryfall brace
+// body (without the braces) — the inverse of the hybrid / Phyrexian /
+// numeric-alt / snow arms of absorbToken. Symbol by symbol:
+//
+//	{"W"}                       → "W"
+//	{"C"}, Snow                 → "S"          (never "C" — see Snow)
+//	{"W","U"}                   → "W/U"
+//	{"W"}, Phyrexian            → "W/P"
+//	{"W","U"}, Phyrexian        → "W/U/P"
+//	{"W"}, NumericAlt 2         → "2/W"
+func (r ColorRequirement) String() string {
+	if r.Snow {
+		return "S"
+	}
+	if r.HasNumericAlt {
+		return strconv.Itoa(r.NumericAlt) + "/" + firstOption(r.Options)
+	}
+	body := strings.Join(r.Options, "/")
+	if r.Phyrexian {
+		body += "/P"
+	}
+	return body
+}
+
+func firstOption(options []string) string {
+	if len(options) == 0 {
+		return ""
+	}
+	return options[0]
+}
+
+// String renders a ParsedCost back into Scryfall brace syntax — the
+// renderer ParseCost needed since #1184 gave the engine a post-
+// modifier cost to show instead of the printed one (#1190): the
+// activated-ability row and the mana-ability row both stamp what the
+// engine actually charges, computed from a ParsedCost rather than a
+// printed string, and this is how that ParsedCost becomes a string
+// again.
+//
+// Order: {X} once per XSlots, then the generic component (omitted
+// when zero — ParseCost("{0}") and no generic component at all
+// already parse to the same Generic, so there is nothing left to
+// distinguish), then each colored requirement in the order ParseCost
+// produced it. A cost with only a {T} or a non-mana component (a
+// mana ability's tap-only cost, an activated ability's sacrifice-only
+// cost) renders "".
+//
+// Round-trips {S}: Required carries a Snow bit per requirement (see
+// ColorRequirement), so ParseCost("{1}{S}{C}").String() prints the
+// snow symbol and the plain colorless symbol as the two different
+// glyphs they were printed as, rather than folding both into "{C}"
+// the way a ParsedCost with only the cost-level HasSnow bit would
+// have to.
+func (c ParsedCost) String() string {
+	var b strings.Builder
+	for i := 0; i < c.XSlots; i++ {
+		b.WriteString("{X}")
+	}
+	if c.Generic > 0 {
+		b.WriteByte('{')
+		b.WriteString(strconv.Itoa(c.Generic))
+		b.WriteByte('}')
+	}
+	for _, r := range c.Required {
+		b.WriteByte('{')
+		b.WriteString(r.String())
+		b.WriteByte('}')
+	}
+	return b.String()
+}
+
+// Empty reports whether the cost has nothing left to pay — no
+// generic mana, no {X}, no colored requirement. A cost modifier can
+// discount a mana ability's own component all the way to this
+// (#1191); the auto-tapper treats such a source exactly as it treats
+// one with no printed mana component at all, since there is nothing
+// left for the planner to decide.
+func (c ParsedCost) Empty() bool {
+	return c.Generic == 0 && c.XSlots == 0 && len(c.Required) == 0
 }
 
 // ParseCost walks s and produces a ParsedCost. Returns an error on
@@ -168,7 +263,7 @@ func absorbToken(token string, out *ParsedCost) error {
 			return nil
 		case 'S':
 			out.HasSnow = true
-			out.Required = append(out.Required, ColorRequirement{Options: []string{"C"}})
+			out.Required = append(out.Required, ColorRequirement{Options: []string{"C"}, Snow: true})
 			return nil
 		}
 	}
