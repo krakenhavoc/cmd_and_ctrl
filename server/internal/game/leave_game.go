@@ -523,6 +523,21 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// breath. There is nothing for a drop action to do, so it keeps
 	// the default rather than declaring one that could never fire.
 	PendingChoiceEntryPayLife: {},
+	// entry_reveal_from_hand (#1198) is entry_pay_life's row
+	// verbatim and for its argument: the reveal is the "unless" of
+	// the departed player's OWN entering permanent, which CR 800.4a
+	// takes out of the game in the same breath, and the hand the
+	// candidates live in went with it.
+	//
+	// The empty second column does NOT leave the paused entry
+	// dangling: the frame rides PendingChoice.replacementResume, so
+	// dropChoicesForPlayerLocked hands it to
+	// finishDroppedReplacementLocked without a row of its own.
+	// dropDefault would be wrong rather than merely unnecessary —
+	// this kind's continuation is a replacement event, and settling
+	// it once through the drop action and once through the frame is
+	// the double-resume the second column exists to avoid.
+	PendingChoiceEntryRevealFromHand: {},
 	// mana_pick is a cost's other half: the mana would enter a pool
 	// that has left the game with its player.
 	PendingChoiceMana: {},

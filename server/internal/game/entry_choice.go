@@ -66,7 +66,7 @@ const PendingChoiceEntryPayLife PendingChoiceKind = "entry_pay_life"
 // Caller must hold g.mu.
 func (g *Game) offerEntryLifePaymentLocked(ev *ReplacementEvent, chosen activeReplacement) bool {
 	cost := chosen.effect.EntryLifeCost
-	payer := g.entryLifePayerLocked(ev, chosen)
+	payer := g.entryChoicePlayerLocked(ev, chosen)
 	p := g.playerByIDLocked(payer)
 	if cost > 0 && ev.entryResumable && p != nil && !p.Eliminated && p.Life >= cost {
 		g.queueEntryPayLifePromptLocked(ev, chosen, payer, cost)
@@ -83,13 +83,17 @@ func (g *Game) offerEntryLifePaymentLocked(ev *ReplacementEvent, chosen activeRe
 	return false
 }
 
-// entryLifePayerLocked resolves who is asked to pay. The effect's
-// own Controller hook wins (a card knows best — for an entering
-// permanent it reads ev.Actor / the card's controller), then the
-// generic affected-player rule.
+// entryChoicePlayerLocked resolves WHO an entry replacement's own
+// question is put to. The effect's own Controller hook wins (a card
+// knows best — for an entering permanent it reads ev.Actor / the
+// card's controller), then the generic affected-player rule.
+//
+// Shared with the reveal-from-hand branch (entry_reveal.go) and named
+// for the question rather than for the payment, because the rule was
+// never about life: it is "whose permanent is entering".
 //
 // Caller must hold g.mu.
-func (g *Game) entryLifePayerLocked(ev *ReplacementEvent, chosen activeReplacement) uuid.UUID {
+func (g *Game) entryChoicePlayerLocked(ev *ReplacementEvent, chosen activeReplacement) uuid.UUID {
 	if chosen.effect.Controller != nil {
 		if id := chosen.effect.Controller(ev, g, chosen.source); id != uuid.Nil {
 			return id

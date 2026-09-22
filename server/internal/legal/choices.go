@@ -442,7 +442,7 @@ func (e *enumerator) choiceMoves() bool {
 				})
 			}
 
-		case game.PendingChoiceChooseCards, game.PendingChoiceUntapChoice:
+		case game.PendingChoiceChooseCards, game.PendingChoiceUntapChoice, game.PendingChoiceEntryRevealFromHand:
 			// "Choose N of these cards." The bounds ride on the
 			// choice, and a prompt may also carry a set-level
 			// Validate hook ("discard two unless you discard a
@@ -484,9 +484,21 @@ func (e *enumerator) choiceMoves() bool {
 			// engine-side acceptance check, which is where the cap
 			// solver lives (ADR 0070 Decision 3). Only the verb the
 			// seat reads differs.
+			//
+			// #1198: and so does entry_reveal_from_hand, CR 614.1c's
+			// "you may reveal an Island or Swamp card from your
+			// hand". Its floor is always zero, so the empty answer
+			// above is this kind's AlwaysLegal move and the prompt
+			// can never leave a seat without one — which matters
+			// more here than anywhere else on this branch, because
+			// the seat owing it is holding a permanent halfway onto
+			// the battlefield.
 			verb := ": choose"
-			if c.Kind == game.PendingChoiceUntapChoice {
+			switch c.Kind {
+			case game.PendingChoiceUntapChoice:
 				verb = ": untap"
+			case game.PendingChoiceEntryRevealFromHand:
+				verb = ": reveal"
 			}
 			for _, set := range sets {
 				p := base()

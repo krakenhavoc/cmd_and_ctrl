@@ -276,6 +276,32 @@ offers only sets the engine accepts (the cap solver runs inside
 in a step where nobody holds priority, so a seat with no answer here
 would stop the game outright rather than merely stall its own turn.
 
+**Whether to reveal (`entry_reveal_from_hand`, #1198, CR 614.1c).** The
+one card-set pick whose answer is FREE, and the reason it is a branch
+of its own rather than a second spelling of `choose_cards`. "As this
+land enters, you may reveal an Island or Swamp card from your hand. If
+you don't, it enters tapped" names a card and takes nothing: revealing
+is not a zone change, so the card is still in hand afterwards, and what
+it buys is an untapped land this turn. Both of the valuations this
+package already has would get it backwards — the `choose_cards` branch
+scores an answer by what it KEEPS, because a card named there is a card
+given up, and the cost-fuel pricer (#1028) prices a card EATEN by a
+cost. Through either, "reveal nothing" wins and every reveal-land in
+the deck comes down tapped forever.
+
+So the branch is flat and unambiguous: naming any card beats naming
+none. The count settles itself (every printed member of the family
+reveals at most one), and the enumerator offers the decline FIRST, so
+this preference is exactly what breaks a tie the "take the first offer"
+default would otherwise decide the wrong way.
+
+What the bot gives up is information — the table learns one card in its
+hand — and that is deliberately not priced. Against an untapped land on
+curve it is the trade a human takes almost every time, and pricing it
+would need an opponent model this policy does not have. A bluff (holding
+a matching card and declining anyway, to keep the hand hidden) is a real
+play and is out of reach for the same reason.
+
 ### An unavailable tier is refused, not downgraded
 
 Every declared tier is listed by `GET /bot/options`, including the

@@ -3518,6 +3518,16 @@ func (g *Game) pruneSacrificeChoicesLocked() {
 // player's own permanents during their own untap step, where nothing
 // has priority to move them.
 //
+// #1198's entry_reveal_from_hand is out for the same reason and one
+// of its own. The drop would strand a paused CR 614 ENTRY, which is
+// worse than the untap step it would strand above; and the prompt
+// cannot need the prune, because its floor is zero — "reveal nothing"
+// is an answer no emptied candidate list can take away, which is
+// exactly the property untap_choice lacks and a choose_cards with a
+// floor of one lacks. A stale candidate is still refused on submit by
+// pickStillInPickZoneLocked, so the worst an un-pruned list costs is
+// one rejected click.
+//
 // Called where pruneSacrificeChoicesLocked is called, and for its
 // reason: a queued choice stops priority from passing, so the
 // state-check loop is exactly what does NOT run while one is open.
