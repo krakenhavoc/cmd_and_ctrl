@@ -446,7 +446,9 @@ func (e *enumerator) choiceMoves() bool {
 				})
 			}
 
-		case game.PendingChoiceChooseCards, game.PendingChoiceUntapChoice, game.PendingChoiceEntryRevealFromHand:
+		case game.PendingChoiceChooseCards, game.PendingChoiceUntapChoice,
+			game.PendingChoiceEntryRevealFromHand, game.PendingChoiceRevealPick,
+			game.PendingChoiceTheirPermanents, game.PendingChoiceOwnPermanents:
 			// "Choose N of these cards." The bounds ride on the
 			// choice, and a prompt may also carry a set-level
 			// Validate hook ("discard two unless you discard a
@@ -481,7 +483,7 @@ func (e *enumerator) choiceMoves() bool {
 			// still reaches the valid pairs instead of spending the
 			// whole budget on singles (#544, and
 			// TestChooseCardsReachesValidPairsPastTheBudget).
-			sets := filteredCombinations(c.ChooseCards, c.ChooseMin, c.ChooseMax, e.opts.MaxExpansionPerSource,
+			sets := filteredCombinations(e.cardSetPickPool(c), c.ChooseMin, c.ChooseMax, e.opts.MaxExpansionPerSource,
 				func(set []uuid.UUID) bool { return g.ChooseCardsPickLegalLocked(c, set) })
 			// #826: untap_choice shares every line of this branch —
 			// the same payload, the same bounds and the same
@@ -497,12 +499,23 @@ func (e *enumerator) choiceMoves() bool {
 			// more here than anywhere else on this branch, because
 			// the seat owing it is holding a permanent halfway onto
 			// the battlefield.
+			//
+			// #1214's three resolution-time picks join on exactly the
+			// same terms, and add one thing of their own: the ORDER
+			// the pool is walked in, which is what decides which sets
+			// survive MaxExpansionPerSource (see cardSetPickPool).
 			verb := ": choose"
 			switch c.Kind {
 			case game.PendingChoiceUntapChoice:
 				verb = ": untap"
 			case game.PendingChoiceEntryRevealFromHand:
 				verb = ": reveal"
+			case game.PendingChoiceTheirPermanents:
+				// The label says WHOSE board is on offer, because a
+				// run of these is one prompt per player and four
+				// identical "choose Grizzly Bears" lines is a move
+				// list a human reading a bot's log cannot follow.
+				verb = ": choose from " + choiceSeatName(g, c.FromPlayer)
 			}
 			for _, set := range sets {
 				p := base()
@@ -1184,4 +1197,74 @@ func (e *enumerator) cardNameAnswers(c *game.PendingChoice) []string {
 		return []string{cardNameFallback}
 	}
 	return names
+}
+
+// choiceSeatName names a seat for a prompt label, falling back to
+// "another player" for a seat the table no longer carries. Seat names
+// are public (they are on every GameView), so a label may say one.
+func choiceSeatName(g *game.Game, id uuid.UUID) string {
+	if p := playerByID(g, id); p != nil && p.Name != "" {
+		return p.Name
+	}
+	return "another player"
+}
+
+// cardSetPickPool is a card-set prompt's candidate list in the ORDER
+// the enumerator should spend its expansion budget on — #1014's
+// ordering hooks, reaching the three resolution-time picks (#1214).
+//
+// It matters because `allowedSubsets` walks the pool by index and
+// stops at MaxExpansionPerSource: what the pool starts with is what
+// survives the cap, and what survives the cap is the whole move list a
+// policy gets to choose between. On a four-permanent board nothing is
+// lost; on a real one, the set containing the card that matters simply
+// is not offered, and no policy can pick a move it was never shown.
+//
+// WHICH HOOK, per kind — and the two hooks point OPPOSITE ways
+// (legal.Options):
+//
+//   - their_permanents ranks somebody ELSE's board by what matters on
+//     it, which is exactly Options.OrderTargets' question: "the part
+//     of the board that matters" first, so the top of it reaches the
+//     cap. reveal_pick is the same question about cards rather than
+//     permanents — an opponent deciding which of your four tutored
+//     cards you get is reading them the way they would read a board to
+//     aim a removal spell.
+//   - own_permanents ranks the seat's OWN permanents by what it would
+//     miss least, which is Options.OrderCostFuel's question. Scapeshift
+//     sacrificing any number of lands is a seat spending its own
+//     board, and a policy handed OrderTargets there would keep its
+//     worst land and sacrifice its best.
+//
+// choose_cards and untap_choice are deliberately left in engine order.
+// Neither hook asks their question — one is usually a hand, and the
+// other is CR 502.3's own determination, where the cap solver in the
+// engine has already decided what is legal.
+//
+// A caller with neither hook set — every caller but a bot seat — gets
+// the engine's own order back, byte for byte.
+func (e *enumerator) cardSetPickPool(c *game.PendingChoice) []uuid.UUID {
+	switch c.Kind {
+	case game.PendingChoiceTheirPermanents, game.PendingChoiceRevealPick:
+		return e.mostValuableFirst(c.ChooseCards)
+	case game.PendingChoiceOwnPermanents:
+		return e.cheapestFuelFirst(c.ChooseCards)
+	}
+	return c.ChooseCards
+}
+
+// mostValuableFirst is orderCandidates for a plain ID list: the same
+// hook, the same stable descending sort, on a fresh slice because the
+// pool comes from the engine and must not be reordered under it.
+func (e *enumerator) mostValuableFirst(pool []uuid.UUID) []uuid.UUID {
+	if e.opts.OrderTargets == nil || len(pool) < 2 {
+		return pool
+	}
+	out := append([]uuid.UUID(nil), pool...)
+	score := make(map[uuid.UUID]float64, len(out))
+	for _, id := range out {
+		score[id] = e.opts.OrderTargets(TargetCandidate{ID: id})
+	}
+	sort.SliceStable(out, func(i, j int) bool { return score[out[i]] > score[out[j]] })
+	return out
 }

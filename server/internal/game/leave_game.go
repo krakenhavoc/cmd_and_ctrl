@@ -508,6 +508,33 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// chooser, so every one of them is still dropped by the material
 	// gate.
 	PendingChoiceConfirm: {reassign: true},
+	// #1214, CR 608.2 (resolution_pick.go). Two of the three
+	// resolution-time picks are about ANOTHER player's material by
+	// construction, which is CR 800.4g's case and 800.4g's second
+	// sentence besides: the choice was to be made by an opponent of
+	// the object's controller, so another opponent makes it if there
+	// is one (choiceInheritorLocked walks turn order from the departed
+	// seat and is unchanged).
+	//
+	//   - reveal_pick — the cards are the CONTROLLER's, revealed off
+	//     their library; an opponent says which of them they get.
+	//     Gifts Ungiven does not stop being a spell because the
+	//     opponent it named conceded.
+	//   - their_permanents — the permanents belong to a seat that is
+	//     not the chooser. CR 800.4a takes them out of the game only
+	//     if that seat is the one who left, and the prompt's candidate
+	//     prune (reassignChoiceLocked) already drops exactly those.
+	//
+	// Both declare dropDefault for the reason option_pick does (#1006):
+	// each is one LEG of a RUN (the printed instruction in flight), and
+	// a run whose continuation never hears that a leg was withdrawn is
+	// a card that stops halfway. The action reaches settleRunLegLocked
+	// through PendingChoice.promptRun, which is the branch
+	// defaultDroppedChoiceLocked already takes on the run link rather
+	// than on the kind (#1027) — so none of the three needed a case of
+	// its own anywhere.
+	PendingChoiceRevealPick:      {reassign: true, onDrop: dropDefault},
+	PendingChoiceTheirPermanents: {reassign: true, onDrop: dropDefault},
 
 	// --- CR 800.4f: a cost, or whether to pay one ----------------
 	//
@@ -559,7 +586,15 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// so a run whose own source left with its controller is abandoned
 	// rather than paid out — which is the right answer, because the
 	// payout belonged to the seat that has gone.
-	PendingChoiceSacrifice:     {onDrop: dropDefault},
+	PendingChoiceSacrifice: {onDrop: dropDefault},
+	// own_permanents is their_permanents' sibling with the one field
+	// that decides this column the other way (#1214): the chooser IS
+	// the permanents' controller, so the whole pool is material CR
+	// 800.4a has taken out of the game in the same breath — Scapeshift
+	// asking which of YOUR lands you sacrifice has nothing left to ask
+	// once you are gone. Never reassigned; the drop still settles its
+	// leg, for sacrifice's reason one row up.
+	PendingChoiceOwnPermanents: {onDrop: dropDefault},
 	PendingChoiceLegendRule:    {},
 	PendingChoiceScry:          {},
 	PendingChoiceSurveil:       {},
