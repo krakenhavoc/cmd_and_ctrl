@@ -279,6 +279,31 @@ func heuristicSeats(n int) []aiseat.Policy {
 // Four heuristic bots play to a winner within 50 turns — the S31
 // sprint's exit criterion for this sub-PR, verbatim.
 func TestFourHeuristicBotsPlayToAWinner(t *testing.T) {
+	heuristicGateAtSeats(t, 4, 101)
+}
+
+// TestTwoHeuristicBotsPlayToAWinner is the same gate on the shape
+// #1096 found untested: a HEADS-UP table, which is what ADR 0076
+// makes the tutorial's and what #39 fixed the seating for.
+//
+// A SIBLING rather than a seat count on the test above, because that
+// test's name is S31 exit criterion 2 quoted verbatim — "four
+// heuristic bots" — and a name that says four while running two is
+// worse than a second function. The body is shared; only the seat
+// count and the seed block differ.
+//
+// Its own seed block (201+) so a failure names one table
+// unambiguously: reusing 101.. would make "seed 103" mean two
+// different games depending on which test printed it.
+func TestTwoHeuristicBotsPlayToAWinner(t *testing.T) {
+	heuristicGateAtSeats(t, 2, 201)
+}
+
+// heuristicGateAtSeats is the gate itself: N seeded tables of `seats`
+// heuristic bots, each to a single survivor inside the turn budget,
+// with zero engine-refused moves and zero runner fallbacks.
+func heuristicGateAtSeats(t *testing.T, seats int, firstSeed uint64) {
+	t.Helper()
 	requireGameTests(t)
 	const (
 		turnBudget = 50
@@ -298,20 +323,20 @@ func TestFourHeuristicBotsPlayToAWinner(t *testing.T) {
 	}
 	seeds := make([]uint64, 0, games)
 	for i := 0; i < games; i++ {
-		seeds = append(seeds, uint64(101+i))
+		seeds = append(seeds, firstSeed+uint64(i))
 	}
 	// Logged before the games rather than only per game, so a nightly
 	// artifact names the whole sample even when every game passes: the
 	// seeds are fixed, so "which twenty" is reproducible from the log
 	// alone.
-	t.Logf("heuristic gate: %d games, seeds %d..%d, turn budget %d, wall %s (AISEAT_WALLCLOCK raises it)",
-		games, seeds[0], seeds[len(seeds)-1], turnBudget, wall)
+	t.Logf("heuristic gate: %d games at %d seats, seeds %d..%d, turn budget %d, wall %s (AISEAT_WALLCLOCK raises it)",
+		games, seats, seeds[0], seeds[len(seeds)-1], turnBudget, wall)
 	for _, seed := range seeds {
 		t.Run(fmt.Sprintf("seed=%d", seed), func(t *testing.T) {
-			res := playGame(t, seed, heuristicSeats(4), turnBudget, wall)
+			res := playGame(t, seed, heuristicSeats(seats), turnBudget, wall)
 			total := res.totals()
-			t.Logf("seed %d: state=%s turns=%d winner=%d lives=%v applied=%d passes=%d rejected=%d in %v",
-				seed, res.state, res.turns, res.winner, res.lives, total.Applied, total.Passes, total.Rejected, res.elapsed)
+			t.Logf("seed %d: seats=%d state=%s turns=%d winner=%d lives=%v applied=%d passes=%d rejected=%d in %v",
+				seed, seats, res.state, res.turns, res.winner, res.lives, total.Applied, total.Passes, total.Rejected, res.elapsed)
 			if res.state != game.StateEnded {
 				t.Errorf("game did not finish inside %d turns (state %s, lives %v)", turnBudget, res.state, res.lives)
 			}
