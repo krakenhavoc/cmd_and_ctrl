@@ -192,8 +192,28 @@
   // nothing — the card stays in hand, so the floor of zero is a real
   // bluff rather than a formality.
   const isEntryReveal = $derived(active?.kind === "entry_reveal_from_hand");
-  // The three kinds that share the bounded card-set grid.
-  const isCardSetPick = $derived(isChooseCards || isUntapChoice || isEntryReveal);
+
+  // #1214 — the three resolution-time picks (CR 608.2). Same
+  // {choice_id, card_ids} payload and the same choose_min / choose_max
+  // bounds as choose_cards, so they render through the same grid;
+  // what differs is the sentence, because the three questions are not
+  // the same question.
+  //
+  //   reveal_pick       an opponent picks from a set you revealed —
+  //                     the cards are not theirs, and the reveal is
+  //                     what lets them look at all.
+  //   their_permanents  a pick over somebody ELSE's battlefield.
+  //                     `from_player` names whose.
+  //   own_permanents    "choose N of your own permanents", untargeted
+  //                     and made on resolution.
+  const isRevealPick = $derived(active?.kind === "reveal_pick");
+  const isTheirPermanents = $derived(active?.kind === "their_permanents");
+  const isOwnPermanents = $derived(active?.kind === "own_permanents");
+  const isPermanentPick = $derived(isTheirPermanents || isOwnPermanents);
+  // The kinds that share the bounded card-set grid.
+  const isCardSetPick = $derived(
+    isChooseCards || isUntapChoice || isEntryReveal || isRevealPick || isPermanentPick,
+  );
 
   // How many cards this prompt accepts, and how few it will settle
   // for. Search and copy are the two that move the floor off the
@@ -1406,6 +1426,12 @@
           {:else if isChooseCards}
             {active.reason || "Choose cards"}
             <span class="prompt-src" aria-hidden="true">choose</span>
+          {:else if isRevealPick}
+            {active.reason || "Choose from the revealed cards"}
+            <span class="prompt-src" aria-hidden="true">reveal · CR 701.20</span>
+          {:else if isPermanentPick}
+            {active.reason || "Choose permanents"}
+            <span class="prompt-src" aria-hidden="true">choose · CR 608.2</span>
           {:else}
             {active.reason || "Choose"} — pick {active.count} card{active.count === 1 ? "" : "s"}
             <span class="prompt-src" aria-hidden="true">{isSelfSource ? "discard" : "reveal"}</span>
@@ -1449,6 +1475,34 @@
             {/if}
             What happens to them is the card's business, and it will tell you next — choosing them costs
             nothing on its own.
+          {:else if isRevealPick}
+            {#if pickMin === pickMax}
+              Pick {pickMax} of these.
+            {:else if pickMin === 0}
+              Pick any of these, or none.
+            {:else}
+              Pick between {pickMin} and {pickMax} of these.
+            {/if}
+            <strong>{fromName}</strong> revealed them, so the whole table can see them — and what happens
+            to the ones you leave is the card's business.
+          {:else if isTheirPermanents}
+            {#if pickMin === pickMax}
+              Pick {pickMax} of <strong>{fromName}</strong>'s permanents.
+            {:else if pickMin === 0}
+              Pick any of <strong>{fromName}</strong>'s permanents, or none.
+            {:else}
+              Pick between {pickMin} and {pickMax} of <strong>{fromName}</strong>'s permanents.
+            {/if}
+            Nothing here is targeted, so hexproof and shroud don't protect anything from being chosen.
+          {:else if isOwnPermanents}
+            {#if pickMin === pickMax}
+              Pick {pickMax} of your permanents.
+            {:else if pickMin === 0}
+              Pick any number of your permanents, or none.
+            {:else}
+              Pick between {pickMin} and {pickMax} of your permanents.
+            {/if}
+            Nothing here is targeted — the choice is being made now, as the card resolves.
           {:else if isSelfSource}
             Pick {active.count} card{active.count === 1 ? "" : "s"} from your hand to discard.
           {:else}
@@ -1494,7 +1548,7 @@
               Untap
             {:else if isEntryReveal}
               {selected.size === 0 ? "Reveal nothing" : "Reveal"}
-            {:else if isChooseCards}
+            {:else if isChooseCards || isRevealPick || isPermanentPick}
               Choose
             {:else}
               Confirm

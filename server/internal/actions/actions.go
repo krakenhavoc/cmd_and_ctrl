@@ -1636,6 +1636,22 @@ func Dispatch(g *game.Game, a Action) error {
 				// the land enter tapped, so it is routed here ahead
 				// of the count guards like the two above it.
 				return g.ResolveEntryRevealFromHand(choiceID, a.Player, ids)
+			case game.PendingChoiceRevealPick:
+				// #1214, CR 608.2 / CR 701.20: "an opponent chooses
+				// two of those cards". Same payload and the same
+				// floor-can-be-zero reason — a Fact or Fiction pile
+				// split is a legal 5-0.
+				return g.ResolveRevealPick(choiceID, a.Player, ids)
+			case game.PendingChoiceTheirPermanents:
+				// #1214: "you choose from among the permanents that
+				// player controls" — a pick across the table, routed
+				// by kind so it cannot be answered through the
+				// chooser's-own-material verb below.
+				return g.ResolveTheirPermanents(choiceID, a.Player, ids)
+			case game.PendingChoiceOwnPermanents:
+				// #1214: "sacrifice any number of lands" — the
+				// untargeted self-choice, whose floor really is zero.
+				return g.ResolveOwnPermanents(choiceID, a.Player, ids)
 			case game.PendingChoiceCopyTarget:
 				// "You may have this enter as a copy of ..." — an
 				// EMPTY list is the decline, exactly as it is for

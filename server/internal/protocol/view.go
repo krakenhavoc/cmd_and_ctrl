@@ -4102,9 +4102,16 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// prompt is about. The other seats learn what was shown after
 		// the answer, through the reveal's own log line, which is the
 		// order CR 701.20 puts them in.
-		if c.Kind == game.PendingChoiceChooseCards ||
-			c.Kind == game.PendingChoiceUntapChoice ||
-			c.Kind == game.PendingChoiceEntryRevealFromHand {
+		//
+		// #1214's three resolution-time picks (reveal_pick,
+		// their_permanents, own_permanents) carry the same payload and
+		// project the same way. What they do NOT share is
+		// filterPendingChoices' bound-stripping: a reveal_pick's
+		// candidates were REVEALED, and the two permanent picks are
+		// battlefield cards, so "choose 2 of these 5" is public for all
+		// three and hiding it would be hiding a fact the table watched
+		// happen.
+		if game.IsCardSetPickKind(c.Kind) {
 			v.ChooseMin = c.ChooseMin
 			v.ChooseMax = c.ChooseMax
 			v.Options = make([]CardView, 0, len(c.ChooseCards))

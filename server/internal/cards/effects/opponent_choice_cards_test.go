@@ -78,7 +78,7 @@ func TestFactOrFictionSplitsAndTakesAPile(t *testing.T) {
 	// #929: "an opponent" is the controller's choice now.
 	answerChoosePlayer(t, g, me.ID, opp)
 
-	split := latestChooseCardsFor(g, opp.ID)
+	split := latestRevealPickFor(g, opp.ID)
 	if split == nil {
 		t.Fatalf("the opponent separates the piles: %+v", g.PendingChoices)
 	}
@@ -94,7 +94,7 @@ func TestFactOrFictionSplitsAndTakesAPile(t *testing.T) {
 			t.Fatalf("the reveal makes %s public to the splitter", id)
 		}
 	}
-	if err := g.ResolveChooseCards(split.ID, opp.ID, revealed[:2]); err != nil {
+	if err := g.ResolveRevealPick(split.ID, opp.ID, revealed[:2]); err != nil {
 		t.Fatalf("ResolveChooseCards: %v", err)
 	}
 
@@ -137,12 +137,12 @@ func TestFactOrFictionAcceptsAnEmptyPile(t *testing.T) {
 	castCatalogSpell(t, g, "Fact or Fiction", "Instant", factOrFictionOracle, nil)
 	passPriorityAroundTable(t, g)
 	answerChoosePlayer(t, g, me.ID, opp)
-	split := latestChooseCardsFor(g, opp.ID)
+	split := latestRevealPickFor(g, opp.ID)
 	if split == nil {
 		t.Fatalf("no split prompt: %+v", g.PendingChoices)
 	}
-	if err := g.ResolveChooseCards(split.ID, opp.ID, nil); err != nil {
-		t.Fatalf("ResolveChooseCards(empty): %v", err)
+	if err := g.ResolveRevealPick(split.ID, opp.ID, nil); err != nil {
+		t.Fatalf("ResolveRevealPick(empty): %v", err)
 	}
 	pick := latestOptionPickFor(g, me.ID)
 	if pick == nil {
@@ -174,12 +174,12 @@ func TestFactOrFictionUndoesAcrossBothPrompts(t *testing.T) {
 	castCatalogSpell(t, g, "Fact or Fiction", "Instant", factOrFictionOracle, nil)
 	passPriorityAroundTable(t, g)
 	answerChoosePlayer(t, g, me.ID, opp)
-	split := latestChooseCardsFor(g, opp.ID)
+	split := latestRevealPickFor(g, opp.ID)
 	if split == nil {
 		t.Fatalf("no split prompt: %+v", g.PendingChoices)
 	}
 	snap := g.Clone()
-	if err := g.ResolveChooseCards(split.ID, opp.ID, revealed[:2]); err != nil {
+	if err := g.ResolveRevealPick(split.ID, opp.ID, revealed[:2]); err != nil {
 		t.Fatalf("ResolveChooseCards: %v", err)
 	}
 	answerOptionPick(t, g, me.ID, 0)
@@ -193,15 +193,15 @@ func TestFactOrFictionUndoesAcrossBothPrompts(t *testing.T) {
 	if me.Hand.Size() != hand {
 		t.Errorf("undo rewinds both links: hand %d, want %d", me.Hand.Size(), hand)
 	}
-	restored := latestChooseCardsFor(g, opp.ID)
+	restored := latestRevealPickFor(g, opp.ID)
 	if restored == nil {
 		t.Fatalf("undo puts the split back: %+v", g.PendingChoices)
 	}
 	// The restored prompt is a chain link whose continuation did NOT
 	// survive the snapshot census — it survives the CLONE, which is
 	// what undo uses — so answering it must still work end to end.
-	if err := g.ResolveChooseCards(restored.ID, opp.ID, revealed[:3]); err != nil {
-		t.Fatalf("ResolveChooseCards after undo: %v", err)
+	if err := g.ResolveRevealPick(restored.ID, opp.ID, revealed[:3]); err != nil {
+		t.Fatalf("ResolveRevealPick after undo: %v", err)
 	}
 	answerOptionPick(t, g, me.ID, 0)
 	if me.Hand.Size() != hand+3 {

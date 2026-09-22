@@ -48,7 +48,7 @@ func pileSplitFor(t *testing.T, g *game.Game, caster, splitter *game.Player) uui
 	var id uuid.UUID
 	g.ReadSnapshot(func() {
 		for _, c := range g.PendingChoices {
-			if c != nil && c.Kind == game.PendingChoiceChooseCards {
+			if c != nil && c.Kind == game.PendingChoiceRevealPick {
 				id = c.ID
 			}
 		}

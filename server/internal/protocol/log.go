@@ -158,6 +158,26 @@ const (
 	// a SEAT, so it rides TargetSeat like every other player
 	// reference in this log and `Choice` is empty.
 	LogChoosePlayer LogKind = "choose_player"
+	// LogChooseCards — a player answered one of #1214's three
+	// resolution-time picks (CR 608.2): an opponent choosing from a
+	// set you revealed, somebody choosing among another player's
+	// permanents, a seat choosing N of its own.
+	//
+	// `Amount` is how many cards were chosen and is always present;
+	// `CardID` names the one card for the common single-card pick and
+	// is empty for any other count, so a viewer who may not identify
+	// it reads "chose a card" and one who may reads its name. `Target`
+	// is the card that ASKED — the resolving spell or the permanent
+	// whose ability it was — because "chose 2 cards" says nothing
+	// without it.
+	//
+	// The line exists for the reason LogChooseColor does (#1023 /
+	// #984): a decision the table watched somebody make is a decision
+	// the history has to carry. Without it the only trace of Tragic
+	// Arrogance is a column of sacrifices with nobody's name on them,
+	// and the only trace of Gifts Ungiven is two cards appearing in a
+	// graveyard.
+	LogChooseCards LogKind = "choose_cards"
 	// LogControl — a permanent changed controller (CR 613.1b).
 	// `Seat` is the player who GAINED control and `TargetSeat` the
 	// one who lost it, which is one sentence for a gain, an
@@ -719,6 +739,19 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		}
 		return base, true
 
+	case game.EventCardsChosen:
+		// #1214, CR 608.2. Actor chose, Source asked, CardID is the one
+		// card when there was one. The asking card rides `Target` so
+		// it goes through resolveLogNames' redaction like any other
+		// card reference — it is usually a spell on the stack, which
+		// is public, but a face-down or already-gone source should not
+		// be named out of this line either.
+		base.Kind = LogChooseCards
+		base.Amount = ev.Amount
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.Target = uuidStringOrEmpty(ev.Source)
+		return base, true
+
 	case game.EventControlChanged:
 		// CR 613.1b, #930 / #1008. "Ian gained control of Grizzly
 		// Bears" is a thing a player says out loud, and until #1021
@@ -1223,6 +1256,21 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 			return fmt.Sprintf("%s chose a player for %s", actor, card)
 		}
 		return fmt.Sprintf("%s chose %s for %s", actor, target, card)
+	case LogChooseCards:
+		// #1214. `card` is the one card chosen (or "a card" for a
+		// viewer who may not identify it), `target` the card that
+		// asked. A count other than one names no card at all, so the
+		// line says how many rather than guessing which.
+		switch {
+		case e.Amount == 0:
+			return fmt.Sprintf("%s chose nothing for %s", actor, target)
+		case e.Amount == 1 && e.CardID != "":
+			return fmt.Sprintf("%s chose %s for %s", actor, card, target)
+		case e.Amount == 1:
+			return fmt.Sprintf("%s chose a card for %s", actor, target)
+		default:
+			return fmt.Sprintf("%s chose %d cards for %s", actor, e.Amount, target)
+		}
 	case LogControl:
 		// `target` is the seat that lost control, for the same reason.
 		if e.TargetSeat == nil {

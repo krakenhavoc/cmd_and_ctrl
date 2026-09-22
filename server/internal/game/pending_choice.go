@@ -1316,6 +1316,19 @@ func (g *Game) reassignChoiceLocked(c *PendingChoice, newChooser uuid.UUID) bool
 		return out
 	}
 
+	if isCardSetPickKind(c.Kind) {
+		// Every kind carrying the choose-cards payload prunes the same
+		// way (#1214): the candidates that leave with the old chooser
+		// come off, the bounds move with the list through the one
+		// helper the zone prune uses (setCardSetCandidates, #1045), and
+		// a question with nothing left on it does not move at all —
+		// handing a seat a prompt with no answers is the #544 wedge.
+		live := keep(c.ChooseCards)
+		if len(live) == 0 {
+			return false
+		}
+		setCardSetCandidates(c, live)
+	}
 	switch c.Kind {
 	case PendingChoicePickTarget:
 		players := make([]uuid.UUID, 0, len(c.PickTargetPlayers))
@@ -1332,14 +1345,6 @@ func (g *Game) reassignChoiceLocked(c *PendingChoice, newChooser uuid.UUID) bool
 		if len(c.PickTargetPlayers) == 0 && len(c.PickTargetCards) == 0 {
 			return false
 		}
-	case PendingChoiceChooseCards:
-		live := keep(c.ChooseCards)
-		if len(live) == 0 {
-			return false
-		}
-		// The bounds move with the list, through the one helper the
-		// zone prune uses (setCardSetCandidates, #1045).
-		setCardSetCandidates(c, live)
 	case PendingChoiceOptionPick:
 		// The branches are labelled sentences and survive on their own;
 		// only the piles they name, and the SEATS they name, can go.
@@ -3555,7 +3560,12 @@ func (g *Game) pruneSacrificeChoicesLocked() {
 func (g *Game) pruneCardSetChoicesLocked() {
 	var emptied []*PendingChoice
 	for _, c := range g.PendingChoices {
-		if c == nil || c.Kind != PendingChoiceChooseCards {
+		// Every kind carrying the choose-cards payload, not just
+		// choose_cards itself (#1214): a their_permanents prompt over
+		// a board that empties under it is exactly the prompt this
+		// sweep exists for, and untap_choice sets no zone so it falls
+		// out at the next line.
+		if c == nil || !isCardSetPickKind(c.Kind) {
 			continue
 		}
 		frame := c.chooseCardsResume
