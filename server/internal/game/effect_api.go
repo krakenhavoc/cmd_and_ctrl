@@ -88,6 +88,27 @@ func (g *Game) LookupCardForEffect(cardID uuid.UUID) (Card, bool) {
 	return Card{}, false
 }
 
+// LastKnownCountersForEffect is the CR 603.10 LKI reader for a
+// departing card's COUNTERS (#1218) — The Ozolith's "if it had
+// counters on it": by the time a "creature you control leaves the
+// battlefield" trigger is judged (whether it is the leaving
+// permanent's OWN trigger, read off `sourceLKI`, or a BYSTANDER's,
+// like Ozolith watching a permanent that is not itself), MoveCard has
+// already zeroed Card.Counters on the departing card, so
+// LookupCardForEffect(cardID).Counters answers "none" unconditionally
+// (see zone.go). This answers what the card actually had, snapshotted
+// by snapshotLKILocked in the same beat lastKnownBattlefield is.
+//
+// Returns nil for a card that had no counters, was never snapshotted,
+// or whose snapshot has already been consumed and cleared — a card
+// still on the battlefield with counters right now is not what this
+// answers; read Card.Counters directly for that.
+//
+// Caller must hold g.mu.
+func (g *Game) LastKnownCountersForEffect(cardID uuid.UUID) map[string]int {
+	return g.lastKnownCounters[cardID]
+}
+
 // RevealHandForEffect marks every card in the named player's hand
 // as known to all seated players. Used by Thoughtseize / Duress
 // style "reveals hand" effects. No-op if the player isn't seated

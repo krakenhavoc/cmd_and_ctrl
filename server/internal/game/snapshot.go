@@ -304,6 +304,9 @@ type GameSnapshot struct {
 	// but carried so a round-trip is exact rather than nearly exact.
 	LastKnownBattlefield     map[uuid.UUID]Characteristic     `json:"lastKnownBattlefield,omitempty"`
 	LastKnownTriggerIdentity map[uuid.UUID]triggerIdentityLKI `json:"lastKnownTriggerIdentity,omitempty"`
+	// LastKnownCounters is lastKnownBattlefield's sibling for a card's
+	// counters (#1218) — see the field doc on game.go.
+	LastKnownCounters map[uuid.UUID]map[string]int `json:"lastKnownCounters,omitempty"`
 
 	RNG               rngSnapshot          `json:"rng"`
 	SourceOrdinals    map[uuid.UUID]uint64 `json:"sourceOrdinals,omitempty"`
@@ -998,6 +1001,12 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 			s.LastKnownTriggerIdentity[k] = v
 		}
 	}
+	if len(g.lastKnownCounters) > 0 {
+		s.LastKnownCounters = make(map[uuid.UUID]map[string]int, len(g.lastKnownCounters))
+		for k, v := range g.lastKnownCounters {
+			s.LastKnownCounters[k] = copyStringIntMap(v)
+		}
+	}
 
 	// Turn-scoped registries: entirely closure-bearing, so only the
 	// census and the labels survive. Dropping a Fog silently would be
@@ -1638,6 +1647,12 @@ func (s *GameSnapshot) restoreGame() *Game {
 		g.lastKnownTriggerIdentity = make(map[uuid.UUID]triggerIdentityLKI, len(s.LastKnownTriggerIdentity))
 		for k, v := range s.LastKnownTriggerIdentity {
 			g.lastKnownTriggerIdentity[k] = v
+		}
+	}
+	if len(s.LastKnownCounters) > 0 {
+		g.lastKnownCounters = make(map[uuid.UUID]map[string]int, len(s.LastKnownCounters))
+		for k, v := range s.LastKnownCounters {
+			g.lastKnownCounters[k] = copyStringIntMap(v)
 		}
 	}
 

@@ -155,6 +155,7 @@ var gameFields = plan(
 	"firstStrikeStepParticipants", carried, "",
 	"lastKnownBattlefield", carried, "",
 	"lastKnownTriggerIdentity", carried, "",
+	"lastKnownCounters", carried, "",
 	// ADR 0054: the key and the per-turn stream counters ARE the
 	// randomness. Clone copies them (undo rewinds) and rngSnapshot
 	// carries them (a restore continues every stream).

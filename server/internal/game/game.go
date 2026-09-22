@@ -412,6 +412,20 @@ type Game struct {
 	// paired with lastKnownBattlefield and cleared at the same boundary.
 	lastKnownTriggerIdentity map[uuid.UUID]triggerIdentityLKI
 
+	// lastKnownCounters is lastKnownBattlefield's sibling for a card's
+	// COUNTERS (#1218): Characteristic deliberately excludes Counters
+	// ("belongs to other engine subsystems"; see characteristic.go),
+	// and MoveCard's battlefield-exit cleanup zeroes Card.Counters
+	// (zone.go) before an LTB trigger — or a bystander watching the
+	// event, The Ozolith's "if it had counters on it" — ever sees it.
+	// Populated by snapshotLKILocked from the live counters just
+	// before that zeroing; read by LastKnownCountersForEffect; kept
+	// on the GAME rather than the card for the same reason the other
+	// two are — the departing Card value is about to be overwritten
+	// out from under whatever holds a copy of it. Cleared at the same
+	// two boundaries lastKnownBattlefield is.
+	lastKnownCounters map[uuid.UUID]map[string]int
+
 	// simultaneousExit holds copies of the permanents currently
 	// leaving the battlefield as ONE event — a board wipe, or one
 	// state-based-action sweep. Non-empty only for the duration of
