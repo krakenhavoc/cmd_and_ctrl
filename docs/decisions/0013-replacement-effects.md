@@ -2859,7 +2859,26 @@ paused on the CR 903.9 prompt holds the whole run rather than being
 walked past. What is new is that no routing loop can be handed a clause
 either, because the verdict is not inside one.
 
-**4. The clause is still about ARRIVALS, and still pure.** `millRun`
+**4. A loop needs a TERMINATION guard, and a single instruction did
+not.** A repetition is a real instruction, so it can be replaced away:
+CR 614.10's null replacement cancels a mill, and a replacement that
+halved an amount would turn a mill of one into a mill of none. The
+library is then where it was, the clause is where it was, and the run
+asks for the same repetition forever — without the guard the test for it
+blows the goroutine stack. `millRun.stalled` ends the run when a
+repetition leaves the library no shorter than it found it.
+
+The measure is the library's DEPTH and not the landed list, and that
+distinction is the whole of the guard's correctness: a run under Rest in
+Peace lands NOTHING and is still making progress, which is the famous
+Helm combo (§5z item 2) and must still walk to the bottom of the
+library. The old model could not reach this at all — a run named no
+number, so it opened no amount window and nothing could replace it to
+nothing. A card put BACK on the library by the same repetition reads as
+no progress and ends the run: conservative on purpose, because the
+alternative is a run that mills the same card forever.
+
+**5. The clause is still about ARRIVALS, and still pure.** `millRun`
 values are immutable: a repetition's continuation builds a FRESH run
 with a fresh landed slice rather than appending in place, and the
 pre-move card copies the clause reads are taken ONCE, from the library
@@ -2867,7 +2886,7 @@ as the run began. So an undo that rewinds into an open CR 903.9 prompt
 and replays the answer asks the clause the same question and gets the
 same answer — §5l's property, kept at the new boundary.
 
-**5. "Put ONE OF THEM onto the battlefield" became a real choice.**
+**6. "Put ONE OF THEM onto the battlefield" became a real choice.**
 Helm's doc comment said a prompt was unnecessary because the run stops
 AT the first creature card, so there is never more than one to choose
 from. That was true of a one-card repetition and is not true of a
@@ -2877,7 +2896,7 @@ the Helm's controller, raised ONLY when there is more than one — so the
 common case is still promptless and the card stays
 `CompletenessFull`.
 
-**6. What else it reaches.** Every `until` run in the catalog, which is
+**7. What else it reaches.** Every `until` run in the catalog, which is
 three: `b14MillUntilLand` (Consuming Aberration) and Helm of Obedience
 into a graveyard, where the per-repetition window is the point, and
 `b27ExileTopUntilTotalManaValue` / Improvisation Capstone into EXILE,
