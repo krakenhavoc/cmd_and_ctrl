@@ -293,8 +293,10 @@ directly and keeps its own target read, because it needs the ID twice.
 
 - **The other nine earthbend cards.** Each is now one clause, but each
   also needs something else this branch does not build: Bitter Work and
-  Ba Sing Se want **exhaust** (CR 702.x "activate each exhaust ability
-  only once"), which nothing in the engine has; Earth Rumble wants a
+  Ba Sing Se want **exhaust** ("activate each exhaust ability only
+  once"), which nothing in the engine has — filed as
+  [#1181](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1181), where
+  the shape is named; Earth Rumble wants a
   reflexive "when you do" trigger around the verb; Cracked Earth
   Technique wants two target clauses; Sandbenders' Storm and Dai Li
   Indoctrination are modal with per-mode targets; Earthshape reads the
