@@ -48,6 +48,5 @@ d46495c46dee625f 7 2 batch17_helpers.go,batch27_helpers.go
 dd481c2a4e82af35 6 2 blood_seeker.go,suture_priest.go
 dfee2f6c7b5bea62 10 2 batch40_helpers.go,mana_spent.go
 ec369074573e8e94 16 2 branching_evolution.go,hardened_scales.go
-f86f8fb018c793a6 9 2 magewrights_stone.go,wirewood_lodge.go
 f9c60e49e144a4e4 6 3 into_the_flood_maw.go,snapback.go,unsummon.go
 fd7c4991832e1ed9 6 2 bojuka_bog.go,tormods_crypt.go

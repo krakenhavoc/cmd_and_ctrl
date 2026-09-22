@@ -75,6 +75,7 @@ var tokenTable = map[string]game.Card{
 	"1/1 black and green Pest":                      {Name: "Pest", TypeLine: "Token Creature — Pest", Power: 1, Toughness: 1, Colors: []string{"B", "G"}},
 	"1/1 blue Bird Illusion with flying":            {Name: "Bird Illusion", TypeLine: "Token Creature — Bird Illusion", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
 	"1/1 blue Bird with flying and vigilance":       {Name: "Bird", TypeLine: "Token Creature — Bird", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying", "vigilance"}},
+	"1/1 blue Illusion with flying":                 {Name: "Illusion", TypeLine: "Token Creature — Illusion", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
 	"1/1 blue Fish":                                 {Name: "Fish", TypeLine: "Token Creature — Fish", Power: 1, Toughness: 1, Colors: []string{"U"}},
 	"1/1 blue Merfolk with hexproof":                {Name: "Merfolk", TypeLine: "Token Creature — Merfolk", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"hexproof"}},
 	"1/1 blue Tentacle":                             {Name: "Tentacle", TypeLine: "Token Creature — Tentacle", Power: 1, Toughness: 1, Colors: []string{"U"}},

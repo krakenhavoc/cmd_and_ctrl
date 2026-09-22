@@ -803,3 +803,26 @@ func EnteringPermanentChooser(ev *game.ReplacementEvent, _ *game.Game, src *game
 	}
 	return src.Owner
 }
+
+// untapTheTarget is the Effect body for an ability whose whole
+// instruction is "Untap target <something>". Four cards print it
+// behind four different costs — Magewright's Stone ({1}, {T}),
+// Wirewood Lodge ({G}, {T}), Quirion Ranger (return a Forest) and
+// Wirewood Symbiote (return an Elf) — and the clause that differs
+// between them is the TARGET clause, which lives on the ability, not
+// this body.
+//
+// It walks ctx.LegalTargets() rather than indexing item.Targets so a
+// target that became illegal in response is skipped (CR 608.2b) and
+// the ability resolves doing nothing, which is the printed outcome.
+// Named in #1213, where the third and fourth copies would have been
+// written.
+func untapTheTarget(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind == game.TargetCard {
+			return UntapTarget{Target: t.ID}.Apply(ctx)
+		}
+	}
+	return nil
+}

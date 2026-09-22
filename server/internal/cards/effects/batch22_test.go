@@ -127,9 +127,12 @@ func TestBatch22CardsAreRegistered(t *testing.T) {
 		b22AethericAmplifierOracle:  "Aetheric Amplifier",
 		b22GodEternalOketraOracle:   "God-Eternal Oketra",
 		b22HarshMentorOracle:        "Harsh Mentor",
+		// #1213 built the return-an-artifact cost component, so the
+		// batch's fifth declared skip is a registered card now.
+		"da46786e-28df-4638-ab3d-121011d2f150": "Master Transmuter",
 	}
-	if len(want) != 30 {
-		t.Fatalf("the batch registers 29 cards plus Whelming Wave, the table lists %d", len(want))
+	if len(want) != 31 {
+		t.Fatalf("the batch registers 30 cards plus Whelming Wave, the table lists %d", len(want))
 	}
 	for oracle, name := range want {
 		spec, ok := Lookup(oracle)
@@ -141,16 +144,17 @@ func TestBatch22CardsAreRegistered(t *testing.T) {
 			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
 		}
 	}
-	// The four remaining declared skips must NOT be registered —
+	// The three remaining declared skips must NOT be registered —
 	// each has a cost or a trigger the engine cannot express, and a
-	// spec would ship the card stronger than printed. Harsh Mentor
-	// came off this list with #1210's opponent-activation watch and
-	// is in `want` above.
+	// spec would ship the card stronger than printed.
+	//
+	// Two cards came OFF this list and are in `want` above: Harsh
+	// Mentor with #1210's opponent-activation watch, and Master
+	// Transmuter with #1213's return-an-artifact cost component.
 	for _, skipped := range []string{
 		"119d719d-e965-45b4-9bc9-ac03211b10c2", // Survival of the Fittest — discard-a-card cost
 		"e38e3723-05f5-4a51-8364-1cda19f9cc49", // Steelbane Hydra — remove-a-counter cost
 		"ade898df-14a5-460b-94f6-1f3f74d3ff95", // Odric, Master Tactician — choose the blocks
-		"da46786e-28df-4638-ab3d-121011d2f150", // Master Transmuter — return-an-artifact cost
 	} {
 		if _, ok := Lookup(skipped); ok {
 			t.Errorf("%s is a declared skip and must not be registered", skipped)
