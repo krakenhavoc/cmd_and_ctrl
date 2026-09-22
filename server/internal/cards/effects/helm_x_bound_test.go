@@ -328,3 +328,67 @@ func TestHelmAsksWhichCreatureWhenADoubledRepetitionLandsTwo(t *testing.T) {
 		t.Error("the unchosen creature card stays in the graveyard")
 	}
 }
+
+// TestHelmsRunResumesAfterEachRepetitionsOrderingPrompt — a repetition
+// is a whole mill instruction, so it can PAUSE the way any other mill
+// can: two mill-amount replacements in one window is a CR 616.1
+// ordering question, asked of the milled player (#982).
+//
+// The run has to survive that once per repetition. Nothing of the
+// repetition has happened when the prompt opens, the next repetition is
+// started from the resumed one's continuation, and the clause is asked
+// with everything that has landed by then — so a paused run neither
+// double-mills nor stalls.
+//
+// Bruvac first is (1 x 2) + 4 = six cards a repetition, so X=20 takes
+// four repetitions and four prompts and ends at 24, four past its own
+// bound.
+func TestHelmsRunResumesAfterEachRepetitionsOrderingPrompt(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	fillPool(me, 25)
+	pushMillReplacement(g, me.ID, "Bruvac the Grandiloquent",
+		"Legendary Creature — Human Advisor", bruvacOracle)
+	pushMillReplacement(g, me.ID, "The Water Crystal", "Legendary Artifact", theWaterCrystalOracle)
+	helm := pushCatalogPermanent(g, me.ID, "Helm of Obedience", "Artifact", helmOfObedienceOracle, false)
+	// No creature card in the run, so only the X half can end it.
+	for i := 0; i < 40; i++ {
+		libraryCardFor(opp, "Filler", "Sorcery")
+	}
+	graveBefore := opp.Graveyard.Size()
+
+	helmActivation(t, g, me, helm, opp, 20)
+
+	prompts := 0
+	for len(g.PendingChoices) > 0 {
+		c := g.PendingChoices[0]
+		if c.Kind != game.PendingChoiceReplacementOrder {
+			t.Fatalf("prompt kind = %q, want %q", c.Kind, game.PendingChoiceReplacementOrder)
+		}
+		if c.Chooser != opp.ID {
+			t.Fatalf("chooser = %s, want the milled opponent %s (CR 616.1)", c.Chooser, opp.ID)
+		}
+		prompts++
+		if prompts > 10 {
+			t.Fatal("the run is not finishing")
+		}
+		if err := g.ResolveReplacementOrder(c.ID, c.Chooser, replacementOrderByLabel(t, g, c,
+			"Bruvac the Grandiloquent — mill twice that many",
+			"The Water Crystal — mill that many plus four",
+		)); err != nil {
+			t.Fatalf("ResolveReplacementOrder: %v", err)
+		}
+	}
+
+	if prompts != 4 {
+		t.Errorf("%d ordering prompts, want 4 — one per repetition, each asked before any card "+
+			"of that repetition moves", prompts)
+	}
+	if got := opp.Graveyard.Size() - graveBefore; got != 24 {
+		t.Errorf("the Helm put %d cards into the graveyard at X=20, want 24 — four repetitions "+
+			"of six, the last of them carrying the run past its bound", got)
+	}
+	if !g.Battlefield.Contains(helm) {
+		t.Error("no creature card was milled, so the Helm stays")
+	}
+}
