@@ -593,7 +593,7 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 	// is revealed and then unreadable again. Reveal last would leave
 	// every seat able to read a library card by position.
 	if hadBefore {
-		g.revealFaceDownExitLocked(before)
+		g.revealFaceDownExitLocked(before, src.Kind)
 	}
 
 	// Destination bookkeeping. All of it is keyed on where the card

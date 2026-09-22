@@ -540,11 +540,17 @@ type stackItemSnapshot struct {
 	CastFromZone  ZoneKind          `json:"castFromZone,omitempty"`
 	AltCost       string            `json:"altCost,omitempty"`
 	Foretold      bool              `json:"foretold,omitempty"`
-	AltCostExiles bool              `json:"altCostExiles,omitempty"`
-	SplitSecond   bool              `json:"splitSecond"`
-	IsCopy        bool              `json:"isCopy,omitempty"`
-	Seq           uint64            `json:"seq"`
-	Ordered       bool              `json:"ordered"`
+	// FaceDown is CR 708.4 (#1194): the state the permanent this
+	// spell becomes enters in. Carried, and it has to be — a restore
+	// that lost it would resolve a morph on the stack into a face-UP
+	// creature, revealing the card and giving it every ability
+	// CR 708.2a says it does not have.
+	FaceDown      FaceDownKind `json:"faceDown,omitempty"`
+	AltCostExiles bool         `json:"altCostExiles,omitempty"`
+	SplitSecond   bool         `json:"splitSecond"`
+	IsCopy        bool         `json:"isCopy,omitempty"`
+	Seq           uint64       `json:"seq"`
+	Ordered       bool         `json:"ordered"`
 
 	// Paid is what the announcement cost (#789 / #761). Carried: a
 	// restore that lost it would resolve a converge spell for zero
@@ -1237,6 +1243,7 @@ func snapshotStackItem(g *Game, s *StackItem, cen *ContinuationCensus) stackItem
 		CastFromZone:  s.CastFromZone,
 		AltCost:       s.AltCost,
 		Foretold:      s.Foretold,
+		FaceDown:      s.FaceDown,
 		AltCostExiles: s.AltCostExiles,
 		SplitSecond:   s.SplitSecond,
 		IsCopy:        s.IsCopy,
@@ -1846,6 +1853,7 @@ func restoreStackItem(s *stackItemSnapshot) *StackItem {
 		CastFromZone:  s.CastFromZone,
 		AltCost:       s.AltCost,
 		Foretold:      s.Foretold,
+		FaceDown:      s.FaceDown,
 		AltCostExiles: s.AltCostExiles,
 		SplitSecond:   s.SplitSecond,
 		IsCopy:        s.IsCopy,

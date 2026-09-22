@@ -647,6 +647,28 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		)
 		return err
 	}
+	// CR 708.4, ADR 0082 decision 2: the whole of "casting a card
+	// face down" is this line, and where it sits is the decision.
+	//
+	// ABOVE it, two gates have to read the REAL card: the claim
+	// resolution (does this card offer this key at all) and the path
+	// validation (may the key be claimed from this zone). Stamping
+	// before them would erase the very offer being claimed.
+	//
+	// BELOW it, every gate reads the CR 708.2 OBJECT, because
+	// CatalogKey has gone silent for a face-down permanent (ADR 0069
+	// decision 4) — no target clause, no modes, no additional or
+	// optional costs, no tap cost, no cost modifiers of its own. And
+	// `card` is a 2/2 creature that is not an instant, so the
+	// sorcery-speed gate below demands sorcery timing, the cast tally
+	// counts a creature spell, and the cast gate judges a colourless
+	// creature spell with no name. CR 601.2b relative to 601.2c-f,
+	// and nothing in this function forks on the fact.
+	faceDown := FaceDownNone
+	if alt != nil && alt.FaceDown != nil {
+		faceDown = alt.FaceDown.Kind
+		card.SetFaceDown(faceDown)
+	}
 	// CR 118.6: no mana cost is an unpayable cost, and paying it is
 	// illegal, so a cast that would pay it is refused here. Checked
 	// once the claimed alternative cost and the exile grant are both
@@ -1089,10 +1111,30 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 			// the face has to be stamped on the real card, not just
 			// the copy the announce gates were judged against.
 			g.Stack.Cards[i].SetFace(params.Face)
+			if faceDown != FaceDownNone {
+				// The face-down viewers rule is "the CONTROLLER may
+				// look" (CR 708.5), and it is read off the card. A
+				// card that has just left a hand carries no
+				// controller, so the caster is stamped here, before
+				// the landing below asks.
+				g.Stack.Cards[i].Controller = playerID
+			}
 		}
 	}
-	// S13.5: cast spells are public on the stack.
-	g.markCardKnownInZoneLocked(g.Stack, cardID)
+	if faceDown != FaceDownNone {
+		// CR 708.4: a spell cast face down is a CR 708.2 object on
+		// the stack — a 2/2 creature spell with no name and no text —
+		// and its CONTROLLER is the only player who may look at it
+		// (CR 708.5). This REPLACES the public marking below rather
+		// than adding to it: the stack is a public zone and this is
+		// not a public object, which is the one line that separates
+		// the two. Same writer as the face-down exile route and the
+		// face-down battlefield entry (ADR 0069 decision 2).
+		g.applyFaceDownLandingLocked(g.Stack, cardID, faceDown)
+	} else {
+		// S13.5: cast spells are public on the stack.
+		g.markCardKnownInZoneLocked(g.Stack, cardID)
+	}
 	if g.StackMeta == nil {
 		g.StackMeta = make(map[uuid.UUID]*StackItem)
 	}
@@ -1116,6 +1158,12 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		// CR 406.3a turns the card face up as it is cast, and
 		// MoveCard has already done so by here.
 		Foretold: foretold,
+		// CR 708.4, ADR 0082 decision 3: the permanent this spell
+		// becomes enters FACE DOWN. Carried on the item because the
+		// permanent is a new object and MoveCard clears the state on
+		// every zone change — stack resolution seeds it onto the
+		// entry event from here.
+		FaceDown: faceDown,
 		// CR 702.34a / CR 400.7g, ADR 0066. The fact travels with the
 		// stack object because the catalog cannot answer for it: a
 		// card given flashback by Snapcaster was cast for a cost the
@@ -2250,6 +2298,13 @@ func (g *Game) resolveTopOfStackLocked() error {
 			// entirely.
 			entryResumable: true,
 			stackItem:      item,
+			// CR 708.4, ADR 0082 decision 3: a spell cast face down
+			// resolves into a face-down permanent. Seeded onto the
+			// event rather than applied after the push, so the whole
+			// CR 614 window — and any replacement that inspects the
+			// entry — sees what is arriving, and so the pause-and-
+			// resume path carries it with everything else.
+			FaceDown: item.FaceDown,
 		}
 		// S29: "this creature escapes with a +1/+1 counter on it"
 		// (CR 702.138c). Seeded onto the event BEFORE the pipeline

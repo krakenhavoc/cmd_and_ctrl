@@ -287,6 +287,29 @@ type ReplacementEvent struct {
 	// before emitting EventETB.
 	EntersTapped bool
 
+	// FaceDown is the CR 708.2 state the permanent ENTERS in —
+	// FaceDownManifested for a manifest (CR 701.34a), FaceDownMorphed
+	// or FaceDownDisguised for a spell that was cast face down
+	// (CR 708.4). The zero value is an ordinary face-up entry, which
+	// is every other entry in the game.
+	//
+	// Seeded by the caller that knows (stack resolution off
+	// StackItem.FaceDown, putOntoBattlefieldFromZoneLocked off
+	// ZoneEntryOptions.FaceDown) and read by the ONE entry finisher,
+	// so the fact rides the same event for both doors and a
+	// replacement effect inspecting the entry sees the same truth
+	// whichever one the permanent came through.
+	//
+	// It changes two things about the landing, both of them CR 708
+	// falling out rather than being special-cased: the entry sets the
+	// face-down state and its CR 708.5 viewers instead of marking
+	// every seat a knower, and because the state is set before the
+	// announcement CatalogKey answers "" — so a face-down entry runs
+	// no ETB trigger and no "as enters" choice (CR 708.2a). Only
+	// meaningful when NewZone == ZoneBattlefield. Added for #1194
+	// (ADR 0082 decision 3).
+	FaceDown FaceDownKind
+
 	// EntersAsCopyOf is the CR 707 copy a permanent enters wearing —
 	// the copiable values settled by a CopySelector replacement,
 	// with the card's "except" clause already applied. nil for the

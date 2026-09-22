@@ -235,6 +235,23 @@ type AlternativeCost struct {
 	// sees them.
 	EntersWithCounterName  string
 	EntersWithCounterCount int
+
+	// FaceDown is CR 708.4: paying this cost casts the card FACE
+	// DOWN. Morph's "you may cast this card as a 2/2 face-down
+	// creature spell for {3}" (CR 702.37b), megamorph's (CR 702.109a)
+	// and disguise's (CR 702.168a) — nil for every other alternative
+	// cost in the game.
+	//
+	// The sixth clause a keyword staples to a price, and the one that
+	// changes what the SPELL IS rather than what it costs or what it
+	// targets. `alt.FaceDown != nil` is the predicate CastSpell
+	// branches on, once, and everything after that line reads the
+	// CR 708.2 object because CatalogKey has gone silent for it
+	// (ADR 0069 decision 4, ADR 0082 decision 2).
+	//
+	// It carries the price of turning the permanent back up as well,
+	// and that is deliberate — see FaceDownCast.
+	FaceDown *FaceDownCast
 }
 
 // cardComponent returns the card-shaped half of this cost: the spec
@@ -345,7 +362,7 @@ func (g *Game) resolveAlternativeCostLocked(card Card, grant *CastPermission, ke
 	if key == "" {
 		return nil, nil
 	}
-	if alt, err := validateAlternativeCost(CatalogKey(card), key, targets); err == nil {
+	if alt, err := validateAlternativeCost(castOfferKey(card), key, targets); err == nil {
 		return alt, nil
 	}
 	granted := grant.AlternativeCostFor(card)

@@ -761,6 +761,31 @@ const (
 	// any kind a TriggeredAbility names. Added in S46 (ADR 0079, #343).
 	EventTransform EventKind = "transform"
 
+	// EventTurnedFaceUp — Actor turned the face-down permanent
+	// CardID face up (CR 708.6, the CR 116.2g special action).
+	// Source is the same card: a permanent turns ITSELF face up, and
+	// there is no other object involved.
+	//
+	// A KIND OF ITS OWN, not a reuse of EventTransform or EventETB,
+	// and the distinction is a rules one rather than a tidiness one.
+	// Both of those mean "a different object is here now" and "an
+	// object arrived"; CR 708.8 is the one transition in the game
+	// that explicitly means NEITHER — the permanent does not become a
+	// new object, and it does not enter anything. A card reading
+	// "whenever this transforms" would fire on every morph under the
+	// reuse.
+	//
+	// Two consumers, the same two EventTransform has. layerVersionBump
+	// invalidates on it, because the permanent's printed
+	// characteristics have just changed wholesale (the CR 708.2 body
+	// for the real card) while it sits still. And it is what makes
+	// "when this permanent is turned face up" (CR 708.8) writable,
+	// with no new constructor — the harvester already watches any
+	// kind a TriggeredAbility names, and by the time this is emitted
+	// the permanent is face up and its catalog entry answers again.
+	// Added in S43 (ADR 0082, #1194).
+	EventTurnedFaceUp EventKind = "turned_face_up"
+
 	// EventRevealCards — Actor showed CardID to the whole table (CR
 	// 701.20). Fires once per card, so "reveal the top five cards of
 	// your library" produces five events sharing one RevealSeq; the

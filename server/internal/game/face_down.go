@@ -84,6 +84,260 @@ func (k FaceDownKind) HasWard() bool {
 	return k == FaceDownDisguised || k == FaceDownCloaked
 }
 
+// FaceDownCast is the CR 708 half of morph (CR 702.37b), megamorph
+// (CR 702.109a) and disguise (CR 702.168a): the keyword's permission
+// to cast the card FACE DOWN, and the price of turning the permanent
+// it becomes back face up.
+//
+// It hangs off AlternativeCost, because casting face down IS an
+// alternative cost — a price paid instead of the mana cost, chosen at
+// CR 601.2b, that changes what the spell is. The {3} lives on the
+// AlternativeCost's own ManaCost, because that half is the KEYWORD's
+// and is the same on every card that prints it.
+//
+// FaceUpCost is here rather than in a declaration of its own for the
+// one reason ADR 0082 decision 4 is arranged around: a face-down
+// permanent has no catalog entry, so the price of turning it up
+// cannot be read off the object. It has to be read off the CARD, and
+// the card's "I may be cast face down" declaration is the only place
+// in the catalog that already knows which face-down state this card
+// produces. One declaration cannot be half-written.
+type FaceDownCast struct {
+	// Kind is the CR 708.2 state the cast produces —
+	// FaceDownMorphed for morph and megamorph, FaceDownDisguised for
+	// disguise. Must be a permanent state; Register refuses anything
+	// else at boot.
+	Kind FaceDownKind
+
+	// FaceUpCost is the MORPH COST (CR 702.37b) or DISGUISE COST
+	// (CR 702.168b) — what the controller pays to turn the permanent
+	// face up, in Scryfall brace notation. Empty is a free
+	// turn-face-up, which Zoetic Cavern's "Morph {0}"-shaped cards
+	// really are.
+	FaceUpCost string
+
+	// FaceUpCounter is megamorph's "turn it face up, then put a
+	// +1/+1 counter on it" (CR 702.109b). False for morph and
+	// disguise.
+	FaceUpCounter bool
+}
+
+// FaceDownCastFor returns the card's own CR 708.4 face-down cast
+// offer, or nil when the card prints none.
+//
+// It reads the catalog under the key given, so a caller holding a
+// FACE-DOWN card has to decide for itself which key it means: the
+// OBJECT's (CatalogKey, which is "" — a face-down permanent has no
+// text) or the CARD's (faceUpCatalogKey, whose two permitted callers
+// its own doc comment names).
+func FaceDownCastFor(catalogKey string) *AlternativeCost {
+	for _, ac := range AlternativeCostsFor(catalogKey) {
+		if ac.FaceDown != nil {
+			out := ac
+			return &out
+		}
+	}
+	return nil
+}
+
+// faceUpCatalogKey is the catalog key of the CARD UNDERNEATH a
+// face-down object — CatalogKey with the CR 708.2a suppression lifted.
+//
+// EXACTLY ONE RULE may ask, and it is CR 708.6: "any time you have
+// priority, you may turn this permanent face up by paying its morph
+// cost". That cost is printed on the CARD, and the player reading it
+// is the one CR 708.5 allows to look at it. Every other reader in the
+// engine wants the OBJECT and must keep using CatalogKey, which
+// answers "" — a face-down permanent has no text, no abilities and no
+// catalog entry (ADR 0069 decision 4).
+//
+// So it is unexported and it has exactly TWO callers, both named
+// here and both asking about a price the CARD prints:
+//
+//  1. TurnFaceUpOffer — CR 708.6's morph cost, above.
+//  2. castOfferKey — the CR 601.2b re-derivation of the
+//     alternative cost a face-down cast is ALREADY paying, below.
+//
+// A third caller is a rules bug. It caches nothing and materialises
+// nothing: the read is a pure function of the card, taken at the
+// moment the price is quoted, and the instant ClearFaceDown runs
+// CatalogKey answers on its own again.
+func faceUpCatalogKey(c Card) string {
+	up := c
+	up.ClearFaceDown()
+	return CatalogKey(up)
+}
+
+// castOfferKey is the catalog key an ALTERNATIVE-COST CLAIM is
+// resolved against — CatalogKey for every card in the game, and the
+// card underneath for a face-down spell.
+//
+// A face-down spell (CR 708.4) is the one object whose claimed cost
+// cannot be re-derived from its own catalog entry: the stamp that
+// made it a CR 708.2 object silenced the very entry the claim came
+// out of. But the claim itself is legitimate and was validated
+// against the CARD before the stamp — CR 601.2b chooses the cost
+// while the card is still a card in a zone — and morph's {3} is a
+// price the CARD prints, not text the OBJECT has.
+//
+// So this is a re-read of a decision already made, not a new look at
+// a face-down permanent's text. It cannot widen what a cast may
+// claim: CastSpell resolved the claim before stamping anything, and a
+// key the card does not offer was refused there.
+//
+// Locked in name only — it takes no game state — but it is the
+// alternative-cost path's half of the pair and reads the way its
+// caller does.
+func castOfferKey(c Card) string {
+	if c.FaceDownIsPermanent() {
+		return faceUpCatalogKey(c)
+	}
+	return CatalogKey(c)
+}
+
+// TurnFaceUpOffer is CR 708.6's answer for ONE face-down permanent:
+// may this be turned face up, and at what price. It is the whole of
+// ADR 0082 decision 5, and the ONE place the per-kind rule is written
+// down — the engine, the legal-move enumerator and the wire
+// projection all reach it through SpecialActionOffered.
+//
+//	morphed      the card declares a morph cast    its morph cost    CR 702.37b
+//	disguised    the card declares a disguise cast its disguise cost CR 702.168b
+//	manifested   the card is a CREATURE CARD       its mana cost     CR 701.34d
+//	cloaked      the card is a CREATURE CARD       its mana cost     CR 701.58b
+//
+// nil means "no", and the three ways to get one all matter: a
+// manifested Mountain (CR 701.34d — it stays face down forever), an
+// Ixidron'd Sheoldred (CR 708.7 — a permanent turned face down by an
+// effect that did not give it a way back up can never be turned face
+// up), and every face-up permanent in the game.
+//
+// "Creature card" is PrintedIsCreature deliberately: that accessor is
+// the copiable-value surface (CR 707.2) and answers "what does this
+// CARD say", which is exactly what CR 701.34d asks. The face-down
+// projection would answer "yes, a 2/2 creature" for a manifested
+// Island.
+//
+// CR 701.34e — a manifested card that ALSO has morph may be turned up
+// for either cost — is out of scope (ADR 0082 decision 5): this is one
+// offer per permanent, and no card in the catalog reaches the case.
+func TurnFaceUpOffer(c Card) *SpecialAction {
+	if !c.FaceDownIsPermanent() {
+		return nil
+	}
+	switch c.FaceDownKind {
+	case FaceDownMorphed, FaceDownDisguised:
+		// CR 708.6: "its morph cost" is printed on the CARD, which is
+		// what the controller is allowed to look at (CR 708.5).
+		alt := FaceDownCastFor(faceUpCatalogKey(c))
+		if alt == nil || alt.FaceDown == nil || alt.FaceDown.Kind != c.FaceDownKind {
+			// The permanent is in a state its card does not print a
+			// way out of — an effect turned it face down. CR 708.7:
+			// it can never be turned face up.
+			return nil
+		}
+		return &SpecialAction{
+			Kind:          SpecialActionTurnFaceUp,
+			Cost:          alt.FaceDown.FaceUpCost,
+			FaceUpCounter: alt.FaceDown.FaceUpCounter,
+			Label:         turnFaceUpLabel(alt.FaceDown.FaceUpCost),
+		}
+	case FaceDownManifested, FaceDownCloaked:
+		// CR 701.34d / CR 701.58b: a manifested or cloaked CREATURE
+		// CARD may be turned face up for its mana cost. Anything else
+		// stays face down for as long as it is on the battlefield.
+		if !c.PrintedIsCreature() {
+			return nil
+		}
+		return &SpecialAction{
+			Kind:  SpecialActionTurnFaceUp,
+			Cost:  c.ManaCost,
+			Label: turnFaceUpLabel(c.ManaCost),
+		}
+	}
+	return nil
+}
+
+// turnFaceUpLabel is the menu row and the log line. The COST is in it
+// and the card's name is not: the row is shown to the controller, who
+// can already see the card, and the log line is read by the whole
+// table, who may not (CR 708.5).
+func turnFaceUpLabel(cost string) string {
+	if cost == "" {
+		return "Turn face up"
+	}
+	return "Turn face up " + cost
+}
+
+// turnFaceUpLocked is the turn_face_up special action's performer,
+// run by PerformSpecialAction once the morph cost is paid
+// (CR 708.6, CR 116.2g).
+//
+// CR 708.8: turning a permanent face up DOES NOT make it a new
+// object. So this touches nothing that identifies one — InstanceID,
+// ObjectEpoch, counters, damage, attachments, the combat
+// declarations, EnteredBattlefieldAt and SummonedThisTurn all ride
+// through untouched. A morph that is attacking stays attacking, and
+// one that has been out since last turn can attack the moment it is
+// turned up.
+//
+// The ORDER is the rule. The state is cleared BEFORE the event is
+// emitted, because the trigger harvester reads a source's abilities
+// through CatalogKey: emitting first would harvest against an object
+// with no text and drop the very "when this is turned face up"
+// trigger CR 708.8 exists for.
+//
+// Caller must hold g.mu (write).
+func (g *Game) turnFaceUpLocked(p *Player, cardID uuid.UUID, sa SpecialAction) error {
+	idx := -1
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == cardID {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return ErrCardNotFound
+	}
+	c := &g.Battlefield.Cards[idx]
+	// Re-checked here rather than trusted from the dispatcher: the
+	// offer was priced against this card, and between then and now
+	// nothing may have changed it — but "nothing may have" is not a
+	// guarantee the performer is entitled to make about itself.
+	if !c.FaceDownIsPermanent() || c.Controller != p.ID {
+		return ErrSpecialActionNotOffered
+	}
+	c.ClearFaceDown()
+	// The card's OWN cached resolution is nilled at the mutation site
+	// rather than left to the listener, for the window between the
+	// two: EmitEvent dispatches synchronously, and a listener earlier
+	// in the slice than layerVersionBump would otherwise read the 2/2
+	// off the card it has just been told is face up. The same
+	// treatment, for the same reason, that
+	// TransformPermanentForEffect gives a transform (ADR 0079).
+	c.effective = nil
+	// The battlefield is a public zone and the object is public again
+	// (CR 708.2 stops applying the moment the permanent is face up),
+	// so every seat becomes a knower — the mirror of the face-down
+	// landing, which REPLACED the marking rather than adding to it.
+	g.markCardKnownInZoneLocked(g.Battlefield, cardID)
+	if sa.FaceUpCounter {
+		// CR 702.109b: megamorph turns it face up AND puts a +1/+1
+		// counter on it — before the event, so a "when this is turned
+		// face up" trigger already sees it.
+		if err := g.applyCounterByLocked(cardID, "+1/+1", 1, p.ID, cardID); err != nil {
+			return err
+		}
+	}
+	g.EmitEvent(Event{
+		Kind:   EventTurnedFaceUp,
+		Actor:  p.ID,
+		Source: cardID,
+		CardID: cardID,
+	})
+	return nil
+}
+
 // SetFaceDown puts the card into a face-down state, or takes it out of
 // one when kind is FaceDownNone. The ONLY writer of the pair, so
 // "FaceDown true with no kind" cannot be built.
@@ -232,14 +486,29 @@ func (g *Game) applyFaceDownLandingLocked(zone *Zone, cardID uuid.UUID, kind Fac
 	}
 }
 
-// revealFaceDownExitLocked is CR 708.9: when a face-down PERMANENT
-// moves to another zone, its owner reveals it.
+// revealFaceDownExitLocked is CR 708.9: a face-down object leaving the
+// zone it is a CR 708.2 object in is revealed by its owner.
+//
+// TWO exits reach it, and both are the rule rather than one being an
+// accident of the other:
+//
+//   - a face-down PERMANENT leaving the BATTLEFIELD — a manifest
+//     destroyed, a morph bounced or tucked into a library;
+//   - a face-down SPELL leaving the STACK — a countered morph, one
+//     that fizzled, one Hinder shuffles away (#1194). The table finds
+//     out what the {3} was buying, which is the answer the rules give
+//     and the one a player would insist on at a paper table.
 //
 // `before` is the card as it was BEFORE the move — MoveCard has
 // already cleared the flag by then (CR 400.7), so the question can
 // only be asked of the pre-move copy. The reveal itself names the
 // card where it landed, which is what "reveals it" means even when
 // the destination is a hidden zone.
+//
+// `from` is the zone it left, and it is carried in ONLY to say so in
+// the log line: the rule is the same on both exits, and a reveal that
+// told the table a countered spell "left the battlefield" would be
+// describing a game that did not happen.
 //
 // It runs BEFORE the destination's own knowledge rule, and that order
 // is the rule: the reveal is what every player SAW, and the
@@ -252,20 +521,33 @@ func (g *Game) applyFaceDownLandingLocked(zone *Zone, cardID uuid.UUID, kind Fac
 // change, which is exactly the shape CR 708.9 wants.
 //
 // A face-down EXILE that leaves exile is not revealed by this rule:
-// CR 708.9 is about permanents. The ordinary knowledge rules apply to
-// it, which for a public destination already means everyone.
+// its kind is not a CR 708.2 object state, so FaceDownIsPermanent is
+// false for it. The ordinary knowledge rules apply, which for a public
+// destination already means everyone.
 //
 // Caller must hold g.mu.
-func (g *Game) revealFaceDownExitLocked(before Card) {
+func (g *Game) revealFaceDownExitLocked(before Card, from ZoneKind) {
 	if !before.FaceDownIsPermanent() {
 		return
 	}
 	g.RevealForEffect(RevealSpec{
 		Player: before.Owner,
 		Source: before.InstanceID,
-		Reason: "turned face up on leaving the battlefield",
+		Reason: faceDownExitReason(from),
 		Cards:  []uuid.UUID{before.InstanceID},
 	})
+}
+
+// faceDownExitReason is the one-line log reason for a CR 708.9 reveal,
+// in the words of the zone the object actually left.
+func faceDownExitReason(from ZoneKind) string {
+	switch from {
+	case ZoneStack:
+		return "turned face up as it left the stack"
+	case ZoneBattlefield:
+		return "turned face up on leaving the battlefield"
+	}
+	return "turned face up on leaving the " + string(from)
 }
 
 // revealFaceDownOwnedByLocked is CR 702.143f's half that can be built
