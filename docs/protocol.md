@@ -1332,6 +1332,61 @@ bullet with no `legal_targets` must treat it as a bullet it cannot
 open a picker for — never as a free-form prompt over the whole board —
 which is what `beginForModes` already does.
 
+## An ability row's charged cost, alongside its printed one (#1190, #1191, 2026-09-22)
+
+One additive field, on each of the two ability rows that carry a mana
+component. A client that ignores it behaves exactly as it did.
+
+Since #1184 (S601.2f) an activated ability's mana cost can be modified
+by a permanent someone else controls — Boom Scholar's "Exhaust
+abilities of other permanents you control cost {2} less to activate"
+— and `Game.AbilityManaCostForEffect` is what the engine actually
+charges and what `internal/legal` checks affordability against. The
+menu row kept stamping only the PRINTED string
+(`activated_abilities[i].mana_cost` / `mana_abilities[i].mana_cost`),
+so a discounted ability's row and its real price could disagree — the
+gap Boom Scholar shipped as two declared caveats while #1184 closed.
+
+- **`activated_abilities[i].charged_mana_cost`** and
+  **`mana_abilities[i].charged_mana_cost`** (both `omitempty`) are what
+  the engine will actually charge for the ability's mana component
+  right now, rendered from the same `ParsedCost` the payment path
+  charges (`ParsedCost.String()`, the CR 601.2f pass's own renderer)
+  rather than a second copy of the printed string. CR 605.1a makes a
+  mana ability an activated ability, so #1191 gave the CR 605 half the
+  same pass through `Game.ManaAbilityManaCostForEffect` and the same
+  field name — one shape, two owners, exactly as the counter-cost and
+  sacrifice-cost fields already are.
+
+  Present whenever the ability's `mana_cost` is, and **equal** to it
+  when no cost modifier on the battlefield reaches this ability, which
+  is nearly every activation in the game — a pre-#1190 client that
+  only ever read `mana_cost` sees no discounted card differently than
+  it always has. Absent when the printed cost could not be priced (an
+  unparseable string, or a modifier that itself errors), in which case
+  a client falls back to `mana_cost` exactly as it did before this
+  field existed.
+
+  **A client shows `charged_mana_cost` in the row where it showed
+  `mana_cost`, and `mana_cost` as a tooltip only when the two strings
+  differ.** There is no cost arithmetic on the client side — the
+  server is still the one pricer, in one direction only, the same
+  discipline `target_cost_notes` and `phyrexian_symbols` already hold
+  to.
+
+- **The `{S}` (snow) round trip.** `ParsedCost.String()` is a full
+  renderer — `{X}` × `XSlots`, then the generic component, then each
+  colored requirement (a hybrid's options joined by `/`, `/P` for
+  Phyrexian, the numeric alternative for `{2/W}`) — and needed one
+  parser fix to be honest about snow: `{S}` and `{C}` used to parse to
+  the identical `ColorRequirement{Options: {"C"}}`, so a cost with both
+  ("`{1}{S}{C}`") had two indistinguishable colorless requirements and
+  no way to print one back as `{S}`. `ColorRequirement` now carries a
+  `Snow` bit per symbol (`ParsedCost.HasSnow` is unchanged — still the
+  cost-level "at least one" flag its existing readers use), so
+  `ParseCost(s).String() == s` for every shape `ParseCost` accepts,
+  snow included.
+
 ## Schema evolution rules
 
 - **Breaking changes** bump `v` and require updating both server and client
