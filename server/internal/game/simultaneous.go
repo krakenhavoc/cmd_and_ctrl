@@ -485,8 +485,17 @@ func millRoute(player uuid.UUID, dest ZoneKind) zoneRoute {
 // are separate templates rather than one with a flag. A battlefield
 // destination never reaches here — an entry is not an exit, and
 // searchEnterBattlefieldLocked owns it.
-func searchRoute(player uuid.UUID, dest ZoneKind) zoneRoute {
-	return zoneRoute{Dst: dest, Actor: player}
+//
+// #1230 widened the destination to ZoneExile — "search your library
+// for any number of … cards, exile them, then shuffle" (Ugin, Eye of
+// the Storms) — and gave it the same FaceDown parameter every other
+// exile-capable route carries, so a future "exile it face down" search
+// does not need a seventh template: routeDestinationLocked already
+// resolves ZoneExile to the shared g.Exile zone, and
+// executeZoneRouteLocked already reads FaceDown against the SETTLED
+// destination the same way it does for a tuck or a plain exile.
+func searchRoute(player uuid.UUID, dest ZoneKind, faceDown FaceDownKind) zoneRoute {
+	return zoneRoute{Dst: dest, Actor: player, FaceDown: faceDown}
 }
 
 // tuckRoute is the fifth template (#783): "put it into its owner's
