@@ -772,7 +772,63 @@ queued prompt about moving that same card out of that zone is as stale
 as it would be after an exit. It is not called here because #1069
 scoped one prune at one door, and because nothing in the catalog queues
 such a pair today. Named here rather than swept blind — the posture
-#1045 took towards this door, one issue earlier.
+#1045 took towards this door, one issue earlier. *(Closed 2026-09-21 by
+[#1175](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1175); see
+the amendment below.)*
+
+**Amendment (2026-09-21, #1175): the entry funnel runs BOTH prunes, and
+the sacrifice prune stays out for good.**
+
+Item 4 above named the second gap and left it open. This closes it, and
+the change is one line — `g.pruneStaleZoneChangeChoicesLocked()` after
+the card-set prune in `Game.pruneChoicesAfterArrivalLocked`
+(`server/internal/game/battlefield_entry.go`) — so what is worth
+recording is the three judgements around it.
+
+**1. It is the same question, asked at the other door.**
+`pausedZoneChangeStaleLocked` asks whether the card a paused exit would
+move is still in the zone that exit would leave. A commander's CR 903.9
+prompt over a move out of a GRAVEYARD (CR 903.9 holds "from anywhere",
+#539) whose card is reanimated while the question hangs has no answer
+its own resume would accept — `dropStaleReplacementResumeLocked` is the
+backstop that refuses it — and the reanimation reaches no exit, because
+`routeDestinationLocked` refuses a battlefield destination outright.
+Only the exile ran the prune; now both doors do.
+
+**2. The order is the exit primitive's, and it is load-bearing.**
+Card-set prune first, stale-move prune second, exactly as
+`executeZoneRouteLocked:718-721` has it. The card-set drop's
+continuation is a RUN LEG settling with nothing (#1016's `dropDefault`);
+the stale-move prune's is a ROUTE continuation
+(`abandonZoneRouteLocked`, #865) that can start the next move or queue
+the next leg's prompt. Reversing them would let a route's next leg be
+queued in front of a withdrawal the same arrival already owes.
+
+**3. No double-run, and nothing new to prove it with.** The structural
+fact item 3 above rests on covers the second prune unchanged: an
+arrival never reaches `executeZoneRouteLocked`'s block, so the funnel
+adds a door rather than doubling one. The second prune does bring one
+hazard the card-set prune did not — a route continuation is somebody's
+printed instruction, so running the funnel twice over one arrival would
+run it twice — and the prune is idempotent because it re-reads the live
+queue and a withdrawn prompt is no longer in it.
+`TestTheArrivalFunnelIsIdempotent` pins that beside the issue's own
+shape in `entry_prune_test.go`.
+
+**4. `pruneSacrificeChoicesLocked` is now permanently out, not
+deferred.** Its question is "is this candidate still on the battlefield
+under its chooser's control", and an entry only ADDS permanents. There
+is no board an arrival can produce that invalidates an option on an
+open sacrifice prompt, so this is a closed argument rather than an
+unscoped one. The entry funnel holds two prunes and will not grow a
+third for this reason.
+
+**Reachability, restated.** Still none in the catalog: the prompts in
+question block the table (#791's gate), so one resolving effect would
+have to hold the prompt open and move the same card onto the
+battlefield, and no card does. This is the wedge closed before a card
+reaches it, which is the posture #1027, #1045 and #1069 each took in
+turn.
 
 ## Out of scope (explicit deferrals)
 
