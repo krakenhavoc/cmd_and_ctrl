@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 
 import { castableFromZone } from "./zoneBrowser.logic";
+import { castableFaceIndex } from "./faces";
 import { applyCastChoices } from "./targeting";
 import type { CardView } from "./protocol";
 
@@ -59,6 +60,45 @@ describe("castableFromZone — who gets the graveyard cast button", () => {
     expect(castableFromZone(card, "exile")).toBe(false);
     expect(castableFromZone(card, "command")).toBe(false);
     expect(castableFromZone(card, "stack")).toBe(false);
+  });
+
+  // #1173. `castable_here` is stamped on `faces[i]` for a permission
+  // printed on the BACK face (#1171) — the front half of such a card
+  // is not a cast surface here, and reading the card's own top-level
+  // block alone (always face 0's answer for a front-up pile, CR
+  // 712.8) missed it. Latent today — no catalog card prints a
+  // back-face graveyard permission yet — but the union is the
+  // documented rule (docs/protocol.md, "castable_here… for every
+  // castable FACE") and the fixture below is exactly the shape #1171
+  // ships when one does.
+  it("shows the button when only the BACK face's castable_here is true", () => {
+    const gravecrawlerShaped = inYard({
+      name: "Refraction Elemental",
+      layout: "modal_dfc",
+      castable_here: false,
+      faces: [
+        { name: "Refraction Elemental", type_line: "Creature — Elemental", castable_here: false },
+        { name: "Refraction's Echo", type_line: "Sorcery", castable_here: true },
+      ],
+    });
+    expect(castableFromZone(gravecrawlerShaped, "graveyard")).toBe(true);
+    // The same union `castableFromZone` reads (`castableFaces`,
+    // faces.ts) is what the face picker's own default reads — so the
+    // button and the picker it opens agree on which half this is.
+    // The picker opens on face 1 rather than defaulting to the front,
+    // which the server would refuse this cast from.
+    expect(castableFaceIndex(gravecrawlerShaped, (f) => f.castable_here === true)).toBe(1);
+  });
+
+  it("still withholds the button when neither face's castable_here is true", () => {
+    const neither = inYard({
+      layout: "modal_dfc",
+      faces: [
+        { name: "Front", type_line: "Sorcery" },
+        { name: "Back", type_line: "Land" },
+      ],
+    });
+    expect(castableFromZone(neither, "graveyard")).toBe(false);
   });
 });
 

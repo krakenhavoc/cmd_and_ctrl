@@ -1279,7 +1279,9 @@ card is the union over the card's block and its `faces[i]` blocks —
 the front half of a card whose BACK opens the graveyard is not a cast
 surface and the back half is, so a zone browser that reads the card's
 `castable_here` alone will not offer a cast the server would accept.
-This client's does, and that half is filed as #1173.
+This client's does (#1173, via the shared `castableFaces` walk in
+`client/src/lib/faces.ts`), and hands the face picker the face the
+union answered yes on rather than defaulting it to the front.
 
 ## Schema evolution rules
 
