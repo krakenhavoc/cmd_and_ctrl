@@ -192,6 +192,13 @@ func (g *Game) removeFromCombatLocked(c *Card) {
 	if c == nil {
 		return
 	}
+	// #1218: only when this permanent was actually ATTACKING — a
+	// blocker pulled out of combat never was, and bumping for it would
+	// pay for a recompute nothing needs. See
+	// invalidateLayersForAttackChangeLocked.
+	if c.AttackingTarget != uuid.Nil {
+		g.invalidateLayersForAttackChangeLocked()
+	}
 	c.AttackingTarget = uuid.Nil
 	c.BlockingTarget = uuid.Nil
 	delete(g.announcedAttacks, c.InstanceID)

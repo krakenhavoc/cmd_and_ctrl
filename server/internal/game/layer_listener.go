@@ -38,6 +38,17 @@ import (
 //     on one side of the write on one route and the other side on
 //     the other.
 //
+// A third CONDITIONAL bump, added for #1218 in the same mould as the
+// hand and life ones above:
+//   - EventAttack, while something declares
+//     StaticAbility.DependsOnAttackingStatus. Ohran Frostfang is the
+//     card. Attacking status has two other exits this listener cannot
+//     reach from an event switch — a control change pulling a
+//     permanent out of combat (CR 506.4) and combat ending (CR
+//     511.3) — because neither emits an event naming every affected
+//     card; see invalidateLayersForAttackChangeLocked, called
+//     directly from removeFromCombatLocked and clearCombatLocked.
+//
 // Things this listener INTENTIONALLY does NOT bump on:
 //   - Turn advance. Handled, but not here: S25 (#77) put the bump in
 //     `onTurnBeganLocked` (rotation.go) exactly as this note used to
@@ -272,6 +283,19 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		if lifeTotalStaticIsLiveLocked(g) {
 			g.layerVersion.Add(1)
 		}
+	case EventAttack:
+		// #1218: the declare-attackers half of attacking-status
+		// invalidation. EventAttack fires once per creature at the
+		// declaration's LOCK-IN (commitAttackDeclarationLocked), by
+		// which point Card.AttackingTarget is already stamped for
+		// every attacker in the batch, so a static reading "is this
+		// creature attacking" sees the fresh answer once this bump
+		// runs. The other two exits (removed from combat, combat
+		// ends) have no event of their own; see
+		// invalidateLayersForAttackChangeLocked.
+		if attackingStatusStaticIsLiveLocked(g) {
+			g.layerVersion.Add(1)
+		}
 	case EventTapCard, EventUntapCard:
 		// Tap state is an AppliesTo input, not just a display flag:
 		// The Wandering Rescuer grants hexproof to "other TAPPED
@@ -335,6 +359,13 @@ func lifeTotalStaticIsLiveLocked(g *Game) bool {
 	return staticOnBattlefieldLocked(g, func(ab StaticAbility) bool { return ab.DependsOnLifeTotal })
 }
 
+// attackingStatusStaticIsLiveLocked is handSizeStaticIsLiveLocked for
+// attacking status. Ohran Frostfang's "attacking creatures you
+// control have deathtouch" is the card that makes it matter.
+func attackingStatusStaticIsLiveLocked(g *Game) bool {
+	return staticOnBattlefieldLocked(g, func(ab StaticAbility) bool { return ab.DependsOnAttackingStatus })
+}
+
 // staticOnBattlefieldLocked reports whether any permanent on the
 // battlefield declares a static ability the predicate accepts. The
 // shared walk under the two invalidation hints, so a third hint is a
@@ -383,6 +414,24 @@ func staticOnBattlefieldLocked(g *Game, want func(StaticAbility) bool) bool {
 // Caller must hold g.mu.
 func (g *Game) invalidateLayersForLifeChangeLocked() {
 	if lifeTotalStaticIsLiveLocked(g) {
+		g.layerVersion.Add(1)
+	}
+}
+
+// invalidateLayersForAttackChangeLocked drops the cached layer
+// resolution when a permanent's ATTACKING status just changed off the
+// declare-attackers event — a control change removing it from combat
+// (CR 506.4, removeFromCombatLocked) or combat ending (CR 511.3,
+// clearCombatLocked) — and something on the battlefield is reading
+// that status. #1218, the other two exits the EventAttack arm above
+// cannot reach: neither of these mutates through an event that names
+// every affected card, so each call site invalidates directly at the
+// write, in the same mould #1117's invalidateLayersForLifeChangeLocked
+// does for a life total.
+//
+// Caller must hold g.mu.
+func (g *Game) invalidateLayersForAttackChangeLocked() {
+	if attackingStatusStaticIsLiveLocked(g) {
 		g.layerVersion.Add(1)
 	}
 }

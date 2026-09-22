@@ -7197,9 +7197,20 @@ func (g *Game) ClearCombat() error {
 // (which takes the lock) and AdvanceStep (which already holds it).
 // Caller must hold g.mu.
 func (g *Game) clearCombatLocked() {
+	// #1218: one bump for the whole sweep, not one per creature, and
+	// only when something actually left combat attacking — a combat
+	// with no attackers (or none at all this turn) invalidates
+	// nothing. See invalidateLayersForAttackChangeLocked.
+	attackerLeft := false
 	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].AttackingTarget != uuid.Nil {
+			attackerLeft = true
+		}
 		g.Battlefield.Cards[i].AttackingTarget = uuid.Nil
 		g.Battlefield.Cards[i].BlockingTarget = uuid.Nil
+	}
+	if attackerLeft {
+		g.invalidateLayersForAttackChangeLocked()
 	}
 	// #830 / #859: the combat declarations' announcements describe
 	// the declarations being wiped here, so they go with them.
