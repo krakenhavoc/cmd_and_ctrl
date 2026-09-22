@@ -520,3 +520,47 @@ func TestAMorphIsRevealedWhenItLeavesTheBattlefield(t *testing.T) {
 		t.Error("CR 708.9: a face-down permanent is revealed as it leaves the battlefield")
 	}
 }
+
+// TestACounteredMorphIsRevealedAsItLeavesTheStack is the exit CR 708.9
+// covers that had no way to happen before the face-down CAST existed:
+// a face-down SPELL leaving the stack. The table watched a {3} it
+// could not read, and it finds out what the {3} was buying.
+//
+// The log reason has to name the zone the object actually left:
+// telling the table a countered spell "left the battlefield" would be
+// describing a game that did not happen.
+func TestACounteredMorphIsRevealedAsItLeavesTheStack(t *testing.T) {
+	g, me, id := morphGame(t, morphOffer(FaceDownMorphed, morphCost, false))
+	opp := g.Seats[1]
+	if err := castFaceDown(t, g, me, id, "morph"); err != nil {
+		t.Fatalf("cast: %v", err)
+	}
+	if err := g.CounterSpell(id, nil); err != nil {
+		t.Fatalf("counter: %v", err)
+	}
+	c, zone, ok := cardAnywhere(g, id)
+	if !ok || zone != ZoneGraveyard {
+		t.Fatalf("card is in %q, want the graveyard", zone)
+	}
+	if c.FaceDown {
+		t.Error("the countered spell is still face down; MoveCard clears it (CR 400.7)")
+	}
+	if !c.IsKnownTo(opp.ID) {
+		t.Error("CR 708.9: a face-down spell is revealed as it leaves the stack")
+	}
+	const want = "turned face up as it left the stack"
+	found := false
+	g.ReadSnapshot(func() {
+		for _, ev := range g.Events {
+			if ev.Kind == EventRevealCards && ev.CardID == id {
+				found = true
+				if ev.Label != want {
+					t.Errorf("reveal reason = %q, want %q", ev.Label, want)
+				}
+			}
+		}
+	})
+	if !found {
+		t.Error("no reveal event for the countered morph")
+	}
+}

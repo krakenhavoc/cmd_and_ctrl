@@ -486,14 +486,29 @@ func (g *Game) applyFaceDownLandingLocked(zone *Zone, cardID uuid.UUID, kind Fac
 	}
 }
 
-// revealFaceDownExitLocked is CR 708.9: when a face-down PERMANENT
-// moves to another zone, its owner reveals it.
+// revealFaceDownExitLocked is CR 708.9: a face-down object leaving the
+// zone it is a CR 708.2 object in is revealed by its owner.
+//
+// TWO exits reach it, and both are the rule rather than one being an
+// accident of the other:
+//
+//   - a face-down PERMANENT leaving the BATTLEFIELD — a manifest
+//     destroyed, a morph bounced or tucked into a library;
+//   - a face-down SPELL leaving the STACK — a countered morph, one
+//     that fizzled, one Hinder shuffles away (#1194). The table finds
+//     out what the {3} was buying, which is the answer the rules give
+//     and the one a player would insist on at a paper table.
 //
 // `before` is the card as it was BEFORE the move — MoveCard has
 // already cleared the flag by then (CR 400.7), so the question can
 // only be asked of the pre-move copy. The reveal itself names the
 // card where it landed, which is what "reveals it" means even when
 // the destination is a hidden zone.
+//
+// `from` is the zone it left, and it is carried in ONLY to say so in
+// the log line: the rule is the same on both exits, and a reveal that
+// told the table a countered spell "left the battlefield" would be
+// describing a game that did not happen.
 //
 // It runs BEFORE the destination's own knowledge rule, and that order
 // is the rule: the reveal is what every player SAW, and the
@@ -506,20 +521,33 @@ func (g *Game) applyFaceDownLandingLocked(zone *Zone, cardID uuid.UUID, kind Fac
 // change, which is exactly the shape CR 708.9 wants.
 //
 // A face-down EXILE that leaves exile is not revealed by this rule:
-// CR 708.9 is about permanents. The ordinary knowledge rules apply to
-// it, which for a public destination already means everyone.
+// its kind is not a CR 708.2 object state, so FaceDownIsPermanent is
+// false for it. The ordinary knowledge rules apply, which for a public
+// destination already means everyone.
 //
 // Caller must hold g.mu.
-func (g *Game) revealFaceDownExitLocked(before Card) {
+func (g *Game) revealFaceDownExitLocked(before Card, from ZoneKind) {
 	if !before.FaceDownIsPermanent() {
 		return
 	}
 	g.RevealForEffect(RevealSpec{
 		Player: before.Owner,
 		Source: before.InstanceID,
-		Reason: "turned face up on leaving the battlefield",
+		Reason: faceDownExitReason(from),
 		Cards:  []uuid.UUID{before.InstanceID},
 	})
+}
+
+// faceDownExitReason is the one-line log reason for a CR 708.9 reveal,
+// in the words of the zone the object actually left.
+func faceDownExitReason(from ZoneKind) string {
+	switch from {
+	case ZoneStack:
+		return "turned face up as it left the stack"
+	case ZoneBattlefield:
+		return "turned face up on leaving the battlefield"
+	}
+	return "turned face up on leaving the " + string(from)
 }
 
 // revealFaceDownOwnedByLocked is CR 702.143f's half that can be built
