@@ -183,6 +183,32 @@ type StackItem struct {
 	// Added in #636.
 	Payload []TargetRef
 
+	// Trigger is what the TRIGGERING EVENT was, for an item the
+	// harvester put here — the damage amount, the object that left
+	// with its CR 603.10 last-known characteristics, the counters
+	// placed, the spell cast, the ability activated. Nil on every
+	// cast spell, every activated ability and every reflexive
+	// trigger, which have no triggering event to carry.
+	//
+	// Stamped once, where the item is built, and read in two places
+	// that are a priority round apart: the ability's TARGET CLAUSE as
+	// it is put on the stack (CR 603.3d — Scrap Trawler's "with
+	// lesser mana value" is lesser than a mana value only this field
+	// remembers), and its EFFECT at resolution, through
+	// effects.Context.Trigger().
+	//
+	// DATA rather than a value captured in the Effect closure, which
+	// is where every card that needed one used to put it. A closure
+	// reaches resolution and reaches nothing else: not the clause
+	// that runs before it, not the snapshot (a func has no wire
+	// form), and not — the reason this field exists at all — a CR
+	// 707.10 COPY of the ability, which "copies any choices made when
+	// it triggered" and must resolve against the same event the
+	// original does. See trigger_event.go.
+	//
+	// Added in #1223.
+	Trigger *TriggerContext
+
 	// Modes is the list of mode indices chosen at announce time for
 	// modal spells / abilities. Empty for non-modal items.
 	Modes []int

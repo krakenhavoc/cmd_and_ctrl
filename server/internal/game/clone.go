@@ -627,6 +627,10 @@ func cloneStackItem(s *StackItem) *StackItem {
 		out.Targets = make([]TargetRef, len(s.Targets))
 		copy(out.Targets, s.Targets)
 	}
+	// #1223: the triggering event, deep-copied for the same reason
+	// the payload is — an undo that shared the slices inside it
+	// would let the restored game mutate the live one.
+	out.Trigger = cloneTriggerContext(s.Trigger)
 	// A reflexive trigger's payload (#636): its own backing array for
 	// the same reason Targets gets one — an undo that shared it would
 	// let the restored game mutate the live one.

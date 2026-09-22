@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"sort"
+
+	"github.com/google/uuid"
+)
 
 // targets.go — S20 sub-PR 1: structured targeting. A catalog card
 // declares WHAT it can target as a TargetSpec (which zones, which
@@ -175,6 +179,45 @@ type TargetSpec struct {
 	// means every seated, non-eliminated player qualifies. Same
 	// locking rule as CardOK.
 	PlayerOK func(g *Game, caster uuid.UUID, p *Player) bool
+
+	// Abilities admits ACTIVATED and TRIGGERED ability items on the
+	// stack as targets — CR 115.6's "target activated or triggered
+	// ability" (Strionic Resonator, Lithoform Engine, Stifle).
+	//
+	// It is a flag of its own rather than ZoneStack, and the reason
+	// is that the stack ZONE holds cards while an ability holds none:
+	// its source permanent is standing on the battlefield and the
+	// item is an entry in StackMeta. A clause that said `Zones:
+	// {ZoneStack}` would enumerate the spell cards there and never
+	// see an ability at all, which is the shape ADR 0065 recorded as
+	// the open half of stack targeting.
+	//
+	// A chosen ability rides in an ordinary TargetRef{Kind:
+	// TargetCard} whose ID is the STACK ITEM's — not a fifth
+	// TargetRefKind. The wire, the client picker, the bot enumerator
+	// and the CR 608.2b re-check all key on "a uuid that has to still
+	// be there", which is exactly as true of an item as of a card,
+	// and a new kind would have had to be taught to every one of
+	// them to say the same thing. `Zones` and `CardOK` still mean
+	// what they mean; a spec may set both, and no printed card does.
+	//
+	// The CR 702 keyword gate is not applied and must not be: an
+	// ability on the stack is neither a permanent nor a player, so
+	// nothing about it can have hexproof, shroud or protection.
+	// Added in #1223.
+	Abilities bool
+
+	// AbilityOK is the candidate predicate for an ability item
+	// target — "target TRIGGERED ability you control" narrowing the
+	// set Abilities opens. Nil means every activated or triggered
+	// item on the stack qualifies.
+	//
+	// It receives the live *StackItem rather than a snapshot: the
+	// item is on the stack, where it stays until it resolves or is
+	// countered, and a predicate that reads Kind, Controller or
+	// SourceCardID off it is reading the announcement. Same locking
+	// rule as CardOK — MUST NOT call public locking mutators.
+	AbilityOK func(g *Game, chooser uuid.UUID, item *StackItem) bool
 
 	// Min / Max bound the number of targets. Max 0 means unbounded.
 	//
@@ -410,6 +453,43 @@ func (g *Game) specMatchesLocked(src TargetSource, spec *TargetSpec, targeting b
 			}
 		}
 	}
+	// #1223, CR 115.6: ability items on the stack. Appended AFTER the
+	// zone walk so a spec that admitted both would list cards first,
+	// and ordered by Seq so the list is deterministic — StackMeta is
+	// a map, and the wire projection, the bot's enumeration and the
+	// golden tests all read this slice in order.
+	if spec.Abilities {
+		for _, item := range g.abilityItemsBySeqLocked() {
+			if spec.AbilityOK != nil && !spec.AbilityOK(g, src.Controller, item) {
+				continue
+			}
+			out.Cards = append(out.Cards, item.ID)
+		}
+	}
+	return out
+}
+
+// abilityItemsBySeqLocked is every ACTIVATED or TRIGGERED item on the
+// stack, oldest announcement first.
+//
+// Sorted by Seq rather than returned in map order because a
+// legal-target list is public output: it crosses the wire to the
+// picker, it is enumerated by the bot, and two runs of the same game
+// that offered the same abilities in a different order would be two
+// different games as far as a replay is concerned. Seq is the same
+// key resolveTopAbilityLocked orders by, so the picker's order is the
+// stack's order.
+//
+// Caller must hold g.mu.
+func (g *Game) abilityItemsBySeqLocked() []*StackItem {
+	out := make([]*StackItem, 0, len(g.StackMeta))
+	for _, item := range g.StackMeta {
+		if item == nil || item.Kind == StackItemSpell {
+			continue
+		}
+		out = append(out, item)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Seq < out[j].Seq })
 	return out
 }
 
@@ -567,6 +647,18 @@ func (g *Game) specMatchLocked(src TargetSource, spec *TargetSpec, ref TargetRef
 		}
 		return spec.PlayerOK == nil || spec.PlayerOK(g, src.Controller, p)
 	case TargetCard:
+		// #1223, CR 115.6: an ability item on the stack, which is a
+		// TargetCard ref whose ID belongs to StackMeta rather than to
+		// any zone (see TargetSpec.Abilities). Checked FIRST because
+		// the two id spaces do overlap by design — a SPELL item's id
+		// is its card's instance id — and the ability branch excludes
+		// spells, so a clause that admits both still resolves each
+		// ref to exactly one thing.
+		if spec.Abilities {
+			if item := g.StackMeta[ref.ID]; item != nil && item.Kind != StackItemSpell {
+				return spec.AbilityOK == nil || spec.AbilityOK(g, src.Controller, item)
+			}
+		}
 		z := g.findCardZoneLocked(ref.ID)
 		if z == nil {
 			return false

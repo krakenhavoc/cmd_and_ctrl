@@ -47,7 +47,7 @@ package game
 //     the ability is removed and does nothing, so the prompt is
 //     dropped and no item reaches the stack.
 //   - the CR 707.10c "you may choose new targets for the copy"
-//     re-target (copySpellResume). Empty set ⇒ the choice has become
+//     re-target (copyResume). Empty set ⇒ the choice has become
 //     impossible, which is the same state CopySpellForEffect handles
 //     at queue time: the copy is created keeping the original's
 //     targets. It is NOT dropped — the copy exists either way, and
@@ -66,7 +66,7 @@ func (g *Game) refreshTargetChoicesLocked() {
 	// emits EventBecomesTarget, which can harvest further triggers and
 	// queue further prompts, and a harvest running inside this walk
 	// would be mutating the slice it is iterating.
-	var keepOriginalTargets []*copySpellFrame
+	var keepOriginalTargets []*copyFrame
 	for i := len(g.PendingChoices) - 1; i >= 0; i-- {
 		c := g.PendingChoices[i]
 		if c == nil || c.Kind != PendingChoicePickTarget {
@@ -87,9 +87,9 @@ func (g *Game) refreshTargetChoicesLocked() {
 			// whichever one the prompt belongs to.
 			spec = c.pickTargetResume.currentClause()
 			src = SourceObject(c.pickTargetResume.source.Controller, &c.pickTargetResume.source)
-		case c.copySpellResume != nil:
-			spec = c.copySpellResume.spec
-			src = SourceSnapshot(c.copySpellResume.controller, SourceCharacteristics(&c.copySpellResume.src))
+		case c.copyResume != nil:
+			spec = c.copyResume.spec
+			src = SourceSnapshot(c.copyResume.controller, SourceCharacteristics(&c.copyResume.src))
 		}
 		if spec == nil {
 			continue
@@ -99,7 +99,7 @@ func (g *Game) refreshTargetChoicesLocked() {
 			c.PickTargetPlayers, c.PickTargetCards = lt.Players, lt.Cards
 			continue
 		}
-		if cf := c.copySpellResume; cf != nil {
+		if cf := c.copyResume; cf != nil {
 			keepOriginalTargets = append(keepOriginalTargets, cf)
 		}
 		g.dropChoiceLocked(i)

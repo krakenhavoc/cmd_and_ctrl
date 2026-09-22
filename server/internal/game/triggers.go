@@ -152,6 +152,35 @@ type TriggeredAbility struct {
 	// Build / Effect read item.Targets[0]. Added in S20 sub-PR 2.
 	Targets *TargetSpec
 
+	// TargetsFrom is `Targets` for a clause that is a fact about WHAT
+	// HAPPENED: "return to your hand target artifact card in your
+	// graveyard with lesser mana value" (Scrap Trawler), where
+	// "lesser" is lesser than the mana value of the artifact that was
+	// just put into a graveyard.
+	//
+	// Non-nil wins over `Targets`, which such a card leaves nil —
+	// declaring both would be two answers to one question. Called
+	// with the trigger's own CR 603.10 context (trigger_event.go) and
+	// a value copy of the source, at every point the dispatch needs
+	// the clause: the CR 603.3d "can this be filled at all" check,
+	// the target walk, and the spec stamped onto the item for the
+	// CR 608.2b re-check. Returning nil is "this trigger targets
+	// nothing after all", which is a legal answer and drops the
+	// clause rather than the trigger.
+	//
+	// A FUNCTION rather than a predicate that receives the context,
+	// because the event changes the clause's COUNT and LABEL as
+	// readily as its predicate — "up to X target creatures", where X
+	// is the damage that was dealt — and a spec is the only thing
+	// that can say all three.
+	//
+	// Runs under g.mu in write mode. MUST NOT call public locking
+	// mutators, and must be a pure read of its arguments plus the
+	// board: it is called more than once for one trigger (once per
+	// prompt step) and every call must agree. Not persisted — catalog
+	// data, like Targets. Added in #1223.
+	TargetsFrom func(tc TriggerContext, source *Card, g *Game) *TargetSpec
+
 	// HasLegalTarget reports whether the trigger has a legal
 	// target / will actually do something at fire time. Optional —
 	// nil means "assume the effect always has an effect" (e.g.
@@ -495,6 +524,13 @@ func (g *Game) harvestMatchLocked(pass *harvestPass, source Card, lki Characteri
 }
 
 func (g *Game) dispatchTriggerInstanceLocked(ev Event, source Card, lki Characteristic, t TriggeredAbility, doubledBy doublerRef) {
+	// #1223: the triggering event, read into a value HERE and
+	// carried from here on. This is the last moment the CR 603.10
+	// last-known-information snapshot of the object the event was
+	// about is still in lastKnownBattlefield — harvestLTB deletes it
+	// as its walk ends — so a context built any later would be
+	// missing exactly the half a dies-trigger needs.
+	tc := g.triggerContextLocked(ev)
 	// CR 603.3d, checked before any prompt: an ability whose target
 	// clause cannot be filled is never put on the stack, so nobody is
 	// asked a question whose only answer is "nothing happens".
@@ -505,8 +541,9 @@ func (g *Game) dispatchTriggerInstanceLocked(ev Event, source Card, lki Characte
 	// this is, which is the object CR 702.16b tests the quality
 	// against — not its controller.
 	src := SourceObject(source.Controller, &source)
-	if t.Modes == nil && t.Targets != nil &&
-		g.anyClauseUnfillableLocked(src, AnnouncedClauses(t.Targets, nil, nil)) {
+	spec := g.triggerTargetsLocked(t, tc, &source)
+	if t.Modes == nil && spec != nil &&
+		g.anyClauseUnfillableLocked(src, AnnouncedClauses(spec, nil, nil)) {
 		return
 	}
 	if t.Modes != nil &&
@@ -514,10 +551,10 @@ func (g *Game) dispatchTriggerInstanceLocked(ev Event, source Card, lki Characte
 		return
 	}
 	if t.OptionalPrompt != nil {
-		g.queueTriggerPromptLocked(ev, source, lki, t, doubledBy)
+		g.queueTriggerPromptLocked(tc, source, lki, t, doubledBy)
 		return
 	}
-	g.buildOrPickTriggerLocked(ev, source, lki, t, doubledBy, nil)
+	g.buildOrPickTriggerLocked(tc, source, lki, t, doubledBy, nil)
 }
 
 // buildOrPickTriggerLocked is the post-"yes" half of the dispatch:
@@ -528,7 +565,7 @@ func (g *Game) dispatchTriggerInstanceLocked(ev Event, source Card, lki Characte
 // the way back through ResolveModePick — which is what makes the
 // mode choice happen exactly once, before targets, and never for an
 // ability that has none. Caller must hold g.mu.
-func (g *Game) buildOrPickTriggerLocked(ev Event, source Card, lki Characteristic, t TriggeredAbility, doubledBy doublerRef, modes []int) {
+func (g *Game) buildOrPickTriggerLocked(tc TriggerContext, source Card, lki Characteristic, t TriggeredAbility, doubledBy doublerRef, modes []int) {
 	if t.Build == nil {
 		return
 	}
@@ -536,26 +573,57 @@ func (g *Game) buildOrPickTriggerLocked(ev Event, source Card, lki Characteristi
 	// Mark, Gala Greeters) takes this path too — the prompt is the
 	// only thing between the harvest and the stack.
 	if t.Modes != nil && modes == nil {
-		if !g.queueModePickLocked(ev, source, lki, t, doubledBy) {
+		if !g.queueModePickLocked(tc, source, lki, t, doubledBy) {
 			// Fewer choosable options than Min: CR 603.3d removes the
 			// ability rather than asking an unanswerable question.
 			return
 		}
 		return
 	}
-	steps := AnnouncedClauses(t.Targets, t.Modes, modes)
+	spec := g.triggerTargetsLocked(t, tc, &source)
+	steps := AnnouncedClauses(spec, t.Modes, modes)
 	if len(steps) > 0 {
-		g.queuePickTargetLocked(ev, source, lki, t, doubledBy, modes, steps)
+		g.queuePickTargetLocked(tc, source, lki, t, doubledBy, modes, steps, spec)
 		return
 	}
-	item := t.Build(ev, &source, lki, g)
+	item := t.Build(tc.Event, &source, lki, g)
 	if item == nil {
 		return
 	}
 	item.Modes = append([]int(nil), modes...)
 	item.modeSpec = t.Modes
 	item.DoubledBy, item.DoubledByName = doubledBy.id, doubledBy.name
+	stampTriggerContext(item, t, tc)
 	g.queueHarvestedTriggerLocked(item)
+}
+
+// stampTriggerContext puts the triggering event on the item the
+// harvester built (#1223).
+//
+// Here rather than inside Build, and that is the point of the field:
+// Build is CATALOG code, ~2,200 declarations of it, and every one
+// would have had to remember. The two sites that call Build call this
+// immediately afterwards, so a card that declares a trigger gets the
+// event on its item whether or not its author thought about it.
+//
+// An item that set its own context is left alone — a Build that
+// constructs a trigger ABOUT a different event than the one that
+// fired it has said something this cannot improve on.
+//
+// An ability that WATCHES NOTHING is left alone too, and that is the
+// CR 603.12 reflexive trigger: QueueReflexiveTriggerForEffect hands
+// the dispatch a synthetic EventResolve describing the resolution
+// that created the trigger, precisely because there was no triggering
+// event. Stamping that would tell a card its trigger fired off a
+// resolution and hand it a snapshot of the parent's source, and both
+// would be lies. Empty Watches is the fact rather than a flag: the
+// harvester refuses to fire an ability that declares none, so
+// anything that reaches here with none did not come from an event.
+func stampTriggerContext(item *StackItem, t TriggeredAbility, tc TriggerContext) {
+	if item == nil || item.Trigger != nil || !tc.Fired() || len(t.Watches) == 0 {
+		return
+	}
+	item.Trigger = cloneTriggerContext(&tc)
 }
 
 // harvestLTB walks LTB triggers for a card whose battlefield exit

@@ -439,6 +439,14 @@ var stackItemFields = plan(
 	// Effect reads its whole input from here, so a restore that lost
 	// it would resolve the trigger against nothing.
 	"Payload", carried, "",
+	// #1223: the triggering event (the damage amount, the object
+	// that left with its CR 603.10 characteristics). Carried, and it
+	// has to be — a trigger paused on its CR 603.3d target prompt is
+	// a restore point, and the event is unrecoverable from the
+	// restored board: the object it describes has already moved, and
+	// the last-known-information map it was read from is cleared as
+	// the harvest ends.
+	"Trigger", carried, "",
 	"Modes", carried, "",
 	"XValue", carried, "",
 	"Distribution", carried, "",
@@ -614,7 +622,7 @@ var pendingChoiceFields = plan(
 	"replacementResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"modePickResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"pickTargetResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
-	"copySpellResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
+	"copyResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"triggerResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"payUnlessResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"mayCastResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
