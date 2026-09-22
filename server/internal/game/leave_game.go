@@ -641,6 +641,21 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// rotation re-enters the next seat's untap step, which makes its
 	// own determination.
 	PendingChoiceUntapChoice: {},
+	// #1196, CR 115.7. retarget looks like pick_target's twin — the
+	// legal set is the whole board, and the item being redirected can
+	// be a survivor's spell — and is classified the OPPOSITE way, on
+	// purpose. pick_target asks "which target does this ability of
+	// yours take"; a retarget asks "where do YOU want this spell
+	// pointed", and that is a decision belonging to the seat that
+	// cast the Deflecting Swat. Nobody else inherits it: CR 800.4's
+	// rule for a choice a departed player would have made is that the
+	// choice is not made, and the printed outcome of a retarget that
+	// is not made is that the targets are unchanged (CR 115.7a's
+	// wording for the same situation). The drop does nothing beyond
+	// forgetting the question because there is nothing else to do —
+	// the item is still on the stack with the targets it had, and the
+	// retargeting spell finished resolving before the prompt opened.
+	PendingChoiceRetarget: {},
 
 	// --- the CR 616 pair, which settles its own drop (#808) ------
 	PendingChoiceReplacementOrder:    {},

@@ -541,6 +541,16 @@ var pendingChoiceFields = plan(
 	"PickTargetCards", carried, "",
 	"PickTargetMin", carried, "",
 	"PickTargetMax", carried, "",
+	// #1196's CR 115.7 retarget prompt. Carried, and that is the
+	// point of building it out of data: the prompt is a question
+	// about an object already on the stack, so unlike every other
+	// prompt in this family it holds no continuation and a game
+	// paused on one is a restorable snapshot.
+	"RetargetItem", carried, "",
+	"RetargetPolicy", carried, "",
+	"RetargetOptional", carried, "",
+	"RetargetSlot", carried, "",
+	"RetargetReason", carried, "",
 	// #764 mode_pick. Carried for the same reason ChooseCards is:
 	// the offered options ARE the prompt, and a restored game that
 	// forgot them would put a question with no answers in front of a

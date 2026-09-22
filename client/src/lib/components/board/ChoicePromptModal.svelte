@@ -53,7 +53,10 @@
     for (const c of snap.pending_choices) {
       // S20 sub-PR 2: pick_target is answered by clicking the board
       // (Board.svelte drives the targeting store), not by a modal.
-      if (c.kind === "pick_target") continue;
+      // #1196: the CR 115.7 retarget prompt is answered the same way
+      // — click the new target on the board — so it is not a modal
+      // either.
+      if (c.kind === "pick_target" || c.kind === "retarget") continue;
       // #844, CR 903.4f: a colour prompt with no colours on offer is
       // not a choice anybody can answer, and an empty picker modal
       // would block the board. The server stopped queueing one when a

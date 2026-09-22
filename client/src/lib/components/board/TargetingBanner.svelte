@@ -58,7 +58,13 @@
   >
     <span class="label"><Icon name="sword" size={12} /> target</span>
     <span class="prompt">
-      {#if state.choiceID}
+      {#if state.choiceID && state.choiceKind === "retarget"}
+        <!-- #1196, CR 115.7: the source is a spell that is RESOLVING,
+             not a trigger, and it is pointing something else
+             somewhere else. "Deflecting Swat triggered" would be the
+             wrong sentence. -->
+        <strong>{state.card.name}</strong> — click {state.label || "a new target"}
+      {:else if state.choiceID}
         <strong>{state.card.name}</strong> triggered — click {state.label || "a target"}
       {:else if state.steps.length > 1}
         <!-- #764: a multi-clause or per-mode announcement is a WALK,

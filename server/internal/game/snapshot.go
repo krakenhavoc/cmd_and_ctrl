@@ -626,22 +626,34 @@ type pendingChoiceSnapshot struct {
 	PickTargetCards      []uuid.UUID            `json:"pickTargetCards,omitempty"`
 	PickTargetMin        int                    `json:"pickTargetMin"`
 	PickTargetMax        int                    `json:"pickTargetMax"`
-	ModeOptionIndex      []int                  `json:"modeOptionIndex,omitempty"`
-	ModeOptionLabel      []string               `json:"modeOptionLabel,omitempty"`
-	ModeMin              int                    `json:"modeMin,omitempty"`
-	ModeMax              int                    `json:"modeMax,omitempty"`
-	ModeRepeatable       bool                   `json:"modeRepeatable,omitempty"`
-	SacrificeOptions     []uuid.UUID            `json:"sacrificeOptions,omitempty"`
-	CopyOptions          []uuid.UUID            `json:"copyOptions,omitempty"`
-	ScryCards            []uuid.UUID            `json:"scryCards,omitempty"`
-	TriggerOrderIDs      []uuid.UUID            `json:"triggerOrderIds,omitempty"`
-	PayCost              string                 `json:"payCost,omitempty"`
-	SearchCards          []uuid.UUID            `json:"searchCards,omitempty"`
-	SearchMax            int                    `json:"searchMax"`
-	MayCastCard          uuid.UUID              `json:"mayCastCard,omitempty"`
-	AcceptLabel          string                 `json:"acceptLabel,omitempty"`
-	LifeCost             int                    `json:"lifeCost,omitempty"`
-	DeclineLabel         string                 `json:"declineLabel,omitempty"`
+	// #1196's CR 115.7 retarget prompt. Carried rather than counted
+	// as a continuation because it IS the prompt: the item whose
+	// targets are being changed, the printed sentence being applied,
+	// whether declining is allowed, which slot is being asked, and
+	// the card's own header for the rest of the walk. A restored
+	// game with these missing would put a question about nothing in
+	// front of a seat.
+	RetargetItem     uuid.UUID      `json:"retargetItem,omitempty"`
+	RetargetPolicy   RetargetPolicy `json:"retargetPolicy,omitempty"`
+	RetargetOptional bool           `json:"retargetOptional,omitempty"`
+	RetargetSlot     int            `json:"retargetSlot,omitempty"`
+	RetargetReason   string         `json:"retargetReason,omitempty"`
+	ModeOptionIndex  []int          `json:"modeOptionIndex,omitempty"`
+	ModeOptionLabel  []string       `json:"modeOptionLabel,omitempty"`
+	ModeMin          int            `json:"modeMin,omitempty"`
+	ModeMax          int            `json:"modeMax,omitempty"`
+	ModeRepeatable   bool           `json:"modeRepeatable,omitempty"`
+	SacrificeOptions []uuid.UUID    `json:"sacrificeOptions,omitempty"`
+	CopyOptions      []uuid.UUID    `json:"copyOptions,omitempty"`
+	ScryCards        []uuid.UUID    `json:"scryCards,omitempty"`
+	TriggerOrderIDs  []uuid.UUID    `json:"triggerOrderIds,omitempty"`
+	PayCost          string         `json:"payCost,omitempty"`
+	SearchCards      []uuid.UUID    `json:"searchCards,omitempty"`
+	SearchMax        int            `json:"searchMax"`
+	MayCastCard      uuid.UUID      `json:"mayCastCard,omitempty"`
+	AcceptLabel      string         `json:"acceptLabel,omitempty"`
+	LifeCost         int            `json:"lifeCost,omitempty"`
+	DeclineLabel     string         `json:"declineLabel,omitempty"`
 	// OwedInStep: the step a pay-or-else prompt has to be answered in
 	// (#997). Carried so a restored game gates the same way, cheap
 	// and honest even though every prompt that sets it today also
@@ -1357,6 +1369,11 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		PickTargetCards:      copyUUIDs(c.PickTargetCards),
 		PickTargetMin:        c.PickTargetMin,
 		PickTargetMax:        c.PickTargetMax,
+		RetargetItem:         c.RetargetItem,
+		RetargetPolicy:       c.RetargetPolicy,
+		RetargetOptional:     c.RetargetOptional,
+		RetargetSlot:         c.RetargetSlot,
+		RetargetReason:       c.RetargetReason,
 		ModeOptionIndex:      copyInts(c.ModeOptionIndex),
 		ModeOptionLabel:      copyStrings(c.ModeOptionLabel),
 		ModeMin:              c.ModeMin,
@@ -1932,6 +1949,11 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		PickTargetCards:      copyUUIDs(c.PickTargetCards),
 		PickTargetMin:        c.PickTargetMin,
 		PickTargetMax:        c.PickTargetMax,
+		RetargetItem:         c.RetargetItem,
+		RetargetPolicy:       c.RetargetPolicy,
+		RetargetOptional:     c.RetargetOptional,
+		RetargetSlot:         c.RetargetSlot,
+		RetargetReason:       c.RetargetReason,
 		ModeOptionIndex:      copyInts(c.ModeOptionIndex),
 		ModeOptionLabel:      copyStrings(c.ModeOptionLabel),
 		ModeMin:              c.ModeMin,

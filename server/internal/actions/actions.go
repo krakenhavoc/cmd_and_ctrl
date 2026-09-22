@@ -1476,6 +1476,14 @@ func Dispatch(g *game.Game, a Action) error {
 			if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceChooseProtector {
 				return g.ResolveChooseProtector(choiceID, a.Player, ref.ID)
 			}
+			// #1196, CR 115.7: the retarget prompt reuses the same
+			// {kind, id} payload for the same reason — one ref out of
+			// a server-computed set — and is routed apart on the
+			// KIND, since what the answer does is rewrite an item on
+			// the stack rather than build one.
+			if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceRetarget {
+				return g.ResolveRetarget(choiceID, a.Player, []game.TargetRef{ref})
+			}
 			return g.ResolvePickTarget(choiceID, a.Player, ref)
 		}
 		if p.Targets != nil {
@@ -1506,6 +1514,14 @@ func Dispatch(g *game.Game, a Action) error {
 					return game.ErrInvalidParam
 				}
 				return g.ResolveChooseProtector(choiceID, a.Player, refs[0].ID)
+			}
+			// #1196: the client's targeting banner always submits the
+			// PLURAL form, so a retarget answer normally arrives
+			// here. An EMPTY list is the decline ("you may choose new
+			// targets" left unchanged, CR 115.7c), which is why this
+			// branch is reached at all — `targets: []` is non-nil.
+			if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceRetarget {
+				return g.ResolveRetarget(choiceID, a.Player, refs)
 			}
 			return g.ResolvePickTargets(choiceID, a.Player, refs)
 		}

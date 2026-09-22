@@ -4225,7 +4225,13 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// NOT targeting (a state-based action chooses nothing on the
 		// stack); the kind is what keeps the two distinguishable on
 		// the way back.
-		if c.Kind == game.PendingChoicePickTarget || c.Kind == game.PendingChoiceLegendRule || c.Kind == game.PendingChoiceChooseProtector {
+		// #1196: the CR 115.7 retarget prompt is a fourth. Same
+		// question shape again — pick one from a server-computed set
+		// — so it rides the same projection and the client's existing
+		// highlight flow answers it; the KIND is what routes the
+		// answer to ResolveRetarget rather than to ResolvePickTarget.
+		if c.Kind == game.PendingChoicePickTarget || c.Kind == game.PendingChoiceLegendRule ||
+			c.Kind == game.PendingChoiceChooseProtector || c.Kind == game.PendingChoiceRetarget {
 			pt := &LegalTargetsView{Min: c.PickTargetMin, Max: c.PickTargetMax}
 			for _, id := range c.PickTargetPlayers {
 				pt.Players = append(pt.Players, id.String())
