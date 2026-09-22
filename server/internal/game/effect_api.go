@@ -2983,6 +2983,13 @@ func (g *Game) addManaSlotsLocked(
 	if narrow || hasMultiOptionSlot(slots) {
 		identity = commanderIdentityFor(g, p)
 	}
+	// #1212: what the source is, if it is a permanent at all. A
+	// resolving Dark Ritual is not one, and zero is the honest answer
+	// for it — "mana from a Treasure" is a question about a
+	// permanent's ability (CR 605.1a). A triggered mana ability's
+	// source (#763, Wild Growth on a Forest) IS a permanent, and this
+	// is where its kinds are recorded.
+	srcKinds := g.manaSourceKindsLocked(source)
 	for _, slot := range slots {
 		colorOptions := manaPickOptions(slot.Options, identity, narrow)
 		if len(colorOptions) == 0 {
@@ -2993,7 +3000,7 @@ func (g *Game) addManaSlotsLocked(
 			continue
 		}
 		if len(slot.Options) == 1 {
-			p.ManaPool.AddMana(ManaToken{Color: colorOptions[0], Source: source})
+			p.ManaPool.AddMana(ManaToken{Color: colorOptions[0], Source: source, SourceKinds: srcKinds})
 			g.EmitEvent(Event{Kind: EventManaAdded, Actor: p.ID, Source: source, Colors: []string{colorOptions[0]}})
 			if pending != nil {
 				bookColorRequirement(colorOptions[0], pending)
@@ -3011,20 +3018,21 @@ func (g *Game) addManaSlotsLocked(
 				bookColorRequirement(color, pending)
 			}
 			for k := 0; k < slot.AmountFor(color); k++ {
-				p.ManaPool.AddMana(ManaToken{Color: color, Source: source})
+				p.ManaPool.AddMana(ManaToken{Color: color, Source: source, SourceKinds: srcKinds})
 				g.EmitEvent(Event{Kind: EventManaAdded, Actor: p.ID, Source: source, Colors: []string{color}})
 			}
 			continue
 		}
 		g.QueueChoiceForEffect(PendingChoice{
-			Kind:         PendingChoiceMana,
-			Chooser:      p.ID,
-			FromPlayer:   p.ID,
-			Count:        1,
-			Source:       source,
-			Reason:       reason(slot),
-			ColorOptions: colorOptions,
-			ManaAmounts:  copyManaAmounts(slot.Amounts),
+			Kind:            PendingChoiceMana,
+			Chooser:         p.ID,
+			FromPlayer:      p.ID,
+			Count:           1,
+			Source:          source,
+			Reason:          reason(slot),
+			ColorOptions:    colorOptions,
+			ManaAmounts:     copyManaAmounts(slot.Amounts),
+			ManaSourceKinds: srcKinds,
 		})
 	}
 	return nil

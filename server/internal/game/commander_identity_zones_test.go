@@ -116,7 +116,7 @@ func TestCommanderIdentityHoldsOnTheBattlefield(t *testing.T) {
 		g, p := setup(t)
 		pushBattlefieldForTest(g, p.ID, "Command Tower", "Land", commandTowerOracleID)
 		var sources []tapSource
-		g.WithWriteLock(func() { sources = gatherTapSources(g, p.ID, nil) })
+		g.WithWriteLock(func() { sources = gatherTapSources(g, p.ID, nil, 0) })
 		if len(sources) != 1 || !reflect.DeepEqual(sources[0].Slots[0].Options, []string{"G"}) {
 			t.Errorf("planned Tower slots = %+v, want one slot of [G]", sources)
 		}

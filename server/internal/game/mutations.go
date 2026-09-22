@@ -1488,7 +1488,12 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	for _, id := range params.TapIDs {
 		excluded[id] = true
 	}
-	plan, ok := g.autoTapLocked(p.ID, cost, params.XValue, excluded)
+	// #1212: the spell's own source wish. A card whose text reads
+	// which mana paid for it ("if mana from a Treasure was spent to
+	// cast it") prefers a source it can read back — a tiebreak in the
+	// planner's ordering and never a filter, so the plan the solver
+	// can find is exactly the plan it could find before.
+	plan, ok := g.autoTapPreferringLocked(p.ID, cost, params.XValue, excluded, WantedManaSourcesFor(card))
 	if !ok {
 		return &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, params.XValue, ManaSpendForCast(card))}
 	}
@@ -1687,6 +1692,14 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 					Color:        color,
 					Source:       cardID,
 					Restrictions: restrictionsFor(g, ab, p.ID, cardID),
+					// #1212: what the source WAS, snapshotted off the
+					// copy taken before the tap. The auto-tapper never
+					// plans a sacrifice cost (autoTapAbilityFor
+					// refuses one), so the permanent is still here —
+					// but it is read off the same copy the triggered
+					// mana abilities below use, so the two can never
+					// disagree about the permanent they describe.
+					SourceKinds: manaSourceKindsOf(tappedForMana),
 				})
 				g.EmitEvent(Event{Kind: EventManaAdded, Actor: p.ID, Source: cardID, Colors: []string{color}})
 				addedColors = append(addedColors, color)
@@ -4980,6 +4993,15 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	// many came off.
 	paid := PaidCost{}
 
+	// #1212: what this permanent IS, read before a single component
+	// of the cost runs. It has to be here and not at the mint below,
+	// because the commonest source a card asks about pays for its own
+	// ability by SACRIFICING itself — a Treasure is in a graveyard
+	// (and a Treasure token has ceased to exist, CR 111.7) three
+	// statements before its mana reaches the pool, and `card` is
+	// deliberately nil by then.
+	srcKinds := manaSourceKindsOf(*card)
+
 	// #1183: the activation record, in both scopes, written HERE —
 	// the moment every gate and every cost has been checked and the
 	// first payment is about to be made. CR 605.3a makes activating a
@@ -5179,6 +5201,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 				Color:        options[0],
 				Source:       cardID,
 				Restrictions: restrictionsFor(g, &ab, playerID, cardID),
+				SourceKinds:  srcKinds,
 			})
 			g.EmitEvent(Event{Kind: EventManaAdded, Actor: playerID, Source: cardID, Colors: []string{options[0]}})
 			addedColors = append(addedColors, options[0])
@@ -5200,6 +5223,13 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 			Reason:           ab.Label,
 			ColorOptions:     options,
 			ManaRestrictions: restrictionsFor(g, &ab, playerID, cardID),
+			// #1212: and the source snapshot rides the choice for the
+			// same reason the restrictions do — the token is minted
+			// later, in ResolveManaChoice, and a Treasure's pick is
+			// answered after the Treasure has gone. Without this the
+			// one source every "mana from a Treasure" card is printed
+			// about would be the one source that records nothing.
+			ManaSourceKinds: srcKinds,
 			// #742: "N mana of any one color" — one pick, N tokens.
 			ManaAmounts: copyManaAmounts(slot.Amounts),
 			// #763: this pick is part of TAPPING A PERMANENT FOR MANA

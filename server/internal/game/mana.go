@@ -30,6 +30,19 @@ type ManaToken struct {
 	Color        string
 	Source       uuid.UUID
 	Restrictions []string
+
+	// SourceKinds is what the producing permanent WAS when this mana
+	// was made (#1212, mana_source.go): snow, Treasure, creature,
+	// land, artifact, enchantment.
+	//
+	// A snapshot rather than a second look through Source, because
+	// the commonest reader asks about a source that is gone. A
+	// Treasure sacrifices itself to pay for its own mana ability, so
+	// "if mana from a Treasure was spent to cast it" is asked of a
+	// permanent that has ceased to exist (CR 111.7) — the uuid names
+	// nothing and a lookup would answer no. Zero for a mana that came
+	// from something that is not a permanent.
+	SourceKinds ManaSourceKinds
 }
 
 // ManaPool is a player's current mana pool. Order matters — see the

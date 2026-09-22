@@ -119,20 +119,21 @@ func (p PaidCost) OptionalCostTimes(index int) int {
 	return n
 }
 
-// ManaSpent is the tokens that paid, or nil. The accessor rather
+// ManaTokens is the tokens that paid, or nil. The accessor rather
 // than the field so a caller cannot append into the record.
-func (p PaidCost) ManaSpent() []ManaToken {
-	if len(p.Mana) == 0 {
-		return nil
-	}
-	return append([]ManaToken(nil), p.Mana...)
+//
+// Was ManaSpent() until #1212 gave that name to the VIEW below; a
+// caller that wants the tokens still gets them, and one that wants a
+// question answered asks Spent().
+func (p PaidCost) ManaTokens() []ManaToken {
+	return ManaSpent{tokens: p.Mana}.Tokens()
 }
 
 // ManaSpentCount is how many mana paid — adamant's "at least three"
 // and Memory Deluge's "the amount spent" both count from here. Zero
 // for an OnPaper payment, which is the weaker answer.
 func (p PaidCost) ManaSpentCount() int {
-	return len(p.Mana)
+	return p.Spent().Total()
 }
 
 // ColorsSpent is the distinct COLOURS the payment spent, in WUBRG
@@ -145,44 +146,20 @@ func (p PaidCost) ManaSpentCount() int {
 // colours, so converge draws nothing and sunburst adds no counters
 // rather than guessing five.
 func (p PaidCost) ColorsSpent() []string {
-	if p.OnPaper {
-		return nil
-	}
-	seen := make(map[string]bool, 5)
-	for _, t := range p.Mana {
-		if isColorSymbol(t.Color) {
-			seen[t.Color] = true
-		}
-	}
-	var out []string
-	for _, c := range []string{"W", "U", "B", "R", "G"} {
-		if seen[c] {
-			out = append(out, c)
-		}
-	}
-	return out
+	return p.Spent().Colors()
 }
 
 // ColorsSpentCount is len(ColorsSpent) without the allocation —
 // converge's X and sunburst's counter count.
 func (p PaidCost) ColorsSpentCount() int {
-	return len(p.ColorsSpent())
+	return p.Spent().ColorCount()
 }
 
 // SpentOfColor is how many mana of one colour paid: adamant's "at
 // least three red mana was spent" is SpentOfColor("R") >= 3. Zero
 // for an OnPaper payment.
 func (p PaidCost) SpentOfColor(color string) int {
-	if p.OnPaper {
-		return 0
-	}
-	n := 0
-	for _, t := range p.Mana {
-		if t.Color == color {
-			n++
-		}
-	}
-	return n
+	return p.Spent().Count(color)
 }
 
 // NoManaSpent reports the clause "if no mana was spent to cast it"
@@ -196,7 +173,7 @@ func (p PaidCost) SpentOfColor(color string) int {
 // see, and a punisher that fired on it would counter half the spells
 // cast at a permissive table.
 func (p PaidCost) NoManaSpent() bool {
-	return !p.OnPaper && len(p.Mana) == 0
+	return p.Spent().None()
 }
 
 // Known reports whether the mana half of this record is a fact. The

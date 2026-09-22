@@ -684,6 +684,30 @@ type Spec struct {
 	// player happened to spend.
 	WantsDistinctColors bool
 
+	// WantsManaFrom declares the kinds of mana SOURCE this card's own
+	// text reads back — game.ManaSourceTreasure for "if mana from a
+	// Treasure was spent to cast it" (Hired Hexblade, Jaded
+	// Sell-Sword, Devour Intellect), ManaSourceCreature for Inga and
+	// Esika's "three or more mana from creatures" (#1212).
+	//
+	// Like WantsDistinctColors above it changes the PAYMENT and not
+	// the effect, and it changes it even more softly: the auto-tapper
+	// prefers a matching source when it has a free choice, as a
+	// tiebreak after the frozen and restrictiveness orderings and
+	// never as a filter. The set of sources it may plan is untouched,
+	// so a cast that was payable stays payable and one that was not
+	// stays not — see game.autoTapPreferringLocked.
+	//
+	// It is not the reader. The card still asks
+	// ctx.ManaSpent().FromTreasure() (or ManaSpentToCastThis() from
+	// an enters trigger) and gets the truth: a Hired Hexblade whose
+	// controller tapped two Swamps by hand draws no card, wish or no
+	// wish.
+	//
+	// Zero for every card that does not read its payment's sources,
+	// which is all but about twenty of them.
+	WantsManaFrom game.ManaSourceKinds
+
 	// AdditionalLandPlays declares the printed static "you may play
 	// an additional land on each of your turns" — 1 for Exploration,
 	// 2 for Azusa, Lost but Seeking. Counted while the permanent is

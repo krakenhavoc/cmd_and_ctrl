@@ -45,15 +45,33 @@ import "github.com/google/uuid"
 //     line next to queueAltCostEntryTriggerLocked, which is already the
 //     "last moment the cost that was paid is still in hand".
 //
-// WHAT IT DOES NOT CARRY, and why. Not the mana (StackItem.Paid.Mana):
+// WHAT IT DOES NOT CARRY, and why. ~~Not the mana (StackItem.Paid.Mana):
 // nothing reads it after entry, because the clauses that care —
 // sunburst, converge, "escapes with a +1/+1 counter" — all land their
 // counters through the CR 614 entry pipeline while the item is still
-// there. Not the targets, which are not costs. Adding a fact here
+// there.~~ Not the targets, which are not costs. Adding a fact here
 // means a card needs it AFTER the permanent has landed; #664's kicker
 // will need exactly that ("if it was kicked", checked by an ETB
 // trigger) and the field it wants is a sibling of AltCost on this
 // struct rather than a second record.
+//
+// THE MANA IS NOW CARRIED (#1212). The paragraph above was right about
+// the clauses that existed when it was written and wrong about the
+// family that is larger than all of them: a printed ETB trigger that
+// reads the payment.
+//
+//	"When this creature enters, if mana from a Treasure was
+//	 spent to cast it, you draw a card…"      Hired Hexblade
+//	"…if {R} was spent to cast it, it gains haste…"  Gruul Scrapper
+//	"…sacrifice it unless {U} was spent to cast it." Azorius Herald
+//
+// An entry REPLACEMENT can read StackItem.Paid, because the item is
+// still on the event (entry_counters.go, #1002). An entry TRIGGER
+// cannot: by the time it resolves the spell has finished resolving and
+// the item is gone, which is the same wall "sacrifice it unless it
+// escaped" hit and the same answer — the fact rides the permanent. It
+// is the exact sibling of AltCost the paragraph above predicted, and
+// it is the same tokens rather than a second record.
 
 // AltCostKeyEscape is the CR 702.138 keyword's alternative-cost key —
 // the one "escaped" reads (CR 702.138b). It is a constant here because
@@ -101,19 +119,67 @@ type CastProvenance struct {
 	// the readers (CardKickedTimes, CardPaidOptionalCost) did not
 	// change shape, only where they look.
 	OptionalCosts []int `json:"optionalCosts,omitempty"`
+
+	// Mana is the tokens that paid for the spell, copied off
+	// StackItem.Paid.Mana at the entry finisher (#1212) — each still
+	// carrying the colour it was and the SourceKinds snapshot of the
+	// permanent that made it (mana_source.go).
+	//
+	// The same tokens, not a summary: a summary would be a second
+	// shape of the one record, and the questions a card asks about a
+	// payment are already written down once, on ManaSpent. Read it
+	// through Spent() and never by ranging this slice.
+	Mana []ManaToken `json:"mana,omitempty"`
+
+	// ManaOnPaper is PaidCost.OnPaper carried across the entry: the
+	// engine WAIVED the charge (permissive mode, a strict-mode
+	// ForceCast) and has no record of what was paid.
+	//
+	// It has to come too, or the entry-side readers lose the one
+	// distinction ADR 0068 §3 was written to preserve. Without it a
+	// waived payment and a genuinely free cast are the same empty
+	// slice, and "if mana from a Treasure was spent" would answer the
+	// same to both — which is fine here (both answer no, the weaker
+	// direction) and wrong the moment an entry clause reads "if NO
+	// mana was spent to cast it".
+	ManaOnPaper bool `json:"manaOnPaper,omitempty"`
+}
+
+// Spent is what this permanent's cast paid, as the same view a
+// resolving spell reads off its own stack item (CR 400.7d).
+//
+// ONE vocabulary for the question, two homes for the fact. A card
+// that asks ctx.ManaSpent().FromTreasure() during resolution and one
+// that asks it from an enters trigger are asking the same thing and
+// get the same answer shape.
+func (p CastProvenance) Spent() ManaSpent {
+	return ManaSpent{tokens: p.Mana, unknown: p.ManaOnPaper}
 }
 
 // Any reports whether this record says anything at all.
 func (p CastProvenance) Any() bool {
-	return p.AltCost != "" || p.FromZone != "" || len(p.OptionalCosts) > 0
+	return p.AltCost != "" || p.FromZone != "" || len(p.OptionalCosts) > 0 ||
+		len(p.Mana) > 0 || p.ManaOnPaper
 }
 
-// Clone deep-copies the record. The one reference-typed field is
-// OptionalCosts, so this is one reallocation; everything else is a
-// string the value copy already carried.
+// Clone deep-copies the record. Two reference-typed fields now —
+// OptionalCosts and the token slice, whose per-token Restrictions get
+// their own backing array for the reason clonePaidCost gives: an undo
+// snapshot that aliased the live array would let a restore mutate the
+// game it came from.
 func (p CastProvenance) Clone() CastProvenance {
 	if len(p.OptionalCosts) > 0 {
 		p.OptionalCosts = append([]int(nil), p.OptionalCosts...)
+	}
+	if len(p.Mana) > 0 {
+		mana := make([]ManaToken, len(p.Mana))
+		for i, t := range p.Mana {
+			mana[i] = t
+			if len(t.Restrictions) > 0 {
+				mana[i].Restrictions = append([]string(nil), t.Restrictions...)
+			}
+		}
+		p.Mana = mana
 	}
 	return p
 }
@@ -133,6 +199,19 @@ func (p CastProvenance) Escaped() bool {
 // Escaped is the same question asked of a card. On Card rather than
 // only on the record so a catalog reader can say `c.Escaped()`.
 func (c Card) Escaped() bool { return c.Provenance.Escaped() }
+
+// ManaSpentToCast is what paid for the spell that became this
+// permanent (CR 400.7d), as the same view a resolving spell reads off
+// its own stack item.
+//
+// On Card for the reason Escaped is: an intervening-if (CR 603.4) is
+// handed the permanent and nothing else — "when this creature enters,
+// IF mana from a Treasure was spent to cast it" is checked in a
+// trigger's AppliesTo, where `source *Card` is all there is.
+//
+// The zero view for a permanent that was not cast, which answers every
+// question the weaker way.
+func (c Card) ManaSpentToCast() ManaSpent { return c.Provenance.Spent() }
 
 // CastProvenanceForEffect returns what the permanent with this ID
 // remembers about the spell it came from, or the zero record when the
@@ -183,12 +262,34 @@ func (g *Game) stampCastProvenanceLocked(cardID uuid.UUID, item *StackItem) {
 		// on the undo stack, and a permanent that shared it would see
 		// a rewind edit its own record.
 		OptionalCosts: append([]int(nil), item.Paid.OptionalCosts...),
+		// #1212: the mana, for the same reason and with the same
+		// copy. Taken off the item here rather than looked up later,
+		// because this is the last moment it exists — the item is
+		// discarded the instant resolution finishes.
+		ManaOnPaper: item.Paid.OnPaper,
+	}
+	if len(item.Paid.Mana) > 0 {
+		prov.Mana = make([]ManaToken, len(item.Paid.Mana))
+		for i, t := range item.Paid.Mana {
+			prov.Mana[i] = t
+			if len(t.Restrictions) > 0 {
+				prov.Mana[i].Restrictions = append([]string(nil), t.Restrictions...)
+			}
+		}
 	}
 	if !prov.Any() {
 		// Nothing to say. Left zero rather than written, so a
-		// permanent hard-cast from hand is byte-identical to one that
-		// was never a spell — the two answer the same to every reader
-		// this record has.
+		// permanent whose cast recorded nothing at all is
+		// byte-identical to one that was never a spell — the two
+		// answer the same to every reader this record has.
+		//
+		// #1212 narrowed what reaches here: a cast that spent any
+		// mana, or that was waived, now says so, and only a genuinely
+		// free cast from hand (cascade, "without paying its mana
+		// cost", a {0} alternative cost) still falls through. That is
+		// the right narrowing — "no mana was spent to cast it" is a
+		// fact a permanent may yet be asked about, and the zero
+		// record is what answers it.
 		return
 	}
 	for i := range g.Battlefield.Cards {
