@@ -11,9 +11,16 @@ package effects
 //
 // The pipe in Produced routes through the same colour-pick prompt
 // Birds of Paradise uses, so the mana lands only once the
-// controller answers. The autotapper deliberately skips
-// sacrifice-cost abilities, so paying a cost never eats the Petal
-// on its own.
+// controller answers.
+//
+// #1215: the auto-tapper no longer skips this. It used to refuse
+// every sacrifice-cost ability, which is why the note here said
+// "paying a cost never eats the Petal on its own" — the exclusion
+// was really about "sacrifice a creature you control" (a permanent
+// the planner would have to name) and the Petal, which eats itself
+// and asks nothing, was caught with it. The planner reaches for it
+// LAST, behind every land and rock on the board, so a cast that any
+// other source could have funded still leaves the Petal alone.
 func init() {
 	Register(Spec{
 		OracleID:     "32e5339e-9e4f-46f8-b305-f9d6d3ba8bb5",

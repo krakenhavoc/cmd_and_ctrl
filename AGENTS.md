@@ -737,6 +737,21 @@ creature source (CR 302.6) — Birds of Paradise, Palladium Myr. The
 engine enforces it inside `ActivateManaAbility`; specs don't declare
 it.
 
+**Which of these the AUTO-TAPPER will plan (#1215).** `Sacrifice: true`
+eats the SOURCE, names nothing and asks nothing, so the planner may pay
+it — a board of Treasures funds a cast, and the `/autotap` preview, the
+strict cast gate and the bot enumerator all say so. It plans such a
+source LAST, behind every ordinary source and behind a frozen one:
+cracking a Treasure for a generic pip a Mountain could have paid spends
+a resource the player never agreed to spend. `SacrificeOther` asks WHICH
+permanent dies and stays out of the plan entirely, with the life cost,
+the add-a-counter cost and the tap-another cost. A sacrifice cost with
+NO `{T}` (Gold, Eldrazi Spawn) is still not plannable — a plan is a list
+of permanents to tap — so those stay hand-activated. Order the abilities
+so the cheapest is FIRST; the planner takes one ability per permanent,
+in order ([ADR 0011](docs/decisions/0011-mana-pool-and-auto-tapper.md)
+amendment 2026-09-22).
+
 **Counter costs (#789).** `ManaAbilityCost.RemoveCounters` is the SAME
 `*game.CounterRemovalCost` a CR 602 ability's cost carries — one
 component with two owners — so build it with the same constructors and

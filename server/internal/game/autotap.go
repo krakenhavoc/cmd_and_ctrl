@@ -39,10 +39,29 @@ import (
 // the first matching half), `{X}` mid-cast slider with live
 // recompute (auto-tapper consumes the announced XValue verbatim).
 //
-// Mana abilities are tap-cost-only in S15; sacrifice-cost
-// abilities (Lotus Petal, etc.) are filtered out of the source
-// list because `applyManaAbilityCostLocked` would require an
-// additional decision the auto-tapper can't make autonomously.
+// S15's "mana abilities are tap-cost-only" note is half closed
+// (#1215). A cost that sacrifices the SOURCE — a Treasure, a Lotus
+// Petal — names no permanent and asks no question, so the planner can
+// pay it; a cost that sacrifices OTHER permanents (Ashnod's Altar)
+// asks which ones, and stays out of the source list. Every planned
+// source still owes a {T}: the plan is a list of permanents to TAP,
+// and a sacrifice-only ability (a Gold token, an Eldrazi Spawn) has no
+// slot in that shape yet.
+//
+// A sacrifice-self source is planned LAST, behind every ordinary
+// source and behind a frozen one: cracking a Treasure to pay a generic
+// pip a Mountain could have paid spends a resource the player never
+// agreed to spend, which is the bar the life-cost and counter-adding
+// exclusions are held to.
+//
+// …unless the spell being cast ASKED for it. #1212's source wish
+// (tapSource.Wanted) is read before the last-resort tier in both
+// comparators, because a card that reads "if mana from a Treasure was
+// spent to cast it" wants the Treasure cracked — that is the whole
+// text. The two features meet on exactly one kind of source and the
+// card's own instruction wins; the tier governs only what the planner
+// reaches for when nothing asked. See the sort in
+// autoTapPreferringLocked and orderUnusedByGenericPreference.
 
 // AutoTapBudget is the maximum number of solver-recursion nodes
 // the auto-tapper expands before bailing. Hit this cap and the
@@ -251,17 +270,34 @@ func (g *Game) autoTapPreferringLocked(
 	// requirement, so restrictive sources get reserved for the
 	// requirements that need them most.
 	sort.SliceStable(sources, func(i, j int) bool {
-		if sources[i].Frozen != sources[j].Frozen {
-			return !sources[i].Frozen
-		}
-		// #1212: a source the spell can read back comes first among
-		// equally usable ones. Above restrictiveness rather than
-		// below it, because the point is to get the wished source
-		// INTO the plan at all; the solver backtracks, so preferring
-		// a less restricted source here costs a little search and
-		// never an answer.
+		// #1212: a source the spell can read back comes first. Above
+		// restrictiveness rather than below it, because the point is
+		// to get the wished source INTO the plan at all; the solver
+		// backtracks, so preferring a less restricted source here
+		// costs a little search and never an answer.
+		//
+		// #1215 raised it to the TOP, above the sacrifice tier below
+		// and the frozen one. The wish is an explicit instruction from
+		// the card being cast and the tiers are the planner's own
+		// thrift, so the wish wins — and it has to, because the two
+		// meet on exactly one kind of source: a Treasure is both the
+		// commonest wished source and a self-sacrificing one, so a
+		// wish ranked under the tier would never fire for the family
+		// it was written for. See orderUnusedByGenericPreference for
+		// the same order and the rest of the argument.
 		if sources[i].Wanted != sources[j].Wanted {
 			return sources[i].Wanted
+		}
+		// #1215: a source the cost EATS sorts behind everything else,
+		// frozen sources included — the coloured pass takes the first
+		// source that fits, so an UNWISHED Treasure is only reached
+		// when no land, rock or creature on the board could have paid
+		// the pip.
+		if sources[i].Sacrifices != sources[j].Sacrifices {
+			return !sources[i].Sacrifices
+		}
+		if sources[i].Frozen != sources[j].Frozen {
+			return !sources[i].Frozen
 		}
 		return restrictivenessScore(sources[i]) < restrictivenessScore(sources[j])
 	})
@@ -293,6 +329,19 @@ type tapSource struct {
 	Slots  []ProducedManaEntry
 	Frozen bool
 
+	// Sacrifices marks a source whose mana ability eats the source
+	// as part of its cost (#1215) — a Treasure, a Lotus Petal. The
+	// planner takes one only when nothing else can pay: it is the
+	// LAST-resort tier, behind Frozen, because missing one untap is
+	// a permanent coming back next turn and a cracked Treasure is a
+	// resource gone for good.
+	//
+	// UNLESS Wanted is set. The spell that asked for Treasure mana
+	// asked for the Treasure to be cracked, and its wish is read
+	// first in both comparators — see the sort in
+	// autoTapPreferringLocked.
+	Sacrifices bool
+
 	// OneColor is set on a candidate that exists only because its
 	// permanent adds "N mana of any one color" (#779): the ONE colour
 	// this candidate spends the source's single pick on, with Slots
@@ -312,6 +361,11 @@ type tapSource struct {
 	// is not consulted anywhere a source could be dropped. False on
 	// every source of every ordinary cast, which is nearly all of
 	// them.
+	//
+	// #1215: it is the FIRST key of both comparators, above
+	// Sacrifices and Frozen. Until that issue the wished source could
+	// not be planned at all — a Treasure was not a candidate — so the
+	// hint's headline card was the one card it never reached.
 	Wanted bool
 }
 
@@ -430,7 +484,8 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 		// this source is.
 		wanted := prefer != 0 && manaSourceKindsOf(c).HasAny(prefer)
 		out = appendTapSource(out, c.InstanceID, slots,
-			untapStepRestrictedBy(&c, g, restrictions) || c.hasNextUntapSkipFor(controller), wanted)
+			untapStepRestrictedBy(&c, g, restrictions) || c.hasNextUntapSkipFor(controller),
+			wanted, picked.SacrificeCost)
 	}
 	return out
 }
@@ -489,11 +544,17 @@ func oneColorSlot(slots []ProducedManaEntry) int {
 // booked for {U}{U} leaves its third slot in the spare tally, which
 // recruitGeneric spends on the generic half of the same cost, and
 // anything still left floats (CR 106.4).
-func appendTapSource(out []tapSource, cardID uuid.UUID, slots []ProducedManaEntry, frozen, wanted bool) []tapSource {
+func appendTapSource(out []tapSource, cardID uuid.UUID, slots []ProducedManaEntry, frozen, wanted, sacrifices bool) []tapSource {
 	idx := oneColorSlot(slots)
 	switch idx {
 	case oneColorSlotNone:
-		return append(out, tapSource{CardID: cardID, Slots: slots, Frozen: frozen, Wanted: wanted})
+		return append(out, tapSource{
+			CardID:     cardID,
+			Slots:      slots,
+			Frozen:     frozen,
+			Wanted:     wanted,
+			Sacrifices: sacrifices,
+		})
 	case oneColorSlotUnplannable:
 		return out
 	}
@@ -511,7 +572,14 @@ func appendTapSource(out []tapSource, cardID uuid.UUID, slots []ProducedManaEntr
 			variant = append(variant, ProducedManaEntry{Options: []string{color}})
 		}
 		variant = append(variant, slots[idx+1:]...)
-		out = append(out, tapSource{CardID: cardID, Slots: variant, Frozen: frozen, OneColor: color, Wanted: wanted})
+		out = append(out, tapSource{
+			CardID:     cardID,
+			Slots:      variant,
+			Frozen:     frozen,
+			Wanted:     wanted,
+			Sacrifices: sacrifices,
+			OneColor:   color,
+		})
 	}
 	return out
 }
@@ -539,11 +607,17 @@ func appendTapSource(out []tapSource, cardID uuid.UUID, slots []ProducedManaEntr
 //     planner declining a decision it may not make, this one is the
 //     rule;
 //
-//   - a sacrifice cost needs a permanent named (S15's original note).
-//     TRUE of SacrificeOther and not of SacrificeCost, which eats the
-//     SOURCE and needs no decision at all — so a board of Treasures
-//     currently reads as unpayable, and #1212's source wish cannot
-//     reach the family it was built for. Filed as #1215;
+//   - a sacrifice cost that names OTHER permanents (Ashnod's Altar's
+//     "Sacrifice a creature") needs a permanent named, and naming one
+//     is a decision the planner may not make. #1215: this used to read
+//     `a.SacrificeCost`, which is the OTHER clause — the one that eats
+//     the SOURCE (a Treasure, a Lotus Petal) and needs no decision at
+//     all, because ActivateManaAbility pays it off the source's own
+//     ID. The two were folded into one exclusion and the half that
+//     asks nothing was excluded with the half that asks. A board of
+//     Treasures read as unpayable to the cast preview, to the strict
+//     gate and to every bot, and #1212's source wish could not reach
+//     the one family it was built for;
 //
 //   - a cost that ADDS a counter spends a resource the player never
 //     agreed to spend, like a life cost (#789);
@@ -605,7 +679,16 @@ func appendTapSource(out []tapSource, cardID uuid.UUID, slots []ProducedManaEntr
 func (g *Game) autoTapAbilityFor(asker uuid.UUID, source Card, abilities []ManaAbilityShape) *ManaAbilityShape {
 	for i := range abilities {
 		a := abilities[i]
-		if !a.TapCost || a.SacrificeCost {
+		// Every planned source owes a {T}: a tapPlan is a list of
+		// permanents to tap, so a sacrifice-ONLY ability (a Gold
+		// token, an Eldrazi Spawn) has no slot in it yet — see the
+		// file header.
+		if !a.TapCost {
+			continue
+		}
+		// #1215: the sacrifice-OTHER half only. Sacrificing the source
+		// itself is plannable — see the bullet above.
+		if a.SacrificeOther != nil {
 			continue
 		}
 		// #1183: "Activate each exhaust ability only once", and this
@@ -888,13 +971,21 @@ func recruitGeneric(
 // generic faster. A frozen source comes after every ordinary source
 // regardless of its generic tier, preserving a permanent that will
 // miss its next normal untap unless no other source can pay.
+//
+// #1215: and a source the cost EATS comes after even a frozen one.
+// The generic half of a cost is exactly where the wrong answer is
+// cheapest to reach — a Treasure is a five-colour source, so the
+// any-colour tier would otherwise recruit it ahead of the basic land
+// sitting untapped beside it — and it is also where it costs the
+// most, because the Treasure is gone and the land untaps.
 func orderUnusedByGenericPreference(sources []tapSource, used []bool) []int {
 	type rank struct {
-		idx     int
-		frozen  bool
-		wanted  bool
-		tier    int // 0 = colorless-only, 1 = any-color, 2 = monocolored
-		slotCnt int
+		idx        int
+		wanted     bool
+		sacrifices bool
+		frozen     bool
+		tier       int // 0 = colorless-only, 1 = any-color, 2 = monocolored
+		slotCnt    int
 	}
 	out := make([]rank, 0, len(sources))
 	for i, s := range sources {
@@ -902,20 +993,42 @@ func orderUnusedByGenericPreference(sources []tapSource, used []bool) []int {
 			continue
 		}
 		t := tierForGeneric(s)
-		out = append(out, rank{idx: i, frozen: s.Frozen, wanted: s.Wanted, tier: t, slotCnt: len(s.Slots)})
+		out = append(out, rank{
+			idx:        i,
+			wanted:     s.Wanted,
+			sacrifices: s.Sacrifices,
+			frozen:     s.Frozen,
+			tier:       t,
+			slotCnt:    len(s.Slots),
+		})
 	}
 	sort.SliceStable(out, func(a, b int) bool {
-		if out[a].frozen != out[b].frozen {
-			return !out[a].frozen
-		}
 		// #1212: this is where the wish actually bites. A Treasure is
 		// an any-colour source (tier 1) and a Sol Ring is colourless
 		// (tier 0), so without the hint a Hired Hexblade's generic
 		// pip is always paid by the Sol Ring and the card never
 		// draws. Above the tier, because the tier is exactly the
 		// preference being overridden.
+		//
+		// #1215 moved it to the TOP, above the sacrifice tier and the
+		// frozen one. The wish and the tier meet on exactly one kind
+		// of source — a Treasure is both the commonest wished source
+		// and a self-sacrificing one — so a wish ranked below the
+		// tier is a wish that never fires for the family it was
+		// written for. And a wish that is allowed to beat "this
+		// permanent will be DESTROYED" must beat "this permanent
+		// misses one untap" too, which is strictly the cheaper of the
+		// two. One sentence for the whole order: the card being cast
+		// gets the source it asks for, and where it asks for nothing
+		// the planner spends the cheapest thing on the board.
 		if out[a].wanted != out[b].wanted {
 			return out[a].wanted
+		}
+		if out[a].sacrifices != out[b].sacrifices {
+			return !out[a].sacrifices
+		}
+		if out[a].frozen != out[b].frozen {
+			return !out[a].frozen
 		}
 		if out[a].tier != out[b].tier {
 			return out[a].tier < out[b].tier
