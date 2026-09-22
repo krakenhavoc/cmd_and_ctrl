@@ -406,3 +406,176 @@ Only where the permanent-side ones look has changed.
 A snapshot written before this note decodes `paidOptionalCosts` as an
 unknown key and the permanent comes back unkicked. That is a one-deploy
 window on a field that is a week old, and it errs weaker than printed.
+
+---
+
+## Amendment (2026-09-22, #1210): the ACTIVATION gate, and the chosen card name
+
+§7 built one announce-time answer to "may this player cast this spell at
+all?". This amendment builds its twin — "may this player activate this
+ability at all?" (CR 602.5a) — in the same shape, in a new file beside it,
+and adds the one piece of state §7 named as missing and then went without.
+
+### Why a twin and not a widened `CastGateLocked`
+
+A cast and an activation share the *rule* (CR 101.2, "can't beats may") and
+share nothing else. A cast has a spell, a source zone, a face and an
+announcement; an activation has a source OBJECT that stays where it is, an
+ability INDEX inside that object, and a CR 605.1a mana/non-mana split that no
+cast has. Widening `CastQuery` to carry both would have made every field
+optional and every restriction start by asking which of the two it was
+looking at — which is how Rule of Law comes to have an opinion about
+Pithing Needle.
+
+So: `game/activation_gate.go`, `Game.ActivationGateLocked`, and a
+field-for-field mirror of §7's shapes, because the shape is the part that
+was right.
+
+### 1. `ActivationRestriction`, `ActivationQuery`, `CantActivateError`
+
+```go
+type ActivationAbility struct {
+    Label string // the ability's printed label, the activation record's key
+    Mana  bool   // CR 605.1a: this ability is a mana ability
+}
+
+type ActivationQuery struct {
+    Game       *Game             // read-only
+    Card       Card              // the object whose ability is being activated
+    Controller uuid.UUID         // the player activating it
+    Source     Card              // the permanent contributing the restriction
+    FromZone   ZoneKind          // where that object is (CR 113.6)
+    Ability    ActivationAbility // which ability, and whether it is a mana one
+}
+
+type ActivationRestriction struct {
+    Label      string
+    Forbids    func(q ActivationQuery) bool
+    ActiveWhen Designation
+}
+```
+
+`Card` / `Controller` / `Source` / `FromZone` mean exactly what `CastQuery`'s
+do, down to the "you" split: `Controller` is the "you" of the ACTIVATION,
+`Source.Controller` the "you" of the ABILITY. Linvala restricts everybody
+else's creatures; Cursed Totem restricts everybody's, its controller
+included.
+
+**`Ability.Mana` is on the query, not on the call site**, and that is the one
+decision in this amendment worth arguing. It would have been a line shorter to
+have `ActivateManaAbility` skip the gate — except Pithing Needle exempts mana
+abilities ("…can't be activated **unless they're mana abilities**") and Cursed
+Totem does not ("Activated abilities of creatures can't be activated", full
+stop). The exemption is printed on the *card*, so it belongs to the
+restriction, and a call site that decided it would make Cursed Totem
+unwritable without a second gate. Both paths call the one function; the
+restriction asks.
+
+`CantActivateError{Reason, Source}` wraps the existing `ErrCantActivate`, so
+every `errors.Is(err, ErrCantActivate)` in the tree — the Arrest and Faith's
+Fetters checks, the auto-tapper's, the client's error mapping — still matches
+and needed no change. That is the `CantCastError` / `ErrCantCast` shape
+exactly.
+
+### 2. Callers: four, and the fourth is the one §7 did not have
+
+- `ActivateCatalogAbility`, after the CR 113.6 zone check (so the ability is
+  the one the view published) and **before the timing check**, X, targets and
+  every cost. A refused activation costs nothing. Before timing because "can't
+  be activated" is the answer that will still be true next turn, where
+  `ErrSorcerySpeedRequired` will not; that order is ours, not the rules'.
+- `ActivateManaAbility`, at the same point relative to its own gates — after
+  the ability is resolved, before the exhaust record and the condition.
+- `legal.abilityMovesForSource` and `legal.manaMoves` — #544: a bot is never
+  offered a move the engine refuses.
+- **`gatherTapSources`** (`game/autotap.go`). The fourth caller, and the one
+  the cast gate has no equivalent of: the auto-tapper does not go through
+  `ActivateManaAbility` at all — `materializePlanLocked` taps the permanent
+  and mints its mana directly — so a plan built without asking would tap a
+  Birds of Paradise under a Cursed Totem and produce mana the rule forbids.
+  It sits beside the `CanActivateManaAbilities`, sickness and `Condition`
+  checks already there, each of which is in that loop for the same reason.
+
+**`ProducibleManaLocked` (CR 106.7) deliberately does NOT ask.** "Could
+produce" is a question about what the ability would do *if it resolved*, not
+about whether it can be activated; a Reflecting Pool beside a Cursed-Totem'd
+Birds still sees {G}. #1183's exhaust narrowing is declared in that file as
+the one exception, and this amendment does not add a second.
+
+### 3. The view stamp: `cant_activate` grows a reason
+
+`cant_activate` already existed — as one of the snake_case tokens in
+`CardView.Restrictions`, which is the per-permanent Arrest bit and says
+nothing about *which* ability or *why*. The board-wide restriction is a fact
+about an ability ROW, so the reason lands there:
+`ActivatedAbilityView.CantActivate` and `ManaAbilityView.CantActivate`, both
+the printed clause, both stamped from the same `ActivationGateLocked` the
+engine and the enumerator call, both absent on nearly every row.
+
+It is a sibling of `condition_unmet` and `exhausted` rather than a third
+spelling of them, for the reason those two are separate from each other: the
+three recover differently and the client says so. A condition may hold again
+next turn; an exhaust never does until the object is new; a restriction ends
+when somebody kills the artifact.
+
+### 4. `Card.ChosenName` — the piece §7 named and skipped
+
+§7's own file says it: *"A BAN ON A CHOSEN CARD NAME. Meddling Mage and
+Nevermore need a choose-a-card-name prompt, and the engine has `NamedTribe`
+and `ChosenColor` but no name."* Pithing Needle, Phyrexian Revoker and
+Sorcerous Spyglass want the same prompt on the activation side.
+
+`Card.ChosenName string`, built on #1007's `ChosenPlayer` pattern and on S26's
+`NamedTribe` before it:
+
+- `PendingChoiceCardName` (`choose_card_name`), queued from the permanent's
+  as-enters hook — the same declared simplification
+  `creature_type_choice.go` argues at length, and for the same reason (the CR
+  614 pipeline pauses only for a LAND, and Pithing Needle is an artifact).
+- Answered with `{card_name: "…"}`. **Free text, and validated only for
+  shape** — trimmed, non-empty, length-capped. There is no vocabulary to
+  validate against: CR 201.2 lets a player name *any* card name, including
+  one in no deck at the table and one the server has never seen. That is the
+  one place this differs from `NamedTribe`, whose 345-word CR 205.3m list the
+  engine does own.
+- The wire carries `name_options` — the names of cards in PUBLIC zones (the
+  battlefield, every graveyard, the stack) — as a *convenience* for the
+  picker, never as the legal set. Public zones only, so the option list
+  cannot leak a hidden card; the free-text entry is the general answer.
+- Per INSTANCE, carried by clone and by the snapshot (`chosenName`,
+  classified `carried` in `snapshot_drift_test.go`), cleared when the
+  permanent leaves the battlefield (CR 400.7) by the same two clears
+  `ChosenPlayer` uses.
+- **NOT copiable** (CR 706.2), and that falls out of where it lives rather
+  than out of a rule anybody has to remember: `CopiableValuesOf` projects
+  printed characteristics and never looks here, so a Clone of a Pithing
+  Needle names its own card as IT enters.
+- `CardNameMatches(c Card, name string)` is the one comparison, and it asks
+  every FACE (CR 201.2b: naming one half of a split or a modal DFC names the
+  card), case-insensitively on trimmed strings.
+
+**Meddling Mage becomes buildable** — a `CastRestriction` reading
+`ChosenNameOf(q.Source.InstanceID)` and nothing new — which is the item §7
+left open. It is not written here; this amendment supplies the prompt, not
+the card.
+
+### Scope, stated
+
+Out, and named so the next issue does not have to rediscover them:
+
+- **A restriction with a DURATION** (Stifle-style, "activated abilities can't
+  be activated this turn"). Same answer §7 gave for Silence: it wants #755's
+  registries. A third source slots into `ActivationGateLocked` without
+  changing its signature; that is the extension point.
+- **Split second** stays out here exactly as it stays out of the cast gate —
+  it restricts taking an ACTION, and both activation paths keep their own
+  check beside the gate call.
+- **Loyalty abilities.** CR 606.1 makes them activated abilities and the gate
+  covers them, but no card in the catalog restricts them as a class; when one
+  arrives it is a bool on `ActivationAbility`, not a second gate.
+- **The per-permanent bits stay.** `CantActivate` / `CantActivateMana`
+  (Arrest, Faith's Fetters) are a restriction on ONE permanent put there by
+  an Aura attached to it, live on `Characteristic.Restrictions`, and are
+  checked where they always were. Folding them into the gate would have made
+  every restriction walk the battlefield to answer a question layer 6 already
+  answered.
