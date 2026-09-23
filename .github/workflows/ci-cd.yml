@@ -230,6 +230,10 @@ jobs:
   cmdctrl-cd:
     runs-on: self-hosted
     needs: cmdctrl-ci
+    # actions: write is only for deleting this run's artifacts at the end.
+    permissions:
+      contents: read
+      actions: write
     if: >-
       github.event_name == 'push' &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
@@ -1131,3 +1135,19 @@ jobs:
             success|'') echo "${BACKUP_UNIT}.timer enabled; last run: ${last:-never}." ;;
             *) echo "::warning title=Off-site backup failing::The last ${BACKUP_UNIT} run on ${CMDCTRL_HOST} ended with '${last}'. Check journalctl -u ${BACKUP_UNIT} on that host (docs/environments.md#backups)." ;;
           esac
+
+      # Private repos get ~500 MB of artifact storage and develop pushes
+      # ~30 times a day, so even 1-day retention overflows it. Drop the
+      # build artifacts once deployed. Skipped on failure so a re-run of
+      # this job can still download them.
+      - name: Delete this run's artifacts
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const { data } = await github.rest.actions.listWorkflowRunArtifacts({
+              ...context.repo, run_id: context.runId, per_page: 100,
+            });
+            for (const a of data.artifacts) {
+              await github.rest.actions.deleteArtifact({ ...context.repo, artifact_id: a.id });
+              core.info(`deleted ${a.name} (${a.size_in_bytes} bytes)`);
+            }
