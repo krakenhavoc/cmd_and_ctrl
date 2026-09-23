@@ -435,6 +435,13 @@
     {/if}
   {:else}
     <span class="name-fallback">{card.name}</span>
+    {#if card.token_text}
+      <!-- ADR 0083: a token has no printing, so no art and no oracle
+           text — the server sends what the token prints. A trigger or
+           a static has no control to read it off, unlike an activated
+           ability's menu row, so without this the words are nowhere. -->
+      <span class="token-text" title={card.token_text}>{card.token_text}</span>
+    {/if}
     {#if showFaceDownBadge}
       <!-- ADR 0069: the viewer may look at this face (CR 708.5 for a
            permanent they control, CR 702.143d for their own foretold
@@ -634,6 +641,22 @@
     line-height: 1.15;
     text-align: center;
     color: #e0e6f5;
+  }
+  /* ADR 0083. Clamped rather than scrolled: the full text is in the
+     title attribute, and a token card is small. `white-space:
+     pre-line` so the printed line breaks the server sends survive. */
+  .token-text {
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    padding: 0 4px 6px;
+    font-size: 8px;
+    line-height: 1.2;
+    text-align: center;
+    white-space: pre-line;
+    color: #aab4cc;
   }
   .badge {
     position: absolute;

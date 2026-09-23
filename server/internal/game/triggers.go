@@ -753,7 +753,12 @@ func (g *Game) snapshotLKILocked(cardID uuid.UUID) {
 		if g.lastKnownTriggerIdentity == nil {
 			g.lastKnownTriggerIdentity = make(map[uuid.UUID]triggerIdentityLKI)
 		}
-		g.lastKnownTriggerIdentity[cardID] = triggerIdentityLKI{OracleID: c.OracleID, ActiveFace: c.ActiveFace, AttachedTo: c.AttachedTo}
+		g.lastKnownTriggerIdentity[cardID] = triggerIdentityLKI{
+			OracleID:   c.OracleID,
+			TokenKey:   c.TokenKey,
+			ActiveFace: c.ActiveFace,
+			AttachedTo: c.AttachedTo,
+		}
 		// #1218: The Ozolith's "if it had counters on it" — snapshotted
 		// here, before MoveCard's battlefield-exit cleanup zeroes
 		// Card.Counters a line later. Deep-copied so the map that

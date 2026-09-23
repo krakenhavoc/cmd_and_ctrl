@@ -21,14 +21,20 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // SANDBOX SIMPLIFICATIONS, and this is why the card is not Full:
 //
 //   - The Spirit token's own clause — "can't block or be blocked by
-//     non-Spirit creatures" — is not implemented. A token that isn't a
-//     copy has no oracle ID, so game.CatalogKey answers the empty
-//     string for it and no static or triggered ability can be hung
-//     off it: the "Triggered and static abilities on non-copy tokens"
-//     seam (#521), the same gap Fable of the Mirror-Breaker's Goblin
-//     Shaman token ships against. The token itself — a 1/1 colorless
-//     Spirit — is created in full; only its restriction text is
-//     missing, which is weaker than printed (#259).
+//     non-Spirit creatures" — is not implemented, and since ADR 0083
+//     (#1248) the reason is no longer that a token cannot carry an
+//     ability. It can: the Goblin Shaman and the Pest do. This clause
+//     is a PAIR RULE, `game.BlockRule.Pair`, and `CardDef` has no
+//     `BlockRules` slot for any object to declare one — ADR 0045's
+//     addendum, PR 4's card half, tracked on the "Conditional blocking
+//     restrictions" row of docs/engine-seams.md (#750). #1248 fixed
+//     the half that was this card's: `forEachBlockRuleLocked` used to
+//     skip every token by construction, so a token could not have
+//     carried the rule even once the Spec field exists. The token
+//     itself — a 1/1 colorless Spirit — is created in full; only its
+//     restriction text is missing, which is weaker than printed
+//     (#259), and the day `Spec.BlockRules` lands this is one
+//     `tokenTemplate` away.
 //   - "Exhaust — Waterbend {20}: Take an extra turn after this one."
 //     is not registered at all, for two independent reasons, either
 //     one enough on its own: extra turns have no primitive anywhere in

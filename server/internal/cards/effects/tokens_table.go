@@ -20,6 +20,17 @@ import (
 // Add a token by adding a row; if a card needs a variant (a tapped
 // entry, counters), wrap the template in a TokenSpec.
 //
+// A TOKEN WHOSE PRINTED VERSION ALWAYS CARRIES AN ABILITY DOES NOT
+// BELONG HERE AT ALL. The Pest is always "when this token dies, you
+// gain 1 life"; the 0/1 black Wizard is always the noncreature-cast
+// ping; Fable's Goblin Shaman is always the attack trigger. A row for
+// one of those is a textless version of a token that has never been
+// printed textless, and the next card to reach for it would ship
+// silently weaker than printed. Those three left this table when
+// ADR 0083 gave them catalog templates (tokens.go,
+// fable_of_the_mirror_breaker.go); TokenCard panics on the key, and
+// TestEveryTokenKeyResolves catches it at test time.
+//
 // THE COLOUR IN THE KEY IS THE COLOUR IN THE ROW. `Colors` is a
 // characteristic the rules read — protection, lords, "destroy target
 // white creature", devotion — so a row whose colour is wrong is a
@@ -62,7 +73,6 @@ var tokenTable = map[string]game.Card{
 	"0/0 black Phyrexian Germ":                      {Name: "Phyrexian Germ", TypeLine: "Token Creature — Phyrexian Germ", Power: 0, Toughness: 0, Colors: []string{"B"}, PrintedPTKnown: true},
 	"0/0 colorless Construct artifact":              {Name: "Construct", TypeLine: "Token Artifact Creature — Construct", Power: 0, Toughness: 0},
 	"0/0 white Spirit Cleric":                       {Name: "Spirit Cleric", TypeLine: "Token Creature — Spirit Cleric", Power: 0, Toughness: 0, Colors: []string{"W"}},
-	"0/1 black Wizard":                              {Name: "Wizard", TypeLine: "Token Creature — Wizard", Power: 0, Toughness: 1, Colors: []string{"B"}},
 	"0/1 green Egg with defender":                   {Name: "Egg", TypeLine: "Token Creature — Egg", Power: 0, Toughness: 1, Colors: []string{"G"}, Keywords: []string{"defender"}},
 	"0/1 green Plant":                               {Name: "Plant", TypeLine: "Token Creature — Plant", Power: 0, Toughness: 1, Colors: []string{"G"}},
 	"0/1 red Kobolds of Kher Keep":                  {Name: "Kobolds of Kher Keep", TypeLine: "Token Creature — Kobold", Power: 0, Toughness: 1, Colors: []string{"R"}},
@@ -72,7 +82,6 @@ var tokenTable = map[string]game.Card{
 	"1/1 black Insect":                              {Name: "Insect", TypeLine: "Token Creature — Insect", Power: 1, Toughness: 1, Colors: []string{"B"}},
 	"1/1 black Rat":                                 {Name: "Rat", TypeLine: "Token Creature — Rat", Power: 1, Toughness: 1, Colors: []string{"B"}},
 	"1/1 black Slug":                                {Name: "Slug", TypeLine: "Token Creature — Slug", Power: 1, Toughness: 1, Colors: []string{"B"}},
-	"1/1 black and green Pest":                      {Name: "Pest", TypeLine: "Token Creature — Pest", Power: 1, Toughness: 1, Colors: []string{"B", "G"}},
 	"1/1 blue Bird Illusion with flying":            {Name: "Bird Illusion", TypeLine: "Token Creature — Bird Illusion", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
 	"1/1 blue Bird with flying and vigilance":       {Name: "Bird", TypeLine: "Token Creature — Bird", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying", "vigilance"}},
 	"1/1 blue Illusion with flying":                 {Name: "Illusion", TypeLine: "Token Creature — Illusion", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
@@ -141,7 +150,6 @@ var tokenTable = map[string]game.Card{
 	"2/2 colorless Robot artifact":                  {Name: "Robot", TypeLine: "Token Artifact Creature — Robot", Power: 2, Toughness: 2},
 	"2/2 white Samurai with vigilance":              {Name: "Samurai", TypeLine: "Token Creature — Samurai", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
 	"2/2 green Boar":                                {Name: "Boar", TypeLine: "Token Creature — Boar", Power: 2, Toughness: 2, Colors: []string{"G"}},
-	"2/2 red Goblin Shaman":                         {Name: "Goblin Shaman", TypeLine: "Token Creature — Goblin Shaman", Power: 2, Toughness: 2, Colors: []string{"R"}},
 	"2/2 red Human Knight with trample and haste":   {Name: "Human Knight", TypeLine: "Token Creature — Human Knight", Power: 2, Toughness: 2, Colors: []string{"R"}, Keywords: []string{"trample", "haste"}},
 	"2/2 green Elemental":                           {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 2, Toughness: 2, Colors: []string{"G"}},
 	"2/2 green Spider with reach":                   {Name: "Spider", TypeLine: "Token Creature — Spider", Power: 2, Toughness: 2, Colors: []string{"G"}, Keywords: []string{"reach"}},

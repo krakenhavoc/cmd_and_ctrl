@@ -248,7 +248,13 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		ManaAbilities: []ManaAbilityView{{Index: 0, Label: "Add {U}"}},
 		Abilities:     []string{"flying"},
 		Restrictions:  []string{"cant_block"},
-		Layout:        "modal_dfc",
+		// ADR 0083. Public on a token the viewer can see, and a token
+		// is known to every seat, so this cell can never fire in a
+		// real game — it is here because the field is a catalog read
+		// like mana_abilities and the table is what proves it is
+		// placed rather than forgotten.
+		TokenText: "When this token dies, you gain 1 life.",
+		Layout:    "modal_dfc",
 		// #992: both faces carry the per-face announce block, so the
 		// redaction table covers a face's `legal_targets` as well as
 		// the card's — a back face's target clause names the card

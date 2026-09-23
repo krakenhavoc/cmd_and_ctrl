@@ -638,13 +638,18 @@ func (g *Game) EffectiveMaxHandSizeLocked(p *Player) int {
 	}
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
-		if c.Controller != p.ID || c.OracleID == "" {
+		if c.Controller != p.ID {
 			continue
 		}
 		// CatalogAbilityKey: "you have no maximum hand size" is a
 		// static ability, and a Thought Vessel that has lost all its
-		// abilities gives the cap back.
-		if CatalogNoMaxHandSize(CatalogAbilityKey(*c)) {
+		// abilities gives the cap back. The empty KEY is the skip, so
+		// a token is walked too (ADR 0083 decision 3).
+		key := CatalogAbilityKey(*c)
+		if key == "" {
+			continue
+		}
+		if CatalogNoMaxHandSize(key) {
 			return NoMaxHandSize
 		}
 	}

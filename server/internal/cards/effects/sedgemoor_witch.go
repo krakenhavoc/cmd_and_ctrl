@@ -23,11 +23,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     (CopySpellForEffect puts the copy on the stack without one), so
 //     magecraft fires on casts only. Archmage Emeritus declares the
 //     same gap.
-//   - The Pest's "when this token dies, you gain 1 life" is not on the
-//     token. A token template carries no triggered abilities and has no
-//     oracle ID to key one on; Beledros Witherbloom declares the same
-//     gap. Watching Pest deaths from the Witch instead would be wrong
-//     the moment the Witch left the battlefield, so it is not faked.
+//
+// The Pest's own "when this token dies, you gain 1 life" ships since
+// ADR 0083 (#1248) — the same `token:pest` catalog template Beledros
+// Witherbloom makes, because it is the same printed token. Until then
+// this card declared a second caveat for it.
 func init() {
 	Register(Spec{
 		OracleID:     "25dce517-ac0a-4577-89ed-04296c7c4069",
@@ -35,14 +35,13 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
 			"Magecraft only fires on instants and sorceries you cast, not on copies of them.",
-			"The Pest tokens don't gain you 1 life when they die.",
 		},
 		PrintedKeywords: []string{"menace"},
 		Triggered: []game.TriggeredAbility{
 			Ward(WardLife(3), "Sedgemoor Witch — ward, pay 3 life"),
 			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return instantOrSorceryCastByYou(ev, source, g)
-			}, "Sedgemoor Witch — create a Pest (magecraft)", Do(CreateToken{Template: TokenCard("1/1 black and green Pest"), N: 1})),
+			}, "Sedgemoor Witch — create a Pest (magecraft)", Do(CreateToken{Template: PestToken(), N: 1})),
 		},
 	})
 }

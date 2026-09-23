@@ -153,26 +153,36 @@ func TestATableFullOfTokensIsStillARestorePoint(t *testing.T) {
 // game back to writing no restore points, and would do it silently —
 // so the table is the test.
 func TestEveryTokenTemplateWithAbilitiesIsRestorable(t *testing.T) {
-	for slug, build := range tokenTemplates {
-		t.Run(slug, func(t *testing.T) {
-			printed := build()
-			tmpl := tokenFromCatalog(slug)
+	for _, build := range tokenTemplates {
+		printed := build()
+		t.Run(printed.Slug, func(t *testing.T) {
+			tmpl := tokenFromCatalog(build)
 
 			if len(tmpl.ManaAbilities) != 0 || len(tmpl.ActivatedAbilities) != 0 {
 				t.Errorf("the template still carries closures on the instance: %d mana, %d activated",
 					len(tmpl.ManaAbilities), len(tmpl.ActivatedAbilities))
 			}
-			if tmpl.TokenKey != game.TokenKey(slug) {
-				t.Fatalf("template key = %q, want %q", tmpl.TokenKey, game.TokenKey(slug))
+			if tmpl.TokenKey != game.TokenKey(printed.Slug) {
+				t.Fatalf("template key = %q, want %q", tmpl.TokenKey, game.TokenKey(printed.Slug))
 			}
 			// The catalog hands back exactly what the printed
 			// template declared, which is what makes the swap
-			// invisible to every reader.
-			if got, want := len(game.ManaAbilitiesForCard(tmpl)), len(printed.ManaAbilities); got != want {
+			// invisible to every reader. ADR 0083 added the trigger
+			// and static slots to the same list.
+			if got, want := len(game.ManaAbilitiesForCard(tmpl)), len(printed.Mana); got != want {
 				t.Errorf("catalog returns %d mana abilities, the printed template declares %d", got, want)
 			}
-			if got, want := len(game.ActivatedAbilitiesForCard(tmpl)), len(printed.ActivatedAbilities); got != want {
+			if got, want := len(game.ActivatedAbilitiesForCard(tmpl)), len(printed.Activated); got != want {
 				t.Errorf("catalog returns %d activated abilities, the printed template declares %d", got, want)
+			}
+			if got, want := len(game.TriggersForCard(tmpl)), len(printed.Triggered); got != want {
+				t.Errorf("catalog returns %d triggered abilities, the printed template declares %d", got, want)
+			}
+			if got, want := len(game.StaticAbilitiesForCard(tmpl)), len(printed.Static); got != want {
+				t.Errorf("catalog returns %d static abilities, the printed template declares %d", got, want)
+			}
+			if got, want := game.TokenTextForCard(tmpl), printed.Text; got != want {
+				t.Errorf("token text = %q, want %q", got, want)
 			}
 
 			g := newCatalogGame(t)

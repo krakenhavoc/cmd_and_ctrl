@@ -90,7 +90,7 @@ cmd_and_ctrl/
     ├── lobby.md         # lobby HTTP API reference
     ├── bot.md           # AI bot seat — user-facing guide (S31)
     ├── sprints.md       # sprint plan
-    └── decisions/       # ADRs (0001 WS library … 0082 face-down casting) — see §4 on numbering
+    └── decisions/       # ADRs (0001 WS library … 0083 token abilities) — see §4 on numbering
 ```
 
 When you create a new top-level directory, add it here.
@@ -3471,9 +3471,55 @@ the way the card prints them ("2/2 black Zombie", "1/1 blue Bird with
 flying", "3/3 green Beast", "0/4 colorless Wall artifact with defender").
 A token the table lacks is a new row, not a new constructor; a variant
 (enters tapped, with counters) wraps the template in a `TokenSpec`.
-Only tokens with behaviour — Treasure, Food, Clue, Gold and the other
-sacrifice-for-something artifacts — keep a constructor in `tokens.go`.
 `TestEveryTokenKeyResolves` fails on a key that is not in the table.
+
+**A token that PRINTS AN ABILITY (#521, #1248, [ADR 0083](docs/decisions/0083-token-abilities.md)):**
+not a row — a `tokenTemplate` in the catalog, because behaviour goes in
+the catalog and data goes in the table. Declare the slug, the printed
+characteristics, whichever of the four ability slots it uses, and the
+printed text; add the builder to `tokenTemplates` in
+[token_catalog.go](server/internal/cards/effects/token_catalog.go); give
+it a named constructor beside the card that makes it.
+
+```go
+func PestToken() game.Card { return tokenFromCatalog(printedPestToken) }
+
+func printedPestToken() tokenTemplate {
+    return tokenTemplate{
+        Slug: "pest",
+        Card: game.Card{Name: "Pest", TypeLine: "Token Creature — Pest",
+            Power: 1, Toughness: 1, Colors: []string{"B", "G"}},
+        Triggered: []game.TriggeredAbility{
+            WhenThisDies("Pest — you gain 1 life", func(g *game.Game, item *game.StackItem) error {
+                return GainLife{Player: item.Controller, Amount: 1}.Apply(NewContext(g, item))
+            }),
+        },
+        Text: "When this token dies, you gain 1 life.",
+    }
+}
+```
+
+The abilities are the SAME constructors a printed card uses — nothing
+about a token is a dialect — and they are registered once at boot under
+`game.TokenKey(slug)`, where the ordinary accessors find them through
+`game.CatalogKey`'s token-key fallback. Five rules, each enforced at
+boot by `checkTokenTemplate`: the template needs a slug, at least one
+ability, and **printed text** (a token has no printing to fetch oracle
+text from, so `Text` is the only thing that can tell the player what it
+does — it ships as `CardView.token_text`); it must not declare an oracle
+ID, and it must not leave a mana or activated ability on the `Card`
+(that is a closure on the instance, and one of those on the battlefield
+stops every restore point being written — #521, ADR 0041).
+
+Two cards that print the SAME token share one template and one slug —
+Beledros Witherbloom and Sedgemoor Witch both make `pest`. The slug is
+an on-disk identity a snapshot carries, so rename one with the care a
+database column gets, and qualify an ambiguous name
+(`dragon-firebending`, `dragon-nesting`) rather than numbering it.
+`tokenFromCatalog` takes the BUILDER, not the slug: a template may name
+another token (the Goblin Shaman makes a Treasure) and a slug-keyed
+registry would be a package variable whose initialiser reaches back into
+itself.
 
 **A token that's a copy (S22):** `CreateTokenCopy`, not a hand-written
 template:
@@ -4084,7 +4130,8 @@ importer stamps it from Scryfall like any other printed keyword, and
 `Card.HasSubtype` answers true for every creature type in every
 zone. Only write a file when the card does something else too
 (Irregular Cohort's token). A TOKEN declares it on the template's
-`Keywords`, since a token has no oracle ID.
+`Keywords`: a keyword is plain data and always was, and it stays there
+even for a token that has a catalog entry of its own (ADR 0083).
 
 "Is every creature type" is a **layer-4 TYPE FACT**, not a keyword:
 `Characteristic.AllCreatureTypes`, set by a grant (Maskwood Nexus, via
@@ -4246,7 +4293,8 @@ is gone. In its place:
   `triggers_common.go`; a card predicate or an effect body used by
   more than one card goes in `helpers.go` (or a `predicates_<mechanic>.go`
   / `effects_<mechanic>.go` beside it); a token is a row in
-  `tokens_table.go`. Add a function; never change an existing one's
+  `tokens_table.go`, or — if it prints an ability of its own — a
+  `tokenTemplate` in the catalog (ADR 0083). Add a function; never change an existing one's
   behaviour in a card PR. Two PRs that both append to the same file
   merge cleanly.
 - **No batch prefixes.** A helper is named for what it says

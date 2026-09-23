@@ -365,19 +365,28 @@ func forEachAbilityToken(c *Card, fn func(token string) bool) {
 		return
 	}
 	// Off-battlefield path: the card's own printed keywords first
-	// (S21 sub-PR 1 — token templates carry them on the Card, since
-	// a token has no oracle ID for the catalog to key on), then the
-	// catalog. Lookup-miss (non-catalog card) returns nil → no
-	// keywords.
+	// (S21 sub-PR 1 — a token template's keywords are plain data on
+	// the Card and always were), then the catalog. Lookup-miss
+	// (non-catalog card) returns nil → no keywords.
 	for _, a := range c.Keywords {
 		if !fn(a) {
 			return
 		}
 	}
-	if CatalogPrintedKeywords == nil || c.OracleID == "" {
+	if CatalogPrintedKeywords == nil {
 		return
 	}
-	for _, a := range CatalogPrintedKeywords(CatalogKey(*c)) {
+	// The empty KEY is the skip, not an empty oracle ID (ADR 0083
+	// decision 3). A token reaches the catalog under its token key
+	// like every other object; no token template declares
+	// PrintedKeywords today — its keywords ride the Card above — so
+	// this is the gate asking the right question rather than a
+	// behaviour change.
+	key := CatalogKey(*c)
+	if key == "" {
+		return
+	}
+	for _, a := range CatalogPrintedKeywords(key) {
 		if !fn(a) {
 			return
 		}

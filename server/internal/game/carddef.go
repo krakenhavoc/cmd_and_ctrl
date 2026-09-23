@@ -141,6 +141,19 @@ type CardDef struct {
 	// See emblem.go and ADR 0064. Added in S40 (#623).
 	Emblem *EmblemDef
 
+	// TokenText is the presentation half of a TOKEN TEMPLATE's catalog
+	// entry (CR 111.1) — the token's printed ability text, verbatim,
+	// as the player reads it on the board. Set only on a token
+	// template's own def, the one effects files under
+	// game.TokenKey(slug), and only when the token prints something.
+	//
+	// It is here for the reason EmblemDef.Text is: a token has no
+	// printing behind it, so there is no oracle text for the client to
+	// fetch and a trigger's Label is a log line, not card text. Read
+	// through CatalogTokenText / TokenTextForCard; see token_key.go
+	// and ADR 0083.
+	TokenText string
+
 	// XMatters says everything the card does scales with the
 	// announced X, so X=0 does nothing at all. Read only by the
 	// legal-move enumerator, through XMattersFor; see
@@ -463,5 +476,11 @@ func init() {
 			return d.LibraryTopVisible
 		}
 		return LibraryTopHidden
+	}
+	CatalogTokenText = func(key string) string {
+		if d := catalogDef(key); d != nil {
+			return d.TokenText
+		}
+		return ""
 	}
 }

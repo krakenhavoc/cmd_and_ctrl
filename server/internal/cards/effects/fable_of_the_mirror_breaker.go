@@ -28,25 +28,21 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // a card with chapters. sagaHasChapterOnStackLocked is what keeps the
 // door open until chapter III has actually resolved.
 //
-// SANDBOX SIMPLIFICATION, and it is the reason this card is not Full:
-// the chapter I token ships WITHOUT its printed attack trigger. A
-// token that is not a copy has no oracle ID, so game.CatalogKey
-// answers the empty string for it and TriggersForCard returns nil —
-// the "Triggered and static abilities on non-copy tokens" seam
-// (#521), which is open and is not this PR's to close. A 2/2 body is
-// weaker than printed, which is the only direction allowed (#259).
-// The caveat clears the day #521 lands.
+// The chapter I token carries its own attack trigger since ADR 0083
+// (#1248): the Goblin Shaman is a catalog template under
+// `token:goblin-shaman`, and `TriggersForCard` finds its ability
+// through `game.CatalogKey`'s token-key fallback exactly as it finds
+// a printed card's. Until then this card shipped as `caveats` with a
+// plain 2/2, on the "Triggered and static abilities on non-copy
+// tokens" seam.
 func init() {
 	Register(Spec{
 		OracleID:     fableOfTheMirrorBreakerOracleID,
 		Name:         "Fable of the Mirror-Breaker",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The Goblin Shaman token is a plain 2/2 — its \"whenever this creature attacks, create a Treasure token\" ability is not implemented.",
-		},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			ChapterTrigger(1, "Fable of the Mirror-Breaker — create a 2/2 red Goblin Shaman",
-				Do(CreateToken{Template: TokenCard("2/2 red Goblin Shaman"), N: 1})),
+				Do(CreateToken{Template: fableGoblinShamanToken(), N: 1})),
 			ChapterTrigger(2, "Fable of the Mirror-Breaker — discard up to two cards, then draw that many",
 				func(g *game.Game, item *game.StackItem) error {
 					return b39MayDiscardThenDraw(2, false,
@@ -62,3 +58,31 @@ func init() {
 // fableOfTheMirrorBreakerOracleID is shared with the back face, which
 // registers under it plus "#1" (game.CatalogKey).
 const fableOfTheMirrorBreakerOracleID = "c0957e5e-c71b-439c-931c-9f55d2f76ace"
+
+// fableGoblinShamanToken is chapter I's 2/2 red Goblin Shaman with
+// "Whenever this creature attacks, create a Treasure token."
+func fableGoblinShamanToken() game.Card { return tokenFromCatalog(printedFableGoblinShamanToken) }
+
+// printedFableGoblinShamanToken is that Goblin Shaman as PRINTED.
+//
+// The Treasure it makes is the ordinary catalog Treasure, so a token
+// whose ability creates another token is two catalog entries and no
+// new machinery: the attack trigger resolves and calls the same
+// CreateToken every printed card calls.
+func printedFableGoblinShamanToken() tokenTemplate {
+	return tokenTemplate{
+		Slug: "goblin-shaman",
+		Card: game.Card{
+			Name:      "Goblin Shaman",
+			TypeLine:  "Token Creature — Goblin Shaman",
+			Power:     2,
+			Toughness: 2,
+			Colors:    []string{"R"},
+		},
+		Triggered: []game.TriggeredAbility{
+			WheneverThisAttacks("Goblin Shaman — create a Treasure",
+				Do(CreateToken{Template: TreasureToken(), N: 1})),
+		},
+		Text: "Whenever this creature attacks, create a Treasure token.",
+	}
+}
