@@ -128,3 +128,35 @@ func TestLegendarySorceryIsNotEnumeratedWithoutALegendary(t *testing.T) {
 	}
 	dispatchAll(t, g, active.ID, moves[:1])
 }
+
+// TestGrantedCastBanRemovesTheCastFromTheEnumeration is #1316's
+// enumerator half, alongside Rule of Law's: a granted, per-player
+// "can't cast" statement — the shape only a resolving spell can
+// create, never a permanent's static — is read by the same
+// CastGateLocked call the printed restriction is, so the bot is never
+// offered a cast the engine will refuse for either reason.
+func TestGrantedCastBanRemovesTheCastFromTheEnumeration(t *testing.T) {
+	g := newTable(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	clearHand(active)
+	bolt := handCard(active, game.Card{
+		Name: "Burst Lightning", TypeLine: "Instant",
+		OracleID: oracleBurstLightning, ManaCost: "{R}",
+	})
+	lands(g, active, "Mountain", "Mountain", 6)
+	advanceTo(t, g, game.StepPrecombatMain)
+
+	if n := len(castMovesFor(legal.EnumerateFor(g, active.ID), bolt)); n == 0 {
+		t.Fatal("the bolt was not offered before the ban")
+	}
+
+	g.WithWriteLock(func() {
+		g.GrantCastBanForEffect(active.ID, game.CastBanRule{Kind: game.CastBanOutright},
+			"Test — can't cast spells this turn", uuid.Nil, game.Duration{})
+	})
+	for _, m := range legal.EnumerateFor(g, active.ID) {
+		if m.Kind == legal.KindCast {
+			t.Errorf("a cast was offered under a granted cast ban: %q", m.Label)
+		}
+	}
+}

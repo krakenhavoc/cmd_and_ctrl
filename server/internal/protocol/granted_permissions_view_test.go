@@ -34,6 +34,20 @@ func withStandingPermission(t *testing.T, oracle string, perm game.CastPermissio
 	t.Cleanup(func() { game.CatalogCastPermissions = prev })
 }
 
+// withGatedStandingPermission stubs the GATED standing-permission
+// hook (#1314) for one oracle ID.
+func withGatedStandingPermission(t *testing.T, oracle string, gate game.CastPermissionGate) {
+	t.Helper()
+	prev := game.CatalogGatedCastPermissions
+	game.CatalogGatedCastPermissions = func(id string) []game.CastPermissionGate {
+		if id == oracle {
+			return []game.CastPermissionGate{gate}
+		}
+		return nil
+	}
+	t.Cleanup(func() { game.CatalogGatedCastPermissions = prev })
+}
+
 // withTopVisibility stubs the CR 401.5 visibility hook.
 func withTopVisibility(t *testing.T, oracle string, v game.LibraryTopVisibility) {
 	t.Helper()
@@ -126,6 +140,72 @@ func TestCastableHereStampedOnAGrantedGraveyardCard(t *testing.T) {
 	v = ViewOfGameFor(g, me.ID.String())
 	if other := cardInZone(v.Seats[1].Graveyard, theirSpell.InstanceID); other == nil || other.CastableHere {
 		t.Errorf("a card in a graveyard no permission reaches was stamped castable: %+v", other)
+	}
+}
+
+// TestCastableHereWaitsOnAGatedPermission is #1314's view half: the
+// same `castable_here` stamp, for a permission that is not there yet
+// because its designation gate has not been satisfied. The fast
+// negative (AnyCastPermissionsForEffect) has to see the GATED hook too
+// — before #1314 it only walked CatalogCastPermissions, and a card
+// gated entirely behind CatalogGatedCastPermissions would have made
+// the whole library walk skip itself, whether or not the gate was
+// open.
+func TestCastableHereWaitsOnAGatedPermission(t *testing.T) {
+	g := buildActiveGame(t)
+	me := g.Seats[0]
+	const oracle = "test-view-talent"
+	withGatedStandingPermission(t, oracle, game.CastPermissionGate{
+		Permission: game.CastPermission{Zone: game.ZoneLibrary, TopOfLibraryOnly: true},
+		ActiveWhen: game.ClassLevel(2),
+		Condition: func(g *game.Game, controller, _ uuid.UUID) bool {
+			return g.CastTallyFor(controller).Total > 0
+		},
+	})
+	withTopVisibility(t, oracle, game.LibraryTopOwner)
+
+	seen := map[uuid.UUID]bool{me.ID: true}
+	talent := game.NewCard("Test Talent", me.ID)
+	talent.TypeLine = "Enchantment — Class"
+	talent.OracleID = oracle
+	talent.Controller = me.ID
+	talent.KnownBy = seen
+	g.Battlefield.PushTop(talent)
+
+	top := game.NewCard("Top Instant", me.ID)
+	top.TypeLine = "Instant"
+	top.ManaCost = "{U}"
+	top.KnownBy = seen
+	me.Library.PushTop(top)
+
+	// Level 1, nothing cast: the gate is shut, and the card is not a
+	// cast surface at all.
+	v := ViewOfGameFor(g, me.ID.String())
+	got := cardInZone(v.Seats[0].Library, top.InstanceID)
+	if got == nil {
+		t.Fatalf("the library-top card is missing from the view")
+	}
+	if got.CastableHere {
+		t.Error("castable_here stamped at level 1 with nothing cast — the gate is shut")
+	}
+
+	// Level 2, a spell cast this turn: both halves open, and the card
+	// is a cast surface with the permission's own price.
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == talent.InstanceID {
+				g.Battlefield.Cards[i].ClassLevel = 2
+			}
+		}
+		if g.SpellsCastThisTurn == nil {
+			g.SpellsCastThisTurn = make(map[uuid.UUID]game.CastTally)
+		}
+		g.SpellsCastThisTurn[me.ID] = game.CastTally{Total: 1}
+	})
+	v = ViewOfGameFor(g, me.ID.String())
+	got = cardInZone(v.Seats[0].Library, top.InstanceID)
+	if got == nil || !got.CastableHere {
+		t.Error("castable_here not stamped once both the level and the condition are satisfied")
 	}
 }
 

@@ -1777,3 +1777,244 @@ rounds, and the window only opens on the owner's turn, so this gives exactly
 That is weaker, never stronger. `plot.go` explains the floor.
 `TestAFlashGrantDoesNotWidenThePlotWindow` is the back-out proof: with
 `TimingSorcery` it fails.
+
+---
+
+## Amendment — 2026-09-23 (#1314): a standing permission gated by a Class
+level or a condition
+
+Decision 1 and `standingCastPermissionsLocked` gave a permanent's printed
+"you may cast/play …" a home — derived from the battlefield, re-evaluated on
+every query — and never asked whether the permanent HAS the ability right
+now. Every other gateable slot in the catalog (`StaticAbility`,
+`TriggeredAbility`, `ActivatedAbilityShape`, `CostModifier`) carries an
+`ActiveWhen Designation` (ADR 0071) precisely so a Class's level-2 line, a
+solved Case's line, or a station's threshold line is not offered before it
+exists. `CastPermission` was the one slot ADR 0071 missed, and Fortune
+Teller's Talent's level 2 — "As long as you've cast a spell this turn, you
+may play cards from the top of your library" — needed it and something ADR
+0071 does not name at all: a card-specific "as long as …" clause that is not
+a Class level, a solved Case, or a charge-counter threshold.
+
+### Decision 1 — the gate is a SEPARATE type, not two more fields on `CastPermission`
+
+The obvious change is `ActiveWhen Designation` and `Condition func(...) bool`
+added directly to `CastPermission`. It compiles, and it fails
+`snapshot_drift_test.go`'s `TestSnapshotMirrorsHaveNoFuncs`: `CastPermission`
+is dual-purpose — a catalog declaration on one path (`CardDef.CastPermissions`,
+never snapshotted) and, on the other, the exact type STORED on
+`Player.CastPermissions` and mirrored verbatim into `GameSnapshot`. A func
+field on the shared type poisons the stored side even though no stored
+instance would ever set it: the guard reflects over the TYPE, not over which
+instances happen to be nil.
+
+So the gate lives on `CastPermissionGate`, a wrapper reachable only from
+`CardDef` and a new hook, never from anything a snapshot touches:
+
+```go
+type CastPermissionGate struct {
+    Permission CastPermission
+    ActiveWhen Designation
+    Condition  func(g *Game, controller, source uuid.UUID) bool
+}
+
+var CatalogGatedCastPermissions func(oracleID string) []CastPermissionGate
+```
+
+The same posture `ActivatedAbility.Condition` and `TriggeredAbility.AppliesTo`
+already have — both are catalog-only closures on catalog-only types — one
+struct over, because `CastPermission` is the one permission-shaped type that
+is also player state.
+
+**`CatalogCastPermissions`'s existing signature is untouched.** Seven test
+files across three packages stub it as `func(oracleID string) []CastPermission`;
+widening it (or wrapping every entry) would have meant migrating all seven for
+a gate exactly one card uses today. The new hook is additive:
+`standingCastPermissionsLocked` walks both, in order — the ordinary hook
+first (byte-for-byte the pre-#1314 loop), then, if `CatalogGatedCastPermissions`
+is non-nil, the gated one, `activeOnly`-filtered by `ActiveWhen` and then by
+`Condition` — and both funnel into one shared stamping step
+(`stampStandingPermissionLocked`) so a gated and an ungated permission from
+the same card cannot disagree about what Scope, ZoneOwner, Source or Duration
+a "standing" permission means.
+
+### Decision 2 — `ActiveWhen` and `Condition` are independent tests, in that order
+
+`ActiveWhen` is asked first, through the same `activeOnly` helper
+`StaticAbilitiesForCard` and `CostModifiersForCard` already use, for the same
+reason: it is the cheap, common-case test (almost every card has no gate at
+all) and it decides whether the entry is even a candidate. `Condition` runs
+only on what survives — Fortune Teller's Talent's level-2 line asks it
+exactly once the Class is level 2 or greater, never at level 1, which is
+observable: a test asserting the closure's call count pins it
+(`TestGatedStandingPermissionNeedsBothTheLevelAndTheCondition`,
+`cast_permission_test.go`).
+
+Two independent booleans rather than one merged predicate, because CR 716.2a
+gates the LINE ("as long as this Class is level 2 or greater, it has …") and
+"as long as you've cast a spell this turn" gates the CLAUSE printed on that
+line — two different rules, from two different parts of the Comprehensive
+Rules, and folding them into one closure would have made a future card that
+needs `ActiveWhen` alone (a Case's solved line that grants a plain permission)
+write a `Condition` that always returns `true` to get there.
+
+`Condition`'s signature mirrors `ActivatedAbility.Condition`
+(`func(g *Game, controller, source uuid.UUID) bool`) rather than inventing a
+third shape: `controller` is the permission-holder asking ("you" in "you've
+cast a spell"), `source` is the permanent contributing it — not necessarily
+the same seat if the permanent changes hands, which is why the walk passes
+the CURRENT controller rather than a captured one.
+
+### Decision 3 — the fast negative has to see BOTH hooks
+
+`AnyCastPermissionsForEffect` — the check the enumerator and the view take
+before walking every graveyard, every library and the whole of exile — used
+to answer only from `CatalogCastPermissions`. A card gated ENTIRELY behind
+`CatalogGatedCastPermissions` (Fortune Teller's Talent has no ungated
+permission at all) made this answer `false` regardless of whether the gate
+was open, which skipped the library walk outright — not "offered nothing
+because the gate is shut", but "never asked". `TestEnumeratorOffersAGatedLibraryTopPlayOnlyWhenBothHalvesHold`
+(`internal/legal`) and `TestCastableHereWaitsOnAGatedPermission`
+(`internal/protocol`) both caught this in the writing of this amendment — the
+first draft passed the game-package model test and failed both surface tests,
+because the model test calls `standingCastPermissionsLocked` directly and
+never goes through the fast negative at all.
+
+The fix does not evaluate the gate in the fast path: `AnyCastPermissionsForEffect`
+answers "could anything open one of the expensive zones", not "does one
+apply right now" — evaluating `ActiveWhen`/`Condition` there would just move
+the question the walk exists to ask into the wrong function, for a check
+whose entire purpose is being cheaper than the walk it guards.
+
+### Decision 4 — `Spec.GatedCastPermissions`, a slot beside `Spec.CastPermissions`
+
+Card files declare a gated entry through a new `Spec` slot rather than
+widening `Spec.CastPermissions`'s element type, for the same reason
+`CastPermissionGate` is a separate engine type: every existing card using
+`Spec.CastPermissions` (Realmwalker, Bolas's Citadel, Courser of Kruphix,
+Oracle of Mul Daya, Underworld Breach) keeps its literal unchanged.
+`gatedStandingCastPermissions` mirrors `standingCastPermissions`'s Scope/Duration
+normalisation one level down, into `CastPermissionGate.Permission`.
+
+`specDesignations` (the effects package's cross-slot walk that backs
+Register's Room-door-gate refusal, ADR 0071 decision 3) grew a fifth source —
+`spec.GatedCastPermissions[i].ActiveWhen` — so a card that gated a permission
+on a door the engine cannot yet honour fails at boot exactly as one gating a
+static or a trigger on it already does.
+
+**Cards shipped:** Fortune Teller's Talent (`caveats` → `full`; level 1's
+`LibraryTopVisible: game.LibraryTopOwner` and level 2's `GatedCastPermissions`
+entry together close both of the card's remaining gaps, since level 2's
+permission needs level 1's visibility to open anything at all).
+
+---
+
+## Amendment — 2026-09-23 (#1316): the CAST-BAN twin
+
+`cast_gate.go`'s `CastGateLocked` answers CR 101.2's "can beats can't" for a
+cast from two sources — a static on a permanent (`CastRestriction`) and the
+spell's own condition (`CastConditionFor`) — and its own doc comment named
+the gap this amendment closes: *"BANS WITH A DURATION. Silence's 'this turn'
+and Reflector Mage's 'until your next turn' want the turn-scoped and
+permanent-duration registries. A third source slots into `castRestrictionsLocked`
+without changing this function's signature; that is the extension point."*
+Avatar's Wrath ("Until your next turn, your opponents can't cast spells from
+anywhere other than their hands") and Mandate of Peace ("Your opponents
+can't cast spells this turn") are exactly that shape: a ban with a CR 611.2
+duration, created by a resolving spell that is gone — often exiled by its own
+text — a moment after it grants the ban.
+
+### Decision 1 — the fourth payload on `PlayerStatic`, not a new registry
+
+This ADR's own 2026-09-22 amendment built `CastTimingRule` for the sibling
+question — a per-player statement about WHEN a cast is legal — and put it on
+`PlayerStatic` rather than on a registry of its own, for the argument ADR
+0085 Decision 1 makes at length for the life-total lock one payload over: a
+statement about a PLAYER for a CR 611.2 duration wants the slice that already
+has a duration, a sweep, a clone and a snapshot field, not a fourth of each.
+A cast BAN is the same statement pointed the other way — CR 101.2's "can't"
+rather than "may" — so it takes the same home: `PlayerStatic.CastBan
+CastBanRule`, told apart from `Keyword`, `Timing` and `LifeTotalLocked` by its
+own presence bit (`CastBanRule.Kind`, zero value `CastBanNone`) for the reason
+those three doc comments already give and `CastBanRule`'s own repeats: its
+zero value otherwise ("no exception, no count") IS a real statement — Mandate
+of Peace's outright ban — not "nothing to say", so it cannot borrow a
+sentinel off an existing field the way `LifeTotalLocked`'s plain bool does.
+
+### Decision 2 — `CastBanRule`'s two shapes, and the third the issue named without a card
+
+```go
+type CastBanRule struct {
+    Kind           CastBanKind // CastBanOutright | CastBanMaxPerTurn
+    Filter         PermissionFilter
+    ExceptFromZone ZoneKind
+    MaxPerTurn     int
+}
+```
+
+`CastBanOutright` with `ExceptFromZone` zero is Mandate of Peace. With
+`ExceptFromZone: ZoneHand` it is Avatar's Wrath — "from anywhere other than
+their hands" is a ban that reaches every zone but one, which is why the field
+is an EXCEPTION rather than a target list the way `CastTimingRule.FromZone`
+narrows a GRANT to one zone: a grant naming a zone opens only that one, a ban
+naming an exception closes every other one, and reusing `FromZone`'s own
+meaning here would have inverted it silently on the read side.
+
+`CastBanMaxPerTurn` is the seam issue's third named shape — "each player
+can't cast more than one spell each turn," granted rather than printed on a
+permanent — with no catalogued card behind it yet. Built and tested
+(`TestMaxPerTurnBanReadsTheSameTallyTheStaticRestrictionDoes`,
+`internal/game`) against the model rather than a card, because the issue
+named it as a shape the storage has to support, not as a card to ship; it
+reads the identical `Game.CastTallyFor` tally `EachPlayerMaxSpellsPerTurn`
+(the printed, derived version, `cast_restriction.go`) already reads, so a
+granted cap and a printed one can never disagree about what "one spell this
+turn" counts.
+
+### Decision 3 — one reader, and it IS the third source `CastGateLocked` already reserved
+
+```go
+func (g *Game) castBanForbidsLocked(playerID uuid.UUID, card Card, zone ZoneKind) (label string, source uuid.UUID, forbidden bool)
+```
+
+Walks `p.Statics`, skips every entry that is not a `CastBan` or whose
+duration has expired (the same "test it here too, not only in the sweep"
+posture `playerLifeTotalCantChangeLocked` and `castTimingVerdictLocked` take,
+for the identical reason: the sweep is hygiene at known moments and the
+reader has to be right between them), and returns the first live entry that
+forbids — `CantCastError` carries one reason, and CR 101.2 does not ask which
+"can't" arrived first among several.
+
+`CastGateLocked` calls it once, between the battlefield's static
+`CastRestriction`s and the spell's own `CastConditionFor` — external "can't"s
+before the card's own, which is the order the function already documents for
+the two sources it had. **No new caller was needed anywhere else**: unlike
+`CastTimingRule`, which had to add itself to three separate call sites
+(`CastSpell`, `legal.castMovesPayingOptional`, `protocol.castStampsFor`)
+because CR 307.1 had no single existing choke point, `CastGateLocked` already
+IS the one function ADR 0073 §7 built for exactly this question, and it
+already has all three callers. Extending its insides extends all three at
+once, and the wire needs no new field: `cant_cast` already means "an effect
+prevents this cast", stamped from `CastGateLocked`'s own error, so a card
+silenced by Avatar's Wrath greys exactly the way one silenced by Rule of Law
+already does (`TestCantCastIsStampedFromAGrantedBan`, `internal/protocol`).
+
+`AnyCastRestrictionsForEffect` — the fast negative beside the gate — grew a
+matching check (`anyLiveCastBanForEffect`, one pass over the seats) for the
+same reason Decision 3 of the companion amendment above extended
+`AnyCastPermissionsForEffect`: a table with nothing on the battlefield but a
+live granted ban must not answer `false`.
+
+### Decision 4 — one primitive, `RestrictCasting`, one grant per opponent
+
+`effects.RestrictCasting{Player, Rule, Label, Duration}` is the card-facing
+wrapper, calling `GrantCastBanForEffect` — the same shape `LockLifeTotal` and
+`GainPlayerKeyword` already take for their own `PlayerStatic` payloads. "Your
+opponents can't cast spells" is granted once PER OPPONENT
+(`for _, opp := range ctx.Opponents()`), not as one table-wide statement:
+`PlayerStatic` is per-seat by construction, and a card that meant the
+CASTER too would say "each player", which neither proof card does.
+
+**Cards shipped:** Avatar's Wrath (`full`) and Mandate of Peace (`full` —
+CR 724.2's "end the combat phase" (#1317) landed alongside this seam via PR #1343, so
+the card ships with neither half caveated).

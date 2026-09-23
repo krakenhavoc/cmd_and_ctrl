@@ -220,6 +220,19 @@ type CardDef struct {
 	// player.
 	CastPermissions []CastPermission
 
+	// GatedCastPermissions are standing permissions gated by an ADR
+	// 0071 designation and/or a card Condition (#1314) — Fortune
+	// Teller's Talent's level-2 line: "as long as this Class is level
+	// 2 or greater [ActiveWhen], you may play cards from the top of
+	// your library [if you've cast a spell this turn, Condition]".
+	//
+	// A separate slice from CastPermissions, not a field on
+	// CastPermission itself, because CastPermission is ALSO the type
+	// stored on Player.CastPermissions and mirrored into GameSnapshot
+	// — see CastPermissionGate's own doc comment. Read through
+	// CatalogGatedCastPermissions.
+	GatedCastPermissions []CastPermissionGate
+
 	// CastTimings are the per-player cast-timing statements this
 	// permanent makes while it is on the battlefield (#1195) —
 	// Vedalken Orrery's "you may cast spells as though they had
@@ -507,6 +520,12 @@ func init() {
 	CatalogCastPermissions = func(key string) []CastPermission {
 		if d := catalogDef(key); d != nil {
 			return d.CastPermissions
+		}
+		return nil
+	}
+	CatalogGatedCastPermissions = func(key string) []CastPermissionGate {
+		if d := catalogDef(key); d != nil {
+			return d.GatedCastPermissions
 		}
 		return nil
 	}

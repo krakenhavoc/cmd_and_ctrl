@@ -83,6 +83,7 @@ func buildDef(spec Spec) *game.CardDef {
 		AdditionalLandPlays:        spec.AdditionalLandPlays,
 		XMatters:                   spec.XMatters,
 		CastPermissions:            standingCastPermissions(spec.CastPermissions),
+		GatedCastPermissions:       gatedStandingCastPermissions(spec.GatedCastPermissions),
 		CastTimings:                spec.CastTimings,
 		LibraryTopVisible:          spec.LibraryTopVisible,
 		CastCondition:              spec.CastCondition,
@@ -236,6 +237,24 @@ func standingCastPermissions(in []game.CastPermission) []game.CastPermission {
 	for i := range out {
 		out[i].Scope = game.ScopeStanding
 		out[i].Duration = game.WhileInZoneDuration()
+	}
+	return out
+}
+
+// gatedStandingCastPermissions is standingCastPermissions for a
+// GATED entry (#1314): the same Scope/Duration normalisation, applied
+// to the embedded game.CastPermission of each game.CastPermissionGate
+// rather than to the gate wrapper itself, which carries no Scope or
+// Duration of its own.
+func gatedStandingCastPermissions(in []game.CastPermissionGate) []game.CastPermissionGate {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]game.CastPermissionGate, len(in))
+	copy(out, in)
+	for i := range out {
+		out[i].Permission.Scope = game.ScopeStanding
+		out[i].Permission.Duration = game.WhileInZoneDuration()
 	}
 	return out
 }

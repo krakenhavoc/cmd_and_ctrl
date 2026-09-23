@@ -823,6 +823,26 @@ type Spec struct {
 	// cannot play, and every printed card carries both halves.
 	CastPermissions []game.CastPermission
 
+	// GatedCastPermissions is CastPermissions for a permission gated by
+	// an ADR 0071 designation and/or a card Condition (#1314) —
+	// Fortune Teller's Talent's level-2 line, gated by BOTH `Level(2)`
+	// and "as long as you've cast a spell this turn":
+	//
+	//	GatedCastPermissions: []game.CastPermissionGate{{
+	//	    Permission: game.CastPermission{Zone: game.ZoneLibrary, TopOfLibraryOnly: true},
+	//	    ActiveWhen: Level(2),
+	//	    Condition:  hasCastASpellThisTurn,
+	//	}},
+	//
+	// A separate slot from CastPermissions rather than a gate field on
+	// the same struct, because game.CastPermission is ALSO the type
+	// STORED on a player and mirrored into the snapshot —
+	// game.CastPermissionGate's own doc comment has the argument.
+	// Everything else about a gated entry — Scope, Duration, the
+	// LibraryTopVisible requirement for a library permission — is
+	// exactly as CastPermissions above.
+	GatedCastPermissions []game.CastPermissionGate
+
 	// CastTimings declares the per-player cast-TIMING statements this
 	// permanent makes while it is on the battlefield (#1195, ADR 0066's
 	// 2026-09-22 amendment) — "you may cast spells as though they had
