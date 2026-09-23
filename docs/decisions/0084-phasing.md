@@ -279,11 +279,24 @@ shared, owner-less, public. Phased-out permanents are **not** merged into
   blocker is the same silent class of bug Decision 1 exists to avoid. A separate
   zone the bot does not read means the bot is right for free.
 
-The client renders it as a per-seat **phased pile** in `PileBar`, beside graveyard
-and exile, opening the existing `ZoneBrowserModal` — the house pattern for "cards
-that are somewhere other than the board", which is what a phased-out permanent looks
-like to a player. Each card carries `phased_out: true` so a future in-place render
-has the bit without another wire change.
+The client puts them **back where they were**: `Board.svelte` folds
+`phased_out` into the same controller-keyed map the battlefield row is built from,
+and `Card.svelte` renders each one dimmed, badged `PHASED`, and inert — the
+board-freeze idiom for the look, the `face_down` badge idiom for the label, and the
+click withheld in the card rather than in every parent that might pass an `onClick`.
+Each card carries `phased_out: true`, which is what the render keys on.
+
+**Not a pile chip beside graveyard and exile**, which was the first design and is the
+house pattern for "cards that are somewhere other than the board". A phased-out
+permanent is not somewhere else — it is *right there* and temporarily not real — and
+Teferi's Protection is the case that decides it: a whole board vanishing into a chip
+is indistinguishable from a whole board being wrathed, which is the one thing the
+client has to tell the player. The `phased_out` bit exists on the card so that the
+render is a property of the card rather than of where the client found it.
+
+Grouped by **controller**, not owner: CR 702.26d leaves control alone, so a creature
+stolen with Act of Treason and then phased out is still on the thief's side of the
+table, and that is where its controller will be watching for it.
 
 ### 7. Snapshot, clone and undo
 
