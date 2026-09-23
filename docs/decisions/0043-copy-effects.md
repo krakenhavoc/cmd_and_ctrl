@@ -737,11 +737,18 @@ amendment takes the rest of it, and keeps the first road where it was.
 `Game.lastKnownStack` (`server/internal/game/stack_lki.go`) holds a
 VALUE copy of the card and stack item of every spell that leaves the
 stack **without resolving** this turn. It is written by
-`routeCardToZoneLocked` when the route has `DropStackMeta` and the
-source zone is the stack — the path every counterspell, every
-Remand-style return and the sandbox's manual move all share — and
+`routeCardToZoneLocked` when the source zone is the stack — the path
+every counterspell, every Remand-style return, every "exile target
+spell" and airbend, and the sandbox's manual move all share — and
 before the replacement pipeline runs, while the card and item are still
 the spell's.
+
+*Note, 2026-09-23 (#1318):* the condition used to be "the route has
+`DropStackMeta` and the source zone is the stack". Only the counter,
+return-to-hand and sandbox routes set that flag, so an airbent spell was
+neither recorded here nor retired from `StackMeta`. The flag is gone and
+the source zone decides both — see
+[ADR 0013 §5ad](0013-replacement-effects.md).
 
 Resolution is deliberately not a writer. The only effect that can name
 a spell after it resolves is its own, and `Game.resolving` answers for

@@ -1742,3 +1742,38 @@ which have no ability row at all, keep the client-side predicate.
 - **Thousand-Year Elixir's "as though those creatures had haste"** is a
   different seam — CR 302.6's tap-symbol restriction, not CR 602.5's window —
   and nothing here touches it.
+
+## Amendment — 2026-09-23 (#1318): `TimingPlot`, a window no grant widens
+
+Aven Interrupter's "exile target spell. It becomes plotted." needs CR 702.170d:
+the owner may cast the card from exile without paying its mana cost "during
+their main phase while the stack is empty during any turn after the turn in
+which it became plotted". Every clause but one is a field this ADR already
+has: the owner as `Player`, exile as `Zone` under `ScopeCards`, `Cost: "{0}"`,
+`WhileInZone`, and a `NotBeforeTurn` floor. `game.PlotExiledCardForEffect`
+(`game/plot.go`) builds the permission. [ADR 0013 §5ad](0013-replacement-effects.md)
+records the rest of #1318.
+
+The one missing clause is the timing, and `TimingSorcery` is the wrong answer.
+Decision 3 of the 2026-09-22 amendment puts the per-player GRANTS after the
+permission's override, so Vedalken Orrery's "as though they had flash" beats
+a permission's `TimingSorcery`. That is right for a madness or suspend cast,
+where the timing is the card's. It is wrong for a plotted card. The plot rule is
+the permission's own window, so a plotted instant, a plotted card with flash,
+and a plotted card under an Orrery are all cast only in their owner's main
+phase with the stack empty.
+
+`TimingPlot` is a fourth `GrantTiming` value. `CastTimingOpenLocked` answers it
+before step 1 and returns `sorcerySpeedOpenLocked` without reading the card or
+the grants. The restrictions (step 4) cannot narrow it, because Dosan's "only
+during your turn" and Teferi's "only as a sorcery" are both already true of the
+window. Only a `CastPermission` may carry it. A per-player statement has no use
+for it, and `effects.Register`'s timing check does not offer it.
+
+The `NotBeforeTurn` floor is `Turn.Number` or `Turn.Number + 1`, depending on
+whether the card was plotted on its owner's own turn. `Turn.Number` counts
+rounds, and the window only opens on the owner's turn, so this gives exactly
+"any later turn". An extra turn the owner takes in the same round waits a round.
+That is weaker, never stronger. `plot.go` explains the floor.
+`TestAFlashGrantDoesNotWidenThePlotWindow` is the back-out proof: with
+`TimingSorcery` it fails.

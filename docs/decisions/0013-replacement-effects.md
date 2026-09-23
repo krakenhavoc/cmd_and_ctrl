@@ -3366,6 +3366,174 @@ covers it.
   so they do not depend on it.
 
 
+### 5ad. Amendment, 2026-09-23: a stack exit retires its record by source zone, and a move carries its cause
+
+**Issues [#1318](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1318)
+and [#1320](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1320).**
+Trackers [#879](https://github.com/krakenhavoc/cmd_and_ctrl/issues/879)
+(tables that wedge) and [#882](https://github.com/krakenhavoc/cmd_and_ctrl/issues/882)
+(replacements). Found by the *Aang is so flashy* deck triage,
+[#1306](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1306).
+
+#### 1. The gap: a spell exiled from the stack left its record behind
+
+A spell on the stack is two things: its card in `Game.Stack` and its
+`StackItem` in `Game.StackMeta`. The resolver reads them together. The
+shared exit primitive (`routeCardToZoneLocked`, §5f) moved the card, and
+retired the record only when the route said `DropStackMeta`. Two callers
+said it: the counter / return-to-hand body (`exitSpellFromStackLocked`,
+#1230) and the sandbox move. Every other exit that could reach a spell
+did not.
+
+Aang, Swift Savior, the deck's commander, airbends "up to one other
+target creature or SPELL". Airbend goes through the plain exile route.
+The spell's card went to exile and its record stayed. A record with no
+card is a spell the resolver can never finish, and 27 passes never left
+the step.
+
+#### Decision 1. The source zone decides, not a flag
+
+`zoneRoute.DropStackMeta` is gone. `executeZoneRouteLocked` retires the
+record when the card it moved came FROM the stack, and
+`routeCardToZoneLocked` takes the CR 608.2h last-known record
+(`rememberLeavingSpellLocked`, ADR 0043 decision 16) on the same
+condition. Whether a card is still a spell is a fact about where it is
+(CR 400.7). A flag that some callers set is how the gap got in: the
+exile route was never wrong about the card, it just never knew it had to
+say something. This is the same reasoning #529 used to move the CR 903.9
+window down into the primitive.
+
+A resolving spell's record is already out of `StackMeta` before its card
+is routed (`resolveTopOfStackLocked`), so the new condition changes
+nothing for resolution. Resolution is still not a writer of the
+last-known record.
+
+#### Decision 2. "Exile target spell" is its own verb
+
+`Game.ExileSpellForEffect(stackID)` and
+`Game.ExileSpellThenForEffect(stackID, then)` are the third verb over
+`exitSpellFromStackLocked`, beside the counter and the return to hand.
+`effects.ExileTargetSpell{StackID, Then}` is the card-side primitive.
+Three properties come from the shared body:
+
+- It is **not a counter** (CR 701.6). A spell that can't be countered is
+  exiled all the same, and no `EventCounterSpell` fires.
+- It **refuses anything that is not a spell on the stack**
+  (`ErrCardNotOnStack`), so a card that says "spell" cannot exile a
+  permanent by mistake.
+- The `Then` form hears **CR 400.7's answer**: `exiled` is true only if
+  the card is in exile once the move settles. A commander spell whose
+  owner takes CR 903.9's offer went to the command zone, so there is
+  nothing to plot. `exitSpellFromStackLocked` gained a `then` parameter
+  to carry the continuation onto the route. A spell that already left in
+  response is not an error; `then` hears false.
+
+The fix in Decision 1 is what un-wedges airbend. Decision 2 is what lets
+a card say "spell" and get a refusal when it points at something else.
+
+#### Decision 3. Plot, the effect half (CR 702.170c/d)
+
+`Game.PlotExiledCardForEffect(cardID, source)` (`game/plot.go`) makes a
+card in exile plotted. It grants a cast permission (ADR 0066):
+
+| Clause | Field |
+|---|---|
+| its owner may cast it | `Player` = owner, `CastOnly` |
+| from exile | `Zone` = exile, `ScopeCards` on the instance |
+| without paying its mana cost | `Cost: "{0}"` (the cascade idiom) |
+| main phase, stack empty | `Timing: TimingPlot` |
+| any turn after this one | `NotBeforeTurn` |
+
+`TimingPlot` is a new `GrantTiming` value. It is **not** `TimingSorcery`,
+because a per-player flash grant (Vedalken Orrery) overrides a
+permission's sorcery timing, and the plot window is the permission's own
+rule, not the card's speed. `CastTimingOpenLocked` answers it first and
+stops, so neither the card's own flash nor a grant widens it.
+
+`Turn.Number` counts ROUNDS, so "a later turn" is not `Number + 1`. The
+plot window only opens on the owner's turn, so the floor is the current
+round when the card is plotted on someone else's turn, and the next
+round when it is plotted on the owner's own turn. An extra turn the
+owner takes right after their own, in the same round, waits one round.
+That is weaker, never stronger.
+
+Not built: the plot KEYWORD's special action (CR 702.170a, "exile this
+card from your hand"). Aven Interrupter does not need it.
+
+#### 2. The gap: nothing said what moved a card
+
+Ranar the Ever-Watchful triggers when "a spell or ability you control
+exiles one or more permanents". `EventZoneMove` said where a card went,
+and sometimes whose action it was (`Actor`) and which card asked
+(`Source`). The plain exile route left both empty. An airbend, an
+opponent's Swords to Plowshares and a sandbox drag into exile all looked
+the same.
+
+#### Decision 4. The route carries a cause, and the effect case is inferred
+
+`zoneRoute.Cause` is a `game.MoveCause{Kind, Controller, Item}`
+(`game/move_cause.go`). The zone-change events carry it as
+`Event.Cause` / `CauseController` / `CauseItem`: `EventZoneMove`,
+`EventMill`, `EventDiscardCard`, `EventCounterSpell`, and the `EventLTB`
+beside them. There are five kinds:
+
+| Kind | Named by | Controller |
+|---|---|---|
+| `effect` | inferred | the resolving item's controller |
+| `cost` | `exile_cost.go`, `return_cost.go`, a cost discard | the payer |
+| `special_action` | foretell, suspend | the player |
+| `rule` | a spell's own move off the stack (CR 608.2n), the cleanup discard | — |
+| `manual` | the sandbox move | — |
+
+The **effect** case is the one no route names. When the route leaves
+`Cause` zero, `routeCardToZoneLocked` fills it from `Game.resolving`
+(`resolving_item.go`, #920). That slot is set for spells and abilities
+alike, and it lasts through every paused continuation of the resolution
+that set it, because a resolution-time prompt blocks the table. That is
+about forty effect exits that need no change. The alternative was
+threading the item through every one of them, and a forty-first mover
+would forget.
+
+Two details make the inference sound:
+
+- **The cause is captured onto the route when the move is asked for**,
+  not when it lands. A commander exiled by an effect that pauses on
+  CR 903.9 keeps its cause through the answer, whatever the slot says by
+  then.
+- **The explicit kinds exist for the one window where the slot is
+  stale.** `Game.resolving` is cleared at the next batch boundary, not
+  when the resolution ends. So a cost paid, a special action taken or a
+  card moved by hand after a spell resolved, in the same priority
+  window, would otherwise be claimed by that spell.
+  `TestCostExileIsNotTheLastResolutionsDoing` pins it.
+
+`game.ExiledBySpellOrAbilityOf(ev, player)` is the reader Ranar uses. The
+protocol does not project the fields (`protocol/log.go`), so the wire is
+unchanged.
+
+#### Not closed here
+
+- **The destroy / sacrifice / SBA exit carries no cause.**
+  `executeBattlefieldLeaveLocked` keeps its own mover (the reason is at
+  the top of `zone_route.go`). A destruction that Rest in Peace turns into
+  an exile is therefore not recorded as "the spell exiled it". Weaker for
+  a reader like Ranar, never stronger.
+- **A cost is not counted as "a spell or ability exiles".** The engine
+  records a cost as its own kind. Ranar does not count it, because no
+  ruling settles whether paying a cost is the ability exiling. Not
+  counting it is the weaker reading.
+- **Special actions share an event batch.** Two foretells with nothing
+  resolving between them are one batch, so a `OncePerBatch` trigger
+  counts one occurrence where CR 603.2c counts two. Ranar says so in a
+  caveat, and `TestRanarTwoForetellsInOneWindowMakeOneSpirit` pins it.
+  Filed separately.
+- **Ranar's foretell discount** waits on
+  [#1319](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1319).
+- **The leaving-player cleanup** moves spells with a raw `MoveCard` and
+  deletes their records itself (`cleanupStackForEliminatedLocked`). It
+  emits no zone-change event, so it has no cause to carry.
+
+
 ### 6. Six pipeline integration points (five mutations + step transition)
 
 The core five mutations named in the sprint plan are the rules-
