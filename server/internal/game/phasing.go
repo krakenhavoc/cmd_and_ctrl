@@ -213,6 +213,9 @@ func (g *Game) phaseOutSetLocked(ids []uuid.UUID) (order []uuid.UUID, indirect m
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) phaseOutLocked(source uuid.UUID, ids []uuid.UUID, opts phaseOutOptions) {
+	if g.Battlefield == nil || g.PhasedOut == nil {
+		return
+	}
 	order, indirect := g.phaseOutSetLocked(ids)
 	if len(order) == 0 {
 		return
