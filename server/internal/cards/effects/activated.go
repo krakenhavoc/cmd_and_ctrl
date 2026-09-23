@@ -220,8 +220,37 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.ExileSelf {
 			out.ExileSelf = true
 		}
+		// #759: and the tap-another half (#758). A composed "{T},
+		// Tap another untapped creature you control" that dropped it
+		// would be the bare {T} ability — the #259 direction again.
+		if c.TapOthers != nil {
+			out.TapOthers = c.TapOthers
+		}
 	}
 	return out
+}
+
+// TapAnotherUntapped is "Tap another untapped <permanent> you control"
+// as a COST (#758's TapOthersCost, #759) — station's
+//
+//	TapAnotherUntapped("another untapped creature you control", Creature())
+//
+// Jaspera Sentinel's creature, and every other clause that prints the
+// word "another". The label is the clause as printed, without the
+// verb, exactly as ReturnAPermanentToHand's is: the client's picker
+// says "Tap <label> to pay for this ability".
+//
+// It is not the {T} symbol (CR 302.6): a creature that arrived this
+// turn may be tapped to pay it, and the engine's validator carries no
+// sickness check. It does not target, so a hexproof creature you
+// control pays it.
+func TapAnotherUntapped(label string, preds ...CardPredicate) game.AbilityCost {
+	return game.AbilityCost{TapOthers: &game.TapOthersCost{
+		Count:         1,
+		Filter:        TargetPermanent(label, preds...),
+		ExcludeSource: true,
+		Label:         label,
+	}}
 }
 
 // ReturnAPermanentToHand is "Return a <permanent> you control to its
