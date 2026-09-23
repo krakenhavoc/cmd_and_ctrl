@@ -2247,6 +2247,14 @@ export interface ManaAbilityView {
   discard_cost_n?: number;
   discard_cost_label?: string;
   discard_cost_options?: string[];
+  // #1283: an "Exile N cards from your hand" component — Cadaverous
+  // Bloom's "Exile a card from your hand: Add {B}{B} or {G}{G}". The
+  // discard triple's shape under its OWN names, because an exiled
+  // card is not discarded (no discard event, nothing for madness to
+  // see). The picks ride activate_mana_ability as `exile_ids`.
+  exile_cost_n?: number;
+  exile_cost_label?: string;
+  exile_cost_options?: string[];
   // S22: a "Pay N life" component of the activation cost — Mana
   // Confluence's "{T}, Pay 1 life:". Advisory only; the server does
   // the real CR 119.4 check. A damage RIDER ("This land deals 1

@@ -108,6 +108,7 @@
   import AltCostPaymentModal from "./AltCostPaymentModal.svelte";
   import ModePickerModal from "./ModePickerModal.svelte";
   import DiscardCostModal from "./DiscardCostModal.svelte";
+  import { manaAbilityNeedsPrompt } from "../../manaAbilityCost";
   import AlternativeCostModal from "./AlternativeCostModal.svelte";
   import FacePickerModal from "./FacePickerModal.svelte";
   import { cardAsFace, needsFacePicker } from "../../faces";
@@ -1106,11 +1107,59 @@
     } else {
       manaDiscardIDs = [];
     }
+    askManaExileCost(card, ability);
+  }
+
+  // #1283: the exile-a-card pick (Cadaverous Bloom), after the discard
+  // and before the sacrifice — the order the engine validates in —
+  // and skipped the same way when the hand holds exactly what the
+  // clause demands. The same modal as the discard, with the verb
+  // changed, because the question is the same one; the answer rides
+  // its own field, `exile_ids`, because the component is not.
+  function askManaExileCost(card: CardView, ability: ManaAbilityView): void {
+    if (ability.exile_cost_n) {
+      const options = ability.exile_cost_options ?? [];
+      if (options.length > ability.exile_cost_n) {
+        manaExilePrompt = { card, ability };
+        return;
+      }
+      manaExileIDs = options;
+    } else {
+      manaExileIDs = [];
+    }
+    afterManaCardCosts(card, ability);
+  }
+
+  // The rest of the mana-ability chain once the card-shaped costs are
+  // answered: the sacrifice picker, then the counter cost.
+  function afterManaCardCosts(card: CardView, ability: ManaAbilityView): void {
     if (ability.sacrifice_options) {
       sacrificePrompt = { kind: "mana", card, ability };
       return;
     }
     askManaCounterCost(card, ability);
+  }
+
+  let manaExilePrompt = $state<{
+    card: CardView;
+    ability: ManaAbilityView;
+  } | null>(null);
+  let manaExileIDs: string[] = [];
+
+  const manaExileOptions = $derived.by(() => {
+    const p = manaExilePrompt;
+    if (!p || !viewerID) return [];
+    const ids = new Set(p.ability.exile_cost_options ?? []);
+    const me = view.seats.find((s) => s.id === viewerID);
+    return (me?.hand.cards ?? []).filter((c) => ids.has(c.instance_id));
+  });
+
+  function confirmManaExileCost(ids: string[]): void {
+    const p = manaExilePrompt;
+    manaExilePrompt = null;
+    if (!p) return;
+    manaExileIDs = ids;
+    afterManaCardCosts(p.card, p.ability);
   }
 
   // #1213: the mana-ability half of #660's discard picker. The same
@@ -1135,11 +1184,7 @@
     manaDiscardPrompt = null;
     if (!p) return;
     manaDiscardIDs = ids;
-    if (p.ability.sacrifice_options) {
-      sacrificePrompt = { kind: "mana", card: p.card, ability: p.ability };
-      return;
-    }
-    askManaCounterCost(p.card, p.ability);
+    askManaExileCost(p.card, p.ability);
   }
 
   // askManaCounterCost is askCounterCost's mana-ability twin: the same
@@ -1175,11 +1220,14 @@
         // #1213: omitted when empty, so every payload a client sent
         // before this field existed is byte-for-byte unchanged.
         ...(manaDiscardIDs.length > 0 ? { discard_ids: manaDiscardIDs } : {}),
+        // #1283: the same posture — absent unless the ability exiles.
+        ...(manaExileIDs.length > 0 ? { exile_ids: manaExileIDs } : {}),
         ...counter,
       },
       viewerID ?? undefined,
     );
     manaDiscardIDs = [];
+    manaExileIDs = [];
   }
 
   // #170: an ability row picked from the admin context menu. Same two
@@ -1191,10 +1239,7 @@
       return;
     }
     const ability = (card.mana_abilities ?? []).find((a) => a.index === activate.index);
-    if (
-      ability &&
-      (ability.sacrifice_options || ability.discard_cost_n || counterCostNeedsPrompt(ability))
-    ) {
+    if (ability && manaAbilityNeedsPrompt(ability)) {
       handleManaAbilityCost(card, ability);
       return;
     }
@@ -1750,6 +1795,23 @@
     onConfirm={confirmManaDiscardCost}
     onCancel={() => {
       manaDiscardPrompt = null;
+      manaDiscardIDs = [];
+    }}
+  />
+  <!-- #1283: "Exile a card from your hand" (Cadaverous Bloom). The
+       discard picker with the verb changed; the answer rides
+       exile_ids, never discard_ids. -->
+  <DiscardCostModal
+    card={manaExilePrompt?.card ?? null}
+    options={manaExileOptions}
+    need={manaExilePrompt?.ability.exile_cost_n}
+    label={manaExilePrompt?.ability.exile_cost_label}
+    verb="Exile"
+    note="exiled from your hand · not a discard"
+    onConfirm={confirmManaExileCost}
+    onCancel={() => {
+      manaExilePrompt = null;
+      manaExileIDs = [];
       manaDiscardIDs = [];
     }}
   />

@@ -372,11 +372,12 @@ solver with three readers.
 
 **Still open**, named here rather than discovered later:
 
-- A mana ability whose cost is a sacrifice with NO `{T}` (Gold, Eldrazi Spawn,
+- ~~A mana ability whose cost is a sacrifice with NO `{T}` (Gold, Eldrazi Spawn,
   Eldrazi Scion) is still not plannable. `tapPlan` models "permanents to tap",
   and a sacrifice-only source needs the plan to say "and this one is only
   cracked" — including for a source that is already tapped, which
-  `gatherTapSources` skips today.
+  `gatherTapSources` skips today.~~ **Closed by #1242** — see the 2026-09-23
+  amendment for #1242, #1283 and #1285.
 - ~~The ordering hint ADR 0068's 2026-09-22 amendment declares
   (`Spec.WantsManaFrom`, `tapSource.Wanted`) has to compose with the
   last-resort tier once it lands.~~ **Closed in this same PR**, which rebased
@@ -549,12 +550,177 @@ a player's hand, and a take-back has to put it back.
 
 **Still open**, named here rather than discovered later:
 
-- The sacrifice-only source (Gold, Eldrazi Spawn) named in the #1215 amendment
+- ~~The sacrifice-only source (Gold, Eldrazi Spawn) named in the #1215 amendment
   is unchanged and still not plannable. It is a nearer neighbour than it was —
   this amendment proves a plan entry need not be a tap — but the fix is
-  `tapPlan` growing a payment kind, not another zone.
+  `tapPlan` growing a payment kind, not another zone.~~ **Closed by #1242**,
+  and not by `tapPlan` growing a payment kind after all: the executor reads the
+  kind off the picked ability, as it reads the zone off where the card is.
 - `AutoTapForCost*` returns `[]uuid.UUID`, so a plan containing a hand card
   reaches the `/autotap` preview and the client as an ID like any other. The
   client highlights planned permanents and simply finds nothing for a card in
   hand; showing "and this card out of your hand" in the preview is a UI
-  improvement this PR did not make.
+  improvement this PR did not make. **Closed by #1285** — see the next
+  amendment.
+
+## Amendment (2026-09-23, #1242, #1283, #1285): a plan entry is a source to SPEND, not a permanent to tap
+
+Both amendments above ended on the same open item from two sides. #1215 named
+the sacrifice-ONLY source (a Gold token, an Eldrazi Spawn, an Eldrazi Scion —
+"Sacrifice this: Add …" and nothing else) as unplannable because "a plan is a
+list of permanents to TAP"; #1228 proved a plan entry need not be a tap at all
+and named the preview's bare ID list as the thing that could not show it. This
+amendment closes both, plus the one cost component the Spirit Guide work found
+next door.
+
+Eight decisions.
+
+### 1. The tap is a cost COMPONENT the executor pays, read off the picked ability
+
+`plannedTap` stays `{CardID, OneColor}`. Whether an entry is tapped is not
+carried on the plan: the planner (`gatherTapSources`) and the executor
+(`materializePlanLocked`) both read it off the one ability
+`autoTapAbilityFor` picks, and pay the `{T}` exactly when `ab.TapCost` says
+so — the same `if ab.TapCost` `ActivateManaAbility` has always had. A bit on
+the plan would be the second opinion §4 of the #1228 amendment refused for the
+zone, for the same reason: the plan can arrive stale, and every gate is
+re-asked.
+
+A source that is cracked rather than tapped:
+
+- is **not tapped** and emits **no `EventTapCard`** — a "whenever this becomes
+  tapped" watcher never sees a tap that never happened;
+- is **not "tapped for mana"** (CR 106.12a), so `produceManaLocked` is told
+  `fromTap: false` (Mana Reflection does not double a Spawn) and **no triggered
+  mana ability fires** (CR 605.1b watches a permanent tapped for mana);
+- still has its `tappedForMana` snapshot taken before the sacrifice, because
+  #1212's source kinds are read off it after the source has gone.
+
+### 2. The picker's demand is "costs the source something", not "has a {T}"
+
+`autoTapAbilityFor`'s opening line was `if !a.TapCost { continue }`. It is now
+`if !a.TapCost && !a.SacrificeCost { continue }`: an ability that costs its
+source neither a tap nor itself is bounded only by components the other
+exclusions refuse anyway, and a battlefield mana ability with no cost at all
+would be a source the planner could book without limit. Ramos's counter payout
+still falls on this line, which is where it always fell.
+
+### 3. The tapped check moves AFTER the pick and asks only of a {T}
+
+`gatherTapSources` opened with `if c.Controller != controller || c.Tapped`, and
+the executor with `if card.Tapped`. Both now pick first and then ask
+`manaSourceTappedOut(card, ab)` — `ab.TapCost && card.Tapped` — one helper,
+shared, in the same order, the way `manaTapBlockedBySickness` is. A Gold or a
+Spawn that something else tapped (Opposition, an attack) is still a source,
+because sacrificing it asks nothing about its tapped state (CR 701.21a). CR
+302.6 likewise stays a `{T}` question: a Spawn made this turn is plannable this
+turn. `Frozen` is set only on a source the plan TAPS; a cracked source misses
+no untap.
+
+**Named limit.** The picker takes the FIRST qualifying ability and does not
+consider the permanent's tapped state while choosing, so a permanent whose
+first mana ability owes a `{T}` and whose second is sacrifice-only is not a
+source while tapped. Making the picker tapped-aware would let a stale plan
+fire a DIFFERENT ability at execution than it was planned for (sacrificing a
+permanent the plan meant to tap), which is the worse direction; no printed
+card in the catalog has the shape.
+
+### 4. The creature question: an ORDER, not an exclusion
+
+#1242 asked whether a creature the cost eats — a Spawn kept back to chump-block
+— belongs with #758's `TapOthers` bar (refused outright) rather than with a
+Treasure. It does not, and the difference is whose text names the resource:
+Springleaf Drum's victim is some OTHER creature the player never offered as
+mana, while an Eldrazi Spawn's own printed ability says it is a mana source.
+Refusing it would put the Eldrazi-ramp archetype back where #1242 found it.
+
+So `tapSource.SacrificesCreature` is a sub-tier INSIDE the sacrifice tier, read
+immediately after `Sacrifices` in both comparators:
+
+```
+Wanted → LeavesHand → Sacrifices → SacrificesCreature → Frozen → (restrictiveness | tier, slotCnt)
+```
+
+A creature body is the last sacrifice the planner reaches for — behind every
+Treasure and Gold, still above a card out of hand — and a player who wants a
+particular Spawn kept locks it in the preview, which is what the lock is for.
+The key matters most in the generic recruiter, where a Spawn's `{C}` is the
+colourless tier and would otherwise be spent ahead of a Gold.
+
+### 5. What an announcement already SPENT is not the plan's to spend again
+
+CR 118.3 read from the planner's side: one object pays one component once. It
+held for an ability's own `{T}` since S15 and for convoke / waterbend taps since
+S22. It now has to hold for the two components the planner can newly reach:
+
+- a **sacrifice** — an Eldrazi Spawn named to Village Rites or Deadly Dispute
+  is also a mana source, and `applyAutoTapLocked` runs BEFORE
+  `payAdditionalCostLocked`, so a plan could crack it and leave the sacrifice
+  nothing to pay with after the mana was made (reachable for a Treasure since
+  #1215; common for a Spawn);
+- a **discard** — a Spirit Guide named to Thrill of Possibility's discard
+  could be exiled for mana first (reachable since #1228).
+
+`game.CastAutoTapExclusions(params)` and `game.AbilityAutoTapExclusions(...)`
+are the one list each path excludes; the latter also excludes the source of
+an ability whose cost sacrifices it. Their readers: `applyAutoTapLocked`,
+`ActivateCatalogAbility`, the `/autotap` preview (which now reads
+`sacrifice_ids` / `discard_ids` and — fixing a gap it had since #696 — also
+excludes its `tap_ids`), and the legal-move enumerator, which re-asks
+affordability per payment it offers (`legal/cast.go`'s expansion,
+`enumerator.payableExcluding` for abilities), so a bot is never offered
+Deadly Dispute naming the Spawn that was also its `{1}` (#544).
+
+### 6. `ManaAbilityShape.ExileCards`: "Exile a card from your hand" (#1283)
+
+Cadaverous Bloom's cost exiles a card the activator PICKS. It is a new
+component, `game.ExileCost` (`N`, `Label`, `Match`), and deliberately neither
+of its neighbours:
+
+- not `DiscardCost` routed to exile — discarding is a CR 701.8 keyword action
+  with its own event, cause and CR 614 window that madness watches; exiling
+  from a hand as a cost is a plain CR 406 zone change. The card leaves through
+  the one exit primitive with `MustSettleNow` (a commander still gets its
+  CR 903.9 answer; the CR 601.2h step cannot pause), fires no
+  `EventDiscardCard`, and is invisible to madness;
+- not `ExileSelf` — that names the source and asks nothing.
+
+It has the discard's shape everywhere else: a candidate walk
+(`ExileCostOptionsForEffect`), a validator that also refuses a card named to
+both components, the wire triple under its own names (`exile_cost_n` /
+`exile_cost_label` / `exile_cost_options`, answered with `exile_ids`), the
+client's `DiscardCostModal` with the verb changed, and the enumerator's
+one-payment arm. **The auto-tapper never plans it**, on the discard's ground:
+which card leaves the hand is a decision. The CR 602 owner
+(`AbilityCost.ExileCards`, mostly the GRAVEYARD form — Grim Lavamancer) is
+#1297.
+
+### 7. The preview DESCRIBES the plan (#1285)
+
+`GET /games/:id/auto-tap-preview` keeps `plan` (the IDs, unchanged) and gains
+`sources`, the same entries in the same order, each
+`{card_id, name, zone, tap?, sacrifice?, exile?}`. They come from
+`Game.AutoTapPlanPreferringExcluding`, which re-reads each planned card through
+the SAME two pickers the executor uses under the snapshot the plan was made in
+— so the preview names exactly the payment `materializePlanLocked` would make.
+The name is safe to send: the preview is only ever answered for the asking
+seat's own sources.
+
+The client renders each row's payment (`tap`, `sacrifice`, `tap + sacrifice`,
+`exile from hand`, the last three marked as spending the source for good) and
+one summary sentence — "Taps 2 permanents and exiles Simian Spirit Guide from
+your hand." — because a card spent out of the hand should not be discovered by
+noticing it is missing.
+
+### 8. CR 106.7 already agreed
+
+`ProducibleManaLocked` never asked about costs ("if the ability were to
+resolve") and so already counted a Gold's and a Spawn's mana. That was a
+disagreement with the PLANNER before this amendment, but not one either reader
+was wrong about: CR 106.7 is about what could be produced, not what can be
+paid for. It needed no change.
+
+**Still open**, named here rather than discovered later:
+
+- `AbilityCost.ExileCards`, the CR 602 owner of decision 6's component (#1297).
+- The tapped-aware picker of decision 3's named limit.

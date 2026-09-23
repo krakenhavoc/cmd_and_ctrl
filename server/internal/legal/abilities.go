@@ -275,6 +275,13 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// both are answered by the same floor.
 		xValue := 0
 		phyrexianLife := 0
+		// #1242: the priced mana component and the base exclusion set,
+		// kept for the per-payment affordability check in the
+		// expansion below.
+		var (
+			abilityMana     game.ParsedCost
+			abilityExcluded map[uuid.UUID]bool
+		)
 		if ab.Cost.Mana != "" {
 			// #1184: the PRICED cost, not the printed one — the same
 			// function ActivateCatalogAbility pays through, so a Boom
@@ -293,10 +300,16 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 			// exclusion: a {T} ability cannot tap its own source
 			// for mana, and an enumerator that thought it could
 			// would offer activations the engine refuses.
-			var excluded map[uuid.UUID]bool
-			if ab.Cost.Tap {
-				excluded = map[uuid.UUID]bool{source.InstanceID: true}
-			}
+			//
+			// #1242: through the engine's own list, which also
+			// excludes the source when the cost SACRIFICES it — a
+			// sacrifice-only mana source is plannable now, so the
+			// planner must not crack the permanent the ability is
+			// about to sacrifice anyway. The per-payment half (the
+			// permanents and cards the move names) is checked
+			// below, once those payments are chosen.
+			excluded := game.AbilityAutoTapExclusions(source.InstanceID, ab.Cost, nil, nil, nil)
+			abilityMana, abilityExcluded = cost, excluded
 			floor := enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX())
 			// #917, CR 107.4f: the announcement has TWO numbers
 			// when the cost prints a Phyrexian symbol — the X and
@@ -444,6 +457,17 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 				xValue := xValue
 				if game.SacrificeCountFromX(ab.Cost.SacrificeOther) {
 					xValue = len(sacs)
+				}
+				// #1242: the engine's auto-tap will not spend what this
+				// payment names (AbilityAutoTapExclusions), so the
+				// affordability answered above — with nothing named —
+				// has to hold with these named too. An Eldrazi Spawn
+				// that is both the sacrifice and the mana is a move the
+				// engine refuses; offering it is #544.
+				if ab.Cost.Mana != "" && (len(sacs) > 0 || len(discardIDs) > 0) &&
+					!e.payableExcluding(abilityMana, xValue, phyrexianLife, game.ManaSpendForAbility(*source),
+						game.WithAutoTapExclusions(abilityExcluded, sacs, discardIDs)) {
+					continue
 				}
 				for _, rets := range returnSets {
 					for _, cc := range counterChoices {
@@ -644,6 +668,23 @@ func returnLabel(g *game.Game, ids []uuid.UUID) string {
 // engine reduces the cost with, reading the same pool — so the
 // enumerator and the payment cannot disagree about which symbol the
 // life buys.
+// payableExcluding re-asks affordability for a payment already chosen
+// by affordablePayment — the same X and the same number of Phyrexian
+// symbols paid with life — against a WIDER exclusion set (#1242): the
+// permanents and cards the move names for its other cost components,
+// which the engine's auto-tap will not also spend on mana.
+func (e *enumerator) payableExcluding(
+	cost game.ParsedCost,
+	x, phyrexianLife int,
+	spend game.ManaSpendContext,
+	excluded map[uuid.UUID]bool,
+) bool {
+	if phyrexianLife > 0 {
+		cost, _ = game.PhyrexianLifePlan(cost, e.p.ManaPool, spend, phyrexianLife)
+	}
+	return e.canPayExcluding(cost, x, spend, excluded)
+}
+
 func (e *enumerator) affordablePayment(
 	cost game.ParsedCost,
 	spend game.ManaSpendContext,
@@ -1030,14 +1071,19 @@ type manaParams struct {
 	// "Discard a card: Add {B}" is #660's component with a second
 	// owner, not a second component.
 	DiscardIDs []string `json:"discard_ids,omitempty"`
+	// #1283: Cadaverous Bloom's "Exile a card from your hand" — its
+	// own field, because an exiled card is not discarded.
+	ExileIDs []string `json:"exile_ids,omitempty"`
 }
 
 // manaMoves enumerates mana abilities on the seat's permanents and —
 // since #1228 — on the seat's own cards in every other zone a mana
 // ability can function from (CR 113.6).
 // Casts already auto-tap, so a policy rarely needs these for plain
-// "{T}: Add" sources; they matter for sacrifice sources (Treasure,
-// Lotus Petal, Ashnod's Altar) the auto-tapper never touches.
+// "{T}: Add" sources; they matter for the sources the auto-tapper
+// reaches for last (a Treasure, a Gold, an Eldrazi Spawn — #1215,
+// #1242) or never (Ashnod's Altar, Skirge Familiar, Cadaverous Bloom:
+// each asks which card or permanent pays).
 // Requires priority (checked by the caller). Mana abilities ignore
 // split second (CR 702.61b).
 func (e *enumerator) manaMoves() {
@@ -1212,6 +1258,28 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 			}
 			manaDiscardIDs = opts[:dc.N]
 		}
+		// #1283: an "Exile a card from your hand" cost (Cadaverous
+		// Bloom), solved exactly as the discard above — ONE payment,
+		// in hand order, out of the engine's own walk — and from what
+		// the discard left, because one card pays one component.
+		var manaExileIDs []uuid.UUID
+		if ec := ab.ExileCards; ec != nil && ec.N > 0 {
+			taken := make(map[uuid.UUID]bool, len(manaDiscardIDs))
+			for _, id := range manaDiscardIDs {
+				taken[id] = true
+			}
+			for _, id := range g.ExileCostOptionsForEffect(e.seat, source.InstanceID, ec) {
+				if len(manaExileIDs) == ec.N {
+					break
+				}
+				if !taken[id] {
+					manaExileIDs = append(manaExileIDs, id)
+				}
+			}
+			if len(manaExileIDs) < ec.N {
+				continue
+			}
+		}
 		// #789: the counter components, enumerated by the SAME
 		// functions the activated path uses, because it is the
 		// same component. A Vivid land with no charge counters is
@@ -1259,6 +1327,7 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 						CounterKind:      cc.wireKind(),
 						CounterKinds:     cc.wireKinds(),
 						DiscardIDs:       idStrings(manaDiscardIDs),
+						ExileIDs:         idStrings(manaExileIDs),
 					}),
 				})
 			}

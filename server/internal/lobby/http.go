@@ -1389,7 +1389,13 @@ func gameCreator(c Config, w http.ResponseWriter, r *http.Request) error {
 //	                            convoke or waterbend. They pay part of
 //	                            the cost, so the plan must not also
 //	                            tap them for mana.
-//	?face=<int>               — optional. The printed face being cast
+//	?sacrifice_ids=<uuid>,...  — optional (#1242). Permanents the
+//	?discard_ids=<uuid>,...      cast names to its additional cost's
+//	                            sacrifice and discard. They do not
+//	                            change the price; the plan must not
+//	                            also spend them on mana (a named
+//	                            Eldrazi Spawn, a named Spirit Guide).
+//	?face=<int>              — optional. The printed face being cast
 //	                            (ADR 0034). A modal DFC's back face
 //	                            has its own mana cost.
 //	?x=<int>                  — optional. Caller-supplied X value
@@ -1414,6 +1420,11 @@ func gameCreator(c Config, w http.ResponseWriter, r *http.Request) error {
 //	{
 //	  "ok": true,
 //	  "plan": ["<uuid>", "<uuid>", ...],
+//	  "sources": [      // #1285: plan, described, same order
+//	    {"card_id": "<uuid>", "name": "Mountain", "zone": "battlefield", "tap": true},
+//	    {"card_id": "<uuid>", "name": "Gold", "zone": "battlefield", "sacrifice": true},
+//	    {"card_id": "<uuid>", "name": "Simian Spirit Guide", "zone": "hand", "exile": true}
+//	  ],
 //	  "missing": null,  // or ["{R}", "{1}"] when ok is false
 //	  "cost": "{2}"     // the cost string this cast PAYS
 //	}
@@ -1546,6 +1557,16 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	// #1242: and what the announcement has already SPENT is not the
+	// plan's to spend again — the convoke / waterbend taps, and the
+	// cards and permanents named to the additional cost. The same
+	// list CastSpell's auto-tap excludes (game.CastAutoTapExclusions),
+	// so the preview shows the payment the cast will make: without it
+	// a preview could crack the very Eldrazi Spawn the cast offers to
+	// Village Rites and read "ok" for a cast the engine then refuses.
+	for eid := range game.CastAutoTapExclusions(params) {
+		excluded[eid] = true
+	}
 	price, err := g.PriceCast(p.PlayerID, card, params)
 	if err != nil {
 		return httpError(http.StatusBadRequest, "this cast cannot be priced: "+err.Error())
@@ -1615,6 +1636,14 @@ func castParamsFromPreviewQuery(r *http.Request, xValue int) (game.CastSpellPara
 		return params, err
 	}
 	params.TapIDs = ids
+	// #1242: the additional cost's named payments. They do not change
+	// the price; they change what the auto-tapper may spend on it.
+	if params.SacrificeIDs, err = uuidListParam(q.Get("sacrifice_ids"), "sacrifice_ids"); err != nil {
+		return params, err
+	}
+	if params.DiscardIDs, err = uuidListParam(q.Get("discard_ids"), "discard_ids"); err != nil {
+		return params, err
+	}
 	return params, nil
 }
 
@@ -1685,18 +1714,43 @@ func writeAutoTapPreview(
 	prefer game.ManaSourceKinds,
 	w http.ResponseWriter,
 ) error {
-	plan, ok := g.AutoTapForCostPreferringExcluding(playerID, cost, xValue, excluded, prefer)
+	plan, ok := g.AutoTapPlanPreferringExcluding(playerID, cost, xValue, excluded, prefer)
+	// #1285: `sources` describes each planned source — where it is and
+	// what paying with it costs — beside the bare `plan` ID list, which
+	// is unchanged for every reader that only wanted the IDs. A plan
+	// entry stopped meaning "an untapped permanent" twice over: #1228
+	// can plan a Spirit Guide out of the HAND, and #1242 can crack a
+	// Gold or an Eldrazi Spawn without tapping it. A client that looked
+	// the IDs up on the battlefield showed the first as nothing at all.
+	type source struct {
+		CardID     string `json:"card_id"`
+		Name       string `json:"name,omitempty"`
+		Zone       string `json:"zone,omitempty"`
+		Tap        bool   `json:"tap,omitempty"`
+		Sacrifice  bool   `json:"sacrifice,omitempty"`
+		ExileCards bool   `json:"exile,omitempty"`
+	}
 	type response struct {
 		OK      bool     `json:"ok"`
 		Plan    []string `json:"plan,omitempty"`
+		Sources []source `json:"sources,omitempty"`
 		Missing []string `json:"missing,omitempty"`
 		Cost    string   `json:"cost"`
 	}
 	body := response{OK: ok, Cost: costStr}
 	if ok {
 		body.Plan = make([]string, len(plan))
-		for i, id := range plan {
-			body.Plan[i] = id.String()
+		body.Sources = make([]source, len(plan))
+		for i, e := range plan {
+			body.Plan[i] = e.CardID.String()
+			body.Sources[i] = source{
+				CardID:     e.CardID.String(),
+				Name:       e.Name,
+				Zone:       string(e.Zone),
+				Tap:        e.Taps,
+				Sacrifice:  e.Sacrifices,
+				ExileCards: e.Exiles,
+			}
 		}
 	} else {
 		// On miss, surface the unpaid symbols so the client UI can

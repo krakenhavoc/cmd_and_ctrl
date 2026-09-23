@@ -37,9 +37,11 @@ import (
 // per-permanent and per-ability are the same question here; the
 // helper says so.
 //
-// The auto-tapper never plans the payout: the ability has no {T}, so
-// it is not a tap source at all, and ten mana from five counters is
-// not a decision a planner should make on the player's behalf.
+// The auto-tapper never plans the payout: the ability costs its source
+// neither a {T} nor itself (the demand autoTapAbilityFor makes since
+// #1242), so it is not a planned source at all, and ten mana from five
+// counters is not a decision a planner should make on the player's
+// behalf.
 //
 // No simplification.
 func init() {

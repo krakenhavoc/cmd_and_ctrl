@@ -8,7 +8,8 @@ import (
 
 // autotap.go is the S15 sub-PR 4 backtracking auto-tapper. Public
 // API: `Game.AutoTapForCost(controller, cost, xValue)` returns a
-// plan (list of permanent IDs to tap) that satisfies the parsed
+// plan (the source IDs it would spend — tapped, cracked or, for a
+// card in hand, exiled) that satisfies the parsed
 // cost, or (nil, false) when no plan fits within the budget.
 // `AutoTapForCostExcluding` accepts a set of "lock-tap" excluded
 // sources the player has pre-pinned for a different purpose; the
@@ -39,20 +40,26 @@ import (
 // the first matching half), `{X}` mid-cast slider with live
 // recompute (auto-tapper consumes the announced XValue verbatim).
 //
-// S15's "mana abilities are tap-cost-only" note is half closed
-// (#1215). A cost that sacrifices the SOURCE — a Treasure, a Lotus
+// S15's "mana abilities are tap-cost-only" note is closed (#1215,
+// #1242). A cost that sacrifices the SOURCE — a Treasure, a Lotus
 // Petal — names no permanent and asks no question, so the planner can
 // pay it; a cost that sacrifices OTHER permanents (Ashnod's Altar)
-// asks which ones, and stays out of the source list. Every planned
-// source still owes a {T}: the plan is a list of permanents to TAP,
-// and a sacrifice-only ability (a Gold token, an Eldrazi Spawn) has no
-// slot in that shape yet.
+// asks which ones, and stays out of the source list. Since #1242 the
+// sacrifice need not come with a {T}: a Gold token, an Eldrazi Spawn
+// and an Eldrazi Scion print the sacrifice ALONE, and a plan entry is
+// "a source this plan spends", not "a permanent this plan taps".
+// Whether an entry is tapped is not carried on the plan — both halves
+// read it off the one ability autoTapAbilityFor picks (ab.TapCost), so
+// they cannot disagree about it, and an already-tapped Gold is a
+// source because nothing about its cost asks it to be untapped.
 //
 // A sacrifice-self source is planned LAST, behind every ordinary
 // source and behind a frozen one: cracking a Treasure to pay a generic
 // pip a Mountain could have paid spends a resource the player never
 // agreed to spend, which is the bar the life-cost and counter-adding
-// exclusions are held to.
+// exclusions are held to. Inside that tier a CREATURE the cost eats
+// (an Eldrazi Spawn, a Scion) comes after one that is not (a Treasure,
+// a Gold) — see tapSource.SacrificesCreature (#1242).
 //
 // …and behind THAT, since #1228, a source that is not on the
 // battlefield at all: a Spirit Guide's "Exile this card from your
@@ -166,7 +173,110 @@ func (g *Game) AutoTapForCostPreferringExcluding(
 	return plan.cardIDs(), ok
 }
 
-// plannedTap is one entry of an auto-tap plan: the permanent to tap,
+// AutoTapPlanEntry is one source of an auto-tap plan as a reader
+// OUTSIDE this package sees it — the /autotap preview (#1285).
+//
+// The bare ID list the other exported entry points return was enough
+// while every planned source was an untapped permanent: the client
+// found the ID on the battlefield and drew a tap. Two issues broke
+// that. #1228 made a planned source able to be a card in HAND (a
+// Spirit Guide), which the battlefield lookup cannot find, so the
+// preview said "ok" and showed fewer sources than the payment would
+// spend — and the one it hid is the one that does not come back. #1242
+// made a planned permanent able to be CRACKED without being tapped (a
+// Gold, an Eldrazi Spawn), which "these permanents tap" misdescribes.
+// So the entry says where the source is and what paying with it costs.
+//
+// Derived, not carried: describePlanLocked re-reads each planned card
+// through the SAME two pickers the executor uses (autoTapAbilityFor on
+// the battlefield, autoManaExileAbilityFor off it), under the same
+// snapshot the plan was made in. The preview therefore names exactly
+// the payment materializePlanLocked would make, and the plan itself
+// stays {CardID, OneColor} — a zone or a payment kind stamped on it
+// would be the second opinion ADR 0011's #1228 amendment §4 refuses.
+type AutoTapPlanEntry struct {
+	CardID uuid.UUID
+	// Name is the card's name. The preview is only ever asked by the
+	// seat whose sources these are, so a hand card's name is the
+	// asker's own information.
+	Name string
+	// Zone is where the source is: the battlefield, or a zone its mana
+	// ability functions from (CR 113.6 — the hand, today).
+	Zone ZoneKind
+	// Taps: the payment taps it ({T}). Sacrifices: the payment
+	// sacrifices it. Exiles: the payment exiles it from Zone. A
+	// Treasure is Taps+Sacrifices, a Gold or an Eldrazi Spawn is
+	// Sacrifices alone, a Spirit Guide is Exiles, a land is Taps.
+	Taps       bool
+	Sacrifices bool
+	Exiles     bool
+}
+
+// AutoTapPlanPreferringExcluding is AutoTapForCostPreferringExcluding
+// with each planned source DESCRIBED (#1285) rather than projected to
+// an ID. Same planner, same snapshot, same answer to "is this payable";
+// the /autotap preview is the caller.
+func (g *Game) AutoTapPlanPreferringExcluding(
+	controller uuid.UUID,
+	cost ParsedCost,
+	xValue int,
+	excluded map[uuid.UUID]bool,
+	prefer ManaSourceKinds,
+) ([]AutoTapPlanEntry, bool) {
+	var (
+		out []AutoTapPlanEntry
+		ok  bool
+	)
+	g.ReadSnapshot(func() {
+		var plan tapPlan
+		plan, ok = g.autoTapPreferringLocked(controller, cost, xValue, excluded, prefer)
+		if ok {
+			out = g.describePlanLocked(controller, plan)
+		}
+	})
+	return out, ok
+}
+
+// describePlanLocked is the projection AutoTapPlanPreferringExcluding
+// returns: each planned card re-found, and its payment read off the
+// ability the executor's own picker would fire. A card the walk cannot
+// find (unreachable under one snapshot) is still listed, by ID alone,
+// so the list never has fewer entries than the plan.
+//
+// Caller must hold g.mu.
+func (g *Game) describePlanLocked(controller uuid.UUID, plan tapPlan) []AutoTapPlanEntry {
+	if len(plan) == 0 {
+		return nil
+	}
+	p := g.playerByIDLocked(controller)
+	out := make([]AutoTapPlanEntry, 0, len(plan))
+	for _, planned := range plan {
+		entry := AutoTapPlanEntry{CardID: planned.CardID}
+		if c, ok := g.cardInZoneLocked(g.Battlefield, planned.CardID); ok {
+			entry.Name, entry.Zone = c.Name, ZoneBattlefield
+			if ab := g.autoTapAbilityFor(controller, c, ManaAbilitiesForCard(c)); ab != nil {
+				entry.Taps, entry.Sacrifices = ab.TapCost, ab.SacrificeCost
+			}
+			out = append(out, entry)
+			continue
+		}
+		for _, kind := range supportedManaAbilityZones {
+			c, ok := g.cardInZoneLocked(playerManaZone(p, kind), planned.CardID)
+			if !ok {
+				continue
+			}
+			entry.Name, entry.Zone = c.Name, kind
+			if ab := g.autoManaExileAbilityFor(controller, c, ManaAbilitiesForCard(c), kind); ab != nil {
+				entry.Exiles = ab.ExileSelf
+			}
+			break
+		}
+		out = append(out, entry)
+	}
+	return out
+}
+
+// plannedTap is one entry of an auto-tap plan: the source to spend,
 // and — for a "N mana of any one color" source (#779) — the ONE
 // colour the solver booked it for.
 //
@@ -184,7 +294,7 @@ type plannedTap struct {
 	OneColor string
 }
 
-// tapPlan is the auto-tapper's answer: the permanents to tap, in the
+// tapPlan is the auto-tapper's answer: the sources to spend, in the
 // order the solver picked them (coloured requirements first, generic
 // recruits second). The public API projects it to a plain ID list —
 // the lobby preview and the legal enumerator only ever wanted the
@@ -315,6 +425,12 @@ func (g *Game) autoTapPreferringLocked(
 		if sources[i].Sacrifices != sources[j].Sacrifices {
 			return !sources[i].Sacrifices
 		}
+		// #1242: inside the sacrifice tier, a creature body last. It is
+		// only ever set alongside Sacrifices, so among ordinary sources
+		// both sides are false and the key is inert.
+		if sources[i].SacrificesCreature != sources[j].SacrificesCreature {
+			return !sources[i].SacrificesCreature
+		}
 		if sources[i].Frozen != sources[j].Frozen {
 			return !sources[i].Frozen
 		}
@@ -360,6 +476,24 @@ type tapSource struct {
 	// first in both comparators — see the sort in
 	// autoTapPreferringLocked.
 	Sacrifices bool
+
+	// SacrificesCreature marks a Sacrifices source that is a CREATURE
+	// (#1242) — an Eldrazi Spawn, an Eldrazi Scion. Never set without
+	// Sacrifices.
+	//
+	// The creature question #1242 left open, answered as an ORDER and
+	// not as an exclusion. A Spawn kept back to chump-block is closer
+	// to the TapOthers bar (#758) than a Treasure is, and the planner
+	// cannot weigh combat — but the Spawn's own printed text names it
+	// as a mana source, which Springleaf Drum's victim never is, and
+	// refusing it would put the Eldrazi-ramp archetype back where
+	// #1242 found it: a board of Spawn reading as "missing {3}" to the
+	// preview, the strict gate and every bot. So a creature the cost
+	// eats is the LAST sacrifice the planner reaches for — behind every
+	// Treasure and Gold, still above a card out of hand — and a player
+	// who wants one kept locks it in the preview, which is what the
+	// lock exists for.
+	SacrificesCreature bool
 
 	// OneColor is set on a candidate that exists only because its
 	// permanent adds "N mana of any one color" (#779): the ONE colour
@@ -409,12 +543,15 @@ type tapSource struct {
 	LeavesHand bool
 }
 
-// gatherTapSources walks the battlefield and collects every tap-
-// for-mana ability the controller has access to. Tapped, foreign,
-// or excluded permanents are skipped. A card with multiple mana
-// abilities contributes only its first tap-cost ability for S15;
-// multi-ability mana sources (Mox Diamond, City of Brass with
-// activations) need a richer model that lands in a later sprint.
+// gatherTapSources walks the battlefield and collects every mana
+// ability the controller has access to. Foreign or excluded
+// permanents are skipped, and so is a TAPPED one whose picked ability
+// owes a {T} — a tapped Gold or Eldrazi Spawn is still a source
+// (#1242), because its cost never asks it to be untapped. A card with
+// multiple mana abilities contributes only the first ability the
+// picker accepts; multi-ability mana sources (Mox Diamond, City of
+// Brass with activations) need a richer model that lands in a later
+// sprint.
 func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool, prefer ManaSourceKinds) []tapSource {
 	if g.Battlefield == nil {
 		return nil
@@ -429,7 +566,7 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 	// producesManaReplacementsExistLocked.
 	priceProduction := g.producesManaReplacementsExistLocked()
 	for _, c := range g.Battlefield.Cards {
-		if c.Controller != controller || c.Tapped {
+		if c.Controller != controller {
 			continue
 		}
 		if excluded[c.InstanceID] {
@@ -446,6 +583,15 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 		}
 		picked := g.autoTapAbilityFor(controller, c, ManaAbilitiesForCard(c))
 		if picked == nil {
+			continue
+		}
+		// #1242: the tapped check lives AFTER the pick and asks only of
+		// an ability that owes a {T}. It used to open the loop, which
+		// was right while every planned ability tapped; a Gold that
+		// something else tapped can still be sacrificed for mana. The
+		// executor asks the same question through the same helper, so
+		// the two cannot disagree.
+		if manaSourceTappedOut(&c, picked) {
 			continue
 		}
 		// #540: CR 302.6. A mana creature that entered this turn
@@ -511,10 +657,14 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 		// replaces how much mana is produced, not what produced it.
 		wanted := prefer != 0 && manaSourceKindsOf(c).HasAny(prefer)
 		out = appendTapSource(out, tapSource{
-			CardID:     c.InstanceID,
-			Frozen:     untapStepRestrictedBy(&c, g, restrictions) || c.hasNextUntapSkipFor(controller),
-			Wanted:     wanted,
-			Sacrifices: picked.SacrificeCost,
+			CardID: c.InstanceID,
+			// #1242: Frozen is a claim about an UNTAP the source would
+			// miss, so it is asked only of a source this plan taps. A
+			// sacrifice-only source is gone, not tapped.
+			Frozen:             picked.TapCost && (untapStepRestrictedBy(&c, g, restrictions) || c.hasNextUntapSkipFor(controller)),
+			Wanted:             wanted,
+			Sacrifices:         picked.SacrificeCost,
+			SacrificesCreature: picked.SacrificeCost && c.IsCreature(),
 		}, slots)
 	}
 	return gatherManaZoneSources(g, controller, excluded, prefer, identity, priceProduction, out)
@@ -780,8 +930,23 @@ func appendTapSource(out []tapSource, proto tapSource, slots []ProducedManaEntry
 // spent exhaust still auto-taps the second, which a per-source check
 // outside the picker would have got wrong.
 //
-// Seven exclusions, all for the same reason — the auto-tapper's
+// One demand first: the ability has to cost the SOURCE something — a
+// {T}, or the source itself (#1242). An ability with neither is bounded
+// only by components the exclusions below refuse anyway, and a
+// battlefield mana ability with no cost at all would be a source the
+// planner could book without limit. Before #1242 the demand was "a
+// {T}", which is what kept a Gold token, an Eldrazi Spawn and an
+// Eldrazi Scion — "Sacrifice this: Add …" and nothing else — out of
+// every plan.
+//
+// Then eight exclusions, all for the same reason — the auto-tapper's
 // contract is "no further player decisions and no hidden costs":
+//
+//   - an EXILE-A-CARD cost (#1283, Cadaverous Bloom's "Exile a card
+//     from your hand"), on the ground the discard bullet below gives:
+//     WHICH card is a decision. It is not the Spirit Guides'
+//     ExileSelf, which names the source and asks nothing — that one
+//     has its own picker, autoManaExileAbilityFor;
 //
 //   - a SPENT EXHAUST ability cannot be activated at all (#1183), and
 //     the planner must not book mana the executor would then refuse to
@@ -870,11 +1035,11 @@ func (g *Game) autoTapAbilityFor(asker uuid.UUID, source Card, abilities []ManaA
 		if !ManaAbilityFunctionsFromZone(a, ZoneBattlefield) {
 			continue
 		}
-		// Every planned source owes a {T}: a tapPlan is a list of
-		// permanents to tap, so a sacrifice-ONLY ability (a Gold
-		// token, an Eldrazi Spawn) has no slot in it yet — see the
-		// file header.
-		if !a.TapCost {
+		// #1242: a {T} OR the source itself. A sacrifice-ONLY ability
+		// (a Gold token, an Eldrazi Spawn) is a plan entry like any
+		// other now — the executor reads ab.TapCost to decide whether
+		// to tap it. See the demand in the doc above.
+		if !a.TapCost && !a.SacrificeCost {
 			continue
 		}
 		// #1215: the sacrifice-OTHER half only. Sacrificing the source
@@ -938,6 +1103,11 @@ func (g *Game) autoTapAbilityFor(asker uuid.UUID, source Card, abilities []ManaA
 		if a.DiscardCards != nil {
 			continue
 		}
+		// #1283: the exile-a-card clause, on the discard's ground one
+		// verb over — Cadaverous Bloom asks which card leaves the hand.
+		if a.ExileCards != nil {
+			continue
+		}
 		return &a
 	}
 	return nil
@@ -956,7 +1126,7 @@ func (g *Game) autoTapAbilityFor(asker uuid.UUID, source Card, abilities []ManaA
 //
 // A separate function rather than a zone parameter on the twin,
 // because the two pickers exclude for different reasons. The
-// battlefield picker's seven exclusions are all about a payment the
+// battlefield picker's eight exclusions are all about a payment the
 // planner may not decide or may not afford; this one's demands are
 // about what a card in a hand even IS:
 //
@@ -1017,7 +1187,7 @@ func (g *Game) autoManaExileAbilityFor(asker uuid.UUID, source Card, abilities [
 		if a.AddCounter != nil || a.RemoveCounters != nil {
 			continue
 		}
-		if !a.TapOthers.Empty() || a.DiscardCards != nil {
+		if !a.TapOthers.Empty() || a.DiscardCards != nil || a.ExileCards != nil {
 			continue
 		}
 		return &a
@@ -1096,6 +1266,25 @@ func manaTapBlockedBySickness(c *Card, ab *ManaAbilityShape) bool {
 		return false
 	}
 	return c.IsCreature() && HasSummoningSickness(c)
+}
+
+// manaSourceTappedOut reports whether a permanent cannot pay the {T}
+// the picked ability owes because it is already tapped (#1242). The
+// one copy of the rule the planner (gatherTapSources) and the executor
+// (materializePlanLocked) share, for the reason manaTapBlockedBySickness
+// is shared.
+//
+// Only a {T} cost is gated, which is the point: until #1242 the planner
+// skipped every tapped permanent before it had picked an ability at
+// all, so a Gold or an Eldrazi Spawn that something else had tapped was
+// not a mana source, although sacrificing it asks nothing about its
+// tapped state (CR 701.21a). ActivateManaAbility has always asked the
+// question this way round: `if ab.TapCost { if card.Tapped { … } }`.
+func manaSourceTappedOut(c *Card, ab *ManaAbilityShape) bool {
+	if c == nil || ab == nil {
+		return true
+	}
+	return ab.TapCost && c.Tapped
 }
 
 // restrictivenessScore lower = more restrictive (better picked
@@ -1261,12 +1450,16 @@ func recruitGeneric(
 // most, because the Treasure is gone and the land untaps.
 //
 // #1228: and a source that LEAVES THE HAND comes after even that.
+//
+// #1242: and inside the sacrifice tier, a creature body comes after a
+// Treasure or a Gold.
 func orderUnusedByGenericPreference(sources []tapSource, used []bool) []int {
 	type rank struct {
 		idx        int
 		wanted     bool
 		leavesHand bool
 		sacrifices bool
+		creature   bool
 		frozen     bool
 		tier       int // 0 = colorless-only, 1 = any-color, 2 = monocolored
 		slotCnt    int
@@ -1282,6 +1475,7 @@ func orderUnusedByGenericPreference(sources []tapSource, used []bool) []int {
 			wanted:     s.Wanted,
 			leavesHand: s.LeavesHand,
 			sacrifices: s.Sacrifices,
+			creature:   s.SacrificesCreature,
 			frozen:     s.Frozen,
 			tier:       t,
 			slotCnt:    len(s.Slots),
@@ -1323,6 +1517,13 @@ func orderUnusedByGenericPreference(sources []tapSource, used []bool) []int {
 		}
 		if out[a].sacrifices != out[b].sacrifices {
 			return !out[a].sacrifices
+		}
+		// #1242: the creature sub-tier, in the same place as in the
+		// coloured comparator. An Eldrazi Spawn is colourless (tier 0)
+		// and a Gold is any-colour (tier 1), so without this key the
+		// generic tier would spend the body first.
+		if out[a].creature != out[b].creature {
+			return !out[a].creature
 		}
 		if out[a].frozen != out[b].frozen {
 			return !out[a].frozen
