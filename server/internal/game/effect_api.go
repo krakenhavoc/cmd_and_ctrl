@@ -1738,6 +1738,29 @@ func (g *Game) ReturnFromGraveyardUnderControlForEffect(cardID uuid.UUID, dest Z
 	return err
 }
 
+// ReturnFromGraveyardTappedForEffect is
+// ReturnFromGraveyardUnderControlForEffect with the CR 614
+// "enters tapped" clause riding the same event
+// ReturnToBattlefieldForEffect's `tapped` already does for the
+// exile-return path (#1178) — Reassembling Skeleton and Drownyard
+// Temple's own printed "return this card from your graveyard to the
+// battlefield tapped" (#1284).
+//
+// A separate function rather than a fourth parameter on
+// ReturnFromGraveyardUnderControlForEffect on purpose: that one has
+// call sites across the catalog and the engine's own tests today, all
+// of them meaning "untapped", and a bare positional bool at the end
+// of an existing signature is the kind of change a diff reviews past
+// without noticing which call sites silently kept the old meaning and
+// which needed the new one. `tapped` is meaningless for anything but
+// Dest == ZoneBattlefield, same as ReturnToBattlefieldForEffect's.
+//
+// Caller must hold g.mu.
+func (g *Game) ReturnFromGraveyardTappedForEffect(cardID uuid.UUID, dest ZoneKind, controller uuid.UUID, tapped bool) error {
+	_, err := g.returnFromGraveyardLocked(cardID, dest, controller, tapped)
+	return err
+}
+
 // ReturnToBattlefieldForEffect is "return it to the battlefield"
 // (optionally TAPPED) said of a card whose zone the effect does not
 // know — which is exactly what a delayed trigger keyed on "when it

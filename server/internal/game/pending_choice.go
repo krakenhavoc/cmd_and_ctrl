@@ -3643,21 +3643,29 @@ func (g *Game) pruneSacrificeChoicesLocked() {
 // the table, and a stall dump has to say where it went.
 //
 // untap_choice carries the same payload (isCardSetPickKind) and is
-// deliberately NOT swept. Its continuation is the rest of the UNTAP
-// STEP (finishUntapStepLocked), its departure row is dropDiscard, so a
-// withdrawal here would end the question by stranding the step — and
-// it cannot need this: CR 502.3's determination is about the active
-// player's own permanents during their own untap step, where nothing
-// has priority to move them.
+// deliberately NOT swept — excluded BY KIND, below, since #1263.
+// (Before #1263 this comment claimed the exclusion was automatic
+// because untap_choice "sets no zone", which was never true —
+// queueUntapChoiceLocked has stamped Zone: ZoneBattlefield on it
+// since #826, so the loop examined and could WITHDRAW it exactly like
+// any other card-set pick, contradicting this very paragraph and ADR
+// 0018 §6's #1045 amendment.) Its continuation is the rest of the
+// UNTAP STEP (finishUntapStepLocked), its departure row is
+// dropDiscard, so a withdrawal here would end the question by
+// stranding the step — and it cannot need this: CR 502.3's
+// determination is about the active player's own permanents during
+// their own untap step, where nothing has priority to move them.
 //
 // #1198's entry_reveal_from_hand is out for the same reason and one
-// of its own. The drop would strand a paused CR 614 ENTRY, which is
-// worse than the untap step it would strand above; and the prompt
-// cannot need the prune, because its floor is zero — "reveal nothing"
-// is an answer no emptied candidate list can take away, which is
-// exactly the property untap_choice lacks and a choose_cards with a
-// floor of one lacks. A stale candidate is still refused on submit by
-// pickStillInPickZoneLocked, so the worst an un-pruned list costs is
+// of its own (also excluded by kind, below, since #1263 — its frame's
+// zone is ZoneHand, not empty either). The drop would strand a paused
+// CR 614 ENTRY, which is worse than the untap step it would strand
+// above; and the prompt cannot need the prune, because its floor is
+// zero — "reveal nothing" is an answer no emptied candidate list can
+// take away, which is exactly the property untap_choice lacks and a
+// choose_cards with a floor of one lacks. A stale candidate is still
+// refused on submit by pickStillInPickZoneLocked, so the worst an
+// un-pruned list costs is
 // one rejected click.
 //
 // Called where pruneSacrificeChoicesLocked is called, and for its
@@ -3690,9 +3698,20 @@ func (g *Game) pruneCardSetChoicesLocked() {
 		// Every kind carrying the choose-cards payload, not just
 		// choose_cards itself (#1214): a their_permanents prompt over
 		// a board that empties under it is exactly the prompt this
-		// sweep exists for, and untap_choice sets no zone so it falls
-		// out at the next line.
+		// sweep exists for.
 		if c == nil || !isCardSetPickKind(c.Kind) {
+			continue
+		}
+		// #1263: untap_choice and entry_reveal_from_hand are excluded
+		// BY KIND, not by an absent zone — both stamp a real Zone on
+		// their frame (ZoneBattlefield, ZoneHand), so the zone check
+		// below does not exclude them and never did. See the doc
+		// comment above for why neither needs (and neither can
+		// survive) this sweep: both would be WITHDRAWN by it, and
+		// each one's drop action is dropDiscard, which strands the
+		// paused untap step or the paused CR 614 entry it is
+		// pausing — forever, with nothing to settle it.
+		if c.Kind == PendingChoiceUntapChoice || c.Kind == PendingChoiceEntryRevealFromHand {
 			continue
 		}
 		frame := c.chooseCardsResume

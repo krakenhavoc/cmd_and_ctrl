@@ -16,11 +16,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // without one it is four mana for four damage spread over two bodies.
 //
 // The ETB works fully. "Damage equal to ITS power" is read at
-// RESOLUTION off the Redcap's effective power, so an anthem or a
-// counter that arrived in the window counts, and a Redcap that has
-// left the battlefield before the trigger resolves deals nothing —
-// the printed card would use its last-known power, which the engine
-// has no way to read here. Weaker, never stronger.
+// RESOLUTION off the Redcap's CURRENT power — CurrentPower(), which
+// layers an anthem on top of printed power AND adds/subtracts
+// +1/+1 / -1/-1 counters, not Effective().Power alone (#1281: that
+// field excludes counters, which is exactly what persist would put on
+// this creature the moment it existed) — so an anthem, a counter
+// effect, or persist itself once it lands all count, and a Redcap
+// that has left the battlefield before the trigger resolves deals
+// nothing — the printed card would use its last-known power, which
+// the engine has no way to read here. Weaker, never stronger.
 //
 // "Any target" is the full CR 115.4 slot: a player, a creature, a
 // planeswalker or a battle.
@@ -55,7 +59,7 @@ func init() {
 					if !ok {
 						return nil
 					}
-					power := src.Effective().Power
+					power := src.CurrentPower()
 					if power <= 0 || len(item.Targets) == 0 {
 						return nil
 					}
