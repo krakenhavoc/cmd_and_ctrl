@@ -58,6 +58,9 @@
     onTargetCard?: (card: CardView) => boolean;
     /** Pin this seat open. Board owns the pin; the summary just asks. */
     onExpand?: () => void;
+    // #1307: threaded straight through to PlayerIdentity — see its
+    // prop doc.
+    considering?: boolean;
   }
 
   const {
@@ -77,6 +80,7 @@
     onTargetPlayer,
     onTargetCard,
     onExpand,
+    considering = false,
   }: Props = $props();
 
   const summary = $derived(buildSeatSummary(seat, controlledCards, view.battlefield?.cards ?? []));
@@ -211,6 +215,7 @@
       {sendAction}
       {onDeclareAttack}
       {onTargetPlayer}
+      {considering}
     />
     <button
       class="expand"

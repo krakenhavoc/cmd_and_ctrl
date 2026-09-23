@@ -58,6 +58,10 @@
     // Whose window it is when the viewer doesn't hold priority — the
     // header names them instead of showing actions.
     priorityHolderName?: string | null;
+    // #1307: true when the named priority holder is the seat Board
+    // has decided is "considering a response" — a public-timing
+    // read, never a hint about whether they actually have one.
+    priorityHolderConsidering?: boolean;
     // Pass priority from the strip (same handler as the phase widget).
     onPass?: () => void;
   }
@@ -74,6 +78,7 @@
     onCounter,
     onTargetStackItem,
     priorityHolderName = null,
+    priorityHolderConsidering = false,
     onPass,
   }: Props = $props();
 
@@ -262,7 +267,13 @@
       {:else if viewerHasPriority}
         <span class="hint">top resolves when everyone passes · you hold priority</span>
       {:else if priorityHolderName}
-        <span class="hint">{priorityHolderName} holds priority</span>
+        <span class="hint">
+          {#if priorityHolderConsidering}
+            {priorityHolderName} is considering a response…
+          {:else}
+            {priorityHolderName} holds priority
+          {/if}
+        </span>
       {/if}
       <!-- #323: the same session hold as the phase widget's button,
            mirrored here because this card is on screen exactly when

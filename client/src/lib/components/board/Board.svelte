@@ -31,6 +31,7 @@
     ZoneView,
   } from "../../protocol";
   import { seatPlacements, type SeatPosition } from "../../cardTypes";
+  import { isResponseWindowFor, responseWindowKey } from "../../considering";
   import PlayerPanel from "./PlayerPanel.svelte";
   import SeatSummary from "./SeatSummary.svelte";
   import {
@@ -265,6 +266,71 @@
   const prioritySeatID = $derived(view.seats[view.turn.priority_holder]?.id ?? null);
   const monarchID = $derived(view.monarch ?? null);
   const initiativeID = $derived(view.initiative ?? null);
+
+  // ---- "considering a response…" chip (#1307) -----------------------
+  //
+  // See considering.ts's header for the rationale: the chip has to be
+  // derived from public state and elapsed time ALONE, so a real hold,
+  // a timed bluff, a manual bluff and someone away from the keyboard
+  // all read the same way to every other seat. Board owns the timer
+  // because it's the one place that sees every seat and mounts every
+  // panel; the pure predicate stays in considering.ts so it's testable
+  // without a component.
+  //
+  // Automatic passes land in about one round trip — milliseconds — so
+  // this delay is long enough that nothing ever gets a chip.
+  const CONSIDERING_DELAY_MS = 800;
+
+  let consideringSeatID = $state<string | null>(null);
+  let consideringTimer: ReturnType<typeof setTimeout> | null = null;
+  // Plain (non-reactive) watermark: `view` is a brand-new object on
+  // every snapshot, so an effect that merely reads it re-runs on every
+  // broadcast — a life total changing included. Comparing against the
+  // last key this effect actually acted on is what turns that into
+  // "only when the response window itself changed".
+  let lastConsideringKey = "";
+
+  $effect(() => {
+    const key = responseWindowKey(view);
+    if (key === lastConsideringKey) return;
+    lastConsideringKey = key;
+
+    consideringSeatID = null;
+    if (consideringTimer !== null) {
+      clearTimeout(consideringTimer);
+      consideringTimer = null;
+    }
+
+    const holderIdx = view.turn?.priority_holder ?? -1;
+    const holder = holderIdx >= 0 ? (view.seats[holderIdx] ?? null) : null;
+    // Never the viewer's own seat (nothing to signal to yourself),
+    // never a bot (which already has its own thinking chip), never an
+    // eliminated seat.
+    if (!holder || holder.id === viewerID || holder.is_bot === true || holder.eliminated) {
+      return;
+    }
+
+    consideringTimer = setTimeout(() => {
+      consideringTimer = null;
+      // Re-read fresh rather than trust the closure: the window this
+      // timer was scheduled for might have already moved on to the
+      // next one (which would have reset lastConsideringKey and
+      // cleared this very timer) — this check is the belt to that
+      // brace for a timer that somehow still fires anyway.
+      if (responseWindowKey(view) !== key) return;
+      if (!isResponseWindowFor(view, holderIdx)) return;
+      consideringSeatID = holder.id;
+    }, CONSIDERING_DELAY_MS);
+  });
+
+  // Teardown-only: clears an in-flight timer on unmount (leaving the
+  // game, switching tables). Kept dependency-free so it doesn't fire
+  // on every snapshot the way the effect above deliberately does.
+  $effect(() => {
+    return () => {
+      if (consideringTimer !== null) clearTimeout(consideringTimer);
+    };
+  });
 
   function handleTapToggle(card: CardView): void {
     guardedSendAction(card.tapped ? "untap" : "tap", { instance_id: card.instance_id });
@@ -1614,6 +1680,7 @@
               onTargetPlayer={handleTargetPlayer}
               onTargetCard={handleTargetCard}
               onExpand={() => (pinnedSeatID = nextPinnedSeat(pinned, seat.id))}
+              considering={seat.id === consideringSeatID}
             />
           {:else}
             {#if decision.reason === "pinned"}
@@ -1663,6 +1730,7 @@
               {onToggleAutopass}
               onActivateAbility={handleActivateAbility}
               onManaAbilityCost={handleManaAbilityCost}
+              considering={seat.id === consideringSeatID}
             />
           {/if}
         </div>
@@ -1696,6 +1764,7 @@
           onDrawCard={handleDrawCard}
           onTargetPlayer={handleTargetPlayer}
           onTargetCard={handleTargetCard}
+          considering={seat.id === consideringSeatID}
         />
       </div>
     {/each}
@@ -1717,6 +1786,7 @@
       seats={view.seats}
       viewerHasPriority={prioritySeatID === viewerID}
       priorityHolderName={view.seats[view.turn.priority_holder]?.name ?? null}
+      priorityHolderConsidering={consideringSeatID !== null && consideringSeatID === prioritySeatID}
       splitSecondActive={view.split_second_active === true}
       onCounter={(item) => {
         const verb = item.kind === "spell" ? "counter_spell" : "counter_ability";
