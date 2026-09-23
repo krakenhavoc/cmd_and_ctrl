@@ -32,16 +32,24 @@ import (
 //     creature's own dies-triggers do not fire, because it never
 //     died (CR 700.4).
 //
-// Shares Cosmic Intervention's declared gap: an opponent's commander
-// whose CR 903.9 command-zone replacement was taken goes there, not
-// to exile — the built-in rewrites the destination first. Weaker,
-// never stronger.
+// An opponent's dying COMMANDER is exiled too, and its owner
+// separately decides. CR 903.9a (pinned edition) makes a commander's
+// trip from a graveyard or exile a state-based "may" AFTER it
+// arrives, so this replacement exiles the commander like any other of
+// the opponent's creatures, and the built-in command-zone replacement
+// (builtin_replacements.go) meets it in the CR 616 apply loop: the
+// commander's OWNER orders the two (CR 616.1 gives that choice to the
+// affected object's controller, not to Liesa's), the command-zone
+// offer is asked, and "no" leaves this effect to exile the creature.
+// Both printed outcomes are reachable and nothing else is — the same
+// reasoning that closed Cosmic Intervention's identical stale caveat,
+// pinned here by
+// TestB19LiesaExilesAnOpponentsDyingCommanderWhenItsOwnerDeclines.
 func init() {
 	Register(Spec{
 		OracleID:        "efcaadbe-24e3-4dfc-b08c-a910f003d427",
 		Name:            "Liesa, Forgotten Archangel",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"An opponent's dying commander still goes to the command zone instead of being exiled."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying", "lifelink"},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventLTB},

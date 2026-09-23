@@ -21,16 +21,23 @@ import (
 // ability is Stonespeaker Crystal's narrowed to one target player,
 // with the draw after the exile in printed order.
 //
-// Shares Liesa's declared gap: an opponent's commander whose CR
-// 903.9 command-zone replacement was taken goes there, not to exile
-// — the built-in rewrites the destination first. Weaker, never
-// stronger.
+// An opponent's dying COMMANDER is exiled too, and its owner
+// separately decides — Liesa's reasoning, shared because the
+// replacement is Liesa's. CR 903.9a (pinned edition) makes a
+// commander's trip from a graveyard or exile a state-based "may"
+// AFTER it arrives, so this replacement exiles the commander like any
+// other of the opponent's creatures, and the built-in command-zone
+// replacement (builtin_replacements.go) meets it in the CR 616 apply
+// loop: the commander's OWNER orders the two (CR 616.1 gives that
+// choice to the affected object's controller, not to the Stone's),
+// the command-zone offer is asked, and "no" leaves this effect to
+// exile the creature. Pinned by
+// TestB33StoneOfErechExilesAnOpponentsDyingCommanderWhenItsOwnerDeclines.
 func init() {
 	Register(Spec{
 		OracleID:     "73dad679-1edb-41c9-9d43-56dc93c3e9fe",
 		Name:         "Stone of Erech",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"An opponent's dying commander still goes to the command zone instead of being exiled."},
+		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{{
 			Watches: []game.EventKind{game.EventZoneMove},
 			AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {

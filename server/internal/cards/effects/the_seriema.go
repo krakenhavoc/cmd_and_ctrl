@@ -31,13 +31,15 @@ import (
 // a Seriema whose charge counters are removed stops being a creature
 // and loses flying in the same recompute.
 //
-// The station ABILITY is the one line still missing, and it is a COST
-// gap rather than a Station gap: "tap another untapped creature you
-// control" is a cost component AbilityCost cannot express (#758).
-// ADR 0071 names the field #758 should add and the constructor that
-// will sit on it; until then the charge counters go on by hand from
-// the counter menu and the caveat says so. Nothing about the
-// thresholds waits on it.
+// The station ABILITY is the one line still missing, and the cost is
+// no longer why: #758 gave AbilityCost the TapOthers component the
+// "tap another untapped creature you control" clause needs. What's
+// missing is on the EFFECT side — "put charge counters equal to ITS
+// power on this" names the specific creature that paid the cost, and
+// nothing threads a TapOthers payment's chosen permanent through to
+// the ability's resolution yet. That's #759; until it lands the
+// charge counters go on by hand from the counter menu and the caveat
+// says so. Nothing about the thresholds waits on it.
 //
 // CR 721.2c — "a station card has no power or toughness outside the
 // battlefield" — is also not modelled: The Seriema shows its printed

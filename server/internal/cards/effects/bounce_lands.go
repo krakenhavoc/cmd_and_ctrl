@@ -15,19 +15,23 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Farm; batch 11 (#304) adds Guildless Commons, the colourless one;
 // the rest of the cycle belongs here when it arrives.
 //
-// Two differences from the Chancery file, both deliberate:
+// One difference from the Chancery file, deliberate:
 //
 //   - The tapped entry is a real CR 614 self-replacement. The
 //     Chancery's comment says a catalog replacement cannot fire on
 //     its own entry; that was true when it was written and has not
 //     been since the Temple cycle (gatherActiveReplacementsLocked's
 //     third block). The Chancery file itself is left to its owner.
-//   - Same declared simplification as the Chancery: the printed
-//     bounce is a CHOICE, not a target — modelled as a target clause
-//     so the controller gets the existing picker, which locks the
-//     choice at announce rather than resolution. It can never fizzle
-//     for want of a choice, because the land itself is always a
-//     legal one, and bouncing itself is sometimes the right line.
+//
+// The bounce is the Chancery's own shape: a CHOICE, not a target —
+// "return a land you control", with no "target" in the oracle text —
+// made on resolution (ReturnOneYouControl, the own_permanents
+// prompt, #1214). It used to be a target clause picked when the
+// trigger went on the stack, a declared simplification that let
+// opponents see and answer the choice before the resolution-time
+// picker existed. Each land in the cycle is always a candidate while
+// it is still on the battlefield, and returning itself is a normal,
+// sometimes correct, line.
 func init() {
 	for _, land := range []struct{ oracleID, name, produced string }{
 		{"046f5783-cc7b-416a-8cf6-2bcef9c2cc1a", "Simic Growth Chamber", "{G}{U}"},
@@ -40,30 +44,19 @@ func init() {
 		Register(Spec{
 			OracleID:     land.oracleID,
 			Name:         land.name,
-			Completeness: CompletenessCaveats,
-			Caveats:      []string{"You pick the land to return when the trigger goes on the stack, not on resolution, and it's a target that can be removed in response."},
+			Completeness: CompletenessFull,
 			Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 			ManaAbilities: []ManaAbility{{
 				Cost:     ManaAbilityCost{Tap: true},
 				Produced: land.produced,
 				Label:    "Add " + land.produced,
 			}},
-			Triggered: []game.TriggeredAbility{{
-				Watches: []game.EventKind{game.EventETB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return ev.CardID == source.InstanceID
-				},
-				Targets: TargetPermanent("a land you control", And(Land(), YouControl())),
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, name+" — return a land you control to hand",
-						func(g *game.Game, item *game.StackItem) error {
-							if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-								return nil
-							}
-							return BounceToHand{Target: item.Targets[0].ID}.Apply(NewContext(g, item))
-						})
-				},
-			}},
+			Triggered: []game.TriggeredAbility{
+				WhenThisEnters(name+" — return a land you control", Do(ReturnOneYouControl{
+					Match:    MatchLand,
+					Question: name + " — return a land you control to its owner's hand",
+				})),
+			},
 		})
 	}
 }

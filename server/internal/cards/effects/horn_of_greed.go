@@ -20,14 +20,25 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // battlefield from exile or a graveyard by an effect earlier in the
 // same turn, the tally can no longer tell a later land played from
 // exile or a graveyard apart from another return, and the trigger
-// stays quiet for it. A land played from hand is always seen.
-// Weaker than printed, never stronger.
+// stays quiet for it — weaker than printed, never stronger.
+//
+// A land from HAND is the opposite direction, and it is not
+// currently declared as a gap even though it is one: #654 shipped
+// PutFromHandOntoBattlefield (Eureka Moment, Spelunking, Chulane,
+// Broken Bond), which puts a land from hand without playing it, and
+// b20LandPlayed still reads every hand-origin entry as a play. That
+// is STRONGER than printed — the Horn draws for a land it should
+// ignore — and the fix needs a "played" marker on the entry itself
+// (#1326, the same seam Deep Gnome Terramancer is blocked on).
 func init() {
 	Register(Spec{
 		OracleID:     "b8181d53-1954-4f46-8670-8696440208e8",
 		Name:         "Horn of Greed",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"A land played from exile or from a graveyard isn't counted if another land already came back to the battlefield from exile or a graveyard earlier that turn."},
+		Caveats: []string{
+			"A land played from exile or from a graveyard isn't counted if another land already came back to the battlefield from exile or a graveyard earlier that turn.",
+			"A land put onto the battlefield from hand by another effect (not played) is still counted as a play, drawing a card it shouldn't.",
+		},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventZoneMove},
 			AppliesTo: func(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {

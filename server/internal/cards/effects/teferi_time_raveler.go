@@ -74,10 +74,15 @@ func init() {
 				Targets: upToOneArtifactCreatureOrEnchantment(),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
-					// The bounce is the optional half; the draw is
-					// not. A target that became illegal between
-					// announce and resolution (CR 608.2b) is
-					// skipped and the draw still happens.
+					// If a chosen target became illegal between
+					// announce and resolution, the engine's own
+					// CR 608.2b re-check (resolveTopAbilityLocked)
+					// has already fizzled the whole ability before
+					// this Effect ever runs — no bounce AND no
+					// draw. This loop only ever sees a legal target
+					// or none chosen at all ("up to one"); the
+					// IsTargetLegal check is defensive, not a real
+					// per-target skip.
 					for _, t := range ctx.Targets() {
 						if t.Kind != game.TargetCard {
 							continue

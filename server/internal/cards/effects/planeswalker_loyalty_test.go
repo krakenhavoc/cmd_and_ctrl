@@ -171,6 +171,18 @@ func TestTeferiOneLoyaltyAbilityPerTurn(t *testing.T) {
 	}
 }
 
+// #1337: flash was missing from PrintedKeywords, which is real for
+// an imported deck (Scryfall supplies the keyword there) but leaves
+// a spawned or fixture Emperor without it.
+func TestWanderingEmperorPrintsFlash(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	emperor := pushCatalogWalker(g, me.ID, "The Wandering Emperor", wanderingEmperorOracle, 3)
+	if !hasEffectiveKeyword(t, g, emperor, "flash") {
+		t.Error("The Wandering Emperor does not carry printed flash")
+	}
+}
+
 // The Emperor's +1 puts a +1/+1 counter on up to one target creature
 // and grants it first strike - two layers, one ability (#1208 fixed
 // the card: S27 had the three abilities permuted and altered).

@@ -49,11 +49,16 @@ func b20GolemToken(keyword string) game.Card {
 //   - The library, the stack and the battlefield are origins a land
 //     play can never have (Cultivate, a fetchland, a cast permanent,
 //     a control change), so those are never a play.
-//   - Nothing in the engine moves a land from a HAND to the
-//     battlefield except playing it (the "put a land card from your
-//     hand onto the battlefield" clause has no primitive — the
-//     Spelunking / Eureka Moment gap), so a hand origin is always a
-//     play.
+//   - A hand origin is treated as always a play, which was exact
+//     until #654 shipped PutFromHandOntoBattlefield: Eureka Moment,
+//     Spelunking, Chulane, Broken Bond and Insidious Fungus's third
+//     mode can all put a land from hand onto the battlefield without
+//     playing it. Nothing here tells that apart from an ordinary land
+//     drop, so a PUT land from hand still reads as a PLAY — stronger
+//     than printed for Horn of Greed and Prosper's Pact Boon, the
+//     wrong direction (#259). The fix needs a "played" marker on the
+//     entry itself, which is the engine half tracked as #1326;
+//     Deep Gnome Terramancer is blocked on the same seam.
 //   - Exile and a graveyard are ambiguous: a land played through a
 //     permission (Prosper's, Crucible of Worlds') and a land an
 //     effect RETURNS (a flickered land, Splendid Reclamation) both

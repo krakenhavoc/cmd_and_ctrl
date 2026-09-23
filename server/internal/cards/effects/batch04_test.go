@@ -140,6 +140,9 @@ func TestB04TalismanRowsHaveBothHalves(t *testing.T) {
 
 // --- lands ---------------------------------------------------------
 
+// #1337: the bounce is a resolution-time choice (ReturnOneYouControl
+// / ChoosePermanents), not a target picked when the trigger goes on
+// the stack.
 func TestB04BounceLandEntersTappedAndBouncesALand(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
@@ -148,9 +151,14 @@ func TestB04BounceLandEntersTappedAndBouncesALand(t *testing.T) {
 	garrison := playLandFromHand(t, g, "Boros Garrison", b04BorosGarrisonOracle)
 	top100AssertEnteredTapped(t, g, garrison, "Boros Garrison")
 
-	b04WaitForPick(t, g, me.ID)
-	pickCard(t, g, me.ID, plains)
 	passPriorityAroundTable(t, g)
+	p := latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, me.ID)
+	if p == nil {
+		t.Fatal("Boros Garrison queued no return pick")
+	}
+	if err := g.ResolveOwnPermanents(p.ID, me.ID, []uuid.UUID{plains}); err != nil {
+		t.Fatalf("ResolveOwnPermanents: %v", err)
+	}
 
 	if g.Battlefield.Contains(plains) || !me.Hand.Contains(plains) {
 		t.Error("the chosen land should be back in its owner's hand")

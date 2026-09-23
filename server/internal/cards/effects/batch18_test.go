@@ -922,13 +922,20 @@ func TestB18JunkDiverReturnsAnotherArtifactCardWhenItDies(t *testing.T) {
 	if hasID(p.PickTargetCards, bear) || !hasID(p.PickTargetCards, relic) {
 		t.Error("artifact cards in your graveyard are offered, creature cards are not")
 	}
+	// #1337: the picker excludes the Diver ITSELF too — TargetsFrom /
+	// AnotherTarget by instance rather than the old resolution-time
+	// self-decline — so the gap that used to be a declared caveat is
+	// closed.
+	if hasID(p.PickTargetCards, diver) {
+		t.Error("Junk Diver itself is not offered — \"another\" excludes it by instance")
+	}
 	pickCard(t, g, me.ID, relic)
 	passPriorityAroundTable(t, g)
 	if !me.Hand.Contains(relic) {
 		t.Error("the artifact card returns to hand")
 	}
-	if spec, _ := Lookup(b18JunkDiverOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the self-pick gap must be declared")
+	if spec, _ := Lookup(b18JunkDiverOracle); spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Error("the self-pick gap (#1337) is closed")
 	}
 }
 

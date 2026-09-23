@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Teferi, Hero of Dominaria — Legendary Planeswalker — Teferi for
 // {3}{W}{U}, starting loyalty 4 (EDHREC rank 4205):
@@ -30,18 +26,12 @@ import (
 // the command zone instead (#529 / #539). Nothing in this file does
 // that work; it happens because the tuck uses the engine's one door.
 //
-// The +1's DRAW is complete. Its untap clause ships with the choice
-// made for the player: at the next end step it untaps up to two
-// tapped lands its controller controls, taken in battlefield order.
-// The engine has no "choose up to two permanents" prompt — the
-// sacrifice picker is the only permanent chooser there is — and of
-// the three honest options this is the one that is bounded by the
-// printed card in every direction: it never untaps more than two, it
-// never untaps a land the controller does not control, and the worst
-// it can do is untap two lands the player would not have picked,
-// which is weaker than the card, never stronger. Omitting the clause
-// outright was the alternative and it throws away the reason the +1
-// is a plus.
+// The +1's DRAW is complete. Its untap clause prints no "target" and
+// no "you control" — on paper it is a resolution-time choice among
+// every land at the table, made when the delayed trigger fires at
+// the next end step. UntapUpToLands is that choice: a prompt over
+// every tapped land at the table, any controller's, queued by the
+// delayed trigger's Effect (teferiHeroUntapTwoLands).
 //
 // The −8 is REGISTERED since S40 (#623) and is the catalog's first
 // TRIGGERED emblem. Its whole declaration is an `Emblem` slot holding
@@ -66,10 +56,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "f2f165b6-ef0a-42ad-9352-ba68be8248b0",
 		Name:         "Teferi, Hero of Dominaria",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The +1's end-step untap picks two of your tapped lands for you rather than asking.",
-		},
+		Completeness: CompletenessFull,
 		// Printed loyalty reaches the card through deck import
 		// (ADR 0032 §1); this is the fallback for tokens, fixtures
 		// and the dev spawner.
@@ -143,22 +130,8 @@ func init() {
 // controller the scheduler already recorded.
 //
 // "Up to two" is a ceiling, so one tapped land, or none, is a legal
-// and silent outcome.
+// and silent outcome — UntapUpToLands's prompt offers Min 0.
 func teferiHeroUntapTwoLands(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	var picked []uuid.UUID
-	for _, c := range g.BattlefieldCardsForEffect() {
-		if len(picked) == 2 {
-			break
-		}
-		if c.Controller == item.Controller && c.IsLand() && c.Tapped {
-			picked = append(picked, c.InstanceID)
-		}
-	}
-	for _, id := range picked {
-		if err := (UntapTarget{Target: id}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
+	return UntapUpToLands{N: 2, Question: "Teferi, Hero of Dominaria — untap up to two lands"}.Apply(ctx)
 }

@@ -27,10 +27,10 @@ import (
 // fails. Both failure modes are silent — a fetch that quietly finds
 // no card rather than erroring.
 //
-// "Basic" is read off the SUPERTYPE (b30IsBasicLandCard), not
-// IsBasicLand's "basic land" type-line substring: a Snow-Covered
-// Plains is "Basic Snow Land — Plains", which is a basic Plains card
-// and which the substring misses.
+// "Basic" is read off the SUPERTYPE via b30IsBasicLandCard (an alias
+// for IsBasicLand since #1334) — a Snow-Covered Plains is "Basic Snow
+// Land — Plains", which is a basic Plains card and is found like any
+// other basic.
 func IsBasicLandWithSubtype(subtype string) func(game.Card) bool {
 	return func(c game.Card) bool {
 		return b30IsBasicLandCard(c) && containsFoldASCII(c.TypeLine, subtype)

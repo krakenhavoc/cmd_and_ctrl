@@ -52,17 +52,12 @@ import (
 // file — this is the same three effects re-attached to the right
 // costs, plus the +1/+1 counter and the 2 life the printed card has
 // and the old entry did not.
-//
-// WHAT IS NOT WIRED
-//
-//   - Flash. Printed keywords reach the cast gate through
-//     CatalogPrintedKeywords and hers come off Scryfall for an
-//     imported deck, so nothing is claimed here.
 func init() {
 	Register(Spec{
-		OracleID:     "0c7f18d5-36cb-4bc6-a358-443b97666215",
-		Name:         "The Wandering Emperor",
-		Completeness: CompletenessFull,
+		OracleID:        "0c7f18d5-36cb-4bc6-a358-443b97666215",
+		Name:            "The Wandering Emperor",
+		Completeness:    CompletenessFull,
+		PrintedKeywords: []string{"flash"},
 		ActivationTimings: []game.ActivationTiming{
 			ThisSourcesLoyaltyAbilitiesAtInstantSpeed(
 				"As long as The Wandering Emperor entered this turn, you may activate her loyalty abilities any time you could cast an instant.",
@@ -122,10 +117,15 @@ func init() {
 				Targets: TargetCreature("target tapped creature", tappedPermanent()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
-					// The life gain is NOT conditional on the exile:
-					// CR 608.2b makes the ability do as much as it
-					// can, and a target that became illegal in
-					// response only skips the exile.
+					// This ability has exactly one target, so a
+					// target that became illegal in response makes
+					// EVERY target illegal — the engine's own
+					// CR 608.2b re-check (resolveTopAbilityLocked)
+					// has already fizzled the whole ability before
+					// this Effect ever runs, and the life gain does
+					// NOT happen either. This loop only ever sees a
+					// legal target; the range is defensive, not a
+					// real per-target skip.
 					for _, t := range ctx.LegalTargets() {
 						if t.Kind != game.TargetCard {
 							continue

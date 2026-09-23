@@ -474,6 +474,64 @@ func TestB33StoneOfErechExilesOpposingDeathsAndEatsAGraveyard(t *testing.T) {
 	}
 }
 
+// #1337: the same stale caveat Liesa's file carried, closed the same
+// way — CR 903.9a's command-zone move is a state-based "may" AFTER
+// the exile, so an opponent's dying commander is exiled like any
+// other of their creatures and its owner separately decides.
+func TestB33StoneOfErechExilesAnOpponentsDyingCommanderWhenItsOwnerDeclines(t *testing.T) {
+	for _, takeCommandZone := range []bool{false, true} {
+		g := newCatalogGame(t)
+		me, opp := g.Seats[0], g.Seats[1]
+		pushCatalogPermanent(g, me.ID, "Stone of Erech", "Legendary Artifact", b33StoneOfErechOracle, false)
+		commander := uuid.New()
+		g.Battlefield.PushTop(game.Card{
+			InstanceID: commander, Name: "Their Commander", TypeLine: "Legendary Creature — Human Wizard",
+			Power: 3, Toughness: 3, Owner: opp.ID, Controller: opp.ID, IsCommander: true,
+		})
+
+		asked := false
+		g.WithWriteLock(func() {
+			if err := g.DestroyPermanentForEffect(commander); err != nil {
+				t.Fatalf("DestroyPermanentForEffect: %v", err)
+			}
+		})
+		for i := 0; i < 4 && len(g.PendingChoices) > 0; i++ {
+			c := g.PendingChoices[len(g.PendingChoices)-1]
+			if c.Chooser != opp.ID {
+				t.Fatalf("prompt %s addressed to %s, want the commander's owner %s", c.Kind, c.Chooser, opp.ID)
+			}
+			switch c.Kind {
+			case game.PendingChoiceReplacementOrder:
+				if err := g.ResolveReplacementOrder(c.ID, opp.ID, c.ReplacementEffectIDs); err != nil {
+					t.Fatalf("ResolveReplacementOrder: %v", err)
+				}
+			case game.PendingChoiceOptionalReplacement:
+				asked = true
+				if err := g.ResolveOptionalReplacement(c.ID, opp.ID, takeCommandZone); err != nil {
+					t.Fatalf("ResolveOptionalReplacement: %v", err)
+				}
+			default:
+				t.Fatalf("unexpected prompt %s", c.Kind)
+			}
+		}
+		if !asked {
+			t.Fatal("the commander's owner was never offered the command zone")
+		}
+		if opp.Graveyard.Contains(commander) {
+			t.Fatal("the commander hit the graveyard under Stone of Erech")
+		}
+		if takeCommandZone {
+			if !opp.Command.Contains(commander) {
+				t.Fatal("the owner took the command zone but the commander is not there")
+			}
+			continue
+		}
+		if !exileHas(g, commander) {
+			t.Fatal("declined commander is not in exile")
+		}
+	}
+}
+
 // --- lands and mana -------------------------------------------------
 
 func TestB33CopperMyrTapsForGreen(t *testing.T) {
@@ -925,6 +983,11 @@ func TestB33RakdosJoinsUpReanimatesWithTwoCountersAndPunishesLegendaryDeaths(t *
 	}
 }
 
+// #1337: the sacrifice is a resolution-time choice (ChoosePermanents,
+// Sacrifice mode), not a target picked when the trigger goes on the
+// stack, so the prompt is an own_permanents choose-cards pick rather
+// than a pick_target one, and it only appears once the trigger
+// resolves.
 func TestB33GodEternalBontuSacrificesTheChosenPermanentsToDrawAndReturnsThirdFromTop(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
@@ -933,21 +996,28 @@ func TestB33GodEternalBontuSacrificesTheChosenPermanentsToDrawAndReturnsThirdFro
 	bear := b12Creature(g, me.ID, "My Bear", "Creature — Bear", 2, 2)
 	theirs := b12Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2)
 	bontu := castCatalogSpell(t, g, "God-Eternal Bontu", "Legendary Creature — Zombie God", b33GodEternalBontuOracle, nil)
+	if pendingOfKind(g, game.PendingChoicePickTarget) != nil {
+		t.Fatal("the sacrifice asked for a target; the printed text names none")
+	}
 	passPriorityAroundTable(t, g)
-	b04WaitForPick(t, g, me.ID)
-	p := latestPickTarget(g, me.ID)
-	if hasID(p.PickTargetCards, bontu) || hasID(p.PickTargetCards, theirs) {
+
+	p := latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, me.ID)
+	if p == nil {
+		t.Fatal("God-Eternal Bontu queued no sacrifice pick")
+	}
+	if hasID(p.ChooseCards, bontu) || hasID(p.ChooseCards, theirs) {
 		t.Error("Bontu himself and an opponent's permanent are not offered")
 	}
-	if !hasID(p.PickTargetCards, rock) || !hasID(p.PickTargetCards, land) || !hasID(p.PickTargetCards, bear) {
+	if !hasID(p.ChooseCards, rock) || !hasID(p.ChooseCards, land) || !hasID(p.ChooseCards, bear) {
 		t.Error("every other permanent you control is offered")
 	}
-	if p.PickTargetMin != 0 || p.PickTargetMax != 0 {
-		t.Errorf("any number: min %d max %d", p.PickTargetMin, p.PickTargetMax)
+	if p.ChooseMin != 0 {
+		t.Errorf("any number: min %d, want 0", p.ChooseMin)
 	}
 	hand := me.Hand.Size()
-	b17PickCards(t, g, me.ID, rock, land)
-	passPriorityAroundTable(t, g)
+	if err := g.ResolveOwnPermanents(p.ID, me.ID, []uuid.UUID{rock, land}); err != nil {
+		t.Fatalf("ResolveOwnPermanents: %v", err)
+	}
 	if g.Battlefield.Contains(rock) || g.Battlefield.Contains(land) {
 		t.Error("the chosen permanents are sacrificed")
 	}

@@ -90,45 +90,63 @@ func (g *Game) ExileTopWithPermissionForEffect(fromPlayer, grantTo uuid.UUID, n 
 //
 // A zero perm.Player means "the card's owner", which is what every
 // airbend card says and what makes this primitive different from the
-// impulse one in the way that matters. The owner is read off the card
-// AFTER the move, not before: Card.Owner is fixed at deck build and
-// rides the card through every zone, so the two are the same value,
-// and reading it after means one scan rather than two.
+// impulse one in the way that matters. GrantCastPermissionOverCardForEffect
+// fills that default in from the card's current owner.
 //
-// The move goes through ExileCardForEffect so the LKI snapshot, the
-// ZoneMove event and the LTB event are exactly the ones every other
-// exile produces — an airbent creature's leaves-the-battlefield
-// triggers fire normally, and dies-triggers correctly do not (CR
-// 700.4: exile is not dying).
+// The grant is stamped from ExileCardThenForEffect's continuation, not
+// on the line after a fire-and-forget move — #1336, the same root
+// cause #1332 fixed for the card-side airbend primitive
+// (exileAllWithPermission in effects/airbend.go). An exile can PAUSE
+// on the CR 903.9 prompt when the card is a commander: the
+// fire-and-forget exile this used to call (ExileCardForEffect) returns
+// nil while the commander is still on the battlefield waiting for its
+// owner's answer, so a scan for the card in exile on the very next
+// line found nothing — and if the owner then DECLINED the command
+// zone, the card landed in exile with no permission ever granted.
+// Warp (scheduleWarpExileLocked, alternative_cost.go) is the current
+// caller: a warped commander that stays in exile now gets its recast
+// grant like any other warped permanent.
+//
+// The move goes through the shared exit primitive so the LKI
+// snapshot, the ZoneMove event and the LTB event are exactly the ones
+// every other exile produces — an airbent creature's
+// leaves-the-battlefield triggers fire normally, and dies-triggers
+// correctly do not (CR 700.4: exile is not dying).
 //
 // A card that is no longer in exile once the move completes is not an
-// error. The LTB event dispatches triggers synchronously, and one of
-// them may move the card on (a commander heading for the command zone
-// is the live example); the permission simply does not land on a card
-// that isn't there to receive it.
+// error: the window may have cancelled the move, a replacement may
+// have sent it somewhere else, or (CR 903.9) its owner may have sent
+// it to the command zone instead. The permission simply does not land
+// on a card that isn't there to receive it.
+//
+// A card ALREADY in exile is not routed at all — Neyali, Suns'
+// Vanguard's re-grant calls this on a card an earlier resolution of
+// its own trigger already exiled, purely to refresh the permission's
+// duration, and the exit primitive's "already there" leg is
+// deliberately NOT counted as landing (routeEachStepLocked: "it is
+// already where the route would put it... it did not go THIS way").
+// Routing unconditionally would silently drop every re-grant. This
+// checks the card's current zone first and grants immediately when
+// it is already exile, exactly as the pre-#1336 body did; only a
+// card that still needs to MOVE goes through ExileCardThenForEffect.
 //
 // Caller must hold g.mu.
 func (g *Game) ExileCardWithPermissionForEffect(cardID uuid.UUID, perm CastPermission) error {
-	if err := g.ExileCardForEffect(cardID); err != nil {
-		return err
-	}
-	if g.Exile == nil {
+	if z := g.FindCardZoneForEffect(cardID); z != nil && z.Kind == ZoneExile {
+		perm.Zone = ZoneExile
+		g.GrantCastPermissionOverCardForEffect(cardID, perm)
 		return nil
 	}
-	for i := range g.Exile.Cards {
-		if g.Exile.Cards[i].InstanceID != cardID {
-			continue
+	return g.ExileCardThenForEffect(cardID, func(g *Game, exiled bool) error {
+		if !exiled {
+			return nil
 		}
-		if perm.Player == uuid.Nil {
-			perm.Player = g.Exile.Cards[i].Owner
-		}
-		perm.Zone = ZoneExile
-		// The card is already publicly known — ExileCardForEffect
+		// The card is already publicly known — the exit primitive
 		// marks every seat as a knower on the way in, which is what
 		// the permission needs: one nobody can see is unplayable in
 		// practice.
-		g.GrantCastPermissionToCardsForEffect(perm, []Card{g.Exile.Cards[i]})
+		perm.Zone = ZoneExile
+		g.GrantCastPermissionOverCardForEffect(cardID, perm)
 		return nil
-	}
-	return nil
+	})
 }

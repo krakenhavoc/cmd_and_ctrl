@@ -15,42 +15,36 @@ import (
 // The second card on the trigger-data row, and the other half of what
 // that row means. Scrap Trawler's clause reads a NUMBER off the
 // event; this one reads a TYPE LINE — "shares a permanent type WITH
-// IT", where "it" is the permanent that just entered and nothing in
-// a static clause can name it.
+// IT", where "it" is the permanent that just entered.
 //
-// `TargetsFrom` builds the clause from the trigger's own CR 603.10
-// snapshot: the entering permanent's permanent types (CR 110.4a),
-// intersected against each candidate. An artifact creature entering
-// offers both the artifacts and the creatures, which is the card's
-// whole engine — a Bounce-and-replay loop only closes when the two
-// ends share a type.
-//
-// Sandbox simplification, declared (the Whitemane Lion posture): "you
-// may return another permanent you control" is a resolution-time
-// choice, not a target, and the pick_target prompt is the one picker
-// the engine has for choosing among permanents — so the permanent is
-// chosen as the trigger goes on the stack, with a count of "up to
-// one" carrying the "you may". Weaker than printed on two counts:
-// opponents see the choice before the trigger resolves, and a
-// permanent of yours with shroud cannot be the one returned.
+// "You may return another permanent you control" is a CHOICE, not a
+// target — there is no "target" in the printed text — made on
+// resolution (CR 608.2), the ReturnOneYouControl / ChoosePermanents
+// posture (#1214, #1337). It used to be TargetsFrom's announce-time
+// clause, a declared simplification that let opponents see and
+// answer the choice before the trigger resolved and excluded a
+// permanent with shroud; neither applies to an untargeted choice, so
+// both are gone. Because the candidate set depends on a FACT about
+// what entered rather than a static predicate, this calls
+// ChoosePermanents directly instead of the simpler
+// ReturnOneYouControl wrapper: `entered` is captured as a plain ID
+// when the trigger fires, and its CURRENT permanent types (CR 110.4a)
+// are read fresh at resolution — the correct timing for an
+// instruction with no target, and never less permissive than the old
+// announce-time snapshot.
 func init() {
 	Register(Spec{
 		OracleID:     "5cd2fd32-4da2-40eb-b003-c0b9a9ec91c1",
 		Name:         "Cloudstone Curio",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"You pick the permanent to return when the trigger goes on the stack rather than as it resolves, so opponents can respond to the choice, and a permanent of yours with shroud can't be picked.",
-		},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches:   []game.EventKind{game.EventETB},
 			AppliesTo: cloudstoneNonartifactEntered,
-			// TargetsFrom, not Targets: "shares a permanent type with
-			// it" is a fact about what entered. See trigger_event.go.
-			TargetsFrom: cloudstoneSharesATypeClause,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
+			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
+				entered := ev.CardID
 				return game.NewTriggeredItem(source,
 					"Cloudstone Curio — return another permanent you control to its owner's hand",
-					bounceChosenTarget)
+					cloudstoneReturnAnother(entered))
 			},
 		}},
 	})
@@ -72,26 +66,53 @@ func cloudstoneNonartifactEntered(ev game.Event, source *game.Card, _ game.Chara
 	return ok && !c.IsArtifact() && c.Controller == source.Controller
 }
 
-// cloudstoneSharesATypeClause builds the clause from the triggering
-// event: "another permanent you control that shares a permanent type
-// with it", as an up-to-one so declining is an answer.
+// cloudstoneReturnAnother is the resolution effect: "you may return
+// another permanent you control that shares a permanent type with
+// it". `entered` is the permanent that triggered this, captured at
+// Build time as a plain instance ID.
 //
-// "Another" excludes the permanent that entered, by instance id —
-// which is also what keeps a creature from bouncing itself the moment
-// it lands and makes the Curio a two-card loop rather than a one-card
-// one.
-//
-// An event with no object snapshot yields a clause nothing satisfies
-// rather than nil, for the reason Scrap Trawler's does: nil would say
-// "this trigger targets nothing" and put an ability on the stack that
-// returns nothing.
-func cloudstoneSharesATypeClause(tc game.TriggerContext, _ *game.Card, _ *game.Game) *game.TargetSpec {
-	entered := tc.Object
-	return TargetPermanent(
-		"another permanent you control that shares a permanent type with the permanent that entered",
-		YouControl(),
-		func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
-			return entered != nil && c.InstanceID != entered.ID && entered.SharesPermanentTypeWith(c)
-		},
-	).WithCount(0, 1)
+// If the entered permanent has since left the battlefield — bounced,
+// destroyed, or otherwise, in response to the trigger — nothing can
+// share a type with a permanent that is not there any more, so there
+// is nothing to offer (CR 608.2c: only as much of the ability as
+// possible).
+func cloudstoneReturnAnother(entered uuid.UUID) func(g *game.Game, item *game.StackItem) error {
+	return func(g *game.Game, item *game.StackItem) error {
+		ctx := NewContext(g, item)
+		enteredCard, ok := g.LookupCardForEffect(entered)
+		if !ok {
+			return nil
+		}
+		return ChoosePermanents{
+			Question: "Cloudstone Curio — return another permanent you control to its owner's hand",
+			Candidates: func(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
+				var out []uuid.UUID
+				for _, c := range g.BattlefieldCardsForEffect() {
+					if c.Controller != of || c.InstanceID == entered {
+						continue
+					}
+					if cloudstoneSharesAPermanentType(enteredCard, c) {
+						out = append(out, c.InstanceID)
+					}
+				}
+				return out, 0, 1
+			},
+			Then: bouncePickedToHand,
+		}.Apply(ctx)
+	}
+}
+
+// cloudstoneSharesAPermanentType is CR 110.4a's six permanent types,
+// checked directly against two live cards rather than through
+// game.ObjectSnapshot — that type is built from CR 603.10
+// last-known-information at trigger-fire time and is not meant to be
+// reconstructed later, so a resolution-time check reads both cards'
+// CURRENT effective types instead.
+func cloudstoneSharesAPermanentType(a, b game.Card) bool {
+	return (a.IsArtifact() && b.IsArtifact()) ||
+		(a.IsCreature() && b.IsCreature()) ||
+		(a.IsEnchantment() && b.IsEnchantment()) ||
+		(a.IsLand() && b.IsLand()) ||
+		(a.IsPlaneswalker() && b.IsPlaneswalker()) ||
+		(a.IsBattle() && b.IsBattle())
 }

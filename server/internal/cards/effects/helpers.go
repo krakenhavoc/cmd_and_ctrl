@@ -40,15 +40,31 @@ func resumeClause(g *game.Game, item *game.StackItem, then func(ctx *Context) er
 	return then(NewContext(g, item))
 }
 
-// IsBasicLand reports whether a card's type line contains the
-// "basic land" supertype (case-insensitive substring). Used by
-// tutor / fetch primitives that need to match Forest / Island /
-// Mountain / Plains / Swamp / Wastes without enumerating each
-// subtype. Path to Exile, Cultivate, and Solemn Simulacrum share
-// this predicate; keep it here rather than duplicating the
-// lowercase loop per-card.
+// IsBasicLand reports whether a card carries the Basic supertype
+// (CR 205.4a) — read off Effective().Supertypes, not a "basic land"
+// type-line substring. A Snow-Covered basic's type line is "Basic
+// Snow Land — Plains": the word "Basic" and the word "Land" both
+// appear, but never adjacent, so a substring match on "basic land"
+// silently misses every snow basic. That was this function's
+// original body, and it shipped 16 tutor / fetch call sites weaker
+// than printed against a snow-basic-playing deck (#1334). Off the
+// battlefield the effective supertypes are the printed ones.
+//
+// Used by tutor / fetch primitives that need to match Forest /
+// Island / Mountain / Plains / Swamp / Wastes (and their snow
+// counterparts) without enumerating each subtype. Path to Exile,
+// Cultivate, and Solemn Simulacrum share this predicate; keep it
+// here rather than duplicating the loop per-card.
 func IsBasicLand(c game.Card) bool {
-	return containsFoldASCII(c.TypeLine, "basic land")
+	if !c.IsLand() {
+		return false
+	}
+	for _, s := range c.Effective().Supertypes {
+		if s == "Basic" {
+			return true
+		}
+	}
+	return false
 }
 
 // lookAtTargetPlayersHandThenDraw is "Look at target player's hand.
@@ -74,6 +90,23 @@ func lookAtTargetPlayersHandThenDraw(item *game.StackItem, ctx *Context) error {
 		}
 	}
 	return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
+}
+
+// returnTargetedCardToHand returns the resolving item's first
+// targeted card to hand — "return target artifact card from your
+// graveyard to your hand" (Buried Ruin) and every "return another
+// target X card in your graveyard to your hand" trigger (Junk Diver,
+// Myr Retriever) that has no clause beyond the return itself. The
+// target's zone is whatever TargetCardInGraveyard already restricted
+// it to; this is only the resolution half.
+func returnTargetedCardToHand(g *game.Game, item *game.StackItem) error {
+	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+		return nil
+	}
+	return ReturnFromGraveyard{
+		Target: item.Targets[0].ID,
+		Dest:   game.ZoneHand,
+	}.Apply(NewContext(g, item))
 }
 
 // IsBasicLandOfAnySubtype is "a basic <A>, <B>, or <C> card" — the
@@ -773,8 +806,10 @@ func firstLegalPlayerTarget(ctx *Context) (uuid.UUID, bool) {
 }
 
 // notACreature strips the Creature card type, and the creature
-// subtypes that rode on it (CR 205.1b), from a characteristic being
-// built in layer 4.
+// subtypes that rode on it, from a characteristic being built in
+// layer 4. Not a CR citation — the Comprehensive Rules don't mandate
+// erasing a permanent's printed creature subtypes when it stops being
+// a creature; this engine does it anyway, for the reason below.
 //
 // Shared by every "as long as <condition>, this isn't a creature"
 // clause — The Warring Triad's graveyard gate, impending's time
