@@ -409,6 +409,34 @@ func TargetSpell(label string, preds ...CardPredicate) *game.TargetSpec {
 	}
 }
 
+// TargetSpellOrPermanent — "target spell or permanent": ONE pick that
+// may be a spell on the stack or a permanent on the battlefield
+// (Venser, Shaper Savant; Sink into Stupor). `spell` narrows the stack
+// half and `permanent` the battlefield half; nil admits every spell /
+// every permanent.
+//
+// Mode is "any" because the client's Mode string decides which
+// SURFACES enter targeting and this clause needs both the stack and
+// the battlefield (Aang, Swift Savior's shape); legality still comes
+// from CardOK. Players stays false, so "any" never points at a player.
+// Only a spell is a card on the stack — an ability is a StackMeta item
+// with no card — so an ability is never offered.
+func TargetSpellOrPermanent(label string, spell, permanent CardPredicate) *game.TargetSpec {
+	return &game.TargetSpec{
+		Mode:  "any",
+		Label: label,
+		Zones: []game.ZoneKind{game.ZoneStack, game.ZoneBattlefield},
+		CardOK: func(g *game.Game, caster uuid.UUID, c game.Card, zone game.ZoneKind) bool {
+			pred := permanent
+			if zone == game.ZoneStack {
+				pred = spell
+			}
+			return pred == nil || pred(g, caster, c)
+		},
+		Min: 1, Max: 1,
+	}
+}
+
 // TargetCardInGraveyard — "target card in a graveyard", narrowed by
 // predicates (YouOwn() for "your graveyard", Creature() for
 // "creature card").
