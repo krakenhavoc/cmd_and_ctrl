@@ -8,38 +8,23 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The blink engine's mana battery: flickering the Drake re-triggers
 // the untap.
 //
-// Sandbox simplification: "up to five lands" is any lands in paper,
-// and the choice is the controller's. Until a multi-target
-// "up to N permanents" picker exists (the S20 multi-target work
-// covers spells, not trigger-side free picks), this untaps up to
-// five TAPPED LANDS THE CONTROLLER CONTROLS, in battlefield order.
-// That is the overwhelmingly common use and never untaps an
-// opponent's land, so the simplification is strictly conservative.
+// "Up to five lands" is the controller's choice, made as the trigger
+// resolves, among every land on the battlefield — theirs or anyone
+// else's, since the clause says neither "target" nor "you control".
+// UntapUpToLands asks it as a choose_cards prompt over the tapped
+// lands at the table, so zero to five of them untap; the choice is
+// untargeted, so a hexproof land is as choosable as any other.
 func init() {
 	Register(Spec{
 		OracleID:        "0bd67481-6bd9-48d6-92bd-8933b5ea1eae",
 		Name:            "Peregrine Drake",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"You don't choose the lands — it auto-untaps up to five of your own tapped lands and can never untap another player's land."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Peregrine Drake — untap up to five lands", func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				untapped := 0
-				for _, c := range g.BattlefieldCardsForEffect() {
-					if untapped >= 5 {
-						break
-					}
-					if !c.IsLand() || c.Controller != item.Controller || !c.Tapped {
-						continue
-					}
-					if err := (UntapTarget{Target: c.InstanceID}).Apply(ctx); err != nil {
-						return err
-					}
-					untapped++
-				}
-				return nil
-			}),
+			WhenThisEnters("Peregrine Drake — untap up to five lands", Do(UntapUpToLands{
+				N:        5,
+				Question: "Peregrine Drake — untap up to five lands",
+			})),
 		},
 	})
 }
