@@ -19,16 +19,6 @@ func init() {
 		SelfCostModifiers: []game.CostModifier{
 			CostsLessEach(OpponentsOfCaster(), "Undaunted"),
 		},
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			for _, t := range ctx.LegalTargets() {
-				if t.Kind != game.TargetCard {
-					continue
-				}
-				if err := (DestroyTarget{Target: t.ID}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+		OnResolve: destroyEachLegalTarget,
 	})
 }

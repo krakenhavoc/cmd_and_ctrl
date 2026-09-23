@@ -12,22 +12,21 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Essence Scatter that can be Counterspell for the price of a card
 // to an opponent.
 //
-// Sandbox simplification, declared — Into the Flood Maw's posture:
-// the GIFT is not offered. Gift is a cast-time promise (CR 702.174)
-// that needs a prompt in the cast flow and a per-cast flag the
-// resolution reads, and neither exists. So the spell is always its
-// base mode — counter target creature spell — which is the printed
-// card with one option removed, weaker and never stronger, and the
-// target picker makes the missing option visible: it offers creature
-// spells only. When a cast-time promise lands, the second clause is a
-// TargetSpell("target spell") swap plus a draw for the promisee.
+// Gift (CR 702.174, ADR 0089): the promise swaps the target clause
+// (`.Instead(TargetSpell("target spell"))`, CR 702.174m), so a
+// promised cast may name any spell and an unpromised one only a
+// creature spell — the engine judges the targets at announce and
+// again at resolution under the clause the announcement produced. The
+// opponent draws before the counter (CR 702.174j); a Pull that
+// fizzles because its target left gives no card, which is the same
+// rule.
 func init() {
 	Register(Spec{
 		OracleID:     "f1993767-1d07-49c8-b8dc-04ec9840a999",
 		Name:         "Long River's Pull",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The gift can't be promised, so the spell always counters a creature spell — never any other spell."},
+		Completeness: CompletenessFull,
 		Targets:      TargetSpell("target creature spell", Creature()),
+		Gift:         GiftACard().Instead(TargetSpell("target spell")),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 				return nil
