@@ -200,13 +200,16 @@ jobs:
         working-directory: tests-e2e
         run: npx tsc --noEmit
 
+      # Only cmdctrl-cd in this same run downloads these. develop sees
+      # hundreds of pushes a week, so anything longer than a day piles
+      # up gigabytes of dead artifacts against the storage quota.
       - name: Upload server binary
         if: github.event_name == 'push'
         uses: actions/upload-artifact@v5
         with:
           name: cmdctrl-server-bin
           path: server/bin/cmd_and_ctrl-server
-          retention-days: 7
+          retention-days: 1
 
       - name: Upload bot binary
         if: github.event_name == 'push'
@@ -214,7 +217,7 @@ jobs:
         with:
           name: cmdctrl-bot-bin
           path: server/bin/cmd_and_ctrl-bot
-          retention-days: 7
+          retention-days: 1
 
       - name: Upload client dist
         if: github.event_name == 'push'
@@ -222,7 +225,7 @@ jobs:
         with:
           name: cmdctrl-client-dist
           path: client/dist/
-          retention-days: 7
+          retention-days: 1
 
   cmdctrl-cd:
     runs-on: self-hosted
