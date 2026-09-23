@@ -813,6 +813,25 @@ type payUnlessFrame struct {
 	cost      ParsedCost
 	onDecline func(g *Game) error
 	onPay     func(g *Game) error
+
+	// tap is the CR 701.67 "you can tap your artifacts and creatures
+	// to help" clause of a waterbend payment — "Ward—Waterbend {4}"
+	// (The Unagi of Kyoshi Island, #1311). Nil for every other
+	// pay-unless, which is nearly all of them. Its Extra names the
+	// part of `cost` the taps may cover; see waterbend_cost.go.
+	tap *TapPermanentsCost
+}
+
+// PayTapCost is the waterbend clause of a PendingChoicePayUnless —
+// the permanents the chooser may tap instead of paying some of the
+// generic mana (#1311) — or nil when the payment is mana only. Read by
+// the protocol view (the picker) and the legal-move enumerator (the
+// bot's payment); ResolvePayUnlessWithTaps is the one validator.
+func (c *PendingChoice) PayTapCost() *TapPermanentsCost {
+	if c == nil || c.payUnlessResume == nil {
+		return nil
+	}
+	return c.payUnlessResume.tap
 }
 
 // mayCastFrame carries the two branches of a PendingChoiceMayCast.
@@ -3023,7 +3042,7 @@ func (g *Game) QueuePayUnlessForEffect(
 	cost, question string,
 	onDecline func(g *Game) error,
 ) error {
-	return g.queuePayUnlessLocked(chooser, source, cost, question, onDecline, TurnStep{}, uuid.Nil)
+	return g.queuePayUnlessLocked(chooser, source, cost, question, onDecline, TurnStep{}, uuid.Nil, nil)
 }
 
 // queuePayUnlessLocked is the one body behind every pay-unless.
@@ -3042,6 +3061,7 @@ func (g *Game) queuePayUnlessLocked(
 	onDecline func(g *Game) error,
 	owed TurnStep,
 	guards uuid.UUID,
+	tap *TapPermanentsCost,
 ) error {
 	parsed, err := ParseCost(cost)
 	if err != nil {
@@ -3073,6 +3093,7 @@ func (g *Game) queuePayUnlessLocked(
 		payUnlessResume: &payUnlessFrame{
 			cost:      parsed,
 			onDecline: onDecline,
+			tap:       tap,
 		},
 	})
 	return nil
@@ -3237,6 +3258,32 @@ func (g *Game) ResolveMayCast(choiceID, chooserID uuid.UUID, apply bool) error {
 // Caller must NOT hold g.mu — this method takes the write lock.
 // Added in S19 sub-PR 6.
 func (g *Game) ResolvePayUnless(choiceID, chooserID uuid.UUID, apply bool) error {
+	return g.ResolvePayUnlessWithTaps(choiceID, chooserID, apply, nil)
+}
+
+// ResolvePayUnlessWithTaps is ResolvePayUnless with the permanents the
+// chooser taps to help pay a waterbend cost (#1311, CR 701.67a) —
+// "Ward—Waterbend {4}". Each tapped untapped artifact or creature the
+// chooser controls pays {1} of the cost's generic mana; the rest is
+// paid from the pool and the auto-tapper exactly as before, with the
+// tapped permanents kept out of the auto-tapper's reach (CR 118.3).
+//
+// A malformed tap list is REFUSED, with the prompt left in place,
+// rather than read as a decline: tap IDs on a prompt with no waterbend
+// clause, on a "Don't pay" answer, or naming a permanent that cannot
+// pay (not the chooser's, already tapped, not an artifact or creature,
+// named twice, more than the generic). That is the posture every other
+// cost validator takes — a client bug must not cost the payer their
+// spell — and the rule the tap_ids of a cast and the waterbend_ids of
+// an activation follow.
+//
+// A well-formed payment that still cannot be funded (the remaining
+// mana isn't there) degrades to a decline with NOTHING tapped: the
+// mana half is settled first and the taps only happen once it has
+// been.
+//
+// Caller must NOT hold g.mu — this method takes the write lock.
+func (g *Game) ResolvePayUnlessWithTaps(choiceID, chooserID uuid.UUID, apply bool, tapIDs []uuid.UUID) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
@@ -3260,6 +3307,15 @@ func (g *Game) ResolvePayUnless(choiceID, chooserID uuid.UUID, apply bool) error
 		return ErrNotTheChooser
 	}
 	frame := choice.payUnlessResume
+	if len(tapIDs) > 0 {
+		if !apply || frame == nil {
+			return ErrInvalidParam
+		}
+		budget := WaterbendBudget(frame.tap, frame.cost, 0)
+		if err := g.validateTapPermanentsCostLocked(chooserID, frame.tap, tapIDs, budget); err != nil {
+			return err
+		}
+	}
 	g.dequeueChoiceLocked(idx)
 	if frame == nil {
 		return nil
@@ -3267,7 +3323,11 @@ func (g *Game) ResolvePayUnless(choiceID, chooserID uuid.UUID, apply bool) error
 	paid := false
 	if apply {
 		if p := g.playerByIDLocked(chooserID); p != nil {
-			paid = g.payCostLocked(p, frame.cost, choice.Source)
+			cost := WaterbendReduced(frame.cost, 0, len(tapIDs))
+			paid = g.payCostLocked(p, cost, choice.Source, unionIDs(tapIDs))
+			if paid {
+				g.payTapPermanentsCostLocked(chooserID, tapIDs)
+			}
 		}
 	}
 	// Exactly one of the two branches runs. `paid` is the real
@@ -3345,10 +3405,16 @@ func (g *Game) declineDepartedChoiceLocked(c *PendingChoice) {
 // Returns false — with nothing tapped or spent — when the cost
 // can't be met. Emits EventManaSpent on success so the client's
 // pool display and the event log line up with the cast path.
+//
+// `excluded` is sources the auto-tapper may not reach for — the
+// permanents a waterbend payment is tapping instead of paying mana
+// (#1311), which cannot also tap for the rest (CR 118.3). Nil for
+// every other pay-unless.
+//
 // Caller must hold g.mu.
-func (g *Game) payCostLocked(p *Player, cost ParsedCost, source uuid.UUID) bool {
+func (g *Game) payCostLocked(p *Player, cost ParsedCost, source uuid.UUID, excluded map[uuid.UUID]bool) bool {
 	if !p.ManaPool.CanPay(cost, 0) {
-		plan, ok := g.autoTapLocked(p.ID, cost, 0, nil)
+		plan, ok := g.autoTapLocked(p.ID, cost, 0, excluded)
 		if !ok {
 			return false
 		}

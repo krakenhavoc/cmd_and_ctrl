@@ -148,7 +148,30 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 			out.SacrificeOther = c.SacrificeOther
 		}
 		if c.Mana != "" {
-			out.Mana = c.Mana
+			// #1310, CR 701.67b: a waterbend cost is PART of the
+			// total, so composing it with a mana component sums the
+			// two strings — "{1}{U}, Waterbend {2}" owes {1}{U}{2}.
+			// Everywhere else the later component wins, as it always
+			// has.
+			if out.Mana != "" && (c.Waterbend != nil || out.Waterbend != nil) {
+				out.Mana += c.Mana
+			} else {
+				out.Mana = c.Mana
+			}
+		}
+		// #1310: without this a composed "Waterbend {X}, …" keeps its
+		// mana and silently loses the taps — harder to pay than
+		// printed, but a card that says waterbend and never offers it.
+		if c.Waterbend != nil {
+			out.Waterbend = c.Waterbend
+		}
+		// #758: the same failure for the tap-another component, which
+		// Plus never learned — a composed "{T}, Tap an untapped
+		// creature you control" dropped its second half and became a
+		// plain {T}, the #259 direction. No card composes one yet;
+		// the first would have shipped stronger than printed.
+		if c.TapOthers != nil {
+			out.TapOthers = c.TapOthers
 		}
 		if c.Life != 0 {
 			out.Life = c.Life

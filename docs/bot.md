@@ -1341,6 +1341,23 @@ printed clause returns exactly one permanent, and the enumerator offers
 one move per candidate, cheapest-to-keep first, out of the ordinary
 `MaxExpansionPerSource` budget.
 
+### A waterbend payment (#1310 / #1311)
+
+"Waterbend {8}: Transform Aang" and "Ward—Waterbend {4}" let the payer
+tap untapped artifacts and creatures, each paying {1} of the generic
+(CR 701.67a). A seat with no mana but a board of creatures can therefore
+pay, and an enumerator that asked only "can the pool pay" would never
+offer the move. `legal/waterbend.go` offers **one** payment, as crew
+does: the permanents in the order the seat misses least — free ones
+first (an artifact that is neither a creature nor a mana source, taken
+whenever the budget allows), then creatures that make no mana (a
+blocker spent each), then mana sources (tapping one for waterbend pays
+what tapping it for mana would) — and the smallest prefix of that order
+that makes the rest affordable. For "Waterbend {X}" it offers the
+largest X the taps and the mana reach together, never below the printed
+floor (Katara's "X can't be 0"). The heuristic prices each tapped
+creature as a spent blocker, exactly as it prices a crew tap.
+
 ## Ordering target expansion by threat (#687)
 
 `legal.Options.MaxExpansionPerSource` is spent in candidate order, so

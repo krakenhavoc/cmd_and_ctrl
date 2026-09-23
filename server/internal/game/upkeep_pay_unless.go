@@ -98,7 +98,7 @@ type UpkeepPayUnlessPrompt struct {
 // Caller must hold g.mu. Added in #997.
 func (g *Game) QueueUpkeepPayUnlessForEffect(p UpkeepPayUnlessPrompt) error {
 	return g.queuePayUnlessLocked(p.Chooser, p.Source, p.Cost, p.Question,
-		p.OnDecline, g.currentTurnStepLocked(), uuid.Nil)
+		p.OnDecline, g.currentTurnStepLocked(), uuid.Nil, nil)
 }
 
 // currentTurnStepLocked freezes the cursor as an anchor a later read

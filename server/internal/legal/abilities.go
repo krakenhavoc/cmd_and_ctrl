@@ -42,7 +42,10 @@ type activateParams struct {
 	// control to its owner's hand" cost. Omitted for every ability
 	// that does not print the clause.
 	ReturnIDs []string `json:"return_ids,omitempty"`
-	XValue    int      `json:"x_value,omitempty"`
+	// #1310: the permanents tapped to pay part of a "Waterbend {N}"
+	// cost (CR 701.67a). Omitted when the payment taps none.
+	WaterbendIDs []string `json:"waterbend_ids,omitempty"`
+	XValue       int      `json:"x_value,omitempty"`
 	// #917, CR 107.4f: how many of the mana component's Phyrexian
 	// symbols this activation pays with 2 life each. Omitted for
 	// every ability that prints none, which is nearly all of them.
@@ -281,6 +284,8 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		var (
 			abilityMana     game.ParsedCost
 			abilityExcluded map[uuid.UUID]bool
+			// #1310: the permanents a waterbend cost taps.
+			waterbendIDs []uuid.UUID
 		)
 		if ab.Cost.Mana != "" {
 			// #1184: the PRICED cost, not the printed one — the same
@@ -316,11 +321,28 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 			// how many symbols are paid with 2 life each — and
 			// they are solved together, because striking a symbol
 			// changes what X the pool can afford.
-			x, life, ok := e.affordablePayment(cost, game.ManaSpendForAbility(*source), floor, ab.Cost.Life, excluded)
-			if !ok {
-				continue
+			if !ab.Cost.Waterbend.Empty() {
+				// #1310, CR 701.67a: a waterbend cost may be paid
+				// partly by tapping artifacts and creatures, so the
+				// affordability question is the pair (X, taps) rather
+				// than X alone — see waterbend.go. The move carries
+				// the taps, and every later affordability re-check
+				// reads the REDUCED cost with the taps excluded, the
+				// two things the engine will charge.
+				x, taps, ok := e.waterbendAbilityPayment(source, ab, cost, floor, excluded)
+				if !ok {
+					continue
+				}
+				xValue, waterbendIDs = x, taps
+				abilityMana = game.WaterbendReduced(cost, x, len(taps))
+				abilityExcluded = game.WithAutoTapExclusions(excluded, taps)
+			} else {
+				x, life, ok := e.affordablePayment(cost, game.ManaSpendForAbility(*source), floor, ab.Cost.Life, excluded)
+				if !ok {
+					continue
+				}
+				xValue, phyrexianLife = x, life
 			}
-			xValue, phyrexianLife = x, life
 		} else if ab.Cost.DemandsX() {
 			// Unreachable — DemandsX reads the same string — but
 			// a cost that demanded X with no mana component
@@ -483,6 +505,9 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 							label += fmt.Sprintf(" paying %d life for Phyrexian mana",
 								phyrexianLife*game.PhyrexianLifePerSymbol)
 						}
+						if len(waterbendIDs) > 0 {
+							label += fmt.Sprintf(" waterbending with %d", len(waterbendIDs))
+						}
 						label += sacrificeLabel(g, sacs)
 						label += returnLabel(g, rets)
 						label += cc.label(g)
@@ -520,6 +545,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 								CounterKinds:     cc.wireKinds(),
 								DiscardIDs:       idStrings(discardIDs),
 								ReturnIDs:        idStrings(rets),
+								WaterbendIDs:     idStrings(waterbendIDs),
 								XValue:           xValue,
 								PhyrexianLife:    phyrexianLife,
 								Strict:           true,

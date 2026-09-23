@@ -230,6 +230,15 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 				v -= 0.3
 			}
 		}
+		// #1310: a waterbend payment taps artifacts and creatures the
+		// enumerator names. A tapped creature is a blocker spent, like
+		// crew; a non-creature artifact costs nothing this evaluator
+		// can see, which is why the enumerator taps those first.
+		for _, id := range cp.WaterbendIDs {
+			if c := st.bf[id]; c != nil && !c.Tapped && isCreature(c) {
+				v -= 0.3
+			}
+		}
 		return v, "activate"
 
 	case legal.KindMana:

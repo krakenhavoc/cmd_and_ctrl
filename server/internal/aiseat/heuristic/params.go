@@ -48,7 +48,10 @@ type activateParams struct {
 	Targets      []targetRef `json:"targets"`
 	SacrificeIDs []string    `json:"sacrifice_ids"`
 	CrewIDs      []string    `json:"crew_ids"`
-	XValue       int         `json:"x_value"`
+	// WaterbendIDs are the artifacts and creatures a "Waterbend {N}"
+	// cost taps (#1310) — like crew, blockers the move spends.
+	WaterbendIDs []string `json:"waterbend_ids"`
+	XValue       int      `json:"x_value"`
 }
 
 type specialActionParams struct {

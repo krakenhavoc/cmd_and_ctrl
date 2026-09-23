@@ -41,29 +41,27 @@ import (
 // 2/3 with flash and flying, and this is the trigger #325 reported
 // missing.
 //
-// # Declared simplifications
+// # Waterbend {8}
 //
-//   - "Waterbend {8}: Transform Aang" ships with a flat {8} mana cost
-//     instead of a waterbend one. ADR 0079 built the TRANSFORM half —
-//     `Game.TransformPermanentForEffect` / `effects.TransformThis`,
-//     with the CR 712.18 hygiene (counters, damage, attachments and
-//     the CR 613.7 timestamp all surviving the flip) — and this is
-//     the first card to use it through an activated ability rather
-//     than a Saga's chapter III. What is still missing is the COST:
-//     `Spec.TapCost` carries convoke and waterbend for a SPELL (S22);
-//     `AbilityCost` has no tap-other component (AGENTS.md §7, #758).
-//     Paying a flat {8} in mana is strictly weaker than printed
-//     (#259) — every legal way to pay {8} in mana is still legal, and
-//     the only thing missing is the option to tap untapped artifacts
-//     and creatures instead — never stronger, since nothing lets the
-//     ability activate for less.
-//   - The back face's attack trigger (aang_and_la_oceans_fury.go) is
-//     now reachable, because the ability above can actually flip the
-//     face, and ships in full.
+// "Waterbend {8}: Transform Aang" is an activated ability whose cost
+// is a waterbend cost (CR 701.67a): pay {8}, and for each of those
+// eight generic mana you may tap an untapped artifact or creature you
+// control instead. ADR 0079 built the TRANSFORM half —
+// `Game.TransformPermanentForEffect` / `effects.TransformThis`, with
+// the CR 712.18 hygiene (counters, damage, attachments and the CR
+// 613.7 timestamp all surviving the flip) — and #1310 built the COST:
+// `WaterbendCost("{8}")` puts the {8} in the mana component and the
+// tap clause beside it (`game.AbilityCost.Waterbend`). Until then the
+// ability charged a flat {8} in mana, which was weaker than printed.
 //
-// Waterbend on an activated ability stays on the seam registry
-// (docs/engine-seams.md) for the day the tap-discount itself is
-// wanted; this card just no longer needs it to transform.
+// Two things the rules give the ability for free, and the engine
+// honours both: tapping to waterbend is not the {T} symbol, so a
+// creature that arrived this turn may help (CR 302.6); and the cost
+// prints no {T}, so Aang himself — flash, so often freshly arrived —
+// may be one of the eight.
+//
+// The back face's attack trigger (aang_and_la_oceans_fury.go) ships
+// in full and is reached through this ability.
 //
 // # The ETB clause
 //
@@ -91,12 +89,11 @@ func init() {
 		// aang_and_la_oceans_fury.go.
 		OracleID:        aangSwiftSaviorOracle,
 		Name:            "Aang, Swift Savior",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"Waterbend isn't implemented — the transform ability costs a flat {8} in mana; artifacts and creatures can't be tapped to help pay."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flash", "flying"},
 		Activated: []ActivatedAbility{{
 			Label:  "Waterbend {8}: Transform Aang.",
-			Cost:   ManaCost("{8}"),
+			Cost:   WaterbendCost("{8}"),
 			Effect: Do(TransformThis{}),
 		}},
 		Triggered: []game.TriggeredAbility{{

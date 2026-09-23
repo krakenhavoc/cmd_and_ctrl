@@ -894,3 +894,70 @@ every instant-speed row, and it is what the client greys on;
 recover differently — a shut window opens next main phase, a ban ends when
 somebody kills the artifact — which is the same argument §3 makes for
 `cant_activate` being distinct from `condition_unmet` and `exhausted`.
+
+## Amendment (2026-09-23, [#1310](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1310) / [#1311](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1311)): waterbend has three owners, and one of them is a prompt
+
+**Sprint:** S44 — mana and cost components. Tracker [#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887)
+(costs) and [#883](https://github.com/krakenhavoc/cmd_and_ctrl/issues/883) (protection, which owns ward).
+Deck tracker [#1306](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1306).
+
+This ADR owns the cost vocabulary, and the #1213 amendment's rule is that a
+component is ONE struct with one options walk, one budget, one validator and one
+payer, however many surfaces carry it. Waterbend (CR 701.67a) is the next
+component to test that rule, with two new surfaces at once. The activated
+ability is [ADR 0020](0020-activated-abilities.md)'s amendment of the same date
+(Decisions 32–34); this one records the vocabulary decision and the prompt.
+
+### Decision 5 — `TapPermanentsCost` is the component, and the surface decides only where the mana lives
+
+S22's `game.TapPermanentsCost` now has three owners — `Spec.TapCost` (a spell),
+`AbilityCost.Waterbend` (an activated ability) and
+`CounterUnlessPaidPrompt.Waterbend` (a pay-or-counter prompt) — and not a second
+struct. What differs is only whether the waterbend mana is ADDED to what is owed
+(a spell's additional cost) or already IS what is owed (an ability's cost, a
+prompt's payment); in the second case `Extra` names the part of the cost the
+taps may cover, which is CR 701.67b's rule written down. The shared arithmetic is
+`game.WaterbendBudget` (the clause's generic, capped by what the priced cost
+still charges) and `game.WaterbendReduced` (that many generic paid by tapping),
+and the shared walk is `Game.WaterbendOptionsForEffect` — read by the validator,
+the protocol view and the legal-move enumerator alike (#544).
+
+### Decision 6 — "Ward—Waterbend {N}" is the pay-unless prompt with a tap list
+
+The Unagi of Kyoshi Island's ward charged as a plain {4} would be HARDER to pay
+than printed — the card stronger than it is, #259's wrong direction — so it
+waited. `effects.WardWaterbend("{4}")` now queues the ordinary CR 118.12
+`pay_unless` (it halts the stack while open, #951, exactly as `Ward {N}` does)
+with the waterbend clause on its frame. `PendingChoice.PayTapCost()` reads it
+back; the view ships it as `PendingChoiceView.tap_cost` (the `TapCostView` a
+hand card's convoke already uses) and the "Pay" answer names the taps:
+`resolve_choice { choice_id, apply: true, tap_ids }`, resolved by
+`Game.ResolvePayUnlessWithTaps`. Four rules:
+
+1. **"You control" is the PAYER.** The clause is `effects.Waterbend` — the one a
+   spell uses — and the validator reads it for the chooser, so the taps come off
+   the targeting player's board, never the warded permanent's controller's.
+2. **The mana half is settled first; the taps happen only if it is.** A payment
+   whose remainder cannot be funded degrades to a decline with nothing tapped —
+   the CR 118.12 reading `ResolvePayUnless` already had for a "yes" that can't
+   pay.
+3. **The tapped permanents are out of the auto-tapper's reach**
+   (`payCostLocked`'s exclusion set), so a mana creature cannot waterbend for {1} and
+   then tap again for the rest (CR 118.3).
+4. **A malformed tap list is REFUSED with the prompt left open** — taps on a
+   prompt with no clause, on a decline, or naming a permanent that cannot pay. It
+   is not read as a decline: a client bug must not cost the payer their spell,
+   which is the posture every other cost validator already takes.
+
+The enumerator (`legal/waterbend.go`) offers the "Pay" move only when some tap
+list plus the pool can fund it, and the move carries that list — free artifacts
+first, then creatures, then mana sources, the same order the activation half
+uses. The client's pay-unless modal lists the chooser's waterbenders under the
+Pay button when `tap_cost` is present.
+
+### What this does NOT decide
+
+- A ward whose cost MIXES waterbend with another component — no printed card.
+- "Whenever a player waterbends" (CR 701.67c) — no catalog card asks; neither
+  payment path emits an event for it.
+

@@ -84,6 +84,17 @@ type CounterUnlessPaidPrompt struct {
 
 	// Question is the dialog header.
 	Question string
+
+	// Waterbend is set when the payment is a waterbend cost (CR
+	// 701.67a) — "Ward—Waterbend {4}" (#1311): the chooser may tap
+	// untapped artifacts and creatures they control, each paying {1}
+	// of Cost's generic mana. Nil is an ordinary mana payment. Build
+	// it with effects.Waterbend(Cost), so Extra repeats Cost.
+	//
+	// Without it a waterbend ward would be charged as plain mana,
+	// which is HARDER to pay than printed — the card stronger than
+	// it is, the #259 direction.
+	Waterbend *TapPermanentsCost
 }
 
 // QueueCounterUnlessPaidForEffect queues the CR 118.12 prompt for
@@ -113,7 +124,7 @@ func (g *Game) QueueCounterUnlessPaidForEffect(p CounterUnlessPaidPrompt) error 
 	stackID := p.StackItem
 	return g.queuePayUnlessLocked(chooser, p.Source, p.Cost, p.Question,
 		func(g *Game) error { return g.counterIfStillOnStackLocked(stackID) },
-		TurnStep{}, stackID)
+		TurnStep{}, stackID, p.Waterbend)
 }
 
 // counterIfStillOnStackLocked counters `stackID` unless it has

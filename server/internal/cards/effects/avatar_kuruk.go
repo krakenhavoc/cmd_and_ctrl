@@ -36,19 +36,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     (#259), and the day `Spec.BlockRules` lands this is one
 //     `tokenTemplate` away.
 //   - "Exhaust — Waterbend {20}: Take an extra turn after this one."
-//     is not registered at all, for two independent reasons, either
-//     one enough on its own: extra turns have no primitive anywhere in
-//     this engine (Turn.IsNewTurn compares seats and Turn.Number
-//     counts rounds, not turns — the "Extra turns primitive" seam,
-//     docs/engine-seams.md, #753), and waterbend on an ACTIVATED
-//     ability has no cost shape (AbilityCost prices tap-this /
-//     sacrifice-self / sacrifice-other / mana / life; Spec.TapCost
-//     prices a SPELL, not an ability — see aang_swift_savior.go's own
-//     Waterbend {8}, which ships because "take an extra turn" isn't
-//     the effect it's paying for). An ability that costs mana and
-//     does nothing when activated would not be a weaker card, it
-//     would be a broken one, so it stays off entirely rather than
-//     half-shipped.
+//     is not registered, and the reason is now ONE, not two: extra
+//     turns have no primitive anywhere in this engine (Turn.IsNewTurn
+//     compares seats and Turn.Number counts rounds, not turns — the
+//     "Extra turns primitive" seam, docs/engine-seams.md, #753). The
+//     COST is expressible since #1310: `WaterbendCost("{20}")`
+//     with `Exhaust: true` is the whole declaration, the same
+//     component Aang's "Waterbend {8}" and Katara's "Waterbend {X}"
+//     use, and Boom Scholar's exhaust discount already reaches it
+//     through the ability's mana component. An ability that costs
+//     twenty and does nothing when activated would not be a weaker
+//     card, it would be a broken one, so it stays off entirely until
+//     #753 lands the effect.
 func init() {
 	Register(Spec{
 		OracleID:     theLegendOfKurukOracleID + "#1",
