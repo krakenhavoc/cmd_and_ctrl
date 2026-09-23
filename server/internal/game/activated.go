@@ -1269,13 +1269,23 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	// Game.Activations back sees this activation counted, and after
 	// the item is on StackMeta, so the ability a trigger will sit
 	// above already exists.
+	//
+	// #1223: StackItemID names the ability ITSELF, which Source and
+	// CardID cannot — both name the permanent the ability came from,
+	// and that permanent stays on the battlefield with any number of
+	// its abilities on the stack at once. Rings of Brighthearth's
+	// "copy THAT ability" needs a handle on the one that was just
+	// activated, and the announcement is the only moment it is
+	// unambiguous. Same field, same reason, as the became-target emit
+	// one line below (see Event.StackItemID).
 	g.EmitEvent(Event{
-		Kind:    EventActivateAbility,
-		Actor:   playerID,
-		Source:  cardID,
-		CardID:  cardID,
-		Label:   ab.Label,
-		Exhaust: ab.Exhaust,
+		Kind:        EventActivateAbility,
+		Actor:       playerID,
+		Source:      cardID,
+		CardID:      cardID,
+		StackItemID: itemID,
+		Label:       ab.Label,
+		Exhaust:     ab.Exhaust,
 	})
 	// CR 602.2b / 115.7: the ability's targets were chosen as it was
 	// put on the stack. S22, for "whenever ~ becomes the target of a

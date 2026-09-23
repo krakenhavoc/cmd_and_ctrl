@@ -483,7 +483,7 @@ type PendingChoice struct {
 	// Added by #764.
 	modePickResume *modePickFrame
 
-	// copySpellResume is the other continuation a
+	// copyResume is the other continuation a
 	// PendingChoicePickTarget can carry (S30, #95): the CR 707.10
 	// "you may choose new targets for the copy" prompt. It reuses
 	// the pick_target prompt rather than getting a kind of its own
@@ -493,8 +493,8 @@ type PendingChoice struct {
 	// choice enumerator) then needs no change at all to answer it.
 	// What differs is only what gets built on submit, which is what
 	// the frame decides. Exactly one of pickTargetResume and
-	// copySpellResume is set.
-	copySpellResume *copySpellFrame
+	// copyResume is set.
+	copyResume *copyFrame
 
 	// SacrificeOptions is the set of permanents a
 	// PendingChoiceSacrifice's chooser may pick from — their own
@@ -806,7 +806,17 @@ type mayCastFrame struct {
 // #764 — is that walk with one step, which is one prompt, which is
 // exactly what it was.
 type pickTargetFrame struct {
-	ev     Event
+	// watches is the ability's declared event kinds, kept only so
+	// the finished item can be stamped with its triggering event —
+	// see stampTriggerContext on why an ability that watches nothing
+	// (a CR 603.12 reflexive trigger) must not be.
+	watches []EventKind
+	// tc is the triggering event (#1223), carried rather than
+	// re-derived: the CR 603.10 snapshot it holds is deleted from
+	// lastKnownBattlefield as the harvest ends, which is before this
+	// prompt can possibly be answered. tc.Event is the `ev` this
+	// frame used to hold.
+	tc     TriggerContext
 	source Card
 	lki    Characteristic
 	build  func(ev Event, source *Card, sourceLKI Characteristic, g *Game) *StackItem
@@ -842,7 +852,9 @@ func (f *pickTargetFrame) currentClause() *TargetClause {
 // fires on `apply: true` against the value-copy source + LKI; on
 // `apply: false` the frame is discarded. Added in S19 sub-PR 2.
 type triggerResumeFrame struct {
-	ev     Event
+	// tc is the triggering event (#1223) — see pickTargetFrame.tc
+	// for why it is carried whole rather than re-read on the answer.
+	tc     TriggerContext
 	source Card
 	lki    Characteristic
 	build  func(ev Event, source *Card, sourceLKI Characteristic, g *Game) *StackItem
@@ -2615,7 +2627,7 @@ func (g *Game) ResolveDamageAssignment(
 //
 // Caller must hold g.mu. Added in S19 sub-PR 2.
 func (g *Game) queueTriggerPromptLocked(
-	ev Event,
+	tc TriggerContext,
 	source Card,
 	lki Characteristic,
 	ability TriggeredAbility,
@@ -2623,7 +2635,7 @@ func (g *Game) queueTriggerPromptLocked(
 ) {
 	chooser := source.Controller
 	if ability.OptionalPrompt != nil && ability.OptionalPrompt.Chooser != nil {
-		if override := ability.OptionalPrompt.Chooser(ev, &source, g); override != uuid.Nil {
+		if override := ability.OptionalPrompt.Chooser(tc.Event, &source, g); override != uuid.Nil {
 			chooser = override
 		}
 	}
@@ -2637,7 +2649,7 @@ func (g *Game) queueTriggerPromptLocked(
 	// something (NoLegalTarget stays false).
 	noLegalTarget := false
 	if ability.HasLegalTarget != nil {
-		noLegalTarget = !ability.HasLegalTarget(ev, &source, lki, g)
+		noLegalTarget = !ability.HasLegalTarget(tc.Event, &source, lki, g)
 	}
 	g.QueueChoiceForEffect(PendingChoice{
 		Kind:          PendingChoiceTriggerPrompt,
@@ -2647,7 +2659,7 @@ func (g *Game) queueTriggerPromptLocked(
 		Reason:        question,
 		NoLegalTarget: noLegalTarget,
 		triggerResume: &triggerResumeFrame{
-			ev:        ev,
+			tc:        tc,
 			source:    source,
 			lki:       lki,
 			build:     ability.Build,
@@ -2664,13 +2676,14 @@ func (g *Game) queueTriggerPromptLocked(
 // refreshTargetChoicesLocked re-reads the frozen set at the next
 // priority-grant boundary (#809). Caller must hold g.mu. Added in S20
 // sub-PR 2.
-func (g *Game) queuePickTargetLocked(ev Event, source Card, lki Characteristic, t TriggeredAbility, doubledBy doublerRef, modes []int, steps []AnnouncedClause) {
+func (g *Game) queuePickTargetLocked(tc TriggerContext, source Card, lki Characteristic, t TriggeredAbility, doubledBy doublerRef, modes []int, steps []AnnouncedClause, spec *TargetSpec) {
 	g.queuePickTargetStepLocked(&pickTargetFrame{
-		ev:        ev,
+		tc:        tc,
 		source:    source,
 		lki:       lki,
 		build:     t.Build,
-		spec:      t.Targets,
+		watches:   t.Watches,
+		spec:      spec,
 		modeSpec:  t.Modes,
 		modes:     append([]int(nil), modes...),
 		steps:     steps,
@@ -2743,10 +2756,11 @@ func (g *Game) finishPickTargetLocked(f *pickTargetFrame) {
 		return
 	}
 	source := f.source
-	item := f.build(f.ev, &source, f.lki, g)
+	item := f.build(f.tc.Event, &source, f.lki, g)
 	if item == nil {
 		return
 	}
+	stampTriggerContext(item, TriggeredAbility{Watches: f.watches}, f.tc)
 	item.Targets = append([]TargetRef(nil), f.picked...)
 	item.Modes = append([]int(nil), f.modes...)
 	item.targetSpec = f.spec
@@ -2833,8 +2847,8 @@ func (g *Game) ResolvePickTargets(choiceID, chooserID uuid.UUID, targets []Targe
 	// re-target. Handled before the trigger frame because the two
 	// are mutually exclusive and the copy path builds something
 	// that is not a triggered ability.
-	if cf := choice.copySpellResume; cf != nil {
-		return g.resolveCopySpellTargetsLocked(idx, cf, targets)
+	if cf := choice.copyResume; cf != nil {
+		return g.resolveCopyTargetsLocked(idx, cf, targets)
 	}
 	frame := choice.pickTargetResume
 	step := frame.currentClause()
@@ -2916,7 +2930,7 @@ func (g *Game) ResolveTriggerPrompt(choiceID, chooserID uuid.UUID, apply bool) e
 	}
 	// S20: a targeted optional trigger continues into the target
 	// pick; an untargeted one builds straight away.
-	g.buildOrPickTriggerLocked(frame.ev, frame.source, frame.lki, frame.ability, frame.doubledBy, nil)
+	g.buildOrPickTriggerLocked(frame.tc, frame.source, frame.lki, frame.ability, frame.doubledBy, nil)
 	// The prompt is answered outside any priority-wrap, so nothing
 	// downstream would drain the queue until the next pass around
 	// the table — and an empty stack at that wrap would advance the

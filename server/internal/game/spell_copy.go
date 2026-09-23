@@ -61,12 +61,13 @@ import "github.com/google/uuid"
 //     battlefield was worse than nothing; the token is what makes it
 //     neither.
 //
-// What this deliberately does not do:
-//
-//   - Copies of ABILITIES (CR 707.10 covers those too — Lithoform
-//     Engine, Strionic Resonator). Ability items carry a resolution
-//     closure rather than a card, so they are a different copy
-//     shape; nothing in S30 needs one.
+// Copies of ABILITIES (CR 707.10 covers those too — Strionic
+// Resonator, Lithoform Engine, Rings of Brighthearth) live next door
+// in ability_copy.go (#1223). They share this file's PROMPT: the
+// CR 707.10c "you may choose new targets for the copy" is one
+// question with one frame and one submit half, and only the last step
+// — build a new card on the stack, or build a new item beside it —
+// differs. See copyFrame below.
 
 // CopySpellForEffect creates a copy of the spell `spellID` under
 // `controller`'s control, per CR 707.10.
@@ -116,22 +117,43 @@ func (g *Game) CopySpellForEffect(spellID, controller uuid.UUID, mayChooseNewTar
 		src.setPrintedValues(v)
 	}
 	spec := castTargetSpecForItem(CatalogKey(src), item)
+	g.offerCopyTargetsLocked(src, item, controller, spec, mayChooseNewTargets)
+	return nil
+}
+
+// offerCopyTargetsLocked is CR 707.10c, shared by the spell copy
+// above and the ability copy in ability_copy.go: open the "you may
+// choose new targets for the copy" prompt, or create the copy now
+// with the original's targets.
+//
+// `src` is the object the copy's legality is judged from — the copied
+// SPELL for a spell copy (CR 707.10: the copy has the original's
+// characteristics, so protection is tested against the original's
+// colour and type), and the ability's SOURCE PERMANENT for an ability
+// copy (CR 702.16b tests an ability's quality against the permanent
+// it came from). `item` decides which copy gets built on the far
+// side, off its Kind, which is the only thing the two paths do
+// differently.
+//
+// Creating the copy NOW is the right answer in three cases and they
+// are all the printed outcome rather than a shortcut: the card does
+// not offer the choice, the original named no target anybody chose,
+// and nothing on the board qualifies any more — CR 707.10c's choice
+// is optional, and a copy that keeps an illegal target is countered
+// by game rules on resolution, which is what the card does in paper.
+// The alternative is a prompt with no answers, which since #791 is a
+// table that cannot move.
+//
+// Caller must hold g.mu.
+func (g *Game) offerCopyTargetsLocked(src Card, item *StackItem, controller uuid.UUID, spec *TargetSpec, mayChooseNewTargets bool) {
 	if !mayChooseNewTargets || spec == nil || !itemHasChosenTarget(item) {
-		g.createSpellCopyLocked(src, item, controller, item.Targets)
-		return nil
+		g.createCopyLocked(src, item, controller, item.Targets)
+		return
 	}
-	// CR 707.10c — the choice is optional, and it is also
-	// impossible when nothing on the board qualifies any more. In
-	// that case the copy keeps the original's targets and is
-	// countered by game rules on resolution, which is the printed
-	// outcome rather than a wedged prompt.
-	// The copy's source is the copied SPELL (CR 707.10 — the copy has
-	// its characteristics), not the player making the copy, so
-	// protection is tested against the original's colour and type.
 	lt := g.legalTargetsLocked(SourceObject(controller, &src), spec)
 	if len(lt.Players) == 0 && len(lt.Cards) == 0 {
-		g.createSpellCopyLocked(src, item, controller, item.Targets)
-		return nil
+		g.createCopyLocked(src, item, controller, item.Targets)
+		return
 	}
 	label := spec.Label
 	if label == "" {
@@ -147,28 +169,51 @@ func (g *Game) CopySpellForEffect(spellID, controller uuid.UUID, mayChooseNewTar
 		PickTargetCards:   lt.Cards,
 		PickTargetMin:     spec.Min,
 		PickTargetMax:     spec.Max,
-		copySpellResume: &copySpellFrame{
+		copyResume: &copyFrame{
 			src:        src,
 			item:       *item,
 			controller: controller,
 			spec:       spec,
 		},
 	})
-	return nil
 }
 
-// copySpellFrame is the continuation for the CR 707.10 "you may
-// choose new targets" prompt. It carries VALUE copies of the source
-// card and its stack item, deliberately: between the prompt and the
-// answer the original spell can be countered, and the copy is
-// unaffected by that (CR 707.10 — the copy's characteristics are
-// locked in when it is created, and a copy of a countered spell
-// still resolves).
-type copySpellFrame struct {
+// copyFrame is the continuation for the CR 707.10c "you may choose
+// new targets" prompt, for a copy of a spell OR of an ability. It
+// carries VALUE copies of the source and its stack item,
+// deliberately: between the prompt and the answer the original can be
+// countered, and the copy is unaffected by that (CR 707.10 — the
+// copy's characteristics are locked in when it is created, and a copy
+// of a countered spell still resolves).
+//
+// `item.Kind` is the discriminator, and it is the only one needed.
+// `src` means slightly different things on the two paths and both
+// readings are the object CR 702.16b tests targeting against: for a
+// SPELL copy it is the copied spell itself, for an ABILITY copy the
+// permanent the ability came from. Nothing between here and
+// createCopyLocked has to know which.
+type copyFrame struct {
 	src        Card
 	item       StackItem
 	controller uuid.UUID
 	spec       *TargetSpec
+}
+
+// createCopyLocked puts the copy on the stack: a new spell object for
+// a spell, a new item beside the source permanent for an ability.
+//
+// The ONE branch in the copy path, and it is here rather than at each
+// call site so that everything before it — the re-target offer, the
+// prompt, the submit gate, the #809 refresh that re-reads a frozen
+// legal set — is written once for both shapes.
+//
+// Caller must hold g.mu.
+func (g *Game) createCopyLocked(src Card, item *StackItem, controller uuid.UUID, targets []TargetRef) {
+	if item.Kind == StackItemSpell {
+		g.createSpellCopyLocked(src, item, controller, targets)
+		return
+	}
+	g.createAbilityCopyLocked(item, controller, targets)
 }
 
 // stackSpellLocked returns the card and stack item for a spell on the
@@ -296,11 +341,11 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 	g.emitBecameTargetLocked(controller, copyCard.InstanceID, copyCard.InstanceID, meta.Targets)
 }
 
-// resolveCopySpellTargetsLocked is the submit half of the CR 707.10
+// resolveCopyTargetsLocked is the submit half of the CR 707.10c
 // re-target prompt, reached from ResolvePickTargets when the choice
-// carries a copySpellFrame. Validates the refs against the copied
-// spell's own clause — the same spec the original was announced
-// under — then creates the copy on top of the stack.
+// carries a copyFrame. Validates the refs against the copied object's
+// own clause — the same spec the original was announced under — then
+// creates the copy on top of the stack.
 //
 // #1196: the check is the CR 115.7 one (retargetCheckLocked), not the
 // announce gate. "You may choose new targets for the copy" is CR
@@ -313,7 +358,7 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 // are a snapshot and the original may be gone.
 //
 // Caller must hold g.mu and must have located the choice at `idx`.
-func (g *Game) resolveCopySpellTargetsLocked(idx int, cf *copySpellFrame, targets []TargetRef) error {
+func (g *Game) resolveCopyTargetsLocked(idx int, cf *copyFrame, targets []TargetRef) error {
 	for _, t := range targets {
 		if t.Kind != TargetPlayer && t.Kind != TargetCard {
 			return ErrInvalidParam
@@ -332,7 +377,7 @@ func (g *Game) resolveCopySpellTargetsLocked(idx int, cf *copySpellFrame, target
 	targets = stamped
 	g.dequeueChoiceLocked(idx)
 	item := cf.item
-	g.createSpellCopyLocked(cf.src, &item, cf.controller, targets)
+	g.createCopyLocked(cf.src, &item, cf.controller, targets)
 	g.runStateChecksLocked()
 	return nil
 }

@@ -1954,10 +1954,180 @@ off either kind.
 
 **Cards:** Harsh Mentor and Runic Armasaur, both `full`.
 
-What stays open on this family, and is a different row: a watch on an
-ability's activation whose TARGET clause reads the triggering event
+What stayed open on this family, and was a different row: a watch on
+an ability's activation whose TARGET clause reads the triggering event
 (`docs/engine-seams.md`, "Trigger/target clause reading the triggering
 event's data"). A `Build` closure can capture an event field and hand
 it to a non-targeted effect — that is what this note's `build`
 argument is — but `TriggeredAbility.Targets` is a static `TargetSpec`
-evaluated by the harvester and cannot see the event at all.
+evaluated by the harvester and cannot see the event at all. **Closed
+the same day by #1223** — see the amendment below, whose
+`TriggeredAbility.TargetsFrom` is exactly that clause.
+
+## Amendment 2026-09-22 — the triggering event is DATA on the item (CR 603.2, CR 603.10) · Accepted · S45
+
+Issue [#1223](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1223).
+Decision 2 above says `Build` builds and does not resolve. It is
+silent on what happens to the EVENT, and the answer the catalog
+settled on by default was "capture it in the `Effect` closure". That
+works for exactly one reader and fails for three.
+
+### What was actually missing
+
+`TriggeredAbility` is handed the event twice — `AppliesTo(ev, …)` and
+`Build(ev, …)` — and both hands go away immediately. `AppliesTo`
+returns a bool; `Build` returns a `*StackItem`, and the only way past
+it is a closure. A closure reaches resolution and reaches nothing
+else:
+
+- **The target clause.** A trigger's targets are chosen as it is put
+  on the stack (CR 603.3d), by the harvester, from
+  `TriggeredAbility.Targets` — STATIC catalog data declared before the
+  game started. Scrap Trawler's "target artifact card in your
+  graveyard with lesser mana value" could not be stated at all,
+  because "lesser" is lesser than the mana value of the artifact that
+  just died and no closure runs between the event and the clause.
+- **The copy.** CR 707.10 copies a triggered ability together with the
+  choices made when it triggered, and the Strionic Resonator rulings
+  are explicit that the copy remembers the same event. A closure
+  reached a copy only by accident of sharing a func pointer, and
+  nothing said so.
+- **The snapshot.** A func has no wire form, so a game paused on an
+  unanswered CR 603.3d prompt could not be a restore point for any
+  trigger whose effect needed its event.
+
+The catalog's other way of reaching a past event — walking `g.Events`
+backwards for the last one of a kind — is not a fourth answer either.
+A sweep of all 29 log-walking helpers in `cards/effects` found NONE
+re-deriving its own triggering event: every one of them is reading
+game HISTORY (a per-turn tally, a counter total before the change, the
+nearest resolution's actor) that the triggering event could never
+answer. That is a good thing and this field is what keeps it true —
+such a scan finds the wrong event the moment two of a kind land in one
+batch (two creatures dying to one wrath), and nothing at all a
+priority round later.
+
+### Decision 8. One typed value, `StackItem.Trigger`
+
+```go
+type TriggerContext struct {
+        Event  Event           // the triggering event, verbatim
+        Object *ObjectSnapshot // CR 603.10 LKI about Event.CardID
+}
+```
+
+`Event` whole, rather than a hand-picked subset, for two reasons: the
+alternative is a new field for every clause that wants one more fact,
+and `Event` is already the flat, closure-free, JSON-tagged shape the
+log is built out of. `Amount` is the damage dealt or the life gained
+or the counters placed; `StackItemID` is the ability that was
+activated; `OldZone` / `NewZone` say where an object went.
+
+Read by the effect as `effects.Context.Trigger()` and by the clause as
+`TriggeredAbility.TargetsFrom`. The zero value — `Fired()` false — is
+the honest answer for every cast spell, every activated ability and
+every item restored from a snapshot written before the field existed.
+
+It is **plain data**, which is the whole decision: it survives a copy
+(copying it is copying a struct), it survives a snapshot (so a paused
+trigger prompt is still a restore point, `carried` in
+`snapshot_drift_test.go`), and it survives the log being walked past.
+
+### Decision 9. `ObjectSnapshot` is a flat value, and it is NOT a `Card`
+
+Half of what a trigger wants to know is about an object that has gone:
+the creature that died, the artifact put into a graveyard. CR 603.10
+judges such an ability on what the object looked like immediately
+before the event, and the engine already keeps that reading in
+`Game.lastKnownBattlefield` — written by every battlefield exit,
+DELETED as `harvestLTB` ends. `objectSnapshotLocked` reads it while it
+is still there and copies by value.
+
+Not a `*Card`: a pointer into a zone slice is already invalid when an
+LTB trigger is built. Not a `Card`: it carries `effective`,
+`PrintedSelf` and the rest of the layer bookkeeping, none of which
+means anything once the object is gone and all of which would have to
+be snapshotted to keep the item restorable.
+
+The two halves come from different places on purpose. Types, colours
+and name are CHARACTERISTICS and come off the CR 603.10 snapshot; the
+oracle id, the owner and the mana value are facts about the CARD and
+come off the card, because a permanent's mana value is computed from
+its printed cost (CR 202.3b) and `Characteristic` carries none.
+
+**Power and toughness are deliberately absent.** "A creature with
+power equal to the power of the creature that died" is a real printed
+clause and is not answerable yet: `lastKnownBattlefield` holds a
+`Characteristic`, the engine applies +1/+1 and -1/-1 counters OUTSIDE
+it (`Card.PowerForComparison`), and `MoveCard` clears a permanent's
+counters on the way off the battlefield — so by the time a
+dies-trigger is harvested the number is gone from both places. A
+`Power` field would silently read 2 for the 3/3 a counter made, which
+is the one case such a clause is written about. It waits for a second
+LKI store, and ADR 0072 §2 already records what a second store costs.
+
+### Decision 10. The clause is a function of the event: `TargetsFrom`
+
+```go
+TargetsFrom func(tc TriggerContext, source *Card, g *Game) *TargetSpec
+```
+
+Non-nil wins over `Targets`, which such a card leaves nil. A FUNCTION
+returning a whole spec rather than a predicate that receives the
+context, because the event changes a clause's COUNT and LABEL as
+readily as its predicate — "up to X target creatures", where X is the
+damage dealt — and only a spec can say all three.
+
+It is called at every point the dispatch needs the clause (the CR
+603.3d fillability check, the target walk, the spec stamped on the
+item for the CR 608.2b re-check) rather than cached in a frame, and
+the contract is that every call must agree: the answer is a function
+of the trigger context, which is carried and therefore stable, and of
+the board, which is not and must not be — a clause re-read after an
+optional prompt should see the board as it is, exactly as
+`refreshTargetChoicesLocked` re-reads a frozen legal set for the same
+reason.
+
+### Decision 11. The stamp is the dispatch's, not the card's
+
+`Build` is catalog code, ~2,200 declarations of it, and every one
+would have had to remember. The two sites that call `Build`
+(`buildOrPickTriggerLocked` and `finishPickTargetLocked`) call
+`stampTriggerContext` immediately afterwards instead, so a card gets
+the event on its item whether or not its author thought about it.
+
+The context is built ONCE, in `dispatchTriggerInstanceLocked`, and
+carried from there through every prompt frame (`triggerResumeFrame`,
+`modePickFrame`, `pickTargetFrame` all hold `tc TriggerContext` where
+they used to hold `ev Event`). That is not tidiness: the CR 603.10
+snapshot is deleted from `lastKnownBattlefield` as the harvest ends,
+which is before any prompt can be answered, so a context rebuilt later
+would be missing exactly the half a dies-trigger needs.
+
+**A CR 603.12 reflexive trigger is stamped with nothing.**
+`QueueReflexiveTriggerForEffect` hands the dispatch a synthetic
+`EventResolve` describing the resolution that created the trigger,
+precisely because there was no triggering event; stamping it would
+tell a card its trigger fired off a resolution and hand it a snapshot
+of the parent's source, and both would be lies. The test is an ability
+that WATCHES NOTHING — `len(t.Watches) == 0` — which is a fact rather
+than a flag, since the harvester refuses to fire an ability that
+declares no `Watches`.
+
+### Cards
+
+Scrap Trawler ships `full` (the clause is cut to the mana value of the
+artifact that died, so a chain resolves in descending order as it does
+in paper). Cloudstone Curio ships `caveats` — "shares a permanent type
+with it" is built from the event, and the caveat is the Whitemane Lion
+posture, that the permanent to return is picked as the trigger goes on
+the stack rather than at resolution.
+
+### Still not covered
+
+Power and toughness on the object snapshot (above). Three helpers sit
+next to this and are NOT replaced by it, each for a stated reason:
+`b16EnteredFromStack` wants the ETB's ORIGIN ZONE, which
+`EventETB` does not carry; `b30CastFromHand` wants a different,
+earlier `EventCast`; and `random_effects.WheneverYouRollDice` wants
+the whole die BATCH, of which the triggering event is one member.

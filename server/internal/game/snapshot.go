@@ -529,24 +529,33 @@ type cardSnapshot struct {
 // stackItemSnapshot mirrors StackItem. Effect and targetSpec are both
 // func-bearing; see rehydrateStackItem for which ones come back.
 type stackItemSnapshot struct {
-	ID            uuid.UUID         `json:"id"`
-	Kind          StackItemKind     `json:"kind"`
-	Controller    uuid.UUID         `json:"controller"`
-	Owner         uuid.UUID         `json:"owner"`
-	SourceCardID  uuid.UUID         `json:"sourceCardId"`
-	SourceEpoch   int               `json:"sourceEpoch,omitempty"`
-	Label         string            `json:"label,omitempty"`
-	DoubledBy     uuid.UUID         `json:"doubledBy,omitempty"`
-	DoubledByName string            `json:"doubledByName,omitempty"`
-	Targets       []TargetRef       `json:"targets,omitempty"`
-	Payload       []TargetRef       `json:"payload,omitempty"`
-	Modes         []int             `json:"modes,omitempty"`
-	XValue        int               `json:"xValue"`
-	Distribution  map[uuid.UUID]int `json:"distribution,omitempty"`
-	HoldPriority  bool              `json:"holdPriority"`
-	CastFromZone  ZoneKind          `json:"castFromZone,omitempty"`
-	AltCost       string            `json:"altCost,omitempty"`
-	Foretold      bool              `json:"foretold,omitempty"`
+	ID            uuid.UUID     `json:"id"`
+	Kind          StackItemKind `json:"kind"`
+	Controller    uuid.UUID     `json:"controller"`
+	Owner         uuid.UUID     `json:"owner"`
+	SourceCardID  uuid.UUID     `json:"sourceCardId"`
+	SourceEpoch   int           `json:"sourceEpoch,omitempty"`
+	Label         string        `json:"label,omitempty"`
+	DoubledBy     uuid.UUID     `json:"doubledBy,omitempty"`
+	DoubledByName string        `json:"doubledByName,omitempty"`
+	Targets       []TargetRef   `json:"targets,omitempty"`
+	Payload       []TargetRef   `json:"payload,omitempty"`
+	// Trigger is the triggering event (#1223). Carried, and it has
+	// to be: a targeted trigger waiting on its CR 603.3d prompt is a
+	// restorable snapshot, and a restore that lost the event would
+	// resolve Scrap Trawler against a mana value nothing on the
+	// restored board remembers — the artifact it is about is in a
+	// graveyard, where the characteristics it died with are gone.
+	// Plain data, so unlike the Effect beside it there is nothing to
+	// census.
+	Trigger      *TriggerContext   `json:"trigger,omitempty"`
+	Modes        []int             `json:"modes,omitempty"`
+	XValue       int               `json:"xValue"`
+	Distribution map[uuid.UUID]int `json:"distribution,omitempty"`
+	HoldPriority bool              `json:"holdPriority"`
+	CastFromZone ZoneKind          `json:"castFromZone,omitempty"`
+	AltCost      string            `json:"altCost,omitempty"`
+	Foretold     bool              `json:"foretold,omitempty"`
 	// FaceDown is CR 708.4 (#1194): the state the permanent this
 	// spell becomes enters in. Carried, and it has to be — a restore
 	// that lost it would resolve a morph on the stack into a face-UP
@@ -1257,6 +1266,7 @@ func snapshotStackItem(g *Game, s *StackItem, cen *ContinuationCensus) stackItem
 		DoubledByName: s.DoubledByName,
 		Targets:       copyTargetRefs(s.Targets),
 		Payload:       copyTargetRefs(s.Payload),
+		Trigger:       cloneTriggerContext(s.Trigger),
 		Modes:         copyInts(s.Modes),
 		XValue:        s.XValue,
 		Distribution:  copyIntMap(s.Distribution),
@@ -1414,7 +1424,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 	for name, present := range map[string]bool{
 		"replacementResume": c.replacementResume != nil,
 		"pickTargetResume":  c.pickTargetResume != nil,
-		"copySpellResume":   c.copySpellResume != nil,
+		"copyResume":        c.copyResume != nil,
 		"triggerResume":     c.triggerResume != nil,
 		"payUnlessResume":   c.payUnlessResume != nil,
 		"mayCastResume":     c.mayCastResume != nil,
@@ -1874,6 +1884,7 @@ func restoreStackItem(s *stackItemSnapshot) *StackItem {
 		DoubledByName: s.DoubledByName,
 		Targets:       copyTargetRefs(s.Targets),
 		Payload:       copyTargetRefs(s.Payload),
+		Trigger:       cloneTriggerContext(s.Trigger),
 		Modes:         copyInts(s.Modes),
 		XValue:        s.XValue,
 		Distribution:  copyIntMap(s.Distribution),

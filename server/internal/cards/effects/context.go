@@ -392,6 +392,32 @@ func (c *Context) Payload() []game.TargetRef {
 	return c.Item.Payload
 }
 
+// Trigger is the event that fired this triggered ability (#1223): the
+// amount for a damage or life event, the CR 603.10 last-known
+// snapshot of the object a zone change was about, the counters
+// placed, the spell cast, the ability activated.
+//
+//	ctx.Trigger().Event.Amount      // "that much damage"
+//	ctx.Trigger().Object.ManaValue  // "the creature that died"
+//
+// The zero value — `Fired()` false, `Object` nil — for a spell, an
+// activated ability, a CR 603.12 reflexive trigger and a trigger
+// restored from a snapshot written before the field existed. A card
+// that reads it unconditionally gets zeroes rather than a panic,
+// which is the #259 direction: the weaker-than-printed answer.
+//
+// Read this rather than walking `ctx.Game.Events` backwards for the
+// event. The log scan finds the LAST event of a kind, which is the
+// wrong one the moment two land in the same batch (two creatures
+// dying to one wrath), and it finds nothing at all for a trigger that
+// resolved a priority round later.
+func (c *Context) Trigger() game.TriggerContext {
+	if c.Item == nil || c.Item.Trigger == nil {
+		return game.TriggerContext{}
+	}
+	return *c.Item.Trigger
+}
+
 // PayloadCards is Payload narrowed to its card refs, in the order the
 // creating effect listed them. The common read: "the creatures that
 // were tapped this way", "the cards revealed this way".

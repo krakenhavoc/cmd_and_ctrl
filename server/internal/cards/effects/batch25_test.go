@@ -123,19 +123,22 @@ func TestBatch25CardsAreRegistered(t *testing.T) {
 			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
 		}
 	}
-	// The twelve declared skips must stay out until their seam
-	// lands: a counter-removal cost, an untap-step event, a
-	// resolution-time choice constrained by the triggering permanent,
+	// The eleven declared skips still waiting must stay out until
+	// their seam lands: a counter-removal cost, an untap-step event,
 	// an "exiled with this" record plus an exile-to-graveyard move, an opponent's
 	// non-mana choice at resolution (three cards), a reveal-from-hand
 	// entry choice, a per-player "as though it had flash" plus a
 	// trigger replacement, a legendary-sorcery cast restriction, a
 	// card put from hand at resolution, a beginning-of-combat event
 	// plus a modal trigger, and a tap-another-creature cost.
+	//
+	// Cloudstone Curio came off this list with #1223: "a
+	// resolution-time choice constrained by the triggering permanent"
+	// was the trigger-data seam, and its clause is now built from the
+	// event (TriggeredAbility.TargetsFrom).
 	for oracle, name := range map[string]string{
 		"3c7ea603-c985-4107-806b-a467b5fcca36": "Scholar of New Horizons",
 		"61d28182-498f-4bbc-bb7a-c5e1ef872dda": "Murkfiend Liege",
-		"5cd2fd32-4da2-40eb-b003-c0b9a9ec91c1": "Cloudstone Curio",
 		"981298e6-ddee-49c0-9377-f47f019b4138": "Currency Converter",
 		"8e356df5-ca92-4be2-871e-8965c2510fbe": "Tempt with Vengeance",
 		"42b9d383-3fe2-4fc8-ab86-f80a288d502b": "Murmuring Bosk",
