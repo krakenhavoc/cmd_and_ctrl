@@ -115,6 +115,17 @@ func buildDef(spec Spec) *game.CardDef {
 	// declaration for the reason suspend's pair is, and appended to
 	// whatever the card declares itself — Big Game Hunter has an ETB
 	// trigger of its own and keeps it.
+	// ADR 0089 / CR 702.174a–b: gift is a cost and a gift, and both
+	// belong to the KEYWORD. Grown here from the one declaration for
+	// the reason madness's pair is. The cost goes LAST so any printed
+	// optional cost keeps its index; the entry trigger is installed on
+	// every gift card and fires only for a permanent whose record says
+	// the gift was promised, and the resolve wrapper stands aside for a
+	// permanent spell — so neither half needs to know the card's type.
+	if gift := spec.Gift; gift != nil {
+		d.OptionalCosts = append(append([]game.AdditionalCost(nil), d.OptionalCosts...), gift.cost())
+		d.Triggered = append(append([]game.TriggeredAbility(nil), d.Triggered...), gift.entryTrigger(spec.Name))
+	}
 	if spec.Madness != "" {
 		d.Replacements = append(append([]game.ReplacementEffect(nil), d.Replacements...),
 			game.MadnessReplacement())
@@ -130,6 +141,11 @@ func buildDef(spec Spec) *game.CardDef {
 		d.Resolve = func(g *game.Game, item *game.StackItem) error {
 			return onResolve(item, NewContext(g, item))
 		}
+	}
+	// CR 702.174j: an instant or sorcery's gift happens before any of
+	// its other spell abilities.
+	if spec.Gift != nil {
+		d.Resolve = spec.Gift.wrapResolve(spec.OnResolve)
 	}
 	if asEnters := spec.AsEnters; asEnters != nil {
 		d.AsEnters = func(g *game.Game, cardID uuid.UUID) error {

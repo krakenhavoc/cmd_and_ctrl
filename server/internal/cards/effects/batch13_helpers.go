@@ -74,7 +74,16 @@ func b13CreatureDealtDamageToYou(ev game.Event, source *game.Card, g *game.Game)
 // a layer effect, or a stolen creature that went back to its owner's
 // hand, is not counted — weaker than printed, never stronger.
 func b13OtherCreatureYouControlLeftWithoutDying(ev game.Event, source *game.Card, g *game.Game) bool {
-	if ev.Kind != game.EventLTB || ev.NewZone == game.ZoneGraveyard || ev.CardID == source.InstanceID {
+	return ev.CardID != source.InstanceID && creatureYouControlLeftWithoutDying(ev, source, g)
+}
+
+// creatureYouControlLeftWithoutDying is the same condition without
+// the word "other" — Aang, Airbending Master counts himself. When the
+// departing creature IS the source, the harvester's CR 603.10a
+// look-back hands this the card that left, so the controller test is
+// trivially the source's own.
+func creatureYouControlLeftWithoutDying(ev game.Event, source *game.Card, g *game.Game) bool {
+	if ev.Kind != game.EventLTB || ev.NewZone == game.ZoneGraveyard {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)

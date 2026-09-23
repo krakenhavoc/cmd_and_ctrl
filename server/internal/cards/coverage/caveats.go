@@ -432,6 +432,21 @@ var mechanics = []Mechanic{
 		Confidence: Heuristic,
 		Adopt:      `CounterTarget{StackID: …, Dest: game.ZoneRef{Kind: game.ZoneExile}} (or ZoneHand / ZoneLibrary) inside OnResolve — see effects/force_of_negation.go, effects/devious_cover_up.go`,
 	},
+	{
+		// ADR 0089 (#1267): gift is one declaration, Spec.Gift, and
+		// the keyword's cost and gift both grow from it — so the probe
+		// is exact. Six catalog cards carried "the gift can't be
+		// promised" when it landed; the ones it did not adopt are
+		// pinned in caveats_test.go.
+		Name:    "gift",
+		Phrases: []string{"gift"},
+		Implements: func(s effects.Spec) bool {
+			return s.Gift != nil
+		},
+		Evidence:   "the spec declares Spec.Gift",
+		Confidence: Exact,
+		Adopt:      `Gift: GiftACard() / GiftAFood() / GiftATappedFish() / GiftATreasure(), plus .Instead(clause) when the promise swaps the target — see effects/gift.go`,
+	},
 }
 
 // Mechanics returns the curated table. Exported so a card author can

@@ -18,10 +18,16 @@ package effects
 // maximum hand size at cleanup" note that was already stale —
 // enforcement landed in S13.4 — and a player was made to discard at
 // their end step with a Thought Vessel on the battlefield.
+//
+// Reviewed against the oracle text line by line for the Aang deck
+// (#1306): both lines are here and nothing else is printed.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:      "9965d9c5-2ebf-4a6c-930e-55c5890979be",
 		Name:          "Thought Vessel",
+		Completeness:  CompletenessFull,
 		NoMaxHandSize: true,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},

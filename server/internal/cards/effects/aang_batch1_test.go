@@ -114,9 +114,11 @@ func TestAuthorityOfTheConsulsIgnoresYourOwnCreatures(t *testing.T) {
 
 // --- Peregrine Drake ---------------------------------------------
 
-// Untaps five of six tapped lands — capped at five, and only the
-// controller's.
-func TestPeregrineDrakeUntapsUpToFiveOfYourLands(t *testing.T) {
+// "Untap up to five lands" is the controller's choice, made on
+// resolution, among EVERY tapped land at the table: an opponent's land
+// is offered and untaps when picked, the bound is five, and unpicked
+// lands stay tapped.
+func TestPeregrineDrakeUntapsTheLandsItsControllerChooses(t *testing.T) {
 	g := newCatalogGame(t)
 	p0, p1 := g.Seats[0], g.Seats[1]
 
@@ -124,22 +126,40 @@ func TestPeregrineDrakeUntapsUpToFiveOfYourLands(t *testing.T) {
 	for i := range mine {
 		mine[i] = aangPushLand(g, p0.ID, "Island", true)
 	}
-	theirs := aangPushLand(g, p1.ID, "Island", true)
+	theirs := aangPushLand(g, p1.ID, "Forest", true)
+	alreadyUp := aangPushLand(g, p0.ID, "Plains", false)
 
 	castCatalogSpell(t, g, "Peregrine Drake", "Creature — Drake", peregrineDrakeOracle, nil)
 	passPriorityAroundTable(t, g)
 
-	untapped := 0
-	for _, id := range mine {
-		if c, ok := aangCardOnBF(g, id); ok && !c.Tapped {
-			untapped++
+	pick := chooseCardsChoiceFor(g, p0.ID)
+	if pick == nil {
+		t.Fatal("no choose-cards prompt: the lands are not the controller's choice")
+	}
+	if pick.ChooseMin != 0 || pick.ChooseMax != 5 {
+		t.Errorf("bounds %d..%d, want 0..5 (\"up to five\")", pick.ChooseMin, pick.ChooseMax)
+	}
+	if !hasID(pick.ChooseCards, theirs) {
+		t.Error("an opponent's tapped land is not offered — the clause says no \"you control\"")
+	}
+	if hasID(pick.ChooseCards, alreadyUp) {
+		t.Error("an untapped land is offered; untapping it would do nothing")
+	}
+	if err := g.ResolveChooseCards(pick.ID, p0.ID, append(append([]uuid.UUID{}, mine...), theirs)[:6]); err == nil {
+		t.Fatal("six lands accepted for \"up to five\"")
+	}
+
+	answerChooseCards(t, g, p0.ID, mine[0], mine[1], mine[2], mine[3], theirs)
+	passPriorityAroundTable(t, g)
+
+	for i, id := range mine {
+		c, _ := aangCardOnBF(g, id)
+		if want := i >= 4; c.Tapped != want {
+			t.Errorf("my land %d tapped=%v, want %v", i, c.Tapped, want)
 		}
 	}
-	if untapped != 5 {
-		t.Errorf("untapped %d of the controller's lands, want exactly 5", untapped)
-	}
-	if c, ok := aangCardOnBF(g, theirs); ok && !c.Tapped {
-		t.Error("Peregrine Drake untapped an opponent's land")
+	if c, _ := aangCardOnBF(g, theirs); c.Tapped {
+		t.Error("the chosen opponent's land did not untap")
 	}
 }
 

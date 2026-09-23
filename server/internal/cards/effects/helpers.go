@@ -850,3 +850,21 @@ func untapTheTarget(g *game.Game, item *game.StackItem) error {
 	}
 	return nil
 }
+
+// destroyEachLegalTarget is "destroy target …" for a clause of any
+// count: every card target still legal at resolution is destroyed, and
+// one that left in response is skipped (CR 608.2b). Curtains' Call's
+// "two target creatures" and Wear Down's gift-promised "two target
+// artifacts and/or enchantments" — and the one-target unpromised Wear
+// Down, which is the same loop over one slot.
+func destroyEachLegalTarget(_ *game.StackItem, ctx *Context) error {
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetCard {
+			continue
+		}
+		if err := (DestroyTarget{Target: t.ID}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+}

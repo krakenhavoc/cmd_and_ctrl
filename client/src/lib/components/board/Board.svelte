@@ -76,6 +76,7 @@
     tapCostLimit,
     alternativeCostsOf,
     alternativeCostByKey,
+    castTargetOverride,
     altCostPayOptions,
     applyCastChoices,
     isLegalCardTarget,
@@ -305,7 +306,11 @@
   // the vast majority of casts of these cards will be.
   let altCostPromptCard = $state<CardView | null>(null);
   let altCostPromptChoices: CastChoices = {};
-  function confirmAltCost(key: string | undefined, optional: number[]): void {
+  function confirmAltCost(
+    key: string | undefined,
+    optional: number[],
+    giftOpponent?: string,
+  ): void {
     const card = altCostPromptCard;
     const choices = altCostPromptChoices;
     altCostPromptCard = null;
@@ -317,6 +322,9 @@
     // branch of `key` drops the other.
     let next: CastChoices = key === undefined ? choices : { ...choices, altCost: key };
     if (optional.length > 0) next = { ...next, optionalCosts: optional };
+    // #1267: the gift's opponent is part of the same announcement; the
+    // modal only hands one back when the gift toggle is on.
+    if (giftOpponent !== undefined) next = { ...next, giftOpponent };
     afterAltCost(card, next);
   }
 
@@ -692,7 +700,13 @@
     // targeting flow and wait for a second click on a legal target.
     // Otherwise fire cast_spell immediately (lands, sorceries with
     // no targets, vanilla permanents).
-    const alt = alternativeCostByKey(card, choices.altCost);
+    //
+    // #1267: an alternative cost's clause replaces the card's, and so
+    // does a claimed optional cost's that carries one — a promised
+    // gift. That includes a card that prints no target at all but
+    // gains one with the gift, which is why this reads the override
+    // rather than the card first.
+    const alt = castTargetOverride(card, choices);
     const mode = alt ? alt.target_mode : card.target_mode;
     // #1211: the allowlist moved into targeting.ts as
     // opensTargetPicker. It was written out here as a chain of `===`
@@ -1747,6 +1761,7 @@
   />
   <AlternativeCostModal
     card={altCostPromptCard}
+    seats={view.seats}
     onConfirm={confirmAltCost}
     onCancel={() => {
       altCostPromptCard = null;

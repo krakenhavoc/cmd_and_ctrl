@@ -253,8 +253,10 @@ func TestB26PeerlessRecyclingReturnsAPermanentCardWithoutTheGift(t *testing.T) {
 	if !me.Hand.Contains(rock) {
 		t.Error("the permanent card returns to hand")
 	}
-	if spec, _ := Lookup(b26PeerlessRecyclingOracle); spec.Completeness != CompletenessCaveats || spec.Targets.Max != 1 {
-		t.Error("the gift is a declared gap — one card, never two")
+	// ADR 0089: unpromised, one card; the gift's clause is the
+	// two-card one (TestGiftPeerlessRecyclingPromisedReturnsTwo).
+	if spec, _ := Lookup(b26PeerlessRecyclingOracle); spec.Targets.Max != 1 || spec.Gift == nil || spec.Gift.Targets.Max != 2 {
+		t.Error("one card without the gift, two with it")
 	}
 }
 

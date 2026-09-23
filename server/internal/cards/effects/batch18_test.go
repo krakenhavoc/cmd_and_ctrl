@@ -724,7 +724,7 @@ func TestB18WindsOfAbandonOverloadedExilesEachCreatureYouDontControl(t *testing.
 	}
 }
 
-func TestB18VenserBouncesATargetPermanentAndDeclaresTheSpellGap(t *testing.T) {
+func TestB18VenserBouncesATargetPermanent(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	theirs := b16Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2, "G")
@@ -734,13 +734,6 @@ func TestB18VenserBouncesATargetPermanentAndDeclaresTheSpellGap(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	if !opp.Hand.Contains(theirs) {
 		t.Error("the target permanent returns to its owner's hand")
-	}
-	spec, _ := Lookup(b18VenserShaperSavantOracle)
-	if spec.Completeness != CompletenessCaveats {
-		t.Error("the spell-half gap must be declared")
-	}
-	if len(spec.Triggered) != 1 || spec.Triggered[0].Targets == nil || len(spec.Triggered[0].Targets.Zones) != 1 || spec.Triggered[0].Targets.Zones[0] != game.ZoneBattlefield {
-		t.Error("the target clause offers the battlefield only")
 	}
 }
 

@@ -1040,8 +1040,10 @@ func TestB22WearDownDestroysOneArtifactOrEnchantment(t *testing.T) {
 		t.Error("the artifact survived")
 	}
 	spec, _ := Lookup(b22WearDownOracle)
-	if spec.Targets == nil || spec.Targets.Max != 1 || spec.Completeness != CompletenessCaveats {
-		t.Error("the gift is a declared gap: one target, never two")
+	// ADR 0089: unpromised, one target; the gift's clause is the
+	// two-target one (TestGiftWearDownPromisedDestroysTwo).
+	if spec.Targets == nil || spec.Targets.Max != 1 || spec.Gift == nil || spec.Gift.Targets.Max != 2 {
+		t.Error("one target without the gift, two with it")
 	}
 }
 

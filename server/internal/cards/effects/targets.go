@@ -293,6 +293,31 @@ func NotSelf(selfID uuid.UUID) CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.InstanceID != selfID }
 }
 
+// AnotherTarget is a triggered ability's "another target …" clause
+// that excludes the trigger's OWN source by instance — for
+// game.TriggeredAbility.TargetsFrom, which is handed the source, as a
+// static Targets clause is not.
+//
+// `build` receives NotSelf(source) and returns the clause with it
+// among its predicates:
+//
+//	TargetsFrom: AnotherTarget(func(other CardPredicate) *game.TargetSpec {
+//		return TargetCreature("another target creature you control", YouControl(), other)
+//	}),
+//
+// Exact where b03NotNamed is an approximation: a second permanent with
+// the same name — a Clone or token copy of the source — stays a legal
+// target, as printed, and the source itself never is.
+func AnotherTarget(build func(other CardPredicate) *game.TargetSpec) func(game.TriggerContext, *game.Card, *game.Game) *game.TargetSpec {
+	return func(_ game.TriggerContext, source *game.Card, _ *game.Game) *game.TargetSpec {
+		self := uuid.Nil
+		if source != nil {
+			self = source.InstanceID
+		}
+		return build(NotSelf(self))
+	}
+}
+
 // Opponent passes for players other than the caster.
 func Opponent() PlayerPredicate {
 	return func(_ *game.Game, caster uuid.UUID, p *game.Player) bool { return p.ID != caster }
@@ -379,6 +404,34 @@ func TargetSpell(label string, preds ...CardPredicate) *game.TargetSpec {
 		Zones: []game.ZoneKind{game.ZoneStack},
 		CardOK: func(g *game.Game, caster uuid.UUID, c game.Card, _ game.ZoneKind) bool {
 			return pred(g, caster, c)
+		},
+		Min: 1, Max: 1,
+	}
+}
+
+// TargetSpellOrPermanent — "target spell or permanent": ONE pick that
+// may be a spell on the stack or a permanent on the battlefield
+// (Venser, Shaper Savant; Sink into Stupor). `spell` narrows the stack
+// half and `permanent` the battlefield half; nil admits every spell /
+// every permanent.
+//
+// Mode is "any" because the client's Mode string decides which
+// SURFACES enter targeting and this clause needs both the stack and
+// the battlefield (Aang, Swift Savior's shape); legality still comes
+// from CardOK. Players stays false, so "any" never points at a player.
+// Only a spell is a card on the stack — an ability is a StackMeta item
+// with no card — so an ability is never offered.
+func TargetSpellOrPermanent(label string, spell, permanent CardPredicate) *game.TargetSpec {
+	return &game.TargetSpec{
+		Mode:  "any",
+		Label: label,
+		Zones: []game.ZoneKind{game.ZoneStack, game.ZoneBattlefield},
+		CardOK: func(g *game.Game, caster uuid.UUID, c game.Card, zone game.ZoneKind) bool {
+			pred := permanent
+			if zone == game.ZoneStack {
+				pred = spell
+			}
+			return pred == nil || pred(g, caster, c)
 		},
 		Min: 1, Max: 1,
 	}

@@ -8,6 +8,13 @@ shape as [the Pirates list](pirates-mary-read-anne-bonny.md): a deck is
 a better forcing function than a card count, because it says which
 gaps actually stop a game from being played.
 
+> **Superseded 2026-09-23.** The live per-card checklist is
+> [#1306](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1306), re-triaged
+> against `develop` @ `ecaab344`: every card, its bucket (full / caveated /
+> buildable / blocked) and the seam issue each blocked card waits on. The
+> text below is the 2026-09-11 triage, kept as a record; its numbers and
+> several of its blockers are out of date.
+
 **Re-triaged 2026-09-11** against `main` @ `0f82505` — re-run after
 [#267](https://github.com/krakenhavoc/cmd_and_ctrl/pull/267),
 [#268](https://github.com/krakenhavoc/cmd_and_ctrl/pull/268),

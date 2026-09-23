@@ -1173,6 +1173,15 @@ the policy for choosing the sets is what keeps that product finite
   {4})", "... (Multikicker {G} x3)"), so the kicked and unkicked casts
   of one card are distinguishable in the move list and in a bot-eval
   trace.
+- **A gift is one move per opponent** (#1267, [ADR
+  0089](decisions/0089-gift.md)). Promising a gift names the opponent
+  who receives it, so every set that promises one is expanded once per
+  entry of `game.GiftOpponentsLocked` — the list the engine validates
+  against — and each is targeted under the PROMISED clause (Long River's
+  Pull counters any spell once promised). The unpromised cast is always
+  offered beside them. The label names the recipient ("Cast Dawn's
+  Truce (Gift a card) → Seat2"). Which opponent to feed is the policy's
+  choice; the enumerator only makes sure it has one.
 
 A NON-MANA optional cost (Constant Mists' "Buyback—Sacrifice a land")
 is expanded through the same payment search the mandatory sacrifice

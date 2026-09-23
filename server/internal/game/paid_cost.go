@@ -143,6 +143,20 @@ type PaidCost struct {
 	// field differs from Mana above: CopySpellForEffect carries it
 	// and clears the rest. Added in ADR 0073 (#664).
 	OptionalCosts []int `json:"optionalCosts,omitempty"`
+
+	// GiftOpponent is the opponent the caster chose while paying a
+	// gift cost (CR 702.174a) — the player the gift was PROMISED to —
+	// or uuid.Nil when no gift was promised. Non-nil is exactly CR
+	// 702.174k's "that spell's gift was promised", read through
+	// GiftPromised().
+	//
+	// A fact about the announcement for the reason OptionalCosts is:
+	// "choose an opponent" is how the gift cost is paid, and by
+	// resolution nothing on the board records the choice. It is the
+	// same kind of fact as "was it kicked" and travels the same way —
+	// a CR 707.10 copy keeps it, and CR 400.7d carries it onto the
+	// permanent as CastProvenance.GiftOpponent. ADR 0089 §2.
+	GiftOpponent uuid.UUID `json:"giftOpponent,omitempty"`
 }
 
 // PaidOptionalCost reports whether the optional cost at `index` was

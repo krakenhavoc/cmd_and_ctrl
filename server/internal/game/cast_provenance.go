@@ -120,6 +120,12 @@ type CastProvenance struct {
 	// change shape, only where they look.
 	OptionalCosts []int `json:"optionalCosts,omitempty"`
 
+	// GiftOpponent is PaidCost.GiftOpponent carried across the entry
+	// (CR 400.7d, ADR 0089 §2): the opponent a gift was promised to,
+	// or uuid.Nil. What a gift PERMANENT's "when this enters, if the
+	// gift was promised" reads, and who its gift trigger gives to.
+	GiftOpponent uuid.UUID `json:"giftOpponent,omitempty"`
+
 	// Mana is the tokens that paid for the spell, copied off
 	// StackItem.Paid.Mana at the entry finisher (#1212) — each still
 	// carrying the colour it was and the SourceKinds snapshot of the
@@ -159,7 +165,7 @@ func (p CastProvenance) Spent() ManaSpent {
 // Any reports whether this record says anything at all.
 func (p CastProvenance) Any() bool {
 	return p.AltCost != "" || p.FromZone != "" || len(p.OptionalCosts) > 0 ||
-		len(p.Mana) > 0 || p.ManaOnPaper
+		len(p.Mana) > 0 || p.ManaOnPaper || p.GiftOpponent != uuid.Nil
 }
 
 // Clone deep-copies the record. Two reference-typed fields now —
@@ -262,6 +268,9 @@ func (g *Game) stampCastProvenanceLocked(cardID uuid.UUID, item *StackItem) {
 		// on the undo stack, and a permanent that shared it would see
 		// a rewind edit its own record.
 		OptionalCosts: append([]int(nil), item.Paid.OptionalCosts...),
+		// ADR 0089: and who the gift was promised to, the same
+		// announcement fact one field over.
+		GiftOpponent: item.Paid.GiftOpponent,
 		// #1212: the mana, for the same reason and with the same
 		// copy. Taken off the item here rather than looked up later,
 		// because this is the last moment it exists — the item is

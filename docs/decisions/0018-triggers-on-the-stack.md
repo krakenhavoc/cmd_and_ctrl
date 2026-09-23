@@ -705,6 +705,30 @@ own untap step, where nothing has priority to move them. A pick with no
 zone on its frame is left alone too: it re-checks nothing on submit, so
 there is no live list for the engine to be right about.
 
+**Amendment (2026-09-23, #1263): the exclusion above was aspirational,
+not enforced.** `pruneCardSetChoicesLocked`'s loop excluded a kind with
+no zone on its frame (the sentence just above, correctly) but had no
+kind check at all for `untap_choice` or `entry_reveal_from_hand` — and
+both of them DO set a real zone (`ZoneBattlefield`, `ZoneHand`), so the
+loop's comment claiming untap_choice "sets no zone so it falls out at
+the next line" was never true (`queueUntapChoiceLocked` has stamped
+`Zone: ZoneBattlefield` since #826) and both kinds were examined and
+could be WITHDRAWN exactly like a discard prompt. Neither kind's
+departure row survives that: `untap_choice`'s `dropDiscard` runs
+nothing, stranding the untap step, and `entry_reveal_from_hand`'s
+paused `replacementResume` is settled only by
+`dropChoicesForPlayerLocked` (a player's departure), never by the
+plain withdrawal `dropChoiceLocked` performs here — so a withdrawal
+strands the paused CR 614 entry too, with no path back. The fix is an
+explicit kind check (`c.Kind == PendingChoiceUntapChoice ||
+PendingChoiceEntryRevealFromHand`) rather than any change to the zone
+logic, so this paragraph's claim is now what the code does rather than
+what it was supposed to do. `TestAnUntapChoiceIsNotWithdrawnWhen-
+ItsCandidateLeavesTheBattlefield` and
+`TestAnEntryRevealFromHandIsNotWithdrawnWhenItsCandidateLeavesTheHand`
+(`card_set_prune_test.go`) pin both shapes and fail without the kind
+check.
+
 **The reachability, stated.** No catalog card empties a hand under
 another player's open discard prompt today, and the same is true of the
 graveyard and library picks; this is the wedge closed before a card

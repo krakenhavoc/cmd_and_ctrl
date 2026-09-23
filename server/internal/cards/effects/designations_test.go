@@ -222,6 +222,53 @@ func TestClassLevelIsNotCopiedByACopyEffect(t *testing.T) {
 
 // --- Fortune Teller's Talent (#333) ----------------------------------
 
+// TestFortuneTellersTalentOwnerSeesTheTopCardAtLevelOne is level 1's
+// "you may look at the top card of your library any time" (CR 401.5):
+// with the Talent on the battlefield at level 1 its controller — and
+// only its controller — knows the top card of their own library. The
+// opponent's library is untouched, and without the Talent nobody sees
+// anything.
+func TestFortuneTellersTalentOwnerSeesTheTopCardAtLevelOne(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	if me.Library.Size() == 0 {
+		t.Fatalf("test needs a non-empty library")
+	}
+
+	visible := func(owner, viewer uuid.UUID) bool {
+		var ok bool
+		g.ReadSnapshot(func() { ok = g.LibraryTopVisibleToLocked(owner, viewer) })
+		return ok
+	}
+	knowers := func(owner uuid.UUID) []uuid.UUID {
+		var out []uuid.UUID
+		g.ReadSnapshot(func() { out, _ = g.LibraryTopKnowersLocked(owner) })
+		return out
+	}
+
+	if visible(me.ID, me.ID) {
+		t.Fatalf("the top card is visible before the Talent is on the battlefield")
+	}
+
+	talent := pushClass(g, me.ID, "Fortune Teller's Talent", "Enchantment — Class", fortuneTellersTalentOracle)
+	if got := levelOf(g, talent); got != 1 {
+		t.Fatalf("the Talent should be level 1, got %d", got)
+	}
+
+	if !visible(me.ID, me.ID) {
+		t.Errorf("at level 1 the Talent's controller should see the top card of their library")
+	}
+	if visible(me.ID, opp.ID) {
+		t.Errorf("an opponent sees the top card; the Talent's look is private, not a reveal")
+	}
+	if got := knowers(me.ID); len(got) != 1 || got[0] != me.ID {
+		t.Errorf("top-card knowers = %v, want exactly the owner %v", got, me.ID)
+	}
+	if visible(opp.ID, me.ID) || visible(opp.ID, opp.ID) {
+		t.Errorf("the Talent opened the top of an OPPONENT's library")
+	}
+}
+
 // TestFortuneTellersTalentReductionWaitsForLevelThree is the gated
 // COST MODIFIER, the fourth slot the gate covers. The reduction must
 // not apply at level 1 or 2 and must apply at level 3 — and only to
@@ -271,22 +318,23 @@ func TestFortuneTellersTalentReductionWaitsForLevelThree(t *testing.T) {
 	}
 }
 
-// TestFortuneTellersTalentDeclaresItsLibraryTopCaveats — the two
-// clauses that are NOT implemented are declared, not approximated
-// (ADR 0037 §5). If #765 lands and the clauses are built, this test
-// is the one that should be deleted along with the caveats.
+// TestFortuneTellersTalentDeclaresItsLibraryTopCaveats — level 2's
+// play-from-the-top clause is NOT implemented, so it is declared, not
+// approximated (ADR 0037 §5). Level 1's look shipped with
+// LibraryTopOwner, and its caveat went with it. When a standing cast
+// permission can be gated by Class level and by "you've cast a spell
+// this turn", level 2 is built and this test is deleted along with
+// the last caveat.
 func TestFortuneTellersTalentDeclaresItsLibraryTopCaveats(t *testing.T) {
 	spec, ok := Lookup(fortuneTellersTalentOracle)
 	if !ok {
 		t.Fatal("Fortune Teller's Talent is not registered")
 	}
-	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 2 {
-		t.Fatalf("want CompletenessCaveats with 2 caveats, got %s with %d", spec.Completeness, len(spec.Caveats))
+	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
+		t.Fatalf("want CompletenessCaveats with 1 caveat, got %s with %d", spec.Completeness, len(spec.Caveats))
 	}
-	for _, cv := range spec.Caveats {
-		if !containsFoldASCII(cv, "top card of your library") && !containsFoldASCII(cv, "top of your library") {
-			t.Errorf("caveat does not name the library-top clause it covers: %q", cv)
-		}
+	if cv := spec.Caveats[0]; !containsFoldASCII(cv, "level 2") || !containsFoldASCII(cv, "top of your library") {
+		t.Errorf("the caveat should name level 2's play-from-the-top clause: %q", cv)
 	}
 }
 

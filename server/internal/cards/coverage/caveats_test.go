@@ -62,6 +62,12 @@ a player right now.
 //
 // Key is Finding.Key() — "<card name> / <mechanic>".
 var adoptableGaps = map[string]string{
+	"Starfall Invocation / gift": `ADR 0089 (#1267) landed gift and adopted it on
+		six cards. Starfall's promised branch returns "a creature card
+		put into your graveyard this way", which needs a resolution-time
+		pick among the cards THIS wipe moved; offering the promise
+		without it would give the opponent a card for nothing, so the
+		card stays unpromisable until that pick is written.`,
 	"Deadly Rollick / free cast": `#428 landed the conditional free cast and used it on
 		Fierce Guardianship only. Deadly Rollick and the rest of the
 		Commander Legends cycle are two lines each

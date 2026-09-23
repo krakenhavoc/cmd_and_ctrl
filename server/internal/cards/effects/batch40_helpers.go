@@ -244,19 +244,24 @@ func b40DrainEachOpponent(n int) Effect {
 
 // b40ChaosSpillover is Vincent, Vengeful Atoner's Chaos ability: the
 // source deals `amount` damage to each opponent OTHER than `hit`, but
-// only if its effective power is at least `minPower`.
+// only if its power is at least `minPower`.
 //
 // The power check happens here, at RESOLUTION, because that is where
 // the printed text puts it — after the effect clause rather than as
 // an intervening-if. So Vincent can be pumped in response and the
 // spillover happens; a Vincent who has shrunk, or who has left the
 // battlefield and has no power to read at all, does nothing.
+//
+// CurrentPower(), not Effective().Power (#1281): the gate is "if its
+// power is 7 or greater", and Effective().Power excludes +1/+1 / -1/-1
+// counters, so a Vincent pumped by counters rather than by an anthem
+// never reached the threshold.
 func b40ChaosSpillover(g *game.Game, item *game.StackItem, hit uuid.UUID, amount, minPower int) error {
 	if amount <= 0 {
 		return nil
 	}
 	src, ok := g.LookupCardForEffect(item.SourceCardID)
-	if !ok || src.Effective().Power < minPower {
+	if !ok || src.CurrentPower() < minPower {
 		return nil
 	}
 	ctx := NewContext(g, item)

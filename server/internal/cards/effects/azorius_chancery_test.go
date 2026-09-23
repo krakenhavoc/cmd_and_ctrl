@@ -55,7 +55,31 @@ func TestAzoriusChanceryEntersTapped(t *testing.T) {
 	}
 }
 
-// The ETB returns the chosen land to its owner's hand.
+// chanceryReturnPrompt is the resolution-time "return a land you
+// control" prompt, once the trigger has resolved far enough to ask.
+func chanceryReturnPrompt(t *testing.T, g *game.Game, chooser uuid.UUID) *game.PendingChoice {
+	t.Helper()
+	c := latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, chooser)
+	if c == nil {
+		t.Fatalf("no own_permanents prompt for the controller: %+v", g.PendingChoices)
+	}
+	return c
+}
+
+// chanceryInHand reports whether the card is in the player's hand.
+func chanceryInHand(p *game.Player, id uuid.UUID) bool {
+	for _, c := range p.Hand.Cards {
+		if c.InstanceID == id {
+			return true
+		}
+	}
+	return false
+}
+
+// The ETB returns the chosen land to its owner's hand, and the land is
+// CHOSEN ON RESOLUTION: nothing is asked while the trigger waits on the
+// stack, so opponents respond to the trigger without knowing which land
+// is coming back.
 func TestAzoriusChanceryReturnsChosenLand(t *testing.T) {
 	g := newCatalogGame(t)
 	p0 := g.Seats[0]
@@ -63,19 +87,29 @@ func TestAzoriusChanceryReturnsChosenLand(t *testing.T) {
 	handBefore := len(p0.Hand.Cards)
 
 	chancery := chanceryPlay(t, g, p0.ID)
-	pickCard(t, g, p0.ID, island)
+	if pendingOfKind(g, game.PendingChoicePickTarget) != nil {
+		t.Fatal("the bounce asked for a target; \"return a land you control\" names none")
+	}
+	if c := latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, p0.ID); c != nil {
+		t.Fatal("the land was chosen before the trigger resolved")
+	}
 	passPriorityAroundTable(t, g)
+
+	prompt := chanceryReturnPrompt(t, g, p0.ID)
+	if prompt.ChooseMin != 1 || prompt.ChooseMax != 1 {
+		t.Errorf("bounds %d..%d, want exactly one land", prompt.ChooseMin, prompt.ChooseMax)
+	}
+	if len(prompt.ChooseCards) != 2 {
+		t.Errorf("candidates = %v, want the Island and the Chancery", prompt.ChooseCards)
+	}
+	if err := g.ResolveOwnPermanents(prompt.ID, p0.ID, []uuid.UUID{island}); err != nil {
+		t.Fatalf("ResolveOwnPermanents: %v", err)
+	}
 
 	if _, stillOut := aangCardOnBF(g, island); stillOut {
 		t.Error("chosen land is still on the battlefield")
 	}
-	found := false
-	for _, c := range p0.Hand.Cards {
-		if c.InstanceID == island {
-			found = true
-		}
-	}
-	if !found {
+	if !chanceryInHand(p0, island) {
 		t.Error("chosen land did not return to its owner's hand")
 	}
 	if len(p0.Hand.Cards) != handBefore+1 {
@@ -87,27 +121,55 @@ func TestAzoriusChanceryReturnsChosenLand(t *testing.T) {
 	}
 }
 
-// With no other land, the Chancery is still a legal choice for its own
-// trigger — so the trigger can never fizzle for want of a target.
+// With no other land, the Chancery is still a candidate for its own
+// trigger.
 func TestAzoriusChanceryCanReturnItself(t *testing.T) {
 	g := newCatalogGame(t)
 	p0 := g.Seats[0]
 	chancery := chanceryPlay(t, g, p0.ID)
-
-	pickCard(t, g, p0.ID, chancery)
 	passPriorityAroundTable(t, g)
 
+	prompt := chanceryReturnPrompt(t, g, p0.ID)
+	if err := g.ResolveOwnPermanents(prompt.ID, p0.ID, []uuid.UUID{chancery}); err != nil {
+		t.Fatalf("ResolveOwnPermanents: %v", err)
+	}
 	if _, stillOut := aangCardOnBF(g, chancery); stillOut {
 		t.Error("Chancery did not return itself")
 	}
-	found := false
-	for _, c := range p0.Hand.Cards {
-		if c.InstanceID == chancery {
-			found = true
+	if !chanceryInHand(p0, chancery) {
+		t.Error("Chancery did not end up in its owner's hand")
+	}
+}
+
+// Not a target, so a land of yours with hexproof is as
+// good a choice as any — and an opponent's land is no choice at all.
+func TestAzoriusChanceryReturnIgnoresHexproofAndOnlyOffersYourLands(t *testing.T) {
+	g := newCatalogGame(t)
+	p0, p1 := g.Seats[0], g.Seats[1]
+	field := uuid.New()
+	g.Battlefield.PushTop(game.Card{
+		InstanceID: field, Name: "Hexproof Land", TypeLine: "Land",
+		Keywords: []string{"hexproof"}, Owner: p0.ID, Controller: p0.ID,
+	})
+	theirs := aangPushLand(g, p1.ID, "Plains", false)
+
+	chanceryPlay(t, g, p0.ID)
+	passPriorityAroundTable(t, g)
+
+	prompt := chanceryReturnPrompt(t, g, p0.ID)
+	for _, id := range prompt.ChooseCards {
+		if id == theirs {
+			t.Error("an opponent's land was offered for \"a land you control\"")
 		}
 	}
-	if !found {
-		t.Error("Chancery did not end up in its owner's hand")
+	if err := g.ResolveOwnPermanents(prompt.ID, p0.ID, []uuid.UUID{theirs}); err == nil {
+		t.Error("the prompt accepted an opponent's land")
+	}
+	if err := g.ResolveOwnPermanents(prompt.ID, p0.ID, []uuid.UUID{field}); err != nil {
+		t.Fatalf("ResolveOwnPermanents(hexproof land): %v", err)
+	}
+	if !chanceryInHand(p0, field) {
+		t.Error("the hexproof land did not return; the bounce does not target")
 	}
 }
 

@@ -339,6 +339,27 @@ type Spec struct {
 	// was kicked" trigger reads game.CardKickedTimes(*source).
 	OptionalCosts []game.AdditionalCost
 
+	// Gift is the card's "Gift a [something]" (CR 702.174, ADR 0089),
+	// built with GiftACard / GiftAFood / GiftATappedFish /
+	// GiftATreasure, plus .Instead(clause) when a promised gift swaps
+	// the target clause:
+	//
+	//	Gift: GiftACard(),                                     // Dawn's Truce
+	//	Gift: GiftACard().Instead(TargetSpell("target spell")), // Long River's Pull
+	//
+	// ONE declaration, and buildDef grows everything from it: the
+	// optional cost the caster pays by choosing an opponent (appended
+	// after OptionalCosts, so a kicker keeps its index), the gift
+	// itself BEFORE OnResolve on an instant or sorcery (CR 702.174j),
+	// and the "when this enters, if the gift was promised" trigger on a
+	// permanent (CR 702.174b). Do not also declare a gift cost in
+	// OptionalCosts — Register refuses it.
+	//
+	// The card's own "if the gift was promised" branches read
+	// ctx.GiftPromised() in OnResolve, or source.GiftPromised() from a
+	// permanent's own trigger.
+	Gift *Gift
+
 	// CantBeCountered is the S23 "This spell can't be countered"
 	// rider (Supreme Verdict). A spell that declares it is still a
 	// legal target for Counterspell — the counter resolves and does

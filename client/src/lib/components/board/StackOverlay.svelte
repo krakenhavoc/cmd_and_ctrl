@@ -372,6 +372,16 @@
                 {#if item.alt_cost}
                   <span class="chip flag">{item.alt_cost}</span>
                 {/if}
+                <!-- #1267 (CR 702.174): a promised gift changes what the
+                     spell does, and who gets it is public. -->
+                {#if item.gift_to}
+                  <span
+                    class="chip flag"
+                    title={`the gift was promised to ${seatBySeatID.get(item.gift_to)?.name ?? "an opponent"} — they get it before the spell's other effects`}
+                  >
+                    Gift → {seatBySeatID.get(item.gift_to)?.name ?? "opponent"}
+                  </span>
+                {/if}
                 <!-- #764: the chosen bullets, in announce order (CR
                      700.2c) and with repeats (CR 700.2d). This used to
                      print the raw indexes ("modes: 0, 2"), which nobody

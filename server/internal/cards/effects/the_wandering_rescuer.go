@@ -38,10 +38,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // layer engine recomputes (Tapped), so it comes and goes with the
 // tap: untapping the creature removes the hexproof on the next
 // recompute, exactly as printed.
+//
+// Reviewed line by line for #1306: flash and double strike are
+// printed keywords, convoke is Spec.TapCost, and the hexproof grant
+// covers OTHER, TAPPED CREATURES YOU CONTROL — each word a clause of
+// AppliesTo. Hexproof stops only opponents (CR 702.11b), which the
+// targeting gate enforces. No simplifications.
 func init() {
 	Register(Spec{
 		OracleID:        "b8ef65df-f8e7-44e3-9864-9c127232a2b6",
 		Name:            "The Wandering Rescuer",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flash", "double strike"},
 		TapCost:         Convoke(),
 		Static: []game.StaticAbility{{

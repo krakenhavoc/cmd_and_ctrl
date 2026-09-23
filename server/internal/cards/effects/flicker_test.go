@@ -386,6 +386,95 @@ func TestCosmicInterventionExilesInsteadThenReturns(t *testing.T) {
 	}
 }
 
+// A dying commander. CR 903.9a lets its owner send it to the command
+// zone once it has been exiled; Cosmic Intervention does the exiling.
+// So both outcomes must be reachable, whichever order the controller
+// puts the two replacements in: "no" to the command zone leaves the
+// commander in exile and it walks back at the end step; "yes" sends it
+// home and nothing comes back.
+func TestCosmicInterventionSavesACommanderWhoseOwnerDeclines(t *testing.T) {
+	for _, tc := range []struct {
+		name            string
+		reverseOrder    bool
+		takeCommandZone bool
+	}{
+		{"declines, commander rule first", false, false},
+		{"declines, Cosmic Intervention first", true, false},
+		{"takes the command zone", false, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := newCatalogGame(t)
+			me := g.Seats[0]
+			commander := uuid.New()
+			g.Battlefield.PushTop(game.Card{
+				InstanceID: commander, Name: "My Commander", TypeLine: "Legendary Creature — Human Avatar",
+				Power: 3, Toughness: 2, Owner: me.ID, Controller: me.ID, IsCommander: true,
+			})
+
+			castCatalogSpell(t, g, "Cosmic Intervention", "Instant", cosmicInterventionOracle, nil)
+			passPriorityAroundTable(t, g)
+			g.WithWriteLock(func() {
+				if err := g.DestroyPermanentForEffect(commander); err != nil {
+					t.Fatalf("DestroyPermanentForEffect: %v", err)
+				}
+			})
+
+			asked := false
+			for i := 0; i < 4 && len(g.PendingChoices) > 0; i++ {
+				c := g.PendingChoices[len(g.PendingChoices)-1]
+				if c.Chooser != me.ID {
+					t.Fatalf("prompt %s addressed to someone other than the commander's owner", c.Kind)
+				}
+				switch c.Kind {
+				case game.PendingChoiceReplacementOrder:
+					ids := append([]game.ReplacementEffectID(nil), c.ReplacementEffectIDs...)
+					if tc.reverseOrder {
+						for l, r := 0, len(ids)-1; l < r; l, r = l+1, r-1 {
+							ids[l], ids[r] = ids[r], ids[l]
+						}
+					}
+					if err := g.ResolveReplacementOrder(c.ID, me.ID, ids); err != nil {
+						t.Fatalf("ResolveReplacementOrder: %v", err)
+					}
+				case game.PendingChoiceOptionalReplacement:
+					asked = true
+					if err := g.ResolveOptionalReplacement(c.ID, me.ID, tc.takeCommandZone); err != nil {
+						t.Fatalf("ResolveOptionalReplacement: %v", err)
+					}
+				default:
+					t.Fatalf("unexpected prompt %s", c.Kind)
+				}
+			}
+			if !asked {
+				t.Fatal("the commander's owner was never offered the command zone")
+			}
+			if me.Graveyard.Contains(commander) {
+				t.Fatal("the commander hit the graveyard under Cosmic Intervention")
+			}
+
+			if tc.takeCommandZone {
+				if !me.Command.Contains(commander) {
+					t.Fatal("the owner took the command zone but the commander is not there")
+				}
+				advanceToEndStepOf(t, g, 0)
+				passPriorityAroundTable(t, g)
+				if got := battlefieldIDsNamed(g, "My Commander"); len(got) != 0 {
+					t.Errorf("a commander in the command zone came back at the end step: %v", got)
+				}
+				return
+			}
+			if !exileHas(g, commander) {
+				t.Fatal("declined commander is not in exile")
+			}
+			advanceToEndStepOf(t, g, 0)
+			passPriorityAroundTable(t, g)
+			if got := battlefieldIDsNamed(g, "My Commander"); len(got) != 1 {
+				t.Fatalf("%d copies of the commander returned at the end step, want 1", len(got))
+			}
+		})
+	}
+}
+
 // An opponent's permanent dying is untouched — "a permanent YOU
 // control".
 func TestCosmicInterventionIgnoresOpponentsPermanents(t *testing.T) {

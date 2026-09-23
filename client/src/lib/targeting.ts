@@ -87,6 +87,11 @@ export interface CastChoices {
   // payment for a multikicker. Undefined and [] are the same thing
   // to the server: decline them all.
   optionalCosts?: number[];
+  // CR 702.174a (#1267): the opponent a gift is promised to — a
+  // player ID from the gift offer's `opponent_options`. Set exactly
+  // when `optionalCosts` claims the gift offer; the server rejects it
+  // on a cast that does not.
+  giftOpponent?: string;
   // S22: the untapped permanents tapped to help pay — convoke and
   // waterbend. Undefined and empty are the same thing to the server;
   // tapping nothing is always legal.
@@ -145,6 +150,10 @@ export function applyCastChoices(
   // what every client that predates the kicker toggles sends.
   if (choices.optionalCosts !== undefined && choices.optionalCosts.length > 0)
     params.optional_costs = choices.optionalCosts;
+  // #1267: omitted unless a gift was promised — a stray one is an
+  // error server-side, not a no-op.
+  if (choices.giftOpponent !== undefined && choices.giftOpponent !== "")
+    params.gift_opponent = choices.giftOpponent;
   if (choices.tapIDs !== undefined && choices.tapIDs.length > 0) params.tap_ids = choices.tapIDs;
   // #916: omitted at 0, which is the server default and what every
   // client that predates the stepper sends.
@@ -274,8 +283,9 @@ export const targeting: Writable<TargetingState | null> = guardedWritable(null, 
 // — the last cast wins. The caller has already verified the
 // card's target_mode is non-empty.
 //
-// `alt` is the alternative cost being paid, when one is (S22): its
-// clause replaces the card's, because the spell's targets are
+// `alt` is the alternative cost being paid, when one is (S22) — or,
+// since #1267, the claimed optional cost that rewrites the clause
+// (see castTargetOverride): its clause replaces the card's, because the spell's targets are
 // whatever the cost it was cast for says they are. Wash Away hard-cast
 // can only hit a spell that wasn't cast from its owner's hand;
 // cleaved it can hit any spell, and the legal set differs
@@ -284,7 +294,7 @@ export function begin(
   card: CardView,
   mode: TargetingMode,
   choices?: CastChoices,
-  alt?: AlternativeCostView,
+  alt?: TargetClauseOverride,
 ): void {
   const lt = alt ? alt.legal_targets : card.legal_targets;
   // #764: a card with more than one clause walks them in printed
@@ -632,6 +642,53 @@ export function optionalCostSelection(counts: Map<number, number>): number[] {
     for (let i = 0; i < n; i++) out.push(index);
   }
   return out;
+}
+
+// optionalCostOpponentOptions returns the players a gift offer may be
+// promised to, or undefined when the offer is not a gift (#1267). An
+// empty array means the offer cannot be taken right now — nobody left
+// to promise it to.
+export function optionalCostOpponentOptions(offer: OptionalCostView): string[] | undefined {
+  if (!offer.chooses_opponent) return undefined;
+  return offer.opponent_options ?? [];
+}
+
+// TargetClauseOverride is the target-clause trio an offer carries when
+// paying it rewrites the spell's clause. AlternativeCostView and
+// OptionalCostView both satisfy it.
+export type TargetClauseOverride = Pick<
+  AlternativeCostView,
+  "target_mode" | "legal_targets" | "clauses"
+>;
+
+function carriesClause(offer: OptionalCostView): boolean {
+  return (
+    offer.target_mode !== undefined ||
+    offer.legal_targets !== undefined ||
+    (offer.clauses?.length ?? 0) > 0
+  );
+}
+
+// castTargetOverride is the clause that replaces the card's own for
+// THIS cast, or undefined when the card's printed clause stands.
+//
+// The alternative cost wins: it replaces the whole statement, and an
+// offer with no target_mode (overload) means "no targets" rather than
+// "fall back". Otherwise the first claimed optional cost that carries
+// a clause — a promised gift that widens Long River's Pull to any
+// spell, or adds a target to a card that prints none. No card has
+// both, so precedence is a guard rather than a rule anyone relies on.
+export function castTargetOverride(
+  card: CardView,
+  choices: CastChoices | undefined,
+): TargetClauseOverride | undefined {
+  const alt = alternativeCostByKey(card, choices?.altCost);
+  if (alt) return alt;
+  for (const index of choices?.optionalCosts ?? []) {
+    const offer = optionalCostsOf(card)[index];
+    if (offer && carriesClause(offer)) return offer;
+  }
+  return undefined;
 }
 
 // optionalCostPayOptions returns the permanents that can pay an

@@ -116,6 +116,16 @@ type Move struct {
 	// overwhelming majority — means "nothing but mana and the
 	// choices Params already lists".
 	Cost *MoveCost `json:"cost,omitempty"`
+
+	// TargetsStack is true when at least one of this move's chosen
+	// targets is an object ON THE STACK — a spell, or an activated or
+	// triggered ability (CR 115.4). It is what lets the client's smart
+	// autopass tell a counterspell-shaped response (Counterspell,
+	// Stifle) apart from any other instant or activated ability: the
+	// former answers something the table is already looking at, the
+	// latter is offense that happens to be available right now. See
+	// targetsStackObject.
+	TargetsStack bool `json:"targets_stack,omitempty"`
 }
 
 // MoveCost is the half of a move's price that Params does not carry.
@@ -478,6 +488,35 @@ func stackEmpty(g *game.Game) bool {
 		}
 	}
 	return true
+}
+
+// targetsStackObject reports whether any of the chosen refs names an
+// object currently on the stack — a spell or an activated / triggered
+// ability (CR 115.4). It mirrors the two representations stackEmpty
+// checks: a spell is a game.Card in g.Stack.Cards, and an ability has
+// no card at all, only a synthetic id minted as a g.StackMeta entry
+// (#1269, "targeting an activated or triggered ability on the
+// stack"). There is no separate TargetRefKind for an ability — both
+// halves resolve through TargetCard, exactly as specMatchLocked reads
+// them in internal/game — so any non-card ref (player, self, none)
+// is skipped outright.
+func targetsStackObject(g *game.Game, refs []game.TargetRef) bool {
+	for _, r := range refs {
+		if r.Kind != game.TargetCard {
+			continue
+		}
+		if g.Stack != nil {
+			for i := range g.Stack.Cards {
+				if g.Stack.Cards[i].InstanceID == r.ID {
+					return true
+				}
+			}
+		}
+		if item := g.StackMeta[r.ID]; item != nil {
+			return true
+		}
+	}
+	return false
 }
 
 func isMainPhase(g *game.Game) bool {

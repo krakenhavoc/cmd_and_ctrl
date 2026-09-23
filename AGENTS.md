@@ -2182,6 +2182,23 @@ before the X / mode / target prompts; they ride `cast_spell` as
 itself is never a legal pick — CR 601.2a already moved it to the
 stack). See [ADR 0021](docs/decisions/0021-additional-costs.md).
 
+**Gift (CR 702.174, [ADR 0089](docs/decisions/0089-gift.md)):** one
+field, and never a hand-rolled optional cost:
+
+```go
+Gift: GiftACard(),                                        // Dawn's Truce
+Gift: GiftACard().Instead(TargetSpell("target spell")),   // Long River's Pull: "instead counter target spell"
+```
+
+The engine grows the rest — the "choose an opponent" cost (an ADR 0073
+optional cost the client and the bot both offer), the gift itself BEFORE
+`OnResolve` on an instant or sorcery, and the "when this enters, if the
+gift was promised" trigger on a permanent. The card's own "if the gift
+was promised" text reads `ctx.GiftPromised()` (or `source.GiftPromised()`
+in a permanent's trigger). `.Instead(clause)` is the WHOLE target clause
+of a promised cast, including one the unpromised spell does not have at
+all (Valley Rally).
+
 **Impulse exile (S21 sub-PR 6):** "exile the top card of that
 player's library — until end of turn, you may cast that card" is
 the `ExileTopWithPermission` primitive:

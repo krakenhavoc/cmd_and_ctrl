@@ -70,6 +70,12 @@ type ExileWithPermission struct {
 }
 
 func (e ExileWithPermission) Apply(ctx *Context) error {
+	return exileAllWithPermission(ctx.Game, []uuid.UUID{e.Target}, e.permission())
+}
+
+// permission is the grant the primitive's fields describe, before the
+// holder and zone are filled in per landed card.
+func (e ExileWithPermission) permission() game.CastPermission {
 	perm := game.CastPermission{
 		Player:   e.GrantTo,
 		CastOnly: e.CastOnly,
@@ -82,7 +88,37 @@ func (e ExileWithPermission) Apply(ctx *Context) error {
 		// the impulse-exile window.
 		perm.Duration = game.WhileInZoneDuration()
 	}
-	return ctx.Game.ExileCardWithPermissionForEffect(e.Target, perm)
+	return perm
+}
+
+// exileAllWithPermission exiles `ids` as one simultaneous event and
+// grants `perm` over each card that actually LANDED in exile.
+//
+// The grant is stamped from the continuation, not on the next line,
+// and #1304 is why. An exile can pause on the CR 903.9 prompt when the
+// card is a commander — every airbend aimed at an opposing commander,
+// and Appa airbending your own out of a wrath. The fire-and-forget
+// exile (game.ExileCardWithPermissionForEffect) returns while the
+// commander is still on the battlefield waiting for its owner's
+// answer; its permission scan finds nothing in exile, so a commander
+// whose owner DECLINED the command zone landed in exile with no way
+// to cast it back for {2}. The continuation runs after the answer, and
+// only over the cards that arrived: a commander that took the command
+// zone left, but not to exile (CR 400.7), so it gets no grant.
+//
+// The holder defaults to each card's OWNER, per card
+// (GrantCastPermissionOverCardForEffect fills a zero holder in), so
+// one airbend of two players' permanents hands each player their own
+// card back.
+func exileAllWithPermission(g *game.Game, ids []uuid.UUID, perm game.CastPermission) error {
+	return g.ExileCardsThenForEffect(ids, func(g *game.Game, landed []uuid.UUID) error {
+		for _, id := range landed {
+			p := perm
+			p.Zone = game.ZoneExile
+			g.GrantCastPermissionOverCardForEffect(id, p)
+		}
+		return nil
+	})
 }
 
 // Airbend is the AVATAR keyword action: "Exile it. While it's
@@ -106,12 +142,27 @@ type Airbend struct {
 }
 
 func (a Airbend) Apply(ctx *Context) error {
-	return ExileWithPermission{
-		Target:       a.Target,
+	return AirbendAll{Targets: []uuid.UUID{a.Target}}.Apply(ctx)
+}
+
+// AirbendAll airbends several cards at once — "airbend any number of
+// other target nonland permanents you control" (Appa). The reminder
+// text says "Exile THEM", one instruction, so the cards leave as one
+// simultaneous exit (a leaves-the-battlefield watcher sees the whole
+// group go) rather than one exile per card.
+type AirbendAll struct {
+	Targets []uuid.UUID
+}
+
+func (a AirbendAll) Apply(ctx *Context) error {
+	if len(a.Targets) == 0 {
+		return nil
+	}
+	return exileAllWithPermission(ctx.Game, a.Targets, ExileWithPermission{
 		CastOnly:     true,
 		WhileExiled:  true,
 		CostOverride: AirbendCost,
-	}.Apply(ctx)
+	}.permission())
 }
 
 // AirbendOtherTarget is "airbend up to one OTHER target …" — the
