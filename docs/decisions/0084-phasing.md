@@ -7,7 +7,7 @@ under tracker [#889](https://github.com/krakenhavoc/cmd_and_ctrl/issues/889)
 [#1197](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1197) (player protection),
 whose Teferi's Protection shipped with phasing as its first caveat.
 **Numbering:** swept on 2026-09-23 with `git ls-tree origin/develop docs/decisions/`
-and with `git ls-tree -r --name-only <ref> docs/decisions` over all 338 remote heads.
+and with `git ls-tree -r --name-only <ref> docs/decisions` over all 405 remote heads.
 The highest number present anywhere was **0083** (`0083-token-abilities.md`) and
 nothing held an `0084-*` file. 0005, 0024, 0029 and 0030 stay permanently unused per
 AGENTS.md §4.
