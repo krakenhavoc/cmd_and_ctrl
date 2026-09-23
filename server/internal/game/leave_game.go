@@ -487,12 +487,20 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// (FromPlayer is the chooser), and since #1027 it can be one leg
 	// of a RUN — "each opponent discards a card, then you draw a card
 	// for each card discarded this way" — whose continuation has to
-	// hear that the leg settled with nothing. This is the one kind
-	// where the action is NOT a statement about the kind: a
-	// choose_cards that is no run's leg has no run to settle, and
-	// defaultDroppedChoiceLocked branches on PendingChoice.promptRun
-	// rather than on the kind so that a Thoughtseize pick keeps doing
-	// exactly what it did before.
+	// hear that the leg settled with nothing.
+	//
+	// Since #1225 the action IS a statement about the kind, and the
+	// row is the plain one it looks like. A choose_cards that is no
+	// run's leg still has no run to settle, but it does have the other
+	// thing a paused resolution leaves behind — a chooseCardsFrame
+	// holding the rest of the card — and the drop runs it with nothing
+	// picked, which is what the empty-candidate path at QUEUE time has
+	// always done for the same closure. defaultDroppedChoiceLocked
+	// still branches on the PROMPT rather than on the kind (#1027's
+	// rule, three cases now instead of two), which is what keeps a
+	// Thoughtseize pick that wanted nothing after it doing exactly
+	// what it did before, and what lets the discard's run link win
+	// over its own frame so a leg is never settled twice.
 	PendingChoiceChooseCards:     {reassign: true, onDrop: dropDefault},
 	PendingChoiceDiscardFromHand: {reassign: true},
 	// option_pick: the second half of a pile split is a living

@@ -179,6 +179,34 @@ type chooseCardsFrame struct {
 	then     func(g *Game, picked []uuid.UUID) error
 }
 
+// runWithNoChoice runs the frame as though the chooser picked nothing.
+// Reports the error the continuation returned, for the caller to
+// report the way it reports every other continuation failure.
+//
+// optionPickFrame.runWithNoChoice for the other payload, and for the
+// same reason: "nobody chose" is handed to a frame in ONE place, so
+// what a question that ended without an answer does is one line rather
+// than one line per drop path. The empty pick is the absence spelled
+// in this payload's own currency, it is a value every continuation
+// already has to handle (a candidate list that was empty at queue time
+// runs the same closure with the same argument), and — unlike an
+// option pick's NoChoiceIndex — it IS an answer a client can send,
+// whenever the prompt's floor is zero. That is deliberate: a pick with
+// a floor of zero has no outcome to reserve, because "choose nothing"
+// is already the answer the engine can never refuse.
+//
+// `validate` is not consulted. ChooseCardsPrompt.Validate is
+// documented as never being called for an empty pick, for the reason
+// one line up.
+//
+// Caller must hold g.mu.
+func (f *chooseCardsFrame) runWithNoChoice(g *Game) error {
+	if f == nil || f.then == nil {
+		return nil
+	}
+	return f.then(g, nil)
+}
+
 // ConfirmPrompt is the queue-side description of a
 // PendingChoiceConfirm. A struct rather than eight positional
 // arguments, because the labels and the two branches are all optional

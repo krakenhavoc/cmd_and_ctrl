@@ -61,7 +61,7 @@ func TestAGraveyardPickIsPrunedWhenItsCandidateIsReanimated(t *testing.T) {
 	first := permanentInGraveyard(t, g, me, "Buried One")
 	second := permanentInGraveyard(t, g, me, "Buried Two")
 
-	id, ran := queueGraveyardPick(t, g, me.ID, source, []uuid.UUID{first, second})
+	id, call := queueGraveyardPick(t, g, me.ID, source, []uuid.UUID{first, second})
 
 	// Somebody else's effect reanimates one of the candidates while the
 	// prompt is open.
@@ -93,10 +93,13 @@ func TestAGraveyardPickIsPrunedWhenItsCandidateIsReanimated(t *testing.T) {
 	if lastChoiceEvent(g, EventPendingChoiceDropped, me.ID) == nil {
 		t.Error("the withdrawal is not in the log; a stall dump has to say where the prompt went")
 	}
-	// A pick that is no run's leg has no continuation to settle — the
-	// departure table's existing answer for the kind, unwidened here.
-	if *ran != 0 {
-		t.Errorf("the withdrawn pick ran its continuation %d times", *ran)
+	// #1225: no run to settle, but the frame still holds the rest of
+	// the card, so the drop runs it with nothing picked.
+	if call.ran != 1 {
+		t.Errorf("the withdrawn pick ran its continuation %d times, want 1", call.ran)
+	}
+	if len(call.got) != 0 {
+		t.Errorf("the continuation was handed %v, want nothing", call.got)
 	}
 	assertTableIsFree(t, g)
 }
