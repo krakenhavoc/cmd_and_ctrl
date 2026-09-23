@@ -2023,7 +2023,9 @@ export interface CardView extends CastSurfaceView {
   // viewer who knows it still sees the face.
   face_down?: boolean;
   // WHY it is face down (ADR 0069): "exiled" (CR 406.3, Necropotence),
-  // "foretold" (CR 702.143b), or one of the CR 708.2 permanent states
+  // "foretold" (CR 702.143b), "hideaway" (CR 702.75a, ADR 0091 — the
+  // controller of the permanent that hid it may look), or one of the
+  // CR 708.2 permanent states
   // "manifested" / "morphed" / "disguised" / "cloaked". PUBLIC —
   // everyone can see that a permanent is a morph — so it survives the
   // non-knower redaction and labels the card back.
