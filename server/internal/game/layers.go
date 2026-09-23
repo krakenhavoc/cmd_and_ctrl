@@ -246,6 +246,28 @@ type StaticAbility struct {
 	// play.
 	DependsOnAttackingStatus bool
 
+	// DependsOnSpellsCast is DependsOnHandSize for whether a player
+	// has cast a spell this turn — Stoic Sphinx's "This creature has
+	// hexproof as long as you haven't cast a spell this turn" (#1325).
+	//
+	// A per-turn cast count is not on the battlefield's shape and is
+	// not a counter, a tap or the turn identity itself (the turn's
+	// OWN advance already bumps unconditionally, in onTurnBeganLocked
+	// — that clears the tally back to zero, which is a different
+	// invalidation input than a spell being ADDED to it mid-turn). So
+	// nothing else invalidates the cached resolution the moment a
+	// spell is cast; without this flag the Sphinx keeps hexproof
+	// through the cast that should have turned it off, until some
+	// unrelated event happens to invalidate.
+	//
+	// Same contract as DependsOnHandSize, DependsOnLifeTotal and
+	// DependsOnAttackingStatus, and opt-in for the same reason: a
+	// spell is cast every turn at nearly every table, and gating the
+	// bump on this flag is what keeps that free for the tables with
+	// no such card in play. See layerVersionBump.OnEvent's EventCast
+	// arm.
+	DependsOnSpellsCast bool
+
 	// ActiveWhen is the CR 716 / 719 / 721 / 709.5 designation gate:
 	// this static exists only while its source permanent has the
 	// designation named — level N or greater, solved, N or more

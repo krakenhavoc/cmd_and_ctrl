@@ -98,6 +98,16 @@ func (g *Game) foretellLocked(p *Player, cardID uuid.UUID, sa SpecialAction) err
 		if exiled == nil {
 			return nil
 		}
+		// #1319: the per-turn tally Ranar's "the first card you
+		// foretell each turn" reads. Bumped here, once the card has
+		// actually LANDED in exile, rather than at the top of
+		// foretellLocked — a leg that only paused (a replacement
+		// window) has not foretold anything yet, and a special action
+		// that never lands must not count as one.
+		if g.ForetoldThisTurn == nil {
+			g.ForetoldThisTurn = make(map[uuid.UUID]int)
+		}
+		g.ForetoldThisTurn[owner]++
 		// CR 702.143a: "Cast it on a LATER turn for its foretell
 		// cost." NotBeforeTurn is a FLOOR and composes with the
 		// Duration rather than replacing it (#945), which is exactly

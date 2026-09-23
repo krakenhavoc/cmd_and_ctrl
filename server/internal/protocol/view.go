@@ -1951,10 +1951,32 @@ type SpecialActionView struct {
 	// Label is the row's text, as the card prints the keyword:
 	// "Foretell {2}", "Suspend 1—{R}".
 	Label string `json:"label"`
-	// Cost is the mana cost of TAKING the action, for a client that
-	// renders the price separately. Empty is a free action — Lotus
-	// Bloom suspends for nothing.
+	// Cost is the PRINTED mana cost of TAKING the action, in Scryfall
+	// brace notation — always "{2}" for foretell (CR 702.143a), the
+	// printed suspend cost for suspend. Empty is a free action —
+	// Lotus Bloom suspends for nothing.
 	Cost string `json:"cost,omitempty"`
+	// ChargedCost is what the engine actually charges for Cost right
+	// now, after every CR 601.2f cost modifier on the battlefield
+	// (#1319) — Ranar the Ever-Watchful's "The first card you
+	// foretell each turn costs {0} to foretell" turns a printed `{2}`
+	// into a charged `""`. Rendered from the same ParsedCost
+	// SpecialActionManaCostForEffect charges (ParsedCost.String()),
+	// so the row and the payment can never disagree the way Cost
+	// alone could once a discount applied. EQUAL to Cost when no
+	// modifier reaches this action.
+	//
+	// A POINTER for the reason ActivatedAbilityView.ChargedManaCost
+	// is one: a discount that empties the cost out completely renders
+	// "", which is a real answer ("this action now costs nothing")
+	// that `omitempty` on a plain string would erase, indistinguishable
+	// from Cost being empty to begin with. Nil is "not priced" — an
+	// unparseable printed string, or a modifier that itself errors —
+	// in which case the row falls back to Cost exactly as a
+	// pre-#1319 client would. Absent whenever Cost is empty; a cost
+	// with no mana component is not made of mana, so there is
+	// nothing for this field to price.
+	ChargedCost *string `json:"charged_cost,omitempty"`
 	// Available is the engine's own per-kind timing answer for this
 	// moment: foretell only during its owner's turn (and legal under
 	// split second), suspend only when the card could begin to be
@@ -4227,12 +4249,24 @@ func viewOfSpecialActions(g *game.Game, card game.Card, owner uuid.UUID) []Speci
 		if !game.SpecialActionKindBuilt(sa.Kind) {
 			continue
 		}
-		out = append(out, SpecialActionView{
+		view := SpecialActionView{
 			Kind:      string(sa.Kind),
 			Label:     sa.Label,
 			Cost:      sa.Cost,
 			Available: g.SpecialActionTimingOKLocked(owner, card, sa.Kind),
-		})
+		}
+		// #1319: the charged price, after every CR 601.2f cost
+		// modifier on the battlefield — Ranar the Ever-Watchful's
+		// foretell discount. Left nil on a pricing error, exactly as
+		// ActivatedAbilityView.ChargedManaCost does, so the client
+		// falls back to Cost rather than showing a stale charge.
+		if sa.Cost != "" {
+			if charged, err := g.SpecialActionManaCostForEffect(owner, card, sa.Kind, sa); err == nil {
+				s := charged.String()
+				view.ChargedCost = &s
+			}
+		}
+		out = append(out, view)
 	}
 	return out
 }

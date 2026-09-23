@@ -1480,6 +1480,13 @@ export interface SpecialActionView {
   kind: string;
   label: string;
   cost?: string;
+  // #1319: what the engine actually charges for `cost` right now,
+  // after every CR 601.2f cost modifier on the battlefield — Ranar
+  // the Ever-Watchful's "The first card you foretell each turn costs
+  // {0} to foretell". Same contract as ActivatedAbilityView's
+  // charged_mana_cost: absent means "not priced" (fall back to
+  // `cost`), an empty string is a real "this now costs nothing".
+  charged_cost?: string;
   available?: boolean;
 }
 

@@ -74,11 +74,15 @@ func (e *enumerator) specialActionMovesForCard(card game.Card) {
 		// The cost is mana and nothing else, and it is the only
 		// way a special action can be unaffordable — there is no
 		// target to be missing and no choice to be unanswerable.
-		// Priced through the same zero spend context the engine
-		// pays with, so restricted mana counts here exactly as
-		// little as it does there.
+		// Priced through the same CR 601.2f pass the engine charges
+		// with (#1319: SpecialActionManaCostForEffect), so a discount
+		// like Ranar's "first foretell each turn costs {0}" is never
+		// offered as an ordinary {2} the engine then charges less
+		// for, or the reverse. Priced with the same zero spend
+		// context the engine pays with, so restricted mana counts
+		// here exactly as little as it does there.
 		if sa.Cost != "" {
-			cost, err := game.ParseCost(sa.Cost)
+			cost, err := g.SpecialActionManaCostForEffect(e.seat, card, sa.Kind, sa)
 			if err != nil {
 				continue
 			}

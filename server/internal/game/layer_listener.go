@@ -49,6 +49,16 @@ import (
 //     card; see invalidateLayersForAttackChangeLocked, called
 //     directly from removeFromCombatLocked and clearCombatLocked.
 //
+// A fourth CONDITIONAL bump, added for #1325 in the same mould:
+//   - EventCast, while something declares
+//     StaticAbility.DependsOnSpellsCast. Stoic Sphinx's "hexproof as
+//     long as you haven't cast a spell this turn" is the card. The
+//     tally the condition reads (Game.SpellsCastThisTurn) is bumped
+//     BEFORE EventCast fires (mutations.go), so the listener sees the
+//     count this spell just added. The turn-advance exit that resets
+//     the tally back to zero needs no arm here — S25's unconditional
+//     bump in onTurnBeganLocked already covers every turn change.
+//
 // Things this listener INTENTIONALLY does NOT bump on:
 //   - Turn advance. Handled, but not here: S25 (#77) put the bump in
 //     `onTurnBeganLocked` (rotation.go) exactly as this note used to
@@ -323,6 +333,21 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		if attackingStatusStaticIsLiveLocked(g) {
 			g.layerVersion.Add(1)
 		}
+	case EventCast:
+		// #1325: a static reading "you haven't cast a spell this
+		// turn" (Stoic Sphinx) has a new answer the instant a spell
+		// is cast, and nothing else on this listener's switch fires
+		// for a cast that doesn't also cross a hand boundary in a way
+		// the hand-size gate above would catch — casting from the
+		// graveyard (flashback) or exile (foretell, impulse) crosses
+		// no hand boundary at all, and even a hand cast is caught
+		// there only while a HAND-size static happens to be live,
+		// which is a different card's gate. Game.SpellsCastThisTurn
+		// (the tally this condition reads) is bumped before EventCast
+		// is emitted, so the count is already current here.
+		if spellsCastStaticIsLiveLocked(g) {
+			g.layerVersion.Add(1)
+		}
 	case EventTapCard, EventUntapCard:
 		// Tap state is an AppliesTo input, not just a display flag:
 		// The Wandering Rescuer grants hexproof to "other TAPPED
@@ -391,6 +416,13 @@ func lifeTotalStaticIsLiveLocked(g *Game) bool {
 // control have deathtouch" is the card that makes it matter.
 func attackingStatusStaticIsLiveLocked(g *Game) bool {
 	return staticOnBattlefieldLocked(g, func(ab StaticAbility) bool { return ab.DependsOnAttackingStatus })
+}
+
+// spellsCastStaticIsLiveLocked is handSizeStaticIsLiveLocked for the
+// per-turn spells-cast count. Stoic Sphinx's "hexproof as long as you
+// haven't cast a spell this turn" is the card that makes it matter.
+func spellsCastStaticIsLiveLocked(g *Game) bool {
+	return staticOnBattlefieldLocked(g, func(ab StaticAbility) bool { return ab.DependsOnSpellsCast })
 }
 
 // staticOnBattlefieldLocked reports whether any permanent on the

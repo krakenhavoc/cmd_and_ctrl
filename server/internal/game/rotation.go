@@ -237,6 +237,9 @@ func (g *Game) onTurnBeganLocked() {
 	if g.SpellsCastThisTurn != nil {
 		g.SpellsCastThisTurn = nil
 	}
+	if g.ForetoldThisTurn != nil {
+		g.ForetoldThisTurn = nil
+	}
 	if g.LandsPlayedThisTurn != nil {
 		g.LandsPlayedThisTurn = nil
 	}
