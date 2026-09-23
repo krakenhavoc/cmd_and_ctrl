@@ -702,6 +702,17 @@ const (
 	// Added in S46 (#757).
 	EventCaseSolved EventKind = "case_solved"
 
+	// EventHarnessed — a permanent became harnessed (CR 701.64).
+	// Source / CardID / Target = the permanent, Actor = its
+	// controller.
+	//
+	// Emitted once: CR 701.64b says a harnessed permanent stays
+	// harnessed while it is on the battlefield, and HarnessForEffect
+	// is idempotent, so nothing watching this fires twice. Bumps the
+	// layer version for the reason EventClassLevel / EventCaseSolved
+	// do (ADR 0071 amendment, #1321).
+	EventHarnessed EventKind = "harnessed"
+
 	// EventStepBegan — the turn cursor entered a step. Actor is the
 	// active player, Step the step (typed), Amount the turn number and
 	// Label the step name. Emitted from runStepEntryHooksLocked AFTER

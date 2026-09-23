@@ -44,6 +44,8 @@ func TestDesignationActiveReadsTheObject(t *testing.T) {
 		{"level 2 gate at level 3", ClassLevel(2), Card{ClassLevel: 3}, true},
 		{"solved gate on an unsolved Case", CaseSolved(), Card{}, false},
 		{"solved gate on a solved Case", CaseSolved(), Card{Solved: true}, true},
+		{"harnessed gate on an unharnessed permanent", Harnessed(), Card{}, false},
+		{"harnessed gate on a harnessed permanent", Harnessed(), Card{Harnessed: true}, true},
 		{"7+ with no counters", ChargeCounters(7), Card{}, false},
 		{"7+ with six", ChargeCounters(7), Card{Counters: map[string]int{CounterCharge: 6}}, false},
 		{"7+ with seven", ChargeCounters(7), Card{Counters: map[string]int{CounterCharge: 7}}, true},
@@ -404,6 +406,42 @@ func TestSolveCaseIsIdempotent(t *testing.T) {
 	}
 }
 
+// TestHarnessForEffectIsIdempotent — CR 701.64a: "harness [this
+// permanent]" means "if this permanent isn't harnessed, it becomes
+// harnessed", so nothing stops the ability being activated a second
+// time and it must not re-announce.
+func TestHarnessForEffectIsIdempotent(t *testing.T) {
+	g := newActiveGame(t)
+	seat := g.Seats[0].ID
+	id := pushTypedTestCard(g, Card{
+		Name: "Test Rock", TypeLine: "Artifact",
+		Owner: seat, Controller: seat,
+	})
+	g.WithWriteLock(func() {
+		for i := 0; i < 3; i++ {
+			if err := g.HarnessForEffect(id); err != nil {
+				t.Fatalf("HarnessForEffect: %v", err)
+			}
+		}
+	})
+	n := 0
+	g.ReadSnapshot(func() {
+		for _, ev := range g.Events {
+			if ev.Kind == EventHarnessed && ev.CardID == id {
+				n++
+			}
+		}
+	})
+	if n != 1 {
+		t.Errorf("EventHarnessed emitted %d times, want exactly 1", n)
+	}
+	harnessed := false
+	g.ReadSnapshot(func() { harnessed = g.IsHarnessed(id) })
+	if !harnessed {
+		t.Error("IsHarnessed = false after harnessing")
+	}
+}
+
 // TestDesignationsClearOnBattlefieldLeave — CR 400.7. This is also
 // what makes both non-copiable without the copy path knowing
 // anything: a designation is battlefield state on a permanent, not a
@@ -422,6 +460,10 @@ func TestDesignationsClearOnBattlefieldLeave(t *testing.T) {
 		if err := g.SolveCaseForEffect(id); err != nil {
 			t.Fatalf("SolveCaseForEffect: %v", err)
 		}
+		// ADR 0071 amendment (#1321): harnessed is the same shape.
+		if err := g.HarnessForEffect(id); err != nil {
+			t.Fatalf("HarnessForEffect: %v", err)
+		}
 	})
 	var moved Card
 	g.WithWriteLock(func() {
@@ -431,8 +473,9 @@ func TestDesignationsClearOnBattlefieldLeave(t *testing.T) {
 			t.Fatalf("MoveCard: %v", err)
 		}
 	})
-	if moved.ClassLevel != 0 || moved.Solved {
-		t.Errorf("designations survived the zone change: level %d, solved %v", moved.ClassLevel, moved.Solved)
+	if moved.ClassLevel != 0 || moved.Solved || moved.Harnessed {
+		t.Errorf("designations survived the zone change: level %d, solved %v, harnessed %v",
+			moved.ClassLevel, moved.Solved, moved.Harnessed)
 	}
 	if got := ClassLevelOf(moved); got != 1 {
 		t.Errorf("ClassLevelOf a card off the battlefield = %d, want 1 (CR 716.2b)", got)
@@ -456,6 +499,9 @@ func TestDesignationsSurviveCloneAndSnapshot(t *testing.T) {
 		if err := g.SolveCaseForEffect(id); err != nil {
 			t.Fatalf("SolveCaseForEffect: %v", err)
 		}
+		if err := g.HarnessForEffect(id); err != nil {
+			t.Fatalf("HarnessForEffect: %v", err)
+		}
 	})
 
 	find := func(cards []Card) Card {
@@ -468,8 +514,9 @@ func TestDesignationsSurviveCloneAndSnapshot(t *testing.T) {
 	}
 
 	cloned := find(g.Clone().Battlefield.Cards)
-	if cloned.ClassLevel != 3 || !cloned.Solved {
-		t.Errorf("clone lost the designations: level %d, solved %v", cloned.ClassLevel, cloned.Solved)
+	if cloned.ClassLevel != 3 || !cloned.Solved || !cloned.Harnessed {
+		t.Errorf("clone lost the designations: level %d, solved %v, harnessed %v",
+			cloned.ClassLevel, cloned.Solved, cloned.Harnessed)
 	}
 
 	restored, err := g.CaptureSnapshot().Restore()
@@ -478,8 +525,9 @@ func TestDesignationsSurviveCloneAndSnapshot(t *testing.T) {
 	}
 	var back Card
 	restored.ReadSnapshot(func() { back = find(restored.Battlefield.Cards) })
-	if back.ClassLevel != 3 || !back.Solved {
-		t.Errorf("snapshot round-trip lost the designations: level %d, solved %v", back.ClassLevel, back.Solved)
+	if back.ClassLevel != 3 || !back.Solved || !back.Harnessed {
+		t.Errorf("snapshot round-trip lost the designations: level %d, solved %v, harnessed %v",
+			back.ClassLevel, back.Solved, back.Harnessed)
 	}
 }
 
@@ -495,13 +543,14 @@ func TestClassLevelIsNotACopiableValue(t *testing.T) {
 		OracleID:   gatedOracle,
 		ClassLevel: 3,
 		Solved:     true,
+		Harnessed:  true,
 	}
 	copied := CopiableValuesOf(source)
 	clone := Card{InstanceID: uuid.New(), Name: "Clone", TypeLine: "Creature — Shapeshifter"}
 	clone.applyCopy(copied, source)
-	if clone.ClassLevel != 0 || clone.Solved {
-		t.Errorf("copy took the designations: level %d, solved %v — CR 716.2c / 719.3b say it must not",
-			clone.ClassLevel, clone.Solved)
+	if clone.ClassLevel != 0 || clone.Solved || clone.Harnessed {
+		t.Errorf("copy took the designations: level %d, solved %v, harnessed %v — CR 716.2c / 719.3b / 701.64 say it must not",
+			clone.ClassLevel, clone.Solved, clone.Harnessed)
 	}
 	if got := ClassLevelOf(clone); got != 1 {
 		t.Errorf("a copy of a level-3 Class is level %d, want 1", got)

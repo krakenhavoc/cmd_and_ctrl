@@ -133,6 +133,7 @@ var silentEventKinds = map[string]string{
 	"EventUnattach":       silentBoardStateIsVisible,
 	"EventCopyApplied":    silentBoardStateIsVisible,
 	"EventCaseSolved":     silentBoardStateIsVisible,
+	"EventHarnessed":      silentBoardStateIsVisible,
 	"EventRegenerated":    silentImpliedByAnotherLine,
 	"EventBattleDefeated": silentBoardStateIsVisible,
 

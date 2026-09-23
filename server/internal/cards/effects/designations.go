@@ -47,6 +47,13 @@ func Level(n int) game.Designation { return game.ClassLevel(n) }
 // back off.
 func Solved() game.Designation { return game.CaseSolved() }
 
+// Harnessed is the CR 701.64 / 702.186b gate: this ability exists
+// while the permanent is harnessed — "∞ — [Ability]" (#1321). Once
+// harnessed a permanent stays harnessed for as long as it is on the
+// battlefield (CR 701.64b), so nothing that reads this has to worry
+// about it going back off.
+func Harnessed() game.Designation { return game.Harnessed() }
+
 // AtLevel stamps a CR 716.2 level gate onto a triggered ability built
 // with any of the ordinary trigger constructors, so the level line
 // reads as one thing:
@@ -171,6 +178,34 @@ func ToSolve(label string, condition func(g *game.Game, controller, source uuid.
 				}
 				return g.SolveCaseForEffect(item.SourceCardID)
 			})
+		},
+	}
+}
+
+// --- Harness (CR 701.64) ----------------------------------------------
+
+// Harness is CR 701.64a's "Harness [this permanent]" activated
+// ability: "If this permanent isn't harnessed, it becomes harnessed."
+//
+// It carries no ActiveWhen and no Condition: CR 701.64a is worded as
+// an EFFECT ("if … isn't … it becomes …"), not a legality
+// restriction, so nothing stops a permanent already harnessed from
+// having the ability activated again — it simply does nothing the
+// second time, because HarnessForEffect is idempotent. A Condition
+// that refused the second activation would make the ability
+// unactivatable rather than a no-op, which is a stronger and wrong
+// restriction no printed Harness ability states.
+//
+// `label` is the printed line verbatim ("{5}{W}, {T}: Harness The
+// Mind Stone."), because the cost shapes vary card to card exactly as
+// LevelUp's do not, and there is only one card to generalise from so
+// far.
+func Harness(label string, cost game.AbilityCost) ActivatedAbility {
+	return ActivatedAbility{
+		Label: label,
+		Cost:  cost,
+		Effect: func(g *game.Game, item *game.StackItem) error {
+			return g.HarnessForEffect(item.SourceCardID)
 		},
 	}
 }

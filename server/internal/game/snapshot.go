@@ -548,6 +548,12 @@ type cardSnapshot struct {
 	// arm for them.
 	ClassLevel int  `json:"classLevel,omitempty"`
 	Solved     bool `json:"solved,omitempty"`
+	// Harnessed is the CR 701.64 harnessed designation (ADR 0071
+	// amendment, #1321), carried for the same reason as ClassLevel /
+	// Solved: it is a legal zero value, and an old snapshot with no
+	// key decodes as "not harnessed", which is what every game before
+	// this amendment was.
+	Harnessed bool `json:"harnessed,omitempty"`
 	// Prepared, PrepareCopy and PreparedBy are ADR 0090's CR 722.3
 	// state: the designation on the permanent, and the not-a-card
 	// marker and permanent link on the copy it keeps in exile. Carried
@@ -1257,6 +1263,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ChosenName:               c.ChosenName,
 		ClassLevel:               c.ClassLevel,
 		Solved:                   c.Solved,
+		Harnessed:                c.Harnessed,
 		Prepared:                 c.Prepared,
 		PrepareCopy:              c.PrepareCopy,
 		PreparedBy:               c.PreparedBy,
@@ -1847,6 +1854,7 @@ func restoreCard(c *cardSnapshot) Card {
 		ChosenName:               c.ChosenName,
 		ClassLevel:               c.ClassLevel,
 		Solved:                   c.Solved,
+		Harnessed:                c.Harnessed,
 		Prepared:                 c.Prepared,
 		PrepareCopy:              c.PrepareCopy,
 		PreparedBy:               c.PreparedBy,

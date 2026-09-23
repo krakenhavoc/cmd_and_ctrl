@@ -260,6 +260,10 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// without anything in the copy path having to know.
 		c.ClassLevel = 0
 		c.Solved = false
+		// ADR 0071 amendment (#1321) / CR 400.7: and so is the
+		// CR 701.64 harnessed designation — a permanent that leaves
+		// and comes back is a new object and is not harnessed.
+		c.Harnessed = false
 		// ADR 0090 / CR 400.7: and so is the CR 722.3a prepared
 		// designation. The copy it kept in exile names this OBJECT's
 		// epoch, which the increment above has just retired, so the
