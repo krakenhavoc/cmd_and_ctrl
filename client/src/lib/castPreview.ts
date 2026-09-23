@@ -34,6 +34,12 @@ export interface AutoTapCastParams {
   optionalCosts?: number[];
   tapIDs?: string[];
   face?: number;
+  // #1242: the cards and permanents named to the additional cost.
+  // They do not change the price; they change what the auto-tapper
+  // may spend on it — the server will not crack the Eldrazi Spawn a
+  // cast offers to Village Rites, so the preview must not either.
+  sacrificeIDs?: string[];
+  discardIDs?: string[];
 }
 
 // castPreviewParams projects the choices announced so far onto the
@@ -51,7 +57,16 @@ export function castPreviewParams(choices: CastChoices | null | undefined): Auto
   }
   if (choices.tapIDs && choices.tapIDs.length > 0) out.tapIDs = [...choices.tapIDs];
   if (choices.face) out.face = choices.face;
+  if (choices.sacrificeIDs && choices.sacrificeIDs.length > 0) {
+    out.sacrificeIDs = [...choices.sacrificeIDs];
+  }
+  if (choices.discardIDs && choices.discardIDs.length > 0) out.discardIDs = [...choices.discardIDs];
   return out;
+}
+
+function stringIDs(v: unknown): string[] {
+  if (!Array.isArray(v)) return [];
+  return v.filter((s): s is string => typeof s === "string" && s !== "");
 }
 
 // castPreviewParamsFromPayload reads the same fields back off a
@@ -87,5 +102,9 @@ export function castPreviewParamsFromPayload(
   if (typeof payload.face === "number" && Number.isInteger(payload.face) && payload.face > 0) {
     out.face = payload.face;
   }
+  const sacs = stringIDs(payload.sacrifice_ids);
+  if (sacs.length > 0) out.sacrificeIDs = sacs;
+  const discards = stringIDs(payload.discard_ids);
+  if (discards.length > 0) out.discardIDs = discards;
   return out;
 }

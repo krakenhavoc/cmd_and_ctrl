@@ -2357,6 +2357,17 @@ type ManaAbilityView struct {
 	DiscardCostN       int      `json:"discard_cost_n,omitempty"`
 	DiscardCostLabel   string   `json:"discard_cost_label,omitempty"`
 	DiscardCostOptions []string `json:"discard_cost_options,omitempty"`
+	// ExileCostN / Label / Options describe an "Exile N cards from your
+	// hand" cost component (#1283) — Cadaverous Bloom's "Exile a card
+	// from your hand: Add {B}{B} or {G}{G}". The discard triple's shape
+	// under its own names, because it is its own component: an exiled
+	// card is not discarded (no discard event, nothing for madness to
+	// see). The chosen cards go back as `exile_ids`, and the client
+	// skips its picker when the options are exactly ExileCostN.
+	// Absent for every other mana ability.
+	ExileCostN       int      `json:"exile_cost_n,omitempty"`
+	ExileCostLabel   string   `json:"exile_cost_label,omitempty"`
+	ExileCostOptions []string `json:"exile_cost_options,omitempty"`
 	// ConditionUnmet is ActivatedAbilityView.ConditionUnmet for a
 	// mana ability: true while the ability's "Activate only if …"
 	// condition is false — Temple of the False God with four lands,
@@ -4324,8 +4335,8 @@ func livePlayer(g *game.Game, id uuid.UUID) bool {
 
 // stampManaSacrificeOptions fills the card-shaped cost clauses on a
 // permanent's MANA abilities: the sacrifice clause (Ashnod's Altar,
-// Phyrexian Altar) and, since #1213, the discard clause (Skirge
-// Familiar).
+// Phyrexian Altar), since #1213 the discard clause (Skirge
+// Familiar), and since #1283 the exile-a-card clause (Cadaverous Bloom).
 //
 // Split from viewOfManaAbilities because that runs while building the
 // base card view, which has no game handle — computing a legal set
@@ -4349,6 +4360,12 @@ func stampManaSacrificeOptions(g *game.Game, card game.Card, controller uuid.UUI
 			views[i].DiscardCostN = dc.N
 			views[i].DiscardCostLabel = dc.Label
 			views[i].DiscardCostOptions = cardIDStrings(g.DiscardCostOptionsForEffect(controller, card.InstanceID, dc))
+		}
+		// #1283: the exile-a-card sibling, off its own walk.
+		if ec := raw[i].ExileCards; ec != nil && ec.N > 0 {
+			views[i].ExileCostN = ec.N
+			views[i].ExileCostLabel = ec.Label
+			views[i].ExileCostOptions = cardIDStrings(g.ExileCostOptionsForEffect(controller, card.InstanceID, ec))
 		}
 	}
 }

@@ -1342,6 +1342,20 @@ type ManaAbilityCost struct {
 	// to pitch is a decision, and the planner makes none.
 	DiscardCards *game.DiscardCost
 
+	// ExileCards is an "Exile N cards from your hand" component of the
+	// activation cost (#1283) — Cadaverous Bloom's "Exile a card from
+	// your hand: Add {B}{B} or {G}{G}". Build it with ExileACardFromHand
+	// or ExileCardsFromHand.
+	//
+	// DiscardCards' sibling and NOT a discard: the cards go to exile
+	// through the one exit primitive, fire no discard event and are
+	// invisible to madness (game.ExileCost). Nor is it ExileSelf below,
+	// which exiles the SOURCE and asks no question.
+	//
+	// The auto-tapper never plans a source that has one: which card to
+	// exile is a decision, and the planner makes none.
+	ExileCards *game.ExileCost
+
 	// ExileSelf exiles the card that has the ability, out of the zone
 	// the ability functions from, as the activation cost (#1228):
 	//

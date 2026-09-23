@@ -271,6 +271,27 @@ func DiscardN(n int, label string) game.AbilityCost {
 	return DiscardCardsMatching(n, label, nil)
 }
 
+// ExileCardsFromHand is "Exile N <kind> cards from your hand" as a
+// cost component (#1283). The label is the clause as printed, without
+// the verb, for the client's picker; a nil match takes any card.
+//
+// It returns the component rather than an AbilityCost because its one
+// owner today is ManaAbilityCost.ExileCards:
+//
+//	Cost: ManaAbilityCost{ExileCards: ExileACardFromHand()},
+//
+// Not DiscardCardsMatching with a different verb: an exiled card is
+// not discarded (game.ExileCost).
+func ExileCardsFromHand(n int, label string, match func(game.Card) bool) *game.ExileCost {
+	return &game.ExileCost{N: n, Label: label, Match: match}
+}
+
+// ExileACardFromHand is "Exile a card from your hand" — Cadaverous
+// Bloom.
+func ExileACardFromHand() *game.ExileCost {
+	return ExileCardsFromHand(1, "a card", nil)
+}
+
 // sacrificeSpec builds the "what may I sacrifice" clause. It reuses
 // TargetSpec because the shape is identical — a predicate over
 // battlefield cards — but it is NOT targeting: a sacrifice cost

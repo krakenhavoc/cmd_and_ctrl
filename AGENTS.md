@@ -714,6 +714,16 @@ Mana abilities can carry cost components beyond `{T}`:
 | A mana cost | `ManaAbilityCost{Mana: "{1}"}` | the Signet cycle |
 | Remove N counters | `ManaAbilityCost{RemoveCounters: RemoveCountersFromThis("charge", 1).RemoveCounters}` | Vivid Creek, Ramos |
 | Remove any number of counters | `ManaAbilityCost{RemoveCounters: RemoveCountersXFromThis("storage", 0).RemoveCounters}` | Mage-Ring Network |
+| Discard a card | `ManaAbilityCost{DiscardCards: DiscardACard().DiscardCards}` | Skirge Familiar |
+| Exile a card from your hand | `ManaAbilityCost{ExileCards: ExileACardFromHand()}` | Cadaverous Bloom (#1283) |
+| Exile this card from your hand | `ExileFromHandForMana("{R}")` (zone + cost together) | the Spirit Guides (#1228) |
+
+"Exile a card from your hand" is NOT a discard with a different
+destination: the card leaves through the one exit primitive, fires no
+`EventDiscardCard` and is invisible to madness. It rides its own wire
+triple (`exile_cost_n` / `exile_cost_label` / `exile_cost_options`,
+answered with `exile_ids`) and the client reuses `DiscardCostModal`
+with a different verb.
 
 `SacrificeOther` takes a `*game.TargetSpec`, the same shape the CR 602
 activated abilities use — build it with the `SacrificeACreature()` /
@@ -745,12 +755,16 @@ source LAST, behind every ordinary source and behind a frozen one:
 cracking a Treasure for a generic pip a Mountain could have paid spends
 a resource the player never agreed to spend. `SacrificeOther` asks WHICH
 permanent dies and stays out of the plan entirely, with the life cost,
-the add-a-counter cost and the tap-another cost. A sacrifice cost with
-NO `{T}` (Gold, Eldrazi Spawn) is still not plannable — a plan is a list
-of permanents to tap — so those stay hand-activated. Order the abilities
-so the cheapest is FIRST; the planner takes one ability per permanent,
-in order ([ADR 0011](docs/decisions/0011-mana-pool-and-auto-tapper.md)
-amendment 2026-09-22).
+the add-a-counter cost, the tap-another cost, the discard cost and the
+exile-a-card cost. Since #1242 a sacrifice cost with NO `{T}` (Gold,
+Eldrazi Spawn, Eldrazi Scion) is plannable too — the executor cracks it
+without tapping it, and a tapped one is still a source — and inside the
+sacrifice tier a CREATURE the cost eats comes after a Treasure or a Gold.
+What the planner still demands is that the ability cost the source
+SOMETHING: a `{T}` or the source itself. Order the abilities so the
+cheapest is FIRST; the planner takes one ability per permanent, in order
+([ADR 0011](docs/decisions/0011-mana-pool-and-auto-tapper.md)
+amendments 2026-09-22 and 2026-09-23).
 
 **Counter costs (#789).** `ManaAbilityCost.RemoveCounters` is the SAME
 `*game.CounterRemovalCost` a CR 602 ability's cost carries — one

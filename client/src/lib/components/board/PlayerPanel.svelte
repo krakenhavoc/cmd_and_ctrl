@@ -42,7 +42,7 @@
   import { bucketForBattlefield, isCreature } from "../../cardTypes";
   import { battlefieldClickIntent } from "../../contextMenu.logic";
   import { canActivateSorcerySpeedAbility } from "../../timing";
-  import { counterCostNeedsPrompt } from "../../counterCost";
+  import { manaAbilityNeedsPrompt } from "../../manaAbilityCost";
   import { openCardMenu } from "../../contextMenu";
   import BattlefieldRow from "./BattlefieldRow.svelte";
   import PileBar from "./PileBar.svelte";
@@ -252,6 +252,11 @@
   // and CounterCostModal the CR 602 abilities use and sends the
   // action itself once the cost is settled.
   //
+  // A card-shaped cost goes the same way: Skirge Familiar's discard
+  // (#1213) and Cadaverous Bloom's "Exile a card from your hand"
+  // (#1283). This click path used to skip the discard, so a board
+  // click on Skirge Familiar sent no `discard_ids` and was refused.
+  //
   // manaAbilityNeedsPrompt is the one predicate; a plain "{T}: Add
   // {G}", and a Vivid land with charge counters on it, go straight to
   // the action as they always did.
@@ -264,11 +269,7 @@
           // whichever is present, exactly as the card menu does.
           const rows = card.mana_abilities ?? card.zone_mana_abilities ?? [];
           const ability = rows.find((a) => a.index === abilityIndex);
-          if (
-            ability &&
-            onManaAbilityCost &&
-            (ability.sacrifice_options || counterCostNeedsPrompt(ability))
-          ) {
+          if (ability && onManaAbilityCost && manaAbilityNeedsPrompt(ability)) {
             onManaAbilityCost(card, ability);
             return;
           }

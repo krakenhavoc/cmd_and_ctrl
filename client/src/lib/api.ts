@@ -802,8 +802,27 @@ export async function submitBugReport(draft: BugReportDraft): Promise<BugReportR
 export interface AutoTapPreview {
   ok: boolean;
   plan?: string[];
+  // #1285: `plan`, described, in the same order. A planned source is
+  // no longer always an untapped permanent: a Spirit Guide is a card
+  // in HAND that the payment exiles (#1228), and a Gold or an Eldrazi
+  // Spawn is sacrificed without being tapped (#1242). Absent from a
+  // server that predates it, in which case the plan IDs are all there
+  // is.
+  sources?: AutoTapPreviewSource[];
   missing?: string[];
   cost: string;
+}
+
+// AutoTapPreviewSource is one planned source: where it is and what
+// paying with it costs. `tap` / `sacrifice` / `exile` each say one
+// component — a Treasure is tap + sacrifice, a Spirit Guide exile.
+export interface AutoTapPreviewSource {
+  card_id: string;
+  name?: string;
+  zone?: string;
+  tap?: boolean;
+  sacrifice?: boolean;
+  exile?: boolean;
 }
 
 // fetchAutoTapPreview asks the server which permanents the auto-
@@ -844,6 +863,13 @@ export async function fetchAutoTapPreview(
       params.set("tap_ids", cast.tapIDs.join(","));
     }
     if (cast.face) params.set("face", String(cast.face));
+    // #1242: named payments the plan must not also spend on mana.
+    if (cast.sacrificeIDs && cast.sacrificeIDs.length > 0) {
+      params.set("sacrifice_ids", cast.sacrificeIDs.join(","));
+    }
+    if (cast.discardIDs && cast.discardIDs.length > 0) {
+      params.set("discard_ids", cast.discardIDs.join(","));
+    }
   }
   // `abilityIndex` prices a CR 602 activated ability's own mana
   // component instead of the card's printed cast cost. Without it

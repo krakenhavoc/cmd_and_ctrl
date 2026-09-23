@@ -136,3 +136,162 @@ func (g *Game) payExileSelfCostLocked(playerID, sourceID uuid.UUID, exileSelf bo
 func (g *Game) payAbilityExileSelfLocked(playerID, sourceID uuid.UUID, ab ActivatedAbilityShape) error {
 	return g.payExileSelfCostLocked(playerID, sourceID, ab.Cost.ExileSelf)
 }
+
+// ExileCost is "Exile N cards from your hand" as a cost component
+// (#1283) — the clause the activator picks the cards for:
+//
+//	Cadaverous Bloom   "Exile a card from your hand: Add {B}{B} or {G}{G}."
+//
+// It is DiscardCost's sibling one keyword action over (discard_cost.go)
+// and deliberately NOT DiscardCost with a destination bolted on. The
+// two share a shape — a count, a printed label, a predicate — and
+// differ in the one way that matters: discarding is a CR 701.8 keyword
+// action with its own event, its own cause and a CR 614 window that
+// madness (CR 702.35a) watches; exiling a card from a hand as a cost is
+// a plain CR 406 zone change with none of that. A card exiled to
+// Cadaverous Bloom is not discarded, fires no EventDiscardCard and is
+// invisible to madness — what a reused DiscardCost routed to exile
+// would have got wrong the first time a Marauding Mako sat beside it.
+//
+// It is ExileSelf's sibling too, and not the same thing either:
+// ExileSelf names the SOURCE (a Spirit Guide exiles itself), asks no
+// question and sends nothing on the wire; this names OTHER cards, and
+// the activator chooses them.
+//
+// The HAND is the only zone it reads. "Exile a creature card from your
+// graveyard:" is the same component one pile over, and a `From` field
+// is the change the day a card asks for it.
+//
+// One owner today, ManaAbilityShape.ExileCards. The CR 602 owner
+// (AbilityCost.ExileCards) is the same plumbing on the activated path
+// and is tracked on #1297 — the candidate walk, the validator
+// and the payer below take the component, not the owner, so it will be
+// a second caller and not a second implementation.
+type ExileCost struct {
+	// N is how many cards the clause exiles. At least one;
+	// effects.Register refuses a zero or negative count, for the
+	// reason DiscardCost.N gives.
+	N int
+
+	// Label is the clause as printed, without the verb — "a card",
+	// "a creature card". Shown in the client's picker.
+	Label string
+
+	// Match is the clause's predicate. Nil matches any card in hand.
+	// READ-ONLY and runs under g.mu; it sees the card as it sits in the
+	// hand (printed characteristics — a card in a hand has no layers).
+	Match func(Card) bool
+}
+
+// Matches reports whether `c` could pay this clause. Nil-safe on both
+// the clause and the predicate.
+func (e *ExileCost) Matches(c Card) bool {
+	if e == nil {
+		return false
+	}
+	if e.Match == nil {
+		return true
+	}
+	return e.Match(c)
+}
+
+// ExileCostOptionsForEffect lists the cards in `playerID`'s hand that
+// could pay `cost` right now, in hand order, excluding `sourceID` (a
+// card in hand cannot pay its own ability's cost twice). The view
+// stamps it and the legal enumerator pays out of it, so the set a bot
+// pays from and the set the engine accepts are computed once — the
+// posture DiscardCostOptionsForEffect keeps next door.
+//
+// CALLER MUST ALREADY HOLD g.mu (read or write).
+func (g *Game) ExileCostOptionsForEffect(playerID, sourceID uuid.UUID, cost *ExileCost) []uuid.UUID {
+	if cost == nil || cost.N <= 0 {
+		return nil
+	}
+	p := g.playerByIDLocked(playerID)
+	if p == nil || p.Hand == nil {
+		return nil
+	}
+	var out []uuid.UUID
+	for i := range p.Hand.Cards {
+		c := p.Hand.Cards[i]
+		if c.InstanceID == sourceID || !cost.Matches(c) {
+			continue
+		}
+		out = append(out, c.InstanceID)
+	}
+	return out
+}
+
+// validateExileCardsCostLocked checks an ExileCards component without
+// moving anything — the validate-all-then-pay discipline both
+// activation paths keep.
+//
+// What it enforces, one rule per line of validateDiscardCostLocked:
+//
+//   - exactly cost.N ids, each distinct, each in the activator's hand,
+//     each matching the clause, none of them the source;
+//   - none of them ALSO named to another component of the same payment
+//     (`alsoSpent`, the discards) — one card pays one component
+//     (CR 118.3). No printed card has both clauses, so a client that
+//     sends the same card twice is confused rather than clever;
+//   - ids arriving for a cost with no exile component are rejected
+//     rather than ignored, exactly as an unexpected discard_ids is.
+//
+// Caller must hold g.mu.
+func (g *Game) validateExileCardsCostLocked(playerID, sourceID uuid.UUID, cost *ExileCost, chosen, alsoSpent []uuid.UUID) ([]uuid.UUID, error) {
+	if cost == nil {
+		if len(chosen) > 0 {
+			return nil, ErrInvalidParam
+		}
+		return nil, nil
+	}
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return nil, ErrPlayerNotFound
+	}
+	if len(chosen) != cost.N {
+		return nil, ErrInvalidParam
+	}
+	spent := make(map[uuid.UUID]bool, len(alsoSpent))
+	for _, id := range alsoSpent {
+		spent[id] = true
+	}
+	seen := make(map[uuid.UUID]bool, len(chosen))
+	for _, id := range chosen {
+		if seen[id] || spent[id] || id == sourceID {
+			return nil, ErrInvalidParam
+		}
+		seen[id] = true
+		c := g.findHandCardLocked(p, id)
+		if c == nil {
+			return nil, ErrCardNotFound
+		}
+		if !cost.Matches(*c) {
+			return nil, ErrInvalidParam
+		}
+	}
+	return append([]uuid.UUID(nil), chosen...), nil
+}
+
+// payExileCardsCostLocked pays an ExileCards component: each named card
+// leaves its owner's hand for exile through the one exit primitive with
+// MustSettleNow — a commander exiled to Cadaverous Bloom still gets its
+// CR 903.9 answer, and the CR 601.2h / CR 602.2b indivisible step
+// cannot pause on a prompt. NOT through discardCardsLocked: this is not
+// a discard (see ExileCost).
+//
+// Caller must hold g.mu and have validated the list.
+func (g *Game) payExileCardsCostLocked(playerID, sourceID uuid.UUID, ids []uuid.UUID) error {
+	for _, id := range ids {
+		if _, err := g.routeCardToZoneLocked(zoneRoute{
+			CardID:        id,
+			Dst:           ZoneExile,
+			Actor:         playerID,
+			Source:        sourceID,
+			MustSettleNow: true,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}

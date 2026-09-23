@@ -1078,29 +1078,10 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		// S32 (#352): "activate abilities of colorless Eldrazi" is a
 		// restriction on the SOURCE permanent, so the spend context
 		// is built from it.
-		// An ability whose cost includes {T} cannot tap its own
-		// source for mana to help pay itself — the {T} and the mana
-		// are components of the same cost, and the source can only
-		// be tapped once. Without the exclusion the auto-tapper is
-		// free to spend Treasure Vault's own "{T}: Add {C}" on its
-		// "{X}{X}, {T}" ability, which is a free mana on every
-		// activation of every tap ability with a mana component.
-		var excluded map[uuid.UUID]bool
-		if ab.Cost.Tap {
-			excluded = map[uuid.UUID]bool{cardID: true}
-		}
-		// #758, the same rule one component over: a permanent named
-		// to pay the TapOthers half is already spent, so the
-		// auto-tapper must not also tap it for mana. Without this
-		// the payment below would find it tapped and skip it, and
-		// the cost would be paid with one permanent fewer than the
-		// clause prints (CR 118.3).
-		for _, id := range params.TapIDs {
-			if excluded == nil {
-				excluded = make(map[uuid.UUID]bool, len(params.TapIDs))
-			}
-			excluded[id] = true
-		}
+		// The auto-tapper must not spend what this activation has already
+		// spent: see AbilityAutoTapExclusions, which the legal-move
+		// enumerator calls too, so the two exclude one list.
+		excluded := AbilityAutoTapExclusions(cardID, ab.Cost, params.TapIDs, params.SacrificeIDs, params.DiscardIDs)
 		// #1184: the CR 601.2f pass over the ability's mana component
 		// — "Exhaust abilities of other permanents you control cost
 		// {2} less to activate" (Boom Scholar). The same function the

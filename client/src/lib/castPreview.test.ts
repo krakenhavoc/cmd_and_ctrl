@@ -22,11 +22,14 @@ describe("castPreviewParams — the choices announced so far", () => {
       tapIDs: ["bird", "elf"],
       face: 1,
       // Not part of the price question the endpoint takes as cast
-      // params — x rides its own `x` param, the rest are paid rather
-      // than priced.
+      // params — x rides its own `x` param, the alternative cost's
+      // cards are paid rather than priced.
       xValue: 3,
-      discardIDs: ["a"],
       altCostIDs: ["b"],
+      // #1242: a discard is not priced either, but it IS sent — the
+      // plan must not also spend a card the cast has named (a Spirit
+      // Guide offered to Thrill of Possibility).
+      discardIDs: ["a"],
     };
     expect(castPreviewParams(choices)).toEqual({
       fromZone: "graveyard",
@@ -34,6 +37,7 @@ describe("castPreviewParams — the choices announced so far", () => {
       optionalCosts: [0, 0],
       tapIDs: ["bird", "elf"],
       face: 1,
+      discardIDs: ["a"],
     });
   });
 
@@ -87,6 +91,18 @@ describe("castPreviewParamsFromPayload — the stashed cast being retried", () =
       }),
     ).toEqual({});
     expect(castPreviewParamsFromPayload(undefined)).toEqual({});
+  });
+});
+
+describe("named additional-cost payments (#1242)", () => {
+  // The server will not crack a sacrifice the cast names for its mana,
+  // so the preview has to be told which permanents those are.
+  it("carries sacrifice and discard picks to the preview, both ways", () => {
+    const choices: CastChoices = { sacrificeIDs: ["spawn"], discardIDs: ["guide"] };
+    expect(castPreviewParams(choices)).toEqual({ sacrificeIDs: ["spawn"], discardIDs: ["guide"] });
+    const payload: Record<string, unknown> = { instance_id: "rites" };
+    applyCastChoices(payload, choices);
+    expect(castPreviewParamsFromPayload(payload)).toEqual(castPreviewParams(choices));
   });
 });
 

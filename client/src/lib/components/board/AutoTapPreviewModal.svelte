@@ -5,7 +5,10 @@
   // insufficient-mana toast (or any future right-click → cast
   // affordance). On mount it fetches `/games/:id/auto-tap-preview`
   // for the chosen card and renders the proposed plan: the ordered
-  // list of permanents the server would tap. Enter confirms
+  // list of sources the server would spend, each with what paying
+  // with it costs — a tap, a sacrifice, or (#1285) a card exiled out
+  // of the hand, which is named rather than silently missing from a
+  // battlefield lookup. Enter confirms
   // (re-fires cast_spell with auto_tap: true); ESC cancels.
   //
   // Lock-tap UI: each row in the proposed plan has a "lock" toggle.
@@ -17,6 +20,7 @@
 
   import { onDestroy } from "svelte";
   import { fetchAutoTapPreview, type AutoTapPreview } from "../../api";
+  import { paymentVerb, planRows, planSummary } from "../../autoTapPlan";
   import type { AutoTapCastParams } from "../../castPreview";
   import type { CardView, GameView } from "../../protocol";
   import ModalLayer from "../ModalLayer.svelte";
@@ -95,32 +99,31 @@
       });
   });
 
-  // Build a lookup from instance_id → CardView from the snapshot's
-  // battlefield zone. The plan only references cards on the
-  // battlefield, so this covers every entry.
-  const battlefieldByID = $derived.by(() => {
+  // A lookup from instance_id → CardView over the battlefield AND the
+  // hands the viewer can see. #1285: a planned source need not be a
+  // permanent — a Spirit Guide is spent out of the hand (#1228) — and
+  // a locked hand source has to keep its name in the "locked" list
+  // after it drops out of the plan. The server names every planned
+  // source itself (`sources`); this is the fallback for a locked one
+  // and for an older server.
+  const cardsByID = $derived.by(() => {
     const m = new Map<string, CardView>();
     for (const c of snap.battlefield?.cards ?? []) {
       m.set(c.instance_id, c);
     }
+    for (const seat of snap.seats ?? []) {
+      for (const c of seat.hand?.cards ?? []) {
+        if (c.name) m.set(c.instance_id, c);
+      }
+    }
     return m;
   });
 
-  function planCards(): { id: string; name: string; locked: boolean }[] {
-    if (!preview?.plan) return [];
-    return preview.plan.map((id) => {
-      const card = battlefieldByID.get(id);
-      return {
-        id,
-        name: card?.name ?? id.slice(0, 8),
-        locked: lockedSources.includes(id),
-      };
-    });
-  }
+  const rows = $derived(planRows(preview, (id) => cardsByID.get(id)?.name));
 
   function lockedCards(): { id: string; name: string }[] {
     return lockedSources.map((id) => {
-      const card = battlefieldByID.get(id);
+      const card = cardsByID.get(id);
       return { id, name: card?.name ?? id.slice(0, 8) };
     });
   }
@@ -180,13 +183,15 @@
       {:else if preview}
         {#if preview.ok}
           <p class="prompt-hint">
-            These {preview.plan?.length ?? 0} permanent(s) tap to pay for it. Lock a source to keep it
-            for a later cast.
+            {planSummary(rows)} Lock a source to keep it for a later cast.
           </p>
           <ul class="prompt-options plan">
-            {#each planCards() as row (row.id)}
+            {#each rows as row (row.id)}
               <li class="prompt-opt src-row">
                 <span class="card-name">{row.name}</span>
+                <span class="pay-verb" class:gone={row.gone} data-payment={row.payment}
+                  >{paymentVerb(row.payment)}</span
+                >
                 <button
                   type="button"
                   class="ghost lock-btn"
@@ -249,6 +254,21 @@
   .card-name {
     font-size: 13px;
     font-weight: 500;
+    flex: 1;
+  }
+  /* #1285: what paying with this source costs. A sacrifice or an
+     exile spends the source for good, so it reads louder than a tap. */
+  .pay-verb {
+    margin-right: 8px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--fg-dim);
+  }
+  .pay-verb.gone {
+    color: var(--danger);
+    font-weight: 700;
   }
   .lock-btn {
     height: 26px;

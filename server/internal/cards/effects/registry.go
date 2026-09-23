@@ -445,6 +445,16 @@ func Register(spec Spec) {
 		// #789: the counter components are one declaration with two
 		// owners, so they are checked by one function in both places.
 		checkCounterCost(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.RemoveCounters, ma.Cost.AddCounter)
+		// #1213 / #1283: a card-picking clause that picks nothing would
+		// make the ability free — the refusal the CR 602 discard gets.
+		if dc := ma.Cost.DiscardCards; dc != nil && dc.N <= 0 {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d discards %d cards — a discard cost discards at least one",
+				spec.Name, i, dc.N))
+		}
+		if ec := ma.Cost.ExileCards; ec != nil && ec.N <= 0 {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d exiles %d cards from hand — an exile cost exiles at least one",
+				spec.Name, i, ec.N))
+		}
 		if ma.Cost.Mana != "" {
 			if _, err := game.ParseCost(ma.Cost.Mana); err != nil {
 				panic(fmt.Sprintf("effects.Register: %q mana ability %d declares an unparseable mana cost %q: %v",

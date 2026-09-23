@@ -33,6 +33,11 @@
     // rather than growing a second picker.
     need?: number;
     label?: string;
+    // #1283: the same picker for "Exile a card from your hand"
+    // (Cadaverous Bloom). The verb is the button and the note is the
+    // header's small print; both default to the discard wording.
+    verb?: string;
+    note?: string;
   }
 
   const {
@@ -42,6 +47,8 @@
     onCancel,
     need: needOverride,
     label: labelOverride,
+    verb = "Discard",
+    note = "additional cost · CR 601.2f",
   }: Props = $props();
 
   const need = $derived(needOverride ?? card?.additional_cost?.discard_cards ?? 0);
@@ -100,7 +107,7 @@
     <div class="prompt-modal dc-modal">
       <h2 id="discard-cost-title">
         {card.name}
-        <span class="prompt-src" aria-hidden="true">additional cost · CR 601.2f</span>
+        <span class="prompt-src" aria-hidden="true">{note}</span>
       </h2>
       <p class="prompt-hint">{label}</p>
       {#if short}
@@ -136,7 +143,7 @@
           >Cancel <span class="kbd">Esc</span></button
         >
         <button type="button" class="primary" disabled={!ready} onclick={confirm}>
-          Discard <span class="kbd">↵</span>
+          {verb} <span class="kbd">↵</span>
         </button>
       </div>
     </div>

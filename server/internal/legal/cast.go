@@ -644,6 +644,9 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	xFloor := enumeratedXFloor(game.CatalogKey(card), 0)
 	xLifeCeiling := xCeilingFromCost(addCost, p.Life)
 	x := 0
+	// #1242: the priced cost the X was solved against, kept for the
+	// per-payment affordability check in the expansion below.
+	var pricedAll game.ParsedCost
 	if !perTarget {
 		priced, err := e.g.ApplyCostModifiersForEffect(cost, game.CostQuery{
 			Card:       card,
@@ -658,6 +661,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		if !ok {
 			return
 		}
+		pricedAll = priced
 	}
 
 	// Modes → each choice of modes yields its own clause list, and
@@ -807,6 +811,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		}
 		for _, targets := range targetSets {
 			setX := x
+			setCost := pricedAll
 			if perTarget {
 				// §14: priced with this set's targets. An unaffordable
 				// set is skipped before any budget is spent on it, so
@@ -826,6 +831,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 				if !ok {
 					continue
 				}
+				setCost = priced
 			}
 			if len(xSteps) > 0 {
 				// setX is the largest announcement this seat can pay
@@ -843,6 +849,20 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 				for _, sacs := range sacrificeSets {
 					if budget <= 0 {
 						return
+					}
+					// #1242: CastSpell's auto-tap will not spend a card
+					// or permanent this cast names to its additional cost
+					// (game.CastAutoTapExclusions), so the affordability
+					// solved above — with nothing named — has to hold with
+					// these named. Village Rites naming the Eldrazi Spawn
+					// that was also its {B} is a cast the engine refuses;
+					// offering it is #544.
+					if len(discards)+len(sacs) > 0 &&
+						!e.canPayExcluding(setCost, setX, spend, game.CastAutoTapExclusions(game.CastSpellParams{
+							DiscardIDs:   discards,
+							SacrificeIDs: sacs,
+						})) {
+						continue
 					}
 					budget--
 					if first == nil {

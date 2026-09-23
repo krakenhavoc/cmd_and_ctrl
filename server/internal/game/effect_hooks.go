@@ -328,6 +328,23 @@ type ManaAbilityShape struct {
 	// Skirge Familiar is a mana source; an auto-tapped one is not.
 	DiscardCards *DiscardCost
 
+	// ExileCards is an "Exile N cards from your hand" component of the
+	// activation cost (#1283) — Cadaverous Bloom's "Exile a card from
+	// your hand: Add {B}{B} or {G}{G}". The activator names the cards
+	// in ManaAbilityParams.ExileIDs.
+	//
+	// DiscardCards' sibling one keyword action over, and NOT a discard:
+	// the cards leave through the one exit primitive with
+	// MustSettleNow, fire no EventDiscardCard and are invisible to
+	// madness — see game.ExileCost for why the two are two components.
+	// Nor is it ExileSelf below, which exiles the SOURCE and asks
+	// nothing.
+	//
+	// The AUTO-TAPPER never plans an ability that has one, on the
+	// discard's ground: which card to exile is a decision, and the
+	// planner makes none.
+	ExileCards *ExileCost
+
 	// ExileSelf exiles the SOURCE CARD out of the zone the ability
 	// was activated from, as part of the activation cost (#1228):
 	//

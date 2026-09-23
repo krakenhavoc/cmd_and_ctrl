@@ -1739,6 +1739,12 @@ func Dispatch(g *game.Game, a Action) error {
 			// activate_ability's, so the client reuses one picker
 			// for both ability kinds.
 			DiscardIDs []string `json:"discard_ids,omitempty"`
+			// #1283 — exile_ids names the cards paid to an
+			// exile-a-card cost on a MANA ability (Cadaverous Bloom's
+			// "Exile a card from your hand"). Its own field rather
+			// than discard_ids, because it is its own component: an
+			// exiled card is not discarded.
+			ExileIDs []string `json:"exile_ids,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -1771,6 +1777,14 @@ func Dispatch(g *game.Game, a Action) error {
 			}
 			manaDiscardIDs = append(manaDiscardIDs, id)
 		}
+		manaExileIDs := make([]uuid.UUID, 0, len(p.ExileIDs))
+		for _, raw := range p.ExileIDs {
+			id, err := uuid.Parse(raw)
+			if err != nil {
+				return fmt.Errorf("activate_mana_ability exile_ids: %w", err)
+			}
+			manaExileIDs = append(manaExileIDs, id)
+		}
 		return g.ActivateManaAbility(a.Player, cardID, p.AbilityIndex, game.ManaAbilityParams{
 			SacrificeIDs:     sacIDs,
 			CounterSourceIDs: manaCounterIDs,
@@ -1778,6 +1792,7 @@ func Dispatch(g *game.Game, a Action) error {
 			CounterKind:      p.CounterKind,
 			CounterKinds:     p.CounterKinds,
 			DiscardIDs:       manaDiscardIDs,
+			ExileIDs:         manaExileIDs,
 		})
 
 	case TypeSetMaxHandSize:

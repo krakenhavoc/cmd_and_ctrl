@@ -162,6 +162,7 @@ func buildDef(spec Spec) *game.CardDef {
 				RemoveCounters:            a.Cost.RemoveCounters,
 				AddCounter:                a.Cost.AddCounter,
 				DiscardCards:              a.Cost.DiscardCards,
+				ExileCards:                a.Cost.ExileCards,
 				Produced:                  a.Produced,
 				Label:                     a.Label,
 				Exhaust:                   a.Exhaust,

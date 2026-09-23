@@ -1529,17 +1529,16 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	if p.ManaPool.CanPayFor(cost, params.XValue, ManaSpendForCast(card)) {
 		return nil
 	}
-	excluded := make(map[uuid.UUID]bool, len(params.LockedSources)+len(params.TapIDs))
-	for _, id := range params.LockedSources {
-		excluded[id] = true
-	}
-	// S22: a permanent tapped for convoke or waterbend is already
-	// spent. Without this the auto-tapper would happily plan a mana
-	// tap of the same Birds of Paradise the caster just convoked,
-	// and the two payments would race for one untapped creature.
-	for _, id := range params.TapIDs {
-		excluded[id] = true
-	}
+	// The lock-tap reservations, and everything this announcement has
+	// already spent: S22's convoke / waterbend taps (without them the
+	// planner would tap the same Birds of Paradise the caster just
+	// convoked) and, #1242, the permanents and cards named to the
+	// additional cost — auto-tap runs BEFORE payAdditionalCostLocked,
+	// so a plan could otherwise crack the Eldrazi Spawn the caster
+	// offered to Village Rites and leave the sacrifice nothing to pay
+	// with, after the mana was made. One list, shared with the
+	// legal-move enumerator: see CastAutoTapExclusions.
+	excluded := CastAutoTapExclusions(params)
 	// #1212: the spell's own source wish. A card whose text reads
 	// which mana paid for it ("if mana from a Treasure was spent to
 	// cast it") prefers a source it can read back — a tiebreak in the
@@ -1587,6 +1586,15 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 // here is re-asked: a plan can arrive stale, and a zone stamped at
 // planning time would be a second opinion about where a card is.
 //
+// #1242: and a planned PERMANENT need not be tapped. A Gold token or
+// an Eldrazi Spawn prints "Sacrifice this: Add …" with no {T}, so the
+// tap — like the sacrifice before it — is a component this executor
+// pays exactly when the picked ability prints it. Re-derived from
+// ab.TapCost rather than carried on the plan, for the reason the zone
+// is: the planner and this function read the one ability
+// autoTapAbilityFor picks, so there is nothing for a plan bit to add
+// but a second opinion.
+//
 // Skips PendingChoiceMana entirely — the auto-tapper's contract
 // is "no further player decisions required". Caller must hold
 // g.mu and have validated the plan via autoTapLocked.
@@ -1610,9 +1618,6 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 			g.materializeExiledManaSourceLocked(p, planned, identity, &pending)
 			continue
 		}
-		if card.Tapped {
-			continue
-		}
 		// #1215: control, re-asked here because the plan may be
 		// stale. gatherTapSources only ever offers the payer's own
 		// permanents, and a source that has changed hands since is
@@ -1626,6 +1631,15 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 		}
 		ab := g.autoTapAbilityFor(p.ID, *card, ManaAbilitiesForCard(*card))
 		if ab == nil {
+			continue
+		}
+		// #1242: tapped-out, asked AFTER the pick and only of an ability
+		// that owes a {T} — the planner's question, through the same
+		// helper, in the same order. This used to be `if card.Tapped`
+		// before anything else, which was right while every planned
+		// source tapped; a Gold that something else tapped is still a
+		// sacrifice the plan may make.
+		if manaSourceTappedOut(card, ab) {
 			continue
 		}
 		// #540: CR 302.6, enforced here as well as in the planner.
@@ -1759,14 +1773,29 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 		// activation. autoTapAbilityFor has already refused a spent
 		// ability, so this only ever writes a first use.
 		g.noteAbilityActivationLocked(g.activationTallyKeyLocked(cardID, ab.Label))
-		card.Tapped = true
-		// #763: the permanent as it was when it was tapped for mana,
-		// for the triggered mana abilities fired below. Copied for the
-		// same reason ActivateManaAbility copies it, and taken here
-		// because a later source in the same plan may change the
-		// board.
+		// #1242: the tap is a COMPONENT of the cost, paid only when the
+		// ability prints one — the same `if ab.TapCost` ActivateManaAbility
+		// has always had. A Gold token or an Eldrazi Spawn is cracked, not
+		// tapped: it never "becomes tapped" (no EventTapCard, so a
+		// "whenever this becomes tapped" watcher stays silent), and
+		// CR 106.12a's "tapped for mana" is false for it, which is what
+		// the fromTap argument and the triggered mana abilities below
+		// read.
+		tapped := ab.TapCost
+		if tapped {
+			card.Tapped = true
+		}
+		// #763: the permanent as it was when it paid for mana — for the
+		// triggered mana abilities fired below and, #1212, for the source
+		// kinds the mint records. Copied for the same reason
+		// ActivateManaAbility copies it, and taken here because a later
+		// source in the same plan may change the board. Taken whether or
+		// not the source tapped: a cracked Gold still has to be
+		// describable after the sacrifice below has ended it.
 		tappedForMana := *card
-		g.EmitEvent(Event{Kind: EventTapCard, Actor: p.ID, CardID: cardID})
+		if tapped {
+			g.EmitEvent(Event{Kind: EventTapCard, Actor: p.ID, CardID: cardID})
+		}
 		// #1215: the sacrifice, AFTER the tap and BEFORE the mana —
 		// the component order ActivateManaAbility pays in, and for
 		// the same reason: the tap has to happen while the permanent
@@ -1867,12 +1896,13 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 				// mana is produced and not what produced it — a doubled
 				// Treasure is two Treasure mana.
 				manaSourceKindsOf(tappedForMana),
-				// Every planned source owes a {T} (autoTapAbilityFor
-				// refuses an ability without one, #1215's sacrifice of
-				// the source included), and this executor set
-				// card.Tapped above, so every production here is a tap
-				// for mana (CR 106.12a).
-				true,
+				// CR 106.12a: a tap for mana exactly when the ability
+				// tapped the source. #1242 made that a question — a
+				// cracked Gold or Eldrazi Spawn was not tapped, so Mana
+				// Reflection's "if you tap a permanent for mana" does
+				// not double it, which is the printed answer and the
+				// one ActivateManaAbility gives (it passes ab.TapCost).
+				tapped,
 				&pending,
 			)...)
 		}
@@ -1885,7 +1915,12 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 		// by the same function that keeps it for the source's own
 		// slots. The extra mana was never PLANNED (ADR 0074 §7), so
 		// whatever it does not pay for simply floats.
-		if len(addedColors) > 0 {
+		//
+		// #1242: only for a source that was TAPPED for mana. CR 605.1b's
+		// triggered mana abilities watch a permanent tapped for mana,
+		// and a cracked Eldrazi Spawn was not — the same `ab.TapCost &&`
+		// ActivateManaAbility gates its own firing on.
+		if tapped && len(addedColors) > 0 {
 			g.fireManaTriggersLocked(ManaProduced{
 				Source:     tappedForMana,
 				Controller: p.ID,
@@ -5149,6 +5184,13 @@ type ManaAbilityParams struct {
 	// {B}" is the only printed one; every other mana ability sends
 	// none.
 	DiscardIDs []uuid.UUID
+
+	// ExileIDs names the cards paying an ExileCards component (#1283)
+	// — Cadaverous Bloom's "Exile a card from your hand". A separate
+	// list from DiscardIDs because the two are separate components
+	// with separate exits (game.ExileCost); every other mana ability
+	// sends none.
+	ExileIDs []uuid.UUID
 }
 
 func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, params ManaAbilityParams) error {
@@ -5334,6 +5376,13 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	discards, err := g.validateDiscardCostLocked(playerID, cardID, srcZone, AbilityCost{
 		DiscardCards: ab.DiscardCards,
 	}, params.DiscardIDs)
+	if err != nil {
+		return err
+	}
+	// #1283: the exile-a-card component, validated beside the discard
+	// it is the sibling of and against it — a card named to both would
+	// pay two components (CR 118.3).
+	exiles, err := g.validateExileCardsCostLocked(playerID, cardID, ab.ExileCards, params.ExileIDs, discards)
 	if err != nil {
 		return err
 	}
@@ -5550,6 +5599,18 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		// (Marauding Mako) and a madness exile, for the same reason a
 		// sacrifice queues dies-triggers: drain them on the way out,
 		// with the mana already in the pool.
+		needStateChecks = true
+	}
+	// #1283: the exile-a-card component, after the discards and before
+	// the exile-this — it moves cards out of the hand, not the source,
+	// so it keeps the discard's slot in the order. Not a discard: the
+	// one exit primitive, no EventDiscardCard, nothing for madness to
+	// see (game.ExileCost). The exit can still queue leave-the-hand
+	// triggers, so drain on the way out as the discard does.
+	if len(exiles) > 0 {
+		if err := g.payExileCardsCostLocked(playerID, cardID, exiles); err != nil {
+			return err
+		}
 		needStateChecks = true
 	}
 	// #1228: the exile-this component, LAST — after the discards, for
