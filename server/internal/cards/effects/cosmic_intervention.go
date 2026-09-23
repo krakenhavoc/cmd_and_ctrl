@@ -29,7 +29,7 @@ import (
 // per move event — a wrath produces one event per creature. The
 // observable difference is only how many items the stack shows.
 //
-// S22 sandbox simplifications:
+// History — both S22 simplifications are closed:
 //
 //   - **Foretell** (CR 702.143) ships on #658 and is one line on this
 //     card: `Foretell("{1}{W}")`. The comment this replaced claimed
@@ -46,19 +46,27 @@ import (
 //     (ADR 0066) over that one exiled object, carrying the
 //     NotBeforeTurn floor, plus ADR 0069's face-down kind for the
 //     owner-only look.
-//   - The replacement does not fire on a permanent that would go to
-//     the **command zone** instead (a commander dying with the CR
-//     903.9 built-in taken): that built-in rewrites the destination
-//     first, and by the time this effect sees the event the move is
-//     no longer battlefield → graveyard. Paper resolves the two as a
-//     choice between simultaneous replacements; here the commander
-//     one wins.
+//
+// A dying COMMANDER is saved too, and its owner decides. The old
+// caveat here ("a dying commander still goes to the command zone")
+// described an engine that no longer exists. CR 903.9a (pinned
+// edition) makes a commander's trip from a graveyard or exile a
+// state-based "may" AFTER it arrives, so in paper this replacement
+// exiles the commander and its owner then chooses: command zone now,
+// or stay exiled and come back at the end step. The engine models the
+// command-zone rule as an optional replacement on the same move
+// (builtin_replacements.go), and the two meet in the CR 616 apply
+// loop: the controller orders them, the commander offer is asked, and
+// "no" leaves this effect to exile the card and schedule its return.
+// Both printed outcomes are reachable and nothing else is — pinned by
+// TestCosmicInterventionSavesACommanderWhoseOwnerDeclines.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "cddccc2a-a76e-48b3-b4dd-dfeab89e1619",
 		Name:         "Cosmic Intervention",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"A dying commander still goes to the command zone instead of being saved."},
+		Completeness: CompletenessFull,
 		SpecialActions: []game.SpecialAction{
 			Foretell("{1}{W}"),
 		},
