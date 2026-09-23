@@ -738,6 +738,18 @@ func (g *Game) CastPermissionForLocked(playerID uuid.UUID, card Card, zone ZoneK
 	if p == nil {
 		return nil
 	}
+	// ADR 0090: a CR 722.3c prepare copy answers for itself, and ONLY
+	// for itself. Its permission is derived from the prepared
+	// permanent (prepare.go), and nothing else may open it — an
+	// impulse grant or a standing rule over exile reaching a copy
+	// would cast an object CR 722.3c keeps castable only by the
+	// prepared permanent's controller, and only while it is prepared.
+	if card.PrepareCopy {
+		if perm := g.prepareCopyPermissionLocked(card, zone); perm != nil && perm.Player == playerID {
+			return perm
+		}
+		return nil
+	}
 	// Stored permissions first: a named object beats a standing rule,
 	// because the named one is the narrower statement and is the only
 	// one that can carry a face or a per-instance price.
@@ -1057,6 +1069,11 @@ func (g *Game) AnyCastPermissionsForEffect() bool {
 			return true
 		}
 	}
+	// ADR 0090: a prepared permanent grants a cast of its CR 722.3c
+	// copy out of exile, derived rather than stored.
+	if g.anyPreparedPermanentLocked() {
+		return true
+	}
 	if g.Battlefield == nil || CatalogCastPermissions == nil {
 		return false
 	}
@@ -1081,6 +1098,11 @@ func (g *Game) AnyCastPermissionsForEffect() bool {
 //
 // Caller must hold g.mu (read or write).
 func (g *Game) CastPermissionOnCardForEffect(card Card, zone ZoneKind) *CastPermission {
+	// ADR 0090: the CR 722.3c copy's permission is derived, and it is
+	// the only one that may name the copy (see CastPermissionForLocked).
+	if card.PrepareCopy {
+		return g.prepareCopyPermissionLocked(card, zone)
+	}
 	var fallback *CastPermission
 	for _, p := range g.Seats {
 		if p == nil {

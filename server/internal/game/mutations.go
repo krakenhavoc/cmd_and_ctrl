@@ -1241,6 +1241,11 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		// every zone change — stack resolution seeds it onto the
 		// entry event from here.
 		FaceDown: faceDown,
+		// ADR 0090, CR 722.3c / 707.12: the prepare spell is cast as a
+		// COPY, and a copy is not a card — so it takes CR 707.10's exits
+		// off the stack (it ceases to exist rather than landing in a
+		// graveyard), which is the path Twincast's copies already use.
+		IsCopy: card.PrepareCopy,
 		// CR 702.34a / CR 400.7g, ADR 0066. The fact travels with the
 		// stack object because the catalog cannot answer for it: a
 		// card given flashback by Snapcaster was cast for a cost the
@@ -1350,6 +1355,16 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		tally.Noncreature++
 	}
 	g.SpellsCastThisTurn[playerID] = tally
+	// CR 722.3c / 601.2i (ADR 0090): "that permanent loses the prepared
+	// designation at the time the spell becomes cast" — here, with
+	// every cost paid and just before EventCast announces the cast.
+	// Read off the value copy taken out of exile, which still names the
+	// permanent; MoveCard dropped the link on the copy itself.
+	if card.PrepareCopy {
+		if perm := findBattlefieldCard(g, card.PreparedBy.ID); perm != nil && perm.ObjectEpoch == card.PreparedBy.Epoch {
+			g.unprepareLocked(perm)
+		}
+	}
 	// S22 airbend: OldZone stamps where the spell was cast FROM.
 	// CR 601.2a moves the card to the stack and nothing on the card
 	// remembers the zone it left, so "whenever you cast a spell from
@@ -3755,6 +3770,13 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 	if g.tokenCeaseToExistSBALocked() {
 		fired = true
 	}
+	// 704.5e, the part the engine keeps outside the stack (ADR 0090):
+	// a CR 722.3c prepare copy ceases to exist anywhere but the stack,
+	// and in exile once the permanent that kept it there is gone or
+	// unprepared. Beside the token sweep, for the token sweep's reason.
+	if g.prepareCopySweepSBALocked() {
+		fired = true
+	}
 
 	return fired, left
 }
@@ -5068,6 +5090,9 @@ func (g *Game) moveCardByRefLocked(src, dst ZoneRef, cardID uuid.UUID, asCommand
 			}
 		}
 		g.applyEntryCountersLocked(cardID, out.EntersWithCounters)
+		// ADR 0090, CR 722.3a — the sandbox move lands a preparation
+		// card prepared exactly as any other entry does.
+		g.applyEntersPreparedLocked(cardID, out.EntersPrepared)
 	}
 
 	g.EmitEvent(Event{

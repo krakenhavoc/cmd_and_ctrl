@@ -440,6 +440,9 @@ func (g *Game) putOntoBattlefieldFromZoneLocked(ids []uuid.UUID, from ZoneKind, 
 			g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
 		}
 		g.applyEntryCountersLocked(moved.InstanceID, p.out.EntersWithCounters)
+		// ADR 0090, CR 722.3a: read off the settled event for the
+		// reason EntersTapped is, before phase 3 announces.
+		g.applyEntersPreparedLocked(moved.InstanceID, p.out.EntersPrepared)
 		// CR 506.3c (#1227): a permanent PUT onto the battlefield
 		// attacking. Read off the settled EVENT for the reason
 		// EntersTapped is, and stamped HERE — inside phase 2, before

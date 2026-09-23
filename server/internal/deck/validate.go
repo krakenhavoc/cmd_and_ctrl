@@ -300,14 +300,17 @@ func identitySet(syms []string) map[string]struct{} {
 // `adventure` LEFT this map in #719, for the same reason modal_dfc was
 // never in it: CR 715 is played now. Both halves are offered from
 // hand, the Adventure spell exiles as it resolves (CR 715.3d) and its
-// owner may cast the creature from exile (CR 715.4). What an adventure
-// card still shares with every other card is the ordinary catalog gap
-// — an Adventure half with no Spec resolves manually, which is the
+// owner may cast the creature from exile (CR 715.4). `prepare` left it
+// in #1328 for the same reason (ADR 0090): the card is cast as its
+// creature half, which CR 722.3 says is the only way it is ever cast,
+// and a prepared permanent's prepare spell is cast as a copy out of
+// exile. What both still share with every other card is the ordinary
+// catalog gap — an Adventure half with no Spec resolves manually, and a
+// preparation card with no Spec never becomes prepared, which is the
 // `unimplemented` badge's job (ADR 0037) and not a layout warning.
 var layoutSimplifications = map[string]string{
 	"transform": "imports as its front face; transforming it isn't implemented yet",
 	"split":     "casts as its left half only; fusing isn't implemented yet",
-	"prepare":   "casts as its creature half only; preparing isn't implemented yet",
 	"flip":      "imports as its front face only",
 	"meld":      "imports as its front face only; melding isn't implemented yet",
 }

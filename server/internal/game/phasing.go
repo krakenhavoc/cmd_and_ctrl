@@ -306,6 +306,16 @@ func (g *Game) phaseInLocked(ids []uuid.UUID) []uuid.UUID {
 		actors[id] = c.Controller
 		moved = append(moved, id)
 	}
+	// CR 722.3c (ADR 0090): a permanent that "phases in prepared"
+	// makes a fresh copy of its prepare spell. The designation itself
+	// rode through the phase-out untouched (CR 702.26d), but the copy
+	// did not: while the permanent was out it was treated as though it
+	// did not exist, so the CR 704.5e sweep took the copy out of exile.
+	for _, id := range moved {
+		if c := findBattlefieldCard(g, id); c != nil && c.Prepared {
+			g.createPrepareCopyLocked(*c)
+		}
+	}
 	for _, id := range moved {
 		g.EmitEvent(Event{
 			Kind:   EventPhaseIn,
