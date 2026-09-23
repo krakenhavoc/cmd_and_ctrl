@@ -562,9 +562,14 @@ type cardSnapshot struct {
 	// permanent beside a copy nobody may cast, or a copy that is a
 	// real card — and old snapshots decode as "not prepared, no copy",
 	// which is what every game before ADR 0090 was.
-	Prepared          bool              `json:"prepared,omitempty"`
-	PrepareCopy       bool              `json:"prepareCopy,omitempty"`
-	PreparedBy        PermissionCardRef `json:"preparedBy,omitzero"`
+	Prepared    bool              `json:"prepared,omitempty"`
+	PrepareCopy bool              `json:"prepareCopy,omitempty"`
+	PreparedBy  PermissionCardRef `json:"preparedBy,omitzero"`
+	// HiddenBy is ADR 0091's hideaway link: the permanent object that
+	// exiled this card face down. Carried because nothing else records
+	// it — a restore that dropped it would leave the card unplayable by
+	// the land that hid it and unreadable by that land's controller.
+	HiddenBy          PermissionCardRef `json:"hiddenBy,omitzero"`
 	StartingDefense   int               `json:"startingDefense,omitempty"`
 	ProtectorPlayerID uuid.UUID         `json:"protectorPlayerId,omitempty"`
 
@@ -1267,6 +1272,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Prepared:                 c.Prepared,
 		PrepareCopy:              c.PrepareCopy,
 		PreparedBy:               c.PreparedBy,
+		HiddenBy:                 c.HiddenBy,
 		PhasedOutBy:              c.PhasedOutBy,
 		PhaseInLockedBy:          c.PhaseInLockedBy,
 		PhasedOutIndirect:        c.PhasedOutIndirect,
@@ -1858,6 +1864,7 @@ func restoreCard(c *cardSnapshot) Card {
 		Prepared:                 c.Prepared,
 		PrepareCopy:              c.PrepareCopy,
 		PreparedBy:               c.PreparedBy,
+		HiddenBy:                 c.HiddenBy,
 		PhasedOutBy:              c.PhasedOutBy,
 		PhaseInLockedBy:          c.PhaseInLockedBy,
 		PhasedOutIndirect:        c.PhasedOutIndirect,

@@ -3784,6 +3784,10 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 	if g.prepareCopySweepSBALocked() {
 		fired = true
 	}
+	// ADR 0091, CR 702.75a: the controller of a hideaway permanent may
+	// look at the card it hid. Not a state-based action and never
+	// "fired" — it keeps a knower set current as control moves.
+	g.hideawayKnowersSweepLocked()
 
 	return fired, left
 }

@@ -133,6 +133,14 @@ type zoneRoute struct {
 	// ExileTopFaceDownForEffect.
 	FaceDown FaceDownKind
 
+	// HiddenBy is the hideaway link a FaceDownHidden exile lands with
+	// (CR 702.75a, ADR 0091): the permanent object whose hideaway is
+	// exiling the card. Stamped BEFORE the face-down knowers are
+	// computed, because that permanent's controller is who may look.
+	// Meaningless without FaceDown, and ignored on a redirected move —
+	// a commander that took the command zone was never hidden.
+	HiddenBy PermissionCardRef
+
 	// Mill flags a mill (CR 701.17) so the completed move emits
 	// EventMill rather than EventZoneMove. Only honoured when the
 	// move actually lands in a graveyard: a commander redirected to
@@ -684,6 +692,14 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 		// knowledge set rather than leaving it alone matters — a
 		// scryed library card has a knower, and carrying that in
 		// would let exactly one seat read a card nobody may.
+		if r.HiddenBy.ID != uuid.Nil {
+			for i := range dstZone.Cards {
+				if dstZone.Cards[i].InstanceID == ev.CardID {
+					dstZone.Cards[i].HiddenBy = r.HiddenBy
+					break
+				}
+			}
+		}
 		g.applyFaceDownLandingLocked(dstZone, ev.CardID, r.FaceDown, nil)
 	case dstZone.Kind == ZoneLibrary:
 		// A library is a hidden zone (CR 401.2). Whoever could read
