@@ -198,6 +198,30 @@ type optionPickFrame struct {
 	// chooser actually picked cannot drift from what they were shown,
 	// because it IS what they were shown.
 	thenSeat func(g *Game, seat uuid.UUID) error
+
+	// thenSubject is thenSeat for an option list whose branches are
+	// seats AND permanents — CR 508.7's "reselect which player or
+	// permanent that creature is attacking" (attack_reselect.go,
+	// #1329). It receives the chosen option's SUBJECT: its Player when
+	// it names a seat, else its first card, else uuid.Nil — which is
+	// what an option naming neither (the "keep attacking" branch) and
+	// a dropped prompt (runWithNoChoice) both hand it. Same #994
+	// reason as thenSeat: read the answer off the option the chooser
+	// picked, never off an index into a list the prune may have
+	// renumbered. At most one of the three continuations is set.
+	thenSubject func(g *Game, subject uuid.UUID) error
+}
+
+// subject is what an option is ABOUT, for thenSubject: its seat, or
+// its first card, or nothing.
+func (o ChoiceOption) subject() uuid.UUID {
+	if o.Player != uuid.Nil {
+		return o.Player
+	}
+	if len(o.Cards) > 0 {
+		return o.Cards[0]
+	}
+	return uuid.Nil
 }
 
 // runWithNoChoice runs the frame as though nobody chose. Reports the
@@ -217,6 +241,8 @@ func (f *optionPickFrame) runWithNoChoice(g *Game) error {
 		return nil
 	case f.thenSeat != nil:
 		return f.thenSeat(g, uuid.Nil)
+	case f.thenSubject != nil:
+		return f.thenSubject(g, uuid.Nil)
 	case f.then != nil:
 		return f.then(g, NoChoiceIndex)
 	}
@@ -442,6 +468,7 @@ func (g *Game) ResolveOptionPick(choiceID, chooserID uuid.UUID, index int) error
 	// pruned since it was built, so the index is only meaningful
 	// against the list the chooser was shown, which is this one.
 	seat := choice.PickOptions[index].Player
+	subject := choice.PickOptions[index].subject()
 	if frame != nil && frame.thenSeat != nil && seat == uuid.Nil {
 		// A seat continuation answered with an option that names no
 		// seat is a bug in whoever built the list, and it must not
@@ -452,15 +479,18 @@ func (g *Game) ResolveOptionPick(choiceID, chooserID uuid.UUID, index int) error
 		return ErrInvalidParam
 	}
 	g.dequeueChoiceLocked(idx)
-	if frame == nil || (frame.then == nil && frame.thenSeat == nil) {
+	if frame == nil || (frame.then == nil && frame.thenSeat == nil && frame.thenSubject == nil) {
 		// Nothing to run. The prompt is gone either way rather than
 		// stuck: an option pick with no frame is a bug in whoever
 		// queued it, and refusing the answer would wedge the seat.
 		return nil
 	}
 	run := frame.then
-	if frame.thenSeat != nil {
+	switch {
+	case frame.thenSeat != nil:
 		run = func(g *Game, _ int) error { return frame.thenSeat(g, seat) }
+	case frame.thenSubject != nil:
+		run = func(g *Game, _ int) error { return frame.thenSubject(g, subject) }
 	}
 	if err := run(g, index); err != nil {
 		g.EmitEvent(Event{

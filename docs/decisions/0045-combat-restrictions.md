@@ -1913,3 +1913,147 @@ matter.
   zone, so the entry itself would work; what is unexamined is the commander
   bookkeeping around a command-zone exit that is not a cast. See ADR 0020's
   amendment.
+
+---
+
+## Amendment (2026-09-23, [#1317](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1317), [#1329](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1329)): ending the combat phase, and reselecting an attack
+
+Two effects that reach into a combat already under way, both found by the
+*Aang is so flashy* deck triage (tracker
+[#1306](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1306)). Decisions
+1-31 stand. Sprint S37 (combat correctness), tracker
+[#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880); the phase
+skip is turn machinery too, tracker
+[#884](https://github.com/krakenhavoc/cmd_and_ctrl/issues/884). CR numbers
+checked against the pinned edition (`MagicCompRules 20260819.txt`).
+
+### Decision 32: `EndCombatPhaseForEffect` is CR 724.2 in order, and 724.2c is folded
+
+`server/internal/game/end_combat.go`. One printed card does this (CR 724.2
+names it: Mandate of Peace), and the rule is a fixed procedure, so the verb
+is the procedure:
+
+1. **724.2g first:** outside the combat phase (`PhaseOf(step) != PhaseCombat`)
+   it returns having done nothing.
+2. **724.2a:** `PendingTriggers` is emptied. That queue *is* "triggered but
+   not yet put onto the stack". A trigger that fires during the steps below
+   lands on it afresh and is drained in the postcombat main phase, which is
+   724.2f.
+3. **724.2b:** every object on the stack is exiled, the resolving one
+   included. Spells go through the shared stack-exit door,
+   `exitSpellFromStackLocked(id, nil, ZoneExile, false)`, which retires the
+   `StackMeta` record with the card (`DropStackMeta`). That is the door
+   [#1318](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1318) is about:
+   a plain exile route leaves the record behind and wedges the table. #1318's
+   exported "exile target spell" had not merged when this landed, so this
+   uses the same unexported door directly; the two are one door and do not
+   conflict. The **resolving** spell has no `StackMeta` entry any more (the
+   resolution frame took it before `OnResolve`), so it is found through the
+   #920 resolving slot and routed with the same zone route; the frame then
+   finds it gone and routes nothing (#489's `spellMovedItselfLocked`). A
+   **copy** ceases to exist at once — 724.2b says an object "not represented
+   by a card" ceases to exist at the next SBA check, and no zone this engine
+   has can hold one. **Ability items** are deleted, exactly as CR 800.4a's
+   stack cleanup deletes them: exiled, not countered, so no
+   `EventCounterSpell` and nothing watching counters fires. A commander's exit
+   can pause on the CR 903.9 prompt; it then sits on the stack under its
+   prompt exactly as a paused counter does, and the prompt gates the table.
+4. **724.2c is folded into the check that follows.** The verb only runs inside
+   a resolution, and the resolution frame runs the SBA + trigger loop the
+   moment it returns, with nobody having received priority in between. A
+   check here would need an SBA pass that neither drains triggers nor moves a
+   departed active player's turn on, and what it would buy is SBAs taken
+   before the phase jump rather than after it — observable only as a
+   trigger's slot in one APNAP drain that happens either way.
+5. **724.2d:** `clearCombatLocked`, then the cursor walks forward through
+   `advanceCursorLocked` — the seam every transition takes (Decision 27) —
+   **without** running the entry hooks of the steps it passes, and the
+   postcombat main phase is entered through `runStepEntryHooksLocked` like any
+   other step. The engine has no "until end of combat" duration (a grep finds
+   none), so that clause has nothing to expire today.
+6. **724.2e falls out of 5:** the end of combat step is never entered, so it
+   is never announced and nothing harvested off `EventStepBegan{end_combat}`
+   fires. A CR 603.7 delayed trigger scheduled `At: StepEndCombat` is not
+   drained either; it stays queued for the next end of combat step that
+   begins.
+
+It must be the **last** instruction of the effect that calls it, because it
+exiles that effect's own object. On Mandate of Peace it is.
+
+The resolution frame needed no change. `passPriorityLocked` resolves, runs
+state checks and gives the active player priority — in whatever step the
+cursor is now in, which is the postcombat main phase. `AdvanceStep`'s CR 117.4
+drive sees the step change and stops (`driveStepEnded`).
+
+### Decision 33: reselecting an attack writes `AttackingTarget` and nothing else
+
+`server/internal/game/attack_reselect.go`. CR 508.7 has four clauses that
+matter here; three of them are about what does **not** happen, and they are
+the reason this is not `DeclareAttackerWith`:
+
+- **508.7a** — not removed from combat, not "attacked a second time". No
+  `EventAttack`, so no "whenever ~ attacks" trigger and no second Adeline
+  batch; `announcedAttacks` (Decision 23) keeps the creature, so a later
+  lock-in has nothing to announce; `blockedAttackers` (Decision 26) is
+  untouched, so a blocked creature stays blocked by the same blockers. The
+  second sentence — "still considered to have attacked the player … chosen as
+  it was declared" — holds for free: the declaration's triggers were harvested
+  at the lock-in, off the defender it was declared against.
+- **508.7b** — no requirements or restrictions: no summoning-sickness,
+  defender or tapped check, no tap, and no Propaganda tax (ADR 0080 charges
+  the DECLARATION, which this is not).
+- **508.7c** — the new target is checked with `canAttackTargetLocked`
+  against the **attacking creature's** controller — the same function the
+  declaration uses, because 508.7c and CR 506.2 name the same set. A
+  defending player flashing in Misleading Signpost can push the attack onto
+  any other opponent of the attacker, never back onto the attacker's side.
+- **508.7d** does not apply: CR 903.2 makes Commander's default multiplayer
+  setup Free-for-All with the attack multiple players option, which is the
+  only setup this engine plays.
+
+A creature that is only **staged** (declared by click, not yet locked in) is
+refused with `ErrNotAttacking`: the declaration is still the active player's
+to change, and a reselection landing before the lock-in would make the lock-in
+announce the reselected defender, which 508.7a forbids. No effect can resolve
+in that window, so the refusal only reaches a caller that is not one.
+
+Everything downstream reads `AttackingTarget` live and follows with no change:
+the new defender's creatures are the ones the block option generator
+(Decision 14) offers, and an unblocked creature's damage goes to the new
+target (CR 510.1b). The layer cache is dropped, as #1218 does at every
+attack-status change with no event of its own.
+
+**The prompt is the engine's**, `QueueReselectAttackForEffect`, and it is an
+ordinary `option_pick`: "Keep attacking <current>" first — the "you may", and
+the branch the enumerator marks always-legal — then every other legal target,
+a seat as a seat option and a planeswalker or battle as a card option. Its
+answer is read off the **option picked**, not an index into a captured list,
+through a third continuation beside #994's `thenSeat`: `thenSubject` hands the
+frame the option's seat, else its first card, else `uuid.Nil`. #994's hazard is
+real here — a seat that concedes while the question is open is pruned off it
+and renumbers the options after it — and an index frame would move the attack
+onto the wrong player. The picked target is re-validated by the verb, so an
+answer the board has since made illegal changes nothing. No wire change:
+`option_pick` already carries `Player` and `Cards` per option.
+
+The trigger condition ("when this enters during the declare attackers step")
+and the per-creature chaining (Windshaper Planetar) are catalog-side, in
+`effects/attack_reselect.go`.
+
+### What this does NOT decide
+
+- **"Your opponents can't cast spells this turn"**, Mandate of Peace's other
+  sentence, is a cast restriction created by a resolving spell with a
+  duration — [#1316](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1316),
+  a separate PR. The card ships `caveats` until it lands.
+- **Extra combat phases.** "The next phase, usually the postcombat main phase"
+  is always the postcombat main phase here, because the turn has one combat
+  (the "Extra combat and main phases" seam row).
+- **A trigger already parked on a prompt** — a "you may" yes/no or a
+  pick_target queued by the harvester during the same resolution, before the
+  process began — is not withdrawn by 724.2a. It cannot exist in practice (an
+  open prompt stops priority, so nothing resolves under one), and the only
+  way to reach it is a trigger off Mandate of Peace's own resolution event.
+- **Capricopian** ("only the player this creature is attacking may activate
+  this ability") needs an activator that is not the controller, which
+  `ActivatedAbility` has no shape for. Its reselect half would work unchanged.
