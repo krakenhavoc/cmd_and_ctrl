@@ -165,6 +165,24 @@ export interface Settings {
     // not — the pre-#1307 behaviour. Off by default: with smart
     // autopass on, a spell you can't respond to now passes.
     alwaysStopOpponentStack: boolean;
+    // #1307 bluffing. When smart autopass would pass a window you
+    // cannot answer, act as if you could instead, so a pause gives
+    // nothing away.
+    //   bluffCounterspell — represent a counter: bluff at an
+    //                       opponent's item on the stack.
+    //   bluffInstant      — represent an instant: bluff there and in
+    //                       the other key windows (combat, an
+    //                       opponent's end step).
+    //   bluffMode         — "timed" holds for a random delay between
+    //                       the two bounds then passes; "manual"
+    //                       holds until you click next.
+    // Both bluffs also need the in-game bluff toggle (bluff.ts),
+    // which starts on at game load when either is set.
+    bluffCounterspell: boolean;
+    bluffInstant: boolean;
+    bluffMode: "timed" | "manual";
+    bluffDelayMinMs: number;
+    bluffDelayMaxMs: number;
     // #323: when every item on the stack is one the viewer put
     // there, auto-pass instead of asking "Counter or Pass?" about
     // your own spell. Defaults on — casting is already the
@@ -238,7 +256,7 @@ export interface Settings {
   };
 }
 
-export const SETTINGS_VERSION = 12;
+export const SETTINGS_VERSION = 13;
 const STORAGE_KEY = "cmdctrl.settings.v1";
 const LEGACY_MUTED_KEY = "cmdctrl.muted";
 
@@ -346,6 +364,13 @@ export function defaultSettings(): Settings {
       respondAbilities: true,
       respondSpecialActions: true,
       alwaysStopOpponentStack: false,
+      // #1307 bluff defaults: off, timed, 1.5–4 s. A bluff slows the
+      // table, so nobody gets one they didn't ask for.
+      bluffCounterspell: false,
+      bluffInstant: false,
+      bluffMode: "timed",
+      bluffDelayMinMs: 1500,
+      bluffDelayMaxMs: 4000,
       // #323 default: ON. "I cast it" is already the decision; the
       // client shouldn't ask you to confirm it. Opponent items on
       // the stack still stop, and the in-game "hold" toggle is the
@@ -534,6 +559,13 @@ function migrate(raw: unknown): Settings {
   // autopass on, an opponent's spell they cannot answer now passes
   // instead of stopping, and a mana ability no longer counts as a
   // response. alwaysStopOpponentStack puts the old stop back.
+  //
+  // v12 → v13 (#1307 bluffing): gameplay.bluffCounterspell,
+  // bluffInstant (false), bluffMode ("timed"), bluffDelayMinMs (1500)
+  // and bluffDelayMaxMs (4000). The shallow merge fills them, and
+  // with both bluffs off nothing behaves differently. The delay
+  // bounds are clamped where they are read (bluff.ts), so a
+  // hand-edited blob cannot stall the table.
   merged.shortcuts = {
     enabled: merged.shortcuts?.enabled !== false,
     bindings: sanitizeOverrides(merged.shortcuts?.bindings),

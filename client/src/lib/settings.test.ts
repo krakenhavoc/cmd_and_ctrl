@@ -268,6 +268,35 @@ describe("settings", () => {
     expect(s.gameplay.autoPassOwnStack).toBe(false);
   });
 
+  it("v12 → v13 seeds the bluff settings off, and keeps a stored choice", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 12, gameplay: { respondInstants: false } }),
+    );
+    let mod = await freshModule();
+    let s = get(mod.settings);
+    expect(s.__version).toBe(mod.SETTINGS_VERSION);
+    expect(s.gameplay.bluffCounterspell).toBe(false);
+    expect(s.gameplay.bluffInstant).toBe(false);
+    expect(s.gameplay.bluffMode).toBe("timed");
+    expect(s.gameplay.bluffDelayMinMs).toBe(1500);
+    expect(s.gameplay.bluffDelayMaxMs).toBe(4000);
+    expect(s.gameplay.respondInstants).toBe(false);
+
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({
+        __version: 13,
+        gameplay: { bluffInstant: true, bluffMode: "manual", bluffDelayMaxMs: 6000 },
+      }),
+    );
+    mod = await freshModule();
+    s = get(mod.settings);
+    expect(s.gameplay.bluffInstant).toBe(true);
+    expect(s.gameplay.bluffMode).toBe("manual");
+    expect(s.gameplay.bluffDelayMaxMs).toBe(6000);
+  });
+
   it("falls back to defaults when stored blob is corrupt", async () => {
     localStorage.setItem("cmdctrl.settings.v1", "{not valid json");
     const { settings, SETTINGS_VERSION } = await freshModule();

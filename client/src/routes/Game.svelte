@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import { GameClient } from "../lib/ws";
   import { recordClientError } from "../lib/clientErrors";
   import { describeThrown } from "../lib/guardedStore";
@@ -55,7 +55,8 @@
   } from "../lib/attackAll";
   import { hasPassMove, stackEmpty } from "../lib/timing";
   import { consumeManualStop, manualStops } from "../lib/priorityStops";
-  import { autopassDecision } from "../lib/autopassDecision";
+  import { autopassDecision, isBluff, type AutopassGates } from "../lib/autopassDecision";
+  import { bluffArmed, bluffDelayMs, initBluffArmed, setBluffStatus } from "../lib/bluff";
   import { holdPriority, ownsEveryStackItem, toggleHoldPriority } from "../lib/holdPriority";
   import { registerShortcutHandlers, setShortcutContext } from "../lib/shortcutRuntime";
   import { effectiveBindings, formatChord, isMacLike } from "../lib/shortcuts";
@@ -245,6 +246,62 @@
   // toggle); the module decides.
   let autopassEnabled = $state(false);
   let lastAutoPassedSeq = $state(-1);
+
+  // #1307 timed bluff. Plain (non-reactive) on purpose: the timer is a
+  // side effect of the decision, not an input to it. `seq` is the frame
+  // the bluff was rolled on, so a re-run on the same frame keeps the
+  // same delay; `sent` is the client's action count at that moment, so
+  // any action the viewer sends in the meantime calls the pass off.
+  let pendingBluff: { seq: number; sent: number; timer: ReturnType<typeof setTimeout> } | null =
+    null;
+  let latestGates: AutopassGates | null = null;
+
+  function cancelBluffTimer(): void {
+    if (pendingBluff) clearTimeout(pendingBluff.timer);
+    pendingBluff = null;
+  }
+  function cancelBluff(): void {
+    cancelBluffTimer();
+    setBluffStatus(null);
+  }
+
+  // armTimedBluff starts the countdown for this frame, once.
+  function armTimedBluff(minMs: number, maxMs: number): void {
+    const seq = $lastSeq;
+    if (seq === lastAutoPassedSeq) return;
+    if (pendingBluff?.seq === seq) return;
+    cancelBluffTimer();
+    const delay = bluffDelayMs(minMs, maxMs);
+    pendingBluff = { seq, sent: client.actionsSent, timer: setTimeout(fireBluff, delay) };
+    setBluffStatus({ manual: false, passesAt: Date.now() + delay });
+  }
+
+  // fireBluff is the end of a timed bluff. It passes only if nothing
+  // moved while it waited: the same frame, no pass already sent for
+  // it, no action from the viewer, and the decision still says bluff
+  // (or pass). Anything else and the window belongs to the player.
+  function fireBluff(): void {
+    const p = pendingBluff;
+    pendingBluff = null;
+    setBluffStatus(null);
+    if (!p) return;
+    const seq = $lastSeq;
+    if (seq !== p.seq || seq === lastAutoPassedSeq) return;
+    if (client.actionsSent !== p.sent) return;
+    if (!latestGates) return;
+    const v = autopassDecision(latestGates);
+    if (!(v === "pass" || (isBluff(v) && !v.manual))) return;
+    lastAutoPassedSeq = seq;
+    client.sendAction("pass_priority");
+  }
+
+  onMount(() => {
+    // The in-game bluff switch starts from the settings each game.
+    initBluffArmed($settings.gameplay);
+    setBluffStatus(null);
+  });
+  onDestroy(cancelBluff);
+
   $effect(() => {
     const step = view?.turn?.step;
     const gp = $settings.gameplay;
@@ -256,7 +313,7 @@
       special: gp.respondSpecialActions,
     };
     const kw = keyWindow(view, viewerID);
-    const verdict = autopassDecision({
+    const gates: AutopassGates = {
       viewerHasPriority,
       tableBusy: mulligansOpen || gameEnded || viewerEliminated,
       // Never auto-pass while the viewer has an open choice to make
@@ -299,11 +356,26 @@
       hasPlay: hasPlay(view, viewerID, cats),
       combatWindow: kw.combat,
       oppEndWindow: kw.oppEnd,
-      // Bluffing is not wired yet; the decision never returns it.
-      bluffCounter: false,
-      bluffInstant: false,
-      bluffManual: false,
-    });
+      // #1307: a bluff needs the setting AND the in-game switch.
+      bluffCounter: gp.bluffCounterspell && $bluffArmed,
+      bluffInstant: gp.bluffInstant && $bluffArmed,
+      bluffManual: gp.bluffMode === "manual",
+    };
+    latestGates = gates;
+    const verdict = autopassDecision(gates);
+
+    if (isBluff(verdict)) {
+      if (verdict.manual) {
+        // A manual bluff is a hold the phase widget labels; next is
+        // the pass.
+        cancelBluffTimer();
+        setBluffStatus({ manual: true });
+      } else {
+        armTimedBluff(gp.bluffDelayMinMs, gp.bluffDelayMaxMs);
+      }
+      return;
+    }
+    cancelBluff();
 
     if (verdict === "hold") return;
     if (verdict === "clear-toggle") {
@@ -318,8 +390,6 @@
       autopassEnabled = false;
       return;
     }
-    // A bluff verdict falls through to the pass: the bluff gates are
-    // all false until bluffing is wired, so it cannot happen yet.
 
     // Dedupe by snapshot seq so we don't fire twice on the same
     // priority window if the effect re-runs for an unrelated reason
@@ -365,6 +435,8 @@
   const lastCastByCardID = new Map<string, Record<string, unknown>>();
 
   const sendAction = (type: ActionType, params?: unknown, player?: string): void => {
+    // Acting ends a bluff: the viewer has taken the window.
+    cancelBluff();
     if (type === "cast_spell") {
       const strict = $settings.gameplay.strictMana;
       const incoming = (params ?? {}) as Record<string, unknown>;
@@ -584,6 +656,7 @@
   }
 
   function passPriority(): void {
+    cancelBluff();
     client.sendAction("pass_priority");
   }
 

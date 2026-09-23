@@ -10,8 +10,9 @@ into `client/src/lib/autopassDecision.ts`, which is where the precedence list
 now lives in code.
 **Amended by:** S35 (#1307), 2026-09-23 — smart autopass asks about
 *responses* in *key windows*, mana and land stop counting, and an opponent's
-spell you cannot answer now passes. See "Amendment: key windows and response
-categories (#1307)" below.
+spell you cannot answer now passes. It also adds bluffing and a "considering a
+response…" chip. See "Amendment: key windows and response categories (#1307)"
+below.
 
 `hasAnyLegalResponse` no longer walks the viewer's cards running per-action
 predicates. The server enumerates the seat's legal moves and ships them as
@@ -155,8 +156,9 @@ Quiet steps (an opponent's upkeep with an empty stack, say) still pass.
 8. A ticked step: hold if `smartAutoPass ? hasPlay : true`.
 9. Pass.
 
-Rules 4, 6 and 7 name a bluff verdict. It is produced only when a bluff is
-armed, which the bluffing change adds; until then no gate arms one.
+Rules 4, 6 and 7 name a bluff verdict. A bluff only ever replaces a pass. It
+never beats a guard, a pin, a real answer or any other hold. See "Bluffing"
+below.
 
 ### The behaviour change
 
@@ -185,6 +187,72 @@ enumerator does not list (moving a card by hand). A manual pin or
 and `Game.svelte` gathers the gates. `hasAnyLegalResponse` is gone.
 `hasNonPassMove` (mana included) stays in `timing.ts` for UI that wants "any
 move at all".
+
+### Bluffing
+
+A smart hold is a tell. Automatic passes take one round trip, so any pause
+means "they have something". Before this change the only way to bluff was a
+manual pin (§5), clicked in advance, one step at a time.
+
+A bluff is a pause the viewer takes when they have nothing. Two settings pick
+where (schema v13), and both are off by default:
+
+- `bluffCounterspell` — represent a counter: bluff at an opponent's item on the
+  stack.
+- `bluffInstant` — represent an instant: bluff there and in the other key
+  windows (combat, an opponent's end step).
+
+`bluffMode` picks how:
+
+- **timed** (default) holds for a random delay, then passes. The delay is
+  uniform between `bluffDelayMinMs` and `bluffDelayMaxMs` (1500 and 4000 by
+  default), clamped to 500–15000 ms (`bluff.ts`).
+- **manual** holds until the player clicks next, like a real hold.
+
+Either one also needs the in-game **bluff** button in the phase widget. That is
+a session switch (`bluffArmed`) which starts on at game load when either
+setting is on, so a player can stop bluffing for the rest of a game without
+opening Settings. The widget shows "bluffing — passes in Ns" or "bluffing —
+click next" to the viewer only.
+
+The timed bluff lives in `Game.svelte` and is careful about one thing: it must
+never pass a window that has changed under it.
+
+- The delay is rolled once per frame (`seq`). A re-run of the effect on the
+  same frame keeps the timer.
+- Any other verdict cancels it, and so do `next`, any action sent through the
+  board, and leaving the game.
+- When it fires, it checks the frame is unchanged, that no pass was already
+  sent for it, and that the client's action count has not moved (so any send
+  path counts). It then re-runs the decision, and passes only if the answer is
+  still a timed bluff or a pass.
+
+**Costs, stated:**
+
+- **Every bluff slows the table.** Several seats bluffing timed at a four-player
+  table add up. The delay range is adjustable and both bluffs are off by
+  default.
+- **A timed bluff has a ceiling.** It always ends inside its range, so a pause
+  longer than the maximum still means a real answer. Manual mode removes the
+  ceiling, at the price of a click.
+- `alwaysStopOpponentStack` is the other way to give nothing away on the stack:
+  stop every time, answer or not.
+
+### "Considering a response…"
+
+The "Opponent thinking indicator" under "Not done" is resolved, and without the
+cross-seat visibility it was waiting on. The client shows a "{name} is
+considering a response…" chip, on the seat and in the stack overlay, when a
+human seat other than the viewer's has held priority for more than 800 ms in a
+response window. A response window is one where the stack is non-empty or the
+holder is not the active seat, no blocking choice is open, and nobody owes a
+block decision.
+
+It is derived entirely client-side, from public data and elapsed time
+(`considering.ts`). There is no protocol change and nothing leaks. An automatic
+pass clears in about one round trip, well inside 800 ms. So a real hold, a
+timed bluff, a manual bluff and a player who has stepped away all look the
+same, which is the point. Bot seats keep their own `botThinking` chip.
 
 ## Context
 
@@ -459,10 +527,12 @@ missed turn.
 
 ### Not done
 
-- **Opponent "thinking" indicator.** Accurate telegraph of
+- ~~**Opponent "thinking" indicator.** Accurate telegraph of
   "opponent can respond" requires their full hand / board
   visibility, which S13.5 doesn't grant across seats. Future
-  sprint.
+  sprint.~~ Resolved by #1307: the chip shows a hold, not
+  whether the hold is real. See "'Considering a response…'" in the
+  #1307 amendment.
 - **Triggered-ability responses.** S19 will auto-fire catalog
   triggers; predicate doesn't consider them since they aren't
   the viewer's action to dispatch.

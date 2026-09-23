@@ -245,6 +245,13 @@ export class GameClient {
   // reconnectAttempts counts consecutive failed opens since the last
   // successful one — the exponent for the backoff ladder.
   private reconnectAttempts = 0;
+  // actionsSent counts action frames that left the socket. A timed
+  // bluff (#1307) reads it to tell whether the viewer did anything
+  // while it was waiting, whichever of the many send paths they used.
+  private sentActions = 0;
+  get actionsSent(): number {
+    return this.sentActions;
+  }
   // recordFrames gates every capture. Kept as a plain boolean rather
   // than reading a store per frame so the disabled path is a single
   // branch on the hot receive loop.
@@ -580,6 +587,7 @@ export class GameClient {
     };
     const wire = JSON.stringify(frame);
     this.socket.send(wire);
+    this.sentActions++;
     this.recordFrame("out", frame, wire);
     this.append("sent", `action ${type} id=${id.slice(0, 8)}`);
     return id;
