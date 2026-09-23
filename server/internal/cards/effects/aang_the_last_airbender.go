@@ -29,13 +29,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     notice it. The trigger is likewise dropped outright when the
 //     board holds no legal target (CR 603.3d, engine-wide).
 //
-//   - "OTHER target nonland permanent" cannot be expressed in the
-//     target clause: TargetSpec is built at init() and NotSelf needs
-//     an InstanceID that doesn't exist until Aang is on the
-//     battlefield. Same sandbox gap Deputy of Acquittals carries,
-//     and the same remedy — the picker offers Aang, and the Effect
-//     declines to airbend the source, so the printed restriction
-//     holds at resolution.
+//   - "OTHER target nonland permanent" is a real target predicate:
+//     the clause is built per trigger by TargetsFrom, which receives
+//     the source, so NotSelf has Aang's InstanceID to exclude and the
+//     picker never offers him (CR 115.1). It used to be a static
+//     `Targets`, built at init() with no InstanceID to name, so the
+//     picker offered Aang and the Effect quietly skipped him — a
+//     player who clicked Aang wasted the trigger. AirbendOtherTarget
+//     still refuses the source at resolution, which now never fires.
 //
 //   - The Lesson clause is LIVE as of S32. It shipped omitted in
 //     S23 because "Aang gains lifelink until end of turn" needed a
@@ -74,7 +75,10 @@ func init() {
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 					return ev.CardID == source.InstanceID
 				},
-				Targets: TargetPermanent("another target nonland permanent", Nonland()),
+				TargetsFrom: func(_ game.TriggerContext, source *game.Card, _ *game.Game) *game.TargetSpec {
+					return TargetPermanent("another target nonland permanent",
+						Nonland(), NotSelf(source.InstanceID))
+				},
 				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
 					return game.NewTriggeredItem(source, "Aang, the Last Airbender — airbend a nonland permanent",
 						AirbendOtherTarget)

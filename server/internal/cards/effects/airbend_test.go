@@ -156,20 +156,41 @@ func TestAangDeclinedAirbendsNothing(t *testing.T) {
 	}
 }
 
-// "ANOTHER target nonland permanent": the picker can't express it,
-// so the resolution has to. Aang pointed at himself does nothing.
+// "ANOTHER target nonland permanent": Aang is not a legal target of
+// his own trigger. With another permanent around the picker offers
+// that one and never Aang, and an answer naming Aang is refused; alone
+// on the board he has nothing to target and the trigger asks nothing
+// (CR 603.3d).
 func TestAangWillNotAirbendHimself(t *testing.T) {
 	g := newCatalogGame(t)
-	me := g.Seats[0]
+	me, opp := g.Seats[0], g.Seats[1]
+	victim := pushCreatureToBattlefieldForTest(g, opp.ID, "Their Blocker")
 
 	aang := castAndResolveCreature(t, g, "Aang, the Last Airbender",
 		"Legendary Creature — Human Avatar Ally", aangTheLastAirbenderOracle)
 	answerLatestTriggerPrompt(t, g, me.ID, true)
-	pickCard(t, g, me.ID, aang)
-	passPriorityAroundTable(t, g)
+	p := latestPickTarget(g, me.ID)
+	if p == nil {
+		t.Fatalf("no pick_target prompt after saying yes")
+	}
+	if hasID(p.PickTargetCards, aang) {
+		t.Errorf("the picker offered Aang to his own \"another target\" trigger")
+	}
+	if !hasID(p.PickTargetCards, victim) {
+		t.Errorf("the picker did not offer the other nonland permanent")
+	}
+	if err := g.ResolvePickTargets(p.ID, me.ID, []game.TargetRef{{Kind: game.TargetCard, ID: aang}}); err == nil {
+		t.Errorf("an answer naming Aang himself was accepted")
+	}
 
-	if !g.Battlefield.Contains(aang) {
-		t.Errorf("Aang airbent himself; the printed clause says ANOTHER")
+	alone := newCatalogGame(t)
+	castAndResolveCreature(t, alone, "Aang, the Last Airbender",
+		"Legendary Creature — Human Avatar Ally", aangTheLastAirbenderOracle)
+	if p := latestTriggerPromptFor(alone, alone.Seats[0].ID); p != nil {
+		t.Errorf("Aang alone on the board still asked to airbend")
+	}
+	if p := latestPickTarget(alone, alone.Seats[0].ID); p != nil {
+		t.Errorf("Aang alone on the board opened a pick_target prompt offering %v", p.PickTargetCards)
 	}
 }
 
@@ -229,6 +250,81 @@ func TestAppaAirbendsSeveralOfYourOwnPermanents(t *testing.T) {
 	if !g.Battlefield.Contains(theirs) {
 		t.Errorf("an untargeted permanent was airbent")
 	}
+}
+
+// "Any number of OTHER target nonland permanents": Appa is not a
+// legal target of his own trigger, so the picker never offers him and
+// an answer naming him is refused. Alone on the board, the trigger has
+// nothing to target at all and asks nothing.
+func TestAppaCannotTargetHimself(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	bear := pushCreatureToBattlefieldForTest(g, me.ID, "My Bear")
+
+	appa := castAndResolveCreature(t, g, "Appa, Steadfast Guardian",
+		"Legendary Creature — Bison Ally", appaSteadfastGuardianOracle)
+	p := latestPickTarget(g, me.ID)
+	if p == nil {
+		t.Fatalf("no pick_target prompt for Appa")
+	}
+	if hasID(p.PickTargetCards, appa) {
+		t.Errorf("the picker offered Appa to his own \"other target\" trigger")
+	}
+	if !hasID(p.PickTargetCards, bear) {
+		t.Errorf("the picker did not offer another nonland permanent you control")
+	}
+	if err := g.ResolvePickTargets(p.ID, me.ID, []game.TargetRef{{Kind: game.TargetCard, ID: appa}}); err == nil {
+		t.Errorf("an answer naming Appa himself was accepted")
+	}
+
+	g2 := newCatalogGame(t)
+	castAndResolveCreature(t, g2, "Appa, Steadfast Guardian",
+		"Legendary Creature — Bison Ally", appaSteadfastGuardianOracle)
+	if p := latestPickTarget(g2, g2.Seats[0].ID); p != nil {
+		t.Errorf("Appa alone on the board opened a pick_target prompt offering %v", p.PickTargetCards)
+	}
+}
+
+// The card's headline play: Appa airbends your own commander (with
+// other permanents) out of harm's way. The whole group leaves; the
+// commander's owner is asked about the command zone, declines, and
+// every card — the commander included — is left castable for {2}.
+func TestAppaAirbendsYourOwnCommanderAndKeepsItsRebuy(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	bear := pushCreatureToBattlefieldForTest(g, me.ID, "My Bear")
+	commander := uuid.New()
+	g.Battlefield.PushTop(game.Card{
+		InstanceID: commander, Name: "My Commander", TypeLine: "Legendary Creature — Human Avatar",
+		ManaCost: "{3}{W}", Power: 3, Toughness: 2,
+		Owner: me.ID, Controller: me.ID, IsCommander: true,
+	})
+
+	castAndResolveCreature(t, g, "Appa, Steadfast Guardian",
+		"Legendary Creature — Bison Ally", appaSteadfastGuardianOracle)
+	p := latestPickTarget(g, me.ID)
+	if p == nil {
+		t.Fatalf("no pick_target prompt for Appa")
+	}
+	if err := g.ResolvePickTargets(p.ID, me.ID, []game.TargetRef{
+		{Kind: game.TargetCard, ID: bear},
+		{Kind: game.TargetCard, ID: commander},
+	}); err != nil {
+		t.Fatalf("ResolvePickTargets: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+
+	offer := latestChoiceOfKind(g, game.PendingChoiceOptionalReplacement)
+	if offer == nil || offer.Chooser != me.ID {
+		t.Fatalf("the commander's owner was not asked about the command zone (CR 903.9)")
+	}
+	if err := g.ResolveOptionalReplacement(offer.ID, me.ID, false); err != nil {
+		t.Fatalf("ResolveOptionalReplacement: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+
+	assertAirbent(t, g, bear, me.ID)
+	assertAirbent(t, g, commander, me.ID)
 }
 
 // "Whenever you cast a spell from exile" — the EventCast source
