@@ -364,6 +364,57 @@ func TestB27DuplicantDeclinedStaysAShapeshifter(t *testing.T) {
 	}
 }
 
+// #1239: a Duplicant that leaves the battlefield and returns is a new
+// CR 400.7 object with no memory of what the earlier incarnation
+// exiled, even though its instance ID and the trigger's label are
+// unchanged. Without the b27ExiledWith epoch check this test pins,
+// the returning Duplicant still reads the Archmage its first
+// incarnation exiled and keeps wearing it.
+func TestB27DuplicantReturningHasNoMemoryOfItsPreviousExile(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	archmage := b27Push(g, opp.ID, "Archmage", "Legendary Creature — Human Wizard", "", "{3}{U}{U}", 5, 6, "U")
+	dup := b20CastCreature(t, g, me, "Duplicant", "Artifact Creature — Shapeshifter", b27DuplicantOracle, 2, 4)
+	passPriorityAroundTable(t, g)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
+	b04WaitForPick(t, g, me.ID)
+	pickCard(t, g, me.ID, archmage)
+	passPriorityAroundTable(t, g)
+	if !exileHas(g, archmage) {
+		t.Fatal("the first incarnation exiles the Archmage")
+	}
+	if got := effectivePower(t, g, dup); got != 5 {
+		t.Fatalf("first incarnation power %d, want 5 (the Archmage's)", got)
+	}
+
+	// Duplicant leaves and returns — same instance ID, a new object
+	// per CR 400.7 — and this time its ETB is declined, so nothing new
+	// is exiled. The Archmage is still sitting in exile the whole
+	// time: it is still "exiled with" the OLD Duplicant, and must not
+	// be read by the new one.
+	g.WithWriteLock(func() { _ = g.BounceToHandForEffect(dup) })
+	advanceToMain(t, g)
+	if err := g.CastSpell(me.ID, dup, game.CastSpellParams{}); err != nil {
+		t.Fatalf("recast Duplicant: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	answerLatestTriggerPrompt(t, g, me.ID, false)
+	passPriorityAroundTable(t, g)
+
+	if !exileHas(g, archmage) {
+		t.Fatal("the Archmage is still in exile, untouched by the second incarnation")
+	}
+	if got := effectivePower(t, g, dup); got != 2 {
+		t.Errorf("returning Duplicant power %d, want its printed 2 — the old incarnation's exile must not carry over", got)
+	}
+	if got := effectiveToughness(t, g, dup); got != 4 {
+		t.Errorf("returning Duplicant toughness %d, want its printed 4", got)
+	}
+	if subs := effectiveSubtypes(t, g, dup); len(subs) != 1 || subs[0] != "Shapeshifter" {
+		t.Errorf("returning Duplicant subtypes %v, want just Shapeshifter", subs)
+	}
+}
+
 // --- the lands -----------------------------------------------------
 
 func TestB27GingerbreadCabinEntersUntappedWithThreeForestsAndMakesFood(t *testing.T) {

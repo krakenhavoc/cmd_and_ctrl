@@ -175,10 +175,40 @@ func b27GreatestManaValueAmongArtifactsControlled(g *game.Game, controller uuid.
 // counted: its newer move closes the older record. Only cards still
 // in exile are returned, oldest exile first, so the last entry is
 // "the last card exiled with it".
+//
+// CR 400.7: `source` surviving as the same InstanceID across a zone
+// change is a CARD fact, not an OBJECT fact — a Duplicant that leaves
+// the battlefield and returns is a new object with the same
+// InstanceID and no memory of what an earlier incarnation exiled.
+// Event carries no Card.ObjectEpoch of its own, so the walk reads the
+// one place that fact is already visible in the log: `source` getting
+// a NEW EventZoneMove onto the battlefield is exactly the object
+// changing (card.go's MoveCard bumps ObjectEpoch on that same move),
+// so `order` — the accumulated record — is dropped right there,
+// before the returning object's own abilities get a chance to add or
+// read anything.
+//
+// Deliberately keyed on ENTERING rather than on `source` leaving (or
+// on the label resolving again): a "when this leaves the battlefield"
+// reader — Ossification and Angel of Serenity's own return clause,
+// Bag of Holding's sacrifice ability — reads this record for the
+// SAME incarnation that just departed, after the departure event is
+// already in the log, and must still see it (CR 603.10, last known
+// information). And Bag of Holding's discard trigger can open this
+// same label's window many times across one unbroken stay on the
+// battlefield — each has to add to the one record, not start a fresh
+// one, since nothing has re-entered in between. Only an actual
+// re-entry says "new object, no memory" (CR 400.7); merely leaving,
+// or merely re-resolving the label, says nothing of the kind on its
+// own.
 func b27ExiledWith(g *game.Game, source uuid.UUID, label string) []uuid.UUID {
 	open := false
 	order := map[uuid.UUID]int{}
 	for _, ev := range g.Events {
+		if ev.Kind == game.EventZoneMove && ev.CardID == source && ev.NewZone == game.ZoneBattlefield {
+			open = false
+			order = map[uuid.UUID]int{}
+		}
 		switch ev.Kind {
 		case game.EventResolve:
 			open = ev.Source == source && ev.Label == label
