@@ -1667,3 +1667,232 @@ abilities are not priced through the activation pass.
 Avatar Kuruk's extra turn (#753), unchanged. Two new, both narrow:
 the ability view's printed-cost display, and running the CR 601.2f
 pass over a MANA ability's cost.
+
+---
+
+## Addendum (2026-09-22): abilities that function from the graveyard and exile (#1221)
+
+**Status:** Accepted · 2026-09-22 · tracked on
+[#1221](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1221). This
+status covers this section only; every decision above stays accepted
+and unchanged.
+
+### Context
+
+CR 113.6 is one rule and the engine had answered a quarter of it.
+[ADR 0062](0062-abilities-and-special-actions-from-the-hand.md)
+Decision 1 gave `ActivatedAbilityShape.Zones []ZoneKind` to the ONE
+activation path — nil means the battlefield, `{ZoneHand}` is cycling —
+and #922 gave `TriggeredAbility` the same field. What was missing was
+not a shape. It was **every consumer past the activation path**:
+
+- `internal/legal`'s enumerator walked the battlefield and the seat's
+  own HAND and stopped there, so a bot could never unearth.
+- `protocol/view.go` stamped `hand_abilities` on a hand card and
+  nothing anywhere else, so a human could never see the row.
+- `AbilityCost` had no component for "Exile this card from your
+  graveyard", which is the cost three of the four graveyard keywords
+  print.
+
+The seam doc's ["Ability activatable from a non-battlefield
+zone"](../engine-seams.md) row says the same thing from the other
+side: four cards were "one `Spec` edit away", and had been since #660,
+because nothing would have offered the edit to anybody.
+
+The keyword family behind the row is what settles the design, because
+it is four keywords' worth of variation over one dimension:
+
+| keyword | CR | zone | cost | effect |
+|---|---|---|---|---|
+| cycling | 702.29a | hand | discard this | draw |
+| unearth | 702.82a | graveyard | mana only | return it, haste, exile it later |
+| scavenge | 702.96a | graveyard | **exile this** | counters equal to its power |
+| embalm / eternalize | 702.128a / 702.129a | graveyard | **exile this** | a token copy with changes |
+
+Four keywords, one activation path, one zone field. Nothing here is a
+new KIND of thing; all of it is the existing kind, one zone further
+out.
+
+### Decision 24: the consumers get a zone walk, not a second entry point
+
+`ActivatedAbilitiesForCard` is unchanged and `AbilityFunctionsFromZone`
+stays the one predicate. What changes is who asks it, and about how
+many piles:
+
+```go
+// internal/legal/abilities.go
+func (e *enumerator) abilityZones() []abilityZone   // hand, graveyard, command, exile
+
+// internal/protocol/view.go
+func stampZoneAbilities(g, seats, exile)            // the same four
+```
+
+The enumerator's walk is deliberately shaped like `castZones`
+(#1014's five-zone cast walk) and deliberately one pile shorter. The
+**library is not walked**, and that is a rule rather than an omission:
+CR 401.2 makes a library hidden, no printed ability functions from
+one, and an enumerator that read it would be touching cards the seat
+is not entitled to see to answer a question whose answer is always
+"nothing". The one line it would take is named in the comment, so the
+day a card prints such an ability the change is a line and not a
+rediscovery.
+
+Exile is the shared pile and gets the CR 108.4 treatment in both
+walks: the "you" is read off `Card.Owner` rather than off the loop,
+because `g.Exile` holds every seat's cards and the per-seat piles hold
+only their own. That is the same rule `ActivateCatalogAbility` has
+enforced since #660 (`source.Owner != playerID`), asked by the two
+consumers that have to agree with it or fall foul of #544 in one
+direction or the other.
+
+### Decision 25: `AbilityCost.ExileSelf`, and why it is not `DiscardSelf` with a zone
+
+Scavenge, embalm and eternalize all print the same cost clause:
+"Exile this card from your graveyard". It is `DiscardSelf`'s sibling
+and it is a **second bool**, not a zone parameter on one "the source
+pays itself" component, because the two are different rules:
+
+- discarding is a CR 701.8 keyword action with its own event
+  (`EventDiscardCard`), its own cause (`DiscardCauseCost`) and, for
+  cycling, `EventCycle` on top;
+- exiling as a cost is a plain CR 406 zone change with none of that.
+
+A card file that wanted "discard this from your graveyard" would be
+writing a card that does not exist. The part they genuinely share —
+"the payment IS the source, so nothing is announced, nothing is
+picked and nothing goes on the wire" — they get for free by both
+being a bool.
+
+Everything else is the discard component's shape, one zone over
+(`game/exile_cost.go`):
+
+- **Validated** with the rest of the cost, before anything is paid:
+  the source has to be in a GRAVEYARD, or `ErrActivationZoneNotAllowed`
+  with nothing spent. "Your" needs no second check — the activation
+  path has already refused a non-owner off the battlefield.
+- **Paid last**, beside the discards, because it moves the source and
+  invalidates every pointer the payment block held.
+- **Through `routeCardToZoneLocked`** like every other exit, with
+  `MustSettleNow` set for the reason `DiscardCauseCost` sets it:
+  CR 601.2h / 602.2b make activating an ability one indivisible step,
+  so the CR 614 window runs over the move and never stops to ask.
+- **Refused at BOOT** on an ability that does not declare the
+  graveyard (`effects.Register`), exactly as `DiscardSelf` is refused
+  off the hand. A component that could never be paid is a card-file
+  mistake, and the treatment it gets is the one `MinX`-without-`{X}`
+  already gets.
+
+### Decision 26: the effect reads its source back out of exile; no snapshot on the stack item
+
+Scavenge needs "this card's power" and embalm needs the whole card to
+copy — and by the time either effect runs, its own COST has moved the
+card to exile. `StackItem` carries no last-known-information snapshot
+of its source (`SourceCardID` and `SourceEpoch`, and that is all), and
+this addendum deliberately does not add one.
+
+It does not need to. `LookupCardForEffect` finds a card in whatever
+zone holds it, and a card outside the battlefield has no layers
+applied to it (CR 613 runs on permanents), so the printed power read
+out of exile at resolution is the same number the graveyard held. A
+snapshot field would be a second LKI store beside the damage event's,
+for a question that already has a right answer — the same call
+`targets.go` declines to make for the same reason.
+
+The cost of that choice is stated rather than hidden: a card somehow
+moved OUT of exile between the announce and the resolution (a shuffle
+of exile into a library) answers `ok == false` and the ability does
+nothing, which is CR 608.2a's "as much as it can" and is the weaker
+direction (#259).
+
+### Decision 27: the wire renames `hand_abilities` to `zone_abilities`, and it is scoped rather than merely hidden
+
+Two changes to `CardView`, and the second is the one that matters.
+
+**The rename.** `hand_abilities` was named for the only zone it had.
+Now that a graveyard card carries the same rows it is `zone_abilities`
+— one field, because the engine has one activation path with a zone
+dimension, so the wire has one row list and the client has one reader.
+A second `graveyard_abilities` beside it would have been two fields
+that can disagree about a card in neither zone.
+
+**The scoping.** Through #660 the field was written to the exported
+`CardView` field and got its privacy from the HAND: `FilterViewFor`
+blanks another seat's hand wholesale. A graveyard is public, so the
+same code would have shipped one seat's answer to the whole table —
+which is exactly the surface #1055 and #1167 took off the cast
+stamps, arriving again one field over. An ability row carries
+`legal_targets` and `clauses`, and hexproof, shroud and "target
+opponent" all narrow a target set **by who is asking**.
+
+So the rows ride `castOffers`, the per-seat carrier that already
+exists for that question, and `publicIn` drops them: the seat whose
+card it is gets the list, every other seat gets the card and no list,
+a spectator gets no list. The hand's rows moved there with the
+graveyard's rather than leaving two lifecycles for one field.
+
+One wrinkle worth naming, because it is the kind of thing that breaks
+silently: `stampLegalTargets` and `stampGrantedPermissions` file a
+seat's entry with `stampsFor`, which REPLACES. The ability stamp
+therefore merges (`stampZoneAbilitiesFor`) and runs after both — the
+two passes answer different questions about the same card, and a
+plain `stampsFor` here would have blanked a flashback card's announce
+surface the moment the card also printed a graveyard ability.
+
+`ActivatedAbilityView.exile_self` joins `discard_self` as the
+advisory bit for the new cost component. Neither has a renderer: the
+keyword's own label spells the clause out, and the field is there so
+a client that wants to mark the row need not parse the label.
+
+### Decision 28: the client offers the row where a player actually looks at a graveyard
+
+`ZoneBrowserModal` is the only place anyone inspects a graveyard or
+exile, and it rendered `<Card>` with no `onActivateAbility` — so the
+pop-over every battlefield permanent and every hand card already has
+was suppressed for every browsed card. It now wires the same callback
+`Hand.svelte` wires, gated on the card carrying rows at all, which
+for a bystander is never (the server stamped none).
+
+Like the impulse-cast button (#874) it closes the browser and hands
+the choice up to `Board`: an activation can open a target picker, an
+X prompt or a mode picker, and those are Board's chain, not the
+modal's. The viewer's CR 307.1 window is passed down so a
+sorcery-speed row greys with a reason instead of being clickable and
+refused — every keyword on this surface prints "only as a sorcery",
+so without it the row would be wrong more often than right.
+
+### Cards
+
+**Dregscape Zombie** (unearth), **Deadbridge Goliath** (scavenge) and
+**Sacred Cat** (embalm) are each the keyword and almost nothing else,
+which is the point: a test that sees five counters or a Zombie Cat
+token is seeing the keyword's own arithmetic rather than a card's.
+Dregscape Zombie ships `caveats` for the bounce hole below; the other
+two ship `full`.
+
+`ExileInsteadOfLeavingBattlefield` is factored out of Whip of Erebos
+(#296) and shared with unearth, because the clause is identical, its
+failure modes are silent (a missing `NewZone != ZoneExile` guard is
+an infinite loop; a missed event kind is a creature that can be
+reanimated twice), and two inline copies would have drifted. Its two
+declared limitations are inherited whole: the redirect is turn-scoped,
+and a BOUNCE bypasses it because `BounceToHandForEffect` moves a card
+without running the CR 614 pipeline.
+
+### Still out of scope
+
+- **Ninjutsu** (CR 702.49). It is a HAND activation, so the zone
+  dimension already reaches it, but its two other halves do not
+  exist: a cost component that returns an unblocked attacker you
+  control, and an entry that puts a card onto the battlefield
+  **attacking** (`ZoneEntryOptions` has `Tapped` and no `Attacking`;
+  only the token path can do it, `entry_choice.go`'s minted-token
+  branch). Filed separately.
+- **Statics that function from a graveyard** — `StaticAbility.Zones`,
+  the layer pass's own half of CR 113.6c (Anger, Wonder, Brawn). The
+  other row of the same seam issue, and the next PR.
+- **A per-instance grant of an exile ability** (Greater Gargadon while
+  suspended). ADR 0062 open question 2, unchanged: the shape is
+  per-DECLARATION, and a grant over one suspended card is a different
+  object.
+- **Cost modification for activated abilities**, unchanged from the
+  #1181 addendum.

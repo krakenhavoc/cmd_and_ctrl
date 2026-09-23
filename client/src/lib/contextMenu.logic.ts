@@ -630,7 +630,7 @@ function abilityItems(card: CardView, view: GameView, viewerID: string | null): 
   // (CR 113.6) — so one loop covers a permanent's abilities and a
   // hand card's cycling, and the index means the same thing to the
   // engine either way.
-  for (const a of card.activated_abilities ?? card.hand_abilities ?? []) {
+  for (const a of card.activated_abilities ?? card.zone_abilities ?? []) {
     const blocked = restricted || abilityBlocked(a, tapped, sick, loyalty);
     items.push({
       id: `ability-${a.index}`,
@@ -1070,7 +1070,7 @@ export function buildMenuSections(
     // ADR 0062 Decision 4: the special-action rows sit in the hand
     // card's menu, above "move to". They are only ever present on the
     // viewer's own hand — the server strips `special_actions` from
-    // every other seat's, as it strips `hand_abilities`.
+    // every other seat's, as it strips `zone_abilities`.
     const special = specialActionItems(card, card.owner);
     if (special.length > 0) {
       sections.push({ id: "special_actions", label: "special actions", items: special });

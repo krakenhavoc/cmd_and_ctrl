@@ -51,6 +51,7 @@
   import VotingPanel from "./VotingPanel.svelte";
   import ZoneBrowserModal from "./ZoneBrowserModal.svelte";
   import { zoneBrowser, closeZoneBrowser } from "../../zoneBrowser";
+  import { canActivateSorcerySpeedAbility } from "../../timing";
   import CardContextMenu from "./CardContextMenu.svelte";
   import { cardMenu, closeCardMenu } from "../../contextMenu";
   import type { MenuActivate } from "../../contextMenu.logic";
@@ -909,14 +910,25 @@
     return (me?.hand.cards ?? []).filter((c) => ids.has(c.instance_id));
   });
 
-  // #660: a card in hand projects its abilities on `hand_abilities`
+  // #660: a card in hand projects its abilities on `zone_abilities`
   // and a permanent on `activated_abilities` — never both, because
   // the server filters by the zone the card is in (CR 113.6). One
   // lookup reads whichever is there; `index` means the same thing on
   // the wire either way.
   function abilitiesOf(card: CardView): ActivatedAbilityView[] {
-    return card.activated_abilities ?? card.hand_abilities ?? [];
+    return card.activated_abilities ?? card.zone_abilities ?? [];
   }
+
+  // #1221: the CR 307.1 window, for the zone browser's ability rows.
+  // Every keyword that functions from a graveyard prints "only as a
+  // sorcery", so without this a browsed unearth row would be
+  // clickable during an opponent's combat and come back refused —
+  // the failure mode ADR 0033 §1 cites. PlayerPanel derives the same
+  // string for the battlefield and the hand; the browser is a
+  // top-level modal with no panel above it, so Board derives it here.
+  const browsedZoneSorcerySpeedBlocked = $derived(
+    canActivateSorcerySpeedAbility(view, viewerID).reason ?? "",
+  );
 
   function handleActivateAbility(card: CardView, index: number): void {
     const ability = abilitiesOf(card).find((a) => a.index === index);
@@ -1839,6 +1851,8 @@
       onClose={closeZoneBrowser}
       onTargetCard={handleTargetCard}
       onCastCard={handlePlayCard}
+      onActivateAbility={handleActivateAbility}
+      sorcerySpeedBlocked={browsedZoneSorcerySpeedBlocked}
     />
   {/if}
   {#if $cardMenu}

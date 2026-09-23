@@ -116,7 +116,7 @@ export function castSurfaceOf(s: CastSurfaceView) {
  * always right for: a transform card's back, or a half a grant does
  * not open.
  *
- * `hand_abilities` is still cleared rather than swapped. Cycling is
+ * `zone_abilities` is still cleared rather than swapped. Cycling is
  * an ability of the CARD IN HAND (CR 702.29a) rather than of a face
  * being cast, the server stamps it per card, and a face swap has
  * nothing face-specific to put in its place.
@@ -133,7 +133,7 @@ export function cardAsFace(card: CardView, i: number): CardView {
     toughness: face.toughness,
     active_face: i,
     ...castSurfaceOf(face),
-    hand_abilities: undefined,
+    zone_abilities: undefined,
   };
 }
 

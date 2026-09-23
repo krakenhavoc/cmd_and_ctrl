@@ -60,6 +60,23 @@
     // targets — the server was being asked to validate an
     // announcement the player was never given the chance to make.
     onCastCard?: (card: CardView, fromZone: CastSourceZone, face?: number) => void;
+    // #1221: a card in a browsed pile may print a CR 602 activated
+    // ability that functions from THAT zone — unearth and scavenge
+    // out of a graveyard, an exile activation. The server ships
+    // those rows on `zone_abilities`, scoped to the one seat that may
+    // fire them, so the modal offers the same right-click menu the
+    // battlefield and the hand already use and hands the choice up.
+    //
+    // Like onCastCard it closes the browser first: an activation can
+    // open a target picker, an X prompt or a mode picker, and those
+    // are Board's chain, not this modal's.
+    onActivateAbility?: (card: CardView, abilityIndex: number) => void;
+    // The viewer's CR 307.1 window, or "" when it is open. Passed
+    // through to Card so a sorcery-speed row (every keyword on this
+    // surface prints "only as a sorcery") greys with the same reason
+    // the battlefield's does, rather than being clickable and
+    // refused.
+    sorcerySpeedBlocked?: string;
   }
 
   const {
@@ -71,7 +88,23 @@
     onClose,
     onTargetCard,
     onCastCard,
+    onActivateAbility,
+    sorcerySpeedBlocked = "",
   }: Props = $props();
+
+  // #1221: the activation callback for ONE browsed card, or undefined
+  // when there is nothing to offer. Undefined suppresses Card's
+  // pop-over entirely, which is what every non-owner gets: the server
+  // stamps `zone_abilities` only on the frame of the seat whose card
+  // it is, so a bystander's copy carries no rows and this is nothing
+  // to decide.
+  function activateHandlerFor(card: CardView): ((abilityIndex: number) => void) | undefined {
+    if (!onActivateAbility || (card.zone_abilities?.length ?? 0) === 0) return undefined;
+    return (abilityIndex: number) => {
+      onClose();
+      onActivateAbility(card, abilityIndex);
+    };
+  }
 
   // Source zone lookup — server broadcasts exile + stack as shared
   // top-level zones with per-card owner/controller, while graveyard
@@ -272,7 +305,12 @@
       <ul class="grid">
         {#each shown as card (card.instance_id)}
           <li class="cell">
-            <Card {card} onClick={onTargetCard ? () => void onTargetCard?.(card) : undefined} />
+            <Card
+              {card}
+              onClick={onTargetCard ? () => void onTargetCard?.(card) : undefined}
+              onActivateAbility={activateHandlerFor(card)}
+              {sorcerySpeedBlocked}
+            />
             {#if labelFor(card)}
               <!-- The impulse grant is the one action that shouldn't wait
                    for a hover: the thief needs to see that the card is

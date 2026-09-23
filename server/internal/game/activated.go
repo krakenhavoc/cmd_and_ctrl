@@ -283,6 +283,29 @@ type AbilityCost struct {
 	// drops its `source` pointer afterwards exactly as it does after
 	// a sacrifice.
 	ReturnToHand *ReturnToHandCost
+	// ExileSelf exiles the SOURCE CARD from the zone the ability was
+	// activated from, as part of the cost — scavenge's "Exile this
+	// card from your graveyard" (CR 702.96a), embalm's and
+	// eternalize's (CR 702.128a / CR 702.129a). #1221.
+	//
+	// DiscardSelf's sibling, one zone over, and written as a second
+	// bit rather than as a zone on one "the source pays" component
+	// because the two are different rules: discarding is a CR 701.8
+	// keyword action that puts the card in a graveyard and fires
+	// EventDiscardCard (and, for cycling, EventCycle); exiling as a
+	// cost is a plain CR 406 move that fires neither. A card file
+	// that wanted "discard this from your graveyard" would be
+	// writing a card that does not exist.
+	//
+	// The source has to be IN A GRAVEYARD — every card that prints
+	// the component says "from your graveyard" — and Register
+	// refuses the component on an ability that does not declare
+	// ZoneGraveyard, exactly as it refuses DiscardSelf off the hand.
+	// Paid last, with the discards, because it moves the source and
+	// invalidates it; the effect that follows reads the card back
+	// out of EXILE by instance ID (LookupCardForEffect), which is
+	// where the cost has just put it.
+	ExileSelf bool
 }
 
 // DemandsX reports whether the ability's mana component contains
@@ -972,6 +995,14 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	if err != nil {
 		return err
 	}
+	// #1221: the discard component's sibling one zone over —
+	// scavenge's and embalm's "Exile this card from your graveyard".
+	// Nothing to resolve (the source IS the payment), so this is the
+	// zone check alone, made here with the rest so a refusal costs
+	// nothing.
+	if err := g.validateExileSelfCostLocked(srcZone, ab.Cost); err != nil {
+		return err
+	}
 	if ab.Cost.Life > 0 && p.Life < ab.Cost.Life {
 		// CR 119.4 forbids paying more life than you have. Paying
 		// down to exactly 0 is legal; the SBA loop ends the game
@@ -1154,6 +1185,12 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	// watchers see it with the card already in the graveyard, which
 	// is where CR 702.29c says it is.
 	if err := g.payAbilityDiscardsLocked(playerID, cardID, ab, discards); err != nil {
+		return err
+	}
+	// #1221: and the graveyard half. Last of all, because it moves
+	// the source out of the graveyard and the effect that follows
+	// reads it back out of exile. See exile_cost.go.
+	if err := g.payAbilityExileSelfLocked(playerID, cardID, ab); err != nil {
 		return err
 	}
 

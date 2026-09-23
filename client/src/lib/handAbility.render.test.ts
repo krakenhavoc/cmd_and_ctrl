@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 //
 // #660: a card in hand offers the abilities that function THERE
-// (cycling, CR 702.29a). They reach the client on `hand_abilities`
+// (cycling, CR 702.29a). They reach the client on `zone_abilities`
 // rather than `activated_abilities` — a hand is not public, so the
 // server strips the list for every seat but the owner — and Card
 // opens the same popover for either list.
@@ -27,7 +27,7 @@ const triome = (): CardView =>
     owner: "me",
     controller: "me",
     type_line: "Land — Forest Island Mountain",
-    hand_abilities: [
+    zone_abilities: [
       {
         index: 0,
         label: "Cycling {3} ({3}, Discard this card: Draw a card.)",
@@ -81,7 +81,7 @@ describe("hand abilities", () => {
   });
 
   it("offers nothing when the card has no hand abilities", () => {
-    const bare = { ...triome(), hand_abilities: undefined } as CardView;
+    const bare = { ...triome(), zone_abilities: undefined } as CardView;
     const tile = mountHandCard(bare);
     openMenu(tile.root);
     expect(tile.container.querySelector('[role="menu"]')).toBeNull();

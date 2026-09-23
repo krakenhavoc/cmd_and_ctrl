@@ -189,7 +189,7 @@ describe("cardAsFace", () => {
       modes: { prompt: "Choose one", min: 1, max: 1, options: [{ label: "a" }] },
       // #660: a hand ability is face-0's spec too — a back face that
       // still offered "Cycling {3}" would offer the front's ability.
-      hand_abilities: [{ index: 0, label: "Cycling {3}", discard_self: true }],
+      zone_abilities: [{ index: 0, label: "Cycling {3}", discard_self: true }],
       // #1055: the cast-surface bit is the viewer's own answer for the
       // face the grant NAMES, so it belongs to face 0's spec as much
       // as the offer list beside it does.
@@ -200,7 +200,7 @@ describe("cardAsFace", () => {
     expect(back.alternative_costs).toBeUndefined();
     expect(back.additional_cost).toBeUndefined();
     expect(back.tap_cost).toBeUndefined();
-    expect(back.hand_abilities).toBeUndefined();
+    expect(back.zone_abilities).toBeUndefined();
     expect(back.legal_targets).toBeUndefined();
     expect(back.modes).toBeUndefined();
     // Kept, it would be a cast button over an empty price list —

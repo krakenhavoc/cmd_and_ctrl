@@ -108,21 +108,10 @@ func b06WhipReanimate(g *game.Game, item *game.StackItem) error {
 	}).Apply(ctx); err != nil {
 		return err
 	}
-	controller := item.Controller
-	g.RegisterTurnScopedReplacement(game.ReplacementEffect{
-		Watches: []game.EventKind{game.EventZoneMove},
-		AppliesTo: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) bool {
-			return ev.Kind == game.RepEventMove && ev.CardID == id &&
-				ev.OldZone == game.ZoneBattlefield && ev.NewZone != game.ZoneExile
-		},
-		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
-			ev.NewZone = game.ZoneExile
-			return nil
-		},
-		Controller: func(_ *game.ReplacementEvent, _ *game.Game, _ *game.Card) uuid.UUID {
-			return controller
-		},
-		Label: "Whip of Erebos: if it would leave the battlefield, exile it instead",
-	})
+	// #1221: shared with unearth, which prints the same clause. See
+	// exile_instead_of_leaving.go — the caveats below are the
+	// helper's, and every card built on it inherits them.
+	ExileInsteadOfLeavingBattlefield(g, id, item.Controller,
+		"Whip of Erebos: if it would leave the battlefield, exile it instead")
 	return nil
 }

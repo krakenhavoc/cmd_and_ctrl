@@ -435,3 +435,81 @@ which reads the level off the snapshot because the level is on the card.
 | Fortune Teller's Talent (#333, [#757](https://github.com/krakenhavoc/cmd_and_ctrl/issues/757)) | a gated **cost modifier**; levels 1 and 2 are caveats on [#765](https://github.com/krakenhavoc/cmd_and_ctrl/issues/765) |
 | Case of the Shattered Pact | "To solve" at the end step with an intervening if, and a gated **trigger** |
 | The Seriema (#337, [#759](https://github.com/krakenhavoc/cmd_and_ctrl/issues/759)) | gated **statics** across layers 4, 6 and 7b — the Spacecraft that becomes a creature at 7+; the station ability itself is a caveat on [#758](https://github.com/krakenhavoc/cmd_and_ctrl/issues/758) |
+
+---
+
+## Addendum (2026-09-22): the zone is a second dimension on the same accessors, not a second designation (#1221)
+
+**Status:** Accepted · 2026-09-22 · tracked on
+[#1221](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1221). This
+status covers this section only; every decision above stays accepted
+and unchanged.
+
+### Context
+
+Decision 1 above put ONE gate on printed abilities and evaluated it at
+the one point an object is turned into the abilities it currently has
+— the four object-level accessors in `game/designations.go`. #1221
+opens a second question at exactly the same point: not "does this
+permanent have this ability" but "does this ability function **where
+this card is**" (CR 113.6). An unearth ability is on the card in its
+owner's graveyard and is not on the same card on the battlefield.
+
+Two questions, one place they get asked. The temptation is to make
+that one mechanism.
+
+### Decision: the zone stays out of `Designation`, and out of the accessors' return value
+
+`Designation.Active(c Card) bool` reads the object and nothing else —
+no `*Game`, no lock, **no zone** — and that is the property that lets
+it run inside the layer pass and on the trigger harvester's hot path.
+A `DesignationInZone` kind would have had to take one, because a card
+does not know which pile holds it.
+
+So the zone is a sibling predicate and not a `Designation`:
+
+```go
+func AbilityFunctionsFromZone(ab ActivatedAbilityShape, zone ZoneKind) bool
+```
+
+one function in `game/ability_zone.go`, read by the three consumers
+that have the zone in hand — `ActivateCatalogAbility`, the legal
+enumerator, and the view's stamp. It is the same "one predicate,
+every consumer" shape `activeOnly` has; it simply cannot be the same
+FUNCTION, because its extra argument is one the object does not carry.
+
+**And the accessors do not filter by it.** `ActivatedAbilitiesForCard`
+returns the card's full list, gated on designation only, and each
+consumer skips what does not function where it is looking. That is
+deliberate, and the reason is an index: `ActivateAbilityParams.Index`
+is the ability's position in the card's FULL list, which is what the
+engine validates against and what the wire and the enumerator publish.
+An accessor that returned a zone-filtered slice would renumber it, and
+a card with a battlefield ability at 0 and a graveyard ability at 1
+would have its graveyard row published as index 0 and activated as
+the wrong ability. A filtered VIEW keeps the index; a filtered SLICE
+loses it.
+
+The consequence is one line of discipline rather than a guarantee: a
+fourth consumer that reads `ActivatedAbilitiesForCard` and forgets the
+zone predicate would offer a cycling row on a battlefield permanent.
+The accessor's own doc names the predicate for that reason, and the
+enumerator, the view and the engine each have a test that a
+zone-mismatched ability is absent — which is #544's invariant asked of
+the zone instead of the designation.
+
+### Layer invalidation, and the half this addendum does not build
+
+Decision 1's "Layer invalidation" note says a designation change must
+bump `layerVersion`. The zone dimension owes the same debt on the
+STATICS side — a card entering or leaving a graveyard changes which
+statics the layer pass should gather — and #1117 already paid it: the
+graveyard half of the zone-keyed bump condition is not gated on a
+flag, so any event whose `OldZone` / `NewZone` crosses a graveyard
+boundary invalidates.
+
+`StaticAbility.Zones`, and the layer pass's walk over a controller's
+own graveyard (CR 113.6c — Anger, Wonder, Brawn), are the other half
+of #1221 and are NOT in this addendum. They land next, against this
+record, and the rule they will follow is the one above: the zone is a
+second dimension read at the same point, not a second designation.
