@@ -59,13 +59,29 @@ type Earthbend struct {
 
 	// N is the number of +1/+1 counters to put on it.
 	N int
+
+	// Then is the rest of the sentence after the verb — Earthshape's
+	// "Then each creature you control with power less than or equal to
+	// that land's power gains hexproof". It runs once the counters have
+	// LANDED (#1282): on a board with two different counter
+	// replacements that is after the CR 616 ordering prompt is
+	// answered, not when Apply returns, which is why it is a field and
+	// not the next statement. It is handed a fresh Context over the
+	// live game, on the continuation contract every other *Then
+	// primitive follows. Nil means nothing follows.
+	Then func(ctx *Context) error
 }
 
 func (e Earthbend) Apply(ctx *Context) error {
 	if e.Target == uuid.Nil {
 		return nil
 	}
-	return ctx.Game.EarthbendForEffect(ctx.Controller(), ctx.Source(), e.Target, e.N)
+	var then func(g *game.Game) error
+	if e.Then != nil {
+		rest, item := e.Then, ctx.Item
+		then = func(g *game.Game) error { return rest(NewContext(g, item)) }
+	}
+	return ctx.Game.EarthbendThenForEffect(ctx.Controller(), ctx.Source(), e.Target, e.N, then)
 }
 
 // EarthbendFirstTarget is the whole body of a card whose only sentence

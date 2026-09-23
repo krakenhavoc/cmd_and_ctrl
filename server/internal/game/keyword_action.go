@@ -347,15 +347,20 @@ func (g *Game) applyResolvedKeywordActionLocked(ev *ReplacementEvent) (int, erro
 		// #1178. The count is a number of +1/+1 counters and the rest
 		// of the verb happens whatever it settled on, which is why
 		// this arm is reachable with n <= 0 and the other two are not.
-		if err := g.applyEarthbendLocked(ev.Actor, ev.Source, tail.land, n); err != nil {
-			return 0, err
-		}
-		// "Earthbend 3. Then each creature you control … gains
-		// hexproof" (Earthshape) sequences behind the verb, so the
-		// continuation runs from here — the SAME door the abandoned
-		// path uses, so a settled earthbend and a cancelled one cannot
-		// drift apart about whether the rest of the sentence happened.
-		return 0, g.runKeywordActionThenLocked(ev)
+		//
+		// "Earthbend 3. Then each creature you control with power less
+		// than or equal to that land's power gains hexproof"
+		// (Earthshape) sequences behind the verb, and "that land's
+		// power" is only right once the counters have LANDED. #1282:
+		// the counter placement can pause on a CR 616 ordering prompt,
+		// so the continuation is detached from the tail HERE, as a
+		// value, and handed to the placement's own continuation rather
+		// than run on the next line. Taking it as a value (and clearing
+		// it off the tail) is what keeps it exactly-once and
+		// undo-safe: the counter event's snapshot carries the closure,
+		// and an undone-then-redone answer to the ordering prompt runs
+		// it again instead of finding a cleared pointer.
+		return 0, g.applyEarthbendLocked(ev.Actor, ev.Source, tail.land, n, takeKeywordActionThen(tail))
 	}
 	// An action kind nothing takes yet. Telling the caller is the only
 	// safe answer: a continuation nobody runs waits forever.
@@ -376,6 +381,21 @@ func (g *Game) applyResolvedKeywordActionLocked(ev *ReplacementEvent) (int, erro
 // Caller must hold g.mu.
 func (g *Game) abandonKeywordActionLocked(ev *ReplacementEvent) error {
 	return g.runKeywordActionThenLocked(ev)
+}
+
+// takeKeywordActionThen detaches the plain `then` continuation from a
+// keyword action's tail and returns it, so a verb whose last part can
+// itself pause (earthbend's counter placement, #1282) can hand it on
+// to that part's continuation. Clearing it off the tail is what makes
+// the abandoned path and the settled one mutually exclusive: whichever
+// takes it runs it, and nothing else can.
+func takeKeywordActionThen(tail *keywordActionTail) func(g *Game) error {
+	if tail == nil {
+		return nil
+	}
+	then := tail.then
+	tail.then = nil
+	return then
 }
 
 // runKeywordActionThenLocked runs the rest of the sentence after the

@@ -272,6 +272,17 @@ counter API, which is a change to a primitive twenty callers share. Declared her
 rather than discovered later;
 `game/amass.go: finishAmassLocked` carries the same note.
 
+**Note, 2026-09-23 ([#1282](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1282), [ADR 0013 §5ac](0013-replacement-effects.md)): closed.**
+`finishAmassLocked` now places the counters with `AddCounterByThenForEffect`, and
+CR 701.47c's clause is that call's continuation. It runs when the counters
+land. Widespread Brutality on a Doubling Season + Hardened Scales board deals
+the Army's post-amass power (`TestWidespreadBrutalityDealsThePowerTheCountersLandedAt`).
+The `amassed` continuation is read off the tail as a value before the placement,
+so it runs exactly once and an undone-then-redone answer replays it. Still open,
+with its own follow-up: a freshly created 0/0 Army whose counters pause is
+killed by the state-based sweep that runs while the prompt is open
+([#1289](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1289)).
+
 ---
 
 ## Cards
@@ -301,9 +312,9 @@ family also does.
 
 ## Out of scope (explicit deferrals)
 
-- **A continuation that survives a paused counter placement** — decision 7's
-  declared cost, shared with earthbend. It is a `then` on
-  `AddCounterByForEffect`, not an amass change.
+- ~~**A continuation that survives a paused counter placement**~~ — decision 7's
+  declared cost, shared with earthbend. Closed 2026-09-23 by #1282
+  (`AddCounterByThenForEffect`, ADR 0013 §5ac).
 - **The other seventy-two amass cards.** Nothing engine-side blocks them; they are
   batch PRs. The nearest by play rate are Barad-dûr (#309, also waiting on the
   mana pipeline and a per-turn death tally), Lazotep Plating (#388, protection /

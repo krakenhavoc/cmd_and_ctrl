@@ -744,6 +744,22 @@ type ReplacementEvent struct {
 	// affectedPlayerForEvent.
 	CounterPlayer uuid.UUID
 
+	// counterTail is the counter half's answer to lifeTail and
+	// tokenTail: the rest of the effect that asked for the placement,
+	// run with the delta the window settled on once the counters land.
+	// Set by AddCounterByThenForEffect and read only by
+	// runCounterTailLocked, which both the inline path and the CR 616
+	// resume reach.
+	//
+	// #1282: a placement can PAUSE on a CR 616 ordering prompt (a
+	// Doubling Season beside a Hardened Scales), and "amass, then the
+	// Army deals damage equal to its power" cannot be written on the
+	// next line.
+	//
+	// Unexported engine plumbing — the catalog never sets or reads it.
+	// See counter_tail.go.
+	counterTail *counterTail
+
 	// CounterPlacer is who PUTS or GIVES the counters — the player
 	// CR 120.3b and CR 120.3d name when damage from a source with
 	// infect, wither or toxic becomes counters, and the proliferating

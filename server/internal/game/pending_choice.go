@@ -2004,7 +2004,12 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		// die here — which is exactly what ADR 0056's damage results
 		// make routine, and why the hardening lands in this PR rather
 		// than the one that branches the tail.
-		err := g.applyResolvedCounterLocked(ev)
+		//
+		// #1282: through the tail-running exit, so a caller sequenced
+		// behind the placement (amass's "the Army you amassed", a
+		// Saga's chapter check) runs now that the counters are really
+		// there, and is told zero when the target has gone.
+		err := g.applyResolvedCounterThenLocked(ev)
 		if errors.Is(err, ErrCardNotFound) || errors.Is(err, ErrPlayerNotFound) || errors.Is(err, ErrPlayerEliminated) {
 			g.EmitEvent(Event{
 				Kind:     EventEffectError,
@@ -2350,12 +2355,16 @@ func (g *Game) finishSettledReplacementLocked(ev, out *ReplacementEvent) error {
 		// The one kind whose cancellation is not nothing — see the
 		// doc comment above.
 		return g.applyResolvedReplacementEventLocked(ev)
-	case RepEventDraw, RepEventCounter, RepEventProduceMana:
-		// Nothing is sequenced behind any of the three: a cancelled
-		// draw, a cancelled counter placement and a production replaced
-		// away simply do not happen, and no entry point carries a
-		// continuation, so there is nobody to tell. A draw tail or a
-		// counter tail, if one is ever added, belongs here.
+	case RepEventCounter:
+		// #1282: a cancelled COUNTER placement places nothing, but the
+		// rest of the effect behind it ("amass, then the Army deals
+		// damage equal to its power") still runs, told zero.
+		return g.runCounterTailLocked(ev, 0)
+	case RepEventDraw, RepEventProduceMana:
+		// Nothing is sequenced behind either: a cancelled draw and a
+		// production replaced away simply do not happen, and no entry
+		// point carries a continuation, so there is nobody to tell. A
+		// draw tail, if one is ever added, belongs here.
 		//
 		// #1222: a production additionally cannot even reach this
 		// function — it sets mustSettleNow, so it never pauses and

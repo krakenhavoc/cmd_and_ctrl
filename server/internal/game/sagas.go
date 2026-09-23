@@ -79,7 +79,7 @@ func SagaFinalChapter(c Card) int {
 // fires the chapter events for whatever chapters that counter
 // reached.
 //
-// Routed through AddCounterForEffect — the CR 614 replacement
+// Routed through AddCounterThenForEffect — the CR 614 replacement
 // pipeline — for the same reason the starting-loyalty stamp is: the
 // counter is put on "as it enters", which is a counter-placement
 // event Doubling Season replaces. A Saga entering under a Doubling
@@ -100,22 +100,32 @@ func (g *Game) sagaEntersWithLoreCounterLocked(cardID uuid.UUID) {
 	if card.Counters[CounterLore] > 0 {
 		return
 	}
-	if err := g.AddCounterForEffect(cardID, CounterLore, 1); err != nil {
+	// #1282: the chapter check is the placement's CONTINUATION, not
+	// the next line. The placement can pause on a CR 616 ordering
+	// prompt (a Doubling Season beside a second lore-counter
+	// replacement) and return with nothing placed; read on the next
+	// line, the lore count was still zero, no chapter fired, and the
+	// resume then placed the counter without ever asking again —
+	// chapter I was lost. The continuation runs when the counter
+	// really lands, inline or from the resume.
+	err := g.AddCounterThenForEffect(cardID, CounterLore, 1, func(g *Game, _ int) error {
+		// Re-read: the placement may have gone through a replacement
+		// that changed the delta, and the battlefield slice may have
+		// been reallocated underneath the old pointer.
+		after := findBattlefieldCard(g, cardID)
+		if after == nil {
+			return nil
+		}
+		g.fireSagaChaptersLocked(*after, 0, after.Counters[CounterLore])
+		return nil
+	})
+	if err != nil {
 		g.EmitEvent(Event{
 			Kind:     EventEffectError,
 			Source:   cardID,
 			ErrorMsg: err.Error(),
 		})
-		return
 	}
-	// Re-read: AddCounterForEffect may have gone through a
-	// replacement that changed the delta, and the battlefield slice
-	// may have been reallocated underneath the old pointer.
-	after := findBattlefieldCard(g, cardID)
-	if after == nil {
-		return
-	}
-	g.fireSagaChaptersLocked(*after, 0, after.Counters[CounterLore])
 }
 
 // advanceSagasForActiveSeatLocked is the CR 714.3 turn-based action

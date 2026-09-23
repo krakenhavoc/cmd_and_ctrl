@@ -686,9 +686,10 @@ func cloneStackItem(s *StackItem) *StackItem {
 // exactly the effects the first answer skipped (#808).
 //
 // What the resume writes is the event's scalar payload — the counter
-// delta, the life delta, Canceled — and the lifeTail POINTER, which a
-// continuation clears as it runs. Both live in the struct this copies,
-// so the snapshot keeps the values the prompt was queued with. #793.
+// delta, the life delta, Canceled — and the lifeTail and counterTail
+// POINTERS, which a continuation clears on the event as it runs. Both
+// live in the struct this copies, so the snapshot keeps the values the
+// prompt was queued with. #793, #1282.
 //
 // The damageTail and the zoneRoute are the exceptions, and it is why
 // they each get a copy of their own (#807, #853). Their continuations

@@ -107,7 +107,29 @@ import (
 //
 // Caller must hold g.mu (it is an effect-time helper).
 func (g *Game) EarthbendForEffect(actor, source, land uuid.UUID, n int) error {
+	return g.EarthbendThenForEffect(actor, source, land, n, nil)
+}
+
+// EarthbendThenForEffect is EarthbendForEffect with the rest of the
+// sentence: Earthshape's "Earthbend 3. Then each creature you control
+// with power less than or equal to that land's power gains hexproof".
+//
+// `then` runs once the earthbend has actually finished — after the
+// counters have LANDED, which on a board with two different counter
+// replacements (a Doubling Season beside a Hardened Scales) is when
+// the CR 616 ordering prompt is answered, not when this returns
+// (#1282). It also runs when the earthbend did nothing (replaced away,
+// or its land has left): the sentence after "then" is not conditional
+// on the keyword action having happened.
+//
+// A nil land is a no-op that still runs `then`, for the same reason.
+//
+// Caller must hold g.mu (it is an effect-time helper).
+func (g *Game) EarthbendThenForEffect(actor, source, land uuid.UUID, n int, then func(g *Game) error) error {
 	if land == uuid.Nil {
+		if then != nil {
+			return then(g)
+		}
 		return nil
 	}
 	_, err := g.runKeywordActionLocked(&ReplacementEvent{
@@ -116,7 +138,7 @@ func (g *Game) EarthbendForEffect(actor, source, land uuid.UUID, n int) error {
 		Source:             source,
 		KeywordAction:      KeywordActionEarthbend,
 		KeywordActionCount: n,
-		keywordAction:      &keywordActionTail{land: land},
+		keywordAction:      &keywordActionTail{land: land, then: then},
 	})
 	return err
 }
@@ -126,12 +148,18 @@ func (g *Game) EarthbendForEffect(actor, source, land uuid.UUID, n int) error {
 //
 // The counters are last because they are the only part that can pause
 // (a CR 616 ordering prompt between two counter replacements), and
-// `AddCounterByForEffect` returns nil on that pause with the placement
-// owed to the resume. Everything the earthbend owes has to be
-// registered before then, or a paused Doubling Season prompt would
-// leave a land that is not a creature and has no delayed return —
-// the ordering argument `enterBattlefieldThroughPipelineLocked`'s tail
-// makes, applied to a verb.
+// the placement returns nil on that pause with the counters owed to
+// the resume. Everything the earthbend owes has to be registered
+// before then, or a paused Doubling Season prompt would leave a land
+// that is not a creature and has no delayed return — the ordering
+// argument `enterBattlefieldThroughPipelineLocked`'s tail makes,
+// applied to a verb.
+//
+// `then` is the rest of the sentence, and it rides the placement's
+// continuation (#1282) rather than running on the next line, so
+// "that land's power" is read once the counters are really there. It
+// runs exactly once on every path: land gone, earthbend 0, and the
+// counters landed (inline or from the resume).
 //
 // Printed order is not otherwise observable: state-based actions run
 // when a player would receive priority (CR 704.3), and no player does
@@ -139,12 +167,18 @@ func (g *Game) EarthbendForEffect(actor, source, land uuid.UUID, n int) error {
 // cannot die before the counters land.
 //
 // Caller must hold g.mu.
-func (g *Game) applyEarthbendLocked(actor, source, land uuid.UUID, n int) error {
+func (g *Game) applyEarthbendLocked(actor, source, land uuid.UUID, n int, then func(g *Game) error) error {
+	rest := func(g *Game) error {
+		if then == nil {
+			return nil
+		}
+		return then(g)
+	}
 	c, ok := g.battlefieldCardLocked(land)
 	if !ok {
 		// CR 608.2b already had its say about the target; a land that
 		// left between the re-check and here is a no-op, not an error.
-		return nil
+		return rest(g)
 	}
 	stamp := c.EnteredBattlefieldAt
 	g.animateEarthbentLandLocked(source, land, stamp)
@@ -155,9 +189,20 @@ func (g *Game) applyEarthbendLocked(actor, source, land uuid.UUID, n int) error 
 		// with no counters, so the toughness SBA kills it and the
 		// delayed return above hands it back tapped. Placing zero
 		// counters is the one part that does not happen.
-		return nil
+		return rest(g)
 	}
-	return g.AddCounterByForEffect(actor, land, CounterPlusOne, n)
+	// The animation above only REGISTERED three layer effects; the
+	// cached characteristic still says "Land" and not "Land Creature"
+	// until something recomputes. A counter replacement that asks "is
+	// this a creature you control" — Hardened Scales, Branching
+	// Evolution, Corpsejack Menace — reads that cache, so without the
+	// recompute it never saw an earthbend at all (found by #1282's
+	// real-card proof test). The recompute is a no-op when nothing is
+	// stale.
+	g.RecomputeLayersIfStaleLocked()
+	return g.AddCounterByThenForEffect(actor, land, CounterPlusOne, n, func(g *Game, _ int) error {
+		return rest(g)
+	})
 }
 
 // earthbendLabel is the attribution the three continuous effects and

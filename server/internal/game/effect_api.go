@@ -1,7 +1,6 @@
 package game
 
 import (
-	"errors"
 	"log/slog"
 	"strconv"
 
@@ -1689,34 +1688,12 @@ func (g *Game) AddCounterForEffect(cardID uuid.UUID, name string, delta int) err
 //
 // Caller must already hold g.mu.
 func (g *Game) AddCounterByForEffect(placer, cardID uuid.UUID, name string, delta int) error {
-	if delta == 0 {
-		return nil
-	}
-	if name == "" {
-		return ErrInvalidParam
-	}
-	ev := &ReplacementEvent{
-		Kind:          RepEventCounter,
-		CounterTarget: cardID,
-		CounterName:   name,
-		CounterDelta:  delta,
-		CounterPlacer: placer,
-	}
-	out, err := g.applyReplacementsLocked(ev)
-	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
-		// errReplacementPending: the prompt queue is the caller's
-		// problem; return nil so the primitive keeps moving.
-		if errors.Is(err, errReplacementPending) {
-			return nil
-		}
-		g.clearReplacementEventLocked(ev.ID)
-		return err
-	}
-	defer g.clearReplacementEventLocked(ev.ID)
-	if out == nil || out.Canceled {
-		return nil
-	}
-	return g.applyResolvedCounterLocked(out)
+	// #1282: one body with the continuation form, so the two cannot
+	// drift. A caller that does anything after the placement that reads
+	// the counters wants AddCounterByThenForEffect instead — this
+	// returns nil with NOTHING placed when the window pauses on a
+	// CR 616 ordering prompt.
+	return g.AddCounterByThenForEffect(placer, cardID, name, delta, nil)
 }
 
 // ReturnFromGraveyardForEffect moves a card from a player's

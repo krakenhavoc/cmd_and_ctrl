@@ -78,21 +78,33 @@ func b39DawnOfANewAgeEndStep(g *game.Game, item *game.StackItem) error {
 	if !b09SourceStillOnBattlefield(g, item) {
 		return nil
 	}
-	ctx := NewContext(g, item)
 	source := item.SourceCardID
 
 	if b39CountersOn(g, source, b39HopeCounter) > 0 {
-		if err := g.AddCounterForEffect(source, b39HopeCounter, -1); err != nil {
-			return err
-		}
-		if err := (DrawCards{Player: item.Controller, N: 1}).Apply(ctx); err != nil {
-			return err
-		}
+		// #1282: the draw and the zero check are the removal's
+		// continuation. The removal runs the CR 614 counter window,
+		// and a window that pauses on a CR 616 ordering prompt removes
+		// nothing until the prompt is answered — read on the next
+		// line, the check would still see the last hope counter and
+		// never cash the enchantment in.
+		return g.AddCounterThenForEffect(source, b39HopeCounter, -1, func(g *game.Game, _ int) error {
+			if err := (DrawCards{Player: item.Controller, N: 1}).Apply(NewContext(g, item)); err != nil {
+				return err
+			}
+			return b39DawnOfANewAgeCashIn(g, item)
+		})
 	}
-	if b39CountersOn(g, source, b39HopeCounter) > 0 {
+	return b39DawnOfANewAgeCashIn(g, item)
+}
+
+// b39DawnOfANewAgeCashIn is the end step's last sentence: with no hope
+// counters left, sacrifice the enchantment and gain 4 life.
+func b39DawnOfANewAgeCashIn(g *game.Game, item *game.StackItem) error {
+	if b39CountersOn(g, item.SourceCardID, b39HopeCounter) > 0 {
 		return nil
 	}
-	if err := (SacrificePermanent{Target: source}).Apply(ctx); err != nil {
+	ctx := NewContext(g, item)
+	if err := (SacrificePermanent{Target: item.SourceCardID}).Apply(ctx); err != nil {
 		return err
 	}
 	return GainLife{Player: item.Controller, Amount: 4}.Apply(ctx)
