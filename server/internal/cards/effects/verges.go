@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // verges.go — the Duskmourn / Foundations "verge" cycle:
 //
 //	"{T}: Add {A}."
@@ -7,49 +9,55 @@ package effects
 //
 // Three of the ten, the three this deck plays.
 //
-// # Declared sandbox simplification: only the unconditional half
+// A verge is two separate mana abilities, the second carrying a CR
+// 602.1b activation restriction. That restriction is ManaAbility.
+// Condition (the S32 mana-pipeline gate Temple of the False God uses):
+// checked before the tap is paid, so a verge with no Plains or Island
+// beside it offers only its first colour and a failed activation taps
+// nothing. The land types are read post-layer (MatchLandSubtype), so
+// a shockland or a Urborg-granted Swamp counts, and the verge's own
+// type line — it has no land types — never satisfies it.
 //
-// A verge is two separate mana abilities, one of which carries an
-// activation restriction. `ManaAbilityCost` has tap / sacrifice /
-// sacrifice-another and no condition slot, and `ActivateManaAbility`
-// has no hook to evaluate one, so the second ability cannot be
-// declared without an engine change.
+// These first shipped with only the unconditional ability, because
+// mana abilities had no condition slot; the slot landed in S32 (#352)
+// and the caveat outlived it.
 //
-// So these ship with ONLY their unconditional ability. That makes
-// each verge a strictly worse card than the printed one — a
-// mono-coloured land — which is the right direction for a
-// simplification to point: a player can never get mana the real card
-// would not have given them. The cost is that a verge does not fix
-// colours, which is its entire job.
-//
-// The fix is small and shared: a condition on ManaAbilityCost,
-// evaluated at activation time, plus the same filter hook
-// `commanderIdentityFor` already feeds for Arcane Signet's pipe
-// set. It would also unblock Mox Amber ("any colour among legendary
-// creatures and planeswalkers you control") and half of Chrome Mox.
-// Until then the restricted half is absent rather than free.
+// No simplification.
 func init() {
-	// `free` is the colour of the unconditional ability — the only
-	// half that ships.
+	// `free` is the colour of the unconditional ability; `gated` the
+	// colour behind "Activate only if you control an <x> or a <y>".
 	for _, t := range []struct {
 		oracleID string
 		name     string
 		free     string
+		gated    string
+		x, y     string
+		gate     string // the printed restriction, for the label
 	}{
-		{"2b8144a0-08d2-4c28-9fd7-5d90f90105e4", "Bleachbone Verge", "B"},
-		{"f1e9abfb-c3c8-483e-b446-5c2afc9f6394", "Floodfarm Verge", "W"},
-		{"d71bda4c-3dee-4398-8fd0-f77d8743b887", "Gloomlake Verge", "U"},
+		{"2b8144a0-08d2-4c28-9fd7-5d90f90105e4", "Bleachbone Verge", "B", "W", "Plains", "Swamp", "a Plains or a Swamp"},
+		{"f1e9abfb-c3c8-483e-b446-5c2afc9f6394", "Floodfarm Verge", "W", "U", "Plains", "Island", "a Plains or an Island"},
+		{"d71bda4c-3dee-4398-8fd0-f77d8743b887", "Gloomlake Verge", "U", "B", "Island", "Swamp", "an Island or a Swamp"},
 	} {
+		x, y := MatchLandSubtype(t.x), MatchLandSubtype(t.y)
 		Register(Spec{
 			OracleID:     t.oracleID,
 			Name:         t.name,
-			Completeness: CompletenessCaveats,
-			Caveats:      []string{"Only the unconditional half is available — the second, conditional color the verge can make is missing, so it taps for one color."},
-			ManaAbilities: []ManaAbility{{
-				Cost:     ManaAbilityCost{Tap: true},
-				Produced: "{" + t.free + "}",
-				Label:    "Add {" + t.free + "}",
-			}},
+			Completeness: CompletenessFull,
+			ManaAbilities: []ManaAbility{
+				{
+					Cost:     ManaAbilityCost{Tap: true},
+					Produced: "{" + t.free + "}",
+					Label:    "Add {" + t.free + "}",
+				},
+				{
+					Cost:     ManaAbilityCost{Tap: true},
+					Produced: "{" + t.gated + "}",
+					Label:    "Add {" + t.gated + "} (only if you control " + t.gate + ")",
+					Condition: ControlsAtLeast(1, func(c game.Card) bool {
+						return x(c) || y(c)
+					}),
+				},
+			},
 		})
 	}
 }
