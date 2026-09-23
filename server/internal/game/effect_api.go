@@ -2578,8 +2578,15 @@ func (g *Game) revealLibraryCardsLocked(spec SearchLibrarySpec, p *Player, ids [
 // said to, and runs the continuation. Caller must hold g.mu.
 func (g *Game) finishSearchLocked(spec SearchLibrarySpec, p *Player, found []uuid.UUID) error {
 	g.EmitEvent(Event{
-		Kind:   EventSearchLibrary,
-		Actor:  spec.Player,
+		Kind:  EventSearchLibrary,
+		Actor: spec.Player,
+		// #1335: `p` is always the library owner (SearchLibraryThenForEffect
+		// resolves it via libraryOwnerID before calling here), which
+		// differs from the searcher (spec.Player) for Bribery-style
+		// search of another player's library. Without this, "an
+		// opponent searches THEIR library" (Archivist of Oghma) could
+		// not be told apart from "an opponent searches YOUR library".
+		Target: p.ID,
 		Amount: len(found),
 	})
 	if spec.Shuffle {
@@ -2959,7 +2966,8 @@ func (g *Game) ShuffleLibraryForEffect(playerID uuid.UUID) error {
 	}
 	p.Library.Shuffle(g.randForLocked(rngStream{kind: rngStreamShuffle, player: p.ID}))
 	clearKnownInZoneLocked(p.Library)
-	g.EmitEvent(Event{Kind: EventSearchLibrary, Actor: playerID, Label: "shuffle"})
+	// #1335: a plain shuffle is always the player's own library.
+	g.EmitEvent(Event{Kind: EventSearchLibrary, Actor: playerID, Target: playerID, Label: "shuffle"})
 	return nil
 }
 

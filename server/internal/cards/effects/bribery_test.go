@@ -110,3 +110,42 @@ func TestBriberyOnlyOffersCreatureCards(t *testing.T) {
 		t.Error("a noncreature card must never be offered")
 	}
 }
+
+// TestBriberyDoesNotTriggerTheVictimsArchivistOfOghma — #1335. The
+// victim's own Archivist of Oghma reads "whenever an OPPONENT
+// searches THEIR library" (CR-speak for the searcher's own pile).
+// Bribery's caster is an opponent of the victim, but the library
+// scanned is the VICTIM's, not the caster's — so this must NOT
+// trigger. Before #1335, EventSearchLibrary carried no library-owner
+// field at all, so Archivist could not tell "an opponent searched
+// their own library" apart from "an opponent searched MY library",
+// and this case (which the printed card does not reward) fired.
+func TestBriberyDoesNotTriggerTheVictimsArchivistOfOghma(t *testing.T) {
+	g := newCatalogGame(t)
+	caster, victim := g.Seats[0], g.Seats[1]
+	toMain(t, g)
+
+	pushCatalogPermanent(g, victim.ID, "Archivist of Oghma",
+		"Creature — Halfling Cleric", archivistOfOghmaOracle, false)
+	pushLibraryCardForTest(victim, game.Card{
+		Name: "Victim's Bear", TypeLine: "Creature — Bear", Power: 2, Toughness: 2,
+	})
+	lifeBefore, handBefore := victim.Life, len(victim.Hand.Cards)
+
+	briberyID := uuid.New()
+	caster.Hand.PushTop(game.Card{
+		InstanceID: briberyID, Name: "Bribery", TypeLine: "Sorcery",
+		OracleID: briberyOracle, Owner: caster.ID, Controller: caster.ID,
+	})
+	if err := g.CastSpell(caster.ID, briberyID, game.CastSpellParams{
+		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: victim.ID}},
+	}); err != nil {
+		t.Fatalf("CastSpell Bribery: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+
+	if victim.Life != lifeBefore || len(victim.Hand.Cards) != handBefore {
+		t.Errorf("victim's Archivist of Oghma triggered off Bribery searching THEIR library (life %d->%d, hand %d->%d); it should only trigger when an opponent searches their OWN library",
+			lifeBefore, victim.Life, handBefore, len(victim.Hand.Cards))
+	}
+}

@@ -246,6 +246,23 @@ func YouCast(spell CardPredicate) When {
 	}
 }
 
+// AnOpponentSearchesTheirOwnLibrary — "Whenever an opponent searches
+// THEIR library" (Archivist of Oghma, Wan Shi Tong, Librarian). Watch
+// game.EventSearchLibrary.
+//
+// Two things this rules out, both load-bearing: a plain shuffle
+// (Label == "shuffle") is not a search, so a fetchland doesn't
+// double-trigger it; and Target — #1335's library-owner field — must
+// equal Actor, so Bribery-style search of a DIFFERENT player's
+// library (Actor searching, Target's library) does not read as "the
+// searcher's own", which is stronger than printed.
+func AnOpponentSearchesTheirOwnLibrary(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+	if ev.Label == "shuffle" {
+		return false
+	}
+	return ev.Actor != uuid.Nil && ev.Actor != source.Controller && ev.Actor == ev.Target
+}
+
 // AnOpponentCast — an opponent cast a spell matching `spell` (nil
 // for any spell).
 func AnOpponentCast(spell CardPredicate) When {

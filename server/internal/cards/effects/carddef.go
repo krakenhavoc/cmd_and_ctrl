@@ -189,6 +189,8 @@ func buildDef(spec Spec) *game.CardDef {
 				ProducedFunc:              a.ProducedFunc,
 				ProducedForPaid:           a.ProducedForPaid,
 				DerivesFromOtherSources:   a.DerivesFromOtherSources,
+				DerivedMatch:              a.DerivedMatch,
+				DerivedColorsOnly:         a.DerivedColorsOnly,
 				Restrictions:              a.Restrictions,
 				RestrictionsFunc:          a.RestrictionsFunc,
 			}

@@ -1170,13 +1170,17 @@ type ManaAbility struct {
 	// declaring it. Two card families need it and they are the same
 	// mechanism (#352 sub-gaps 3 and 4):
 	//
-	//   - DERIVED colours: Exotic Orchard ("one mana of any color
-	//     that a land an opponent controls could produce"),
-	//     Reflecting Pool, Fellwar Stone, Mox Amber. Return a pipe
-	//     string — "{W|U|G}".
+	//   - A colour or set read directly off the board: Mox Amber
+	//     ("one mana of any color among legendary creatures and
+	//     planeswalkers you control"). Return a pipe string —
+	//     "{W|U|G}".
 	//   - SCALED amounts: Cabal Coffers ("{B} for each Swamp you
 	//     control"), Gaea's Cradle. Return the slot repeated —
 	//     "{B}{B}{B}".
+	//
+	// Exotic Orchard, Reflecting Pool and Fellwar Stone — the DERIVED
+	// colours family, "a land could produce" — do NOT use this slot;
+	// see DerivedMatch below.
 	//
 	// Wins over Produced when non-nil. Returning "" adds no mana,
 	// which is the printed behaviour when the derivation finds
@@ -1209,26 +1213,50 @@ type ManaAbility struct {
 	// three counters could produce {C} and one with none could not.
 	ProducedForPaid func(g *game.Game, controller, source uuid.UUID, paid game.PaidCost) string
 
-	// DerivesFromOtherSources marks a ProducedFunc that asks OTHER
+	// DerivesFromOtherSources marks an ability that asks OTHER
 	// permanents what THEY could produce — Exotic Orchard, Reflecting
-	// Pool, Fellwar Stone, and nothing else in the catalog. It is the
-	// recursion guard, and it is a declaration rather than something
-	// inferred because the alternative is a re-entrancy counter on a
-	// snapshotted struct.
+	// Pool, Fellwar Stone, and nothing else in the catalog. Such an
+	// ability declares DerivedMatch (below) instead of ProducedFunc.
 	//
-	// CR 106.7's "could produce" reader (game.ProducibleManaLocked)
-	// evaluates every OTHER ProducedFunc — a chosen colour, a board
-	// count, a devotion — and skips these, because two Exotic Orchards
-	// facing each other would otherwise recurse until the stack ran
-	// out. CR 106.6b answers the circular case with "no mana" and so
-	// does the guard.
+	// A declaration rather than something inferred, because the
+	// alternative is a re-entrancy counter on a snapshotted struct.
 	//
-	// Pair it with ProducedFromOpponentLands / ProducedFromOwnLands
-	// and nothing else; TestDerivedManaAbilitiesDeclareTheGuard holds
-	// the catalog to that in both directions.
+	// Pair it with DerivedMatch and nothing else;
+	// TestDerivedManaAbilitiesDeclareTheGuard holds the catalog to
+	// that in both directions.
 	//
 	// Added in S44 (#782).
 	DerivesFromOtherSources bool
+
+	// DerivedMatch computes CR 106.7's "could produce" derivation
+	// directly, for exactly the three abilities DerivesFromOtherSources
+	// marks (#1323). ProducedFunc cannot do this itself: the
+	// derivation is recursive whenever the source it asks about is
+	// ITSELF derived (Fellwar Stone asking an opposing Exotic
+	// Orchard), and answering that correctly — a one-way chain
+	// resolves, two copy-mana lands facing each other do not recurse
+	// forever (CR 106.7's own closing sentence, not "106.6b" — that
+	// number does not exist in the pinned edition) — needs the
+	// ancestor path threaded the whole way down, which ProducedFunc's
+	// fixed three-argument shape has no room for. This is a plain
+	// predicate instead — "candidate is a land an opponent controls"
+	// (Exotic Orchard, Fellwar Stone), "candidate is a land you
+	// control" (Reflecting Pool) — and game.ProducibleManaLocked walks
+	// the battlefield and recurses itself, in the game package, where
+	// the ancestor path is an ordinary parameter.
+	//
+	// Wins over ProducedFunc for BOTH the CR 106.7 reader and a real
+	// activation, so the two can never compute a different answer for
+	// the same board. Build one with DerivedFromOpponentLands /
+	// DerivedFromOwnLands in mana_derivation.go rather than by hand.
+	DerivedMatch func(candidate game.Card, controller uuid.UUID) bool
+
+	// DerivedColorsOnly drops {C} from a DerivedMatch union: "any
+	// COLOR that a land an opponent controls could produce" (Exotic
+	// Orchard, Fellwar Stone) cannot make colorless mana (CR 105.1);
+	// "any TYPE that a land you control could produce" (Reflecting
+	// Pool) can.
+	DerivedColorsOnly bool
 
 	// Condition gates activation — "Activate only if you control
 	// five or more lands" (Temple of the False God), "…three or

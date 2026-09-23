@@ -442,14 +442,10 @@ type ManaAbilityShape struct {
 	// Added in the S32 mana-pipeline pass (#352 sub-gaps 3 and 4).
 	ProducedFunc func(g *Game, controller, source uuid.UUID) string
 
-	// DerivesFromOtherSources marks a ProducedFunc that asks OTHER
-	// permanents what THEY could produce — Exotic Orchard,
-	// Reflecting Pool, Fellwar Stone. It is the recursion guard:
-	// ProducibleManaLocked (CR 106.7) evaluates every other
-	// ProducedFunc and skips these, because two Exotic Orchards
-	// facing each other would otherwise recurse until the stack ran
-	// out. CR 106.6b answers the circular case with "no mana" and so
-	// does the guard.
+	// DerivesFromOtherSources marks an ability that asks OTHER
+	// permanents what THEY could produce — Exotic Orchard, Reflecting
+	// Pool, Fellwar Stone. Such an ability declares DerivedMatch
+	// (below) instead of ProducedFunc.
 	//
 	// A declaration rather than something inferred at run time: the
 	// alternative is a re-entrancy counter, which on a snapshotted
@@ -458,6 +454,39 @@ type ManaAbilityShape struct {
 	//
 	// Added in S44 (#782).
 	DerivesFromOtherSources bool
+
+	// DerivedMatch computes CR 106.7's "could produce" derivation
+	// directly, for exactly the three abilities DerivesFromOtherSources
+	// marks (#1323). ProducedFunc cannot do this itself: the
+	// derivation is recursive whenever the source it asks about is
+	// ITSELF derived (Fellwar Stone asking an opposing Exotic
+	// Orchard), and answering that correctly — a one-way chain
+	// resolves, two copy-mana lands facing each other do not recurse
+	// forever (CR 106.7's own closing sentence, not "106.6b" — that
+	// number does not exist in the pinned edition) — needs the
+	// ancestor path threaded the whole way down. A closure with
+	// ProducedFunc's fixed three-argument shape (g, controller,
+	// source) has no room to carry one across the package boundary
+	// into a card-side helper, so this field is a plain predicate
+	// instead — "candidate is a land an opponent controls" (Exotic
+	// Orchard, Fellwar Stone), "candidate is a land you control"
+	// (Reflecting Pool) — and producibleManaVisitingLocked
+	// (producible_mana.go, this package) walks the battlefield and
+	// recurses itself, with the ancestor path as an ordinary
+	// parameter.
+	//
+	// Wins over ProducedFunc for BOTH the CR 106.7 reader and a real
+	// activation — manaAbilityProducedLocked and ActivateManaAbility
+	// both check it first — so the two can never compute a different
+	// answer for the same board.
+	DerivedMatch func(candidate Card, controller uuid.UUID) bool
+
+	// DerivedColorsOnly drops {C} from a DerivedMatch union: "any
+	// COLOR that a land an opponent controls could produce" (Exotic
+	// Orchard, Fellwar Stone) cannot make colorless mana (CR 105.1);
+	// "any TYPE that a land you control could produce" (Reflecting
+	// Pool) can.
+	DerivedColorsOnly bool
 
 	// Restrictions are the tags stamped onto every ManaToken this
 	// ability produces — "spend this mana only to cast a creature

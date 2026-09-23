@@ -2,7 +2,6 @@ package effects
 
 import (
 	"reflect"
-	"runtime"
 	"sort"
 	"strings"
 	"testing"
@@ -280,9 +279,11 @@ func TestProducibleReadsATokenLandsProducedFunc(t *testing.T) {
 	}
 }
 
-// TestTwoExoticOrchardsStillSeeNothing — CR 106.6b. The guard is the
-// reason DerivesFromOtherSources exists; evaluating every OTHER
-// ProducedFunc must not have opened the recursion back up.
+// TestTwoExoticOrchardsStillSeeNothing — CR 106.7's own closing
+// sentence ("no type of mana can be defined this way"), matching the
+// card's official ruling exactly (no real land anywhere in the loop).
+// The guard is the reason DerivesFromOtherSources exists; evaluating
+// every OTHER ProducedFunc must not have opened the recursion back up.
 func TestTwoExoticOrchardsStillSeeNothing(t *testing.T) {
 	g := newCatalogGame(t)
 	me, them := g.Seats[0], g.Seats[1]
@@ -302,10 +303,29 @@ func TestTwoExoticOrchardsStillSeeNothing(t *testing.T) {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
 	if pick := manaPickFor(g, me.ID); pick != nil {
-		t.Errorf("a colour pick was queued with options %v; two Orchards and a Pool see nothing (CR 106.6b)", pick.ColorOptions)
+		t.Errorf("a colour pick was queued with options %v; two Orchards and a Pool see nothing (CR 106.7)", pick.ColorOptions)
 	}
 	if len(me.ManaPool) != 0 {
 		t.Errorf("pool = %v, want empty", me.ManaPool)
+	}
+}
+
+// TestOwnOrchardAndPoolSeeThroughEachOther — #1323. Same controller,
+// a Reflecting Pool AND an Exotic Orchard. The Pool's own-lands match
+// reaches the Orchard, but the Orchard's OPPONENT-lands match does not
+// reach back to the Pool (same controller) — a one-way chain through
+// a real opposing Island, not a cycle, and it must resolve.
+func TestOwnOrchardAndPoolSeeThroughEachOther(t *testing.T) {
+	g := newCatalogGame(t)
+	me, them := g.Seats[0], g.Seats[1]
+	pool := seedPermanentWithOracle(g, me.ID, "Reflecting Pool", "Land", reflectingPoolOracle)
+	seedPermanentWithOracle(g, me.ID, "Exotic Orchard", "Land", exoticOrchardOracle)
+	seedManaLand(g, them.ID, "Island", "Basic Land — Island", "U")
+
+	got := producible(g, pool)
+	sort.Strings(got)
+	if !reflect.DeepEqual(got, []string{"U"}) {
+		t.Errorf("Reflecting Pool beside my own Exotic Orchard could produce %v, want {U} through the one-way chain to the opposing Island", got)
 	}
 }
 
@@ -334,67 +354,27 @@ func TestProducibleIsAPureRead(t *testing.T) {
 	}
 }
 
-// TestDerivedManaAbilitiesDeclareTheGuard — the catalog lint. A
-// ProducedFunc built from ProducedFromOpponentLands or
-// ProducedFromOwnLands reads what OTHER permanents could produce and
-// MUST be marked DerivesFromOtherSources, or CR 106.7's reader calls
-// back into it and two of them recurse until the stack runs out. The
-// reverse holds too: nothing else may claim the guard, because a
-// guarded ability contributes nothing to a derivation.
+// TestDerivedManaAbilitiesDeclareTheGuard — the catalog lint.
+// DerivedMatch (built by DerivedFromOpponentLands or
+// DerivedFromOwnLands — #1323) reads what OTHER permanents could
+// produce and MUST be paired with DerivesFromOtherSources, or CR
+// 106.7's reader treats it as an ordinary ability and its ProducedFunc
+// slot (empty for these three) wins by default. The reverse holds too:
+// nothing else may claim the guard without a DerivedMatch, because a
+// guarded ability with nothing to recurse through contributes nothing
+// to a derivation.
 func TestDerivedManaAbilitiesDeclareTheGuard(t *testing.T) {
-	derivedConstructors := map[string]bool{
-		"ProducedFromOpponentLands": true,
-		"ProducedFromOwnLands":      true,
-	}
 	for _, s := range All() {
 		for i, a := range s.ManaAbilities {
-			from := constructorOf(a.ProducedFunc)
-			derives := derivedConstructors[from]
+			derives := a.DerivedMatch != nil
 			switch {
 			case derives && !a.DerivesFromOtherSources:
-				t.Errorf("%s mana ability %d builds its ProducedFunc from %s, which reads other permanents' producible mana, but does not set DerivesFromOtherSources — CR 106.7's reader will recurse into it",
-					s.Name, i, from)
+				t.Errorf("%s mana ability %d declares DerivedMatch, which reads other permanents' producible mana, but does not set DerivesFromOtherSources — CR 106.7's reader will not route it through the visited set",
+					s.Name, i)
 			case !derives && a.DerivesFromOtherSources:
-				t.Errorf("%s mana ability %d sets DerivesFromOtherSources (ProducedFunc built by %q) without deriving from other sources; the guard would drop it from every derivation for nothing",
-					s.Name, i, from)
+				t.Errorf("%s mana ability %d sets DerivesFromOtherSources without a DerivedMatch; the guard would drop it from every derivation for nothing",
+					s.Name, i)
 			}
 		}
 	}
-}
-
-// constructorOf names the function a closure was built by —
-// "ProducedFromOwnLands" for the value ProducedFromOwnLands()
-// returns. Every closure a constructor makes shares its code pointer,
-// so this identifies the SHAPE rather than the instance. The runtime
-// name is dotted and carries an `init.N` segment for a closure built
-// inside a package init, so the LAST named segment before the
-// `funcN` tail is the one that matters:
-//
-//	…/effects.init.430.ProducedFromOpponentLands.func1
-func constructorOf(fn func(*game.Game, uuid.UUID, uuid.UUID) string) string {
-	if fn == nil {
-		return ""
-	}
-	f := runtime.FuncForPC(reflect.ValueOf(fn).Pointer())
-	if f == nil {
-		return ""
-	}
-	name := f.Name()
-	if i := strings.LastIndex(name, "/"); i >= 0 {
-		name = name[i+1:]
-	}
-	parts := strings.Split(name, ".")
-	for i := len(parts) - 1; i >= 0; i-- {
-		p := parts[i]
-		if p == "" || strings.HasPrefix(p, "func") || strings.HasPrefix(p, "init") {
-			continue
-		}
-		if i == 0 {
-			// Only the package name is left: a plain named function,
-			// not a closure.
-			break
-		}
-		return p
-	}
-	return name
 }

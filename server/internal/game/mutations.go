@@ -5732,7 +5732,12 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	// immediately" means, and what makes Cabal Coffers count the
 	// Swamps that are still there.
 	produced := ab.Produced
-	if ab.ProducedFunc != nil {
+	if ab.DerivedMatch != nil {
+		// #1323: same seeded visited set as manaAbilityProducedLocked
+		// — `card` is already the exact Card this ability belongs to,
+		// so no lookup is needed.
+		produced = pipeString(g.derivedManaLocked(*card, &ab, map[uuid.UUID]bool{cardID: true}))
+	} else if ab.ProducedFunc != nil {
 		produced = ab.ProducedFunc(g, playerID, cardID)
 	}
 	// #789: an output that depends on what the cost PAID wins over
@@ -6162,9 +6167,10 @@ func containsColor(set []string, c string) bool {
 // manaAbilityProducedLocked is the produced-mana string one mana
 // ability would add, given what its cost paid. THE one place the
 // three-slot precedence lives — ProducedForPaid beats ProducedFunc
-// beats Produced — so the activation, the auto-tapper's planner and
-// executor, CR 106.7's "could produce" reader and CR 903.4f's
-// adds-no-mana check cannot disagree about what a source makes.
+// (or DerivedMatch) beats Produced — so the activation, the
+// auto-tapper's planner and executor, CR 106.7's "could produce"
+// reader and CR 903.4f's adds-no-mana check cannot disagree about
+// what a source makes.
 //
 // Read-only. Caller must hold g.mu.
 func manaAbilityProducedLocked(g *Game, playerID, cardID uuid.UUID, ab *ManaAbilityShape, paid PaidCost) string {
@@ -6172,7 +6178,16 @@ func manaAbilityProducedLocked(g *Game, playerID, cardID uuid.UUID, ab *ManaAbil
 		return ""
 	}
 	out := ab.Produced
-	if ab.ProducedFunc != nil {
+	if ab.DerivedMatch != nil {
+		// #1323: seed the visited set with the source's OWN instance
+		// ID before recursing, exactly as producibleManaVisitingLocked
+		// does — otherwise a cycle that loops all the way back to
+		// THIS activation (not just to an intermediate card) would
+		// not be caught by a fresh, empty set.
+		if c, ok := g.LookupCardForEffect(cardID); ok {
+			out = pipeString(g.derivedManaLocked(c, ab, map[uuid.UUID]bool{cardID: true}))
+		}
+	} else if ab.ProducedFunc != nil {
 		out = ab.ProducedFunc(g, playerID, cardID)
 	}
 	if ab.ProducedForPaid != nil {
@@ -7827,7 +7842,8 @@ func (g *Game) ShuffleLibrary(playerID uuid.UUID) error {
 	}
 	p.Library.Shuffle(g.randForLocked(rngStream{kind: rngStreamShuffle, player: p.ID}))
 	clearKnownInZoneLocked(p.Library)
-	g.EmitEvent(Event{Kind: EventSearchLibrary, Actor: playerID, Label: "shuffle"})
+	// #1335: a plain shuffle is always the player's own library.
+	g.EmitEvent(Event{Kind: EventSearchLibrary, Actor: playerID, Target: playerID, Label: "shuffle"})
 	return nil
 }
 
