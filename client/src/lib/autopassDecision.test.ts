@@ -415,3 +415,47 @@ describe("autopassDecision — #1307: the autopass toggle", () => {
     expect(autopassDecision(oppStack({ alwaysStopOpponentStack: true }))).toBe("pass");
   });
 });
+
+// #1307 bluffing. A bluff only ever replaces a pass: it never beats a
+// guard, a pin, a real answer or anything else that holds.
+describe("autopassDecision — #1307: bluffs", () => {
+  const armed = { bluffCounter: true, bluffInstant: true };
+  const oppStack = (overrides: Partial<AutopassGates> = {}) =>
+    gates({ stackEmpty: false, ownsEveryStackItem: false, ...armed, ...overrides });
+
+  it("carries the manual flag through", () => {
+    expect(autopassDecision(oppStack({ bluffManual: false }))).toEqual({
+      kind: "bluff",
+      manual: false,
+    });
+    expect(autopassDecision(oppStack({ bluffManual: true }))).toEqual({
+      kind: "bluff",
+      manual: true,
+    });
+  });
+
+  it("never beats a guard or a pin", () => {
+    expect(autopassDecision(oppStack({ viewerHasPriority: false }))).toBe("hold");
+    expect(autopassDecision(oppStack({ hasPendingChoice: true }))).toBe("hold");
+    expect(autopassDecision(oppStack({ loopSuspended: true }))).toBe("hold");
+    expect(autopassDecision(oppStack({ manualStop: true }))).toBe("hold");
+  });
+
+  it("does not bluff where smart autopass would hold anyway", () => {
+    expect(autopassDecision(oppStack({ alwaysStopOpponentStack: true }))).toBe("hold");
+    expect(autopassDecision(oppStack({ smartAutoPass: false }))).toBe("hold");
+    expect(autopassDecision(oppStack({ autoPassPriority: false }))).toBe("hold");
+  });
+
+  it("does not bluff a quiet step, ticked or not", () => {
+    expect(autopassDecision(gates({ ...armed }))).toBe("pass");
+    expect(autopassDecision(gates({ ...armed, stepStop: true, hasPlay: true }))).toBe("hold");
+    expect(autopassDecision(gates({ ...armed, stepStop: true, hasPlay: false }))).toBe("pass");
+  });
+
+  it("bluffs combat under an instant bluff only", () => {
+    const g = gates({ step: "declare_attackers", combatWindow: true });
+    expect(isBluff(autopassDecision({ ...g, bluffInstant: true }))).toBe(true);
+    expect(autopassDecision({ ...g, bluffCounter: true })).toBe("pass");
+  });
+});

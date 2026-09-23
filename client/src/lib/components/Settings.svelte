@@ -13,6 +13,7 @@
     fingerprintSettings,
   } from "../settings";
   import { STEP_IDS, STEP_LABELS, hasOwnStop, type StepID } from "../turn";
+  import { BLUFF_MAX_MS, BLUFF_MIN_MS } from "../bluff";
   import {
     SHORTCUTS,
     GROUP_ORDER,
@@ -744,6 +745,79 @@
                 The last one stops on every opponent item on the stack even when you can't answer
                 it, which is how auto-pass worked before. Stopping every time also means a pause
                 never tells the table you have an answer.
+              </p>
+            </fieldset>
+
+            <fieldset class="step-stops" disabled={!$settings.gameplay.smartAutoPass}>
+              <legend>Bluff</legend>
+              <p class="help">
+                Smart auto-pass passes the moment you have no answer, so a pause tells the table you
+                do. A bluff pauses anyway when you have nothing, and the other players see the same
+                pause either way. Turn bluffing on or off mid-game with the
+                <strong>bluff</strong> button in the phase widget.
+              </p>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={$settings.gameplay.bluffCounterspell}
+                  onchange={(e) => change("gameplay", "bluffCounterspell", e.currentTarget.checked)}
+                />
+                Represent a counterspell (pause on opponents' spells and abilities)
+                {#if isFresh("gameplay.bluffCounterspell")}<span class="saved">✓</span>{/if}
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={$settings.gameplay.bluffInstant}
+                  onchange={(e) => change("gameplay", "bluffInstant", e.currentTarget.checked)}
+                />
+                Represent an instant (also pause in combat and on opponents' end steps)
+                {#if isFresh("gameplay.bluffInstant")}<span class="saved">✓</span>{/if}
+              </label>
+              <label class="slider-row">
+                <span>Bluff style</span>
+                <select
+                  value={$settings.gameplay.bluffMode}
+                  onchange={(e) =>
+                    change("gameplay", "bluffMode", e.currentTarget.value as "timed" | "manual")}
+                >
+                  <option value="timed">Timed — pass after a random pause</option>
+                  <option value="manual">Manual — wait for me to click next</option>
+                </select>
+                {#if isFresh("gameplay.bluffMode")}<span class="saved">✓</span>{/if}
+              </label>
+              <label class="slider-row">
+                <span>Shortest pause (ms)</span>
+                <input
+                  type="range"
+                  min={BLUFF_MIN_MS}
+                  max={BLUFF_MAX_MS}
+                  step="250"
+                  value={$settings.gameplay.bluffDelayMinMs}
+                  oninput={(e) =>
+                    change("gameplay", "bluffDelayMinMs", Number(e.currentTarget.value))}
+                />
+                <span class="value">{$settings.gameplay.bluffDelayMinMs}</span>
+                {#if isFresh("gameplay.bluffDelayMinMs")}<span class="saved">✓</span>{/if}
+              </label>
+              <label class="slider-row">
+                <span>Longest pause (ms)</span>
+                <input
+                  type="range"
+                  min={BLUFF_MIN_MS}
+                  max={BLUFF_MAX_MS}
+                  step="250"
+                  value={$settings.gameplay.bluffDelayMaxMs}
+                  oninput={(e) =>
+                    change("gameplay", "bluffDelayMaxMs", Number(e.currentTarget.value))}
+                />
+                <span class="value">{$settings.gameplay.bluffDelayMaxMs}</span>
+                {#if isFresh("gameplay.bluffDelayMaxMs")}<span class="saved">✓</span>{/if}
+              </label>
+              <p class="help">
+                Every bluff slows the table down, and a timed bluff always ends inside its range, so
+                a long pause still means a real answer. Manual bluffs have no ceiling: they wait for
+                you, the same as a real hold.
               </p>
             </fieldset>
 
