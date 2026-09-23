@@ -455,6 +455,16 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q ability %d declares an exile-this cost but does not function from the graveyard — build it with Scavenge / Embalm / Eternalize",
 				spec.Name, i))
 		}
+		// #1310, CR 701.67b: a waterbend clause names part of the
+		// mana component — the part its taps may cover — so the mana
+		// component must contain it. A clause with no key or no pool
+		// could never be paid, one whose cost does not parse would
+		// cover nothing, and one larger than the mana would let a
+		// tap pay for mana the ability never charged. Build it with
+		// WaterbendCost, which cannot get any of these wrong.
+		if ab.Cost.Waterbend != nil {
+			checkAbilityWaterbend(spec.Name, i, ab.Cost)
+		}
 		if ab.Cost.MinX > 0 && !ab.Cost.DemandsX() {
 			panic(fmt.Sprintf("effects.Register: %q ability %d sets MinX %d but its cost %q has no {X} — a floor on a variable that cannot vary makes the ability unactivatable",
 				spec.Name, i, ab.Cost.MinX, ab.Cost.Mana))
@@ -955,5 +965,25 @@ func checkPlayerKeywords(spec Spec) {
 		panic(fmt.Sprintf("effects.Register: %q PlayerKeywords[%d] = %q is not a player ability the engine honours — "+
 			"use %q or a \"protection from <quality>\" token the closed grammar parses (ADR 0072, #1197)",
 			spec.Name, i, kw, game.KeywordHexproof))
+	}
+}
+
+// checkAbilityWaterbend refuses, at boot, an activated ability whose
+// waterbend clause (#1310) could not be paid as printed: no key or no
+// pool of permanents, an unparseable clause, or a clause asking for
+// more generic (or more {X}) than the mana component charges.
+func checkAbilityWaterbend(name string, i int, cost game.AbilityCost) {
+	wb := cost.Waterbend
+	if wb.Key == "" || wb.Spec == nil || wb.Extra == "" {
+		panic(fmt.Sprintf("effects.Register: %q ability %d declares a waterbend clause with no key, pool or cost — build it with WaterbendCost", name, i))
+	}
+	clause, err := game.ParseCost(wb.Extra)
+	if err != nil {
+		panic(fmt.Sprintf("effects.Register: %q ability %d declares an unparseable waterbend cost %q: %v", name, i, wb.Extra, err))
+	}
+	mana, err := game.ParseCost(cost.Mana)
+	if err != nil || cost.Mana == "" || clause.Generic > mana.Generic || clause.XSlots > mana.XSlots {
+		panic(fmt.Sprintf("effects.Register: %q ability %d waterbends %q but its mana component %q does not contain it — CR 701.67b lets the taps pay only mana the ability charges",
+			name, i, wb.Extra, cost.Mana))
 	}
 }

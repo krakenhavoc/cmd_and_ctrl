@@ -66,6 +66,28 @@ type AbilityCost struct {
 	// (Opposition into a tap-watcher) resolves above it.
 	TapOthers *TapOthersCost
 
+	// Waterbend is the CR 701.67 clause on an activated ability —
+	// "Waterbend {8}: Transform Aang", Katara's "Waterbend {X}",
+	// Avatar Kuruk's "Exhaust — Waterbend {20}" (#1310). Nil means no
+	// such component, which is every other ability.
+	//
+	// The SAME game.TapPermanentsCost a spell's convoke / waterbend
+	// uses (tap_cost.go), with one reading that differs and is the
+	// point of the field: the waterbend mana is INSIDE Mana, and
+	// Extra names the part of it the taps may cover (CR 701.67b —
+	// the generic in the waterbend cost and nothing else). Every
+	// reader of an ability's mana therefore sees the whole cost
+	// without knowing waterbend exists; the only thing this field
+	// adds is a second way to pay some of it. See waterbend_cost.go.
+	//
+	// The activator names the permanents in
+	// ActivateAbilityParams.WaterbendIDs at announce. Tapping them is
+	// not the {T} symbol (CR 302.6), so a creature that arrived this
+	// turn may pay, and the source may pay for its own ability
+	// unless the cost also prints {T}. Build it with
+	// effects.WaterbendCost.
+	Waterbend *TapPermanentsCost
+
 	// SacrificeSelf sacrifices the source as part of the cost.
 	SacrificeSelf bool
 
@@ -625,6 +647,20 @@ type ActivateAbilityParams struct {
 	// question, asked of an activation instead of a cast.
 	TapIDs []uuid.UUID
 
+	// WaterbendIDs names the permanents tapped to pay part of a
+	// Waterbend cost (#1310, CR 701.67a): any number from zero up to
+	// the clause's budget (WaterbendBudget), each once, each an
+	// untapped artifact or creature the activator controls. Each one
+	// pays {1} of the waterbend cost's generic mana; the rest is paid
+	// with mana as usual.
+	//
+	// Its own field and its own wire name (`waterbend_ids`) rather
+	// than `tap_ids`, because the two are different questions:
+	// TapIDs is a fixed count a TapOthers cost DEMANDS, this is an
+	// optional discount a waterbend cost OFFERS, and an ability
+	// printing both would need to say which tap paid which.
+	WaterbendIDs []uuid.UUID
+
 	// CounterSourceIDs names the permanents a RemoveCounters cost
 	// removes from (#625). Exactly one for the "from a planeswalker
 	// you control" form; empty (or the source's own ID) for the
@@ -1001,6 +1037,23 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	if err := g.validateReturnToHandCostLocked(playerID, cardID, ab.Cost.ReturnToHand, params.ReturnIDs); err != nil {
 		return err
 	}
+	// #1310, CR 701.67: the waterbend taps. The budget is measured
+	// against the PRICED mana — the same number the payment below
+	// charges — so a discount that has already removed generic mana
+	// leaves fewer symbols for a tap to cover. An ability with no
+	// waterbend clause that arrives with waterbend_ids is refused
+	// inside the validator, as a stray tap_ids or crew_ids is.
+	waterbendBudget := 0
+	if !ab.Cost.Waterbend.Empty() {
+		priced, err := g.AbilityManaCostForEffect(playerID, *source, srcZone, ab)
+		if err != nil {
+			return ErrInvalidParam
+		}
+		waterbendBudget = WaterbendBudget(ab.Cost.Waterbend, priced, params.XValue)
+	}
+	if err := g.validateAbilityWaterbendLocked(playerID, cardID, ab.Cost, params, waterbendBudget); err != nil {
+		return err
+	}
 	counters, err := g.validateCounterRemovalCostLocked(playerID, cardID, ab.Cost, CounterCostPayment{
 		SourceIDs: params.CounterSourceIDs,
 		Counts:    params.CounterCounts,
@@ -1082,6 +1135,12 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		// spent: see AbilityAutoTapExclusions, which the legal-move
 		// enumerator calls too, so the two exclude one list.
 		excluded := AbilityAutoTapExclusions(cardID, ab.Cost, params.TapIDs, params.SacrificeIDs, params.DiscardIDs)
+		// #1310: a permanent tapped to waterbend is spent on the
+		// cost already, so the auto-tapper may not also tap it for
+		// the mana half (CR 118.3) — a Birds of Paradise named to
+		// Aang's waterbend cannot also make the {G} that pays the
+		// rest.
+		excluded = WithAutoTapExclusions(excluded, params.WaterbendIDs)
 		// #1184: the CR 601.2f pass over the ability's mana component
 		// — "Exhaust abilities of other permanents you control cost
 		// {2} less to activate" (Boom Scholar). The same function the
@@ -1093,6 +1152,12 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		if err != nil {
 			return ErrInvalidParam
 		}
+		// #1310, CR 701.67a: each waterbend tap pays {1} of the
+		// waterbend cost instead of mana. Subtracted AFTER the
+		// cost-modifier pass, because a discount reduces what is
+		// owed and a tap pays part of what is owed — CR 601.2f
+		// before 601.2h, the order the cast path already follows.
+		manaCost = WaterbendReduced(manaCost, params.XValue, len(params.WaterbendIDs))
 		spent, err := g.payAbilityManaCostLocked(p, cardID, source.Name, manaCost, params, ManaSpendForAbility(*source), excluded)
 		if err != nil {
 			return err
@@ -1318,6 +1383,11 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	// named permanent was validated before anything was paid, so
 	// there is nothing left that can fail.
 	g.payTapOthersCostLocked(playerID, params.TapIDs)
+	// #1310: the waterbend taps, paid here for the same reason and
+	// through the same payer the cast path's convoke / waterbend taps
+	// use. Validated above with every other component; the mana they
+	// stood in for was already subtracted from the mana component.
+	g.payTapPermanentsCostLocked(playerID, params.WaterbendIDs)
 	// The cost may have queued dies-triggers (a sacrifice outlet
 	// feeding Blood Artist). Drain them so they sit ABOVE the
 	// ability on the stack, which is where paying a cost puts them.

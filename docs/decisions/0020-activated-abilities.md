@@ -1348,8 +1348,9 @@ as a sorcery" and repeats every turn). All four `full`.
   Bombardiers and boast are one `Condition` each away and are not in
   this PR.
 - **Avatar Kuruk**'s "Exhaust — Waterbend {20}: Take an extra turn
-  after this one" still waits on extra turns (#753) and on the
-  waterbend cost, neither of which is this seam.
+  after this one" still waits on extra turns (#753), which is not this
+  seam. (The waterbend cost it also waited on landed in #1310 — see the
+  2026-09-23 waterbend amendment at the foot of this ADR.)
 
 ## Note (2026-09-22, #1183): the mana half, and the two write sites
 
@@ -2160,3 +2161,119 @@ of the discard clause #1213 added.
   per-instance exile grant (Greater Gargadon while suspended) and cost
   modification for activated abilities — is unchanged. Ninjutsu closed in the
   amendment above, which landed while this one was in flight.
+
+---
+
+## Amendment (2026-09-23, [#1310](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1310)): waterbend as an activated ability's cost
+
+**Sprint:** S44 — mana and cost components. Tracker [#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887).
+Deck tracker [#1306](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1306).
+The ward half (#1311) is in [ADR 0073](0073-optional-additional-costs-and-the-cast-gate.md)'s
+amendment of the same date.
+
+CR 701.67a (checked against the pinned edition, effective August 7, 2026):
+*"Waterbend [cost]" means "Pay [cost]. For each generic mana in that cost, you
+may tap an untapped artifact or creature you control rather than pay that
+mana."* S22 built it for a SPELL (`Spec.TapCost`, `game.TapPermanentsCost`,
+tap_cost.go). Three printed activated abilities waited on the other half —
+Aang, Swift Savior's "Waterbend {8}: Transform Aang" (shipped at a flat {8},
+weaker than printed), Katara, Water Tribe's Hope's "Waterbend {X}", and Avatar
+Kuruk's "Exhaust — Waterbend {20}" — and `AbilityCost` had no waterbend
+component. #758's `TapOthers` is not it: that is a fixed count a cost DEMANDS,
+this is an optional discount a cost OFFERS.
+
+### Decision 32: `AbilityCost.Waterbend` is the spell's component, and the mana stays in `Mana`
+
+`AbilityCost.Waterbend *game.TapPermanentsCost` — the same struct a spell's
+convoke and waterbend use, a third owner rather than a new kind. One reading
+differs, deliberately, and it is where the mana lives:
+
+- On a **spell** the waterbend is an additional cost, so `Extra` is ADDED to
+  the printed cost.
+- On an **ability** the waterbend IS the cost ("Waterbend {8}:" has no other
+  mana), so the mana goes in `AbilityCost.Mana` and `Extra` names the part of it
+  the taps may cover (CR 701.67b: the waterbend's own generic, never the rest of
+  the total).
+
+Keeping the mana in `Mana` is the point. X detection (`DemandsX`, `MinX`), the
+CR 601.2f cost-modifier pass (Boom Scholar's exhaust discount reaches Kuruk's
+{20}), the view's cost chip and every affordability check already read it, and
+none of them needed to learn that waterbend exists. The only new question is
+"how many permanents, and which", and it has one answer shared by three readers
+(`server/internal/game/waterbend_cost.go`):
+
+- `game.WaterbendBudget(clause, priced, x)` — the clause's generic at the
+  announced X, capped by the PRICED cost's generic (a discount that already
+  removed a symbol leaves nothing for another tap to pay);
+- `game.WaterbendReduced(priced, x, n)` — the priced cost with `n` generic paid
+  by tapping, applied AFTER the cost-modifier pass (CR 601.2f before 601.2h, the
+  cast path's order);
+- `Game.WaterbendOptionsForEffect` — the non-targeting candidate walk the
+  validator, the view's picker and the enumerator all read (#544).
+
+`effects.WaterbendCost(cost)` builds both halves; a card file never writes
+either by hand. `Plus` SUMS a waterbend's mana with another mana component
+instead of letting the later one win — "{1}{U}, Waterbend {2}" owes {1}{U}{2} —
+and `Register` refuses, at boot, a clause with no pool, an unparseable cost, or
+more generic (or more {X}) than the mana component charges. `Plus` also learned
+the `TapOthers` component it had silently dropped since #758.
+
+### Decision 33: the activation path — validate with the rest, subtract after pricing, tap on the stack
+
+`ActivateAbilityParams.WaterbendIDs` (wire `waterbend_ids`, its own field rather
+than `tap_ids` because an ability printing both would need to say which tap paid
+which). In `ActivateCatalogAbility`:
+
+1. **Validated with every other component**, before anything is paid, through
+   tap_cost.go's own validator (controlled, untapped, artifact or creature, named
+   once, no more than the budget) plus what only the activation path can see: the
+   source when the cost also prints {T} (CR 118.3), and a permanent another
+   component of the same cost already spends (crew, tap-another, sacrifice,
+   return). The last two are refused rather than sequenced: paper lets you tap
+   then sacrifice, no card prints both, and refusing is the weaker direction.
+2. **Excluded from the auto-tapper** (`WithAutoTapExclusions`), so a Birds of
+   Paradise named to the waterbend cannot also make the {G} for the rest.
+3. **Subtracted from the priced mana**, and the remainder paid through the
+   ordinary strict / permissive / auto-tap path.
+4. **Tapped after the ability is on the stack**, with the tap-another taps, so a
+   "becomes tapped" payoff resolves first (§4, CR 603.3b).
+
+Tapping to waterbend is not the {T} symbol (CR 302.6), so there is no
+summoning-sickness check, and a source whose cost prints no {T} may pay for its
+own ability — Aang, who has flash and is often freshly arrived, may be one of
+the eight.
+
+### Decision 34: the view, the enumerator, the client
+
+- **View.** `ActivatedAbilityView.Waterbend` is the `TapCostView` a hand card's
+  convoke / waterbend already ships as `tap_cost`, so the client's one picker
+  (TapCostModal) serves both. `Max` is the budget at X=0; a Waterbend {X} ships 0
+  with `demands_x`, the client's cue to size it from the X it collects first.
+- **Enumerator.** `legal/waterbend.go` offers ONE payment, not every subset —
+  crew's discipline. Free permanents first (a non-creature artifact that makes
+  no mana, which costs the seat nothing), then non-mana creatures, then mana
+  sources; the smallest affordable prefix is offered, always taking the free
+  ones. For {X} it offers the largest X the taps and the mana reach together,
+  never below the printed floor. The heuristic prices each tapped creature as a
+  spent blocker, as it prices crew.
+- **Client.** Board's announce chain asks after X and the Phyrexian stepper and
+  before modes and targets — the position the cast chain asks its own taps in —
+  and skips the question when nothing could help.
+
+### Cards
+
+**Aang, Swift Savior** (`full` — the caveat is gone), **Katara, Water Tribe's
+Hope** (`full` — ETB Ally, "Waterbend {X}" with `MinX(1)` and
+`DuringYourTurn()`, base X/X in layer 7b with the affected set locked at
+resolution). **Avatar Kuruk** keeps its extra-turn caveat and nothing else: the
+cost is now expressible as `WaterbendCost("{20}")` with `Exhaust: true`, and the
+ability stays unregistered only because extra turns (#753) do not exist.
+
+### Still out of scope
+
+- **CR 701.67c** — "whenever a player waterbends". No catalog card asks, and
+  neither the cast path nor this one emits an event for it.
+- **Waterbend on a MANA ability.** No printed card.
+- **An ability whose waterbend is only part of a larger mana cost.** The shape
+  is supported (`Plus` sums, the budget is the waterbend's own generic) and
+  tested; no printed card uses it yet.

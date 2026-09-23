@@ -77,3 +77,31 @@ func Waterbend(cost string) *game.TapPermanentsCost {
 			Or(Artifact(), Creature()), YouControl(), Untapped()),
 	}
 }
+
+// WaterbendCost is "Waterbend {cost}:" as an ACTIVATED ability's cost
+// (#1310, CR 701.67a) — Aang, Swift Savior's "Waterbend {8}: Transform
+// Aang", Katara, Water Tribe's Hope's "Waterbend {X}", Avatar Kuruk's
+// "Exhaust — Waterbend {20}".
+//
+// Two halves, and a card file writes neither by hand:
+//
+//   - the MANA is the whole cost ("Pay [cost]"), so it goes in the
+//     ability's mana component, where the cost-modifier pass, the X
+//     prompt and every affordability check already read it;
+//   - the Waterbend clause is Waterbend(cost) above, unchanged, whose
+//     Extra names the part of that mana the taps may cover.
+//
+// On a spell the waterbend is an additional cost and Extra is ADDED
+// to what the card costs; here it is the cost, so it is already
+// there. Composed with a mana component by Plus, the two mana strings
+// are summed rather than the later one winning, because CR 701.67b
+// makes the waterbend cost part of the total — and the taps still
+// pay only the waterbend's own generic, never the rest:
+//
+//	Plus(ManaCost("{1}{U}"), WaterbendCost("{2}"))  // "{1}{U}, Waterbend {2}"
+//
+// X composes with MinX exactly as a mana {X} does:
+// Plus(WaterbendCost("{X}"), MinX(1)) is Katara's "X can't be 0".
+func WaterbendCost(cost string) game.AbilityCost {
+	return game.AbilityCost{Mana: cost, Waterbend: Waterbend(cost)}
+}

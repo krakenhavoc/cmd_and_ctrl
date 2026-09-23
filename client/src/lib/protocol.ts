@@ -918,6 +918,14 @@ export interface PendingChoiceView {
   // "unless" consequence fires. Also carries the life payment ("2
   // life") for kind "entry_pay_life".
   pay_cost?: string;
+  // #1311: populated for a "pay_unless" whose payment is a WATERBEND
+  // cost ("Ward—Waterbend {4}", The Unagi of Kyoshi Island): the
+  // chooser's untapped artifacts and creatures that may each pay {1}
+  // of pay_cost's generic (CR 701.67a), and `max`, how many. The
+  // "Pay" answer names them as `tap_ids` beside `apply: true`; the
+  // rest is paid from the pool and auto-tap as usual. Absent for
+  // every other pay-unless.
+  tap_cost?: TapCostView;
   // S22: populated for kind "search_library" — how many of `options`
   // the searcher may take. The minimum is always zero, so the submit
   // button is live from the first render. Absent for every other
@@ -1593,6 +1601,16 @@ export interface ActivatedAbilityView {
   // the cost cannot be paid (CR 118.3) and the server refuses.
   return_label?: string;
   return_options?: LegalTargetsView;
+  // #1310: the CR 701.67 clause of a "Waterbend {N}:" cost (Aang,
+  // Swift Savior; Katara, Water Tribe's Hope), in the same TapCostView
+  // shape a hand card's convoke / waterbend ships as `tap_cost`, so
+  // TapCostModal serves both. `options` are the untapped artifacts and
+  // creatures that could pay (the source among them unless the cost
+  // also prints {T}); `max` is how many — 0 with `demands_x` means
+  // "as many as the X you announce". Optional in both directions:
+  // tapping none pays the whole cost with mana. The picks ride
+  // activate_ability as `waterbend_ids`.
+  waterbend?: TapCostView;
   // #660: the discard cost components (CR 702.29a and the general
   // "Discard a creature card" clause). `discard_self` is cycling's
   // "Discard this card" — advisory only, there is nothing to pick,

@@ -332,6 +332,15 @@ type PendingChoiceView struct {
 	// Added in S19 sub-PR 6.
 	PayCost string `json:"pay_cost,omitempty"`
 
+	// TapCost is the waterbend clause of a "pay_unless" whose payment
+	// is a waterbend cost (#1311, "Ward—Waterbend {4}"): the untapped
+	// artifacts and creatures the CHOOSER could tap, each paying {1}
+	// of PayCost's generic, and Max, how many. The same TapCostView a
+	// hand card's convoke / waterbend ships. `{apply: true, tap_ids:
+	// [...]}` pays with those taps plus mana for the rest. Absent for
+	// every other pay-unless.
+	TapCost *TapCostView `json:"tap_cost,omitempty"`
+
 	// AcceptLabel / DeclineLabel populate the "confirm" kind: the
 	// card's own words for the two branches ("Pay 4 life" / "Put it on
 	// top"). Absent means the client renders Yes / No, which is what a
@@ -2198,6 +2207,24 @@ type ActivatedAbilityView struct {
 	// control is on this list.
 	ReturnLabel   string            `json:"return_label,omitempty"`
 	ReturnOptions *LegalTargetsView `json:"return_options,omitempty"`
+	// Waterbend is the CR 701.67 clause of a "Waterbend {N}:" cost
+	// (#1310) — Aang, Swift Savior, Katara, Water Tribe's Hope — in
+	// the SAME TapCostView shape a hand card's convoke / waterbend
+	// ships as `tap_cost`, so the client's one picker serves both.
+	// Absent for every ability without the clause.
+	//
+	//   - Options are the untapped artifacts and creatures the
+	//     activator could tap right now, from the walk the engine
+	//     validates against (game.WaterbendOptionsForEffect). The
+	//     source is among them unless its cost also prints {T}.
+	//   - Max is how many may be tapped: the waterbend's generic, capped
+	//     by what the priced cost still charges. 0 with DemandsX set
+	//     means "size it from the X you are about to announce"
+	//     (Katara's "Waterbend {X}").
+	//
+	// OPTIONAL in both directions: tapping none pays the whole cost
+	// with mana. The picks ride activate_ability as `waterbend_ids`.
+	Waterbend *TapCostView `json:"waterbend,omitempty"`
 	// DemandsX marks an ability whose mana component contains {X}
 	// (Helm of Obedience, Treasure Vault, Soothsaying). The client
 	// opens its X picker before the targeting step and sends the
@@ -3739,6 +3766,25 @@ func viewOfTapCost(g *game.Game, caster uuid.UUID, manaCost string, tc *game.Tap
 	return v
 }
 
+// viewOfWaterbend projects a waterbend clause that is not a spell's —
+// an activated ability's (#1310) or a pay-unless prompt's (#1311) —
+// as the TapCostView a hand card's clause already uses. The options
+// come from game.WaterbendOptionsForEffect, the walk the engine
+// validates against, so the picker never offers a permanent the
+// server refuses; `exclude` is a permanent another component of the
+// same cost already spends.
+//
+// Caller must hold g.mu.
+func viewOfWaterbend(g *game.Game, player, exclude uuid.UUID, wb *game.TapPermanentsCost, budget int) *TapCostView {
+	return &TapCostView{
+		Key:      wb.Key,
+		Label:    wb.Label,
+		DemandsX: wb.DemandsX(),
+		Max:      budget,
+		Options:  &LegalTargetsView{Cards: cardIDStrings(g.WaterbendOptionsForEffect(player, exclude, wb))},
+	}
+}
+
 // viewOfAlternativeCosts projects a card's "you may cast this for
 // its overload / evoke / cleave cost" offers, each already resolved
 // against the target clause it would leave the spell with (S22).
@@ -4463,6 +4509,16 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			Reason:        c.Reason,
 			NoLegalTarget: c.NoLegalTarget,
 			PayCost:       c.PayCost,
+		}
+		// #1311: the waterbend half of a pay-unless, sized against the
+		// prompt's own cost — the budget ResolvePayUnlessWithTaps
+		// validates against.
+		if tc := c.PayTapCost(); !tc.Empty() {
+			budget := 0
+			if parsed, err := game.ParseCost(c.PayCost); err == nil {
+				budget = game.WaterbendBudget(tc, parsed, 0)
+			}
+			v.TapCost = viewOfWaterbend(g, c.Chooser, uuid.Nil, tc, budget)
 		}
 		if c.Kind == game.PendingChoiceTriggerPrompt || c.Kind == game.PendingChoicePickTarget {
 			doubledBy, doubledByName := c.TriggerDoubler()
@@ -6449,6 +6505,17 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		if rc := a.Cost.ReturnToHand; !rc.Empty() {
 			v.ReturnLabel = rc.Label
 			v.ReturnOptions = returnCostOptions(g, caster, c.InstanceID, rc)
+		}
+		// #1310: the waterbend clause, sized against the same priced
+		// cost the activation path charges. X is not announced yet,
+		// so a Waterbend {X} ships Max 0 and DemandsX and the client
+		// sizes the picker from the X it collects first.
+		if wb := a.Cost.Waterbend; !wb.Empty() {
+			budget := 0
+			if priced, err := g.AbilityManaCostForEffect(caster, c, zone, a); err == nil {
+				budget = game.WaterbendBudget(wb, priced, 0)
+			}
+			v.Waterbend = viewOfWaterbend(g, caster, game.AbilityWaterbendExclusion(c.InstanceID, a.Cost), wb, budget)
 		}
 		if a.Targets != nil {
 			v.TargetMode = a.Targets.Mode

@@ -16,12 +16,15 @@ import (
 // routes on which optional field is present, so each kind below
 // fills exactly the field(s) its resolver reads.
 type choiceParams struct {
-	ChoiceID    string        `json:"choice_id"`
-	CardIDs     []string      `json:"card_ids,omitempty"`
-	Color       string        `json:"color,omitempty"`
-	Call        string        `json:"call,omitempty"`
-	Order       []string      `json:"order,omitempty"`
-	Apply       *bool         `json:"apply,omitempty"`
+	ChoiceID string   `json:"choice_id"`
+	CardIDs  []string `json:"card_ids,omitempty"`
+	Color    string   `json:"color,omitempty"`
+	Call     string   `json:"call,omitempty"`
+	Order    []string `json:"order,omitempty"`
+	Apply    *bool    `json:"apply,omitempty"`
+	// TapIDs rides a pay_unless "pay" whose cost is a waterbend cost
+	// (#1311): the permanents tapped for part of the generic.
+	TapIDs      []string      `json:"tap_ids,omitempty"`
 	Assignments []assignParam `json:"assignments,omitempty"`
 	TrampleTo   int           `json:"trample_to_player,omitempty"`
 	Target      *targetWire   `json:"target,omitempty"`
@@ -203,12 +206,21 @@ func (e *enumerator) choiceMoves() bool {
 			// Paying is only a move if the cost is payable; the engine
 			// would silently treat an unpayable "yes" as a decline.
 			canPay := false
+			var taps []uuid.UUID
 			if cost, err := game.ParseCost(c.PayCost); err == nil {
-				// Zero spend context, matching payCostLocked: a
-				// pay-unless cost is neither a cast nor an
-				// activation, so restricted mana cannot fund it
-				// (#352).
-				canPay = e.canPay(cost, 0, game.ManaSpendContext{})
+				if c.PayTapCost().Empty() {
+					// Zero spend context, matching payCostLocked: a
+					// pay-unless cost is neither a cast nor an
+					// activation, so restricted mana cannot fund it
+					// (#352).
+					canPay = e.canPay(cost, 0, game.ManaSpendContext{})
+				} else {
+					// #1311, "Ward—Waterbend {4}": the payment may tap
+					// artifacts and creatures for the generic, so
+					// "can I pay" is asked with the taps the move will
+					// carry — see waterbend.go.
+					taps, canPay = e.waterbendPayUnlessPayment(c, cost)
+				}
 			}
 			for _, apply := range []bool{true, false} {
 				if apply && !canPay {
@@ -220,6 +232,10 @@ func (e *enumerator) choiceMoves() bool {
 				verb := "decline"
 				if apply {
 					verb = "pay " + c.PayCost
+					if len(taps) > 0 {
+						verb += fmt.Sprintf(" (waterbending with %d)", len(taps))
+						p.TapIDs = idStrings(taps)
+					}
 				}
 				e.addChoice(c, reason+": "+verb, p)
 			}

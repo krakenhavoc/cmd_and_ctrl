@@ -30,6 +30,7 @@
   } from "../../choiceRejection";
   import { doubledTriggerLabel } from "../../triggerDoubling";
   import { colorButtons, colorPromptAnswerable, colorPromptCopy } from "../../manaPick";
+  import { payUnlessAnswer, waterbendLimit } from "../../waterbend";
 
   interface Props {
     snap: GameView;
@@ -431,6 +432,36 @@
   // player can't cover degrades to a decline server-side.
   const isPayUnless = $derived(active?.kind === "pay_unless");
 
+  // #1311: a pay-unless whose payment is a WATERBEND cost ("Ward—
+  // Waterbend {4}", The Unagi of Kyoshi Island) ships tap_cost: the
+  // chooser may tap untapped artifacts and creatures they control,
+  // each paying {1} of the generic (CR 701.67a), and pays the rest
+  // with mana. The picks ride the "Pay" answer as tap_ids. Optional —
+  // tapping none pays it all with mana, as an ordinary ward would.
+  let payTaps = $state<string[]>([]);
+  let payTapsFor: string | null = null;
+  $effect(() => {
+    const id = active?.id ?? null;
+    if (id !== payTapsFor) {
+      payTapsFor = id;
+      payTaps = [];
+    }
+  });
+  const payTapCost = $derived(isPayUnless ? (active?.tap_cost ?? null) : null);
+  const payTapLimit = $derived(payTapCost ? waterbendLimit(payTapCost, undefined) : 0);
+  const payTapOptions = $derived.by((): CardView[] => {
+    if (!payTapCost) return [];
+    const ids = new Set(payTapCost.options?.cards ?? []);
+    return snap.battlefield.cards.filter((c) => ids.has(c.instance_id));
+  });
+  function togglePayTap(id: string): void {
+    if (payTaps.includes(id)) {
+      payTaps = payTaps.filter((c) => c !== id);
+    } else if (payTaps.length < payTapLimit) {
+      payTaps = [...payTaps, id];
+    }
+  }
+
   // S28 cascade branch — "you may cast it without paying its mana
   // cost". Same {choice_id, apply} payload; the server routes to
   // ResolveMayCast by kind. "Yes" stamps a free-cast permission on
@@ -757,6 +788,11 @@
 
   function answerOptional(apply: boolean): void {
     if (!active || !viewerID) return;
+    // #1311: a waterbend pay-unless names its taps beside the apply.
+    if (isPayUnless) {
+      answer(payUnlessAnswer(active, apply, payTaps));
+      return;
+    }
     answer({ apply });
   }
 
@@ -1335,6 +1371,34 @@
           Pay {active.pay_cost ?? "the cost"} from your pool (untapped sources auto-tap if it's short),
           or don't and let {triggerSourceName(active.source)} do its thing.
         </p>
+        {#if payTapCost}
+          <p class="prompt-hint sub">
+            {payTapCost.label ?? "Waterbend"}: tap your untapped artifacts and creatures to help —
+            each pays for {"{1}"}. Mana pays the rest.
+          </p>
+          {#if payTapOptions.length === 0}
+            <p class="prompt-hint">You control nothing untapped that can help.</p>
+          {:else}
+            <ul class="prompt-options">
+              {#each payTapOptions as c (c.instance_id)}
+                <li>
+                  <button
+                    type="button"
+                    class="prompt-opt"
+                    class:on={payTaps.includes(c.instance_id)}
+                    disabled={payTaps.length >= payTapLimit && !payTaps.includes(c.instance_id)}
+                    aria-pressed={payTaps.includes(c.instance_id)}
+                    onclick={() => togglePayTap(c.instance_id)}
+                  >
+                    <span class="prompt-radio" aria-hidden="true"></span>
+                    <span class="name">{c.name}</span>
+                  </button>
+                </li>
+              {/each}
+            </ul>
+            <p class="prompt-hint sub">{payTaps.length} / {payTapLimit} tapped</p>
+          {/if}
+        {/if}
         <div class="prompt-foot">
           <span class="prompt-count"><span class="kbd">Y</span> / <span class="kbd">N</span></span>
           <button type="button" onclick={() => answerOptional(false)}>Don't pay</button>

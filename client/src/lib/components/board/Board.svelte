@@ -115,6 +115,7 @@
   import FacePickerModal from "./FacePickerModal.svelte";
   import { cardAsFace, needsFacePicker } from "../../faces";
   import TapCostModal from "./TapCostModal.svelte";
+  import { shouldAskAbilityWaterbend, waterbendLimit } from "../../waterbend";
   import PhyrexianCostModal from "./PhyrexianCostModal.svelte";
   import {
     phyrexianSymbolsForAbility,
@@ -865,6 +866,11 @@
       // these targets, and sent in the same message.
       if (state.ability.phyrexianLife) params.phyrexian_life = state.ability.phyrexianLife;
       if (state.modes !== undefined) params.modes = state.modes;
+      // #1310: the waterbend taps chosen before the targeting step.
+      if (abilityWaterbendIDs && abilityWaterbendIDs.length > 0) {
+        params.waterbend_ids = abilityWaterbendIDs;
+      }
+      abilityWaterbendIDs = undefined;
       abilityDiscardIDs = [];
       abilityReturnIDs = [];
       abilitySacrificeX = undefined;
@@ -1028,6 +1034,10 @@
   function handleActivateAbility(card: CardView, index: number): void {
     const ability = abilitiesOf(card).find((a) => a.index === index);
     if (!ability) return;
+    // #1310: a fresh announcement asks its own waterbend question; a
+    // pick left over from one the player backed out of must not ride
+    // along with this one.
+    abilityWaterbendIDs = undefined;
     // #660: the discard payment is asked FIRST, as the cast flow asks
     // its own — it is the cost most likely to make a player back out.
     // Skipped when the hand holds exactly the cards the clause
@@ -1391,6 +1401,24 @@
       phyrexianAbilityPrompt = { card, ability, sacrificeIDs, crewIDs, xValue, counter, modes };
       return;
     }
+    // #1310, CR 701.67a: "Waterbend {N}:" — which untapped artifacts
+    // and creatures pay part of it. After X, because a Waterbend {X}
+    // has no size until X is announced; before the modes and targets,
+    // because it is a cost and the cast chain asks its own convoke /
+    // waterbend taps in the same place. Skipped when nothing could
+    // help: tapping none pays the whole cost with mana.
+    if (abilityWaterbendIDs === undefined && shouldAskAbilityWaterbend(ability, xValue)) {
+      abilityWaterbendPrompt = {
+        card,
+        ability,
+        sacrificeIDs,
+        crewIDs,
+        xValue,
+        counter,
+        phyrexianLife,
+      };
+      return;
+    }
     // #764, CR 602.2b: a modal activated ability chooses its modes
     // with its targets, in the one announcement — so the mode picker
     // sits exactly where a modal cast's does, between the costs and
@@ -1431,6 +1459,11 @@
     // #916: omitted at 0, which is the server default.
     if (phyrexianLife) params.phyrexian_life = phyrexianLife;
     if (modes !== undefined) params.modes = modes;
+    // #1310: the waterbend taps, omitted when there are none.
+    if (abilityWaterbendIDs && abilityWaterbendIDs.length > 0) {
+      params.waterbend_ids = abilityWaterbendIDs;
+    }
+    abilityWaterbendIDs = undefined;
     abilityDiscardIDs = [];
     abilityReturnIDs = [];
     abilitySacrificeX = undefined;
@@ -1462,6 +1495,46 @@
       p.counter,
       p.modes,
       n,
+    );
+  }
+
+  // #1310: the waterbend picker for an activated ability — the same
+  // TapCostModal a spell's convoke / waterbend opens, fed the
+  // ability's `waterbend` clause. The answer is held on the side
+  // (like the discard and return picks) until the one
+  // activate_ability goes out; undefined means "not asked yet".
+  let abilityWaterbendPrompt = $state<{
+    card: CardView;
+    ability: ActivatedAbilityView;
+    sacrificeIDs: string[];
+    crewIDs: string[];
+    xValue?: number;
+    counter?: CounterPayment;
+    phyrexianLife?: number;
+  } | null>(null);
+  let abilityWaterbendIDs: string[] | undefined = undefined;
+
+  const abilityWaterbendOptions = $derived.by(() => {
+    const p = abilityWaterbendPrompt;
+    if (!p?.ability.waterbend) return [];
+    const ids = new Set(p.ability.waterbend.options?.cards ?? []);
+    return view.battlefield.cards.filter((c) => ids.has(c.instance_id));
+  });
+
+  function confirmAbilityWaterbend(ids: string[]): void {
+    const p = abilityWaterbendPrompt;
+    abilityWaterbendPrompt = null;
+    if (!p) return;
+    abilityWaterbendIDs = ids;
+    continueActivation(
+      p.card,
+      p.ability,
+      p.sacrificeIDs,
+      p.crewIDs,
+      p.xValue,
+      p.counter,
+      undefined,
+      p.phyrexianLife,
     );
   }
 
@@ -1985,6 +2058,21 @@
     onCancel={() => {
       tapPromptCard = null;
       tapPromptChoices = {};
+    }}
+  />
+  <!-- #1310: the same picker for an activated ability's "Waterbend
+       {N}:" cost, fed the ability's own clause. -->
+  <TapCostModal
+    card={abilityWaterbendPrompt?.card ?? null}
+    cost={abilityWaterbendPrompt?.ability.waterbend ?? null}
+    options={abilityWaterbendOptions}
+    limit={abilityWaterbendPrompt?.ability.waterbend
+      ? waterbendLimit(abilityWaterbendPrompt.ability.waterbend, abilityWaterbendPrompt.xValue)
+      : 0}
+    onConfirm={confirmAbilityWaterbend}
+    onCancel={() => {
+      abilityWaterbendPrompt = null;
+      abilityWaterbendIDs = undefined;
     }}
   />
   <ModePickerModal

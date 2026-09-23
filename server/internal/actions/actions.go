@@ -1142,6 +1142,11 @@ func Dispatch(g *game.Game, a Action) error {
 			// Exactly the clause's count, each once, each on the
 			// battlefield under the activator's control.
 			ReturnIDs []string `json:"return_ids,omitempty"`
+			// #1310 — waterbend_ids names the untapped artifacts and
+			// creatures tapped to pay part of a "Waterbend {N}" cost
+			// (CR 701.67a), each covering {1} of its generic mana.
+			// Optional: zero taps pays the whole cost with mana.
+			WaterbendIDs []string `json:"waterbend_ids,omitempty"`
 			// CR 107.4f / CR 602.2b (#917) — how many of the mana
 			// component's Phyrexian symbols are being paid with 2
 			// life each instead of mana (Birthing Pod's {1}{G/P}).
@@ -1207,6 +1212,14 @@ func Dispatch(g *game.Game, a Action) error {
 				}
 				returnIDs = append(returnIDs, id)
 			}
+			waterbendIDs := make([]uuid.UUID, 0, len(p.WaterbendIDs))
+			for _, raw := range p.WaterbendIDs {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("activate_ability waterbend_ids: %w", err)
+				}
+				waterbendIDs = append(waterbendIDs, id)
+			}
 			refs := make([]game.TargetRef, 0, len(p.Targets))
 			for _, t := range p.Targets {
 				ref, err := t.toRef()
@@ -1224,6 +1237,7 @@ func Dispatch(g *game.Game, a Action) error {
 				CounterKinds:     p.CounterKinds,
 				DiscardIDs:       discardIDs,
 				ReturnIDs:        returnIDs,
+				WaterbendIDs:     waterbendIDs,
 				Targets:          refs,
 				// #764, CR 602.2b: a modal activated ability announces
 				// its modes with its targets, in one indivisible step.
@@ -1330,6 +1344,13 @@ func Dispatch(g *game.Game, a Action) error {
 			// Pointer so we can disambiguate "absent" (nil) from
 			// "false" (&false) in the routing check.
 			OptionalApply *bool `json:"apply"`
+			// TapIDs rides a PendingChoicePayUnless "pay" answer whose
+			// cost is a waterbend cost (#1311, "Ward—Waterbend {4}"):
+			// the untapped artifacts and creatures the chooser taps,
+			// each paying {1} of the generic mana. Absent for every
+			// other answer, and refused on one that has no waterbend
+			// clause. The same wire name a cast's convoke taps use.
+			TapIDs []string `json:"tap_ids,omitempty"`
 			// Assignments populates an S18 sub-PR 3
 			// PendingChoiceDamageAssignment pick — each entry is
 			// {blocker_id, amount}. The attacker's controller
@@ -1580,7 +1601,17 @@ func Dispatch(g *game.Game, a Action) error {
 			case game.PendingChoicePayUnless:
 				// S19 sub-PR 6: "unless that player pays {N}" — apply
 				// means "I pay".
-				return g.ResolvePayUnless(choiceID, a.Player, *p.OptionalApply)
+				// #1311: a waterbend payment names the permanents
+				// it taps beside the apply.
+				tapIDs := make([]uuid.UUID, 0, len(p.TapIDs))
+				for i, raw := range p.TapIDs {
+					id, err := uuid.Parse(raw)
+					if err != nil {
+						return fmt.Errorf("resolve_choice tap_ids[%d]: %w", i, err)
+					}
+					tapIDs = append(tapIDs, id)
+				}
+				return g.ResolvePayUnlessWithTaps(choiceID, a.Player, *p.OptionalApply, tapIDs)
 			case game.PendingChoiceMayCast:
 				// S28 cascade: "you may cast it without paying its
 				// mana cost" — apply means "I'll take it", and the

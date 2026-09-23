@@ -396,7 +396,10 @@ cards that motivated them:
   Waterbend {8} now transforms Aang through `TransformThis`, with a flat
   {8} mana cost standing in for the printed tap-artifacts-and-creatures
   discount (declared caveat — see `aang_swift_savior.go`), and the back
-  face's attack trigger ships in full (#343).
+  face's attack trigger ships in full (#343). **Updated 2026-09-23**: the
+  flat {8} is gone — #1310 made waterbend an activated-ability cost
+  (`WaterbendCost("{8}")`, ADR 0020 amendment), so artifacts and creatures
+  can be tapped to help pay and the card is `full`.
 - **Avatar's Wrath** — mass airbend, self-exile on resolution, and a
   continuous "opponents can't cast spells from anywhere other than their
   hands" restriction that would have to outlive its source.
@@ -481,14 +484,19 @@ of them is waiting on the cost component any more:
   piece still unshipped, and it is blocked twice over — see
   `avatar_kuruk.go` and the "Extra turns primitive" row in
   `docs/engine-seams.md`.
-- **Katara, Water Tribe's Hope** — its waterbend is on an **activated
-  ability**, which is a different seam: `Spec.TapCost` prices a *spell*,
+- ~~**Katara, Water Tribe's Hope**~~ — **updated 2026-09-23**: ships
+  `full` via #1310's activated-ability waterbend (`WaterbendCost("{X}")`
+  with `MinX(1)`, base X/X in layer 7b). The original note: its waterbend
+  is on an **activated ability**, which is a different seam: `Spec.TapCost` prices a *spell*,
   and `AbilityCost` still has only tap-this / sacrifice-self /
   sacrifice-other / mana / life
   ([activated.go:35–60](../../server/internal/game/activated.go)). Plus
   base P/T until end of turn.
-- **The Unagi of Kyoshi Island** — ward, which is a cost paid by the
-  *opponent*, not by the controller.
+- ~~**The Unagi of Kyoshi Island**~~ — **updated 2026-09-23**: ships
+  `full` via #1311 (`WardWaterbend("{4}")`: the ward's pay-or-counter
+  prompt lets the opponent tap their artifacts and creatures to help). The
+  original note: ward, which is a cost paid by the *opponent*, not by the
+  controller.
 
 ### Multi-face cards (7)
 
