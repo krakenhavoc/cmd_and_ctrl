@@ -160,10 +160,15 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedB18SpringleafShapeshifterToken,
 
 	// ADR 0083's first tokens with an ability of their own that is
-	// not a mana or activated ability. Both are printed by more than
-	// one card, so each is one template.
+	// not a mana or activated ability.
 	printedPestToken,
 	printedNoncreatureCastWizardToken,
+	printedFableGoblinShamanToken,
+	printedFirebendingDragonToken,
+	printedReefWormFishToken,
+	printedReefWormWhaleToken,
+	printedDragonEggToken,
+	printedNestingDragonDragonToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
