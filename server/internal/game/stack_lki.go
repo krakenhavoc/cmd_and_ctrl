@@ -34,8 +34,10 @@ import "github.com/google/uuid"
 //
 // Game.lastKnownStack holds a VALUE copy of the card and its stack item,
 // taken at the one choke point every non-resolving exit from the stack
-// passes through — routeCardToZoneLocked with DropStackMeta, which is
-// counterspells, Remand-style returns, and the sandbox's manual move. A
+// passes through — routeCardToZoneLocked with a card whose source zone
+// is the stack, which is counterspells, Remand-style returns, "exile
+// target spell", airbend, and the sandbox's manual move (#1318 made it
+// the source zone rather than a DropStackMeta flag only some exits set). A
 // spell that RESOLVES does not need an entry: the only effect that can
 // copy it after that point is its own ("copy this spell"), and #920's
 // Game.resolving slot already answers for it.

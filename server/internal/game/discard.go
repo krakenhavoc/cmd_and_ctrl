@@ -234,6 +234,7 @@ func (g *Game) discardBatchLocked(playerID uuid.UUID, cards, landed []uuid.UUID,
 			Discard:       true,
 			DiscardCause:  opts.cause,
 			Source:        opts.source,
+			Cause:         discardMoveCause(opts.cause, playerID),
 			MustSettleNow: opts.cause == DiscardCauseCost,
 			then: func(g *Game) error {
 				// Asked once this leg has reached a TERMINAL outcome,

@@ -3059,7 +3059,14 @@ func (g *Game) routeStackCardToGraveyardLocked(c Card, item *StackItem, resolved
 	// A queued prompt leaves the card on the stack until the owner
 	// answers — priority cannot pass while a choice is outstanding,
 	// so nothing resolves on top of it in the meantime.
-	r := zoneRoute{CardID: c.InstanceID, Dst: ZoneGraveyard, DstOwner: c.Owner}
+	r := zoneRoute{
+		CardID: c.InstanceID, Dst: ZoneGraveyard, DstOwner: c.Owner,
+		// #1320: CR 608.2n puts the card away as the last step of its
+		// own resolution; no spell or ability is exiling it (a
+		// flashed-back or adventure card below goes to exile by a
+		// rule, not by an effect).
+		Cause: MoveCause{Kind: MoveCauseRule},
+	}
 	switch {
 	case altCostExilesFromStack(c, item):
 		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, c.Owner
@@ -4997,10 +5004,12 @@ func (g *Game) moveCardByRefLocked(src, dst ZoneRef, cardID uuid.UUID, asCommand
 			DstOwner: dst.Owner,
 			ToBottom: toBottom,
 			// A card moved off the stack by hand is no longer a spell
-			// on the stack; leaving its StackMeta entry behind left a
-			// ghost item the client still rendered.
-			DropStackMeta: srcZone.Kind == ZoneStack,
-			AsCommander:   asCommander,
+			// on the stack; the route retires its StackMeta entry
+			// because the source zone is the stack (#1318), which is
+			// what this used to have to ask for by hand.
+			AsCommander: asCommander,
+			// #1320: nobody's spell or ability moved it.
+			Cause: MoveCause{Kind: MoveCauseManual},
 		})
 		if err != nil {
 			return err

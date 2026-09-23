@@ -73,6 +73,12 @@ import (
 // choice — announcing no target is legal, and CR 601.2c is satisfied
 // either way.
 //
+// Airbending a SPELL wedged the table until #1318: the exile route
+// moved the card and left its stack record behind, so nothing could
+// resolve past it. The route now retires the record for every card
+// that leaves the stack (ADR 0013 §5ad), and
+// TestAangSwiftSaviorAirbendsASpell plays it through.
+//
 // "Other" excludes Aang himself, and that matters more here than it
 // does on Aang, the Last Airbender: this Aang has FLASH, so he can
 // enter in response to a spell and would otherwise be a legal target

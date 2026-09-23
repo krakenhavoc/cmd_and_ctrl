@@ -1077,6 +1077,20 @@ type Event struct {
 	// Added with #650.
 	DiscardCause DiscardCause `json:"discard_cause,omitempty"`
 
+	// Cause, CauseController and CauseItem say WHAT moved a card, on
+	// the events a routed zone change emits (EventZoneMove, EventMill,
+	// EventDiscardCard, EventCounterSpell and the EventLTB beside
+	// them): a resolving spell or ability and its controller, a cost
+	// and its payer, a special action, a rule, or a manual sandbox
+	// move. Empty when nothing was recorded. "A spell or ability you
+	// control exiles one or more permanents" (Ranar the Ever-Watchful)
+	// reads it — see move_cause.go and ExiledBySpellOrAbilityOf.
+	// Engine-internal: protocol/log.go does not project it. Added with
+	// #1320.
+	Cause           MoveCauseKind `json:"cause,omitempty"`
+	CauseController uuid.UUID     `json:"cause_controller,omitempty"`
+	CauseItem       uuid.UUID     `json:"cause_item,omitempty"`
+
 	// ErrorMsg carries the failure reason on EventEffectError.
 	ErrorMsg string `json:"error_msg,omitempty"`
 

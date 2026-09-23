@@ -363,6 +363,15 @@ func castTimingAffects(a CastTimingAffects, controller, caster uuid.UUID) bool {
 //
 // Caller must hold g.mu (read or write).
 func (g *Game) CastTimingOpenLocked(playerID uuid.UUID, card Card, zone ZoneKind, perm *CastPermission) bool {
+	// 0. A plotted card (CR 702.170d, #1318) is cast in its owner's
+	// main phase with the stack empty and at no other time: the window
+	// belongs to the permission, so neither the card's own flash nor a
+	// per-player grant opens it wider. The per-player restrictions
+	// below cannot narrow it either — Dosan's "only during your turn"
+	// and Teferi's "only as a sorcery" are both already true of it.
+	if perm != nil && perm.Timing == TimingPlot {
+		return g.sorcerySpeedOpenLocked(playerID)
+	}
 	// 1. The card's own timing.
 	instantSpeed := card.IsInstant() || HasKeyword(&card, "flash")
 	// 2. The permission's override, if it carries one.

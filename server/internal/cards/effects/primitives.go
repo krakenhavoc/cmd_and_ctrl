@@ -606,6 +606,51 @@ func (r ReturnSpellToHand) Apply(ctx *Context) error {
 	return ctx.Game.ReturnSpellToHandForEffect(r.StackID)
 }
 
+// ExileTargetSpell exiles a spell from the stack WITHOUT countering it
+// (#1318) — CounterTarget's and ReturnSpellToHand's third sibling, on
+// the same engine body: a spell that can't be countered is exiled all
+// the same, nothing keyed to "countered" fires, and the spell's stack
+// record goes with it.
+//
+// Then, if set, is told whether the spell actually reached exile, once
+// the move has settled — a commander spell's owner may send it to the
+// command zone instead (CR 903.9), and "it becomes plotted" (Aven
+// Interrupter) has nothing to plot then. A spell that already left the
+// stack in response is not an error; Then hears false.
+type ExileTargetSpell struct {
+	StackID uuid.UUID
+	Then    func(ctx *Context, exiled bool) error
+}
+
+func (e ExileTargetSpell) Apply(ctx *Context) error {
+	if e.Then == nil {
+		return ctx.Game.ExileSpellThenForEffect(e.StackID, nil)
+	}
+	// Rebuilt from the live *Game inside the continuation — the
+	// contract massEffect.apply explains.
+	item := ctx.Item
+	return ctx.Game.ExileSpellThenForEffect(e.StackID, func(g *game.Game, exiled bool) error {
+		return e.Then(NewContext(g, item), exiled)
+	})
+}
+
+// PlotExiled makes a card already in exile plotted (CR 702.170c/d):
+// its owner may cast it without paying its mana cost during their main
+// phase while the stack is empty, on any later turn, for as long as it
+// stays in exile. A card not in exile is left alone.
+type PlotExiled struct {
+	Card uuid.UUID
+}
+
+func (p PlotExiled) Apply(ctx *Context) error {
+	var source uuid.UUID
+	if ctx.Item != nil {
+		source = ctx.Item.SourceCardID
+	}
+	ctx.Game.PlotExiledCardForEffect(p.Card, source)
+	return nil
+}
+
 // CounterAllMatching counters every spell on the stack matching
 // Match — the "change 'target' in its text to 'each'" an overloaded
 // counterspell applies to its own printed "counter target spell"

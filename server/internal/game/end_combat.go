@@ -41,9 +41,10 @@ import "github.com/google/uuid"
 //     steps below lands on it afresh and is drained in the postcombat
 //     main phase, which is 724.2f.
 //   - 724.2b: exileEntireStackLocked. Spells leave through the shared
-//     stack-exit door (exitSpellFromStackLocked, with DropStackMeta),
-//     so the item leaves StackMeta with its card — the record a plain
-//     exile route leaves behind is the table wedge #1318 is about. The
+//     stack-exit door (exitSpellFromStackLocked), so the item leaves
+//     StackMeta with its card. Since #1318 every route off the stack
+//     retires the record by source zone (ADR 0013 §5ad), so a plain
+//     exile route no longer leaves the wedge behind either. The
 //     resolving spell has no StackMeta entry any more (the resolution
 //     frame took it) and goes through the same route directly; the
 //     frame then finds it gone and routes nothing (#489's
@@ -164,7 +165,7 @@ func (g *Game) exileStackObjectLocked(id uuid.UUID) {
 		return
 	}
 	if item != nil && g.StackMeta[id] != nil {
-		_ = g.exitSpellFromStackLocked(id, nil, ZoneExile, false)
+		_ = g.exitSpellFromStackLocked(id, nil, ZoneExile, false, nil)
 		return
 	}
 	// The resolving spell, or a card on the stack with no record at
@@ -174,9 +175,8 @@ func (g *Game) exileStackObjectLocked(id uuid.UUID) {
 		owner = item.Owner
 	}
 	_, _ = g.routeCardToZoneLocked(zoneRoute{
-		CardID:        id,
-		Dst:           ZoneExile,
-		DstOwner:      owner,
-		DropStackMeta: true,
+		CardID:   id,
+		Dst:      ZoneExile,
+		DstOwner: owner,
 	})
 }
