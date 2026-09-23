@@ -212,11 +212,26 @@
   // One badge slot, not two: no printed permanent is both a Class and
   // a Case, so they cannot collide, and giving them one slot keeps
   // the top edge of the card readable next to CMD and GOAD.
+  //
+  // ADR 0090 adds a third tenant: a preparation creature's PREPARED
+  // designation (CR 722.3a), which says its prepare spell is waiting
+  // in exile to be cast. A Class or a Case is never a preparation
+  // card, so the slot still holds one badge at most.
   const designationBadge = $derived(
-    card.solved ? "SOLVED" : (card.class_level ?? 0) > 0 ? `LVL ${card.class_level}` : "",
+    card.solved
+      ? "SOLVED"
+      : (card.class_level ?? 0) > 0
+        ? `LVL ${card.class_level}`
+        : card.prepared
+          ? "PREPARED"
+          : "",
   );
   const designationTitle = $derived(
-    card.solved ? "this Case is solved" : `Class level ${card.class_level ?? 1}`,
+    card.solved
+      ? "this Case is solved"
+      : card.prepared
+        ? "prepared — you may cast a copy of its spell from exile"
+        : `Class level ${card.class_level ?? 1}`,
   );
 
   // Hover delay (settings.display.hoverDelayMs) defers the write to

@@ -2124,6 +2124,11 @@ export interface CardView extends CastSurfaceView {
   // `activated_abilities`, and an inactive static or trigger has no
   // per-ability representation here to grey out.
   solved?: boolean;
+  // ADR 0090 (CR 722.3a): this permanent is prepared — its controller
+  // may cast the copy of its prepare spell that sits in exile, which
+  // arrives as an ordinary exile card with an `exile_play` stamp
+  // naming face 1. Absent — not `false` — for everything else.
+  prepared?: boolean;
   // #781 (CR 105.4 / CR 614.12): the answers this permanent's
   // controller gave to its "as this enters, choose a color" and "as
   // this enters, choose a creature type" instructions — one uppercase

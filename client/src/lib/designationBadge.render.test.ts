@@ -71,6 +71,25 @@ describe("the designation badge", () => {
     expect(container.querySelector(".badge.designation")).toBeNull();
   });
 
+  // ADR 0090 (CR 722.3a): a prepared preparation creature.
+  it("shows a prepared permanent", () => {
+    const { container } = mount(
+      permanent({
+        name: "Skycoach Conductor",
+        type_line: "Creature — Bird Pilot",
+        prepared: true,
+      }),
+    );
+    expect(badgeText(container)).toBe("PREPARED");
+  });
+
+  it("is absent on an unprepared preparation creature", () => {
+    const { container } = mount(
+      permanent({ name: "Skycoach Conductor", type_line: "Creature — Bird Pilot" }),
+    );
+    expect(container.querySelector(".badge.designation")).toBeNull();
+  });
+
   // The server clears both fields in the non-knower redaction — a
   // level says "Class" and a solved flag says "Case" as loudly as
   // loyalty says "planeswalker" — so a hidden card has nothing to

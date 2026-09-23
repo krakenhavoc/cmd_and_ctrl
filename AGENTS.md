@@ -4224,6 +4224,28 @@ turn" whose object phases out keeps its `ScopedStatic` registration
 and applies again if the permanent returns inside the duration. No
 catalogued card reaches it.
 
+### Adding a preparation card (S46+, ADR 0090)
+
+A preparation card (CR 722, Scryfall layout `prepare`) is two
+registrations, the adventure shape — the permanent under the bare
+oracle ID and its **prepare spell** under `"<oracle>#1"`:
+
+```go
+Register(Spec{OracleID: id, Name: "Skycoach Conductor",
+    Replacements: []game.ReplacementEffect{SelfEntersPrepared()}})   // "enters prepared"
+Register(Spec{OracleID: id + "#1", Name: "All Aboard", Targets: …, OnResolve: …})
+```
+
+The card never casts its prepare spell from hand (CR 722.3), and you do
+not write the copy, the exile or the cast: the engine makes the CR 722.3c
+copy in exile as the permanent becomes prepared, derives its controller's
+permission to cast it, casts it as a copy that ceases to exist as it
+leaves the stack, and unprepares the permanent as it is cast. The card
+file says only WHEN the permanent becomes prepared —
+`SelfEntersPrepared()` for "enters prepared", `BecomePrepared{Target}`
+from a trigger or an ability — and what the prepare spell does. Read
+`g.IsPreparedForEffect(id)` for "if this creature isn't prepared".
+
 ### Adding a creature-type card (S26+)
 
 Tribal cards come in three shapes, and the shared builders live in
