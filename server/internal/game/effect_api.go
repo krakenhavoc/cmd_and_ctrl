@@ -2043,6 +2043,13 @@ type SearchLibrarySpec struct {
 	// "leave it where it is", which is a search that only reveals.
 	// Ignored for any other destination. Added in S22.
 	ToTop bool
+
+	// Depth is ToTop's position, for "then shuffle and put that card
+	// THIRD from the top" (Long-Term Plans, ADR 0088 Decision 4): the
+	// found card goes Depth cards down, through Zone.InsertFromTop, so
+	// 0 and 1 are the top and a library shorter than Depth takes the
+	// card on the bottom. Meaningful only with ToTop.
+	Depth int
 }
 
 // libraryOwnerID is the seat whose library this search actually reads
@@ -2519,7 +2526,7 @@ func (g *Game) finishSearchLocked(spec SearchLibrarySpec, p *Player, found []uui
 					c.AddKnower(seat.ID)
 				}
 			}
-			p.Library.PushTop(c)
+			p.Library.InsertFromTop(c, spec.Depth)
 		}
 	}
 	if spec.Then != nil {

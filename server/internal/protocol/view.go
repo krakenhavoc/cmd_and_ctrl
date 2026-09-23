@@ -367,6 +367,11 @@ type PendingChoiceView struct {
 	// CR 701.23b permits failing to find — so the client's submit
 	// button is live from the first render. Absent for other kinds.
 	SearchMax int `json:"search_max,omitempty"`
+	// Placement populates the ADR 0088 "put_in_library" kind: which
+	// lanes the answer may use — "top" ({top_order} alone), "bottom"
+	// ({bottom} alone, top-first) or "top_or_bottom" (both). Absent
+	// for other kinds.
+	Placement string `json:"placement,omitempty"`
 	// LoopCount / LoopMaxIterations populate the #804 "loop_shortcut"
 	// kind (CR 726): how many times the repeating ability has already
 	// resolved this turn, and the ceiling the engine will accept on
@@ -4405,13 +4410,16 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				}
 			}
 		}
-		// The scry family — scry, surveil, and plain "look at the top
-		// N, put them back in any order" — projects the looked-at
-		// cards, top-first, as Options. All three are "look at", not
+		// The scry family — scry, surveil, plain "look at the top
+		// N, put them back in any order", and ADR 0088's
+		// put_in_library — projects the cards, top-first, as Options. All three are "look at", not
 		// "reveal": only the chooser was marked a knower, so
 		// FilterViewFor redacts these to backs for every other seat
 		// and the top of the library stays private. The COUNT is
 		// public, which is correct — "scry 2" is a printed number.
+		if c.Kind == game.PendingChoicePutInLibrary {
+			v.Placement = string(c.LibraryPlacement)
+		}
 		if game.IsLookAtTopKind(c.Kind) && len(c.ScryCards) > 0 {
 			v.Options = make([]CardView, 0, len(c.ScryCards))
 			for _, id := range c.ScryCards {

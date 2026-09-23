@@ -1055,7 +1055,8 @@ func TestOptScriesThenDraws(t *testing.T) {
 	}
 }
 
-// Brainstorm draws three and puts two back, first pick on top.
+// Brainstorm draws three and puts two back in the order the player
+// answers (#996: a put_in_library prompt after the pick).
 func TestBrainstormDrawsThreeAndPutsTwoBackFirstPickOnTop(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
@@ -1077,12 +1078,19 @@ func TestBrainstormDrawsThreeAndPutsTwoBackFirstPickOnTop(t *testing.T) {
 	if err := g.ResolveChooseCards(pick.ID, me.ID, []uuid.UUID{first, second}); err != nil {
 		t.Fatalf("ResolveChooseCards: %v", err)
 	}
+	order := putInLibraryChoiceFor(g, me.ID)
+	if order == nil {
+		t.Fatal("no order prompt after the pick")
+	}
+	if err := g.ResolvePutInLibrary(order.ID, me.ID, nil, []uuid.UUID{first, second}); err != nil {
+		t.Fatalf("ResolvePutInLibrary: %v", err)
+	}
 	if got := me.Hand.Size(); got != before+1 {
 		t.Errorf("hand after putting two back = %d, want %d", got, before+1)
 	}
 	top := me.Library.Cards[len(me.Library.Cards)-1].InstanceID
 	if top != first {
-		t.Error("the first pick must end on top of the library")
+		t.Error("the first card of the answer must end on top of the library")
 	}
 }
 

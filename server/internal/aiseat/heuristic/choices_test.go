@@ -98,6 +98,42 @@ func TestChoicesReadTheKindNotThePayloadShape(t *testing.T) {
 		}
 	})
 
+	// ADR 0088: on "top or bottom", an opponent's card is buried — the
+	// Hinder / Aetherspouts shape — while the bot's own best card stays
+	// on top.
+	t.Run("put_in_library buries the opponent's card", func(t *testing.T) {
+		theirs := creature(cardID(50), 1, "Their Dragon", 6, 6)
+		v := newView([]protocol.PlayerView{newSeat(0), newSeat(1)},
+			withChoice(protocol.PendingChoiceView{
+				ID: choiceID, Kind: "put_in_library", Chooser: seatID(0).String(), Reason: "Hinder",
+				Placement: "top_or_bottom",
+				Options:   []protocol.CardView{theirs},
+			}))
+		in := input(0, v,
+			choiceMove(t, 0, choiceID, "leave it on top", map[string]any{"top_order": []string{cardID(50)}, "bottom": []string{}}),
+			choiceMove(t, 0, choiceID, "bury it", map[string]any{"bottom": []string{cardID(50)}, "top_order": []string{}}),
+		)
+		if got := chose(t, in, decide(t, heuristic.New(), in)); got != "bury it" {
+			t.Fatalf("chose %q", got)
+		}
+	})
+
+	t.Run("put_in_library puts the bot's best card on top", func(t *testing.T) {
+		v := newView([]protocol.PlayerView{newSeat(0), newSeat(1)},
+			withChoice(protocol.PendingChoiceView{
+				ID: choiceID, Kind: "put_in_library", Chooser: seatID(0).String(), Reason: "Brainstorm",
+				Placement: "top",
+				Options:   []protocol.CardView{mountain, dragon},
+			}))
+		in := input(0, v,
+			choiceMove(t, 0, choiceID, "land first", map[string]any{"top_order": []string{cardID(2), cardID(1)}, "bottom": []string{}}),
+			choiceMove(t, 0, choiceID, "dragon first", map[string]any{"top_order": []string{cardID(1), cardID(2)}, "bottom": []string{}}),
+		)
+		if got := chose(t, in, decide(t, heuristic.New(), in)); got != "dragon first" {
+			t.Fatalf("chose %q", got)
+		}
+	})
+
 	// #742: Nyx Lotus offers four {G} or one {U}. A hand full of blue
 	// symbols must not talk the bot into the smaller pick; with equal
 	// amounts the hand's need still decides.

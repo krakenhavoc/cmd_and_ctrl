@@ -619,6 +619,10 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	PendingChoiceScry:          {},
 	PendingChoiceSurveil:       {},
 	PendingChoiceLookAtTop:     {},
+	// ADR 0088. Every printed chooser owns the pile, and CR 800.4a
+	// takes it out of the game with them; the cards stay where the
+	// effect left them.
+	PendingChoicePutInLibrary:  {},
 	PendingChoiceSearchLibrary: {},
 	PendingChoiceMayCast:       {},
 	PendingChoiceCopyTarget:    {},

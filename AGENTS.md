@@ -2818,6 +2818,22 @@ every looked-at card must appear in exactly one list: scry moves all of
 them, so an answer that omits one is a client bug, not shorthand for
 "leave it".
 
+**"In any order" (#996, ADR 0088):** "put the rest on the bottom of your
+library in any order", "put two cards from your hand on top of your
+library in any order" and "its owner puts it on their choice of the top
+or bottom of their library" are one prompt, `put_in_library`, reached
+through `PutInLibraryInAnyOrder{Cards, From, Placement}`
+([library_order.go](server/internal/cards/effects/library_order.go)). For
+the common "look at N, take one, the rest on the bottom in any order"
+sentence use `TakeRestOnBottomInAnyOrder` as the `TakeFromLibraryToHand`
+`Then` — **not** `TakeRestOnBottomInRandomOrder`, which is only for cards
+that print "a random order". Brainstorm's put-back is
+`PutFromHandOnTopInAnyOrder`. Do not borrow `Scry` for a top-or-bottom
+choice: scry is a keyword action, and borrowing it fires "whenever you
+scry" payoffs. A position with no choice in it ("second from the top") is
+`PutIntoLibrary{Depth: 2}`, and after a search it is
+`SearchLibrary{ToTop: true, Depth: 3}`.
+
 **A rule about the chosen cards as a set (#624):** when a card-set
 pick says something no count and no per-card list can ("discard two
 cards unless you discard a creature card", "two lands that share a land

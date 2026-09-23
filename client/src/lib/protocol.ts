@@ -691,6 +691,13 @@ export interface PendingChoiceView {
     // third member and the one with no away lane — answered with
     // {top_order} alone, naming every looked-at card exactly once.
     | "look_at_top"
+    // #996 / ADR 0088: "put these cards on top of / on the bottom of
+    // the library in any order" (Brainstorm's put-back, "the rest on
+    // the bottom in any order", Aetherspouts' "top or bottom"). The
+    // family's fourth member: options are the cards, `placement` says
+    // which lanes are open, and the answer is {top_order, bottom} with
+    // BOTH lists top-first.
+    | "put_in_library"
     // Shocklands: "as this land enters, you may pay 2 life. If you
     // don't, it enters tapped." Answered with the shared yes/no
     // {choice_id, apply} payload — apply=true pays and the land
@@ -911,6 +918,10 @@ export interface PendingChoiceView {
   // kind, and absent for non-chooser viewers, who are not told what
   // the search is for.
   search_max?: number;
+  // #996 / ADR 0088: populated for kind "put_in_library" — which lanes
+  // the answer may use. "top" answers {top_order} alone, "bottom"
+  // answers {bottom} alone (top-first), "top_or_bottom" answers both.
+  placement?: "top" | "bottom" | "top_or_bottom";
   // #74: populated for kind "confirm" — the card's own words for the
   // accept and decline branches. Absent means the client renders Yes /
   // No, which is right for a prompt that really is a yes/no.

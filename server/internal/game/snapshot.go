@@ -692,14 +692,16 @@ type pendingChoiceSnapshot struct {
 	SacrificeOptions []uuid.UUID    `json:"sacrificeOptions,omitempty"`
 	CopyOptions      []uuid.UUID    `json:"copyOptions,omitempty"`
 	ScryCards        []uuid.UUID    `json:"scryCards,omitempty"`
-	TriggerOrderIDs  []uuid.UUID    `json:"triggerOrderIds,omitempty"`
-	PayCost          string         `json:"payCost,omitempty"`
-	SearchCards      []uuid.UUID    `json:"searchCards,omitempty"`
-	SearchMax        int            `json:"searchMax"`
-	MayCastCard      uuid.UUID      `json:"mayCastCard,omitempty"`
-	AcceptLabel      string         `json:"acceptLabel,omitempty"`
-	LifeCost         int            `json:"lifeCost,omitempty"`
-	DeclineLabel     string         `json:"declineLabel,omitempty"`
+	// ADR 0088: which lanes a put_in_library answer may use.
+	LibraryPlacement LibraryPlacement `json:"libraryPlacement,omitempty"`
+	TriggerOrderIDs  []uuid.UUID      `json:"triggerOrderIds,omitempty"`
+	PayCost          string           `json:"payCost,omitempty"`
+	SearchCards      []uuid.UUID      `json:"searchCards,omitempty"`
+	SearchMax        int              `json:"searchMax"`
+	MayCastCard      uuid.UUID        `json:"mayCastCard,omitempty"`
+	AcceptLabel      string           `json:"acceptLabel,omitempty"`
+	LifeCost         int              `json:"lifeCost,omitempty"`
+	DeclineLabel     string           `json:"declineLabel,omitempty"`
 	// OwedInStep: the step a pay-or-else prompt has to be answered in
 	// (#997). Carried so a restored game gates the same way, cheap
 	// and honest even though every prompt that sets it today also
@@ -1443,6 +1445,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		SacrificeOptions:     copyUUIDs(c.SacrificeOptions),
 		CopyOptions:          copyUUIDs(c.CopyOptions),
 		ScryCards:            copyUUIDs(c.ScryCards),
+		LibraryPlacement:     c.LibraryPlacement,
 		TriggerOrderIDs:      copyUUIDs(c.TriggerOrderIDs),
 		PayCost:              c.PayCost,
 		SearchCards:          copyUUIDs(c.SearchCards),
@@ -1479,6 +1482,9 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		"mayCastResume":     c.mayCastResume != nil,
 		"searchResume":      c.searchResume != nil,
 		"scryResume":        c.scryResume != nil,
+		// ADR 0088's ordered placement: handed the answer, then
+		// places the pile and runs the rest of the card.
+		"libraryOrderResume": c.libraryOrderResume != nil,
 		// The two chained-choice frames. A chain link is a
 		// continuation like any other, and an entry missing here
 		// would let the server write a restore point that silently
@@ -2038,6 +2044,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		SacrificeOptions:     copyUUIDs(c.SacrificeOptions),
 		CopyOptions:          copyUUIDs(c.CopyOptions),
 		ScryCards:            copyUUIDs(c.ScryCards),
+		LibraryPlacement:     c.LibraryPlacement,
 		TriggerOrderIDs:      copyUUIDs(c.TriggerOrderIDs),
 		PayCost:              c.PayCost,
 		SearchCards:          copyUUIDs(c.SearchCards),

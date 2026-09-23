@@ -8,14 +8,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 the top or bottom of their library."
 //
 // Aetherize's big sibling: the attackers do not come back to hand,
-// they go into the library, and each owner decides where. The owner's
-// choice is asked as a scry — every attacker an owner owns is put on
-// top of their library and the owner then scries that many, which is
-// exactly the printed decision: each card to the bottom or kept on
-// top, and the order of the ones kept (CR 401.4 hands the owner that
-// order anyway). The scry shows nothing that was not public a moment
-// earlier. Owners are asked in seat order; nobody without an attacker
-// is asked.
+// they go into the library, and each owner decides where. Every
+// attacker goes onto its owner's library together (one simultaneous
+// exit), and each owner is then asked a put_in_library with the
+// top_or_bottom placement (ADR 0088) over their own: each card to the
+// top or the bottom, and the order of each pile (CR 401.4 hands the
+// owner that order anyway). Owners are asked in seat order; nobody
+// without an attacker is asked.
+//
+// #996: the choice used to be asked as a SCRY over the tucked cards.
+// That is a keyword action the card never prints — it fired every
+// "whenever you scry" payoff and opened the CR 614 scry window, so a
+// scry-count replacement reached past the attackers into the library.
 //
 // The set is every attacking creature, any controller — a creature
 // the caster controls that was goaded into attacking goes too, as
