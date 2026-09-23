@@ -148,6 +148,23 @@ func TestThoughtVesselCapReturnsWhenLastLeaves(t *testing.T) {
 	}
 }
 
+// TestThoughtVesselTapsForColorless is the card's other line: "{T}:
+// Add {C}." One colourless, and the rock is tapped for it.
+func TestThoughtVesselTapsForColorless(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	vessel := pushThoughtVessel(g, me.ID)
+	if err := g.ActivateManaAbility(me.ID, vessel, 0, game.ManaAbilityParams{}); err != nil {
+		t.Fatalf("ActivateManaAbility: %v", err)
+	}
+	if got := poolColors(me); len(got) != 1 || got[0] != "C" {
+		t.Errorf("pool = %v, want one {C}", got)
+	}
+	if c, _ := battlefieldCard(g, vessel); !c.Tapped {
+		t.Error("Thought Vessel produced mana without tapping")
+	}
+}
+
 // TestBirdsOfParadiseHasFlying is the second half of the #338
 // stale-simplification sweep. Birds of Paradise shipped in S14 with
 // a comment calling its flying "cosmetic (keyword enforcement is
