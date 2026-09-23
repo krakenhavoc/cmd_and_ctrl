@@ -1602,9 +1602,17 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 		// eats. SacrificeOther is nil by construction —
 		// autoTapAbilityFor refuses a source that carries one — which
 		// is why no SacrificeIDs are named and none can be demanded.
+		//
+		// The trailing 0 is #1213's announced X, and 0 is what this
+		// site owes: the parameter is read only by a clause whose
+		// count comes FROM X ("Sacrifice X Treasures"), the clause
+		// here is nil by the construction above, and a mana ability
+		// announces no X at all. validateSacrificeCostLocked's own
+		// doc says it — "pass 0 from a site that has no X to
+		// announce".
 		sacrifices, serr := g.validateSacrificeCostLocked(p.ID, cardID, AbilityCost{
 			SacrificeSelf: ab.SacrificeCost,
-		}, nil)
+		}, nil, 0)
 		if serr != nil {
 			continue
 		}
