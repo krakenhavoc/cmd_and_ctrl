@@ -19,20 +19,17 @@ import (
 // your turn" through the same isActivePlayer read
 // OpponentsCantCastDuringYourTurn uses.
 //
-// DECLARED SIMPLIFICATION, weaker than printed: the countered spell
-// goes to its owner's graveyard, not exile. `CounterTargetForEffect`
-// routes every counter to the graveyard; the destination-taking
-// counter (`counterSpellLocked` with a `*ZoneRef`) has no `*ForEffect`
-// wrapper — the same open seam Venser, Shaper Savant's spell half
-// records (docs/engine-seams.md, "Counter-to-hand / counter-to-zone
-// effect surface"). The counter itself is not weaker: a noncreature
-// spell caught by Force of Negation is still fully countered.
+// The exile clause is CounterTarget.Dest (#1230): counterSpellLocked
+// already accepts a destination zone through
+// `Game.CounterTargetToZoneForEffect`, the same shape Devious
+// Cover-Up and Remand use — see the sweep note on
+// docs/engine-seams.md's now-closed "Counter-to-hand / counter-to-zone
+// effect surface" row.
 func init() {
 	Register(Spec{
 		OracleID:     "ac2173f9-f223-440a-9231-fd98762bdc6f",
 		Name:         "Force of Negation",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The countered spell goes to its owner's graveyard instead of being exiled."},
+		Completeness: CompletenessFull,
 		Targets:      TargetSpell("target noncreature spell", Noncreature()),
 		AlternativeCosts: []game.AlternativeCost{
 			{
@@ -45,6 +42,14 @@ func init() {
 				},
 			},
 		},
-		OnResolve: counterTheTargetSpell,
+		OnResolve: func(item *game.StackItem, ctx *Context) error {
+			if len(item.Targets) == 0 {
+				return nil
+			}
+			return CounterTarget{
+				StackID: item.Targets[0].ID,
+				Dest:    game.ZoneRef{Kind: game.ZoneExile},
+			}.Apply(ctx)
+		},
 	})
 }

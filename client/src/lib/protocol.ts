@@ -489,6 +489,12 @@ export type LogKind =
   | "choose_color"
   | "choose_type"
   | "choose_player"
+  // A player answered an "as this enters, choose a card name" prompt
+  // (CR 614.12): Pithing Needle, Phyrexian Revoker, Sorcerous
+  // Spyglass. `choice` is the name as the player typed it, trimmed
+  // and otherwise untouched — CR 201.2 admits any card name, so
+  // there is no canonical spelling to report (#1210).
+  | "choose_name"
   // #1214: a player answered one of the three resolution-time picks
   // (CR 608.2) — an opponent choosing from a revealed set, a seat
   // choosing among another player's permanents, a seat choosing N of
@@ -534,7 +540,31 @@ export type LogKind =
   // Unlike `counters` / `saga_chapter` / `class_level`, `amount`
   // survives redaction: the count is a fact about the turn's casts,
   // not a value read off the card.
-  | "storm";
+  | "storm"
+  // S46 (ADR 0079, #343): a permanent was turned over to its other
+  // face (CR 701.27a). `label` is the name of the face it turned
+  // FROM — the only place that name survives, since the card's own
+  // name is already the new face by the time the entry is rendered.
+  // Narrated, not silent: a card physically turning over is a thing
+  // a player announces out loud, and a reader scrolling back wants
+  // to know when it happened.
+  | "transform"
+  // #1199, ADR 0084: a permanent phased out or in (CR 702.26).
+  // Narrated for `transform`'s reason and one more that is stronger
+  // here — phasing out is not a zone change (CR 702.26d), so no
+  // `zone` entry says it, and the board simply stops showing the
+  // permanent, indistinguishable from a permanent that died unless
+  // the log says which.
+  | "phase_out"
+  | "phase_in"
+  // #1209, ADR 0082's 2026-09-23 amendment: a permanent that was
+  // face up was turned face down (CR 708.2a). `card_id` is the
+  // permanent; `target` is the object that did it (Ixidron, Cyber
+  // Conversion). Names nobody — a CR 708.2 object has no name for
+  // any viewer, its controller included — so `text` reads "a card"
+  // and `card_id` is still present for the client to point at the
+  // permanent on the board.
+  | "turn_face_down";
 
 // LogEvent mirrors `protocol.LogEvent` — one line of the public game
 // log. `text` is the rendered, already-redacted sentence; the

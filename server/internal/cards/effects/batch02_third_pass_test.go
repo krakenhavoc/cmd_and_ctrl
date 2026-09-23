@@ -638,8 +638,11 @@ func TestB02cForceOfNegationPitchesOnlyOffYourOwnTurn(t *testing.T) {
 		t.Error("the pitched blue card must be exiled")
 	}
 	passPriorityAroundTable(t, g)
-	if !me.Graveyard.Contains(victim) {
-		t.Error("the countered spell lands in its owner's graveyard")
+	if me.Graveyard.Contains(victim) {
+		t.Error("the countered spell must not land in its owner's graveyard — Force of Negation exiles it")
+	}
+	if !g.Exile.Contains(victim) {
+		t.Error("the countered spell must be exiled (#1273: CounterTarget.Dest, ZoneExile)")
 	}
 }
 

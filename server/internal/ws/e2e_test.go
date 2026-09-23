@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -44,14 +45,44 @@ var updateGolden = flag.Bool("update", false, "update golden files instead of di
 //
 // Traversal order: top-level ID, then each seat in seat order (player
 // ID → private zones → CommanderDamage lookups), then shared zones
-// (battlefield, stack, exile). UUIDs that first appear as map KEYS
-// (CommanderDamage keys are opponent player IDs) have ALREADY been
-// assigned placeholders during the preceding seat walk, so the
-// non-deterministic map iteration order in Go never allocates a new
-// placeholder — it only looks up an existing one.
+// (battlefield, stack, exile, phased_out), then the player-ID-only
+// fields (monarch, initiative, promises, vote, discard_pending, the
+// loop notice), then the card-ID-bearing lists (stack_items,
+// pending_triggers, delayed_triggers, log). UUIDs that first appear as
+// map KEYS (CommanderDamage keys are opponent player IDs, Promises'
+// and Ballots' are player IDs) have ALREADY been assigned placeholders
+// during the preceding seat walk, so the non-deterministic map
+// iteration order in Go never allocates a new placeholder — it only
+// looks up an existing one.
+//
+// Two GameView fields are deliberately NOT normalized here, and
+// [normalizeViewNotYetSupported] is the one place that says so
+// (#1264): `pending_choices` and `legal_moves`. Both carry UUIDs
+// nested inside sub-shapes this function has no method for yet
+// (PendingChoiceView's ReplacementOptions / DamageAssignment /
+// PickTarget / PickOptions / DoubledBy; legal.Move's Player and
+// Source are a real uuid.UUID, not the string every other ID field
+// on the wire is, so they cannot even hold a "<uuid-NNN>" placeholder
+// without a parallel scheme, and Params is per-move-kind opaque JSON
+// that may embed further UUIDs no generic walk can find safely). A
+// half-normalization that missed one of those nested UUIDs would look
+// complete and still leak — worse than the honest gap this leaves.
 func normalizeView(v protocol.GameView) protocol.GameView {
 	n := &normalizer{ids: make(map[string]string)}
 	return n.game(v)
+}
+
+// normalizeViewNotYetSupported names every exported GameView field
+// normalizeView does not yet carry through placeholder-normalized,
+// with the reason. TestNormalizeViewCarriesEveryTopLevelField reads
+// this as its allowlist, so removing a field here without also
+// implementing it fails that test rather than the golden silently
+// covering for it.
+func normalizeViewNotYetSupported() map[string]string {
+	return map[string]string{
+		"PendingChoices": "nested UUIDs in ReplacementOptions / DamageAssignment / PickTarget / PickOptions / DoubledBy have no normalizer method yet",
+		"LegalMoves":     "legal.Move.Player/Source are uuid.UUID, not string — cannot hold a placeholder without a parallel scheme, and Params is per-move-kind opaque JSON",
+	}
 }
 
 type normalizer struct {
@@ -102,6 +133,193 @@ func (n *normalizer) game(v protocol.GameView) protocol.GameView {
 	// zero ZoneView a dropped field marshals to — which is what makes
 	// the golden able to notice the day something phases out here.
 	out.PhasedOut = n.zone(v.PhasedOut)
+
+	// #1264: the player-ID-only fields. Safe here — every seat's
+	// placeholder was already assigned above, so a monarch/initiative/
+	// promise/ballot naming a seated player resolves to the existing
+	// placeholder rather than allocating a new one.
+	out.Monarch = n.id(v.Monarch)
+	out.Initiative = n.id(v.Initiative)
+	out.Promises = n.promises(v.Promises)
+	out.Vote = n.vote(v.Vote)
+	out.StartingSeat = v.StartingSeat
+	out.SplitSecondActive = v.SplitSecondActive
+	out.DiscardPending = n.idKeyedIntMap(v.DiscardPending)
+	out.LoopNotice = n.loopNotice(v.LoopNotice)
+
+	// #1264: the card-ID-bearing lists. A card named here that never
+	// appeared in a zone above (a log entry for a card now in a
+	// hidden zone with both endpoints redacted, say) still gets a
+	// placeholder on first sight — see (*normalizer).id — so traversal
+	// order only fixes the NUMBERING, never correctness.
+	out.StackItems = n.stackItems(v.StackItems)
+	out.PendingTriggers = n.stackItems(v.PendingTriggers)
+	out.DelayedTriggers = n.delayedTriggers(v.DelayedTriggers)
+	out.Log = n.logEvents(v.Log)
+	// Reveals: RevealView carries no instance IDs at all by design
+	// (reveal_frame.go) — Source is a card NAME, Cards are printed
+	// identity with a scryfall_id (a printing, not this instance).
+	// Nothing here for a normalizer to touch.
+	out.Reveals = v.Reveals
+
+	return out
+}
+
+// promises normalizes GameView.Promises' "{from}->{to}" composite
+// keys (viewOfPromises in protocol/view.go). Both halves are player
+// IDs, already assigned a placeholder during the seat walk in game().
+func (n *normalizer) promises(in map[string]int) map[string]int {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[string]int, len(in))
+	for k, v := range in {
+		from, to, ok := strings.Cut(k, "->")
+		if !ok {
+			out[k] = v
+			continue
+		}
+		out[n.id(from)+"->"+n.id(to)] = v
+	}
+	return out
+}
+
+// idKeyedIntMap normalizes a map whose keys are player-ID strings and
+// whose values need no normalization of their own — DiscardPending
+// (count owed) and a VoteView's Ballots (the chosen option index).
+func (n *normalizer) idKeyedIntMap(in map[string]int) map[string]int {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[string]int, len(in))
+	for k, v := range in {
+		out[n.id(k)] = v
+	}
+	return out
+}
+
+func (n *normalizer) vote(v *protocol.VoteView) *protocol.VoteView {
+	if v == nil {
+		return nil
+	}
+	return &protocol.VoteView{
+		ID:        v.ID,
+		Topic:     v.Topic,
+		Options:   v.Options,
+		Initiator: n.id(v.Initiator),
+		Ballots:   n.idKeyedIntMap(v.Ballots),
+	}
+}
+
+func (n *normalizer) loopNotice(v *protocol.LoopNoticeView) *protocol.LoopNoticeView {
+	if v == nil {
+		return nil
+	}
+	return &protocol.LoopNoticeView{
+		Source:     n.id(v.Source),
+		Label:      v.Label,
+		Controller: n.id(v.Controller),
+		Count:      v.Count,
+	}
+}
+
+// stackItems normalizes both StackItems and PendingTriggers — the
+// same StackItemView shape (protocol/view.go), announce-time metadata
+// for one item on the stack or in the pending-trigger queue.
+func (n *normalizer) stackItems(in []protocol.StackItemView) []protocol.StackItemView {
+	out := make([]protocol.StackItemView, len(in))
+	for i, it := range in {
+		out[i] = protocol.StackItemView{
+			ID:               it.ID,
+			Kind:             it.Kind,
+			Controller:       n.id(it.Controller),
+			Owner:            n.id(it.Owner),
+			SourceCardID:     n.id(it.SourceCardID),
+			Label:            it.Label,
+			Targets:          n.targetRefs(it.Targets),
+			Modes:            it.Modes,
+			ModeLabels:       it.ModeLabels,
+			XValue:           it.XValue,
+			Distribution:     n.idKeyedIntMap(it.Distribution),
+			HoldPriority:     it.HoldPriority,
+			SplitSecond:      it.SplitSecond,
+			AltCost:          it.AltCost,
+			IsCopy:           it.IsCopy,
+			DoubledBy:        n.id(it.DoubledBy),
+			DoubledByName:    it.DoubledByName,
+			ManaSpent:        it.ManaSpent,
+			ColorsSpent:      it.ColorsSpent,
+			ManaSpentUnknown: it.ManaSpentUnknown,
+		}
+	}
+	return out
+}
+
+// targetRefs normalizes a StackItemView's Targets — the announced
+// target list, where ID is a card or player instance ID (empty for a
+// mode with no target slot).
+func (n *normalizer) targetRefs(in []protocol.TargetRefView) []protocol.TargetRefView {
+	out := make([]protocol.TargetRefView, len(in))
+	for i, t := range in {
+		out[i] = protocol.TargetRefView{Kind: t.Kind, ID: n.id(t.ID), Slot: t.Slot, Mode: t.Mode}
+	}
+	return out
+}
+
+func (n *normalizer) delayedTriggers(in []protocol.DelayedTriggerView) []protocol.DelayedTriggerView {
+	out := make([]protocol.DelayedTriggerView, len(in))
+	for i, d := range in {
+		cards := make([]string, len(d.Cards))
+		for j, c := range d.Cards {
+			cards[j] = n.id(c)
+		}
+		out[i] = protocol.DelayedTriggerView{
+			ID:          d.ID,
+			Controller:  n.id(d.Controller),
+			Source:      n.id(d.Source),
+			Label:       d.Label,
+			At:          d.At,
+			CreatedTurn: d.CreatedTurn,
+			Cards:       cards,
+			On:          d.On,
+		}
+	}
+	return out
+}
+
+// logEvents normalizes the public game log. CardID and Target are the
+// only UUID-bearing fields (log.go); Text is the already-rendered,
+// already-redacted sentence and names cards by printed NAME, not ID,
+// so it needs no rewriting.
+func (n *normalizer) logEvents(in []protocol.LogEvent) []protocol.LogEvent {
+	out := make([]protocol.LogEvent, len(in))
+	for i, e := range in {
+		out[i] = protocol.LogEvent{
+			Seq:         e.Seq,
+			Kind:        e.Kind,
+			Turn:        e.Turn,
+			Step:        e.Step,
+			Seat:        e.Seat,
+			TargetSeat:  e.TargetSeat,
+			CardID:      n.id(e.CardID),
+			Target:      n.id(e.Target),
+			Amount:      e.Amount,
+			LookedAt:    e.LookedAt,
+			OldZone:     e.OldZone,
+			NewZone:     e.NewZone,
+			Combat:      e.Combat,
+			CombatStep:  e.CombatStep,
+			Sides:       e.Sides,
+			Results:     e.Results,
+			Faces:       e.Faces,
+			Call:        e.Call,
+			Wins:        e.Wins,
+			Choice:      e.Choice,
+			Label:       e.Label,
+			ActorIsHost: e.ActorIsHost,
+			Text:        e.Text,
+		}
+	}
 	return out
 }
 
@@ -178,6 +396,130 @@ func (n *normalizer) card(c protocol.CardView) protocol.CardView {
 		Tapped:      c.Tapped,
 		Counters:    c.Counters,
 		IsCommander: c.IsCommander,
+	}
+}
+
+// everyFieldGameViewForNormalizer returns a GameView with every
+// top-level exported field set to a non-zero value —
+// TestNormalizeViewCarriesEveryTopLevelField's fixture. The shape
+// mirrors protocol's own (unexported, different package)
+// everyFieldGameView from #1250: a fixture a test also reflects over
+// for completeness, so a GameView field added later and left at its
+// zero value here is caught by THIS test rather than silently
+// exempted from the one below it.
+func everyFieldGameViewForNormalizer() protocol.GameView {
+	ownerID, oppID := uuid.NewString(), uuid.NewString()
+	cardID := uuid.NewString()
+	zone := func(kind string) protocol.ZoneView {
+		return protocol.ZoneView{
+			Kind: kind, Owner: ownerID, Count: 1,
+			Cards: []protocol.CardView{{InstanceID: uuid.NewString(), Name: "Card", Owner: ownerID, Controller: ownerID}},
+		}
+	}
+	seat := func(id, name string, n int) protocol.PlayerView {
+		return protocol.PlayerView{
+			ID: id, Name: name, Seat: n, Life: 40,
+			Library: zone("library"), Hand: zone("hand"),
+			Graveyard: zone("graveyard"), Command: zone("command"),
+		}
+	}
+	return protocol.GameView{
+		ID:    "game-1",
+		State: "active",
+		Seats: []protocol.PlayerView{seat(ownerID, "Owner", 0), seat(oppID, "Opponent", 1)},
+
+		Battlefield: zone("battlefield"),
+		Stack:       zone("stack"),
+		Exile:       zone("exile"),
+		PhasedOut:   zone("phased_out"),
+
+		Turn: protocol.TurnView{Number: 3, ActiveSeat: 0, PriorityHolder: 0, Phase: "main1", Step: "precombat_main"},
+
+		MulligansOpen: true,
+		Monarch:       ownerID,
+		Initiative:    ownerID,
+		Promises:      map[string]int{ownerID + "->" + oppID: 1},
+		Vote: &protocol.VoteView{
+			ID: "vote-1", Topic: "raise a toast", Options: []string{"yes"},
+			Initiator: ownerID, Ballots: map[string]int{ownerID: 0},
+		},
+		UndoLimit:    3,
+		Settings:     &protocol.TableSettingsView{UndoLimit: 3, UndoScope: "own", StartingLife: 40, BotPace: "normal"},
+		StartingSeat: 1,
+
+		StackItems:      []protocol.StackItemView{{ID: "item-1", Kind: "spell", Controller: ownerID, Owner: ownerID, SourceCardID: cardID}},
+		PendingTriggers: []protocol.StackItemView{{ID: "item-2", Kind: "triggered", Controller: ownerID, Owner: ownerID, SourceCardID: cardID}},
+		DelayedTriggers: []protocol.DelayedTriggerView{{ID: "delayed-1", Controller: ownerID, At: "end_step"}},
+
+		SplitSecondActive: true,
+		DiscardPending:    map[string]int{ownerID: 1},
+		PendingChoices: []protocol.PendingChoiceView{{
+			ID: "choice-1", Kind: "choose_cards", Chooser: ownerID, FromPlayer: ownerID, Count: 1,
+			Options: []protocol.CardView{{InstanceID: uuid.NewString(), Name: "Choice Card", Owner: ownerID, Controller: ownerID}},
+		}},
+		LegalMoves: []protocol.LegalMoveView{{Type: "pass_priority", Player: uuid.MustParse(ownerID), Label: "Pass"}},
+
+		Log: []protocol.LogEvent{{Seq: 1, Kind: protocol.LogCast, Turn: 3, Seat: 0, CardID: cardID, Text: "Owner cast Card"}},
+		Reveals: []protocol.RevealView{{
+			Seq: 1, Turn: 3, Seat: 0, Source: "Fact or Fiction", From: "library",
+			Cards: []protocol.RevealedCardView{{Name: "Island"}}, Count: 1,
+		}},
+
+		LoopNotice: &protocol.LoopNoticeView{Source: ownerID, Label: "loop", Controller: ownerID, Count: 3},
+	}
+}
+
+// TestNormalizeViewCarriesEveryTopLevelField is the #1264 guard, the
+// same shape #1250's TestFilterViewForCarriesEveryTopLevelField uses
+// for FilterViewFor: build a GameView with every top-level exported
+// field non-zero, run it through normalizeView, and fail on any field
+// that came back zero and is not on normalizeViewNotYetSupported's
+// allowlist.
+//
+// Before #1264, normalizeView's struct literal in (*normalizer).game
+// simply never mentioned thirteen of GameView's fields — Monarch,
+// Initiative, Promises, Vote, StartingSeat, StackItems,
+// PendingTriggers, DelayedTriggers, SplitSecondActive,
+// DiscardPending, Log, Reveals and LoopNotice — so every one of them
+// silently zeroed out of every golden file, the same shape #1250
+// found in FilterViewFor's own struct literal one layer over. This
+// test is what makes the NEXT field added to GameView fail here
+// instead of doing the same thing quietly.
+func TestNormalizeViewCarriesEveryTopLevelField(t *testing.T) {
+	fixture := everyFieldGameViewForNormalizer()
+
+	rv := reflect.ValueOf(fixture)
+	rt := rv.Type()
+	for i := 0; i < rt.NumField(); i++ {
+		f := rt.Field(i)
+		if !f.IsExported() {
+			continue
+		}
+		if rv.Field(i).IsZero() {
+			t.Fatalf("everyFieldGameViewForNormalizer leaves GameView.%s zero; set it so this test actually exercises normalizeView's handling of it", f.Name)
+		}
+	}
+
+	out := normalizeView(fixture)
+	allow := normalizeViewNotYetSupported()
+
+	outv := reflect.ValueOf(out)
+	outt := outv.Type()
+	for i := 0; i < outt.NumField(); i++ {
+		f := outt.Field(i)
+		if !f.IsExported() {
+			continue // legalBySeat: unexported, never on the wire.
+		}
+		zero := outv.Field(i).IsZero()
+		if reason, ok := allow[f.Name]; ok {
+			if !zero {
+				t.Errorf("GameView.%s is on normalizeViewNotYetSupported's allowlist (%s) but normalizeView returned a non-zero value — the field is handled now, so drop it from the allowlist", f.Name, reason)
+			}
+			continue
+		}
+		if zero {
+			t.Errorf("GameView.%s came back zero from normalizeView — it dropped the field (add handling in (*normalizer).game, or list it in normalizeViewNotYetSupported with a reason)", f.Name)
+		}
 	}
 }
 
