@@ -69,6 +69,7 @@ func TokenKeys() []string {
 }
 
 var tokenTable = map[string]game.Card{
+	"1/1 green and white Citizen":                   {Name: "Citizen", TypeLine: "Token Creature — Citizen", Power: 1, Toughness: 1, Colors: []string{"G", "W"}},
 	"1/1 blue Faerie Dragon with flying":            {Name: "Faerie Dragon", TypeLine: "Token Creature — Faerie Dragon", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
 	"0/0 black Phyrexian Germ":                      {Name: "Phyrexian Germ", TypeLine: "Token Creature — Phyrexian Germ", Power: 0, Toughness: 0, Colors: []string{"B"}, PrintedPTKnown: true},
 	"0/0 colorless Construct artifact":              {Name: "Construct", TypeLine: "Token Artifact Creature — Construct", Power: 0, Toughness: 0},
