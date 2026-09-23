@@ -36,6 +36,7 @@ func activatedShapes(in []ActivatedAbility) []game.ActivatedAbilityShape {
 			SorcerySpeed: a.SorcerySpeed,
 			Zones:        a.Zones,
 			Cycling:      a.Cycling,
+			Equip:        a.Equip,
 			Condition:    a.Condition,
 			ActiveWhen:   a.ActiveWhen,
 			Exhaust:      a.Exhaust,
@@ -87,6 +88,7 @@ func buildDef(spec Spec) *game.CardDef {
 		CastConditionLabel:         spec.CastConditionLabel,
 		CastRestrictions:           spec.CastRestrictions,
 		ActivationRestrictions:     spec.ActivationRestrictions,
+		ActivationTimings:          spec.ActivationTimings,
 	}
 	if spec.Battle != nil {
 		d.BattleDefense = spec.Battle.Defense

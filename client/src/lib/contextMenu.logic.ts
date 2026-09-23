@@ -406,6 +406,19 @@ interface AbilityCost {
   // catalog's first; a loyalty ability gets the same window from its
   // own arm below rather than from this flag.
   sorcery_speed?: boolean;
+  // #1208: true when the engine will refuse this activation RIGHT NOW
+  // for timing (CR 602.5d, CR 606.3), as modified by any per-player
+  // statement on the board — The Wandering Emperor's "you may
+  // activate her loyalty abilities any time you could cast an
+  // instant", Leonin Shikari's "you may activate equip abilities any
+  // time you could cast an instant".
+  //
+  // It is the ROW's verdict where sorcery_speed is the ability's
+  // printed clause, and it is the one to grey on: the client no
+  // longer derives the window for a catalogued ability. Absent means
+  // the engine has no timing objection, which is every instant-speed
+  // ability, always.
+  timing_closed?: boolean;
   // #743: the ability's "Activate only if …" condition is false right
   // now. Carried by both mana and activated abilities.
   condition_unmet?: boolean;
@@ -564,18 +577,29 @@ export function abilityBlocked(
   // CR 606: a loyalty ability answers to the sorcery-speed window,
   // the once-per-turn flag, and "you have enough counters to pay".
   // The value 0 is a real cost, so this tests for presence.
+  //
+  // #1208: WHETHER the window is shut is the server's answer
+  // (timing_closed, the stamp of game.ActivationTimingOpenLocked);
+  // the client only puts it into words. That split is the point: a
+  // per-player statement — The Wandering Emperor's "you may activate
+  // her loyalty abilities any time you could cast an instant" — is
+  // board state the client cannot see, and before this the row stayed
+  // greyed on activations the engine accepts.
   if (a.loyalty_cost !== undefined && loyalty) {
-    const timing = canActivateLoyalty(loyalty.card, loyalty.view, loyalty.viewerID);
-    if (!timing.legal) return timing.reason ?? "can't activate right now";
+    if (a.timing_closed) return timingReason(loyalty);
+    if (loyalty.card.loyalty_activated) return "Already activated this turn";
     const unpayable = canPayLoyaltyCost(loyalty.card, a.loyalty_cost);
     if (unpayable) return unpayable;
   }
   // CR 602.5d — "activate only as a sorcery". Equip is the first
   // catalog ability to declare it. Checked after the loyalty arm so
   // a loyalty row keeps its more specific reason.
-  if (a.sorcery_speed && a.loyalty_cost === undefined && loyalty) {
-    const timing = canActivateSorcerySpeedAbility(loyalty.view, loyalty.viewerID);
-    if (!timing.legal) return timing.reason ?? "sorcery-speed only";
+  //
+  // timing_closed outranks sorcery_speed, which is only the ability's
+  // PRINTED clause: a Leonin Shikari's controller's equip row carries
+  // sorcery_speed, no timing_closed, and is live.
+  if (a.timing_closed && a.loyalty_cost === undefined) {
+    return loyalty ? timingReason(loyalty) : "sorcery-speed only";
   }
   // #743, CR 602.1b: an "Activate only if …" condition the server says
   // is false. After the timing arms, which is the order the server
@@ -611,6 +635,21 @@ export interface LoyaltyContext {
   card: CardView;
   view: GameView | null | undefined;
   viewerID: string | null;
+}
+
+// timingReason puts the server's `timing_closed` into words (#1208).
+//
+// The BIT is the engine's and the SENTENCE is the client's, which is
+// the only division of labour that survives a per-player timing
+// statement: whether the window is shut depends on board state the
+// client cannot see, but WHY it is shut — no priority, split second,
+// a non-empty stack, somebody else's turn — is all in the snapshot
+// and is what the player wants to read. `canActivateSorcerySpeedAbility`
+// can say "legal" here (a restriction shut the window rather than the
+// phase), in which case the generic sentence is the honest one.
+function timingReason(loyalty: LoyaltyContext): string {
+  const timing = canActivateSorcerySpeedAbility(loyalty.view, loyalty.viewerID);
+  return timing.reason ?? "Can't activate right now";
 }
 
 // abilityItems folds the permanent's mana abilities and CR 602

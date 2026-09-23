@@ -423,6 +423,29 @@ type Spec struct {
 	// 2026-09-22.
 	ActivationRestrictions []game.ActivationRestriction
 
+	// ActivationTimings declares the per-player activation-TIMING
+	// statements this PERMANENT makes while it is on the battlefield
+	// (#1208, ADR 0066's and ADR 0073's amendments of 2026-09-23) —
+	// The Wandering Emperor's "as long as she entered this turn, you
+	// may activate her loyalty abilities any time you could cast an
+	// instant", Teferi, Master of Time's clause without the
+	// condition, Leonin Shikari's "you may activate equip abilities
+	// any time you could cast an instant".
+	//
+	// The ACTIVATION twin of CastTimings, and it has only this one
+	// home: every card that prints such a statement is a permanent
+	// that says it for as long as it is there, so nothing is stored
+	// and the window is the source's presence — the same argument
+	// CastPermissions and CastTimings make, with no second half.
+	//
+	// Read from the BATTLEFIELD through CatalogAbilityKey, so a
+	// permanent that has lost its abilities stops saying it and one
+	// whose designation gate is unsatisfied is not there at all.
+	// Build with the constructors in activation_timing.go rather
+	// than by hand: they carry the printed label and the predicate,
+	// which are the two halves a card file gets wrong.
+	ActivationTimings []game.ActivationTiming
+
 	// TapCost is the S22 "tap permanents you control to help pay"
 	// cost component — convoke (CR 702.51) and waterbend, which are
 	// the same mechanic under two names. Unlike the other cost slots
@@ -976,6 +999,12 @@ type ActivatedAbility struct {
 	// activating it emits EventCycle. Set by the Cycling /
 	// Typecycling constructors; no card file sets it directly.
 	Cycling bool
+	// Equip marks the CR 702.6 equip ability, so a card that speaks
+	// ABOUT equip abilities can find them — Leonin Shikari's "you
+	// may activate equip abilities any time you could cast an
+	// instant" (#1208). Set by EquipAbility; no card file sets it
+	// directly, exactly as none sets Cycling.
+	Equip bool
 	// Condition is the "Activate only if …" / "Activate only during
 	// your turn" gate (CR 602.1b, #743). Same contract and helpers as
 	// ManaAbility.Condition — see game.ActivatedAbilityShape.Condition

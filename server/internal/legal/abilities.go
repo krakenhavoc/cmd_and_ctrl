@@ -54,7 +54,8 @@ type activateParams struct {
 // activatedMoves enumerates catalog activated abilities on the
 // seat's permanents. Requires priority (checked by the caller).
 // Mirrors game.ActivateCatalogAbility's validation: split second,
-// sorcery-speed flag, activation condition (#743), tap cost
+// the board-wide activation gate (#1210), the CR 602.5d / CR 606.3
+// timing read (#1208), activation condition (#743), tap cost
 // (untapped + not summoning sick for creatures), sacrifice costs
 // payable, life cost payable, mana cost affordable, targets legal.
 func (e *enumerator) activatedMoves() {
@@ -62,7 +63,6 @@ func (e *enumerator) activatedMoves() {
 	if g.SplitSecondActive {
 		return
 	}
-	speed := sorcerySpeedOpen(g, e.seat)
 	// #1210: the board-wide fast negative, taken ONCE for the whole
 	// pass. Almost no game has a Cursed Totem in it, and without this
 	// every ability row would walk the battlefield to be told so.
@@ -79,7 +79,7 @@ func (e *enumerator) activatedMoves() {
 		if !game.CanActivateAbilities(source) {
 			continue
 		}
-		e.abilityMovesForSource(source, game.ZoneBattlefield, speed, restricted)
+		e.abilityMovesForSource(source, game.ZoneBattlefield, restricted)
 	}
 	// #660, widened by #1221: every OTHER zone an ability can
 	// function from. Cycling is an ordinary CR 602 activation whose
@@ -108,7 +108,7 @@ func (e *enumerator) activatedMoves() {
 			if src.Owner != e.seat {
 				continue
 			}
-			e.abilityMovesForSource(src, zone.kind, speed, restricted)
+			e.abilityMovesForSource(src, zone.kind, restricted)
 		}
 	}
 }
@@ -162,7 +162,7 @@ func (e *enumerator) abilityZones() []abilityZone {
 // the one accessor every consumer reads through — so a designation-
 // gated ability (ADR 0071) is absent here exactly as it is absent from
 // the activation path and the wire.
-func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind, speed, restricted bool) {
+func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind, restricted bool) {
 	g, p := e.g, e.p
 	abilities := game.ActivatedAbilitiesForCard(*source)
 	// #662: an activated ability's source is the permanent — or, since
@@ -178,6 +178,11 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		if !game.AbilityFunctionsFromZone(ab, zone) {
 			continue
 		}
+		// #1208: ONE identity for both reads below, built the way
+		// the activation path builds it, so CR 606.3's "a loyalty
+		// ability is sorcery-speed" cannot be spelled differently
+		// here than there.
+		abilityID := game.ActivationAbilityOf(ab)
 		// #1210, CR 602.5a: the board-wide "can't be activated"
 		// gate — Cursed Totem, Linvala, Collector Ouphe, Pithing
 		// Needle. The SAME function ActivateCatalogAbility calls,
@@ -186,11 +191,16 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// refuses (#544). Behind the board-wide fast negative the
 		// caller took once: nothing restricts anything in almost
 		// every game, and the walk is otherwise per ability.
-		if restricted && g.ActivationGateLocked(e.seat, *source, zone,
-			game.ActivationAbility{Label: ab.Label}) != nil {
+		if restricted && g.ActivationGateLocked(e.seat, *source, zone, abilityID) != nil {
 			continue
 		}
-		if (ab.SorcerySpeed || ab.Cost.Loyalty != nil) && !speed {
+		// CR 602.5d / CR 606.3, through the one read the engine and
+		// the view share (#1208). This replaced the enumerator's own
+		// copy of the rule — `(ab.SorcerySpeed || ab.Cost.Loyalty !=
+		// nil) && !speed`, with `speed` threaded down from
+		// activatedMoves — so a bot is never denied an equip a
+		// Leonin Shikari opens, and never offered one nothing does.
+		if !g.ActivationTimingOpenLocked(e.seat, *source, zone, abilityID) {
 			continue
 		}
 		// CR 602.1b (#743): the "Activate only if …" gate, with

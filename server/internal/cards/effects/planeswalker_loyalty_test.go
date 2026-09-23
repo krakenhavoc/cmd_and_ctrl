@@ -171,20 +171,67 @@ func TestTeferiOneLoyaltyAbilityPerTurn(t *testing.T) {
 	}
 }
 
-// The Emperor's +1 makes a token; the loyalty cost is paid up.
-func TestWanderingEmperorPlusOneMakesASamurai(t *testing.T) {
+// The Emperor's +1 puts a +1/+1 counter on up to one target creature
+// and grants it first strike - two layers, one ability (#1208 fixed
+// the card: S27 had the three abilities permuted and altered).
+func TestWanderingEmperorPlusOneCountersAndFirstStrikes(t *testing.T) {
 	g := newCatalogGame(t)
 	toMain(t, g)
 	me := g.Seats[g.Turn.ActiveSeat]
 	emperor := pushCatalogWalker(g, me.ID, "The Wandering Emperor", wanderingEmperorOracle, 3)
+	bear := pushCreatureToBattlefieldForTest(g, me.ID, "Bear")
 
-	if err := g.ActivateCatalogAbility(me.ID, emperor, 0, game.ActivateAbilityParams{}); err != nil {
+	if err := g.ActivateCatalogAbility(me.ID, emperor, 0, game.ActivateAbilityParams{
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: bear}},
+	}); err != nil {
 		t.Fatalf("activate +1: %v", err)
 	}
 	passPriorityAroundTable(t, g)
 
 	if got := loyaltyCount(g, emperor); got != 4 {
 		t.Errorf("loyalty after +1: got %d, want 4", got)
+	}
+	// A +1/+1 counter is read off the card (CurrentPower), not out of
+	// the layer pass, so the counter itself is what this asserts.
+	if got := counterCount(g, bear, game.CounterPlusOne); got != 1 {
+		t.Errorf("+1/+1 counters after the +1: got %d, want 1", got)
+	}
+	if !hasEffectiveKeyword(t, g, bear, "first strike") {
+		t.Error("the +1 did not grant first strike")
+	}
+}
+
+// "Up to one target creature" is Min 0, so the +1 is activatable on
+// an empty board and resolves doing nothing but the loyalty.
+func TestWanderingEmperorPlusOneNeedsNoTarget(t *testing.T) {
+	g := newCatalogGame(t)
+	toMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	emperor := pushCatalogWalker(g, me.ID, "The Wandering Emperor", wanderingEmperorOracle, 3)
+
+	if err := g.ActivateCatalogAbility(me.ID, emperor, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatalf("activate +1 with no target: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if got := loyaltyCount(g, emperor); got != 4 {
+		t.Errorf("loyalty after +1: got %d, want 4", got)
+	}
+}
+
+// The Emperor's -1 makes the Samurai token; the loyalty cost is paid.
+func TestWanderingEmperorMinusOneMakesASamurai(t *testing.T) {
+	g := newCatalogGame(t)
+	toMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	emperor := pushCatalogWalker(g, me.ID, "The Wandering Emperor", wanderingEmperorOracle, 3)
+
+	if err := g.ActivateCatalogAbility(me.ID, emperor, 1, game.ActivateAbilityParams{}); err != nil {
+		t.Fatalf("activate -1: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+
+	if got := loyaltyCount(g, emperor); got != 2 {
+		t.Errorf("loyalty after -1: got %d, want 2", got)
 	}
 	samurai := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
@@ -200,9 +247,9 @@ func TestWanderingEmperorPlusOneMakesASamurai(t *testing.T) {
 	}
 }
 
-// The Emperor's −1 exiles a TAPPED creature, and only a tapped one:
-// an untapped creature is not a legal target (CR 115.4).
-func TestWanderingEmperorMinusOneExilesOnlyTappedCreatures(t *testing.T) {
+// The Emperor's -2 exiles a TAPPED creature - and only a tapped one
+// (CR 115.4) - and gains 2 life.
+func TestWanderingEmperorMinusTwoExilesTappedAndGainsLife(t *testing.T) {
 	g := newCatalogGame(t)
 	toMain(t, g)
 	me := g.Seats[g.Turn.ActiveSeat]
@@ -213,53 +260,30 @@ func TestWanderingEmperorMinusOneExilesOnlyTappedCreatures(t *testing.T) {
 	if err := g.TapCard(tapped, true); err != nil {
 		t.Fatalf("TapCard: %v", err)
 	}
+	before := me.Life
 
-	if err := g.ActivateCatalogAbility(me.ID, emperor, 1, game.ActivateAbilityParams{
+	if err := g.ActivateCatalogAbility(me.ID, emperor, 2, game.ActivateAbilityParams{
 		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: untapped}},
 	}); err != game.ErrIllegalTarget {
-		t.Errorf("-1 at an untapped creature: got %v, want ErrIllegalTarget", err)
+		t.Errorf("-2 at an untapped creature: got %v, want ErrIllegalTarget", err)
 	}
-	if err := g.ActivateCatalogAbility(me.ID, emperor, 1, game.ActivateAbilityParams{
+	if err := g.ActivateCatalogAbility(me.ID, emperor, 2, game.ActivateAbilityParams{
 		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: tapped}},
 	}); err != nil {
-		t.Fatalf("-1 at a tapped creature: %v", err)
+		t.Fatalf("-2 at a tapped creature: %v", err)
 	}
-	if got := loyaltyCount(g, emperor); got != 2 {
-		t.Errorf("loyalty after -1: got %d, want 2", got)
+	if got := loyaltyCount(g, emperor); got != 1 {
+		t.Errorf("loyalty after -2: got %d, want 1", got)
 	}
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(tapped) {
 		t.Error("the tapped creature was not exiled")
 	}
-	// Exile, not destroy — the whole point of the ability.
+	// Exile, not destroy - the whole point of the ability.
 	if !g.Exile.Contains(tapped) {
 		t.Error("the tapped creature left the battlefield but was not exiled")
 	}
-}
-
-// The Emperor's −2 is two turn-scoped statics: +2/+1 in layer 7c
-// and lifelink in layer 6.
-func TestWanderingEmperorMinusTwoPumpsAndGrantsLifelink(t *testing.T) {
-	g := newCatalogGame(t)
-	toMain(t, g)
-	me := g.Seats[g.Turn.ActiveSeat]
-	emperor := pushCatalogWalker(g, me.ID, "The Wandering Emperor", wanderingEmperorOracle, 3)
-	bear := pushCreatureToBattlefieldForTest(g, me.ID, "Bear")
-
-	if err := g.ActivateCatalogAbility(me.ID, emperor, 2, game.ActivateAbilityParams{
-		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: bear}},
-	}); err != nil {
-		t.Fatalf("activate -2: %v", err)
-	}
-	passPriorityAroundTable(t, g)
-
-	if got := loyaltyCount(g, emperor); got != 1 {
-		t.Errorf("loyalty after -2: got %d, want 1", got)
-	}
-	if p, tough := effectivePower(t, g, bear), effectiveToughness(t, g, bear); p != 4 || tough != 3 {
-		t.Errorf("P/T after +2/+1 on a 2/2: got %d/%d, want 4/3", p, tough)
-	}
-	if !hasEffectiveKeyword(t, g, bear, "lifelink") {
-		t.Error("the -2 did not grant lifelink")
+	if got := me.Life - before; got != 2 {
+		t.Errorf("life gained by the -2: got %d, want 2", got)
 	}
 }

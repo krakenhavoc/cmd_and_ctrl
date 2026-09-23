@@ -43,13 +43,8 @@ func init() {
 			PumpAttachedPer(1, 1, landsControlledBy),
 		},
 		Activated: []ActivatedAbility{
-			{
-				Label:        "Equip legendary creature {3}",
-				Cost:         ManaCost("{3}"),
-				Targets:      TargetCreature("target legendary creature you control", YouControl(), Legendary()),
-				SorcerySpeed: true,
-				Effect:       AttachSourceToTarget,
-			},
+			EquipOnlyAbility("Equip legendary creature {3}", "{3}",
+				TargetCreature("target legendary creature you control", YouControl(), Legendary())),
 			EquipAbility("{7}"),
 		},
 	})

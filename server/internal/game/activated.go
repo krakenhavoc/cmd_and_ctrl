@@ -390,7 +390,27 @@ type ActivatedAbilityShape struct {
 	Modes *ModeSpec
 
 	// SorcerySpeed marks "activate only as a sorcery" (CR 602.5d).
+	//
+	// It is the ability's OWN clause and not the verdict: since
+	// #1208 a per-player statement may open the window on an ability
+	// that declares this (The Wandering Emperor, Leonin Shikari) or
+	// shut one that does not. `Game.ActivationTimingOpenLocked` is
+	// the verdict, and it is the only thing that should be asked
+	// "may this be activated right now".
 	SorcerySpeed bool
+
+	// Equip marks the CR 702.6 equip ability. Set by
+	// effects.EquipAbility and by no other card file.
+	//
+	// It names a keyword rather than adding a kind: equip is still
+	// an ordinary activated ability with a mana cost, a target
+	// clause and a sorcery-speed gate (attachments.go says so at
+	// length, and that is unchanged). What this field buys is that
+	// a card which speaks ABOUT equip abilities — Leonin Shikari's
+	// "you may activate equip abilities any time you could cast an
+	// instant" (#1208) — can find them, instead of matching on the
+	// label's spelling.
+	Equip bool
 
 	// Zones is the set of zones this ability functions from
 	// (CR 113.6 — an ability works only where it says it does).
@@ -822,15 +842,24 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	//
 	// Separate from CanActivateAbilities above, which is the
 	// per-PERMANENT Arrest bit layer 6 already answered.
-	if err := g.ActivationGateLocked(playerID, *source, srcZone, ActivationAbility{Label: ab.Label}); err != nil {
+	// #1208: ONE identity, built once, for both reads below — the
+	// ban and the timing. CR 606.3 rides the loyalty cost component
+	// inside it, so a catalog entry still cannot forget it.
+	abilityID := ActivationAbilityOf(ab)
+	if err := g.ActivationGateLocked(playerID, *source, srcZone, abilityID); err != nil {
 		return err
 	}
 
 	// --- timing -------------------------------------------------
-	// CR 606.3: a loyalty ability is sorcery-speed whether or not
-	// the catalog entry bothered to say so — the loyalty component
-	// carries the restriction, so a card can't forget it.
-	if (ab.SorcerySpeed || ab.Cost.Loyalty != nil) && !g.sorcerySpeedOpenLocked(playerID) {
+	// CR 602.5d and CR 606.3, through the one read the bot
+	// enumerator and the view share (#1208, activation_timing.go):
+	// the ability's own clause, then any per-player statement that
+	// opens the window (The Wandering Emperor, Leonin Shikari) or
+	// narrows it, then the sorcery-speed gate. It replaced the
+	// inline `(ab.SorcerySpeed || ab.Cost.Loyalty != nil) &&
+	// !g.sorcerySpeedOpenLocked(playerID)` that used to live here
+	// and in two other files.
+	if !g.ActivationTimingOpenLocked(playerID, *source, srcZone, abilityID) {
 		return ErrSorcerySpeedRequired
 	}
 	// #1181: "Activate each exhaust ability only once". The key is

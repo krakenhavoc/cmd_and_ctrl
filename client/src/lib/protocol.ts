@@ -1474,6 +1474,19 @@ export interface ActivatedAbilityView {
   charged_mana_cost?: string;
   life_cost?: number;
   sorcery_speed?: boolean;
+  // #1208: true when the engine will refuse this activation RIGHT NOW
+  // for timing (CR 602.5d, CR 606.3), as modified by any per-player
+  // statement on the board — The Wandering Emperor's "you may
+  // activate her loyalty abilities any time you could cast an
+  // instant", Leonin Shikari's "you may activate equip abilities any
+  // time you could cast an instant".
+  //
+  // It is the ROW's verdict where sorcery_speed is the ability's
+  // printed clause, and it is the one to grey on: the client no
+  // longer derives the window for a catalogued ability. Absent means
+  // the engine has no timing objection, which is every instant-speed
+  // ability, always.
+  timing_closed?: boolean;
   // #743: true while the ability's activation condition (CR 602.1b —
   // "Activate only if an opponent controls four or more lands",
   // "Activate only during your turn") is false. Absent when there is

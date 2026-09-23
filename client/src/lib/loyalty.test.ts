@@ -54,6 +54,22 @@ function walker(extra: Partial<CardView> = {}): CardView {
   };
 }
 
+// closedWalker is the same planeswalker with the server's #1208
+// verdict on its rows. Since #1208 the client does not derive the
+// window for a catalogued ability — `timing_closed` is the stamp of
+// game.ActivationTimingOpenLocked — so a fixture that wants a shut
+// window has to say so the way the wire does.
+function closedWalker(extra: Partial<CardView> = {}): CardView {
+  const pw = walker(extra);
+  return {
+    ...pw,
+    activated_abilities: (pw.activated_abilities ?? []).map((a) => ({
+      ...a,
+      timing_closed: true,
+    })),
+  };
+}
+
 interface ViewOpts {
   battlefield?: CardView[];
   stack?: CardView[];
@@ -205,10 +221,31 @@ describe("loyalty abilities in the card menu", () => {
   });
 
   it("greys loyalty abilities outside the sorcery-speed window (CR 606.3)", () => {
-    const pw = walker();
+    const pw = closedWalker();
     const v = view({ battlefield: [pw], step: "upkeep" });
     const sections = buildMenuSections(v, pw, "a", false);
     expect(itemIn(sections, "ability-0")?.disabled).toBe(true);
+  });
+
+  // #1208, The Wandering Emperor: "As long as she entered this turn,
+  // you may activate her loyalty abilities any time you could cast an
+  // instant." CR 606.3 has no printed clause behind it, so this is
+  // the half sorcery_speed could never have carried — the row is live
+  // in an upkeep step because the SERVER says so.
+  it("leaves a loyalty row live when the server says the window is open", () => {
+    const pw = walker();
+    const v = view({ battlefield: [pw], step: "upkeep" });
+    const sections = buildMenuSections(v, pw, "a", false);
+    expect(itemIn(sections, "ability-0")?.disabled).toBeFalsy();
+  });
+
+  // The once-per-turn half of CR 606.3 is not timing and stays the
+  // client's to read off the card, so an open window does not undo it.
+  it("still greys an already-activated walker when the window is open", () => {
+    const pw = walker({ loyalty_activated: true });
+    const v = view({ battlefield: [pw], step: "upkeep" });
+    const sections = buildMenuSections(v, pw, "a", false);
+    expect(itemIn(sections, "ability-0")?.hint).toBe("Already activated this turn");
   });
 
   it("leaves an instant-speed ability alone outside the main phase", () => {
@@ -327,6 +364,19 @@ describe("sorcery-speed activated abilities (not loyalty)", () => {
     };
   }
 
+  // The same Elixir with the server's #1208 verdict on the row: since
+  // #1208 `timing_closed` is what greys it, because a per-player
+  // statement can open a sorcery-speed ability and the client cannot
+  // see one.
+  function closedRock(extra: Partial<CardView> = {}): CardView {
+    return sorcerySpeedRock({
+      activated_abilities: [
+        { index: 0, label: "{2}: do a thing", sorcery_speed: true, timing_closed: true },
+      ],
+      ...extra,
+    });
+  }
+
   it("is offered inside the sorcery-speed window", () => {
     const rock = sorcerySpeedRock();
     const sections = buildMenuSections(view({ battlefield: [rock] }), rock, "a", false);
@@ -334,7 +384,7 @@ describe("sorcery-speed activated abilities (not loyalty)", () => {
   });
 
   it("is greyed outside a main phase — CR 307.1", () => {
-    const rock = sorcerySpeedRock();
+    const rock = closedRock();
     const v = view({ battlefield: [rock], step: "upkeep" });
     const item = itemIn(buildMenuSections(v, rock, "a", false), "ability-0");
     expect(item?.disabled).toBe(true);
@@ -342,7 +392,7 @@ describe("sorcery-speed activated abilities (not loyalty)", () => {
   });
 
   it("is greyed on an opponent's turn", () => {
-    const rock = sorcerySpeedRock();
+    const rock = closedRock();
     const v = view({ battlefield: [rock], active: 1, priority: 0 });
     const item = itemIn(buildMenuSections(v, rock, "a", false), "ability-0");
     expect(item?.disabled).toBe(true);
@@ -350,7 +400,7 @@ describe("sorcery-speed activated abilities (not loyalty)", () => {
   });
 
   it("is greyed while something is on the stack", () => {
-    const rock = sorcerySpeedRock();
+    const rock = closedRock();
     const spell: CardView = { instance_id: "s1", name: "Spell", owner: "b", controller: "b" };
     const v = view({ battlefield: [rock], stack: [spell] });
     const item = itemIn(buildMenuSections(v, rock, "a", false), "ability-0");
@@ -362,6 +412,18 @@ describe("sorcery-speed activated abilities (not loyalty)", () => {
     const rock = sorcerySpeedRock({
       activated_abilities: [{ index: 0, label: "{2}: do a thing" }],
     });
+    const v = view({ battlefield: [rock], step: "upkeep" });
+    expect(itemIn(buildMenuSections(v, rock, "a", false), "ability-0")?.disabled).toBeFalsy();
+  });
+
+  // #1208, Leonin Shikari: "You may activate equip abilities any time
+  // you could cast an instant." The row still PRINTS "activate only
+  // as a sorcery" — sorcery_speed stays true — and the engine accepts
+  // it, so the absent timing_closed is what the client must obey.
+  // Before #1208 the client re-derived CR 307.1 here and greyed a row
+  // the server would have accepted.
+  it("leaves a sorcery-speed row live when the server says the window is open", () => {
+    const rock = sorcerySpeedRock();
     const v = view({ battlefield: [rock], step: "upkeep" });
     expect(itemIn(buildMenuSections(v, rock, "a", false), "ability-0")?.disabled).toBeFalsy();
   });

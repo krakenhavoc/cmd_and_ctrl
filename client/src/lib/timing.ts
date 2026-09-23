@@ -363,6 +363,19 @@ export function canCastFromHand(
 // by design (see its package doc on sandbox verbs) and there is no
 // move list to look it up in.
 //
+// #1208 NARROWED that: a CATALOGUED ability row no longer asks this
+// whether it may be activated. The engine ships the verdict per row
+// as `activated_abilities[i].timing_closed`, because a per-player
+// timing statement — The Wandering Emperor's "you may activate her
+// loyalty abilities any time you could cast an instant", Leonin
+// Shikari's equip clause — is board state no client-side derivation
+// can see. What is left here is the SENTENCE: `abilityBlocked` asks
+// this for the WORDS ("Not your turn", "Stack isn't empty") once the
+// server has said the row is shut. The two remaining callers that
+// still ask it for the VERDICT are the ones with no server answer to
+// read — the sandbox `activate_loyalty` rows above, and the cast
+// path's last-resort hint.
+//
 // Advisory, like every predicate in this file: the server rejects
 // with ErrSorcerySpeedRequired regardless. This exists so the menu
 // row greys with a reason instead of looking available and failing.
