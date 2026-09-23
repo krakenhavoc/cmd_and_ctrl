@@ -149,9 +149,16 @@ type TargetClause = TargetSpec
 type TargetSpec struct {
 	// Mode is the client-facing hint derived from the spec: "any",
 	// "player", "creature", "permanent", "stack_spell",
-	// "card_in_graveyard". Drives banner copy and which surfaces
-	// enter targeting mode; legality itself comes from
-	// LegalTargets, not from Mode.
+	// "stack_ability", "stack_item", "card_in_graveyard". Drives
+	// banner copy and which surfaces enter targeting mode; legality
+	// itself comes from LegalTargets, not from Mode.
+	//
+	// The three stack hints differ only in the sentence the banner
+	// writes — "a spell on the stack", "an ability on the stack", "a
+	// spell or ability on the stack" (#1211). All three light up the
+	// same surface (the stack overlay) and all three obey the same
+	// legal set; a picker that read Mode for legality would be
+	// reading a hint as a rule.
 	Mode string
 
 	// Label is the human-readable targeting clause, shown in the

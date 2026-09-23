@@ -28,19 +28,22 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // four-mana one everywhere else. Power is read post-layer
 // (CurrentPower), so a pumped 2/2 switches it on.
 //
-// DECLARED CAVEAT — SPELLS ONLY, the same one Deflecting Swat ships:
-// the engine cannot target an ABILITY on the stack (ADR 0065's open
-// item), so "or ability" is out. Strictly narrower than printed
-// (#259).
+// The "OR ABILITY" half landed with #1211, and this card is where the
+// predicate half of that seam shows: "with a single target" restricts
+// a spell and an ability with the same printed words, so it has to be
+// the same function over the same fact. `ItemHasASingleTarget` counts
+// slots on the STACK ITEM, which a spell and an ability both have —
+// the `CardPredicate` twin `HasASingleTarget` stays for the cards that
+// print "target SPELL with a single target" (Misdirection, Ricochet
+// Trap, Imp's Mischief), and both read
+// `StackItemTargetCountForEffect`, so they cannot drift.
 func init() {
 	Register(Spec{
 		OracleID:     "c20a96f7-aa5a-4c15-b8b1-806685c99b27",
 		Name:         "Bolt Bend",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Only a SPELL can be chosen, not an activated or triggered ability on the stack — the engine cannot target an ability item.",
-		},
-		Targets: TargetSpell("target spell with a single target", HasASingleTarget()),
+		Completeness: CompletenessFull,
+		Targets: TargetSpellOrAbility("target spell or ability with a single target",
+			ItemHasASingleTarget()),
 		SelfCostModifiers: []game.CostModifier{
 			CostsLess(3, "This spell costs {3} less to cast if you control a creature with power 4 or greater.",
 				youControlAPowerFourCreature),

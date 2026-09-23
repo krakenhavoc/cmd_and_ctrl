@@ -2819,6 +2819,19 @@ func targetStillExistsLocked(g *Game, t TargetRef) bool {
 		p := g.playerByIDLocked(t.ID)
 		return p != nil && !p.Eliminated
 	case TargetCard:
+		// #1211, CR 115.4: a TargetCard ref may name an ABILITY item
+		// on the stack, which has no card in any zone — its source
+		// permanent stays where it is and the item is a StackMeta
+		// entry alone. It exists while it is still on the stack, and
+		// stops existing the moment it resolves or is countered
+		// (CR 701.5c), which is exactly the question this asks.
+		//
+		// Only reached for a ref with no announced clause behind it (a
+		// free-form S13.1 announcement); a structured clause is
+		// re-checked by specMatchLocked, which reads StackMeta itself.
+		if item := g.StackMeta[t.ID]; item != nil && item.Kind != StackItemSpell {
+			return true
+		}
 		return g.findCardZoneLocked(t.ID) != nil
 	default:
 		return true
@@ -4753,34 +4766,22 @@ func (g *Game) CounterSpell(spellID uuid.UUID, dst *ZoneRef) error {
 
 // CounterAbility removes an activated / triggered ability from the
 // stack. Abilities cease to exist on resolution (CR 608.2n); a
-// counter is the same destinationless removal. Returns
+// counter is the same destinationless removal (CR 701.5c). Returns
 // ErrCardNotOnStack if the ID doesn't reference an ability item.
 //
 // Caller must NOT hold g.mu — this method takes the write lock.
 //
-// S13.1.
+// S13.1. #1211 folded the body into counterAbilityLocked: this was a
+// second copy of the deletion and the emitted event, which is the
+// #529 shape exactly — two counter paths that had already drifted
+// once on flashback. One deletion, one event.
 func (g *Game) CounterAbility(abilityID uuid.UUID) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
-	item, ok := g.StackMeta[abilityID]
-	if !ok || item == nil {
-		return ErrCardNotOnStack
-	}
-	if item.Kind != StackItemActivated && item.Kind != StackItemTriggered {
-		return ErrCardNotOnStack
-	}
-	source := item.SourceCardID
-	delete(g.StackMeta, abilityID)
-	g.recomputeSplitSecondLocked()
-	g.EmitEvent(Event{
-		Kind:   EventCounterSpell,
-		Source: source,
-		Target: abilityID,
-	})
-	return nil
+	return g.counterAbilityLocked(abilityID)
 }
 
 // recomputeSplitSecondLocked walks StackMeta and pending triggers

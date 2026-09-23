@@ -121,6 +121,20 @@ func BounceTheModesTarget(item *game.StackItem, ctx *Context, occ int) error {
 	return BounceToHand{Target: t.ID}.Apply(ctx)
 }
 
+// CounterTheModesTarget is "counter target <thing on the stack>" as a
+// modal bullet's body — Sublime Epiphany's first TWO bullets, which
+// differ only in their clause ("target spell" and "target activated
+// or triggered ability") and not at all in what they do, because
+// CounterTarget takes a stack ITEM id and discriminates on
+// StackItem.Kind (#1211).
+func CounterTheModesTarget(item *game.StackItem, ctx *Context, occ int) error {
+	t, ok := ModeTarget(ctx, occ)
+	if !ok {
+		return nil
+	}
+	return CounterTarget{StackID: t.ID}.Apply(ctx)
+}
+
 // DealFixedDamageToModesTarget is "<source> deals `amount` damage to
 // <this mode's target>" as a modal bullet's body, for a printed fixed
 // amount — Kolaghan's Command's and Prismari Command's "deals 2

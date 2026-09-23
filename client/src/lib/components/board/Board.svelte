@@ -81,12 +81,12 @@
     isLegalCardTarget,
     isLegalPlayerTarget,
     isMultiPick,
+    opensTargetPicker,
     togglePick,
     canConfirm,
     setConfirmHandler,
     type CastChoices,
     type CastSourceZone,
-    type TargetingMode,
     type TargetingState,
     type TargetRef,
   } from "../../targeting";
@@ -692,15 +692,15 @@
     // Otherwise fire cast_spell immediately (lands, sorceries with
     // no targets, vanilla permanents).
     const alt = alternativeCostByKey(card, choices.altCost);
-    const mode = (alt ? alt.target_mode : card.target_mode) as TargetingMode | undefined;
-    if (
-      mode === "any" ||
-      mode === "player" ||
-      mode === "creature" ||
-      mode === "permanent" ||
-      mode === "stack_spell" ||
-      mode === "card_in_graveyard"
-    ) {
+    const mode = alt ? alt.target_mode : card.target_mode;
+    // #1211: the allowlist moved into targeting.ts as
+    // opensTargetPicker. It was written out here as a chain of `===`
+    // and a mode missing from it does not fall back to a picker — it
+    // falls THROUGH to an immediate cast_spell with no targets, which
+    // the server then refuses, with nothing on screen to say why. One
+    // list, next to the type that declares the vocabulary, and a unit
+    // test over it.
+    if (opensTargetPicker(mode)) {
       beginTargeting(card, mode, choices, alt);
       return;
     }

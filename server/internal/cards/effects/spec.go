@@ -90,8 +90,12 @@ type Spec struct {
 	//                  (Lightning Bolt, Shock, Helix)
 	//   "player"       seated player only
 	//   "creature"     battlefield creature only
-	//   "stack_spell"  an item currently on the stack (Counterspell,
+	//   "stack_spell"  a SPELL currently on the stack (Counterspell,
 	//                  Negate, Swan Song)
+	//   "stack_ability" an activated or triggered ABILITY on the
+	//                  stack (Stifle, Strionic Resonator) — #1211
+	//   "stack_item"   either (Disallow, Voidslime, Deflecting Swat,
+	//                  Bolt Bend, Tale's End) — #1211
 	//   "card_in_graveyard" a card in any graveyard (Regrowth, Eternal
 	//                       Witness)
 	//

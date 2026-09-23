@@ -660,6 +660,17 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		// Source is the counter; Target the countered item.
 		base.CardID = uuidStringOrEmpty(ev.Source)
 		base.Target = uuidStringOrEmpty(ev.Target)
+		// #1211, CR 701.5c: a countered ABILITY has no card of its
+		// own — its id names a StackMeta entry the client cannot look
+		// up, and its source permanent is still standing on the
+		// battlefield. So the item's label goes where the target name
+		// would have, which is what the stack overlay prints for the
+		// same item. Only the ability path sets Label, which is what
+		// tells the two apart here.
+		if ev.Label != "" {
+			base.Target = ""
+			base.Label = ev.Label
+		}
 		return base, true
 
 	case game.EventZoneMove:
@@ -1310,6 +1321,11 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 	case LogFizzle:
 		return fmt.Sprintf("%s was countered by game rules (no legal targets)", card)
 	case LogCounter:
+		if e.Target == "" && e.Label != "" {
+			// #1211: a countered ABILITY, named by its label — it has
+			// no card of its own for targetName to resolve.
+			return fmt.Sprintf("%s countered %s", card, e.Label)
+		}
 		return fmt.Sprintf("%s countered %s", card, target)
 	case LogZone:
 		return renderZoneText(e, card)

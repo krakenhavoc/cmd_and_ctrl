@@ -1616,7 +1616,19 @@ func (g *Game) exitSpellFromStackLocked(spellID uuid.UUID, dst *ZoneRef, fallbac
 	return err
 }
 
-// counterAbilityLocked is the lock-free body of CounterAbility.
+// counterAbilityLocked is the lock-free body of CounterAbility, and
+// the ONE place an ability leaves the stack without resolving.
+//
+// CR 701.5c: "an ability that's countered doesn't go anywhere" — it is
+// a DELETION, not a zone change. There is no routeCardToZoneLocked
+// call here and there must not be one: the ability's source permanent
+// is standing on the battlefield and stays there, the item itself has
+// no card, and so none of the exits a countered SPELL contends with
+// (the CR 903.9 commander window, flashback's CR 702.34a exile, a
+// destination override) has anything to act on. That is also why
+// CounterTargetToZoneForEffect's `dst` is meaningless for an ability
+// and routes here unchanged.
+//
 // Caller must hold g.mu.
 func (g *Game) counterAbilityLocked(abilityID uuid.UUID) error {
 	item, ok := g.StackMeta[abilityID]
@@ -1626,13 +1638,27 @@ func (g *Game) counterAbilityLocked(abilityID uuid.UUID) error {
 	if item.Kind != StackItemActivated && item.Kind != StackItemTriggered {
 		return ErrCardNotOnStack
 	}
-	source := item.SourceCardID
+	source, controller, label := item.SourceCardID, item.Controller, item.Label
 	delete(g.StackMeta, abilityID)
 	g.recomputeSplitSecondLocked()
+	// #1211: the event shape events.go documents — Source is THE
+	// COUNTER, Target is the countered item. This used to put the
+	// countered ability's own source card in Source, which the game
+	// log reads as "who countered it": the line came out as "Llanowar
+	// Elves countered <uuid>", the victim in the attacker's place and
+	// an unresolvable stack-item id in the victim's. The emit site
+	// does not know the counter (CounterTargetForEffect is called from
+	// a resolving effect that has its own item), so Source is left
+	// unset exactly as the spell path leaves it, and what the ability
+	// CAN say travels instead: the permanent whose ability it was, and
+	// the item's label, which is the only name a countered ability has
+	// (protocol/log.go renders it).
 	g.EmitEvent(Event{
 		Kind:   EventCounterSpell,
-		Source: source,
+		Actor:  controller,
+		CardID: source,
 		Target: abilityID,
+		Label:  label,
 	})
 	return nil
 }
