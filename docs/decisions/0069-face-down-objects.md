@@ -138,6 +138,12 @@ entered:
 | `foretold` | the **owner** | CR 702.143d |
 | `manifested`, `morphed`, `disguised`, `cloaked` | the **controller** | CR 708.5 |
 
+> **2026-09-23 — a row added by [ADR 0091](0091-hideaway.md) (#1331).**
+> `hideaway` | the **controller of the permanent that exiled it** | CR 702.75a.
+> The first row whose answer is another object's controller, so it is read
+> through `Card.HiddenBy` and kept current by a state-check sweep as that
+> permanent changes hands; CR 406.3 keeps anyone who has already looked.
+
 `faceDownViewersLocked(c)` is that table and it is called from exactly the two
 places that put a card into a face-down state (the exile route, decision 5, and
 the battlefield entry, decision 7). The old `ClearKnown()` is the
