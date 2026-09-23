@@ -242,6 +242,25 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q activation restriction %q forbids nothing", spec.Name, r.Label))
 		}
 	}
+	// #1208, ADR 0066's and ADR 0073's amendments of 2026-09-23: the
+	// same two checks again for an activation-timing statement, plus
+	// the one CastTimings needs — a statement that says nothing.
+	// TimingNormal is the zero value and the read ignores it, so a
+	// Spec slot carrying one is a card file that meant to say
+	// something and failed SILENTLY. The Label is what the next
+	// reader matches against the oracle text; a nil Covers is a
+	// statement about nothing.
+	for i, t := range spec.ActivationTimings {
+		if t.Timing == game.TimingNormal {
+			panic(fmt.Sprintf("effects.Register: %q activation timing %d says nothing — set TimingFlash, TimingSorcery or TimingYourTurnOnly", spec.Name, i))
+		}
+		if t.Label == "" {
+			panic(fmt.Sprintf("effects.Register: %q activation timing %d has no printed Label", spec.Name, i))
+		}
+		if t.Covers == nil {
+			panic(fmt.Sprintf("effects.Register: %q activation timing %q covers nothing", spec.Name, t.Label))
+		}
+	}
 	// #1195: the same bargain for a timing statement. TimingNormal is
 	// the zero value and says nothing, so a Spec slot carrying one is
 	// a card file that meant to say something and did not — and the

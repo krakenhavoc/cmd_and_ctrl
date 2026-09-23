@@ -1513,3 +1513,232 @@ client greys them differently:
   cast this from here", and "not at this timing" is a reason it is false, not
   a second bit. A client that wants to distinguish "banned" from "not yet"
   already has `cant_cast` for the first.
+
+---
+
+## Amendment — 2026-09-23 (#1208): the ACTIVATION twin, and why it is a second type
+
+The 2026-09-22 amendment above built CR 307.1's per-player half for CASTS and
+named its sibling as out of scope: *"Activated abilities. …
+`ActivatedAbility.SorcerySpeed` is a per-ABILITY flag read by `activated.go`,
+and a per-player statement about activations would want the same two homes and
+the same one read this amendment builds for casts."* This amendment builds it,
+and it turns out to want the same SHAPE, one of the two homes, and a type of
+its own.
+
+### The cards, which are three and not the three the issue predicted
+
+`docs/engine-seams.md`'s closed row and issue #1208 both name Grand Abolisher
+and the "activate abilities only as a sorcery" family. **Both were stale by the
+time this was built.** Grand Abolisher's activation half — "During your turn,
+your opponents can't activate abilities of artifacts, creatures, or
+enchantments" — landed with #1210 as an `ActivationRestriction`, because it is a
+BAN and not a timing statement, and the card ships `full`. Every other printed
+restriction on somebody's activations says "can't be activated" (Cursed Totem,
+Linvala, Collector Ouphe, Pithing Needle, Karn, Damping Matrix) and goes through
+the same gate.
+
+What has no home is the GRANT, and the whole printed population is eight cards,
+of which three are in scope here:
+
+- **The Wandering Emperor** — "As long as The Wandering Emperor entered this
+  turn, you may activate her loyalty abilities any time you could cast an
+  instant." `caveats` since S14 for exactly this, and the seam's only caveated
+  card.
+- **Teferi, Master of Time** — "You may activate loyalty abilities of Teferi on
+  any player's turn any time you could cast an instant." The same clause with
+  no condition.
+- **Leonin Shikari** — "You may activate equip abilities any time you could
+  cast an instant."
+
+The other five are Forge Anew (the same equip clause plus a cost gap), Teferi,
+Temporal Archmage and Teferi's Talent (an EMBLEM carries the statement), Jace's
+Machinations, and an Un-set card. Two of those want a second home and are named
+under Scope below.
+
+### Decision 1 — two TYPES, one vocabulary
+
+`game.ActivationTiming` (`server/internal/game/activation_timing.go`) is not
+`CastTimingRule` with a "casts / activations / both" scope field, and the reason
+is the homes rather than taste:
+
+```go
+type ActivationTiming struct {
+    Label      string
+    Timing     GrantTiming                  // ADR 0066's enum, unchanged
+    Covers     func(q ActivationQuery) bool // #1210's query, unchanged
+    ActiveWhen Designation                  // ADR 0071's gate, unchanged
+}
+```
+
+A cast timing statement has a STORED home — Emergence Zone's "this turn",
+Teferi, Time Raveler's +1 — so it must be pure data, which is why its narrowing
+is a `PermissionFilter`, a `ZoneKind` and a `CastTimingAffects` enum. An
+activation timing statement has only a DERIVED home (Decision 5), so `Covers`
+can be a PREDICATE — and it has to be, because what the printed cards narrow on
+is the ability's SOURCE and the ABILITY, two things a filter over *the object
+being cast* says neither of. Folding both into one type would have given every
+field two meanings and made every read start by asking which half it was
+looking at, which is the argument ADR 0073's #1210 amendment already makes for
+`ActivationQuery` not being a widened `CastQuery`.
+
+So the shape is copied and the type is not. `GrantTiming` gains no value,
+`ActivationQuery` and `ActivationAbility` are #1210's, the collection walk is
+`ActivationRestrictionsForCard`'s line for line, and the fold order is this
+amendment's §3. There is no `Affects` enum here: "you" is
+`q.Controller == q.Source.Controller`, written once in the two constructors in
+`cards/effects/activation_timing.go`, which is the spelling
+`OpponentsSourcesCantActivate` next door already uses.
+
+### Decision 2 — the narrowing is asked of the query, not of a filter
+
+Issue #1208 asked what `PermissionFilter` would filter on here, and the answer
+is that it would filter on the wrong noun: on the cast side it narrows the
+object being cast, and on this side the two things a card narrows are
+
+- **which SOURCES** — "loyalty abilities of Teferi" (`q.Card`), and
+- **which ABILITIES** — "loyalty abilities", "equip abilities" (`q.Ability`).
+
+Both are already fields of `ActivationQuery`, so `Covers` asks them. What
+`ActivationAbility` gained is two bools and a third:
+
+```go
+SorcerySpeed bool // CR 602.5d, the ability's printed clause
+Loyalty      bool // CR 606.3, derived from AbilityCost.Loyalty
+Equip        bool // CR 702.6, set by EquipAbility
+```
+
+`Loyalty` is the field ADR 0073's #1210 scope note predicted — *"a restriction
+on LOYALTY abilities as a class … is a bool on `ActivationAbility`, not a second
+gate"* — arriving for the timing read first. `ActivationAbilityOf(shape)` is the
+one place a shape becomes an identity, so CR 606.3 cannot be spelled differently
+in the three callers. `Equip` names a KEYWORD rather than adding a kind: equip
+stays an ordinary activated ability, and `EquipOnlyAbility` plus
+`TestEveryEquipAbilityIsMarked` exist because three cards wrote their narrowed
+equip out by hand and a hand-written equip is one that can forget a field.
+
+### Decision 3 — a mana ability is not in this window at all
+
+Not a carve-out, and not #1210's answer. CR 605.3a gives a mana ability its own
+window — whenever its controller has priority, AND whenever a payment is being
+made, inside a cost, mid-resolution — and that is not the CR 602.5d window a
+timing statement opens or narrows. So `ActivationTimingOpenLocked` returns true
+for `Ability.Mana` before it walks anything: a fast POSITIVE, and a rule rather
+than a safety valve.
+
+The card the issue worried about is real and is already handled elsewhere: Grand
+Abolisher stops mana abilities too, with no "unless they're mana abilities"
+clause, and it does so through `ActivationGateLocked`, where #1210 put the mana
+decision **on the card** because half the printed cards exempt them and half do
+not. The two functions differ here because they answer different questions: the
+gate says an activation is BANNED and the card decides whether that reaches mana
+abilities; this read says an activation is not open YET, and for a mana ability
+the question does not arise.
+
+### Decision 4 — a grant DOES reach loyalty abilities
+
+Issue #1208 proposed the opposite, on the grounds that CR 606.3 is a rule and
+not a printed clause any effect overrides. CR 101.1 says otherwise, and so do
+the cards: both planeswalkers on this row print exactly "you may activate
+loyalty abilities … any time you could cast an instant". A read that refused to
+reach them would make the only two printed users of the seam unwritable.
+
+What must not happen is a statement about "abilities" generally silently opening
+a loyalty ability, and that falls out of the predicate rather than out of a rule
+anyone has to remember: both constructors test `q.Ability.Loyalty`, and a
+statement that does not ask is not about them. CR 606.3's OTHER half — one
+loyalty activation per turn per planeswalker — is untouched and keeps its own
+check, before this one.
+
+### Decision 5 — ONE home, because that is all the cards want
+
+The cast side has two homes because Emergence Zone sacrifices itself and the
+permission outlives it. Nothing on this side does: every card that prints an
+activation timing statement is a permanent whose static says it, for as long as
+it is there. So `Spec.ActivationTimings` → `CardDef.ActivationTimings` →
+`CatalogActivationTimings`, walked per query through **`CatalogAbilityKey`**,
+and nothing is stored — no `PlayerStatic` payload, no fourth kind of entry on
+#1197's slice, no sweep, no clone, no snapshot field. Two Shikari compose
+(harmlessly — the verdict is a bit), a source under a CR 613.1f ability-removing
+effect stops saying it, and one bounced in response shuts the window before the
+activation is validated.
+
+"As long as she entered this turn" rides the derivation rather than a duration:
+`game.EnteredThisTurn` (#1009's per-object entry tally), read live. It is
+deliberately **not** `Card.SummonedThisTurn`, which survives until its
+controller's untap step — and the Emperor has flash, so she lands on somebody
+else's turn nearly every time, and the marker would have given her instant-speed
+loyalty abilities for a whole turn cycle. `Designation` could not have expressed
+it either: `Designation.Active(c Card)` takes a Card and nothing else, and
+"entered this turn" lives on the Game.
+
+### Decision 6 — ONE read, and CR 101.2 decides the order inside it
+
+```go
+func (g *Game) ActivationTimingOpenLocked(activator uuid.UUID, card Card,
+    zone ZoneKind, ability ActivationAbility) bool
+```
+
+1. **Mana abilities are not asked about** (Decision 3).
+2. **The ability's own timing** — `SorcerySpeed` (CR 602.5d) or `Loyalty`
+   (CR 606.3) answer to the sorcery window; everything else is instant-speed
+   (CR 602.5a).
+3. **The per-player GRANTS.**
+4. **The per-player RESTRICTIONS, last, because CR 101.2 says "can't" beats
+   "can".** Nothing declares them today; the placement is the rule stated once
+   rather than a rule to be discovered the day a card does. `TimingYourTurnOnly`
+   refuses outright rather than narrowing, exactly as `CastTimingOpenLocked`
+   reads it.
+
+Then a shut window means `sorcerySpeedOpenLocked` must be open. It sits BESIDE
+`ActivationGateLocked` rather than inside it, for the reason ADR 0073's #1195
+note gives about the cast pair: "banned" and "not yet" are different answers and
+`cant_activate` means the first.
+
+### Decision 7 — four callers, and the wire grows one field
+
+`ActivateCatalogAbility`, `legal.abilityMovesForSource` (which dropped the
+`speed` parameter it threaded through two functions to keep a copy of the rule),
+`protocol.viewOfActivatedAbilities`, and **`ActivateLoyalty`** — the sandbox
+manual loyalty verb, which `internal/legal` skips by design but which is still
+CR 606.3's window, and which a statement about "loyalty abilities of
+planeswalkers you control" reaches on a walker the catalog has never heard of.
+The same argument `gatherTapSources` is the activation gate's fourth caller
+under. Its sorcery-speed check moved below the battlefield lookup, because the
+read needs the object.
+
+**The wire grows `activated_abilities[i].timing_closed`**, where the cast side
+needed nothing. `castable_here` already existed and already meant the engine's
+answer; the activation rows carried only `sorcery_speed`, the ability's PRINTED
+clause, and `client/src/lib/timing.ts` re-derived CR 307.1 to grey them — its
+own comment called it *"the LAST rules derivation left in this file"*. A
+per-player statement is board state the client cannot see, so the bit has to
+come from the server. It is NEGATIVE and `omitempty`, so it is absent on every
+instant-speed row; the client still writes the SENTENCE (no priority, split
+second, a non-empty stack, somebody else's turn) from the snapshot, because that
+is in the snapshot and is what a player wants to read. The sandbox loyalty rows,
+which have no ability row at all, keep the client-side predicate.
+
+### Scope, stated
+
+- **The EMBLEM home.** Teferi, Temporal Archmage's −10 and Teferi's Talent both
+  make an emblem that says "you may activate loyalty abilities of planeswalkers
+  you control on any player's turn any time you could cast an instant". An
+  emblem is an object that exists for as long as the statement does, so it is
+  the DERIVED home one zone over — the walk would gain `Player.Emblems` beside
+  the battlefield, and `EmblemSpec` a slot. Not built: `EmblemSpec` copies only
+  `Static` and `Triggered` today, the one card behind it also needs a
+  library-look prompt that does not exist for its +1, and a slot with no user is
+  a slot that drifts.
+- **A RESTRICTION with a duration**, and a restriction at all. No catalogued
+  card declares `TimingSorcery` or `TimingYourTurnOnly` on this side, because a
+  printed activation restriction says "can't be activated". The fold is written
+  and tested; the constructors are not, and a card that needs one should add the
+  constructor beside the two that exist.
+- **"During your turn" as a narrowing** exists on the constructor
+  (`EquipAbilitiesAtInstantSpeed`'s `onlyDuringYourTurn`) and is unused: Forge
+  Anew prints it, and also prints a `{0}` equip cost, which is the
+  "cost modification for activated abilities" row and not this one.
+- **Thousand-Year Elixir's "as though those creatures had haste"** is a
+  different seam — CR 302.6's tap-symbol restriction, not CR 602.5's window —
+  and nothing here touches it.

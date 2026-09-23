@@ -112,11 +112,14 @@ describe("abilityBlocked and condition_unmet", () => {
   it("lets a shut sorcery-speed window keep its own, more specific reason", () => {
     const card: CardView = { instance_id: "s", name: "Speaker", owner: "a", controller: "a" };
     const v = view([card], "upkeep");
-    const reason = abilityBlocked({ sorcery_speed: true, condition_unmet: true }, false, false, {
-      card,
-      view: v,
-      viewerID: "a",
-    });
+    // #1208: `timing_closed` is the server's verdict and what the
+    // row greys on; `sorcery_speed` alone is only the printed clause.
+    const reason = abilityBlocked(
+      { sorcery_speed: true, timing_closed: true, condition_unmet: true },
+      false,
+      false,
+      { card, view: v, viewerID: "a" },
+    );
     expect(reason).toBe("Sorcery-speed only");
   });
 

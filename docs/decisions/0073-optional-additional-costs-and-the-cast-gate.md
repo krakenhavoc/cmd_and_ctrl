@@ -833,3 +833,64 @@ Three things that follow, and each is a decision rather than a detail:
 
 `PaidCost.IsZero` grows the field so the sparse common case stays sparse, and
 the record is copied by value like every other scalar on it.
+
+---
+
+## Note (2026-09-23, #1208): the activation TIMING read sits beside the activation gate
+
+The 2026-09-22 note above says of the cast pair that `CastGateLocked` and
+`CastTimingOpenLocked` stay apart because "banned" and "not yet" are different
+answers to the player. The activation side now has the same pair, in the same
+relationship: `game.ActivationTimingOpenLocked`
+(`server/internal/game/activation_timing.go`,
+[ADR 0066](0066-granted-cast-and-play-permissions.md)'s 2026-09-23 amendment)
+answers CR 602.5d's and CR 606.3's "may this player begin to activate this
+ability right now", and it is deliberately **not** folded into
+`ActivationGateLocked`. `cant_activate` means a ban — Cursed Totem, Linvala,
+Pithing Needle, Grand Abolisher — and putting a timing verdict there would put a
+printed clause on every equip ability on somebody else's turn.
+
+Three things in this amendment's own §1 changed to carry it, and all three are
+additions rather than edits:
+
+- **`ActivationAbility` grew `SorcerySpeed`, `Loyalty` and `Equip`.** `Loyalty`
+  is the bool **Scope, stated** predicted for a future restriction on loyalty
+  abilities as a class — *"a bool on `ActivationAbility`, not a second gate"* —
+  arriving for the timing read first, and derived from
+  `AbilityCost.Loyalty != nil` so a catalog entry still cannot forget CR 606.3.
+  The gate reads none of the three: a ban does not care how fast the ability is.
+- **`ActivationAbilityOf(shape)`** is now the one place an
+  `ActivatedAbilityShape` becomes the identity both reads take, so the two
+  cannot be handed different answers to "which ability is this". Both call sites
+  in `ActivateCatalogAbility` and in `legal.abilityMovesForSource` build it once
+  and pass it twice.
+- **`ActivationQuery` is unchanged**, and that is the point: the timing
+  statement's `Covers` predicate is handed the same query a restriction's
+  `Forbids` is, with the same read-only contract, so a card file writes one
+  vocabulary. `ActivationTiming` mirrors `ActivationRestriction` field for
+  field (a printed `Label`, a predicate, an `ActiveWhen` designation gate) and
+  `ActivationTimingsForCard` mirrors `ActivationRestrictionsForCard` line for
+  line.
+
+**The order at the announce is unchanged and still ours rather than the rules':**
+`ActivateCatalogAbility` asks the CR 113.6 zone check, then the GATE, then the
+timing read, then the exhaust record, then the CR 602.1b condition. The gate
+still runs first because "can't be activated" is the answer that will still be
+true next turn.
+
+**§2's caller list gains a fifth, for the timing read only.** `ActivateLoyalty`
+(`mutations.go`) is the sandbox manual loyalty verb — not a catalogued ability,
+skipped by `internal/legal` by design — and it is still CR 606.3's window. A
+statement about "loyalty abilities of planeswalkers you control" reaches a
+planeswalker the catalog has never heard of, which is exactly the seat that verb
+exists for, so it reads the same function. Its sorcery-speed check moved below
+the battlefield lookup because the read needs the object; nothing else about
+that verb's order changed.
+
+**The view stamp is a sibling of §3's, not a spelling of it.**
+`ActivatedAbilityView.timing_closed` is negative and `omitempty`, absent on
+every instant-speed row, and it is what the client greys on;
+`cant_activate` keeps its own meaning and its own reason string. The two
+recover differently — a shut window opens next main phase, a ban ends when
+somebody kills the artifact — which is the same argument §3 makes for
+`cant_activate` being distinct from `condition_unmet` and `exhausted`.

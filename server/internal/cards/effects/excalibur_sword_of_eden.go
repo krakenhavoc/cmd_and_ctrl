@@ -54,13 +54,8 @@ func init() {
 			GrantToAttached("vigilance"),
 		},
 		Activated: []ActivatedAbility{
-			{
-				Label:        "Equip legendary creature {2}",
-				Cost:         ManaCost("{2}"),
-				Targets:      TargetCreature("target legendary creature you control", YouControl(), Legendary()),
-				SorcerySpeed: true,
-				Effect:       AttachSourceToTarget,
-			},
+			EquipOnlyAbility("Equip legendary creature {2}", "{2}",
+				TargetCreature("target legendary creature you control", YouControl(), Legendary())),
 		},
 	})
 }

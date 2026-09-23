@@ -2045,6 +2045,29 @@ type ActivatedAbilityView struct {
 	// until the object is new, and a restriction ends when somebody
 	// kills the artifact.
 	CantActivate string `json:"cant_activate,omitempty"`
+	// TimingClosed says the engine will refuse this activation RIGHT
+	// NOW for timing (CR 602.5d, CR 606.3) — the stamp of
+	// game.ActivationTimingOpenLocked, the one read the activation
+	// path and the bot enumerator also ask (#1208).
+	//
+	// It is the row's own verdict, where SorcerySpeed above is only
+	// the ability's printed clause. The two differ exactly where a
+	// per-player statement speaks: The Wandering Emperor's loyalty
+	// rows carry `sorcery_speed` and NOT this on the turn she
+	// entered, and a Leonin Shikari's controller's equip rows carry
+	// `sorcery_speed` and not this at any time.
+	//
+	// NEGATIVE, so `omitempty` keeps it off every row the engine has
+	// no objection to — which is every instant-speed ability, always.
+	// Present on a sorcery-speed or loyalty row whenever the window
+	// is shut, which is the common state of such a row and the one
+	// the client already greys.
+	//
+	// Evaluated once with the ability's CONTROLLER as "you" and sent
+	// to every viewer, exactly as ConditionUnmet is: whose turn it
+	// is, what is on the stack and what the battlefield says are all
+	// public.
+	TimingClosed bool `json:"timing_closed,omitempty"`
 	// LoyaltyCost is the loyalty component of a planeswalker's
 	// loyalty ability: +N / 0 / −N (CR 606.4). A POINTER because [0]
 	// is a real printed cost and `omitempty` would erase it — the
@@ -6247,6 +6270,15 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		// — but the client greys on this flag, so stamp it.
 		if a.Cost.Loyalty != nil {
 			v.SorcerySpeed = true
+		}
+		// #1208, CR 602.5d / CR 606.3: the row's own timing verdict,
+		// from the one read ActivateCatalogAbility and internal/legal
+		// ask. Not derived from SorcerySpeed above — a per-player
+		// statement can open a sorcery-speed row (The Wandering
+		// Emperor, Leonin Shikari) or shut an instant-speed one, and
+		// the printed clause says neither.
+		if !g.ActivationTimingOpenLocked(caster, c, zone, game.ActivationAbilityOf(a)) {
+			v.TimingClosed = true
 		}
 		// #743: the same closure ActivateCatalogAbility gates on,
 		// with the controller as "you" — `caster` is the permanent's

@@ -3138,9 +3138,6 @@ func (g *Game) ActivateLoyalty(playerID, planeswalkerID uuid.UUID, label string,
 	if g.playerByIDLocked(playerID) == nil {
 		return ErrPlayerNotFound
 	}
-	if !g.sorcerySpeedOpenLocked(playerID) {
-		return ErrSorcerySpeedRequired
-	}
 	if g.LoyaltyActivatedThisTurn[planeswalkerID] {
 		return ErrLoyaltyAlreadyActivated
 	}
@@ -3154,6 +3151,18 @@ func (g *Game) ActivateLoyalty(playerID, planeswalkerID uuid.UUID, label string,
 	}
 	if pw == nil {
 		return ErrCardNotFound
+	}
+	// CR 606.3's sorcery window, through the read the catalogued
+	// activation path shares (#1208). It moved BELOW the lookup
+	// because the read needs the object: a statement about "loyalty
+	// abilities of planeswalkers you control" is asked of THIS
+	// permanent, and this sandbox verb is the one place a walker the
+	// catalog has never heard of can have a loyalty ability
+	// activated at all. Nothing else about the order changed — the
+	// once-per-turn flag is still the first thing asked, and a
+	// missing permanent still reports ErrCardNotFound.
+	if !g.ActivationTimingOpenLocked(playerID, *pw, ZoneBattlefield, ActivationAbility{Label: label, Loyalty: true}) {
+		return ErrSorcerySpeedRequired
 	}
 	// CR 606.2 / 606.3: a loyalty ability belongs to a planeswalker,
 	// and only its controller may activate it. Neither was checked

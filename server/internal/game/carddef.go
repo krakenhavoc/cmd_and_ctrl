@@ -121,6 +121,19 @@ type CardDef struct {
 	// from the battlefield through CatalogAbilityKey, never from a
 	// card's own zone. #1210, ADR 0073's amendment of 2026-09-22.
 	ActivationRestrictions []ActivationRestriction
+	// ActivationTimings are the per-player activation-TIMING
+	// statements this PERMANENT makes while it is on the battlefield
+	// (#1208) — The Wandering Emperor's "you may activate her
+	// loyalty abilities any time you could cast an instant", Leonin
+	// Shikari's "you may activate equip abilities any time you could
+	// cast an instant". Read from the battlefield through
+	// CatalogAbilityKey; see activation_timing.go.
+	//
+	// The activation twin of CastTimings below, and it has only this
+	// one home: nothing stores an activation-timing statement,
+	// because every card that prints one is a permanent that says it
+	// for as long as it is there.
+	ActivationTimings []ActivationTiming
 
 	CantBeCountered bool
 	NoMaxHandSize   bool
@@ -380,6 +393,12 @@ func init() {
 	CatalogActivationRestrictions = func(key string) []ActivationRestriction {
 		if d := catalogDef(key); d != nil {
 			return d.ActivationRestrictions
+		}
+		return nil
+	}
+	CatalogActivationTimings = func(key string) []ActivationTiming {
+		if d := catalogDef(key); d != nil {
+			return d.ActivationTimings
 		}
 		return nil
 	}
