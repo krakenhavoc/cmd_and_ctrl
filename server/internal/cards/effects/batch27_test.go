@@ -192,9 +192,13 @@ func TestBatch27CardsAreRegistered(t *testing.T) {
 		b27CuriousAltisaurOracle:       "Curious Altisaur",
 		b27SanctumOfUginOracle:         "Sanctum of Ugin",
 		b27DragonMageOracle:            "Dragon Mage",
+		// #1213 put the #660 discard component on
+		// effects.ManaAbilityCost, so the batch's second declared
+		// skip is a registered card now.
+		"ba95f24d-42da-48ce-bcf1-1b7c4b3c45b5": "Skirge Familiar",
 	}
-	if len(want) != 27 {
-		t.Fatalf("the batch registers 27 cards, the table lists %d", len(want))
+	if len(want) != 28 {
+		t.Fatalf("the batch registers 28 cards, the table lists %d", len(want))
 	}
 	for oracle, name := range want {
 		spec, ok := Lookup(oracle)
@@ -206,13 +210,14 @@ func TestBatch27CardsAreRegistered(t *testing.T) {
 			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
 		}
 	}
-	// The two declared skips must stay out until their seam lands: a
+	// The remaining declared skip stays out until its seam lands: a
 	// choose-a-card-from-hand entry choice (Ugin's Labyrinth's
-	// imprint) and a discard-a-card cost on a mana ability (Skirge
-	// Familiar).
+	// imprint).
+	//
+	// Skirge Familiar LEFT this list in #1213, which put the #660
+	// discard component on effects.ManaAbilityCost.
 	for oracle, name := range map[string]string{
 		"d565cd3d-68d4-4039-9e45-7e69e31d0ffb": "Ugin's Labyrinth",
-		"ba95f24d-42da-48ce-bcf1-1b7c4b3c45b5": "Skirge Familiar",
 	} {
 		if _, ok := Lookup(oracle); ok {
 			t.Errorf("%s is declared skipped on #389 but is registered — update the issue", name)

@@ -42,9 +42,21 @@ func latestOptionPickFor(g *game.Game, chooser uuid.UUID) *game.PendingChoice {
 // latestChooseCardsFor returns the newest open choose-cards prompt
 // owed by a seat, or nil.
 func latestChooseCardsFor(g *game.Game, chooser uuid.UUID) *game.PendingChoice {
+	return latestChoiceOfKindFor(g, game.PendingChoiceChooseCards, chooser)
+}
+
+// latestRevealPickFor is the same read for #1214's reveal_pick — "an
+// opponent picks from a set you revealed", which is what a pile
+// split's first leg has been since that kind existed.
+func latestRevealPickFor(g *game.Game, chooser uuid.UUID) *game.PendingChoice {
+	return latestChoiceOfKindFor(g, game.PendingChoiceRevealPick, chooser)
+}
+
+// latestChoiceOfKindFor is the body both of those share.
+func latestChoiceOfKindFor(g *game.Game, kind game.PendingChoiceKind, chooser uuid.UUID) *game.PendingChoice {
 	var out *game.PendingChoice
 	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == game.PendingChoiceChooseCards && c.Chooser == chooser {
+		if c != nil && c.Kind == kind && c.Chooser == chooser {
 			out = c
 		}
 	}
@@ -179,7 +191,7 @@ func TestPileSplitChainsToTheControllersPick(t *testing.T) {
 		}
 	})
 
-	split := latestChooseCardsFor(g, opp.ID)
+	split := latestRevealPickFor(g, opp.ID)
 	if split == nil {
 		t.Fatalf("the split is asked of the opponent: %+v", g.PendingChoices)
 	}
@@ -192,8 +204,8 @@ func TestPileSplitChainsToTheControllersPick(t *testing.T) {
 	if latestOptionPickFor(g, me.ID) != nil {
 		t.Fatal("the controller is not asked until the split is answered")
 	}
-	if err := g.ResolveChooseCards(split.ID, opp.ID, cards[:1]); err != nil {
-		t.Fatalf("ResolveChooseCards: %v", err)
+	if err := g.ResolveRevealPick(split.ID, opp.ID, cards[:1]); err != nil {
+		t.Fatalf("ResolveRevealPick: %v", err)
 	}
 
 	pick := latestOptionPickFor(g, me.ID)

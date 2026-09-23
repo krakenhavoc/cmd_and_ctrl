@@ -16,16 +16,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // body. The upkeep trigger has no actor test (Tendershoot Dryad's
 // shape).
 //
-// One sandbox simplification, declared, weaker than printed:
-//
-//   - The Pest's "when this token dies, you gain 1 life" is not on
-//     the token. A token template carries no triggered abilities and
-//     a token has no oracle ID for the catalog to key one on, so the
-//     Pest is a 1/1 body and nothing more. Registering a synthetic
-//     spec for the token would publish it in the public catalogue as
-//     a card, which is why it is not done. See the "Triggered and
-//     static abilities on non-copy tokens" row in
-//     docs/engine-seams.md — still open.
+// The Pest's own "when this token dies, you gain 1 life" ships since
+// ADR 0083 (#1248). It is a catalog template (`token:pest`, declared
+// in tokens.go and shared with Sedgemoor Witch) and its trigger is
+// found through `game.CatalogKey`'s token-key fallback like a printed
+// card's, so it fires from the graveyard in the beat before CR 704.5d
+// removes the token. It does NOT publish the Pest in the catalogue
+// page: a token template is filed in `defs`, never in `registry`,
+// which is what `All()` counts. Before that this card shipped as
+// `caveats` with a 1/1 body and nothing more.
 //
 // The activated ability IS implemented. "Activate only once each
 // turn" reads OncePerTurnActivation, which gates the OFFER (the
@@ -42,15 +41,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Beledros can pay 10 life and untap lands the same turn it enters.
 func init() {
 	Register(Spec{
-		OracleID:     "90194ff1-db61-463f-b5a3-15cd85311d0e",
-		Name:         "Beledros Witherbloom",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The Pest tokens don't gain you 1 life when they die.",
-		},
+		OracleID:        "90194ff1-db61-463f-b5a3-15cd85311d0e",
+		Name:            "Beledros Witherbloom",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			AtEachUpkeep("Beledros Witherbloom — create a Pest", Do(CreateToken{Template: TokenCard("1/1 black and green Pest"), N: 1})),
+			AtEachUpkeep("Beledros Witherbloom — create a Pest", Do(CreateToken{Template: PestToken(), N: 1})),
 		},
 		Activated: []ActivatedAbility{{
 			Label:     "Beledros Witherbloom — untap all lands you control",

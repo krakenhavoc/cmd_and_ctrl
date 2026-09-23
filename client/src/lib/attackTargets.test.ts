@@ -149,6 +149,10 @@ describe("the declare-attacker menu", () => {
     const attack = sections.flatMap((s) => s.items).find((i) => i.id === "combat-attack")!;
     const row = (attack.items ?? []).find((i) => i.id === "combat-attack-c-walker")!;
     expect(row.action?.type).toBe("declare_attacker");
-    expect(row.action?.params).toEqual({ attacker: "c-bear", target: "c-walker" });
+    expect(row.action?.params).toEqual({
+      attacker: "c-bear",
+      target: "c-walker",
+      auto_tap: true,
+    });
   });
 });

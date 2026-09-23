@@ -71,3 +71,34 @@ func TokenKey(name string) string {
 // contents — the snapshot's census, and any diagnostic that wants to
 // tell a token's entry from a card's.
 func IsTokenKey(key string) bool { return strings.HasPrefix(key, TokenKeyPrefix) }
+
+// CatalogTokenText returns a token template's printed ability text, or
+// "" for a key that is not a token's or a token that prints nothing.
+// Set by the effects package at boot like every other slot.
+var CatalogTokenText func(key string) string
+
+// TokenTextForCard is the printed ability text of the token `c` is
+// minted from, for the board and the wire (ADR 0083 decision 6).
+//
+// Empty for every printed card and for a vanilla token, which is what
+// makes it an additive field: only a token whose template declares an
+// ability has anything to say here.
+//
+// CatalogKey, not CatalogAbilityKey, and deliberately: this is what
+// the token PRINTS. A Torpor Orb that silences a Dragon Egg does not
+// rub the words off it, and the player still needs to read what the
+// permanent would do — the same reason the client keeps rendering a
+// silenced card's oracle text. CR 707.2 rides along for free: a copy
+// of a token carries the token key, so it shows the token's text,
+// while a token copying Llanowar Elves has an oracle ID, answers ""
+// here and renders Llanowar Elves' own printing.
+func TokenTextForCard(c Card) string {
+	if CatalogTokenText == nil {
+		return ""
+	}
+	key := CatalogKey(c)
+	if !IsTokenKey(key) {
+		return ""
+	}
+	return CatalogTokenText(key)
+}

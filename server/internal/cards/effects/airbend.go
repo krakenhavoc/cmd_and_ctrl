@@ -113,3 +113,22 @@ func (a Airbend) Apply(ctx *Context) error {
 		CostOverride: AirbendCost,
 	}.Apply(ctx)
 }
+
+// AirbendOtherTarget is "airbend up to one OTHER target …" — the
+// trigger body Aang, the Last Airbender, Aang, Swift Savior and Avatar
+// Yangchen all share: read the item's first target and decline it if
+// there is none (CR 608.2b, "up to one" answering zero) or if it names
+// the source itself ("other" — enforced here rather than in the
+// target clause's predicate, because a TargetSpec is built once at
+// Register, before an InstanceID exists to exclude). Otherwise airbend
+// it.
+func AirbendOtherTarget(g *game.Game, item *game.StackItem) error {
+	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+		return nil
+	}
+	target := item.Targets[0]
+	if target.ID == item.SourceCardID {
+		return nil
+	}
+	return Airbend{Target: target.ID}.Apply(NewContext(g, item))
+}

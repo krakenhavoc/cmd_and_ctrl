@@ -178,6 +178,52 @@ type CostQuery struct {
 	// mana value should read Card.ManaCost instead — this field
 	// moves as the pass proceeds, by design.
 	Cost ParsedCost
+
+	// Ability names the ACTIVATED ABILITY being priced when this
+	// query is about an activation (CR 602.2f) rather than a cast,
+	// and is nil for every cast (#1184).
+	//
+	// It is the whole of what a cost modifier could not previously
+	// see. CostQuery already carried the SOURCE of an ability
+	// (Card / Controller are the permanent and its controller), so
+	// "abilities of other permanents you control" was expressible;
+	// what no predicate could reach was the ability itself — which
+	// one of the permanent's abilities this is, and whether it
+	// prints the exhaust keyword. Boom Scholar's "Exhaust abilities
+	// of other permanents you control cost {2} less to activate" is
+	// exactly that pair.
+	//
+	// Nil-ness is also the SELECTOR: a modifier declares which kind
+	// of announcement it prices with CostModifier.Activations, and
+	// activeCostModifiersLocked shows a cast's modifiers only casts
+	// and an activation's modifiers only activations. Without that,
+	// Sphere of Resistance — whose AppliesTo is nil, meaning "every
+	// spell" — would have started taxing every activated ability in
+	// the game the day this field appeared.
+	Ability *AbilityCostSubject
+}
+
+// AbilityCostSubject is the ability an activation-pricing CostQuery
+// is about. A value on the query rather than the ActivatedAbilityShape
+// itself, so a predicate cannot reach the ability's Effect closure or
+// its target spec and start asking questions pricing has no business
+// asking.
+type AbilityCostSubject struct {
+	// Label is the ability's printed label — the same string the
+	// activation record is keyed by (activation_tally.go).
+	Label string
+
+	// Exhaust is the exhaust keyword bit (#1181): "Activate each
+	// exhaust ability only once".
+	Exhaust bool
+
+	// Mana says this is a CR 605 mana ability rather than a CR 602
+	// activation. Always false today — the mana path prices its cost
+	// without this pass at all — and present so that a predicate
+	// written now says which kind it means rather than being silently
+	// widened the day the other path joins. See ADR 0020's exhaust
+	// addendum, note of 2026-09-22.
+	Mana bool
 }
 
 // CostModifier is one "spells cost {N} more / less to cast" static
@@ -259,6 +305,26 @@ type CostModifier struct {
 	// card is a spell being cast, where it has no designations. See
 	// designations.go and ADR 0071.
 	ActiveWhen Designation
+
+	// Activations declares that this modifier prices ACTIVATED
+	// ABILITY costs — "Exhaust abilities of other permanents you
+	// control cost {2} less to activate" (Boom Scholar, #1184) —
+	// rather than casts.
+	//
+	// It is a partition, not a widening: a modifier prices
+	// activations or casts and never both, because every printed
+	// clause in either family says which it means. "Spells cost {1}
+	// more to cast" and "abilities cost {2} less to activate" are
+	// different sentences, and a card that printed both would print
+	// two clauses and declare two modifiers.
+	//
+	// Read in activeCostModifiersLocked, against CostQuery.Ability's
+	// nil-ness, which is what keeps Sphere of Resistance's "every
+	// spell" from meaning "every announcement". Nothing else in the
+	// CR 601.2f pass changes: the order, the generic floor and the
+	// negative-amount refusal are the same rules, applied to the
+	// ability's mana component.
+	Activations bool
 }
 
 // UnitProblem says why a modifier's Unit cannot be applied, or ""
@@ -394,9 +460,24 @@ func (g *Game) activeCostModifiersLocked(q CostQuery) []boundCostModifier {
 			// Talent below level 3 — is not there at all (ADR 0071).
 			mods := CostModifiersForCard(src)
 			for _, m := range mods {
+				// #1184: casts are priced by the cast modifiers and
+				// activations by the activation ones, and never the
+				// other way. See CostModifier.Activations.
+				if m.Activations != (q.Ability != nil) {
+					continue
+				}
 				out = append(out, boundCostModifier{modifier: m, source: src})
 			}
 		}
+	}
+	// #1184: an ability's cost is not its source's cost. The self
+	// slot is "THIS SPELL costs {N} less to cast" (CR 113.6d) and is
+	// about the card as a spell on the stack; a permanent's activated
+	// ability is a different announcement by a different object, so
+	// an affinity-carrying artifact does not discount its own tap
+	// ability.
+	if q.Ability != nil {
+		return out
 	}
 	if self := SelfCostModifiersFor(q.Card); len(self) > 0 {
 		src := q.Card
@@ -508,6 +589,144 @@ func (g *Game) applyCostModifiersLocked(base ParsedCost, q CostQuery) (ParsedCos
 		}
 	}
 	return cost, nil
+}
+
+// abilityCostQueryLocked builds the CostQuery for one activation of
+// `ab` by `activator` from `source`. One builder, so the payment path
+// and the legal-move enumerator cannot ask the board a differently
+// shaped question about the same click (#544, #1184).
+//
+// Caller must hold g.mu.
+func (g *Game) abilityCostQueryLocked(activator uuid.UUID, source Card, zone ZoneKind, ab ActivatedAbilityShape) CostQuery {
+	return CostQuery{
+		Game: g,
+		// The permanent (or, since #660, the hand card) whose ability
+		// this is, and the player activating it — the "you" of the
+		// activation, as against the modifier source's controller,
+		// which is the "you" of the modifier's own clause.
+		Card:       source,
+		Controller: activator,
+		// Where the SOURCE is — the battlefield for nearly every
+		// ability, the hand for a cycling one (#660, CR 113.6). Passed
+		// in rather than looked up: both callers already know it,
+		// because both had to check it to get here.
+		FromZone: zone,
+		Ability: &AbilityCostSubject{
+			Label:   ab.Label,
+			Exhaust: ab.Exhaust,
+		},
+	}
+}
+
+// AbilityManaCostForEffect is what one activation of `ab` will
+// actually charge in mana: the printed component, priced through
+// every activation-scoped cost modifier on the battlefield in
+// CR 601.2f order (#1184).
+//
+// ONE function and three readers, which is the same discipline
+// Game.AbilityExhausted holds the exhaust gate to:
+//
+//  1. ActivateCatalogAbility, which pays this and no other number;
+//  2. internal/legal, which decides whether the seat can afford the
+//     move it is about to offer — a bot offered an activation the
+//     engine then refuses for want of mana is #544 exactly;
+//  3. the ability view (#1190), rendered through ParsedCost.String()
+//     into ActivatedAbilityView.ChargedManaCost, so the row the
+//     player clicks and the number the engine takes are the same
+//     string.
+//
+// Errors exactly where the cast path errors: an unparseable printed
+// cost, or a modifier that returns a nonsensical amount. It does not
+// clamp and does not fall back to the printed cost — #289's lesson,
+// one path over.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) AbilityManaCostForEffect(activator uuid.UUID, source Card, zone ZoneKind, ab ActivatedAbilityShape) (ParsedCost, error) {
+	base, err := ParseCost(ab.Cost.Mana)
+	if err != nil {
+		return ParsedCost{}, err
+	}
+	if ab.Cost.Mana == "" {
+		// Nothing to discount and nothing to tax: a cost with no mana
+		// component is not made of mana, so the pass has no subject.
+		// The early return is also what keeps the battlefield walk
+		// off the {T}-only abilities that are most of the catalog.
+		return base, nil
+	}
+	return g.applyCostModifiersLocked(base, g.abilityCostQueryLocked(activator, source, zone, ab))
+}
+
+// manaAbilityCostQueryLocked builds the CostQuery for one activation of
+// the CR 605 mana ability `ab` on `source` by `activator` — the mana
+// twin of abilityCostQueryLocked (#1191), for the same reason: the
+// manual activation path, the legal-move enumerator and the
+// auto-tapper's planner must ask the board the same shaped question
+// about the same click.
+//
+// Mana: true is the one difference from a CR 602 query — #1193's
+// AbilityCostSubject.Mana, always false until this file set it,
+// existing for exactly this so a predicate written before today (or
+// tomorrow) says which kind of activation it means rather than being
+// silently widened.
+//
+// A mana ability is always a battlefield permanent's — ManaAbilitiesForCard
+// never reads a hand card — so FromZone is always the battlefield,
+// unlike abilityCostQueryLocked's, which a caller passes in for #660's
+// sake.
+//
+// Caller must hold g.mu.
+func (g *Game) manaAbilityCostQueryLocked(activator uuid.UUID, source Card, ab ManaAbilityShape) CostQuery {
+	return CostQuery{
+		Game:       g,
+		Card:       source,
+		Controller: activator,
+		FromZone:   ZoneBattlefield,
+		Ability: &AbilityCostSubject{
+			Label:   ab.Label,
+			Exhaust: ab.Exhaust,
+			Mana:    true,
+		},
+	}
+}
+
+// ManaAbilityManaCostForEffect is AbilityManaCostForEffect's twin for a
+// CR 605 mana ability (#1191): the printed mana component of `ab`'s
+// own activation cost — the Signet cycle's "{1}, {T}", Loot, the
+// Pathfinder's exhaust "{G}, {T}" — priced through every
+// activation-scoped cost modifier on the battlefield in CR 601.2f
+// order.
+//
+// CR 605.1a makes a mana ability an activated ability, so Boom
+// Scholar's "Exhaust abilities of other permanents you control cost
+// {2} less to activate" reaches Loot's mana ability exactly as it
+// reaches a CR 602 one — through the SAME activeCostModifiersLocked
+// partition (CostModifier.Activations against CostQuery.Ability's
+// nil-ness), unchanged by this function. Nothing about the order, the
+// generic floor or the negative-amount refusal is mana-specific;
+// what was missing was a query to hand the pass, which this builds.
+//
+// Three readers, mirroring AbilityManaCostForEffect's:
+// ActivateManaAbility, which pays this and no other number; the
+// legal-move enumerator's manaMoves, so a bot is never offered a mana
+// activation the engine then refuses for want of mana (#544); and the
+// auto-tapper (autoTapAbilityFor / materializePlanLocked), which must
+// know a discounted mana component from a printed one before it can
+// decide whether a source is plannable.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) ManaAbilityManaCostForEffect(activator uuid.UUID, source Card, ab ManaAbilityShape) (ParsedCost, error) {
+	base, err := ParseCost(ab.ManaCost)
+	if err != nil {
+		return ParsedCost{}, err
+	}
+	if ab.ManaCost == "" {
+		// Nothing to discount and nothing to tax, exactly as the CR
+		// 602 early return: a tap-only mana ability is not made of
+		// mana, so the pass has no subject and the battlefield walk
+		// never runs for the ordinary land or Sol Ring.
+		return base, nil
+	}
+	return g.applyCostModifiersLocked(base, g.manaAbilityCostQueryLocked(activator, source, ab))
 }
 
 // ApplyCostModifiers is the read-locked public surface: price `base`

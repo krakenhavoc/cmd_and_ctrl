@@ -111,11 +111,11 @@ func TestCastableHereStampedOnAGrantedGraveyardCard(t *testing.T) {
 	if got.AlternativeCosts[0].Key != "escape" {
 		t.Errorf("offered key = %q, want escape", got.AlternativeCosts[0].Key)
 	}
-	// The stamp is about the ZONE's owner, not the viewer — the same
-	// contract a printed flashback card's stamp has carried since S29,
-	// and the client gates the button on whose seat it is rendering.
-	// What must NOT be stamped is a card no permission reaches: the
-	// opponent's own graveyard, where this Breach grants nothing.
+	// The stamp is the VIEWER's own answer since #1055 — this view is
+	// built for `me`, who holds the Breach, so the bit above is theirs
+	// and not a public statement about the pile's owner. What must NOT
+	// be stamped is a card no permission reaches: the opponent's own
+	// graveyard, where this Breach grants nothing.
 	them := g.Seats[1]
 	theirSpell := game.NewCard("Their Dead Spell", them.ID)
 	theirSpell.TypeLine = "Instant"

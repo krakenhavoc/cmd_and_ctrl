@@ -713,7 +713,297 @@ than living with it. The remaining uncovered door is a card LEAVING a
 hand or library for the BATTLEFIELD, which does not go through the exit
 primitive (`battlefield_put.go`'s batch and `mutations.go`'s inline
 entry branch) — no prompt family can reach it today, and it is named
-here rather than swept blind.
+here rather than swept blind. *(Closed 2026-09-21 by
+[#1069](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1069); see
+the amendment below.)*
+
+**Amendment (2026-09-21, #1069): the entry door is watched too, through
+ONE funnel rather than three sprinklings.**
+
+The paragraph above named the door and left it open. This is the same
+prune at it, and the only judgement in the change is where the call
+goes.
+
+**1. Why the exits could not cover it.** `routeDestinationLocked`
+refuses a battlefield or stack destination outright — *"not an exit,
+the entry path owns these"* — so `executeZoneRouteLocked` never runs
+for an arrival, and a graveyard pick whose candidate is reanimated
+under the open prompt, or a hand pick whose candidate a Warp World-style
+effect puts onto the battlefield, kept offering a card
+`checkChooseCardsPicksLocked` would refuse. Zone-keyed as the prune is
+(#1045), the question is identical to the discard's: the candidate is
+not in the zone the answer is re-checked against. Only the mover
+differs.
+
+**2. One funnel.** The entry side has three landings and no shared
+finisher: `executeEntryToBattlefieldLocked` (every resumable entry —
+the land play, stack resolution, a search, an exile return, a
+reanimation, a token), `putOntoBattlefieldFromZoneLocked` (the hand /
+library batch and manifest) and `moveCardByRefLocked`'s inline branch
+(the sandbox move into the battlefield **or the stack**). The last two
+are the two sites that are deliberately not resumable
+(`ReplacementEvent.entryResumable`), which is exactly why they cannot
+be folded into the first. So the prune gets one named home,
+`Game.pruneChoicesAfterArrivalLocked` in `battlefield_entry.go`, that
+all three call — the shape `battlefieldExitLocked` already has on the
+other side, where a landing added later is covered by the rule rather
+than by a code review.
+
+It takes no card ID: the prune re-reads every open pick against the
+live board, so one call answers for a whole batch of arrivals, which is
+why the batch site calls it once after phase 3 rather than once per
+card. And it runs LAST in each landing — after the zone move, the ETB
+event and the AsEnters hook — for `executeZoneRouteLocked`'s ordering
+reason: a withdrawal settles a run leg, and that continuation is the
+rest of somebody's printed instruction.
+
+**3. No double-run.** By the refusal in item 1, not by a flag: an entry
+cannot reach the exit primitive's prune block, so the new call adds a
+door rather than doubling one. `entry_prune_test.go` pins that as a
+fact about `routeDestinationLocked` alongside the two shapes the issue
+named.
+
+**4. What is deliberately still not swept, and it is now the only one.**
+`pruneSacrificeChoicesLocked` needs no entry door at all — an entry only
+ADDS permanents, so it can invalidate no option on an open sacrifice
+prompt. `pruneStaleZoneChangeChoicesLocked` is a different matter: an
+entry DOES empty a hand slot or take a card out of a graveyard, so a
+queued prompt about moving that same card out of that zone is as stale
+as it would be after an exit. It is not called here because #1069
+scoped one prune at one door, and because nothing in the catalog queues
+such a pair today. Named here rather than swept blind — the posture
+#1045 took towards this door, one issue earlier. *(Closed 2026-09-21 by
+[#1175](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1175); see
+the amendment below.)*
+
+**Amendment (2026-09-21, #1175): the entry funnel runs BOTH prunes, and
+the sacrifice prune stays out for good.**
+
+Item 4 above named the second gap and left it open. This closes it, and
+the change is one line — `g.pruneStaleZoneChangeChoicesLocked()` after
+the card-set prune in `Game.pruneChoicesAfterArrivalLocked`
+(`server/internal/game/battlefield_entry.go`) — so what is worth
+recording is the three judgements around it.
+
+**1. It is the same question, asked at the other door.**
+`pausedZoneChangeStaleLocked` asks whether the card a paused exit would
+move is still in the zone that exit would leave. A commander's CR 903.9
+prompt over a move out of a GRAVEYARD (CR 903.9 holds "from anywhere",
+#539) whose card is reanimated while the question hangs has no answer
+its own resume would accept — `dropStaleReplacementResumeLocked` is the
+backstop that refuses it — and the reanimation reaches no exit, because
+`routeDestinationLocked` refuses a battlefield destination outright.
+Only the exile ran the prune; now both doors do.
+
+**2. The order is the exit primitive's, and it is load-bearing.**
+Card-set prune first, stale-move prune second, exactly as
+`executeZoneRouteLocked:718-721` has it. The card-set drop's
+continuation is a RUN LEG settling with nothing (#1016's `dropDefault`);
+the stale-move prune's is a ROUTE continuation
+(`abandonZoneRouteLocked`, #865) that can start the next move or queue
+the next leg's prompt. Reversing them would let a route's next leg be
+queued in front of a withdrawal the same arrival already owes.
+
+**3. No double-run, and nothing new to prove it with.** The structural
+fact item 3 above rests on covers the second prune unchanged: an
+arrival never reaches `executeZoneRouteLocked`'s block, so the funnel
+adds a door rather than doubling one. The second prune does bring one
+hazard the card-set prune did not — a route continuation is somebody's
+printed instruction, so running the funnel twice over one arrival would
+run it twice — and the prune is idempotent because it re-reads the live
+queue and a withdrawn prompt is no longer in it.
+`TestTheArrivalFunnelIsIdempotent` pins that beside the issue's own
+shape in `entry_prune_test.go`.
+
+**4. `pruneSacrificeChoicesLocked` is now permanently out, not
+deferred.** Its question is "is this candidate still on the battlefield
+under its chooser's control", and an entry only ADDS permanents. There
+is no board an arrival can produce that invalidates an option on an
+open sacrifice prompt, so this is a closed argument rather than an
+unscoped one. The entry funnel holds two prunes and will not grow a
+third for this reason.
+
+**Reachability, restated.** Still none in the catalog: the prompts in
+question block the table (#791's gate), so one resolving effect would
+have to hold the prompt open and move the same card onto the
+battlefield, and no card does. This is the wedge closed before a card
+reaches it, which is the posture #1027, #1045 and #1069 each took in
+turn.
+
+**Amendment (2026-09-22, #1198): a card-set pick can be welded to the
+ENTRY pipeline, and the three tables say so one row each.**
+
+§6's four tables — the gate (`choiceGateDecisions`), the departure rule
+(`choiceDepartureDecisions`), the enumerator's `choiceMoves` and the
+heuristic's `valueOfChoice` — are the whole contract for a new
+`PendingChoiceKind`, and two tests refuse a kind that skips one
+(`TestEveryChoiceKindIsClassifiedAndEnumerated`,
+`TestEveryChoiceKindHasAReassignmentDecision`).
+`entry_reveal_from_hand` (#1198, "as this land enters, you may reveal an
+Island or Swamp card from your hand"; see
+[ADR 0013](0013-replacement-effects.md) §5z for the pipeline half) is the
+third kind to carry the `choose_cards` PAYLOAD after #826's
+`untap_choice`, and the first to carry it welded to a PAUSED EVENT rather
+than to a resolving effect. Its four rows, and the one thing each says
+that is not obvious:
+
+- **Gate: blocks.** For `entry_pay_life`'s reason rather than
+  `choose_cards`': the permanent is mid-entry and the whole CR 614
+  pipeline is suspended on the answer. A table that could walk past the
+  question would be answering it by entering.
+- **Departure: `{}` — dropped, and the drop does nothing**, which is
+  `entry_pay_life`'s row verbatim and for its argument. The prompt is
+  never reassigned (CR 800.4f: the reveal is the "unless" of the departed
+  player's own entering permanent, which CR 800.4a takes out of the game
+  in the same breath), and the paused event is not left dangling by the
+  empty second column: the frame rides `PendingChoice.replacementResume`,
+  so `dropChoicesForPlayerLocked` hands it to
+  `finishDroppedReplacementLocked` → `abandonZoneRouteLocked` with no row
+  of its own. **`dropDefault` would be wrong here**, not merely
+  unnecessary: this kind's continuation is not a card's next sentence, it
+  is a replacement event, and settling it twice — once through the drop
+  action and once through the frame — is the double-resume the second
+  column exists to avoid.
+- **Enumerated: on the `choose_cards` / `untap_choice` branch**, a third
+  verb and nothing else. The bounds ride on the choice, every set is run
+  past `ChooseCardsPickLegalLocked`, and the floor is zero — so "reveal
+  nothing" is the `AlwaysLegal` answer and no board can leave this seat
+  with an empty move list.
+- **Scored: its own branch, not `choose_cards`'.** The sign is the whole
+  decision (#798). A card named to a `choose_cards` prompt over a bot's
+  own hand is a card GIVEN UP, so that branch scores an answer by what it
+  keeps; a card named here is revealed and stays in hand, so naming one
+  costs nothing and buys an untapped land. #1028's fuel pricer is not the
+  hint either — fuel prices a card SPENT to a cost, and a reveal spends
+  nothing. Scored on the `untap_choice` side of the ledger: more is
+  better, and the count settles itself.
+
+**And one sweep it is deliberately outside.** `pruneCardSetChoicesLocked`
+is not extended to it, for `untap_choice`'s reason plus one of its own:
+the prune DROPS a prompt whose candidates have all gone, and dropping
+this one would end the question by stranding the entry it is pausing.
+It cannot need the prune either — its floor is zero, so a candidate list
+emptied under it still has an answer the resolver accepts, which is the
+property `untap_choice` does not have and `choose_cards` with a floor of
+one does not have. The `pickStillInPickZoneLocked` re-check on submit
+still refuses a stale pick, so the worst an un-pruned list can do is cost
+one rejected click.
+
+**Amendment (2026-09-22, #1214): three resolution-time picks over
+cards and permanents — one payload, three kinds, one continuation.**
+
+The #568 amendment above built the one resolution-time question the
+queue could not ask ("choose one of the following", addressed to any
+seat) and said a pile split needs no kind at all because it is two
+chained prompts. Three rows of `docs/engine-seams.md` were the
+questions it did not build, and all three are about CARDS or
+PERMANENTS rather than about a labelled branch:
+
+- **an opponent picks from a set you revealed** — Gifts Ungiven
+  ("target opponent chooses two of those cards"), Intuition;
+- **a non-owner chooses among another player's permanents** — Tragic
+  Arrogance ("for each player, you choose from among the permanents
+  that player controls …"). `PendingChoiceSacrifice` is queued
+  `{Chooser: playerID, FromPlayer: playerID}` at its one queue site and
+  `ResolveSacrificeChoice` refuses anything else, so nothing could
+  point a permanent pick across the table;
+- **"choose N of your own permanents", at resolution** — Scapeshift's
+  "sacrifice any number of lands". The existing sacrifice prompt is a
+  fixed count asked one permanent at a time, which cannot say "any
+  number" and cannot be read for a total.
+
+**One payload.** All three carry the choose-cards payload —
+`ChooseCards`, `ChooseMin`, `ChooseMax` and a `chooseCardsFrame` — so
+`isCardSetPickKind` (`chained_choice.go`) admits them, beside
+`choose_cards`, CR 502.3's `untap_choice` and #1198's
+`entry_reveal_from_hand` (the amendment above), and every rule about the
+payload is written once and asks it:
+`checkChooseCardsPicksLocked` (bounds, candidates, duplicates, the
+live-zone re-check and #1017's set-level `Validate`),
+`ChooseCardsPickLegalLocked` (the enumerator's window onto that),
+`setCardSetCandidates`, and both prunes that keep an open prompt honest
+as the board moves under it. `reassignChoiceLocked`'s candidate prune
+became one `isCardSetPickKind` arm in the same pass, replacing the
+`PendingChoiceChooseCards` case that was the same five lines.
+
+**Three kinds, and each difference is observable.** The test surveil
+had to pass to be a kind rather than a flag on scry:
+
+| | `reveal_pick` | `their_permanents` | `own_permanents` |
+|---|---|---|---|
+| the pool | cards the card REVEALED (CR 701.20) | another seat's battlefield | the chooser's own battlefield |
+| what a non-chooser sees | the cards and the bounds — the reveal is public | the cards and the bounds — the battlefield is public | the same |
+| how a bot should read it | rank the pool by what matters (`Options.OrderTargets`) | the same | rank by what the seat would miss LEAST (`Options.OrderCostFuel`) |
+| CR 800.4g | reassigned | reassigned | never — it is the chooser's own material |
+
+A `choose_cards` over the same IDs would be wrong on every row.
+`filterPendingChoices` withholds even a choose_cards prompt's BOUNDS
+from a non-chooser, because its pool is usually a hand; running a
+public reveal through that would hide from the table a fact it watched
+happen. And a policy handed one ordering hook where the other was
+wanted keeps its worst land and hands an opponent their bomb — the
+mistake `Options.OrderCostFuel` exists as a separate type to prevent.
+
+**One continuation: they are RUNS.** Every one of the three is queued
+through `runPromptsLocked` (`prompt_run.go`), the shape #1019 built for
+a prompted sacrifice and #1027 generalised for a prompted discard. That
+is not reuse for its own sake — Tragic Arrogance is ONE printed
+instruction asked as one prompt per player, and its "then each player
+sacrifices all other nonland permanents they control" may not run until
+the last of them is answered. It also settles the drop path for free:
+each prompt is one LEG, so `dropDefault` reaches `settleRunLegLocked`
+through `PendingChoice.promptRun` — the branch
+`defaultDroppedChoiceLocked` already takes on the RUN LINK rather than
+on the kind (#1027) — and none of the three needed a case of its own
+anywhere. See ADR 0060's amendment of the same date for the departure
+rows.
+
+**Which kind a leg is queued as is decided in one line.**
+`PermanentsPickedThenForEffect` asks whether the leg's subject IS the
+chooser: yes is an `own_permanents`, anything else is a
+`their_permanents`. Tragic Arrogance walks every player including its
+own controller, so one printed sentence is both kinds and the card says
+nothing about either.
+
+**A pile split still needs no kind of its own — but its first leg now
+has a name.** `QueuePileSplitForEffect` is unchanged in shape: a pick
+addressed to the splitter, chained to an `option_pick` addressed back
+to the controller. What changed is that the first leg is a
+`reveal_pick` rather than a `choose_cards`, which is what it always
+was — "an opponent picks from a set you revealed" is the sentence Fact
+or Fiction prints. Two things follow. The prompt stops hiding its
+bounds from the rest of the table. And it fixes a hole the #1006
+amendment to ADR 0060 left one leg upstream of where it was looking: a
+splitter who left AFTER the question went up hit a `dropDefault` that
+found no run and no option frame on the prompt, ran nothing, and Fact
+or Fiction put neither pile anywhere — the exact failure that amendment
+names. It is now one leg of a run, so the withdrawal settles with
+nothing separated and the controller still takes a pile.
+
+**All three block the table**, for `option_pick`'s reason stated once:
+the effect that asked is paused mid-resolution and its continuation is
+the rest of the card. `their_permanents` is the one worth naming out
+loud, because it LOOKS like `pay_unless`'s background question — a
+prompt addressed to somebody who is not the permanents' controller —
+and is not: nothing about a Rhystic tax is holding a spell
+half-resolved.
+
+**Narrated.** `EventCardsChosen` → `LogChooseCards`, for the reason
+#1023 gave a chosen colour a line: a decision the table watched
+somebody make is a decision the history has to carry. Without it the
+only trace of Tragic Arrogance is a column of sacrifices with nobody's
+name on them.
+
+**Out of scope, stated.** The seam rows keep two cards each that this
+does not reach, and both are a second axis rather than a deeper version
+of this one. The Legend of Yangchen's chapter I ("starting with you,
+each player chooses up to one permanent … from among permanents your
+opponents control") needs several players choosing from ONE SHARED
+POOL, with each answer narrowing the next — a run over one pool, not a
+run over one pool each. Gluntch, the Bestower needs two target players
+before the pick and a different effect per seat. Neither is blocked on a
+kind any more; both are card work plus a sequencing shape, and they
+stay on their rows.
 
 ## Out of scope (explicit deferrals)
 
@@ -1580,3 +1870,264 @@ intentionally selects the last creature because its Oracle text says so.
 Delayed-return payloads carry their own slices; none of these paths overwrites
 a single per-source linked-card slot. The doubled Angel regression independently
 targets two creatures and requires both to return.
+
+### Note (2026-09-22, #1184): a trigger can watch an ACTIVATION now
+
+`triggerHarvester.OnEvent` returns immediately on `EventTrigger`, and
+that early return is still right: `EventTrigger` is the "an item
+reached `PendingTriggers`" breadcrumb, a trigger that fires further
+triggers does so at RESOLUTION, and re-entering the harvest at
+announce would spam. The cost of it was that nothing could watch an
+activation at all, because `ActivateCatalogAbility` announced with
+that kind and no other — and with no ability identity on the event
+either.
+
+`EventActivateAbility` (`game/events.go`) is the announcement said in
+a kind the harvest walks like any other. It carries the ability's
+`Label` — the same string the activation record is keyed by — and an
+`Exhaust` bit, both stamped at the announce because by the time a
+watcher runs the source may be gone (a `SacrificeSelf` cost) and the
+ability list may have been renumbered.
+`EventManaAbilityActivated` carries the same two stamps, so a watcher
+that means "any activated ability" (CR 605.1a) watches both kinds:
+`effects.WheneverYouActivateAnExhaustAbility` does exactly that.
+
+Nothing else about the harvest changes. The trigger goes on the stack
+ABOVE the ability that made it and resolves first (CR 603.3b), the
+zone wrappers work as they do for any other event — Afterburner
+Expert's is `InGraveyard` — and the public log stays silent on the new
+kind for the reason it is silent on `EventTrigger`: the LogResolve of
+the ability it becomes already says it.
+
+See [ADR 0020](0020-activated-abilities.md)'s note of the same date
+for the other two seams the same issue opened, and
+[docs/engine-seams.md](../engine-seams.md) for the "whenever an
+opponent activates an ability" row that closes on this event next.
+
+### Note (2026-09-22, #1210): the opponent-activation watch, on that same event
+
+The note above ends by pointing at the `docs/engine-seams.md` row that
+"closes on this event next". This is that row, closed, and it needed
+one constructor and no engine change at all — which was the claim
+#1184 made when it built the event wider than its two cards.
+
+`effects.WheneverAnOpponentActivates(label, of, includeMana, build)`
+(`cards/effects/triggers_common.go`) is the one declaration shape:
+
+- **Whose activation.** `ByAnOpponent` on `Event.Actor`, the same
+  predicate "whenever an opponent draws a card" uses. The ACTOR and
+  not the source's controller, because that is what the cards print
+  ("whenever an opponent activates an ability") and because the two
+  differ exactly where it matters — an ability activated from a
+  permanent somebody else controls.
+- **Which abilities.** `includeMana` picks the watched kinds:
+  `EventActivateAbility` alone, or both it and
+  `EventManaAbilityActivated`. "…if it isn't a mana ability" is
+  therefore not a predicate a card writes and can forget — it is the
+  absence of a kind from `Watches`, decided once, at the only place
+  that knows (CR 605.1a: a mana ability never reaches the stack and
+  has its own event kind precisely so a watcher can tell).
+- **Of what.** `of CardPredicate` runs against the ability's SOURCE
+  object, looked up live on the battlefield — "an ability of an
+  artifact, creature, or land **on the battlefield**" (Harsh Mentor),
+  "of a creature or land" (Runic Armasaur). A nil predicate is "any
+  source", which is the plain "whenever an opponent activates an
+  ability" clause.
+- **"That player."** `build func(activator uuid.UUID) Effect` is
+  handed `Event.Actor`, captured in the `Build` closure the way Ob
+  Nixilis, the Hate-Twisted captures a drawer. It does NOT target:
+  Harsh Mentor's 2 damage goes to the activator with no target
+  chosen, so hexproof and "can't be the target of" do nothing about
+  it, and CR 608.2b re-checks nothing at resolution.
+
+`Optional(…)` composes as it does with every other trigger, which is
+the whole of Runic Armasaur's "you may draw a card".
+
+One engine line did change, and a back-out is what found it:
+`EventManaAbilityActivated` set `Source` but not `CardID`, so a
+source predicate looking the ability's object up by `CardID` matched
+nothing on the mana path — a silent miss, not an error. Both emit
+sites (the hand click and the auto-tapper's executor, CR 605.3a) now
+carry the same stamps `EventActivateAbility` always has, which is
+what #1184 intended when it said a watcher can read the same fields
+off either kind.
+
+**Cards:** Harsh Mentor and Runic Armasaur, both `full`.
+
+What stayed open on this family, and was a different row: a watch on
+an ability's activation whose TARGET clause reads the triggering event
+(`docs/engine-seams.md`, "Trigger/target clause reading the triggering
+event's data"). A `Build` closure can capture an event field and hand
+it to a non-targeted effect — that is what this note's `build`
+argument is — but `TriggeredAbility.Targets` is a static `TargetSpec`
+evaluated by the harvester and cannot see the event at all. **Closed
+the same day by #1223** — see the amendment below, whose
+`TriggeredAbility.TargetsFrom` is exactly that clause.
+
+## Amendment 2026-09-22 — the triggering event is DATA on the item (CR 603.2, CR 603.10) · Accepted · S45
+
+Issue [#1223](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1223).
+Decision 2 above says `Build` builds and does not resolve. It is
+silent on what happens to the EVENT, and the answer the catalog
+settled on by default was "capture it in the `Effect` closure". That
+works for exactly one reader and fails for three.
+
+### What was actually missing
+
+`TriggeredAbility` is handed the event twice — `AppliesTo(ev, …)` and
+`Build(ev, …)` — and both hands go away immediately. `AppliesTo`
+returns a bool; `Build` returns a `*StackItem`, and the only way past
+it is a closure. A closure reaches resolution and reaches nothing
+else:
+
+- **The target clause.** A trigger's targets are chosen as it is put
+  on the stack (CR 603.3d), by the harvester, from
+  `TriggeredAbility.Targets` — STATIC catalog data declared before the
+  game started. Scrap Trawler's "target artifact card in your
+  graveyard with lesser mana value" could not be stated at all,
+  because "lesser" is lesser than the mana value of the artifact that
+  just died and no closure runs between the event and the clause.
+- **The copy.** CR 707.10 copies a triggered ability together with the
+  choices made when it triggered, and the Strionic Resonator rulings
+  are explicit that the copy remembers the same event. A closure
+  reached a copy only by accident of sharing a func pointer, and
+  nothing said so.
+- **The snapshot.** A func has no wire form, so a game paused on an
+  unanswered CR 603.3d prompt could not be a restore point for any
+  trigger whose effect needed its event.
+
+The catalog's other way of reaching a past event — walking `g.Events`
+backwards for the last one of a kind — is not a fourth answer either.
+A sweep of all 29 log-walking helpers in `cards/effects` found NONE
+re-deriving its own triggering event: every one of them is reading
+game HISTORY (a per-turn tally, a counter total before the change, the
+nearest resolution's actor) that the triggering event could never
+answer. That is a good thing and this field is what keeps it true —
+such a scan finds the wrong event the moment two of a kind land in one
+batch (two creatures dying to one wrath), and nothing at all a
+priority round later.
+
+### Decision 8. One typed value, `StackItem.Trigger`
+
+```go
+type TriggerContext struct {
+        Event  Event           // the triggering event, verbatim
+        Object *ObjectSnapshot // CR 603.10 LKI about Event.CardID
+}
+```
+
+`Event` whole, rather than a hand-picked subset, for two reasons: the
+alternative is a new field for every clause that wants one more fact,
+and `Event` is already the flat, closure-free, JSON-tagged shape the
+log is built out of. `Amount` is the damage dealt or the life gained
+or the counters placed; `StackItemID` is the ability that was
+activated; `OldZone` / `NewZone` say where an object went.
+
+Read by the effect as `effects.Context.Trigger()` and by the clause as
+`TriggeredAbility.TargetsFrom`. The zero value — `Fired()` false — is
+the honest answer for every cast spell, every activated ability and
+every item restored from a snapshot written before the field existed.
+
+It is **plain data**, which is the whole decision: it survives a copy
+(copying it is copying a struct), it survives a snapshot (so a paused
+trigger prompt is still a restore point, `carried` in
+`snapshot_drift_test.go`), and it survives the log being walked past.
+
+### Decision 9. `ObjectSnapshot` is a flat value, and it is NOT a `Card`
+
+Half of what a trigger wants to know is about an object that has gone:
+the creature that died, the artifact put into a graveyard. CR 603.10
+judges such an ability on what the object looked like immediately
+before the event, and the engine already keeps that reading in
+`Game.lastKnownBattlefield` — written by every battlefield exit,
+DELETED as `harvestLTB` ends. `objectSnapshotLocked` reads it while it
+is still there and copies by value.
+
+Not a `*Card`: a pointer into a zone slice is already invalid when an
+LTB trigger is built. Not a `Card`: it carries `effective`,
+`PrintedSelf` and the rest of the layer bookkeeping, none of which
+means anything once the object is gone and all of which would have to
+be snapshotted to keep the item restorable.
+
+The two halves come from different places on purpose. Types, colours
+and name are CHARACTERISTICS and come off the CR 603.10 snapshot; the
+oracle id, the owner and the mana value are facts about the CARD and
+come off the card, because a permanent's mana value is computed from
+its printed cost (CR 202.3b) and `Characteristic` carries none.
+
+**Power and toughness are deliberately absent.** "A creature with
+power equal to the power of the creature that died" is a real printed
+clause and is not answerable yet: `lastKnownBattlefield` holds a
+`Characteristic`, the engine applies +1/+1 and -1/-1 counters OUTSIDE
+it (`Card.PowerForComparison`), and `MoveCard` clears a permanent's
+counters on the way off the battlefield — so by the time a
+dies-trigger is harvested the number is gone from both places. A
+`Power` field would silently read 2 for the 3/3 a counter made, which
+is the one case such a clause is written about. It waits for a second
+LKI store, and ADR 0072 §2 already records what a second store costs.
+
+### Decision 10. The clause is a function of the event: `TargetsFrom`
+
+```go
+TargetsFrom func(tc TriggerContext, source *Card, g *Game) *TargetSpec
+```
+
+Non-nil wins over `Targets`, which such a card leaves nil. A FUNCTION
+returning a whole spec rather than a predicate that receives the
+context, because the event changes a clause's COUNT and LABEL as
+readily as its predicate — "up to X target creatures", where X is the
+damage dealt — and only a spec can say all three.
+
+It is called at every point the dispatch needs the clause (the CR
+603.3d fillability check, the target walk, the spec stamped on the
+item for the CR 608.2b re-check) rather than cached in a frame, and
+the contract is that every call must agree: the answer is a function
+of the trigger context, which is carried and therefore stable, and of
+the board, which is not and must not be — a clause re-read after an
+optional prompt should see the board as it is, exactly as
+`refreshTargetChoicesLocked` re-reads a frozen legal set for the same
+reason.
+
+### Decision 11. The stamp is the dispatch's, not the card's
+
+`Build` is catalog code, ~2,200 declarations of it, and every one
+would have had to remember. The two sites that call `Build`
+(`buildOrPickTriggerLocked` and `finishPickTargetLocked`) call
+`stampTriggerContext` immediately afterwards instead, so a card gets
+the event on its item whether or not its author thought about it.
+
+The context is built ONCE, in `dispatchTriggerInstanceLocked`, and
+carried from there through every prompt frame (`triggerResumeFrame`,
+`modePickFrame`, `pickTargetFrame` all hold `tc TriggerContext` where
+they used to hold `ev Event`). That is not tidiness: the CR 603.10
+snapshot is deleted from `lastKnownBattlefield` as the harvest ends,
+which is before any prompt can be answered, so a context rebuilt later
+would be missing exactly the half a dies-trigger needs.
+
+**A CR 603.12 reflexive trigger is stamped with nothing.**
+`QueueReflexiveTriggerForEffect` hands the dispatch a synthetic
+`EventResolve` describing the resolution that created the trigger,
+precisely because there was no triggering event; stamping it would
+tell a card its trigger fired off a resolution and hand it a snapshot
+of the parent's source, and both would be lies. The test is an ability
+that WATCHES NOTHING — `len(t.Watches) == 0` — which is a fact rather
+than a flag, since the harvester refuses to fire an ability that
+declares no `Watches`.
+
+### Cards
+
+Scrap Trawler ships `full` (the clause is cut to the mana value of the
+artifact that died, so a chain resolves in descending order as it does
+in paper). Cloudstone Curio ships `caveats` — "shares a permanent type
+with it" is built from the event, and the caveat is the Whitemane Lion
+posture, that the permanent to return is picked as the trigger goes on
+the stack rather than at resolution.
+
+### Still not covered
+
+Power and toughness on the object snapshot (above). Three helpers sit
+next to this and are NOT replaced by it, each for a stated reason:
+`b16EnteredFromStack` wants the ETB's ORIGIN ZONE, which
+`EventETB` does not carry; `b30CastFromHand` wants a different,
+earlier `EventCast`; and `random_effects.WheneverYouRollDice` wants
+the whole die BATCH, of which the triggering event is one member.

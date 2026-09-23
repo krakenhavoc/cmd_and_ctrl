@@ -208,23 +208,66 @@ func TestLoyaltyAbilityIsSorcerySpeed(t *testing.T) {
 	}
 }
 
-// A loyalty cost only makes sense on a planeswalker (CR 606.2). A
-// creature carrying one is a catalog bug, not a free counter faucet.
-func TestLoyaltyAbilityRequiresAPlaneswalker(t *testing.T) {
+// CR 606.3 says a loyalty ability of a PERMANENT you control, and
+// CR 606.1 defines the ability by the loyalty symbol in its cost —
+// neither asks whether the permanent is a planeswalker. A permanent
+// that carries one and is not a planeswalker is the printed case a
+// type-setting effect makes (a Teferi under Song of the Dryads keeps
+// his abilities and stops being a planeswalker), and this path used
+// to refuse it with ErrNotAPlaneswalker on top of the controller
+// check. #1157.
+//
+// The same activation is still gated on everything CR 606 DOES ask:
+// sorcery speed, once per turn, enough counters for a −N — see the
+// tests above and below, which run against a planeswalker because
+// that is what nearly every loyalty ability is printed on.
+func TestLoyaltyAbilityOnANonPlaneswalkerPermanent(t *testing.T) {
 	g := newActiveGame(t)
 	advanceTo(t, g, StepPrecombatMain)
 	me := g.Seats[0]
-	c := NewCard("Bear", me.ID)
-	c.TypeLine = "Creature — Bear"
+	c := NewCard("Sparkbound Relic", me.ID)
+	c.TypeLine = "Artifact — Equipment"
 	c.Controller = me.ID
+	c.Counters = map[string]int{CounterLoyalty: 3}
 	c.ActivatedAbilities = []ActivatedAbilityShape{{
-		Label: "not a loyalty ability",
+		Label: "+1: a loyalty ability on something that is not a planeswalker",
 		Cost:  AbilityCost{Loyalty: loyaltyN(1)},
+	}, {
+		Label: "−5: more than it can pay",
+		Cost:  AbilityCost{Loyalty: loyaltyN(-5)},
 	}}
 	g.Battlefield.PushTop(c)
 
-	if err := g.ActivateCatalogAbility(me.ID, c.InstanceID, 0, ActivateAbilityParams{}); err != ErrNotAPlaneswalker {
-		t.Errorf("loyalty cost on a creature: got %v, want ErrNotAPlaneswalker", err)
+	if err := g.ActivateCatalogAbility(me.ID, c.InstanceID, 0, ActivateAbilityParams{}); err != nil {
+		t.Fatalf("CR 606.3 is about a permanent, not a planeswalker: got %v", err)
+	}
+	if got := counterOf(g, c.InstanceID, CounterLoyalty); got != 4 {
+		t.Errorf("loyalty after the +1: got %d, want 4", got)
+	}
+	// CR 606.3's once-per-turn clause says "that permanent" too.
+	if err := g.ActivateCatalogAbility(me.ID, c.InstanceID, 0, ActivateAbilityParams{}); err != ErrLoyaltyAlreadyActivated {
+		t.Errorf("second activation the same turn: got %v, want ErrLoyaltyAlreadyActivated", err)
+	}
+}
+
+// CR 606.5 is about the permanent's counters and nothing else, so it
+// answers the same way off a planeswalker.
+func TestLoyaltyMinusCostOnANonPlaneswalkerStillNeedsTheCounters(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	me := g.Seats[0]
+	c := NewCard("Sparkbound Relic", me.ID)
+	c.TypeLine = "Artifact — Equipment"
+	c.Controller = me.ID
+	c.Counters = map[string]int{CounterLoyalty: 3}
+	c.ActivatedAbilities = []ActivatedAbilityShape{{
+		Label: "−5: more than it can pay",
+		Cost:  AbilityCost{Loyalty: loyaltyN(-5)},
+	}}
+	g.Battlefield.PushTop(c)
+
+	if err := g.ActivateCatalogAbility(me.ID, c.InstanceID, 0, ActivateAbilityParams{}); err != ErrInsufficientLoyalty {
+		t.Errorf("−5 with three counters: got %v, want ErrInsufficientLoyalty", err)
 	}
 }
 

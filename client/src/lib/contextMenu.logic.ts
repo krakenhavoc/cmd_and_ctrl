@@ -20,16 +20,24 @@
 // caller that wants a two-option "yes / no" menu builds one section
 // with two action items and reuses the component verbatim.
 
-import { attackAllLabel, attackAllParams, planAttackAll, seatLabel } from "./attackAll";
+import {
+  attackAllLabel,
+  attackAllParams,
+  attackAllTaxLabel,
+  attackTaxOn,
+  planAttackAll,
+  seatLabel,
+} from "./attackAll";
 import { attackTargetHint, permanentAttackTargets } from "./attackTargets";
 import { isCreature, isLand, isPlaneswalker } from "./cardTypes";
 import { counterCostBlocked } from "./counterCost";
 import type { ActionType, CardView, GameView } from "./protocol";
-import { sacrificeShortfall } from "./sacrificeCost";
+import { sacrificeRangeShortfall } from "./sacrificeCost";
 import {
   canActivateLoyalty,
   canActivateSorcerySpeedAbility,
   canPayLoyaltyCost,
+  hasSatisfiableTargets,
   loyaltyOf,
 } from "./timing";
 import {
@@ -361,10 +369,36 @@ export function damageAction(card: CardView, delta: number): MenuAction {
 // identically-shaped local type in ManaAbilityMenu.svelte.
 interface AbilityCost {
   tap_cost?: boolean;
+  // #1190: mana_cost is the PRINTED mana component and
+  // charged_mana_cost what the engine actually charges right now,
+  // after every CR 601.2f cost modifier on the battlefield — see
+  // chargedManaCostNote below. Both mana and activated abilities
+  // carry the pair under the same two names.
+  mana_cost?: string;
+  charged_mana_cost?: string;
   sacrifice_label?: string;
   // #747: min / max are the sacrifice count (sacrificeCost.ts).
-  sacrifice_options?: { players?: string[]; cards?: string[]; min?: number; max?: number };
-  legal_targets?: { players?: string[]; cards?: string[] };
+  // #1213: and they may now differ — an open count ("one or more") is
+  // min 1 with no ceiling, and count_from_x means the count IS the
+  // announced X.
+  sacrifice_options?: {
+    players?: string[];
+    cards?: string[];
+    min?: number;
+    max?: number;
+    count_from_x?: boolean;
+  };
+  // #1213: a return-to-hand cost. The row is greyed when nothing the
+  // clause admits is on the board, for the same reason a sacrifice
+  // cost with no candidates greys one — CR 118.3 refuses the
+  // activation, and finding out at the click is worse than seeing it
+  // before.
+  return_label?: string;
+  return_options?: { players?: string[]; cards?: string[]; min?: number; max?: number };
+  // #1157: `min` is part of the clause and not decoration. "Up to one
+  // target creature you control" is min 0, and a clause with min 0 is
+  // satisfied by an empty candidate list — see hasSatisfiableTargets.
+  legal_targets?: { players?: string[]; cards?: string[]; min?: number };
   // Present, at any value including 0, on a planeswalker's loyalty
   // ability. Mana abilities never carry it.
   loyalty_cost?: number;
@@ -375,6 +409,12 @@ interface AbilityCost {
   // #743: the ability's "Activate only if …" condition is false right
   // now. Carried by both mana and activated abilities.
   condition_unmet?: boolean;
+  // #1181: an exhaust ability this permanent has already used.
+  // #1183: and a MANA ability too — Loot, the Pathfinder's "Exhaust —
+  // {G}, {T}: Add three mana of any one color". The server ships one
+  // flag under one name for both ability kinds, which is why this
+  // predicate needed no sibling.
+  exhausted?: boolean;
   // #844: a "in your commander's color identity" mana ability with no
   // identity to narrow to. Mana abilities only.
   adds_no_mana?: boolean;
@@ -406,11 +446,52 @@ interface AbilityCost {
 // popover says the same thing as the context menu.
 export const ACTIVATION_CONDITION_UNMET = "activation condition not met";
 
+// ABILITY_EXHAUSTED is the hint on a row the server marked exhausted
+// (#1181): "Activate each exhaust ability only once", and this object
+// already has. Its own string rather than ACTIVATION_CONDITION_UNMET
+// because the two recover differently — a condition may hold again
+// next turn, an exhaust only if the permanent becomes a new object.
+export const ABILITY_EXHAUSTED = "already activated (exhaust)";
+
 // NO_COMMANDER_IDENTITY is the hint on a mana row the server marked
 // adds_no_mana (#844, CR 903.4f): "any color in your commander's color
 // identity" with no commander, or a colourless one, adds nothing.
 // Exported for the same reason.
 export const NO_COMMANDER_IDENTITY = "adds no mana: no commander color identity";
+
+// chargedManaCostNote is the tooltip fragment for a row whose
+// charged_mana_cost differs from its printed mana_cost (#1190) — a
+// Boom Scholar-style discount reaching this permanent's ability.
+// "" when there is nothing to say: no mana component at all, the
+// server didn't price one (a redacted or pre-#1190 view — undefined,
+// never a bare ""), or the two already agree, which is nearly every
+// ability in the game. Exported so ManaAbilityMenu's chip and this
+// menu's hint read the same words.
+//
+// `charged_mana_cost === undefined` and `charged_mana_cost === ""`
+// are different answers and this reads them differently: undefined is
+// "not priced" (mana_cost is what the row shows), and "" is "priced
+// to nothing" — a real discount worth naming, not a value to treat as
+// falsy. A plain `!a.charged_mana_cost` check would conflate the two
+// and go silent on the most dramatic discount there is.
+export function chargedManaCostNote(a: AbilityCost): string {
+  if (!a.mana_cost || a.charged_mana_cost === undefined || a.charged_mana_cost === a.mana_cost) {
+    return "";
+  }
+  return `printed cost ${a.mana_cost}`;
+}
+
+// chargedManaCostLabel is what a mana-cost chip displays: the charged
+// cost when the server priced one, the printed cost when it did not
+// (undefined — a redacted or pre-#1190 view), and "free" for the real,
+// distinct case of a discount that emptied the component out
+// completely (charged_mana_cost === ""). `a.charged_mana_cost ||
+// a.mana_cost` alone would treat that empty string as falsy and show
+// the STALE printed cost instead — the one discount worth naming most.
+export function chargedManaCostLabel(a: AbilityCost): string {
+  if (a.charged_mana_cost === undefined) return a.mana_cost ?? "";
+  return a.charged_mana_cost || "free";
+}
 
 // abilityBlocked returns the reason an ability can't be activated
 // right now, or "" when it can. Advisory only — the server re-checks
@@ -425,8 +506,17 @@ export function abilityBlocked(
   if (a.tap_cost && sick) return "summoning sickness";
   // #747: fewer options than the clause's count, not just none —
   // "needs three Foods (you have 2)".
-  const sacrifice = sacrificeShortfall(a.sacrifice_options, a.sacrifice_label ?? "a permanent");
+  const sacrifice = sacrificeRangeShortfall(
+    a.sacrifice_options,
+    a.sacrifice_label ?? "a permanent",
+  );
   if (sacrifice) return sacrifice;
+  // #1213: the same question one verb over. The clause's count is 1
+  // on every printed card, so an empty option list is the whole of
+  // "this cannot be paid".
+  if (a.return_options && (a.return_options.cards?.length ?? 0) < (a.return_options.min ?? 1)) {
+    return `nothing to return (${a.return_label ?? "a permanent you control"})`;
+  }
   // CR 702.122a: a crew cost with no untapped creature to pay it is
   // unpayable. Only the empty case is judged here — whether the
   // creatures that DO exist add up to the crew number is arithmetic
@@ -467,16 +557,24 @@ export function abilityBlocked(
   // is false. After the timing arms, which is the order the server
   // checks in, so a sorcery-speed row keeps its more specific reason.
   // The row's label already prints the clause, so the reason doesn't.
+  // #1181: an exhaust ability already spent. Before condition_unmet,
+  // because Bitter Work prints both and "already activated" is the one
+  // that will still be true tomorrow.
+  if (a.exhausted) return ABILITY_EXHAUSTED;
   if (a.condition_unmet) return ACTIVATION_CONDITION_UNMET;
   // #844, CR 903.4f: the server says this mana ability would add
   // nothing — no commander, or a colourless one. Activating it is
   // legal and pointless (it would just tap the source), so the row is
   // greyed with the reason rather than hidden.
   if (a.adds_no_mana) return NO_COMMANDER_IDENTITY;
-  if (a.legal_targets) {
-    const n = (a.legal_targets.players?.length ?? 0) + (a.legal_targets.cards?.length ?? 0);
-    if (n === 0) return "no legal target";
-  }
+  // CR 601.2c, through the same predicate the cast path uses (#1157).
+  // Not "is the list empty": a clause needs `min` candidates, and an
+  // "up to N" clause needs none. Before this the row for The
+  // Aetherspark's "+1: … up to one target creature you control" was
+  // greyed on a board with no creature on it, an activation the engine
+  // accepts and internal/legal hands to bots — #544's defect with the
+  // sign flipped, withholding a move rather than offering a dead one.
+  if (!hasSatisfiableTargets(a.legal_targets)) return "no legal target";
   return "";
 }
 
@@ -516,10 +614,13 @@ function abilityItems(card: CardView, view: GameView, viewerID: string | null): 
     // Mana abilities never carry a loyalty cost, so the context is
     // inert for them — passed anyway to keep one call shape.
     const blocked = manaRestricted || abilityBlocked(a, tapped, sick, loyalty);
+    // #1190: a discount note when the engine charges less than the
+    // printed cost — shown only on an unblocked row, so a "why is
+    // this greyed" reason never loses to a price note.
     items.push({
       id: `mana-${a.index}`,
       label: a.label || a.produced || "add mana",
-      hint: blocked || undefined,
+      hint: blocked || chargedManaCostNote(a) || undefined,
       disabled: !!blocked,
       activate: { kind: "mana", index: a.index },
     });
@@ -529,12 +630,12 @@ function abilityItems(card: CardView, view: GameView, viewerID: string | null): 
   // (CR 113.6) — so one loop covers a permanent's abilities and a
   // hand card's cycling, and the index means the same thing to the
   // engine either way.
-  for (const a of card.activated_abilities ?? card.hand_abilities ?? []) {
+  for (const a of card.activated_abilities ?? card.zone_abilities ?? []) {
     const blocked = restricted || abilityBlocked(a, tapped, sick, loyalty);
     items.push({
       id: `ability-${a.index}`,
       label: a.label || "activate",
-      hint: blocked || undefined,
+      hint: blocked || chargedManaCostNote(a) || undefined,
       disabled: !!blocked,
       activate: { kind: "ability", index: a.index },
     });
@@ -763,9 +864,15 @@ function combatItems(view: GameView, card: CardView): MenuItem[] {
         ...defenders.map((s) => ({
           id: `combat-attack-${s.id}`,
           label: s.display_name || s.name,
+          // ADR 0080 (#1063): the seat's CR 508.1a attack tax, stated
+          // on the control that charges it. Read off the server's
+          // price, never derived.
+          hint: attackTaxOn(view, s.id) ? `costs ${attackTaxOn(view, s.id)}` : undefined,
           action: {
             type: "declare_attacker" as ActionType,
-            params: { attacker: card.instance_id, target: s.id },
+            // auto_tap: the tax may need lands tapped for it. Inert
+            // at a table with no attack tax on it.
+            params: { attacker: card.instance_id, target: s.id, auto_tap: true },
           },
         })),
         // S27: planeswalkers and battles are attackable too
@@ -778,7 +885,7 @@ function combatItems(view: GameView, card: CardView): MenuItem[] {
           hint: attackTargetHint(view, t),
           action: {
             type: "declare_attacker" as ActionType,
-            params: { attacker: card.instance_id, target: t.id },
+            params: { attacker: card.instance_id, target: t.id, auto_tap: true },
           },
         })),
       ],
@@ -811,7 +918,12 @@ function combatItems(view: GameView, card: CardView): MenuItem[] {
             {
               id: `combat-attack-all-${s.id}`,
               label: seatLabel(s),
-              hint: attackAllLabel(plan, s),
+              // ADR 0080: the tax clause joins the count, so the
+              // price is on the control that commits to it rather
+              // than in a rejection toast afterwards.
+              hint: [attackAllLabel(plan, s), attackAllTaxLabel(view, plan, s.id)]
+                .filter(Boolean)
+                .join(" · "),
               action: { type: "declare_attackers" as ActionType, params },
             },
           ];
@@ -868,15 +980,22 @@ function moveItems(card: CardView, location: CardLocation): MenuItem[] {
   return items;
 }
 
-// specialActionItems is the CR 116.2 special-action rows on a card in
-// the viewer's own hand — "Foretell {2}", "Suspend 1—{R}" (#658,
-// #659, ADR 0062 Decision 4).
+// specialActionItems is the CR 116.2 special-action rows on one card —
+// "Foretell {2}" and "Suspend 1—{R}" in the viewer's own hand (#658,
+// #659, ADR 0062 Decision 4), "Turn face up {1}{U}" on a face-down
+// permanent they control (#1194, ADR 0082).
 //
 // A row fires the `special_action` verb DIRECTLY, with no targeting
-// or cost picker in between, because neither kind has a choice to
-// make: the whole payload is the card and the kind, and the server
-// finds the mana with auto_tap the way every other menu payment
-// does.
+// or cost picker in between, because no kind has a choice to make:
+// the whole payload is the card and the kind, and the server finds
+// the mana with auto_tap the way every other menu payment does.
+//
+// `actor` is WHO takes the action, and it is not the same player for
+// every kind: the hand keywords are the owner's (CR 702.143a — a hand
+// holds only its owner's cards), and turning a permanent face up is
+// its CONTROLLER's (CR 708.6), so a stolen morph is turned up by the
+// thief. The caller knows the zone, so it passes the answer rather
+// than this function guessing it from two fields.
 //
 // `available` is the SERVER's per-kind timing answer, never
 // re-derived here. The rule the client would get wrong is split
@@ -884,7 +1003,7 @@ function moveItems(card: CardView, location: CardLocation): MenuItem[] {
 // not (CR 702.62c) — and a row that disagreed with the engine would
 // be a rejection toast. An unavailable row is greyed rather than
 // dropped, so a player can still see the card has the keyword.
-function specialActionItems(card: CardView): MenuItem[] {
+function specialActionItems(card: CardView, actor: string): MenuItem[] {
   return (card.special_actions ?? []).map((sa) => ({
     id: `special-${sa.kind}`,
     label: sa.label || sa.kind,
@@ -893,7 +1012,7 @@ function specialActionItems(card: CardView): MenuItem[] {
     action: {
       type: "special_action" as ActionType,
       params: { card_id: card.instance_id, kind: sa.kind, strict: true, auto_tap: true },
-      player: card.owner,
+      player: actor,
     },
   }));
 }
@@ -913,6 +1032,20 @@ export function buildMenuSections(
 
   const sections: MenuSection[] = [];
   if (location.zone === "battlefield") {
+    // ADR 0082 decision 9: a FACE-DOWN permanent carries its CR 116.2g
+    // "Turn face up {1}{U}" row here, above its abilities — which is
+    // also where it reads, because while the permanent is face down it
+    // has no abilities at all (CR 708.2a) and this is the only thing
+    // its controller can do with it.
+    //
+    // Same rows, same rule, same verb as the hand's foretell and
+    // suspend below: the server decides what is offered and whether it
+    // is available, and every other permanent on the board arrives
+    // with an empty list.
+    const special = specialActionItems(card, card.controller || card.owner);
+    if (special.length > 0) {
+      sections.push({ id: "special_actions", label: "special actions", items: special });
+    }
     const abilities = abilityItems(card, view, viewerID);
     if (abilities.length > 0) {
       sections.push({ id: "abilities", label: "abilities", items: abilities });
@@ -937,8 +1070,8 @@ export function buildMenuSections(
     // ADR 0062 Decision 4: the special-action rows sit in the hand
     // card's menu, above "move to". They are only ever present on the
     // viewer's own hand — the server strips `special_actions` from
-    // every other seat's, as it strips `hand_abilities`.
-    const special = specialActionItems(card);
+    // every other seat's, as it strips `zone_abilities`.
+    const special = specialActionItems(card, card.owner);
     if (special.length > 0) {
       sections.push({ id: "special_actions", label: "special actions", items: special });
     }

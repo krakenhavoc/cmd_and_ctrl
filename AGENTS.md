@@ -90,7 +90,7 @@ cmd_and_ctrl/
     ├── lobby.md         # lobby HTTP API reference
     ├── bot.md           # AI bot seat — user-facing guide (S31)
     ├── sprints.md       # sprint plan
-    └── decisions/       # ADRs (0001 WS library … 0078 token art) — see §4 on numbering
+    └── decisions/       # ADRs (0001 WS library … 0083 token abilities) — see §4 on numbering
 ```
 
 When you create a new top-level directory, add it here.
@@ -737,6 +737,21 @@ creature source (CR 302.6) — Birds of Paradise, Palladium Myr. The
 engine enforces it inside `ActivateManaAbility`; specs don't declare
 it.
 
+**Which of these the AUTO-TAPPER will plan (#1215).** `Sacrifice: true`
+eats the SOURCE, names nothing and asks nothing, so the planner may pay
+it — a board of Treasures funds a cast, and the `/autotap` preview, the
+strict cast gate and the bot enumerator all say so. It plans such a
+source LAST, behind every ordinary source and behind a frozen one:
+cracking a Treasure for a generic pip a Mountain could have paid spends
+a resource the player never agreed to spend. `SacrificeOther` asks WHICH
+permanent dies and stays out of the plan entirely, with the life cost,
+the add-a-counter cost and the tap-another cost. A sacrifice cost with
+NO `{T}` (Gold, Eldrazi Spawn) is still not plannable — a plan is a list
+of permanents to tap — so those stay hand-activated. Order the abilities
+so the cheapest is FIRST; the planner takes one ability per permanent,
+in order ([ADR 0011](docs/decisions/0011-mana-pool-and-auto-tapper.md)
+amendment 2026-09-22).
+
 **Counter costs (#789).** `ManaAbilityCost.RemoveCounters` is the SAME
 `*game.CounterRemovalCost` a CR 602 ability's cost carries — one
 component with two owners — so build it with the same constructors and
@@ -993,13 +1008,14 @@ func init() {
 |---|---|---|
 | Counter placement (+1/+1, loyalty, …) | `RepEventCounter` | `CounterTarget`, `CounterName`, `CounterDelta` |
 | Zone motion (ETB, LTB, draw-as-move) | `RepEventMove` | `CardID`, `OldZone`, `NewZone`, `NewZoneOwner`, `EntersTapped`, `EntersWithCounters` |
-| Card draw | `RepEventDraw` | `DrawPlayer` |
+| Card draw | `RepEventDraw` | `DrawPlayer`, `DrawCount` |
 | Life total change | `RepEventLife` | `LifePlayer`, `LifeDelta` |
 | Damage (combat and direct) | `RepEventDamage` | `DamageSource`, `DamageTarget`, `DamageAmount`, `IsCombatDamage` |
 | Token creation (CR 701.7b) | `RepEventCreateTokens` | `TokenController`, `TokenGroups`, `TokenAttacking` |
 | Discard (CR 701.8) | `RepEventDiscard` | `DiscardPlayer`, `DiscardCause`, `CardID`, `NewZone`, `NewZoneOwner` |
 | Keyword action with a count — proliferate (CR 701.34), scry (CR 701.22), surveil (CR 701.25) | `RepEventKeywordAction` | `KeywordAction`, `KeywordActionCount`, `Actor`, `Source` |
 | Mill amount (CR 701.13a) | `RepEventMill` | `MillPlayer`, `MillCount` |
+| Mana produced (CR 106.12b) | `RepEventProduceMana` | `ManaPlayer`, `ManaSource`, `ManaColors`, `ManaFromTap` |
 | Step entry (skip-step) | `RepEventStepTransition` | `StepTransitionStep`, `StepTransitionSeat` |
 
 **Adding a kind to that table is five switches, not one** (#982). A
@@ -1202,6 +1218,66 @@ It can PAUSE, before any card is chosen, so `MillToZoneForEffect`'s
 slice is empty when it did. If your card reads what was milled, use
 `MillToZone{…, Then: …}` / `g.MillToZoneThenForEffect` — which you
 should be doing anyway, for #893's reason.
+
+**The MANA PRODUCED is a replaceable quantity too** (#1222,
+[ADR 0013 §5ab](docs/decisions/0013-replacement-effects.md)). "If you
+tap a permanent for mana, it produces twice as much of that mana
+instead" (Mana Reflection, Nyxbloom Ancient) replaces the AMOUNT, so
+`RepEventProduceMana` is opened once per production and before any of
+it is in the pool. The family is
+`cards/effects/mana_replacements.go` — `ManaProducedBecomes{Times,
+Scope, Label}`, with `YouTapForTwiceAsMuchMana(label)` and
+`YouTapForThriceAsMuchMana(label)` as the named wrappers.
+
+Three things about it differ from the other amount events and all three
+are the printed cards' doing:
+
+- **It carries COLOURS, not a count.** `ev.ManaColors` is one entry per
+  mana, because "twice as much of THAT mana" names the mana as well as
+  the amount. Write `ev.MultiplyMana(n)` and nothing else — assigning
+  `ManaColors` yourself could change the COLOURS, which CR 106.12b does
+  not license.
+- **`ev.ManaFromTap` is the printed condition**, not a convenience. Both
+  cards say "if you TAP a permanent for mana" (CR 106.12a), so a spell's
+  "Add {B}{B}{B}", a mana ability with no `{T}` and a triggered mana
+  ability's own output are all productions and none of them is doubled.
+  A card that really is symmetrical leaves the check out.
+- **It never pauses.** CR 605.3a makes activating a mana ability one
+  indivisible step with no priority window inside it, so every event of
+  this kind sets `mustSettleNow` and the CR 616 ordering prompt is never
+  asked. An `Optional` mana-production replacement would therefore be
+  skipped un-applied; if you ever print one, that is the conversation to
+  have first.
+
+A pipe slot is replaced at the PICK, not at the activation — a Birds of
+Paradise under Mana Reflection is ONE choice minting two of the chosen
+colour — because that is the only moment the colour exists. The
+auto-tapper plans with the replaced amount through the same predicate
+(`producedManaPreviewLocked`), so a Mana-Reflected land really does pay
+for two pips.
+
+**The DRAW AMOUNT is a replaceable quantity too** (#1222, same section).
+`RepEventDraw` has existed since S17; what #1222 added is
+`ev.DrawCount`, whose base is always ONE because CR 121.2 makes "draw
+three cards" three individual card draws. The family is
+`cards/effects/draw_replacements.go` — `DrawBecomes{Count, Scope,
+ExceptInOwnDrawStep, Label}`, with `YouDrawTwiceInstead(label)` and
+`YouDrawTwiceInsteadExceptTheFirst(label)`.
+
+The N cards a settled count asks for are drawn one at a time, so every
+per-card payoff still fires per card — but they are ONE event, and the
+window is not re-opened for them. That is what makes two Thought
+Reflections draw FOUR rather than three, and it is why a cancel-style
+draw replacement sharing the window takes the whole doubled draw rather
+than one card of it (the declared simplification; no dredge card is
+catalogued).
+
+**"Except the first one you draw in each of your draw steps"** has no
+per-draw-step tally behind it. Both cards that print it — Notion Thief
+and Alhammarret's Archive — read it as "except ANY draw in that player's
+own draw step" and carry the same `caveats` line. `drawnInOwnDrawStep`
+is the one copy of the predicate; use it rather than writing the check
+again.
 
 **Two copies of your card will not prompt.** When every replacement
 applicable to one event is the *same* declared effect — same catalog
@@ -1726,12 +1802,40 @@ Restrictions are checked **at declaration only** (CR 508.1c, 509.1b).
 A creature pacified after attackers were declared keeps attacking.
 
 [ADR 0045](docs/decisions/0045-combat-restrictions.md) has the
-taxonomy, including what the vocabulary deliberately cannot say
-(Propaganda's attack cost; Silent Arbiter's and Crawlspace's count
-limits, which belong beside `Game.blockerBoundsLocked` as set-shaped
-predicates rather than as bits — one more entry in
-`checkBlockDeclarationLocked`, the validator `DeclareBlockers` runs
-over a whole declaration before it stores any of it).
+taxonomy, including what the vocabulary deliberately cannot say:
+Silent Arbiter's and Crawlspace's count limits, which belong beside
+`Game.blockerBoundsLocked` as set-shaped predicates rather than as
+bits — one more entry in `checkBlockDeclarationLocked`, the validator
+`DeclareBlockers` runs over a whole declaration before it stores any
+of it.
+
+**Propaganda's attack cost used to be on that list and is not any
+more** ([ADR 0080](docs/decisions/0080-attack-taxes.md), #1063). A
+price is not a prohibition, so it is not a bit:
+
+```go
+AttackTaxes: []game.AttackTax{
+    AttackTax("{2}", "Creatures can't attack you unless their controller pays {2} …"),
+    // …or the count-scaled form, and the planeswalker clause:
+    ProtectingPlaneswalkers(AttackTaxCounting(enchantmentsYouControl, "… {X}, where X is …")),
+},
+```
+
+The "you" is **structural** — a tax protects its own controller and
+nothing a card file writes can widen it to another seat. `ManaCost`
+returns a cost STRING for ONE attacking creature; the engine asks it
+once per attacker and concatenates, so three attackers into Propaganda
+is `{2}{2}{2}`. `AttackTaxScope`'s zero value is the narrow "you", so a
+card that forgets `ProtectingPlaneswalkers` under-taxes rather than
+over-taxes.
+
+**The engine charges it; you do not.** `Game.PriceAttackDeclaration`
+is the one pricer, `DeclareAttackerWith` / `DeclareAttackersWith` pay
+it at CR 508.1a before anything is staged, ALL OR NOTHING, and
+`internal/legal` calls the same pricer so an unaffordable attack is
+never offered (#544). It pays through the same
+`payAbilityManaCostLocked` an activated ability uses, so `ManaTrigger`
+fires for the taps and nothing about mana is duplicated.
 
 ### Attaching, and an ability whose source has gone (#812)
 
@@ -2838,6 +2942,37 @@ the ten-Temple cycle in `temples.go` combines all three (enters tapped,
 an ETB scry trigger on the stack, pipe-syntax dual) and is written as a loop over a table, since
 ten near-identical files is ten places to fix one mistake.
 
+**"…unless" and "if you don't": a conditional tapland is one of three
+clauses, and picking the wrong one is the usual mistake.** All three
+are entry replacements on `Spec.Replacements`; what differs is WHO
+decides and WHAT the decision costs:
+
+| Printed text | Clause | Who decides |
+|---|---|---|
+| "enters tapped unless you control a Swamp" (checkland, battle land, bond land) | `SelfEntersTappedUnless(cond)` ([tapland_helpers.go](server/internal/cards/effects/tapland_helpers.go)) | nobody — the board does |
+| "you may pay 2 life. If you don't, it enters tapped" (shockland) | `EntersTappedUnlessYouPayLife(name, 2)` ([shocklands.go](server/internal/cards/effects/shocklands.go)) | the player, for life |
+| "you may reveal an Island or Swamp card from your hand. If you don't, it enters tapped" (reveal-land) | `EntersTappedUnlessYouRevealFromHand(name, clause, matches)` ([reveal_lands.go](server/internal/cards/effects/reveal_lands.go)) | the player, for nothing |
+
+A CONDITION goes in `AppliesTo`, never inside `Replace`, so a land that
+meets it contributes no applicable replacement at all — otherwise CR
+616 asks the controller to order an effect that was always going to do
+nothing. A DECISION is the opposite: the replacement is always
+applicable and the question lives inside it, because a player may
+decline even when they could say yes (bluffing an empty hand is a real
+play, and the shockland at 20 life may still not want to pay).
+
+The reveal clause is `game.EntryHandReveal{Matches, Min, Max, Question,
+Then}` (#1198, [ADR 0013](docs/decisions/0013-replacement-effects.md)
+§5z). `Matches` is a `func(game.Card) bool` over a card in HAND, so it
+reads printed characteristics — `IsLandWithSubtype("island")` and
+friends — and it must not take a `*Game` (it runs under the read lock
+inside the bot enumerator as well as under the write lock on submit).
+Revealing costs nothing and moves nothing (CR 701.20b): the card stays
+in hand, the whole table becomes entitled to read it, and the engine
+does the reveal itself. Do not write a prompt in the card file —
+there is no per-card prompt code in this family, the same way there is
+none in the shockland one.
+
 **An alternative cast cost (S22):** "you may cast this spell for its
 <keyword> cost **rather than** its mana cost" (CR 118.9) goes in
 `Spec.AlternativeCosts`, built from the constructors in
@@ -3031,15 +3166,17 @@ live in. See
 The creature's entry is usually a bare `Completeness` declaration plus
 its `PrintedKeywords` — without it the whole card wears the
 "unimplemented" badge in hand, because the Adventure's text makes
-`NeedsCatalogEffect` true for the card. **One thing is still missing,
-and it decides which adventure cards are worth writing:** the view
-publishes `target_mode` and `legal_targets` for the face that is UP, so
-a human client asked to cast face 1 has no target picker. An Adventure
-half that TARGETS (Stomp, Petty Theft, Swift End) is therefore blocked
-on per-face announce data, while one that does not (Profane Insight,
-Fertile Footsteps, Heart's Desire) ships today. The bot enumerator is
-already face-correct, and an uncatalogued adventure card is unaffected
-— it has no announce data on either face and resolves by hand.
+`NeedsCatalogEffect` true for the card. **A TARGETED Adventure half is
+no longer blocked** (#992): the view publishes the whole announce
+surface — `target_mode`, `legal_targets`, `clauses`, the modes and the
+price list — per castable face, and the client's face picker swaps the
+chosen half's block in, so Stomp, Petty Theft and Swift End open a
+target picker like any other spell. See
+[bonecrusher_giant.go](server/internal/cards/effects/bonecrusher_giant.go).
+Nothing about a card file changes for it: write the Adventure half's
+`Targets` exactly as you would on a single-faced instant, under the
+`"#1"` key. An uncatalogued adventure card is still unaffected — it has
+no announce data on either face and resolves by hand.
 
 **The window is a `game.Duration`** (#945,
 [ADR 0063](docs/decisions/0063-durations-and-control.md)) — the same
@@ -3334,9 +3471,55 @@ the way the card prints them ("2/2 black Zombie", "1/1 blue Bird with
 flying", "3/3 green Beast", "0/4 colorless Wall artifact with defender").
 A token the table lacks is a new row, not a new constructor; a variant
 (enters tapped, with counters) wraps the template in a `TokenSpec`.
-Only tokens with behaviour — Treasure, Food, Clue, Gold and the other
-sacrifice-for-something artifacts — keep a constructor in `tokens.go`.
 `TestEveryTokenKeyResolves` fails on a key that is not in the table.
+
+**A token that PRINTS AN ABILITY (#521, #1248, [ADR 0083](docs/decisions/0083-token-abilities.md)):**
+not a row — a `tokenTemplate` in the catalog, because behaviour goes in
+the catalog and data goes in the table. Declare the slug, the printed
+characteristics, whichever of the four ability slots it uses, and the
+printed text; add the builder to `tokenTemplates` in
+[token_catalog.go](server/internal/cards/effects/token_catalog.go); give
+it a named constructor beside the card that makes it.
+
+```go
+func PestToken() game.Card { return tokenFromCatalog(printedPestToken) }
+
+func printedPestToken() tokenTemplate {
+    return tokenTemplate{
+        Slug: "pest",
+        Card: game.Card{Name: "Pest", TypeLine: "Token Creature — Pest",
+            Power: 1, Toughness: 1, Colors: []string{"B", "G"}},
+        Triggered: []game.TriggeredAbility{
+            WhenThisDies("Pest — you gain 1 life", func(g *game.Game, item *game.StackItem) error {
+                return GainLife{Player: item.Controller, Amount: 1}.Apply(NewContext(g, item))
+            }),
+        },
+        Text: "When this token dies, you gain 1 life.",
+    }
+}
+```
+
+The abilities are the SAME constructors a printed card uses — nothing
+about a token is a dialect — and they are registered once at boot under
+`game.TokenKey(slug)`, where the ordinary accessors find them through
+`game.CatalogKey`'s token-key fallback. Five rules, each enforced at
+boot by `checkTokenTemplate`: the template needs a slug, at least one
+ability, and **printed text** (a token has no printing to fetch oracle
+text from, so `Text` is the only thing that can tell the player what it
+does — it ships as `CardView.token_text`); it must not declare an oracle
+ID, and it must not leave a mana or activated ability on the `Card`
+(that is a closure on the instance, and one of those on the battlefield
+stops every restore point being written — #521, ADR 0041).
+
+Two cards that print the SAME token share one template and one slug —
+Beledros Witherbloom and Sedgemoor Witch both make `pest`. The slug is
+an on-disk identity a snapshot carries, so rename one with the care a
+database column gets, and qualify an ambiguous name
+(`dragon-firebending`, `dragon-nesting`) rather than numbering it.
+`tokenFromCatalog` takes the BUILDER, not the slug: a template may name
+another token (the Goblin Shaman makes a Treasure) and a slug-keyed
+registry would be a package variable whose initialiser reaches back into
+itself.
 
 **A token that's a copy (S22):** `CreateTokenCopy`, not a hand-written
 template:
@@ -3900,6 +4083,79 @@ Two things to know when you touch the untap path at all:
   unquestionably leaves your creatures sick. They were one loop
   before #74 only because the two sets were the same set.
 
+### Phasing (#1199, CR 702.26)
+
+A card that says **"phases out"** is two lines in the card file and
+nothing else, because every consequence of the phrase is the engine's:
+
+```go
+// "Target creature phases out."
+Effect: func(g *game.Game, item *game.StackItem) error {
+    ctx := NewContext(g, item)
+    return PhaseOut{Targets: legalTargetCards(item, g)}.Apply(ctx)
+},
+
+// "… phases out until this enchantment leaves the battlefield.
+//  Tap that creature as it phases in this way."
+return PhaseOutUntilLeaves{
+    Targets:      legalTargetCards(item, g),
+    Until:        source.InstanceID,
+    TapOnPhaseIn: true,
+}.Apply(ctx)
+```
+
+Both live in
+[phasing.go](server/internal/cards/effects/phasing.go). **Pass the
+whole target list in ONE call**, never one call per target: CR 702.26a
+phases them out simultaneously, and an Equipment named beside the
+creature it is attached to must not be dragged out twice (CR 702.26h).
+
+**What you must NOT write, because the engine already does it**
+(`game/phasing.go`, [ADR 0084](docs/decisions/0084-phasing.md)):
+
+- the Auras, Equipment and Fortifications attached to the target go
+  with it, transitively (CR 702.26g), and come back **still attached**;
+- the permanent keeps its counters, its marked damage, its tapped
+  state, its CR 613.7 timestamp and its `ObjectEpoch` (CR 702.26d) —
+  phasing is **not a zone change**, so nothing goes through `MoveCard`
+  and an exhaust ability stays spent across a phase cycle where a
+  flicker would refresh it;
+- it is removed from combat (CR 506.4);
+- **no ETB, LTB or zone-change trigger fires**, at either end;
+- it comes back during its controller's next untap step (CR 502.1),
+  before that player untaps, with no delayed trigger to schedule.
+
+**A phased-out permanent is not on the battlefield as far as your code
+is concerned.** It is in `Game.PhasedOut`, out of
+`g.Battlefield.Cards`, so `BattlefieldCardsForEffect`,
+`legalTargetsLocked`, the layer pass, the SBA sweep, the trigger
+harvester, `internal/legal` and the bot all skip it without asking —
+CR 702.26b, true by construction rather than by 125 remembered
+predicates. The only read surfaces that see one are
+`g.PhasedOutCardsForEffect()` and `g.IsPhasedOutForEffect(id)`, and a
+card should need neither. `FindCardZoneForEffect` deliberately answers
+`nil`.
+
+**The KEYWORD needs no `Spec` at all.** "Phasing" is in
+`canonicalKeywords`, so the deck importer stamps it from Scryfall and
+a printed-phasing permanent phases in and out on its own. A card that
+GRANTS phasing (Shimmer's "each land of the chosen type has phasing",
+an Aura's "enchanted permanent has phasing") is an ordinary layer-6
+keyword grant — the engine reads the keyword off
+`Effective().Abilities`, so a grant and a printing behave identically
+and a permanent that has lost all abilities stops phasing.
+
+**The wire** carries them in `GameView.phased_out`, a shared zone
+beside `battlefield` / `stack` / `exile`, with `phased_out: true` on
+each card; the client folds them back onto the controller's row,
+dimmed and badged `PHASED`, with the click withheld.
+
+Still missing, and named in the ADR rather than here: CR 702.26e /
+702.26f's continuous-effect corners — a "gain control until end of
+turn" whose object phases out keeps its `ScopedStatic` registration
+and applies again if the permanent returns inside the duration. No
+catalogued card reaches it.
+
 ### Adding a creature-type card (S26+)
 
 Tribal cards come in three shapes, and the shared builders live in
@@ -3947,7 +4203,8 @@ importer stamps it from Scryfall like any other printed keyword, and
 `Card.HasSubtype` answers true for every creature type in every
 zone. Only write a file when the card does something else too
 (Irregular Cohort's token). A TOKEN declares it on the template's
-`Keywords`, since a token has no oracle ID.
+`Keywords`: a keyword is plain data and always was, and it stays there
+even for a token that has a catalog entry of its own (ADR 0083).
 
 "Is every creature type" is a **layer-4 TYPE FACT**, not a keyword:
 `Characteristic.AllCreatureTypes`, set by a grant (Maskwood Nexus, via
@@ -4109,7 +4366,8 @@ is gone. In its place:
   `triggers_common.go`; a card predicate or an effect body used by
   more than one card goes in `helpers.go` (or a `predicates_<mechanic>.go`
   / `effects_<mechanic>.go` beside it); a token is a row in
-  `tokens_table.go`. Add a function; never change an existing one's
+  `tokens_table.go`, or — if it prints an ability of its own — a
+  `tokenTemplate` in the catalog (ADR 0083). Add a function; never change an existing one's
   behaviour in a card PR. Two PRs that both append to the same file
   merge cleanly.
 - **No batch prefixes.** A helper is named for what it says

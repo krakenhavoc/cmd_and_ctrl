@@ -610,7 +610,7 @@ func TestB04TerrorOfThePeaksShootsForTheNewcomersPower(t *testing.T) {
 	pushCatalogPermanent(g, me.ID, "Terror of the Peaks", "Creature — Dragon", b04TerrorOfThePeaksOracle, false)
 	oppBefore := opp.Life
 
-	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("3/3 colorless Beast"), 1) })
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("3/3 green Beast"), 1) })
 	b04WaitForPick(t, g, me.ID)
 	pickPlayer(t, g, me.ID, opp.ID)
 	passPriorityAroundTable(t, g)
@@ -619,7 +619,7 @@ func TestB04TerrorOfThePeaksShootsForTheNewcomersPower(t *testing.T) {
 		t.Errorf("a 3/3 entering should deal 3: %d → %d", oppBefore, opp.Life)
 	}
 	// An opponent's creature is not "you control".
-	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(opp.ID, TokenCard("3/3 colorless Beast"), 1) })
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(opp.ID, TokenCard("3/3 green Beast"), 1) })
 	passPriorityAroundTable(t, g)
 	if latestPickTarget(g, me.ID) != nil {
 		t.Error("an opponent's creature must not trigger the Dragon")
@@ -632,7 +632,7 @@ func TestB04ElementalBondDrawsForPowerThreeOrMore(t *testing.T) {
 	pushCatalogPermanent(g, me.ID, "Elemental Bond", "Enchantment", b04ElementalBondOracle, false)
 	before := me.Hand.Size()
 	g.WithWriteLock(func() {
-		_ = g.CreateTokenForEffect(me.ID, TokenCard("3/3 colorless Beast"), 1)
+		_ = g.CreateTokenForEffect(me.ID, TokenCard("3/3 green Beast"), 1)
 		_ = g.CreateTokenForEffect(me.ID, RedGoblinToken(), 1)
 	})
 	passPriorityAroundTable(t, g)

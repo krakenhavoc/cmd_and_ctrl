@@ -102,8 +102,20 @@ const (
 
 	// TimingSorcery forces sorcery speed even on an instant — the
 	// "only any time you could cast a sorcery" clause several
-	// graveyard permissions print.
+	// graveyard permissions print, and the one Teferi, Time Raveler
+	// imposes on each opponent (#1195).
 	TimingSorcery GrantTiming = "sorcery"
+
+	// TimingYourTurnOnly is "you can cast spells only during your
+	// turn" (Dosan the Falling Leaf), and it is NOT TimingSorcery:
+	// Dosan leaves you every instant-speed window on your own turn
+	// and takes away the rest, so the two cannot share a value.
+	//
+	// No CastPermission declares it — it is the per-PLAYER
+	// restriction's spelling (cast_timing.go), carried on this enum
+	// rather than on a second one so the engine has ONE timing
+	// vocabulary. Exactly the posture TimingFlash was added under.
+	TimingYourTurnOnly GrantTiming = "your_turn"
 )
 
 // PermissionCardRef is one card OBJECT a ScopeCards permission names:
@@ -141,6 +153,18 @@ type PermissionFilter struct {
 	// sorcery card in your graveyard".
 	InstantOrSorceryOnly bool `json:"instantOrSorceryOnly,omitempty"`
 
+	// NoncreatureOnly is the half of "noncreature spells" nothing in
+	// ADR 0066 needed and a timing statement does (#1195) — Borne
+	// Upon a Wind's sibling clause, and the shape a "you may cast
+	// noncreature spells as though they had flash" card wants.
+	NoncreatureOnly bool `json:"noncreatureOnly,omitempty"`
+
+	// SorceryOnly is Teferi, Time Raveler's +1: "you may cast SORCERY
+	// spells as though they had flash" (#1195). Narrower than
+	// InstantOrSorceryOnly, which would also open an instant that
+	// needs no opening.
+	SorceryOnly bool `json:"sorceryOnly,omitempty"`
+
 	// FromChosenType marks a filter whose creature type is the one
 	// named as the SOURCE permanent entered (CR 614.12, S26's
 	// Card.NamedTribe) — Realmwalker. The catalog declares the flag;
@@ -167,6 +191,12 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.InstantOrSorceryOnly && !c.IsInstant() && !c.IsSorcery() {
+		return false
+	}
+	if f.NoncreatureOnly && c.IsCreature() {
+		return false
+	}
+	if f.SorceryOnly && !c.IsSorcery() {
 		return false
 	}
 	if f.CreatureType != "" && !cardHasCreatureType(c, f.CreatureType) {
@@ -860,10 +890,16 @@ func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
 	var out []CastPermission
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
-		if c.Controller != p.ID || c.OracleID == "" {
+		if c.Controller != p.ID {
 			continue
 		}
-		for _, perm := range CatalogCastPermissions(CatalogAbilityKey(*c)) {
+		// The empty KEY is the skip, not an empty oracle ID — a token
+		// has one of its own since #521 (ADR 0083 decision 3).
+		key := CatalogAbilityKey(*c)
+		if key == "" {
+			continue
+		}
+		for _, perm := range CatalogCastPermissions(key) {
 			perm.Player = p.ID
 			perm.Scope = ScopeStanding
 			// #1035: a catalog entry is static and cannot name a SEAT,
@@ -1026,10 +1062,11 @@ func (g *Game) AnyCastPermissionsForEffect() bool {
 	}
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
-		if c.OracleID == "" {
+		key := CatalogAbilityKey(*c)
+		if key == "" {
 			continue
 		}
-		if len(CatalogCastPermissions(CatalogAbilityKey(*c))) > 0 {
+		if len(CatalogCastPermissions(key)) > 0 {
 			return true
 		}
 	}

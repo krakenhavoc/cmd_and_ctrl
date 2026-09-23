@@ -138,9 +138,13 @@ func TestBatch20CardsAreRegistered(t *testing.T) {
 		b20WallOfBlossomsOracle:       "Wall of Blossoms",
 		b20ManabarbsOracle:            "Manabarbs",
 		b20BrokenBondOracle:           "Broken Bond",
+		// #1213 closed the return-a-Forest cost and gave the
+		// once-each-turn gate a tally to read, so the batch's second
+		// declared skip is a registered card now.
+		"3ecaefc8-ead2-47a3-a7ea-b030faab65a7": "Quirion Ranger",
 	}
-	if len(want) != 27 {
-		t.Fatalf("the batch registers 27 cards, the table lists %d", len(want))
+	if len(want) != 28 {
+		t.Fatalf("the batch registers 28 cards, the table lists %d", len(want))
 	}
 	for oracle, name := range want {
 		spec, ok := Lookup(oracle)
@@ -152,13 +156,16 @@ func TestBatch20CardsAreRegistered(t *testing.T) {
 			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
 		}
 	}
-	// The two declared skips must NOT be registered: Arboreal Grazer
-	// (the put-a-land-from-hand prompt) and Quirion Ranger (a
-	// return-a-Forest cost). A spec for either would ship the card
-	// stronger than printed.
+	// The remaining declared skip must NOT be registered: Arboreal
+	// Grazer's put-a-land-from-hand prompt. A spec for it would ship
+	// the card stronger than printed.
+	//
+	// Quirion Ranger LEFT this list in #1213: her return-a-Forest cost
+	// is a component now and her "Activate only once each turn" reads
+	// the activation tally, so nothing about her is stronger than
+	// printed any more.
 	for _, skipped := range []string{
 		"d18a0815-59d3-4667-b52b-9acda741215e", // Arboreal Grazer
-		"3ecaefc8-ead2-47a3-a7ea-b030faab65a7", // Quirion Ranger
 	} {
 		if _, ok := Lookup(skipped); ok {
 			t.Errorf("%s is a declared skip and must not be registered", skipped)
@@ -341,7 +348,7 @@ func TestB20GrindingStationMillsThreeAndMayUntapWhenAnArtifactEnters(t *testing.
 		t.Error("the Station untaps when an artifact enters")
 	}
 	// A nonartifact entering is silent.
-	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("3/3 colorless Beast"), 1) })
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("3/3 green Beast"), 1) })
 	if b18TriggerPromptCount(g, me.ID) != 0 {
 		t.Error("a Beast is not an artifact")
 	}
@@ -617,7 +624,7 @@ func TestB20VerdantSunsAvatarGainsToughnessForItselfAndYourCreatures(t *testing.
 		t.Fatalf("its own entry: life %d → %d, want +5", life, me.Life)
 	}
 	// "Another creature you control": a 3/3 token.
-	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("3/3 colorless Beast"), 1) })
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("3/3 green Beast"), 1) })
 	passPriorityAroundTable(t, g)
 	if me.Life != life+8 {
 		t.Errorf("a 3/3 entering: life %d → %d, want +8", life, me.Life)
@@ -635,7 +642,7 @@ func TestB20VerdantSunsAvatarGainsToughnessForItselfAndYourCreatures(t *testing.
 	}
 	// An opponent's creature and a noncreature are silent.
 	g.WithWriteLock(func() {
-		_ = g.CreateTokenForEffect(opp.ID, TokenCard("3/3 colorless Beast"), 1)
+		_ = g.CreateTokenForEffect(opp.ID, TokenCard("3/3 green Beast"), 1)
 		_ = g.CreateTokenForEffect(me.ID, TreasureToken(), 1)
 	})
 	passPriorityAroundTable(t, g)

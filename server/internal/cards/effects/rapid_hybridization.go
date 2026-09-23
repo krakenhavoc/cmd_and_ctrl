@@ -23,8 +23,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "06692cd9-ac2f-4a32-8fd1-043ba3c0fe71",
 		Name:         "Rapid Hybridization",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The Frog Lizard token is created colorless instead of green, so anything that cares about a creature's color doesn't see it."},
+		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
@@ -40,7 +39,7 @@ func init() {
 			}
 			return CreateToken{
 				Controller: controller,
-				Template:   TokenCard("3/3 colorless Frog Lizard"),
+				Template:   TokenCard("3/3 green Frog Lizard"),
 				N:          1,
 			}.Apply(ctx)
 		},

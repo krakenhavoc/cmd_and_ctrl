@@ -35,7 +35,17 @@ type doublerCandidate struct {
 // triggerIdentityLKI is the non-characteristic identity a trigger needs
 // after CR 400.7 has restored the destination card's printed self.
 type triggerIdentityLKI struct {
-	OracleID   string    `json:"oracleID,omitempty"`
+	OracleID string `json:"oracleID,omitempty"`
+	// TokenKey is OracleID's sibling for a TOKEN, whose catalog
+	// identity is its template's synthetic key rather than an oracle
+	// ID (#521, token_key.go). Recorded for exactly the reason the
+	// oracle ID is: the identity a trigger is read off must be the
+	// one the permanent had while it was still on the battlefield
+	// (CR 603.10), and for a token that identity is this field.
+	// Without it, restoring the identity would BLANK a dying token's
+	// key and its "when this token dies" would never be found.
+	// ADR 0083 decision 4.
+	TokenKey   string    `json:"tokenKey,omitempty"`
 	ActiveFace int       `json:"activeFace,omitempty"`
 	AttachedTo TargetRef `json:"attachedTo,omitempty"`
 }
@@ -235,6 +245,7 @@ func (g *Game) withLastKnownTriggerIdentityLocked(c Card) Card {
 		return c
 	}
 	c.OracleID = identity.OracleID
+	c.TokenKey = identity.TokenKey
 	c.ActiveFace = identity.ActiveFace
 	c.AttachedTo = identity.AttachedTo
 	if lki, ok := g.lastKnownBattlefield[c.InstanceID]; ok {

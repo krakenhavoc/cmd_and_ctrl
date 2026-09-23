@@ -152,6 +152,163 @@ func (p PileSplit) Apply(ctx *Context) error {
 	return nil
 }
 
+// RevealPick is "an opponent chooses N of those cards" — Intuition's
+// one, Gifts Ungiven's two (#1214, CR 608.2 / CR 701.20).
+//
+// The cards must already be REVEALED, for PileSplit's reason and with
+// the same consequence: the chooser is being asked about cards they do
+// not own, and protocol's redaction pass shows them exactly what they
+// have been made a knower of. An unrevealed pool reaches them as an
+// empty prompt.
+//
+// `Then` receives the cards they PICKED and the cards they LEFT, each
+// in the order the set was revealed, because every card of this family
+// does something with both halves. It runs even when nothing could be
+// asked — an empty set, or a chooser who has left the game — with
+// nothing picked and everything left.
+type RevealPick struct {
+	// Player picks. Zero is not meaningful; every printed card of this
+	// family names an opponent.
+	Player uuid.UUID
+
+	// Owner owns the cards. Zero means the resolving effect's
+	// controller, which is every printed card of this family.
+	Owner uuid.UUID
+
+	// Question is the prompt's header, written the way the card is.
+	Question string
+
+	// Cards are the revealed cards, in the order the table saw them.
+	Cards []uuid.UUID
+
+	// Min / Max bound the pick. Max <= 0 means all of them. Both are
+	// clamped to the set's size (CR 608.2's "as much as possible"), so
+	// "chooses two" over a set of one is a choice of one.
+	Min, Max int
+
+	// Validate is #1017's set-level legality hook.
+	Validate func(picked []game.Card) bool
+
+	// Then is everything printed after the choice. Runs with g.mu held.
+	Then func(ctx *Context, picked, left []uuid.UUID) error
+}
+
+func (p RevealPick) Apply(ctx *Context) error {
+	owner := p.Owner
+	if owner == uuid.Nil {
+		owner = ctx.Controller()
+	}
+	item := ctx.Item
+	then := p.Then
+	_, err := ctx.Game.RevealPickThenForEffect(game.RevealPickPrompt{
+		Chooser:  p.Player,
+		Owner:    owner,
+		Source:   ctx.Source(),
+		Question: p.Question,
+		Cards:    p.Cards,
+		Min:      p.Min,
+		Max:      p.Max,
+		Validate: p.Validate,
+	}, func(g *game.Game, picked, left []uuid.UUID) error {
+		if then == nil {
+			return nil
+		}
+		return then(NewContext(g, item), picked, left)
+	})
+	return err
+}
+
+// ChoosePermanents is the resolution-time pick over one or more
+// players' boards (#1214, CR 608.2): "for each player, you choose from
+// among the permanents that player controls …" (Tragic Arrogance) and
+// "sacrifice any number of lands" (Scapeshift).
+//
+// ONE primitive for both engine kinds, because the card does not know
+// which one it is asking: the engine decides per leg, from whether the
+// board being walked belongs to the chooser
+// (game.PermanentsPickedThenForEffect). Tragic Arrogance walks every
+// player including its own controller, so one printed sentence is both.
+//
+// It does NOT target. A permanent with hexproof, shroud or protection
+// can be chosen this way, and the effect needs no legal choice to
+// resolve — which is the difference from writing the same clause as a
+// target spec, and the reason these cards were waiting on a prompt
+// rather than on a predicate.
+type ChoosePermanents struct {
+	// Player answers every leg. Zero means the resolving effect's
+	// controller.
+	Player uuid.UUID
+
+	// Of are the players whose boards are walked, in ask order. Empty
+	// means the chooser's own board alone, which is the "choose N of
+	// your own permanents" shape.
+	Of []uuid.UUID
+
+	// Question is each prompt's header.
+	Question string
+
+	// Candidates computes ONE seat's offer — the permanents on offer
+	// and the bounds. Returning nothing skips that seat. Runs with
+	// g.mu held and must not write.
+	Candidates func(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int)
+
+	// Validate is #1017's set-level legality hook, applied to every
+	// leg — Tragic Arrogance's "an artifact, a creature, an
+	// enchantment, and a planeswalker" is a rule about the SET.
+	Validate func(picked []game.Card) bool
+
+	// Sacrifice sacrifices everything chosen, across every leg, before
+	// Then runs — "target opponent sacrifices the creature you choose".
+	// The permanents leave through the one sacrifice path
+	// (SacrificeAllThenForEffect), so a sacrificed commander's CR 903.9
+	// prompt pauses the card exactly as it would anywhere else, and
+	// Then really does run after the permanents have gone.
+	//
+	// A card that sacrifices something OTHER than what was chosen —
+	// Tragic Arrogance sacrifices the rest — leaves this false and does
+	// its own work in Then.
+	Sacrifice bool
+
+	// Then is everything printed after the choice. Runs with g.mu held.
+	Then func(ctx *Context, picked game.PromptedPicks) error
+}
+
+func (p ChoosePermanents) Apply(ctx *Context) error {
+	chooser := p.Player
+	if chooser == uuid.Nil {
+		chooser = ctx.Controller()
+	}
+	of := p.Of
+	if len(of) == 0 {
+		of = []uuid.UUID{chooser}
+	}
+	item := ctx.Item
+	then := p.Then
+	sacrifice := p.Sacrifice
+	_, err := ctx.Game.PermanentsPickedThenForEffect(game.PermanentPickPrompt{
+		Chooser:    chooser,
+		Source:     ctx.Source(),
+		Question:   p.Question,
+		Of:         of,
+		Candidates: p.Candidates,
+		Validate:   p.Validate,
+	}, func(g *game.Game, picked game.PromptedPicks) error {
+		if !sacrifice || picked.Count() == 0 {
+			if then == nil {
+				return nil
+			}
+			return then(NewContext(g, item), picked)
+		}
+		return g.SacrificeAllThenForEffect(uuid.Nil, picked.Cards(), func(g *game.Game, _ []uuid.UUID) error {
+			if then == nil {
+				return nil
+			}
+			return then(NewContext(g, item), picked)
+		})
+	})
+	return err
+}
+
 // NonlandPermanentsControlledBy lists the nonland permanents a player
 // controls, in battlefield order — the candidate set behind "sacrifices
 // a nonland permanent of their choice".

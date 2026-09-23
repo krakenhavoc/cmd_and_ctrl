@@ -162,6 +162,23 @@ type MoveCost struct {
 	// move's source; this is priced against CardID, which is usually a
 	// different permanent.
 	Counters []CounterPrice `json:"counters,omitempty"`
+
+	// Mana is a cost string the move charges that `params` cannot
+	// name — today exactly one thing, the CR 508.1a attack tax
+	// (ADR 0080, #1063): "{2}" for an attack into Propaganda.
+	//
+	// The other fields are documented as the price "beyond a move's
+	// mana", and for a cast that is right — the mana is the card's
+	// printed cost, which a policy can read off the CardView. An
+	// attack has no printed cost, so the tax is nowhere else on the
+	// wire, and a policy that may not import internal/game (ADR 0033
+	// §3) would price an attack under Ghostly Prison exactly like a
+	// free one.
+	//
+	// A cost STRING rather than a number because that is what the
+	// engine charges and concatenates ("{2}{2}" for two taxes), and a
+	// policy that only wants the size reads its generic total.
+	Mana string `json:"mana,omitempty"`
 }
 
 // CounterPrice is one counter-removal component of a move's cost.

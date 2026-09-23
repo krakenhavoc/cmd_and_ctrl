@@ -156,6 +156,24 @@ var canonicalKeywords = map[string]bool{
 	// job is the badge and the ADR 0037 coverage signal, and it must
 	// not arrive before the mechanic does.
 	"madness": true,
+	// phasing (CR 702.26) joins with #1199, in the same change that
+	// teaches the engine to honour it — which is the closedness rule
+	// this table states. Unlike foretell, suspend and madness above,
+	// its consumer IS in the engine and is one function:
+	// performPhasingLocked (phasing.go) reads it off the effective
+	// characteristics to decide which of the active player's
+	// permanents phase out during CR 502.1's turn-based action.
+	//
+	// Reading it off Effective().Abilities rather than off Keywords is
+	// what makes Shimmer's "each land of the chosen type has phasing"
+	// and Vanishing's aura work like a printed one, and what makes a
+	// permanent that has lost all abilities stop phasing.
+	//
+	// Stamped by the deck importer like every other canonical token,
+	// so the ~70 printed-phasing permanents of the Mirage and Visions
+	// cycle are correct with no catalog entry at all. See
+	// KeywordPhasing in phasing.go and ADR 0084.
+	KeywordPhasing: true,
 }
 
 // KeywordChangeling is the canonical token for changeling (CR
@@ -204,10 +222,14 @@ const KeywordChangeling = "changeling"
 // ability fallback — which reads the card's own printed Keywords —
 // would wrongly protect it there.
 //
-// Players are not covered: hexproof and protection on a PLAYER
-// (Leyline of Sanctity, Teferi's Protection) have no home yet,
-// because Player carries no keyword slice. TargetPlayer refs pass
-// this gate by not reaching it.
+// Players are not covered HERE, and since #1197 that is a split
+// rather than a gap: hexproof and protection on a PLAYER (Leyline of
+// Sanctity, Teferi's Protection) are answered by
+// canPlayerBeTargetedByLocked in player_statics.go, at the same two
+// targeting call sites and on the same `targeting` switch. A
+// TargetPlayer ref goes there; a TargetCard ref comes here. Two
+// stores, because a player has no Characteristic and no layer — one
+// rule, because both read the same protection grammar.
 //
 // nil card returns true: a caller that has lost the card has an
 // existence problem, not a targeting one, and the zone walk that
@@ -361,19 +383,28 @@ func forEachAbilityToken(c *Card, fn func(token string) bool) {
 		return
 	}
 	// Off-battlefield path: the card's own printed keywords first
-	// (S21 sub-PR 1 — token templates carry them on the Card, since
-	// a token has no oracle ID for the catalog to key on), then the
-	// catalog. Lookup-miss (non-catalog card) returns nil → no
-	// keywords.
+	// (S21 sub-PR 1 — a token template's keywords are plain data on
+	// the Card and always were), then the catalog. Lookup-miss
+	// (non-catalog card) returns nil → no keywords.
 	for _, a := range c.Keywords {
 		if !fn(a) {
 			return
 		}
 	}
-	if CatalogPrintedKeywords == nil || c.OracleID == "" {
+	if CatalogPrintedKeywords == nil {
 		return
 	}
-	for _, a := range CatalogPrintedKeywords(CatalogKey(*c)) {
+	// The empty KEY is the skip, not an empty oracle ID (ADR 0083
+	// decision 3). A token reaches the catalog under its token key
+	// like every other object; no token template declares
+	// PrintedKeywords today — its keywords ride the Card above — so
+	// this is the gate asking the right question rather than a
+	// behaviour change.
+	key := CatalogKey(*c)
+	if key == "" {
+		return
+	}
+	for _, a := range CatalogPrintedKeywords(key) {
 		if !fn(a) {
 			return
 		}

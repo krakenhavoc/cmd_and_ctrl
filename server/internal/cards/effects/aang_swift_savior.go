@@ -43,24 +43,27 @@ import (
 //
 // # Declared simplifications
 //
-//   - "Waterbend {8}: Transform Aang" is NOT implemented, and since
-//     S46 the reason has changed. The TRANSFORM half is built —
-//     ADR 0079 shipped `Game.TransformPermanentForEffect` and
-//     `effects.TransformThis`, with the CR 712.18 hygiene (counters,
-//     damage, attachments and the CR 613.7 timestamp all surviving
-//     the flip) that ADR 0034 sequenced as its own PR. What is left
-//     is the COST: waterbend on an ACTIVATED ability has no shape.
+//   - "Waterbend {8}: Transform Aang" ships with a flat {8} mana cost
+//     instead of a waterbend one. ADR 0079 built the TRANSFORM half —
+//     `Game.TransformPermanentForEffect` / `effects.TransformThis`,
+//     with the CR 712.18 hygiene (counters, damage, attachments and
+//     the CR 613.7 timestamp all surviving the flip) — and this is
+//     the first card to use it through an activated ability rather
+//     than a Saga's chapter III. What is still missing is the COST:
 //     `Spec.TapCost` carries convoke and waterbend for a SPELL (S22);
-//     `AbilityCost` has no tap-other component, which is the open
-//     seam AGENTS.md §7 names and #758 tracks. Writing the ability
-//     with the cost omitted would make it a free transform — #259's
-//     mistake exactly — so the CLAUSE stays out until the component
-//     exists.
-//   - The back face's attack trigger is unwired for a consequence of
-//     that, not for its own reason: face 1 is reachable by the verb
-//     now, but nothing on THIS card can reach it, so a "#1" entry
-//     would be a trigger no game could fire. It lands in the same PR
-//     as the waterbend cost.
+//     `AbilityCost` has no tap-other component (AGENTS.md §7, #758).
+//     Paying a flat {8} in mana is strictly weaker than printed
+//     (#259) — every legal way to pay {8} in mana is still legal, and
+//     the only thing missing is the option to tap untapped artifacts
+//     and creatures instead — never stronger, since nothing lets the
+//     ability activate for less.
+//   - The back face's attack trigger (aang_and_la_oceans_fury.go) is
+//     now reachable, because the ability above can actually flip the
+//     face, and ships in full.
+//
+// Waterbend on an activated ability stays on the seam registry
+// (docs/engine-seams.md) for the day the tap-discount itself is
+// wanted; this card just no longer needs it to transform.
 //
 // # The ETB clause
 //
@@ -77,14 +80,19 @@ import (
 func init() {
 	Register(Spec{
 		// Face 0's catalog key is the BARE oracle ID — see
-		// game.CatalogKey. The back face would register under
-		// "cbf09050-…#1" when it has rules to run; today it has none
-		// the engine can reach.
-		OracleID:        "cbf09050-39d0-463b-96db-9e22011ae0d8",
+		// game.CatalogKey. The back face registers under
+		// aangSwiftSaviorOracle + "#1" — see
+		// aang_and_la_oceans_fury.go.
+		OracleID:        aangSwiftSaviorOracle,
 		Name:            "Aang, Swift Savior",
 		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"Aang can't transform — the \"Waterbend {8}\" ability and the back face's attack trigger don't work."},
+		Caveats:         []string{"Waterbend isn't implemented — the transform ability costs a flat {8} in mana; artifacts and creatures can't be tapped to help pay."},
 		PrintedKeywords: []string{"flash", "flying"},
+		Activated: []ActivatedAbility{{
+			Label:  "Waterbend {8}: Transform Aang.",
+			Cost:   ManaCost("{8}"),
+			Effect: Do(TransformThis{}),
+		}},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
@@ -95,27 +103,7 @@ func init() {
 			),
 			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
 				return game.NewTriggeredItem(source, "Aang, Swift Savior — airbend a creature or spell",
-					func(g *game.Game, item *game.StackItem) error {
-						// "Up to one": no target is a legal
-						// announcement and resolves as nothing.
-						if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-							return nil
-						}
-						target := item.Targets[0]
-						// "Other". Enforced here rather than in
-						// CardOK because the target predicate is not
-						// given the ability's source — the same
-						// convention Aang, the Last Airbender's
-						// "another target nonland permanent" follows.
-						// It matters more on this Aang: he has
-						// FLASH, so he can enter in response to a
-						// spell and would otherwise be a perfectly
-						// legal target for his own trigger.
-						if target.ID == item.SourceCardID {
-							return nil
-						}
-						return Airbend{Target: target.ID}.Apply(NewContext(g, item))
-					})
+					AirbendOtherTarget)
 			},
 			OptionalPrompt: &game.TriggerOptionalPrompt{
 				Question: "Aang, Swift Savior — airbend a creature or spell? " +
@@ -155,3 +143,8 @@ func targetOtherCreatureOrSpell(label string) *game.TargetSpec {
 		Min: 0, Max: 1,
 	}
 }
+
+// aangSwiftSaviorOracle is shared with the back face
+// (aang_and_la_oceans_fury.go), which registers under it plus "#1"
+// (game.CatalogKey).
+const aangSwiftSaviorOracle = "cbf09050-39d0-463b-96db-9e22011ae0d8"

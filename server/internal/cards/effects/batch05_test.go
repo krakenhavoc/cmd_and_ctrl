@@ -335,7 +335,7 @@ func TestTributeDrawsForBigCreaturesAndGrowsSmallOnes(t *testing.T) {
 	pushCatalogPermanent(g, me.ID, "Tribute to the World Tree", "Enchantment", b05TributeOracle, false)
 	before := me.Hand.Size()
 
-	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("3/3 colorless Beast"), 1) })
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("3/3 green Beast"), 1) })
 	passPriorityAroundTable(t, g)
 	if me.Hand.Size() != before+1 {
 		t.Errorf("a 3/3 entering should draw one card, drew %d", me.Hand.Size()-before)
@@ -577,7 +577,7 @@ func TestMentorOfTheMeekOffersToPayForSmallCreaturesOnly(t *testing.T) {
 		t.Errorf("paying should draw one card, drew %d", me.Hand.Size()-before)
 	}
 
-	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("3/3 colorless Beast"), 1) })
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("3/3 green Beast"), 1) })
 	passPriorityAroundTable(t, g)
 	if hasPayUnlessFor(g, me.ID) {
 		t.Error("a 3/3 entering must not trigger 'power 2 or less'")

@@ -1518,8 +1518,14 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 		}
 		spend := game.ManaSpendForAbility(card)
 		cost = strikePhyrexianForPreview(g, p.PlayerID, cost, spend, phyrexian)
+		// #1212: no source wish for an ability. "If mana from a
+		// Treasure was spent to activate this ability" (Forsworn
+		// Paladin, Jetmir's Fixer) is real printed text and is
+		// declared out of scope there — the record will carry the
+		// kinds, nothing reads them off an activation yet, and the
+		// catalog declaration is per CARD rather than per ability.
 		return writeAutoTapPreview(g, p.PlayerID, cost, xValue, excluded,
-			ab.Cost.Mana, spend, w)
+			ab.Cost.Mana, spend, 0, w)
 	}
 	// #696: the whole of the cast's price, from the engine's one
 	// pricer. The alternative cost claimed at announce, a granted
@@ -1557,8 +1563,15 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 	// generic and the string is Scryfall notation); `plan` and
 	// `missing` are the authority on the total, and they are priced
 	// with both.
+	// #1212: the spell's own source wish, so the plan this preview
+	// hands the client is the plan the engine's own auto-tapper would
+	// have made. The preview's plan is what the client actually taps;
+	// without this a Hired Hexblade previewed and tapped through the
+	// UI would be paid off a Sol Ring and draw nothing, while the
+	// same cast with AutoTap set would be paid off the Treasure and
+	// draw. Two routes, one answer.
 	return writeAutoTapPreview(g, p.PlayerID, cost, xValue, excluded,
-		price.Paid, spend, w)
+		price.Paid, spend, game.WantedManaSourcesFor(price.Card), w)
 }
 
 // castParamsFromPreviewQuery reads the announce-time half of the cast
@@ -1669,9 +1682,10 @@ func writeAutoTapPreview(
 	excluded map[uuid.UUID]bool,
 	costStr string,
 	spend game.ManaSpendContext,
+	prefer game.ManaSourceKinds,
 	w http.ResponseWriter,
 ) error {
-	plan, ok := g.AutoTapForCostExcluding(playerID, cost, xValue, excluded)
+	plan, ok := g.AutoTapForCostPreferringExcluding(playerID, cost, xValue, excluded, prefer)
 	type response struct {
 		OK      bool     `json:"ok"`
 		Plan    []string `json:"plan,omitempty"`

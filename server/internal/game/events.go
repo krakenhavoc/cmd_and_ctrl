@@ -430,6 +430,40 @@ const (
 	// creation without having to poll PendingTriggers.
 	EventTrigger EventKind = "trigger"
 
+	// EventActivateAbility — a player ACTIVATED an activated ability
+	// (CR 602.2b), announced onto the stack. Actor is the activator,
+	// Source and CardID are the permanent (or, since #660, the hand
+	// card) whose ability it is, Label is the ability's printed label
+	// — the same string the activation record is keyed by — and
+	// Exhaust says whether the ability prints the exhaust keyword.
+	//
+	// A SECOND event beside the EventTrigger the announce has always
+	// emitted, rather than fields bolted onto that one, and the
+	// difference is the whole reason it exists (#1184): EventTrigger
+	// is the "an item reached PendingTriggers" breadcrumb, shared by
+	// triggered abilities, and triggerHarvester.OnEvent returns
+	// immediately on it so that a trigger firing further triggers does
+	// not re-enter the harvest. Nothing can watch it, by design. This
+	// kind is the ANNOUNCEMENT, it carries the ability's identity, and
+	// the harvester walks it like any other event.
+	//
+	// It is deliberately wider than the two cards that asked for it.
+	// "Whenever you activate an exhaust ability" (Rangers' Refueler,
+	// Afterburner Expert) reads Actor and Exhaust; the still-open
+	// "whenever an OPPONENT activates an ability" watch (Harsh Mentor,
+	// Runic Armasaur — docs/engine-seams.md) needs exactly this event
+	// with ByAnOpponent in place of ByYou and no Exhaust test, so that
+	// row closes on this shape rather than on a second one.
+	//
+	// CR 605's mana abilities take the other path and keep the other
+	// kind: EventManaAbilityActivated carries the same Label and
+	// Exhaust stamps (#1183 gave that path the same record), so a
+	// watcher that means "any activated ability" watches both kinds.
+	// Two kinds and not one because the two paths differ in what a
+	// watcher may assume — a mana ability used no stack and granted
+	// nobody priority.
+	EventActivateAbility EventKind = "activate_ability"
+
 	// EventEffectError — an effect primitive (S14 catalog) failed
 	// to apply. Caller logs + keeps moving; the event is the
 	// debugging breadcrumb. ErrorMsg carries the reason.
@@ -542,8 +576,19 @@ const (
 	EventBeginDrawStep EventKind = "begin_draw_step"
 
 	// EventManaAbilityActivated — a mana-producing ability fired.
-	// Actor = controller, Source = the permanent that produced the
-	// mana. S15 sub-PR 2.
+	// Actor = controller, Source and CardID = the permanent that
+	// produced the mana, Label = the ability's printed label and
+	// Exhaust = whether it prints the exhaust keyword (#1183). S15
+	// sub-PR 2.
+	//
+	// CardID joined Source in #1210 so the two activation kinds carry
+	// the SAME stamps: a watcher that looks up the ability's source
+	// object (effects.WheneverAnOpponentActivates' `of` predicate)
+	// must not have to know which kind it is holding, and reading a
+	// uuid.Nil CardID matched nothing at all — a silent miss rather
+	// than an error. Both emit sites set it: the hand click and the
+	// AUTO-TAPPER's executor, which activates the ability too
+	// (CR 605.3a).
 	EventManaAbilityActivated EventKind = "mana_ability_activated"
 
 	// EventManaAdded — one mana token landed in a player's pool.
@@ -726,6 +771,57 @@ const (
 	// constructor was needed, because the harvester already watches
 	// any kind a TriggeredAbility names. Added in S46 (ADR 0079, #343).
 	EventTransform EventKind = "transform"
+
+	// EventPhaseOut / EventPhaseIn — CardID phased out or in
+	// (CR 702.26). Actor is its controller; Source, on a phase-out, is
+	// the card whose effect said so (uuid.Nil for CR 502.1's
+	// turn-based action, which has no source).
+	//
+	// NOT zone changes and deliberately not shaped like ones
+	// (CR 702.26d: "Zone-change triggers don't trigger when a
+	// permanent phases in or out"). Nothing emits EventZoneMove,
+	// EventETB or EventLTB alongside them, which is what keeps an ETB
+	// trigger silent on a phase-in and a dies trigger silent on a
+	// phase-out.
+	//
+	// Two consumers, the same two EventTransform has. layerVersionBump
+	// reads them to invalidate the layer engine, which is not optional:
+	// what is ON the battlefield has just changed, so every "creatures
+	// you control get +1/+1" and every AppliesTo has a new answer. And
+	// they are what makes "whenever this phases in" writable with no
+	// new constructor, because the harvester already watches any kind
+	// a TriggeredAbility names — a phased-out permanent's own triggers
+	// cannot fire, since the harvester walks the battlefield slice it
+	// is no longer in, which is CR 702.26b.
+	//
+	// Added in S46 (ADR 0084, #1199).
+	EventPhaseOut EventKind = "phase_out"
+	EventPhaseIn  EventKind = "phase_in"
+
+	// EventTurnedFaceUp — Actor turned the face-down permanent
+	// CardID face up (CR 708.6, the CR 116.2g special action).
+	// Source is the same card: a permanent turns ITSELF face up, and
+	// there is no other object involved.
+	//
+	// A KIND OF ITS OWN, not a reuse of EventTransform or EventETB,
+	// and the distinction is a rules one rather than a tidiness one.
+	// Both of those mean "a different object is here now" and "an
+	// object arrived"; CR 708.8 is the one transition in the game
+	// that explicitly means NEITHER — the permanent does not become a
+	// new object, and it does not enter anything. A card reading
+	// "whenever this transforms" would fire on every morph under the
+	// reuse.
+	//
+	// Two consumers, the same two EventTransform has. layerVersionBump
+	// invalidates on it, because the permanent's printed
+	// characteristics have just changed wholesale (the CR 708.2 body
+	// for the real card) while it sits still. And it is what makes
+	// "when this permanent is turned face up" (CR 708.8) writable,
+	// with no new constructor — the harvester already watches any
+	// kind a TriggeredAbility names, and by the time this is emitted
+	// the permanent is face up and its catalog entry answers again.
+	// Added in S43 (ADR 0082, #1194).
+	EventTurnedFaceUp EventKind = "turned_face_up"
 
 	// EventRevealCards — Actor showed CardID to the whole table (CR
 	// 701.20). Fires once per card, so "reveal the top five cards of
@@ -953,6 +1049,19 @@ type Event struct {
 	// a downstream prompt is answered). "Whenever ~ deals combat
 	// damage to a player" triggers read both. Added in S19 sub-PR 7.
 	Combat bool `json:"combat,omitempty"`
+
+	// Exhaust marks an EventActivateAbility or
+	// EventManaAbilityActivated whose ability prints the exhaust
+	// keyword — "Activate each exhaust ability only once" (#1181,
+	// #1183). False on every other event, and on the ordinary
+	// activations that are nearly all of them.
+	//
+	// A bit on the event rather than a lookup a watcher does for
+	// itself, because by the time a watcher runs the ability's source
+	// may be gone (a SacrificeSelf cost) and its ability list may have
+	// been renumbered or removed; the announcement is the only moment
+	// the fact is reliably knowable. Added for #1184.
+	Exhaust bool `json:"exhaust,omitempty"`
 
 	// CombatStep names which combat damage step dealt a combat
 	// EventDealDamage: CombatStepFirstStrike or CombatStepRegular

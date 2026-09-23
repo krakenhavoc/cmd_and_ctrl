@@ -1043,3 +1043,473 @@ which is what turns the server's per-holder stamp into a button at all.
 Additive on the wire (`v` unchanged), and in the direction the last two
 amendments already went: a card that carried one seat's stamps now
 carries each holder's own, on their own frame.
+
+## Amendment (2026-09-21, #1055): `castable_here` is the viewer's own answer
+
+The amendment above ended with a sentence that was a bug report as much
+as a decision: **"`castable_here` is the pile owner's answer, or
+yours."** One bit, two meanings, chosen by which card you are looking
+at — the pile owner's on most, the viewer's own on a card the viewer
+holds a grant over — and both client readers had to pair it with the
+(also public) `exile_play` to find out which one they were holding.
+That is the [#891](https://github.com/krakenhavoc/cmd_and_ctrl/issues/891)
+shape exactly: the field's NAME is a statement about the viewer and its
+VALUE was a statement about somebody else.
+
+**The bit is now per viewer, everywhere.** It is stamped for a seat
+that may actually make the cast — the pile's owner for a printed
+flashback or escape, a `CastPermission` holder for a granted one, both
+of them on their own frames when both are true — and is absent on every
+other copy of the same card, spectators and admins included.
+
+### The split is "about the card" versus "about a player"
+
+`stampLegalTargets` still computes the pile owner's answer, once per
+card per zone, because that is the only seat a per-seat walk knows
+about. What changed is where it goes: `castStamps.applyPublicTo` writes
+the half every viewer legitimately sees to the exported fields, and
+`CardView.stampsFor` files the WHOLE answer under the owner's own seat,
+exactly as `stampGrantedPermissions` already did for a foreign holder.
+`applyCastStampsFor` then promotes one seat's entry as before — the
+owner's is simply one more entry in the map now, rather than a public
+default nobody could opt out of.
+
+**Public**, because a card in a graveyard or on top of a revealed
+library is a card every player may pick up and read, and because every
+one of these is computed over public state: `alternative_costs` and
+`alternative_cost_required`, `modes`, `additional_cost`,
+`optional_costs`, `tap_cost`, `target_cost_notes`, `phyrexian_symbols`,
+`cant_cast`. An escape offer is priced by the size of a graveyard
+everybody can count; a Rule of Law is on the battlefield.
+
+**Per viewer**, because each answers "what may YOU announce":
+
+- `castable_here` — the field this amendment is about.
+- `legal_targets` and `clauses` — narrowed by hexproof, shroud,
+  protection and "target opponent", so seat A's list is not seat B's to
+  read. `applyCastStampsFor` has said that about a SPECTATOR since
+  #978 ("a legal target set is not a view of the board, it is a view of
+  what one specific player may announce"); this is the same sentence
+  applied to the bystander a public stamp used to reach.
+
+They travel together, and they have to: a bit whose offers were
+stripped is #1015's button with nothing behind it, and offers beside a
+bit that is false are a price list for a cast this viewer cannot make.
+Keeping the price list public and the bit private is the only split
+where neither half lies.
+
+### What it buys, and what it costs
+
+Both client readers lose their second gate and become one field read:
+`castableFromZone(card, zoneKind)` and `libraryTopPlayable(zone)` no
+longer take the viewer's or the owner's seat, and `docs/protocol.md`
+loses the paragraph that explained the pair-read. `cardAsFace` clears
+`castable_here` with the rest of the announce surface, because the
+server computed it for the face the grant names.
+
+The cost is that a bystander can no longer see that a card in somebody
+else's graveyard is castable BY THEM. Nothing in the client rendered
+that, and nothing should: it is the other seat's affordance, it is
+visible to them, and a spectator who wants to know whether a flashback
+is live can read the card's public price list exactly as a player at a
+paper table would.
+
+Additive on the wire in the `omitempty` direction that is safe — the
+field goes out on fewer frames, never on more — so a reader that
+already falls back to `false` for an absent bit needs no change and
+`v` does not move.
+
+---
+
+## Amendment (2026-09-21, #1166): the hand and the command zone take the same path
+
+The amendment above split the announce surface into a public half and
+three per-viewer fields, and applied it to the two zones that could
+carry a foreign holder's answer — the graveyard and the library top.
+It left the hand and the command zone on the pre-#1055 path: one
+`castStampsFor` call whose whole answer, `legal_targets` included, went
+straight into the exported fields, with no per-viewer promotion at all.
+
+That was two live leaks of one seat's answer, of very different sizes.
+
+**The command zone, with nothing in the way.** It is public — every
+seated player is a knower of every card in it — and `FilterViewFor` ran
+no strip over it whatsoever. A commander with a target clause put its
+OWNER's legal target set on all four frames, for a cast CR 903.4 gives
+exactly one seat.
+
+**A revealed hand card, with a hand-rolled strip in the way.**
+`keepKnownInHandZone` had been clearing `legal_targets` and `clauses`
+by hand since S20, so the leak was covered — by a second list of
+fields, in a second place, which is precisely the drift `castStamps`
+was created to end. Those two lines are gone and the hand is routed
+through `applyCastStampsFor` like every other cast surface.
+
+**What `keepKnownInHandZone` still does, and why that is not the same
+thing.** It also drops `modes`, `alternative_costs`,
+`alternative_cost_required`, `tap_cost`, `phyrexian_symbols` and
+`target_cost_notes` from a revealed card on a non-owner's frame. That
+is not the per-viewer split — those fields ARE facts about the card —
+it is the documented scope of the fields, which say "the viewer's own
+hand". A hand is not a public zone the way a graveyard is: a revealed
+card is one card the viewer has been shown, not a pile they may read.
+The two narrowings are independent and both stay.
+
+**`castable_here` was never involved.** `castStampsFor`'s switch only
+ever sets it for `ZoneGraveyard` and `ZoneLibrary` — every card in a
+hand or a command zone is a cast candidate, and an always-true flag
+would be noise the client had to ignore — so neither zone has ever
+carried one.
+
+The "wide blast radius" this was deferred for did not materialise:
+no test read its own hand's announce fields off an unfiltered
+`ViewOfGame`. `stampCastOffers` was left with one caller, which was
+this one, so its body and its history moved onto `castStampsFor` and
+every zone now calls the same function.
+
+Nothing moves on the wire in the direction that breaks a reader: the
+fields go out on fewer frames, never on more.
+
+---
+
+## Note (2026-09-21, #1171 / #1169): the zone question is asked of every face, and the hand's public half is an allowlist
+
+Two coherence items out of #1170, both of the S48 #891 shape — a
+surface that says one thing and means another — and neither changes a
+decision above. They change WHERE two rules live.
+
+### "Does this card open this zone" is one predicate (#1171)
+
+The rule was already written down: a cast out of a non-hand zone needs
+either a permission or the CARD's own declaration
+(`validateCastPathLocked` rule 2, `CastableZonesFor`). It was being
+asked twice, of different faces.
+
+The bot's legal-move enumerator asked it of EVERY castable face,
+because an MDFC's halves are separate catalog entries (ADR 0034's
+`<oracle_id>#N`) and only the back may print flashback. The view asked
+it of `CardView.oracleID` — the BARE oracle ID, which resolves to face
+0's entry whatever the other halves declare — so a card whose back
+face opened the graveyard was enumerated as a legal move for a bot and
+stamped with nothing at all: no `castable_here`, no price list, no
+target clause, and a zone browser with no button behind a cast
+`CastSpell` would have accepted. Silent, and latent: no catalog card
+declares it today, and the view's coherence fixture (#1024) seeded
+only single-faced cards, so the two answers were never compared for a
+card that has more than one.
+
+`game.CardCastableFromAnyFace` is that question, once, read by
+`legal/cast.go` and by `protocol.stampLegalTargets`. It is the same
+move #992 made one question over — `game.CastableFacesUnder` is the
+one answer to "which faces may a cast choose" — and for the same
+reason: a face one side offers and the other does not is either a bot
+move the announce path refuses or a picker row with nothing behind it.
+
+The fixture has a modal DFC whose back face declares AND prices the
+graveyard now, and `viewPrices` reads the union over the card's block
+and its `faces[i]` blocks, which is the shape the enumerator's per-face
+walk produces on the other side of the comparison.
+
+### A hand's public half is narrower, and it is an allowlist (#1169)
+
+The #1166 amendment above left `keepKnownInHandZone` clearing six
+announce fields from a hand-rolled list of field names. That narrowing
+is right — a hand is not a public zone the way a graveyard is, and a
+revealed card is one card the viewer has been SHOWN, not a pile they
+may read — but a list in the per-viewer filter is a second list of
+cast-surface fields in a second place, which is the drift `castStamps`
+exists to end. Being a list of what to REMOVE, it had already gone
+stale twice: it never covered `optional_costs` (added by ADR 0073
+after it), and since #992 it never covered the per-face blocks at all,
+so a knower of a revealed adventure card read its owner's whole
+per-face price list — including an offer's `pay_options`, which for a
+pitch cost is a list of instance IDs out of the hand the viewer was
+shown exactly one card of.
+
+Shape (1) of the issue, the conservative one: `castStamps.publicIn`
+takes the zone kind, and a HAND's public half is narrower than a
+graveyard's. `keepKnownInHandZone` goes back to being purely "drop the
+cards this viewer is not a knower of" and carries no field list at
+all.
+
+The narrowing is written as an ALLOWLIST (`handPublicCastSurface`) —
+the four fields that stay, rather than the six that go — because the
+question a new announce field has to answer is "may somebody who was
+shown this card read it", and the safe default for a field nobody has
+thought about is no. What stays is what is not cost-shaped:
+`target_mode` (the printed prompt shape, and already public on a
+revealed card's faces since #992), `additional_cost` and
+`optional_costs` (printed clauses whose pickers read the public
+battlefield), and `cant_cast` (a Rule of Law on the battlefield, which
+everybody can see).
+
+A reflection guard in `face_down_view_test.go` places every field of
+`CastSurfaceView` on one side of that line and fails on one nobody has
+placed, in the shape the redaction allowlist beside it already uses.
+
+Nothing moves on the wire in the direction that breaks a reader: the
+fields go out on fewer frames, never on more.
+
+### What is NOT in these two
+
+`modes` and `alternative_costs[i]` carry a `legal_targets` of their
+own, computed for the seat the stamp was built for, and those ride the
+PUBLIC half on a public pile — so a bystander reads the pile owner's
+per-mode legal target set off a modal card in a graveyard. That is the
+#1055 sentence one level down inside a nested view, it needs a
+decision about nested per-viewer data rather than a field move. Filed
+as #1172.
+
+The CLIENT half of #1171 is filed as #1173: the zone browser's cast
+gate reads the card's `castable_here`, which for a pile is face 0's
+answer, so it will not offer the cast a back face opens even though
+the frame now carries one on `faces[i]`.
+
+## Note (2026-09-22, #1172): the nested legal sets ride the same per-seat split
+
+The note above ended by filing the one thing it did not fix: `modes`
+and `alternative_costs` stay PUBLIC on a public pile and each carries a
+`legal_targets` of its own, computed for the seat the stamp was built
+for. A modal card in a graveyard shipped the pile owner's per-mode
+legal set to every viewer.
+
+### The shape, and why it is not either of the two the issue named
+
+#1172 named two candidate shapes and neither is what landed:
+
+1. *"The nested sets go private"* — described as a deep copy of two
+   view structs on every public stamp, and "the public half stops
+   being one assignment". The first half is right and is the cost
+   paid; the second is not. `applyPublicTo` was already
+   `publicIn(kind).applyTo(c)`, and `publicIn` was already the one
+   function that knows which fields are which (#1169). Adding two
+   lines to it keeps one place, and the promotion on the other side
+   stays exactly one assignment of the whole `CastSurfaceView`, which
+   is what hands a seat its nested sets back without a second
+   mechanism.
+2. *"The whole field goes private"* — refused, for the reason the
+   issue gives: `modes` is the printed text of a modal card and a
+   bystander at a paper table reads it off the graveyard.
+
+So: **the nested per-viewer fields ride the same per-seat `castStamps`
+/ `castOffers` split as the top-level ones.** The public projection
+carries the mode's and the offer's static facts; each viewer's frame
+gets its own nested lists, promoted with the block around them. It is
+#1170's move one level further in — an embedded `CastSurfaceView` per
+face is how the split travels down to a face, and this is how it
+travels down to a field inside one.
+
+### Which fields, and the rule that decides
+
+Four, and they are the four that are computed from the BOARD for one
+seat rather than read off the card:
+
+- `modes[i].legal_targets` and `modes[i].clauses` — narrowed by
+  hexproof, shroud, protection and "target opponent" exactly as the
+  card's own clause is.
+- `alternative_costs[i].legal_targets` — the clause the spell has when
+  this price is paid, resolved against the board through the same
+  `LegalTargetsForEffect`.
+- `alternative_costs[i].pay_options` — NOT a target list (a cost does
+  not target, CR 601.2h) but a list of instance IDs picked out by "you
+  control" / "your hand" / "your graveyard", so it answers "what may
+  YOU pay". #1169 already called it out as the live leak inside a
+  revealed hand card's offer list, where the whole offer list is
+  dropped; this is the same sentence on a public pile, where the offer
+  stays and the list does not.
+
+Everything else in both blocks is printed text — the prompt, the
+counts, the labels, `target_mode`, the offer's key, mana cost, life,
+pay label, CR 107.3b's X lock and CR 107.4's Phyrexian count — and
+stays public with its parent. The rule, stated once: **does this field
+come off the printed CARD, or off the board for one PLAYER.**
+
+### The copy is load-bearing
+
+`publicIn` takes its stamp by value, but `Modes` is a POINTER and
+`AlternativeCosts` a slice header, and the public projection and the
+asking seat's own answer come out of ONE `castStampsFor` call
+(`stampLegalTargets` stamps publicly and then files the same value for
+the seat). Blanking through the pointer would take the nested sets off
+the OWNER's frame as well as off the bystander's. That is
+`applyFaceCastStampsFor`'s bug — a shared backing array written in
+place — arriving one level further in, and `publicModeSpec` /
+`publicAlternativeCosts` copy for the same reason. One allocation per
+modal card and per priced card per public stamp, and none for a card
+that is neither.
+
+### The guard
+
+`face_down_view_test.go`'s `castSurfaceScopes` table places every field
+of `CastSurfaceView` on the public / private line and fails on a field
+nobody has placed. Two more tables do the same for `ModeOptionView` and
+`AlternativeCostView`, so a field added to a nested block is a decision
+somebody makes rather than one nobody notices — and the same test
+asserts that the public strip did not reach through into the seat's own
+copy.
+
+The #1024 coherence fixture gains a modal card in a graveyard and a
+modal clause on the modal DFC's back face, so the bystander loop asks
+the nested question per card and per face; the owner's half of the same
+fixture asserts all four lists survive the promotion.
+
+### Consequences
+
+Nothing on the wire moves in the direction that breaks a reader: four
+fields go out on fewer frames and never on more, so `v` does not move
+and a client that ignores them behaves as it did. Every client reader
+of the nested sets takes a `CardView` out of the viewer's own snapshot,
+so all of them were already reading their own frame; the one behaviour
+worth pinning — that a targeted-looking bullet arriving with no legal
+set opens no picker rather than a free-form prompt — now has a test.
+
+## Amendment — 2026-09-22 (#1195): the timing rule is per PLAYER, and CR 307.1 is asked in one place
+
+Decision 6 above put a timing rule on a permission — `CastPermission.Timing`,
+one of `TimingNormal` / `TimingFlash` / `TimingSorcery`, read next to
+`HasKeyword(&card, "flash")` in `CastSpell` — and that is the right shape for
+a grant that opens ONE cast of ONE object: madness (#657) and suspend's free
+cast (#659) are both exactly that. It is the wrong shape for the sentence
+Vedalken Orrery prints. "You may cast spells as though they had flash" names
+no card, names no zone, and outlives no particular object; it is a statement
+about a PLAYER. So is its inverse, which the same seam blocks from the other
+side: "each opponent can cast spells only any time they could cast a sorcery".
+
+`docs/engine-seams.md`'s row **Per-player "cast as though it had flash"** is
+nine recorded cards; the audit puts 15 of 21 behind it. This amendment builds
+it, and the shape it builds is the one this ADR already uses twice.
+
+### 1. `CastTiming` is a per-player statement, and it reuses three vocabularies
+
+```go
+type CastTiming struct {
+    Player   uuid.UUID
+    Timing   GrantTiming      // TimingFlash, TimingSorcery, TimingYourTurnOnly
+    Filter   PermissionFilter // the zero filter is "spells"
+    FromZone ZoneKind         // zero is "from anywhere"
+    Duration Duration
+    Affects  CastTimingAffects
+    Source, SourceName, Label
+}
+```
+
+Nothing here is new vocabulary, and that is deliberate:
+
+- **`GrantTiming`** is Decision 6's own enum, gaining one value.
+  `TimingYourTurnOnly` is "you can cast spells only during your turn"
+  (Dosan the Falling Leaf), which is **not** `TimingSorcery` — Dosan leaves
+  you every instant-speed window on your own turn and takes away the rest.
+  No `CastPermission` declares it, exactly as nothing declared `TimingFlash`
+  when this ADR reserved it.
+- **`PermissionFilter`** is Decision 1's, gaining `NoncreatureOnly` and
+  `SorceryOnly`. A timing statement narrows by card type the same way a
+  standing permission does ("you may cast CREATURE spells as though they had
+  flash", Yeva), and a second flag struct saying `CreatureOnly` again would
+  be two spellings of one predicate.
+- **`Duration`** is ADR 0063's, unchanged. Emergence Zone is
+  `UntilEndOfTurn`, Teferi's +1 is `UntilYourNextTurn`, and a derived
+  statement is `WhileInZone` — the same three `CastPermission.Duration`
+  carries, swept by the same `durationExpiredLocked`.
+
+`Affects` is the one field with no precedent, and it exists because a
+catalog entry is static and cannot name a seat: `TimingAffectsYou` (the
+source's controller — Orrery, Leyline, Yeva), `TimingAffectsEachOpponent`
+(Teferi, Time Raveler; Teferi, Mage of Zhalfir) and `TimingAffectsEachPlayer`
+(Dosan). The derivation expands it against the battlefield and stamps
+`Player`; a STORED statement is granted to a player by name and carries
+`TimingAffectsYou` by construction.
+
+### 2. Two homes, and they are the two this ADR already has
+
+**Derived, never stored** for a statement whose duration is a permanent's
+presence: `Spec.CastTimings` → `CardDef.CastTimings` → `CatalogCastTimings`,
+walked per query through **`CatalogAbilityKey`** — so a Vedalken Orrery under
+a CR 613.1f ability-removing effect stops granting, two Orreries compose, and
+one leaving cannot revoke the other's grant. Exactly Decision 1's third home
+and exactly `standingCastPermissionsLocked`'s argument.
+
+**Stored on the player** (`Player.CastTimings`) for a statement that outlives
+its source: Emergence Zone sacrifices itself and the permission lasts the
+turn; Teferi's +1 resolves and the planeswalker may die. Granted by
+`GrantCastTimingForEffect`, swept at the same two moments
+`sweepCastPermissionsLocked` runs (cleanup, and the beginning of a turn), by
+the same expiry function. Cloned and snapshotted beside `CastPermissions`,
+for the same reason: who may cast when is not derivable from the board.
+
+### 3. ONE read, and CR 101.2 decides the order inside it
+
+```go
+func (g *Game) CastTimingOpenLocked(playerID uuid.UUID, card Card,
+    zone ZoneKind, perm *CastPermission) bool
+```
+
+"May this player begin to cast this card, out of this zone, right now?"
+(CR 307.1). Four steps, in this order, and the order IS the rules:
+
+1. **The card.** An instant, or a card with flash (CR 702.8), is
+   instant-speed. This is the `HasKeyword(&card, "flash")` read that used to
+   sit inline in `CastSpell`.
+2. **The permission** (Decision 6, unchanged). `TimingFlash` opens it,
+   `TimingSorcery` shuts it. Madness and suspend reach the window through
+   this branch exactly as before.
+3. **The per-player GRANTS.** Any live `TimingFlash` statement naming this
+   player and covering this card and zone opens the window.
+4. **The per-player RESTRICTIONS, last, because CR 101.2 says "can't" beats
+   "can".** A `TimingSorcery` statement shuts the window whatever step 3
+   said; a `TimingYourTurnOnly` statement refuses the cast outright when it
+   is not this player's turn. An opponent's Vedalken Orrery does not get them
+   past your Teferi, and that falls out of the placement rather than needing
+   a rule of its own.
+
+Then: a shut window means `sorcerySpeedOpenLocked` must be open.
+
+**A land play is not here.** CR 305.1 and CR 116.2a make playing a land a
+special action, not a cast, and every card in this row writes about casting
+SPELLS. `CastSpell`'s land branch keeps its own `sorcerySpeedOpenLocked`
+check beside this call, which is the same split `CastGateLocked` documents
+for the same reason: a Dosan that stopped a land play would be a rule nobody
+printed.
+
+### 4. Three callers, which is the whole point
+
+The same three ADR 0073 §7 names for the cast gate, and for the same reason
+— the read sits BESIDE the gate rather than inside it, because "you cannot
+cast this" and "you cannot cast this **yet**" are different answers and the
+client greys them differently:
+
+- **`CastSpell`** (`mutations.go`), replacing the inline
+  `requiresSorcerySpeed` computation. Refuses with `ErrSorcerySpeedRequired`,
+  unchanged.
+- **`legal.castMovesPayingOptional`** (`legal/cast.go`), replacing its copy
+  of the same three lines, so a bot is never offered a cast the engine will
+  refuse for timing — and never denied one an Orrery opens.
+- **`protocol.castStampsFor`** (`view.go`), where `castable_here` gains its
+  third input. #1015 derived that bit from two things (a claimable price, and
+  the cast gate); it is now three, and the third is this predicate. A
+  flashback sorcery in a graveyard is a cast surface on your main phase and
+  not in an opponent's end step — which is what the announce path has always
+  answered and what the wire did not say.
+
+### 5. Out of scope, stated
+
+- **Activated abilities.** Several of these cards print an "activate
+  abilities only as a sorcery" clause beside the cast clause (Grand
+  Abolisher, Teferi, Mage of Zhalfir's sibling family).
+  `ActivatedAbility.SorcerySpeed` (`activated.go:337`) is a per-ABILITY flag
+  read by `activated.go:713`, and a per-player statement about activations
+  would want the same two homes and the same one read this amendment builds
+  for casts. It is a sibling, not a part: nothing in this row is blocked on
+  it, and a card that prints both gets the cast half and a caveat.
+- **A per-spell COUNT.** Winding Canyons is "until end of turn, you may cast
+  **a** creature spell as though it had flash" — one spell, not a window.
+  There is no allowance for the read to consult (the same gap
+  `CastTally` fills for Rule of Law and does not fill here), and a duration
+  that expired on use would be a sixth `DurationKind` with one user.
+  Caveated.
+- **"As though it had flash" said of ONE named card.** Every card on the row
+  says it of a player. A per-object version is `CastPermission.Timing`, which
+  already exists and is untouched.
+- **The wire does not grow a field.** `castable_here` already means "you may
+  cast this from here", and "not at this timing" is a reason it is false, not
+  a second bit. A client that wants to distinguish "banned" from "not yet"
+  already has `cant_cast` for the first.

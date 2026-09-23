@@ -25,6 +25,10 @@ export interface SacrificeOptionsShape {
   cards?: string[];
   min?: number;
   max?: number;
+  // #1213: the clause's count is the announced X ('Sacrifice X
+  // Treasures'), so min / max say nothing and the number picked IS
+  // the x_value the same message announces. See sacrificeRange.
+  count_from_x?: boolean;
 }
 
 // sacrificeCount is how many permanents the clause sacrifices: the
@@ -109,4 +113,87 @@ export function keepAvailablePicks(chosen: string[], optionIDs: string[]): strin
   const available = new Set(optionIDs);
   const kept = chosen.filter((id) => available.has(id));
   return kept.length === chosen.length ? chosen : kept;
+}
+
+// --- #1213: a count the ACTIVATOR announces --------------------------
+//
+// Two printed clauses no longer ship min == max:
+//
+//   "Sacrifice one or more artifacts"  min 1, max 0 (no ceiling)
+//   "Sacrifice X Treasures"            count_from_x, the count IS the X
+//
+// Everything above stays the fixed-count vocabulary, byte for byte,
+// because every other cost site still uses it. What follows is the
+// RANGE vocabulary, and a fixed clause passes through it unchanged:
+// its bounds are N..N and every answer these give is the answer the
+// functions above give.
+
+// SacrificeRange is how many permanents one payment may name. `max`
+// of 0 means "no printed ceiling" — the board is the only bound — and
+// a caller that needs a concrete number substitutes the option count.
+export interface SacrificeRange {
+  min: number;
+  max: number;
+}
+
+// sacrificeRange reads the bounds off the view. A clause whose count
+// is the announced X (`count_from_x`) has no printed bounds at all, so
+// it reads as "at least one, as many as you control": the client sends
+// the number picked AS the x_value, which is the only reading that
+// cannot disagree with the server.
+//
+// A view with no bounds at all is the one-permanent clause every cost
+// was before #747, which is what sacrificeCount already assumes.
+export function sacrificeRange(opts: SacrificeOptionsShape | undefined): SacrificeRange {
+  if (opts?.count_from_x) return { min: 1, max: 0 };
+  const min = opts?.min ?? 0;
+  const max = opts?.max ?? 0;
+  if (min <= 0 && max <= 0) return { min: 1, max: 1 };
+  if (min <= 0) return { min: max, max };
+  return { min, max };
+}
+
+// sacrificeCeiling is the range's `max` resolved against what is
+// actually on offer: an unbounded clause is capped by the board.
+export function sacrificeCeiling(range: SacrificeRange, optionCount: number): number {
+  return range.max > 0 ? range.max : optionCount;
+}
+
+// canConfirmSacrificeRange is the confirm gate for a range: at least
+// `min` distinct picks, and no more than the ceiling.
+export function canConfirmSacrificeRange(
+  chosen: string[],
+  range: SacrificeRange,
+  optionCount: number,
+): boolean {
+  if (new Set(chosen).size !== chosen.length) return false;
+  return chosen.length >= range.min && chosen.length <= sacrificeCeiling(range, optionCount);
+}
+
+// toggleSacrificePickInRange is one click in a ranged picker. A
+// single-pick clause (ceiling 1) replaces the pick, exactly as
+// toggleSacrificePick does; anything wider adds until the ceiling and
+// removes on a second click.
+export function toggleSacrificePickInRange(
+  chosen: string[],
+  id: string,
+  ceiling: number,
+): string[] {
+  return toggleSacrificePick(chosen, id, ceiling);
+}
+
+// sacrificeRangeShortfall is the reason a ranged cost cannot be paid
+// right now, or "" when it can — the greyed-row text, one clause over
+// from sacrificeShortfall. It reads the FLOOR, because a clause with
+// no ceiling is payable the moment one permanent can pay it.
+export function sacrificeRangeShortfall(
+  opts: SacrificeOptionsShape | undefined,
+  label: string,
+): string {
+  if (!opts) return "";
+  const have = opts.cards?.length ?? 0;
+  const need = sacrificeRange(opts).min;
+  if (have >= need) return "";
+  if (need === 1) return `nothing to sacrifice (${label})`;
+  return `needs ${label} (you have ${have})`;
 }

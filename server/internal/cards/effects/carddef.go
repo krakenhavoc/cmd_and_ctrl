@@ -38,6 +38,7 @@ func activatedShapes(in []ActivatedAbility) []game.ActivatedAbilityShape {
 			Cycling:      a.Cycling,
 			Condition:    a.Condition,
 			ActiveWhen:   a.ActiveWhen,
+			Exhaust:      a.Exhaust,
 			Effect:       a.Effect,
 		}
 	}
@@ -63,6 +64,8 @@ func buildDef(spec Spec) *game.CardDef {
 		TapCost:                    spec.TapCost,
 		CostModifiers:              spec.CostModifiers,
 		SelfCostModifiers:          spec.SelfCostModifiers,
+		ExhaustPermissions:         spec.ExhaustPermissions,
+		AttackTaxes:                spec.AttackTaxes,
 		CastableZones:              spec.CastableZones,
 		SpecialActions:             spec.SpecialActions,
 		UntapStep:                  spec.UntapStep,
@@ -71,14 +74,18 @@ func buildDef(spec Spec) *game.CardDef {
 		UntapOptOuts:               spec.UntapOptOuts,
 		CantBeCountered:            spec.CantBeCountered,
 		NoMaxHandSize:              spec.NoMaxHandSize,
+		PlayerKeywords:             spec.PlayerKeywords,
 		WantsDistinctColors:        spec.WantsDistinctColors,
+		WantsManaFrom:              spec.WantsManaFrom,
 		AdditionalLandPlays:        spec.AdditionalLandPlays,
 		XMatters:                   spec.XMatters,
 		CastPermissions:            standingCastPermissions(spec.CastPermissions),
+		CastTimings:                spec.CastTimings,
 		LibraryTopVisible:          spec.LibraryTopVisible,
 		CastCondition:              spec.CastCondition,
 		CastConditionLabel:         spec.CastConditionLabel,
 		CastRestrictions:           spec.CastRestrictions,
+		ActivationRestrictions:     spec.ActivationRestrictions,
 	}
 	if spec.Battle != nil {
 		d.BattleDefense = spec.Battle.Defense
@@ -149,8 +156,10 @@ func buildDef(spec Spec) *game.CardDef {
 				ManaCost:                  a.Cost.Mana,
 				RemoveCounters:            a.Cost.RemoveCounters,
 				AddCounter:                a.Cost.AddCounter,
+				DiscardCards:              a.Cost.DiscardCards,
 				Produced:                  a.Produced,
 				Label:                     a.Label,
+				Exhaust:                   a.Exhaust,
 				Rider:                     a.Rider,
 				NarrowToCommanderIdentity: a.NarrowToCommanderIdentity,
 				Condition:                 a.Condition,

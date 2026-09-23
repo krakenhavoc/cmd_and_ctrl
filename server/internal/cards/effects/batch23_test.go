@@ -31,6 +31,10 @@ const (
 	b23NivMizzetFiremindOracle     = "959acb66-84ca-4535-bca2-ad591895735e"
 	b23ProteanHulkOracle           = "10180e2f-90c5-4d41-ba44-16b14948f923"
 	b23RipApartOracle              = "cbdbf18f-0180-4ade-a79e-1e644dd42d6f"
+	// #1210: both were declared skips — the activation gate and the
+	// opponent-activation watch — and both landed with that issue.
+	b23CollectorOupheOracle = "0c4bc9ea-a5fd-4f44-96a1-5448eee228c4"
+	b23RunicArmasaurOracle  = "48e8ae59-a234-498e-9dae-bac8d1424ea5"
 )
 
 // b23Cast seeds a fully-specified card — colours and mana cost
@@ -92,9 +96,11 @@ func TestBatch23CardsAreRegistered(t *testing.T) {
 		b23NivMizzetFiremindOracle:     "Niv-Mizzet, the Firemind",
 		b23ProteanHulkOracle:           "Protean Hulk",
 		b23RipApartOracle:              "Rip Apart",
+		b23CollectorOupheOracle:        "Collector Ouphe",
+		b23RunicArmasaurOracle:         "Runic Armasaur",
 	}
-	if len(want) != 15 {
-		t.Fatalf("the batch registers 14 cards plus Hordeling Outburst, the table lists %d", len(want))
+	if len(want) != 17 {
+		t.Fatalf("the batch registers 16 cards plus Hordeling Outburst, the table lists %d", len(want))
 	}
 	for oracle, name := range want {
 		spec, ok := Lookup(oracle)
@@ -106,15 +112,14 @@ func TestBatch23CardsAreRegistered(t *testing.T) {
 			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
 		}
 	}
-	// The six declared skips must stay out until their seam lands:
-	// an activation gate ("activated abilities can't be activated"),
-	// an ability-activation trigger event, an opponent's choice at
-	// resolution, an additional phase, a card put from hand at
-	// resolution, and a trigger-replacement ("triggers an additional
-	// time").
+	// The four remaining declared skips must stay out until their
+	// seam lands: an opponent's choice at resolution, an additional
+	// phase, a card put from hand at resolution, and a trigger-
+	// replacement ("triggers an additional time"). Collector Ouphe
+	// (the activation gate) and Runic Armasaur (the ability-
+	// activation trigger event) came off this list with #1210 and
+	// are in `want` above.
 	for oracle, name := range map[string]string{
-		"0c4bc9ea-a5fd-4f44-96a1-5448eee228c4": "Collector Ouphe",
-		"48e8ae59-a234-498e-9dae-bac8d1424ea5": "Runic Armasaur",
 		"5bb32efd-9e58-4021-bbda-4ffccfa1d601": "Druid of Purification",
 		"516101be-be39-4d84-8fee-d8a79930dd0a": "Sphinx of the Second Sun",
 		"8d571129-9030-47e0-9624-a49fb63e5a1b": "Ilharg, the Raze-Boar",

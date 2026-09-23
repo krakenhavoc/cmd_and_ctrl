@@ -237,6 +237,12 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// nobody — which is also what stops the protection reader
 		// having to ask what zone it is in.
 		c.ChosenPlayer = uuid.Nil
+		// #1210 / CR 614.12: and so does the chosen card NAME. A
+		// Pithing Needle that is bounced and recast names a card
+		// again, and one in a graveyard restricts nobody — which is
+		// also what stops the restriction reader having to ask what
+		// zone the Needle is in.
+		c.ChosenName = ""
 		// #653 / #664, CR 400.7: how the SPELL was cast is a fact
 		// about the permanent that spell became, and CR 400.7d's
 		// licence to read it back ends with that permanent. A Phlage
@@ -272,6 +278,22 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// when it mints a new instance ID (resetAsNewObjectLocked).
 		c.EnteredBattlefieldAt = 0
 		c.SummonedThisTurn = false
+		// #1199 / CR 110.5d: only permanents have status, and phased
+		// in / phased out is one of the four. A card that has really
+		// left the battlefield is not a permanent and has none.
+		//
+		// It is here for completeness rather than because a phased-out
+		// permanent travels this way: PHASING ITSELF NEVER CALLS
+		// MoveCard — that is ADR 0084's whole point, and every field
+		// this block clears is one CR 702.26d says a phase-out must
+		// keep. What does reach here is a permanent that phased out
+		// and then left the battlefield for real while it was away
+		// (its controller conceded, CR 702.26k), and the card it
+		// leaves behind must not remember a status it no longer has.
+		c.PhasedOutBy = uuid.Nil
+		c.PhaseInLockedBy = uuid.Nil
+		c.PhasedOutIndirect = false
+		c.TapOnPhaseIn = false
 	}
 	// CR 400.7: a card that changes zones becomes a NEW OBJECT with no
 	// Counters go with the exile exit specifically. Nothing in the

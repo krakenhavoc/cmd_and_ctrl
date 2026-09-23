@@ -53,35 +53,36 @@ describe("libraryTopPlayable", () => {
     expect(libraryTopPlayable(library([card({ castable_here: true })]))).toBe(false);
   });
 
-  // #1035. `castable_here` on a library top is the LIBRARY OWNER's
-  // answer and it is public, so a viewer looking at somebody else's
-  // pile has to be told whose it is. The server says so the way it
-  // does for a foreign graveyard cast: the public `exile_play` names
-  // the holder, and that holder's frame is the only one carrying their
-  // stamps.
+  // #1055. "Whose answer is the bit" used to be a question this
+  // function had to answer, because `castable_here` was PUBLIC and
+  // carried the LIBRARY OWNER's answer: two seats at a table with
+  // Oracles of Mul Daya both saw the other's revealed top card marked
+  // playable. It takes the viewer's and the owner's seat no longer —
+  // the server stamps the bit for the seat it is projecting, so a
+  // frame that carries it is a frame that may play the card.
+  //
+  // The server holds that half now, in
+  // TestTwoHoldersEachSeeTheirOwnGraveyardCastStamps and
+  // TestTheLibraryOwnerAndBystandersGetNoForeignLibraryStamps
+  // (server/internal/protocol). What is left here is that the reader
+  // reads the bit and nothing beside it.
   describe("whose answer the bit is", () => {
-    const top = card({ name: "Their Top", known_by_you: true, castable_here: true });
-
-    it("offers the viewer's own library top", () => {
-      expect(libraryTopPlayable(library([top]), "me", "me")).toBe(true);
+    it("plays a top card the server marked for THIS frame", () => {
+      const top = card({ name: "Their Top", known_by_you: true, castable_here: true });
+      expect(libraryTopPlayable(library([top]))).toBe(true);
     });
 
-    it("withholds an opponent's, even though the bit is public", () => {
-      expect(libraryTopPlayable(library([top]), "them", "me")).toBe(false);
-      expect(libraryTopPlayable(library([top]), null, "me")).toBe(false);
-    });
-
-    it("offers it to the seat a cross-seat grant names", () => {
-      const granted = card({
+    it("does not play one it did not mark, grant or no grant", () => {
+      // `exile_play` is public and names the seat the permission was
+      // granted to. It is not the answer to "may I play this" any
+      // more, so a bystander's frame — the card, the public grant, no
+      // bit — is not a button.
+      const bystander = card({
         name: "Their Top",
         known_by_you: true,
-        castable_here: true,
         exile_play: { player: "them" },
       });
-      expect(libraryTopPlayable(library([granted]), "them", "me")).toBe(true);
-      // And to nobody else: a third seat that can see a revealed top
-      // card gets no button off somebody else's grant.
-      expect(libraryTopPlayable(library([granted]), "third", "me")).toBe(false);
+      expect(libraryTopPlayable(library([bystander]))).toBe(false);
     });
   });
 });

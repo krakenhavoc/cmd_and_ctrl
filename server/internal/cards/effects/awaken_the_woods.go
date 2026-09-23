@@ -22,7 +22,7 @@ func init() {
 		XMatters:     true,
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return CreateToken{Controller: ctx.Controller(), Template: TokenCard("1/1 green Dryad"), N: ctx.X()}.Apply(ctx)
+			return CreateToken{Controller: ctx.Controller(), Template: TokenCard("1/1 green Forest Dryad"), N: ctx.X()}.Apply(ctx)
 		},
 	})
 }

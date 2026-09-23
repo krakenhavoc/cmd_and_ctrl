@@ -342,18 +342,23 @@ func b27DealDamageWithExcess(ctx *Context, target uuid.UUID, amount int) (int, e
 // left 0 with an Until): a library that totals less than the
 // threshold is exiled whole and the run just stops — running out is
 // not a draw, so nobody loses for it (CR 701.17b, CR 704.5b).
+//
+// #1161: the run SEQUENCES, so a commander that pauses on CR 903.9
+// holds the rest of this seat's run rather than being walked past, and
+// the total counts the cards that really reached exile.
+//
+// #1176 makes each repetition its own instruction, which changes
+// nothing here: exiling the top card of a library is not a mill
+// (CR 701.13a), so no repetition opens a mill-amount window and
+// nothing can double one.
 func b27ExileTopUntilTotalManaValue(ctx *Context, player uuid.UUID, threshold int) error {
 	if ctx.PlayerByID(player) == nil {
 		return nil
 	}
-	total := 0
 	return MillToZone{
 		Player: player,
 		To:     game.ZoneExile,
-		Until: func(c game.Card) bool {
-			total += c.ManaValue()
-			return total >= threshold
-		},
+		Until:  UntilTotalManaValue(threshold),
 	}.Apply(ctx)
 }
 

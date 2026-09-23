@@ -135,3 +135,80 @@ func TestAllReturnsSnapshot(t *testing.T) {
 		t.Errorf("mutating All() leaked back: before=%d, after=%d", before, after)
 	}
 }
+
+// TestRegisterExileSelfOffTheGraveyardPanics pins #1221's boot check:
+// scavenge's and embalm's "Exile this card from YOUR GRAVEYARD" can
+// only be paid by a card in a graveyard, so an ability that declares
+// the component without declaring the zone could never be activated
+// — and would look complete on the catalog page while refusing every
+// activation. The symmetric check DiscardSelf has had since #660.
+func TestRegisterExileSelfOffTheGraveyardPanics(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("an exile-this cost off the graveyard did not panic")
+		}
+	}()
+	Register(Spec{
+		OracleID: "test-registry-exile-self-zone",
+		Name:     "Misplaced Scavenge",
+		Activated: []ActivatedAbility{{
+			Label: "{1}, Exile this card: do nothing",
+			Cost:  Plus(ManaCost("{1}"), ExileThis()),
+			Zones: []game.ZoneKind{game.ZoneHand},
+		}},
+	})
+}
+
+// And the other side of the same bound: with the graveyard declared
+// it registers.
+func TestRegisterExileSelfFromTheGraveyardIsFine(t *testing.T) {
+	registerForTest(t, Spec{
+		OracleID: "test-registry-exile-self-ok",
+		Name:     "Proper Scavenge",
+		Activated: []ActivatedAbility{{
+			Label: "{1}, Exile this card from your graveyard: do nothing",
+			Cost:  Plus(ManaCost("{1}"), ExileThis()),
+			Zones: []game.ZoneKind{game.ZoneGraveyard},
+		}},
+	})
+	if !Has("test-registry-exile-self-ok") {
+		t.Error("a graveyard exile-this ability did not register")
+	}
+}
+
+// TestRegisterStaticFromAnUnwalkedZonePanics pins #1221's other
+// boot check: a static may declare the zone it functions from, and
+// the layer gather walks the graveyard and nothing else. A zone it
+// does not walk would be a declaration the engine silently ignored —
+// the card would register, look complete on the catalog page, and
+// never apply. Same treatment #925 gives a trigger zone.
+func TestRegisterStaticFromAnUnwalkedZonePanics(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("a static declaring an unwalked zone did not panic")
+		}
+	}()
+	Register(Spec{
+		OracleID: "test-registry-static-zone",
+		Name:     "Misplaced Incarnation",
+		Static: []game.StaticAbility{{
+			Layer: game.Layer6Ability,
+			Zones: []game.ZoneKind{game.ZoneExile},
+		}},
+	})
+}
+
+// And the other side: the graveyard registers.
+func TestRegisterStaticFromTheGraveyardIsFine(t *testing.T) {
+	registerForTest(t, Spec{
+		OracleID: "test-registry-static-zone-ok",
+		Name:     "Proper Incarnation",
+		Static: []game.StaticAbility{{
+			Layer: game.Layer6Ability,
+			Zones: []game.ZoneKind{game.ZoneGraveyard},
+		}},
+	})
+	if !Has("test-registry-static-zone-ok") {
+		t.Error("a graveyard static did not register")
+	}
+}

@@ -89,7 +89,35 @@ const (
 	// KeywordActionSurveil is CR 701.25. Its count is the number of
 	// CARDS looked at, as scry's is.
 	KeywordActionSurveil KeywordAction = "surveil"
+
+	// KeywordActionEarthbend is the Avatar set's earthbend (#1178,
+	// earthbend.go). Its count is the number of +1/+1 COUNTERS put on
+	// the animated land — the third thing a count has meant in this
+	// family, and the rules' own distinction again: proliferate counts
+	// TIMES, scry and surveil count CARDS, earthbend counts COUNTERS.
+	//
+	// It is also the first action in the family that DOES SOMETHING at
+	// a count of zero; see actsAtZeroCount.
+	KeywordActionEarthbend KeywordAction = "earthbend"
 )
+
+// actsAtZeroCount reports whether the action still happens when its
+// count has been replaced down to nothing.
+//
+// False for the first three, and that is the rule
+// applyResolvedKeywordActionLocked has always applied: a proliferate
+// taken zero TIMES is not taken, and a scry of zero CARDS looks at
+// nothing. Both are "the action had no count left" rather than a
+// cancellation, and both end in abandonKeywordActionLocked so the rest
+// of the sentence still runs.
+//
+// True for earthbend, because its count is a number of COUNTERS and
+// the other three sentences of the keyword do not depend on it. "Earth-
+// bend 0" is a printed instruction — Rockalanche with no Forests —
+// and it animates the land, gives it haste and schedules the return;
+// what it skips is only the counters. Collapsing that into "no count,
+// no action" would make a real card a no-op.
+func (a KeywordAction) actsAtZeroCount() bool { return a == KeywordActionEarthbend }
 
 // maxKeywordActionRepeats caps how many times one settled instruction
 // may take its action. The CR 616.1 apply-loop is bounded at 32
@@ -134,6 +162,13 @@ type keywordActionTail struct {
 	// PendingChoiceScry or PendingChoiceSurveil. The count on the
 	// event is what it is queued with.
 	choice PendingChoiceKind
+
+	// land is an earthbend's TARGET (#1178): the land the settled
+	// action animates and puts its counters on. The target is chosen
+	// before the window opens — it is the spell's or ability's own
+	// target, re-checked by CR 608.2b — and a replacement rewrites the
+	// COUNT, never which land.
+	land uuid.UUID
 
 	// then is the rest of the sentence after the keyword action:
 	// Preordain's "then draw a card". It runs from wherever the
@@ -225,7 +260,7 @@ func (g *Game) applyResolvedKeywordActionLocked(ev *ReplacementEvent) (int, erro
 		tail = &keywordActionTail{}
 	}
 	n := ev.KeywordActionCount
-	if n <= 0 {
+	if n <= 0 && !ev.KeywordAction.actsAtZeroCount() {
 		// Replaced down to nothing. Not a cancellation — the action
 		// was taken, it simply had no count left — but there is
 		// nothing to do but tell the caller.
@@ -251,6 +286,19 @@ func (g *Game) applyResolvedKeywordActionLocked(ev *ReplacementEvent) (int, erro
 		return 0, nil
 	case KeywordActionScry, KeywordActionSurveil:
 		return g.lookAtTopForEffect(tail.choice, ev.Actor, ev.Source, n, tail.then), nil
+	case KeywordActionEarthbend:
+		// #1178. The count is a number of +1/+1 counters and the rest
+		// of the verb happens whatever it settled on, which is why
+		// this arm is reachable with n <= 0 and the other two are not.
+		if err := g.applyEarthbendLocked(ev.Actor, ev.Source, tail.land, n); err != nil {
+			return 0, err
+		}
+		// "Earthbend 3. Then each creature you control … gains
+		// hexproof" (Earthshape) sequences behind the verb, so the
+		// continuation runs from here — the SAME door the abandoned
+		// path uses, so a settled earthbend and a cancelled one cannot
+		// drift apart about whether the rest of the sentence happened.
+		return 0, g.runKeywordActionThenLocked(ev)
 	}
 	// An action kind nothing takes yet. Telling the caller is the only
 	// safe answer: a continuation nobody runs waits forever.
@@ -270,6 +318,20 @@ func (g *Game) applyResolvedKeywordActionLocked(ev *ReplacementEvent) (int, erro
 //
 // Caller must hold g.mu.
 func (g *Game) abandonKeywordActionLocked(ev *ReplacementEvent) error {
+	return g.runKeywordActionThenLocked(ev)
+}
+
+// runKeywordActionThenLocked runs the rest of the sentence after the
+// keyword action, exactly once.
+//
+// The shared body of abandonKeywordActionLocked and of the settled
+// earthbend arm (#1178), which is the point: "the rest of the
+// sentence" has one implementation whether the action happened or
+// was replaced away, so the two paths cannot disagree about whether
+// Preordain drew its card.
+//
+// Caller must hold g.mu.
+func (g *Game) runKeywordActionThenLocked(ev *ReplacementEvent) error {
 	if ev == nil || ev.keywordAction == nil || ev.keywordAction.then == nil {
 		return nil
 	}

@@ -16,28 +16,26 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // every other target on the card, not picked later the way a "when
 // you do" follow-up is.
 //
-// The exile clause is NOT modelled. docs/engine-seams.md tracks it as
-// an open seam: counterSpellLocked already accepts a destination
-// zone, but the only *ForEffect wrapper (CounterTargetForEffect)
-// hard-codes the owner's graveyard, and closing it is shared work
-// with Reprieve (#298) and Narset's Reversal (#299). A spell
-// countered here lands in the graveyard, same as an ordinary
-// Counterspell — weaker than printed, never stronger, and declared.
+// The exile clause is modelled with CounterTarget.Dest (#1230):
+// counterSpellLocked already accepted a destination zone, and closing
+// the *ForEffect wrapper gap that hard-coded the owner's graveyard was
+// shared work with Reprieve and Narset's Reversal, which need the
+// sibling "return to hand" verb off the same stack-exit primitive.
 func init() {
 	Register(Spec{
 		OracleID:     "feb221fb-59bf-4671-a53f-1bbe8e9c2ca9",
 		Name:         "Devious Cover-Up",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"A spell countered this way goes to its owner's graveyard, not exile.",
-		},
+		Completeness: CompletenessFull,
 		Targets: Clauses(
 			TargetSpell("target spell"),
 			TargetCardInGraveyard("up to four target cards in your graveyard", YouOwn()).WithCount(0, 4),
 		),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if t, ok := ctx.ClauseTarget(0); ok && t.Kind == game.TargetCard {
-				if err := (CounterTarget{StackID: t.ID}).Apply(ctx); err != nil {
+				if err := (CounterTarget{
+					StackID: t.ID,
+					Dest:    game.ZoneRef{Kind: game.ZoneExile},
+				}).Apply(ctx); err != nil {
 					return err
 				}
 			}

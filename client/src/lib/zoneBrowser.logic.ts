@@ -4,7 +4,7 @@
 // renderer (the client is node-only at test time). The component
 // delegates all derivations here so there's no behavioural drift.
 
-import { cardAsFace } from "./faces";
+import { cardAsFace, castableFaces } from "./faces";
 import type { CardView, ExilePlayView, GameView } from "./protocol";
 import type { BrowsableZone } from "./zoneBrowser";
 
@@ -160,10 +160,12 @@ export function grantedFaceIndex(grant: ExilePlayView | null): number | undefine
 export function grantedFace(card: CardView, grant: ExilePlayView | null): CardView {
   const i = grantedFaceIndex(grant);
   // A grant naming the face that is ALREADY up returns the card
-  // untouched rather than round-tripping it through cardAsFace, which
-  // clears the announce-prompt fields the server computed for exactly
-  // that face. CR 715.4's Adventure grant is this case — face 0, on a
-  // card exile is already showing front-up (CR 712.8).
+  // untouched, which since #992 is an economy rather than a
+  // correctness rule: cardAsFace swaps a face's announce block in
+  // instead of clearing the card's, and for the face that is up the
+  // two blocks are the same answer. CR 715.4's Adventure grant is
+  // this case — face 0, on a card exile is already showing front-up
+  // (CR 712.8).
   if (i === undefined || i === (card.active_face ?? 0)) return card;
   return cardAsFace(card, i);
 }
@@ -184,33 +186,41 @@ export function grantedFace(card: CardView, grant: ExilePlayView | null): CardVi
 // castableFromZone reports whether the viewer may cast `card` out of
 // the zone the browser is showing.
 //
-// Two gates, and the second one is not redundant with the server's.
-// `castable_here` on a card in a per-seat pile is the PILE OWNER's
-// answer and it is public — the graveyard is a public zone and a
-// flashback cost is printed on the card, so an opponent's snapshot
-// carries the bit too. Without a second gate the browser would offer
-// a button on someone else's graveyard card that the server then
-// refuses with ErrCardNotFound, which reads to the player as a bug
-// rather than as a rule.
+// ONE gate, because `castable_here` is the viewer's own answer since
+// #1055. It used to be the PILE OWNER's and it used to be public, so
+// this function needed a second gate — "you own the pile, or
+// `exile_play` names you" — to stop the browser offering a button on
+// someone else's graveyard card that the server then refused with
+// ErrCardNotFound, which reads to the player as a bug rather than as a
+// rule. That pair-read was the bug #1055 fixed at the source: the
+// field's name is a statement about the viewer, and now so is its
+// value.
 //
-// The second gate is "or the grant names ME" (#1022, #1035, #1037). A
-// permission is a statement about an OBJECT, not about a pile —
-// Wrexial's "cast target instant or sorcery card from that player's
+// A permission is still a statement about an OBJECT, not about a pile
+// — Wrexial's "cast target instant or sorcery card from that player's
 // graveyard" — so a card in an opponent's pile IS castable by its
-// holder, and the server stamps that holder's own offers, targets and
-// gate on their frame and nobody else's. `exile_play` is how it says
-// whose: it is public, it names the seat, and since #1037 a viewer who
-// holds a grant over the card gets THEIR OWN rather than whichever
-// live permission came first. Reading it here is what turns the
-// server's per-holder stamp into a button.
-export function castableFromZone(
-  card: CardView,
-  zoneKind: BrowsableZone,
-  viewerID: string | null,
-  ownerID: string,
-): boolean {
+// holder. The server computes that holder's own offers, targets and
+// gate and stamps them, the bit included, on their frame and nobody
+// else's. Reading the bit alone is reading exactly that.
+//
+// `exile_play` keeps its own job: it is public, it names the seat that
+// granted the permission, and the impulse button above reads it for
+// the grant's face and label. It is no longer part of ANSWERING
+// whether this viewer may cast.
+//
+// #1173: the answer is the UNION over the card's block and its
+// castable `faces[i]` blocks, not the card's alone. #1171 made the
+// server ask "does this card's own text open this zone" of every
+// castable face rather than of the card's bare (face 0) oracle ID, so
+// a card whose BACK face prints flashback, escape or a Gravecrawler-
+// shaped permission is stamped with `castable_here` on `faces[1]` and
+// `false` on the card — casting the FRONT half out of the graveyard is
+// genuinely not legal. Reading the card alone answered face 0's
+// question for every face; `castableFaces` (faces.ts) is the shared
+// walk that also backs canCastFromHand's face-aware gates (#1168), so
+// the two readers can't drift into different opinions about which
+// faces a cast may choose.
+export function castableFromZone(card: CardView, zoneKind: BrowsableZone): boolean {
   if (zoneKind !== "graveyard") return false;
-  if (!viewerID) return false;
-  if (viewerID !== ownerID && card.exile_play?.player !== viewerID) return false;
-  return card.castable_here === true;
+  return castableFaces(card).some((f) => f.castable_here === true);
 }

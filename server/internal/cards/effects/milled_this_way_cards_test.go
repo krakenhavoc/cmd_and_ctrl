@@ -152,3 +152,66 @@ func TestHelmOfObedienceWaitsForAMilledCommandersAnswer(t *testing.T) {
 		t.Error("finding a creature sacrifices the Helm")
 	}
 }
+
+// TestHelmOfObedienceCarriesOnPastACommanderThatTookTheCommandZone is
+// the other answer to the same prompt, and the #1159 regression.
+//
+// "Until a creature card ... has been put into their graveyard this
+// way" is CR 400.7's reading: a commander whose owner ACCEPTS the
+// command zone was never put into that graveyard, so it does not end
+// the run. Before #1159 the `until` clause was answered against the
+// card that came off the library, so the Helm stopped on a creature
+// that never arrived, reanimated nothing, and left itself in play.
+//
+// The library is stacked commander-first, then a real creature, so the
+// run has to walk past the diverted card to find the card the Helm is
+// actually about.
+func TestHelmOfObedienceCarriesOnPastACommanderThatTookTheCommandZone(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	fillPool(me, 5)
+	helm := pushCatalogPermanent(g, me.ID, "Helm of Obedience", "Artifact", helmOfObedienceOracle, false)
+
+	// PushTop, so the LAST one pushed is milled first.
+	beast := libraryCardFor(opp, "Their Beast", "Creature — Beast")
+	commander := libraryCardFor(opp, "Their Commander", "Legendary Creature — Beast")
+	markCommanderCard(t, g, opp, commander)
+
+	if err := g.ActivateCatalogAbility(me.ID, helm, 0, game.ActivateAbilityParams{
+		XValue:  5,
+		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}},
+		Strict:  true,
+	}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	b21AcceptCommandZone(t, g, opp.ID)
+
+	if !opp.Command.Contains(commander) {
+		t.Fatal("accepting did not put the commander into the command zone")
+	}
+	if !g.Battlefield.Contains(beast) {
+		t.Fatal("the run stopped on the diverted commander; it should have carried on to the Beast and reanimated it")
+	}
+	if c := findTestCard(g, beast); c == nil || c.Controller != me.ID {
+		t.Error(`the reanimated creature arrives under the activator's control ("under your control")`)
+	}
+	if g.Battlefield.Contains(helm) {
+		t.Error("a creature card really did reach the graveyard, so the Helm is sacrificed")
+	}
+}
+
+// b21AcceptCommandZone answers the CR 903.9 prompt with "yes, the
+// command zone" — the half b21DeclineCommandZone does not cover.
+func b21AcceptCommandZone(t *testing.T, g *game.Game, owner uuid.UUID) {
+	t.Helper()
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == game.PendingChoiceOptionalReplacement && c.Chooser == owner {
+			if err := g.ResolveOptionalReplacement(c.ID, owner, true); err != nil {
+				t.Fatalf("ResolveOptionalReplacement: %v", err)
+			}
+			return
+		}
+	}
+	t.Fatalf("no command-zone prompt for %s", owner)
+}

@@ -227,6 +227,25 @@ type StaticAbility struct {
 	// lifeTotalStaticIsLiveLocked.
 	DependsOnLifeTotal bool
 
+	// DependsOnAttackingStatus is DependsOnHandSize for whether a
+	// permanent is ATTACKING — Ohran Frostfang's "attacking creatures
+	// you control have deathtouch".
+	//
+	// Attacking status is not on the battlefield's shape (it doesn't
+	// add, remove or move a permanent, and it isn't a counter, a tap
+	// or the turn), so nothing else invalidates the cached resolution
+	// when a creature is declared as an attacker, is removed from
+	// combat (a control change, CR 506.4) or combat ends (CR 511.3).
+	// See layerVersionBump.OnEvent's EventAttack arm and
+	// invalidateLayersForAttackChangeLocked.
+	//
+	// Same contract as DependsOnHandSize and DependsOnLifeTotal, and
+	// opt-in for the same reason: a declare-attackers step happens
+	// every combat at every table, and gating the bump on this flag
+	// is what keeps that free for the tables with no such card in
+	// play.
+	DependsOnAttackingStatus bool
+
 	// ActiveWhen is the CR 716 / 719 / 721 / 709.5 designation gate:
 	// this static exists only while its source permanent has the
 	// designation named — level N or greater, solved, N or more
@@ -237,6 +256,34 @@ type StaticAbility struct {
 	// gated-off static is never gathered, never sorted into a bucket
 	// and never applied. See designations.go and ADR 0071.
 	ActiveWhen Designation
+
+	// Zones is WHERE this static functions from (CR 113.6, #1221).
+	// Nil means the BATTLEFIELD, which is every static written
+	// before this field existed and nearly every static there will
+	// ever be.
+	//
+	// The sibling of ActivatedAbilityShape.Zones (ADR 0062
+	// Decision 1) and TriggeredAbility.Zones (#925), with the same
+	// shape and the same default for the same reason: the dimension
+	// is per-DECLARATION, because a card may print one ability that
+	// works in a graveyard beside one that works on the battlefield.
+	//
+	// `{ZoneGraveyard}` is the Judgment incarnations — "As long as
+	// Anger is in your graveyard and you control a Mountain,
+	// creatures you control have haste" (CR 113.6c). A static that
+	// declares the graveyard does NOT also apply from the
+	// battlefield, exactly as a cycling ability does not also work
+	// on one: the declared list IS the list, and Anger's printed
+	// haste on the battlefield is a separate keyword on the card.
+	//
+	// Read by activeStaticAbilitiesLocked, which gathers the
+	// battlefield walk and one narrow declared-zone walk
+	// (static_zones.go) behind a boot-time index, so a table with
+	// no such card in any graveyard pays one map lookup.
+	//
+	// effects.Register refuses a zone the gather does not walk, so a
+	// declaration the engine would silently ignore fails at boot.
+	Zones []ZoneKind
 }
 
 // staticContinuousEffect is the internal `ContinuousEffect` adapter
@@ -342,6 +389,13 @@ func (g *Game) activeStaticAbilitiesLocked() []ContinuousEffect {
 	// zone. One more source list into the same gather, never a second
 	// pass — see emblem.go.
 	out = append(out, g.emblemContinuousEffectsLocked()...)
+	// #1221 / CR 113.6c: statics that function from a zone other than
+	// the battlefield — the Judgment incarnations' "as long as this
+	// card is in your graveyard". One more source list into the same
+	// gather, never a second pass, and behind a boot-time index so a
+	// table with no such card pays one slice read. See
+	// static_zones.go.
+	out = append(out, g.declaredZoneStaticsLocked()...)
 	if g.Battlefield == nil || CatalogStaticAbilities == nil {
 		return out
 	}
@@ -375,6 +429,17 @@ func (g *Game) activeStaticAbilitiesLocked() []ContinuousEffect {
 			ts = src.AttachedAt
 		}
 		for _, ab := range abilities {
+			// #1221 / CR 113.6: a static that declares another zone
+			// does not ALSO apply from the battlefield. The declared
+			// list IS the list — Anger's anthem is a graveyard clause
+			// and its own haste is a separate printed keyword, so a
+			// battlefield Anger giving the team haste would be the
+			// card saying something it does not. One comparison per
+			// ability, and the same predicate the declared-zone
+			// gather asks.
+			if !StaticFunctionsFromZone(ab, ZoneBattlefield) {
+				continue
+			}
 			out = append(out, staticContinuousEffect{
 				ability:   ab,
 				source:    src,

@@ -201,6 +201,22 @@ func discardedByYou(ev game.Event, source *game.Card) bool {
 	return ev.Kind == game.EventDiscardCard && ev.Actor == source.Controller
 }
 
+// exileFromGraveyardIfStillThere is "exile that [discarded] card from
+// your graveyard": a no-op if the card has already left — answered in
+// response with a reanimation, a madness cast, or anything else that
+// moves it first — because "from your graveyard" names an object in
+// one zone (CR 400.7). Bag of Holding's own trigger and Currency
+// Converter's share this body verbatim (#1218); the linked-exile
+// identity each reads back afterward is b27ExiledWith, keyed on the
+// caller's own (source, label) pair, not on anything this function
+// does.
+func exileFromGraveyardIfStillThere(g *game.Game, item *game.StackItem, cardID uuid.UUID) error {
+	if z := g.FindCardZoneForEffect(cardID); z == nil || z.Kind != game.ZoneGraveyard {
+		return nil
+	}
+	return ExileTarget{Target: cardID}.Apply(NewContext(g, item))
+}
+
 // eventCardHasType reports whether the card just discarded has
 // any of the given type-line words ("Island", "Pirate", "Vehicle").
 // The card is read from the graveyard, where its printed type line
@@ -643,6 +659,26 @@ func damageToFirstTarget(amount int) func(item *game.StackItem, ctx *Context) er
 // killed the source before the ability resolves, otherwise a counter
 // on the source itself. Both cards pair it with b24KeywordCounterGrant
 // so the counter carries CR 122.1e's keyword.
+// plusOneCountersOnThis is "Put N +1/+1 counters on this creature" —
+// the body most of the exhaust cards print (Prowcatcher Specialist,
+// Greenbelt Guardian, Afterburner Expert, Elvish Refueler, Boom
+// Scholar) and a common one outside them.
+//
+// Unlike putCounterOnSourceWhileOnBattlefield beside it, it does NOT
+// check that the source is still on the battlefield: AddCounter is a
+// no-op on a card that has gone, and the two cards that read that
+// check pair it with a keyword-counter grant that would not be. Keep
+// them separate rather than merging them into one flagged helper.
+func plusOneCountersOnThis(n int) Effect {
+	return func(g *game.Game, item *game.StackItem) error {
+		return AddCounter{
+			Target: item.SourceCardID,
+			Kind:   game.CounterPlusOne,
+			N:      n,
+		}.Apply(NewContext(g, item))
+	}
+}
+
 func putCounterOnSourceWhileOnBattlefield(kind string, n int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		if !b15OnBattlefield(g, item.SourceCardID) {
@@ -752,4 +788,57 @@ func notACreature(c *game.Characteristic) {
 	}
 	c.Types = kept
 	c.SetSubtypes(nil)
+}
+
+// EnteringPermanentChooser is the `Controller` hook every entry
+// replacement that asks its own question shares: WHO is asked.
+//
+// One copy rather than three (#1198). The clone gate found the same
+// sixteen lines in `EntersAsCopyOf` (copy_effects.go, CR 707.2's
+// "enter as a copy of…?"), `EntersTappedUnlessYouPayLife`
+// (shocklands.go) and `EntersTappedUnlessYouRevealFromHand`
+// (reveal_lands.go), and it is the same RULE in all three rather than
+// merely the same text: the question belongs to whoever is putting
+// the permanent onto the battlefield.
+//
+// `ev.Actor` first, because the battlefield-entry path stamps
+// Card.Controller only AFTER the replacement pipeline has run — so at
+// this point src.Controller is whatever the card carried in the zone
+// it is leaving, and the Actor is the one field guaranteed correct.
+// The card's own controller, then its owner, are the fallbacks for an
+// entry driven by something that stamped no actor.
+func EnteringPermanentChooser(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
+	if ev != nil && ev.Actor != uuid.Nil {
+		return ev.Actor
+	}
+	if src == nil {
+		return uuid.Nil
+	}
+	if src.Controller != uuid.Nil {
+		return src.Controller
+	}
+	return src.Owner
+}
+
+// untapTheTarget is the Effect body for an ability whose whole
+// instruction is "Untap target <something>". Four cards print it
+// behind four different costs — Magewright's Stone ({1}, {T}),
+// Wirewood Lodge ({G}, {T}), Quirion Ranger (return a Forest) and
+// Wirewood Symbiote (return an Elf) — and the clause that differs
+// between them is the TARGET clause, which lives on the ability, not
+// this body.
+//
+// It walks ctx.LegalTargets() rather than indexing item.Targets so a
+// target that became illegal in response is skipped (CR 608.2b) and
+// the ability resolves doing nothing, which is the printed outcome.
+// Named in #1213, where the third and fourth copies would have been
+// written.
+func untapTheTarget(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind == game.TargetCard {
+			return UntapTarget{Target: t.ID}.Apply(ctx)
+		}
+	}
+	return nil
 }

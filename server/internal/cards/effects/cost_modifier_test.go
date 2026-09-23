@@ -255,3 +255,19 @@ func TestAnimarDiscountsPerCounter(t *testing.T) {
 		t.Errorf("{1}{G}{G} with three counters: %d, want 2 (the {G}{G} stands)", got)
 	}
 }
+
+// SpellManaValueAtLeast has no caller in the catalog yet (#832): this
+// pins its one behaviour directly so it does not sit untested until a
+// card needs it. {X}{U} announced at X=3 has mana value 4 (CR 202.3e)
+// and passes a floor of 4; at X=2 its mana value is 3 and the same
+// floor fails.
+func TestSpellManaValueAtLeastReadsTheAnnouncedX(t *testing.T) {
+	pred := SpellManaValueAtLeast(4)
+	card := game.Card{ManaCost: "{X}{U}"}
+	if !pred(game.CostQuery{Card: card, XValue: 3}) {
+		t.Error("X=3 ({X}{U} = mana value 4): want SpellManaValueAtLeast(4) to pass")
+	}
+	if pred(game.CostQuery{Card: card, XValue: 2}) {
+		t.Error("X=2 ({X}{U} = mana value 3): want SpellManaValueAtLeast(4) to fail")
+	}
+}

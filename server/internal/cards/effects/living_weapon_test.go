@@ -34,7 +34,7 @@ func castLivingWeapon(t *testing.T, g *game.Game, name, oracle string) (equipmen
 	t.Helper()
 	equipment = castCatalogSpell(t, g, name, equipTypeLine, oracle, nil)
 	passPriorityAroundTable(t, g)
-	germ = findBattlefieldByName(g, "Germ")
+	germ = findBattlefieldByName(g, "Phyrexian Germ")
 	if germ == uuid.Nil {
 		t.Fatalf("%s made no Germ token", name)
 	}

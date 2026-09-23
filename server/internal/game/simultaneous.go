@@ -403,6 +403,13 @@ var (
 	battlefieldExitRoute = zoneRoute{ViaBattlefieldLeave: true}
 	exileRoute           = zoneRoute{Dst: ZoneExile}
 	bounceRoute          = zoneRoute{Dst: ZoneHand}
+	// graveyardRoute is a plain zone move to a graveyard from
+	// anywhere but the battlefield — PutCardsIntoGraveyardThenForEffect's
+	// route. Not ViaBattlefieldLeave: that flag is CR 400.7's exit
+	// cleanup and the CR 603.10 LKI snapshot a leaves-the-battlefield
+	// trigger needs, and this route is refused for a battlefield card
+	// (see the caller), so neither ever applies here.
+	graveyardRoute = zoneRoute{Dst: ZoneGraveyard}
 )
 
 // destroyRouteWith is the destroy template carrying the rider a
@@ -485,8 +492,17 @@ func millRoute(player uuid.UUID, dest ZoneKind) zoneRoute {
 // are separate templates rather than one with a flag. A battlefield
 // destination never reaches here — an entry is not an exit, and
 // searchEnterBattlefieldLocked owns it.
-func searchRoute(player uuid.UUID, dest ZoneKind) zoneRoute {
-	return zoneRoute{Dst: dest, Actor: player}
+//
+// #1230 widened the destination to ZoneExile — "search your library
+// for any number of … cards, exile them, then shuffle" (Ugin, Eye of
+// the Storms) — and gave it the same FaceDown parameter every other
+// exile-capable route carries, so a future "exile it face down" search
+// does not need a seventh template: routeDestinationLocked already
+// resolves ZoneExile to the shared g.Exile zone, and
+// executeZoneRouteLocked already reads FaceDown against the SETTLED
+// destination the same way it does for a tuck or a plain exile.
+func searchRoute(player uuid.UUID, dest ZoneKind, faceDown FaceDownKind) zoneRoute {
+	return zoneRoute{Dst: dest, Actor: player, FaceDown: faceDown}
 }
 
 // tuckRoute is the fifth template (#783): "put it into its owner's
@@ -519,6 +535,17 @@ func tuckRoute(opts TuckOptions) zoneRoute {
 // The pre-move copies are taken ONCE, before the first move, and
 // re-published from every leg, so a Blood Artist still sees the whole
 // board leave with it on either side of a prompt.
+//
+// Caller must hold g.mu in write mode.
+// There is NO early stop on it, and since #1176 there is nowhere in
+// the engine that wants one. #1159 gave this loop the mill's `until`
+// predicate, because a run that ends "until a creature card is put
+// into their graveyard" ends on the card that ARRIVED and only this
+// loop knows which legs arrived. #1176 took it back, because a run is
+// not one instruction with an early exit: it is a SEQUENCE of one-card
+// mill instructions, each with its own CR 614 window on its own
+// amount, and its verdict is asked between repetitions rather than
+// between legs (millUntilRunLocked). A batch is a batch again.
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) routeAllThenLocked(r zoneRoute, ids []uuid.UUID, then func(g *Game, landed []uuid.UUID) error) error {
@@ -607,6 +634,16 @@ func (g *Game) routeAllLandedLocked(r zoneRoute, ids []uuid.UUID) []uuid.UUID {
 //
 // Everything else about the batch is unchanged: the pre-move copies
 // are published once for the whole loop, and nothing here can pause.
+//
+// There is NO early stop on this loop, and since #1161 there is no way
+// to ask for one. #1159 gave it the mill's `until` predicate and #1161
+// took it back: a run that ends on what ARRIVED has to wait for each
+// leg to arrive, and this loop is the one that does not wait — a leg
+// paused on the CR 903.9 prompt has not landed when the loop asks, so
+// the run walks past it. With a landed-COUNT bound (Helm of Obedience
+// at X) that walk is the whole library. #1176 kept the property and
+// moved the verdict further out still: an `until` run is a loop over
+// one-card mill instructions, so NO routing loop is handed a clause.
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) routeAllLandedPerLegLocked(ids []uuid.UUID, routeFor func(uuid.UUID) zoneRoute) []uuid.UUID {
@@ -843,6 +880,44 @@ func (g *Game) ExileCardsThenForEffect(ids []uuid.UUID, then func(g *Game, exile
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) ExileCardThenForEffect(cardID uuid.UUID, then func(g *Game, exiled bool) error) error {
 	return g.ExileCardsThenForEffect([]uuid.UUID{cardID}, func(g *Game, landed []uuid.UUID) error {
+		if then == nil {
+			return nil
+		}
+		return then(g, len(landed) == 1)
+	})
+}
+
+// PutCardsIntoGraveyardThenForEffect puts every card in `ids` into
+// its owner's graveyard as one simultaneous exit and hands `then` the
+// ones that actually reached the graveyard — Valakut Exploration's
+// "put them into their owner's graveyard, then this enchantment deals
+// that much damage" (#1218) needs the count AFTER the move lands, not
+// before: a leg can pause on the CR 903.9 prompt exactly as an exile
+// or a destroy leg can (ADR 0013 §5t), so a caller that read back a
+// pre-move tally would pay out for a move the window has not answered
+// yet. PutIntoGraveyardForEffect (random_bottom.go) is the same exit
+// with no continuation, for a caller that never needs the count.
+//
+// Refuses any id still on the battlefield (ErrInvalidParam), for the
+// same reason PutIntoGraveyardForEffect does: leaving the battlefield
+// for a graveyard is a destroy, a sacrifice or a state-based action,
+// each with its own path and its own event, and none of them is this.
+//
+// Caller must hold g.mu in write mode (resolution frame).
+func (g *Game) PutCardsIntoGraveyardThenForEffect(ids []uuid.UUID, then func(g *Game, landed []uuid.UUID) error) error {
+	for _, id := range ids {
+		if z := g.findCardZoneLocked(id); z != nil && z.Kind == ZoneBattlefield {
+			return ErrInvalidParam
+		}
+	}
+	return g.routeAllThenLocked(graveyardRoute, ids, then)
+}
+
+// PutIntoGraveyardThenForEffect is the single-card form.
+//
+// Caller must hold g.mu in write mode (resolution frame).
+func (g *Game) PutIntoGraveyardThenForEffect(cardID uuid.UUID, then func(g *Game, landed bool) error) error {
+	return g.PutCardsIntoGraveyardThenForEffect([]uuid.UUID{cardID}, func(g *Game, landed []uuid.UUID) error {
 		if then == nil {
 			return nil
 		}

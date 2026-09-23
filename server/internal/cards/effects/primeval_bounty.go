@@ -28,7 +28,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return creatureSpellCastByYou(ev, source, g)
-			}, "Primeval Bounty — create a 3/3 Beast", Do(CreateToken{Template: TokenCard("3/3 colorless Beast"), N: 1})),
+			}, "Primeval Bounty — create a 3/3 Beast", Do(CreateToken{Template: TokenCard("3/3 green Beast"), N: 1})),
 			{
 				Watches:   []game.EventKind{game.EventCast},
 				AppliesTo: b10NoncreatureSpellCastByYou,

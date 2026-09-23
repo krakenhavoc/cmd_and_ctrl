@@ -221,6 +221,18 @@ func ThisAttacked(ev game.Event, source *game.Card, _ game.Characteristic, _ *ga
 	return attackDeclared(ev, source)
 }
 
+// YouCastYourSecondSpellEachTurn — "Whenever you cast your second
+// spell each turn" (Breeches, the Blastmaker; Avatar Yangchen). The
+// cast path bumps the per-turn tally BEFORE it emits EventCast, so a
+// total of exactly two means "this is the second" — the same clock
+// Maelstrom Nexus reads for "first".
+func YouCastYourSecondSpellEachTurn(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
+		return false
+	}
+	return g.CastTallyFor(ev.Actor).Total == 2
+}
+
 // YouCast — you cast a spell matching `spell` (nil for any spell).
 // The predicate is the same CardPredicate the target clauses use, so
 // "whenever you cast a noncreature spell" is YouCast(Noncreature()).
@@ -470,6 +482,128 @@ func AtEndOfYourCombat(label string, effect Effect) game.TriggeredAbility {
 // WheneverYouGainLife — "Whenever you gain life".
 func WheneverYouGainLife(label string, effect Effect) game.TriggeredAbility {
 	return On(game.EventChangeLife, YouGainedLife, label, effect)
+}
+
+// AnExhaustAbility — the activation event is of an ability that
+// prints the exhaust keyword. Reads the bit the announcement stamped
+// (game.Event.Exhaust) rather than going back to the source's ability
+// list, because a SacrificeSelf or DiscardSelf cost has already ended
+// the object by the time a watcher runs (#1184).
+func AnExhaustAbility(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
+	return ev.Exhaust
+}
+
+// theTwoActivationKinds is every event kind that says "somebody
+// activated an activated ability": the CR 602 announcement, and CR
+// 605's mana abilities, which never touch the stack and so have their
+// own kind. A card that says "an ability" means both.
+var theTwoActivationKinds = []game.EventKind{
+	game.EventActivateAbility,
+	game.EventManaAbilityActivated,
+}
+
+// WheneverYouActivateAnExhaustAbility — "Whenever you activate an
+// exhaust ability" (Rangers' Refueler, Afterburner Expert, #1184).
+//
+// Watches BOTH activation kinds, because a mana ability is an
+// activated ability (CR 605.1a) and Loot, the Pathfinder prints an
+// exhaust one; the exhaust bit and the ability's label ride both
+// events, stamped at the announcement.
+//
+// "You" is the source's controller — or, under InGraveyard, its owner
+// (CR 108.4), which is how Afterburner Expert reads its own clause
+// from the graveyard. The trigger fires for the source's OWN exhaust
+// ability too: "an exhaust ability" does not say "another".
+func WheneverYouActivateAnExhaustAbility(label string, effect Effect) game.TriggeredAbility {
+	return OnAny(theTwoActivationKinds, AllOf(ByYou, AnExhaustAbility), label, effect)
+}
+
+// WheneverAnOpponentActivates — "Whenever an opponent activates an
+// ability of <thing> [that isn't a mana ability], …" (#1210,
+// ADR 0018's note of 2026-09-22): Harsh Mentor, Runic Armasaur.
+//
+// ONE declaration shape for the whole clause family, and the three
+// arguments are the three ways printed cards differ.
+//
+//   - WHOSE. Always ByAnOpponent, on Event.Actor — the ACTIVATOR, not
+//     the source's controller, because that is what the cards print
+//     and the two differ exactly where it matters (an ability
+//     activated from a permanent somebody else controls).
+//   - WHICH ABILITIES. `includeMana` picks the watched KINDS:
+//     EventActivateAbility alone, or both it and
+//     EventManaAbilityActivated. "…if it isn't a mana ability" is
+//     therefore not a predicate a card file writes and can forget —
+//     it is the absence of a kind from Watches, decided at the only
+//     place that knows (CR 605.1a: a mana ability never reaches the
+//     stack and carries its own event kind precisely so a watcher can
+//     tell the difference).
+//   - OF WHAT. `of` runs against the ability's SOURCE object, looked
+//     up live on the battlefield: "an ability of an artifact,
+//     creature, or land on the battlefield" (Harsh Mentor), "of a
+//     creature or land" (Runic Armasaur). Nil is "any source", the
+//     plain "whenever an opponent activates an ability" clause. A
+//     source that is no longer on the battlefield — a Lotus Petal
+//     that sacrificed itself to its own cost — matches nothing, which
+//     is the printed reading of "on the battlefield" and the safe
+//     direction for a clause that does not print it.
+//
+// `build` receives the ACTIVATOR (Event.Actor) and returns the
+// effect: "this creature deals 2 damage to THAT PLAYER". It does not
+// target — the clause says "that player", so hexproof and "can't be
+// the target of" do nothing about it and CR 608.2b re-checks nothing
+// — and it is captured in the Build closure the way Ob Nixilis, the
+// Hate-Twisted captures a drawer.
+//
+// Compose Optional() over the result for a "you may" (Runic
+// Armasaur), exactly as with any other trigger.
+func WheneverAnOpponentActivates(label string, of CardPredicate, includeMana bool, build func(activator uuid.UUID) Effect) game.TriggeredAbility {
+	kinds := []game.EventKind{game.EventActivateAbility}
+	if includeMana {
+		kinds = theTwoActivationKinds
+	}
+	return game.TriggeredAbility{
+		Watches: kinds,
+		Key:     label,
+		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			if ev.Actor == uuid.Nil || ev.Actor == source.Controller {
+				return false
+			}
+			return activationSourceMatches(g, ev, of)
+		},
+		Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
+			activator := ev.Actor
+			return game.NewTriggeredItem(source, label, build(activator))
+		},
+	}
+}
+
+// activationSourceMatches runs `of` against the object whose ability
+// was activated, as it stands on the battlefield NOW.
+//
+// The event carries the source's ID and not a snapshot of it, so a
+// source that has left — a Lotus Petal sacrificed to its own cost, a
+// creature that died in response — matches nothing. Both printed
+// cards say "on the battlefield" or name permanent types, so that is
+// the reading, and it is the one that cannot over-trigger.
+//
+// A nil predicate skips the lookup entirely: "whenever an opponent
+// activates an ability" asks nothing about the source and must not
+// start caring whether it is still there.
+func activationSourceMatches(g *game.Game, ev game.Event, of CardPredicate) bool {
+	if of == nil {
+		return true
+	}
+	if g == nil || g.Battlefield == nil {
+		return false
+	}
+	for i := range g.Battlefield.Cards {
+		c := g.Battlefield.Cards[i]
+		if c.InstanceID != ev.CardID {
+			continue
+		}
+		return of(g, ev.Actor, c)
+	}
+	return false
 }
 
 // --- where the ability watches from (CR 113.6, #925) ----------------

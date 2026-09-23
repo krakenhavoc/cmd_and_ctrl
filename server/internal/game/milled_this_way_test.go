@@ -249,7 +249,7 @@ func TestFireAndForgetMillReturnsWhatLanded(t *testing.T) {
 	var moved []uuid.UUID
 	g.WithWriteLock(func() {
 		var err error
-		moved, err = g.MillToZoneForEffect(owner.ID, 3, ZoneGraveyard, nil)
+		moved, err = g.MillToZoneForEffect(owner.ID, 3, ZoneGraveyard)
 		if err != nil {
 			t.Fatalf("MillToZoneForEffect: %v", err)
 		}

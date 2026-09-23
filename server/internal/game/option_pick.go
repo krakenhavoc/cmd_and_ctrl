@@ -453,7 +453,7 @@ func (g *Game) ResolveOptionPick(choiceID, chooserID uuid.UUID, index int) error
 //
 // Two chained prompts to two different seats (#552):
 //
-//  1. PendingChoiceChooseCards to the SPLITTER — "choose the cards for
+//  1. PendingChoiceRevealPick to the SPLITTER — "choose the cards for
 //     the first pile", floor zero, ceiling all of them. An empty pile
 //     is legal and is frequently the right split — "two piles" does
 //     not require both to hold a card, and splitting 5-0 is a real
@@ -461,6 +461,20 @@ func (g *Game) ResolveOptionPick(choiceID, chooserID uuid.UUID, index int) error
 //  2. PendingChoiceOptionPick to the CHOOSER — two options, each
 //     carrying its pile's cards, so the client renders the two piles
 //     rather than quoting names into a sentence.
+//
+// The first leg was a plain PendingChoiceChooseCards until #1214 and
+// is now a reveal_pick, which is the same question stated once: "an
+// opponent picks from a set you revealed". Two things follow, and the
+// second is a bug this move fixes. The prompt no longer hides its
+// bounds from the rest of the table — the five cards are PUBLIC, so
+// "separate these five" is public too, where a choose_cards over a
+// hand rightly is not. And the split leg is now one leg of a RUN, so a
+// splitter who leaves AFTER the question goes up settles it with
+// nothing separated and the controller still gets to take a pile;
+// before, the departure table's dropDefault found no run and no option
+// frame on the prompt, ran nothing, and Fact or Fiction put neither
+// pile anywhere — which is precisely the failure #1006 named and fixed
+// one leg further along.
 //
 // `then` receives the pile the chooser TOOK first and the other one
 // second, both in the order they were split. A splitter who has left
@@ -487,30 +501,31 @@ func (g *Game) QueuePileSplitForEffect(p PileSplitPrompt) {
 	source := p.Source
 	pickQuestion := p.PickQuestion
 	then := p.Then
-	queued := g.QueueChooseCardsForEffect(ChooseCardsPrompt{
-		Chooser:    p.Splitter,
-		FromPlayer: owner,
-		Source:     source,
-		Question:   p.SplitQuestion,
-		Cards:      cards,
-		Min:        0,
-		Max:        len(cards),
-		// No Zone re-check. The cards are revealed where they sit —
-		// Fact or Fiction's five are still on top of a library — and
-		// the piles are a partition of what was revealed, not a claim
-		// about where anything is now. The `then` that acts on them
-		// re-checks each card the way every other effect does.
-		Then: func(g *Game, picked []uuid.UUID) error {
-			return g.queuePilePickLocked(chooser, owner, source, pickQuestion, cards, picked, then)
-		},
-	})
-	if queued == uuid.Nil {
-		// The splitter has left the game (CR 800.4a). Nobody can
-		// separate the cards, so the whole reveal is one pile and the
-		// rest of the card resolves against it.
+	if who := g.playerByIDLocked(p.Splitter); who == nil || who.Eliminated {
+		// The splitter has left the game BEFORE the question could go
+		// up (CR 800.4a). Nobody can separate the cards, so the whole
+		// reveal is one pile and the rest of the card resolves against
+		// it — the answer this shape has always given, kept here
+		// explicitly now that the run below would otherwise settle an
+		// empty first pile instead.
 		if err := then(g, cards, nil); err != nil {
 			g.emitChoiceEffectErrorLocked(chooser, source, err)
 		}
+		return
+	}
+	_, err := g.RevealPickThenForEffect(RevealPickPrompt{
+		Chooser:  p.Splitter,
+		Owner:    owner,
+		Source:   source,
+		Question: p.SplitQuestion,
+		Cards:    cards,
+		Min:      0,
+		Max:      len(cards),
+	}, func(g *Game, picked, _ []uuid.UUID) error {
+		return g.queuePilePickLocked(chooser, owner, source, pickQuestion, cards, picked, then)
+	})
+	if err != nil {
+		g.emitChoiceEffectErrorLocked(chooser, source, err)
 	}
 }
 

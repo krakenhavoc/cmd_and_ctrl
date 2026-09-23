@@ -63,7 +63,7 @@ func init() {
 			}, "Adeline — a tapped and attacking Human for each opponent", func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				for _, opp := range ctx.Opponents() {
-					tmpl := TokenCard("1/1 colorless Human")
+					tmpl := TokenCard("1/1 white Human")
 					tmpl.Tapped = true
 					tmpl.AttackingTarget = opp
 					if err := (CreateToken{Controller: item.Controller, Template: tmpl, N: 1}).Apply(ctx); err != nil {

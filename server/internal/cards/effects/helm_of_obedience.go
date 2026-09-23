@@ -31,9 +31,54 @@ import (
 // Diffing the graveyard afterwards would be wrong the moment
 // anything else put a card there in the same resolution.
 //
-// "One of them" needs no prompt. The run stops AT the first creature
-// card, so there is never more than one to choose from — the plural
-// in the oracle text is there for the rules, not for the player.
+// # Both halves of the sentence count ARRIVALS (#1159, #1161)
+//
+// "Until a creature card OR X CARDS have been put into their
+// graveyard this way, whichever comes first" is one clause with two
+// stop conditions and the same verb governing both — "put into their
+// graveyard this way", CR 400.7's arrived object. #1159 fixed the
+// creature half; this is the other half, and it is written as what it
+// is: UntilAny(UntilCard(creature), UntilCount(X)) over the cards
+// that landed.
+//
+// So the Helm asks for an UNBOUNDED mill and stops itself. X is not
+// the mill's amount, and that is the whole of the fix:
+//
+//   - a card the CR 614 window diverts costs the run nothing. A
+//     milled commander whose owner takes the command zone was never
+//     put into that graveyard, so it neither ends the run nor uses up
+//     one of the X, and the Helm mills another card in its place.
+//   - under Rest in Peace or Leyline of the Void NOTHING is ever put
+//     into that graveyard, so the run never reaches X and the Helm
+//     mills the victim's whole library. That is the famous combo, and
+//     it falls out of the reading rather than being special-cased.
+//   - the BOUND is not a mill amount, so no mill-amount replacement
+//     doubles it. CR 701.13b's number is the one an instruction names,
+//     and "until X cards have been put into their graveyard this way"
+//     names none — Bruvac the Grandiloquent doubles mills, not bounds
+//     (game/mill.go, millAmountIsReplaceable).
+//
+// # But the run REPEATS an instruction (#1176)
+//
+// "Target opponent MILLS A CARD, then repeats this process until …"
+// gives one instruction and repeats it, so each repetition is its own
+// one-card mill and a mill-amount replacement replaces each of them.
+// With Bruvac the Grandiloquent on the battlefield the Helm mills two
+// cards at a time and the clause is asked between repetitions, which
+// can overshoot the bound by a card: X=3 mills FOUR, which is the
+// paper number (and X=2 mills two, because the first doubled
+// repetition already reaches the bound — the board where the two
+// readings agree).
+//
+// The engine used to model the whole run as ONE instruction that named
+// no number. That got the bound right and the amount invisible, and
+// X=3 with Bruvac milled three.
+//
+// "One of them" needs no prompt when the run ends normally: it stops
+// on the first repetition that lands a creature card, and an ordinary
+// repetition is one card. A DOUBLED repetition can land two creature
+// cards at once, and then the plural in the oracle text is a real
+// choice — so the card asks, with a one-of pick, and only then.
 //
 // The sacrifice is at RESOLUTION, not part of the cost: the Helm is
 // still on the battlefield while the mill happens, and an opponent
@@ -50,10 +95,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "16cadebf-c484-41f8-9e38-5c2c528f5b54",
 		Name:         "Helm of Obedience",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"If the creature card milled is a commander and its owner puts it into the command zone instead (CR 903.9), the Helm stops milling rather than continuing until a creature card really is put into the graveyard, and nothing is reanimated.",
-		},
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{X}, {T}: Target opponent mills until a creature card or X cards are in their graveyard; reanimate it.",
 			Cost:    Plus(ManaCost("{X}"), TapCost(), MinX(1)),
@@ -78,8 +120,20 @@ func helmOfObedienceMill(g *game.Game, item *game.StackItem) error {
 	// clause needs no second check in the effect.
 	return MillToZone{
 		Player: victim,
-		N:      ctx.X(),
-		Until:  func(c game.Card) bool { return c.IsCreature() },
+		// No N: the bound is the other half of the CLAUSE, not the
+		// mill's amount (#1161). N <= 0 with an Until is "no limit but
+		// the library", and the library is exactly how far this runs
+		// when a replacement keeps every card out of the graveyard.
+		//
+		// #1159 / #1161: both conditions are answered against what
+		// reached the graveyard, so a commander whose owner takes the
+		// command zone neither ends the run nor spends one of the X —
+		// the Helm mills another card in its place, which is what the
+		// card says.
+		Until: UntilAny(
+			UntilCard(func(c game.Card) bool { return c.IsCreature() }),
+			UntilCount(ctx.X()),
+		),
 		// #893: the reanimation reads what was PUT INTO THE GRAVEYARD,
 		// so it runs from the continuation. A milled commander stops to
 		// answer CR 903.9 and the creature card to reanimate is not
@@ -87,15 +141,14 @@ func helmOfObedienceMill(g *game.Game, item *game.StackItem) error {
 		// that prompt still open, find nothing, and drop its own second
 		// half on the floor.
 		Then: func(ctx *Context, milled []uuid.UUID) error {
-			var creature uuid.UUID
+			var creatures []uuid.UUID
 			for _, id := range milled {
 				c, ok := ctx.Game.LookupCardForEffect(id)
 				if ok && c.IsCreature() {
-					creature = id
-					break
+					creatures = append(creatures, id)
 				}
 			}
-			if creature == uuid.Nil {
+			if len(creatures) == 0 {
 				return nil
 			}
 			// "sacrifice this artifact AND put one of them onto the
@@ -104,11 +157,57 @@ func helmOfObedienceMill(g *game.Game, item *game.StackItem) error {
 			if err := (SacrificePermanent{Target: item.SourceCardID}).Apply(ctx); err != nil {
 				return err
 			}
-			return ReturnFromGraveyard{
-				Target:     creature,
-				Dest:       game.ZoneBattlefield,
-				Controller: item.Controller,
-			}.Apply(ctx)
+			return helmReanimateOneOfThem(ctx, item, victim, creatures)
 		},
 	}.Apply(ctx)
+}
+
+// helmReanimateOneOfThem is "put one of them onto the battlefield
+// under your control" (#1176).
+//
+// One creature card needs no prompt and is the normal case: the run
+// ends on the first repetition that lands one, and an ordinary
+// repetition mills exactly one card. It takes TWO to make the plural
+// real, which needs a mill-amount replacement (Bruvac the
+// Grandiloquent) doubling the repetition that found the first of them
+// — and then the choice is the controller's, so the card asks rather
+// than taking whichever came off the top.
+//
+// The pick is from the VICTIM's graveyard and the chooser is the
+// Helm's controller, which is what FromPlayer is for. Min 1: the
+// printed sentence is not optional once a creature card is there.
+//
+// The continuation rebuilds its Context from the game the resolver
+// hands back, the contract every queued continuation follows — an undo
+// restores a different *Game, and a closure holding the old one would
+// reanimate into a game nobody is looking at.
+func helmReanimateOneOfThem(ctx *Context, item *game.StackItem, victim uuid.UUID, creatures []uuid.UUID) error {
+	if len(creatures) == 1 {
+		return ReturnFromGraveyard{
+			Target:     creatures[0],
+			Dest:       game.ZoneBattlefield,
+			Controller: item.Controller,
+		}.Apply(ctx)
+	}
+	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+		Chooser:    item.Controller,
+		FromPlayer: victim,
+		Source:     item.SourceCardID,
+		Question:   "Helm of Obedience — put one of the milled creature cards onto the battlefield under your control",
+		Cards:      creatures,
+		Min:        1,
+		Max:        1,
+		Zone:       game.ZoneGraveyard,
+		Then: func(g *game.Game, picked []uuid.UUID) error {
+			if len(picked) == 0 {
+				return nil
+			}
+			return ReturnFromGraveyard{
+				Target:     picked[0],
+				Dest:       game.ZoneBattlefield,
+				Controller: item.Controller,
+			}.Apply(NewContext(g, item))
+		},
+	})
+	return nil
 }

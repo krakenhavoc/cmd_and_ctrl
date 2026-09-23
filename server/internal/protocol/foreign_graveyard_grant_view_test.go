@@ -201,6 +201,7 @@ func TestViewAndEnumeratorAgreeOnAForeignGraveyardCast(t *testing.T) {
 // unwritten while every caller scoped the question to its own pile.
 func TestAStandingGraveyardGrantStopsAtItsHoldersOwnYard(t *testing.T) {
 	g := buildActiveGame(t)
+	castWindowOpen(t, g)
 	const oracle = "test-view-standing-breach"
 	withStandingPermission(t, oracle, game.CastPermission{
 		Zone:       game.ZoneGraveyard,
@@ -272,8 +273,17 @@ func TestTwoHoldersEachSeeTheirOwnGraveyardCastStamps(t *testing.T) {
 	knownToEveryone(g, owner.Graveyard, id)
 	// The SECOND permission, held by another seat, with its own key so
 	// the two answers are told apart by what they offer.
+	//
+	// TimingFlash, since #1195, and it is what makes this fixture a
+	// test of the per-holder STAMP rather than of the turn order: the
+	// seeded card is a sorcery and the holder is not the active seat,
+	// so without the ADR 0066 override `castable_here` would be false
+	// for them on CR 307.1 grounds and the assertion below would pass
+	// for the wrong reason. A grant that says "cast it as though it
+	// had flash" is the shape madness and cascade already use.
 	grantOverCard(t, g, holder.ID, id, game.CastPermission{
 		Zone: game.ZoneGraveyard, Scope: game.ScopeCards, AltCostKey: "escape",
+		Timing: game.TimingFlash,
 	})
 
 	// The owner: their own printed flashback, and no sight of the
@@ -298,11 +308,29 @@ func TestTwoHoldersEachSeeTheirOwnGraveyardCastStamps(t *testing.T) {
 		t.Errorf("second holder offers = %v, want [escape flashback]", got)
 	}
 
-	// And a bystander gets the public answer — the owner's — and no
-	// trace of the private one.
+	// And a bystander gets what is public about the CARD — the prices
+	// claimable out of this zone, which is printed on a card in a
+	// public zone — and no seat's answer to "may YOU cast it".
+	//
+	// #1055: that bit used to be public too, and so it said "yes" on
+	// three frames for a cast one seat could make. The name is
+	// `castable_here`, not `castable_here_by_its_owner`, and both
+	// client readers had to pair it with `exile_play` to find out
+	// which of the two it meant.
 	other := cardInSeatZone(t, ViewOfGameFor(g, bystander.ID.String()).Seats[0].Graveyard, id)
 	if got := keysOf(other.AlternativeCosts); !sameStrings(got, []string{"flashback"}) {
 		t.Errorf("bystander offers = %v, want the public [flashback]", got)
+	}
+	if other.CastableHere {
+		t.Errorf("a bystander is told they may cast a card out of somebody else's graveyard (#1055)")
+	}
+	if other.LegalTargets != nil {
+		t.Errorf("a bystander got one seat's legal target set: %+v", other.LegalTargets)
+	}
+	// And the spectator, who is the same case with no seat at all.
+	spectator := cardInSeatZone(t, FilterViewFor(ViewOfGame(g), "").Seats[0].Graveyard, id)
+	if spectator.CastableHere {
+		t.Errorf("a spectator, who has no seat to cast from, is told the card is a cast surface")
 	}
 }
 

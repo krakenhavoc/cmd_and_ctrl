@@ -37,6 +37,17 @@ import (
 // exile, instead …" — never reached exile, so it is not one of the
 // cards the second sentence is about, and it is not granted.
 //
+// THE RUNNING TOTAL GETS IT RIGHT TOO, since #1159, and the caveat
+// this card shipped with (#1158) is gone. `Until` used to be answered
+// in millPlanLocked against the cards that came OFF the library,
+// before the CR 614 window had said where any of them went, so a
+// diverted commander's mana value still counted toward the 4 and could
+// end the run one card short. It is now answered in the routing loop
+// against the cards that LANDED, which is the same list the second
+// sentence reads — one rule, asked once. The plan is still the flat
+// list of IDs the batch body can proceed around (#529), because the
+// plan no longer carries the verdict.
+//
 // # The permission is per-object, and exactly what is printed
 //
 // Each exiled card gets its own ADR 0066 grant, stamped against that
@@ -92,14 +103,10 @@ func init() {
 		},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			controller, source := item.Controller, item.SourceCardID
-			total := 0
 			return MillToZone{
 				Player: controller,
 				To:     game.ZoneExile,
-				Until: func(c game.Card) bool {
-					total += c.ManaValue()
-					return total >= improvisationCapstoneThreshold
-				},
+				Until:  UntilTotalManaValue(improvisationCapstoneThreshold),
 				Then: func(ctx *Context, exiled []uuid.UUID) error {
 					improvisationCapstoneGrantCasts(ctx.Game, controller, source, exiled)
 					return nil

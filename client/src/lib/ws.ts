@@ -215,6 +215,11 @@ export class GameClient {
     at: Date;
     missing?: string[];
     cardID?: string;
+    // #1063: the attack-tax refusal's whole price as a cost string
+    // ("{2}{2}"), or a block refusal's stable reason token — whichever
+    // the error frame's `reason` field carries for this code. See
+    // ErrorPayload.reason (protocol.ts).
+    reason?: string;
   } | null> = guardedWritable(null, "lastError");
   // reconnectAttempt is how many automatic reconnects have been
   // scheduled since the last successful open, and 0 whenever the
@@ -496,7 +501,7 @@ export class GameClient {
   private raiseError(
     code: string,
     message: string,
-    extra: { missing?: string[]; cardID?: string } = {},
+    extra: { missing?: string[]; cardID?: string; reason?: string } = {},
   ): void {
     this.lastError.set({ code, message, at: new Date(), ...extra });
     if (this.errorClearTimer !== null) {
@@ -688,7 +693,11 @@ export class GameClient {
         // rejected. raiseError resets the auto-clear timer so a fresh
         // error gets its full TTL even if a previous one is still
         // showing.
-        this.raiseError(code, message, { missing: p?.missing, cardID: p?.card_id });
+        this.raiseError(code, message, {
+          missing: p?.missing,
+          cardID: p?.card_id,
+          reason: p?.reason,
+        });
         break;
       }
       default:

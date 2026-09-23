@@ -253,6 +253,26 @@ func stepTargetCount(step AnnouncedClause, targets []TargetRef) int {
 //
 // Caller must hold g.mu.
 func (g *Game) validateAnnouncedTargetsLocked(src TargetSource, steps []AnnouncedClause, targets []TargetRef) error {
+	return g.validateAnnouncedTargetsWithLocked(src, steps, targets, nil)
+}
+
+// validateAnnouncedTargetsWithLocked is the same walk with the
+// per-ref PREDICATE check waivable — the one thing #1196's CR 115.7
+// retarget needed that the announce gate could not say.
+//
+// CR 115.7c lets a player who is choosing new targets leave any
+// number of them unchanged "even if those targets would be illegal",
+// so a retarget runs the predicate on the slots that CHANGED and
+// waives it on the ones that did not. Everything else — step
+// membership and order, counts, AllowSame, Distinct — is checked over
+// the whole list exactly as it is at announce, which is CR 115.7c's
+// "must not cause any unchanged targets to become illegal".
+//
+// `waive` is called with the ref's index in `targets` and the ref;
+// nil waives nothing, which is every announce caller.
+//
+// Caller must hold g.mu.
+func (g *Game) validateAnnouncedTargetsWithLocked(src TargetSource, steps []AnnouncedClause, targets []TargetRef, waive func(i int, t TargetRef) bool) error {
 	if len(steps) == 0 {
 		// No structured clause list: the S13.1 free-form path, which
 		// accepts whatever the client sent.
@@ -262,7 +282,7 @@ func (g *Game) validateAnnouncedTargetsLocked(src TargetSource, steps []Announce
 	earlier := make(map[uuid.UUID]bool, len(targets))
 	perStep := make([]map[uuid.UUID]bool, len(steps))
 	cursor := 0
-	for _, t := range targets {
+	for i, t := range targets {
 		if t.Kind == TargetSelf || t.Kind == TargetNone {
 			continue
 		}
@@ -303,6 +323,9 @@ func (g *Game) validateAnnouncedTargetsLocked(src TargetSource, steps []Announce
 		}
 		perStep[idx][t.ID] = true
 		counts[idx]++
+		if waive != nil && waive(i, t) {
+			continue
+		}
 		if !g.targetLegalLocked(src, clause, t) {
 			return ErrIllegalTarget
 		}

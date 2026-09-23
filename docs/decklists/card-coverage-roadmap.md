@@ -126,7 +126,7 @@ catalog's first modal triggered ability, first multi-predicate trigger
 and first modal activated ability. Other batches holding cards filed
 under modal / multi-target are worth a re-look now.
 
-<!-- BEGIN GENERATED CATALOG CENSUS — regenerate with: go test ./internal/cards/coverage/ -update -->
+<!-- BEGIN GENERATED CATALOG CENSUS — refreshed by CI on every push to develop and main; do not regenerate in a PR (manual refresh: go test ./internal/cards/coverage/ -update) -->
 
 **The catalog, as measured on this commit.** Not typed by hand and not
 derived from what a batch believes it landed — `TakeCensus` in
@@ -136,11 +136,11 @@ registry disagree.
 
 | Measured | Count |
 |---|---:|
-| Registry keys (`len(effects.All())`) | **2159** |
-| — whole cards (bare `oracle_id`) | **2091** |
-| — back faces (`<oracle_id>#1`) | 68 |
-| Declared `full` | 1675 |
-| Declared `caveats` | 423 |
+| Registry keys (`len(effects.All())`) | **2252** |
+| — whole cards (bare `oracle_id`) | **2178** |
+| — back faces (`<oracle_id>#1`) | 74 |
+| Declared `full` | 1758 |
+| Declared `caveats` | 433 |
 | Declared `unreviewed` | 61 |
 
 A back face is usually half a card: the modal-DFC land cycle registers

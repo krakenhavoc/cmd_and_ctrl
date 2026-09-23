@@ -31,12 +31,7 @@ func init() {
 			Cost:  Plus(ManaCost("{G}"), SacrificeThis()),
 			Targets: TargetPermanent("target noncreature artifact or noncreature enchantment",
 				Or(Artifact(), Enchantment()), Noncreature()),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-					return nil
-				}
-				return ExileTarget{Target: item.Targets[0].ID}.Apply(NewContext(g, item))
-			},
+			Effect: ExileFirstTarget,
 		}},
 	})
 }

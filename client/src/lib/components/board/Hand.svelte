@@ -25,7 +25,7 @@
     onPlayCard?: (card: CardView) => void;
     // #660: a card in hand can have activated abilities that function
     // THERE — cycling, typecycling (CR 702.29a/e). They ride
-    // `hand_abilities` on the wire and open the same popover a
+    // `zone_abilities` on the wire and open the same popover a
     // permanent's abilities do. Self hands only: an opponent's hand
     // cards carry no abilities on the wire in the first place.
     onActivateAbility?: (card: CardView, abilityIndex: number) => void;
@@ -150,7 +150,7 @@
           faceDown={!isSelf && c.known_by_you !== true}
           showManaCost={isSelf}
           priority={isSelf}
-          onActivateAbility={isSelf && (c.hand_abilities?.length ?? 0) > 0
+          onActivateAbility={isSelf && (c.zone_abilities?.length ?? 0) > 0
             ? (idx) => onActivateAbility?.(c, idx)
             : undefined}
           {sorcerySpeedBlocked}

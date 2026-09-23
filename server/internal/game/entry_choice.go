@@ -66,7 +66,7 @@ const PendingChoiceEntryPayLife PendingChoiceKind = "entry_pay_life"
 // Caller must hold g.mu.
 func (g *Game) offerEntryLifePaymentLocked(ev *ReplacementEvent, chosen activeReplacement) bool {
 	cost := chosen.effect.EntryLifeCost
-	payer := g.entryLifePayerLocked(ev, chosen)
+	payer := g.entryChoicePlayerLocked(ev, chosen)
 	p := g.playerByIDLocked(payer)
 	if cost > 0 && ev.entryResumable && p != nil && !p.Eliminated && p.Life >= cost {
 		g.queueEntryPayLifePromptLocked(ev, chosen, payer, cost)
@@ -83,13 +83,17 @@ func (g *Game) offerEntryLifePaymentLocked(ev *ReplacementEvent, chosen activeRe
 	return false
 }
 
-// entryLifePayerLocked resolves who is asked to pay. The effect's
-// own Controller hook wins (a card knows best — for an entering
-// permanent it reads ev.Actor / the card's controller), then the
-// generic affected-player rule.
+// entryChoicePlayerLocked resolves WHO an entry replacement's own
+// question is put to. The effect's own Controller hook wins (a card
+// knows best — for an entering permanent it reads ev.Actor / the
+// card's controller), then the generic affected-player rule.
+//
+// Shared with the reveal-from-hand branch (entry_reveal.go) and named
+// for the question rather than for the payment, because the rule was
+// never about life: it is "whose permanent is entering".
 //
 // Caller must hold g.mu.
-func (g *Game) entryLifePayerLocked(ev *ReplacementEvent, chosen activeReplacement) uuid.UUID {
+func (g *Game) entryChoicePlayerLocked(ev *ReplacementEvent, chosen activeReplacement) uuid.UUID {
 	if chosen.effect.Controller != nil {
 		if id := chosen.effect.Controller(ev, g, chosen.source); id != uuid.Nil {
 			return id
@@ -372,7 +376,25 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) (entered uu
 		}
 		break
 	}
-	g.markCardKnownInZoneLocked(g.Battlefield, entered)
+	if ev.FaceDown != FaceDownNone {
+		// CR 708.5, ADR 0082 decision 3: a FACE-DOWN entry — a
+		// manifest, or a spell cast face down — lands as a CR 708.2
+		// object whose CONTROLLER is its only knower. This REPLACES
+		// the public marking below rather than adding to it: the
+		// battlefield is a public zone and this is not a public
+		// object.
+		//
+		// It runs before the provenance stamp and well before
+		// EventETB, so CatalogKey has already gone silent by the time
+		// fireETBHookLocked reads it — a face-down permanent runs no
+		// ETB trigger and no "as enters" hook, which is CR 708.2a
+		// falling out rather than a special case. `moved` is stamped
+		// too because that copy is what the ETB hook is keyed on.
+		g.applyFaceDownLandingLocked(g.Battlefield, entered, ev.FaceDown)
+		moved.SetFaceDown(ev.FaceDown)
+	} else {
+		g.markCardKnownInZoneLocked(g.Battlefield, entered)
+	}
 	// CR 400.7d (#653, #664): what the spell that became this
 	// permanent was cast for — the alternative cost AND the optional
 	// additional costs, one record. Before the copy and the counters,
@@ -449,5 +471,14 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) (entered uu
 	if ev.stackItem != nil {
 		g.queueAltCostEntryTriggerLocked(moved, ev.stackItem)
 	}
+	// #1069: the card has left the zone it came from, and an open
+	// choose_cards prompt that still offers it there is offering an
+	// answer its own resolver would refuse — a graveyard pick whose
+	// candidate this reanimation just took. The entry side's one prune
+	// door (battlefield_entry.go). Last, and before the deferred entry
+	// tail for the reason executeZoneRouteLocked runs its route tail
+	// after its prunes: a withdrawal settles a run leg, and that
+	// continuation is the rest of somebody's card.
+	g.pruneChoicesAfterArrivalLocked()
 	return entered, nil
 }

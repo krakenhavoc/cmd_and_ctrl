@@ -35,7 +35,11 @@ on:
         required: false
         default: "20"
       soak_games:
-        description: "Randomised soak games (S31 exit criterion 4)"
+        description: "Randomised soak games at 4 seats (S31 exit criterion 4)"
+        required: false
+        default: "100"
+      soak_games_2p:
+        description: "Randomised soak games at 2 seats (#1096; 0 skips the two-seat pass)"
         required: false
         default: "100"
       soak_policy:
@@ -122,7 +126,12 @@ jobs:
         #
         # Measured 2026-09-14, this step with the -skip in place:
         # internal/aiseat 336s under -race on a contended machine.
-        run: go test ./internal/aiseat/... -race -timeout 30m -skip 'TestFourRandomBotsPlayToAWinner|TestFourHeuristicBotsPlayToAWinner'
+        #
+        # TestTwoHeuristicBotsPlayToAWinner (#1096) joins the -skip
+        # list on the same argument as its four-seat sibling: the
+        # `bot-soak` job below plays both gates, and a table played
+        # twice a night is a table whose second run buys nothing.
+        run: go test ./internal/aiseat/... -race -timeout 30m -skip 'TestFourRandomBotsPlayToAWinner|TestFourHeuristicBotsPlayToAWinner|TestTwoHeuristicBotsPlayToAWinner'
 
       # S31's four-`random`-bots exit criterion: twenty consecutive
       # unattended games to a winner, no deadlocks, no illegal actions,
@@ -235,10 +244,16 @@ jobs:
     runs-on: self-hosted
     # Measured 2026-09-19 on an idle 24-core developer machine: the
     # heuristic gate 112s for 20 games, the soak 679s for 100. 100
-    # minutes is ~8x that, and it is deliberately ABOVE the two
-    # `go test -timeout` values below (30m + 60m): a Go timeout prints
-    # every goroutine's stack into the artifact, a job timeout kills
-    # the upload.
+    # minutes is ~8x that, and it is deliberately ABOVE the
+    # `go test -timeout` values below: a Go timeout prints every
+    # goroutine's stack into the artifact, a job timeout kills the
+    # upload.
+    #
+    # #1096 added the two-seat pass and it is small against that
+    # budget: a two-seat heuristic game is ~0.5s (so ~11s for the
+    # twenty) and #1096 measured 100 two-seat soak games at 82s. Call
+    # it ~100s on top of ~790s, which leaves the 100-minute ceiling
+    # roughly 6x the expected run rather than 8x.
     timeout-minutes: 100
     env:
       AISEAT_GAME_TESTS: "1"
@@ -255,6 +270,10 @@ jobs:
       AISEAT_STALL: ${{ inputs.stall || '30s' }}
       AISEAT_WALLCLOCK: ${{ inputs.wallclock || '300s' }}
       SOAK_LOGS: ${{ github.workspace }}/bot-soak-logs
+      # #1096: the two-seat pass writes into its own directory and
+      # uploads as its own artifact, so "the two-seat soak went red" is
+      # answerable from the artifact list without opening a log.
+      SOAK_LOGS_2P: ${{ github.workspace }}/bot-soak-logs-2p
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -309,6 +328,14 @@ jobs:
           fi
           echo "seed=${seed}" >> "$GITHUB_OUTPUT"
           echo "soak base seed: ${seed} (games use base+0 .. base+n-1)"
+          # #1096: the two-seat pass gets its own block, 500 above the
+          # four-seat one. Game i uses base+i, so a shared base would
+          # make the two passes play the same seeds at different seat
+          # counts — half the fuzzing for the same runtime. 500 is
+          # comfortably above any soak_games anyone will type and well
+          # inside the x1000 that keeps consecutive nights disjoint.
+          echo "seed_2p=$((seed + 500))" >> "$GITHUB_OUTPUT"
+          echo "two-seat soak base seed: $((seed + 500))"
         env:
           SEED_INPUT: ${{ inputs.soak_seed }}
 
@@ -352,6 +379,54 @@ jobs:
           go test ./internal/aiseat/ -run TestRandomBotSoak \
             -v -timeout 60m 2>&1 | tee "${SOAK_LOGS}/random-soak.log"
 
+      # #1096. The same two gates at TWO seats, which is a supported
+      # configuration (#39 fixed its seating) and the shape ADR 0076
+      # makes the tutorial's — one human seat, one `random` bot. It was
+      # also the one shape this fuzzer had never run: TestRandomBotSoak
+      # passed a literal 4 to newRoom, so every table the nightly has
+      # ever played had four seats.
+      #
+      # Two seats is not four minus two. There is no third seat for the
+      # priority cursor to pass through, the bot is the only opponent,
+      # and an eliminated-seat or turn-wrap bug surfaces differently —
+      # or not at all — with two positions in the rotation.
+      #
+      # Cheap, which is why it is the same 100 games rather than a
+      # reduced sample: #1096 measured 100 two-seat games in 82s and
+      # 150 in 134s locally, and a 20-game local run at 2 seats took
+      # 21s on the branch that added this. The four-seat soak is 679s
+      # for 100 on this runner, so the whole two-seat pass is well
+      # inside the job's 100-minute budget with the four-seat run and
+      # the heuristic gates alongside it.
+      #
+      # !cancelled() for the same reason the step above has it: the
+      # passes are independent gates and a red one must not hide the
+      # others.
+      - name: Heuristic gate (2 seats) — two heuristic bots to a winner, 20 games
+        if: ${{ !cancelled() }}
+        working-directory: server
+        env:
+          AISEAT_HEURISTIC_GAMES: ${{ inputs.heuristic_games || '20' }}
+        run: |
+          set -euo pipefail
+          mkdir -p "${SOAK_LOGS_2P}"
+          go test ./internal/aiseat/ -run TestTwoHeuristicBotsPlayToAWinner \
+            -v -timeout 30m 2>&1 | tee "${SOAK_LOGS_2P}/heuristic-games-2p.log"
+
+      - name: Random soak (2 seats) — 100 games, zero engine-rejected actions
+        if: ${{ !cancelled() && (inputs.soak_games_2p || '100') != '0' }}
+        working-directory: server
+        env:
+          AISEAT_SOAK_GAMES: ${{ inputs.soak_games_2p || '100' }}
+          AISEAT_SOAK_SEATS: "2"
+          AISEAT_SOAK_POLICY: ${{ inputs.soak_policy || 'random' }}
+          AISEAT_SOAK_SEED: ${{ steps.seed.outputs.seed_2p }}
+        run: |
+          set -euo pipefail
+          mkdir -p "${SOAK_LOGS_2P}"
+          go test ./internal/aiseat/ -run TestRandomBotSoak \
+            -v -timeout 60m 2>&1 | tee "${SOAK_LOGS_2P}/random-soak-2p.log"
+
       # Uploaded on green too, and that is the point: the log carries
       # the seeds and the per-game result line, so the night a game
       # goes red you can diff it against the night before.
@@ -368,6 +443,18 @@ jobs:
         with:
           name: bot-soak-logs
           path: bot-soak-logs/
+          if-no-files-found: warn
+          retention-days: 14
+
+      # #1096: its own artifact rather than another file in the one
+      # above, so the two seat counts are told apart in the artifact
+      # list — which is where the morning after a red night starts.
+      - name: Upload two-seat soak decision logs and stall dumps
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: bot-soak-logs-2p
+          path: bot-soak-logs-2p/
           if-no-files-found: warn
           retention-days: 14
 
@@ -534,6 +621,20 @@ jobs:
           CMDCTRL_SCRYFALL_DUMP: ${{ github.workspace }}/data/scryfall/default-cards.json
         run: go test ./internal/decks/ -run RealDump -v
 
+      # Token templates against the printed token cards (#1127, ADR
+      # 0078 decision 8). A template's name, type line, P/T and colours
+      # ARE the token's characteristics, and a row that matches no
+      # printing is usually a row that is wrong: 21 of them declared no
+      # colour where every printing of that token is coloured, which is
+      # a rules bug (protection, lords, "destroy target white
+      # creature", devotion) and not a cosmetic one. Same job for the
+      # same reason as the step above — it is where the dump is.
+      - name: Token templates — match against the real Scryfall dump
+        working-directory: server
+        env:
+          CMDCTRL_SCRYFALL_DUMP: ${{ github.workspace }}/data/scryfall/default-cards.json
+        run: go test ./internal/cards/effects/ -run RealDumpEveryTokenTemplate -v
+
       - name: Client — npm ci
         working-directory: client
         run: npm ci
@@ -556,4 +657,4 @@ jobs:
         with:
           name: playwright-report
           path: tests-e2e/playwright-report/
-          retention-days: 14
+          retention-days: 5

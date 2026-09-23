@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Bag of Holding — Artifact {1}:
 //
@@ -58,7 +54,7 @@ func init() {
 				discarded := ev.CardID
 				return game.NewTriggeredItem(source, bagOfHoldingExileLabel,
 					func(g *game.Game, item *game.StackItem) error {
-						return bagOfHoldingExileFromGraveyard(g, item, discarded)
+						return exileFromGraveyardIfStillThere(g, item, discarded)
 					})
 			},
 		}},
@@ -77,18 +73,6 @@ func init() {
 			},
 		},
 	})
-}
-
-// bagOfHoldingExileFromGraveyard is the trigger's body: exile the
-// discarded card, but only if it is STILL in a graveyard. A discard
-// answered in response with a reanimation, or a madness cast, leaves
-// nothing to exile and the trigger does nothing — "exile that card
-// from your graveyard" names an object in one zone (CR 400.7).
-func bagOfHoldingExileFromGraveyard(g *game.Game, item *game.StackItem, cardID uuid.UUID) error {
-	if z := g.FindCardZoneForEffect(cardID); z == nil || z.Kind != game.ZoneGraveyard {
-		return nil
-	}
-	return ExileTarget{Target: cardID}.Apply(NewContext(g, item))
 }
 
 // bagOfHoldingReturnExiledCards is the sacrifice ability's body:

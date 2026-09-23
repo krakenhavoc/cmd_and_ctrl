@@ -275,6 +275,33 @@ type ManaAbilityShape struct {
 	// an ability that has one.
 	AddCounter *CounterAddCost
 
+	// DiscardCards is a "discard N cards" component of the activation
+	// cost — Skirge Familiar's "Discard a card: Add {B}" (#1213).
+	//
+	// The SAME game.DiscardCost an activated ability's cost carries
+	// (#660), with the same options walk, the same validator and the
+	// same payer, for the reason SacrificeOther, RemoveCounters and
+	// TapOthers above are each one struct with two owners: a clause
+	// declared twice is a clause that can be paid two ways.
+	//
+	// It pays through the ONE discard door (discardCardsLocked with
+	// DiscardCauseCost), so EventDiscardCard fires once per card, the
+	// CR 614 window runs over the exit and madness (CR 702.35a) sees
+	// it — without any of them learning that mana abilities exist.
+	// CR 601.2h's indivisible step is expressed by
+	// zoneRoute.MustSettleNow, as it is for every other cost discard.
+	//
+	// The activator names the cards in ManaAbilityParams.DiscardIDs.
+	// There is no DiscardSelf twin: that component discards the
+	// SOURCE (cycling, CR 702.29a) and a mana ability's source is a
+	// permanent, which is not in a hand to discard.
+	//
+	// The AUTO-TAPPER never plans an ability that has one, the same
+	// bar the life cost and the tap-others cost fail: which card to
+	// pitch is a decision, and the planner makes none. A hand-clicked
+	// Skirge Familiar is a mana source; an auto-tapped one is not.
+	DiscardCards *DiscardCost
+
 	// ProducedForPaid computes the produced-mana string from what
 	// the cost actually PAID, for an ability whose output the
 	// printed text derives from the payment rather than from the
@@ -390,6 +417,32 @@ type ManaAbilityShape struct {
 
 	Produced string
 	Label    string
+
+	// Exhaust marks an EXHAUST mana ability (#1183):
+	//
+	//	Exhaust — {G}, {T}: Add three mana of any one color.
+	//	(Activate each exhaust ability only once.)
+	//
+	// The twin of ActivatedAbilityShape.Exhaust, reading the same
+	// record through the same key, and one declarative bit for the
+	// same reason: the keyword IS the rule. Loot, the Pathfinder is
+	// the one printed card, and prints it three times — once on a mana
+	// ability and twice on ordinary ones.
+	//
+	// Keyed by the LABEL (activation_tally.go), so a mana ability that
+	// sets this must have one; effects.Register refuses a blank label
+	// and a duplicate at boot, across BOTH ability lists, because the
+	// two share one key space on one object.
+	//
+	// The extra reader a mana ability has is the AUTO-TAPPER. A spent
+	// exhaust ability is not a mana source — gatherTapSources will not
+	// plan it and materializePlanLocked will not tap it — because a
+	// planner that spent one behind the player's back would be taking
+	// the ability away to pay for something the player was not asked
+	// about. ProducibleManaLocked answers CR 106.7 the same way, so a
+	// Reflecting Pool is not priced on mana the spent source can never
+	// make again.
+	Exhaust bool
 
 	// Rider is the post-production half of a mana ability whose
 	// oracle text continues past the "Add …" clause — the painland
@@ -585,13 +638,18 @@ func (g *Game) EffectiveMaxHandSizeLocked(p *Player) int {
 	}
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
-		if c.Controller != p.ID || c.OracleID == "" {
+		if c.Controller != p.ID {
 			continue
 		}
 		// CatalogAbilityKey: "you have no maximum hand size" is a
 		// static ability, and a Thought Vessel that has lost all its
-		// abilities gives the cap back.
-		if CatalogNoMaxHandSize(CatalogAbilityKey(*c)) {
+		// abilities gives the cap back. The empty KEY is the skip, so
+		// a token is walked too (ADR 0083 decision 3).
+		key := CatalogAbilityKey(*c)
+		if key == "" {
+			continue
+		}
+		if CatalogNoMaxHandSize(key) {
 			return NoMaxHandSize
 		}
 	}

@@ -110,12 +110,38 @@ const PendingChoiceChooseCards PendingChoiceKind = "choose_cards"
 
 // isCardSetPickKind reports whether a prompt carries the choose-cards
 // payload — ChooseCards / ChooseMin / ChooseMax and a chooseCardsFrame.
-// Two kinds do: this one, and CR 502.3's untap_choice (ADR 0070
-// Decision 2), which shares the shape and differs only in what the
-// player is being asked and how a bot scores the answer.
+//
+// SIX kinds do. This one; CR 502.3's untap_choice (ADR 0070
+// Decision 2); #1198's entry_reveal_from_hand (ADR 0013 §5z); and
+// #1214's three resolution-time picks (resolution_pick.go). Each
+// shares the SHAPE and differs in what the player is being asked, in
+// how a bot should score the answer, and — for the three picks — in
+// what a seat may SEE of the pool and who inherits the question when
+// the chooser leaves.
+//
+// Answering that with one predicate is the point: every rule about the
+// PAYLOAD — the bounds check, the candidate check, the live-zone
+// re-check, #1017's set-level Validate, the two prunes that keep an
+// open prompt honest — is written once and asks this, while every rule
+// about the QUESTION is a row in one of the two tables keyed by kind.
+//
+// What they do NOT all share is the RESOLVER: entry_reveal_from_hand's
+// continuation is a paused replacement event rather than a card's next
+// sentence, so it settles through its own ResolveEntryRevealFromHand
+// instead of resolveCardSetPick.
 func isCardSetPickKind(kind PendingChoiceKind) bool {
-	return kind == PendingChoiceChooseCards || kind == PendingChoiceUntapChoice
+	switch kind {
+	case PendingChoiceChooseCards, PendingChoiceUntapChoice, PendingChoiceEntryRevealFromHand:
+		return true
+	}
+	return isResolutionPickKind(kind)
 }
+
+// IsCardSetPickKind is isCardSetPickKind for callers outside this
+// package: `protocol` projects the same three fields for every kind
+// that carries them, and a hand-kept list there would be the second
+// copy this predicate exists to prevent (IsLookAtTopKind's reason).
+func IsCardSetPickKind(kind PendingChoiceKind) bool { return isCardSetPickKind(kind) }
 
 // confirmFrame is the continuation pair behind a PendingChoiceConfirm.
 // Both callbacks receive the live *Game (not a captured one) on the

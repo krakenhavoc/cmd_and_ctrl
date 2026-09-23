@@ -39,7 +39,7 @@ func init() {
 			}
 			return CreateToken{
 				Controller: controller,
-				Template:   TokenCard("3/3 colorless Ape"),
+				Template:   TokenCard("3/3 green Ape"),
 				N:          1,
 			}.Apply(ctx)
 		},

@@ -276,6 +276,32 @@ offers only sets the engine accepts (the cap solver runs inside
 in a step where nobody holds priority, so a seat with no answer here
 would stop the game outright rather than merely stall its own turn.
 
+**Whether to reveal (`entry_reveal_from_hand`, #1198, CR 614.1c).** The
+one card-set pick whose answer is FREE, and the reason it is a branch
+of its own rather than a second spelling of `choose_cards`. "As this
+land enters, you may reveal an Island or Swamp card from your hand. If
+you don't, it enters tapped" names a card and takes nothing: revealing
+is not a zone change, so the card is still in hand afterwards, and what
+it buys is an untapped land this turn. Both of the valuations this
+package already has would get it backwards — the `choose_cards` branch
+scores an answer by what it KEEPS, because a card named there is a card
+given up, and the cost-fuel pricer (#1028) prices a card EATEN by a
+cost. Through either, "reveal nothing" wins and every reveal-land in
+the deck comes down tapped forever.
+
+So the branch is flat and unambiguous: naming any card beats naming
+none. The count settles itself (every printed member of the family
+reveals at most one), and the enumerator offers the decline FIRST, so
+this preference is exactly what breaks a tie the "take the first offer"
+default would otherwise decide the wrong way.
+
+What the bot gives up is information — the table learns one card in its
+hand — and that is deliberately not priced. Against an untapped land on
+curve it is the trade a human takes almost every time, and pricing it
+would need an opponent model this policy does not have. A bluff (holding
+a matching card and declining anyway, to keep the hand hidden) is a real
+play and is out of reach for the same reason.
+
 ### An unavailable tier is refused, not downgraded
 
 Every declared tier is listed by `GET /bot/options`, including the
@@ -1268,6 +1294,44 @@ as a mistake. It also closes #673's declared gap — a non-hand cast
 still costs no card in HAND, and what it really spends is now the
 alternative cost's own price rather than nothing.
 
+### A cost whose COUNT the activator announces (#1213)
+
+"Sacrifice one or more artifacts" (Radiant Lotus) and "Sacrifice X
+Treasures" (Grim Hireling) are the third variable in a cost, after the
+card-shaped payment above and multikicker's repeat. Unlike either, what
+varies is a NUMBER the activator names at announce, and every value of
+it is the same ability with the same target at a different size.
+
+**Up to THREE counts are enumerated per ability** —
+`legal.maxEnumeratedVariableCounts`, beside `maxEnumeratedCostPayments`
+and `maxEnumeratedRepeats` and for the same reason: [ADR
+0033](decisions/0033-ai-bot-seat.md) §1's corollary that a variable in
+a cost must not become an arity of the target/mode cross product. An
+open count over a ten-artifact board is ten counts, and a budget spent
+ten ways there would never reach a second target.
+
+The counts offered are the SMALLEST ones — the clause's floor and the
+two above it. Small is the conservative direction for a cost: it spends
+the least board, and a policy that wants more can take the biggest of
+the three. Inside each payment the permanents are already ordered
+cheapest-to-keep first, by the same `Options.OrderCostFuel` hook the
+card-shaped payments use, then by
+`game.SacrificePaymentOrderForEffect`'s policy-neutral tie-break
+(tokens, then lower mana value, then the ability's own source last). So
+the counts NEST: a bot asked to sacrifice three eats the same two it
+would have eaten to sacrifice two.
+
+For a `CountFromX` clause the announced X IS the count, so the move's
+`x_value` is the size of the payment it carries rather than a value
+solved from the mana cost — and `effects.Register` refuses a cost that
+also puts `{X}` in its mana component, because one announced number
+cannot pay both.
+
+The RETURN-to-hand component (`return_ids`) has no count to vary: every
+printed clause returns exactly one permanent, and the enumerator offers
+one move per candidate, cheapest-to-keep first, out of the ordinary
+`MaxExpansionPerSource` budget.
+
 ## Ordering target expansion by threat (#687)
 
 `legal.Options.MaxExpansionPerSource` is spent in candidate order, so
@@ -1363,6 +1427,44 @@ it to itself again on the next decision — the stall that shared
 predicates exist to prevent. The view's `cant_cast` stamp is the third
 reader of the same answer, so the human client greys exactly what the
 bot is not offered.
+
+## Never offered an attack it cannot pay for (#1063)
+
+The same shape, one step over. Propaganda, Ghostly Prison and Sphere of
+Safety make attacking their controller cost mana at CR 508.1a
+([ADR 0080](decisions/0080-attack-taxes.md)), and an attack tax is the
+first thing that can make a DECLARATION fail for want of it.
+
+`legal/combat.go`'s attack arm prices every candidate through
+`game.PriceAttackDeclarationForEffect` — the SAME function the
+declaration verbs charge with — and drops the move when neither the
+seat's mana pool nor the auto-tapper can cover it. A move that is
+offered on the strength of the tapper carries `auto_tap` in its params,
+because `Move.Params` is exactly the payload that performs the move.
+
+Two things follow that are worth stating:
+
+- **The policy weighs the price, it does not merely tolerate it.**
+  `MoveCost.mana` carries the cost string onto the wire (a policy may
+  not import `internal/game`, ADR 0033 §3, and an attack has no printed
+  cost to read off the CardView), and `attackValue` subtracts its mana
+  value times `Config.AttackTaxPenalty` — 0.30 by default, so one point
+  of tax is worth about one point of power getting through. A bot with
+  two lands and a 1/1 passes rather than spending its turn for two
+  damage. `LethalBonus` still dwarfs the term, so a lethal swing
+  happens at any price the seat can pay.
+- **Per-creature enumeration composes with a per-declaration charge.**
+  The enumerator offers one move per (attacker, target) pair and the
+  engine charges one declaration verb call at a time, so three separate
+  attacks under Propaganda pay {2} three times — the same {6} one bulk
+  `declare_attackers` pays. After each declaration the seat's mana has
+  shrunk and the next enumeration prices the next attack against what
+  is left, so a bot cannot strand itself mid-swing.
+
+The human client reads the same price from
+`turn.attack_targets[].tax` and labels its attack controls with it, so
+what the bot is refused and what a person is warned about come from one
+number.
 
 ## Known limitations
 

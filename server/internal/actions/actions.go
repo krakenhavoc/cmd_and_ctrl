@@ -165,6 +165,43 @@ var ErrMissingParams = errors.New("actions: missing required params")
 // payload before it reaches the game lock.
 const MaxBulkAttackers = 256
 
+// attackTaxParams is the payment posture both declaration verbs carry
+// for the CR 508.1a attack tax (ADR 0080, #1063) — the same trio
+// cast_spell, activate_ability and special_action already send.
+//
+// Embedded in each verb's params struct rather than written twice, so
+// the two actions cannot drift on what `auto_tap` means. Every field
+// is absent from a payload built before the tax existed and inert at a
+// table with no tax on it.
+//
+// There is deliberately no `strict`: an attack tax waived on paper is
+// Propaganda as a blank. See game.payAttackTaxLocked.
+type attackTaxParams struct {
+	AutoTap       bool     `json:"auto_tap,omitempty"`
+	LockedSources []string `json:"locked_sources,omitempty"`
+	PhyrexianLife int      `json:"phyrexian_life,omitempty"`
+}
+
+// decode turns the wire form into the engine's params, naming the
+// action in any parse error the way every other verb does.
+func (p attackTaxParams) decode(action string) (game.DeclareAttackersParams, error) {
+	out := game.DeclareAttackersParams{
+		AutoTap:       p.AutoTap,
+		PhyrexianLife: p.PhyrexianLife,
+	}
+	if len(p.LockedSources) > 0 {
+		out.LockedSources = make([]uuid.UUID, 0, len(p.LockedSources))
+		for i, raw := range p.LockedSources {
+			id, err := uuid.Parse(raw)
+			if err != nil {
+				return game.DeclareAttackersParams{}, fmt.Errorf("%s locked_sources[%d]: %w", action, i, err)
+			}
+			out.LockedSources = append(out.LockedSources, id)
+		}
+	}
+	return out, nil
+}
+
 // ErrEmptyAttackerSet is returned when declare_attackers arrives with
 // an empty `attackers` list. "Attack with nobody" is the default
 // state of the step, not an action — a player who wants it passes
@@ -720,6 +757,7 @@ func Dispatch(g *game.Game, a Action) error {
 		var p struct {
 			Attacker string `json:"attacker"`
 			Target   string `json:"target"`
+			attackTaxParams
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -735,7 +773,11 @@ func Dispatch(g *game.Game, a Action) error {
 		if err := requireCardController(g, a.Caller, attackerID); err != nil {
 			return err
 		}
-		return g.DeclareAttacker(attackerID, targetID)
+		declParams, err := p.attackTaxParams.decode("declare_attacker")
+		if err != nil {
+			return err
+		}
+		return g.DeclareAttackerWith(attackerID, targetID, declParams)
 
 	case TypeDeclareAttackers:
 		var p struct {
@@ -743,6 +785,7 @@ func Dispatch(g *game.Game, a Action) error {
 				Attacker string `json:"attacker"`
 				Target   string `json:"target"`
 			} `json:"attackers"`
+			attackTaxParams
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -773,7 +816,11 @@ func Dispatch(g *game.Game, a Action) error {
 			}
 			decls = append(decls, game.AttackDeclaration{Attacker: attackerID, Target: targetID})
 		}
-		_, err := g.DeclareAttackers(decls)
+		declParams, err := p.attackTaxParams.decode("declare_attackers")
+		if err != nil {
+			return err
+		}
+		_, err = g.DeclareAttackersWith(decls, declParams)
 		return err
 
 	case TypeDeclareBlocker:
@@ -1078,6 +1125,12 @@ func Dispatch(g *game.Game, a Action) error {
 			// ability (CR 602.2b). Cycling's "Discard this card"
 			// needs none: the source IS the payment.
 			DiscardIDs []string `json:"discard_ids,omitempty"`
+			// #1213 — return_ids names the permanents paid to a
+			// "Return a permanent you control to its owner's hand"
+			// cost (Quirion Ranger, Master Transmuter, Meloku).
+			// Exactly the clause's count, each once, each on the
+			// battlefield under the activator's control.
+			ReturnIDs []string `json:"return_ids,omitempty"`
 			// CR 107.4f / CR 602.2b (#917) — how many of the mana
 			// component's Phyrexian symbols are being paid with 2
 			// life each instead of mana (Birthing Pod's {1}{G/P}).
@@ -1135,6 +1188,14 @@ func Dispatch(g *game.Game, a Action) error {
 				}
 				discardIDs = append(discardIDs, id)
 			}
+			returnIDs := make([]uuid.UUID, 0, len(p.ReturnIDs))
+			for _, raw := range p.ReturnIDs {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("activate_ability return_ids: %w", err)
+				}
+				returnIDs = append(returnIDs, id)
+			}
 			refs := make([]game.TargetRef, 0, len(p.Targets))
 			for _, t := range p.Targets {
 				ref, err := t.toRef()
@@ -1151,6 +1212,7 @@ func Dispatch(g *game.Game, a Action) error {
 				CounterKind:      p.CounterKind,
 				CounterKinds:     p.CounterKinds,
 				DiscardIDs:       discardIDs,
+				ReturnIDs:        returnIDs,
 				Targets:          refs,
 				// #764, CR 602.2b: a modal activated ability announces
 				// its modes with its targets, in one indivisible step.
@@ -1285,6 +1347,13 @@ func Dispatch(g *game.Game, a Action) error {
 			// engine validates and normalises it. Routed by presence,
 			// like Color above.
 			CreatureType string `json:"creature_type"`
+			// CardName answers a PendingChoiceCardName ("as this
+			// enters, choose a card name", CR 614.12, #1210). Free
+			// text — CR 201.2 lets a player name any card name, so
+			// there is no vocabulary to check it against and the
+			// engine validates only its shape. Routed by presence,
+			// like CreatureType and Color above.
+			CardName string `json:"card_name"`
 			// Graveyard answers a PendingChoiceSurveil (CR 701.25)
 			// alongside TopOrder: the looked-at cards going to the
 			// chooser's graveyard. Its PRESENCE is what distinguishes
@@ -1359,6 +1428,13 @@ func Dispatch(g *game.Game, a Action) error {
 		if p.CreatureType != "" {
 			return g.ResolveCreatureTypeChoice(choiceID, a.Player, p.CreatureType)
 		}
+		// #1210, CR 614.12: "as this enters, choose a card name".
+		// Routed by presence like the two above; a non-empty
+		// card_name identifies the answer, and ResolveCardNameChoice
+		// refuses it against any other kind.
+		if p.CardName != "" {
+			return g.ResolveCardNameChoice(choiceID, a.Player, p.CardName)
+		}
 		// The scry family — scry, surveil, "look at the top N and put
 		// them back in any order" — routes on the CHOICE'S KIND, not
 		// on the payload shape every other branch here keys off.
@@ -1415,6 +1491,14 @@ func Dispatch(g *game.Game, a Action) error {
 			if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceChooseProtector {
 				return g.ResolveChooseProtector(choiceID, a.Player, ref.ID)
 			}
+			// #1196, CR 115.7: the retarget prompt reuses the same
+			// {kind, id} payload for the same reason — one ref out of
+			// a server-computed set — and is routed apart on the
+			// KIND, since what the answer does is rewrite an item on
+			// the stack rather than build one.
+			if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceRetarget {
+				return g.ResolveRetarget(choiceID, a.Player, []game.TargetRef{ref})
+			}
 			return g.ResolvePickTarget(choiceID, a.Player, ref)
 		}
 		if p.Targets != nil {
@@ -1445,6 +1529,14 @@ func Dispatch(g *game.Game, a Action) error {
 					return game.ErrInvalidParam
 				}
 				return g.ResolveChooseProtector(choiceID, a.Player, refs[0].ID)
+			}
+			// #1196: the client's targeting banner always submits the
+			// PLURAL form, so a retarget answer normally arrives
+			// here. An EMPTY list is the decline ("you may choose new
+			// targets" left unchanged, CR 115.7c), which is why this
+			// branch is reached at all — `targets: []` is non-nil.
+			if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceRetarget {
+				return g.ResolveRetarget(choiceID, a.Player, refs)
 			}
 			return g.ResolvePickTargets(choiceID, a.Player, refs)
 		}
@@ -1567,6 +1659,30 @@ func Dispatch(g *game.Game, a Action) error {
 				// line above — a board of nothing but "you may choose
 				// not to untap" permanents accepts the empty answer.
 				return g.ResolveUntapChoice(choiceID, a.Player, ids)
+			case game.PendingChoiceEntryRevealFromHand:
+				// #1198, CR 614.1c: "as this land enters, you may
+				// reveal an Island or Swamp card from your hand". The
+				// third kind on this payload, and the floor is zero
+				// by design — an EMPTY list is the decline that makes
+				// the land enter tapped, so it is routed here ahead
+				// of the count guards like the two above it.
+				return g.ResolveEntryRevealFromHand(choiceID, a.Player, ids)
+			case game.PendingChoiceRevealPick:
+				// #1214, CR 608.2 / CR 701.20: "an opponent chooses
+				// two of those cards". Same payload and the same
+				// floor-can-be-zero reason — a Fact or Fiction pile
+				// split is a legal 5-0.
+				return g.ResolveRevealPick(choiceID, a.Player, ids)
+			case game.PendingChoiceTheirPermanents:
+				// #1214: "you choose from among the permanents that
+				// player controls" — a pick across the table, routed
+				// by kind so it cannot be answered through the
+				// chooser's-own-material verb below.
+				return g.ResolveTheirPermanents(choiceID, a.Player, ids)
+			case game.PendingChoiceOwnPermanents:
+				// #1214: "sacrifice any number of lands" — the
+				// untargeted self-choice, whose floor really is zero.
+				return g.ResolveOwnPermanents(choiceID, a.Player, ids)
 			case game.PendingChoiceCopyTarget:
 				// "You may have this enter as a copy of ..." — an
 				// EMPTY list is the decline, exactly as it is for
@@ -1606,6 +1722,12 @@ func Dispatch(g *game.Game, a Action) error {
 			CounterCounts    []int    `json:"counter_counts,omitempty"`
 			CounterKind      string   `json:"counter_kind,omitempty"`
 			CounterKinds     []string `json:"counter_kinds,omitempty"`
+			// #1213 — discard_ids names the cards paid to a discard
+			// cost on a MANA ability (Skirge Familiar's "Discard a
+			// card: Add {B}"). Same field name and shape as
+			// activate_ability's, so the client reuses one picker
+			// for both ability kinds.
+			DiscardIDs []string `json:"discard_ids,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -1630,12 +1752,21 @@ func Dispatch(g *game.Game, a Action) error {
 			}
 			manaCounterIDs = append(manaCounterIDs, id)
 		}
+		manaDiscardIDs := make([]uuid.UUID, 0, len(p.DiscardIDs))
+		for _, raw := range p.DiscardIDs {
+			id, err := uuid.Parse(raw)
+			if err != nil {
+				return fmt.Errorf("activate_mana_ability discard_ids: %w", err)
+			}
+			manaDiscardIDs = append(manaDiscardIDs, id)
+		}
 		return g.ActivateManaAbility(a.Player, cardID, p.AbilityIndex, game.ManaAbilityParams{
 			SacrificeIDs:     sacIDs,
 			CounterSourceIDs: manaCounterIDs,
 			CounterCounts:    p.CounterCounts,
 			CounterKind:      p.CounterKind,
 			CounterKinds:     p.CounterKinds,
+			DiscardIDs:       manaDiscardIDs,
 		})
 
 	case TypeSetMaxHandSize:
