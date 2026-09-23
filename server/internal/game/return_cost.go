@@ -252,6 +252,7 @@ func (g *Game) payReturnToHandCostLocked(playerID, sourceID uuid.UUID, ids []uui
 			Dst:           ZoneHand,
 			Actor:         playerID,
 			Source:        sourceID,
+			Cause:         MoveCause{Kind: MoveCauseCost, Controller: playerID},
 			MustSettleNow: true,
 		}); err != nil {
 			return attacking, err

@@ -191,9 +191,26 @@ type zoneRoute struct {
 	// Countered flags a counterspell, whose completed move emits
 	// EventCounterSpell INSTEAD of EventZoneMove (the historic shape
 	// — counter watchers key on it and a zone move would double-
-	// count). DropStackMeta additionally retires the stack item.
-	Countered     bool
-	DropStackMeta bool
+	// count).
+	//
+	// There is deliberately no flag for retiring the stack item any
+	// more (#1318, ADR 0013 §5ad). It used to be DropStackMeta, set by
+	// the counter / return-to-hand exit and the sandbox move and by
+	// nothing else, so an airbend or any other plain exile of a spell
+	// moved the card and left its StackMeta entry behind — a spell
+	// record with no card, which the resolver could never clear, and
+	// the table wedged. Whether a move retires the record is a fact
+	// about the SOURCE zone, so executeZoneRouteLocked reads it there:
+	// every card that leaves the stack by this route takes its record
+	// with it.
+	Countered bool
+
+	// Cause is what moved the card (#1320, move_cause.go): a cost, a
+	// special action, a rule or a manual move, named by the caller that
+	// knows it. Left zero, routeCardToZoneLocked fills it from the
+	// resolving stack item — the effect case, which every effect exit
+	// shares and so none of them has to name.
+	Cause MoveCause
 
 	// Sacrifice says this battlefield exit is a SACRIFICE (CR 701.17a)
 	// rather than a destruction, so the leg announces EventSacrifice
@@ -464,13 +481,24 @@ func (g *Game) routeCardToZoneLocked(r zoneRoute) (paused bool, err error) {
 	if src == nil {
 		return false, ErrCardNotFound
 	}
-	if r.DropStackMeta && src.Kind == ZoneStack {
+	if src.Kind == ZoneStack {
 		// #1255, CR 608.2h: a spell leaving the stack without
 		// resolving can still be copied by an effect that names it
 		// without targeting it (a storm trigger whose spell was
 		// countered in response). Taken here, before the move, while
-		// the card and its item are still the spell's.
+		// the card and its item are still the spell's. A resolving
+		// spell's item is already out of StackMeta, so this records
+		// nothing for it — resolution is not a writer (ADR 0043
+		// decision 16). #1318: EVERY stack exit, not only the ones
+		// that used to say DropStackMeta; an airbent spell is as
+		// copyable as a countered one.
 		g.rememberLeavingSpellLocked(r.CardID)
+	}
+	if r.Cause.Kind == "" {
+		// #1320: the effect case. Captured HERE, onto the route, so a
+		// move that pauses on a CR 903.9 prompt carries its cause to
+		// the resume rather than reading the slot again later.
+		r.Cause = g.resolutionCauseLocked()
 	}
 	dstZone, _, err := g.routeDestinationLocked(r.CardID, r.Dst, r.DstOwner)
 	if err != nil {
@@ -651,9 +679,17 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 			dstZone.InsertFromTop(c, r.Depth)
 		}
 	}
-	if r.DropStackMeta {
-		delete(g.StackMeta, ev.CardID)
-		g.recomputeSplitSecondLocked()
+	if src.Kind == ZoneStack {
+		// #1318: the source zone decides, not a flag on the route. A
+		// card that has left the stack is no longer a spell (CR 400.7),
+		// so its record goes with it — counter, bounce, airbend, the
+		// sandbox move, and any exit a future caller adds. A resolving
+		// spell's record is already gone (resolveTopOfStackLocked
+		// deletes it first), so there is nothing to do for one.
+		if _, ok := g.StackMeta[ev.CardID]; ok {
+			delete(g.StackMeta, ev.CardID)
+			g.recomputeSplitSecondLocked()
+		}
 	}
 
 	// Events. A counterspell keeps its historic single-event shape;
@@ -664,11 +700,13 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 	// move that emitted its own kind AND a zone move.
 	switch {
 	case r.Countered:
-		g.EmitEvent(Event{
+		out := Event{
 			Kind:   EventCounterSpell,
 			Target: ev.CardID,
 			CardID: ev.CardID,
-		})
+		}
+		r.Cause.stampCause(&out)
+		g.EmitEvent(out)
 	case r.Discard:
 		// CR 701.8a: the discard is the move OUT of the hand, so it
 		// happened whatever the window did with the destination — a
@@ -681,7 +719,7 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 		// #650: it also carries the CAUSE now, so the log can say why
 		// and a payoff that cares ("a spell or ability an opponent
 		// controls causes you to discard") has it beside the Source.
-		g.EmitEvent(Event{
+		out := Event{
 			Kind:         EventDiscardCard,
 			Actor:        actor,
 			Source:       r.Source,
@@ -689,28 +727,34 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 			OldZone:      src.Kind,
 			NewZone:      dstZone.Kind,
 			DiscardCause: ev.DiscardCause,
-		})
+		}
+		r.Cause.stampCause(&out)
+		g.EmitEvent(out)
 	default:
 		kind := EventZoneMove
 		if r.Mill && dstZone.Kind == ZoneGraveyard {
 			kind = EventMill
 		}
-		g.EmitEvent(Event{
+		out := Event{
 			Kind:    kind,
 			Actor:   actor,
 			Source:  r.Source,
 			CardID:  ev.CardID,
 			OldZone: src.Kind,
 			NewZone: dstZone.Kind,
-		})
+		}
+		r.Cause.stampCause(&out)
+		g.EmitEvent(out)
 	}
 	if fromBattlefield {
-		g.EmitEvent(Event{
+		ltb := Event{
 			Kind:    EventLTB,
 			Actor:   actor,
 			CardID:  ev.CardID,
 			NewZone: dstZone.Kind,
-		})
+		}
+		r.Cause.stampCause(&ltb)
+		g.EmitEvent(ltb)
 		// A permanent leaving the battlefield can invalidate a queued
 		// "sacrifice a creature of your choice" prompt (Grave Pact).
 		// Same reason executeBattlefieldLeaveLocked re-checks here:

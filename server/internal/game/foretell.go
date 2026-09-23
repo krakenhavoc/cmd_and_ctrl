@@ -88,6 +88,8 @@ func (g *Game) foretellLocked(p *Player, cardID uuid.UUID, sa SpecialAction) err
 		Dst:      ZoneExile,
 		Actor:    owner,
 		FaceDown: FaceDownForetold,
+		// #1320: a special action (CR 116.2h), not a spell or ability.
+		Cause: MoveCause{Kind: MoveCauseSpecialAction, Controller: owner},
 	}, []uuid.UUID{cardID}, func(g *Game, landed []uuid.UUID) error {
 		if len(landed) != 1 {
 			return nil

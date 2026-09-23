@@ -1529,7 +1529,65 @@ func (g *Game) CounterTargetToZoneForEffect(stackID uuid.UUID, dst ZoneRef) erro
 //
 // Caller must hold g.mu.
 func (g *Game) ReturnSpellToHandForEffect(stackID uuid.UUID) error {
-	return g.exitSpellFromStackLocked(stackID, nil, ZoneHand, false)
+	return g.exitSpellFromStackLocked(stackID, nil, ZoneHand, false, nil)
+}
+
+// ExileSpellForEffect exiles a spell from the stack WITHOUT countering
+// it — "exile target spell" (#1318). CR 701.6 never applies, so a
+// spell printed "can't be countered" is exiled all the same and
+// nothing watching "whenever a spell is countered" fires. The third
+// verb over exitSpellFromStackLocked, beside the counter and the
+// return to hand, and it exists for the reason those two share one
+// body: a spell leaving the stack owes the CR 903.9 window, the
+// CR 608.2h last-known record and the retirement of its stack record,
+// and three spellings of that drift.
+//
+// Before this there was no exported way to say it, so the one card
+// that needed it — airbend, which targets "a creature or spell" —
+// went through ExileCardForEffect, and that route did not retire the
+// StackMeta entry. The spell's card went to exile, its record stayed,
+// and the table could never resolve past it. The route now retires the
+// record by source zone (zone_route.go), so both spellings are
+// correct; this one is the one that SAYS spell, and refuses anything
+// else.
+//
+// Returns ErrCardNotOnStack for an ID that is not a spell on the
+// stack, like its siblings.
+//
+// Caller must hold g.mu.
+func (g *Game) ExileSpellForEffect(stackID uuid.UUID) error {
+	return g.exitSpellFromStackLocked(stackID, &ZoneRef{Kind: ZoneExile}, ZoneExile, false, nil)
+}
+
+// ExileSpellThenForEffect is ExileSpellForEffect with the rest of the
+// instruction handed over rather than written on the next line: `then`
+// is told whether the spell actually reached exile. Aven Interrupter's
+// "exile target spell. It becomes plotted." is the caller — the plot
+// is a property of the card in exile, and a commander spell whose
+// owner takes CR 903.9's offer went to the command zone instead, so
+// there is nothing to plot.
+//
+// `exiled` is CR 400.7's reading (landedInZoneLocked): true only when
+// the card is in exile once the move settles. A spell that has already
+// left the stack — countered or resolved in response — is not an error
+// here: the move is "nothing happened" and `then` hears false, the
+// same terminal outcome a cancelled route reports.
+//
+// Caller must hold g.mu.
+func (g *Game) ExileSpellThenForEffect(stackID uuid.UUID, then func(g *Game, exiled bool) error) error {
+	tell := func(g *Game, exiled bool) error {
+		if then == nil {
+			return nil
+		}
+		return then(g, exiled)
+	}
+	if item, ok := g.StackMeta[stackID]; !ok || item == nil || item.Kind != StackItemSpell ||
+		g.Stack == nil || !g.Stack.Contains(stackID) {
+		return tell(g, false)
+	}
+	return g.exitSpellFromStackLocked(stackID, &ZoneRef{Kind: ZoneExile}, ZoneExile, false, func(g *Game) error {
+		return tell(g, g.landedInZoneLocked(stackID, ZoneExile, uuid.Nil))
+	})
 }
 
 // counterSpellLocked is the lock-free body of CounterSpell. Caller
@@ -1547,7 +1605,7 @@ func (g *Game) ReturnSpellToHandForEffect(stackID uuid.UUID) error {
 // prompt is queued nothing has moved, the stack item is still
 // registered, and both complete when the owner answers.
 func (g *Game) counterSpellLocked(spellID uuid.UUID, dst *ZoneRef) error {
-	return g.exitSpellFromStackLocked(spellID, dst, ZoneGraveyard, true)
+	return g.exitSpellFromStackLocked(spellID, dst, ZoneGraveyard, true, nil)
 }
 
 // exitSpellFromStackLocked is the shared body behind counterSpellLocked
@@ -1566,8 +1624,12 @@ func (g *Game) counterSpellLocked(spellID uuid.UUID, dst *ZoneRef) error {
 // vs. an ordinary zone move; it is the one bit the two callers
 // disagree about.
 //
+// `then` is the caller's continuation, run once the move reaches a
+// terminal outcome (zoneRoute.then) — nil for the fire-and-forget
+// verbs. ExileSpellThenForEffect is the one caller that needs it.
+//
 // Caller must hold g.mu.
-func (g *Game) exitSpellFromStackLocked(spellID uuid.UUID, dst *ZoneRef, fallback ZoneKind, countered bool) error {
+func (g *Game) exitSpellFromStackLocked(spellID uuid.UUID, dst *ZoneRef, fallback ZoneKind, countered bool, then func(*Game) error) error {
 	item, ok := g.StackMeta[spellID]
 	if !ok || item == nil || item.Kind != StackItemSpell {
 		return ErrCardNotOnStack
@@ -1606,11 +1668,11 @@ func (g *Game) exitSpellFromStackLocked(spellID uuid.UUID, dst *ZoneRef, fallbac
 		}
 	}
 	_, err := g.routeCardToZoneLocked(zoneRoute{
-		CardID:        spellID,
-		Dst:           destKind,
-		DstOwner:      destOwner,
-		Countered:     countered,
-		DropStackMeta: true,
+		CardID:    spellID,
+		Dst:       destKind,
+		DstOwner:  destOwner,
+		Countered: countered,
+		then:      then,
 	})
 	return err
 }

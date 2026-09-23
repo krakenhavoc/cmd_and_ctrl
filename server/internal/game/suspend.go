@@ -111,6 +111,8 @@ func (g *Game) suspendLocked(p *Player, cardID uuid.UUID, sa SpecialAction) erro
 	return g.routeAllThenLocked(zoneRoute{
 		Dst:   ZoneExile,
 		Actor: owner,
+		// #1320: a special action (CR 116.2f), not a spell or ability.
+		Cause: MoveCause{Kind: MoveCauseSpecialAction, Controller: owner},
 	}, []uuid.UUID{cardID}, func(g *Game, landed []uuid.UUID) error {
 		if len(landed) != 1 {
 			// A commander took CR 903.9's offer: it left the hand but

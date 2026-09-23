@@ -116,6 +116,16 @@ const (
 	// rather than on a second one so the engine has ONE timing
 	// vocabulary. Exactly the posture TimingFlash was added under.
 	TimingYourTurnOnly GrantTiming = "your_turn"
+
+	// TimingPlot is a plotted card's window (CR 702.170d, #1318): its
+	// owner's main phase while the stack is empty — and NOTHING widens
+	// it. That is the difference from TimingSorcery, which a per-player
+	// flash grant (Vedalken Orrery, Leyline of Anticipation) overrides:
+	// the plot rule is the permission's own timing, not the card's, so
+	// a plotted instant or a plotted card with flash is still cast only
+	// in that window. Only a CastPermission carries it; no per-player
+	// statement may (CastTimingOpenLocked reads it first and stops).
+	TimingPlot GrantTiming = "plot"
 )
 
 // PermissionCardRef is one card OBJECT a ScopeCards permission names:

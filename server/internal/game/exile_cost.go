@@ -122,6 +122,7 @@ func (g *Game) payExileSelfCostLocked(playerID, sourceID uuid.UUID, exileSelf bo
 		Dst:    ZoneExile,
 		Actor:  playerID,
 		Source: sourceID,
+		Cause:  MoveCause{Kind: MoveCauseCost, Controller: playerID},
 		// CR 601.2h / 602.2b: paying a cost is part of one
 		// indivisible step, so the window over this move settles
 		// itself rather than pausing on a player prompt — the bit
@@ -288,6 +289,7 @@ func (g *Game) payExileCardsCostLocked(playerID, sourceID uuid.UUID, ids []uuid.
 			Dst:           ZoneExile,
 			Actor:         playerID,
 			Source:        sourceID,
+			Cause:         MoveCause{Kind: MoveCauseCost, Controller: playerID},
 			MustSettleNow: true,
 		}); err != nil {
 			return err
