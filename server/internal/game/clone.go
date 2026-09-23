@@ -340,6 +340,16 @@ func (g *Game) cloneLocked() *Game {
 			out.lastKnownTriggerIdentity[k] = v
 		}
 	}
+	// #1218: lastKnownCounters' values are themselves maps, so unlike
+	// its two siblings above each entry needs its OWN copy — sharing
+	// the inner map would let a mutation on the clone (or the undo it
+	// is taken for) write through to the live game's snapshot.
+	if len(g.lastKnownCounters) > 0 {
+		out.lastKnownCounters = make(map[uuid.UUID]map[string]int, len(g.lastKnownCounters))
+		for k, v := range g.lastKnownCounters {
+			out.lastKnownCounters[k] = copyStringIntMap(v)
+		}
+	}
 	// CR 614.5 once-per-event marks for events PAUSED on a CR 616 /
 	// CR 614.10 prompt (#808). Between actions the map holds an entry
 	// only for an event whose prompt is still open, and that entry is
@@ -875,6 +885,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.ScopedStatics = src.ScopedStatics
 	g.lastKnownBattlefield = src.lastKnownBattlefield
 	g.lastKnownTriggerIdentity = src.lastKnownTriggerIdentity
+	g.lastKnownCounters = src.lastKnownCounters
 	// #808: the paused events' once-per-event marks rewind with the
 	// prompts that own them — see cloneLocked.
 	g.replacementsAppliedThisEvent = src.replacementsAppliedThisEvent

@@ -201,6 +201,22 @@ func discardedByYou(ev game.Event, source *game.Card) bool {
 	return ev.Kind == game.EventDiscardCard && ev.Actor == source.Controller
 }
 
+// exileFromGraveyardIfStillThere is "exile that [discarded] card from
+// your graveyard": a no-op if the card has already left — answered in
+// response with a reanimation, a madness cast, or anything else that
+// moves it first — because "from your graveyard" names an object in
+// one zone (CR 400.7). Bag of Holding's own trigger and Currency
+// Converter's share this body verbatim (#1218); the linked-exile
+// identity each reads back afterward is b27ExiledWith, keyed on the
+// caller's own (source, label) pair, not on anything this function
+// does.
+func exileFromGraveyardIfStillThere(g *game.Game, item *game.StackItem, cardID uuid.UUID) error {
+	if z := g.FindCardZoneForEffect(cardID); z == nil || z.Kind != game.ZoneGraveyard {
+		return nil
+	}
+	return ExileTarget{Target: cardID}.Apply(NewContext(g, item))
+}
+
 // eventCardHasType reports whether the card just discarded has
 // any of the given type-line words ("Island", "Pirate", "Vehicle").
 // The card is read from the graveyard, where its printed type line

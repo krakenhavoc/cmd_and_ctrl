@@ -403,6 +403,13 @@ var (
 	battlefieldExitRoute = zoneRoute{ViaBattlefieldLeave: true}
 	exileRoute           = zoneRoute{Dst: ZoneExile}
 	bounceRoute          = zoneRoute{Dst: ZoneHand}
+	// graveyardRoute is a plain zone move to a graveyard from
+	// anywhere but the battlefield — PutCardsIntoGraveyardThenForEffect's
+	// route. Not ViaBattlefieldLeave: that flag is CR 400.7's exit
+	// cleanup and the CR 603.10 LKI snapshot a leaves-the-battlefield
+	// trigger needs, and this route is refused for a battlefield card
+	// (see the caller), so neither ever applies here.
+	graveyardRoute = zoneRoute{Dst: ZoneGraveyard}
 )
 
 // destroyRouteWith is the destroy template carrying the rider a
@@ -873,6 +880,44 @@ func (g *Game) ExileCardsThenForEffect(ids []uuid.UUID, then func(g *Game, exile
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) ExileCardThenForEffect(cardID uuid.UUID, then func(g *Game, exiled bool) error) error {
 	return g.ExileCardsThenForEffect([]uuid.UUID{cardID}, func(g *Game, landed []uuid.UUID) error {
+		if then == nil {
+			return nil
+		}
+		return then(g, len(landed) == 1)
+	})
+}
+
+// PutCardsIntoGraveyardThenForEffect puts every card in `ids` into
+// its owner's graveyard as one simultaneous exit and hands `then` the
+// ones that actually reached the graveyard — Valakut Exploration's
+// "put them into their owner's graveyard, then this enchantment deals
+// that much damage" (#1218) needs the count AFTER the move lands, not
+// before: a leg can pause on the CR 903.9 prompt exactly as an exile
+// or a destroy leg can (ADR 0013 §5t), so a caller that read back a
+// pre-move tally would pay out for a move the window has not answered
+// yet. PutIntoGraveyardForEffect (random_bottom.go) is the same exit
+// with no continuation, for a caller that never needs the count.
+//
+// Refuses any id still on the battlefield (ErrInvalidParam), for the
+// same reason PutIntoGraveyardForEffect does: leaving the battlefield
+// for a graveyard is a destroy, a sacrifice or a state-based action,
+// each with its own path and its own event, and none of them is this.
+//
+// Caller must hold g.mu in write mode (resolution frame).
+func (g *Game) PutCardsIntoGraveyardThenForEffect(ids []uuid.UUID, then func(g *Game, landed []uuid.UUID) error) error {
+	for _, id := range ids {
+		if z := g.findCardZoneLocked(id); z != nil && z.Kind == ZoneBattlefield {
+			return ErrInvalidParam
+		}
+	}
+	return g.routeAllThenLocked(graveyardRoute, ids, then)
+}
+
+// PutIntoGraveyardThenForEffect is the single-card form.
+//
+// Caller must hold g.mu in write mode (resolution frame).
+func (g *Game) PutIntoGraveyardThenForEffect(cardID uuid.UUID, then func(g *Game, landed bool) error) error {
+	return g.PutCardsIntoGraveyardThenForEffect([]uuid.UUID{cardID}, func(g *Game, landed []uuid.UUID) error {
 		if then == nil {
 			return nil
 		}

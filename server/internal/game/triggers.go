@@ -635,6 +635,7 @@ func (g *Game) harvestLTB(pass *harvestPass) {
 	ev := pass.ev
 	defer delete(g.lastKnownBattlefield, ev.CardID)
 	defer delete(g.lastKnownTriggerIdentity, ev.CardID)
+	defer delete(g.lastKnownCounters, ev.CardID)
 	card := g.findCardByIDLocked(ev.CardID)
 	if card == nil {
 		return
@@ -753,6 +754,19 @@ func (g *Game) snapshotLKILocked(cardID uuid.UUID) {
 			g.lastKnownTriggerIdentity = make(map[uuid.UUID]triggerIdentityLKI)
 		}
 		g.lastKnownTriggerIdentity[cardID] = triggerIdentityLKI{OracleID: c.OracleID, ActiveFace: c.ActiveFace, AttachedTo: c.AttachedTo}
+		// #1218: The Ozolith's "if it had counters on it" — snapshotted
+		// here, before MoveCard's battlefield-exit cleanup zeroes
+		// Card.Counters a line later. Deep-copied so the map that
+		// survives is not the one MoveCard is about to nil out from
+		// under it. Only allocated when there is something to carry,
+		// so a counterless departure (almost all of them) costs
+		// nothing.
+		if len(c.Counters) > 0 {
+			if g.lastKnownCounters == nil {
+				g.lastKnownCounters = make(map[uuid.UUID]map[string]int)
+			}
+			g.lastKnownCounters[cardID] = copyStringIntMap(c.Counters)
+		}
 		return
 	}
 }

@@ -227,6 +227,25 @@ type StaticAbility struct {
 	// lifeTotalStaticIsLiveLocked.
 	DependsOnLifeTotal bool
 
+	// DependsOnAttackingStatus is DependsOnHandSize for whether a
+	// permanent is ATTACKING — Ohran Frostfang's "attacking creatures
+	// you control have deathtouch".
+	//
+	// Attacking status is not on the battlefield's shape (it doesn't
+	// add, remove or move a permanent, and it isn't a counter, a tap
+	// or the turn), so nothing else invalidates the cached resolution
+	// when a creature is declared as an attacker, is removed from
+	// combat (a control change, CR 506.4) or combat ends (CR 511.3).
+	// See layerVersionBump.OnEvent's EventAttack arm and
+	// invalidateLayersForAttackChangeLocked.
+	//
+	// Same contract as DependsOnHandSize and DependsOnLifeTotal, and
+	// opt-in for the same reason: a declare-attackers step happens
+	// every combat at every table, and gating the bump on this flag
+	// is what keeps that free for the tables with no such card in
+	// play.
+	DependsOnAttackingStatus bool
+
 	// ActiveWhen is the CR 716 / 719 / 721 / 709.5 designation gate:
 	// this static exists only while its source permanent has the
 	// designation named — level N or greater, solved, N or more

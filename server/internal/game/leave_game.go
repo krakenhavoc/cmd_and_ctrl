@@ -201,6 +201,9 @@ func (g *Game) forgetObjectLocked(cardID uuid.UUID) {
 	if g.lastKnownTriggerIdentity != nil {
 		delete(g.lastKnownTriggerIdentity, cardID)
 	}
+	if g.lastKnownCounters != nil {
+		delete(g.lastKnownCounters, cardID)
+	}
 }
 
 // exileStillControlledLocked is CR 800.4a's last clause: once the

@@ -109,9 +109,11 @@ func TestBatch25CardsAreRegistered(t *testing.T) {
 		b25RimewoodFallsOracle:       "Rimewood Falls",
 		b25VegaOracle:                "Vega, the Watcher",
 		b25VoraciousHydraOracle:      "Voracious Hydra",
+		// #1218: no longer a skip — see the note below the skip map.
+		currencyConverterOracle: "Currency Converter",
 	}
-	if len(want) != 19 {
-		t.Fatalf("the batch registers 19 cards, the table lists %d", len(want))
+	if len(want) != 20 {
+		t.Fatalf("the batch registers 20 cards, the table lists %d", len(want))
 	}
 	for oracle, name := range want {
 		spec, ok := Lookup(oracle)
@@ -123,23 +125,28 @@ func TestBatch25CardsAreRegistered(t *testing.T) {
 			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
 		}
 	}
-	// The eleven declared skips still waiting must stay out until
-	// their seam lands: a counter-removal cost, an untap-step event,
-	// an "exiled with this" record plus an exile-to-graveyard move, an opponent's
-	// non-mana choice at resolution (three cards), a reveal-from-hand
-	// entry choice, a per-player "as though it had flash" plus a
-	// trigger replacement, a legendary-sorcery cast restriction, a
-	// card put from hand at resolution, a beginning-of-combat event
-	// plus a modal trigger, and a tap-another-creature cost.
+	// The ten remaining declared skips must stay out until their seam
+	// lands: a counter-removal cost, an untap-step event, an
+	// opponent's non-mana choice at resolution (three cards), a
+	// reveal-from-hand entry choice, a per-player "as though it had
+	// flash" plus a trigger replacement, a legendary-sorcery cast
+	// restriction, a card put from hand at resolution, a
+	// beginning-of-combat event plus a modal trigger, and a
+	// tap-another-creature cost.
 	//
-	// Cloudstone Curio came off this list with #1223: "a
+	// Two cards came off this list since it was written, each closing
+	// a different seam. Cloudstone Curio, with #1223: "a
 	// resolution-time choice constrained by the triggering permanent"
 	// was the trigger-data seam, and its clause is now built from the
-	// event (TriggeredAbility.TargetsFrom).
+	// event (TriggeredAbility.TargetsFrom). Currency Converter, with
+	// #1218: it was declared skipped here for "an 'exiled with this'
+	// record plus an exile-to-graveyard move" and shipped using
+	// b27ExiledWith (which did not exist when this batch ran) plus
+	// ordinary primitives — see currency_converter.go — with no new
+	// engine seam needed.
 	for oracle, name := range map[string]string{
 		"3c7ea603-c985-4107-806b-a467b5fcca36": "Scholar of New Horizons",
 		"61d28182-498f-4bbc-bb7a-c5e1ef872dda": "Murkfiend Liege",
-		"981298e6-ddee-49c0-9377-f47f019b4138": "Currency Converter",
 		"8e356df5-ca92-4be2-871e-8965c2510fbe": "Tempt with Vengeance",
 		"42b9d383-3fe2-4fc8-ab86-f80a288d502b": "Murmuring Bosk",
 		"5b3b5f6a-375e-4479-9384-a942eda83f9b": "Gandalf the White",
