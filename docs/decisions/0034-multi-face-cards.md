@@ -558,6 +558,11 @@ its cost; the *mechanic* ("while it's prepared you may cast a copy of
 its spell") needs spell-copying, which does not exist. It is blocked on
 that, not on faces.
 
+> **2026-09-23 — built by [ADR 0090](0090-preparation-cards.md) (#1328).**
+> Front-face-only from hand turned out to be the rule (CR 722.3), not a
+> simplification; the prepared designation, the copy of the prepare spell
+> in exile and its cast are ADR 0090's.
+
 **Flip (26), meld (21), class (38, not multi-face) — out of scope.**
 
 ---
