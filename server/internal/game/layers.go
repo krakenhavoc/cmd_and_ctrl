@@ -741,6 +741,15 @@ func (g *Game) recomputeLayersLocked() {
 	g.ClearExpiredScopedStaticsLocked()
 	g.layerPassLocked()
 	changed := g.materialiseControlLocked()
+	// #1313: untap holds end with their CR 611.2b duration, and the
+	// board those durations read — who controls the source, whether it
+	// is still here — is settled only now, after layer 2 has been
+	// materialised. Sweeping here rather than with the scoped statics
+	// at the top of the pass is what lets the pass that moves control
+	// of a Dungeon Geists also end its hold, so a control change that
+	// is undone before the next pass cannot revive it. Holds are not
+	// layer inputs, so this does not touch the layer version.
+	g.sweepUntapHoldsLocked()
 	g.lastResolvedVersion.Store(g.layerVersion.Load())
 	// #930: the control deltas are EMITTED here, after the store, and
 	// not from inside the walk that found them. EmitEvent dispatches

@@ -4124,11 +4124,23 @@ For one-shot effects use `DoesntUntapNextUntapStep` or `TapAndFreeze`.
 names that player's next untap step. Markers expire at that actual step,
 even on an untapped permanent, survive skipped steps, and disappear on
 zone changes. They are data on `Card`, not turn-scoped closures, so undo
-and persisted snapshots retain them. Exert's action/cost, and a restriction
-that lasts "for as long as ~ remains tapped" (Rust Tick's and Amber
-Prison's tap abilities), remain separate work. See
-[ADR 0058](docs/decisions/0058-doesnt-untap.md) and
+and persisted snapshots retain them. Exert's action/cost remains separate
+work. See [ADR 0058](docs/decisions/0058-doesnt-untap.md) and
 [ADR 0070](docs/decisions/0070-untap-step-choices.md).
+
+For "it doesn't untap during its controller's untap step **for as long
+as** you control ~ / ~ remains tapped" (Ty Lee, Dungeon Geists, Rust
+Tick), use `TapAndHoldWhileYouControlThis` or
+`TapAndHoldWhileThisRemainsTapped` (#1313, ADR 0058's 2026-09-23
+amendment). Each one records a HOLD: an `UntapSkip` whose `While` is a
+CR 611.2 `Duration`. It is read at every untap step of the permanent's
+controller, never used up by a step, and dropped once the duration ends.
+The helpers tap the target whatever happens, and record the hold only if
+the duration starts (CR 611.2b: a source already gone taps with no
+lock). For any other duration, build it with a `Duration*` helper and
+apply `DoesntUntapWhile`. Do not write this as an `UntapStepRestriction`
+on the source that remembers its target. The hold lives on the target,
+so a zone change, a copy and a snapshot already treat it correctly.
 
 Two things to know when you touch the untap path at all:
 

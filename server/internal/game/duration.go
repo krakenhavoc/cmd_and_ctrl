@@ -143,6 +143,20 @@ const (
 	// object is already on the battlefield wants
 	// WhileYouControlSource, which is strictly tighter.
 	WhileYouControlSourceOnceItLands
+
+	// WhileSourceRemainsTapped — "for as long as ~ remains tapped"
+	// (Rust Tick, Amber Prison; #1313, ADR 0058's 2026-09-23
+	// amendment). WhileSourceOnBattlefield, and the source must still
+	// be tapped. The layer listener bumps the layer version on
+	// EventTapCard / EventUntapCard, so the recompute sweep sees the
+	// source untap. Once the source has untapped the effect is over
+	// for good, even if the source is tapped again later: CR 611.2b
+	// says the effect "doesn't last forever", and the sweep is what
+	// makes the end permanent.
+	//
+	// Appended, never inserted: the enum's integer values are written
+	// into snapshot files.
+	WhileSourceRemainsTapped
 )
 
 // Duration is how long one continuous effect lasts. The zero value is
@@ -299,6 +313,23 @@ func (g *Game) ForAsLongAsYouControlDuration(source, player uuid.UUID) (Duration
 	}, true
 }
 
+// ForAsLongAsSourceTappedDuration is "for as long as ~ remains tapped"
+// (CR 611.2b). Returns false when the source is not on the battlefield
+// or is not tapped: the duration never starts, so the caller records
+// nothing. Caller must hold g.mu.
+func (g *Game) ForAsLongAsSourceTappedDuration(source uuid.UUID) (Duration, bool) {
+	c, ok := g.battlefieldCardLocked(source)
+	if !ok || !c.Tapped {
+		return Duration{}, false
+	}
+	return Duration{
+		Kind:            ForAsLongAs,
+		Condition:       WhileSourceRemainsTapped,
+		Source:          source,
+		SourceEnteredAt: c.EnteredBattlefieldAt,
+	}, true
+}
+
 // UntilYouLoseControlOfDuration is "until that player loses control
 // of it" (CR 611.2b, and CR 702.62e's haste), for an effect created
 // while `source` is still a spell on the stack. See
@@ -398,6 +429,9 @@ func (g *Game) durationConditionHoldsLocked(d Duration) bool {
 		return false
 	}
 	if d.Condition == WhileYouControlSource && c.Controller != d.Player {
+		return false
+	}
+	if d.Condition == WhileSourceRemainsTapped && !c.Tapped {
 		return false
 	}
 	return true

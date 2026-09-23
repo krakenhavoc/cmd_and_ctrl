@@ -615,7 +615,8 @@ implementation; its end-step flicker and its `{3}{U}` tap ability are
 both writable now), Enduring Curiosity (the graveyard return exists; "it
 returns as an enchantment, not a creature" needs a continuous effect
 conditioned on *how* the permanent got there), Ty Lee, Chi Blocker
-(prowess + a "doesn't untap for as long as you control this" lockdown),
+(prowess, #706; its "doesn't untap for as long as you control this"
+lockdown shipped with #1313),
 Meticulous Archive (in the catalog, but surveil is unimplemented), The
 Mind Stone (harness — a once-activated state gate), Deep Gnome
 Terramancer ("lands enter under an opponent's control **without being
