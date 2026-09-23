@@ -272,6 +272,36 @@ const (
 	// as LogSagaChapter and LogClassLevel: a mechanic whose number is
 	// otherwise unobservable gets a line.
 	LogStorm LogKind = "storm"
+	// LogTurnFaceDown — a permanent that was face up on the
+	// battlefield was turned face down (CR 708.2a). `card_id` is the
+	// permanent; `target` is the object that did it (Ixidron, Cyber
+	// Conversion), which is public where the permanent's identity no
+	// longer is. #1209, ADR 0082's 2026-09-23 amendment.
+	//
+	// Narrated for LogTransform's reason and LogPhaseOut's stronger
+	// one. Turning face down is not a zone change and not a
+	// transform, so no other line says it; the board simply stops
+	// showing a card the table could read a second ago and starts
+	// showing a nameless 2/2, which is indistinguishable from the
+	// creature having been exiled and replaced unless the log says
+	// which.
+	//
+	// IT NAMES NOBODY, and that is not this projection's decision. A
+	// CR 708.2 object has no name for ANY viewer, its controller
+	// included (ADR 0069 decision 6: `CardView.Name` is the effective
+	// characteristic's, and CR 708.2a leaves it empty; the controller
+	// gets the art through `scryfall_id` and `face_visible` instead).
+	// So resolveLogNames finds no name to put on the entry, and the
+	// house fallback "a card" is the honest rendering — there is
+	// nothing here to leak and nothing to withhold. `card_id` is
+	// still on the entry, so a client can point at the permanent on
+	// the board, which is the half of the identity that IS public.
+	//
+	// The reverse direction has no line at all: EventTurnedFaceUp's
+	// silence row says the CR 116.2g special action's own line
+	// already carries it, and there is no special action here to
+	// carry this one.
+	LogTurnFaceDown LogKind = "turn_face_down"
 )
 
 // The three choose-a-value kinds are separate rather than one "chose
@@ -932,6 +962,25 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.CardID = uuidStringOrEmpty(ev.CardID)
 		return base, true
 
+	case game.EventTurnedFaceDown:
+		// CR 708.2a, #1209. Not a zone move and not a transform
+		// (CR 701.27b is explicit that the two are different game
+		// actions), so no other entry says it.
+		//
+		// The card reference is the permanent and is redacted for
+		// every seat but its controller, which is the rule (CR 708.5)
+		// arriving through the ordinary knower predicate. The SOURCE
+		// goes in Target instead of in Label, so that it is redacted
+		// on its own terms rather than travelling with the name it is
+		// not: Ixidron is a public permanent and stays named in a
+		// line that has stopped naming what it hit.
+		base.Kind = LogTurnFaceDown
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		if ev.Source != ev.CardID {
+			base.Target = uuidStringOrEmpty(ev.Source)
+		}
+		return base, true
+
 	case game.EventTransform:
 		// CR 701.27a. Not a zone move (CR 712.18), so no LogZone entry
 		// says it — this is the only line the table gets, and without
@@ -1367,6 +1416,17 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		// the count is public (it is a fact about the turn's casts,
 		// which every seat watched) and only the name is redacted.
 		return fmt.Sprintf("%s — storm count %d", card, e.Amount)
+	case LogTurnFaceDown:
+		// `card` is "a card" for everyone, because the permanent has
+		// stopped having a name (see LogTurnFaceDown's comment); it
+		// is still resolved through the ordinary path so the line
+		// improves on its own if that ever changes. `target` is the
+		// object that did it — public, and the half of this line that
+		// carries the information.
+		if e.Target == "" {
+			return fmt.Sprintf("%s was turned face down", card)
+		}
+		return fmt.Sprintf("%s turned %s face down", target, card)
 	case LogPhaseOut:
 		return fmt.Sprintf("%s phased out", card)
 	case LogPhaseIn:

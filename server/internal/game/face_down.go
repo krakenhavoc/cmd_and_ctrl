@@ -52,6 +52,37 @@ const (
 	// FaceDownCloaked is CR 701.58's cloak: manifest plus ward {2}.
 	// Not made by anything yet — #95.
 	FaceDownCloaked FaceDownKind = "cloaked"
+
+	// FaceDownTurned is CR 708.2a: a permanent that was ALREADY on
+	// the battlefield, face up, and was turned face down by a spell
+	// or ability that listed no characteristics for it — Ixidron,
+	// Backslide, Cyber Conversion. It is a 2/2 with no text like the
+	// other four, and it is the only one of the six that is not a
+	// keyword's doing.
+	//
+	// A SEVENTH KIND RATHER THAN A REUSE, and the two candidates fail
+	// for rules reasons rather than tidiness ones (ADR 0082's
+	// 2026-09-23 amendment, #1209):
+	//
+	//   - `morphed` would price the wrong thing. TurnFaceUpOffer's
+	//     morph arm demands that the CARD's declared face-down cast
+	//     match the state's kind, which is right for a cast (you cast
+	//     it face down USING that keyword) and wrong for a turn:
+	//     CR 702.37e and CR 702.168d both key the turn-face-up
+	//     permission on the card HAVING the ability, whatever put the
+	//     permanent face down. A Backslid disguise creature would be
+	//     refused its own way back up.
+	//   - `disguised` and `cloaked` would hand it WARD {2}. That body
+	//     is the one those two keywords list (CR 702.168a,
+	//     CR 701.58a); CR 708.2a's is "no text", full stop, and
+	//     HasWard is false here for exactly that reason.
+	//
+	// It also has to be distinguishable at a glance from the four
+	// keyword states, because CR 708.7 ("the ability or rules that
+	// allow a permanent to be face down MAY ALSO allow the
+	// permanent's controller to turn it face up") is a question about
+	// WHICH rules did it — which is what FaceDownKind is for.
+	FaceDownTurned FaceDownKind = "turned"
 )
 
 // IsPermanentState reports whether this kind is one of the CR 708.2
@@ -64,7 +95,7 @@ const (
 // because the cast out of exile needs it.
 func (k FaceDownKind) IsPermanentState() bool {
 	switch k {
-	case FaceDownManifested, FaceDownMorphed, FaceDownDisguised, FaceDownCloaked:
+	case FaceDownManifested, FaceDownMorphed, FaceDownDisguised, FaceDownCloaked, FaceDownTurned:
 		return true
 	}
 	return false
@@ -236,12 +267,14 @@ func castOfferKey(c Card) string {
 //	disguised    the card declares a disguise cast its disguise cost CR 702.168b
 //	manifested   the card is a CREATURE CARD       its mana cost     CR 701.34d
 //	cloaked      the card is a CREATURE CARD       its mana cost     CR 701.58b
+//	turned       the card declares EITHER cast     that cast's cost  CR 702.37e / CR 702.168d
 //
 // nil means "no", and the three ways to get one all matter: a
 // manifested Mountain (CR 701.34d — it stays face down forever), an
 // Ixidron'd Sheoldred (CR 708.7 — a permanent turned face down by an
-// effect that did not give it a way back up can never be turned face
-// up), and every face-up permanent in the game.
+// effect that did not give it a way back up, and whose own card
+// prints no way either, can never be turned face up), and every
+// face-up permanent in the game.
 //
 // "Creature card" is PrintedIsCreature deliberately: that accessor is
 // the copiable-value surface (CR 707.2) and answers "what does this
@@ -263,8 +296,43 @@ func TurnFaceUpOffer(c Card) *SpecialAction {
 		alt := FaceDownCastFor(faceUpCatalogKey(c))
 		if alt == nil || alt.FaceDown == nil || alt.FaceDown.Kind != c.FaceDownKind {
 			// The permanent is in a state its card does not print a
-			// way out of — an effect turned it face down. CR 708.7:
-			// it can never be turned face up.
+			// way out of. CR 708.7: it can never be turned face up.
+			//
+			// The kind EQUALITY is the whole of this guard, and it
+			// belongs here and nowhere else: a morphed or disguised
+			// permanent is one a CAST made, using that keyword, so
+			// the card's declaration and the state cannot disagree
+			// unless something is wrong. The turned arm below
+			// deliberately does not ask (#1209).
+			return nil
+		}
+		return &SpecialAction{
+			Kind:          SpecialActionTurnFaceUp,
+			Cost:          alt.FaceDown.FaceUpCost,
+			FaceUpCounter: alt.FaceDown.FaceUpCounter,
+			Label:         turnFaceUpLabel(alt.FaceDown.FaceUpCost),
+		}
+	case FaceDownTurned:
+		// CR 708.2a put it here, and CR 708.7 says the rules that did
+		// so "may also allow the permanent's controller to turn it
+		// face up" — Ixidron's and Cyber Conversion's do not, and
+		// that is the nil below. But morph and disguise are not the
+		// effect's to give or withhold: CR 702.37e is "any time you
+		// have priority, you may turn a face-down permanent you
+		// control WITH A MORPH ABILITY face up", and CR 702.168d says
+		// the same for disguise. Both key on the CARD having the
+		// ability rather than on how the permanent came to be face
+		// down — which is exactly why Backslide is printed "target
+		// creature with a morph ability", and why Master of the
+		// Veil's loop is a loop.
+		//
+		// So EITHER declared cast opens the door and the kind
+		// equality the arm above makes is deliberately absent here. A
+		// megamorph card re-hidden this way still gets CR 702.109b's
+		// +1/+1 counter when its megamorph cost is paid to turn it
+		// up, because the counter rides the cost that was paid.
+		alt := FaceDownCastFor(faceUpCatalogKey(c))
+		if alt == nil || alt.FaceDown == nil {
 			return nil
 		}
 		return &SpecialAction{
@@ -367,6 +435,150 @@ func (g *Game) turnFaceUpLocked(p *Player, cardID uuid.UUID, sa SpecialAction) e
 		CardID: cardID,
 	})
 	return nil
+}
+
+// CanTurnFaceDown reports whether an instruction to turn this
+// permanent face down can do anything to it.
+//
+// Two refusals, and both are "nothing happens" rather than an error
+// — the rules say so in those words:
+//
+//   - CR 708.2b: "A face-down permanent can't be turned face down. If
+//     a spell or ability attempts to turn a face-down permanent face
+//     down, nothing happens and that effect doesn't change any of its
+//     characteristics or their copiable values." Ixidron resolving
+//     over a board that already holds a morph is the case, and
+//     Ixidron's own ruling says it in as many words: "turning a
+//     face-down creature face-down typically has no effect".
+//   - CR 712.16: "Melded permanents and other double-faced permanents
+//     can't be turned face down." The predicate is transform.go's,
+//     because the layout allowlist that decides what "double-faced"
+//     means has to have one definition — an `adventure` card also has
+//     two Faces and is not a double-faced card.
+//
+// A TOKEN is deliberately NOT refused. Nothing in CR 708 or CR 111
+// stops one being turned face down: it becomes a nameless 2/2 and
+// goes on sitting on the battlefield, and Card.IsToken reads the
+// PRINTED type line rather than the CR 708.2 projection, so CR 704.5d
+// still removes it the instant it leaves. Ixidron says "nontoken" in
+// its own text, which is that card's restriction and not the rule's;
+// Cyber Conversion happily hits one.
+func CanTurnFaceDown(c Card) bool {
+	if c.FaceDown {
+		return false
+	}
+	return !isDoubleFacedPermanent(c)
+}
+
+// TurnFaceDownForEffect turns the named face-up battlefield
+// permanents face down (CR 708.2a) — Ixidron's whole board, Cyber
+// Conversion's one target, Backslide's re-hidden morph. `source` is
+// the object doing it; the variadic tail is the batch, and one ID is
+// the ordinary case.
+//
+// Returns the IDs that actually turned over, in the order given: a
+// card that is not on the battlefield is skipped (CR 608.2b's per-slot
+// existence re-check for free), and so is one CanTurnFaceDown refuses.
+// A caller that has to count what it did — Ixidron sizing itself —
+// counts this.
+//
+// NOT A NEW OBJECT, which is the whole of the contract. CR 708.8
+// gives the rule for the other direction and CR 613.7f gives it for
+// both ("a permanent receives a new timestamp each time it turns face
+// up or face down" is a statement about one permanent, not two), so
+// this touches nothing that identifies one: InstanceID, ObjectEpoch,
+// counters, marked damage, attachments, tap state, the combat
+// declarations, EnteredBattlefieldAt and SummonedThisTurn all ride
+// through untouched. An Ixidron'd attacker goes on attacking as a
+// 2/2. The Equipment stays equipped.
+//
+// The AURA stays attached too, and then may not survive the next
+// state-based check — CR 704.5m, and the engine needs no line here
+// for it: attachmentSBALocked re-asks the enchant restriction every
+// pass, and a "enchant creature with flying" Aura on something that
+// is now a vanilla 2/2 is put into its owner's graveyard by the same
+// sweep that handles a creature losing flying any other way.
+//
+// WHO MAY LOOK is reset to the CR 708.5 answer — the controller and
+// nobody else — through applyFaceDownLandingLocked, the same one
+// writer the exile route and the face-down battlefield entry use. It
+// is a genuine narrowing: every player SAW the creature a moment ago,
+// and CR 708.6's differentiation rule assumes at a paper table they
+// remember. ADR 0082's 2026-09-23 amendment decision A3 records why
+// the engine forgets instead — KnownBy has always modelled "may look
+// at", CR 708.5 is explicit that you may not look at another player's
+// face-down permanent, and the log line the change produces is
+// redacted by the very same knower predicate, so the identity does
+// not leak back out through the history.
+//
+// THE ORDER IS MUTATE, THEN ANNOUNCE, and it is worth being explicit
+// because the mirror of it looks tempting. ADR 0082 decision 7 clears
+// the face-down state BEFORE emitting EventTurnedFaceUp so that the
+// trigger harvester, which reads a source's abilities through
+// CatalogKey, finds the card's text again. Reading that as "the
+// readable state comes first" would put the emit before the mutation
+// here. It is not the rule. The rule is that an event is emitted
+// after the change it reports — layerVersionBump must not be told
+// about a change that has not happened, and a listener earlier in the
+// slice must not read face-up characteristics off a card it has just
+// been told is face down. What the order costs is the permanent's OWN
+// "when this is turned face down" trigger, which CR 708.2a has
+// already silenced by then; no printed card has one, and the
+// asymmetry belongs to the rules rather than to this function.
+//
+// The whole batch is turned over before the FIRST event goes out, for
+// phaseOutLocked's reason: Ixidron turns every other creature face
+// down at once, and a trigger that fired halfway through would read a
+// board that never existed.
+//
+// Caller must hold g.mu (write). Added in S46 (ADR 0082's 2026-09-23
+// amendment, #1209).
+func (g *Game) TurnFaceDownForEffect(source uuid.UUID, ids ...uuid.UUID) []uuid.UUID {
+	if g.Battlefield == nil || len(ids) == 0 {
+		return nil
+	}
+	seen := make(map[uuid.UUID]bool, len(ids))
+	actors := make(map[uuid.UUID]uuid.UUID, len(ids))
+	turned := make([]uuid.UUID, 0, len(ids))
+	for _, id := range ids {
+		if id == uuid.Nil || seen[id] {
+			continue
+		}
+		seen[id] = true
+		idx := findCardOnBattlefield(g, id)
+		if idx < 0 {
+			continue
+		}
+		if !CanTurnFaceDown(g.Battlefield.Cards[idx]) {
+			continue
+		}
+		// Read before the write: the CR 708.2 body has no controller
+		// of its own to report, and layer 2 rides through unchanged
+		// anyway (faceDownCharacteristic keeps baseController).
+		actors[id] = g.Battlefield.Cards[idx].Controller
+		g.applyFaceDownLandingLocked(g.Battlefield, id, FaceDownTurned)
+		// The card's own cached resolution is nilled at the mutation
+		// site rather than left to the listener, for the window
+		// between the two: EmitEvent dispatches synchronously, and a
+		// listener earlier in the slice than layerVersionBump would
+		// otherwise read the real card off the permanent it has just
+		// been told is a 2/2. The same treatment, for the same
+		// reason, that turnFaceUpLocked gives the other direction.
+		g.Battlefield.Cards[idx].effective = nil
+		turned = append(turned, id)
+	}
+	for _, id := range turned {
+		g.EmitEvent(Event{
+			Kind:   EventTurnedFaceDown,
+			Actor:  actors[id],
+			Source: source,
+			CardID: id,
+		})
+	}
+	if len(turned) == 0 {
+		return nil
+	}
+	return turned
 }
 
 // SetFaceDown puts the card into a face-down state, or takes it out of
@@ -491,9 +703,11 @@ func (g *Game) faceDownViewersLocked(c Card) []uuid.UUID {
 
 // applyFaceDownLandingLocked puts the card at cardID in zone into the
 // face-down state `kind` and sets its knowers to the decision-2
-// answer. The one write path both face-down destinations use — the
-// exile route (zone_route.go) and the battlefield entry
-// (battlefield_put.go).
+// answer. The one write path every face-down state uses — the exile
+// route (zone_route.go), the battlefield entry (battlefield_put.go)
+// and, since #1209, the CR 708.2a turn-face-down above, which is the
+// only one of the three whose card was already sitting in its zone
+// face up.
 //
 // The caller must NOT also call markCardKnownInZoneLocked: exile and
 // the battlefield are both public zones, so the ordinary path would
