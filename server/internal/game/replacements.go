@@ -405,6 +405,17 @@ type ReplacementEvent struct {
 	// before emitting EventETB.
 	EntersTapped bool
 
+	// EntersPrepared is CR 722.3a's "this creature enters prepared",
+	// a CR 614.1d replacement (ADR 0090): set by the entering card's
+	// own self-replacement (effects.SelfEntersPrepared) and read by
+	// every battlefield landing, which gives the permanent the
+	// designation — and makes its CR 722.3c copy in exile — before
+	// EventETB, so the permanent is never on the battlefield
+	// unprepared. Rides the event for EntersTapped's reason. Only
+	// meaningful when NewZone == ZoneBattlefield, and ignored for a
+	// permanent with no prepare spell (CR 722.3a).
+	EntersPrepared bool
+
 	// EntersAttacking is the player, planeswalker or battle the
 	// permanent is put onto the battlefield ATTACKING (CR 506.3c,
 	// #1227) — ninjutsu's "put this card onto the battlefield from

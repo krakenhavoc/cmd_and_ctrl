@@ -729,7 +729,22 @@ type Card struct {
 	// S46 (#757).
 	ClassLevel int
 
-	// Solved lives in the bool block at the end of Card, for alignment.
+	// PreparedBy is set on a CR 722.3c prepare copy only: the
+	// permanent OBJECT — instance and CR 400.7 epoch — whose prepared
+	// designation keeps this copy in exile and castable (ADR 0090).
+	// Zero on every other card, and zero on a prepare copy that has
+	// left exile: MoveCard clears it on every move, so a copy that is
+	// cast, countered or put anywhere else no longer names anything
+	// and can never become castable again.
+	//
+	// Read by prepareCopyPermissionLocked, which DERIVES the cast
+	// permission from it on every query rather than storing one, and
+	// by the CR 704.5e sweep that removes a copy whose permanent is
+	// gone or unprepared. Carried by the snapshot.
+	PreparedBy PermissionCardRef
+
+	// Solved, Prepared and PrepareCopy live in the bool block at the
+	// end of Card, for alignment.
 
 	// effective is the cached post-layer-resolution characteristic
 	// for this card on the battlefield. Populated by the layer
@@ -891,6 +906,32 @@ type Card struct {
 	// up with the other non-bool fields, and for the same reasons.
 	// Carried by the snapshot. Added in S46 (#757).
 	Solved bool
+
+	// Prepared is the CR 722.3a designation on a permanent with a
+	// prepare spell (ADR 0090): while it is set, the permanent's
+	// controller may cast the CR 722.3c copy of its prepare spell that
+	// sits in exile, and casting that copy clears it (CR 601.2i).
+	//
+	// Set by becomePreparedLocked and by nothing else, which refuses a
+	// permanent with no prepare spell and one that is already prepared
+	// (both are CR 722.3a). A designation, not a counter and not a
+	// characteristic: not copiable, cleared when the permanent leaves
+	// the battlefield (CR 400.7) exactly as Solved is, and KEPT across
+	// phasing (CR 702.26d) — a permanent "phases in prepared" and makes
+	// a fresh copy as it does (CR 722.3c). Carried by the snapshot.
+	Prepared bool
+
+	// PrepareCopy marks the CR 722.3c copy of a prepare spell — the
+	// object created in exile as a permanent becomes prepared. It is
+	// NOT A CARD (CR 707.10, 722.3c), so the CR 704.5e sweep removes it
+	// from every zone but the stack, and from exile too once the
+	// permanent PreparedBy names is gone or unprepared; its spell, once
+	// cast, is a StackItem with IsCopy set and ceases to exist as it
+	// leaves the stack. It also keeps the copy wearing its prepare
+	// spell in every zone: CR 722.3c makes those characteristics its
+	// NORMAL ones, so MoveCard's CR 712.8 front-face reset skips it.
+	// Carried by the snapshot.
+	PrepareCopy bool
 
 	// PhasedOutIndirect records that this permanent phased out WITH
 	// the permanent it is attached to rather than on its own

@@ -260,6 +260,12 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// without anything in the copy path having to know.
 		c.ClassLevel = 0
 		c.Solved = false
+		// ADR 0090 / CR 400.7: and so is the CR 722.3a prepared
+		// designation. The copy it kept in exile names this OBJECT's
+		// epoch, which the increment above has just retired, so the
+		// copy stops being castable here and the CR 704.5e sweep takes
+		// it out of exile at the next state check.
+		c.Prepared = false
 		// S27 / CR 400.7: a battle that leaves and returns is a new
 		// object and chooses a new protector. Keeping the old one
 		// would make the returning battle defended by whoever
@@ -328,6 +334,13 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// while it sits in exile" true with no special case: a move
 	// within a zone is not a move, and never reaches here.
 	c.ClearFaceDown()
+	// ADR 0090: a CR 722.3c prepare copy is castable only from the
+	// exile it was created in, for as long as its permanent stays
+	// prepared. Any move at all ends that — the cast itself (exile to
+	// stack), a counter, or an effect that shuffles exile around — so
+	// the link is dropped on every move, unconditionally, and a copy
+	// that came back to exile by some route names nothing.
+	c.PreparedBy = PermissionCardRef{}
 	// CR 712.8: a double-faced card is FRONT face up in every zone
 	// except the battlefield and the stack. Keyed on the DESTINATION
 	// rather than the source, because that is how the rule is written
@@ -353,7 +366,12 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// SetFace is a no-op for the ~33,000 single-faced oracle IDs and
 	// for every token, so the guard costs one integer comparison on
 	// every move in the game.
-	if c.ActiveFace != 0 && dst.Kind != ZoneBattlefield && dst.Kind != ZoneStack {
+	//
+	// Not for a CR 722.3c prepare copy (ADR 0090): "those
+	// characteristics become the copy's NORMAL characteristics", so a
+	// countered All Aboard is still All Aboard in the graveyard for the
+	// moment before CR 704.5e removes it — never a Skycoach Conductor.
+	if c.ActiveFace != 0 && !c.PrepareCopy && dst.Kind != ZoneBattlefield && dst.Kind != ZoneStack {
 		c.SetFace(0)
 	}
 	dst.PushTop(c)

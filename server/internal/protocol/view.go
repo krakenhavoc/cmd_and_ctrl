@@ -1502,6 +1502,13 @@ type CardView struct {
 	// that list is built from, and an inactive static or trigger has
 	// no per-ability representation on the wire to grey out.
 	Solved bool `json:"solved,omitempty"`
+	// Prepared is a permanent's CR 722.3a prepared designation
+	// (ADR 0090): while it is set, its controller may cast the copy of
+	// its prepare spell that sits in exile — which the wire already
+	// shows as an exile card with an `exile_play` stamp. Public, as a
+	// level and a solved Case are, and absent rather than `false` for
+	// every permanent that is not prepared.
+	Prepared bool `json:"prepared,omitempty"`
 	// ChosenColor and NamedTribe are the answers a player gave to this
 	// permanent's "as this enters, choose a color" (CR 105.4) and "as
 	// this enters, choose a creature type" (CR 614.12) instructions —
@@ -5663,6 +5670,10 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// neither. Cleared with the rest of the type-derived bits.
 	out.ClassLevel = 0
 	out.Solved = false
+	// ADR 0090: a face-down permanent has no prepare spell (CR 708.2)
+	// and cannot be prepared, but the field is cleared with the other
+	// designations rather than trusted to be false.
+	out.Prepared = false
 	// #781: a chosen colour and a named tribe are PUBLIC on a card the
 	// viewer can see — that is the whole point of the fields — but
 	// they are read off the card's own text, so they name it exactly
@@ -5972,6 +5983,7 @@ func viewOfCard(c game.Card) CardView {
 		if game.IsCase(c) {
 			view.Solved = c.Solved
 		}
+		view.Prepared = c.Prepared
 	}
 	if c.BlockingTarget != uuid.Nil {
 		view.BlockingTarget = c.BlockingTarget.String()

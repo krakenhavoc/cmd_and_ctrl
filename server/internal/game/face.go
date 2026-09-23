@@ -126,8 +126,12 @@ const (
 	LayoutAdventure = "adventure"
 
 	// LayoutSplit and LayoutPrepare carry a joined top-level cost.
-	// Out of scope: the spine makes them cost their LEFT half
-	// instead of being free, which is a strict improvement.
+	// The spine makes them cost their LEFT half instead of being
+	// free. For a split card that is still a simplification (fusing);
+	// for a preparation card it is the rule — CR 722.3, the card is
+	// only ever cast as its permanent half, and its prepare spell
+	// (face 1) is cast as a COPY out of exile while the permanent is
+	// prepared (CR 722.3c, ADR 0090, prepare.go).
 	LayoutSplit   = "split"
 	LayoutPrepare = "prepare"
 )
@@ -212,8 +216,13 @@ func (c Card) FaceCount() int {
 //	                   one of them.
 //	transform          front only (CR 712.4). The back is reached by
 //	                   transforming the permanent, not by casting it.
-//	split/prepare      front only for now — split needs fusing.
+//	split              front only for now — split needs fusing.
 //	                   Deferred.
+//	prepare            front only, and that is CR 722.3 rather than
+//	                   a deferral: the prepare spell is never cast
+//	                   from the card. Its copy in exile is, through
+//	                   the permission prepare.go derives, which names
+//	                   face 1 (ADR 0090).
 //	anything else      front only.
 func (c Card) CastableFaces() []int {
 	if len(c.Faces) < 2 {

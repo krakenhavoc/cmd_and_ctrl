@@ -419,6 +419,10 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) (entered uu
 		moved = copied
 	}
 	g.applyEntryCountersLocked(entered, ev.EntersWithCounters)
+	// ADR 0090, CR 722.3a: "this creature enters prepared". After the
+	// copy above, so a Clone copying a preparation card prepares the
+	// prepare spell it copied, and before EventETB.
+	g.applyEntersPreparedLocked(entered, ev.EntersPrepared)
 	// Per-turn land-drop tally. The land branch in CastSpell bumps
 	// this on the path where nothing pauses; this branch is the same
 	// land play finishing after a prompt, and it was never bumping

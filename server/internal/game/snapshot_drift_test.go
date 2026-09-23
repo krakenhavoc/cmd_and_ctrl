@@ -335,6 +335,14 @@ var cardFields = plan(
 	// wrong and say nothing about it.
 	"ClassLevel", carried, "",
 	"Solved", carried, "",
+	// ADR 0090 (#1328): the CR 722.3a prepared designation, the
+	// CR 722.3c copy's not-a-card marker, and the permanent object the
+	// copy is kept in exile by. Carried for Solved's reason — every
+	// zero value is a legal state, so a restore that dropped them would
+	// come back wrong and say nothing.
+	"Prepared", carried, "",
+	"PrepareCopy", carried, "",
+	"PreparedBy", carried, "",
 	// #1199 / CR 702.26, ADR 0084. All four are the phased-out status
 	// and all four are legal zero values, so a restore that dropped
 	// them would bring a phased board back under the wrong player's

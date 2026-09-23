@@ -245,6 +245,7 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		LoyaltyActivated:  true,
 		ClassLevel:        3,
 		Solved:            true,
+		Prepared:          true,
 		// #781. Deliberately NOT added to redactedCardKeys: both are
 		// public on a card the viewer can see and both are stripped
 		// from one they cannot, because "Elf" names Cavern of Souls

@@ -538,10 +538,21 @@ type cardSnapshot struct {
 	// have neither key, and their zero values read correctly as
 	// "level 1, unsolved", which is why snapshot_backfill.go needs no
 	// arm for them.
-	ClassLevel        int       `json:"classLevel,omitempty"`
-	Solved            bool      `json:"solved,omitempty"`
-	StartingDefense   int       `json:"startingDefense,omitempty"`
-	ProtectorPlayerID uuid.UUID `json:"protectorPlayerId,omitempty"`
+	ClassLevel int  `json:"classLevel,omitempty"`
+	Solved     bool `json:"solved,omitempty"`
+	// Prepared, PrepareCopy and PreparedBy are ADR 0090's CR 722.3
+	// state: the designation on the permanent, and the not-a-card
+	// marker and permanent link on the copy it keeps in exile. Carried
+	// for Solved's reason — all three zero values are legal states, so
+	// a restore that dropped them would bring back an unprepared
+	// permanent beside a copy nobody may cast, or a copy that is a
+	// real card — and old snapshots decode as "not prepared, no copy",
+	// which is what every game before ADR 0090 was.
+	Prepared          bool              `json:"prepared,omitempty"`
+	PrepareCopy       bool              `json:"prepareCopy,omitempty"`
+	PreparedBy        PermissionCardRef `json:"preparedBy,omitzero"`
+	StartingDefense   int               `json:"startingDefense,omitempty"`
+	ProtectorPlayerID uuid.UUID         `json:"protectorPlayerId,omitempty"`
 
 	// The CR 702.26 phased-out status (#1199, ADR 0084). Meaningful
 	// only for a card in GameSnapshot.PhasedOut, and carried for
@@ -1234,6 +1245,9 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ChosenName:               c.ChosenName,
 		ClassLevel:               c.ClassLevel,
 		Solved:                   c.Solved,
+		Prepared:                 c.Prepared,
+		PrepareCopy:              c.PrepareCopy,
+		PreparedBy:               c.PreparedBy,
 		PhasedOutBy:              c.PhasedOutBy,
 		PhaseInLockedBy:          c.PhaseInLockedBy,
 		PhasedOutIndirect:        c.PhasedOutIndirect,
@@ -1818,6 +1832,9 @@ func restoreCard(c *cardSnapshot) Card {
 		ChosenName:               c.ChosenName,
 		ClassLevel:               c.ClassLevel,
 		Solved:                   c.Solved,
+		Prepared:                 c.Prepared,
+		PrepareCopy:              c.PrepareCopy,
+		PreparedBy:               c.PreparedBy,
 		PhasedOutBy:              c.PhasedOutBy,
 		PhaseInLockedBy:          c.PhaseInLockedBy,
 		PhasedOutIndirect:        c.PhasedOutIndirect,
