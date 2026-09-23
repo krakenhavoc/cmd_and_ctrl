@@ -170,3 +170,18 @@ func TestWanderingRescuerDoesNotProtectItself(t *testing.T) {
 	}
 	t.Errorf("the Rescuer must not grant hexproof to itself")
 }
+
+// TestWanderingRescuerPrintsFlashAndDoubleStrike — the two keywords
+// the hexproof tests never looked at. Flash is read off the card in
+// hand (the cast gate), double strike off the permanent.
+func TestWanderingRescuerPrintsFlashAndDoubleStrike(t *testing.T) {
+	g := newCatalogGame(t)
+	rescuer, _ := rescuerBoard(t, g, false)
+	if !hasEffectiveKeyword(t, g, rescuer, "double strike") {
+		t.Error("The Wandering Rescuer has no double strike")
+	}
+	inHand := game.Card{OracleID: theWanderingRescuerOracle, TypeLine: "Legendary Creature — Human Samurai Noble"}
+	if !game.HasKeyword(&inHand, "flash") {
+		t.Error("The Wandering Rescuer in hand has no flash")
+	}
+}
