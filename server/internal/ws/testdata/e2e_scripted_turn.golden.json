@@ -252,6 +252,15 @@
       "bot_pace": "normal",
       "allow_spawn": false
     },
-    "starting_seat": 0
+    "starting_seat": 0,
+    "log": [
+      {
+        "seq": 1,
+        "kind": "draw",
+        "seat": 0,
+        "amount": 1,
+        "text": "Player 1 drew a card"
+      }
+    ]
   }
 }
