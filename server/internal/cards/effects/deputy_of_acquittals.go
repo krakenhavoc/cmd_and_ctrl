@@ -5,41 +5,35 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Deputy of Acquittals — "Flash. When this creature enters, you may
 // return another target creature you control to its owner's hand."
 //
-// Sandbox simplification: the target clause cannot express
-// "another" — TargetSpec is declared statically at init() and
-// NotSelf needs the source's InstanceID, which only exists once the
-// card is on the battlefield. The picker therefore offers every
-// creature the controller controls, Deputy included; the Effect
-// declines to bounce itself so the printed restriction still holds
-// at resolution.
+// "ANOTHER" is exact. The clause is built per trigger through
+// AnotherTarget (TriggeredAbility.TargetsFrom, which is handed the
+// source), so the picker excludes THIS Deputy by instance rather than
+// by name: a second Deputy — a Clone or a token copy of this one — is
+// a legal target, as printed, and the Deputy whose trigger it is
+// never is. The resolution re-check (CR 608.2b) runs the same clause.
+//
+// The "you may" is the optional prompt, asked before the target is
+// chosen (CR 603.3c-d): no, and nothing happens.
 func init() {
 	Register(Spec{
 		OracleID:        "3cbb5045-8566-4279-b7d3-3e599b11ccc5",
 		Name:            "Deputy of Acquittals",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"The picker offers Deputy itself as a choice, but picking it does nothing and the bounce is wasted."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flash"},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.CardID == source.InstanceID
 			},
-			Targets: TargetCreature("target creature you control", YouControl()),
+			TargetsFrom: AnotherTarget(func(other CardPredicate) *game.TargetSpec {
+				return TargetCreature("another target creature you control", YouControl(), other)
+			}),
 			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
 				return game.NewTriggeredItem(source, "Deputy of Acquittals — return a creature to hand",
-					func(g *game.Game, item *game.StackItem) error {
-						if len(item.Targets) == 0 {
-							return nil
-						}
-						target := item.Targets[0]
-						if target.ID == item.SourceCardID {
-							return nil
-						}
-						return BounceToHand{Target: target.ID}.Apply(NewContext(g, item))
-					})
+					bounceChosenTarget)
 			},
 			OptionalPrompt: &game.TriggerOptionalPrompt{
-				Question: "Deputy of Acquittals — return a creature you control to its owner's hand?",
+				Question: "Deputy of Acquittals — return another creature you control to its owner's hand?",
 			},
 		}},
 	})

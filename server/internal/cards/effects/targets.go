@@ -293,6 +293,31 @@ func NotSelf(selfID uuid.UUID) CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.InstanceID != selfID }
 }
 
+// AnotherTarget is a triggered ability's "another target …" clause
+// that excludes the trigger's OWN source by instance — for
+// game.TriggeredAbility.TargetsFrom, which is handed the source, as a
+// static Targets clause is not.
+//
+// `build` receives NotSelf(source) and returns the clause with it
+// among its predicates:
+//
+//	TargetsFrom: AnotherTarget(func(other CardPredicate) *game.TargetSpec {
+//		return TargetCreature("another target creature you control", YouControl(), other)
+//	}),
+//
+// Exact where b03NotNamed is an approximation: a second permanent with
+// the same name — a Clone or token copy of the source — stays a legal
+// target, as printed, and the source itself never is.
+func AnotherTarget(build func(other CardPredicate) *game.TargetSpec) func(game.TriggerContext, *game.Card, *game.Game) *game.TargetSpec {
+	return func(_ game.TriggerContext, source *game.Card, _ *game.Game) *game.TargetSpec {
+		self := uuid.Nil
+		if source != nil {
+			self = source.InstanceID
+		}
+		return build(NotSelf(self))
+	}
+}
+
 // Opponent passes for players other than the caster.
 func Opponent() PlayerPredicate {
 	return func(_ *game.Game, caster uuid.UUID, p *game.Player) bool { return p.ID != caster }
