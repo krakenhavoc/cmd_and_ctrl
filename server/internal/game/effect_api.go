@@ -3144,11 +3144,18 @@ func (g *Game) addManaSlotsLocked(
 			continue
 		}
 		if len(slot.Options) == 1 {
-			p.ManaPool.AddMana(ManaToken{Color: colorOptions[0], Source: source, SourceKinds: srcKinds})
-			g.EmitEvent(Event{Kind: EventManaAdded, Actor: p.ID, Source: source, Colors: []string{colorOptions[0]}})
+			// The caller's booking for the mana the effect PRINTS; the
+			// production body below books whatever a replacement ADDS.
 			if pending != nil {
 				bookColorRequirement(colorOptions[0], pending)
 			}
+			// #1222: through the one production body, which opens the
+			// CR 106.12b window on the amount. fromTap is false — this
+			// is a SPELL's "Add {B}{B}{B}" or a triggered mana ability's
+			// own output (ADR 0074), and neither taps a permanent for
+			// mana, so neither is doubled by Mana Reflection. That is
+			// what the card says, not a simplification.
+			g.produceManaLocked(p, source, []string{colorOptions[0]}, nil, srcKinds, false, pending)
 			continue
 		}
 		if pending != nil {
@@ -3161,10 +3168,7 @@ func (g *Game) addManaSlotsLocked(
 			for k := 1; k < slot.AmountFor(color); k++ {
 				bookColorRequirement(color, pending)
 			}
-			for k := 0; k < slot.AmountFor(color); k++ {
-				p.ManaPool.AddMana(ManaToken{Color: color, Source: source, SourceKinds: srcKinds})
-				g.EmitEvent(Event{Kind: EventManaAdded, Actor: p.ID, Source: source, Colors: []string{color}})
-			}
+			g.produceManaLocked(p, source, repeatColor(color, slot.AmountFor(color)), nil, srcKinds, false, pending)
 			continue
 		}
 		g.QueueChoiceForEffect(PendingChoice{

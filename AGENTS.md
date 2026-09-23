@@ -1008,13 +1008,14 @@ func init() {
 |---|---|---|
 | Counter placement (+1/+1, loyalty, …) | `RepEventCounter` | `CounterTarget`, `CounterName`, `CounterDelta` |
 | Zone motion (ETB, LTB, draw-as-move) | `RepEventMove` | `CardID`, `OldZone`, `NewZone`, `NewZoneOwner`, `EntersTapped`, `EntersWithCounters` |
-| Card draw | `RepEventDraw` | `DrawPlayer` |
+| Card draw | `RepEventDraw` | `DrawPlayer`, `DrawCount` |
 | Life total change | `RepEventLife` | `LifePlayer`, `LifeDelta` |
 | Damage (combat and direct) | `RepEventDamage` | `DamageSource`, `DamageTarget`, `DamageAmount`, `IsCombatDamage` |
 | Token creation (CR 701.7b) | `RepEventCreateTokens` | `TokenController`, `TokenGroups`, `TokenAttacking` |
 | Discard (CR 701.8) | `RepEventDiscard` | `DiscardPlayer`, `DiscardCause`, `CardID`, `NewZone`, `NewZoneOwner` |
 | Keyword action with a count — proliferate (CR 701.34), scry (CR 701.22), surveil (CR 701.25) | `RepEventKeywordAction` | `KeywordAction`, `KeywordActionCount`, `Actor`, `Source` |
 | Mill amount (CR 701.13a) | `RepEventMill` | `MillPlayer`, `MillCount` |
+| Mana produced (CR 106.12b) | `RepEventProduceMana` | `ManaPlayer`, `ManaSource`, `ManaColors`, `ManaFromTap` |
 | Step entry (skip-step) | `RepEventStepTransition` | `StepTransitionStep`, `StepTransitionSeat` |
 
 **Adding a kind to that table is five switches, not one** (#982). A
@@ -1217,6 +1218,66 @@ It can PAUSE, before any card is chosen, so `MillToZoneForEffect`'s
 slice is empty when it did. If your card reads what was milled, use
 `MillToZone{…, Then: …}` / `g.MillToZoneThenForEffect` — which you
 should be doing anyway, for #893's reason.
+
+**The MANA PRODUCED is a replaceable quantity too** (#1222,
+[ADR 0013 §5ab](docs/decisions/0013-replacement-effects.md)). "If you
+tap a permanent for mana, it produces twice as much of that mana
+instead" (Mana Reflection, Nyxbloom Ancient) replaces the AMOUNT, so
+`RepEventProduceMana` is opened once per production and before any of
+it is in the pool. The family is
+`cards/effects/mana_replacements.go` — `ManaProducedBecomes{Times,
+Scope, Label}`, with `YouTapForTwiceAsMuchMana(label)` and
+`YouTapForThriceAsMuchMana(label)` as the named wrappers.
+
+Three things about it differ from the other amount events and all three
+are the printed cards' doing:
+
+- **It carries COLOURS, not a count.** `ev.ManaColors` is one entry per
+  mana, because "twice as much of THAT mana" names the mana as well as
+  the amount. Write `ev.MultiplyMana(n)` and nothing else — assigning
+  `ManaColors` yourself could change the COLOURS, which CR 106.12b does
+  not license.
+- **`ev.ManaFromTap` is the printed condition**, not a convenience. Both
+  cards say "if you TAP a permanent for mana" (CR 106.12a), so a spell's
+  "Add {B}{B}{B}", a mana ability with no `{T}` and a triggered mana
+  ability's own output are all productions and none of them is doubled.
+  A card that really is symmetrical leaves the check out.
+- **It never pauses.** CR 605.3a makes activating a mana ability one
+  indivisible step with no priority window inside it, so every event of
+  this kind sets `mustSettleNow` and the CR 616 ordering prompt is never
+  asked. An `Optional` mana-production replacement would therefore be
+  skipped un-applied; if you ever print one, that is the conversation to
+  have first.
+
+A pipe slot is replaced at the PICK, not at the activation — a Birds of
+Paradise under Mana Reflection is ONE choice minting two of the chosen
+colour — because that is the only moment the colour exists. The
+auto-tapper plans with the replaced amount through the same predicate
+(`producedManaPreviewLocked`), so a Mana-Reflected land really does pay
+for two pips.
+
+**The DRAW AMOUNT is a replaceable quantity too** (#1222, same section).
+`RepEventDraw` has existed since S17; what #1222 added is
+`ev.DrawCount`, whose base is always ONE because CR 121.2 makes "draw
+three cards" three individual card draws. The family is
+`cards/effects/draw_replacements.go` — `DrawBecomes{Count, Scope,
+ExceptInOwnDrawStep, Label}`, with `YouDrawTwiceInstead(label)` and
+`YouDrawTwiceInsteadExceptTheFirst(label)`.
+
+The N cards a settled count asks for are drawn one at a time, so every
+per-card payoff still fires per card — but they are ONE event, and the
+window is not re-opened for them. That is what makes two Thought
+Reflections draw FOUR rather than three, and it is why a cancel-style
+draw replacement sharing the window takes the whole doubled draw rather
+than one card of it (the declared simplification; no dredge card is
+catalogued).
+
+**"Except the first one you draw in each of your draw steps"** has no
+per-draw-step tally behind it. Both cards that print it — Notion Thief
+and Alhammarret's Archive — read it as "except ANY draw in that player's
+own draw step" and carry the same `caveats` line. `drawnInOwnDrawStep`
+is the one copy of the predicate; use it rather than writing the check
+again.
 
 **Two copies of your card will not prompt.** When every replacement
 applicable to one event is the *same* declared effect — same catalog

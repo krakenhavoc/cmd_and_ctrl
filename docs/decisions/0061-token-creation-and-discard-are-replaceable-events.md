@@ -258,6 +258,38 @@ creations; a creation with no source card (a test fixture, an admin verb) leaves
 - **No new prompt kind.** Both events reuse the CR 616 ordering prompt and the
   CR 614.10 optional prompt, so the bots and the client need nothing new.
 
+### Note, 2026-09-22: decision 1's shape has now been reused four times, and the family is closed
+
+Decision 1 — *one event per INSTRUCTION, carrying the count, with the
+replacement rewriting the count and the affected player ordering the
+window* — was written for a token creation and has since been the shape of
+every amount replacement the engine grew:
+
+| event | instruction | field | ADR |
+|---|---|---|---|
+| `RepEventCreateTokens` | "create N tokens" (CR 701.7b) | `TokenGroups` | this one, decision 1 |
+| `RepEventKeywordAction` | proliferate / scry / surveil | `KeywordActionCount` | [0013 §5s](0013-replacement-effects.md) |
+| `RepEventMill` | "mill N cards" (CR 701.13a) | `MillCount` | [0013 §5u](0013-replacement-effects.md), §5aa |
+| `RepEventProduceMana` | one mana production (CR 106.12b) | `ManaColors` | [0013 §5ab](0013-replacement-effects.md) |
+| `RepEventDraw` | one card draw (CR 121.2) | `DrawCount` | [0013 §5ab](0013-replacement-effects.md) |
+
+The last two closed the registry's remaining amount rows
+([#1222](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1222)), and
+between them they mark the two edges of the shape:
+
+- **A count is not always a number.** `ManaColors` is a LIST, because
+  "twice as much of that mana" names the mana as well as the amount. A
+  bare count could not have said which colours a doubled Sol Ring makes.
+  Decision 1's rule survives it — one event per instruction, one field
+  the replacement rewrites — but "the count" is whatever quantity the
+  instruction actually names.
+- **A count does not always need a tail.** Every event in the first three
+  rows carries one, because it can pause and the resume has to finish
+  what the caller asked for. A mana production sets `mustSettleNow`
+  (CR 605.3a) and therefore cannot pause, so it carries none — and the
+  three switches that name what a kind owes on a pause, a cancellation
+  or a dropped prompt say "nothing, and here is why" instead.
+
 ## Consequences
 
 ### Good
