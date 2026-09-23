@@ -503,6 +503,19 @@ func TestThePhasingKeywordPhasesOutEveryUntapStep(t *testing.T) {
 	}
 }
 
+// The keyword is in the CLOSED table, which is the only thing that
+// makes a printed-phasing permanent work with no catalog entry: the
+// deck importer filters Scryfall's keywords array through
+// CanonicalKeyword before stamping Card.Keywords, so a token that is
+// not in the table is dropped on the way in and the permanent phases
+// nowhere.
+func TestPhasingIsACanonicalKeyword(t *testing.T) {
+	got, ok := CanonicalKeyword("Phasing")
+	if !ok || got != KeywordPhasing {
+		t.Fatalf("CanonicalKeyword(%q) = (%q, %v), want (%q, true)", "Phasing", got, ok, KeywordPhasing)
+	}
+}
+
 // Both halves of CR 502.1 happen simultaneously, which means the set
 // is chosen before either is applied: a permanent with phasing that
 // phases IN this step does not phase straight back out.

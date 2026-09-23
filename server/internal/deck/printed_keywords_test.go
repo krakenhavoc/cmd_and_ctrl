@@ -289,7 +289,7 @@ func TestFlashCommanderCastsFromCommandZone(t *testing.T) {
 func TestPrintedKeywordsStampedOnGameCard(t *testing.T) {
 	list := &List{
 		Commanders: []cards.Card{aangSwiftSavior()},
-		Mainboard:  []cards.Card{skycoachConductor(), enduringCuriosity()},
+		Mainboard:  []cards.Card{skycoachConductor(), enduringCuriosity(), tolarianSerpent()},
 	}
 	byName := map[string][]string{}
 	for _, c := range list.ToGameCards() {
@@ -309,6 +309,13 @@ func TestPrintedKeywordsStampedOnGameCard(t *testing.T) {
 		// must NOT ride along on the front; airbend, transform and
 		// waterbend are not canonical keywords at all.
 		"Aang, Swift Savior": {"flying", "flash"},
+		// #1199 / CR 702.26: phasing joined the closed table in the
+		// change that taught the engine to honour it, so the ~70
+		// printed-phasing permanents of the Mirage / Visions cycle
+		// work with no catalog entry at all. Dropping it from
+		// canonicalKeywords leaves this card a vanilla Serpent that
+		// never phases, silently.
+		"Tolarian Serpent": {"phasing"},
 	}
 	for name, exp := range want {
 		got, ok := byName[name]
@@ -318,6 +325,24 @@ func TestPrintedKeywordsStampedOnGameCard(t *testing.T) {
 		if !sameSet(got, exp) {
 			t.Errorf("%s: keywords = %v, want %v", name, got, exp)
 		}
+	}
+}
+
+// tolarianSerpent is a Scryfall record for a plain printed-phasing
+// creature (Weatherlight). It needs no catalog entry: the keyword is
+// the whole card as far as this engine is concerned, and phasing is
+// the only thing on the array.
+func tolarianSerpent() cards.Card {
+	return cards.Card{
+		ID:        uuid.MustParse("5f4d5e5e-9d1a-4b8f-9d0e-1a2b3c4d5e6f"),
+		OracleID:  uuid.MustParse("6a7b8c9d-0e1f-4a2b-8c3d-4e5f60718293"),
+		Name:      "Tolarian Serpent",
+		Layout:    "normal",
+		TypeLine:  "Creature — Serpent",
+		ManaCost:  "{4}{U}{U}",
+		Power:     "5",
+		Toughness: "5",
+		Keywords:  []string{"Phasing"},
 	}
 }
 
