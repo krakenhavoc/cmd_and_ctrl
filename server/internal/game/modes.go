@@ -160,7 +160,11 @@ func castTargetSpecForItem(oracleID string, item *StackItem) *TargetSpec {
 			}
 		}
 	}
-	return TargetSpecUnderAlternativeCost(spec, AlternativeCostByKey(oracleID, item.AltCost))
+	spec = TargetSpecUnderAlternativeCost(spec, AlternativeCostByKey(oracleID, item.AltCost))
+	// ADR 0089 §3: the same rewrite the announce path applied, so a
+	// restored or copied promised Long River's Pull is still judged
+	// under "target spell".
+	return TargetSpecUnderOptionalCosts(spec, OptionalCostsFor(oracleID), item.Paid.OptionalCosts)
 }
 
 // runChosenModeEffectsLocked runs each chosen bullet's ModeOption

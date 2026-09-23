@@ -1974,7 +1974,13 @@ func restoreStackItem(s *stackItemSnapshot) *StackItem {
 		// restore point.
 	}
 	if s.HasTargetSpec && spellSpecRederivable(*s) {
-		out.targetSpec = CatalogTargetSpec(s.OracleID)
+		// The clause the spell was ANNOUNCED under, not the printed
+		// one: an alternative cost (cleave) or a paid optional cost
+		// (a promised gift, ADR 0089 §3) may have rewritten it, and
+		// both are recorded on the item. castTargetSpecForItem is the
+		// one function that applies both rewrites, in the order the
+		// announce path does.
+		out.targetSpec = castTargetSpecForItem(s.OracleID, out)
 	}
 	if s.HasModeSpec && s.Kind == StackItemSpell && s.OracleID != "" && CatalogModeSpec != nil {
 		out.modeSpec = CatalogModeSpec(s.OracleID)

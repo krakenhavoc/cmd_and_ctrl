@@ -579,6 +579,25 @@ type OptionalCostView struct {
 	// offer cannot be taken right now.
 	DiscardCards     int               `json:"discard_cards,omitempty"`
 	SacrificeOptions *LegalTargetsView `json:"sacrifice_options,omitempty"`
+
+	// ChoosesOpponent marks gift's cost (CR 702.174a, ADR 0089): taking
+	// this offer means naming one of OpponentOptions, sent back on
+	// cast_spell as `gift_opponent`. OpponentOptions is who may be
+	// chosen right now — every other player still in the game. On a
+	// gift offer an empty list (which the wire omits) means nobody is
+	// left to promise it to and the offer cannot be taken.
+	ChoosesOpponent bool     `json:"chooses_opponent,omitempty"`
+	OpponentOptions []string `json:"opponent_options,omitempty"`
+
+	// TargetMode / LegalTargets / Clauses are the target clause the
+	// spell has WHEN THIS COST IS PAID — a gift's "if the gift was
+	// promised, instead … target …" (CR 702.174m) — in exactly the
+	// shape AlternativeCostView gives cleave. All absent when paying
+	// the cost leaves the card's own clause alone, which is every
+	// kicker and buyback. Per viewer, like every legal set here.
+	TargetMode   string             `json:"target_mode,omitempty"`
+	LegalTargets *LegalTargetsView  `json:"legal_targets,omitempty"`
+	Clauses      []LegalTargetsView `json:"clauses,omitempty"`
 }
 
 // AlternativeCostView is the wire shape of one game.AlternativeCost
@@ -764,6 +783,13 @@ type StackItemView struct {
 	// one-sided board wipe and a hard-cast one bounces a single
 	// permanent, so a responder needs to see which is on the stack.
 	AltCost string `json:"alt_cost,omitempty"`
+
+	// GiftTo is the player a gift was promised to (CR 702.174a/k, ADR
+	// 0089) — absent when the spell promised none. Public: the promise
+	// is made aloud as the spell is cast, and it is load-bearing for a
+	// responder, because a promised Long River's Pull counters any
+	// spell and an unpromised one only a creature spell.
+	GiftTo string `json:"gift_to,omitempty"`
 
 	// IsCopy marks a CR 707.10 spell copy — Reverberate's output,
 	// not a cast card (S30). Public and worth showing: the copy and
@@ -3481,7 +3507,7 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// ADR 0073: the optional costs this card OFFERS. Stamped next to
 	// the mandatory one and read by the same modal the alternative
 	// costs open, because CR 601.2b announces all of them together.
-	out.OptionalCosts = viewOfOptionalCosts(g, caster, key)
+	out.OptionalCosts = viewOfOptionalCosts(g, caster, src, key)
 	// S22: convoke / waterbend. Stamped before the target clause
 	// because the caster pays it first, and the count of a "X target
 	// creatures" clause depends on what they paid.
@@ -3821,7 +3847,12 @@ func printedCostAmong(offers []*game.AlternativeCost) bool {
 // caster's own permanents (CR 701.21a), in payment order. A
 // present-and-empty list is how the client knows the offer cannot be
 // taken right now, exactly as it is for the mandatory cost.
-func viewOfOptionalCosts(g *game.Game, caster uuid.UUID, key string) []OptionalCostView {
+//
+// ADR 0089: a gift offer also carries who may receive it, and any
+// optional cost that rewrites the target clause carries the rewritten
+// clause's legal set — `src` is the spell as its own source (#662),
+// exactly as the alternative-cost stamp reads it.
+func viewOfOptionalCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, key string) []OptionalCostView {
 	costs := game.OptionalCostsFor(key)
 	if len(costs) == 0 {
 		return nil
@@ -3838,6 +3869,19 @@ func viewOfOptionalCosts(g *game.Game, caster uuid.UUID, key string) []OptionalC
 		}
 		if oc.Sacrifice != nil {
 			v.SacrificeOptions = sacrificeCostOptions(g, caster, oc.Sacrifice, uuid.Nil, false)
+		}
+		if oc.ChoosesOpponent {
+			v.ChoosesOpponent = true
+			// Nobody left to choose serialises as an absent list
+			// beside chooses_opponent, which the client greys.
+			for _, id := range g.GiftOpponentsLocked(caster) {
+				v.OpponentOptions = append(v.OpponentOptions, id.String())
+			}
+		}
+		if spec := oc.Targets; spec != nil {
+			v.TargetMode = spec.Mode
+			v.LegalTargets = viewOfLegalTargets(g.LegalTargetsForEffect(src, spec), spec)
+			v.Clauses = viewOfClauses(g, src, spec)
 		}
 		out = append(out, v)
 	}
@@ -4827,6 +4871,9 @@ func viewOfStackItem(it *game.StackItem) StackItemView {
 		ManaSpent:        it.Paid.ManaSpentCount(),
 		ColorsSpent:      it.Paid.ColorsSpent(),
 		ManaSpentUnknown: !it.Paid.Known(),
+	}
+	if it.Paid.GiftPromised() {
+		view.GiftTo = it.Paid.GiftOpponent.String()
 	}
 	if it.DoubledBy != uuid.Nil {
 		view.DoubledBy = it.DoubledBy.String()
