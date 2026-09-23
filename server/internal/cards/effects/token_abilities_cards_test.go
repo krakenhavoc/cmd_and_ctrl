@@ -160,6 +160,20 @@ func TestNestingDragonEggHatchesIntoADragonWithItsOwnFirebreathing(t *testing.T)
 	if abs[0].Cost.Mana != "{R}" {
 		t.Errorf("firebreathing costs %q, want {R}", abs[0].Cost.Mana)
 	}
+
+	// And it pumps THE TOKEN. "This token" on a token's own ability is
+	// the source of that ability (CR 113.7a), which is
+	// item.SourceCardID — the one thing a token's activated ability
+	// could plausibly get wrong, since the effect has no target to
+	// name it by. Permissive mode waives the unfunded {R}.
+	if err := g.ActivateCatalogAbility(me.ID, dragon, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatalf("ActivateCatalogAbility: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if pumped, _ := battlefieldCard(g, dragon); pumped.CurrentPower() != 3 {
+		t.Errorf("the Dragon is %d/%d after firebreathing, want 3/2",
+			pumped.CurrentPower(), pumped.CurrentToughness())
+	}
 }
 
 // --- Mysidian Elder, and the Wizard two cards share ----------------
