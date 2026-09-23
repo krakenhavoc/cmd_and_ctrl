@@ -81,6 +81,7 @@ const LOG_TONE: Record<LogKind, string> = {
   choose_color: "tone-quiet",
   choose_type: "tone-quiet",
   choose_player: "tone-quiet",
+  choose_name: "tone-quiet",
   // #1214: a resolution-time pick over cards or permanents. Quiet for
   // the same reason — the choice itself moves nothing, and whatever
   // the card then does to what was chosen has its own line.
@@ -109,11 +110,30 @@ const LOG_TONE: Record<LogKind, string> = {
   // get their own resolve line and this is the one that explains
   // them.
   storm: "tone-cast",
+  // A permanent turning over, phasing, or being turned face down is a
+  // board-state change a player announces out loud rather than a
+  // whisper (#1256) — louder than the quiet choose_* / scry-family
+  // tones, toned like the other permanent motions (token, cycle).
+  transform: "tone-zone",
+  phase_out: "tone-zone",
+  phase_in: "tone-zone",
+  turn_face_down: "tone-zone",
 };
 
 export function logTone(kind: LogKind): string {
   return LOG_TONE[kind] ?? "tone-quiet";
 }
+
+// ALL_LOG_KINDS is the client's runtime enumeration of every LogKind
+// value, derived from LOG_TONE's keys rather than re-listed by hand:
+// TypeScript already refuses to compile `Record<LogKind, string>`
+// unless every union member has an entry, so LOG_TONE's key set IS
+// the union at runtime. logKind.test.ts diffs this against the
+// server's own const block in protocol/log.go so the client union
+// can't silently fall behind again the way #1256 found it (missing
+// `transform`, `phase_out`, `phase_in`, `choose_name` and
+// `turn_face_down`, with no build error to catch it).
+export const ALL_LOG_KINDS: LogKind[] = Object.keys(LOG_TONE) as LogKind[];
 
 // seatName resolves a seat index to a display name, or null when the
 // index names nobody (the -1 "no actor" sentinel, or a seat the view
