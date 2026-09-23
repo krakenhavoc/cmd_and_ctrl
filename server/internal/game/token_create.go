@@ -460,6 +460,14 @@ func (g *Game) enterCreatedTokensLocked(batch []stagedToken, created []uuid.UUID
 		NewZone:      ZoneBattlefield,
 		NewZoneOwner: next.card.Controller,
 		EntersTapped: next.entry.Tapped,
+		// #1227: CR 506.3c's attack, taken off the minted token and
+		// put on the ENTRY where the card door already carries it
+		// (ZoneEntryOptions.Attacking). The token object keeps its own
+		// AttackingTarget — that is what a replacement inspecting the
+		// staged token reads, and what this line copies — but the
+		// "never declared" marking is now made once, by the entry, for
+		// both doors. See stampEntryAttackerLocked.
+		EntersAttacking: next.card.AttackingTarget,
 		// The entry may pause, and #478's frame finishes it. Nothing is
 		// skipped by resuming one: there is no shuffle owed and no new
 		// object identity to mint.

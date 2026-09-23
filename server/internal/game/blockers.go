@@ -306,3 +306,77 @@ func (g *Game) clearBlockStateLocked() {
 func (g *Game) attackerBlockedLocked(attacker uuid.UUID) bool {
 	return g.blockedAttackers[attacker]
 }
+
+// UnblockedAttackerForEffect reports whether `id` is an UNBLOCKED
+// ATTACKER right now — CR 509.1h's term, and the question ninjutsu's
+// "Return an unblocked attacker you control to hand" cost asks
+// (CR 702.49a, #1227). It is the only exported reader of the blocked
+// record; before it, `Game.blockedAttackers` was visible to the combat
+// damage steps and to nothing in `internal/cards/effects`.
+//
+// Three facts, and all three are load-bearing:
+//
+//   - the permanent is ATTACKING (Card.AttackingTarget). A creature
+//     removed from combat, or one whose combat has ended, is not —
+//     both of those clear the field.
+//   - the cursor is at the DECLARE BLOCKERS step or later in this
+//     combat. "Unblocked" is not a property an attacker has before
+//     blockers are declared; CR 509.1h decides it AS PART of that
+//     declaration, which is why the Gatherer ruling on Ninja of the
+//     Deep Hours says a ninjutsu ability can be activated only once
+//     blockers have been declared. Without this clause every attacker
+//     would read as unblocked in the declare-attackers step, because
+//     the blocked record is empty until the block lock-in writes it.
+//   - NOTHING is blocking it. That is two reads, not one: the blocked
+//     RECORD (written by commitBlockDeclarationLocked, and the fact
+//     that outlives a blocker which has since died, been bounced or
+//     been removed from combat — CR 510.1c, #715), and a block that
+//     is STAGED and not yet announced. The second matters because
+//     DeclareBlocker only stages the pairing and the lock-in runs at
+//     the next priority boundary (#830): between the defender's click
+//     and that boundary the record is still empty, and an attacker
+//     with a blocker already pointed at it must not read as unblocked.
+//
+// The sandbox simplification this file's header describes is
+// inherited whole and cannot be papered over here: nothing in the step
+// machinery marks the declare-blockers turn-based action COMPLETE, so
+// an attacker at the top of the step — before the defending seat has
+// clicked anything — reads as unblocked. That is a window in which
+// ninjutsu is available a beat early, never one in which it is
+// available after the defender has blocked.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) UnblockedAttackerForEffect(id uuid.UUID) bool {
+	if id == uuid.Nil || !g.blockersDeclaredStepLocked() {
+		return false
+	}
+	c := findBattlefieldCard(g, id)
+	if c == nil || c.AttackingTarget == uuid.Nil {
+		return false
+	}
+	if g.attackerBlockedLocked(id) {
+		return false
+	}
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].BlockingTarget == id {
+			return false
+		}
+	}
+	return true
+}
+
+// blockersDeclaredStepLocked reports whether the cursor is at a step
+// by which CR 509.1's declare-blockers turn-based action has happened
+// — the declare-blockers step itself and the three combat steps after
+// it. Every other step of the turn, combat's own first two included,
+// answers false: there is no declaration yet, so no attacker is
+// blocked OR unblocked.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) blockersDeclaredStepLocked() bool {
+	switch g.Turn.Step {
+	case StepDeclareBlockers, StepFirstStrikeDamage, StepCombatDamage, StepEndCombat:
+		return true
+	}
+	return false
+}

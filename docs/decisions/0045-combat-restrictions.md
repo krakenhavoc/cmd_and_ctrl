@@ -1797,3 +1797,119 @@ Unchanged: the two combat damage steps, the blocked state (Decision 26)
 and the declarations' announcements. They are all cleared by the same
 `clearCombatLocked`, so they all now last exactly as long as the
 combat does.
+
+---
+
+## Amendment (2026-09-23, [#1227](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1227)): an entry that puts a CARD onto the battlefield attacking, and an exported "unblocked attacker"
+
+Ninjutsu (CR 702.49) is a hand activation, and [ADR 0020](0020-activated-abilities.md)'s
+2026-09-23 amendment carries that half. The two halves that are COMBAT's are
+here, because both are facts this ADR already owns — `announcedAttacks`
+(Decision 25) and `blockedAttackers` (Decision 26).
+
+### Context
+
+Decision 25 named `announcedAttacks` as the record that keeps a permanent PUT
+onto the battlefield attacking out of the declaration (CR 506.3c), and named
+the two token entry points as the only things that could mint one. That was
+true: `ZoneEntryOptions` carried `Controller`, `Tapped` and `FaceDown` and had
+nowhere to say "attacking", so a CARD moved from a real zone took
+`executeEntryToBattlefieldLocked`'s `default:` branch and arrived with
+`AttackingTarget == uuid.Nil`. The CR 506.3c marking lived in the minted-token
+branch alone.
+
+Decision 26's `blockedAttackers` had the mirror-image gap: one reader
+(`attackerBlockedLocked`), unexported, consulted by the combat damage steps and
+by nothing in `internal/cards/effects`. A cost clause could not ask whether an
+attacker was blocked, so "Return an unblocked attacker you control to hand"
+could not be written at all.
+
+### Decision 29: the attack rides the ENTRY EVENT, and both doors read it
+
+`ZoneEntryOptions.Attacking uuid.UUID` is seeded onto
+`ReplacementEvent.EntersAttacking` by `putOntoBattlefieldFromZoneLocked`,
+exactly as `Tapped` is seeded onto `EntersTapped` and `FaceDown` onto
+`FaceDown`. The reason is the one those two already give: the entry's ONE
+settled record carries the fact, a replacement effect inspecting the entry can
+see it, and a CR 616 resume that holds only the event still knows what the
+entry was for.
+
+The token door now carries the same field. `enterCreatedTokensLocked` copies the
+minted token's own `AttackingTarget` onto the entry event it builds, so
+`executeEntryToBattlefieldLocked` reads `ev.EntersAttacking` for a token and a
+card alike and the minted-token branch has no combat code left in it. The token
+object keeps its own `AttackingTarget` — that is what a replacement inspecting
+the staged token reads, and what the copy is taken from — but the RULE is now
+stated once.
+
+**`DeclareAttackerWith` is not the route, and this is the load-bearing half.**
+It refuses outside `StepDeclareAttackers`, it taps, it checks summoning sickness
+and it emits `EventAttack`. CR 506.3c is explicit that a permanent put onto the
+battlefield attacking was never declared as an attacker, so all four would be
+wrong — and the fourth is the one that would be invisible until an Adeline
+trigger fired off a ninja.
+
+### Decision 30: one marking function, three facts, and #1218's fourth exit
+
+`stampEntryAttackerLocked(id, defender)` (attackers.go) is that one place. It
+stamps `Card.AttackingTarget`, marks the permanent announced
+(`noteAttackAnnouncedLocked` — CR 506.3c itself), and drops the layer cache.
+
+The third is new and it was a real hole. #1218 gave
+`StaticAbility.DependsOnAttackingStatus` three bumps: the `EventAttack` arm in
+the layer listener, plus `invalidateLayersForAttackChangeLocked` at the two
+exits that have no event of their own (a control change removing a permanent
+from combat, and combat ending). An ENTRY is the fourth, and neither door had
+it — a Parhelion II Angel became an attacking creature with no event naming it,
+so an Ohran Frostfang reading "attacking creature" kept the stale answer until
+something unrelated invalidated. Making the marking one function is what makes
+that a one-line fix for both doors instead of two.
+
+A `defender` that is no longer attackable (an eliminated seat, a planeswalker
+that died while the ability was on the stack) leaves the permanent on the
+battlefield NOT attacking rather than erroring. That is
+`CreateTokensAttackingForEffect`'s existing posture — the effect has resolved
+and the body is the part that can still be delivered — said once for both doors.
+
+### Decision 31: `UnblockedAttackerForEffect` is CR 509.1h plus the step plus the staged block
+
+The exported reader is not a getter on `blockedAttackers`. It answers the
+question a cost clause actually asks, and it takes three facts to answer:
+
+1. **Attacking** — `Card.AttackingTarget` is set. Removal from combat and the
+   end of combat both clear it.
+2. **The cursor is at declare blockers or later in this combat.** "Unblocked"
+   is not a property an attacker has beforehand: CR 509.1h decides it as PART
+   of the declaration, which is why the Gatherer ruling on Ninja of the Deep
+   Hours says a ninjutsu ability can be activated only once blockers have been
+   declared. Without this clause the blocked record is simply empty in the
+   declare-attackers step and every attacker would read as unblocked — ninjutsu
+   would become a "swing and always get the best creature back" ability.
+3. **Nothing is blocking it**, which is two reads rather than one. The blocked
+   RECORD (Decision 26 — the fact that outlives a blocker that has since died),
+   AND a block that is staged and not yet announced. The second matters because
+   `DeclareBlocker` only stages the pairing and the lock-in runs at the next
+   priority boundary (Decision 27): in that window the record is still empty,
+   and an attacker with a blocker already pointed at it must not read as
+   unblocked.
+
+**The sandbox simplification is inherited whole and is named rather than
+papered over.** Nothing in this engine's step machinery marks the
+declare-blockers turn-based action COMPLETE — `blockers.go`'s file header has
+said so since #328 — so an attacker at the top of the step, before the
+defending seat has clicked anything, reads as unblocked. That is a window in
+which ninjutsu is available a beat early. It is never a window in which it is
+available after the defender has blocked, which is the direction that would
+matter.
+
+### What this does NOT decide
+
+- **A generic "put onto the battlefield blocking".** CR 509.1 has no such
+  entry and no printed card asks for one; `TokenEntryOptions` has no blocking
+  field either. Brimaz's Cat is created attacking on one branch and created
+  plain on the other.
+- **Commander ninjutsu** (CR 702.49c), whose entry may also come from the
+  COMMAND ZONE. `putOntoBattlefieldFromZoneLocked` is generic in its source
+  zone, so the entry itself would work; what is unexamined is the commander
+  bookkeeping around a command-zone exit that is not a cast. See ADR 0020's
+  amendment.

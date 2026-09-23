@@ -106,6 +106,22 @@ func (c *Context) Sacrificed() int {
 	return c.Paid().Sacrificed
 }
 
+// ReturnedAttacking is what the permanent the announcement's
+// return-to-hand cost returned was ATTACKING — the player,
+// planeswalker or battle, uuid.Nil when it was attacking nothing.
+// A fact about the ANNOUNCEMENT, read back the way X, CountersRemoved
+// and Sacrificed are, and for a stronger reason than any of them: the
+// returned permanent's exit CLEARS Card.AttackingTarget and LKI
+// carries no combat state, so by resolution there is nowhere else the
+// answer could come from. Added in #1227.
+//
+// Ninjutsu is the clause that asks (CR 702.49a): the ninja is put
+// onto the battlefield attacking the same player or planeswalker the
+// returned creature was attacking.
+func (c *Context) ReturnedAttacking() uuid.UUID {
+	return c.Paid().ReturnedAttacking
+}
+
 // ManaSpent is what the payment for THIS stack item can be asked
 // about: Colors(), Count("R"), Total(), FromTreasure(), Snow() and
 // the rest of game.ManaSpent's vocabulary.

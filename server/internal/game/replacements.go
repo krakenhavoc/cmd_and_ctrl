@@ -49,7 +49,7 @@ import (
 //
 //	"draw"         — RepEventDraw    — DrawPlayer, DrawCount (CR 121.2)
 //	"produce_mana" — RepEventProduceMana — ManaPlayer, ManaSource, ManaColors (CR 106.12b)
-//	"move"         — RepEventMove    — CardID, OldZone, NewZone, NewZoneOwner, EntersTapped, EntersWithCounters, asCommanderMove
+//	"move"         — RepEventMove    — CardID, OldZone, NewZone, NewZoneOwner, EntersTapped, EntersAttacking, EntersWithCounters, asCommanderMove
 //	"discard"      — RepEventDiscard — CardID, DiscardPlayer, DiscardCause, NewZone, NewZoneOwner (CR 701.8)
 //	"counter"      — RepEventCounter — CounterTarget OR CounterPlayer,
 //	                 CounterName, CounterDelta, CounterPlacer,
@@ -404,6 +404,26 @@ type ReplacementEvent struct {
 	// The battlefield-entry path reads this and sets Card.Tapped
 	// before emitting EventETB.
 	EntersTapped bool
+
+	// EntersAttacking is the player, planeswalker or battle the
+	// permanent is put onto the battlefield ATTACKING (CR 506.3c,
+	// #1227) — ninjutsu's "put this card onto the battlefield from
+	// your hand tapped and attacking" (CR 702.49a) and the attack a
+	// token is created making (Parhelion II). uuid.Nil, which is every
+	// other entry in the game, enters not attacking.
+	//
+	// It rides the EVENT rather than a local for the reason
+	// EntersTapped and FaceDown do: both battlefield-entry doors carry
+	// the same fact in the same field, a replacement effect inspecting
+	// the entry sees it, and a CR 616 resume that only has the event
+	// still knows what the entry was for. Both doors hand it to
+	// stampEntryAttackerLocked (attackers.go), which is the one place
+	// CR 506.3c's "never declared" marking happens.
+	//
+	// Only meaningful when NewZone == ZoneBattlefield. Nothing
+	// REPLACES it today; it is seeded by the caller and read by the
+	// entry.
+	EntersAttacking uuid.UUID
 
 	// FaceDown is the CR 708.2 state the permanent ENTERS in —
 	// FaceDownManifested for a manifest (CR 701.34a), FaceDownMorphed

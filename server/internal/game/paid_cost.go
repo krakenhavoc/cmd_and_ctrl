@@ -1,5 +1,7 @@
 package game
 
+import "github.com/google/uuid"
+
 // paid_cost.go — #789 / #761: ONE record of what an announcement
 // actually paid.
 //
@@ -97,6 +99,30 @@ type PaidCost struct {
 	// interesting case would make every reader ask which it was
 	// looking at.
 	Sacrificed int
+
+	// ReturnedAttacking is what the permanent a ReturnToHand component
+	// returned was ATTACKING when it was returned — the player,
+	// planeswalker or battle, in Card.AttackingTarget's own overloaded
+	// domain. uuid.Nil when the cost returned nothing, or returned a
+	// permanent that was not attacking, which is every printed return
+	// cost but one.
+	//
+	// The one is ninjutsu (CR 702.49a, #1227): "Return an unblocked
+	// attacker you control to hand: Put this card onto the battlefield
+	// from your hand tapped and attacking" — attacking THE SAME player
+	// or planeswalker the returned creature was attacking. Nothing at
+	// resolution could recompute that: the exit clears
+	// Card.AttackingTarget (zone.go) and LKI carries no combat state,
+	// so the fact has to be read BEFORE the bounce and carried here.
+	// Exactly the argument CountersRemoved (#789) and Sacrificed
+	// (#1213) were added under, which is why it is the neighbouring
+	// field of the same record rather than a second mechanism.
+	//
+	// For a clause that returns more than one permanent — none is
+	// printed — this is the FIRST returned permanent that was
+	// attacking, in the order the activator named them. Read through
+	// Context.ReturnedAttacking().
+	ReturnedAttacking uuid.UUID
 
 	// OptionalCosts is which of the card's optional additional costs
 	// the caster chose to pay (CR 601.2b), as positions in the card's
@@ -207,7 +233,7 @@ func (p PaidCost) Known() bool { return !p.OnPaper }
 func (p PaidCost) IsZero() bool {
 	return len(p.Mana) == 0 && !p.OnPaper &&
 		p.CountersRemoved == 0 && p.CountersAdded == 0 && p.LifePaid == 0 &&
-		p.Sacrificed == 0 && len(p.OptionalCosts) == 0
+		p.Sacrificed == 0 && p.ReturnedAttacking == uuid.Nil && len(p.OptionalCosts) == 0
 }
 
 // clonePaidCost deep-copies the record. The ManaToken slice is

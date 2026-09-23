@@ -128,9 +128,11 @@ func (g *Game) commitAttackDeclarationLocked() {
 // "whenever ~ attacks" trigger and nothing that watches attack
 // declarations sees it. Marking it here is what stops the
 // battlefield scan above from mistaking its AttackingTarget for a
-// staged declaration — see CreateTokensForEffect and
-// CreateTokensAttackingForEffect in effect_api.go, the two entry
-// points that can mint one.
+// staged declaration. Nobody reaches it for that reason directly:
+// stampEntryAttackerLocked below is the one door, shared by both
+// battlefield-entry paths, and it is what CreateTokensAttackingForEffect
+// (a token created attacking) and ZoneEntryOptions.Attacking (a card
+// put onto the battlefield attacking — ninjutsu) both arrive through.
 //
 // Caller must hold g.mu.
 func (g *Game) noteAttackAnnouncedLocked(id uuid.UUID) {
@@ -149,4 +151,61 @@ func (g *Game) noteAttackAnnouncedLocked(id uuid.UUID) {
 // announces again. Caller must hold g.mu.
 func (g *Game) clearAttackAnnouncementsLocked() {
 	g.announcedAttacks = nil
+}
+
+// stampEntryAttackerLocked makes a permanent that has just landed on
+// the battlefield an ATTACKER without declaring it one (CR 506.3c) —
+// "put onto the battlefield tapped and attacking". `defender` is the
+// player, planeswalker or battle it attacks: ninjutsu hands it the
+// attack the returned creature was making (CR 702.49a), Parhelion II
+// hands it the player its Angels are created attacking.
+//
+// ONE function for both battlefield-entry doors, reached from the
+// shared tail of each, so a card put onto the battlefield attacking
+// and a token created attacking cannot disagree about what that
+// means. The three things it does are the whole of the rule:
+//
+//   - stamp Card.AttackingTarget, which is what the combat damage
+//     steps build their attacker set from;
+//   - mark the permanent announced (noteAttackAnnouncedLocked), which
+//     is CR 506.3c itself — it was never DECLARED as an attacker, so
+//     the lock-in must not announce it, no "whenever ~ attacks"
+//     trigger fires and nothing watching attack declarations sees it;
+//   - drop the layer cache, because "is this creature attacking" just
+//     became true for a permanent no EventAttack will ever name. That
+//     is #1218's fourth exit and it was missing on the token door:
+//     the three call sites the EventAttack arm could not reach were a
+//     control change, combat ending and — this one — an entry.
+//
+// A `defender` that is no longer attackable (an eliminated seat, a
+// planeswalker that died while the entry was paused on a CR 616
+// prompt) leaves the permanent on the battlefield NOT attacking rather
+// than erroring: the effect that asked for it has already resolved,
+// and the body is the part of it that can still be delivered. That is
+// CreateTokensAttackingForEffect's posture, said once for both doors.
+//
+// That case CLEARS the field rather than leaving it, which matters on
+// the token door alone: a token is minted with its AttackingTarget
+// already stamped, so bailing out quietly would leave it attacking a
+// defender nobody can be attacking AND unmarked, and the next lock-in
+// would mistake it for a staged declaration and hand it an attack
+// trigger. A card arrives with the field already clear (the exit wipes
+// it, zone.go), so for every other caller this write is a no-op.
+//
+// Caller must hold g.mu.
+func (g *Game) stampEntryAttackerLocked(id, defender uuid.UUID) {
+	if id == uuid.Nil {
+		return
+	}
+	c := findBattlefieldCard(g, id)
+	if c == nil {
+		return
+	}
+	if defender == uuid.Nil || g.classifyAttackTargetLocked(defender) == AttackTargetNone {
+		c.AttackingTarget = uuid.Nil
+		return
+	}
+	c.AttackingTarget = defender
+	g.noteAttackAnnouncedLocked(id)
+	g.invalidateLayersForAttackChangeLocked()
 }

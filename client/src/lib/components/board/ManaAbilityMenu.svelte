@@ -18,6 +18,8 @@
     NO_COMMANDER_IDENTITY,
     chargedManaCostLabel,
     chargedManaCostNote,
+    returnShortfall,
+    type ReturnOptionsShape,
   } from "../../contextMenu.logic";
   import { sacrificeShortfall } from "../../sacrificeCost";
   import { hasSatisfiableTargets } from "../../timing";
@@ -74,6 +76,12 @@
     tap_cost?: boolean;
     sacrifice_label?: string;
     sacrifice_options?: { players?: string[]; cards?: string[]; min?: number; max?: number };
+    // #1213 / #1227: a return-to-hand cost. Ninjutsu is the row this
+    // matters most for — it is payable only in the declare-blockers
+    // window, with an unblocked attacker on the board, so a hand card
+    // that never greyed would be clickable and refused nearly always.
+    return_label?: string;
+    return_options?: ReturnOptionsShape;
     // #1157: `min` carries the clause's count, and an "up to N" clause
     // (min 0) is satisfied by an empty candidate list.
     legal_targets?: { players?: string[]; cards?: string[]; min?: number };
@@ -101,6 +109,10 @@
     // #747: count-aware — "needs three Foods (you have 2)".
     const sacrifice = sacrificeShortfall(a.sacrifice_options, a.sacrifice_label ?? "a permanent");
     if (sacrifice) return sacrifice;
+    // #1213 / #1227: the same question one verb over, off the one
+    // shared predicate the right-click menu asks.
+    const returned = returnShortfall(a.return_options, a.return_label);
+    if (returned) return returned;
     // #625: a "remove N counters" cost with nothing that can pay it.
     const counters = counterCostBlocked(a);
     if (counters) return counters;
