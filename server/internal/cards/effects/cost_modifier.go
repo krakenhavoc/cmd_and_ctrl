@@ -178,6 +178,18 @@ func OpponentsSpell() CostPredicate {
 	}
 }
 
+// CastFromGraveyardOrExile passes on a spell being cast from a
+// graveyard or from exile — "spells your opponents cast from
+// graveyards or from exile cost {2} more" (Aven Interrupter). Reads
+// the zone the cast is coming FROM, so flashback, escape, a warped
+// card's recast, an airbent card and a plotted card are all taxed, and
+// the command zone and the hand are not.
+func CastFromGraveyardOrExile() CostPredicate {
+	return func(q game.CostQuery) bool {
+		return q.FromZone == game.ZoneGraveyard || q.FromZone == game.ZoneExile
+	}
+}
+
 // --- what kind of spell ------------------------------------------
 
 // CreatureSpell passes on a creature spell.
