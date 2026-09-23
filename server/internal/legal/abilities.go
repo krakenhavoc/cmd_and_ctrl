@@ -230,7 +230,11 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 				continue
 			}
 		}
-		if ab.Cost.Life > 0 && p.Life < ab.Cost.Life {
+		// CR 119.4 and CR 119.8, through the one predicate
+		// ActivateCatalogAbility validates with (#544, #1200): a
+		// policy is never offered a life cost the engine refuses,
+		// including one a locked life total makes unpayable.
+		if !g.CanPayLifeLocked(p, ab.Cost.Life) {
 			continue
 		}
 		// CR 602.2b: X is announced with the activation, so the
@@ -1081,7 +1085,9 @@ func (e *enumerator) manaMoves() {
 					continue
 				}
 			}
-			if ab.LifeCost > 0 && e.p.Life < ab.LifeCost {
+			// CR 119.4 and CR 119.8, the same predicate one path
+			// over (#544, #1200).
+			if !g.CanPayLifeLocked(e.p, ab.LifeCost) {
 				continue
 			}
 			// A mana component in the cost has to be already floating

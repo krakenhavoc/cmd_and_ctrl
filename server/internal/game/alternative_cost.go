@@ -97,11 +97,13 @@ type AlternativeCost struct {
 	// A COST, not a drawback: it is validated before anything is
 	// paid, so a player below N life cannot claim the offer at all —
 	// and #695 made that true of the OFFER as well as the payment.
-	// AlternativeCostPayableLocked is the predicate; LifePayableBy is
-	// the line. (CR 119.4 lets a player pay life down to exactly
-	// zero, and the state-based action kills them afterwards — that
-	// is a legal, if unwise, Force of Will. The stale 118.4 citation
-	// here was the #693 renumbering tail.)
+	// AlternativeCostPayableLocked is the predicate; lifePayableBy is
+	// the line, and since #1200 it also carries CR 119.8 — a player
+	// whose life total can't change cannot pay any of it. (CR 119.4
+	// lets a player pay life down to exactly zero, and the
+	// state-based action kills them afterwards — that is a legal, if
+	// unwise, Force of Will. The stale 118.4 citation here was the
+	// #693 renumbering tail.)
 	Life int
 
 	// ExileFromHand is "exile a blue card from your hand" (Force of
@@ -411,26 +413,25 @@ func (a *AlternativeCost) Available(g *Game, controller uuid.UUID) bool {
 	return a.Condition == nil || a.Condition(g, controller)
 }
 
-// LifePayableBy is CR 119.4: a player may pay life only if their life
-// total is greater than or equal to the payment. Exactly equal is
-// payable — paying down to zero is legal, and the state-based action
-// that follows is a separate rule (CR 704.5a).
+// lifePayableBy is CR 119.4 and CR 119.8 on this offer's life
+// component: may `p` pay it right now?
 //
 // One line, and it is a FUNCTION rather than a comparison spelled out
 // at each reader because it had been spelled out at only one of them
 // (#695): announce refused the cast, the view showed the offer anyway,
-// and a Force of Will at 0 life was a button that could only fail.
+// and a Force of Will at 0 life was a button that could only fail. It
+// forwards to g.CanPayLifeLocked (life_lock.go), the one predicate
+// every life-cost validator in the engine reads, so a player whose
+// life total can't change (#1200) is refused Snuff Out's "pay 4 life"
+// here as well as at the payment.
 //
 // Nil-safe on both sides. An offer with no life component is payable
-// by anybody.
-func (a *AlternativeCost) LifePayableBy(p *Player) bool {
+// by anybody. Caller must hold g.mu.
+func (g *Game) lifePayableBy(a *AlternativeCost, p *Player) bool {
 	if a == nil {
 		return false
 	}
-	if a.Life <= 0 {
-		return true
-	}
-	return p != nil && p.Life >= a.Life
+	return g.CanPayLifeLocked(p, a.Life)
 }
 
 // AlternativeCostPayableLocked reports whether a player could pay
@@ -474,7 +475,7 @@ func (g *Game) AlternativeCostPayableLocked(playerID, castID uuid.UUID, alt *Alt
 	if p == nil {
 		return false
 	}
-	if !alt.LifePayableBy(p) {
+	if !g.lifePayableBy(alt, p) {
 		return false
 	}
 	spec, zone, want := alt.cardComponent()
@@ -543,10 +544,10 @@ func (g *Game) validateAlternativeCostPaymentLocked(playerID, castID uuid.UUID, 
 	if p == nil {
 		return ErrPlayerNotFound
 	}
-	// CR 119.4, through the same one-line predicate the view's offer
-	// stamp and the bot enumerator read (#695), so an offer the client
-	// can see is one this validator will accept.
-	if !alt.LifePayableBy(p) {
+	// CR 119.4 and CR 119.8, through the same one-line predicate the
+	// view's offer stamp and the bot enumerator read (#695), so an
+	// offer the client can see is one this validator will accept.
+	if !g.lifePayableBy(alt, p) {
 		return ErrInvalidParam
 	}
 	spec, zone, want := alt.cardComponent()

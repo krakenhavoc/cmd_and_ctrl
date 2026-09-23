@@ -132,6 +132,12 @@ type CardDef struct {
 	// card's own zone; see game.CatalogPlayerKeywords and ADR 0072's
 	// 2026-09-22 amendment (#1197).
 	PlayerKeywords []string
+	// PlayerLifeTotalLocked is this permanent's printed "Your life
+	// total can't change" (CR 119.7 / CR 119.8 — Platinum Emperion),
+	// about its CONTROLLER. Read from the battlefield through
+	// CatalogAbilityKey, never from a card's own zone; see
+	// game.CatalogPlayerLifeTotalLocked and ADR 0085 (#1200).
+	PlayerLifeTotalLocked bool
 	// Emblem is the presentation half of an EMBLEM's catalog entry
 	// (CR 114) — its board label and its printed ability text. Set
 	// only on an emblem's own def, the one effects.Register files
@@ -438,6 +444,10 @@ func init() {
 			return d.PlayerKeywords
 		}
 		return nil
+	}
+	CatalogPlayerLifeTotalLocked = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.PlayerLifeTotalLocked
 	}
 	CatalogWantsDistinctColors = func(key string) bool {
 		d := catalogDef(key)

@@ -75,6 +75,7 @@ func buildDef(spec Spec) *game.CardDef {
 		CantBeCountered:            spec.CantBeCountered,
 		NoMaxHandSize:              spec.NoMaxHandSize,
 		PlayerKeywords:             spec.PlayerKeywords,
+		PlayerLifeTotalLocked:      spec.PlayerLifeTotalLocked,
 		WantsDistinctColors:        spec.WantsDistinctColors,
 		WantsManaFrom:              spec.WantsManaFrom,
 		AdditionalLandPlays:        spec.AdditionalLandPlays,

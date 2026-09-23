@@ -1001,6 +1001,30 @@ type PlayerView struct {
 	// the field ships with the rule so the badge is a client-only
 	// change when it comes. Added in S40 (#1197, ADR 0072).
 	Keywords []string `json:"keywords,omitempty"`
+
+	// LifeTotalLocked is "your life total can't change" on this seat
+	// (CR 119.7, CR 119.8) — Platinum Emperion's printed static, or a
+	// grant that lasts until this player's next turn (Teferi's
+	// Protection, Teferi's Reproach). Absent for every seat that has
+	// no lock, which is nearly every seat in nearly every game.
+	//
+	// EFFECTIVE, like keywords above: the derived half is not written
+	// anywhere on the engine's Player, so this is computed on every
+	// projection.
+	//
+	// PUBLIC and unredacted, same posture as keywords and emblems.
+	// The lock changes what every player at the table may do — a Bolt
+	// that moves no life, a drain that drains nobody, a Phyrexian
+	// symbol this seat may not claim — so a viewer who could see the
+	// refusal but not its reason is strictly worse off.
+	//
+	// NOT folded into keywords. That field carries the bare ability
+	// TOKENS a seat has, which the client parses "protection from
+	// <quality>" out of; a life-total lock is not an ability the
+	// player has and would be a badge built on a grammar it does not
+	// belong to. See ADR 0085 Decision 7 and game/life_lock.go.
+	// Added in S39 (#1200, ADR 0085).
+	LifeTotalLocked bool `json:"life_total_locked,omitempty"`
 }
 
 // EmblemView is one emblem on the wire (CR 114). Label is what the
@@ -4784,6 +4808,7 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		ManaPool:            manaPool,
 		Emblems:             emblems,
 		Keywords:            g.PlayerAbilitiesForEffect(p),
+		LifeTotalLocked:     g.PlayerLifeTotalCantChangeLocked(p),
 	}
 }
 

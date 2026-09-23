@@ -1191,6 +1191,23 @@ export interface PlayerView {
   // granting a player some other quality reaches a badge without a
   // wire change.
   keywords?: string[];
+  // #1200 (CR 119.7, CR 119.8): "your life total can't change" on
+  // this seat — Platinum Emperion's printed static, or a grant that
+  // lasts until this player's next turn (Teferi's Protection,
+  // Teferi's Reproach). Absent for a seat with none, which is nearly
+  // every seat.
+  //
+  // EFFECTIVE and PUBLIC, same posture as `keywords` above. It is a
+  // separate field rather than another token in that list because a
+  // life-total lock is not an ability the player HAS — the list is
+  // engine ability tokens and the client parses "protection from
+  // <quality>" out of it. See ADR 0085 Decision 7.
+  //
+  // What it means at the table: no life gain, no life loss, no life
+  // PAYMENT (so a Phyrexian symbol, a shockland's 2 life and Snuff
+  // Out are all off the table for this seat). Damage is still dealt
+  // and still triggers; it just moves no life. Poison still lands.
+  life_total_locked?: boolean;
 }
 
 // One emblem (CR 114). `label` is the board name ("Elspeth, Sun's

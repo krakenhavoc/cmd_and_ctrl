@@ -659,6 +659,29 @@ type Spec struct {
 	// Issue #1197, ADR 0072's 2026-09-22 amendment.
 	PlayerKeywords []string
 
+	// PlayerLifeTotalLocked declares the printed static "Your life
+	// total can't change" (CR 119.7, CR 119.8 — Platinum Emperion),
+	// about this permanent's CONTROLLER. True while the permanent is
+	// on the battlefield and nowhere else.
+	//
+	//	PlayerLifeTotalLocked: true,
+	//
+	// NOT a `Static` entry, and DERIVED rather than written, for
+	// exactly the reasons NoMaxHandSize and PlayerKeywords above give:
+	// game.StaticAbility's Apply takes a *Characteristic and a target
+	// *Card and a player is neither, and a "set on enter, restore on
+	// leave" design cannot answer "restore to what?" when a second
+	// copy is out. The engine asks the battlefield on every query,
+	// through the game.CatalogPlayerLifeTotalLocked hook.
+	//
+	// The GRANTED half of the same rule — "until your next turn, your
+	// life total can't change" (Teferi's Protection, Teferi's
+	// Reproach) — is stored instead, on game.Player.Statics, and is
+	// written from a card file with the LockLifeTotal primitive.
+	//
+	// Issue #1200, ADR 0085.
+	PlayerLifeTotalLocked bool
+
 	// WantsDistinctColors declares a spell that READS the colours of
 	// the mana that paid for it: converge (CR 702.86 — Painful
 	// Truths, Bring to Light) and sunburst (CR 702.44 — Etched
