@@ -228,6 +228,89 @@ func TestAmbrosiaWhiteheartReturnsAnotherPermanentAndGrowsOnLandfall(t *testing.
 	}
 }
 
+// --- The Mighty Thor, Jane Foster --------------------------------
+
+const mightyThorOracle = "57d02dc8-e22e-4874-9f02-490a2528a28f"
+
+// The attack trigger flickers one nontoken artifact or creature and
+// returns it TAPPED under its OWNER's control: a creature stolen from
+// an opponent goes home, tapped, as a new object. Tokens are not
+// offered.
+func TestMightyThorAttackFlickersTappedUnderItsOwnersControl(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	thor := pushDiesCreatureForTest(g, me.ID, "The Mighty Thor, Jane Foster", mightyThorOracle, "Legendary Creature — Human God Hero", 3, 3)
+	stolen := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Stolen Bear", TypeLine: "Creature — Bear",
+		Power: 2, Toughness: 2, Owner: opp.ID, Controller: me.ID,
+	})
+	token := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Soldier", TypeLine: "Token Creature — Soldier",
+		Power: 1, Toughness: 1, Owner: opp.ID, Controller: opp.ID,
+	})
+
+	declareAttack(t, g, opp.ID, thor)
+	pick := latestPickTarget(g, me.ID)
+	if pick == nil {
+		t.Fatalf("no pick_target prompt for the attack trigger: %+v", g.PendingChoices)
+	}
+	if hasID(pick.PickTargetCards, token) {
+		t.Error("a token is offered to \"nontoken artifact or creature\"")
+	}
+	if !hasID(pick.PickTargetCards, stolen) || !hasID(pick.PickTargetCards, thor) {
+		t.Error("a nontoken creature (and Thor herself) must be offered")
+	}
+	pickCard(t, g, me.ID, stolen)
+	passPriorityAroundTable(t, g)
+
+	if onBattlefield(g, stolen) {
+		t.Fatal("the flickered creature is still the same object (CR 400.7)")
+	}
+	back := findBattlefieldByName(g, "Stolen Bear")
+	if back == uuid.Nil {
+		t.Fatal("the flickered creature did not return to the battlefield")
+	}
+	c, _ := aangCardOnBF(g, back)
+	if c.Controller != opp.ID {
+		t.Errorf("returned under %v's control, want its owner %v", c.Controller, opp.ID)
+	}
+	if !c.Tapped {
+		t.Error("the flickered creature returned untapped")
+	}
+}
+
+// "Whenever an Equipment you control enters, draw a card" — yours
+// draws, an opponent's does not.
+func TestMightyThorDrawsWhenYourEquipmentEnters(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	pushDiesCreatureForTest(g, me.ID, "The Mighty Thor, Jane Foster", mightyThorOracle, "Legendary Creature — Human God Hero", 3, 3)
+
+	toMainForCost(t, g)
+	hand := me.Hand.Size()
+	castCatalogSpell(t, g, "Bonesplitter", "Artifact — Equipment", "", nil)
+	passPriorityAroundTable(t, g)
+	if got := me.Hand.Size(); got != hand+1 {
+		t.Errorf("hand %d → %d after your Equipment entered, want +1", hand, got)
+	}
+
+	hand = me.Hand.Size()
+	theirs := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Their Sword", TypeLine: "Artifact — Equipment",
+		Owner: opp.ID, Controller: opp.ID,
+	})
+	g.WithWriteLock(func() {
+		g.EmitEvent(game.Event{Kind: game.EventETB, CardID: theirs, Actor: opp.ID})
+	})
+	if len(g.PendingTriggers) != 0 {
+		t.Errorf("an opponent's Equipment entering queued %d trigger(s)", len(g.PendingTriggers))
+	}
+	passPriorityAroundTable(t, g)
+	if got := me.Hand.Size(); got != hand {
+		t.Errorf("hand %d → %d after an opponent's Equipment entered, want unchanged", hand, got)
+	}
+}
+
 // "You may": choosing nothing returns nothing.
 func TestAmbrosiaWhiteheartMayReturnNothing(t *testing.T) {
 	g := newCatalogGame(t)
