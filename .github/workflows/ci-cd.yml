@@ -485,19 +485,15 @@ jobs:
     if: >-
       github.event_name == 'push' &&
       (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
-    # Shares the deploy job's concurrency group for this ref -- whichever
-    # of cmdctrl-cd-dev (develop) or cmdctrl-cd-prod (main) that actually
-    # is -- so the two can never run at once on this single self-hosted
-    # runner. Both need only `cmdctrl-ci` (cmdctrl-cd-prod also needs
-    # `build`) and neither needs the other, so without this they are
-    # free to be scheduled in parallel -- and this job commits and
-    # force-resets the SAME checkout path a concurrent deploy could be
-    # rsync-ing out of, on a runner whose workspace persists between
-    # jobs (see "Free runner disk" in server-check/server-test/build).
-    # Queueing behind the deploy is fine: nothing this job does changes
-    # what that job already downloaded as build artifacts from `build`.
+    # One publisher per branch at a time, so two runs finishing close
+    # together don't race the same push (the retry below handles one
+    # lost race, not a pile-up). Its own group on purpose: reusing the
+    # workflow-level `cmdctrl-cd-<ref>` group from inside the run that
+    # holds it gets the job cancelled as a concurrency deadlock. It
+    # can't collide with the deploy job's workspace either -- a runner
+    # takes one job at a time.
     concurrency:
-      group: cmdctrl-cd-${{ github.ref }}
+      group: census-publish-${{ github.ref }}
       cancel-in-progress: false
     steps:
       - name: Checkout code
