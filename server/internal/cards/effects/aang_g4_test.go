@@ -311,6 +311,107 @@ func TestMightyThorDrawsWhenYourEquipmentEnters(t *testing.T) {
 	}
 }
 
+// --- Thassa, Deep-Dwelling ---------------------------------------
+
+const thassaDeepDwellingOracle = "2396299a-c031-4020-b13e-1f9bf9d64511"
+
+func pushThassa(g *game.Game, owner uuid.UUID) uuid.UUID {
+	return pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Thassa, Deep-Dwelling", OracleID: thassaDeepDwellingOracle,
+		TypeLine: "Legendary Enchantment Creature — God", ManaCost: "{3}{U}",
+		Power: 6, Toughness: 5, Owner: owner, Controller: owner,
+	})
+}
+
+// The God clause: not a creature below five blue devotion (her own {U}
+// counts), a creature at five.
+func TestThassaIsACreatureOnlyAtFiveBlueDevotion(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	thassa := pushThassa(g, me.ID)
+	if hasString(effectiveTypes(t, g, thassa), "Creature") {
+		t.Fatal("Thassa is a creature at devotion 1")
+	}
+	pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Blue Pips", TypeLine: "Enchantment", ManaCost: "{U}{U}{U}",
+		Owner: me.ID, Controller: me.ID,
+	})
+	if hasString(effectiveTypes(t, g, thassa), "Creature") {
+		t.Fatal("Thassa is a creature at devotion 4")
+	}
+	pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "One More", TypeLine: "Artifact", ManaCost: "{U}",
+		Owner: me.ID, Controller: me.ID,
+	})
+	if !hasString(effectiveTypes(t, g, thassa), "Creature") {
+		t.Error("Thassa is not a creature at devotion 5")
+	}
+}
+
+// The end-step blink offers up to one OTHER creature you control and
+// returns it under YOUR control as a new object — a creature you had
+// stolen stays yours. Thassa (a creature here) is never offered.
+func TestThassaBlinksAnotherCreatureAtYourEndStepUnderYourControl(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	thassa := pushThassa(g, me.ID)
+	pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Blue Pips", TypeLine: "Enchantment", ManaCost: "{U}{U}{U}{U}",
+		Owner: me.ID, Controller: me.ID,
+	})
+	stolen := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Stolen Bear", TypeLine: "Creature — Bear",
+		Power: 2, Toughness: 2, Owner: opp.ID, Controller: me.ID,
+	})
+
+	advanceToEndStepOf(t, g, 0)
+	pick := latestPickTarget(g, me.ID)
+	if pick == nil {
+		t.Fatalf("no pick_target prompt at your end step: %+v", g.PendingChoices)
+	}
+	if hasID(pick.PickTargetCards, thassa) {
+		t.Error("Thassa is offered to her own \"other target creature\"")
+	}
+	if !hasID(pick.PickTargetCards, stolen) {
+		t.Fatal("a creature you control is not offered")
+	}
+	pickCard(t, g, me.ID, stolen)
+	passPriorityAroundTable(t, g)
+
+	back := findBattlefieldByName(g, "Stolen Bear")
+	if back == uuid.Nil || back == stolen {
+		t.Fatalf("blinked creature back=%v (old %v): want a new object on the battlefield", back, stolen)
+	}
+	if c, _ := aangCardOnBF(g, back); c.Controller != me.ID {
+		t.Errorf("returned under %v's control, want yours (%v)", c.Controller, me.ID)
+	}
+}
+
+// {3}{U}: tap another target creature — an opponent's creature taps,
+// Thassa herself is refused.
+func TestThassaTapsAnotherTargetCreature(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	thassa := pushThassa(g, me.ID)
+	pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Blue Pips", TypeLine: "Enchantment", ManaCost: "{U}{U}{U}{U}",
+		Owner: me.ID, Controller: me.ID,
+	})
+	theirs := pushVanillaCreature(g, opp.ID, "Their Bear", 2, 2)
+	toMainForCost(t, g)
+
+	if err := g.ActivateCatalogAbility(me.ID, thassa, 0, game.ActivateAbilityParams{Targets: cardRefs(thassa)}); !errors.Is(err, game.ErrIllegalTarget) {
+		t.Errorf("Thassa targeting herself: err = %v, want ErrIllegalTarget", err)
+	}
+	if err := g.ActivateCatalogAbility(me.ID, thassa, 0, game.ActivateAbilityParams{Targets: cardRefs(theirs)}); err != nil {
+		t.Fatalf("ActivateCatalogAbility: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if c, _ := aangCardOnBF(g, theirs); !c.Tapped {
+		t.Error("the target creature did not become tapped")
+	}
+}
+
 // "You may": choosing nothing returns nothing.
 func TestAmbrosiaWhiteheartMayReturnNothing(t *testing.T) {
 	g := newCatalogGame(t)
