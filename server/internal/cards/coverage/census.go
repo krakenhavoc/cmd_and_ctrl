@@ -142,8 +142,16 @@ func TakeCensus() Census {
 // stops asserting that the document is true and starts asserting that
 // the document is whatever the code says today, which no longer
 // catches anything.
+//
+// BeginMarker's own text is part of what it says, not just where it
+// sits: since Discussion #1231 the block is refreshed by CI on every
+// push to develop and main, and a PR is not expected — and must not
+// try — to regenerate it itself (see census_test.go's
+// staleCensusActionFor). `-update` stays the correct manual tool, so
+// the marker keeps naming it, but the marker no longer reads as an
+// instruction aimed at whoever is looking at a stale block in a PR.
 const (
-	BeginMarker = "<!-- BEGIN GENERATED CATALOG CENSUS — regenerate with: go test ./internal/cards/coverage/ -update -->"
+	BeginMarker = "<!-- BEGIN GENERATED CATALOG CENSUS — refreshed by CI on every push to develop and main; do not regenerate in a PR (manual refresh: go test ./internal/cards/coverage/ -update) -->"
 	EndMarker   = "<!-- END GENERATED CATALOG CENSUS -->"
 )
 
