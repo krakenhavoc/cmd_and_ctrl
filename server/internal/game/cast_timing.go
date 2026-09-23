@@ -288,15 +288,17 @@ func (g *Game) castTimingVerdictLocked(playerID uuid.UUID, card Card, zone ZoneK
 	}
 	for i := range g.Battlefield.Cards {
 		src := &g.Battlefield.Cards[i]
-		if src.OracleID == "" {
-			continue
-		}
 		// CatalogAbilityKey, not CatalogKey, for the reason
 		// standingCastPermissionsLocked gives: "you may cast spells
 		// as though they had flash" is a static ability, and an
 		// Orrery that has lost its abilities (CR 613.1f) stops
-		// saying it.
-		for _, t := range CatalogCastTimings(CatalogAbilityKey(*src)) {
+		// saying it. The EMPTY KEY is the skip — a TOKEN has one of
+		// its own since #521 (ADR 0083 decision 3).
+		key := CatalogAbilityKey(*src)
+		if key == "" {
+			continue
+		}
+		for _, t := range CatalogCastTimings(key) {
 			if !castTimingAffects(t.Affects, src.Controller, playerID) {
 				continue
 			}

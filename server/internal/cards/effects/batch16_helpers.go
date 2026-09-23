@@ -34,18 +34,23 @@ import (
 // do, because a token has no oracle ID for the catalog to key one
 // on. The search is the S22 chooser; a Lander cracked with no basic
 // left still shuffles.
-func b16LanderToken() game.Card { return tokenFromCatalog("lander") }
+func b16LanderToken() game.Card { return tokenFromCatalog(printedB16LanderToken) }
 
 // printedB16LanderToken is the Lander as PRINTED —
 // the ability included. It is the catalog's entry for this token
 // (token_catalog.go, #521): the ability is registered from here at
 // boot, and the template that reaches the battlefield carries the
 // key that finds it rather than the closure itself.
-func printedB16LanderToken() game.Card {
-	return game.Card{
-		Name:     "Lander",
-		TypeLine: "Token Artifact — Lander",
-		ActivatedAbilities: []game.ActivatedAbilityShape{{
+func printedB16LanderToken() tokenTemplate {
+	return tokenTemplate{
+		Slug: "lander",
+		Card: game.Card{
+			Name:     "Lander",
+			TypeLine: "Token Artifact — Lander",
+		},
+		Text: "{2}, {T}, Sacrifice this token: Search your library for a basic land card, " +
+			"put it onto the battlefield tapped, then shuffle.",
+		Activated: []game.ActivatedAbilityShape{{
 			Label: "{2}, {T}, Sacrifice this token: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle",
 			Cost: game.AbilityCost{
 				Tap:           true,

@@ -220,19 +220,24 @@ func (c Card) printedCharacteristic() Characteristic {
 	// Card.Keywords is the printed-data road: the deck importer
 	// stamps Scryfall's `keywords` array onto every imported card
 	// (#317 / #319 / #320), and token templates declare theirs
-	// inline because a token has no oracle ID for the catalog hook
-	// to key on (S21 sub-PR 1). The catalog remains a fallback and
-	// an override for cards that never go through deck import —
-	// fixtures, tokens, and any spec that deliberately states a
-	// keyword Scryfall doesn't.
+	// inline as plain data (S21 sub-PR 1). The catalog remains a
+	// fallback and an override for cards that never go through deck
+	// import — fixtures, tokens, and any spec that deliberately
+	// states a keyword Scryfall doesn't.
 	//
 	// The two sources overlap for every catalog card that is also
 	// imported from a decklist, so the merge dedupes: a doubled
 	// "flash" is harmless to HasKeyword but renders as two badges
 	// on the client's keyword row.
+	//
+	// The gate is the catalog KEY and not an oracle ID (ADR 0083
+	// decision 3): a token has a key of its own since #521, so a
+	// template that declares PrintedKeywords in its catalog entry is
+	// read here like any card's. CatalogKey already answers "" for
+	// an uncatalogued object.
 	var abilities []string
-	if CatalogPrintedKeywords != nil && c.OracleID != "" {
-		if kws := CatalogPrintedKeywords(CatalogKey(c)); len(kws) > 0 {
+	if key := CatalogKey(c); CatalogPrintedKeywords != nil && key != "" {
+		if kws := CatalogPrintedKeywords(key); len(kws) > 0 {
 			abilities = append(abilities, kws...)
 		}
 	}

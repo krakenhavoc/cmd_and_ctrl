@@ -33,26 +33,33 @@ import (
 // ability lives on the tokens the Parade makes and switches off when
 // the Parade leaves. See springleaf_parade.go for what that does and
 // does not cover.
-func b18SpringleafShapeshifterToken() game.Card { return tokenFromCatalog("springleaf-shapeshifter") }
+func b18SpringleafShapeshifterToken() game.Card {
+	return tokenFromCatalog(printedB18SpringleafShapeshifterToken)
+}
 
 // printedB18SpringleafShapeshifterToken is the Springleaf Parade Shapeshifter as PRINTED —
 // the ability included. It is the catalog's entry for this token
 // (token_catalog.go, #521): the ability is registered from here at
 // boot, and the template that reaches the battlefield carries the
 // key that finds it rather than the closure itself.
-func printedB18SpringleafShapeshifterToken() game.Card {
-	return game.Card{
-		Name:      "Shapeshifter",
-		TypeLine:  "Token Creature — Shapeshifter",
-		Power:     1,
-		Toughness: 1,
-		Keywords:  []string{game.KeywordChangeling},
-		ManaAbilities: []game.ManaAbilityShape{{
+func printedB18SpringleafShapeshifterToken() tokenTemplate {
+	return tokenTemplate{
+		Slug: "springleaf-shapeshifter",
+		Card: game.Card{
+			Name:      "Shapeshifter",
+			TypeLine:  "Token Creature — Shapeshifter",
+			Power:     1,
+			Toughness: 1,
+			Keywords:  []string{game.KeywordChangeling},
+		},
+		Mana: []game.ManaAbilityShape{{
 			TapCost:   true,
 			Produced:  "{W|U|B|R|G}",
 			Label:     "{T}: Add one mana of any color (while you control Springleaf Parade)",
 			Condition: b18ControlsNamed("Springleaf Parade"),
 		}},
+		Text: "Changeling (This card is every creature type.)\n" +
+			"{T}: Add one mana of any color. (Granted by Springleaf Parade.)",
 	}
 }
 

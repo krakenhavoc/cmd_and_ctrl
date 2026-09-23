@@ -35,24 +35,28 @@ func b28WhiteSpiritFlyingToken() game.Card { return TokenCard("1/1 white Spirit 
 // b28EldraziScionToken is Spawnbed Protector's 1/1 colorless Eldrazi
 // Scion with "Sacrifice this token: Add {C}" — the Spawn's mana
 // ability on a 1/1 body.
-func b28EldraziScionToken() game.Card { return tokenFromCatalog("eldrazi-scion") }
+func b28EldraziScionToken() game.Card { return tokenFromCatalog(printedB28EldraziScionToken) }
 
 // printedB28EldraziScionToken is the Eldrazi Scion as PRINTED —
 // the ability included. It is the catalog's entry for this token
 // (token_catalog.go, #521): the ability is registered from here at
 // boot, and the template that reaches the battlefield carries the
 // key that finds it rather than the closure itself.
-func printedB28EldraziScionToken() game.Card {
-	return game.Card{
-		Name:      "Eldrazi Scion",
-		TypeLine:  "Token Creature — Eldrazi Scion",
-		Power:     1,
-		Toughness: 1,
-		ManaAbilities: []game.ManaAbilityShape{{
+func printedB28EldraziScionToken() tokenTemplate {
+	return tokenTemplate{
+		Slug: "eldrazi-scion",
+		Card: game.Card{
+			Name:      "Eldrazi Scion",
+			TypeLine:  "Token Creature — Eldrazi Scion",
+			Power:     1,
+			Toughness: 1,
+		},
+		Mana: []game.ManaAbilityShape{{
 			SacrificeCost: true,
 			Produced:      "{C}",
 			Label:         "Sacrifice this creature: Add {C}",
 		}},
+		Text: "Sacrifice this token: Add {C}.",
 	}
 }
 

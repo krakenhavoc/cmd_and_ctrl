@@ -1457,6 +1457,23 @@ type CardView struct {
 	// Added in S16 sub-PR 1.
 	Abilities []string `json:"abilities,omitempty"`
 
+	// TokenText is a TOKEN's printed ability text, verbatim (ADR
+	// 0083) — "When this token dies, you gain 1 life." Empty for
+	// every printed card and for a vanilla token.
+	//
+	// It exists because a token has no printing behind it: there is
+	// no scryfall_id for the client to resolve oracle text from (ADR
+	// 0078's art is still Proposed), and a Dragon Egg whose
+	// dies-trigger the player cannot read is a surprise rather than a
+	// play. The emblem's `text` is the same field for the same
+	// reason.
+	//
+	// Newlines separate printed lines, as on the card. It is public —
+	// a token's text is public information — and survives the
+	// face-down redaction path only insofar as a token is never face
+	// down.
+	TokenText string `json:"token_text,omitempty"`
+
 	// Restrictions is the S24 restriction set as stable snake_case
 	// tokens — "cant_attack", "cant_block", "cant_be_blocked",
 	// "cant_activate", "cant_activate_mana". Empty for the permanent
@@ -5408,6 +5425,14 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.ChosenColor = ""
 	out.NamedTribe = ""
 	out.ChosenName = ""
+	// ADR 0083: a token's printed text is public on a token the
+	// viewer can see, and a token is always known to every seat
+	// (mintTokenLocked adds every seat as a knower), so in practice
+	// this line never fires. It is here because the field is read off
+	// the object's catalog entry exactly as mana_abilities is, and
+	// "when this token dies, you gain 1 life" would name the object
+	// as loudly as any of them if a hidden object ever carried one.
+	out.TokenText = ""
 	return stampFaceDownPublicBody(out, c)
 }
 
@@ -5649,6 +5674,14 @@ func viewOfCard(c game.Card) CardView {
 		Layout:      c.Layout,
 		Faces:       viewOfFaces(c),
 		ActiveFace:  c.ActiveFace,
+		// ADR 0083. A token has no printing behind it, so there is no
+		// oracle text for the client to fetch by scryfall_id and a
+		// token that prints an ability would otherwise reach the board
+		// as a bare name. Derived on every read like the emblem's
+		// text, so fixing a token's wording reaches a game already in
+		// progress; empty for every printed card and every vanilla
+		// token, which is what keeps the field additive.
+		TokenText: game.TokenTextForCard(c),
 	}
 	if c.AttackingTarget != uuid.Nil {
 		view.AttackingTarget = c.AttackingTarget.String()

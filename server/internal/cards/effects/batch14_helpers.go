@@ -48,22 +48,26 @@ func b14RedDragonToken(size int) game.Card {
 // does, because a token has no oracle ID for the catalog to key one
 // on. "Any color" is the printed text, so the pipe keeps its five
 // options rather than narrowing to the commander's identity.
-func b14ReplicatedRingToken() game.Card { return tokenFromCatalog("replicated-ring") }
+func b14ReplicatedRingToken() game.Card { return tokenFromCatalog(printedB14ReplicatedRingToken) }
 
 // printedB14ReplicatedRingToken is the Replicated Ring as PRINTED —
 // the ability included. It is the catalog's entry for this token
 // (token_catalog.go, #521): the ability is registered from here at
 // boot, and the template that reaches the battlefield carries the
 // key that finds it rather than the closure itself.
-func printedB14ReplicatedRingToken() game.Card {
-	return game.Card{
-		Name:     "Replicated Ring",
-		TypeLine: "Token Snow Artifact",
-		ManaAbilities: []game.ManaAbilityShape{{
+func printedB14ReplicatedRingToken() tokenTemplate {
+	return tokenTemplate{
+		Slug: "replicated-ring",
+		Card: game.Card{
+			Name:     "Replicated Ring",
+			TypeLine: "Token Snow Artifact",
+		},
+		Mana: []game.ManaAbilityShape{{
 			TapCost:  true,
 			Produced: "{W|U|B|R|G}",
 			Label:    "{T}: Add one mana of any color",
 		}},
+		Text: "{T}: Add one mana of any color.",
 	}
 }
 

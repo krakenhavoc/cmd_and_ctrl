@@ -202,13 +202,19 @@ func (g *Game) playerAbilityTokensLocked(p *Player, fn func(token string) bool) 
 	if CatalogPlayerKeywords != nil && g.Battlefield != nil {
 		for i := range g.Battlefield.Cards {
 			c := &g.Battlefield.Cards[i]
-			if c.Controller != p.ID || c.OracleID == "" {
+			if c.Controller != p.ID {
 				continue
 			}
 			// CatalogAbilityKey, not CatalogKey: "you have hexproof"
 			// is a static ability of the permanent, so a Leyline that
-			// has lost its abilities (layer 6) stops granting it.
-			for _, tok := range CatalogPlayerKeywords(CatalogAbilityKey(*c)) {
+			// has lost its abilities (layer 6) stops granting it. The
+			// empty KEY is the skip, so a token is walked like any
+			// other permanent (ADR 0083 decision 3).
+			key := CatalogAbilityKey(*c)
+			if key == "" {
+				continue
+			}
+			for _, tok := range CatalogPlayerKeywords(key) {
 				if !fn(tok) {
 					return
 				}

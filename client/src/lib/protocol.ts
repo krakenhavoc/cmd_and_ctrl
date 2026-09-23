@@ -2019,6 +2019,17 @@ export interface CardView extends CastSurfaceView {
   // printed keywords (S18 Spec.PrintedKeywords). S18 renders
   // keyword badges from this list via the KeywordBadgeRow component.
   abilities?: string[];
+  // ADR 0083 — a TOKEN's printed ability text, verbatim ("When this
+  // token dies, you gain 1 life."). Absent for every printed card and
+  // for a vanilla token.
+  //
+  // A token has no printing behind it, so there is no scryfall_id to
+  // resolve oracle text from and the card renders through the
+  // name-fallback path. An activated ability still reaches the player
+  // as a row in the right-click menu; a TRIGGER or a STATIC has no
+  // control, so without this the text would be invisible. Newlines
+  // separate printed lines.
+  token_text?: string;
   // #662 — this permanent's CR 702.16 protections, already PARSED by
   // the server. The raw "protection from red" tokens are in
   // `abilities` like every other keyword; this is the same list with

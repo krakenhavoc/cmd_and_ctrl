@@ -92,10 +92,17 @@ func (g *Game) LibraryTopVisibilityLocked(playerID uuid.UUID) LibraryTopVisibili
 	out := LibraryTopHidden
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
-		if c.Controller != playerID || c.OracleID == "" {
+		if c.Controller != playerID {
 			continue
 		}
-		if v := CatalogLibraryTopVisible(CatalogAbilityKey(*c)); v > out {
+		// The gate is "has no catalog entry", not "has no oracle ID"
+		// (ADR 0083 decision 3): a TOKEN has a key of its own since
+		// #521, and an object CR 708.2a has silenced has none.
+		key := CatalogAbilityKey(*c)
+		if key == "" {
+			continue
+		}
+		if v := CatalogLibraryTopVisible(key); v > out {
 			out = v
 		}
 	}

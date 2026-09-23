@@ -890,10 +890,16 @@ func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
 	var out []CastPermission
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
-		if c.Controller != p.ID || c.OracleID == "" {
+		if c.Controller != p.ID {
 			continue
 		}
-		for _, perm := range CatalogCastPermissions(CatalogAbilityKey(*c)) {
+		// The empty KEY is the skip, not an empty oracle ID — a token
+		// has one of its own since #521 (ADR 0083 decision 3).
+		key := CatalogAbilityKey(*c)
+		if key == "" {
+			continue
+		}
+		for _, perm := range CatalogCastPermissions(key) {
 			perm.Player = p.ID
 			perm.Scope = ScopeStanding
 			// #1035: a catalog entry is static and cannot name a SEAT,
@@ -1056,10 +1062,11 @@ func (g *Game) AnyCastPermissionsForEffect() bool {
 	}
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
-		if c.OracleID == "" {
+		key := CatalogAbilityKey(*c)
+		if key == "" {
 			continue
 		}
-		if len(CatalogCastPermissions(CatalogAbilityKey(*c))) > 0 {
+		if len(CatalogCastPermissions(key)) > 0 {
 			return true
 		}
 	}
