@@ -1073,6 +1073,28 @@ type Event struct {
 	OldZone ZoneKind `json:"old_zone,omitempty"`
 	NewZone ZoneKind `json:"new_zone,omitempty"`
 
+	// Played marks a battlefield entry as a PLAY (CR 305.1) rather
+	// than an effect PUTTING the permanent onto the battlefield
+	// (CR 305.4: "This isn't the same as 'playing a land' and doesn't
+	// count as a land played during the current turn"). Set on
+	// EventZoneMove and EventTokenCreated when the entry landed —
+	// never on the earlier EventCast/EventTrigger that led to it.
+	//
+	// It mirrors the settled entry's internal landPlay flag
+	// (replacements.go), stamped by announceEntryLocked from the
+	// entryLanding record every battlefield entry produces
+	// (entry_choice.go) — one finisher, so the marker can never drift
+	// from the land-drop tally that flag already gates. False, the
+	// zero value, is correct for every "put" path (a search, a
+	// reanimation, PutFromHandOntoBattlefieldForEffect, an exile or
+	// graveyard return with no play permission) AND for a token,
+	// which comes from no zone at all and was never played.
+	//
+	// Meaningful only on a land's own entry — nothing stops it being
+	// read off a nonland permanent, but nothing prints a nonland
+	// clause that cares. Added for #1326.
+	Played bool `json:"played,omitempty"`
+
 	// DiscardCause is why a discard happened, on EventDiscardCard: an
 	// effect's instruction, a cost, or the cleanup step's turn-based
 	// action (CR 701.8a, 601.2h, 514.1). Empty on every other kind.

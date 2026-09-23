@@ -9,36 +9,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The symmetrical lands-matter draw engine. "Plays a land" is a
 // land PLAY, not a land entering: a fetched or ramped land draws
 // nothing, a land played from exile through Prosper's grant draws.
-// The engine emits no land-play event, so the trigger reads the
-// origin of the battlefield entry and, for the exile / graveyard
-// origins that a returning land shares with a played one, the
-// engine's own land-drop tally (b20LandPlayed). The drawer is the
-// player who played the land — the event's Actor — not the Horn's
-// controller.
+// Since #1326 the engine stamps CR 305.4's distinction on the
+// settled entry itself (Event.Played), so the trigger reads that
+// directly (b20LandPlayed) rather than guessing from the zone the
+// land came from. The drawer is the player who played the land —
+// the event's Actor — not the Horn's controller.
 //
-// Sandbox simplification, declared: when a land was RETURNED to the
-// battlefield from exile or a graveyard by an effect earlier in the
-// same turn, the tally can no longer tell a later land played from
-// exile or a graveyard apart from another return, and the trigger
-// stays quiet for it — weaker than printed, never stronger.
-//
-// A land from HAND is the opposite direction, and it is not
-// currently declared as a gap even though it is one: #654 shipped
-// PutFromHandOntoBattlefield (Eureka Moment, Spelunking, Chulane,
-// Broken Bond), which puts a land from hand without playing it, and
-// b20LandPlayed still reads every hand-origin entry as a play. That
-// is STRONGER than printed — the Horn draws for a land it should
-// ignore — and the fix needs a "played" marker on the entry itself
-// (#1326, the same seam Deep Gnome Terramancer is blocked on).
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "b8181d53-1954-4f46-8670-8696440208e8",
 		Name:         "Horn of Greed",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"A land played from exile or from a graveyard isn't counted if another land already came back to the battlefield from exile or a graveyard earlier that turn.",
-			"A land put onto the battlefield from hand by another effect (not played) is still counted as a play, drawing a card it shouldn't.",
-		},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventZoneMove},
 			AppliesTo: func(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {

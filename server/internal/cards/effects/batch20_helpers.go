@@ -39,77 +39,23 @@ func b20GolemToken(keyword string) game.Card {
 
 // --- trigger conditions ------------------------------------------
 
-// b20LandPlayed reports whether ev is a land PLAY (CR 305.1) and
-// returns the land — Horn of Greed's "whenever a player plays a
-// land" for any player, and the land half of Prosper's "whenever you
-// play a card from exile". The engine emits no land-play event, so
-// the trigger watches the EventZoneMove that precedes every
-// battlefield entry and reads where the land came FROM:
-//
-//   - The library, the stack and the battlefield are origins a land
-//     play can never have (Cultivate, a fetchland, a cast permanent,
-//     a control change), so those are never a play.
-//   - A hand origin is treated as always a play, which was exact
-//     until #654 shipped PutFromHandOntoBattlefield: Eureka Moment,
-//     Spelunking, Chulane, Broken Bond and Insidious Fungus's third
-//     mode can all put a land from hand onto the battlefield without
-//     playing it. Nothing here tells that apart from an ordinary land
-//     drop, so a PUT land from hand still reads as a PLAY — stronger
-//     than printed for Horn of Greed and Prosper's Pact Boon, the
-//     wrong direction (#259). The fix needs a "played" marker on the
-//     entry itself, which is the engine half tracked as #1326;
-//     Deep Gnome Terramancer is blocked on the same seam.
-//   - Exile and a graveyard are ambiguous: a land played through a
-//     permission (Prosper's, Crucible of Worlds') and a land an
-//     effect RETURNS (a flickered land, Splendid Reclamation) both
-//     arrive from there under the same Actor. The land-drop tally
-//     the engine keeps for the legal-move enumerator separates them:
-//     both play paths bump LandsPlayedThisTurn BEFORE emitting the
-//     move, and no return path bumps it. So this event is a play
-//     exactly when the tally is one more than the land entries by
-//     this player earlier this turn from the same three zones. When
-//     an earlier return this turn makes that arithmetic ambiguous
-//     the answer is "not a play" — weaker than printed for the one
-//     turn, never stronger. Declared on both cards.
-//
-// "Earlier this turn" is g.EventsThisTurn(), bounded at the real turn
-// boundary. It used to stop at the turn's upkeep (#1009), which would
-// have missed a land entering during the untap step and read the
-// tally one too high for the next land that turn.
+// b20LandPlayed reports whether ev is a land PLAY (CR 305.1) —
+// Horn of Greed's "whenever a player plays a land" for any player,
+// and the land half of Prosper's "whenever you play a card from
+// exile". Since #1326 the engine stamps the distinction itself
+// (Event.Played, CR 305.4) on the settled entry, from whichever zone
+// it was played: hand, exile (an impulse grant) or a graveyard (a
+// Crucible grant) all set it, and every "put" path — a fetchland, a
+// reanimation, a flickered or returned land — leaves it false. No
+// zone-origin guess and no land-drop-tally arithmetic needed any
+// more; both are gone along with the ambiguity they could not always
+// resolve (Horn of Greed's and Prosper's caveats).
 func b20LandPlayed(ev game.Event, g *game.Game) bool {
-	if ev.Kind != game.EventZoneMove || ev.NewZone != game.ZoneBattlefield || ev.Actor == uuid.Nil {
-		return false
-	}
-	if !b20LandPlayOrigin(ev.OldZone) {
+	if ev.Kind != game.EventZoneMove || ev.NewZone != game.ZoneBattlefield || !ev.Played {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	if !ok || !c.IsLand() {
-		return false
-	}
-	if ev.OldZone == game.ZoneHand {
-		return true
-	}
-	prior := 0
-	for _, e := range g.EventsThisTurn() {
-		if e.Seq >= ev.Seq {
-			break
-		}
-		if e.Kind != game.EventZoneMove || e.NewZone != game.ZoneBattlefield || e.Actor != ev.Actor || !b20LandPlayOrigin(e.OldZone) {
-			continue
-		}
-		if earlier, ok := g.LookupCardForEffect(e.CardID); ok && earlier.IsLand() {
-			prior++
-		}
-	}
-	return g.LandsPlayedThisTurnFor(ev.Actor)-prior == 1
-}
-
-// b20LandPlayOrigin is the set of zones a land can be PLAYED from:
-// the hand, exile (an impulse grant) and a graveyard (a Crucible
-// grant).
-func b20LandPlayOrigin(z game.ZoneKind) bool {
-	return z == game.ZoneHand || z == game.ZoneExile || z == game.ZoneGraveyard
+	return ok && c.IsLand()
 }
 
 // b20PlayedACardFromExile is Prosper's Pact Boon: the source's

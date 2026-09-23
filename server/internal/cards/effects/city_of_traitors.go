@@ -14,24 +14,20 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // sees it). A City already gone when the trigger resolves does
 // nothing.
 //
-// The engine emits no land-PLAY event, so the trigger reads the zone
-// a land arrived FROM (b10AnotherLandPlayedByYou): a land played from
-// hand, from an impulse-exile grant or from a graveyard permission
-// counts, and a land put onto the battlefield from the LIBRARY —
-// Cultivate, a fetchland, Rampant Growth — does not, which is the
-// printed distinction for every common case.
+// Since #1326 the engine stamps CR 305.4's distinction on the settled
+// entry itself (Event.Played), so the trigger reads that directly
+// (b10AnotherLandPlayedByYou): a land played from hand, from an
+// impulse-exile grant or from a graveyard permission counts, and a
+// land an effect PUTS onto the battlefield — Cultivate, a fetchland,
+// Rampant Growth, Titania's ETB, Splendid Reclamation, a flickered
+// land — does not.
 //
-// Sandbox simplification, declared: a land an effect RETURNS to the
-// battlefield from a graveyard or exile (Titania's ETB, Splendid
-// Reclamation, a flickered land) also reads as a play and costs the
-// City. Weaker than printed for the City's controller, never
-// stronger.
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "f161111d-9747-47b3-bb10-3c8bded32e21",
 		Name:         "City of Traitors",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"A land returned to the battlefield from your graveyard or from exile also counts as playing a land."},
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{C}{C}",

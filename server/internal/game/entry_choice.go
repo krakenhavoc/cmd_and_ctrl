@@ -362,6 +362,12 @@ type entryLanding struct {
 	// entered is its battlefield ID: the NEW one when the entry minted
 	// a new object.
 	entered uuid.UUID
+	// played is CR 305.4's distinction, carried from the settled
+	// event's landPlay flag to the record announceEntryLocked reads
+	// rather than reaching back into ev for it: true for the one
+	// entry that is a land PLAY (CR 305.1), false for every "put"
+	// path and for a token, which was never played. See Event.Played.
+	played bool
 }
 
 // landEntryLocked performs the move a settled entry event describes and
@@ -504,7 +510,7 @@ func (g *Game) landEntryLocked(ev *ReplacementEvent) (l entryLanding, ok bool, e
 		}
 		g.LandsPlayedThisTurn[ev.Actor]++
 	}
-	return entryLanding{ev: ev, moved: moved, srcKind: srcKind, entered: entered}, true, nil
+	return entryLanding{ev: ev, moved: moved, srcKind: srcKind, entered: entered, played: ev.landPlay}, true, nil
 }
 
 // announceEntryLocked emits what a landed permanent's arrival owes the
@@ -526,6 +532,7 @@ func (g *Game) announceEntryLocked(l entryLanding) {
 			Actor:  ev.Actor,
 			Source: ev.Source,
 			CardID: l.entered,
+			Played: l.played,
 		})
 	} else {
 		g.EmitEvent(Event{
@@ -534,6 +541,7 @@ func (g *Game) announceEntryLocked(l entryLanding) {
 			CardID:  l.entered,
 			OldZone: l.srcKind,
 			NewZone: ZoneBattlefield,
+			Played:  l.played,
 		})
 	}
 	// S16.5: the two jobs stack resolution does that no other entry

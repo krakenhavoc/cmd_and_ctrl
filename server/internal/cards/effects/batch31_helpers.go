@@ -184,8 +184,8 @@ func b31YouSacrificedAFood(ev game.Event, source *game.Card, g *game.Game) bool 
 
 // b31YouPlayedALandOrCastASpell is The Endstone's condition — one
 // printed ability with two trigger conditions, watching the land
-// play (b20LandPlayed, with the play-versus-return arithmetic that
-// helper documents) and the cast on one declaration.
+// play (b20LandPlayed, off Event.Played since #1326) and the cast on
+// one declaration.
 func b31YouPlayedALandOrCastASpell(ev game.Event, source *game.Card, g *game.Game) bool {
 	switch ev.Kind {
 	case game.EventCast:
