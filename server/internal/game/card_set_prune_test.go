@@ -286,11 +286,18 @@ func TestAPartlyEmptiedDiscardPromptTrimsAndClampsItsBounds(t *testing.T) {
 
 // --- the same prune at the other zones --------------------------------
 
+// cardSetPickCall records what a card-set pick's continuation was run
+// with: how many times, and the last set of picks it was handed.
+type cardSetPickCall struct {
+	ran int
+	got []uuid.UUID
+}
+
 // queueGraveyardPick puts a "choose from your graveyard" prompt up over
 // `cards`, the shape Skullwinder and the batch-38 helpers queue.
-func queueGraveyardPick(t *testing.T, g *Game, chooser uuid.UUID, source uuid.UUID, cards []uuid.UUID) (uuid.UUID, *int) {
+func queueGraveyardPick(t *testing.T, g *Game, chooser uuid.UUID, source uuid.UUID, cards []uuid.UUID) (uuid.UUID, *cardSetPickCall) {
 	t.Helper()
-	ran := 0
+	call := &cardSetPickCall{}
 	var id uuid.UUID
 	g.WithWriteLock(func() {
 		id = g.QueueChooseCardsForEffect(ChooseCardsPrompt{
@@ -301,13 +308,17 @@ func queueGraveyardPick(t *testing.T, g *Game, chooser uuid.UUID, source uuid.UU
 			Min:      1,
 			Max:      1,
 			Zone:     ZoneGraveyard,
-			Then:     func(*Game, []uuid.UUID) error { ran++; return nil },
+			Then: func(_ *Game, picked []uuid.UUID) error {
+				call.ran++
+				call.got = picked
+				return nil
+			},
 		})
 	})
 	if id == uuid.Nil {
 		t.Fatal("setup: the graveyard pick was not queued")
 	}
-	return id, &ran
+	return id, call
 }
 
 // TestAGraveyardPickIsWithdrawnWhenItsCandidatesAreExiled — the same
@@ -327,7 +338,7 @@ func TestAGraveyardPickIsWithdrawnWhenItsCandidatesAreExiled(t *testing.T) {
 		}
 	})
 
-	id, ran := queueGraveyardPick(t, g, me.ID, source, binned)
+	id, call := queueGraveyardPick(t, g, me.ID, source, binned)
 
 	g.WithWriteLock(func() {
 		if err := g.ExileCardForEffect(binned[0]); err != nil {
@@ -350,10 +361,16 @@ func TestAGraveyardPickIsWithdrawnWhenItsCandidatesAreExiled(t *testing.T) {
 	if findChoice(g, id) != nil {
 		t.Error("the prompt survives a graveyard with none of its candidates in it")
 	}
-	// A pick that is no run's leg has no continuation to settle — the
-	// departure table's existing answer for the kind, unchanged here.
-	if *ran != 0 {
-		t.Errorf("the withdrawn pick ran its continuation %d times", *ran)
+	// #1225: a pick that is no run's leg has no run to settle, but it
+	// still holds the REST OF THE CARD in its frame, and the drop runs
+	// it with nothing picked — the same closure the empty-candidate
+	// path at queue time would have run with the same argument.
+	if call.ran != 1 {
+		t.Errorf("the withdrawn pick ran its continuation %d times, want 1 — "+
+			"the rest of the card went with the question", call.ran)
+	}
+	if len(call.got) != 0 {
+		t.Errorf("the continuation was handed %v; a drop chooses nothing on the chooser's behalf", call.got)
 	}
 	assertTableIsFree(t, g)
 }

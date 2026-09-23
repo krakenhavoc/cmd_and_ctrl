@@ -258,12 +258,41 @@ func (f *optionPickFrame) runWithNoChoice(g *Game) error {
 // drop paths because the departure table has one second column, and a
 // kind settled in two places is a kind settled two ways.
 //
-// The branch is on the RUN LINK rather than on the kind (#1027). Two
-// kinds carry one today and the discard's is a PendingChoiceChooseCards
-// — the same kind Thoughtseize's revealed-hand pick uses, which is no
-// run's leg — so "is this prompt part of a run" is a question about
-// the prompt, not about its kind. A fourth verb then needs no fourth
-// case here.
+// The branch is on the PROMPT rather than on the kind (#1027). Two
+// kinds carried a run link when that rule was written and the
+// discard's is a PendingChoiceChooseCards — the same kind
+// Thoughtseize's revealed-hand pick uses, which is no run's leg — so
+// "what is waiting on this prompt" is a question about the prompt, not
+// about its kind. A fourth verb then needs no fourth case here.
+//
+// THREE SHAPES A DROPPED PROMPT CAN HAVE, in the order they are asked
+// (#1225):
+//
+//  1. It is one LEG OF A RUN. The leg settles with nothing moved and
+//     the run's continuation runs after the last of them. Asked FIRST
+//     and exclusively: a run leg's own frame is the leg's sentence and
+//     settles the run from inside itself (the discard's
+//     discardCardsLocked into opts.then), so running that frame here
+//     as well would settle the leg twice and pay the run out early.
+//  2. It carries a CARD-SET FRAME whose continuation is a plain
+//     closure — a chained pick asked from inside a resolution that is
+//     paused waiting for it, which is every mid-card choose_cards:
+//     effects.SacrificeChoice's "Torment of Hailfire repeats X times",
+//     Gluntch's counters before the second player draws, Ward's
+//     sacrifice before the spell is or is not countered. The frame
+//     runs with NOTHING PICKED, which is the outcome this payload
+//     reserves for "nobody chose" and the one every such continuation
+//     already has to handle: with no short-circuit in
+//     QueueChooseCardsForEffect, each caller wrote the empty-candidate
+//     path itself and it runs the same closure with the same empty
+//     answer. Validate is not consulted — it is documented as never
+//     being called for an empty pick, because a floor of zero has to
+//     keep "choose nothing" as an answer the engine cannot refuse.
+//  3. It carries an OPTION-PICK FRAME. NoChoiceIndex, as since #1006.
+//
+// A prompt with none of the three — a Thoughtseize-shaped pick whose
+// caller wanted nothing after it — still runs nothing, which is what
+// the nil receivers say.
 //
 // Caller must hold g.mu, and must already have taken the prompt out of
 // the queue: the continuation may queue the next link of the chain and
@@ -276,6 +305,8 @@ func (g *Game) defaultDroppedChoiceLocked(c *PendingChoice) {
 	switch {
 	case c.promptRun != uuid.Nil:
 		err = g.settleRunLegLocked(c.promptRun, c.Chooser, nil)
+	case c.chooseCardsResume != nil:
+		err = c.chooseCardsResume.runWithNoChoice(g)
 	default:
 		err = c.optionPickResume.runWithNoChoice(g)
 	}

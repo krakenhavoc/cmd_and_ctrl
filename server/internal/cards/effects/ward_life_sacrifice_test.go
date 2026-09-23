@@ -273,6 +273,51 @@ func TestSacrificeWardDeclinedCountersTheSpell(t *testing.T) {
 	}
 }
 
+// TestSacrificeWardCountersWhenItsPickIsWithdrawn — #1225, and the
+// third way a sacrifice ward can go unpaid. The caster accepted, and
+// then their last creature left the battlefield while the "which
+// creature?" prompt was open (removal in response, a state-based
+// death, an admin move). No answer the resolver would take is left, so
+// the prompt is withdrawn (#1045) — and the drop runs the pick's frame
+// with nothing picked, which is the SAME branch the guard one line
+// above takes for a caster who never had a creature: the cost is not
+// paid, so the spell is countered.
+//
+// Before #1225 the drop ran nothing at all and the spell sat on the
+// stack neither paid for nor countered — the ward silently did not
+// happen.
+func TestSacrificeWardCountersWhenItsPickIsWithdrawn(t *testing.T) {
+	g, _, opp, ripper := wardTable(t, "Vein Ripper", "Creature — Vampire Assassin", veinRipperOracle)
+	bear := b16Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2, "G")
+	blade := castAtWardedCreature(t, g, opp, ripper)
+
+	prompt := passUntilConfirmFor(t, g, opp.ID)
+	if prompt == nil {
+		t.Fatal("no ward prompt for the spell's controller")
+	}
+	if err := g.ResolveConfirm(prompt.ID, opp.ID, true); err != nil {
+		t.Fatalf("ResolveConfirm: %v", err)
+	}
+	if chooseCardsChoiceFor(g, opp.ID) == nil {
+		t.Fatal("accepting the ward queued no sacrifice pick")
+	}
+
+	g.WithWriteLock(func() {
+		if err := g.ExileCardForEffect(bear); err != nil {
+			t.Fatalf("ExileCardForEffect: %v", err)
+		}
+	})
+
+	if c := chooseCardsChoiceFor(g, opp.ID); c != nil {
+		t.Fatalf("the pick survives a board with none of its candidates on it: %+v", c)
+	}
+	passPriorityAroundTable(t, g)
+
+	if !g.Battlefield.Contains(ripper) || !opp.Graveyard.Contains(blade) {
+		t.Error("a ward whose payment could not be completed must counter the spell")
+	}
+}
+
 // A caster with no creature cannot pay: countered, no prompt. The
 // Ripper's controller having creatures does not count.
 func TestSacrificeWardCountersWithoutAPromptWhenTheCasterHasNoCreature(t *testing.T) {

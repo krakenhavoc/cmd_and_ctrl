@@ -3583,9 +3583,12 @@ func (g *Game) pruneSacrificeChoicesLocked() {
 // kind, so a prompt that is one leg of a prompted RUN settles that leg
 // with "nothing discarded" (#1016's dropDefault, ADR 0013 §5y item 5)
 // and the rest of the printed instruction still happens. A pick that
-// is no run's leg has no continuation to run, exactly as it has none
-// when its chooser leaves the game; that is the departure table's
-// existing answer for the kind and this does not widen it.
+// is no run's leg has no run to settle, but since #1225 it still runs
+// the rest of the card: its frame's continuation is called with
+// nothing picked, exactly as it is when its chooser leaves the game,
+// because a mid-card choose_cards is asked from inside a resolution
+// that is paused waiting for it and the drop must not be where the
+// card stops (Torment of Hailfire's sacrifice branch is the case).
 //
 // The bounds move with the list (setCardSetCandidates): a pick of two
 // from a hand that now holds one is CR 701.8a's "as many as you can",

@@ -1005,6 +1005,118 @@ before the pick and a different effect per seat. Neither is blocked on a
 kind any more; both are card work plus a sequencing shape, and they
 stay on their rows.
 
+**Amendment (2026-09-23, #1225): a withdrawn mid-card `choose_cards`
+runs the rest of the card. The #1045 amendment's "unwidened here" is
+repealed.**
+
+That amendment closed the wedge and then declined the second half of
+it, in one sentence: *"A pick that is no run's leg has no continuation
+to run — the table's existing answer for the kind, unwidened here."*
+It is wrong, and it is wrong about the commonest shape this kind has.
+
+**The shape it missed.** Three things can be waiting on a dropped
+prompt, and `defaultDroppedChoiceLocked` knew two of them. A RUN LINK
+(#1019 / #1027): the leg settles with nothing moved. An OPTION FRAME
+(#1006): the continuation runs with `NoChoiceIndex`. The third is a
+`choose_cards` carrying **only a `chooseCardsFrame`** — a pick chained
+from inside a resolution that is paused waiting for it, which is what
+`effects.SacrificeChoice` is and what its own doc comment says it is
+for: *"a sacrifice in the MIDDLE of an effect — Torment of Hailfire
+repeats X times, and the next repetition must not be asked until this
+one has finished."* `optionPickResume` is nil there,
+`runWithNoChoice` returns nil on a nil receiver, and the rest of the
+card never ran. **Torment of Hailfire stopped at the victim whose
+board emptied and never asked the opponents after them** — the same
+sentence the #1006 amendment to ADR 0060 wrote about the `option_pick`
+half of the very same card, one prompt further in. The floor of one is
+what makes it reachable: a zero-floor pick keeps "choose nothing" when
+its list shrinks, so `pruneCardSetChoicesLocked` leaves it standing.
+
+**The decision: the drop runs the frame with NOTHING PICKED.** One
+case added to `defaultDroppedChoiceLocked`
+(`server/internal/game/option_pick.go`), performed by
+`chooseCardsFrame.runWithNoChoice`
+(`server/internal/game/chained_choice.go`) — the sibling of
+`optionPickFrame.runWithNoChoice`, and the one place "nobody chose" is
+handed to this payload.
+
+Three reasons it is the right answer rather than a flag on the frame
+or a run wrapped around each caller, which were the two shapes #1225
+proposed:
+
+1. **The empty pick is not a new outcome.** `QueueChooseCardsForEffect`
+   deliberately has no empty-candidate short-circuit, so every caller
+   of it already wrote the "there was nothing to ask" path by hand —
+   and every one of them runs *the same closure* with *the same empty
+   answer*. `SacrificeChoice` runs `Then` immediately for a player with
+   no candidate permanent; `PutFromLibraryOntoBattlefield` and
+   `TakeFromLibraryToHand` call `finish(g, nil)`; Ward's sacrifice
+   counters the spell. The drop was the one path into those
+   continuations that did not reach them. What this fixes is a
+   card that behaves one way when the board was empty as the question
+   was asked and another way when it emptied while the question was
+   open.
+2. **`Validate` is untouched, because it was already excluded.**
+   `ChooseCardsPrompt.Validate` is documented as never being called for
+   an empty pick, since a floor of zero has to keep "choose nothing" as
+   an answer the engine cannot refuse. So there is no set rule for the
+   drop to be judged against and none to bypass.
+3. **#1027's rule survives intact: branch on the PROMPT, not on the
+   kind.** The run link is asked FIRST and exclusively, because a run
+   leg's own frame settles the run from inside itself (the discard's
+   `discardCardsLocked` → `opts.then`) and running both would settle
+   the leg twice and pay the run out before its other legs were
+   answered — `TestARunWhoseLegWasWithdrawnStillCompletes` is the guard.
+   A prompt with neither a run nor a `then` still runs nothing, which
+   is Thoughtseize's pick and is unchanged.
+
+**What changes for the catalog, swept site by site.** Twenty catalog
+`choose_cards` sites plus the engine's two. Seven move; thirteen
+cannot.
+
+- **Two cards stopped halfway and now finish** — Torment of Hailfire
+  (`effects.SacrificeChoice`; the next repetition and every later
+  victim) and Gluntch, the Bestower (the second and third players were
+  never chosen). Both are the #544 shape.
+- **Four clauses now run their remainder with nothing chosen**, which
+  is byte for byte the call their own empty-candidate path already
+  makes: `PutFromHandOntoBattlefield` (`then` with `Entered` unset),
+  `PutFromLibraryOntoBattlefield` and `TakeFromLibraryToHand` (both
+  `finish(g, nil)`), and Invasion of Tarkir (its reflexive damage
+  trigger with X = 0 revealed Dragons).
+- **One card was neither paid nor countered and now resolves the
+  "unless"** — Vein Ripper's `ward—sacrifice a creature`. A payer
+  whose last creature leaves mid-pick has not paid, so the spell is
+  countered, which is exactly the branch the queue-time guard takes
+  for a payer who had no creature to begin with. This is the one
+  behaviour change that is not simply "more of the card happens", and
+  it is CR 800.4f's shape reached through `dropDefault` rather than
+  `dropDecline`.
+- **Thirteen sites are unchanged by construction** — the ones whose
+  continuation opens `if len(picked) == 0 { return nil }` or loops
+  over the picks and so does nothing with none, and Sylvan Library,
+  whose `sylvanLibrarySettle(…, nil)` returns immediately. Sylvan
+  Library is pinned by a test of its own rather than by argument,
+  because its continuation is the one that recurses into further
+  prompts.
+
+**The prompt kinds that are NOT touched, and why the table is still
+what decides.** `untap_choice` and `entry_reveal_from_hand` carry the
+same payload (`isCardSetPickKind`) and both are `dropDiscard` rows, so
+neither reaches this action at all; `entry_reveal_from_hand` also
+carries no `then`. The three #1214 picks are always run legs and take
+case 1 unchanged. The four-table contract this section states for a
+new kind is unchanged: what moved is the meaning of ONE cell of one
+table, for one kind.
+
+**Where the departure table is printed**, and the two gates in front
+of the action, are ADR 0060's: the row is still
+`{reassign: true, onDrop: dropDefault}` and `dropDefault`'s definition
+there — *"the frame runs with the outcome the kind reserves for
+'nobody chose'"* — needed no change, because an empty pick is that
+outcome for this payload. Only the claim that this kind had no such
+outcome, made here, did.
+
 ## Out of scope (explicit deferrals)
 
 - **Treasure's sac-for-mana** is inert until S21 ships sacrifice
