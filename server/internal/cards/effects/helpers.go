@@ -494,6 +494,14 @@ func returnFirstLegalGraveyardTargetToBattlefield(g *game.Game, item *game.Stack
 // counterTheTargetSpell is the whole OnResolve of "Counter target
 // spell." — Cancel's body, named so a new card calls it rather than
 // adding another copy to that clone family.
+//
+// It is also the whole OnResolve of "Counter target spell, activated
+// ability, or triggered ability" (#1211): CounterTarget takes a STACK
+// ITEM id and has discriminated on item.Kind since S13.1, and a
+// picked ability arrives in the same TargetRef a picked spell does.
+// The name keeps the spell in it because the clause is what differs
+// between the two families and the body is not — see Disallow,
+// Voidslime, Stifle and Tale's End, which all call this.
 func counterTheTargetSpell(item *game.StackItem, ctx *Context) error {
 	if len(item.Targets) == 0 {
 		return nil

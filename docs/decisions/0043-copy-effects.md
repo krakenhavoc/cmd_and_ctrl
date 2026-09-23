@@ -679,3 +679,24 @@ on a different axis again and are still open. A copy of an ability
 whose source has left is judged against a source-less `TargetSource`
 for its re-target prompt, which is the declared limitation ADR 0072 §2
 already records for the CR 608.2b re-check.
+
+## Amendment (2026-09-23, #1211): the ability-target clause is general targeting
+
+Decision 14 above ("a chosen ability rides an ordinary
+`TargetRef{Kind: TargetCard}`") was written for the copy family, which
+was the only family that could use it. It is not a copy decision and
+it no longer lives here: **`TargetSpec.Abilities` / `AbilityOK` are
+the targeting vocabulary's**, and the whole of CR 115.4 — "counter
+target activated or triggered ability", "target spell or ability" —
+is written on them.
+
+Nothing above changes. `AbilityOnStack` is still the copy family's
+clause and still means "target activated or triggered ability"; what
+joined it is `TargetSpellOrAbility`, a spec that sets `Zones:
+{ZoneStack}` **and** `Abilities: true` so one clause enumerates both
+halves of the stack, and a `StackItemPredicate` vocabulary that
+narrows a spell and an ability with the same function.
+
+The canonical statement is now
+[ADR 0019's 2026-09-23 amendment](0019-structured-targeting.md#amendment-2026-09-23-1211-targeting-an-ability-on-the-stack-cr-1154);
+read this section as the copy family's use of it.

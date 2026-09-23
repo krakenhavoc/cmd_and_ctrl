@@ -31,14 +31,27 @@ import type { CounterPayment } from "./counterCost";
 //   "player"      — seated player only
 //   "creature"    — battlefield creature only
 //   "stack_spell" — a spell currently on the stack
+//   "stack_ability" — an activated or triggered ability on the stack
+//                     (Stifle, Strionic Resonator) — #1211
+//   "stack_item"  — either of those (Disallow, Deflecting Swat,
+//                   Bolt Bend, Tale's End) — #1211
 //   "card_in_graveyard" — a card in any graveyard (Regrowth, Eternal
 //                         Witness)
+//
+// The three stack modes differ only in the sentence the banner
+// writes. They light the same surface (the stack overlay, which draws
+// spells and abilities in one list) and obey the same legal set — an
+// ability is an ordinary card-kind ref carrying its STACK ITEM's id,
+// so nothing downstream had to learn a new shape. A picker that read
+// the mode for legality would be reading a hint as a rule.
 export type TargetingMode =
   | "any"
   | "player"
   | "creature"
   | "permanent"
   | "stack_spell"
+  | "stack_ability"
+  | "stack_item"
   | "card_in_graveyard";
 
 // CastChoices bundles every announce-time decision collected before
@@ -846,8 +859,40 @@ export function isTargetingCreature(mode: TargetingMode): boolean {
   return mode === "any" || mode === "creature" || mode === "permanent";
 }
 
+// opensTargetPicker answers the cast flow's one question about a
+// card's `target_mode`: does clicking this card open the picker, or
+// does it fire cast_spell straight away?
+//
+// An ALLOWLIST, and the typed narrowing is the point: a mode the
+// client does not recognise falls through to an immediate cast with
+// no targets, which the server refuses with nothing on screen to
+// explain it. That is exactly what happened to every "counter target
+// activated or triggered ability" card before #1211 added
+// `stack_ability` and `stack_item` here — so the list lives next to
+// the type that declares the vocabulary, where adding a mode and
+// forgetting this is one file rather than two.
+export function opensTargetPicker(mode: string | undefined | null): mode is TargetingMode {
+  switch (mode) {
+    case "any":
+    case "player":
+    case "creature":
+    case "permanent":
+    case "stack_spell":
+    case "stack_ability":
+    case "stack_item":
+    case "card_in_graveyard":
+      return true;
+    default:
+      return false;
+  }
+}
+
 export function isTargetingStack(mode: TargetingMode): boolean {
-  return mode === "stack_spell";
+  // #1211: all three stack modes route to the same surface. This is
+  // the FREE-FORM fallback ("no server legal set, so guess from the
+  // mode"); a structured clause never reaches it, which is why the
+  // widening cannot make an illegal target clickable.
+  return mode === "stack_spell" || mode === "stack_ability" || mode === "stack_item";
 }
 
 export function isTargetingGraveyard(mode: TargetingMode): boolean {

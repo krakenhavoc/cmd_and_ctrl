@@ -41,6 +41,13 @@
         return "a permanent";
       case "stack_spell":
         return "a spell on the stack";
+      // #1211, CR 115.4. An ability on the stack is drawn in the same
+      // overlay row a spell is, so the sentence is the only thing that
+      // tells a player which half of the stack they may click.
+      case "stack_ability":
+        return "an ability on the stack";
+      case "stack_item":
+        return "a spell or ability on the stack";
       case "card_in_graveyard":
         return "a card in a graveyard";
       default:

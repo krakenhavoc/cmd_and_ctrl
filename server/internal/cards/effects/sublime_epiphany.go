@@ -19,30 +19,36 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // order that decides whether the token copy sees the creature the
 // bounce is about to return.
 //
-// Declared simplification, weaker than printed: the second bullet,
-// "counter target activated or triggered ability", is NOT offered.
-// An ability on the stack is a StackMeta item rather than a card in
-// the stack zone, and nothing in the targeting vocabulary can name
-// one — a target clause walks ZONES. Offering the bullet and then
-// failing to find anything to point at would be a mode that can
-// never be taken; leaving it out is four bullets instead of five,
-// and never a line the printed card forbids.
+// The SECOND BULLET is the card the targeting seam was measured by:
+// it shipped with four bullets because "counter target activated or
+// triggered ability" could not be written, and #1211 gives it the
+// fifth. The bullet is `AbilityOnStack` plus the same CounterTarget
+// the first bullet uses — the primitive discriminates on
+// StackItem.Kind, so the two bullets differ only in their clause.
+//
+// The two counter bullets are NOT one bullet with a wider clause,
+// even though `TargetSpellOrAbility` could express that in one line.
+// CR 700.2 makes each bullet an independent choice with its own
+// target, so "choose one or more" lets a player take BOTH — counter a
+// spell and an ability with one Epiphany — and a merged bullet would
+// silently take that away. Printed structure wins over expressible
+// structure.
+//
+// An unfillable bullet is not offered (#764), so the second bullet
+// simply does not appear when no ability is on the stack, which is
+// the ordinary case and needs nothing of its own.
 func init() {
 	Register(Spec{
 		OracleID:     "56148ae7-a9df-4771-8d53-d9ffb815c884",
 		Name:         "Sublime Epiphany",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The \"counter target activated or triggered ability\" mode isn't offered — abilities on the stack can't be targeted yet."},
+		Completeness: CompletenessFull,
 		Modes: ChooseOneOrMore(
 			ModeDoing("Counter target spell.",
 				TargetSpell("target spell"),
-				func(item *game.StackItem, ctx *Context, occ int) error {
-					t, ok := ModeTarget(ctx, occ)
-					if !ok {
-						return nil
-					}
-					return CounterTarget{StackID: t.ID}.Apply(ctx)
-				}),
+				CounterTheModesTarget),
+			ModeDoing("Counter target activated or triggered ability.",
+				AbilityOnStack("target activated or triggered ability"),
+				CounterTheModesTarget),
 			ModeDoing("Return target nonland permanent to its owner's hand.",
 				TargetPermanent("target nonland permanent", Nonland()),
 				BounceTheModesTarget),

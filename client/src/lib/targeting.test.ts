@@ -21,6 +21,8 @@ import {
   togglePick,
   isLegalCardTarget,
   isLegalPlayerTarget,
+  isTargetingStack,
+  opensTargetPicker,
   legalTargetCount,
   targeting,
 } from "./targeting";
@@ -528,5 +530,82 @@ describe("retarget prompt — #1196", () => {
     expect(canConfirm(t)).toBe(false);
     expect(canConfirm(togglePick(t, { kind: "player", id: "p1" }))).toBe(true);
     targeting.set(null);
+  });
+});
+
+describe("targeting an ability on the stack — #1211, CR 115.4", () => {
+  it("the three stack modes all route to the stack surface", () => {
+    for (const mode of ["stack_spell", "stack_ability", "stack_item"] as const) {
+      expect(isTargetingStack(mode)).toBe(true);
+    }
+    expect(isTargetingStack("creature")).toBe(false);
+    expect(isTargetingStack("player")).toBe(false);
+  });
+
+  it("the cast flow opens a picker for every declared mode", () => {
+    // The allowlist the Board reads. A mode missing from it fires
+    // cast_spell with no targets and the server refuses it, which is
+    // what every ability-targeting card would have done.
+    for (const mode of [
+      "any",
+      "player",
+      "creature",
+      "permanent",
+      "stack_spell",
+      "stack_ability",
+      "stack_item",
+      "card_in_graveyard",
+    ] as const) {
+      expect(opensTargetPicker(mode)).toBe(true);
+    }
+    expect(opensTargetPicker(undefined)).toBe(false);
+    expect(opensTargetPicker("")).toBe(false);
+    expect(opensTargetPicker("something_new")).toBe(false);
+  });
+
+  it("a picked ability is an ordinary card-kind ref carrying the stack item's id", () => {
+    // The server's legal set for "counter target activated or
+    // triggered ability" holds a STACK ITEM id, which the overlay
+    // matches against `stack_items[i].id` exactly as it matches a
+    // spell's instance id. Nothing on this path knows the difference.
+    begin(
+      card({
+        instance_id: "stifle",
+        name: "Stifle",
+        legal_targets: { players: [], cards: ["item-1"] },
+      }),
+      "stack_ability",
+    );
+    const t = get(targeting)!;
+    expect(t.mode).toBe("stack_ability");
+    expect(isLegalCardTarget(t, "item-1")).toBe(true);
+    expect(isLegalCardTarget(t, "some-spell")).toBe(false);
+    expect(isLegalPlayerTarget(t, "p1")).toBe(false);
+    cancel();
+  });
+
+  it("a spell-or-ability clause offers both halves of the stack at once", () => {
+    begin(
+      card({
+        instance_id: "disallow",
+        name: "Disallow",
+        legal_targets: { players: [], cards: ["their-bolt", "item-1"] },
+      }),
+      "stack_item",
+    );
+    const t = get(targeting)!;
+    expect(isLegalCardTarget(t, "their-bolt")).toBe(true);
+    expect(isLegalCardTarget(t, "item-1")).toBe(true);
+    expect(legalTargetCount(t)).toBe(2);
+    cancel();
+  });
+
+  it("free-form: a stack mode with no legal set still lights the stack", () => {
+    begin(card({ instance_id: "stifle", name: "Stifle" }), "stack_ability");
+    const t = get(targeting)!;
+    expect(t.legal).toBeUndefined();
+    expect(isLegalCardTarget(t, "item-1")).toBe(true);
+    expect(isLegalPlayerTarget(t, "p1")).toBe(false);
+    cancel();
   });
 });

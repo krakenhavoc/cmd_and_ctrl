@@ -505,7 +505,12 @@ func TestB16LeadenMyrTapsForBlackOnceItCanTap(t *testing.T) {
 
 // --- the spells ----------------------------------------------------
 
-func TestB16DisallowCountersASpellAndDeclaresTheAbilityGap(t *testing.T) {
+// TestB16DisallowCountersASpell — the spell third of the printed
+// three-way clause. The ability thirds are in
+// target_ability_cards_test.go, which is where the #1211 seam is
+// proved; this test asserted the gap was DECLARED until that landed,
+// and now asserts the card is whole.
+func TestB16DisallowCountersASpell(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	bolt := batch01OpponentCasts(t, g, opp, "Lightning Bolt", lightningBoltOracle, "", b16TargetPlayer(me.ID))
@@ -518,8 +523,8 @@ func TestB16DisallowCountersASpellAndDeclaresTheAbilityGap(t *testing.T) {
 		t.Errorf("life = %d, the countered Bolt must not resolve", me.Life)
 	}
 	spec, _ := Lookup(b16DisallowOracle)
-	if spec.Completeness != CompletenessCaveats {
-		t.Error("the spells-only gap must be declared")
+	if spec.Completeness != CompletenessFull {
+		t.Errorf("#1211 closed the ability gap: Disallow is %q", spec.Completeness)
 	}
 }
 

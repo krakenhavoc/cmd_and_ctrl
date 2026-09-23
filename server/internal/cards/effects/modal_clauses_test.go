@@ -186,9 +186,12 @@ func TestSublimeEpiphanyTakesOneThroughN(t *testing.T) {
 		t.Fatalf("choose one or more: %+v", spec.Modes)
 	}
 
-	// One bullet.
+	// One bullet. #1211 gave the card its printed SECOND bullet
+	// ("counter target activated or triggered ability"), so the bounce
+	// is option 2 and the token copy 3 — the indexes are the printed
+	// order and move when a missing bullet is restored.
 	castModal(t, g, "Sublime Epiphany", "Instant", sublimeEpiphanyOracle,
-		[]int{1}, []game.TargetRef{modeRef(game.TargetCard, theirs, 0, 0)})
+		[]int{2}, []game.TargetRef{modeRef(game.TargetCard, theirs, 0, 0)})
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(theirs) {
 		t.Error("one bullet: the Elk was bounced")
@@ -197,7 +200,7 @@ func TestSublimeEpiphanyTakesOneThroughN(t *testing.T) {
 	// Three bullets, three target groups.
 	before := len(opp.Hand.Cards)
 	castModal(t, g, "Sublime Epiphany", "Instant", sublimeEpiphanyOracle,
-		[]int{1, 2, 3},
+		[]int{2, 3, 4},
 		[]game.TargetRef{
 			modeRef(game.TargetCard, mine, 0, 0),
 			modeRef(game.TargetCard, mine, 1, 0),
