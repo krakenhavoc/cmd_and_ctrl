@@ -297,7 +297,7 @@ func TestRanarCountsACardForetoldFromMyHand(t *testing.T) {
 // (the card's second caveat): two foretells with nothing resolving
 // between them are one event batch, so OncePerBatch sees one
 // occurrence. The rules say two. When special actions open their own
-// batch this flips to 2 — update the caveat with it.
+// batch (#1341) this flips to 2 — update the caveat with it.
 func TestRanarTwoForetellsInOneWindowMakeOneSpirit(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]

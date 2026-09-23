@@ -3458,7 +3458,8 @@ owner takes right after their own, in the same round, waits one round.
 That is weaker, never stronger.
 
 Not built: the plot KEYWORD's special action (CR 702.170a, "exile this
-card from your hand"). Aven Interrupter does not need it.
+card from your hand"). Aven Interrupter does not need it; it is
+[#1342](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1342).
 
 #### 2. The gap: nothing said what moved a card
 
@@ -3526,7 +3527,7 @@ unchanged.
   resolving between them are one batch, so a `OncePerBatch` trigger
   counts one occurrence where CR 603.2c counts two. Ranar says so in a
   caveat, and `TestRanarTwoForetellsInOneWindowMakeOneSpirit` pins it.
-  Filed separately.
+  Filed as [#1341](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1341).
 - **Ranar's foretell discount** waits on
   [#1319](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1319).
 - **The leaving-player cleanup** moves spells with a raw `MoveCard` and

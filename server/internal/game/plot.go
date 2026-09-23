@@ -15,7 +15,7 @@ import "github.com/google/uuid"
 // plotted (Aven Interrupter's "exile target spell. It becomes
 // plotted."). The KEYWORD half — the plot special action that exiles a
 // card with plot from its owner's hand (CR 702.170a) — is not built;
-// its first card files against #1318's follow-up.
+// it is #1342.
 //
 // A plotted card is nothing but a cast permission, which is why this
 // is cheap: ADR 0066's CastPermission already carries every clause.

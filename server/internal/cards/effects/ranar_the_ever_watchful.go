@@ -48,7 +48,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     are one event batch today (event_batch.go: only a resolution and
 //     a step change open a batch), so they make one Spirit rather than
 //     two. Weaker than printed. The batch boundary for special actions
-//     is its own issue.
+//     is #1341.
 //   - A destruction that a replacement turns into an exile (Rest in
 //     Peace) carries no cause, so it does not count as "a spell you
 //     control exiled it". Weaker than printed.
