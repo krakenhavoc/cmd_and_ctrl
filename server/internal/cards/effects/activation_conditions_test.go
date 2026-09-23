@@ -478,7 +478,7 @@ func TestIdolOfOblivionDrawsAfterATokenThisTurn(t *testing.T) {
 	advanceToMain(t, g)
 
 	acRefused(t, g, me.ID, idol, 0, game.ActivateAbilityParams{})
-	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("1/1 colorless Soldier"), 1) })
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("1/1 white Soldier"), 1) })
 	handBefore := me.Hand.Size()
 	b16Activate(t, g, me.ID, idol, 0, game.ActivateAbilityParams{})
 	if me.Hand.Size() != handBefore+1 {

@@ -84,6 +84,43 @@ type BecomeCreatureUntilEOT struct {
 }
 
 func (b BecomeCreatureUntilEOT) Apply(ctx *Context) error {
+	return b.applyFor(ctx, ctx.Game.UntilEndOfTurnDuration())
+}
+
+// BecomeArtifactCreature is the same animation with NO duration
+// printed (CR 611.2a) — Rangers' Refueler's "Exhaust — {4}: This
+// Vehicle becomes an artifact creature", as against crew's
+// until-end-of-turn one (#1184).
+//
+// A separate type rather than a flag on the one above, because the
+// duration is the whole difference between the two printed
+// sentences and a card file should say which it means in its type
+// name rather than in a bool. The effect is still pinned to
+// (instance, battlefield-entry stamp): CR 400.7 says a Vehicle
+// flickered in response comes back as a new object and un-animated,
+// which is the same rule the crew version obeys.
+type BecomeArtifactCreature struct {
+	Target       uuid.UUID
+	Types        []string
+	Subtypes     []string
+	SetPower     int
+	SetToughness int
+	Label        string
+}
+
+func (b BecomeArtifactCreature) Apply(ctx *Context) error {
+	return BecomeCreatureUntilEOT{
+		Target:       b.Target,
+		Types:        b.Types,
+		Subtypes:     b.Subtypes,
+		SetPower:     b.SetPower,
+		SetToughness: b.SetToughness,
+		Label:        b.Label,
+	}.applyFor(ctx, game.IndefiniteDuration())
+}
+
+// applyFor is the shared body: one registration, two durations.
+func (b BecomeCreatureUntilEOT) applyFor(ctx *Context, duration game.Duration) error {
 	target := b.Target
 	if target == uuid.Nil {
 		target = ctx.Source()
@@ -134,7 +171,7 @@ func (b BecomeCreatureUntilEOT) Apply(ctx *Context) error {
 				}
 			}
 		},
-	}, ctx.Source(), label, ctx.Game.UntilEndOfTurnDuration())
+	}, ctx.Source(), label, duration)
 
 	if b.SetPower != 0 || b.SetToughness != 0 {
 		power, toughness := b.SetPower, b.SetToughness
@@ -146,7 +183,7 @@ func (b BecomeCreatureUntilEOT) Apply(ctx *Context) error {
 				c.Power = power
 				c.Toughness = toughness
 			},
-		}, ctx.Source(), label+" (base P/T)", ctx.Game.UntilEndOfTurnDuration())
+		}, ctx.Source(), label+" (base P/T)", duration)
 	}
 	return nil
 }

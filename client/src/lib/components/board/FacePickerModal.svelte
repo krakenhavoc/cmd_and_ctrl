@@ -20,7 +20,8 @@
   import type { CardView } from "../../protocol";
   import { cardImageURL } from "../../cardImage";
   import { cardArt } from "../../cardArt";
-  import { LAYOUT_ADVENTURE } from "../../faces";
+  import { LAYOUT_ADVENTURE, castableFaceIndex } from "../../faces";
+  import { hasSatisfiableTargets } from "../../timing";
   import ModalLayer from "../ModalLayer.svelte";
 
   interface Props {
@@ -37,16 +38,31 @@
 
   const faces = $derived(card?.faces ?? []);
 
-  // Default to the front face: it is the half the card is named
-  // after, it is what a mis-click should land on, and it matches the
-  // server's default for a cast that arrives with no face at all.
+  // #1173 / #1168: default to the face this cast can actually make,
+  // not always the front. A printed graveyard permission on one half
+  // only (`castable_here`) is the stronger signal — it names a zone
+  // where casting the OTHER half is a rejected click, not a live
+  // choice — so it wins when present; a hand or command-zone cast
+  // never carries it (it is never stamped there at all), so this
+  // falls back to a face whose own target clause isn't stuck on
+  // nothing to point at. Falls back to the front face when nothing
+  // distinguishes them, which is every ordinary case: it is the half
+  // the card is named after, it is what a mis-click should land on,
+  // and it matches the server's default for a cast that arrives with
+  // no face at all.
+  function preferredFace(c: CardView): number {
+    return castableFaceIndex(
+      c,
+      (f) => f.castable_here === true || (!f.cant_cast && hasSatisfiableTargets(f.legal_targets)),
+    );
+  }
   let chosen = $state(0);
   let lastCardID: string | null = null;
   $effect(() => {
     const id = card?.instance_id ?? null;
     if (id !== lastCardID) {
       lastCardID = id;
-      chosen = 0;
+      chosen = card ? preferredFace(card) : 0;
     }
   });
 

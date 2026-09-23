@@ -167,9 +167,12 @@ var regenerationShieldReplacement = ReplacementEffect{
 // time a CR 616 pause resumes. A nil LKI is an unknown source and
 // prevents nothing, which errs weaker.
 //
-// PLAYERS ARE NOT COVERED. ev.DamageTarget is a card ID or a player
-// ID and this looks only on the battlefield: a player with protection
-// (Teferi's Protection) has no ability slice to read. ADR 0072 §10.
+// PLAYERS ARE COVERED since #1197. ev.DamageTarget is a card ID or a
+// player ID, and the branch that used to say "a player has no ability
+// slice to read" now asks the player-side reader instead
+// (player_statics.go). CR 702.16e names a permanent and a player in
+// one sentence, so this is one rule with two stores rather than two
+// rules. ADR 0072's 2026-09-22 amendment.
 //
 // CR 615.12 ("this damage can't be prevented") is not modelled
 // anywhere in this engine, so it does not stop this either — the
@@ -211,10 +214,45 @@ func (g *Game) protectionPreventsDamageLocked(ev *ReplacementEvent) bool {
 	}
 	idx := findCardOnBattlefield(g, ev.DamageTarget)
 	if idx < 0 {
-		// Not a permanent: a player, or a permanent that has already
-		// left. Player protection has no home yet (ADR 0072 §10).
-		return false
+		// Not a permanent: a PLAYER, or a permanent that has already
+		// left. CR 702.16e names both in one sentence — "damage that
+		// would be dealt … to a permanent or player with protection
+		// from that quality is prevented" — so the player branch is
+		// this same rule and not a second one (#1197, ADR 0072's
+		// 2026-09-22 amendment).
+		//
+		// ONE BRANCH COVERS BOTH KINDS OF DAMAGE. Every damage entry
+		// point in the engine — combat, trample overflow, a spell, an
+		// ability — routes through damageThroughReplacementsLocked,
+		// which is where SourceLKI is stamped. A player with
+		// protection from everything is therefore shielded from a
+		// Lightning Bolt and from an attacking 8/8 by the same four
+		// lines.
+		//
+		// A player who is not a seat (a stale ref, a permanent that
+		// left) finds no player and prevents nothing, which errs
+		// weaker.
+		return g.playerProtectionPreventsDamageLocked(ev)
 	}
 	c := &g.Battlefield.Cards[idx]
 	return HasProtection(c) && ProtectedFrom(c, ev.SourceLKI)
+}
+
+// playerProtectionPreventsDamageLocked is the player half of
+// CR 702.16e: is the damage target a seat with protection from the
+// source this event's last-known information describes?
+//
+// Split out rather than inlined because the two halves read different
+// stores — the battlefield for a permanent's abilities, the derived +
+// granted reader for a player's — and the branch above is already the
+// one place that tells them apart.
+//
+// Caller must hold g.mu.
+func (g *Game) playerProtectionPreventsDamageLocked(ev *ReplacementEvent) bool {
+	p := g.playerByIDLocked(ev.DamageTarget)
+	if p == nil {
+		return false
+	}
+	_, prevented := g.PlayerProtectedFromLocked(p, ev.SourceLKI)
+	return prevented
 }

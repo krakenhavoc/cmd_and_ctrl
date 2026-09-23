@@ -1169,3 +1169,730 @@ is already wired end to end.
 - **A counter cost as an ADDITIONAL cost to cast a spell.** The component
   lives on `AbilityCost`; `AdditionalCost` has its own shape.
 - **A prohibition to refuse against.** §23.
+
+## Addendum (2026-09-22): exhaust, and the activation tally (#1181)
+
+**Status:** Accepted · 2026-09-22 · tracked on
+[#1181](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1181). This
+status covers this section only; every decision above stays accepted
+and unchanged.
+
+### Context
+
+Exhaust is an activated-ability modifier printed on 41 cards across
+`dft`, `tla`, `tle`, `fra`, `ytdm` and `yecl`:
+
+> **Exhaust — {4}: Earthbend 4.** *(Activate each exhaust ability only
+> once.)*
+
+The engine had a shape for the ability and none for the "only once".
+Two things already on `Game` look as though they should answer it and
+neither does:
+
+- `ActivatedAbilityShape.Condition` (the #743 addendum above) is the
+  right GATE and the wrong question. A condition is a predicate over
+  the board; "have I already done this" is a fact about the past, and
+  nothing recorded it.
+- `TurnTally` (#586, `game/turn_tally.go`) counts what a source's
+  abilities **resolved** or **triggered** this turn. Both halves are
+  wrong for exhaust. An exhaust ability countered on the stack is
+  still spent, so the count has to be of ANNOUNCEMENTS; and exhaust
+  never refreshes, while `TurnTally` is emptied on every turn advance
+  by construction.
+
+The seam doc's [Per-source activations-this-turn
+count](../engine-seams.md) row (Quirion Ranger, Wirewood Symbiote,
+boast) wants the same missing number in a different scope. That is why
+this is one record and not two.
+
+### Decision 1: one record, `Game.Activations`, with two scopes
+
+`game/activation_tally.go`:
+
+```go
+type ActivationTally struct {
+    Ever map[string]int `json:"ever,omitempty"` // whole game, never reset
+    Turn map[string]int `json:"turn,omitempty"` // emptied on the turn advance
+}
+```
+
+Both maps are keyed by `ObjectTallyKey(source, Card.ObjectEpoch,
+label)` — the key `ResolvedThisTurn` and `TriggeredThisTurn` already
+use. `Ever` is what exhaust reads (`ActivatedThisGame`); `Turn` is
+what "Activate only once each turn" and boast will read
+(`ActivatedThisTurn`) when their cards are written, and it is here now
+because the two are one write at one call site.
+
+Written in ONE place: `ActivateCatalogAbility`, beside
+`notePlayerActivationLocked`, at the announce. Read in three, all
+through one function — `Game.AbilityExhausted(source, shape)`.
+
+**Mana abilities are deliberately not counted.** They take the other
+entry point (`ActivateManaAbility`, CR 605.3a — no stack, no
+priority), so `effects.ManaAbility` carries no `Exhaust` field and the
+combination is unspellable rather than silently ignored. One printed
+card wants it — **Loot, the Pathfinder**'s "Exhaust — {G}, {T}: Add
+three mana of any one color" — and is not in the catalog for that
+reason.
+
+### Decision 2: the key is the object and the ability's LABEL
+
+Per ABILITY, because a card may print three exhaust abilities (Loot,
+the Pathfinder) and each is activatable once; per OBJECT, because
+CR 400.7 says a permanent that changed zones is a new object with no
+memory of its previous existence.
+
+The label rather than the ability's index: the index is a position in
+`ActivatedAbilitiesForCard`'s FILTERED list, and an
+[ADR 0071](0071-designations-that-switch-abilities-on.md) designation
+switching an ability on renumbers everything behind it. A label is
+what the card printed. `effects.Register` refuses an exhaust ability
+with a blank label, two exhaust abilities on one card sharing a label,
+and a label that prints "Exhaust" without the bit (or the bit without
+the word) — all at boot.
+
+Three printed consequences fall out of the key rather than being
+coded:
+
+| board | answer | why |
+| --- | --- | --- |
+| flicker the permanent | its exhausts are available again | exile and return is two epoch bumps |
+| phase it out | they are not | phasing is not a zone change (CR 702.26d) and does not bump the epoch — built in #1199, [ADR 0084](0084-phasing.md) |
+| copy it | the copy has its own | a new instance is a new key (CR 707.2: what a permanent has done is not copiable) |
+
+Phasing is not modelled in this engine. The rule the day it is: **a
+phase-out does not bump `Card.ObjectEpoch`.**
+
+Nothing is deleted at the battlefield exit, for the reason
+`battlefield_exit.go` already gives about `TurnTally`'s per-ability
+counts: the epoch IS the forgetting, so the old object's entries are
+unreachable rather than absent.
+
+### Decision 3: the card side is one bit
+
+`ActivatedAbilityShape.Exhaust bool` / `effects.ActivatedAbility.Exhaust`,
+carried through `activatedShapes`. No per-card logic, no per-card
+condition closure, exactly as `Cycling` is one bit.
+
+It is **not** `Condition` and **not** `ActiveWhen`:
+
+- a `Condition` is CR 602.1b and may be true again tomorrow; the view
+  says `condition_unmet` and the client says "activation condition not
+  met";
+- an `ActiveWhen` designation means the ability is not on the
+  permanent at all, so it is absent from `ActivatedAbilitiesForCard`;
+- an exhausted ability is still printed and still shown, greyed, with
+  a different reason — it is never available again for this object.
+
+A card that prints both sets both. **Bitter Work** ("Exhaust — {4}:
+Earthbend 4. Activate only during your turn.") is the card, and the
+order in `ActivateCatalogAbility` is timing → exhaust → condition, so
+a second activation on your own turn is refused as exhausted rather
+than as badly timed.
+
+### Decision 4: one reader, three refusals
+
+`Game.AbilityExhausted` is read by:
+
+1. `ActivateCatalogAbility` — refuses with `ErrAbilityExhausted`,
+   after the timing check and before X, targets and every cost, so
+   nothing is paid;
+2. `legal.activatedMoves` — does not enumerate the move;
+3. `protocol.viewOfActivatedAbilities` — stamps `exhausted` on
+   `ActivatedAbilityView`, and the client greys the row with
+   "already activated (exhaust)".
+
+That is #544's rule expressed as a property of there being one reader
+rather than three copies of a rule that agree today.
+
+`ErrAbilityExhausted` is its own error and `exhausted` its own wire
+flag, both because the recovery differs: a condition can hold again on
+the next turn, an exhaust only if the permanent becomes a new object.
+
+### Consequences
+
+- `Game.Activations` is classified `carried` in the snapshot plan
+  (#1020's `snapshot_drift_test.go`), so the round-trip property test
+  enforces it. It has to be: "have I used this yet" is game state a
+  player can lose a game over, and a restore that dropped it would
+  hand every exhaust ability on the board back.
+- It rewinds with `Clone` / `RestoreFrom` for the mirror reason — an
+  undo that kept the activation would take an ability away for the
+  rest of the game on the strength of something that no longer
+  happened.
+- `Ever` is never flushed, so it grows by one entry per ability ever
+  activated. That is the cost of "for the whole game" and it is
+  bounded by the length of the game.
+
+### Cards
+
+**Prowcatcher Specialist** (the keyword and nothing else),
+**Greenbelt Guardian** (an exhaust ability beside a repeatable one —
+the per-ability proof on a printed card), **Bitter Work** (exhaust and
+a printed condition, over earthbend) and **Ba Sing Se** (an earthbend
+activation that is deliberately NOT exhaust: it prints "Activate only
+as a sorcery" and repeats every turn). All four `full`.
+
+### Still out of scope
+
+- **The mana-ability half.** ~~([#1183](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1183))~~ **Closed** — see the note of 2026-09-22 below.
+- **Cards that read the record from outside** ([#1184](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1184)). Rangers' Refueler and
+  Afterburner Expert ("Whenever you activate an exhaust ability, …")
+  want an event or a watch, not this map; Elvish Refueler ("you may
+  activate exhaust abilities as though they haven't been activated")
+  wants a permission that overrides the gate; Boom Scholar ("Exhaust
+  abilities of other permanents you control cost {2} less") wants a
+  `CostModifier` that can see the bit. None is built.
+- **The per-turn row itself.** `ActivatedThisTurn` exists and has no
+  reader: Quirion Ranger, Wirewood Symbiote, Varragoth, Broadside
+  Bombardiers and boast are one `Condition` each away and are not in
+  this PR.
+- **Avatar Kuruk**'s "Exhaust — Waterbend {20}: Take an extra turn
+  after this one" still waits on extra turns (#753) and on the
+  waterbend cost, neither of which is this seam.
+
+## Note (2026-09-22, #1183): the mana half, and the two write sites
+
+**Status:** Accepted · 2026-09-22 · tracked on
+[#1183](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1183). This
+note closes the first bullet of "Still out of scope" above; every
+decision in the addendum stays accepted and unchanged.
+
+### Context
+
+Decision 1 above says mana abilities are deliberately not counted:
+they take the other entry point (`ActivateManaAbility`, CR 605.3a — no
+stack, no priority, no announcement to hang a record on), so
+`effects.ManaAbility` carried no `Exhaust` field and the combination
+was **unspellable** rather than silently ignored. One printed card
+wants it, and it is a Commander card people play:
+
+> **Loot, the Pathfinder** — `{2}{G}{U}{R}`, Legendary Creature —
+> Beast Noble, 2/4
+> Double strike, vigilance, haste
+> **Exhaust — {G}, {T}: Add three mana of any one color.**
+> Exhaust — {U}, {T}: Draw three cards.
+> Exhaust — {R}, {T}: Loot deals 3 damage to any target.
+
+It is also the printed example Decision 2 is shaped for — three
+exhaust abilities on one card, each activatable once — so it is the
+card most worth reaching.
+
+### Decision 1: the card side is the same bit, twice
+
+`ManaAbilityShape.Exhaust` / `effects.ManaAbility.Exhaust`, carried
+through `buildDef`'s mana projection. No new record, no new key, no
+per-card logic — the twin of `ActivatedAbilityShape.Exhaust`.
+
+The PREDICATE is one function and the two public readers are thin:
+
+```go
+func (g *Game) AbilityExhausted(source uuid.UUID, ab ActivatedAbilityShape) bool
+func (g *Game) ManaAbilityExhausted(source uuid.UUID, ab ManaAbilityShape) bool
+// both -> g.exhaustedLocked(source, ab.Exhaust, ab.Label)
+```
+
+Two entry points rather than one generic one because the two ability
+kinds are two structs everywhere else in the engine; what must not
+drift is the rule, and the rule is written once.
+
+`effects.Register`'s boot checks now run over **both** ability lists
+with **one** `seen` set. That shared set is the point: a mana ability
+and an activated ability on the same card write to the same key space
+on the same object, so two exhaust abilities that shared a label
+across the kinds would share one use, and two per-list sets would not
+have caught it.
+
+### Decision 2: TWO write sites, because the auto-tapper spends abilities
+
+The CR 602 path has one write site (`ActivateCatalogAbility`). The
+mana path has two, and this is the whole reason #1183 is its own issue
+rather than a line in #1181:
+
+1. **`ActivateManaAbility`** — the hand click. The key is taken before
+   anything is validated or paid (a Lotus Petal-shaped sacrifice cost
+   ends the object and carries `Card.ObjectEpoch` with it), the gate
+   is read from it immediately, and the record is written at the point
+   every gate has passed and the first payment is about to be made.
+   CR 605.3a makes the activation one indivisible step with no
+   priority window inside it, so there is no later "announcement
+   finished" to hang the write on — and an activation that begins
+   paying has happened. That is #1181's "an exhaust ability countered
+   on the stack is still spent", spelled for a path with no stack.
+2. **`materializePlanLocked`** — the AUTO-TAPPER's executor, which
+   taps a permanent and mints its mana **directly** rather than
+   routing through `ActivateManaAbility`. A plan that spent an exhaust
+   ability without recording it would hand the player the ability
+   straight back.
+
+Both writes are **unconditional**, exactly as the CR 602 one is:
+`Ever` is what exhaust reads and `Turn` is the per-turn count the
+"Activate only once each turn" cards will read, and both are one write
+at one call site.
+
+### Decision 3: five readers, and the planner is one of them
+
+`Game.ManaAbilityExhausted` is read by:
+
+1. `ActivateManaAbility` — refuses with `ErrAbilityExhausted` before
+   any cost is validated, so a second click taps nothing;
+2. `legal.manaMoves` — does not enumerate the move;
+3. `protocol`'s `ManaAbilityView` — stamps `exhausted`, under the SAME
+   wire name the activated view uses, so the client's row predicate is
+   structural and `ABILITY_EXHAUSTED` needed no sibling string;
+4. the **auto-tapper**, both halves, through the one picker the
+   planner (`gatherTapSources`) and the executor
+   (`materializePlanLocked`) share. `autoTapAbilityFor` became a
+   method for this: one of its exclusions is now a fact about the game
+   rather than about the ability shape. Putting it inside the picker
+   rather than beside the sickness and gate checks at the two call
+   sites is deliberate — a card whose FIRST mana ability is a spent
+   exhaust still auto-taps the second, which a per-source check
+   outside the picker would have got wrong;
+5. `ProducibleManaLocked` — CR 106.7's "could produce".
+
+### Decision 4: CR 106.7 answers no, and that is a declared narrowing
+
+`producible_mana.go`'s own docblock says costs and timing are not
+asked about: a tapped Island still offers `{U}`, a Temple of the False
+God its controller cannot activate still offers `{C}`, a false
+`Condition` is irrelevant. Read strictly, "Activate each exhaust
+ability only once" is an activation restriction of that same family,
+so CR 106.7 would still count a spent exhaust ability.
+
+**It answers no anyway**, and the reason is the direction of the
+error. The readers of CR 106.7 are Exotic Orchard, Reflecting Pool and
+Fellwar Stone, and their answers price casts: a Pool deriving a colour
+from a Loot whose exhaust is already gone is a colour the auto-tapper
+cannot actually produce, and the executor would tap the Pool for
+nothing on the way to a cast it cannot pay. Answering no is one colour
+short — the WEAKER-than-printed direction, which is the same direction
+the recursion guard in that file is already short in — and it keeps
+CR 106.7 and the auto-tapper saying the same thing about the same
+permanent.
+
+It is the only place in that file where a permanent can be "could
+produce nothing" for a reason that is not about its output, and it is
+written down there as well as here.
+
+### Consequences
+
+- The activation record now covers **every** activation the engine
+  performs. `ActivatedThisTurn` consequently has a mana-side number
+  too, which the "Activate only once each turn" seam row can read when
+  its cards are written.
+- Nothing about the snapshot changes: `Game.Activations` was already
+  `carried` (#1020) and already rewound with `Clone` / `RestoreFrom`.
+  The mana path writes to the same maps, which the tests re-assert on
+  this path because it writes its own record and could have got the
+  key wrong on its own.
+- Nothing on the wire moves in a breaking direction: `exhausted` is
+  one more `omitempty` flag on `ManaAbilityView`, absent for every
+  mana ability but a spent exhaust one.
+
+### Cards
+
+**Loot, the Pathfinder**, `full`. Its second and third abilities are
+ordinary activated abilities on existing primitives (draw three; three
+damage to any target), and "Add three mana of any one color" is
+`OneColorOfAmount(3)` — ONE colour pick that adds three tokens (#742),
+not three independent picks.
+
+The auto-tapper never plans Loot's mana ability, and that is **not** a
+simplification of exhaust: a mana ability with a MANA component in its
+cost (`{G}` here) is excluded from planning outright, because the
+planner would have to solve a second cost to fund the first
+(`autoTapAbilityFor`, unchanged since S32). The player floats the `{G}`
+and clicks, which is how the card is played on paper. The exhaust
+refusal sits in that same picker, so the day a planner learns to fund
+a mana cost, a spent Loot is already refused.
+
+### Still out of scope
+
+Unchanged from the addendum above: the cards that read the record from
+OUTSIDE (#1184) and Avatar Kuruk's extra turn (#753).
+
+## Note (2026-09-22, #1184): the three seams that read the record from outside
+
+The addendum above built the record and one reader, and listed the
+cards that read it from OUTSIDE the ability that owns it as still out
+of scope. They are in scope now, and the point of writing them down
+together is that they were never one gap: **three different
+mechanisms wear one keyword.**
+
+### 1. The activation event (Rangers' Refueler, Afterburner Expert)
+
+*"Whenever you activate an exhaust ability, …"* is a trigger over an
+ANNOUNCEMENT, and before this there was no announcement to watch.
+`ActivateCatalogAbility` emitted `EventTrigger` — the "an item reached
+`PendingTriggers`" breadcrumb, shared with triggered abilities — and
+`triggerHarvester.OnEvent` returns immediately on that kind, by
+design: a trigger that fires further triggers does so at resolution,
+so re-entering the harvest at announce would only spam. Even if it had
+not, the event carried no ability identity at all.
+
+`EventActivateAbility` is that announcement said in a kind anything
+may watch. It carries:
+
+- `Label` — the ability's printed label, which is the same string the
+  activation record is keyed by, so an event and a record entry name
+  the same thing;
+- `Exhaust` — the keyword bit, read off the shape at the announce.
+
+The bit is on the EVENT rather than looked up by each watcher, and
+that is not convenience. By the time a watcher runs, a `SacrificeSelf`
+or `DiscardSelf` cost may have ended the object, and an ADR 0071
+designation gate may have renumbered or removed the ability; the
+announcement is the only moment the fact is reliably knowable.
+
+`EventManaAbilityActivated` gained the same two stamps, at both of its
+write sites (the click and the auto-tapper's executor), because
+CR 605.1a makes a mana ability an activated ability and Loot, the
+Pathfinder prints an exhaust one. Two kinds and not one, because the
+two paths differ in what a watcher may assume: a mana ability used no
+stack and granted nobody priority.
+
+**Deliberately wider than the two cards.** The open *"Whenever an
+opponent activates an ability"* row on
+[docs/engine-seams.md](../engine-seams.md) (Harsh Mentor, Runic
+Armasaur) is the same event with `ByAnOpponent` in place of `ByYou`
+and no exhaust test. That row closes on this shape rather than on a
+second one, and the seam doc now says so.
+
+### 2. The permission (Elvish Refueler)
+
+*"During your turn, as long as you haven't activated an exhaust
+ability this turn, you may activate exhaust abilities as though they
+haven't been activated."*
+
+This is why `Game.AbilityExhausted` and `Game.ManaAbilityExhausted`
+now take the **asking player**. A permission is not a fact about the
+object: the record still says the ability was activated, and every
+opponent still reads it that way. So the question stopped being "is
+this spent" and became "is this spent FOR YOU", and every reader had
+to start naming the asker — the activation path the activator,
+`internal/legal` the seat it is enumerating for, the view the
+controller whose menu it is stamping, the auto-tapper the tapping
+player, `ProducibleManaLocked` the permanent's controller. That is the
+same set the addendum above pointed at one reader so they could not
+disagree; they still read one reader, it takes one more argument.
+
+**Not an entry point that clears the record**, which was the obvious
+alternative and is wrong twice over. The permission is continuous
+while its conditions hold, so there is no moment to run a clear AT;
+and a clear would be visible to every player and would survive the
+Refueler dying, which "as though" never does (CR 609.4 — an effect
+that lets you do something as though a rule were different changes
+nothing else).
+
+Keeping the record honest is also what makes the card self-limiting
+with no code: activating under the permission WRITES the record a
+second time, and the second activation is itself an exhaust ability
+activated this turn, so the printed condition goes false on its own.
+One extra activation per turn, on your turn, is the whole card.
+
+`Game.ExhaustAbilitiesActivatedThisTurn(player)` is the counter that
+condition reads, and it is an `EventsThisTurn` scan rather than a
+`PlayerTurnTally` field: this is a FILTERED question (whose
+activation, and was it an exhaust one) that no counter carries, and
+`Game.Activations` is keyed by object rather than by player so it
+cannot answer "you". It runs only when a permission is already on the
+battlefield, because the gate consults the record first and the
+permission only if the record said "spent".
+
+The card side is `Spec.ExhaustPermissions` + `game.ExhaustPermission`,
+a battlefield static with the ADR 0071 designation gate and the
+CR 613.1f ability-removal key, read through one accessor
+(`ExhaustPermissionsForCard`). `effects.Register` panics at boot on a
+nil `Applies` — it would grant the permission to every player at every
+moment, which no card prints — and on a blank `Label`.
+
+### 3. The priced activation (Boom Scholar)
+
+*"Exhaust abilities of other permanents you control cost {2} less to
+activate."* The CR 601.2f pass already existed with its ordering, its
+generic floor and its negative-amount refusal; what it could not do
+was look at the ABILITY. `CostQuery` already carried the SOURCE
+permanent, so "of other permanents you control" was expressible.
+
+Two fields close it:
+
+- `CostQuery.Ability` (`AbilityCostSubject`: the label, the exhaust
+  bit, and a `Mana` flag that is always false today so a predicate
+  written now says which kind it means);
+- `CostModifier.Activations`, which **partitions** the board's
+  modifiers into the ones that price casts and the ones that price
+  activations.
+
+The partition is not bookkeeping. Sphere of Resistance's `AppliesTo`
+is nil, meaning "every spell"; without the partition every `{T}`
+ability in the game would have started costing `{1}` more the day
+`CostQuery.Ability` appeared. A modifier prices casts or activations
+and never both, because every printed clause in either family says
+which it means. The self-modifier slot is skipped entirely for an
+activation query: "this SPELL costs {1} less to cast" (CR 113.6d) is
+about the card as a spell on the stack, not about a permanent's
+ability.
+
+`Game.AbilityManaCostForEffect` is the one function three readers
+share: the payment path pays it, `internal/legal` checks affordability
+against it, and a test reads it. That is #544's rule with the sign
+reversed — an enumerator pricing at the printed cost would silently
+HIDE legal moves rather than offer illegal ones.
+`payAbilityManaCostLocked` therefore takes a `ParsedCost` now; the
+attack tax (CR 508.1a is a cost to attack) and the special-action path
+(CR 116.2 is not an activation) parse their own strings and stay
+unpriced.
+
+### Cards
+
+**Rangers' Refueler**, **Afterburner Expert** and **Elvish Refueler**
+ship `full`. Rangers' Refueler's animation prints no duration
+(CR 611.2a), so it is `BecomeArtifactCreature` —
+`BecomeCreatureUntilEOT`'s body with `IndefiniteDuration`, factored
+out rather than flagged — and it is not the crew ability beside it.
+Afterburner Expert's trigger is `InGraveyard`, which REPLACES the zone
+list (#925): a battlefield copy of "return this card from your
+graveyard" would have nothing to return, and "you" there is the OWNER
+(CR 108.4).
+
+**Boom Scholar** ships `caveats`, two of them: the ability's row in
+the menu still lists the printed cost (the engine charges the
+discounted one — the wire's `ActivatedAbilityView.mana_cost` is the
+printed string and nothing renders a `ParsedCost` back), and mana
+abilities are not priced through the activation pass.
+
+### Still out of scope
+
+Avatar Kuruk's extra turn (#753), unchanged. Two new, both narrow:
+the ability view's printed-cost display, and running the CR 601.2f
+pass over a MANA ability's cost.
+
+---
+
+## Addendum (2026-09-22): abilities that function from the graveyard and exile (#1221)
+
+**Status:** Accepted · 2026-09-22 · tracked on
+[#1221](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1221). This
+status covers this section only; every decision above stays accepted
+and unchanged.
+
+### Context
+
+CR 113.6 is one rule and the engine had answered a quarter of it.
+[ADR 0062](0062-abilities-and-special-actions-from-the-hand.md)
+Decision 1 gave `ActivatedAbilityShape.Zones []ZoneKind` to the ONE
+activation path — nil means the battlefield, `{ZoneHand}` is cycling —
+and #922 gave `TriggeredAbility` the same field. What was missing was
+not a shape. It was **every consumer past the activation path**:
+
+- `internal/legal`'s enumerator walked the battlefield and the seat's
+  own HAND and stopped there, so a bot could never unearth.
+- `protocol/view.go` stamped `hand_abilities` on a hand card and
+  nothing anywhere else, so a human could never see the row.
+- `AbilityCost` had no component for "Exile this card from your
+  graveyard", which is the cost three of the four graveyard keywords
+  print.
+
+The seam doc's ["Ability activatable from a non-battlefield
+zone"](../engine-seams.md) row says the same thing from the other
+side: four cards were "one `Spec` edit away", and had been since #660,
+because nothing would have offered the edit to anybody.
+
+The keyword family behind the row is what settles the design, because
+it is four keywords' worth of variation over one dimension:
+
+| keyword | CR | zone | cost | effect |
+|---|---|---|---|---|
+| cycling | 702.29a | hand | discard this | draw |
+| unearth | 702.82a | graveyard | mana only | return it, haste, exile it later |
+| scavenge | 702.96a | graveyard | **exile this** | counters equal to its power |
+| embalm / eternalize | 702.128a / 702.129a | graveyard | **exile this** | a token copy with changes |
+
+Four keywords, one activation path, one zone field. Nothing here is a
+new KIND of thing; all of it is the existing kind, one zone further
+out.
+
+### Decision 24: the consumers get a zone walk, not a second entry point
+
+`ActivatedAbilitiesForCard` is unchanged and `AbilityFunctionsFromZone`
+stays the one predicate. What changes is who asks it, and about how
+many piles:
+
+```go
+// internal/legal/abilities.go
+func (e *enumerator) abilityZones() []abilityZone   // hand, graveyard, command, exile
+
+// internal/protocol/view.go
+func stampZoneAbilities(g, seats, exile)            // the same four
+```
+
+The enumerator's walk is deliberately shaped like `castZones`
+(#1014's five-zone cast walk) and deliberately one pile shorter. The
+**library is not walked**, and that is a rule rather than an omission:
+CR 401.2 makes a library hidden, no printed ability functions from
+one, and an enumerator that read it would be touching cards the seat
+is not entitled to see to answer a question whose answer is always
+"nothing". The one line it would take is named in the comment, so the
+day a card prints such an ability the change is a line and not a
+rediscovery.
+
+Exile is the shared pile and gets the CR 108.4 treatment in both
+walks: the "you" is read off `Card.Owner` rather than off the loop,
+because `g.Exile` holds every seat's cards and the per-seat piles hold
+only their own. That is the same rule `ActivateCatalogAbility` has
+enforced since #660 (`source.Owner != playerID`), asked by the two
+consumers that have to agree with it or fall foul of #544 in one
+direction or the other.
+
+### Decision 25: `AbilityCost.ExileSelf`, and why it is not `DiscardSelf` with a zone
+
+Scavenge, embalm and eternalize all print the same cost clause:
+"Exile this card from your graveyard". It is `DiscardSelf`'s sibling
+and it is a **second bool**, not a zone parameter on one "the source
+pays itself" component, because the two are different rules:
+
+- discarding is a CR 701.8 keyword action with its own event
+  (`EventDiscardCard`), its own cause (`DiscardCauseCost`) and, for
+  cycling, `EventCycle` on top;
+- exiling as a cost is a plain CR 406 zone change with none of that.
+
+A card file that wanted "discard this from your graveyard" would be
+writing a card that does not exist. The part they genuinely share —
+"the payment IS the source, so nothing is announced, nothing is
+picked and nothing goes on the wire" — they get for free by both
+being a bool.
+
+Everything else is the discard component's shape, one zone over
+(`game/exile_cost.go`):
+
+- **Validated** with the rest of the cost, before anything is paid:
+  the source has to be in a GRAVEYARD, or `ErrActivationZoneNotAllowed`
+  with nothing spent. "Your" needs no second check — the activation
+  path has already refused a non-owner off the battlefield.
+- **Paid last**, beside the discards, because it moves the source and
+  invalidates every pointer the payment block held.
+- **Through `routeCardToZoneLocked`** like every other exit, with
+  `MustSettleNow` set for the reason `DiscardCauseCost` sets it:
+  CR 601.2h / 602.2b make activating an ability one indivisible step,
+  so the CR 614 window runs over the move and never stops to ask.
+- **Refused at BOOT** on an ability that does not declare the
+  graveyard (`effects.Register`), exactly as `DiscardSelf` is refused
+  off the hand. A component that could never be paid is a card-file
+  mistake, and the treatment it gets is the one `MinX`-without-`{X}`
+  already gets.
+
+### Decision 26: the effect reads its source back out of exile; no snapshot on the stack item
+
+Scavenge needs "this card's power" and embalm needs the whole card to
+copy — and by the time either effect runs, its own COST has moved the
+card to exile. `StackItem` carries no last-known-information snapshot
+of its source (`SourceCardID` and `SourceEpoch`, and that is all), and
+this addendum deliberately does not add one.
+
+It does not need to. `LookupCardForEffect` finds a card in whatever
+zone holds it, and a card outside the battlefield has no layers
+applied to it (CR 613 runs on permanents), so the printed power read
+out of exile at resolution is the same number the graveyard held. A
+snapshot field would be a second LKI store beside the damage event's,
+for a question that already has a right answer — the same call
+`targets.go` declines to make for the same reason.
+
+The cost of that choice is stated rather than hidden: a card somehow
+moved OUT of exile between the announce and the resolution (a shuffle
+of exile into a library) answers `ok == false` and the ability does
+nothing, which is CR 608.2a's "as much as it can" and is the weaker
+direction (#259).
+
+### Decision 27: the wire renames `hand_abilities` to `zone_abilities`, and it is scoped rather than merely hidden
+
+Two changes to `CardView`, and the second is the one that matters.
+
+**The rename.** `hand_abilities` was named for the only zone it had.
+Now that a graveyard card carries the same rows it is `zone_abilities`
+— one field, because the engine has one activation path with a zone
+dimension, so the wire has one row list and the client has one reader.
+A second `graveyard_abilities` beside it would have been two fields
+that can disagree about a card in neither zone.
+
+**The scoping.** Through #660 the field was written to the exported
+`CardView` field and got its privacy from the HAND: `FilterViewFor`
+blanks another seat's hand wholesale. A graveyard is public, so the
+same code would have shipped one seat's answer to the whole table —
+which is exactly the surface #1055 and #1167 took off the cast
+stamps, arriving again one field over. An ability row carries
+`legal_targets` and `clauses`, and hexproof, shroud and "target
+opponent" all narrow a target set **by who is asking**.
+
+So the rows ride `castOffers`, the per-seat carrier that already
+exists for that question, and `publicIn` drops them: the seat whose
+card it is gets the list, every other seat gets the card and no list,
+a spectator gets no list. The hand's rows moved there with the
+graveyard's rather than leaving two lifecycles for one field.
+
+One wrinkle worth naming, because it is the kind of thing that breaks
+silently: `stampLegalTargets` and `stampGrantedPermissions` file a
+seat's entry with `stampsFor`, which REPLACES. The ability stamp
+therefore merges (`stampZoneAbilitiesFor`) and runs after both — the
+two passes answer different questions about the same card, and a
+plain `stampsFor` here would have blanked a flashback card's announce
+surface the moment the card also printed a graveyard ability.
+
+`ActivatedAbilityView.exile_self` joins `discard_self` as the
+advisory bit for the new cost component. Neither has a renderer: the
+keyword's own label spells the clause out, and the field is there so
+a client that wants to mark the row need not parse the label.
+
+### Decision 28: the client offers the row where a player actually looks at a graveyard
+
+`ZoneBrowserModal` is the only place anyone inspects a graveyard or
+exile, and it rendered `<Card>` with no `onActivateAbility` — so the
+pop-over every battlefield permanent and every hand card already has
+was suppressed for every browsed card. It now wires the same callback
+`Hand.svelte` wires, gated on the card carrying rows at all, which
+for a bystander is never (the server stamped none).
+
+Like the impulse-cast button (#874) it closes the browser and hands
+the choice up to `Board`: an activation can open a target picker, an
+X prompt or a mode picker, and those are Board's chain, not the
+modal's. The viewer's CR 307.1 window is passed down so a
+sorcery-speed row greys with a reason instead of being clickable and
+refused — every keyword on this surface prints "only as a sorcery",
+so without it the row would be wrong more often than right.
+
+### Cards
+
+**Dregscape Zombie** (unearth), **Deadbridge Goliath** (scavenge) and
+**Sacred Cat** (embalm) are each the keyword and almost nothing else,
+which is the point: a test that sees five counters or a Zombie Cat
+token is seeing the keyword's own arithmetic rather than a card's.
+Dregscape Zombie ships `caveats` for the bounce hole below; the other
+two ship `full`.
+
+`ExileInsteadOfLeavingBattlefield` is factored out of Whip of Erebos
+(#296) and shared with unearth, because the clause is identical, its
+failure modes are silent (a missing `NewZone != ZoneExile` guard is
+an infinite loop; a missed event kind is a creature that can be
+reanimated twice), and two inline copies would have drifted. Its two
+declared limitations are inherited whole: the redirect is turn-scoped,
+and a BOUNCE bypasses it because `BounceToHandForEffect` moves a card
+without running the CR 614 pipeline.
+
+### Still out of scope
+
+- **Ninjutsu** (CR 702.49). It is a HAND activation, so the zone
+  dimension already reaches it, but its two other halves do not
+  exist: a cost component that returns an unblocked attacker you
+  control, and an entry that puts a card onto the battlefield
+  **attacking** (`ZoneEntryOptions` has `Tapped` and no `Attacking`;
+  only the token path can do it, `entry_choice.go`'s minted-token
+  branch). Filed separately.
+- **Statics that function from a graveyard** — `StaticAbility.Zones`,
+  the layer pass's own half of CR 113.6c (Anger, Wonder, Brawn). The
+  other row of the same seam issue, and the next PR.
+- **A per-instance grant of an exile ability** (Greater Gargadon while
+  suspended). ADR 0062 open question 2, unchanged: the shape is
+  per-DECLARATION, and a grant over one suspended card is a different
+  object.
+- **Cost modification for activated abilities**, unchanged from the
+  #1181 addendum.

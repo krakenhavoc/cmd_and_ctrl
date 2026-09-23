@@ -7,6 +7,7 @@
 **Amended:** 2026-09-17 · Branch `fix/815-847-replacement-outcomes` — §5a's "never collapsed" limit now holds on the multi-effect order paths too, see [§5h](#5h-amendment-2026-09-17-a-may-inside-a-chosen-order-is-still-a-question)
 **Amended:** 2026-09-17 · Branch `fix/815-847-replacement-outcomes` — §5d's landed-outcome rule now decides the destruction COUNT as well, see [§5i](#5i-amendment-2026-09-17-destroyed-this-way-counts-what-was-destroyed)
 **Amended:** 2026-09-19 · Branch `feat/1027-1026-discard-continuation-and-springbloom` — §5x's run is shared with the prompted DISCARD, and §5g's "no continuation form" note is closed, see [§5y](#5y-amendment-2026-09-19-a-prompted-discard-is-the-same-run-and-both-verbs-share-one-body)
+**Amended:** 2026-09-22 · Branch `feat/amount-replacements` — §13's deferred `RepEventManaProduced` is answered and the draw event grows a COUNT, see [§5ab](#5ab-amendment-2026-09-22-the-last-two-amount-replacements--mana-produced-and-cards-drawn)
 
 ## Context
 
@@ -1076,6 +1077,54 @@ Its one deviation is now declared on the card: a commander that takes
 the command zone was never put into a graveyard, so by CR 701.17a's
 letter the Helm should keep milling, and it stops instead. That is the
 caveat Helm of Obedience carries, rewritten to say so.
+
+> **Amendment (2026-09-21, [#1159](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1159)): §3 was wrong, and
+> the deviation it declared was the bug.** "Exact" was the claim that
+> answering `until` before the first move is card-for-card identical
+> to answering it after the last, and it is not: a card the CR 614
+> window diverts comes off the library and never arrives, so the two
+> readings disagree on exactly the case §3 shipped as a caveat. CR
+> 400.7 — the reading `landedInZoneLocked` already gives the `Then`
+> continuation, §5l — says the clause counts the object that ARRIVED.
+>
+> What changed: `millPlanLocked` still chooses the whole candidate set
+> up front, top-down, before anything moves, so #529's paused-leg
+> behaviour and the flat list of IDs are untouched. It no longer
+> TRUNCATES that list. The verdict moved into the routing loop, as a
+> stop predicate `routeAllThenUntilLocked` and
+> `routeAllLandedUntilLocked` consult only for legs that landed.
+>
+> The clause is now typed as a function of the whole landed list,
+> `func([]Card) bool`, rather than of one card. The loops carry that
+> list forward by value across a pause (§5b), so a predicate over it
+> is pure and an undo that rewinds into an open CR 903.9 prompt asks
+> the same question twice and gets the same answer. A per-card
+> predicate accumulating state across legs — Improvisation Capstone's
+> running mana-value total — would be consumed by the first run and
+> wrong on the replay, which is the reason for the shape and not a
+> stylistic preference. `effects.UntilCard` and
+> `effects.UntilTotalManaValue` are the two catalog shapes.
+>
+> The fire-and-forget form keeps §4's trade in one more place: a leg
+> paused on CR 903.9 has not landed when the loop asks, so the run
+> carries on past it rather than waiting. A card that must be exact
+> about where the run ends uses the `Then` form, which both Helm of
+> Obedience and Improvisation Capstone do.
+>
+> Helm of Obedience's "until" caveat and Improvisation Capstone's
+> diverted-card caveat both come off. What Helm still declares is the
+> OTHER half of its printed sentence: X bounds the cards the run takes
+> off the library, not the cards that arrive. That is the mill AMOUNT
+> (CR 701.13b counts cards moved, and it is the number Bruvac the
+> Grandiloquent doubles), not the clause, and it is filed rather than
+> folded in here. *(Closed 2026-09-21 by
+> [#1161](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1161),
+> §5z: the bound is not the amount, it is the rest of the same clause,
+> and the fire-and-forget form's trade named in the paragraph above is
+> gone because that form no longer takes an `until` at all. §5aa then
+> made each repetition of the run its own one-card mill instruction, so
+> a mill-amount replacement doubles the repetitions without touching
+> the bound.)*
 
 **4. The two forms differ in one thing, and #529 chose it.** A paused
 mill must not re-read the top of the library, and the plan-up-front
@@ -2645,6 +2694,581 @@ graveyard and the library picks alike. See
 the withdrawal settles the leg through this section's `dropDefault`,
 unchanged.)*
 
+### 5z. Amendment, 2026-09-21: a run's BOUND counts arrivals too, and only the form that WAITS may carry a clause
+
+*Amendment, 2026-09-21, branch
+`fix/1161-1069-helm-x-bound-and-entry-door-prune`.
+Closes [#1161](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1161).
+§5l's #1159 amendment fixed one half of Helm of Obedience's printed
+sentence and filed the other half as "a change to a different rule";
+this is that half, and the different rule turned out to be the same
+one.*
+
+**1. The sentence has one verb and two stop conditions.** *"Target
+opponent mills a card, then repeats this process until a creature card
+OR X CARDS have been put into their graveyard this way, whichever comes
+first."* "Put into their graveyard this way" governs both halves, so
+both are CR 400.7 questions about the object that ARRIVED — §5l's
+reading, applied to the whole clause rather than to the first half of
+it. Written out, it is one predicate over the landed list with both
+conditions in it:
+
+```go
+Until: UntilAny(
+    UntilCard(func(c game.Card) bool { return c.IsCreature() }),
+    UntilCount(ctx.X()),
+),
+```
+
+`effects.UntilCount` and `effects.UntilAny` are the two new shapes
+(`primitives.go`), beside `UntilCard` and `UntilTotalManaValue`. Both
+are pure in the sense §5l requires — `UntilCount` reads a length,
+`UntilAny` is as pure as its parts — so an undo that rewinds into an
+open CR 903.9 prompt replays the same answer.
+
+**2. A BOUND is not an AMOUNT, and this is the line between them.**
+#1159 declined to move X because moving it looked like a change to the
+mill amount. It is the opposite: X was only ever *modelled* as the
+amount, and that model is what made the two disagree.
+
+| | the AMOUNT (CR 701.13b) | the BOUND (this clause) |
+| --- | --- | --- |
+| what it counts | cards the instruction MOVES off the library | cards that are PUT INTO the named zone |
+| a diverted card | spends one (it was milled) | costs it nothing (it never arrived) |
+| written as | `MillToZone.N` | a condition inside `MillToZone.Until` |
+| replaceable | yes — `RepEventMill`, Bruvac the Grandiloquent | no — the run names no number at all |
+
+So Helm asks for an unbounded run (`N` left 0 with an `Until`) and
+stops itself. Three consequences, all of them the card as printed:
+a milled commander that takes the command zone no longer spends one of
+the X; under Rest in Peace or Leyline of the Void nothing is ever put
+into that graveyard, so the run mills the whole library (the famous
+combo, falling out of the reading rather than special-cased); and
+Bruvac doubles mills and not bounds — X=2 is two cards with him on the
+battlefield exactly as it is without.
+
+~~Paper doubles each one-card repetition instead and can overshoot the
+bound by a card; the engine models the run as ONE instruction, which is
+the same modelling decision §5s made for a keyword action with a
+count.~~ ***Superseded 2026-09-22 by
+[#1176](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1176),
+§5aa:*** *the run is a SEQUENCE of one-card mill instructions, each
+with its own `RepEventMill` window, so Bruvac does double each
+repetition and X=3 mills four cards as it does in paper. The row of the
+table above still holds as written — the BOUND names no number and
+nothing replaces it — and the `millAmountIsReplaceable` reading it
+rests on is untouched; what changed is that a repetition is an
+instruction and it names `1`. X=2 still mills two, because the first
+doubled repetition already reaches the bound, which is why the board
+this amendment measured did not show the gap.*
+
+**3. The over-mill #1161 named is closed BY CONSTRUCTION.** The issue's
+own warning: a landed-count bound plus the fire-and-forget loop is a
+run that walks the whole library, because a leg paused on CR 903.9 has
+not landed when that loop asks and the loop does not wait for it. The
+answer is not a check inside the mill. `MillToZoneForEffect` — the form
+that does not wait — no longer takes an `until` parameter, so the
+combination cannot be written:
+
+| entry point | takes `until` | why |
+| --- | --- | --- |
+| `MillToZoneThenForEffect` | yes | it sequences: each leg from the previous one's continuation, so a clause about arrivals has arrivals to read |
+| `MillToZoneForEffect` | no | it routes every leg on one line and cannot answer "has it landed yet" |
+
+`routeAllLandedUntilLocked` is deleted with it and
+`routeAllLandedPerLegLocked` is the fire-and-forget loop again, with no
+`stop` to hand it. #1159's "standing trade" paragraph — the
+fire-and-forget run that ends one card late — describes a combination
+that no longer exists.
+
+**4. What that changes in the catalog.** `MillToZone.Apply` picks the
+sequencing form whenever `Until` is set, whatever `Then` says; the
+fire-and-forget return value it gives up was discarded on that line
+anyway. Two cards were writing an `until` run with nothing hanging off
+it — `b14MillUntilLand` (Consuming Aberration) and
+`b27ExileTopUntilTotalManaValue` (Tasha's Hideous Laughter) — and both
+get the exact version: a commander's prompt now holds the rest of THAT
+SEAT's run instead of being walked past, and the card that ends the run
+is the card that arrived. Every other mill in the catalog names a
+number and is untouched.
+
+**5. Helm of Obedience is `CompletenessFull`.** Both halves of the
+clause read what arrived, the reanimation already read it (§5l item 5),
+and there is no printed clause left unmodelled. `helm_x_bound_test.go`
+pins the three boards where the two readings disagree: the diverted
+commander, Rest in Peace, and Bruvac.
+
+### 5aa. Amendment, 2026-09-22: a run REPEATS an instruction, so a mill-amount replacement replaces each repetition
+
+*Amendment, 2026-09-22, branch
+`feat/1181-1176-exhaust-and-until-run-repetitions`.
+Closes [#1176](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1176),
+filed from #1177 while §5z was being written. It supersedes one
+paragraph of §5z item 2 and nothing else: the line between an AMOUNT
+and a BOUND stands, and so does every consequence §5z drew from it.*
+
+**1. "Mills a card, then repeats this process" is a loop over
+instructions.** Helm of Obedience gives ONE instruction — "target
+opponent mills a card" — and the rest of the sentence repeats it. §5z
+modelled the whole run as one instruction that named no number, which
+made the bound safe from a mill-amount replacement (right) and made the
+AMOUNT invisible (wrong): there was no number for Bruvac the
+Grandiloquent to double, and the engine milled three cards where paper
+mills four.
+
+The rulings are unambiguous — each repetition is a separate mill, a
+mill-amount replacement applies to each of them, and the stop condition
+is checked after each replaced mill, which can overshoot the bound:
+
+| board | paper | engine before | engine now |
+| --- | --- | --- | --- |
+| Helm X=1, Bruvac out | 2 | 1 | 2 |
+| Helm X=2, Bruvac out | 2 | 2 | 2 |
+| Helm X=3, Bruvac out | 4 | 3 | 4 |
+
+X=2 is why the gap survived §5z: it is the one small board where the
+two readings agree on the total, and it is the board §5z's test
+measured.
+
+**2. The shape: `millUntilRunLocked`, one repetition at a time.** An
+`until` clause no longer rides the mill's tail at all. It makes the
+call a RUN (`game.millRun`), and each repetition is an ordinary
+one-card mill through the very same entry point — the same CR 614
+window on its own amount, the same `millPlanLocked`, the same
+sequencing routing loop. Nothing about a repetition knows it is part of
+a run.
+
+| | before (§5z) | now |
+| --- | --- | --- |
+| the instruction | the whole run, naming no number | one repetition, naming `1` |
+| `RepEventMill` windows | none for the run | one per repetition |
+| where the clause is asked | inside the routing loop, after each LEG | between repetitions, with everything that has landed |
+| what carries it | `millTail.until` | `millRun.until` |
+
+`millTail` keeps only the destination and the caller's continuation.
+`millStopForLocked` and `routeAllThenUntilLocked` are deleted, and
+`routeEachStepLocked` loses its `stop` parameter: a batch is a batch
+again.
+
+**3. The over-mill is still closed by construction, and more of it.**
+§5z item 3's property — a run that ends on what ARRIVED may only be
+carried by the form that WAITS — is unchanged and strengthened.
+`MillToZoneForEffect` still takes no `until`, every repetition still
+goes through `MillToZoneThenForEffect`'s sequencing body, and the next
+repetition is started FROM the previous one's continuation, so a leg
+paused on the CR 903.9 prompt holds the whole run rather than being
+walked past. What is new is that no routing loop can be handed a clause
+either, because the verdict is not inside one.
+
+**4. A loop needs a TERMINATION guard, and a single instruction did
+not.** A repetition is a real instruction, so it can be replaced away:
+CR 614.10's null replacement cancels a mill, and a replacement that
+halved an amount would turn a mill of one into a mill of none. The
+library is then where it was, the clause is where it was, and the run
+asks for the same repetition forever — without the guard the test for it
+blows the goroutine stack. `millRun.stalled` ends the run when a
+repetition leaves the library no shorter than it found it.
+
+The measure is the library's DEPTH and not the landed list, and that
+distinction is the whole of the guard's correctness: a run under Rest in
+Peace lands NOTHING and is still making progress, which is the famous
+Helm combo (§5z item 2) and must still walk to the bottom of the
+library. The old model could not reach this at all — a run named no
+number, so it opened no amount window and nothing could replace it to
+nothing. A card put BACK on the library by the same repetition reads as
+no progress and ends the run: conservative on purpose, because the
+alternative is a run that mills the same card forever.
+
+**5. The clause is still about ARRIVALS, and still pure.** `millRun`
+values are immutable: a repetition's continuation builds a FRESH run
+with a fresh landed slice rather than appending in place, and the
+pre-move card copies the clause reads are taken ONCE, from the library
+as the run began. So an undo that rewinds into an open CR 903.9 prompt
+and replays the answer asks the clause the same question and gets the
+same answer — §5l's property, kept at the new boundary.
+
+**6. "Put ONE OF THEM onto the battlefield" became a real choice.**
+Helm's doc comment said a prompt was unnecessary because the run stops
+AT the first creature card, so there is never more than one to choose
+from. That was true of a one-card repetition and is not true of a
+doubled one: two creature cards can now land together. The card asks —
+a one-of `ChooseCardsPrompt` over the victim's graveyard, answered by
+the Helm's controller, raised ONLY when there is more than one — so the
+common case is still promptless and the card stays
+`CompletenessFull`.
+
+**7. What else it reaches.** Every `until` run in the catalog, which is
+three: `b14MillUntilLand` (Consuming Aberration) and Helm of Obedience
+into a graveyard, where the per-repetition window is the point, and
+`b27ExileTopUntilTotalManaValue` / Improvisation Capstone into EXILE,
+where no window opens at all because exiling the top N is not a mill
+(CR 701.13a). Every other mill in the catalog names a number and is
+untouched.
+
+### 5z. Amendment, 2026-09-22: a CARD choice inside an entry replacement, and the third card-set pick
+
+*Status: Accepted. Issue #1198, seam row "Reveal-from-hand entry choice"
+(`docs/engine-seams.md`), tracker S39 #882.*
+
+#### Context
+
+The entry pipeline could stop and ask three questions, and all three are
+yes/no-shaped: a CR 614.10 "may" (`Optional`, §5h), a shockland's
+"you may pay 2 life" (`EntryLifeCost`, `entry_choice.go`) and a copy
+selector's "enter as a copy of what?" (`CopySelector`, §5o). None of them
+can express the one sentence twelve catalog-waiting cards print:
+
+> "As this land enters, you may reveal an Island or Swamp card from your
+> hand. If you don't, this land enters tapped."   — Choked Estuary, ×10
+
+The census filed the family in batch 02 under its own name — *"A card
+choice inside a replacement effect"*
+(`docs/decklists/card-coverage-roadmap.md:418`) — and the diagnosis there
+is still the right one: **the replacement pipeline is synchronous with no
+per-card prompt**. `Optional` is a bare yes/no and cannot name a card;
+`CopySelector` names a card but only a permanent on the battlefield, and
+its answer rewrites the entering object rather than a player's hand.
+
+The shape is `EntryLifeCost`'s exactly, with the payment swapped: the
+player is offered a way to AVOID the replacement, declining is what makes
+it fire, and the decision happens before the permanent moves. What is new
+is that the answer is a set of CARDS in a hidden zone.
+
+#### Decision 1 — A fourth branch on the apply-loop, not a fourth pipeline
+
+`ReplacementEffect.EntryHandReveal *EntryHandReveal` joins `Optional`,
+`EntryLifeCost` and `CopySelector` as a branch in
+`applyReplacementsLocked`'s single-applicable arm
+(`server/internal/game/replacements.go`), and joins `asksItsOwnQuestion`,
+so the two windows that cannot put a question to anybody —
+`ev.mustSettleNow` and a CR 616 ordering whose affected player has left —
+skip it un-applied exactly as they skip the other three. That is the
+weaker branch of the card ("you didn't reveal"), which is the posture
+every un-prompted path in this ADR already takes.
+
+Everything else it reuses: `entryChoicePlayerLocked` (the pay-life file's
+"who does this entry ask", renamed off `entryLifePayerLocked` because the
+rule was never about life), the `replacementResumeFrame`, and
+`finishSettledReplacementLocked` as the one finisher. In particular a
+prompt that is taken away when its chooser leaves the game settles the
+paused entry through `finishDroppedReplacementLocked` →
+`abandonZoneRouteLocked` with no new code, which is §5j's rule holding.
+
+**The guards are `EntryLifeCost`'s, one for one**, and for its reasons:
+
+| Guard | Why | Outcome |
+|---|---|---|
+| `!ev.entryResumable` | pausing an entry with no resume strands the card in its old zone (§5o) | replacement applies, unprompted |
+| no matching card in hand | a question whose only answer is "no" is worse than not asking | replacement applies |
+| chooser has left | CR 800.4a | replacement applies |
+
+The second is the one that differs in kind from pay-life's "can they
+afford it": an empty hand is not a refusal, it is the absence of the
+question. The observable result is the same in both files — weaker than
+printed, never stronger.
+
+#### Decision 2 — One new prompt kind, carrying the choose-cards payload
+
+`PendingChoiceEntryRevealFromHand` (`entry_reveal.go`) is the **third**
+member of `isCardSetPickKind`, after `choose_cards` (#74) and #826's
+`untap_choice`. It carries `ChooseCards` / `ChooseMin` / `ChooseMax` and a
+`chooseCardsFrame{zone: ZoneHand}`, so `checkChooseCardsPicksLocked`
+(#1017) — bounds, candidacy, duplicates, the live-zone re-check and the
+set-level `Validate` hook — is the ONE copy of "would this answer be
+accepted", shared with the submit path and with
+`ChooseCardsPickLegalLocked` in the enumerator.
+
+It is a separate KIND rather than a `choose_cards` with a replacement
+frame on it, for `untap_choice`'s three reasons with the third again
+deciding:
+
+- **The continuation is not a card's next sentence, it is a paused
+  ENTRY.** `resolveCardSetPick` dequeues and runs `frame.then`; this kind
+  has to re-enter `applyReplacementsLocked` and then
+  `finishSettledReplacementLocked`, which is the replacement pipeline's
+  resume contract and not the chain's.
+- **The sentence is different.** "Choose cards" is not "reveal a card to
+  keep this untapped", and the kind is what the client renders from.
+- **The SIGN is inverted for a bot.** The heuristic's `choose_cards`
+  branch scores an answer by what it does NOT name (#798) — naming a card
+  there is giving it up. A card named here is REVEALED and stays in hand;
+  it is not spent, so #1028's fuel pricer is not the hint either. Scored
+  through the choose_cards branch, "reveal nothing" would beat "reveal",
+  and every one of the ten lands would enter tapped forever.
+
+**Declining is a real answer**, not a second prompt: the floor is zero,
+which makes "reveal nothing" the enumerator's `AlwaysLegal` answer and
+means this prompt can never be the #544 wedge even with every candidate
+gone from the hand. For the same reason it is deliberately NOT swept by
+`pruneCardSetChoicesLocked` — `untap_choice`'s exemption for
+`untap_choice`'s reason, plus one of its own: the prune DROPS an emptied
+prompt, and dropping this one would strand the entry it is pausing.
+
+#### Decision 3 — Revealing is `RevealForEffect`, and the table reads it in the log
+
+The answer is not applied by hand. `RevealForEffect` (`reveal.go`) makes
+every seated player a knower of each named card and announces the run as
+grouped `EventRevealCards` — so the picker is the owner's alone
+(`filterPendingChoices` drops both options AND bounds from every other
+seat, `choose_cards`' redaction, because the COUNT of matches in a hand is
+itself hidden information) and the other seats learn what was shown
+afterwards, through the log, which is exactly CR 701.20's "entitled to
+remember". Nothing moves: a reveal is not a zone change (CR 701.20b), so
+the card is still in hand when the land finishes entering.
+
+#### Decision 4 — The clause, and what is NOT in it
+
+Card side is one constructor in the land vocabulary, beside
+`EntersTappedUnlessYouPayLife` and `SelfEntersTappedUnless`:
+
+```go
+EntersTappedUnlessYouRevealFromHand(name, "an Island or Swamp card",
+    Or(IsLandWithSubtype("island"), IsLandWithSubtype("swamp")))
+```
+
+`EntryHandReveal` carries `Matches func(game.Card) bool` (a function of
+the card, no `*Game` — `ChooseCardsPrompt.Validate`'s rule, for its
+reason: the predicate runs under the write lock on submit and under the
+READ lock inside `legal.EnumerateFor`), `Min` / `Max`, the prompt
+`Question`, and an optional `Then(g, revealed)` continuation.
+
+Deliberately absent, and each with a card that proves it is a different
+shape:
+
+- **Exile** ("imprint"). Chrome Mox is already `CompletenessFull`
+  (`server/internal/cards/effects/chrome_mox.go`) and must stay where it
+  is: it prints *"When this artifact enters"*, so its imprint is an
+  ordinary ETB TRIGGER on the stack — #578's distinction, and observable,
+  because a Mox flickered in response to its own trigger imprints
+  nothing. No card in the catalog or on the seam row exiles from hand as
+  part of a CR 614 entry, so an exile branch would ship a bot
+  sign-inversion with nothing to prove it. `Then` is the door.
+- **Discard.** Mox Diamond, and discarding is a COST — its own seam row
+  (`docs/engine-seams.md:76`).
+- **A conditional "if you don't"**. Temple of the Dragon Queen prints
+  *"unless you revealed a Dragon card this way **or you control a
+  Dragon**"* and a second CR 614.12 clause (choose a colour) besides. Two
+  clauses on one entry is a question this amendment does not answer.
+
+#### Consequences
+
+- The ten reveal-lands ship from one clause, one file, one row each.
+- `entryLifePayerLocked` is `entryChoicePlayerLocked`; nothing else in
+  `entry_choice.go` moves.
+- A third card-set-pick kind means three places now read
+  `isCardSetPickKind` rather than two. That is the intended direction:
+  the alternative was a fourth copy of the bounds-and-candidates
+  validation, which is the pair that drifts.
+- A game with this prompt open writes no restore point, like every other
+  continuation-bearing prompt: the choice holds two frames
+  (`replacementResume` and `chooseCardsResume`) and both are counted in
+  `ContinuationCensus.ChoiceResumeFrames`.
+
+
+### 5ab. Amendment, 2026-09-22: the last two amount replacements — mana produced and cards drawn
+
+*Status: Accepted. Issue [#1222](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1222),
+seam rows "Mana-production replacement event" and "Draw-replacement count"
+(`docs/engine-seams.md`), tracker S39 [#882](https://github.com/krakenhavoc/cmd_and_ctrl/issues/882).*
+
+#### Context
+
+The CR 614 surface has grown one amount-carrying event at a time —
+`RepEventCreateTokens` (ADR 0061 decision 1), `RepEventKeywordAction`
+(§5s), `RepEventMill` (§5u, §5aa) — and each of them was the same gap
+read off a different card: a mutation that a printed replacement wants to
+change the NUMBER of, reaching the board with no event that names the
+number. Two were left on the registry, and they are the last two:
+
+> "If you tap a permanent for mana, it produces twice as much of that
+> mana instead."  — Mana Reflection; Nyxbloom Ancient's is three
+
+> "If you would draw a card, draw two cards instead."  — Thought
+> Reflection; Alhammarret's Archive, with an "except the first" clause
+
+The draw half is the narrower one. `RepEventDraw` has existed since S17
+and Notion Thief has been rewriting its DRAWING PLAYER since S20; what
+there was no room on the event for is HOW MANY.
+
+The mana half had no event at all, and §13 of this ADR is where it was
+last looked at: sub-PR 6 named `RepEventManaProduced` as a "seventh
+integration point outside the core S17 scope" and deferred it. Four
+production sites have grown since (ADR 0074 §3 lists three of them, and
+#742's pick is the fourth), so the deferral was the right call then and
+the shape is clearer now.
+
+#### Decision 1 — `RepEventProduceMana` carries COLOURS, not a count
+
+CR 106.12b replaces the mana an object produces, and both printed cards
+say "twice as much of **that** mana". A bare count could not say which
+mana: a doubled Forest is `{G}{G}` and a doubled Sol Ring is
+`{C}{C}{C}{C}`. So the event carries `ManaColors []string`, one entry per
+mana, in the order it would reach the pool, and `MultiplyMana(n)` is the
+whole arithmetic — a method on the event rather than a card-side loop,
+because a card reaching for the slice directly could change the COLOURS,
+which CR 106.12b does not license.
+
+The event also carries `ManaFromTap`, and it is the printed CONDITION
+rather than a convenience: both cards say "if you **tap** a permanent for
+mana" (CR 106.12a), so a resolving spell's `Add {B}{B}{B}`, a mana
+ability with no `{T}`, and a triggered mana ability's own output
+(Wild Growth's extra `{G}`, which comes from the Aura) are all
+productions and none of them is doubled. It is the same bit
+`PendingChoice.ManaTapped` already carries for ADR 0074 §3's triggers,
+read at the same two places.
+
+**One body, four sites.** `produceManaLocked` (`produce_mana.go`) is now
+the only place in the engine that mints a `ManaToken` and emits
+`EventManaAdded`:
+
+| site | what it produces | window opens |
+|---|---|---|
+| `ActivateManaAbility` | a printed single-colour slot | at the activation |
+| `ResolveManaChoice` | a pipe slot's answered pick | at the PICK |
+| `materializePlanLocked` | the auto-tap executor's own taps | at the tap |
+| `addManaSlotsLocked` | a spell's `Add …`, and #763's triggers | at the add, `ManaFromTap` false |
+
+The pick is the interesting row. A multi-option slot has no settled
+colour at the activation, so it opens no window there; the window opens
+when the pick is answered, which is the only moment a Birds of Paradise's
+colour exists — ADR 0074 §3 fires the triggered mana abilities from the
+same place for the same reason. The consequence is the one the card
+wants: a doubled Birds is still ONE pick minting two of the chosen
+colour, so it cannot pay `{W}{U}`.
+
+#### Decision 2 — A production can never pause, and that is a rule
+
+Every `RepEventProduceMana` sets `mustSettleNow`. For the two halves of
+#793's cost line that flag is a cost argument; here it is CR 605.3a:
+activating a mana ability is a single indivisible step with no stack and
+no priority window inside it, so there is no point between paying the
+cost and producing the mana at which anybody can be asked anything. The
+auto-tapper adds a second, independent reason — its contract is "no
+further player decisions required", and a prompt raised halfway through
+`materializePlanLocked` strands a half-tapped board mid-cast.
+
+What that costs is the CR 616.1 ordering choice when two production
+replacements share a window; the apply-loop applies the gathered order
+inline instead, one effect per pass. It is unobservable for both printed
+cards — ×2 then ×3 is ×6 in either order — and it is stated here rather
+than discovered later, because a future production replacement that is
+NOT a multiplication would make it observable.
+
+**What that buys is no tail.** A mill, a token creation and a keyword
+action each carry one because their window can pause and the resume has
+to finish what the caller asked for. A window that cannot pause owes
+nothing across a boundary that does not exist, so all three of #982's
+"what does this kind owe" switches say *nothing, and here is why*.
+
+#### Decision 3 — The auto-tap PLANNER prices through the same predicate
+
+A Mana Reflection board pays more per land, so a planner that booked the
+printed amount would tap two lands where one pays — and, worse, would
+read a payable cast as unpayable in strict mode, which is the failure
+#779 and #273 are both about. The planner cannot open a real window: it
+runs under a read lock inside `ReadSnapshot` and must not write the
+once-per-event map.
+
+So `producedManaPreviewLocked` walks the SAME gathered `AppliesTo` /
+`Replace` pairs against a scratch event, with its own applied set
+standing in for the map. One predicate, two readers. It is sound only
+because a replacement of this kind rewrites the event and nothing else —
+which is the contract written on `ManaColors`, and the reason the preview
+skips anything that would ask its controller a question (there is nobody
+to ask while planning, and the real window skips them too under
+`mustSettleNow`).
+
+`priceProducedSlotsLocked` then expresses the answer in the grammar the
+planner already has: a doubled single-option slot becomes two slots of
+that colour (what `ParseProducedMana` already does for `{G2}`), and a
+doubled multi-option slot becomes one slot with per-option `Amounts` —
+#779's "N mana of any one color", which `appendTapSource` already expands
+into one candidate per colour. That is what makes a doubled Birds unable
+to pay `{W}{U}` in the PLAN as well as in the pool.
+
+The EXECUTOR does not price. It produces from the printed slots and lets
+the real window apply the amount; pricing there too would multiply twice.
+What it takes from the plan is the booked COLOUR — `plannedTap.OneColor`,
+which the printed slot list cannot show as a pick — and `firstSlotOffering`
+is how it finds the slot that colour was booked for.
+
+Both halves are gated on `producesManaReplacementsExistLocked`, one
+battlefield walk asking only the watch key, because on ~every board the
+answer is no and the pricing pass is a gather per colour per slot.
+
+#### Decision 4 — `DrawCount` is per INSTRUCTION, and its base is always one
+
+CR 121.2: "if a player is instructed to draw multiple cards, that player
+performs that many individual card draws". `DrawNForEffect` has always
+looped through `drawCardLocked`, so a "draw three" is already three
+events — and that is what makes the count's base one and makes a doubler
+double EACH of them. A Thought Reflection on Divination draws four.
+
+The cards the settled count asks for are then drawn one at a time
+(`actuallyDrawCardsLocked`), because every per-card payoff in the catalog
+reads `EventDrawCard` — Nekusar, Sheoldred, Consecrated Sphinx, Fate
+Unraveler — and a doubled draw that emitted one event would fire them
+once for two cards.
+
+**The window is NOT re-opened for the extra cards.** They are one event,
+and CR 614.5's once-per-event tracking covers all of them. That is what
+stops a doubler from doubling its own output forever, and it is what
+makes two Thought Reflections draw FOUR rather than three: the second
+multiplies the count the first left, through the ordinary CR 616.1
+apply-loop, exactly as two mill doublers do.
+
+**The declared consequence**, and it is the one place this is weaker than
+paper: a CANCEL-style draw replacement sharing the window with a doubler
+takes the whole doubled draw rather than one card of it. Dredge in paper
+replaces a single card draw, so against "draw two" it applies to one of
+the two; here the affected player orders the two replacements and a
+dredge ordered second eats both. Nothing in the catalog is affected —
+no dredge card is catalogued, and Notion Thief redirects rather than
+cancels, so it composes exactly as printed — and the fix, if a dredge
+card is ever written, is to re-open the per-card window with the
+once-per-event map carried across, which is the shape §5aa gave a mill
+run.
+
+#### Decision 5 — "Except the first one you draw in each of your draw steps"
+
+Alhammarret's Archive prints it and so does Notion Thief, and the engine
+keeps no per-draw-step draw tally. Both read it as "except ANY draw
+during that player's own draw step", and the Archive ships the same
+`caveats` line Notion Thief does. The direction is the same in both
+files even though the cards point opposite ways: the Thief steals one
+card fewer, the Archive gives its controller one card fewer. Weaker for
+the replacement's controller, never stronger.
+
+`drawnInOwnDrawStep` (`cards/effects/draw_replacements.go`) is now the
+one copy of the predicate, and Notion Thief's inline version is gone.
+Closing it properly is a per-draw-step tally on the player — the other
+half of the "Draw-replacement count" row, which Teferi's Ageless Insight
+also waits on.
+
+#### Consequences
+
+- The "Mana-production replacement event" and "Draw-replacement count"
+  rows close. Mana Reflection, Nyxbloom Ancient and Thought Reflection
+  ship `full`; Alhammarret's Archive ships with decision 5's caveat, and
+  its life half needed no engine work at all (#482's window, shared with
+  Rhox Faithmender through the new `life_replacements.go`).
+- §13's deferred `RepEventManaProduced` is answered, seventeen sprints
+  later and with four production sites instead of one.
+- `produceManaLocked` is a real unification: five copies of
+  "`AddMana` then `EmitEvent(EventManaAdded)`" became one, which is also
+  why the doubled tokens keep their spend restrictions (#259) without
+  anybody remembering to copy that line.
+- The CR 616.1 ordering prompt is now reachable on a DRAW for the first
+  time from the catalog: a Thought Reflection beside an Alhammarret's
+  Archive asks the drawer to order two replacements that agree. That is
+  the printed behaviour and the same cost §5a already accepted for two
+  different token doublers.
+- One more `ReplacementEventKind`, so the five switches #982 enumerates
+  are five arms longer. Three of them say "nothing is owed", which is a
+  written decision rather than a fall-through — and the back-out for the
+  fourth (`affectedPlayerForEvent`) is the gate test failing by name.
+
+
 ### 6. Six pipeline integration points (five mutations + step transition)
 
 The core five mutations named in the sprint plan are the rules-
@@ -2917,6 +3541,17 @@ sub-PR 6:
 
 Scope decision deferred to sub-PR 6 PR-open time with an explicit
 user prompt. Either outcome is tracked (§Consequences below).
+
+**Deferred, then closed 2026-09-22 by
+[§5ab](#5ab-amendment-2026-09-22-the-last-two-amount-replacements--mana-produced-and-cards-drawn)
+(#1222).** S17 held the clauses; the event landed seventeen sprints later
+as `RepEventProduceMana`, and by then there were FOUR production sites
+rather than the one this section imagined — which is why the deferral was
+right. Mycosynth Lattice's own two clauses are still not written: "lands
+tap for any color" is a layer-4 grant on the mana ability rather than a
+replacement of the amount, and "no land's mana ability adds non-colorless"
+is a COLOUR rewrite, which decision 1 of §5ab deliberately does not offer
+the catalog.
 
 ## Out of scope (explicit deferrals)
 

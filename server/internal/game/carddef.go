@@ -78,7 +78,17 @@ type CardDef struct {
 	// addendum §11), read by SelfCostModifiersFor for the spell being
 	// priced and never from the battlefield.
 	SelfCostModifiers []CostModifier
-	CastableZones     []ZoneKind
+	// ExhaustPermissions are the "you may activate exhaust abilities
+	// as though they haven't been activated" statics this permanent
+	// contributes (#1184) — Elvish Refueler. Read from the
+	// battlefield through ExhaustPermissionsForCard.
+	ExhaustPermissions []ExhaustPermission
+	// AttackTaxes are the "creatures can't attack you unless their
+	// controller pays {N}" statics this permanent contributes
+	// (CR 508.1a, ADR 0080) — Propaganda, Ghostly Prison, Windborn
+	// Muse. Read from the battlefield through AttackTaxesForCard.
+	AttackTaxes   []AttackTax
+	CastableZones []ZoneKind
 
 	// SpecialActions are the CR 116.2 special actions the card offers
 	// from its owner's hand — foretell (CR 702.143a) and suspend
@@ -105,9 +115,23 @@ type CardDef struct {
 	// Cage, Rakdos). Read from the battlefield through
 	// CatalogAbilityKey, never from a card's own zone.
 	CastRestrictions []CastRestriction
+	// ActivationRestrictions are the "can't be activated" statics
+	// this PERMANENT imposes on other objects' activated abilities
+	// (Cursed Totem, Linvala, Collector Ouphe, Pithing Needle). Read
+	// from the battlefield through CatalogAbilityKey, never from a
+	// card's own zone. #1210, ADR 0073's amendment of 2026-09-22.
+	ActivationRestrictions []ActivationRestriction
 
 	CantBeCountered bool
 	NoMaxHandSize   bool
+	// PlayerKeywords are the abilities this permanent's printed
+	// static gives its CONTROLLER — "You have hexproof" (Leyline of
+	// Sanctity, Aegis of the Gods). Engine ability tokens, in the
+	// vocabulary protection.go and keywords.go already parse. Read
+	// from the battlefield through CatalogAbilityKey, never from a
+	// card's own zone; see game.CatalogPlayerKeywords and ADR 0072's
+	// 2026-09-22 amendment (#1197).
+	PlayerKeywords []string
 	// Emblem is the presentation half of an EMBLEM's catalog entry
 	// (CR 114) — its board label and its printed ability text. Set
 	// only on an emblem's own def, the one effects.Register files
@@ -116,6 +140,19 @@ type CardDef struct {
 	// abilities are the ordinary Static and Triggered slots above.
 	// See emblem.go and ADR 0064. Added in S40 (#623).
 	Emblem *EmblemDef
+
+	// TokenText is the presentation half of a TOKEN TEMPLATE's catalog
+	// entry (CR 111.1) — the token's printed ability text, verbatim,
+	// as the player reads it on the board. Set only on a token
+	// template's own def, the one effects files under
+	// game.TokenKey(slug), and only when the token prints something.
+	//
+	// It is here for the reason EmblemDef.Text is: a token has no
+	// printing behind it, so there is no oracle text for the client to
+	// fetch and a trigger's Label is a log line, not card text. Read
+	// through CatalogTokenText / TokenTextForCard; see token_key.go
+	// and ADR 0083.
+	TokenText string
 
 	// XMatters says everything the card does scales with the
 	// announced X, so X=0 does nothing at all. Read only by the
@@ -128,6 +165,12 @@ type CardDef struct {
 	// 702.44), and nothing else today. It picks the colour-maximising
 	// payment strategy at the cast gate (#761).
 	WantsDistinctColors bool
+
+	// WantsManaFrom is the kinds of mana SOURCE this card's text reads
+	// back — Treasure, creature, artifact (#1212). Read through
+	// CatalogWantsManaFrom; it is an ORDERING HINT for the auto-tapper
+	// and never a filter (mana_source.go, autotap.go).
+	WantsManaFrom ManaSourceKinds
 
 	// AdditionalLandPlays is how many EXTRA lands per turn this
 	// permanent lets its controller play while it is on the
@@ -147,6 +190,19 @@ type CardDef struct {
 	// are not here — they are granted by an effect and stored on the
 	// player.
 	CastPermissions []CastPermission
+
+	// CastTimings are the per-player cast-timing statements this
+	// permanent makes while it is on the battlefield (#1195) —
+	// Vedalken Orrery's "you may cast spells as though they had
+	// flash", Teferi, Time Raveler's "each opponent can cast spells
+	// only any time they could cast a sorcery". Read through
+	// CatalogCastTimings; see cast_timing.go.
+	//
+	// Derived on every query rather than written onto a player, for
+	// the reason CastPermissions gives one field up. A statement that
+	// OUTLIVES its source (Emergence Zone's "this turn") is not here:
+	// it is granted by an effect and stored on the player.
+	CastTimings []CastTimingRule
 
 	// LibraryTopVisible is how far this permanent makes its
 	// controller's top library card visible (CR 401.5) — "you may look
@@ -309,6 +365,24 @@ func init() {
 		}
 		return nil
 	}
+	CatalogExhaustPermissions = func(key string) []ExhaustPermission {
+		if d := catalogDef(key); d != nil {
+			return d.ExhaustPermissions
+		}
+		return nil
+	}
+	CatalogActivationRestrictions = func(key string) []ActivationRestriction {
+		if d := catalogDef(key); d != nil {
+			return d.ActivationRestrictions
+		}
+		return nil
+	}
+	CatalogAttackTaxes = func(key string) []AttackTax {
+		if d := catalogDef(key); d != nil {
+			return d.AttackTaxes
+		}
+		return nil
+	}
 	CatalogCastableZones = func(key string) []ZoneKind {
 		if d := catalogDef(key); d != nil {
 			return d.CastableZones
@@ -359,9 +433,21 @@ func init() {
 		d := catalogDef(key)
 		return d != nil && d.NoMaxHandSize
 	}
+	CatalogPlayerKeywords = func(key string) []string {
+		if d := catalogDef(key); d != nil {
+			return d.PlayerKeywords
+		}
+		return nil
+	}
 	CatalogWantsDistinctColors = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.WantsDistinctColors
+	}
+	CatalogWantsManaFrom = func(key string) ManaSourceKinds {
+		if d := catalogDef(key); d != nil {
+			return d.WantsManaFrom
+		}
+		return 0
 	}
 	CatalogAdditionalLandPlays = func(key string) int {
 		if d := catalogDef(key); d != nil {
@@ -379,10 +465,22 @@ func init() {
 		}
 		return nil
 	}
+	CatalogCastTimings = func(key string) []CastTimingRule {
+		if d := catalogDef(key); d != nil {
+			return d.CastTimings
+		}
+		return nil
+	}
 	CatalogLibraryTopVisible = func(key string) LibraryTopVisibility {
 		if d := catalogDef(key); d != nil {
 			return d.LibraryTopVisible
 		}
 		return LibraryTopHidden
+	}
+	CatalogTokenText = func(key string) string {
+		if d := catalogDef(key); d != nil {
+			return d.TokenText
+		}
+		return ""
 	}
 }

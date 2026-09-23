@@ -500,7 +500,7 @@ func TestB29DazzlingAngelGainsOnOtherCreaturesEntering(t *testing.T) {
 	if me.Life != start+1 {
 		t.Errorf("a creature entering: life %d, want %d", me.Life, start+1)
 	}
-	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("1/1 colorless Spirit with flying"), 2) })
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("1/1 white Spirit with flying"), 2) })
 	passPriorityAroundTable(t, g)
 	if me.Life != start+3 {
 		t.Errorf("two tokens: life %d, want %d", me.Life, start+3)
@@ -992,8 +992,15 @@ func TestB29CorneredByBlackMagesEdictsAndLeavesAWizard(t *testing.T) {
 	if w.Controller != me.ID || w.Power != 0 || w.Toughness != 1 || len(w.Colors) != 1 || w.Colors[0] != "B" {
 		t.Errorf("the Wizard is my 0/1 black token, got %d/%d %v", w.Power, w.Toughness, w.Colors)
 	}
-	if spec, _ := Lookup(b29CorneredByBlackMagesOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the token's missing ping must be declared")
+	// The Wizard's own "whenever you cast a noncreature spell" ping
+	// ships since ADR 0083 (#1248) — this used to assert the caveat
+	// that declared it missing. Its behaviour is exercised in
+	// token_abilities_cards_test.go.
+	if got := len(game.TriggersForCard(w)); got != 1 {
+		t.Errorf("the Wizard has %d triggered abilities, want its printed ping", got)
+	}
+	if spec, _ := Lookup(b29CorneredByBlackMagesOracle); spec.Completeness != CompletenessFull {
+		t.Error("nothing about this card is simplified any more")
 	}
 }
 

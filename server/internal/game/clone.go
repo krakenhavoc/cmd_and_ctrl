@@ -109,6 +109,7 @@ func (g *Game) cloneLocked() *Game {
 		}
 	}
 	out.TurnTally = cloneTurnTally(g.TurnTally)
+	out.Activations = cloneActivationTally(g.Activations)
 	if len(g.DrawnThisTurn) > 0 {
 		out.DrawnThisTurn = make(map[uuid.UUID][]uuid.UUID, len(g.DrawnThisTurn))
 		for k, v := range g.DrawnThisTurn {
@@ -127,6 +128,11 @@ func (g *Game) cloneLocked() *Game {
 	out.Battlefield = cloneZone(g.Battlefield)
 	out.Stack = cloneZone(g.Stack)
 	out.Exile = cloneZone(g.Exile)
+	// #1199: the phased-out holding slice. Deep-copied like any other
+	// zone, which is what makes an undo across a phase-out or a
+	// phase-in exact — the state is a Card value in a slice, not a
+	// flag several subsystems have to agree about. See ADR 0084.
+	out.PhasedOut = cloneZone(g.PhasedOut)
 	out.Seats = make([]*Player, len(g.Seats))
 	for i, p := range g.Seats {
 		out.Seats[i] = clonePlayer(p)
@@ -339,6 +345,16 @@ func (g *Game) cloneLocked() *Game {
 			out.lastKnownTriggerIdentity[k] = v
 		}
 	}
+	// #1218: lastKnownCounters' values are themselves maps, so unlike
+	// its two siblings above each entry needs its OWN copy — sharing
+	// the inner map would let a mutation on the clone (or the undo it
+	// is taken for) write through to the live game's snapshot.
+	if len(g.lastKnownCounters) > 0 {
+		out.lastKnownCounters = make(map[uuid.UUID]map[string]int, len(g.lastKnownCounters))
+		for k, v := range g.lastKnownCounters {
+			out.lastKnownCounters[k] = copyStringIntMap(v)
+		}
+	}
 	// CR 614.5 once-per-event marks for events PAUSED on a CR 616 /
 	// CR 614.10 prompt (#808). Between actions the map holds an entry
 	// only for an event whose prompt is still open, and that entry is
@@ -546,6 +562,13 @@ func clonePlayer(p *Player) *Player {
 	// a point where the permission was still owed must restore it
 	// intact, with its own Cards backing array.
 	out.CastPermissions = cloneCastPermissions(p.CastPermissions)
+	// #1197: granted player abilities, the same reasoning one more
+	// time. A PlayerStatic has no reference-typed field at all, so a
+	// fresh backing array IS the whole copy — what must not be shared
+	// is the array, because sweepPlayerStaticsLocked replaces the
+	// slice rather than compacting it, precisely so an undo snapshot
+	// taken mid-turn still holds the grants that were live then.
+	out.Statics = clonePlayerStatics(p.Statics)
 	return out
 }
 
@@ -593,6 +616,7 @@ func cloneStackItem(s *StackItem) *StackItem {
 		SplitSecond:   s.SplitSecond,
 		AltCost:       s.AltCost,
 		Foretold:      s.Foretold,
+		FaceDown:      s.FaceDown,
 		AltCostExiles: s.AltCostExiles,
 		CastFromZone:  s.CastFromZone,
 		IsCopy:        s.IsCopy,
@@ -618,6 +642,10 @@ func cloneStackItem(s *StackItem) *StackItem {
 		out.Targets = make([]TargetRef, len(s.Targets))
 		copy(out.Targets, s.Targets)
 	}
+	// #1223: the triggering event, deep-copied for the same reason
+	// the payload is — an undo that shared the slices inside it
+	// would let the restored game mutate the live one.
+	out.Trigger = cloneTriggerContext(s.Trigger)
 	// A reflexive trigger's payload (#636): its own backing array for
 	// the same reason Targets gets one — an undo that shared it would
 	// let the restored game mutate the live one.
@@ -722,12 +750,11 @@ func cloneReplacementResume(f *replacementResumeFrame) *replacementResumeFrame {
 		if f.ev.mill != nil {
 			// #569, the same reason as the two above: the mill's
 			// continuation is cleared THROUGH the pointer as it runs,
-			// and the REST of what the tail carries — the destination
-			// and the `until` predicate — is what applyResolvedMillLocked
-			// is still reading. Its own copy, so a live run cannot
-			// consume the snapshot's continuation and an
-			// undone-then-redone answer mills the same cards and
-			// reports the same list.
+			// and the REST of what the tail carries — the destination —
+			// is what applyResolvedMillLocked is still reading. Its own
+			// copy, so a live run cannot consume the snapshot's
+			// continuation and an undone-then-redone answer mills the
+			// same cards and reports the same list.
 			t := *f.ev.mill
 			ev.mill = &t
 		}
@@ -796,6 +823,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.Battlefield = src.Battlefield
 	g.Stack = src.Stack
 	g.Exile = src.Exile
+	g.PhasedOut = src.PhasedOut
 	g.Turn = src.Turn
 	g.MulligansOpen = src.MulligansOpen
 	g.Monarch = src.Monarch
@@ -815,6 +843,11 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.ExtraLandDropsThisTurn = src.ExtraLandDropsThisTurn
 	g.DrawnThisTurn = src.DrawnThisTurn
 	g.TurnTally = src.TurnTally
+	// #1181: the activation record rewinds with the rest of the
+	// per-turn state. An undo that kept an exhaust spent would take
+	// the ability away for the whole game on the strength of an
+	// activation that no longer happened.
+	g.Activations = src.Activations
 	// #628's loop breaker, missed by this list when it landed: the
 	// clone carries the notice (cloneLocked, above) and the persisted
 	// snapshot carries it, but the undo path did not put it back, so
@@ -858,6 +891,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.ScopedStatics = src.ScopedStatics
 	g.lastKnownBattlefield = src.lastKnownBattlefield
 	g.lastKnownTriggerIdentity = src.lastKnownTriggerIdentity
+	g.lastKnownCounters = src.lastKnownCounters
 	// #808: the paused events' once-per-event marks rewind with the
 	// prompts that own them — see cloneLocked.
 	g.replacementsAppliedThisEvent = src.replacementsAppliedThisEvent

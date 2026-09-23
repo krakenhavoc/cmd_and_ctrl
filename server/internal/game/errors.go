@@ -318,6 +318,16 @@ var (
 	// untouched. Added in the S32 mana-pipeline pass (#352).
 	ErrConditionNotMet = errors.New("game: ability's activation condition is not met")
 
+	// ErrAbilityExhausted is returned by ActivateCatalogAbility when
+	// an exhaust ability has already been activated by this object
+	// ("Activate each exhaust ability only once", #1181). Its own
+	// error rather than ErrConditionNotMet because the two do not
+	// recover the same way: a condition can become true again on the
+	// next turn, and this one never does until the permanent becomes
+	// a new object (CR 400.7). Checked after the timing check and
+	// before the printed condition, so nothing is paid.
+	ErrAbilityExhausted = errors.New("game: this exhaust ability has already been activated")
+
 	// ErrDefender is returned by DeclareAttacker when the creature
 	// has the defender keyword (CR 702.3). Added in S18 sub-PR 2.
 	ErrDefender = errors.New("game: creature has defender and cannot attack")
@@ -369,6 +379,25 @@ var (
 	// leaves the undo stack and the snapshot sequence untouched for
 	// what is, in the end, a no-op. Added in S31 for #318.
 	ErrNoLegalAttackers = errors.New("game: no creature in the declaration is able to attack")
+
+	// ErrAttackTaxUnpaid is returned by the declaration verbs when the
+	// attacking player cannot pay the CR 508.1a cost of the
+	// declaration they submitted — Propaganda's "{2} for each creature
+	// they control that's attacking you". ADR 0080, #1063.
+	//
+	// The error actually returned is an *AttackTaxUnpaidError carrying
+	// the price and the payer's reason for failing it (the missing
+	// symbols, usually), so the client's toast says what to tap rather
+	// than "invalid parameter"; callers doing
+	// errors.Is(err, ErrAttackTaxUnpaid) still match. Same shape
+	// InsufficientManaError and CantCastError have, for the same
+	// reason.
+	//
+	// ALL OR NOTHING: nothing is staged, no creature is tapped and no
+	// EventAttack fires. A player who can afford part of the swing
+	// submits a smaller declaration — the choice of which attacks to
+	// drop is theirs, and the engine must not make it for them.
+	ErrAttackTaxUnpaid = errors.New("game: the attack tax for this declaration was not paid")
 
 	// ErrEmptyBlockerSet is returned by DeclareBlockers for a
 	// declaration with no entries. "Block with nobody" is the default

@@ -45,26 +45,27 @@ func TestMillMoreThanTheLibraryHoldsDoesNotLose(t *testing.T) {
 }
 
 // An unbounded until-run that never finds its card reads the library
-// dry and stops there.
+// dry and stops there. Through the Then form, which since #1161 is the
+// only form a clause can ride.
 func TestUnboundedMillUntilThatNeverMatchesDoesNotLose(t *testing.T) {
 	g := newActiveGameWithSeats(t, 3)
 	p := g.Seats[1]
-	never := func(Card) bool { return false }
+	never := func([]Card) bool { return false }
 	runOutAndCheck(t, g, p, func() error {
-		_, err := g.MillToZoneForEffect(p.ID, 0, ZoneGraveyard, never)
-		return err
+		return g.MillToZoneThenForEffect(p.ID, 0, ZoneGraveyard, never, nil)
 	})
 }
 
-// Helm of Obedience's shape: a bounded until-run whose bound is larger
-// than the library and whose card is never found.
+// Helm of Obedience's shape: an until-run whose landed-count bound is
+// larger than the library and whose card is never found (#1161 — the
+// bound is a clause over what landed, so it is a predicate here too).
 func TestBoundedMillUntilPastTheLibraryDoesNotLose(t *testing.T) {
 	g := newActiveGameWithSeats(t, 3)
 	p := g.Seats[1]
-	never := func(Card) bool { return false }
+	size := p.Library.Size()
+	neverInThisLibrary := func(landed []Card) bool { return len(landed) >= size+5 }
 	runOutAndCheck(t, g, p, func() error {
-		_, err := g.MillToZoneForEffect(p.ID, p.Library.Size()+5, ZoneGraveyard, never)
-		return err
+		return g.MillToZoneThenForEffect(p.ID, 0, ZoneGraveyard, neverInThisLibrary, nil)
 	})
 }
 
@@ -74,7 +75,7 @@ func TestExileTopPastTheLibraryDoesNotLose(t *testing.T) {
 	g := newActiveGameWithSeats(t, 3)
 	p := g.Seats[1]
 	runOutAndCheck(t, g, p, func() error {
-		moved, err := g.MillToZoneForEffect(p.ID, p.Library.Size()+4, ZoneExile, nil)
+		moved, err := g.MillToZoneForEffect(p.ID, p.Library.Size()+4, ZoneExile)
 		if err == nil && len(moved) == 0 {
 			t.Error("the library's cards are exiled")
 		}

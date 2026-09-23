@@ -328,6 +328,11 @@ func (g *Game) putOntoBattlefieldFromZoneLocked(ids []uuid.UUID, from ZoneKind, 
 			OldZone:      from,
 			NewZone:      ZoneBattlefield,
 			EntersTapped: opts.Tapped,
+			// ADR 0082 decision 3: the face-down state rides the
+			// EVENT rather than a local, so both battlefield-entry
+			// doors carry the same fact in the same field and a
+			// replacement effect inspecting the entry sees it.
+			FaceDown: opts.FaceDown,
 		}
 		out, err := g.applyReplacementsLocked(ev)
 		if errors.Is(err, errReplacementPending) {
@@ -392,11 +397,13 @@ func (g *Game) putOntoBattlefieldFromZoneLocked(ids []uuid.UUID, from ZoneKind, 
 			g.Battlefield.Cards[i].ClearKnown()
 			break
 		}
-		if opts.FaceDown != FaceDownNone {
+		if p.out.FaceDown != FaceDownNone {
 			// CR 708.5: the controller of a face-down permanent may
 			// look at it, and nobody else may — so this replaces the
-			// public-zone marking rather than adding to it.
-			g.applyFaceDownLandingLocked(g.Battlefield, moved.InstanceID, opts.FaceDown)
+			// public-zone marking rather than adding to it. Read off
+			// the settled EVENT rather than off opts, for the reason
+			// EntersTapped is: the pipeline gets the last word.
+			g.applyFaceDownLandingLocked(g.Battlefield, moved.InstanceID, p.out.FaceDown)
 		} else {
 			g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
 		}
@@ -447,7 +454,18 @@ func (g *Game) putOntoBattlefieldFromZoneLocked(ids []uuid.UUID, from ZoneKind, 
 		}
 	}
 	if len(entered) == 0 {
+		// Nothing moved, so no zone lost a card and no open pick can
+		// have been invalidated by this call.
 		return nil, firstErr
 	}
+	// #1069: the batch has left the hand or the library it came from,
+	// so an open choose_cards prompt over that zone — a discard prompt
+	// whose candidates a Warp World just put onto the battlefield — is
+	// trimmed or withdrawn here. One call for the whole batch: the
+	// prune is keyed by zone and re-reads every open pick
+	// (battlefield_entry.go). After phase 3, so every arrival is
+	// announced and every ETB hook has run before a withdrawal's
+	// continuation can start something of its own.
+	g.pruneChoicesAfterArrivalLocked()
 	return entered, firstErr
 }

@@ -54,6 +54,14 @@ concurrency:
 jobs:
   cmdctrl-ci:
     runs-on: self-hosted
+    # Job-level override of the workflow's `contents: read` above.
+    # Discussion #1231 P1a: "Census -- commit refresh" below pushes a
+    # docs-only commit back to develop/main on a push, using the
+    # default GITHUB_TOKEN actions/checkout already wired up for this
+    # checkout. Scoped to this job -- cmdctrl-cd never touches git and
+    # keeps contents: read.
+    permissions:
+      contents: write
     # The repo is public and these runners keep state between jobs and
     # can reach the deploy hosts, so fork PRs never run here. A fork's
     # code can still edit this line, which is why fork PR workflows also
@@ -151,6 +159,67 @@ jobs:
           GOTOOLCHAIN: auto
         run: make lint
 
+      # Discussion #1231 P1a: the generated catalog census block in
+      # docs/decklists/card-coverage-roadmap.md carries absolute counts
+      # that move under every merged card PR. Letting each PR
+      # regenerate the block itself was the reason nearly every rebase
+      # in the card-batch queue happened -- two PRs branch off the same
+      # develop commit, each runs `-update` before opening, each lands
+      # a different plausible total, and whichever merges second
+      # conflicts on these exact two lines even though the two PRs
+      # never touched the same card (14 of develop's 20 commits in one
+      # week touched only this block).
+      #
+      # The fix: only a push refreshes it, never a PR. This step runs
+      # the same `-update` a developer would run by hand, gated to
+      # `github.event_name == 'push'` so the tree is fresh BEFORE
+      # "Server -- test" below enforces it (see CENSUS_ENFORCE there)
+      # and before "Census -- commit refresh" pushes the result back
+      # at the end of the job. -run scopes this to the one test that
+      # owns the block; this package's OTHER -update consumer -- the
+      # exact-clone baseline in clones_test.go -- is a separate,
+      # unrelated concern and must not be regenerated here.
+      - name: Census — refresh
+        if: github.event_name == 'push'
+        working-directory: server
+        run: go test ./internal/cards/coverage/ -run TestRoadmapCensusIsCurrent -update
+
+      # The other half of the same contract, for a pull request instead
+      # of a push: a PR is not expected to carry today's numbers
+      # (develop refreshes them on its own next push, above), but it
+      # also must not carry a regeneration of its OWN -- that is
+      # exactly the two-PRs-collide failure mode Discussion #1231 was
+      # filed over. This diffs only the generated block, not the whole
+      # file, so a PR is free to edit the surrounding prose (the docs
+      # change in this very PR does).
+      #
+      # A warning, not a failure: several open card PRs already carry
+      # a hand-regenerated block from before this policy landed, and
+      # failing the check here would block every one of them on
+      # something that is not their real change. Once that queue has
+      # drained this should become a hard failure (swap the
+      # ::warning:: + exit 0 below for a plain exit 1) so the rule has
+      # teeth again.
+      - name: Census — PR must not touch the generated block
+        if: github.event_name == 'pull_request'
+        run: |
+          set +e +o pipefail
+          git fetch --depth=1 origin "${{ github.base_ref }}"
+          if ! git show "origin/${{ github.base_ref }}:docs/decklists/card-coverage-roadmap.md" \
+              > "$RUNNER_TEMP/census-base.md" 2>/dev/null; then
+            echo "::notice::could not read docs/decklists/card-coverage-roadmap.md from origin/${{ github.base_ref }}; skipping the census-block comparison"
+            exit 0
+          fi
+          extract() {
+            sed -n '/<!-- BEGIN GENERATED CATALOG CENSUS/,/<!-- END GENERATED CATALOG CENSUS -->/p' "$1"
+          }
+          extract "$RUNNER_TEMP/census-base.md" > "$RUNNER_TEMP/census-base.block"
+          extract docs/decklists/card-coverage-roadmap.md > "$RUNNER_TEMP/census-head.block"
+          if ! diff -q "$RUNNER_TEMP/census-base.block" "$RUNNER_TEMP/census-head.block" >/dev/null; then
+            echo "::warning::this PR regenerated the census block; develop refreshes it, drop the change to avoid conflicts"
+          fi
+          exit 0
+
       - name: Server — test
         working-directory: server
         # -timeout 30m, not Go's 10m default. internal/aiseat runs whole
@@ -165,6 +234,17 @@ jobs:
         # is headroom, not a target: if aiseat approaches it again the
         # answer is to ration whole games (sub-PR 7 already trimmed once),
         # not to raise this further.
+        #
+        # CENSUS_ENFORCE=1 only on a push (main or develop): that is the
+        # one context where "Census -- refresh" above just ran -update
+        # against this exact tree, so census_test.go finding the block
+        # still stale is a real failure -- the refresh's write did not
+        # take -- and not ordinary PR-branch drift. Everywhere else (a
+        # PR, workflow_dispatch, merge_group) this is the empty string,
+        # which census_test.go treats the same as unset: skip a stale
+        # block instead of failing it (Discussion #1231).
+        env:
+          CENSUS_ENFORCE: ${{ github.event_name == 'push' && '1' || '' }}
         run: go test -race -cover -timeout 30m ./...
 
       - name: Server — build
@@ -207,6 +287,55 @@ jobs:
       - name: Tests-e2e — typecheck
         working-directory: tests-e2e
         run: npx tsc --noEmit
+
+      # Discussion #1231 P1a, the other half of "Census -- refresh"
+      # near the top of this job: a push to develop or main that moved
+      # the catalog just rewrote the census block in place (via
+      # -update, before the test suite ran), and if that rewrite
+      # actually changed bytes it needs to land on the branch, not
+      # evaporate when this runner's workspace is thrown away. This
+      # commits and pushes it back with [skip ci] -- the change is
+      # docs-only, and a docs-only push must not trigger a second,
+      # redundant cmdctrl-cd deploy of the commit that just deployed.
+      #
+      # Placed after every gate step and before the artifact uploads
+      # on purpose: nothing above depends on this file, and the
+      # binaries and dist about to be uploaded were already built from
+      # the tree "Census -- refresh" produced, so this push (or its
+      # rejection) cannot change what gets deployed.
+      #
+      # continue-on-error: true is load-bearing, not a shortcut. Branch
+      # protection today has no bypass actor for the GitHub Actions app
+      # (id 15368, Discussion #1231), so a ruleset that requires PRs on
+      # develop/main can legitimately refuse this push -- and a
+      # rejected docs-only push must never fail the job that already
+      # built and tested real artifacts and is about to hand them to
+      # cmdctrl-cd. The script below already turns a rejected push into
+      # an `exit 0` after a ::warning::; continue-on-error is the
+      # backstop for anything it does not anticipate (git itself
+      # missing, a config error), not the primary way this succeeds.
+      - name: Census — commit refresh
+        if: >-
+          github.event_name == 'push' &&
+          (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
+        continue-on-error: true
+        run: |
+          set +e +o pipefail
+          if git diff --quiet -- docs/decklists/card-coverage-roadmap.md; then
+            echo "census block unchanged; nothing to commit"
+            exit 0
+          fi
+          short_sha=$(git rev-parse --short HEAD)
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/decklists/card-coverage-roadmap.md
+          git commit -m "chore(census): refresh the catalog census for ${short_sha} [skip ci]"
+          if git push origin "HEAD:${{ github.ref_name }}"; then
+            echo "census refresh pushed for ${short_sha}"
+          else
+            echo "::warning::census refresh could not be pushed; the ruleset needs the GitHub Actions app as a bypass actor (Discussion #1231)"
+          fi
+          exit 0
 
       # Only cmdctrl-cd in this same run downloads these. develop sees
       # hundreds of pushes a week, so anything longer than a day piles

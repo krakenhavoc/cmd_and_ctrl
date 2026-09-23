@@ -60,6 +60,10 @@ type choiceParams struct {
 	// empty string sent on every other kind would be read as "this is
 	// a creature-type answer".
 	CreatureType string `json:"creature_type,omitempty"`
+	// CardName answers a choose_card_name prompt (CR 614.12, #1210).
+	// omitempty for CreatureType's reason: the dispatcher routes on
+	// its PRESENCE.
+	CardName string `json:"card_name,omitempty"`
 }
 
 type assignParam struct {
@@ -267,6 +271,37 @@ func (e *enumerator) choiceMoves() bool {
 				e.addChoice(c, reason+targetLabel(g, set), p)
 			}
 
+		// #1196 CR 115.7: "choose the new target for …". One slot of
+		// an item already on the stack, so the answer is one ref (or
+		// none, when the prompt allows declining) and never a
+		// combination — which is why it is its own case rather than
+		// another kind on the pick_target one above.
+		//
+		// Ordered through #1014's Options.OrderTargets, and the
+		// DECLINE comes first when it is legal: a bot that has to
+		// choose between moving a removal spell and leaving it where
+		// it is should have "leave it" in the list at all, and it is
+		// also the answer that always terminates.
+		case game.PendingChoiceRetarget:
+			cands := make([]game.TargetRef, 0, len(c.PickTargetPlayers)+len(c.PickTargetCards))
+			for _, id := range c.PickTargetPlayers {
+				cands = append(cands, game.TargetRef{Kind: game.TargetPlayer, ID: id})
+			}
+			for _, id := range c.PickTargetCards {
+				cands = append(cands, game.TargetRef{Kind: game.TargetCard, ID: id})
+			}
+			e.orderCandidates(cands)
+			if c.PickTargetMin == 0 {
+				p := base()
+				p.Targets = []targetWire{}
+				e.addChoice(c, reason+": leave the target unchanged", p)
+			}
+			for _, t := range cands {
+				p := base()
+				p.Targets = wireTargets([]game.TargetRef{t})
+				e.addChoice(c, reason+targetLabel(g, []game.TargetRef{t}), p)
+			}
+
 		// #764 CR 603.3c: a modal trigger's mode, chosen as the
 		// ability is put on the stack. Every legal selection, bounded
 		// by MaxExpansionPerSource and ordered by ADR 0065 §6 — the
@@ -442,7 +477,9 @@ func (e *enumerator) choiceMoves() bool {
 				})
 			}
 
-		case game.PendingChoiceChooseCards, game.PendingChoiceUntapChoice:
+		case game.PendingChoiceChooseCards, game.PendingChoiceUntapChoice,
+			game.PendingChoiceEntryRevealFromHand, game.PendingChoiceRevealPick,
+			game.PendingChoiceTheirPermanents, game.PendingChoiceOwnPermanents:
 			// "Choose N of these cards." The bounds ride on the
 			// choice, and a prompt may also carry a set-level
 			// Validate hook ("discard two unless you discard a
@@ -477,16 +514,39 @@ func (e *enumerator) choiceMoves() bool {
 			// still reaches the valid pairs instead of spending the
 			// whole budget on singles (#544, and
 			// TestChooseCardsReachesValidPairsPastTheBudget).
-			sets := filteredCombinations(c.ChooseCards, c.ChooseMin, c.ChooseMax, e.opts.MaxExpansionPerSource,
+			sets := filteredCombinations(e.cardSetPickPool(c), c.ChooseMin, c.ChooseMax, e.opts.MaxExpansionPerSource,
 				func(set []uuid.UUID) bool { return g.ChooseCardsPickLegalLocked(c, set) })
 			// #826: untap_choice shares every line of this branch —
 			// the same payload, the same bounds and the same
 			// engine-side acceptance check, which is where the cap
 			// solver lives (ADR 0070 Decision 3). Only the verb the
 			// seat reads differs.
+			//
+			// #1198: and so does entry_reveal_from_hand, CR 614.1c's
+			// "you may reveal an Island or Swamp card from your
+			// hand". Its floor is always zero, so the empty answer
+			// above is this kind's AlwaysLegal move and the prompt
+			// can never leave a seat without one — which matters
+			// more here than anywhere else on this branch, because
+			// the seat owing it is holding a permanent halfway onto
+			// the battlefield.
+			//
+			// #1214's three resolution-time picks join on exactly the
+			// same terms, and add one thing of their own: the ORDER
+			// the pool is walked in, which is what decides which sets
+			// survive MaxExpansionPerSource (see cardSetPickPool).
 			verb := ": choose"
-			if c.Kind == game.PendingChoiceUntapChoice {
+			switch c.Kind {
+			case game.PendingChoiceUntapChoice:
 				verb = ": untap"
+			case game.PendingChoiceEntryRevealFromHand:
+				verb = ": reveal"
+			case game.PendingChoiceTheirPermanents:
+				// The label says WHOSE board is on offer, because a
+				// run of these is one prompt per player and four
+				// identical "choose Grizzly Bears" lines is a move
+				// list a human reading a bot's log cannot follow.
+				verb = ": choose from " + choiceSeatName(g, c.FromPlayer)
 			}
 			for _, set := range sets {
 				p := base()
@@ -652,6 +712,31 @@ func (e *enumerator) choiceMoves() bool {
 				p := base()
 				p.CreatureType = t
 				e.addAlwaysLegalChoice(c, reason+": "+t, p)
+			}
+
+		case game.PendingChoiceCardName:
+			// #1210, CR 614.12. "As this enters, choose a card name"
+			// — Pithing Needle, Phyrexian Revoker, Sorcerous
+			// Spyglass. There is NO legal set (CR 201.2 admits any
+			// card name at all), so this is not "offer the legal
+			// answers, capped" the way the creature-type case is; it
+			// is "offer the answers worth taking".
+			//
+			// Those are the names on the OPPONENTS' battlefield that
+			// actually have an activated ability, most threatening
+			// first, which is what a player points a Needle at. Read
+			// off public zones only, so the labels leak nothing.
+			//
+			// Every answer is always legal: ResolveCardNameChoice
+			// accepts any non-empty name and treats a departed source
+			// as "nowhere to land", not an error. A board with
+			// nothing worth naming still gets one answer, so the seat
+			// is never handed an empty list — the wedge this case
+			// exists to end.
+			for _, n := range e.cardNameAnswers(c) {
+				p := base()
+				p.CardName = n
+				e.addAlwaysLegalChoice(c, reason+": "+n, p)
 			}
 
 		case game.PendingChoiceLoopShortcut:
@@ -1080,4 +1165,137 @@ func (e *enumerator) creatureTypeAnswers() []string {
 		return []string{creatureTypeFallback}
 	}
 	return types
+}
+
+// cardNameAnswersCap bounds the card names offered for one
+// choose_card_name prompt. Small for the reason the creature-type cap
+// is small, and smaller: the list is a judgement call ("what is worth
+// naming") rather than a vocabulary, and a random policy taking the
+// first offer should be taking a good one.
+const cardNameAnswersCap = 5
+
+// cardNameFallback answers a card-name prompt on a board with nothing
+// worth naming. CR 201.2 accepts any card name, and a Needle that
+// named the card it is stapled to restricts nothing — which is the
+// honest answer to "there was nothing to point this at" and keeps the
+// list non-empty, so the prompt can always be cleared.
+const cardNameFallback = "Pithing Needle"
+
+// cardNameAnswers ranks the card names worth naming for a
+// choose_card_name prompt (#1210): the names on OPPONENTS'
+// battlefields that actually have an activated ability, because that
+// is the only thing a Pithing Needle or a Phyrexian Revoker does
+// anything about.
+//
+// Ordered by how many such permanents carry the name (a table with
+// two copies of one thing is saying something) and then
+// alphabetically, so the list is stable across calls.
+//
+// PUBLIC zones only, and the battlefield is the only one that matters
+// — a name in a hand is hidden, and a name in a graveyard has no
+// ability anybody can activate.
+func (e *enumerator) cardNameAnswers(c *game.PendingChoice) []string {
+	chooser := e.seat
+	if c != nil && c.Chooser != uuid.Nil {
+		chooser = c.Chooser
+	}
+	counts := map[string]int{}
+	for i := range e.g.Battlefield.Cards {
+		card := &e.g.Battlefield.Cards[i]
+		if card.Controller == chooser || card.FaceDown || card.Name == "" {
+			continue
+		}
+		if len(game.ActivatedAbilitiesForCard(*card)) == 0 &&
+			len(game.ManaAbilitiesForCard(*card)) == 0 {
+			continue
+		}
+		counts[card.Name]++
+	}
+	names := make([]string, 0, len(counts))
+	for n := range counts {
+		names = append(names, n)
+	}
+	sort.Slice(names, func(i, j int) bool {
+		if counts[names[i]] != counts[names[j]] {
+			return counts[names[i]] > counts[names[j]]
+		}
+		return names[i] < names[j]
+	})
+	if len(names) > cardNameAnswersCap {
+		names = names[:cardNameAnswersCap]
+	}
+	if len(names) == 0 {
+		return []string{cardNameFallback}
+	}
+	return names
+}
+
+// choiceSeatName names a seat for a prompt label, falling back to
+// "another player" for a seat the table no longer carries. Seat names
+// are public (they are on every GameView), so a label may say one.
+func choiceSeatName(g *game.Game, id uuid.UUID) string {
+	if p := playerByID(g, id); p != nil && p.Name != "" {
+		return p.Name
+	}
+	return "another player"
+}
+
+// cardSetPickPool is a card-set prompt's candidate list in the ORDER
+// the enumerator should spend its expansion budget on — #1014's
+// ordering hooks, reaching the three resolution-time picks (#1214).
+//
+// It matters because `allowedSubsets` walks the pool by index and
+// stops at MaxExpansionPerSource: what the pool starts with is what
+// survives the cap, and what survives the cap is the whole move list a
+// policy gets to choose between. On a four-permanent board nothing is
+// lost; on a real one, the set containing the card that matters simply
+// is not offered, and no policy can pick a move it was never shown.
+//
+// WHICH HOOK, per kind — and the two hooks point OPPOSITE ways
+// (legal.Options):
+//
+//   - their_permanents ranks somebody ELSE's board by what matters on
+//     it, which is exactly Options.OrderTargets' question: "the part
+//     of the board that matters" first, so the top of it reaches the
+//     cap. reveal_pick is the same question about cards rather than
+//     permanents — an opponent deciding which of your four tutored
+//     cards you get is reading them the way they would read a board to
+//     aim a removal spell.
+//   - own_permanents ranks the seat's OWN permanents by what it would
+//     miss least, which is Options.OrderCostFuel's question. Scapeshift
+//     sacrificing any number of lands is a seat spending its own
+//     board, and a policy handed OrderTargets there would keep its
+//     worst land and sacrifice its best.
+//
+// choose_cards and untap_choice are deliberately left in engine order.
+// Neither hook asks their question — one is usually a hand, and the
+// other is CR 502.3's own determination, where the cap solver in the
+// engine has already decided what is legal.
+//
+// A caller with neither hook set — every caller but a bot seat — gets
+// the engine's own order back, byte for byte.
+func (e *enumerator) cardSetPickPool(c *game.PendingChoice) []uuid.UUID {
+	switch c.Kind {
+	case game.PendingChoiceTheirPermanents, game.PendingChoiceRevealPick:
+		return e.mostValuableFirst(c.ChooseCards)
+	case game.PendingChoiceOwnPermanents:
+		return e.cheapestFuelFirst(c.ChooseCards)
+	}
+	return c.ChooseCards
+}
+
+// mostValuableFirst is orderCandidates for a plain ID list: the same
+// hook, the same stable descending sort, on a fresh slice because the
+// pool comes from the engine and must not be reordered under it.
+func (e *enumerator) mostValuableFirst(pool []uuid.UUID) []uuid.UUID {
+	if e.opts.OrderTargets == nil || len(pool) < 2 {
+		return pool
+	}
+	out := append([]uuid.UUID(nil), pool...)
+	score := make(map[uuid.UUID]float64, len(out))
+	for _, id := range out {
+		score[id] = e.opts.OrderTargets(TargetCandidate{ID: id})
+	}
+	sort.SliceStable(out, func(i, j int) bool { return score[out[i]] > score[out[j]] })
+	return out
 }

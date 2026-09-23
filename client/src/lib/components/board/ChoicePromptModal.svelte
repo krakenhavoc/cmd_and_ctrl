@@ -53,7 +53,10 @@
     for (const c of snap.pending_choices) {
       // S20 sub-PR 2: pick_target is answered by clicking the board
       // (Board.svelte drives the targeting store), not by a modal.
-      if (c.kind === "pick_target") continue;
+      // #1196: the CR 115.7 retarget prompt is answered the same way
+      // — click the new target on the board — so it is not a modal
+      // either.
+      if (c.kind === "pick_target" || c.kind === "retarget") continue;
       // #844, CR 903.4f: a colour prompt with no colours on offer is
       // not a choice anybody can answer, and an empty picker modal
       // would block the board. The server stopped queueing one when a
@@ -183,8 +186,37 @@
   // sentence, and that the candidates are public permanents rather
   // than somebody's hand.
   const isUntapChoice = $derived(active?.kind === "untap_choice");
-  // The two kinds that share the bounded card-set grid.
-  const isCardSetPick = $derived(isChooseCards || isUntapChoice);
+
+  // #1198 entry_reveal_from_hand — CR 614.1c's "as this land enters,
+  // you may reveal an Island or Swamp card from your hand. If you
+  // don't, it enters tapped." Same payload, same bounds and the same
+  // picker; what differs is that the land is NOT on the battlefield
+  // yet (the answer decides how it enters) and that revealing costs
+  // nothing — the card stays in hand, so the floor of zero is a real
+  // bluff rather than a formality.
+  const isEntryReveal = $derived(active?.kind === "entry_reveal_from_hand");
+
+  // #1214 — the three resolution-time picks (CR 608.2). Same
+  // {choice_id, card_ids} payload and the same choose_min / choose_max
+  // bounds as choose_cards, so they render through the same grid;
+  // what differs is the sentence, because the three questions are not
+  // the same question.
+  //
+  //   reveal_pick       an opponent picks from a set you revealed —
+  //                     the cards are not theirs, and the reveal is
+  //                     what lets them look at all.
+  //   their_permanents  a pick over somebody ELSE's battlefield.
+  //                     `from_player` names whose.
+  //   own_permanents    "choose N of your own permanents", untargeted
+  //                     and made on resolution.
+  const isRevealPick = $derived(active?.kind === "reveal_pick");
+  const isTheirPermanents = $derived(active?.kind === "their_permanents");
+  const isOwnPermanents = $derived(active?.kind === "own_permanents");
+  const isPermanentPick = $derived(isTheirPermanents || isOwnPermanents);
+  // The kinds that share the bounded card-set grid.
+  const isCardSetPick = $derived(
+    isChooseCards || isUntapChoice || isEntryReveal || isRevealPick || isPermanentPick,
+  );
 
   // How many cards this prompt accepts, and how few it will settle
   // for. Search and copy are the two that move the floor off the
@@ -291,6 +323,45 @@
     if (e.key !== "Enter" || filteredTypes.length === 0) return;
     e.preventDefault();
     pickCreatureType(filteredTypes[0]);
+  }
+
+  // #1210 choose_card_name branch — "as this permanent enters, choose
+  // a card name" (CR 614.12): Pithing Needle, Phyrexian Revoker,
+  // Sorcerous Spyglass.
+  //
+  // The one prompt in the engine with NO legal set. CR 201.2 lets a
+  // player name any card name at all, so `name_options` is a
+  // SUGGESTION list — the names visible in public zones — and the
+  // text box is the real answer. That is why this is not a second
+  // copy of the creature-type picker despite looking like one: there,
+  // typing filters a closed vocabulary and Enter takes the top match;
+  // here, Enter submits WHAT WAS TYPED, because a name the list does
+  // not have is an ordinary answer and guessing over the player would
+  // be the bug.
+  const isCardNamePick = $derived(active?.kind === "choose_card_name");
+  const nameOptions = $derived<string[]>(active?.name_options ?? []);
+  let nameFilter = $state("");
+  const filteredNames = $derived.by(() => {
+    const q = nameFilter.trim().toLowerCase();
+    if (!q) return nameOptions;
+    const starts = nameOptions.filter((n) => n.toLowerCase().startsWith(q));
+    const contains = nameOptions.filter(
+      (n) => !n.toLowerCase().startsWith(q) && n.toLowerCase().includes(q),
+    );
+    return [...starts, ...contains];
+  });
+
+  function pickCardName(name: string): void {
+    const trimmed = name.trim();
+    if (!active || !viewerID || !trimmed) return;
+    nameFilter = "";
+    answer({ card_name: trimmed });
+  }
+
+  function onNameFilterKey(e: KeyboardEvent): void {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    pickCardName(nameFilter);
   }
 
   // S17 replacement_order branch — CR 616 affected-player-chooses-
@@ -1006,6 +1077,42 @@
             <p class="prompt-hint warn">No creature type matches “{typeFilter}”.</p>
           {/each}
         </div>
+      {:else if isCardNamePick}
+        <h2 id="choice-title">
+          {active.reason || "Choose a card name"}
+          <span class="prompt-src" aria-hidden="true">as this enters · CR 614.12</span>
+        </h2>
+        <p class="prompt-hint">
+          Any card name is legal — type one. The suggestions are the cards everyone can currently
+          see.
+        </p>
+        <!-- svelte-ignore a11y_autofocus -->
+        <input
+          class="type-filter"
+          type="text"
+          autofocus
+          placeholder="Name a card…"
+          aria-label="Name a card"
+          bind:value={nameFilter}
+          onkeydown={onNameFilterKey}
+        />
+        <div class="type-list">
+          {#each filteredNames as n (n)}
+            <button type="button" class="type-pick" onclick={() => pickCardName(n)}>{n}</button>
+          {:else}
+            <p class="prompt-hint">No visible card matches — press Enter to name it anyway.</p>
+          {/each}
+        </div>
+        <div class="prompt-foot">
+          <button
+            type="button"
+            class="primary"
+            disabled={nameFilter.trim() === ""}
+            onclick={() => pickCardName(nameFilter)}
+          >
+            Name “{nameFilter.trim() || "…"}”
+          </button>
+        </div>
       {:else if isOptionalReplacement}
         <h2 id="choice-title">
           {active.reason || "Apply replacement?"}
@@ -1316,9 +1423,18 @@
           {:else if isUntapChoice}
             {active.reason || "Untap step — choose which permanents untap"}
             <span class="prompt-src" aria-hidden="true">untap · CR 502.3</span>
+          {:else if isEntryReveal}
+            {active.reason || "Reveal a card from your hand?"}
+            <span class="prompt-src" aria-hidden="true">reveal · CR 614</span>
           {:else if isChooseCards}
             {active.reason || "Choose cards"}
             <span class="prompt-src" aria-hidden="true">choose</span>
+          {:else if isRevealPick}
+            {active.reason || "Choose from the revealed cards"}
+            <span class="prompt-src" aria-hidden="true">reveal · CR 701.20</span>
+          {:else if isPermanentPick}
+            {active.reason || "Choose permanents"}
+            <span class="prompt-src" aria-hidden="true">choose · CR 608.2</span>
           {:else}
             {active.reason || "Choose"} — pick {active.count} card{active.count === 1 ? "" : "s"}
             <span class="prompt-src" aria-hidden="true">{isSelfSource ? "discard" : "reveal"}</span>
@@ -1348,6 +1464,10 @@
             {/if}
             Nothing else on your board is affected — everything that could untap without a decision already
             has.
+          {:else if isEntryReveal}
+            Show {pickMax === 1 ? "one of these" : `up to ${pickMax} of these`} to the table and it enters
+            untapped. Revealing costs nothing — the card stays in your hand — but everyone gets to see
+            it, and you may show nothing instead.
           {:else if isChooseCards}
             {#if pickMin === pickMax}
               Pick {pickMax} of these.
@@ -1358,6 +1478,34 @@
             {/if}
             What happens to them is the card's business, and it will tell you next — choosing them costs
             nothing on its own.
+          {:else if isRevealPick}
+            {#if pickMin === pickMax}
+              Pick {pickMax} of these.
+            {:else if pickMin === 0}
+              Pick any of these, or none.
+            {:else}
+              Pick between {pickMin} and {pickMax} of these.
+            {/if}
+            <strong>{fromName}</strong> revealed them, so the whole table can see them — and what happens
+            to the ones you leave is the card's business.
+          {:else if isTheirPermanents}
+            {#if pickMin === pickMax}
+              Pick {pickMax} of <strong>{fromName}</strong>'s permanents.
+            {:else if pickMin === 0}
+              Pick any of <strong>{fromName}</strong>'s permanents, or none.
+            {:else}
+              Pick between {pickMin} and {pickMax} of <strong>{fromName}</strong>'s permanents.
+            {/if}
+            Nothing here is targeted, so hexproof and shroud don't protect anything from being chosen.
+          {:else if isOwnPermanents}
+            {#if pickMin === pickMax}
+              Pick {pickMax} of your permanents.
+            {:else if pickMin === 0}
+              Pick any number of your permanents, or none.
+            {:else}
+              Pick between {pickMin} and {pickMax} of your permanents.
+            {/if}
+            Nothing here is targeted — the choice is being made now, as the card resolves.
           {:else if isSelfSource}
             Pick {active.count} card{active.count === 1 ? "" : "s"} from your hand to discard.
           {:else}
@@ -1401,7 +1549,9 @@
               {selected.size === 0 ? "Enter as itself" : "Enter as a copy"}
             {:else if isUntapChoice}
               Untap
-            {:else if isChooseCards}
+            {:else if isEntryReveal}
+              {selected.size === 0 ? "Reveal nothing" : "Reveal"}
+            {:else if isChooseCards || isRevealPick || isPermanentPick}
               Choose
             {:else}
               Confirm

@@ -157,7 +157,13 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	// answer.
 	PendingChoiceModePick: true,
 
-	PendingChoicePickTarget:      true,
+	PendingChoicePickTarget: true,
+	// #1196, CR 115.7. The retargeting spell is mid-resolution and
+	// the item it is redirecting is still on the stack waiting to
+	// find out what it points at; a table that could walk past the
+	// question would resolve the redirected spell at its old target,
+	// which is the question answered by doing.
+	PendingChoiceRetarget:        true,
 	PendingChoiceSacrifice:       true,
 	PendingChoiceScry:            true,
 	PendingChoiceSurveil:         true,
@@ -173,12 +179,30 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	PendingChoiceEntryPayLife:    true,
 	PendingChoiceCopyTarget:      true,
 	PendingChoiceCreatureType:    true,
+	// #1210, CR 614.12. "As this enters, choose a card name" — the
+	// as-enters family's fourth member, blocking for the reason the
+	// other three block: the permanent is on the battlefield with the
+	// answer outstanding, and a table that could walk past the
+	// question would be answering it by doing.
+	PendingChoiceCardName: true,
 	// #568. "Choose one of the following", addressed to any seat —
 	// Torment of Hailfire's three-way question, and the second half
 	// of a Fact or Fiction pile split. It blocks for the reason every
 	// resolution-time prompt does: the effect that asked it is paused
 	// mid-resolution and its continuation is the rest of the card.
 	PendingChoiceOptionPick: true,
+	// #1214, CR 608.2. The three resolution-time picks over cards and
+	// permanents (resolution_pick.go). All three block for option_pick's
+	// reason, stated once: the effect that asked is paused
+	// mid-resolution and its continuation is the rest of the card, so a
+	// table that could walk past the question would be answering it by
+	// doing. their_permanents is the one worth naming out loud — it is
+	// asked of somebody who is not the permanents' controller, which
+	// LOOKS like pay_unless's background question and is not: nothing
+	// about a Rhystic tax is holding a spell half-resolved.
+	PendingChoiceRevealPick:      true,
+	PendingChoiceTheirPermanents: true,
+	PendingChoiceOwnPermanents:   true,
 	// #804, CR 726. The one kind whose blocking is worth arguing
 	// about, since ADR 0055 §4 was careful that the loop breaker
 	// refuse no passes. It blocks: the shortcut is proposed while the
@@ -195,6 +219,13 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	// (Deny-by-default would have said the same; the row is here
 	// because the gate demands every kind be classified out loud.)
 	PendingChoiceUntapChoice: true,
+	// #1198, CR 614.1c. "As this land enters, you may reveal an
+	// Island or Swamp card from your hand." It blocks for
+	// entry_pay_life's reason rather than choose_cards': the
+	// permanent is mid-entry and the whole CR 614 pipeline is
+	// suspended on the answer, so a table that could walk past the
+	// question would be answering it by entering.
+	PendingChoiceEntryRevealFromHand: true,
 }
 
 // ChoiceBlocksTable is THE question "does an unanswered prompt of this

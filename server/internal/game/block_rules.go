@@ -117,10 +117,16 @@ func (g *Game) forEachBlockRuleLocked(fn func(rule BlockRule, source *Card) bool
 	}
 	for i := range g.Battlefield.Cards {
 		src := &g.Battlefield.Cards[i]
-		if src.OracleID == "" {
+		// The empty KEY is the skip, not an empty oracle ID: a token
+		// has a catalog key of its own since #521, and Avatar Kuruk's
+		// Spirit token ("can't block or be blocked by non-Spirit
+		// creatures") is a token that prints a pair rule. ADR 0083
+		// decision 3.
+		key := CatalogAbilityKey(*src)
+		if key == "" {
 			continue
 		}
-		for _, r := range CatalogBlockRules(CatalogAbilityKey(*src)) {
+		for _, r := range CatalogBlockRules(key) {
 			if !fn(r, src) {
 				return
 			}

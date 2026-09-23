@@ -21,12 +21,14 @@
   import { onDestroy } from "svelte";
   import type { CardView } from "../../protocol";
   import {
-    canConfirmSacrifice,
+    canConfirmSacrificeRange,
     chooseForMeState,
     chooseSacrificeForMe,
     keepAvailablePicks,
-    toggleSacrificePick,
+    sacrificeCeiling,
+    toggleSacrificePickInRange,
   } from "../../sacrificeCost";
+  import type { SacrificeRange } from "../../sacrificeCost";
   import ModalLayer from "../ModalLayer.svelte";
 
   interface Props {
@@ -39,11 +41,35 @@
     // How many permanents the clause sacrifices. 1 unless the view
     // said otherwise.
     count?: number;
+    // #1213: the clause's FLOOR, when it differs from `count` — an
+    // open count ("sacrifice one or more artifacts") is min 1 with no
+    // ceiling, and a clause whose count is the announced X has no
+    // printed bounds at all. Absent means the fixed clause every
+    // caller had before, where the floor and the ceiling are `count`.
+    min?: number;
+    // #1213: the verb, for the hint and the confirm button. A
+    // return-to-hand cost is the same picker one verb over, so it
+    // says "Return" rather than "Sacrifice".
+    verb?: string;
     onConfirm: (instanceIDs: string[]) => void;
     onCancel: () => void;
   }
 
-  const { source, label, options, count = 1, onConfirm, onCancel }: Props = $props();
+  const {
+    source,
+    label,
+    options,
+    count = 1,
+    min,
+    verb = "Sacrifice",
+    onConfirm,
+    onCancel,
+  }: Props = $props();
+
+  // The bounds this picker enforces. A caller that passes only
+  // `count` gets N..N, which is exactly what it got before #1213.
+  const range = $derived<SacrificeRange>({ min: min ?? count, max: count });
+  const ceiling = $derived(sacrificeCeiling(range, options.length));
 
   let chosen = $state<string[]>([]);
 
@@ -68,18 +94,18 @@
     if (kept !== chosen) chosen = kept;
   });
 
-  const ready = $derived(canConfirmSacrifice(chosen, count));
-  const short = $derived(options.length < count);
-  const chooseForMeButton = $derived(chooseForMeState(count, options.length));
+  const ready = $derived(canConfirmSacrificeRange(chosen, range, options.length));
+  const short = $derived(options.length < range.min);
+  const chooseForMeButton = $derived(chooseForMeState(range.min, options.length));
 
   function pick(id: string): void {
-    chosen = toggleSacrificePick(chosen, id, count);
+    chosen = toggleSacrificePickInRange(chosen, id, ceiling);
   }
 
   function chooseForMe(): void {
     chosen = chooseSacrificeForMe(
       options.map((c) => c.instance_id),
-      count,
+      range.min,
     );
   }
 
@@ -114,13 +140,13 @@
         {source.name}
         <span class="prompt-src" aria-hidden="true">additional cost</span>
       </h2>
-      <p class="prompt-hint">Sacrifice {label} to pay for this ability.</p>
+      <p class="prompt-hint">{verb} {label} to pay for this ability.</p>
       {#if options.length === 0}
         <p class="prompt-hint error">Nothing you control can pay this cost.</p>
       {:else}
         {#if short}
           <p class="prompt-hint error">
-            You control {options.length} of the {count} permanents this cost needs.
+            You control {options.length} of the {range.min} permanents this cost needs.
           </p>
         {/if}
         <ul class="prompt-options">
@@ -132,7 +158,7 @@
                 class="prompt-opt"
                 class:on
                 aria-pressed={on}
-                disabled={!on && count > 1 && chosen.length >= count}
+                disabled={!on && ceiling > 1 && chosen.length >= ceiling}
                 onclick={() => pick(c.instance_id)}
               >
                 <span class="prompt-radio" aria-hidden="true"></span>
@@ -147,7 +173,9 @@
       {/if}
       <div class="prompt-foot">
         {#if chooseForMeButton.shown}
-          <span class="prompt-count" aria-live="polite">{chosen.length} / {count} picked</span>
+          <span class="prompt-count" aria-live="polite"
+            >{chosen.length} / {range.max > 0 ? range.max : `${range.min}+`} picked</span
+          >
           <button
             type="button"
             class="ghost"
@@ -159,7 +187,7 @@
         <button type="button" class="ghost" onclick={onCancel}
           >Cancel <span class="kbd">Esc</span></button
         >
-        <button type="button" class="primary" disabled={!ready} onclick={confirm}>Sacrifice</button>
+        <button type="button" class="primary" disabled={!ready} onclick={confirm}>{verb}</button>
       </div>
     </div>
   </div>

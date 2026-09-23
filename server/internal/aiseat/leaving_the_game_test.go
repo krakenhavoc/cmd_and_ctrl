@@ -122,7 +122,7 @@ func TestConcedeMidPromptLeavesTheBotTablePlaying(t *testing.T) {
 	moved := uuid.Nil
 	g.ReadSnapshot(func() {
 		for _, c := range g.PendingChoices {
-			if c != nil && c.Kind == game.PendingChoiceChooseCards {
+			if c != nil && c.Kind == game.PendingChoiceRevealPick {
 				moved = c.Chooser
 			}
 		}

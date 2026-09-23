@@ -283,6 +283,15 @@ func StaticAbilitiesForCard(c Card) []StaticAbility {
 // Off the battlefield this degrades to the printed list, which is
 // what the LKI harvest and the from-stack cascade scan want.
 func TriggersForCard(c Card) []TriggeredAbility {
+	// CR 702.168a / CR 701.58a, ADR 0069 decision 3 and ADR 0082
+	// decision 8: a DISGUISED or CLOAKED object has ward {2}, and it
+	// is the one ability a CR 708.2 object has. Answered before the
+	// catalog read rather than folded into it, because the catalog
+	// read is exactly what CR 708.2a silences — this ability belongs
+	// to the face-down STATE, not to the card underneath.
+	if ward := faceDownWardLocked(c); len(ward) > 0 {
+		return ward
+	}
 	if CatalogTriggers == nil {
 		return nil
 	}

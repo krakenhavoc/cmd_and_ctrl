@@ -92,12 +92,53 @@ func (c *Context) CountersRemoved() int {
 	return c.Paid().CountersRemoved
 }
 
-// ManaSpent is the tokens that paid for this spell, in the order the
-// solver spent them. Empty for an ability item, for a copy (CR
-// 707.10) and for a payment the engine waived — use ManaSpentKnown
-// to tell the last case apart. Added in #761.
-func (c *Context) ManaSpent() []game.ManaToken {
-	return c.Paid().ManaSpent()
+// Sacrificed is how many permanents the announcement's cost
+// sacrificed — "for each artifact sacrificed this way" (Radiant
+// Lotus). A fact about the ANNOUNCEMENT, read back the way X and
+// CountersRemoved are: by resolution the permanents are in
+// graveyards, so nothing here could recompute it. Added in #1213.
+//
+// For an ability whose clause prints a fixed count this is simply
+// that number; the reason it exists is the VARIABLE count
+// ("sacrifice one or more", "sacrifice X"), where the card itself
+// cannot say.
+func (c *Context) Sacrificed() int {
+	return c.Paid().Sacrificed
+}
+
+// ManaSpent is what the payment for THIS stack item can be asked
+// about: Colors(), Count("R"), Total(), FromTreasure(), Snow() and
+// the rest of game.ManaSpent's vocabulary.
+//
+// The spell's own record, so this is the read a RESOLVING spell makes
+// ("if {U} was spent to cast this spell, draw a card" — Ribbons of
+// Night). A permanent asking the same question about the spell it
+// came from wants ManaSpentToCastThis below; the two return the same
+// type on purpose.
+//
+// Empty for an ability item and for a copy (CR 707.10), and the
+// weaker-than-printed answer to everything for a payment the engine
+// waived — ask .Known() to tell the last case apart. Returned by
+// value since #1212; was []game.ManaToken in #761.
+func (c *Context) ManaSpent() game.ManaSpent {
+	return c.Paid().Spent()
+}
+
+// ManaSpentToCastThis is CR 400.7d's half of the same question: what
+// paid for the spell that became the PERMANENT this effect is running
+// for.
+//
+// The sibling of Escaped() below, and it exists for the same reason:
+// "when this creature enters, if mana from a Treasure was spent to
+// cast it" resolves as a TRIGGER, after the spell has finished
+// resolving, so ManaSpent above answers about the trigger's own
+// (empty) record and the fact lives on the permanent instead.
+//
+// The zero view for an ability whose source is not on the
+// battlefield, which is also the honest answer: CR 400.7d is written
+// about a permanent. Added in #1212.
+func (c *Context) ManaSpentToCastThis() game.ManaSpent {
+	return c.CastProvenance().Spent()
 }
 
 // ColorsSpent is the distinct COLOURS of mana spent to cast this
@@ -349,6 +390,32 @@ func (c *Context) Payload() []game.TargetRef {
 		return nil
 	}
 	return c.Item.Payload
+}
+
+// Trigger is the event that fired this triggered ability (#1223): the
+// amount for a damage or life event, the CR 603.10 last-known
+// snapshot of the object a zone change was about, the counters
+// placed, the spell cast, the ability activated.
+//
+//	ctx.Trigger().Event.Amount      // "that much damage"
+//	ctx.Trigger().Object.ManaValue  // "the creature that died"
+//
+// The zero value — `Fired()` false, `Object` nil — for a spell, an
+// activated ability, a CR 603.12 reflexive trigger and a trigger
+// restored from a snapshot written before the field existed. A card
+// that reads it unconditionally gets zeroes rather than a panic,
+// which is the #259 direction: the weaker-than-printed answer.
+//
+// Read this rather than walking `ctx.Game.Events` backwards for the
+// event. The log scan finds the LAST event of a kind, which is the
+// wrong one the moment two land in the same batch (two creatures
+// dying to one wrath), and it finds nothing at all for a trigger that
+// resolved a priority round later.
+func (c *Context) Trigger() game.TriggerContext {
+	if c.Item == nil || c.Item.Trigger == nil {
+		return game.TriggerContext{}
+	}
+	return *c.Item.Trigger
 }
 
 // PayloadCards is Payload narrowed to its card refs, in the order the

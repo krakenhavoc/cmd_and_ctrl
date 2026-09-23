@@ -171,7 +171,7 @@ func TestIdentityManaAddsNothingWithoutAnIdentity(t *testing.T) {
 			t.Run("the planner skips the source", func(t *testing.T) {
 				g, p, _ := setup(t)
 				var sources []tapSource
-				g.WithWriteLock(func() { sources = gatherTapSources(g, p.ID, nil) })
+				g.WithWriteLock(func() { sources = gatherTapSources(g, p.ID, nil, 0) })
 				if len(sources) != 0 {
 					t.Errorf("planned sources = %+v, want none", sources)
 				}

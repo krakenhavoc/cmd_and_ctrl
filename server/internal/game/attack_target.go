@@ -24,13 +24,19 @@ import "github.com/google/uuid"
 // mattered — combat damage and the block-decision scan — are routed
 // through defendingPlayerForAttackLocked here.
 //
-// WHAT IS NOT MODELLED. "Attacks each combat if able" redirection,
-// propaganda-style attack taxes, and the requirement that a battle be
-// attacked by someone other than its protector's controller are
-// enforcement questions the sandbox has never taken on for attacks;
-// the one restriction that IS enforced is the protector's own, because
-// a player attacking a battle they protect is nonsense rather than a
-// judgement call (CR 310.9b).
+// WHAT IS NOT MODELLED. "Attacks each combat if able" redirection and
+// the requirement that a battle be attacked by someone other than its
+// protector's controller are enforcement questions the sandbox has
+// never taken on for attacks; the one restriction that IS enforced is
+// the protector's own, because a player attacking a battle they
+// protect is nonsense rather than a judgement call (CR 310.9b).
+//
+// Propaganda-style attack TAXES used to be on that list and are not
+// any more: they ship in attack_tax.go, charged by the declaration
+// verbs at CR 508.1a (ADR 0080, #1063). They are not a target-legality
+// question, which is why they are not here — defendingPlayerForAttack-
+// Locked is what the pricer uses this file for, so an attack on a
+// planeswalker is taxed by its controller's Propaganda.
 
 // AttackTargetKind classifies what an attack declaration names.
 type AttackTargetKind string
@@ -137,9 +143,11 @@ func (g *Game) defendingPlayerForAttackLocked(target uuid.UUID) uuid.UUID {
 //	           attackable by you either, for the same reason the
 //	           fallback above makes you its defender)
 //
-// Everything else about attack LEGALITY — propaganda taxes, "can't
-// attack unless", goad — remains the sandbox's to arbitrate, exactly
-// as it was for player attacks.
+// Everything else about attack LEGALITY — goad, "attacks if able" —
+// remains the sandbox's to arbitrate, exactly as it was for player
+// attacks. The propaganda tax is no longer among them: it is a COST,
+// not a legality, and the declaration verbs charge it through
+// attack_tax.go (ADR 0080).
 //
 // Caller must hold g.mu.
 func (g *Game) canAttackTargetLocked(attackerController, target uuid.UUID) error {

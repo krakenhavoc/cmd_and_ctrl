@@ -763,7 +763,7 @@ func TestB41StaffOfTitaniaScalesWithForestsAndMakesDryads(t *testing.T) {
 	dryads := 0
 	g.ReadSnapshot(func() {
 		for _, c := range g.Battlefield.Cards {
-			if c.Name == "Dryad" {
+			if c.Name == "Forest Dryad" {
 				dryads++
 			}
 		}

@@ -47,6 +47,21 @@ func (e ExileTopWithPermission) Apply(ctx *Context) error {
 	return err
 }
 
+// ExileTopNUntilYourNextTurn exiles the top n cards of the resolving
+// effect's controller and lets them play it until the end of their
+// next turn — b19ExileTopTwoUntilEndOfNextTurn's shape (Reckless
+// Impulse, Wrenn's Resolve) generalized to a card whose printed count
+// isn't two (The Legend of Roku's chapter I, top three). ADR 0063's
+// seat-turn counter is what makes "your next turn" mean the same
+// thing from every seat, so no round-number backstop is needed.
+func ExileTopNUntilYourNextTurn(ctx *Context, n int) error {
+	controller := ctx.Controller()
+	_, err := ctx.Game.ExileTopWithPermissionForEffect(controller, controller, n, game.CastPermission{
+		Duration: ctx.Game.UntilEndOfYourNextTurnDuration(controller),
+	})
+	return err
+}
+
 // damagedOpponent returns the opponent a combat-damage event hit,
 // or uuid.Nil — the trigger condition shared by Ragavan ("deals
 // combat damage to a player") and the Pirate batch triggers

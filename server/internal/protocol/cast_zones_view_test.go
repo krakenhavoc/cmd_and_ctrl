@@ -22,6 +22,7 @@ import (
 
 func TestCastableHereStampedOnGraveyardCards(t *testing.T) {
 	g := buildActiveGame(t)
+	castWindowOpen(t, g)
 	me := g.Seats[0]
 	const oracle = "test-view-flashback"
 

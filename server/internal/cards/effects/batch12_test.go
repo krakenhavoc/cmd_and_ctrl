@@ -317,7 +317,7 @@ func TestB12AwakenTheWoodsMakesXForestDryadLandCreatures(t *testing.T) {
 	}
 	var dryads []game.Card
 	for _, c := range g.Battlefield.Cards {
-		if c.Name == "Dryad" && c.Controller == me.ID {
+		if c.Name == "Forest Dryad" && c.Controller == me.ID {
 			dryads = append(dryads, c)
 		}
 	}

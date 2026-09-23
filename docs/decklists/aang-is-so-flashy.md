@@ -382,8 +382,14 @@ cards that motivated them:
 
 **Still blocked, and none of them on airbend itself:**
 
-- **Aang, Swift Savior** — transform DFC, waterbend {8}, and it airbends
-  a *spell* off the stack rather than a permanent.
+- ~~**Aang, Swift Savior** — transform DFC, waterbend {8}~~ — **updated
+  2026-09-21.** The card was already in the catalog (its ETB airbend
+  targets a creature or spell, same as every other airbend user here);
+  what was missing was the transform half. ADR 0079's verb closed it:
+  Waterbend {8} now transforms Aang through `TransformThis`, with a flat
+  {8} mana cost standing in for the printed tap-artifacts-and-creatures
+  discount (declared caveat — see `aang_swift_savior.go`), and the back
+  face's attack trigger ships in full (#343).
 - **Avatar's Wrath** — mass airbend, self-exile on resolution, and a
   continuous "opponents can't cast spells from anywhere other than their
   hands" restriction that would have to outlive its source.
@@ -453,8 +459,21 @@ in the targeting gate.
 The remaining four each have a **second, independent** blocker, so none
 of them is waiting on the cost component any more:
 
-- **Clever Concealment** — phasing. No implementation anywhere.
-- **Aang, Swift Savior** and **The Legend of Kuruk** — multi-face.
+- ~~**Clever Concealment** — phasing. No implementation anywhere.~~
+  **Updated 2026-09-23**: phasing is built (#1199,
+  [ADR 0084](../decisions/0084-phasing.md)) and the card ships `full` —
+  any number of target nonland permanents you control phase out, with
+  everything attached to them, and come back at your next untap step.
+- ~~**Aang, Swift Savior** and **The Legend of Kuruk** — multi-face.~~
+  **Updated 2026-09-21**: multi-face transform is no longer the blocker
+  (ADR 0079). Both ship — Aang's Waterbend {8} pays a flat mana cost
+  instead of the printed tap discount (still this row's gap, just no
+  longer blocking the whole card), and Kuruk's front face needs no
+  waterbend at all (its own Saga chapters don't print the keyword); the
+  back face's Exhaust — Waterbend {20} extra-turn ability is the one
+  piece still unshipped, and it is blocked twice over — see
+  `avatar_kuruk.go` and the "Extra turns primitive" row in
+  `docs/engine-seams.md`.
 - **Katara, Water Tribe's Hope** — its waterbend is on an **activated
   ability**, which is a different seam: `Spec.TapCost` prices a *spell*,
   and `AbilityCost` still has only tap-this / sacrifice-self /
@@ -577,8 +596,7 @@ The static half (printing the word) is cheap; the behaviour is the work.
 ### One-offs
 
 Herald of Eternal Dawn (can't-lose / can't-win replacement), Mandate of
-Peace (end the combat phase + a cast restriction), Clever Concealment
-(phasing — no implementation anywhere), Rabble Rousing (hideaway, plus
+Peace (end the combat phase + a cast restriction), Rabble Rousing (hideaway, plus
 "whenever you attack with **one or more** creatures", which over-fires
 against per-creature `EventAttack` — the CR 603.1 batching gap
 `events.go` documents at `:162`), The Seriema (station), Misleading

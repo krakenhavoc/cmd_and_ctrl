@@ -2,6 +2,7 @@ package effects
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -50,6 +51,8 @@ func Register(spec Spec) {
 		}
 	}
 	checkFlatClauses(spec.Name, spec.Targets)
+	checkExhaustAbilities(spec)
+	checkPlayerKeywords(spec)
 	for _, a := range spec.Activated {
 		checkFlatClauses(spec.Name, a.Targets)
 		if a.Modes != nil {
@@ -94,6 +97,43 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q offers %q from %s but does not list that zone in CastableZones",
 				spec.Name, ac.Key, ac.FromZone))
 		}
+		if ac.FaceDown == nil {
+			continue
+		}
+		// ADR 0082, CR 708.4: the face-down cast. Three boot checks,
+		// each for a shape that compiles and then behaves as
+		// something the card does not print.
+		//
+		// A kind that is not a CR 708.2 object state would cast the
+		// card into an EXILE state on the stack — an object with no
+		// characteristics at all, which the resolution has no
+		// meaning for.
+		if !ac.FaceDown.Kind.IsPermanentState() {
+			panic(fmt.Sprintf("effects.Register: %q offers %q with face-down kind %q, which is not a CR 708.2 object state — build it with Morph / Megamorph / Disguise",
+				spec.Name, ac.Key, ac.FaceDown.Kind))
+		}
+		// The face-up cost is the half of the keyword the CARD
+		// prints, and the only place the engine can read it from
+		// once the permanent is face down and has no text
+		// (ADR 0082 decision 4). An unparseable one refuses at boot
+		// rather than at the moment a player tries to turn a
+		// permanent up they can no longer turn up.
+		if ac.FaceDown.FaceUpCost != "" {
+			if _, err := game.ParseCost(ac.FaceDown.FaceUpCost); err != nil {
+				panic(fmt.Sprintf("effects.Register: %q offers %q with an unparseable face-up cost %q: %v",
+					spec.Name, ac.Key, ac.FaceDown.FaceUpCost, err))
+			}
+		}
+		// A face-down cast has no targets, no modes and no
+		// additional costs, because the object it produces has no
+		// text (CR 708.2a) — CastSpell stamps the state before every
+		// one of those gates reads the catalog. An offer that
+		// declared a target clause anyway would be a card file
+		// expecting a clause the announce path can never reach.
+		if ac.Targets != nil || ac.ClearsTargets {
+			panic(fmt.Sprintf("effects.Register: %q offers %q with a target clause — a spell cast face down has no text and no targets (CR 708.2a)",
+				spec.Name, ac.Key))
+		}
 	}
 	// #659: a card may not declare exile castable. S29 allowed it "for
 	// the shape suspend and foretell will use"; they do not use it and
@@ -135,6 +175,17 @@ func Register(spec Spec) {
 				panic(fmt.Sprintf("effects.Register: %q declares an unparseable optional cost %q: %v", spec.Name, oc.ManaCost, err))
 			}
 		}
+		// #1224: an AdditionalCost in OptionalCosts carries the same
+		// Sacrifice *TargetSpec the mandatory slot does (Constant Mists'
+		// "Buyback—Sacrifice a land"), and it reaches
+		// validateAdditionalCostLocked through the same plan and the same
+		// flat sacrifice_ids walk — so every shape the guard refuses on
+		// the mandatory slot below is refusable here too.
+		// #1213: an optional cost is a CAST cost, so neither variable
+		// shape has a shape here — the flat payment lists are walked
+		// in plan order and need a fixed width, exactly as the
+		// mandatory slot above.
+		checkSacrificeClause(spec.Name, fmt.Sprintf("optional cost %q", oc.Key), oc.Sacrifice, false, false)
 		if oc.Empty() {
 			panic(fmt.Sprintf("effects.Register: %q optional cost %q demands nothing", spec.Name, oc.Key))
 		}
@@ -177,6 +228,31 @@ func Register(spec Spec) {
 		}
 		if r.Forbids == nil {
 			panic(fmt.Sprintf("effects.Register: %q cast restriction %q forbids nothing", spec.Name, r.Label))
+		}
+	}
+	// #1210, ADR 0073's amendment of 2026-09-22: the same two checks
+	// for the activation twin, and for the same reason — the Label is
+	// what the greyed ability row shows the player, and a restriction
+	// with no Forbids claims to refuse and refuses nothing.
+	for i, r := range spec.ActivationRestrictions {
+		if r.Label == "" {
+			panic(fmt.Sprintf("effects.Register: %q activation restriction %d has no printed Label — the refusal carries it to the client", spec.Name, i))
+		}
+		if r.Forbids == nil {
+			panic(fmt.Sprintf("effects.Register: %q activation restriction %q forbids nothing", spec.Name, r.Label))
+		}
+	}
+	// #1195: the same bargain for a timing statement. TimingNormal is
+	// the zero value and says nothing, so a Spec slot carrying one is
+	// a card file that meant to say something and did not — and the
+	// failure would be silent, because the read ignores it. The Label
+	// is what the log prints.
+	for i, ct := range spec.CastTimings {
+		if ct.Timing == game.TimingNormal {
+			panic(fmt.Sprintf("effects.Register: %q cast timing %d says nothing — set TimingFlash, TimingSorcery or TimingYourTurnOnly", spec.Name, i))
+		}
+		if ct.Label == "" {
+			panic(fmt.Sprintf("effects.Register: %q cast timing %d has no printed Label", spec.Name, i))
 		}
 	}
 	// ADR 0048 addendum §11: no printed card sets a floor on its own
@@ -281,7 +357,8 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q ability %d sets a negative MinX %d", spec.Name, i, ab.Cost.MinX))
 		}
 		checkCounterCost(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.RemoveCounters, ab.Cost.AddCounter)
-		checkSacrificeClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.SacrificeOther)
+		checkSacrificeClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.SacrificeOther, true, true)
+		checkReturnClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ReturnToHand)
 		// #660: a discard clause that discards nothing would make
 		// the ability free, the way a zero-counter cost would.
 		if dc := ab.Cost.DiscardCards; dc != nil && dc.N <= 0 {
@@ -311,13 +388,36 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q ability %d declares a discard-this cost but does not function from the hand — build it with Cycling / Typecycling",
 				spec.Name, i))
 		}
+		// #1213: two claimants on one announced X. A cost whose mana
+		// component carries {X} AND whose sacrifice clause counts
+		// from X would have to spend one number on both, and the
+		// engine would silently take whichever the first reader
+		// asked for. The same refusal ADR 0021 §3 makes for
+		// PayLifeX, one component over; no printed card does it.
+		if ab.Cost.XSlots() > 0 && game.SacrificeCountFromX(ab.Cost.SacrificeOther) {
+			panic(fmt.Sprintf("effects.Register: %q ability %d has {X} in its mana cost %q AND sacrifices X permanents — one announced X cannot pay both",
+				spec.Name, i, ab.Cost.Mana))
+		}
+		// #1221: the same rule one zone over. ExileSelf is scavenge's
+		// and embalm's "Exile this card from YOUR GRAVEYARD"
+		// (CR 702.96a, CR 702.128a), so an ability that declares it
+		// without declaring the graveyard could never pay it — and
+		// would look complete on the catalog page while refusing
+		// every activation.
+		if ab.Cost.ExileSelf && !zoneDeclared(ab.Zones, game.ZoneGraveyard) {
+			panic(fmt.Sprintf("effects.Register: %q ability %d declares an exile-this cost but does not function from the graveyard — build it with Scavenge / Embalm / Eternalize",
+				spec.Name, i))
+		}
 		if ab.Cost.MinX > 0 && !ab.Cost.DemandsX() {
 			panic(fmt.Sprintf("effects.Register: %q ability %d sets MinX %d but its cost %q has no {X} — a floor on a variable that cannot vary makes the ability unactivatable",
 				spec.Name, i, ab.Cost.MinX, ab.Cost.Mana))
 		}
 	}
 	for i, ma := range spec.ManaAbilities {
-		checkSacrificeClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.SacrificeOther)
+		// #1213: `false` — a mana ability has no stack item and no
+		// announced X (CR 605.3b), so a "Sacrifice X …" clause there
+		// has nothing to read its count from.
+		checkSacrificeClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.SacrificeOther, true, false)
 		// #789: the counter components are one declaration with two
 		// owners, so they are checked by one function in both places.
 		checkCounterCost(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.RemoveCounters, ma.Cost.AddCounter)
@@ -329,7 +429,7 @@ func Register(spec Spec) {
 		}
 	}
 	if spec.AdditionalCost != nil {
-		checkSacrificeClause(spec.Name, "additional cost", spec.AdditionalCost.Sacrifice)
+		checkSacrificeClause(spec.Name, "additional cost", spec.AdditionalCost.Sacrifice, false, false)
 	}
 	// #801: a replacement's per-instance ReplacementEffectID packs the
 	// source's battlefield index and its slot in this slice into one
@@ -352,6 +452,11 @@ func Register(spec Spec) {
 	// their own walk (#623), so a Zones on one of them would be
 	// ignored just as silently.
 	checkTriggerZones(spec.Name, "trigger", spec.Triggered)
+	// #1221: the same boot-time refusal for the STATIC half of
+	// CR 113.6. A zone the layer gather does not walk would be a
+	// declaration the engine silently ignored — the card would
+	// register, look complete on the catalog page, and never apply.
+	checkStaticZones(spec.Name, "static", spec.Static)
 	if spec.Emblem != nil {
 		checkTriggerZones(spec.Name, "emblem trigger", spec.Emblem.Triggered)
 	}
@@ -366,6 +471,11 @@ func Register(spec Spec) {
 	// owns it, not the card — and an index built from spec.Triggered
 	// would never walk exile for it.
 	game.IndexTriggerZones(spec.OracleID, def.Triggered)
+	// #1221: and the static half of the same index. From the SPEC
+	// rather than from the def, because nothing in buildDef grows or
+	// rewrites a static the way a suspend declaration grows a
+	// trigger — Spec.Static is what the layer pass gathers.
+	game.IndexStaticZones(spec.OracleID, spec.Static)
 	// #623 / CR 114: a card that makes an emblem files a SECOND def
 	// for the emblem object, under "emblem:<this key>". It goes in
 	// `defs` and not in `registry`, so the engine finds the emblem's
@@ -390,6 +500,21 @@ func Register(spec Spec) {
 // triggered ability declares has to be one the harvest actually
 // walks, or the ability is dead text the catalog page would still
 // call complete.
+// checkStaticZones is checkTriggerZones for the layer half of
+// CR 113.6 (#1221): a static may declare the zone it functions from,
+// and a zone activeStaticAbilitiesLocked does not gather is refused
+// at boot with the reason.
+func checkStaticZones(card, what string, statics []game.StaticAbility) {
+	for i, s := range statics {
+		for _, zone := range s.Zones {
+			if why := game.StaticZoneUnsupported(zone); why != "" {
+				panic(fmt.Sprintf("effects.Register: %q %s %d functions from %s — %s",
+					card, what, i, zone, why))
+			}
+		}
+	}
+}
+
 func checkTriggerZones(card, what string, triggers []game.TriggeredAbility) {
 	for i, t := range triggers {
 		for _, zone := range t.Zones {
@@ -401,15 +526,28 @@ func checkTriggerZones(card, what string, triggers []game.TriggeredAbility) {
 	}
 }
 
-// checkSacrificeClause is #747's registration guard (ADR 0020
-// addendum §12). A sacrifice clause's Min == Max is the number of
-// permanents the cost sacrifices, so the only shape the engine pays
-// is a fixed count of at least one. Every form that would quietly
-// read as something else panics at boot instead:
+// checkSacrificeClause is #747's registration guard, narrowed by
+// #1213 (ADR 0020 addendum §12, ADR 0073's 2026-09-22 amendment).
 //
-//   - Min != Max, or Min < 1: a variable count ("one or more", "any
-//     number") has no announced count and no record of what was paid.
-//   - CountFromX: "Sacrifice X Treasures" needs the same.
+// #747 accepted exactly one shape — a FIXED count of at least one,
+// written Min == Max == N — because a variable count had no announced
+// count and no record of what was paid. Both exist now
+// (SacrificeCostBounds and PaidCost.Sacrificed), so two more shapes
+// are legal:
+//
+//   - an OPEN count, Min ≥ 1 with Max 0: "Sacrifice one or more
+//     artifacts" (Radiant Lotus). The activator names how many.
+//   - CountFromX: "Sacrifice X Treasures" (Grim Hireling). The
+//     announced X is the count on both sides.
+//
+// Everything still refused is a card-file mistake that would ship the
+// card as something it does not print:
+//
+//   - a floor below one: a cost that can be paid with nothing is free.
+//   - a ceiling below the floor.
+//   - CountFromX where there is no X to announce — `allowX` is false
+//     for a mana ability, which has no stack item to carry one
+//     (CR 605.3b).
 //   - AllowSame: one permanent cannot pay two sacrifices.
 //   - Players: a player is not a permanent.
 //
@@ -471,20 +609,58 @@ func checkCounterCost(card, where string, rc *game.CounterRemovalCost, ac *game.
 	}
 }
 
-func checkSacrificeClause(card, where string, spec *game.TargetSpec) {
+func checkSacrificeClause(card, where string, spec *game.TargetSpec, allowOpen, allowX bool) {
 	if spec == nil {
 		return
 	}
 	switch {
-	case spec.Min != spec.Max || spec.Min < 1:
-		panic(fmt.Sprintf("effects.Register: %q %s sacrifices %d to %d permanents — a sacrifice cost is a fixed count of at least one (SacrificeN); variable counts have no shape yet (#747)",
+	case spec.CountFromX && !allowX:
+		panic(fmt.Sprintf("effects.Register: %q %s sacrifices X permanents, but there is no X to announce here (CR 605.3b / the flat cast payment list, #1213)", card, where))
+	case game.SacrificeCostVariable(spec) && !spec.CountFromX && !allowOpen:
+		panic(fmt.Sprintf("effects.Register: %q %s sacrifices %d to %d permanents, but a variable count has no shape here — a cast's payment lists are walked in plan order and need a fixed width (#1213)",
 			card, where, spec.Min, spec.Max))
-	case spec.CountFromX:
-		panic(fmt.Sprintf("effects.Register: %q %s sacrifices X permanents — a sacrifice count from X has no shape yet (#747)", card, where))
+	case !spec.CountFromX && spec.Min < 1:
+		panic(fmt.Sprintf("effects.Register: %q %s sacrifices %d to %d permanents — a sacrifice cost pays at least one, so its floor is at least one (SacrificeN, SacrificeOneOrMore)",
+			card, where, spec.Min, spec.Max))
+	case !spec.CountFromX && spec.Max != 0 && spec.Max < spec.Min:
+		panic(fmt.Sprintf("effects.Register: %q %s sacrifices %d to %d permanents — the ceiling is below the floor",
+			card, where, spec.Min, spec.Max))
 	case spec.AllowSame:
 		panic(fmt.Sprintf("effects.Register: %q %s lets one permanent pay a sacrifice twice (AllowSame)", card, where))
 	case spec.Players:
 		panic(fmt.Sprintf("effects.Register: %q %s admits players — a sacrifice clause matches permanents only", card, where))
+	}
+}
+
+// checkReturnClause is #1213's registration guard for the
+// return-to-hand cost component, and it is checkSacrificeClause's
+// shape one verb over: a fixed count of at least one, over a clause
+// that matches permanents.
+//
+// Refused at boot, each naming a card-file mistake:
+//
+//   - a count below one, or no clause at all: the component would
+//     demand nothing and the ability would be free.
+//   - a variable count: "Return X permanents you control" is not
+//     printed, and it would need the announce path
+//     SacrificeCostBounds uses.
+//   - AllowSame: one permanent cannot pay two returns.
+//   - Players: a player is not a permanent.
+func checkReturnClause(card, where string, rc *game.ReturnToHandCost) {
+	if rc == nil {
+		return
+	}
+	if rc.Count < 1 || rc.Filter == nil {
+		panic(fmt.Sprintf("effects.Register: %q %s returns %d permanents to hand — a return cost returns at least one and needs its clause (ReturnAPermanentToHand)",
+			card, where, rc.Count))
+	}
+	switch {
+	case rc.Filter.CountFromX:
+		panic(fmt.Sprintf("effects.Register: %q %s returns X permanents to hand — a variable return count has no shape (#1213)", card, where))
+	case rc.Filter.AllowSame:
+		panic(fmt.Sprintf("effects.Register: %q %s lets one permanent pay a return twice (AllowSame)", card, where))
+	case rc.Filter.Players:
+		panic(fmt.Sprintf("effects.Register: %q %s admits players — a return clause matches permanents only", card, where))
 	}
 }
 
@@ -547,5 +723,116 @@ func checkFlatClauses(name string, spec *game.TargetSpec) {
 		if len(spec.Rest[i].Rest) > 0 {
 			panic(fmt.Sprintf("effects.Register: %q target clause %d nests further clauses — the list is flat; build it with Clauses(...)", name, i+1))
 		}
+	}
+}
+
+// checkExhaustAbilities holds the exhaust declaration to the two
+// things the engine's record needs from it (#1181), over BOTH ability
+// lists (#1183).
+//
+// The record is keyed by (object, ability LABEL) — see
+// game/activation_tally.go on why the label and not the index — so a
+// blank label is unaddressable and two exhaust abilities sharing one
+// label would share one use between them. Loot, the Pathfinder prints
+// three exhaust abilities on one card and each of them is separately
+// activatable; a copy-paste that gave two of them the same label would
+// silently take one away, which is exactly the class of bug a boot
+// panic is cheap insurance against.
+//
+// ONE `seen` set across the two lists, and that is the #1183 half: a
+// mana ability and an activated ability on the same card write to the
+// same key space on the same object, so Loot's "Exhaust — {G}, {T}:
+// Add three mana of any one color" and a hypothetical activated
+// ability with the same label would share one use across the two
+// kinds. Two per-list sets would not have caught it.
+//
+// The third check is the other direction: an ability whose label says
+// "exhaust" and does not set the bit gets no gate at all and is
+// repeatable forever. Nothing else in an ability label mentions the
+// word — the cards that talk ABOUT exhaust abilities (Rangers'
+// Refueler's trigger, Boom Scholar's cost modifier, Elvish Refueler's
+// static) say so somewhere other than an ability Label.
+func checkExhaustAbilities(spec Spec) {
+	seen := make(map[string]bool, len(spec.Activated)+len(spec.ManaAbilities))
+	for i, a := range spec.Activated {
+		checkOneExhaustAbility(spec.Name, "activated ability", i, a.Label, a.Exhaust, seen)
+	}
+	// #1183: the mana half. A mana ability takes the other entry
+	// point (ActivateManaAbility, CR 605.3a) and the same record, so
+	// it answers to the same three rules.
+	for i, a := range spec.ManaAbilities {
+		checkOneExhaustAbility(spec.Name, "mana ability", i, a.Label, a.Exhaust, seen)
+	}
+	// #1184: the permission that suspends the gate. A nil Applies
+	// would grant it to every player at every moment, which no card
+	// prints and which nothing downstream could tell apart from a
+	// card whose condition simply happened to hold — so it is a boot
+	// panic rather than a silent grant. A blank Label is the same
+	// argument as the one above: it is what a log line names.
+	for i, p := range spec.ExhaustPermissions {
+		if p.Applies == nil {
+			panic(fmt.Sprintf("effects.Register: %q exhaust permission %d has no Applies — it would suspend the gate for every player, always", spec.Name, i))
+		}
+		if p.Label == "" {
+			panic(fmt.Sprintf("effects.Register: %q exhaust permission %d has no Label — the label is the printed clause", spec.Name, i))
+		}
+	}
+}
+
+// checkOneExhaustAbility is the body of the three checks above, for
+// one ability of either kind. `seen` is shared across the kinds
+// because the record's key space is.
+func checkOneExhaustAbility(name, kind string, i int, label string, exhaust bool, seen map[string]bool) {
+	mentions := strings.Contains(strings.ToLower(label), "exhaust")
+	if exhaust && !mentions {
+		panic(fmt.Sprintf("effects.Register: %q %s %d sets Exhaust but its label does not print the keyword — the label is what the player reads", name, kind, i))
+	}
+	if mentions && !exhaust {
+		panic(fmt.Sprintf("effects.Register: %q %s %d prints \"Exhaust\" and does not set Exhaust: true — without the bit it can be activated every turn", name, kind, i))
+	}
+	if !exhaust {
+		return
+	}
+	if label == "" {
+		panic(fmt.Sprintf("effects.Register: %q %s %d is an exhaust ability with no Label — the label is the record's key", name, kind, i))
+	}
+	if seen[label] {
+		panic(fmt.Sprintf("effects.Register: %q declares two exhaust abilities labelled %q — they would share one use", name, label))
+	}
+	seen[label] = true
+}
+
+// checkPlayerKeywords guards Spec.PlayerKeywords (#1197): every entry
+// must be a token the engine actually honours on a PLAYER.
+//
+// A boot panic rather than a silent no-op, for the reason
+// protection.go gives about its closed grammar: a token nothing can
+// parse grants NOTHING, so a card with a typo in it ships looking
+// finished and doing nothing at all, and the badge would promise a
+// rule the engine does not enforce. The grammar is closed, so the
+// list of what a player may be granted is short and checkable.
+//
+// Two shapes are accepted, and they are exactly the two the three
+// consumers read:
+//
+//   - "hexproof" (CR 702.11d), the bare token;
+//   - any "protection from <quality>" the closed grammar parses
+//     (CR 702.16i) — "protection from everything" is the only one a
+//     catalogued card prints, but the grammar is the grammar.
+//
+// Shroud is refused: no card prints shroud on a player, and a token
+// with no card behind it is what game.CanonicalKeywords refuses a
+// bare "protection" for.
+func checkPlayerKeywords(spec Spec) {
+	for i, kw := range spec.PlayerKeywords {
+		if kw == game.KeywordHexproof {
+			continue
+		}
+		if _, ok := game.ParseProtectionQuality(kw); ok {
+			continue
+		}
+		panic(fmt.Sprintf("effects.Register: %q PlayerKeywords[%d] = %q is not a player ability the engine honours — "+
+			"use %q or a \"protection from <quality>\" token the closed grammar parses (ADR 0072, #1197)",
+			spec.Name, i, kw, game.KeywordHexproof))
 	}
 }

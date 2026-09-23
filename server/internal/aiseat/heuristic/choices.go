@@ -39,6 +39,7 @@ const (
 	choiceConfirm             = "confirm"
 	choiceChooseCards         = "choose_cards"
 	choiceUntapChoice         = "untap_choice"
+	choiceEntryRevealFromHand = "entry_reveal_from_hand"
 	choiceColor               = "choose_color"
 	choiceCoinCall            = "coin_call"
 )
@@ -224,6 +225,38 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 			}
 		}
 		return v, "untap the best"
+
+	case choiceEntryRevealFromHand:
+		// #1198, CR 614.1c: "as this land enters, you may reveal an
+		// Island or Swamp card from your hand. If you don't, it
+		// enters tapped."
+		//
+		// The one card-set pick whose answer is FREE. A revealed card
+		// is not a spent card — nothing moves (CR 701.20b), the card
+		// is still in hand when the land has finished entering — so
+		// neither of the two valuations this package already has is
+		// the right one: the choose_cards branch scores an answer by
+		// what it KEEPS, because naming a card there gives it up, and
+		// #1028's fuel pricer prices a card eaten by a cost. Through
+		// either of those, "reveal nothing" wins and every reveal-land
+		// in the deck enters tapped forever.
+		//
+		// So: naming any card is strictly better than naming none,
+		// and the enumerator has already filtered to sets the engine
+		// accepts. The count settles itself — one card is enough for
+		// every printed member of the family, and the enumerator
+		// offers the empty answer first, so a tie can never leave the
+		// land tapped.
+		//
+		// The information given up is real and is deliberately not
+		// priced: the table learns one card in this seat's hand.
+		// Against an untapped land on curve that is the trade every
+		// human takes, and pricing it would need an opponent model
+		// this policy does not have (docs/bot.md).
+		if len(cp.CardIDs) > 0 {
+			return 1, "reveal, so it enters untapped"
+		}
+		return 0.5, "reveal nothing"
 
 	case choiceConfirm:
 		// The chained-choice two-way prompt. Both branches are always

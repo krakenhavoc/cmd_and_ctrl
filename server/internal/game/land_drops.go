@@ -74,14 +74,20 @@ func (g *Game) EffectiveLandDropsLocked(p *Player) int {
 	if CatalogAdditionalLandPlays != nil {
 		for i := range g.Battlefield.Cards {
 			c := &g.Battlefield.Cards[i]
-			if c.Controller != p.ID || c.OracleID == "" {
+			if c.Controller != p.ID {
 				continue
 			}
 			// CatalogAbilityKey, not CatalogKey: "you may play an
 			// additional land on each of your turns" is a static
 			// ability, and an Exploration that has lost its abilities
-			// grants nothing.
-			n += CatalogAdditionalLandPlays(CatalogAbilityKey(*c))
+			// grants nothing. The empty key — not an empty oracle ID
+			// — is the skip, so a TOKEN with a catalog key of its own
+			// is walked like any other permanent (ADR 0083 decision 3).
+			key := CatalogAbilityKey(*c)
+			if key == "" {
+				continue
+			}
+			n += CatalogAdditionalLandPlays(key)
 		}
 	}
 	n += g.ExtraLandDropsThisTurn[p.ID]

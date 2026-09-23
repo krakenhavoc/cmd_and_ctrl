@@ -467,7 +467,7 @@ func b29TargetOpponentSacrificesACreatureThenWizard(item *game.StackItem, ctx *C
 		sacrificeSpec("a creature", Creature()),
 		"Cornered by Black Mages — sacrifice a creature",
 		func(g *game.Game, _ game.PromptedSacrifices) error {
-			return CreateToken{Controller: item.Controller, Template: TokenCard("0/1 black Wizard"), N: 1}.
+			return CreateToken{Controller: item.Controller, Template: NoncreatureCastWizardToken(), N: 1}.
 				Apply(NewContext(g, item))
 		})
 }

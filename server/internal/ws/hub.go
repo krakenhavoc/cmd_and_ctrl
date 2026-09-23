@@ -968,6 +968,16 @@ func (c *Client) handleAction(frame protocol.Frame) {
 		// missing-symbols slice so the client's "Override strict
 		// mode for this cast" toast knows what's short. Surface it
 		// before the generic classifier flattens the wire.
+		// ADR 0080: an unpaid attack tax WRAPS the payer's
+		// *InsufficientManaError, so it has to be recognised before
+		// the branch below — otherwise a refused declaration would
+		// surface as "insufficient mana to cast" with the client's
+		// force_cast override offered for an attack, which has no
+		// override and never should.
+		if body, ok := attackTaxPayload(err); ok {
+			c.sendErrorPayload(frame.ID, body)
+			return
+		}
 		var im *game.InsufficientManaError
 		if errors.As(err, &im) {
 			cardID := ""
@@ -1073,6 +1083,12 @@ func classifyActionError(err error) (code, message string) {
 		// refusal attached.
 		body, _ := blockRefusalPayload(err, uuid.Nil)
 		return body.Code, body.Message
+	case errors.Is(err, game.ErrAttackTaxUnpaid):
+		// ADR 0080. The hub sends the structured frame
+		// (attackTaxPayload) before reaching this classifier; this arm
+		// is the same code and the same sentence for any other caller.
+		body, _ := attackTaxPayload(err)
+		return body.Code, body.Message
 	case errors.Is(err, game.ErrLandDropUnavailable):
 		// #500: the player is out of land plays for the turn. The
 		// allowance is not always one (Exploration, a one-turn
@@ -1137,6 +1153,36 @@ func blockRefusalPayload(err error, viewer uuid.UUID) (protocol.ErrorPayload, bo
 	}
 	if br.Blocker != uuid.Nil {
 		body.CardID = br.Blocker.String()
+	}
+	return body, true
+}
+
+// attackTaxPayload builds the `attack_tax_unpaid` error frame for a
+// declaration refused for want of its CR 508.1a cost (ADR 0080,
+// #1063): the whole price as a cost string in Reason, and the symbols
+// the pool and the tapper together could not cover in Missing. ok is
+// false for any error that is not an unpaid attack tax.
+//
+// No CardID: the refusal is about the DECLARATION, not about one
+// creature, and a bulk swing has no single card to point at. Nothing
+// was staged, so there is nothing for the client to correlate with
+// either.
+func attackTaxPayload(err error) (protocol.ErrorPayload, bool) {
+	if !errors.Is(err, game.ErrAttackTaxUnpaid) {
+		return protocol.ErrorPayload{}, false
+	}
+	body := protocol.ErrorPayload{
+		Code:    protocol.CodeAttackTaxUnpaid,
+		Message: "you can't pay what it costs to attack",
+	}
+	var te *game.AttackTaxUnpaidError
+	if errors.As(err, &te) && te.Cost != "" {
+		body.Reason = te.Cost
+		body.Message = "attacking costs " + te.Cost + " and you can't pay it"
+	}
+	var im *game.InsufficientManaError
+	if errors.As(err, &im) {
+		body.Missing = im.Missing
 	}
 	return body, true
 }

@@ -407,12 +407,17 @@ func (g *Game) abandonZoneRouteLocked(frame *replacementResumeFrame) error {
 		// run, and running it again through the cleared pointer would
 		// be a no-op rather than a second payout.
 		return nil
-	case RepEventDraw, RepEventCounter, RepEventStepTransition:
-		// No continuation exists on any of the three, so an abandoned
+	case RepEventDraw, RepEventCounter, RepEventStepTransition, RepEventProduceMana:
+		// No continuation exists on any of the four, so an abandoned
 		// one owes nobody an answer. A cancelled step transition is a
 		// SKIP and does move the cursor (CR 500.11), but only when its
 		// prompt is ANSWERED — one taken away leaves the step where it
 		// was, which a player can always advance.
+		//
+		// #1222: a mana production never gets here at all, because it
+		// sets mustSettleNow and so never queues the prompt this path
+		// drops. Written down rather than left to the fall-through, for
+		// the reason the switch exists (#982).
 		return nil
 	}
 	return nil
@@ -593,7 +598,7 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 	// is revealed and then unreadable again. Reveal last would leave
 	// every seat able to read a library card by position.
 	if hadBefore {
-		g.revealFaceDownExitLocked(before)
+		g.revealFaceDownExitLocked(before, src.Kind)
 	}
 
 	// Destination bookkeeping. All of it is keyed on where the card

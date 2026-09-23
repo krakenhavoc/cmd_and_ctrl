@@ -63,13 +63,8 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"menace"},
 		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				if ev.Kind != game.EventCast || ev.Actor != source.Controller {
-					return false
-				}
-				return g.CastTallyFor(ev.Actor).Total == 2
-			},
+			Watches:   []game.EventKind{game.EventCast},
+			AppliesTo: YouCastYourSecondSpellEachTurn,
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
 				spell := ev.CardID
 				return game.NewTriggeredItem(source,

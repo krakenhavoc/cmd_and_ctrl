@@ -45,7 +45,19 @@ func TestEveryTokenKeyResolves(t *testing.T) {
 			}
 			key, _ := strconv.Unquote(lit.Value)
 			if _, ok := tokenTable[key]; !ok {
-				t.Errorf("%s:%d: TokenCard(%q) names no token in tokens_table.go", f, fset.Position(lit.Pos()).Line, key)
+				// The second half of the message is the one that
+				// matters since ADR 0083: a token that PRINTS an
+				// ability is not a row here at all, and three keys
+				// that used to be rows (the Pest, the 0/1 black
+				// Wizard, Fable's Goblin Shaman) were deleted rather
+				// than left as textless versions of tokens that have
+				// never been printed textless. Adding the row back is
+				// the wrong fix and this says so.
+				t.Errorf("%s:%d: TokenCard(%q) names no token in tokens_table.go. "+
+					"If this token PRINTS an ability, it is a tokenTemplate in the "+
+					"catalog and not a row here — call its constructor (PestToken(), "+
+					"TreasureToken(), …) instead of adding a textless row.",
+					f, fset.Position(lit.Pos()).Line, key)
 			}
 			seen++
 			return true
@@ -86,5 +98,74 @@ func TestTokenTableRowsAreWellFormed(t *testing.T) {
 		if strings.Contains(c.TypeLine, "Creature") && !strings.HasPrefix(k, strconv.Itoa(c.Power)+"/"+strconv.Itoa(c.Toughness)+" ") {
 			t.Errorf("%q: key does not start with the printed %d/%d", k, c.Power, c.Toughness)
 		}
+		if got, want := c.Colors, colorsNamedInKey(k); !sameColors(got, want) {
+			t.Errorf("%q: key names %v, row declares %v — the key reads like the printed text, "+
+				"so the two cannot disagree (#1127)", k, want, got)
+		}
 	}
+}
+
+// colorNames maps the colour words a key may use to their letters.
+// "colorless" maps to nothing, which is the empty Colors a colourless
+// token carries.
+var colorNames = map[string]string{
+	"white": "W", "blue": "U", "black": "B", "red": "R", "green": "G",
+}
+
+// colorsNamedInKey reads the colour clause out of a table key — the
+// words between the printed P/T and the creature type, joined by
+// "and": "1/1 white Soldier", "1/1 black and green Pest",
+// "10/10 colorless Eldrazi". A key with no P/T prefix (the Munitions
+// artifact) names no colour and answers nil.
+//
+// #1127: a template's Colors is a CHARACTERISTIC the rules read, and
+// the key is how a reviewer checks it at a glance. Nothing hermetic
+// can say which colour is right — that is the printed token, and
+// TestEveryTokenTemplateMatchesAPrintedToken asks the dump — but the
+// two halves of the row must at least agree with each other, and a
+// row edited on one side only is the way the 21 colourless templates
+// drifted in the first place.
+func colorsNamedInKey(key string) []string {
+	rest := key
+	slash := strings.Index(rest, "/")
+	if slash < 0 {
+		return nil
+	}
+	sp := strings.Index(rest, " ")
+	if sp < 0 || sp < slash {
+		return nil
+	}
+	words := strings.Fields(rest[sp+1:])
+	var out []string
+	for i := 0; i < len(words); i++ {
+		if words[i] == "and" && i > 0 && len(out) > 0 {
+			continue
+		}
+		if words[i] == "colorless" && i == 0 {
+			return nil
+		}
+		letter, ok := colorNames[words[i]]
+		if !ok {
+			break
+		}
+		out = append(out, letter)
+		// A colour word is only part of the clause while the words
+		// keep alternating colour / "and".
+		if i+1 < len(words) && words[i+1] != "and" {
+			break
+		}
+	}
+	return out
+}
+
+func sameColors(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }

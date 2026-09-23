@@ -147,11 +147,37 @@ const (
 	// prompt (CR 614.12): Cavern of Souls, Door of Destinies.
 	// `Choice` is the type as the engine canonicalised it ("Elf").
 	LogChooseType LogKind = "choose_type"
+	// LogChooseName — a player answered an "as this enters, choose a
+	// card name" prompt (CR 614.12): Pithing Needle, Phyrexian
+	// Revoker, Sorcerous Spyglass. `Choice` is the name as the player
+	// typed it, trimmed and otherwise untouched — CR 201.2 admits any
+	// card name, so there is no canonical spelling to report (#1210).
+	LogChooseName LogKind = "choose_name"
 	// LogChoosePlayer — a player answered an "as this enters, choose
 	// a player" prompt (CR 614.12): True-Name Nemesis. The answer is
 	// a SEAT, so it rides TargetSeat like every other player
 	// reference in this log and `Choice` is empty.
 	LogChoosePlayer LogKind = "choose_player"
+	// LogChooseCards — a player answered one of #1214's three
+	// resolution-time picks (CR 608.2): an opponent choosing from a
+	// set you revealed, somebody choosing among another player's
+	// permanents, a seat choosing N of its own.
+	//
+	// `Amount` is how many cards were chosen and is always present;
+	// `CardID` names the one card for the common single-card pick and
+	// is empty for any other count, so a viewer who may not identify
+	// it reads "chose a card" and one who may reads its name. `Target`
+	// is the card that ASKED — the resolving spell or the permanent
+	// whose ability it was — because "chose 2 cards" says nothing
+	// without it.
+	//
+	// The line exists for the reason LogChooseColor does (#1023 /
+	// #984): a decision the table watched somebody make is a decision
+	// the history has to carry. Without it the only trace of Tragic
+	// Arrogance is a column of sacrifices with nobody's name on them,
+	// and the only trace of Gifts Ungiven is two cards appearing in a
+	// graveyard.
+	LogChooseCards LogKind = "choose_cards"
 	// LogControl — a permanent changed controller (CR 613.1b).
 	// `Seat` is the player who GAINED control and `TargetSeat` the
 	// one who lost it, which is one sentence for a gain, an
@@ -219,6 +245,19 @@ const (
 	// scrolling back wants to know WHEN it happened, which the board
 	// alone cannot say. Added in S46 (ADR 0079, #343).
 	LogTransform LogKind = "transform"
+	// LogPhaseOut / LogPhaseIn — a permanent phased out or in
+	// (CR 702.26). #1199, ADR 0084.
+	//
+	// Narrated rather than silent, for LogTransform's reason and one
+	// more that is stronger here. A phase-out is not a zone change
+	// (CR 702.26d), so no LogZone entry says it, and the board simply
+	// STOPS SHOWING the permanent — which is indistinguishable from a
+	// permanent that died unless the log says which. Teferi's
+	// Protection removes a whole board this way, and a reader
+	// scrolling back has no other way to learn that it came back
+	// rather than never left.
+	LogPhaseOut LogKind = "phase_out"
+	LogPhaseIn  LogKind = "phase_in"
 )
 
 // The three choose-a-value kinds are separate rather than one "chose
@@ -694,6 +733,12 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Choice = ev.Label
 		return base, true
 
+	case game.EventCardNameChosen:
+		base.Kind = LogChooseName
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.Choice = ev.Label
+		return base, true
+
 	case game.EventPlayerChosen:
 		base.Kind = LogChoosePlayer
 		base.CardID = uuidStringOrEmpty(ev.CardID)
@@ -705,6 +750,19 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		if seat := seatOf(ev.Target); seat != NoSeat {
 			base.TargetSeat = &seat
 		}
+		return base, true
+
+	case game.EventCardsChosen:
+		// #1214, CR 608.2. Actor chose, Source asked, CardID is the one
+		// card when there was one. The asking card rides `Target` so
+		// it goes through resolveLogNames' redaction like any other
+		// card reference — it is usually a spell on the stack, which
+		// is public, but a face-down or already-gone source should not
+		// be named out of this line either.
+		base.Kind = LogChooseCards
+		base.Amount = ev.Amount
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.Target = uuidStringOrEmpty(ev.Source)
 		return base, true
 
 	case game.EventControlChanged:
@@ -846,6 +904,18 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Kind = LogClassLevel
 		base.CardID = uuidStringOrEmpty(ev.CardID)
 		base.Amount = ev.Amount
+		return base, true
+
+	case game.EventPhaseOut, game.EventPhaseIn:
+		// CR 702.26. Not a zone move (CR 702.26d), so no LogZone entry
+		// says it — this is the only line the table gets, and without
+		// it a permanent silently vanishes from the board and is read
+		// as dead.
+		base.Kind = LogPhaseOut
+		if ev.Kind == game.EventPhaseIn {
+			base.Kind = LogPhaseIn
+		}
+		base.CardID = uuidStringOrEmpty(ev.CardID)
 		return base, true
 
 	case game.EventTransform:
@@ -1201,6 +1271,8 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		return fmt.Sprintf("%s chose %s for %s", actor, nameOr(game.ColorName(e.Choice), "a color"), card)
 	case LogChooseType:
 		return fmt.Sprintf("%s chose %s for %s", actor, nameOr(e.Choice, "a creature type"), card)
+	case LogChooseName:
+		return fmt.Sprintf("%s named %s for %s", actor, nameOr(e.Choice, "a card"), card)
 	case LogChoosePlayer:
 		// `target` is already the seat name here (or "a player"): a
 		// chosen player never rides Target, so the card branch above
@@ -1209,6 +1281,21 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 			return fmt.Sprintf("%s chose a player for %s", actor, card)
 		}
 		return fmt.Sprintf("%s chose %s for %s", actor, target, card)
+	case LogChooseCards:
+		// #1214. `card` is the one card chosen (or "a card" for a
+		// viewer who may not identify it), `target` the card that
+		// asked. A count other than one names no card at all, so the
+		// line says how many rather than guessing which.
+		switch {
+		case e.Amount == 0:
+			return fmt.Sprintf("%s chose nothing for %s", actor, target)
+		case e.Amount == 1 && e.CardID != "":
+			return fmt.Sprintf("%s chose %s for %s", actor, card, target)
+		case e.Amount == 1:
+			return fmt.Sprintf("%s chose a card for %s", actor, target)
+		default:
+			return fmt.Sprintf("%s chose %d cards for %s", actor, e.Amount, target)
+		}
 	case LogControl:
 		// `target` is the seat that lost control, for the same reason.
 		if e.TargetSeat == nil {
@@ -1244,6 +1331,10 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		return renderSettingsText(e)
 	case LogSpawn:
 		return renderSpawnText(e, target)
+	case LogPhaseOut:
+		return fmt.Sprintf("%s phased out", card)
+	case LogPhaseIn:
+		return fmt.Sprintf("%s phased in", card)
 	case LogTransform:
 		// The card name is the face it turned INTO — viewOfCard reads
 		// the active face — and Label is the one it turned from. Label

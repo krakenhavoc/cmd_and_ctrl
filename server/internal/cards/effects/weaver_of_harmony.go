@@ -14,20 +14,27 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // other enchantment creatures the controller controls — post-layer
 // types, so a creature made an enchantment by another effect counts.
 //
-// Sandbox simplification, declared (Multani's posture, one whole
-// ability omitted): the copy ability is not implemented. Copying
-// an ABILITY on the stack has no shape — CopySpellForEffect resolves
-// its target through the stack's spell cards, and a triggered or
-// activated ability is a StackMeta item with no card, so neither the
-// target clause ("target activated or triggered ability") nor the
-// copy itself exists yet. Weaker than printed, never stronger: the
-// Weaver is a 2/2 lord that taps for nothing.
+// The copy ability shipped with #1223, which built both halves it was
+// waiting on: a target clause that can name an ability ITEM
+// (AbilityOnStack, game.TargetSpec.Abilities) and
+// game.CopyAbilityForEffect. "From an enchantment source" is
+// AbilityFromSource(Enchantment()), read off the source card as it is
+// now — a permanent that has stopped being an enchantment has stopped
+// being a legal source. The reminder text's "mana abilities can't be
+// targeted" needs no clause of its own: a mana ability never uses the
+// stack (CR 605.3b), so there is no item to offer.
 func init() {
 	Register(Spec{
 		OracleID:     "494b31b2-27ef-4ca1-ac72-c2fcfc8a23a1",
 		Name:         "Weaver of Harmony",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The ability-copying activation isn't implemented — the Weaver only gives your other enchantment creatures +1/+1."},
+		Completeness: CompletenessFull,
+		Activated: []ActivatedAbility{{
+			Label: "{G}, {T}: Copy target activated or triggered ability you control from an enchantment source",
+			Cost:  Plus(ManaCost("{G}"), TapCost()),
+			Targets: AbilityOnStack("target activated or triggered ability you control from an enchantment source",
+				AnAbilityYouControl(), AbilityFromSource(Enchantment())),
+			Effect: copyTargetedAbility,
+		}},
 		Static: []game.StaticAbility{{
 			Layer:    game.Layer7PT,
 			SubLayer: game.SubLayer7C_Modify,

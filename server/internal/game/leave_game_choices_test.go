@@ -195,8 +195,8 @@ func TestOnlyTheInheritorMayAnswerAReassignedPrompt(t *testing.T) {
 
 // TestPileSplitIsReassignedWhenTheSplitterLeaves is the other shape the
 // engine really produces: Fact or Fiction's opponent-separates-the-piles
-// prompt (a choose_cards over cards the SPLITTER does not own). The
-// splitter leaves mid-split and the next opponent separates instead.
+// prompt (a reveal_pick over cards the SPLITTER does not own, #1214).
+// The splitter leaves mid-split and the next opponent separates instead.
 func TestPileSplitIsReassignedWhenTheSplitterLeaves(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
 	caster, splitter, next := g.Seats[0], g.Seats[1], g.Seats[2]
@@ -219,8 +219,8 @@ func TestPileSplitIsReassignedWhenTheSplitterLeaves(t *testing.T) {
 			},
 		})
 	})
-	if len(g.PendingChoices) != 1 || g.PendingChoices[0].Kind != PendingChoiceChooseCards {
-		t.Fatalf("setup: want one choose_cards prompt, got %+v", g.PendingChoices)
+	if len(g.PendingChoices) != 1 || g.PendingChoices[0].Kind != PendingChoiceRevealPick {
+		t.Fatalf("setup: want one reveal_pick prompt, got %+v", g.PendingChoices)
 	}
 	choiceID := g.PendingChoices[0].ID
 
@@ -241,7 +241,7 @@ func TestPileSplitIsReassignedWhenTheSplitterLeaves(t *testing.T) {
 
 	// The inheritor splits, the caster picks, and the continuation the
 	// card supplied runs untouched.
-	if err := g.ResolveChooseCards(choiceID, next.ID, revealed[:1]); err != nil {
+	if err := g.ResolveRevealPick(choiceID, next.ID, revealed[:1]); err != nil {
 		t.Fatalf("the inheritor could not split: %v", err)
 	}
 	var pickID uuid.UUID

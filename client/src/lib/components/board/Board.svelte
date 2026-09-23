@@ -51,6 +51,8 @@
   import VotingPanel from "./VotingPanel.svelte";
   import ZoneBrowserModal from "./ZoneBrowserModal.svelte";
   import { zoneBrowser, closeZoneBrowser } from "../../zoneBrowser";
+  import { phasedOutCards } from "../../phasedOut";
+  import { canActivateSorcerySpeedAbility } from "../../timing";
   import CardContextMenu from "./CardContextMenu.svelte";
   import { cardMenu, closeCardMenu } from "../../contextMenu";
   import type { MenuActivate } from "../../contextMenu.logic";
@@ -90,7 +92,7 @@
   } from "../../targeting";
   import { suggestedAbilityX as suggestedAbilityXFor } from "../../abilityX";
   import { castPreviewParams } from "../../castPreview";
-  import { orderSacrificeOptions, sacrificeCount } from "../../sacrificeCost";
+  import { orderSacrificeOptions, sacrificeCount, sacrificeRange } from "../../sacrificeCost";
   import XCostModal from "./XCostModal.svelte";
   import SacrificeCostModal from "./SacrificeCostModal.svelte";
   import CrewCostModal from "./CrewCostModal.svelte";
@@ -201,6 +203,19 @@
   const cardsByController = $derived.by(() => {
     const out = new Map<string, CardView[]>();
     for (const c of view.battlefield.cards) {
+      const list = out.get(c.controller);
+      if (list) list.push(c);
+      else out.set(c.controller, [c]);
+    }
+    // #1199 / CR 702.26, ADR 0084. A phased-out permanent arrives in
+    // its own zone and is absent from `battlefield`, which is what
+    // makes every rules question the client asks the board come out
+    // right. This is the ONE place that puts it back, at the END of
+    // its controller's row: the player has to be able to see that
+    // their four permanents are coming back rather than gone, and no
+    // other surface says so. Card.svelte dims it, badges it PHASED
+    // and withholds the click.
+    for (const c of phasedOutCards(view)) {
       const list = out.get(c.controller);
       if (list) list.push(c);
       else out.set(c.controller, [c]);
@@ -561,15 +576,19 @@
     facePromptCard = null;
     facePromptZone = undefined;
     if (!card) return;
-    if (face <= 0) {
-      afterFace(card, fromZone ? { fromZone } : {});
-      return;
-    }
     // Run the rest of the chain against the CHOSEN face, so the
-    // prompts and the cast-timing checks see its type line and cost
-    // rather than the front's. cardAsFace drops the announce-prompt
-    // fields, which describe face 0's catalog spec and would be
-    // wrong here — see the note on cardAsFace.
+    // prompts and the cast-timing checks see its type line, its cost
+    // and — since #992 — its own announce data: the cost picker, the
+    // mode picker and the TARGET picker all read the block the server
+    // published for this half. Casting Stomp opens a target picker
+    // here; before #992 cardAsFace cleared the front's answers and
+    // put nothing back, so the chain fell through to an announce the
+    // server refused.
+    //
+    // Face 0 goes through it too. cardAsFace swaps rather than clears
+    // now, and face 0's block is the same answer the card's top-level
+    // block carries, so the special case the old code needed is gone
+    // — and one path is one path.
     afterFace(cardAsFace(card, face), fromZone ? { face, fromZone } : { face });
   }
 
@@ -607,9 +626,10 @@
   // Which is why the gate is "defined", not "greater than zero". A
   // CR 715.4 grant names face 0, and a `face > 0` test read that as
   // "no face given" and re-opened the picker on a cast with exactly
-  // one legal half. Face 0 skips cardAsFace all the same: the card
-  // already IS its front face here, and cardAsFace would strip the
-  // announce-prompt fields the server computed for it.
+  // one legal half. Face 0 goes through cardAsFace like any other
+  // since #992: the function swaps a face's announce block in rather
+  // than clearing the card's, and face 0's block is the same answer
+  // the card already carries.
   //
   // The face picker's confirm re-enters at afterFace with its own
   // choices object, so the zone has to be seeded here rather than at
@@ -617,8 +637,7 @@
   // lose it.
   function handlePlayCard(card: CardView, fromZone?: CastSourceZone, face?: number): void {
     if (face !== undefined) {
-      const played = face > 0 ? cardAsFace(card, face) : card;
-      afterFace(played, fromZone ? { face, fromZone } : { face });
+      afterFace(cardAsFace(card, face), fromZone ? { face, fromZone } : { face });
       return;
     }
     if (needsFacePicker(card)) {
@@ -755,6 +774,8 @@
         // targeting step, and ride the one activate_ability with the
         // rest of the cost.
         discard_ids: abilityDiscardIDs,
+        // #1213: same announcement, same message.
+        return_ids: abilityReturnIDs,
         ...state.ability.counter,
         targets,
       };
@@ -764,6 +785,8 @@
       if (state.ability.phyrexianLife) params.phyrexian_life = state.ability.phyrexianLife;
       if (state.modes !== undefined) params.modes = state.modes;
       abilityDiscardIDs = [];
+      abilityReturnIDs = [];
+      abilitySacrificeX = undefined;
       guardedSendAction("activate_ability", params, viewerID ?? undefined);
       targeting.set(null);
       return;
@@ -800,6 +823,37 @@
     if (!p) return [];
     return orderSacrificeOptions(view.battlefield.cards, p.ability.sacrifice_options?.cards);
   });
+
+  // #1213: the bounds the picker enforces. A fixed clause is N..N and
+  // behaves exactly as it did; an open count ("sacrifice one or more
+  // artifacts") is a floor with no ceiling, and a clause whose count
+  // is the announced X has no printed bounds at all — the number
+  // picked becomes the x_value.
+  const sacrificeBounds = $derived(sacrificeRange(sacrificePrompt?.ability.sacrifice_options));
+
+  // #1213: "Return a permanent you control to its owner's hand" as a
+  // COST (Quirion Ranger, Master Transmuter, Meloku). The same picker
+  // the sacrifice cost uses, one verb over, so there is one component
+  // and one "Choose for me" rather than two. Carried on the side like
+  // the discard picks, because the announce chain already takes eight
+  // arguments.
+  let abilityReturnPrompt = $state<{
+    card: CardView;
+    ability: ActivatedAbilityView;
+  } | null>(null);
+  let abilityReturnIDs: string[] = [];
+
+  const abilityReturnOptions = $derived.by(() => {
+    const p = abilityReturnPrompt;
+    if (!p) return [];
+    return orderSacrificeOptions(view.battlefield.cards, p.ability.return_options?.cards);
+  });
+
+  // #1213: the X a "Sacrifice X Treasures" clause announces. It is
+  // the SIZE of the payment rather than a number the player types, so
+  // the X stepper is skipped for such an ability — asking twice could
+  // only produce an announcement the server refuses.
+  let abilitySacrificeX: number | undefined;
 
   // S27: a Vehicle's crew cost. Its own prompt rather than a reuse of
   // the sacrifice picker because crew is a many-pick with a POWER
@@ -870,14 +924,25 @@
     return (me?.hand.cards ?? []).filter((c) => ids.has(c.instance_id));
   });
 
-  // #660: a card in hand projects its abilities on `hand_abilities`
+  // #660: a card in hand projects its abilities on `zone_abilities`
   // and a permanent on `activated_abilities` — never both, because
   // the server filters by the zone the card is in (CR 113.6). One
   // lookup reads whichever is there; `index` means the same thing on
   // the wire either way.
   function abilitiesOf(card: CardView): ActivatedAbilityView[] {
-    return card.activated_abilities ?? card.hand_abilities ?? [];
+    return card.activated_abilities ?? card.zone_abilities ?? [];
   }
+
+  // #1221: the CR 307.1 window, for the zone browser's ability rows.
+  // Every keyword that functions from a graveyard prints "only as a
+  // sorcery", so without this a browsed unearth row would be
+  // clickable during an opponent's combat and come back refused —
+  // the failure mode ADR 0033 §1 cites. PlayerPanel derives the same
+  // string for the battlefield and the hand; the browser is a
+  // top-level modal with no panel above it, so Board derives it here.
+  const browsedZoneSorcerySpeedBlocked = $derived(
+    canActivateSorcerySpeedAbility(view, viewerID).reason ?? "",
+  );
 
   function handleActivateAbility(card: CardView, index: number): void {
     const ability = abilitiesOf(card).find((a) => a.index === index);
@@ -908,6 +973,23 @@
     discardIDs: string[],
   ): void {
     abilityDiscardIDs = discardIDs;
+    // #1213: the return-to-hand pick, in the same place the sacrifice
+    // pick sits — both are announce-time cost choices (CR 602.2b) and
+    // both name permanents. Skipped when the board offers exactly the
+    // permanents the clause demands, for the reason the discard
+    // picker is: a modal with one possible answer is a worse version
+    // of no modal.
+    if (ability.return_options) {
+      const options = ability.return_options.cards ?? [];
+      const need = ability.return_options.max ?? ability.return_options.min ?? 1;
+      if (options.length > need) {
+        abilityReturnPrompt = { card, ability };
+        return;
+      }
+      abilityReturnIDs = options;
+    } else {
+      abilityReturnIDs = [];
+    }
     if (ability.sacrifice_options) {
       sacrificePrompt = { kind: "ability", card, ability };
       return;
@@ -924,6 +1006,24 @@
     abilityDiscardPrompt = null;
     if (!p) return;
     afterAbilityDiscardCost(p.card, p.ability, ids);
+  }
+
+  // #1213: the return pick answered. The discard picks are already on
+  // the side, so the chain resumes at the sacrifice picker.
+  function confirmAbilityReturnCost(ids: string[]): void {
+    const p = abilityReturnPrompt;
+    abilityReturnPrompt = null;
+    if (!p) return;
+    abilityReturnIDs = ids;
+    if (p.ability.sacrifice_options) {
+      sacrificePrompt = { kind: "ability", card: p.card, ability: p.ability };
+      return;
+    }
+    if (p.ability.crew_cost) {
+      crewPrompt = { card: p.card, ability: p.ability };
+      return;
+    }
+    askCounterCost(p.card, p.ability, [], []);
   }
 
   function askCounterCost(
@@ -993,11 +1093,53 @@
   // board-wide. Sacrifice first, then counters — the order the engine
   // validates and pays them in.
   function handleManaAbilityCost(card: CardView, ability: ManaAbilityView): void {
+    // #1213: the discard pick first, as the CR 602 chain asks its own
+    // — it is the cost most likely to make a player back out — and
+    // skipped when the hand holds exactly what the clause demands.
+    if (ability.discard_cost_n) {
+      const options = ability.discard_cost_options ?? [];
+      if (options.length > ability.discard_cost_n) {
+        manaDiscardPrompt = { card, ability };
+        return;
+      }
+      manaDiscardIDs = options;
+    } else {
+      manaDiscardIDs = [];
+    }
     if (ability.sacrifice_options) {
       sacrificePrompt = { kind: "mana", card, ability };
       return;
     }
     askManaCounterCost(card, ability);
+  }
+
+  // #1213: the mana-ability half of #660's discard picker. The same
+  // modal, the same wire field, a different action to end in —
+  // Skirge Familiar's "Discard a card: Add {B}".
+  let manaDiscardPrompt = $state<{
+    card: CardView;
+    ability: ManaAbilityView;
+  } | null>(null);
+  let manaDiscardIDs: string[] = [];
+
+  const manaDiscardOptions = $derived.by(() => {
+    const p = manaDiscardPrompt;
+    if (!p || !viewerID) return [];
+    const ids = new Set(p.ability.discard_cost_options ?? []);
+    const me = view.seats.find((s) => s.id === viewerID);
+    return (me?.hand.cards ?? []).filter((c) => ids.has(c.instance_id));
+  });
+
+  function confirmManaDiscardCost(ids: string[]): void {
+    const p = manaDiscardPrompt;
+    manaDiscardPrompt = null;
+    if (!p) return;
+    manaDiscardIDs = ids;
+    if (p.ability.sacrifice_options) {
+      sacrificePrompt = { kind: "mana", card: p.card, ability: p.ability };
+      return;
+    }
+    askManaCounterCost(p.card, p.ability);
   }
 
   // askManaCounterCost is askCounterCost's mana-ability twin: the same
@@ -1030,10 +1172,14 @@
         card_id: card.instance_id,
         ability_index: ability.index,
         ...(sacrificeIDs && sacrificeIDs.length > 0 ? { sacrifice_ids: sacrificeIDs } : {}),
+        // #1213: omitted when empty, so every payload a client sent
+        // before this field existed is byte-for-byte unchanged.
+        ...(manaDiscardIDs.length > 0 ? { discard_ids: manaDiscardIDs } : {}),
         ...counter,
       },
       viewerID ?? undefined,
     );
+    manaDiscardIDs = [];
   }
 
   // #170: an ability row picked from the admin context menu. Same two
@@ -1045,7 +1191,10 @@
       return;
     }
     const ability = (card.mana_abilities ?? []).find((a) => a.index === activate.index);
-    if (ability && (ability.sacrifice_options || counterCostNeedsPrompt(ability))) {
+    if (
+      ability &&
+      (ability.sacrifice_options || ability.discard_cost_n || counterCostNeedsPrompt(ability))
+    ) {
       handleManaAbilityCost(card, ability);
       return;
     }
@@ -1074,6 +1223,10 @@
       );
       return;
     }
+    // #1213: "Sacrifice X Treasures" announces its count AS the X
+    // (CR 602.2b), so the payment the player just made is the
+    // announcement and the X stepper has nothing left to ask.
+    abilitySacrificeX = p.ability.sacrifice_options?.count_from_x ? instanceIDs.length : undefined;
     askCounterCost(p.card, p.ability, instanceIDs, []);
   }
 
@@ -1094,8 +1247,13 @@
     // that name cards and before the targeting step — the same
     // position it holds in a cast's prompt chain.
     if (ability.demands_x && xValue === undefined) {
-      xAbilityPrompt = { card, ability, sacrificeIDs, crewIDs, counter };
-      return;
+      // #1213: unless the sacrifice payment already answered it.
+      if (abilitySacrificeX !== undefined) {
+        xValue = abilitySacrificeX;
+      } else {
+        xAbilityPrompt = { card, ability, sacrificeIDs, crewIDs, counter };
+        return;
+      }
     }
     // CR 107.4f / CR 602.2b (#917, #916): the ability's Phyrexian
     // symbols. Same question the cast chain asks, in the same place —
@@ -1139,6 +1297,9 @@
       sacrifice_ids: sacrificeIDs,
       crew_ids: crewIDs,
       discard_ids: abilityDiscardIDs,
+      // #1213: the return-to-hand picks, made at announce with the
+      // rest of the cost and sent in the one activate_ability.
+      return_ids: abilityReturnIDs,
       ...counter,
     };
     if (xValue !== undefined) params.x_value = xValue;
@@ -1146,6 +1307,8 @@
     if (phyrexianLife) params.phyrexian_life = phyrexianLife;
     if (modes !== undefined) params.modes = modes;
     abilityDiscardIDs = [];
+    abilityReturnIDs = [];
+    abilitySacrificeX = undefined;
     guardedSendAction("activate_ability", params, viewerID ?? undefined);
   }
 
@@ -1224,9 +1387,15 @@
     // one from a server-computed set) and the banner's confirm sends
     // the same payload. The server routes by the choice's kind, so
     // the client needs no second component and no second code path.
+    // #1196: the CR 115.7 retarget is the fourth — same question
+    // shape, same picker, and the server routes the answer on the
+    // kind.
     const mine = (view.pending_choices ?? []).find(
       (c) =>
-        (c.kind === "pick_target" || c.kind === "legend_rule" || c.kind === "choose_protector") &&
+        (c.kind === "pick_target" ||
+          c.kind === "legend_rule" ||
+          c.kind === "choose_protector" ||
+          c.kind === "retarget") &&
         c.chooser === viewerID,
     );
     const cur = $targeting;
@@ -1239,7 +1408,9 @@
             ? "Legend rule"
             : mine.kind === "choose_protector"
               ? "Battle"
-              : "Triggered ability",
+              : mine.kind === "retarget"
+                ? "Retarget"
+                : "Triggered ability",
         owner: viewerID ?? "",
         controller: viewerID ?? "",
       };
@@ -1252,6 +1423,9 @@
   function findCardAnywhere(id: string | undefined): CardView | undefined {
     if (!id) return undefined;
     for (const c of view.battlefield.cards) if (c.instance_id === id) return c;
+    // #1196: a retarget prompt's source is the spell that is
+    // resolving — still on the stack when the prompt opens.
+    for (const c of view.stack.cards ?? []) if (c.instance_id === id) return c;
     for (const c of view.exile?.cards ?? []) if (c.instance_id === id) return c;
     for (const s of view.seats) {
       for (const c of s.graveyard?.cards ?? []) if (c.instance_id === id) return c;
@@ -1442,6 +1616,7 @@
         <PlayerPanel
           {seat}
           isSelf={false}
+          spectator={true}
           isActive={seat.id === activeSeatID}
           hasPriority={seat.id === prioritySeatID}
           {viewerID}
@@ -1498,7 +1673,8 @@
     source={sacrificePrompt?.card ?? null}
     label={sacrificePrompt?.ability.sacrifice_label ?? "a permanent"}
     options={sacrificeOptions}
-    count={sacrificeCount(sacrificePrompt?.ability.sacrifice_options)}
+    count={sacrificeBounds.max}
+    min={sacrificeBounds.min}
     onConfirm={confirmSacrifice}
     onCancel={() => (sacrificePrompt = null)}
   />
@@ -1562,6 +1738,33 @@
     onCancel={() => {
       abilityDiscardPrompt = null;
       abilityDiscardIDs = [];
+    }}
+  />
+  <!-- #1213: the mana-ability half of the discard picker (Skirge
+       Familiar). Same modal, same wire field, a different action. -->
+  <DiscardCostModal
+    card={manaDiscardPrompt?.card ?? null}
+    options={manaDiscardOptions}
+    need={manaDiscardPrompt?.ability.discard_cost_n}
+    label={manaDiscardPrompt?.ability.discard_cost_label}
+    onConfirm={confirmManaDiscardCost}
+    onCancel={() => {
+      manaDiscardPrompt = null;
+      manaDiscardIDs = [];
+    }}
+  />
+  <!-- #1213: "Return a permanent you control to its owner's hand" as
+       a cost. The sacrifice picker with a different verb. -->
+  <SacrificeCostModal
+    source={abilityReturnPrompt?.card ?? null}
+    label={abilityReturnPrompt?.ability.return_label ?? "a permanent you control"}
+    options={abilityReturnOptions}
+    count={abilityReturnPrompt?.ability.return_options?.max ?? 1}
+    verb="Return"
+    onConfirm={confirmAbilityReturnCost}
+    onCancel={() => {
+      abilityReturnPrompt = null;
+      abilityReturnIDs = [];
     }}
   />
   <SacrificeCostModal
@@ -1662,6 +1865,8 @@
       onClose={closeZoneBrowser}
       onTargetCard={handleTargetCard}
       onCastCard={handlePlayCard}
+      onActivateAbility={handleActivateAbility}
+      sorcerySpeedBlocked={browsedZoneSorcerySpeedBlocked}
     />
   {/if}
   {#if $cardMenu}

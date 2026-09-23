@@ -34,7 +34,8 @@ const PendingChoiceModePick PendingChoiceKind = "mode_pick"
 // captured trigger, so the answer can continue into the CR 603.3d
 // target walk and then Build.
 type modePickFrame struct {
-	ev        Event
+	// tc is the triggering event (#1223) — see pickTargetFrame.tc.
+	tc        TriggerContext
 	source    Card
 	lki       Characteristic
 	ability   TriggeredAbility
@@ -48,7 +49,7 @@ type modePickFrame struct {
 // drops the trigger (CR 603.3d).
 //
 // Caller must hold g.mu.
-func (g *Game) queueModePickLocked(ev Event, source Card, lki Characteristic, t TriggeredAbility, doubledBy doublerRef) bool {
+func (g *Game) queueModePickLocked(tc TriggerContext, source Card, lki Characteristic, t TriggeredAbility, doubledBy doublerRef) bool {
 	ms := t.Modes
 	options := g.choosableModeOptionsLocked(SourceObject(source.Controller, &source), ms)
 	if !EnoughChoosableModes(len(options), ms) {
@@ -74,7 +75,7 @@ func (g *Game) queueModePickLocked(ev Event, source Card, lki Characteristic, t 
 		ModeMax:         ms.Max,
 		ModeRepeatable:  ms.Repeatable,
 		modePickResume: &modePickFrame{
-			ev:        ev,
+			tc:        tc,
 			source:    source,
 			lki:       lki,
 			ability:   t,
@@ -119,7 +120,7 @@ func (g *Game) ResolveModePick(choiceID, chooserID uuid.UUID, modes []int) error
 	if frame == nil {
 		return nil
 	}
-	g.buildOrPickTriggerLocked(frame.ev, frame.source, frame.lki, frame.ability, frame.doubledBy, append([]int(nil), modes...))
+	g.buildOrPickTriggerLocked(frame.tc, frame.source, frame.lki, frame.ability, frame.doubledBy, append([]int(nil), modes...))
 	// Answering is the moment the ability is put on the stack (CR
 	// 603.3), so drain and run SBAs here rather than waiting for the
 	// next pass around the table — the same reason

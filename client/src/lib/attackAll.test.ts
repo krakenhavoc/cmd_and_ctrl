@@ -3,7 +3,10 @@ import type { CardView, GameView, PlayerView, ZoneView } from "./protocol";
 import {
   attackAllLabel,
   attackAllParams,
+  attackAllTaxLabel,
   attackBlocker,
+  attackTaxLabelForCount,
+  attackTaxOn,
   blockedSummary,
   planAttackAll,
 } from "./attackAll";
@@ -191,6 +194,9 @@ describe("attackAllParams", () => {
         { attacker: "x", target: "c" },
         { attacker: "y", target: "c" },
       ],
+      // ADR 0080 (#1063): the payload always carries permission to
+      // tap for the CR 508.1a attack tax. Inert without one.
+      auto_tap: true,
     });
   });
 
@@ -204,6 +210,116 @@ describe("attackAllParams", () => {
     const plan = planAttackAll(v, "a");
     expect(attackAllParams(plan, "a")).toBeNull();
     expect(attackAllParams(plan, "nobody")).toBeNull();
+  });
+
+  // #1162: the attack-tax picker's subset and lock-a-land options.
+  // Both are additive over the plain "attack with everything" shape
+  // above — omitting either keeps that behaviour byte for byte, which
+  // the tests in this describe block already pin.
+  describe("opts.only — the picker's chosen subset", () => {
+    it("declares exactly the named subset rather than every eligible creature", () => {
+      const v = view(
+        [alice, bob, carol],
+        [creature("x", "a"), creature("y", "a"), creature("z", "a")],
+      );
+      const plan = planAttackAll(v, "a");
+      expect(attackAllParams(plan, "c", { only: ["y"] })).toEqual({
+        attackers: [{ attacker: "y", target: "c" }],
+        auto_tap: true,
+      });
+    });
+
+    it("keeps plan.eligible's own order rather than the subset list's", () => {
+      const v = view(
+        [alice, bob, carol],
+        [creature("x", "a"), creature("y", "a"), creature("z", "a")],
+      );
+      const plan = planAttackAll(v, "a");
+      expect(attackAllParams(plan, "c", { only: ["z", "x"] })?.attackers).toEqual([
+        { attacker: "x", target: "c" },
+        { attacker: "z", target: "c" },
+      ]);
+    });
+
+    it("drops an ID the plan no longer considers eligible rather than sending it", () => {
+      const v = view(
+        [alice, bob, carol],
+        [creature("x", "a"), creature("y", "a", { tapped: true })],
+      );
+      const plan = planAttackAll(v, "a");
+      // "y" is tapped (blocked, not eligible) and "ghost" names nothing
+      // on the board at all — a stale picker selection after a
+      // snapshot changed the board underneath it.
+      expect(attackAllParams(plan, "c", { only: ["x", "y", "ghost"] })).toEqual({
+        attackers: [{ attacker: "x", target: "c" }],
+        auto_tap: true,
+      });
+    });
+
+    it("refuses an empty subset the same way it refuses an empty plan", () => {
+      const v = view([alice, bob, carol], [creature("x", "a")]);
+      const plan = planAttackAll(v, "a");
+      expect(attackAllParams(plan, "c", { only: [] })).toBeNull();
+      expect(attackAllParams(plan, "c", { only: ["nobody-here"] })).toBeNull();
+    });
+
+    it("still refuses a seat that isn't an attackable opponent, subset or not", () => {
+      const v = view([alice, bob], [creature("x", "a")]);
+      const plan = planAttackAll(v, "a");
+      expect(attackAllParams(plan, "a", { only: ["x"] })).toBeNull();
+    });
+  });
+
+  describe("opts.lockedSources — the lock-a-land toggle", () => {
+    it("carries locked_sources through to the payload", () => {
+      const v = view([alice, bob], [creature("x", "a")]);
+      const plan = planAttackAll(v, "a");
+      expect(attackAllParams(plan, "b", { lockedSources: ["forest-1"] })).toEqual({
+        attackers: [{ attacker: "x", target: "b" }],
+        auto_tap: true,
+        locked_sources: ["forest-1"],
+      });
+    });
+
+    it("omits the field entirely for an empty or absent lock list", () => {
+      const v = view([alice, bob], [creature("x", "a")]);
+      const plan = planAttackAll(v, "a");
+      expect(attackAllParams(plan, "b", { lockedSources: [] })).toEqual({
+        attackers: [{ attacker: "x", target: "b" }],
+        auto_tap: true,
+      });
+      expect(attackAllParams(plan, "b")).toEqual({
+        attackers: [{ attacker: "x", target: "b" }],
+        auto_tap: true,
+      });
+    });
+
+    it("copies the list rather than aliasing the caller's array", () => {
+      const v = view([alice, bob], [creature("x", "a")]);
+      const plan = planAttackAll(v, "a");
+      const locked = ["forest-1"];
+      const params = attackAllParams(plan, "b", { lockedSources: locked });
+      locked.push("island-1");
+      expect(params?.locked_sources).toEqual(["forest-1"]);
+    });
+
+    it("composes with a chosen subset — the picker's actual shape", () => {
+      const v = view(
+        [alice, bob, carol],
+        [creature("x", "a"), creature("y", "a"), creature("z", "a")],
+      );
+      const plan = planAttackAll(v, "a");
+      expect(attackAllParams(plan, "c", { only: ["x", "z"], lockedSources: ["forest-1"] })).toEqual(
+        {
+          attackers: [
+            { attacker: "x", target: "c" },
+            { attacker: "z", target: "c" },
+          ],
+          auto_tap: true,
+          locked_sources: ["forest-1"],
+        },
+      );
+    });
   });
 });
 
@@ -237,5 +353,108 @@ describe("attackAllLabel", () => {
   it("singularises one creature", () => {
     const v = view([alice, bob], [creature("x", "a")]);
     expect(attackAllLabel(planAttackAll(v, "a"), bob)).toBe("Attack bobby with all 1 creature");
+  });
+});
+
+// --- the CR 508.1a attack tax (ADR 0080, #1063) --------------------
+//
+// The price is the SERVER's, read off turn.attack_targets[].tax.
+// Nothing here derives it, and the total for a wide swing is the
+// per-creature string repeated rather than arithmetic on it — which
+// is exactly what the engine charges and concatenates.
+
+// taxedView is `view` with attack_targets stamped, the way the server
+// stamps them during declare_attackers.
+function taxedView(
+  seats: PlayerView[],
+  battlefield: CardView[],
+  taxes: Record<string, string>,
+): GameView {
+  const v = view(seats, battlefield);
+  v.turn.attack_targets = seats.map((s) => ({
+    kind: "player" as const,
+    id: s.id,
+    ...(taxes[s.id] ? { tax: taxes[s.id] } : {}),
+  }));
+  return v;
+}
+
+describe("attackTaxOn", () => {
+  const alice = seat("a", "Alice");
+  const bob = seat("b", "Bob", { seat: 1 });
+
+  it("reads the server's price for the named seat", () => {
+    const v = taxedView([alice, bob], [], { b: "{2}" });
+    expect(attackTaxOn(v, "b")).toBe("{2}");
+  });
+
+  it("is empty for a seat that charges nothing", () => {
+    const v = taxedView([alice, bob], [], { b: "{2}" });
+    expect(attackTaxOn(v, "a")).toBe("");
+  });
+
+  it("is empty when the server sent no attack targets at all", () => {
+    // An older server, or a step that is not declare_attackers.
+    expect(attackTaxOn(view([alice, bob]), "b")).toBe("");
+    expect(attackTaxOn(null, "b")).toBe("");
+  });
+});
+
+// #1162: the running-total primitive the subset picker reuses as the
+// player checks attackers on and off. attackAllTaxLabel below is now
+// this function called with plan.eligible.length, so the two describe
+// blocks pin the same arithmetic from two different call shapes.
+describe("attackTaxLabelForCount", () => {
+  it("is empty for a free attack or a non-positive count", () => {
+    expect(attackTaxLabelForCount("", 3)).toBe("");
+    expect(attackTaxLabelForCount("{2}", 0)).toBe("");
+    expect(attackTaxLabelForCount("{2}", -1)).toBe("");
+  });
+
+  it("names the flat price for one attacker", () => {
+    expect(attackTaxLabelForCount("{2}", 1)).toBe("costs {2}");
+  });
+
+  it("repeats the price once per attacker for a wider count", () => {
+    expect(attackTaxLabelForCount("{2}", 3)).toBe("costs {2} each, {2}{2}{2} for all 3");
+  });
+});
+
+describe("attackAllTaxLabel", () => {
+  const alice = seat("a", "Alice");
+  const bob = seat("b", "Bob", { seat: 1 });
+
+  it("is empty when attacking the seat is free", () => {
+    const v = taxedView([alice, bob], [creature("x", "a")], {});
+    expect(attackAllTaxLabel(v, planAttackAll(v, "a"), "b")).toBe("");
+  });
+
+  it("names the per-creature price for a single attacker", () => {
+    const v = taxedView([alice, bob], [creature("x", "a")], { b: "{2}" });
+    expect(attackAllTaxLabel(v, planAttackAll(v, "a"), "b")).toBe("costs {2}");
+  });
+
+  it("repeats the price once per attacker rather than adding it up", () => {
+    // Three attackers into Propaganda is "{2}{2}{2}" on the wire, six
+    // generic to the parser. The client never does that arithmetic.
+    const v = taxedView(
+      [alice, bob],
+      [creature("x", "a"), creature("y", "a"), creature("z", "a")],
+      {
+        b: "{2}",
+      },
+    );
+    expect(attackAllTaxLabel(v, planAttackAll(v, "a"), "b")).toBe(
+      "costs {2} each, {2}{2}{2} for all 3",
+    );
+  });
+
+  it("carries a stacked price through unchanged", () => {
+    const v = taxedView([alice, bob], [creature("x", "a"), creature("y", "a")], {
+      b: "{2}{2}",
+    });
+    expect(attackAllTaxLabel(v, planAttackAll(v, "a"), "b")).toBe(
+      "costs {2}{2} each, {2}{2}{2}{2} for all 2",
+    );
   });
 });

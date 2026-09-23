@@ -272,6 +272,19 @@ func (e ExileTarget) Apply(ctx *Context) error {
 	})
 }
 
+// ExileFirstTarget is "exile target <whatever>" with no trailing
+// clause: the item's first target if it is a card, or nothing at all
+// (CR 608.2b — a target gone by resolution does nothing). Named
+// because Haywire Mite, Soul-Guide Lantern and The Legend of Yangchen
+// all resolve to exactly this body; call it rather than writing the
+// same four lines again.
+func ExileFirstTarget(g *game.Game, item *game.StackItem) error {
+	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+		return nil
+	}
+	return ExileTarget{Target: item.Targets[0].ID}.Apply(NewContext(g, item))
+}
+
 // ExileThenIfItWas is "Exile target card from a graveyard. If it was
 // a creature card, <clause>" — Cling to Dust, Scavenging Ooze and
 // Deluge of the Dead, and the ONE body all three now share (#911).
@@ -559,12 +572,38 @@ func (u UntapTarget) Apply(ctx *Context) error {
 // spell items to their owner's graveyard by default; ability items
 // cease to exist. `StackID` is the StackItem.ID (equal to the
 // card's InstanceID for spells, a synthetic UUID for abilities).
+//
+// Dest overrides a countered SPELL's destination (#1230) — Devious
+// Cover-Up's "exile it instead of putting it into its owner's
+// graveyard" is Dest: game.ZoneRef{Kind: game.ZoneExile}; Remand's
+// hand and Memory Lapse's library top are the same shape with a
+// different Kind. The zero value (Dest.Kind == "") keeps the historic
+// graveyard default. Meaningless for a countered ABILITY, which
+// CR 701.6b simply ceases to exist wherever it was.
 type CounterTarget struct {
 	StackID uuid.UUID
+	Dest    game.ZoneRef
 }
 
 func (c CounterTarget) Apply(ctx *Context) error {
-	return ctx.Game.CounterTargetForEffect(c.StackID)
+	if c.Dest.Kind == "" {
+		return ctx.Game.CounterTargetForEffect(c.StackID)
+	}
+	return ctx.Game.CounterTargetToZoneForEffect(c.StackID, c.Dest)
+}
+
+// ReturnSpellToHand returns a spell on the stack to its owner's hand
+// WITHOUT countering it (CR 701.6 does not apply): a spell printed
+// "can't be countered" is unaffected, and nothing watching "whenever
+// a spell is countered" fires. CounterTarget's sibling rather than a
+// mode of it — Reprieve, and the second half of Narset's Reversal
+// once CopySpell has made the copy.
+type ReturnSpellToHand struct {
+	StackID uuid.UUID
+}
+
+func (r ReturnSpellToHand) Apply(ctx *Context) error {
+	return ctx.Game.ReturnSpellToHandForEffect(r.StackID)
 }
 
 // CounterAllMatching counters every spell on the stack matching
@@ -712,6 +751,21 @@ type SearchLibrary struct {
 	// is placed after the shuffle, which is what makes the clause
 	// mean anything.
 	ToTop bool
+	// LibraryOwner is the seat whose library is actually searched,
+	// when that is not Player (#1230) — Bribery's "search TARGET
+	// OPPONENT's library", where the caster (Player) chooses and the
+	// found card enters under the caster's control, but the pile
+	// scanned and shuffled is the named opponent's. Zero means "the
+	// same as Player", which is every search before Bribery.
+	LibraryOwner uuid.UUID
+	// Unbounded is "search your library for ANY NUMBER of … cards"
+	// (Ugin, Eye of the Storms) — a real choice from zero up to every
+	// match, never a forced take-all. Limit is ignored when set.
+	Unbounded bool
+	// FaceDown exiles the taken cards face down (CR 406.3a) when
+	// Dest is game.ZoneExile. The zero value, game.FaceDownNone, is
+	// an ordinary face-up exile.
+	FaceDown game.FaceDownKind
 }
 
 func (s SearchLibrary) Apply(ctx *Context) error {
@@ -733,6 +787,9 @@ func (s SearchLibrary) Apply(ctx *Context) error {
 		Validate:      s.Validate,
 		Then:          s.Then,
 		ToTop:         s.ToTop,
+		LibraryOwner:  s.LibraryOwner,
+		Unbounded:     s.Unbounded,
+		FaceDown:      s.FaceDown,
 	})
 }
 
@@ -1113,10 +1170,55 @@ type MillToZone struct {
 	// ZoneExile. Anything else is rejected rather than guessed at.
 	To game.ZoneKind
 
-	// Until, when set, ends the run after the first card it returns
-	// true for. With Until set, N <= 0 means "no limit but the
-	// library", which is how an unbounded mill is written.
-	Until func(c game.Card) bool
+	// Until, when set, ends the run after the first LANDED list it
+	// returns true for. With Until set, N <= 0 means "no limit but the
+	// library", which is how an unbounded mill is written — and, since
+	// #1161, how a run whose only bound is a landed COUNT is written
+	// too: "until a creature card or X cards have been put into their
+	// graveyard this way, whichever comes first" is ONE predicate with
+	// both conditions in it, UntilAny(UntilCard(…), UntilCount(x)).
+	//
+	// A landed count is not N. N is the mill AMOUNT the instruction
+	// names (CR 701.13b), the number Bruvac the Grandiloquent doubles,
+	// and it would be spent on a card a replacement diverted on the
+	// way; a bound that counts arrivals is the clause, and a card the
+	// CR 614 window sent elsewhere costs it nothing.
+	//
+	// #1176: a run with an Until is a REPEATED one-card mill, not one
+	// mill of many cards — "mills a card, then repeats this process
+	// until …" gives one instruction and repeats it. Each repetition
+	// opens its own CR 614 window on its own amount, so a mill-amount
+	// replacement doubles each of them (Helm of Obedience at X=3 with
+	// Bruvac out mills four cards, as in paper), and the clause is
+	// asked BETWEEN repetitions, with everything that has landed. With
+	// Until set, N > 0 caps the number of REPETITIONS; no card in the
+	// catalog uses it, because a bound a card prints is a clause
+	// (UntilCount).
+	//
+	// A run with an Until is always SEQUENCED, whatever Then says: the
+	// clause is about cards that have arrived, so the mill waits for
+	// each one rather than routing every leg on one line (Apply picks
+	// the form). Nothing is lost by it — the fire-and-forget form's
+	// returned list is discarded here anyway — and what it buys is a
+	// run that cannot walk past a leg paused on CR 903.9 and keep
+	// milling.
+	//
+	// `landed` is the cards that have actually reached To so far, top
+	// of the library first, and it is never empty when the clause is
+	// asked. #1159: a card the CR 614 window sent somewhere else — a
+	// commander taking the command zone (CR 903.9), "if a card would
+	// be put into a graveyard from anywhere, exile it instead" — was
+	// never put into To, so it is not in the list and does not end the
+	// run. Same reading as Then's `milled`, because it is the same
+	// rule (CR 400.7).
+	//
+	// Write it as a question about the WHOLE list, not as an
+	// accumulator over successive calls: the engine may ask it again
+	// for the same prefix when an undo replays the answer to a CR
+	// 903.9 prompt, and a closure counting as it goes would be wrong
+	// the second time. UntilCard and UntilTotalManaValue below are the
+	// two shapes the catalog needs; reach for them first.
+	Until func(landed []game.Card) bool
 
 	// Then is the "for each card milled this way" clause, and `milled`
 	// holds the instance IDs that actually reached To, in library
@@ -1155,13 +1257,20 @@ func (m MillToZone) Apply(ctx *Context) error {
 	if player == uuid.Nil {
 		player = ctx.Controller()
 	}
-	if m.Then == nil {
-		// Nothing is waiting on the list, so the mill stays
-		// fire-and-forget: every card is routed on this line and a
-		// commander's CR 903.9 prompt lands its own card later without
-		// holding the rest of the mill up.
-		_, err := ctx.Game.MillToZoneForEffect(player, m.N, dest, m.Until)
+	if m.Then == nil && m.Until == nil {
+		// Nothing is waiting on the list and nothing is watching what
+		// lands, so the mill stays fire-and-forget: every card is
+		// routed on this line and a commander's CR 903.9 prompt lands
+		// its own card later without holding the rest of the mill up.
+		_, err := ctx.Game.MillToZoneForEffect(player, m.N, dest)
 		return err
+	}
+	if m.Then == nil {
+		// An Until with nothing hanging off it still SEQUENCES (#1161):
+		// the clause is answered about cards that have arrived, and
+		// only the continuation form waits for them. The returned list
+		// this form gives up was discarded on the line above anyway.
+		return ctx.Game.MillToZoneThenForEffect(player, m.N, dest, m.Until, nil)
 	}
 	// The context is rebuilt inside the continuation from the live
 	// *Game, the contract massEffect.apply explains: an undo restores
@@ -1172,6 +1281,86 @@ func (m MillToZone) Apply(ctx *Context) error {
 		func(g *game.Game, milled []uuid.UUID) error {
 			return m.Then(NewContext(g, item), milled)
 		})
+}
+
+// UntilCard is MillToZone.Until for the common clause: the run ends on
+// the card that arrived, judged on its own — "until a creature card is
+// put into their graveyard", "until they reveal a land card".
+//
+// Pure by construction: it reads only the last entry of the list it is
+// handed, so replaying it over the same prefix gives the same answer.
+// See MillToZone.Until for why that matters.
+func UntilCard(pred func(c game.Card) bool) func([]game.Card) bool {
+	return func(landed []game.Card) bool {
+		return len(landed) > 0 && pred(landed[len(landed)-1])
+	}
+}
+
+// UntilCount is MillToZone.Until for the COUNT clause: the run ends
+// once `n` cards have landed — Helm of Obedience's "or X cards have
+// been put into their graveyard this way".
+//
+// #1161, and the reason it is a clause rather than MillToZone.N. N is
+// the mill AMOUNT: CR 701.13b counts the cards the instruction moves,
+// so a card a replacement diverts on the way to the graveyard (a
+// commander taking the command zone, Rest in Peace's "exile it
+// instead") spends one of it without ever arriving — and it is the
+// number a mill-amount replacement doubles. This bound counts
+// ARRIVALS, exactly as the rest of the same sentence does, which is
+// what makes Helm mill a whole library under Rest in Peace and what
+// makes a diverted card cost it nothing.
+//
+// Pure: it reads the length of the list it is handed and nothing else,
+// so replaying it over the same prefix gives the same answer.
+//
+// n <= 0 never ends the run. A card that prints a bound of zero prints
+// no run at all, and "stop before you start" is better expressed by
+// not milling.
+func UntilCount(n int) func([]game.Card) bool {
+	return func(landed []game.Card) bool {
+		return n > 0 && len(landed) >= n
+	}
+}
+
+// UntilAny is "whichever comes first": the run ends as soon as ANY of
+// the clauses accepts the landed list.
+//
+// Helm of Obedience is the card — "until a creature card OR X cards
+// have been put into their graveyard this way, whichever comes first"
+// is two stop conditions on one list, and the engine takes ONE
+// predicate, so the card composes them here rather than the mill
+// growing a second clause field (#1161).
+//
+// Pure as long as its parts are, which is the property MillToZone.Until
+// requires of all of them.
+func UntilAny(clauses ...func([]game.Card) bool) func([]game.Card) bool {
+	return func(landed []game.Card) bool {
+		for _, clause := range clauses {
+			if clause != nil && clause(landed) {
+				return true
+			}
+		}
+		return false
+	}
+}
+
+// UntilTotalManaValue is MillToZone.Until for the running-total
+// clause: the run ends once the cards that LANDED total `threshold`
+// mana value or more — "until you exile cards with total mana value 4
+// or greater" (Improvisation Capstone, Echocasting Symposium).
+//
+// The total is recomputed from the whole landed list every time rather
+// than accumulated across calls, which is what makes it pure and what
+// makes a card the CR 614 window diverted contribute nothing: it never
+// arrived, so it is not in the list (#1159).
+func UntilTotalManaValue(threshold int) func([]game.Card) bool {
+	return func(landed []game.Card) bool {
+		total := 0
+		for _, c := range landed {
+			total += c.ManaValue()
+		}
+		return total >= threshold
+	}
 }
 
 // ExileTopFaceDown is "exile the top N cards of your library face

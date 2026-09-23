@@ -46,7 +46,6 @@ const (
 	b28SpawnbedProtectorOracle     = "256a7f54-0e8e-4d22-a0f7-ff2830e8884e"
 	b28RampagingYaoGuaiSkipOracle  = "d37e8f75-c7cb-4270-bb2f-0125e972ed15"
 	b28TectonicGiantSkipOracle     = "0e5e46e3-f9af-47cc-a740-bf808d5cb4b1"
-	b28BriberySkipOracle           = "6d194882-ca37-49bb-ac9f-a751c53850a8"
 	b28HallOfTheBanditLordSkipOID  = "32fe7ac4-86f5-44af-9f73-ee8f6a9ce2ba"
 	b28HoldoutSettlementSkipOracle = "e6b77545-de5c-4f4a-b7ea-83498fb33ba8"
 	b28FertilidSkipOracle          = "21f1c6d7-8289-44b2-b88f-c09e202be200"
@@ -156,13 +155,15 @@ func TestBatch28CardsAreRegistered(t *testing.T) {
 			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
 		}
 	}
-	// The nine declared skips must NOT be registered — each needs a
+	// The eight declared skips must NOT be registered — each needs a
 	// seam the engine does not have, and a spec would ship the card
 	// stronger than printed or as something other than itself.
+	// Bribery was the ninth until #1230 gave the search primitive a
+	// LibraryOwner parameter; it is registered now (bribery.go) and
+	// dropped from this list.
 	for _, skipped := range []string{
 		b28RampagingYaoGuaiSkipOracle,  // an enters trigger cannot read the spell's X
 		b28TectonicGiantSkipOracle,     // a modal triggered ability
-		b28BriberySkipOracle,           // the searcher is always the library's owner; no control-changing entry
 		b28HallOfTheBanditLordSkipOID,  // a "if that mana is spent on" rider
 		b28HoldoutSettlementSkipOracle, // tap-another-creature cost
 		b28FertilidSkipOracle,          // counter-removal cost

@@ -77,17 +77,7 @@ func init() {
 				Targets: TargetPermanent("another target nonland permanent", Nonland()),
 				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
 					return game.NewTriggeredItem(source, "Aang, the Last Airbender — airbend a nonland permanent",
-						func(g *game.Game, item *game.StackItem) error {
-							if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-								return nil
-							}
-							target := item.Targets[0]
-							// "Another": Aang does not airbend himself.
-							if target.ID == item.SourceCardID {
-								return nil
-							}
-							return Airbend{Target: target.ID}.Apply(NewContext(g, item))
-						})
+						AirbendOtherTarget)
 				},
 				OptionalPrompt: &game.TriggerOptionalPrompt{
 					Question: "Aang, the Last Airbender — airbend a nonland permanent? (Exile it; its owner may cast it for {2}.)",

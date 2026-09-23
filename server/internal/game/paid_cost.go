@@ -79,6 +79,25 @@ type PaidCost struct {
 	// with neither.
 	LifePaid int
 
+	// Sacrificed is how many permanents a sacrifice component
+	// actually took — the source when the cost sacrificed it, and the
+	// permanents the clause named (#1213).
+	//
+	// It exists for the VARIABLE count: Radiant Lotus's "three mana of
+	// the chosen color for each artifact sacrificed this way" is read
+	// at resolution, by which time the artifacts are in graveyards and
+	// nothing on the board could count them. Exactly the argument
+	// CountersRemoved was added under (#789), which is why it is the
+	// neighbouring field of the same record rather than a second
+	// mechanism.
+	//
+	// Recorded for a FIXED cost too, where it is simply the printed
+	// number. "The engine charged N" and "the card prints N" are
+	// different facts, and a record that only spoke up for the
+	// interesting case would make every reader ask which it was
+	// looking at.
+	Sacrificed int
+
 	// OptionalCosts is which of the card's optional additional costs
 	// the caster chose to pay (CR 601.2b), as positions in the card's
 	// OptionalCosts slice, ascending. A cost paid N times appears N
@@ -119,20 +138,21 @@ func (p PaidCost) OptionalCostTimes(index int) int {
 	return n
 }
 
-// ManaSpent is the tokens that paid, or nil. The accessor rather
+// ManaTokens is the tokens that paid, or nil. The accessor rather
 // than the field so a caller cannot append into the record.
-func (p PaidCost) ManaSpent() []ManaToken {
-	if len(p.Mana) == 0 {
-		return nil
-	}
-	return append([]ManaToken(nil), p.Mana...)
+//
+// Was ManaSpent() until #1212 gave that name to the VIEW below; a
+// caller that wants the tokens still gets them, and one that wants a
+// question answered asks Spent().
+func (p PaidCost) ManaTokens() []ManaToken {
+	return ManaSpent{tokens: p.Mana}.Tokens()
 }
 
 // ManaSpentCount is how many mana paid — adamant's "at least three"
 // and Memory Deluge's "the amount spent" both count from here. Zero
 // for an OnPaper payment, which is the weaker answer.
 func (p PaidCost) ManaSpentCount() int {
-	return len(p.Mana)
+	return p.Spent().Total()
 }
 
 // ColorsSpent is the distinct COLOURS the payment spent, in WUBRG
@@ -145,44 +165,20 @@ func (p PaidCost) ManaSpentCount() int {
 // colours, so converge draws nothing and sunburst adds no counters
 // rather than guessing five.
 func (p PaidCost) ColorsSpent() []string {
-	if p.OnPaper {
-		return nil
-	}
-	seen := make(map[string]bool, 5)
-	for _, t := range p.Mana {
-		if isColorSymbol(t.Color) {
-			seen[t.Color] = true
-		}
-	}
-	var out []string
-	for _, c := range []string{"W", "U", "B", "R", "G"} {
-		if seen[c] {
-			out = append(out, c)
-		}
-	}
-	return out
+	return p.Spent().Colors()
 }
 
 // ColorsSpentCount is len(ColorsSpent) without the allocation —
 // converge's X and sunburst's counter count.
 func (p PaidCost) ColorsSpentCount() int {
-	return len(p.ColorsSpent())
+	return p.Spent().ColorCount()
 }
 
 // SpentOfColor is how many mana of one colour paid: adamant's "at
 // least three red mana was spent" is SpentOfColor("R") >= 3. Zero
 // for an OnPaper payment.
 func (p PaidCost) SpentOfColor(color string) int {
-	if p.OnPaper {
-		return 0
-	}
-	n := 0
-	for _, t := range p.Mana {
-		if t.Color == color {
-			n++
-		}
-	}
-	return n
+	return p.Spent().Count(color)
 }
 
 // NoManaSpent reports the clause "if no mana was spent to cast it"
@@ -196,7 +192,7 @@ func (p PaidCost) SpentOfColor(color string) int {
 // see, and a punisher that fired on it would counter half the spells
 // cast at a permissive table.
 func (p PaidCost) NoManaSpent() bool {
-	return !p.OnPaper && len(p.Mana) == 0
+	return p.Spent().None()
 }
 
 // Known reports whether the mana half of this record is a fact. The
@@ -211,7 +207,7 @@ func (p PaidCost) Known() bool { return !p.OnPaper }
 func (p PaidCost) IsZero() bool {
 	return len(p.Mana) == 0 && !p.OnPaper &&
 		p.CountersRemoved == 0 && p.CountersAdded == 0 && p.LifePaid == 0 &&
-		len(p.OptionalCosts) == 0
+		p.Sacrificed == 0 && len(p.OptionalCosts) == 0
 }
 
 // clonePaidCost deep-copies the record. The ManaToken slice is

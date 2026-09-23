@@ -1324,3 +1324,53 @@ never cut it. A loaded runner should make this job slow, not red.
 **A red night opens or comments on one standing issue** (`bug`,
 `tech-debt`), scheduled runs only. One issue per night trains everyone
 to close them unread; no issue at all is a gate nobody is told about.
+
+### Note (2026-09-22, #1096): the soak fuzzes two-seat tables too
+
+`TestRandomBotSoak` passed a literal `4` to `newRoom`, which has taken
+a seat count since it was written. So every table this fuzzer has ever
+played had four seats — and the two-seat table is a supported
+configuration (#39 fixed its seating) and the shape
+[ADR 0076](0076-tutorial.md) makes the tutorial's: one human seat, one
+`random` bot. The one shape a brand-new player meets first was the one
+shape nothing fuzzed.
+
+**Two seats is not four minus two.** There is no third seat for the
+priority cursor to pass through, the bot is the only opponent, and an
+eliminated-seat or turn-wrap bug surfaces differently — or not at all
+— when the rotation has two positions.
+
+`AISEAT_SOAK_SEATS` is the knob, defaulting to 4 so every existing
+invocation and the nightly's four-seat step are unchanged. A
+PARAMETER rather than a second near-duplicate test: the soak's body is
+a stall watchdog, a wall-clock backstop, a rejection sweep and a
+reproduce line, and a copy of all four with `2` in it is four things
+to keep in step rather than one. The seat count rides the reproduce
+line and the stall dump, and the run asserts the table it actually
+got.
+
+The heuristic gate (exit criterion 2) got a **sibling** rather than a
+seat count: `TestFourHeuristicBotsPlayToAWinner` is that criterion
+quoted verbatim, so a name that says four while running two would be
+worse than a second function. Both call `heuristicGateAtSeats`; the
+two-seat one has its own seed block (201+) so a seed names one table.
+
+The nightly (`bot-soak` in `.github/workflows/e2e-nightly.yml`, #1066)
+now plays both gates at both seat counts. The two-seat pass has its own
+base seed — the four-seat one plus 500, because game *i* uses base+*i*
+and a shared base would play the same hundred seeds twice — and its
+own artifact, `bot-soak-logs-2p`. It costs about 100s on top of ~790s,
+so the job's 100-minute ceiling is unchanged.
+
+Two shapes are pinned deterministically in
+`internal/aiseat/two_seat_test.go`, without the soak, because a fuzzer
+is a tripwire and not a specification: the priority cursor has exactly
+two positions (one pass reaches the only opponent, the second
+completes the round, CR 117.4), and the turn wraps between the same
+two seats with `Turn.Number` — a ROUND counter — advancing every
+second turn.
+
+No bug was found, and that is the point #1096 made when it filed this:
+250 games were cheap, they passed, and they are worth having as a
+tripwire rather than as something re-derived the next time two-player
+seating regresses.

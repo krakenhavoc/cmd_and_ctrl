@@ -110,6 +110,52 @@ func CostsAtLeast(n int, label string, when ...CostPredicate) game.CostModifier 
 	}
 }
 
+// --- abilities, not spells (#1184) -------------------------------
+
+// ActivationCostsLess is "<matching> abilities cost {n} less to
+// activate" — Boom Scholar. The activation twin of CostsLess, and
+// the ONLY difference is which announcements it is shown: the
+// Activations bit partitions the board's modifiers into the ones
+// that price casts and the ones that price activations, so a Sphere
+// of Resistance written as "spells" never silently starts taxing
+// abilities. Everything else — the CR 601.2f order, the generic
+// floor, the negative-amount refusal — is the same pass.
+//
+// Note the predicates below are ability predicates: an activation's
+// q.Card is the SOURCE permanent rather than a spell, so a
+// spell-shaped predicate (CreatureSpell, SpellManaValueAtLeast) means
+// something different here and should not be reached for.
+func ActivationCostsLess(n int, label string, when ...CostPredicate) game.CostModifier {
+	m := CostsLessEach(func(game.CostQuery) int { return n }, label, when...)
+	m.Activations = true
+	return m
+}
+
+// AnExhaustAbilityCost — the ability being priced prints the exhaust
+// keyword (#1181). Reads the bit off the query rather than the
+// ability's label, for the same reason the trigger predicate does:
+// the bit is the declaration and the label is prose.
+func AnExhaustAbilityCost() CostPredicate {
+	return func(q game.CostQuery) bool {
+		return q.Ability != nil && q.Ability.Exhaust
+	}
+}
+
+// OfAnotherPermanentYouControl — "abilities of OTHER permanents you
+// control". Two clauses in one predicate because the card prints them
+// as one phrase: the source of the ability is controlled by the
+// modifier's controller, and it is not the modifier's own permanent.
+//
+// The "other" half is the one that matters on the board: Boom Scholar
+// prints an exhaust ability of its own, and discounting that too
+// would be a cheaper card than the one in the pack.
+func OfAnotherPermanentYouControl() CostPredicate {
+	return func(q game.CostQuery) bool {
+		return q.Card.Controller == q.Source.Controller &&
+			q.Card.InstanceID != q.Source.InstanceID
+	}
+}
+
 // --- who cast it -------------------------------------------------
 
 // YourSpell passes on a spell cast by the modifier source's own
@@ -178,6 +224,12 @@ func InstantOrSorcerySpell() CostPredicate {
 // spell — Aura of Silence.
 func ArtifactOrEnchantmentSpell() CostPredicate {
 	return func(q game.CostQuery) bool { return q.Card.IsArtifact() || q.Card.IsEnchantment() }
+}
+
+// ArtifactSpell passes on an artifact spell — Foundry Inspector,
+// Semblance Anvil.
+func ArtifactSpell() CostPredicate {
+	return func(q game.CostQuery) bool { return q.Card.IsArtifact() }
 }
 
 // ColoredSpell passes on a spell that IS the given colour — "BLUE

@@ -1,7 +1,6 @@
 # exact-duplicate bodies in server/internal/cards/effects, one per line:
 # <hash> <lines> <members> <files>. Keyed on the hash and the declaring files, never on
 # a line number (#895). Regenerate with -update; never add a line by hand.
-00d76bde97807c32 6 2 haywire_mite.go,soul_guide_lantern.go
 04b64b99fd6854ae 10 3 authority_of_the_consuls.go,batch31_helpers.go,urabrask_the_hidden.go
 05619471636b20d7 7 2 dragon_fodder.go,krenkos_command.go
 059e7bc2be2e6e18 11 2 goblin_bombardment.go,mayhem_devil.go
@@ -12,9 +11,7 @@
 1efa2882831aaaca 12 2 junk_diver.go,myr_retriever.go
 2583fef819d1461d 6 3 abraded_bluffs.go,batch36_helpers.go,bristling_backwoods.go
 2bfc7f64441b2dc5 6 12 cancel.go,counterspell.go,disdainful_stroke.go,dispel.go,essence_scatter.go,fierce_guardianship.go,force_of_will.go,helpers.go,mana_sculpt.go,mental_misstep.go,negate.go,wash_away.go
-2c94a73075e12677 16 2 copy_effects.go,shocklands.go
 2e9cdde2f4504f84 7 2 efficient_construction.go,sai_master_thopterist.go
-31cc55b4573333d0 21 2 aang_swift_savior.go,aang_the_last_airbender.go
 33c0713d2abdc36e 9 2 bastion_of_remembrance.go,zulaport_cutthroat.go
 379a0425537f869b 8 2 batch20_helpers.go,tribal.go
 3d233195a1026310 7 7 archivist_of_oghma.go,inspiring_overseer.go,moldervine_reclamation.go,ravenous_squirrel.go,sythis_harvests_hand.go,tatyova_benthic_druid.go,vampiric_rites.go
@@ -25,7 +22,7 @@
 50ec6ce2e4092bf2 6 2 grinding_station.go,thermo_alchemist.go
 5e9a2a93a49af934 7 2 animar_soul_of_elements.go,yoshimaru_ever_faithful.go
 67997cc5509c0805 6 3 deadly_rollick.go,despark.go,vanishing_verse.go
-6990833235cc4f97 7 2 dark_prophecy.go,undead_augur.go
+6990833235cc4f97 7 3 dark_prophecy.go,hired_hexblade.go,undead_augur.go
 69c81a765114353a 8 2 batch40_helpers.go,mana_spent.go
 7621313c61d22514 7 2 pashalik_mons.go,sunscorched_desert.go
 7bc059f70d12ebaf 6 3 fate_unraveler.go,razorkin_needlehead.go,underworld_dreams.go
@@ -51,6 +48,5 @@ d46495c46dee625f 7 2 batch17_helpers.go,batch27_helpers.go
 dd481c2a4e82af35 6 2 blood_seeker.go,suture_priest.go
 dfee2f6c7b5bea62 10 2 batch40_helpers.go,mana_spent.go
 ec369074573e8e94 16 2 branching_evolution.go,hardened_scales.go
-f86f8fb018c793a6 9 2 magewrights_stone.go,wirewood_lodge.go
 f9c60e49e144a4e4 6 3 into_the_flood_maw.go,snapback.go,unsummon.go
 fd7c4991832e1ed9 6 2 bojuka_bog.go,tormods_crypt.go

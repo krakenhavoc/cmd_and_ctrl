@@ -52,9 +52,33 @@ type Game struct {
 	Seats []*Player
 
 	// Shared zones. Owner is uuid.Nil.
+	//
+	// Battlefield holds every permanent the game currently treats as
+	// existing. That is NOT quite "every permanent on the
+	// battlefield": a phased-out permanent is still on the
+	// battlefield by CR 702.26d and is held in PhasedOut below, out of
+	// this slice, so that CR 702.26b's "treated as though it does not
+	// exist" is true of every walk over it without any walk having to
+	// ask. See ADR 0084.
 	Battlefield *Zone
 	Stack       *Zone
 	Exile       *Zone
+
+	// PhasedOut holds the permanents that are phased out (CR 702.26).
+	//
+	// NOT A ZONE IN THE CR 400 SENSE, despite the type: phasing is not
+	// a zone change (CR 702.26d) and these permanents are still on the
+	// battlefield as far as the rules are concerned. The Zone type is
+	// reused so that cloneZone, snapshotZone / restoreZone and
+	// viewOfZone work on it unchanged; findCardZoneLocked deliberately
+	// does not look here, and nothing routes a card in or out of it
+	// but phaseOutLocked / phaseInLocked in phasing.go.
+	//
+	// Three readers, and each names the rule it is implementing: the
+	// untap step's CR 502.1 turn-based action, the CR 800.4a sweep in
+	// leave_game.go, and the wire's `phased_out` zone. Added in S46
+	// (#1199, ADR 0084).
+	PhasedOut *Zone
 
 	// Turn cursor, meaningful only when State == StateActive.
 	Turn Turn
@@ -201,6 +225,15 @@ type Game struct {
 	// and reset on Turn.advance to a new turn. See turn_tally.go
 	// (#586).
 	TurnTally TurnTally
+
+	// Activations counts what has been ACTIVATED — CR 602.2b's
+	// announcement — per (object, printed ability), in two scopes at
+	// once: `Ever`, which is never reset and is what exhaust reads,
+	// and `Turn`, which is emptied on the turn advance beside
+	// TurnTally. Written at the one place a non-mana activation is
+	// paid for (ActivateCatalogAbility). See activation_tally.go
+	// (#1181).
+	Activations ActivationTally
 
 	// LoopNotice is the CR 726 loop breaker's flag: set when the
 	// same triggered ability has resolved LoopThreshold times this
@@ -402,6 +435,20 @@ type Game struct {
 	// CR 400.7 cleanup removes before the move-form event is harvested. It is
 	// paired with lastKnownBattlefield and cleared at the same boundary.
 	lastKnownTriggerIdentity map[uuid.UUID]triggerIdentityLKI
+
+	// lastKnownCounters is lastKnownBattlefield's sibling for a card's
+	// COUNTERS (#1218): Characteristic deliberately excludes Counters
+	// ("belongs to other engine subsystems"; see characteristic.go),
+	// and MoveCard's battlefield-exit cleanup zeroes Card.Counters
+	// (zone.go) before an LTB trigger — or a bystander watching the
+	// event, The Ozolith's "if it had counters on it" — ever sees it.
+	// Populated by snapshotLKILocked from the live counters just
+	// before that zeroing; read by LastKnownCountersForEffect; kept
+	// on the GAME rather than the card for the same reason the other
+	// two are — the departing Card value is about to be overwritten
+	// out from under whatever holds a copy of it. Cleared at the same
+	// two boundaries lastKnownBattlefield is.
+	lastKnownCounters map[uuid.UUID]map[string]int
 
 	// simultaneousExit holds copies of the permanents currently
 	// leaving the battlefield as ONE event — a board wipe, or one
@@ -629,6 +676,7 @@ func NewGame() *Game {
 		Battlefield: newZone(ZoneBattlefield, uuid.Nil),
 		Stack:       newZone(ZoneStack, uuid.Nil),
 		Exile:       newZone(ZoneExile, uuid.Nil),
+		PhasedOut:   newZone(ZonePhasedOut, uuid.Nil),
 		Settings:    DefaultTableSettings(),
 	}
 	// S16 sub-PR 2: install the layer-engine invalidation listener.

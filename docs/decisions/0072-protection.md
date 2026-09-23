@@ -409,10 +409,13 @@ one.
 
 ### 10. Out of scope, stated
 
-- **Player protection and player hexproof** — Teferi's Protection,
+- ~~**Player protection and player hexproof**~~ — Teferi's Protection,
   Leyline of Sanctity, The One Ring. `Player` carries no ability
   slice and `CanBeTargetedBy` is never reached for a player ref.
-  Unchanged from ADR 0038.
+  Unchanged from ADR 0038. **Retired 2026-09-22 (#1197)** — see the
+  amendment at the end of this ADR: `Player.Statics` is the slice,
+  and the three choke points that each returned early for a player
+  ref now answer.
 - **CR 615.12 "can't be prevented"** — §4.
 - **CR 616.1 ordering against protection** — §4, a declared
   simplification.
@@ -452,3 +455,175 @@ genuinely has none has to say so with `SourceChooser` — which reads
 as a claim ("this is not targeting") rather than as an omission.
 That asymmetry is deliberate and is the same one ADR 0038 §4 chose
 for the cost-payment split.
+
+## Amendment (2026-09-22, #1197): the RECEIVER may be a player (CR 702.16i, CR 702.11d)
+
+§10 listed "player protection and player hexproof" as out of scope,
+with one reason: `Player` carries no ability slice, so "you have
+protection from everything" has nowhere to live and no consumer.
+This amendment gives it both. Nothing above changes — the grammar,
+the token, the quality kinds and the matcher are the ones already
+shipped. What is new is a second kind of thing that can HAVE a
+quality.
+
+Note the two axes, because they are easy to conflate and this ADR
+now has all four corners:
+
+|                 | protection ON an object | protection ON a player |
+| --------------- | ----------------------- | ---------------------- |
+| **FROM** a characteristic | #662 (§1–§6) | this amendment |
+| **FROM** a player | #980 (§7 amendment) | reachable, uncatalogued |
+
+### A1. Where a player's abilities live: derived plus granted, never written
+
+`Player` gets one new field, `Statics []PlayerStatic`, and the
+engine gets one new reader. The field is modelled on
+`Player.CastPermissions` (ADR 0066), which is the closest existing
+thing: per-player, plain data with no closures, carrying a
+`Duration`, cloned by value and mirrored into the snapshot rather
+than rebuilt.
+
+A player's abilities come from two places, and the split is the same
+one `land_drops.go` and `CatalogNoMaxHandSize` (#338) already make:
+
+- **DERIVED** — a permanent on the battlefield whose printed static
+  says "you have hexproof" (Leyline of Sanctity, Aegis of the Gods).
+  Declared as `effects.Spec.PlayerKeywords` and read through the
+  `game.CatalogPlayerKeywords` hook on every query. Nothing is
+  written to the player, so two Leylines compose and one of them
+  leaving cannot revoke the other's grant — the argument
+  `CatalogNoMaxHandSize` spells out at length, verbatim.
+
+- **GRANTED** — a resolved spell or triggered ability that says "you
+  gain protection from everything until your next turn" (Teferi's
+  Protection, The One Ring). This one HAS to be stored: the source
+  is a spell that is in a graveyard a moment later, which is the
+  same reason `ScopedStatic` exists (scoped_statics.go). It carries
+  a `Duration` and is swept through `durationExpiredLocked` — the
+  one function ADR 0063 says decides when any continuous effect in
+  this game is over.
+
+**Why not a `ScopedStatic`.** The registry next door looks like the
+obvious home and is the wrong one. A `ScopedStatic` is adapted into
+a `ContinuousEffect` and applied by the CR 613 layer pass, whose
+`Apply` signature is `(*Characteristic, *Card)` — a characteristic
+of an OBJECT. A player has no `Characteristic` and no layer, which
+is exactly the argument `Spec.NoMaxHandSize` and `Spec.CostModifiers`
+already make for staying out of the layer engine. So a
+`PlayerStatic` is a THIRD thing beside the two registries: a token,
+an attribution, and a duration.
+
+```go
+type PlayerStatic struct {
+    Keyword  string    // an engine token: "hexproof", "protection from everything"
+    Source   uuid.UUID // attribution, for the log and the badge
+    Label    string
+    Duration Duration
+}
+```
+
+`Keyword` is a token in the same closed vocabulary `Card` abilities
+use, parsed by the same `ParseProtectionQuality`. That is the whole
+point of putting it here rather than inventing a player-side enum:
+"protection from everything" means one thing in this engine and one
+file parses it.
+
+### A2. One reader, three consumers — the same shape §1 chose for objects
+
+`playerAbilityTokensLocked(p)` is the player-side twin of
+`forEachAbilityToken`: the derived battlefield grants, then the
+stored ones whose duration has not run out. The expiry test is in
+the READER as well as in the sweep, for the reason
+`CastPermissionActiveForEffect` gives — the sweep is hygiene, run at
+known moments; the reader is the truth, and must be right between
+them.
+
+Three consumers, one line each, all of them the choke point that
+already exists:
+
+| rule | where | CR |
+| --- | --- | --- |
+| targeting | `specMatchesLocked` seat walk + `specMatchLocked`'s `case TargetPlayer` (targets.go) | 702.11d, 702.16i |
+| damage | `protectionPreventsDamageLocked`'s non-permanent branch (builtin_replacements.go) | 702.16e |
+| attachment | `attachmentLegalLocked`'s `TargetPlayer` host (attach.go) | 702.16c |
+
+None of the three is a new pass. Each is the branch the existing
+function already had and returned early from:
+`protectionPreventsDamageLocked` said "not a permanent: a player…
+player protection has no home yet"; `attachmentLegalLocked` tested
+only `AttachedTo.Kind == TargetCard`; `CanBeTargetedBy`'s doc
+comment said "players are not covered… `TargetPlayer` refs pass this
+gate by not reaching it". All three comments were an IOU and this
+amendment pays them.
+
+**The enumerator and the view follow by construction.** The bot's
+move list (`internal/legal`) and the client's `legal_targets` both
+read `legalTargetsLocked`, which is `specMatchesLocked` with
+`targeting=true`. Neither learns the rule; they cannot disagree with
+it. That is the property §2 bought with the `TargetSource` refactor
+and it pays out again here with no new call site.
+
+**Blocking and equipping are not relevant.** CR 702.16f is about a
+creature being blocked; CR 301.5c's Equipment attaches only to a
+creature. A player can be enchanted (an "enchant player" Aura —
+Curse of Opulence) and that is the only attachment half there is.
+
+### A3. Hexproof on a player is the same asymmetry it is on an object
+
+CR 702.11d is CR 702.11b with "player" for "permanent": can't be the
+target of spells or abilities your OPPONENTS control. So the test is
+`src.Controller != p.ID`, and a hexproof player may still target
+themselves — which is load-bearing, not a nicety. Leyline of
+Sanctity must not stop you from casting your own Sylvan Library, and
+a player who could not target themselves would be unable to pay a
+cost, take a draw trigger's downside, or aim their own removal-plus-
+gain.
+
+Shroud on a player is not in the grammar. No card prints it and
+inventing the token would be a rule with no card behind it, which is
+what `CanonicalKeywords` refuses a bare "protection" for.
+
+### A4. What this does NOT build, stated the way §10 states things
+
+- **Phasing (CR 702.26), #1199** — not modelled anywhere in this
+  engine (`activation_tally.go` says so and has since S38). Teferi's
+  Protection's "all permanents you control phase out" ships as a
+  caveat, not as a half-built phase. It is the larger half of that
+  card and it is a seam of its own.
+- **"Your life total can't change", #1200** — a replacement effect with a
+  duration longer than end of turn. `TurnScopedReplacements` has no
+  duration field at all, which ADR 0063 Decision 8 states as
+  deliberate ("no card needs a longer-lived replacement yet"). This
+  is the first card that does, and it is not this seam.
+- **Protection on a player FROM a player** (the fourth corner of
+  the table above). Reachable — the quality kind, the matcher and
+  the reader are all shared — but no catalogued card prints it, so
+  nothing exercises it and it is claimed nowhere.
+- **A player losing an ability.** CR 613 layer 6 can strip a
+  permanent's abilities; there is no equivalent for a player and no
+  card asks for one.
+- **The client badge, #1201.** The wire carries a player's tokens
+  (`PlayerView.keywords`); rendering a chip beside the life total is
+  a client-only change.
+
+### A5. Consequences
+
+**The seam row closes.** "Player protection and player hexproof
+(CR 702.16, CR 702.11)" in `docs/engine-seams.md`, 4 cards.
+
+**The One Ring loses its caveat's first half.** The card is already
+in the catalog and its caveat names this exact gap — "casting The
+One Ring doesn't shield you". It now does.
+
+**Three cards join the catalog**: Leyline of Sanctity, Aegis of the
+Gods (both `CompletenessCaveats` only for their opening-hand /
+nothing-else clauses) and Teferi's Protection (`CompletenessCaveats`
+for phasing and the life lock).
+
+**Uncatalogued printed player hexproof still does nothing.** The
+derived half reads `Spec.PlayerKeywords`, a catalog declaration, not
+Scryfall's keyword array — because "you have hexproof" is oracle
+TEXT and not a keyword-ability line, so there is nothing for the
+deck importer to stamp. That is the same posture §1 takes toward a
+quality the grammar cannot parse: err weaker, and let the card carry
+the ADR 0037 unimplemented badge until somebody writes it.

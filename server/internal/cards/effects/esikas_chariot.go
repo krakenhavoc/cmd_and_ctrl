@@ -21,8 +21,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "8e7b079d-9ede-421c-bd2b-f9a5126a8e6f",
 		Name:         "Esika's Chariot",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The Cat token is created colorless instead of green, so anything that cares about a creature's color doesn't see it."},
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:  "Crew 4",
 			Cost:   CrewCost(4),
@@ -30,7 +29,7 @@ func init() {
 		}},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Esika's Chariot — create two 2/2 Cats", Do(CreateToken{
-				Template: TokenCard("2/2 colorless Cat"),
+				Template: TokenCard("2/2 green Cat"),
 				N:        2,
 			})),
 			{

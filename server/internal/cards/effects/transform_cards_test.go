@@ -264,10 +264,12 @@ func TestVaultOfCatlacanManaAbilitiesAreLiveAfterTheTransform(t *testing.T) {
 
 // --- Fable of the Mirror-Breaker // Reflection of Kiki-Jiki ---------
 
-// TestFableChapterOneMakesTheGoblinShaman also pins the caveat: the
-// token is a plain 2/2, because a non-copy token has no catalog key to
-// hang a trigger off (#521). If that stops being true this assertion
-// is the one that says so.
+// TestFableChapterOneMakesTheGoblinShaman pins the token's own attack
+// trigger, which the card shipped WITHOUT until ADR 0083 (#1248): the
+// assertion used to be that a non-copy token had no triggered
+// abilities at all, because it had no catalog key to hang one off.
+// The trigger itself is exercised end to end in
+// token_abilities_cards_test.go.
 func TestFableChapterOneMakesTheGoblinShaman(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
@@ -284,9 +286,13 @@ func TestFableChapterOneMakesTheGoblinShaman(t *testing.T) {
 		if c.Power != 2 || c.Toughness != 2 {
 			t.Errorf("token is %d/%d, want 2/2", c.Power, c.Toughness)
 		}
-		if len(game.TriggersForCard(c)) != 0 {
-			t.Error("the token has triggered abilities — #521 closed, and the " +
-				"Fable caveat is now stale")
+		if c.TokenKey != game.TokenKey("goblin-shaman") {
+			t.Errorf("token key = %q, want the Goblin Shaman's — without it the "+
+				"catalog cannot find its attack trigger", c.TokenKey)
+		}
+		if got := len(game.TriggersForCard(c)); got != 1 {
+			t.Errorf("the token has %d triggered abilities, want its printed "+
+				"\"whenever this creature attacks, create a Treasure token\"", got)
 		}
 	}
 }

@@ -890,7 +890,7 @@ func TestB16BennieBracksDrawsAtAnyEndStepAfterATokenAndConvokes(t *testing.T) {
 	// An opponent's turn: a token created by Bennie's controller
 	// during it still draws at that turn's end step ("each end step").
 	advanceToMainOf(t, g, 1)
-	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("2/2 colorless Zombie"), 1) })
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("2/2 black Zombie"), 1) })
 	hand = me.Hand.Size()
 	batch01AdvanceToStepOf(t, g, 1, game.StepEnd)
 	passPriorityAroundTable(t, g)

@@ -347,6 +347,22 @@ type PendingChoice struct {
 	// S32 mana-pipeline pass (#352).
 	ManaRestrictions []string
 
+	// ManaSourceKinds is what the permanent producing this mana WAS
+	// at the moment the pick was queued — snow, Treasure, creature,
+	// land, artifact, enchantment (#1212, mana_source.go).
+	//
+	// Here for exactly the reason ManaRestrictions is, and the case
+	// is sharper: a Treasure's mana ability sacrifices the Treasure,
+	// so by the time the colour pick is answered the source is gone
+	// and a Treasure TOKEN has ceased to exist (CR 111.7). The one
+	// source that eighteen printed cards ask about is the one source
+	// a resolve-time lookup could never answer, so the fact travels
+	// on the choice.
+	//
+	// A plain value, so the clone and the snapshot carry it with the
+	// rest of the struct.
+	ManaSourceKinds ManaSourceKinds
+
 	// ManaAmounts is how many mana a PendingChoiceMana adds for each
 	// colour in ColorOptions — "{T}: Add three mana of any one color"
 	// (Gilded Lotus) is ONE pick minting three tokens, and Nyx Lotus's
@@ -417,6 +433,25 @@ type PendingChoice struct {
 	// prompt or picks accumulate.
 	PickTargetMin, PickTargetMax int
 
+	// RetargetItem / RetargetPolicy / RetargetOptional /
+	// RetargetSlot / RetargetReason are the whole of a
+	// PendingChoiceRetarget (#1196, CR 115.7): which stack item is
+	// being redirected, under which printed sentence, whether
+	// declining is allowed, which of the item's target slots this
+	// prompt is asking about, and the card's own header text for the
+	// rest of the walk.
+	//
+	// DATA rather than a resume frame, and that is the whole point:
+	// the object being rewritten is already on the stack, so the
+	// answer needs no closure and the snapshot can carry the prompt
+	// intact. The legal set rides the PickTarget* fields above, since
+	// the QUESTION is the same one those were built for.
+	RetargetItem     uuid.UUID
+	RetargetPolicy   RetargetPolicy
+	RetargetOptional bool
+	RetargetSlot     int
+	RetargetReason   string
+
 	// pickTargetResume is the server-only continuation for a
 	// PendingChoicePickTarget: the captured event / source / LKI,
 	// the Build closure, and the spec the pick is validated against
@@ -448,7 +483,7 @@ type PendingChoice struct {
 	// Added by #764.
 	modePickResume *modePickFrame
 
-	// copySpellResume is the other continuation a
+	// copyResume is the other continuation a
 	// PendingChoicePickTarget can carry (S30, #95): the CR 707.10
 	// "you may choose new targets for the copy" prompt. It reuses
 	// the pick_target prompt rather than getting a kind of its own
@@ -458,8 +493,8 @@ type PendingChoice struct {
 	// choice enumerator) then needs no change at all to answer it.
 	// What differs is only what gets built on submit, which is what
 	// the frame decides. Exactly one of pickTargetResume and
-	// copySpellResume is set.
-	copySpellResume *copySpellFrame
+	// copyResume is set.
+	copyResume *copyFrame
 
 	// SacrificeOptions is the set of permanents a
 	// PendingChoiceSacrifice's chooser may pick from — their own
@@ -771,7 +806,17 @@ type mayCastFrame struct {
 // #764 — is that walk with one step, which is one prompt, which is
 // exactly what it was.
 type pickTargetFrame struct {
-	ev     Event
+	// watches is the ability's declared event kinds, kept only so
+	// the finished item can be stamped with its triggering event —
+	// see stampTriggerContext on why an ability that watches nothing
+	// (a CR 603.12 reflexive trigger) must not be.
+	watches []EventKind
+	// tc is the triggering event (#1223), carried rather than
+	// re-derived: the CR 603.10 snapshot it holds is deleted from
+	// lastKnownBattlefield as the harvest ends, which is before this
+	// prompt can possibly be answered. tc.Event is the `ev` this
+	// frame used to hold.
+	tc     TriggerContext
 	source Card
 	lki    Characteristic
 	build  func(ev Event, source *Card, sourceLKI Characteristic, g *Game) *StackItem
@@ -807,7 +852,9 @@ func (f *pickTargetFrame) currentClause() *TargetClause {
 // fires on `apply: true` against the value-copy source + LKI; on
 // `apply: false` the frame is discarded. Added in S19 sub-PR 2.
 type triggerResumeFrame struct {
-	ev     Event
+	// tc is the triggering event (#1223) — see pickTargetFrame.tc
+	// for why it is carried whole rather than re-read on the answer.
+	tc     TriggerContext
 	source Card
 	lki    Characteristic
 	build  func(ev Event, source *Card, sourceLKI Characteristic, g *Game) *StackItem
@@ -1101,26 +1148,26 @@ func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) er
 	if v, ok := choice.ManaAmounts[color]; ok {
 		n = v
 	}
-	colors := make([]string, 0, n)
-	for k := 0; k < n; k++ {
-		p.ManaPool.AddMana(ManaToken{
-			Color:  color,
-			Source: choice.Source,
-			// The choice carried the ability's restrictions here so
-			// the minted token gets them (#352). copyRestrictions
-			// because the choice is about to be dequeued and the
-			// token outlives it.
-			Restrictions: copyRestrictions(choice.ManaRestrictions),
-		})
-		g.EmitEvent(Event{
-			Kind:   EventManaAdded,
-			Actor:  chooserID,
-			Source: choice.Source,
-			Colors: []string{color},
-		})
-		colors = append(colors, color)
-	}
 	tapped := choice.ManaTapped
+	// #1222: through the one production body, which opens the
+	// CR 106.12b window on the amount. This is the ONLY place a
+	// Birds-of-Paradise-style source's colour is known, so it is the
+	// only place Mana Reflection can double it — the same reason
+	// ADR 0074 §3 fires the triggered mana abilities from here. The
+	// choice carried the ability's restrictions so the minted tokens
+	// get them (#352); copyRestrictions because the choice is about to
+	// be dequeued and the tokens outlive it.
+	colors := g.produceManaLocked(
+		p, choice.Source,
+		repeatColor(color, n),
+		copyRestrictions(choice.ManaRestrictions),
+		// #1212: the snapshot the CHOICE carried, not a live lookup —
+		// the source may have been sacrificed to pay for the ability
+		// whose colour is being answered here.
+		choice.ManaSourceKinds,
+		tapped,
+		nil,
+	)
 	source := choice.Source
 	g.dequeueChoiceLocked(idx)
 	// #763, CR 605.1b / 605.4a: the second of the three production
@@ -1316,6 +1363,19 @@ func (g *Game) reassignChoiceLocked(c *PendingChoice, newChooser uuid.UUID) bool
 		return out
 	}
 
+	if isCardSetPickKind(c.Kind) {
+		// Every kind carrying the choose-cards payload prunes the same
+		// way (#1214): the candidates that leave with the old chooser
+		// come off, the bounds move with the list through the one
+		// helper the zone prune uses (setCardSetCandidates, #1045), and
+		// a question with nothing left on it does not move at all —
+		// handing a seat a prompt with no answers is the #544 wedge.
+		live := keep(c.ChooseCards)
+		if len(live) == 0 {
+			return false
+		}
+		setCardSetCandidates(c, live)
+	}
 	switch c.Kind {
 	case PendingChoicePickTarget:
 		players := make([]uuid.UUID, 0, len(c.PickTargetPlayers))
@@ -1332,14 +1392,6 @@ func (g *Game) reassignChoiceLocked(c *PendingChoice, newChooser uuid.UUID) bool
 		if len(c.PickTargetPlayers) == 0 && len(c.PickTargetCards) == 0 {
 			return false
 		}
-	case PendingChoiceChooseCards:
-		live := keep(c.ChooseCards)
-		if len(live) == 0 {
-			return false
-		}
-		// The bounds move with the list, through the one helper the
-		// zone prune uses (setCardSetCandidates, #1045).
-		setCardSetCandidates(c, live)
 	case PendingChoiceOptionPick:
 		// The branches are labelled sentences and survive on their own;
 		// only the piles they name, and the SEATS they name, can go.
@@ -1563,8 +1615,50 @@ func (g *Game) ResolveOptionalReplacement(choiceID, chooserID uuid.UUID, apply b
 		g.clearReplacementEventLocked(ev.ID)
 		return err
 	}
-	defer g.clearReplacementEventLocked(ev.ID)
-	return g.finishSettledReplacementLocked(ev, out)
+	return g.finishReplacementResumeLocked(ev, out)
+}
+
+// finishReplacementResumeLocked is the tail the two CR 614 / CR 616
+// RESUME paths share: land the settled event, forget its bookkeeping,
+// and then run the state checks the paused caller never got to run.
+//
+// That last line is the whole reason this is a helper (#1156). On the
+// unpaused path the caller of the mutation runs them — moveCardByRefLocked
+// calls runStateChecksLocked the moment routeCardToZoneLocked comes back
+// unpaused, the SBA loop re-enters itself, resolveTopOfStackLocked has its
+// own boundary. A prompt splits that in half: the caller returns with
+// "nothing has moved, the resume lands the card", and the resume then
+// landed the card and returned to the action layer with nobody left to
+// look at the board. CR 117.5 puts the state-based-action pass and the
+// APNAP trigger drain at the boundary where a player would next receive
+// priority, and answering a replacement prompt is exactly such a
+// boundary — the same one every other Resolve* entry point in this file
+// already honours.
+//
+// What that cost, before this existed: a commander with an Aura on it
+// left the battlefield, the CR 903.9 "put it in the command zone
+// instead?" prompt paused the move, and the answer landed the commander
+// in the command zone while the Aura sat on the battlefield attached to
+// a card that is no longer there — CR 704.5m never re-checked, and the
+// client drew the orphan in the enchantments row. Since #539 made the
+// CR 903.9 window open on every exit "from anywhere", this is the
+// ordinary way a commander leaves, not a corner.
+//
+// Not run on the two early returns above: errReplacementPending means
+// another prompt is open and its own resume owns the boundary, and a
+// stale resume frame moved nothing at all.
+//
+// Caller must hold g.mu.
+func (g *Game) finishReplacementResumeLocked(ev, out *ReplacementEvent) error {
+	err := func() error {
+		defer g.clearReplacementEventLocked(ev.ID)
+		return g.finishSettledReplacementLocked(ev, out)
+	}()
+	if err != nil {
+		return err
+	}
+	g.runStateChecksLocked()
+	return nil
 }
 
 // queueReplacementOrderPromptLocked queues a CR 616 order-choose
@@ -1672,6 +1766,19 @@ func affectedPlayerForEvent(ev *ReplacementEvent, applicable []activeReplacement
 		if ev.StepTransitionSeat >= 0 && ev.StepTransitionSeat < len(g.Seats) {
 			return g.Seats[ev.StepTransitionSeat].ID
 		}
+	case RepEventProduceMana:
+		// #1222. CR 106.12b: the mana is produced for a player, and
+		// that player is the affected one whoever controls the
+		// replacements — the same reading the mill arm above takes.
+		//
+		// The prompt it would order is never actually put to them: a
+		// production sets mustSettleNow (CR 605.3a), so the apply-loop
+		// applies the gathered order inline. The arm is still the
+		// honest answer to "who would be asked", it is what the
+		// eliminated-chooser branch reads before the mustSettleNow one,
+		// and it is the value a future production replacement that CAN
+		// pause would need.
+		return ev.ManaPlayer
 	case RepEventKeywordAction:
 		// #976. The affected player of a keyword action is the player
 		// TAKING it — the one who proliferates, the one who scrys —
@@ -1860,9 +1967,10 @@ func (g *Game) ResolveReplacementOrder(choiceID, chooserID uuid.UUID, ordered []
 	// Apply-loop settled. Dispatch the underlying mutation per
 	// ev.Kind using the (possibly mutated) event payload. Added in
 	// S17 sub-PR 3 so Doubling Season + Hardened Scales actually
-	// land counters after the CR 616 prompt resolves.
-	defer g.clearReplacementEventLocked(ev.ID)
-	return g.finishSettledReplacementLocked(ev, out)
+	// land counters after the CR 616 prompt resolves. Through the
+	// shared resume tail since #1156, so the CR 117.5 boundary this
+	// answer is happens here too and not only on the CR 614 half.
+	return g.finishReplacementResumeLocked(ev, out)
 }
 
 // applyResolvedReplacementEventLocked runs the underlying
@@ -1910,7 +2018,21 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		g.runStateChecksLocked()
 		return nil
 	case RepEventDraw:
-		return g.actuallyDrawCardLocked(ev.DrawPlayer)
+		// #1222: with the count the window settled on. CR 121.2 makes
+		// those N one individual card draw each, so a paused draw and
+		// an unpaused one cannot drift apart.
+		return g.actuallyDrawCardsLocked(ev.DrawPlayer, ev.DrawCount)
+	case RepEventProduceMana:
+		// #1222: unreachable, and that is the decision rather than an
+		// oversight. A production sets mustSettleNow (CR 605.3a — a
+		// mana ability resolves as one indivisible step with no
+		// priority window inside it, and the auto-tapper may raise no
+		// prompt at all), so no event of this kind ever queues a
+		// prompt and nothing ever resumes one. If one somehow did, the
+		// mana it was carrying has already gone into the pool
+		// unreplaced (replaceProducedManaLocked's error branch), so
+		// adding it here would double it.
+		return nil
 	case RepEventLife:
 		// #482: a life change carries everything its resume needs on
 		// the event itself — the player, the settled delta and the
@@ -2228,12 +2350,17 @@ func (g *Game) finishSettledReplacementLocked(ev, out *ReplacementEvent) error {
 		// The one kind whose cancellation is not nothing — see the
 		// doc comment above.
 		return g.applyResolvedReplacementEventLocked(ev)
-	case RepEventDraw, RepEventCounter:
-		// Nothing is sequenced behind either: a cancelled draw and a
-		// cancelled counter placement simply do not happen, and neither
-		// entry point carries a continuation, so there is nobody to
-		// tell. A draw tail or a counter tail, if one is ever added,
-		// belongs here.
+	case RepEventDraw, RepEventCounter, RepEventProduceMana:
+		// Nothing is sequenced behind any of the three: a cancelled
+		// draw, a cancelled counter placement and a production replaced
+		// away simply do not happen, and no entry point carries a
+		// continuation, so there is nobody to tell. A draw tail or a
+		// counter tail, if one is ever added, belongs here.
+		//
+		// #1222: a production additionally cannot even reach this
+		// function — it sets mustSettleNow, so it never pauses and
+		// nothing resumes it. The arm is the written answer #982 asks
+		// for rather than a fall-through, and it is right either way.
 		return nil
 	}
 	return nil
@@ -2500,7 +2627,7 @@ func (g *Game) ResolveDamageAssignment(
 //
 // Caller must hold g.mu. Added in S19 sub-PR 2.
 func (g *Game) queueTriggerPromptLocked(
-	ev Event,
+	tc TriggerContext,
 	source Card,
 	lki Characteristic,
 	ability TriggeredAbility,
@@ -2508,7 +2635,7 @@ func (g *Game) queueTriggerPromptLocked(
 ) {
 	chooser := source.Controller
 	if ability.OptionalPrompt != nil && ability.OptionalPrompt.Chooser != nil {
-		if override := ability.OptionalPrompt.Chooser(ev, &source, g); override != uuid.Nil {
+		if override := ability.OptionalPrompt.Chooser(tc.Event, &source, g); override != uuid.Nil {
 			chooser = override
 		}
 	}
@@ -2522,7 +2649,7 @@ func (g *Game) queueTriggerPromptLocked(
 	// something (NoLegalTarget stays false).
 	noLegalTarget := false
 	if ability.HasLegalTarget != nil {
-		noLegalTarget = !ability.HasLegalTarget(ev, &source, lki, g)
+		noLegalTarget = !ability.HasLegalTarget(tc.Event, &source, lki, g)
 	}
 	g.QueueChoiceForEffect(PendingChoice{
 		Kind:          PendingChoiceTriggerPrompt,
@@ -2532,7 +2659,7 @@ func (g *Game) queueTriggerPromptLocked(
 		Reason:        question,
 		NoLegalTarget: noLegalTarget,
 		triggerResume: &triggerResumeFrame{
-			ev:        ev,
+			tc:        tc,
 			source:    source,
 			lki:       lki,
 			build:     ability.Build,
@@ -2549,13 +2676,14 @@ func (g *Game) queueTriggerPromptLocked(
 // refreshTargetChoicesLocked re-reads the frozen set at the next
 // priority-grant boundary (#809). Caller must hold g.mu. Added in S20
 // sub-PR 2.
-func (g *Game) queuePickTargetLocked(ev Event, source Card, lki Characteristic, t TriggeredAbility, doubledBy doublerRef, modes []int, steps []AnnouncedClause) {
+func (g *Game) queuePickTargetLocked(tc TriggerContext, source Card, lki Characteristic, t TriggeredAbility, doubledBy doublerRef, modes []int, steps []AnnouncedClause, spec *TargetSpec) {
 	g.queuePickTargetStepLocked(&pickTargetFrame{
-		ev:        ev,
+		tc:        tc,
 		source:    source,
 		lki:       lki,
 		build:     t.Build,
-		spec:      t.Targets,
+		watches:   t.Watches,
+		spec:      spec,
 		modeSpec:  t.Modes,
 		modes:     append([]int(nil), modes...),
 		steps:     steps,
@@ -2628,10 +2756,11 @@ func (g *Game) finishPickTargetLocked(f *pickTargetFrame) {
 		return
 	}
 	source := f.source
-	item := f.build(f.ev, &source, f.lki, g)
+	item := f.build(f.tc.Event, &source, f.lki, g)
 	if item == nil {
 		return
 	}
+	stampTriggerContext(item, TriggeredAbility{Watches: f.watches}, f.tc)
 	item.Targets = append([]TargetRef(nil), f.picked...)
 	item.Modes = append([]int(nil), f.modes...)
 	item.targetSpec = f.spec
@@ -2718,8 +2847,8 @@ func (g *Game) ResolvePickTargets(choiceID, chooserID uuid.UUID, targets []Targe
 	// re-target. Handled before the trigger frame because the two
 	// are mutually exclusive and the copy path builds something
 	// that is not a triggered ability.
-	if cf := choice.copySpellResume; cf != nil {
-		return g.resolveCopySpellTargetsLocked(idx, cf, targets)
+	if cf := choice.copyResume; cf != nil {
+		return g.resolveCopyTargetsLocked(idx, cf, targets)
 	}
 	frame := choice.pickTargetResume
 	step := frame.currentClause()
@@ -2801,7 +2930,7 @@ func (g *Game) ResolveTriggerPrompt(choiceID, chooserID uuid.UUID, apply bool) e
 	}
 	// S20: a targeted optional trigger continues into the target
 	// pick; an untargeted one builds straight away.
-	g.buildOrPickTriggerLocked(frame.ev, frame.source, frame.lki, frame.ability, frame.doubledBy, nil)
+	g.buildOrPickTriggerLocked(frame.tc, frame.source, frame.lki, frame.ability, frame.doubledBy, nil)
 	// The prompt is answered outside any priority-wrap, so nothing
 	// downstream would drain the queue until the next pass around
 	// the table — and an empty stack at that wrap would advance the
@@ -3475,9 +3604,27 @@ func (g *Game) pruneSacrificeChoicesLocked() {
 // player's own permanents during their own untap step, where nothing
 // has priority to move them.
 //
+// #1198's entry_reveal_from_hand is out for the same reason and one
+// of its own. The drop would strand a paused CR 614 ENTRY, which is
+// worse than the untap step it would strand above; and the prompt
+// cannot need the prune, because its floor is zero — "reveal nothing"
+// is an answer no emptied candidate list can take away, which is
+// exactly the property untap_choice lacks and a choose_cards with a
+// floor of one lacks. A stale candidate is still refused on submit by
+// pickStillInPickZoneLocked, so the worst an un-pruned list costs is
+// one rejected click.
+//
 // Called where pruneSacrificeChoicesLocked is called, and for its
 // reason: a queued choice stops priority from passing, so the
 // state-check loop is exactly what does NOT run while one is open.
+//
+// And at a fourth site those three do not reach (#1069): the ENTRY
+// side, through pruneChoicesAfterArrivalLocked. Those three are exits
+// and a departure, and a card that leaves a hand, a library or a
+// graveyard FOR THE BATTLEFIELD takes none of them — a candidate
+// reanimated or put onto the battlefield under an open prompt left the
+// pick's zone exactly as a discarded one does. See
+// battlefield_entry.go for the three landings that share that door.
 //
 // THE WHOLE QUEUE IS EXAMINED BEFORE ANY PROMPT IS DROPPED, which is
 // pruneStaleZoneChangeChoicesLocked's shape and its reason: a drop runs
@@ -3494,7 +3641,12 @@ func (g *Game) pruneSacrificeChoicesLocked() {
 func (g *Game) pruneCardSetChoicesLocked() {
 	var emptied []*PendingChoice
 	for _, c := range g.PendingChoices {
-		if c == nil || c.Kind != PendingChoiceChooseCards {
+		// Every kind carrying the choose-cards payload, not just
+		// choose_cards itself (#1214): a their_permanents prompt over
+		// a board that empties under it is exactly the prompt this
+		// sweep exists for, and untap_choice sets no zone so it falls
+		// out at the next line.
+		if c == nil || !isCardSetPickKind(c.Kind) {
 			continue
 		}
 		frame := c.chooseCardsResume

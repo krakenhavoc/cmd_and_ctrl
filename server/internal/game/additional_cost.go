@@ -306,6 +306,16 @@ func paidWithOptionalCosts(paid PaidCost, plan []costPayment) PaidCost {
 	return paid
 }
 
+// paidWithSacrifices folds the number of permanents the additional
+// cost sacrificed into the record that lands on the stack item
+// (#1213) — the same shape and the same reason as the fold above:
+// by resolution the permanents are in graveyards, so the number has to
+// be a fact about the announcement rather than a count of the board.
+func paidWithSacrifices(paid PaidCost, n int) PaidCost {
+	paid.Sacrificed = n
+	return paid
+}
+
 // validateOptionalCostChoice checks the ANNOUNCEMENT itself (CR
 // 601.2b) before anything is priced or paid: every index names a cost
 // the card offers, and no cost is named more times than it may be
@@ -403,9 +413,16 @@ func (g *Game) validateAdditionalCostLocked(playerID, castID uuid.UUID, plan []c
 		// so "you may only sacrifice what you control" (CR 701.21a)
 		// and the spec's own predicate are enforced in one place
 		// rather than two.
+		//
+		// #1213: a cast's sacrifice clause is always a FIXED count —
+		// effects.Register refuses a variable one here, because the
+		// flat wire lists are walked in plan order and a clause with
+		// no fixed width could not be split from the next one's
+		// payment. So there is no announced X to pass, and 0 reads
+		// the clause exactly as it did before.
 		if _, err := g.validateSacrificeCostLocked(playerID, castID, AbilityCost{
 			SacrificeOther: cost.Sacrifice,
-		}, slice); err != nil {
+		}, slice, 0); err != nil {
 			return err
 		}
 		si += n

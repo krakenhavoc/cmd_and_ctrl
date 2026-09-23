@@ -81,6 +81,7 @@ var gameFields = plan(
 	"Battlefield", carried, "",
 	"Stack", carried, "",
 	"Exile", carried, "",
+	"PhasedOut", carried, "",
 	"Turn", carried, "",
 	"MulligansOpen", carried, "",
 	"Monarch", carried, "",
@@ -101,6 +102,12 @@ var gameFields = plan(
 	// wrong candidate set, and the cards it names are still in hand.
 	"DrawnThisTurn", carried, "",
 	"TurnTally", carried, "",
+	// #1181: what has been ACTIVATED, per (object, printed ability),
+	// in both scopes. Carried for a stronger reason than the per-turn
+	// tallies: the game-lifetime half never refreshes, so a restore
+	// that dropped it would give every exhaust ability on the board a
+	// second use.
+	"Activations", carried, "",
 	// #628 CR 726 loop breaker. Carried for the same reason the
 	// per-turn tallies are: a restore mid-loop that forgot the notice
 	// would come back with automatic passing live again, and the
@@ -149,6 +156,7 @@ var gameFields = plan(
 	"firstStrikeStepParticipants", carried, "",
 	"lastKnownBattlefield", carried, "",
 	"lastKnownTriggerIdentity", carried, "",
+	"lastKnownCounters", carried, "",
 	// ADR 0054: the key and the per-turn stream counters ARE the
 	// randomness. Clone copies them (undo rewinds) and rngSnapshot
 	// carries them (a restore continues every stream).
@@ -170,7 +178,7 @@ var gameFields = plan(
 	"testReplacements", dropped, "test-only injection slot; production has no path to it",
 	"replacementsAppliedThisEvent", dropped, "non-empty between actions only for an event paused on a replacement prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone deep-copies it for undo (#808)",
 	"nextReplacementEventID", dropped, "mints keys for the map above, which restores empty",
-	"promptRuns", dropped, "non-empty between actions only for a printed sacrifice or discard instruction paused on its prompts, and each of those prompts is counted in ContinuationCensus.ChoiceResumeFrames through PendingChoice.promptRun; the run holds a continuation closure the snapshot could not carry anyway; Clone deep-copies it for undo (#1019, #1027)",
+	"promptRuns", dropped, "non-empty between actions only for a printed sacrifice, discard or resolution-time pick instruction paused on its prompts (#1214), and each of those prompts is counted in ContinuationCensus.ChoiceResumeFrames through PendingChoice.promptRun; the run holds a continuation closure the snapshot could not carry anyway; Clone deep-copies it for undo (#1019, #1027)",
 	"enteringTokens", dropped, "non-empty between actions only for a created token whose battlefield entry is paused on a replacement prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone copies it for undo (#762)",
 	"resolving", dropped, "the CR 707.10 self-copy source (#920); set between actions only for a resolution paused on a prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; it holds a *StackItem, whose Effect is a closure the snapshot could not carry anyway; Clone shares it for undo",
 	"recomputeCount", dropped, "test instrumentation for the layer fast-path, not game state",
@@ -293,6 +301,11 @@ var cardFields = plan(
 	// entered. A player's choice, so nothing can rebuild it — and it
 	// is the whole of what True-Name Nemesis's protection reads.
 	"ChosenPlayer", carried, "",
+	// #1210, CR 614.12: the card NAME named as the permanent entered.
+	// A player's choice, so nothing can rebuild it — and unlike the
+	// three above there is not even a vocabulary to rebuild it from,
+	// because CR 201.2 lets a player name any card name at all.
+	"ChosenName", carried, "",
 	// #653 / #664, CR 400.7d: what the spell that became this
 	// permanent was cast for — the alternative cost and the optional
 	// additional costs, one record. Carried, and it is the field here
@@ -309,6 +322,14 @@ var cardFields = plan(
 	// wrong and say nothing about it.
 	"ClassLevel", carried, "",
 	"Solved", carried, "",
+	// #1199 / CR 702.26, ADR 0084. All four are the phased-out status
+	// and all four are legal zero values, so a restore that dropped
+	// them would bring a phased board back under the wrong player's
+	// untap step, or an Aura back without its host.
+	"PhasedOutBy", carried, "",
+	"PhaseInLockedBy", carried, "",
+	"PhasedOutIndirect", carried, "",
+	"TapOnPhaseIn", carried, "",
 	// S27 battles. Both are printed / chosen state with no other
 	// source: a restore that lost StartingDefense would re-stamp
 	// nothing (the stamp is idempotent and only fires on entry), and
@@ -373,6 +394,14 @@ var playerFields = plan(
 	// (Underworld Breach, Bolas's Citadel) are not in this slice at
 	// all — they are re-derived from the battlefield on every query.
 	"CastPermissions", carried, "",
+	// #1197 granted player abilities ("you gain protection from
+	// everything until your next turn"). Carried for the same reason
+	// and by the same mechanism as the line above: plain data with no
+	// closure, so PlayerSnapshot holds the engine type directly. The
+	// DERIVED half — Leyline of Sanctity's "you have hexproof" — is
+	// not in this slice at all and needs nothing, because it comes
+	// back with the battlefield.
+	"Statics", carried, "",
 )
 
 // scopedStaticFields classifies game.ScopedStatic — the floating
@@ -420,6 +449,14 @@ var stackItemFields = plan(
 	// Effect reads its whole input from here, so a restore that lost
 	// it would resolve the trigger against nothing.
 	"Payload", carried, "",
+	// #1223: the triggering event (the damage amount, the object
+	// that left with its CR 603.10 characteristics). Carried, and it
+	// has to be — a trigger paused on its CR 603.3d target prompt is
+	// a restore point, and the event is unrecoverable from the
+	// restored board: the object it describes has already moved, and
+	// the last-known-information map it was read from is cleared as
+	// the harvest ends.
+	"Trigger", carried, "",
 	"Modes", carried, "",
 	"XValue", carried, "",
 	"Distribution", carried, "",
@@ -431,6 +468,11 @@ var stackItemFields = plan(
 	// stack, and the fact cannot be recomputed — the card turned face
 	// up as it was cast, so the object it was read from is gone.
 	"Foretold", carried, "",
+	// CR 708.4 (#1194, ADR 0082). Carried: a restore that lost it
+	// would resolve a morph on the stack into a face-UP creature,
+	// revealing the card to the table and handing it back every
+	// ability CR 708.2a says it does not have.
+	"FaceDown", carried, "",
 	// CR 702.34a / CR 400.7g (ADR 0066). Carried for the reason
 	// IsCopy is: a restore that lost it would route a flashed-back
 	// spell to a graveyard instead of exile, and a card Snapcaster
@@ -502,6 +544,7 @@ var pendingChoiceFields = plan(
 	// clone.go:135 — so the snapshot must carry it too, or a restored
 	// game would let the player spend restricted mana on anything.
 	"ManaRestrictions", carried, "",
+	"ManaSourceKinds", carried, "",
 	// #742: how many tokens each colour of a one-pick-N-mana choice
 	// mints (Gilded Lotus). Without it a restored pick adds one.
 	"ManaAmounts", carried, "",
@@ -517,6 +560,16 @@ var pendingChoiceFields = plan(
 	"PickTargetCards", carried, "",
 	"PickTargetMin", carried, "",
 	"PickTargetMax", carried, "",
+	// #1196's CR 115.7 retarget prompt. Carried, and that is the
+	// point of building it out of data: the prompt is a question
+	// about an object already on the stack, so unlike every other
+	// prompt in this family it holds no continuation and a game
+	// paused on one is a restorable snapshot.
+	"RetargetItem", carried, "",
+	"RetargetPolicy", carried, "",
+	"RetargetOptional", carried, "",
+	"RetargetSlot", carried, "",
+	"RetargetReason", carried, "",
 	// #764 mode_pick. Carried for the same reason ChooseCards is:
 	// the offered options ARE the prompt, and a restored game that
 	// forgot them would put a question with no answers in front of a
@@ -579,7 +632,7 @@ var pendingChoiceFields = plan(
 	"replacementResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"modePickResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"pickTargetResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
-	"copySpellResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
+	"copyResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"triggerResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"payUnlessResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"mayCastResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
@@ -590,7 +643,7 @@ var pendingChoiceFields = plan(
 	"chooseColorResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"chooseCardsResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"coinFlipResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
-	"promptRun", dropped, "the id of the prompted run this prompt is one leg of — a sacrifice (#1019) or a discard (#1027); the run's continuation lives on Game.promptRuns and is counted in ContinuationCensus.ChoiceResumeFrames through this field; Clone copies it with the rest of the choice",
+	"promptRun", dropped, "the id of the prompted run this prompt is one leg of — a sacrifice (#1019), a discard (#1027) or one of the three resolution-time picks (#1214); the run's continuation lives on Game.promptRuns and is counted in ContinuationCensus.ChoiceResumeFrames through this field; Clone copies it with the rest of the choice",
 )
 
 // driftPlans is every domain type the snapshot touches, paired with the

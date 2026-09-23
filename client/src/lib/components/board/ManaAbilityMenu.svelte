@@ -13,8 +13,14 @@
 
   import type { ActivatedAbilityView, ManaAbilityView } from "../../protocol";
   import { counterCostBlocked, type CounterCostShape } from "../../counterCost";
-  import { ACTIVATION_CONDITION_UNMET, NO_COMMANDER_IDENTITY } from "../../contextMenu.logic";
+  import {
+    ACTIVATION_CONDITION_UNMET,
+    NO_COMMANDER_IDENTITY,
+    chargedManaCostLabel,
+    chargedManaCostNote,
+  } from "../../contextMenu.logic";
   import { sacrificeShortfall } from "../../sacrificeCost";
+  import { hasSatisfiableTargets } from "../../timing";
   import ModalLayer from "../ModalLayer.svelte";
 
   interface Props {
@@ -68,7 +74,9 @@
     tap_cost?: boolean;
     sacrifice_label?: string;
     sacrifice_options?: { players?: string[]; cards?: string[]; min?: number; max?: number };
-    legal_targets?: { players?: string[]; cards?: string[] };
+    // #1157: `min` carries the clause's count, and an "up to N" clause
+    // (min 0) is satisfied by an empty candidate list.
+    legal_targets?: { players?: string[]; cards?: string[]; min?: number };
     // Never set on a ManaAbilityView — mana abilities don't use the
     // stack and have no timing restriction (CR 605.1a) — so the arm
     // below is inert for the first list and live for the second.
@@ -96,10 +104,11 @@
     // #625: a "remove N counters" cost with nothing that can pay it.
     const counters = counterCostBlocked(a);
     if (counters) return counters;
-    if (a.legal_targets) {
-      const n = (a.legal_targets.players?.length ?? 0) + (a.legal_targets.cards?.length ?? 0);
-      if (n === 0) return "no legal target";
-    }
+    // #1157: CR 601.2c through the shared predicate — a clause needs
+    // `min` candidates, and "up to N" needs none. The same one-line
+    // copy of this test lived here and in contextMenu.logic.ts, and
+    // both stopped at "the list is empty".
+    if (!hasSatisfiableTargets(a.legal_targets)) return "no legal target";
     return "";
   }
 
@@ -123,6 +132,7 @@
 <div class="mana-menu" role="menu" aria-label="abilities">
   {#each abilities as a (a.index)}
     {@const blocked = abilityBlocked(a)}
+    {@const costNote = chargedManaCostNote(a)}
     <button
       type="button"
       class="menu-item"
@@ -137,6 +147,16 @@
       <span class="label">{a.label || a.produced || "activate"}</span>
       {#if a.tap_cost}
         <span class="cost" aria-label="tap cost">↻</span>
+      {/if}
+      {#if a.mana_cost}
+        <!-- #1190: the ability's OWN mana component (the Signet
+             cycle's "{1}", Loot's exhaust "{G}"). Shows what the
+             engine actually charges (charged_mana_cost); the tooltip
+             names the printed cost only when a discount made the two
+             differ. -->
+        <span class="cost" aria-label="mana cost" title={costNote || `mana cost ${a.mana_cost}`}>
+          {chargedManaCostLabel(a)}
+        </span>
       {/if}
       {#if a.sacrifice_cost || a.sacrifice_options}
         <span class="cost" aria-label="sacrifice cost">†</span>
@@ -156,6 +176,7 @@
     {/if}
     {#each activated as a (a.index)}
       {@const blocked = abilityBlocked(a)}
+      {@const costNote = chargedManaCostNote(a)}
       <button
         type="button"
         class="menu-item"
@@ -170,6 +191,15 @@
         <span class="label">{a.label || "activate"}</span>
         {#if a.tap_cost}
           <span class="cost" aria-label="tap cost">↻</span>
+        {/if}
+        {#if a.mana_cost}
+          <!-- #1190: same chip as the mana list above — the row's
+               Label text already prints the ability's cost baked in
+               by hand, so this is the ONE place a discount that made
+               the printed text stale is visible. -->
+          <span class="cost" aria-label="mana cost" title={costNote || `mana cost ${a.mana_cost}`}>
+            {chargedManaCostLabel(a)}
+          </span>
         {/if}
       </button>
     {/each}

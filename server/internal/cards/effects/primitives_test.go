@@ -292,7 +292,7 @@ func TestCreateToken(t *testing.T) {
 	bfBefore := len(g.Battlefield.Cards)
 
 	g.WithWriteLock(func() {
-		err := (CreateToken{Controller: owner.ID, Template: TokenCard("2/2 colorless Bird with flying"), N: 2}).Apply(ctxFor(g, &game.StackItem{}))
+		err := (CreateToken{Controller: owner.ID, Template: TokenCard("2/2 blue Bird with flying"), N: 2}).Apply(ctxFor(g, &game.StackItem{}))
 		if err != nil {
 			t.Fatalf("Apply: %v", err)
 		}

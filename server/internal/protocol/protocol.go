@@ -44,6 +44,20 @@ const (
 	// blocker in ErrorPayload.CardID. ADR 0045 addendum Decision 8
 	// (#705).
 	CodeIllegalBlock = "illegal_block"
+	// CodeAttackTaxUnpaid — a declare_attacker or declare_attackers
+	// was refused because the attacking player cannot pay the
+	// CR 508.1a attack tax the declaration owes (Propaganda, Ghostly
+	// Prison, Sphere of Safety). The frame carries the whole price in
+	// ErrorPayload.Reason — a cost string like "{2}{2}" — and the
+	// symbols the pool and the tapper together could not cover in
+	// ErrorPayload.Missing.
+	//
+	// Nothing was declared: no creature is tapped and no attack was
+	// announced. The player's move is to attack with fewer creatures
+	// or to make more mana; unlike insufficient_mana there is NO
+	// override, because a tax waived is the card played as a blank.
+	// ADR 0080 (#1063).
+	CodeAttackTaxUnpaid = "attack_tax_unpaid"
 )
 
 // Frame is the envelope around every message. Payload is left as raw JSON
@@ -95,6 +109,12 @@ type ErrorPayload struct {
 	// game.BlockReason. Stable once shipped, like the restriction
 	// tokens. CardID carries the refused blocker on the same frame.
 	// Omitted for other codes. ADR 0045 addendum Decision 8 (#705).
+	//
+	// It also populates `code: "attack_tax_unpaid"`, where it is the
+	// declaration's whole CR 508.1a price as a cost string ("{2}{2}"
+	// for two attackers into Propaganda) rather than a token. One
+	// field, two codes, because both answer "why" in the shape their
+	// own code documents. ADR 0080 (#1063).
 	Reason string `json:"reason,omitempty"`
 }
 

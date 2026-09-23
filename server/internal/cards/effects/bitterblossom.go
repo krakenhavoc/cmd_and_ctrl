@@ -18,8 +18,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "fb868840-09fa-49b1-85cb-b08ad065e972",
 		Name:         "Bitterblossom",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The Faerie Rogue token is created colorless instead of black, so anything that cares about a creature's color doesn't see it."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			AtYourUpkeep("Bitterblossom — lose 1 life, create a Faerie Rogue", func(g *game.Game, item *game.StackItem) error {
 				if err := g.ChangePlayerLifeForEffect(item.SourceCardID, item.Controller, -1); err != nil {

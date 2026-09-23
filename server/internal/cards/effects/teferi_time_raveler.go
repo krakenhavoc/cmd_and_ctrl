@@ -15,71 +15,58 @@ import (
 //	to its owner's hand. Draw a card."
 //
 // The card issue #334 is named after, and the first planeswalker in
-// the catalog whose loyalty abilities do anything. Both replays
-// (#329 report c3ecbf98, #334 report 2b4ce9cc) show the same thing:
-// a Teferi on the battlefield with four loyalty counters and
-// `activated_abilities: []`, the `tapped` bit flipping true / false
-// as the player clicked him. There was nothing to activate because
-// AbilityCost had no loyalty component — see ADR 0032 §7.
+// the catalog whose loyalty abilities do anything. It spent a sprint
+// carrying two caveats that were both the same missing primitive, and
+// #1195 built it: the whole card is wired.
 //
-// WHAT IS WIRED
+// THE STATIC is `Spec.CastTimings` with the "each opponent" clause
+// (`OpponentsCastAtSorcerySpeed`), derived from the battlefield on
+// every query. Two things fall out of the derivation rather than
+// needing a rule here: a Teferi that has lost its abilities
+// (CR 613.1f) stops restricting, and CR 101.2's "can't beats can" is
+// the ORDER the one read applies, so an opponent's Vedalken Orrery
+// does not get them past this.
 //
-//   - −3 in full: the loyalty payment (CR 606.6 refuses it below
-//     three counters), the bounce, and the draw. "Up to one target"
-//     is a Min 0 / Max 1 clause, so the −3 is activatable on an
-//     empty board and still draws — the draw is the half you always
-//     get, and forcing a target would have made Teferi unusable
-//     exactly when you most want the card.
+// THE +1 is the other home — a statement STORED on the player, with
+// ADR 0063's "until your next turn" window (CR 611.2b: it ends as
+// that turn BEGINS, CR 500.1, not at its cleanup). It has to be
+// stored rather than derived because the planeswalker may die before
+// your next turn comes and the permission does not die with it. The
+// filter is `SorceryOnly` rather than `InstantOrSorceryOnly`: the
+// clause says sorcery spells, and an instant needs no opening.
 //
-//     This is a deliberate departure from the "up to one" modelling
-//     Aang uses (an optional trigger with one required target).
-//     Aang's shape needs a prompt to decline, and an activated
-//     ability has no prompt to decline — the player simply confirms
-//     the picker with nothing selected.
+// WHAT IS NOT WIRED
 //
-//   - +1 as a loyalty gain, and nothing more. See below.
-//
-// WHAT IS NOT WIRED, AND WHY
-//
-//   - The +1's continuous effect. "Until your next turn, you may
-//     cast sorcery spells as though they had flash" needs two
-//     things the engine does not have: an "as though" cast
-//     permission (the cast gate reads HasKeyword(card, "flash") off
-//     the card, with no per-player override — mutations.go:597),
-//     and an "until your next turn" duration, which
-//     turn_scoped_statics.go:97 records as inexpressible because
-//     Turn.Number counts rounds, not seat-turns.
-//
-//     The ability is still registered, because a planeswalker that
-//     can only ever tick DOWN is a worse lie than one whose plus
-//     ability protects it: the loyalty gain, the once-per-turn
-//     window and the sorcery-speed gate are all real, and the label
-//     the player reads in the menu is the printed text. When the
-//     two missing pieces land, this Effect stops being nil and
-//     nothing else about the card changes.
-//
-//   - The static ("Each opponent can cast spells only any time they
-//     could cast a sorcery"). A cast-timing restriction imposed on
-//     OTHER players is not a layer-system characteristic and has no
-//     home in Spec.Static; it needs the same per-player cast gate
-//     the +1 does. Opponents keep instant speed until it lands.
+//   - Nothing on this card. The −3's "up to one target" is a Min 0
+//     clause, so it is activatable on an empty board and still draws
+//     — the draw is the half you always get, and forcing a target
+//     would have made Teferi unusable exactly when you most want the
+//     card. That is a deliberate departure from the "up to one"
+//     modelling Aang uses (an optional trigger with one required
+//     target): Aang's shape needs a prompt to decline, and an
+//     activated ability has no prompt to decline — the player simply
+//     confirms the picker with nothing selected.
 func init() {
 	Register(Spec{
 		OracleID:     "ae7604bb-4818-45a3-960c-cf3d83f15964",
 		Name:         "Teferi, Time Raveler",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Opponents can still cast spells at instant speed.", "The +1 only adds loyalty — it doesn't let you cast sorceries at instant speed."},
+		Completeness: CompletenessFull,
+		CastTimings:  []game.CastTimingRule{OpponentsCastAtSorcerySpeed()},
 		// Printed loyalty reaches the card through deck import
 		// (ADR 0032 §1); this is the fallback for tokens, fixtures
 		// and the dev spawner, which never see Scryfall data.
 		StartingLoyalty: 4,
 		Activated: []ActivatedAbility{
 			{
-				Label: "+1: Until your next turn, you may cast sorcery spells as though they had flash. (loyalty only — the timing permission is not implemented)",
+				Label: "+1: Until your next turn, you may cast sorcery spells as though they had flash.",
 				Cost:  LoyaltyCost(1),
-				// Effect nil: the loyalty counter IS the whole of
-				// what this engine can do here today. See the
-				// comment above.
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					return GrantCastTiming{
+						Filter:            game.PermissionFilter{SorceryOnly: true},
+						UntilYourNextTurn: true,
+						Label:             "Until your next turn, you may cast sorcery spells as though they had flash.",
+					}.Apply(NewContext(g, item))
+				},
 			},
 			{
 				Label:   "−3: Return up to one target artifact, creature, or enchantment to its owner's hand. Draw a card.",

@@ -64,7 +64,7 @@
     // parents for battlefield permanents the viewer controls, and
     // since #660 by Hand.svelte for the viewer's own hand — a card in
     // hand offers the abilities that function THERE (cycling), which
-    // ride `hand_abilities` rather than `activated_abilities`. One
+    // ride `zone_abilities` rather than `activated_abilities`. One
     // callback for both: the index means the same thing on the wire.
     onActivateAbility?: (abilityIndex: number) => void;
     // S31: why the CR 307.1 sorcery-speed window is shut, or "" when
@@ -128,7 +128,7 @@
   // #660: a card projects EITHER list, never both — the server
   // filters by the zone the card is in (CR 113.6) — so one menu reads
   // whichever is present and the indices stay the card's own.
-  const menuAbilities = $derived(card.activated_abilities ?? card.hand_abilities ?? []);
+  const menuAbilities = $derived(card.activated_abilities ?? card.zone_abilities ?? []);
   const hasManaAbilities = $derived(
     (!!onActivateManaAbility && !!card.mana_abilities && card.mana_abilities.length > 0) ||
       (!!onActivateAbility && menuAbilities.length > 0),
@@ -152,6 +152,16 @@
   // why "doesn't know" is `!== true` rather than `=== false`, lives
   // in cardBack.ts.
   const showBack = $derived(showsCardBack(card, faceDown));
+
+  // #1199 / CR 702.26: a phased-out permanent. It arrives in
+  // GameView.phased_out rather than in the battlefield zone
+  // (ADR 0084), and Board.svelte folds it back onto its controller's
+  // row so the player can see WHERE it was. Dimmed, badged and inert:
+  // "treated as though it does not exist" means nothing may be done
+  // to it, so the click affordance is withheld here rather than by
+  // every parent remembering to withhold it.
+  const phasedOut = $derived(card.phased_out === true);
+  const interactive = $derived(!!onClick && !phasedOut);
 
   // ADR 0069 — a face-down object the viewer IS allowed to look at:
   // the controller of their own morph or manifest (CR 708.5), the
@@ -251,6 +261,9 @@
       manaMenuOpen = false;
       return;
     }
+    // CR 702.26b: a phased-out permanent "can't affect or be affected
+    // by anything else in the game", so there is nothing to click.
+    if (phasedOut) return;
     onClick?.(card, ev);
   }
 
@@ -314,12 +327,13 @@
   class:picked
   class:attacking
   class:blocking
-  class:clickable={!!onClick}
+  class:clickable={interactive}
+  class:phased-out={phasedOut}
   class:menu-open={manaMenuOpen}
   data-instance-id={card.instance_id}
   data-tapped={card.tapped ? "true" : "false"}
-  role={onClick ? "button" : "img"}
-  tabindex={onClick ? 0 : undefined}
+  role={interactive ? "button" : "img"}
+  tabindex={interactive ? 0 : undefined}
   aria-label={showBack ? "face-down card" : card.name}
   title={showBack ? "" : card.name}
   onpointerenter={handleEnter}
@@ -366,6 +380,17 @@
         aria-label={`face down: ${faceDownLabel}`}
       >
         {faceDownLabel}
+      </span>
+    {/if}
+    {#if phasedOut}
+      <!-- CR 702.26. Without it the board simply stops showing the
+           permanent, which reads identically to one that died. -->
+      <span
+        class="badge phased"
+        title="phased out — treated as though it doesn't exist"
+        aria-label="phased out"
+      >
+        PHASED
       </span>
     {/if}
     {#if card.is_commander}
@@ -435,6 +460,13 @@
     {/if}
   {:else}
     <span class="name-fallback">{card.name}</span>
+    {#if card.token_text}
+      <!-- ADR 0083: a token has no printing, so no art and no oracle
+           text — the server sends what the token prints. A trigger or
+           a static has no control to read it off, unlike an activated
+           ability's menu row, so without this the words are nowhere. -->
+      <span class="token-text" title={card.token_text}>{card.token_text}</span>
+    {/if}
     {#if showFaceDownBadge}
       <!-- ADR 0069: the viewer may look at this face (CR 708.5 for a
            permanent they control, CR 702.143d for their own foretold
@@ -606,6 +638,15 @@
     filter: brightness(1.06);
     z-index: 5;
   }
+  .card.phased-out {
+    /* The board-freeze idiom (Board.svelte .board-disabled), because
+       it says the same thing: this is here and you may not act on it.
+       The badge is the message; the dimming is the tone. Hover-zoom
+       still works — a player looking for what phased out wants to
+       read it — and only the click is withheld, in the script. */
+    opacity: 0.45;
+    filter: grayscale(0.7) brightness(0.9);
+  }
   .card.face-down {
     background: #0f1428;
   }
@@ -635,6 +676,22 @@
     text-align: center;
     color: #e0e6f5;
   }
+  /* ADR 0083. Clamped rather than scrolled: the full text is in the
+     title attribute, and a token card is small. `white-space:
+     pre-line` so the printed line breaks the server sends survive. */
+  .token-text {
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    padding: 0 4px 6px;
+    font-size: 8px;
+    line-height: 1.2;
+    text-align: center;
+    white-space: pre-line;
+    color: #aab4cc;
+  }
   .badge {
     position: absolute;
     top: 3px;
@@ -661,6 +718,19 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    color: #b9d8ff;
+    background: rgba(12, 22, 44, 0.9);
+    border-color: rgba(145, 195, 255, 0.55);
+    font-size: 7px;
+  }
+  .badge.phased {
+    /* #1199. Bottom-left, clear of FACE DOWN / GOAD / CMD at the top
+       and of the P/T pip at the bottom right, because a phased-out
+       permanent keeps every one of those and can wear them at once.
+       The same cool slate as FACE DOWN: both say "state", not
+       "property of the card". */
+    top: auto;
+    bottom: 3px;
     color: #b9d8ff;
     background: rgba(12, 22, 44, 0.9);
     border-color: rgba(145, 195, 255, 0.55);

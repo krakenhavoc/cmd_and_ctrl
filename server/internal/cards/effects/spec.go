@@ -401,6 +401,24 @@ type Spec struct {
 	// Build with the constructors in cast_restriction.go.
 	CastRestrictions []game.CastRestriction
 
+	// ActivationRestrictions are the "can't be activated" statics
+	// this PERMANENT imposes on other objects' activated abilities
+	// (CR 602.5a) — Cursed Totem's "activated abilities of creatures
+	// can't be activated", Linvala's "…of creatures your opponents
+	// control…", Collector Ouphe's "…of artifacts…", Pithing
+	// Needle's "…of sources with the chosen name … unless they're
+	// mana abilities".
+	//
+	// Read from the BATTLEFIELD through CatalogAbilityKey, like a
+	// cast restriction and for the same reasons: a permanent that
+	// has lost its abilities stops restricting, one whose
+	// designation gate is unsatisfied is not there at all, and
+	// nothing is stored so the source leaving lifts the restriction
+	// on the next query. Build with the constructors in
+	// activation_restriction.go. #1210, ADR 0073's amendment of
+	// 2026-09-22.
+	ActivationRestrictions []game.ActivationRestriction
+
 	// TapCost is the S22 "tap permanents you control to help pay"
 	// cost component — convoke (CR 702.51) and waterbend, which are
 	// the same mechanic under two names. Unlike the other cost slots
@@ -469,6 +487,43 @@ type Spec struct {
 	// here panics at Register: no printed card sets a floor on its own
 	// cost. Nil for nearly every card.
 	SelfCostModifiers []game.CostModifier
+
+	// ExhaustPermissions is "you may activate exhaust abilities as
+	// though they haven't been activated" (#1184, CR 609.4) — Elvish
+	// Refueler, the one printed card that reads the exhaust record and
+	// then tells one player to ignore it.
+	//
+	// Build the entries with MayActivateExhaustAbilitiesAgain in
+	// exhaust_permission.go; the predicate is the printed condition
+	// and nothing else:
+	//
+	//	ExhaustPermissions: []game.ExhaustPermission{
+	//	    MayActivateExhaustAbilitiesAgain(
+	//	        "During your turn, as long as you haven't activated an "+
+	//	            "exhaust ability this turn, you may activate exhaust "+
+	//	            "abilities as though they haven't been activated.",
+	//	        DuringTheControllersTurn(), ControllerHasActivatedNoExhaustAbilityThisTurn()),
+	//	},
+	//
+	// It suspends the GATE and nothing else: the ability still costs
+	// what it costs, still checks its Condition, and activating it
+	// still writes the record. Read from the battlefield only
+	// (CR 113.6). Nil for every other card.
+	ExhaustPermissions []game.ExhaustPermission
+
+	// AttackTaxes is the CR 508.1a attack tax: "creatures can't attack
+	// you unless their controller pays {2} for each creature they
+	// control that's attacking you" — Propaganda, Ghostly Prison,
+	// Windborn Muse, Sphere of Safety. ADR 0080.
+	//
+	// A static on the DEFENDER's side, read when the attacking player
+	// declares and charged as one announce-time payment on the whole
+	// declaration. The "you" is the permanent's own controller and is
+	// structural, so a card cannot accidentally tax the table.
+	//
+	// Build the entries with AttackTax / AttackTaxCounting in
+	// attack_tax.go. Nil for nearly every card.
+	AttackTaxes []game.AttackTax
 
 	// CastableZones is the S29 "you may cast this card from
 	// somewhere other than your hand" declaration (CR 601.2, and
@@ -572,6 +627,38 @@ type Spec struct {
 	// Issue #338.
 	NoMaxHandSize bool
 
+	// PlayerKeywords declares a printed static that gives this
+	// permanent's CONTROLLER an ability — "You have hexproof"
+	// (Leyline of Sanctity, Aegis of the Gods), "You have protection
+	// from everything" if a permanent ever prints it. True while the
+	// permanent is on the battlefield and nowhere else.
+	//
+	//	PlayerKeywords: []string{"hexproof"},
+	//
+	// Engine ability TOKENS, in the vocabulary keywords.go and
+	// protection.go already parse — a protection token is built with
+	// game.ProtectionFromColor or spelled with the constants in
+	// protection.go, never by hand, for the reason that file gives: a
+	// token the closed grammar cannot parse grants nothing at all, so
+	// a typo ships a card that looks finished and does nothing.
+	//
+	// NOT a `Static` entry, for exactly the reason NoMaxHandSize
+	// above is not: game.StaticAbility's Apply takes a
+	// *Characteristic and a target *Card, and a player is neither.
+	// The engine derives the answer instead — it asks the battlefield
+	// on every query, through the game.CatalogPlayerKeywords hook —
+	// so two Leylines compose and one of them leaving cannot revoke
+	// the other's grant. The GRANTED half of the same rule, "you gain
+	// protection from everything until your next turn", is stored
+	// instead and lives on game.Player.Statics.
+	//
+	// Three consumers read it and there is no fourth: targeting
+	// (CR 702.11d / 702.16i), the CR 702.16e damage built-in, and
+	// the CR 702.16c attachment check for an "enchant player" Aura.
+	//
+	// Issue #1197, ADR 0072's 2026-09-22 amendment.
+	PlayerKeywords []string
+
 	// WantsDistinctColors declares a spell that READS the colours of
 	// the mana that paid for it: converge (CR 702.86 — Painful
 	// Truths, Bring to Light) and sunburst (CR 702.44 — Etched
@@ -596,6 +683,30 @@ type Spec struct {
 	// again; the honest answer for now is that adamant reads what the
 	// player happened to spend.
 	WantsDistinctColors bool
+
+	// WantsManaFrom declares the kinds of mana SOURCE this card's own
+	// text reads back — game.ManaSourceTreasure for "if mana from a
+	// Treasure was spent to cast it" (Hired Hexblade, Jaded
+	// Sell-Sword, Devour Intellect), ManaSourceCreature for Inga and
+	// Esika's "three or more mana from creatures" (#1212).
+	//
+	// Like WantsDistinctColors above it changes the PAYMENT and not
+	// the effect, and it changes it even more softly: the auto-tapper
+	// prefers a matching source when it has a free choice, as a
+	// tiebreak after the frozen and restrictiveness orderings and
+	// never as a filter. The set of sources it may plan is untouched,
+	// so a cast that was payable stays payable and one that was not
+	// stays not — see game.autoTapPreferringLocked.
+	//
+	// It is not the reader. The card still asks
+	// ctx.ManaSpent().FromTreasure() (or ManaSpentToCastThis() from
+	// an enters trigger) and gets the truth: a Hired Hexblade whose
+	// controller tapped two Swamps by hand draws no card, wish or no
+	// wish.
+	//
+	// Zero for every card that does not read its payment's sources,
+	// which is all but about twenty of them.
+	WantsManaFrom game.ManaSourceKinds
 
 	// AdditionalLandPlays declares the printed static "you may play
 	// an additional land on each of your turns" — 1 for Exploration,
@@ -640,6 +751,27 @@ type Spec struct {
 	// LibraryTopVisible below: a card you cannot see is a card you
 	// cannot play, and every printed card carries both halves.
 	CastPermissions []game.CastPermission
+
+	// CastTimings declares the per-player cast-TIMING statements this
+	// permanent makes while it is on the battlefield (#1195, ADR 0066's
+	// 2026-09-22 amendment) — "you may cast spells as though they had
+	// flash" (Vedalken Orrery, Leyline of Anticipation), "you may cast
+	// creature spells as though they had flash" (Yeva), "each opponent
+	// can cast spells only any time they could cast a sorcery" (Teferi,
+	// Time Raveler).
+	//
+	// Build one with CastAsThoughFlash / OpponentsCastAtSorcerySpeed
+	// and friends in cast_timing.go rather than by hand: the
+	// constructors carry the Affects clause and the printed label,
+	// which are the two halves a card file gets wrong.
+	//
+	// The window is forced to "while the source remains" for the
+	// reason CastPermissions above is: a permanent's static ability is
+	// re-derived from the battlefield on every query, so two Orreries
+	// compose and one leaving cannot revoke the other's. A statement
+	// that OUTLIVES its source — Emergence Zone's "this turn", Teferi's
+	// +1 — is granted by an EFFECT instead, with GrantCastTiming.
+	CastTimings []game.CastTimingRule
 
 	// LibraryTopVisible declares the printed clause that makes this
 	// permanent's controller's top library card visible (CR 401.5) —
@@ -832,7 +964,18 @@ type ActivatedAbility struct {
 	// Distinct from Condition: a Condition greys an ability the
 	// permanent HAS, a gate means it is not there at all.
 	ActiveWhen game.Designation
-	Effect     func(g *game.Game, item *game.StackItem) error
+	// Exhaust marks an exhaust ability — "Exhaust — {4}: Earthbend 4.
+	// (Activate each exhaust ability only once.)" One bit, no card
+	// logic: the engine keys the record by (object, this ability's
+	// Label) and refuses a second activation itself. See
+	// game.ActivatedAbilityShape.Exhaust and ADR 0020's exhaust
+	// addendum (#1181).
+	//
+	// ManaAbility deliberately has no twin of this field: the mana
+	// path does not write the activation record, so the combination
+	// is unspellable rather than silently ignored.
+	Exhaust bool
+	Effect  func(g *game.Game, item *game.StackItem) error
 }
 
 // ManaAbility is one mana-producing activated ability on a permanent.
@@ -849,6 +992,29 @@ type ManaAbility struct {
 	Cost     ManaAbilityCost
 	Produced string
 	Label    string
+
+	// Exhaust marks an exhaust mana ability — "Exhaust — {G}, {T}:
+	// Add three mana of any one color. (Activate each exhaust ability
+	// only once.)" (#1183). The twin of ActivatedAbility.Exhaust, and
+	// one declarative bit for the same reason: the keyword IS the
+	// rule, and a card that wrote its own "have I done this yet"
+	// check would be writing a rule the engine enforces in five
+	// places anyway.
+	//
+	// Loot, the Pathfinder is the one printed card that wants it, and
+	// prints exhaust three times — once here and twice on ordinary
+	// activated abilities, which is exactly why the record is keyed by
+	// the ability's LABEL and not by the permanent.
+	//
+	// Register enforces the same two rules it enforces on the
+	// activated list, ACROSS BOTH LISTS: the label must print the
+	// keyword (and a label that prints it must set the bit), and no
+	// two exhaust abilities on one card may share a label — they would
+	// share one use.
+	//
+	// See game.ManaAbilityShape.Exhaust and ADR 0020's exhaust
+	// addendum.
+	Exhaust bool
 
 	// Rider is everything the oracle text says AFTER the "Add …"
 	// clause, as one callback: the painland cycle's "This land deals
@@ -1082,6 +1248,27 @@ type ManaAbilityCost struct {
 	// component is declared once and owned by both ability kinds.
 	// Build it with AddCounterToThis(kind, n).AddCounter.
 	AddCounter *game.CounterAddCost
+
+	// DiscardCards is a "discard N cards" component of the
+	// activation cost (#1213) — Skirge Familiar's "Discard a card:
+	// Add {B}", the shape `ManaAbilityCost` was missing while
+	// `AbilityCost` grew one with #660.
+	//
+	// Build it with the SAME constructors an activated ability's
+	// cost uses, reading the component off the returned AbilityCost:
+	//
+	//	DiscardACard().DiscardCards
+	//	DiscardCardsMatching(1, "a land card", isLand).DiscardCards
+	//
+	// One game.DiscardCost with two owners, so the validator, the
+	// candidate walk, the enumerator, the view and the client's
+	// picker are each written once — the same "one clause
+	// vocabulary" reasoning SacrificeOther and RemoveCounters above
+	// were built on.
+	//
+	// The auto-tapper never plans a source that has one: which card
+	// to pitch is a decision, and the planner makes none.
+	DiscardCards *game.DiscardCost
 }
 
 // ZeroUUID is an alias for uuid.Nil. Mostly used in tests to

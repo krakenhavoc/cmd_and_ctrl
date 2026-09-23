@@ -200,6 +200,55 @@ describe("buildMenuSections — battlefield", () => {
     expect(ids).toEqual(["state", "counters", "damage", "move", "extras"]);
   });
 
+  // #1194 / ADR 0082 decision 9. A face-down permanent's only menu
+  // row is the CR 116.2g one — while it is face down it has no
+  // abilities at all (CR 708.2a) — and the server decides both that
+  // the row exists and whether it is available.
+  it("offers turn face up on a face-down permanent it controls", () => {
+    const morph = card("m1", "a", {
+      name: "",
+      type_line: "Creature",
+      face_down: true,
+      face_down_kind: "morphed",
+      special_actions: [
+        { kind: "turn_face_up", label: "Turn face up {1}{U}", cost: "{1}{U}", available: true },
+      ],
+    });
+    const v2 = view([seat("a", "Alice")], { battlefield: [morph] });
+    const sections = buildMenuSections(v2, morph, "a", false);
+    expect(sectionIDs(sections)[0]).toBe("special_actions");
+    const row = itemById(sections, "special-turn_face_up");
+    expect(row?.label).toBe("Turn face up {1}{U}");
+    expect(row?.disabled).toBeFalsy();
+    expect(row?.action).toEqual({
+      type: "special_action",
+      params: { card_id: "m1", kind: "turn_face_up", strict: true, auto_tap: true },
+      player: "a",
+    });
+  });
+
+  // CR 708.6 says the CONTROLLER turns it face up, so a stolen morph
+  // is turned up by the thief — the one kind whose actor is not the
+  // card's owner.
+  it("sends a stolen morph's turn-face-up as its controller", () => {
+    const stolen: CardView = {
+      ...card("m2", "b"),
+      controller: "a",
+      face_down: true,
+      face_down_kind: "morphed",
+      special_actions: [
+        { kind: "turn_face_up", label: "Turn face up {2}", cost: "{2}", available: true },
+      ],
+    };
+    const v2 = view([seat("a", "Alice"), seat("b", "Bob")], { battlefield: [stolen] });
+    const sections = buildMenuSections(v2, stolen, "a", false);
+    expect(itemById(sections, "special-turn_face_up")?.action?.player).toBe("a");
+  });
+
+  it("gives an ordinary permanent no special-action section", () => {
+    expect(sectionIDs(buildMenuSections(v, c, "a", false))).not.toContain("special_actions");
+  });
+
   it("disables the no-op half of the tap toggle", () => {
     const sections = buildMenuSections(v, c, "a", false);
     expect(itemById(sections, "tap")?.disabled).toBe(true);
@@ -310,6 +359,56 @@ describe("buildMenuSections — battlefield", () => {
     expect(itemById(sections, "mana-0")?.hint).toBe("summoning sickness");
   });
 
+  // #1190: a discounted ability's row shows the charged cost where the
+  // wire used to carry only the printed one, baked into `label`
+  // freehand. The row itself never re-renders the cost — that stays
+  // free text the catalog author wrote — but the hint says what the
+  // engine will actually take, with the printed cost named, whenever
+  // charged_mana_cost differs from mana_cost.
+  it("hints the printed cost on an ability the engine discounts", () => {
+    const discounted = card("c11", "a", {
+      activated_abilities: [
+        {
+          index: 0,
+          label: "{3}{R}: Do a thing.",
+          mana_cost: "{3}{R}",
+          charged_mana_cost: "{1}{R}",
+        },
+      ],
+      mana_abilities: [
+        {
+          index: 0,
+          label: "{3}, {T}: Add {C}{C}{C}.",
+          tap_cost: true,
+          mana_cost: "{3}",
+          charged_mana_cost: "{1}",
+        },
+      ],
+    });
+    const v2 = view([seat("a", "Alice")], { battlefield: [discounted] });
+    const sections = buildMenuSections(v2, discounted, "a", false);
+    expect(itemById(sections, "ability-0")?.hint).toBe("printed cost {3}{R}");
+    expect(itemById(sections, "ability-0")?.disabled).toBe(false);
+    expect(itemById(sections, "mana-0")?.hint).toBe("printed cost {3}");
+    expect(itemById(sections, "mana-0")?.disabled).toBe(false);
+  });
+
+  it("is silent about the cost on an undiscounted ability", () => {
+    const plain = card("c12", "a", {
+      activated_abilities: [
+        {
+          index: 0,
+          label: "{3}{R}: Do a thing.",
+          mana_cost: "{3}{R}",
+          charged_mana_cost: "{3}{R}",
+        },
+      ],
+    });
+    const v2 = view([seat("a", "Alice")], { battlefield: [plain] });
+    const sections = buildMenuSections(v2, plain, "a", false);
+    expect(itemById(sections, "ability-0")?.hint).toBeUndefined();
+  });
+
   // --- S24 restrictions --------------------------------------------
   //
   // "Its activated abilities can't be activated" (Arrest, Faith's
@@ -365,7 +464,9 @@ describe("buildMenuSections — combat", () => {
     expect(sectionIDs(sections)).toContain("combat");
     expect(itemById(sections, "combat-attack-b")?.action).toEqual({
       type: "declare_attacker",
-      params: { attacker: "c1", target: "b" },
+      // ADR 0080 (#1063): auto_tap rides every attack payload so the
+      // CR 508.1a tax can reach the lands. Inert without a tax.
+      params: { attacker: "c1", target: "b", auto_tap: true },
     });
     expect(itemById(sections, "combat-attack-a")).toBeUndefined();
   });
@@ -405,6 +506,7 @@ describe("buildMenuSections — combat", () => {
           { attacker: "c1", target: "c" },
           { attacker: "c2", target: "c" },
         ],
+        auto_tap: true,
       },
     });
     // Never the controller's own seat.

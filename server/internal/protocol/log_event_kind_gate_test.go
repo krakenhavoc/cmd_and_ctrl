@@ -71,7 +71,15 @@ var silentEventKinds = map[string]string{
 	"EventBecomesTarget":  "the cast or activation line already named the spell; targeting is announce-time bookkeeping the stack view carries",
 	"EventBecomesBlocked": "the LogBlock entry for the blocker is the same fact from the other side",
 	"EventTrigger":        "a trigger reaching the stack is told by the LogResolve of the ability it becomes",
-	"EventKeywordAction":  silentImpliedByAnotherLine,
+	// #1184: the same argument as the row above, for the other half of
+	// the same announcement. An activation reaching the stack is told
+	// by the LogResolve of the ability it becomes, and the stack view
+	// carries it in the meantime; a second line at the announce would
+	// say the same thing twice about one click. The kind exists so
+	// TRIGGERS can watch an activation, not so the log can narrate
+	// one.
+	"EventActivateAbility": "an activation reaching the stack is told by the LogResolve of the ability it becomes",
+	"EventKeywordAction":   silentImpliedByAnotherLine,
 
 	// --- the step spine ----------------------------------------------
 	"EventStepTransition":     silentStepSpine,
@@ -101,6 +109,17 @@ var silentEventKinds = map[string]string{
 	// catalog soak, which is exactly the posture the two rows above
 	// take.
 	"EventAttachSkipped": "CR 701.3b's attach that doesn't happen changes nothing a player could observe; the event is a breadcrumb for a stall dump, not a table fact (#812, #1017)",
+	// ADR 0082 / #1194. Turning a permanent face up is loud and the
+	// table is told — by the LogSpecialAction line for the CR 116.2g
+	// action that did it, which carries the card and the price
+	// ("Turn face up {1}{U}") and lands in the same frame as the
+	// permanent's identity. turnFaceUpLocked is the ONE emitter of
+	// this kind and it only ever runs from that action, so the two
+	// are the same moment; a second line would say it twice. If a
+	// second emitter ever appears — an effect that turns permanents
+	// face up without a special action — this row stops being true
+	// and the kind needs an arm.
+	"EventTurnedFaceUp": "the CR 116.2g special action that turns a permanent face up is the only emitter, and its LogSpecialAction line already names the card and the price",
 
 	// --- visible board state -------------------------------------------
 	"EventTapCard":        silentBoardStateIsVisible,

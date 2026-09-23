@@ -183,6 +183,32 @@ type StackItem struct {
 	// Added in #636.
 	Payload []TargetRef
 
+	// Trigger is what the TRIGGERING EVENT was, for an item the
+	// harvester put here — the damage amount, the object that left
+	// with its CR 603.10 last-known characteristics, the counters
+	// placed, the spell cast, the ability activated. Nil on every
+	// cast spell, every activated ability and every reflexive
+	// trigger, which have no triggering event to carry.
+	//
+	// Stamped once, where the item is built, and read in two places
+	// that are a priority round apart: the ability's TARGET CLAUSE as
+	// it is put on the stack (CR 603.3d — Scrap Trawler's "with
+	// lesser mana value" is lesser than a mana value only this field
+	// remembers), and its EFFECT at resolution, through
+	// effects.Context.Trigger().
+	//
+	// DATA rather than a value captured in the Effect closure, which
+	// is where every card that needed one used to put it. A closure
+	// reaches resolution and reaches nothing else: not the clause
+	// that runs before it, not the snapshot (a func has no wire
+	// form), and not — the reason this field exists at all — a CR
+	// 707.10 COPY of the ability, which "copies any choices made when
+	// it triggered" and must resolve against the same event the
+	// original does. See trigger_event.go.
+	//
+	// Added in #1223.
+	Trigger *TriggerContext
+
 	// Modes is the list of mode indices chosen at announce time for
 	// modal spells / abilities. Empty for non-modal items.
 	Modes []int
@@ -264,6 +290,27 @@ type StackItem struct {
 	// the card face up as it is cast, and ADR 0069 decision 5 makes
 	// that MoveCard's unconditional ClearFaceDown. Added for #658.
 	Foretold bool
+
+	// FaceDown is the CR 708.2 state a spell CAST FACE DOWN
+	// (CR 708.4) resolves into — FaceDownMorphed for a morph or a
+	// megamorph, FaceDownDisguised for a disguise, and the zero value
+	// for every other spell in the game.
+	//
+	// It rides the item because the permanent is a different object
+	// from the spell (CR 400.7) and MoveCard clears the face-down
+	// state on every zone change (ADR 0069 decision 5) — so "it was
+	// cast face down, therefore it enters face down" has to be
+	// carried across the move rather than read off the card on the
+	// far side of it. Stack resolution seeds it onto the entry event
+	// and the ONE entry finisher applies it, which is how the CR 614
+	// window, the pause-and-resume and the undo path come free.
+	//
+	// Distinct from `AltCost == "morph"` for the reason Foretold is
+	// distinct from `AltCost == "foretell"`: the fact is about the
+	// OBJECT, and an effect that cast a card face down some other way
+	// would still produce a face-down permanent. Added for #1194
+	// (ADR 0082 decision 3).
+	FaceDown FaceDownKind
 
 	// AltCostExiles is CR 702.34a's flashback clause as a FACT about
 	// this stack object: "exile this card instead of putting it

@@ -164,6 +164,15 @@ func (g *Game) removeObjectsOwnedByLocked(playerID uuid.UUID) int {
 	sweep(g.Battlefield)
 	sweep(g.Stack)
 	sweep(g.Exile)
+	// #1199 / CR 702.26k: "Phased-out permanents owned by a player who
+	// leaves the game also leave the game. This doesn't cause
+	// zone-change abilities to trigger." Which is this function's own
+	// contract exactly, so the holding slice joins the sweep rather
+	// than needing a rule of its own. Without it a phased-out
+	// permanent would be the one object in the game that survived its
+	// owner — and would phase back in during a seat's untap step with
+	// nobody controlling it.
+	sweep(g.PhasedOut)
 	for _, p := range g.Seats {
 		sweep(p.Library)
 		sweep(p.Hand)
@@ -200,6 +209,9 @@ func (g *Game) forgetObjectLocked(cardID uuid.UUID) {
 	}
 	if g.lastKnownTriggerIdentity != nil {
 		delete(g.lastKnownTriggerIdentity, cardID)
+	}
+	if g.lastKnownCounters != nil {
+		delete(g.lastKnownCounters, cardID)
 	}
 }
 
@@ -508,6 +520,33 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// chooser, so every one of them is still dropped by the material
 	// gate.
 	PendingChoiceConfirm: {reassign: true},
+	// #1214, CR 608.2 (resolution_pick.go). Two of the three
+	// resolution-time picks are about ANOTHER player's material by
+	// construction, which is CR 800.4g's case and 800.4g's second
+	// sentence besides: the choice was to be made by an opponent of
+	// the object's controller, so another opponent makes it if there
+	// is one (choiceInheritorLocked walks turn order from the departed
+	// seat and is unchanged).
+	//
+	//   - reveal_pick — the cards are the CONTROLLER's, revealed off
+	//     their library; an opponent says which of them they get.
+	//     Gifts Ungiven does not stop being a spell because the
+	//     opponent it named conceded.
+	//   - their_permanents — the permanents belong to a seat that is
+	//     not the chooser. CR 800.4a takes them out of the game only
+	//     if that seat is the one who left, and the prompt's candidate
+	//     prune (reassignChoiceLocked) already drops exactly those.
+	//
+	// Both declare dropDefault for the reason option_pick does (#1006):
+	// each is one LEG of a RUN (the printed instruction in flight), and
+	// a run whose continuation never hears that a leg was withdrawn is
+	// a card that stops halfway. The action reaches settleRunLegLocked
+	// through PendingChoice.promptRun, which is the branch
+	// defaultDroppedChoiceLocked already takes on the run link rather
+	// than on the kind (#1027) — so none of the three needed a case of
+	// its own anywhere.
+	PendingChoiceRevealPick:      {reassign: true, onDrop: dropDefault},
+	PendingChoiceTheirPermanents: {reassign: true, onDrop: dropDefault},
 
 	// --- CR 800.4f: a cost, or whether to pay one ----------------
 	//
@@ -523,6 +562,21 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// breath. There is nothing for a drop action to do, so it keeps
 	// the default rather than declaring one that could never fire.
 	PendingChoiceEntryPayLife: {},
+	// entry_reveal_from_hand (#1198) is entry_pay_life's row
+	// verbatim and for its argument: the reveal is the "unless" of
+	// the departed player's OWN entering permanent, which CR 800.4a
+	// takes out of the game in the same breath, and the hand the
+	// candidates live in went with it.
+	//
+	// The empty second column does NOT leave the paused entry
+	// dangling: the frame rides PendingChoice.replacementResume, so
+	// dropChoicesForPlayerLocked hands it to
+	// finishDroppedReplacementLocked without a row of its own.
+	// dropDefault would be wrong rather than merely unnecessary —
+	// this kind's continuation is a replacement event, and settling
+	// it once through the drop action and once through the frame is
+	// the double-resume the second column exists to avoid.
+	PendingChoiceEntryRevealFromHand: {},
 	// mana_pick is a cost's other half: the mana would enter a pool
 	// that has left the game with its player.
 	PendingChoiceMana: {},
@@ -544,7 +598,15 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// so a run whose own source left with its controller is abandoned
 	// rather than paid out — which is the right answer, because the
 	// payout belonged to the seat that has gone.
-	PendingChoiceSacrifice:     {onDrop: dropDefault},
+	PendingChoiceSacrifice: {onDrop: dropDefault},
+	// own_permanents is their_permanents' sibling with the one field
+	// that decides this column the other way (#1214): the chooser IS
+	// the permanents' controller, so the whole pool is material CR
+	// 800.4a has taken out of the game in the same breath — Scapeshift
+	// asking which of YOUR lands you sacrifice has nothing left to ask
+	// once you are gone. Never reassigned; the drop still settles its
+	// leg, for sacrifice's reason one row up.
+	PendingChoiceOwnPermanents: {onDrop: dropDefault},
 	PendingChoiceLegendRule:    {},
 	PendingChoiceScry:          {},
 	PendingChoiceSurveil:       {},
@@ -553,6 +615,7 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	PendingChoiceMayCast:       {},
 	PendingChoiceCopyTarget:    {},
 	PendingChoiceCreatureType:  {},
+	PendingChoiceCardName:      {},
 	PendingChoiceColor:         {},
 	// The attacker whose damage is being assigned was theirs, and it
 	// left with them.
@@ -590,6 +653,21 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// rotation re-enters the next seat's untap step, which makes its
 	// own determination.
 	PendingChoiceUntapChoice: {},
+	// #1196, CR 115.7. retarget looks like pick_target's twin — the
+	// legal set is the whole board, and the item being redirected can
+	// be a survivor's spell — and is classified the OPPOSITE way, on
+	// purpose. pick_target asks "which target does this ability of
+	// yours take"; a retarget asks "where do YOU want this spell
+	// pointed", and that is a decision belonging to the seat that
+	// cast the Deflecting Swat. Nobody else inherits it: CR 800.4's
+	// rule for a choice a departed player would have made is that the
+	// choice is not made, and the printed outcome of a retarget that
+	// is not made is that the targets are unchanged (CR 115.7a's
+	// wording for the same situation). The drop does nothing beyond
+	// forgetting the question because there is nothing else to do —
+	// the item is still on the stack with the targets it had, and the
+	// retargeting spell finished resolving before the prompt opened.
+	PendingChoiceRetarget: {},
 
 	// --- the CR 616 pair, which settles its own drop (#808) ------
 	PendingChoiceReplacementOrder:    {},

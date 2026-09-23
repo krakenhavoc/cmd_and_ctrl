@@ -230,6 +230,11 @@
       "count": 0,
       "cards": []
     },
+    "phased_out": {
+      "kind": "phased_out",
+      "count": 0,
+      "cards": []
+    },
     "turn": {
       "number": 1,
       "active_seat": 1,

@@ -326,10 +326,20 @@ func TestStaleSandboxMovePromptIsPruned(t *testing.T) {
 }
 
 // TestStaleSandboxMoveAnswerIsDroppedNotRefused — the answer path's own
-// tolerance. A card that left by a route the prune does not see (a
-// reanimation is an ENTRY and lands without going through the exit
-// primitive) leaves the prompt in flight; answering it must drop the
-// move rather than rip the card back out of the battlefield.
+// tolerance. A card that left by a route NO prune sees leaves the
+// prompt in flight; answering it must drop the move rather than rip the
+// card back out of the battlefield.
+//
+// #1175 changed the vehicle, not the claim. The reanimation this test
+// used to move the card with was the entry door's own gap: an ENTRY
+// lands without going through the exit primitive, so nothing pruned the
+// sibling prompt — and `pruneChoicesAfterArrivalLocked` now runs
+// `pruneStaleZoneChangeChoicesLocked` there, which withdraws the prompt
+// before anyone can answer it (that is
+// TestAnArrivalPrunesAStaleMoveOutOfTheGraveyard's shape). The raw zone
+// mutation below stands in for any door the two funnels do not cover:
+// `dropStaleReplacementResumeLocked` is belt-and-braces and has to keep
+// working when the belt is not there.
 func TestStaleSandboxMoveAnswerIsDroppedNotRefused(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[0]
@@ -344,8 +354,8 @@ func TestStaleSandboxMoveAnswerIsDroppedNotRefused(t *testing.T) {
 	}
 	prompt := expectCommanderPrompt(t, g, owner)
 	g.WithWriteLock(func() {
-		if err := g.ReturnFromGraveyardForEffect(cmdID, ZoneBattlefield); err != nil {
-			t.Fatalf("ReturnFromGraveyardForEffect: %v", err)
+		if _, err := MoveCard(owner.Graveyard, g.Battlefield, cmdID); err != nil {
+			t.Fatalf("MoveCard: %v", err)
 		}
 	})
 

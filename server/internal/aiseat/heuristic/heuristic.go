@@ -197,6 +197,21 @@ type Config struct {
 	AttackReserve int
 	ReserveLife   int
 
+	// AttackTaxPenalty is what one point of CR 508.1a attack tax costs
+	// an attack's value (ADR 0080, #1063) — Propaganda's {2} is worth
+	// 2 × this. It is a MANA price rather than a life or card price,
+	// so it is tuned against DamageToOpponent: at the default, {2}
+	// cancels roughly a 6-power swing, which is the right shape for
+	// "a 1/1 into Ghostly Prison is not worth the turn's mana, a Wurm
+	// usually is".
+	//
+	// Deliberately a flat generic count rather than a colour-aware
+	// price: what else the mana could have bought is the fuel pricer's
+	// question, not a combat term's, and LethalBonus dwarfs this
+	// anyway so a lethal swing still happens at any price the seat can
+	// pay.
+	AttackTaxPenalty float64
+
 	// Concede enables the concede heuristic. On by default and
 	// deliberately conservative — see concede.go.
 	Concede bool
@@ -250,6 +265,10 @@ func DefaultConfig() Config {
 		BlockChumpLife: 8,
 		AttackReserve:  1,
 		ReserveLife:    25,
+		// One point of tax ≈ one point of power through: at
+		// DamageToOpponent 0.30 a {2} tax cancels a 2-power attacker
+		// outright and leaves a 7/7 trampler comfortably worth it.
+		AttackTaxPenalty: 0.30,
 
 		Concede:      true,
 		ConcedeLife:  3,

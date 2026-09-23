@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Ugin, Eye of the Storms — Legendary Planeswalker — Ugin {7},
 // starting loyalty 7:
@@ -40,21 +44,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // putting it there would make it uncounterable and let it be
 // activated at instant speed.
 //
-// THE −11 IS NOT REGISTERED, and the reason is a missing engine
-// seam rather than a judgement call. A library search cannot send
-// what it finds to EXILE: game.searchDestZoneLocked accepts hand,
-// battlefield, library and graveyard, and returns ErrZoneNotFound for
-// anything else, which would make the whole ability — search,
-// shuffle and all — fail on its first line. The free-cast grant on
-// the other side of the sentence is writable (game.CastPermission
-// with a "{0}" override); the search that feeds it is not. Routing
-// it through the hand instead would put every card the search found
-// in a hand it never legally occupied, where a discard, a hand-size
-// check or an opponent's Thoughtseize could see it — a different
-// ability with different answers. So the whole clause is omitted,
-// which leaves Ugin weaker than printed (#259's direction) and
-// leaves him a plus, so he can still be used without only ticking
-// down. Recorded in docs/engine-seams.md.
+// THE −11 IS NOW REGISTERED (#1230). It was blocked on a missing
+// engine seam rather than a judgement call: a library search could
+// not send what it finds to EXILE (game.searchDestZoneLocked accepted
+// hand, battlefield, library and graveyard only) and SearchLibrarySpec
+// had no "any number" spelling (Limit <= 0 meant exactly 1). Both are
+// parameters on the search primitive now — Dest: game.ZoneExile and
+// Unbounded: true — routed through searchRoute /
+// routeCardToZoneLocked exactly like every other search take, so
+// CR 614 and CR 903.9 still see the move. The free-cast grant is the
+// half that was already writable: game.CastPermission with a "{0}"
+// Cost override and the zero Duration ("until end of turn"), handed
+// every card the search actually exiled.
 //
 // Printed loyalty reaches the card through deck import (ADR 0032
 // §1), so Spec.StartingLoyalty is deliberately not set here.
@@ -62,10 +63,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "5c58353a-fd60-4528-bf0d-669626cda0b2",
 		Name:         "Ugin, Eye of the Storms",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The −11 isn't offered — Ugin can't search your library for colorless cards and set them aside to play.",
-		},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			{
 				FromStack: true,
@@ -106,6 +104,45 @@ func init() {
 				Cost:  LoyaltyCost(0),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return AddMana{Player: item.Controller, Produced: "{C}{C}{C}"}.Apply(NewContext(g, item))
+				},
+			},
+			{
+				Label: "−11: Search your library for any number of colorless nonland cards, exile them, then shuffle. " +
+					"Until end of turn, you may cast those cards without paying their mana costs.",
+				Cost: LoyaltyCost(-11),
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					controller := item.Controller
+					source := item.SourceCardID
+					return g.SearchLibraryThenForEffect(game.SearchLibrarySpec{
+						Player: controller,
+						Source: source,
+						Reason: "Ugin, Eye of the Storms — search for colorless nonland cards",
+						Pred: func(c game.Card) bool {
+							return c.IsColorless() && !c.IsLand()
+						},
+						Dest:      game.ZoneExile,
+						Unbounded: true,
+						Shuffle:   true,
+						Then: func(g *game.Game, found []uuid.UUID) error {
+							if len(found) == 0 {
+								return nil
+							}
+							cards := make([]game.Card, 0, len(found))
+							for _, id := range found {
+								if c, ok := g.LookupCardForEffect(id); ok {
+									cards = append(cards, c)
+								}
+							}
+							g.GrantCastPermissionToCardsForEffect(game.CastPermission{
+								Player: controller,
+								Zone:   game.ZoneExile,
+								Cost:   "{0}",
+								Source: source,
+								Label:  "Ugin, Eye of the Storms — cast without paying its mana cost",
+							}, cards)
+							return nil
+						},
+					})
 				},
 			},
 		},
