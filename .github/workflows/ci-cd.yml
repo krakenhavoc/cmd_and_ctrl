@@ -16,9 +16,9 @@ on:
   # build, no tests and no gofmt. That is a real gap when work is prepared on
   # a branch before anyone is ready to open a PR for it.
   #
-  # This is deploy-safe by construction: cmdctrl-cd is gated on
+  # This is deploy-safe by construction: both CD jobs are gated on
   # `github.event_name == 'push'`, so a manual run can only ever execute
-  # cmdctrl-ci. The artifact-upload steps are gated the same way, so a
+  # CI. The artifact-upload steps are gated the same way, so a
   # dispatch also publishes nothing -- it compiles, tests and typechecks,
   # and stops there.
   workflow_dispatch:
@@ -52,24 +52,59 @@ concurrency:
   cancel-in-progress: ${{ github.event_name != 'merge_group' && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop' }}
 
 jobs:
-  cmdctrl-ci:
+  # Which of the jobs below a pull request needs. A push to develop or
+  # main, a manual run and a merge-queue run always get everything:
+  # those are the runs that test what actually merged. A PR that only
+  # touches client/ or tests-e2e/ skips the Go jobs; one that touches
+  # neither skips the client job. Anything outside those two (docs,
+  # deploy, scripts, workflows, root files) counts as server, because
+  # the Go tests read docs/ (the census, docsguard, coverage).
+  #
+  # The repo is public and these runners keep state between jobs and
+  # can reach the deploy hosts, so fork PRs never run here. Every other
+  # job needs this one and skips with it, and cmdctrl-ci then fails
+  # rather than passing untested code. A fork's code can still edit
+  # this line, which is why fork PR workflows also need maintainer
+  # approval (repo settings) -- read any workflow diff before
+  # approving. To CI a fork PR, push its branch to this repo.
+  changes:
     runs-on: self-hosted
-    # Job-level override of the workflow's `contents: read` above.
-    # Discussion #1231 P1a: "Census -- commit refresh" below pushes a
-    # docs-only commit back to develop/main on a push, using the
-    # default GITHUB_TOKEN actions/checkout already wired up for this
-    # checkout. Scoped to this job -- cmdctrl-cd never touches git and
-    # keeps contents: read.
     permissions:
-      contents: write
-    # The repo is public and these runners keep state between jobs and
-    # can reach the deploy hosts, so fork PRs never run here. A fork's
-    # code can still edit this line, which is why fork PR workflows also
-    # need maintainer approval (repo settings) -- read any workflow diff
-    # before approving. To CI a fork PR, push its branch to this repo.
+      contents: read
+      pull-requests: read
     if: >-
       github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name == github.repository
+    outputs:
+      server: ${{ steps.paths.outputs.server }}
+      client: ${{ steps.paths.outputs.client }}
+    steps:
+      - name: Classify changed paths
+        id: paths
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const set = (server, client) => {
+              core.info(`server: ${server}, client: ${client}`);
+              core.setOutput('server', String(server));
+              core.setOutput('client', String(client));
+            };
+            if (!pr) return set(true, true);
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              ...context.repo, pull_number: pr.number, per_page: 100,
+            });
+            // The API stops listing at 3000 files; build everything past that.
+            if (files.length < pr.changed_files) return set(true, true);
+            const names = files.flatMap((f) => [f.filename, f.previous_filename]).filter(Boolean);
+            const frontend = (n) => n.startsWith('client/') || n.startsWith('tests-e2e/');
+            const shared = (n) => n.startsWith('.github/') || !n.includes('/');
+            set(names.some((n) => !frontend(n)), names.some((n) => frontend(n) || shared(n)));
+
+  server-check:
+    needs: changes
+    if: needs.changes.outputs.server == 'true'
+    runs-on: self-hosted
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -84,7 +119,8 @@ jobs:
       # on every run, then silently re-downloads the whole module set.
       # Note the Scryfall cache below is NOT affected and stays on: its
       # path is inside the workspace, not $HOME.
-      - name: Set up Go
+      - &setup-go
+        name: Set up Go
         uses: actions/setup-go@v6
         with:
           go-version: "1.22"
@@ -97,7 +133,8 @@ jobs:
       # The cache is only dropped when the disk is actually low, so a
       # healthy runner keeps its warm cache and the ~1-2 min rebuild
       # cost is paid only when it would otherwise fail.
-      - name: Free runner disk
+      - &free-disk
+        name: Free runner disk
         shell: bash
         run: |
           df -h / /tmp | sed 's/^/before: /'
@@ -111,17 +148,6 @@ jobs:
             docker system prune -f >/dev/null 2>&1 || true
           fi
           df -h / /tmp | sed 's/^/after: /'
-
-      # No `cache:` input, for the same reason as Go above -- ~/.npm
-      # persists on a self-hosted runner and restoring over it fails the
-      # same way. Note setup-node's `cache` is an enum of package
-      # managers (npm/yarn/pnpm), NOT a boolean: `cache: false` is a
-      # hard error ("Caching for 'false' is not supported"). Omitting
-      # the input is how you turn it off.
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: "22"
 
       - name: Server — gofmt check
         working-directory: server
@@ -158,6 +184,24 @@ jobs:
         env:
           GOTOOLCHAIN: auto
         run: make lint
+
+  server-test:
+    needs: changes
+    if: needs.changes.outputs.server == 'true'
+    runs-on: self-hosted
+    # Job-level override of the workflow's `contents: read` above.
+    # Discussion #1231 P1a: "Census -- commit refresh" below pushes a
+    # docs-only commit back to develop/main on a push, using the
+    # default GITHUB_TOKEN actions/checkout already wired up for this
+    # checkout. Scoped to this job -- nothing else here touches git.
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - *setup-go
+      - *free-disk
 
       # Discussion #1231 P1a: the generated catalog census block in
       # docs/decklists/card-coverage-roadmap.md carries absolute counts
@@ -247,47 +291,6 @@ jobs:
           CENSUS_ENFORCE: ${{ github.event_name == 'push' && '1' || '' }}
         run: go test -race -cover -timeout 30m ./...
 
-      - name: Server — build
-        working-directory: server
-        run: |
-          mkdir -p bin
-          go build -o bin/cmd_and_ctrl-server ./cmd/server
-
-      - name: Bot — build
-        working-directory: server
-        run: go build -o bin/cmd_and_ctrl-bot ./cmd/bot
-
-      - name: Client — npm ci
-        working-directory: client
-        run: npm ci
-
-      - name: Client — typecheck
-        working-directory: client
-        run: npm run check
-
-      - name: Client — unit tests
-        working-directory: client
-        run: npm test
-
-      - name: Client — lint
-        working-directory: client
-        run: npm run lint
-
-      # `npm run build` is `svelte-check && vite build`; the typecheck
-      # step above already ran svelte-check, so invoke vite directly to
-      # avoid running it twice. Local `npm run build` is unchanged.
-      - name: Client — build
-        working-directory: client
-        run: npx vite build
-
-      - name: Tests-e2e — npm ci
-        working-directory: tests-e2e
-        run: npm ci
-
-      - name: Tests-e2e — typecheck
-        working-directory: tests-e2e
-        run: npx tsc --noEmit
-
       # Discussion #1231 P1a, the other half of "Census -- refresh"
       # near the top of this job: a push to develop or main that moved
       # the catalog just rewrote the census block in place (via
@@ -298,20 +301,20 @@ jobs:
       # docs-only, and a docs-only push must not trigger a second,
       # redundant cmdctrl-cd deploy of the commit that just deployed.
       #
-      # Placed after every gate step and before the artifact uploads
-      # on purpose: nothing above depends on this file, and the
-      # binaries and dist about to be uploaded were already built from
-      # the tree "Census -- refresh" produced, so this push (or its
-      # rejection) cannot change what gets deployed.
+      # Placed after the test step on purpose: the push only happens
+      # once CENSUS_ENFORCE=1 has accepted the refreshed block. The
+      # binaries and dist come from the build job, which never reads
+      # this file, so this push (or its rejection) cannot change what
+      # gets deployed.
       #
       # continue-on-error: true is load-bearing, not a shortcut. Branch
       # protection today has no bypass actor for the GitHub Actions app
       # (id 15368, Discussion #1231), so a ruleset that requires PRs on
       # develop/main can legitimately refuse this push -- and a
-      # rejected docs-only push must never fail the job that already
-      # built and tested real artifacts and is about to hand them to
-      # cmdctrl-cd. The script below already turns a rejected push into
-      # an `exit 0` after a ::warning::; continue-on-error is the
+      # rejected docs-only push must never fail the job that just
+      # tested the tree, and with it cmdctrl-ci. The script below
+      # already turns a rejected push into an `exit 0` after a
+      # ::warning::; continue-on-error is the
       # backstop for anything it does not anticipate (git itself
       # missing, a config error), not the primary way this succeeds.
       - name: Census — commit refresh
@@ -337,7 +340,91 @@ jobs:
           fi
           exit 0
 
-      # Only cmdctrl-cd in this same run downloads these. develop sees
+  client:
+    needs: changes
+    if: needs.changes.outputs.client == 'true'
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      # No `cache:` input, for the same reason as "Set up Go" -- ~/.npm
+      # persists on a self-hosted runner and restoring over it fails the
+      # same way. Note setup-node's `cache` is an enum of package
+      # managers (npm/yarn/pnpm), NOT a boolean: `cache: false` is a
+      # hard error ("Caching for 'false' is not supported"). Omitting
+      # the input is how you turn it off.
+      - &setup-node
+        name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Client — npm ci
+        working-directory: client
+        run: npm ci
+
+      - name: Client — typecheck
+        working-directory: client
+        run: npm run check
+
+      - name: Client — unit tests
+        working-directory: client
+        run: npm test
+
+      - name: Client — lint
+        working-directory: client
+        run: npm run lint
+
+      - name: Tests-e2e — npm ci
+        working-directory: tests-e2e
+        run: npm ci
+
+      - name: Tests-e2e — typecheck
+        working-directory: tests-e2e
+        run: npx tsc --noEmit
+
+  # What the CD jobs deploy, and nothing else, so it finishes in a
+  # minute or two: cmdctrl-cd-dev waits only for this. On a PR it
+  # builds whichever half the PR touched; on a push it builds and
+  # uploads everything.
+  build:
+    needs: changes
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - *setup-go
+      - *free-disk
+      - *setup-node
+
+      - name: Server — build
+        if: needs.changes.outputs.server == 'true'
+        working-directory: server
+        run: |
+          mkdir -p bin
+          go build -o bin/cmd_and_ctrl-server ./cmd/server
+
+      - name: Bot — build
+        if: needs.changes.outputs.server == 'true'
+        working-directory: server
+        run: go build -o bin/cmd_and_ctrl-bot ./cmd/bot
+
+      - name: Client — npm ci
+        if: needs.changes.outputs.client == 'true'
+        working-directory: client
+        run: npm ci
+
+      # `npm run build` is `svelte-check && vite build`; the typecheck
+      # step above already ran svelte-check, so invoke vite directly to
+      # avoid running it twice. Local `npm run build` is unchanged.
+      - name: Client — build
+        if: needs.changes.outputs.client == 'true'
+        working-directory: client
+        run: npx vite build
+
+      # Only the CD jobs in this same run download these. develop sees
       # hundreds of pushes a week, so anything longer than a day piles
       # up gigabytes of dead artifacts against the storage quota.
       - name: Upload server binary
@@ -364,25 +451,62 @@ jobs:
           path: client/dist/
           retention-days: 1
 
-  cmdctrl-cd:
+  # The required status check on develop and main (both rulesets name
+  # it), so it keeps the name the single CI job used to have. It passes
+  # when every job above passed or was skipped as not needed for this
+  # PR, and fails if `changes` did not run at all (a fork PR).
+  cmdctrl-ci:
+    needs: [changes, server-check, server-test, client, build]
+    if: always()
     runs-on: self-hosted
-    needs: cmdctrl-ci
+    steps:
+      - name: Check CI results
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          SERVER_CHECK: ${{ needs.server-check.result }}
+          SERVER_TEST: ${{ needs.server-test.result }}
+          CLIENT: ${{ needs.client.result }}
+          BUILD: ${{ needs.build.result }}
+        run: |
+          failed=0
+          for pair in "changes=$CHANGES" "server-check=$SERVER_CHECK" \
+              "server-test=$SERVER_TEST" "client=$CLIENT" "build=$BUILD"; do
+            job="${pair%%=*}"
+            result="${pair#*=}"
+            echo "$job: $result"
+            case "$job:$result" in
+              changes:success | *:success) ;;
+              changes:*)
+                echo "::error::changes did not run ($result). Fork PRs are not built on these runners; push the branch to this repo."
+                failed=1 ;;
+              *:skipped) ;;
+              *) failed=1 ;;
+            esac
+          done
+          exit "$failed"
+
+  # develop: deploys as soon as `build` is done, without waiting for the
+  # tests. The PR was tested, but against whatever develop was when its
+  # CI ran (there is no merge queue, see docs/environments.md), so this
+  # run's test jobs are the first to see the merged tree, and they keep
+  # running after the preview updates. A merge that breaks them turns
+  # develop red with the broken build on the preview until the fix
+  # lands, which is what the preview is for.
+  cmdctrl-cd-dev:
+    runs-on: self-hosted
+    needs: build
     # actions: write is only for deleting this run's artifacts at the end.
     permissions:
       contents: read
       actions: write
-    if: >-
-      github.event_name == 'push' &&
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
     # GitHub environment, for secrets and variables that differ per host
     # (today: the off-site backup's). `prod` accepts deployments from main
     # only and `dev` from develop only (deployment branch policies), so a
-    # topic branch can never read production's values. Both arms are
-    # non-empty literals, so the ternary fall-through hazard described on
-    # "Resolve deploy target" cannot occur here. Repo-level secrets and
-    # variables are still visible to the job exactly as before.
-    environment: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
-    env:
+    # topic branch can never read production's values. Repo-level secrets
+    # and variables are still visible to the job exactly as before.
+    environment: dev
+    env: &cd-env
       # Production and the develop preview are two VMs on the same
       # Proxmox node, identical below the fqdn (ADR 0023). So this job
       # branches on exactly two things -- which host it talks to, and
@@ -432,7 +556,7 @@ jobs:
 
       # CMDCTRL_HOST is deliberately NOT declared here. It is resolved
       # in the first step and exported through $GITHUB_ENV; see there.
-    steps:
+    steps: &cd-steps
       - name: Checkout code
         uses: actions/checkout@v6
 
@@ -1288,3 +1412,17 @@ jobs:
               await github.rest.actions.deleteArtifact({ ...context.repo, artifact_id: a.id });
               core.info(`deleted ${a.name} (${a.size_in_bytes} bytes)`);
             }
+
+  # main: the same deploy (the aliases below are cmdctrl-cd-dev's env and
+  # steps), gated on the whole of CI passing. Production only moves on a
+  # promotion, so it can afford to wait.
+  cmdctrl-cd-prod:
+    runs-on: self-hosted
+    needs: [build, cmdctrl-ci]
+    permissions:
+      contents: read
+      actions: write
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: prod
+    env: *cd-env
+    steps: *cd-steps

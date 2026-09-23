@@ -43,6 +43,17 @@ a stale `develop` can still break it together; `develop` breaking is
 what the preview is for, and it is caught before promotion rather
 than on the live table.
 
+That is why a push to `develop` runs CI again even though its PR
+passed: it is the first run that tests the merged tree. It does not
+hold up the preview, though. `ci-cd.yml` runs `build`, `server-check`,
+`server-test` and `client` as parallel jobs, `cmdctrl-cd-dev` deploys
+as soon as `build` is done, and the tests finish behind it. A push to
+`main` waits for all of CI (`cmdctrl-cd-prod` needs `cmdctrl-ci`).
+On a PR, `changes` skips the Go jobs when only `client/` or
+`tests-e2e/` changed, and the client job when neither did.
+`cmdctrl-ci` is a small job that passes when the others passed or
+were skipped, so it stays the one required check.
+
 Promotion is a `develop` → `main` PR, merged with a **merge commit** —
 the only method `main` allows. A squash would give `main` a commit
 `develop` does not have, and the two drift further apart with every
