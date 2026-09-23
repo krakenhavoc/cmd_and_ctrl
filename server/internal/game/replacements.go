@@ -530,12 +530,15 @@ type ReplacementEvent struct {
 	// below is. With one the generic resume is faithful, so they are
 	// flagged and the entry can ask its question.
 	//
-	// Off by default still. putOntoBattlefieldFromZoneLocked (the
-	// hand / library "put onto the battlefield" batch) is the remaining
-	// unflagged entry: it runs every card's pipeline against the
-	// pre-entry board and then moves them together, a simultaneity a
-	// per-card resume would break. A card of that batch whose pipeline
-	// pauses stays where it was — weaker than printed, never stronger.
+	// Since #1322 the hand / library / exile "put onto the battlefield"
+	// batch is flagged too (entry_batch.go). It could not be while its
+	// only resume was the single-card finisher, which would land one
+	// card after its siblings had been announced; its events carry the
+	// batch on entryTail instead, and the resume hands each settled
+	// event back to the batch rather than landing it. The one entry
+	// left unflagged is the sandbox move_card verb
+	// (moveCardByRefLocked), a manual move with nothing behind it to
+	// finish, whose questions take their un-asked branch.
 	//
 	// An effect that WOULD pause consults this before prompting: a
 	// pay-life entry choice on an unflagged event takes the un-paid
@@ -1798,7 +1801,20 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 	// Only consulted for a card that is NOT already on the
 	// battlefield, so a permanent already in play can never match here
 	// as well as in the walk above and apply the same effect twice.
-	if CatalogReplacements != nil && ev.CardID != uuid.Nil && !g.Battlefield.Contains(ev.CardID) {
+	//
+	// And not for a card entering FACE DOWN (#1322). CR 614.12 decides
+	// which replacements apply from the permanent "as it would exist on
+	// the battlefield", and a face-down permanent is a 2/2 with no
+	// abilities (CR 708.2a). A face-down CAST already reads "" here —
+	// the card is face down on the stack — but a manifest takes a card
+	// that is face UP in its library, so without this a manifested
+	// shockland asked its controller for 2 life, on a card the rest of
+	// the table was not allowed to see. That question could not be put
+	// while the put batch was unresumable, so it took the un-asked
+	// branch and the manifest entered TAPPED instead — wrong the other
+	// way, and silently.
+	if CatalogReplacements != nil && ev.CardID != uuid.Nil && !g.Battlefield.Contains(ev.CardID) &&
+		!(ev.Kind == RepEventMove && ev.NewZone == ZoneBattlefield && ev.FaceDown != FaceDownNone) {
 		if entering, ok := g.LookupCardForEffect(ev.CardID); ok {
 			key := CatalogKey(entering)
 			reps := CatalogReplacements(key)

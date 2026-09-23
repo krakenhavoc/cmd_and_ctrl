@@ -1,8 +1,6 @@
 package game
 
 import (
-	"errors"
-
 	"github.com/google/uuid"
 )
 
@@ -119,9 +117,10 @@ type LibraryEntryOptions = ZoneEntryOptions
 // card is still in the library, the CR 614 pipeline runs before it
 // leaves, the move is followed by EventZoneMove, EventETB and the
 // catalog's AsEnters hook, and a land put this way is not a land drop
-// (CR 305.4). It is not entryResumable either — no Clone choice and
-// no entry prompt, the declared simplification the search and hand
-// paths already carry.
+// (CR 305.4). Since #1322 the entry can pause for its own question — a
+// shockland's life, a Clone's copy, a reveal-land's reveal — in which
+// case this returns uuid.Nil and the card lands when the answer
+// arrives; see entry_batch.go.
 //
 // It does NOT emit EventSearchLibrary and does NOT shuffle. That is
 // the whole difference from a search, and the reason this is not
@@ -175,20 +174,32 @@ func (g *Game) PutFromLibraryOntoBattlefieldForEffect(cardID uuid.UUID, opts Lib
 //     battlefield when the first event is harvested: a Soul Warden
 //     put alongside two creatures sees both of them, as it would.
 //
+// # A question pauses the whole batch (#1322)
+//
+// A card whose window asks something — a shockland's "you may pay 2
+// life", a Clone's "copy what?", a reveal-land's reveal, a CR 616
+// ordering prompt — stops phase 1 there. Nothing has moved; the
+// answer's resume hands the settled event back to the batch, which
+// opens the next card's window, and the batch lands when the last one
+// settles (CR 614.12a: the choice is made before the permanent
+// enters). This door then returns nil with a nil error, and a caller
+// that needs to know what entered uses
+// PutCardsFromLibraryOntoBattlefieldThenForEffect. See entry_batch.go.
+//
 // # The declared simplification that remains
 //
-// The AsEnters hooks (CR 614.12 "as this enters, choose …") run one
-// after another in phase 3, after every card has landed, so a choice
-// one of them makes can see the rest of the batch on the battlefield.
-// No catalog AsEnters choice reads the other permanents entering with
-// it today; the first one that does would err in whichever direction
-// its choice leans, and should say so on its own card.
+// The AsEnters hooks that are ETB-hook prompts rather than CR 614
+// windows ("as this enters, choose a creature type", which
+// creature_type_choice.go queues from the hook) run one after another
+// in phase 3, after every card has landed, so a choice one of them
+// makes can see the rest of the batch on the battlefield. No catalog
+// AsEnters choice reads the other permanents entering with it today;
+// the first one that does would err in whichever direction its choice
+// leans, and should say so on its own card.
 //
-// A card whose pipeline PAUSES (a CR 616 ordering prompt) stays in the
-// library and is not part of the entry, and a card a replacement
-// cancels or redirects likewise stays where it was — the same posture
-// as the single-card move, and weaker than printed rather than
-// stronger. Returns the IDs that entered, in the order given.
+// A card a replacement cancels or redirects stays where it was — the
+// same posture as the single-card move. Returns the IDs that entered,
+// in the order given.
 //
 // Every ID is validated before anything happens: one that is not in
 // a library (ErrCardNotFound) or not a permanent card — a nonpermanent
@@ -251,263 +262,67 @@ func (g *Game) ManifestForEffect(playerID uuid.UUID) (uuid.UUID, error) {
 	return entered[0], nil
 }
 
-// pendingPut is one card of a putOntoBattlefieldFromZoneLocked batch
-// between its pipeline (phase 1) and its announcement (phase 3).
-type pendingPut struct {
-	cardID     uuid.UUID
-	src        *Zone
-	controller uuid.UUID
-	// priorController is the Controller the card carried in its
-	// source zone, put back if it does not enter.
-	priorController uuid.UUID
-	out             *ReplacementEvent
-	eventID         ReplacementEventID
-	entered         bool
-}
-
 // putOntoBattlefieldFromZoneLocked is the shared body of the hand and
-// library moves. `from` is the only zone kind a named card may be in;
-// see PutCardsFromLibraryOntoBattlefieldForEffect for the three phases
-// and PutFromHandOntoBattlefieldForEffect for the steps each card owes.
+// library moves' synchronous doors: one simultaneous entry
+// (entry_batch.go) of cards that are all in zones of kind `from`,
+// reporting what entered on return.
+//
+// When a card's window asks a question (#1322) the batch waits for the
+// answer, so this returns (nil, nil) and the cards land when it
+// arrives. A caller with something to do with the entered permanents
+// uses a Then door instead —
+// PutCardsFromLibraryOntoBattlefieldThenForEffect,
+// PutFromHandOntoBattlefieldThenForEffect or
+// PutOntoBattlefieldTogetherThenForEffect.
 //
 // Caller must hold g.mu.
 func (g *Game) putOntoBattlefieldFromZoneLocked(ids []uuid.UUID, from ZoneKind, opts ZoneEntryOptions) ([]uuid.UUID, error) {
-	// Validate the whole batch before touching any of it.
-	batch := make([]*pendingPut, 0, len(ids))
-	seen := make(map[uuid.UUID]bool, len(ids))
+	var entered []uuid.UUID
+	err := g.startEntryBatchLocked(batchEntriesFrom(ids, from), opts, func(_ *Game, in []uuid.UUID) error {
+		entered = in
+		return nil
+	})
+	return entered, err
+}
+
+// batchEntriesFrom names every ID as put from one zone kind.
+func batchEntriesFrom(ids []uuid.UUID, from ZoneKind) []BatchEntry {
+	out := make([]BatchEntry, 0, len(ids))
 	for _, id := range ids {
-		if seen[id] {
-			continue
-		}
-		seen[id] = true
-		src := g.findCardZoneLocked(id)
-		if src == nil || src.Kind != from {
-			return nil, ErrCardNotFound
-		}
-		c, ok := g.cardInZoneLocked(src, id)
-		if !ok {
-			return nil, ErrCardNotFound
-		}
-		// CR 110.4: only a permanent card can be put onto the
-		// battlefield — unless it is going there FACE DOWN, in which
-		// case the object that arrives is a 2/2 creature whatever the
-		// card says (CR 701.40a, CR 708.2). Manifesting an instant is
-		// legal and common.
-		if !c.IsPermanent() && opts.FaceDown == FaceDownNone {
-			return nil, ErrInvalidParam
-		}
-		if c.IsToken() {
-			// CR 111.8: a token that has left the battlefield can't
-			// move to another zone or come back onto the battlefield,
-			// and CR 108.2: it is not a "card" at all. Since #596 the
-			// CR 704.5d sweep removes it at the next state-based
-			// check, so a token tucked into a library (Chaos Warp) is
-			// only there for the window before that; putting it back
-			// inside that window would undo the removal that tucked
-			// it. Refused like a nonpermanent.
-			return nil, ErrInvalidParam
-		}
-		controller := opts.Controller
-		if controller == uuid.Nil || g.playerByIDLocked(controller) == nil {
-			controller = src.Owner
-		}
-		batch = append(batch, &pendingPut{cardID: id, src: src, controller: controller, priorController: c.Controller})
+		out = append(out, BatchEntry{CardID: id, From: from})
 	}
-	if len(batch) == 0 {
-		return nil, nil
-	}
+	return out
+}
 
-	// Phase 1: stamp every controller, then run every pipeline, all
-	// against the pre-entry board. Controllers go first so a
-	// replacement consulted for one card of the batch reads the right
-	// controller on the others.
-	for _, p := range batch {
-		for i := range p.src.Cards {
-			if p.src.Cards[i].InstanceID == p.cardID {
-				p.src.Cards[i].Controller = p.controller
-				break
-			}
-		}
-	}
-	defer func() {
-		for _, p := range batch {
-			if p.out != nil {
-				g.clearReplacementEventLocked(p.eventID)
-			}
-		}
-	}()
-	var firstErr error
-	for _, p := range batch {
-		// NO entryResumable, and this is THE site the flag's doc
-		// comment and the shockland / MDFC-land caveats name: the
-		// three phases run every card's pipeline against the
-		// pre-entry board and then move them together, and a per-card
-		// resume would finish one card's entry after the others had
-		// landed, which is the simultaneity this function exists for.
-		// So an effect that would pause here (a pay-life entry
-		// choice, a Clone pick) takes the un-paid branch instead —
-		// weaker than printed, never stronger. See
-		// ReplacementEvent.entryResumable and
-		// offerEntryLifePaymentLocked.
-		ev := &ReplacementEvent{
-			Kind:         RepEventMove,
-			Actor:        p.controller,
-			CardID:       p.cardID,
-			OldZone:      from,
-			NewZone:      ZoneBattlefield,
-			EntersTapped: opts.Tapped,
-			// #1227: and the attacking clause, seeded here for the
-			// reason EntersTapped is. See ZoneEntryOptions.Attacking.
-			EntersAttacking: opts.Attacking,
-			// ADR 0082 decision 3: the face-down state rides the
-			// EVENT rather than a local, so both battlefield-entry
-			// doors carry the same fact in the same field and a
-			// replacement effect inspecting the entry sees it.
-			FaceDown:       opts.FaceDown,
-			FaceDownListed: opts.FaceDownListed,
-		}
-		out, err := g.applyReplacementsLocked(ev)
-		if errors.Is(err, errReplacementPending) {
-			// A CR 616 ordering prompt is open. Nothing has moved;
-			// this card stays where it is and is not part of the put.
-			continue
-		}
-		if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
-			g.clearReplacementEventLocked(ev.ID)
-			if firstErr == nil {
-				firstErr = err
-			}
-			continue
-		}
-		if out == nil || out.Canceled || out.NewZone != ZoneBattlefield {
-			// Canceled, or redirected somewhere else by a
-			// replacement. There is no generic "put it wherever the
-			// pipeline said" helper for these sources, so a redirect
-			// is treated as a cancel rather than guessed at — the
-			// posture the exile-return path takes.
-			g.clearReplacementEventLocked(ev.ID)
-			continue
-		}
-		p.out, p.eventID = out, ev.ID
-	}
+// PutCardsFromLibraryOntoBattlefieldThenForEffect is
+// PutCardsFromLibraryOntoBattlefieldForEffect with the rest of the
+// effect as a continuation: `then` is told the permanents that entered
+// once the entry is complete — at once when no card's window asked a
+// question, and from the last answer when one did (#1322). It runs
+// exactly once, including when the batch is refused, which is what lets
+// a caller put "the rest" of a library pile away without ever doing it
+// while a card of the pile is still waiting to enter.
+//
+// Caller must hold g.mu.
+func (g *Game) PutCardsFromLibraryOntoBattlefieldThenForEffect(ids []uuid.UUID, opts LibraryEntryOptions, then func(g *Game, entered []uuid.UUID) error) error {
+	return g.startEntryBatchLocked(batchEntriesFrom(ids, ZoneLibrary), opts, then)
+}
 
-	// Phase 2: move every card whose pipeline settled on the
-	// battlefield.
-	entered := make([]uuid.UUID, 0, len(batch))
-	for _, p := range batch {
-		if p.out == nil {
-			continue
+// PutFromHandOntoBattlefieldThenForEffect is the hand door with a
+// continuation, told the entering permanent's ID (uuid.Nil when nothing
+// entered) once the entry is complete. See
+// PutCardsFromLibraryOntoBattlefieldThenForEffect for when it runs.
+//
+// Caller must hold g.mu.
+func (g *Game) PutFromHandOntoBattlefieldThenForEffect(cardID uuid.UUID, opts HandEntryOptions, then func(g *Game, entered uuid.UUID) error) error {
+	return g.startEntryBatchLocked([]BatchEntry{{CardID: cardID, From: ZoneHand}}, opts, func(g *Game, in []uuid.UUID) error {
+		if then == nil {
+			return nil
 		}
-		moved, err := MoveCard(p.src, g.Battlefield, p.cardID)
-		if err != nil {
-			if firstErr == nil {
-				firstErr = err
-			}
-			continue
+		entered := uuid.Nil
+		if len(in) > 0 {
+			entered = in[0]
 		}
-		for i := range g.Battlefield.Cards {
-			if g.Battlefield.Cards[i].InstanceID != moved.InstanceID {
-				continue
-			}
-			g.Battlefield.Cards[i].Controller = p.controller
-			// out.EntersTapped carries both inputs: the putting
-			// effect's own "tapped" clause, seeded onto the event, and
-			// whatever the CR 614 pipeline added on top. The permanent
-			// ARRIVES tapped — no tap event fires.
-			if p.out.EntersTapped {
-				g.Battlefield.Cards[i].Tapped = true
-			}
-			// Whatever a hidden zone had recorded about who could see
-			// this card (a scry, a look) is superseded: the
-			// battlefield is public, and markCardKnownInZoneLocked
-			// below makes every seat a knower.
-			//
-			// MoveCard has already cleared the face-down state
-			// (CR 400.7, ADR 0069 decision 5), so the former
-			// `FaceDown = false` here is gone; a FACE-DOWN entry sets
-			// it back, below, instead of marking the table.
-			g.Battlefield.Cards[i].ClearKnown()
-			break
-		}
-		if p.out.FaceDown != FaceDownNone {
-			// CR 708.5: the controller of a face-down permanent may
-			// look at it, and nobody else may — so this replaces the
-			// public-zone marking rather than adding to it. Read off
-			// the settled EVENT rather than off opts, for the reason
-			// EntersTapped is: the pipeline gets the last word.
-			g.applyFaceDownLandingLocked(g.Battlefield, moved.InstanceID, p.out.FaceDown, p.out.FaceDownListed)
-		} else {
-			g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
-		}
-		g.applyEntryCountersLocked(moved.InstanceID, p.out.EntersWithCounters)
-		// ADR 0090, CR 722.3a: read off the settled event for the
-		// reason EntersTapped is, before phase 3 announces.
-		g.applyEntersPreparedLocked(moved.InstanceID, p.out.EntersPrepared)
-		// CR 506.3c (#1227): a permanent PUT onto the battlefield
-		// attacking. Read off the settled EVENT for the reason
-		// EntersTapped is, and stamped HERE — inside phase 2, before
-		// phase 3 announces — so the EventETB an entering ninja fires
-		// already finds it attacking. One shared helper with the
-		// token door; see stampEntryAttackerLocked.
-		g.stampEntryAttackerLocked(moved.InstanceID, p.out.EntersAttacking)
-		p.entered = true
-		entered = append(entered, moved.InstanceID)
-	}
-
-	// A card that did not enter (canceled, redirected, paused, or its
-	// move failed) is still in its source zone wearing the controller
-	// phase 1 stamped for the entry. Give it back what it had, so a put
-	// under someone other than the owner (Lonis) leaves no trace on a
-	// card it never moved.
-	for _, p := range batch {
-		if p.entered {
-			continue
-		}
-		for i := range p.src.Cards {
-			if p.src.Cards[i].InstanceID == p.cardID {
-				p.src.Cards[i].Controller = p.priorController
-				break
-			}
-		}
-	}
-
-	// Phase 3: announce. Every permanent of the batch is on the
-	// battlefield before the first event, so a watcher among them
-	// sees the rest.
-	for _, p := range batch {
-		if !p.entered {
-			continue
-		}
-		g.EmitEvent(Event{
-			Kind:    EventZoneMove,
-			Actor:   p.controller,
-			CardID:  p.cardID,
-			OldZone: from,
-			NewZone: ZoneBattlefield,
-		})
-		g.EmitEvent(Event{Kind: EventETB, Actor: p.controller, CardID: p.cardID})
-	}
-	for _, p := range batch {
-		if !p.entered {
-			continue
-		}
-		if c, ok := g.cardInZoneLocked(g.Battlefield, p.cardID); ok {
-			g.fireETBHookLocked(p.cardID, CatalogKey(c))
-		}
-	}
-	if len(entered) == 0 {
-		// Nothing moved, so no zone lost a card and no open pick can
-		// have been invalidated by this call.
-		return nil, firstErr
-	}
-	// #1069: the batch has left the hand or the library it came from,
-	// so an open choose_cards prompt over that zone — a discard prompt
-	// whose candidates a Warp World just put onto the battlefield — is
-	// trimmed or withdrawn here. One call for the whole batch: the
-	// prune is keyed by zone and re-reads every open pick
-	// (battlefield_entry.go). After phase 3, so every arrival is
-	// announced and every ETB hook has run before a withdrawal's
-	// continuation can start something of its own.
-	g.pruneChoicesAfterArrivalLocked()
-	return entered, firstErr
+		return then(g, entered)
+	})
 }

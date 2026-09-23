@@ -44,17 +44,17 @@ import (
 // takes when a player plays it as a land — and, since #478, stack
 // resolution, the library search, the exile return and the
 // reanimation, so a fetched or blinked MDFC land back is asked too.
-// The one entry that still takes the un-paid branch is
-// putOntoBattlefieldFromZoneLocked's batch (see shocklands.go, and
-// server/internal/game/battlefield_put.go:313 for the event built
-// without the flag): weaker than printed, never stronger.
 //
-// The caveat below says that narrower thing since #1051. It used to
-// say "by another spell", which #478 made an overstatement — a search
-// is a spell, and a fetched back face is prompted. The shocklands'
-// caveat is the same sentence with 2 life for 3, and
-// TestWhichShocklandEntrySitesOfferThePayment holds both halves of it
-// against the engine for the whole family.
+// Since #1322 it is every effect-side entry: the hand / library "put"
+// batch (Genesis Wave, Coiling Oracle, Arboreal Grazer) asks one card's
+// question at a time and lands the batch once the last answer is in
+// (server/internal/game/entry_batch.go). The caveat every back face
+// carried until then — "a back face a spell PUTS onto the battlefield
+// always enters tapped" — is gone, so the whole cycle is complete.
+// TestEveryShocklandEntrySiteOffersThePayment holds every site against
+// the engine for the shocklands, and
+// TestPutPayLifeMDFCBackOffersTheLife (mdfc_lands_test.go) does the
+// same for the back faces.
 
 // mdfcLandLifeCost is what every pay-life MDFC land back charges.
 // All fifteen ask for the same number; naming it keeps the prompt
@@ -120,8 +120,7 @@ func registerMDFCLandBacks(rows []mdfcLandBack, reps func(back string) []game.Re
 			// face's.
 			OracleID:      game.CatalogKeyForFace(row.oracleID, 1),
 			Name:          row.back,
-			Completeness:  CompletenessCaveats,
-			Caveats:       []string{"A back face a spell PUTS onto the battlefield out of a hand or library — Genesis Wave, Coiling Oracle, Arboreal Grazer — always enters tapped. Playing it as a land, or fetching it with a search (a fetchland, Farseek), does offer the 3 life."},
+			Completeness:  CompletenessFull,
 			Replacements:  reps(row.back),
 			ManaAbilities: []ManaAbility{backManaAbility(row.colors)},
 		})

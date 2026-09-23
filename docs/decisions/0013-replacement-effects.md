@@ -1450,6 +1450,13 @@ whose pipeline pauses stays where it was: weaker than printed, never
 stronger, and it is now the only site `optionalReplacementResumableLocked`
 and `offerEntryLifePaymentLocked` refuse to prompt for.
 
+*Superseded 2026-09-23 (#1322):* the batch is resumable now. It walks its
+cards' windows one at a time, carries itself across a question on
+`entryTail.batch`, and lands everything once the last answer is in, so
+simultaneity survives the pause. The one entry left unflagged is the
+sandbox `move_card` verb. See the
+[ADR 0061 amendment of 2026-09-23](0061-token-creation-and-discard-are-replaceable-events.md#amendment-2026-09-23-a-simultaneous-entry-can-ask-can-come-from-two-zones-and-the-exile-return-reports-what-arrived).
+
 **8. Nothing new is snapshotted.** `entryTail` rides the
 `replacementResume` frame the census already counts
 (`ChoiceResumeFrames`), and gets its own copy in

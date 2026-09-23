@@ -1353,12 +1353,36 @@ uses finishes it
 means the line after a fetch, a blink or a reanimation may run one
 action later than the call; if you read the permanent's zone, its ID or
 what arrived, use the effect's own continuation
-(`SearchLibrarySpec.Then`) rather than the next line. The one entry that
-still cannot pause is `putOntoBattlefieldFromZoneLocked` (the
-hand / library "put onto the battlefield" batch), which runs every
-card's pipeline against the pre-entry board and moves them together; a
-card of that batch whose pipeline pauses stays where it was — weaker
-than printed, never stronger.
+(`SearchLibrarySpec.Then`, `ReturnFromExile.Then`) rather than the next
+line.
+
+**"Put … onto the battlefield" is one entry, and it can ask too**
+(#1322, #1324, #1327; [ADR 0061 amendment
+2026-09-23](docs/decisions/0061-token-creation-and-discard-are-replaceable-events.md)).
+The hand / library / exile put batch
+([entry_batch.go](server/internal/game/entry_batch.go)) runs each card's
+window against the pre-entry board, one at a time; a card that asks
+something stops the batch there, and the batch lands every card together
+once the last answer is in. So a shockland Genesis Wave puts is offered
+its life, and a Clone it puts is asked what to copy. Three rules for
+card code:
+
+- If your sentence continues past the put ("put the rest on the
+  bottom", "if you put a Cave onto the battlefield this way"), use a
+  Then door — `PutCardsFromLibraryOntoBattlefieldThenForEffect`,
+  `PutFromHandOntoBattlefieldThenForEffect`, or the effects primitives
+  `PutFromLibraryOntoBattlefield` / `PutFromHandOntoBattlefield`, which
+  already do. The synchronous doors return nothing while a card waits.
+- "Put both cards onto the battlefield" from two zones is
+  `PutOntoBattlefieldTogetherThenForEffect` with a `game.BatchEntry` per
+  card (Sword of Hearth and Home). Two calls in a row are two events, and
+  CR 603.6a can tell: a trigger on the first card would not see the
+  second.
+- "If it entered under your control" after an exile return is
+  `ReturnFromExile{…, Then: …}` (Phelia, Exuberant Shepherd); `entered`
+  is the new object's ID, `uuid.Nil` when nothing came back.
+
+The one entry that still cannot pause is the sandbox `move_card` verb.
 
 **Regeneration is an engine built-in, not a card's replacement**
 (#667, [ADR 0013 §5p](docs/decisions/0013-replacement-effects.md)).

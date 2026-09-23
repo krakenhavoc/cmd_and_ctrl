@@ -2163,6 +2163,21 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		// sacrifice / SBA exit, which keeps its own mover and carries
 		// a route only to hold a continuation (#815, ViaBattlefieldLeave).
 		// It falls through to the battlefield-leave branch below.
+		//
+		// #1322: one card of a SIMULTANEOUS entry is not landed here.
+		// Its window has settled, so the settled event goes back to the
+		// batch, which opens the next card's window and lands the whole
+		// batch together once the last one settles (entry_batch.go).
+		// First, because a batch card is an entry the branches below
+		// would otherwise finish on its own.
+		if b, i, ok := ev.takeEntryBatch(); ok {
+			if err := g.resumeEntryBatchLocked(b, i, ev); err != nil {
+				return err
+			}
+			// An action boundary, as for the single entry below.
+			g.runStateChecksLocked()
+			return nil
+		}
 		if ev.zoneRoute != nil && !ev.zoneRoute.ViaBattlefieldLeave {
 			return g.executeZoneRouteLocked(ev)
 		}
@@ -2196,16 +2211,19 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 			return nil
 		}
 		if ev.OldZone != ZoneBattlefield {
-			// What is left here is a battlefield ENTRY that is not
-			// entryResumable: putOntoBattlefieldFromZoneLocked's batch,
-			// which runs every card's pipeline against the pre-entry
-			// board and then moves them together — a simultaneity a
-			// per-card resume would break. It bails before moving
-			// anything and is documented as not happening when it
-			// pauses; see ReplacementEvent.entryResumable. Since #707 no
+			// What is left here is a battlefield entry the window
+			// REDIRECTED (it settled on some zone other than the
+			// battlefield), or one that is not entryResumable at all —
+			// since #1322 that is only the sandbox move_card verb,
+			// which never pauses. A redirected effect-side entry is
+			// treated as a cancel, the posture
+			// enterBattlefieldThroughPipelineLocked takes inline, so
+			// the caller's continuation is still told nothing entered;
+			// it used to be dropped here, which stranded a search whose
+			// fetched card a paused window redirected. Since #707 no
 			// EXIT lands here: every one of them carries a zoneRoute or
 			// comes off the battlefield.
-			return nil
+			return g.runEntryTailLocked(ev, uuid.Nil)
 		}
 		var owner *Player
 		if card, ok := g.LookupCardForEffect(ev.CardID); ok {

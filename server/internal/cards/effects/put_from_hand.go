@@ -141,21 +141,23 @@ func (p PutFromHandOntoBattlefield) Apply(ctx *Context) error {
 		// player's hand when the answer arrives.
 		Zone: game.ZoneHand,
 		Then: func(g *game.Game, picked []uuid.UUID) error {
-			entered := uuid.Nil
-			if len(picked) > 0 {
-				id, err := g.PutFromHandOntoBattlefieldForEffect(picked[0], game.HandEntryOptions{
-					Controller: player,
-					Tapped:     tapped,
-				})
-				if err != nil {
-					return err
+			report := func(g *game.Game, entered uuid.UUID) error {
+				if then != nil {
+					return then(g, PutFromHandResult{Source: source, Player: player, Entered: entered})
 				}
-				entered = id
+				return nil
 			}
-			if then != nil {
-				return then(g, PutFromHandResult{Source: source, Player: player, Entered: entered})
+			if len(picked) == 0 {
+				return report(g, uuid.Nil)
 			}
-			return nil
+			// Through the Then door (#1322): the land may stop to ask
+			// its own question (a shockland's life), and a rider on
+			// the result (Spelunking's Cave) has to wait for the
+			// answer rather than read an entry that has not happened.
+			return g.PutFromHandOntoBattlefieldThenForEffect(picked[0], game.HandEntryOptions{
+				Controller: player,
+				Tapped:     tapped,
+			}, report)
 		},
 	})
 	return nil

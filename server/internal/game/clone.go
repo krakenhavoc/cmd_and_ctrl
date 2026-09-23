@@ -789,6 +789,13 @@ func cloneReplacementResume(f *replacementResumeFrame) *replacementResumeFrame {
 		// card and skip the library shuffle.
 		if f.ev.entryTail != nil {
 			tail := *f.ev.entryTail
+			// #1322: and the simultaneous entry the tail may be one
+			// card of. The batch's cursor moves and its settled events
+			// accumulate as the resume walks it, so a shared batch
+			// would let the live game's answer walk the snapshot's
+			// batch on, and an undone-then-redone answer would skip
+			// the rest of the entry.
+			tail.batch = cloneEntryBatch(f.ev.entryTail.batch)
 			ev.entryTail = &tail
 		}
 		out.ev = &ev

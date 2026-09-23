@@ -31,17 +31,19 @@ package game
 //	                                  play, stack resolution, a search,
 //	                                  an exile return, a reanimation, a
 //	                                  token (entry_choice.go)
-//	putOntoBattlefieldFromZoneLocked  the hand / library "put onto the
-//	                                  battlefield" batch and manifest
-//	                                  (battlefield_put.go)
+//	landEntryBatchLocked              the hand / library / exile "put
+//	                                  onto the battlefield" batch and
+//	                                  manifest (entry_batch.go)
 //	moveCardByRefLocked               the sandbox / admin move into the
 //	                                  battlefield or the stack
 //	                                  (mutations.go)
 //
-// The last two are the two sites that are deliberately NOT resumable
-// (ReplacementEvent.entryResumable), which is exactly why they cannot
-// be folded into the first. So the prune gets one named home that all
-// three call, in the shape battlefieldExitLocked already has on the
+// The batch is resumable since #1322 and lands through the same
+// landEntryLocked / announceEntryLocked halves the first uses, but it
+// announces a whole batch after landing it, so it prunes once for the
+// batch rather than once per card. The sandbox move is deliberately
+// NOT resumable (ReplacementEvent.entryResumable). So the prune gets
+// one named home that all three call, in the shape battlefieldExitLocked already has on the
 // other side: a card added later is covered by the rule rather than by
 // a code review, and a second prune that belongs to the entry side has
 // somewhere to go.

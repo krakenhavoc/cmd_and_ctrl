@@ -401,26 +401,22 @@ func TestShocklandEveryMemberEntersTappedOnDecline(t *testing.T) {
 	}
 }
 
-// TestWhichShocklandEntrySitesOfferThePayment is the CAVEAT, held
-// against the engine (#1051).
+// TestEveryShocklandEntrySiteOffersThePayment is the table that used
+// to hold the shocklands' CAVEAT against the engine (#1051), and since
+// #1322 holds its absence.
 //
-// The caveat used to read "put onto the battlefield by another spell
-// always enters tapped", and that stopped being true at #478: the
-// effect-side entries that go through
-// enterBattlefieldThroughPipelineLocked are entryResumable, so the
-// biggest "another spell" there is — a SEARCH, which is every
-// fetchland, Farseek, Circuitous Route and Expedition Map — pauses the
-// entry and asks. What survives is the entry site that runs the CR 614
-// pipeline with NO resume behind it:
-// putOntoBattlefieldFromZoneLocked, the hand / library "put onto the
-// battlefield" batch (server/internal/game/battlefield_put.go:94),
-// whose simultaneity a per-card resume would break. There the engine
-// takes the un-paid branch — weaker than printed, never stronger.
+// The caveat read "a shockland a spell PUTS onto the battlefield out of
+// a hand or library always enters tapped", and was true because the
+// put batch (putOntoBattlefieldFromZoneLocked) was the one entry site
+// built without entryResumable: a per-card resume would have landed one
+// card after the rest of the batch had been announced. The batch is a
+// resumable value now (server/internal/game/entry_batch.go), so every
+// row asks, pays, and enters untapped — and the caveat is gone from all
+// ten shocklands and the fifteen pay-life MDFC land backs.
 //
 // One table over the entry SITES rather than a test per card, because
-// what the caveat claims is a DIFFERENCE: either half asserted alone
-// would keep passing if the other moved, and it is the boundary
-// between them that the caveat's words have to track.
+// the claim the cards make is about every way a land can arrive: a
+// site that stops asking would fail here by name.
 //
 // The search row is deliberately thin. What it pins is that this
 // family is asked at all; the search's own side of the pause —
@@ -428,17 +424,15 @@ func TestShocklandEveryMemberEntersTappedOnDecline(t *testing.T) {
 // the shuffle wait for the answer — is
 // TestFetchedShocklandOffersItsPaymentAndTheSearchWaits
 // (search_chooser_test.go), and is not copied here.
-func TestWhichShocklandEntrySitesOfferThePayment(t *testing.T) {
+func TestEveryShocklandEntrySiteOffersThePayment(t *testing.T) {
 	for _, tc := range []struct {
-		site       string
-		wantPrompt bool
-		enter      func(t *testing.T, g *game.Game, me *game.Player) uuid.UUID
+		site  string
+		enter func(t *testing.T, g *game.Game, me *game.Player) uuid.UUID
 	}{
 		{
 			// A fetchland cracking for it, Farseek, a Circuitous
 			// Route: the search path, entryResumable since #478.
-			site:       "fetched by a search",
-			wantPrompt: true,
+			site: "fetched by a search",
 			enter: func(t *testing.T, g *game.Game, me *game.Player) uuid.UUID {
 				t.Helper()
 				id := pushLibraryCardForTest(me, game.Card{
@@ -458,9 +452,8 @@ func TestWhichShocklandEntrySitesOfferThePayment(t *testing.T) {
 		},
 		{
 			// Warp World, Genesis Wave, Coiling Oracle: the library
-			// half of the batch that cannot resume.
-			site:       "put from the library",
-			wantPrompt: false,
+			// half of the put batch, resumable since #1322.
+			site: "put from the library",
 			enter: func(t *testing.T, g *game.Game, me *game.Player) uuid.UUID {
 				t.Helper()
 				id := pushLibraryCardForTest(me, game.Card{
@@ -481,8 +474,7 @@ func TestWhichShocklandEntrySitesOfferThePayment(t *testing.T) {
 		{
 			// Arboreal Grazer: the hand half of the same batch, and
 			// not a land drop.
-			site:       "put from the hand",
-			wantPrompt: false,
+			site: "put from the hand",
 			enter: func(t *testing.T, g *game.Game, me *game.Player) uuid.UUID {
 				t.Helper()
 				id := uuid.New()
@@ -513,28 +505,20 @@ func TestWhichShocklandEntrySitesOfferThePayment(t *testing.T) {
 			id := tc.enter(t, g, me)
 
 			prompt := entryPayLifeChoiceFor(g, me.ID)
-			switch {
-			case tc.wantPrompt && prompt == nil:
-				t.Fatal("no pay-life prompt: this entry site is entryResumable, so the " +
-					"land's own replacement is allowed to ask")
-			case !tc.wantPrompt && prompt != nil:
-				t.Fatal("prompted on an entry the engine cannot resume; pausing there would " +
-					"strand the card in its old zone")
+			if prompt == nil {
+				t.Fatal("no pay-life prompt: every entry site is entryResumable since #1322, " +
+					"so the land's own replacement is allowed to ask")
 			}
-
-			wantLife, wantTapped := lifeBefore, true
-			if tc.wantPrompt {
-				if prompt.PayCost != "2 life" {
-					t.Errorf("prompt cost label: got %q, want %q", prompt.PayCost, "2 life")
-				}
-				// The ENTRY is what is being replaced, so nothing has
-				// entered while the question is open.
-				if _, ok := battlefieldCard(g, id); ok {
-					t.Error("the land entered before the choice was made")
-				}
-				answerEntryPayLife(t, g, me.ID, true)
-				wantLife, wantTapped = lifeBefore-2, false
+			if prompt.PayCost != "2 life" {
+				t.Errorf("prompt cost label: got %q, want %q", prompt.PayCost, "2 life")
 			}
+			// The ENTRY is what is being replaced, so nothing has
+			// entered while the question is open.
+			if _, ok := battlefieldCard(g, id); ok {
+				t.Error("the land entered before the choice was made")
+			}
+			answerEntryPayLife(t, g, me.ID, true)
+			wantLife, wantTapped := lifeBefore-2, false
 
 			card, ok := battlefieldCard(g, id)
 			if !ok {
