@@ -487,6 +487,8 @@ type cardSnapshot struct {
 	AttachedTo               TargetRef           `json:"attachedTo,omitempty"`
 	AttachedAt               int64               `json:"attachedAt,omitempty"`
 	BaseController           uuid.UUID           `json:"baseController,omitempty"`
+	FaceDownListed           *FaceDownListing    `json:"faceDownListed,omitempty"`
+	FaceTurnedAt             int64               `json:"faceTurnedAt,omitempty"`
 	// NamedTribe is the CR 614.12 "as this enters, choose a creature
 	// type" answer (S26). Carried rather than rebuilt: the choice was
 	// made by a player and nothing in the catalog can re-derive it, so
@@ -1211,6 +1213,8 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		RegenerationShields:      c.RegenerationShields,
 		FaceDown:                 c.FaceDown,
 		FaceDownKind:             c.FaceDownKind,
+		FaceDownListed:           c.FaceDownListed.clone(),
+		FaceTurnedAt:             c.FaceTurnedAt,
 		KnownBy:                  copyBoolMap(c.KnownBy),
 		EnteredBattlefieldAt:     c.EnteredBattlefieldAt,
 		ObjectEpoch:              c.ObjectEpoch,
@@ -1789,6 +1793,8 @@ func restoreCard(c *cardSnapshot) Card {
 		RegenerationShields:      c.RegenerationShields,
 		FaceDown:                 c.FaceDown,
 		FaceDownKind:             c.FaceDownKind,
+		FaceDownListed:           c.FaceDownListed.clone(),
+		FaceTurnedAt:             c.FaceTurnedAt,
 		KnownBy:                  copyBoolMap(c.KnownBy),
 		EnteredBattlefieldAt:     c.EnteredBattlefieldAt,
 		ObjectEpoch:              c.ObjectEpoch,

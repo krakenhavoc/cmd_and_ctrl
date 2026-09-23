@@ -1143,7 +1143,8 @@ type CardView struct {
 	FaceDown bool `json:"face_down,omitempty"`
 	// FaceDownKind is WHY the card is face down (ADR 0069) — one of
 	// "exiled", "foretold", "manifested", "morphed", "disguised",
-	// "cloaked", or absent for a face-up card. PUBLIC: every player
+	// "cloaked", "turned" (an effect, not a keyword, put it face down
+	// — #1209, #1270), or absent for a face-up card. PUBLIC: every player
 	// can see that a permanent is a morph and that an exiled card is
 	// foretold, so it survives the non-knower redaction. The client
 	// uses it to label the card back.
@@ -5631,6 +5632,13 @@ func redactCardForViewer(c CardView, known bool) CardView {
 // needs. game.FaceDownBody is consulted only for "is this a CR 708.2
 // object", so there is still one definition of the 2/2 for the engine
 // and the wire both.
+//
+// A LISTED body (CR 708.2, #1270) needs nothing here for the same
+// reason: the listing is read at layer 0 too, so `orig` already
+// carries "Artifact Creature — Cyberman" or "Land — Forest", and a
+// listed body is exactly as public as the default one. The kind check
+// is still the right gate — a listing only ever rides a permanent
+// state (Card.SetFaceDownListed).
 // IsFaceDownPermanent reports whether this view is a CR 708.2 object —
 // a face-down permanent, which every viewer sees as a 2/2 colourless
 // creature with no name (ADR 0069 decision 3), as opposed to a

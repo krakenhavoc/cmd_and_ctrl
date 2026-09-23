@@ -448,6 +448,16 @@ type ReplacementEvent struct {
 	// (ADR 0082 decision 3).
 	FaceDown FaceDownKind
 
+	// FaceDownListed is the CR 708.2 body the putting effect LISTED
+	// for a face-down entry — Yedora's "It's a Forest land",
+	// Cybership's "They're 2/2 Cyberman artifact creatures". nil is
+	// CR 708.2a's default nameless 2/2. Rides the event beside
+	// FaceDown for FaceDown's reason: the one entry finisher reads it,
+	// whichever door the permanent came through, and a paused entry's
+	// resume still knows it. Never mutated through the pointer, so the
+	// undo clone may share it. Meaningless without FaceDown. #1270.
+	FaceDownListed *FaceDownListing
+
 	// EntersAsCopyOf is the CR 707 copy a permanent enters wearing —
 	// the copiable values settled by a CopySelector replacement,
 	// with the card's "except" clause already applied. nil for the

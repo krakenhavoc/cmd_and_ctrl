@@ -34,29 +34,72 @@ import (
 type TurnFaceDown struct {
 	Source  uuid.UUID
 	Targets []uuid.UUID
+	// Listed is the body the card LISTS for what it turns over
+	// (CR 708.2) — CybermanBody() for Cyber Conversion's "It's a 2/2
+	// Cyberman artifact creature". nil is CR 708.2a's default
+	// nameless 2/2, which is Ixidron, Backslide and Master of the
+	// Veil. #1270.
+	Listed *game.FaceDownListing
 }
 
 func (t TurnFaceDown) Apply(ctx *Context) error {
 	if len(t.Targets) == 0 {
 		return nil
 	}
-	ctx.Game.TurnFaceDownForEffect(t.Source, t.Targets...)
+	ctx.Game.TurnFaceDownListedForEffect(t.Source, t.Listed, t.Targets...)
 	return nil
+}
+
+// CybermanBody is the face-down body the Doctor Who Cyberman cards
+// list — "It's a 2/2 Cyberman artifact creature" (Cyber Conversion,
+// Missy) and "They're 2/2 Cyberman artifact creatures" (Cybership,
+// The Cyber-Controller). CR 708.2: a listing REPLACES the default
+// body, so this is the whole object — no name, no text, no colour.
+//
+// A fresh value per call, because the engine copies it anyway and a
+// shared package-level pointer would be one careless write away from
+// turning every Cyberman into something else.
+func CybermanBody() *game.FaceDownListing {
+	return &game.FaceDownListing{
+		Types:     []string{"Artifact", "Creature"},
+		Subtypes:  []string{"Cyberman"},
+		Power:     2,
+		Toughness: 2,
+	}
+}
+
+// ForestLandBody is Yedora, Grave Gardener's "It's a Forest land. (It
+// has no other types or abilities.)" — not a creature, no P/T. The
+// "{T}: Add {G}" it has is CR 305.6's, which the engine derives from
+// the Forest subtype; the listing does not have to say it.
+func ForestLandBody() *game.FaceDownListing {
+	return &game.FaceDownListing{Types: []string{"Land"}, Subtypes: []string{"Forest"}}
 }
 
 // turnSingleTargetFaceDown is the body of every "turn target creature
 // … face down" card: read the one target, turn it over. Shared by
-// Backslide and Cyber Conversion as an OnResolve, and by Master of
-// the Veil as a trigger Effect, which is why it takes the item rather
-// than the Context.
+// Backslide as an OnResolve and by Master of the Veil as a trigger
+// Effect, which is why it takes the item rather than the Context.
 func turnSingleTargetFaceDown(g *game.Game, item *game.StackItem) error {
-	if item == nil || len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-		return nil
+	return turnSingleTargetFaceDownAs(nil)(g, item)
+}
+
+// turnSingleTargetFaceDownAs is turnSingleTargetFaceDown with a listed
+// body — Cyber Conversion's. nil is the CR 708.2a default.
+func turnSingleTargetFaceDownAs(listed func() *game.FaceDownListing) func(g *game.Game, item *game.StackItem) error {
+	return func(g *game.Game, item *game.StackItem) error {
+		if item == nil || len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+			return nil
+		}
+		t := TurnFaceDown{
+			Source:  item.SourceCardID,
+			Targets: []uuid.UUID{item.Targets[0].ID},
+		}
+		if listed != nil {
+			t.Listed = listed()
+		}
+		return t.Apply(NewContext(g, item))
 	}
-	return TurnFaceDown{
-		Source:  item.SourceCardID,
-		Targets: []uuid.UUID{item.Targets[0].ID},
-	}.Apply(NewContext(g, item))
 }
 
 // otherNontokenCreaturesOnBattlefield is Ixidron's "all other

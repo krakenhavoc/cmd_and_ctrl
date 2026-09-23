@@ -424,10 +424,11 @@ func (g *Game) activeStaticAbilitiesLocked() []ContinuousEffect {
 		// for every card in the S24 catalog (layer 6 grants and 7c
 		// modifies are both commutative), and right by construction
 		// for the first 7b "set" that meets a 7c "modify".
-		ts := src.EnteredBattlefieldAt
-		if src.AttachedAt != 0 {
-			ts = src.AttachedAt
-		}
+		//
+		// CR 613.7f (#1271): and it takes a new one each time it
+		// turns face up or face down. layerTimestamp is the latest
+		// of the three.
+		ts := src.layerTimestamp()
 		for _, ab := range abilities {
 			// #1221 / CR 113.6: a static that declares another zone
 			// does not ALSO apply from the battlefield. The declared
@@ -875,4 +876,19 @@ func (g *Game) LayerRecomputeCountForTest() uint64 {
 // package, where the one narrowing function reads it.
 func CommanderIdentityForTest(g *Game, p *Player) []string {
 	return commanderIdentityFor(g, p).Colors
+}
+
+// layerTimestamp is the CR 613.7 timestamp this permanent's OWN
+// continuous effects are ordered by: the LATEST new timestamp it has
+// received — entering the battlefield (CR 613.7d), becoming attached
+// (CR 613.7e, Card.AttachedAt), or turning face up or face down
+// (CR 613.7f, Card.FaceTurnedAt, #1271).
+//
+// The latest rather than a fixed precedence, because each of the three
+// is the same statement — "the permanent receives a new timestamp" —
+// and a later one supersedes an earlier one whichever kind it is. A
+// morph that was equipped and then turned face up sorts at the turn;
+// an Aura moved onto a new host after turning up sorts at the move.
+func (c *Card) layerTimestamp() int64 {
+	return max(c.EnteredBattlefieldAt, c.AttachedAt, c.FaceTurnedAt)
 }

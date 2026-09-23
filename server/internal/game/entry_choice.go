@@ -395,8 +395,8 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) (entered uu
 		// ETB trigger and no "as enters" hook, which is CR 708.2a
 		// falling out rather than a special case. `moved` is stamped
 		// too because that copy is what the ETB hook is keyed on.
-		g.applyFaceDownLandingLocked(g.Battlefield, entered, ev.FaceDown)
-		moved.SetFaceDown(ev.FaceDown)
+		g.applyFaceDownLandingLocked(g.Battlefield, entered, ev.FaceDown, ev.FaceDownListed)
+		moved.SetFaceDownListed(ev.FaceDown, ev.FaceDownListed)
 	} else {
 		g.markCardKnownInZoneLocked(g.Battlefield, entered)
 	}

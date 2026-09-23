@@ -175,3 +175,52 @@ func TestTurnFaceUpRowFollowsTheCardUnderneathNotTheEffect(t *testing.T) {
 		t.Errorf("cost = %q, want the card's morph cost", rows[0].Cost)
 	}
 }
+
+// TestAListedFaceDownBodyIsPublicAndTheCardIsNot is #1270's wire half.
+// A listed body is read at layer 0 like the default one, so the view
+// ships it with no view-side rule: every seat sees a nameless
+// "Artifact Creature — Cyberman" 2/2, and only the controller may look
+// at the card underneath (CR 708.5).
+func TestAListedFaceDownBodyIsPublicAndTheCardIsNot(t *testing.T) {
+	g := buildActiveGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	c := game.NewCard("Sheoldred, the Apocalypse", me.ID)
+	c.Controller = me.ID
+	c.OracleID = "oracle-listed-view"
+	c.ScryfallID = "scryfall-listed-view"
+	c.TypeLine = "Legendary Creature — Phyrexian Praetor"
+	c.ManaCost = "{2}{B}{B}"
+	c.Colors = []string{"B"}
+	c.Power, c.Toughness = 4, 5
+	c.EnteredBattlefieldAt = time.Now().UnixNano()
+	id := c.InstanceID
+	g.WithWriteLock(func() {
+		g.Battlefield.PushTop(c)
+		g.TurnFaceDownListedForEffect(uuid.Nil, &game.FaceDownListing{
+			Types:     []string{"Artifact", "Creature"},
+			Subtypes:  []string{"Cyberman"},
+			Power:     2,
+			Toughness: 2,
+		}, id)
+	})
+
+	theirs := findBattlefieldView(t, g, opp.ID, id)
+	if theirs.TypeLine != "Artifact Creature — Cyberman" {
+		t.Errorf("opponent: type line %q, want the listed \"Artifact Creature — Cyberman\"", theirs.TypeLine)
+	}
+	if theirs.Name != "" || theirs.ScryfallID != "" || theirs.ManaCost != "" || len(theirs.Colors) != 0 {
+		t.Errorf("opponent: the card underneath leaked (%q, %q, %q, %v)",
+			theirs.Name, theirs.ScryfallID, theirs.ManaCost, theirs.Colors)
+	}
+	if theirs.Power != 2 || theirs.Toughness != 2 {
+		t.Errorf("opponent: %d/%d, want the listed 2/2", theirs.Power, theirs.Toughness)
+	}
+
+	mine := findBattlefieldView(t, g, me.ID, id)
+	if !mine.FaceVisible || mine.ScryfallID != "scryfall-listed-view" {
+		t.Error("controller: may not look at the card underneath its own face-down permanent (CR 708.5)")
+	}
+	if mine.TypeLine != "Artifact Creature — Cyberman" {
+		t.Errorf("controller: type line %q — the OBJECT is the Cyberman for its controller too", mine.TypeLine)
+	}
+}

@@ -244,6 +244,13 @@ var cardFields = plan(
 	// reads an ABSENT kind on a face-down card as FaceDownExiled, the
 	// only face-down object that could exist before the field did.
 	"FaceDownKind", carried, "",
+	// #1270 / CR 708.2: the body an effect LISTED for a face-down
+	// object. Carried — nothing can re-derive that Yedora's face-down
+	// card is a Forest land rather than the default 2/2.
+	"FaceDownListed", carried, "",
+	// #1271 / CR 613.7f: the face-change timestamp. Carried with
+	// EnteredBattlefieldAt, which it competes with for the layer sort.
+	"FaceTurnedAt", carried, "",
 	"KnownBy", carried, "",
 	"EnteredBattlefieldAt", carried, "",
 	// #936 / CR 400.7: the object's serial number, and the epoch half

@@ -96,6 +96,12 @@ type ZoneEntryOptions struct {
 	//     runs no ETB trigger and no "as enters" choice, which is
 	//     CR 708.2a falling out rather than being special-cased.
 	FaceDown FaceDownKind
+
+	// FaceDownListed is the body the putting effect LISTED for a
+	// face-down entry (CR 708.2) — Cybership's "They're 2/2 Cyberman
+	// artifact creatures". nil is CR 708.2a's default 2/2, which is
+	// what manifest and cloak get. Ignored without FaceDown. #1270.
+	FaceDownListed *FaceDownListing
 }
 
 // LibraryEntryOptions are ZoneEntryOptions for a library source, named
@@ -357,7 +363,8 @@ func (g *Game) putOntoBattlefieldFromZoneLocked(ids []uuid.UUID, from ZoneKind, 
 			// EVENT rather than a local, so both battlefield-entry
 			// doors carry the same fact in the same field and a
 			// replacement effect inspecting the entry sees it.
-			FaceDown: opts.FaceDown,
+			FaceDown:       opts.FaceDown,
+			FaceDownListed: opts.FaceDownListed,
 		}
 		out, err := g.applyReplacementsLocked(ev)
 		if errors.Is(err, errReplacementPending) {
@@ -428,7 +435,7 @@ func (g *Game) putOntoBattlefieldFromZoneLocked(ids []uuid.UUID, from ZoneKind, 
 			// public-zone marking rather than adding to it. Read off
 			// the settled EVENT rather than off opts, for the reason
 			// EntersTapped is: the pipeline gets the last word.
-			g.applyFaceDownLandingLocked(g.Battlefield, moved.InstanceID, p.out.FaceDown)
+			g.applyFaceDownLandingLocked(g.Battlefield, moved.InstanceID, p.out.FaceDown, p.out.FaceDownListed)
 		} else {
 			g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
 		}
