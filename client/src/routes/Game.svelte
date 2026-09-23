@@ -1661,7 +1661,12 @@
       {#if viewerNeedsToDecide}
         <ModalLayer />
         <div class="mulligan-scrim"></div>
-        <div class="mulligan-dialog" role="dialog" aria-label="keep or mulligan your hand">
+        <div
+          class="mulligan-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-label="keep or mulligan your hand"
+        >
           <header>
             <h2>Your opening hand</h2>
             {#if (viewerSeat?.mulligans_taken ?? 0) > 0}
@@ -2355,9 +2360,9 @@
     font-size: 10px;
   }
 
-  /* The viewer's own keep-or-mulligan decision: the table dims and
-     the dialog docks low with large cards, so the hand is the only
-     thing in focus. */
+  /* Give the opening hand the table's width so all seven cards can
+     be read together. On smaller screens only the cards scroll;
+     the heading and keep/mulligan controls stay in view. */
   .mulligan-scrim {
     /* Sits under Board's attention strip (z 40) so the opening-hand
        roll-call stays readable while the table behind it dims. */
@@ -2371,11 +2376,12 @@
   .mulligan-dialog {
     position: absolute;
     left: 50%;
-    bottom: 24px;
-    transform: translateX(-50%);
+    top: 50%;
+    transform: translate(-50%, -50%);
     z-index: 71;
-    width: min(880px, calc(100% - 48px));
-    padding: 16px 18px 14px;
+    width: min(2400px, calc(100% - clamp(24px, 6vw, 160px)));
+    max-height: calc(100% - 96px);
+    padding: clamp(16px, 2vw, 28px);
     background: var(--surface);
     border: 1px solid rgba(217, 180, 92, 0.4);
     border-radius: var(--radius-xl);
@@ -2384,10 +2390,12 @@
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 18px;
+    overflow: hidden;
   }
   .mulligan-dialog header {
     display: flex;
+    flex-shrink: 0;
     align-items: baseline;
     gap: 12px;
     flex-wrap: wrap;
@@ -2395,26 +2403,29 @@
   .mulligan-dialog header h2 {
     margin: 0;
     font-family: var(--font-display);
-    font-size: 18px;
+    font-size: clamp(18px, 1.5vw, 24px);
     font-weight: 700;
   }
   .mulligan-dialog header p {
     margin: 0;
-    font-size: 12.5px;
+    font-size: 14px;
   }
   .mulligan-cards {
-    display: flex;
-    gap: 8px;
-    overflow-x: auto;
-    padding: 2px 0;
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-auto-rows: max-content;
+    gap: clamp(8px, 1vw, 16px);
+    min-height: 0;
+    overflow-y: auto;
+    padding: 2px;
   }
   .mulligan-card {
     /* positioned for the failed-art pip (#33) */
     position: relative;
-    flex: 0 0 auto;
-    width: 112px;
-    height: 157px;
-    border-radius: 7px;
+    min-width: 0;
+    aspect-ratio: 5 / 7;
+    border-radius: 10px;
+    box-sizing: border-box;
     overflow: hidden;
     background: var(--surface-sunken);
     border: 1px solid var(--border);
@@ -2424,7 +2435,7 @@
     display: block;
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
   }
   .mulligan-card-fallback {
     display: flex;
@@ -2432,16 +2443,53 @@
     height: 100%;
     align-items: center;
     justify-content: center;
-    padding: 6px;
+    padding: 12px;
     text-align: center;
-    font-size: 11px;
+    font-size: 16px;
     color: var(--fg-muted);
     box-sizing: border-box;
   }
   .mulligan-actions {
     display: flex;
+    flex-shrink: 0;
     justify-content: flex-end;
-    gap: 6px;
+    gap: 10px;
+  }
+  .mulligan-actions button {
+    min-height: 44px;
+    padding-inline: 20px;
+  }
+
+  @media (max-width: 1279px) {
+    .mulligan-cards {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 767px) {
+    .mulligan-cards {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 599px) {
+    .mulligan-dialog {
+      gap: 12px;
+    }
+    .mulligan-dialog header {
+      gap: 6px;
+    }
+    .mulligan-cards {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .mulligan-actions button {
+      flex: 1;
+    }
+  }
+  @media (max-height: 600px) {
+    .mulligan-dialog {
+      max-height: calc(100% - 24px);
+      padding: 12px;
+      gap: 10px;
+    }
   }
 
   .life-history-popover {
