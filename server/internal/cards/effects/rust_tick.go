@@ -17,24 +17,27 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // question the prompt's floor is zero, so "untap nothing" is a real
 // answer.
 //
-// Declared simplification: the activated ability is not implemented.
-// Its rider is a restriction on a REMEMBERED target that lasts "for as
-// long as this creature remains tapped", and the engine has no
-// per-source linked-object field — ADR 0058 Decision 8's second
-// bullet, still open. ADR 0070 Decision 6 designs it as two more
-// fields on ADR 0058's UntapSkip and deliberately does not build it,
-// because the tap half without the rider is a materially different
-// card and half an ability is worse than none.
+// #1313 / ADR 0058's 2026-09-23 amendment: the activated ability. Its
+// rider is an untap HOLD with the WhileSourceRemainsTapped duration
+// ADR 0070 Decision 6 designed. The two clauses are the card's whole
+// point together: decline to untap Rust Tick and the artifact stays
+// locked; untap it and the lock is over for good.
 func init() {
 	Register(Spec{
 		OracleID:     "c7f20899-2625-4b3a-8bd8-0bcee07ed86e",
 		Name:         "Rust Tick",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Its tap ability isn't implemented — the creature can only be used for its \"you may choose not to untap\" clause.",
-		},
+		Completeness: CompletenessFull,
 		UntapOptOuts: []game.UntapOptOut{
 			mayChooseNotToUntapSelf("Rust Tick — you may choose not to untap this creature"),
 		},
+		Activated: []ActivatedAbility{{
+			Label:   "{1}, {T}: Tap target artifact. It doesn't untap during its controller's untap step for as long as this creature remains tapped.",
+			Cost:    Plus(ManaCost("{1}"), TapCost()),
+			Targets: TargetPermanent("target artifact", Artifact()),
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				return TapAndHoldWhileThisRemainsTapped(ctx, holdTargetIDs(ctx))
+			},
+		}},
 	})
 }

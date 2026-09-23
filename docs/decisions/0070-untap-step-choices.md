@@ -416,6 +416,11 @@ separate bullet and it stays one. Rust Tick and Amber Prison ship with the
 opt-out implemented and their activated abilities declared in `Caveats`, the
 precedent ADR 0058's own first wave set with Mana Vault and Claustrophobia.
 
+**Built 2026-09-23 (#1313).** ADR 0058's amendment of that date builds this
+design, with one change: the entry carries a `*Duration` (ADR 0063) instead of
+the two bare fields above. `WhileSourceRemainsTapped` is the condition this
+section names. Rust Tick and Amber Prison now ship their activated abilities.
+
 ## Decision 7 — Persistence, undo and clone need nothing new
 
 The prompt rides `PendingChoice` and reuses its existing fields: `ChooseCards`,

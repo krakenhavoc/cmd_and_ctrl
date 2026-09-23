@@ -699,8 +699,11 @@ type Card struct {
 	// Added in S27.
 	ProtectorPlayerID uuid.UUID
 
-	// NextUntapSkips records one-shot next-untap-step effects on this
-	// permanent. It is battlefield state, not a copiable value.
+	// NextUntapSkips records the effects that keep this permanent from
+	// untapping during an untap step: one-shot next-untap-step markers
+	// (ADR 0058 Decision 2) and, since #1313, holds that last "for as
+	// long as" a CR 611.2 duration (UntapSkip.While). It is
+	// battlefield state, not a copiable value.
 	NextUntapSkips []UntapSkip
 
 	// ClassLevel is the CR 716.2 level designation on a Class

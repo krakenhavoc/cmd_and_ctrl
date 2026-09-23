@@ -87,6 +87,16 @@ import "github.com/google/uuid"
 // Static restrictions and next-untap markers narrow that same set.
 // Stun counters instead replace every individual untap in the shared
 // primitive, including untaps outside an untap step.
+//
+// Untap HOLDS (#1313, ADR 0058's 2026-09-23 amendment) narrow it too.
+// A hold is an UntapSkip carrying a CR 611.2 Duration: "it doesn't
+// untap during its controller's untap step for as long as you control
+// Ty Lee" / "for as long as this creature remains tapped". It sits on
+// the same per-permanent slice as the one-shot marker, so it is
+// cloned, snapshotted, projected and dropped on a zone change by the
+// code that already does that for the marker. The difference is that
+// a hold is READ at every untap step (durationExpiredLocked decides
+// whether it still applies) rather than used up by the next one.
 
 // UntapStepPermission declares one card's contribution to the set of
 // permanents that untap during a player's untap step (CR 502.3) —
@@ -145,12 +155,33 @@ type UntapStepRestriction struct {
 	Label     string
 }
 
-// UntapSkip is one one-shot next-untap-step marker. Nil Player follows the
-// permanent's controller; a non-nil Player names that player's next step.
-type UntapSkip struct{ Player uuid.UUID }
+// UntapSkip is one reason a permanent does not untap during an untap
+// step. Nil Player follows the permanent's controller; a non-nil
+// Player names that player's untap step.
+//
+// With While nil it is a ONE-SHOT marker (ADR 0058 Decision 2): "doesn't
+// untap during its controller's NEXT untap step", used up by that step
+// whether or not the permanent was tapped.
+//
+// With While set it is a HOLD (#1313): "doesn't untap during its
+// controller's untap step for as long as <duration>" (CR 611.2b). It
+// applies at every matching untap step while
+// durationExpiredLocked(*While, false) is false, is never used up by a
+// step, and is dropped by sweepUntapHoldsLocked once it has expired —
+// "it doesn't last forever". IMMUTABLE after registration: cloneCard
+// shares the pointer with every undo snapshot, exactly as Clone shares
+// ScopedStatic.Duration by value.
+type UntapSkip struct {
+	Player uuid.UUID
+	While  *Duration
+}
 
 type untapSkipSnapshot struct {
 	Player uuid.UUID `json:"player"`
+	// While is a hold's duration (#1313). A file written before the
+	// field existed has no key and restores one-shot markers only,
+	// which is all such a file could hold.
+	While *Duration `json:"while,omitempty"`
 }
 
 func snapshotUntapSkips(in []UntapSkip) []untapSkipSnapshot {
@@ -160,6 +191,10 @@ func snapshotUntapSkips(in []UntapSkip) []untapSkipSnapshot {
 	out := make([]untapSkipSnapshot, len(in))
 	for i := range in {
 		out[i].Player = in[i].Player
+		if in[i].While != nil {
+			d := *in[i].While
+			out[i].While = &d
+		}
 	}
 	return out
 }
@@ -171,6 +206,10 @@ func restoreUntapSkips(in []untapSkipSnapshot) []UntapSkip {
 	out := make([]UntapSkip, len(in))
 	for i := range in {
 		out[i].Player = in[i].Player
+		if in[i].While != nil {
+			d := *in[i].While
+			out[i].While = &d
+		}
 	}
 	return out
 }
@@ -253,7 +292,7 @@ func (g *Game) SkipNextUntapForEffect(cardID, player uuid.UUID) error {
 			continue
 		}
 		for _, skip := range c.NextUntapSkips {
-			if skip.Player == player {
+			if skip.While == nil && skip.Player == player {
 				return nil
 			}
 		}
@@ -263,13 +302,119 @@ func (g *Game) SkipNextUntapForEffect(cardID, player uuid.UUID) error {
 	return nil
 }
 
-func (c Card) hasNextUntapSkipFor(player uuid.UUID) bool {
+// HoldUntappedForEffect records "it doesn't untap during its
+// controller's untap step for as long as <d>" on a battlefield
+// permanent (#1313, CR 611.2b, CR 502.3). Controller-keyed, like every
+// printed card in the family: the hold applies at the untap step of
+// whoever controls the permanent when that step begins.
+//
+// The caller builds `d` with the constructor that answers CR 611.2b's
+// "never starts" (ForAsLongAsYouControlDuration,
+// ForAsLongAsSourceTappedDuration) and records nothing when it says
+// false. A hold identical to one already on the permanent is not
+// added twice; holds from two different sources are both kept and end
+// independently. A card that is not on the battlefield is a no-op —
+// it is not a permanent.
+//
+// Caller already holds g.mu.
+func (g *Game) HoldUntappedForEffect(cardID uuid.UUID, d Duration) error {
+	c, ok := g.battlefieldCardLocked(cardID)
+	if !ok {
+		return nil
+	}
 	for _, skip := range c.NextUntapSkips {
-		if skip.Player == player || (skip.Player == uuid.Nil && c.Controller == player) {
+		if skip.While != nil && skip.Player == uuid.Nil && *skip.While == d {
+			return nil
+		}
+	}
+	held := d
+	c.NextUntapSkips = append(c.NextUntapSkips, UntapSkip{While: &held})
+	return nil
+}
+
+// untapSkipKeyedTo reports whether `skip` names `player`'s untap step
+// for permanent `c` — directly, or through "its controller's".
+func untapSkipKeyedTo(c *Card, skip UntapSkip, player uuid.UUID) bool {
+	return skip.Player == player || (skip.Player == uuid.Nil && c.Controller == player)
+}
+
+// untapHoldLiveLocked reports whether a hold's duration is still
+// running. Only meaningful for an entry with While set.
+func (g *Game) untapHoldLiveLocked(skip UntapSkip) bool {
+	return skip.While != nil && !g.durationExpiredLocked(*skip.While, false)
+}
+
+// untapSkippedForLocked reports whether `c` sits out `player`'s untap
+// step because of a one-shot marker or a live hold. Caller holds g.mu.
+func (g *Game) untapSkippedForLocked(c *Card, player uuid.UUID) bool {
+	for _, skip := range c.NextUntapSkips {
+		if !untapSkipKeyedTo(c, skip, player) {
+			continue
+		}
+		if skip.While == nil || g.untapHoldLiveLocked(skip) {
 			return true
 		}
 	}
 	return false
+}
+
+// UntapHeldLocked reports whether a live hold keeps `c` from untapping
+// during its current controller's untap step. It is the wire's
+// reading (CardView.no_untap.static) and the same test the step uses.
+// Caller holds g.mu (read is enough).
+func (g *Game) UntapHeldLocked(c *Card) bool {
+	if c == nil {
+		return false
+	}
+	for _, skip := range c.NextUntapSkips {
+		if skip.While != nil && untapSkipKeyedTo(c, skip, c.Controller) && g.untapHoldLiveLocked(skip) {
+			return true
+		}
+	}
+	return false
+}
+
+// sweepUntapHoldsLocked drops every hold whose duration has run out.
+// It runs at the end of every layer recompute, after layer 2 is
+// materialised (recomputeLayersLocked), so a hold that ended stays
+// ended: CR 611.2b's "it doesn't last forever", and the Dungeon Geists
+// ruling that regaining control does not revive it. The reader re-checks the
+// duration anyway; this sweep makes the end permanent, it is not what
+// makes the answer right at any single moment.
+//
+// Builds a fresh slice rather than compacting in place, for the reason
+// sweepScopedStaticsLocked gives about undo snapshots.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) sweepUntapHoldsLocked() {
+	if g.Battlefield == nil {
+		return
+	}
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if len(c.NextUntapSkips) == 0 {
+			continue
+		}
+		expired := 0
+		for _, skip := range c.NextUntapSkips {
+			if skip.While != nil && !g.untapHoldLiveLocked(skip) {
+				expired++
+			}
+		}
+		if expired == 0 {
+			continue
+		}
+		var kept []UntapSkip
+		if len(c.NextUntapSkips) > expired {
+			kept = make([]UntapSkip, 0, len(c.NextUntapSkips)-expired)
+		}
+		for _, skip := range c.NextUntapSkips {
+			if skip.While == nil || g.untapHoldLiveLocked(skip) {
+				kept = append(kept, skip)
+			}
+		}
+		c.NextUntapSkips = kept
+	}
 }
 
 // activeUntapStepRestrictionsLocked binds every live restriction source once
@@ -320,7 +465,16 @@ func (g *Game) consumeUntapSkipsLocked(activePlayer uuid.UUID) {
 		c := &g.Battlefield.Cards[i]
 		out := c.NextUntapSkips[:0]
 		for _, skip := range c.NextUntapSkips {
-			if skip.Player == activePlayer || (skip.Player == uuid.Nil && c.Controller == activePlayer) {
+			if skip.While != nil {
+				// A hold is not used up by a step (#1313); an
+				// expired one is dropped here as well as by the
+				// recompute sweep.
+				if g.untapHoldLiveLocked(skip) {
+					out = append(out, skip)
+				}
+				continue
+			}
+			if untapSkipKeyedTo(c, skip, activePlayer) {
 				continue
 			}
 			out = append(out, skip)
@@ -418,13 +572,13 @@ func (g *Game) untapStepSetLocked(activePlayer uuid.UUID) []uuid.UUID {
 		}
 		// CR 502.3: the active player's own permanents, always.
 		if c.Controller == activePlayer {
-			if untapStepRestrictedBy(c, g, restrictions) || c.hasNextUntapSkipFor(activePlayer) {
+			if untapStepRestrictedBy(c, g, restrictions) || g.untapSkippedForLocked(c, activePlayer) {
 				continue
 			}
 			ids = append(ids, c.InstanceID)
 			continue
 		}
-		if c.hasNextUntapSkipFor(activePlayer) {
+		if g.untapSkippedForLocked(c, activePlayer) {
 			continue
 		}
 		for _, bp := range permissions {

@@ -169,15 +169,10 @@ func theSeriema() cards.Card {
 }
 
 // tyLeeChiBlocker — #339 and #340, the same card and the same ETB
-// reported twice. Flash works (printed keyword, #319's fix). Prowess
-// does not, and neither does the lockdown. #74 gave the untap step a
-// hook, but it is the wrong DIRECTION: UntapStepPermission ADDS
-// permanents to CR 502.1's set (Seedborn Muse), and "it doesn't
-// untap during its controller's next untap step" has to remove one.
-// The place for that is untapStepSetLocked, alongside the permission
-// leg. The duration is the other half of the problem: #314's
-// TurnScopedStatics is swept at cleanup, which is the wrong clock for
-// "for as long as you control Ty Lee".
+// reported twice. NeedsEffect is the Scryfall half of the predicate
+// only, so the stamp stays true now that the card is catalogued: #1313
+// shipped its "doesn't untap for as long as you control Ty Lee" hold
+// (ADR 0058's 2026-09-23 amendment). Prowess is still #706.
 func tyLeeChiBlocker() cards.Card {
 	return cards.Card{
 		ID:        uuid.New(),

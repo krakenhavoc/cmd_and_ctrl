@@ -1635,6 +1635,11 @@ type CardView struct {
 // restrictions. A controller-keyed marker is represented by the current
 // controller's player ID in Next; duplicate and eliminated players are
 // omitted by stampNoUntap.
+//
+// Static means the permanent does not untap during its controller's
+// untap step RIGHT NOW: an UntapStepRestriction applies to it, or
+// (#1313) a live "for as long as" hold does. Next lists one-shot
+// next-untap-step markers only; a hold is not a "next step" statement.
 type NoUntapView struct {
 	Static bool     `json:"static,omitempty"`
 	Next   []string `json:"next,omitempty"`
@@ -4349,7 +4354,11 @@ func stampNoUntap(g *game.Game, view *ZoneView) {
 			break
 		}
 		card := &g.Battlefield.Cards[i]
-		static := !card.FaceDown && g.UntapStepRestrictedLocked(card)
+		// A face-down permanent has no abilities, so its own static
+		// restriction reads false — but a hold (#1313) comes from
+		// ANOTHER object's resolved ability and applies face-down or
+		// not, like a next-step marker.
+		static := (!card.FaceDown && g.UntapStepRestrictedLocked(card)) || g.UntapHeldLocked(card)
 		next := projectedUntapSkipPlayers(g, card)
 		if !static && len(next) == 0 {
 			continue
@@ -4365,6 +4374,10 @@ func projectedUntapSkipPlayers(g *game.Game, card *game.Card) []string {
 	seen := make(map[uuid.UUID]struct{}, len(card.NextUntapSkips))
 	players := make([]string, 0, len(card.NextUntapSkips))
 	for _, skip := range card.NextUntapSkips {
+		if skip.While != nil {
+			// A hold is projected as Static by stampNoUntap.
+			continue
+		}
 		playerID := skip.Player
 		if playerID == uuid.Nil {
 			playerID = card.Controller
