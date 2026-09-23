@@ -16,7 +16,7 @@ package effects
 // engine has an equivalent hook only for commander colour identity".
 // That note ended "Follow-up work is a ManaAbility-level filter
 // analogous to commanderIdentityFor" — this is that follow-up, and
-// `ProducedFunc` is the filter.
+// `DerivedMatch` is the filter.
 //
 // It also mattered more than the old note implied. An over-permissive
 // simplification is the #259 direction: a Fellwar Stone that offers
@@ -25,21 +25,32 @@ package effects
 // opponent could make. Of the batch-01 declared simplifications this
 // was the only one pointing the wrong way.
 //
-// The remaining simplification is the shared recursion guard
-// documented in mana_derivation.go: an opposing land whose own output
-// is derived contributes nothing. Weaker than printed.
+// #1323 closed the OTHER declared gap: an opposing Exotic Orchard or
+// Reflecting Pool used to contribute nothing at all, because the old
+// recursion guard skipped every derived source unconditionally rather
+// than only the ones that would actually cycle. Now
+// game.ProducibleManaLocked carries a visited set, so a one-way chain
+// (this Stone → an opposing Exotic Orchard → THAT player's own plain
+// Forest) resolves to a real colour. The remaining simplification is
+// narrower and genuinely circular: two Fellwar Stones can't cycle
+// (this ability doesn't read other artifacts), but an opposing land
+// that, directly or indirectly, ends up asking about ITSELF through
+// this derivation still answers "no mana" for CR 106.6b's case.
+// Weaker than printed.
 func init() {
 	Register(Spec{
 		OracleID:     "95560508-7ac9-4be9-8a3f-3c7d5b52807b",
 		Name:         "Fellwar Stone",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"It can't see colors from opponents' lands that themselves copy other lands' mana (Exotic Orchard, Reflecting Pool) — those contribute nothing."},
+		Caveats:      []string{"An opposing land that copies other lands' mana in a genuine circle back to itself (facing another such land) contributes nothing."},
 		ManaAbilities: []ManaAbility{{
-			Cost:         ManaAbilityCost{Tap: true},
-			ProducedFunc: ProducedFromOpponentLands(),
+			Cost:              ManaAbilityCost{Tap: true},
+			DerivedMatch:      DerivedFromOpponentLands(),
+			DerivedColorsOnly: true,
 			// CR 106.6b: this ability reads what OTHER permanents
-			// could produce, so CR 106.7's reader must not call back
-			// into it (#782).
+			// could produce, so CR 106.7's reader must route it
+			// through the visited set rather than a plain ProducedFunc
+			// call (#782, #1323).
 			DerivesFromOtherSources: true,
 			Label:                   "Add one mana of any color an opponent's land could produce",
 			// The printed text derives the colours from opponents'

@@ -275,10 +275,17 @@ const (
 	// is created. Nothing watches it.
 	EventStorm EventKind = "storm"
 
-	// EventSearchLibrary — Actor searched their library. Reserved
-	// for S14 catalog effects that fire SearchLibrary; the log
-	// entry is the "you searched your library" trigger source
-	// that S19 listens for (Panoptic Mirror, etc.).
+	// EventSearchLibrary — Actor searched a library; Target names
+	// WHOSE library it was. The two agree for an ordinary tutor, but
+	// not for Bribery-style search of another player's library
+	// (#1230) — Target is what tells "an opponent searched THEIR
+	// library" (Actor == Target) apart from "an opponent searched
+	// YOUR library" (Target == the watcher, Actor someone else),
+	// which #1335 found EventSearchLibrary could not do at all before
+	// this. Reserved for S14 catalog effects that fire
+	// SearchLibrary; the log entry is the "you searched your library"
+	// trigger source that S19 listens for (Panoptic Mirror,
+	// Archivist of Oghma, etc.).
 	EventSearchLibrary EventKind = "search_library"
 
 	// EventCounterSpell — a stack item was countered (spell or

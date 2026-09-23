@@ -10,32 +10,39 @@ package effects
 // COLOR". Colorless is a type of mana but not a colour (CR 105.1), so
 // a Reflecting Pool next to an Ancient Tomb can make {C} where an
 // Exotic Orchard facing one could not. That single distinction is why
-// mana_derivation.go keeps producibleFrom and colorsOnly as separate
-// steps.
+// DerivedColorsOnly exists as a separate flag on DerivedMatch rather
+// than being baked into the derivation itself.
 //
 // A lone Reflecting Pool produces nothing: the only land you control
-// is the Pool, its own ability is derived, and the recursion guard
-// skips derived abilities. That is also the printed ruling, so here
-// the guard and the rules agree exactly.
+// is the Pool, and game.derivedManaLocked excludes a card from its own
+// derivation. That is also the printed ruling, so this and the rules
+// agree exactly, independently of the cycle guard below.
 //
-// Simplification, declared: two Reflecting Pools (or a Pool and an
-// Exotic Orchard) do not see each other, for the same reason — the
-// guard. The real rules resolve some of those pairs to a real colour;
-// this is one colour short. Weaker than printed, and the alternative
-// is an unbounded mutual recursion between two permanents.
+// Two Reflecting Pools, or a Pool and an Exotic Orchard the SAME
+// player controls, DO now see each other when doing so is not a real
+// cycle (#1323): the Pool's own-lands match reaches the Orchard, whose
+// opponent-lands match then reads real opposing lands rather than
+// looping back. Simplification, declared and narrower than it used to
+// be: a genuinely CIRCULAR chain — two Pools facing each other, or a
+// Pool and an Orchard that end up asking about each other across
+// multiple opponents — still answers "no mana" for the permanents in
+// the cycle (CR 106.6b), one colour short of what the real rules would
+// resolve for some of those pairs. Weaker than printed.
 func init() {
 	Register(Spec{
 		OracleID:     "67f43ac6-2a58-4b53-b5d7-0330e2a252e2",
 		Name:         "Reflecting Pool",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Two Reflecting Pools (or a Pool alongside Exotic Orchard) do not see each other, so they may offer fewer colors than they should."},
+		Caveats:      []string{"Lands that copy other lands' mana in a genuine circle back to this Pool (facing another Reflecting Pool, or an Exotic Orchard that in turn reads this land) contribute nothing."},
 		ManaAbilities: []ManaAbility{{
-			Cost:         ManaAbilityCost{Tap: true},
-			ProducedFunc: ProducedFromOwnLands(),
+			Cost:              ManaAbilityCost{Tap: true},
+			DerivedMatch:      DerivedFromOwnLands(),
+			DerivedColorsOnly: false,
 			// CR 106.6b: this ability reads what OTHER permanents
-			// could produce, so CR 106.7's reader must not call back
-			// into it — which is also why a lone Pool makes nothing
-			// (#782).
+			// could produce, so CR 106.7's reader must route it
+			// through the visited set rather than a plain ProducedFunc
+			// call — which is also why a lone Pool makes nothing
+			// (#782, #1323).
 			DerivesFromOtherSources: true,
 			Label:                   "Add one mana of any type a land you control could produce",
 			// "any type that a land you control could produce" — no

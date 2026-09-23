@@ -2,6 +2,8 @@ package game
 
 import (
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 // producible_mana.go — CR 106.7's "the type of mana a permanent could
@@ -80,15 +82,35 @@ import (
 // reason that is not about its output: ADR 0020's exhaust addendum
 // (#1183) is where the decision lives.
 //
-// # The recursion guard
+// # The recursion guard (#1323: a visited set, not a blanket skip)
 //
-// An ability that reads OTHER permanents' producible mana is skipped
+// An ability that reads OTHER permanents' producible mana
 // (ManaAbilityShape.DerivesFromOtherSources — Exotic Orchard,
-// Reflecting Pool, Fellwar Stone, and nothing else). Two of them
-// facing each other would otherwise recurse until the stack ran out;
-// CR 106.6b answers the circular case with "no mana" and so does
-// this. Where the real rules would resolve a one-way chain it is one
-// colour short, which is the weaker-than-printed direction.
+// Reflecting Pool, Fellwar Stone, and nothing else) declares
+// DerivedMatch instead of ProducedFunc, and this file walks the
+// battlefield and recurses ITSELF rather than going through the
+// generic ProducedFunc closure. The reason is the visited set: two of
+// these facing each other would otherwise recurse until the stack ran
+// out, and answering that correctly needs the set of instance IDs
+// already "in flight" threaded the whole way down — which a
+// `func(*Game, controller, source uuid.UUID) string` closure (the
+// shape every OTHER mana ability's ProducedFunc uses) has no fourth
+// argument to carry.
+//
+// Before this, the guard was a blanket skip of every
+// DerivesFromOtherSources ability, which stopped the two-node cycle
+// by refusing every chain, including a one-way one: a Fellwar Stone
+// facing only an opposing Exotic Orchard (no cycle at all) saw
+// nothing, because the guard could not tell the two cases apart.
+//
+// producibleManaVisitingLocked marks `c.InstanceID` visited before it
+// asks anything else, and a permanent already in that set contributes
+// nothing — CR 106.6b's circular case, the same weaker-than-printed
+// direction the old blanket skip took, now scoped to an actual cycle
+// instead of every derived source. A one-way chain (Fellwar Stone →
+// an opposing Exotic Orchard → THAT player's opponent's plain Forest)
+// resolves correctly, because nothing in it revisits an ID already on
+// the way down.
 //
 // Every other ProducedFunc IS evaluated, which is the half #782
 // added: a chosen colour (the Thriving lands, the Gates, Uncharted
@@ -108,6 +130,22 @@ import (
 //
 // Caller must hold g.mu.
 func (g *Game) ProducibleManaLocked(c Card) []string {
+	return g.producibleManaVisitingLocked(c, map[uuid.UUID]bool{})
+}
+
+// producibleManaVisitingLocked is ProducibleManaLocked's real body,
+// carrying the set of instance IDs already being resolved somewhere
+// up this derivation's own call chain (#1323). A card already in
+// `visiting` contributes nothing — the CR 106.6b circular case — and
+// everything else works exactly as ProducibleManaLocked always did.
+//
+// Caller must hold g.mu.
+func (g *Game) producibleManaVisitingLocked(c Card, visiting map[uuid.UUID]bool) []string {
+	if visiting[c.InstanceID] {
+		return nil
+	}
+	visiting[c.InstanceID] = true
+
 	abilities := ManaAbilitiesForCard(c)
 	if len(abilities) == 0 {
 		// Nothing in the catalog, no instance ability and no basic
@@ -124,9 +162,6 @@ func (g *Game) ProducibleManaLocked(c Card) []string {
 	var haveIdentity bool
 	seen := map[string]bool{}
 	for _, ab := range abilities {
-		if ab.DerivesFromOtherSources {
-			continue
-		}
 		// #1183: a SPENT exhaust ability. The one place this function
 		// looks past "if the ability were to resolve" at something
 		// that stops it being activated, and it is a deliberate,
@@ -134,6 +169,17 @@ func (g *Game) ProducibleManaLocked(c Card) []string {
 		// "Exhaust is the one restriction this asks about" section
 		// above.
 		if g.ManaAbilityExhausted(c.Controller, c.InstanceID, ab) {
+			continue
+		}
+		if ab.DerivesFromOtherSources {
+			// #1323: recurse through the SAME visiting set, rather
+			// than the blanket skip this used to be. A card already
+			// in `visiting` (the circular case) contributes nothing
+			// from inside derivedManaLocked; anything else is a
+			// one-way chain and resolves normally.
+			for _, m := range g.derivedManaLocked(c, &ab, visiting) {
+				seen[m] = true
+			}
 			continue
 		}
 		// #789: an ability whose output depends on what its cost paid
@@ -163,6 +209,47 @@ func (g *Game) ProducibleManaLocked(c Card) []string {
 		}
 	}
 	return orderedManaSymbols(seen)
+}
+
+// derivedManaLocked is the CR 106.7 union for a DerivesFromOtherSources
+// ability: every permanent on the battlefield `ab.DerivedMatch`
+// accepts, asked with the SAME visited set the caller is already
+// carrying, then filtered by DerivedColorsOnly. Shared by the CR 106.7
+// reader above and by a real activation (manaAbilityProducedLocked,
+// ActivateManaAbility), so the two can never disagree about what an
+// ability adds — the same guarantee #782 built for every other
+// ProducedFunc.
+//
+// Caller must hold g.mu.
+func (g *Game) derivedManaLocked(c Card, ab *ManaAbilityShape, visiting map[uuid.UUID]bool) []string {
+	if ab.DerivedMatch == nil {
+		return nil
+	}
+	seen := map[string]bool{}
+	for _, cand := range g.BattlefieldCardsForEffect() {
+		if cand.InstanceID == c.InstanceID || !ab.DerivedMatch(cand, c.Controller) {
+			continue
+		}
+		for _, m := range g.producibleManaVisitingLocked(cand, visiting) {
+			if ab.DerivedColorsOnly && m == "C" {
+				continue
+			}
+			seen[m] = true
+		}
+	}
+	return orderedManaSymbols(seen)
+}
+
+// pipeString renders a symbol set as a single produced-mana slot —
+// ["W","U"] becomes "{W|U}". Empty input returns "", which
+// ActivateManaAbility and manaAbilityProducedLocked both treat as
+// "this ability produced no mana": the printed outcome for Exotic
+// Orchard facing no opposing lands.
+func pipeString(symbols []string) string {
+	if len(symbols) == 0 {
+		return ""
+	}
+	return "{" + strings.Join(symbols, "|") + "}"
 }
 
 // scryfallProducibleMana is the import-only fallback: the
