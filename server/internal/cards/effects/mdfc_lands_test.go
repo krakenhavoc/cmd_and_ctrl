@@ -426,9 +426,11 @@ func TestBackFaceSpecsAreKeyedByFace(t *testing.T) {
 			"face 0 keeping it is what makes this change a no-op for "+
 			"every single-faced card", got, seaGateRestorationOracle)
 	}
-	if Has(game.CatalogKey(c)) {
-		t.Error("the FRONT face resolved to a catalog spec; only the " +
-			"land back is registered")
+	// Both faces are registered (the front in sea_gate_restoration.go),
+	// and the two keys must reach two different specs.
+	if front, ok := Lookup(game.CatalogKey(c)); !ok || front.Name != "Sea Gate Restoration" {
+		t.Errorf("the FRONT face must resolve to the sorcery's own spec, got ok=%v name=%q",
+			ok, front.Name)
 	}
 
 	c.SetFace(1)

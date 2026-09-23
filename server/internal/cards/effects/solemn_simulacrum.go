@@ -29,15 +29,27 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // OnETB is dropped — the listener now owns ETB dispatch for this
 // card.
+//
+// Reviewed against the oracle text for #1306. "A basic land card" is
+// read off the Basic supertype (b30IsBasicLandCard) rather than the
+// shared IsBasicLand's "basic land" type-line substring, which misses
+// a Snow-Covered basic ("Basic Snow Land — Forest") — a real basic
+// land card the printed search can find.
+//
+// One engine-wide posture applies here as on every optional trigger
+// in the catalog: the "you may" is asked as the trigger is put on the
+// stack rather than as it resolves (ADR 0018). Declining puts nothing
+// on the stack, which is the same outcome as declining on resolution.
 func init() {
 	Register(Spec{
-		OracleID: "00c0543c-2a1f-4425-8283-4062d74a1637",
-		Name:     "Solemn Simulacrum",
+		OracleID:     "00c0543c-2a1f-4425-8283-4062d74a1637",
+		Name:         "Solemn Simulacrum",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Optional(WhenThisEnters("Solemn Simulacrum — search for a basic land", func(g *game.Game, item *game.StackItem) error {
 				return SearchLibrary{
 					Player:        item.Controller,
-					Predicate:     IsBasicLand,
+					Predicate:     b30IsBasicLandCard,
 					Dest:          game.ZoneBattlefield,
 					Limit:         1,
 					Reveal:        true,
