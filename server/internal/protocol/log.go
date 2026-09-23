@@ -266,9 +266,10 @@ const (
 	// Narrated because nothing else narrates the number, and the
 	// number is the card. A spell copy is created and not cast
 	// (CR 707.10), so it emits no engine event and produces no line;
-	// the trigger's own resolution is a LogResolve with no card_id,
-	// which renders as "a card resolved". Without this entry the
-	// table watches N Grapeshots appear from nowhere. Same argument
+	// the trigger's own resolution is a LogResolve naming the ability
+	// ("Grapeshot — storm resolved", #1257) and not the count. Without
+	// this entry the table watches N Grapeshots appear from nowhere.
+	// Same argument
 	// as LogSagaChapter and LogClassLevel: a mechanic whose number is
 	// otherwise unobservable gets a line.
 	LogStorm LogKind = "storm"
@@ -476,6 +477,43 @@ type LogEvent struct {
 	revealIDs   []string
 	revealNames []string
 	batchSeq    uint64
+	// ability marks a LogResolve / LogFizzle entry about a triggered
+	// or activated ABILITY rather than a spell (#1257). Its CardID is
+	// then the ability's SOURCE and its Label the stack item's label,
+	// and redactLogForViewer drops the two together when the viewer
+	// may not identify the source. Unexported because the wire already
+	// says it: only the ability path puts a label on these kinds.
+	ability bool
+	// cardFound says resolveLogNames found CardID in the view, which is
+	// what separates "the viewer may not identify this card" from "the
+	// card has ceased to exist" when cardKnowers is empty. Read only
+	// for ability entries; see redactLogForViewer.
+	cardFound bool
+}
+
+// projectAbilityItem fills a LogResolve / LogFizzle entry for an
+// ABILITY item (#1257). resolveTopAbilityLocked emits the event with
+// the item's source in Source, its label in Label and no CardID — an
+// ability has no card on the stack — while the spell branch sets
+// CardID and no Label. So a Label with no CardID is exactly "this was
+// an ability".
+//
+// The SOURCE goes in CardID for two reasons, and the second is the one
+// that matters. It makes the source nameable ("Viscera Seer — Sacrifice
+// a creature: scry 1 resolved", for an activation whose label does not
+// say the card), and it gives the entry a knower set. The label names
+// the card as loudly as the card's own name does ("Grapeshot —
+// storm"), and redactLogForViewer can only take it away from a viewer
+// who may not identify the source if the entry says which card the
+// source is. Without the ID, a face-down or hidden source's label
+// would ride to every seat.
+func projectAbilityItem(base *LogEvent, ev game.Event) {
+	if ev.CardID != uuid.Nil || ev.Label == "" {
+		return
+	}
+	base.ability = true
+	base.CardID = uuidStringOrEmpty(ev.Source)
+	base.Label = ev.Label
 }
 
 // hiddenZone reports whether a zone's contents are hidden from the
@@ -648,11 +686,13 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 	case game.EventResolve:
 		base.Kind = LogResolve
 		base.CardID = uuidStringOrEmpty(ev.CardID)
+		projectAbilityItem(&base, ev)
 		return base, true
 
 	case game.EventFizzle:
 		base.Kind = LogFizzle
 		base.CardID = uuidStringOrEmpty(ev.CardID)
+		projectAbilityItem(&base, ev)
 		return base, true
 
 	case game.EventCounterSpell:
@@ -1004,8 +1044,9 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 	case game.EventStorm:
 		// CR 702.40a, #1238. The count is the card, and nothing else
 		// says it: a spell copy emits no event (CR 707.10 — it is
-		// created, not cast) and the trigger's LogResolve carries no
-		// card, so N copies would otherwise arrive unexplained.
+		// created, not cast) and the trigger's LogResolve names the
+		// ability but not the number, so N copies would otherwise
+		// arrive unexplained.
 		// Entered even at zero — "storm count 0" is the turn's first
 		// spell, and a reader counting copies wants to see that the
 		// trigger resolved and found nothing to copy rather than
@@ -1147,6 +1188,7 @@ func resolveLogNames(entries []LogEvent, v *GameView) {
 		if c, ok := cards[e.CardID]; ok {
 			e.cardName = c.Name
 			e.cardKnowers = c.knowers
+			e.cardFound = true
 		}
 		if c, ok := cards[e.Target]; ok {
 			e.targetName = c.Name
@@ -1252,8 +1294,10 @@ func redactLogForViewer(src []LogEvent, isKnower func(CardView) bool) []LogEvent
 	out := make([]LogEvent, len(src))
 	for i, e := range src {
 		cardName, targetName := e.cardName, e.targetName
+		abilityHidden := false
 		if e.CardID != "" && !isKnower(CardView{knowers: e.cardKnowers}) {
 			cardName = ""
+			abilityHidden = e.ability
 		}
 		if e.Target != "" && !isKnower(CardView{knowers: e.targetKnowers}) {
 			targetName = ""
@@ -1283,12 +1327,49 @@ func redactLogForViewer(src []LogEvent, isKnower func(CardView) bool) []LogEvent
 			}
 			e.Text = renderLogText(e, cardName, targetName)
 		}
+		// #1257: an ABILITY entry is redacted off the source's knower
+		// set directly, not off a dropped name. The name-drop test
+		// above cannot see the case that matters most: a face-down
+		// permanent's name is "" on every view (CR 708.2 — the 2/2 has
+		// no name), so nothing drops, while the label ("Secret Sphinx —
+		// draw a card") names the card outright. And the ID goes with
+		// the label, because a source in a hidden zone (a hand, a
+		// library) has an instance ID the zone filter never hands a
+		// non-knower. A source the view cannot account for at all is a
+		// token or a copy that has ceased to exist — public objects —
+		// and keeps its line.
+		if abilityHidden && e.cardFound {
+			e.Label, e.CardID, e.cardName = "", "", ""
+			e.Text = renderLogText(e, "", e.targetName)
+		}
 		out[i] = e
 	}
 	return out
 }
 
 // --- rendering ---
+
+// abilityName is how a line names a triggered or activated ability
+// (#1257): its stack label — what the stack overlay printed for the
+// same item — prefixed with the source's name when the label does not
+// already start with it. Trigger labels mostly do ("Grapeshot —
+// storm"); activation labels mostly do not ("Sacrifice a creature:
+// scry 1"), and those were the anonymous ones.
+//
+// A redacted entry has lost both halves together and says only that
+// an ability resolved, which the stack view already showed the whole
+// table.
+func abilityName(label, cardName string) string {
+	switch {
+	case label == "" && cardName == "":
+		return "an ability"
+	case label == "":
+		return cardName + "'s ability"
+	case cardName == "" || strings.HasPrefix(label, cardName):
+		return label
+	}
+	return cardName + " — " + label
+}
 
 // renderLogText writes the human-readable line. cardName / targetName
 // are passed in rather than read off e so the same function serves
@@ -1317,8 +1398,14 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		}
 		return fmt.Sprintf("%s cast %s", actor, card)
 	case LogResolve:
+		if e.ability {
+			return fmt.Sprintf("%s resolved", abilityName(e.Label, cardName))
+		}
 		return fmt.Sprintf("%s resolved", card)
 	case LogFizzle:
+		if e.ability {
+			return fmt.Sprintf("%s was countered by game rules (no legal targets)", abilityName(e.Label, cardName))
+		}
 		return fmt.Sprintf("%s was countered by game rules (no legal targets)", card)
 	case LogCounter:
 		if e.Target == "" && e.Label != "" {

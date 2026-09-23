@@ -700,3 +700,90 @@ narrows a spell and an ability with the same function.
 The canonical statement is now
 [ADR 0019's 2026-09-23 amendment](0019-structured-targeting.md#amendment-2026-09-23-1211-targeting-an-ability-on-the-stack-cr-1154);
 read this section as the copy family's use of it.
+
+## Amendment 2026-09-23 (#1255): a spell that left the stack is copied from last-known information (CR 608.2h)
+
+Issue [#1255](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1255),
+filed from [ADR 0086](0086-storm-and-the-turns-cast-order.md)
+Decision 6. Builds on the #920 amendment above (`Game.resolving`) and
+on #1206 / #1235 (`copyFrame`, `resolveCopyTargetsLocked`,
+`createCopyLocked`), none of which changes.
+
+### The line CR 608 draws
+
+Two rules answer "what does a copy effect do when the spell it is about
+has left the stack", and which one applies is decided by the **wording**
+of the copy effect, not by the copy:
+
+- **CR 608.2b** governs a copy effect that TARGETS the spell —
+  Reverberate, Twincast, Dualcaster Mage, Lithoform Engine. The target
+  is illegal once it has left the stack, and a spell or ability whose
+  every target is illegal does nothing at all. The engine's CR 608.2b
+  re-check already counters such an item before its effect runs, and
+  `CopySpellForEffect`'s `ErrCardNotFound` is the backstop for a
+  multi-target item.
+- **CR 608.2h** governs a copy effect that NAMES the spell without
+  targeting it — storm ("copy it"), Thousand-Year Storm, Doublecast and
+  Galvanic Iteration ("copy that spell"). The effect uses the spell's
+  last-known information, so the copies are made.
+
+The #920 amendment already took one step down the second road: a
+spell copying ITSELF ("copy this spell") reads `Game.resolving`, whose
+card is last-known information once the copy decision has paused. This
+amendment takes the rest of it, and keeps the first road where it was.
+
+### Decision 16. A last-known-stack record, taken at the one exit choke point
+
+`Game.lastKnownStack` (`server/internal/game/stack_lki.go`) holds a
+VALUE copy of the card and stack item of every spell that leaves the
+stack **without resolving** this turn. It is written by
+`routeCardToZoneLocked` when the route has `DropStackMeta` and the
+source zone is the stack — the path every counterspell, every
+Remand-style return and the sandbox's manual move all share — and
+before the replacement pipeline runs, while the card and item are still
+the spell's.
+
+Resolution is deliberately not a writer. The only effect that can name
+a spell after it resolves is its own, and `Game.resolving` answers for
+that. It is cleared at the turn boundary: every copy effect that names
+a spell is a stack object created while the spell was on the stack, and
+the stack is empty before a turn can end.
+
+**Clone carries it; the snapshot does not.** `RestoreFrom` COPIES the
+map rather than sharing it, unlike `resolving`, because the record is
+inserted into in place and an undo snapshot can be restored twice. The
+snapshot drops it with a census reason: every reader is a stack item or
+delayed trigger whose behaviour is a closure (`ContinuationCensus.StackEffects`,
+`.DelayedTriggerEffects`), so a snapshot that could need it is not a
+restore point anyway.
+
+### Decision 17. The lookup is a second entry point, chosen by the card
+
+`CopyLastKnownSpellForEffect` finds the spell on the stack, then in the
+resolving slot, then in the record; everything after the lookup is
+`copySpellFromLocked`, the body `CopySpellForEffect` now shares.
+`CopySpellForEffect` is unchanged and still strict. On the catalog side
+the choice is `CopySpell.FromLastKnown`, set by the card file, because
+the card's wording is the only thing that knows which rule applies —
+a flag on the shared lookup would have to guess.
+
+Nothing past the lookup needed to change, which is the #920 payoff:
+the "except" clause, the CR 707.10c offer, `copyFrame` and
+`createSpellCopyLocked` all work from value copies of the card and the
+item, so a copy of a countered spell is built exactly like a copy of a
+spell still on the stack — a new object with a fresh instance ID and
+the original's targets, modes, X and optional-cost record.
+
+### Cards
+
+Grapeshot and Brain Freeze (through `Storm()`, and so every storm card:
+Empty the Warrens, Flusterstorm, Tendrils of Agony), Thousand-Year
+Storm, Doublecast and Galvanic Iteration. Reverberate is pinned
+unchanged by `TestReverberateOnACounteredSpellCopiesNothing`.
+
+### Still not covered
+
+Breeches, the Blastmaker's reflexive "copy that spell" is the same
+non-targeting shape and has not opted in; it is one field and a test,
+filed as #1288. A spell that left the stack on an EARLIER turn cannot
+be copied from last-known information — nothing in the catalog can ask.

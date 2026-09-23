@@ -157,6 +157,12 @@ var gameFields = plan(
 	"lastKnownBattlefield", carried, "",
 	"lastKnownTriggerIdentity", carried, "",
 	"lastKnownCounters", carried, "",
+	// #1255: CR 608.2h LKI for spells that left the stack this turn.
+	// Its only readers are copy effects that name a spell without
+	// targeting it — a storm trigger, Thousand-Year Storm, Doublecast's
+	// delayed trigger — and every one of those is a closure the
+	// snapshot already refuses to carry. Clone copies it for undo.
+	"lastKnownStack", dropped, "read only by stack items and delayed triggers whose behaviour is a closure, counted in ContinuationCensus.StackEffects and ContinuationCensus.DelayedTriggerEffects; with no such reader the record is dead and restores empty",
 	// ADR 0054: the key and the per-turn stream counters ARE the
 	// randomness. Clone copies them (undo rewinds) and rngSnapshot
 	// carries them (a restore continues every stream).

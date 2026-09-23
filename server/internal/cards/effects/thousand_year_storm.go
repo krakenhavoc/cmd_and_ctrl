@@ -41,6 +41,11 @@ func init() {
 							Controller:       item.Controller,
 							Count:            count,
 							ChooseNewTargets: true,
+							// CR 608.2h, #1255: "copy it" names the
+							// spell without targeting it, so a spell
+							// countered before this resolves is still
+							// copied.
+							FromLastKnown: true,
 						}.Apply(NewContext(g, item))
 					})
 			},

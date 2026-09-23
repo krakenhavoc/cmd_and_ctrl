@@ -309,3 +309,67 @@ counterspell cast in response to the trigger.
   storm trigger is the ability-copy path (#1223) and needs nothing
   from here: the copied ability re-reads the same list and produces
   the same number.
+
+## Amendment 2026-09-23 — #1255 and #1257: Decision 6's open half is closed, and Decision 5's premise changed · Accepted · S45
+
+Issues [#1255](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1255)
+and [#1257](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1257),
+both filed while closing #1238. No new ADR number: each is the
+follow-up this ADR named, and the copy half is written up in
+[ADR 0043's amendment of the same date](0043-copy-effects.md#amendment-2026-09-23-1255-a-spell-that-left-the-stack-is-copied-from-last-known-information-cr-6082h),
+which owns the copy path.
+
+### Decision 6, revised: a countered storm spell IS copied
+
+Decision 6 left "a countered storm spell keeps its trigger — and makes
+no copies" open because the only fix in reach was a change to the
+shared copy lookup that Reverberate must not take. The fix is the
+shape Decision 6 described: a last-known-stack record that only a
+non-targeting copy effect consults.
+
+- `Game.lastKnownStack` records the card and stack item of a spell that
+  leaves the stack **without resolving**, at the one choke point every
+  such exit passes (`routeCardToZoneLocked` with `DropStackMeta`:
+  counterspells, Remand-style returns, the sandbox move). It lives for
+  the turn.
+- `CopyLastKnownSpellForEffect` reads the stack, then the #920
+  resolving slot, then the record. `CopySpellForEffect` is unchanged.
+- `stormItem` sets `CopySpell.FromLastKnown`. Storm's trigger names the
+  spell ("copy **it**") and does not target it, so CR 608.2h governs:
+  the copies are made from the spell as it last stood on the stack,
+  with its targets, modes and X, and each still gets its own CR 707.10c
+  re-target prompt (Decision 4).
+
+`TestACounteredStormSpellKeepsItsTriggerOnTheStack` was written to
+change the day this landed, and it did: with one spell before it, a
+Grapeshot countered in response to its trigger now deals 1 (its copy)
+rather than 0. `TestBrainFreezeCounteredInResponseStillMills` is the
+same rule on the storm card a counterspell is most often aimed at.
+
+The record is `dropped` by the snapshot, for `resolving`'s reason:
+every reader of it is a stack item or delayed trigger whose behaviour
+is a closure, already counted in `ContinuationCensus`, so a snapshot
+that could need the record is not a restore point.
+
+### Decision 5, revised premise: the resolve line now names the ability
+
+Decision 5 argued for the `storm` log kind partly on the ground that an
+ability's `resolve` entry "carries no `card_id` and no label, so it
+renders as 'a card resolved'". #1257 changed that for every ability:
+the entry now carries the ability's source as `card_id` and its stack
+label as `label`, and reads "Grapeshot — storm resolved".
+
+Decision 5 still stands, on its first ground alone, which was always
+the stronger one: the resolve line names the **ability**, and the
+count is the **card**. "Grapeshot — storm resolved" followed by three
+Grapeshots still does not say why there are three. So the table now
+reads both lines — "Grapeshot — storm count 3", then "Grapeshot —
+storm resolved" — and neither is redundant.
+
+The two deliberate log silences that rested on the old line
+(`EventTrigger`, `EventActivateAbility` in
+`log_event_kind_gate_test.go`) keep their silence; their stated reason
+— "told by the LogResolve of the ability it becomes" — is now true.
+The redaction and wire-cost argument for the new fields is in
+[docs/protocol.md](../protocol.md) under "An ability's `resolve` /
+`fizzle`".
