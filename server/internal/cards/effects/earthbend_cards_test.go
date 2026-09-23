@@ -248,3 +248,23 @@ func TestTheLegendOfKyoshiShipsWithoutTheEarthbendCaveat(t *testing.T) {
 		t.Errorf("Caveats = %v, want none", spec.Caveats)
 	}
 }
+
+// TestHardenedScalesSeesAnEarthbend: the animation registers its layer
+// effects and the counters go on straight after, so the placement has
+// to see the land as the creature it just became — Hardened Scales
+// asks "a creature you control". Before #1282's recompute it read the
+// stale cache, saw a plain land, and added nothing.
+func TestHardenedScalesSeesAnEarthbend(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	seedReplacementPermanent(g, hardenedScalesOracle, "Hardened Scales", me.ID)
+	land := pushEarthbendLand(g, me.ID, "Forest", "Basic Land — Forest")
+
+	castCatalogSpell(t, g, "Earthbending Lesson", "Sorcery — Lesson", earthbendingLessonOracle,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: land}})
+	passPriorityAroundTable(t, g)
+
+	if got := countersOn(g, land, game.CounterPlusOne); got != 5 {
+		t.Errorf("+1/+1 counters = %d, want 5 — Hardened Scales adds one to an earthbend's counters", got)
+	}
+}

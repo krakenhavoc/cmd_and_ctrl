@@ -357,15 +357,20 @@ func b31FetchPlainsTapped(g *game.Game, item *game.StackItem) error {
 // Mine is sacrificed — the printed "If there are no mining counters
 // on this land, sacrifice it", which is why the third activation
 // both taps for mana and loses the land.
+//
+// The zero check is the removal's continuation (#1282), not the next
+// line: the removal runs the CR 614 counter window, and a window that
+// pauses on a CR 616 ordering prompt removes nothing until the prompt
+// is answered — read early, the check would see the counter still
+// there and never sacrifice.
 func b31RemoveMiningCounterOrSacrifice(g *game.Game, _, source uuid.UUID) error {
-	if err := g.AddCounterForEffect(source, "mining", -1); err != nil {
-		return err
-	}
-	c, ok := g.LookupCardForEffect(source)
-	if !ok || c.Counters["mining"] > 0 {
-		return nil
-	}
-	return g.SacrificePermanentForEffect(source)
+	return g.AddCounterThenForEffect(source, "mining", -1, func(g *game.Game, _ int) error {
+		c, ok := g.LookupCardForEffect(source)
+		if !ok || c.Counters["mining"] > 0 {
+			return nil
+		}
+		return g.SacrificePermanentForEffect(source)
+	})
 }
 
 // b31HasMiningCounter gates Gemstone Mine's activation: at least one

@@ -294,7 +294,7 @@ func amassQuestion(n int, subtype string) string {
 //
 // # Why the subtype goes before the counters, and CR 701.47a says after
 //
-// `AddCounterByForEffect` can PAUSE — a window with two counter
+// The counter placement can PAUSE — a window with two counter
 // replacements in it queues the CR 616 ordering prompt and returns nil
 // with the placement owed to the resume — so anything the amass still
 // owes has to be registered before then, or a paused Doubling Season
@@ -305,16 +305,35 @@ func amassQuestion(n int, subtype string) string {
 // priority in the middle of one resolution for a state-based action to
 // notice (CR 704.3).
 //
+// # "The Army you amassed" runs when the counters land (#1282)
+//
+// CR 701.47c's clause reads the Army — Widespread Brutality's "deals
+// damage equal to its power" — so it rides the placement's
+// continuation instead of the next line. Before #1282 it ran on the
+// next line, and on the paused board above it dealt damage equal to the
+// Army's PRE-amass power. The continuation is detached from the tail
+// as a value first, for the reason takeKeywordActionThen gives: it runs
+// exactly once, and an undone-then-redone answer to the ordering
+// prompt runs it again rather than finding a cleared pointer.
+//
 // Caller must hold g.mu.
 func (g *Game) finishAmassLocked(ev *ReplacementEvent, army uuid.UUID) error {
 	tail := ev.keywordAction
 	g.grantAmassSubtypeLocked(ev.Source, army, tail.armySubtype)
-	if n := ev.KeywordActionCount; n > 0 {
-		if err := g.AddCounterByForEffect(ev.Actor, army, CounterPlusOne, n); err != nil {
-			return err
+	amassed := tail.amassed
+	tail.amassed = nil
+	rest := func(g *Game) error {
+		if amassed == nil {
+			return nil
 		}
+		return amassed(g, army)
 	}
-	return g.runAmassThenLocked(tail, army)
+	if n := ev.KeywordActionCount; n > 0 {
+		return g.AddCounterByThenForEffect(ev.Actor, army, CounterPlusOne, n, func(g *Game, _ int) error {
+			return rest(g)
+		})
+	}
+	return rest(g)
 }
 
 // grantAmassSubtypeLocked is CR 701.47a's last sentence: "If it isn't

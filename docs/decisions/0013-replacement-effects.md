@@ -3268,6 +3268,103 @@ also waits on.
   written decision rather than a fall-through — and the back-out for the
   fourth (`affectedPlayerForEvent`) is the gate test failing by name.
 
+### 5ac. Amendment, 2026-09-23: a counter placement carries its continuation
+
+**Issue [#1282](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1282).**
+Trackers [#882](https://github.com/krakenhavoc/cmd_and_ctrl/issues/882)
+(replacements) and [#879](https://github.com/krakenhavoc/cmd_and_ctrl/issues/879)
+(tables that wedge).
+
+#### The gap
+
+`AddCounterByForEffect` was the last pausable primitive with no
+continuation form. The RepEventCounter window queues the CR 616 ordering
+prompt when two different replacements apply (a Doubling Season beside a
+Hardened Scales) and returns nil with **nothing placed**; the placement
+lands from the resume, an action later. Every caller that did more work
+on the next line did it while the prompt was open. ADR 0081 and ADR 0087
+decision 7 both declared this for earthbend and amass. The sweep found
+three more:
+
+- **A Saga's entry lore counter** (CR 714.3a). The chapter check read the
+  lore count on the next line, saw zero, fired nothing. Then the resume
+  placed the counter and never asked again, so chapter I was lost.
+- **Dawn of a New Age** and **Gemstone Mine** remove a counter and then
+  check "if there are no … counters". Read too early, the check still
+  sees the counter, and the permanent is never sacrificed.
+
+#### Decision
+
+`AddCounterThenForEffect(cardID, name, delta, then)` and
+`AddCounterByThenForEffect(placer, …)` (`game/counter_tail.go`) use the
+shape `CreateTokensThenForEffect` and `ChangePlayerLifeThenForEffect`
+already have:
+
+1. **The event carries the tail.** `ReplacementEvent.counterTail` is set
+   before the window opens, because a pause returns with nothing placed
+   and the resume has nothing else to go on.
+2. **One settled exit.** `applyResolvedCounterThenLocked` lands the
+   counters and then runs the tail with the delta the window settled on.
+   The inline path uses it, and so does the CR 616 / CR 614.10 resume
+   (`applyResolvedReplacementEventLocked`'s RepEventCounter arm). So a
+   paused placement and an unpaused one cannot disagree about when the
+   rest of the effect runs.
+3. **Every terminal outcome runs the tail.** A zero delta, a CR 614.10
+   cancellation (inline, or on the resume: `finishSettledReplacementLocked`
+   has its own RepEventCounter arm now, split from draw and mana), and a
+   target that left mid-prompt all pass the tail zero. A caller
+   sequenced behind the placement is always told.
+4. **The tail is cleared on the event**, the way the lifeTail is, not
+   through the pointer. `cloneReplacementResume` copies the event by
+   value, so an undo snapshot taken with the prompt open still carries
+   the continuation, and an undone-then-redone answer runs it again.
+5. **`AddCounterByForEffect` is the same body with nil**, so there is
+   one implementation and the ~20 fire-and-forget callers do not change.
+
+Earthbend and amass also detach their own continuation from the keyword
+action's tail **as a value** (`takeKeywordActionThen`, the amass
+`amassed` read) before they hand it to the placement. Their tail is
+cleared through a pointer the undo snapshot does not own. If a closure
+captured the tail instead of its value, a replayed answer would find it
+already cleared.
+
+`game.EarthbendThenForEffect` / `effects.Earthbend.Then` is new, because
+earthbend had no card-side way to say "then". Earthshape is its proof
+card.
+
+#### Found on the way: earthbend's placement read a stale layer cache
+
+`animateEarthbentLandLocked` registers three layer effects and the
+counters go on straight after. The cached characteristic still said
+"Land", so Hardened Scales' "a creature you control" check never matched
+an earthbend. `applyEarthbendLocked` now recomputes before placing, which
+is a no-op when nothing is stale. `TestHardenedScalesSeesAnEarthbend`
+covers it.
+
+#### Not closed here
+
+- **State-based actions run inside a paused resolution.** The resolution
+  bookend sweeps while the ordering prompt is open, so a fresh 0/0
+  (an earthbent land with no counters, a freshly created Army) dies to
+  CR 704.5f before its counters land. The tail then correctly runs with
+  zero. That is a different wrong answer with a different fix, and it has
+  its own follow-up issue:
+  [#1289](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1289).
+- **Card-side placements through the `AddCounter` primitive** that read
+  the counters on the next line: Assemble the Legion, Krenko Tin Street
+  Kingpin, Caldera Pyremaw, Invigorating Surge, Fangs of Kalonia, Insight
+  Engine, The One Ring, cumulative upkeep, Replicating Ring, Finneas Ace
+  Archer and Malcolm. The primitive is outside the ~20 direct callers #1282
+  counted, so these are filed as a follow-up:
+  [#1290](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1290). Each is now a mechanical
+  move onto `AddCounterThenForEffect`.
+- **Doubling Season, Hardened Scales and Branching Evolution apply to
+  counter REMOVALS.** They do not check the sign of the delta, so a
+  removal can also pause. That is
+  [#1291](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1291). The
+  Dawn of a New Age and Gemstone Mine tests use sourceless removal probes
+  so they do not depend on it.
+
 
 ### 6. Six pipeline integration points (five mutations + step transition)
 
