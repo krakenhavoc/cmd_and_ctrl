@@ -634,7 +634,13 @@ function abilityItems(card: CardView, view: GameView, viewerID: string | null): 
     ? "an effect stops its abilities"
     : "";
   const items: MenuItem[] = [];
-  for (const a of card.mana_abilities ?? []) {
+  // #1228: a card projects EITHER the battlefield mana list or the
+  // in-zone one, never both — the server filters by the zone the card
+  // is in (CR 113.6) — so one loop covers a permanent's "{T}: Add {G}"
+  // and a Spirit Guide's "Exile this card from your hand: Add {R}",
+  // and the index means the same thing to the engine either way. The
+  // same shape the activated loop below has had since #660.
+  for (const a of card.mana_abilities ?? card.zone_mana_abilities ?? []) {
     // Mana abilities never carry a loyalty cost, so the context is
     // inert for them — passed anyway to keep one call shape.
     const blocked = manaRestricted || abilityBlocked(a, tapped, sick, loyalty);

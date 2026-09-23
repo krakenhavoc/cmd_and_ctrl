@@ -418,6 +418,11 @@ func Register(spec Spec) {
 		// announced X (CR 605.3b), so a "Sacrifice X …" clause there
 		// has nothing to read its count from.
 		checkSacrificeClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.SacrificeOther, true, false)
+		// #1228 / CR 113.6: the MANA half of the zone dimension, held
+		// to the same three rules the activated half is held to —
+		// every one of them a boot-time refusal rather than a
+		// mysteriously-dead card.
+		checkManaAbilityZones(spec.Name, i, ma)
 		// #789: the counter components are one declaration with two
 		// owners, so they are checked by one function in both places.
 		checkCounterCost(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.RemoveCounters, ma.Cost.AddCounter)
@@ -493,6 +498,65 @@ func Register(spec Spec) {
 	// a granted ability is not one.
 	for _, gr := range spec.Grants {
 		defs[game.GrantKey(gr.Key)] = buildGrantDef(gr)
+	}
+}
+
+// checkManaAbilityZones is #1228's registration guard for a CR 605
+// mana ability's CR 113.6 declaration. Three rules, and each one
+// makes an otherwise-silent failure loud at boot:
+//
+//  1. a declared zone has to be one every consumer walks
+//     (game.ManaAbilityZoneUnsupported) — otherwise the card
+//     registers, looks complete on the catalog page, and never
+//     offers the ability anywhere;
+//  2. a non-battlefield declaration may not carry a component only a
+//     permanent could pay (game.ManaAbilityNeedsPermanentSource) —
+//     the same refusal an activated ability's Zones already gets, and
+//     the same reason: the cost could never be paid;
+//  3. an exile-this cost and a non-battlefield zone imply each other.
+//     Without the zone there is nothing to exile FROM; without the
+//     cost the ability is a free, repeatable mana source, which is
+//     not a card anybody printed.
+func checkManaAbilityZones(card string, i int, ma ManaAbility) {
+	offBattlefield := false
+	for _, zone := range ma.Zones {
+		if why := game.ManaAbilityZoneUnsupported(zone); why != "" {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d functions from %s — %s",
+				card, i, zone, why))
+		}
+		if zone == game.ZoneBattlefield {
+			continue
+		}
+		offBattlefield = true
+		if why := game.ManaAbilityNeedsPermanentSource(shapeOfManaAbility(ma)); why != "" {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d functions from the %s but declares %s — that component needs a permanent on the battlefield",
+				card, i, zone, why))
+		}
+	}
+	if ma.Cost.ExileSelf && !offBattlefield {
+		panic(fmt.Sprintf("effects.Register: %q mana ability %d declares an exile-this cost but does not function from a non-battlefield zone — build it with ExileFromHandForMana",
+			card, i))
+	}
+	if offBattlefield && !ma.Cost.ExileSelf {
+		panic(fmt.Sprintf("effects.Register: %q mana ability %d functions off the battlefield but exiles nothing — a mana ability with no cost is a free repeatable source; build it with ExileFromHandForMana",
+			card, i))
+	}
+}
+
+// shapeOfManaAbility projects the declared cost onto the game-package
+// shape the zone rules are written against, so the boot check asks
+// game.ManaAbilityNeedsPermanentSource exactly the question the
+// engine will ask of the built ability. Only the cost components
+// matter here; the produced-mana half is not a zone question.
+func shapeOfManaAbility(ma ManaAbility) game.ManaAbilityShape {
+	return game.ManaAbilityShape{
+		Zones:          ma.Zones,
+		TapCost:        ma.Cost.Tap,
+		SacrificeCost:  ma.Cost.Sacrifice,
+		SacrificeOther: ma.Cost.SacrificeOther,
+		RemoveCounters: ma.Cost.RemoveCounters,
+		AddCounter:     ma.Cost.AddCounter,
+		ExileSelf:      ma.Cost.ExileSelf,
 	}
 }
 

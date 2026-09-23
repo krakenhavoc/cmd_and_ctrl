@@ -237,11 +237,14 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		ExilePlay:          &ExilePlayView{Player: owner, CostOverride: "{1}{U}"},
 		ActivatedAbilities: []ActivatedAbilityView{{Index: 0, Label: "{T}: Draw", LoyaltyCost: &one}},
 		ZoneAbilities:      []ActivatedAbilityView{{Index: 0, Label: "Cycling {2}", DiscardSelf: true, ManaCost: "{2}"}},
-		SpecialActions:     []SpecialActionView{{Kind: "foretell", Label: "Foretell {2}", Cost: "{2}", Available: true}},
-		SummoningSick:      true,
-		LoyaltyActivated:   true,
-		ClassLevel:         3,
-		Solved:             true,
+		// #1228: the CR 605 half of the same secret — "Exile this
+		// card from your hand: Add {R}" names Simian Spirit Guide.
+		ZoneManaAbilities: []ManaAbilityView{{Index: 0, Label: "Exile this card from your hand: Add {R}", ExileSelf: true, Produced: "{R}"}},
+		SpecialActions:    []SpecialActionView{{Kind: "foretell", Label: "Foretell {2}", Cost: "{2}", Available: true}},
+		SummoningSick:     true,
+		LoyaltyActivated:  true,
+		ClassLevel:        3,
+		Solved:            true,
 		// #781. Deliberately NOT added to redactedCardKeys: both are
 		// public on a card the viewer can see and both are stripped
 		// from one they cannot, because "Elf" names Cavern of Souls

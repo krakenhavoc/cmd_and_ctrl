@@ -56,9 +56,12 @@
     // onActivateManaAbility — when supplied, right-click / context-menu
     // opens the ManaAbilityMenu for the card's mana_abilities and
     // this callback fires with the chosen index. Parents set it on
-    // battlefield cards the viewer controls; undefined suppresses
-    // the menu entirely (hand cards, opponent permanents, zones
-    // where activations aren't meaningful).
+    // battlefield cards the viewer controls, and since #1228 on the
+    // viewer's own hand cards — a Spirit Guide's "Exile this card
+    // from your hand: Add {R}" is a mana ability that functions there
+    // (CR 113.6) and rides `zone_mana_abilities`. Undefined
+    // suppresses the menu entirely (opponent permanents, zones where
+    // activations aren't meaningful).
     onActivateManaAbility?: (abilityIndex: number) => void;
     // S21 sub-PR 2: same menu, CR 602 activated abilities. Set by
     // parents for battlefield permanents the viewer controls, and
@@ -129,8 +132,13 @@
   // filters by the zone the card is in (CR 113.6) — so one menu reads
   // whichever is present and the indices stay the card's own.
   const menuAbilities = $derived(card.activated_abilities ?? card.zone_abilities ?? []);
+  // #1228: and the same sentence for the CR 605 list. A permanent
+  // publishes `mana_abilities`; a card in hand whose mana ability
+  // functions there (a Spirit Guide) publishes `zone_mana_abilities`,
+  // and the index means the same thing on the wire either way.
+  const menuManaAbilities = $derived(card.mana_abilities ?? card.zone_mana_abilities ?? []);
   const hasManaAbilities = $derived(
-    (!!onActivateManaAbility && !!card.mana_abilities && card.mana_abilities.length > 0) ||
+    (!!onActivateManaAbility && menuManaAbilities.length > 0) ||
       (!!onActivateAbility && menuAbilities.length > 0),
   );
 
@@ -552,7 +560,7 @@
   {#if manaMenuOpen && hasManaAbilities}
     <div class="mana-menu-anchor">
       <ManaAbilityMenu
-        abilities={onActivateManaAbility ? (card.mana_abilities ?? []) : []}
+        abilities={onActivateManaAbility ? menuManaAbilities : []}
         tapped={!!card.tapped}
         onActivate={(idx) => onActivateManaAbility?.(idx)}
         activated={onActivateAbility ? menuAbilities : []}

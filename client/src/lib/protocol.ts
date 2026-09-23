@@ -2003,6 +2003,16 @@ export interface CardView extends CastSurfaceView {
   // is the ability's index in the card's FULL list, so the same
   // activate_ability payload works for both.
   zone_abilities?: ActivatedAbilityView[];
+  // #1228: MANA abilities this card offers while it is IN HAND —
+  // "Exile this card from your hand: Add {R}" (the Spirit Guides,
+  // CR 113.6). `zone_abilities`' twin one ability kind over, and a
+  // separate field for the reason `mana_abilities` is separate from
+  // `activated_abilities`: the wire payload differs
+  // (`activate_mana_ability`, not `activate_ability`), so a client
+  // sends the verb that matches the row it read. `index` is the
+  // ability's index in the card's FULL mana-ability list. Stripped
+  // from every seat but the hand's owner, like `zone_abilities`.
+  zone_mana_abilities?: ManaAbilityView[];
   // #658 / #659: CR 116.2 special actions this card offers while it
   // is IN HAND — "Foretell {2}", "Suspend 1—{R}". Not abilities and
   // not casts: they use no stack and there is nothing to respond to,
@@ -2157,6 +2167,12 @@ export interface ManaAbilityView {
   label?: string;
   tap_cost?: boolean;
   sacrifice_cost?: boolean;
+  // #1228: the "Exile this card from your hand" component of a mana
+  // ability that functions from a hand (CR 113.6) — the Spirit
+  // Guides. The same wire name ActivatedAbilityView carries it under,
+  // so one cost chip serves both ability kinds. Advisory; the server
+  // validates the zone and pays the exile.
+  exile_self?: boolean;
   produced?: string;
   // S21: "Sacrifice a creature: Add {C}{C}" (Ashnod's Altar) — a
   // mana ability whose cost sacrifices ANOTHER permanent. Mirrors

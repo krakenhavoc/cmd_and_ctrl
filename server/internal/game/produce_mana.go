@@ -213,7 +213,7 @@ func (g *Game) replaceProducedManaLocked(playerID, source uuid.UUID, colors []st
 // the real window skips them too, under mustSettleNow).
 //
 // Caller must hold g.mu (a read lock is enough).
-func (g *Game) producedManaPreviewLocked(playerID, source uuid.UUID, colors []string) []string {
+func (g *Game) producedManaPreviewLocked(playerID, source uuid.UUID, colors []string, fromTap bool) []string {
 	if len(colors) == 0 {
 		return nil
 	}
@@ -223,10 +223,14 @@ func (g *Game) producedManaPreviewLocked(playerID, source uuid.UUID, colors []st
 		Source:     source,
 		ManaPlayer: playerID,
 		ManaSource: source,
-		// The planner only ever prices a TAP source: gatherTapSources
-		// collects tap-for-mana abilities and nothing else, which is
-		// the same set the executor taps.
-		ManaFromTap:   true,
+		// CR 106.12a: whether this production is a TAP for mana. True
+		// for every battlefield source the planner gathers, and false
+		// for the one kind that is not a permanent at all — a Spirit
+		// Guide exiled out of a hand (#1228). It decides whether
+		// "whenever you tap a permanent for mana" replacements see
+		// the production at all, so passing the wrong one would price
+		// a Mana-Reflected Spirit Guide at two {R}.
+		ManaFromTap:   fromTap,
 		ManaColors:    append([]string(nil), colors...),
 		mustSettleNow: true,
 	}
@@ -341,6 +345,7 @@ func (g *Game) producesManaReplacementsExistLocked() bool {
 func (g *Game) priceProducedSlotsLocked(
 	playerID, cardID uuid.UUID,
 	slots []ProducedManaEntry,
+	fromTap bool,
 ) []ProducedManaEntry {
 	out := make([]ProducedManaEntry, 0, len(slots))
 	changed := false
@@ -349,7 +354,7 @@ func (g *Game) priceProducedSlotsLocked(
 		differs := false
 		for _, color := range slot.Options {
 			base := slot.AmountFor(color)
-			n := len(g.producedManaPreviewLocked(playerID, cardID, repeatColor(color, base)))
+			n := len(g.producedManaPreviewLocked(playerID, cardID, repeatColor(color, base), fromTap))
 			amounts[color] = n
 			if n != base {
 				differs = true

@@ -54,6 +54,15 @@ import (
 // agreed to spend, which is the bar the life-cost and counter-adding
 // exclusions are held to.
 //
+// …and behind THAT, since #1228, a source that is not on the
+// battlefield at all: a Spirit Guide's "Exile this card from your
+// hand: Add {R}" (CR 113.6, ManaAbilityShape.Zones). It is the same
+// argument one step further along — a Treasure is a resource the
+// player agreed to have on the table, a card in hand is a spell they
+// have not played yet, so a plan reaches for it only when neither an
+// untapped permanent nor a crackable one could pay. See
+// tapSource.LeavesHand for the whole ordering in one sentence.
+//
 // …unless the spell being cast ASKED for it. #1212's source wish
 // (tapSource.Wanted) is read before the last-resort tier in both
 // comparators, because a card that reads "if mana from a Treasure was
@@ -293,6 +302,16 @@ func (g *Game) autoTapPreferringLocked(
 		// source that fits, so an UNWISHED Treasure is only reached
 		// when no land, rock or creature on the board could have paid
 		// the pip.
+		// #1228: and the last-resort tier below the last-resort tier.
+		// A source that LEAVES THE HAND to pay for itself is ranked
+		// below a sacrifice source, so the order reads
+		// ordinary → frozen → sacrificed → out of hand. It is a key
+		// ABOVE Sacrifices because the keys are applied in order and
+		// the first one to differ decides: putting it above is what
+		// makes every hand source sort behind every Treasure.
+		if sources[i].LeavesHand != sources[j].LeavesHand {
+			return !sources[i].LeavesHand
+		}
 		if sources[i].Sacrifices != sources[j].Sacrifices {
 			return !sources[i].Sacrifices
 		}
@@ -367,6 +386,27 @@ type tapSource struct {
 	// not be planned at all — a Treasure was not a candidate — so the
 	// hint's headline card was the one card it never reached.
 	Wanted bool
+
+	// LeavesHand marks a source that is NOT A PERMANENT: a card in
+	// the controller's hand whose mana ability functions from there
+	// (CR 113.6) and pays for itself by exiling the card (#1228) — a
+	// Simian Spirit Guide, an Elvish Spirit Guide.
+	//
+	// It is the last tier of the ordering, below even Sacrifices, and
+	// the whole argument is one sentence: a Treasure is a resource
+	// the player already put on the table and a card in hand is a
+	// spell they have not played yet, so the planner spends the
+	// Treasure first. Both comparators read it immediately above
+	// Sacrifices, which is what makes "below" true — the keys apply
+	// in order and the first to differ decides.
+	//
+	// Nothing else reads it. The EXECUTOR does not: it re-finds the
+	// planned card in whatever zone holds it now
+	// (materializePlanLocked), for the same reason it re-asks the
+	// gate, the sickness and the counter cost — a plan can arrive
+	// stale, and a bit carried on the plan would be a second opinion
+	// about where a card is.
+	LeavesHand bool
 }
 
 // gatherTapSources walks the battlefield and collects every tap-
@@ -447,64 +487,21 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 		if !manaCounterCostPlannable(&c, picked) {
 			continue
 		}
-		// A derived or scaled ability declares nothing useful in
-		// Produced — Exotic Orchard's colours and Cabal Coffers'
-		// count only exist once computed. Read-only under the lock
-		// the caller already holds, same contract the activation
-		// path gives the callback.
-		producedStr := manaAbilityProducedLocked(g, controller, c.InstanceID, picked,
-			g.maxCounterPaymentLocked(controller, c.InstanceID, picked.RemoveCounters))
-		slots, err := ParseProducedMana(producedStr)
-		if err != nil || len(slots) == 0 {
-			continue
-		}
-		// Mirror the activation's option list (manaPickOptions) so
-		// the planner books exactly the colours the activation will
-		// offer: Birds of Paradise keeps all five with the commander's
-		// identity first, and only a NarrowToCommanderIdentity source
-		// (Command Tower, Arcane Signet) is intersected with the
-		// identity.
+		// What this source would really add — the derived or scaled
+		// output, the activation's own option list (identity-first,
+		// or the CR 903.4f narrowing) and the CR 106.12b window on
+		// the amount, in that order. One helper since #1228, so the
+		// hand walk below prices a source exactly as this one does;
+		// see manaPlannableSlotsLocked for what each step is for.
 		//
-		// CR 903.4f (#844): that intersection can be empty — no
-		// commander, or a colourless one — and a slot with nothing to
-		// add is not a slot. Drop those, and a source left with no
-		// slots at all is not a mana source: planning it would book a
-		// mana the activation can never mint, and the executor would
-		// tap the land for nothing on the way to a cast it can't pay.
-		live := slots[:0]
-		for _, slot := range slots {
-			slot.Options = manaPickOptions(slot.Options, identity, picked.NarrowToCommanderIdentity)
-			if len(slot.Options) == 0 {
-				continue
-			}
-			live = append(live, slot)
-		}
-		slots = live
+		// BEFORE the #1212 wish below, because this is the branch
+		// that can still drop the source: a permanent the window
+		// leaves with nothing to add is not a mana source, wished-for
+		// or not, and tapping a land for no mana is worse than not
+		// tapping it.
+		slots := manaPlannableSlotsLocked(g, controller, c, picked, identity, priceProduction, true)
 		if len(slots) == 0 {
 			continue
-		}
-		// #1222: what this source will REALLY make. "If you tap a
-		// permanent for mana, it produces twice as much of that mana
-		// instead" (Mana Reflection) is a CR 614 replacement, so a
-		// planner that booked the printed amount would tap two lands
-		// where a Mana-Reflected one pays — and, worse, would read a
-		// payable cast as unpayable in strict mode. Priced through the
-		// same gathered AppliesTo / Replace pairs the executor runs, so
-		// the two halves of the tapper cannot disagree about what a
-		// source produces, which is the rule this whole function is
-		// built around.
-		//
-		// BEFORE the #1212 wish below, because this is the branch that
-		// can still drop the source: a permanent the window leaves with
-		// nothing to add is not a mana source, wished-for or not.
-		if priceProduction {
-			slots = g.priceProducedSlotsLocked(controller, c.InstanceID, slots)
-			if len(slots) == 0 {
-				// The window replaces this source's production away
-				// entirely. Tapping a land for no mana is worse than
-				// not tapping it — the CR 903.4f posture, one line up.
-				continue
-			}
 		}
 		// #1212: the wish, answered off the same snapshot the mana
 		// this permanent produces will carry (manaSourceKindsOf), so
@@ -513,11 +510,171 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 		// the KINDS it produces are unaffected by that — CR 106.12b
 		// replaces how much mana is produced, not what produced it.
 		wanted := prefer != 0 && manaSourceKindsOf(c).HasAny(prefer)
-		out = appendTapSource(out, c.InstanceID, slots,
-			untapStepRestrictedBy(&c, g, restrictions) || c.hasNextUntapSkipFor(controller),
-			wanted, picked.SacrificeCost)
+		out = appendTapSource(out, tapSource{
+			CardID:     c.InstanceID,
+			Frozen:     untapStepRestrictedBy(&c, g, restrictions) || c.hasNextUntapSkipFor(controller),
+			Wanted:     wanted,
+			Sacrifices: picked.SacrificeCost,
+		}, slots)
+	}
+	return gatherManaZoneSources(g, controller, excluded, prefer, identity, priceProduction, out)
+}
+
+// gatherManaZoneSources is gatherTapSources' NON-BATTLEFIELD half
+// (#1228, CR 113.6): the controller's own cards whose mana ability
+// says it functions from the zone they are sitting in.
+//
+// One pile today — the hand, which is all supportedManaAbilityZones
+// admits — holding the two Spirit Guides. The loop is written over
+// the supported set rather than over `p.Hand` directly so that adding
+// a zone is adding it in one place, the way legal.abilityZones and
+// protocol.stampZoneAbilities are each one list.
+//
+// What it does NOT do, and each omission is a rule rather than a
+// shortcut:
+//
+//   - no Tapped check and no {T}: the payment is the card LEAVING the
+//     zone, which is what autoManaExileAbilityFor demands instead;
+//   - no CanActivateManaAbilities: Arrest and Cursed Totem restrict a
+//     PERMANENT, and layer 6 has nothing to say about a card in a
+//     hand — the same omission ActivateManaAbility makes on this arm
+//     and legal.activatedMoves makes on its own;
+//   - no summoning-sickness check: CR 302.6 is about a permanent you
+//     control, and a card in hand is neither;
+//   - no untap-step (Frozen) tier: a card that is about to be exiled
+//     will not miss an untap.
+//
+// The wish, the activation gate, the Condition, the CR 903.4f
+// narrowing and the CR 614 production window are all asked exactly as
+// the battlefield loop asks them, through the same helpers, because
+// none of them is a fact about the battlefield.
+//
+// Caller must hold g.mu.
+func gatherManaZoneSources(
+	g *Game,
+	controller uuid.UUID,
+	excluded map[uuid.UUID]bool,
+	prefer ManaSourceKinds,
+	identity commanderIdentity,
+	priceProduction bool,
+	out []tapSource,
+) []tapSource {
+	p := g.playerByIDLocked(controller)
+	if p == nil {
+		return out
+	}
+	for _, kind := range supportedManaAbilityZones {
+		pile := playerManaZone(p, kind)
+		if pile == nil {
+			continue
+		}
+		for _, c := range pile.Cards {
+			if excluded[c.InstanceID] {
+				continue
+			}
+			picked := g.autoManaExileAbilityFor(controller, c, ManaAbilitiesForCard(c), kind)
+			if picked == nil {
+				continue
+			}
+			// #1210, CR 602.5a: the board-wide "can't be activated"
+			// gate, asked of the zone the card is in — the same call
+			// ActivateManaAbility now makes, so a restriction that
+			// reaches a hand activation reaches the planner too.
+			if g.ActivationGateLocked(controller, c, kind,
+				ActivationAbility{Label: picked.Label, Mana: true}) != nil {
+				continue
+			}
+			if picked.Condition != nil && !picked.Condition(g, controller, c.InstanceID) {
+				continue
+			}
+			slots := manaPlannableSlotsLocked(g, controller, c, picked, identity, priceProduction, false)
+			if len(slots) == 0 {
+				continue
+			}
+			out = appendTapSource(out, tapSource{
+				CardID:     c.InstanceID,
+				Wanted:     prefer != 0 && manaSourceKindsOf(c).HasAny(prefer),
+				LeavesHand: true,
+			}, slots)
+		}
 	}
 	return out
+}
+
+// playerManaZone is the seat's own pile for a zone a mana ability may
+// declare, or nil for a kind that is not one of a player's piles.
+// Small and local because the one caller is the gather above; the
+// view and the enumerator each have their own spelling of the same
+// switch for their own projections.
+func playerManaZone(p *Player, kind ZoneKind) *Zone {
+	if p == nil {
+		return nil
+	}
+	switch kind {
+	case ZoneHand:
+		return p.Hand
+	case ZoneGraveyard:
+		return p.Graveyard
+	case ZoneCommand:
+		return p.Command
+	}
+	return nil
+}
+
+// manaPlannableSlotsLocked is the produced-mana half of a gather: what
+// this source would REALLY add right now, in the grammar the solver
+// reasons in, or nil when it would add nothing and is therefore not a
+// mana source at all.
+//
+// Factored out of gatherTapSources so the battlefield walk and the
+// hand walk price a source identically (#1228). Three steps, each one
+// the battlefield loop already took:
+//
+//  1. the derived or scaled output, computed rather than read off
+//     Produced (Exotic Orchard, Cabal Coffers, Mage-Ring Network);
+//  2. the activation's own option list — identity-first order, or the
+//     CR 903.4f narrowing for a NarrowToCommanderIdentity source —
+//     so the planner books exactly the colours the activation offers,
+//     and a slot the narrowing empties is not a slot;
+//  3. the CR 106.12b window on the AMOUNT (#1222), which can leave a
+//     source with nothing to add.
+//
+// `fromTap` says whether the production being priced is a tap for mana
+// (CR 106.12a). False for a hand source, which is not tapped and is
+// not a permanent — so Mana Reflection's "if you tap a permanent for
+// mana" does not double a Spirit Guide, which is the printed answer.
+//
+// Caller must hold g.mu.
+func manaPlannableSlotsLocked(
+	g *Game,
+	controller uuid.UUID,
+	c Card,
+	picked *ManaAbilityShape,
+	identity commanderIdentity,
+	priceProduction, fromTap bool,
+) []ProducedManaEntry {
+	producedStr := manaAbilityProducedLocked(g, controller, c.InstanceID, picked,
+		g.maxCounterPaymentLocked(controller, c.InstanceID, picked.RemoveCounters))
+	slots, err := ParseProducedMana(producedStr)
+	if err != nil || len(slots) == 0 {
+		return nil
+	}
+	live := slots[:0]
+	for _, slot := range slots {
+		slot.Options = manaPickOptions(slot.Options, identity, picked.NarrowToCommanderIdentity)
+		if len(slot.Options) == 0 {
+			continue
+		}
+		live = append(live, slot)
+	}
+	slots = live
+	if len(slots) == 0 {
+		return nil
+	}
+	if priceProduction {
+		slots = g.priceProducedSlotsLocked(controller, c.InstanceID, slots, fromTap)
+	}
+	return slots
 }
 
 // Return values of oneColorSlot.
@@ -574,17 +731,16 @@ func oneColorSlot(slots []ProducedManaEntry) int {
 // booked for {U}{U} leaves its third slot in the spare tally, which
 // recruitGeneric spends on the generic half of the same cost, and
 // anything still left floats (CR 106.4).
-func appendTapSource(out []tapSource, cardID uuid.UUID, slots []ProducedManaEntry, frozen, wanted, sacrifices bool) []tapSource {
+// `proto` carries everything about the source that is not its slots —
+// the card, its tier bits and the wish — so the tiers can grow (#1215
+// added Sacrifices, #1228 LeavesHand) without this function growing
+// another positional bool for each.
+func appendTapSource(out []tapSource, proto tapSource, slots []ProducedManaEntry) []tapSource {
 	idx := oneColorSlot(slots)
 	switch idx {
 	case oneColorSlotNone:
-		return append(out, tapSource{
-			CardID:     cardID,
-			Slots:      slots,
-			Frozen:     frozen,
-			Wanted:     wanted,
-			Sacrifices: sacrifices,
-		})
+		proto.Slots = slots
+		return append(out, proto)
 	case oneColorSlotUnplannable:
 		return out
 	}
@@ -602,14 +758,10 @@ func appendTapSource(out []tapSource, cardID uuid.UUID, slots []ProducedManaEntr
 			variant = append(variant, ProducedManaEntry{Options: []string{color}})
 		}
 		variant = append(variant, slots[idx+1:]...)
-		out = append(out, tapSource{
-			CardID:     cardID,
-			Slots:      variant,
-			Frozen:     frozen,
-			Wanted:     wanted,
-			Sacrifices: sacrifices,
-			OneColor:   color,
-		})
+		candidate := proto
+		candidate.Slots = variant
+		candidate.OneColor = color
+		out = append(out, candidate)
 	}
 	return out
 }
@@ -709,6 +861,15 @@ func appendTapSource(out []tapSource, cardID uuid.UUID, slots []ProducedManaEntr
 func (g *Game) autoTapAbilityFor(asker uuid.UUID, source Card, abilities []ManaAbilityShape) *ManaAbilityShape {
 	for i := range abilities {
 		a := abilities[i]
+		// CR 113.6 (#1228): an ability that functions only from a
+		// HAND is not a battlefield permanent's mana ability, even
+		// when the card somehow reaches the battlefield — a Simian
+		// Spirit Guide cast as a creature is a 2/2 Ape with no
+		// abilities, which is the paper card. Its own picker is
+		// autoManaExileAbilityFor.
+		if !ManaAbilityFunctionsFromZone(a, ZoneBattlefield) {
+			continue
+		}
 		// Every planned source owes a {T}: a tapPlan is a list of
 		// permanents to tap, so a sacrifice-ONLY ability (a Gold
 		// token, an Eldrazi Spawn) has no slot in it yet — see the
@@ -775,6 +936,88 @@ func (g *Game) autoTapAbilityFor(asker uuid.UUID, source Card, abilities []ManaA
 		// makes none of. A hand-clicked Skirge Familiar is a mana
 		// source; an auto-tapped one is not.
 		if a.DiscardCards != nil {
+			continue
+		}
+		return &a
+	}
+	return nil
+}
+
+// autoManaExileAbilityFor is autoTapAbilityFor for a source that is
+// NOT ON THE BATTLEFIELD (#1228): the one mana ability the planner is
+// willing to fire on a card sitting in `zone`, or nil when none
+// qualifies.
+//
+// Shared by the planner (gatherManaZoneSources) and the executor
+// (materializePlanLocked) for exactly the reason its battlefield twin
+// is: two copies of "which ability index is this card going to be
+// spent for" drift, and when the planner's copy is the laxer one the
+// executor strands whatever it had already tapped.
+//
+// A separate function rather than a zone parameter on the twin,
+// because the two pickers exclude for different reasons. The
+// battlefield picker's seven exclusions are all about a payment the
+// planner may not decide or may not afford; this one's demands are
+// about what a card in a hand even IS:
+//
+//   - the ability has to function from this zone (CR 113.6);
+//
+//   - it has to pay by EXILING ITSELF, and that has to be the whole
+//     cost. A card in hand has nothing to tap and nothing to
+//     sacrifice, and effects.Register refuses those components at
+//     boot — but a mana ability off the battlefield with NO cost at
+//     all would be a source the planner could spend infinitely, so
+//     the demand is stated here rather than inferred from the boot
+//     check two packages away;
+//
+//   - every other cost component is excluded for the SAME reasons the
+//     battlefield picker excludes it: a mana or life cost, a rider, a
+//     discard, restricted output and a spent exhaust ability are each
+//     a decision the planner may not make or a rule it must not
+//     break, and none of them becomes safe because the source is in a
+//     hand.
+//
+// The cost this leaves is exactly "Exile this card from your hand:
+// Add {R}" — the Spirit Guides, and nothing else the catalog can
+// express.
+//
+// Caller must hold g.mu.
+func (g *Game) autoManaExileAbilityFor(asker uuid.UUID, source Card, abilities []ManaAbilityShape, zone ZoneKind) *ManaAbilityShape {
+	if zone == ZoneBattlefield {
+		return nil
+	}
+	for i := range abilities {
+		a := abilities[i]
+		if !ManaAbilityFunctionsFromZone(a, zone) {
+			continue
+		}
+		// The payment, and the whole of it. TapCost and
+		// SacrificeCost are unpayable here (effects.Register refuses
+		// them at boot) and a costless mana source would be an
+		// infinite one, so the picker demands the exile rather than
+		// merely tolerating it.
+		if !a.ExileSelf || a.TapCost || a.SacrificeCost || a.SacrificeOther != nil {
+			continue
+		}
+		if g.ManaAbilityExhausted(asker, source.InstanceID, a) {
+			continue
+		}
+		if a.LifeCost > 0 || a.Rider != nil {
+			continue
+		}
+		if len(a.Restrictions) > 0 || a.RestrictionsFunc != nil {
+			continue
+		}
+		if a.ManaCost != "" {
+			priced, err := g.ManaAbilityManaCostForEffect(asker, source, a)
+			if err != nil || !priced.Empty() {
+				continue
+			}
+		}
+		if a.AddCounter != nil || a.RemoveCounters != nil {
+			continue
+		}
+		if !a.TapOthers.Empty() || a.DiscardCards != nil {
 			continue
 		}
 		return &a
@@ -1016,10 +1259,13 @@ func recruitGeneric(
 // any-colour tier would otherwise recruit it ahead of the basic land
 // sitting untapped beside it — and it is also where it costs the
 // most, because the Treasure is gone and the land untaps.
+//
+// #1228: and a source that LEAVES THE HAND comes after even that.
 func orderUnusedByGenericPreference(sources []tapSource, used []bool) []int {
 	type rank struct {
 		idx        int
 		wanted     bool
+		leavesHand bool
 		sacrifices bool
 		frozen     bool
 		tier       int // 0 = colorless-only, 1 = any-color, 2 = monocolored
@@ -1034,6 +1280,7 @@ func orderUnusedByGenericPreference(sources []tapSource, used []bool) []int {
 		out = append(out, rank{
 			idx:        i,
 			wanted:     s.Wanted,
+			leavesHand: s.LeavesHand,
 			sacrifices: s.Sacrifices,
 			frozen:     s.Frozen,
 			tier:       t,
@@ -1061,6 +1308,18 @@ func orderUnusedByGenericPreference(sources []tapSource, used []bool) []int {
 		// the planner spends the cheapest thing on the board.
 		if out[a].wanted != out[b].wanted {
 			return out[a].wanted
+		}
+		// #1228: the generic half is where the hand tier matters most,
+		// for the reason the sacrifice tier does — a Spirit Guide is a
+		// single-colour source and would otherwise be recruited ahead
+		// of nothing at all, but a plan that reached for it to pay one
+		// generic pip a second Mountain could have paid would be
+		// spending a card out of hand behind the player's back. Above
+		// Sacrifices for the reason it is above it in the other
+		// comparator: the first key to differ decides, so "below the
+		// sacrifice tier" is spelled "tested before it".
+		if out[a].leavesHand != out[b].leavesHand {
+			return !out[a].leavesHand
 		}
 		if out[a].sacrifices != out[b].sacrifices {
 			return !out[a].sacrifices

@@ -1392,6 +1392,30 @@ type CardView struct {
 	// list, so the client sends the same activate_ability payload it
 	// sends for a permanent. Added for #660, widened by #1221.
 	ZoneAbilities []ActivatedAbilityView `json:"zone_abilities,omitempty"`
+	// ZoneManaAbilities are the CR 605 MANA abilities this card offers
+	// from the non-battlefield zone it is sitting in (#1228) — a hand,
+	// today and only a hand (game.supportedManaAbilityZones). The
+	// Spirit Guides' "Exile this card from your hand: Add {R}" is the
+	// whole printed family.
+	//
+	// `zone_abilities`' twin, one ability kind over, and separate from
+	// it for the reason `mana_abilities` is separate from
+	// `activated_abilities`: the two payloads differ
+	// (`activate_mana_ability` against `activate_ability`) and a
+	// client sends the row it read.
+	//
+	// Not public, and it rides castOffers for the same reason
+	// `zone_abilities` does — an activation row answers "what may YOU
+	// announce about this card, from here". A hand is already hidden
+	// wholesale, so today that is belt-and-braces; it is written this
+	// way because the graveyard is one entry in
+	// supportedManaAbilityZones away and a public pile would ship one
+	// seat's answer to the table (#1055, #1167).
+	//
+	// `index` is the ability's index in the card's FULL mana-ability
+	// list, so the client sends the same activate_mana_ability payload
+	// it sends for a permanent.
+	ZoneManaAbilities []ManaAbilityView `json:"zone_mana_abilities,omitempty"`
 	// SpecialActions are the CR 116.2 special actions this card
 	// offers while it is IN HAND — "Foretell {2}" (CR 702.143a),
 	// "Suspend 1—{R}" (CR 702.62a). Each entry is a menu row the
@@ -2241,6 +2265,15 @@ type ManaAbilityView struct {
 	// Petal); both went live in S21 sub-PR 1.
 	TapCost       bool `json:"tap_cost,omitempty"`
 	SacrificeCost bool `json:"sacrifice_cost,omitempty"`
+	// ExileSelf is the "Exile this card from your hand" component of
+	// a mana ability that functions from a hand (#1228) — the Spirit
+	// Guides, and the whole printed family. The same wire name
+	// ActivatedAbilityView carries it under (#1221), so a client that
+	// renders a cost chip renders one chip for both ability kinds.
+	//
+	// Advisory, like every other cost flag on this view: the server
+	// validates the zone and pays the exile.
+	ExileSelf bool `json:"exile_self,omitempty"`
 	// SacrificeLabel / SacrificeOptions describe a sacrifice-ANOTHER
 	// cost — Ashnod's Altar's "Sacrifice a creature" — exactly as
 	// ActivatedAbilityView carries them, so the client reuses one
@@ -2916,6 +2949,15 @@ type castStamps struct {
 	// it — the two passes answer different questions about the same
 	// card.
 	ZoneAbilities []ActivatedAbilityView
+
+	// ZoneManaAbilities is the seat's CR 605 MANA activation rows for
+	// this card in this zone (#1228) — a Spirit Guide's "Exile this
+	// card from your hand: Add {R}". It rides the per-seat carrier
+	// beside ZoneAbilities and for the same sentence: an activation
+	// row answers "what may YOU announce about this card, from here".
+	//
+	// Written by the same pass, through the same merge.
+	ZoneManaAbilities []ManaAbilityView
 }
 
 // applyTo writes one seat's answer onto the card they will receive.
@@ -2933,6 +2975,8 @@ func (s castStamps) applyTo(c *CardView) {
 	// wrote. Nothing writes it publicly today; assigning rather than
 	// guarding on nil is what keeps that true if something ever does.
 	c.ZoneAbilities = s.ZoneAbilities
+	// #1228: the mana half, the same way and for the same reason.
+	c.ZoneManaAbilities = s.ZoneManaAbilities
 }
 
 // applyToFace is applyTo for ONE PRINTED FACE of the card (#992) —
@@ -3047,6 +3091,11 @@ func (s castStamps) publicIn(kind game.ZoneKind) castStamps {
 	// `castable_here` — "what may YOU announce from here" — and it
 	// carries legal sets of its own. None of it is public.
 	s.ZoneAbilities = nil
+	// #1228: and the mana rows beside them. A mana ability names no
+	// targets, but the row still answers "what may YOU announce", and
+	// the day the graveyard joins supportedManaAbilityZones is the
+	// day a public pile would otherwise start shipping it.
+	s.ZoneManaAbilities = nil
 	s.Modes = publicModeSpec(s.Modes)
 	s.AlternativeCosts = publicAlternativeCosts(s.AlternativeCosts)
 	if kind == game.ZoneHand {
@@ -3196,6 +3245,24 @@ func (c *CardView) stampZoneAbilitiesFor(seat uuid.UUID, rows []ActivatedAbility
 	key := seat.String()
 	s := c.castOffers[key]
 	s.ZoneAbilities = rows
+	c.castOffers[key] = s
+}
+
+// stampZoneManaAbilitiesFor is stampZoneAbilitiesFor for the CR 605
+// half (#1228), with the same merge and the same empty-rows
+// short-circuit — and the short-circuit matters more here, because
+// almost every card in a hand has a mana ability list that is empty
+// once the zone predicate has run over it.
+func (c *CardView) stampZoneManaAbilitiesFor(seat uuid.UUID, rows []ManaAbilityView) {
+	if len(rows) == 0 {
+		return
+	}
+	if c.castOffers == nil {
+		c.castOffers = make(map[string]castStamps, 1)
+	}
+	key := seat.String()
+	s := c.castOffers[key]
+	s.ZoneManaAbilities = rows
 	c.castOffers[key] = s
 }
 
@@ -3892,6 +3959,11 @@ func stampZoneAbilities(g *game.Game, seats []PlayerView, exile *ZoneView) {
 				continue
 			}
 			c.stampZoneAbilitiesFor(owner, viewOfActivatedAbilities(g, card, owner, game.ZoneHand))
+			// #1228: the CR 605 rows beside the CR 602 ones. The same
+			// pass, because it is the same question about the same
+			// card — "what may you activate here" — and a second walk
+			// of every hand would be a second answer to keep in step.
+			c.stampZoneManaAbilitiesFor(owner, viewOfManaAbilitiesFromZone(card, game.ZoneHand))
 			c.SpecialActions = viewOfSpecialActions(g, card, owner)
 		}
 		stampZoneAbilitiesInPile(g, &seat.Graveyard, game.ZoneGraveyard, owner)
@@ -3930,6 +4002,11 @@ func stampZoneAbilitiesInPile(g *game.Game, zone *ZoneView, kind game.ZoneKind, 
 			continue
 		}
 		c.stampZoneAbilitiesFor(you, viewOfActivatedAbilities(g, card, you, kind))
+		// #1228: nil for every pile today — game.supportedManaAbilityZones
+		// is the hand alone, so the zone predicate answers no here —
+		// and the call is made anyway so that adding a zone to that
+		// list is adding it in one place rather than two.
+		c.stampZoneManaAbilitiesFor(you, viewOfManaAbilitiesFromZone(card, kind))
 	}
 }
 
@@ -5450,6 +5527,10 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// would name the Triome. It is also the only ability list on the
 	// wire that is not public information in the first place.
 	out.ZoneAbilities = nil
+	// #1228: and the mana rows beside them. "Exile this card from
+	// your hand: Add {R}" names Simian Spirit Guide as surely as
+	// "Cycling {3}" names a Triome.
+	out.ZoneManaAbilities = nil
 	// #658 / #659: "Foretell {1}{U}" and "Suspend 4—{U}" quote the
 	// card exactly as a hand ability does, and are hidden for the
 	// same reason.
@@ -6536,22 +6617,45 @@ func viewOfAbilityBadges(eff game.Characteristic) []string {
 }
 
 func viewOfManaAbilities(c game.Card) []ManaAbilityView {
+	return viewOfManaAbilitiesFromZone(c, game.ZoneBattlefield)
+}
+
+// viewOfManaAbilitiesFromZone is viewOfManaAbilities for a card in a
+// named zone (#1228, CR 113.6): the abilities that function THERE and
+// no others.
+//
+// The exported `mana_abilities` field goes through it with the
+// BATTLEFIELD, which is what that field has always meant — "what does
+// this permanent do" — and what keeps a Simian Spirit Guide's hand
+// ability off a public projection of the card. A Forest in hand is
+// unaffected: its "{T}: Add {G}" declares nothing and so functions
+// from the battlefield, which is where the row it publishes is about.
+//
+// The INDEX is the ability's index in the card's FULL list either
+// way, which is what the engine validates against — so a filtered
+// list never renumbers, exactly as viewOfActivatedAbilities' does
+// not.
+func viewOfManaAbilitiesFromZone(c game.Card, zone game.ZoneKind) []ManaAbilityView {
 	raw := game.ManaAbilitiesForCard(c)
 	if len(raw) == 0 {
 		return nil
 	}
-	out := make([]ManaAbilityView, len(raw))
+	var out []ManaAbilityView
 	for i, a := range raw {
-		out[i] = ManaAbilityView{
+		if !game.ManaAbilityFunctionsFromZone(a, zone) {
+			continue
+		}
+		out = append(out, ManaAbilityView{
 			Index:         i,
 			Label:         a.Label,
 			TapCost:       a.TapCost,
 			SacrificeCost: a.SacrificeCost,
+			ExileSelf:     a.ExileSelf,
 			LifeCost:      a.LifeCost,
 			ManaCost:      a.ManaCost,
 			Restrictions:  a.Restrictions,
 			Produced:      a.Produced,
-		}
+		})
 	}
 	return out
 }
