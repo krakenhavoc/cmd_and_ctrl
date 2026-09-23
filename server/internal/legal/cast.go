@@ -963,6 +963,11 @@ func (e *enumerator) castMoveEmitter(
 			// cannot name, so a policy reading only the payload would
 			// price Force of Will's pitch as free. See MoveCost.
 			Cost: moveCost(offerLife(offer), 0),
+			// A modal spell may have a counter mode and a burn mode
+			// in the same expansion (Cryptic Command); the flag is
+			// per ANNOUNCEMENT, not per card, so only the modes that
+			// actually chose a stack target come back flagged.
+			TargetsStack: targetsStackObject(g, targets),
 			Params: mustJSON(castParams{
 				InstanceID:      card.InstanceID.String(),
 				FromZone:        from,
