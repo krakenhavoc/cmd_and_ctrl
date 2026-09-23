@@ -114,6 +114,9 @@
     // that reason doesn't apply and the ceiling can match self's.
     // See .panel.opponent.spectator below.
     spectator?: boolean;
+    // #1307: threaded straight through to PlayerIdentity — see its
+    // prop doc.
+    considering?: boolean;
   }
 
   const {
@@ -147,6 +150,7 @@
     onManaAbilityCost,
     flipped = false,
     spectator = false,
+    considering = false,
   }: Props = $props();
 
   // The seat's commander, wherever it is right now: the command zone
@@ -443,6 +447,7 @@
       {sendAction}
       {onDeclareAttack}
       {onTargetPlayer}
+      {considering}
     />
     <div class="rail-gap"></div>
     <PileBar {seat} {exile} {isSelf} {sendAction} onDrawCard={isSelf ? onDrawCard : undefined} />
