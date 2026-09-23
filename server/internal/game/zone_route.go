@@ -464,6 +464,14 @@ func (g *Game) routeCardToZoneLocked(r zoneRoute) (paused bool, err error) {
 	if src == nil {
 		return false, ErrCardNotFound
 	}
+	if r.DropStackMeta && src.Kind == ZoneStack {
+		// #1255, CR 608.2h: a spell leaving the stack without
+		// resolving can still be copied by an effect that names it
+		// without targeting it (a storm trigger whose spell was
+		// countered in response). Taken here, before the move, while
+		// the card and its item are still the spell's.
+		g.rememberLeavingSpellLocked(r.CardID)
+	}
 	dstZone, _, err := g.routeDestinationLocked(r.CardID, r.Dst, r.DstOwner)
 	if err != nil {
 		return false, err

@@ -450,6 +450,15 @@ type Game struct {
 	// two boundaries lastKnownBattlefield is.
 	lastKnownCounters map[uuid.UUID]map[string]int
 
+	// lastKnownStack is CR 608.2h last-known information for spells
+	// that left the stack WITHOUT resolving this turn — countered,
+	// returned, moved by hand — keyed by the spell's instance ID and
+	// holding the card and its stack item as they last stood. Read
+	// only by CopyLastKnownSpellForEffect, the copy entry point for
+	// effects that name a spell without targeting it (storm). Cleared
+	// at the turn boundary. See stack_lki.go (#1255).
+	lastKnownStack map[uuid.UUID]lastKnownSpell
+
 	// simultaneousExit holds copies of the permanents currently
 	// leaving the battlefield as ONE event — a board wipe, or one
 	// state-based-action sweep. Non-empty only for the duration of

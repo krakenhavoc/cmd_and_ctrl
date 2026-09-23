@@ -251,6 +251,10 @@ func (g *Game) onTurnBeganLocked() {
 		g.DrawnThisTurn = nil
 	}
 	g.resetTurnTallyLocked()
+	// #1255: last-known information for spells that left the stack
+	// this turn. Nothing can still name one — the stack is empty at a
+	// turn boundary, and every copy effect that names a spell was on it.
+	g.clearLastKnownStackLocked()
 	// #1181: the per-turn half of the activation record dies with the
 	// turn it counted. The game-lifetime half does not — "activate
 	// each exhaust ability only once" is a claim about the whole game,

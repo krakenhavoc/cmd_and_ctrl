@@ -108,6 +108,12 @@ func stormItem(name string, caster, spell uuid.UUID) *game.StackItem {
 				Controller:       item.Controller,
 				Count:            n,
 				ChooseNewTargets: true,
+				// CR 608.2h, #1255: the trigger names the spell and
+				// does not target it, so a storm spell countered in
+				// response to its own trigger (CR 113.7a keeps the
+				// trigger) is still copied, from last-known
+				// information.
+				FromLastKnown: true,
 			}.Apply(NewContext(g, item))
 		},
 	}

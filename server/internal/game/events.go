@@ -44,8 +44,11 @@ const (
 	// same fact recorded on the stack item.
 	EventCast EventKind = "cast"
 
-	// EventResolve — a stack item successfully resolved. CardID is
-	// the card whose spell or ability resolved.
+	// EventResolve — a stack item successfully resolved. For a SPELL,
+	// CardID (and Source) is the spell's card. For an ABILITY, CardID
+	// is empty — the item has no card on the stack — Source is the
+	// ability's source and Label the item's label; the public log
+	// names the ability off those two (#1257).
 	EventResolve EventKind = "resolve"
 
 	// EventFizzle — a spell or ability resolved but did nothing
@@ -260,9 +263,9 @@ const (
 	// It exists because nothing else says the number. A spell COPY is
 	// created and not cast, so createSpellCopyLocked deliberately
 	// emits no EventCast (CR 707.10) and emits nothing else either;
-	// and the ability's own EventResolve carries a label the public
-	// log does not project, so it renders as "a card resolved". The
-	// table would otherwise watch N Grapeshots appear from nowhere
+	// and the ability's own EventResolve names the ability ("Grapeshot
+	// — storm resolved", #1257) but not the count. The table would
+	// otherwise watch N Grapeshots appear from nowhere
 	// with nothing written down about why there are N. The count is
 	// the card, so it gets a line — the same argument saga chapters
 	// and Class levels get theirs. See ADR 0086 Decision 5.

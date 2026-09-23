@@ -70,7 +70,12 @@ var silentEventKinds = map[string]string{
 	"EventDiscardCard":    silentAlreadyToldAsAZoneMove,
 	"EventBecomesTarget":  "the cast or activation line already named the spell; targeting is announce-time bookkeeping the stack view carries",
 	"EventBecomesBlocked": "the LogBlock entry for the blocker is the same fact from the other side",
-	"EventTrigger":        "a trigger reaching the stack is told by the LogResolve of the ability it becomes",
+	// #1257: this reason was not true when it was written. The
+	// ability's LogResolve carried no card and no label and rendered
+	// as "a card resolved". It now names the ability by its stack
+	// label and its source (projectAbilityItem), redacted with the
+	// source — log_ability_resolve_test.go pins both halves.
+	"EventTrigger": "a trigger reaching the stack is told by the LogResolve of the ability it becomes, which names it by its label and source (#1257)",
 	// #1184: the same argument as the row above, for the other half of
 	// the same announcement. An activation reaching the stack is told
 	// by the LogResolve of the ability it becomes, and the stack view
@@ -78,7 +83,7 @@ var silentEventKinds = map[string]string{
 	// say the same thing twice about one click. The kind exists so
 	// TRIGGERS can watch an activation, not so the log can narrate
 	// one.
-	"EventActivateAbility": "an activation reaching the stack is told by the LogResolve of the ability it becomes",
+	"EventActivateAbility": "an activation reaching the stack is told by the LogResolve of the ability it becomes, which names it by its label and source (#1257)",
 	"EventKeywordAction":   silentImpliedByAnotherLine,
 
 	// --- the step spine ----------------------------------------------

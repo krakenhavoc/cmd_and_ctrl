@@ -352,14 +352,12 @@ func TestTendrilsOfAgonyDrainsOncePerCopy(t *testing.T) {
 // triggered, an ability exists on the stack independently of its
 // source, so countering the spell does not counter the trigger.
 //
-// The copies are the OPEN half (ADR 0086 Decision 6): the shared copy
-// path answers ErrCardNotFound for a spell that has left the stack
-// and CopySpell treats that as "the copy effect did nothing", which
-// CR 608.2h's last-known-information reading says is wrong. It is not
-// fixed here because the fix must not reach Reverberate, which
-// TARGETS the spell and is correctly countered by game rules when
-// that target is gone. This test pins what the engine does do, so the
-// day that changes it changes here too.
+// And the trigger still COPIES it (#1255, CR 608.2h). The storm
+// ability names the spell and does not target it, so when the spell
+// has left the stack the copies are made from its last-known
+// information. Until #1255 the shared copy path answered
+// ErrCardNotFound here and the trigger made nothing; the original
+// Grapeshot deals no damage (it was countered), the one copy deals 1.
 func TestACounteredStormSpellKeepsItsTriggerOnTheStack(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0].ID, g.Seats[1].ID
@@ -386,9 +384,42 @@ func TestACounteredStormSpellKeepsItsTriggerOnTheStack(t *testing.T) {
 		t.Error("countering the spell took its storm trigger with it (CR 113.7a)")
 	}
 
-	answerCopyPrompts(t, g, me, opp, 0)
-	if got := lifeOf(g, opp); got != before {
-		t.Errorf("life %d → %d: a countered Grapeshot deals no damage", before, got)
+	answerCopyPrompts(t, g, me, opp, 1)
+	if got := lifeOf(g, opp); got != before-1 {
+		t.Errorf("life %d → %d, want -1: the countered Grapeshot deals nothing, its one copy deals 1 (CR 608.2h)", before, got)
+	}
+	// The copy is not a card, and the countered original is in the
+	// graveyard once: the filler and the Grapeshot.
+	if got := graveyardSize(g, me); got != 2 {
+		t.Errorf("graveyard = %d cards, want 2 (the filler and the countered Grapeshot)", got)
+	}
+}
+
+// TestBrainFreezeCounteredInResponseStillMills — the same rule on the
+// storm card a counterspell is most often pointed at. Two spells
+// before it, so two copies, and each mills three: the countered
+// original mills nothing.
+func TestBrainFreezeCounteredInResponseStillMills(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+
+	stormFiller(t, g)
+	stormFiller(t, g)
+	libraryBefore := opp.Library.Size()
+	freeze := castCatalogSpell(t, g, "Brain Freeze", "Instant", brainFreezeOracle,
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}})
+	if triggerOnStack(g, freeze) == nil {
+		t.Fatal("no storm trigger")
+	}
+	g.WithWriteLock(func() {
+		if err := g.CounterTargetForEffect(freeze); err != nil {
+			t.Fatalf("CounterTargetForEffect: %v", err)
+		}
+	})
+
+	answerCopyPrompts(t, g, me.ID, opp.ID, 2)
+	if got := libraryBefore - opp.Library.Size(); got != 6 {
+		t.Errorf("milled %d cards, want 6 (two copies of three; the countered original mills nothing)", got)
 	}
 }
 

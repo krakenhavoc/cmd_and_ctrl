@@ -546,6 +546,14 @@ func fourPlayerBoard(tb testing.TB) *game.Game {
 					Kind: game.EventZoneMove, Actor: active.ID, CardID: card,
 					OldZone: game.ZoneStack, NewZone: game.ZoneBattlefield,
 				})
+				// #1257: an ETB trigger resolving, the way the engine
+				// emits it — source and label, no CardID — so the
+				// budget below prices the label an ability's line now
+				// carries on the wire.
+				g.EmitEvent(game.Event{
+					Kind: game.EventResolve, Actor: active.ID, Source: card,
+					Label: fmt.Sprintf("Permanent %d-%d — draw a card", (turn*4+i)%len(perms)/12+1, (turn*4+i)%12+1),
+				})
 				g.EmitEvent(game.Event{
 					Kind: game.EventAttack, Actor: active.ID, CardID: card, Target: victim.ID,
 				})

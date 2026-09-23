@@ -126,8 +126,9 @@ func YouNextCast(spell CardPredicate) func(ev game.Event, dt *game.DelayedTrigge
 // Galvanic Iteration are one line each.
 //
 // A spell that has already left the stack by the time the trigger
-// resolves (countered in response, or a copy of a copy) is skipped
-// silently, which is CopySpell's own contract.
+// resolves — countered in response — is still copied, from last-known
+// information: "copy that spell" names the spell and does not target
+// it, so CR 608.2h governs rather than CR 608.2b (#1255).
 func copyTheSpellYouJustCast(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	cast := ctx.PayloadCards()
@@ -138,5 +139,6 @@ func copyTheSpellYouJustCast(g *game.Game, item *game.StackItem) error {
 		StackID:          cast[0],
 		Controller:       item.Controller,
 		ChooseNewTargets: true,
+		FromLastKnown:    true,
 	}.Apply(ctx)
 }

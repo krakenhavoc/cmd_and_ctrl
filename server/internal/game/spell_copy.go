@@ -101,7 +101,11 @@ import "github.com/google/uuid"
 // Errors: ErrCardNotFound when the spell is no longer on the stack
 // (its controller may have had it countered in response to the copy
 // effect, which is a normal outcome and not an engine fault —
-// callers should treat it as "the copy effect did nothing").
+// callers should treat it as "the copy effect did nothing"). That is
+// the CR 608.2b outcome for a copy effect that TARGETS the spell. One
+// that merely names it — storm, Doublecast's "copy that spell" —
+// copies from last-known information instead (CR 608.2h) and calls
+// CopyLastKnownSpellForEffect (stack_lki.go, #1255).
 //
 // Caller must hold g.mu. Added in S30 (#95); `except` in S45 (#666).
 func (g *Game) CopySpellForEffect(spellID, controller uuid.UUID, mayChooseNewTargets bool, except func(v *PrintedValues)) error {
@@ -109,6 +113,15 @@ func (g *Game) CopySpellForEffect(spellID, controller uuid.UUID, mayChooseNewTar
 	if !ok {
 		return ErrCardNotFound
 	}
+	g.copySpellFromLocked(src, item, controller, mayChooseNewTargets, except)
+	return nil
+}
+
+// copySpellFromLocked is everything CopySpellForEffect does once it has
+// found the spell, shared with CopyLastKnownSpellForEffect (#1255),
+// which differs only in WHERE it may find it. `src` is a value copy
+// the caller owns; `item` is only read. Caller must hold g.mu.
+func (g *Game) copySpellFromLocked(src Card, item *StackItem, controller uuid.UUID, mayChooseNewTargets bool, except func(v *PrintedValues)) {
 	if except != nil {
 		v := CopiableValuesOf(src)
 		except(&v)
@@ -118,7 +131,6 @@ func (g *Game) CopySpellForEffect(spellID, controller uuid.UUID, mayChooseNewTar
 	}
 	spec := castTargetSpecForItem(CatalogKey(src), item)
 	g.offerCopyTargetsLocked(src, item, controller, spec, mayChooseNewTargets)
-	return nil
 }
 
 // offerCopyTargetsLocked is CR 707.10c, shared by the spell copy
