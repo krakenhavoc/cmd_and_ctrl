@@ -175,3 +175,75 @@ func TestVenserReturnsATargetSpellToItsOwnersHand(t *testing.T) {
 		t.Errorf("Venser is %v with caveats %v, want full", spec.Completeness, spec.Caveats)
 	}
 }
+
+// --- Ambrosia Whiteheart -----------------------------------------
+
+const ambrosiaWhiteheartOracle = "2bcc9f11-5b12-433e-9680-0f4b18aa521c"
+
+// The ETB is an untargeted choice on resolution among the controller's
+// OTHER permanents — lands included, Ambrosia and opponents' permanents
+// not — with zero as a legal answer; landfall pumps her +1/+0.
+func TestAmbrosiaWhiteheartReturnsAnotherPermanentAndGrowsOnLandfall(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	bear := pushCatalogPermanent(g, me.ID, "Bears", "Creature — Bear", "", false)
+	land := aangPushLand(g, me.ID, "Plains", false)
+	theirs := pushCatalogPermanent(g, opp.ID, "Their Rock", "Artifact", "", false)
+
+	ambrosia := castAndResolveCreature(t, g, "Ambrosia Whiteheart", "Legendary Creature — Bird", ambrosiaWhiteheartOracle)
+	passPriorityAroundTable(t, g)
+
+	pick := latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, me.ID)
+	if pick == nil {
+		t.Fatalf("no resolution-time permanent choice: %+v", g.PendingChoices)
+	}
+	if pick.ChooseMin != 0 || pick.ChooseMax != 1 {
+		t.Errorf("bounds %d..%d, want 0..1 (\"you may return another permanent\")", pick.ChooseMin, pick.ChooseMax)
+	}
+	if hasID(pick.ChooseCards, ambrosia) {
+		t.Error("Ambrosia is offered as \"another\" permanent")
+	}
+	if !hasID(pick.ChooseCards, bear) || !hasID(pick.ChooseCards, land) {
+		t.Error("a creature and a land you control are both \"another permanent you control\"")
+	}
+	if hasID(pick.ChooseCards, theirs) {
+		t.Error("an opponent's permanent is offered")
+	}
+	if err := g.ResolveOwnPermanents(pick.ID, me.ID, []uuid.UUID{bear}); err != nil {
+		t.Fatalf("ResolveOwnPermanents: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if !me.Hand.Contains(bear) {
+		t.Error("the chosen permanent did not return to its owner's hand")
+	}
+	if !onBattlefield(g, land) || !onBattlefield(g, ambrosia) {
+		t.Error("an unchosen permanent moved")
+	}
+
+	before := effectivePower(t, g, ambrosia)
+	b13PlayAs(t, g, g.Turn.ActiveSeat, "Plains", "Basic Land — Plains", "")
+	passPriorityAroundTable(t, g)
+	if got := effectivePower(t, g, ambrosia); got != before+1 {
+		t.Errorf("Ambrosia's power after a land entered = %d, want %d", got, before+1)
+	}
+}
+
+// "You may": choosing nothing returns nothing.
+func TestAmbrosiaWhiteheartMayReturnNothing(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	bear := pushCatalogPermanent(g, me.ID, "Bears", "Creature — Bear", "", false)
+	castAndResolveCreature(t, g, "Ambrosia Whiteheart", "Legendary Creature — Bird", ambrosiaWhiteheartOracle)
+	passPriorityAroundTable(t, g)
+	pick := latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, me.ID)
+	if pick == nil {
+		t.Fatal("no resolution-time permanent choice")
+	}
+	if err := g.ResolveOwnPermanents(pick.ID, me.ID, nil); err != nil {
+		t.Fatalf("declining: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if !onBattlefield(g, bear) {
+		t.Error("declining still returned a permanent")
+	}
+}
