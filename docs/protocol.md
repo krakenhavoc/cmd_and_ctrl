@@ -1148,7 +1148,13 @@ readable by every client that ignores them.
   being cast from the zone it is in right now (#760) — "Each player
   can't cast more than one spell each turn", "Cast this spell only if
   you control a legendary creature or planeswalker". Absent, which is
-  nearly always, means nothing refuses the cast.
+  nearly always, means nothing refuses the cast. Since #1316 the same
+  bit and the same clause also cover a per-player ban a resolved spell
+  GRANTED with a duration ("Until your next turn, your opponents can't
+  cast spells from anywhere other than their hands", Avatar's Wrath) —
+  the source card is often gone (exiled) by the time the ban is read,
+  which is exactly why it is stored rather than derived; the clause
+  itself is unaffected and still travels as plain text.
 
   It is the STAMP of the one announce-time cast gate that `CastSpell`
   and the bot enumerator both call, so a card carrying it is one the

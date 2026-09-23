@@ -318,23 +318,90 @@ func TestFortuneTellersTalentReductionWaitsForLevelThree(t *testing.T) {
 	}
 }
 
-// TestFortuneTellersTalentDeclaresItsLibraryTopCaveats — level 2's
-// play-from-the-top clause is NOT implemented, so it is declared, not
-// approximated (ADR 0037 §5). Level 1's look shipped with
-// LibraryTopOwner, and its caveat went with it. When a standing cast
-// permission can be gated by Class level and by "you've cast a spell
-// this turn", level 2 is built and this test is deleted along with
-// the last caveat.
-func TestFortuneTellersTalentDeclaresItsLibraryTopCaveats(t *testing.T) {
+// TestFortuneTellersTalentIsFull — #1314 closed the last gap (level
+// 2's play, gated by a Designation and a Condition together), so the
+// card ships with no simplification at all.
+func TestFortuneTellersTalentIsFull(t *testing.T) {
 	spec, ok := Lookup(fortuneTellersTalentOracle)
 	if !ok {
 		t.Fatal("Fortune Teller's Talent is not registered")
 	}
-	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
-		t.Fatalf("want CompletenessCaveats with 1 caveat, got %s with %d", spec.Completeness, len(spec.Caveats))
+	if spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Fatalf("want CompletenessFull with no caveats, got %s with %d", spec.Completeness, len(spec.Caveats))
 	}
-	if cv := spec.Caveats[0]; !containsFoldASCII(cv, "level 2") || !containsFoldASCII(cv, "top of your library") {
-		t.Errorf("the caveat should name level 2's play-from-the-top clause: %q", cv)
+}
+
+// TestFortuneTellersTalentLevelTwoGatesOnLevelAndACastThisTurn is
+// #1314's proof: the level-2 line is a `game.CastPermission` gated by
+// BOTH a Designation (CR 716.2a, Level(2)) and a Condition ("as long
+// as you've cast a spell this turn") — neither alone is what the
+// printed card says, and the card must not open the top of the
+// library on either one by itself.
+func TestFortuneTellersTalentLevelTwoGatesOnLevelAndACastThisTurn(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	classID := pushClass(g, me.ID, "Fortune Teller's Talent", "Enchantment — Class", fortuneTellersTalentOracle)
+	advanceTo(t, g, game.StepPrecombatMain)
+
+	var top uuid.UUID
+	g.WithWriteLock(func() {
+		c := game.NewCard("On Top", me.ID)
+		c.TypeLine = "Instant"
+		me.Library.PushTop(c)
+		top = c.InstanceID
+	})
+
+	permissionGranted := func() bool {
+		granted := false
+		g.ReadSnapshot(func() {
+			card, ok := g.LookupCardForEffect(top)
+			if !ok {
+				return
+			}
+			granted = g.CastPermissionForLocked(me.ID, card, game.ZoneLibrary).Granted()
+		})
+		return granted
+	}
+
+	// Level 1, nothing cast: level 1's own line ("look at the top card
+	// any time") is live, but level 2's is not — neither the gate nor
+	// the condition is satisfied.
+	if got := g.LibraryTopVisibilityForEffect(me.ID); got != game.LibraryTopOwner {
+		t.Fatalf("level 1's look should be live from the start, got %v", got)
+	}
+	if permissionGranted() {
+		t.Error("the top of the library is playable at level 1")
+	}
+
+	// Level 2, still nothing cast this turn: the DESIGNATION is
+	// satisfied and the CONDITION is not.
+	if err := levelUpTo(t, g, me.ID, classID, 0, "{3}{U}"); err != nil {
+		t.Fatalf("level 2: %v", err)
+	}
+	if permissionGranted() {
+		t.Error("the top of the library is playable at level 2 with no spell cast this turn")
+	}
+
+	// A spell cast this turn: both halves are satisfied.
+	g.WithWriteLock(func() {
+		if g.SpellsCastThisTurn == nil {
+			g.SpellsCastThisTurn = make(map[uuid.UUID]game.CastTally)
+		}
+		g.SpellsCastThisTurn[me.ID] = game.CastTally{Total: 1}
+	})
+	if !permissionGranted() {
+		t.Error("the top of the library should be playable at level 2 after casting a spell this turn")
+	}
+
+	// An opponent gets nothing from someone else's Talent.
+	them := g.Seats[1]
+	opponentGranted := false
+	g.ReadSnapshot(func() {
+		card, _ := g.LookupCardForEffect(top)
+		opponentGranted = g.CastPermissionForLocked(them.ID, card, game.ZoneLibrary).Granted()
+	})
+	if opponentGranted {
+		t.Error("an opponent should not be able to play off this Talent's controller's library")
 	}
 }
 

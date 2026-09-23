@@ -127,6 +127,83 @@ func TestEnumeratorOffersALibraryTopPlay(t *testing.T) {
 	dispatchAll(t, g, seat.ID, moves)
 }
 
+// TestEnumeratorOffersAGatedLibraryTopPlayOnlyWhenBothHalvesHold is
+// #1314's enumerator half: a standing permission gated by BOTH an ADR
+// 0071 designation and a card Condition is offered only once both are
+// satisfied, and the engine accepts the move the enumerator offers —
+// the same #544 agreement TestEnumeratorOffersALibraryTopPlay pins
+// for the ungated shape.
+func TestEnumeratorOffersAGatedLibraryTopPlayOnlyWhenBothHalvesHold(t *testing.T) {
+	const oracle = "test-enum-gated-oracle"
+	g := newTable(t)
+	seat := g.Seats[g.Turn.ActiveSeat]
+	clearHand(seat)
+	advanceTo(t, g, game.StepPrecombatMain)
+	mana(g, seat, 4)
+
+	prevGated := game.CatalogGatedCastPermissions
+	game.CatalogGatedCastPermissions = func(id string) []game.CastPermissionGate {
+		if id != oracle {
+			return nil
+		}
+		return []game.CastPermissionGate{{
+			Permission: game.CastPermission{Zone: game.ZoneLibrary, TopOfLibraryOnly: true},
+			ActiveWhen: game.ClassLevel(2),
+			Condition: func(g *game.Game, controller, _ uuid.UUID) bool {
+				return g.CastTallyFor(controller).Total > 0
+			},
+		}}
+	}
+	t.Cleanup(func() { game.CatalogGatedCastPermissions = prevGated })
+
+	prevVis := game.CatalogLibraryTopVisible
+	game.CatalogLibraryTopVisible = func(id string) game.LibraryTopVisibility {
+		if id == oracle {
+			return game.LibraryTopOwner
+		}
+		return game.LibraryTopHidden
+	}
+	t.Cleanup(func() { game.CatalogLibraryTopVisible = prevVis })
+
+	source := game.NewCard("Test Talent", seat.ID)
+	source.TypeLine = "Enchantment — Class"
+	source.OracleID = oracle
+	source.Controller = seat.ID
+	g.Battlefield.PushTop(source)
+
+	seat.Library.Cards = nil
+	top := game.NewCard("Top Instant", seat.ID)
+	top.TypeLine, top.ManaCost = "Instant", "{U}"
+	seat.Library.PushTop(top)
+
+	if n := len(castMovesFor(legal.EnumerateFor(g, seat.ID), top.InstanceID)); n != 0 {
+		t.Errorf("level 1: got %d moves for the library-top card, want 0", n)
+	}
+
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == source.InstanceID {
+				g.Battlefield.Cards[i].ClassLevel = 2
+			}
+		}
+	})
+	if n := len(castMovesFor(legal.EnumerateFor(g, seat.ID), top.InstanceID)); n != 0 {
+		t.Errorf("level 2 with nothing cast: got %d moves, want 0", n)
+	}
+
+	g.WithWriteLock(func() {
+		if g.SpellsCastThisTurn == nil {
+			g.SpellsCastThisTurn = make(map[uuid.UUID]game.CastTally)
+		}
+		g.SpellsCastThisTurn[seat.ID] = game.CastTally{Total: 1}
+	})
+	moves := castMovesFor(legal.EnumerateFor(g, seat.ID), top.InstanceID)
+	if len(moves) == 0 {
+		t.Fatal("level 2 after casting a spell this turn: the library-top card was not offered")
+	}
+	dispatchAll(t, g, seat.ID, moves[:1])
+}
+
 // The negative that keeps the gate honest: with nothing granting
 // anything, the three extra zones produce no moves at all — which is
 // also what the AnyCastPermissionsForEffect fast path relies on.

@@ -176,11 +176,20 @@ func ToSolve(label string, condition func(g *game.Game, controller, source uuid.
 }
 
 // specDesignations is every designation gate a Spec declares, across
-// all four gateable slots. One walk, so a guard (Register's door
-// check, and the catalog-wide test beside it) cannot cover three
-// slots and forget the fourth.
+// all five gateable slots. One walk, so a guard (Register's door
+// check, and the catalog-wide test beside it) cannot cover four slots
+// and forget the fifth.
+//
+// #1314 added GatedCastPermissions: a standing cast/play permission
+// can now be gated exactly like a static, a trigger, an activated
+// ability or a cost modifier (Fortune Teller's Talent's level-2 line),
+// and the door guard has to see it or a card could ship a door-gated
+// permission that silently never opens. Plain CastPermissions carries
+// no gate at all (game.CastPermission has none — see
+// game.CastPermissionGate's doc comment for why the gate lives on a
+// separate wrapper), so it is not walked here.
 func specDesignations(spec Spec) []game.Designation {
-	out := make([]game.Designation, 0, len(spec.Static)+len(spec.Triggered)+len(spec.Activated)+len(spec.CostModifiers))
+	out := make([]game.Designation, 0, len(spec.Static)+len(spec.Triggered)+len(spec.Activated)+len(spec.CostModifiers)+len(spec.GatedCastPermissions))
 	for _, a := range spec.Static {
 		out = append(out, a.ActiveWhen)
 	}
@@ -192,6 +201,9 @@ func specDesignations(spec Spec) []game.Designation {
 	}
 	for _, m := range spec.CostModifiers {
 		out = append(out, m.ActiveWhen)
+	}
+	for _, p := range spec.GatedCastPermissions {
+		out = append(out, p.ActiveWhen)
 	}
 	return out
 }

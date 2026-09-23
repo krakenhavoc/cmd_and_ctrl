@@ -444,3 +444,51 @@ here touches the SBA loop.
 **Cards shipped:** Platinum Emperion (`full`, the derived half),
 Teferi's Reproach (`full`, the granted half aimed at an opponent),
 Teferi's Protection (`caveats` → **`full`**).
+
+---
+
+## Amendment — 2026-09-23 (#1316): Decision 1's table gains a fourth row
+
+Decision 1's argument — `PlayerStatic` over `TurnScopedReplacements`, because
+the latter's entries are closures the snapshot census can only classify
+`dropped` — was written to justify ONE payload. #1195's `Timing` had already
+taken the same seat for the same reason a sprint earlier; this decision's own
+`LifeTotalLocked` was the second. #1316 is the third seam to reach for this
+slice rather than inventing a registry of its own, this time for a granted
+CAST BAN (Avatar's Wrath, Mandate of Peace — see [ADR 0066's 2026-09-23
+amendment](0066-granted-cast-and-play-permissions.md), which has the
+mechanism), and it is worth extending this ADR's table rather than only that
+one's, because the table is the argument this decision made and the argument
+is what a fourth payload has to keep satisfying:
+
+| | `TurnScopedReplacements` | `Player.Statics` |
+|---|---|---|
+| entry shape | two closures | plain data |
+| duration | none (ADR 0063 D8) | `Duration`, CR 611.2 |
+| swept by | wholesale clear at cleanup | `durationExpiredLocked` |
+| clone | closure shared | value copy, fresh array |
+| snapshot | `dropped`, censused | `carried` |
+| scope | the game | one player |
+
+A cast ban fits the right-hand column for the identical reason a life-total
+lock does: "your opponents can't cast spells" is a statement about PLAYERS,
+for a CR 611.2 duration, and both proof cards exile themselves — Avatar's
+Wrath explicitly, Mandate of Peace by way of the CR 724.2 "end the combat
+phase" clause (#1317, shipped by PR #1343 alongside this ADR's own amendment,
+one) — so the source is gone a moment after the statement is made, exactly
+the condition that rules out anything keyed to the battlefield.
+
+**One difference from `LifeTotalLocked`, and it decided `CastBanRule`'s own
+shape rather than this decision's.** A life-total lock is a single bool: it
+either holds or it does not, so `PlayerStatic.LifeTotalLocked bool` needed no
+presence bit of its own — `false` already means "not locked". A cast ban is
+not a bool: `CastBanRule`'s zero value (no exception zone, no count) is a
+REAL, distinct statement — Mandate of Peace's outright ban — so `PlayerStatic.CastBan`
+could not reuse the "zero value means nothing" trick `LifeTotalLocked` and
+(via `TimingNormal`) `Timing` both use. `CastBanRule` carries its own
+presence bit (`Kind`, zero value `CastBanNone`) instead, which is a detail of
+the FOURTH payload's own type and changes nothing about why it belongs on
+this slice — the table above is unchanged by it, one row wider.
+
+No change to Decision 8: `TurnScopedReplacements` still has no duration
+field, and the seam that would have needed one still does not exist.

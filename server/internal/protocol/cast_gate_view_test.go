@@ -180,3 +180,45 @@ func TestCantCastIsStampedFromTheSameGate(t *testing.T) {
 		t.Errorf("the engine allowed a cast the view greyed out")
 	}
 }
+
+// TestCantCastIsStampedFromAGrantedBan is #1316's view half: the same
+// `cant_cast` stamp, this time from a PLAYER-scoped grant rather than
+// a permanent's static — Avatar's Wrath and Mandate of Peace's shape,
+// with no card on the battlefield at all to explain the refusal.
+func TestCantCastIsStampedFromAGrantedBan(t *testing.T) {
+	g := buildActiveGame(t)
+	me := g.Seats[0]
+	const clause = "Test Mandate — can't cast spells this turn"
+
+	id := uuid.New()
+	g.WithWriteLock(func() {
+		me.Hand.PushTop(game.Card{
+			InstanceID: id,
+			Name:       "Any Instant",
+			TypeLine:   "Instant",
+			ManaCost:   "{R}",
+			Owner:      me.ID,
+			Controller: me.ID,
+			KnownBy:    map[uuid.UUID]bool{me.ID: true},
+		})
+	})
+
+	if got := handCardIn(t, ViewOfGameFor(g, me.ID.String()), me.ID.String(), id.String()).CantCast; got != "" {
+		t.Errorf("before any grant, cant_cast = %q, want empty", got)
+	}
+
+	g.WithWriteLock(func() {
+		g.GrantCastBanForEffect(me.ID, game.CastBanRule{Kind: game.CastBanOutright}, clause, uuid.Nil, game.Duration{})
+	})
+
+	c := handCardIn(t, ViewOfGameFor(g, me.ID.String()), me.ID.String(), id.String())
+	if c.CantCast != clause {
+		t.Errorf("cant_cast = %q, want %q", c.CantCast, clause)
+	}
+	if c.CastableHere {
+		t.Error("a card a granted ban refuses is still marked castable_here")
+	}
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{}); err == nil {
+		t.Error("the engine allowed a cast the view greyed out")
+	}
+}

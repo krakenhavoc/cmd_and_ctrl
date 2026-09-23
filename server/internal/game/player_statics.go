@@ -52,12 +52,13 @@ import "github.com/google/uuid"
 //	damage      protectionPreventsDamageLocked builtin_replacements.go CR 702.16e
 //	attachment  attachmentLegalLocked          attach.go               CR 702.16c
 //
-// Since #1195 and #1200 two other kinds of entry ride this slice and
-// have readers of their own: a granted cast-timing statement
-// (PlayerStatic.Timing, castTimingVerdictLocked in cast_timing.go) and
+// Since #1195, #1200 and #1316 three other kinds of entry ride this
+// slice and have readers of their own: a granted cast-timing statement
+// (PlayerStatic.Timing, castTimingVerdictLocked in cast_timing.go),
 // "your life total can't change" (PlayerStatic.LifeTotalLocked,
-// playerLifeTotalCantChangeLocked in life_lock.go). Neither carries a
-// Keyword, so neither reaches the walk below.
+// playerLifeTotalCantChangeLocked in life_lock.go) and a granted
+// cast-BAN (PlayerStatic.CastBan, castBanForbidsLocked in cast_ban.go).
+// None of the three carries a Keyword, so none reaches the walk below.
 //
 // The bot's move enumerator and the client's legal_targets follow by
 // construction: both read legalTargetsLocked, which is the targeting
@@ -147,6 +148,29 @@ type PlayerStatic struct {
 	// half — Platinum Emperion's printed static — is not in this
 	// slice at all, exactly as Leyline of Sanctity's hexproof is not.
 	LifeTotalLocked bool `json:"lifeTotalLocked,omitempty"`
+
+	// CastBan is a granted "you/they can't cast …" statement with a
+	// CR 611.2 duration — Avatar's Wrath's "until your next turn, your
+	// opponents can't cast spells from anywhere other than their
+	// hands", Mandate of Peace's "your opponents can't cast spells this
+	// turn". #1316, ADR 0066's 2026-09-23 amendment, cast_ban.go.
+	//
+	// The FOURTH payload, and the fourth kind of entry on this slice.
+	// Like Timing and LifeTotalLocked it carries no Keyword, which is
+	// what keeps it out of playerAbilityTokensLocked's answer; unlike
+	// them it needs its own presence bit rather than reading one off a
+	// zero value, because CastBanRule's own zero value (no exception,
+	// no count) is Mandate of Peace's actual ban and not "nothing to
+	// say" — CastBanRule.Kind is that bit, CastBanNone its zero value.
+	//
+	// Its READER is castBanForbidsLocked, consulted from CastGateLocked
+	// beside the battlefield's CastRestrictions — the third source that
+	// function's own doc comment reserved. There is no DERIVED half:
+	// every printed permanent that restricts casting already has one
+	// (CastRestriction, cast_gate.go), and nothing in the catalog needs
+	// a battlefield-derived ban with a DURATION, which is the one thing
+	// a permanent's continued presence already gives it for free.
+	CastBan CastBanRule `json:"castBan,omitzero"`
 
 	// Source is the card that granted it, for the log and for the
 	// view's attribution. Never read by any rule: a granted ability

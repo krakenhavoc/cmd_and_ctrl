@@ -25,6 +25,15 @@ func withCatalogCastPermissions(t *testing.T, fn func(oracleID string) []CastPer
 	t.Cleanup(func() { CatalogCastPermissions = prev })
 }
 
+// withCatalogGatedCastPermissions stubs the GATED standing-permission
+// hook (#1314) for one test.
+func withCatalogGatedCastPermissions(t *testing.T, fn func(oracleID string) []CastPermissionGate) {
+	t.Helper()
+	prev := CatalogGatedCastPermissions
+	CatalogGatedCastPermissions = fn
+	t.Cleanup(func() { CatalogGatedCastPermissions = prev })
+}
+
 // withCatalogLibraryTop stubs the CR 401.5 visibility hook.
 func withCatalogLibraryTop(t *testing.T, fn func(oracleID string) LibraryTopVisibility) {
 	t.Helper()
@@ -433,5 +442,86 @@ func TestCleanupSweepsSpentPermissions(t *testing.T) {
 	}
 	if perm := grantOn(g, me.ID, nextTurn, ZoneGraveyard); !perm.Granted() {
 		t.Errorf("the sweep reaped a permission with a later window")
+	}
+}
+
+// --- #1314: a standing permission gated by a designation and a condition ---
+
+// TestGatedStandingPermissionNeedsBothTheLevelAndTheCondition is
+// Fortune Teller's Talent's level-2 line in model form: ActiveWhen
+// (CR 716.2a) and Condition ("as long as you've cast a spell this
+// turn") are independent tests, and BOTH must pass before the
+// permission is derived at all — the same "gate first" order
+// StaticAbilitiesForCard and CostModifiersForCard already use, applied
+// to standingCastPermissionsLocked for the first time.
+func TestGatedStandingPermissionNeedsBothTheLevelAndTheCondition(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	advanceTo(t, g, StepPrecombatMain)
+	var conditionCalls int
+	withCatalogGatedCastPermissions(t, func(id string) []CastPermissionGate {
+		if id != "test-talent" {
+			return nil
+		}
+		return []CastPermissionGate{{
+			Permission: CastPermission{Zone: ZoneLibrary, Scope: ScopeStanding, TopOfLibraryOnly: true},
+			ActiveWhen: ClassLevel(2),
+			Condition: func(g *Game, controller, _ uuid.UUID) bool {
+				conditionCalls++
+				return g.CastTallyFor(controller).Total > 0
+			},
+		}}
+	})
+	withCatalogLibraryTop(t, func(id string) LibraryTopVisibility {
+		if id == "test-talent" {
+			return LibraryTopOwner
+		}
+		return LibraryTopHidden
+	})
+	source := permanentFor(g, me, "Test Talent", "Enchantment — Class", "{U}")
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == source {
+				g.Battlefield.Cards[i].OracleID = "test-talent"
+			}
+		}
+	})
+	top := seedLibraryTop(me, "On Top", "Instant")
+
+	// Level 1 (the default), nothing cast: neither half is satisfied,
+	// and the ungated activeOnly fast path must not even ask the
+	// Condition — it never gets the chance to satisfy it either.
+	if perm := grantOn(g, me.ID, top, ZoneLibrary); perm.Granted() {
+		t.Error("level 1 with nothing cast should not grant the permission")
+	}
+	if conditionCalls != 0 {
+		t.Errorf("Condition was asked %d times at level 1; activeOnly should have filtered it out first", conditionCalls)
+	}
+
+	// Level 2, nothing cast: the designation passes, the condition
+	// does not.
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == source {
+				g.Battlefield.Cards[i].ClassLevel = 2
+			}
+		}
+	})
+	if perm := grantOn(g, me.ID, top, ZoneLibrary); perm.Granted() {
+		t.Error("level 2 with nothing cast should not grant the permission")
+	}
+	if conditionCalls == 0 {
+		t.Error("Condition was never asked at level 2; the designation gate should have let it through")
+	}
+
+	// Level 2, a spell cast this turn: both halves are satisfied.
+	g.WithWriteLock(func() {
+		if g.SpellsCastThisTurn == nil {
+			g.SpellsCastThisTurn = make(map[uuid.UUID]CastTally)
+		}
+		g.SpellsCastThisTurn[me.ID] = CastTally{Total: 1}
+	})
+	if perm := grantOn(g, me.ID, top, ZoneLibrary); !perm.Granted() {
+		t.Error("level 2 after casting a spell this turn should grant the permission")
 	}
 }
