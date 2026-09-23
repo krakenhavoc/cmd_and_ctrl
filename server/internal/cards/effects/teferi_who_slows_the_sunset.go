@@ -40,24 +40,20 @@ import (
 // unconditional: zero, one, two or three targets, Teferi's controller
 // still gains 2 life.
 //
-// The −2 is a DECLARED SIMPLIFICATION, weaker than printed (matching
-// Goblin Ringleader's #259 caveat, not Horn of the Mark's uncaveated
-// "random order" clause): the two cards NOT taken go to the bottom of
-// the library in a RANDOM order rather than one the player chooses.
-// The engine has no ordering prompt for a pile headed to the bottom
-// of a library (that primitive is ADR 0088, not yet on this branch).
-// LookAtTopOfLibraryForEffect + TakeFromLibraryToHand +
-// TakeRestOnBottomInRandomOrder is the same three-piece composition
-// Horn of the Mark's May-take clause uses, with Optional:false and
-// Max:1 for "put ONE of them" (mandatory, not "you may").
+// The −2 is IN FULL (ADR 0088, #996): the two cards NOT taken go to
+// the bottom of the library in the ORDER THE PLAYER CHOOSES, through
+// the `put_in_library` prompt — not a random order, which is what
+// this card shipped with before ADR 0088's ordered-placement
+// primitive existed. The whole sentence is `LookAtTopThenTakeOneRestOnBottom`,
+// the exact composition Impulse's identical second and third
+// sentences use — a LOOK (only the looker sees the three), Max:1 for
+// "put ONE of them" (mandatory, not "you may"), and
+// TakeRestOnBottomInAnyOrder for the rest.
 func init() {
 	Register(Spec{
 		OracleID:     "98c389ed-b960-42e2-9c76-a062f77c9a78",
 		Name:         "Teferi, Who Slows the Sunset",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The −2's two cards you don't keep go to the bottom of your library in a random order — you don't get to choose the order.",
-		},
+		Completeness: CompletenessFull,
 		// Printed loyalty reaches the card through deck import
 		// (ADR 0032 §1); this is the fallback for tokens, fixtures
 		// and the dev spawner.
@@ -113,17 +109,8 @@ func init() {
 				Label: "−2: Look at the top three cards of your library. Put one of them into your hand and " +
 					"the rest on the bottom of your library in any order.",
 				Cost: LoyaltyCost(-2),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					player := item.Controller
-					return TakeFromLibraryToHand{
-						Player: player,
-						Cards:  g.LookAtTopOfLibraryForEffect(player, 3),
-						Max:    1,
-						Label:  "Teferi, Who Slows the Sunset — put one of them into your hand",
-						Then:   TakeRestOnBottomInRandomOrder,
-					}.Apply(ctx)
-				},
+				Effect: LookAtTopThenTakeOneRestOnBottom(3,
+					"Teferi, Who Slows the Sunset — put one of them into your hand"),
 			},
 			{
 				Label: "−7: You get an emblem with \"Untap all permanents you control during each opponent's " +

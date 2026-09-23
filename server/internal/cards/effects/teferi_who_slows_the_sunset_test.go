@@ -142,16 +142,20 @@ func TestTeferiWhoSlowsTheSunsetPlusOneUntapsTapsAndGainsLife(t *testing.T) {
 	}
 }
 
-// TestTeferiWhoSlowsTheSunsetMinusTwoPutsOneInHandAndRestOnBottom is
-// the −2: it looks at three cards, offers exactly one for the hand,
-// and the two declined cards are conserved (library size unchanged),
-// not lost or duplicated.
-func TestTeferiWhoSlowsTheSunsetMinusTwoPutsOneInHandAndRestOnBottom(t *testing.T) {
+// TestTeferiWhoSlowsTheSunsetMinusTwoPutsOneInHandAndOrdersTheRestOnTheBottom
+// is the −2 end to end (ADR 0088, #996): it looks at three cards,
+// offers exactly one for the hand, and the two declined cards are
+// ORDERED BY THE PLAYER onto the bottom of the library — not a random
+// order, and not lost or duplicated. Mirrors
+// TestImpulseTakesOneAndOrdersTheRestOnTheBottom's pattern exactly,
+// since LookAtTopThenTakeOneRestOnBottom is the same composition.
+func TestTeferiWhoSlowsTheSunsetMinusTwoPutsOneInHandAndOrdersTheRestOnTheBottom(t *testing.T) {
 	g := newCatalogGame(t)
 	toMain(t, g)
 	me := g.Seats[g.Turn.ActiveSeat]
 	teferi := pushCatalogWalker(g, me.ID, "Teferi, Who Slows the Sunset", teferiWhoSlowsTheSunsetOracle, 4)
 	seeded := seedLibrary(me, "Look1", "Look2", "Look3", "Filler1", "Filler2")
+	look1, look2, look3 := seeded[0], seeded[1], seeded[2]
 	libraryBefore := me.Library.Size()
 	handBefore := me.Hand.Size()
 
@@ -163,23 +167,28 @@ func TestTeferiWhoSlowsTheSunsetMinusTwoPutsOneInHandAndRestOnBottom(t *testing.
 	if choice == nil {
 		t.Fatal("no choose-cards prompt for the -2's pick")
 	}
-	if err := g.ResolveChooseCards(choice.ID, me.ID, []uuid.UUID{seeded[0]}); err != nil {
+	if err := g.ResolveChooseCards(choice.ID, me.ID, []uuid.UUID{look1}); err != nil {
 		t.Fatalf("ResolveChooseCards: %v", err)
 	}
-	passPriorityAroundTable(t, g)
-
-	if got := me.Hand.Size(); got != handBefore+1 {
-		t.Errorf("hand size %d -> %d, want +1", handBefore, got)
+	if !me.Hand.Contains(look1) || me.Hand.Size() != handBefore+1 {
+		t.Fatal("the chosen card did not reach the hand")
 	}
+
+	order := putInLibraryChoiceFor(g, me.ID)
+	if order == nil {
+		t.Fatal("the two declined cards are ordered by the player — no put_in_library prompt")
+	}
+	if order.LibraryPlacement != game.LibraryPlaceBottom || len(order.ScryCards) != 2 {
+		t.Fatalf("a bottom placement over the two declined cards: %+v", order)
+	}
+	if err := g.ResolvePutInLibrary(order.ID, me.ID, []uuid.UUID{look3, look2}, nil); err != nil {
+		t.Fatalf("ResolvePutInLibrary: %v", err)
+	}
+
 	if got := me.Library.Size(); got != libraryBefore-1 {
 		t.Errorf("library size %d -> %d, want -1 (one card left for the hand)", libraryBefore, got)
 	}
-	if !me.Hand.Contains(seeded[0]) {
-		t.Error("the chosen card did not reach the hand")
-	}
-	for _, id := range seeded[1:3] {
-		if !me.Library.Contains(id) {
-			t.Errorf("declined card %s is missing from the library — it must go to the bottom, not vanish", id)
-		}
+	if got := libraryBottomIDs(me, 2); !sameIDs(got, []uuid.UUID{look3, look2}) {
+		t.Errorf("the bottom two are %v, want [Look3 Look2] top-first, in the order chosen", got)
 	}
 }
