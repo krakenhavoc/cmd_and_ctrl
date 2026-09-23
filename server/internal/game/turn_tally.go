@@ -586,15 +586,26 @@ func (g *Game) EventsThisTurn() []Event {
 // count (CR 702.40a, "copy it for each other spell that was cast
 // before it this turn"). See ADR 0086.
 //
-// It reads TurnTally.Casts, so it is the same answer whenever it is
-// asked: the list is append-only within a turn and a spell's index in
-// it is frozen by its own cast. A spell cast in RESPONSE to the storm
-// trigger is appended after the storm spell and does not move that
-// index, which is the rule and the reason storm can read this at
-// resolution (CR 608.2h) instead of capturing a number at announce.
+// It reads TurnTally.Casts, which is append-only within a turn, so a
+// spell's index is frozen by its own cast and the answer does not
+// move under a caller. A spell cast in RESPONSE to the storm trigger
+// is appended AFTER the storm spell and leaves that index alone,
+// which is the rule and the reason storm can read this at resolution
+// (CR 608.2h) instead of capturing a number at announce.
 //
 // "Other" is free: the spell's own entry is at the index this
 // returns, so it is never counted.
+//
+// The MOST RECENT cast of that ID, which matters for exactly one
+// shape: a spell countered or bounced back to its owner's hand
+// (Remand) and cast again the same turn is two casts of one card, and
+// a card keeps its instance ID across the round trip — so the list
+// holds the ID twice. The question is always about the later one. The
+// earlier cast's own trigger cannot still be waiting for an answer:
+// CR 603.3 puts it on the stack ABOVE its spell, so it resolves
+// before anything can bounce that spell. Taking the first index
+// instead would undercount every recast, which is the case that
+// actually happens at a table.
 //
 // A spell this turn's casts do not name answers zero. That is the
 // honest answer for the two ways it happens — a spell cast on an
@@ -604,8 +615,8 @@ func (g *Game) EventsThisTurn() []Event {
 //
 // Caller must hold g.mu.
 func (g *Game) SpellsCastBeforeThisTurn(spellID uuid.UUID) int {
-	for i, id := range g.TurnTally.Casts {
-		if id == spellID {
+	for i := len(g.TurnTally.Casts) - 1; i >= 0; i-- {
+		if g.TurnTally.Casts[i] == spellID {
 			return i
 		}
 	}

@@ -140,6 +140,19 @@ point of recording it at the cast.
 type test and therefore needs the lookup; this one must not have it.
 They stay two readers.
 
+**The MOST RECENT cast of an ID, when there are two.** A spell
+countered or bounced back to its owner's hand (Remand) and cast again
+the same turn is two casts of one card, and a card keeps its instance
+ID across the round trip — so the list holds that ID twice. The
+question is always about the later one, and the earlier cast's own
+trigger cannot still be waiting: CR 603.3 puts a cast trigger on the
+stack *above* its own spell, so it resolves before anything can bounce
+that spell. Taking the first index instead would undercount every
+recast, which is the case that actually happens at a table. The first
+cast *counts toward* the second, because CR 400.7 made the card a new
+object when it left the stack: it really is "another spell that was
+cast before it".
+
 **Cost.** One `uuid.UUID` (16 bytes) per spell cast per turn, freed at
 the turn boundary. A storm turn is the worst case and is the turn the
 field exists for.

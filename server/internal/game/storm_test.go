@@ -208,6 +208,46 @@ func TestATriggerIsNotASpell(t *testing.T) {
 	}
 }
 
+// TestARecastSpellCountsFromItsLatestCast — Remand's shape. A spell
+// bounced back to hand and cast again the same turn is two casts of
+// one card, and a card keeps its instance ID across the round trip, so
+// the record holds that ID twice. The question is about the LATER
+// cast: taking the first index would undercount every recast, and the
+// earlier cast's own trigger is long gone by then (CR 603.3 puts it
+// above its own spell, so it resolves before anything can bounce
+// that spell).
+//
+// The first cast counts toward the second: CR 400.7 makes the card a
+// new object when it leaves the stack, so it really is "another
+// spell that was cast before it".
+func TestARecastSpellCountsFromItsLatestCast(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	me := g.Seats[0]
+
+	bounced := castInstantFor(t, g, me)
+	g.mu.Lock()
+	err := g.ReturnSpellToHandForEffect(bounced)
+	g.mu.Unlock()
+	if err != nil {
+		t.Fatalf("ReturnSpellToHandForEffect: %v", err)
+	}
+	castInstantFor(t, g, me)
+	floatMana(me, "B")
+	if err := g.CastSpell(me.ID, bounced, CastSpellParams{}); err != nil {
+		t.Fatalf("recast: %v", err)
+	}
+
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if n := len(g.TurnTally.Casts); n != 3 {
+		t.Fatalf("cast order holds %d entries, want 3 (the same card twice plus one other)", n)
+	}
+	if got := g.SpellsCastBeforeThisTurn(bounced); got != 2 {
+		t.Errorf("storm count = %d, want 2 (the latest cast's index, not the first)", got)
+	}
+}
+
 // --- "was cast": a countered spell still counts ---------------------
 
 // TestACounteredSpellStaysInTheTurnsCastOrder — CR 702.40a counts
