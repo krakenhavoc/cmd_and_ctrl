@@ -45,7 +45,9 @@ on:
 
 jobs:
   triage-label:
-    runs-on: self-hosted
+    # Anyone can open an issue on a public repo, so this stays off the
+    # self-hosted runners.
+    runs-on: ubuntu-latest
     steps:
       - name: needs-triage tracks whether a sprint owns this issue
         env:

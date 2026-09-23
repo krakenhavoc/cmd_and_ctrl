@@ -26,7 +26,8 @@ on:
 
 jobs:
   promotion-guard:
-    runs-on: self-hosted
+    # Runs for fork PRs too, so keep it off the self-hosted runners.
+    runs-on: ubuntu-latest
     steps:
       - name: Head must be develop or hotfix/*
         env:

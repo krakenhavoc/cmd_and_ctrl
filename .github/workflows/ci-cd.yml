@@ -59,9 +59,17 @@ jobs:
     # docs-only commit back to develop/main on a push, using the
     # default GITHUB_TOKEN actions/checkout already wired up for this
     # checkout. Scoped to this job -- cmdctrl-cd never touches git and
-    # stays on the workflow default of read-only.
+    # keeps contents: read.
     permissions:
       contents: write
+    # The repo is public and these runners keep state between jobs and
+    # can reach the deploy hosts, so fork PRs never run here. A fork's
+    # code can still edit this line, which is why fork PR workflows also
+    # need maintainer approval (repo settings) -- read any workflow diff
+    # before approving. To CI a fork PR, push its branch to this repo.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -329,13 +337,16 @@ jobs:
           fi
           exit 0
 
+      # Only cmdctrl-cd in this same run downloads these. develop sees
+      # hundreds of pushes a week, so anything longer than a day piles
+      # up gigabytes of dead artifacts against the storage quota.
       - name: Upload server binary
         if: github.event_name == 'push'
         uses: actions/upload-artifact@v5
         with:
           name: cmdctrl-server-bin
           path: server/bin/cmd_and_ctrl-server
-          retention-days: 7
+          retention-days: 1
 
       - name: Upload bot binary
         if: github.event_name == 'push'
@@ -343,7 +354,7 @@ jobs:
         with:
           name: cmdctrl-bot-bin
           path: server/bin/cmd_and_ctrl-bot
-          retention-days: 7
+          retention-days: 1
 
       - name: Upload client dist
         if: github.event_name == 'push'
@@ -351,11 +362,15 @@ jobs:
         with:
           name: cmdctrl-client-dist
           path: client/dist/
-          retention-days: 7
+          retention-days: 1
 
   cmdctrl-cd:
     runs-on: self-hosted
     needs: cmdctrl-ci
+    # actions: write is only for deleting this run's artifacts at the end.
+    permissions:
+      contents: read
+      actions: write
     if: >-
       github.event_name == 'push' &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
@@ -1257,3 +1272,19 @@ jobs:
             success|'') echo "${BACKUP_UNIT}.timer enabled; last run: ${last:-never}." ;;
             *) echo "::warning title=Off-site backup failing::The last ${BACKUP_UNIT} run on ${CMDCTRL_HOST} ended with '${last}'. Check journalctl -u ${BACKUP_UNIT} on that host (docs/environments.md#backups)." ;;
           esac
+
+      # Private repos get ~500 MB of artifact storage and develop pushes
+      # ~30 times a day, so even 1-day retention overflows it. Drop the
+      # build artifacts once deployed. Skipped on failure so a re-run of
+      # this job can still download them.
+      - name: Delete this run's artifacts
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const { data } = await github.rest.actions.listWorkflowRunArtifacts({
+              ...context.repo, run_id: context.runId, per_page: 100,
+            });
+            for (const a of data.artifacts) {
+              await github.rest.actions.deleteArtifact({ ...context.repo, artifact_id: a.id });
+              core.info(`deleted ${a.name} (${a.size_in_bytes} bytes)`);
+            }
