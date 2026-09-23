@@ -308,6 +308,77 @@ func TestAReplayedHideawayLandHasNoClaimOnItsOldCard(t *testing.T) {
 	}
 }
 
+// ADR 0091's 2026-09-23 amendment: a hidden LAND is played as part of
+// the ability's resolution (CR 608.2g) — during combat, with the stack
+// in use, spending a land drop (CR 305.2a). With no land drop left the
+// instruction is ignored (CR 305.2b): nobody is asked, and the land
+// stays hidden.
+func TestAHiddenLandIsPlayedDuringTheResolution(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		dropsLeft bool
+	}{
+		{"with a land drop left", true},
+		{"with no land drop left", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := newCatalogGame(t)
+			me, opp := g.Seats[0], g.Seats[1]
+			advanceTo(t, g, game.StepPrecombatMain)
+			top := stackTopLibrary(me, "A", "Hidden Mountain", "C", "D")
+			for i := range me.Library.Cards {
+				if me.Library.Cards[i].InstanceID == top[1] {
+					me.Library.Cards[i].TypeLine = "Basic Land — Mountain"
+					me.Library.Cards[i].ManaCost = ""
+				}
+			}
+			heights := game.NewCard("Windbrisk Heights", me.ID)
+			heights.OracleID = "3589bcfc-42b0-414a-adce-bc690dc631c8"
+			heights.TypeLine = "Land"
+			enterWithHideaway(t, g, heights, top[1]) // spends the turn's land drop
+			if tc.dropsLeft {
+				g.WithWriteLock(func() { g.LandsPlayedThisTurn[me.ID] = 0 })
+			}
+
+			a := pushVanillaCreature(g, me.ID, "A1", 1, 1)
+			b := pushVanillaCreature(g, me.ID, "A2", 1, 1)
+			c := pushVanillaCreature(g, me.ID, "A3", 1, 1)
+			declareAttack(t, g, opp.ID, a, b, c)
+			step := g.Turn.Step
+			untapForTest(g, heights.InstanceID)
+			floatForTest(g, me, "W")
+			if err := g.ActivateCatalogAbility(me.ID, heights.InstanceID, 0, game.ActivateAbilityParams{}); err != nil {
+				t.Fatalf("activate: %v", err)
+			}
+			passPriorityAroundTable(t, g)
+
+			answered := answerAllMayCast(t, g, me.ID, true)
+			if !tc.dropsLeft {
+				if answered != 0 || g.Battlefield.Contains(top[1]) || !g.Exile.Contains(top[1]) {
+					t.Fatal("CR 305.2b: with no land drop the land was offered or played")
+				}
+				return
+			}
+			if answered != 1 {
+				t.Fatalf("answered %d play offers, want 1", answered)
+			}
+			played, ok := cardOnBattlefield(g, top[1])
+			if !ok {
+				t.Fatal("the hidden land is not on the battlefield")
+			}
+			if played.FaceDown || played.Controller != me.ID {
+				t.Errorf("played land: face down %v, controller %v", played.FaceDown, played.Controller)
+			}
+			if g.Turn.Step != step {
+				t.Errorf("step moved to %v — the land was played during the resolution, in %v", g.Turn.Step, step)
+			}
+			if got := g.LandsPlayedThisTurnFor(me.ID); got != 1 {
+				t.Errorf("lands played = %d, want 1 — it is a land play (CR 305.2a)", got)
+			}
+		})
+	}
+}
+
 func cardOnBattlefield(g *game.Game, id uuid.UUID) (game.Card, bool) {
 	for _, c := range g.Battlefield.Cards {
 		if c.InstanceID == id {

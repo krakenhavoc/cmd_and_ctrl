@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"errors"
+
+	"github.com/google/uuid"
+)
 
 // hideaway.go — CR 702.75, hideaway (ADR 0091, #1331).
 //
@@ -30,13 +34,13 @@ import "github.com/google/uuid"
 //     HiddenCardsForEffect is CR 607.2a's "the exiled card": the cards
 //     still in exile that THIS object's hideaway put there.
 //
-//  3. THE FREE PLAY is not engine work at all: it is an ADR 0066 grant
-//     over the linked card, "{0}" and not cast-only (hideaway says
-//     PLAY — a land may be hidden and played), written by the card's
-//     own linked ability (effects.PlayHiddenCard). The engine already
-//     casts a face-down exiled card (foretell, CR 406.3a turns it face
-//     up as it is cast); a land played from exile comes through the
-//     same land branch.
+//  3. THE FREE PLAY, written by the card's own linked ability
+//     (effects.PlayHiddenCard). A hidden SPELL is an ADR 0066 grant over
+//     the linked card at "{0}"; the engine already casts a face-down
+//     exiled card (foretell — CR 406.3a turns it face up as it is
+//     cast). A hidden LAND is played during the resolution itself
+//     (CR 608.2g), by PlayLandDuringResolutionForEffect below: a land
+//     play with the turn's land drop and no special-action window.
 //
 // The look-and-choose itself is effects.Hideaway, which composes the
 // primitives that already exist: LookAtTopOfLibraryForEffect, a
@@ -148,4 +152,79 @@ func (g *Game) hideawayKnowersSweepLocked() {
 			c.AddKnower(viewer)
 		}
 	}
+}
+
+// CanPlayLandDuringResolutionForEffect is PlayLandDuringResolutionForEffect's
+// gate on its own: the card is a land outside the battlefield and the
+// stack, it is playerID's turn (CR 305.3), and they have a land drop
+// left (CR 305.2b). A caller asks it before offering the "you may", so
+// a player is never asked about a play the rules would ignore.
+//
+// Caller must hold g.mu.
+func (g *Game) CanPlayLandDuringResolutionForEffect(playerID, cardID uuid.UUID) bool {
+	src := g.findCardZoneLocked(cardID)
+	if src == nil || src.Kind == ZoneBattlefield || src.Kind == ZoneStack {
+		return false
+	}
+	card, ok := g.cardInZoneLocked(src, cardID)
+	if !ok || !card.IsLand() {
+		return false
+	}
+	return g.activePlayerIDLocked() == playerID && g.LandDropsRemainingLocked(playerID) > 0
+}
+
+// PlayLandDuringResolutionForEffect is "you may PLAY [that land]" when
+// the instruction is carried out while a spell or ability is resolving
+// (CR 608.2g) — hideaway's free play of a hidden land (ADR 0091's
+// 2026-09-23 amendment), and the shape cascade and Malcolm would use
+// for a land.
+//
+// It is a LAND PLAY, not a "put onto the battlefield" (CR 305.4): it
+// counts against the turn's allowance, and CR 305.2a counts a land
+// played during a resolution like any other. What it does NOT need is
+// the special-action window — a main phase with an empty stack is the
+// rule for a land played from hand with priority (CR 305.1), not for a
+// land an effect instructs a player to play. Two things still stop it,
+// both CR 305's "ignore any part of an effect that instructs a player
+// to do so": no land drop left (CR 305.2b), and not the player's turn
+// (CR 305.3). Either answers (false, nil) with nothing moved.
+//
+// The entry goes through the one land entry: the CR 614 window with
+// landPlay set, then executeEntryToBattlefieldLocked, which bumps the
+// land-drop tally, stamps the controller, clears the face-down state
+// (MoveCard, CR 406.3a), marks the table and fires the ETB — the path a
+// paused land play from hand finishes on. The entry may pause (a
+// shockland's "pay 2 life"); the resume finishes it.
+//
+// Answers whether the land was played or its entry paused on a prompt.
+//
+// Caller must hold g.mu.
+func (g *Game) PlayLandDuringResolutionForEffect(playerID, cardID uuid.UUID) (bool, error) {
+	if !g.CanPlayLandDuringResolutionForEffect(playerID, cardID) {
+		return false, nil
+	}
+	src := g.findCardZoneLocked(cardID)
+	ev := &ReplacementEvent{
+		Kind:           RepEventMove,
+		CardID:         cardID,
+		OldZone:        src.Kind,
+		NewZone:        ZoneBattlefield,
+		Actor:          playerID,
+		entryResumable: true,
+		landPlay:       true,
+	}
+	out, err := g.applyReplacementsLocked(ev)
+	if errors.Is(err, errReplacementPending) {
+		return true, nil
+	}
+	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
+		g.clearReplacementEventLocked(ev.ID)
+		return false, err
+	}
+	defer g.clearReplacementEventLocked(ev.ID)
+	if out == nil || out.Canceled {
+		return false, nil
+	}
+	entered, err := g.executeEntryToBattlefieldLocked(out)
+	return entered != uuid.Nil, err
 }

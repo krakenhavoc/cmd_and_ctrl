@@ -90,27 +90,47 @@ the permanent. An activated ability reads the reference off `StackItem.SourceEpo
 (`effects.HiddenRefOfActivation`). A triggered one captures `game.ObjectRefOf(*source)` in its
 `Build`.
 
-## Decision 3 — The free play is an ADR 0066 grant the card's ability writes
+## Decision 3 — A hidden spell is an ADR 0066 grant the card's ability writes; a hidden land is played on the spot
 
-`effects.PlayHiddenCard` grants the controller a play of the linked card:
+`effects.PlayHiddenCard` splits on what was hidden. A **land** is played during the resolution
+(Decision 5). A **spell** gets a grant for the controller:
 
 - `Cost "{0}"` — "without paying its mana cost".
-- **Not** `CastOnly` — hideaway says *play*, and a land may be what was hidden. A hidden land goes
-  through the ordinary land branch and spends the turn's land drop (CR 305.2a).
+- **Not** `CastOnly` — hideaway says *play*.
 - `TimingFlash` — a spell played "as part of the resolution" ignores its own timing (CR 608.2g).
 - Until end of turn — the zero `Duration`.
 
 The engine had everything else. A face-down exiled card is cast out of exile and turned face up as it
-moves (CR 406.3a — foretell's path). A land plays out of exile through the land branch. A grant names
-one object at one epoch, so a card that leaves exile loses it.
+moves (CR 406.3a — foretell's path). A grant names one object at one epoch, so a card that leaves
+exile loses it.
 
-**Declared deviation: a grant, not an inline play.** It is ADR 0066's posture on every "you may cast
-it" a resolution offers (cascade, Malcolm), and for the same reason: the announce path has no frame
-for a cast collected from inside a resolution. What this adds over the printed card is a response
-window before the play and the choice of when in the turn to take it. What it loses is the land
-case: a hidden **land** follows the ordinary land-play rules — a main phase, the stack empty, a land
-drop left — where the printed resolution-time play needs only the land drop. That makes it weaker
-than printed there.
+**Declared: a grant, not an inline cast, for a spell.** It is ADR 0066's posture on every "you may
+cast it" a resolution offers (cascade, Malcolm), and for the same reason: the announce path has no
+frame for a cast collected from inside a resolution. What it adds over the printed card is a
+response window before the cast and the choice of when in the turn to take it; it takes nothing
+away (flash timing, no cost), so no card is weaker than printed.
+
+## Decision 5 — A hidden land is played during the resolution (2026-09-23 amendment)
+
+The first version of this ADR sent a hidden land through the grant too, which made it wait for a main
+phase with the stack empty — weaker than printed, and under house rules a card cannot be `full` while
+it is. So a land is played as part of the resolution (CR 608.2g), which is what the card says.
+
+`Game.PlayLandDuringResolutionForEffect(player, card)` is a **land play**, not a "put onto the
+battlefield" (CR 305.4). It runs the CR 614 window with `landPlay` set and finishes on
+`executeEntryToBattlefieldLocked`, the same finisher a paused land play from hand already uses. That
+finisher bumps the land-drop tally (CR 305.2a counts a land played during a resolution), clears the
+face-down state, marks the table and fires the ETB, and it can pause and resume (a shockland's
+payment). It needs no main phase and no empty stack: that window is CR 305.1's, for a land played
+from hand with priority. Two things still stop it, both CR 305's "ignore any part of an effect that
+instructs a player to do so": no land drop left (CR 305.2b), and not the player's turn (CR 305.3).
+`CanPlayLandDuringResolutionForEffect` is that gate on its own, and `PlayHiddenCard` asks it first,
+so nobody is offered a play the rules would ignore. When the gate says no, the land stays hidden for
+a later activation.
+
+The "you may" is the existing `may_cast` prompt (`QueueMayCastForEffect`, cascade's). An open prompt
+freezes the table, so answering it is still inside the resolution, and the bot already answers it.
+Cascade and Malcolm can reuse the same function for a land if a card ever needs it.
 
 ## Decision 4 — `effects.Hideaway(name, n)` is CR 702.75a whole
 
@@ -147,7 +167,6 @@ by every card, so none of the four carries a per-card caveat.
 
 ## Out of scope
 
-- **A land played as part of the resolution** needing only the land drop — see Decision 3.
 - **Evercoat Ursine** — two hideaways and "one of them". `HiddenCardsForEffect` already returns both;
   `PlayHiddenCard` grants the first.
 - **Watcher for Tomorrow** — "when this creature leaves the battlefield, put the exiled card into its
@@ -173,14 +192,16 @@ by every card, so none of the four carries a per-card caveat.
   - the look following a change of control, with CR 406.3 keeping the old viewer;
   - the link dropped on leaving exile;
   - a snapshot round trip;
-  - a hidden spell cast for `{0}` and a hidden land played from exile under a grant.
+  - a hidden spell cast for `{0}` and a hidden land played from exile under a grant;
+  - `PlayLandDuringResolutionForEffect` refused on another player's turn (CR 305.3) and a land play on its own.
 - `cards/effects/hideaway_cards_test.go` covers:
   - the look-and-choose (one hidden, four on the bottom, controller-only knowers);
   - Rabble Rousing at nine and at ten creatures;
   - Windbrisk Heights refused before an attack and granted after three attackers, then cast for free;
   - Mosswort Bridge at power 9 and at 10;
   - Spinerock Knoll with 7 damage split across two opponents, then 7 to one;
-  - a replayed land with no claim on its old card.
+  - a replayed land with no claim on its old card;
+  - a hidden land played during the resolution, in combat, spending the land drop — and not offered with no land drop left (Decision 5).
 - `legal/hideaway_moves_test.go` — the enumerator offers a hidden card only under its grant, only to
   the holder, and the offered play dispatches.
 - `protocol/hideaway_view_test.go` — the controller reads the card, the opponent reads a back labelled

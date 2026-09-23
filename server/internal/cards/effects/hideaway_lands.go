@@ -26,11 +26,9 @@ import (
 // its card, and a land that was bounced and replayed has hidden a new
 // card and has no claim on the old one (CR 607.2a, CR 400.7).
 //
-// Declared simplification in ADR 0091, not a caveat: the play is a
-// grant rather than an inline play (the cascade / Malcolm posture), and
-// a LAND that was hidden plays under the ordinary land-play rules — a
-// main phase with the stack empty and a land drop left — where the
-// printed resolution-time play needs only the land drop (CR 305.2b).
+// A hidden LAND is played during the resolution with the turn's land
+// drop (CR 608.2g, CR 305.2a); a hidden SPELL is a {0} grant cast right
+// after (ADR 0091, the cascade / Malcolm posture) — see PlayHiddenCard.
 
 type hideawayLand struct {
 	oracle string

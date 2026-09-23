@@ -166,6 +166,37 @@ func TestAHiddenCardIsPlayedFromExileUnderAGrant(t *testing.T) {
 	}
 }
 
+// CR 305.3: a land an effect lets a player play during a resolution
+// is still only playable on that player's own turn; on anyone else's
+// the instruction is ignored and nothing moves.
+func TestALandPlayedDuringAResolutionNeedsItsPlayersTurn(t *testing.T) {
+	g := newActiveGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	_, land := hideawaySetup(t, g, Card{Name: "Hidden Mountain", TypeLine: "Basic Land — Mountain"})
+	g.WithWriteLock(func() {
+		if played, err := g.PlayLandDuringResolutionForEffect(opp.ID, land); played || err != nil {
+			t.Errorf("not their turn: played=%v err=%v", played, err)
+		}
+		if played, err := g.PlayLandDuringResolutionForEffect(me.ID, land); !played || err != nil {
+			t.Errorf("their turn, a land drop left: played=%v err=%v", played, err)
+		}
+	})
+	if !g.Battlefield.Contains(land) || g.LandsPlayedThisTurnFor(me.ID) != 1 {
+		t.Error("the land was not played as a land play")
+	}
+	// CR 305.4 (#1326): the entry is announced as PLAYED, not put —
+	// what City of Traitors and Deep Gnome Terramancer read.
+	played := false
+	for _, ev := range g.Events {
+		if ev.Kind == EventZoneMove && ev.CardID == land && ev.NewZone == ZoneBattlefield {
+			played = ev.Played
+		}
+	}
+	if !played {
+		t.Error("the entry does not say the land was played (Event.Played)")
+	}
+}
+
 // hiddenZoneCard reads one card out of a zone by instance ID.
 func hiddenZoneCard(z *Zone, id uuid.UUID) (Card, bool) {
 	for _, c := range z.Cards {

@@ -34,14 +34,10 @@ import (
 // check written after it would read the board before the tokens.
 //
 // The free play is PlayHiddenCard over the card THIS Rabble Rousing
-// hid, captured as the object in Build (CR 607.2a). A grant rather than
-// an inline play — ADR 0091's declared deviation, ADR 0066's posture:
-// the player plays the card with an ordinary action once the trigger
-// has resolved, until end of turn; a land hidden here waits for a main
-// phase and the turn's land drop, which the attack step never has.
-//
-// Declared simplification in ADR 0091, not a caveat: the grant-not-
-// inline window every "you may cast it" in the engine shares.
+// hid, captured as the object in Build (CR 607.2a). A hidden land is
+// played during the resolution — in the declare-attackers step — with
+// the turn's land drop (CR 608.2g, CR 305.2a); a hidden spell is a {0}
+// grant the player casts right after (ADR 0091). See PlayHiddenCard.
 const rabbleRousingOracleID = "2e420001-2b3d-4eb7-b01c-3a49d5e241c2"
 
 const rabbleRousingLabel = "Rabble Rousing — create that many Citizens"

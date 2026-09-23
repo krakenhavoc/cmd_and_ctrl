@@ -109,22 +109,27 @@ func HiddenRefOfActivation(item *game.StackItem) game.PermissionCardRef {
 
 // PlayHiddenCard is hideaway's payoff: "you may play the exiled card
 // without paying its mana cost" (CR 607.2a — "the exiled card" is the
-// one Source's hideaway exiled). It grants Player a free play of it.
+// one Source's hideaway exiled). Two shapes, by what was hidden:
 //
-// A GRANT, not an inline play — ADR 0066's posture on every "you may
-// cast it" a resolution offers (cascade, Malcolm): the announce path
-// has no frame for a cast collected from inside a resolution
-// (CR 608.2g), so the player is handed a permission and plays the card
+// A LAND is played NOW, as part of the resolution (CR 608.2g, ADR 0091's
+// 2026-09-23 amendment): a "you may" prompt, then
+// PlayLandDuringResolutionForEffect — a land play that spends a land
+// drop (CR 305.2a) and needs no main phase and no empty stack. With no
+// land drop left, or on another player's turn, the instruction is
+// ignored (CR 305.2b / 305.3): nobody is asked and the land stays
+// hidden.
+//
+// A SPELL is a GRANT, not an inline cast — ADR 0066's posture on every
+// "you may cast it" a resolution offers (cascade, Malcolm): the
+// announce path has no frame for a cast collected from inside a
+// resolution, so the player is handed a permission and casts the card
 // with an ordinary action once the ability has resolved. Its shape:
 //
 //   - Cost "{0}" — "without paying its mana cost". Empty would mean
 //     the printed cost.
-//   - NOT CastOnly: hideaway says PLAY, and a land may be what was hid.
-//     A land then takes the land-play branch, with its own timing and
-//     the turn's land drop (CR 305.2b / 305.3) — no timing statement
-//     reaches a land play, so a land hidden by a land activated during
-//     combat waits for a main phase. Weaker than printed, never
-//     stronger.
+//   - NOT CastOnly: hideaway says PLAY. (A land never reaches the grant
+//     — see above — but a permission that said "cast" would be the
+//     wrong statement of the card.)
 //   - TimingFlash — "as part of the resolution" ignores the card's own
 //     timing (CR 608.2g), so a sorcery hidden by an instant-speed
 //     activation is castable now rather than never.
@@ -155,18 +160,38 @@ func (p PlayHiddenCard) Apply(ctx *Context) error {
 // reach, for a continuation that must not hold a stack item across a
 // pause (an undo replays it against the restored game).
 func grantHiddenPlay(g *game.Game, player uuid.UUID, source game.PermissionCardRef, label string) {
-	for _, id := range g.HiddenCardsForEffect(source) {
-		g.GrantCastPermissionOverCardForEffect(id, game.CastPermission{
-			Player: player,
-			Zone:   game.ZoneExile,
-			Cost:   "{0}",
-			Timing: game.TimingFlash,
-			Source: source.ID,
-			Label:  label,
-		})
-		// "The exiled card" — one. A second hideaway on the same
-		// permanent (Evercoat Ursine) prints "one of them" and is its
-		// own clause.
+	hidden := g.HiddenCardsForEffect(source)
+	if len(hidden) == 0 {
 		return
 	}
+	// "The exiled card" — one. A second hideaway on the same permanent
+	// (Evercoat Ursine) prints "one of them" and is its own clause.
+	id := hidden[0]
+	if c, ok := g.LookupCardForEffect(id); ok && c.IsLand() {
+		// A hidden LAND is played now, as part of this resolution
+		// (CR 608.2g, ADR 0091's 2026-09-23 amendment): a land play
+		// that spends a land drop (CR 305.2a) and needs no main phase
+		// and no empty stack. A player with no land drop left, or on
+		// someone else's turn, is not asked — CR 305.2b and 305.3 say
+		// the instruction is ignored — and the land stays hidden for a
+		// later activation.
+		if !g.CanPlayLandDuringResolutionForEffect(player, id) {
+			return
+		}
+		_ = g.QueueMayCastForEffect(player, source.ID, id,
+			label+" — play "+c.Name+"?",
+			func(g *game.Game) error {
+				_, err := g.PlayLandDuringResolutionForEffect(player, id)
+				return err
+			}, nil)
+		return
+	}
+	g.GrantCastPermissionOverCardForEffect(id, game.CastPermission{
+		Player: player,
+		Zone:   game.ZoneExile,
+		Cost:   "{0}",
+		Timing: game.TimingFlash,
+		Source: source.ID,
+		Label:  label,
+	})
 }
