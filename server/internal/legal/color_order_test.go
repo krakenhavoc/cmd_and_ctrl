@@ -157,6 +157,25 @@ func TestProtectRanksTheBiggestThreatNotTheCommonest(t *testing.T) {
 	wantOrder(t, colorAnswerLabels(t, g, me.ID), "white", "red", "blue", "black", "green")
 }
 
+// TestProtectRanksCounterPumpedThreatCorrectly is #1281:
+// colorBoardOf's threat map read c.Effective().Power, which excludes
+// +1/+1 / -1/-1 counters, so a 1/1 with four +1/+1 counters ranked as
+// a 1/1. A printed 2/2 with five +1/+1 counters (CurrentPower 7, no
+// anthem in play) must still outrank a plain 6/6 — the opposite order
+// from what Effective().Power alone would give (2 < 6).
+func TestProtectRanksCounterPumpedThreatCorrectly(t *testing.T) {
+	g := newTable(t)
+	me, them := g.Seats[0], g.Seats[1]
+	battlefieldCard(g, me, creature("Llanowar Elves", "{G}", 1, 1))
+	pumped := creature("Goblin Guide", "{R}", 2, 2)
+	pumped.Counters = map[string]int{game.CounterPlusOne: 5}
+	battlefieldCard(g, them, pumped)
+	battlefieldCard(g, them, creature("Serra Avatar", "{W}{W}{W}", 6, 6))
+
+	queueColorPrompt(t, g, me.ID, game.ColorForProtection, nil)
+	wantOrder(t, colorAnswerLabels(t, g, me.ID), "red", "white", "blue", "black", "green")
+}
+
 // TestEveryPurposeStillOffersEveryLegalAnswer is the floor. An
 // ORDERING may not become a filter: CR 105.4 makes all five legal, and
 // a narrowed printed list ("a color other than blue") stays exactly as
