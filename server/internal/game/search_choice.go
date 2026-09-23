@@ -65,7 +65,13 @@ func (g *Game) ResolveSearchLibrary(choiceID, chooserID uuid.UUID, picks []uuid.
 		return ErrInvalidParam
 	}
 	spec := choice.searchResume.spec
-	p := g.playerByIDLocked(chooserID)
+	// #1230: the library read here is the SEARCHED one, not necessarily
+	// the chooser's own — Bribery's caster picks, but the pile is
+	// target opponent's. chooserID is still who must be answering
+	// (checked above) and who checkSearchPicksLocked reports errors
+	// against; p is which library the picks are checked and taken
+	// from.
+	p := g.playerByIDLocked(spec.libraryOwnerID())
 	if p == nil {
 		return ErrPlayerNotFound
 	}
@@ -155,10 +161,13 @@ func (g *Game) checkSearchPicksLocked(choice *PendingChoice, p *Player, picks []
 // inside ReadSnapshot, like every other *ForEffect / *Locked surface
 // the enumerator uses.
 func (g *Game) SearchPickLegalLocked(choice *PendingChoice, picks []uuid.UUID) bool {
-	if choice == nil || choice.Kind != PendingChoiceSearchLibrary {
+	if choice == nil || choice.Kind != PendingChoiceSearchLibrary || choice.searchResume == nil {
 		return false
 	}
-	p := g.playerByIDLocked(choice.Chooser)
+	// Same read as ResolveSearchLibrary: the library checked is the
+	// spec's, which for a foreign search (Bribery) is not the
+	// chooser's own.
+	p := g.playerByIDLocked(choice.searchResume.spec.libraryOwnerID())
 	if p == nil {
 		return false
 	}

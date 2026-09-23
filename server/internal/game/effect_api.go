@@ -1458,6 +1458,60 @@ func (g *Game) CounterTargetForEffect(stackID uuid.UUID) error {
 	}
 }
 
+// CounterTargetToZoneForEffect is CounterTargetForEffect with the
+// destination exposed — #1230's "counter target spell; if that spell
+// is countered this way, put it into its owner's hand / on top of its
+// owner's library / exile it instead of into the graveyard" (Remand,
+// Memory Lapse, Dissipate; Devious Cover-Up's exile clause in this
+// catalog). `dst.Owner` left uuid.Nil means "its owner", which is what
+// every one of those destinations prints.
+//
+// Same "can't be countered" gate as CounterTargetForEffect — a
+// destination override does not change that this IS a counter
+// (CR 701.6a), so a spell printed uncounterable is untouched by
+// either. A countered ABILITY has no destination to redirect
+// (CR 701.6b: it ceases to exist), so this behaves exactly like
+// CounterTargetForEffect for one.
+func (g *Game) CounterTargetToZoneForEffect(stackID uuid.UUID, dst ZoneRef) error {
+	item, ok := g.StackMeta[stackID]
+	if !ok || item == nil {
+		return ErrCardNotOnStack
+	}
+	switch item.Kind {
+	case StackItemSpell:
+		if g.spellCantBeCounteredLocked(stackID) {
+			slog.Info("counter had no effect: spell can't be countered",
+				"spell_id", stackID)
+			return nil
+		}
+		return g.counterSpellLocked(stackID, &dst)
+	case StackItemActivated, StackItemTriggered:
+		return g.counterAbilityLocked(stackID)
+	default:
+		return ErrCardNotOnStack
+	}
+}
+
+// ReturnSpellToHandForEffect returns a spell on the stack to its
+// owner's hand WITHOUT countering it: CR 701.6 never applies, so a
+// spell printed "can't be countered" is unaffected and nothing
+// watching "whenever a spell is countered" fires. Reprieve; the
+// second half of Narset's Reversal, once CopySpell has made the copy.
+//
+// Shares counterSpellLocked's stack-exit body — exitSpellFromStackLocked
+// — with `countered: false` and the owner's hand as the fallback
+// destination instead of the graveyard, so S29's flashback override
+// and the CR 614 / CR 903.9 window through routeCardToZoneLocked apply
+// exactly as they do to a counter: a commander Reprieve'd back to hand
+// still gets the CR 903.9 offer, and a flashed-back spell bounced this
+// way is still exiled instead (CR 702.34a is unconditional about how
+// the spell would otherwise leave the stack).
+//
+// Caller must hold g.mu.
+func (g *Game) ReturnSpellToHandForEffect(stackID uuid.UUID) error {
+	return g.exitSpellFromStackLocked(stackID, nil, ZoneHand, false)
+}
+
 // counterSpellLocked is the lock-free body of CounterSpell. Caller
 // must hold g.mu.
 //
@@ -1473,6 +1527,27 @@ func (g *Game) CounterTargetForEffect(stackID uuid.UUID) error {
 // prompt is queued nothing has moved, the stack item is still
 // registered, and both complete when the owner answers.
 func (g *Game) counterSpellLocked(spellID uuid.UUID, dst *ZoneRef) error {
+	return g.exitSpellFromStackLocked(spellID, dst, ZoneGraveyard, true)
+}
+
+// exitSpellFromStackLocked is the shared body behind counterSpellLocked
+// and ReturnSpellToHandForEffect (#1230): CR 701.6a's counter and a
+// plain "return target spell to its owner's hand" both remove a spell
+// from the stack without letting it resolve, through the same
+// destination resolution and the same routeCardToZoneLocked call —
+// they differ only in the destination and in whether the move counts
+// as a COUNTER for CR 701.6-keyed triggers and for "can't be
+// countered" (checked by the caller, not here).
+//
+// `fallback` is the destination when the caller names none (dst ==
+// nil) and no S29 override applies — the owner's graveyard for a
+// counter, the owner's hand for a bounce. `countered` sets
+// zoneRoute.Countered, which is what actually decides EventCounterSpell
+// vs. an ordinary zone move; it is the one bit the two callers
+// disagree about.
+//
+// Caller must hold g.mu.
+func (g *Game) exitSpellFromStackLocked(spellID uuid.UUID, dst *ZoneRef, fallback ZoneKind, countered bool) error {
 	item, ok := g.StackMeta[spellID]
 	if !ok || item == nil || item.Kind != StackItemSpell {
 		return ErrCardNotOnStack
@@ -1480,12 +1555,13 @@ func (g *Game) counterSpellLocked(spellID uuid.UUID, dst *ZoneRef) error {
 	if g.Stack == nil || !g.Stack.Contains(spellID) {
 		return ErrCardNotOnStack
 	}
-	// Resolve the destination. nil → the spell's owner's graveyard,
+	// Resolve the destination. nil → the fallback at the spell's
+	// owner (a countered spell's graveyard, a returned spell's hand),
 	// or exile when that player has left the game (the primitive's
-	// own fallback). Battlefield / stack are illegal — a counter that
+	// own fallback). Battlefield / stack are illegal — an effect that
 	// "puts the spell onto the battlefield" would be a different
-	// effect, and a counter MUST move the spell off the stack.
-	destKind, destOwner := ZoneGraveyard, item.Owner
+	// effect, and either verb MUST move the spell off the stack.
+	destKind, destOwner := fallback, item.Owner
 	if dst != nil {
 		if dst.Kind == ZoneBattlefield || dst.Kind == ZoneStack {
 			return ErrInvalidStackDestination
@@ -1497,11 +1573,12 @@ func (g *Game) counterSpellLocked(spellID uuid.UUID, dst *ZoneRef) error {
 	}
 	// S29 flashback: "exile this card instead of putting it anywhere
 	// else ANY TIME it would leave the stack" (CR 702.34a). It beats
-	// the counter's chosen destination, so a flashed-back spell
-	// answered by Hinder is exiled rather than shuffled away — which
-	// is the whole difference between a replacement effect and an
-	// exile bolted onto the resolution, and the only place in the
-	// engine where it is observable.
+	// the chosen destination whichever verb is asking, so a
+	// flashed-back spell answered by Hinder OR by Reprieve is exiled
+	// rather than shuffled away — which is the whole difference
+	// between a replacement effect and an exile bolted onto the
+	// resolution, and the only place in the engine where it is
+	// observable.
 	for _, c := range g.Stack.Cards {
 		if c.InstanceID == spellID && altCostExilesFromStack(c, item) {
 			destKind, destOwner = ZoneExile, uuid.Nil
@@ -1512,7 +1589,7 @@ func (g *Game) counterSpellLocked(spellID uuid.UUID, dst *ZoneRef) error {
 		CardID:        spellID,
 		Dst:           destKind,
 		DstOwner:      destOwner,
-		Countered:     true,
+		Countered:     countered,
 		DropStackMeta: true,
 	})
 	return err
@@ -1798,11 +1875,49 @@ type SearchLibrarySpec struct {
 	// Pred filters the library. nil matches every card (Gamble).
 	Pred func(Card) bool
 
-	// Dest is one of ZoneHand, ZoneBattlefield, ZoneLibrary.
+	// Dest is one of ZoneHand, ZoneBattlefield, ZoneLibrary, ZoneExile.
 	Dest ZoneKind
 
+	// FaceDown exiles the taken cards face down (CR 406.3a) when Dest
+	// is ZoneExile — the zero value, FaceDownNone, is an ordinary
+	// face-up exile. Rides straight onto the zoneRoute the takes are
+	// routed through (searchRoute), the same way it does for every
+	// other exit, so CR 614 and CR 903.9 still see the move and
+	// applyFaceDownLandingLocked still decides who may look. Ignored
+	// for any other Dest. No printed card in the catalog sets it yet;
+	// it exists so a future "search your library for a card, exile it
+	// face down" does not reopen this file.
+	FaceDown FaceDownKind
+
+	// LibraryOwner is the seat whose library is actually searched,
+	// when that is not Player — Bribery's "search TARGET OPPONENT's
+	// library", where the caster (Player) does the choosing but the
+	// pile scanned, shuffled and left un-knowing afterwards is the
+	// target's. The zero value (uuid.Nil) means "the same as Player",
+	// which is what every search before #1230 already meant and what
+	// every other field on this spec keeps assuming: the chooser, the
+	// knower grant, the entering CONTROLLER (searchEnterBattlefieldLocked)
+	// and the stamped Actor are all Player regardless, exactly as
+	// Bribery's "under YOUR control" wants. Assassin's Trophy's
+	// "that player searches" is not this — there Player already IS
+	// the searched owner, so LibraryOwner is unset.
+	LibraryOwner uuid.UUID
+
 	// Limit is the maximum number of cards taken. <= 0 means 1.
+	// Meaningless with Unbounded set.
 	Limit int
+
+	// Unbounded is "search your library for ANY NUMBER of … cards"
+	// (Ugin, Eye of the Storms' −11): the searcher may take as many
+	// of the matches as they choose, from zero up to all of them, and
+	// nothing about the count forces a decision the way Limit's
+	// "take every match" shortcut does. Separate from Limit rather
+	// than a sentinel value on it (0 already means "default to 1")
+	// for the reason CounterCost.Variable is its own bool beside a
+	// numeric field rather than overloading one: a search that finds
+	// exactly one match still has to ask, because "any number"
+	// includes zero.
+	Unbounded bool
 
 	// Reveal marks the TAKEN cards known to every seated player (CR
 	// "reveal"). It never reveals the cards that were merely
@@ -1865,6 +1980,19 @@ type SearchLibrarySpec struct {
 	// "leave it where it is", which is a search that only reveals.
 	// Ignored for any other destination. Added in S22.
 	ToTop bool
+}
+
+// libraryOwnerID is the seat whose library this search actually reads
+// — LibraryOwner when it names one, Player otherwise. Every OTHER
+// field on the spec (the chooser, the knower grant, the entering
+// controller, the stamped Actor) already reads Player directly and is
+// unaffected by this: a foreign-library search changes WHICH pile is
+// scanned, shuffled and moved out of, not who is doing the searching.
+func (spec SearchLibrarySpec) libraryOwnerID() uuid.UUID {
+	if spec.LibraryOwner != uuid.Nil {
+		return spec.LibraryOwner
+	}
+	return spec.Player
 }
 
 // SearchLibraryForEffect scans playerID's library for cards matching
@@ -1947,11 +2075,11 @@ func (g *Game) SearchLibraryForEffectWithOptions(
 //
 // Caller must hold g.mu.
 func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
-	p := g.playerByIDLocked(spec.Player)
+	p := g.playerByIDLocked(spec.libraryOwnerID())
 	if p == nil {
 		return ErrPlayerNotFound
 	}
-	if spec.Limit <= 0 {
+	if spec.Limit <= 0 && !spec.Unbounded {
 		spec.Limit = 1
 	}
 	if _, err := g.searchDestZoneLocked(p, spec.Dest); err != nil {
@@ -1973,7 +2101,14 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 		// unconditionally.
 		return g.finishSearchLocked(spec, p, nil)
 	}
-	if !spec.Optional && len(matches) <= spec.Limit &&
+	if spec.Unbounded {
+		// "Any number" is a ceiling, never a target (CR 701.23a): the
+		// searcher may take zero up to every match, so the count is
+		// always a real choice and Limit becomes the size of the
+		// whole match set rather than a forced take-all.
+		spec.Limit = len(matches)
+	}
+	if !spec.Optional && !spec.Unbounded && len(matches) <= spec.Limit &&
 		(spec.Validate == nil || spec.Validate(matched)) {
 		// No decision to make — take them all. The take finishes the
 		// search itself (#478): a battlefield destination is an entry
@@ -2003,6 +2138,15 @@ func (g *Game) searchDestZoneLocked(p *Player, dest ZoneKind) (*Zone, error) {
 		// with ErrZoneNotFound and silently find nothing. Added with
 		// the roadmap's batch 02 (#295).
 		return p.Graveyard, nil
+	case ZoneExile:
+		// #1230: "search your library for any number of … cards, exile
+		// them, then shuffle" (Ugin, Eye of the Storms). Exile is a
+		// single shared zone, not per-player, so p is unread here —
+		// unlike the three cases above it carries no ownership
+		// question at all. The generic MoveCard branch below (through
+		// searchRoute / routeCardToZoneLocked, which already resolves
+		// ZoneExile) handles the move unchanged.
+		return g.Exile, nil
 	}
 	return nil, ErrZoneNotFound
 }
@@ -2114,8 +2258,8 @@ func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []
 	// CR 903.9's offer, are not in it — the same reading the
 	// battlefield branch has used since #478, where a fetched permanent
 	// whose entry was replaced away is not "found" either.
-	return g.routeAllThenLocked(searchRoute(spec.Player, spec.Dest), ids, func(g *Game, found []uuid.UUID) error {
-		p := g.playerByIDLocked(spec.Player)
+	return g.routeAllThenLocked(searchRoute(spec.Player, spec.Dest, spec.FaceDown), ids, func(g *Game, found []uuid.UUID) error {
+		p := g.playerByIDLocked(spec.libraryOwnerID())
 		if p == nil {
 			return ErrPlayerNotFound
 		}
@@ -2135,7 +2279,7 @@ func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []
 //
 // Caller must hold g.mu.
 func (g *Game) searchEnterEachThenFinishLocked(spec SearchLibrarySpec, ids, found []uuid.UUID) error {
-	p := g.playerByIDLocked(spec.Player)
+	p := g.playerByIDLocked(spec.libraryOwnerID())
 	if p == nil {
 		return ErrPlayerNotFound
 	}
