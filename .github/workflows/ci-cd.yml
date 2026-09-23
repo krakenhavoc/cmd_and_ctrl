@@ -54,6 +54,14 @@ concurrency:
 jobs:
   cmdctrl-ci:
     runs-on: self-hosted
+    # The repo is public and these runners keep state between jobs and
+    # can reach the deploy hosts, so fork PRs never run here. A fork's
+    # code can still edit this line, which is why fork PR workflows also
+    # need maintainer approval (repo settings) -- read any workflow diff
+    # before approving. To CI a fork PR, push its branch to this repo.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
