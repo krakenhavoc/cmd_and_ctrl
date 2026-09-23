@@ -452,6 +452,11 @@ func Register(spec Spec) {
 	// their own walk (#623), so a Zones on one of them would be
 	// ignored just as silently.
 	checkTriggerZones(spec.Name, "trigger", spec.Triggered)
+	// #1221: the same boot-time refusal for the STATIC half of
+	// CR 113.6. A zone the layer gather does not walk would be a
+	// declaration the engine silently ignored — the card would
+	// register, look complete on the catalog page, and never apply.
+	checkStaticZones(spec.Name, "static", spec.Static)
 	if spec.Emblem != nil {
 		checkTriggerZones(spec.Name, "emblem trigger", spec.Emblem.Triggered)
 	}
@@ -466,6 +471,11 @@ func Register(spec Spec) {
 	// owns it, not the card — and an index built from spec.Triggered
 	// would never walk exile for it.
 	game.IndexTriggerZones(spec.OracleID, def.Triggered)
+	// #1221: and the static half of the same index. From the SPEC
+	// rather than from the def, because nothing in buildDef grows or
+	// rewrites a static the way a suspend declaration grows a
+	// trigger — Spec.Static is what the layer pass gathers.
+	game.IndexStaticZones(spec.OracleID, spec.Static)
 	// #623 / CR 114: a card that makes an emblem files a SECOND def
 	// for the emblem object, under "emblem:<this key>". It goes in
 	// `defs` and not in `registry`, so the engine finds the emblem's
@@ -490,6 +500,21 @@ func Register(spec Spec) {
 // triggered ability declares has to be one the harvest actually
 // walks, or the ability is dead text the catalog page would still
 // call complete.
+// checkStaticZones is checkTriggerZones for the layer half of
+// CR 113.6 (#1221): a static may declare the zone it functions from,
+// and a zone activeStaticAbilitiesLocked does not gather is refused
+// at boot with the reason.
+func checkStaticZones(card, what string, statics []game.StaticAbility) {
+	for i, s := range statics {
+		for _, zone := range s.Zones {
+			if why := game.StaticZoneUnsupported(zone); why != "" {
+				panic(fmt.Sprintf("effects.Register: %q %s %d functions from %s — %s",
+					card, what, i, zone, why))
+			}
+		}
+	}
+}
+
 func checkTriggerZones(card, what string, triggers []game.TriggeredAbility) {
 	for i, t := range triggers {
 		for _, zone := range t.Zones {
