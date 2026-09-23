@@ -690,9 +690,19 @@ type ReturnFromGraveyard struct {
 	// second. Reanimating an opponent's creature and handing it back
 	// to the opponent is the failure mode this field exists to stop.
 	Controller uuid.UUID
+
+	// Tapped stamps the CR 614 entry with EntersTapped when Dest ==
+	// ZoneBattlefield (#1284) — Reassembling Skeleton, Drownyard
+	// Temple: "Return this card from your graveyard to the
+	// battlefield tapped." Matches SearchLibrary.TappedOnEntry's
+	// shape one primitive over. Meaningless for any other Dest.
+	Tapped bool
 }
 
 func (r ReturnFromGraveyard) Apply(ctx *Context) error {
+	if r.Tapped {
+		return ctx.Game.ReturnFromGraveyardTappedForEffect(r.Target, r.Dest, r.Controller, true)
+	}
 	return ctx.Game.ReturnFromGraveyardUnderControlForEffect(r.Target, r.Dest, r.Controller)
 }
 
