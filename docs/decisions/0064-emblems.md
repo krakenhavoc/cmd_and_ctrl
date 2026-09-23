@@ -402,3 +402,69 @@ three abilities work. Emblems stop being its blocker.
   Six on #652 (Decision 10), and Invasion of New Phyrexia on #626's other
   two blockers. The seam row moves to Closed with two of four converted,
   which is honest but is not the whole row.
+
+## Amendment (2026-09-23, #1315): emblems can widen a turn-based action, not only add Static / Triggered
+
+Decision 4's `EmblemSpec` had two ability slots, `Static` and `Triggered` —
+every emblem catalogued so far speaks one of those two vocabularies. Teferi,
+Who Slows the Sunset's −7 does not: "Untap all permanents you control
+during each opponent's untap step" and "You draw a card during each
+opponent's draw step" are both **turn-based-action widenings**
+(CR 502.3, CR 504.1), the same shape `effects.Spec.UntapStep` already gives
+a battlefield permanent (untap.go, #74) for exactly the reason that file's
+header gives: neither clause uses the stack, so writing either as a
+`Triggered` entry would land it a step late, on the stack, answerable by a
+counter or a tap-in-response with no printed basis.
+
+**What changed.** `EmblemSpec` gained two fields, `UntapStep
+[]game.UntapStepPermission` and `DrawStep []game.DrawStepPermission`,
+mirroring `Static` / `Triggered` exactly: declared on the card's `Spec.Emblem`,
+projected into the emblem's `game.CardDef` by `buildEmblemDef`, and reachable
+through the same synthetic `"emblem:<oracle>"` key every other emblem
+ability already uses. `checkEmblemSpec`'s "an emblem needs at least one
+ability" guard now accepts either new field in place of Static/Triggered,
+so an emblem whose whole text is these two clauses (Teferi's) is not an
+`EmblemSpec` with "no abilities".
+
+**`DrawStepPermission` is new** (`game/draw_step.go`) — CR 504.1's turn-based
+draw had no widening hook at all before this, because no catalogued card
+needed one. It is `UntapStepPermission`'s shape one turn-based action over:
+an `AppliesTo(g, source, activePlayer) bool` and a `Drawer(g, source)
+uuid.UUID` naming who draws, gathered once per draw step
+(`activeDrawStepPermissionsLocked`) and applied in `StepDraw`'s case in
+`finishStepEntryLocked` — in the SAME turn-based action as the active
+player's own CR 504.1 draw, before `EventBeginDrawStep` announces the step
+to the trigger harvester. This is deliberately NOT how Howling Mine and
+Dictate of Kruphix's "at the beginning of each player's draw step, that
+player draws an additional card" work: those print "at the beginning of",
+which is a trigger, and both are registered as one (`howling_mine.go`,
+`dictate_of_kruphix.go`) — they go on the stack and land strictly after the
+turn-based draw. Teferi's emblem prints no such clause, and it does not go
+on the stack.
+
+**The untap-step gather now also walks emblems.**
+`activeUntapStepPermissionsLocked` (untap.go) previously walked only
+`g.Battlefield.Cards` — a `UntapStepPermission` could be declared on
+`Spec.UntapStep` (a permanent) but not reached from `EmblemSpec.UntapStep`,
+because nothing read the command zone for one. It now walks every seat's
+`p.Emblems` too, mirroring the second walk `emblemContinuousEffectsLocked`
+and `harvestFromEmblemsLocked` already do for statics and triggers
+(Decision 4) — one line of precedent, extended rather than reinvented. The
+emblem walk reads `CatalogKey`, not `CatalogAbilityKey`: nothing in the
+game can name an emblem to remove its abilities (emblem.go), so there is no
+CR 613.1f removal state to consult, exactly as the two existing emblem
+walks already read. `activeDrawStepPermissionsLocked` is written with both
+walks from the start, for the same reason.
+
+**Consequences.** A future emblem that widens a turn-based action this
+engine does not yet model (say, a hypothetical "skip your discard step")
+still has no slot — this amendment adds exactly two, for the two clauses a
+real card needs today, and follows `Spec.UntapStep`'s own precedent rather
+than generalising ahead of a card that asks for it. Nothing about Decision
+4's Static/Triggered path changes; the two new fields are additive and the
+zero value of both is "declares neither", which is every emblem catalogued
+before this card.
+
+Proof card: Teferi, Who Slows the Sunset
+([teferi_who_slows_the_sunset.go](../../server/internal/cards/effects/teferi_who_slows_the_sunset.go)).
+Tracker: [#884](https://github.com/krakenhavoc/cmd_and_ctrl/issues/884).

@@ -73,6 +73,7 @@ func buildDef(spec Spec) *game.CardDef {
 		UntapStepRestrictions:      spec.UntapStepRestrictions,
 		UntapCaps:                  spec.UntapCaps,
 		UntapOptOuts:               spec.UntapOptOuts,
+		DrawStep:                   spec.DrawStep,
 		CantBeCountered:            spec.CantBeCountered,
 		NoMaxHandSize:              spec.NoMaxHandSize,
 		PlayerKeywords:             spec.PlayerKeywords,

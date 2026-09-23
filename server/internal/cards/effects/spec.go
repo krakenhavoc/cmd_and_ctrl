@@ -906,6 +906,21 @@ type Spec struct {
 	// from the rule that untapping is otherwise mandatory.
 	UntapOptOuts []game.UntapOptOut
 
+	// DrawStep declares the printed clause "you draw a card during
+	// each opponent's draw step" — Teferi, Who Slows the Sunset's
+	// emblem (#1315). UntapStep's argument for why its clause is not
+	// a Triggered entry applies word for word here, one turn-based
+	// action over: the draw step's turn-based action is CR 504.1's
+	// "the active player draws a card", and this widens who else
+	// draws as PART of that action — no stack, no announce, no
+	// response window. Written as a trigger, it would land a step
+	// late, on the stack, answerable by a counter or a tap effect
+	// that has no printed basis. See game/draw_step.go.
+	//
+	// Nil for every card that does not print the clause, which is
+	// nearly all of them.
+	DrawStep []game.DrawStepPermission
+
 	// Completeness declares how faithfully this spec implements the
 	// card as printed — the machine-readable form of the prose
 	// "declared simplification" convention in AGENTS.md §7. See
