@@ -296,29 +296,40 @@ func TestLotusFieldEntersTappedAndSacrificesTwoLands(t *testing.T) {
 	if !b13Tapped(t, g, field) {
 		t.Error("Lotus Field entered untapped")
 	}
-	n := 0
-	g.ReadSnapshot(func() {
-		for _, c := range g.PendingChoices {
-			if c != nil && c.Kind == game.PendingChoiceSacrifice && c.Chooser == me.ID {
+
+	// ONE question for both lands — not a sacrifice prompt per land.
+	if c := sacrificeChoiceFor(g, me.ID); c != nil {
+		t.Fatalf("a single-land sacrifice prompt is open: %+v", c)
+	}
+	prompt := latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, me.ID)
+	if prompt == nil {
+		t.Fatalf("no sacrifice-two-lands prompt: %+v", g.PendingChoices)
+	}
+	if prompt.ChooseMin != 2 || prompt.ChooseMax != 2 {
+		t.Errorf("bounds %d..%d, want exactly two", prompt.ChooseMin, prompt.ChooseMax)
+	}
+	if len(prompt.ChooseCards) != 3 {
+		t.Errorf("candidates = %v, want both basics and Lotus Field itself", prompt.ChooseCards)
+	}
+	if err := g.ResolveOwnPermanents(prompt.ID, me.ID, []uuid.UUID{forest}); err == nil {
+		t.Error("the prompt accepted one land for \"sacrifice two lands\"")
+	}
+
+	sacrificed := func() int {
+		n := 0
+		for _, ev := range g.Events {
+			if ev.Kind == game.EventSacrifice && (ev.CardID == forest || ev.CardID == island) {
 				n++
 			}
 		}
-	})
-	if n != 2 {
-		t.Fatalf("sacrifice prompts = %d, want 2", n)
+		return n
 	}
-
-	// Answering both sacrifices two DIFFERENT lands: the second prompt
-	// cannot name the land the first one already took.
-	answerSacrifice(t, g, me.ID, forest)
-	second := sacrificeChoiceFor(g, me.ID)
-	if second == nil {
-		t.Fatal("the second sacrifice prompt is gone after the first answer")
+	if n := sacrificed(); n != 0 {
+		t.Fatalf("%d lands sacrificed before the answer", n)
 	}
-	if err := g.ResolveSacrificeChoice(second.ID, me.ID, forest); err == nil {
-		t.Error("the second prompt accepted the land the first one already sacrificed")
+	if err := g.ResolveOwnPermanents(prompt.ID, me.ID, []uuid.UUID{forest, island}); err != nil {
+		t.Fatalf("ResolveOwnPermanents: %v", err)
 	}
-	answerSacrifice(t, g, me.ID, island)
 	for _, id := range []uuid.UUID{forest, island} {
 		if _, ok := battlefieldCard(g, id); ok {
 			t.Errorf("%s is still on the battlefield", id)
@@ -327,11 +338,37 @@ func TestLotusFieldEntersTappedAndSacrificesTwoLands(t *testing.T) {
 			t.Errorf("%s is not in the graveyard", id)
 		}
 	}
+	if n := sacrificed(); n != 2 {
+		t.Errorf("%d sacrifice events, want 2 — the lands are SACRIFICED, not destroyed", n)
+	}
 	if _, ok := battlefieldCard(g, field); !ok {
 		t.Error("Lotus Field left the battlefield; it was not one of the two picks")
 	}
-	if c := sacrificeChoiceFor(g, me.ID); c != nil {
-		t.Errorf("a third sacrifice prompt is open: %+v", c)
+	if c := latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, me.ID); c != nil {
+		t.Errorf("a second sacrifice prompt is open: %+v", c)
+	}
+}
+
+// With Lotus Field the only land, "sacrifice two lands" does as much as
+// it can (CR 609.3): the Field sacrifices itself.
+func TestLotusFieldAloneSacrificesItself(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	field := b13PlayAs(t, g, 0, "Lotus Field", "Land", "134d5b82-7940-4b33-a922-7f9d1f403e50")
+	passPriorityAroundTable(t, g)
+
+	prompt := latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, me.ID)
+	if prompt == nil {
+		t.Fatalf("no prompt: %+v", g.PendingChoices)
+	}
+	if prompt.ChooseMin != 1 || prompt.ChooseMax != 1 {
+		t.Errorf("bounds %d..%d, want 1..1 with one land on the board", prompt.ChooseMin, prompt.ChooseMax)
+	}
+	if err := g.ResolveOwnPermanents(prompt.ID, me.ID, []uuid.UUID{field}); err != nil {
+		t.Fatalf("ResolveOwnPermanents: %v", err)
+	}
+	if !me.Graveyard.Contains(field) {
+		t.Error("Lotus Field did not sacrifice itself")
 	}
 }
 
