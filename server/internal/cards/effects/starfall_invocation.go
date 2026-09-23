@@ -15,14 +15,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // creature dies as one event, so the aristocrats payoffs see all of
 // them.
 //
-// Sandbox simplification, declared — Long River's Pull's posture: the
-// GIFT is not offered. Gift is a cast-time promise (CR 702.174) that
-// needs a prompt in the cast flow and a per-cast flag the resolution
-// reads, and neither exists. So the spell is always its base mode —
-// destroy all creatures — which is the printed card with one option
-// removed, weaker and never stronger. When a cast-time promise lands,
-// the second clause is a draw for the promisee plus a pick among the
-// controller's creature cards the wipe put into the graveyard.
+// Sandbox simplification, declared: the GIFT is not offered. Gift
+// itself exists since ADR 0089 (#1267) — `Gift: GiftACard()` would
+// offer the promise and draw the opponent a card — but the promised
+// branch needs a pick among the creature cards THIS wipe put into
+// your graveyard, and a card that offered the promise without the
+// return would be a trap: the opponent draws and you get nothing. So
+// the spell stays its base mode — destroy all creatures — which is the
+// printed card with one option removed, weaker and never stronger.
+// Declaring the gift is one line the day the pick lands.
 //
 // The catalog-wide one this used to carry alongside it (#446 — the
 // mass destroy path not consulting indestructible) was the engine

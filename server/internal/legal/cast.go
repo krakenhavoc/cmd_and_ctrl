@@ -35,8 +35,12 @@ type castParams struct {
 	// (CR 601.2b, ADR 0073), as positions in the card's OptionalCosts
 	// slice, repeated once per payment for a multikicker.
 	OptionalCosts []int `json:"optional_costs,omitempty"`
-	Strict        bool  `json:"strict,omitempty"`
-	AutoTap       bool  `json:"auto_tap,omitempty"`
+	// GiftOpponent is the opponent a gift is promised to (CR
+	// 702.174a, ADR 0089) — set exactly when OptionalCosts names the
+	// card's gift cost.
+	GiftOpponent string `json:"gift_opponent,omitempty"`
+	Strict       bool   `json:"strict,omitempty"`
+	AutoTap      bool   `json:"auto_tap,omitempty"`
 	// Face is the printed face being cast or played (ADR 0034).
 	// Omitted — the front — for every single-faced card.
 	Face int `json:"face,omitempty"`
@@ -338,9 +342,49 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, kind game.Zon
 	// optionalCostSets is [nil] for every card that offers none,
 	// which is every card in the catalog before #664 — so this loop
 	// runs exactly once for them and the enumeration is unchanged.
-	for _, chosen := range optionalCostSets(game.OptionalCostsFor(game.CatalogKey(card)), e.opts.MaxExpansionPerSource) {
-		e.castMovesPayingOptional(card, from, perm, offer, chosen)
+	optional := game.OptionalCostsFor(game.CatalogKey(card))
+	for _, chosen := range optionalCostSets(optional, e.opts.MaxExpansionPerSource) {
+		// ADR 0089: a set that promises a gift is one announcement
+		// per opponent who could receive it — "which opponent" is
+		// part of paying the cost (CR 702.174a), and a bot offered
+		// only the first seat could never choose to feed the player
+		// who is furthest behind.
+		for _, to := range giftRecipients(e.g, e.seat, optional, chosen) {
+			e.castMovesPayingOptional(card, from, perm, offer, chosen, to)
+		}
 	}
+}
+
+// giftWire is the wire form of a gift recipient: omitted for
+// uuid.Nil, which is every cast that promises nothing.
+func giftWire(id uuid.UUID) string {
+	if id == uuid.Nil {
+		return ""
+	}
+	return id.String()
+}
+
+// giftRecipients is the gift half of one announced optional-cost set:
+// [uuid.Nil] when the set promises no gift, one entry per opponent
+// who may receive it when it does, and nothing at all when a gift is
+// announced and nobody is left to promise it to — that set is not a
+// legal announcement (the engine's validateGiftChoiceLocked).
+//
+// The list is game.GiftOpponentsLocked verbatim, the one the engine
+// and the view read, so a bot can never be offered a recipient the
+// server refuses.
+func giftRecipients(g *game.Game, seat uuid.UUID, optional []game.AdditionalCost, chosen []int) []uuid.UUID {
+	gift := false
+	for _, i := range chosen {
+		if i >= 0 && i < len(optional) && optional[i].ChoosesOpponent {
+			gift = true
+			break
+		}
+	}
+	if !gift {
+		return []uuid.UUID{uuid.Nil}
+	}
+	return g.GiftOpponentsLocked(seat)
 }
 
 // maxEnumeratedCostPayments caps how many ways the enumerator will
@@ -489,7 +533,10 @@ func costPaymentDemands(mandatory *game.AdditionalCost, optional []game.Addition
 // castMovesPayingOptional is castMovesForCard for ONE announced set
 // of optional additional costs — the unkicked cast, or the kicked
 // one. `chosen` is nil for every card that offers none.
-func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *game.CastPermission, offer *game.AlternativeCost, chosen []int) {
+//
+// `giftTo` is the opponent a gift is promised to when `chosen` names a
+// gift cost, and uuid.Nil otherwise (ADR 0089).
+func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *game.CastPermission, offer *game.AlternativeCost, chosen []int, giftTo uuid.UUID) {
 	g, p := e.g, e.p
 	// #662: the spell IS its own source (CR 702.16b), so every legal
 	// set below is computed against the card's colour and type. An
@@ -513,6 +560,10 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// an overloaded Cyclonic Rift with a target would have every one
 	// of those moves refused with ErrInvalidParam.
 	cardSpec := game.TargetSpecUnderAlternativeCost(game.TargetSpecFor(game.CatalogKey(card)), offer)
+	// ADR 0089 §3: and a paid optional cost may swap it again — a
+	// promised gift's "instead … target …" (CR 702.174m). The same
+	// function, in the same order, the engine applies at announce.
+	cardSpec = game.TargetSpecUnderOptionalCosts(cardSpec, game.OptionalCostsFor(game.CatalogKey(card)), chosen)
 
 	// A card the catalog marks as targeted the S13.1 way (free-form
 	// target_mode, no structured spec) cannot be enumerated: the
@@ -563,6 +614,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		FromZone:        from,
 		AlternativeCost: offerKey(offer),
 		OptionalCosts:   chosen,
+		GiftOpponent:    giftTo,
 		// ADR 0034: `card` has already had SetFace applied by the
 		// caller, so this is the face the move announces.
 		Face: card.ActiveFace,
@@ -760,7 +812,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	}
 
 	budget := e.opts.MaxExpansionPerSource
-	emit := e.castMoveEmitter(g, card, from, offer, optional, chosen)
+	emit := e.castMoveEmitter(g, card, from, offer, optional, chosen, giftTo)
 	// #1013: the first announcement the expansion makes, kept so the
 	// ALTERNATIVE cost payments can be offered against it below.
 	var first *announcedCast
@@ -931,6 +983,7 @@ func (e *enumerator) castMoveEmitter(
 	offer *game.AlternativeCost,
 	optional []game.AdditionalCost,
 	chosen []int,
+	giftTo uuid.UUID,
 ) castEmitter {
 	return func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX int, discards, sacs []uuid.UUID) {
 		label := "Cast " + card.Name
@@ -952,6 +1005,9 @@ func (e *enumerator) castMoveEmitter(
 		// same line in the move log, and a bot eval that cannot tell
 		// them apart cannot explain why the bot kicked.
 		label += optionalCostLabel(optional, chosen)
+		if giftTo != uuid.Nil {
+			label += " → " + playerName(g, giftTo)
+		}
 		label += targetLabel(g, targets)
 		e.add(Move{
 			Type:   TypeCastSpell,
@@ -974,6 +1030,7 @@ func (e *enumerator) castMoveEmitter(
 				DiscardIDs:      idStrings(discards),
 				SacrificeIDs:    idStrings(sacs),
 				OptionalCosts:   chosen,
+				GiftOpponent:    giftWire(giftTo),
 				Strict:          true,
 				AutoTap:         true,
 				// ADR 0034: `card` has already had SetFace applied by

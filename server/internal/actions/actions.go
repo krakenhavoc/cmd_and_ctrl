@@ -475,6 +475,10 @@ func Dispatch(g *game.Game, a Action) error {
 			// ordinary "decline them all" case, and absent on a card
 			// that offers none is every cast the engine has ever had.
 			OptionalCosts []int `json:"optional_costs,omitempty"`
+			// ADR 0089 (#1267) — the opponent a gift is promised to
+			// (CR 702.174a). Present exactly when optional_costs
+			// names the card's gift cost.
+			GiftOpponent string `json:"gift_opponent,omitempty"`
 			// S22 — the untapped permanents tapped to help pay
 			// (convoke, waterbend). Optional even on a card that
 			// offers the cost: tapping nothing and paying the whole
@@ -549,6 +553,13 @@ func Dispatch(g *game.Game, a Action) error {
 		// engine stamps this slice onto a stack item that does.
 		if len(p.OptionalCosts) > 0 {
 			params.OptionalCosts = append([]int(nil), p.OptionalCosts...)
+		}
+		if p.GiftOpponent != "" {
+			id, err := uuid.Parse(p.GiftOpponent)
+			if err != nil {
+				return fmt.Errorf("cast_spell gift_opponent: %w", err)
+			}
+			params.GiftOpponent = id
 		}
 		if len(p.AltCostIDs) > 0 {
 			params.AltCostIDs = make([]uuid.UUID, 0, len(p.AltCostIDs))

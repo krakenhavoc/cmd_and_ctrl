@@ -343,6 +343,10 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 	if len(item.Paid.OptionalCosts) > 0 {
 		meta.Paid.OptionalCosts = append([]int(nil), item.Paid.OptionalCosts...)
 	}
+	// ADR 0089 §2: and so is "was the gift promised, and to whom" —
+	// the gift cost is paid by that choice (CR 702.174a), and a copy
+	// of a promised spell gives its gift to the same opponent.
+	meta.Paid.GiftOpponent = item.Paid.GiftOpponent
 	g.StackMeta[copyCard.InstanceID] = meta
 	g.recomputeSplitSecondLocked()
 
@@ -442,6 +446,7 @@ func (g *Game) resolvePermanentSpellCopyLocked(top Card, item *StackItem) error 
 	if len(item.Paid.OptionalCosts) > 0 {
 		tmpl.Provenance.OptionalCosts = append([]int(nil), item.Paid.OptionalCosts...)
 	}
+	tmpl.Provenance.GiftOpponent = item.Paid.GiftOpponent
 	return g.CreateTokensThenForEffect(TokenCreation{
 		Controller: item.Controller,
 		Groups:     []TokenGroup{{Template: tmpl, Count: 1}},

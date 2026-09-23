@@ -357,6 +357,16 @@ type CastSpellParams struct {
 	// one is rejected, not ignored. Added in ADR 0073 (#664).
 	OptionalCosts []int
 
+	// GiftOpponent is the opponent the caster chooses while paying a
+	// gift cost (CR 702.174a) — the other half of announcing one.
+	// Required exactly when OptionalCosts names the card's gift cost,
+	// and rejected, not ignored, when it does not: a recipient sent
+	// with no promise is a client that thought it was promising one.
+	// Must be a player still in the game other than the caster
+	// (GiftOpponentsLocked). Lands on StackItem.Paid.GiftOpponent.
+	// Added in ADR 0089 (#1267).
+	GiftOpponent uuid.UUID
+
 	// TapIDs names the untapped permanents the caster is tapping to
 	// help pay for the spell — convoke's "your creatures can help
 	// cast this spell", waterbend's "you can tap your artifacts and
@@ -828,6 +838,20 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		)
 		return err
 	}
+	// ADR 0089, CR 702.174a: a gift cost is paid by CHOOSING an
+	// opponent, so its announcement is the index above plus a
+	// recipient. Checked here with the rest of CR 601.2b, before the
+	// targets, because the promise can change the target clause
+	// (CR 702.174m).
+	if err := g.validateGiftChoiceLocked(playerID, optionalCosts, params.OptionalCosts, params.GiftOpponent); err != nil {
+		slog.Warn("cast_spell rejected: bad gift choice",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"gift_opponent", params.GiftOpponent,
+			"optional_costs", params.OptionalCosts,
+		)
+		return err
+	}
 	// S20: structured targeting. Cards with a TargetSpec — declared
 	// on the card, or on the chosen mode of a modal card — get their
 	// announce-time targets validated against it (CR 601.2c): zone,
@@ -841,6 +865,11 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// the card-level clause list; no card offers an alternative cost
 	// AND modes, and the two would compose rather than conflict.
 	spec = TargetSpecUnderAlternativeCost(spec, alt)
+	// ADR 0089 §3: and a paid optional cost may swap it again — the
+	// gift's "if the gift was promised, instead … target …" (CR
+	// 702.174m). After the alternative cost, which no gift card
+	// offers.
+	spec = TargetSpecUnderOptionalCosts(spec, optionalCosts, params.OptionalCosts)
 	// #764: the announcement's target STEPS — one per clause of the
 	// card-level list, or one per clause of each chosen mode
 	// occurrence (CR 700.2c). A card with neither keeps the S13.1
@@ -848,6 +877,15 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// target must arrive with none.
 	steps := AnnouncedClauses(spec, modeSpec, params.Modes)
 	if len(steps) == 0 && modeSpec != nil && len(params.Targets) > 0 {
+		return ErrInvalidParam
+	}
+	// ADR 0089 §3: a card whose ONLY clause is the one an unpaid
+	// optional cost would add (Valley Rally's "if the gift was
+	// promised, target creature you control") has structured
+	// targeting all the same — the S13.1 free-form fallback is for
+	// cards that declared nothing — so an unpromised cast that names
+	// a target is refused (CR 702.174m).
+	if len(steps) == 0 && len(params.Targets) > 0 && optionalCostsDeclareTargets(optionalCosts) {
 		return ErrInvalidParam
 	}
 	// S22: "Exile X target creatures you control" — the clause's
@@ -1230,7 +1268,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		// one on a cast), so this is never news here; it is recorded
 		// anyway so a reader of PaidCost.Sacrificed never has to ask
 		// which kind of announcement it is looking at.
-		Paid: paidWithSacrifices(paidWithOptionalCosts(paid, costPlan), len(params.SacrificeIDs)),
+		Paid: paidWithGift(paidWithSacrifices(paidWithOptionalCosts(paid, costPlan), len(params.SacrificeIDs)), params.GiftOpponent),
 		Seq:  g.nextStackSeqLocked(),
 		// S20: remember the clause the targets were validated under so
 		// the resolution re-check and per-slot effect checks use it.

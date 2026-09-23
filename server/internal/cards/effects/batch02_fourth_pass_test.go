@@ -320,12 +320,12 @@ func TestB02dKindredDiscoveryDrawsForChosenTypeEntersOrAttacks(t *testing.T) {
 
 // --- Dawn's Truce --------------------------------------------------------
 
-// TestB02dDawnsTruceGrantsHexproofAndDeclinesTheUnimplementedGift
-// proves the guaranteed half end to end (a player-level hexproof grant
-// an opponent's Bolt can't get past, and the same grant on permanents
-// you control) and that the declared gap holds: no indestructible ever
-// lands, because the gift is never promised.
-func TestB02dDawnsTruceGrantsHexproofAndDeclinesTheUnimplementedGift(t *testing.T) {
+// TestB02dDawnsTruceGrantsHexproofWithoutTheGift proves the
+// guaranteed half end to end (a player-level hexproof grant an
+// opponent's Bolt can't get past, and the same grant on permanents you
+// control) and that an UNPROMISED Truce gives no indestructible. The
+// promised half is TestGiftDawnsTrucePromisedDrawsForTheOpponentAndAddsIndestructible.
+func TestB02dDawnsTruceGrantsHexproofWithoutTheGift(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	mine := pushVanillaCreature(g, me.ID, "My Guy", 2, 2)
@@ -343,6 +343,6 @@ func TestB02dDawnsTruceGrantsHexproofAndDeclinesTheUnimplementedGift(t *testing.
 		t.Error("permanents you control must also gain hexproof")
 	}
 	if eotHasAbility(effectiveAbilities(t, g, mine), "indestructible") {
-		t.Error("the gift is never promised, so permanents must never gain indestructible")
+		t.Error("unpromised, permanents must not gain indestructible")
 	}
 }

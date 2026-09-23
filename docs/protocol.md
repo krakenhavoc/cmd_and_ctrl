@@ -1177,6 +1177,37 @@ of the old key sees nothing rather than something wrong — the field
 was advisory, because the server settles the face from the grant
 rather than from the request.
 
+### Gift (#1267, ADR 0089)
+
+Gift (CR 702.174) is one more optional cost, keyed `"gift"`, whose
+payment is choosing an opponent rather than paying anything. Three
+additive fields; a client that ignores them never promises a gift and
+casts every gift card as its printed ungifted spell.
+
+- **`cast_spell.gift_opponent`** (player ID string, omitted when no
+  gift is promised) is the opponent the gift is promised to. It rides
+  WITH the gift offer's index in `optional_costs`: required exactly
+  when that index is announced, and a rejected cast — never an ignored
+  field — when sent without it, when it names the caster, or when it
+  names a player who has left the game.
+
+- **`OptionalCostView`** gains `chooses_opponent` (true on a gift
+  offer) and `opponent_options` (the player IDs the gift may be
+  promised to — every other player still in the game; absent on a
+  gift offer means nobody is left and the offer cannot be taken). It
+  also gains the target-clause trio `target_mode` / `legal_targets` /
+  `clauses`, in exactly the shape `alternative_costs` gives cleave: the
+  clause the spell has WHEN THIS COST IS PAID (CR 702.174m — Long
+  River's Pull's promised "target spell", Wear Down's two targets,
+  Valley Rally's target that only a promised cast has). Absent when
+  paying the cost leaves the card's own clause alone, which is every
+  kicker and buyback. Per viewer, like every legal set.
+
+- **`StackItemView.gift_to`** (player ID string) is who a spell on the
+  stack promised its gift to; absent when it promised none. Public: a
+  responder needs it, because a promised Long River's Pull counters
+  any spell and an unpromised one only a creature spell.
+
 ## One list of cast prices, and the printed cost's place in it (#1012, #1015)
 
 One additive field on `CardView`, and a sharper meaning for two that

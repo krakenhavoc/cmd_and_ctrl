@@ -154,6 +154,22 @@ func Register(spec Spec) {
 	if spec.AdditionalCost != nil && spec.AdditionalCost.Optional {
 		panic(fmt.Sprintf("effects.Register: %q puts an Optional cost in AdditionalCost — the mandatory slot is never optional; declare it in OptionalCosts", spec.Name))
 	}
+	// ADR 0089: gift is declared once, in Spec.Gift, and buildDef grows
+	// its cost. A hand-rolled one in OptionalCosts would have no gift
+	// effect behind it and no entry trigger — a promise that gives
+	// nothing — and a Gift built outside the constructors would have
+	// no effect at all.
+	if g := spec.Gift; g != nil {
+		if g.give == nil || g.Label == "" {
+			panic(fmt.Sprintf("effects.Register: %q declares a Gift built by hand — use GiftACard / GiftAFood / GiftATappedFish / GiftATreasure", spec.Name))
+		}
+		if g.Targets != nil {
+			if spec.Modes != nil {
+				panic(fmt.Sprintf("effects.Register: %q is modal and its gift rewrites the target clause — put the clause on the mode", spec.Name))
+			}
+			checkFlatClauses(spec.Name, g.Targets)
+		}
+	}
 	seenOptional := make(map[string]bool, len(spec.OptionalCosts))
 	for i, oc := range spec.OptionalCosts {
 		// Without the flag the cast path prices it and never offers
@@ -165,6 +181,18 @@ func Register(spec Spec) {
 		// blank or duplicated one is unaddressable.
 		if oc.Key == "" {
 			panic(fmt.Sprintf("effects.Register: %q declares an optional cost with no Key", spec.Name))
+		}
+		// An optional cost that rewrites the target clause is
+		// read against the card-level clause (ADR 0089 §3); a modal
+		// card's clauses live on its modes, where no rewrite reaches.
+		if oc.Targets != nil {
+			if spec.Modes != nil {
+				panic(fmt.Sprintf("effects.Register: %q is modal and optional cost %q rewrites the target clause — put the clause on the mode", spec.Name, oc.Key))
+			}
+			checkFlatClauses(spec.Name, oc.Targets)
+		}
+		if oc.ChoosesOpponent || oc.Key == game.GiftKey {
+			panic(fmt.Sprintf("effects.Register: %q declares a gift cost in OptionalCosts — declare Spec.Gift and let buildDef grow the cost (ADR 0089)", spec.Name))
 		}
 		if seenOptional[oc.Key] {
 			panic(fmt.Sprintf("effects.Register: %q declares two optional costs keyed %q", spec.Name, oc.Key))
