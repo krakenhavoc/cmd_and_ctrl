@@ -3210,6 +3210,24 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 	if g.State != StateActive {
 		return false, false
 	}
+	// #1199 / CR 702.26, ADR 0084: the "phases out until ~ leaves the
+	// battlefield" family comes back the moment its source is gone —
+	// Oubliette destroyed, Out of Time's last time counter removed.
+	//
+	// NOT a state-based action; it is a CR 611.2b "for as long as"
+	// duration ending, and this pass is simply the one place in the
+	// engine that runs after every action with the board settled. It
+	// is FIRST so that the recompute below sees the returning
+	// permanents and attachmentSBALocked sweeps an Aura that phased in
+	// onto a host that died while it was away (CR 702.26i, CR 704.5m)
+	// in this same settling rather than a round later.
+	//
+	// CR 704.3's "state-based actions ignore phased-out permanents"
+	// needs no code: a phased-out permanent is not in the battlefield
+	// slice every check below walks.
+	if g.sweepPhaseInLocksLocked() {
+		fired = true
+	}
 	// S16: refresh effective characteristics before any toughness /
 	// loyalty / battle-defense check. Counter mutations + zone moves
 	// from prior SBA iterations bump layerVersion; this fast-paths

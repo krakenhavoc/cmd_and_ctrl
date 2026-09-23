@@ -498,6 +498,26 @@ func (g *Game) performUntapStepLocked(seat int) (paused bool) {
 	}
 	g.RecomputeLayersIfStaleLocked()
 	activePlayer := g.Seats[seat].ID
+	// CR 502.1, the FIRST of this step's three turn-based actions and
+	// the one this function is not named after: phasing (#1199, ADR
+	// 0084, phasing.go). Ahead of the CR 302.6 sickness clear and well
+	// ahead of untapStepSetLocked, because a permanent phasing in has
+	// to be in the untap set and one phasing out has to be out of it.
+	//
+	// HERE RATHER THAN IN THE STEP-ENTRY ARM, for the reason this
+	// file's contract gives about consumeUntapSkipsLocked: the step
+	// can pause on CR 502.3's determination and its continuation
+	// (finishUntapStepLocked) only untaps and exits, so everything
+	// ahead of the pause runs exactly once. CR 502.1 is a turn-based
+	// action of this step, not of the step entry, and moving it would
+	// have to be re-reasoned the day a second pause is added.
+	//
+	// The layers are recomputed again afterwards: phasing changes what
+	// is on the battlefield, so the untap-step permissions and
+	// restrictions below (Seedborn Muse, Winter Orb) must be read off
+	// a board that no longer has the phased-out permanents in it.
+	g.performPhasingLocked(activePlayer)
+	g.RecomputeLayersIfStaleLocked()
 	if g.Battlefield != nil {
 		for i := range g.Battlefield.Cards {
 			if g.Battlefield.Cards[i].Controller == activePlayer {

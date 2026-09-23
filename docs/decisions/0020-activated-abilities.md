@@ -1257,7 +1257,7 @@ coded:
 | board | answer | why |
 | --- | --- | --- |
 | flicker the permanent | its exhausts are available again | exile and return is two epoch bumps |
-| phase it out | they would not be | phasing is not a zone change (CR 702.25f) and must not bump the epoch when it is built |
+| phase it out | they are not | phasing is not a zone change (CR 702.26d) and does not bump the epoch — built in #1199, [ADR 0084](0084-phasing.md) |
 | copy it | the copy has its own | a new instance is a new key (CR 707.2: what a permanent has done is not copiable) |
 
 Phasing is not modelled in this engine. The rule the day it is: **a

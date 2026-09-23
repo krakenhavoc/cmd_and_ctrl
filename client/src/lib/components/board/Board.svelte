@@ -51,6 +51,7 @@
   import VotingPanel from "./VotingPanel.svelte";
   import ZoneBrowserModal from "./ZoneBrowserModal.svelte";
   import { zoneBrowser, closeZoneBrowser } from "../../zoneBrowser";
+  import { phasedOutCards } from "../../phasedOut";
   import { canActivateSorcerySpeedAbility } from "../../timing";
   import CardContextMenu from "./CardContextMenu.svelte";
   import { cardMenu, closeCardMenu } from "../../contextMenu";
@@ -202,6 +203,19 @@
   const cardsByController = $derived.by(() => {
     const out = new Map<string, CardView[]>();
     for (const c of view.battlefield.cards) {
+      const list = out.get(c.controller);
+      if (list) list.push(c);
+      else out.set(c.controller, [c]);
+    }
+    // #1199 / CR 702.26, ADR 0084. A phased-out permanent arrives in
+    // its own zone and is absent from `battlefield`, which is what
+    // makes every rules question the client asks the board come out
+    // right. This is the ONE place that puts it back, at the END of
+    // its controller's row: the player has to be able to see that
+    // their four permanents are coming back rather than gone, and no
+    // other surface says so. Card.svelte dims it, badges it PHASED
+    // and withholds the click.
+    for (const c of phasedOutCards(view)) {
       const list = out.get(c.controller);
       if (list) list.push(c);
       else out.set(c.controller, [c]);

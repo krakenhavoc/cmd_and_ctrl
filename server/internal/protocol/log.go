@@ -245,6 +245,19 @@ const (
 	// scrolling back wants to know WHEN it happened, which the board
 	// alone cannot say. Added in S46 (ADR 0079, #343).
 	LogTransform LogKind = "transform"
+	// LogPhaseOut / LogPhaseIn — a permanent phased out or in
+	// (CR 702.26). #1199, ADR 0084.
+	//
+	// Narrated rather than silent, for LogTransform's reason and one
+	// more that is stronger here. A phase-out is not a zone change
+	// (CR 702.26d), so no LogZone entry says it, and the board simply
+	// STOPS SHOWING the permanent — which is indistinguishable from a
+	// permanent that died unless the log says which. Teferi's
+	// Protection removes a whole board this way, and a reader
+	// scrolling back has no other way to learn that it came back
+	// rather than never left.
+	LogPhaseOut LogKind = "phase_out"
+	LogPhaseIn  LogKind = "phase_in"
 )
 
 // The three choose-a-value kinds are separate rather than one "chose
@@ -893,6 +906,18 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Amount = ev.Amount
 		return base, true
 
+	case game.EventPhaseOut, game.EventPhaseIn:
+		// CR 702.26. Not a zone move (CR 702.26d), so no LogZone entry
+		// says it — this is the only line the table gets, and without
+		// it a permanent silently vanishes from the board and is read
+		// as dead.
+		base.Kind = LogPhaseOut
+		if ev.Kind == game.EventPhaseIn {
+			base.Kind = LogPhaseIn
+		}
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		return base, true
+
 	case game.EventTransform:
 		// CR 701.27a. Not a zone move (CR 712.18), so no LogZone entry
 		// says it — this is the only line the table gets, and without
@@ -1306,6 +1331,10 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		return renderSettingsText(e)
 	case LogSpawn:
 		return renderSpawnText(e, target)
+	case LogPhaseOut:
+		return fmt.Sprintf("%s phased out", card)
+	case LogPhaseIn:
+		return fmt.Sprintf("%s phased in", card)
 	case LogTransform:
 		// The card name is the face it turned INTO — viewOfCard reads
 		// the active face — and Label is the one it turned from. Label

@@ -97,6 +97,11 @@ func (n *normalizer) game(v protocol.GameView) protocol.GameView {
 	out.Battlefield = n.zone(v.Battlefield)
 	out.Stack = n.zone(v.Stack)
 	out.Exile = n.zone(v.Exile)
+	// #1199: the CR 702.26 holding zone. Normalised like the other
+	// three, so the golden shows an empty `phased_out` rather than the
+	// zero ZoneView a dropped field marshals to — which is what makes
+	// the golden able to notice the day something phases out here.
+	out.PhasedOut = n.zone(v.PhasedOut)
 	return out
 }
 

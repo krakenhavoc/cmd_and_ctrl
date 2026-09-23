@@ -273,6 +273,11 @@
         "count": 0,
         "cards": []
       },
+      "phased_out": {
+        "kind": "phased_out",
+        "count": 0,
+        "cards": []
+      },
       "turn": {
         "number": 1,
         "active_seat": 0,
@@ -712,6 +717,11 @@
         "count": 0,
         "cards": []
       },
+      "phased_out": {
+        "kind": "phased_out",
+        "count": 0,
+        "cards": []
+      },
       "turn": {
         "number": 1,
         "active_seat": 0,
@@ -1129,6 +1139,11 @@
       },
       "exile": {
         "kind": "exile",
+        "count": 0,
+        "cards": []
+      },
+      "phased_out": {
+        "kind": "phased_out",
         "count": 0,
         "cards": []
       },
@@ -1586,6 +1601,11 @@
         "count": 0,
         "cards": []
       },
+      "phased_out": {
+        "kind": "phased_out",
+        "count": 0,
+        "cards": []
+      },
       "turn": {
         "number": 1,
         "active_seat": 0,
@@ -1999,6 +2019,11 @@
         "count": 0,
         "cards": []
       },
+      "phased_out": {
+        "kind": "phased_out",
+        "count": 0,
+        "cards": []
+      },
       "turn": {
         "number": 1,
         "active_seat": 0,
@@ -2253,6 +2278,11 @@
       },
       "exile": {
         "kind": "exile",
+        "count": 0,
+        "cards": []
+      },
+      "phased_out": {
+        "kind": "phased_out",
         "count": 0,
         "cards": []
       },
@@ -2553,6 +2583,11 @@
       },
       "exile": {
         "kind": "exile",
+        "count": 0,
+        "cards": []
+      },
+      "phased_out": {
+        "kind": "phased_out",
         "count": 0,
         "cards": []
       },
@@ -2872,6 +2907,11 @@
       },
       "exile": {
         "kind": "exile",
+        "count": 0,
+        "cards": []
+      },
+      "phased_out": {
+        "kind": "phased_out",
         "count": 0,
         "cards": []
       },

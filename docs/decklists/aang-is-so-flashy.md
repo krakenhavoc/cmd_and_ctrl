@@ -459,7 +459,11 @@ in the targeting gate.
 The remaining four each have a **second, independent** blocker, so none
 of them is waiting on the cost component any more:
 
-- **Clever Concealment** — phasing. No implementation anywhere.
+- ~~**Clever Concealment** — phasing. No implementation anywhere.~~
+  **Updated 2026-09-23**: phasing is built (#1199,
+  [ADR 0084](../decisions/0084-phasing.md)) and the card ships `full` —
+  any number of target nonland permanents you control phase out, with
+  everything attached to them, and come back at your next untap step.
 - ~~**Aang, Swift Savior** and **The Legend of Kuruk** — multi-face.~~
   **Updated 2026-09-21**: multi-face transform is no longer the blocker
   (ADR 0079). Both ship — Aang's Waterbend {8} pays a flat mana cost
@@ -592,8 +596,7 @@ The static half (printing the word) is cheap; the behaviour is the work.
 ### One-offs
 
 Herald of Eternal Dawn (can't-lose / can't-win replacement), Mandate of
-Peace (end the combat phase + a cast restriction), Clever Concealment
-(phasing — no implementation anywhere), Rabble Rousing (hideaway, plus
+Peace (end the combat phase + a cast restriction), Rabble Rousing (hideaway, plus
 "whenever you attack with **one or more** creatures", which over-fires
 against per-creature `EventAttack` — the CR 603.1 batching gap
 `events.go` documents at `:162`), The Seriema (station), Misleading

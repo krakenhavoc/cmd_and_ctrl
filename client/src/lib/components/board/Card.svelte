@@ -153,6 +153,16 @@
   // in cardBack.ts.
   const showBack = $derived(showsCardBack(card, faceDown));
 
+  // #1199 / CR 702.26: a phased-out permanent. It arrives in
+  // GameView.phased_out rather than in the battlefield zone
+  // (ADR 0084), and Board.svelte folds it back onto its controller's
+  // row so the player can see WHERE it was. Dimmed, badged and inert:
+  // "treated as though it does not exist" means nothing may be done
+  // to it, so the click affordance is withheld here rather than by
+  // every parent remembering to withhold it.
+  const phasedOut = $derived(card.phased_out === true);
+  const interactive = $derived(!!onClick && !phasedOut);
+
   // ADR 0069 — a face-down object the viewer IS allowed to look at:
   // the controller of their own morph or manifest (CR 708.5), the
   // owner of their own foretold card (CR 702.143d). They see the real
@@ -251,6 +261,9 @@
       manaMenuOpen = false;
       return;
     }
+    // CR 702.26b: a phased-out permanent "can't affect or be affected
+    // by anything else in the game", so there is nothing to click.
+    if (phasedOut) return;
     onClick?.(card, ev);
   }
 
@@ -314,12 +327,13 @@
   class:picked
   class:attacking
   class:blocking
-  class:clickable={!!onClick}
+  class:clickable={interactive}
+  class:phased-out={phasedOut}
   class:menu-open={manaMenuOpen}
   data-instance-id={card.instance_id}
   data-tapped={card.tapped ? "true" : "false"}
-  role={onClick ? "button" : "img"}
-  tabindex={onClick ? 0 : undefined}
+  role={interactive ? "button" : "img"}
+  tabindex={interactive ? 0 : undefined}
   aria-label={showBack ? "face-down card" : card.name}
   title={showBack ? "" : card.name}
   onpointerenter={handleEnter}
@@ -366,6 +380,17 @@
         aria-label={`face down: ${faceDownLabel}`}
       >
         {faceDownLabel}
+      </span>
+    {/if}
+    {#if phasedOut}
+      <!-- CR 702.26. Without it the board simply stops showing the
+           permanent, which reads identically to one that died. -->
+      <span
+        class="badge phased"
+        title="phased out — treated as though it doesn't exist"
+        aria-label="phased out"
+      >
+        PHASED
       </span>
     {/if}
     {#if card.is_commander}
@@ -613,6 +638,15 @@
     filter: brightness(1.06);
     z-index: 5;
   }
+  .card.phased-out {
+    /* The board-freeze idiom (Board.svelte .board-disabled), because
+       it says the same thing: this is here and you may not act on it.
+       The badge is the message; the dimming is the tone. Hover-zoom
+       still works — a player looking for what phased out wants to
+       read it — and only the click is withheld, in the script. */
+    opacity: 0.45;
+    filter: grayscale(0.7) brightness(0.9);
+  }
   .card.face-down {
     background: #0f1428;
   }
@@ -684,6 +718,19 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    color: #b9d8ff;
+    background: rgba(12, 22, 44, 0.9);
+    border-color: rgba(145, 195, 255, 0.55);
+    font-size: 7px;
+  }
+  .badge.phased {
+    /* #1199. Bottom-left, clear of FACE DOWN / GOAD / CMD at the top
+       and of the P/T pip at the bottom right, because a phased-out
+       permanent keeps every one of those and can wear them at once.
+       The same cool slate as FACE DOWN: both say "state", not
+       "property of the card". */
+    top: auto;
+    bottom: 3px;
     color: #b9d8ff;
     background: rgba(12, 22, 44, 0.9);
     border-color: rgba(145, 195, 255, 0.55);

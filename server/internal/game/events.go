@@ -772,6 +772,32 @@ const (
 	// any kind a TriggeredAbility names. Added in S46 (ADR 0079, #343).
 	EventTransform EventKind = "transform"
 
+	// EventPhaseOut / EventPhaseIn — CardID phased out or in
+	// (CR 702.26). Actor is its controller; Source, on a phase-out, is
+	// the card whose effect said so (uuid.Nil for CR 502.1's
+	// turn-based action, which has no source).
+	//
+	// NOT zone changes and deliberately not shaped like ones
+	// (CR 702.26d: "Zone-change triggers don't trigger when a
+	// permanent phases in or out"). Nothing emits EventZoneMove,
+	// EventETB or EventLTB alongside them, which is what keeps an ETB
+	// trigger silent on a phase-in and a dies trigger silent on a
+	// phase-out.
+	//
+	// Two consumers, the same two EventTransform has. layerVersionBump
+	// reads them to invalidate the layer engine, which is not optional:
+	// what is ON the battlefield has just changed, so every "creatures
+	// you control get +1/+1" and every AppliesTo has a new answer. And
+	// they are what makes "whenever this phases in" writable with no
+	// new constructor, because the harvester already watches any kind
+	// a TriggeredAbility names — a phased-out permanent's own triggers
+	// cannot fire, since the harvester walks the battlefield slice it
+	// is no longer in, which is CR 702.26b.
+	//
+	// Added in S46 (ADR 0084, #1199).
+	EventPhaseOut EventKind = "phase_out"
+	EventPhaseIn  EventKind = "phase_in"
+
 	// EventTurnedFaceUp — Actor turned the face-down permanent
 	// CardID face up (CR 708.6, the CR 116.2g special action).
 	// Source is the same card: a permanent turns ITSELF face up, and

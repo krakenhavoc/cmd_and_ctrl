@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Teferi's Protection — Instant {2}{W}:
 //
@@ -32,38 +36,48 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // printed — a Regrowth target the printed card never gives you —
 // which is the direction #259 forbids.
 //
-// TWO SIMPLIFICATIONS, and both are named on the card's caveats:
+// "ALL PERMANENTS YOU CONTROL PHASE OUT" SHIPS TOO, since #1199
+// (CR 702.26, ADR 0084). It is the larger half of the card and the
+// half it is famous for, and it is one call: every permanent this
+// player controls leaves the battlefield SLICE — simultaneously,
+// dragging every Aura and Equipment with it (CR 702.26g) — and comes
+// back at the start of their next untap step (CR 502.1) with its
+// counters, its damage, its tapped state and its attachments
+// untouched, because phasing is not a zone change (CR 702.26d).
 //
-//   - **PHASING (CR 702.26) IS NOT IMPLEMENTED.** "All permanents you
-//     control phase out" is the larger half of the card and it is a
-//     seam of its own: phasing is not a zone change (CR 702.25f), it
-//     is a state a permanent is in, and this engine models no such
-//     state anywhere (activation_tally.go has said so since S38). So
-//     your board is still there, still attackable, still a legal
-//     target for a Wrath. What the card DOES give you is the half
-//     about you: you cannot be targeted or damaged. Strictly weaker
-//     than printed.
-//   - **"YOUR LIFE TOTAL CAN'T CHANGE"** is not implemented either.
-//     It is a replacement effect with a duration longer than end of
-//     turn, and TurnScopedReplacements carries no duration field at
-//     all (ADR 0063 Decision 8 states that as deliberate — no card
-//     needed one until this one). Most of what it stops is already
-//     stopped by the protection: damage is prevented at the source.
-//     What gets through is life LOSS that is not damage — a drain, an
-//     "each opponent loses 3 life" — and, the other way, life GAIN
-//     you would rather not have had. Weaker than printed on the half
-//     that matters.
+// The board is therefore not attackable, not targetable and not
+// wrathable for a whole turn cycle, which is what the card is for.
+// Nothing here has to arrange any of it: "treated as though it does
+// not exist" is true of every battlefield walk in the engine because
+// a phased-out permanent is not in the slice they walk.
 //
-// Deferred to whichever sprint teaches the engine phasing; the life
-// lock wants a replacement registry with a duration on it, which is
-// the smaller of the two.
+// The PERMANENTS are taken by CONTROLLER, not by owner, and the list
+// is snapshotted before any of it moves — the printed clause is
+// "permanents you control" and the rule is simultaneous.
+//
+// ONE SIMPLIFICATION, and it is named on the card's one remaining
+// caveat:
+//
+//   - **"YOUR LIFE TOTAL CAN'T CHANGE"** is not implemented. It is a
+//     replacement effect with a duration longer than end of turn, and
+//     TurnScopedReplacements carries no duration field at all
+//     (ADR 0063 Decision 8 states that as deliberate — no card needed
+//     one until this one). Most of what it stops is already stopped
+//     by the protection: damage is prevented at the source. What gets
+//     through is life LOSS that is not damage — a drain, an "each
+//     opponent loses 3 life" — and, the other way, life GAIN you
+//     would rather not have had. Weaker than printed.
+//
+// Tracked as #1200; ADR 0084's closing section records what the
+// phasing work leaves in place for it (Player.Statics is the registry
+// the other half of this very card already uses, and
+// ChangePlayerLifeThenForEffect is the one consumer).
 func init() {
 	Register(Spec{
 		OracleID:     "0d4ecdb1-ec90-497f-a7a4-1c68092b8757",
 		Name:         "Teferi's Protection",
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
-			"Phasing isn't implemented — \"all permanents you control phase out\" does nothing, so your board is still on the battlefield and can still be attacked, targeted and wrathed.",
 			"\"Your life total can't change\" isn't implemented — damage is prevented by the protection, but life loss that isn't damage (a drain) still reaches you, and you can still gain life.",
 		},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
@@ -74,6 +88,20 @@ func init() {
 				Label:    "Teferi's Protection — protection from everything",
 				Duration: DurationUntilYourNextTurn(ctx, me),
 			}).Apply(ctx); err != nil {
+				return err
+			}
+			// "All permanents you control phase out" (CR 702.26).
+			// The set is snapshotted before any of it moves: the
+			// phase-out is simultaneous, and a permanent attached to
+			// another permanent in the same list must not be dragged
+			// out twice (CR 702.26h).
+			var mine []uuid.UUID
+			for _, c := range ctx.Game.BattlefieldCardsForEffect() {
+				if c.Controller == me {
+					mine = append(mine, c.InstanceID)
+				}
+			}
+			if err := (PhaseOut{Targets: mine}).Apply(ctx); err != nil {
 				return err
 			}
 			// "Exile Teferi's Protection." The spell moves ITSELF, so

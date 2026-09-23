@@ -211,6 +211,20 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		// otherwise read the stale characteristic off the card it was
 		// just told about.
 		g.layerVersion.Add(1)
+	case EventPhaseOut, EventPhaseIn:
+		// ADR 0084 / CR 702.26: what is on the battlefield has just
+		// changed, which is the same invalidation input a zone move
+		// is — every "creatures you control get +1/+1", every
+		// AppliesTo and every ForAsLongAs condition has a new answer.
+		// The EventZoneMove arm above cannot stand in for it, because
+		// phasing deliberately emits no zone move (CR 702.26d).
+		//
+		// The card's own effective cache is nilled at the mutation
+		// site (phaseOutLocked / phaseInLocked) rather than here, for
+		// the window the transform arm explains — and because by the
+		// time this runs the card is in a different slice than the one
+		// a cache-clearing helper would look in.
+		g.layerVersion.Add(1)
 	case EventTurnedFaceUp:
 		// ADR 0082 / CR 708.6: the twin of the transform arm above,
 		// and for the same reason. A permanent turning face up

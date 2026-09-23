@@ -52,9 +52,33 @@ type Game struct {
 	Seats []*Player
 
 	// Shared zones. Owner is uuid.Nil.
+	//
+	// Battlefield holds every permanent the game currently treats as
+	// existing. That is NOT quite "every permanent on the
+	// battlefield": a phased-out permanent is still on the
+	// battlefield by CR 702.26d and is held in PhasedOut below, out of
+	// this slice, so that CR 702.26b's "treated as though it does not
+	// exist" is true of every walk over it without any walk having to
+	// ask. See ADR 0084.
 	Battlefield *Zone
 	Stack       *Zone
 	Exile       *Zone
+
+	// PhasedOut holds the permanents that are phased out (CR 702.26).
+	//
+	// NOT A ZONE IN THE CR 400 SENSE, despite the type: phasing is not
+	// a zone change (CR 702.26d) and these permanents are still on the
+	// battlefield as far as the rules are concerned. The Zone type is
+	// reused so that cloneZone, snapshotZone / restoreZone and
+	// viewOfZone work on it unchanged; findCardZoneLocked deliberately
+	// does not look here, and nothing routes a card in or out of it
+	// but phaseOutLocked / phaseInLocked in phasing.go.
+	//
+	// Three readers, and each names the rule it is implementing: the
+	// untap step's CR 502.1 turn-based action, the CR 800.4a sweep in
+	// leave_game.go, and the wire's `phased_out` zone. Added in S46
+	// (#1199, ADR 0084).
+	PhasedOut *Zone
 
 	// Turn cursor, meaningful only when State == StateActive.
 	Turn Turn
@@ -652,6 +676,7 @@ func NewGame() *Game {
 		Battlefield: newZone(ZoneBattlefield, uuid.Nil),
 		Stack:       newZone(ZoneStack, uuid.Nil),
 		Exile:       newZone(ZoneExile, uuid.Nil),
+		PhasedOut:   newZone(ZonePhasedOut, uuid.Nil),
 		Settings:    DefaultTableSettings(),
 	}
 	// S16 sub-PR 2: install the layer-engine invalidation listener.
