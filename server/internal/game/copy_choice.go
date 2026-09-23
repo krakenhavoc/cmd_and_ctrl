@@ -234,10 +234,11 @@ func (g *Game) ResolveCopyTarget(choiceID, chooserID, cardID uuid.UUID) error {
 		return err
 	}
 	defer g.clearReplacementEventLocked(ev.ID)
-	if out == nil || out.Canceled {
-		return nil
-	}
-	return g.applyResolvedReplacementEventLocked(out)
+	// Through the shared finisher the other entry resumes use (#478),
+	// rather than returning nil for a CANCELLED entry: a cancelled
+	// entry still owes its caller an answer — a search its shuffle, a
+	// simultaneous entry (#1322) the rest of its batch.
+	return g.finishSettledReplacementLocked(ev, out)
 }
 
 // copyCandidateStillLegalLocked re-runs the selector against the

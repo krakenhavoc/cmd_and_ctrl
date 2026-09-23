@@ -290,6 +290,118 @@ between them they mark the two edges of the shape:
   three switches that name what a kind owes on a pause, a cancellation
   or a dropped prompt say "nothing, and here is why" instead.
 
+### Amendment, 2026-09-23: a simultaneous entry can ask, can come from two zones, and the exile return reports what arrived
+
+**Issues:** [#1322](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1322),
+[#1324](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1324),
+[#1327](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1327) (tracker
+[#882](https://github.com/krakenhavoc/cmd_and_ctrl/issues/882); deck tracker
+[#1306](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1306)).
+**Rules:** CR 614.12, 614.12a, 614.12b, 603.6a, 603.4, 400.7, 712.14, 708.2a.
+
+Decision 3 made each created token's entry resumable and carried the rest of the
+creation on the entry tail. The other batch entry — "put … onto the battlefield",
+`putOntoBattlefieldFromZoneLocked` (#654, #745) — stayed the one effect-side entry
+built without `entryResumable`, and [ADR 0013 §5o](0013-replacement-effects.md)
+item 7 recorded why: it runs every card's CR 614 window against the pre-entry board
+and lands them together, and the only resume the engine had finishes ONE card, so a
+card whose window paused would have landed after its siblings were announced. Every
+question an entry can ask took its un-asked branch there: a shockland or a pay-life
+MDFC back entered tapped, a reveal-land entered tapped, a Clone copied nothing.
+That is the caveat ten shocklands, fifteen MDFC backs and ten reveal-lands carried.
+
+**1. The batch is a value carried across its questions** (`game/entry_batch.go`).
+`entryBatch` holds the batch's members (card, source zone, controller, the
+controller to restore, and — once its window settles — the settled event), a cursor
+and the caller's continuation. `continueEntryBatchLocked` opens the next member's
+window; when it asks something, the member's event carries the batch on
+`entryTail.batch` inside the ordinary `replacementResume` frame, and the walk stops.
+The answer's resume reaches `applyResolvedReplacementEventLocked`, which — FIRST in
+its move arm — hands a batch member's settled event back to the batch
+(`resumeEntryBatchLocked`) instead of landing it, and the walk carries on. A
+member's terminal outcome with nothing entering (a cancel, a pruned prompt, a
+departed chooser) reaches `runEntryTailLocked`, which tells the batch that member is
+out. When the last window has settled the batch lands, announces and runs its hooks
+exactly as before, then calls the continuation once.
+
+CR 614.12a is satisfied by construction (every choice is made before any member
+enters), and CR 614.12b falls out of the order: a player asked to pay 2 life for the
+first of two shocklands pays at once, so the second question is asked against what
+is left, and a combined cost that is not payable cannot be chosen.
+
+**2. The finisher is split at the seam a batch needs.**
+`executeEntryToBattlefieldLocked` is now `landEntryLocked` (move, CR 400.7 reset,
+controller, tapped, attacking, face-down or public knowledge, provenance, CR 707.2
+copy, counters, land-drop tally — no events), `announceEntryLocked` (zone move or
+token creation, Aura attach, `EventETB`) and `runEntryHooksLocked` (`AsEnters`,
+evoke). The single entry calls the three in a row; the batch calls the first for
+every member, then the second for every member, then the third. The batch's old
+phase 2 was a hand copy of the first half and had already missed the copy and the
+CR 400.7 reset; it is gone.
+
+**3. One entry from two zones** (#1324). The batch takes a `BatchEntry{CardID,
+From}` per card rather than one source zone per call:
+`Game.PutOntoBattlefieldTogetherThenForEffect(cards, opts, then)`, with `From` one
+of hand, library or exile. A card put from exile returns as a new object, as
+`ReturnFromExileToBattlefieldForEffect`'s does, and the continuation is told its new
+ID. The old hand / library doors are thin wrappers over the same body. Sword of
+Hearth and Home's "put both cards onto the battlefield" is one event, so CR 603.6a
+checks both newcomers against it: a Loyal Warhound returned with the Sword's basic
+land reads the land already on the battlefield, and its intervening-if (CR 603.4)
+does not trigger. Two entries in a row would trigger it.
+
+**4. The exile return has a continuation** (#1327).
+`Game.ReturnFromExileToBattlefieldThenForEffect(card, controller, tapped, then)`
+sets `entryTail.then`, which the landing runs with the NEW object's ID — inline when
+nothing paused, from the resume when something did, and with `uuid.Nil` from every
+outcome where nothing entered (including a card no longer in exile, which also
+returns `ErrCardNotFound`). `effects.ReturnFromExile.Then` exposes it. Phelia,
+Exuberant Shepherd's "if it entered under your control, put a +1/+1 counter on
+Phelia" is asked there, of the permanent that arrived.
+
+**5. The doors a caller reads the result of.** A paused batch returns nothing from
+the synchronous doors, so the two catalog callers whose sentence continues past the
+put — `effects.PutFromLibraryOntoBattlefield` (Genesis Wave's "the rest") and
+`effects.PutFromHandOntoBattlefield` (Spelunking's Cave rider) — now use
+`PutCardsFromLibraryOntoBattlefieldThenForEffect` and
+`PutFromHandOntoBattlefieldThenForEffect`. Without that, "put the rest on the
+bottom" would run while a card of the batch was still waiting to enter, and take it
+along. Callers that stop at the put (Coiling Oracle, Ninjutsu, Cybership, manifest)
+are unchanged.
+
+**6. Two fixes the batch exposed.**
+- *A face-down entry does not apply the entering card's own replacements*
+  (`gatherActiveReplacementsLocked`). CR 614.12 decides which replacements apply
+  from the permanent "as it would exist on the battlefield", and a face-down
+  permanent has no abilities (CR 708.2a). A manifested shockland used to take the
+  un-asked branch and enter tapped; with the batch resumable it would have asked
+  for life on a card the table cannot see. It does neither now.
+- *The copy prompt's resume goes through the shared finisher.* It returned nil for
+  a cancelled entry, which dropped whatever the entry's tail was carrying — the rest
+  of a batch, a search's shuffle. And a paused entry the window REDIRECTED used to
+  fall out of the resume's move arm with its tail unrun; it runs, told nothing
+  entered.
+
+**7. What is still not resumable.** The sandbox `move_card` verb
+(`moveCardByRefLocked`), a manual move with nothing behind it to finish. Its
+questions take their un-asked branch, as before.
+
+**8. Undo.** `cloneReplacementResume` gives a snapshot its own copy of the batch
+(`cloneEntryBatch`), settled events included, for the reason it copies the entry
+tail: the batch's cursor moves as the resume walks it, so sharing it would let the
+live game's answer walk the snapshot on, and an answer undone and given again would
+skip the rest of the entry. Nothing new is persisted: the batch rides a frame
+`ContinuationCensus` already counts.
+
+**Not a proof card, and why.** The pay-life MDFC backs' caveat named a case that
+cannot arise for any of the fifteen: a double-faced card put onto the battlefield
+from anywhere but the stack enters front face up (CR 712.14), and in a hand or a
+library it has only its front face's characteristics (CR 712.8a). Sea Gate
+Restoration and Sink into Stupor are a sorcery and an instant, so a put refuses them
+(CR 110.4); the creature-front backs enter as the creature. The back faces enter by
+being played, which has always asked. The caveat goes because it was never true,
+and the batch fix makes the general claim behind it untrue as well.
+
 ## Consequences
 
 ### Good

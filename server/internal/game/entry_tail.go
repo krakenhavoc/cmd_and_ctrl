@@ -80,14 +80,39 @@ type entryTail struct {
 	// which is why cloneReplacementResume gives an undo snapshot its
 	// own copy of the tail.
 	then func(g *Game, entered uuid.UUID) error
+
+	// batch is the simultaneous entry this event is one card of
+	// (entry_batch.go, #1322), and batchIndex the card's place in it.
+	// When set, a settled window does NOT land the card: the resume
+	// hands the settled event back to the batch, which walks on to the
+	// next card's window and lands them all together once the last one
+	// settles. Detached through the pointer as it is used
+	// (ReplacementEvent.takeEntryBatch), so exactly one path can hand
+	// the event back; cloneReplacementResume gives an undo snapshot its
+	// own copy of the batch.
+	//
+	// Never set together with `then`: a batch's continuation is the
+	// batch's own, run once for the whole entry.
+	batch      *entryBatch
+	batchIndex int
 }
 
 // runEntryTailLocked runs a settled entry's continuation exactly once.
 // The continuation is cleared before it runs, so a tail that re-enters
 // the pipeline on the same event cannot run itself twice.
 //
+// For one card of a simultaneous entry (entryTail.batch) the
+// "continuation" is the rest of the batch. This function is reached
+// only on a terminal outcome where nothing entered — a cancel, a
+// dropped or pruned prompt — because a settled entry of a batch card
+// is intercepted before it can land (applyResolvedReplacementEventLocked),
+// so the batch is told this card is not part of the entry and walks on.
+//
 // Caller must hold g.mu.
 func (g *Game) runEntryTailLocked(ev *ReplacementEvent, entered uuid.UUID) error {
+	if b, i, ok := ev.takeEntryBatch(); ok {
+		return g.resumeEntryBatchLocked(b, i, nil)
+	}
 	if ev == nil || ev.entryTail == nil || ev.entryTail.then == nil {
 		return nil
 	}

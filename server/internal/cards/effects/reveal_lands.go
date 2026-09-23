@@ -54,6 +54,15 @@ import (
 // nothing about the card being revealed, so IsLandWithSubtype reading
 // the type line is both simpler and correct.
 //
+// # Every entry asks (#1322)
+//
+// Until #1322 a reveal-land a spell PUT onto the battlefield out of a
+// hand or library (Genesis Wave, Coiling Oracle, Arboreal Grazer)
+// entered tapped unasked, because that batch was the one entry site
+// that could not pause, and the cycle carried a caveat saying so. The
+// batch asks one card's question at a time now
+// (server/internal/game/entry_batch.go), so the caveat is gone.
+//
 // No simplifications.
 
 // EntersTappedUnlessYouRevealFromHand is "as this permanent enters,
@@ -142,10 +151,7 @@ func init() {
 		Register(Spec{
 			OracleID:     land.oracleID,
 			Name:         land.name,
-			Completeness: CompletenessCaveats,
-			Caveats: []string{
-				"A reveal-land a spell PUTS onto the battlefield out of a hand or library — Genesis Wave, Coiling Oracle, Arboreal Grazer — always enters tapped. Playing it as a land, or fetching it with a search, does offer the reveal.",
-			},
+			Completeness: CompletenessFull,
 			Replacements: []game.ReplacementEffect{
 				EntersTappedUnlessYouRevealFromHand(land.name, clause, matches),
 			},

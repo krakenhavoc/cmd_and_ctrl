@@ -771,7 +771,11 @@ be folded into the first. So the prune gets one named home,
 `Game.pruneChoicesAfterArrivalLocked` in `battlefield_entry.go`, that
 all three call — the shape `battlefieldExitLocked` already has on the
 other side, where a landing added later is covered by the rule rather
-than by a code review.
+than by a code review. (*2026-09-23, #1322:* the batch is resumable now
+and lands through the same halves of the finisher — see the
+[ADR 0061 amendment](0061-token-creation-and-discard-are-replaceable-events.md) —
+but it still announces a whole batch after landing it, so it keeps its own
+call to the prune. The sandbox move is the one unresumable landing.)
 
 It takes no card ID: the prune re-reads every open pick against the
 live board, so one call answers for a whole batch of arrivals, which is

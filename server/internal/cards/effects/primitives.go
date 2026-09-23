@@ -393,12 +393,26 @@ type ReturnFromExile struct {
 	Target     uuid.UUID
 	Controller uuid.UUID
 	Tapped     bool
+
+	// Then is the rest of the sentence about the permanent that
+	// returned (#1327) — Phelia, Exuberant Shepherd's "if it entered
+	// under your control, put a +1/+1 counter on Phelia". `entered` is
+	// the NEW object's ID (CR 400.7), uuid.Nil when nothing entered.
+	// It runs once the entry is complete, which is one action later
+	// when the entry stopped to ask something (a returning Clone, a
+	// blinked shockland), so never read the result on the next line.
+	// Not run when the card is no longer in exile, which is "nothing to
+	// return". Capture only scalars.
+	Then func(g *game.Game, entered uuid.UUID) error
 }
 
 func (r ReturnFromExile) Apply(ctx *Context) error {
 	z := ctx.Game.FindCardZoneForEffect(r.Target)
 	if z == nil || z.Kind != game.ZoneExile {
 		return nil
+	}
+	if r.Then != nil {
+		return ctx.Game.ReturnFromExileToBattlefieldThenForEffect(r.Target, r.Controller, r.Tapped, r.Then)
 	}
 	_, err := ctx.Game.ReturnFromExileToBattlefieldForEffect(r.Target, r.Controller, r.Tapped)
 	return err

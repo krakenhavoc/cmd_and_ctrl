@@ -712,15 +712,18 @@ func TestThePrismaticBridgeRevealsUntilACreatureOrPlaneswalkerOnUpkeep(t *testin
 
 // --- the primitive's error paths ---------------------------------------
 
-// Then runs even when the put returns an error: whatever did enter is
-// reported, and "the rest" still leave the top of the library.
+// Then runs when a card of the batch cannot enter after all: whatever
+// did enter is reported, and "the rest" still leave the top of the
+// library.
 //
-// The replacement pipeline logs a Replace error rather than returning
-// it, so the failure is staged one step later: the Bear's replacement
-// moves the Bear out of the library while its entry is evaluated, and
-// the batch's move then cannot find it (ErrCardNotFound). The Forest's
-// entry is unaffected.
-func TestPutFromLibraryThenRunsEvenWhenTheBatchErrors(t *testing.T) {
+// The Bear's replacement moves the Bear out of the library while its
+// entry is evaluated. Until #1322 the batch's move then failed with
+// ErrCardNotFound; since the batch can wait on a question, a card that
+// left its zone before the landing is an ordinary outcome — milled or
+// drawn while a shockland's question was open — so it is simply not
+// part of the entry, the way the single-card finisher has always
+// treated it. The Forest's entry is unaffected.
+func TestPutFromLibraryThenRunsWhenABatchCardLeavesMidEntry(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	floor := plTop(me, "Floor", "Instant", "{U}")
@@ -755,11 +758,11 @@ func TestPutFromLibraryThenRunsEvenWhenTheBatchErrors(t *testing.T) {
 		}.Apply(NewContext(g, nil))
 	})
 
-	if !errors.Is(err, game.ErrCardNotFound) {
-		t.Errorf("err = %v, want the Bear's ErrCardNotFound", err)
+	if err != nil {
+		t.Errorf("err = %v; a card that left its zone is not part of the entry, not a failure", err)
 	}
 	if !ran {
-		t.Fatal("Then did not run after the batch errored")
+		t.Fatal("Then did not run after a card of the batch could not enter")
 	}
 	if len(res.Entered) != 1 || res.Entered[0] != forest || !g.Battlefield.Contains(forest) {
 		t.Errorf("entered %v, want only the Forest", res.Entered)

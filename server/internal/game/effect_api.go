@@ -1,6 +1,7 @@
 package game
 
 import (
+	"errors"
 	"log/slog"
 	"strconv"
 
@@ -3057,7 +3058,47 @@ func lookAtTopReasonFor(kind PendingChoiceKind) func(int) string {
 //
 // Caller must hold g.mu. Added in S22.
 func (g *Game) ReturnFromExileToBattlefieldForEffect(cardID, controller uuid.UUID, tapped bool) (uuid.UUID, error) {
+	return g.returnFromExileToBattlefieldLocked(cardID, controller, tapped, nil)
+}
+
+// ReturnFromExileToBattlefieldThenForEffect is the exile return with the
+// rest of the effect as a continuation (#1327): `then` is told the
+// permanent's NEW instance ID once the entry is complete, or uuid.Nil
+// when nothing entered.
+//
+// The synchronous door cannot answer "did it enter, and under whose
+// control?" when the entry pauses — a returning Clone asks what to
+// copy, a blinked shockland asks for its life — because it has
+// returned uuid.Nil by the time the answer arrives. Phelia, Exuberant
+// Shepherd's "if it entered under your control, put a +1/+1 counter on
+// Phelia" is that question, and asking it on the next line is wrong
+// both ways: no counter on a paused entry, or a counter before an
+// entry that could still be cancelled.
+//
+// `then` runs exactly once, from every terminal outcome: at once when
+// nothing paused, from the resume when something did, and with
+// uuid.Nil when the card is not in exile (with ErrCardNotFound
+// returned), when a replacement cancelled or redirected the entry, or
+// when the prompt was taken away. It takes the live *Game, on the
+// undo-safety contract every continuation follows.
+//
+// Caller must hold g.mu.
+func (g *Game) ReturnFromExileToBattlefieldThenForEffect(cardID, controller uuid.UUID, tapped bool, then func(g *Game, entered uuid.UUID) error) error {
+	_, err := g.returnFromExileToBattlefieldLocked(cardID, controller, tapped, then)
+	return err
+}
+
+// returnFromExileToBattlefieldLocked is the body of both exile-return
+// doors.
+//
+// Caller must hold g.mu.
+func (g *Game) returnFromExileToBattlefieldLocked(cardID, controller uuid.UUID, tapped bool, then func(g *Game, entered uuid.UUID) error) (uuid.UUID, error) {
 	if g.Exile == nil || !g.Exile.Contains(cardID) {
+		if then != nil {
+			if err := then(g, uuid.Nil); err != nil {
+				return uuid.Nil, errors.Join(ErrCardNotFound, err)
+			}
+		}
 		return uuid.Nil, ErrCardNotFound
 	}
 	// Resolve the destination controller before the pipeline runs: a
@@ -3095,7 +3136,11 @@ func (g *Game) ReturnFromExileToBattlefieldForEffect(cardID, controller uuid.UUI
 		// battlefield state, on the inline path and the resumed one
 		// alike — which is what the old "an exile return cannot be
 		// resumed generically" note was about.
-		entryTail: &entryTail{newObject: true},
+		//
+		// #1327: and the caller's continuation, run from the landing
+		// with the NEW ID, whether the entry settled inline or on a
+		// resume.
+		entryTail: &entryTail{newObject: true, then: then},
 	})
 }
 
@@ -3136,24 +3181,24 @@ type HandEntryOptions = ZoneEntryOptions
 //  4. EventZoneMove, EventETB, then the catalog's AsEnters hook, so
 //     the permanent triggers everything an ordinary entry triggers.
 //
-// Three things it deliberately does NOT do:
+// Two things it deliberately does NOT do:
 //
 //   - It does not count a land drop. A land an effect puts onto the
 //     battlefield was not PLAYED (CR 305.4), so LandsPlayedThisTurn
 //     is untouched and the enumerator still offers the turn's land
-//     play. That is also why this event is not flagged
-//     entryResumable: the generic resume in
-//     executeEntryToBattlefieldLocked bumps the tally for any land
-//     arriving with no stack item, which is right for the land-play
-//     branch it was written for and wrong here.
+//     play. The event carries no landPlay flag, which is the only
+//     thing the finisher bumps the tally on (#478).
 //   - It does not run state checks. Like its neighbours it leaves
 //     them to the resolution boundary the caller is already inside,
 //     so a permanent that enters and dies does so once, together
 //     with everything else that effect did.
-//   - It does not offer the Clone choice. That prompt needs a
-//     resumable entry site (copy_choice.go), and this is not one for
-//     the reason above — the same declared simplification the search
-//     path carries, and weaker than printed rather than stronger.
+//
+// It DOES offer the entry's own questions since #1322 — the Clone
+// choice, a shockland's life, a reveal-land's reveal — because the put
+// batch it runs through is resumable now (entry_batch.go). On such a
+// pause it returns uuid.Nil and the card lands when the answer
+// arrives; PutFromHandOntoBattlefieldThenForEffect is the door for a
+// caller that needs the result.
 //
 // Returns the entering permanent's ID. It is the InstanceID the card
 // had in hand: every non-exile move keeps it, and only the exile
