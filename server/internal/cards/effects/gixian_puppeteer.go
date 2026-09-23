@@ -32,12 +32,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // damage doubler touches it.
 //
 // The dies half is a targeted reanimation and it targets FROM THE
-// GRAVEYARD, where the Puppeteer itself now is — so "another" matters
-// and is the catalog's by-name exclusion (b03NotNamed), the same
-// posture Benevolent Hydra and Dour Port-Mage take for "another" on a
-// declared target clause. The consequence is stated rather than
-// hidden: a SECOND Gixian Puppeteer in the same graveyard cannot be
-// the target, which the printed card allows. Weaker, never stronger.
+// GRAVEYARD, where the Puppeteer itself now is — so "another" matters.
+// The clause is built per trigger through AnotherTarget
+// (TriggeredAbility.TargetsFrom, which is handed the source), so the
+// picker excludes THIS Puppeteer by instance rather than by name: a
+// second Gixian Puppeteer in the same graveyard — a Clone or a token
+// copy, or simply a second copy that died earlier — is a legal
+// target, as printed, and the Puppeteer whose trigger it is never is.
+// The resolution re-check (CR 608.2b) runs the same clause.
 //
 // Mana value is read off the card in the graveyard, where it has no
 // layer cache and the printed cost is the only reading there is —
@@ -47,25 +49,33 @@ func init() {
 	Register(Spec{
 		OracleID:     "9d6a9a37-a245-4503-baeb-9488553798ab",
 		Name:         "Gixian Puppeteer",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The dies trigger can't reanimate a second Gixian Puppeteer out of your graveyard, though the printed card can."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			On(game.EventDrawCard, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b40IsYourSecondDrawThisTurn(ev, source, g)
 			}, "Gixian Puppeteer — each opponent loses 2, you gain 2", b40DrainEachOpponent(2)),
-			Targeting(
-				WhenThisDies("Gixian Puppeteer — reanimate a creature card with mana value 3 or less", func(g *game.Game, item *game.StackItem) error {
-					if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-						return nil
-					}
-					return ReturnFromGraveyard{
-						Target: item.Targets[0].ID,
-						Dest:   game.ZoneBattlefield,
-					}.Apply(NewContext(g, item))
-				}),
-				TargetCardInGraveyard("another target creature card with mana value 3 or less from your graveyard",
-					YouOwn(), Creature(), ManaValueLE(3), b03NotNamed("Gixian Puppeteer")),
-			),
+			gixianPuppeteerDiesTrigger(),
 		},
 	})
+}
+
+// gixianPuppeteerDiesTrigger is the reanimation half, split out so
+// TargetsFrom can be set directly — Targeting only takes a static
+// *game.TargetSpec, and this clause needs the trigger's own source
+// (see the card comment).
+func gixianPuppeteerDiesTrigger() game.TriggeredAbility {
+	t := WhenThisDies("Gixian Puppeteer — reanimate a creature card with mana value 3 or less", func(g *game.Game, item *game.StackItem) error {
+		if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+			return nil
+		}
+		return ReturnFromGraveyard{
+			Target: item.Targets[0].ID,
+			Dest:   game.ZoneBattlefield,
+		}.Apply(NewContext(g, item))
+	})
+	t.TargetsFrom = AnotherTarget(func(other CardPredicate) *game.TargetSpec {
+		return TargetCardInGraveyard("another target creature card with mana value 3 or less from your graveyard",
+			YouOwn(), Creature(), ManaValueLE(3), other)
+	})
+	return t
 }

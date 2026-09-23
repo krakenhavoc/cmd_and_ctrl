@@ -336,6 +336,11 @@ func TestB36HeliodsPilgrimMayTutorAnAura(t *testing.T) {
 	}
 }
 
+// #1337: the return is a resolution-time choice (ReturnOneYouControl
+// / ChoosePermanents), not a target picked when the trigger goes on
+// the stack, so the prompt is an own_permanents choose-cards pick
+// rather than a pick_target one, and it only appears once the
+// trigger resolves.
 func TestB36WhitemaneLionFlashesInAndReturnsAnyCreatureYouControlItselfIncluded(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
@@ -343,19 +348,22 @@ func TestB36WhitemaneLionFlashesInAndReturnsAnyCreatureYouControlItselfIncluded(
 	theirs := b12Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2)
 	lion := castCatalogSpell(t, g, "Whitemane Lion", "Creature — Cat", b36WhitemaneLionOracle, nil)
 	passPriorityAroundTable(t, g)
-	b04WaitForPick(t, g, me.ID)
-	p := latestPickTarget(g, me.ID)
-	if !hasID(p.PickTargetCards, bear) || !hasID(p.PickTargetCards, lion) {
+	p := latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, me.ID)
+	if p == nil {
+		t.Fatal("Whitemane Lion queued no return pick")
+	}
+	if !hasID(p.ChooseCards, bear) || !hasID(p.ChooseCards, lion) {
 		t.Error("every creature you control is offered, the Lion itself included")
 	}
-	if hasID(p.PickTargetCards, theirs) {
+	if hasID(p.ChooseCards, theirs) {
 		t.Error("an opponent's creature is not")
 	}
-	if p.PickTargetMin != 1 {
+	if p.ChooseMin != 1 {
 		t.Error("the return is mandatory")
 	}
-	pickCard(t, g, me.ID, lion)
-	passPriorityAroundTable(t, g)
+	if err := g.ResolveOwnPermanents(p.ID, me.ID, []uuid.UUID{lion}); err != nil {
+		t.Fatalf("ResolveOwnPermanents: %v", err)
+	}
 	if g.Battlefield.Contains(lion) || !me.Hand.Contains(lion) {
 		t.Error("the Lion returns itself to hand")
 	}
@@ -365,9 +373,13 @@ func TestB36WhitemaneLionFlashesInAndReturnsAnyCreatureYouControlItselfIncluded(
 	// Again, bouncing the Bear this time.
 	second := castCatalogSpell(t, g, "Whitemane Lion", "Creature — Cat", b36WhitemaneLionOracle, nil)
 	passPriorityAroundTable(t, g)
-	b04WaitForPick(t, g, me.ID)
-	pickCard(t, g, me.ID, bear)
-	passPriorityAroundTable(t, g)
+	p2 := latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, me.ID)
+	if p2 == nil {
+		t.Fatal("Whitemane Lion queued no return pick")
+	}
+	if err := g.ResolveOwnPermanents(p2.ID, me.ID, []uuid.UUID{bear}); err != nil {
+		t.Fatalf("ResolveOwnPermanents: %v", err)
+	}
 	if g.Battlefield.Contains(bear) || !me.Hand.Contains(bear) {
 		t.Error("the Bear returns to hand")
 	}

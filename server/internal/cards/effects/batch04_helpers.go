@@ -21,44 +21,35 @@ import (
 //	 hand.
 //	 {T}: Add {A}{B}."
 //
-// Azorius Chancery (Aang deck) was the first and taps its own entry
-// in OnETB; that file's comment predates the entering-card block in
-// gatherActiveReplacementsLocked, and the three lands here use the
-// real CR 614 self-replacement instead, exactly as every conditional
-// dual does. The bounce is modelled as a targeted trigger for the
-// reason the Chancery file gives: the printed "return a land you
-// control" is a choice, not a target, and the pick_target prompt is
-// the one picker the engine has for a choice among permanents. It
-// can never fizzle — the land itself is always a legal answer, and
-// returning it is a real line.
+// Azorius Chancery (Aang deck) is the template: the real CR 614
+// self-replacement (SelfEntersTapped) for the tapped entry, and
+// ReturnOneYouControl for the bounce.
+//
+// The bounce is a CHOICE, not a target — "return a land you control",
+// with no "target" in the printed text — made on resolution
+// (ReturnOneYouControl, the own_permanents prompt, #1214). It used to
+// be a target clause picked when the trigger went on the stack, a
+// declared simplification that let opponents see and answer the
+// choice before the resolution-time picker existed. The land is
+// always a candidate while it is still on the battlefield, and
+// returning itself is a normal, sometimes correct, line.
 func b04BounceLand(oracleID, name, produced string) Spec {
 	return Spec{
 		OracleID:     oracleID,
 		Name:         name,
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"You pick the land to return when the trigger goes on the stack rather than on resolution, so opponents can respond to the choice."},
+		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: produced,
 			Label:    "Add " + produced,
 		}},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.CardID == source.InstanceID
-			},
-			Targets: TargetPermanent("a land you control", And(Land(), YouControl())),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, name+" — return a land you control to its owner's hand",
-					func(g *game.Game, item *game.StackItem) error {
-						if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-							return nil
-						}
-						return BounceToHand{Target: item.Targets[0].ID}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters(name+" — return a land you control", Do(ReturnOneYouControl{
+				Match:    MatchLand,
+				Question: name + " — return a land you control to its owner's hand",
+			})),
+		},
 	}
 }
 

@@ -8,19 +8,16 @@ package effects
 // The noncreature gate is the target predicate, checked at announce
 // and again at resolution.
 //
-// Sandbox simplification, declared — the Snap posture: "untap up to
-// three lands" is a resolution-time choice among every land at the
-// table on paper. With no pick-a-permanent prompt for a spell, this
-// untaps the first three TAPPED lands the caster controls, in
-// battlefield order — never an opponent's, never stronger than
-// printed, only less controllable.
+// "Untap up to three lands" is a resolution-time choice among every
+// land at the table on paper. UntapUpToLands is that choice: a
+// prompt over every tapped land at the table, any controller's,
+// queued after the counter resolves.
 func init() {
 	Register(Spec{
 		OracleID:     "e38b8ecb-e7ae-474d-b6a4-29cc1aa8ccd9",
 		Name:         "Unwind",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"You can't choose which lands untap — it automatically untaps the first three tapped lands you control and can never untap an opponent's lands."},
+		Completeness: CompletenessFull,
 		Targets:      TargetSpell("target noncreature spell", Noncreature()),
-		OnResolve:    b09CounterThenUntapLands(3),
+		OnResolve:    b09CounterThenUntapLands(3, "Unwind — untap up to three lands"),
 	})
 }

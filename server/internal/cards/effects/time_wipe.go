@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Time Wipe — Sorcery {2}{W}{W}{U} (EDHREC rank 1414):
 //
@@ -13,18 +17,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // so the saved creature is in hand before anything dies and every
 // dies-trigger sees the whole batch.
 //
-// Sandbox simplification, declared (the Azorius Chancery / Mount
-// Doom posture): "return a creature you control" is a resolution-
-// time choice, not a target, and the pick_target prompt is the one
-// picker the engine has for choosing among permanents — so the
-// creature is chosen at announce as a target. Three consequences,
-// all weaker than printed: opponents see the choice before the spell
-// resolves; a creature you control with hexproof or shroud cannot
-// be the one saved; and with no creature of your own the spell has
-// no legal target and cannot be cast at all, where the printed card
-// is simply a five-mana Wrath. If the chosen creature is gone by
-// resolution the spell is countered by game rules (CR 608.2b) and
-// the sweep does not happen — also weaker.
+// "Return a creature you control" is a CHOICE, not a target — there
+// is no "target" in the printed text — made on resolution (CR 608.2,
+// ReturnOneYouControl / ChoosePermanents posture, #1214, #1337). It
+// used to be a target clause picked at announce, a declared
+// simplification with three consequences, all fixed by the move to a
+// resolution-time pick: opponents no longer see the choice before the
+// spell resolves; a creature with hexproof or shroud can be the one
+// saved; and casting the spell no longer requires a creature of your
+// own — with none, the pick is skipped (CR 608.2c, "as much as
+// possible") and the sweep still runs, exactly as the printed
+// five-mana Wrath would.
 //
 // The engine gap it shared with every wipe in the catalog — the
 // simultaneous destroy path not consulting indestructible the way
@@ -35,19 +38,28 @@ func init() {
 	Register(Spec{
 		OracleID:     "36c78a5f-0148-4596-a346-f8e35037b694",
 		Name:         "Time Wipe",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The creature you return to hand is picked when you cast the spell rather than as it resolves, so opponents can respond to the choice, a creature with hexproof or shroud can't be picked, and you need a creature of your own to cast it at all.",
-		},
-		Targets: TargetCreature("a creature you control to return to hand", YouControl()),
+		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			targets := ctx.Targets()
-			if len(targets) > 0 && targets[0].Kind == game.TargetCard && ctx.IsTargetLegal(targets[0]) {
-				if err := (BounceToHand{Target: targets[0].ID}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return DestroyAllMatching{Match: Creature()}.Apply(ctx)
+			return ChoosePermanents{
+				Question: "Time Wipe — return a creature you control to its owner's hand",
+				Candidates: func(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
+					var out []uuid.UUID
+					for _, c := range g.BattlefieldCardsForEffect() {
+						if c.Controller == of && c.IsCreature() {
+							out = append(out, c.InstanceID)
+						}
+					}
+					return out, 1, 1
+				},
+				Then: func(ctx *Context, picked game.PromptedPicks) error {
+					for _, id := range picked.Cards() {
+						if err := (BounceToHand{Target: id}).Apply(ctx); err != nil {
+							return err
+						}
+					}
+					return DestroyAllMatching{Match: Creature()}.Apply(ctx)
+				},
+			}.Apply(ctx)
 		},
 	})
 }

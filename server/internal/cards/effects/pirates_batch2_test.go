@@ -461,6 +461,22 @@ func TestFranticSearchLootsAndUntapsThreeLands(t *testing.T) {
 	castCatalogSpell(t, g, "Frantic Search", "Instant", franticSearchOracle, nil)
 	passPriorityAroundTable(t, g)
 
+	// Two choose_cards prompts are open at once (the loot's discard
+	// and the untap), so tell them apart by which cards they offer
+	// rather than by discardChoiceFor / chooseCardsChoiceFor, which
+	// would only find one of them.
+	var untapPick *game.PendingChoice
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == game.PendingChoiceChooseCards && c.Chooser == active.ID && hasID(c.ChooseCards, lands[0]) {
+			untapPick = c
+		}
+	}
+	if untapPick == nil {
+		t.Fatalf("no untap prompt for the controller: %+v", g.PendingChoices)
+	}
+	if err := g.ResolveChooseCards(untapPick.ID, active.ID, lands[:3]); err != nil {
+		t.Fatalf("ResolveChooseCards(untap): %v", err)
+	}
 	untapped := 0
 	for _, id := range lands {
 		for _, c := range g.Battlefield.Cards {

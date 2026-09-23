@@ -212,6 +212,9 @@ func TestArcaneSanctumEntersTappedAndOffersThreeColours(t *testing.T) {
 	}
 }
 
+// #1337: the bounce is a resolution-time choice (ReturnOneYouControl
+// / ChoosePermanents), not a target picked when the trigger goes on
+// the stack.
 func TestSimicGrowthChamberEntersTappedAndBouncesAChosenLand(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
@@ -219,8 +222,14 @@ func TestSimicGrowthChamberEntersTappedAndBouncesAChosenLand(t *testing.T) {
 	id := playLandFromHand(t, g, "Simic Growth Chamber", b02SimicGrowthChamberOracle)
 	top100AssertEnteredTapped(t, g, id, "Simic Growth Chamber")
 
-	pickCard(t, g, me.ID, forest)
 	passPriorityAroundTable(t, g)
+	p := latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, me.ID)
+	if p == nil {
+		t.Fatal("Simic Growth Chamber queued no return pick")
+	}
+	if err := g.ResolveOwnPermanents(p.ID, me.ID, []uuid.UUID{forest}); err != nil {
+		t.Fatalf("ResolveOwnPermanents: %v", err)
+	}
 
 	if !me.Hand.Contains(forest) {
 		t.Error("the chosen land should be back in hand")
@@ -390,6 +399,7 @@ func TestSnapBouncesAndUntapsTwoOfYourTappedLands(t *testing.T) {
 	if !opp.Hand.Contains(bear) {
 		t.Error("the creature should be back in its owner's hand")
 	}
+	answerChooseCards(t, g, me.ID, a, b) // 3 tapped lands offered, pick 2
 	untapped := 0
 	for _, id := range []uuid.UUID{a, b, c} {
 		if card, _ := battlefieldCard(g, id); !card.Tapped {

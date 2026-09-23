@@ -60,27 +60,3 @@ func tablePlayers(ctx *Context) []uuid.UUID {
 	out := []uuid.UUID{ctx.Controller()}
 	return append(out, ctx.Opponents()...)
 }
-
-// untapUpToLands untaps up to n tapped lands playerID controls.
-//
-// Sandbox simplification: the card says "untap up to three lands",
-// which is a choice. Untapping the player's own tapped lands is
-// what that choice is for in every deck that plays these cards, and
-// a prompt for it would be three clicks of ceremony. If a card ever
-// makes the choice interesting — untapping an opponent's land, or
-// choosing between land types — this needs a real picker.
-func untapUpToLands(g *game.Game, playerID uuid.UUID, n int) error {
-	for _, c := range g.BattlefieldCardsForEffect() {
-		if n <= 0 {
-			return nil
-		}
-		if c.Controller != playerID || !c.IsLand() || !c.Tapped {
-			continue
-		}
-		if err := g.UntapTargetForEffect(c.InstanceID); err != nil {
-			return err
-		}
-		n--
-	}
-	return nil
-}

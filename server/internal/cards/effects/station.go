@@ -11,12 +11,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	counters equal to its power on this. Station only as a sorcery.)
 //	7+ | Flying
 //
-// The threshold half is here. The station ABILITY is not: its cost
-// is "tap another untapped creature you control", which AbilityCost
-// cannot express — that component is #758, and ADR 0071 names the
-// field it should add (AbilityCost.TapOthers) so the Station()
-// constructor can be written the day it lands. Until then a station
-// card ships with its thresholds working and a caveat naming #758,
+// The threshold half is here. The station ABILITY is not, and the
+// cost is no longer why: #758 gave AbilityCost the TapOthers
+// component the "tap another untapped creature you control" clause
+// needs, and it validates and pays that cost today. What is missing
+// is on the EFFECT side — "put charge counters equal to ITS power on
+// this" names the specific creature that paid the cost, and nothing
+// threads a TapOthers payment's chosen permanent through to the
+// ability's resolution the way, say, a sacrifice cost's chosen
+// permanent can be read back. That's #759. Until it lands a station
+// card ships with its thresholds working and a caveat naming #759,
 // and its charge counters are added by hand from the counter menu.
 //
 // The gate is an ordinary designation, so nothing here is

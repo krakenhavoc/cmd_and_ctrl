@@ -34,46 +34,44 @@ import (
 // locking, and therefore uncallable from inside a resolution)
 // SetMaxHandSize.
 //
-// Sandbox simplification, declared, weaker than printed:
-//
-//   - "Untap up to five lands" doesn't say "target" — the choice is
-//     made as the spell resolves, not announced — and there's no
-//     resolution-time picker for "choose up to N of your own
-//     permanents" in the engine yet. The high-X branch untaps up to
-//     five of your own tapped lands automatically instead of letting
-//     you choose which five, which can only ever be as good as or
-//     worse than the printed choice.
+// "Untap up to five lands" doesn't say "target" — the choice is made
+// as the spell resolves, not announced. UntapUpToLands is that
+// resolution-time choice: a prompt over every tapped land at the
+// table, any controller's. Everything printed after the untap — the
+// hand-size grant, and the self-exile every branch ends with — rides
+// its Then, so it runs after the prompt is answered rather than on
+// the line after a synchronous call that hasn't happened yet.
 func init() {
 	Register(Spec{
 		OracleID:     "755bd5d8-67f1-4f24-a4e8-d98edf2f2e03",
 		Name:         "Finale of Revelation",
-		Completeness: CompletenessCaveats,
+		Completeness: CompletenessFull,
 		XMatters:     true,
-		Caveats: []string{
-			"When X is 10 or more, you can't choose which lands get untapped — the engine untaps up to five of your own tapped lands for you.",
-		},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			controller := ctx.Controller()
 			x := ctx.X()
-			if x >= 10 {
-				if err := finaleShuffleGraveyardIntoLibrary(ctx, controller); err != nil {
-					return err
-				}
+			if x < 10 {
 				if err := (DrawCards{Player: controller, N: x}).Apply(ctx); err != nil {
 					return err
 				}
-				if err := finaleUntapUpToFiveLands(ctx, controller); err != nil {
-					return err
-				}
-				if err := ctx.Game.SetMaxHandSizeForEffect(controller, game.NoMaxHandSize); err != nil {
-					return err
-				}
-			} else {
-				if err := (DrawCards{Player: controller, N: x}).Apply(ctx); err != nil {
-					return err
-				}
+				return (ExileTarget{Target: ctx.Source()}).Apply(ctx)
 			}
-			return (ExileTarget{Target: ctx.Source()}).Apply(ctx)
+			if err := finaleShuffleGraveyardIntoLibrary(ctx, controller); err != nil {
+				return err
+			}
+			if err := (DrawCards{Player: controller, N: x}).Apply(ctx); err != nil {
+				return err
+			}
+			return UntapUpToLands{
+				N:        5,
+				Question: "Finale of Revelation — untap up to five lands",
+				Then: func(next *Context) error {
+					if err := next.Game.SetMaxHandSizeForEffect(controller, game.NoMaxHandSize); err != nil {
+						return err
+					}
+					return (ExileTarget{Target: next.Source()}).Apply(next)
+				},
+			}.Apply(ctx)
 		},
 	})
 }
@@ -101,25 +99,4 @@ func finaleShuffleGraveyardIntoLibrary(ctx *Context, controller uuid.UUID) error
 		}
 	}
 	return ShuffleLibrary{Player: controller}.Apply(ctx)
-}
-
-// finaleUntapUpToFiveLands untaps up to five of the controller's own
-// tapped lands. See the declared Caveat above: the printed clause
-// lets the controller choose which five, and this picks the first
-// five it finds on the battlefield instead.
-func finaleUntapUpToFiveLands(ctx *Context, controller uuid.UUID) error {
-	n := 0
-	for _, c := range ctx.Game.BattlefieldCardsForEffect() {
-		if n >= 5 {
-			break
-		}
-		if c.Controller != controller || !c.IsLand() || !c.Tapped {
-			continue
-		}
-		if err := (UntapTarget{Target: c.InstanceID}).Apply(ctx); err != nil {
-			return err
-		}
-		n++
-	}
-	return nil
 }

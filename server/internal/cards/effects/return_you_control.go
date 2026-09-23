@@ -52,13 +52,20 @@ func (r ReturnOneYouControl) Apply(ctx *Context) error {
 			}
 			return out, 1, 1
 		},
-		Then: func(ctx *Context, picked game.PromptedPicks) error {
-			for _, id := range picked.Cards() {
-				if err := (BounceToHand{Target: id}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+		Then: bouncePickedToHand,
 	}.Apply(ctx)
+}
+
+// bouncePickedToHand is a ChoosePermanents.Then that returns every
+// picked permanent to its owner's hand — the continuation
+// ReturnOneYouControl uses, and Cloudstone Curio's own custom
+// ChoosePermanents call, whose candidate set (a fact about what just
+// entered) can't be expressed as a Match predicate.
+func bouncePickedToHand(ctx *Context, picked game.PromptedPicks) error {
+	for _, id := range picked.Cards() {
+		if err := (BounceToHand{Target: id}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
 }

@@ -343,8 +343,8 @@ func TestTeferiHeroTucksACommanderThroughTheCommandZonePrompt(t *testing.T) {
 }
 
 // TestTeferiHeroPlusOneDrawsAndUntapsAtTheNextEndStep — the untap is
-// a delayed trigger, and the lands it picks are chosen for the
-// player (declared caveat).
+// a delayed trigger whose lands are chosen by the controller at
+// resolution (#1337: UntapUpToLands, not an auto-pick).
 func TestTeferiHeroPlusOneDrawsAndUntapsAtTheNextEndStep(t *testing.T) {
 	g := newCatalogGame(t)
 	seat := g.Turn.ActiveSeat
@@ -380,6 +380,7 @@ func TestTeferiHeroPlusOneDrawsAndUntapsAtTheNextEndStep(t *testing.T) {
 
 	advanceToStepOnThisTurn(t, g, game.StepEnd)
 	passPriorityAroundTable(t, g)
+	answerChooseCards(t, g, owner.ID, lands[:2]...) // "untap up to two lands", 3 tapped offered
 
 	if got := untappedCount(g, lands); got != 2 {
 		t.Errorf("untapped lands at the end step = %d, want exactly 2 of 3", got)

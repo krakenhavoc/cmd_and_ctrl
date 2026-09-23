@@ -54,7 +54,7 @@ func init() {
 		Name:         "Avatar Kuruk",
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
-			"The Spirit token doesn't have its \"can't block or be blocked by non-Spirit creatures\" ability — a token that isn't a copy has no way to carry one.",
+			"The Spirit token doesn't have its \"can't block or be blocked by non-Spirit creatures\" ability.",
 			"\"Exhaust — Waterbend {20}: Take an extra turn after this one\" isn't implemented — extra turns don't exist in the engine yet.",
 		},
 		Triggered: []game.TriggeredAbility{

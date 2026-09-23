@@ -12,20 +12,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 {T}: Add {A}{B}."
 //
 // Azorius Chancery is already in the catalog as a single file and is
-// the template; it is deliberately left untouched (it taps itself in
-// OnETB, a workaround from before the entering card's own
-// replacements were consulted). These four use the current shape —
-// SelfEntersTapped, the real CR 614 replacement — and are otherwise
-// the Chancery row for row, including its one simplification:
+// the template. These four use the same shape: SelfEntersTapped, the
+// real CR 614 replacement, and ReturnOneYouControl for the bounce.
 //
-// Sandbox simplification (the Chancery's, inherited): "return a land
-// you control" is a CHOICE, not a target — there is no "target" in
-// the printed text. It is modelled as a target clause so the
-// controller gets the existing board picker, which makes the choice
-// targetable in response and locks it in at announce rather than at
-// resolution. The trigger can never fizzle for want of a legal
-// choice: the land itself is always a land its controller controls,
-// and bouncing itself is a legal, sometimes correct, line.
+// The bounce is the Chancery's own shape: a CHOICE, not a target —
+// "return a land you control", with no "target" in the printed text
+// — made on resolution (ReturnOneYouControl, the own_permanents
+// prompt, #1214). It used to be a target clause picked when the
+// trigger went on the stack, a declared simplification that let
+// opponents see and answer the choice before the resolution-time
+// picker existed. Each land here is always a candidate while it is
+// still on the battlefield, and returning itself is a normal,
+// sometimes correct, line.
 func init() {
 	for _, l := range []struct{ oracleID, name, a, b string }{
 		{"378a1d57-e2f1-4b84-9692-1564602e9e99", "Dimir Aqueduct", "U", "B"},
@@ -37,30 +35,19 @@ func init() {
 		Register(Spec{
 			OracleID:     l.oracleID,
 			Name:         name,
-			Completeness: CompletenessCaveats,
-			Caveats:      []string{"You pick the land to return when the trigger goes on the stack rather than on resolution, so opponents can respond to the choice."},
+			Completeness: CompletenessFull,
 			Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 			ManaAbilities: []ManaAbility{{
 				Cost:     ManaAbilityCost{Tap: true},
 				Produced: "{" + l.a + "}{" + l.b + "}",
 				Label:    "Add {" + l.a + "}{" + l.b + "}",
 			}},
-			Triggered: []game.TriggeredAbility{{
-				Watches: []game.EventKind{game.EventETB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return ev.CardID == source.InstanceID
-				},
-				Targets: TargetPermanent("a land you control", And(Land(), YouControl())),
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, name+" — return a land you control",
-						func(g *game.Game, item *game.StackItem) error {
-							if len(item.Targets) == 0 {
-								return nil
-							}
-							return BounceToHand{Target: item.Targets[0].ID}.Apply(NewContext(g, item))
-						})
-				},
-			}},
+			Triggered: []game.TriggeredAbility{
+				WhenThisEnters(name+" — return a land you control", Do(ReturnOneYouControl{
+					Match:    MatchLand,
+					Question: name + " — return a land you control to its owner's hand",
+				})),
+			},
 		})
 	}
 }

@@ -216,6 +216,9 @@ func TestOriginalDualEntersUntappedAndTapsForEitherColour(t *testing.T) {
 	}
 }
 
+// #1337: the bounce is a resolution-time choice (ReturnOneYouControl
+// / ChoosePermanents), not a target picked when the trigger goes on
+// the stack.
 func TestBounceLandEntersTappedAndReturnsAChosenLand(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
@@ -224,8 +227,14 @@ func TestBounceLandEntersTappedAndReturnsAChosenLand(t *testing.T) {
 
 	id := playLandFromHand(t, g, "Dimir Aqueduct", b03DimirAqueductOracle)
 	top100AssertEnteredTapped(t, g, id, "Dimir Aqueduct")
-	pickCard(t, g, me.ID, island)
 	passPriorityAroundTable(t, g)
+	p := latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, me.ID)
+	if p == nil {
+		t.Fatal("Dimir Aqueduct queued no return pick")
+	}
+	if err := g.ResolveOwnPermanents(p.ID, me.ID, []uuid.UUID{island}); err != nil {
+		t.Fatalf("ResolveOwnPermanents: %v", err)
+	}
 
 	if g.Battlefield.Contains(island) || !me.Hand.Contains(island) {
 		t.Error("the chosen land should be back in hand")

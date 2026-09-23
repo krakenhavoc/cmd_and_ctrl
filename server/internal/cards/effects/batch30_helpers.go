@@ -42,20 +42,13 @@ func b30SacrificeAnArtifactOrCreature() game.AbilityCost {
 // --- card reads --------------------------------------------------
 
 // b30IsBasicLandCard is "a basic land card" read off the Basic
-// SUPERTYPE rather than the "basic land" type-line substring
-// IsBasicLand keys on — a Snow-Covered Forest is "Basic Snow Land —
-// Forest" and is basic. Off the battlefield the effective supertypes
-// are the printed ones.
+// supertype. It predates #1334, which fixed IsBasicLand's own
+// substring-based body to read the same supertype — the two are now
+// identical, and this is kept as a thin alias rather than renamed at
+// every existing call site (batches 30/33/34, Solemn Simulacrum, the
+// Aang deck).
 func b30IsBasicLandCard(c game.Card) bool {
-	if !c.IsLand() {
-		return false
-	}
-	for _, s := range c.Effective().Supertypes {
-		if s == "Basic" {
-			return true
-		}
-	}
-	return false
+	return IsBasicLand(c)
 }
 
 // b30SquirrelOrFood reports whether a permanent is a Squirrel or a

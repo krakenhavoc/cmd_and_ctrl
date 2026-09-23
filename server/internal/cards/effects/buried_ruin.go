@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Buried Ruin — Land (EDHREC rank 194):
 //
 //	"{T}: Add {C}.
@@ -36,15 +34,7 @@ func init() {
 			Label:   "{2}, {T}, Sacrifice this land: Return target artifact card from your graveyard to your hand.",
 			Cost:    Plus(ManaCost("{2}"), TapCost(), SacrificeThis()),
 			Targets: TargetCardInGraveyard("target artifact card in your graveyard", Artifact(), YouOwn()),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-					return nil
-				}
-				return ReturnFromGraveyard{
-					Target: item.Targets[0].ID,
-					Dest:   game.ZoneHand,
-				}.Apply(NewContext(g, item))
-			},
+			Effect:  returnTargetedCardToHand,
 		}},
 	})
 }

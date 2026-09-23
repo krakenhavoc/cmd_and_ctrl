@@ -24,12 +24,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     against the one creature the trigger targeted.
 //   - "gains trample" is a Layer 6 grant on the same creature.
 //
-// "ANOTHER target creature you control" is matched by NAME, the
-// catalog's convention for "another" on a declared target clause
-// (Benevolent Hydra, Dour Port-Mage): a target predicate is not told
-// which permanent is the source. Oliphaunt cannot pump itself, as
-// printed; it also cannot pump a SECOND Oliphaunt, which the printed
-// card can. Noted as a caveat rather than buried.
+// "ANOTHER target creature you control" is exact. The clause is built
+// per trigger through AnotherTarget (TriggeredAbility.TargetsFrom,
+// which is handed the source), so the picker excludes THIS Oliphaunt
+// by instance rather than by name: a second Oliphaunt — a Clone or a
+// token copy of this one — is a legal target, as printed, and the
+// Oliphaunt whose trigger it is never is. The resolution re-check
+// (CR 608.2b) runs the same clause.
 //
 // DECLARED SIMPLIFICATION — NO MOUNTAINCYCLING, the same shape as
 // every other cycling card in the catalog and for the same two
@@ -45,27 +46,34 @@ func init() {
 		PrintedKeywords: []string{"trample"},
 		Caveats: []string{
 			"Mountaincycling {1} is not implemented — the card can only be cast, never cycled from hand for a Mountain, which is most of the reason it is played.",
-			"The attack trigger can't pump a second Oliphaunt, though the printed card can.",
 		},
 		Triggered: []game.TriggeredAbility{
-			Targeting(
-				WheneverThisAttacks("Oliphaunt — +2/+0 and trample until end of turn", func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					id, ok := b16FirstLegalTargetCard(ctx)
-					if !ok {
-						return nil
-					}
-					if err := (BoostUntilEOT{Target: id, Power: 2, Label: "Oliphaunt — +2/+0"}).Apply(ctx); err != nil {
-						return err
-					}
-					return GrantKeywordUntilEOT{
-						Target:   id,
-						Keywords: []string{"trample"},
-						Label:    "Oliphaunt — trample",
-					}.Apply(ctx)
-				}),
-				TargetCreature("another target creature you control", YouControl(), b03NotNamed("Oliphaunt")),
-			),
+			oliphauntAttackTrigger(),
 		},
 	})
+}
+
+// oliphauntAttackTrigger is split out so TargetsFrom can be set
+// directly — Targeting only takes a static *game.TargetSpec, and this
+// clause needs the trigger's own source (see the card comment).
+func oliphauntAttackTrigger() game.TriggeredAbility {
+	t := WheneverThisAttacks("Oliphaunt — +2/+0 and trample until end of turn", func(g *game.Game, item *game.StackItem) error {
+		ctx := NewContext(g, item)
+		id, ok := b16FirstLegalTargetCard(ctx)
+		if !ok {
+			return nil
+		}
+		if err := (BoostUntilEOT{Target: id, Power: 2, Label: "Oliphaunt — +2/+0"}).Apply(ctx); err != nil {
+			return err
+		}
+		return GrantKeywordUntilEOT{
+			Target:   id,
+			Keywords: []string{"trample"},
+			Label:    "Oliphaunt — trample",
+		}.Apply(ctx)
+	})
+	t.TargetsFrom = AnotherTarget(func(other CardPredicate) *game.TargetSpec {
+		return TargetCreature("another target creature you control", YouControl(), other)
+	})
+	return t
 }

@@ -719,36 +719,6 @@ func b33DistributeCountersRoundRobin(g *game.Game, item *game.StackItem) error {
 	return nil
 }
 
-// b33SacrificeChosenThenDrawThatMany is God-Eternal Bontu's entry
-// body: every announced permanent that is still legal and still the
-// controller's is sacrificed, then the controller draws one card per
-// permanent sacrificed. Bontu himself is never among them — the
-// target clause excludes his name.
-//
-// #910: one batch with the draw as its continuation, not a loop with a
-// tally. "That many" is a number about permanents that really left the
-// battlefield, and a sacrificed COMMANDER stops to answer CR 903.9 —
-// so counted on the line after the loop it was one card too many, drawn
-// on the strength of a question having been asked. The sacrifices are
-// also one simultaneous exit now, which is what a single instruction
-// should look like to a Blood Artist.
-func b33SacrificeChosenThenDrawThatMany(g *game.Game, item *game.StackItem) error {
-	var doomed []uuid.UUID
-	for _, t := range item.Targets {
-		if t.Kind != game.TargetCard || t.ID == item.SourceCardID || !g.TargetStillLegalForEffect(item, t) {
-			continue
-		}
-		c, ok := g.LookupCardForEffect(t.ID)
-		if !ok || c.Controller != item.Controller || !onBattlefield(g, t.ID) {
-			continue
-		}
-		doomed = append(doomed, t.ID)
-	}
-	return g.SacrificeAllThenForEffect(item.SourceCardID, doomed, func(g *game.Game, sacrificed []uuid.UUID) error {
-		return DrawCards{Player: item.Controller, N: len(sacrificed)}.Apply(NewContext(g, item))
-	})
-}
-
 // tuckSelfThirdFromTop is God-Eternal Bontu's return body —
 // Oketra's: the card, if it is still in a graveyard or in exile, goes
 // into its owner's library third from the top.

@@ -13,32 +13,26 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // it from a wipe, which is a real and printed line. Flash rides
 // PrintedKeywords; the bounce is a mandatory ETB trigger.
 //
-// Sandbox simplification, declared (the Azorius Chancery / Time Wipe
-// posture): "return a creature you control" is a resolution-time
-// choice, not a target, and the pick_target prompt is the one picker
-// the engine has for choosing among permanents — so the creature is
-// chosen as a target when the trigger goes on the stack. Weaker than
-// printed on two counts: opponents see the choice before the trigger
-// resolves, and a creature you control with shroud cannot be the one
-// returned. It can never fizzle — the Lion itself is always a legal
-// answer.
+// "Return a creature you control" is a CHOICE, not a target — there
+// is no "target" in the printed text — made on resolution
+// (ReturnOneYouControl, the own_permanents prompt, #1214). It used to
+// be a target clause picked when the trigger went on the stack, a
+// declared simplification that let opponents see the choice before
+// it resolved and excluded a creature with shroud; the
+// resolution-time picker retired both. The Lion itself is always a
+// candidate while it is still on the battlefield, and bouncing itself
+// to save it from a wipe is a normal, sometimes correct, line.
 func init() {
 	Register(Spec{
-		OracleID:     "e8d6084b-9b72-438e-a30a-851b888f3e4d",
-		Name:         "Whitemane Lion",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"You pick the creature to return when the trigger goes on the stack rather than as it resolves, so opponents can respond to the choice, and a creature of yours with shroud can't be picked.",
-		},
+		OracleID:        "e8d6084b-9b72-438e-a30a-851b888f3e4d",
+		Name:            "Whitemane Lion",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flash"},
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Targets:   TargetCreature("a creature you control to return to its owner's hand", YouControl()),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Whitemane Lion — return a creature you control to its owner's hand",
-					bounceChosenTarget)
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Whitemane Lion — return a creature you control", Do(ReturnOneYouControl{
+				Match:    MatchCreature,
+				Question: "Whitemane Lion — return a creature you control to its owner's hand",
+			})),
+		},
 	})
 }

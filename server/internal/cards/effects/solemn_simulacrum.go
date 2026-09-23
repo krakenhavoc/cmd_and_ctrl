@@ -31,10 +31,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // card.
 //
 // Reviewed against the oracle text for #1306. "A basic land card" is
-// read off the Basic supertype (b30IsBasicLandCard) rather than the
-// shared IsBasicLand's "basic land" type-line substring, which misses
-// a Snow-Covered basic ("Basic Snow Land — Forest") — a real basic
-// land card the printed search can find.
+// read off the Basic supertype (b30IsBasicLandCard, an alias for
+// IsBasicLand since #1334) — a Snow-Covered basic ("Basic Snow Land —
+// Forest") is a real basic land card and the printed search finds it.
 //
 // One engine-wide posture applies here as on every optional trigger
 // in the catalog: the "you may" is asked as the trigger is put on the

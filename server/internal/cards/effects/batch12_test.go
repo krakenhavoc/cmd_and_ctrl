@@ -1131,6 +1131,10 @@ func TestB12ThousandYearStormCopiesForEachEarlierSpell(t *testing.T) {
 
 // --- Time Wipe -----------------------------------------------------
 
+// #1337: the return is a resolution-time choice (ChoosePermanents),
+// not a cast-time target, so the prompt only appears once the spell
+// resolves, offers only the caster's own creatures, and the caster
+// needs no creature of their own to cast the spell at all.
 func TestB12TimeWipeSavesOneCreatureAndWipesTheRest(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
@@ -1138,18 +1142,57 @@ func TestB12TimeWipeSavesOneCreatureAndWipesTheRest(t *testing.T) {
 	mine := b12Creature(g, me.ID, "Mine", "Creature — Bear", 2, 2)
 	theirs := b12Creature(g, opp.ID, "Theirs", "Creature — Bear", 2, 2)
 
-	if err := b09TryCast(t, g, "Time Wipe", "Sorcery", b12TimeWipeOracle,
-		[]game.TargetRef{{Kind: game.TargetCard, ID: theirs}}); err == nil {
-		t.Fatal("only a creature you control can be returned")
+	castCatalogSpell(t, g, "Time Wipe", "Sorcery", b12TimeWipeOracle, nil)
+	if pendingOfKind(g, game.PendingChoicePickTarget) != nil {
+		t.Fatal("the return asked for a target; the printed text names none")
 	}
-	castCatalogSpell(t, g, "Time Wipe", "Sorcery", b12TimeWipeOracle,
-		[]game.TargetRef{{Kind: game.TargetCard, ID: saved}})
 	passPriorityAroundTable(t, g)
+
+	choice := latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, me.ID)
+	if choice == nil {
+		t.Fatal("Time Wipe queued no return pick")
+	}
+	offered := map[uuid.UUID]bool{}
+	for _, id := range choice.ChooseCards {
+		offered[id] = true
+	}
+	if !offered[saved] || !offered[mine] {
+		t.Error("both of the caster's own creatures should be offered")
+	}
+	if offered[theirs] {
+		t.Error("only a creature you control can be returned")
+	}
+	if choice.ChooseMin != 1 {
+		t.Error("the return is mandatory when the caster controls a creature")
+	}
+
+	if err := g.ResolveOwnPermanents(choice.ID, me.ID, []uuid.UUID{saved}); err != nil {
+		t.Fatalf("ResolveOwnPermanents: %v", err)
+	}
 	if b12ZoneOf(g, saved) != game.ZoneHand {
 		t.Error("the chosen creature returns to hand")
 	}
 	if g.Battlefield.Contains(mine) || g.Battlefield.Contains(theirs) {
 		t.Error("every other creature is destroyed")
+	}
+}
+
+// With no creature of their own, the caster is simply skipped
+// (CR 608.2c) and the sweep still runs — the printed card is a plain
+// five-mana Wrath in that case, not uncastable.
+func TestB12TimeWipeCastableWithNoCreatureOfYourOwn(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	theirs := b12Creature(g, opp.ID, "Theirs", "Creature — Bear", 2, 2)
+
+	castCatalogSpell(t, g, "Time Wipe", "Sorcery", b12TimeWipeOracle, nil)
+	passPriorityAroundTable(t, g)
+
+	if c := latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, me.ID); c != nil {
+		t.Error("a caster with no creature was still asked to pick one")
+	}
+	if g.Battlefield.Contains(theirs) {
+		t.Error("the sweep did not run when the caster had no creature to save")
 	}
 }
 

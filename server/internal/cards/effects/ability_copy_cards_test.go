@@ -63,16 +63,26 @@ func TestAbilityCopyCardsAreWired(t *testing.T) {
 		t.Error("the Rings have no activated ability of their own")
 	}
 
-	// The two trigger-data cards build their clause from the event
-	// rather than declaring a static one.
-	for _, oracle := range []string{scrapTrawlerOracle, cloudstoneCurioOracle} {
-		trigs := game.TriggersForCard(game.Card{OracleID: oracle})
-		if len(trigs) != 1 {
-			t.Fatalf("%s: one trigger, got %d", oracle, len(trigs))
-		}
-		if trigs[0].TargetsFrom == nil || trigs[0].Targets != nil {
-			t.Errorf("%s: the clause must come from the event, not from a static spec", oracle)
-		}
+	// Scrap Trawler's clause is a fact about the event — a target,
+	// built from it rather than from a static spec.
+	trawler := game.TriggersForCard(game.Card{OracleID: scrapTrawlerOracle})
+	if len(trawler) != 1 {
+		t.Fatalf("Scrap Trawler: one trigger, got %d", len(trawler))
+	}
+	if trawler[0].TargetsFrom == nil || trawler[0].Targets != nil {
+		t.Error("Scrap Trawler: the clause must come from the event, not from a static spec")
+	}
+
+	// Cloudstone Curio's bounce is not a target at all (#1337): no
+	// "target" in the printed text, so the pick is a resolution-time
+	// ChoosePermanents call inside the Effect, and the trigger itself
+	// declares neither Targets nor TargetsFrom.
+	curio := game.TriggersForCard(game.Card{OracleID: cloudstoneCurioOracle})
+	if len(curio) != 1 {
+		t.Fatalf("Cloudstone Curio: one trigger, got %d", len(curio))
+	}
+	if curio[0].TargetsFrom != nil || curio[0].Targets != nil {
+		t.Error("Cloudstone Curio: the bounce is a resolution-time choice, not a declared target clause")
 	}
 }
 
@@ -286,7 +296,10 @@ func TestScrapTrawlerReadsTheDeadArtifactsManaValue(t *testing.T) {
 
 // TestCloudstoneCurioReadsTheEnteringPermanentsTypes — the other
 // trigger-data card: "shares a permanent type with it", where "it" is
-// the permanent that just entered.
+// the permanent that just entered. #1337: the bounce is a
+// resolution-time choice (ChoosePermanents), not a target picked when
+// the trigger goes on the stack, so the prompt only appears after the
+// trigger resolves.
 func TestCloudstoneCurioReadsTheEnteringPermanentsTypes(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
@@ -298,13 +311,17 @@ func TestCloudstoneCurioReadsTheEnteringPermanentsTypes(t *testing.T) {
 	g.WithWriteLock(func() {
 		g.EmitEvent(game.Event{Kind: game.EventETB, CardID: entering, Actor: me.ID})
 	})
+	if pendingOfKind(g, game.PendingChoicePickTarget) != nil {
+		t.Fatal("the bounce asked for a target; the printed text names none")
+	}
+	passPriorityAroundTable(t, g)
 
-	choice := latestChoiceOfKind(g, game.PendingChoicePickTarget)
+	choice := latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, me.ID)
 	if choice == nil {
 		t.Fatal("Cloudstone Curio queued no pick")
 	}
 	offered := map[uuid.UUID]bool{}
-	for _, id := range choice.PickTargetCards {
+	for _, id := range choice.ChooseCards {
 		offered[id] = true
 	}
 	if !offered[creature] {
@@ -316,8 +333,44 @@ func TestCloudstoneCurioReadsTheEnteringPermanentsTypes(t *testing.T) {
 	if offered[entering] {
 		t.Error("'another' must exclude the permanent that entered")
 	}
-	if choice.PickTargetMin != 0 {
+	if choice.ChooseMin != 0 {
 		t.Error("the 'you may' is an up-to-one, so declining must be an answer")
+	}
+
+	handBefore := len(me.Hand.Cards)
+	if err := g.ResolveOwnPermanents(choice.ID, me.ID, []uuid.UUID{creature}); err != nil {
+		t.Fatalf("ResolveOwnPermanents: %v", err)
+	}
+	if _, stillOut := aangCardOnBF(g, creature); stillOut {
+		t.Error("the chosen creature is still on the battlefield")
+	}
+	if len(me.Hand.Cards) != handBefore+1 {
+		t.Errorf("hand %d, want %d", len(me.Hand.Cards), handBefore+1)
+	}
+}
+
+// TestCloudstoneCurioDeclineReturnsNothing — "you may" declined
+// leaves the board untouched.
+func TestCloudstoneCurioDeclineReturnsNothing(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	pushCatalogPermanent(g, me.ID, "Cloudstone Curio", "Artifact", cloudstoneCurioOracle, false)
+	creature := pushCatalogPermanent(g, me.ID, "Bear", "Creature — Bear", "", false)
+	entering := pushCatalogPermanent(g, me.ID, "Elf", "Creature — Elf", "", false)
+	g.WithWriteLock(func() {
+		g.EmitEvent(game.Event{Kind: game.EventETB, CardID: entering, Actor: me.ID})
+	})
+	passPriorityAroundTable(t, g)
+
+	choice := latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, me.ID)
+	if choice == nil {
+		t.Fatal("Cloudstone Curio queued no pick")
+	}
+	if err := g.ResolveOwnPermanents(choice.ID, me.ID, nil); err != nil {
+		t.Fatalf("ResolveOwnPermanents(decline): %v", err)
+	}
+	if _, ok := aangCardOnBF(g, creature); !ok {
+		t.Error("declining the 'you may' still bounced a permanent")
 	}
 }
 

@@ -18,6 +18,7 @@ const (
 	baneslayerOracle    = "0e11792b-7fe5-4208-aa0b-e5d09b2b65fe"
 	swordFireIceOracle  = "2ccdc60a-49a9-44b9-a7af-0ebf18b26785"
 	motherOfRunesOracle = "60433b48-d27f-413c-905c-43839b1943f1"
+	swordBodyMindOracle = "fac42229-4f5f-4d04-85dd-5031d4e435aa"
 )
 
 // protectionsOn reads the engine's one quality reader off a
@@ -125,6 +126,7 @@ func TestTheSwordsGrantTheirProtectionsToTheEquippedCreature(t *testing.T) {
 	}{
 		{"Sword of Fire and Ice", swordFireIceOracle, [2]string{"red", "blue"}},
 		{"Sword of Feast and Famine", swordFeastOracle, [2]string{"black", "green"}},
+		{"Sword of Body and Mind", swordBodyMindOracle, [2]string{"green", "blue"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			g := newCatalogGame(t)
