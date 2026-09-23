@@ -2708,25 +2708,31 @@ const legalMovesWireCap = 48
 // playable — the exact class of "greyed in the UI, accepted by the
 // server" bug this whole sub-PR exists to kill.
 //
-// So the degraded list keeps the FIRST move of every (source, kind)
-// pair and drops only the alternatives. Every card that had a move
-// still has one; what is lost is the choice between its twelve
-// targets, which no client consumes today (targeting is driven by
-// CardView.legal_targets, and targeting.ts stays the presentation
-// layer for it). docs/protocol.md states this as part of the field's
-// contract.
+// So the degraded list keeps the FIRST move of every (source, kind,
+// targets_stack) tuple and drops only the alternatives. Every card
+// that had a move still has one; what is lost is the choice between
+// its twelve targets, which no client consumes today (targeting is
+// driven by CardView.legal_targets, and targeting.ts stays the
+// presentation layer for it). TargetsStack rides along in the key
+// because it is NOT an alternative target of the same shape: a modal
+// card with a counter mode and a burn mode is two different moves
+// that happen to share a source and a kind, and keeping only the
+// burn one would silently delete the counterspell response smart
+// autopass needs to see. docs/protocol.md states this as part of the
+// field's contract.
 func capLegalMoves(moves []LegalMoveView) []LegalMoveView {
 	if len(moves) <= legalMovesWireCap {
 		return moves
 	}
 	type key struct {
-		source uuid.UUID
-		kind   legal.Kind
+		source       uuid.UUID
+		kind         legal.Kind
+		targetsStack bool
 	}
 	seen := make(map[key]bool, len(moves))
 	out := make([]LegalMoveView, 0, legalMovesWireCap)
 	for _, m := range moves {
-		k := key{m.Source, m.Kind}
+		k := key{m.Source, m.Kind, m.TargetsStack}
 		if seen[k] {
 			continue
 		}

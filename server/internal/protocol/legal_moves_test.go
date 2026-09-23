@@ -11,6 +11,7 @@ import (
 
 	_ "github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects" // catalog hooks
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
 )
 
 // Catalog oracle IDs with the structured specs the enumerator needs:
@@ -384,6 +385,52 @@ func TestLegalMovesPathologicalBoardStaysCapped(t *testing.T) {
 		if !sources[id] {
 			t.Errorf("degraded list dropped every move for hand card %s — that greys a playable card", id)
 		}
+	}
+}
+
+// TestCapLegalMovesKeepsTargetsStackDistinct is #1307: capLegalMoves
+// dedupes on (source, kind, targets_stack), not just (source, kind),
+// because TargetsStack is not an alternative TARGET of the same
+// announcement — it is a different one. A modal card with a counter
+// mode and a burn mode shares one source and one kind; collapsing
+// them to whichever came first would silently drop the counterspell
+// response smart autopass needs to see. Exercises capLegalMoves
+// directly (this file is in package protocol) rather than building a
+// board wide enough to trigger it through ViewOfGame.
+func TestCapLegalMovesKeepsTargetsStackDistinct(t *testing.T) {
+	source := uuid.New()
+	moves := make([]LegalMoveView, 0, legalMovesWireCap+3)
+	// Filler moves from OTHER sources, one past the cap, so the
+	// degrade path actually runs.
+	for i := 0; i <= legalMovesWireCap; i++ {
+		moves = append(moves, LegalMoveView{
+			Type: legal.TypeCastSpell, Kind: legal.KindCast,
+			Label: fmt.Sprintf("filler %d", i), Source: uuid.New(),
+		})
+	}
+	// One source with an unflagged move (the burn mode) BEFORE a
+	// flagged one (the counter mode) — the ordering the old
+	// (source, kind) key would have collapsed to just the first.
+	moves = append(moves,
+		LegalMoveView{Type: legal.TypeCastSpell, Kind: legal.KindCast, Label: "burn mode", Source: source},
+		LegalMoveView{Type: legal.TypeCastSpell, Kind: legal.KindCast, Label: "counter mode", Source: source, TargetsStack: true},
+	)
+
+	out := capLegalMoves(moves)
+	var sawBurn, sawCounter bool
+	for _, m := range out {
+		if m.Source != source {
+			continue
+		}
+		if m.TargetsStack {
+			sawCounter = true
+		} else {
+			sawBurn = true
+		}
+	}
+	if !sawBurn || !sawCounter {
+		t.Errorf("cap dropped one of %s's two announcements: burn kept=%v, counter kept=%v (%v)",
+			source, sawBurn, sawCounter, labelsOf(out))
 	}
 }
 

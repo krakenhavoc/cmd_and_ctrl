@@ -503,6 +503,10 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 							Label:  label,
 							Source: source.InstanceID,
 							Cost:   cost,
+							// See the same note on the cast emitter:
+							// a modal ability's stack-targeting mode
+							// is flagged on its own.
+							TargetsStack: targetsStackObject(g, targets),
 							Params: mustJSON(activateParams{
 								SourceCardID:     source.InstanceID.String(),
 								AbilityIndex:     idx,
