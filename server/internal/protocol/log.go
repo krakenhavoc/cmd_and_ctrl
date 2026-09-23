@@ -258,6 +258,20 @@ const (
 	// rather than never left.
 	LogPhaseOut LogKind = "phase_out"
 	LogPhaseIn  LogKind = "phase_in"
+	// LogStorm — a storm trigger settled on its count (CR 702.40a).
+	// `card_id` is the storm spell and `amount` the count, which is
+	// how many copies of it are about to be created and is zero for
+	// the turn's first spell. #1238, ADR 0086.
+	//
+	// Narrated because nothing else narrates the number, and the
+	// number is the card. A spell copy is created and not cast
+	// (CR 707.10), so it emits no engine event and produces no line;
+	// the trigger's own resolution is a LogResolve with no card_id,
+	// which renders as "a card resolved". Without this entry the
+	// table watches N Grapeshots appear from nowhere. Same argument
+	// as LogSagaChapter and LogClassLevel: a mechanic whose number is
+	// otherwise unobservable gets a line.
+	LogStorm LogKind = "storm"
 )
 
 // The three choose-a-value kinds are separate rather than one "chose
@@ -927,6 +941,20 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Label = ev.Label
 		return base, true
 
+	case game.EventStorm:
+		// CR 702.40a, #1238. The count is the card, and nothing else
+		// says it: a spell copy emits no event (CR 707.10 — it is
+		// created, not cast) and the trigger's LogResolve carries no
+		// card, so N copies would otherwise arrive unexplained.
+		// Entered even at zero — "storm count 0" is the turn's first
+		// spell, and a reader counting copies wants to see that the
+		// trigger resolved and found nothing to copy rather than
+		// wonder whether it fired.
+		base.Kind = LogStorm
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.Amount = ev.Amount
+		return base, true
+
 	default:
 		return LogEvent{}, false
 	}
@@ -1331,6 +1359,14 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		return renderSettingsText(e)
 	case LogSpawn:
 		return renderSpawnText(e, target)
+	case LogStorm:
+		// "Grapeshot — storm count 3". The em dash is the separator
+		// every storm-shaped stack label in the catalog already uses,
+		// so the log line and the stack overlay read the same way. A
+		// viewer who may not identify the card still gets the number:
+		// the count is public (it is a fact about the turn's casts,
+		// which every seat watched) and only the name is redacted.
+		return fmt.Sprintf("%s — storm count %d", card, e.Amount)
 	case LogPhaseOut:
 		return fmt.Sprintf("%s phased out", card)
 	case LogPhaseIn:

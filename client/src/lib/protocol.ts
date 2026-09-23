@@ -524,7 +524,17 @@ export type LogKind =
   // the count, `new_zone` where they went and `target_seat` whose
   // zone it was. A spawn into a hidden zone names the zone and NOT
   // the card, so `label` is absent there for everyone.
-  | "spawn";
+  | "spawn"
+  // ADR 0086 (#1238): a storm trigger settled on its count
+  // (CR 702.40a). `card_id` is the storm spell and `amount` the
+  // number of OTHER spells cast before it this turn, which is how
+  // many copies are about to be created. Emitted at zero too, so a
+  // trigger that found nothing to copy is distinguishable from one
+  // that never fired. `text` reads "Grapeshot — storm count 3".
+  // Unlike `counters` / `saga_chapter` / `class_level`, `amount`
+  // survives redaction: the count is a fact about the turn's casts,
+  // not a value read off the card.
+  | "storm";
 
 // LogEvent mirrors `protocol.LogEvent` — one line of the public game
 // log. `text` is the rendered, already-redacted sentence; the

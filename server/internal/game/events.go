@@ -250,6 +250,28 @@ const (
 	// happened. Added in S16.5 (#159).
 	EventCopyApplied EventKind = "copy_applied"
 
+	// EventStorm — a storm trigger resolved and settled on its count
+	// (CR 702.40a). Actor is the player who cast the storm spell,
+	// Source and CardID are that spell, and Amount is how many other
+	// spells were cast before it this turn — which is how many copies
+	// the trigger is about to create, and is zero for the turn's
+	// first spell.
+	//
+	// It exists because nothing else says the number. A spell COPY is
+	// created and not cast, so createSpellCopyLocked deliberately
+	// emits no EventCast (CR 707.10) and emits nothing else either;
+	// and the ability's own EventResolve carries a label the public
+	// log does not project, so it renders as "a card resolved". The
+	// table would otherwise watch N Grapeshots appear from nowhere
+	// with nothing written down about why there are N. The count is
+	// the card, so it gets a line — the same argument saga chapters
+	// and Class levels get theirs. See ADR 0086 Decision 5.
+	//
+	// Emitted once per storm trigger, by StormCountForEffect
+	// (storm.go), as the trigger resolves and before the first copy
+	// is created. Nothing watches it.
+	EventStorm EventKind = "storm"
+
 	// EventSearchLibrary — Actor searched their library. Reserved
 	// for S14 catalog effects that fire SearchLibrary; the log
 	// entry is the "you searched your library" trigger source
