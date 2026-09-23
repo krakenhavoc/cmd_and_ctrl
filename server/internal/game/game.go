@@ -1516,7 +1516,25 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 		// SBA that lands in S13.1). The drawCardLocked helper surfaces
 		// ErrZoneEmpty, which we swallow so the cursor keeps moving —
 		// the losing player will be caught by the SBA once it exists.
-		_ = g.drawCardLocked(g.Seats[g.Turn.ActiveSeat].ID)
+		activeSeatID := g.Seats[g.Turn.ActiveSeat].ID
+		_ = g.drawCardLocked(activeSeatID)
+		// #1315 / CR 504.1 widened: "you draw a card during each
+		// opponent's draw step" (Teferi, Who Slows the Sunset's
+		// emblem) is part of the SAME turn-based action as the active
+		// player's own draw — no stack, no priority window in
+		// between — so it runs here, before the trigger-eligible
+		// announcement below. This is untap.go's Seedborn Muse
+		// widening one turn-based action over; see draw_step.go.
+		for _, extra := range g.activeDrawStepPermissionsLocked(activeSeatID) {
+			drawer := extra.permission.Drawer(g, extra.source)
+			n := extra.permission.N
+			if n <= 0 {
+				n = 1
+			}
+			for i := 0; i < n; i++ {
+				_ = g.drawCardLocked(drawer)
+			}
+		}
 		// S22: announce the draw step so "at the beginning of each
 		// player's draw step" triggers auto-fire (Howling Mine).
 		// AFTER the draw, per CR 504.1/504.2 — the turn-based draw

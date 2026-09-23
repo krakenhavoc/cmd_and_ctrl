@@ -505,35 +505,69 @@ func (g *Game) untapPermanentByIDLocked(cardID uuid.UUID) {
 
 // activeUntapStepPermissionsLocked gathers the untap-step
 // permissions that are live right now for `activePlayer`'s untap
-// step. One walk of the battlefield per untap step; the per-card
-// oracle lookup is the same map hit the trigger harvester does, and
-// the AppliesTo evaluation is one predicate per DECLARED permission,
-// of which a whole board typically has zero.
+// step. One walk of the battlefield plus one walk of every seat's
+// emblem zone (CR 114.3, #1315) per untap step; the per-card oracle
+// lookup is the same map hit the trigger harvester does, and the
+// AppliesTo evaluation is one predicate per DECLARED permission, of
+// which a whole board typically has zero.
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) activeUntapStepPermissionsLocked(activePlayer uuid.UUID) []boundUntapPermission {
-	if g.Battlefield == nil || CatalogUntapStepPermissions == nil {
+	if CatalogUntapStepPermissions == nil {
 		return nil
 	}
 	var out []boundUntapPermission
-	for i := range g.Battlefield.Cards {
-		src := &g.Battlefield.Cards[i]
-		// CatalogAbilityKey: "untap all permanents you control
-		// during each other player's untap step" is a static
-		// ability, and a Seedborn Muse that has lost all its
-		// abilities grants nothing.
-		oracle := CatalogAbilityKey(*src)
-		if oracle == "" {
+	if g.Battlefield != nil {
+		for i := range g.Battlefield.Cards {
+			src := &g.Battlefield.Cards[i]
+			// CatalogAbilityKey: "untap all permanents you control
+			// during each other player's untap step" is a static
+			// ability, and a Seedborn Muse that has lost all its
+			// abilities grants nothing.
+			oracle := CatalogAbilityKey(*src)
+			if oracle == "" {
+				continue
+			}
+			for _, p := range CatalogUntapStepPermissions(oracle) {
+				if p.AppliesTo == nil || p.Untaps == nil {
+					continue
+				}
+				if !p.AppliesTo(g, src, activePlayer) {
+					continue
+				}
+				out = append(out, boundUntapPermission{permission: p, source: src})
+			}
+		}
+	}
+	// CR 114.3: an emblem's abilities function in the command zone,
+	// exactly like a battlefield permanent's — Teferi, Who Slows the
+	// Sunset's emblem grants "untap all permanents you control during
+	// each opponent's untap step" with no permanent on the
+	// battlefield at all. Mirrors emblemContinuousEffectsLocked and
+	// harvestFromEmblemsLocked, which do the same second walk for
+	// statics and triggers.
+	for _, p := range g.Seats {
+		if p == nil || p.Emblems == nil {
 			continue
 		}
-		for _, p := range CatalogUntapStepPermissions(oracle) {
-			if p.AppliesTo == nil || p.Untaps == nil {
+		for i := range p.Emblems.Cards {
+			src := &p.Emblems.Cards[i]
+			// CatalogKey, not CatalogAbilityKey: nothing in the game
+			// can name an emblem to remove its abilities (emblem.go),
+			// so there is no removal state to read.
+			oracle := CatalogKey(*src)
+			if oracle == "" {
 				continue
 			}
-			if !p.AppliesTo(g, src, activePlayer) {
-				continue
+			for _, perm := range CatalogUntapStepPermissions(oracle) {
+				if perm.AppliesTo == nil || perm.Untaps == nil {
+					continue
+				}
+				if !perm.AppliesTo(g, src, activePlayer) {
+					continue
+				}
+				out = append(out, boundUntapPermission{permission: perm, source: src})
 			}
-			out = append(out, boundUntapPermission{permission: p, source: src})
 		}
 	}
 	return out

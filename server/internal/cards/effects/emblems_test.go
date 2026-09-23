@@ -253,7 +253,8 @@ func TestEveryEmblemSpecIsWellFormed(t *testing.T) {
 		if spec.Emblem == nil {
 			continue
 		}
-		if len(spec.Emblem.Static) == 0 && len(spec.Emblem.Triggered) == 0 {
+		if len(spec.Emblem.Static) == 0 && len(spec.Emblem.Triggered) == 0 &&
+			len(spec.Emblem.UntapStep) == 0 && len(spec.Emblem.DrawStep) == 0 {
 			t.Errorf("%s declares an emblem with no abilities", spec.Name)
 		}
 		if spec.Emblem.Label == "" || spec.Emblem.Text == "" {
@@ -264,9 +265,16 @@ func TestEveryEmblemSpecIsWellFormed(t *testing.T) {
 		}
 		// The emblem's def has to be reachable under the synthetic
 		// key, or nothing the card creates will have any abilities.
-		if def := game.CatalogStaticAbilities(game.EmblemKey(spec.OracleID)); def == nil &&
-			len(game.CatalogTriggers(game.EmblemKey(spec.OracleID))) == 0 {
-			t.Errorf("%s's emblem is not registered under %q", spec.Name, game.EmblemKey(spec.OracleID))
+		// #1315 widened the def with two turn-based-action slots
+		// alongside Static/Triggered, so a card whose only abilities
+		// are UntapStep/DrawStep (Teferi, Who Slows the Sunset) has
+		// to be found through those two hooks too.
+		key := game.EmblemKey(spec.OracleID)
+		if len(game.CatalogStaticAbilities(key)) == 0 &&
+			len(game.CatalogTriggers(key)) == 0 &&
+			len(game.CatalogUntapStepPermissions(key)) == 0 &&
+			len(game.CatalogDrawStepPermissions(key)) == 0 {
+			t.Errorf("%s's emblem is not registered under %q", spec.Name, key)
 		}
 	}
 }

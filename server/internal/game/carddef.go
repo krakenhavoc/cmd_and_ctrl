@@ -102,6 +102,16 @@ type CardDef struct {
 	UntapCaps             []UntapCap
 	UntapOptOuts          []UntapOptOut
 
+	// DrawStep are the "you draw a card during each opponent's draw
+	// step" permissions this source contributes (#1315) —
+	// draw_step.go's widening of CR 504.1's turn-based draw, the same
+	// shape UntapStep is for CR 502.3's untap. Read from the
+	// battlefield AND from every seat's emblem zone through
+	// activeDrawStepPermissionsLocked, because CR 114.3 runs an
+	// emblem's abilities in the command zone exactly like a
+	// permanent's.
+	DrawStep []DrawStepPermission
+
 	// CastCondition is the card's own "you may cast this only if …"
 	// (CR 307.6's legendary sorcery, and the "cast only if" family),
 	// checked by CastGateLocked at announce and never at resolution.
@@ -429,6 +439,12 @@ func init() {
 	CatalogUntapStepPermissions = func(key string) []UntapStepPermission {
 		if d := catalogDef(key); d != nil {
 			return d.UntapStep
+		}
+		return nil
+	}
+	CatalogDrawStepPermissions = func(key string) []DrawStepPermission {
+		if d := catalogDef(key); d != nil {
+			return d.DrawStep
 		}
 		return nil
 	}
