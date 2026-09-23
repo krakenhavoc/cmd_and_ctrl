@@ -783,3 +783,53 @@ source; an auto-tapped one is not.
   (Secluded Starforge) is the same announcement question one component over.
   #758 stated it out of scope and that row stays open; nothing here narrows it,
   and `SacrificeCostBounds` is the shape it should copy when it lands.
+
+---
+
+## Amendment (2026-09-23, [#1227](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1227)): what the returned permanent was attacking is a paid-cost fact
+
+The #1213 amendment above shipped `AbilityCost.ReturnToHand` as
+`TapOthersCost` one verb over. Ninjutsu (CR 702.49a) is the first card family
+whose EFFECT has to know something about what the cost returned:
+
+> Return an unblocked attacker you control to hand: Put this card onto the
+> battlefield from your hand tapped and **attacking**.
+
+and CR 702.49a's next sentence says attacking *the same player or planeswalker
+that the returned creature was attacking*.
+
+### Decision 4 — `PaidCost.ReturnedAttacking`
+
+One field on the existing record, beside `CountersRemoved` (#789) and
+`Sacrificed` (#1213), read back through `Context.ReturnedAttacking()`.
+
+It is here rather than anywhere else because it is the same KIND of fact those
+two are, and it is unrecomputable for a stronger reason than either. The
+returned permanent's battlefield exit clears `Card.AttackingTarget`
+(`zone.go`), and LKI carries no combat state — so one line after the bounce,
+with the ability not yet even on the stack, nothing in the game can answer the
+question. `payReturnToHandCostLocked` therefore reads the field BEFORE it
+routes the card and hands the answer back to the announce path, which locks it
+onto the stack item with the rest of the payment.
+
+Three things that follow, and each is a decision rather than a detail:
+
+- **It is recorded for every return cost**, not only ninjutsu's. Quirion
+  Ranger's Forest is attacking nothing, so the field is `uuid.Nil` and the
+  record simply says so. "The engine charged N" and "the card prints N" are
+  different facts — `Sacrificed`'s own argument — and a record that only spoke
+  up for the interesting case would make every reader ask which it was looking
+  at.
+- **It is the FIRST returned permanent that was attacking**, in the order the
+  activator named them. No printed clause returns more than one, and the
+  alternative — a slice, mirrored into the snapshot and the clone — would be
+  shape for a card that does not exist.
+- **It is not a bit on `ReturnToHandCost`.** The narrowing to "an unblocked
+  attacker you control" is a PREDICATE on the clause's filter, so the one
+  candidate walk (`ReturnToHandOptionsForEffect`) narrows the client's picker,
+  the legal-move enumerator and the validator at once — the #544 invariant the
+  #1213 amendment built the component around. A second bit on the component
+  would have been a fourth reader with its own opinion.
+
+`PaidCost.IsZero` grows the field so the sparse common case stays sparse, and
+the record is copied by value like every other scalar on it.

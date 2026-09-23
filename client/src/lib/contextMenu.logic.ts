@@ -493,6 +493,33 @@ export function chargedManaCostLabel(a: AbilityCost): string {
   return a.charged_mana_cost || "free";
 }
 
+// ReturnOptionsShape is the part of a LegalTargetsView a return-to-hand
+// cost ships (#1213). `min` and `max` are both the clause's count.
+export interface ReturnOptionsShape {
+  players?: string[];
+  cards?: string[];
+  min?: number;
+  max?: number;
+}
+
+// returnShortfall is the reason a return-to-hand cost can't be paid
+// right now, or "" when it can — sacrificeShortfall one verb over.
+// The clause's count is 1 on every printed card, so an option list
+// shorter than `min` is the whole of "this cannot be paid" (CR 118.3).
+//
+// ONE definition, two menus (#1227). The right-click menu had it
+// inline and the hand / zone-browser popover had nothing at all, which
+// is exactly the row ninjutsu needs greyed: a ninjutsu ability is
+// unpayable for the whole game except the declare-blockers window with
+// an unblocked attacker on the board, so a row that never greys is a
+// row that is almost always wrong.
+export function returnShortfall(opts: ReturnOptionsShape | undefined, label?: string): string {
+  if (!opts) return "";
+  const have = opts.cards?.length ?? 0;
+  if (have >= (opts.min ?? 1)) return "";
+  return `nothing to return (${label ?? "a permanent you control"})`;
+}
+
 // abilityBlocked returns the reason an ability can't be activated
 // right now, or "" when it can. Advisory only — the server re-checks
 // every cost; this just greys the row and explains why.
@@ -511,12 +538,9 @@ export function abilityBlocked(
     a.sacrifice_label ?? "a permanent",
   );
   if (sacrifice) return sacrifice;
-  // #1213: the same question one verb over. The clause's count is 1
-  // on every printed card, so an empty option list is the whole of
-  // "this cannot be paid".
-  if (a.return_options && (a.return_options.cards?.length ?? 0) < (a.return_options.min ?? 1)) {
-    return `nothing to return (${a.return_label ?? "a permanent you control"})`;
-  }
+  // #1213: the same question one verb over.
+  const returned = returnShortfall(a.return_options, a.return_label);
+  if (returned) return returned;
   // CR 702.122a: a crew cost with no untapped creature to pay it is
   // unpayable. Only the empty case is judged here — whether the
   // creatures that DO exist add up to the crew number is arithmetic

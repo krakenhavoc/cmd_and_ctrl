@@ -53,6 +53,28 @@ type ZoneEntryOptions struct {
 	// reader downstream can lose one of the two.
 	Tapped bool
 
+	// Attacking is the putting effect's own "onto the battlefield
+	// ATTACKING" clause (CR 506.3c) — ninjutsu's "Put this card onto
+	// the battlefield from your hand tapped and attacking"
+	// (CR 702.49a, #1227). It names the player, planeswalker or battle
+	// the permanent attacks, with Card.AttackingTarget's own overloaded
+	// domain (attack_target.go); the zero value is every other caller,
+	// which enters not attacking.
+	//
+	// SEEDED onto the replacement event exactly as Tapped is, and for
+	// the same reason: the entry's one settled record carries it, so
+	// no reader downstream can lose it and a CR 616 resume that holds
+	// only the event still knows the entry was an attacking one.
+	//
+	// The permanent was never DECLARED as an attacker, so it fires no
+	// "whenever ~ attacks" trigger and nothing watching the declaration
+	// sees it. That whole rule is stampEntryAttackerLocked's, shared
+	// with the token door, and DeclareAttackerWith is deliberately NOT
+	// the route: it refuses outside StepDeclareAttackers, it taps, it
+	// checks summoning sickness and it emits EventAttack — wrong on all
+	// four counts for a CR 506.3c entry.
+	Attacking uuid.UUID
+
 	// FaceDown enters the permanent FACE DOWN in this state (CR 708,
 	// ADR 0069) — FaceDownManifested for manifest, and later
 	// FaceDownCloaked for cloak. The zero value is an ordinary face-up
@@ -328,6 +350,9 @@ func (g *Game) putOntoBattlefieldFromZoneLocked(ids []uuid.UUID, from ZoneKind, 
 			OldZone:      from,
 			NewZone:      ZoneBattlefield,
 			EntersTapped: opts.Tapped,
+			// #1227: and the attacking clause, seeded here for the
+			// reason EntersTapped is. See ZoneEntryOptions.Attacking.
+			EntersAttacking: opts.Attacking,
 			// ADR 0082 decision 3: the face-down state rides the
 			// EVENT rather than a local, so both battlefield-entry
 			// doors carry the same fact in the same field and a
@@ -408,6 +433,13 @@ func (g *Game) putOntoBattlefieldFromZoneLocked(ids []uuid.UUID, from ZoneKind, 
 			g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
 		}
 		g.applyEntryCountersLocked(moved.InstanceID, p.out.EntersWithCounters)
+		// CR 506.3c (#1227): a permanent PUT onto the battlefield
+		// attacking. Read off the settled EVENT for the reason
+		// EntersTapped is, and stamped HERE — inside phase 2, before
+		// phase 3 announces — so the EventETB an entering ninja fires
+		// already finds it attacking. One shared helper with the
+		// token door; see stampEntryAttackerLocked.
+		g.stampEntryAttackerLocked(moved.InstanceID, p.out.EntersAttacking)
 		p.entered = true
 		entered = append(entered, moved.InstanceID)
 	}

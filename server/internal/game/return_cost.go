@@ -208,6 +208,16 @@ func (g *Game) validateReturnToHandCostLocked(playerID, sourceID uuid.UUID, rc *
 // one route each, so a leaves-the-battlefield watcher sees every one of
 // them.
 //
+// Returns what the first returned permanent that was ATTACKING was
+// attacking, for PaidCost.ReturnedAttacking (#1227). It is read HERE,
+// before the bounce, because it cannot be read anywhere else: the exit
+// clears Card.AttackingTarget (zone.go) and LKI carries no combat
+// state, so ninjutsu's "attacking the same player or planeswalker that
+// the returned creature was attacking" (CR 702.49a) would be
+// unanswerable one line later. uuid.Nil for every other printed return
+// cost, whose permanent is a Forest or an artifact and is attacking
+// nothing.
+//
 // Through the ONE exit door (routeCardToZoneLocked) rather than through
 // BounceToHandForEffect, and with MustSettleNow set: CR 601.2h /
 // 602.2b pay an announcement's costs as one indivisible step, so a
@@ -227,10 +237,15 @@ func (g *Game) validateReturnToHandCostLocked(playerID, sourceID uuid.UUID, rc *
 // ever stops being true.
 //
 // Caller must hold g.mu.
-func (g *Game) payReturnToHandCostLocked(playerID, sourceID uuid.UUID, ids []uuid.UUID) error {
+func (g *Game) payReturnToHandCostLocked(playerID, sourceID uuid.UUID, ids []uuid.UUID) (uuid.UUID, error) {
+	var attacking uuid.UUID
 	for _, id := range ids {
-		if findBattlefieldCard(g, id) == nil {
+		c := findBattlefieldCard(g, id)
+		if c == nil {
 			continue
+		}
+		if attacking == uuid.Nil {
+			attacking = c.AttackingTarget
 		}
 		if _, err := g.routeCardToZoneLocked(zoneRoute{
 			CardID:        id,
@@ -239,8 +254,8 @@ func (g *Game) payReturnToHandCostLocked(playerID, sourceID uuid.UUID, ids []uui
 			Source:        sourceID,
 			MustSettleNow: true,
 		}); err != nil {
-			return err
+			return attacking, err
 		}
 	}
-	return nil
+	return attacking, nil
 }

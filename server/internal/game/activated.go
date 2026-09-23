@@ -1169,9 +1169,15 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	// before the stack item is built so the leaves-triggers it queues
 	// are drained ABOVE the ability by the closing state-check pass
 	// (CR 603.3b).
-	if err := g.payReturnToHandCostLocked(playerID, cardID, params.ReturnIDs); err != nil {
+	returnedAttacking, err := g.payReturnToHandCostLocked(playerID, cardID, params.ReturnIDs)
+	if err != nil {
 		return err
 	}
+	// #1227: what the returned permanent was attacking, read by the
+	// payer BEFORE the bounce because the exit clears it and LKI
+	// carries no combat state. Ninjutsu's entry reads it back through
+	// Context.ReturnedAttacking(); see PaidCost.ReturnedAttacking.
+	paid.ReturnedAttacking = returnedAttacking
 	source = nil
 	// Discards last (#660). They move cards out of the hand, which
 	// invalidates `source` for a DiscardSelf cost, and they go

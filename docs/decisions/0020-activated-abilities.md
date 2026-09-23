@@ -1886,7 +1886,8 @@ without running the CR 614 pipeline.
   control, and an entry that puts a card onto the battlefield
   **attacking** (`ZoneEntryOptions` has `Tapped` and no `Attacking`;
   only the token path can do it, `entry_choice.go`'s minted-token
-  branch). Filed separately.
+  branch). Filed separately. *(Delivered by the 2026-09-23 amendment
+  below, #1227.)*
 - **Statics that function from a graveyard** — `StaticAbility.Zones`,
   the layer pass's own half of CR 113.6c (Anger, Wonder, Brawn). The
   other row of the same seam issue, and the next PR.
@@ -1896,3 +1897,94 @@ without running the CR 614 pipeline.
   object.
 - **Cost modification for activated abilities**, unchanged from the
   #1181 addendum.
+
+---
+
+## Amendment (2026-09-23, [#1227](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1227)): ninjutsu, a hand activation whose cost reads combat
+
+The #1221 addendum above listed **Ninjutsu** under "Still out of scope" with
+its two missing halves named. Both exist now —
+[ADR 0045](0045-combat-restrictions.md)'s 2026-09-23 amendment has the combat
+half (the attacking entry, and an exported "unblocked attacker") and
+[ADR 0073](0073-optional-additional-costs-and-the-cast-gate.md)'s has the
+paid-cost half — and what is left for this ADR is the part that turned out to
+be nothing at all.
+
+### Decision 29: the keyword is a constructor, and the activation path is untouched
+
+`effects.Ninjutsu(cost)` is `effects.Cycling(cost)`'s shape with a different
+cost component and a different verb:
+
+```go
+Label:  "Ninjutsu {1}{U} (…)",
+Cost:   Plus(ManaCost("{1}{U}"), ReturnAnUnblockedAttacker()),
+Zones:  []game.ZoneKind{game.ZoneHand},
+Effect: ninjutsuEnter,
+```
+
+Not one line of `ActivateCatalogAbility` changed. The zone dimension reached
+the hand in #660 (Decision 1 of [ADR 0062](0062-abilities-and-special-actions-from-the-hand.md)),
+the return component landed in #1213, and the boot-time guard that refuses a
+cost naming the source as a permanent on a non-battlefield ability
+(`AbilityNeedsPermanentSource`) already admits `ReturnToHand`, because the
+permanent it returns is not the source. That is the zone dimension paying off:
+the keyword that most obviously wanted a fork needed none.
+
+### Decision 30: the timing restriction is the COST, not a `Condition`
+
+Ninjutsu is activatable only from the declare-blockers step onward, while an
+unblocked attacker you control exists. That is a real restriction and it is
+deliberately NOT expressed as `ActivatedAbilityShape.Condition`.
+
+CR 118.3 already says a player can't begin to activate an ability whose cost
+they can't pay, and outside that window no creature is an unblocked attacker —
+so the cost IS the restriction, and a `Condition` would be the same sentence
+said twice in two places that could drift. The three consumers all get the
+right answer from the one clause: the validator refuses the activation
+(`ErrIllegalTarget`), `returnCostOptions` ships an empty picker, and the
+legal-move enumerator offers no move at all, because `returnPayments` returns
+nil when the pool cannot reach the clause's count (#544).
+
+The one thing that gets worse is the greyed ROW, and that is fixed on the
+client rather than by bending the ability's shape — see Decision 31.
+
+### Decision 31: one shortfall predicate, both menus
+
+`returnShortfall(options, label)` is factored out of `contextMenu.logic.ts`'s
+`abilityBlocked` and is now asked by `ManaAbilityMenu.svelte` too — the
+pop-over a HAND card and the zone browser open, which had no return arm at all.
+
+It matters more for ninjutsu than for any earlier card with the component.
+Quirion Ranger's row is unpayable when you control no Forest, which is rare;
+a ninjutsu row is unpayable for nearly the whole game and payable only inside
+one step with an unblocked attacker on the board. A row that never greyed
+would have been clickable and refused far more often than it worked.
+
+No other client change, and none was needed: `return_options` / `return_label`
+have been on `ActivatedAbilityView` since #1213 and `return_ids` on the
+`activate_ability` payload since the same PR, and Board's announce chain
+(`afterAbilityDiscardCost` → the return picker → `continueActivation`) never
+inspects the card's zone. Zone-ness is decided once, in `abilitiesOf`.
+
+### Cards
+
+**Ninja of the Deep Hours** (the canonical proof — draw a card on connect),
+**Ingenious Infiltrator** ("whenever a Ninja you control deals combat damage to
+a player", which fires off the keyword's own arrival because the Infiltrator is
+a Ninja), **Moonblade Shinobi** (an Illusion token) and **Prosperous Thief**
+(the batch form — "one or more Ninja or Rogue creatures you control deal combat
+damage", one Treasure per player connected with). All four `full`; all four are
+one `Ninjutsu(cost)` entry plus an ordinary combat-damage trigger.
+
+### Still out of scope
+
+- **Commander ninjutsu** (CR 702.49c) — Yuriko, the Tiger's Shadow. The entry
+  would come from the COMMAND ZONE as well as the hand, and
+  `putOntoBattlefieldFromZoneLocked` is already generic in its source zone, so
+  the ENTRY is free. What is not free is the commander bookkeeping around a
+  command-zone exit that is not a cast, which nothing in the engine does today;
+  it did not fall out, so it is not here.
+- **Ninjutsu on a card whose other half needs machinery.** Fallen Shinobi
+  ("you may play those cards without paying their mana costs" over another
+  player's exiled cards) and Silent-Blade Oni (cast a spell from an opponent's
+  hand) are ordinary catalog work behind other seams, not ninjutsu work.

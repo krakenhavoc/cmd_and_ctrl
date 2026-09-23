@@ -334,12 +334,6 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) (entered uu
 		if !ok {
 			return uuid.Nil, ErrCardNotFound
 		}
-		if tok.AttackingTarget != uuid.Nil {
-			// CR 506.3c: PUT onto the battlefield attacking, never
-			// declared, so the attack-declaration lock-in must not
-			// mistake this for a staged declaration and announce it.
-			g.noteAttackAnnouncedLocked(tok.InstanceID)
-		}
 		g.Battlefield.PushTop(tok)
 		moved = tok
 	default:
@@ -378,6 +372,15 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) (entered uu
 		}
 		break
 	}
+	// CR 506.3c (#1227): PUT onto the battlefield attacking, never
+	// declared — so the attack-declaration lock-in must not mistake
+	// this for a staged declaration and announce it. Read off the
+	// settled EVENT for the reason EntersTapped is, which is what
+	// makes this one line serve both the minted-token branch above
+	// (whose creation seeded EntersAttacking off the token) and every
+	// card that reaches this door. Before phase 3's EventETB, so an
+	// entering attacker's own ETB trigger finds it attacking.
+	g.stampEntryAttackerLocked(entered, ev.EntersAttacking)
 	if ev.FaceDown != FaceDownNone {
 		// CR 708.5, ADR 0082 decision 3: a FACE-DOWN entry — a
 		// manifest, or a spell cast face down — lands as a CR 708.2
