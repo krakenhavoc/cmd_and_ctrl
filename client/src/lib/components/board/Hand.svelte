@@ -29,6 +29,13 @@
     // permanent's abilities do. Self hands only: an opponent's hand
     // cards carry no abilities on the wire in the first place.
     onActivateAbility?: (card: CardView, abilityIndex: number) => void;
+    // #1228: and the MANA abilities that function from a hand —
+    // "Exile this card from your hand: Add {R}" (CR 113.6). They ride
+    // `zone_mana_abilities` and open the same popover, but they fire
+    // `activate_mana_ability` rather than `activate_ability`, which is
+    // why this is a second callback rather than a second index on the
+    // first.
+    onActivateManaAbility?: (card: CardView, abilityIndex: number) => void;
     // Why the CR 307.1 sorcery-speed window is shut, or "" when it is
     // open. Passed through to the popover exactly as the battlefield
     // rows pass it; no cycling ability is sorcery-speed today, but a
@@ -47,6 +54,7 @@
     isSelf,
     onPlayCard,
     onActivateAbility,
+    onActivateManaAbility,
     sorcerySpeedBlocked = "",
     snap = null,
     viewerID = null,
@@ -152,6 +160,9 @@
           priority={isSelf}
           onActivateAbility={isSelf && (c.zone_abilities?.length ?? 0) > 0
             ? (idx) => onActivateAbility?.(c, idx)
+            : undefined}
+          onActivateManaAbility={isSelf && (c.zone_mana_abilities?.length ?? 0) > 0
+            ? (idx) => onActivateManaAbility?.(c, idx)
             : undefined}
           {sorcerySpeedBlocked}
           onClick={isSelf && leg.legal ? () => handleCardClick(c) : undefined}

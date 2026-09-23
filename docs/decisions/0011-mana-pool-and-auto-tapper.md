@@ -421,3 +421,140 @@ permanent is still here". It no longer is — the plan's own sacrifice runs
 between the tap and the mint — so the pre-tap copy is now load-bearing on the
 auto-tap path exactly as it always was on `ActivateManaAbility`'s. The code was
 already right; only its reason changed.
+
+## Amendment (2026-09-23, #1228): the planner may spend a card that is not on the battlefield
+
+Decision 7 called the candidate set "every available mana ability on the
+battlefield", and for four sprints that sentence had no exceptions worth
+naming. CR 113.6 supplies two:
+
+```
+Simian Spirit Guide   Exile this card from your hand: Add {R}.
+Elvish Spirit Guide   Exile this card from your hand: Add {G}.
+```
+
+CR 605.1a makes those mana abilities — they could add mana, they are not
+loyalty abilities, they target nothing — so they resolve immediately, with no
+stack and no priority window, and can be activated in the middle of paying for
+a spell. And CR 113.6 is what lets them work at all from a hand: the ability
+says where it functions, which is the saying the rule asks for. A Spirit Guide
+is the ritual every deck that runs one runs it as, and to the auto-tapper it
+was invisible: a hand full of them read as "missing {R}" to the cast preview,
+to the strict gate and to every bot.
+
+Five decisions.
+
+### 1. The candidate set grows a second WALK, not a second solver
+
+`gatherTapSources` keeps the battlefield loop it has had since S15 and gains
+`gatherManaZoneSources` beside it, over `game.supportedManaAbilityZones`. Both
+append to one `[]tapSource` and the solver, the budget, the backtracking and
+the generic recruiter are untouched — a Spirit Guide is a source with one
+`{R}` slot and nothing about the search knows where it came from.
+
+The walk is over a declared list rather than over `p.Hand` for the reason
+`legal.abilityZones` and `protocol.stampZoneAbilities` are each one list:
+adding a zone should be adding it in one place. Today the list is the HAND
+alone, and `effects.Register` refuses anything else at boot — a zone no
+consumer walks is a declaration the engine silently ignores, and the card would
+register, look complete on the catalog page and never produce a mana.
+
+The per-card gates the hand walk does NOT apply are each a rule rather than a
+shortcut: no `Tapped` check and no `{T}` (the payment is the card leaving the
+zone), no `CanActivateManaAbilities` (Arrest and Cursed Totem restrict a
+permanent, and layer 6 has nothing to say about a card in a hand — the same
+omission `ActivateManaAbility` and `legal.activatedMoves` make on this arm), no
+summoning sickness (CR 302.6 is about a permanent you control) and no `Frozen`
+tier (a card about to be exiled will not miss an untap). The activation gate,
+the `Condition`, the CR 903.4f narrowing and the CR 106.12b production window
+are all asked exactly as the battlefield loop asks them, through the same
+helpers, because none of them is a fact about the battlefield.
+
+### 2. A third tier, below the second: `tapSource.LeavesHand`
+
+#1215 made a sacrifice-self source the LAST thing the planner reaches for.
+This is the tier below it:
+
+```
+Wanted → LeavesHand → Sacrifices → Frozen → (restrictiveness | tier, slotCnt)
+```
+
+One sentence: **a Treasure is a resource the player already put on the table
+and a card in hand is a spell they have not played yet, so the planner spends
+the Treasure first.** An untapped Mountain beats both, and a frozen Mountain
+beats both too — missing one untap is a permanent coming back next turn.
+
+`LeavesHand` sits ABOVE `Sacrifices` in both comparators, which is how "below"
+is spelled: the keys apply in order and the first to differ decides, so testing
+the hand bit first is what puts every hand source behind every Treasure.
+
+The wish still wins, unchanged and for the unchanged reason: #1212's hint is an
+explicit instruction from the card being cast and the tiers are the planner's
+own thrift. No printed card wishes for mana from a card in hand today, so the
+two do not yet meet; the order is stated rather than discovered later.
+
+### 3. Two pickers, not one picker with a zone parameter
+
+`autoTapAbilityFor` stays the battlefield picker and gains exactly one line —
+the CR 113.6 predicate, so a Spirit Guide that somehow reached the battlefield
+is not planned as a source there. `autoManaExileAbilityFor` is its
+non-battlefield sibling, and like it is shared by the planner and the executor
+so the two can never disagree about which ability index a planned card is going
+to be spent for.
+
+Two functions rather than one with a `zone` argument because the two exclude for
+different reasons. The battlefield picker's seven exclusions are about a payment
+the planner may not decide or may not afford. This one's demands are about what
+a card in a hand even IS: the ability has to function from this zone, and it has
+to pay by exiling itself — which has to be the WHOLE cost.
+
+That last demand is stated in the picker rather than inferred from the boot
+check two packages away, and it is the one line here that is really about
+safety: a mana ability off the battlefield with NO cost would be a source the
+planner could spend without limit. Every other component — a mana or life cost,
+a rider, a discard, restricted output, a spent exhaust ability — is excluded for
+exactly the reason the battlefield picker excludes it, and none of them becomes
+safe because the source is in a hand. What survives the filter is "Exile this
+card from your hand: Add {R}" and nothing else the catalog can express.
+
+### 4. The executor RE-FINDS the card; the plan carries no zone
+
+`plannedTap` is still `{CardID, OneColor}`. `materializePlanLocked` looks each
+planned card up on the battlefield and, failing that, in the piles a mana
+ability may function from, and takes the arm that matches where it actually is.
+
+Carrying the zone on the plan would be a second opinion about where a card is,
+and the whole discipline of this executor is that a plan can arrive stale: the
+gate, the sickness, the counter cost and the sacrifice are all re-asked, and a
+source that has changed drops silently rather than stranding what the plan had
+already spent. A card that has left the hand since the plan was made is simply
+not found, which is the same answer a permanent that left the battlefield gets.
+
+Three things differ on the non-battlefield arm and all three are rules: the
+"you" is the card's OWNER (CR 108.4), the production is not a tap for mana
+(CR 106.12a) — so `produceManaLocked` is told so and no triggered mana ability
+fires, because CR 605.1b wants a permanent tapped for mana and Wild Growth has
+nothing to attach to a card in hand — and `producedManaPreviewLocked` is
+therefore priced with `fromTap: false`, so Mana Reflection's "if you tap a
+permanent for mana" does not double a Spirit Guide.
+
+### 5. The undo stack covers a HAND exit now
+
+#1215 made the auto-tap payment able to destroy a permanent and named the undo
+stack's pre-mutation clone as load-bearing for a case it never used to cover.
+This is the same sentence one zone over: the payment can now take a card out of
+a player's hand, and a take-back has to put it back.
+`internal/ws/undo_exiled_mana_source_test.go` holds it, beside
+`undo_sacrificed_mana_source_test.go` that holds the other.
+
+**Still open**, named here rather than discovered later:
+
+- The sacrifice-only source (Gold, Eldrazi Spawn) named in the #1215 amendment
+  is unchanged and still not plannable. It is a nearer neighbour than it was —
+  this amendment proves a plan entry need not be a tap — but the fix is
+  `tapPlan` growing a payment kind, not another zone.
+- `AutoTapForCost*` returns `[]uuid.UUID`, so a plan containing a hand card
+  reaches the `/autotap` preview and the client as an ID like any other. The
+  client highlights planned permanents and simply finds nothing for a card in
+  hand; showing "and this card out of your hand" in the preview is a UI
+  improvement this PR did not make.

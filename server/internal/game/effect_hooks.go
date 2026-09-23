@@ -170,6 +170,32 @@ var CatalogTargetMode func(oracleID string) string
 // activate_mana_ability call to look up the ability's cost shape +
 // produced-mana string.
 type ManaAbilityShape struct {
+	// Zones is the CR 113.6 dimension on a MANA ability: the zones
+	// this ability functions from. Nil means the battlefield and
+	// nowhere else, which is every mana ability the catalog held
+	// before #1228.
+	//
+	// `ActivatedAbilityShape.Zones`' sibling (ability_zone.go, #660)
+	// and `TriggeredAbility.Zones`' (#922) and `StaticAbility.Zones`'
+	// (#1221), read through the same shape of predicate —
+	// ManaAbilityFunctionsFromZone — by the same four consumers: the
+	// activation path, the legal-move enumerator, the view's stamp
+	// and, uniquely to this ability kind, the auto-tapper.
+	//
+	// The one printed family is the Spirit Guides' "Exile this card
+	// from your hand: Add {R}" (CR 605.1a makes that a mana ability
+	// and CR 113.6 is what lets it work from a hand). ADR 0071
+	// Decision 1 note 3 predicted this day from the designation side:
+	// "the field plus its accessor is the same two lines on the day
+	// one does".
+	//
+	// Only the HAND is supported — supportedManaAbilityZones — and
+	// effects.Register refuses anything else at boot, for the reason
+	// StaticZoneUnsupported exists: a zone no consumer walks is a
+	// declaration the engine silently ignores, and the card would
+	// register, look complete on the catalog page and never work.
+	Zones []ZoneKind
+
 	TapCost bool
 	// SacrificeCost sacrifices the SOURCE as part of the cost
 	// (Treasure, Lotus Petal, an Eldrazi Spawn).
@@ -301,6 +327,39 @@ type ManaAbilityShape struct {
 	// pitch is a decision, and the planner makes none. A hand-clicked
 	// Skirge Familiar is a mana source; an auto-tapped one is not.
 	DiscardCards *DiscardCost
+
+	// ExileSelf exiles the SOURCE CARD out of the zone the ability
+	// was activated from, as part of the activation cost (#1228):
+	//
+	//	Simian Spirit Guide  "Exile this card from your hand: Add {R}."
+	//	Elvish Spirit Guide  "Exile this card from your hand: Add {G}."
+	//
+	// The SAME clause AbilityCost.ExileSelf carries (#1221,
+	// exile_cost.go), with the same validator and the same payer,
+	// because it is the same cost — scavenge exiles a card from a
+	// graveyard to put counters on something, a Spirit Guide exiles
+	// one from a hand to make mana, and a component declared twice is
+	// a component that can be paid two ways. The ZONE it is validated
+	// against comes off the ability's own Zones, not off the
+	// component: the clause names "this card", and which pile it is
+	// in is CR 113.6's business.
+	//
+	// It pays through the one exit primitive (routeCardToZoneLocked)
+	// with MustSettleNow, so a commander exiled to a Spirit Guide's
+	// cost still gets its CR 903.9 answer and the CR 601.2h /
+	// CR 602.2b indivisible step cannot pause on a prompt.
+	//
+	// Refused at BOOT on an ability that declares no non-battlefield
+	// zone, and required on one that does: a mana ability off the
+	// battlefield has no {T} and no permanent to sacrifice, so
+	// without this it would have no cost at all and CR 106.7's
+	// "could produce" would be reading a free mana source.
+	//
+	// The AUTO-TAPPER does plan it, as the LAST-resort tier below
+	// even a sacrifice source — see tapSource.LeavesHand. A card in
+	// hand is worth more than a Treasure, and both are worth less
+	// than an untapped land.
+	ExileSelf bool
 
 	// ProducedForPaid computes the produced-mana string from what
 	// the cost actually PAID, for an ability whose output the

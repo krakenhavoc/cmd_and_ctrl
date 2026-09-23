@@ -134,6 +134,11 @@ export function cardAsFace(card: CardView, i: number): CardView {
     active_face: i,
     ...castSurfaceOf(face),
     zone_abilities: undefined,
+    // #1228: the mana half of the same clearing. A Spirit Guide has
+    // one face, so nothing reaches this today; it is here because a
+    // list left behind when the face swaps is the bug this function
+    // exists to prevent.
+    zone_mana_abilities: undefined,
   };
 }
 

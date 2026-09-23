@@ -150,6 +150,8 @@ func buildDef(spec Spec) *game.CardDef {
 		d.ManaAbilities = make([]game.ManaAbilityShape, len(spec.ManaAbilities))
 		for i, a := range spec.ManaAbilities {
 			d.ManaAbilities[i] = game.ManaAbilityShape{
+				Zones:                     a.Zones,
+				ExileSelf:                 a.Cost.ExileSelf,
 				TapCost:                   a.Cost.Tap,
 				SacrificeCost:             a.Cost.Sacrifice,
 				SacrificeOther:            a.Cost.SacrificeOther,

@@ -258,7 +258,12 @@
   const activateManaAbility = $derived(
     isSelf
       ? (card: CardView, abilityIndex: number) => {
-          const ability = (card.mana_abilities ?? []).find((a) => a.index === abilityIndex);
+          // #1228: a permanent publishes `mana_abilities` and a card
+          // in hand whose mana ability functions there publishes
+          // `zone_mana_abilities` — never both. One lookup reads
+          // whichever is present, exactly as the card menu does.
+          const rows = card.mana_abilities ?? card.zone_mana_abilities ?? [];
+          const ability = rows.find((a) => a.index === abilityIndex);
           if (
             ability &&
             onManaAbilityCost &&
@@ -399,6 +404,7 @@
         {isSelf}
         onPlayCard={isSelf ? onPlayCard : undefined}
         onActivateAbility={isSelf ? onActivateAbility : undefined}
+        onActivateManaAbility={activateManaAbility}
         {sorcerySpeedBlocked}
         snap={view}
         {viewerID}

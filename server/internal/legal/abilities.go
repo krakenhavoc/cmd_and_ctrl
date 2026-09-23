@@ -1022,7 +1022,9 @@ type manaParams struct {
 	DiscardIDs []string `json:"discard_ids,omitempty"`
 }
 
-// manaMoves enumerates mana abilities on the seat's permanents.
+// manaMoves enumerates mana abilities on the seat's permanents and —
+// since #1228 — on the seat's own cards in every other zone a mana
+// ability can function from (CR 113.6).
 // Casts already auto-tap, so a policy rarely needs these for plain
 // "{T}: Add" sources; they matter for sacrifice sources (Treasure,
 // Lotus Petal, Ashnod's Altar) the auto-tapper never touches.
@@ -1044,151 +1046,211 @@ func (e *enumerator) manaMoves() {
 		if !game.CanActivateManaAbilities(source) {
 			continue
 		}
-		abilities := game.ManaAbilitiesForCard(*source)
-		for idx, ab := range abilities {
-			// #1183: "Activate each exhaust ability only once", and
-			// this object has. First, exactly as ActivateManaAbility
-			// checks it, and through the same one reader — #544's
-			// rule is that a bot is never offered a move the engine
-			// refuses.
-			if g.ManaAbilityExhausted(e.seat, source.InstanceID, ab) {
+		e.manaMovesForSource(source, game.ZoneBattlefield, restricted)
+	}
+	// #1228: the walk activatedMoves has made since #660, for the
+	// CR 605 ability kind. A Spirit Guide's "Exile this card from
+	// your hand: Add {R}" is an ordinary mana ability whose ability
+	// functions from a hand, so it goes through the same body below
+	// rather than through a second enumerator — the zone predicate is
+	// the only thing that differs.
+	//
+	// abilityZones() is reused whole rather than trimmed to the one
+	// pile game.supportedManaAbilityZones admits: the per-ability
+	// predicate inside the body is what decides, and walking the same
+	// four piles the activated half already walks keeps ONE list of
+	// "where can an ability come from" in this file. The piles are
+	// scanned either way, for the abilities loop above them.
+	//
+	// No CanActivateManaAbilities call, for the reason the activated
+	// walk makes none: layer 6 removes a PERMANENT's abilities, and
+	// ActivateManaAbility does not ask it off the battlefield either.
+	for _, zone := range e.abilityZones() {
+		if zone.z == nil {
+			continue
+		}
+		for i := range zone.z.Cards {
+			src := &zone.z.Cards[i]
+			// CR 108.4: off the battlefield the card's OWNER is the
+			// "you" of its printed text, and that is the check
+			// ActivateManaAbility makes. Free for the per-seat piles
+			// and the whole of the answer for exile, which is one
+			// shared pile holding everybody's cards.
+			if src.Owner != e.seat {
 				continue
 			}
-			// #1210, CR 602.5a: the board-wide "can't be activated"
-			// gate. Cursed Totem does NOT exempt mana abilities, so a
-			// Birds of Paradise under one is not a move — the same
-			// function ActivateManaAbility calls, with Mana: true, so
-			// the restriction decides and not this call site (#544).
-			if restricted && g.ActivationGateLocked(e.seat, *source, game.ZoneBattlefield,
-				game.ActivationAbility{Label: ab.Label, Mana: true}) != nil {
+			e.manaMovesForSource(src, zone.kind, restricted)
+		}
+	}
+}
+
+// manaMovesForSource enumerates one card's mana abilities, from the
+// zone that card is actually in. Split out of manaMoves (#1228) so
+// the battlefield loop and the other-zone loop share every line of
+// the cost solve — the sacrifice, counter and discard payments, the
+// affordability of a mana component, the CR 903.4f narrowing, the
+// exhaust gate and the per-source budget — exactly as
+// abilityMovesForSource is shared by the CR 602 pair.
+//
+// The ability list comes from game.ManaAbilitiesForCard, which is the
+// one accessor every consumer reads through, so the intrinsic
+// basic-land half (CR 305.6) is present here as it is on the
+// activation path — and filtered out again by the zone predicate for
+// a land sitting in a hand, which is exactly what should happen.
+func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, restricted bool) {
+	g := e.g
+	abilities := game.ManaAbilitiesForCard(*source)
+	for idx, ab := range abilities {
+		// CR 113.6 (#1228): the ability has to function from the zone
+		// the card is in. Same predicate the engine gates on, so a
+		// Forest sitting in a hand is never offered as a mana source
+		// and a Spirit Guide's hand ability is never offered from the
+		// battlefield either.
+		if !game.ManaAbilityFunctionsFromZone(ab, zone) {
+			continue
+		}
+		// #1183: "Activate each exhaust ability only once", and
+		// this object has. First, exactly as ActivateManaAbility
+		// checks it, and through the same one reader — #544's
+		// rule is that a bot is never offered a move the engine
+		// refuses.
+		if g.ManaAbilityExhausted(e.seat, source.InstanceID, ab) {
+			continue
+		}
+		// #1210, CR 602.5a: the board-wide "can't be activated"
+		// gate. Cursed Totem does NOT exempt mana abilities, so a
+		// Birds of Paradise under one is not a move — the same
+		// function ActivateManaAbility calls, with Mana: true, so
+		// the restriction decides and not this call site (#544).
+		if restricted && g.ActivationGateLocked(e.seat, *source, zone,
+			game.ActivationAbility{Label: ab.Label, Mana: true}) != nil {
+			continue
+		}
+		// #352: the activation gate first, exactly as
+		// ActivateManaAbility checks it — Temple of the False
+		// God is not a move with four lands out.
+		if ab.Condition != nil && !ab.Condition(g, e.seat, source.InstanceID) {
+			continue
+		}
+		// CR 903.4f (#844): "any color in your commander's color
+		// identity" adds nothing for a seat with no commander, or
+		// a colourless one. Tapping Command Tower for no mana is
+		// legal and pointless; it is not a move worth offering,
+		// and a bot that took it would just lose a land.
+		if game.ManaAbilityAddsNoMana(g, e.seat, source.InstanceID, ab) {
+			continue
+		}
+		if ab.TapCost {
+			if source.Tapped {
 				continue
 			}
-			// #352: the activation gate first, exactly as
-			// ActivateManaAbility checks it — Temple of the False
-			// God is not a move with four lands out.
-			if ab.Condition != nil && !ab.Condition(g, e.seat, source.InstanceID) {
+			if source.IsCreature() && game.HasSummoningSickness(source) {
 				continue
 			}
-			// CR 903.4f (#844): "any color in your commander's color
-			// identity" adds nothing for a seat with no commander, or
-			// a colourless one. Tapping Command Tower for no mana is
-			// legal and pointless; it is not a move worth offering,
-			// and a bot that took it would just lose a land.
-			if game.ManaAbilityAddsNoMana(g, e.seat, source.InstanceID, ab) {
+		}
+		// CR 119.4 and CR 119.8, the same predicate one path
+		// over (#544, #1200).
+		if !g.CanPayLifeLocked(e.p, ab.LifeCost) {
+			continue
+		}
+		// A mana component in the cost has to be already floating
+		// — the activation path deliberately does not auto-tap
+		// into a mana ability, so a Signet with an empty pool is
+		// not a legal move.
+		//
+		// #1191: the PRICED cost, not the printed one — the same
+		// function ActivateManaAbility pays through, so Boom
+		// Scholar's "{2} less to activate" reaching Loot, the
+		// Pathfinder's mana half is visible to the policy as an
+		// activation it can now afford, mirroring the CR 602 arm
+		// above (#544, sign reversed: pricing at the printed cost
+		// would silently hide a legal move).
+		if ab.ManaCost != "" {
+			cost, err := g.ManaAbilityManaCostForEffect(e.seat, *source, ab)
+			if err != nil || !e.p.ManaPool.CanPayFor(cost, 0, game.ManaSpendForAbility(*source)) {
 				continue
 			}
-			if ab.TapCost {
-				if source.Tapped {
-					continue
-				}
-				if source.IsCreature() && game.HasSummoningSickness(source) {
-					continue
-				}
+		}
+		sacrificeSets := [][]uuid.UUID{nil}
+		if ab.SacrificeOther != nil {
+			pool := e.sacrificePool(source.InstanceID, ab.SacrificeCost, ab.SacrificeOther)
+			// #1213: the same two-way split the CR 602 path makes.
+			// A mana ability announces no X, so only the OPEN form
+			// can reach here (effects.Register refuses CountFromX
+			// on a mana ability).
+			if game.SacrificeCostVariable(ab.SacrificeOther) {
+				sacrificeSets = e.variableSacrificePayments(pool, ab.SacrificeOther, source.InstanceID)
+			} else {
+				sacrificeSets = e.sacrificePayments(pool, ab.SacrificeOther, source.InstanceID)
 			}
-			// CR 119.4 and CR 119.8, the same predicate one path
-			// over (#544, #1200).
-			if !g.CanPayLifeLocked(e.p, ab.LifeCost) {
+			if len(sacrificeSets) == 0 {
 				continue
 			}
-			// A mana component in the cost has to be already floating
-			// — the activation path deliberately does not auto-tap
-			// into a mana ability, so a Signet with an empty pool is
-			// not a legal move.
-			//
-			// #1191: the PRICED cost, not the printed one — the same
-			// function ActivateManaAbility pays through, so Boom
-			// Scholar's "{2} less to activate" reaching Loot, the
-			// Pathfinder's mana half is visible to the policy as an
-			// activation it can now afford, mirroring the CR 602 arm
-			// above (#544, sign reversed: pricing at the printed cost
-			// would silently hide a legal move).
-			if ab.ManaCost != "" {
-				cost, err := g.ManaAbilityManaCostForEffect(e.seat, *source, ab)
-				if err != nil || !e.p.ManaPool.CanPayFor(cost, 0, game.ManaSpendForAbility(*source)) {
-					continue
-				}
-			}
-			sacrificeSets := [][]uuid.UUID{nil}
-			if ab.SacrificeOther != nil {
-				pool := e.sacrificePool(source.InstanceID, ab.SacrificeCost, ab.SacrificeOther)
-				// #1213: the same two-way split the CR 602 path makes.
-				// A mana ability announces no X, so only the OPEN form
-				// can reach here (effects.Register refuses CountFromX
-				// on a mana ability).
-				if game.SacrificeCostVariable(ab.SacrificeOther) {
-					sacrificeSets = e.variableSacrificePayments(pool, ab.SacrificeOther, source.InstanceID)
-				} else {
-					sacrificeSets = e.sacrificePayments(pool, ab.SacrificeOther, source.InstanceID)
-				}
-				if len(sacrificeSets) == 0 {
-					continue
-				}
-			}
-			// #1213: a "Discard N cards" cost on a mana ability
-			// (Skirge Familiar). Solved exactly as the activated
-			// path solves its own — ONE payment, the cheapest set in
-			// hand order, rather than one move per subset of the
-			// hand. Nothing payable means no move at all (#544), and
-			// the walk is the engine's own so an offered payment is
-			// one ActivateManaAbility accepts.
-			var manaDiscardIDs []uuid.UUID
-			if dc := ab.DiscardCards; dc != nil && dc.N > 0 {
-				opts := g.DiscardCostOptionsForEffect(e.seat, source.InstanceID, dc)
-				if len(opts) < dc.N {
-					continue
-				}
-				manaDiscardIDs = opts[:dc.N]
-			}
-			// #789: the counter components, enumerated by the SAME
-			// functions the activated path uses, because it is the
-			// same component. A Vivid land with no charge counters is
-			// not a five-colour move, and Ramos with four +1/+1
-			// counters is not a move at all.
-			counterChoices := []counterChoice{{}}
-			if rc := ab.RemoveCounters; rc != nil {
-				counterChoices = counterPaymentChoices(g.CounterCostOptionsForEffect(e.seat, source.InstanceID, rc), rc)
-				if len(counterChoices) == 0 {
-					continue
-				}
-			}
-			if ac := ab.AddCounter; ac != nil && !g.CanPlaceCounterForEffect(e.seat, source.InstanceID, ac) {
+		}
+		// #1213: a "Discard N cards" cost on a mana ability
+		// (Skirge Familiar). Solved exactly as the activated
+		// path solves its own — ONE payment, the cheapest set in
+		// hand order, rather than one move per subset of the
+		// hand. Nothing payable means no move at all (#544), and
+		// the walk is the engine's own so an offered payment is
+		// one ActivateManaAbility accepts.
+		var manaDiscardIDs []uuid.UUID
+		if dc := ab.DiscardCards; dc != nil && dc.N > 0 {
+			opts := g.DiscardCostOptionsForEffect(e.seat, source.InstanceID, dc)
+			if len(opts) < dc.N {
 				continue
 			}
-			for _, sacs := range sacrificeSets {
-				for _, cc := range counterChoices {
-					label := source.Name + ": " + ab.Label
-					if ab.Label == "" {
-						label = source.Name + ": add " + ab.Produced
-					}
-					label += sacrificeLabel(g, sacs)
-					label += cc.label(g)
-					// Mana Confluence's "Pay 1 life" is the same
-					// invisible cost an activated ability's is (#74),
-					// and so is a charge counter: the params name the
-					// permanent but never the price.
-					cost := moveCost(ab.LifeCost, 0)
-					for _, price := range cc.prices() {
-						cost = withCounterPrice(cost, price)
-					}
-					e.add(Move{
-						Type:   TypeActivateManaAbility,
-						Player: e.seat,
-						Kind:   KindMana,
-						Label:  label,
-						Source: source.InstanceID,
-						Cost:   cost,
-						Params: mustJSON(manaParams{
-							CardID:           source.InstanceID.String(),
-							AbilityIndex:     idx,
-							SacrificeIDs:     idStrings(sacs),
-							CounterSourceIDs: cc.wireIDs(),
-							CounterCounts:    cc.wireCounts(),
-							CounterKind:      cc.wireKind(),
-							CounterKinds:     cc.wireKinds(),
-							DiscardIDs:       idStrings(manaDiscardIDs),
-						}),
-					})
+			manaDiscardIDs = opts[:dc.N]
+		}
+		// #789: the counter components, enumerated by the SAME
+		// functions the activated path uses, because it is the
+		// same component. A Vivid land with no charge counters is
+		// not a five-colour move, and Ramos with four +1/+1
+		// counters is not a move at all.
+		counterChoices := []counterChoice{{}}
+		if rc := ab.RemoveCounters; rc != nil {
+			counterChoices = counterPaymentChoices(g.CounterCostOptionsForEffect(e.seat, source.InstanceID, rc), rc)
+			if len(counterChoices) == 0 {
+				continue
+			}
+		}
+		if ac := ab.AddCounter; ac != nil && !g.CanPlaceCounterForEffect(e.seat, source.InstanceID, ac) {
+			continue
+		}
+		for _, sacs := range sacrificeSets {
+			for _, cc := range counterChoices {
+				label := source.Name + ": " + ab.Label
+				if ab.Label == "" {
+					label = source.Name + ": add " + ab.Produced
 				}
+				label += sacrificeLabel(g, sacs)
+				label += cc.label(g)
+				// Mana Confluence's "Pay 1 life" is the same
+				// invisible cost an activated ability's is (#74),
+				// and so is a charge counter: the params name the
+				// permanent but never the price.
+				cost := moveCost(ab.LifeCost, 0)
+				for _, price := range cc.prices() {
+					cost = withCounterPrice(cost, price)
+				}
+				e.add(Move{
+					Type:   TypeActivateManaAbility,
+					Player: e.seat,
+					Kind:   KindMana,
+					Label:  label,
+					Source: source.InstanceID,
+					Cost:   cost,
+					Params: mustJSON(manaParams{
+						CardID:           source.InstanceID.String(),
+						AbilityIndex:     idx,
+						SacrificeIDs:     idStrings(sacs),
+						CounterSourceIDs: cc.wireIDs(),
+						CounterCounts:    cc.wireCounts(),
+						CounterKind:      cc.wireKind(),
+						CounterKinds:     cc.wireKinds(),
+						DiscardIDs:       idStrings(manaDiscardIDs),
+					}),
+				})
 			}
 		}
 	}

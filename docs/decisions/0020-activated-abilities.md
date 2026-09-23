@@ -1988,3 +1988,175 @@ one `Ninjutsu(cost)` entry plus an ordinary combat-damage trigger.
   ("you may play those cards without paying their mana costs" over another
   player's exiled cards) and Silent-Blade Oni (cast a spell from an opponent's
   hand) are ordinary catalog work behind other seams, not ninjutsu work.
+
+---
+
+## Addendum (2026-09-23): a MANA ability that functions from the hand (#1228)
+
+The 2026-09-22 addendum above closed the CR 602 half of CR 113.6 and named
+what was left: "`ManaAbilityShape` has no zone dimension, so the Spirit Guides
+stay blocked." This closes that.
+
+```
+Simian Spirit Guide   Exile this card from your hand: Add {R}.
+Elvish Spirit Guide   Exile this card from your hand: Add {G}.
+```
+
+CR 605.1a makes both of those mana abilities — they could add mana, they are
+not loyalty abilities, they target nothing — so they take the OTHER entry
+point. `ActivateManaAbility` found its source on the battlefield and nowhere
+else, `ManaAbilityShape` had neither the zone field nor an exile-this cost, and
+[ADR 0071](0071-designations-that-switch-abilities-on.md) Decision 1 note 3 had
+already written the sentence this issue is the answer to: mana abilities do not
+get the field, "not a principle — the field plus its accessor is the same two
+lines on the day one does".
+
+Six decisions. The auto-tapper is the seventh reader and has an amendment of
+its own on [ADR 0011](0011-mana-pool-and-auto-tapper.md), because it is the
+consumer with no CR 602 counterpart: nothing plans a cycling activation on the
+player's behalf, and a mana source is exactly the thing the planner exists to
+find.
+
+### 1. `ManaAbilityShape.Zones`, with the same nil default and the same posture
+
+`ActivatedAbilityShape.Zones`' sibling (#660), `TriggeredAbility.Zones`' (#922)
+and `StaticAbility.Zones`' (#1221). Nil means the battlefield and nowhere else,
+which is every mana ability the catalog held before this, the synthetic
+basic-land ability included.
+
+The posture is the one `AbilityFunctionsFromZone` takes and is worth restating
+because it is the half that surprises: **a declared zone is not an ADDITION to
+the battlefield.** A Simian Spirit Guide that got cast is a 2/2 Ape with no
+abilities, which is the paper card — "from your hand" is the ability, not a
+permission bolted onto one. The predicate is
+`game.ManaAbilityFunctionsFromZone`, a separate function from the CR 602 one
+rather than a generic over both, because the two ability kinds carry their cost
+components in different shapes (`ManaAbilityShape` holds them directly,
+`ActivatedAbilityShape` holds an `AbilityCost`) and a shared signature would
+have to take an interface to hide a four-line loop.
+
+What IS shared is the rule underneath: `ManaAbilityNeedsPermanentSource` is
+`AbilityNeedsPermanentSource` with the mana shape's field names mapped onto the
+CR 602 cost's, so "a tap cost needs a permanent" is written once and a
+component that becomes unpayable off the battlefield becomes unpayable for both
+kinds at once.
+
+### 2. Only the HAND is supported, and `effects.Register` refuses the rest at boot
+
+`game.supportedManaAbilityZones` is `{ZoneHand}`, the exact shape
+`supportedStaticZones` took for the graveyard in #1221 and for the same reason:
+a zone the planner's gather, the enumerator's walk and the view's stamp do not
+visit would be a declaration the engine silently ignores. The card would
+register, look complete on the catalog page, and never make a mana.
+
+The graveyard, exile and the command zone are each one line in that list plus
+one pile in `gatherManaZoneSources` on the day a printed card asks. Nothing
+does: a scan of the Scryfall dump finds exactly two cards with a mana ability
+that functions off the battlefield, and they are the two above.
+
+### 3. `ManaAbilityCost.ExileSelf` is #1221's clause with a second owner
+
+`AbilityCost.ExileSelf` is scavenge's and embalm's "Exile this card from your
+graveyard". This is the same clause, and it is the same `bool` in a second
+struct rather than a new component, for the reason `SacrificeOther`,
+`RemoveCounters`, `TapOthers` and `DiscardCards` are each one type with two
+owners: a component declared twice is a component that can be paid two ways.
+`exile_cost.go`'s validator and payer now take the zone and the bit rather than
+an `AbilityCost`, and both ability kinds call them.
+
+The ZONE it is validated against comes off the ability's own `Zones`, not off
+the component. The clause names "this card"; which pile the card is in is
+CR 113.6's business, and duplicating the zone on the cost would be two places
+that can disagree. (The CR 602 side keeps its hard-coded graveyard: every card
+that prints it there says "from your graveyard", and changing that was not this
+issue's to do.)
+
+It pays through the one exit primitive with `MustSettleNow`, so a commander
+spent as a Spirit Guide's cost gets its CR 903.9 window and settles without
+pausing — CR 601.2h and CR 602.2b make paying a cost one indivisible step, and
+a cost may not stop to ask a question. That is the same answer #660 gave for a
+commander pitched to a cost discard.
+
+### 4. The zone and the cost imply each other, at boot
+
+`checkManaAbilityZones` panics in both directions:
+
+- a non-battlefield zone with NO exile cost is a free repeatable mana source,
+  which is not a card anybody printed;
+- an exile cost with no non-battlefield zone has nothing to exile from.
+
+The first is the one that matters. Every other cost component a mana ability
+can carry is refused off the battlefield (there is nothing to tap, sacrifice or
+put a counter on), so without this rule the only way to declare a hand mana
+ability would be to declare a costless one. Stating the implication at boot is
+cheaper than discovering it as an infinite mana engine, and the auto-tapper's
+picker states it a second time rather than trusting a check two packages away.
+
+### 5. One activation path, and the CR 108.4 "you"
+
+`ActivateManaAbility` finds its source in whatever zone holds it —
+`findCardAndZoneLocked`, the same helper `ActivateCatalogAbility` has used
+since #660 — and branches exactly where the CR 602 path branches: on the
+battlefield the CONTROLLER is "you" and `CanActivateManaAbilities` applies; off
+it the OWNER is "you" (CR 108.4) and the layer-6 restriction is not asked,
+because Arrest and Cursed Totem restrict a permanent.
+
+The zone check goes after the index lookup and before everything else, so the
+ability judged is the one the view and the enumerator published and a refusal
+costs nothing. The exile is paid LAST, after the discards, because it moves the
+source and invalidates every pointer the payment block holds — and #1212's
+`ManaSourceKinds` snapshot is taken before the first payment, for the reason it
+already was on the Treasure path: by the time the {R} is minted the card is in
+exile. Off the battlefield the snapshot reads printed characteristics, which is
+the honest answer, because nothing outside the battlefield has layers.
+
+### 6. The wire gets `zone_mana_abilities`, and `mana_abilities` means the battlefield
+
+`zone_abilities`' twin one ability kind over, riding the same per-seat carrier
+(`castOffers`) and dropped by the same `publicIn`. A separate field rather than
+a reuse of `mana_abilities`, for the reason `zone_abilities` is separate from
+`activated_abilities` **and one reason more**: the two lists take different wire
+verbs (`activate_mana_ability` against `activate_ability`), so a client sends
+the verb that matches the row it read.
+
+The half that is a behaviour change for existing clients:
+**`mana_abilities` is now filtered to the battlefield.** It has always been
+stamped on every card in every zone, which was harmless while every mana ability
+functioned from the battlefield — a Forest in hand publishing "{T}: Add {G}" is
+a true statement about the permanent it would become. It stops being harmless
+the moment a card's mana ability does NOT function there, so the exported field
+now means what it always said it meant: what does this permanent do. A Forest in
+hand is unaffected; a Spirit Guide on the battlefield publishes neither list.
+
+A hand is hidden wholesale, so the per-seat scoping is belt-and-braces today.
+It is written that way because `supportedManaAbilityZones` is one entry away
+from a public pile, and a public pile publishing one seat's rows is #1055 and
+#1167 arriving one field over.
+
+### Shipped on
+
+**Simian Spirit Guide** and **Elvish Spirit Guide**, both `full`. They are the
+entire printed family — a scan of the Scryfall dump for "exile this card from
+your hand" finds nine other cards, and all nine are CR 602 activated abilities
+that GRANT a mana ability to a land (the OTJ "Outlaw" cycle, Emrakul, the
+Exigent Doom), which is a different seam. Cadaverous Bloom's "Exile a card from
+your hand: Add {B}{B}" is a BATTLEFIELD mana ability whose cost exiles a card
+from hand — a component `ManaAbilityCost` still does not have, and the sibling
+of the discard clause #1213 added.
+
+### Still out of scope
+
+- **A mana ability from a GRAVEYARD, exile or the command zone.** One line in
+  `supportedManaAbilityZones` and one pile in `gatherManaZoneSources`; no
+  printed card asks.
+- **`ManaAbilityCost.ExileCards`** — "Exile A CARD from your hand" as a cost
+  (Cadaverous Bloom). `DiscardCards`' sibling, on the battlefield, and a
+  different component from this one for exactly the reason `ExileSelf` is a
+  different component from `DiscardSelf`.
+- **A mana ability with a `Rider` off the battlefield.** The picker refuses one
+  and nothing prints one; it would be a rider on an object that no longer
+  exists by the time it ran.
+- Everything the #1221 addendum left open and #1227 did not take — the
+  per-instance exile grant (Greater Gargadon while suspended) and cost
+  modification for activated abilities — is unchanged. Ninjutsu closed in the
+  amendment above, which landed while this one was in flight.

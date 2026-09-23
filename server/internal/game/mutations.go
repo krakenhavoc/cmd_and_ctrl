@@ -1578,6 +1578,15 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 // ABOVE the spell the Treasure was cracked to cast rather than under
 // it.
 //
+// #1228: a planned source need not be a PERMANENT any more. A Spirit
+// Guide's "Exile this card from your hand: Add {R}" is a CR 605 mana
+// ability that functions from a hand (CR 113.6), so the loop re-finds
+// each planned card in whatever zone holds it now and takes the
+// non-battlefield arm below when that is not the battlefield. Re-found
+// rather than carried on the plan, for the reason every other gate
+// here is re-asked: a plan can arrive stale, and a zone stamped at
+// planning time would be a second opinion about where a card is.
+//
 // Skips PendingChoiceMana entirely — the auto-tapper's contract
 // is "no further player decisions required". Caller must hold
 // g.mu and have validated the plan via autoTapLocked.
@@ -1593,7 +1602,15 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 				break
 			}
 		}
-		if card == nil || card.Tapped {
+		if card == nil {
+			// #1228: not on the battlefield — a hand source, or a
+			// permanent that has left since the plan was made. The
+			// arm below tells the two apart by asking the card's own
+			// ability list, and does nothing for the second.
+			g.materializeExiledManaSourceLocked(p, planned, identity, &pending)
+			continue
+		}
+		if card.Tapped {
 			continue
 		}
 		// #1215: control, re-asked here because the plan may be
@@ -1875,6 +1892,167 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 				Colors:     addedColors,
 			}, &pending)
 		}
+	}
+}
+
+// materializeExiledManaSourceLocked is materializePlanLocked's
+// NON-BATTLEFIELD arm (#1228): one planned source that is a card in a
+// zone its mana ability functions from, paid for by exiling itself.
+//
+// Two Spirit Guides are the whole family, and the shape is the
+// battlefield arm with the tap taken out and the exile put in:
+//
+//	re-find  →  re-ask the picker, the gate and the condition
+//	         →  re-derive the slots  →  pay  →  mint
+//
+// Everything is re-asked rather than carried across from the planner,
+// for the reason the battlefield arm re-asks it: a plan can arrive
+// stale — the card may have been discarded in response, the ability
+// may have stopped functioning — and a source that has changed drops
+// silently rather than stranding what the plan had already spent.
+//
+// Three differences from the battlefield arm, all of them rules:
+//
+//   - the "you" is the card's OWNER (CR 108.4), not a controller,
+//     because a card outside the battlefield and the stack has none;
+//   - the production is NOT a tap for mana (CR 106.12a), so
+//     produceManaLocked is told so and no triggered mana ability
+//     fires (CR 605.1b wants a permanent tapped for mana — Wild
+//     Growth has nothing to attach to a card in hand);
+//   - the slots are NOT priced through the CR 614 window here, for
+//     the reason the battlefield arm does not price either: the real
+//     window runs inside produceManaLocked and pricing twice would
+//     multiply twice.
+//
+// Caller must hold g.mu.
+func (g *Game) materializeExiledManaSourceLocked(
+	p *Player,
+	planned plannedTap,
+	identity commanderIdentity,
+	pending *[]ColorRequirement,
+) {
+	cardID := planned.CardID
+	var (
+		card *Card
+		zone ZoneKind
+	)
+	for _, kind := range supportedManaAbilityZones {
+		pile := playerManaZone(p, kind)
+		if pile == nil {
+			continue
+		}
+		for i := range pile.Cards {
+			if pile.Cards[i].InstanceID == cardID {
+				card, zone = &pile.Cards[i], kind
+				break
+			}
+		}
+		if card != nil {
+			break
+		}
+	}
+	// Not in any pile a mana ability may function from: a permanent
+	// that left the battlefield since the plan was made, or a card
+	// that has already been spent. Either way it is not a source.
+	if card == nil || card.Owner != p.ID {
+		return
+	}
+	ab := g.autoManaExileAbilityFor(p.ID, *card, ManaAbilitiesForCard(*card), zone)
+	if ab == nil {
+		return
+	}
+	if g.ActivationGateLocked(p.ID, *card, zone, ActivationAbility{Label: ab.Label, Mana: true}) != nil {
+		return
+	}
+	if ab.Condition != nil && !ab.Condition(g, p.ID, cardID) {
+		return
+	}
+	slots, err := ParseProducedMana(manaAbilityProducedLocked(g, p.ID, cardID, ab, PaidCost{}))
+	if err != nil {
+		return
+	}
+	live := slots[:0]
+	for _, slot := range slots {
+		slot.Options = manaPickOptions(slot.Options, identity, ab.NarrowToCommanderIdentity)
+		if len(slot.Options) == 0 {
+			continue
+		}
+		live = append(live, slot)
+	}
+	slots = live
+	if len(slots) == 0 {
+		// CR 903.4f: nothing to add. Exiling the card for no mana is
+		// worse than leaving it in hand — the same posture the
+		// battlefield arm takes about tapping a land for nothing.
+		return
+	}
+	// #779: the plan's booked colour, checked BEFORE the card is
+	// spent, exactly as the battlefield arm checks it before the tap.
+	oneColorIdx := oneColorSlot(slots)
+	if oneColorIdx == oneColorSlotUnplannable {
+		return
+	}
+	if oneColorIdx == oneColorSlotNone && planned.OneColor != "" {
+		oneColorIdx = firstSlotOffering(slots, planned.OneColor)
+	}
+	if oneColorIdx >= 0 && !colorOffered(slots[oneColorIdx].Options, planned.OneColor) {
+		return
+	}
+	// #1212: what this card IS, read BEFORE the cost moves it — the
+	// same snapshot ActivateManaAbility takes and for the same
+	// reason, one zone over: by the time the mana is minted the card
+	// is in exile and this pointer is dangling.
+	srcKinds := manaSourceKindsOf(*card)
+	// #1183: the activation record, written at the last point before
+	// the card is committed — the placement and the argument the
+	// battlefield arm gives for its own write, with the exile in the
+	// tap's place.
+	g.noteAbilityActivationLocked(g.activationTallyKeyLocked(cardID, ab.Label))
+	// The payment. Through the one exit primitive with MustSettleNow
+	// (payExileSelfCostLocked), so a commander spent this way still
+	// gets its CR 903.9 answer and the CR 601.2h indivisible step
+	// cannot pause. A failure mints nothing and leaves the card where
+	// it was; nothing above this line has changed the board.
+	if err := g.payExileSelfCostLocked(p.ID, cardID, true); err != nil {
+		return
+	}
+	// `card` is DANGLING from here — the pile it points into has been
+	// rewritten. Nothing below reads it: the mint works off cardID,
+	// `ab` and the srcKinds snapshot taken above.
+	// #1184: the same two stamps a hand-clicked activation carries,
+	// so a watcher sees one kind of event whichever route produced
+	// the mana.
+	g.EmitEvent(Event{
+		Kind:    EventManaAbilityActivated,
+		Actor:   p.ID,
+		Source:  cardID,
+		CardID:  cardID,
+		Label:   ab.Label,
+		Exhaust: ab.Exhaust,
+	})
+	for si, slot := range slots {
+		var color string
+		if si == oneColorIdx {
+			color = planned.OneColor
+			for k := 0; k < slot.AmountFor(color); k++ {
+				bookColorRequirement(color, pending)
+			}
+		} else {
+			color = pickColorForSlot(slot.Options, pending)
+		}
+		if color == "" {
+			continue
+		}
+		g.produceManaLocked(
+			p, cardID,
+			repeatColor(color, slot.AmountFor(color)),
+			restrictionsFor(g, ab, p.ID, cardID),
+			srcKinds,
+			// CR 106.12a: not a tap for mana. The card was never
+			// tapped and was never a permanent.
+			false,
+			pending,
+		)
 	}
 }
 
@@ -4976,18 +5154,38 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	// indexing or a player's {B} click lands on a stale list.
 	// Fast-path no-op when nothing has changed.
 	g.RecomputeLayersIfStaleLocked()
-	// Locate the card on the battlefield.
-	var card *Card
-	for i := range g.Battlefield.Cards {
-		if g.Battlefield.Cards[i].InstanceID == cardID {
-			card = &g.Battlefield.Cards[i]
-			break
-		}
-	}
+	// #1228 / CR 113.6: the source is found in WHATEVER zone holds
+	// it, not on the battlefield alone — the same move
+	// ActivateCatalogAbility made for CR 602 abilities in #660. A
+	// Spirit Guide's "Exile this card from your hand: Add {R}" is an
+	// ordinary CR 605 mana ability whose ability functions from a
+	// hand, not a fork.
+	card, srcZone := g.findCardAndZoneLocked(cardID)
 	if card == nil {
 		return ErrCardNotFound
 	}
-	if card.Controller != playerID {
+	if srcZone == ZoneBattlefield {
+		if card.Controller != playerID {
+			return ErrCardCallerMismatch
+		}
+		// CR 602.5: an effect that stops this permanent's activated
+		// abilities being activated stops its mana abilities too,
+		// when it says so. Arrest does; Faith's Fetters explicitly
+		// does not ("unless they're mana abilities"), which is why
+		// the two are separate bits — see restrictions.go.
+		if !CanActivateManaAbilities(card) {
+			return ErrCantActivate
+		}
+	} else if card.Owner != playerID {
+		// CR 108.4: a card outside the battlefield and the stack has
+		// no controller, so its OWNER is the "you" of the printed
+		// text. The same check the CR 602 path makes, asked of the
+		// field that means something here.
+		//
+		// CanActivateManaAbilities is deliberately NOT asked, for the
+		// reason CanActivateAbilities is not asked one path over:
+		// Arrest and Cursed Totem apply to a permanent, and layer 6
+		// has nothing to say about a card in a hand.
 		return ErrCardCallerMismatch
 	}
 	p := g.playerByIDLocked(playerID)
@@ -4998,19 +5196,20 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	// fallback second. A catalog spec with ManaAbilities overrides
 	// the synthetic path wholesale (Dryad Arbor, if it ever lands,
 	// would declare its own; basic Forest just uses the synthetic).
-	// CR 602.5: an effect that stops this permanent's activated
-	// abilities being activated stops its mana abilities too, when
-	// it says so. Arrest does; Faith's Fetters explicitly does not
-	// ("unless they're mana abilities"), which is why the two are
-	// separate bits — see restrictions.go.
-	if !CanActivateManaAbilities(card) {
-		return ErrCantActivate
-	}
 	abilities := ManaAbilitiesForCard(*card)
 	if abilityIdx < 0 || abilityIdx >= len(abilities) {
 		return ErrInvalidParam
 	}
 	ab := abilities[abilityIdx]
+	// CR 113.6 (#1228): the ability has to function from the zone the
+	// card is in. After the index lookup, so the index judged is the
+	// one the view and the enumerator published, and before
+	// everything else, so a Forest's "{T}: Add {G}" fired out of a
+	// hand — or a Spirit Guide's ability fired off the battlefield —
+	// costs nothing and pays nothing.
+	if !ManaAbilityFunctionsFromZone(ab, srcZone) {
+		return ErrActivationZoneNotAllowed
+	}
 	// --- gate ----------------------------------------------------
 	//
 	// #1210, CR 602.5a: the board-wide "can't be activated" gate, the
@@ -5020,7 +5219,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	// Needle exempts mana abilities, Cursed Totem does not. See
 	// activation_gate.go on why the exemption is not a property of
 	// this call site.
-	if err := g.ActivationGateLocked(playerID, *card, ZoneBattlefield, ActivationAbility{Label: ab.Label, Mana: true}); err != nil {
+	if err := g.ActivationGateLocked(playerID, *card, srcZone, ActivationAbility{Label: ab.Label, Mana: true}); err != nil {
 		return err
 	}
 	// #1183: "Activate each exhaust ability only once", the mana
@@ -5122,10 +5321,17 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	// The source is a permanent, so the zone passed is the
 	// battlefield and the DiscardSelf branch can never fire here
 	// (effects.ManaAbilityCost has no such field to set).
-	discards, err := g.validateDiscardCostLocked(playerID, cardID, ZoneBattlefield, AbilityCost{
+	discards, err := g.validateDiscardCostLocked(playerID, cardID, srcZone, AbilityCost{
 		DiscardCards: ab.DiscardCards,
 	}, params.DiscardIDs)
 	if err != nil {
+		return err
+	}
+	// #1228: the exile-this component, validated by the SAME rule one
+	// ability kind over — the source has to be in the zone the clause
+	// names, which for the Spirit Guides is the hand. Free: srcZone
+	// is the zone the activation was already validated against.
+	if err := g.validateManaExileSelfCostLocked(srcZone, ab); err != nil {
 		return err
 	}
 	// CR 118.3, as on the activated path: a cost that prints both
@@ -5199,6 +5405,13 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	// (and a Treasure token has ceased to exist, CR 111.7) three
 	// statements before its mana reaches the pool, and `card` is
 	// deliberately nil by then.
+	//
+	// #1228: and the same sentence one zone over — a Spirit Guide is
+	// in EXILE by the time its {R} is minted, for exactly the same
+	// reason. Off the battlefield the read is of printed
+	// characteristics, which is the honest answer: nothing outside
+	// the battlefield has layers (CR 613 runs on permanents), so a
+	// Simian Spirit Guide in hand is the creature card it prints.
 	srcKinds := manaSourceKindsOf(*card)
 
 	// #1183: the activation record, in both scopes, written HERE —
@@ -5327,6 +5540,27 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		// (Marauding Mako) and a madness exile, for the same reason a
 		// sacrifice queues dies-triggers: drain them on the way out,
 		// with the mana already in the pool.
+		needStateChecks = true
+	}
+	// #1228: the exile-this component, LAST — after the discards, for
+	// the reason they are last: it moves the SOURCE and invalidates
+	// every pointer this block was holding. Through the one exit
+	// primitive with MustSettleNow, so a commander exiled to a Spirit
+	// Guide's cost still gets its CR 903.9 answer and the CR 601.2h
+	// indivisible step cannot pause on a prompt.
+	//
+	// Everything below works off `cardID`, `ab` and the `srcKinds`
+	// snapshot taken before the first payment; `card` is deliberately
+	// dangling from here, exactly as it is after a sacrifice.
+	if ab.ExileSelf {
+		if err := g.payExileSelfCostLocked(playerID, cardID, true); err != nil {
+			return err
+		}
+		card = nil
+		// The exit opens a CR 614 window and can queue leave-the-zone
+		// triggers, so drain them on the way out with the mana
+		// already in the pool — the posture the sacrifice and the
+		// discard above each take.
 		needStateChecks = true
 	}
 	defer func() {

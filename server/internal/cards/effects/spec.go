@@ -1016,6 +1016,22 @@ type ManaAbility struct {
 	Produced string
 	Label    string
 
+	// Zones is the CR 113.6 dimension: the zones this mana ability
+	// functions from (#1228). Nil means the battlefield and nowhere
+	// else, which is every mana ability in the catalog but the two
+	// Spirit Guides.
+	//
+	// `ActivatedAbility.Zones`' sibling (#660) and
+	// `TriggeredAbility.Zones`' (#922) and `StaticAbility.Zones`'
+	// (#1221). Build one with ExileFromHandForMana rather than by
+	// hand — the zone, the exile cost and the label travel together
+	// and a declaration missing any of them is refused at boot.
+	//
+	// Only the hand is supported (game.supportedManaAbilityZones);
+	// Register refuses the rest, because a zone no consumer walks is
+	// a mana ability the engine would silently never offer.
+	Zones []game.ZoneKind
+
 	// Exhaust marks an exhaust mana ability — "Exhaust — {G}, {T}:
 	// Add three mana of any one color. (Activate each exhaust ability
 	// only once.)" (#1183). The twin of ActivatedAbility.Exhaust, and
@@ -1292,6 +1308,23 @@ type ManaAbilityCost struct {
 	// The auto-tapper never plans a source that has one: which card
 	// to pitch is a decision, and the planner makes none.
 	DiscardCards *game.DiscardCost
+
+	// ExileSelf exiles the card that has the ability, out of the zone
+	// the ability functions from, as the activation cost (#1228):
+	//
+	//	Simian Spirit Guide  "Exile this card from your hand: Add {R}."
+	//	Elvish Spirit Guide  "Exile this card from your hand: Add {G}."
+	//
+	// The SAME clause AbilityCost.ExileSelf carries (#1221) — build
+	// it with ExileThis().ExileSelf if you are writing one by hand,
+	// though ExileFromHandForMana is the constructor that exists for
+	// it.
+	//
+	// Register refuses it on a mana ability that declares no
+	// non-battlefield zone (there would be nothing to exile from) and
+	// requires it on one that does (there would be no cost at all,
+	// and a free repeatable mana source is not a card).
+	ExileSelf bool
 }
 
 // ZeroUUID is an alias for uuid.Nil. Mostly used in tests to
