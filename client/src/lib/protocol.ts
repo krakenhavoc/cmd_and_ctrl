@@ -1076,6 +1076,11 @@ export interface StackItemView {
   // for anyone deciding whether to respond: an overloaded Cyclonic
   // Rift is a one-sided wipe, a hard-cast one is a single bounce.
   alt_cost?: string;
+  // CR 702.174 (#1267): the player the gift was promised to. Absent
+  // when no gift was promised, which includes every spell without
+  // one. Public — the promise is announced at CR 601.2b, and whether
+  // it was made changes what the spell does.
+  gift_to?: string;
   // S30: a CR 707.10 spell copy rather than a cast card. The copy
   // and its source look identical on the stack, and which is which
   // decides what countering one leaves behind.
@@ -1351,6 +1356,22 @@ export interface OptionalCostView {
   // sacrifice_options means the offer cannot be taken right now.
   discard_cards?: number;
   sacrifice_options?: LegalTargetsView;
+  // CR 702.174a (#1267): a gift offer. Taking it means naming one
+  // opponent to promise the gift to, and that choice rides cast_spell
+  // as `gift_opponent`. `opponent_options` is who may be named — the
+  // opponents still in the game. On a gift offer an absent or empty
+  // list means nobody is left to promise it to, so the offer cannot
+  // be taken right now (the server's `omitempty` drops an empty
+  // list).
+  chooses_opponent?: boolean;
+  opponent_options?: string[];
+  // #1267: the target clause the spell has WHEN THIS COST IS PAID —
+  // Long River's Pull counters any spell once the gift is promised.
+  // Same shape and meaning as AlternativeCostView's trio; absent when
+  // the cost leaves the card's own clause alone (every kicker).
+  target_mode?: string;
+  legal_targets?: LegalTargetsView;
+  clauses?: LegalTargetsView[];
 }
 
 // AlternativeCostView is one "you may cast this spell for its

@@ -271,7 +271,17 @@ export function canCastFromHand(
     const printedCounts = printedCostClaimable(face) && hasSatisfiableTargets(face.legal_targets);
     return (
       printedCounts ||
-      (face.alternative_costs ?? []).some((a) => hasSatisfiableTargets(a.legal_targets))
+      (face.alternative_costs ?? []).some((a) => hasSatisfiableTargets(a.legal_targets)) ||
+      // #1267: a promised gift can widen the clause (Long River's
+      // Pull counters any spell with it), so an optional cost that
+      // carries a satisfiable clause — and can itself be taken —
+      // keeps the card castable too.
+      (face.optional_costs ?? []).some(
+        (o) =>
+          o.legal_targets !== undefined &&
+          hasSatisfiableTargets(o.legal_targets) &&
+          !(o.chooses_opponent && (o.opponent_options?.length ?? 0) === 0),
+      )
     );
   };
   if (!faces.some(targetOK)) {
