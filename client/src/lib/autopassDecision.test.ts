@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { autopassDecision, type AutopassGates } from "./autopassDecision";
+import { autopassDecision, isBluff, type AutopassGates } from "./autopassDecision";
 
 // A viewer holding priority on an empty stack at their opponent's
 // upkeep with the default settings: nothing pinned, nothing owed, the
@@ -26,7 +26,14 @@ function gates(overrides: Partial<AutopassGates> = {}): AutopassGates {
     ownsEveryStackItem: false,
     stepStop: undefined,
     smartAutoPass: true,
-    hasLegalResponse: false,
+    alwaysStopOpponentStack: false,
+    hasResponse: false,
+    hasPlay: false,
+    combatWindow: false,
+    oppEndWindow: false,
+    bluffCounter: false,
+    bluffInstant: false,
+    bluffManual: false,
     ...overrides,
   };
 }
@@ -76,7 +83,7 @@ describe("autopassDecision — #526: a manual stop beats autopass", () => {
     // is "I want the cursor even though the engine sees no reason for
     // it" — bluffing, thinking, or an action the catalog doesn't
     // model yet.
-    const g = gates({ stepStop: true, smartAutoPass: true, hasLegalResponse: false });
+    const g = gates({ stepStop: true, smartAutoPass: true, hasPlay: false });
     expect(autopassDecision({ ...g, manualStop: false })).toBe("pass");
     expect(autopassDecision({ ...g, manualStop: true })).toBe("hold");
   });
@@ -100,7 +107,7 @@ describe("autopassDecision — #526: a manual stop beats autopass", () => {
       autopassToggle: true,
       stepStop: false,
       smartAutoPass: true,
-      hasLegalResponse: false,
+      hasPlay: false,
       step: "declare_blockers",
       manualStop: true,
     });
@@ -113,7 +120,7 @@ describe("autopassDecision — #526: a manual stop beats autopass", () => {
 // #318's Undo button lives inside it and nothing else in the client
 // can put a declared attacker back. The predicate half of this is
 // `hasDeclaredAttackers` in priority.ts (tested there); the half that
-// lives here is that a `true` hasLegalResponse on a stopped step
+// lives here is that a `true` hasPlay on a stopped step
 // still HOLDS, and that the autopass toggle still passes through it
 // ("Scope is the smart-autopass path only. An explicit autopass
 // toggle still passes." — #599).
@@ -124,9 +131,9 @@ describe("autopassDecision — #599: the declare-attackers review window", () =>
       viewerIsActive: true,
       stepStop: true,
       smartAutoPass: true,
-      // hasAnyLegalResponse returns true here via hasDeclaredAttackers
+      // hasPlay returns true here via hasDeclaredAttackers
       // even though the enumerator has only `pass` left to offer.
-      hasLegalResponse: true,
+      hasPlay: true,
       ...overrides,
     });
 
@@ -140,9 +147,7 @@ describe("autopassDecision — #599: the declare-attackers review window", () =>
 
   it("passes it with smartAutoPass off and the step unstopped", () => {
     // Nothing to review and no stop: smart-skip's own case.
-    expect(autopassDecision(declareAttackers({ stepStop: false, hasLegalResponse: false }))).toBe(
-      "pass",
-    );
+    expect(autopassDecision(declareAttackers({ stepStop: false, hasPlay: false }))).toBe("pass");
   });
 
   it("an explicit autopass toggle still passes the window", () => {
@@ -153,9 +158,9 @@ describe("autopassDecision — #599: the declare-attackers review window", () =>
   });
 
   it("smartAutoPass off keeps a stopped declare-attackers window", () => {
-    expect(
-      autopassDecision(declareAttackers({ smartAutoPass: false, hasLegalResponse: false })),
-    ).toBe("hold");
+    expect(autopassDecision(declareAttackers({ smartAutoPass: false, hasPlay: false }))).toBe(
+      "hold",
+    );
   });
 });
 
@@ -215,17 +220,17 @@ describe("autopassDecision — the autopass safety belt", () => {
   it("does not fire with the toggle already off", () => {
     // Toggle off, own main phase, stopped with something to do: the
     // conventional path holds.
-    expect(autopassDecision(ownMain({ autopassToggle: false, hasLegalResponse: true }))).toBe(
-      "hold",
-    );
+    expect(autopassDecision(ownMain({ autopassToggle: false, hasPlay: true }))).toBe("hold");
   });
 });
 
 // The #323 own-stack carve-out and the stops grid, unchanged by #526
 // but pinned here now that they are testable.
 describe("autopassDecision — the conventional path", () => {
-  it("holds a stack with an opponent's item on it", () => {
-    expect(autopassDecision(gates({ stackEmpty: false, ownsEveryStackItem: false }))).toBe("hold");
+  it("holds a stack with an opponent's item on it when the viewer can respond", () => {
+    expect(
+      autopassDecision(gates({ stackEmpty: false, ownsEveryStackItem: false, hasResponse: true })),
+    ).toBe("hold");
   });
 
   it("passes a stack that is entirely the viewer's own (#323)", () => {
@@ -249,21 +254,164 @@ describe("autopassDecision — the conventional path", () => {
   });
 
   it("holds a stopped step with something to consider", () => {
-    expect(autopassDecision(gates({ stepStop: true, hasLegalResponse: true }))).toBe("hold");
+    expect(autopassDecision(gates({ stepStop: true, hasPlay: true }))).toBe("hold");
   });
 
   it("passes a stopped step with nothing to consider", () => {
-    expect(autopassDecision(gates({ stepStop: true, hasLegalResponse: false }))).toBe("pass");
+    expect(autopassDecision(gates({ stepStop: true, hasPlay: false }))).toBe("pass");
   });
 
   it("holds a stopped step with smartAutoPass off", () => {
-    expect(
-      autopassDecision(gates({ stepStop: true, smartAutoPass: false, hasLegalResponse: false })),
-    ).toBe("hold");
+    expect(autopassDecision(gates({ stepStop: true, smartAutoPass: false, hasPlay: false }))).toBe(
+      "hold",
+    );
   });
 
-  it("passes an unstopped step even with something to consider", () => {
-    expect(autopassDecision(gates({ stepStop: false, hasLegalResponse: true }))).toBe("pass");
-    expect(autopassDecision(gates({ stepStop: undefined, hasLegalResponse: true }))).toBe("pass");
+  it("passes an unstopped quiet step even with something to play or respond with", () => {
+    // #1307: outside the ticked steps only the key windows stop, and
+    // an opponent's upkeep with an empty stack is not one of them.
+    expect(autopassDecision(gates({ stepStop: false, hasPlay: true }))).toBe("pass");
+    expect(autopassDecision(gates({ stepStop: undefined, hasPlay: true }))).toBe("pass");
+    expect(autopassDecision(gates({ stepStop: undefined, hasPlay: true, hasResponse: true }))).toBe(
+      "pass",
+    );
+  });
+
+  it("holds a land-only own main phase that is ticked", () => {
+    // A land is a play, not a response: it keeps your own ticked main
+    // phase open and never holds anyone else's window.
+    const g = gates({
+      step: "precombat_main",
+      viewerIsActive: true,
+      stepStop: true,
+      hasPlay: true,
+      hasResponse: false,
+    });
+    expect(autopassDecision(g)).toBe("hold");
+  });
+});
+
+// #1307 — smart autopass on an opponent's stack item. It used to
+// hold every time; now it holds only when the viewer has an answer.
+describe("autopassDecision — #1307: an opponent's stack", () => {
+  const oppStack = (overrides: Partial<AutopassGates> = {}) =>
+    gates({ stackEmpty: false, ownsEveryStackItem: false, ...overrides });
+
+  it("passes a spell the viewer cannot answer", () => {
+    expect(autopassDecision(oppStack())).toBe("pass");
+  });
+
+  it("holds when the viewer has a response", () => {
+    expect(autopassDecision(oppStack({ hasResponse: true }))).toBe("hold");
+  });
+
+  it("does not hold on a play with no response, even on a ticked step", () => {
+    expect(autopassDecision(oppStack({ hasPlay: true, stepStop: true }))).toBe("pass");
+  });
+
+  it("alwaysStopOpponentStack restores the old stop", () => {
+    expect(autopassDecision(oppStack({ alwaysStopOpponentStack: true }))).toBe("hold");
+  });
+
+  it("smart autopass off keeps the legacy stop", () => {
+    expect(autopassDecision(oppStack({ smartAutoPass: false }))).toBe("hold");
+  });
+
+  it("hold-priority still holds", () => {
+    expect(autopassDecision(oppStack({ holdPriority: true }))).toBe("hold");
+  });
+
+  it("bluffs when a bluff is armed and there is no answer", () => {
+    expect(autopassDecision(oppStack({ bluffCounter: true }))).toEqual({
+      kind: "bluff",
+      manual: false,
+    });
+    expect(autopassDecision(oppStack({ bluffInstant: true, bluffManual: true }))).toEqual({
+      kind: "bluff",
+      manual: true,
+    });
+  });
+
+  it("a real response beats a bluff", () => {
+    expect(autopassDecision(oppStack({ hasResponse: true, bluffCounter: true }))).toBe("hold");
+  });
+
+  it("a stack of the viewer's own never bluffs", () => {
+    expect(
+      autopassDecision(gates({ stackEmpty: false, ownsEveryStackItem: true, bluffCounter: true })),
+    ).toBe("pass");
+  });
+});
+
+// #1307 — the empty-stack key windows: combat with attackers
+// declared, and an opponent's end step.
+describe("autopassDecision — #1307: key windows", () => {
+  it("holds an unticked combat window with a response", () => {
+    const g = gates({ step: "declare_blockers", combatWindow: true, hasResponse: true });
+    expect(autopassDecision(g)).toBe("hold");
+  });
+
+  it("holds an unticked opponent's end step with a response", () => {
+    const g = gates({ step: "end", oppEndWindow: true, hasResponse: true });
+    expect(autopassDecision(g)).toBe("hold");
+  });
+
+  it("passes a key window with nothing to respond with", () => {
+    expect(autopassDecision(gates({ step: "end", oppEndWindow: true, hasPlay: true }))).toBe(
+      "pass",
+    );
+  });
+
+  it("an instant bluff bluffs in a key window, a counter bluff does not", () => {
+    const g = gates({ step: "end", oppEndWindow: true });
+    expect(isBluff(autopassDecision({ ...g, bluffInstant: true }))).toBe(true);
+    expect(autopassDecision({ ...g, bluffCounter: true })).toBe("pass");
+  });
+
+  it("smart autopass off ignores key windows", () => {
+    const g = gates({ step: "end", oppEndWindow: true, hasResponse: true, smartAutoPass: false });
+    expect(autopassDecision(g)).toBe("pass");
+  });
+
+  it("a ticked key window with no response falls through to the stops grid", () => {
+    const g = gates({ step: "end", oppEndWindow: true, stepStop: true, hasPlay: true });
+    expect(autopassDecision(g)).toBe("hold");
+  });
+});
+
+// #1307 — the Shift+P toggle stops for a real answer to an
+// opponent's stack item, and bluffs there if asked. Everywhere else
+// it passes as before.
+describe("autopassDecision — #1307: the autopass toggle", () => {
+  const oppStack = (overrides: Partial<AutopassGates> = {}) =>
+    gates({ autopassToggle: true, stackEmpty: false, ownsEveryStackItem: false, ...overrides });
+
+  it("holds an opponent's stack item the viewer can answer", () => {
+    expect(autopassDecision(oppStack({ hasResponse: true }))).toBe("hold");
+  });
+
+  it("passes one the viewer cannot answer", () => {
+    expect(autopassDecision(oppStack())).toBe("pass");
+  });
+
+  it("bluffs at one when a bluff is armed", () => {
+    expect(isBluff(autopassDecision(oppStack({ bluffCounter: true })))).toBe(true);
+  });
+
+  it("still passes key windows and ticked steps with an empty stack", () => {
+    const g = gates({
+      autopassToggle: true,
+      step: "end",
+      oppEndWindow: true,
+      hasResponse: true,
+      stepStop: true,
+      hasPlay: true,
+      bluffInstant: true,
+    });
+    expect(autopassDecision(g)).toBe("pass");
+  });
+
+  it("ignores alwaysStopOpponentStack", () => {
+    expect(autopassDecision(oppStack({ alwaysStopOpponentStack: true }))).toBe("pass");
   });
 });

@@ -2,12 +2,12 @@ import { describe, it, expect, beforeEach } from "vitest";
 
 import {
   autopassSuspended,
-  hasAnyLegalResponse,
   hasDeclaredAttackers,
   loopNoticeText,
   owesBlockDecision,
   _resetCacheForTests,
 } from "./priority";
+import { ALL_RESPONSES, hasPlay } from "./responseWindow";
 import type {
   CardView,
   GameView,
@@ -72,7 +72,7 @@ interface SnapOpts {
   hand?: CardView[];
   command?: CardView[];
   // S31: the seat's enumerated move list, which is now the whole
-  // input to hasAnyLegalResponse. Absent means the server said
+  // input to hasPlay. Absent means the server said
   // nothing — a distinct state from "enumerated, nothing to do".
   moves?: LegalMoveView[];
 }
@@ -119,37 +119,44 @@ function snap(o: SnapOpts = {}): GameView {
   };
 }
 
-describe("hasAnyLegalResponse", () => {
+describe("hasPlay", () => {
   beforeEach(() => _resetCacheForTests());
 
   it("returns false for null snap or viewer", () => {
-    expect(hasAnyLegalResponse(null, "p0")).toBe(false);
-    expect(hasAnyLegalResponse(snap(), null)).toBe(false);
+    expect(hasPlay(null, "p0", ALL_RESPONSES)).toBe(false);
+    expect(hasPlay(snap(), null, ALL_RESPONSES)).toBe(false);
   });
 
   it("returns false when viewer does not hold priority", () => {
     const s = snap({ priorityHolder: 1, moves: [pass, play("cast", "c-bolt")] });
-    expect(hasAnyLegalResponse(s, "p0")).toBe(false);
+    expect(hasPlay(s, "p0", ALL_RESPONSES)).toBe(false);
   });
 
   it("returns false during no-priority steps (Untap / Cleanup sentinel)", () => {
     const s = snap({ step: "untap", priorityHolder: -1, moves: [pass, play("cast", "c-bolt")] });
-    expect(hasAnyLegalResponse(s, "p0")).toBe(false);
+    expect(hasPlay(s, "p0", ALL_RESPONSES)).toBe(false);
   });
 
-  it("is true for any non-pass move the server enumerated", () => {
-    for (const kind of ["land", "cast", "activate", "mana", "attack", "block", "choice"] as const) {
+  it("is true for any non-pass, non-mana move the server enumerated", () => {
+    for (const kind of ["land", "cast", "activate", "attack", "block", "choice"] as const) {
       const s = snap({ moves: [pass, play(kind)] });
-      expect(hasAnyLegalResponse(s, "p0"), `kind=${kind}`).toBe(true);
+      expect(hasPlay(s, "p0", ALL_RESPONSES), `kind=${kind}`).toBe(true);
     }
   });
 
+  // #1307: an untapped land is not something to do. Before, a mana
+  // move counted, so any board with a land on it held every stop.
+  it("is false when the only non-pass moves are mana abilities", () => {
+    const s = snap({ moves: [pass, play("mana", "c-forest"), play("mana", "c-island")] });
+    expect(hasPlay(s, "p0", ALL_RESPONSES)).toBe(false);
+  });
+
   it("is false when yielding is the only move", () => {
-    expect(hasAnyLegalResponse(snap({ moves: [pass] }), "p0")).toBe(false);
+    expect(hasPlay(snap({ moves: [pass] }), "p0", ALL_RESPONSES)).toBe(false);
   });
 
   it("is false when the server enumerated nothing at all", () => {
-    expect(hasAnyLegalResponse(snap({ moves: [] }), "p0")).toBe(false);
+    expect(hasPlay(snap({ moves: [] }), "p0", ALL_RESPONSES)).toBe(false);
   });
 
   // The affordability case the old card-walk could not see. It read
@@ -162,27 +169,15 @@ describe("hasAnyLegalResponse", () => {
       hand: [card("bolt", "Instant"), card("wrath", "Sorcery")],
       moves: [pass],
     });
-    expect(hasAnyLegalResponse(s, "p0")).toBe(false);
+    expect(hasPlay(s, "p0", ALL_RESPONSES)).toBe(false);
   });
 
   // Compatibility: no move list on a frame where the viewer holds
   // priority means a pre-S31 server, or a field we dropped. Stopping
   // costs one click; skipping costs the player a window.
   it("errs toward stopping when the server shipped no move list", () => {
-    expect(hasAnyLegalResponse(snap(), "p0")).toBe(true);
-    expect(hasAnyLegalResponse(snap({ priorityHolder: 1 }), "p0")).toBe(false);
-  });
-
-  it("is stable across repeat calls and across seq changes", () => {
-    // The per-seq memo is gone — the answer is one array scan of a
-    // field the server computed — so the parameter is inert and the
-    // answer tracks the snapshot, never a stale cache entry.
-    const live = snap({ moves: [pass, play("cast", "c-bolt")] });
-    expect(hasAnyLegalResponse(live, "p0", 1)).toBe(true);
-    expect(hasAnyLegalResponse(live, "p0", 1)).toBe(true);
-    const quiet = snap({ moves: [pass] });
-    expect(hasAnyLegalResponse(quiet, "p0", 1)).toBe(false);
-    expect(hasAnyLegalResponse(quiet, "p0", 2)).toBe(false);
+    expect(hasPlay(snap(), "p0", ALL_RESPONSES)).toBe(true);
+    expect(hasPlay(snap({ priorityHolder: 1 }), "p0", ALL_RESPONSES)).toBe(false);
   });
 });
 
@@ -236,7 +231,7 @@ describe("owesBlockDecision", () => {
   });
 });
 
-describe("hasAnyLegalResponse — #328 blocking window", () => {
+describe("hasPlay — #328 blocking window", () => {
   beforeEach(() => _resetCacheForTests());
 
   it("is true when the viewer owes a block decision and has nothing else to do", () => {
@@ -250,9 +245,9 @@ describe("hasAnyLegalResponse — #328 blocking window", () => {
       battlefield: [card("enemy", "Creature", { controller: "p1" })],
       moves: [pass],
     });
-    expect(hasAnyLegalResponse(s, "p0", 500)).toBe(false);
+    expect(hasPlay(s, "p0", ALL_RESPONSES)).toBe(false);
     s.turn.block_decision_seats = [0];
-    expect(hasAnyLegalResponse(s, "p0", 501)).toBe(true);
+    expect(hasPlay(s, "p0", ALL_RESPONSES)).toBe(true);
   });
 
   it("still passes a declare-blockers window the viewer cannot block in", () => {
@@ -264,7 +259,7 @@ describe("hasAnyLegalResponse — #328 blocking window", () => {
       moves: [pass],
     });
     s.turn.block_decision_seats = [1];
-    expect(hasAnyLegalResponse(s, "p0", 502)).toBe(false);
+    expect(hasPlay(s, "p0", ALL_RESPONSES)).toBe(false);
   });
 
   // The two signals must not be able to disagree: a `block` move in
@@ -280,7 +275,7 @@ describe("hasAnyLegalResponse — #328 blocking window", () => {
       priorityHolder: 0,
       moves: [pass, play("block", "c-my-bear")],
     });
-    expect(hasAnyLegalResponse(s, "p0", 503)).toBe(true);
+    expect(hasPlay(s, "p0", ALL_RESPONSES)).toBe(true);
   });
 });
 
@@ -288,7 +283,7 @@ describe("hasAnyLegalResponse — #328 blocking window", () => {
 // taps every attacker it declares, so the enumerator has nothing left
 // to offer and smart auto-pass would close the window the undo lives
 // in.
-describe("hasAnyLegalResponse — #599 declare-attackers review window", () => {
+describe("hasPlay — #599 declare-attackers review window", () => {
   beforeEach(() => _resetCacheForTests());
 
   const attacker = (name: string, extras = {}) =>
@@ -302,7 +297,7 @@ describe("hasAnyLegalResponse — #599 declare-attackers review window", () => {
       battlefield: [attacker("declared", { attacking_target: "p1", tapped: true })],
       moves: [pass],
     });
-    expect(hasAnyLegalResponse(s, "p0", 600)).toBe(true);
+    expect(hasPlay(s, "p0", ALL_RESPONSES)).toBe(true);
   });
 
   it("passes a declare-attackers window with nothing declared", () => {
@@ -316,7 +311,7 @@ describe("hasAnyLegalResponse — #599 declare-attackers review window", () => {
       battlefield: [attacker("idle", { tapped: true })],
       moves: [pass],
     });
-    expect(hasAnyLegalResponse(s, "p0", 601)).toBe(false);
+    expect(hasPlay(s, "p0", ALL_RESPONSES)).toBe(false);
   });
 
   it("does not hold the window for a seat that is not attacking", () => {
@@ -331,7 +326,7 @@ describe("hasAnyLegalResponse — #599 declare-attackers review window", () => {
       ],
       moves: [pass],
     });
-    expect(hasAnyLegalResponse(s, "p0", 602)).toBe(false);
+    expect(hasPlay(s, "p0", ALL_RESPONSES)).toBe(false);
   });
 });
 

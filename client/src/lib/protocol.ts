@@ -418,6 +418,12 @@ export interface LegalMoveView {
   // list already promises. Automated seats use it as the way out of a
   // prompt whose other answers keep being rejected.
   always_legal?: boolean;
+  // #1307: true on a cast or activation whose chosen targets include
+  // an object on the stack — a counterspell, a Stifle, a redirect.
+  // Smart autopass reads it to tell "can answer the thing on the
+  // stack" from "has some instant". Absent on older servers, which
+  // the client treats as a plain instant-speed move.
+  targets_stack?: boolean;
   // What the move charges beyond its mana, in the components `params`
   // cannot name — the ones the engine reads off the ability rather
   // than off the payload. Absent for the overwhelming majority of

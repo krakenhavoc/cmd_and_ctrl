@@ -1,25 +1,16 @@
 // S13.6 — intelligent priority auto-pass.
 //
-// Answers one question: "does the viewer have anything to do in this
-// priority window?" The autoPassPriority effect uses it to skip
-// *stopped* steps where the viewer would otherwise have to click pass
-// with nothing to do.
-//
-// S31 sub-PR 2 turned this from a derivation into a lookup. It used
-// to walk the viewer's hand, command zone and battlefield running the
-// S13.3 timing predicates over every card, which meant it inherited
-// every bug in those predicates plus one of its own: it could not see
-// mana, so "you have a response" meant "you hold a card that is legal
-// at this speed", affordable or not. The server now enumerates the
-// seat's legal moves and ships them as `legal_moves`, so the question
-// is `legal_moves.some(m => m.kind !== "pass")` — the engine's own
-// answer, mana and targets and all.
+// The signals here are the ones that are not "which moves does the
+// viewer have": an owed block (#328), a declaration to review (#599)
+// and the loop breaker (#628). The move-list questions — is there a
+// response, is there a play, is this a window worth asking in — moved
+// to responseWindow.ts with #1307, which also stopped counting a mana
+// ability as a response.
 //
 // The server is still authoritative for every action; this module
 // exists purely to decide whether the client should auto-pass
-// priority on the viewer's behalf when `smartAutoPass` is on.
+// priority on the viewer's behalf.
 
-import { hasNonPassMove, hasPriority } from "./timing";
 import type { GameView } from "./protocol";
 
 // owesBlockDecision reports whether the viewer is facing a
@@ -100,45 +91,6 @@ export function hasDeclaredAttackers(
   return (snap.battlefield?.cards ?? []).some(
     (c) => c.controller === viewerID && !!c.attacking_target,
   );
-}
-
-// hasAnyLegalResponse reports whether the viewer could fire *any*
-// action against the current snapshot. Used by the smart-skip
-// auto-pass to decide whether to pass through a step the viewer has
-// pinned in their stops grid.
-//
-// Returns false for spectators and for viewers who don't hold
-// priority. An owed declare-blockers decision counts as "you have
-// something to do here" even though it isn't a response (#328).
-//
-// `snapSeq` is vestigial: the answer is one scan of a field the
-// server already computed, so the per-seq memo the card walk needed
-// is gone. The parameter stays so call sites don't churn.
-export function hasAnyLegalResponse(
-  snap: GameView | null | undefined,
-  viewerID: string | null,
-  snapSeq = -1,
-): boolean {
-  void snapSeq;
-  if (!snap || !viewerID) return false;
-
-  // #328 first: it's the one entry here that isn't a priority-gated
-  // action, and the one whose absence silently costs the player the
-  // game.
-  if (owesBlockDecision(snap, viewerID)) return true;
-
-  if (!hasPriority(snap, viewerID)) return false;
-
-  // #599: a declaration the viewer just made is something to look at,
-  // even though the engine has no further move to offer them.
-  if (hasDeclaredAttackers(snap, viewerID)) return true;
-
-  // No move list on a frame where the viewer holds priority means a
-  // server older than S31, or a field we dropped; err toward
-  // stopping. A false positive costs one click, a false negative eats
-  // a window the player was entitled to — the asymmetry ADR 0009 §3
-  // calls for.
-  return hasNonPassMove(snap) ?? true;
 }
 
 // autopassSuspended reports whether the server has told this table to

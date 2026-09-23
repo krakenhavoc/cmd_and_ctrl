@@ -123,8 +123,9 @@ export interface Settings {
   gameplay: {
     // Confirm-before-exit when navigating away from an active game.
     confirmExit: boolean;
-    // When the stack is empty and no legal plays exist, auto-pass
-    // priority. Held Shift on the pass button overrides.
+    // Pass priority automatically outside the stops grid and the
+    // #1307 key windows. Off means every priority window waits for a
+    // click. The rules live in autopassDecision.ts.
     autoPassPriority: boolean;
     // Per-step stops (S13). For each priority-granting step, true
     // means "stop here when priority lands on me" and false means
@@ -149,6 +150,21 @@ export interface Settings {
     // "stop every time regardless." Flip off to restore strict
     // pre-S13.6 behaviour where every stop demands a click.
     smartAutoPass: boolean;
+    // #1307: what counts as a response for smartAutoPass. Each is a
+    // category of the viewer's own legal moves; mana abilities and
+    // land plays are never responses. All on by default.
+    //   respondCounterspells  — casts / activations that target the stack
+    //   respondInstants       — any other instant-speed cast
+    //   respondAbilities      — any other non-mana activated ability
+    //   respondSpecialActions — foretell, suspend, turning face up
+    respondCounterspells: boolean;
+    respondInstants: boolean;
+    respondAbilities: boolean;
+    respondSpecialActions: boolean;
+    // #1307: stop for every opponent item on the stack, answer or
+    // not — the pre-#1307 behaviour. Off by default: with smart
+    // autopass on, a spell you can't respond to now passes.
+    alwaysStopOpponentStack: boolean;
     // #323: when every item on the stack is one the viewer put
     // there, auto-pass instead of asking "Counter or Pass?" about
     // your own spell. Defaults on — casting is already the
@@ -222,7 +238,7 @@ export interface Settings {
   };
 }
 
-export const SETTINGS_VERSION = 11;
+export const SETTINGS_VERSION = 12;
 const STORAGE_KEY = "cmdctrl.settings.v1";
 const LEGACY_MUTED_KEY = "cmdctrl.muted";
 
@@ -323,6 +339,13 @@ export function defaultSettings(): Settings {
       // affordance; smartAutoPass lets it mean "stop if I
       // might want to respond" instead of "stop every time."
       smartAutoPass: true,
+      // #1307 defaults: every response category counts, and an
+      // opponent's spell you can't answer passes.
+      respondCounterspells: true,
+      respondInstants: true,
+      respondAbilities: true,
+      respondSpecialActions: true,
+      alwaysStopOpponentStack: false,
       // #323 default: ON. "I cast it" is already the decision; the
       // client shouldn't ask you to confirm it. Opponent items on
       // the stack still stop, and the in-game "hold" toggle is the
@@ -502,6 +525,15 @@ function migrate(raw: unknown): Settings {
   // expansion mechanisms; a stored value for it is expected to stop
   // being honoured, which is fine because the shallow merge will
   // simply drop an unknown field at v12.
+  //
+  // v11 → v12 (#1307): gameplay.respondCounterspells,
+  // respondInstants, respondAbilities, respondSpecialActions (all
+  // true) and alwaysStopOpponentStack (false). The shallow merge
+  // fills them. Nothing is stored to rescue, but the upgrade does
+  // change behaviour for a player who touched nothing: with smart
+  // autopass on, an opponent's spell they cannot answer now passes
+  // instead of stopping, and a mana ability no longer counts as a
+  // response. alwaysStopOpponentStack puts the old stop back.
   merged.shortcuts = {
     enabled: merged.shortcuts?.enabled !== false,
     bindings: sanitizeOverrides(merged.shortcuts?.bindings),
