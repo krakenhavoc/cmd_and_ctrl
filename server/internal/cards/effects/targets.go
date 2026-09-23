@@ -201,6 +201,31 @@ func HasKeyword(kw string) CardPredicate {
 // "creature without flying" is how the clause reads on the card.
 func WithoutKeyword(kw string) CardPredicate { return Not(HasKeyword(kw)) }
 
+// WithMorphAbility — "target creature with a morph ability"
+// (CR 702.37a), the clause Backslide and Master of the Veil print.
+//
+// Not HasKeyword("morph"): morph is not a token in canonicalKeywords
+// and could not be, because a bare token has nowhere to put the cost
+// (morph.go). The card's declaration of the CR 708.4 face-down cast
+// IS the ability, so the predicate asks for that.
+//
+// MEGAMORPH COUNTS AND DISGUISE DOES NOT. CR 702.37b: "a megamorph
+// cost is a morph cost", and both declare FaceDownMorphed. Disguise
+// is its own keyword with its own rule (CR 702.168), and a card that
+// asks for "a morph ability" does not reach it — which is why the
+// kind is compared rather than the presence of any face-down cast.
+//
+// A FACE-DOWN permanent answers false, because CatalogKey answers ""
+// for one (CR 708.2a: it has no text to read the declaration off).
+// That is also the only useful answer: CR 708.2b says turning a
+// face-down permanent face down does nothing at all.
+func WithMorphAbility() CardPredicate {
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+		alt := game.FaceDownCastFor(game.CatalogKey(c))
+		return alt != nil && alt.FaceDown != nil && alt.FaceDown.Kind == game.FaceDownMorphed
+	}
+}
+
 // --- controller / owner predicates ------------------------------
 
 // YouControl passes for cards the caster controls.

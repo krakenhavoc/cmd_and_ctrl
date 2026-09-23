@@ -845,6 +845,38 @@ const (
 	// Added in S43 (ADR 0082, #1194).
 	EventTurnedFaceUp EventKind = "turned_face_up"
 
+	// EventTurnedFaceDown — the permanent CardID was turned face down
+	// by Source (CR 708.2a). Actor is the permanent's OWN controller,
+	// not the effect's: it is the seat whose board just changed, and
+	// Ixidron turns a whole table's creatures over in one batch.
+	// Source is the object that did it, which is the only half of
+	// "why" the event can carry — CR 708.7's other half, whether
+	// there is a way back up, is TurnFaceUpOffer's to answer off the
+	// card underneath.
+	//
+	// The twin of EventTurnedFaceUp, and a second kind rather than a
+	// direction flag on the first, because the two are not the same
+	// transition read backwards. CR 701.27b spells the distinction
+	// out for transform — "abilities that trigger when a permanent is
+	// turned face down won't trigger when that permanent transforms"
+	// — and a card watching one direction must not fire on the other.
+	//
+	// Two consumers, the same two EventTurnedFaceUp has:
+	// layerVersionBump invalidates on it, because the permanent's
+	// printed characteristics have just been replaced wholesale by
+	// the CR 708.2 body while it sits still; and a trigger on any
+	// OTHER permanent can watch it with no new constructor.
+	//
+	// What it cannot do is carry the turned permanent's OWN "when
+	// this is turned face down" trigger, because by the time it is
+	// emitted that permanent has no text (CR 708.2a) and the
+	// harvester reads a source's abilities through CatalogKey. That
+	// is the rule's asymmetry rather than the engine's — no printed
+	// card has such an ability — and it is written down in ADR 0082's
+	// 2026-09-23 amendment, decision A4.
+	// Added in S46 (ADR 0082 amendment, #1209).
+	EventTurnedFaceDown EventKind = "turned_face_down"
+
 	// EventRevealCards — Actor showed CardID to the whole table (CR
 	// 701.20). Fires once per card, so "reveal the top five cards of
 	// your library" produces five events sharing one RevealSeq; the

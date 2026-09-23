@@ -238,6 +238,19 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		// site (turnFaceUpLocked) rather than here, for the window
 		// between the two, exactly as the transform arm explains.
 		g.layerVersion.Add(1)
+	case EventTurnedFaceDown:
+		// ADR 0082 amendment / CR 708.2a, #1209: the same
+		// invalidation input as the arm above, travelling the other
+		// way. The real card at layer 0 is replaced by the nameless
+		// 2/2, so every anthem, every AppliesTo and every "creatures
+		// you control" count has a new answer while the permanent has
+		// not moved an inch.
+		//
+		// Nilled at the mutation site (TurnFaceDownForEffect) for the
+		// window the transform arm explains, and nilled there for
+		// every card in an Ixidron-sized batch BEFORE the first event
+		// goes out, so no listener reads a half-turned board.
+		g.layerVersion.Add(1)
 	case EventControlChanged:
 		// #990: who controls a permanent is an AppliesTo input for
 		// every "creatures you control" static and for every

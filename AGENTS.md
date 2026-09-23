@@ -2393,7 +2393,7 @@ Two other things the engine handles so a card never has to:
 A card is face down because of a *kind*, and the kind answers every
 question about it. `Card.SetFaceDown(kind)` and `Card.ClearFaceDown()`
 are the only writers of `FaceDown` + `FaceDownKind`; never set either
-field directly. Six kinds, in two families:
+field directly. Seven kinds, in two families:
 
 - **exile** — `FaceDownExiled` (CR 406.3: nobody may look, not even
   the player who exiled it — Necropotence) and `FaceDownForetold`
@@ -2401,10 +2401,16 @@ field directly. Six kinds, in two families:
   its real characteristics and its catalog entry, because the cast out
   of exile needs them.
 - **CR 708.2 permanents** — `FaceDownManifested`, `FaceDownMorphed`,
-  `FaceDownDisguised`, `FaceDownCloaked` (CR 708.5: the CONTROLLER may
-  look). `Card.FaceDownIsPermanent()` is that partition, and for one
-  of these the object **is** a 2/2 colourless creature with no name,
-  text, subtypes or mana cost — whatever the card underneath says.
+  `FaceDownDisguised`, `FaceDownCloaked` and `FaceDownTurned`
+  (CR 708.5: the CONTROLLER may look). `Card.FaceDownIsPermanent()` is
+  that partition, and for one of these the object **is** a 2/2
+  colourless creature with no name, text, subtypes or mana cost —
+  whatever the card underneath says. The first four are made by a
+  KEYWORD; `FaceDownTurned` is CR 708.2a's "a face-up permanent is
+  turned face down by a spell or ability" — Ixidron, Backslide, Cyber
+  Conversion — and is a kind of its own because CR 708.7 asks WHICH
+  rules put it there (#1209, [ADR 0082's 2026-09-23
+  amendment](docs/decisions/0082-casting-face-down-and-turning-face-up.md)).
 
 Four things a card therefore never has to do:
 
@@ -2432,7 +2438,22 @@ Four things a card therefore never has to do:
   through the S22 reveal frame (CR 708.9), and `ManifestForEffect` is
   the primitive that makes one (CR 701.40a). The mechanics — the
   `turn_face_up` special action (CR 116.2g), the face-down cast
-  (CR 708.4), morph and foretell themselves — are #95 and #658.
+  (CR 708.4), morph, disguise and foretell themselves — shipped in
+  #1194 and #658.
+
+Turning a permanent that is already on the battlefield face down is
+`Game.TurnFaceDownForEffect(source, ids...)` (#1209). It is variadic
+because Ixidron is the batch: every permanent is turned over before
+the first event goes out. Two refusals, both "nothing happens" in the
+rules and so neither an error — CR 708.2b (a face-down permanent can't
+be turned face down) and CR 712.16 (nor can a double-faced one) — and
+a token is NOT refused, because no rule refuses one. It is not a new
+object, so counters, damage, attachments and combat all ride through;
+an Aura whose enchant restriction the 2/2 no longer meets is swept by
+CR 704.5m with no code of its own. Whether such a permanent can be
+turned face UP again is `TurnFaceUpOffer`'s, and the answer is the
+CARD's: CR 702.37e and CR 702.168d key on the card having morph or
+disguise, whatever put the permanent face down.
 
 **Life changes: "that much life" comes from a continuation, never from
 a read-back (#793).** A life change runs the CR 614 window (#482), so

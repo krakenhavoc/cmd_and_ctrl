@@ -68,15 +68,31 @@ func CanTransform(c Card) bool {
 	if c.FaceDownIsPermanent() {
 		return false
 	}
+	if !isDoubleFacedPermanent(c) {
+		return false
+	}
+	return !faceIsInstantOrSorcery(c.Faces[1-c.ActiveFace])
+}
+
+// isDoubleFacedPermanent is "is this permanent represented by a
+// double-faced card" (CR 712.2), and it is the layout allowlist the
+// comment above calls the load-bearing line, pulled out so there is
+// ONE definition of it.
+//
+// Two rules ask, from opposite ends of the tree: CR 712.9 (only a
+// double-faced permanent can transform) and CR 712.16 ("Melded
+// permanents and other double-faced permanents can't be turned face
+// down", #1209). Two copies of an allowlist that an `adventure` and a
+// `split` card both fall foul of is two places to forget one.
+func isDoubleFacedPermanent(c Card) bool {
 	if len(c.Faces) != 2 {
 		return false
 	}
 	switch c.Layout {
 	case LayoutTransform, LayoutModalDFC:
-	default:
-		return false
+		return true
 	}
-	return !faceIsInstantOrSorcery(c.Faces[1-c.ActiveFace])
+	return false
 }
 
 // faceIsInstantOrSorcery is CR 712.10's guard, asked of a face rather
