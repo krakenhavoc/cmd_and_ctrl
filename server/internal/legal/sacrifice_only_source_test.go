@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
 )
@@ -92,6 +94,54 @@ func TestACastIsOfferedWhenAnotherSourceCoversItsSacrifice(t *testing.T) {
 	moves := legal.EnumerateFor(g, active.ID)
 	if got := movesFrom(moves, dispute, legal.KindCast); len(got) == 0 {
 		t.Fatalf("Swamp + two Spawn cast Deadly Dispute, but no cast was offered: %v", labels(moves))
+	}
+	dispatchAll(t, g, active.ID, moves)
+}
+
+// The activation twin: "{1}, Sacrifice a creature: You gain 1 life"
+// with one Eldrazi Spawn out. The Spawn is the only creature to
+// sacrifice AND the only source of the {1}, and ActivateCatalogAbility's
+// auto-tap will not spend what the activation names
+// (game.AbilityAutoTapExclusions), so the activation is not a move.
+// With a Mountain beside it, it is.
+func TestAnActivationIsNotOfferedWhenItsSacrificeIsAlsoItsMana(t *testing.T) {
+	g := newTable(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	clearHand(active)
+	advanceTo(t, g, game.StepPrecombatMain)
+	battlefieldCard(g, active, spawnCard())
+	outlet := battlefieldCard(g, active, game.Card{
+		Name:     "Paid Altar",
+		TypeLine: "Artifact",
+		ActivatedAbilities: []game.ActivatedAbilityShape{{
+			Label: "{1}, Sacrifice a creature: You gain 1 life",
+			Cost: game.AbilityCost{
+				Mana: "{1}",
+				SacrificeOther: &game.TargetSpec{
+					Mode:  "permanent",
+					Label: "a creature",
+					Zones: []game.ZoneKind{game.ZoneBattlefield},
+					CardOK: func(_ *game.Game, _ uuid.UUID, c game.Card, _ game.ZoneKind) bool {
+						return c.IsCreature()
+					},
+					Min: 1,
+					Max: 1,
+				},
+			},
+			Effect: func(*game.Game, *game.StackItem) error { return nil },
+		}},
+	})
+
+	moves := legal.EnumerateFor(g, active.ID)
+	if got := movesFrom(moves, outlet, legal.KindActivate); len(got) != 0 {
+		t.Errorf("offered %v — the Spawn cannot be both the sacrifice and the {1}", labels(got))
+	}
+	dispatchAll(t, g, active.ID, moves)
+
+	battlefieldCard(g, active, basic("Mountain", "Mountain"))
+	moves = legal.EnumerateFor(g, active.ID)
+	if got := movesFrom(moves, outlet, legal.KindActivate); len(got) == 0 {
+		t.Fatalf("a Mountain pays the {1}, but no activation was offered: %v", labels(moves))
 	}
 	dispatchAll(t, g, active.ID, moves)
 }

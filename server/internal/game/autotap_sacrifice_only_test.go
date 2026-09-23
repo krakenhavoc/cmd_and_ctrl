@@ -1,6 +1,7 @@
 package game
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -144,6 +145,28 @@ func TestAutoTapRefusesAManaAbilityThatCostsTheSourceNothing(t *testing.T) {
 
 	if plan, ok := g.AutoTapForCost(me.ID, costFor(t, "{1}"), 0); ok {
 		t.Fatalf("planned %v off an ability that costs its source nothing", plan)
+	}
+}
+
+// #1283: an exile-a-card cost is a decision — WHICH card leaves the
+// hand — so the planner refuses it even when the ability also owes a
+// {T} and would otherwise pass the demand above. (Cadaverous Bloom
+// itself prints no {T}, so the demand alone keeps it out; this is the
+// shape the exclusion exists for.)
+func TestAutoTapRefusesAnExileACardCost(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	pushTypedCardToHandWithCost(me, "Spare Card", "Sorcery", "{4}")
+	pushIntrinsicPermanent(g, me, "Tap-and-Pitch Rock", "Artifact",
+		[]ManaAbilityShape{{
+			TapCost:    true,
+			ExileCards: &ExileCost{N: 1, Label: "a card"},
+			Produced:   "{B}",
+			Label:      "{T}, Exile a card from your hand: Add {B}",
+		}}, nil)
+
+	if plan, ok := g.AutoTapForCost(me.ID, costFor(t, "{B}"), 0); ok {
+		t.Fatalf("planned %v — the planner would have chosen a card to exile", plan)
 	}
 }
 
@@ -300,6 +323,39 @@ func TestCastAutoTapDoesNotCrackTheSpawnNamedToTheSacrifice(t *testing.T) {
 	})
 	if !ok || len(plan) != 1 || plan[0].CardID != other {
 		t.Fatalf("plan = %v ok=%v, want the other Spawn", plan.cardIDs(), ok)
+	}
+}
+
+// The activation path end to end: "{1}, Sacrifice a creature" naming
+// the only Spawn, which is also the only possible {1}. The activation is
+// refused as unpayable before anything moves, rather than cracking the
+// Spawn for mana and then finding nothing to sacrifice.
+func TestActivateAbilityDoesNotCrackTheSpawnItSacrifices(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	me := g.Seats[g.Turn.ActiveSeat]
+	spawn := pushSpawn(g, me)
+	altar := NewCard("Paid Altar", me.ID)
+	altar.TypeLine = "Artifact"
+	altar.ActivatedAbilities = []ActivatedAbilityShape{{
+		Label: "{1}, Sacrifice a creature: You gain 1 life",
+		Cost: AbilityCost{
+			Mana:           "{1}",
+			SacrificeOther: altarAbility()[0].SacrificeOther,
+		},
+		Effect: func(*Game, *StackItem) error { return nil },
+	}}
+	g.Battlefield.PushTop(altar)
+
+	err := g.ActivateCatalogAbility(me.ID, altar.InstanceID, 0, ActivateAbilityParams{
+		Strict: true, AutoTap: true, SacrificeIDs: []uuid.UUID{spawn},
+	})
+	var short *InsufficientManaError
+	if !errors.As(err, &short) {
+		t.Fatalf("ActivateCatalogAbility = %v, want an InsufficientManaError", err)
+	}
+	if !g.Battlefield.Contains(spawn) {
+		t.Error("the refused activation cracked the Spawn anyway")
 	}
 }
 
