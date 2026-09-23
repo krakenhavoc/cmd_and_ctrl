@@ -1790,6 +1790,41 @@ func (g *Game) ReturnToBattlefieldForEffect(cardID, controller uuid.UUID, tapped
 //
 // Caller must hold g.mu.
 func (g *Game) returnFromGraveyardLocked(cardID uuid.UUID, dest ZoneKind, controller uuid.UUID, tapped bool) (uuid.UUID, error) {
+	return g.returnFromGraveyardFaceLocked(cardID, dest, controller, tapped, FaceDownNone, nil)
+}
+
+// ReturnFromGraveyardFaceDownForEffect is "return it to the
+// battlefield FACE DOWN under its owner's control. It's a Forest land."
+// — Yedora, Grave Gardener; and, with a controller and `tapped`,
+// Missy's "under your control face down and tapped. It's a 2/2
+// Cyberman artifact creature."
+//
+// It is the reanimation door (the CR 614 entry pipeline, the resume,
+// the controller stamped before the pipeline runs) with the face-down
+// state riding the entry EVENT, exactly as a morph's does — so the
+// one entry finisher lands it as a CR 708.2 object whose controller
+// is its only knower, and no ETB trigger or "as enters" hook fires
+// because CatalogKey has already gone silent (CR 708.2a).
+//
+// The kind is FaceDownTurned: an effect put it here, not a keyword,
+// so only the card's own morph or disguise brings it back up
+// (CR 708.7, CR 702.37e). `listed` is the body the card lists
+// (CR 708.2); nil is the default nameless 2/2.
+//
+// `controller` uuid.Nil means "under its owner's control". Returns
+// the entering permanent's ID, uuid.Nil when nothing entered, and
+// ErrCardNotFound when the card is not in a graveyard any more —
+// the CR 400.7 answer a "return it" trigger swallows.
+//
+// Caller must hold g.mu. Added for #1270.
+func (g *Game) ReturnFromGraveyardFaceDownForEffect(cardID, controller uuid.UUID, tapped bool, listed *FaceDownListing) (uuid.UUID, error) {
+	return g.returnFromGraveyardFaceLocked(cardID, ZoneBattlefield, controller, tapped, FaceDownTurned, listed)
+}
+
+// returnFromGraveyardFaceLocked is returnFromGraveyardLocked with the
+// face-down state a battlefield entry lands in. FaceDownNone is every
+// face-up return.
+func (g *Game) returnFromGraveyardFaceLocked(cardID uuid.UUID, dest ZoneKind, controller uuid.UUID, tapped bool, faceDown FaceDownKind, listed *FaceDownListing) (uuid.UUID, error) {
 	src := g.findCardZoneLocked(cardID)
 	if src == nil || src.Kind != ZoneGraveyard {
 		return uuid.Nil, ErrCardNotFound
@@ -1851,12 +1886,16 @@ func (g *Game) returnFromGraveyardLocked(cardID uuid.UUID, dest ZoneKind, contro
 		// ev.EntersTapped and nothing else knows what asked for the
 		// return.
 		return g.enterBattlefieldThroughPipelineLocked(&ReplacementEvent{
-			Kind:           RepEventMove,
-			Actor:          newController,
-			CardID:         cardID,
-			OldZone:        ZoneGraveyard,
-			NewZone:        ZoneBattlefield,
-			EntersTapped:   tapped,
+			Kind:         RepEventMove,
+			Actor:        newController,
+			CardID:       cardID,
+			OldZone:      ZoneGraveyard,
+			NewZone:      ZoneBattlefield,
+			EntersTapped: tapped,
+			// #1270: a face-down return rides the event the way a
+			// morph's entry does, so the one finisher lands it.
+			FaceDown:       faceDown,
+			FaceDownListed: listed,
 			entryResumable: true,
 		})
 	}

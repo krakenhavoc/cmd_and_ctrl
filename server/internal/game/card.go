@@ -465,6 +465,24 @@ type Card struct {
 	// 7b "set" that meets a 7c "modify" is right by construction.
 	// Added in S24, per ADR 0036 decision 2.
 	AttachedAt int64
+
+	// FaceTurnedAt is the CR 613.7f timestamp: "a permanent receives
+	// a new timestamp each time it turns face up or face down". The
+	// layer engine orders this permanent's own static abilities by
+	// the LATEST of EnteredBattlefieldAt, AttachedAt and this
+	// (layerTimestamp), so a morph turned face up applies its statics
+	// after everything already on the battlefield.
+	//
+	// A third field rather than a re-stamp of EnteredBattlefieldAt,
+	// because that one is also the permanent's IDENTITY pin — every
+	// "until end of turn" and control effect is keyed on
+	// (InstanceID, EnteredBattlefieldAt), and CR 708.8 says turning
+	// face up is not a new object — and it drives summoning
+	// sickness's "entered this turn". Stamped by turnFaceUpLocked and
+	// TurnFaceDownForEffect (both directions, #1271), zeroed on
+	// battlefield exit, carried by clone and snapshot. Zero means
+	// "never turned since it entered".
+	FaceTurnedAt int64
 	// NamedTribe is the creature type chosen for this permanent by an
 	// "as this enters, choose a creature type" instruction (CR
 	// 614.12) — Cavern of Souls, Door of Destinies, Vanquisher's
@@ -624,6 +642,26 @@ type Card struct {
 	// else, and a restore that lost it would resurrect every clone
 	// on the board as a 0/0. Added in S16.5 (#159 / #335).
 	PrintedSelf *PrintedValues
+
+	// FaceDownListed is the CR 708.2 body an effect LISTED for this
+	// face-down object — Cyber Conversion's "It's a 2/2 Cyberman
+	// artifact creature", Yedora's "It's a Forest land". nil is
+	// CR 708.2a's default nameless 2/2 (FaceDownBody), which is every
+	// morph, manifest, cloak and every Ixidron'd permanent.
+	//
+	// It REPLACES the default body rather than decorating it: a
+	// face-down Forest is not a creature at all. So it is read in
+	// exactly one place, faceDownCharacteristic, the layer-0
+	// baseline, and every reader downstream sees it for free.
+	//
+	// Per-OBJECT data beside the per-kind FaceDownKind, set and
+	// cleared with it by SetFaceDownListed / ClearFaceDown — so
+	// MoveCard's CR 400.7 clear drops it on every zone change and
+	// turning the permanent face up drops it too. Never mutated
+	// through the pointer: a writer replaces it whole, and
+	// clone.go and the snapshot copy it anyway, PrintedSelf's
+	// posture. ADR 0082's second 2026-09-23 amendment (#1270).
+	FaceDownListed *FaceDownListing
 	// StartingDefense is the printed defense a battle enters the
 	// battlefield with (CR 310.4), parsed from Scryfall's `defense`
 	// string at deck-import time. Zero for every other card type.
@@ -1195,11 +1233,17 @@ func (c Card) HasCardType(lowerType string) bool {
 // Changeling in a graveyard really is an Elf, which is what a tribal
 // reanimator or a lord counting from exile has to see.
 func (c Card) HasSubtype(subtype string) bool {
-	// CR 708.2: a face-down permanent has NO subtypes, so it is not a
-	// Human, not an Elf, and — the reason this guard precedes the
-	// changeling check below — not every creature type either.
+	// CR 708.2: a face-down permanent has no subtypes but the ones an
+	// effect LISTED for it (#1270) — Cyber Conversion's Cyberman,
+	// Yedora's Forest — so it is not a Human, not an Elf, and — the
+	// reason this branch precedes the changeling check below — not
+	// every creature type either: the card underneath's changeling is
+	// text the object does not have.
 	if c.FaceDownIsPermanent() {
-		return false
+		if c.effective != nil {
+			return typeListHas(c.effective.Subtypes, subtype)
+		}
+		return typeListHas(faceDownCharacteristic(c).Subtypes, subtype)
 	}
 	if c.effective == nil {
 		_, _, printed := ParseTypeLine(c.TypeLine)

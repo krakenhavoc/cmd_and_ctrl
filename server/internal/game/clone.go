@@ -461,6 +461,10 @@ func cloneCard(c Card) Card {
 	// values through the shared pointer and the undo would find it
 	// already un-cloned.
 	out.PrintedSelf = copyPrintedValues(c.PrintedSelf)
+	// #1270: the listed face-down body is a pointer too. Never
+	// mutated through, but copied for PrintedSelf's reason — an undo
+	// snapshot must not share anything with the live card.
+	out.FaceDownListed = c.FaceDownListed.clone()
 	if len(c.Counters) > 0 {
 		out.Counters = make(map[string]int, len(c.Counters))
 		for k, v := range c.Counters {

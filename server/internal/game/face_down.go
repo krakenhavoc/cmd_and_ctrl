@@ -82,8 +82,77 @@ const (
 	// allow a permanent to be face down MAY ALSO allow the
 	// permanent's controller to turn it face up") is a question about
 	// WHICH rules did it — which is what FaceDownKind is for.
+	//
+	// It is also the kind an EFFECT gives an object it puts onto the
+	// battlefield face down without a keyword — Yedora's graveyard
+	// return, Cybership's library put (#1270). Those are not manifest
+	// (CR 701.40 is a keyword action, and CR 701.34d's "a creature
+	// card may be turned up for its mana cost" is manifest's alone),
+	// and every question this kind answers — CR 708.7's "only the
+	// card's own morph or disguise brings it back up", no ward, the
+	// controller as the only viewer — is the same question for them.
+	// So the kind reads "an effect, not a keyword, did this", and
+	// where the object was a moment earlier is not part of it.
 	FaceDownTurned FaceDownKind = "turned"
 )
+
+// FaceDownListing is CR 708.2's LISTED characteristics: "face-down
+// spells and face-down permanents have no characteristics other than
+// those listed by the ability or rules that allowed the spell or
+// permanent to be face down". CR 708.2a's nameless 2/2 is what an
+// object gets when nothing lists anything, and FaceDownBody is that
+// default; a listing REPLACES it (ADR 0082's second 2026-09-23
+// amendment, #1270).
+//
+// It replaces rather than decorates, and Yedora is why: "It's a
+// Forest land" is not a creature, so a listing is the whole body —
+// types, subtypes, and P/T only when Types says creature.
+//
+// Only the characteristics a printed card lists are here. No card
+// lists a name, a mana cost, a colour, a supertype or an ability,
+// and every one of those is "none" on a CR 708.2 object. A Forest's
+// "{T}: Add {G}" is not an ability the listing grants: CR 305.6 hands
+// it to anything with the Forest subtype, and the engine derives it
+// from the effective subtypes (intrinsicLandManaAbilities).
+//
+// The per-OBJECT payload beside the per-KIND FaceDownKind. The kind
+// still answers every question that is about WHY the object is face
+// down — who may look, whether it can be turned up, whether it has
+// ward; the listing answers only "what is it", which is the one
+// question the kind could not.
+type FaceDownListing struct {
+	// Types are the card types, in printed order: {"Artifact",
+	// "Creature"} for a Cyberman, {"Land"} for Yedora's Forest.
+	Types []string `json:"types,omitempty"`
+	// Subtypes: {"Cyberman"}, {"Forest"}.
+	Subtypes []string `json:"subtypes,omitempty"`
+	// Power and Toughness are meaningful only when Types holds
+	// "Creature"; a listed land leaves them zero.
+	Power     int `json:"power,omitempty"`
+	Toughness int `json:"toughness,omitempty"`
+}
+
+// clone is the deep copy clone.go and the snapshot take. nil in, nil
+// out.
+func (l *FaceDownListing) clone() *FaceDownListing {
+	if l == nil {
+		return nil
+	}
+	out := *l
+	out.Types = append([]string(nil), l.Types...)
+	out.Subtypes = append([]string(nil), l.Subtypes...)
+	return &out
+}
+
+// characteristic is the listing as a layer-0 body.
+func (l *FaceDownListing) characteristic() Characteristic {
+	return Characteristic{
+		Power:     l.Power,
+		Toughness: l.Toughness,
+		Types:     append([]string(nil), l.Types...),
+		Subtypes:  append([]string(nil), l.Subtypes...),
+	}
+}
 
 // IsPermanentState reports whether this kind is one of the CR 708.2
 // object states — a face-down permanent, or a morph or disguise on
@@ -378,7 +447,8 @@ func turnFaceUpLabel(cost string) string {
 // declarations, EnteredBattlefieldAt and SummonedThisTurn all ride
 // through untouched. A morph that is attacking stays attacking, and
 // one that has been out since last turn can attack the moment it is
-// turned up.
+// turned up. The ONE thing that changes is CR 613.7f's timestamp,
+// which goes on its own field (Card.FaceTurnedAt, #1271).
 //
 // The ORDER is the rule. The state is cleared BEFORE the event is
 // emitted, because the trigger harvester reads a source's abilities
@@ -407,6 +477,12 @@ func (g *Game) turnFaceUpLocked(p *Player, cardID uuid.UUID, sa SpecialAction) e
 		return ErrSpecialActionNotOffered
 	}
 	c.ClearFaceDown()
+	// CR 613.7f (#1271): "a permanent receives a new timestamp each
+	// time it turns face up or face down". The statics the card just
+	// got back are ordered AFTER everything already on the
+	// battlefield. Its own field, not EnteredBattlefieldAt — see
+	// Card.FaceTurnedAt for why that one must ride through.
+	c.FaceTurnedAt = timeNowUnixNano()
 	// The card's OWN cached resolution is nilled at the mutation site
 	// rather than left to the listener, for the window between the
 	// two: EmitEvent dispatches synchronously, and a listener earlier
@@ -490,7 +566,8 @@ func CanTurnFaceDown(c Card) bool {
 // counters, marked damage, attachments, tap state, the combat
 // declarations, EnteredBattlefieldAt and SummonedThisTurn all ride
 // through untouched. An Ixidron'd attacker goes on attacking as a
-// 2/2. The Equipment stays equipped.
+// 2/2. The Equipment stays equipped. CR 613.7f's new TIMESTAMP is not
+// identity and goes on Card.FaceTurnedAt (#1271).
 //
 // The AURA stays attached too, and then may not survive the next
 // state-based check — CR 704.5m, and the engine needs no line here
@@ -534,9 +611,30 @@ func CanTurnFaceDown(c Card) bool {
 // Caller must hold g.mu (write). Added in S46 (ADR 0082's 2026-09-23
 // amendment, #1209).
 func (g *Game) TurnFaceDownForEffect(source uuid.UUID, ids ...uuid.UUID) []uuid.UUID {
+	return g.TurnFaceDownListedForEffect(source, nil, ids...)
+}
+
+// TurnFaceDownListedForEffect is TurnFaceDownForEffect for an effect
+// that LISTS the characteristics the permanent has face down
+// (CR 708.2) — Cyber Conversion's "Turn target creature face down.
+// It's a 2/2 Cyberman artifact creature." nil `listed` is CR 708.2a's
+// default body, which is what TurnFaceDownForEffect passes.
+//
+// Everything else is TurnFaceDownForEffect's contract, including the
+// CR 708.2b refusal: a permanent that is already face down is left
+// alone, and "that effect doesn't change any of its characteristics"
+// means its listing too — a Cyber Conversion aimed at a morph does
+// not make it a Cyberman.
+//
+// Caller must hold g.mu (write). Added for #1270.
+func (g *Game) TurnFaceDownListedForEffect(source uuid.UUID, listed *FaceDownListing, ids ...uuid.UUID) []uuid.UUID {
 	if g.Battlefield == nil || len(ids) == 0 {
 		return nil
 	}
+	// CR 613.7f (#1271): one timestamp for the whole batch — Ixidron
+	// turns every creature over as one event, so none of them is
+	// "later" than another.
+	now := timeNowUnixNano()
 	seen := make(map[uuid.UUID]bool, len(ids))
 	actors := make(map[uuid.UUID]uuid.UUID, len(ids))
 	turned := make([]uuid.UUID, 0, len(ids))
@@ -556,7 +654,12 @@ func (g *Game) TurnFaceDownForEffect(source uuid.UUID, ids ...uuid.UUID) []uuid.
 		// of its own to report, and layer 2 rides through unchanged
 		// anyway (faceDownCharacteristic keeps baseController).
 		actors[id] = g.Battlefield.Cards[idx].Controller
-		g.applyFaceDownLandingLocked(g.Battlefield, id, FaceDownTurned)
+		g.applyFaceDownLandingLocked(g.Battlefield, id, FaceDownTurned, listed)
+		// CR 613.7f (#1271): a new timestamp for turning face down.
+		// FaceTurnedAt rather than EnteredBattlefieldAt, which is the
+		// object's identity pin and must ride through (CR 708.8's
+		// "not a new object" holds this direction too).
+		g.Battlefield.Cards[idx].FaceTurnedAt = now
 		// The card's own cached resolution is nilled at the mutation
 		// site rather than left to the listener, for the window
 		// between the two: EmitEvent dispatches synchronously, and a
@@ -581,26 +684,45 @@ func (g *Game) TurnFaceDownForEffect(source uuid.UUID, ids ...uuid.UUID) []uuid.
 	return turned
 }
 
-// SetFaceDown puts the card into a face-down state, or takes it out of
-// one when kind is FaceDownNone. The ONLY writer of the pair, so
-// "FaceDown true with no kind" cannot be built.
+// SetFaceDown puts the card into a face-down state with CR 708.2a's
+// default body, or takes it out of one when kind is FaceDownNone.
+// SetFaceDownListed is the same with a listed body.
 //
 // It does not touch KnownBy: who may look is the caller's business,
 // because the answer needs the seat list (faceDownViewersLocked).
 func (c *Card) SetFaceDown(kind FaceDownKind) {
+	c.SetFaceDownListed(kind, nil)
+}
+
+// SetFaceDownListed is the ONLY writer of the face-down triple —
+// FaceDown, FaceDownKind and FaceDownListed — so "face down with no
+// kind" and "a listing on a face-up card" cannot be built.
+//
+// A listing is kept only on a CR 708.2 permanent state. A face-down
+// card in EXILE has no characteristics at all (CR 406.3a), so nothing
+// can be listed for it and a listing handed in with an exile kind is
+// dropped rather than trusted. The listing is copied, so the caller's
+// value can never alias a card's.
+func (c *Card) SetFaceDownListed(kind FaceDownKind, listed *FaceDownListing) {
 	if kind == FaceDownNone {
 		c.ClearFaceDown()
 		return
 	}
 	c.FaceDown = true
 	c.FaceDownKind = kind
+	c.FaceDownListed = nil
+	if kind.IsPermanentState() {
+		c.FaceDownListed = listed.clone()
+	}
 }
 
 // ClearFaceDown turns the object face up. Called unconditionally by
-// MoveCard on every zone change (CR 400.7).
+// MoveCard on every zone change (CR 400.7), which is what drops a
+// listed body with the state it belonged to.
 func (c *Card) ClearFaceDown() {
 	c.FaceDown = false
 	c.FaceDownKind = FaceDownNone
+	c.FaceDownListed = nil
 }
 
 // FaceDownIsPermanent reports whether this card is a CR 708.2 object
@@ -615,8 +737,10 @@ func (c Card) FaceDownIsPermanent() bool {
 	return c.FaceDown && c.FaceDownKind.IsPermanentState()
 }
 
-// faceDownCharacteristic is the CR 708.2 body: a 2/2 creature with no
-// name, no mana cost, no subtypes and no colour.
+// faceDownCharacteristic is the CR 708.2 body: what an effect LISTED
+// for this object (Card.FaceDownListed, #1270) when it listed
+// anything, and otherwise CR 708.2a's 2/2 creature with no name, no
+// mana cost, no subtypes and no colour.
 //
 // It is returned from printedCharacteristic, which is layer 0 — the
 // baseline the whole CR 613 pass is applied to — so an anthem still
@@ -628,13 +752,20 @@ func (c Card) FaceDownIsPermanent() bool {
 // The layer-2 control baseline rides through unchanged: turning a
 // permanent face down does not change who controls it.
 func faceDownCharacteristic(c Card) Characteristic {
-	ch, _ := FaceDownBody(c.FaceDownKind)
+	var ch Characteristic
+	if c.FaceDownListed != nil {
+		ch = c.FaceDownListed.characteristic()
+	} else {
+		ch, _ = FaceDownBody(c.FaceDownKind)
+	}
 	ch.Controller = c.baseController()
 	return ch
 }
 
-// FaceDownBody is the CR 708.2 body as a pure function of the kind,
-// and the ONE definition of the 2/2. ok is false — and the
+// FaceDownBody is the CR 708.2a DEFAULT body as a pure function of the
+// kind, and the ONE definition of the 2/2. An object an effect listed
+// characteristics for carries them on Card.FaceDownListed instead,
+// and faceDownCharacteristic prefers that (#1270). ok is false — and the
 // Characteristic is the zero value — for a kind that is not a CR 708.2
 // object state, so a caller's guard and this one cannot drift.
 //
@@ -702,8 +833,9 @@ func (g *Game) faceDownViewersLocked(c Card) []uuid.UUID {
 }
 
 // applyFaceDownLandingLocked puts the card at cardID in zone into the
-// face-down state `kind` and sets its knowers to the decision-2
-// answer. The one write path every face-down state uses — the exile
+// face-down state `kind` — with the body an effect listed for it, or
+// CR 708.2a's default when `listed` is nil — and sets its knowers to
+// the decision-2 answer. The one write path every face-down state uses — the exile
 // route (zone_route.go), the battlefield entry (battlefield_put.go)
 // and, since #1209, the CR 708.2a turn-face-down above, which is the
 // only one of the three whose card was already sitting in its zone
@@ -715,7 +847,7 @@ func (g *Game) faceDownViewersLocked(c Card) []uuid.UUID {
 // "public zone" from "public object".
 //
 // Caller must hold g.mu.
-func (g *Game) applyFaceDownLandingLocked(zone *Zone, cardID uuid.UUID, kind FaceDownKind) {
+func (g *Game) applyFaceDownLandingLocked(zone *Zone, cardID uuid.UUID, kind FaceDownKind, listed *FaceDownListing) {
 	if zone == nil || kind == FaceDownNone {
 		return
 	}
@@ -723,7 +855,7 @@ func (g *Game) applyFaceDownLandingLocked(zone *Zone, cardID uuid.UUID, kind Fac
 		if zone.Cards[i].InstanceID != cardID {
 			continue
 		}
-		zone.Cards[i].SetFaceDown(kind)
+		zone.Cards[i].SetFaceDownListed(kind, listed)
 		viewers := g.faceDownViewersLocked(zone.Cards[i])
 		zone.Cards[i].ClearKnown()
 		zone.Cards[i].AddKnowersAll(viewers)

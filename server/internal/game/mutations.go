@@ -1169,7 +1169,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		// not a public object, which is the one line that separates
 		// the two. Same writer as the face-down exile route and the
 		// face-down battlefield entry (ADR 0069 decision 2).
-		g.applyFaceDownLandingLocked(g.Stack, cardID, faceDown)
+		g.applyFaceDownLandingLocked(g.Stack, cardID, faceDown, nil)
 	} else {
 		// S13.5: cast spells are public on the stack.
 		g.markCardKnownInZoneLocked(g.Stack, cardID)
@@ -5782,6 +5782,14 @@ func ManaAbilitiesForCard(c Card) []ManaAbilityShape {
 	// other side of this switch rather than being re-granted.
 	case c.HasLostAllAbilities():
 		declared = nil
+	// CR 708.2a: a face-down permanent has no text, so nothing it
+	// carries declares a mana ability — CatalogKey is already silent,
+	// and this closes the other door, a TOKEN's card-carried slice (a
+	// Treasure turned face down by Cyber Conversion is not a Treasure).
+	// A listed Forest still taps for {G}: that is the intrinsic half
+	// below, read off the listed subtype (#1270).
+	case c.FaceDownIsPermanent():
+		declared = nil
 	// S21 sub-PR 1: instance abilities win — a token has no oracle
 	// ID for the catalog to key on.
 	case len(c.ManaAbilities) > 0:
@@ -5855,9 +5863,16 @@ func intrinsicLandManaAbilities(c Card) []ManaAbilityShape {
 		return nil
 	}
 	var subtypes []string
-	if c.effective != nil {
+	switch {
+	case c.effective != nil:
 		subtypes = c.effective.Subtypes
-	} else {
+	case c.FaceDownIsPermanent():
+		// CR 708.2: the body's subtypes, not the card's — a
+		// manifested Forest has none, Yedora's face-down Forest has
+		// "Forest" (#1270). HasCardType's cold path makes the same
+		// guard for the IsLand above.
+		subtypes = faceDownCharacteristic(c).Subtypes
+	default:
 		_, _, subtypes = ParseTypeLine(c.TypeLine)
 	}
 	if len(subtypes) == 0 {

@@ -211,7 +211,7 @@ func TestTurnFaceDownRefusals(t *testing.T) {
 		// Put it face down as a MORPH first, so the assertion is that
 		// the second turn leaves the kind (and therefore the way back
 		// up) alone rather than overwriting it with `turned`.
-		g.applyFaceDownLandingLocked(g.Battlefield, id, FaceDownMorphed)
+		g.applyFaceDownLandingLocked(g.Battlefield, id, FaceDownMorphed, nil)
 
 		if got := g.TurnFaceDownForEffect(uuid.Nil, id); len(got) != 0 {
 			t.Errorf("turned %v, want nothing — CR 708.2b", got)

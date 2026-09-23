@@ -278,6 +278,10 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// when it mints a new instance ID (resetAsNewObjectLocked).
 		c.EnteredBattlefieldAt = 0
 		c.SummonedThisTurn = false
+		// #1271 / CR 613.7f: the face-change timestamp is the
+		// permanent's too, and goes with the entry stamp it competes
+		// with in layerTimestamp.
+		c.FaceTurnedAt = 0
 		// #1199 / CR 110.5d: only permanents have status, and phased
 		// in / phased out is one of the four. A card that has really
 		// left the battlefield is not a permanent and has none.

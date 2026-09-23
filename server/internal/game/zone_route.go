@@ -626,7 +626,7 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 		// knowledge set rather than leaving it alone matters — a
 		// scryed library card has a knower, and carrying that in
 		// would let exactly one seat read a card nobody may.
-		g.applyFaceDownLandingLocked(dstZone, ev.CardID, r.FaceDown)
+		g.applyFaceDownLandingLocked(dstZone, ev.CardID, r.FaceDown, nil)
 	case dstZone.Kind == ZoneLibrary:
 		// A library is a hidden zone (CR 401.2). Whoever could read
 		// this card a moment ago cannot now.

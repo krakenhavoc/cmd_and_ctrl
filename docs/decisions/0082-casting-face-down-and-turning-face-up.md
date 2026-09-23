@@ -604,3 +604,159 @@ forbids.
   A4. No printed card has one.
 - **CR 701.34e**, still, and hideaway, still — decision 10 is unchanged
   about both.
+
+## Amendment (2026-09-23, #1270 and #1271): LISTED face-down characteristics (CR 708.2), and the face-change timestamp (CR 613.7f) · Accepted · S46
+
+**Status:** Accepted · 2026-09-23 · S46 · [#1270](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1270),
+[#1271](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1271), trackers
+[#886](https://github.com/krakenhavoc/cmd_and_ctrl/issues/886) (face-down) and
+[#881](https://github.com/krakenhavoc/cmd_and_ctrl/issues/881) (layers)
+**Proof cards:** Cyber Conversion (caveat dropped), Yedora, Grave Gardener,
+Cybership
+**Changes:** ADR 0069's object model gains ONE per-object field beside the
+per-kind one. The first amendment's A6 (#1270) and A2's "not done" (#1271) are
+closed by this one.
+
+### B1. Where the listed body lives: a sibling field, not a kind
+
+CR 708.2 is written in two halves: a face-down object has "no characteristics
+other than those listed by the ability or rules that allowed [it] to be face
+down", and CR 708.2a is only the DEFAULT for an effect that lists nothing.
+`FaceDownBody(kind)` built the default and nothing else.
+
+#1270 set out three shapes. The one taken is the issue's (1) with (3)'s call
+sites:
+
+- **`Card.FaceDownListed *FaceDownListing`**, beside `FaceDownKind` — types,
+  subtypes, power, toughness. Nothing else, because no printed card lists a
+  name, a cost, a colour, a supertype or an ability, and every one of those is
+  "none" on a CR 708.2 object.
+- **The kind still answers every question about WHY** the object is face down:
+  who may look (CR 708.5), whether it can come back up (CR 708.7), whether it
+  has ward. The listing answers only "what is it", the one question a kind could
+  not.
+- **It is read in exactly one place**, `faceDownCharacteristic`, the layer-0
+  baseline, which prefers the listing to `FaceDownBody(kind)`. So every layer
+  above it, every predicate, targeting, combat and the wire got it with no
+  change. The three cold-cache fast paths that bypass layer 0 (`HasCardType`,
+  `HasSubtype`, and the CR 305.6 intrinsic mana read) got the same guard.
+
+**Rejected: a kind per listed body** (#1270's option 2). Two bodies exist
+today and a kind cannot carry a payload, so the third card that lists one would
+need a third kind. Worse, the kind already means something (WHY), and a
+"cyberman" kind would have to re-answer CR 708.7 and ward for itself.
+
+**Rejected: the body as data on the kind at the call site only** (#1270's
+option 3, alone). Listed characteristics are per OBJECT. Two Cybermen and a
+Forest can sit on one battlefield, all `turned`, and the snapshot, the clone
+and the wire all need to know which is which after the call returns.
+
+**It REPLACES the default, and Yedora is the proof.** "It's a Forest land" is
+not a 2/2 with a land type added. A face-down Forest is not a creature and has
+no P/T. It taps for {G} because CR 305.6 gives the ability to anything with the
+Forest subtype, and the engine already derives that ability from the effective
+subtypes. The listing does not have to say it.
+
+**Lifecycle.** `SetFaceDownListed(kind, listed)` is the one writer of the
+triple (`FaceDown`, `FaceDownKind`, `FaceDownListed`). It keeps a listing only
+on a CR 708.2 permanent state, because a face-down card in exile has no
+characteristics at all (CR 406.3a). It also copies the value, so no caller can
+alias a card's. `ClearFaceDown` drops it, so `MoveCard`'s CR 400.7 reset and
+turning face up both take the listing away with the state it belonged to. The
+field is never mutated through the pointer. Clone and snapshot deep-copy it
+anyway, following `PrintedSelf`, and the drift table marks it carried.
+
+**The doors.** `TurnFaceDownListedForEffect(source, listed, ids...)` is the
+turn. `TurnFaceDownForEffect` is now that function with `nil`. The entry side
+rides `ZoneEntryOptions.FaceDownListed` and `ReplacementEvent.FaceDownListed`
+beside `FaceDown`, for `FaceDown`'s reason: the one entry finisher reads it,
+whichever door the permanent came through, and a paused entry's resume still
+has it. `ReturnFromGraveyardFaceDownForEffect(card, controller, tapped, listed)`
+is the reanimation door with the face-down state on the event. It is Yedora's
+door, and Missy's too once that card is written.
+
+**CR 708.2b holds for the listing.** A listed turn aimed at a permanent that is
+already face down does nothing, and "doesn't change any of its characteristics"
+includes the listing. A Cyber Conversion aimed at a morph does not make it a
+Cyberman.
+
+### B2. The kind for an effect's face-down ENTRY is `turned`
+
+Yedora and Cybership put a card onto the battlefield face down, and neither is
+a keyword. Manifest (CR 701.40) is a keyword action, and CR 701.34d, which lets
+a creature card be turned up for its mana cost, applies to manifest alone. A
+manifested Yedora Forest would have walked straight into that arm. That is the
+`PrintedIsCreature` read #1270 flagged.
+
+`FaceDownTurned` already gives every answer an effect's face-down needs. Only
+the card's own morph or disguise brings it back up (CR 702.37e, CR 708.7). It
+has no ward. Its controller is the only viewer. So its meaning widens from "was
+turned face down" to "**an effect, not a keyword, did this**", and where the
+object was a moment earlier is no longer part of it. The wire string is
+unchanged (`"turned"`), and so is the client's badge.
+
+**Rejected: an eighth kind** (say, `put`). It would have the same arm in
+`TurnFaceUpOffer`, the same ward answer and the same viewers row, so it would
+be a synonym that every table has to learn twice.
+
+### B3. Copiable values: CR 708.2's second sentence
+
+"Any listed characteristics are the copiable values of that object's
+characteristics." `CopiableValuesOf` read the card underneath for a face-down
+permanent, so a Clone of a morph became a Willbender. That is the card the
+Clone's controller may not look at (CR 708.5), and it made the Clone stronger
+than printed. It now returns the body: the listed one, or CR 708.2a's nameless
+2/2, with no name, no oracle ID (so no catalog entry), no cost and no colour.
+`applyCopy`'s stash of a card's OWN values reads the raw printed fields through
+`printedValuesOf`, because a card's own values are the card's whatever state it
+is in.
+
+### B4. CR 613.7f: a third timestamp field (#1271)
+
+`EnteredBattlefieldAt` has two jobs, and CR 613.7f touches only one of them. It
+is the CR 613.7d sort key for the permanent's own statics. It is also the
+object's **identity pin**: every until-end-of-turn, control and earthbend
+effect is keyed on `(InstanceID, EnteredBattlefieldAt)`, and summoning sickness
+reads "entered this turn" beside it. Re-stamping it would have dropped every
+pinned effect off a morph the moment it turned up, which contradicts CR 708.8's
+"not a new object".
+
+So the timestamp gets its own field, **`Card.FaceTurnedAt`**, stamped by both
+directions: `turnFaceUpLocked` and `TurnFaceDownListedForEffect`, with one stamp
+for Ixidron's whole batch. The first amendment's A2 said both or neither, and
+both it is. The layer gather now sorts a permanent's statics by
+`layerTimestamp()`, the **latest** of `EnteredBattlefieldAt`, `AttachedAt`
+(CR 613.7e) and `FaceTurnedAt` (CR 613.7f). All three are the same rule, "the
+permanent receives a new timestamp", and a later one supersedes an earlier one
+of any kind. That replaces the old "AttachedAt when non-zero", which only had
+two inputs. The field is zeroed on battlefield exit alongside the entry stamp,
+and carried by clone and snapshot.
+
+**What it takes to observe it:** two permanents with order-dependent effects.
+The test is two layer-7b "set base P/T" lords. The morph entered first, so the
+other lord's set wins (4/4). The morph is turned down and back up, and the bear
+is now 1/1. Before this change it stayed 4/4.
+
+### B5. Two holes the listing work found and closed
+
+- **A face-down TOKEN kept its card-carried mana ability.** `CatalogKey`
+  silences a face-down card, but a token carries `ManaAbilities` on the
+  instance, so a Treasure hit by Cyber Conversion still tapped for mana.
+  `ManaAbilitiesForCard` now declares nothing for a CR 708.2 object. The
+  CR 305.6 intrinsic half is unaffected, which is how the listed Forest keeps
+  its {G}.
+- **`HasSubtype` answered `false` for every face-down permanent**, including
+  one that a later layer-4 effect had given a subtype. It now reads the
+  effective subtypes when warm and the body's when cold. Changeling on the card
+  underneath still counts for nothing (CR 708.2a).
+
+### B6. What this does NOT build
+
+- **Missy and The Cyber-Controller.** Both are in #1270's table and neither is
+  in the ranked roadmap. Missy's primitive is here
+  (`ReturnFromGraveyardFaceDownForEffect` with a controller and `tapped`), but
+  its second ability is a villainous choice. The Cyber-Controller needs a mill
+  that reports what it milled. They are ordinary card work now.
+- **A copy of a face-down SPELL** is CR 708.2's copiable values like any other
+  copy. What the copy then does on resolution is not revisited here.
+- **CR 701.34e** and hideaway: decision 10 still holds for both.
