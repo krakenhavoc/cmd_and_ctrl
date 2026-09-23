@@ -1382,7 +1382,12 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	// ability and resolve first (ADR 0020 §4, CR 603.3b). Every
 	// named permanent was validated before anything was paid, so
 	// there is nothing left that can fail.
-	g.payTapOthersCostLocked(playerID, params.TapIDs)
+	//
+	// #759: and what it tapped is written onto the item's payment
+	// record — here, after the item exists, because this is where the
+	// taps are paid — so station's effect can read the tapped
+	// creature back at resolution (CR 702.184a). See PaidTap.
+	item.Paid.TappedOthers = paidTapsFrom(g.payTapOthersCostLocked(playerID, params.TapIDs))
 	// #1310: the waterbend taps, paid here for the same reason and
 	// through the same payer the cast path's convoke / waterbend taps
 	// use. Validated above with every other component; the mana they

@@ -45,7 +45,11 @@ type activateParams struct {
 	// #1310: the permanents tapped to pay part of a "Waterbend {N}"
 	// cost (CR 701.67a). Omitted when the payment taps none.
 	WaterbendIDs []string `json:"waterbend_ids,omitempty"`
-	XValue       int      `json:"x_value,omitempty"`
+	// #759: the permanents tapped to pay a "Tap another untapped
+	// creature you control" cost (station, CR 702.184a). Omitted for
+	// every ability that does not print the clause.
+	TapIDs []string `json:"tap_ids,omitempty"`
+	XValue int      `json:"x_value,omitempty"`
 	// #917, CR 107.4f: how many of the mana component's Phyrexian
 	// symbols this activation pays with 2 life each. Omitted for
 	// every ability that prints none, which is nearly all of them.
@@ -393,6 +397,18 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 				continue
 			}
 		}
+		// #759: a "Tap another untapped creature you control" cost
+		// (station). One move per creature for the one-permanent
+		// clause, so the policy — not the enumerator — decides which
+		// creature is worth more tapped than attacking. Nothing
+		// payable means no move at all (#544, CR 118.3).
+		tapSets := [][]uuid.UUID{nil}
+		if tc := ab.Cost.TapOthers; !tc.Empty() {
+			tapSets = e.tapOthersPayments(g.TapOthersOptionsForEffect(e.seat, source.InstanceID, tc), tc, source.InstanceID, ab.Cost.Tap)
+			if len(tapSets) == 0 {
+				continue
+			}
+		}
 		// #625: a "remove N counters" cost. One move per (permanent,
 		// kind) that could pay, most counters first — so a capped
 		// budget spends itself on the payments that hurt least
@@ -492,66 +508,80 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 					continue
 				}
 				for _, rets := range returnSets {
-					for _, cc := range counterChoices {
-						if budget <= 0 {
-							break
+					for _, taps := range tapSets {
+						// #759: the same #1242 rule for the tapped
+						// permanents — the auto-tapper will not spend a
+						// creature the payment has already named, so a
+						// mana creature that is both the tap and the mana
+						// is a move the engine refuses.
+						if ab.Cost.Mana != "" && len(taps) > 0 &&
+							!e.payableExcluding(abilityMana, xValue, phyrexianLife, game.ManaSpendForAbility(*source),
+								game.WithAutoTapExclusions(abilityExcluded, sacs, discardIDs, taps)) {
+							continue
 						}
-						budget--
-						label := source.Name + ": " + ab.Label
-						if xValue > 0 {
-							label += fmt.Sprintf(" for X=%d", xValue)
+						for _, cc := range counterChoices {
+							if budget <= 0 {
+								break
+							}
+							budget--
+							label := source.Name + ": " + ab.Label
+							if xValue > 0 {
+								label += fmt.Sprintf(" for X=%d", xValue)
+							}
+							if phyrexianLife > 0 {
+								label += fmt.Sprintf(" paying %d life for Phyrexian mana",
+									phyrexianLife*game.PhyrexianLifePerSymbol)
+							}
+							if len(waterbendIDs) > 0 {
+								label += fmt.Sprintf(" waterbending with %d", len(waterbendIDs))
+							}
+							label += sacrificeLabel(g, sacs)
+							label += returnLabel(g, rets)
+							label += tapLabel(g, taps)
+							label += cc.label(g)
+							label += targetLabel(g, targets)
+							// #74: the life on the Move is what the
+							// controller pays at announce, so the
+							// Phyrexian half counts — a policy that saw
+							// only the printed component would read a
+							// four-life activation as free.
+							cost := moveCost(ab.Cost.Life+phyrexianLife*game.PhyrexianLifePerSymbol, loyalty)
+							for _, price := range cc.prices() {
+								cost = withCounterPrice(cost, price)
+							}
+							e.add(Move{
+								Type:   TypeActivateAbility,
+								Player: e.seat,
+								Kind:   KindActivate,
+								Label:  label,
+								Source: source.InstanceID,
+								Cost:   cost,
+								// See the same note on the cast emitter:
+								// a modal ability's stack-targeting mode
+								// is flagged on its own.
+								TargetsStack: targetsStackObject(g, targets),
+								Params: mustJSON(activateParams{
+									SourceCardID:     source.InstanceID.String(),
+									AbilityIndex:     idx,
+									Targets:          wireTargets(targets),
+									Modes:            ann.modes,
+									SacrificeIDs:     idStrings(sacs),
+									CrewIDs:          idStrings(crewIDs),
+									CounterSourceIDs: cc.wireIDs(),
+									CounterCounts:    cc.wireCounts(),
+									CounterKind:      cc.wireKind(),
+									CounterKinds:     cc.wireKinds(),
+									DiscardIDs:       idStrings(discardIDs),
+									ReturnIDs:        idStrings(rets),
+									WaterbendIDs:     idStrings(waterbendIDs),
+									TapIDs:           idStrings(taps),
+									XValue:           xValue,
+									PhyrexianLife:    phyrexianLife,
+									Strict:           true,
+									AutoTap:          true,
+								}),
+							})
 						}
-						if phyrexianLife > 0 {
-							label += fmt.Sprintf(" paying %d life for Phyrexian mana",
-								phyrexianLife*game.PhyrexianLifePerSymbol)
-						}
-						if len(waterbendIDs) > 0 {
-							label += fmt.Sprintf(" waterbending with %d", len(waterbendIDs))
-						}
-						label += sacrificeLabel(g, sacs)
-						label += returnLabel(g, rets)
-						label += cc.label(g)
-						label += targetLabel(g, targets)
-						// #74: the life on the Move is what the
-						// controller pays at announce, so the
-						// Phyrexian half counts — a policy that saw
-						// only the printed component would read a
-						// four-life activation as free.
-						cost := moveCost(ab.Cost.Life+phyrexianLife*game.PhyrexianLifePerSymbol, loyalty)
-						for _, price := range cc.prices() {
-							cost = withCounterPrice(cost, price)
-						}
-						e.add(Move{
-							Type:   TypeActivateAbility,
-							Player: e.seat,
-							Kind:   KindActivate,
-							Label:  label,
-							Source: source.InstanceID,
-							Cost:   cost,
-							// See the same note on the cast emitter:
-							// a modal ability's stack-targeting mode
-							// is flagged on its own.
-							TargetsStack: targetsStackObject(g, targets),
-							Params: mustJSON(activateParams{
-								SourceCardID:     source.InstanceID.String(),
-								AbilityIndex:     idx,
-								Targets:          wireTargets(targets),
-								Modes:            ann.modes,
-								SacrificeIDs:     idStrings(sacs),
-								CrewIDs:          idStrings(crewIDs),
-								CounterSourceIDs: cc.wireIDs(),
-								CounterCounts:    cc.wireCounts(),
-								CounterKind:      cc.wireKind(),
-								CounterKinds:     cc.wireKinds(),
-								DiscardIDs:       idStrings(discardIDs),
-								ReturnIDs:        idStrings(rets),
-								WaterbendIDs:     idStrings(waterbendIDs),
-								XValue:           xValue,
-								PhyrexianLife:    phyrexianLife,
-								Strict:           true,
-								AutoTap:          true,
-							}),
-						})
 					}
 				}
 			}
@@ -644,6 +674,58 @@ func (e *enumerator) returnPayments(pool []uuid.UUID, rc *game.ReturnToHandCost,
 		return [][]uuid.UUID{ordered[:rc.Count]}
 	}
 	return combinations(ordered, 1, 1, e.opts.MaxExpansionPerSource)
+}
+
+// tapOthersPayments turns a TapOthers clause's candidate pool into the
+// payments the enumerator offers (#759) — returnPayments one verb
+// over: one move per candidate for the one-permanent clause station
+// prints, and the first Count of the pool for a larger one (Heritage
+// Druid's three Elves), where which three is not a choice the policy
+// has any information to make.
+//
+// The order is the pool's battlefield order, deliberately NOT the
+// fuel order the sacrifice and return payments use: tapping does not
+// spend the permanent, and which creature is best tapped — the
+// biggest, for station — is the POLICY's judgement, made by scoring
+// each move, not the enumerator's.
+//
+// `alsoTapsSource` drops the source for the CR 118.3 rule the engine
+// enforces when the same ability also taps it with {T}.
+//
+// Nil when the pool cannot reach the clause's count, so the ability is
+// not offered at all (#544).
+func (e *enumerator) tapOthersPayments(pool []uuid.UUID, tc *game.TapOthersCost, sourceID uuid.UUID, alsoTapsSource bool) [][]uuid.UUID {
+	if tc.Empty() {
+		return nil
+	}
+	if alsoTapsSource {
+		kept := pool[:0:0]
+		for _, id := range pool {
+			if id != sourceID {
+				kept = append(kept, id)
+			}
+		}
+		pool = kept
+	}
+	if len(pool) < tc.Count {
+		return nil
+	}
+	if tc.Count > 1 {
+		return [][]uuid.UUID{pool[:tc.Count]}
+	}
+	return combinations(pool, 1, 1, e.opts.MaxExpansionPerSource)
+}
+
+// tapLabel is sacrificeLabel one verb over (#759).
+func tapLabel(g *game.Game, ids []uuid.UUID) string {
+	if len(ids) == 0 {
+		return ""
+	}
+	names := make([]string, len(ids))
+	for i, id := range ids {
+		names[i] = cardName(g, id)
+	}
+	return " (tapping " + strings.Join(names, ", ") + ")"
 }
 
 // sacrificeLabel names what a payment eats, so two moves that differ

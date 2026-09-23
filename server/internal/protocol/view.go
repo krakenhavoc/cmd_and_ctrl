@@ -2233,6 +2233,26 @@ type ActivatedAbilityView struct {
 	// OPTIONAL in both directions: tapping none pays the whole cost
 	// with mana. The picks ride activate_ability as `waterbend_ids`.
 	Waterbend *TapCostView `json:"waterbend,omitempty"`
+	// TapOthersLabel / TapOthersOptions describe a "Tap another
+	// untapped creature you control" cost component (#758's
+	// TapOthersCost, wired to the wire by #759 for station, CR
+	// 702.184a). Absent when the cost has no such component.
+	//
+	// TapOthersOptions is ReturnOptions one verb over: a
+	// LegalTargetsView whose min and max are both the clause's count,
+	// whose cards are the untapped permanents that could pay right
+	// now, from the same walk the engine validates against
+	// (game.TapOthersOptionsForEffect). The client reuses the
+	// sacrifice picker with the verb "Tap" and sends the choice as
+	// `tap_ids`.
+	//
+	// NOT a target list and NOT the {T} symbol: a hexproof creature
+	// you control is on it (CR 601.2h), and so is one that arrived
+	// this turn (CR 302.6). The source is left off when the clause
+	// says "another" or when the ability also taps its source
+	// (CR 118.3 — it will already be tapped).
+	TapOthersLabel   string            `json:"tap_others_label,omitempty"`
+	TapOthersOptions *LegalTargetsView `json:"tap_others_options,omitempty"`
 	// DemandsX marks an ability whose mana component contains {X}
 	// (Helm of Obedience, Treasure Vault, Soothsaying). The client
 	// opens its X picker before the targeting step and sends the
@@ -6525,6 +6545,11 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			}
 			v.Waterbend = viewOfWaterbend(g, caster, game.AbilityWaterbendExclusion(c.InstanceID, a.Cost), wb, budget)
 		}
+		// #759: the tap-another component, from the same walk.
+		if tc := a.Cost.TapOthers; !tc.Empty() {
+			v.TapOthersLabel = tc.Label
+			v.TapOthersOptions = tapOthersCostOptions(g, caster, c.InstanceID, tc, a.Cost.Tap)
+		}
 		if a.Targets != nil {
 			v.TargetMode = a.Targets.Mode
 			// #662: an activated ability's source is the permanent
@@ -6728,6 +6753,30 @@ func returnCostOptions(g *game.Game, controller, sourceID uuid.UUID, rc *game.Re
 	ids := g.ReturnToHandOptionsForEffect(controller, sourceID, rc)
 	out := &LegalTargetsView{Min: rc.Count, Max: rc.Count}
 	for _, id := range g.SacrificePaymentOrderForEffect(ids, sourceID) {
+		out.Cards = append(out.Cards, id.String())
+	}
+	return out
+}
+
+// tapOthersCostOptions is returnCostOptions for a TapOthers component
+// (#759): the untapped permanents that could be tapped to pay it, in
+// the same payment order, with min and max both the clause's count.
+//
+// `alsoTapsSource` is the CR 118.3 rule the engine enforces where the
+// {T} symbol and this clause meet on one ability: the source is
+// tapped by its own half of the cost and cannot be named for the
+// other. Filtering it here keeps the picker from offering a choice
+// the server refuses.
+func tapOthersCostOptions(g *game.Game, controller, sourceID uuid.UUID, tc *game.TapOthersCost, alsoTapsSource bool) *LegalTargetsView {
+	if tc.Empty() {
+		return nil
+	}
+	ids := g.TapOthersOptionsForEffect(controller, sourceID, tc)
+	out := &LegalTargetsView{Min: tc.Count, Max: tc.Count}
+	for _, id := range g.SacrificePaymentOrderForEffect(ids, sourceID) {
+		if alsoTapsSource && id == sourceID {
+			continue
+		}
 		out.Cards = append(out.Cards, id.String())
 	}
 	return out

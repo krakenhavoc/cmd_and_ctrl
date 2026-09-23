@@ -19,6 +19,7 @@
     chargedManaCostLabel,
     chargedManaCostNote,
     returnShortfall,
+    tapOthersShortfall,
     type ReturnOptionsShape,
   } from "../../contextMenu.logic";
   import { sacrificeShortfall } from "../../sacrificeCost";
@@ -82,6 +83,9 @@
     // that never greyed would be clickable and refused nearly always.
     return_label?: string;
     return_options?: ReturnOptionsShape;
+    // #759: a tap-another cost (station), greyed the same way.
+    tap_others_label?: string;
+    tap_others_options?: ReturnOptionsShape;
     // #1157: `min` carries the clause's count, and an "up to N" clause
     // (min 0) is satisfied by an empty candidate list.
     legal_targets?: { players?: string[]; cards?: string[]; min?: number };
@@ -113,6 +117,8 @@
     // shared predicate the right-click menu asks.
     const returned = returnShortfall(a.return_options, a.return_label);
     if (returned) return returned;
+    const tapOthers = tapOthersShortfall(a.tap_others_options, a.tap_others_label);
+    if (tapOthers) return tapOthers;
     // #625: a "remove N counters" cost with nothing that can pay it.
     const counters = counterCostBlocked(a);
     if (counters) return counters;

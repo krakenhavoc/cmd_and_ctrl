@@ -57,7 +57,10 @@ func (g *Game) cardObjectEpochLocked(cardID uuid.UUID) int {
 // It is the ONE read behind "source gone, so the ability does
 // nothing". Use it only in an ability whose effect genuinely cannot
 // happen without its source on the battlefield — attaching it
-// (AttachSourceForEffect) is the whole of that set today. An ability
+// (AttachSourceForEffect), and station's "put charge counters on THIS
+// permanent" (#759, effects.Station), whose counters would otherwise
+// land on a card in a graveyard or on the new object a replay made.
+// An ability
 // that merely mentions its source (damage, a counter, a draw) resolves
 // from last known information under CR 608.2 and must NOT consult
 // this.

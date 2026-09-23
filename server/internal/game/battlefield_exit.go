@@ -35,6 +35,11 @@ import "github.com/google/uuid"
 // Caller must hold g.mu.
 func (g *Game) battlefieldExitLocked(cardID uuid.UUID) {
 	g.snapshotLKILocked(cardID)
+	// #759: a creature tapped to pay for a station ability that is
+	// still on the stack is read at resolution as it last existed
+	// here (CR 608.2h) — so its power is written down now, while
+	// the card still has it.
+	g.freezePaidTapsOnExitLocked(cardID)
 	g.forgetPerObjectTurnStateLocked(cardID)
 }
 
