@@ -292,6 +292,7 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 		// a strip rather than a struct that was empty anyway.
 		Modes: &ModeSpecView{Prompt: "Choose one", Min: 1, Max: 1, Options: []ModeOptionView{{
 			Label: "mode", TargetMode: "creature", LegalTargets: lt, Clauses: []LegalTargetsView{*lt, *lt},
+			Cost: "{1}{U}",
 		}}},
 		AdditionalCost: &AdditionalCostView{DiscardCards: 1},
 		AlternativeCosts: []AlternativeCostView{{
@@ -721,6 +722,10 @@ var modeOptionScopes = map[string]castSurfaceScope{
 	// Printed text: the bullet and the shape of its prompt.
 	"Label":      surfacePublicPile,
 	"TargetMode": surfacePublicPile,
+	// CR 702.172a, ADR 0065's 2026-09-23 amendment: Spree's per-mode
+	// cost is the printed clause ("+ {1}{U} — ..."), not a board-
+	// derived answer, so it travels with Label and TargetMode.
+	"Cost": surfacePublicPile,
 	// #1172: the legal sets. Narrowed by hexproof, shroud, protection
 	// and "target opponent", so seat A's is not seat B's to read.
 	"LegalTargets": surfacePrivate,

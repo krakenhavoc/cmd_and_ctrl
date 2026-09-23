@@ -48,6 +48,7 @@ func Register(spec Spec) {
 				panic(fmt.Sprintf("effects.Register: %q mode %d has no label — the bullet is the whole of what the picker shows", spec.Name, i))
 			}
 			checkFlatClauses(spec.Name, o.Targets)
+			checkModeCost(spec.Name, "mode", i, o.Cost, true)
 		}
 	}
 	checkFlatClauses(spec.Name, spec.Targets)
@@ -64,6 +65,7 @@ func Register(spec Spec) {
 					panic(fmt.Sprintf("effects.Register: %q activated mode %d has no label", spec.Name, i))
 				}
 				checkFlatClauses(spec.Name, o.Targets)
+				checkModeCost(spec.Name, "activated mode", i, o.Cost, false)
 			}
 		}
 	}
@@ -71,6 +73,11 @@ func Register(spec Spec) {
 		checkFlatClauses(spec.Name, t.Targets)
 		if t.Modes != nil && t.Targets != nil {
 			panic(fmt.Sprintf("effects.Register: %q declares a trigger with both Targets and Modes — put the target clause on the mode", spec.Name))
+		}
+		if t.Modes != nil {
+			for i, o := range t.Modes.Options {
+				checkModeCost(spec.Name, "trigger mode", i, o.Cost, false)
+			}
 		}
 	}
 	// S22: an alternative cost is claimed by name on the wire, so a
@@ -854,6 +861,28 @@ func checkFlatClauses(name string, spec *game.TargetSpec) {
 		if len(spec.Rest[i].Rest) > 0 {
 			panic(fmt.Sprintf("effects.Register: %q target clause %d nests further clauses — the list is flat; build it with Clauses(...)", name, i+1))
 		}
+	}
+}
+
+// checkModeCost validates one mode option's Spree cost (CR 702.172a,
+// ADR 0065's 2026-09-23 amendment) at boot. `owner` names what is
+// being checked in the panic message.
+//
+// `allowed` is false for an activated ability's or a trigger's mode:
+// CR 702.172a is a static ability found on modal SPELLS, and no
+// printed activated or triggered ability prices a chosen mode. A
+// silent no-op cost on either of those owners would be a card that
+// compiles and never charges what it means to — the same failure
+// mode ADR 0073 guards against everywhere else in this file.
+func checkModeCost(name, owner string, i int, cost string, allowed bool) {
+	if cost == "" {
+		return
+	}
+	if !allowed {
+		panic(fmt.Sprintf("effects.Register: %q %s %d declares a Cost — Spree (CR 702.172a) prices a spell's own modes; only Spec.Modes may", name, owner, i))
+	}
+	if _, err := game.ParseCost(cost); err != nil {
+		panic(fmt.Sprintf("effects.Register: %q %s %d declares an unparseable Cost %q: %v", name, owner, i, cost, err))
 	}
 }
 

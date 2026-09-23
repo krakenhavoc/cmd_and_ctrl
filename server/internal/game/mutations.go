@@ -2364,6 +2364,14 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	if err != nil {
 		return ParsedCost{}, chosen, err
 	}
+	// ADR 0065's 2026-09-23 amendment, CR 702.172a: Spree's per-mode
+	// cost joins the optional costs' mana at the same point, for the
+	// same reason — a card with no Cost on any mode option (every
+	// modal card before S45) reprices to the identical number.
+	cost, err = AddModeCostMana(cost, ModeSpecFor(CatalogKey(card)), params.Modes)
+	if err != nil {
+		return ParsedCost{}, chosen, err
+	}
 	// S21 sub-PR 6: "you may spend mana as though it were mana of any
 	// color to cast those spells" (Breeches, Brazen Plunderer). Folds
 	// the colored slots into the generic demand, which is exactly
