@@ -45,7 +45,19 @@ func TestEveryTokenKeyResolves(t *testing.T) {
 			}
 			key, _ := strconv.Unquote(lit.Value)
 			if _, ok := tokenTable[key]; !ok {
-				t.Errorf("%s:%d: TokenCard(%q) names no token in tokens_table.go", f, fset.Position(lit.Pos()).Line, key)
+				// The second half of the message is the one that
+				// matters since ADR 0083: a token that PRINTS an
+				// ability is not a row here at all, and three keys
+				// that used to be rows (the Pest, the 0/1 black
+				// Wizard, Fable's Goblin Shaman) were deleted rather
+				// than left as textless versions of tokens that have
+				// never been printed textless. Adding the row back is
+				// the wrong fix and this says so.
+				t.Errorf("%s:%d: TokenCard(%q) names no token in tokens_table.go. "+
+					"If this token PRINTS an ability, it is a tokenTemplate in the "+
+					"catalog and not a row here — call its constructor (PestToken(), "+
+					"TreasureToken(), …) instead of adding a textless row.",
+					f, fset.Position(lit.Pos()).Line, key)
 			}
 			seen++
 			return true
