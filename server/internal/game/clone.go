@@ -745,6 +745,11 @@ func cloneReplacementResume(f *replacementResumeFrame) *replacementResumeFrame {
 			t := *f.ev.keywordAction
 			t.cards = append([]uuid.UUID(nil), f.ev.keywordAction.cards...)
 			t.players = append([]uuid.UUID(nil), f.ev.keywordAction.players...)
+			// #1236: the amass token template is a Card, and a Card
+			// carries slices (Colors, Keywords) the minting path
+			// appends to. cloneCard for the same reason the two
+			// slices above get their own backing arrays.
+			t.armyToken = cloneCard(f.ev.keywordAction.armyToken)
 			ev.keywordAction = &t
 		}
 		if f.ev.mill != nil {
