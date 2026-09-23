@@ -1,5 +1,6 @@
 // playerKeywordBadges.ts — #1201, the client half of #1197's player
-// protection and hexproof.
+// protection and hexproof, and since #1200 of the life-total lock
+// that rides the same seat tile.
 //
 // PlayerView.keywords (docs/protocol.md, server/internal/protocol/
 // view.go) carries the bare engine tokens a seat has right now:
@@ -62,12 +63,32 @@ function protectionShort(quality: string): string {
   return quality.slice(0, 3).toUpperCase();
 }
 
+// #1200 (CR 119.7, CR 119.8): "your life total can't change". Not a
+// token in PlayerView.keywords — that list is engine ABILITY tokens
+// and this is not an ability the player has (ADR 0085 Decision 7) —
+// so it arrives as its own bool and gets its own badge here, in the
+// same visual language, rather than a second badge row.
+//
+// Last in the list, because the keyword tokens are the ones a reader
+// is scanning for when they are wondering why their spell found no
+// target, and this one answers a different question.
+const LIFE_LOCK_BADGE: PlayerKeywordBadge = {
+  key: "life-total-locked",
+  short: "LIFE",
+  title: "Life total can't change — no gain, no loss, and no paying life",
+  kind: "protection",
+};
+
 /**
- * Turns PlayerView.keywords into the badges the seat tile renders,
- * one per distinct token, in wire order (derived grants first, then
- * durationed ones — see PlayerView.keywords in protocol.ts).
+ * Turns PlayerView.keywords (and #1200's life_total_locked) into the
+ * badges the seat tile renders, one per distinct token, in wire order
+ * (derived grants first, then durationed ones — see
+ * PlayerView.keywords in protocol.ts).
  */
-export function playerKeywordBadges(keywords?: string[]): PlayerKeywordBadge[] {
+export function playerKeywordBadges(
+  keywords?: string[],
+  lifeTotalLocked?: boolean,
+): PlayerKeywordBadge[] {
   const seen = new Set<string>();
   const badges: PlayerKeywordBadge[] = [];
   for (const token of keywords ?? []) {
@@ -106,5 +127,6 @@ export function playerKeywordBadges(keywords?: string[]): PlayerKeywordBadge[] {
       kind: "plain",
     });
   }
+  if (lifeTotalLocked) badges.push(LIFE_LOCK_BADGE);
   return badges;
 }

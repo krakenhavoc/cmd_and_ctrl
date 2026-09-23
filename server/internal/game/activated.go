@@ -1003,10 +1003,11 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	if err := g.validateExileSelfCostLocked(srcZone, ab.Cost); err != nil {
 		return err
 	}
-	if ab.Cost.Life > 0 && p.Life < ab.Cost.Life {
+	if !g.CanPayLifeLocked(p, ab.Cost.Life) {
 		// CR 119.4 forbids paying more life than you have. Paying
 		// down to exactly 0 is legal; the SBA loop ends the game
-		// after.
+		// after. CR 119.8 forbids it outright while the player's life
+		// total can't change (#1200, life_lock.go).
 		return ErrInvalidParam
 	}
 	// CR 602.2b / 700.2: the modes are announced with the targets, in

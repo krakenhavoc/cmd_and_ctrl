@@ -13,11 +13,11 @@ import (
 //	 Exile Teferi's Protection."
 //
 // The white "I am not here this turn cycle" button, and three clauses
-// wide. One of them is the seam this card is in the sprint for; two
-// are not, and the split is worth stating precisely because the card
-// is famous for the halves that are missing.
+// wide. Each of the three is its own engine seam, and the card is
+// complete as of #1200 — the split below is kept because it is the
+// clearest account of what each clause actually does.
 //
-// WHAT SHIPS. "You gain protection from everything" until your next
+// WHAT SHIPPED FIRST. "You gain protection from everything" until your next
 // turn — CR 702.16i, the GRANTED half of #1197. It is a real
 // protection, read at the same three choke points a permanent's is:
 // nothing an opponent (or you) controls can target you, every source
@@ -55,33 +55,44 @@ import (
 // is snapshotted before any of it moves — the printed clause is
 // "permanents you control" and the rule is simultaneous.
 //
-// ONE SIMPLIFICATION, and it is named on the card's one remaining
-// caveat:
+// "YOUR LIFE TOTAL CAN'T CHANGE" SHIPS TOO, since #1200 (CR 119.7 /
+// CR 119.8, ADR 0085) — and with it the card's last caveat. It is one
+// call, for the reason ADR 0084's closing section predicted: the lock
+// is a player-scoped statement with a CR 611.2 duration, so it goes on
+// Player.Statics beside the protection this same OnResolve grants a
+// few lines below, and its consumer is the one CR 614 life window
+// #482 built. Nothing else about the card had to learn it.
 //
-//   - **"YOUR LIFE TOTAL CAN'T CHANGE"** is not implemented. It is a
-//     replacement effect with a duration longer than end of turn, and
-//     TurnScopedReplacements carries no duration field at all
-//     (ADR 0063 Decision 8 states that as deliberate — no card needed
-//     one until this one). Most of what it stops is already stopped
-//     by the protection: damage is prevented at the source. What gets
-//     through is life LOSS that is not damage — a drain, an "each
-//     opponent loses 3 life" — and, the other way, life GAIN you
-//     would rather not have had. Weaker than printed.
+// What that adds on top of the protection is the half the protection
+// never covered: life LOSS that is not damage — a drain, an "each
+// opponent loses 3 life", a Phyrexian cost somebody makes you pay —
+// and, the other way, life GAIN you would rather not have had (your
+// own Ad Nauseam, a Sylvan Library cast under the shield). Damage was
+// already prevented at the source by CR 702.16e, and now would not
+// move the total even if it got through.
 //
-// Tracked as #1200; ADR 0084's closing section records what the
-// phasing work leaves in place for it (Player.Statics is the registry
-// the other half of this very card already uses, and
-// ChangePlayerLifeThenForEffect is the one consumer).
+// THREE PRINTED CLAUSES, THREE SHIPPED, NO SIMPLIFICATIONS. The card
+// took three sprints and three ADRs to finish: #1197 / ADR 0072's
+// amendment (the protection), #1199 / ADR 0084 (the phasing),
+// #1200 / ADR 0085 (the life-total lock).
 func init() {
 	Register(Spec{
 		OracleID:     "0d4ecdb1-ec90-497f-a7a4-1c68092b8757",
 		Name:         "Teferi's Protection",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"\"Your life total can't change\" isn't implemented — damage is prevented by the protection, but life loss that isn't damage (a drain) still reaches you, and you can still gain life.",
-		},
+		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			me := ctx.Controller()
+			// "Your life total can't change" (CR 119.7, CR 119.8).
+			// First for no reason but the printed order: the two
+			// grants are independent entries on one slice and neither
+			// reads the other.
+			if err := (LockLifeTotal{
+				Player:   me,
+				Label:    "Teferi's Protection — your life total can't change",
+				Duration: DurationUntilYourNextTurn(ctx, me),
+			}).Apply(ctx); err != nil {
+				return err
+			}
 			if err := (GainPlayerKeyword{
 				Player:   me,
 				Keyword:  ProtectionFromEverything,

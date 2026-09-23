@@ -49,10 +49,12 @@ const PendingChoiceEntryPayLife PendingChoiceKind = "entry_pay_life"
 //
 // Returns false when no prompt is possible:
 //
-//   - the payer can't be identified, or can't legally pay (CR 118.4:
+//   - the payer can't be identified, or can't legally pay (CR 119.4:
 //     a player may pay N life only if their life total is at least
-//     N). A player at 1 life does not get to pay 2, and asking a
-//     question whose only answer is "no" is worse than not asking.
+//     N; CR 119.8: a player whose life total can't change may not pay
+//     any of it, #1200). A player at 1 life does not get to pay 2, and
+//     asking a question whose only answer is "no" is worse than not
+//     asking.
 //   - the entry can't be resumed (see ReplacementEvent.entryResumable).
 //     Pausing an entry site that has no resume would strand the card
 //     in its old zone; taking the un-paid branch instead costs the
@@ -68,7 +70,7 @@ func (g *Game) offerEntryLifePaymentLocked(ev *ReplacementEvent, chosen activeRe
 	cost := chosen.effect.EntryLifeCost
 	payer := g.entryChoicePlayerLocked(ev, chosen)
 	p := g.playerByIDLocked(payer)
-	if cost > 0 && ev.entryResumable && p != nil && !p.Eliminated && p.Life >= cost {
+	if cost > 0 && ev.entryResumable && p != nil && !p.Eliminated && g.CanPayLifeLocked(p, cost) {
 		g.queueEntryPayLifePromptLocked(ev, chosen, payer, cost)
 		return true
 	}
@@ -204,7 +206,7 @@ func (g *Game) ResolveEntryPayLife(choiceID, chooserID uuid.UUID, pay bool) erro
 	paid := false
 	if pay {
 		cost := chosen.effect.EntryLifeCost
-		if p := g.playerByIDLocked(chooserID); cost > 0 && p != nil && p.Life >= cost {
+		if p := g.playerByIDLocked(chooserID); cost > 0 && g.CanPayLifeLocked(p, cost) {
 			var source uuid.UUID
 			if chosen.source != nil {
 				source = chosen.source.InstanceID

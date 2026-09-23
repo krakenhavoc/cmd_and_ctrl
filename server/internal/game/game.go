@@ -715,6 +715,14 @@ func NewGame() *Game {
 		// puts it ahead of every other applicable replacement and
 		// keeps a charged prevention shield unspent (ADR 0072 §4).
 		protectionPreventsDamageReplacement,
+		// #1200, CR 119.7 / CR 119.8 (ADR 0085, life_lock.go). Also
+		// Preemptive, and for the same reasons one event kind over:
+		// there is only one answer once an amount replacement has
+		// been applied, and a life PAYMENT cannot pause to be asked.
+		// It watches the LIFE event; the damage half of the rule is
+		// in applyResolvedDamageToPlayerLocked, because damage does
+		// not fire this window (CR 120.3).
+		lifeTotalCantChangeReplacement,
 	)
 	return g
 }

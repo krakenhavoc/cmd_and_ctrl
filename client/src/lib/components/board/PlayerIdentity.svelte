@@ -95,9 +95,11 @@
   const displayLabel = $derived(seat.display_name ?? seat.name);
 
   // #1201: hexproof / protection-on-a-player badges (CR 702.11d, CR
-  // 702.16i). See playerKeywordBadges.ts for the token → badge
-  // mapping; this component only renders what it returns.
-  const keywordBadges = $derived(playerKeywordBadges(seat.keywords));
+  // 702.16i), and since #1200 the life-total lock (CR 119.7, CR
+  // 119.8) that arrives as its own bool rather than as a token. See
+  // playerKeywordBadges.ts for the mapping; this component only
+  // renders what it returns.
+  const keywordBadges = $derived(playerKeywordBadges(seat.keywords, seat.life_total_locked));
 
   // --- bot seats (S31, ADR 0033) ---------------------------------
   //

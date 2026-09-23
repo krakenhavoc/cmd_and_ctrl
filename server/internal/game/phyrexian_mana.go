@@ -169,9 +169,11 @@ func (g *Game) strikePhyrexianLifeLocked(p *Player, sourceName string, cost Pars
 	reduced, life := PhyrexianLifePlan(cost, p.ManaPool, spendCtx, claimed)
 	// CR 119.4: a player may pay life only down to 0. Checked before
 	// anything is paid, so an over-claim rejects the announcement
-	// without costing the announcer a single point.
-	if p.Life < life {
-		return cost, 0, fmt.Errorf("%w: paying %d life for %d Phyrexian symbol(s) would take %s below 0 (CR 119.4)", ErrInvalidParam, life, claimed, p.Name)
+	// without costing the announcer a single point. CR 119.8 rides
+	// the same predicate (#1200): a player whose life total can't
+	// change may not claim a Phyrexian symbol at all.
+	if !g.CanPayLifeLocked(p, life) {
+		return cost, 0, fmt.Errorf("%w: %s cannot pay the %d life for %d Phyrexian symbol(s) (CR 119.4, CR 119.8)", ErrInvalidParam, p.Name, life, claimed)
 	}
 	if paid != nil {
 		paid.LifePaid += life

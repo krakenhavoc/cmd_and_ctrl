@@ -52,6 +52,13 @@ import "github.com/google/uuid"
 //	damage      protectionPreventsDamageLocked builtin_replacements.go CR 702.16e
 //	attachment  attachmentLegalLocked          attach.go               CR 702.16c
 //
+// Since #1195 and #1200 two other kinds of entry ride this slice and
+// have readers of their own: a granted cast-timing statement
+// (PlayerStatic.Timing, castTimingVerdictLocked in cast_timing.go) and
+// "your life total can't change" (PlayerStatic.LifeTotalLocked,
+// playerLifeTotalCantChangeLocked in life_lock.go). Neither carries a
+// Keyword, so neither reaches the walk below.
+//
 // The bot's move enumerator and the client's legal_targets follow by
 // construction: both read legalTargetsLocked, which is the targeting
 // consumer. Neither learns the rule, so neither can disagree with it.
@@ -115,6 +122,31 @@ type PlayerStatic struct {
 	// Plain data, like everything else here — CastTimingRule is
 	// flags, two strings and a zone.
 	Timing CastTimingRule `json:"timing,omitzero"`
+
+	// LifeTotalLocked is "your life total can't change" (CR 119.7,
+	// CR 119.8) — Teferi's Protection, Teferi's Reproach. #1200,
+	// ADR 0085, life_lock.go.
+	//
+	// The THIRD payload, and the third kind of entry on this slice.
+	// Like Timing it carries no Keyword, which is what keeps it out
+	// of playerAbilityTokensLocked's answer: the kinds are told apart
+	// by their payload rather than by a discriminator field, for the
+	// reason Timing's comment gives above.
+	//
+	// It is HERE for the same reason Timing is — one slice, one
+	// sweep, one durationExpiredLocked read, one clone and one
+	// snapshot field — and because a life-total lock is a statement
+	// about a PLAYER for a CR 611.2 duration, which is exactly what
+	// this slice is for. ADR 0085 Decision 1 has the argument against
+	// the registry #1200 named (Game.TurnScopedReplacements, whose
+	// closures are censused `dropped`).
+	//
+	// Its READER is playerLifeTotalCantChangeLocked, not
+	// playerAbilityTokensLocked: the lock is not an ability the
+	// player HAS and has no protection quality to parse. The DERIVED
+	// half — Platinum Emperion's printed static — is not in this
+	// slice at all, exactly as Leyline of Sanctity's hexproof is not.
+	LifeTotalLocked bool `json:"lifeTotalLocked,omitempty"`
 
 	// Source is the card that granted it, for the log and for the
 	// view's attribution. Never read by any rule: a granted ability

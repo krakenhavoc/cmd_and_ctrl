@@ -507,6 +507,11 @@ func (g *Game) applyManualDamageMarkLocked(ev *ReplacementEvent) (int, error) {
 // life loss, the CR 903.10a commander tally, the EventDealDamage the
 // "deals damage to a player" triggers watch, and CR 702.15 lifelink.
 //
+// The life loss is the one part a player whose LIFE TOTAL CAN'T CHANGE
+// (CR 119.8, #1200, ADR 0085) skips — the damage is still dealt, which
+// is what CR 120.3a's "causes that player to lose that much life"
+// means once something says the life can't be lost.
+//
 // Reports the damage actually dealt, for the caller's continuation.
 //
 // Caller must hold g.mu.
@@ -533,9 +538,21 @@ func (g *Game) applyResolvedDamageToPlayerLocked(ev *ReplacementEvent, t *damage
 	// two orders differ — see invalidateLayersForLifeChangeLocked. Both orders are kept as they
 	// were, because a listener on EventDealDamage can read life totals
 	// and the two paths' existing tests pin what it sees.
+	//
+	// #1200, CR 119.8 + CR 120.3a (ADR 0085 Decision 5): the damage is
+	// still DEALT to a player whose life total can't change — the
+	// event fires, the CR 903.10a tally accrues, lifelink credits, a
+	// "whenever ~ is dealt damage" trigger sees it — and only the life
+	// loss CR 120.3a would have caused does not happen. Platinum
+	// Emperion's printed ruling, and the reason this is a branch here
+	// rather than an arm of the life built-in: damage does not fire
+	// the CR 614 life window at all, so the rule has two consumers.
+	loseLife := !g.playerLifeTotalCantChangeLocked(p)
 	if t.combat {
-		p.ChangeLife(-ev.DamageAmount)
-		g.invalidateLayersForLifeChangeLocked()
+		if loseLife {
+			p.ChangeLife(-ev.DamageAmount)
+			g.invalidateLayersForLifeChangeLocked()
+		}
 		// CR 903.10a: combat damage from a commander accrues toward
 		// the 21-damage loss SBA.
 		if t.commanderSource != uuid.Nil {
@@ -544,8 +561,10 @@ func (g *Game) applyResolvedDamageToPlayerLocked(ev *ReplacementEvent, t *damage
 		g.emitDealDamageLocked(ev, t)
 	} else {
 		g.emitDealDamageLocked(ev, t)
-		p.ChangeLife(-ev.DamageAmount)
-		g.invalidateLayersForLifeChangeLocked()
+		if loseLife {
+			p.ChangeLife(-ev.DamageAmount)
+			g.invalidateLayersForLifeChangeLocked()
+		}
 	}
 	g.creditLifelinkLocked(t, ev.DamageSource, ev.DamageAmount)
 	return ev.DamageAmount, nil

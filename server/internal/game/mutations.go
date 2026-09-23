@@ -5083,11 +5083,13 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	if err != nil {
 		return err
 	}
-	if ab.LifeCost > 0 && p.Life < ab.LifeCost {
+	if !g.CanPayLifeLocked(p, ab.LifeCost) {
 		// CR 119.4: you can't pay more life than you have. Paying
 		// down to exactly 0 is legal and the SBA loop ends the game
-		// after. Same gate ActivateCatalogAbility applies to
-		// AbilityCost.Life.
+		// after. CR 119.8: a player whose life total can't change
+		// cannot pay any of it (#1200). Same gate
+		// ActivateCatalogAbility applies to AbilityCost.Life, through
+		// the same predicate.
 		return ErrInvalidParam
 	}
 	// #789: the counter components, validated by the SAME functions
