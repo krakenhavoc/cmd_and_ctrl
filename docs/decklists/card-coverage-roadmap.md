@@ -126,7 +126,7 @@ catalog's first modal triggered ability, first multi-predicate trigger
 and first modal activated ability. Other batches holding cards filed
 under modal / multi-target are worth a re-look now.
 
-<!-- BEGIN GENERATED CATALOG CENSUS — regenerate with: go test ./internal/cards/coverage/ -update -->
+<!-- BEGIN GENERATED CATALOG CENSUS — refreshed by CI on every push to develop and main; do not regenerate in a PR (manual refresh: go test ./internal/cards/coverage/ -update) -->
 
 **The catalog, as measured on this commit.** Not typed by hand and not
 derived from what a batch believes it landed — `TakeCensus` in
