@@ -191,7 +191,7 @@ put one into your hand and the rest on the bottom of your library in any order" 
 `RevealTopThenTakeToHand` uses it too, because the card it was written for (Goblin Ringleader)
 prints "in any order".
 
-## Out of scope (explicit deferrals)
+## Out of scope (explicit deferrals) — tracked on #1298
 
 - **A look at ANOTHER player's library top** (#996 item 5 — Jace, the Mind Sculptor's +2, Chaos
   Wand's look). `put_in_library` can order cards in anyone's library, but the LOOK that precedes it
@@ -202,6 +202,10 @@ prints "in any order".
 - **An exact count on the top lane** ("put one of them on top of your library and the rest on the
   bottom in any order" — Cream of the Crop). The placement would need a lane count; nobody in the
   catalog prints it.
+- **Hinder / Spell Crumple** ("put that card on your choice of the top or bottom of its owner's
+  library instead of into that player's graveyard") — a counter-to-library followed by a
+  `top_or_bottom` prompt whose chooser is not the owner. The counter's CR 903.9 leg has no
+  continuation to hang the choice off, so the card waits for one.
 - **Library of Leng's** multi-card discard redirect still lands in the order the discard names; it
   is a replacement on a batch, not an instruction with a chooser, and CR 401.4's owner arrangement
   there is a replacement-pipeline question.
