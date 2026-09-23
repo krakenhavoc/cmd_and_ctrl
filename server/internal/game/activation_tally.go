@@ -42,11 +42,17 @@ import "github.com/google/uuid"
 //   - a FLICKER refreshes an exhaust ability. Exile and return is two
 //     zone changes, so the returning permanent reads a key nothing has
 //     written.
-//   - a PHASE-OUT does not. Phasing is not a zone change (CR 702.25f),
+//   - a PHASE-OUT does not. Phasing is not a zone change (CR 702.26d),
 //     so the epoch is untouched and the permanent comes back spent.
-//     Phasing is not modelled in this engine at all; when it is, the
-//     rule it must respect to keep this true is "phasing does not bump
-//     ObjectEpoch".
+//     Built in #1199 (game/phasing.go, ADR 0084), and it keeps that
+//     promise the only way it could: phaseOutLocked and phaseInLocked
+//     move the Card value between g.Battlefield and g.PhasedOut
+//     without going through MoveCard, which is the one function that
+//     bumps the epoch.
+//
+//     (The citation used to read CR 702.25f, which is a rule that does
+//     not exist: 702.25 is Flanking. 702.26d is the sentence it was
+//     reaching for.)
 //   - a COPY of the permanent has its own exhausts (CR 707.2: a copy
 //     takes the copiable values, and what a permanent has already done
 //     is not one of them). A token copy is a different instance ID, so

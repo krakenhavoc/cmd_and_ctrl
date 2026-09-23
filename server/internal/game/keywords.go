@@ -156,6 +156,24 @@ var canonicalKeywords = map[string]bool{
 	// job is the badge and the ADR 0037 coverage signal, and it must
 	// not arrive before the mechanic does.
 	"madness": true,
+	// phasing (CR 702.26) joins with #1199, in the same change that
+	// teaches the engine to honour it — which is the closedness rule
+	// this table states. Unlike foretell, suspend and madness above,
+	// its consumer IS in the engine and is one function:
+	// performPhasingLocked (phasing.go) reads it off the effective
+	// characteristics to decide which of the active player's
+	// permanents phase out during CR 502.1's turn-based action.
+	//
+	// Reading it off Effective().Abilities rather than off Keywords is
+	// what makes Shimmer's "each land of the chosen type has phasing"
+	// and Vanishing's aura work like a printed one, and what makes a
+	// permanent that has lost all abilities stop phasing.
+	//
+	// Stamped by the deck importer like every other canonical token,
+	// so the ~70 printed-phasing permanents of the Mirage and Visions
+	// cycle are correct with no catalog entry at all. See
+	// KeywordPhasing in phasing.go and ADR 0084.
+	KeywordPhasing: true,
 }
 
 // KeywordChangeling is the canonical token for changeling (CR

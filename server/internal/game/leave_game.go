@@ -164,6 +164,15 @@ func (g *Game) removeObjectsOwnedByLocked(playerID uuid.UUID) int {
 	sweep(g.Battlefield)
 	sweep(g.Stack)
 	sweep(g.Exile)
+	// #1199 / CR 702.26k: "Phased-out permanents owned by a player who
+	// leaves the game also leave the game. This doesn't cause
+	// zone-change abilities to trigger." Which is this function's own
+	// contract exactly, so the holding slice joins the sweep rather
+	// than needing a rule of its own. Without it a phased-out
+	// permanent would be the one object in the game that survived its
+	// owner — and would phase back in during a seat's untap step with
+	// nobody controlling it.
+	sweep(g.PhasedOut)
 	for _, p := range g.Seats {
 		sweep(p.Library)
 		sweep(p.Hand)

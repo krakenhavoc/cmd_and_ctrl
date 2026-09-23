@@ -266,11 +266,13 @@ func TestExhaustNeverRefreshesOnATurnBoundary(t *testing.T) {
 // fresh exhaust; a permanent that never changed zones keeps its spent
 // one, however much else happens to it.
 //
-// The second half is also phasing's answer in advance: phasing is not
-// a zone change (CR 702.25f) and so does not bump Card.ObjectEpoch, so
-// a phased-out permanent comes back spent. Phasing is not modelled in
-// this engine, which is why this half is written as "the epoch did not
-// move" rather than as a phase-out.
+// The second half is also phasing's answer: phasing is not a zone
+// change (CR 702.26d) and so does not bump Card.ObjectEpoch, so a
+// phased-out permanent comes back spent. It is still written as "the
+// epoch did not move" rather than as a phase-out, because the epoch is
+// what the rule is about and #1199's own
+// TestPhasingDoesNotBumpTheObjectEpoch asserts the phase cycle
+// directly.
 func TestAFlickerRefreshesAnExhaustAbilityAndStayingPutDoesNot(t *testing.T) {
 	g := newActiveGame(t)
 	advanceTo(t, g, StepPrecombatMain)

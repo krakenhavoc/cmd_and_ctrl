@@ -81,6 +81,7 @@ var gameFields = plan(
 	"Battlefield", carried, "",
 	"Stack", carried, "",
 	"Exile", carried, "",
+	"PhasedOut", carried, "",
 	"Turn", carried, "",
 	"MulligansOpen", carried, "",
 	"Monarch", carried, "",
@@ -321,6 +322,14 @@ var cardFields = plan(
 	// wrong and say nothing about it.
 	"ClassLevel", carried, "",
 	"Solved", carried, "",
+	// #1199 / CR 702.26, ADR 0084. All four are the phased-out status
+	// and all four are legal zero values, so a restore that dropped
+	// them would bring a phased board back under the wrong player's
+	// untap step, or an Aura back without its host.
+	"PhasedOutBy", carried, "",
+	"PhaseInLockedBy", carried, "",
+	"PhasedOutIndirect", carried, "",
+	"TapOnPhaseIn", carried, "",
 	// S27 battles. Both are printed / chosen state with no other
 	// source: a restore that lost StartingDefense would re-stamp
 	// nothing (the stamp is idempotent and only fires on entry), and

@@ -4083,6 +4083,79 @@ Two things to know when you touch the untap path at all:
   unquestionably leaves your creatures sick. They were one loop
   before #74 only because the two sets were the same set.
 
+### Phasing (#1199, CR 702.26)
+
+A card that says **"phases out"** is two lines in the card file and
+nothing else, because every consequence of the phrase is the engine's:
+
+```go
+// "Target creature phases out."
+Effect: func(g *game.Game, item *game.StackItem) error {
+    ctx := NewContext(g, item)
+    return PhaseOut{Targets: legalTargetCards(item, g)}.Apply(ctx)
+},
+
+// "… phases out until this enchantment leaves the battlefield.
+//  Tap that creature as it phases in this way."
+return PhaseOutUntilLeaves{
+    Targets:      legalTargetCards(item, g),
+    Until:        source.InstanceID,
+    TapOnPhaseIn: true,
+}.Apply(ctx)
+```
+
+Both live in
+[phasing.go](server/internal/cards/effects/phasing.go). **Pass the
+whole target list in ONE call**, never one call per target: CR 702.26a
+phases them out simultaneously, and an Equipment named beside the
+creature it is attached to must not be dragged out twice (CR 702.26h).
+
+**What you must NOT write, because the engine already does it**
+(`game/phasing.go`, [ADR 0084](docs/decisions/0084-phasing.md)):
+
+- the Auras, Equipment and Fortifications attached to the target go
+  with it, transitively (CR 702.26g), and come back **still attached**;
+- the permanent keeps its counters, its marked damage, its tapped
+  state, its CR 613.7 timestamp and its `ObjectEpoch` (CR 702.26d) —
+  phasing is **not a zone change**, so nothing goes through `MoveCard`
+  and an exhaust ability stays spent across a phase cycle where a
+  flicker would refresh it;
+- it is removed from combat (CR 506.4);
+- **no ETB, LTB or zone-change trigger fires**, at either end;
+- it comes back during its controller's next untap step (CR 502.1),
+  before that player untaps, with no delayed trigger to schedule.
+
+**A phased-out permanent is not on the battlefield as far as your code
+is concerned.** It is in `Game.PhasedOut`, out of
+`g.Battlefield.Cards`, so `BattlefieldCardsForEffect`,
+`legalTargetsLocked`, the layer pass, the SBA sweep, the trigger
+harvester, `internal/legal` and the bot all skip it without asking —
+CR 702.26b, true by construction rather than by 125 remembered
+predicates. The only read surfaces that see one are
+`g.PhasedOutCardsForEffect()` and `g.IsPhasedOutForEffect(id)`, and a
+card should need neither. `FindCardZoneForEffect` deliberately answers
+`nil`.
+
+**The KEYWORD needs no `Spec` at all.** "Phasing" is in
+`canonicalKeywords`, so the deck importer stamps it from Scryfall and
+a printed-phasing permanent phases in and out on its own. A card that
+GRANTS phasing (Shimmer's "each land of the chosen type has phasing",
+an Aura's "enchanted permanent has phasing") is an ordinary layer-6
+keyword grant — the engine reads the keyword off
+`Effective().Abilities`, so a grant and a printing behave identically
+and a permanent that has lost all abilities stops phasing.
+
+**The wire** carries them in `GameView.phased_out`, a shared zone
+beside `battlefield` / `stack` / `exile`, with `phased_out: true` on
+each card; the client folds them back onto the controller's row,
+dimmed and badged `PHASED`, with the click withheld.
+
+Still missing, and named in the ADR rather than here: CR 702.26e /
+702.26f's continuous-effect corners — a "gain control until end of
+turn" whose object phases out keeps its `ScopedStatic` registration
+and applies again if the permanent returns inside the duration. No
+catalogued card reaches it.
+
 ### Adding a creature-type card (S26+)
 
 Tribal cards come in three shapes, and the shared builders live in

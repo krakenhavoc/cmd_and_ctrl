@@ -130,10 +130,23 @@ import (
 // post-#521 restore point, tokens or not, rather than restoring one
 // wrong.
 //
+// v6 is #1199 (ADR 0084), and it is the emblem shape of the argument
+// again rather than the Treasure one. The new `phasedOut` holding
+// slice zero-values correctly in the direction that usually matters: a
+// v5 file has no key, restore reads none, and a game in which nothing
+// was phased out comes back exactly as a v5 binary would have restored
+// it. What forces the bump is the other direction. A v5 binary handed
+// a v6 file would drop the key it does not know about and restore the
+// game with somebody's WHOLE BOARD silently gone — Teferi's Protection
+// is four permanents on a light board and twenty on a heavy one, and
+// none of them would be anywhere. There is no per-field way to say
+// "refuse this file if you do not know what phasing is", so the
+// version is it, and the cost is the one v2 and v5 accepted.
+//
 // Restore REFUSES anything it does not recognise rather than guessing.
 // See ErrSchemaTooNew / ErrSchemaUnsupported and ADR 0041 for the
 // version-skew policy this implements.
-const SnapshotSchemaVersion = 5
+const SnapshotSchemaVersion = 6
 
 // settingsSchemaVersion is the first schema that carries
 // GameSnapshot.Settings. Older files are migrated from UndoLimit.
@@ -192,6 +205,13 @@ type GameSnapshot struct {
 	Battlefield *zoneSnapshot `json:"battlefield"`
 	Stack       *zoneSnapshot `json:"stack"`
 	Exile       *zoneSnapshot `json:"exile"`
+
+	// PhasedOut is the CR 702.26 holding slice (#1199, ADR 0084). Not
+	// a zone in the CR 400 sense — see Game.PhasedOut — but a *Zone in
+	// the code, so it snapshots and restores through the same two
+	// helpers with no new mirror type and no new census counter:
+	// there is nothing in it but plain Cards.
+	PhasedOut *zoneSnapshot `json:"phasedOut,omitempty"`
 
 	Turn          Turn      `json:"turn"`
 	MulligansOpen bool      `json:"mulligansOpen"`
@@ -520,6 +540,17 @@ type cardSnapshot struct {
 	Solved            bool      `json:"solved,omitempty"`
 	StartingDefense   int       `json:"startingDefense,omitempty"`
 	ProtectorPlayerID uuid.UUID `json:"protectorPlayerId,omitempty"`
+
+	// The CR 702.26 phased-out status (#1199, ADR 0084). Meaningful
+	// only for a card in GameSnapshot.PhasedOut, and carried for
+	// ClassLevel's reason: every one of them is a legal zero value, so
+	// a restore that dropped them would bring back somebody's phased
+	// board under the wrong player's untap step, or bring an Aura back
+	// without its host.
+	PhasedOutBy       uuid.UUID `json:"phasedOutBy,omitempty"`
+	PhaseInLockedBy   uuid.UUID `json:"phaseInLockedBy,omitempty"`
+	PhasedOutIndirect bool      `json:"phasedOutIndirect,omitempty"`
+	TapOnPhaseIn      bool      `json:"tapOnPhaseIn,omitempty"`
 
 	// ManaAbilityCount / ActivatedAbilityCount record that the card
 	// HAD intrinsic ability closures, so restore can tell the
@@ -910,6 +941,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	s.Battlefield = snapshotZone(g.Battlefield, cen)
 	s.Stack = snapshotZone(g.Stack, cen)
 	s.Exile = snapshotZone(g.Exile, cen)
+	s.PhasedOut = snapshotZone(g.PhasedOut, cen)
 
 	s.Seats = make([]playerSnapshot, len(g.Seats))
 	for i, p := range g.Seats {
@@ -1196,6 +1228,10 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ChosenName:               c.ChosenName,
 		ClassLevel:               c.ClassLevel,
 		Solved:                   c.Solved,
+		PhasedOutBy:              c.PhasedOutBy,
+		PhaseInLockedBy:          c.PhaseInLockedBy,
+		PhasedOutIndirect:        c.PhasedOutIndirect,
+		TapOnPhaseIn:             c.TapOnPhaseIn,
 		StartingDefense:          c.StartingDefense,
 		ProtectorPlayerID:        c.ProtectorPlayerID,
 		ManaAbilityCount:         len(c.ManaAbilities),
@@ -1577,6 +1613,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.Battlefield = restoreZone(s.Battlefield, ZoneBattlefield)
 	g.Stack = restoreZone(s.Stack, ZoneStack)
 	g.Exile = restoreZone(s.Exile, ZoneExile)
+	g.PhasedOut = restoreZone(s.PhasedOut, ZonePhasedOut)
 
 	g.Seats = make([]*Player, len(s.Seats))
 	for i := range s.Seats {
@@ -1769,6 +1806,10 @@ func restoreCard(c *cardSnapshot) Card {
 		ChosenName:               c.ChosenName,
 		ClassLevel:               c.ClassLevel,
 		Solved:                   c.Solved,
+		PhasedOutBy:              c.PhasedOutBy,
+		PhaseInLockedBy:          c.PhaseInLockedBy,
+		PhasedOutIndirect:        c.PhasedOutIndirect,
+		TapOnPhaseIn:             c.TapOnPhaseIn,
 		StartingDefense:          c.StartingDefense,
 		ProtectorPlayerID:        c.ProtectorPlayerID,
 	}

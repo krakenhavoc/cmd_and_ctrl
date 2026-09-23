@@ -31,7 +31,23 @@ type GameView struct {
 	Battlefield ZoneView     `json:"battlefield"`
 	Stack       ZoneView     `json:"stack"`
 	Exile       ZoneView     `json:"exile"`
-	Turn        TurnView     `json:"turn"`
+	// PhasedOut is the CR 702.26 phased-out permanents (#1199,
+	// ADR 0084). A shared, owner-less, public zone beside the other
+	// three.
+	//
+	// They are a SEPARATE ZONE rather than battlefield entries
+	// carrying a flag, and that is load-bearing in two directions.
+	// stampNoUntap and stampCombatTargets index
+	// view.Battlefield.Cards[i] positionally against
+	// g.Battlefield.Cards[i], so merging would desynchronise every
+	// positional stamp. And internal/aiseat never touches game.Game —
+	// its sixteen battlefield walks are over this view — so a zone the
+	// bot does not read is a bot that cannot count a phased-out
+	// creature as a blocker, with nothing to teach and nothing to
+	// forget. The same argument ADR 0084 Decision 1 makes for the
+	// engine, one layer up.
+	PhasedOut ZoneView `json:"phased_out"`
+	Turn      TurnView `json:"turn"`
 	// MulligansOpen reflects Game.MulligansOpen — true between Start
 	// and the moment all seated players have committed to their
 	// opening hand via the keep_hand action. Clients render the
@@ -1119,6 +1135,18 @@ type CardView struct {
 	// real face plus a face-down badge when it is true and a card
 	// back when it is not. Added by ADR 0069.
 	FaceVisible bool `json:"face_visible,omitempty"`
+	// PhasedOut marks a card in the `phased_out` zone (CR 702.26,
+	// #1199, ADR 0084). Always true there and absent everywhere else,
+	// so the bit is redundant with the zone it arrived in — carried
+	// anyway so that a client rendering phased-out permanents IN PLACE
+	// one day has it without another wire change, and so that a card
+	// pulled out of the zone into a list still says what it is.
+	//
+	// PUBLIC, like face_down_kind: everyone at the table can see that
+	// a permanent phased out, and everyone needs to, because the board
+	// simply stops showing it otherwise. Survives the non-knower
+	// redaction.
+	PhasedOut bool `json:"phased_out,omitempty"`
 	// KnownByYou reports whether the viewer is currently a knower
 	// of this card's identity (S13.5). Computed per-viewer at
 	// FilterViewFor time. When false, printed characteristics
@@ -2424,6 +2452,7 @@ func ViewOfGame(g *game.Game) GameView {
 			Battlefield: viewOfZone(g.Battlefield),
 			Stack:       viewOfZone(g.Stack),
 			Exile:       viewOfZone(g.Exile),
+			PhasedOut:   viewOfZone(g.PhasedOut),
 			Turn: TurnView{
 				Number:         g.Turn.Number,
 				ActiveSeat:     g.Turn.ActiveSeat,
@@ -4827,8 +4856,15 @@ func viewOfZone(z *game.Zone) ZoneView {
 	}
 	cards := make([]CardView, len(z.Cards))
 	onBattlefield := z.Kind == game.ZoneBattlefield
+	phasedOut := z.Kind == game.ZonePhasedOut
 	for i, c := range z.Cards {
 		cards[i] = viewOfCard(c)
+		// #1199: read off the zone rather than off the card, because
+		// the card carries no flag — ADR 0084 keeps phasing as a
+		// membership rather than as a bit several subsystems have to
+		// agree about, and this is the one place the wire needs it
+		// spelled out.
+		cards[i].PhasedOut = phasedOut
 		// #29: the position pair is battlefield-only, and on the
 		// battlefield it is ALWAYS sent — including (0, 0), which is
 		// both a legitimate stamp (the clamp lands every negative and
@@ -4864,7 +4900,8 @@ func viewOfZone(z *game.Zone) ZoneView {
 //     hidden stack. Graveyard and Command zones stay visible
 //     (graveyard is public in MTG; command is public because
 //     commanders are public).
-//   - Shared zones (battlefield, stack, exile): unchanged.
+//   - Shared zones (battlefield, stack, exile, phased_out):
+//     unchanged but for the per-card redaction every zone gets.
 //
 // viewerID is the player UUID string; pass the empty string to get a
 // "spectator" view where every opponent hand and library is hidden
@@ -4951,7 +4988,11 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// announce-time cast stamps, and they were computed for one
 		// seat — the holder of the CastPermission that opened the
 		// card. Everyone else gets the card without them.
-		Exile:             applyCastStampsFor(redactZone(v.Exile, isKnower), viewerID),
+		Exile: applyCastStampsFor(redactZone(v.Exile, isKnower), viewerID),
+		// #1199: shared and public like the battlefield, and redacted
+		// the same way — a permanent can phase out face down, and the
+		// card under it is no more knowable for having phased.
+		PhasedOut:         redactZone(v.PhasedOut, isKnower),
 		Turn:              v.Turn,
 		MulligansOpen:     v.MulligansOpen,
 		Monarch:           v.Monarch,

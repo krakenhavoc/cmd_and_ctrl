@@ -278,6 +278,22 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// when it mints a new instance ID (resetAsNewObjectLocked).
 		c.EnteredBattlefieldAt = 0
 		c.SummonedThisTurn = false
+		// #1199 / CR 110.5d: only permanents have status, and phased
+		// in / phased out is one of the four. A card that has really
+		// left the battlefield is not a permanent and has none.
+		//
+		// It is here for completeness rather than because a phased-out
+		// permanent travels this way: PHASING ITSELF NEVER CALLS
+		// MoveCard — that is ADR 0084's whole point, and every field
+		// this block clears is one CR 702.26d says a phase-out must
+		// keep. What does reach here is a permanent that phased out
+		// and then left the battlefield for real while it was away
+		// (its controller conceded, CR 702.26k), and the card it
+		// leaves behind must not remember a status it no longer has.
+		c.PhasedOutBy = uuid.Nil
+		c.PhaseInLockedBy = uuid.Nil
+		c.PhasedOutIndirect = false
+		c.TapOnPhaseIn = false
 	}
 	// CR 400.7: a card that changes zones becomes a NEW OBJECT with no
 	// Counters go with the exile exit specifically. Nothing in the

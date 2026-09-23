@@ -261,6 +261,37 @@ type Card struct {
 	// AttackingTarget. Added in S10.
 	GoadedBy uuid.UUID
 
+	// PhasedOutBy is the player who controlled this permanent AT THE
+	// MOMENT IT PHASED OUT (CR 702.26a), and it is meaningful only
+	// while the card sits in Game.PhasedOut. uuid.Nil on every
+	// phased-in permanent.
+	//
+	// Not Controller, and not derivable from it: CR 502.1 phases in
+	// "all phased-out permanents that the active player controlled
+	// when they phased out", and CR 702.26f lets a control-changing
+	// continuous effect expire while a permanent is phased out. An Act
+	// of Treason creature phased out under YOUR control phases in
+	// during YOUR untap step even though control has reverted by then.
+	//
+	// See phasing.go and ADR 0084. Added in S46 (#1199).
+	PhasedOutBy uuid.UUID
+
+	// PhaseInLockedBy names the object whose presence on the
+	// battlefield is this phase-out's duration — Oubliette's "phases
+	// out until this enchantment leaves the battlefield", Out of
+	// Time's "phase out until this enchantment leaves the
+	// battlefield".
+	//
+	// uuid.Nil is ordinary phasing: the permanent phases in during its
+	// controller's next untap step (CR 502.1). Set, it phases in the
+	// moment the named object stops being on the battlefield, which is
+	// what the cards do — Out of Time's whole point is that the
+	// creatures come back at once when the last time counter goes,
+	// mid-turn.
+	//
+	// See phasing.go and ADR 0084. Added in S46 (#1199).
+	PhaseInLockedBy uuid.UUID
+
 	// DamageMarked is the damage currently noted on the creature this
 	// turn, used by the lethal-damage state-based action (CR 704.5g).
 	// Combat damage and direct-damage spells (resolved manually) write
@@ -822,6 +853,32 @@ type Card struct {
 	// up with the other non-bool fields, and for the same reasons.
 	// Carried by the snapshot. Added in S46 (#757).
 	Solved bool
+
+	// PhasedOutIndirect records that this permanent phased out WITH
+	// the permanent it is attached to rather than on its own
+	// (CR 702.26g, "phasing out indirectly"), and so "won't phase in
+	// by itself, but instead phases in along with the permanent it's
+	// attached to".
+	//
+	// Also CR 702.26h: an object that would phase out directly and
+	// indirectly at the same time "just phases out indirectly", which
+	// is why the mark is decided once for a whole batch in
+	// phaseOutSetLocked rather than per card by whoever asked.
+	//
+	// Meaningful only while the card sits in Game.PhasedOut. Not
+	// copiable — CR 707.2 copies characteristics, not status. See
+	// phasing.go and ADR 0084. Added in S46 (#1199).
+	PhasedOutIndirect bool
+
+	// TapOnPhaseIn is Oubliette's "Tap that creature as it phases in
+	// this way" — a rider on ONE phase-in, consumed as it fires.
+	//
+	// A bool on the card rather than a delayed trigger because the
+	// phase-in it rides on is a turn-based action or a duration
+	// ending, and neither uses the stack (CR 702.26a), so there is
+	// nothing for a trigger to sit on. See phasing.go and ADR 0084.
+	// Added in S46 (#1199).
+	TapOnPhaseIn bool
 }
 
 // AddKnower marks `viewerID` as having seen this card. No-op for

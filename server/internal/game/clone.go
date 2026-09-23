@@ -128,6 +128,11 @@ func (g *Game) cloneLocked() *Game {
 	out.Battlefield = cloneZone(g.Battlefield)
 	out.Stack = cloneZone(g.Stack)
 	out.Exile = cloneZone(g.Exile)
+	// #1199: the phased-out holding slice. Deep-copied like any other
+	// zone, which is what makes an undo across a phase-out or a
+	// phase-in exact — the state is a Card value in a slice, not a
+	// flag several subsystems have to agree about. See ADR 0084.
+	out.PhasedOut = cloneZone(g.PhasedOut)
 	out.Seats = make([]*Player, len(g.Seats))
 	for i, p := range g.Seats {
 		out.Seats[i] = clonePlayer(p)
@@ -818,6 +823,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.Battlefield = src.Battlefield
 	g.Stack = src.Stack
 	g.Exile = src.Exile
+	g.PhasedOut = src.PhasedOut
 	g.Turn = src.Turn
 	g.MulligansOpen = src.MulligansOpen
 	g.Monarch = src.Monarch

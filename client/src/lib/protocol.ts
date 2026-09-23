@@ -203,6 +203,22 @@ export interface GameView {
   battlefield: ZoneView;
   stack: ZoneView;
   exile: ZoneView;
+  // The CR 702.26 phased-out permanents (#1199, ADR 0084). A shared,
+  // owner-less, public zone like `exile`.
+  //
+  // They are ABSENT from `battlefield` rather than flagged inside it:
+  // CR 702.26b says a phased-out permanent "is treated as though it
+  // does not exist", and the server makes that true by keeping it out
+  // of the slice every other reader walks. So anything that asks the
+  // board a question — targeting, legal moves, combat, the bot — is
+  // right without knowing phasing exists, and the client is the one
+  // consumer that deliberately looks here (phasedOut.ts), because a
+  // board that silently loses four permanents is indistinguishable
+  // from a board that was wrathed.
+  //
+  // Optional on the type so a client built against a newer server
+  // than it is talking to degrades to "nothing is phased out".
+  phased_out?: ZoneView;
   turn: TurnView;
   // True between Start and the moment all seated, non-eliminated
   // players have committed to their opening hand via the keep_hand
@@ -1844,6 +1860,15 @@ export interface CardView extends CastSurfaceView {
   // Stamped per-viewer by the server; equals `face_down && known_by_you`.
   // True means "draw the real face plus a face-down badge".
   face_visible?: boolean;
+  // A phased-out permanent (CR 702.26, #1199, ADR 0084). Always true
+  // on a card in `GameView.phased_out` and absent everywhere else, so
+  // it is redundant with the zone the card arrived in — carried so a
+  // CardView pulled out of that zone into a list still says what it
+  // is. PUBLIC, like face_down_kind: it survives the non-knower
+  // redaction, because everyone can see the board stop showing a
+  // permanent and everyone needs to be able to tell "phased out" from
+  // "died".
+  phased_out?: boolean;
   // S13.5 per-viewer knowledge flag. True when the viewer is in the
   // server-side KnownBy set for this card. When false, printed
   // characteristics (name, type_line, scryfall_id, power, toughness,

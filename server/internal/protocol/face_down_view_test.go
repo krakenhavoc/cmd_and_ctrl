@@ -49,7 +49,12 @@ var redactedCardKeys = map[string]bool{
 	// ADR 0069: WHY it is face down is public — everyone can see
 	// that a permanent is a morph and that an exiled card is
 	// foretold. The identity of the card under it is not.
-	"face_down_kind":        true,
+	"face_down_kind": true,
+	// #1199 / ADR 0084: that a permanent is phased out is public for
+	// the same reason — everyone at the table can see the board stop
+	// showing it, and a viewer who cannot identify the card still has
+	// to be able to tell "phased out" from "died".
+	"phased_out":            true,
 	"battle_x":              true,
 	"battle_y":              true,
 	"attacking_target":      true,
@@ -207,6 +212,7 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		// one. TestFaceDownPermanentShipsItsPublicBody covers that
 		// cell.
 		FaceDownKind:        "exiled",
+		PhasedOut:           true,
 		FaceVisible:         true,
 		KnownByYou:          true,
 		knowers:             knowers,
