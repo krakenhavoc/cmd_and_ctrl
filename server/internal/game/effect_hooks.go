@@ -462,16 +462,18 @@ type ManaAbilityShape struct {
 	// ITSELF derived (Fellwar Stone asking an opposing Exotic
 	// Orchard), and answering that correctly — a one-way chain
 	// resolves, two copy-mana lands facing each other do not recurse
-	// forever (CR 106.6b) — needs a visited set threaded the whole
-	// way down. A closure with ProducedFunc's fixed three-argument
-	// shape (g, controller, source) has no room to carry one across
-	// the package boundary into effects.producibleAcross, so this
-	// field is a plain predicate instead — "candidate is a land an
-	// opponent controls" (Exotic Orchard, Fellwar Stone), "candidate
-	// is a land you control" (Reflecting Pool) — and
-	// producibleManaVisitingLocked (producible_mana.go, this package)
-	// walks the battlefield and recurses itself, with the visited set
-	// as an ordinary parameter.
+	// forever (CR 106.7's own closing sentence, not "106.6b" — that
+	// number does not exist in the pinned edition) — needs the
+	// ancestor path threaded the whole way down. A closure with
+	// ProducedFunc's fixed three-argument shape (g, controller,
+	// source) has no room to carry one across the package boundary
+	// into a card-side helper, so this field is a plain predicate
+	// instead — "candidate is a land an opponent controls" (Exotic
+	// Orchard, Fellwar Stone), "candidate is a land you control"
+	// (Reflecting Pool) — and producibleManaVisitingLocked
+	// (producible_mana.go, this package) walks the battlefield and
+	// recurses itself, with the ancestor path as an ordinary
+	// parameter.
 	//
 	// Wins over ProducedFunc for BOTH the CR 106.7 reader and a real
 	// activation — manaAbilityProducedLocked and ActivateManaAbility

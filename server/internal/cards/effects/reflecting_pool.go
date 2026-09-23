@@ -22,27 +22,29 @@ package effects
 // player controls, DO now see each other when doing so is not a real
 // cycle (#1323): the Pool's own-lands match reaches the Orchard, whose
 // opponent-lands match then reads real opposing lands rather than
-// looping back. Simplification, declared and narrower than it used to
-// be: a genuinely CIRCULAR chain — two Pools facing each other, or a
-// Pool and an Orchard that end up asking about each other across
-// multiple opponents — still answers "no mana" for the permanents in
-// the cycle (CR 106.6b), one colour short of what the real rules would
-// resolve for some of those pairs. Weaker than printed.
+// looping back. A genuinely CIRCULAR chain — two Pools facing each
+// other, or a Pool and an Orchard that end up asking about each other
+// across multiple opponents with no real land anywhere in the loop —
+// still answers "no mana" for the permanents in the cycle, and that is
+// not a simplification: it is the printed card's own worked ruling
+// (Exotic Orchard's, word for word — Reflecting Pool is the same
+// question asked of a different board) and CR 106.7's own closing
+// sentence; see game/producible_mana.go's file doc. Nothing here is
+// weaker than printed.
 func init() {
 	Register(Spec{
 		OracleID:     "67f43ac6-2a58-4b53-b5d7-0330e2a252e2",
 		Name:         "Reflecting Pool",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Lands that copy other lands' mana in a genuine circle back to this Pool (facing another Reflecting Pool, or an Exotic Orchard that in turn reads this land) contribute nothing."},
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:              ManaAbilityCost{Tap: true},
 			DerivedMatch:      DerivedFromOwnLands(),
 			DerivedColorsOnly: false,
-			// CR 106.6b: this ability reads what OTHER permanents
-			// could produce, so CR 106.7's reader must route it
-			// through the visited set rather than a plain ProducedFunc
-			// call — which is also why a lone Pool makes nothing
-			// (#782, #1323).
+			// CR 106.7: this ability reads what OTHER permanents
+			// could produce, so CR 106.7's own reader must route it
+			// through the ancestor-path guard rather than a plain
+			// ProducedFunc call — which is also why a lone Pool makes
+			// nothing (#782, #1323).
 			DerivesFromOtherSources: true,
 			Label:                   "Add one mana of any type a land you control could produce",
 			// "any type that a land you control could produce" — no

@@ -30,16 +30,22 @@ package effects
 //
 // An opposing land whose own ability is ITSELF derived — a second
 // Exotic Orchard, a Reflecting Pool — is recursed into, not skipped
-// (#1323): game.ProducibleManaLocked carries a visited set the whole
-// way down, so a one-way chain (this Orchard → an opposing Reflecting
-// Pool → THAT player's own plain Forest) resolves to a real colour.
-// Simplification, declared and narrower than it used to be: a
-// genuinely CIRCULAR chain — two Exotic Orchards facing each other, or
-// an Orchard and a Reflecting Pool that both, directly or indirectly,
-// end up asking about each other — still answers "no mana" for the
-// permanents in the cycle (CR 106.6b), one colour short of what the
-// real rules would resolve for some of those pairs. Weaker than
-// printed.
+// (#1323): game.ProducibleManaLocked carries the ancestor path the
+// whole way down, so a one-way chain (this Orchard → an opposing
+// Reflecting Pool → THAT player's own plain Forest) resolves to a
+// real colour.
+//
+// A genuinely CIRCULAR chain — two Exotic Orchards facing each other,
+// or an Orchard and a Reflecting Pool that both, directly or
+// indirectly, end up asking about each other with no real land
+// anywhere in the loop — answers "no mana" for every permanent in it,
+// and that is not a simplification: it is the printed card's own
+// official ruling, word for word ("none of those lands would produce
+// mana if their mana abilities were activated"), and CR 106.7's own
+// last sentence ("no type of mana can be defined this way" ⇒ "there's
+// no type of mana it could produce"). See game/producible_mana.go's
+// file doc for the ruling in full and the reachability argument
+// behind it. Nothing here is weaker than printed.
 //
 // Auto-tap plans it fine: the derivation is a pure read, so the
 // planner evaluates the same derivation the activation will.
@@ -47,16 +53,15 @@ func init() {
 	Register(Spec{
 		OracleID:     "27b047e3-0d41-45e2-98e9-9391d7923a1e",
 		Name:         "Exotic Orchard",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Opposing lands that copy other lands' mana in a genuine circle back to this land (facing another Exotic Orchard, or a Reflecting Pool that in turn reads this land) contribute nothing."},
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:              ManaAbilityCost{Tap: true},
 			DerivedMatch:      DerivedFromOpponentLands(),
 			DerivedColorsOnly: true,
-			// CR 106.6b: this ability reads what OTHER permanents
-			// could produce, so CR 106.7's reader must route it
-			// through the visited set rather than a plain ProducedFunc
-			// call (#782, #1323).
+			// CR 106.7: this ability reads what OTHER permanents
+			// could produce, so CR 106.7's own reader must route it
+			// through the ancestor-path guard rather than a plain
+			// ProducedFunc call (#782, #1323).
 			DerivesFromOtherSources: true,
 			Label:                   "Add one mana of any color an opponent's land could produce",
 			// The printed text says "any color that a land an

@@ -696,7 +696,7 @@ for the same reason the cast's is not.
   payment for a CAST (above), and Solphim's ability still waits on an
   activation-cost discard component.
 
-## Amendment — 2026-09-23 (#1323): the recursion guard becomes a visited set, not a blanket skip
+## Amendment — 2026-09-23 (#1323): the recursion guard becomes CR 106.7's own reachability rule, and the three cards go to full
 
 Found by the *Aang is so flashy* deck triage (#1306): Fellwar Stone facing an
 opposing Exotic Orchard or Reflecting Pool saw nothing from it, even on a
@@ -704,24 +704,56 @@ board with no cycle at all. The #782 amendment's guard — "an ability that
 reads OTHER permanents' producible mana is skipped
 (`ManaAbilityShape.DerivesFromOtherSources`)" — was unconditional: any
 `DerivesFromOtherSources` ability contributed nothing to a derivation,
-whether or not asking it would actually loop. CR 106.6b only answers the
-CIRCULAR case with "no mana"; a one-way chain — Fellwar Stone reading an
-opposing Exotic Orchard reading a THIRD player's plain Forest — has a real
-answer, and the blanket skip refused to give it.
+whether or not asking it would actually loop.
 
-### The fix has to leave `mana_derivation.go`'s closures, because the state doesn't fit through them
+**There is no CR 106.6b.** The #782 amendment (and every comment written
+against it since) cited "CR 106.6b" for the circular case. Checked against
+the pinned edition (`MagicCompRules 20260819.txt`), 106.6 has one subrule,
+106.6a, about replacement effects that scale a mana-producing ability's
+output — nothing about circularity. The circular case is the LAST SENTENCE
+of **106.7 itself**: "If that permanent wouldn't produce any mana under
+these conditions, **or no type of mana can be defined this way**, there's no
+type of mana it could produce." A "could produce" chain that loops back on
+itself is exactly a type that "can't be defined this way" — evaluating it
+never bottoms out — so the rule answers it the same way it answers every
+other undefined case: nothing. Every citation of "106.6b" in this file, in
+`game/producible_mana.go`, `game/effect_hooks.go`, `effects/spec.go` and the
+three card files is corrected to 106.7 by this amendment.
+
+**The official ruling settles what "weaker than printed" would have meant,
+and the answer is: it wouldn't have meant anything, because there IS no
+stronger answer.** Exotic Orchard's own ruling (WotC, 2009-02-01) gives the
+worked example directly:
+
+> "Lands that produce mana based only on what other lands 'could produce'
+> won't help each other unless some other land allows one of them to
+> actually produce some type of mana. For example, if you control an Exotic
+> Orchard and your opponent controls an Exotic Orchard and a Reflecting
+> Pool, none of those lands would produce mana if their mana abilities were
+> activated. On the other hand, if you control a Forest and an Exotic
+> Orchard, and your opponent controls an Exotic Orchard and a Reflecting
+> Pool, then each of those lands can be tapped to produce {G}."
+
+A genuine circle with no real land anywhere in it produces **nothing**, full
+stop — not "one colour short of what the real rules would resolve," which is
+what every version of these three cards' doc comments claimed before this
+amendment. That claim was simply wrong: there is no printed resolution for a
+pure cycle to fall short of. The engine's answer for that case was already
+correct; only the CITATION and the CAVEAT WORDING were not.
+
+### The fix has to leave `mana_derivation.go`'s closures, because the ancestor path doesn't fit through them
 
 The three derived abilities (Exotic Orchard, Reflecting Pool, Fellwar Stone)
 used to be `ProducedFunc` closures built by `ProducedFromOpponentLands()` /
 `ProducedFromOwnLands()`, which called a package-level `producibleAcross`
 that in turn called the exported `game.ProducibleManaLocked` for each
-candidate. Answering "one-way chains resolve, cycles don't" needs a set of
-instance IDs already "in flight" threaded the whole way down that call chain
-— and `ProducedFunc`'s fixed shape, `func(*Game, controller, source
-uuid.UUID) string`, used by every OTHER mana ability in the catalog too, has
-no fourth argument to carry it. Widening that type to thread a visited set
-through thirty-odd unrelated cards' closures for three cards' benefit was
-rejected outright.
+candidate. Answering "one-way chains resolve, cycles don't" needs the set of
+instance IDs currently ON THE PATH from the original query threaded the whole
+way down that call chain — and `ProducedFunc`'s fixed shape, `func(*Game,
+controller, source uuid.UUID) string`, used by every OTHER mana ability in
+the catalog too, has no fourth argument to carry it. Widening that type to
+thread a path set through thirty-odd unrelated cards' closures for three
+cards' benefit was rejected outright.
 
 So the three derived abilities declare a NEW field instead —
 `ManaAbilityShape.DerivedMatch func(candidate Card, controller uuid.UUID)
@@ -729,47 +761,60 @@ bool` plus `DerivedColorsOnly bool` — a plain predicate ("a land an opponent
 controls", "a land you control") rather than a closure that does its own
 board walk. `game/producible_mana.go` owns the walk and the recursion
 entirely: `producibleManaVisitingLocked(c, visiting)` marks `c.InstanceID`
-before it asks anything else, and `derivedManaLocked` scans the battlefield
-for `DerivedMatch` and recurses back into `producibleManaVisitingLocked` for
-each candidate WITH THE SAME MAP. A candidate already in `visiting` — the
-circular case — contributes nothing; everything else is an ordinary chain and
-resolves. `ProducibleManaLocked(c)`, the public entry point, is now a one-line
-wrapper seeding a fresh empty set.
+on entry and (`defer`) UNMARKS it on return, so `visiting` tracks the
+ANCESTOR PATH — the textbook-correct shape for cycle detection in a
+reachability walk — rather than "every permanent this query has ever asked
+about." `derivedManaLocked` scans the battlefield for `DerivedMatch` and
+recurses back into `producibleManaVisitingLocked` for each candidate with the
+SAME map. A candidate currently on the path — the circular case — contributes
+nothing; everything else is an ordinary chain and resolves.
+`ProducibleManaLocked(c)`, the public entry point, is now a one-line wrapper
+seeding a fresh empty set.
+
+(A permanently-growing "seen" set — never unmarked — turns out to answer the
+same TOP-LEVEL question correctly too, because this aggregation is a
+monotone union with nothing ever discarded: a colour found via any one path
+is retained by that path's own return value regardless of what a redundant,
+masked reference elsewhere would separately have found. An adversarial
+four-controller board built specifically to try to break that property
+during this amendment's own review gave an identical answer under both
+implementations. The ancestor-path version ships anyway, because it is
+correct by construction rather than by an argument specific to one
+aggregation shape, and it is what the code says on its face.)
 
 **One shared implementation for both readers.** A real ACTIVATION (someone
 taps Fellwar Stone for actual mana) goes through the identical
 `derivedManaLocked` call, from `manaAbilityProducedLocked` and
-`ActivateManaAbility`'s produced-string computation, each seeding the
-visited set with the activating permanent's OWN instance ID before
-recursing — the same seed `producibleManaVisitingLocked` gives itself at the
-top of an ordinary CR 106.7 query. Two Reflecting Pools cross-referencing
-each other at real activation time is exactly as unbounded a recursion as
-the same board asked about abstractly, and it needed the identical guard.
+`ActivateManaAbility`'s produced-string computation, each seeding the path
+with the activating permanent's OWN instance ID before recursing — the same
+seed `producibleManaVisitingLocked` gives itself at the top of an ordinary
+CR 106.7 query. Two Reflecting Pools cross-referencing each other at real
+activation time is exactly as unbounded a recursion as the same board asked
+about abstractly, and it needed the identical guard.
 
 ### What actually changes for the three cards
 
 - **Exotic Orchard / Fellwar Stone** ("a land an opponent controls"): now see
   through an opposing derived land to whatever IT could derive, as long as
-  that chain doesn't loop back to an already-visited permanent. The
-  remaining simplification is narrower than before and genuinely circular —
-  two Exotic Orchards facing each other, or an Orchard and a Pool that end up
-  asking about each other (which happens naturally in a pod: "opponent" is
-  symmetric, so any two players who each run one of these cards form a
-  2-cycle by construction) — still answer "no mana" for CR 106.6b's case.
+  that chain doesn't loop back to an already-visited permanent — exactly the
+  official ruling's second worked example (a Forest on your side lights up
+  every land in the chain).
 - **Reflecting Pool** ("a land you control"): the SAME controller running a
   Pool and an Orchard is no longer a false cycle — the Pool's own-lands match
   reaches the Orchard, but the Orchard's opponent-lands match (relative to
   the SAME controller) does not reach back to the Pool, so the chain resolves
-  through a real opposing land. Two Pools (or two Orchards) under one
-  controller — an actual cycle, since each would ask about the other again —
-  still see nothing.
-- The three cards' caveats were narrowed to match: "contributes nothing"
-  only for a genuine circle back to the asking permanent, not for every
-  derived land in sight.
+  through a real opposing land.
+- A genuine circle — two Exotic Orchards facing each other, two Reflecting
+  Pools, or an Orchard and a Pool that end up asking about each other, with
+  no real land anywhere in the loop — still answers "no mana" for every
+  permanent in it, matching the ruling's FIRST worked example exactly. This
+  is the printed card's own behaviour, not a simplification, so **all three
+  cards move to `CompletenessFull` with no caveat.**
 
 `TestFellwarStoneSeesThroughAnOpposingExoticOrchard`,
 `TestOwnOrchardAndPoolSeeThroughEachOther` and
-`TestFellwarStoneVersusFellwarStoneIsNotACycle` are the new one-way-chain
-proofs; `TestTwoExoticOrchardsStillSeeNothing` (the original #782 test,
-unchanged) is the guard's own back-out proof — it still passes, because a
-genuine 3-permanent circle still resolves to nothing.
+`TestFellwarStoneVersusFellwarStoneIsNotACycle` are the one-way-chain proofs;
+`TestTwoExoticOrchardsStillSeeNothing` (the original #782 test, unchanged) is
+the guard's own back-out proof — it still passes, because a genuine
+3-permanent circle still resolves to nothing, which is now documented as the
+rule's own answer rather than an engine limitation.

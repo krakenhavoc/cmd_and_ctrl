@@ -279,9 +279,11 @@ func TestProducibleReadsATokenLandsProducedFunc(t *testing.T) {
 	}
 }
 
-// TestTwoExoticOrchardsStillSeeNothing — CR 106.6b. The guard is the
-// reason DerivesFromOtherSources exists; evaluating every OTHER
-// ProducedFunc must not have opened the recursion back up.
+// TestTwoExoticOrchardsStillSeeNothing — CR 106.7's own closing
+// sentence ("no type of mana can be defined this way"), matching the
+// card's official ruling exactly (no real land anywhere in the loop).
+// The guard is the reason DerivesFromOtherSources exists; evaluating
+// every OTHER ProducedFunc must not have opened the recursion back up.
 func TestTwoExoticOrchardsStillSeeNothing(t *testing.T) {
 	g := newCatalogGame(t)
 	me, them := g.Seats[0], g.Seats[1]
@@ -301,7 +303,7 @@ func TestTwoExoticOrchardsStillSeeNothing(t *testing.T) {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
 	if pick := manaPickFor(g, me.ID); pick != nil {
-		t.Errorf("a colour pick was queued with options %v; two Orchards and a Pool see nothing (CR 106.6b)", pick.ColorOptions)
+		t.Errorf("a colour pick was queued with options %v; two Orchards and a Pool see nothing (CR 106.7)", pick.ColorOptions)
 	}
 	if len(me.ManaPool) != 0 {
 		t.Errorf("pool = %v, want empty", me.ManaPool)

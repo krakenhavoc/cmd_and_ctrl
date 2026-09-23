@@ -1235,14 +1235,15 @@ type ManaAbility struct {
 	// ITSELF derived (Fellwar Stone asking an opposing Exotic
 	// Orchard), and answering that correctly — a one-way chain
 	// resolves, two copy-mana lands facing each other do not recurse
-	// forever (CR 106.6b) — needs a visited set threaded the whole
-	// way down, which ProducedFunc's fixed three-argument shape has
-	// no room for. This is a plain predicate instead — "candidate is
-	// a land an opponent controls" (Exotic Orchard, Fellwar Stone),
-	// "candidate is a land you control" (Reflecting Pool) — and
-	// game.ProducibleManaLocked walks the battlefield and recurses
-	// itself, in the game package, where the visited set is an
-	// ordinary parameter.
+	// forever (CR 106.7's own closing sentence, not "106.6b" — that
+	// number does not exist in the pinned edition) — needs the
+	// ancestor path threaded the whole way down, which ProducedFunc's
+	// fixed three-argument shape has no room for. This is a plain
+	// predicate instead — "candidate is a land an opponent controls"
+	// (Exotic Orchard, Fellwar Stone), "candidate is a land you
+	// control" (Reflecting Pool) — and game.ProducibleManaLocked walks
+	// the battlefield and recurses itself, in the game package, where
+	// the ancestor path is an ordinary parameter.
 	//
 	// Wins over ProducedFunc for BOTH the CR 106.7 reader and a real
 	// activation, so the two can never compute a different answer for
