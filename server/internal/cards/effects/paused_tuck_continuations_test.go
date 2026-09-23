@@ -272,7 +272,7 @@ func TestGodEternalCommanderTakingTheCommandZoneStaysThere(t *testing.T) {
 // --- Aetherspouts ---------------------------------------------------
 
 // TestAetherspoutsScriesOnlyTheAttackersThatReachedTheLibrary — the
-// scry is the tuck batch's continuation and counts what LANDED. An
+// ordering prompt (a scry until #996) is the tuck batch's continuation and counts what LANDED. An
 // attacking commander whose owner takes the command zone was never put
 // into a library (CR 400.7), so it is not among the cards its owner
 // arranges — and nothing is arranged at all until the question is
@@ -292,19 +292,19 @@ func TestAetherspoutsScriesOnlyTheAttackersThatReachedTheLibrary(t *testing.T) {
 	castInPlace(t, g, me.ID, "Aetherspouts", b26AetherspoutsOracle)
 	passPriorityAroundTable(t, g)
 
-	if scryChoiceFor(g, a.ID) != nil {
-		t.Fatal("nobody scries while the CR 903.9 prompt is open")
+	if putInLibraryChoiceFor(g, a.ID) != nil {
+		t.Fatal("nobody arranges anything while the CR 903.9 prompt is open")
 	}
 	b36AcceptCommandZone(t, g, a.ID)
 
 	if !a.Command.Contains(cmd) {
 		t.Fatal("the owner took the command zone")
 	}
-	c := scryChoiceFor(g, a.ID)
+	c := putInLibraryChoiceFor(g, a.ID)
 	if c == nil {
 		t.Fatal("the owner arranges the attackers that did reach their library")
 	}
 	if len(c.ScryCards) != 1 || c.ScryCards[0] != raider {
-		t.Errorf("scry looks at %v, want only the attacker that landed in the library", c.ScryCards)
+		t.Errorf("the prompt names %v, want only the attacker that landed in the library", c.ScryCards)
 	}
 }

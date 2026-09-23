@@ -221,6 +221,26 @@ const (
 	// two keywords, and this one has no away lane. Added in S22.
 	PendingChoiceLookAtTop PendingChoiceKind = "look_at_top"
 
+	// PendingChoicePutInLibrary — "put these cards into their owners'
+	// libraries in the order you choose" (CR 401.4, ADR 0088). The
+	// placement half of the library-top row (#996): "put the rest on
+	// the bottom of your library in any order" (Goblin Ringleader,
+	// Impulse), "put two cards from your hand on top of your library
+	// in any order" (Brainstorm), "its owner puts it on their choice
+	// of the top or bottom of their library" (Aetherspouts).
+	//
+	// The fourth member of the scry family: same ScryCards, same
+	// chooser-only projection, same dialog, same answer keys. It is
+	// its own kind because it is not a look at the top of a library —
+	// the cards may be in a hand, on the battlefield or on the stack,
+	// and LibraryPlacement says which lanes the answer may use.
+	//
+	// Answered with {top_order, bottom}, both TOP-FIRST (the first
+	// entry of `bottom` is the one nearest the top of the pile that
+	// goes under the library). Every card appears in exactly one list,
+	// and a lane the placement does not open must be empty.
+	PendingChoicePutInLibrary PendingChoiceKind = "put_in_library"
+
 	// PendingChoiceSearchLibrary — "search your library for ..."
 	// (CR 701.23). The searcher picks which of the matching cards
 	// they take; picking none is always legal ("you may fail to
@@ -554,6 +574,13 @@ type PendingChoice struct {
 	// redacted to the chooser alone.
 	ScryCards []uuid.UUID
 
+	// LibraryPlacement is which lanes a PendingChoicePutInLibrary's
+	// answer may use — top, bottom, or either (ADR 0088). Plain data,
+	// carried by the clone and the snapshot: the prompt has to mean
+	// the same thing after an undo and after a restart. Empty on every
+	// other kind.
+	LibraryPlacement LibraryPlacement
+
 	// TriggerOrderIDs is the set of pending-trigger item IDs a
 	// PendingChoiceTriggerOrder entry asks the chooser to order.
 	// Wire-serialised (with label + source per ID) so the client
@@ -757,6 +784,13 @@ type PendingChoice struct {
 	// happens before the reorder is a different card. Not
 	// serialised to the wire.
 	scryResume func(g *Game) error
+
+	// libraryOrderResume is a PendingChoicePutInLibrary's
+	// continuation: it is handed the validated answer (both lanes
+	// top-first) and places the cards, then runs the rest of the
+	// effect. Captures only IDs and scalars. Not serialised; counted
+	// in the snapshot census. See library_order.go.
+	libraryOrderResume func(g *Game, top, bottom []uuid.UUID) error
 }
 
 // payUnlessFrame carries a pay-unless prompt's parsed cost and the
@@ -4029,18 +4063,21 @@ func (g *Game) ResolveScry(choiceID, chooserID uuid.UUID, bottom, topOrder []uui
 }
 
 // IsLookAtTopKind reports whether a choice kind belongs to the scry
-// family: the prompts that show their chooser the top N cards of
-// their own library and ask where they go.
+// family: the prompts that show their chooser a set of cards and ask
+// where in a library they go. Three of them are a look at the top of
+// the chooser's own library; the fourth, put_in_library (ADR 0088),
+// orders cards on their way into a library from wherever they are.
 //
-// The three share PendingChoice.ScryCards, scryResume, the
-// chooser-only wire redaction and the client dialog — so the places
+// The four share PendingChoice.ScryCards, the chooser-only wire
+// redaction and the client dialog (put_in_library has its own resume
+// slot, because its continuation is handed the answer) — so the places
 // that care about the family rather than the individual keyword (the
 // view projection, the legal-move enumerator, the dispatcher) ask
-// here instead of listing the kinds and going stale when a fourth
-// arrives. Added in S22.
+// here instead of listing the kinds. Added in S22; the fourth member
+// in #996.
 func IsLookAtTopKind(k PendingChoiceKind) bool {
 	switch k {
-	case PendingChoiceScry, PendingChoiceSurveil, PendingChoiceLookAtTop:
+	case PendingChoiceScry, PendingChoiceSurveil, PendingChoiceLookAtTop, PendingChoicePutInLibrary:
 		return true
 	}
 	return false
@@ -4138,21 +4175,9 @@ func (g *Game) ResolveLookAtTop(choiceID, chooserID uuid.UUID, topOrder []uuid.U
 //
 // Caller must hold g.mu.
 func partitionLookedAtCards(p *Player, lookedAt, away, topOrder []uuid.UUID) (map[uuid.UUID]bool, error) {
-	want := make(map[uuid.UUID]bool, len(lookedAt))
-	for _, id := range lookedAt {
-		want[id] = true
-	}
-	seen := make(map[uuid.UUID]bool, len(want))
-	for _, list := range [][]uuid.UUID{away, topOrder} {
-		for _, id := range list {
-			if !want[id] || seen[id] {
-				return nil, ErrInvalidParam
-			}
-			seen[id] = true
-		}
-	}
-	if len(seen) != len(want) {
-		return nil, ErrInvalidParam
+	want, err := partitionChoiceCards(lookedAt, away, topOrder)
+	if err != nil {
+		return nil, err
 	}
 	for id := range want {
 		if !p.Library.Contains(id) {

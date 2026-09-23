@@ -271,10 +271,9 @@ func libraryCardsTakeable(g *game.Game, player uuid.UUID, ids []uuid.UUID, pred 
 // TakeRestOnBottomInRandomOrder is the Then for "put the rest on the
 // bottom of your library in a random order" — Horn of the Mark.
 //
-// The engine has no prompt for ordering a pile headed to the bottom of
-// a library, so a card that prints "in any order" uses this and
-// declares the caveat: random is the strictly-less-informed version of
-// the choice the card offers.
+// Only for cards that PRINT "a random order". A card that prints "in
+// any order" uses TakeRestOnBottomInAnyOrder (library_order.go), which
+// asks the player (#996, ADR 0088).
 func TakeRestOnBottomInRandomOrder(g *game.Game, res TakeFromLibraryResult) error {
 	return g.PutOnBottomInRandomOrderForEffect(res.Player, game.ZoneLibrary, res.Rest)
 }
@@ -320,7 +319,8 @@ func LookAtTopThenMayTakeToHand(n int, match CardPredicate, max int, label strin
 // RevealTopThenTakeToHand is the whole sentence for the public
 // version: "reveal the top N cards of your library. Put all [Match]
 // cards revealed this way into your hand and the rest on the bottom of
-// your library in a random order" — Goblin Ringleader.
+// your library in any order" — Goblin Ringleader, Sylvan Messenger,
+// Garruk, Caller of Beasts. The rest are ordered by the player (#996).
 //
 // Mandatory and unbounded, which is why it raises no prompt at all:
 // "all of them" is the only answer.
@@ -331,6 +331,6 @@ func RevealTopThenTakeToHand(ctx *Context, player uuid.UUID, n int, match CardPr
 		Match:  match,
 		All:    true,
 		Label:  label,
-		Then:   TakeRestOnBottomInRandomOrder,
+		Then:   TakeRestOnBottomInAnyOrder,
 	}.Apply(ctx)
 }

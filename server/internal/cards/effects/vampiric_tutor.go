@@ -21,12 +21,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No reveal: Vampiric Tutor does not say "reveal it", so only the
 // controller knows what is on top.
+//
+// #996: the card carried a caveat saying the found card "goes straight
+// to your hand" for a sprint after ToTop made that false. Cleared; the
+// test pins the card on top of the library, not in hand.
 func init() {
 	Register(Spec{
 		OracleID:     "ededbdae-d9dc-4206-9335-d7158f2d7700",
 		Name:         "Vampiric Tutor",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The card you find goes straight to your hand instead of on top of your library."},
+		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if err := (SearchLibrary{
 				Player:  ctx.Controller(),

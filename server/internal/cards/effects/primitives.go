@@ -751,6 +751,10 @@ type SearchLibrary struct {
 	// is placed after the shuffle, which is what makes the clause
 	// mean anything.
 	ToTop bool
+	// Depth is where ToTop puts the card: "then shuffle and put that
+	// card THIRD from the top" is Depth 3 (Long-Term Plans). Zero is
+	// the top. Meaningful only with ToTop.
+	Depth int
 	// LibraryOwner is the seat whose library is actually searched,
 	// when that is not Player (#1230) — Bribery's "search TARGET
 	// OPPONENT's library", where the caster (Player) chooses and the
@@ -787,6 +791,7 @@ func (s SearchLibrary) Apply(ctx *Context) error {
 		Validate:      s.Validate,
 		Then:          s.Then,
 		ToTop:         s.ToTop,
+		Depth:         s.Depth,
 		LibraryOwner:  s.LibraryOwner,
 		Unbounded:     s.Unbounded,
 		FaceDown:      s.FaceDown,

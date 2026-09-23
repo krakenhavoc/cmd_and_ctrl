@@ -672,6 +672,61 @@ func (e *enumerator) choiceMoves() bool {
 				e.addChoice(c, reason+": put "+cardName(g, id)+" on top", p)
 			}
 
+		case game.PendingChoicePutInLibrary:
+			// ADR 0088. The answer is a permutation of the pile in the
+			// lane(s) the placement opens, so offer the answers that
+			// matter rather than N! of them: leave the order alone, and
+			// pull each card to the front of its lane — plus, when the
+			// choice is top OR bottom, bury all and bury each one. The
+			// first entry is always "leave it alone", which every
+			// placement accepts.
+			cards := c.ScryCards
+			all := idStrings(cards)
+			lane := func(p *choiceParams, ids []string) {
+				if c.LibraryPlacement == game.LibraryPlaceBottom {
+					p.Bottom = ids
+					p.TopOrder = []string{}
+				} else {
+					p.TopOrder = ids
+					p.Bottom = []string{}
+				}
+			}
+			p := base()
+			lane(&p, all)
+			e.addChoice(c, reason+": leave the order alone", p)
+			for i, id := range cards {
+				if i == 0 {
+					continue
+				}
+				p = base()
+				ids := []string{id.String()}
+				for j, other := range cards {
+					if j != i {
+						ids = append(ids, other.String())
+					}
+				}
+				lane(&p, ids)
+				e.addChoice(c, reason+": put "+cardName(g, id)+" first", p)
+			}
+			if c.LibraryPlacement == game.LibraryPlaceTopOrBottom {
+				p = base()
+				p.Bottom = all
+				p.TopOrder = []string{}
+				e.addChoice(c, reason+": all on the bottom", p)
+				if len(cards) > 1 {
+					for i, id := range cards {
+						p = base()
+						p.Bottom = []string{id.String()}
+						for j, other := range cards {
+							if j != i {
+								p.TopOrder = append(p.TopOrder, other.String())
+							}
+						}
+						e.addChoice(c, reason+": "+cardName(g, id)+" on the bottom", p)
+					}
+				}
+			}
+
 		case game.PendingChoiceMayCast:
 			// #499. Cascade's "you may cast it without paying its mana
 			// cost". ResolveMayCast refuses neither answer — a failing

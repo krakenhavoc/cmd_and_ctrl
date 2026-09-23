@@ -28,20 +28,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // never showed them. The reveal makes all four cards known to every
 // seat, as printed, and the rest go back under.
 //
-// Declared simplification, weaker than printed (#259): the rest go to
-// the bottom in a RANDOM order rather than an order you choose. The
-// engine has no ordering prompt for a pile headed to the bottom of a
-// library, and random is the strictly-less-informed version of the
-// choice the card gives you. It costs you the ability to set up your
-// next few draws with a Ringleader that whiffed.
+// "The rest on the bottom of your library in any order" is a
+// put_in_library prompt on the bottom lane (#996, ADR 0088): the player
+// arranges the non-Goblins, top-first. It shipped with a random order
+// and a caveat until the engine had that prompt. The revealed cards
+// were seen by the whole table; the ORDER they go under in is the
+// player's alone (CR 401.4).
 func init() {
 	Register(Spec{
-		OracleID:     "4100e486-0d27-436c-8429-76bc2c1a26ab",
-		Name:         "Goblin Ringleader",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The revealed cards that aren't Goblins go to the bottom of your library in a random order — you don't get to choose the order.",
-		},
+		OracleID:        "4100e486-0d27-436c-8429-76bc2c1a26ab",
+		Name:            "Goblin Ringleader",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"haste"},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Goblin Ringleader — reveal four, take the Goblins",

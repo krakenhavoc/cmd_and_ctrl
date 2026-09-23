@@ -1338,7 +1338,9 @@ func Dispatch(g *game.Game, a Action) error {
 			// Bottom / TopOrder answer a PendingChoiceScry (CR
 			// 701.22): the looked-at cards going under the library,
 			// and the ones staying on top listed TOP-FIRST. Every
-			// looked-at card must appear in exactly one list.
+			// looked-at card must appear in exactly one list. A
+			// put_in_library (ADR 0088) answers on the same two keys,
+			// with Bottom top-first as well.
 			Bottom   []string `json:"bottom"`
 			TopOrder []string `json:"top_order"`
 			// CreatureType answers an S26 PendingChoiceCreatureType
@@ -1459,6 +1461,15 @@ func Dispatch(g *game.Game, a Action) error {
 				return g.ResolveSurveil(choiceID, a.Player, gy, top)
 			case game.PendingChoiceLookAtTop:
 				return g.ResolveLookAtTop(choiceID, a.Player, top)
+			case game.PendingChoicePutInLibrary:
+				// ADR 0088: scry's two keys, each lane top-first;
+				// the resolver refuses a lane the prompt's
+				// placement does not open.
+				bottom, err := parseUUIDs(p.Bottom, "bottom")
+				if err != nil {
+					return err
+				}
+				return g.ResolvePutInLibrary(choiceID, a.Player, bottom, top)
 			default:
 				bottom, err := parseUUIDs(p.Bottom, "bottom")
 				if err != nil {
