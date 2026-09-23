@@ -80,6 +80,63 @@ func TestAangAirbendsAnOpponentsPermanentAndOwnerRebuysIt(t *testing.T) {
 	_ = aang
 }
 
+// #1304 / #1299: airbending an opposing COMMANDER. Exiling it opens
+// the CR 903.9 window, so its owner is asked about the command zone
+// before anything moves. A "no" must leave the commander in exile
+// WITH the airbend grant — the old primitive stamped the grant on the
+// line after a paused exile, found nothing in exile, and stranded the
+// card — and the owner must then be able to cast it for {2}. A "yes"
+// sends it home, where there is nothing to grant.
+func TestAirbendingACommanderKeepsTheRebuyWhenItsOwnerDeclines(t *testing.T) {
+	for _, takeCommandZone := range []bool{false, true} {
+		g := newCatalogGame(t)
+		me, opp := g.Seats[0], g.Seats[1]
+		vivi := uuid.New()
+		g.Battlefield.PushTop(game.Card{
+			InstanceID: vivi, Name: "Their Commander", TypeLine: "Legendary Creature — Human Wizard",
+			ManaCost: "{2}{U}{R}", Power: 3, Toughness: 3,
+			Owner: opp.ID, Controller: opp.ID, IsCommander: true,
+		})
+
+		castAndResolveCreature(t, g, "Aang, the Last Airbender",
+			"Legendary Creature — Human Avatar Ally", aangTheLastAirbenderOracle)
+		answerLatestTriggerPrompt(t, g, me.ID, true)
+		pickCard(t, g, me.ID, vivi)
+		passPriorityAroundTable(t, g)
+
+		offer := latestChoiceOfKind(g, game.PendingChoiceOptionalReplacement)
+		if offer == nil || offer.Chooser != opp.ID {
+			t.Fatalf("the commander's owner was not asked about the command zone (CR 903.9)")
+		}
+		if err := g.ResolveOptionalReplacement(offer.ID, opp.ID, takeCommandZone); err != nil {
+			t.Fatalf("ResolveOptionalReplacement: %v", err)
+		}
+		passPriorityAroundTable(t, g)
+
+		if takeCommandZone {
+			if !opp.Command.Contains(vivi) {
+				t.Fatalf("a commander whose owner took the offer is not in the command zone")
+			}
+			if perm := g.CastPermissionOnCardByIDForEffect(vivi); perm != nil {
+				t.Errorf("a commander back in the command zone carries an airbend grant: %+v", perm)
+			}
+			continue
+		}
+		assertAirbent(t, g, vivi, opp.ID)
+
+		// The rebuy itself: on its owner's turn, {2} casts it.
+		advanceToPrecombatMainOf(t, g, 1)
+		b06AddMana(opp, "C", "C")
+		if err := g.CastSpell(opp.ID, vivi, game.CastSpellParams{FromZone: "exile"}); err != nil {
+			t.Fatalf("owner casting the airbent commander for {2}: %v", err)
+		}
+		passPriorityAroundTable(t, g)
+		if !g.Battlefield.Contains(vivi) {
+			t.Errorf("the airbent commander did not come back for {2}")
+		}
+	}
+}
+
 // Declining the prompt is how "up to one" chooses zero.
 func TestAangDeclinedAirbendsNothing(t *testing.T) {
 	g := newCatalogGame(t)
