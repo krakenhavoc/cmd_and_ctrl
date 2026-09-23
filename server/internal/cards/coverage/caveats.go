@@ -390,6 +390,48 @@ var mechanics = []Mechanic{
 		Confidence: Exact,
 		Adopt:      `RemoveCountersFromThis / RemoveCountersFrom / RemoveCountersXFromThis / RemoveCountersAmong — see effects/activated.go`,
 	},
+	{
+		// #1273: exactly the #412 failure mode. Force of Negation's
+		// caveat said the countered spell "goes to its owner's
+		// graveyard instead of being exiled" for a sprint after #1230
+		// closed the gap — `Game.CounterTargetToZoneForEffect` (rode
+		// onto the card catalog as `CounterTarget.Dest`) has shipped
+		// on Devious Cover-Up, Remand, Memory Lapse and Dissipate
+		// since. This row is the durable half: the caveat text was
+		// fixed by hand, but the curated table had no entry for the
+		// mechanic it names, so nothing would have caught the NEXT
+		// card that ships the same stale sentence.
+		//
+		// Heuristic, and narrower than "adamant"'s bare OnResolve
+		// check: CounterTarget.Dest is set inside an opaque OnResolve
+		// closure, so there is no declared Spec field an Exact probe
+		// could point at the way AlternativeCosts or a Static ability
+		// gives one. What IS observable is that the card targets a
+		// spell on the stack at all (TargetSpell's "stack_spell"
+		// mode) and has grown a resolution body — which at least
+		// excludes every card whose caveat happens to share the
+		// phrase for an unrelated reason (Whip of Erebos' "graveyard
+		// instead of being exiled" is about a returned creature, and
+		// declares a graveyard target, not a stack one).
+		//
+		// The false positive is an ordinary "Counter target spell."
+		// card whose caveat is about something else and happens to
+		// contain one of these phrases; the fix then is to tighten
+		// the phrase list, not delete the row. When counter-to-zone
+		// becomes a declared Spec field, probe for the field and
+		// promote to Exact.
+		Name: "counter to a zone",
+		Phrases: []string{
+			"graveyard instead of being exiled", "graveyard instead of exile",
+			"countered this way",
+		},
+		Implements: func(s effects.Spec) bool {
+			return s.Targets != nil && s.Targets.Mode == "stack_spell" && s.OnResolve != nil
+		},
+		Evidence:   `the spec targets a spell on the stack (Targets.Mode == "stack_spell") and declares an OnResolve body`,
+		Confidence: Heuristic,
+		Adopt:      `CounterTarget{StackID: …, Dest: game.ZoneRef{Kind: game.ZoneExile}} (or ZoneHand / ZoneLibrary) inside OnResolve — see effects/force_of_negation.go, effects/devious_cover_up.go`,
+	},
 }
 
 // Mechanics returns the curated table. Exported so a card author can

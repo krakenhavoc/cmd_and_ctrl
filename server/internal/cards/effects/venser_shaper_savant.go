@@ -15,13 +15,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // goes where its owner chooses.
 //
 // DECLARED SIMPLIFICATION: the SPELL half is not implemented — the
-// target clause offers permanents only. "Return target spell to its
-// owner's hand" is a counter with a destination other than the
-// graveyard (Remand's shape), and under the effect lock the engine
-// exposes only CounterTargetForEffect, which routes to the
-// graveyard; the destination-taking counter (counterSpellLocked with
-// a ZoneRef) is unexported, and a plain hand move off the stack
-// would leave the item's StackMeta behind. Until that seam opens,
+// target clause offers permanents only. This is no longer an engine
+// primitive gap: `Game.CounterTargetToZoneForEffect` (#1230,
+// CounterTarget.Dest) and the plain `ReturnSpellToHand` primitive
+// (Reprieve's shape, which does not counter the spell at all — the
+// verb Venser actually needs) both exist today. What's still missing
+// is a target CLAUSE that can offer a spell on the stack and a
+// permanent on the battlefield as one printed "target spell or
+// permanent" — every `TargetSpec` constructor here is single-zone
+// (`TargetPermanent` walks the battlefield, `TargetSpell` walks the
+// stack), and nothing composes the two into one pick the way `Or()`
+// composes predicates within a zone. Until that clause shape exists,
 // Venser cannot be pointed at a spell — weaker than printed, never
 // stronger.
 func init() {
