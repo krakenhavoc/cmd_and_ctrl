@@ -643,9 +643,11 @@
               {#if isFresh("gameplay.autoPassPriority")}<span class="saved">✓ saved</span>{/if}
             </label>
             <p class="help">
-              Pairs with the stops grid below: priority auto-passes through any step you haven't
-              pinned. Use the &ldquo;&rarr; next stop&rdquo; toolbar button to fast-forward one stop
-              at a time without enabling auto-pass globally.
+              Priority passes for you everywhere except the steps you tick below and, with smart
+              auto-pass on, the moments you can actually respond: an opponent's spell or ability on
+              the stack, combat once attackers are declared, and an opponent's end step. Click
+              <strong>next</strong> in the phase widget to pass by hand, or click a step icon to stop
+              there once.
             </p>
 
             <fieldset class="step-stops">
@@ -675,15 +677,75 @@
                 checked={$settings.gameplay.smartAutoPass}
                 onchange={(e) => change("gameplay", "smartAutoPass", e.currentTarget.checked)}
               />
-              Smart auto-pass (skip stops with no legal response)
+              Smart auto-pass (stop only when you can do something)
               {#if isFresh("gameplay.smartAutoPass")}<span class="saved">✓ saved</span>{/if}
             </label>
             <p class="help">
-              Pairs with the stops grid. Auto-passes even at a pinned stop when the legality engine
-              can't find anything you could cast or activate — so &ldquo;stop on upkeep&rdquo; means
-              &ldquo;stop here if I have something to consider,&rdquo; not &ldquo;stop every time
-              regardless.&rdquo; Turn off to demand a click at every stop.
+              Two things. A ticked step passes when you have nothing to play there, so &ldquo;stop
+              on upkeep&rdquo; means &ldquo;stop if I have something to do,&rdquo; not &ldquo;stop
+              every time.&rdquo; And outside the ticked steps, it stops you in the key windows
+              &mdash; an opponent's spell or ability on the stack, declared attackers or blockers,
+              an opponent's end step &mdash; only when you hold a response from the list below. Mana
+              abilities and land drops never count as a response. Turn this off to stop on every
+              ticked step and every opponent stack item.
             </p>
+
+            <fieldset class="step-stops" disabled={!$settings.gameplay.smartAutoPass}>
+              <legend>Stop for</legend>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={$settings.gameplay.respondCounterspells}
+                  onchange={(e) =>
+                    change("gameplay", "respondCounterspells", e.currentTarget.checked)}
+                />
+                Counterspells (anything that targets a spell or ability on the stack)
+                {#if isFresh("gameplay.respondCounterspells")}<span class="saved">✓</span>{/if}
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={$settings.gameplay.respondInstants}
+                  onchange={(e) => change("gameplay", "respondInstants", e.currentTarget.checked)}
+                />
+                Instants and flash spells
+                {#if isFresh("gameplay.respondInstants")}<span class="saved">✓</span>{/if}
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={$settings.gameplay.respondAbilities}
+                  onchange={(e) => change("gameplay", "respondAbilities", e.currentTarget.checked)}
+                />
+                Activated abilities (not mana abilities)
+                {#if isFresh("gameplay.respondAbilities")}<span class="saved">✓</span>{/if}
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={$settings.gameplay.respondSpecialActions}
+                  onchange={(e) =>
+                    change("gameplay", "respondSpecialActions", e.currentTarget.checked)}
+                />
+                Special actions (foretell, suspend, turning a card face up)
+                {#if isFresh("gameplay.respondSpecialActions")}<span class="saved">✓</span>{/if}
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={$settings.gameplay.alwaysStopOpponentStack}
+                  onchange={(e) =>
+                    change("gameplay", "alwaysStopOpponentStack", e.currentTarget.checked)}
+                />
+                Always stop for opponents' spells and abilities
+                {#if isFresh("gameplay.alwaysStopOpponentStack")}<span class="saved">✓</span>{/if}
+              </label>
+              <p class="help">
+                The last one stops on every opponent item on the stack even when you can't answer
+                it, which is how auto-pass worked before. Stopping every time also means a pause
+                never tells the table you have an answer.
+              </p>
+            </fieldset>
 
             <label>
               <input

@@ -992,7 +992,7 @@ Detailed plan: `/home/node/.claude/plans/s13-5-card-visibility-knownby.md`. Buil
 ### Exit criteria
 
 1. Four-player game, all seats with `smartAutoPass` on, empty hands + empty boards → cursor walks Untap → Untap with zero `pass_priority` clicks.
-2. Seat 0 casts Lightning Bolt targeting seat 2. Seat 1 holds Counterspell + U available → cursor stops for seat 1. Seat 3 holds no instants → cursor auto-passes through seat 3.
+2. Seat 0 casts Lightning Bolt targeting seat 2. Seat 1 holds Counterspell + U available → cursor stops for seat 1. Seat 3 holds no instants → cursor auto-passes through seat 3. _(The seat-3 half was not met until [#1307](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1307): an opponent's stack item always stopped, and a mana ability counted as a response. It is met now; see the ADR 0009 #1307 amendment.)_
 3. Toggle `smartAutoPass` off → every configured stop blocks on a manual click regardless of hand state (strict pre-S13.6 behaviour).
 4. Click `autopass` → button lights amber; every time priority lands on the viewer, cursor auto-passes (including through stepStops and manual pins). Click again → reverts to the intelligent default path.
 5. Click an upkeep icon on PhaseDisplay with autopass off → next time priority lands on the viewer at upkeep, cursor holds even with `smartAutoPass` on and nothing legal to do; pin clears on the pass; next turn's upkeep is unpinned.

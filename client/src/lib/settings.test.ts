@@ -245,6 +245,29 @@ describe("settings", () => {
     expect(s.display.expandStyle).toBe("overlay");
   });
 
+  // #1307. The new fields arrive at their defaults, and an existing
+  // smartAutoPass: false is left alone — turning smart autopass off is
+  // how a player keeps the old "every opponent stack item stops".
+  it("v11 → v12 seeds the response categories without disturbing stored choices", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({
+        __version: 11,
+        gameplay: { smartAutoPass: false, autoPassOwnStack: false },
+      }),
+    );
+    const { settings, SETTINGS_VERSION } = await freshModule();
+    const s = get(settings);
+    expect(s.__version).toBe(SETTINGS_VERSION);
+    expect(s.gameplay.respondCounterspells).toBe(true);
+    expect(s.gameplay.respondInstants).toBe(true);
+    expect(s.gameplay.respondAbilities).toBe(true);
+    expect(s.gameplay.respondSpecialActions).toBe(true);
+    expect(s.gameplay.alwaysStopOpponentStack).toBe(false);
+    expect(s.gameplay.smartAutoPass).toBe(false);
+    expect(s.gameplay.autoPassOwnStack).toBe(false);
+  });
+
   it("falls back to defaults when stored blob is corrupt", async () => {
     localStorage.setItem("cmdctrl.settings.v1", "{not valid json");
     const { settings, SETTINGS_VERSION } = await freshModule();

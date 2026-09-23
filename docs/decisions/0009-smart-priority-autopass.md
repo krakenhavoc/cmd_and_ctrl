@@ -8,6 +8,10 @@ toggle no longer overrides a manual pin.** See "Amendment: a manual pin beats th
 autopass toggle (#526)" below. The gate chain also moved out of `Game.svelte`
 into `client/src/lib/autopassDecision.ts`, which is where the precedence list
 now lives in code.
+**Amended by:** S35 (#1307), 2026-09-23 — smart autopass asks about
+*responses* in *key windows*, mana and land stop counting, and an opponent's
+spell you cannot answer now passes. See "Amendment: key windows and response
+categories (#1307)" below.
 
 `hasAnyLegalResponse` no longer walks the viewer's cards running per-action
 predicates. The server enumerates the seat's legal moves and ships them as
@@ -78,6 +82,109 @@ it. It is now `autopassDecision(gates) -> "hold" | "pass" | "clear-toggle"` in
 with `autopassDecision.test.ts` covering the precedence, #526's reported
 configuration and #599's declare-attackers window. The component keeps the
 reactive reads and the two side effects.
+
+## Amendment: key windows and response categories (#1307)
+
+**Status:** Accepted · 2026-09-23 · Sprint S35
+
+Smart autopass read the right signal — the viewer's own `legal_moves`, which
+the enumerator already filters for timing, targets and mana — and then asked
+the wrong questions of it:
+
+- **Mana counted as a response.** "Anything but pass" included `mana` moves, so
+  an untapped land held every ticked step. Smart autopass almost never skipped.
+- **Most windows were never asked.** Unticked steps always passed, which by
+  default is every step of an opponent's turn, counterspell in hand or not. An
+  opponent's item on the stack always held, whether or not you could answer it.
+- **The autopass toggle passed everything**, a live counterspell included.
+
+### Responses and plays
+
+`client/src/lib/responseWindow.ts` sorts each move (`classifyMove`):
+
+| Move | Class |
+|---|---|
+| `pass`, `mana` | none — never a reason to hold |
+| `land`; a `cast` / `activate` in the viewer's own main phase with an empty stack | play |
+| a `cast` / `activate` with `targets_stack` | counter |
+| any other `cast` | instant |
+| any other `activate` | ability |
+| `special_action` | special |
+| `attack`, `block` | declaration |
+| `choice`, `mulligan`, anything unknown | other |
+
+`hasResponse` is "a counter, instant, ability or special move in an enabled
+category". The four categories are settings (`respondCounterspells`,
+`respondInstants`, `respondAbilities`, `respondSpecialActions`, schema v12),
+all on by default. `hasPlay` is a response or a play, declaration or other move,
+plus #328's owed block and #599's declared attack. It is asked only on ticked
+steps, so a hand holding just a land still stops on your own main phase, and a
+land never holds an opponent's window.
+
+`targets_stack` is a server flag on the legal move (#1307 PR 1). A server that
+does not send it gets its counterspells classed as instants, which with the
+default categories changes nothing.
+
+### Key windows
+
+Outside the ticked steps, smart autopass now stops in the windows where a
+response is worth having (`keyWindow`):
+
+- **stackOpp** — the stack holds something the viewer did not put there, or a
+  trigger is still queuing (it could be anyone's).
+- **combat** — declare attackers or declare blockers with an attack declared.
+- **oppEnd** — an opponent's end step.
+
+Quiet steps (an opponent's upkeep with an empty stack, say) still pass.
+
+### Precedence, strongest first
+
+1. The guards: no priority, mulligans / game over / eliminated, a pending
+   choice, an owed block (#328), the loop breaker (#628), no step → hold.
+2. The safety belt (§7) → clear-toggle.
+3. A manual pin (§5, #526) → hold.
+4. The autopass toggle: stackOpp with a response → hold; stackOpp with a bluff
+   armed → bluff; otherwise pass.
+5. `autoPassPriority` off → hold.
+6. A non-empty stack: hold-priority → hold; entirely the viewer's own → #323
+   (`autoPassOwnStack` ? pass : hold); smart autopass off or
+   `alwaysStopOpponentStack` on → hold; a response → hold; a bluff armed →
+   bluff; otherwise pass.
+7. An empty stack with smart autopass on, in a combat or oppEnd window: a
+   response → hold; an instant bluff armed → bluff; otherwise fall through.
+8. A ticked step: hold if `smartAutoPass ? hasPlay : true`.
+9. Pass.
+
+Rules 4, 6 and 7 name a bluff verdict. It is produced only when a bluff is
+armed, which the bluffing change adds; until then no gate arms one.
+
+### The behaviour change
+
+**With smart autopass on, an opponent's spell you cannot answer now passes.**
+That is the S13.6 exit criterion ("Seat 3 holds no instants → cursor
+auto-passes through seat 3"), which the old rule 6 never met. A player who
+wants every opponent stack item to stop — to read it, or so that stopping
+gives nothing away — turns on `alwaysStopOpponentStack` (default off).
+Turning smart autopass off does the same, along with its other effects.
+
+### §3 revisited
+
+Decision 3 preferred a false-positive stop to a false-negative skip. That still
+holds where the answer is unknown: a missing `legal_moves` while holding
+priority counts as a response, and an unrecognised move kind counts as a play.
+What changes is that a known *non*-answer no longer holds. Mana and land moves
+are known not to be responses, and the enumerator already pays for what it
+offers, so the permissive stance is no longer buying safety there. It only
+cost clicks. The remaining false negatives are sandbox-only verbs the
+enumerator does not list (moving a card by hand). A manual pin or
+`alwaysStopOpponentStack` covers those.
+
+### Where the code lives
+
+`responseWindow.ts` holds the questions, `autopassDecision.ts` holds the order,
+and `Game.svelte` gathers the gates. `hasAnyLegalResponse` is gone.
+`hasNonPassMove` (mana included) stays in `timing.ts` for UI that wants "any
+move at all".
 
 ## Context
 

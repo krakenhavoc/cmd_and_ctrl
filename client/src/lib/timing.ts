@@ -79,8 +79,10 @@ export function movesFor(
 }
 
 // hasNonPassMove reports whether the viewer's seat has anything to do
-// beyond yielding. This is the whole of the auto-pass question, and
-// it is the server's answer to it rather than a reconstruction.
+// beyond yielding, mana included. It is NOT the auto-pass question any
+// more: autopass ignores mana and lands and asks per category
+// (responseWindow.ts, #1307). This stays for UI that wants "is there
+// any move at all".
 //
 // Undefined move list → undefined answer, for the same reason as
 // movesFor: the caller decides what to do with "don't know".

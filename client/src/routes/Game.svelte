@@ -42,12 +42,8 @@
   import { stopKeyFor, type StepID } from "../lib/turn";
   import { armAudioOnFirstGesture, isMuted, play, toggleMuted } from "../lib/sounds";
   import { openSettings, settings } from "../lib/settings";
-  import {
-    autopassSuspended,
-    hasAnyLegalResponse,
-    loopNoticeText,
-    owesBlockDecision,
-  } from "../lib/priority";
+  import { autopassSuspended, loopNoticeText, owesBlockDecision } from "../lib/priority";
+  import { hasPlay, hasResponse, keyWindow, type ResponseCategories } from "../lib/responseWindow";
   import {
     attackAllLabel,
     attackAllParams,
@@ -251,6 +247,15 @@
   let lastAutoPassedSeq = $state(-1);
   $effect(() => {
     const step = view?.turn?.step;
+    const gp = $settings.gameplay;
+    // #1307: what counts as a response, per the "Stop for" settings.
+    const cats: ResponseCategories = {
+      counter: gp.respondCounterspells,
+      instant: gp.respondInstants,
+      ability: gp.respondAbilities,
+      special: gp.respondSpecialActions,
+    };
+    const kw = keyWindow(view, viewerID);
     const verdict = autopassDecision({
       viewerHasPriority,
       tableBusy: mulligansOpen || gameEnded || viewerEliminated,
@@ -288,8 +293,16 @@
       // first-strike step too, which is the window a player who asked
       // to see damage most wants.
       stepStop: step ? $settings.gameplay.stepStops[stopKeyFor(step as StepID)] : undefined,
-      smartAutoPass: $settings.gameplay.smartAutoPass,
-      hasLegalResponse: hasAnyLegalResponse(view, viewerID, $lastSeq),
+      smartAutoPass: gp.smartAutoPass,
+      alwaysStopOpponentStack: gp.alwaysStopOpponentStack,
+      hasResponse: hasResponse(view, viewerID, cats),
+      hasPlay: hasPlay(view, viewerID, cats),
+      combatWindow: kw.combat,
+      oppEndWindow: kw.oppEnd,
+      // Bluffing is not wired yet; the decision never returns it.
+      bluffCounter: false,
+      bluffInstant: false,
+      bluffManual: false,
     });
 
     if (verdict === "hold") return;
@@ -305,6 +318,8 @@
       autopassEnabled = false;
       return;
     }
+    // A bluff verdict falls through to the pass: the bluff gates are
+    // all false until bluffing is wired, so it cannot happen yet.
 
     // Dedupe by snapshot seq so we don't fire twice on the same
     // priority window if the effect re-runs for an unrelated reason
