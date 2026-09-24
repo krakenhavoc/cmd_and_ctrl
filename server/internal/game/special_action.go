@@ -8,11 +8,13 @@ import (
 //
 // A special action is a game action a player takes WITHOUT using the
 // stack and without passing priority. CR 116.2 lists seven of them;
-// three are built here:
+// four are built here:
 //
 //	foretell      CR 116.2h, 702.143a  pay {2}, exile the card face down
 //	suspend       CR 116.2f, 702.62a   pay the suspend cost, exile it with
 //	                                   N time counters
+//	plot          CR 702.170a          pay the plot cost, exile the card
+//	                                   face up; it becomes plotted
 //	turn_face_up  CR 116.2g, 708.6     pay a face-down permanent's morph
 //	                                   cost and turn it face up
 //
@@ -43,6 +45,10 @@ import (
 //	                                   turn, with anything on the stack;
 //	                                   LEGAL under split second, for the
 //	                                   same reason foretell is
+//	plot          CR 702.170a          any time you have priority during
+//	                                   YOUR main phase while the stack is
+//	                                   empty — sorcery timing, whatever
+//	                                   the card's own type or flash says
 //
 // The split-second asymmetry is the one thing in this file that is
 // easy to get wrong and invisible when you do. CR 702.61b stops
@@ -76,6 +82,13 @@ const (
 	// owner (CR 708.5). That is one more per-kind table
 	// (specialActionZone) and nothing else — see ADR 0082 decision 6.
 	SpecialActionTurnFaceUp SpecialActionKind = "turn_face_up"
+
+	// SpecialActionPlot is CR 702.170a (a CR 116.2 special action) — pay the plot
+	// cost and exile a card from your hand face up; it becomes
+	// plotted, castable for free on a later turn (CR 702.170d). The
+	// cast half is PlotExiledCardForEffect, shared with "it becomes
+	// plotted" on Aven Interrupter (#1318); #1342 added the keyword.
+	SpecialActionPlot SpecialActionKind = "plot"
 )
 
 // SpecialAction is one CR 116.2 special action a card offers, as the
@@ -199,7 +212,7 @@ func SpecialActionOffered(c Card, kind SpecialActionKind) *SpecialAction {
 // The empty zone is a kind the engine does not carry out.
 func specialActionZone(kind SpecialActionKind) ZoneKind {
 	switch kind {
-	case SpecialActionForetell, SpecialActionSuspend:
+	case SpecialActionForetell, SpecialActionSuspend, SpecialActionPlot:
 		return ZoneHand
 	case SpecialActionTurnFaceUp:
 		return ZoneBattlefield
@@ -276,6 +289,21 @@ func (g *Game) SpecialActionTimingOKLocked(playerID uuid.UUID, card Card, kind S
 		// is SpecialActionOffered's answer and PerformSpecialAction's
 		// re-check. Nothing left for the window itself to say.
 		return true
+
+	case SpecialActionPlot:
+		// CR 702.170a: "any time you have priority during your main
+		// phase while the stack is empty" — sorcery timing, and the
+		// SAME predicate an ordinary sorcery cast asks, so the two
+		// cannot drift. It is the KEYWORD's window, not the card's:
+		// a plotted instant or a card with flash is plotted at
+		// sorcery speed all the same (the reminder text's "Plot only
+		// as a sorcery"), which is why this row does not read `card`
+		// the way suspend's does.
+		//
+		// Split second needs no clause of its own: it only ever
+		// matters while a split-second spell is ON the stack, and
+		// this window requires the stack to be empty.
+		return g.sorcerySpeedOpenLocked(playerID)
 	}
 	return false
 }
@@ -402,6 +430,8 @@ func specialActionPerformer(kind SpecialActionKind) func(*Game, *Player, uuid.UU
 		return (*Game).suspendLocked
 	case SpecialActionTurnFaceUp:
 		return (*Game).turnFaceUpLocked
+	case SpecialActionPlot:
+		return (*Game).plotLocked
 	}
 	return nil
 }

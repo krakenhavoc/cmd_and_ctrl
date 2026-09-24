@@ -608,3 +608,37 @@ shape one door over. Shipped on **Ranar the Ever-Watchful** (its
 event #1320 brings). See
 [docs/engine-seams.md](../engine-seams.md)'s "Special actions from the
 hand, and foretell" entry for the closed-seam summary.
+
+## Amendment — 2026-09-23: plot is the fourth kind (#1342)
+
+Plot (CR 702.170a) is a hand special action: "any time you have priority
+during your main phase while the stack is empty, you may exile this card from
+your hand and pay [cost]. It becomes a plotted card." It needed a row in each
+of Decision 4's per-kind tables and nothing else:
+
+| table | plot's row |
+|---|---|
+| `specialActionZone` | the actor's **hand**, like foretell and suspend |
+| `SpecialActionTimingOKLocked` | `sorcerySpeedOpenLocked` — the owner's main phase, stack empty. It is the **keyword's** window, not the card's, so an instant or a card with flash is plotted at sorcery speed too (the reminder text's "Plot only as a sorcery"). That is where plot and suspend differ: suspend asks the card's own casting window (CR 702.62c). No split-second clause is needed, because split second only matters while a spell is on the stack and this window needs an empty one. |
+| `specialActionPerformer` | `plotLocked` (`game/plot.go`): route the card to exile **face up** with `MoveCauseSpecialAction` (#1320), then call `PlotExiledCardForEffect` on what landed |
+
+The plotted state is #1318's, unchanged: [ADR 0066's 2026-09-23
+amendment](0066-granted-cast-and-play-permissions.md) gives a card in exile a
+free, per-instance `CastPermission` with `TimingPlot` and a `NotBeforeTurn`
+floor. A card plotted from hand and a card Aven Interrupter plotted are the
+same object with the same permission. A commander whose owner sends it to the
+command zone instead (CR 903.9) never landed in exile, so nothing is plotted.
+
+The catalog line is `effects.Plot("{cost}")`: `Cost` is the plot cost and
+`CastCost` stays empty, because the later cast is free and the grant sets the
+price. `"plot"` joined `canonicalKeywords` in the same change, as foretell and
+suspend did. The enumerator, the wire's `special_actions` row, and the
+client's menu row needed no code: each walks `SpecialActionsOfferedByCard` and
+asks the timing table, which is Decision 4's "one verb" claim holding for a
+fourth time.
+
+Proof cards: Djinn of Fool's Fall, Spinewoods Paladin, Beastbond Outcaster and
+Plan the Heist, all `full`. Still open on this family (#1382): "when this card becomes
+plotted" triggers (Longhorn Sharpshooter, Aloe Alchemist) need an event for the
+plotted state. Fblthp, Lost on the Range, which plots from the top of the
+library, needs the special action to reach a zone other than the hand.

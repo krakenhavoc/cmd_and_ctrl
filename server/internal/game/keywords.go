@@ -156,6 +156,14 @@ var canonicalKeywords = map[string]bool{
 	// job is the badge and the ADR 0037 coverage signal, and it must
 	// not arrive before the mechanic does.
 	"madness": true,
+	// plot (CR 702.170) joins with #1342, in the same change that
+	// teaches the engine to honour it: the CR 116.2 special action
+	// from hand (SpecialActionPlot, plot.go) and the free later cast
+	// out of exile that #1318's PlotExiledCardForEffect already
+	// granted. Same reasoning as foretell and suspend above — the
+	// consumer is the card, not a table in this file, so the token's
+	// job is the badge and the ADR 0037 coverage signal.
+	"plot": true,
 	// phasing (CR 702.26) joins with #1199, in the same change that
 	// teaches the engine to honour it — which is the closedness rule
 	// this table states. Unlike foretell, suspend and madness above,

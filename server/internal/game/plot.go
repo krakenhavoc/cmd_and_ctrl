@@ -11,11 +11,24 @@ import "github.com/google/uuid"
 //	         stack is empty during any turn after the turn in which it
 //	         became plotted.
 //
-// Only the EFFECT half exists here: a card already in exile becomes
-// plotted (Aven Interrupter's "exile target spell. It becomes
-// plotted."). The KEYWORD half — the plot special action that exiles a
-// card with plot from its owner's hand (CR 702.170a) — is not built;
-// it is #1342.
+//	702.170a Plot is a keyword that functions while the card with plot
+//	         is in a player's hand. "Plot [cost]" means "Any time you
+//	         have priority during your main phase while the stack is
+//	         empty, you may exile this card from your hand and pay
+//	         [cost]. It becomes a plotted card."
+//
+// Both halves live here, and they share one function:
+//
+//   - the EFFECT half (#1318): a card already in exile becomes plotted
+//     — Aven Interrupter's "exile target spell. It becomes plotted." —
+//     PlotExiledCardForEffect;
+//   - the KEYWORD half (#1342): the CR 116.2 special action that pays
+//     the plot cost and exiles a card with plot from its owner's hand
+//     face up — plotLocked below, the performer special_action.go's
+//     verb dispatches to. It routes the card to exile and then calls
+//     PlotExiledCardForEffect on what landed, so a card plotted from
+//     hand and a card plotted by Aven Interrupter are the same object
+//     with the same permission.
 //
 // A plotted card is nothing but a cast permission, which is why this
 // is cheap: ADR 0066's CastPermission already carries every clause.
@@ -77,4 +90,36 @@ func (g *Game) PlotExiledCardForEffect(cardID uuid.UUID, source uuid.UUID) {
 		Source:        source,
 		Label:         "Plotted — cast it without paying its mana cost",
 	}, []Card{*exiled})
+}
+
+// plotLocked is the plot special action's performer, run by
+// PerformSpecialAction once the plot cost is paid (CR 702.170a).
+//
+// The card goes to exile FACE UP — CR 702.170a says nothing about
+// hiding it, and a plotted card is public (unlike a foretold one) —
+// through the zone route with MoveCauseSpecialAction, exactly as
+// suspend's does, so every entry replacement and CR 903.9 commander
+// offer sees an ordinary exile. It becomes plotted only if it LANDED:
+// a commander whose owner took the command zone never reached exile,
+// so there is nothing to plot, and PlotExiledCardForEffect's own
+// not-in-exile guard would say the same.
+//
+// The source of the permission is the card itself — the keyword is
+// its own, not another permanent's.
+//
+// Caller must hold g.mu (write).
+func (g *Game) plotLocked(p *Player, cardID uuid.UUID, _ SpecialAction) error {
+	owner := p.ID
+	return g.routeAllThenLocked(zoneRoute{
+		Dst:   ZoneExile,
+		Actor: owner,
+		// #1320: a special action (CR 702.170a), not a spell or ability.
+		Cause: MoveCause{Kind: MoveCauseSpecialAction, Controller: owner},
+	}, []uuid.UUID{cardID}, func(g *Game, landed []uuid.UUID) error {
+		if len(landed) != 1 {
+			return nil
+		}
+		g.PlotExiledCardForEffect(landed[0], landed[0])
+		return nil
+	})
 }

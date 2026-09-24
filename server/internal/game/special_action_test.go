@@ -186,9 +186,9 @@ func TestADesignedButUnbuiltKindIsNotOffered(t *testing.T) {
 	if SpecialActionKindBuilt(SpecialActionKind("bestow_nonsense")) {
 		t.Error("a kind with no performer is offered")
 	}
-	// The three kinds that ARE built, so this test fails loudly if a
+	// The four kinds that ARE built, so this test fails loudly if a
 	// performer is ever deleted rather than only when one is added.
-	for _, kind := range []SpecialActionKind{SpecialActionForetell, SpecialActionSuspend, SpecialActionTurnFaceUp} {
+	for _, kind := range []SpecialActionKind{SpecialActionForetell, SpecialActionSuspend, SpecialActionTurnFaceUp, SpecialActionPlot} {
 		if !SpecialActionKindBuilt(kind) {
 			t.Errorf("%s has no performer", kind)
 		}
