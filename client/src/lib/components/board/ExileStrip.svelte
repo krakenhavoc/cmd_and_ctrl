@@ -33,7 +33,6 @@
     exileCostBadge,
     exileEntryLegality,
     exileStripEntries,
-    symbolClass,
     type ExileStripEntry,
   } from "../../exileStrip";
   import type { CastSourceZone } from "../../targeting";
