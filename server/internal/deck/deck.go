@@ -322,11 +322,11 @@ func printedKeywords(c cards.Card) []string {
 	if len(c.Keywords) == 0 {
 		return nil
 	}
-	var front map[string]bool
+	var front map[string]int
 	if len(c.CardFaces) > 1 {
-		front = keywordLines(c.CardFaces[0].OracleText)
+		front = keywordLineCounts(c.CardFaces[0].OracleText)
 	}
-	var confirm map[string]bool
+	var scanned map[string]int
 	wantProtection := false
 	wantToxic := false
 	out := make([]string, 0, len(c.Keywords))
@@ -352,7 +352,7 @@ func printedKeywords(c cards.Card) []string {
 			continue
 		}
 		kw := kws[0]
-		if front != nil && !front[kw] {
+		if front != nil && front[kw] == 0 {
 			continue
 		}
 		// A keyword with a NARROWER printed variant has to be
@@ -371,10 +371,10 @@ func printedKeywords(c cards.Card) []string {
 		// simplification, that narrow ability is then not enforced
 		// at all, which errs weaker.
 		if narrowVariantKeywords[kw] {
-			if confirm == nil {
-				confirm = keywordLinesOf(c)
+			if scanned == nil {
+				scanned = keywordLineCountsOf(c)
 			}
-			if !confirm[kw] {
+			if scanned[kw] == 0 {
 				continue
 			}
 		}
@@ -395,10 +395,16 @@ func printedKeywords(c cards.Card) []string {
 	if wantProtection {
 		lines := front
 		if lines == nil {
-			lines = keywordLinesOf(c)
+			if scanned == nil {
+				scanned = keywordLineCountsOf(c)
+			}
+			lines = scanned
 		}
 		var protections []string
-		for kw := range lines {
+		for kw, n := range lines {
+			if n == 0 {
+				continue
+			}
 			if _, ok := game.ParseProtectionQuality(kw); ok && !containsString(out, kw) {
 				protections = append(protections, kw)
 			}
@@ -414,19 +420,51 @@ func printedKeywords(c cards.Card) []string {
 	if wantToxic {
 		lines := front
 		if lines == nil {
-			lines = keywordLinesOf(c)
+			if scanned == nil {
+				scanned = keywordLineCountsOf(c)
+			}
+			lines = scanned
 		}
 		var toxics []string
-		for kw := range lines {
+		for kw, n := range lines {
+			if n == 0 {
+				continue
+			}
 			if _, ok := game.ToxicValue(kw); ok && !containsString(out, kw) {
 				toxics = append(toxics, kw)
 			}
 		}
-		// Sorted for the same stable-badge reason as protection. No
-		// printed card has two toxic lines; one that did would stamp
-		// each distinct amount once.
+		// Sorted for the same stable-badge reason as protection.
 		sort.Strings(toxics)
 		out = append(out, toxics...)
+	}
+	// A CUMULATIVE keyword (prowess, toxic — game.KeywordIsCumulative,
+	// CR 702.108b / 702.164b) is a real thing per PRINTED INSTANCE, but
+	// everything above stamps at most one token per distinct keyword
+	// string: Scryfall's `keywords` array is a SET ("Prowess, prowess"
+	// still lists "Prowess" once), and the protection / toxic scans
+	// just above dedupe on the same string for the same reason a
+	// protection quality or a toxic amount is normally printed once
+	// per card. So grow `out` to match the keyword's own repeat count
+	// on the oracle line — the one place a doubled keyword ("Prowess,
+	// prowess" — Thor Odinson, Ruric Thar, Biomagus, #1510) is still
+	// visible, the same source toxic's amount already comes from.
+	if len(out) > 0 {
+		counts := front
+		if counts == nil {
+			if scanned == nil {
+				scanned = keywordLineCountsOf(c)
+			}
+			counts = scanned
+		}
+		for _, kw := range append([]string(nil), out...) {
+			if !game.KeywordIsCumulative(kw) {
+				continue
+			}
+			for i := 1; i < counts[kw]; i++ {
+				out = append(out, kw)
+			}
+		}
 	}
 	if len(out) == 0 {
 		return nil
@@ -461,30 +499,38 @@ func containsString(xs []string, s string) bool {
 // kept only for a card whose own line is the bare keyword.
 var narrowVariantKeywords = map[string]bool{"hexproof": true, game.KeywordSplitSecond: true}
 
-// keywordLinesOf unions the keyword-ability lines across every
-// oracle text a printing carries — the top-level one for a
+// keywordLineCountsOf sums the keyword-ability line counts across
+// every oracle text a printing carries — the top-level one for a
 // single-faced card, each face's for a multi-faced one. The
 // multi-face NARROWING above is a separate, stricter check; this is
-// only asked whether the bare keyword is printed anywhere at all.
-func keywordLinesOf(c cards.Card) map[string]bool {
-	out := keywordLines(c.OracleText)
+// only asked whether (and how many times) the bare keyword is printed
+// anywhere at all. Summing rather than unioning is safe because
+// Scryfall fills exactly one of "top-level text" / "per-face text" in
+// for any one printing (oracleTexts' doc comment), so in practice this
+// sums exactly one non-empty text with a run of empty ones.
+func keywordLineCountsOf(c cards.Card) map[string]int {
+	out := keywordLineCounts(c.OracleText)
 	for _, f := range c.CardFaces {
-		for kw := range keywordLines(f.OracleText) {
-			out[kw] = true
+		for kw, n := range keywordLineCounts(f.OracleText) {
+			out[kw] += n
 		}
 	}
 	return out
 }
 
-// keywordLines collects the canonical keywords printed as keyword
-// abilities in one face's oracle text. A keyword ability occupies
-// its own line, alone or comma-separated from its neighbours
-// ("Flash", "Flying, vigilance", "Reach, trample"); reminder text
-// in parentheses is stripped first so a reminder that names another
+// keywordLineCounts collects the canonical keywords printed as
+// keyword abilities in one face's oracle text, counting how many
+// times each canonical token appears rather than just whether it
+// appears at all — CR 702.108b's "Prowess, prowess" and CR 702.164b's
+// duplicate toxic lines both depend on the repeat count, not merely
+// the presence (#1510). A keyword ability occupies its own line,
+// alone or comma-separated from its neighbours ("Flash", "Flying,
+// vigilance", "Reach, trample", "Prowess, prowess"); reminder text in
+// parentheses is stripped first so a reminder that names another
 // keyword doesn't count. Only exact matches after the split are
 // kept, so a sentence is never mistaken for a keyword line.
-func keywordLines(text string) map[string]bool {
-	out := map[string]bool{}
+func keywordLineCounts(text string) map[string]int {
+	out := map[string]int{}
 	for _, line := range strings.Split(text, "\n") {
 		if i := strings.IndexByte(line, '('); i >= 0 {
 			line = line[:i]
@@ -498,7 +544,7 @@ func keywordLines(text string) map[string]bool {
 				continue
 			}
 			for _, kw := range kws {
-				out[kw] = true
+				out[kw]++
 			}
 		}
 	}

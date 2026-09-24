@@ -31,12 +31,16 @@ package game
 // drain and the same response window.
 //
 // MULTIPLE INSTANCES. CR 702.108b is why prowess is a CUMULATIVE
-// keyword (keywordIsCumulative): AppendKeywordAbility keeps every
+// keyword (KeywordIsCumulative): AppendKeywordAbility keeps every
 // granted instance instead of deduping it, so a Ty Lee under Sokka has
-// two, and triggers twice. A PRINTED "Prowess, prowess" (Thor Odinson)
-// reaches the list twice only through Spec.PrintedKeywords; the deck
-// importer's keyword filter is a set and stamps one. That is weaker
-// than printed, never stronger, and is stated in the ADR amendment.
+// two, and triggers twice. A PRINTED "Prowess, prowess" (Thor Odinson,
+// Ruric Thar, Biomagus) also reaches the list twice: the deck
+// importer's oracle-line scan counts a cumulative keyword's repeats
+// (deck.printedKeywords, #1510) rather than taking Scryfall's
+// `keywords` array — a set — at its word, and printedCharacteristic's
+// merge (characteristic.go) keeps the higher of the catalog's and the
+// import's own counts for a cumulative token instead of deduping it
+// to one.
 
 import "github.com/google/uuid"
 

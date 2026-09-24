@@ -451,10 +451,18 @@ prowess trigger set it, and `cards/coverage` gains exact `cascade`,
 `storm` and `prowess` probes, so a caveat claiming a card lacks a
 keyword it has fails the build.
 
-**What is weaker than printed.** Scryfall's `keywords` array is a set,
-so a creature that prints "Prowess, prowess" (Thor Odinson, Ruric
-Thar, Cursed Firebreathing Yogurt) imports with ONE instance. A catalog
-entry declaring `PrintedKeywords: {"prowess", "prowess"}` gets both.
-The client's badge row dedupes by token, so two instances show one
-badge.
+**What used to be weaker than printed (#1510, fixed).** Scryfall's
+`keywords` array is a set, so a creature that prints "Prowess,
+prowess" (Thor Odinson, Ruric Thar, Biomagus, Cursed Firebreathing
+Yogurt) used to import with ONE instance. The deck importer now counts
+a cumulative keyword's own repeats off the oracle line instead of
+taking the array at its word (`deck.keywordLineCounts`,
+`deck.printedKeywords`), and `printedCharacteristic`'s merge of
+Card.Keywords with the catalog's own PrintedKeywords keeps the higher
+of the two sources' own counts for a cumulative keyword
+(`game.mergePrintedKeywords`) rather than deduping every repeat to
+one. A catalog entry declaring `PrintedKeywords: {"prowess",
+"prowess"}` still gets both, and combining it with an import that
+also counts two does not triple it. The client's badge row dedupes by
+token, so two instances still show one badge.
 

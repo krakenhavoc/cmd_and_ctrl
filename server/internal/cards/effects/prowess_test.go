@@ -222,6 +222,38 @@ func TestTwoInstancesOfProwessTriggerSeparately(t *testing.T) {
 	}
 }
 
+// TestPrintedProwessTwiceTriggersTwice — #1510, CR 702.108b. A card
+// that PRINTS prowess twice ("Prowess, prowess" — Thor Odinson, Ruric
+// Thar, Biomagus, Cursed Firebreathing Yogurt) has no catalog entry
+// (the deck importer's own keyword line does the whole job, the
+// Monastery Swiftspear case), and the two instances are the deck
+// importer's own Card.Keywords rather than a printed one plus a
+// layer-6 grant — the shape TestTwoInstancesOfProwessTriggerSeparately
+// exercises above. One noncreature spell still puts two triggers on
+// the stack and pumps +2/+2.
+func TestPrintedProwessTwiceTriggersTwice(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	thor := pushProwessCreature(g, me.ID, "Thor Odinson", 6, 6,
+		"flying", "vigilance", game.KeywordProwess, game.KeywordProwess)
+
+	if n := prowessCountOf(t, g, thor); n != 2 {
+		t.Fatalf("a card printing prowess twice has %d instances, want 2", n)
+	}
+	if !effectiveAbilitiesContain(t, g, thor, "flying") || !effectiveAbilitiesContain(t, g, thor, "vigilance") {
+		t.Errorf("Thor Odinson's ordinary printed keywords: %v, want flying and vigilance", effectiveAbilities(t, g, thor))
+	}
+
+	castNoncreature(t, g)
+	if got := prowessItemsFrom(g, thor); got != 2 {
+		t.Fatalf("Thor Odinson put %d prowess triggers on the stack, want 2", got)
+	}
+	settleProwess(t, g)
+	if p, tg := effectivePower(t, g, thor), effectiveToughness(t, g, thor); p != 8 || tg != 8 {
+		t.Errorf("Thor Odinson: %d/%d, want 8/8 (+2/+2 from one noncreature spell)", p, tg)
+	}
+}
+
 // TestProwessIsNotTriggeredByCopies — a copy of a spell is put on the
 // stack, not cast (CR 707.10), and prowess says "cast". Elemental
 // Eruption is the card that puts both on one stack: with one spell
