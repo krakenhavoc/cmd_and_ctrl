@@ -1727,6 +1727,27 @@ it was made is not live, so the holder gets the public `exile_play`
 `cast_prices`: the engine would not accept the cast at any price. The
 client shows such a card dimmed with a "next turn" hint and no badge.
 
+## A land's `castable_here` is the land-play rule in every zone (#1407, 2026-09-24)
+
+A narrowing, no new field, `v` unmoved. #1389 answered a LAND in exile
+by the land-play rule; the graveyard and the library top still asked
+the spell rules, so a land a play permission opens there (Courser of
+Kruphix, Oracle of Mul Daya, a Crucible of Worlds) stayed `true` after
+the turn's land drop was spent, and the click came back
+`ErrLandDropUnavailable`.
+
+For a land in a graveyard, on a library top or in exile, `castable_here`
+is now `true` exactly when `cast_spell`'s land branch would accept the
+play: the viewer's own main phase with an empty stack (CR 305.1), a
+land drop left (CR 305.2, `game.LandPlayOpenForEffect`), something
+opening the zone (a permission, or the card's own text), and no
+cast-only grant (Realmwalker, Ragavan — CR 305.1 strands the
+land). No timing statement reaches it: a Vedalken Orrery does not open
+a land drop and Dosan does not shut one. A spell in the same zone is
+unchanged. The client reads the bit and nothing else, so the zone
+browser's button and the library-top affordance follow with no client
+change.
+
 
 ## Schema evolution rules
 
