@@ -37,7 +37,10 @@ export type Route =
   // because AGENTS.md §1/§8 describe this project as private and
   // personal-use and serving card art to signed-out visitors is a
   // different posture from the one the repo states.
-  | { name: "catalog" }
+  //
+  // `query` is #/catalog?q=<text>, which pre-fills the search box. The
+  // roadmap links a signed-in viewer's example card names here.
+  | { name: "catalog"; query?: string }
   // "My games" (ADR 0051 decision 4, S34): every seat the signed-in
   // person holds, with a way back into the open ones. Session-gated;
   // the page itself explains what a guest or admin session is missing.
@@ -86,8 +89,10 @@ export function parseHash(hash: string): Route {
       return { name: "roadmap" };
     case "lobby":
       return { name: "lobby" };
-    case "catalog":
-      return { name: "catalog" };
+    case "catalog": {
+      const q = params.get("q");
+      return q ? { name: "catalog", query: q } : { name: "catalog" };
+    }
     case "my-games":
       return { name: "myGames" };
     case "games":

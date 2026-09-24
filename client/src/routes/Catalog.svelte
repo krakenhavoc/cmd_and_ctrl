@@ -18,6 +18,7 @@
   import Icon from "../lib/components/Icon.svelte";
   import SiteHeader from "../lib/components/SiteHeader.svelte";
   import { cardArt } from "../lib/cardArt";
+  import { route } from "../lib/router";
   import {
     fetchCatalog,
     filterCatalog,
@@ -41,6 +42,16 @@
   let error = $state("");
 
   let query = $state("");
+
+  // #/catalog?q=<text> pre-fills the search (the roadmap links its
+  // example card names here). Re-applied when the hash changes while
+  // the page is open, so a second link lands on its own card.
+  $effect(() => {
+    const r = $route;
+    if (r.name === "catalog" && r.query !== undefined) {
+      query = r.query;
+    }
+  });
   let colors = $state<ColorFilter[]>([]);
   let types = $state<TypeFilter[]>([]);
   let completeness = $state<Completeness[]>([]);
