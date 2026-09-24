@@ -42,7 +42,7 @@ func init() {
 					if !c.IsCreature() || !c.HasColor("G") || !b06EnteredThisTurn(g, c.InstanceID) {
 						continue
 					}
-					if err := (AddCounter{Target: c.InstanceID, Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
+					if err := (AddCounter{Target: c.InstanceID, Kind: "+1/+1", N: 1}).Apply(ctx.asGroupMember()); err != nil {
 						return err
 					}
 				}

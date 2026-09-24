@@ -139,7 +139,7 @@ func titaniasCommandCountersOnYourCreatures(ctx *Context) error {
 		}
 	}
 	for _, id := range yours {
-		if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 2}).Apply(ctx); err != nil {
+		if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 2}).Apply(ctx.asGroupMember()); err != nil {
 			return err
 		}
 	}

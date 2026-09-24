@@ -27,7 +27,7 @@ func init() {
 					if c.Controller != item.Controller || !c.IsCreature() || !c.IsArtifact() {
 						continue
 					}
-					if err := (AddCounter{Target: c.InstanceID, Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
+					if err := (AddCounter{Target: c.InstanceID, Kind: "+1/+1", N: 1}).Apply(ctx.asGroupMember()); err != nil {
 						return err
 					}
 				}

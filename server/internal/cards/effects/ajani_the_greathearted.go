@@ -98,12 +98,12 @@ func b39AjaniMinusTwo(g *game.Game, item *game.StackItem) error {
 		}
 	}
 	for _, id := range creatures {
-		if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
+		if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}).Apply(ctx.asGroupMember()); err != nil {
 			return err
 		}
 	}
 	for _, id := range walkers {
-		if err := (AddCounter{Target: id, Kind: game.CounterLoyalty, N: 1}).Apply(ctx); err != nil {
+		if err := (AddCounter{Target: id, Kind: game.CounterLoyalty, N: 1}).Apply(ctx.asGroupMember()); err != nil {
 			return err
 		}
 	}

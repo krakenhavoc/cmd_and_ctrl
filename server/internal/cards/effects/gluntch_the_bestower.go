@@ -90,7 +90,7 @@ func gluntchCounters(ctx *Context) error {
 		Then: func(g *game.Game, picked []uuid.UUID) error {
 			next := NewContext(g, item)
 			for _, id := range picked {
-				if err := (AddCounter{Target: id, Kind: "+1/+1", N: 2}).Apply(next); err != nil {
+				if err := (AddCounter{Target: id, Kind: "+1/+1", N: 2}).Apply(next.asGroupMember()); err != nil {
 					return err
 				}
 			}

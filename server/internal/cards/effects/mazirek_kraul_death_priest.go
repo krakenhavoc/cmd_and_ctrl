@@ -43,7 +43,7 @@ func init() {
 						Target: c.InstanceID,
 						Kind:   game.CounterPlusOne,
 						N:      1,
-					}).Apply(ctx); err != nil {
+					}).Apply(ctx.asGroupMember()); err != nil {
 						return err
 					}
 				}

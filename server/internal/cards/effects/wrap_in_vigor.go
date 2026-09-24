@@ -34,7 +34,7 @@ func init() {
 				if !c.IsCreature() || c.Controller != me {
 					continue
 				}
-				if err := (Regenerate{Target: c.InstanceID}).Apply(ctx); err != nil {
+				if err := (Regenerate{Target: c.InstanceID}).Apply(ctx.asGroupMember()); err != nil {
 					return err
 				}
 			}

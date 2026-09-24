@@ -482,7 +482,7 @@ func b34DestroyChosenAndAllOthersWithItsName(ctx *Context) error {
 		if !onBattlefield(ctx.Game, target) {
 			continue
 		}
-		if err := (DestroyTarget{Target: target}).Apply(ctx); err != nil {
+		if err := (DestroyTarget{Target: target}).Apply(ctx.asGroupMember()); err != nil {
 			return err
 		}
 	}

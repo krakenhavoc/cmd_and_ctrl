@@ -285,7 +285,7 @@ func b16UntapAllYouControlMatching(ctx *Context, controller uuid.UUID, match fun
 		}
 	}
 	for _, id := range ids {
-		if err := (UntapTarget{Target: id}).Apply(ctx); err != nil {
+		if err := (UntapTarget{Target: id}).Apply(ctx.asGroupMember()); err != nil {
 			return err
 		}
 	}

@@ -66,7 +66,7 @@ func (u UntapUpToLands) Apply(ctx *Context) error {
 				if !onBattlefield(g, id) {
 					continue
 				}
-				if err := (UntapTarget{Target: id}).Apply(next); err != nil {
+				if err := (UntapTarget{Target: id}).Apply(next.asGroupMember()); err != nil {
 					return err
 				}
 			}

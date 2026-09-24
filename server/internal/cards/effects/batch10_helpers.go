@@ -334,7 +334,7 @@ func b10Fight(ctx *Context, a, b uuid.UUID) error {
 	// #1432, CR 701.12b: a fighter that is no longer on the
 	// battlefield — including a source that left and came back as a
 	// new object — means no damage is dealt at all.
-	if ctx.isNewSourceObject(a) || ctx.isNewSourceObject(b) {
+	if ctx.isNewSourceObjectAsThis(a) || ctx.isNewSourceObjectAsThis(b) {
 		return nil
 	}
 	ctx.Game.RecomputeLayersIfStaleLocked()

@@ -483,7 +483,7 @@ func b29TapAllCreaturesControlledBy(ctx *Context, player uuid.UUID) error {
 		}
 	}
 	for _, id := range ids {
-		if err := (TapTarget{Target: id}).Apply(ctx); err != nil {
+		if err := (TapTarget{Target: id}).Apply(ctx.asGroupMember()); err != nil {
 			return err
 		}
 	}
