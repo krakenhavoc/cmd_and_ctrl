@@ -19,20 +19,19 @@ import (
 // is read when the trigger RESOLVES (CR 608.2h), which is the printed
 // timing: a Giant Growth in response makes the Surge hit harder. If the
 // creature has left the battlefield by then it still deals the damage,
-// equal to its last-known power (#1379).
+// equal to its last-known power (#1379), and with the lifelink and
+// deathtouch it had as it last existed (#1396): a lifelinker killed in
+// response still gains its controller the life.
 //
-// Declared simplification: a creature that has LEFT deals that damage
-// as a plain source. The damage tail reads lifelink and deathtouch off
-// the battlefield only (ADR 0056 Decision 2, step 4: durable LKI for
-// damage sources is out of scope there; #1396), so a lifelinker killed in
-// response gains its controller nothing. Weaker than printed, and only
-// in that corner.
+// The damage names its source by OBJECT (DealDamage.SourceObject), not
+// by card. A creature blinked in response is a new object the trigger
+// never named (CR 400.7), so the damage is the departed creature's,
+// with the departed creature's keywords — not whatever the new one has.
 func init() {
 	Register(Spec{
 		OracleID:     "42fb1a1c-ab3d-4cdc-a6ff-a591f7481583",
 		Name:         "Warstorm Surge",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"If the creature has left the battlefield before the trigger resolves, it still deals damage equal to its last power, but without any lifelink or deathtouch it had."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
@@ -59,9 +58,10 @@ func b06WarstormSurgeDamage(g *game.Game, item *game.StackItem) error {
 	if !ok {
 		return nil
 	}
+	ref := ctx.Trigger().Object.Ref()
 	return DealDamage{
-		Source: ctx.Trigger().Object.ID,
-		Target: item.Targets[0].ID,
-		Amount: creature.Power,
+		SourceObject: &ref,
+		Target:       item.Targets[0].ID,
+		Amount:       creature.Power,
 	}.Apply(ctx)
 }

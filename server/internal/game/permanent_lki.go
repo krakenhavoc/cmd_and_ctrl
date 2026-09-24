@@ -94,6 +94,15 @@ type PermanentInfo struct {
 	// AttachedTo is what it was attached to (CR 301.5c / 303.4). An
 	// Aura's "enchanted creature" reads it after the Aura has gone.
 	AttachedTo TargetRef `json:"attachedTo,omitempty"`
+
+	// Tapped is its tapped status (CR 110.5). Not a characteristic,
+	// but last-known information all the same: Mana Vault's "if this
+	// artifact is tapped" is re-checked when its draw-step trigger
+	// resolves (CR 603.4), and a Vault that has left by then is judged
+	// as it last existed (#1396). Read live while it is there;
+	// MoveCard clears the flag on the way out, a line after the
+	// record is written.
+	Tapped bool `json:"tapped,omitempty"`
 }
 
 // permanentInfoOf reads a battlefield card into a PermanentInfo. The
@@ -107,6 +116,7 @@ func permanentInfoOf(c *Card) PermanentInfo {
 		Toughness:      c.CurrentToughness(),
 		Counters:       copyStringIntMap(c.Counters),
 		AttachedTo:     c.AttachedTo,
+		Tapped:         c.Tapped,
 	}
 }
 
