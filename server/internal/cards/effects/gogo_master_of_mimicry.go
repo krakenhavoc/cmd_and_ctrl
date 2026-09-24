@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Gogo, Master of Mimicry — Legendary Creature — Wizard {2}{U}, 2/4
 // (Edea steal-and-sac deck, #1565):
@@ -26,27 +22,28 @@ import (
 // copies, and X = 0 is refused at announce, as printed. CopyAbility's
 // Count is X, and each copy gets its own CR 707.10c re-target offer.
 //
-// "This ability can't be copied", half of it: Gogo's own clause will
-// not target a Gogo activation — its own, or one from a copy of Gogo
-// (the check is on the ability source's catalog key, which a Clone or
-// token copy carries). The other half, another card's copy effect
-// (Lithoform Engine, Rings of Brighthearth) copying a Gogo activation,
-// needs a "this ability can't be copied" flag the engine's ability
-// copy does not have, and ships as the declared caveat.
+// "This ability can't be copied" is the ability's Uncopyable bit
+// (#1574, ADR 0043 Decision 20). The activation carries it onto the
+// stack item and game.CopyAbilityForEffect, the one door every
+// ability copy comes through, refuses it: Lithoform Engine, Strionic
+// Resonator, Rings of Brighthearth and another Gogo all copy nothing.
+// It narrows no target clause, which is how "can't be countered"
+// works too: another Gogo (a Spark Double's non-legendary copy, say)
+// may target this activation, and its copies are simply not made. So
+// may this Gogo, untapped, target its own earlier activation. An
+// activation never targets ITSELF: its targets are chosen before the
+// item is on the stack (CR 115.5).
 func init() {
 	Register(Spec{
 		OracleID:     gogoMasterOfMimicryOracleID,
 		Name:         "Gogo, Master of Mimicry",
 		XMatters:     true,
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Another card that copies abilities, such as Lithoform Engine or Rings of Brighthearth, can still copy Gogo's ability.",
-		},
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{X}{X}, {T}: Copy target activated or triggered ability you control X times. You may choose new targets for the copies. This ability can't be copied and X can't be 0.",
-			Cost:  Plus(ManaCost("{X}{X}"), TapCost(), MinX(1)),
-			Targets: AbilityOnStack("target activated or triggered ability you control",
-				AnAbilityYouControl(), notAGogoActivation()),
+			Label:      "{X}{X}, {T}: Copy target activated or triggered ability you control X times. You may choose new targets for the copies. This ability can't be copied and X can't be 0.",
+			Cost:       Plus(ManaCost("{X}{X}"), TapCost(), MinX(1)),
+			Targets:    AbilityOnStack("target activated or triggered ability you control", AnAbilityYouControl()),
+			Uncopyable: true,
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				id, ok := b16FirstLegalTargetCard(ctx)
@@ -65,16 +62,3 @@ func init() {
 }
 
 const gogoMasterOfMimicryOracleID = "61586052-7d69-489c-84c4-0359228d131b"
-
-// notAGogoActivation keeps "this ability can't be copied" inside
-// Gogo's own clause: an activated ability whose source is a Gogo (or a
-// copy of one) is not a legal target.
-func notAGogoActivation() AbilityPredicate {
-	return func(g *game.Game, _ uuid.UUID, item *game.StackItem) bool {
-		if item.Kind != game.StackItemActivated {
-			return true
-		}
-		src, ok := g.LookupCardForEffect(item.SourceCardID)
-		return !ok || game.BaseCatalogKey(game.CatalogKey(src)) != gogoMasterOfMimicryOracleID
-	}
-}

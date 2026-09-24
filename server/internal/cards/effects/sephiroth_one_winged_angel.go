@@ -25,20 +25,23 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // from the command zone (CR 114.3), and targets an opponent when it
 // goes on the stack like any trigger.
 //
-// DECLARED SIMPLIFICATION (weaker than printed): Super Nova is made by
-// the front face's own transform, the fourth-resolution clause. The
-// engine's in-place transform has no "as this transforms" hook a face
-// could declare, so if some other effect transforms Sephiroth, no
-// emblem is made. In this deck nothing else transforms it.
+// Super Nova is AsTransformsInto on this face (#1574, ADR 0079
+// amendment 2026-09-24): the engine's in-place transform runs it for
+// the face now up, whatever effect asked for the transform, so the
+// front face's fourth drain, a Moonmist and anything else that turns
+// Sephiroth over all make the emblem, once per transform. It is a
+// static clause, not a trigger: nothing goes on the stack. A
+// Sephiroth that ENTERS on this face never transformed, and gets no
+// emblem.
 func init() {
 	Register(Spec{
-		OracleID:     sephirothOracleID + "#1",
-		Name:         "Sephiroth, One-Winged Angel",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Only Sephiroth's own transform gives you the Super Nova emblem. If another card's effect transforms it, you don't get one.",
-		},
+		OracleID:        sephirothOracleID + "#1",
+		Name:            "Sephiroth, One-Winged Angel",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
+		AsTransformsInto: func(card *game.Card, ctx *Context) error {
+			return CreateEmblem{Player: card.Controller, Source: card.InstanceID}.Apply(ctx)
+		},
 		Emblem: &EmblemSpec{
 			Label: "Sephiroth, One-Winged Angel emblem",
 			Text:  "Whenever a creature dies, target opponent loses 1 life and you gain 1 life.",

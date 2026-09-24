@@ -34,9 +34,10 @@ import (
 // count. A Sephiroth that died and came back this turn is a new object
 // and starts again from zero.
 //
-// **The transform** is the in-place verb (TransformThis, CR 701.27),
-// and the back face's Super Nova emblem is made as it happens. See the
-// back face for why only this transform makes it.
+// **The transform** is the in-place verb (TransformThis, CR 701.27).
+// It makes no emblem itself: Super Nova is the back face's own
+// AsTransformsInto clause, which the verb runs for whatever turned the
+// card over (#1574).
 func init() {
 	Register(Spec{
 		OracleID:     sephirothOracleID,
@@ -98,15 +99,5 @@ func sephirothDrainAndMaybeTransform(g *game.Game, item *game.StackItem) error {
 	if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneBattlefield {
 		return nil
 	}
-	if err := (TransformThis{}).Apply(ctx); err != nil {
-		return err
-	}
-	// Super Nova: "As this creature transforms into Sephiroth,
-	// One-Winged Angel, you get an emblem". Made only if the
-	// permanent really is on its back face now (CR 701.27c: a
-	// permanent that cannot transform does nothing).
-	if after, ok := g.LookupCardForEffect(item.SourceCardID); !ok || !TransformedPermanent(after) {
-		return nil
-	}
-	return CreateEmblem{}.Apply(ctx)
+	return (TransformThis{}).Apply(ctx)
 }

@@ -71,6 +71,18 @@ type Spec struct {
 	// nearly every card.
 	AsEnters func(card *game.Card, ctx *Context) error
 
+	// AsTransformsInto is the face's "As this permanent transforms
+	// into <this face>, …" clause (Sephiroth, One-Winged Angel's Super
+	// Nova), declared on the Spec of the face being turned TO — a back
+	// face's "<oracle_id>#1" entry. The engine's in-place transform
+	// runs it whatever effect asked for the transform, off the stack,
+	// as the permanent turns over: the transform twin of AsEnters, and
+	// under the same contract (Item is nil, so read the controller off
+	// the card). A permanent that ENTERS transformed never runs it,
+	// because it never transformed. #1574, ADR 0079 amendment
+	// 2026-09-24.
+	AsTransformsInto func(card *game.Card, ctx *Context) error
+
 	// StartingLoyalty is the loyalty counter count a planeswalker
 	// enters the battlefield with. 0 means "not a planeswalker" or
 	// "planeswalker with 0 starting loyalty" (which the SBA would
@@ -1164,7 +1176,15 @@ type ActivatedAbility struct {
 	// this ability and nothing else, exactly as Spec.SelfCostModifiers
 	// does for a spell. See game.ActivatedAbilityShape.CostModifiers.
 	CostModifiers []game.CostModifier
-	Effect        func(g *game.Game, item *game.StackItem) error
+	// Uncopyable is the ability's printed "This ability can't be
+	// copied" (Gogo, Master of Mimicry). The activation carries it
+	// onto the stack item and every ability copy — Lithoform Engine,
+	// Strionic Resonator, Rings of Brighthearth, another Gogo —
+	// refuses it. It narrows nothing: the item stays a legal target
+	// for a copy clause (the copy just isn't made) and for Stifle.
+	// See game.ActivatedAbilityShape.Uncopyable (#1574).
+	Uncopyable bool
+	Effect     func(g *game.Game, item *game.StackItem) error
 }
 
 // ManaAbility is one mana-producing activated ability on a permanent.
