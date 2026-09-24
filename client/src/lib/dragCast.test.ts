@@ -14,8 +14,11 @@ import {
   autoTapHighlight,
   cantPayReason,
   clearAutoTapHighlight,
+  dragMode,
   dragVerdict,
   inCastZone,
+  inReorderBand,
+  insertionIndex,
   pastActivation,
   previewDecidesMana,
   previewSourceIDs,
@@ -313,5 +316,149 @@ describe("the auto-tap preview", () => {
     autoTapHighlight.set(new Set(["m1"]));
     clearAutoTapHighlight();
     expect(get(autoTapHighlight).size).toBe(0);
+  });
+});
+
+// ---- #1524: one gesture, two outcomes --------------------------------
+//
+// The hand's band is its own top to bottom edge. Sideways inside it is
+// a reorder; up past the line is #1508's cast; released between the
+// two the card snaps back.
+
+describe("the reorder band (#1524)", () => {
+  const HAND_BOTTOM = 760;
+  // The OTHER cards' centres; the dragged card is index 1 of four.
+  const CENTERS = [100, 300, 400];
+  const rdown = (x = 200, y = 650): DragInput => ({
+    type: "down",
+    cardID: "bolt",
+    x,
+    y,
+    handTop: HAND_TOP,
+    handBottom: HAND_BOTTOM,
+    slotCenters: CENTERS,
+    fromIndex: 1,
+  });
+
+  it("the mode follows the pointer's height", () => {
+    expect(dragMode(HAND_TOP, HAND_TOP, HAND_BOTTOM)).toBe("reorder");
+    expect(dragMode(700, HAND_TOP, HAND_BOTTOM)).toBe("reorder");
+    expect(dragMode(HAND_BOTTOM, HAND_TOP, HAND_BOTTOM)).toBe("reorder");
+    expect(dragMode(HAND_TOP - 1, HAND_TOP, HAND_BOTTOM)).toBe("none");
+    expect(dragMode(HAND_TOP - CAST_ZONE_MARGIN_PX, HAND_TOP, HAND_BOTTOM)).toBe("none");
+    expect(dragMode(TABLE_Y, HAND_TOP, HAND_BOTTOM)).toBe("cast");
+    expect(dragMode(HAND_BOTTOM + 1, HAND_TOP, HAND_BOTTOM)).toBe("none");
+  });
+
+  it("a hand that gave no bottom edge has no reorder band", () => {
+    expect(inReorderBand(650, HAND_TOP, null)).toBe(false);
+    expect(dragMode(650, HAND_TOP, null)).toBe("none");
+    expect(dragMode(TABLE_Y, HAND_TOP, null)).toBe("cast");
+  });
+
+  it("the state machine tracks the mode and the insertion index while dragging", () => {
+    let res = run([rdown(), move(40, 650)]);
+    expect(res.state.mode).toBe("reorder");
+    expect(res.state.insertAt).toBe(0);
+    res = { ...res, ...step(res.state, move(350, 700)) };
+    expect(res.state.insertAt).toBe(2);
+    res = { ...res, ...step(res.state, move(350, 580)) };
+    expect(res.state.mode).toBe("none");
+    expect(res.state.insertAt).toBe(-1);
+    res = { ...res, ...step(res.state, move(350, TABLE_Y)) };
+    expect(res.state.mode).toBe("cast");
+    expect(res.state.inCastZone).toBe(true);
+  });
+
+  it("a press is still a click, and has no mode", () => {
+    const { outcome, state } = run([rdown(), up(203, 652)]);
+    expect(outcome).toEqual({ kind: "click" });
+    expect(state).toEqual(IDLE);
+  });
+
+  it("released sideways inside the band, the card moves to the insertion index", () => {
+    expect(run([rdown(), move(450, 650), up(450, 650)]).outcome).toEqual({
+      kind: "reorder",
+      cardID: "bolt",
+      from: 1,
+      to: 3,
+    });
+    expect(run([rdown(), move(20, 700), up(20, 700)]).outcome).toEqual({
+      kind: "reorder",
+      cardID: "bolt",
+      from: 1,
+      to: 0,
+    });
+  });
+
+  it("released back where it started, it snaps back rather than reordering", () => {
+    // Between the first and second other card: index 1, where it was.
+    const { outcome } = run([rdown(), move(150, 700), up(250, 700)]);
+    expect(outcome).toEqual({ kind: "snapBack" });
+  });
+
+  it("released up past the line, it casts exactly as before", () => {
+    const { outcome } = run([rdown(), move(450, 650), up(450, TABLE_Y)]);
+    expect(outcome).toEqual({ kind: "cast", cardID: "bolt" });
+  });
+
+  it("released between the band and the line, it snaps back silently", () => {
+    const red = { castable: false, reason: "Not your priority" };
+    expect(run([rdown(), move(450, 650), up(450, HAND_TOP - 20)]).outcome).toEqual({
+      kind: "snapBack",
+    });
+    expect(run([rdown(), move(450, 650), up(450, HAND_TOP - 20, red)]).outcome).toEqual({
+      kind: "snapBack",
+    });
+  });
+
+  it("the release point decides, not the band the drag passed through", () => {
+    const { outcome } = run([rdown(), move(450, TABLE_Y), move(450, 700), up(450, 700)]);
+    expect(outcome.kind).toBe("reorder");
+  });
+
+  it("a reorder ignores the cast verdict", () => {
+    const red = { castable: false, reason: "Not your priority" };
+    const { outcome } = run([rdown(), move(450, 650), up(450, 650, red)]);
+    expect(outcome.kind).toBe("reorder");
+  });
+
+  it("a land can be reordered, but is still not cast by drag", () => {
+    const forest = card({ instance_id: "forest", type_line: "Basic Land — Forest" });
+    const verdict = dragVerdict(forest, { legal: true }, null);
+    const land = (): DragInput => ({ ...rdown(), cardID: "forest" }) as DragInput;
+    expect(run([land(), move(450, 650), up(450, 650, verdict)]).outcome).toEqual({
+      kind: "reorder",
+      cardID: "forest",
+      from: 1,
+      to: 3,
+    });
+    expect(run([land(), move(450, TABLE_Y), up(450, TABLE_Y, verdict)]).outcome).toEqual({
+      kind: "snapBack",
+      reason: LAND_DRAG_REASON,
+    });
+  });
+
+  it("a gesture that gave no reorder geometry never reorders (#1508's drag alone)", () => {
+    const { outcome } = run([down(), move(450, 650), up(450, 650)]);
+    expect(outcome).toEqual({ kind: "snapBack" });
+  });
+});
+
+describe("insertionIndex", () => {
+  it("counts the other cards' centres to the left of the pointer", () => {
+    const centers = [100, 200, 300];
+    expect(insertionIndex(50, centers)).toBe(0);
+    expect(insertionIndex(150, centers)).toBe(1);
+    expect(insertionIndex(250, centers)).toBe(2);
+    expect(insertionIndex(999, centers)).toBe(3);
+  });
+
+  it("a pointer exactly on a centre goes before that card", () => {
+    expect(insertionIndex(200, [100, 200, 300])).toBe(1);
+  });
+
+  it("with no other cards, the only place is 0", () => {
+    expect(insertionIndex(500, [])).toBe(0);
   });
 });
