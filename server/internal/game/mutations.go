@@ -61,31 +61,14 @@ func (g *Game) zoneFromRefLocked(ref ZoneRef) *Zone {
 // findCardZoneLocked returns the Zone currently holding the card with
 // the given instance ID, or nil if the card is not in any zone. Must
 // be called with g.mu held.
+//
+// #1479: answered by the card index (card_index.go) rather than by
+// walking every zone. The zones it covers — the battlefield, the
+// stack, exile and each seat's library, hand, graveyard and command
+// zone, not PhasedOut — are unchanged.
 func (g *Game) findCardZoneLocked(cardID uuid.UUID) *Zone {
-	if g.Battlefield.Contains(cardID) {
-		return g.Battlefield
-	}
-	if g.Stack.Contains(cardID) {
-		return g.Stack
-	}
-	if g.Exile.Contains(cardID) {
-		return g.Exile
-	}
-	for _, p := range g.Seats {
-		if p.Library.Contains(cardID) {
-			return p.Library
-		}
-		if p.Hand.Contains(cardID) {
-			return p.Hand
-		}
-		if p.Graveyard.Contains(cardID) {
-			return p.Graveyard
-		}
-		if p.Command.Contains(cardID) {
-			return p.Command
-		}
-	}
-	return nil
+	z, _ := g.locateCardLocked(cardID)
+	return z
 }
 
 // DrawCard moves the top card of the given player's library into
@@ -2987,7 +2970,7 @@ func spellAllTargetsIllegalLocked(g *Game, item *StackItem) bool {
 // targetStillExistsLocked performs the CR 608.2b existence check for
 // a single TargetRef: the referenced player is still seated and
 // non-eliminated, or the referenced card is still in a zone the
-// engine tracks (findCardZoneLocked walks every zone). Caller must
+// engine tracks (findCardZoneLocked covers every one). Caller must
 // hold g.mu.
 func targetStillExistsLocked(g *Game, t TargetRef) bool {
 	switch t.Kind {

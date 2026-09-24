@@ -332,6 +332,14 @@ type Game struct {
 	// an empty slot and the first view refolds from event 0.
 	logProjection ProjectionCache
 
+	// cardIndex is the instance-ID → zone-and-position hint table
+	// every card lookup goes through (#1479, ADR 0094). A HINT: every
+	// answer is checked against the live zone before it is returned,
+	// so nothing invalidates it — not a move, not RestoreFrom. Not
+	// cloned, not snapshotted: a new *Game builds its own on its first
+	// lookup. See card_index.go.
+	cardIndex cardLocationIndex
+
 	// eventBatch is the monotonic counter stamped into Event.Batch on
 	// each EmitEvent: the identity of the run of events the engine is
 	// emitting as ONE occurrence (CR 603.2c). It advances at exactly
@@ -1802,16 +1810,11 @@ func (g *Game) PlayerByID(id uuid.UUID) *Player {
 func (g *Game) ControllerOfCard(instanceID uuid.UUID) (uuid.UUID, bool) {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
-	z := g.findCardZoneLocked(instanceID)
+	z, pos := g.locateCardLocked(instanceID)
 	if z == nil {
 		return uuid.Nil, false
 	}
-	for _, c := range z.Cards {
-		if c.InstanceID == instanceID {
-			return c.Controller, true
-		}
-	}
-	return uuid.Nil, false
+	return z.Cards[pos].Controller, true
 }
 
 // playerByIDLocked is the unlocked variant of PlayerByID. The caller

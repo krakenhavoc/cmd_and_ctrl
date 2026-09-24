@@ -149,3 +149,75 @@ func TestSeatIndexerDoesNotAllocate(t *testing.T) {
 		t.Errorf("seatOf allocated %.0f times per call; want 0", allocs)
 	}
 }
+
+// #1479: the view asks for every card it projects by instance ID —
+// castSourceOf, liveCardForView, liveCardForAbilityRows,
+// stampActivatedAbilities — and each of those lookups used to walk
+// every zone until it found the card. That made a view quadratic in
+// the board, and about 7% of a bot table's CPU. The card index
+// (game/card_index.go, ADR 0094) answers each one from a table,
+// checked against the live zone.
+//
+// lookupWorkFor counts the cards the lookups of ONE view examine, on a
+// board with n permanents on the battlefield and 2n cards in the last
+// seat's graveyard — the last zone the old walk reached. The count is
+// taken on the second view: the first builds the index, the way the
+// first view of a new game does, and every view after it is the one a
+// table pays for over and over.
+func lookupWorkFor(t *testing.T, n int) (first, steady game.CardLookupWork) {
+	t.Helper()
+	g := boardOf(t, n)
+	g.WithWriteLock(func() {
+		last := g.Seats[len(g.Seats)-1]
+		for i := 0; i < 2*n; i++ {
+			last.Graveyard.PushTop(game.Card{
+				InstanceID: uuid.New(),
+				Name:       fmt.Sprintf("Buried %d", i),
+				TypeLine:   "Creature — Bear",
+				// A catalog key is what makes the view look a
+				// graveyard card up (liveCardForAbilityRows); nothing
+				// is registered under it.
+				OracleID:   fmt.Sprintf("view-cost-buried-%d", i),
+				Owner:      last.ID,
+				Controller: last.ID,
+			})
+		}
+	})
+	read, stop := game.CountCardLookupWork()
+	defer stop()
+	_ = ViewOfGame(g)
+	first = read()
+	_ = ViewOfGame(g)
+	total := read()
+	return first, game.CardLookupWork{Lookups: total.Lookups - first.Lookups, Examined: total.Examined - first.Examined}
+}
+
+func TestViewCardLookupsAreLinearInTheBoard(t *testing.T) {
+	// Quadrupling rather than doubling the board: the view also looks
+	// up the seats' own few cards, a linear term big enough to blur a
+	// quadratic one at 2x.
+	firstSmall, small := lookupWorkFor(t, 10)
+	firstLarge, large := lookupWorkFor(t, 40)
+	t.Logf("n=10: first view %d lookups examined %d cards, steady view %d examined %d", firstSmall.Lookups, firstSmall.Examined, small.Lookups, small.Examined)
+	t.Logf("n=40: first view %d lookups examined %d cards, steady view %d examined %d", firstLarge.Lookups, firstLarge.Examined, large.Lookups, large.Examined)
+	if small.Lookups == 0 || large.Lookups <= small.Lookups {
+		t.Fatalf("the view looked up %d cards at n=10 and %d at n=40 — the probe board does not reach the lookups", small.Lookups, large.Lookups)
+	}
+	// The shape: what ONE lookup costs must not grow with the board. A
+	// walk of every zone costs more the more cards there are to walk
+	// past; a table read costs one card whatever the size.
+	perSmall := float64(small.Examined) / float64(small.Lookups)
+	perLarge := float64(large.Examined) / float64(large.Lookups)
+	if perLarge > 1.5*perSmall {
+		t.Errorf("a lookup examined %.1f cards on the small board and %.1f on the 4x board; want the same (a table read), not a walk that grows with the board", perSmall, perLarge)
+	}
+	// The size: on the fast path a lookup examines exactly one card.
+	if perLarge > 1.5 {
+		t.Errorf("a steady view's lookups examined %.1f cards each; want ~1 (the fast path)", perLarge)
+	}
+	// And the whole view's lookup work stays linear in the board: ~4 at
+	// 4x, where one walk per card would be ~16.
+	if ratio := float64(large.Examined) / float64(small.Examined); ratio > 8 {
+		t.Errorf("quadrupling the board multiplied the cards the view's lookups examine by %.1f; want ~4", ratio)
+	}
+}
