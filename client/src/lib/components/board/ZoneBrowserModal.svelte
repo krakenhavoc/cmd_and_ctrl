@@ -32,6 +32,15 @@
   } from "../../zoneBrowser.logic";
   import { printedCostClaimable, type CastSourceZone } from "../../targeting";
   import ModalLayer from "../ModalLayer.svelte";
+  // #1406: the exile button's enabled state and price tag read the
+  // same verdict the castable-from-exile strip does — `castable_here`
+  // across every castable face, then the server's own move list —
+  // rather than a second, client-side timing guess. Reusing these
+  // rather than duplicating them is the point: both surfaces read the
+  // same server bits and must not drift into different opinions about
+  // the same card.
+  import { exileCostBadge, exileEntryFor, exileEntryLegality, symbolClass } from "../../exileStrip";
+  import type { Legality } from "../../timing";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -157,6 +166,27 @@
   // card's own name for every grant that names no face.
   const grantedName = (card: CardView) => grantedFace(card, grantFor(card)).name ?? "card";
 
+  // #1406: the impulse button's enabled state and tooltip. Only
+  // called for a card `labelFor` already showed a button for, which
+  // means `impulseGrantFor` already found a grant naming this viewer
+  // with an open not-before-turn floor — so `viewerID` is guaranteed
+  // non-null here, and `exileEntryFor` re-deriving "now / waiting /
+  // later" from the same `card.exile_play` agrees with it. A null
+  // entry (the grant's floor hasn't opened, or a cast-only land) reads
+  // as "not castable" rather than throwing — belt and braces, since
+  // `labelFor` already keeps those off the button entirely.
+  const exileLegalityFor = (card: CardView): Legality => {
+    const entry = exileEntryFor(card, viewerID ?? "", view.turn.number);
+    if (!entry) return { legal: false, reason: "Not castable from exile right now" };
+    return exileEntryLegality(entry, view, viewerID);
+  };
+
+  // The price tag beside the button — the same badge the exile strip
+  // shows, null when the cheapest price IS the printed cost (the
+  // common case: an ordinary impulse-exiled card costs what it
+  // prints).
+  const exileBadgeFor = (card: CardView) => exileCostBadge(card);
+
   // S29: "cast from here" for the zones whose permission is printed
   // on the card rather than granted to an instance. Only the
   // graveyard today; the gate lives in zoneBrowser.logic.ts so
@@ -198,6 +228,10 @@
   function playFromExile(card: CardView): void {
     const grant = grantFor(card);
     if (!onCastCard || !grant) return;
+    // #1406: belt and braces — the button is `disabled` when this is
+    // false, but a disabled native <button> already swallows the
+    // click, so this only matters if that attribute is ever dropped.
+    if (!exileLegalityFor(card).legal) return;
     onCastCard(card, "exile", grantedFaceIndex(grant));
     onClose();
   }
@@ -312,16 +346,36 @@
               {sorcerySpeedBlocked}
             />
             {#if labelFor(card)}
+              {@const leg = exileLegalityFor(card)}
+              {@const badge = exileBadgeFor(card)}
               <!-- The impulse grant is the one action that shouldn't wait
                    for a hover: the thief needs to see that the card is
-                   theirs to play. -->
+                   theirs to play. #1406: enabled state and tooltip read
+                   the same castable_here + legal-move verdict the exile
+                   strip does, so a shut timing window (a sorcery in an
+                   end step, a plotted card outside its main phase, a
+                   cant_cast clause) greys the button instead of
+                   dispatching a cast the server would refuse. -->
+              {#if badge}
+                <span class="cost-tag" title={badge.title} aria-label={badge.label}>
+                  {#each badge.symbols as s, i (i)}
+                    <span class="sym {symbolClass(s)}">{s}</span>
+                  {/each}
+                  {#if badge.life}
+                    <span class="life">+{badge.life}♥</span>
+                  {/if}
+                </span>
+              {/if}
               <div class="actions always" aria-label="play from exile">
                 <button
                   type="button"
                   class="act impulse"
-                  title={grantFor(card)?.any_color
-                    ? "spend mana as though it were any colour"
-                    : "playable until end of turn"}
+                  disabled={!leg.legal}
+                  title={leg.legal
+                    ? grantFor(card)?.any_color
+                      ? "spend mana as though it were any colour"
+                      : "playable until end of turn"
+                    : (leg.reason ?? "Not castable from exile right now")}
                   aria-label={`${labelFor(card)} ${grantedName(card)} from exile`}
                   onclick={() => playFromExile(card)}
                 >
@@ -504,6 +558,73 @@
     border-color: rgba(217, 180, 92, 0.6);
     color: var(--gold-strong);
   }
+  /* #1406: a shut timing window (end step, wrong phase, a cant_cast
+     clause) greys the button instead of hiding it, so the reason is
+     still readable on hover. */
+  .act:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    filter: grayscale(0.4);
+  }
+  /* The price tag, same shape as ExileStrip's — top-right corner of
+     the cell, which is already position: relative. */
+  .cost-tag {
+    position: absolute;
+    top: -4px;
+    right: 4px;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    gap: 1px;
+    padding: 2px 3px;
+    border-radius: 999px;
+    background: #1c1503;
+    border: 1.5px solid var(--gold-strong);
+    box-shadow:
+      0 2px 8px rgba(0, 0, 0, 0.55),
+      0 0 0 1px rgba(0, 0, 0, 0.4);
+    cursor: help;
+  }
+  .sym {
+    display: inline-grid;
+    place-items: center;
+    min-width: 15px;
+    height: 15px;
+    padding: 0 2px;
+    box-sizing: border-box;
+    border-radius: 999px;
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 1;
+    color: #111;
+    background: #cfd6e2;
+  }
+  .sym-W {
+    background: #f4ead5;
+  }
+  .sym-U {
+    background: #aad4ff;
+  }
+  .sym-B {
+    background: #7a7390;
+    color: #f4f0ff;
+  }
+  .sym-R {
+    background: #ff9a85;
+  }
+  .sym-G {
+    background: #92c493;
+  }
+  .sym-C {
+    background: #c6cfdd;
+  }
+  .life {
+    margin-left: 2px;
+    font-size: 9px;
+    font-weight: 700;
+    color: #ffb3b3;
+  }
   /* The back-face name on a "cast it transformed" grant. Rendered
      inside the pill rather than under it so the button stays one
      hit target, and truncated rather than wrapped so a long name
@@ -545,7 +666,7 @@
     letter-spacing: 0.1em;
     font-weight: 600;
   }
-  .act:hover {
+  .act:hover:not(:disabled) {
     color: var(--gold-strong);
     border-color: rgba(217, 180, 92, 0.5);
   }

@@ -28,9 +28,15 @@
   import Card from "./Card.svelte";
   import { dealIn, dealOut } from "../../animations";
   import { handOverlap } from "../../handFan";
-  import { canCastFromHand, type Legality } from "../../timing";
-  import { exileCostBadge, exileStripEntries, type ExileStripEntry } from "../../exileStrip";
+  import {
+    exileCostBadge,
+    exileEntryLegality,
+    exileStripEntries,
+    symbolClass,
+    type ExileStripEntry,
+  } from "../../exileStrip";
   import type { CastSourceZone } from "../../targeting";
+  import type { Legality } from "../../timing";
 
   interface Props {
     view: GameView;
@@ -54,24 +60,17 @@
     if (entries.length === 0) open = false;
   });
 
+  // #1406: extracted to exileStrip.ts as exileEntryLegality, shared
+  // with the zone browser's exile button so the two surfaces read the
+  // same verdict rather than deriving it a second way.
   function legalityFor(e: ExileStripEntry): Legality {
-    if (e.state === "later") return { legal: false, reason: `Castable from exile ${e.hint}` };
-    if (e.state === "waiting") {
-      return { legal: false, reason: e.card.cant_cast || "Not castable from exile right now" };
-    }
-    // The same verdict the hand reads: the server's own move list,
-    // which covers exile casts and knows about mana.
-    return canCastFromHand(e.card, view, viewerID);
+    return exileEntryLegality(e, view, viewerID);
   }
 
   function cast(e: ExileStripEntry): void {
     if (!onCastCard) return;
     open = false;
     onCastCard(e.card, "exile", e.face);
-  }
-
-  function symbolClass(s: string): string {
-    return /^[WUBRGC]$/.test(s) ? `sym-${s}` : "sym-generic";
   }
 </script>
 
