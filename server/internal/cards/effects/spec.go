@@ -611,6 +611,17 @@ type Spec struct {
 	// suspend declaring no time counters, at boot.
 	SpecialActions []game.SpecialAction
 
+	// SpecialActionGrants are special actions this PERMANENT gives to
+	// OTHER cards, which SpecialActions above cannot say because it
+	// describes only the card's own keywords (#1391). One constructor
+	// per printed clause, never a hand-built struct:
+	//
+	//	SpecialActionGrants: []game.SpecialActionGrant{PlotFromTopOfLibrary()}, // Fblthp, Lost on the Range
+	//
+	// Register refuses at boot a grant whose kind or zone the engine
+	// cannot carry out (game.SpecialActionGrantBuilt).
+	SpecialActionGrants []game.SpecialActionGrant
+
 	// Madness is the card's madness cost (CR 702.35), as printed:
 	//
 	//	Madness: "{R}",   // Fiery Temper

@@ -1515,6 +1515,12 @@ type CardView struct {
 	//
 	// Not public, and stripped by the same redaction that strips
 	// zone_abilities: "Suspend 4—{U}" names Ancestral Vision.
+	//
+	// #1391: also on the top card of its owner's LIBRARY when a
+	// permanent grants a special action there (Fblthp, Lost on the
+	// Range's plot). The owner sees it only while they can see the
+	// card, and FilterViewFor drops it from every other seat's frame
+	// even when the card is revealed.
 	SpecialActions []SpecialActionView `json:"special_actions,omitempty"`
 	// SummoningSick reports CR 302.6 sickness: the permanent is a
 	// creature, it entered this turn and it has no haste, so it
@@ -4500,7 +4506,7 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 		// offer is derived from the face-down kind, so
 		// SpecialActionsOfferedByCard answers nothing for a face-up
 		// permanent, and the declared kinds are hand keywords.
-		c.SpecialActions = viewOfSpecialActions(g, card, controller)
+		c.SpecialActions = viewOfSpecialActions(g, card, controller, game.ZoneBattlefield)
 		c.LoyaltyActivated = g.LoyaltyActivatedThisTurn[instanceID]
 		stampManaSacrificeOptions(g, card, controller, c.ManaAbilities)
 		stampManaConditions(g, card, controller, c.ManaAbilities, restricted)
@@ -4574,8 +4580,9 @@ func stampZoneAbilities(g *game.Game, seats []PlayerView, exile *ZoneView) {
 			// card — "what may you activate here" — and a second walk
 			// of every hand would be a second answer to keep in step.
 			c.stampZoneManaAbilitiesFor(owner, viewOfManaAbilitiesFromZone(card, game.ZoneHand))
-			c.SpecialActions = viewOfSpecialActions(g, card, owner)
+			c.SpecialActions = viewOfSpecialActions(g, card, owner, game.ZoneHand)
 		}
+		stampLibraryTopSpecialActions(g, &seat.Library, owner)
 		stampZoneAbilitiesInPile(g, &seat.Graveyard, game.ZoneGraveyard, owner, restricted)
 		stampZoneAbilitiesInPile(g, &seat.Command, game.ZoneCommand, owner, restricted)
 	}
@@ -4640,6 +4647,43 @@ func liveCardForAbilityRows(g *game.Game, c *CardView) (game.Card, bool) {
 	return g.LookupCardForEffect(instanceID)
 }
 
+// stampLibraryTopSpecialActions puts the special-action rows a GRANT
+// offers on the top card of `owner`'s library (#1391: Fblthp, Lost on
+// the Range's plot). The top is the last element, as it is for
+// stampLibraryTop and the cast-permission stamps.
+//
+// It does not reveal anything, and it is not what decides who sees
+// the rows. The rows sit on the projected card, so the same per-viewer
+// redaction that hides the card hides them:
+//
+//   - the owner sees them only while they can see the card. A grant
+//     with no "look at the top card" would leave the owner a
+//     non-knower, and redactCardForViewer clears special_actions;
+//   - an opponent never gets the card unless it is revealed
+//     (keepKnownTopInLibraryZone). When it is revealed, FilterViewFor
+//     still drops the rows, because they are the owner's to take.
+//
+// Found by instance ID rather than through liveCardForAbilityRows,
+// because a grant reaches cards that have no catalog entry of their
+// own. Fblthp gives plot to any nonland card.
+//
+// Runs under the read lock ViewOfGame already holds.
+func stampLibraryTopSpecialActions(g *game.Game, lib *ZoneView, owner uuid.UUID) {
+	if lib == nil || len(lib.Cards) == 0 {
+		return
+	}
+	c := &lib.Cards[len(lib.Cards)-1]
+	instanceID, err := uuid.Parse(c.InstanceID)
+	if err != nil {
+		return
+	}
+	card, ok := g.LookupCardForEffect(instanceID)
+	if !ok {
+		return
+	}
+	c.SpecialActions = viewOfSpecialActions(g, card, owner, game.ZoneLibrary)
+}
+
 // viewOfSpecialActions projects the CR 116.2 special actions a card
 // offers, with the engine's own per-kind timing answer stamped on
 // each (ADR 0062 Decision 4).
@@ -4651,13 +4695,18 @@ func liveCardForAbilityRows(g *game.Game, c *CardView) (game.Card, bool) {
 // both, off one engine accessor, so a row the client can see is a row
 // the engine would accept.
 //
+// #1391 added a third: the top card of its owner's LIBRARY, where a
+// permanent's grant (Fblthp, Lost on the Range) may offer plot. `zone`
+// says which of the three this is, and the engine answers for that
+// zone (SpecialActionsOfferedLocked).
+//
 // A kind the engine cannot carry out is not projected at all: the
 // client must never show a row the server would refuse.
 //
 // Runs under the read lock ViewOfGame already holds.
-func viewOfSpecialActions(g *game.Game, card game.Card, owner uuid.UUID) []SpecialActionView {
+func viewOfSpecialActions(g *game.Game, card game.Card, owner uuid.UUID, zone game.ZoneKind) []SpecialActionView {
 	var out []SpecialActionView
-	for _, sa := range game.SpecialActionsOfferedByCard(card) {
+	for _, sa := range g.SpecialActionsOfferedLocked(owner, card, zone) {
 		if !game.SpecialActionKindBuilt(sa.Kind) {
 			continue
 		}
@@ -5754,6 +5803,15 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 				// that still carries a stale knower is not exposed,
 				// because only the last element is even considered.
 				out.Library = keepKnownTopInLibraryZone(out.Library)
+				// #1391: a revealed top card may carry its OWNER's
+				// special-action rows (Fblthp's plot). The card is
+				// public, and "Plot {4}{U}" tells nobody anything the
+				// mana cost doesn't. But the row, and its `available`,
+				// is the owner's to take, so it goes the way a hand
+				// card's rows go on a card someone else can see.
+				for ci := range out.Library.Cards {
+					out.Library.Cards[ci].SpecialActions = nil
+				}
 			}
 		}
 		seats[i] = out
