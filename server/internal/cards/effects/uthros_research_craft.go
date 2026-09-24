@@ -52,7 +52,9 @@ func init() {
 // uthrosResearchCraftCastTrigger is the "3+" line: an ordinary cast
 // trigger (YouCast, Sai, Master Thopterist's shape) behind a charge-counter
 // gate. The charge counter it adds goes on the SOURCE, through the
-// counter window, so Doubling Season doubles it.
+// counter window, so Doubling Season doubles it — and only while the
+// Craft is still the object that triggered: one that left and came
+// back is a new object (CR 400.7, #1418) and gets nothing.
 func uthrosResearchCraftCastTrigger() game.TriggeredAbility {
 	t := On(game.EventCast, YouCast(Artifact()), "Uthros Research Craft — draw a card and add a charge counter",
 		func(g *game.Game, item *game.StackItem) error {
