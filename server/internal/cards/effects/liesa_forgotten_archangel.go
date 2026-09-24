@@ -61,9 +61,9 @@ func init() {
 				return game.NewTriggeredItem(source, "Liesa, Forgotten Archangel — return that card to hand at the next end step",
 					func(g *game.Game, item *game.StackItem) error {
 						return ScheduleDelayedTrigger{
-							Label:  "Liesa, Forgotten Archangel — return the creature card to its owner's hand",
-							Cards:  []uuid.UUID{dead},
-							Effect: b15ReturnListedCardsFromGraveyardToHand,
+							Label: "Liesa, Forgotten Archangel — return the creature card to its owner's hand",
+							Cards: []uuid.UUID{dead},
+							Body:  returnListedGraveyardToHandBody,
 						}.Apply(NewContext(g, item))
 					})
 			},

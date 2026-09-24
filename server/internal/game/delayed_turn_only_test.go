@@ -38,10 +38,10 @@ func TestDelayedTriggerControllerTurnOnlySkipsOtherPlayersTurns(t *testing.T) {
 			Label:              "probe — your next main phase",
 			At:                 StepPrecombatMain,
 			ControllerTurnOnly: true,
-			Effect: func(_ *Game, _ *StackItem) error {
+			Body: testBody(func(_ *Game, _ *StackItem) error {
 				fired++
 				return nil
-			},
+			}),
 		})
 	})
 
@@ -92,7 +92,7 @@ func TestCloneCarriesControllerTurnOnly(t *testing.T) {
 			Label:              "probe",
 			At:                 StepPrecombatMain,
 			ControllerTurnOnly: true,
-			Effect:             func(_ *Game, _ *StackItem) error { return nil },
+			Body:               testBody(func(_ *Game, _ *StackItem) error { return nil }),
 		})
 	})
 	snap := g.Clone()

@@ -46,9 +46,9 @@ func init() {
 			WheneverYouDraw("The Locust God — create a 1/1 Insect with flying and haste", Do(CreateToken{Template: TokenCard("1/1 blue and red Insect with flying and haste"), N: 1})),
 			WhenThisDies("The Locust God — return it to hand at the next end step", func(g *game.Game, item *game.StackItem) error {
 				return ScheduleDelayedTrigger{
-					Label:  "The Locust God — return to its owner's hand",
-					Cards:  []uuid.UUID{item.SourceCardID},
-					Effect: b15ReturnListedCardsFromGraveyardToHand,
+					Label: "The Locust God — return to its owner's hand",
+					Cards: []uuid.UUID{item.SourceCardID},
+					Body:  returnListedGraveyardToHandBody,
 				}.Apply(NewContext(g, item))
 			}),
 		},

@@ -359,11 +359,29 @@ func (g *Game) scheduleEarthbendReturnLocked(actor, source, land uuid.UUID, stam
 		SourceCardID: source,
 		Label:        earthbendLabel + " — when it dies or is exiled, return it to the battlefield tapped",
 		On:           []EventKind{EventLTB},
-		AppliesTo:    earthbendReturnMatches,
+		Condition:    earthbendReturnConditionKey,
 		Cards:        []uuid.UUID{land},
 		Duration:     &d,
-		Effect:       returnEarthbentLandTapped,
+		Body:         earthbendReturnBodyKey,
 	})
+}
+
+// The return's condition and body, as registered keys (ADR 0041 phase
+// 3, #1497): an earthbent land is data all the way down, so it no
+// longer keeps its table off the restore path.
+const (
+	earthbendReturnConditionKey = "earthbend/this-object-left"
+	earthbendReturnBodyKey      = "earthbend/return-tapped"
+)
+
+// Registered in init: a var initialiser would be an initialisation
+// cycle through the battlefield-entry primitives.
+func init() {
+	DelayedCondition(earthbendReturnConditionKey,
+		func(ev Event, dt *DelayedTrigger, g *Game, _ EffectParams) bool {
+			return earthbendReturnMatches(ev, dt, g)
+		})
+	SimpleDelayedBody(earthbendReturnBodyKey, returnEarthbentLandTapped)
 }
 
 // earthbendReturnMatches is the event condition: this object leaving

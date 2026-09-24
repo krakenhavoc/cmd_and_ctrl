@@ -25,9 +25,8 @@ import (
 // ROLLBACK — the file was written by a newer build — and the answer is
 // the one Decision 5 gives a too-new file: refuse it, keep it.
 //
-// Effect-body keys arrive with ADR 0041 P2 (tier 2). This binary has
-// none registered, so it refuses any non-empty one: that is the reader
-// the v7 bump promised, in place before the writer exists.
+// Effect-body and condition keys are ADR 0041 P2's (tier 2): a key
+// this binary registered restores; any other is refused.
 func (s *GameSnapshot) checkEffectKeys() error {
 	unknown := append([]string(nil), s.unknownEffectFields...)
 	for _, e := range s.ScopedEffects {
@@ -46,16 +45,16 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			unknown = append(unknown, fmt.Sprintf("delayed-trigger duration kind %d / condition %d",
 				d.Duration.Kind, d.Duration.Condition))
 		}
-		if d.Body != "" {
+		if d.Body != "" && !KnownEffectBody(d.Body) {
 			unknown = append(unknown, "delayed-trigger body "+d.Body)
 		}
-		if d.Condition != "" {
+		if d.Condition != "" && !KnownEffectCondition(d.Condition) {
 			unknown = append(unknown, "delayed-trigger condition "+d.Condition)
 		}
 	}
 	for _, list := range [][]stackItemSnapshot{s.StackMeta, s.PendingTriggers} {
 		for _, it := range list {
-			if it.Body != "" {
+			if it.Body != "" && !KnownEffectBody(it.Body) {
 				unknown = append(unknown, "stack-item body "+it.Body)
 			}
 		}

@@ -2,7 +2,6 @@ package effects
 
 import (
 	"strconv"
-	"strings"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -62,17 +61,13 @@ func init() {
 				At:                 game.StepPrecombatMain,
 				ControllerTurnOnly: true,
 				Label:              "Mana Drain — add {C} × " + strconv.Itoa(mv),
-				Effect:             manaDrainRefund(mv),
+				Body:               manaDrainRefundBody,
+				Params:             game.EffectParams{Amount: mv},
 			}.Apply(ctx)
 		},
 	})
 }
 
-// manaDrainRefund builds the delayed trigger's effect: add mv
-// colorless mana to the controller's pool. mv is a copied int, so
-// the closure captures no game state and survives Clone / undo.
-func manaDrainRefund(mv int) func(g *game.Game, item *game.StackItem) error {
-	return func(g *game.Game, item *game.StackItem) error {
-		return AddMana{Produced: strings.Repeat("{C}", mv)}.Apply(NewContext(g, item))
-	}
-}
+// The refund itself is manaDrainRefundBody (delayed_bodies.go): the
+// mana value it adds rides as the trigger's params (ADR 0041 phase 3,
+// #1497), not as a captured int.

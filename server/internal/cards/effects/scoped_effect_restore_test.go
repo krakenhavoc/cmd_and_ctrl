@@ -2,7 +2,6 @@ package effects
 
 import (
 	"encoding/json"
-	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -127,13 +126,14 @@ func TestEnduringCuriosityStaysAnEnchantmentAcrossARestore(t *testing.T) {
 	}
 }
 
-// TestKyoshiIslandIsDataButTheEarthbendReturnStillBlocks is the honest
-// half of the slice. Chapter II's Island and the earthbend animation
-// are data now, but earthbend also schedules its "return it tapped"
-// delayed trigger, which stays a closure until ADR 0041 phase 3's
-// tier 2. So the census must name exactly that — and nothing about a
-// scoped static — and a (non-strict) restore must keep the Island.
-func TestKyoshiIslandIsDataButTheEarthbendReturnStillBlocks(t *testing.T) {
+// TestAnEarthbentKyoshiLandIsARestorePoint is tier 2's payoff (#1497).
+// Chapter II's Island and the earthbend animation became data in tier
+// 1, but earthbend's "return it tapped when it dies or is exiled" was a
+// closure-bearing delayed trigger, so the land still froze its table's
+// restore point for as long as it lived. The return is a registered
+// body and condition now: the table is a full restore point, and in the
+// restored game the land still comes back tapped when it dies.
+func TestAnEarthbentKyoshiLandIsARestorePoint(t *testing.T) {
 	g := newCatalogGame(t)
 	seat := g.Turn.ActiveSeat
 	me := g.Seats[seat]
@@ -145,20 +145,12 @@ func TestKyoshiIslandIsDataButTheEarthbendReturnStillBlocks(t *testing.T) {
 	passPriorityAroundTable(t, g)
 
 	snap := g.CaptureSnapshot()
-	if snap.Continuations.ScopedStatics != 0 {
-		t.Errorf("census counts %d scoped statics; the Island and the animation should be data", snap.Continuations.ScopedStatics)
-	}
-	if snap.Continuations.DelayedTriggerEffects != 1 {
-		t.Errorf("census counts %d delayed triggers, want 1 (earthbend's return, tier 2)", snap.Continuations.DelayedTriggerEffects)
-	}
-	for _, l := range snap.Continuations.Labels {
-		if strings.Contains(l, "scoped static") {
-			t.Errorf("census label names a scoped static: %q", l)
-		}
+	if !snap.Restorable() {
+		t.Fatalf("an earthbent land still blocks the restore point: %+v", snap.Continuations)
 	}
 
-	restored := restoreRoundTrip(t, g, false)
-	c := findBattlefieldCardByID(restored, findBattlefieldByName(restored, "Forest"))
+	restored := restoreRoundTrip(t, g, true)
+	c := findBattlefieldCardByID(restored, land)
 	if c == nil {
 		t.Fatal("the land did not survive the restore")
 	}
@@ -167,6 +159,17 @@ func TestKyoshiIslandIsDataButTheEarthbendReturnStillBlocks(t *testing.T) {
 	}
 	if !c.IsCreature() {
 		t.Error("restored: the earthbent land is no longer a creature")
+	}
+
+	// The return still works in the restored game.
+	restored.WithWriteLock(func() { _ = restored.DestroyPermanentForEffect(land) })
+	passPriorityAroundTable(t, restored)
+	back := findBattlefieldCardByID(restored, land)
+	if back == nil {
+		t.Fatal("restored: the earthbent land died and did not come back")
+	}
+	if !back.Tapped {
+		t.Error("restored: the land came back untapped; earthbend returns it tapped")
 	}
 }
 
@@ -285,9 +288,8 @@ func TestKyoshiIslandSurvivesAPhaseCycle(t *testing.T) {
 func TestKyoshiIslandSurvivesARestoreWhilePhasedOut(t *testing.T) {
 	g, land := kyoshiIslandLand(t)
 	phaseOut(t, g, land)
-	// Not strict: earthbend's delayed return is still a closure until
-	// tier 2 — see TestKyoshiIslandIsDataButTheEarthbendReturnStillBlocks.
-	restored := restoreRoundTrip(t, g, false)
+	// Strict since tier 2: earthbend's return is data too.
+	restored := restoreRoundTrip(t, g, true)
 	untilPhasedIn(t, restored, land)
 	assertIsland(t, restored, land, "restored, after phasing in")
 }

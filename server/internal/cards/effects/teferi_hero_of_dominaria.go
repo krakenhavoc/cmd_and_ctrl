@@ -93,7 +93,7 @@ func init() {
 						At:         game.StepEnd,
 						Controller: item.Controller,
 						Label:      "Teferi, Hero of Dominaria — untap up to two lands",
-						Effect:     teferiHeroUntapTwoLands,
+						Body:       teferiUntapLandsBody,
 					}.Apply(ctx)
 				},
 			},

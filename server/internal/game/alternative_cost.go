@@ -869,30 +869,41 @@ func (g *Game) scheduleWarpExileLocked(card Card, item *StackItem, alt *Alternat
 		Label:        card.Name + " — " + alt.Label + ", exile it",
 		At:           StepEnd,
 		Cards:        []uuid.UUID{card.InstanceID},
-		Effect: func(g *Game, it *StackItem) error {
-			for _, t := range it.Targets {
-				if t.Kind != TargetCard {
-					continue
-				}
-				// The permanent may have died, been exiled by
-				// something else, or bounced since the warp. Nothing
-				// to exile is not an error — CR 608.2c — and the
-				// grant simply never lands.
-				if g.controllerOfBattlefieldCardLocked(t.ID) == uuid.Nil {
-					continue
-				}
-				if err := g.ExileCardWithPermissionForEffect(t.ID, CastPermission{
-					// Zero Player means "the card's owner", which is
-					// what warp says: YOU cast it later, and the
-					// warping player owns the card.
-					Duration:     WhileInZoneDuration(),
-					NotBeforeSeq: notBefore,
-					Label:        "Warp — cast it from exile",
-				}); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+		Body:         warpExileBodyKey,
+		// The "later turn" floor, computed now (see above).
+		Params: EffectParams{Amount: notBefore},
 	})
+}
+
+// warpExileBody is the delayed trigger's body, a registered key (ADR
+// 0041 phase 3, #1497): the floor it used to capture is Params.Amount.
+const warpExileBodyKey = "warp/exile"
+
+// Registered in init: a var initialiser would be an initialisation
+// cycle through the exit primitives.
+func init() { DelayedBody(warpExileBodyKey, warpExile) }
+
+func warpExile(g *Game, it *StackItem, p EffectParams) error {
+	for _, t := range it.Targets {
+		if t.Kind != TargetCard {
+			continue
+		}
+		// The permanent may have died, been exiled by something else,
+		// or bounced since the warp. Nothing to exile is not an error —
+		// CR 608.2c — and the grant simply never lands.
+		if g.controllerOfBattlefieldCardLocked(t.ID) == uuid.Nil {
+			continue
+		}
+		if err := g.ExileCardWithPermissionForEffect(t.ID, CastPermission{
+			// Zero Player means "the card's owner", which is what
+			// warp says: YOU cast it later, and the warping player
+			// owns the card.
+			Duration:     WhileInZoneDuration(),
+			NotBeforeSeq: p.Amount,
+			Label:        "Warp — cast it from exile",
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
 }

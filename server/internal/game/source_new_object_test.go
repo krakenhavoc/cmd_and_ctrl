@@ -161,7 +161,7 @@ func TestADelayedTriggerFollowsTheSourceItsCreatorPutOntoTheBattlefield(t *testi
 		}
 		g.ScheduleDelayedTriggerForEffect(DelayedTrigger{
 			Controller: me.ID, SourceCardID: src, Label: "exile it", At: StepEnd, Cards: []uuid.UUID{src},
-			Effect: func(*Game, *StackItem) error { return nil },
+			Body: testBody(func(*Game, *StackItem) error { return nil }),
 		})
 		if !queueReflexiveProbe(g, item) {
 			t.Error("QueueReflexiveTriggerForEffect refused a well-formed declaration")
@@ -220,7 +220,7 @@ func TestADelayedTriggerKeepsTheStampWhenItsCreatorMovedTheSourceElsewhere(t *te
 		}
 		g.ScheduleDelayedTriggerForEffect(DelayedTrigger{
 			Controller: me.ID, SourceCardID: src, Label: "later", At: StepEnd,
-			Effect: func(*Game, *StackItem) error { return nil },
+			Body: testBody(func(*Game, *StackItem) error { return nil }),
 		})
 		return nil
 	})

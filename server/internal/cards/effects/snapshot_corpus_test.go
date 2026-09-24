@@ -132,6 +132,9 @@ func corpusBoards() []corpusBoard {
 		{"amass", corpusAmass},
 		{"scoped_effect_kinds", corpusScopedEffectKinds},
 		{"mass_diminish", corpusMassDiminish},
+		// v7, added by tier 2 (#1497) as new files: delayed triggers as data.
+		{"earthbend", corpusEarthbend},
+		{"suspend_haste", corpusSuspendHaste},
 	}
 }
 
@@ -408,6 +411,90 @@ func corpusMassDiminish(t *testing.T) *game.Game {
 	}
 	return g
 }
+
+// ---------------------------------------------------------------
+// v7 boards added by ADR 0041 phase 3's tier 2 (#1497)
+// ---------------------------------------------------------------
+//
+// NEW files in v7/, under the narrowed rule: the writer never touches
+// an existing file. Both shapes only became restore points with tier 2.
+
+// corpusEarthbend is a real earthbend: the animation record AND the
+// "return it tapped when it dies or is exiled" delayed trigger, whose
+// body and event condition are registered keys.
+func corpusEarthbend(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[0].ID
+	land := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Forest", TypeLine: "Basic Land — Forest",
+		Owner: me, Controller: me,
+	})
+	g.WithWriteLock(func() {
+		if err := g.EarthbendForEffect(me, uuid.Nil, land, 2); err != nil {
+			t.Fatalf("EarthbendForEffect: %v", err)
+		}
+	})
+	if len(g.DelayedTriggers) != 1 || len(g.ScopedEffects) != 1 {
+		t.Fatalf("setup: earthbend left %d delayed triggers and %d scoped effects, want 1 and 1",
+			len(g.DelayedTriggers), len(g.ScopedEffects))
+	}
+	return g
+}
+
+// corpusSuspendHaste is a real suspend cast (#1558 item 6): Judoon
+// Enforcers suspended, its countdown run to the last counter, the free
+// cast taken, and the creature on the battlefield with CR 702.62a's
+// haste — the record whose member follows the card from the stack
+// (EnteredAt 0) while its caster controls it.
+func corpusSuspendHaste(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	for g.Turn.Step != game.StepPrecombatMain {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+	id := uuid.New()
+	active.Hand.PushTop(game.Card{
+		InstanceID: id, Name: "Judoon Enforcers", TypeLine: "Creature — Rhino Soldier",
+		OracleID: corpusJudoonOracle, ManaCost: "{3}{R}{W}", Power: 5, Toughness: 5,
+		Owner: active.ID, Controller: active.ID,
+	})
+	for _, c := range []string{"C", "R", "W"} {
+		active.ManaPool.AddMana(game.ManaToken{Color: c})
+	}
+	if err := g.PerformSpecialAction(active.ID, id, game.SpecialActionSuspend, game.SpecialActionParams{Strict: true}); err != nil {
+		t.Fatalf("suspend Judoon Enforcers: %v", err)
+	}
+	// Six counters is six turns of draws from an eleven-card library;
+	// take all but the last off by effect, so the next upkeep's tick is
+	// the one that offers the cast.
+	g.WithWriteLock(func() {
+		if err := g.AddCounterForEffect(id, game.CounterTime, -5); err != nil {
+			t.Fatalf("AddCounterForEffect: %v", err)
+		}
+	})
+	passPriorityAroundTable(t, g)
+	advanceToUpkeepOf(t, g, g.Turn.ActiveSeat)
+	passPriorityAroundTable(t, g)
+	offer := latestChoiceOfKind(g, game.PendingChoiceMayCast)
+	if offer == nil {
+		t.Fatal("setup: the last time counter offered no cast")
+	}
+	if err := g.ResolveMayCast(offer.ID, active.ID, true); err != nil {
+		t.Fatalf("ResolveMayCast: %v", err)
+	}
+	if err := g.CastSpell(active.ID, id, game.CastSpellParams{Strict: true, FromZone: "exile"}); err != nil {
+		t.Fatalf("the free cast: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if len(g.ScopedEffects) != 1 {
+		t.Fatalf("setup: the suspended creature carries %d scoped effects, want its haste", len(g.ScopedEffects))
+	}
+	return g
+}
+
+const corpusJudoonOracle = "ca04089c-24b6-465e-9303-ea28c0d6f3c7"
 
 // ---------------------------------------------------------------
 // Rendering a board deterministically
