@@ -83,6 +83,65 @@ func TestTokenCopyOfAStarCreatureSurvivesLosingItsLastCounter(t *testing.T) {
 	}
 }
 
+// TestTokenCopyOfACommanderIsNotACommander — #1363, CR 903.3. The
+// commander designation is not one of the copiable values CR 707.2
+// lists, and TokenCopyTemplate already builds a fresh game.Card field
+// by field rather than copying the source wholesale, so this pins
+// that IsCommander is one of the fields deliberately left out — a
+// token copy of a commander is just a token, never a commander, and
+// so never queues the CR 903.9 "send to command zone" prompt on the
+// way to the graveyard, never gets a commander tax (tokens are never
+// cast), and never attributes commander damage (RecordCommanderDamage
+// only fires for a battlefield source with IsCommander set).
+func TestTokenCopyOfACommanderIsNotACommander(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	src := uuid.New()
+	me.Graveyard.PushTop(game.Card{
+		InstanceID:  src,
+		Name:        "Fixture Commander",
+		TypeLine:    "Legendary Creature — Test",
+		Power:       2,
+		Toughness:   2,
+		Owner:       me.ID,
+		Controller:  me.ID,
+		IsCommander: true,
+	})
+
+	g.WithWriteLock(func() {
+		if err := (CreateTokenCopy{Controller: me.ID, Copy: src, N: 1}).Apply(NewContext(g, nil)); err != nil {
+			t.Fatalf("CreateTokenCopy.Apply: %v", err)
+		}
+	})
+	token := findBattlefieldByName(g, "Fixture Commander")
+	if token == uuid.Nil {
+		t.Fatal("no token copy was created")
+	}
+	tokenCard, ok := battlefieldCard(g, token)
+	if !ok {
+		t.Fatal("token copy not found on battlefield")
+	}
+	if tokenCard.IsCommander {
+		t.Error("token copy of a commander carries IsCommander")
+	}
+
+	// Kill it and confirm nothing asks to send it to the command
+	// zone — a token has nowhere to go anyway (CR 111.7), but the
+	// point is that commanderZoneReplacement's own AppliesTo never
+	// even considers it.
+	g.WithWriteLock(func() {
+		if err := g.DestroyPermanentForEffect(token); err != nil {
+			t.Fatalf("DestroyPermanentForEffect: %v", err)
+		}
+	})
+	if n := len(g.PendingChoices); n != 0 {
+		t.Errorf("%d prompts queued destroying a token copy, want none: %+v", n, g.PendingChoices)
+	}
+	if n := me.CommanderDamage[token]; n != 0 {
+		t.Errorf("CommanderDamage[token] = %d, want 0", n)
+	}
+}
+
 // An exception that sets a numeric toughness ("except it's a 4/4")
 // replaces the `*` with a number, so the token is no stand-in.
 func TestTokenCopyExceptionWithANumberClearsVariableToughness(t *testing.T) {

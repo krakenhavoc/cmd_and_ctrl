@@ -199,13 +199,59 @@ func TestASpellCopyMovingItselfWhileResolvingCeasesToExist(t *testing.T) {
 }
 
 // TestACounteredCopyOfACommanderSpellAsksNothing — the route skips the
-// replacement window for a copy, not just the landing. A copy of a
-// commander spell carries the card's fields across (createSpellCopyLocked
-// copies the Card), so without the skip the CR 903.9 built-in would ask
-// its owner "send commander to command zone instead?" about an object
-// that goes nowhere whatever they answer, and hold the table on the
-// prompt meanwhile.
+// replacement window for a copy, not just the landing, and it does so
+// UNCONDITIONALLY on IsCopy rather than by reading IsCommander.
+//
+// Since #1363, createSpellCopyLocked no longer carries IsCommander
+// onto the copy at all (CR 903.3 — the designation is not a copiable
+// value), so an ordinary copy of a commander spell no longer even
+// LOOKS like a commander to the CR 903.9 built-in. That would make
+// this test pass for the wrong reason — commanderZoneReplacement's own
+// AppliesTo would already say no — so the flag is set BY HAND on the
+// copy after it is made, standing in for whatever future path might
+// otherwise re-carry it (a card-level "except" clause, a fixture built
+// directly rather than through createSpellCopyLocked). The skip in
+// routeCardToZoneLocked (stackCopyLocked) has to hold regardless: no
+// replacement has a card-shaped object to act on, and a copy must
+// never pause on a prompt about a zone it will not reach.
 func TestACounteredCopyOfACommanderSpellAsksNothing(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	orig := pushLKISpell(t, g, me.ID, "Commander Spell")
+	var cp uuid.UUID
+	g.WithWriteLock(func() {
+		if err := g.CopySpellForEffect(orig, me.ID, false, nil); err != nil {
+			t.Fatalf("CopySpellForEffect: %v", err)
+		}
+		for id, item := range g.StackMeta {
+			if item != nil && item.IsCopy {
+				cp = id
+			}
+		}
+		// Set by hand: see the doc comment above for why the copy
+		// does not carry this naturally any more.
+		for i := range g.Stack.Cards {
+			if g.Stack.Cards[i].InstanceID == cp {
+				g.Stack.Cards[i].IsCommander = true
+			}
+		}
+	})
+	counterForTest(t, g, cp)
+
+	if n := len(g.PendingChoices); n != 0 {
+		t.Errorf("%d prompts queued by countering a copy, want none: %+v", n, g.PendingChoices)
+	}
+	assertCopyGone(t, g, cp)
+}
+
+// TestASpellCopyOfACommanderSpellIsNotACommander pins #1363 itself:
+// CR 903.3 says the commander designation is an attribute of the
+// physical card, not a copiable characteristic (CR 707.2), so a copy
+// is never a commander — whatever the spell it was copied from was.
+// Before the fix, createSpellCopyLocked's `copyCard := src` carried
+// IsCommander across, and the wire's `is_commander` on the stack card
+// (plus any future "commander spell" check) would see the copy as one.
+func TestASpellCopyOfACommanderSpellIsNotACommander(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
 	orig := pushLKISpell(t, g, me.ID, "Commander Spell")
@@ -225,12 +271,29 @@ func TestACounteredCopyOfACommanderSpellAsksNothing(t *testing.T) {
 			}
 		}
 	})
-	counterForTest(t, g, cp)
-
-	if n := len(g.PendingChoices); n != 0 {
-		t.Errorf("%d prompts queued by countering a copy, want none: %+v", n, g.PendingChoices)
+	if cp == uuid.Nil {
+		t.Fatal("no copy on the stack")
 	}
-	assertCopyGone(t, g, cp)
+	for _, c := range g.Stack.Cards {
+		if c.InstanceID == cp && c.IsCommander {
+			t.Error("spell copy carries IsCommander from the original it was copied from")
+		}
+	}
+
+	// No commander tax: a copy is never CAST (CR 707.10), so nothing
+	// increments CommanderCasts for it, and no commander-damage
+	// attribution: the original is still on the stack as an instant/
+	// sorcery, not a permanent, so there is nothing on the battlefield
+	// for combatDamageTailLocked to read IsCommander off in the first
+	// place. Asserted here so a future change that routed a copy
+	// through the ordinary cast path, or gave it a battlefield
+	// presence, would have to update this test to keep it green.
+	if n := me.CommanderCasts[orig]; n != 0 {
+		t.Errorf("CommanderCasts[orig] = %d after copying, want 0 (a copy is not a cast)", n)
+	}
+	if n := me.CommanderDamage[cp]; n != 0 {
+		t.Errorf("CommanderDamage[cp] = %d, want 0 (a spell copy never deals commander damage)", n)
+	}
 }
 
 // TestACounteredOriginalStillLands — the branch is the COPY's, not the
