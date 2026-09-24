@@ -58,6 +58,9 @@ func TestPhlageThatEscapedIsNotSacrificed(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	// The damage trigger targets, so it asks as it goes on the stack.
 	b16PickPlayer(t, g, me.ID, opp.ID)
+	// #1529: the Helix and the sacrifice trigger are one CR 603.3b
+	// batch; the Helix resolves first.
+	answerTriggerOrderLastQueuedFirst(t, g)
 	passPriorityAroundTable(t, g)
 
 	if !g.Battlefield.Contains(id) {
@@ -82,6 +85,9 @@ func TestPhlageHardCastSacrificesItself(t *testing.T) {
 	id := handCastIntoPlay(t, g, "Phlage, Titan of Fire's Fury", "Creature — Elder Giant", phlageOracle)
 	passPriorityAroundTable(t, g)
 	b16PickPlayer(t, g, me.ID, opp.ID)
+	// #1529: the Helix and the sacrifice trigger are one CR 603.3b
+	// batch; the Helix resolves first.
+	answerTriggerOrderLastQueuedFirst(t, g)
 	passPriorityAroundTable(t, g)
 
 	if g.Battlefield.Contains(id) {

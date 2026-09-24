@@ -118,6 +118,7 @@ func (g *Game) ResolveModePick(choiceID, chooserID uuid.UUID, modes []int) error
 	frame := choice.modePickResume
 	g.dequeueChoiceLocked(idx)
 	if frame == nil {
+		g.runStateChecksLocked()
 		return nil
 	}
 	g.buildOrPickTriggerLocked(frame.tc, frame.source, frame.lki, frame.ability, frame.doubledBy, append([]int(nil), modes...))

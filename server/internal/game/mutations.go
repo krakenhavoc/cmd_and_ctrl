@@ -4786,8 +4786,11 @@ func (g *Game) markDamageWithKind(source, cardID uuid.UUID, delta int, isCombat 
 // Caller must hold g.mu.
 //
 // Returns false when the queue is being held behind a CR 603.3b
-// ordering prompt (S19 sub-PR 8) — the caller's loop should stop
-// spinning until ResolveTriggerOrder re-runs the drain. Returns
+// ordering prompt (S19 sub-PR 8), or behind a trigger of the same
+// batch that is still choosing its targets, modes or "you may"
+// (#1529) — the caller's loop should stop spinning until the answer
+// (ResolveTriggerOrder, ResolvePickTargets, ResolveModePick,
+// ResolveTriggerPrompt) re-runs the drain. Returns
 // true when the queue is empty or was drained.
 //
 // S13.1.
@@ -4798,6 +4801,16 @@ func (g *Game) drainPendingTriggersAPNAPLocked() bool {
 	numSeats := len(g.Seats)
 	if numSeats == 0 {
 		return true
+	}
+	// #1529 / CR 603.3b: a triggered ability still being put on the
+	// stack (its "you may", its mode pick or its target pick is open)
+	// belongs to this batch. Hold the WHOLE queue until it has joined,
+	// so its controller orders it with the rest and the APNAP
+	// placement below sees every seat's complete batch. Draining
+	// around the prompt is what put a targeted trigger above its
+	// untargeted siblings every time. See ADR 0018's #1529 amendment.
+	if g.triggerAnnouncementOpenLocked() {
+		return false
 	}
 	// Bucket triggers by controller seat so we can drain in seat
 	// order. Preserves per-controller queue order via stable
@@ -4931,6 +4944,28 @@ func seatNeedsTriggerOrder(items []*StackItem) bool {
 // modes.
 func commutesForOrdering(t *StackItem) bool {
 	return t.Commutes && len(t.Targets) == 0 && len(t.Modes) == 0
+}
+
+// triggerAnnouncementOpenLocked reports whether some triggered
+// ability is still on its way onto the stack: a prompt is open that
+// the harvest queued for it and whose answer ends with the ability
+// joining PendingTriggers. Those are the CR 603.5 optional-trigger
+// yes/no (triggerResume), the CR 603.3c mode pick (modePickResume)
+// and the CR 603.3d target pick (pickTargetResume). A pick_target for
+// a spell COPY (copyResume, CR 707.10c) is not one: it builds no
+// triggered ability.
+//
+// Every such prompt blocks the table (choice_gate.go), so holding the
+// drain behind one stops nothing that was not already stopped.
+//
+// Caller must hold g.mu.
+func (g *Game) triggerAnnouncementOpenLocked() bool {
+	for _, c := range g.PendingChoices {
+		if c != nil && (c.triggerResume != nil || c.pickTargetResume != nil || c.modePickResume != nil) {
+			return true
+		}
+	}
+	return false
 }
 
 // hasTriggerOrderPromptLocked reports whether chooser already has a
@@ -8077,6 +8112,9 @@ func (g *Game) Concede(playerID uuid.UUID) error {
 		return ErrPlayerEliminated
 	}
 	g.EmitEvent(Event{Kind: EventConcede, Actor: playerID})
+	// #1529: whether the trigger queue is being held for a trigger
+	// that is still announcing (see drainPendingTriggersAPNAPLocked).
+	heldForAnnouncement := g.triggerAnnouncementOpenLocked()
 	// S13.1: delegate to the unified elimination path so concede
 	// fires the same stack cleanup + cursor advance + game-end
 	// check as an SBA-driven loss. eliminatePlayerLocked leaves with
@@ -8086,6 +8124,13 @@ func (g *Game) Concede(playerID uuid.UUID) error {
 	// resolution was waiting on (ADR 0018 §6's departure table), which
 	// finishes that resolution. Its CR 704.3 boundary is owed now.
 	g.settleResolutionLocked()
+	// #1529: the same for a trigger batch. If the departure dropped
+	// the last announcement prompt the drain was holding for, the rest
+	// of the batch goes on the stack now rather than waiting for an
+	// unrelated action.
+	if heldForAnnouncement && g.State == StateActive && !g.triggerAnnouncementOpenLocked() {
+		g.runStateChecksLocked()
+	}
 	return nil
 }
 

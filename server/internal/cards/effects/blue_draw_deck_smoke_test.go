@@ -198,7 +198,11 @@ func anyPendingChoiceFor(g *game.Game, chooser uuid.UUID) bool {
 // TRIGGER HARVESTER itself raises on the way — an optional trigger's
 // yes/no (answered yes: this is a draw deck and it wants its draws)
 // and the CR 603.3b ordering prompt when two of the seat's triggers
-// go on the stack together.
+// go on the stack together. The ordering prompt is answered so the
+// stack comes out as the drain would build it unasked, last-queued on
+// top: since #1529 an optional trigger (Sylvan Library) joins its
+// batch before the drain instead of landing alone above it, and this
+// keeps the stack the turn-three walk below was written against.
 //
 // It answers nothing else. A choice queued by a card's own resolution
 // — the scry, the look-at-top, the Sylvan Library chain — is what the
@@ -207,10 +211,7 @@ func anyPendingChoiceFor(g *game.Game, chooser uuid.UUID) bool {
 func settleBlueStack(t *testing.T, g *game.Game, me uuid.UUID) {
 	t.Helper()
 	for i := 0; i < 64; i++ {
-		if ch := triggerOrderPrompt(g); ch != nil {
-			if err := g.ResolveTriggerOrder(ch.ID, ch.Chooser, ch.TriggerOrderIDs); err != nil {
-				t.Fatalf("ResolveTriggerOrder: %v", err)
-			}
+		if answerTriggerOrderLastQueuedFirst(t, g) {
 			continue
 		}
 		if ch := latestTriggerPromptFor(g, me); ch != nil {

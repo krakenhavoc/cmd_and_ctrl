@@ -2987,6 +2987,8 @@ func (g *Game) ResolvePickTargets(choiceID, chooserID uuid.UUID, targets []Targe
 	step := frame.currentClause()
 	if frame == nil || frame.build == nil || step == nil {
 		g.dequeueChoiceLocked(idx)
+		// #1529: the batch this trigger belonged to was held for it.
+		g.runStateChecksLocked()
 		return nil
 	}
 	for _, t := range targets {
@@ -3020,6 +3022,15 @@ func (g *Game) ResolvePickTargets(choiceID, chooserID uuid.UUID, targets []Targe
 	frame.picked = append(frame.picked, stamped...)
 	frame.step++
 	g.queuePickTargetStepLocked(frame)
+	// #1529: the drain holds the whole trigger queue while this walk
+	// is open. finishPickTargetLocked runs the boundary when the item
+	// joins; a walk that ended because CR 603.3d removed the ability
+	// (a later required clause with nothing left to pick) has to run
+	// it too, or the batch waits for an unrelated action. A no-op
+	// while a further step's prompt is open.
+	if !g.triggerAnnouncementOpenLocked() {
+		g.runStateChecksLocked()
+	}
 	return nil
 }
 
@@ -3059,6 +3070,9 @@ func (g *Game) ResolveTriggerPrompt(choiceID, chooserID uuid.UUID, apply bool) e
 	frame := choice.triggerResume
 	g.dequeueChoiceLocked(idx)
 	if !apply || frame == nil || frame.build == nil {
+		// #1529: declining still releases the batch the drain was
+		// holding for this trigger (CR 603.3b).
+		g.runStateChecksLocked()
 		return nil
 	}
 	// S20: a targeted optional trigger continues into the target
