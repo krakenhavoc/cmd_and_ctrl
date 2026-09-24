@@ -184,6 +184,16 @@ func TestHeuristicMirrorResolvesInsideTheTurnBudget(t *testing.T) {
 // Wurm connected for nothing, the spare Wurm was invisible, and all
 // four games stopped at the turn budget (51 turns, lives [6 6] and
 // [8 4]).
+//
+//   - The full mirror (#1527): six Drakes, five Wurms against six, six
+//     Ogres and five Bears, both players on 6. The Drakes trade off in
+//     the first race, and what is left has no two-turn kill while a
+//     chumped Wurm counts as dead: the one Ogre in front of the spare
+//     Wurm holds it for a turn and nothing comes of it after. Counting
+//     the Wurm alive into NEXT — their Wurm is busy with my other one,
+//     and no single creature they have spare can kill it — is what
+//     cashes the edge. Before
+//     #1527 both games stopped at the turn budget with lives [6 6].
 func TestHeuristicWurmEdgeResolvesInsideTheTurnBudget(t *testing.T) {
 	requireGameTests(t)
 	const (
@@ -194,6 +204,7 @@ func TestHeuristicWurmEdgeResolvesInsideTheTurnBudget(t *testing.T) {
 	for _, spec := range []mirrorSpec{
 		{edge: "Wurm", life: 6, board: [4]int{0, 5, 0, 5}},
 		{edge: "Wurm", life: 8, board: [4]int{0, 5, 6, 0}},
+		{edge: "Wurm", life: 6, board: [4]int{6, 5, 6, 5}},
 	} {
 		for _, edge := range []int{0, 1} {
 			t.Run(fmt.Sprintf("life=%d/board=%v/edge=seat%d", spec.life, spec.board, edge), func(t *testing.T) {
