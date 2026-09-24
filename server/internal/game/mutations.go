@@ -5434,6 +5434,13 @@ func (g *Game) TapCard(cardID uuid.UUID, tapped bool) error {
 // ActivateAbilityParams there is no target list here: a mana ability
 // that targeted would have to resolve, and none does.
 type ManaAbilityParams struct {
+	// Ref is the stable ref of the row the activator meant (ADR 0093
+	// Decision 5): "own:<i>", "land:<colour>", "grant:<bundle>:<i>:<n>".
+	// A mismatch with the row at the index is ErrStaleAbilityRef,
+	// before anything is paid. Empty is accepted — the auto-tapper and
+	// every client that predates the field send none.
+	Ref string
+
 	// SacrificeIDs names the permanents paying a SacrificeOther
 	// component. Exactly one for a single-permanent clause; empty
 	// when the ability has no such cost.
@@ -5555,7 +5562,13 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// fallback second. A catalog spec with ManaAbilities overrides
 	// the synthetic path wholesale (Dryad Arbor, if it ever lands,
 	// would declare its own; basic Forest just uses the synthetic).
-	abilities := ManaAbilitiesForCard(*card)
+	abilities, origins := ManaAbilitiesWithOrigins(*card)
+	// ADR 0093 Decision 5: the ref names the row the activator meant.
+	// A grant appearing or vanishing since the view moved the rows;
+	// refuse the stale move before anything is paid (#544).
+	if staleAbilityRef(params.Ref, abilityIdx, len(abilities), origins) {
+		return ErrStaleAbilityRef
+	}
 	if abilityIdx < 0 || abilityIdx >= len(abilities) {
 		return ErrInvalidParam
 	}
@@ -6243,62 +6256,14 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 // static "would apply cleanly and do nothing" — the synthetic mana
 // ability read the printed TypeLine, so a Mountain that the layer
 // engine had made a Swamp still only tapped for {R}.
+//
+// And since ADR 0093 a THIRD half, always last: the mana abilities a
+// layer-6 effect granted the object (Cryptolith Rite, Chromatic
+// Lantern). The body — and each row's stable ref — is manaAbilityRows
+// in granted_abilities.go.
 func ManaAbilitiesForCard(c Card) []ManaAbilityShape {
-	var declared []ManaAbilityShape
-	switch {
-	// S24 layer 6: an ability-removing effect takes the DECLARED
-	// half and leaves the INTRINSIC half, and the split is the whole
-	// of CR 305.7. "Enchanted permanent is a colorless Forest land"
-	// removes the abilities the permanent's rules text generated —
-	// Sol Ring's "{T}: Add {C}{C}", a Signet's filter — and grants
-	// the mana ability that comes with the new land type. That
-	// second half is not printed on the card and is not in the
-	// catalog: it is derived from the effective subtypes, below, by
-	// the same effect that did the removing, so it survives on the
-	// other side of this switch rather than being re-granted.
-	case c.HasLostAllAbilities():
-		declared = nil
-	// CR 708.2a: a face-down permanent has no text, so nothing it
-	// carries declares a mana ability — CatalogKey is already silent,
-	// and this closes the other door, a TOKEN's card-carried slice (a
-	// Treasure turned face down by Cyber Conversion is not a Treasure).
-	// A listed Forest still taps for {G}: that is the intrinsic half
-	// below, read off the listed subtype (#1270).
-	case c.FaceDownIsPermanent():
-		declared = nil
-	// S21 sub-PR 1: instance abilities win — a token has no oracle
-	// ID for the catalog to key on.
-	case len(c.ManaAbilities) > 0:
-		declared = c.ManaAbilities
-	// CatalogAbilityKey, not c.OracleID: an MDFC back face keys on
-	// "<oracle_id>#N" (#357). A bare OracleID here would silently
-	// resolve a back face to face 0's spec.
-	case CatalogManaAbilities != nil:
-		declared = CatalogManaAbilities(CatalogAbilityKey(c))
-	}
-	intrinsic := intrinsicLandManaAbilities(c)
-	if len(intrinsic) == 0 {
-		return declared
-	}
-	if len(declared) == 0 {
-		return intrinsic
-	}
-	// A declared ability and an intrinsic one can name the same
-	// colour — every catalog dual land ("{T}: Add {B} or {G}") is
-	// printed with the land types that would have produced the
-	// same mana, and doubling it up would put two ways to make {B}
-	// in the client's ability row. Keep the declared shape (it may
-	// carry a rider or a pipe) and add only colours it cannot make.
-	covered := producibleColors(declared)
-	out := make([]ManaAbilityShape, 0, len(declared)+len(intrinsic))
-	out = append(out, declared...)
-	for _, ab := range intrinsic {
-		if covered[landTypeColorOf(ab)] {
-			continue
-		}
-		out = append(out, ab)
-	}
-	return out
+	abs, _ := manaAbilityRows(c, false)
+	return abs
 }
 
 // landTypeMana lists the five basic land types (CR 305.6) with the

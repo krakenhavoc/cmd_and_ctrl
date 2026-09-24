@@ -2,6 +2,7 @@
 
 **Status:** Proposed · 2026-09-24 · S38 — Layers: dependency ordering, ability grants, ability removal
 **Amended:** 2026-09-24 — the owner answered four of the five open questions; see "Owner decisions".
+2026-09-24 — PR 1's implementation notes; see "Amendment 2026-09-24 — what PR 1 built".
 **Issue:** [#754](https://github.com/krakenhavoc/cmd_and_ctrl/issues/754) (this seam — the public roadmap's
 top missing seam, `abilities-granted-to-other-permanents` in `server/internal/roadmap/registry.go`)
 **Numbering:** swept with the AGENTS.md §4 check on 2026-09-24 — `git fetch origin`, then every
@@ -514,6 +515,44 @@ The owner answered four of the five open questions this ADR was proposed with. T
    late tier #1215 gave Treasures. The per-ability fix stays in PR 2. See Decision 6.
 4. **Dionus and Agent of the Iron Throne.** They move onto the seam in PR 3, with tests pinning the
    changed control and removal behaviour.
+
+## Amendment 2026-09-24 — what PR 1 built, and where it differs
+
+PR 1 (the seam, no cards) shipped as planned, with four differences.
+
+1. **The grant is a declaration on the static, not a call in `Apply`.** A layer-6 static names its
+   bundles in `StaticAbility.GrantAbilities []string`, and the engine appends the `GrantedAbility`
+   (with the static's source as the grantor) after the static's `Apply`, in the same timestamp slot.
+   This is `RemovesAbilities`' reason: the grantor has to be the effect's source, and the key list
+   has to be data a test can read. `effects.GrantAbilities(appliesTo, keys...)` is the constructor.
+   `TestEveryGrantKeyResolves` walks every registered def's statics rather than scanning source.
+2. **The composed key is not cached per pass.** Decision 2 §4 asked for the composed key to be
+   written once per layer pass. The only home for it is an unexported field on `Characteristic`,
+   which the snapshot drift guard forbids because `Characteristic` is embedded by value in
+   `GameSnapshot` (last-known information). The alternative, a field on `Card`, would add 40 bytes
+   to a struct whose layout is packed on purpose. So `CatalogAbilityKey` composes on each call. That
+   costs one small allocation for an object that carries a layered grant, and nothing for any
+   other object. The merged `CardDef` IS memoised, process-wide rather than per game, and
+   validated: each entry records the definition pointer each part resolved to, and a hit
+   re-resolves the parts and compares them. So a test that swaps `CatalogLookup` misses rather than
+   reading stale data. The benchmark (`BenchmarkGrantedAbilityReaders`, 40 creatures) on an AMD
+   9800X3D:
+
+   | Board | recompute | trigger harvest | rows with refs |
+   |---|---|---|---|
+   | no grant | 8.5 µs, 161 allocs | 3.3 µs, 0 allocs | 5.8 µs, 0 allocs |
+   | two grantors, three bundles | 16.9 µs, 425 allocs | 7.0 µs, 40 allocs | 19.5 µs, 360 allocs |
+
+   The no-grant arms take the pre-ADR code path and allocate exactly what they did before.
+3. **`granted_abilities` is redacted with the ability rows.** Decision 8 calls it public. It is, for
+   every card the viewer can see. For a face-down permanent's non-controllers it is cleared along
+   with `mana_abilities` and `activated_abilities`. A grantor's "applies to" is a closure that can
+   read the card underneath, and the redaction does not publish fields on that basis.
+4. **The seams moved off this one have no issues of their own yet.** The registry lists riot (Rhythm
+   of the Wild) and "has all activated abilities of" (Marvin) as separate seams. Both still point
+   at #754 until the owner files an issue for each.
+
+Every other part of the PR 1 list is as written above.
 
 ## Open questions for the owner
 
