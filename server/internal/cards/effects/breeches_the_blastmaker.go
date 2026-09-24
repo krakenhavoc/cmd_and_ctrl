@@ -163,6 +163,11 @@ func breechesFlipResult(g *game.Game, item *game.StackItem, spell uuid.UUID, res
 // You may choose new targets for the copy." The spell rides the
 // trigger's payload rather than a captured variable, which is the
 // slot reflexive triggers carry for exactly this.
+//
+// "That spell" NAMES the spell; the reflexive trigger does not target
+// it. So a spell countered before this trigger resolves is copied from
+// last-known information (CR 608.2h, #1288) — storm's and Doublecast's
+// reading (ADR 0043 decision 17), not Reverberate's CR 608.2b one.
 func breechesCopyThatSpell(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	cards := ctx.PayloadCards()
@@ -173,6 +178,7 @@ func breechesCopyThatSpell(g *game.Game, item *game.StackItem) error {
 		StackID:          cards[0],
 		Controller:       item.Controller,
 		ChooseNewTargets: true,
+		FromLastKnown:    true,
 	}.Apply(ctx)
 }
 

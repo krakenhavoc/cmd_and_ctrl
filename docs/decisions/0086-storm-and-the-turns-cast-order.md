@@ -373,3 +373,29 @@ The two deliberate log silences that rested on the old line
 The redaction and wire-cost argument for the new fields is in
 [docs/protocol.md](../protocol.md) under "An ability's `resolve` /
 `fizzle`".
+
+## Amendment 2026-09-23 — #1340 and #1288: a storm copy that is answered goes nowhere, and Breeches joins the last-known family · Accepted · S45
+
+Issues [#1340](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1340)
+and [#1288](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1288).
+The copy path owns both, so the full write-up is
+[ADR 0043's amendment of the same date](0043-copy-effects.md#amendment-2026-09-23-1340-1288-a-copy-that-leaves-the-stack-goes-nowhere-and-breeches-copies-from-last-known-information)
+(Decisions 18 and 19). What it means for this ADR:
+
+- **A storm copy that is countered, bounced or exiled ceases to exist**
+  (CR 707.10a / 704.5e). Decision 6 and the #1255 amendment above were
+  about the storm SPELL leaving the stack; nothing said what happened
+  to one of its COPIES answered the same way, and the answer was wrong:
+  a Remanded Grapeshot copy was a Grapeshot card in its controller's
+  hand, castable next turn and counted by the next storm trigger. The
+  stack exit now ends it, and `TestABouncedStormCopyDoesNotReachAHand`
+  pins it. A copy was never in the count (`TestStormDoesNotCountItsOwnCopies`
+  — it was never cast), and it cannot now become a card that is.
+- **The record the #1255 amendment introduced is taken for a copy too.**
+  `routeCardToZoneLocked` records the leaving object before it decides
+  the object is a copy, so an effect that names a countered copy still
+  copies it from last-known information.
+- **Breeches, the Blastmaker opted in** to `CopySpell.FromLastKnown`,
+  which the #1255 amendment's list of non-targeting copy effects had
+  left out. Storm, Thousand-Year Storm, the Doublecast / Galvanic
+  Iteration delayed trigger and Breeches are now the whole family.

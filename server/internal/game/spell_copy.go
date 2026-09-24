@@ -28,7 +28,10 @@ import "github.com/google/uuid"
 //     Without the branch, casting Twincast on your own Lightning
 //     Bolt would leave two Bolts in your graveyard: countable by
 //     Tarmogoyf, returnable by Regrowth, and flashback-castable if
-//     the copied spell happened to have flashback.
+//     the copied spell happened to have flashback. A copy that leaves
+//     the stack WITHOUT resolving — countered, bounced, exiled — is
+//     ended the same way at the shared exit, routeCardToZoneLocked
+//     (#1340, CR 707.10a): see spellCopyLeavesStackLocked below.
 //
 //  3. THE TARGETS ARE RE-CHOSEN BEFORE IT LANDS. "You may choose new
 //     targets for the copy" is resolved by the copy's controller as
@@ -502,4 +505,83 @@ func (g *Game) ceaseToExistLocked(cardID uuid.UUID) {
 		CardID:  cardID,
 		OldZone: ZoneStack,
 	})
+}
+
+// stackCopyLocked reports whether the object `cardID` on the stack is
+// a COPY of a spell (StackItem.IsCopy) — whether it is still waiting on
+// the stack (StackMeta) or is the item currently resolving, whose meta
+// the resolver has already taken out of StackMeta while the card is
+// still standing on the stack (#920's slot). The second case is a copy
+// whose own effect moves it ("shuffle this spell into its owner's
+// library"): it leaves the stack by the same route a counterspell
+// uses, and it is no more a card for having done it itself.
+//
+// Caller must hold g.mu.
+func (g *Game) stackCopyLocked(cardID uuid.UUID) bool {
+	if item, ok := g.StackMeta[cardID]; ok && item != nil {
+		return item.IsCopy
+	}
+	_, item, ok := g.resolvingSpellLocked(cardID)
+	return ok && item.IsCopy
+}
+
+// spellCopyLeavesStackLocked is the exit route's answer for a COPY of a
+// spell (#1340): countered, returned to hand, exiled, tucked, or moved
+// by hand in the sandbox, it goes nowhere. CR 707.10a: "If a copy of a
+// spell is in a zone other than the stack, it ceases to exist"; CR
+// 704.5e says the same as a state-based action. The engine never lets
+// the copy reach the other zone at all, rather than landing it there
+// and sweeping it a beat later, because nothing may observe it in
+// between — a copy is not a card, so no "put into a graveyard from
+// anywhere" trigger, no Tarmogoyf, no Regrowth and no flashback may
+// ever see it.
+//
+// What it owes is the route's EVENT, minus the landing:
+//
+//   - a counterspell still COUNTERED it, so a Countered route emits
+//     EventCounterSpell exactly as it does for a card (CR 701.6a — the
+//     counter happened; only the destination is missing), and every
+//     "whenever a spell is countered" watcher sees it;
+//   - every other route emits the ceasing-to-exist shape
+//     ceaseToExistLocked and prepareCopyCeasesLocked already use: an
+//     EventZoneMove out of the stack with NO NewZone. Never a move to a
+//     graveyard, a hand or exile — the copy was never there.
+//
+// The stack record goes with it, as it does on every stack exit
+// (#1318). The last-known record has already been taken by the caller
+// (routeCardToZoneLocked), so a copy that is countered can itself still
+// be copied from last-known information by an effect that names it
+// (CR 608.2h).
+//
+// Caller must hold g.mu.
+func (g *Game) spellCopyLeavesStackLocked(cardID uuid.UUID, r zoneRoute) {
+	if g.Stack == nil {
+		return
+	}
+	if _, err := g.Stack.Remove(cardID); err != nil {
+		return
+	}
+	if _, ok := g.StackMeta[cardID]; ok {
+		delete(g.StackMeta, cardID)
+		g.recomputeSplitSecondLocked()
+	}
+	var out Event
+	if r.Countered {
+		out = Event{Kind: EventCounterSpell, Target: cardID, CardID: cardID}
+	} else {
+		out = Event{
+			Kind:    EventZoneMove,
+			Actor:   r.Actor,
+			Source:  r.Source,
+			CardID:  cardID,
+			OldZone: ZoneStack,
+		}
+	}
+	r.Cause.stampCause(&out)
+	g.EmitEvent(out)
+	// The two prunes every landed exit runs: a prompt that still offers
+	// the copy as a candidate, or asks about another move of it, is
+	// asking about an object that no longer exists.
+	g.pruneCardSetChoicesLocked()
+	g.pruneStaleZoneChangeChoicesLocked()
 }

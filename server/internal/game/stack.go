@@ -342,7 +342,10 @@ type StackItem struct {
 	// instead and a phantom Lightning Bolt accumulates in somebody's
 	// yard, where it is countable by Tarmogoyf, castable by
 	// flashback, and returnable by Regrowth. See
-	// ceaseToExistLocked in spell_copy.go.
+	// ceaseToExistLocked in spell_copy.go. The same holds for every
+	// OTHER way off the stack — countered, bounced, exiled — and
+	// routeCardToZoneLocked reads this flag to end the copy there
+	// (#1340, CR 707.10a; spellCopyLeavesStackLocked).
 	//
 	// It is NOT a "don't fire triggers" flag. A resolving copy deals
 	// its damage, draws its cards and fires everything a cast spell

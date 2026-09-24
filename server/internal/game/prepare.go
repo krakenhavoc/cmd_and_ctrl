@@ -63,8 +63,10 @@ import "github.com/google/uuid"
 // still on the battlefield and still prepared. prepareCopySweepSBALocked
 // is that rule, run with the other existence SBAs, and it is what
 // clears the copy when the permanent dies, is flickered, phases out,
-// loses the designation to an effect, or when a cast copy is countered
-// into a graveyard.
+// or loses the designation to an effect. A CAST copy that is countered,
+// bounced or exiled never reaches another zone at all: it is IsCopy on
+// the stack, and the shared stack exit ends it (#1340,
+// spellCopyLeavesStackLocked) — the sweep stays its backstop.
 
 // prepareSpellFace is the index of the prepare spell on a `prepare`
 // layout card: Scryfall prints the creature first and the inset spell
