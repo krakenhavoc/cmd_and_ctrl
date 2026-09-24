@@ -529,6 +529,7 @@
       {isSelf}
       {sendAction}
       onDrawCard={isSelf ? onDrawCard : undefined}
+      {onPlayCard}
       onActivateAbility={isSelf ? onActivateAbility : undefined}
       {sorcerySpeedBlocked}
     />

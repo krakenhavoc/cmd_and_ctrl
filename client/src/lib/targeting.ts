@@ -130,7 +130,12 @@ export interface CastChoices {
 // castZoneFromWire accepts. "hand" is never sent — it is the server
 // default and omitting it keeps every pre-S29 client's payload
 // byte-identical.
-export type CastSourceZone = "command" | "exile" | "graveyard";
+//
+// #1440: "library" joins the set for the S42 library-top permissions
+// (Bolas's Citadel, Oracle of Mul Daya, Courser of Kruphix) — the same
+// wire word `castZoneFromWire` already accepts, sent by the PileBar
+// affordance on a visible, playable top card.
+export type CastSourceZone = "command" | "exile" | "graveyard" | "library";
 
 // applyCastChoices writes a CastChoices onto a cast_spell payload.
 // Undefined fields are omitted rather than sent as null — the server

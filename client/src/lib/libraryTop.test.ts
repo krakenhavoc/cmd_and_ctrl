@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { libraryTopPlayable, visibleLibraryTop } from "./libraryTop";
+import { libraryTopActionLabel, libraryTopPlayable, visibleLibraryTop } from "./libraryTop";
 import type { CardView, ZoneView } from "./protocol";
 
 function card(over: Partial<CardView> = {}): CardView {
@@ -84,5 +84,43 @@ describe("libraryTopPlayable", () => {
       });
       expect(libraryTopPlayable(library([bystander]))).toBe(false);
     });
+  });
+});
+
+// #1440: the verb for the PileBar affordance. A land is played, not
+// cast (CR 305.1, CR 116.2a) — the same wording nit the graveyard's
+// flashback button has to mind (ZoneBrowserModal's castLabelFor).
+describe("libraryTopActionLabel", () => {
+  it("is null when the top isn't visible or isn't playable", () => {
+    expect(libraryTopActionLabel(undefined)).toBeNull();
+    expect(libraryTopActionLabel(library([], 40))).toBeNull();
+    // Oracle of Mul Daya reveals a sorcery to the whole table but
+    // opens only lands: visible, not playable, no button.
+    const revealedOnly = card({
+      name: "Top Sorcery",
+      type_line: "Sorcery",
+      known_by_you: true,
+    });
+    expect(libraryTopActionLabel(library([revealedOnly]))).toBeNull();
+  });
+
+  it("says play for a land", () => {
+    const land = card({
+      name: "Top Forest",
+      type_line: "Basic Land — Forest",
+      known_by_you: true,
+      castable_here: true,
+    });
+    expect(libraryTopActionLabel(library([land]))).toBe("play");
+  });
+
+  it("says cast for anything else", () => {
+    const spell = card({
+      name: "Top Sorcery",
+      type_line: "Sorcery",
+      known_by_you: true,
+      castable_here: true,
+    });
+    expect(libraryTopActionLabel(library([spell]))).toBe("cast");
   });
 });
