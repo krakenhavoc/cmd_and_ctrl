@@ -213,10 +213,15 @@ func (g *Game) createAbilityCopyLocked(item *StackItem, controller uuid.UUID, ta
 		Distribution: cloneDistributionLocked(item.Distribution),
 		Paid:         copiedPaidCost(item.Paid),
 		Effect:       item.Effect,
-		targetSpec:   item.targetSpec,
-		modeSpec:     item.modeSpec,
-		IsCopy:       true,
-		Seq:          g.nextStackSeqLocked(),
+		// A copy of a keyed item (a fired delayed trigger, #1497) is
+		// keyed too, so it stays data on the stack and the table stays
+		// a restore point while it waits (#1568 review).
+		Body:       item.Body,
+		Params:     cloneEffectParams(item.Params),
+		targetSpec: item.targetSpec,
+		modeSpec:   item.modeSpec,
+		IsCopy:     true,
+		Seq:        g.nextStackSeqLocked(),
 	}
 	g.StackMeta[copyID] = meta
 

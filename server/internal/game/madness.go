@@ -298,7 +298,7 @@ func (g *Game) scheduleMadnessGraveyardLocked(owner, cardID uuid.UUID, name stri
 		Label:        "Madness — put " + name + " into its owner's graveyard",
 		At:           StepEnd,
 		Cards:        []uuid.UUID{cardID},
-		Body:         madnessGraveyardBodyKey,
+		Body:         madnessGraveyardBody,
 		// The epoch is the object the offer was about (CR 400.7).
 		Params: EffectParams{Object: ObjectRef{ID: cardID, Epoch: epoch}},
 	})
@@ -307,12 +307,12 @@ func (g *Game) scheduleMadnessGraveyardLocked(owner, cardID uuid.UUID, name stri
 // madnessGraveyardBody is the delayed trigger's body, a registered key
 // (ADR 0041 phase 3, #1497): the epoch it used to capture is its
 // Params.Object.
-const madnessGraveyardBodyKey = "madness/graveyard-if-not-cast"
+// madnessGraveyardBody is assigned in init: a var initialiser would be
+// an initialisation cycle through the exit primitives.
+var madnessGraveyardBody BodyRef
 
-// Registered in init: a var initialiser would be an initialisation
-// cycle through the exit primitives.
 func init() {
-	DelayedBody(madnessGraveyardBodyKey, func(g *Game, _ *StackItem, p EffectParams) error {
+	madnessGraveyardBody = DelayedBody("madness/graveyard-if-not-cast", func(g *Game, _ *StackItem, p EffectParams) error {
 		c := exiledCardByIDLocked(g, p.Object.ID)
 		if c == nil || c.ObjectEpoch != p.Object.Epoch {
 			return nil

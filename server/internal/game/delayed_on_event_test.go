@@ -284,7 +284,7 @@ func TestEventDelayedTriggerSnapshotRoundTrip(t *testing.T) {
 	if got.Duration == nil || got.Duration.Kind != UntilEndOfTurn {
 		t.Errorf("restored Duration = %+v, want an UntilEndOfTurn stamp", got.Duration)
 	}
-	if got.Body == "" || got.Condition == "" {
+	if got.Body.Key() == "" || got.Condition.Key() == "" {
 		t.Errorf("restored Body %q / Condition %q, want both keys carried", got.Body, got.Condition)
 	}
 

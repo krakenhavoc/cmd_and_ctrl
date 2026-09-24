@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -83,6 +84,11 @@ var (
 			if p.Amount <= 0 {
 				return nil
 			}
+			// The amount is read off disk after a restore; a mana value
+			// no card has is a corrupt file, not a refund (#1568 review).
+			if p.Amount > maxManaDrainRefund {
+				return fmt.Errorf("mana-drain/refund: implausible amount %d", p.Amount)
+			}
 			return AddMana{Produced: strings.Repeat("{C}", p.Amount)}.Apply(NewContext(g, item))
 		})
 
@@ -91,3 +97,7 @@ var (
 	// passes CondParams.Filter.
 	youNextCastCondition = game.DelayedCondition("cast/you-next-cast", youNextCast)
 )
+
+// maxManaDrainRefund bounds the refund a restored Mana Drain may add. No
+// printed card has a mana value anywhere near it.
+const maxManaDrainRefund = 1000

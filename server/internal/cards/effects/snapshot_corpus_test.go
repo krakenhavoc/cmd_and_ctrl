@@ -135,6 +135,11 @@ func corpusBoards() []corpusBoard {
 		// v7, added by tier 2 (#1497) as new files: delayed triggers as data.
 		{"earthbend", corpusEarthbend},
 		{"suspend_haste", corpusSuspendHaste},
+		// v7, added by the #1568 review as new files: params, condParams
+		// and a fired keyed item on disk.
+		{"queued_mana_drain", corpusQueuedManaDrain},
+		{"queued_doublecast", corpusQueuedDoublecast},
+		{"fired_arcane_denial", corpusFiredArcaneDenial},
 	}
 }
 
@@ -490,6 +495,64 @@ func corpusSuspendHaste(t *testing.T) *game.Game {
 	passPriorityAroundTable(t, g)
 	if len(g.ScopedEffects) != 1 {
 		t.Fatalf("setup: the suspended creature carries %d scoped effects, want its haste", len(g.ScopedEffects))
+	}
+	return g
+}
+
+// corpusQueuedManaDrain is a queued Mana Drain refund: a delayed trigger
+// whose body reads PARAMS (the mana value), waiting for its controller's
+// next main phase (#1568 review).
+func corpusQueuedManaDrain(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	g.WithWriteLock(func() {
+		g.ScheduleDelayedTriggerForEffect(game.DelayedTrigger{
+			Controller: me, Label: "Mana Drain — add {C} × 3",
+			At: game.StepPrecombatMain, ControllerTurnOnly: true,
+			Body: manaDrainRefundBody, Params: game.EffectParams{Amount: 3},
+		})
+	})
+	return g
+}
+
+// corpusQueuedDoublecast is a queued Doublecast: an event-conditioned
+// delayed trigger whose condition reads CONDPARAMS (the spell filter).
+func corpusQueuedDoublecast(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	g.WithWriteLock(func() {
+		g.ScheduleDelayedTriggerForEffect(game.DelayedTrigger{
+			Controller: me, Label: "Doublecast — copy that spell",
+			On:         []game.EventKind{game.EventCast},
+			Condition:  youNextCastCondition,
+			CondParams: game.EffectParams{Filter: game.CastFilter{Types: []string{"Instant", "Sorcery"}}},
+			Body:       copyTheSpellBody,
+		})
+	})
+	return g
+}
+
+// corpusFiredArcaneDenial is a FIRED keyed trigger waiting on the stack:
+// Arcane Denial's upkeep draws, with its victim as params, put on the
+// stack by the upkeep that fires it — so the file holds a stack item
+// with `body` and `params`.
+func corpusFiredArcaneDenial(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	victim := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)].ID
+	g.WithWriteLock(func() {
+		g.ScheduleDelayedTriggerForEffect(game.DelayedTrigger{
+			Controller: me, Label: "Arcane Denial — its controller draws two cards, you draw a card",
+			At: game.StepEnd, Body: arcaneDenialDrawsBody, Params: game.EffectParams{Player: victim},
+		})
+	})
+	for g.Turn.Step != game.StepEnd {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+	if len(g.StackMeta)+len(g.PendingTriggers) == 0 {
+		t.Fatal("setup: the delayed trigger did not fire at the end step")
 	}
 	return g
 }

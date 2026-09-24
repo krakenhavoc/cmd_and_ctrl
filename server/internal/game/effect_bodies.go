@@ -2,10 +2,12 @@ package game
 
 import (
 	"fmt"
+	"log/slog"
 	"regexp"
 	"sort"
 	"strings"
 	"sync"
+	"testing"
 
 	"github.com/google/uuid"
 )
@@ -47,22 +49,68 @@ type EffectParams struct {
 // CastFilter is a spell predicate as data: the card types a spell may
 // have, any one of which matches. Empty matches every spell. It is
 // what WhenYouNextCast's "an instant or sorcery spell" became.
+//
+// Types is a CLOSED vocabulary — CR 205.2a's card types, spelled as the
+// rules spell them ("Instant", "Sorcery") — and matching is EXACT
+// against the card's type list, never a substring of its type line
+// (#1568 review: "art" would otherwise match Artifact, and "" every
+// spell). A filter naming anything else is refused where it is
+// scheduled and where it is restored (ErrUnknownEffectKey).
 type CastFilter struct {
 	Types []string `json:"types,omitempty"`
 }
 
-// Matches reports whether the card passes the filter. Type names are
-// compared case-insensitively ("Instant" or "instant").
+// cardTypes205 is CR 205.2a's list of card types.
+var cardTypes205 = map[string]bool{
+	"Artifact": true, "Battle": true, "Conspiracy": true, "Creature": true,
+	"Dungeon": true, "Enchantment": true, "Instant": true, "Kindred": true,
+	"Land": true, "Phenomenon": true, "Plane": true, "Planeswalker": true,
+	"Scheme": true, "Sorcery": true, "Vanguard": true,
+}
+
+// Valid reports whether every type is one of CR 205.2a's card types,
+// spelled exactly.
+func (f CastFilter) Valid() bool {
+	for _, t := range f.Types {
+		if !cardTypes205[t] {
+			return false
+		}
+	}
+	return true
+}
+
+// Matches reports whether the card has one of the filter's types,
+// compared as whole type names. An invalid filter matches nothing.
 func (f CastFilter) Matches(c Card) bool {
 	if len(f.Types) == 0 {
 		return true
 	}
+	if !f.Valid() {
+		return false
+	}
+	have := exactCardTypesOf(c)
 	for _, t := range f.Types {
-		if c.HasCardType(strings.ToLower(t)) {
-			return true
+		for _, h := range have {
+			if strings.EqualFold(h, t) {
+				return true
+			}
 		}
 	}
 	return false
+}
+
+// exactCardTypesOf is the card's type LIST — the effective one when the
+// layer cache is warm, else the printed one parsed out of the type line
+// — for a whole-word comparison.
+func exactCardTypesOf(c Card) []string {
+	if c.effective != nil {
+		return c.effective.Types
+	}
+	if c.FaceDownIsPermanent() {
+		return faceDownCharacteristic(c).Types
+	}
+	_, types, _ := ParseTypeLine(c.TypeLine)
+	return types
 }
 
 // BodyFunc is what a delayed trigger does when its item resolves. The
@@ -83,6 +131,18 @@ type BodyRef struct{ key string }
 
 // Key is the body's on-disk key.
 func (r BodyRef) Key() string { return r.key }
+
+// effectKeyFault reports a programming error in how a delayed trigger
+// was built — a forgotten Body, an invalid filter. In a test binary it
+// panics, so the first test that schedules it fails; in production it
+// logs and the caller drops the trigger, because a malformed card must
+// never take the server down (#1568 review).
+func effectKeyFault(msg string) {
+	if testing.Testing() {
+		panic(msg)
+	}
+	slog.Error(msg)
+}
 
 // ConditionRef names a registered event condition.
 type ConditionRef struct{ key string }

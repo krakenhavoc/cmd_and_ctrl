@@ -51,11 +51,20 @@ func (s *GameSnapshot) checkEffectKeys() error {
 		if d.Condition != "" && !KnownEffectCondition(d.Condition) {
 			unknown = append(unknown, "delayed-trigger condition "+d.Condition)
 		}
+		// A spell filter is a closed vocabulary too (#1568 review).
+		for _, p := range []*EffectParams{d.Params, d.CondParams} {
+			if p != nil && !p.Filter.Valid() {
+				unknown = append(unknown, fmt.Sprintf("delayed-trigger spell filter %v", p.Filter.Types))
+			}
+		}
 	}
 	for _, list := range [][]stackItemSnapshot{s.StackMeta, s.PendingTriggers} {
 		for _, it := range list {
 			if it.Body != "" && !KnownEffectBody(it.Body) {
 				unknown = append(unknown, "stack-item body "+it.Body)
+			}
+			if it.Params != nil && !it.Params.Filter.Valid() {
+				unknown = append(unknown, fmt.Sprintf("stack-item spell filter %v", it.Params.Filter.Types))
 			}
 		}
 	}
@@ -80,22 +89,27 @@ func deepCopyScopedEffects(in []ScopedEffect) []ScopedEffect {
 	return out
 }
 
-// unknownScopedEffectFields re-reads the raw snapshot's scopedEffects
-// and lists every key this binary's record types do not declare — on
-// the record, an affected member, a mod or the duration. encoding/json
-// drops an unknown key without a word, and for these types an unknown
-// key is exactly what a newer build's vocabulary looks like: a field a
-// future mod kind reads, a duration field a future condition needs. So
-// it is refused (ErrUnknownEffectKey), never dropped. ADR 0041 P4.
+// unknownScopedEffectFields re-reads the raw snapshot and lists every
+// key this binary's effect types do not declare. encoding/json drops an
+// unknown key without a word, and on these types an unknown key is
+// exactly what a newer build's vocabulary looks like: a field a future
+// mod kind reads, a duration field a future condition needs, a param a
+// future body reads. So it is refused (ErrUnknownEffectKey), never
+// dropped. ADR 0041 P4.
+//
+// Covered: a scopedEffects record, its affected members, its mods and
+// its duration (tier 1); and — #1568 review — every EffectParams a
+// delayed trigger or a stack item carries (`params`, `condParams`),
+// down through its `filter` and its `object`.
 func unknownScopedEffectFields(data []byte) ([]string, error) {
 	var envelope struct {
-		ScopedEffects []map[string]json.RawMessage `json:"scopedEffects"`
+		ScopedEffects   []map[string]json.RawMessage `json:"scopedEffects"`
+		DelayedTriggers []map[string]json.RawMessage `json:"delayedTriggers"`
+		StackMeta       []map[string]json.RawMessage `json:"stackMeta"`
+		PendingTriggers []map[string]json.RawMessage `json:"pendingTriggers"`
 	}
 	if err := json.Unmarshal(data, &envelope); err != nil {
 		return nil, err
-	}
-	if len(envelope.ScopedEffects) == 0 {
-		return nil, nil
 	}
 	var out []string
 	check := func(where string, obj map[string]json.RawMessage, known map[string]bool) {
@@ -105,13 +119,21 @@ func unknownScopedEffectFields(data []byte) ([]string, error) {
 			}
 		}
 	}
+	object := func(raw json.RawMessage) (map[string]json.RawMessage, error) {
+		if len(raw) == 0 || string(raw) == "null" {
+			return nil, nil
+		}
+		var obj map[string]json.RawMessage
+		err := json.Unmarshal(raw, &obj)
+		return obj, err
+	}
 	nested := func(where string, raw json.RawMessage, known map[string]bool, many bool) error {
 		if len(raw) == 0 || string(raw) == "null" {
 			return nil
 		}
 		if !many {
-			var obj map[string]json.RawMessage
-			if err := json.Unmarshal(raw, &obj); err != nil {
+			obj, err := object(raw)
+			if err != nil {
 				return err
 			}
 			check(where, obj, known)
@@ -126,6 +148,17 @@ func unknownScopedEffectFields(data []byte) ([]string, error) {
 		}
 		return nil
 	}
+	params := func(where string, raw json.RawMessage) error {
+		obj, err := object(raw)
+		if err != nil || obj == nil {
+			return err
+		}
+		check(where, obj, effectParamsJSONKeys)
+		if err := nested(where+" filter", obj["filter"], castFilterJSONKeys, false); err != nil {
+			return err
+		}
+		return nested(where+" object", obj["object"], objectRefJSONKeys, false)
+	}
 	for _, rec := range envelope.ScopedEffects {
 		check("a scoped effect", rec, scopedEffectJSONKeys)
 		if err := nested("an affected object", rec["affected"], affectedObjectJSONKeys, true); err != nil {
@@ -138,6 +171,21 @@ func unknownScopedEffectFields(data []byte) ([]string, error) {
 			return nil, err
 		}
 	}
+	for _, dt := range envelope.DelayedTriggers {
+		if err := params("a delayed trigger's params", dt["params"]); err != nil {
+			return nil, err
+		}
+		if err := params("a delayed trigger's condParams", dt["condParams"]); err != nil {
+			return nil, err
+		}
+	}
+	for _, list := range [][]map[string]json.RawMessage{envelope.StackMeta, envelope.PendingTriggers} {
+		for _, it := range list {
+			if err := params("a stack item's params", it["params"]); err != nil {
+				return nil, err
+			}
+		}
+	}
 	sort.Strings(out)
 	return out, nil
 }
@@ -147,6 +195,9 @@ var (
 	affectedObjectJSONKeys = jsonKeysOf(reflect.TypeOf(AffectedObject{}))
 	modJSONKeys            = jsonKeysOf(reflect.TypeOf(Mod{}))
 	durationJSONKeys       = jsonKeysOf(reflect.TypeOf(Duration{}))
+	effectParamsJSONKeys   = jsonKeysOf(reflect.TypeOf(EffectParams{}))
+	castFilterJSONKeys     = jsonKeysOf(reflect.TypeOf(CastFilter{}))
+	objectRefJSONKeys      = jsonKeysOf(reflect.TypeOf(ObjectRef{}))
 )
 
 // jsonKeysOf is the set of keys encoding/json writes for a struct's
