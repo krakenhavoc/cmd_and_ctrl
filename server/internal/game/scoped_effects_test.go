@@ -366,3 +366,105 @@ func TestAForAsLongAsDurationEndsWhenItsSourcePhasesOut(t *testing.T) {
 		t.Errorf("%d scoped effects survive their source phasing out, want 0", n)
 	}
 }
+
+// TestAnUnknownDurationIsRefused is the #1497 review's second finding.
+// A duration's kind and condition are bare ints on disk, so a kind or
+// a condition a newer build adds would otherwise restore as an effect
+// that never ends, or fall through to "source on battlefield". Both
+// are the rollback case, and both are refused.
+func TestAnUnknownDurationIsRefused(t *testing.T) {
+	cases := map[string]func(s *GameSnapshot){
+		"scoped-effect duration kind": func(s *GameSnapshot) {
+			s.ScopedEffects[0].Duration.Kind = DurationKind(99)
+		},
+		"scoped-effect duration condition": func(s *GameSnapshot) {
+			s.ScopedEffects[0].Duration.Condition = DurationCondition(42)
+		},
+		"delayed-trigger duration kind": func(s *GameSnapshot) {
+			d := Duration{Kind: DurationKind(99)}
+			s.DelayedTriggers[0].Duration = &d
+		},
+	}
+	for name, corrupt := range cases {
+		t.Run(name, func(t *testing.T) {
+			loose, strict := corruptAndRestore(t, corrupt)
+			for which, err := range map[string]error{"Restore": loose, "RestoreStrict": strict} {
+				if !errors.Is(err, ErrUnknownEffectKey) {
+					t.Errorf("%s: err = %v, want ErrUnknownEffectKey", which, err)
+				}
+			}
+		})
+	}
+}
+
+// TestEveryDurationKindAndConditionIsKnown keeps the sentinels honest:
+// a kind declared after the sentinel would be refused by the binary
+// that declares it.
+func TestEveryDurationKindAndConditionIsKnown(t *testing.T) {
+	for _, k := range []DurationKind{UntilEndOfTurn, UntilYourNextTurn, ForAsLongAs, Indefinite, WhileInZone} {
+		if !k.Known() {
+			t.Errorf("duration kind %v is not Known — is it after durationKindEnd?", k)
+		}
+	}
+	for _, c := range []DurationCondition{WhileSourceOnBattlefield, WhileYouControlSource,
+		WhileYouControlSourceOnceItLands, WhileSourceRemainsTapped} {
+		if !c.Known() {
+			t.Errorf("duration condition %d is not Known — is it after durationConditionEnd?", c)
+		}
+	}
+	if durationKindEnd.Known() || durationConditionEnd.Known() {
+		t.Error("a sentinel reports itself Known")
+	}
+}
+
+// TestAnUnknownFieldOnARecordIsRefused: encoding/json drops a key it
+// has no field for, and on these four types an unknown key is what a
+// newer build's vocabulary looks like — a field a future mod kind
+// reads, a duration field a future condition needs. Refused, not
+// dropped (ADR 0041 P4, #1497 review).
+func TestAnUnknownFieldOnARecordIsRefused(t *testing.T) {
+	g := newActiveGame(t)
+	id := pushScopedTestCreature(g, g.Seats[0].ID, 2, 2)
+	registerScopedEffectForTest(t, g, id, []Mod{ModifyPTMod(1, 1)}, IndefiniteDuration())
+	raw, err := json.Marshal(g.CaptureSnapshot())
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := map[string]func(rec map[string]any){
+		"record":   func(rec map[string]any) { rec["fromTheFuture"] = true },
+		"affected": func(rec map[string]any) { rec["affected"].([]any)[0].(map[string]any)["phaseTag"] = 1 },
+		"mod":      func(rec map[string]any) { rec["mods"].([]any)[0].(map[string]any)["counterKind"] = "blight" },
+		"duration": func(rec map[string]any) { rec["duration"].(map[string]any)["CounterKind"] = "blight" },
+	}
+	for name, corrupt := range cases {
+		t.Run(name, func(t *testing.T) {
+			var generic map[string]any
+			if err := json.Unmarshal(raw, &generic); err != nil {
+				t.Fatal(err)
+			}
+			corrupt(generic["scopedEffects"].([]any)[0].(map[string]any))
+			bad, err := json.Marshal(generic)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var snap GameSnapshot
+			if err := json.Unmarshal(bad, &snap); err != nil {
+				t.Fatalf("decode: %v", err)
+			}
+			if _, err := snap.Restore(); !errors.Is(err, ErrUnknownEffectKey) {
+				t.Errorf("Restore: err = %v, want ErrUnknownEffectKey", err)
+			}
+			if _, err := snap.RestoreStrict(); !errors.Is(err, ErrUnknownEffectKey) {
+				t.Errorf("RestoreStrict: err = %v, want ErrUnknownEffectKey", err)
+			}
+		})
+	}
+	// The unaltered file is fine.
+	var snap GameSnapshot
+	if err := json.Unmarshal(raw, &snap); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := snap.RestoreStrict(); err != nil {
+		t.Errorf("an intact file was refused: %v", err)
+	}
+}

@@ -157,7 +157,15 @@ import (
 // binary writes them, and refuses a file naming an effect key it
 // cannot interpret (ErrUnknownEffectKey) — which is what lets the mod
 // vocabulary and, later, the effect bodies grow within v7 without a
-// bump each (ADR 0041 P4).
+// bump each (ADR 0041 P4). The refusal covers every way a newer v7
+// vocabulary can appear in a scoped effect, so each is additive within
+// v7: a mod KIND, a duration KIND or CONDITION (bare ints on disk,
+// checked against DurationKind.Known / DurationCondition.Known), and a
+// JSON FIELD on the record, an affected member, a mod or its duration
+// (unknownScopedEffectFields, which encoding/json would otherwise drop
+// in silence). Anything else about a scoped effect that would change
+// what an older v7 file means — a kind whose meaning changes, a field
+// repurposed — is a new kind or a bump, never an edit.
 //
 // THE COMPATIBILITY RULE, and what enforces it (#522, ADR 0044
 // decision 7). The paragraphs above are the judgement; these are the
@@ -254,6 +262,13 @@ type GameSnapshot struct {
 	// present and zero) from a pre-ADR-0059 snapshot (Seq is absent).
 	// Decode metadata only; not game state and never written.
 	turnSeqPresent bool
+
+	// unknownEffectFields lists JSON keys on a scopedEffects record, an
+	// affected member, a mod or a duration that this binary's types do
+	// not have (#1497 review, ADR 0041 P4). encoding/json would drop
+	// them silently; checkEffectKeys refuses them instead. Decode
+	// metadata only; not game state and never written.
+	unknownEffectFields []string
 
 	// TakenAt is when the snapshot was captured, for operator
 	// triage ("how stale is the restore point?"). Not game state.
@@ -465,6 +480,11 @@ func (s *GameSnapshot) UnmarshalJSON(data []byte) error {
 	if !s.turnSeqPresent {
 		_, s.turnSeqPresent = envelope.Turn["seq"]
 	}
+	fields, err := unknownScopedEffectFields(data)
+	if err != nil {
+		return err
+	}
+	s.unknownEffectFields = fields
 	return nil
 }
 

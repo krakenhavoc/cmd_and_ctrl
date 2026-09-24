@@ -194,6 +194,28 @@ var carriedFixture = map[string]any{
 	// it does not know (ErrUnknownEffectKey, ADR 0041 P4) — so an
 	// invented one would fail the restore, not test the carry.
 	"ScopedEffect.Mods": []Mod{AddSubtypesMod("drift-ScopedEffect.Mods"), ModifyPTMod(4, 2)},
+	// A duration's kind and condition are closed sets too (#1497
+	// review): restore refuses an unknown one, so an invented 4242
+	// would fail the restore rather than test the carry. Every other
+	// field is non-zero, so a projection dropping any of them shows.
+	"ScopedEffect.Duration": Duration{
+		Kind: ForAsLongAs, Condition: WhileSourceRemainsTapped,
+		Player:              uuid.NewSHA1(uuid.Nil, []byte("ScopedEffect.Duration/player")),
+		ExpiresAtTurnsBegun: 7, ExpiresAfterTurnsBegun: 6,
+		Source:          uuid.NewSHA1(uuid.Nil, []byte("ScopedEffect.Duration/source")),
+		SourceEnteredAt: 4444,
+		Pinned:          uuid.NewSHA1(uuid.Nil, []byte("ScopedEffect.Duration/pinned")),
+		PinnedEnteredAt: 4545,
+	},
+	"DelayedTrigger.Duration": &Duration{
+		Kind: UntilYourNextTurn, Condition: WhileYouControlSource,
+		Player:              uuid.NewSHA1(uuid.Nil, []byte("DelayedTrigger.Duration/player")),
+		ExpiresAtTurnsBegun: 9, ExpiresAfterTurnsBegun: 8,
+		Source:          uuid.NewSHA1(uuid.Nil, []byte("DelayedTrigger.Duration/source")),
+		SourceEnteredAt: 4646,
+		Pinned:          uuid.NewSHA1(uuid.Nil, []byte("DelayedTrigger.Duration/pinned")),
+		PinnedEnteredAt: 4747,
+	},
 	"Game.ScopedEffects": func(g *Game) any {
 		c := g.Battlefield.Cards[0]
 		return []ScopedEffect{{

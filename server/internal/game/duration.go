@@ -93,7 +93,18 @@ const (
 	// Indefinite, which is the safe half of that mistake — the layer
 	// pass keeps such an effect rather than dropping it silently.
 	WhileInZone
+
+	// durationKindEnd is a sentinel, not a kind: every kind this binary
+	// knows is below it. Keep it LAST. DurationKind is persisted as a
+	// bare int (a restore point's `duration.Kind`), so a kind a newer
+	// build adds is unknown to an older one, and restore refuses it
+	// (ErrUnknownEffectKey, ADR 0041 P4) rather than restoring an
+	// effect that never ends.
+	durationKindEnd
 )
+
+// Known reports whether this binary can interpret k.
+func (k DurationKind) Known() bool { return k >= 0 && k < durationKindEnd }
 
 // DurationCondition is the re-evaluated half of a ForAsLongAs
 // duration. A small closed vocabulary rather than a predicate,
@@ -157,7 +168,21 @@ const (
 	// Appended, never inserted: the enum's integer values are written
 	// into snapshot files.
 	WhileSourceRemainsTapped
+
+	// durationConditionEnd is a sentinel, not a condition. Keep it
+	// LAST, for the reason durationKindEnd gives: an unknown condition
+	// would otherwise fall through to a bare "source on battlefield".
+	durationConditionEnd
 )
+
+// Known reports whether this binary can interpret c.
+func (c DurationCondition) Known() bool { return c >= 0 && c < durationConditionEnd }
+
+// Known reports whether this binary can interpret the duration: its
+// kind and its condition. The condition is checked whatever the kind,
+// because its zero value is a known condition and a non-zero one came
+// from somewhere.
+func (d Duration) Known() bool { return d.Kind.Known() && d.Condition.Known() }
 
 // Duration is how long one continuous effect lasts. The zero value is
 // "until end of turn" with no stamp, which the sweep treats as ending
