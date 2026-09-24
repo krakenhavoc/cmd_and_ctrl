@@ -20,7 +20,7 @@ func init() {
 		Name:         "Brass Squire",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "Attach target Equipment you control to target creature you control",
+			Label: "{T}: Attach target Equipment you control to target creature you control.",
 			Cost:  TapCost(),
 			Targets: TwoSlotAttachTargets(
 				"target Equipment you control", []CardPredicate{YouControl()},
