@@ -151,10 +151,12 @@ func TestManaAbilityFromHandStampsTheSourceKinds(t *testing.T) {
 }
 
 // CR 601.2h / 602.2b: a cost is one indivisible step, so the exit
-// settles itself. A COMMANDER spent as a Spirit Guide's cost goes to
-// exile and asks nobody — the same posture the cost discard takes
-// (#660) and the reason payExileSelfCostLocked sets MustSettleNow.
-func TestManaAbilityFromHandNeverPausesOnTheCommanderQuestion(t *testing.T) {
+// settles itself — and CR 605.3a gives a mana ability no window to
+// pause in. Since #1397 a COMMANDER spent as a Spirit Guide's cost is
+// still offered CR 903.9: the question is asked before the activation
+// begins, no mana is made while it is open, and the answer activates
+// the ability with the commander going where its owner said.
+func TestManaAbilityFromHandAsksTheCommanderQuestionFirst(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
 	id := seatCommander(t, me.Hand, me)
@@ -167,11 +169,17 @@ func TestManaAbilityFromHandNeverPausesOnTheCommanderQuestion(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, id, 0, ManaAbilityParams{}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
-	if n := len(g.PendingChoices); n != 0 {
-		t.Fatalf("%d pending choices after a cost exile — CR 601.2h does not pause", n)
+	prompt := expectCommanderPrompt(t, g, me)
+	if len(me.ManaPool) != 0 || !me.Hand.Contains(id) {
+		t.Fatal("the mana ability was activated before the owner answered")
 	}
-	// Fails the test if the commander is anywhere else: a cost cannot
-	// take CR 903.9's "may".
+	if err := g.ResolveOptionalReplacement(prompt.ID, me.ID, false); err != nil {
+		t.Fatalf("decline: %v", err)
+	}
+	if n := len(g.PendingChoices); n != 0 {
+		t.Fatalf("%d pending choices after the answer — CR 605.3a does not pause", n)
+	}
+	// Fails the test if the commander is anywhere else.
 	exiledCard(t, g, id)
 	if len(me.ManaPool) != 1 {
 		t.Error("the mana did not arrive")

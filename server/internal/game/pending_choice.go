@@ -425,6 +425,14 @@ type PendingChoice struct {
 	// on submit. Added in S17 sub-PR 2.
 	replacementResume *replacementResumeFrame
 
+	// costCommanderResume is the parked announcement behind a CR 903.9
+	// prompt asked BEFORE a cost is paid (#1397, cost_commander_choice.go).
+	// The prompt is an ordinary PendingChoiceOptionalReplacement on the
+	// wire; this frame is what tells ResolveOptionalReplacement to re-run
+	// the announcement with the answer rather than resume a paused event.
+	// Mutually exclusive with replacementResume. Not serialised.
+	costCommanderResume *costCommanderFrame
+
 	// DamageAssignment is the client-facing payload for a
 	// PendingChoiceDamageAssignment entry: the attacker's instance
 	// ID, ordered blocker instance IDs (in declared order; the
@@ -1648,6 +1656,13 @@ func (g *Game) ResolveOptionalReplacement(choiceID, chooserID uuid.UUID, apply b
 	}
 	if choice.Chooser != chooserID {
 		return ErrNotTheChooser
+	}
+	if parked := choice.costCommanderResume; parked != nil {
+		// #1397: a CR 903.9 question asked BEFORE a cost is paid.
+		// There is no paused event behind it — the announcement it is
+		// about has not been made yet — so the answer re-makes it.
+		g.dequeueChoiceLocked(idx)
+		return g.resolveCostCommanderChoiceLocked(parked, chooserID, apply)
 	}
 	frame := choice.replacementResume
 	g.dequeueChoiceLocked(idx)

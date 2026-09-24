@@ -599,6 +599,14 @@ type ReplacementEvent struct {
 	// the catalog should never read or set it.
 	asCommanderMove bool
 
+	// commanderAnswer is the CR 903.9 answer the commander's owner gave
+	// before this move was made (#1397, cost_commander_choice.go),
+	// copied off zoneRoute.commanderAnswer. Unasked leaves the built-in
+	// as it always was; accept makes it mandatory for this event, so a
+	// cost move that cannot pause applies it instead of skipping it as
+	// a question; decline keeps it from being gathered at all.
+	commanderAnswer commanderZoneAnswer
+
 	// --- RepEventDiscard fields ---
 	//
 	// A discard also fills in the RepEventMove fields above: CardID is
@@ -916,6 +924,11 @@ type ReplacementEvent struct {
 	// un-applied. Weaker than printed on the "may", arbitrary but
 	// deterministic on the ordering, and never a wedged table.
 	//
+	// The one "may" a cost does NOT lose is CR 903.9's: the owner of a
+	// commander a cost moves is asked BEFORE the payment begins, and
+	// the answer rides in as commanderAnswer (#1397,
+	// cost_commander_choice.go).
+	//
 	// Unexported engine plumbing — the catalog never sets or reads it.
 	mustSettleNow bool
 }
@@ -1133,6 +1146,12 @@ type ReplacementEffect struct {
 	// ("Doubling Season: double counters"). Kept server-side so
 	// the wire carries it; no localisation yet.
 	Label string
+
+	// commanderZone marks the CR 903.9 built-in
+	// (commanderZoneReplacement) so the gather can honour an answer
+	// its owner gave BEFORE the move (ReplacementEvent.commanderAnswer,
+	// #1397). Unexported: no catalog effect is the commander rule.
+	commanderZone bool
 }
 
 // activeReplacement binds one declared ReplacementEffect to its
@@ -1740,6 +1759,20 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 		}
 		if eff.AppliesTo != nil && !eff.AppliesTo(ev, g, nil) {
 			continue
+		}
+		if eff.commanderZone {
+			// #1397: the owner has already answered CR 903.9 for this
+			// move — before a cost that cannot pause was paid. A "no"
+			// is not a question to ask again; a "yes" is no longer a
+			// question at all, so it applies like any mandatory
+			// replacement, in the gathered order a settle-now event
+			// uses. `eff` is this gather's own copy.
+			switch ev.commanderAnswer {
+			case commanderZoneDecline:
+				continue
+			case commanderZoneAccept:
+				eff.Optional = false
+			}
 		}
 		out = append(out, activeReplacement{effect: eff, source: nil, id: id})
 	}

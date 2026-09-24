@@ -29,7 +29,9 @@ import "github.com/google/uuid"
 //     ONE INDIVISIBLE STEP — so the move may not stop on a CR 903.9
 //     prompt with the ability half announced. The payer sets
 //     zoneRoute.MustSettleNow, which is the same bit, set for the same
-//     reason, that a discard paid as a cost sets.
+//     reason, that a discard paid as a cost sets. The CR 903.9 question
+//     is asked before the payment instead (#1397,
+//     cost_commander_choice.go).
 //
 // And one it shares with every other cost component: paying a cost
 // does not TARGET (CR 601.2h / 602.2b), so the filter is matched with
@@ -220,11 +222,11 @@ func (g *Game) validateReturnToHandCostLocked(playerID, sourceID uuid.UUID, rc *
 //
 // Through the ONE exit door (routeCardToZoneLocked) rather than through
 // BounceToHandForEffect, and with MustSettleNow set: CR 601.2h /
-// 602.2b pay an announcement's costs as one indivisible step, so a
-// commander returned this way takes its owner's hand without opening
-// the CR 903.9 prompt. CR 903.9 is a "may", and a cost that cannot ask
-// falls back to the ordinary result — the argument the cost discard
-// already makes one component over.
+// 602.2b pay an announcement's costs as one indivisible step, so the
+// move may not stop on a prompt. A commander returned this way is still
+// offered CR 903.9 — its owner was asked BEFORE the payment began
+// (askCostCommanderLocked, #1397), and `answers` carries what they
+// said onto the move.
 //
 // Call only after validateReturnToHandCostLocked has passed, and —
 // as with payCostSacrificesLocked — BEFORE the ability's stack item is
@@ -237,7 +239,7 @@ func (g *Game) validateReturnToHandCostLocked(playerID, sourceID uuid.UUID, rc *
 // ever stops being true.
 //
 // Caller must hold g.mu.
-func (g *Game) payReturnToHandCostLocked(playerID, sourceID uuid.UUID, ids []uuid.UUID) (uuid.UUID, error) {
+func (g *Game) payReturnToHandCostLocked(playerID, sourceID uuid.UUID, ids []uuid.UUID, answers map[uuid.UUID]bool) (uuid.UUID, error) {
 	var attacking uuid.UUID
 	for _, id := range ids {
 		c := findBattlefieldCard(g, id)
@@ -254,6 +256,9 @@ func (g *Game) payReturnToHandCostLocked(playerID, sourceID uuid.UUID, ids []uui
 			Source:        sourceID,
 			Cause:         MoveCause{Kind: MoveCauseCost, Controller: playerID},
 			MustSettleNow: true,
+			// #1397: the owner's CR 903.9 answer, asked before the
+			// payment by askCostCommanderLocked.
+			commanderAnswer: commanderAnswerFor(answers, id),
 		}); err != nil {
 			return attacking, err
 		}

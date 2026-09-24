@@ -352,14 +352,18 @@ func TestCleanupDiscardOfACommanderOffersTheCommandZone(t *testing.T) {
 	}
 }
 
-// --- (e) the cost discard, which may not ask --------------------------
+// --- (e) the cost discard, which asks FIRST ---------------------------
 
-// TestCostDiscardOfACommanderNeverAsks — CR 601.2h pays a spell's
-// costs as one indivisible step, so this one discard must NOT pause.
-// CR 903.9 is a "may" and a cost that cannot ask falls back to the
-// ordinary result: the commander goes to the graveyard and the spell
-// is cast.
-func TestCostDiscardOfACommanderNeverAsks(t *testing.T) {
+// TestCostDiscardOfACommanderAsksBeforePaying — CR 601.2h pays a
+// spell's costs as one indivisible step, so the discard itself must not
+// pause. Until #1397 that meant the owner was never asked at all. Now
+// the question comes BEFORE the cast is paid for: the cast parks on a
+// CR 903.9 prompt with the commander still in hand, and the answer
+// casts it with the commander going where its owner said. The full
+// matrix — every cost component, both answers, undo — is
+// cost_commander_choice_test.go; this pins the discard event, which is
+// this file's subject.
+func TestCostDiscardOfACommanderAsksBeforePaying(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
 	const oracle = "test-thrill"
@@ -376,14 +380,23 @@ func TestCostDiscardOfACommanderNeverAsks(t *testing.T) {
 	if err := g.CastSpell(me.ID, spell, CastSpellParams{DiscardIDs: []uuid.UUID{cmdID}}); err != nil {
 		t.Fatalf("CastSpell: %v", err)
 	}
-	if len(g.PendingChoices) != 0 {
-		t.Fatalf("a cost paused on %d prompt(s) — CR 601.2h pays costs as one step", len(g.PendingChoices))
+	prompt := expectCommanderPrompt(t, g, me)
+	if g.Stack.Contains(spell) || len(w.discards) != 0 {
+		t.Fatal("the cast was paid for before the owner answered")
 	}
-	assertOnlyIn(t, cmdID, me.Graveyard, me.Command, me.Hand)
+	if err := g.ResolveOptionalReplacement(prompt.ID, me.ID, true); err != nil {
+		t.Fatalf("answer: %v", err)
+	}
+	if len(g.PendingChoices) != 0 {
+		t.Fatalf("the payment paused on %d prompt(s) after the answer — CR 601.2h pays costs as one step", len(g.PendingChoices))
+	}
+	assertOnlyIn(t, cmdID, me.Command, me.Graveyard, me.Hand)
 	if !g.Stack.Contains(spell) {
 		t.Error("the spell was not cast")
 	}
-	assertOneDiscardEvent(t, w, me.ID, cmdID, ZoneGraveyard)
+	// CR 701.8a: a commander put into the command zone instead was
+	// still discarded.
+	assertOneDiscardEvent(t, w, me.ID, cmdID, ZoneCommand)
 }
 
 // --- (g) undo across the open prompt ----------------------------------

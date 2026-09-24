@@ -646,6 +646,8 @@ Three things fell out of it:
   graveyard. Weaker than printed, never stronger; the same posture and
   the same rule (CR 601.2h) as `payLifeAsCostLocked` (§5b), which is
   the other half of the same cost line.
+  *(2026-09-24: superseded for a commander by §5af — the owner is now
+  asked BEFORE the payment, and the payment still settles.)*
 - **The undo snapshot needs its own copy of the route.**
   `cloneReplacementResume` shared the `zoneRoute` on the stated grounds
   that it is written once and only read afterwards. That stopped being
@@ -3602,6 +3604,137 @@ What is observable on the two boards #1289 named:
 The first bullet (state-based actions inside a paused resolution) is
 closed by this amendment. The other two (#1290, #1291) are unchanged.
 
+
+### 5af. Amendment, 2026-09-24: a commander paid as a COST is asked before the payment, not during it
+
+**Issue [#1397](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1397).**
+Trackers [#882](https://github.com/krakenhavoc/cmd_and_ctrl/issues/882)
+(replacements) and [#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887)
+(mana and costs). Supersedes the commander half of §5g's "the cost site
+settles instead of asking" and of
+[ADR 0062 Decision 3](0062-abilities-and-special-actions-from-the-hand.md#3-a-cost-settles-now--cr-6012h--cr-6022b--including-for-a-commander).
+
+#### The gap
+
+CR 903.9 gives a commander's OWNER the command zone whenever the
+commander would be put into a hand, library, graveyard or exile "from
+anywhere". Paying a cost moves cards, and any of them can be a
+commander. The engine answered that two incompatible ways:
+
+- **The discard, return and exile payers skipped the question.** Each
+  set `zoneRoute.MustSettleNow` for CR 601.2h / 602.2b (costs are one
+  indivisible step) and CR 605.3a (a mana ability has no window at all),
+  and `mustSettleNow` skips anything that asks. A commander discarded to
+  Thrill of Possibility or cycled, returned by ninjutsu or Quirion
+  Ranger, exiled to Cadaverous Bloom, Grim Lavamancer, a scavenge or a
+  Spirit Guide went to the graveyard, the hand or exile, and its owner
+  was never asked. Weaker than printed — and routinely, for ninjutsu,
+  whose whole point is returning an attacker, very often a commander.
+- **The sacrifice and alternative-cost payers PAUSED half way through
+  the payment.** Neither set the bit, so a sacrificed commander (Viscera
+  Seer, Ashnod's Altar, Village Rites) or a pitched / returned / escaped
+  one opened the ordinary CR 903.9 prompt mid-payment. The ability went
+  on the stack, or the mana into the pool, with the commander still
+  where it was — and it could be spent AGAIN. A second Ashnod's Altar
+  activation naming the same stolen commander was accepted and paid
+  while the first prompt was open. Stronger than printed, which is the
+  direction the engine never errs in.
+
+#### Decision
+
+**Ask first, then pay.** Every announcement that moves cards as a cost —
+`ActivateCatalogAbility`, `CastSpell`, `ActivateManaAbility` — validates
+its whole payload, then passes the one gate
+`askCostCommanderLocked` (`cost_commander_choice.go`) before anything is
+paid. The gate is handed every card the payment is about to move: the
+sacrifices, the returns, the discards, the exiles, an alternative cost's
+card(s), and the source itself when the cost moves it (sacrifice-this,
+discard-this, exile-this).
+
+- If one is a commander whose owner has not answered, the announcement
+  is **parked**: nothing is tapped, spent, moved or put on the stack,
+  and a CR 903.9 prompt is queued to the card's **owner** — the
+  opponent, when the commander was stolen.
+- The owner's answer **re-makes the whole announcement** with the answer
+  attached (`params.commanderAnswers`, unexported on all three params
+  types so no payload can answer for somebody else's commander). A
+  payment that moves two commanders asks twice, one card per prompt,
+  the first answer riding into the second.
+- The payment that follows is the ordinary indivisible one. The discard,
+  return and exile moves keep `MustSettleNow`; the sacrifice and
+  alternative-cost moves keep the posture they had. Each commander's
+  move carries its owner's answer on `zoneRoute.commanderAnswer` onto
+  `ReplacementEvent.commanderAnswer`, and the gather reads it: a "no"
+  keeps the CR 903.9 built-in from being gathered; a "yes" gathers it as
+  a MANDATORY replacement for that one event, so a settle-now event
+  applies it rather than skipping it as a question, in the ordinary
+  CR 616 company of any other replacement (Rest in Peace still meets it,
+  and the command zone still wins because the owner chose it).
+
+**Why this is the rules-correct direction, not a default.** The two
+alternatives were a documented default (the old skip — weaker than
+printed and invisible to the player, so rejected) and a genuine
+mid-payment pause with a continuation. The continuation machinery can
+pause a *move* — the sacrifice path proved it — but the pause is the
+problem: it leaves a committed card in its old zone, available, while
+the question is open, and there is no cheap way to make "this card is
+already spent" true of every entry point that could reach it. Asking
+first has none of that. Nothing between the answer and the payment can
+change what the payment is, because the payment is re-validated from
+scratch when the announcement is re-made; if the payer spent the card,
+the mana or the source on something else meanwhile, the re-run is
+refused and nothing is paid. The owner's decision is the same decision
+paper asks for — where does this card go — made at the moment paper
+would make it known: when the payer names it.
+
+**The question is the existing `optional_replacement` prompt.** No new
+kind, so the client modal, the legal enumerator (yes / no) and the bot
+heuristic answer it unchanged, and it blocks the table like every
+CR 614.10 prompt. `ResolveOptionalReplacement` tells it apart by the
+frame it carries (`PendingChoice.costCommanderResume`) and routes the
+answer to `resolveCostCommanderChoiceLocked`. The frame is immutable and
+captures its arguments by value, so the undo snapshot shares it safely
+and a rewind into the open prompt replays the same announcement with
+either answer; the persisted snapshot drops it and counts it in the
+continuation census, as every other resume frame is.
+
+**A refused re-run goes back only to the payer.** When the payer is the
+one answering, the refusal is returned to them (they can act on it).
+When the owner is an opponent, the answer is accepted and the refusal
+is logged as an `EventEffectError` — an opponent is not handed
+"insufficient mana" for someone else's ability. An owner who has left
+the game (CR 800.4a) is not asked; their commander is recorded as a
+decline and the payment goes ahead.
+
+#### What it costs, stated
+
+- **The payer's intent is visible early.** The owner sees "Atraxa is
+  paying Viscera Seer's cost" before the payment exists. In paper the
+  payer names the card and the owner answers at once, so this is the
+  same information at the same moment.
+- **An unpayable announcement can still ask.** The gate runs after
+  validation and before the mana is spent, so a CR 602 activation whose
+  mana turns out to be short asks its question and is then refused on
+  the re-run. The mana ability path checks its mana before the gate and
+  does not have this.
+- **The payer keeps priority while the owner decides.** The engine does
+  not refuse the payer's other actions (it never has, for any prompt);
+  whatever they do is simply in the past when the announcement is
+  re-made, which is re-validated against it.
+
+#### Not closed here
+
+- **The auto-tapper's cost moves.** A mana source the auto-tapper cracks
+  (a Treasure's sacrifice, a Spirit Guide's exile from hand) is paid
+  with no answers, i.e. unasked, inside a cast. No commander carries
+  such a self-costed mana ability, so this is recorded rather than
+  built.
+- **Other questions on a sacrifice or alternative-cost move.** Those two
+  payers still do not set `MustSettleNow`, so a CR 616 ordering between
+  two OTHER replacements on a sacrificed permanent can still pause the
+  payment half way, with the double-spend exposure described above.
+  The commander no longer does. Filed as
+  [#1420](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1420).
 
 ### 6. Six pipeline integration points (five mutations + step transition)
 

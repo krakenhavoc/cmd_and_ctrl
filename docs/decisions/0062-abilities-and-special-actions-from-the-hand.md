@@ -263,6 +263,16 @@ activation's atomicity to fix one card in one hand. #903's
 resolution-time prompt work is where that question gets reopened, if it
 ever should be.
 
+**Note (2026-09-24, [#1397](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1397)):
+the commander half of this decision is superseded by
+[ADR 0013 §5af](0013-replacement-effects.md#5af-amendment-2026-09-24-a-commander-paid-as-a-cost-is-asked-before-the-payment-not-during-it).
+The discard still settles now — `MustSettleNow` is unchanged — but the
+announce is no longer uninterruptible in the sense this section feared:
+it is interrupted BEFORE anything is paid, not during the payment. A
+cycled commander's owner is asked, the announcement is re-made with the
+answer, and the discard carries it. Nothing about the payment's
+atomicity changed.
+
 ### 4. Special actions (CR 116.2): the verb, designed here, built on #658 / #659
 
 **One `special_action` verb with a kind, not one verb per keyword.**

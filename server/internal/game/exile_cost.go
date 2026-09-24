@@ -37,10 +37,12 @@ import "github.com/google/uuid"
 // a bool.
 //
 // The payment goes through routeCardToZoneLocked like every other
-// exit, so a commander scavenged out of its owner's graveyard still
-// gets its CR 903.9 answer, and MustSettleNow is set for the reason
-// the discard cost sets it: CR 602.2b activates an ability in one
-// indivisible step, so a cost may not stop to ask a question.
+// exit, and MustSettleNow is set for the reason the discard cost sets
+// it: CR 602.2b activates an ability in one indivisible step, so a
+// cost may not stop to ask a question. A commander scavenged out of
+// its owner's graveyard still gets its CR 903.9 answer: the owner is
+// asked BEFORE the payment (#1397, cost_commander_choice.go) and the
+// move carries what they said.
 
 // validateExileSelfFromLocked checks an ExileSelf component without
 // moving anything — the validate-all-then-pay discipline both
@@ -113,7 +115,7 @@ func (g *Game) validateManaExileSelfCostLocked(srcZone ZoneKind, ab ManaAbilityS
 // ManaSourceKinds) rather than reading a pointer this invalidated.
 //
 // Caller must hold g.mu.
-func (g *Game) payExileSelfCostLocked(playerID, sourceID uuid.UUID, exileSelf bool) error {
+func (g *Game) payExileSelfCostLocked(playerID, sourceID uuid.UUID, exileSelf bool, answers map[uuid.UUID]bool) error {
 	if !exileSelf {
 		return nil
 	}
@@ -128,14 +130,17 @@ func (g *Game) payExileSelfCostLocked(playerID, sourceID uuid.UUID, exileSelf bo
 		// itself rather than pausing on a player prompt — the bit
 		// DiscardCauseCost sets for the discard half.
 		MustSettleNow: true,
+		// #1397: the owner's CR 903.9 answer, asked before the
+		// payment began (cost_commander_choice.go).
+		commanderAnswer: commanderAnswerFor(answers, sourceID),
 	})
 	return err
 }
 
 // payAbilityExileSelfLocked is payExileSelfCostLocked for a CR 602
 // activated ability. Caller must hold g.mu.
-func (g *Game) payAbilityExileSelfLocked(playerID, sourceID uuid.UUID, ab ActivatedAbilityShape) error {
-	return g.payExileSelfCostLocked(playerID, sourceID, ab.Cost.ExileSelf)
+func (g *Game) payAbilityExileSelfLocked(playerID, sourceID uuid.UUID, ab ActivatedAbilityShape, answers map[uuid.UUID]bool) error {
+	return g.payExileSelfCostLocked(playerID, sourceID, ab.Cost.ExileSelf, answers)
 }
 
 // ExileCost is "Exile N cards from your hand" or "Exile N cards from
@@ -347,13 +352,15 @@ func findZoneCard(z *Zone, id uuid.UUID) *Card {
 
 // payExileCardsCostLocked pays an ExileCards component: each named card
 // leaves its owner's hand or graveyard for exile through the one exit
-// primitive with MustSettleNow — a commander exiled to Cadaverous Bloom
-// or to Grim Lavamancer still gets its CR 903.9 answer, and the CR
-// 601.2h / CR 602.2b indivisible step cannot pause on a prompt. NOT
-// through discardCardsLocked: this is not a discard (see ExileCost).
+// primitive with MustSettleNow, so the CR 601.2h / CR 602.2b
+// indivisible step cannot pause on a prompt. A commander exiled to
+// Cadaverous Bloom or to Grim Lavamancer still gets its CR 903.9
+// answer — asked before the payment (#1397) and carried in `answers`.
+// NOT through discardCardsLocked: this is not a discard (see
+// ExileCost).
 //
 // Caller must hold g.mu and have validated the list.
-func (g *Game) payExileCardsCostLocked(playerID, sourceID uuid.UUID, ids []uuid.UUID) error {
+func (g *Game) payExileCardsCostLocked(playerID, sourceID uuid.UUID, ids []uuid.UUID, answers map[uuid.UUID]bool) error {
 	for _, id := range ids {
 		if _, err := g.routeCardToZoneLocked(zoneRoute{
 			CardID:        id,
@@ -362,6 +369,8 @@ func (g *Game) payExileCardsCostLocked(playerID, sourceID uuid.UUID, ids []uuid.
 			Source:        sourceID,
 			Cause:         MoveCause{Kind: MoveCauseCost, Controller: playerID},
 			MustSettleNow: true,
+			// #1397: see payExileSelfCostLocked.
+			commanderAnswer: commanderAnswerFor(answers, id),
 		}); err != nil {
 			return err
 		}

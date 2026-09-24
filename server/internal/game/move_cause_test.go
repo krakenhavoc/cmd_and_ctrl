@@ -100,7 +100,7 @@ func TestCostExileIsNotTheLastResolutionsDoing(t *testing.T) {
 	mine := pushBear(g, me.ID)
 	g.mu.Lock()
 	resolvingAbilityOf(g, opp.ID) // an opponent's item resolved a moment ago
-	err := g.payExileSelfCostLocked(me.ID, mine, true)
+	err := g.payExileSelfCostLocked(me.ID, mine, true, nil)
 	g.mu.Unlock()
 	if err != nil {
 		t.Fatalf("payExileSelfCostLocked: %v", err)
