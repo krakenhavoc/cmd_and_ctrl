@@ -427,6 +427,15 @@ multi-face card answers for itself.
   which is CR 707.2: split second is a copiable ability of the spell.
 - **Nothing grants it**, so there is no layer read. A spell off the
   battlefield has no layer-6 list anyway.
+- **The importer confirms it against a keyword line** (it joins
+  `narrowVariantKeywords` beside hexproof). Scryfall tags The Fearsome
+  Flock "Split second" for its "split second level up {2}{U}", which is
+  a property of the level-up activation; stamping the card would make
+  casting the creature shut the table down, stronger than printed.
+  The split card Yeah Nah // Nah Yeah loses it the same way through the
+  existing front-face narrowing — weaker than printed on its back half,
+  never stronger, because `Card.Keywords` is card-level and the front
+  half does not print it.
 
 **Decision 12. The two timing reads refuse under split second, so the
 view agrees with the enumerator.** `CastTimingOpenLocked` and
