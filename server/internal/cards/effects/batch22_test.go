@@ -573,6 +573,11 @@ func TestB22FuryDividesFourDamageEvenlyAndEvokesForARedCard(t *testing.T) {
 	}
 	passPriorityAroundTable(t, g2)
 	b17PickCards(t, g2, me2.ID, victim)
+	// #1529: the damage trigger and the evoke sacrifice are one CR
+	// 603.3b batch; the damage resolves first.
+	if !answerTriggerOrderLastQueuedFirst(t, g2) {
+		t.Error("the evoke sacrifice and the damage trigger were not offered for ordering")
+	}
 	passPriorityAroundTable(t, g2)
 	if g2.Battlefield.Contains(victim) {
 		t.Error("one target takes all 4")

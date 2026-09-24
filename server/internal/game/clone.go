@@ -244,6 +244,14 @@ func (g *Game) cloneLocked() *Game {
 				frame := *c.coinFlipResume
 				cloned.coinFlipResume = &frame
 			}
+			// #1529: the CR 603.3d target walk. Answering a step
+			// MUTATES the frame (the cursor advances and the pick is
+			// appended), so a frame shared with the undo snapshot came
+			// back already answered: the restored prompt read a
+			// finished walk, and answering it again dropped the
+			// trigger. The snapshot gets its own cursor and picks;
+			// the steps, spec and source it only reads stay shared.
+			cloned.pickTargetResume = clonePickTargetFrame(c.pickTargetResume)
 			out.PendingChoices[i] = &cloned
 		}
 	}
@@ -700,6 +708,22 @@ func cloneStackItem(s *StackItem) *StackItem {
 		}
 	}
 	return out
+}
+
+// clonePickTargetFrame gives an undo snapshot its own copy of a
+// trigger's CR 603.3d target walk (#1529). ResolvePickTargets advances
+// `step` and appends to `picked` in place, so those two — and the
+// chosen modes, for symmetry — are copied; everything else on the
+// frame is read-only once the walk starts and is shared like every
+// other server-only continuation on a PendingChoice.
+func clonePickTargetFrame(f *pickTargetFrame) *pickTargetFrame {
+	if f == nil {
+		return nil
+	}
+	out := *f
+	out.picked = append([]TargetRef(nil), f.picked...)
+	out.modes = append([]int(nil), f.modes...)
+	return &out
 }
 
 // cloneReplacementResume gives an undo snapshot its own copy of the
