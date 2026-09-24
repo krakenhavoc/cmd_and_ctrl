@@ -903,15 +903,17 @@ boteval arena --seats assisted,heuristic,heuristic,heuristic \
 
 There is no server, no websocket and no client: the arena builds a
 `game.Game`, wraps it in the same `ws.Room` the server uses, and
-starts one ordinary `aiseat.Runner` per chair. Every seat sees exactly
-the filtered `aiseat.Input` it would see at a real table.
+starts one ordinary `aiseat.Runner` per chair — one goroutine each,
+unless `--lockstep` asks for one goroutine in all (below). Every seat
+sees exactly the filtered `aiseat.Input` it would see at a real table.
 
 | Flag | What it does |
 |---|---|
 | `--seats` | one tier per chair, comma-separated. 2–4 chairs. |
 | `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump. |
 | `--names` | one tally name per chair. Use it when every chair is the same tier and the thing being compared is the deck or the configuration. |
-| `--games`, `--seed` | game *i* uses `seed+i`, so two policies can be compared on the same deals. The seats still run one goroutine each, so the seed fixes the deal and the policies' randomness, not the interleaving — a rerun is the same deals, not always the same games (#1409). |
+| `--games`, `--seed` | game *i* uses `seed+i`, so two policies can be compared on the same deals. By default the seats run one goroutine each, so the seed fixes the deal and the policies' randomness, not the interleaving — a rerun is the same deals, not always the same games (#1409). Add `--lockstep` for the same games. |
+| `--lockstep` | plays each game on one goroutine, seat by seat, so the same `--seed` replays the same games move for move (#1503). Off by default — see "Lockstep runs" below for what it changes. |
 | `--rotate` | moves each contestant one chair along per game (contestant *k* sits at position `(k+i) mod n`). **Use it.** Turn order in Commander is worth real percentage points; without rotation you are measuring the chair. |
 | `--turn-budget`, `--wall`, `--stall` | when to stop a game that will not end (default 60 turns, 30 minutes, `3×max-think+15s` with no committed move). |
 | `--max-think`, `--model`, `--frontier-model`, `--endpoint` | the model tiers' deadline and transport. With an endpoint set and no `--max-think`, the deadline defaults to **20s**, the same local default `cmd/server` applies and for the same reason. |
@@ -968,6 +970,44 @@ priority back after the last one ([ADR 0045](decisions/0045-combat-restrictions.
 Decision 38), so no block is lost either way; the grace only saves the
 extra round of passes. It still defaults to production's value, so a
 run matches what a live table does.
+
+#### Lockstep runs (#1503)
+
+By default an arena seat is a runner goroutine, exactly as at a live
+table, and after every commit the Go scheduler decides which seat acts
+first. That is where a seeded game forks: a defender's block lands
+before or after the attacker's pass depending on which goroutine woke
+first. `--lockstep` takes the goroutines away. The arena steps each
+seat in chair order, one wake's act-loop at a time
+(`aiseat.NewStepped` / `Runner.Step`), round after round — the same
+enumeration, policy, observer, forced answers and dispatch a woken
+runner runs; only *when* a seat acts is the arena's. The same seed then
+replays the same game, move for move, which is what you want when a
+run turns up a strange game and you need to watch it again with a
+decision log on.
+
+What else it changes, all of it following from "nobody else can act
+while a seat holds":
+
+- **No pacing and no block grace.** `--block-grace` is ignored: the
+  defenders it would wait for cannot act until the attacker's step
+  returns, so it would cost its full length on every combat and change
+  nothing.
+- **Stalls are exact, not timed.** A full round in which no seat
+  committed anything is a table nothing will move again, so the game is
+  marked stalled then and there; `--stall` is ignored. The dump says
+  `no move in a full lockstep round`.
+- **Model seats are only as reproducible as their endpoint.** Lockstep
+  removes the scheduler, not the model's own sampling, and a decision
+  that overruns `--max-think` falls back — the one place wall clock
+  still reaches a lockstep game.
+- **It is not how a live table runs.** Use it to reproduce and to
+  compare two policies move for move; keep the default for a run whose
+  numbers should reflect production's scheduling, races included. The
+  report's games line says `schedule lockstep` or `schedule concurrent`,
+  and `summary.json` carries `lockstep`, so two reports can be told
+  apart on the one point that decides whether their seeds are
+  comparable.
 
 #### Wall clock
 
@@ -1544,17 +1584,19 @@ change to the race term moves the same forty games every time it runs.
 `TestFourHeuristicBotsPlayToAWinner`, `TestTwoHeuristicBotsPlayToAWinner`
 and `TestHeuristicBeatsRandomHeadToHead` run their seats on one
 goroutine, in seat order: each seat's ordinary act-loop (the runner's
-own `step`, reached through the test-only `lockstep_export_test.go`),
-round after round. A seed is then a whole game rather than a deal, and a
+own `step`, reached through `aiseat.NewStepped` / `Runner.Step` since
+#1503 — `lockstep_export_test.go` keeps #1409's names as one-line
+delegations), round after round. A seed is then a whole game rather than a deal, and a
 red night replays move for move. The soak (`TestRandomBotSoak`) keeps
 one goroutine per seat on purpose: it tests concurrent liveness, and the
 races lockstep removes are exactly what it exists to find (discussion
 #1390). `AISEAT_HEURISTIC_SCHEDULE=concurrent` plays the gate the old
 way, for comparing the two.
 
-The arena (`boteval arena`) still starts one goroutine per seat, so its
-`--seed` fixes the deals and the policies' randomness but not the
-interleaving.
+The arena (`boteval arena`) starts one goroutine per seat by default,
+so its `--seed` fixes the deals and the policies' randomness but not the
+interleaving. `boteval arena --lockstep` plays the gate's schedule, so a
+seed is a whole game there too (#1503; see "Lockstep runs" above).
 
 ## Known limitations
 
