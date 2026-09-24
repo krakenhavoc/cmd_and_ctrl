@@ -573,6 +573,27 @@ type Spec struct {
 	// attack_tax.go. Nil for nearly every card.
 	AttackTaxes []game.AttackTax
 
+	// BlockRules are the CR 509.1b block restrictions with a
+	// PARAMETER this permanent imposes while it is on the battlefield
+	// (ADR 0045 addendum, Decision 11): "can't be blocked except by
+	// Walls" (Prowler's Helm), "can't be blocked by creatures with
+	// power 2 or less" (Legolas Greenleaf), "creatures with power less
+	// than this creature's power can't block creatures you control"
+	// (Champion of Lambholt), "can't be blocked by more than one
+	// creature" (Vorrac Battlehorns).
+	//
+	// Build them with the constructors in block_rules.go, never by
+	// hand: each one pairs a SCOPE (whose attackers or blockers the
+	// rule binds, relative to this permanent) with the rule, and the
+	// scope is the part a hand-written closure gets wrong. A flat
+	// "can't be blocked" or "can't block" with no parameter is a
+	// Restriction bit (RestrictSelf / RestrictAttached), not a rule.
+	//
+	// Read live at every block check, keyed by CatalogAbilityKey, so a
+	// permanent that loses all abilities imposes nothing. Nil for
+	// nearly every card.
+	BlockRules []game.BlockRule
+
 	// CastableZones is the S29 "you may cast this card from
 	// somewhere other than your hand" declaration (CR 601.2, and
 	// every keyword in CR 702 that grants an alternative cast
