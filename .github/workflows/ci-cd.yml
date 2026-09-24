@@ -41,8 +41,8 @@ on:
 
 concurrency:
   group: cmdctrl-cd-${{ github.ref }}
-  # Cancel superseded runs on PRs/topic branches so the single
-  # self-hosted runner doesn't queue stale builds. Keep both deploy
+  # Cancel superseded runs on PRs/topic branches so stale builds
+  # don't hold runners. Keep both deploy
   # branches serialized (never cancel) so an in-flight deploy can't be
   # aborted mid-rsync -- that would leave a host with a new binary and
   # a half-written client bundle.
@@ -60,15 +60,37 @@ jobs:
   # deploy, scripts, workflows, root files) counts as server, because
   # the Go tests read docs/ (the census, docsguard, coverage).
   #
-  # The repo is public and these runners keep state between jobs and
-  # can reach the deploy hosts, so fork PRs never run here. Every other
+  # Fork PRs never run here. The hosted runners would be safe for
+  # them, but the self-hosted fallback above keeps state between jobs
+  # and can reach the deploy hosts, and opening CI to forks is its own
+  # decision. Every other
   # job needs this one and skips with it, and cmdctrl-ci then fails
   # rather than passing untested code. A fork's code can still edit
   # this line, which is why fork PR workflows also need maintainer
   # approval (repo settings) -- read any workflow diff before
   # approving. To CI a fork PR, push its branch to this repo.
+  # Where the CI jobs run (#1433). Every job up to and including
+  # census-publish needs only a checkout, Go, Node and the GitHub API,
+  # so it runs on a GitHub-hosted `ubuntu-latest`: free and unmetered
+  # for a PUBLIC repository, 4 vCPU / 16 GB, and no queue behind the
+  # six self-hosted runners, which stay for the CD jobs (they rsync
+  # and ssh to hosts on the LAN) and the nightly workflows.
+  #
+  # Hosted minutes are only free while the repository is public. If
+  # it is ever made private, `github.event.repository.private` sends
+  # every one of these jobs back to `self-hosted` with no edit, so a
+  # visibility change can never start spending the plan's quota. The
+  # repository variable CI_RUNNER overrides the hosted label (set it
+  # to `self-hosted` to move CI back without a PR). Keep it a STANDARD
+  # label: larger-runner labels are billed even on public repos.
+  #
+  # Steps that differ by runner key off `runner.environment`: the Go
+  # and npm caches are restored only on a hosted runner (a hosted
+  # runner starts cold; a self-hosted one is already warm, and
+  # restoring over its read-only module cache fails), and the disk
+  # trim runs only on a self-hosted runner.
   changes:
-    runs-on: self-hosted
+    runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
     permissions:
       contents: read
       pull-requests: read
@@ -104,13 +126,16 @@ jobs:
   server-check:
     needs: changes
     if: needs.changes.outputs.server == 'true'
-    runs-on: self-hosted
+    runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      # cache: false on purpose. These are self-hosted runners, so
-      # $HOME survives between jobs and ~/go/pkg/mod is already warm --
+      # The cache is on for a GitHub-hosted runner only (#1433). A
+      # hosted runner starts cold, so restoring the module and build
+      # cache (keyed on server/go.sum) saves the download and most of
+      # the compile. A self-hosted runner is the opposite: $HOME
+      # survives between jobs and ~/go/pkg/mod is already warm --
       # there is nothing for a cache to restore that is not already
       # there. Worse, Go marks the module cache read-only (files 0444,
       # dirs 0555), so actions/cache untarring over it fails with
@@ -124,7 +149,8 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: "1.22"
-          cache: false
+          cache: ${{ runner.environment == 'github-hosted' }}
+          cache-dependency-path: server/go.sum
 
       # One self-hosted runner, no job-level cleanup: the Go build cache
       # under $HOME and orphaned /tmp/go-build* trees left by cancelled
@@ -135,6 +161,7 @@ jobs:
       # cost is paid only when it would otherwise fail.
       - &free-disk
         name: Free runner disk
+        if: runner.environment == 'self-hosted'
         shell: bash
         run: |
           df -h / /tmp | sed 's/^/before: /'
@@ -188,7 +215,7 @@ jobs:
   server-test:
     needs: changes
     if: needs.changes.outputs.server == 'true'
-    runs-on: self-hosted
+    runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
     # Explicit rather than relying on the workflow-level default above,
     # so it stays true if that default ever changes. Discussion #1231
     # review point 2 (Luke, 2026-09-23): the `contents: write` this job
@@ -314,14 +341,14 @@ jobs:
   client:
     needs: changes
     if: needs.changes.outputs.client == 'true'
-    runs-on: self-hosted
+    runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      # No `cache:` input, for the same reason as "Set up Go" -- ~/.npm
-      # persists on a self-hosted runner and restoring over it fails the
-      # same way. Note setup-node's `cache` is an enum of package
+      # npm cache on a hosted runner only, for the same reason as "Set
+      # up Go" -- ~/.npm persists on a self-hosted runner and restoring
+      # over it fails the same way. Note setup-node's `cache` is an enum of package
       # managers (npm/yarn/pnpm), NOT a boolean: `cache: false` is a
       # hard error ("Caching for 'false' is not supported"). Omitting
       # the input is how you turn it off.
@@ -330,6 +357,12 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: "22"
+          # 'npm' on a hosted runner, and the empty string -- which
+          # setup-node reads as "no cache" -- on a self-hosted one.
+          cache: ${{ runner.environment == 'github-hosted' && 'npm' || '' }}
+          cache-dependency-path: |
+            client/package-lock.json
+            tests-e2e/package-lock.json
 
       - name: Client — npm ci
         working-directory: client
@@ -361,7 +394,7 @@ jobs:
   # uploads everything.
   build:
     needs: changes
-    runs-on: self-hosted
+    runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -429,7 +462,7 @@ jobs:
   cmdctrl-ci:
     needs: [changes, server-check, server-test, client, build]
     if: always()
-    runs-on: self-hosted
+    runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - name: Check CI results
         env:
@@ -473,7 +506,7 @@ jobs:
   # bypass would have covered every push this workflow makes, not just
   # this one docs-only commit.
   census-publish:
-    runs-on: self-hosted
+    runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
     needs: cmdctrl-ci
     permissions:
       # The push below authenticates with the deploy key over SSH, not
@@ -513,7 +546,8 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: "1.22"
-          cache: false
+          cache: ${{ runner.environment == 'github-hosted' }}
+          cache-dependency-path: server/go.sum
 
       # One step, in numbered sections, for the same reason "Ensure
       # off-site backup" below (in the shared CD steps) is one step: the
