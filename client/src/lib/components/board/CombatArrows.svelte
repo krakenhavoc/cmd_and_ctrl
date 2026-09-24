@@ -62,9 +62,13 @@
     // reconnect and a replay toggle, where the board stays mounted but
     // the frames in between were never watched live.
     beatsPrimeKey?: string;
+    // #1467: false while the fan stack lane is up. It draws its own
+    // target arrows from its tiles, and two sets of arrows from one
+    // stack item would read as two spells.
+    stackTargets?: boolean;
   }
 
-  const { view, boardEl, beatsPrimeKey = "" }: Props = $props();
+  const { view, boardEl, beatsPrimeKey = "", stackTargets = true }: Props = $props();
 
   type Pair =
     | { kind: "attack"; id: string; fromCardID: string; toSeatID: string }
@@ -98,7 +102,7 @@
     // announce-time targets[]; draw one arrow per player / card slot
     // so the board shows who each spell is aimed at. Self / none
     // slots don't produce arrows (no visual referent).
-    for (const item of view.stack_items ?? []) {
+    for (const item of stackTargets ? (view.stack_items ?? []) : []) {
       for (let i = 0; i < (item.targets?.length ?? 0); i++) {
         const t = item.targets![i];
         if (t.kind === "player" && t.id) {

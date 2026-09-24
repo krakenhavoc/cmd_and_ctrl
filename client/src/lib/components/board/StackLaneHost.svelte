@@ -20,8 +20,8 @@
   //     item, and the #322 hover preview (lib/stackHover.ts);
   //   - an aria-live region that reads out the top item's line.
   //
-  // The design itself is STYLE_BODIES[style]. Today all three are the
-  // placeholder list; the follow-up PRs replace their entries.
+  // The design itself is STYLE_BODIES[style]: StackLaneFan,
+  // StackLaneSpotlight or StackLaneRibbon.
 
   import type { Component } from "svelte";
   import { untrack } from "svelte";
@@ -40,7 +40,7 @@
   import { holdPriority, toggleHoldPriority } from "../../holdPriority";
   import { metaFor } from "../../cardMetaCache";
   import Icon from "../Icon.svelte";
-  import StackLanePlaceholder from "./StackLanePlaceholder.svelte";
+  import StackLaneFan from "./StackLaneFan.svelte";
   import StackLaneSpotlight from "./StackLaneSpotlight.svelte";
   import StackLaneRibbon from "./StackLaneRibbon.svelte";
 
@@ -68,11 +68,11 @@
     onPass,
   }: Props = $props();
 
-  // A design is a component taking StackLaneStyleProps. The follow-up
-  // PRs swap their entry; nothing else here changes.
+  // A design is a component taking StackLaneStyleProps; adding one is
+  // an entry here and nothing else.
   type StyleBody = Component<StackLaneStyleProps & { styleName: StackLaneStyle }>;
   const STYLE_BODIES: Record<StackLaneStyle, StyleBody> = {
-    fan: StackLanePlaceholder,
+    fan: StackLaneFan,
     spotlight: StackLaneSpotlight,
     ribbon: StackLaneRibbon,
   };
