@@ -258,6 +258,9 @@ func (g *Game) onTurnBeganLocked() {
 	// this turn. Nothing can still name one — the stack is empty at a
 	// turn boundary, and every copy effect that names a spell was on it.
 	g.clearLastKnownStackLocked()
+	// #1379: the same argument for permanents that left the
+	// battlefield — whatever referred to one was on the stack.
+	g.clearLastKnownPermanentsLocked()
 	// #1181: the per-turn half of the activation record dies with the
 	// turn it counted. The game-lifetime half does not — "activate
 	// each exhaust ability only once" is a claim about the whole game,

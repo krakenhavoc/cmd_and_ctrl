@@ -3780,6 +3780,16 @@ characteristics as the third `Build` argument — the card is already
 in the graveyard when `Build` runs, so read power / toughness /
 types from `sourceLKI`, not `source`.
 
+**"Where X is that creature's power"** (and any other read of the
+event's permanent at RESOLUTION) is `ctx.TriggeringPermanent()`
+(#1379, CR 608.2h): live while that object is still on the
+battlefield, its last-known information — counters included — once
+it has left, and never the new object a returned card became. Don't
+capture a power in `Build` or look the card up by ID at resolution.
+Check `info.Left` before acting ON the permanent: last-known
+information is read, never written to. See
+[ADR 0018's 2026-09-24 amendment](docs/decisions/0018-triggers-on-the-stack.md).
+
 **Tests** — `castCatalogSpell` + `passPriorityAroundTable` settles
 the spell *and* the trigger it queues (the helper waits for
 `Game.Stack`, `StackMeta`, and `PendingTriggers` to all empty).

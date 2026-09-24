@@ -468,6 +468,28 @@ func (c *Context) Trigger() game.TriggerContext {
 	return *c.Item.Trigger
 }
 
+// TriggeringPermanent is the permanent the trigger's event was about —
+// the creature that entered, the permanent that left — read at
+// RESOLUTION under CR 608.2h (#1379): as it is now while that object is
+// still on the battlefield, so a pump in response counts, and as it last
+// existed there once it has gone. PermanentInfo.Left says which.
+//
+// "Where X is that creature's power" is `info.Power` (counters included,
+// not clamped). A clause that ACTS on the permanent — "put two +1/+1
+// counters on it" — must check Left first: last-known information is
+// something to read, not something to change.
+//
+// False when the event named no permanent, the item is not a trigger,
+// or the object left by a route the engine keeps no record of (its
+// owner left the game).
+func (c *Context) TriggeringPermanent() (game.PermanentInfo, bool) {
+	obj := c.Trigger().Object
+	if obj == nil {
+		return game.PermanentInfo{}, false
+	}
+	return c.Game.PermanentForEffect(obj.Ref())
+}
+
 // PayloadCards is Payload narrowed to its card refs, in the order the
 // creating effect listed them. The common read: "the creatures that
 // were tapped this way", "the cards revealed this way".
