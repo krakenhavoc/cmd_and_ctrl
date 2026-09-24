@@ -91,9 +91,10 @@ Probes come in three kinds, and each asks a question that has an honest answer:
    when the card file declares the card complete. This is the honest answer for mechanics that are
    closures (ward, cascade, hideaway): if a card prints "Cascade" and a person declared the card fully
    automated, the engine does cascade on that card. The text comes from
-   `coverage/testdata/oracle_text.json`, which is now embedded through `coverage.PrintedOracle()` so that
-   a running server can read it. It is the same file the oracle guard already reads and the nightly
-   fixture test keeps current, and nothing serves it.
+   `coverage/testdata/oracle/` (one file per card since #1542; `oracle_text.json` before that), which
+   is now embedded through `coverage.PrintedOracle()` so that a running server can read it. It is the
+   same fixture the oracle guard already reads and the nightly fixture test keeps current, and nothing
+   serves it.
 
 `Build()` runs once per binary behind a `sync.Once`, because the registry and the catalogue are both
 fixed at init. It returns plain data:

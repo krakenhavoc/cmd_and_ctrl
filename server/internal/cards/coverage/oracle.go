@@ -1,13 +1,18 @@
 package coverage
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
+	"path"
 	"regexp"
 	"sort"
 	"strings"
 	"unicode"
+
+	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 )
@@ -63,17 +68,35 @@ import (
 //
 // # Where the text comes from
 //
-// testdata/oracle_text.json: every catalogued oracle ID's printed
-// text, generated from the Scryfall dump. CI has no dump, so the check
-// reads the fixture, and TestOracleFixtureIsCurrent (dump-gated, run
-// nightly) fails when the fixture and the dump disagree. Regenerate:
+// testdata/oracle/<oracle_id>.json: one generated file per catalogued
+// base oracle ID holding that card's printed text, read from the
+// Scryfall dump. CI has no dump, so the check reads the fixture, and
+// TestOracleFixtureIsCurrent (dump-gated, run nightly) fails when the
+// fixture and the dump disagree.
 //
-//	CMDCTRL_SCRYFALL_DUMP=../data/scryfall/default-cards.json \
-//	  go test ./internal/cards/coverage/ -run TestOracleFixtureIsCurrent -update-oracle
+// One file per card, not one file for the catalog (#1542): every card
+// PR has to add its card's text, and while the text lived in a single
+// file every card PR touched it, so card PRs merged one at a time,
+// each regenerated on the tip. A PR now adds only its own cards'
+// files. Regenerate just those (from server/):
+//
+//	CMDCTRL_SCRYFALL_DUMP=$PWD/../data/scryfall/default-cards.json \
+//	  go test ./internal/cards/coverage/ -run TestOracleFixtureIsCurrent \
+//	  -update-oracle -oracle-ids=<id>,<id>
+//
+// or drop -oracle-ids to regenerate every file (which also deletes the
+// files of cards that left the catalog).
 
-// OracleFixturePath is the checked-in oracle text, relative to this
-// package.
-const OracleFixturePath = "testdata/oracle_text.json"
+// OracleFixtureDir is the directory of checked-in oracle text,
+// relative to this package: one <base oracle ID>.json per catalogued
+// card.
+const OracleFixtureDir = "testdata/oracle"
+
+// OracleFixtureFile is the path of one card's fixture file, relative to
+// this package.
+func OracleFixtureFile(baseOracleID string) string {
+	return path.Join(OracleFixtureDir, baseOracleID+".json")
+}
 
 // OracleCard is one card's printed text as the fixture records it: a
 // single-faced card's text in Text, a multi-faced card's per face in
@@ -98,45 +121,68 @@ type OracleFace struct {
 	Text string `json:"text"`
 }
 
-// LoadOracleFixture reads the fixture, keyed by base oracle ID.
-func LoadOracleFixture(path string) (map[string]OracleCard, error) {
-	b, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	out := map[string]OracleCard{}
-	if err := json.Unmarshal(b, &out); err != nil {
-		return nil, fmt.Errorf("%s: %w", path, err)
-	}
-	return out, nil
+// LoadOracleFixture reads the fixture directory from disk, keyed by
+// base oracle ID.
+func LoadOracleFixture(dir string) (map[string]OracleCard, error) {
+	cards, _, err := LoadOracleFixtureFS(os.DirFS(dir), ".")
+	return cards, err
 }
 
-// EncodeOracleFixture renders the fixture one card per line, sorted
-// by oracle ID, so a regeneration diff is one line per changed card
-// and two branches adding different cards rarely touch the same line.
-func EncodeOracleFixture(cards map[string]OracleCard) ([]byte, error) {
-	ids := make([]string, 0, len(cards))
-	for id := range cards {
-		ids = append(ids, id)
+// LoadOracleFixtureFS reads every <oracle_id>.json in dir of fsys. It
+// returns the parsed cards and each file's raw bytes, both keyed by
+// base oracle ID; the raw bytes are what the freshness test compares
+// with EncodeOracleCard to catch a hand-edit.
+//
+// It is strict about the directory's contents on purpose: a file whose
+// name is not a lower-case oracle UUID with a .json extension (a
+// "<id>#1.json" face key, an upper-cased ID, an editor's backup) is an
+// error, not something to skip, because a skipped file is a card whose
+// text silently stops being checked.
+func LoadOracleFixtureFS(fsys fs.FS, dir string) (map[string]OracleCard, map[string][]byte, error) {
+	entries, err := fs.ReadDir(fsys, dir)
+	if err != nil {
+		return nil, nil, err
 	}
-	sort.Strings(ids)
-	var b strings.Builder
-	b.WriteString("{\n")
-	for i, id := range ids {
-		var line strings.Builder
-		enc := json.NewEncoder(&line)
-		enc.SetEscapeHTML(false)
-		if err := enc.Encode(cards[id]); err != nil {
-			return nil, err
+	cards := make(map[string]OracleCard, len(entries))
+	raw := make(map[string][]byte, len(entries))
+	for _, e := range entries {
+		name := e.Name()
+		id, ok := strings.CutSuffix(name, ".json")
+		if !ok || e.IsDir() || !isOracleID(id) {
+			return nil, nil, fmt.Errorf("%s: %q is not <lower-case oracle id>.json; the directory holds generated per-card files only", dir, name)
 		}
-		fmt.Fprintf(&b, "%q: %s", id, strings.TrimSuffix(line.String(), "\n"))
-		if i < len(ids)-1 {
-			b.WriteString(",")
+		b, err := fs.ReadFile(fsys, path.Join(dir, name))
+		if err != nil {
+			return nil, nil, err
 		}
-		b.WriteString("\n")
+		var c OracleCard
+		if err := json.Unmarshal(b, &c); err != nil {
+			return nil, nil, fmt.Errorf("%s: %w", path.Join(dir, name), err)
+		}
+		cards[id], raw[id] = c, b
 	}
-	b.WriteString("}\n")
-	return []byte(b.String()), nil
+	return cards, raw, nil
+}
+
+// isOracleID: s is a UUID in its canonical lower-case hyphenated form,
+// the only spelling the generator writes.
+func isOracleID(s string) bool {
+	u, err := uuid.Parse(s)
+	return err == nil && u.String() == s
+}
+
+// EncodeOracleCard renders one card's fixture file: the card as one
+// line of JSON (HTML characters unescaped, so "<" stays readable) and a
+// trailing newline. It is exactly the row the single-file fixture held
+// for the card before #1542, so the split changed no card's data.
+func EncodeOracleCard(c OracleCard) ([]byte, error) {
+	var b bytes.Buffer
+	enc := json.NewEncoder(&b)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(c); err != nil {
+		return nil, err
+	}
+	return b.Bytes(), nil
 }
 
 // BaseOracleID strips a Spec key's "#<face>" suffix and returns the
@@ -208,7 +254,8 @@ func (f OracleFinding) Describe() string {
 	case OracleAbilityMissing:
 		return fmt.Sprintf("%s: the card prints %q and nothing is registered for it", f.Card, f.Line)
 	case OracleNoText:
-		return fmt.Sprintf("%s (%s): registers activated abilities but %s has no text for it", f.Card, f.OracleID, OracleFixturePath)
+		base, _ := BaseOracleID(f.OracleID)
+		return fmt.Sprintf("%s (%s): registers activated abilities but %s does not exist", f.Card, f.OracleID, OracleFixtureFile(base))
 	}
 	return f.Card + ": " + string(f.Kind)
 }

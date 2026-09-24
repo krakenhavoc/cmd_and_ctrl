@@ -648,12 +648,32 @@ surface tiny.
    (which uses `PushBottom` so the "first match" sandbox pick is
    deterministic).
 
-6. **Verify.** `cd server && go test ./internal/cards/effects/...` and
+6. **Add the card's oracle-text file.** Every catalogued card needs its
+   own generated file, `server/internal/cards/coverage/testdata/oracle/<oracle_id>.json`
+   (one per base oracle ID, whether or not the card has an activated
+   ability). `TestAbilitiesMatchOracleText` checks ability labels
+   against it, and `TestOracleFixtureCoversRegistry` fails in plain PR CI
+   when a registered card has no file. Generate only your cards' files,
+   never by hand, with the Scryfall dump (from `server/`):
+   ```bash
+   CMDCTRL_SCRYFALL_DUMP=$PWD/../data/scryfall/default-cards.json \
+     go test ./internal/cards/coverage/ -run TestOracleFixtureIsCurrent \
+     -update-oracle -oracle-ids=<oracle_id>,<oracle_id>
+   ```
+   Commit only the files for the cards you added. Two card PRs never
+   share a file, so they no longer conflict here
+   ([#1542](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1542)).
+   Dropping `-oracle-ids` regenerates every file and deletes the files
+   of cards that left the catalog. That is the nightly's job, and a
+   card PR should not do it: if files for other cards change, your dump
+   is older or newer than the one the fixture came from.
+
+7. **Verify.** `cd server && go test ./internal/cards/effects/... ./internal/cards/coverage/...` and
    `gofmt -l internal/cards/effects/` should both be clean. The
    `TestNonCatalogSpellStaysSandbox` canary should still pass — it's the
    opt-in invariant.
 
-7. **Manual smoke-test.** `CMDCTRL_DEV_SKIP_DECK_VALIDATION=1 make server-dev`
+8. **Manual smoke-test.** `CMDCTRL_DEV_SKIP_DECK_VALIDATION=1 make server-dev`
    plus a small deck (`make dev-skip-validation` target on the top-level
    Makefile) so the library is small enough to find your card quickly.
    Cast it, verify the AUTO badge renders, verify the effect resolves.

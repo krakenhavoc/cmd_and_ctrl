@@ -38,9 +38,9 @@ var knownOracleMismatches = map[string]string{
 
 func loadOracleFixture(t *testing.T) map[string]OracleCard {
 	t.Helper()
-	fx, err := LoadOracleFixture(OracleFixturePath)
+	fx, err := LoadOracleFixture(OracleFixtureDir)
 	if err != nil {
-		t.Fatalf("%v — regenerate it (oracle_fixture_test.go)", err)
+		t.Fatalf("%v\n\nregenerate the fixture (needs the dump):\n\n%s", err, oracleRegenCommand(nil))
 	}
 	return fx
 }
@@ -59,7 +59,7 @@ func TestAbilitiesMatchOracleText(t *testing.T) {
 		if _, ok := knownOracleMismatches[f.Key()]; ok {
 			continue
 		}
-		t.Errorf("%s\n\n%s\n  pin key: %q", f.Describe(), oracleAdvice(f.Kind), f.Key())
+		t.Errorf("%s\n\n%s\n  pin key: %q", f.Describe(), oracleAdvice(f), f.Key())
 	}
 
 	var stale []string
@@ -79,13 +79,12 @@ matches nothing hides the next real mismatch on the same card.`, key)
 		report.Abilities, report.EffectsCompared, report.PrintedLines, len(report.Findings), len(knownOracleMismatches))
 }
 
-func oracleAdvice(k OracleFindingKind) string {
-	switch k {
+func oracleAdvice(f OracleFinding) string {
+	switch f.Kind {
 	case OracleNoText:
-		return `The fixture has no text for this card. Regenerate it (needs the dump):
-
-  CMDCTRL_SCRYFALL_DUMP=../data/scryfall/default-cards.json \
-    go test ./internal/cards/coverage/ -run TestOracleFixtureIsCurrent -update-oracle`
+		base, _ := BaseOracleID(f.OracleID)
+		return "The fixture has no file for this card. Generate it (needs the dump):\n\n" +
+			oracleRegenCommand([]string{base})
 	case OracleAbilityMissing:
 		return `The card prints this ability and the Spec registers nothing for it. Register
 it, or — if it is deliberately left out — declare CompletenessCaveats with a

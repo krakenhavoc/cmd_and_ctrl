@@ -750,10 +750,11 @@ jobs:
       # The oracle-text fixture behind TestAbilitiesMatchOracleText
       # (#1276, ADR 0042 amendment). PR CI has no dump, so the check
       # reads a checked-in, generated copy of every catalogued card's
-      # printed text; this is where that copy is compared with the
-      # dump. It fails on an erratum, a catalogued card missing from
-      # the fixture, or a row for a card that left the catalog. Fix:
-      # regenerate with -update-oracle (the failure prints the command).
+      # printed text, one file per card (#1542); this is where that
+      # copy is compared with the dump. It fails on an erratum, a
+      # catalogued card with no file, or a file for a card that left
+      # the catalog. Fix: regenerate with -update-oracle (the failure
+      # prints the command, scoped to the cards that differ).
       - name: Oracle-text fixture — match against the real Scryfall dump
         working-directory: server
         env:
