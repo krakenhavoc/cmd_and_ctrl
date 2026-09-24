@@ -374,9 +374,14 @@ func main() {
 	// recomputes it from the printing (game/snapshot_backfill.go).
 	// With no index it falls back to the pre-#683 rule.
 	game.PrintedVariableToughness = deck.PrintedVariableToughness(cardIdx)
-	if n := l.RestoreFromDisk(log); n > 0 {
-		log.Info("resumed games from the previous process", "count", n)
-	}
+	// Timed and logged unconditionally (#524): the strong hypothesis
+	// on #515 is that startup — not this restore pass — dominates the
+	// restart window, and that hypothesis needs a number rather than
+	// a guess. This is the boot-side half of the pair; the shutdown
+	// census logged below, at SIGTERM, is the other half.
+	restoreStart := time.Now()
+	n := l.RestoreFromDisk(log)
+	log.Info("restore from disk complete", "duration", time.Since(restoreStart).Round(time.Millisecond).String(), "resumed", n)
 
 	// Optional demo game for the gamecli dev path. Creates a game
 	// directly (bypassing the lobby's invite flow) so you can dial
@@ -584,6 +589,19 @@ func main() {
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		log.Error("http shutdown", "err", err)
 	}
+
+	// Log what this restart costs each live table, before the hub
+	// closes any of them (ADR 0044 decision 1, #524). This is a read
+	// of already-held state — no disk writes, no capture — so it
+	// cannot make the shutdown grace period any less safe. archived
+	// looks the game up in the lobby (a fact ws itself does not know)
+	// so an archived table's line says so rather than reading as an
+	// abandoned live one.
+	ws.LogShutdownCensus(log, mgr.List(), func(id uuid.UUID) bool {
+		meta, err := l.Get(id)
+		return err == nil && meta.Archived()
+	})
+
 	hub.Shutdown(shutdownCtx)
 	bots.Shutdown()
 	if database != nil {
