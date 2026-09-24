@@ -243,9 +243,20 @@ export function canOverride(card: CardView, viewerID: string | null, isAdmin: bo
 // battlefield permanent should do.
 //
 //	"abilities" — open this card's menu so the player can pick one
+//	"mana"      — tap it FOR mana (#1438): activate its mana ability,
+//	              or open the mana picker when it has several
 //	"tap"       — the historic default: toggle tapped / untapped
 //	"none"      — the viewer may not drive this card at all
-export type BattlefieldClickIntent = "abilities" | "tap" | "none";
+export type BattlefieldClickIntent = "abilities" | "mana" | "tap" | "none";
+
+// BattlefieldClickOptions carries what the click router cannot read
+// off the card: whether this panel may activate mana abilities at all
+// (only the viewer's own panel wires the activation), and whether the
+// click was an Alt-click, which always means "just turn it sideways".
+export interface BattlefieldClickOptions {
+  manaClick?: boolean;
+  rawTap?: boolean;
+}
 
 // battlefieldClickIntent routes a left-click. Issue #329: "I cast
 // teferi and when I click on him to choose one of his abilities it
@@ -266,13 +277,35 @@ export type BattlefieldClickIntent = "abilities" | "tap" | "none";
 // planeswalker with none still has the manual loyalty +/− rows
 // there, which beats a meaningless tap. Tap and untap remain in that
 // same menu for the rare effect that wants them.
+//
+// #1438, Ian: "when you click on mana and it taps can you have it tap
+// for that mana and put it in the floating mana pool". A raw tap of a
+// Forest adds nothing, and that is exactly how #1296's reporter tapped
+// a land and then wondered where the mana was. So an UNTAPPED
+// permanent with a mana ability is clicked FOR mana — lands, rocks
+// and dorks alike, and utility lands that also make mana (Rogue's
+// Passage): making mana is what they are clicked for nearly every
+// time, and the utility ability stays on right-click. What keeps the
+// old behaviour:
+//   - a TAPPED permanent: the click untaps it, one click as before;
+//   - a permanent with no mana ability: click-to-tap as before;
+//   - Alt-click: a raw tap, for the sandbox cases that want one
+//     (the right-click menu has it too, as "Tap (no mana)");
+//   - a planeswalker: still its menu (#329).
+// Summoning sickness is NOT checked here. The activation goes out and
+// the server's refusal is shown; the client does not pre-empt it.
 export function battlefieldClickIntent(
   card: CardView,
   viewerID: string | null,
   isAdmin: boolean,
+  opts: BattlefieldClickOptions = {},
 ): BattlefieldClickIntent {
   if (!canOverride(card, viewerID, isAdmin)) return "none";
+  if (opts.rawTap) return "tap";
   if (isPlaneswalker(card)) return "abilities";
+  if (opts.manaClick && !card.tapped && (card.mana_abilities?.length ?? 0) > 0) {
+    return "mana";
+  }
   // #368, the same shape one rung down. Fabled Passage's only act is
   // "{T}, Sacrifice this land: search for a basic" — a CR 602
   // activated ability, not a mana ability — and left-clicking it
@@ -806,10 +839,14 @@ function loyaltyAbilityItems(card: CardView, view: GameView, viewerID: string | 
 
 function tapItems(card: CardView): MenuItem[] {
   const tapped = !!card.tapped;
+  // #1438: a left-click on a mana source now taps it FOR mana, so the
+  // plain tap here is the one that makes none — and says so.
+  const makesMana = (card.mana_abilities?.length ?? 0) > 0;
   return [
     {
       id: "tap",
-      label: "Tap",
+      label: makesMana ? "Tap (no mana)" : "Tap",
+      hint: makesMana ? "turn it sideways without adding mana" : undefined,
       disabled: tapped,
       action: { type: "tap", params: { instance_id: card.instance_id } },
     },

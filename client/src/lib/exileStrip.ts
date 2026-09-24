@@ -21,6 +21,7 @@
 // face-down card, so an opponent's foretold card cannot reach the
 // strip at all.
 
+import { manaSymbols } from "./manaSymbol";
 import { castableFaces } from "./faces";
 import type { CardView, CastPriceView, GameView } from "./protocol";
 import { grantedFace, grantedFaceIndex } from "./zoneBrowser.logic";
@@ -191,21 +192,14 @@ export interface ExileCostBadge {
   label: string;
 }
 
-/** manaSymbols splits a brace-notation cost into its symbols. */
-export function manaSymbols(cost: string): string[] {
-  return Array.from(cost.matchAll(/\{([^}]+)\}/g), (m) => m[1]);
-}
+// manaSymbols moved to manaSymbol.ts with the symbol component
+// (#1438); re-exported so this module's callers and tests keep their
+// import.
+export { manaSymbols };
 
-/**
- * symbolClass maps one mana symbol to the CSS class that colours its
- * pip — one of the five colours or colourless get their own swatch,
- * anything else (hybrid, X, generic numbers) falls back to a neutral
- * one. Shared by the strip and the zone browser's exile badge (#1406)
- * so a price tag looks the same wherever it appears.
- */
-export function symbolClass(s: string): string {
-  return /^[WUBRGC]$/.test(s) ? `sym-${s}` : "sym-generic";
-}
+// symbolClass (#1406) is gone: the strip and the zone browser's exile
+// badge both draw ManaSymbol now (#1438), which is what keeps a price
+// tag looking the same wherever it appears.
 
 function priceText(p: CastPriceView): string {
   const life = p.life ? ` + ${p.life} life` : "";
