@@ -273,6 +273,33 @@ func TestAnActivationNamesTheSourceItsCostSacrificed(t *testing.T) {
 	}
 }
 
+// #1404's "Exile this artifact:" cost moves the source off the
+// battlefield during the payment, exactly as a sacrifice cost does. The
+// stamp is read before the payment, so it names the permanent that paid
+// — whose record the read returns — not the card now in exile.
+func TestAnExileThisPermanentCostStillNamesThePermanent(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	me := g.Seats[0]
+	src := pushExileThisPermanent(g, me, exileThisPermanentAbility("{1}", false))
+	me.ManaPool.AddMana(ManaToken{Color: "C"})
+	want := refOf(t, g, src)
+
+	if err := g.ActivateCatalogAbility(me.ID, src, 0, ActivateAbilityParams{}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	if !g.Exile.Contains(src) {
+		t.Fatal("setup: the source is not in exile after paying its cost")
+	}
+	item := onlyAbilityOnStack(g)
+	if item == nil || item.SourceObject != want {
+		t.Fatalf("activated item = %+v, want SourceObject %+v (the permanent before the cost)", item, want)
+	}
+	if _, _, info, ok, gone := sourceRead(g, item); !ok || !info.Left || !gone {
+		t.Errorf("the exiled source reads %+v, %v, gone=%v; want the departed permanent's record", info, ok, gone)
+	}
+}
+
 // The manual announce and the sandbox trigger both stamp the object.
 func TestManualActivationAndAnnouncedTriggerNameTheSourceObject(t *testing.T) {
 	g := newActiveGame(t)
