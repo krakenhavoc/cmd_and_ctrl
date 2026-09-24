@@ -63,20 +63,16 @@ import "github.com/google/uuid"
 //     keyed on the DEFENDING player rather than on the attacker,
 //     consulted by the declaration verbs at CR 508.1a. Nothing about
 //     the five bits changed to make room for it.
-//   - "no more than one creature can attack you each combat"
+//   - "no more than two creatures can attack you each combat"
 //     (Crawlspace) and "no more than one creature can attack each
 //     combat and no more than one creature can block each combat"
 //     (Silent Arbiter) are COUNT restrictions over the whole
-//     declaration, not over one permanent. They are reachable from
-//     here without disturbing anything in this file: DeclareBlockers
-//     already receives a whole block declaration in one call and
-//     REFUSES an illegal COUNT before storing it (block_declaration.go,
-//     #750), and DeclareAttackers already receives the whole attacking
-//     set in one call, which is the batch a count rule needs. The
-//     block half is one more set check in
-//     checkBlockDeclarationLocked — BlockRule.Limit, which ADR 0045's
-//     addendum Decision 12 leaves unbuilt until Silent Arbiter ships
-//     — with this file's per-permanent bits left alone.
+//     declaration, not over one permanent, and they are SHIPPED
+//     without disturbing anything in this file (#1507): the block
+//     half is BlockRule.Limit, one more set check in
+//     checkBlockDeclarationLocked, and the attack half is
+//     game.AttackLimit (attack_limits.go), judged by both attack
+//     declaration verbs and the enumerator. ADR 0045 Decisions 43-45.
 //   - Goad's "can't attack you or a planeswalker you control" is
 //     CONDITIONAL on the other side of the pairing. It is not a
 //     property of one permanent, so it is not a bit: its home is

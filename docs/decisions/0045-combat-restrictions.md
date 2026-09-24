@@ -562,7 +562,8 @@ func (g *Game) blockerBoundsLocked(attacker *Card) (min, max int, src uuid.UUID)
   **not built in PR 4**. They land with Silent Arbiter, which also needs
   the attack-side count limit that Decision 18 leaves out. The validator
   in Decision 13 is written as a list of set checks, so the limit is one
-  more entry there.
+  more entry there. *(Built by [#1507](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1507):
+  [Decision 43](#decision-43-blockrulelimit-is-a-third-set-check-in-the-block-validator).)*
 
 #### 13. The stored declaration is always legal, and the menace close-out is deleted
 
@@ -753,7 +754,9 @@ never contains that string. The restriction is in `restrictions` as
   since `BlockingTarget` is a single ID.
 - Attack-side count limits (Crawlspace, Silent Arbiter's first line).
   `DeclareAttackers` already receives the set, and the same all-or-nothing
-  shape would work, but no card in this wave needs it.
+  shape would work, but no card in this wave needs it. *(Built by
+  [#1507](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1507):
+  [Decision 44](#decision-44-the-attack-side-twin-is-gameattacklimit-a-scope-and-a-number).)*
 - Creatures put onto the battlefield blocking (CR 509.4b) and "becomes
   blocked" by an effect.
 - Goad (§"What this deliberately does not express" still applies).
@@ -2764,3 +2767,183 @@ source; the legal-move enumerator never offers a refused block and
 turn-scoped rule binds for the turn, is swept at its end, and does not follow a
 creature that left and came back; a creature that loses its abilities loses
 its rule.
+
+---
+
+## Amendment (2026-09-24, [#1507](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1507)): combat-wide attack and block limits
+
+Builds what Decision 12 reserved (`BlockRule.Limit`) and what Decision 18 put
+out of scope (the attack-side count limit), together, because their first card
+needs both. Decisions 1-42 stand. Sprint S37 (combat correctness), tracker
+[#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880). ADR 0080 §8
+pointed here for the same two cards.
+
+### The rules
+
+- **CR 509.1b** lets a restriction bound the number of creatures that block.
+  Silent Arbiter's "No more than one creature can block each combat" bounds
+  the WHOLE combat rather than one attacker (Hungering Hydra's bound is per
+  attacker, and is `Count`, Decision 12).
+- **CR 508.1c** does the same for attacks: "No more than one creature can
+  attack each combat" (Silent Arbiter, Dueling Grounds), "No more than two
+  creatures can attack you each combat" (Crawlspace). The declaration as a
+  whole must obey it. No single creature is forbidden to attack.
+- A restriction is checked when attackers or blockers are declared, and only
+  then (§5). A limit that arrives afterwards unmakes nothing.
+
+### Decision 43: `BlockRule.Limit` is a third set check in the block validator
+
+```go
+// Limit returns the bound `blocker` counts toward, or 0 when this rule
+// does not count it.
+Limit func(g *Game, blocker, source *Card) int
+```
+
+- **Where it is judged.** `checkBlockDeclarationLocked` builds the
+  assignment the action would leave behind (`after`) and checks it after the
+  per-pair checks and the per-attacker bounds. The Limit check is the third
+  entry in that list of set checks (`blockLimitRefusalLocked`,
+  `game/block_rules.go`). It counts every blocker in the combat, whichever
+  attacker it blocks and whichever defender declared it.
+- **When it refuses.** A rule refuses only when it counts more blockers in
+  `after` than its bound **and** more than it counts in the assignment the
+  action starts from. The second half follows the same idea as the
+  "attackers the action does not touch are not re-judged" rule in the
+  per-attacker bounds. A Silent Arbiter flashed in after two blocks leaves
+  both blocks standing, and re-pointing one of them is not refused for a
+  count it does not raise.
+- **The reason** is `declaration_limit`. Decision 8 reserved the token, and
+  this is the first change to send it. `BlockRefusal.N` is the bound and
+  `Source` is the permanent that prints it. The refusal also carries a new
+  `SourceName`, because the limit is printed on a third card that the
+  player has to answer. The sentence is "No more than one creature can
+  block each combat (Silent Arbiter)." A rule's `Label`, when set, replaces
+  the clause.
+- **Several limits.** Each rule is judged on its own, so the tightest bound
+  wins: a Caverns of Despair beside a Silent Arbiter allows one blocker. All
+  the blockers one rule counts share one bound, the smallest any of them
+  reported.
+- **Multiplayer.** This engine stages each defender's declaration separately
+  (Decision 38). Under a combat-wide limit, the first defender to block uses
+  it up, and a later defender's block is refused. In the rules, all
+  defending players declare at once and have to agree. When declarations are
+  staged one at a time, first-come is the only order the engine can give.
+  The option generator runs every candidate through the validator
+  (Decision 14), so it stops offering the second defender anything, and the
+  #328 signal releases them.
+- **The constructor** is `effects.NoMoreThanNCanBlockEachCombat(n)`. It takes
+  no scope, unlike every other rule constructor (Decision 41), because the
+  printed line has none: it binds every creature at the table, including
+  those of the permanent's own controller.
+
+### Decision 44: the attack-side twin is `game.AttackLimit`, a scope and a number
+
+```go
+type AttackLimit struct {
+	Scope AttackLimitScope // AttackLimitAttackingYou (zero value) | AttackLimitEachCombat
+	Max   int
+}
+```
+
+It is not a `BlockRule`, for two reasons. An attack has no blocker to hand a
+rule. And the "you" family is scoped by the DEFENDING SEAT, which is the axis
+`AttackTax` already keys on (ADR 0080). So the struct follows `AttackTax`:
+
+- **The "you" is structural.** `AttackLimitAttackingYou` counts attacks on the
+  limit's controller, and "you" means the PLAYER. An attack on a planeswalker
+  they control does not count. This is ADR 0080's reading of Propaganda's
+  same word, and the reading of every printed card in the family.
+- **The zero value is the narrower scope**, so a card file that forgets to
+  choose limits less than printed, never more.
+- **Collection.** Limits come from `CardDef.AttackLimits` and reach the engine
+  through `CatalogAttackLimits`, keyed by `CatalogAbilityKey`. A permanent
+  that has lost all its abilities (CR 613.1f) therefore limits nothing.
+  `Spec.AttackLimits` is built with `NoMoreThanNCanAttackEachCombat(n)` /
+  `NoMoreThanNCanAttackYouEachCombat(n)`.
+- **The one check** is `attackLimitRefusalLocked` (`game/attack_limits.go`).
+  It applies the declaration on top of every creature attacking now and uses
+  the same raise-the-count rule as Decision 43. Re-pointing an attacker from
+  one opponent to a Crawlspace player counts against the Crawlspace player,
+  and moving one away is never refused.
+- **Both verbs enforce it,** before the CR 508.1a tax is priced, so a refused
+  declaration owes nothing:
+  - `DeclareAttackerWith` refuses the one creature. The verb is lax about
+    eligibility for the sandbox's hand-forcing, but a limit is not
+    eligibility. It is the card doing its whole job, the same reason "can't
+    attack" is not relaxed.
+  - `DeclareAttackersWith` refuses **all or nothing**. The verb skips
+    INELIGIBLE entries, but an over-full swing has none: each creature is
+    fine on its own. Which creatures stay home is the attacking player's
+    choice, as ADR 0080 has it for a tax the seat can only partly afford.
+- **The enumerator** asks the same function of every candidate
+  (attacker, target) move and withholds the refused ones (#544). Its attacks
+  are one creature at a time, so under Silent Arbiter a seat is offered
+  attacks until one creature is attacking, and then none. Under Crawlspace it
+  is offered attacks at that player until two creatures are attacking them,
+  and it keeps being offered attacks at everyone else.
+- **What counts as attacking.** Every creature with an `AttackingTarget`
+  counts, including one put onto the battlefield attacking, which CR 506.3c
+  says was never declared. That cannot matter to any declaration the rules
+  allow: such a creature can only arrive after the lock-in, when the rules'
+  declaration is already over. It can only refuse a sandbox LATE
+  declaration, which is the weaker direction.
+
+### Decision 45: the wire
+
+- A refused block is `illegal_block` / `declaration_limit`, as in
+  Decision 8, with `card_id` set to the first blocker in the declaration that
+  the limit counts.
+- A refused attack gets a new code, **`illegal_attack`**, with `reason`
+  **`attack_limit`** and `card_id` set to the first attacker in the refused
+  declaration that the limit counts. The sentence is built by the engine and
+  addressed to the reader: the protected seat reads "No more than two
+  creatures can attack you each combat (Crawlspace)", and anyone else reads
+  that seat's name. It is a new code rather than `bad_request` so that a
+  client can tell an attack the rules refuse from a malformed request. The
+  client needs no change: it shows any error frame's message.
+
+### Proof cards
+
+**Silent Arbiter**, **Dueling Grounds** (both halves, one), **Crawlspace**
+(attacking you, two) and **Judoon Enforcers** (attacking you, one, beside
+trample and suspend) ship `full`. **Caverns of Despair** (both halves, two)
+ships with the world-rule caveat Concordant Crossroads already declares.
+
+### Tests
+
+- `game/combat_limits_test.go` covers the engine with the hooks stubbed. The
+  second attacker is refused, with nothing staged. The bulk verb is all or
+  nothing. "Attacking you" is per defender in a four-seat game, re-pointing
+  onto the Crawlspace player is refused and re-pointing off it is allowed,
+  and planeswalker attacks are not counted. A late limit unmakes nothing, on
+  both sides. On the block side: a block is limited across attackers and
+  across defenders (the generator and the #328 signal agree), menace under a
+  one-blocker combat is unblockable, and the tightest bound wins.
+- `cards/effects/combat_limits_test.go` runs one test per proof card. Each
+  checks that the enumerator offers EXACTLY what the verb accepts, by trying
+  every candidate on a clone. It also covers a Silent Arbiter that has lost
+  its abilities and a Crawlspace that does not limit its own controller.
+- `aiseat/combat_limits_test.go` drives one combat move by move with the
+  heuristic and with a scripted policy that attacks and blocks with
+  everything, under Silent Arbiter (two seats) and Crawlspace (four seats).
+  The combat ends, every enumerated move is accepted, and the limits hold.
+- `ws/attack_limit_error_test.go` covers the `illegal_attack` frame and the
+  classifier. `ws/block_refusal_error_test.go` picks up `declaration_limit`
+  through `BlockReasons()`.
+
+### What this does NOT decide
+
+- **Conditional and per-player variants.** Mirri, Weatherlight Duelist
+  ("as long as Mirri is tapped, no more than one creature can attack you";
+  "each opponent can't block with more than one creature this combat") would
+  need a `While` gate on `AttackLimit` and a per-player group on
+  `BlockRule.Limit`. The Eternal Wanderer ("no more than one creature can
+  attack The Eternal Wanderer") would need a third `AttackLimitScope`. Each
+  is one field, and none of them is built without its card.
+- **Turn-scoped attack limits.** No printed card needs one, so there is no
+  `TurnScopedAttackLimits` registry.
+- **Reselection** (CR 508.7, `game/attack_reselect.go`) does not go through
+  the declaration verbs and does not consult the limits.
+- **The client's "attack with all"** under a limit is refused whole with the
+  sentence. It does not offer the tax picker's "choose attackers…" flow. See
+  the follow-up issue.

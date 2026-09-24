@@ -679,7 +679,7 @@ comments; a card can sit in two):
   **mana-production replacement** (2: Nyxbloom Ancient, Mana
   Reflection).
 - Singles worth naming: attack- and block-count restrictions (Silent
-  Arbiter, Crawlspace), a die roll over the seeded RNG (Ancient
+  Arbiter, Crawlspace — closed by #1507), a die roll over the seeded RNG (Ancient
   Copper Dragon, Ancient Gold Dragon) and a search replacement (Aven
   Mindcensor). The mill replacement (Bruvac) closed with #569.
 
