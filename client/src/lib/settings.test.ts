@@ -59,6 +59,7 @@ describe("settings", () => {
     expect(s.__version).toBe(d.__version);
     expect(s.audio.masterVolume).toBe(80);
     expect(s.display.cardSize).toBe("medium");
+    expect(s.display.stackStyle).toBe("compact");
     expect(s.gameplay.confirmExit).toBe(true);
   });
 
@@ -295,6 +296,52 @@ describe("settings", () => {
     expect(s.gameplay.bluffInstant).toBe(true);
     expect(s.gameplay.bluffMode).toBe("manual");
     expect(s.gameplay.bluffDelayMaxMs).toBe(6000);
+  });
+
+  // #1467. The stack stays where players know it: nobody's moves on
+  // upgrade, and the floating lanes are opt-in.
+  it("v13 → v14 seeds stackStyle as compact without disturbing stored choices", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({
+        __version: 13,
+        display: { tableLayout: "row", handLayout: "stacked" },
+        gameplay: { bluffInstant: true },
+      }),
+    );
+    const { settings, SETTINGS_VERSION } = await freshModule();
+    const s = get(settings);
+    expect(SETTINGS_VERSION).toBe(14);
+    expect(s.__version).toBe(14);
+    expect(s.display.stackStyle).toBe("compact");
+    expect(s.display.tableLayout).toBe("row");
+    expect(s.display.handLayout).toBe("stacked");
+    expect(s.gameplay.bluffInstant).toBe(true);
+  });
+
+  it("v14 keeps a chosen stack style across a load", async () => {
+    for (const style of ["fan", "spotlight", "ribbon", "compact"] as const) {
+      localStorage.setItem(
+        "cmdctrl.settings.v1",
+        JSON.stringify({ __version: 14, display: { stackStyle: style } }),
+      );
+      const { settings } = await freshModule();
+      expect(get(settings).display.stackStyle).toBe(style);
+    }
+  });
+
+  it("falls back to the compact stack for a style it does not know", async () => {
+    // A style that was tried and removed, or a hand-edited blob: the
+    // board must still draw a stack, and compact is the one that
+    // always exists.
+    for (const bad of ["carousel", 7, null]) {
+      localStorage.setItem(
+        "cmdctrl.settings.v1",
+        JSON.stringify({ __version: 14, display: { stackStyle: bad } }),
+      );
+      const { settings } = await freshModule();
+      expect(get(settings).display.stackStyle).toBe("compact");
+    }
   });
 
   it("falls back to defaults when stored blob is corrupt", async () => {

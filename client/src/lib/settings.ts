@@ -5,6 +5,7 @@ import { setMusicMuted, setMusicVolumeMultiplier } from "./music";
 import { setAnimationConfig } from "./animations";
 import { STEP_IDS, NO_PRIORITY_STEPS, hasOwnStop, type StepID } from "./turn";
 import { sanitizeOverrides } from "./shortcuts";
+import { isStackStyle, type StackStyle } from "./stackLane";
 
 // Settings is the client-wide preferences schema. Every toggle the
 // Settings panel surfaces maps to a field here. Persisted to
@@ -78,6 +79,15 @@ export interface Settings {
     // arrangement worth having. This setting only distinguishes the
     // 4-player table.
     tableLayout: "row" | "quadrant";
+    // #1467: how the stack is drawn. "compact" (the default) is the
+    // docked card in the top-left attention strip, as it has always
+    // been. The other three float a lane over the middle of the table
+    // while the stack or pending triggers are live — "fan" (cards with
+    // arrows to their targets), "spotlight" (the next item large, the
+    // queue beside it) and "ribbon" (a numbered row). The board grid
+    // never reflows for any of them. All four ship so they can be
+    // compared on a live table; see lib/stackLane.ts.
+    stackStyle: StackStyle;
     // How an opponent's board is drawn. "summary" (the default)
     // renders a dense read-out — life, untapped mana by colour,
     // creature pips carrying P/T — and expands that seat to a full
@@ -258,7 +268,7 @@ export interface Settings {
   };
 }
 
-export const SETTINGS_VERSION = 13;
+export const SETTINGS_VERSION = 14;
 const STORAGE_KEY = "cmdctrl.settings.v1";
 const LEGACY_MUTED_KEY = "cmdctrl.muted";
 
@@ -327,6 +337,9 @@ export function defaultSettings(): Settings {
       cardSize: "medium",
       handLayout: "fan",
       tableLayout: "quadrant",
+      // v14 default: compact — the docked card players already know,
+      // until the owner picks one of the floating lanes (#1467).
+      stackStyle: "compact",
       // v11 default: summary. The full-card rendering clips at small
       // panel sizes and has no headroom left to shrink into (#956),
       // so the dense read-out is the one that works at every table
@@ -568,6 +581,17 @@ function migrate(raw: unknown): Settings {
   // with both bluffs off nothing behaves differently. The delay
   // bounds are clamped where they are read (bluff.ts), so a
   // hand-edited blob cannot stall the table.
+  //
+  // v13 → v14 (#1467): display.stackStyle. The shallow merge fills it
+  // from defaults ("compact"), so nobody's stack moves on upgrade —
+  // the floating lanes are opt-in. Unlike the enums before it, the
+  // value is also checked: this one picks which component the board
+  // mounts, and an unknown string (a style that was tried and
+  // removed, a hand-edited blob) must fall back to the docked card
+  // rather than to no stack at all.
+  if (!isStackStyle(merged.display.stackStyle)) {
+    merged.display.stackStyle = "compact";
+  }
   merged.shortcuts = {
     enabled: merged.shortcuts?.enabled !== false,
     bindings: sanitizeOverrides(merged.shortcuts?.bindings),
