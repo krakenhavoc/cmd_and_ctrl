@@ -1024,11 +1024,14 @@ response to its enter trigger and then dies:
   last-known one. It now reads the same `lastKnownPermanents` record,
   by the item's `SourceObject`.
   [#1429](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1429).
-- **Controller and type matchers.** Four catalog damage replacements
-  that test only the source's controller or type (Angrath's
-  Marauders, the batch 28 helper, Gratuitous Violence, Inquisitor's
-  Flail) still look the card up. So do `EventDealDamage` triggers,
-  whose event carries no snapshot.
+- ~~**Controller and type matchers.** Four catalog damage
+  replacements that test only the source's controller or type
+  (Angrath's Marauders, the batch 28 helper, Gratuitous Violence,
+  Inquisitor's Flail) still look the card up.~~ **The four
+  replacements are closed by #1430**, Decision 13 below.
+  `EventDealDamage` **triggers are still not covered** — their event
+  carries no snapshot at all, so the fix needs a `SourceLKI` on
+  `game.Event` first.
   [#1430](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1430).
 - **Combat and the manual mark.** These keep `damageSourceLKILocked`.
   A combat source is on the battlefield or has a CR 510.1c frame, and
@@ -1114,3 +1117,94 @@ The "Still not covered" bullet under the first 2026-09-24 amendment that
 says infect, wither and toxic "join the same reader when PR 2 wires
 them" is done: they read the departed record through
 `damageSourceTraitsOfAbilities`.
+
+## Amendment 2026-09-24 (follow-up 2) — the controller and type matchers read the same record (#1430) · Accepted · S38
+
+Issue [#1430](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1430),
+the second "Still not covered" bullet above. Decision 12 landed
+`effects.damageSourceCharacteristics` for the catalog's THREE
+COLOUR-testing damage doublers (Torbran, Ojer Axonil, Mechanized
+Warfare), but four more catalog damage replacements test only the
+source's controller or its type, and still called
+`g.LookupCardForEffect(ev.DamageSource)` directly at apply time
+instead of going through the helper:
+
+- `damageSourceControlledBy` (Angrath's Marauders and three siblings
+  — Solphim, Mayhem Dominus; Twinflame Tyrant; the batch 07 triple
+  doubler — that all share it), `angraths_marauders.go`.
+- `b28DamageSourceControlledBy` (Fated Firepower; also read by
+  Uncivil Unrest's counter-gated doubler, though that caller's own
+  `onBattlefield` check already excludes a departed source),
+  `batch28_helpers.go`.
+- Gratuitous Violence's own controller-and-type check,
+  `gratuitous_violence.go`.
+- Inquisitor's Flail's "another creature" dealer-type check,
+  `inquisitors_flail.go`.
+
+A direct current-zone lookup at apply time is wrong for the same
+reason Decision 12 fixed the colour readers: a source whose
+controller or type changed on the way out of the battlefield is a
+new object in its new zone (CR 400.7), and CR 608.2h says the
+question is asked about the object as it last existed. A stolen
+creature's "when this dies" damage is still attributed to the player
+who controlled it when it died, even though the graveyard card goes
+home to its owner the moment it leaves the battlefield. An animated
+permanent that dealt damage as a creature is still a creature's
+damage even though the animation does not follow the card to its new
+zone.
+
+### Decision 13. The controller and type matchers move onto the same helper
+
+Each of the four sites above now reads
+`effects.damageSourceCharacteristics(ev, g)` — the same `ev.SourceLKI`
+read Decision 12 already wired up — for the field it tests
+(`Characteristic.Controller`, or `Characteristic.Types` via the
+existing `hasFold` case-insensitive membership check), rather than a
+fresh lookup. `b28DamageSourceControlledBy` keeps its
+`g.LookupCardForEffect` lookup too, unchanged in shape, because two of
+its three call sites still need the live `game.Card` for fields the
+snapshot does not carry (instance ID, counters) — but only ever read
+it after also confirming the source is presently on the battlefield,
+so a departed source's wrong-zone card never reaches them under the
+wrong identity.
+
+No engine change: every fix is inside a catalog `AppliesTo` closure in
+`server/internal/cards/effects`.
+
+### Cards
+
+No catalog caveat named this gap, the same as Decision 12. The proof
+is a direct test of each registered `Spec`'s `AppliesTo` closure
+(`server/internal/cards/effects/departed_source_matcher_test.go`),
+the same technique `TestOjerAxonilLeavesCombatDamageAlone` already
+uses: a hand-built `ReplacementEvent` whose `DamageSource` names a
+REAL, contradicting current-zone card (an opponent's, or a
+noncreature's) and whose `SourceLKI` names the departed identity the
+source actually had when it dealt the damage.
+
+- Angrath's Marauders and Fated Firepower: a source I controlled when
+  it dealt the damage still triggers the doubler / the fire counters,
+  even though its current-zone card belongs to the opponent.
+- Gratuitous Violence: both halves of its test (creature, and mine)
+  are read from the snapshot independently — a source that was a
+  creature I controlled doubles; a source that was mine but NOT a
+  creature, or was a creature but the opponent's, does not.
+- Inquisitor's Flail: a dealer that was a creature when it dealt
+  combat damage to the equipped creature doubles the damage coming
+  back, even though its current-zone card is a plain artifact.
+
+Every test also drives the live-source fallback path (no `SourceLKI`,
+a real live card at `DamageSource`) to confirm the ordinary case is
+unchanged.
+
+### Still not covered
+
+- **`EventDealDamage` triggers.** Unchanged from the bullet above:
+  `game.Event` (as opposed to `game.ReplacementEvent`) carries no
+  source snapshot, so `combatDamageToPlayerBy`, `damageToPlayerBy` and
+  every trigger condition that reads `g.LookupCardForEffect(ev.Source)`
+  (`helpers.go`, `triggers_common.go`, several batch helpers) still
+  read the source's current zone. Needs a `SourceLKI` on `game.Event`
+  first, which is engine work, not a catalog fix.
+- **Combat and the manual mark**, unchanged from Decision 12's note:
+  both keep `damageSourceLKILocked`, a current-zone read, by design.
