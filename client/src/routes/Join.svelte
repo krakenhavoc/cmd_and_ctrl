@@ -11,6 +11,7 @@
   import { navigate } from "../lib/router";
   import { LobbyApiError, session } from "../lib/session";
   import { signedInUserID } from "../lib/myGames";
+  import { GUEST_RETURN_ADVICE, SIGNED_IN_RETURN_LINK } from "../lib/joinRecovery";
   import { seatColor } from "../lib/colors";
   import Icon from "../lib/components/Icon.svelte";
   import SiteHeader from "../lib/components/SiteHeader.svelte";
@@ -93,6 +94,13 @@
     if (s.principal.role !== "identified" && !signedInUserID(s)) return null;
     return s.principal.name || "your Discord account";
   });
+
+  // signedInReturning is who the tableStarted notice below points a
+  // player at (#1475, ADR 0044 decision 4): a signed-in identity (or
+  // a player session minted from one) can rejoin through My games in
+  // one click, so it gets that link instead of the guest's "ask your
+  // host" advice.
+  const signedInReturning = $derived(signedInUserID($session) !== null);
 
   async function joinSignedIn(): Promise<void> {
     busy = true;
@@ -204,6 +212,34 @@
           <Icon name="x" size={14} />
           <span>invite token missing from URL — ask your host to resend the link.</span>
         </p>
+      {:else if tableStarted}
+        <!--
+          #1475 (ADR 0044 decision 4): a table that has already
+          started is unreachable through JoinWithIdentity whether or
+          not it's also full (lobby.ErrGameStarted refuses either
+          way), so this branch is checked ahead of tableFull and
+          covers both. The player most likely to hit this is the one
+          who cleared their storage or switched devices and reopened
+          their OWN old invite link — #520 shipped two real ways back
+          for them, and neither is "ask your host for a spectator
+          link".
+        -->
+        <p class="notice err" role="alert">
+          <Icon name="x" size={14} />
+          <span
+            ><strong>This table has already started.</strong> Seats can't be claimed once the game is
+            underway.</span
+          >
+        </p>
+        {#if signedInReturning}
+          <p class="help">
+            Already had a seat here? Head to
+            <a href={SIGNED_IN_RETURN_LINK.href}>{SIGNED_IN_RETURN_LINK.label}</a> — rejoining is one
+            click.
+          </p>
+        {:else}
+          <p class="help">{GUEST_RETURN_ADVICE}</p>
+        {/if}
       {:else if tableFull}
         <p class="notice err" role="alert">
           <Icon name="x" size={14} />
@@ -220,15 +256,6 @@
             <Icon name="untap" size={14} /> Check again
           </button>
         </div>
-      {:else if tableStarted}
-        <p class="notice err" role="alert">
-          <Icon name="x" size={14} />
-          <span
-            ><strong>This table has already started.</strong> Seats can't be claimed once the game is
-            underway.</span
-          >
-        </p>
-        <p class="help">Ask your host for a spectator link to watch.</p>
       {:else}
         {#if signedInAs}
           <button type="button" class="primary lg" disabled={busy} onclick={joinSignedIn}>

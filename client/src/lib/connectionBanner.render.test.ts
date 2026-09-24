@@ -65,6 +65,15 @@ describe("the connection banner", () => {
     expect(banner(container)?.classList.contains("tone-lost")).toBe(true);
   });
 
+  // #1475: the dead-session state, its own tone.
+  it("appears when the session has ended", () => {
+    const { container } = mount({ status: "session_ended" });
+    const el = banner(container);
+    expect(el).not.toBeNull();
+    expect(el?.classList.contains("tone-ended")).toBe(true);
+    expect(el?.textContent).toContain("session ended");
+  });
+
   // The whole point: it goes away on its own when the table comes
   // back, without anything having to blank the board to prove it.
   it("clears when the connection returns", () => {
@@ -88,6 +97,25 @@ describe("the retry control", () => {
   it("is omitted when no handler was given", () => {
     const { container } = mount({ status: "disconnected" });
     expect(container.querySelector("button.retry")).toBeNull();
+  });
+
+  // #1475: a dead session cannot be fixed by dialling harder, so this
+  // renders a real link instead of the retry button — even when a
+  // handler was passed, the way Game.svelte always passes one.
+  it("is replaced by a Login link for a guest whose session ended", () => {
+    const onRetry = vi.fn();
+    const { container } = mount({ status: "session_ended", onRetry });
+    expect(container.querySelector("button.retry")).toBeNull();
+    const link = container.querySelector("a.retry");
+    expect(link).not.toBeNull();
+    expect(link?.getAttribute("href")).toBe("#/login");
+  });
+
+  it("links a signed-in identity to My games instead", () => {
+    const { container } = mount({ status: "session_ended", signedIn: true });
+    const link = container.querySelector("a.retry");
+    expect(link?.getAttribute("href")).toBe("#/my-games");
+    expect(link?.textContent).toContain("My games");
   });
 });
 

@@ -26,6 +26,7 @@ const ALL_STATUSES: ConnectionStatus[] = [
   "connected",
   "reconnecting",
   "disconnected",
+  "session_ended",
 ];
 
 describe("boardIsStale", () => {
@@ -46,6 +47,12 @@ describe("boardIsStale", () => {
   // banner here would fire on every normal page load.
   it("is false on the first connect, which has nothing to be stale about", () => {
     expect(boardIsStale("connecting")).toBe(false);
+  });
+
+  // #1475: a dead session is the one stale state that never clears
+  // itself, but it is still stale — the board on screen is not live.
+  it("is true once the session has ended", () => {
+    expect(boardIsStale("session_ended")).toBe(true);
   });
 });
 
@@ -106,9 +113,34 @@ describe("connectionBanner", () => {
   });
 
   it("tells the player what they are looking at in every stale state", () => {
-    for (const status of ["reconnecting", "disconnected"] as const) {
+    for (const status of ["reconnecting", "disconnected", "session_ended"] as const) {
       expect(connectionBanner(status, 1)?.detail).toContain(STALE_BOARD_SENTENCE);
     }
+  });
+});
+
+// #1475: the terminal state a dead session lands in — no retry button,
+// because dialling harder cannot fix a revoked or expired credential.
+describe("connectionBanner — session_ended", () => {
+  it("says the session ended and offers no retry", () => {
+    const banner = connectionBanner("session_ended", 0);
+    expect(banner?.tone).toBe("ended");
+    expect(banner?.headline).toContain("session ended");
+    expect(banner?.retryLabel).toBeFalsy();
+  });
+
+  it("links a guest to Login", () => {
+    const banner = connectionBanner("session_ended", 0, false);
+    expect(banner?.link).toEqual({ href: "#/login", label: "Sign in" });
+  });
+
+  it("links a signed-in identity to My games instead", () => {
+    const banner = connectionBanner("session_ended", 0, true);
+    expect(banner?.link).toEqual({ href: "#/my-games", label: "My games" });
+  });
+
+  it("defaults to the guest link when signedIn is omitted", () => {
+    expect(connectionBanner("session_ended", 0)?.link?.href).toBe("#/login");
   });
 });
 
@@ -144,7 +176,7 @@ describe("connectionAnnouncement", () => {
     expect(connectionAnnouncement("connected", 0)).toContain("Reconnected");
   });
 
-  it("distinguishes all four states from each other", () => {
+  it("distinguishes all five states from each other", () => {
     const lines = ALL_STATUSES.map((s) => connectionAnnouncement(s, 1));
     expect(new Set(lines).size).toBe(ALL_STATUSES.length);
   });
