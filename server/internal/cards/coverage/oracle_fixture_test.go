@@ -110,6 +110,53 @@ registered ability wrong.`, OracleFixturePath, len(diffs), strings.Join(diffs, "
 	}
 }
 
+// TestOracleFixtureCoversRegistry is the cheap half of
+// TestOracleFixtureIsCurrent: it runs in ordinary PR CI, with no
+// Scryfall dump, and fails when a registered catalog oracle ID has no
+// row in the fixture at all. It can't tell a STALE row from a fresh
+// one — that needs the dump, which is what TestOracleFixtureIsCurrent
+// is for — but a MISSING row is visible from the registry alone, and
+// a missing row is exactly the shape #1477 and #1496 both were: a
+// card merged, nobody regenerated the fixture, and the gap sat
+// invisible until the nightly dump run caught it.
+//
+// Its notion of "should have a row" mirrors buildOracleFixture's
+// selection exactly (dedup by base oracle ID via BaseOracleID, one
+// row expected per distinct base — the generator writes a row for
+// every catalogued card, not only ones with activated or loyalty
+// abilities), so this test's pass/fail agrees with what -update-oracle
+// would write.
+func TestOracleFixtureCoversRegistry(t *testing.T) {
+	have, err := LoadOracleFixture(OracleFixturePath)
+	if err != nil {
+		t.Fatalf("%v — regenerate it with -update-oracle (needs the dump; see oracle_fixture_test.go)", err)
+	}
+	seen := map[string]bool{}
+	var missing []string
+	for _, s := range effects.All() {
+		base, _ := BaseOracleID(s.OracleID)
+		if seen[base] {
+			continue
+		}
+		seen[base] = true
+		if _, ok := have[base]; !ok {
+			missing = append(missing, fmt.Sprintf("%s (%s)", s.Name, base))
+		}
+	}
+	if len(missing) == 0 {
+		return
+	}
+	sort.Strings(missing)
+	t.Errorf(`%d catalogued oracle IDs have no row in %s:
+  %s
+
+Regenerate it — never edit it by hand:
+
+  CMDCTRL_SCRYFALL_DUMP=../data/scryfall/default-cards.json \
+    go test ./internal/cards/coverage/ -run TestOracleFixtureIsCurrent -update-oracle`,
+		len(missing), OracleFixturePath, strings.Join(missing, "\n  "))
+}
+
 // buildOracleFixture reads every catalogued base oracle ID out of the
 // index. Placeholder printings (art series, "Card" front cards,
 // AGENTS.md §7 step 1) never win cards.Index's by-oracle join, and a

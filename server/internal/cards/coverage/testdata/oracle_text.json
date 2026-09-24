@@ -1102,6 +1102,7 @@
 "75f5d372-4ff9-430c-8302-72472439e0d2": {"name":"Blood Money","text":"Destroy all creatures. For each nontoken creature destroyed this way, you create a tapped Treasure token."},
 "761cb262-f83b-4a99-9345-b773182a7671": {"name":"Bountiful Promenade","text":"This land enters tapped unless you have two or more opponents.\n{T}: Add {G} or {W}."},
 "761ee6f9-b0fa-43c9-8d1f-9591ea18e52d": {"name":"Necroblossom Snarl","text":"As this land enters, you may reveal a Swamp or Forest card from your hand. If you don't, this land enters tapped.\n{T}: Add {B} or {G}."},
+"764f6412-c4ff-4eec-9a9d-870661f97f8b": {"name":"Fblthp, Lost on the Range","text":"Ward {2}\nYou may look at the top card of your library any time.\nThe top card of your library has plot. The plot cost is equal to its mana cost.\nYou may plot nonland cards from the top of your library."},
 "7652f328-e142-494b-a869-772ced10c26a": {"name":"Sulfuric Vortex","text":"At the beginning of each player's upkeep, this enchantment deals 2 damage to that player.\nIf a player would gain life, that player gains no life instead."},
 "7663ac7c-1de3-4250-b96a-fae9dbd66a27": {"name":"Memnite"},
 "76678885-3674-443d-b9a2-2a460cf6aac0": {"name":"Panharmonicon","text":"If an artifact or creature entering causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time."},
