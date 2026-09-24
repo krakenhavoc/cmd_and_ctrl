@@ -194,10 +194,11 @@ func TestB40CyclingLandsEnterTappedAndTapForTheirColour(t *testing.T) {
 		if got := poolColors(me); len(got) != 1 || got[0] != row.colour {
 			t.Errorf("%s: tapped for {%s}: pool %v", row.name, row.colour, got)
 		}
-		// The caveat is declared, not silently dropped.
+		// #1412: cycling is real (#660 shipped it), so the card ships
+		// complete rather than caveated.
 		spec, _ := Lookup(row.oracle)
-		if spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
-			t.Errorf("%s ships with the cycling caveat declared", row.name)
+		if spec.Completeness != CompletenessFull {
+			t.Errorf("%s: completeness %v, want CompletenessFull now that cycling is registered", row.name, spec.Completeness)
 		}
 	}
 }
@@ -938,5 +939,97 @@ func b40TapForMana(t *testing.T, g *game.Game, controller, card uuid.UUID, idx i
 	}
 	if color != "" {
 		b10ResolveAllManaPicks(t, g, controller, color)
+	}
+}
+
+// --- #1412: cycling ---------------------------------------------------
+
+// Polluted Mire and Remote Isle: cycling {2} from hand discards the
+// land and draws a card, and is refused without the mana to pay it.
+func TestB40CyclingLandsCycleForACard(t *testing.T) {
+	for _, row := range []struct{ name, oracle string }{
+		{"Polluted Mire", b40PollutedMireOracle},
+		{"Remote Isle", b40RemoteIsleOracle},
+	} {
+		g := newCatalogGame(t)
+		me := g.Seats[g.Turn.ActiveSeat]
+
+		refused := pushCatalogHandCard(me, row.name, "Land", row.oracle)
+		if err := g.ActivateCatalogAbility(me.ID, refused, 0, game.ActivateAbilityParams{Strict: true}); err == nil {
+			t.Fatalf("%s: {2} must be paid to cycle", row.name)
+		}
+		if !me.Hand.Contains(refused) {
+			t.Errorf("%s: discarded despite the unpaid cost", row.name)
+		}
+		g.WithWriteLock(func() { me.Hand.Cards = nil })
+
+		id, _ := cycleFromHand(t, g, row.name, "Land", row.oracle, "{C}{C}")
+		if !me.Graveyard.Contains(id) {
+			t.Fatalf("%s: the cycled land is not in the graveyard", row.name)
+		}
+		before := len(me.Hand.Cards)
+		passPriorityAroundTable(t, g)
+		if got := len(me.Hand.Cards); got != before+1 {
+			t.Errorf("%s: hand %d -> %d, want the cycling draw", row.name, before, got)
+		}
+	}
+}
+
+// Oliphaunt: mountaincycling {1} discards it and fetches a Mountain
+// card (any land with the Mountain type, not only a basic one),
+// reveals it and shuffles; refused without the mana.
+func TestB40OliphauntMountaincyclesForAMountain(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+
+	refused := pushCatalogHandCard(me, "Oliphaunt", "Creature — Elephant", b40OliphauntOracle)
+	if err := g.ActivateCatalogAbility(me.ID, refused, 0, game.ActivateAbilityParams{Strict: true}); err == nil {
+		t.Fatal("{1} must be paid to mountaincycle")
+	}
+	if !me.Hand.Contains(refused) {
+		t.Error("discarded despite the unpaid cost")
+	}
+	g.WithWriteLock(func() { me.Hand.Cards = nil })
+
+	ids := seedSearchLibrary(me,
+		searchTestLand("Mountain", "Basic Land — Mountain"),
+		searchTestLand("Rugged Prairie", "Land — Mountain Plains"),
+		searchTestLand("Island", "Basic Land — Island"),
+		game.Card{Name: "Bear", TypeLine: "Creature — Bear"},
+	)
+	mountain, dual := ids[0], ids[1]
+
+	id, _ := cycleFromHand(t, g, "Oliphaunt", "Creature — Elephant", b40OliphauntOracle, "{C}")
+	if !me.Graveyard.Contains(id) {
+		t.Fatal("the mountaincycled Oliphaunt is not in the graveyard")
+	}
+	handBefore := len(me.Hand.Cards)
+	libraryBefore := len(me.Library.Cards)
+	passPriorityAroundTable(t, g)
+
+	c := searchChoiceFor(g, me.ID)
+	if c == nil {
+		t.Fatal("no search prompt after mountaincycling")
+	}
+	if len(c.SearchCards) != 2 {
+		t.Fatalf("search offers %d cards, want the two Mountain-typed lands %v %v", len(c.SearchCards), mountain, dual)
+	}
+	for _, got := range c.SearchCards {
+		if got != mountain && got != dual {
+			t.Errorf("search offers %v, which is not a Mountain card", got)
+		}
+	}
+	if err := g.ResolveSearchLibrary(c.ID, me.ID, []uuid.UUID{dual}); err != nil {
+		t.Fatalf("ResolveSearchLibrary: %v", err)
+	}
+	if got := len(me.Hand.Cards); got != handBefore+1 {
+		t.Errorf("hand %d -> %d, want the fetched Mountain", handBefore, got)
+	}
+	if !me.Hand.Contains(dual) {
+		t.Error("the fetched land did not reach the hand")
+	}
+	// "then shuffle" — CR 702.29e. One card left the library.
+	if got := len(me.Library.Cards); got != libraryBefore-1 {
+		t.Errorf("library %d -> %d, want one card taken", libraryBefore, got)
 	}
 }
