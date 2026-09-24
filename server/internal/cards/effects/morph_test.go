@@ -59,7 +59,7 @@ func TestMorphDeclarationsAreWired(t *testing.T) {
 				t.Errorf("%s face-up cost = %q, want the printed one %q", tc.name, ac.FaceDown.FaceUpCost, tc.faceUp)
 			}
 			if ac.FaceDown.FaceUpCounter != tc.counter {
-				t.Errorf("%s megamorph counter = %v, want %v (CR 702.109b)", tc.name, ac.FaceDown.FaceUpCounter, tc.counter)
+				t.Errorf("%s megamorph counter = %v, want %v (CR 702.37b)", tc.name, ac.FaceDown.FaceUpCounter, tc.counter)
 			}
 		})
 	}
@@ -126,7 +126,7 @@ func TestAerieBowmastersTurnsUpWithACounter(t *testing.T) {
 	}
 	up := findCardAnywhere(t, g, id)
 	if n := up.Counters["+1/+1"]; n != 1 {
-		t.Errorf("+1/+1 counters = %d, want 1 (CR 702.109b)", n)
+		t.Errorf("+1/+1 counters = %d, want 1 (CR 702.37b)", n)
 	}
 	if !game.HasKeyword(&up, "reach") {
 		t.Error("reach did not come back with the card")

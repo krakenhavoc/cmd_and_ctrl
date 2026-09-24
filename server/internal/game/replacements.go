@@ -58,7 +58,7 @@ import (
 //	"damage"       — RepEventDamage  — DamageSource, DamageTarget, DamageAmount, IsCombatDamage
 //	"create_tokens"— RepEventCreateTokens — TokenController, TokenGroups, TokenAttacking (CR 701.7b)
 //	"keyword_action"— RepEventKeywordAction — KeywordAction, KeywordActionCount (CR 701.22 / 701.25 / 701.34)
-//	"mill"         — RepEventMill    — MillPlayer, MillCount (CR 701.13a)
+//	"mill"         — RepEventMill    — MillPlayer, MillCount (CR 701.17a)
 //	"step"         — RepEventStepTransition — StepTransitionStep, StepTransitionSeat
 type ReplacementEventKind string
 
@@ -115,7 +115,7 @@ const (
 	// written on the KeywordAction constants.
 	RepEventKeywordAction ReplacementEventKind = "keyword_action"
 
-	// RepEventMill is one "mill N cards" INSTRUCTION (CR 701.13a),
+	// RepEventMill is one "mill N cards" INSTRUCTION (CR 701.17a),
 	// opened once per instruction before any card moves — the third
 	// member of the count-carrying family, after RepEventCreateTokens
 	// and RepEventKeywordAction, and opened for the same reason: "if an
@@ -129,7 +129,7 @@ const (
 	// a milled commander is offered the command zone (CR 903.9). What
 	// had no seam was the amount. See #569 and mill.go.
 	//
-	// Opened only for a real mill: a graveyard destination (CR 701.13a
+	// Opened only for a real mill: a graveyard destination (CR 701.17a
 	// defines the keyword action by where the cards go, so "exile the
 	// top N cards of your library" is not a mill and opens no window)
 	// and a positive count (there is nothing to replace about milling
@@ -393,7 +393,7 @@ type ReplacementEvent struct {
 	// destruction ignores regeneration shields (CR 701.19c).
 	//
 	// It gates the built-in's AppliesTo rather than being consumed
-	// inside its Replace, because CR 701.19d leaves an ignored shield
+	// inside its Replace, because CR 701.19c leaves an ignored shield
 	// UNUSED — a creature with a shield that Damnation kills would
 	// still have had that shield if something had saved it. Only
 	// meaningful alongside Destruction.
@@ -723,7 +723,7 @@ type ReplacementEvent struct {
 	//
 	// It is the number the instruction ASKED for, not what the library
 	// can supply. A player told to mill more cards than they have mills
-	// as many as possible (CR 701.13b) and the clamp happens in
+	// as many as possible (CR 701.17b) and the clamp happens in
 	// millPlanLocked, after this window settles — so a Bruvac doubling
 	// a mill of twenty against a library of twelve doubles twenty,
 	// which is what the card says and is observable through any
@@ -2065,7 +2065,7 @@ func eventKindMatches(watches []EventKind, kind ReplacementEventKind) bool {
 		// like EventStepTransition rather than a logged event.
 		want = EventKeywordAction
 	case RepEventMill:
-		// CR 701.13a. EventMill is the post-event twin and it fires per
+		// CR 701.17a. EventMill is the post-event twin and it fires per
 		// CARD, after the move, while this window is one per
 		// INSTRUCTION and opens before any card has left the library.
 		// Reusing the key rather than minting a sentinel is what

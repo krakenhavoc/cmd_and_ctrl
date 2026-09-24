@@ -18,8 +18,9 @@ import (
 //	CR 715.3d  an Adventure spell that RESOLVES is exiled
 //	CR 715.4   its owner may cast the creature — and only the
 //	           creature — from exile, for as long as it stays
-//	CR 715.3e  countered or fizzled, it is an ordinary card in an
-//	           ordinary graveyard and there is no grant
+//	(715.3d's "instead of") countered or fizzled, it is an ordinary
+//	           card in an ordinary graveyard and there is no grant —
+//	           CR 715.3d only redirects a spell that resolves
 //	CR 400.7   casting it out of exile ends the grant, because the
 //	           card that reaches the stack is a new object
 
@@ -236,10 +237,10 @@ func TestTheExileGrantOpensTheCreatureAndNothingElse(t *testing.T) {
 	}
 }
 
-// TestCounteredAdventureGoesToTheGraveyard is CR 715.3e. Only a
-// RESOLVED Adventure spell is exiled; one answered on the stack is an
-// ordinary card going to an ordinary graveyard, and no grant exists to
-// let its controller try again.
+// TestCounteredAdventureGoesToTheGraveyard is the complement of CR
+// 715.3d: only a RESOLVED Adventure spell is exiled; one answered on
+// the stack is an ordinary card going to an ordinary graveyard, and
+// no grant exists to let its controller try again.
 func TestCounteredAdventureGoesToTheGraveyard(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
@@ -289,9 +290,10 @@ func TestCastingTheCreatureHalfFromHandIsUnchanged(t *testing.T) {
 	}
 }
 
-// TestAFizzledAdventureGoesToTheGraveyard is CR 715.3e's other half,
-// and the reason the leg is gated on `resolved` rather than on the
-// layout alone. A spell countered by game rules (CR 608.2b) never
+// TestAFizzledAdventureGoesToTheGraveyard is the other half of CR
+// 715.3d's complement, and the reason the leg is gated on `resolved`
+// rather than on the layout alone. A spell countered by game rules
+// (CR 608.2b) never
 // finishes resolving, so nothing replaced "put it into its owner's
 // graveyard" and there is nothing to cast from exile later.
 //
@@ -330,7 +332,7 @@ func TestAFizzledAdventureGoesToTheGraveyard(t *testing.T) {
 // TestBuybackBeatsTheAdventureExile pins the precedence the two rules
 // meet at, now that they decide in one switch.
 //
-// Both CR 702.27b and CR 715.3d replace the same event — "put it into
+// Both CR 702.27a and CR 715.3d replace the same event — "put it into
 // its owner's graveyard as it resolves" — so CR 616.1 would hand the
 // choice to the spell's controller. No printed card has both (an
 // adventure card prints no buyback), so this fixture is hypothetical;

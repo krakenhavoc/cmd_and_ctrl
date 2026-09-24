@@ -1858,7 +1858,7 @@ func affectedPlayerForEvent(ev *ReplacementEvent, applicable []activeReplacement
 		// ordering prompt to the Primal Vigor player.
 		return ev.TokenController
 	case RepEventMill:
-		// #569. CR 701.13a: the player who mills is the one whose
+		// #569. CR 701.17a: the player who mills is the one whose
 		// library is being read, and they are the affected player
 		// whoever controls the replacements. Bruvac the Grandiloquent
 		// and The Water Crystal both replace an OPPONENT's mill, so
@@ -2344,7 +2344,7 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		// Answering a prompt is an action boundary, like every other
 		// Resolve* handler, so the sweep the effect-time helpers
 		// deliberately skip happens here. Running a library out is NOT
-		// a loss (CR 701.13b, #767), but the cards that landed can be —
+		// a loss (CR 701.17b, #767), but the cards that landed can be —
 		// a milled Aura loses its host and a mill payoff's trigger has
 		// to be put on the stack against a swept board.
 		g.runStateChecksLocked()

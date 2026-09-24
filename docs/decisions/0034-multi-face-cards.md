@@ -883,7 +883,8 @@ the caller's `want`. The wire moved with it, `exile_play.face` →
 **Where the reroute went, and where it did not.** §4 pointed at
 `routeStackCardToGraveyardLocked`. It is not there: that helper also
 carries a spell that fizzled (CR 608.2b) and the defensive no-meta
-path, and both are CR 715.3e cards that must reach a graveyard. The
+path, and both are cards CR 715.3d's "instead of" does not redirect,
+so both must reach a graveyard. The
 branch is on the resolution path, one call above it, in
 `game/adventure.go`.
 

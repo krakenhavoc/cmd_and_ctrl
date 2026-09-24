@@ -645,7 +645,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// the card moves: CR 406.3a turns a foretold card face up as it is
 	// cast, which ADR 0069 decision 5 makes MoveCard's business.
 	foretold := CardIsForetold(card)
-	// CR 702.62e (#659): a permanent cast from a suspended card has
+	// CR 702.62a (#659): a permanent cast from a suspended card has
 	// haste. It is the PERMISSION that says so, not the card, so it is
 	// read here where the permission is consumed and registered
 	// against the object the cast produces. See
@@ -1336,7 +1336,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		targetSpec: spec,
 		modeSpec:   modeSpec,
 	}
-	// CR 702.62e (#659): the permanent this cast produces has haste.
+	// CR 702.62a (#659): the permanent this cast produces has haste.
 	// Registered here rather than at resolution because the grant that
 	// says so has been consumed by now — the card has left exile and
 	// the permission no longer covers the object. The static matches
@@ -2742,7 +2742,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 		// S29: a flashed-back spell that fizzles is still exiled —
 		// CR 702.34a replaces every way out of the stack, not just
 		// the resolution. A BOUGHT-BACK one is not returned to hand,
-		// for the mirror-image reason: CR 702.27b says "as it
+		// for the mirror-image reason: CR 702.27a says "as it
 		// resolves", and a spell countered by game rules never
 		// resolves. Hence `false`.
 		return g.routeStackCardToGraveyardLocked(top, item, false)
@@ -2891,7 +2891,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// Instants / sorceries: resolve to the owner's graveyard — or to
 	// exile, when the flashback cost was paid (CR 702.34a) or the
 	// spell went on an Adventure (CR 715.3d), or to the owner's HAND,
-	// when the buyback cost was paid (CR 702.27b). This is the one
+	// when the buyback cost was paid (CR 702.27a). This is the one
 	// call site that resolves, so it is the one that passes `true`.
 	return g.routeStackCardToGraveyardLocked(top, item, true)
 }
@@ -3012,7 +3012,7 @@ func targetStillExistsLocked(g *Game, t TargetRef) bool {
 		// permanent stays where it is and the item is a StackMeta
 		// entry alone. It exists while it is still on the stack, and
 		// stops existing the moment it resolves or is countered
-		// (CR 701.5c), which is exactly the question this asks.
+		// (CR 701.6a), which is exactly the question this asks.
 		//
 		// Only reached for a ref with no announced clause behind it (a
 		// free-form S13.1 announcement); a structured clause is
@@ -3117,7 +3117,7 @@ func (g *Game) resolveTopAbilityLocked() {
 //     exit, which is why `resolved` does not gate it.
 //   - BUYBACK — "if the buyback cost was paid, put this card into its
 //     owner's hand as it resolves instead of putting it into that
-//     player's graveyard" (CR 702.27b, ADR 0073 §6). AS IT RESOLVES
+//     player's graveyard" (CR 702.27a, ADR 0073 §6). AS IT RESOLVES
 //     and no other exit, which is what `resolved` is for: a bought-back
 //     Capsize whose only target left in response is countered by game
 //     rules, does not resolve, and goes to the graveyard.
@@ -3125,9 +3125,10 @@ func (g *Game) resolveTopAbilityLocked() {
 //     owner's graveyard as that spell finishes resolving", CR 715.3d,
 //     with CR 715.4's cast permission landing on it there (#719,
 //     adventure.go). Resolution only, for the same reason buyback is:
-//     CR 715.3e leaves a countered, fizzled, discarded or milled
-//     adventure card an ordinary card in an ordinary graveyard, and
-//     `resolved` is the fact that tells them apart. Before #988 gave
+//     CR 715.3d's "instead of" only fires on a resolution, so a
+//     countered, fizzled, discarded or milled adventure card is an
+//     ordinary card in an ordinary graveyard, and `resolved` is the
+//     fact that tells them apart. Before #988 gave
 //     this helper that fact, the adventure leg had to live one frame
 //     up to get it.
 //
@@ -3175,7 +3176,7 @@ func (g *Game) routeStackCardToGraveyardLocked(c Card, item *StackItem, resolved
 		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, c.Owner
 	case resolved && item != nil &&
 		OptionalCostTimesPaid(c, item.Paid.OptionalCosts, BuybackKey) > 0:
-		// CR 702.27b. Through the SAME exit primitive, so a
+		// CR 702.27a. Through the SAME exit primitive, so a
 		// bought-back commander still gets its CR 903.9 choice and a
 		// replacement watching the stack exit still sees one.
 		r.Dst = ZoneHand
@@ -5079,7 +5080,7 @@ func (g *Game) CounterSpell(spellID uuid.UUID, dst *ZoneRef) error {
 
 // CounterAbility removes an activated / triggered ability from the
 // stack. Abilities cease to exist on resolution (CR 608.2n); a
-// counter is the same destinationless removal (CR 701.5c). Returns
+// counter is the same destinationless removal (CR 701.6a). Returns
 // ErrCardNotOnStack if the ID doesn't reference an ability item.
 //
 // Caller must NOT hold g.mu — this method takes the write lock.

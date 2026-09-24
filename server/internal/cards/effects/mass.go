@@ -163,7 +163,7 @@ func MatchingBattlefield(ctx *Context, match CardPredicate) []game.Card {
 //
 // "THEY CAN'T BE REGENERATED" IS ENFORCED, as of #667: set
 // CantBeRegenerated and the sweep ignores regeneration shields
-// (CR 701.19c) without spending them (CR 701.19d). It was cosmetic on
+// (CR 701.19c) without spending them (CR 701.19c). It was cosmetic on
 // every card that printed it for as long as the engine had no shield
 // to ignore — the note Wrath of God carried from S14 to S40 — which
 // is why every wipe in the catalog that prints the clause had to be
@@ -212,7 +212,7 @@ type DestroyAllMatching struct {
 	// CantBeRegenerated is the clause Damnation, Damn, Day of
 	// Judgment, Decree of Pain, Winds of Rath and Shatterstorm print:
 	// this destruction ignores regeneration shields (CR 701.19c), and
-	// does not spend them (CR 701.19d). #667.
+	// does not spend them (CR 701.19c). #667.
 	CantBeRegenerated bool
 }
 

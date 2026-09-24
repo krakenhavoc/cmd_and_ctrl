@@ -130,7 +130,7 @@ func TestADoublerDoublesTheWholeMillInstruction(t *testing.T) {
 }
 
 // The count the window sees is the number the INSTRUCTION asked for,
-// not what the library can supply: CR 701.13b's "as many as possible"
+// not what the library can supply: CR 701.17b's "as many as possible"
 // clamp happens after the window settles. A twelve-card mill of a
 // five-card library mills five, and a doubler still doubles twelve.
 func TestTheReplacedCountIsTheInstructionsNotTheLibrarys(t *testing.T) {
@@ -159,7 +159,7 @@ func TestTheReplacedCountIsTheInstructionsNotTheLibrarys(t *testing.T) {
 		t.Errorf("the window saw a count of %d, want the instruction's 12", seen)
 	}
 	if len(got) != 5 {
-		t.Errorf("milled %d cards off a five-card library, want 5 (CR 701.13b)", len(got))
+		t.Errorf("milled %d cards off a five-card library, want 5 (CR 701.17b)", len(got))
 	}
 	if p.AttemptedEmptyDraw {
 		t.Error("milling out set the empty-draw flag — only a DRAW from an empty library loses (#767)")
@@ -186,7 +186,7 @@ func TestAMillReplacedToZeroMillsNothing(t *testing.T) {
 // --- what does NOT open a window -------------------------------------
 
 // "Exile the top N cards of your library" uses the same helper and is
-// not a mill (CR 701.13a defines the keyword action by its
+// not a mill (CR 701.17a defines the keyword action by its
 // destination), so a mill doubler must not touch it.
 func TestAnExileOfTheTopCardsIsNotAMill(t *testing.T) {
 	g := newActiveGame(t)
@@ -301,7 +301,7 @@ func TestAnUntilRunWithNoReplacementMillsOneCardPerRepetition(t *testing.T) {
 }
 
 // A run whose clause never accepts ends at the bottom of the library,
-// with no error and no loss (CR 701.13b) — and it does so one
+// with no error and no loss (CR 701.17b) — and it does so one
 // repetition at a time rather than planning the whole library up
 // front.
 func TestAnUntilRunThatNeverStopsEndsAtTheBottomOfTheLibrary(t *testing.T) {
@@ -328,7 +328,7 @@ func TestAnUntilRunThatNeverStopsEndsAtTheBottomOfTheLibrary(t *testing.T) {
 		t.Errorf("library holds %d, want 0", len(p.Library.Cards))
 	}
 	if p.Eliminated {
-		t.Error("running a library out with a mill is not a loss (CR 701.13b)")
+		t.Error("running a library out with a mill is not a loss (CR 701.17b)")
 	}
 }
 

@@ -1059,7 +1059,7 @@ func (g *Game) MillNForEffect(playerID uuid.UUID, n int) error {
 // #569: the AMOUNT is replaceable. A mill into a graveyard opens a
 // RepEventMill window on n before any card moves, so Bruvac the
 // Grandiloquent doubles the instruction; an exile of the top N is not a
-// mill (CR 701.13a) and opens none. That window can PAUSE, on a CR 616
+// mill (CR 701.17a) and opens none. That window can PAUSE, on a CR 616
 // ordering prompt between two amount replacements, and then this
 // returns an EMPTY slice with the mill still owed — the contract
 // CreateTokensForEffect's empty ID slice already carries, and the
@@ -1113,7 +1113,7 @@ func (g *Game) MillToZoneForEffect(playerID uuid.UUID, n int, dest ZoneKind) ([]
 // of the repetition that ended it all move.
 //
 // That is what makes a mill-amount replacement double the right thing.
-// Bruvac the Grandiloquent doubles a MILL (CR 701.13b) and each
+// Bruvac the Grandiloquent doubles a MILL (CR 701.17b) and each
 // repetition is one, so Helm of Obedience at X=3 with Bruvac out mills
 // 2 + 2 = four cards and overshoots its bound by one, exactly as it
 // does in paper. It does NOT double the bound: "until a creature card
@@ -1799,7 +1799,7 @@ func (g *Game) exitSpellFromStackAtLocked(spellID uuid.UUID, dst *ZoneRef, fallb
 // counterAbilityLocked is the lock-free body of CounterAbility, and
 // the ONE place an ability leaves the stack without resolving.
 //
-// CR 701.5c: "an ability that's countered doesn't go anywhere" — it is
+// CR 701.6a: "an ability that's countered doesn't go anywhere" — it is
 // a DELETION, not a zone change. There is no routeCardToZoneLocked
 // call here and there must not be one: the ability's source permanent
 // is standing on the battlefield and stays there, the item itself has

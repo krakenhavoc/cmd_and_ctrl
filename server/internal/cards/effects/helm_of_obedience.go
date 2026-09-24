@@ -53,7 +53,7 @@ import (
 //     mills the victim's whole library. That is the famous combo, and
 //     it falls out of the reading rather than being special-cased.
 //   - the BOUND is not a mill amount, so no mill-amount replacement
-//     doubles it. CR 701.13b's number is the one an instruction names,
+//     doubles it. CR 701.17b's number is the one an instruction names,
 //     and "until X cards have been put into their graveyard this way"
 //     names none — Bruvac the Grandiloquent doubles mills, not bounds
 //     (game/mill.go, millAmountIsReplaceable).

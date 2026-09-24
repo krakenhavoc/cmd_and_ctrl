@@ -265,7 +265,7 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		// #990: who controls a permanent is an AppliesTo input for
 		// every "creatures you control" static and for every
 		// ForAsLongAs duration keyed on control (suspend's haste,
-		// CR 702.62e). The pass that MOVES control cannot see its own
+		// CR 702.62a). The pass that MOVES control cannot see its own
 		// answer — materialiseControlLocked writes Card.Controller
 		// after the layer walk has already run against the old one —
 		// so without this bump the stale resolution survives until

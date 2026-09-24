@@ -223,7 +223,7 @@ func OptionalCostsFor(oracleID string) []AdditionalCost {
 // may use any key it likes — the engine only ever compares strings —
 // but these three are the ones the ENGINE reads rather than the card:
 // kicker and multikicker because CR 702.33 counts them together, and
-// buyback because CR 702.27b changes where the spell goes.
+// buyback because CR 702.27a changes where the spell goes.
 const (
 	// KickerKey is CR 702.33's kicker, paid at most once.
 	KickerKey = "kicker"

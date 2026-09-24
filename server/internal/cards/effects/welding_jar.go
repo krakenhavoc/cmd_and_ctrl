@@ -16,7 +16,7 @@ package effects
 //
 // Shatterstorm says the artifacts can't be regenerated (CR 701.19c),
 // so the Jar does not save anything from that one — and the shield it
-// made is not even spent trying (CR 701.19d), which matters because
+// made is not even spent trying (CR 701.19c), which matters because
 // the Jar itself is already in the graveyard by then.
 //
 // The sacrifice is a COST, paid at announce, so responding to the

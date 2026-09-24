@@ -20,7 +20,7 @@ import (
 // OncePerBatch, exactly the shape combatDamageToPlayerBy exists for
 // (Bident of Thassa, Old Gnawbone).
 //
-// The graveyard cast is the CR 307.6-family CastCondition/
+// The graveyard cast is the CR 205.4e-family CastCondition/
 // CastConditionLabel pair (ADR 0073 §7, Rakdos, Lord of Riots) rather
 // than a caveat: the printed clause names a real, checkable board
 // state, and the condition closure is what scopes it to the graveyard

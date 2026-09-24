@@ -18,7 +18,7 @@ import (
 //	3. the special action — the offer, the timing, the payment
 //	4. turning face up — same object, real card back, trigger fires
 //	5. megamorph's counter
-//	6. the ways there is NO way up (CR 701.34d, CR 708.7)
+//	6. the ways there is NO way up (CR 701.40b, CR 708.7)
 
 const (
 	morphOracle = "oracle-morph-test"
@@ -411,7 +411,7 @@ func TestTurningFaceUpFiresTheTurnedFaceUpTrigger(t *testing.T) {
 
 // --- 5. megamorph -----------------------------------------------------
 
-// TestMegamorphPutsACounterOnAsItTurnsUp is CR 702.109b.
+// TestMegamorphPutsACounterOnAsItTurnsUp is CR 702.37b.
 func TestMegamorphPutsACounterOnAsItTurnsUp(t *testing.T) {
 	g, me, id := morphGame(t, morphOffer(FaceDownMorphed, morphCost, true))
 	if err := castFaceDown(t, g, me, id, "morph"); err != nil {
@@ -427,7 +427,7 @@ func TestMegamorphPutsACounterOnAsItTurnsUp(t *testing.T) {
 	}
 	up, _, _ := cardAnywhere(g, id)
 	if n := up.Counters["+1/+1"]; n != 1 {
-		t.Errorf("+1/+1 counters after megamorph = %d, want 1 (CR 702.109b)", n)
+		t.Errorf("+1/+1 counters after megamorph = %d, want 1 (CR 702.37b)", n)
 	}
 }
 
@@ -459,9 +459,9 @@ func TestTurnFaceUpOfferPerKind(t *testing.T) {
 	}{
 		{"morphed, the card prints morph: its morph cost (CR 702.37b)", creature(FaceDownMorphed), morphCost},
 		{"disguised, the card prints only morph: no way up (CR 708.7)", creature(FaceDownDisguised), ""},
-		{"manifested creature card: its mana cost (CR 701.34d)", creature(FaceDownManifested), "{1}{U}"},
+		{"manifested creature card: its mana cost (CR 701.40b)", creature(FaceDownManifested), "{1}{U}"},
 		{"cloaked creature card: its mana cost (CR 701.58b)", creature(FaceDownCloaked), "{1}{U}"},
-		{"manifested LAND: face down forever (CR 701.34d)", land(FaceDownManifested), ""},
+		{"manifested LAND: face down forever (CR 701.40b)", land(FaceDownManifested), ""},
 		{"a face-UP permanent offers nothing", creature(FaceDownNone), ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
