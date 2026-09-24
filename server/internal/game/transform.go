@@ -156,7 +156,56 @@ func (g *Game) TransformPermanentForEffect(cardID uuid.UUID) error {
 		Amount: to,
 		Label:  from,
 	})
+	g.runAsTransformsIntoLocked(cardID)
 	return nil
+}
+
+// runAsTransformsIntoLocked runs the "As this permanent transforms into
+// <face>, …" clause of the face that is now up (#1574, ADR 0079
+// amendment 2026-09-24) — Sephiroth, One-Winged Angel's Super Nova.
+//
+// Here, in the verb, and not in the card that asked for the transform,
+// because the clause belongs to the FACE: Sephiroth's own fourth drain,
+// a Moonmist, or anything else that turns it over must all make the
+// emblem, and a clause the front face's text ran would make it only for
+// the first of those. It is a static ability that applies as the
+// permanent turns over (not a trigger — nothing goes on the stack and
+// nobody gets a window), so it runs synchronously, the way the AsEnters
+// hook runs for an entry, and after EventTransform for the same reason
+// that hook runs after EventETB: the event is the moment, and the
+// layer version it bumps is what lets the lookup below see the new face.
+//
+// Only the in-place verb calls it. "Exile it, then return it
+// transformed" (ExileAndReturnTransformedForEffect) does not: that
+// permanent ENTERS on its back face, and a permanent that enters
+// transformed never transformed (ADR 0079 decision 5), so its "as this
+// transforms" clause does nothing.
+//
+// The key is CatalogAbilityKey, read after a layer refresh: CR 712.18
+// keeps every effect that applied to the permanent applying after it
+// turns over, so one that removed all its abilities has removed the
+// new face's clause too. An error is published as EventEffectError,
+// exactly as fireETBHookLocked publishes an AsEnters one — the
+// transform has already happened and cannot be unwound.
+//
+// Caller must hold g.mu.
+func (g *Game) runAsTransformsIntoLocked(cardID uuid.UUID) {
+	g.RecomputeLayersIfStaleLocked()
+	card := findBattlefieldCard(g, cardID)
+	if card == nil {
+		return
+	}
+	d := catalogDef(CatalogAbilityKey(*card))
+	if d == nil || d.AsTransformsInto == nil {
+		return
+	}
+	if err := d.AsTransformsInto(g, cardID); err != nil {
+		g.EmitEvent(Event{
+			Kind:     EventEffectError,
+			Source:   cardID,
+			ErrorMsg: err.Error(),
+		})
+	}
 }
 
 // ExileAndReturnTransformedForEffect is the OTHER verb: "exile this

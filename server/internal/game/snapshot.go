@@ -965,6 +965,7 @@ type stackItemSnapshot struct {
 	AltCostExiles bool         `json:"altCostExiles,omitempty"`
 	SplitSecond   bool         `json:"splitSecond"`
 	IsCopy        bool         `json:"isCopy,omitempty"`
+	Uncopyable    bool         `json:"uncopyable,omitempty"` // #1574
 	Seq           uint64       `json:"seq"`
 	Ordered       bool         `json:"ordered"`
 	Commutes      bool         `json:"commutes,omitempty"` // #1511
@@ -1769,6 +1770,7 @@ func snapshotStackItem(g *Game, s *StackItem, cen *ContinuationCensus) stackItem
 		AltCostExiles: s.AltCostExiles,
 		SplitSecond:   s.SplitSecond,
 		IsCopy:        s.IsCopy,
+		Uncopyable:    s.Uncopyable,
 		Seq:           s.Seq,
 		Ordered:       s.Ordered,
 		Commutes:      s.Commutes,
@@ -2488,6 +2490,7 @@ func restoreStackItem(s *stackItemSnapshot) *StackItem {
 		AltCostExiles: s.AltCostExiles,
 		SplitSecond:   s.SplitSecond,
 		IsCopy:        s.IsCopy,
+		Uncopyable:    s.Uncopyable,
 		Seq:           s.Seq,
 		Ordered:       s.Ordered,
 		Commutes:      s.Commutes,

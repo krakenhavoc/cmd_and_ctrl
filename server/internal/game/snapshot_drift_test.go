@@ -581,6 +581,9 @@ var stackItemFields = plan(
 	// as though it were a card, putting a phantom Twincast in
 	// somebody's yard where Tarmogoyf can count it.
 	"IsCopy", carried, "",
+	// #1574: "this ability can't be copied". Carried: a restore that
+	// lost it would let a copy effect copy Gogo's activation.
+	"Uncopyable", carried, "",
 	"Seq", carried, "",
 	"Ordered", carried, "",
 	// #1511: which pending triggers may skip the CR 603.3b prompt.

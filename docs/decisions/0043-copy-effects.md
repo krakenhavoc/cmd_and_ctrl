@@ -888,3 +888,76 @@ commander designation an attribute of the card, not a copiable value.
 The one engine reader that mattered, the CR 903.9 exit, no longer sees
 the copy; clearing the field on the copy is
 [#1363](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1363).
+
+## Amendment 2026-09-24 (#1574): "This ability can't be copied" is a fact on the stack item, refused at the one copy door
+
+Issue [#1574](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1574),
+found by slice E2 of the Edea deck ([#1565](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1565),
+PR [#1577](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1577)). Tracker #888.
+No new ADR number: this is the ability-copy path of the 2026-09-22
+amendment above.
+
+Gogo, Master of Mimicry prints "{X}{X}, {T}: Copy target activated or
+triggered ability you control X times. … This ability can't be copied".
+E2 shipped half of the last sentence, as a predicate on Gogo's own target
+clause that refused a Gogo activation. Nothing stopped Lithoform Engine,
+Strionic Resonator or Rings of Brighthearth from copying one.
+
+### Decision 20. `StackItem.Uncopyable`, set at activation, read by `CopyAbilityForEffect` alone
+
+- **The declaration** is `ActivatedAbility.Uncopyable` (card side),
+  projected onto `game.ActivatedAbilityShape.Uncopyable`, and
+  `ActivateCatalogAbility` copies it onto the stack item it builds.
+  A granted activated ability gets it the same way, because a grant
+  is projected through the same `activatedShapes`.
+- **The fact rides the ITEM**, not the catalog, for the reason
+  `AltCostExiles` does (CR 400.7g): the ability belongs to the object
+  that activated it, and that object may have left, turned over or
+  lost the grant by the time something tries to copy it. It is
+  carried by `Clone` and by the snapshot (`stackMeta[].uncopyable`,
+  additive, zero value "copyable"), classified `carried` in the drift
+  plan.
+- **The refusal is in `CopyAbilityForEffect`**, before the CR 707.10c
+  re-target prompt. That function is the one door every ability copy
+  comes through: `createCopyLocked` is reached for an ability only from
+  the offer this function opens, and every card-side copier (the
+  `CopyAbility` primitive, so Lithoform Engine, Strionic Resonator,
+  Weaver of Harmony, Virtue of Knowledge's adventure, Rings of
+  Brighthearth and Gogo itself) calls it. One check, and no copier can
+  be written that misses it.
+- **It returns nil**, not an error. The copy effect resolved and made
+  nothing, which is CR 101.2's "can't" beating "can". It is the
+  posture `TransformPermanentForEffect` takes for a permanent that
+  can't transform (ADR 0079 decision 4), and it keeps the catalog soak
+  from reading a legal resolution as a card that threw.
+
+### What it deliberately does NOT do: narrow a target clause
+
+The issue proposed dropping an uncopyable item from `AbilityOnStack`'s
+legal set. That is wrong twice. `AbilityOnStack` is also Stifle's
+clause ("counter target activated or triggered ability"), and Gogo's
+ability can certainly be Stifled. More basically, "can't be copied"
+restricts what a copy effect DOES, not what it may target, which is how
+"can't be countered" already works in this engine
+(`spellCantBeCounteredLocked` is read at the counter, and Counterspell
+may still target Supreme Verdict). So Lithoform Engine may target Gogo's
+activation and pay for it, and the copy is not made, as on paper.
+
+E2's `notAGogoActivation` predicate is removed for the same reason. It
+was a stand-in for this flag, and it added a targeting restriction the
+card does not print. A Gogo may now target another Gogo's activation
+(for instance a Spark Double's copy of Gogo, which is not legendary), and the
+copy is refused at the door. A Gogo can never target its own activation
+anyway: the targets are chosen before the item is on the stack
+(CR 115.5).
+
+A triggered ability that printed the clause would set `Uncopyable` on
+the item its `Build` returns, because the item IS the declaration
+there. No `TriggeredAbility` field is added until a card needs one.
+
+### Cards
+
+Gogo, Master of Mimicry comes off its caveat and ships `full`.
+Lithoform Engine, Strionic Resonator and Rings of Brighthearth are
+unchanged and now refuse a Gogo activation. The tests are in
+`server/internal/cards/effects/gogo_sephiroth_hooks_test.go`.
