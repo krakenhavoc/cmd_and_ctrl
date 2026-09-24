@@ -19,27 +19,28 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // moment after it resolves, and end in the cleanup step (CR 514.2).
 // "Your opponents" is relative to the caster and is stored once.
 //
-// TWO CLAUSES ARE MISSING, and both make the card WEAKER than printed:
+// Split second (CR 702.61) is declared below and enforced since #1519:
+// nobody can cast a spell or activate a non-mana ability in response,
+// which is what makes this a reliable answer to a lethal Exsanguinate.
+// It shipped with #749 carrying a second caveat saying players could
+// respond; #1519 cleared it.
 //
-//   - The life floor ("damage that would reduce your life total to
-//     less than 1 reduces it to 1 instead") is a damage-RESULT
-//     replacement that has to keep lifelink whole (the 2021-03-19
-//     ruling). That is a separate seam — ADR 0057 Decision 8 scoped it
-//     out. Without it the caster still can't LOSE this turn; they just
-//     end the turn at 0 or less life and lose at the first check after
-//     it unless they gain life first.
-//   - Split second (CR 702.61) is not read from the card anywhere in
-//     the engine yet — the stack's split-second gate is set only by a
-//     sandbox cast flag — so players may respond to Angel's Grace.
-//     #1519 is that seam; it clears this caveat.
+// ONE CLAUSE IS MISSING, and it makes the card WEAKER than printed:
+// the life floor ("damage that would reduce your life total to less
+// than 1 reduces it to 1 instead") is a damage-RESULT replacement that
+// has to keep lifelink whole (the 2021-03-19 ruling). That is a
+// separate seam — ADR 0057 Decision 8 scoped it out. Without it the
+// caster still can't LOSE this turn; they just end the turn at 0 or
+// less life and lose at the first check after it unless they gain life
+// first.
 func init() {
 	Register(Spec{
-		OracleID:     "66ca8a60-e028-4a5f-8177-860b888cb9d1",
-		Name:         "Angel's Grace",
-		Completeness: CompletenessCaveats,
+		OracleID:        "66ca8a60-e028-4a5f-8177-860b888cb9d1",
+		Name:            "Angel's Grace",
+		Completeness:    CompletenessCaveats,
+		PrintedKeywords: []string{game.KeywordSplitSecond},
 		Caveats: []string{
 			"Damage can still reduce your life total below 1 this turn; you just can't lose the game until the turn ends.",
-			"Split second isn't enforced — players can respond to it.",
 		},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return CantLoseAndOpponentsCantWinThisTurn{Label: "Angel's Grace"}.Apply(ctx)

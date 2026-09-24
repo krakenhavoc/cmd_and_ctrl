@@ -448,9 +448,18 @@ func containsString(xs []string, s string) bool {
 // narrowVariantKeywords lists the canonical tokens whose Scryfall
 // entry can be a superset of what the card prints, so a bare
 // keyword-ability line is required before the token is stamped.
-// "Hexproof" is the only one today ("Hexproof from <quality>");
-// shroud and the combat keywords have no parameterised form.
-var narrowVariantKeywords = map[string]bool{"hexproof": true}
+// "Hexproof" was the first ("Hexproof from <quality>"); shroud and
+// the combat keywords have no parameterised form.
+//
+// Split second (#1519) is the second, for a different reason: it can
+// be printed on an ABILITY rather than on the card. The Fearsome
+// Flock's "split second level up {2}{U}" earns it Scryfall's "Split
+// second" tag, and a creature SPELL stamped with the token would shut
+// the table down when cast — stronger than printed, since only its
+// level-up activation can't be responded to. The line scan reads
+// "split second level up {2}{U}" as no keyword at all, so the token is
+// kept only for a card whose own line is the bare keyword.
+var narrowVariantKeywords = map[string]bool{"hexproof": true, game.KeywordSplitSecond: true}
 
 // keywordLinesOf unions the keyword-ability lines across every
 // oracle text a printing carries — the top-level one for a

@@ -320,7 +320,13 @@ type CastSpellParams struct {
 	XValue       int
 	Distribution map[uuid.UUID]int
 	HoldPriority bool
-	SplitSecond  bool
+	// SplitSecond is the S13.1 sandbox flag: "treat this spell as
+	// having split second". Since #1519 a spell that PRINTS split
+	// second has it without the flag (castHasSplitSecond reads the
+	// card's keywords); the flag survives for a card the catalog and
+	// the importer know nothing about, and is ignored on a face-down
+	// cast.
+	SplitSecond bool
 
 	// DiscardIDs names the cards paid to an additional cost of the
 	// form "As an additional cost to cast this spell, discard a
@@ -1257,6 +1263,12 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	if g.StackMeta == nil {
 		g.StackMeta = make(map[uuid.UUID]*StackItem)
 	}
+	// CR 702.61a (#1519): the spell's own split second, or the
+	// sandbox flag — one writer for both, so the cache below and
+	// recomputeSplitSecondLocked can never disagree about where the
+	// fact came from. Read off the announce copy, which carries the
+	// chosen face and, for a face-down cast, has no text at all.
+	splitSecond := castHasSplitSecond(&card, faceDown, params.SplitSecond)
 	g.StackMeta[cardID] = &StackItem{
 		ID:           cardID,
 		Kind:         StackItemSpell,
@@ -1268,7 +1280,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		XValue:       params.XValue,
 		Distribution: cloneDistributionLocked(params.Distribution),
 		HoldPriority: params.HoldPriority,
-		SplitSecond:  params.SplitSecond,
+		SplitSecond:  splitSecond,
 		AltCost:      params.AlternativeCost,
 		// CR 702.143c, #658: a spell cast from a foretold card is a
 		// foretold spell, whatever cost paid for it. Read off the
@@ -1371,7 +1383,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// above it. The mana side of the payment was already folded into
 	// the cost gate above; this is the board half.
 	g.payTapPermanentsCostLocked(playerID, params.TapIDs)
-	if params.SplitSecond {
+	if splitSecond {
 		g.SplitSecondActive = true
 	}
 	// Commander tax bookkeeping (CR 903.8). Increment AFTER the
