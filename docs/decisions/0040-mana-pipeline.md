@@ -1060,8 +1060,8 @@ activations are two.
 
 **Snapshot.** Additive: `riders` on every token home (pool, payment record,
 provenance) and `manaRiders` on a pending choice, recorded in
-`testdata/snapshot_shape/v6.txt`; `PendingChoice.ManaRiders` is `carried` in the
-drift test. No bump. A file written before this change has no riders and
+`testdata/snapshot_shape/v7.txt` (current once #1555 bumped to v7);
+`PendingChoice.ManaRiders` is `carried` in the drift test. No bump. A file written before this change has no riders and
 restores as it always did. A binary from before it reading a newer file drops
 them, which makes those spells counterable and that creature slow again. That
 is weaker than printed and local to the riders, not the whole-board loss that
