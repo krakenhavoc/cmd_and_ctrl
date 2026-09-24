@@ -2646,3 +2646,118 @@ they finish); the wire in `blockers_view_test.go`; dispatch in
   finish and would need a bot move kind for `finish_blocks`; the priority
   return above gives the active player the window that matters without either.
 - **A log line for "declares no blockers"**, above.
+
+---
+
+## Amendment (2026-09-24, [#750](https://github.com/krakenhavoc/cmd_and_ctrl/issues/750)): the card half of block rules
+
+Decisions 11-13 built the engine half of block rules: slot 4 of
+`BlockPairRefusalLocked`, the bounds `blockerBoundsLocked` combines, the
+whole-declaration refusal in `DeclareBlockers`, and the two registries
+(`CatalogBlockRules`, `Game.TurnScopedBlockRules`). No card could declare a
+rule, because nothing set `CatalogBlockRules`. This amendment is the card half
+Decision 11 and the PR split's PR 4 and PR 6+ describe. Decisions 1-39 stand.
+Sprint S37 (combat correctness), tracker
+[#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880). The deck that
+asked for it is *Aang is so flashy*
+([#1306](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1306)): Avatar
+Kuruk's Spirit token prints "can't block or be blocked by non-Spirit
+creatures".
+
+### Decision 40: one slot on the Spec, one on the token template, one on `CardDef`
+
+- **`effects.Spec.BlockRules []game.BlockRule`**, projected by `buildDef` onto
+  **`game.CardDef.BlockRules`**, which carddef.go publishes through
+  `CatalogBlockRules`. The hook was always keyed by `CatalogAbilityKey`, so a
+  permanent that loses all abilities imposes nothing (Decision 11's "losing
+  abilities works without extra code" holds with no new code).
+- **A token template has the same slot** (`tokenTemplate.BlockRules`,
+  `effects/token_catalog.go`), registered under the token's key like its
+  triggers and statics (ADR 0083). #1249 already made `forEachBlockRuleLocked`
+  skip on an empty key rather than an empty oracle ID, so a token's rule is
+  found exactly as a card's is. A template whose only ability is a block rule
+  is registrable: `checkTokenTemplate` counts the slot.
+- **Kuruk's Spirit is its own template** (`spirit-only-spirits`), not the plain
+  `"1/1 colorless Spirit"` row Forbidden Orchard makes. The Orchard's Spirit
+  prints nothing, and a shared row would either give it a restriction or take
+  Kuruk's away.
+
+### Decision 41: a rule is a scope plus a rule, and the scope is never optional
+
+Every rule is read off every permanent on the battlefield for every pair the
+engine checks. A `Pair` closure that forgets to ask "is this attacker mine?"
+binds every attacker at the table. So `effects/block_rules.go` builds every
+rule from a **scope** that says whose creatures it binds relative to its source,
+and takes the scope as an argument:
+
+| Scope | Printed as |
+|---|---|
+| `OnSelf()` | "this creature", "Legolas" |
+| `OnAttached()` | "equipped creature", "enchanted creature" |
+| `ControlledBySourceController()` | "creatures you control" |
+| `OnMatching(pred)` | "Slivers", "non-Spirit creatures" — either side of the pair |
+| `PowerLessThanSource()` | "creatures with power less than this creature's power" |
+
+| Rule | Reason on the wire | First card |
+|---|---|---|
+| `CantBeBlockedExceptBy(scope, allowed, label)` | `cant_be_blocked_except_by` | Prowler's Helm, Departed Deckhand, Canopy Cover |
+| `CantBeBlockedBy(scope, forbidden, label)` | `cant_be_blocked_by` | Legolas Greenleaf |
+| `CantBeBlockedWhile(scope, cond)` | `cant_be_blocked` | Thieves' Tools |
+| `CantBlockAttackers(blockers, attackers, label)` | `cant_block_attacker` | Champion of Lambholt |
+| `CantBlockOrBeBlockedBy(scope, other, label)` — both of the above, one per side | both | Avatar Kuruk's Spirit token |
+| `MaxBlockers(scope, n)` | `too_many_blockers` | Vorrac Battlehorns |
+| `MinBlockers(scope, n)` | `too_few_blockers` | Rampaging Ceratops |
+
+Decision 11 named the blocker-side scope `BlockerMatching(pred)`. It is
+`OnMatching(pred)`, because a scope is a predicate on a creature and does not
+care which side of the pair it is asked about. `CantBlockOrBeBlockedBy` uses the
+same one on both sides.
+
+Predicates are the targeting vocabulary (`CardPredicate`), evaluated with the
+rule source's controller as the caster, so `YouControl()` in a rule means "the
+controller of the permanent that prints it". Everything reads effective
+characteristics live when the block is checked (§5, CR 509.1b).
+
+`CantBeBlockedWhile` is a block rule and not a `Restriction` bit behind a
+layer-6 condition, because Thieves' Tools' condition is the equipped creature's
+power. Power is finished in layer 7, after a layer-6 static has already run. A
+block rule reads it after every layer.
+
+### Decision 42: the until-end-of-turn twin is one applier, not one per rule
+
+Decision 11 foresaw an `…UntilEOT` twin per builder. There is one,
+`BlockRuleUntilEOT{Target | Match, Rule}`: it snapshots the affected set exactly
+as `RestrictUntilEOT` does (CR 611.2c: the instance ID plus its entry stamp, so
+a creature that leaves and returns is a new object and is not covered), hands
+`Rule` a scope for that set, and registers the result in
+`Game.TurnScopedBlockRules`. Gingerbrute's `{1}` and Departed Deckhand's `{3}{U}`
+are each one line with it. A turn-scoped rule has no source permanent (the
+effect outlives the ability that made it, CR 611.2b), so predicates inside it
+see no caster. No printed turn-scoped rule needs one.
+
+### What this does NOT decide
+
+- **`BlockRule.Limit`** (Silent Arbiter's "no more than one creature can block
+  each combat") is still unbuilt, as Decision 12 left it, and so is the
+  attack-side twin Decision 18 puts out of scope (Crawlspace). Silent Arbiter
+  needs both, so they ship together: [#1507](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1507),
+  its own seam row.
+- **PR 5's per-card stamps** (`blockable_attackers`, `blockers_min`,
+  `blockers_max`, Decision 16) are not added. The wire already carries every
+  refusal's reason and label in the `illegal_block` frame, and
+  `block_decision_seats` is computed from the same option generator the
+  enumerator uses, so the three agree without them.
+- **Hungering Hydra and Alpha Authority** are not in this change. Both are one
+  `MaxBlockers` line; the Hydra also needs "whenever this creature is dealt
+  damage, put that many +1/+1 counters on it", which is a card-side trigger,
+  not this seam.
+
+### Tests
+
+`server/internal/cards/effects/block_rules_test.go`: for each rule shape, a
+legal block accepted and an illegal one refused with its reason, label and
+source; the legal-move enumerator never offers a refused block and
+`SeatOwesBlockDecision` agrees; the token carries its rule both ways; the
+turn-scoped rule binds for the turn, is swept at its end, and does not follow a
+creature that left and came back; a creature that loses its abilities loses
+its rule.

@@ -1,7 +1,6 @@
 package effects
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -72,37 +71,5 @@ func TestDepartedDeckhandSurvivesAnAbilityThatTargetsIt(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	if !g.Battlefield.Contains(deckhand) {
 		t.Error("the Deckhand survives an ability that targets it")
-	}
-}
-
-// The two evasion clauses are declared, not implemented, and the
-// declaration is what the public catalog page publishes. Pinning it
-// here is what makes the day somebody ships conditional block rules
-// the day this test asks to be updated.
-func TestDepartedDeckhandDeclaresItsEvasionGaps(t *testing.T) {
-	spec, ok := Lookup(departedDeckhandOracle)
-	if !ok {
-		t.Fatal("Departed Deckhand is registered")
-	}
-	if spec.Completeness != CompletenessCaveats {
-		t.Fatalf("completeness = %v, want caveats", spec.Completeness)
-	}
-	if len(spec.Caveats) != 2 {
-		t.Fatalf("two clauses are deferred, %d caveats declared", len(spec.Caveats))
-	}
-	joined := strings.Join(spec.Caveats, " ")
-	for _, want := range []string{"Spirits", "{3}{U}"} {
-		if !strings.Contains(joined, want) {
-			t.Errorf("the caveats name %q: %q", want, joined)
-		}
-	}
-	// Never the flat bit: it would make the Deckhand unconditionally
-	// unblockable, which is STRONGER than printed (#259).
-	for _, ab := range game.CatalogStaticAbilities(spec.OracleID) {
-		_ = ab
-		t.Error("no static ships until conditional block rules exist")
-	}
-	if len(spec.Activated) != 0 {
-		t.Error("the {3}{U} ability is not offered")
 	}
 }

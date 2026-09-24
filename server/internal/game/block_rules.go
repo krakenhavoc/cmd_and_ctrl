@@ -82,17 +82,11 @@ type BlockRule struct {
 }
 
 // CatalogBlockRules returns the block rules a battlefield permanent
-// with the given catalog key imposes, or nil. A nil hook is "no card
-// declares one", which is where the catalog stands today.
-//
-// The card side is one card PR away and deliberately not here: it is
-// the `effects.Spec.BlockRules` field, its line in `effects.buildDef`,
-// the `CardDef.BlockRules` slot carddef.go projects, and the first
-// cards (Prowler's Helm, Hungering Hydra) — ADR 0045's addendum,
-// PR 4's card half. The hook exists ahead of them so that writing
-// those cards is a Spec field and not an engine change, which is the
-// same shape, and the same reason, as CatalogAdditionalLandPlays in
-// land_drops.go ("No catalog card declares AdditionalLandPlays yet").
+// with the given catalog key imposes, or nil. carddef.go sets it from
+// `CardDef.BlockRules`, which `effects.Spec.BlockRules` and a token
+// template's BlockRules slot fill (ADR 0045 addendum, amendment of
+// 2026-09-24). Build a rule with the constructors in
+// cards/effects/block_rules.go rather than by hand.
 //
 // Tests stub this directly, as keywords_test.go stubs
 // CatalogPrintedKeywords.

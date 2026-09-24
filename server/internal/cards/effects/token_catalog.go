@@ -118,6 +118,13 @@ type tokenTemplate struct {
 	Triggered []game.TriggeredAbility
 	Static    []game.StaticAbility
 
+	// BlockRules are the token's printed CR 509.1b block restrictions
+	// with a parameter — Avatar Kuruk's Spirit's "This token can't
+	// block or be blocked by non-Spirit creatures" (#750). Built with
+	// the block_rules.go constructors, exactly as a card's
+	// Spec.BlockRules are, and registered under the same token key.
+	BlockRules []game.BlockRule
+
 	// Text is the token's printed ability text, verbatim, as it
 	// appears on the printed token card ("When this token dies,
 	// create a 2/2 red Dragon creature token with flying.").
@@ -139,9 +146,9 @@ type tokenTemplate struct {
 type tokenTemplateBuilder func() tokenTemplate
 
 // tokenTemplates is every token whose template declares a mana,
-// activated, triggered or static ability. A token that declares none
-// is a row in tokens_table.go and needs no entry here; one that is
-// not here could not declare an ability at all.
+// activated, triggered or static ability, or a block rule. A token
+// that declares none is a row in tokens_table.go and needs no entry
+// here; one that is not here could not declare an ability at all.
 //
 // A LIST and not a map, because the slug lives on the template — see
 // tokenTemplate.Slug for the initialization cycle that shape avoids.
@@ -169,6 +176,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedReefWormWhaleToken,
 	printedDragonEggToken,
 	printedNestingDragonDragonToken,
+
+	// #750: the first token whose printed text is a block rule.
+	printedKurukSpiritToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
@@ -185,6 +195,7 @@ func buildTokenDef(t tokenTemplate) *game.CardDef {
 		Activated:     t.Activated,
 		Triggered:     t.Triggered,
 		Static:        t.Static,
+		BlockRules:    t.BlockRules,
 		TokenText:     t.Text,
 	}
 }
@@ -196,7 +207,7 @@ func checkTokenTemplate(t tokenTemplate) string {
 	switch {
 	case t.Slug == "":
 		return "declares no slug — the slug is its catalog identity"
-	case len(t.Mana) == 0 && len(t.Activated) == 0 && len(t.Triggered) == 0 && len(t.Static) == 0:
+	case len(t.Mana) == 0 && len(t.Activated) == 0 && len(t.Triggered) == 0 && len(t.Static) == 0 && len(t.BlockRules) == 0:
 		// A template with nothing to register would hand out a key
 		// that resolves to an empty entry, which reads as "this
 		// token's abilities were removed" everywhere downstream. A

@@ -260,8 +260,9 @@ func (g *Game) BlockPairRefusalLocked(attacker, blocker *Card) BlockRefusal {
 	// refusal is the more specific answer for the player.
 	//
 	// Block COUNTS are not here. A bound is a property of a whole
-	// declaration, not of a pair, so it is judged at the declaration's
-	// lock-in (revertIllegalBlockCountsLocked, blockers.go).
+	// declaration, not of a pair, so it is judged on the whole
+	// declaration by DeclareBlockers (blockCountRefusalLocked,
+	// block_declaration.go), which refuses an illegal count.
 	if r := g.blockRuleRefusalLocked(attacker, blocker); !r.Legal() {
 		return r
 	}
