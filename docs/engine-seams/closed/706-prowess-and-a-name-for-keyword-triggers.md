@@ -1,0 +1,7 @@
+---
+title: "Prowess, and a name for keyword triggers"
+date: 2026-09-24
+issues: [706, 1258]
+pr: 1516
+---
+**Prowess, and a name for keyword triggers** (#706 and #1258, CR 702.108 / 707.10 / 400.7 / 603.3b, [ADR 0014 amendment 2026-09-24](decisions/0014-combat-keywords.md)) — prowess is a `canonicalKeywords` token and the table's first TRIGGERED keyword. `TriggersForCard` (`game/designations.go`) asks `keywordTriggersFor` (`game/prowess.go`) for one trigger per prowess token on the effective ability list, so a printed prowess stamped by the deck importer (no catalog entry), a token's `Keywords` and a layer-6 grant all fire, a "loses all abilities" silences it, and a face-down creature has none. It watches `EventCast` for a noncreature spell its controller cast, so copies never trigger it (CR 707.10), and resolves as a layer-7c +1/+1 until end of turn pinned to the object after the #1432 new-object check. It is cumulative in `AppendKeywordAbility` beside toxic (CR 702.108b). `game.TriggeredAbility.Keyword` names a keyword trigger (`Cascade()`, `GrantsCascade()`, `Storm()`, prowess), and `cards/coverage` has exact `cascade`, `storm` and `prowess` probes. The bot prices prowess per instance. Proof cards: Ty Lee, Chi Blocker (to full, deck #1306), Monastery Mentor, Sokka, Tenacious Tactician (grant; batch 49's #754 skip), Elemental Eruption (token + storm copies; batch 53), Cori-Steel Cutter (batch 40's prowess skip). Still weaker than printed: a card that prints "Prowess, prowess" imports with one instance, because Scryfall's keyword array is a set.

@@ -1,0 +1,8 @@
+---
+title: "A free yes/no for a resolving effect's own controller"
+date: 2026-09-18
+issues: [796]
+pr: 918
+legacy_order: 79
+---
+**A free yes/no for a resolving effect's own controller** (#796, [ADR 0018 amendment 2026-09-18](decisions/0018-triggers-on-the-stack.md)) - `effects.MayChoice{Player, Question, YesLabel, NoLabel, LifeCost, OnYes, OnNo}` (`effects/may_choice.go`): "you may [do X]. If you do, [Y]" asked while an effect RESOLVES, where X is neither a search nor a cost the engine already prompts for. No new prompt kind — it is built on `PendingChoiceConfirm` (#552), which is already a two-way question with card-supplied continuations, addressed by `Chooser`, classified in the gate, enumerated for bots and rendered by the client modal. `Player` defaults to the controller ("you may") and names any seat otherwise, which is the whole of what #568's opponent-facing cards needed. Branches are ctx-taking effects bound to a FRESH `Context` on the game the resolver hands back, so they rewind with an undo like every other continuation. **3 cards converted:** Eden, Seat of the Sanctum (now `CompletenessFull` — one activation, the question after the mill, and the #636 reflexive trigger picking its target after the sacrifice, so a card the mill just binned is a legal pick); Mask of Memory (the optional draw is a real question, and the linked discard happens only on the branch that drew); Crossway Troublemakers (the pay-2-life decision moved from the trigger's CR 603.5 prompt to the ability's resolution, where the card prints it). `OtherThan(id)` joined `effects/targets.go` for Eden's "another".

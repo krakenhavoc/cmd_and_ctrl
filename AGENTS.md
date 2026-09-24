@@ -67,7 +67,7 @@ cmd_and_ctrl/
 │   │   ├── cards/       # Scryfall index (streaming load) + disk-backed image cache + /cards routes
 │   │   │   └── coverage/ # measures the live catalog; fails CI when the coverage docs or a card's Caveats stop being true
 │   │   ├── catalog/     # /catalog routes (signed-in) — what the engine automates + how completely (ADR 0042)
-│   │   ├── roadmap/     # the curated registry of keywords, mechanics and engine seams behind the public roadmap; generates docs/engine-seams.md's open table (ADR 0092)
+│   │   ├── roadmap/     # the curated registry of keywords, mechanics and engine seams behind the public roadmap; generates docs/engine-seams.md's open table (ADR 0092) and its closed list from docs/engine-seams/closed/ (#1461)
 │   │   ├── bugstore/    # bug-report artifacts: reporter screenshots (public, Camo-reachable) + pinned replays (admin-only)
 │   │   ├── deck/        # decklist parsers (Moxfield, plain text) + Commander validation
 │   │   ├── snapshotscrub/ # the scrubber behind cmd/snapshotscrub: generic-JSON rewrite, refuses snowflakes and emails (#522)
@@ -93,6 +93,7 @@ cmd_and_ctrl/
     ├── protocol.md      # v0 wire format spec
     ├── lobby.md         # lobby HTTP API reference
     ├── bot.md           # AI bot seat — user-facing guide (S31)
+    ├── engine-seams/closed/ # one fragment per closed seam; CI generates engine-seams.md's Closed list from them (#1461)
     ├── sprints.md       # sprint plan
     └── decisions/       # ADRs (0001 WS library … 0093 granted abilities) — see §4 on numbering
 ```
@@ -4797,6 +4798,38 @@ disagree (Discussion #559 item 6). The same registry feeds the public
 roadmap page, so its `Summary` and `Missing` sentences are held to the
 Caveats tone rule, and a seam you close in an engine PR is flipped to
 implemented there.
+
+**Closing a seam: add a fragment, never edit the Closed list.** The
+Closed seams list in `docs/engine-seams.md` is generated from one file
+per closure in `docs/engine-seams/closed/` (#1461, Discussion #1231
+Option A), because a hand-written list that every engine PR prepended
+to made any two open PRs conflict. Your engine PR adds
+`docs/engine-seams/closed/<issue>-<slug>.md`:
+
+```
+---
+title: "Phasing"
+date: 2026-09-23
+issues: [1199]
+pr: 1251
+---
+**Phasing** (#1199, [ADR 0084](decisions/0084-phasing.md)) — what closed, and what is still open.
+```
+
+`title` is double-quoted and matches the bold heading the body starts
+with (no `- ` list marker; the generator adds it); `issues` is a list;
+`pr` is optional (add it once the PR exists, or leave it out). Links
+are relative to `docs/`. Say which issue you mean rather than "the row
+above": new fragments sort by date, not by where you would have put
+them. Do **not** regenerate the list in a PR — CI's `census-publish`
+job does it on every push to `develop` and `main`, as it does for the
+census, and a regenerated block in your diff is the conflict this
+exists to remove. `TestClosedSeamsAreCurrent` skips a stale list
+outside CI but always fails a malformed fragment or an entry written
+into the list by hand (the next refresh would delete it). To look at
+the result locally, run
+`go test ./internal/roadmap/ -run TestClosedSeamsAreCurrent -update-closed`
+and then discard the change to `docs/engine-seams.md`.
 
 - **Activated abilities whose cost has no component** — `AbilityCost`
   carries tap-this, sacrifice-this, sacrifice-another (since #747
