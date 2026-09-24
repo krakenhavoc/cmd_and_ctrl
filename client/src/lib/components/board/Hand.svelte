@@ -9,6 +9,9 @@
   //     of how many they hold; we render `count` placeholder
   //     face-down cards in a tighter fan so the player count is
   //     visible at a glance without leaking content.
+  //   - #1524: the viewer's own hand shows in THEIR order — dragged
+  //     sideways or sorted from the hand menu, saved in this browser
+  //     (lib/handOrder.ts). Opponents' hands keep the server's order.
 
   import type { Action } from "svelte/action";
   import type { CardView, GameView, ZoneView } from "../../protocol";
@@ -20,6 +23,18 @@
   import { canCastFromHand, type Legality } from "../../timing";
   import { fetchAutoTapPreview, type AutoTapPreview } from "../../api";
   import { cardImageURL } from "../../cardImage";
+  import {
+    HAND_SORTS,
+    applyHandOrder,
+    handOrderKey,
+    idsOf,
+    loadHandOrder,
+    moveCard,
+    saveHandOrder,
+    sameOrder,
+    sortHand,
+    type HandSort,
+  } from "../../handOrder";
   import {
     CAST_ZONE_MARGIN_PX,
     IDLE,
@@ -83,6 +98,25 @@
     viewerID = null,
   }: Props = $props();
 
+  // ---- #1524: the viewer's own order --------------------------------
+  //
+  // What is saved is read once per (game, viewer); a reorder or a sort
+  // made on this page overrides it for the same key. Everything else —
+  // the reconcile, the sorts, the storage and its failures — is
+  // handOrder.ts.
+  const gameID = $derived(snap?.id ?? null);
+  const orderKey = $derived(gameID && viewerID ? handOrderKey(gameID, viewerID) : "");
+  const storedOrder = $derived(isSelf ? loadHandOrder(gameID, viewerID) : null);
+  let orderOverride = $state<{ key: string; ids: string[] } | null>(null);
+  const savedOrder = $derived(
+    orderOverride && orderOverride.key === orderKey ? orderOverride.ids : storedOrder,
+  );
+
+  function setOrder(ids: string[]): void {
+    orderOverride = { key: orderKey, ids };
+    saveHandOrder(gameID, viewerID, ids);
+  }
+
   // Opponent hand composition:
   //   - hand.cards contains any cards the server has revealed to the
   //     viewer (Thoughtseize-style reveals, sticky per S13.5). Those
@@ -94,7 +128,7 @@
   //     compact opponent hand; revealed cards still render in full
   //     so a Thoughtseize peek isn't obscured by the setting.
   const cards = $derived.by((): CardView[] => {
-    if (isSelf) return hand.cards;
+    if (isSelf) return applyHandOrder(hand.cards, savedOrder);
     const revealed = hand.cards;
     const hidden = Math.max(0, hand.count - revealed.length);
     const showCount = $settings.display.showOpponentHandCount;
@@ -122,6 +156,68 @@
   // layout; handOverlap only ever tightens them.
   const overlapBase = $derived(layout === "stacked" ? 0.85 : isSelf ? 0.5 : 0.62);
   const overlap = $derived(handOverlap(cards.length, overlapBase));
+
+  // Once an order is saved, keep it in step with the hand: a card that
+  // left drops out and a new one is recorded at the right end, so a
+  // card that comes BACK later (a bounce, an undo) is appended like any
+  // other new card rather than returning to a stale slot. Quiet: no
+  // write at all while the two already agree, and nothing is saved for
+  // a hand that was never rearranged.
+  $effect(() => {
+    if (!isSelf || !savedOrder) return;
+    const ids = idsOf(cards);
+    if (!sameOrder(ids, savedOrder)) setOrder(ids);
+  });
+
+  // The hand menu's one-time sorts (owner decision 3).
+  let sortMenuOpen = $state(false);
+  let sortButton = $state<HTMLButtonElement | null>(null);
+  let sortMenu = $state<HTMLElement | null>(null);
+  const canSort = $derived(isSelf && hand.cards.length > 1);
+
+  function sortBy(key: HandSort): void {
+    setOrder(sortHand(cards, key));
+    closeSortMenu(true);
+  }
+
+  function openSortMenu(): void {
+    sortMenuOpen = true;
+    queueMicrotask(() => sortMenu?.querySelector<HTMLElement>('[role="menuitem"]')?.focus());
+  }
+
+  function closeSortMenu(refocus: boolean): void {
+    if (!sortMenuOpen) return;
+    sortMenuOpen = false;
+    if (refocus) sortButton?.focus();
+  }
+
+  function onSortMenuKey(ev: KeyboardEvent): void {
+    const items = [...(sortMenu?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
+    const at = items.indexOf(document.activeElement as HTMLElement);
+    if (ev.key === "Escape") {
+      ev.preventDefault();
+      ev.stopPropagation();
+      closeSortMenu(true);
+    } else if (ev.key === "ArrowDown" || ev.key === "ArrowUp") {
+      ev.preventDefault();
+      const d = ev.key === "ArrowDown" ? 1 : -1;
+      items[(at + d + items.length) % items.length]?.focus();
+    } else if (ev.key === "Tab") {
+      closeSortMenu(false);
+    }
+  }
+
+  // A press anywhere outside the button and the menu closes it.
+  $effect(() => {
+    if (!sortMenuOpen) return;
+    const onDown = (ev: PointerEvent) => {
+      const t = ev.target as Node | null;
+      if (t && (sortMenu?.contains(t) || sortButton?.contains(t))) return;
+      closeSortMenu(false);
+    };
+    window.addEventListener("pointerdown", onDown, true);
+    return () => window.removeEventListener("pointerdown", onDown, true);
+  });
 
   function handleCardClick(card: CardView): void {
     if (!isSelf) return;
@@ -155,13 +251,14 @@
     };
   };
 
-  // ---- #1508: drag to cast ---------------------------------------
+  // ---- #1508: drag to cast, #1524: drag to reorder ---------------
   //
   // dragCast.ts owns every decision (the activation distance, the
-  // line, the gold / red verdict, cast vs snap back); this block owns
-  // the DOM: pointer listeners, the ghost that follows the pointer,
-  // the drop zone over the table, the auto-tap preview fetch and the
-  // board highlight it drives.
+  // line, the reorder band and its insertion index, the gold / red
+  // verdict, reorder vs cast vs snap back); this block owns the DOM:
+  // pointer listeners, the ghost that follows the pointer, the gap in
+  // the fan, the drop zone over the table, the auto-tap preview fetch
+  // and the board highlight it drives.
   //
   // Clicking and the keyboard are untouched. A press that never
   // travels DRAG_ACTIVATION_PX is a click and the Card's own handler
@@ -194,12 +291,25 @@
   let snapTimer: ReturnType<typeof setTimeout> | null = null;
   let dragSlot: HTMLElement | null = null;
   let dragPointerID: number | null = null;
+  // The auto-tap preview is asked for once per drag, and only once the
+  // card leaves the hand's band: a sideways reorder never fetches one.
+  let previewRequested = false;
   // A drag that ended (cast, snapped back or cancelled) swallows the
   // one click the browser may still deliver for the same press.
   let swallowClick = false;
 
   const dragEnabled = $derived(isSelf && !!onDragCast);
   const dragging = $derived(drag.phase === "dragging");
+  const reordering = $derived(dragging && drag.mode === "reorder");
+  // gapShift: in reorder mode, the other cards slide apart around the
+  // insertion point — those left of it one way, the rest the other.
+  // The dragged card keeps its (dimmed) slot. 0 when not reordering.
+  function gapShift(i: number, c: CardView): number {
+    if (!reordering || c.instance_id === dragCardID) return 0;
+    const from = cards.findIndex((x) => x.instance_id === dragCardID);
+    const j = from >= 0 && i > from ? i - 1 : i;
+    return j < drag.insertAt ? -1 : 1;
+  }
   const liveDragCard = $derived(
     dragCardID ? (cards.find((c) => c.instance_id === dragCardID) ?? null) : null,
   );
@@ -240,7 +350,7 @@
     return dragPointerID === null || ev.pointerId === undefined || ev.pointerId === dragPointerID;
   }
 
-  function onSlotPointerDown(ev: PointerEvent, c: CardView): void {
+  function onSlotPointerDown(ev: PointerEvent, c: CardView, index: number): void {
     swallowClick = false;
     if (!dragEnabled || drag.phase !== "idle") return;
     if (ev.button !== 0 || ev.isPrimary === false) return;
@@ -248,7 +358,17 @@
     if ((ev.target as Element | null)?.closest?.('[role="menu"]')) return;
     const slot = ev.currentTarget as HTMLElement;
     const handEl = slot.closest(".hand") as HTMLElement | null;
-    const handTop = (handEl ?? slot).getBoundingClientRect().top;
+    const handRect = (handEl ?? slot).getBoundingClientRect();
+    const handTop = handRect.top;
+    // #1524: the reorder band is the hand itself, and the insertion
+    // points are the other cards' centres, both as they are now — the
+    // gap that opens later must not move the targets under the pointer.
+    const slotCenters: number[] = [];
+    for (const el of handEl?.querySelectorAll<HTMLElement>(".hand-slot") ?? []) {
+      if (el === slot) continue;
+      const sr = el.getBoundingClientRect();
+      slotCenters.push(sr.left + sr.width / 2);
+    }
     const cardEl = (slot.querySelector(".card") as HTMLElement | null) ?? slot;
     const r = cardEl.getBoundingClientRect();
     grabX = ev.clientX - r.left;
@@ -266,17 +386,28 @@
       originY: r.top,
       snapping: false,
     };
-    apply({ type: "down", cardID: c.instance_id, x: ev.clientX, y: ev.clientY, handTop });
+    apply({
+      type: "down",
+      cardID: c.instance_id,
+      x: ev.clientX,
+      y: ev.clientY,
+      handTop,
+      handBottom: handEl ? handRect.bottom : undefined,
+      slotCenters,
+      fromIndex: index,
+    });
     listen();
   }
 
   function onWindowMove(ev: PointerEvent): void {
     if (!samePointer(ev)) return;
     const was = drag.phase;
+    const wasMode = drag.mode;
     apply({ type: "move", x: ev.clientX, y: ev.clientY });
     if (drag.phase !== "dragging") return;
     ev.preventDefault();
     if (was === "pressed") startDrag();
+    if (was === "pressed" || wasMode !== drag.mode) syncCastFeedback();
     if (ghost) ghost = { ...ghost, x: ev.clientX - grabX, y: ev.clientY - grabY };
   }
 
@@ -309,9 +440,7 @@
   }
 
   // startDrag runs once, as a press becomes a drag: capture the pointer
-  // so the gesture keeps its events wherever it goes, and ask the
-  // auto-tapper which sources it would spend — once per drag, never per
-  // move.
+  // so the gesture keeps its events wherever it goes.
   function startDrag(): void {
     if (dragSlot && dragPointerID !== null) {
       try {
@@ -321,6 +450,24 @@
         // window listeners still see its events.
       }
     }
+  }
+
+  // syncCastFeedback runs when the drag starts and whenever it changes
+  // band. Inside the hand's band it is a reorder, and the board shows
+  // no auto-tap highlight; out of it, the auto-tapper is asked which
+  // sources it would spend — once per drag, never per move — and its
+  // answer drives the highlight.
+  function syncCastFeedback(): void {
+    if (drag.mode === "reorder") {
+      clearAutoTapHighlight();
+      return;
+    }
+    if (preview) {
+      autoTapHighlight.set(new Set(previewSourceIDs(preview)));
+      return;
+    }
+    if (previewRequested) return;
+    previewRequested = true;
     const card = liveDragCard;
     if (!card || !snap?.id || !wantsPreview(card, legalityFor(card))) return;
     const token = ++previewToken;
@@ -328,7 +475,7 @@
       .then((p) => {
         if (token !== previewToken || drag.phase !== "dragging") return;
         preview = p;
-        autoTapHighlight.set(new Set(previewSourceIDs(p)));
+        if (drag.mode !== "reorder") autoTapHighlight.set(new Set(previewSourceIDs(p)));
       })
       .catch(() => {
         // No preview, no highlight: the drag works without one, and the
@@ -349,6 +496,7 @@
     dragPointerID = null;
     dragCardID = null;
     previewToken++;
+    previewRequested = false;
     preview = null;
     clearAutoTapHighlight();
 
@@ -360,6 +508,15 @@
     if (out.kind === "cast") {
       ghost = null;
       if (card) onDragCast?.(card);
+      return;
+    }
+    if (out.kind === "reorder") {
+      ghost = null;
+      // Re-find the card in the live hand: a snapshot may have landed
+      // mid-drag. A card that left the hand has nothing to move.
+      const ids = idsOf(cards);
+      const from = ids.indexOf(out.cardID);
+      if (from >= 0) setOrder(moveCard(ids, from, out.to));
       return;
     }
     if (out.reason) showSnapReason(out.reason, x, y);
@@ -410,15 +567,58 @@
   });
 </script>
 
+{#if canSort}
+  <!-- #1524: the hand menu — one-time sorts. The result becomes the
+       saved order; nothing keeps the hand sorted afterwards. -->
+  <div class="hand-sort">
+    <button
+      bind:this={sortButton}
+      type="button"
+      class="hand-sort-button"
+      aria-label="Sort hand"
+      title="Sort hand"
+      aria-haspopup="menu"
+      aria-expanded={sortMenuOpen}
+      onclick={() => (sortMenuOpen ? closeSortMenu(false) : openSortMenu())}
+    >
+      <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+        <path
+          d="M2 3.5h12M2 8h8M2 12.5h4"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          fill="none"
+        />
+      </svg>
+    </button>
+    {#if sortMenuOpen}
+      <div
+        bind:this={sortMenu}
+        class="hand-sort-menu"
+        role="menu"
+        aria-label="Sort hand by"
+        tabindex="-1"
+        onkeydown={onSortMenuKey}
+      >
+        {#each HAND_SORTS as s (s.key)}
+          <button type="button" role="menuitem" onclick={() => sortBy(s.key)}>{s.label}</button>
+        {/each}
+      </div>
+    {/if}
+  </div>
+{/if}
 <div
   class="hand"
   class:opponent={!isSelf}
   class:stacked={layout === "stacked"}
+  class:reordering
   style:--hand-overlap={overlap}
   aria-label={isSelf ? "your hand" : "opponent hand"}
 >
   {#each cards as c, i (c.instance_id)}
     {@const leg = legalityFor(c)}
+    {@const shift = gapShift(i, c)}
+    {@const gapX = shift === 0 ? "" : `translateX(calc(var(--card-w, 80px) * ${shift * 0.3})) `}
     <!-- #1508: the pointer handler is the drag-to-cast gesture, a
          pointer-only enhancement. The Card inside is the button, and
          clicking or pressing Enter on it casts exactly as before. -->
@@ -428,12 +628,14 @@
       class:timing-disabled={isSelf && !leg.legal}
       class:draggable={dragEnabled}
       class:drag-source={dragging && dragCardID === c.instance_id}
+      class:gap-left={shift < 0}
+      class:gap-right={shift > 0}
       title={isSelf && !leg.legal ? leg.reason : undefined}
-      onpointerdown={dragEnabled ? (ev) => onSlotPointerDown(ev, c) : undefined}
+      onpointerdown={dragEnabled ? (ev) => onSlotPointerDown(ev, c, i) : undefined}
       onclickcapture={dragEnabled ? onSlotClickCapture : undefined}
       style:transform={layout === "stacked"
-        ? "none"
-        : `rotate(${fanAngle(i, cards.length)}deg) translateY(${fanLift(i, cards.length)}px)`}
+        ? gapX || "none"
+        : `${gapX}rotate(${fanAngle(i, cards.length)}deg) translateY(${fanLift(i, cards.length)}px)`}
     >
       <!-- Inner wrapper carries the deal-in / deal-out transforms so
            they don't fight the .hand-slot's fan-layout transform. -->
@@ -460,7 +662,7 @@
   {/if}
 </div>
 
-{#if dragging && drag.inCastZone}
+{#if dragging && drag.mode === "cast"}
   <!-- #1508: the faint "release to cast" zone over the table, shown
        once the dragged card has crossed the line. -->
   <div
@@ -480,8 +682,9 @@
   {@const art = cardImageURL(ghost.card, "small")}
   <div
     class="drag-ghost"
-    class:castable={dragging && verdict.castable}
-    class:blocked={dragging && !verdict.castable}
+    class:castable={dragging && !reordering && verdict.castable}
+    class:blocked={dragging && !reordering && !verdict.castable}
+    class:reordering
     class:snapping={ghost.snapping}
     style:left="{ghost.x}px"
     style:top="{ghost.y}px"
@@ -495,7 +698,7 @@
     {:else}
       <span class="drag-ghost-name">{ghost.card.name}</span>
     {/if}
-    {#if dragging && !verdict.castable && verdict.reason}
+    {#if dragging && !reordering && !verdict.castable && verdict.reason}
       <span class="drag-ghost-reason">{verdict.reason}</span>
     {/if}
   </div>
@@ -618,6 +821,76 @@
   .hand-slot.drag-source {
     opacity: 0.3;
   }
+  /* #1524: while reordering, the other cards slide apart to show where
+     the dragged one will land (gapShift in the script). A slightly
+     longer ease than the resting 80ms so the gap reads as opening. */
+  .hand.reordering .hand-slot {
+    transition: transform 140ms var(--ease, ease);
+  }
+  /* The sort menu sits in the hand zone's top-left corner, faint until
+     it is wanted. PlayerPanel's .hand-zone is position: relative. */
+  .hand-sort {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    z-index: 21;
+  }
+  .hand-sort-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 1px solid var(--border, rgba(255, 255, 255, 0.2));
+    border-radius: 6px;
+    background: var(--surface-2, #222);
+    color: var(--fg, #eee);
+    opacity: 0.55;
+    cursor: pointer;
+  }
+  .hand-sort-button:hover,
+  .hand-sort-button:focus-visible,
+  .hand-sort-button[aria-expanded="true"] {
+    opacity: 1;
+  }
+  .hand-sort-menu {
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: 0;
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    min-width: 170px;
+    padding: 4px;
+    border: 1px solid var(--border, rgba(255, 255, 255, 0.2));
+    border-radius: 8px;
+    background: var(--surface-2, #222);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5);
+  }
+  .hand-sort-menu button {
+    padding: 6px 10px;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--fg, #eee);
+    font-size: 12px;
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .hand-sort-menu button:hover,
+  .hand-sort-menu button:focus-visible {
+    background: var(--accent-soft, rgba(255, 212, 0, 0.18));
+    outline: none;
+  }
+  /* A reordering ghost is neither gold nor red: nothing is being cast. */
+  .drag-ghost.reordering {
+    transform: scale(1.04);
+    box-shadow:
+      0 0 0 2px rgba(255, 255, 255, 0.35),
+      0 14px 30px rgba(0, 0, 0, 0.55);
+  }
   /* The ghost, the zone and the reason are portalled to <body>. Scoped
      rules still reach them: the scoping class is on the element, and
      moving it does not take it off. */
@@ -729,6 +1002,9 @@
     white-space: nowrap;
   }
   @media (prefers-reduced-motion: reduce) {
+    .hand.reordering .hand-slot {
+      transition: none;
+    }
     .drag-ghost,
     .drag-ghost.snapping {
       transition: none;

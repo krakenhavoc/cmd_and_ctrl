@@ -618,7 +618,15 @@ type cardSnapshot struct {
 	// Absent in a file written before the field existed, which decodes
 	// as the zero record: "not cast, or cast for its mana cost", the
 	// answer every permanent gave before #653.
-	Provenance CastProvenance `json:"provenance,omitzero"`
+	//
+	// No `omitzero`: `encoding/json` only honours that option from Go
+	// 1.24 (#1492), and CI's pinned 1.22 toolchain — the one that
+	// builds every fixture in testdata/snapshots and every deployed
+	// binary — silently ignores it and always writes the field. A
+	// contributor's newer local toolchain honouring the option is
+	// what produced the divergence; always writing it, on every Go
+	// version, is what removes it.
+	Provenance CastProvenance `json:"provenance"`
 	// ClassLevel is the CR 716.2 level designation and Solved the
 	// CR 719.3 solved designation (ADR 0071 decision 6). Both carried,
 	// for NamedTribe's reason and one more: they are legal zero
@@ -645,14 +653,16 @@ type cardSnapshot struct {
 	// permanent beside a copy nobody may cast, or a copy that is a
 	// real card — and old snapshots decode as "not prepared, no copy",
 	// which is what every game before ADR 0090 was.
-	Prepared    bool              `json:"prepared,omitempty"`
-	PrepareCopy bool              `json:"prepareCopy,omitempty"`
-	PreparedBy  PermissionCardRef `json:"preparedBy,omitzero"`
+	Prepared    bool `json:"prepared,omitempty"`
+	PrepareCopy bool `json:"prepareCopy,omitempty"`
+	// No `omitzero` on PreparedBy or HiddenBy below — see Provenance's
+	// comment above (#1492).
+	PreparedBy PermissionCardRef `json:"preparedBy"`
 	// HiddenBy is ADR 0091's hideaway link: the permanent object that
 	// exiled this card face down. Carried because nothing else records
 	// it — a restore that dropped it would leave the card unplayable by
 	// the land that hid it and unreadable by that land's controller.
-	HiddenBy          PermissionCardRef `json:"hiddenBy,omitzero"`
+	HiddenBy          PermissionCardRef `json:"hiddenBy"`
 	StartingDefense   int               `json:"startingDefense,omitempty"`
 	ProtectorPlayerID uuid.UUID         `json:"protectorPlayerId,omitempty"`
 
