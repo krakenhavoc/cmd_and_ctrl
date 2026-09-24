@@ -811,7 +811,7 @@ bump unless they turn out to be wire-breaking:
 
 ### Auto-tap preview (S15)
 
-`GET /games/{id}/auto-tap-preview?card=<uuid>&from_zone=<zone>&alternative_cost=<key>&optional_costs=<i>,<i>&tap_ids=<uuid>,<uuid>&face=<int>&x=<int>&phyrexian=<int>&exclude=<uuid>,<uuid>...`
+`GET /games/{id}/auto-tap-preview?card=<uuid>&from_zone=<zone>&alternative_cost=<key>&optional_costs=<i>,<i>&tap_ids=<uuid>,<uuid>&face=<int>&x=<int>&phyrexian=<int>&ability=<int>&targets=<kind>:<uuid>,...&exclude=<uuid>,<uuid>...`
 returns a read-only projection of what the auto-tapper would do for
 a given cast — the client uses it to render the `AutoTapPreviewModal`
 before committing a `cast_spell` with `auto_tap: true`. No game state
@@ -841,7 +841,8 @@ would fail.
 | `tap_ids` | no | Comma-separated permanent UUIDs being tapped for convoke or waterbend. They pay part of the cost, and the plan must not tap them again for mana. |
 | `face` | no | The printed face being cast (ADR 0034). A modal DFC's back face has its own mana cost. Defaults to 0, the front. |
 | `x` | no | Caller-supplied X value for spells with `{X}` in their cost. Defaults to 0. |
-| `ability` | no | Price the card's CR 602 activated ability at this index instead of its cast cost. Every cast-shaped param above is ignored on this branch — an ability is not a cast. |
+| `ability` | no | Price the card's CR 602 activated ability at this index instead of its cast cost. Every cast-shaped param above is ignored on this branch — an ability is not a cast. #1405: priced by `Game.PriceActivation`, the function `ActivateCatalogAbility` charges, so board activation modifiers (Boom Scholar) and the ability's own cost clause (the channel lands, Dragonfire Blade) are in the plan and the `missing` list. No commander tax. |
+| `targets` | no | #1405, with `ability` only — the targets the activation announces, as comma-separated `card:<uuid>` / `player:<uuid>` entries. A price that reads the target (Dragonfire Blade's "{1} less for each color of the creature it targets") is previewed at that target's price. Omitted, the no-target price, which is what the activation charges when it names no target and what the X and Phyrexian pickers want, since they open before targeting. Any other kind, or a malformed UUID, is a 400. Slot and mode are not carried; no cost reads them. |
 | `sacrifice_ids` / `discard_ids` | no | #1242 — the permanents and cards the cast names to its additional cost's sacrifice and discard. They do not change the price; the plan must not ALSO spend them on mana (an Eldrazi Spawn offered to Village Rites, a Spirit Guide offered to Thrill of Possibility), exactly as `CastSpell`'s auto-tap will not. The same holds for `tap_ids`, which the plan now excludes too. |
 | `exclude` | no | Comma-separated permanent UUIDs the auto-tapper must NOT consider — the lock-tap UI's reservation list. |
 | `phyrexian` | no | #916 — how many of the cost's Phyrexian symbols the announcement will pay with 2 life each (CR 107.4f). Those symbols are struck before planning, exactly as the engine strikes them, so the plan and the `missing` breakdown describe the MANA the announcement still owes. Defaults to 0. Clamped to the number the cost prints rather than rejected: refusing a malformed announce is the announce gate's job, not a read-only preview's. |
