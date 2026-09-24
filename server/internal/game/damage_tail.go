@@ -2,6 +2,7 @@ package game
 
 import (
 	"errors"
+	"slices"
 
 	"github.com/google/uuid"
 )
@@ -221,8 +222,8 @@ func (g *Game) combatDamageTailLocked(kind damageTailKind, sourceID uuid.UUID, s
 	return t
 }
 
-// effectDamageTailLocked snapshots a live battlefield source into a
-// NON-COMBAT damage tail: the fight primitive, a pinger's activated
+// effectDamageTailLocked snapshots a permanent source, live or as it
+// last existed, into a NON-COMBAT damage tail: the fight primitive, a pinger's activated
 // ability, a "target creature you control deals damage equal to its
 // power" spell. The sibling of combatDamageTailLocked, and it reads
 // the same two keywords off the same place for the same reason.
@@ -239,10 +240,11 @@ func (g *Game) combatDamageTailLocked(kind damageTailKind, sourceID uuid.UUID, s
 // Soul's Fire and Chandra's Ignition all say the damage carries the
 // creature's deathtouch and lifelink "as printed"); now they are right.
 //
-// A source that is not a battlefield permanent — a spell, an emblem, a
-// token that has already left, uuid.Nil — has no characteristics to
+// A source that is not and never was a battlefield permanent — a
+// spell, an emblem, uuid.Nil — has no permanent characteristics to
 // read and carries neither keyword. That is what "a source with
 // lifelink" means, and it is why Lightning Bolt still just deals 3.
+// A permanent that HAS left is the #1396 paragraph below.
 //
 // Unlike combatDamageTailLocked this sets no actor and no commander
 // source. The non-combat paths have never attributed their
@@ -254,8 +256,25 @@ func (g *Game) combatDamageTailLocked(kind damageTailKind, sourceID uuid.UUID, s
 // (the fight primitive, every activated ability, stack resolution)
 // have already recomputed by the time they get here.
 //
+// #1396, CR 608.2h: a source that has LEFT the battlefield deals its
+// damage with the keywords it had as it last existed there. "When this
+// creature dies, it deals 2 damage to any target" from a creature
+// wearing a Basilisk Collar is deathtouch damage, and a lifelinker
+// killed in response to Warstorm Surge still gains its controller the
+// life. Those keywords are read off Game.lastKnownPermanents, the
+// per-object record #1379 keeps; see departedDamageSourceLocked for
+// which object a source names. A spell on the stack, an emblem or a
+// card that was never on the battlefield has no record and carries
+// neither keyword, as before.
+//
+// obj names the source OBJECT (CR 400.7) when the caller knows it — a
+// trigger about the creature that entered, via its ObjectSnapshot.
+// With obj set, a live permanent of a different epoch is a new object
+// and is never read: the record for obj is. Nil for every caller that
+// has only an instance ID.
+//
 // Caller must hold g.mu.
-func (g *Game) effectDamageTailLocked(kind damageTailKind, sourceID uuid.UUID) *damageTail {
+func (g *Game) effectDamageTailLocked(kind damageTailKind, sourceID uuid.UUID, obj *ObjectRef) *damageTail {
 	t := &damageTail{kind: kind}
 	if sourceID == uuid.Nil {
 		return t
@@ -266,15 +285,63 @@ func (g *Game) effectDamageTailLocked(kind damageTailKind, sourceID uuid.UUID) *
 	// battlefield, and its colour is exactly what CR 702.16e asks
 	// about.
 	t.sourceLKI = g.damageSourceLKILocked(sourceID)
-	src := findBattlefieldCard(g, sourceID)
-	if src == nil {
+	if src := findBattlefieldCard(g, sourceID); src != nil && (obj == nil || src.ObjectEpoch == obj.Epoch) {
+		t.deathtouch = HasKeyword(src, "deathtouch")
+		if HasKeyword(src, "lifelink") {
+			t.lifelinkTo = src.Controller
+		}
 		return t
 	}
-	t.deathtouch = HasKeyword(src, "deathtouch")
-	if HasKeyword(src, "lifelink") {
-		t.lifelinkTo = src.Controller
+	rec, ok := g.departedDamageSourceLocked(sourceID, obj)
+	if !ok {
+		return t
+	}
+	// The record's Characteristic is Effective() as it last stood, so
+	// its ability tokens are exactly what HasKeyword read off the live
+	// card.
+	t.deathtouch = slices.Contains(rec.Characteristic.Abilities, "deathtouch")
+	if slices.Contains(rec.Characteristic.Abilities, "lifelink") {
+		t.lifelinkTo = rec.Controller
 	}
 	return t
+}
+
+// departedDamageSourceLocked is the last-known record of the permanent
+// a damage source names once that permanent has left the battlefield
+// (#1396, CR 608.2h), or false when there is none to read.
+//
+// With obj, the answer is obj's own record and nothing else — the
+// caller has said which object it means.
+//
+// With only an instance ID, the source is the LAST battlefield object
+// the card was, and only while the card has not moved since it left:
+// its current epoch is exactly one past the record's (CR 400.7 bumps
+// the epoch once per zone change, in MoveCard). That is the dies
+// trigger's case — the creature is in the graveyard it went to — and it
+// excludes every card that has moved on: one that was bounced and then
+// cast (on the stack now, a spell with no battlefield past), one that
+// died and was then exiled from the graveyard, one that came back and
+// left again (the newer record is the one that matches). A token that
+// has ceased to exist (CR 704.5d) is in no zone at all and cannot come
+// back (CR 111.8), so its last record is unambiguous.
+//
+// A card back on the battlefield never reaches here: the live read in
+// effectDamageTailLocked answers first, with the new object.
+//
+// Caller must hold g.mu.
+func (g *Game) departedDamageSourceLocked(sourceID uuid.UUID, obj *ObjectRef) (PermanentInfo, bool) {
+	if obj != nil {
+		return g.lastKnownPermanentLocked(*obj)
+	}
+	recs := g.lastKnownPermanents[sourceID]
+	if len(recs) == 0 {
+		return PermanentInfo{}, false
+	}
+	last := recs[len(recs)-1]
+	if now := g.cardObjectEpochLocked(sourceID); now != -1 && now != last.Epoch+1 {
+		return PermanentInfo{}, false
+	}
+	return last, true
 }
 
 // damageSourceLKILocked snapshots the damage source's

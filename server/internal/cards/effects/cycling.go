@@ -97,10 +97,10 @@ func BasicLandcycling(cost string) ActivatedAbility {
 // It works from the battlefield today with no change to the
 // harvester, because the battlefield scan is the harvester's first
 // pass. "When you cycle THIS card" (Magmakin Artillerist) is a
-// different trigger and does NOT work yet: the card is in the
-// graveyard by the time the event fires (CR 702.29c) and the
-// harvester has no scan that finds it there. ADR 0062 Decision 7
-// carries the design and the reason it waits.
+// different trigger — the card is in the graveyard by the time the
+// event fires (CR 702.29c) — and it now works too, watching via
+// `InGraveyard(On(game.EventCycle, Self, …))`: #925 built the
+// harvester's graveyard scan that ADR 0062 Decision 7 deferred.
 func WheneverYouCycle(label string, effect Effect) game.TriggeredAbility {
 	return On(game.EventCycle, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 		return source != nil && ev.Actor == source.Controller

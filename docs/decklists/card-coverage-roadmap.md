@@ -66,8 +66,14 @@ is a comment on its card file.
 | 34 | #397 | **32** | — | — | PR #532 — the "no new machinery" group (32 of the 42 it listed) |
 | 35 | #398 | **23** | — | — | PR #538 — the "no new machinery" group (23 of the 28 it listed) |
 | 36 | #399 | **27** | — | — | PR #542 — the "no new machinery" group (27 of the 33 it listed) |
-| 37–40 | #400–#403 | 0 | 0 | — | not started |
-| 41–60 | #448–#467 | 0 | 0 | — | not started — ranked against `b5a3055`, 2026-09-13 |
+| 37 | #400 | **6** | — | — | partial — 4 in #933; Voyage Home and Lilypad Village had landed separately; stale claim cleared 2026-09-24 |
+| 38 | #401 | **40** | 22 | 38 | complete pass in #953/#966 |
+| 39 | #402 | **31** | 31 | 38 | complete pass in #950/#966 |
+| 40 | #403 | **34** | 26 | 40 | 1 pre-existing plus 33 in #954/#966 |
+| 41 | #448 | **46** | 25 | 29 | complete pass in #949/#966 |
+| 42 | #449 | **30** | — | — | partial — 29 in #947/#948 plus Price of Fame pre-existing; stale claim cleared 2026-09-24 |
+| 43 | #450 | **48** | 19 | 33 | 1 pre-existing plus 47 in #955/#966 |
+| 44–60 | #451–#467 | 0 | 0 | — | not started — ranked against `b5a3055`, 2026-09-13 |
 
 ### Where the work actually is — measured 2026-09-18
 
@@ -75,15 +81,15 @@ The Progress table above says what has been *registered*. It does not say
 what is *available*, and the two have drifted apart because a batch only
 ever harvests its "no new machinery" group.
 
-**Read the status comment on a batch issue, not the issue body.** Every
-one of the sixty issues carries a per-card `Status 2026-09-1x` comment
-checked against `develop`, and that comment — not the body — is the
-current triage. The bodies were written against the frozen batch-01
-detector set and still file cards under the five mechanics above; the
-status comments already correct for that, list each card's *other*
-blockers in parentheses, and carry a refutation checklist. A re-sort of
-the bodies alone overcounts, because dominant-blocker filing hides
-second blockers.
+**Read the latest status and progress comments on a batch issue, not the
+issue body.** Every one of the sixty issues carries a per-card
+`Status 2026-09-1x` comment checked against that day's `develop`; later
+progress comments record what actually landed. Those comments are historical,
+not a permanent claim that a card is still ready: revalidate against current
+`develop` before starting a new pass. The bodies were written against the
+frozen batch-01 detector set and still file cards under the five mechanics
+above. A re-sort of the bodies alone overcounts, because dominant-blocker
+filing hides second blockers.
 
 **What the first six batches actually measured.** Batches 37–43 were
 worked on 2026-09-18 against today's `develop`:
@@ -136,11 +142,11 @@ registry disagree.
 
 | Measured | Count |
 |---|---:|
-| Registry keys (`len(effects.All())`) | **2394** |
-| — whole cards (bare `oracle_id`) | **2316** |
+| Registry keys (`len(effects.All())`) | **2399** |
+| — whole cards (bare `oracle_id`) | **2321** |
 | — back faces (`<oracle_id>#1`) | 78 |
-| Declared `full` | 2040 |
-| Declared `caveats` | 297 |
+| Declared `full` | 2060 |
+| Declared `caveats` | 282 |
 | Declared `unreviewed` | 57 |
 
 A back face is usually half a card: the modal-DFC land cycle registers

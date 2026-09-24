@@ -430,8 +430,11 @@ func TestB28ChivalricAllianceDrawsOnATwoCreatureAttackOnce(t *testing.T) {
 	if me.Hand.Size() != hand {
 		t.Errorf("one attacker is no draw: %d → %d", hand, me.Hand.Size())
 	}
-	if spec, _ := Lookup(b28ChivalricAllianceOracle); len(spec.Activated) != 0 || spec.Completeness != CompletenessCaveats {
-		t.Error("the discard-cost ability is a declared gap, not a free Knight")
+	// #1381: the discard-cost Knight-making ability is registered now
+	// (chivalric_alliance_test.go proves it works) and the card is
+	// complete.
+	if spec, _ := Lookup(b28ChivalricAllianceOracle); len(spec.Activated) != 1 || spec.Completeness != CompletenessFull {
+		t.Error("the discard-cost ability should be registered and the card complete")
 	}
 }
 
@@ -470,8 +473,11 @@ func TestB28CauldronFamiliarDrainsEachOpponentForOne(t *testing.T) {
 			t.Errorf("seat %d: %d → %d, want %d", i, before[i], p.Life, want[i])
 		}
 	}
-	if spec, _ := Lookup(b28CauldronFamiliarOracle); len(spec.Activated) != 0 || spec.Completeness != CompletenessCaveats {
-		t.Error("the graveyard ability is a declared gap")
+	// #1381: the sacrifice-a-Food graveyard ability is registered now
+	// (cauldron_familiar_test.go proves it works) and the card is
+	// complete.
+	if spec, _ := Lookup(b28CauldronFamiliarOracle); len(spec.Activated) != 1 || spec.Completeness != CompletenessFull {
+		t.Error("the graveyard ability should be registered and the card complete")
 	}
 }
 

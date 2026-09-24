@@ -1912,7 +1912,8 @@ matter.
   COMMAND ZONE. `putOntoBattlefieldFromZoneLocked` is generic in its source
   zone, so the entry itself would work; what is unexamined is the commander
   bookkeeping around a command-zone exit that is not a cast. See ADR 0020's
-  amendment.
+  amendment. *Shipped by #1278 (ADR 0020's 2026-09-24 amendment): the entry
+  above is used unchanged, from the command zone.*
 
 ---
 
@@ -2243,9 +2244,139 @@ offer the block with no code change beyond the comments and a test.
   controller. That is a separate gap in removal-from-combat, not in this
   record, and the record would give the right answer the day the removal is
   modelled ([#1376](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1376)).
+  *Closed by the amendment below, Decision 36* (the control-change half; the
+  engine has no path that changes a battle's protector mid-game).
 - **A planeswalker that phases back in** in the same combat still resolves
   live as the attack's target — the same removal-from-combat gap (#1376).
+  *Closed by the amendment below, Decision 36.*
 - **The bot's pressure estimate** (`aiseat/heuristic` `decideBlock`) counts
   only attacks aimed at its seat as incoming damage, which is right for such a
   creature (it deals none). The block moves themselves come from the
   enumerator, so a bot is offered and may take the block.
+
+## Amendment (2026-09-24, [#1376](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1376)): an attacked planeswalker or battle that changes control or phases out leaves combat
+
+Decision 35 recorded who was defending an attack so that the block path could
+name that player once the attacked permanent had gone. It left the other half
+of CR 506.4 open: an attacked planeswalker or battle that is removed from
+combat **without leaving the battlefield** stayed in combat, because nothing
+touched the creatures attacking it. This closes it. Decisions 1-35 stand.
+Sprint S37 (combat correctness), tracker
+[#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880). CR numbers
+checked against the pinned edition (`MagicCompRules 20260819.txt`).
+
+### The rules
+
+- **CR 506.4** — a permanent is removed from combat if it leaves the
+  battlefield, **if its controller changes, if it phases out**, if an effect
+  specifically removes it from combat, if it is a planeswalker that stops being
+  a planeswalker or a battle that stops being a battle, or if it is an
+  attacking or blocking creature that regenerates or stops being a creature.
+  A planeswalker or battle removed from combat stops being attacked.
+- **CR 506.4c** (Decision 35) — the creatures attacking it keep attacking,
+  attack nothing, may be blocked, and deal no combat damage if unblocked.
+- **CR 802.2a** (Decision 35) — the player who may block them is the one
+  defending before the removal.
+- **CR 701.19a** — a regenerating permanent is removed from combat only "if
+  it's an attacking or blocking creature".
+
+### Decision 36: the attackers are re-pointed at a reserved id that names nothing
+
+**The shape.** When an attacked planeswalker or battle is removed from combat
+and stays on the battlefield, every ANNOUNCED creature attacking it has its
+`Card.AttackingTarget` rewritten to `game.AttackingNothing`, the reserved id
+`00000000-0000-0000-0000-000000000506`. One helper does it,
+`removeAttackedFromCombatLocked` (`server/internal/game/attack_target.go`),
+called from the two removal doors that keep the permanent on the battlefield:
+
+| Door | Call site |
+|---|---|
+| a control change (layer 2 materialised, CR 613.1b) | `materialiseControlLocked` (`layers.go`), right after the stolen permanent's own `removeFromCombatLocked` |
+| phasing out (CR 702.26b) | `phaseOutLocked` (`phasing.go`), after the batch has moved and before the events |
+
+The attackers change in nothing else. They stay announced (they attacked),
+stay blocked or unblocked (Decision 26), and keep their
+`Game.attackDefenders` row — which is why the helper writes the field directly
+rather than through `setAttackTargetLocked`, whose nil-defender arm would drop
+the row Decision 35 exists to keep.
+
+**Why a sentinel rather than a flag beside the walker's id.** A creature
+attacking nothing has to satisfy two families of readers at once:
+
+- every "is this creature attacking" test, `AttackingTarget != uuid.Nil` —
+  the bulk of the field's ~140 non-test reads, across the engine, the enumerator, the view, the
+  bots and the catalog — must still say yes (CR 506.4c: "it continues to be an
+  attacking creature");
+- every reader that RESOLVES the target — combat damage
+  (`dealCombatDamageToAttackTargetLocked`), the card-side "attacking you"
+  readers, the view's `attacking_target_kind`, the reselect label, the bot's
+  per-defender tallies — must find nothing.
+
+An id that names no seat and no card satisfies both with no edit at any
+reader. It is also exactly the state a creature whose walker DIED has been in
+since S27 (its target is an instance id no longer on the battlefield), which is
+the state Decision 35's block fallback already handles — so blocking needed no
+change at all: the live read resolves nothing, and
+`defendingPlayerForAttackerLocked` falls back to the recorded defender. A flag
+beside a still-live walker id would have had to be consulted by every
+resolving reader, and one that forgot would deal the damage — the failure this
+issue is about. The value is a version-0 uuid, so it cannot collide with a
+seat or instance id (both `uuid.New`, version 4).
+
+**Why not the walker's id left as it was.** It still resolves: under a control
+change to the new controller (who is then "being attacked" and takes the
+walker's damage), and after a phase-in to the walker again. Phasing out alone
+already stopped the damage while the walker was out of the battlefield slice
+(ADR 0084); the rewrite is what stops it resuming.
+
+**Only announced attackers.** A creature merely staged in the
+declare-attackers step (Decision 22) is not in combat yet, and its declaration
+is still the active player's to change — the reselect verb refuses it for the
+same reason (Decision 33). A staged attack on a walker that changes control
+keeps naming the walker.
+
+**Not inside `removeFromCombatLocked`.** Its other caller is regeneration,
+and CR 701.19a removes a regenerating permanent from combat only if it is an
+attacking or blocking creature. An attacked planeswalker that is also a
+creature (an animated Gideon) and regenerates stays attacked, and still takes
+the damage.
+
+**Lifetime, undo and restore.** Nothing new to carry: the sentinel is an
+ordinary value of a field that `Clone`, `RestoreFrom` and the persisted
+snapshot already carry, and `clearCombatLocked` wipes it with every other
+`AttackingTarget` when combat ends.
+
+**The wire.** No new field. Such an attacker ships `attacking_target` set to
+the reserved id (so every client check for "is attacking" still holds), no
+`attacking_target_kind`, and `defending_player` naming the seat that was
+defending before the removal. The client's combat arrows find no seat for the
+id and draw nothing, as they already did for a walker that died.
+
+### Tests
+
+`server/internal/game/attacked_leaves_combat_test.go`: a walker stolen by the
+attacking player (blocks by the former controller; bystander refused; no
+damage), a walker stolen by a third player (no loyalty lost, no life lost), a
+battle stolen mid-combat (the protector blocks; the old and new controllers
+are refused; no defense lost), a walker that phases out and back in (blocks,
+no damage), a staged attack left alone, a regenerating walker-creature that
+stays attacked, and the clone / undo (`RestoreFrom`) / persisted-snapshot
+round trip. `legal/block_defender_lki_test.go`
+`TestBlockMovesOfferAnAttackerWhoseWalkerWasStolen` (the enumerator and
+`actions.Dispatch` agree); `protocol/defender_lki_view_test.go`
+`TestAttackerWhoseWalkerWasStolenAttacksNothingOnTheWire`.
+
+### What this does NOT decide
+
+- **A planeswalker or battle that stops being one and becomes one again
+  inside one combat** (CR 506.4's type clause). While it is not a planeswalker
+  the live read already resolves it to nothing; only the return is wrong,
+  and no catalogued card produces it. It would need a type-delta hook in the
+  layer pass. Filed as [#1387](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1387).
+- **A battle's protector changing mid-combat.** The engine sets
+  `ProtectorPlayerID` only when the battle enters (`battle.go`), so there is
+  no path to hook.
+- **Ninjutsu from an attacker that attacks nothing.** `stampEntryAttackerLocked`
+  hands the ninja the returned creature's target; a target that resolves to
+  nothing leaves the ninja on the battlefield not attacking, as it already did
+  for a walker that died. Unchanged here.

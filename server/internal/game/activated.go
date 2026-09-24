@@ -578,6 +578,32 @@ type ActivatedAbilityShape struct {
 	// are checked in that order.
 	Exhaust bool
 
+	// CostModifiers are the ability's OWN cost clauses — "This ability
+	// costs {1} less to activate for each legendary creature you
+	// control" (Takenuma, Otawara, Boseiju), "This ability costs {1}
+	// less to activate for each color of the creature it targets"
+	// (Dragonfire Blade). #1296, ADR 0020 amendment 2026-09-24.
+	//
+	// The activation twin of CardDef.SelfCostModifiers ("THIS SPELL
+	// costs …"), and for the same reason a separate slot rather than a
+	// board modifier: the clause is part of the ability, so it prices
+	// this ability and no other, and it functions wherever the ability
+	// does (CR 113.6) — a channel land prices its discount from the
+	// HAND, where a battlefield scan would never find it. Nil for
+	// nearly every ability.
+	//
+	// Joined to the CR 601.2f pass beside the board's
+	// activation-scoped modifiers (activeCostModifiersLocked), bound
+	// to the ability's source with the activator as its controller, so
+	// the order, the generic floor and the negative-amount refusal are
+	// the same rules. A modifier here that reads the announced targets
+	// sets ReadsTargets, and the price is then determined after the
+	// targets (CR 602.2b → 601.2c before 601.2f) — the activation path
+	// hands the targets in, and the enumerator and the view price per
+	// target. CostModifier.Activations, SpecialActions and ActiveWhen
+	// mean nothing in this slot; effects.Register refuses the last two.
+	CostModifiers []CostModifier
+
 	// Effect runs at resolution against the live game. Same contract
 	// as TriggeredAbility's stack items: never capture a *Card,
 	// read what you need off the item and the game.
@@ -926,7 +952,7 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	// opens the window (The Wandering Emperor, Leonin Shikari) or
 	// narrows it, then the sorcery-speed gate. It replaced the
 	// inline `(ab.SorcerySpeed || ab.Cost.Loyalty != nil) &&
-	// !g.sorcerySpeedOpenLocked(playerID)` that used to live here
+	// !g.SorcerySpeedOpenLocked(playerID)` that used to live here
 	// and in two other files.
 	if !g.ActivationTimingOpenLocked(playerID, *source, srcZone, abilityID) {
 		return ErrSorcerySpeedRequired
@@ -1078,7 +1104,9 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	// inside the validator, as a stray tap_ids or crew_ids is.
 	waterbendBudget := 0
 	if !ab.Cost.Waterbend.Empty() {
-		priced, err := g.AbilityManaCostForEffect(playerID, *source, srcZone, ab)
+		// #1296: with the announced targets, so a target-keyed
+		// discount sizes the budget as it sizes the payment below.
+		priced, err := g.AbilityManaCostForTargetsForEffect(playerID, *source, srcZone, ab, params.Targets)
 		if err != nil {
 			return ErrInvalidParam
 		}
@@ -1191,7 +1219,13 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		// offered an activation the engine then refuses for want of
 		// mana. A board with no activation-scoped modifier on it
 		// returns the printed cost and walks nothing.
-		manaCost, err := g.AbilityManaCostForEffect(playerID, *source, srcZone, ab)
+		//
+		// #1296: priced HERE, after the targets were announced and
+		// validated above, and with them — CR 602.2b runs 601.2c
+		// before 601.2f, so "{1} less for each color of the creature
+		// it targets" (Dragonfire Blade) is sized against the target
+		// this activation actually named.
+		manaCost, err := g.AbilityManaCostForTargetsForEffect(playerID, *source, srcZone, ab, params.Targets)
 		if err != nil {
 			return ErrInvalidParam
 		}

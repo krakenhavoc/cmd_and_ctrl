@@ -255,6 +255,16 @@ func (g *Game) phaseOutLocked(source uuid.UUID, ids []uuid.UUID, opts phaseOutOp
 		g.PhasedOut.Cards = append(g.PhasedOut.Cards, c)
 		moved = append(moved, id)
 	}
+	// #1376: a planeswalker or battle that phases out is removed from
+	// combat too, so the creatures attacking it attack nothing — and
+	// keep attacking nothing if it phases back in this combat
+	// (CR 506.4c). Its absence from the slice already stopped the
+	// damage; this is what stops it resuming. After the move loop, so
+	// an attacker phasing out in the same batch has already cleared
+	// its own target.
+	for _, id := range moved {
+		g.removeAttackedFromCombatLocked(id)
+	}
 	for _, id := range moved {
 		g.EmitEvent(Event{
 			Kind:   EventPhaseOut,

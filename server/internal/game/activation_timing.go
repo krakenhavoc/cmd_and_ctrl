@@ -235,7 +235,7 @@ func (g *Game) activationTimingVerdictLocked(q ActivationQuery) activationTiming
 //
 //   - ActivateCatalogAbility, where it replaced the inline
 //     `(ab.SorcerySpeed || ab.Cost.Loyalty != nil) &&
-//     !g.sorcerySpeedOpenLocked(playerID)`;
+//     !g.SorcerySpeedOpenLocked(playerID)`;
 //   - legal.abilityMovesForSource, which dropped the `speed`
 //     parameter it threaded through two functions to keep a copy of
 //     the same three lines, so a bot is never offered an activation
@@ -289,8 +289,8 @@ func (g *Game) activationTimingVerdictLocked(q ActivationQuery) activationTiming
 //     placement is the rule, stated once, rather than a rule that
 //     would have to be discovered the day a card does.
 //
-// Then a shut window means `sorcerySpeedOpenLocked` must be open,
-// which is CR 302.6's main-phase / empty-stack / active-player test
+// Then a shut window means `SorcerySpeedOpenLocked` must be open,
+// which is CR 307.1's main-phase / empty-stack / active-player test
 // unchanged.
 //
 // It sits BESIDE ActivationGateLocked rather than inside it, for the
@@ -330,5 +330,5 @@ func (g *Game) ActivationTimingOpenLocked(activator uuid.UUID, card Card, zone Z
 	if instantSpeed {
 		return true
 	}
-	return g.sorcerySpeedOpenLocked(activator)
+	return g.SorcerySpeedOpenLocked(activator)
 }

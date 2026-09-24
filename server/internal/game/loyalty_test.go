@@ -244,7 +244,11 @@ func TestLoyaltyAbilityOnANonPlaneswalkerPermanent(t *testing.T) {
 	if got := counterOf(g, c.InstanceID, CounterLoyalty); got != 4 {
 		t.Errorf("loyalty after the +1: got %d, want 4", got)
 	}
-	// CR 606.3's once-per-turn clause says "that permanent" too.
+	// CR 606.3's once-per-turn clause says "that permanent" too. The
+	// +1 resolves first: with it still on the stack the sorcery window
+	// is shut (CR 307.1, #1352), and that is the refusal the second
+	// activation would meet instead.
+	resolveWholeStackForTest(t, g)
 	if err := g.ActivateCatalogAbility(me.ID, c.InstanceID, 0, ActivateAbilityParams{}); err != ErrLoyaltyAlreadyActivated {
 		t.Errorf("second activation the same turn: got %v, want ErrLoyaltyAlreadyActivated", err)
 	}

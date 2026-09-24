@@ -24,31 +24,28 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The discard is a COST (CR 602.2b), paid at announce with the
 // ability on the stack, so a countered channel still costs the land.
 //
-// DECLARED SIMPLIFICATION, weaker than printed: "This ability costs
-// {1} less to activate for each legendary creature you control" is
-// not applied — cost modification reaches spells only, and an
-// activated ability never passes through the CR 601.2f-style pricing
-// pass (the open "Cost modification for activated abilities" seam).
-// The channel always costs the printed {3}{U}, which is the
-// acceptable direction (#259). Boseiju, Who Endures records the same
-// gap.
+// "This ability costs {1} less to activate for each legendary
+// creature you control" is the channel ability's OWN cost clause
+// (ActivatedAbility.CostModifiers, #1296), so it prices from the hand
+// where channel is activated — a board modifier would never be found
+// there (CR 113.6). It used to be a declared simplification; see
+// Takenuma, Abandoned Mire for why the #1184 board route did not
+// reach it either.
 func init() {
 	Register(Spec{
 		OracleID:     "e9b6a394-691c-425a-9307-76d8edc7375e",
 		Name:         "Otawara, Soaring City",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The channel ability always costs {3}{U}; it doesn't get cheaper for each legendary creature you control.",
-		},
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{U}",
 			Label:    "Add {U}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "Channel — {3}{U}, Discard this card: Return target artifact, creature, enchantment, or planeswalker to its owner's hand",
-			Cost:  game.AbilityCost{Mana: "{3}{U}", DiscardSelf: true},
-			Zones: []game.ZoneKind{game.ZoneHand},
+			Label:         "Channel — {3}{U}, Discard this card: Return target artifact, creature, enchantment, or planeswalker to its owner's hand",
+			Cost:          game.AbilityCost{Mana: "{3}{U}", DiscardSelf: true},
+			Zones:         []game.ZoneKind{game.ZoneHand},
+			CostModifiers: []game.CostModifier{ChannelDiscountPerLegendaryCreature()},
 			Targets: TargetPermanent("target artifact, creature, enchantment, or planeswalker",
 				Or(Artifact(), Creature(), Enchantment(), Planeswalker())),
 			Effect: otawaraChannel,

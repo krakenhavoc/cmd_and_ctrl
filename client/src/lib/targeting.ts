@@ -217,6 +217,10 @@ export interface TargetingState {
     // the targets, and it rides the one activate_ability the confirm
     // sends as `phyrexian_life`.
     phyrexianLife?: number;
+    // #1296: the ability's price per legal target, when its price
+    // reads the target (target_charged_mana_costs). The banner shows
+    // it, because an equip's one click is also its confirm.
+    prices?: Record<string, string>;
   };
   // Human-readable clause for the banner ("target artifact or
   // enchantment"); the server's TargetSpec label.
@@ -829,7 +833,15 @@ export function beginForAbility(
       // CR 602.2b: X was announced before the targets were chosen and
       // cannot change now — it rides through to the one
       // activate_ability the confirm sends.
-      ability: { index: ability.index, sacrificeIDs, crewIDs, xValue, counter, phyrexianLife },
+      ability: {
+        index: ability.index,
+        sacrificeIDs,
+        crewIDs,
+        xValue,
+        counter,
+        phyrexianLife,
+        prices: ability.target_charged_mana_costs,
+      },
       modes,
     }),
   );

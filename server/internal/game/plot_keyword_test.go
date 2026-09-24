@@ -141,6 +141,14 @@ func TestPlotOutsideItsWindowIsRefusedBeforePaying(t *testing.T) {
 			stackSpellFor(t, g, g.Seats[1], "Something On The Stack")
 			return g.Seats[0]
 		}},
+		// #1352: an ability on the stack is on the stack (CR 405.1).
+		// It has no card in the stack zone — only a StackMeta entry —
+		// which is the half the gate used to miss.
+		{"a trigger on the stack", func(t *testing.T, g *Game) *Player {
+			toMainPhase(t, g)
+			stackTriggerForTest(t, g, g.Seats[1])
+			return g.Seats[0]
+		}},
 		{"combat", func(t *testing.T, g *Game) *Player {
 			g.WithWriteLock(func() {
 				g.Turn.Step = StepDeclareAttackers

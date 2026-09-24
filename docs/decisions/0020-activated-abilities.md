@@ -1987,7 +1987,8 @@ one `Ninjutsu(cost)` entry plus an ordinary combat-damage trigger.
   `putOntoBattlefieldFromZoneLocked` is already generic in its source zone, so
   the ENTRY is free. What is not free is the commander bookkeeping around a
   command-zone exit that is not a cast, which nothing in the engine does today;
-  it did not fall out, so it is not here.
+  it did not fall out, so it is not here. *Shipped by #1278 — see the
+  2026-09-24 amendment below.*
 - **Ninjutsu on a card whose other half needs machinery.** Fallen Shinobi
   ("you may play those cards without paying their mana costs" over another
   player's exiled cards) and Silent-Blade Oni (cast a spell from an opponent's
@@ -2390,3 +2391,242 @@ Haunt**, **Tome Shredder** and **Holistic Wisdom**, all `full`.
   Palace). The component expresses it (`ExileCardsFromGraveyard`) and the view
   ships the zone; no catalog card declares one yet, and the auto-tapper already
   refuses any source with an exile-cards cost.
+
+## Amendment (2026-09-24, [#1278](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1278)): commander ninjutsu, a non-cast exit from the command zone
+
+**Sprint:** S42 — casting from non-hand zones. Tracker
+[#885](https://github.com/krakenhavoc/cmd_and_ctrl/issues/885) (the issue's own
+tracker; the keyword is also hand-special-action adjacent, #886, and a combat
+entry, #880).
+
+The #1227 amendment above left **commander ninjutsu** (CR 702.49c) out with one
+sentence: the entry from the command zone would work, but "the commander
+bookkeeping around a command-zone exit that is not a cast" was unexamined.
+Examined, it is almost entirely things that already do not happen:
+
+> Commander ninjutsu [cost] means "[cost], Return an unblocked attacker you
+> control to hand: Put this card onto the battlefield from your hand **or the
+> command zone** tapped and attacking."
+
+### Decision 38: the keyword is Ninjutsu with a second zone
+
+`effects.CommanderNinjutsu(cost)` is `Ninjutsu(cost)` with
+`Zones: {ZoneHand, ZoneCommand}` and CR 702.49c's reminder text, and shares its
+effect body (`ninjutsuEnter`). As with #1227, **not one line of
+`ActivateCatalogAbility` changed**: `findCardAndZoneLocked` has scanned the
+command zone since #660, `AbilityFunctionsFromZone` is the CR 113.6 gate, and
+the CR 108.4 "you" off the command zone is the card's owner — the same
+`source.Owner != playerID` arm the hand takes. The timing restriction is still
+the COST (Decision 30); nothing about the command zone changes that.
+
+### Decision 39: one more door into the shared entry batch, keeping the ID
+
+`Game.PutFromCommandZoneOntoBattlefieldForEffect(cardID, ZoneEntryOptions)` is
+the hand door with `ZoneCommand` for `ZoneHand`: `startEntryBatchLocked` now
+admits the command zone as a `BatchEntry.From`, so the arrival runs the one
+CR 614 entry window, lands through `landEntryLocked`, stamps the CR 506.3c
+attacker, and announces `EventZoneMove` / `EventETB` like every other put. The
+card **keeps its instance ID**, as a hand or library card does, and here the
+reason is load-bearing: `Player.CommanderCasts` is keyed by it, so a fresh ID
+would quietly reset the CR 903.8 tax.
+
+What the door does NOT do is the answer to the issue's question:
+
+- **No commander tax, and nothing added to the next one.** CR 903.8 taxes
+  CASTING from the command zone. The tally is bumped by the cast path alone
+  (`mutations.go`, after `CastSpell` succeeds); a put never reaches it, and an
+  activation's cost is not a spell's cost, so no tax is priced either.
+- **No CR 903.9 prompt on the way in.** `commanderZoneReplacement`'s
+  `AppliesTo` is destination-only (library, hand, graveyard, exile), so an
+  arrival on the battlefield is none of its business. PR #539 moved that window
+  into the shared exit primitive (`routeCardToZoneLocked`), and it applies on
+  the way OUT: `Card.IsCommander` rides the card through the non-cast exit, so
+  a ninjutsu'd Yuriko that is bounced, killed or exiled is offered the command
+  zone exactly as a cast one is, and deals commander damage while she is out
+  (CR 903.10a).
+- **No colour-identity check.** CR 903.4 is deck construction and mana; it
+  says nothing about which card may leave the command zone.
+
+The return cost's bounce was already on the shared exit primitive (#1227) with
+`MustSettleNow`, so returning a COMMANDER as the ninjutsu cost does not stop
+for CR 903.9 — a cost cannot pause (the posture `payLifeAsCostLocked` and the
+discard cost take). That is unchanged and not new here.
+
+### Decision 40: the effect checks the OBJECT, not just the zone
+
+With two zones, `ninjutsuEnter`'s old "is it still in its owner's hand"
+check stopped being enough. A commander discarded in response to her own hand
+ninjutsu takes CR 903.9's command zone — a zone the same ability also names,
+with the same instance ID. By CR 400.7 she is a new object and the ability has
+lost her. The effect now compares `Card.ObjectEpoch` against
+`StackItem.SourceEpoch` (stamped at announce for every catalog activation) and
+does nothing on a mismatch, which also guarantees the zone it reads is the zone
+the ability was activated from — so plain ninjutsu can never reach the
+command-zone arm. This tightens plain ninjutsu too (a ninja discarded and
+returned to hand in response no longer enters), which is the printed rule.
+
+### The rest is already built
+
+The enumerator's `abilityZones()` has walked the command zone since #1221, and
+the view's `stampZoneAbilities` ships its rows on `zone_abilities`, owner-only.
+No wire change. The client's one change is where the command zone's actions
+live: `CommandZone.svelte` hands `zone_abilities` to its `Card` the way
+`Hand.svelte` does, so right-clicking the commander opens the same popover
+(with #1227's shortfall greying) that a hand card and the zone browser open,
+and the tile shows an `ability` hint beside `cast` while a row is present.
+
+### Cards
+
+**Yuriko, the Tiger's Shadow** (`full`) — the only non-joke printing of the
+keyword. Her trigger is Dark Confidant's flip with the life lost by each
+opponent, on Ingenious Infiltrator's per-Ninja combat-damage condition. The two
+"Fixed commander ninjutsu" cards (The Multifaceted Phyrexian, Monet) are
+playtest / Un printings whose whole point is that the tax DOES apply; neither is
+catalogued.
+
+### Still out of scope
+
+- **"Put onto the battlefield blocking"** — unchanged from #1227.
+- **A commander returned as a ninjutsu COST** goes to hand without the CR 903.9
+  offer, because costs cannot pause (see Decision 39). Weaker for the player
+  than printed in the rare case it matters; the same posture every cost exit
+  takes. Filed as [#1397](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1397).
+
+## Amendment (2026-09-24, [#1296](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1296)): an ability's own cost clause, and a price that reads the target
+
+**Sprint:** S44 — mana and cost components. Tracker [#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887).
+Decisions 38–40 are the commander-ninjutsu amendment above (#1399); this
+one starts at 41.
+
+### Context
+
+An in-app report: *"Equip costs were not paid when equipping to Vivi Ornitier"*,
+with Dragonfire Blade:
+
+```
+Dragonfire Blade   Equipped creature gets +2/+2 and has hexproof from monocolored.
+                   Equip {4}. This ability costs {1} less to activate for each
+                   color of the creature it targets.
+```
+
+Two things were wrong, and only one of them was the card.
+
+1. **Nothing was charged.** The client stamps its `gameplay.strictMana` setting
+   on `cast_spell` and on nothing else, so every `activate_ability` a player
+   clicked reached `payAbilityManaCostLocked` with neither `Strict` nor
+   `AutoTap` — the sandbox paper path, which spends what the pool covers and
+   otherwise waives the charge (`PaidCost.OnPaper`). The reporter had strict
+   mana on (their casts were refused with `insufficient_mana` minutes earlier),
+   tapped a land by hand (a raw tap, no mana), and equipped for free. This has
+   been true of every activated ability since S21; the bots never saw it because
+   `internal/legal` sends `strict` + `auto_tap` on every move.
+2. **The discount could not be said.** The card shipped with the full {4} and a
+   caveat. #1184 put activations through the CR 601.2f pass, but only for BOARD
+   modifiers (`CostModifier.Activations`, Boom Scholar), and a board modifier
+   has two problems here: it never sees the target, and it is gathered from the
+   battlefield. The second one had already bitten: Takenuma's channel discount
+   was written as a board modifier scoped to its own ability, and channel is
+   activated from the HAND, so the scan never found it — its caveat said "the
+   discount applies when you pay for it", and it did not.
+
+### Decision 41: `ActivatedAbilityShape.CostModifiers` — the ability's own clause
+
+"This ability costs {1} less to activate …" is part of the ability, so it lives
+on the ability: `ActivatedAbilityShape.CostModifiers` (card side
+`ActivatedAbility.CostModifiers`), the activation twin of a spell's
+`SelfCostModifiers` (ADR 0048 addendum). `abilityCostQueryLocked` carries the
+list on `AbilityCostSubject` (unexported — a predicate cannot reach another
+modifier's hooks), and `activeCostModifiersLocked` binds each one to the
+ability's source **with the activator as its controller** (CR 602.2) after the
+board's activation-scoped modifiers. Consequences:
+
+- It prices this ability and no other — the slot is the scope, so no
+  `q.Card.InstanceID == q.Source.InstanceID` predicate to get wrong.
+- It works wherever the ability does (CR 113.6): the channel lands price their
+  discount from the hand.
+- The CR 601.2f rules are the same pass: increases before reductions, the
+  generic floor at zero, the negative-amount refusal. Boseiju with five legends
+  still costs {G}.
+
+`effects.Register` refuses the shapes the engine would ignore: a clause on an
+ability with no mana component (the pass never runs), a `CostFloor` (no printed
+ability sets a floor on its own cost — Power Artifact's "can't reduce … to less
+than one mana" is a board clause about other abilities, and is still open),
+`SpecialActions`, or a designation gate.
+
+### Decision 42: the price is determined after the targets, with them
+
+CR 602.2b runs activation through 601.2b–i, so the targets (601.2c) are chosen
+before the total cost is determined (601.2f). `CostQuery.Targets` already
+existed for casts (ADR 0048 addendum §13), shown only to a modifier that sets
+`ReadsTargets`. The activation door now fills it:
+
+- `Game.AbilityManaCostForTargetsForEffect(activator, source, zone, ab, targets)`
+  is the pricer; `AbilityManaCostForEffect` is it with nil targets.
+- `ActivateCatalogAbility` prices with `params.Targets` **after** validating
+  them, in the one place it pays (and in the waterbend budget, which is sized
+  against the same priced cost).
+- A target-reading clause with no target (a query before one is chosen, or a
+  target that has left) reads zero — for a reduction, the printed cost, the
+  #259 direction.
+
+`effects.CostsLessForTheCardItTargets(label, per)` reads the first card target
+("the creature it targets" — every printed clause has one target) and sets
+`ReadsTargets`; `ColorsOf` (layer-5 colours) and `CountersOf(kind)` are the two
+readers the cards use. `CostsLessIfItTargets` (Price of Fame's constructor)
+works in the new slot unchanged.
+
+### Decision 43: the enumerator and the view price per target
+
+A nil-targets price is not the price of a target-reading ability, and for a
+reduction it is not even a usable gate — it is higher than the real one, so it
+would hide legal moves (#544 with the sign reversed). The cast path's §14 rule,
+one path over:
+
+- `Game.AbilityPriceReadsTargetsForEffect(ab)` is true when the ability's own
+  clause, or any activation-scoped board modifier, reads targets (it ignores
+  `AppliesTo`, erring toward true).
+- `internal/legal` solves the mana half (`abilityManaPayment`, split out of
+  `abilityMovesForSource`) once up front when nothing reads targets, and
+  otherwise once per announcement, skipping an unaffordable set before any
+  budget is spent on it.
+- The view keeps `charged_mana_cost` as the no-target price and adds
+  `activated_abilities[i].target_charged_mana_costs` — one price per legal
+  target, from the same pricer — when the price reads the target and the
+  ability is one clause, one pick, no modes. The client shows the range in the
+  menu row ("{2}–{4} depending on the target") and each price with its targets
+  in the targeting banner, because an equip's single click is also its confirm.
+
+### Decision 44: the client charges activations when the player enforces mana
+
+`client/src/lib/manaEnforcement.ts` stamps a catalog `activate_ability`
+(`ability_index` present) with `strict: true, auto_tap: true` when
+`gameplay.strictMana` is on, and leaves it untouched when it is off. `auto_tap`
+as well as `strict`, because a cast has the "Auto-tap & cast" override toast to
+fall back on and an activation has no retry path; the engine taps for the
+shortfall exactly as it does for every bot activation, special action and
+attack tax, and refuses only when the board cannot pay — with "insufficient
+mana to activate that ability" and no `card_id`, so the cast-only override is
+never offered for it. Strict mana off keeps the paper posture it always had.
+
+### Cards
+
+**Dragonfire Blade** (equip discount ships; the hexproof-from-monocolored
+caveat stays), **Ghostfire Blade** and **Warrior's Blades** (new, `full`),
+and **Takenuma, Abandoned Mire**, **Otawara, Soaring City** and **Boseiju, Who
+Endures** (`full`, via `effects.ChannelDiscountPerLegendaryCreature`).
+
+### Still out of scope
+
+- **Board reductions with a per-reduction floor** — Training Grounds, Power
+  Artifact ("can't reduce the mana in that cost to less than one mana"). A
+  `CostFloor` is a total-mana minimum (Trinisphere), not this.
+- **Belt of Giant Strength** ("{X} less, where X is the power of the creature
+  it targets") is one `CostsLessForTheCardItTargets` away and was not added;
+  the non-target members of the family (Arm-Mounted Anchor, Crown of Gondor,
+  Plate Armor, Mirror of Galadriel, …) are ordinary card work now.
+- **Per-target prices for a multi-target or modal ability.** No printed card
+  prices by target on one; the view omits the map rather than guess.
+- **The auto-tap preview's ability branch** (`/games/:id/auto-tap-preview?ability=`)
+  still prices the printed cost with no modifiers at all — stale since #1184,
+  filed as [#1405](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1405).

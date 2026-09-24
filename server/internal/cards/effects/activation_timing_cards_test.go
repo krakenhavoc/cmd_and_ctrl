@@ -160,7 +160,7 @@ func TestTeferiMasterOfTimeActivatesLoyaltyAtInstantSpeed(t *testing.T) {
 }
 
 // "ON ANY PLAYER'S TURN", which is the half CR 606.3 otherwise
-// forbids outright — the active-player test in sorcerySpeedOpenLocked.
+// forbids outright — the active-player test in SorcerySpeedOpenLocked.
 func TestTeferiMasterOfTimeActivatesOnAnOpponentsTurn(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]

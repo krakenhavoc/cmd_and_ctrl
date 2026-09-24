@@ -1575,6 +1575,14 @@ export interface ActivatedAbilityView {
   // show mana_cost as a tooltip only when the two differ (see
   // chargedCostNote in contextMenu.logic.ts).
   charged_mana_cost?: string;
+  // #1296: what the mana component costs if the ability targets each
+  // legal target, keyed by the target's ID (card instance or player),
+  // valued as charged_mana_cost is ("" = free). Present only when the
+  // PRICE reads the target — Dragonfire Blade's "{1} less for each
+  // color of the creature it targets" — on a one-target, non-modal
+  // ability; charged_mana_cost is then the price before a target is
+  // chosen. See targetPrices.ts.
+  target_charged_mana_costs?: Record<string, string>;
   life_cost?: number;
   sorcery_speed?: boolean;
   // #1208: true when the engine will refuse this activation RIGHT NOW
@@ -2094,7 +2102,11 @@ export interface CardView extends CastSurfaceView {
   // nothing is declared. #1364: once the attacked planeswalker or
   // battle has left, it still names the player who was defending it
   // (CR 506.4c "it may be blocked"), and attacking_target_kind is
-  // absent. Read it through defendingPlayerOf (attackTargets.ts), which
+  // absent. #1376: the same holds when the planeswalker or battle is
+  // removed from combat WITHOUT leaving — a control change or phasing
+  // out — and attacking_target is then the reserved id
+  // "00000000-0000-0000-0000-000000000506", which names no seat or
+  // card. Read it through defendingPlayerOf (attackTargets.ts), which
   // covers older frames.
   defending_player?: string;
   // S27: the seat protecting this battle (CR 310.9a). Absent for every

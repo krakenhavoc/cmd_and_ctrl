@@ -653,6 +653,21 @@ func InExile(t game.TriggeredAbility) game.TriggeredAbility {
 	return t
 }
 
+// WhenThisBecomesPlotted — "When this card becomes plotted, …"
+// (CR 702.170c/d; Longhorn Sharpshooter, Aloe Alchemist; #1382).
+//
+// A card becomes plotted in exile, so the ability watches from exile —
+// the plot special action from hand and an "it becomes plotted" effect
+// (Aven Interrupter) both end in Game.PlotExiledCardForEffect, which is
+// the one emitter of EventBecomesPlotted. A plain exile emits nothing,
+// so an exiled-but-not-plotted card does not trigger. The trigger's
+// controller is the card's owner (CR 108.4 — the harvest makes the
+// exiled source's Controller its Owner), even when an opponent's Aven
+// Interrupter did the plotting.
+func WhenThisBecomesPlotted(label string, effect Effect) game.TriggeredAbility {
+	return InExile(On(game.EventBecomesPlotted, Self, label, effect))
+}
+
 // ThisWasPutIntoYourGraveyardFromYourLibrary — "when this card is put
 // into your graveyard from your library" (Narcomoeba, the dredge and
 // mill recursion family).

@@ -35,6 +35,9 @@ import "github.com/google/uuid"
 // Caller must hold g.mu.
 func (g *Game) battlefieldExitLocked(cardID uuid.UUID) {
 	g.snapshotLKILocked(cardID)
+	// #1379: the same reading, kept past the harvest for an ability
+	// that resolves later and asks about this object (CR 608.2h).
+	g.rememberDepartingPermanentLocked(cardID)
 	// #759: a creature tapped to pay for a station ability that is
 	// still on the stack is read at resolution as it last existed
 	// here (CR 608.2h) — so its power is written down now, while

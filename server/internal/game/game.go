@@ -490,6 +490,16 @@ type Game struct {
 	// at the turn boundary. See stack_lki.go (#1255).
 	lastKnownStack map[uuid.UUID]lastKnownSpell
 
+	// lastKnownPermanents is CR 608.2h last-known information for
+	// permanents that left the battlefield this turn, one entry per
+	// departed OBJECT (instance ID + ObjectEpoch). Unlike
+	// lastKnownBattlefield it outlives the exit's trigger harvest, so
+	// an ability that resolves later can read the power a creature had
+	// as it left. Written by battlefieldExitLocked, read by
+	// PermanentForEffect, cleared at the turn boundary. See
+	// permanent_lki.go (#1379).
+	lastKnownPermanents map[uuid.UUID][]PermanentInfo
+
 	// simultaneousExit holds copies of the permanents currently
 	// leaving the battlefield as ONE event — a board wipe, or one
 	// state-based-action sweep. Non-empty only for the duration of

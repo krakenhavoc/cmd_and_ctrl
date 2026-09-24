@@ -56,10 +56,16 @@ import (
 // skip the rest of the batch.
 
 // BatchEntry names one card of a simultaneous entry and the zone it is
-// put from. From is ZoneHand, ZoneLibrary or ZoneExile; a card put from
-// exile returns as a NEW OBJECT (CR 400.7) exactly as
+// put from. From is ZoneHand, ZoneLibrary, ZoneExile or ZoneCommand; a
+// card put from exile returns as a NEW OBJECT (CR 400.7) exactly as
 // ReturnFromExileToBattlefieldForEffect's does, so the entered ID the
 // continuation is told about is the new one.
+//
+// A card put from the COMMAND ZONE (#1278, commander ninjutsu,
+// CR 702.49c) keeps its ID, as a hand or library card does, and for a
+// reason the other two do not have: Player.CommanderCasts is keyed by
+// the commander's instance ID, so minting a new one on the way out
+// would silently reset its CR 903.8 tax the next time it is cast.
 type BatchEntry struct {
 	CardID uuid.UUID
 	From   ZoneKind
@@ -182,7 +188,7 @@ func (g *Game) startEntryBatchLocked(cards []BatchEntry, opts ZoneEntryOptions, 
 		}
 		seen[e.CardID] = true
 		switch e.From {
-		case ZoneHand, ZoneLibrary, ZoneExile:
+		case ZoneHand, ZoneLibrary, ZoneExile, ZoneCommand:
 		default:
 			return refuse(ErrInvalidParam)
 		}

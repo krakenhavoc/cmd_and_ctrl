@@ -29,18 +29,19 @@ func activatedShapes(in []ActivatedAbility) []game.ActivatedAbilityShape {
 	out := make([]game.ActivatedAbilityShape, len(in))
 	for i, a := range in {
 		out[i] = game.ActivatedAbilityShape{
-			Label:        a.Label,
-			Cost:         a.Cost,
-			Targets:      a.Targets,
-			Modes:        a.Modes,
-			SorcerySpeed: a.SorcerySpeed,
-			Zones:        a.Zones,
-			Cycling:      a.Cycling,
-			Equip:        a.Equip,
-			Condition:    a.Condition,
-			ActiveWhen:   a.ActiveWhen,
-			Exhaust:      a.Exhaust,
-			Effect:       a.Effect,
+			Label:         a.Label,
+			Cost:          a.Cost,
+			Targets:       a.Targets,
+			Modes:         a.Modes,
+			SorcerySpeed:  a.SorcerySpeed,
+			Zones:         a.Zones,
+			Cycling:       a.Cycling,
+			Equip:         a.Equip,
+			Condition:     a.Condition,
+			ActiveWhen:    a.ActiveWhen,
+			Exhaust:       a.Exhaust,
+			CostModifiers: a.CostModifiers,
+			Effect:        a.Effect,
 		}
 	}
 	return out

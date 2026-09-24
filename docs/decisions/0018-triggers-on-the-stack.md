@@ -2,6 +2,7 @@
 
 **Status:** Implemented · 2026-09-02 · Branch `feat/s19-triggers-on-stack`
 **Addendum:** 2026-09-17 · **Accepted** · [Trigger doubling (CR 603.2d)](#addendum-2026-09-17-trigger-doubling-cr-6032d--accepted) · tracked on [#752](https://github.com/krakenhavoc/cmd_and_ctrl/issues/752)
+**Amendment:** 2026-09-24 · **Accepted** · [Resolution-time LKI for a permanent that has left (CR 608.2h)](#amendment-2026-09-24--resolution-time-lki-for-a-permanent-that-has-left-cr-6082h--accepted--s38) · [#1379](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1379)
 
 ## Context
 
@@ -2271,3 +2272,164 @@ next to this and are NOT replaced by it, each for a stated reason:
 `EventETB` does not carry; `b30CastFromHand` wants a different,
 earlier `EventCast`; and `random_effects.WheneverYouRollDice` wants
 the whole die BATCH, of which the triggering event is one member.
+
+## Amendment 2026-09-24 — resolution-time LKI for a permanent that has left (CR 608.2h) · Accepted · S38
+
+Issue [#1379](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1379).
+This ADR owns the engine's CR 603.10 last-known-information store
+(`Game.lastKnownBattlefield`, written by `snapshotLKILocked` at every
+battlefield exit and read by the harvester), so the resolution-time
+sibling lands here rather than under a new number.
+
+### What was missing
+
+CR 603.10 looks back in time when a trigger is HARVESTED. CR 608.2h
+is a different rule, applied when an ability RESOLVES: "where X is
+that creature's power" is read then, and if the creature has left
+the battlefield by that point, the ability uses the creature's
+last-known information. The engine had nothing to answer that with.
+
+- `lastKnownBattlefield` is deleted by `harvestLTB` as soon as the
+  exit's dispatch ends, a priority round before anything resolves.
+- `lastKnownCounters` (#1218) has the same lifetime and holds
+  counters only.
+- `LookupCardForEffect` finds the card in its new zone, with printed
+  power, no counters and no continuous effects.
+
+So every card that read a permanent at resolution chose one of two
+wrong answers when the permanent had gone. Cream of the Crop fell back
+to the power the creature had when the ability TRIGGERED, which misses
+a pump in response. Tribute to the World Tree, Warstorm Surge and
+Murderous Redcap did nothing. Claustrophobia could not find the
+creature it had enchanted. Each shipped a caveat that said so.
+
+Decision 9 above left "power and toughness on the object snapshot"
+open for the same reason: the number was gone from both stores before
+a trigger was even built.
+
+### Decision 12. A second LKI store, per departed OBJECT, for the rest of the turn
+
+```go
+lastKnownPermanents map[uuid.UUID][]PermanentInfo // game.go
+
+type PermanentInfo struct {
+        Epoch          int            // Card.ObjectEpoch while on the battlefield
+        Left           bool           // true on a record; false on a live read
+        Controller     uuid.UUID
+        Characteristic Characteristic // Effective(), as the CR 603.10 snapshot
+        Power, Toughness int          // counters included, not clamped
+        Counters       map[string]int
+        AttachedTo     TargetRef
+}
+```
+
+Written by `rememberDepartingPermanentLocked` from
+`battlefieldExitLocked`, in the same beat, from the same live card and
+the same layer cache as the CR 603.10 snapshot. There is no recompute,
+for the reason the paid-tap freeze (#759) gives: in a board wipe the
+permanents leave one at a time, and a recompute part-way through would
+read a creature after its lord had already gone.
+
+**Keyed by object, not by card.** The map key is the instance ID,
+which survives a zone change. The value is a list, one entry per
+battlefield object that card has been this turn, told apart by
+`Card.ObjectEpoch` (CR 400.7). A creature bounced and replayed twice
+in response to a trigger is two departed objects, and the trigger
+names only the first.
+
+**Power and toughness include counters.** `Characteristic` excludes
+them by design, and `MoveCard` zeroes `Card.Counters` a line after the
+snapshot. So the record takes `PowerForComparison()` and
+`CurrentToughness()` while the counters are still there. This is the
+number Decision 9 could not supply.
+
+**Lifetime: the turn.** Cleared at the turn boundary alongside
+`lastKnownStack` (#1255), for the argument that record makes. Whatever
+refers to a departed permanent is a stack object or a pending trigger,
+and the stack is empty before a turn can end. The size is bounded by
+the turn's battlefield exits. A card leaving the GAME (CR 800.4a)
+drops its records in `forgetObjectLocked`, with the other per-object
+maps.
+
+**Carried everywhere.** Clone and RestoreFrom copy it, so an undo
+across the removal spell rewinds it. The persisted snapshot carries it
+too (`GameSnapshot.LastKnownPermanents`, `carried` in
+`snapshot_drift_test.go`). This is unlike `lastKnownStack`, whose only
+readers are closures: the object ref below is plain data on the item,
+so a data-driven reader can use the record after a restore.
+
+### Decision 13. One read, live-or-last-known: `PermanentForEffect(ObjectRef)`
+
+```go
+type ObjectRef struct{ ID uuid.UUID; Epoch int }
+
+func (g *Game) PermanentForEffect(ref ObjectRef) (PermanentInfo, bool)
+func (g *Game) PermanentRefForEffect(cardID uuid.UUID) (ObjectRef, bool)
+```
+
+The read returns the LIVE permanent (after a layer recompute) while
+the named object is still on the battlefield, so a Giant Growth in
+response counts. Once the object has left, it returns the record. A
+live card with a different epoch is a new object, and the read never
+answers with it: the record is the answer.
+
+The ref comes from the trigger context. `ObjectSnapshot` (Decision 9)
+gains `Epoch`, the epoch of the object the event was about. For an
+exit, that is the epoch the object had ON THE BATTLEFIELD, taken from
+the record. It is not the epoch its card has now in the graveyard.
+`ObjectSnapshot.Ref()` hands it to the read. On the card side,
+`effects.Context.TriggeringPermanent()` is the one-line spelling, and
+the proof cards use nothing else. An effect that is not a trigger takes
+`PermanentRefForEffect` when it is built.
+
+**Read, never written to.** Last-known information answers questions
+about an object. It cannot receive counters, be tapped or be moved.
+Tribute to the World Tree's "otherwise put two +1/+1 counters on it"
+checks `Left` and does nothing for a creature that has gone. That
+includes the case where the card is back on the battlefield as a new
+object.
+
+### Cards
+
+Cream of the Crop, Tribute to the World Tree and Claustrophobia ship
+`full`. Warstorm Surge and Murderous Redcap keep a narrower caveat.
+A creature that has left now deals damage equal to its last-known
+power. It deals that damage as a plain source, because the damage
+tail reads lifelink and deathtouch off the battlefield only.
+
+### Still not covered
+
+- ~~**Damage-source keywords from a departed source.**~~ **Closed by
+  [#1396](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1396)**
+  (see the 2026-09-24 note below and
+  [ADR 0056's 2026-09-24 amendment](0056-infect-wither-toxic.md)).
+- **An exit that bypasses `battlefieldExitLocked`.** A player leaving
+  the game takes their permanents with them (CR 800.4a), and those
+  permanents get no record. The read answers false, and each card
+  chooses the weaker answer.
+- **`ObjectSnapshot` still has no power field.** A clause judged at
+  HARVEST ("a creature with power equal to the power of the creature
+  that died") can now read `PermanentForEffect(snapshot.Ref())` while
+  it builds. No card needs it yet.
+
+### Note 2026-09-24 — the record's first engine reader (#1396)
+
+The non-combat damage tail now reads Decision 12's record when the
+damage source has left the battlefield: `deathtouch` from the recorded
+abilities and `lifelinkTo` from the recorded controller. The decision
+belongs to [ADR 0056](0056-infect-wither-toxic.md) (its Decision 2 step
+4), so the amendment lives there as Decisions 9-11. Two things it
+changed here:
+
+- **`PermanentInfo` gains `Tapped`** (ADR 0056 Decision 11). A status,
+  not a characteristic, and last-known information all the same: Mana
+  Vault's "if this artifact is tapped" is re-checked at resolution.
+  It is written with the rest of the record, from the live card, before
+  `MoveCard` clears the flag.
+- **An object ref can now name a damage source.**
+  `Game.DealDamageFromObjectForEffect(ObjectRef, target, amount)` and
+  `effects.DealDamage{SourceObject: &ref}` read the named object's
+  record, never a new object the card has become (Decision 13's rule,
+  applied to the damage source). A bare instance ID reads the last
+  object the card was, and only while the card has not moved since it
+  left (ADR 0056 Decision 10).

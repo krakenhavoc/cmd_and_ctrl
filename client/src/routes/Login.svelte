@@ -254,9 +254,9 @@
       {/if}
     </p>
 
-    <!-- The one entry point to the public catalogue. Login is the
-         page a signed-out visitor lands on, so a link that needs no
-         session belongs here rather than in the lobby. -->
+    <!-- A link to the card catalogue. The catalogue needs a session
+         (main.go mounts it behind auth.Middleware), so a signed-out
+         visitor who follows it is sent back here to sign in first. -->
     <p class="foot">
       <a class="ghost-link" href="#/catalog">
         <Icon name="library" size={12} /> See which cards the engine plays

@@ -132,6 +132,36 @@ func TestStationRefusesItselfAndInstantSpeed(t *testing.T) {
 	}
 }
 
+// #1352, the test #759 wanted first: station is "activate only as a
+// sorcery", and a station ability already on the stack means the
+// stack is not empty (CR 307.1, CR 405.1). The first activation is an
+// ABILITY — no card in the stack zone — which is the half the
+// sorcery-speed gate used to miss.
+func TestStationRefusesASecondActivationOverTheFirst(t *testing.T) {
+	g, me, ship, crew := stationBoard(t, "Galvanizing Sawship", "Artifact — Spacecraft", galvanizingSawshipOracle, 2)
+	second := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Second Hand", TypeLine: "Creature — Human",
+		Power: 3, Toughness: 3, Owner: me.ID, Controller: me.ID,
+	})
+	idx := stationIndex(t, g, ship)
+	station(t, g, me, ship, crew)
+
+	err := g.ActivateCatalogAbility(me.ID, ship, idx, game.ActivateAbilityParams{TapIDs: []uuid.UUID{second}})
+	if !errors.Is(err, game.ErrSorcerySpeedRequired) {
+		t.Fatalf("station over a station ability on the stack: err = %v, want ErrSorcerySpeedRequired", err)
+	}
+	if layeredCard(t, g, second).Tapped {
+		t.Error("a refused station tapped its creature")
+	}
+
+	passPriorityAroundTable(t, g)
+	station(t, g, me, ship, second)
+	passPriorityAroundTable(t, g)
+	if got := counterOn(g, ship, game.CounterCharge); got != 5 {
+		t.Errorf("charge counters = %d, want 5 — both stations resolved once the stack was empty", got)
+	}
+}
+
 // CR 608.2h: the power is read as the ability RESOLVES. A pump in
 // response puts more counters on.
 func TestStationReadsPowerAsItResolves(t *testing.T) {

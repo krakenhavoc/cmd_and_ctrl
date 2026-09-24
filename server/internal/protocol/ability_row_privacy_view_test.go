@@ -80,6 +80,9 @@ var activatedRowScopes = map[string]rowScope{
 	// Target sets: an activated ability never targets a card in a
 	// hand (game.zonesOfKindLocked's hidden-zone caution).
 	"LegalTargets": rowPublic, "Clauses": rowPublic,
+	// #1296: a price per legal target, read off those public targets
+	// by the same pass ChargedManaCost is.
+	"TargetChargedManaCosts": rowPublic,
 	// CounterCostView: every counter lives on a permanent.
 	"CounterCostN": rowPublic, "CounterCostKind": rowPublic, "CounterCostSelf": rowPublic,
 	"CounterCostLabel": rowPublic, "CounterCostAmong": rowPublic,

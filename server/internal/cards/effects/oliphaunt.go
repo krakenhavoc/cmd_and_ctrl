@@ -13,12 +13,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // A six-mana 6/4 trampler that is really played as a one-mana
 // Mountain tutor: the body is a late-game top-deck and the
-// mountaincycling is the reason it makes the deck. That is what makes
-// the caveat below unusually large for this batch.
+// mountaincycling is the reason it makes the deck.
 //
-// The attack trigger is the part that works, and both halves of it
-// are until-end-of-turn continuous effects — one of the five
-// mechanics the 2026-09-18 re-triage freed (#279):
+// The attack trigger is until-end-of-turn continuous effects — one of
+// the five mechanics the 2026-09-18 re-triage freed (#279):
 //
 //   - "+2/+0" is a Layer 7c modification, snapshotted at resolution
 //     against the one creature the trigger targeted.
@@ -32,20 +30,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Oliphaunt whose trigger it is never is. The resolution re-check
 // (CR 608.2b) runs the same clause.
 //
-// DECLARED SIMPLIFICATION — NO MOUNTAINCYCLING, the same shape as
-// every other cycling card in the catalog and for the same two
-// reasons: game.AbilityCost has no discard component, and the CR 602
-// activation path only offers abilities on battlefield permanents,
-// while cycling is activated from hand. Tracked by #655. Weaker than
-// printed in the only direction we ship (#259).
+// Mountaincycling {1} arrived with #660, the same Typecycling
+// constructor every other cycling card uses. "A Mountain card" is any
+// land with the Mountain type, not only a basic one, so the search
+// predicate is IsLandWithSubtype("Mountain") rather than
+// IsBasicLand-scoped.
 func init() {
 	Register(Spec{
 		OracleID:        "186b2256-4af3-48cb-96b0-b0e80a7ee6dc",
 		Name:            "Oliphaunt",
-		Completeness:    CompletenessCaveats,
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"trample"},
-		Caveats: []string{
-			"Mountaincycling {1} is not implemented — the card can only be cast, never cycled from hand for a Mountain, which is most of the reason it is played.",
+		Activated: []ActivatedAbility{
+			Typecycling("Mountaincycling", "{1}", "a Mountain card", IsLandWithSubtype("Mountain")),
 		},
 		Triggered: []game.TriggeredAbility{
 			oliphauntAttackTrigger(),

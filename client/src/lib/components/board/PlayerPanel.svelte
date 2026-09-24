@@ -453,7 +453,15 @@
       {considering}
     />
     <div class="rail-gap"></div>
-    <PileBar {seat} {exile} {isSelf} {sendAction} onDrawCard={isSelf ? onDrawCard : undefined} />
+    <PileBar
+      {seat}
+      {exile}
+      {isSelf}
+      {sendAction}
+      onDrawCard={isSelf ? onDrawCard : undefined}
+      onActivateAbility={isSelf ? onActivateAbility : undefined}
+      {sorcerySpeedBlocked}
+    />
   </div>
 </div>
 

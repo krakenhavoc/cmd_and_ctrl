@@ -244,6 +244,13 @@ type AbilityCostSubject struct {
 	// widened the day the other path joins. See ADR 0020's exhaust
 	// addendum, note of 2026-09-22.
 	Mana bool
+
+	// own is the ability's own cost clauses
+	// (ActivatedAbilityShape.CostModifiers, #1296). Unexported so a
+	// predicate cannot reach another modifier's hooks; read only by
+	// activeCostModifiersLocked, which binds them to the ability's
+	// source.
+	own []CostModifier
 }
 
 // SpecialActionCostSubject is the CR 116.2 special action a
@@ -538,7 +545,24 @@ func (g *Game) activeCostModifiersLocked(q CostQuery) []boundCostModifier {
 	// different object, so an affinity-carrying artifact does not
 	// discount its own tap ability, and nothing discounts its own
 	// foretell.
-	if q.Ability != nil || q.SpecialAction != nil {
+	if q.Ability != nil {
+		// #1296: the ability's OWN clause — "This ability costs {1}
+		// less to activate …" — the activation twin of the self slot
+		// below. Bound to the ability's source with the activator as
+		// its controller (CR 602.2), and read from the query rather
+		// than the battlefield, so a channel land in hand prices its
+		// own discount (CR 113.6). After the board's, for determinism;
+		// the passes are additive, so the order changes no result.
+		if len(q.Ability.own) > 0 {
+			src := q.Card
+			src.Controller = q.Controller
+			for _, m := range q.Ability.own {
+				out = append(out, boundCostModifier{modifier: m, source: src})
+			}
+		}
+		return out
+	}
+	if q.SpecialAction != nil {
 		return out
 	}
 	if self := SelfCostModifiersFor(q.Card); len(self) > 0 {
@@ -659,7 +683,12 @@ func (g *Game) applyCostModifiersLocked(base ParsedCost, q CostQuery) (ParsedCos
 // shaped question about the same click (#544, #1184).
 //
 // Caller must hold g.mu.
-func (g *Game) abilityCostQueryLocked(activator uuid.UUID, source Card, zone ZoneKind, ab ActivatedAbilityShape) CostQuery {
+//
+// `targets` are the announced targets (CR 601.2c, before the cost is
+// determined in 601.2f), or nil when the caller is pricing before any
+// are chosen — the menu row, the up-front enumerator gate. amountFor
+// still hides them from every modifier that does not set ReadsTargets.
+func (g *Game) abilityCostQueryLocked(activator uuid.UUID, source Card, zone ZoneKind, ab ActivatedAbilityShape, targets []TargetRef) CostQuery {
 	return CostQuery{
 		Game: g,
 		// The permanent (or, since #660, the hand card) whose ability
@@ -676,7 +705,9 @@ func (g *Game) abilityCostQueryLocked(activator uuid.UUID, source Card, zone Zon
 		Ability: &AbilityCostSubject{
 			Label:   ab.Label,
 			Exhaust: ab.Exhaust,
+			own:     ab.CostModifiers,
 		},
+		Targets: targets,
 	}
 }
 
@@ -704,6 +735,25 @@ func (g *Game) abilityCostQueryLocked(activator uuid.UUID, source Card, zone Zon
 //
 // Caller must hold g.mu (read or write).
 func (g *Game) AbilityManaCostForEffect(activator uuid.UUID, source Card, zone ZoneKind, ab ActivatedAbilityShape) (ParsedCost, error) {
+	return g.AbilityManaCostForTargetsForEffect(activator, source, zone, ab, nil)
+}
+
+// AbilityManaCostForTargetsForEffect is AbilityManaCostForEffect with
+// the announced targets in hand (#1296): "This ability costs {1} less
+// to activate for each color of the creature it targets" (Dragonfire
+// Blade) has no price until there is a target, and CR 602.2b runs
+// CR 601.2c (targets) before 601.2f (the total cost), so the activation
+// path prices here, with the targets it has just validated.
+//
+// Nil targets is exactly AbilityManaCostForEffect — the price a
+// target-reading modifier gives before anything is chosen, which for a
+// reduction is the printed cost. That is why the enumerator cannot use
+// a nil-targets price as its affordability gate for such an ability
+// (AbilityPriceReadsTargetsForEffect), and why the view prices each
+// legal target on its own (ActivatedAbilityView.TargetChargedManaCosts).
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) AbilityManaCostForTargetsForEffect(activator uuid.UUID, source Card, zone ZoneKind, ab ActivatedAbilityShape, targets []TargetRef) (ParsedCost, error) {
 	base, err := ParseCost(ab.Cost.Mana)
 	if err != nil {
 		return ParsedCost{}, err
@@ -715,7 +765,43 @@ func (g *Game) AbilityManaCostForEffect(activator uuid.UUID, source Card, zone Z
 		// off the {T}-only abilities that are most of the catalog.
 		return base, nil
 	}
-	return g.applyCostModifiersLocked(base, g.abilityCostQueryLocked(activator, source, zone, ab))
+	return g.applyCostModifiersLocked(base, g.abilityCostQueryLocked(activator, source, zone, ab, targets))
+}
+
+// AbilityPriceReadsTargetsForEffect reports whether pricing an
+// activation of `ab` could depend on the targets announced for it: the
+// ability's own cost clause, or any activation-scoped modifier on the
+// battlefield, declares ReadsTargets (#1296). The activation twin of
+// CastPriceReadsTargetsForEffect, asked by the legal-move enumerator
+// (price each target set on its own) and the view (stamp a price per
+// legal target) for the same reason: a false answer is a promise that
+// one up-front price is THE price.
+//
+// Deliberately ignores AppliesTo, so it errs toward true.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) AbilityPriceReadsTargetsForEffect(ab ActivatedAbilityShape) bool {
+	if ab.Cost.Mana == "" {
+		// The pass never runs for a cost with no mana component
+		// (AbilityManaCostForTargetsForEffect), so nothing reads targets.
+		return false
+	}
+	for _, m := range ab.CostModifiers {
+		if m.ReadsTargets {
+			return true
+		}
+	}
+	if g == nil || g.Battlefield == nil || CatalogCostModifiers == nil {
+		return false
+	}
+	for i := range g.Battlefield.Cards {
+		for _, m := range CostModifiersForCard(g.Battlefield.Cards[i]) {
+			if m.Activations && m.ReadsTargets {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // specialActionCostQueryLocked builds the CostQuery for one CR 116.2

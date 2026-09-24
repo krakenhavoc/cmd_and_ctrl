@@ -367,6 +367,9 @@ func (g *Game) cloneLocked() *Game {
 	// #1255: an undo across a counterspell rewinds the record with the
 	// spell, so a replay that counters it again records it again.
 	out.lastKnownStack = cloneLastKnownStack(g.lastKnownStack)
+	// #1379: an undo across a removal spell rewinds the record with
+	// the permanent it describes.
+	out.lastKnownPermanents = cloneLastKnownPermanents(g.lastKnownPermanents)
 	// CR 614.5 once-per-event marks for events PAUSED on a CR 616 /
 	// CR 614.10 prompt (#808). Between actions the map holds an entry
 	// only for an event whose prompt is still open, and that entry is
@@ -931,6 +934,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	// Copied, not shared: rememberLeavingSpellLocked inserts into the
 	// live map, and an undo snapshot may be restored more than once.
 	g.lastKnownStack = cloneLastKnownStack(src.lastKnownStack)
+	g.lastKnownPermanents = cloneLastKnownPermanents(src.lastKnownPermanents)
 	// #808: the paused events' once-per-event marks rewind with the
 	// prompts that own them — see cloneLocked.
 	g.replacementsAppliedThisEvent = src.replacementsAppliedThisEvent
