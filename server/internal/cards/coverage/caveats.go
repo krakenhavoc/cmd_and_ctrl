@@ -475,23 +475,47 @@ var mechanics = []Mechanic{
 		// through the hook printedCharacteristic reads. A card that
 		// relies on the deck importer alone is invisible here, which
 		// is the direction a curated table is allowed to miss in.
-		Name:    "prowess",
-		Phrases: []string{"prowess"},
-		Implements: func(s effects.Spec) bool {
-			if game.CatalogPrintedKeywords == nil {
-				return false
-			}
-			for _, kw := range game.CatalogPrintedKeywords(s.OracleID) {
-				if kw == game.KeywordProwess {
-					return true
-				}
-			}
-			return false
-		},
+		Name:       "prowess",
+		Phrases:    []string{"prowess"},
+		Implements: printedKeywordProbe(game.KeywordProwess),
 		Evidence:   `game.CatalogPrintedKeywords(oracleID) contains "prowess"`,
 		Confidence: Exact,
 		Adopt:      `PrintedKeywords: []string{"prowess"} — the engine does the rest`,
 	},
+	{
+		// #1519: split second is a canonicalKeywords token read off
+		// the spell at announce (game/split_second.go). Same probe as
+		// prowess, for the same reason: the declaration is the fact,
+		// and a card relying on the importer alone is the direction a
+		// curated table may miss in. Krosan Grip carried "Split second
+		// is not implemented" for as long as the flag had no writer.
+		Name:       "split second",
+		Phrases:    []string{"split second"},
+		Implements: printedKeywordProbe(game.KeywordSplitSecond),
+		Evidence:   `game.CatalogPrintedKeywords(oracleID) contains "split second"`,
+		Confidence: Exact,
+		Adopt:      `PrintedKeywords: []string{"split second"} — the engine does the rest`,
+	},
+}
+
+// printedKeywordProbe is the exact probe for a canonical keyword token
+// whose consumer is the engine, not a constructor (#706 prowess, #1519
+// split second): does the card's catalog declaration print it? Read
+// through game.CatalogPrintedKeywords, the hook the engine itself
+// reads, so a broken wiring silences the probe and
+// TestEveryExactMechanicHasAnImplementor notices.
+func printedKeywordProbe(token string) func(effects.Spec) bool {
+	return func(s effects.Spec) bool {
+		if game.CatalogPrintedKeywords == nil {
+			return false
+		}
+		for _, kw := range game.CatalogPrintedKeywords(s.OracleID) {
+			if kw == token {
+				return true
+			}
+		}
+		return false
+	}
 }
 
 // keywordTrigger builds the exact probe for a keyword that ships as a

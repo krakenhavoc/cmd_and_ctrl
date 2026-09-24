@@ -213,6 +213,16 @@ var canonicalKeywords = map[string]bool{
 	// amendment 2026-09-24 records why it is a token and not a
 	// constructor like ward and cascade.
 	KeywordProwess: true,
+	// split second (CR 702.61) joins with #1519, in the same change
+	// that teaches the engine to READ it. The rule itself was built in
+	// S13.1 — CastSpell, both activation paths, the enumerator and the
+	// wire all ask Game.SplitSecondActive — but only a sandbox flag no
+	// client sends ever set it, so a Krosan Grip could be answered.
+	// Its consumer is castHasSplitSecond (split_second.go), which
+	// stamps StackItem.SplitSecond at announce from HasKeyword. A
+	// spell's keyword, so it is read off the card as it is cast, never
+	// off a layer-6 list: nothing in print grants it.
+	KeywordSplitSecond: true,
 }
 
 // KeywordChangeling is the canonical token for changeling (CR
@@ -381,7 +391,7 @@ func CanonicalKeywords(s string) ([]string, bool) {
 // "trample", "vigilance", "menace", "defender", "haste", "flash",
 // "hexproof", "shroud", "indestructible", "changeling", fear,
 // intimidate, shadow, horsemanship, skulk, infect, wither, prowess,
-// and the landwalk tokens ("islandwalk", "nonbasic landwalk", …). Toxic is NOT
+// "split second", and the landwalk tokens ("islandwalk", "nonbasic landwalk", …). Toxic is NOT
 // asked through here: its token carries an amount, so it is read with
 // ToxicTotal.
 //

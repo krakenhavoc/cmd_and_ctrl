@@ -388,3 +388,75 @@ actually matters. Less work, same outcome.
 - Static-ability continuous effects (CR 604)
 - Combat keyword effects
 - Per-commander damage map (deferred until partner-pair playtest)
+
+## Amendment 2026-09-24 — split second is read from the card (#1519)
+
+**Context.** Decision 1 put split second on `StackItem` and mirrored it
+on `Game.SplitSecondActive`, and every consumer was built against that
+cache: `CastSpell`, `ActivateAbility`, `ActivateCatalogAbility` and
+`ActivateLoyalty` refuse with `ErrSplitSecondActive`, the enumerator's
+`castMoves` and `activatedMoves` return early, suspend's special-action
+window shuts, and the wire carries `split_second_active`. The WRITER
+was the sandbox `split_second` flag on `cast_spell`, which no client
+sends. So nothing any card printed ever turned the rule on, and a
+Krosan Grip could be answered like any other instant. #749 found it
+while writing Angel's Grace.
+
+**Decision 11. Split second is a `canonicalKeywords` token, read off the
+spell at announce.** The #706 pattern (a token with an engine consumer,
+ADR 0014's amendment of the same date), for the same reason: about
+twenty-five cards print it, most with an ordinary effect behind it, and
+a token reaches every one of them through the deck importer with no
+card file. The consumer is `castHasSplitSecond`
+(`game/split_second.go`), which `castSpellLocked` asks once, before it
+builds the stack item, and whose answer is written both to
+`StackItem.SplitSecond` and to the cache. It reads `HasKeyword` off the
+announce copy — `Card.Keywords` for an imported card,
+`CatalogPrintedKeywords` for a catalog entry — so the chosen face of a
+multi-face card answers for itself.
+
+- **The sandbox flag is routed through the same function**, ORed with
+  the keyword, rather than retired: a table playing a card nobody has
+  data for can still say so. One writer, so the cache and
+  `recomputeSplitSecondLocked` never disagree about where a stamp came
+  from.
+- **A face-down spell has neither** (CR 708.2 / 708.4). The flag is
+  refused too — a face-down spell that shut the table down would name
+  itself.
+- **Copies keep it.** `spell_copy.go` already copied `SplitSecond`,
+  which is CR 707.2: split second is a copiable ability of the spell.
+- **Nothing grants it**, so there is no layer read. A spell off the
+  battlefield has no layer-6 list anyway.
+
+**Decision 12. The two timing reads refuse under split second, so the
+view agrees with the enumerator.** `CastTimingOpenLocked` and
+`ActivationTimingOpenLocked` (the latter after its mana-ability early
+return) now return false while the cache is set. Their other callers —
+`CastSpell`, the activation paths, the enumerator — already returned
+earlier with their own answer, so nothing changes for them. The caller
+that had no earlier return was the view: `castable_here` on a graveyard,
+exile or library-top card, and `timing_closed` on an INSTANT-speed
+ability row, both stayed lit under split second. Putting the check in
+the shared read rather than in two view stamps is ADR 0073 §7's
+argument again: one read, so a future stamp cannot forget it.
+
+This does not contradict ADR 0073's "split second stays out of the
+gate". That gate is the CR 101.2 "can't cast" restriction list, and the
+reason given was the land play; neither timing read is asked about a
+land (a land cannot be played with a non-empty stack in any case).
+
+**What split second still does not stop** (CR 702.61b), unchanged and
+now exercised by a printed spell rather than a hand-set cache: mana
+abilities, special actions (foretell and turning a face-down permanent
+face up; suspend is barred by its own CR 702.62c), and triggered
+abilities, which trigger and go on the stack above the split-second
+spell. A trigger whose resolution would CAST a spell cannot (Gatherer
+ruling on Sudden Shock, 2006-09-25), which `CastSpell`'s own check
+answers.
+
+**Proof cards.** Krosan Grip loses its caveat and ships `full`; Sudden
+Shock, Sudden Death, Sudden Edict and Sudden Spoiling join the catalog.
+Angel's Grace (#749, PR #1522) was still open when this landed — its
+"Split second isn't enforced" caveat goes stale the moment both have
+merged, and it should declare `PrintedKeywords: {"split second"}`
+instead.
