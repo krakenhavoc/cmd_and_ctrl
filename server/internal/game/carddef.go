@@ -94,7 +94,14 @@ type CardDef struct {
 	// be blocked by more than one creature" (Vorrac Battlehorns). Read
 	// through CatalogBlockRules, keyed by CatalogAbilityKey; see
 	// block_rules.go and ADR 0045's addendum, Decision 11.
-	BlockRules    []BlockRule
+	BlockRules []BlockRule
+	// AttackLimits are the CR 508.1c count limits this permanent
+	// imposes on an attack declaration — "no more than one creature
+	// can attack each combat" (Silent Arbiter), "no more than two
+	// creatures can attack you each combat" (Crawlspace). Read through
+	// CatalogAttackLimits, keyed by CatalogAbilityKey; see
+	// attack_limits.go and ADR 0045 Decision 44 (#1507).
+	AttackLimits  []AttackLimit
 	CastableZones []ZoneKind
 
 	// SpecialActions are the CR 116.2 special actions the card offers
@@ -174,6 +181,12 @@ type CardDef struct {
 	// CatalogAbilityKey, never from a card's own zone; see
 	// game.CatalogPlayerLifeTotalLocked and ADR 0085 (#1200).
 	PlayerLifeTotalLocked bool
+	// GameEndGates are this permanent's printed "you can't lose the
+	// game" / "your opponents can't win the game" statics (CR 104.3),
+	// scoped relative to its CONTROLLER. Read from the battlefield
+	// through CatalogAbilityKey; see game.CatalogGameEndGates and
+	// ADR 0057 Decision 4 (#749).
+	GameEndGates []GameEndGate
 	// Emblem is the presentation half of an EMBLEM's catalog entry
 	// (CR 114) — its board label and its printed ability text. Set
 	// only on an emblem's own def, the one effects.Register files
@@ -450,6 +463,12 @@ func init() {
 		}
 		return nil
 	}
+	CatalogAttackLimits = func(key string) []AttackLimit {
+		if d := catalogDef(key); d != nil {
+			return d.AttackLimits
+		}
+		return nil
+	}
 	CatalogCastableZones = func(key string) []ZoneKind {
 		if d := catalogDef(key); d != nil {
 			return d.CastableZones
@@ -521,6 +540,12 @@ func init() {
 	CatalogPlayerLifeTotalLocked = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.PlayerLifeTotalLocked
+	}
+	CatalogGameEndGates = func(key string) []GameEndGate {
+		if d := catalogDef(key); d != nil {
+			return d.GameEndGates
+		}
+		return nil
 	}
 	CatalogWantsDistinctColors = func(key string) bool {
 		d := catalogDef(key)

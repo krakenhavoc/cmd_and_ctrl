@@ -21,13 +21,14 @@ package game
 // per-turn state, announces steps and queues upkeep triggers, and none
 // of that may happen in the middle of a spell. The callers today are
 // the cursor advance, an SBA pass and a player action (Concede,
-// PassTurn), which are all action boundaries. Nothing in a resolution
-// eliminates a player directly: a loss during a resolution sets a flag
-// (Player.AttemptedEmptyDraw, or life at 0) that the next SBA pass reads,
-// and that pass is the resolution bookend's or a later prompt
-// answer's. ADR 0057's effect losses keep the same shape
-// (Game.ActiveSeatLeftPending, consumed by the SBA loss pass); a new
-// caller that can be reached mid-resolution must defer the same way.
+// PassTurn), which are all action boundaries. A state-based loss during
+// a resolution sets a flag (Player.AttemptedEmptyDraw, or life at 0)
+// that the next SBA pass reads. An effect loss (ADR 0057,
+// LoseTheGameForEffect) takes the player out at once, and when that
+// player is the active one it defers the rotation the same way
+// (Game.ActiveSeatLeftPending, consumed by the SBA loss pass, which is
+// the resolution bookend's or a later prompt answer's). A new caller
+// that can be reached mid-resolution must defer the same way.
 
 // sweepTurnEndLocked is the non-interactive part of the cleanup step
 // (CR 514.2): marked damage and deathtouch marks are removed, and
@@ -35,9 +36,10 @@ package game
 // the StepCleanup entry hook, moved out unchanged so a turn that ends
 // early runs exactly the same sweep.
 //
-// Every "this turn" registry sweeps here. When ADR 0057's
-// TurnScopedGameEndGates or ADR 0045's TurnScopedBlockRules land,
-// their sweeps join this function rather than the cleanup hook.
+// Every "this turn" registry sweeps here. ADR 0057's granted "can't
+// lose / can't win this turn" gates ride Player.Statics (its
+// 2026-09-24 amendment) and end in ClearEndOfTurnScopedStaticsLocked
+// below; ADR 0045's TurnScopedBlockRules have their own line.
 //
 // Idempotent: CR 514.3a's second cleanup step runs it again (#661),
 // and a player leaving during a discard pause runs it once more.
@@ -310,7 +312,8 @@ func (g *Game) onTurnBeganLocked() {
 
 // advancePastEliminatedLocked moves play on after a player has left
 // the game. Called once per batch of departures, and only when the
-// game goes on: from settleDeparturesLocked (Concede), or from
+// game goes on: from settleDeparturesLocked (Concede, or an effect
+// loss by a player who is not the active one — ADR 0057), or from
 // runStateChecksLocked after repeated state-based action passes settle.
 //
 // If the active seat is still in the game, the only work is priority:

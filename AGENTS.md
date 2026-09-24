@@ -1879,11 +1879,10 @@ A creature pacified after attackers were declared keeps attacking.
 
 [ADR 0045](docs/decisions/0045-combat-restrictions.md) has the
 taxonomy, including what the vocabulary deliberately cannot say:
-Silent Arbiter's and Crawlspace's count limits, which belong beside
-`Game.blockerBoundsLocked` as set-shaped predicates rather than as
-bits — one more entry in `checkBlockDeclarationLocked`, the validator
-`DeclareBlockers` runs over a whole declaration before it stores any
-of it.
+Silent Arbiter's and Crawlspace's count limits, which are set-shaped
+predicates rather than bits — shipped in #1507 as `BlockRule.Limit`
+(one more entry in `checkBlockDeclarationLocked`) and `game.AttackLimit`
+(judged by both attack declaration verbs and the enumerator).
 
 **Propaganda's attack cost used to be on that list and is not any
 more** ([ADR 0080](docs/decisions/0080-attack-taxes.md), #1063). A
@@ -1980,12 +1979,29 @@ BlockRules: []game.BlockRule{
   It snapshots the set at resolution (CR 611.2c).
 - **A token that prints one** declares it on its `tokenTemplate`'s
   `BlockRules` slot (Avatar Kuruk's Spirit).
-- **Not yet:** "no more than one creature can block each combat"
-  (Silent Arbiter) has no shape. That is `BlockRule.Limit`, #1507.
+- **"No more than N creatures can block each combat"** (Silent Arbiter,
+  Dueling Grounds, Caverns of Despair) is `NoMoreThanNCanBlockEachCombat(n)`
+  — `BlockRule.Limit`, judged over every block in the combat and refused
+  as `declaration_limit` (#1507). It takes no scope: the printed line
+  binds every creature at the table.
+- **The attack half** — "no more than N creatures can attack each
+  combat" / "…can attack you each combat" (Crawlspace) — is not a block
+  rule. It goes in `Spec.AttackLimits`, built with
+  `NoMoreThanNCanAttackEachCombat(n)` or
+  `NoMoreThanNCanAttackYouEachCombat(n)` from
+  [attack_limits.go](server/internal/cards/effects/attack_limits.go).
+  "You" is the card's controller, the player — an attack on their
+  planeswalker does not count. Both declaration verbs and the
+  enumerator read the same check, so a bot is never offered a refused
+  attack ([ADR 0045](docs/decisions/0045-combat-restrictions.md)
+  Decisions 43-45).
 
 Tests: [block_rules_test.go](server/internal/cards/effects/block_rules_test.go)
 pins every shape through the verb, `legal.EnumerateFor` and
-`block_decision_seats`.
+`block_decision_seats`;
+[combat_limits_test.go](server/internal/cards/effects/combat_limits_test.go)
+pins the whole-combat limits, checking the enumerator against the verb
+on a clone for every candidate.
 
 ### Adding a triggered ability (S19+)
 
@@ -4677,6 +4693,41 @@ is gone. In its place:
   means the set of duplicates — or a group's size — really changed.
   The `file.go:closure@line` locations are still printed in the
   failure report, where a human wants them.
+
+### Winning, losing, and "can't lose" (S40, ADR 0057)
+
+A card that says "you win the game" or "<player> loses the game" calls
+the primitive and **returns its error** — nothing else:
+
+```go
+return WinTheGame{}.Apply(ctx)                    // "you win the game" (Felidar Sovereign)
+return LoseTheGame{Player: target}.Apply(ctx)     // "that player loses the game" (Strixhaven Stadium)
+```
+
+Both are immediate (CR 104.2b, CR 104.3e), and both return
+`game.ErrStopResolution` when the rest of the effect must not happen —
+the game ended, or the resolving item's own controller left. The engine
+treats that error as a clean stop, so a card never swallows it, and a
+card **never** calls the rotation or the game-over check itself. A
+draw-replacement win is `WinInsteadOfDrawingFromAnEmptyLibrary(name)`
+(Laboratory Maniac), which cancels the draw before it tries to win.
+
+"You can't lose the game" / "your opponents can't win the game" on a
+permanent is a declaration, not code:
+
+```go
+GameEndGates: YouCantLoseOpponentsCantWin(),   // Platinum Angel, Herald of Eternal Dawn
+GameEndGates: YouCantWinOpponentsCantLose(),   // Abyssal Persecutor
+```
+
+The engine reads it off the battlefield through `CatalogAbilityKey` at
+every loss and every win, so two copies compose and an ability-stripped
+copy gates nothing. The "this turn" version from a spell is
+`CantLoseAndOpponentsCantWinThisTurn{Label: name}` (Angel's Grace),
+stored on the caster as a `PlayerStatic` with an until-end-of-turn
+duration. Concession is never gated, and the last player standing always
+wins (CR 104.2a). See [ADR 0057](docs/decisions/0057-win-and-lose-by-effect.md)
+and its 2026-09-24 amendment.
 
 ### When NOT to add a catalog entry
 

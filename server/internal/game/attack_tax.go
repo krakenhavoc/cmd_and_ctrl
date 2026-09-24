@@ -50,9 +50,10 @@ import (
 // # What is deliberately not here
 //
 //   - COUNT limits (Silent Arbiter, Crawlspace). A count is a property
-//     of the whole declaration, not a price on it; it belongs beside
-//     blockerBoundsLocked as a set-shaped predicate and keeps its own
-//     seam row. ADR 0080 §8.
+//     of the whole declaration, not a price on it, so it is its own
+//     check — attack_limits.go (#1507), judged before the tax is
+//     priced so a refused declaration owes nothing. ADR 0080 §8,
+//     ADR 0045 Decision 44.
 //   - A NON-MANA tax. Nothing printed charges one (Norn's Annex's
 //     {W/P} is mana with a life alternative, which the Phyrexian
 //     machinery already handles). A Sacrifice or PayLife sibling of

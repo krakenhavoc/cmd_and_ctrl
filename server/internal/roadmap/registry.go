@@ -759,17 +759,17 @@ var items = []Item{
 		Phrases:  []string{"infect", "wither", "toxic"},
 	},
 	{
-		Slug: "win-the-game", Name: "Winning the game by an effect", Kind: KindSeam, Status: StatusMissing,
-		Summary:  "Cards that say you win the game, and effects like \"you can't lose the game\" or \"your opponents can't win the game\".",
-		Missing:  "A player can lose the game, but no card can make a player win it, and nothing stops a player from losing.",
-		Issue:    749,
-		Unblocks: 23,
-		Waiting: []string{
-			"Felidar Sovereign", "Laboratory Maniac", "Thassa's Oracle", "Jace, Wielder of Mysteries",
-			"Platinum Angel", "Revel in Riches", "Simic Ascendancy", "Test of Endurance",
-		},
-		Phrases:     []string{"win the game", "wins the game", "can't lose the game"},
-		EngineNotes: "primitive: a player can lose, but no effect can make a player win the game (CR 104.2b), and nothing gates the loss checks for \"you can't lose the game\" or \"your opponents can't win the game\". Re-checked 2026-09-24: nothing in `internal/game` makes a player win by effect.",
+		Slug: "win-the-game", Name: "Winning the game by an effect", Kind: KindSeam, Status: StatusImplemented,
+		Summary: "Cards that say you win the game, and effects like \"you can't lose the game\" or \"your opponents can't win the game\".",
+		Rules:   []string{"104.2b", "104.3", "104.4a"},
+		ADR:     "0057-win-and-lose-by-effect.md",
+		Issue:   749,
+		// A card that prints the result is the honest probe: the win
+		// is a closure in a trigger or a replacement, and a gate is a
+		// Spec field only on the permanents that print one.
+		Printed:  `(?i)\b(wins? the game|can't (lose|win) the game)\b`,
+		Examples: []string{"Platinum Angel", "Felidar Sovereign", "Laboratory Maniac"},
+		Phrases:  []string{"win the game", "wins the game", "can't lose the game"},
 	},
 	{
 		Slug: "mana-spend-riders", Name: "Mana that does something when it's spent", Kind: KindSeam, Status: StatusPartial,
@@ -834,15 +834,14 @@ var items = []Item{
 		Phrases:  []string{"can't be blocked except", "can't block"},
 	},
 	{
-		Slug: "combat-wide-limits", Name: "Combat-wide attack and block limits", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Rules that limit how many creatures can attack or block in a whole combat, such as Silent Arbiter's \"no more than one creature can block each combat\".",
-		Missing:     "No card can limit the number of attackers or blockers across a whole combat yet.",
-		Rules:       []string{"508.1c", "509.1b"},
-		Issue:       1507,
-		ADR:         "0045-combat-restrictions.md",
-		Waiting:     []string{"Silent Arbiter", "Crawlspace"},
-		Phrases:     []string{"no more than one creature can", "no more than two creatures can"},
-		EngineNotes: "Split out of #750 when its card half closed the conditional-blocking row. `game.BlockRule` has `Pair` and `Count`; `Limit`, the whole-declaration bound ADR 0045's addendum Decision 12 reserves for Silent Arbiter, is unbuilt, and would be one more set check in `checkBlockDeclarationLocked` plus a stop in `blockOptionsLocked`. The attack-side twin (Crawlspace, Silent Arbiter's first line) is Decision 18's out-of-scope item: `DeclareAttackers` already receives the set, so the same all-or-nothing shape works.",
+		Slug: "combat-wide-limits", Name: "Combat-wide attack and block limits", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Rules that limit how many creatures can attack or block in a whole combat, such as Silent Arbiter's \"no more than one creature can block each combat\" and Crawlspace's \"no more than two creatures can attack you each combat\".",
+		Rules:    []string{"508.1c", "509.1b"},
+		Issue:    1507,
+		ADR:      "0045-combat-restrictions.md",
+		Probe:    func(s effects.Spec) bool { return len(s.AttackLimits) > 0 },
+		Examples: []string{"Silent Arbiter", "Crawlspace"},
+		Phrases:  []string{"no more than one creature can", "no more than two creatures can"},
 	},
 	{
 		Slug: "extra-turns", Name: "Extra turns", Kind: KindSeam, Status: StatusPartial,

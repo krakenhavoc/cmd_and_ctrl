@@ -10,6 +10,7 @@ activations.ever	map:string
 activations.ever{}	number:int
 activations.turn	map:string
 activations.turn{}	number:int
+activeSeatLeftPending	bool
 announcedAttacks	map:array
 announcedAttacks{}	bool
 announcedBecameBlocked	map:array
@@ -547,6 +548,11 @@ monarch	custom(uuid.UUID)
 mulligansOpen	bool
 oncePerBatchFired	map:string
 oncePerBatchFired{}	number:uint64
+outcome	object
+outcome.cause	string
+outcome.kind	string
+outcome.source	custom(uuid.UUID)
+outcome.winner	custom(uuid.UUID)
 pendingChoices	array
 pendingChoices[]	object
 pendingChoices[].acceptLabel	string
@@ -1964,6 +1970,12 @@ seats[].statics[].duration.PinnedEnteredAt	number:int64
 seats[].statics[].duration.Player	custom(uuid.UUID)
 seats[].statics[].duration.Source	custom(uuid.UUID)
 seats[].statics[].duration.SourceEnteredAt	number:int64
+seats[].statics[].gameEnd	object
+seats[].statics[].gameEnd.cantLose	bool
+seats[].statics[].gameEnd.cantWin	bool
+seats[].statics[].gameEnd.causes	array
+seats[].statics[].gameEnd.causes[]	string
+seats[].statics[].gameEnd.scope	number:uint8
 seats[].statics[].keyword	string
 seats[].statics[].label	string
 seats[].statics[].lifeTotalLocked	bool

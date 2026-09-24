@@ -146,6 +146,7 @@ func (n *normalizer) game(v protocol.GameView) protocol.GameView {
 	out.SplitSecondActive = v.SplitSecondActive
 	out.DiscardPending = n.idKeyedIntMap(v.DiscardPending)
 	out.LoopNotice = n.loopNotice(v.LoopNotice)
+	out.Outcome = n.outcome(v.Outcome)
 
 	// #1264: the card-ID-bearing lists. A card named here that never
 	// appeared in a zone above (a log entry for a card now in a
@@ -209,6 +210,18 @@ func (n *normalizer) vote(v *protocol.VoteView) *protocol.VoteView {
 		Initiator: n.id(v.Initiator),
 		Ballots:   n.idKeyedIntMap(v.Ballots),
 	}
+}
+
+// outcome normalizes ADR 0057's GameView.outcome: the winner is a
+// seated player (already a placeholder) and the source a card.
+func (n *normalizer) outcome(v *protocol.OutcomeView) *protocol.OutcomeView {
+	if v == nil {
+		return nil
+	}
+	out := *v
+	out.Winner = n.id(v.Winner)
+	out.Source = n.id(v.Source)
+	return &out
 }
 
 func (n *normalizer) loopNotice(v *protocol.LoopNoticeView) *protocol.LoopNoticeView {
@@ -466,6 +479,7 @@ func everyFieldGameViewForNormalizer() protocol.GameView {
 		}},
 
 		LoopNotice: &protocol.LoopNoticeView{Source: ownerID, Label: "loop", Controller: ownerID, Count: 3},
+		Outcome:    &protocol.OutcomeView{Kind: "win", Winner: ownerID, Cause: "effect", Source: cardID},
 	}
 }
 

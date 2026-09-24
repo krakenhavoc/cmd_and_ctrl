@@ -988,30 +988,6 @@ func (g *Game) DiscardRandomThenForEffect(playerID uuid.UUID, n int, then func(g
 	return g.discardCardsLocked(playerID, picked, discardOptions{cause: DiscardCauseEffect, then: then})
 }
 
-// LoseTheGameForEffect marks a player as losing the game — the
-// consequence half of "pay {3}{U}{U}. If you don't, you lose the
-// game" (Pact of Negation and the rest of the Pact cycle), and of
-// every other card that says those words outright.
-//
-// Routed through the AttemptedEmptyDraw flag rather than eliminating
-// the player on the spot, so the ability finishes resolving first and
-// the loss lands at the next SBA check alongside the empty-library
-// and zero-life losses. That borrows the CR 704.5b flag for a loss
-// that is not a draw, and CR 104.3e actually makes an effect loss
-// immediate; ADR 0057 sub-PR 2 replaces this writer with
-// loseGameLocked, after which actuallyDrawCardLocked is the flag's
-// only writer.
-//
-// Caller must hold g.mu. Added in S28.
-func (g *Game) LoseTheGameForEffect(playerID uuid.UUID) error {
-	p := g.playerByIDLocked(playerID)
-	if p == nil {
-		return ErrPlayerNotFound
-	}
-	p.AttemptedEmptyDraw = true
-	return nil
-}
-
 // MillNForEffect moves n cards from the top of playerID's library
 // to their graveyard. Emits EventMill per card. A library holding
 // fewer than n mills what it has (CR 701.17b) and nobody loses for

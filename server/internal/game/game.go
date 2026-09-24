@@ -48,6 +48,21 @@ type Game struct {
 	CreatedAt time.Time
 	State     State
 
+	// Outcome is the result of an ended game — who won, or a draw, and
+	// why (ADR 0057 Decision 5, game_end.go). Nil while the game is
+	// active, and nil for a game ended by End() with no result (an
+	// abandoned table). Written only by endGameLocked.
+	Outcome *GameOutcome
+
+	// ActiveSeatLeftPending is set when the ACTIVE player loses the
+	// game by an effect in the middle of a resolution (ADR 0057
+	// Decision 3). They leave at once, but the game-over check and the
+	// turn rotation wait for the next SBA loss pass, which consumes
+	// the flag: beginning the next turn must never run inside a
+	// resolving callback (ADR 0059 Decision 6). Plain data, carried by
+	// Clone and the snapshot.
+	ActiveSeatLeftPending bool
+
 	// Seats is the ordered list of players. Index matches Turn.ActiveSeat.
 	Seats []*Player
 
@@ -1060,11 +1075,15 @@ const DefaultUndoLimit = 1
 
 // End transitions the game to the ended state. Idempotent: calling
 // End on an already-ended game is a no-op.
+//
+// An admin closing a table, not a result: Outcome stays nil, and the
+// wire has no winner for it (ADR 0057 Decision 5). Every rules-driven
+// end goes through endGameLocked instead.
 func (g *Game) End() {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateEnded {
-		// CR 702.143f, #658. The same sweep endGameIfDecidedLocked
+		// CR 702.143f, #658. The same sweep endGameLocked
 		// runs, on the other door out of an active game — an admin
 		// ending the table, and every caller that ends it outright.
 		g.revealForetoldAtGameEndLocked()
@@ -1774,17 +1793,29 @@ func (g *Game) CurrentState() State {
 	return g.State
 }
 
-// WinnerSeat returns the seat of the one player left standing in an
-// ended game. ok is false while the game is not over, and for an
-// ended game with no single survivor (a draw, or an ended table with
-// nobody seated). The engine keeps no winner field — the game ends
-// when exactly one seat is not Eliminated — so this derives it the
-// same way, under the read lock. Read by the lobby to fill
+// WinnerSeat returns the seat of the winner of an ended game, read
+// from Game.Outcome (ADR 0057 Decision 5) — which is what makes an
+// effect win, where several seats are still standing, name the right
+// player. ok is false while the game is not over, for a draw, and for
+// an ended game with no single survivor. Read by the lobby to fill
 // games.winner_seat (ADR 0051 decision 4).
+//
+// A game ended with no Outcome — End(), or a snapshot written before
+// the engine recorded one — falls back to the one seat left standing,
+// which is how the winner was derived before ADR 0057.
 func (g *Game) WinnerSeat() (seat int, ok bool) {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
 	if g.State != StateEnded {
+		return 0, false
+	}
+	if g.Outcome != nil {
+		if g.Outcome.Kind != OutcomeWin {
+			return 0, false
+		}
+		if p := g.playerByIDLocked(g.Outcome.Winner); p != nil {
+			return p.Seat, true
+		}
 		return 0, false
 	}
 	found := -1

@@ -175,6 +175,12 @@ func (p *Policy) buildDelta(in aiseat.Input, cands []heuristic.Candidate, fallba
 		if len(s.ManaPool) > 0 {
 			fmt.Fprintf(&b, ", mana pool %s", strings.Join(s.ManaPool, ""))
 		}
+		// ADR 0057 Decision 6: a seat behind a "can't lose" or "can't
+		// win" gate plays by different arithmetic, and the model is
+		// told so on the seat line, with the sources.
+		if gates := endGateNote(s); gates != "" {
+			fmt.Fprintf(&b, ", %s", gates)
+		}
 		b.WriteByte('\n')
 		if bf := p.battlefieldOf(v, s.ID); bf != "" {
 			fmt.Fprintf(&b, "  battlefield: %s\n", bf)
@@ -496,4 +502,28 @@ func nameOfInstance(v *protocol.GameView, id string) string {
 // breaks with it.
 func OneLine(s string) string {
 	return strings.Join(strings.Fields(strings.ReplaceAll(s, "\n", " ")), " ")
+}
+
+// endGateNote is a seat's "can't lose the game" / "can't win the game"
+// state for the seat line (ADR 0057 Decision 6), or "".
+func endGateNote(s *protocol.PlayerView) string {
+	var parts []string
+	if len(s.CantLose) > 0 {
+		parts = append(parts, "CAN'T LOSE the game ("+strings.Join(s.CantLose, ", ")+")")
+	}
+	if s.CantWin {
+		parts = append(parts, "CAN'T WIN the game")
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	var names []string
+	for _, g := range s.EndGates {
+		names = append(names, g.SourceName)
+	}
+	out := strings.Join(parts, ", ")
+	if len(names) > 0 {
+		out += " because of " + strings.Join(names, ", ")
+	}
+	return out
 }
