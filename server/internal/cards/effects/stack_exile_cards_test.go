@@ -293,12 +293,15 @@ func TestRanarCountsACardForetoldFromMyHand(t *testing.T) {
 	}
 }
 
-// TestRanarTwoForetellsInOneWindowMakeOneSpirit PINS a declared gap
-// (the card's second caveat): two foretells with nothing resolving
-// between them are one event batch, so OncePerBatch sees one
-// occurrence. The rules say two. When special actions open their own
-// batch (#1341) this flips to 2 — update the caveat with it.
-func TestRanarTwoForetellsInOneWindowMakeOneSpirit(t *testing.T) {
+// TestRanarTwoForetellsInOneWindowMakeTwoSpirits is #1341's proof
+// card: two foretells with nothing resolving between them used to
+// share one event batch (each foretell is its own CR 116.2 special
+// action, and CR 603.2c counts an occurrence per event, not per
+// priority window), so OncePerBatch saw one occurrence instead of two
+// and Ranar shipped weaker than printed. PerformSpecialAction now
+// opens its own batch (event_batch.go), so the two foretells are two
+// occurrences and two Spirits.
+func TestRanarTwoForetellsInOneWindowMakeTwoSpirits(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	pushPermanentForTest(g, me.ID, "Ranar the Ever-Watchful", ranarOracle, "Legendary Creature — Spirit Warrior")
@@ -312,7 +315,7 @@ func TestRanarTwoForetellsInOneWindowMakeOneSpirit(t *testing.T) {
 		}
 	}
 	passPriorityAroundTable(t, g)
-	if got := spiritsOf(g, me.ID); got != 1 {
-		t.Errorf("Spirits = %d — the declared one-batch gap has changed; update Ranar's caveat", got)
+	if got := spiritsOf(g, me.ID); got != 2 {
+		t.Errorf("Spirits = %d, want 2 — two foretells, before anything resolves, are two special actions and two occurrences (CR 603.2c)", got)
 	}
 }

@@ -3530,13 +3530,18 @@ unchanged.
   records a cost as its own kind. Ranar does not count it, because no
   ruling settles whether paying a cost is the ability exiling. Not
   counting it is the weaker reading.
-- **Special actions share an event batch.** Two foretells with nothing
-  resolving between them are one batch, so a `OncePerBatch` trigger
-  counts one occurrence where CR 603.2c counts two. Ranar says so in a
-  caveat, and `TestRanarTwoForetellsInOneWindowMakeOneSpirit` pins it.
-  Filed as [#1341](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1341).
-- **Ranar's foretell discount** waits on
-  [#1319](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1319).
+- ~~**Special actions share an event batch.**~~ **Closed by
+  [#1341](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1341).**
+  `PerformSpecialAction` now opens its own event batch (CR 116.2 is
+  itself an event), so two foretells with nothing resolving between
+  them are two occurrences, as CR 603.2c asks. Ranar's second caveat
+  is gone and `TestRanarTwoForetellsInOneWindowMakeTwoSpirits` pins
+  the fixed behaviour.
+- ~~**Ranar's foretell discount** waits on #1319.~~ **Closed by
+  [#1319](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1319)
+  (`SpecialActionCostsLess`, `TheFirstOneThisTurn`).** With #1341
+  also closed, Ranar the Ever-Watchful carries no caveat and is
+  `full`.
 - **The leaving-player cleanup** moves spells with a raw `MoveCard` and
   deletes their records itself (`cleanupStackForEliminatedLocked`). It
   emits no zone-change event, so it has no cause to carry.
