@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
   import { GameClient } from "../lib/ws";
+  import { endCueFor, gameOverText } from "../lib/gameOutcome";
   import { recordClientError } from "../lib/clientErrors";
   import { describeThrown } from "../lib/guardedStore";
   import { navigate } from "../lib/router";
@@ -598,9 +599,10 @@
   const viewerIsActive = $derived(viewerID !== null && activePlayer?.id === viewerID);
   const viewerEliminated = $derived(viewerSeat?.eliminated === true);
 
-  // Game-end state. The server transitions State to "ended" once
-  // exactly one non-eliminated seat remains; the survivor is the
-  // implicit winner.
+  // Game-end state. The server names the result on GameView.outcome
+  // (ADR 0057): an effect win ends the game with the other seats still
+  // seated, so the winner comes from there, and "the one seat left
+  // standing" is only the fallback for a view with no outcome.
   const gameEnded = $derived(view?.state === "ended");
   // #628 (CR 726): the server's loop notice. While it stands, nothing
   // on this table passes priority automatically — see the autopass
@@ -608,8 +610,8 @@
   // toggle.
   const loopSuspended = $derived(autopassSuspended(view));
   const loopNotice = $derived(loopNoticeText(view));
-  const survivors = $derived(seats.filter((s) => !s.eliminated));
-  const winner = $derived(gameEnded && survivors.length === 1 ? survivors[0] : null);
+  const gameOver = $derived(gameOverText(view));
+  const winner = $derived(gameOver.winner);
 
   // Mulligan window: open between Start and the moment everyone has
   // KeptHand. The dialog blocks the viewer's normal toolbar until
@@ -665,8 +667,9 @@
   let prevEnded = false;
   $effect(() => {
     const ended = gameEnded;
-    if (ended && !prevEnded && viewerID) {
-      play(winner?.id === viewerID ? "win" : "loss");
+    const cue = endCueFor(view, viewerID);
+    if (ended && !prevEnded && cue) {
+      play(cue);
     }
     prevEnded = ended;
   });
@@ -1797,9 +1800,10 @@
                 <span class="att-text">
                   {#if winner}
                     <span class="seat-dot" style="background:{seatColor(winner.seat)}"></span>
-                    <strong>{winner.name}</strong> wins the game.
+                    <strong>{winner.name}</strong>
+                    {gameOver.text}
                   {:else}
-                    Game ended — no survivors.
+                    {gameOver.text}
                   {/if}
                 </span>
                 <button type="button" class="primary att-btn" onclick={back}>

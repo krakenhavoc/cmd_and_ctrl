@@ -342,6 +342,39 @@ export interface GameView {
   // person has to ask for the next iteration, with the loop's trigger
   // still on the stack. Table-wide and identical for every seat.
   loop_notice?: LoopNoticeView;
+  // ADR 0057 (#749): the result of an ended game — who won, or a draw,
+  // and why. Absent while the game is active and for a table an admin
+  // closed with no result. An effect win ends the game with the other
+  // seats still seated, so read the winner from here; gameOutcome.ts
+  // falls back to "the one seat left standing" only when this is
+  // absent on an ended view.
+  outcome?: OutcomeView;
+}
+
+// OutcomeView is GameView.outcome (ADR 0057 Decisions 5 and 7).
+export interface OutcomeView {
+  kind: "win" | "draw";
+  // The winner of a win.
+  winner?: string;
+  winner_seat?: number;
+  // "last_standing" (every opponent left, CR 104.2a), "effect" (an
+  // effect said this player wins, CR 104.2b) or "all_lost" (everyone
+  // left lost at once, CR 104.4a — a draw).
+  cause: "last_standing" | "effect" | "all_lost";
+  // The object whose effect won, for an effect win.
+  source?: string;
+  source_name?: string;
+}
+
+// GameEndGateView is one "can't lose" / "can't win" gate on a seat
+// (ADR 0057 Decision 7): where it comes from and what it stops.
+export interface GameEndGateView {
+  source?: string;
+  source_name: string;
+  cant_lose?: string[];
+  cant_win?: boolean;
+  // A gate a resolved spell granted until end of turn (Angel's Grace).
+  this_turn?: boolean;
 }
 
 // LoopNoticeView is the CR 726 loop breaker's notice. `label` is the
@@ -502,7 +535,18 @@ export type LogKind =
   | "no_blocks"
   | "token"
   | "sacrifice"
+  // A player left the game. `cause` says why ("life", "empty_draw",
+  // "poison", "commander_damage", "effect", "concede"); `card_id` is
+  // the source of an effect loss. One line per departure (ADR 0057).
   | "eliminated"
+  // The game ended with a result: `seat` is the winner (-1 for a
+  // draw), `cause` the outcome cause, `card_id` the winning source of
+  // an effect win (ADR 0057).
+  | "game_over"
+  // An effect would have made `seat` win and a "can't win the game"
+  // gate stopped it: `card_id` is the winning source, `target` the
+  // gate's (ADR 0057).
+  | "win_prevented"
   // A player revealed cards (CR 701.20): one entry per reveal, however
   // many cards it showed. Never carries card_id; `amount` is the card
   // count, `old_zone` where they were revealed from, and `target_seat`
@@ -662,6 +706,9 @@ export interface LogEvent {
   // `counters` one. Redacted with the card's name exactly as `choice`
   // is: both price or characterise the card the line no longer names.
   label?: string;
+  // ADR 0057: why an `eliminated` player left, or how a `game_over`
+  // game ended. Absent on every other kind.
+  cause?: string;
   // ADR 0075 §2.4: the actor held the table when they took this
   // action. Set only on `spawn` entries, and stamped by the room
   // rather than the projection — the host is a room property, so the
@@ -1195,8 +1242,9 @@ export interface PlayerView {
   // (possibly empty); each entry is server-stamped at the moment of
   // change. Added in S08.
   life_history: LifeChangeView[];
-  // Set when the player has conceded (S08) or, in the future, lost
-  // to a state-based action. Eliminated players still appear in the
+  // Set when the player has left the game: a concession (S08), a
+  // state-based loss, or an effect loss (ADR 0057). An effect WIN
+  // eliminates nobody. Eliminated players still appear in the
   // seats list and may continue to spectate; the UI greys them out
   // and disables their action buttons. Omitempty on the wire — only
   // present when true.
@@ -1315,6 +1363,17 @@ export interface PlayerView {
   // Out are all off the table for this seat). Damage is still dealt
   // and still triggers; it just moves no life. Poison still lands.
   life_total_locked?: boolean;
+  // ADR 0057 (#749, CR 104.3): the "can't lose the game" / "can't win
+  // the game" gates on this seat. `cant_lose` lists the causes that
+  // can't make this player lose right now ("life", "empty_draw",
+  // "poison", "commander_damage", "effect") — all five under a
+  // Platinum Angel; concession is never in it. `cant_win` is true when
+  // an effect can't make this player win. `end_gates` names the
+  // sources for the badge's tooltip. Derived, public, and absent for
+  // nearly every seat.
+  cant_lose?: string[];
+  cant_win?: boolean;
+  end_gates?: GameEndGateView[];
 }
 
 // One emblem (CR 114). `label` is the board name ("Elspeth, Sun's
