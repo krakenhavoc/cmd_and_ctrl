@@ -4678,6 +4678,41 @@ is gone. In its place:
   The `file.go:closure@line` locations are still printed in the
   failure report, where a human wants them.
 
+### Winning, losing, and "can't lose" (S40, ADR 0057)
+
+A card that says "you win the game" or "<player> loses the game" calls
+the primitive and **returns its error** — nothing else:
+
+```go
+return WinTheGame{}.Apply(ctx)                    // "you win the game" (Felidar Sovereign)
+return LoseTheGame{Player: target}.Apply(ctx)     // "that player loses the game" (Strixhaven Stadium)
+```
+
+Both are immediate (CR 104.2b, CR 104.3e), and both return
+`game.ErrStopResolution` when the rest of the effect must not happen —
+the game ended, or the resolving item's own controller left. The engine
+treats that error as a clean stop, so a card never swallows it, and a
+card **never** calls the rotation or the game-over check itself. A
+draw-replacement win is `WinInsteadOfDrawingFromAnEmptyLibrary(name)`
+(Laboratory Maniac), which cancels the draw before it tries to win.
+
+"You can't lose the game" / "your opponents can't win the game" on a
+permanent is a declaration, not code:
+
+```go
+GameEndGates: YouCantLoseOpponentsCantWin(),   // Platinum Angel, Herald of Eternal Dawn
+GameEndGates: YouCantWinOpponentsCantLose(),   // Abyssal Persecutor
+```
+
+The engine reads it off the battlefield through `CatalogAbilityKey` at
+every loss and every win, so two copies compose and an ability-stripped
+copy gates nothing. The "this turn" version from a spell is
+`CantLoseAndOpponentsCantWinThisTurn{Label: name}` (Angel's Grace),
+stored on the caster as a `PlayerStatic` with an until-end-of-turn
+duration. Concession is never gated, and the last player standing always
+wins (CR 104.2a). See [ADR 0057](docs/decisions/0057-win-and-lose-by-effect.md)
+and its 2026-09-24 amendment.
+
 ### When NOT to add a catalog entry
 
 The registry of known seams — what is missing, which cards wait on

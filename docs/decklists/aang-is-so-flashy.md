@@ -610,7 +610,10 @@ The static half (printing the word) is cheap; the behaviour is the work.
 
 ### One-offs
 
-Herald of Eternal Dawn (can't-lose / can't-win replacement), Mandate of
+(Herald of Eternal Dawn left this list with #749: "you can't lose the
+game and your opponents can't win the game" is a gate the engine reads
+at every loss and win, [ADR 0057](../decisions/0057-win-and-lose-by-effect.md),
+and the card is in the catalog.) Mandate of
 Peace (end the combat phase + a cast restriction), Rabble Rousing (hideaway, plus
 "whenever you attack with **one or more** creatures", which over-fires
 against per-creature `EventAttack` — the "one or more" batching gap

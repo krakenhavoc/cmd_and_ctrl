@@ -759,17 +759,17 @@ var items = []Item{
 		Phrases:  []string{"infect", "wither", "toxic"},
 	},
 	{
-		Slug: "win-the-game", Name: "Winning the game by an effect", Kind: KindSeam, Status: StatusMissing,
-		Summary:  "Cards that say you win the game, and effects like \"you can't lose the game\" or \"your opponents can't win the game\".",
-		Missing:  "A player can lose the game, but no card can make a player win it, and nothing stops a player from losing.",
-		Issue:    749,
-		Unblocks: 23,
-		Waiting: []string{
-			"Felidar Sovereign", "Laboratory Maniac", "Thassa's Oracle", "Jace, Wielder of Mysteries",
-			"Platinum Angel", "Revel in Riches", "Simic Ascendancy", "Test of Endurance",
-		},
-		Phrases:     []string{"win the game", "wins the game", "can't lose the game"},
-		EngineNotes: "primitive: a player can lose, but no effect can make a player win the game (CR 104.2b), and nothing gates the loss checks for \"you can't lose the game\" or \"your opponents can't win the game\". Re-checked 2026-09-24: nothing in `internal/game` makes a player win by effect.",
+		Slug: "win-the-game", Name: "Winning the game by an effect", Kind: KindSeam, Status: StatusImplemented,
+		Summary: "Cards that say you win the game, and effects like \"you can't lose the game\" or \"your opponents can't win the game\".",
+		Rules:   []string{"104.2b", "104.3", "104.4a"},
+		ADR:     "0057-win-and-lose-by-effect.md",
+		Issue:   749,
+		// A card that prints the result is the honest probe: the win
+		// is a closure in a trigger or a replacement, and a gate is a
+		// Spec field only on the permanents that print one.
+		Printed:  `(?i)\b(wins? the game|can't (lose|win) the game)\b`,
+		Examples: []string{"Platinum Angel", "Felidar Sovereign", "Laboratory Maniac"},
+		Phrases:  []string{"win the game", "wins the game", "can't lose the game"},
 	},
 	{
 		Slug: "mana-spend-riders", Name: "Mana that does something when it's spent", Kind: KindSeam, Status: StatusPartial,
