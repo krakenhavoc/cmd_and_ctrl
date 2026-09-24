@@ -1087,7 +1087,17 @@ type ActivatedAbility struct {
 	// path does not write the activation record, so the combination
 	// is unspellable rather than silently ignored.
 	Exhaust bool
-	Effect  func(g *game.Game, item *game.StackItem) error
+	// CostModifiers is the ability's OWN cost clause — "This ability
+	// costs {1} less to activate for each legendary creature you
+	// control" (the channel lands), "…for each color of the creature
+	// it targets" (Dragonfire Blade). #1296, ADR 0020 amendment
+	// 2026-09-24. Build it with the ordinary constructors
+	// (CostsLessEach, CostsLessIfItTargets) or the target-reading
+	// CostsLessForTheCardItTargets; the SLOT is what makes it price
+	// this ability and nothing else, exactly as Spec.SelfCostModifiers
+	// does for a spell. See game.ActivatedAbilityShape.CostModifiers.
+	CostModifiers []game.CostModifier
+	Effect        func(g *game.Game, item *game.StackItem) error
 }
 
 // ManaAbility is one mana-producing activated ability on a permanent.

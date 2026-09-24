@@ -422,6 +422,7 @@ func Register(spec Spec) {
 		// #1297: the exile-N-cards component, held to the rules its
 		// mana owner is held to (checkExileCardsClause).
 		checkExileCardsClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ExileCards)
+		checkAbilityCostModifiers(spec.Name, i, ab)
 		// CR 113.6 / ADR 0062 Decision 1: an ability that functions
 		// somewhere other than the battlefield has no permanent to
 		// tap, sacrifice, crew or put loyalty counters on. Such a
@@ -1037,5 +1038,40 @@ func checkExileCardsClause(name, where string, ec *game.ExileCost) {
 	if !game.ExileCostZoneSupported(ec.Zone()) {
 		panic(fmt.Sprintf("effects.Register: %q %s exiles cards from the %s — an exile cost reads the hand or the graveyard",
 			name, where, ec.Zone()))
+	}
+}
+
+// checkAbilityCostModifiers is the boot-time refusal for an activated
+// ability's OWN cost clause (ActivatedAbility.CostModifiers, #1296).
+// Every shape it refuses is one the engine would silently ignore or
+// refuse at every activation, so it fails here instead:
+//
+//   - a clause on an ability with no mana component prices nothing —
+//     the CR 601.2f pass never runs for it — and would read as a real
+//     discount on the catalogue page;
+//   - a CostFloor: no printed ability sets a floor on its own cost
+//     ("can't reduce … to less than one mana" is Power Artifact's, a
+//     board clause about OTHER abilities);
+//   - SpecialActions or a designation gate, which mean nothing in a
+//     slot that prices exactly one ability;
+//   - a mana Unit the engine would refuse (ADR 0048 addendum §16).
+func checkAbilityCostModifiers(name string, i int, ab ActivatedAbility) {
+	for j, m := range ab.CostModifiers {
+		where := fmt.Sprintf("ability %d cost modifier %d (%q)", i, j, m.Label)
+		if ab.Cost.Mana == "" {
+			panic(fmt.Sprintf("effects.Register: %q %s modifies an ability with no mana cost — there is nothing to price", name, where))
+		}
+		if m.Kind == game.CostFloor {
+			panic(fmt.Sprintf("effects.Register: %q %s is a CostFloor — an ability's own cost clause increases or reduces", name, where))
+		}
+		if m.SpecialActions {
+			panic(fmt.Sprintf("effects.Register: %q %s sets SpecialActions — an ability's own clause prices that ability", name, where))
+		}
+		if m.ActiveWhen != (game.Designation{}) {
+			panic(fmt.Sprintf("effects.Register: %q %s declares a designation gate — gate the ability (ActivatedAbility.ActiveWhen) instead", name, where))
+		}
+		if why := m.UnitProblem(); why != "" {
+			panic(fmt.Sprintf("effects.Register: %q %s declares %s (ADR 0048 addendum §16)", name, where, why))
+		}
 	}
 }

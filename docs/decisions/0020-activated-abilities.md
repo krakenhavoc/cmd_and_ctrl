@@ -2491,3 +2491,142 @@ catalogued.
   offer, because costs cannot pause (see Decision 39). Weaker for the player
   than printed in the rare case it matters; the same posture every cost exit
   takes. Filed as [#1397](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1397).
+
+## Amendment (2026-09-24, [#1296](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1296)): an ability's own cost clause, and a price that reads the target
+
+**Sprint:** S44 — mana and cost components. Tracker [#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887).
+Decisions 38–40 are the commander-ninjutsu amendment above (#1399); this
+one starts at 41.
+
+### Context
+
+An in-app report: *"Equip costs were not paid when equipping to Vivi Ornitier"*,
+with Dragonfire Blade:
+
+```
+Dragonfire Blade   Equipped creature gets +2/+2 and has hexproof from monocolored.
+                   Equip {4}. This ability costs {1} less to activate for each
+                   color of the creature it targets.
+```
+
+Two things were wrong, and only one of them was the card.
+
+1. **Nothing was charged.** The client stamps its `gameplay.strictMana` setting
+   on `cast_spell` and on nothing else, so every `activate_ability` a player
+   clicked reached `payAbilityManaCostLocked` with neither `Strict` nor
+   `AutoTap` — the sandbox paper path, which spends what the pool covers and
+   otherwise waives the charge (`PaidCost.OnPaper`). The reporter had strict
+   mana on (their casts were refused with `insufficient_mana` minutes earlier),
+   tapped a land by hand (a raw tap, no mana), and equipped for free. This has
+   been true of every activated ability since S21; the bots never saw it because
+   `internal/legal` sends `strict` + `auto_tap` on every move.
+2. **The discount could not be said.** The card shipped with the full {4} and a
+   caveat. #1184 put activations through the CR 601.2f pass, but only for BOARD
+   modifiers (`CostModifier.Activations`, Boom Scholar), and a board modifier
+   has two problems here: it never sees the target, and it is gathered from the
+   battlefield. The second one had already bitten: Takenuma's channel discount
+   was written as a board modifier scoped to its own ability, and channel is
+   activated from the HAND, so the scan never found it — its caveat said "the
+   discount applies when you pay for it", and it did not.
+
+### Decision 41: `ActivatedAbilityShape.CostModifiers` — the ability's own clause
+
+"This ability costs {1} less to activate …" is part of the ability, so it lives
+on the ability: `ActivatedAbilityShape.CostModifiers` (card side
+`ActivatedAbility.CostModifiers`), the activation twin of a spell's
+`SelfCostModifiers` (ADR 0048 addendum). `abilityCostQueryLocked` carries the
+list on `AbilityCostSubject` (unexported — a predicate cannot reach another
+modifier's hooks), and `activeCostModifiersLocked` binds each one to the
+ability's source **with the activator as its controller** (CR 602.2) after the
+board's activation-scoped modifiers. Consequences:
+
+- It prices this ability and no other — the slot is the scope, so no
+  `q.Card.InstanceID == q.Source.InstanceID` predicate to get wrong.
+- It works wherever the ability does (CR 113.6): the channel lands price their
+  discount from the hand.
+- The CR 601.2f rules are the same pass: increases before reductions, the
+  generic floor at zero, the negative-amount refusal. Boseiju with five legends
+  still costs {G}.
+
+`effects.Register` refuses the shapes the engine would ignore: a clause on an
+ability with no mana component (the pass never runs), a `CostFloor` (no printed
+ability sets a floor on its own cost — Power Artifact's "can't reduce … to less
+than one mana" is a board clause about other abilities, and is still open),
+`SpecialActions`, or a designation gate.
+
+### Decision 42: the price is determined after the targets, with them
+
+CR 602.2b runs activation through 601.2b–i, so the targets (601.2c) are chosen
+before the total cost is determined (601.2f). `CostQuery.Targets` already
+existed for casts (ADR 0048 addendum §13), shown only to a modifier that sets
+`ReadsTargets`. The activation door now fills it:
+
+- `Game.AbilityManaCostForTargetsForEffect(activator, source, zone, ab, targets)`
+  is the pricer; `AbilityManaCostForEffect` is it with nil targets.
+- `ActivateCatalogAbility` prices with `params.Targets` **after** validating
+  them, in the one place it pays (and in the waterbend budget, which is sized
+  against the same priced cost).
+- A target-reading clause with no target (a query before one is chosen, or a
+  target that has left) reads zero — for a reduction, the printed cost, the
+  #259 direction.
+
+`effects.CostsLessForTheCardItTargets(label, per)` reads the first card target
+("the creature it targets" — every printed clause has one target) and sets
+`ReadsTargets`; `ColorsOf` (layer-5 colours) and `CountersOf(kind)` are the two
+readers the cards use. `CostsLessIfItTargets` (Price of Fame's constructor)
+works in the new slot unchanged.
+
+### Decision 43: the enumerator and the view price per target
+
+A nil-targets price is not the price of a target-reading ability, and for a
+reduction it is not even a usable gate — it is higher than the real one, so it
+would hide legal moves (#544 with the sign reversed). The cast path's §14 rule,
+one path over:
+
+- `Game.AbilityPriceReadsTargetsForEffect(ab)` is true when the ability's own
+  clause, or any activation-scoped board modifier, reads targets (it ignores
+  `AppliesTo`, erring toward true).
+- `internal/legal` solves the mana half (`abilityManaPayment`, split out of
+  `abilityMovesForSource`) once up front when nothing reads targets, and
+  otherwise once per announcement, skipping an unaffordable set before any
+  budget is spent on it.
+- The view keeps `charged_mana_cost` as the no-target price and adds
+  `activated_abilities[i].target_charged_mana_costs` — one price per legal
+  target, from the same pricer — when the price reads the target and the
+  ability is one clause, one pick, no modes. The client shows the range in the
+  menu row ("{2}–{4} depending on the target") and each price with its targets
+  in the targeting banner, because an equip's single click is also its confirm.
+
+### Decision 44: the client charges activations when the player enforces mana
+
+`client/src/lib/manaEnforcement.ts` stamps a catalog `activate_ability`
+(`ability_index` present) with `strict: true, auto_tap: true` when
+`gameplay.strictMana` is on, and leaves it untouched when it is off. `auto_tap`
+as well as `strict`, because a cast has the "Auto-tap & cast" override toast to
+fall back on and an activation has no retry path; the engine taps for the
+shortfall exactly as it does for every bot activation, special action and
+attack tax, and refuses only when the board cannot pay — with "insufficient
+mana to activate that ability" and no `card_id`, so the cast-only override is
+never offered for it. Strict mana off keeps the paper posture it always had.
+
+### Cards
+
+**Dragonfire Blade** (equip discount ships; the hexproof-from-monocolored
+caveat stays), **Ghostfire Blade** and **Warrior's Blades** (new, `full`),
+and **Takenuma, Abandoned Mire**, **Otawara, Soaring City** and **Boseiju, Who
+Endures** (`full`, via `effects.ChannelDiscountPerLegendaryCreature`).
+
+### Still out of scope
+
+- **Board reductions with a per-reduction floor** — Training Grounds, Power
+  Artifact ("can't reduce the mana in that cost to less than one mana"). A
+  `CostFloor` is a total-mana minimum (Trinisphere), not this.
+- **Belt of Giant Strength** ("{X} less, where X is the power of the creature
+  it targets") is one `CostsLessForTheCardItTargets` away and was not added;
+  the non-target members of the family (Arm-Mounted Anchor, Crown of Gondor,
+  Plate Armor, Mirror of Galadriel, …) are ordinary card work now.
+- **Per-target prices for a multi-target or modal ability.** No printed card
+  prices by target on one; the view omits the map rather than guess.
+- **The auto-tap preview's ability branch** (`/games/:id/auto-tap-preview?ability=`)
+  still prices the printed cost with no modifiers at all — stale since #1184,
+  filed separately.
