@@ -3868,7 +3868,14 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// which is what makes Grafdigger's Cage answerable here at all —
 	// and, since #978, answerable for exile and the library top as
 	// well, because they reach this function too.
-	if haveLive {
+	//
+	// #1439: a LAND never asks this gate, matching CastSpell — a land
+	// play is a special action (CR 305.1), not a cast, and every
+	// clause the gate enforces is written about casting. Without this
+	// a Rule of Law or Grafdigger's Cage stamped `cant_cast` onto a
+	// land, which `castIsForbidden` and friends would then read as
+	// "this land can't be played" even though it always could.
+	if haveLive && !live.IsLand() {
 		if err := g.CastGateLocked(caster, live, kind, game.CastSpellParams{}); err != nil {
 			// A card the gate refuses is not a cast surface, whatever
 			// opened the zone — but the bit itself is derived below,

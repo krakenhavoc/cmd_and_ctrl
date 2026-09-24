@@ -940,14 +940,24 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// "Can't beats may" needs no rule of its own here. Cascade, a
 	// granted permission and an impulse grant all reach CastSpell, so
 	// a free cast passes through this gate like any other.
-	if err := g.CastGateLocked(playerID, card, src.Kind, params); err != nil {
-		slog.Warn("cast_spell rejected: an effect prevents this cast",
-			"card_name", card.Name,
-			"oracle_id", card.OracleID,
-			"from_zone", src.Kind,
-			"err", err,
-		)
-		return err
+	//
+	// #1439: a LAND is not gated here at all. Playing a land is a
+	// special action (CR 305.1, CR 116.2a), not a cast, and every
+	// clause CastGateLocked enforces is written about casting (its
+	// own doc says so). The land branch further down runs its own
+	// CR 305 checks; asking this gate first made Rule of Law and
+	// Grafdigger's Cage — both spell-only restrictions — refuse a
+	// land drop from hand or from the graveyard.
+	if !card.IsLand() {
+		if err := g.CastGateLocked(playerID, card, src.Kind, params); err != nil {
+			slog.Warn("cast_spell rejected: an effect prevents this cast",
+				"card_name", card.Name,
+				"oracle_id", card.OracleID,
+				"from_zone", src.Kind,
+				"err", err,
+			)
+			return err
+		}
 	}
 	// CR 702.16b: the source of a SPELL is the spell itself, so the
 	// quality protection is tested against is the card's own colour
