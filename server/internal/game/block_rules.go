@@ -39,7 +39,9 @@ import "github.com/google/uuid"
 //     third set check in the same validator (#1507, ADR 0045
 //     amendment of 2026-09-24, Decision 43). Every stored block
 //     counts, whichever attacker it is on and whichever defender made
-//     it.
+//     it — unless the rule is LimitPerDefender (Mirri, #1534,
+//     Decision 46), which counts each defending player's blocks on
+//     their own.
 //
 // Rules come from two registries, both walked on every check: the
 // battlefield, through CatalogBlockRules, and Game.TurnScopedBlockRules
@@ -92,6 +94,17 @@ type BlockRule struct {
 	// flashed-in Arbiter) does not unmake blocks already standing
 	// (CR 509.1b: restrictions are checked as blockers are declared).
 	Limit func(g *Game, blocker, source *Card) int
+
+	// LimitPerDefender splits a Limit rule's count by DEFENDING PLAYER:
+	// each player's blockers are counted and bounded on their own
+	// rather than all together — Mirri, Weatherlight Duelist's "each
+	// opponent can't block with more than one creature this combat"
+	// (#1534, ADR 0045 amendment of 2026-09-24, Decision 46). The
+	// group is the blocker's controller, which the declaration's
+	// not_defending check has already made the defending player whose
+	// block it is. False, the zero value, is Silent Arbiter's one
+	// count for the whole table. Ignored without Limit.
+	LimitPerDefender bool
 
 	// Reason is the BlockReason a refused pair reports. Empty defaults
 	// to BlockReasonCantBeBlockedBy, which is the commonest shape.
@@ -316,9 +329,14 @@ func (g *Game) blockerCountValidLocked(attacker *Card, n int) bool {
 // player declare at once, and first-come is the one order a staged
 // declaration can give.
 //
+// A LimitPerDefender rule (Mirri, #1534) is the same judgement made
+// once per defending player: each group of blockers is counted against
+// its own bound, and the raise-the-count rule is applied per group, so
+// one opponent's block never uses up another's.
+//
 // `decls` is the declaration being judged, used only to name a blocker
-// from it — the first entry the broken rule counts — so the client has
-// a card to highlight.
+// from it — the first entry the broken rule counts, in a group it
+// breaks — so the client has a card to highlight.
 //
 // Caller must hold g.mu with fresh layers. Reads only.
 func (g *Game) blockLimitRefusalLocked(base, after map[uuid.UUID]uuid.UUID, decls []BlockDeclaration) *BlockRefusedError {
@@ -327,24 +345,50 @@ func (g *Game) blockLimitRefusalLocked(base, after map[uuid.UUID]uuid.UUID, decl
 		if r.Limit == nil {
 			return true
 		}
-		bound, nAfter := g.blockLimitCountLocked(r, source, after)
-		if bound <= 0 || nAfter <= bound {
+		var broken, baseT map[uuid.UUID]blockLimitTally
+		for key, t := range g.blockLimitTallyLocked(r, source, after) {
+			if t.bound <= 0 || t.n <= t.bound {
+				continue
+			}
+			if baseT == nil {
+				baseT = g.blockLimitTallyLocked(r, source, base)
+			}
+			if t.n <= baseT[key].n {
+				continue
+			}
+			if broken == nil {
+				broken = map[uuid.UUID]blockLimitTally{}
+			}
+			broken[key] = t
+		}
+		if len(broken) == 0 {
 			return true
 		}
-		if _, nBase := g.blockLimitCountLocked(r, source, base); nAfter <= nBase {
-			return true
+		bound := 0
+		var blocker, attacker *Card
+		for _, d := range decls {
+			b := findBattlefieldCard(g, d.Blocker)
+			if b == nil || r.Limit(g, b, source) <= 0 {
+				continue
+			}
+			if t, ok := broken[r.limitGroup(b)]; ok {
+				blocker, attacker, bound = b, findBattlefieldCard(g, d.Attacker), t.bound
+				break
+			}
+		}
+		if bound == 0 {
+			// No entry in the declaration is in a broken group, which
+			// a raised count should make impossible; report the
+			// tightest broken bound rather than none.
+			for _, t := range broken {
+				if bound == 0 || t.bound < bound {
+					bound = t.bound
+				}
+			}
 		}
 		refusal := BlockRefusal{Reason: BlockReasonDeclarationLimit, N: bound, Label: r.Label}
 		if source != nil {
 			refusal.Source = source.InstanceID
-		}
-		var blocker, attacker *Card
-		for _, d := range decls {
-			b := findBattlefieldCard(g, d.Blocker)
-			if b != nil && r.Limit(g, b, source) > 0 {
-				blocker, attacker = b, findBattlefieldCard(g, d.Attacker)
-				break
-			}
 		}
 		out = g.blockRefusedErrorLocked(attacker, blocker, refusal)
 		return false
@@ -356,12 +400,27 @@ func (g *Game) blockLimitRefusalLocked(base, after map[uuid.UUID]uuid.UUID, decl
 	return out
 }
 
-// blockLimitCountLocked counts the blockers in `assign` that the Limit
-// rule `r` counts, and the bound they share: the smallest bound any of
-// them reported, 0 when none counts.
+// blockLimitTally is one group's count under a Limit rule: how many
+// blockers the rule counts, and the bound they share — the smallest
+// any of them reported.
+type blockLimitTally struct{ bound, n int }
+
+// limitGroup is the group a counted blocker falls in: its controller
+// for a LimitPerDefender rule, one shared group (uuid.Nil) otherwise.
+func (r BlockRule) limitGroup(blocker *Card) uuid.UUID {
+	if r.LimitPerDefender && blocker != nil {
+		return blocker.Controller
+	}
+	return uuid.Nil
+}
+
+// blockLimitTallyLocked counts the blockers in `assign` that the Limit
+// rule `r` counts, per group (limitGroup). A group no blocker counts
+// in is absent; nil when none counts at all.
 //
 // Caller must hold g.mu with fresh layers. Reads only.
-func (g *Game) blockLimitCountLocked(r BlockRule, source *Card, assign map[uuid.UUID]uuid.UUID) (bound, n int) {
+func (g *Game) blockLimitTallyLocked(r BlockRule, source *Card, assign map[uuid.UUID]uuid.UUID) map[uuid.UUID]blockLimitTally {
+	var out map[uuid.UUID]blockLimitTally
 	for blockerID := range assign {
 		b := findBattlefieldCard(g, blockerID)
 		if b == nil {
@@ -371,10 +430,16 @@ func (g *Game) blockLimitCountLocked(r BlockRule, source *Card, assign map[uuid.
 		if lim <= 0 {
 			continue
 		}
-		n++
-		if bound == 0 || lim < bound {
-			bound = lim
+		if out == nil {
+			out = map[uuid.UUID]blockLimitTally{}
 		}
+		key := r.limitGroup(b)
+		t := out[key]
+		t.n++
+		if t.bound == 0 || lim < t.bound {
+			t.bound = lim
+		}
+		out[key] = t
 	}
-	return bound, n
+	return out
 }

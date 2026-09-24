@@ -250,6 +250,54 @@ func NoMoreThanNCanBlockEachCombat(n int) game.BlockRule {
 	}
 }
 
+// EachOpponentCantBlockWithMoreThanN — "each opponent can't block with
+// more than N creatures this combat" (Mirri, Weatherlight Duelist's
+// attack trigger: one). A Limit rule with LimitPerDefender, so each
+// opponent's blockers are counted on their own: in a four-player game
+// every opponent may block with one creature, and one opponent's
+// block never uses up another's (#1534, ADR 0045 Decision 46).
+//
+// Registered on resolution into the turn-scoped registry, as
+// BlockRuleUntilEOT's rules are, but WITHOUT a snapshot: the line is
+// a rule about players, not a change to any creature's
+// characteristics, so CR 611.2c does not lock the affected set, and a
+// creature an opponent flashes in afterwards is bound too. "Each
+// opponent" is read at resolution against the ability's controller,
+// and the rule outlives Mirri (CR 611.2b).
+//
+// "This combat" rides the until-end-of-turn registry because the
+// engine has no extra combats yet (#753): the turn's one combat is the
+// only one the rule can meet. When extra combats land, this must end
+// at the end of combat instead, or it binds the next one too.
+//
+// `label` is the whole clause the refusal sentence reads, card name
+// included, because a turn-scoped rule has no source permanent to
+// name.
+type EachOpponentCantBlockWithMoreThanN struct {
+	N     int
+	Label string
+}
+
+// Apply registers the rule. Caller is inside the resolution frame
+// (holds g.mu write).
+func (r EachOpponentCantBlockWithMoreThanN) Apply(ctx *Context) error {
+	if r.N <= 0 {
+		return nil
+	}
+	you, n := ctx.Controller(), r.N
+	ctx.Game.RegisterTurnScopedBlockRuleLocked(game.BlockRule{
+		Limit: func(_ *game.Game, blocker, _ *game.Card) int {
+			if blocker == nil || blocker.Controller == you {
+				return 0
+			}
+			return n
+		},
+		LimitPerDefender: true,
+		Label:            eotLabel(r.Label, "each opponent's blocks are limited this combat"),
+	})
+	return nil
+}
+
 // --- until end of turn ------------------------------------------
 
 // BlockRuleUntilEOT registers a block rule for the rest of the turn —

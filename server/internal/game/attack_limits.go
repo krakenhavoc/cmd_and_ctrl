@@ -6,7 +6,10 @@ import "github.com/google/uuid"
 // declaration: "no more than one creature can attack each combat"
 // (Silent Arbiter, Dueling Grounds), "no more than two creatures can
 // attack you each combat" (Crawlspace). #1507, ADR 0045 amendment of
-// 2026-09-24, Decisions 43-45.
+// 2026-09-24, Decisions 43-45. #1534 (Decision 46) added the
+// per-permanent scope — "no more than one creature can attack The
+// Eternal Wanderer each combat" — and the While gate for Mirri,
+// Weatherlight Duelist's "as long as Mirri is tapped".
 //
 // # Why this is not a Restriction bit, an AttackTax or a BlockRule
 //
@@ -73,14 +76,23 @@ const (
 	// attacking; the limit binds its own controller's attacks as much
 	// as anybody's.
 	AttackLimitEachCombat
+
+	// AttackLimitAttackingThis is "no more than N creatures can attack
+	// <this permanent> each combat" — The Eternal Wanderer (#1534, ADR
+	// 0045 amendment of 2026-09-24, Decision 46). Only a creature whose
+	// attack NAMES THE SOURCE PERMANENT counts: an attack on its
+	// controller, or on another planeswalker they control, does not.
+	// Keyed to the source's InstanceID, so a Wanderer that leaves and
+	// returns is a new object with a fresh count (CR 400.7), and two
+	// Wanderers each protect only themselves.
+	AttackLimitAttackingThis
 )
 
 // AttackLimit is one "no more than N creatures can attack …" static
 // contributed by a permanent on the battlefield. Declared as a struct
 // rather than hooks because every printed card in the family is
-// exactly a scope and a number; a conditional one (Mirri, Weatherlight
-// Duelist's "as long as Mirri is tapped") is one more field when it is
-// written, not a reinterpretation of these two.
+// exactly a scope and a number, plus — for Mirri, Weatherlight
+// Duelist's "as long as Mirri is tapped" — a condition (#1534).
 type AttackLimit struct {
 	// Scope is which attacks count. The zero value is "attacking you".
 	Scope AttackLimitScope
@@ -88,6 +100,18 @@ type AttackLimit struct {
 	// Max is N. A limit with Max <= 0 is inert: "no creature can
 	// attack" is a Restriction bit, not a count.
 	Max int
+
+	// While, when set, gates the limit: it exists only while While
+	// reports true of its source — "As long as Mirri is tapped, no
+	// more than one creature can attack you each combat" (#1534,
+	// Decision 46). Nil is "always", which is every card before Mirri.
+	//
+	// Read LIVE at every check and never cached: a limit that switches
+	// on after attackers are declared is a limit arriving late, and the
+	// raise-the-count rule means it unmakes nothing. Must not write —
+	// it runs inside the read-only check the legal-move enumerator
+	// shares.
+	While func(g *Game, source *Card) bool
 }
 
 // counts reports whether an attack naming `target` counts toward this
@@ -100,6 +124,10 @@ func (l AttackLimit) counts(target uuid.UUID, source *Card) bool {
 		// The seat id itself: an attack on a planeswalker or battle
 		// names the permanent, so it never matches.
 		return source != nil && target == source.Controller
+	case AttackLimitAttackingThis:
+		// The permanent itself: an attack on its controller names the
+		// seat, so it never matches.
+		return source != nil && target == source.InstanceID
 	}
 	return false
 }
@@ -120,7 +148,8 @@ type attackLimitSource struct {
 }
 
 // activeAttackLimitsLocked collects every attack limit on the
-// battlefield, in battlefield order. Nil — the answer at nearly every
+// battlefield whose While condition holds right now, in battlefield
+// order. Nil — the answer at nearly every
 // table — lets the callers skip building any assignment at all.
 //
 // Caller must hold g.mu. Reads only.
@@ -136,9 +165,10 @@ func (g *Game) activeAttackLimitsLocked() []attackLimitSource {
 			continue
 		}
 		for _, l := range CatalogAttackLimits(key) {
-			if l.Max > 0 {
-				out = append(out, attackLimitSource{limit: l, source: src})
+			if l.Max <= 0 || (l.While != nil && !l.While(g, src)) {
+				continue
 			}
+			out = append(out, attackLimitSource{limit: l, source: src})
 		}
 	}
 	return out
@@ -158,7 +188,8 @@ type AttackLimitError struct {
 	SourceName string
 	// Defender is the seat an "attacking you" limit protects, and
 	// DefenderName their display name. uuid.Nil for a combat-wide
-	// limit.
+	// limit and for an "attacking this" one, whose protected object is
+	// Source itself.
 	Defender     uuid.UUID
 	DefenderName string
 	// Attacker is a creature in the refused declaration that the limit
@@ -178,16 +209,22 @@ func (e *AttackLimitError) Unwrap() error { return ErrAttackLimit }
 // Sentence is the player-facing explanation addressed to `viewer`:
 // "No more than two creatures can attack you each combat
 // (Crawlspace)." for the seat it protects, the seat's name for anyone
-// else. Built server-side so the client never re-derives the limit.
+// else. An "attacking this" limit names its own permanent and needs
+// no parenthesis: "No more than one creature can attack The Eternal
+// Wanderer each combat." Built server-side so the client never
+// re-derives the limit.
 func (e *AttackLimitError) Sentence(viewer uuid.UUID) string {
 	s := "No more than " + blockerCountPhrase(e.Max) + " can attack"
-	if e.Scope == AttackLimitAttackingYou {
+	switch e.Scope {
+	case AttackLimitAttackingYou:
 		switch {
 		case e.Defender != uuid.Nil && e.Defender == viewer:
 			s += " you"
 		default:
 			s += " " + nameOr(e.DefenderName, "that player")
 		}
+	case AttackLimitAttackingThis:
+		return s + " " + nameOr(e.SourceName, "that permanent") + " each combat."
 	}
 	s += " each combat"
 	if e.SourceName != "" {
