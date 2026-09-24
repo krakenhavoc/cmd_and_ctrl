@@ -151,6 +151,9 @@ func (g *Game) noteAttackAnnouncedLocked(id uuid.UUID) {
 // announces again. Caller must hold g.mu.
 func (g *Game) clearAttackAnnouncementsLocked() {
 	g.announcedAttacks = nil
+	// #1364: the last-known defending players describe this combat's
+	// attacks too.
+	g.attackDefenders = nil
 }
 
 // stampEntryAttackerLocked makes a permanent that has just landed on
@@ -202,10 +205,10 @@ func (g *Game) stampEntryAttackerLocked(id, defender uuid.UUID) {
 		return
 	}
 	if defender == uuid.Nil || g.classifyAttackTargetLocked(defender) == AttackTargetNone {
-		c.AttackingTarget = uuid.Nil
+		g.setAttackTargetLocked(c, uuid.Nil)
 		return
 	}
-	c.AttackingTarget = defender
+	g.setAttackTargetLocked(c, defender)
 	g.noteAttackAnnouncedLocked(id)
 	g.invalidateLayersForAttackChangeLocked()
 }

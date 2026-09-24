@@ -128,14 +128,17 @@ func (e *enumerator) combatMoves() {
 		// S27: "attacking this seat" is the DEFENDING player of the
 		// declaration, not a bare id match — an attack on a
 		// planeswalker names the walker and is defended by its
-		// controller.
+		// controller. #1364: the ATTACKER-based read, so a creature
+		// whose planeswalker or battle has left combat is still
+		// offered to the player who was defending it (CR 506.4c) —
+		// the same answer the generator below and the verb give.
 		var attackers []*game.Card
 		for i := range g.Battlefield.Cards {
 			c := &g.Battlefield.Cards[i]
 			if c.AttackingTarget == uuid.Nil {
 				continue
 			}
-			if g.DefendingPlayerForAttackForEffect(c.AttackingTarget) == e.seat {
+			if g.DefendingPlayerForAttackerForEffect(c.InstanceID) == e.seat {
 				attackers = append(attackers, c)
 			}
 		}

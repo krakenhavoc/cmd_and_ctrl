@@ -356,6 +356,7 @@ func (g *Game) forgetCombatRecordLocked(cardID uuid.UUID) {
 	if len(g.announcedAttacks) == 0 {
 		g.announcedAttacks = nil
 	}
+	g.forgetAttackDefenderLocked(cardID)
 	delete(g.announcedBlocks, cardID)
 	if len(g.announcedBlocks) == 0 {
 		g.announcedBlocks = nil

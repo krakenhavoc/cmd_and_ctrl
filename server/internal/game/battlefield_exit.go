@@ -64,7 +64,8 @@ func (g *Game) battlefieldExitLocked(cardID uuid.UUID) {
 //     of a permanent, and only once each turn". The bug.
 //   - announcedAttacks / announcedBlocks / blockedAttackers — what
 //     this combat has already announced about this creature, and
-//     whether it is blocked (#830, #859, #715). clearCombatLocked
+//     whether it is blocked (#830, #859, #715) — and attackDefenders,
+//     the defending player its attack was last pointed at (#1364). clearCombatLocked
 //     drops them when the combat ends, so
 //     a stale entry can only be read by the same combat the permanent
 //     left, which nothing in the engine can reach today: a permanent
@@ -109,6 +110,7 @@ func (g *Game) forgetPerObjectTurnStateLocked(cardID uuid.UUID) {
 	if len(g.announcedAttacks) == 0 {
 		g.announcedAttacks = nil
 	}
+	g.forgetAttackDefenderLocked(cardID)
 	delete(g.announcedBlocks, cardID)
 	if len(g.announcedBlocks) == 0 {
 		g.announcedBlocks = nil

@@ -2084,9 +2084,11 @@ export interface CardView extends CastSurfaceView {
   // #1339: the seat defending against this attack — the only seat
   // whose creatures may block it (CR 802.4a): the player attacked, the
   // planeswalker's controller, or the battle's PROTECTOR. Absent when
-  // nothing is declared and when the attacked planeswalker or battle
-  // has left (CR 506.4c: nobody can block it). Read it through
-  // defendingPlayerOf (attackTargets.ts), which covers older frames.
+  // nothing is declared. #1364: once the attacked planeswalker or
+  // battle has left, it still names the player who was defending it
+  // (CR 506.4c "it may be blocked"), and attacking_target_kind is
+  // absent. Read it through defendingPlayerOf (attackTargets.ts), which
+  // covers older frames.
   defending_player?: string;
   // S27: the seat protecting this battle (CR 310.9a). Absent for every
   // other card type and for a battle whose protector prompt has not

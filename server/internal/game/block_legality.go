@@ -306,7 +306,9 @@ type BlockRefusedError struct {
 	// TargetKind and TargetName say what the attacker is attacking,
 	// for not_defending: a player (TargetName empty — DefenderName
 	// is the player), or the planeswalker or battle by name. Empty
-	// for every other reason. #1339.
+	// for every other reason. #1339. AttackTargetNone with a Defender
+	// set is #1364's shape: what it attacked has left combat, and the
+	// Defender is the player who was defending it (CR 506.4c).
 	TargetKind AttackTargetKind
 	TargetName string
 }
@@ -406,6 +408,11 @@ func (e *BlockRefusedError) notDefendingSentence(attacker string, viewer uuid.UU
 	}
 	target := who
 	switch e.TargetKind {
+	case AttackTargetNone:
+		// #1364, CR 506.4c: the planeswalker or battle it attacked has
+		// left combat. It is attacking nothing, but it may still be
+		// blocked — by the player who was defending it.
+		return attacker + " is still attacking, though what it attacked is gone, so only " + who + " can block it."
 	case AttackTargetPlaneswalker:
 		target = nameOr(e.TargetName, "a planeswalker") + ", a planeswalker " + controls
 	case AttackTargetBattle:
@@ -425,7 +432,7 @@ func (g *Game) blockRefusedErrorLocked(attacker, blocker *Card, r BlockRefusal) 
 		return e
 	}
 	e.Attacker, e.AttackerName = attacker.InstanceID, attacker.Effective().Name
-	if e.Defender = g.defendingPlayerForAttackLocked(attacker.AttackingTarget); e.Defender != uuid.Nil {
+	if e.Defender = g.defendingPlayerForAttackerLocked(attacker); e.Defender != uuid.Nil {
 		if p := g.playerByIDLocked(e.Defender); p != nil {
 			e.DefenderName = p.Name
 		}

@@ -81,11 +81,15 @@ export function attackTargetHint(view: GameView, row: AttackTargetRow): string {
 // as `defending_player`, so the client never re-derives who defends a
 // battle.
 //
+// A creature whose planeswalker or battle has left combat still carries
+// `defending_player` — the player who was defending it, who may still
+// block it (CR 506.4c, 802.2a; #1364) — with no attacking_target_kind.
+//
 // The fallback is for frames that predate the field (replays, bug
 // reports): a player attack's target IS its defender, and nothing else
 // can be read off the id without the rule. `undefined` means nobody
-// may block — not attacking, or attacking a planeswalker or battle
-// that has left the battlefield (CR 506.4c).
+// may block — not attacking, or (in a frame from before #1364)
+// attacking a planeswalker or battle that has left the battlefield.
 export function defendingPlayerOf(attacker: CardView): string | undefined {
   if (!attacker.attacking_target) return undefined;
   if (attacker.defending_player) return attacker.defending_player;

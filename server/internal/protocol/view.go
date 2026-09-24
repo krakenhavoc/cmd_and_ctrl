@@ -1357,9 +1357,10 @@ type CardView struct {
 	// player attacked, the controller of the planeswalker attacked, or
 	// the PROTECTOR of the battle attacked. Computed by the server so
 	// the client's block picker never re-derives who defends a battle.
-	// Omitted when nothing is declared, and for an attacker whose
-	// planeswalker or battle has left the battlefield (CR 506.4c —
-	// nobody can block it).
+	// Omitted when nothing is declared. An attacker whose planeswalker
+	// or battle has left the battlefield keeps the player who was
+	// defending it (CR 506.4c "it may be blocked", CR 802.2a; #1364),
+	// with attacking_target_kind absent because it attacks nothing.
 	DefendingPlayer string `json:"defending_player,omitempty"`
 	// ProtectorPlayer is the seat protecting this battle (CR 310.9a),
 	// or omitted for every other card type and for a battle whose
@@ -4581,8 +4582,13 @@ func stampCombatTargets(g *game.Game, view *GameView) {
 		if kind := g.ClassifyAttackTargetForEffect(id); kind != "" {
 			c.AttackingTargetKind = string(kind)
 		}
-		if d := g.DefendingPlayerForAttackForEffect(id); d != uuid.Nil {
-			c.DefendingPlayer = d.String()
+		// #1364: the attacker-based read, so an attacker whose
+		// planeswalker or battle has left still names the player who
+		// may block it (CR 506.4c) — what the verb accepts.
+		if atk, err := uuid.Parse(c.InstanceID); err == nil {
+			if d := g.DefendingPlayerForAttackerForEffect(atk); d != uuid.Nil {
+				c.DefendingPlayer = d.String()
+			}
 		}
 	}
 	if g.Turn.Step != game.StepDeclareAttackers {

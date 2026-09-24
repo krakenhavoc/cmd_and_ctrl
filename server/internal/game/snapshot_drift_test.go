@@ -152,6 +152,10 @@ var gameFields = plan(
 	// that has already attacked, and one that invented it would
 	// swallow a declaration the battlefield is still carrying.
 	"announcedAttacks", carried, "",
+	// #1364: the last-known defending player of each attack. Carried
+	// with announcedAttacks: a restore that dropped it would leave an
+	// attacker whose planeswalker has left unblockable (CR 506.4c).
+	"attackDefenders", carried, "",
 	// #716 combat damage step participation. Carried for the reason
 	// the three above are, and for one more: the window between the
 	// two combat damage steps is a priority window, so an undo or a

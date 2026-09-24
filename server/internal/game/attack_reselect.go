@@ -101,7 +101,10 @@ func (g *Game) ReselectAttackTargetForEffect(attacker, target uuid.UUID) error {
 	if c.AttackingTarget == target {
 		return nil
 	}
-	c.AttackingTarget = target
+	// #1364: the reselected defender is the one recorded, so if this
+	// planeswalker or battle later leaves combat, it is the NEW
+	// defending player who may still block (CR 506.4c, 802.2a).
+	g.setAttackTargetLocked(c, target)
 	// "Is this creature attacking YOU" just changed for two players
 	// with no EventAttack to say so — the same gap #1218 closed for a
 	// control change and for combat ending.

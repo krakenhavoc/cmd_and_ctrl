@@ -186,10 +186,14 @@ func TestBlockOnABattleAttackBelongsToItsProtector(t *testing.T) {
 	}
 }
 
-// A creature attacking nothing has no defending player. Two shapes:
-// one that is not attacking at all (the sandbox's old "pre-emptive"
-// block) and one whose planeswalker left the battlefield (CR 506.4c).
-// The generator offers neither; the verb now refuses both.
+// A creature attacking nothing has no defending player: one that is
+// not attacking at all (the sandbox's old "pre-emptive" block). The
+// generator never offered it; the verb refuses it.
+//
+// Before #1364 this test also refused a block on a creature whose
+// planeswalker had left the battlefield. CR 506.4c says that creature
+// "may be blocked", and attack_defender_lki_test.go now pins that the
+// walker's former controller may block it.
 func TestBlockOnACreatureAttackingNothingIsRefused(t *testing.T) {
 	g := newActiveGameWithSeats(t, 4)
 	idle := pushCombatant(t, g, g.Seats[0], "Idle", 2, 2)
@@ -206,24 +210,9 @@ func TestBlockOnACreatureAttackingNothingIsRefused(t *testing.T) {
 	if got := refusal.Sentence(g.Seats[1].ID); got != "Idle isn't attacking anything, so no one can block it." {
 		t.Errorf("sentence = %q", got)
 	}
-
-	g.WithWriteLock(func() {
-		for i := range g.Battlefield.Cards {
-			if g.Battlefield.Cards[i].InstanceID == walker {
-				g.Battlefield.Cards = append(g.Battlefield.Cards[:i], g.Battlefield.Cards[i+1:]...)
-				break
-			}
-		}
-	})
-	var offered int
-	g.WithWriteLock(func() {
-		g.RecomputeLayersIfStaleLocked()
-		offered = len(g.BlockOptionsLocked(g.Seats[1].ID, 4))
-	})
-	if offered != 0 {
-		t.Errorf("the generator offers %d blocks on an attacker whose walker is gone", offered)
+	if offeredBlocks(g, g.Seats[1].ID)[[2]uuid.UUID{blocker, idle}] {
+		t.Errorf("the generator offers a block on a creature that is not attacking")
 	}
-	wantNotDefending(t, g.DeclareBlocker(blocker, attacker), blocker)
 }
 
 // #1343's reselect path, CR 508.7a + 509.1h. The attacker was blocked

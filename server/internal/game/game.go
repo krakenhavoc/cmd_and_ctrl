@@ -395,6 +395,25 @@ type Game struct {
 	// block maps above are.
 	announcedAttacks map[uuid.UUID]bool
 
+	// attackDefenders is each attacker's DEFENDING PLAYER as it was
+	// when its attack was last pointed (#1364, ADR 0045 Decision 35):
+	// written by setAttackTargetLocked at the declaration, at an entry
+	// "attacking" (CR 506.3c) and at a reselect (CR 508.7), and never
+	// rewritten when the planeswalker or battle it attacks leaves.
+	//
+	// It exists for CR 506.4c's "it may be blocked": once the attacked
+	// permanent is gone the live resolution (defendingPlayerForAttack-
+	// Locked) has nobody to name, and CR 802.2a says the defending
+	// player is still the one it was attacking before the permanent
+	// was removed from combat. Read ONLY by the block path through
+	// defendingPlayerForAttackerLocked — damage still goes nowhere
+	// (CR 510.1b).
+	//
+	// Cleared with the rest of combat, dropped per object with
+	// announcedAttacks, and carried by Clone / RestoreFrom and the
+	// persisted snapshot for the same reasons.
+	attackDefenders map[uuid.UUID]uuid.UUID
+
 	// firstStrikeStepParticipants is THIS combat's CR 510.4 / 702.7c
 	// participation record: the attacking and blocking creatures that
 	// had first strike or double strike as the FIRST combat damage
