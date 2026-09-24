@@ -38,24 +38,15 @@ import (
 // "Play", not "cast": a land exiled this way can be played as a land
 // drop. The window is for as long as the card stays in exile.
 //
-// DECLARED SIMPLIFICATIONS:
-//
-//   - The card is exiled FACE UP, so every player sees it. The engine
-//     has no face-down exile that only the permission holder may look
-//     at. The holder already knows it, so the card is not stronger than
-//     printed, but the table sees more than it should.
-//   - "Mana of any TYPE" is the engine's "as though it were mana of any
-//     colour" permission, which does not cover colourless. A {C} in the
-//     exiled card's cost still needs colourless mana.
+// The card is exiled FACE DOWN (game.FaceDownPermitted, #1573): only
+// the player who may play it can look at it, and the table sees a card
+// back. Mana of any TYPE can be spent to cast it (CastPermission.AnyType),
+// so a {C} in its cost is payable with any mana.
 func init() {
 	Register(Spec{
 		OracleID:     "e16f79c1-ffbb-4893-b62a-d4e9d15e2b16",
 		Name:         "Gonti, Night Minister",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The card is exiled face up, so every player can see it, not only the player who may play it.",
-			"A card whose mana cost includes {C} still needs colorless mana for that part; other mana can pay only its colored and generic parts.",
-		},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			{
 				Watches:   []game.EventKind{game.EventCast},
@@ -80,8 +71,8 @@ func init() {
 						grantee = c.Controller
 					}
 					return game.NewTriggeredItem(source, "Gonti, Night Minister — exile the top card of that opponent's library",
-						func(g *game.Game, _ *game.StackItem) error {
-							return gontiExileTopForPlay(g, victim, grantee, 1)
+						func(g *game.Game, item *game.StackItem) error {
+							return gontiExileTopForPlay(NewContext(g, item), victim, grantee, 1)
 						})
 				},
 			},
@@ -115,16 +106,20 @@ func gontiCombatDamageToYourOpponent(ev game.Event, source *game.Card, _ game.Ch
 	return ok && c.IsCreature()
 }
 
-// gontiExileTopForPlay exiles the top n cards of `from`'s library and
-// lets `grantee` play them for as long as they remain exiled, spending
-// mana as though it were any colour. Shared with Outrageous Robbery.
-func gontiExileTopForPlay(g *game.Game, from, grantee uuid.UUID, n int) error {
+// gontiExileTopForPlay exiles the top n cards of `from`'s library face
+// down and lets `grantee` look at and play them for as long as they
+// remain exiled, spending mana of any type. Shared with Outrageous
+// Robbery. An n of zero exiles nothing (Robbery with X = 0).
+func gontiExileTopForPlay(ctx *Context, from, grantee uuid.UUID, n int) error {
 	if grantee == uuid.Nil || n <= 0 {
 		return nil
 	}
-	_, err := g.ExileTopWithPermissionForEffect(from, grantee, n, game.CastPermission{
-		AnyColor: true,
-		Duration: game.WhileInZoneDuration(),
-	})
-	return err
+	return ExileTopWithPermission{
+		From:        from,
+		GrantTo:     grantee,
+		N:           n,
+		AnyType:     true,
+		FaceDown:    true,
+		WhileExiled: true,
+	}.Apply(ctx)
 }

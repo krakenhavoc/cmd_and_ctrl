@@ -27,22 +27,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //   - The cast permission is ExileWithPermission's airbend grant,
 //     pointed at the Taker's controller rather than the owner: CastOnly
 //     (the text says cast), for as long as the card stays in exile, and
-//     payable with mana of any colour. A card cast this way has left
-//     exile, so the leave trigger no longer returns it. The creature
-//     you cast stays yours; you control the spell and the permanent.
-//
-// DECLARED SIMPLIFICATION (weaker than printed): "mana of any TYPE"
-// is the engine's "as though it were mana of any colour" permission,
-// which does not cover colourless. A stolen card whose cost includes
-// {C} still needs colourless mana for that part.
+//     payable with mana of any TYPE (AnyType, #1573), so a {C} in a
+//     stolen card's cost is payable with any mana. A card cast this way
+//     has left exile, so the leave trigger no longer returns it. The
+//     creature you cast stays yours; you control the spell and the
+//     permanent.
 func init() {
 	Register(Spec{
 		OracleID:     "c5c2d209-e3ef-4b0d-85f5-e7402dcf09eb",
 		Name:         "Hostage Taker",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"A stolen card whose mana cost includes {C} still needs colorless mana for that part; other mana can pay only its colored and generic parts.",
-		},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			{
 				Watches:   []game.EventKind{game.EventETB},
@@ -78,7 +72,7 @@ func hostageTakerExile(g *game.Game, item *game.StackItem) error {
 			Target:      t.ID,
 			GrantTo:     item.Controller,
 			CastOnly:    true,
-			AnyColor:    true,
+			AnyType:     true,
 			WhileExiled: true,
 		}.Apply(ctx)
 	}

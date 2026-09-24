@@ -17,30 +17,22 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // If the target opponent has left the game by resolution, the spell has
 // no legal target and does nothing.
 //
-// DECLARED SIMPLIFICATIONS, Gonti's two:
-//
-//   - The cards are exiled FACE UP, so every player sees them. The
-//     engine has no face-down exile that only the permission holder may
-//     look at.
-//   - "Mana of any TYPE" is the engine's "as though it were mana of any
-//     colour" permission, which does not cover colourless.
+// The cards are exiled FACE DOWN (game.FaceDownPermitted, #1573): only
+// the caster may look at them. Mana of any TYPE can be spent to cast
+// them (CastPermission.AnyType), {C} included.
 func init() {
 	Register(Spec{
 		OracleID:     "5b194438-6946-45dd-8d77-c9de8c115d09",
 		Name:         "Outrageous Robbery",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The cards are exiled face up, so every player can see them, not only you.",
-			"A card whose mana cost includes {C} still needs colorless mana for that part; other mana can pay only its colored and generic parts.",
-		},
-		XMatters: true,
-		Targets:  TargetPlayer("target opponent", Opponent()),
+		Completeness: CompletenessFull,
+		XMatters:     true,
+		Targets:      TargetPlayer("target opponent", Opponent()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			for _, t := range ctx.LegalTargets() {
 				if t.Kind != game.TargetPlayer {
 					continue
 				}
-				return gontiExileTopForPlay(ctx.Game, t.ID, item.Controller, ctx.X())
+				return gontiExileTopForPlay(ctx, t.ID, item.Controller, ctx.X())
 			}
 			return nil
 		},

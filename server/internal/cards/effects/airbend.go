@@ -60,6 +60,10 @@ type ExileWithPermission struct {
 	// any color.
 	AnyColor bool
 
+	// AnyType is the wider "mana of any TYPE can be spent" (Hostage
+	// Taker, #1573): colorless mana pays a {C} in the cost too.
+	AnyType bool
+
 	// WhileExiled makes the grant last as long as the card stays in
 	// exile rather than expiring at end of turn.
 	WhileExiled bool
@@ -82,7 +86,10 @@ func (e ExileWithPermission) permission() game.CastPermission {
 	perm := game.CastPermission{
 		Player:   e.GrantTo,
 		CastOnly: e.CastOnly,
-		AnyColor: e.AnyColor,
+		// AnyType implies AnyColor, and saying both keeps the grant
+		// any-colour for a binary that predates AnyType (#1573).
+		AnyColor: e.AnyColor || e.AnyType,
+		AnyType:  e.AnyType,
 		Cost:     e.CostOverride,
 	}
 	if e.WhileExiled {

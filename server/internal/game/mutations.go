@@ -2442,10 +2442,11 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	// S21 sub-PR 6: "you may spend mana as though it were mana of any
 	// color to cast those spells" (Breeches, Brazen Plunderer). Folds
 	// the colored slots into the generic demand, which is exactly
-	// equivalent for the solver.
-	if grant != nil && grant.AnyColor {
-		cost = asAnyColorCost(cost)
-	}
+	// equivalent for the solver. #1573: "mana of any TYPE" (Hostage
+	// Taker) folds the {C} slots too — colorless is a type, not a
+	// color (CR 106.1b). Here, in the one pricer, so the payment, the
+	// auto-tapper, the preview and the view all read the same fold.
+	cost = spendAsThoughAny(grant, cost)
 	return cost, chosen, nil
 }
 
