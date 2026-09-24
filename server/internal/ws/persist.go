@@ -138,6 +138,11 @@ type RestoreOutcome struct {
 	Room    *Room // nil unless Restored
 	Skipped string
 	Err     error
+	// AbilityShortfalls are the cards this game came back with fewer
+	// catalog abilities than its restore point recorded (#522). The
+	// game is restored anyway and each card is flagged as not
+	// automated; this is the census of them the summary line counts.
+	AbilityShortfalls []game.AbilityShortfall
 }
 
 // Restored reports whether this game is live again.
@@ -249,6 +254,27 @@ func (m *RoomManager) restoreOne(path string) RestoreOutcome {
 		return res
 	}
 
+	// #522: the rebuilt-parity check. A card whose catalog entry this
+	// binary no longer has in full comes back anyway — the owner's
+	// call on #515 is to restore the table and say so loudly, not to
+	// abandon it — and restore has already flagged it as not
+	// automated. Each one is an ERROR, because it is a card that will
+	// silently stop doing something mid-game unless somebody looks.
+	res.AbilityShortfalls = file.Snapshot.AbilityShortfalls()
+	for _, sf := range res.AbilityShortfalls {
+		m.log.Error("restored card has fewer catalog abilities than its restore point recorded; flagged manual for this game",
+			"game_id", res.GameID,
+			"card_id", sf.CardID,
+			"card", sf.Name,
+			"oracle_id", sf.OracleID,
+			"token_key", sf.TokenKey,
+			"zone", sf.Zone,
+			"entry_missing", sf.EntryMissing,
+			"captured", sf.Captured,
+			"restored", sf.Restored,
+		)
+	}
+
 	room := NewRoom(g, m.log, m.dumpDir)
 	room.seq = file.Seq
 	m.Register(room)
@@ -270,7 +296,7 @@ func LogRestoreSummary(log *slog.Logger, outcomes []RestoreOutcome) {
 	if len(outcomes) == 0 {
 		return
 	}
-	var restored, ended, failed int
+	var restored, ended, failed, degradedGames, degradedCards int
 	for _, o := range outcomes {
 		switch {
 		case o.Restored():
@@ -280,6 +306,20 @@ func LogRestoreSummary(log *slog.Logger, outcomes []RestoreOutcome) {
 		default:
 			failed++
 		}
+		if n := len(o.AbilityShortfalls); n > 0 {
+			degradedGames++
+			degradedCards += n
+		}
+	}
+	// #522: a restore that stripped abilities from a card is a
+	// restored table, not an abandoned one, so it is counted beside
+	// the verdicts rather than as one — and escalated to ERROR,
+	// because each per-card line above it is one.
+	if degradedCards > 0 {
+		log.Error("restore pass complete; some cards came back with fewer abilities than captured",
+			"restored", restored, "ended", ended, "abandoned", failed,
+			"games_with_lost_abilities", degradedGames, "cards_with_lost_abilities", degradedCards)
+		return
 	}
 	log.Info("restore pass complete", "restored", restored, "ended", ended, "abandoned", failed)
 }

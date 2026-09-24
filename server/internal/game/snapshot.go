@@ -626,9 +626,191 @@ type cardSnapshot struct {
 	// ManaAbilityCount / ActivatedAbilityCount record that the card
 	// HAD intrinsic ability closures, so restore can tell the
 	// difference between "none" and "some it must rebuild", and so
-	// the census can name the card.
+	// the census can name the card. Since #522 restore also COMPARES
+	// them against what the catalog handed back — see
+	// abilityShortfallOf.
 	ManaAbilityCount      int `json:"manaAbilityCount,omitempty"`
 	ActivatedAbilityCount int `json:"activatedAbilityCount,omitempty"`
+
+	// CatalogAbilities is the catalog entry this card resolved to at
+	// capture, measured: how many abilities of each kind the capturing
+	// binary's catalog held for it. Present only for a card that HAD an
+	// entry (IsAutoCard), and nil for nearly everything in a library.
+	// It is the other half of the #522 parity check: the instance
+	// counts above exist only for tokens and token copies, because a
+	// printed card reads its abilities from the catalog at use time, so
+	// without this record a card whose entry vanished between two
+	// binaries would come back silently inert.
+	//
+	// Additive, and no schema bump in either direction: a file written
+	// before it has no record and restore checks only the instance
+	// counts, which is what the binary before it did; a binary before
+	// it reading a newer file drops the key and does the same.
+	CatalogAbilities *AbilityCounts `json:"catalogAbilities,omitempty"`
+
+	// AbilitiesLostOnRestore is Card.AbilitiesLostOnRestore. Absent
+	// from every file written before #522, which reads as "not
+	// flagged" — the answer every card gave before the flag existed.
+	// No schema bump: a binary that predates it drops the key and
+	// shows the card as automated again, which is cosmetic, not a
+	// rules change.
+	AbilitiesLostOnRestore bool `json:"abilitiesLostOnRestore,omitempty"`
+}
+
+// AbilityCounts is how many catalog abilities of each kind a card
+// has, by the slot the engine reads them from (#522). It measures a
+// catalog ENTRY, not the card: two binaries can disagree about it, and
+// restore's parity check is where they are compared.
+type AbilityCounts struct {
+	Mana         int `json:"mana,omitempty"`
+	Activated    int `json:"activated,omitempty"`
+	Triggered    int `json:"triggered,omitempty"`
+	Static       int `json:"static,omitempty"`
+	Replacements int `json:"replacements,omitempty"`
+}
+
+// Total is every ability counted.
+func (a AbilityCounts) Total() int {
+	return a.Mana + a.Activated + a.Triggered + a.Static + a.Replacements
+}
+
+// fewerThan reports whether any slot of a is below the same slot of b.
+// A slot ABOVE is not a shortfall: a new build adding abilities to a
+// card is normal (owner decision on #515).
+func (a AbilityCounts) fewerThan(b AbilityCounts) bool {
+	return a.Mana < b.Mana || a.Activated < b.Activated ||
+		a.Triggered < b.Triggered || a.Static < b.Static ||
+		a.Replacements < b.Replacements
+}
+
+// catalogAbilityCounts measures the running binary's catalog entry
+// for key. It reads through the per-slot hooks rather than the
+// CardDef, so a test that stubs one slot is measured the way the
+// engine reads it.
+func catalogAbilityCounts(key string) AbilityCounts {
+	var n AbilityCounts
+	if key == "" {
+		return n
+	}
+	if CatalogManaAbilities != nil {
+		n.Mana = len(CatalogManaAbilities(key))
+	}
+	if CatalogActivatedAbilities != nil {
+		n.Activated = len(CatalogActivatedAbilities(key))
+	}
+	if CatalogTriggers != nil {
+		n.Triggered = len(CatalogTriggers(key))
+	}
+	if CatalogStaticAbilities != nil {
+		n.Static = len(CatalogStaticAbilities(key))
+	}
+	if CatalogReplacements != nil {
+		n.Replacements = len(CatalogReplacements(key))
+	}
+	return n
+}
+
+// AbilityShortfall is one card a restore brought back with fewer
+// catalog abilities than the restore point recorded (#522). Reported
+// by GameSnapshot.AbilityShortfalls and logged at ERROR by the boot
+// restore path; the restored card is flagged AbilitiesLostOnRestore.
+type AbilityShortfall struct {
+	CardID   uuid.UUID
+	Name     string
+	OracleID string
+	TokenKey string
+	Zone     ZoneKind
+	// Captured is what the file recorded: per slot, the larger of the
+	// instance count and the catalog-entry count.
+	Captured AbilityCounts
+	// Restored is what this binary's catalog hands back for the same
+	// key.
+	Restored AbilityCounts
+	// EntryMissing is the sharpest case: the capturing binary had a
+	// catalog entry for the card and this one has none, so a spell
+	// with no abilities at all — a Lightning Bolt — is caught too.
+	EntryMissing bool
+}
+
+// abilityShortfallOf is the #522 parity check for one decoded card:
+// did this binary's catalog hand back at least what the restore point
+// recorded? It is ONE function because restoreCard (which flags the
+// card) and AbilityShortfalls (which reports it) must never disagree
+// about which cards were short.
+//
+// "Recorded" is two measurements. The instance counts
+// (ManaAbilityCount / ActivatedAbilityCount) are the closures a token
+// or token copy carried, which restore re-derives by key; the
+// CatalogAbilities record is the entry a printed card reads at use
+// time. Both are compared against the running catalog under
+// abilityCatalogKey — the key capture measured under — so the two
+// sides ask one question.
+func abilityShortfallOf(c *cardSnapshot) (AbilityShortfall, bool) {
+	captured := AbilityCounts{Mana: c.ManaAbilityCount, Activated: c.ActivatedAbilityCount}
+	hadEntry := c.CatalogAbilities != nil
+	if hadEntry {
+		rec := *c.CatalogAbilities
+		captured.Mana = max(captured.Mana, rec.Mana)
+		captured.Activated = max(captured.Activated, rec.Activated)
+		captured.Triggered = max(captured.Triggered, rec.Triggered)
+		captured.Static = max(captured.Static, rec.Static)
+		captured.Replacements = max(captured.Replacements, rec.Replacements)
+	}
+	if !hadEntry && captured.Total() == 0 {
+		return AbilityShortfall{}, false
+	}
+	key := restoreAbilityKey(c)
+	restored := catalogAbilityCounts(key)
+	entryMissing := hadEntry && !IsAutoCard(key)
+	if !entryMissing && !restored.fewerThan(captured) {
+		return AbilityShortfall{}, false
+	}
+	return AbilityShortfall{
+		CardID:       c.InstanceID,
+		Name:         c.Name,
+		OracleID:     c.OracleID,
+		TokenKey:     c.TokenKey,
+		Captured:     captured,
+		Restored:     restored,
+		EntryMissing: entryMissing,
+	}, true
+}
+
+// AbilityShortfalls lists every card this binary restores with fewer
+// catalog abilities than the snapshot recorded (#522), in zone order:
+// battlefield, stack, exile, phased out, then each seat's library,
+// hand, graveyard, command zone and emblems.
+//
+// Restore flags each of them AbilitiesLostOnRestore through the same
+// check; this is the half the boot path logs. It reads the snapshot
+// and the running catalog and nothing else, so it gives the same
+// answer before or after Restore.
+func (s *GameSnapshot) AbilityShortfalls() []AbilityShortfall {
+	var out []AbilityShortfall
+	walk := func(z *zoneSnapshot) {
+		if z == nil {
+			return
+		}
+		for i := range z.Cards {
+			if sf, ok := abilityShortfallOf(&z.Cards[i]); ok {
+				sf.Zone = z.Kind
+				out = append(out, sf)
+			}
+		}
+	}
+	walk(s.Battlefield)
+	walk(s.Stack)
+	walk(s.Exile)
+	walk(s.PhasedOut)
+	for i := range s.Seats {
+		p := &s.Seats[i]
+		walk(p.Library)
+		walk(p.Hand)
+		walk(p.Graveyard)
+		walk(p.Command)
+		walk(p.Emblems)
+	}
+	return out
 }
 
 // stackItemSnapshot mirrors StackItem. Effect and targetSpec are both
@@ -1329,6 +1511,13 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ProtectorPlayerID:        c.ProtectorPlayerID,
 		ManaAbilityCount:         len(c.ManaAbilities),
 		ActivatedAbilityCount:    len(c.ActivatedAbilities),
+		AbilitiesLostOnRestore:   c.AbilitiesLostOnRestore,
+	}
+	// #522: measure the catalog entry this card resolves to, so the
+	// binary that restores the file can tell whether it still has it.
+	if key := abilityCatalogKey(c.OracleID, c.TokenKey); IsAutoCard(key) {
+		counts := catalogAbilityCounts(key)
+		out.CatalogAbilities = &counts
 	}
 	// Intrinsic ability closures, censused only when the registry
 	// cannot give them back (#521). See intrinsicAbilitiesLost.
@@ -1961,6 +2150,15 @@ func restoreCard(c *cardSnapshot) Card {
 		TapOnPhaseIn:             c.TapOnPhaseIn,
 		StartingDefense:          c.StartingDefense,
 		ProtectorPlayerID:        c.ProtectorPlayerID,
+		AbilitiesLostOnRestore:   c.AbilitiesLostOnRestore,
+	}
+	// #522: the parity check. A card this binary's catalog hands back
+	// fewer abilities for than the file recorded is restored anyway
+	// and flagged, for the rest of the game, as not automated. The
+	// report half is GameSnapshot.AbilityShortfalls, through the same
+	// function.
+	if _, short := abilityShortfallOf(c); short {
+		out.AbilitiesLostOnRestore = true
 	}
 	if c.VariableToughness != nil {
 		out.VariableToughness = *c.VariableToughness

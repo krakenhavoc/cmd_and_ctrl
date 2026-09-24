@@ -997,6 +997,24 @@ type Card struct {
 	// nothing for a trigger to sit on. See phasing.go and ADR 0084.
 	// Added in S46 (#1199).
 	TapOnPhaseIn bool
+
+	// AbilitiesLostOnRestore marks a card that a restore brought back
+	// with FEWER catalog abilities than the restore point recorded
+	// (#522): the binary that wrote the file knew abilities for this
+	// card that the binary that read it does not — an entry removed,
+	// renamed or refactored between two deploys. The owner's decision
+	// on #515 is to restore the table anyway, say so loudly, and stop
+	// presenting the card as automated: Unimplemented answers true for
+	// it, so the client shows the `manual` chip, because whatever the
+	// engine still does for it is no longer what it did when the game
+	// was captured. A card that comes back with MORE abilities is not
+	// flagged — a new build adding abilities is normal.
+	//
+	// Set only by restoreCard (snapshot.go, abilityShortfallOf) and
+	// cleared by NOTHING. It survives zone changes, undo, and every
+	// later snapshot, and goes away only when the card itself leaves
+	// the game. Carried by the snapshot. Added in S33 (#522).
+	AbilitiesLostOnRestore bool
 }
 
 // AddKnower marks `viewerID` as having seen this card. No-op for

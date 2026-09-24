@@ -6523,8 +6523,10 @@ func viewOfCard(c game.Card) CardView {
 		RegenerationShields: c.RegenerationShields,
 		FaceDown:            c.FaceDown,
 		FaceDownKind:        string(c.FaceDownKind),
-		Auto:                game.IsAutoCard(game.CatalogKey(c)),
-		Unimplemented:       game.Unimplemented(c),
+		// #522: a card a restore stripped of abilities is not
+		// presented as automated for the rest of the game.
+		Auto:          game.IsAutoCard(game.CatalogKey(c)) && !c.AbilitiesLostOnRestore,
+		Unimplemented: game.Unimplemented(c),
 		// #992: `target_mode` is the one announce field this
 		// function stamps, because it is a pure catalog read and
 		// every zone wants it — a spell on the stack renders its
