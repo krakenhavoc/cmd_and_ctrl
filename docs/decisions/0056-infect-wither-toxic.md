@@ -1032,3 +1032,84 @@ response to its enter trigger and then dies:
 - **Combat and the manual mark.** These keep `damageSourceLKILocked`.
   A combat source is on the battlefield or has a CR 510.1c frame, and
   the sandbox mark is not a rules path.
+
+## Amendment 2026-09-24 (PR 2) — the write side ships, with the first card wave · Accepted · S40
+
+Issue [#748](https://github.com/krakenhavoc/cmd_and_ctrl/issues/748).
+PR 2 is built as Decisions 1 to 4 describe it. This records where the
+code differs from the text above, and what was pulled forward or left.
+
+### What differs from the text
+
+- **The tail's fields.** Decision 2 lists `infect`, `wither` and
+  `toxicTotal` as three fields. They are one, `damageTail.result`, of
+  the read side's `DamageResultSource` type (#1082), so the tail's two
+  landing functions call the pure `DamageToCreature` / `DamageToPlayer`
+  that the read side already pinned. `controller` is its own field, as
+  written.
+- **The reader.** Decision 2 names one `damageSourceTraitsLocked(sourceID)`.
+  The engine has one TRAITS struct and two readers that differ only in
+  what they are handed: `damageSourceTraitsOfCard` (a live permanent,
+  or a spell on the stack) and `damageSourceTraitsOfAbilities` (a
+  departed object's #1396 record). Where the source is FOUND stays in
+  the two builders, because the combat and the effect builders already
+  look in different places for the reasons the 2026-09-24 amendments
+  give. Deathtouch, lifelink and the three results come out of the same
+  call either way, which is the #711 point.
+- **Counters are placed after `EventDealDamage`, on both targets.**
+  Decision 3's pseudocode put the -1/-1 placement inside
+  `applyDamageToPermanentLocked`, ahead of the event; Decision 4 put the
+  poison after it. Both now come after the event, from one helper
+  (`placeDamageResultCountersLocked`): `applyDamageToPermanentLocked`
+  reports how many -1/-1 counters are owed rather than placing them. The
+  log reads "dealt 2 damage", then the counters. Nothing a rule can see
+  depends on the order inside the one action.
+- **Seven of the "eight dedupe sites" move, not eight.** Every keyword
+  GRANT helper appends through `game.AppendKeywordAbility`:
+  `GrantToAttached`, `LoseAllAbilities`' keep list, `KeywordGrant` (so
+  `TribalKeywordGrant`), `GrantKeywordUntilEOT`, `b16GrantKeywords`,
+  `b43`'s conditional grant and `attachments_batch3`'s. The synthesised
+  static that re-applies a card's own PRINTED keywords
+  (`appendKeywordsTo`) keeps its plain dedupe on purpose:
+  `printedCharacteristic` has already put the printed keywords in the
+  layer-0 baseline, so appending a printed `toxic 1` through the
+  cumulative rule would count it twice. The single-keyword grants that
+  name a fixed redundant keyword (Intangible Virtue's vigilance, Whip of
+  Erebos' lifelink and the like) are left as they are; no toxic grant
+  goes through them.
+- **The importer** reads toxic's amount off the keyword-ability LINES,
+  the path protection already takes, and stamps each `toxic N` it finds.
+
+### Pulled forward from PR 3 and PR 5
+
+- **Client:** `KEYWORD_ICONS` has infect and wither (Decision 6's PR 2
+  item). The rest of PR 3 — the "(as poison)" / "(as -1/-1 counters)"
+  log suffixes, the `poison` log line, the `N/10` chip and the one
+  `TOX N` badge — is still to come. The poison chip, the stepper and
+  the marker already existed, so a player sees their poison count
+  today.
+- **Cards.** Owner policy says every new seam path ships with a real
+  card, so eight of PR 5's cards ship with the engine: Plague Myr,
+  Blighted Agent, Ichor Rats, Puncture Blast (wither from the stack),
+  Tainted Strike (infect granted until end of turn), Triumph of the
+  Hordes, Karumonix, the Rat King (the cumulative toxic grant) and
+  Bloated Contaminator (toxic, with the standard proliferate caveat).
+  Grafted Exoskeleton moves out of the wave, as the PR split allows: its
+  "whenever this becomes unattached" trigger has no event. The rest of
+  PR 5 and all of PR 6 remain.
+
+### Test plan status
+
+Items 1-6, 9-11, 14, 16, 17 and 20-21 are engine or importer tests
+(`game/infect_wither_toxic_tail_test.go`, `deck/infect_import_test.go`);
+item 8 and item 13's Doubling Season half are played through Tainted
+Strike, Puncture Blast and Plague Myr
+(`cards/effects/infect_wither_toxic_cards_test.go`). Item 7 (double
+strike) has no dedicated test: each combat damage step is its own damage
+event and so its own placement by construction. Items 22 and 23 are PR
+4's and PR 3's.
+
+The "Still not covered" bullet under the first 2026-09-24 amendment that
+says infect, wither and toxic "join the same reader when PR 2 wires
+them" is done: they read the departed record through
+`damageSourceTraitsOfAbilities`.

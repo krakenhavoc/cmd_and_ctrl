@@ -50,15 +50,34 @@ import "github.com/google/uuid"
 // the CR 614 pipeline first and passes the settled number, which is
 // what keeps Fog and the prevention shields in one place.
 //
-// `deathtouch` marks the CR 702.2c lethal flag on a creature. It is
-// a parameter rather than a lookup because the non-combat caller
-// (DealDamageToCreatureForEffect) has historically not applied it,
-// and changing that is a separate question from this one.
+// It takes the damage TAIL — the source as it was when the event was
+// created — because two of the source's keywords change what the
+// damage does to a creature:
+//
+//   - deathtouch marks the CR 702.2b lethal flag. It is about damage
+//     DEALT, not marked, so it is set whether the damage is marked or
+//     becomes counters, and even when a replacement later stops every
+//     counter (ADR 0056 Decision 3).
+//   - infect and wither (CR 120.3d) make the damage -1/-1 counters
+//     INSTEAD of marked damage. This function does not place them: it
+//     reports how many are owed, and the caller puts them through the
+//     CR 614 counter window once the damage event has been emitted
+//     (placeDamageResultCountersLocked). A placement is a result, not
+//     a write, and a counter replacement has to see it.
+//
+// The planeswalker and battle clauses are unchanged by either, so an
+// animated planeswalker hit by infect damage gets -1/-1 counters AND
+// loses loyalty — the clauses stay additive.
+//
+// Returns ok=false when the card is not on the battlefield.
 //
 // Caller must hold g.mu.
-func (g *Game) applyDamageToPermanentLocked(cardID uuid.UUID, amount int, deathtouch bool) bool {
+func (g *Game) applyDamageToPermanentLocked(cardID uuid.UUID, amount int, t *damageTail) (ok bool, minusOneCounters int) {
 	if amount <= 0 {
-		return false
+		return false, 0
+	}
+	if t == nil {
+		t = &damageTail{}
 	}
 	idx := -1
 	for i := range g.Battlefield.Cards {
@@ -68,7 +87,7 @@ func (g *Game) applyDamageToPermanentLocked(cardID uuid.UUID, amount int, deatht
 		}
 	}
 	if idx < 0 {
-		return false
+		return false, 0
 	}
 	c := &g.Battlefield.Cards[idx]
 	isCreature := c.IsCreature()
@@ -76,8 +95,11 @@ func (g *Game) applyDamageToPermanentLocked(cardID uuid.UUID, amount int, deatht
 	isBattle := c.IsBattle()
 
 	if isCreature {
-		c.DamageMarked += amount
-		if deathtouch {
+		// CR 120.3d / 120.3e: counters or marked damage, never both.
+		counters, marked := t.result.DamageToCreature(amount)
+		c.DamageMarked += marked
+		minusOneCounters = counters
+		if t.deathtouch {
 			c.MarkedLethalByDeathtouch = true
 		}
 	}
@@ -102,7 +124,7 @@ func (g *Game) applyDamageToPermanentLocked(cardID uuid.UUID, amount int, deatht
 	// planeswalker or battle has no effect). Returning true anyway:
 	// the damage WAS dealt, the event has already been emitted by the
 	// caller, and lifelink still triggers off it.
-	return true
+	return true, minusOneCounters
 }
 
 // clearBattlefieldDamage wipes the damage marked on a permanent and

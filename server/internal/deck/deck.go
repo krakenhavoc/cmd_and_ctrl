@@ -328,6 +328,7 @@ func printedKeywords(c cards.Card) []string {
 	}
 	var confirm map[string]bool
 	wantProtection := false
+	wantToxic := false
 	out := make([]string, 0, len(c.Keywords))
 	for _, raw := range c.Keywords {
 		kws, ok := game.CanonicalKeywords(raw)
@@ -339,6 +340,14 @@ func printedKeywords(c cards.Card) []string {
 			// that the engine does not enforce is simply dropped.
 			if strings.EqualFold(strings.TrimSpace(raw), "protection") {
 				wantProtection = true
+			}
+			// TOXIC (CR 702.164) is the same shape: the array says
+			// "Toxic" and the amount is only in the oracle line
+			// ("Toxic 2"), so the numbered token comes from the line
+			// scan too (ADR 0056 Decision 1). A card whose lines name
+			// no amount stamps nothing, which errs weaker.
+			if strings.EqualFold(strings.TrimSpace(raw), game.KeywordToxic) {
+				wantToxic = true
 			}
 			continue
 		}
@@ -401,6 +410,23 @@ func printedKeywords(c cards.Card) []string {
 		// imports.
 		sort.Strings(protections)
 		out = append(out, protections...)
+	}
+	if wantToxic {
+		lines := front
+		if lines == nil {
+			lines = keywordLinesOf(c)
+		}
+		var toxics []string
+		for kw := range lines {
+			if _, ok := game.ToxicValue(kw); ok && !containsString(out, kw) {
+				toxics = append(toxics, kw)
+			}
+		}
+		// Sorted for the same stable-badge reason as protection. No
+		// printed card has two toxic lines; one that did would stamp
+		// each distinct amount once.
+		sort.Strings(toxics)
+		out = append(out, toxics...)
 	}
 	if len(out) == 0 {
 		return nil

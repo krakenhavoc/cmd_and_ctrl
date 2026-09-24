@@ -940,14 +940,24 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// "Can't beats may" needs no rule of its own here. Cascade, a
 	// granted permission and an impulse grant all reach CastSpell, so
 	// a free cast passes through this gate like any other.
-	if err := g.CastGateLocked(playerID, card, src.Kind, params); err != nil {
-		slog.Warn("cast_spell rejected: an effect prevents this cast",
-			"card_name", card.Name,
-			"oracle_id", card.OracleID,
-			"from_zone", src.Kind,
-			"err", err,
-		)
-		return err
+	//
+	// #1439: a LAND is not gated here at all. Playing a land is a
+	// special action (CR 305.1, CR 116.2a), not a cast, and every
+	// clause CastGateLocked enforces is written about casting (its
+	// own doc says so). The land branch further down runs its own
+	// CR 305 checks; asking this gate first made Rule of Law and
+	// Grafdigger's Cage — both spell-only restrictions — refuse a
+	// land drop from hand or from the graveyard.
+	if !card.IsLand() {
+		if err := g.CastGateLocked(playerID, card, src.Kind, params); err != nil {
+			slog.Warn("cast_spell rejected: an effect prevents this cast",
+				"card_name", card.Name,
+				"oracle_id", card.OracleID,
+				"from_zone", src.Kind,
+				"err", err,
+			)
+			return err
+		}
 	}
 	// CR 702.16b: the source of a SPELL is the spell itself, so the
 	// quality protection is tested against is the card's own colour
@@ -4443,6 +4453,11 @@ func (g *Game) routeBattlefieldExitInBatchThenLocked(cardID uuid.UUID, r zoneRou
 		// and nothing else can tell a destruction from a sacrifice.
 		Destruction:       r.Destruction,
 		CantBeRegenerated: r.CantBeRegenerated,
+		// A sacrifice paid as a cost is an indivisible CR 602.2b
+		// payment. Carry the route's posture onto the replacement
+		// event just as routeCardToZoneLocked does for non-battlefield
+		// moves, so a CR 616 ordering window settles inline.
+		mustSettleNow: r.MustSettleNow,
 		// #1397: a sacrifice paid as a cost carries its owner's
 		// CR 903.9 answer, given before the payment.
 		commanderAnswer: r.commanderAnswer,
@@ -7679,6 +7694,10 @@ func (g *Game) queueDamageAssignmentPromptLocked(atk *Card, blockerIDs []uuid.UU
 		// assigned, for the same reason lifelink and deathtouch are.
 		SourceLKI: SourceCharacteristics(atk),
 	}
+	// ADR 0056 Decision 2: the damage-result keywords are snapshotted
+	// by the same reader the direct combat paths use.
+	res := SourceDamageResultTraits(atk)
+	frame.SourceInfect, frame.SourceWither, frame.SourceToxic = res.Infect, res.Wither, res.ToxicTotal
 	g.QueueChoiceForEffect(PendingChoice{
 		Kind:             PendingChoiceDamageAssignment,
 		Chooser:          atk.Controller,

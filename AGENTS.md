@@ -91,7 +91,7 @@ cmd_and_ctrl/
     ├── lobby.md         # lobby HTTP API reference
     ├── bot.md           # AI bot seat — user-facing guide (S31)
     ├── sprints.md       # sprint plan
-    └── decisions/       # ADRs (0001 WS library … 0092 public roadmap) — see §4 on numbering
+    └── decisions/       # ADRs (0001 WS library … 0093 granted abilities) — see §4 on numbering
 ```
 
 When you create a new top-level directory, add it here.
@@ -879,7 +879,7 @@ func init() {
 **`Apply` patterns:**
 - Anthem +1/+1 — `c.Power++; c.Toughness++`
 - Type-add — append to `c.Types` after checking idempotency
-- Keyword grant — append to `c.Abilities` after checking duplicate
+- Keyword grant — `c.Abilities = game.AppendKeywordAbility(c.Abilities, kw)`, which dedupes a redundant keyword and keeps every instance of a cumulative one (toxic, #748)
 - CDA P/T — `c.Power = computed; c.Toughness = computed + 1`
 
 **Tests** — see [anthem_test.go](server/internal/cards/effects/anthem_test.go) and [tarmogoyf_test.go](server/internal/cards/effects/tarmogoyf_test.go) for the layer-aware pattern. Use `pushBattlefieldCardWithTimestamp` (fires `EventZoneMove` so the listener stamps `EnteredBattlefieldAt` + bumps `layerVersion`); read effective characteristics via `effectivePower` / `effectiveToughness` / `effectiveTypes` / `effectiveAbilities` helpers.
@@ -1626,6 +1626,9 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"horsemanship"` | Horsemanship (CR 702.31b) — requires horsemanship on the blocker |
 | `"skulk"` | Skulk (CR 702.118b) — blocker power cannot exceed attacker power |
 | `"protection from <quality>"` | Protection (CR 702.16) — #662, all four DEBT checks. The one PARAMETERISED token; see "Protection" below before writing one |
+| `"infect"` | Infect (CR 702.90) — #748, the damage tail: -1/-1 counters on a creature, poison on a player |
+| `"wither"` | Wither (CR 702.80) — #748, the damage tail: -1/-1 counters on a creature |
+| `"toxic N"` | Toxic (CR 702.164) — #748, N extra poison on combat damage to a player. Numbered AND cumulative: read it with `game.ToxicTotal`, never `HasKeyword`, and grant it through `game.AppendKeywordAbility` so a second instance adds up ([ADR 0056](docs/decisions/0056-infect-wither-toxic.md)) |
 
 Hexproof, shroud, indestructible and changeling are not combat
 keywords, but they ride the same `PrintedKeywords` slot and the same

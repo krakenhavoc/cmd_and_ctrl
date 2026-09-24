@@ -1046,7 +1046,7 @@ and the other legacy keywords have no tracker and are built on demand,
 when a card needs one. *Update 2026-09-17:* infect, with wither and
 toxic, now has one,
 [#748](https://github.com/krakenhavoc/cmd_and_ctrl/issues/748), filed
-from the card-coverage audit. In the last row, regeneration is
+from the card-coverage audit, and shipped on 2026-09-24. In the last row, regeneration is
 [#667](https://github.com/krakenhavoc/cmd_and_ctrl/issues/667); phasing
 and totem armor are on demand too. The same footnote applies to the
 two tables below.
@@ -1162,7 +1162,8 @@ format you go, the weirder the card. Two rows move enough to matter:
   *(Update 2026-09-16: the bucket's umbrella, #176, is closed. Landwalk
   is #705, prowess is #706, changeling shipped in S26, and the rest are
   built on demand; see note ¹ under the first table. Update 2026-09-17:
-  infect, wither and toxic are #748.)*
+  infect, wither and toxic are #748. Update 2026-09-24: #748 shipped
+  them — the keywords are enforced and imported.)*
 - **Attachments (#280) move from 6th to 5th and the count rises** — 55
   sole, 123 touched. Equipment and Auras are a mid-rarity staple shape,
   not a top-of-format one.
