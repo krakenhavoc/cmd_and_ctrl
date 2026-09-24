@@ -248,6 +248,15 @@ type Duration struct {
 	// the full-restore path — for the rest of the game.
 	Pinned          uuid.UUID
 	PinnedEnteredAt int64
+
+	// PinnedUnstamped is AffectedObject.Unstamped for the pin (#1558):
+	// the pinned permanent had no entry stamp, so the pin names it
+	// exactly — "still unstamped" — rather than falling back to the
+	// PinnedEnteredAt 0 wildcard, which went on matching the object's
+	// successor after a flicker. Omitted when false, so every duration
+	// written before it reads the same; an older binary that ignores
+	// it gets the pre-#1558 wildcard back.
+	PinnedUnstamped bool `json:"PinnedUnstamped,omitempty"`
 }
 
 // UntilEndOfTurnDuration is "until end of turn" (CR 514.2), stamped
@@ -389,6 +398,7 @@ func (g *Game) PinnedTo(d Duration, object uuid.UUID) Duration {
 	}
 	d.Pinned = object
 	d.PinnedEnteredAt = c.EnteredBattlefieldAt
+	d.PinnedUnstamped = c.EnteredBattlefieldAt == 0
 	return d
 }
 
@@ -413,7 +423,7 @@ func (g *Game) durationExpiredLocked(d Duration, endOfTurn bool) bool {
 	// the one check that looks in g.PhasedOut: a ForAsLongAs condition
 	// below still reads the battlefield alone, because CR 702.26f ends
 	// a duration that tracks a permanent once it phases out.
-	if d.Pinned != uuid.Nil && !g.sameObjectPresentLocked(d.Pinned, d.PinnedEnteredAt) {
+	if d.Pinned != uuid.Nil && !g.sameObjectPresentLocked(d.Pinned, d.PinnedEnteredAt, d.PinnedUnstamped) {
 		return true
 	}
 	switch d.Kind {
@@ -476,16 +486,17 @@ func (g *Game) durationConditionHoldsLocked(d Duration) bool {
 
 // sameObjectOnBattlefieldLocked reports whether `id` is on the
 // battlefield AND is still the object that entered at `enteredAt`
-// (CR 400.7). A zero stamp means "don't care", which is what a card
-// seeded by a fixture without the zone-move event carries.
+// (CR 400.7), read by entryMatches: `enteredAt` 0 means "don't care",
+// and `unstamped` means "still the unstamped object a fixture seeded
+// without the zone-move event" (#1558).
 //
 // Caller must hold g.mu.
-func (g *Game) sameObjectOnBattlefieldLocked(id uuid.UUID, enteredAt int64) bool {
+func (g *Game) sameObjectOnBattlefieldLocked(id uuid.UUID, enteredAt int64, unstamped bool) bool {
 	c, ok := g.battlefieldCardLocked(id)
 	if !ok {
 		return false
 	}
-	return enteredAt == 0 || c.EnteredBattlefieldAt == enteredAt
+	return entryMatches(enteredAt, unstamped, c.EnteredBattlefieldAt)
 }
 
 // sameObjectPresentLocked is sameObjectOnBattlefieldLocked that also
@@ -495,8 +506,8 @@ func (g *Game) sameObjectOnBattlefieldLocked(id uuid.UUID, enteredAt int64) bool
 // conditions deliberately do not use it.
 //
 // Caller must hold g.mu.
-func (g *Game) sameObjectPresentLocked(id uuid.UUID, enteredAt int64) bool {
-	if g.sameObjectOnBattlefieldLocked(id, enteredAt) {
+func (g *Game) sameObjectPresentLocked(id uuid.UUID, enteredAt int64, unstamped bool) bool {
+	if g.sameObjectOnBattlefieldLocked(id, enteredAt, unstamped) {
 		return true
 	}
 	if g.PhasedOut == nil {
@@ -504,7 +515,7 @@ func (g *Game) sameObjectPresentLocked(id uuid.UUID, enteredAt int64) bool {
 	}
 	for _, c := range g.PhasedOut.Cards {
 		if c.InstanceID == id {
-			return enteredAt == 0 || c.EnteredBattlefieldAt == enteredAt
+			return entryMatches(enteredAt, unstamped, c.EnteredBattlefieldAt)
 		}
 	}
 	return false

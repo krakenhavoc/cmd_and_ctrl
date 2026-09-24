@@ -662,8 +662,10 @@ a timestamp.
 mod. `controlStatic` already does this, and ADR 0093 D7 does it for
 `ScopedGrant`. The running binary builds the adapter's closures from
 the record, so they are **rebuilt**, not persisted. They are memoised
-by `layerVersion` in a field the drift plan classifies `rebuilt`, so
-the pass does not allocate on every recompute.
+in a field the drift plan classifies `rebuilt`, so the pass does not
+allocate on every recompute. (The memo landed with #1558, keyed by
+record identity rather than by `layerVersion`; the implementation
+notes below say why.)
 
 **Expiry does not change.** `sweepScopedStaticsLocked` sweeps
 `Game.ScopedEffects` through the same `durationExpiredLocked` as
@@ -832,13 +834,18 @@ fixed list that only gets shorter**, and three mechanisms enforce that:
 - **A ratchet over the type graph.**
   `TestClosureFieldsReachableFromGame` walks by reflection from `Game`
   through struct fields, slices, maps, pointers and named types. It
-  lists every function-typed path, for example
-  `ScopedStatics[].Ability.AppliesTo`, and compares the list with
+  lists every route to a function or an interface: every field of
+  every reachable struct whose type reaches one, for example
+  `Game.ScopedStatics`, `ScopedStatic.Ability` and
+  `StaticAbility.AppliesTo`. It compares the list with
   `testdata/closure_fields.txt`.
-  - Each line in that file is `<path> rebuilt|keyed|census:<Counter>`.
-  - A new path fails the build.
+  - Each line in that file is `<Type>.<Field> rebuilt|keyed|census:<Counter>`.
+  - A new route fails the build, including a new field whose type is a
+    struct that is already listed (#1558).
   - A `census:` line whose counter has been retired fails the build.
-  - Tier PRs delete lines, and nothing may add a `census:` line.
+  - Tier PRs delete lines. The number of `census:` lines per counter,
+    and of `transient` lines, is pinned in the test and may only fall
+    (#1558).
 
   The drift test classifies seven types by field name. This test also
   follows what those fields hold, all the way down, which is where a
@@ -1189,3 +1196,36 @@ Three things the first slice settled that the decisions above left open.
   - **`CastFilter.Types` is a closed set.** It must be one of CR 205.2a's card types, spelled exactly, and it is matched against the card's type list as whole words, never as a substring. It is refused both where it is scheduled and at restore.
   - **The engine's `DelayedTrigger.Body` and `.Condition` are typed refs.** They are `BodyRef` and `ConditionRef`, so an unregistered key cannot be written at all. A zero ref is a programming fault (`effectKeyFault`): it panics in a test binary, and in production it is logged and the trigger is dropped. It never crashes the server.
   - **An ability copy of a keyed item is keyed too.**
+
+### Implementation notes (#1558: hardening after the #1555 review)
+
+- **The closure ratchet is keyed by route.** `closure_fields.txt` has a
+  line for every field of every reachable struct that reaches a
+  function or an interface, not only for the fields that hold one
+  directly. A new field whose type is an already-listed struct is a new
+  line, so it fails until it is classified. The probe from the review
+  (`[]ReplacementEffect` on `TargetSpec`, `[]StaticAbility` on `Card`)
+  now fails the build. The reachability walk is a fixed point, because
+  a memoised walk scored a type inside a cycle wrongly.
+- **Blocker classes may only shrink.** `closureClassCeilings` pins the
+  number of lines in each `census:` class and in `transient`. A count
+  above its ceiling fails. A count below it fails too, until the
+  ceiling is lowered in the same PR.
+- **The adapter memo landed.** It is keyed by record identity (the
+  address of each record's `Mods`, plus its scalars), not by
+  `layerVersion`. An undo stores the snapshot's version plus one, so one
+  version number can name two different registries, and a
+  version-keyed memo could return a record the undo removed. The memo
+  is not cloned, and it is never mutated in place. At 100 records on
+  one creature, one recompute went from 428 allocations and about
+  26 µs to 20 allocations and about 11 µs. The legacy closure statics
+  cost 121 allocations and about 19.5 µs.
+- **An unstamped permanent is pinned exactly.** `PinObject` and
+  `PinnedTo` record `unstamped` / `PinnedUnstamped` for a permanent
+  with no entry stamp, and the pin matches it only while it is still
+  unstamped. So a flicker ends the effect, as the legacy `== stamp`
+  comparison did. `EnteredAt 0` with no flag is still the wildcard,
+  and suspend's haste is its only writer. The flags are additive within
+  v7 and omitted when false. An older v7 binary refuses a scoped
+  effect that carries one (P4's unknown-field refusal). Anywhere else
+  it drops the flag, which gives back the old wildcard.
