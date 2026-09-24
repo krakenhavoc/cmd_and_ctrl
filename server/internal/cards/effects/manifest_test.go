@@ -59,13 +59,13 @@ func TestSoulSummonsManifestsTheTopCard(t *testing.T) {
 		t.Errorf("body = %q %d/%d, want a nameless 2/2", eff.Name, eff.Power, eff.Toughness)
 	}
 
-	// CR 701.34d: a manifested CREATURE card may be turned face up for
+	// CR 701.40b: a manifested CREATURE card may be turned face up for
 	// its MANA COST — not for any morph cost, and not at all if it is
 	// not a creature card. The offer is the engine's; this asserts the
 	// card reaches it.
 	offer := game.TurnFaceUpOffer(c)
 	if offer == nil {
-		t.Fatal("a manifested creature card offers no way up (CR 701.34d)")
+		t.Fatal("a manifested creature card offers no way up (CR 701.40b)")
 	}
 	if offer.Cost != "{4}{B}{B}" {
 		t.Errorf("turn-face-up cost = %q, want the card's mana cost", offer.Cost)
@@ -73,7 +73,7 @@ func TestSoulSummonsManifestsTheTopCard(t *testing.T) {
 }
 
 // TestAManifestedNoncreatureStaysFaceDown is the other half of
-// CR 701.34d, and the reason the offer cannot be a catalog
+// CR 701.40b, and the reason the offer cannot be a catalog
 // declaration: the same spell, a different top card, no way up.
 func TestAManifestedNoncreatureStaysFaceDown(t *testing.T) {
 	g := newCatalogGame(t)
@@ -95,7 +95,7 @@ func TestAManifestedNoncreatureStaysFaceDown(t *testing.T) {
 		t.Error("a manifested land is not a creature; CR 708.2 makes the object a 2/2 creature")
 	}
 	if offer := game.TurnFaceUpOffer(c); offer != nil {
-		t.Errorf("a manifested land may be turned face up for %q — CR 701.34d says only a creature card may", offer.Cost)
+		t.Errorf("a manifested land may be turned face up for %q — CR 701.40b says only a creature card may", offer.Cost)
 	}
 }
 

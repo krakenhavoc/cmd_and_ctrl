@@ -269,7 +269,7 @@ every amount replacement the engine grew:
 |---|---|---|---|
 | `RepEventCreateTokens` | "create N tokens" (CR 701.7b) | `TokenGroups` | this one, decision 1 |
 | `RepEventKeywordAction` | proliferate / scry / surveil | `KeywordActionCount` | [0013 §5s](0013-replacement-effects.md) |
-| `RepEventMill` | "mill N cards" (CR 701.13a) | `MillCount` | [0013 §5u](0013-replacement-effects.md), §5aa |
+| `RepEventMill` | "mill N cards" (CR 701.17a) | `MillCount` | [0013 §5u](0013-replacement-effects.md), §5aa |
 | `RepEventProduceMana` | one mana production (CR 106.12b) | `ManaColors` | [0013 §5ab](0013-replacement-effects.md) |
 | `RepEventDraw` | one card draw (CR 121.2) | `DrawCount` | [0013 §5ab](0013-replacement-effects.md) |
 

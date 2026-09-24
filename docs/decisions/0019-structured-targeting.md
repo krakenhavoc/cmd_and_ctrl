@@ -420,7 +420,7 @@ Protection still governs the ability's own SOURCE by way of
 `retargetSourceLocked` when the ability is retargeted, which is the
 one place it can matter.
 
-Countering one is a **deletion, not a zone change** (CR 701.5c: "an
+Countering one is a **deletion, not a zone change** (CR 701.6a: "an
 ability that's countered doesn't go anywhere"). `counterAbilityLocked`
 drops the `StackMeta` entry and recomputes split second; there is no
 `routeCardToZoneLocked` call, no CR 903.9 window, no flashback

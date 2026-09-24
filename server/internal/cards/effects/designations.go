@@ -82,7 +82,7 @@ func WhenSolved(t game.TriggeredAbility) game.TriggeredAbility {
 // could get any of them wrong:
 //
 //	CR 716.2d  sorcery speed
-//	CR 716.2e  "activate only if this Class is level N-1" — so the
+//	CR 716.2a  "activate only if this Class is level N-1" — so the
 //	           levels are climbed in order and none is skipped
 //	CR 716.2b  the effect is "this Class's level becomes N", not
 //	           "+1 level", so two copies of the ability on the stack

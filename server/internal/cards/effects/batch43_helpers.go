@@ -149,7 +149,7 @@ func b43NontokenMerfolkYouControlBecameTapped(ev game.Event, source *game.Card, 
 //
 // "You're dealt damage" is not "you lose life": a Vizkopa drain or a
 // paid life cost is life loss, not damage, and Darien sees neither
-// (CR 119.3c). Damage prevented or replaced never happens, so a
+// (CR 119.3). Damage prevented or replaced never happens, so a
 // prevention shield really does stop the tokens as well as the
 // damage — the event is emitted with the amount that was APPLIED.
 func b43YouWereDealtDamage(ev game.Event, source *game.Card, g *game.Game) (int, bool) {

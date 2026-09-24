@@ -383,7 +383,7 @@ func TestTurnFaceUpOfferForAPermanentTurnedFaceDown(t *testing.T) {
 			wantOffer: true, wantCost: morphCost,
 		},
 		{
-			name:      "CR 702.109b: megamorph still pays its counter",
+			name:      "CR 702.37b: megamorph still pays its counter",
 			declares:  ptrAltCost(morphOffer(FaceDownMorphed, morphCost, true)),
 			wantOffer: true, wantCost: morphCost, wantCounter: true,
 		},

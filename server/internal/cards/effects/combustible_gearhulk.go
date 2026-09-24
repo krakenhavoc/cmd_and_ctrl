@@ -24,7 +24,7 @@ import (
 // The damage is read off the three cards that were MILLED, not off the
 // library beforehand: the mill hands back what actually moved, so a
 // short library mills what it has and the damage is the total mana
-// value of those cards (CR 701.13b — you mill as many as you can).
+// value of those cards (CR 701.17b — you mill as many as you can).
 //
 // No simplification.
 func init() {
