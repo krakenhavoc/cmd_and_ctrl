@@ -390,6 +390,32 @@ var mechanics = []Mechanic{
 		Adopt:      `RemoveCountersFromThis / RemoveCountersFrom / RemoveCountersXFromThis / RemoveCountersAmong — see effects/activated.go`,
 	},
 	{
+		// ADR 0093: a layer-6 grant of an ability bundle to OTHER
+		// permanents — Cryptolith Rite's "creatures you control have
+		// '{T}: Add one mana of any color.'" The probe reads the
+		// declaration (StaticAbility.GrantAbilities), so it is exact.
+		// Before ADR 0093 cards faked the grant on a token template or
+		// on the grantor, and said so in a caveat; this row is what
+		// makes such a caveat fail the build once the card declares
+		// the real grant.
+		Name: "an ability granted to another permanent",
+		Phrases: []string{
+			"granted mana ability", "granted activated ability",
+			"granted ability", "granted abilities",
+		},
+		Implements: func(s effects.Spec) bool {
+			for _, st := range s.Static {
+				if len(st.GrantAbilities) > 0 {
+					return true
+				}
+			}
+			return false
+		},
+		Evidence:   "the spec declares StaticAbility.GrantAbilities on a static",
+		Confidence: Exact,
+		Adopt:      `Spec.Grants plus GrantAbilities / TribalAbilityGrant / GrantAbilitiesToAttached — see effects/ability_grant.go`,
+	},
+	{
 		// #1273: exactly the #412 failure mode. Force of Negation's
 		// caveat said the countered spell "goes to its owner's
 		// graveyard instead of being exiled" for a sprint after #1230

@@ -164,7 +164,6 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedB28EldraziScionToken,
 	printedB16LanderToken,
 	printedB14ReplicatedRingToken,
-	printedB18SpringleafShapeshifterToken,
 
 	// ADR 0083's first tokens with an ability of their own that is
 	// not a mana or activated ability.

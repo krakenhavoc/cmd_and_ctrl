@@ -991,9 +991,20 @@ on the recipient takes an earlier grant and not a later one (CR
 refuses a bundle ability with `ActiveWhen` (gate the grantor's static
 instead) or a non-battlefield zone, and `TestEveryGrantKeyResolves`
 refuses a grant naming an unregistered bundle or a bundle with a
-`Static` slot. Attached / tribal constructors, the client picker and
-the auto-tapper's handling arrive with the first cards (ADR 0093 PR 2);
-duration grants from a resolving spell are PR 4 and have no shape yet.
+`Static` slot.
+
+The other constructors: `TribalAbilityGrant(TribeFilter{…}, key)` for
+"All Slivers have …" / "Sliver creatures you control have …", and
+`GrantAbilitiesToAttached(key)` for "Equipped creature has …" /
+"Enchanted land has …". `AnyColorManaGrant(key)` and
+`TapForManaGrant(key, produced, label, text)` build the common mana
+bundles. The auto-tapper plans every acceptable mana ability of a
+permanent (not only the first) and keeps a CREATURE's granted mana for
+last, so an auto-paid cast does not tap your attackers; a land's
+granted mana is an ordinary source. See `cryptolith_rite.go`,
+`chromatic_lantern.go`, `necrotic_sliver.go` and `squirrel_nest.go`.
+Duration grants from a resolving spell are ADR 0093 PR 4 and have no
+shape yet.
 
 ### Adding a replacement effect (S17+)
 

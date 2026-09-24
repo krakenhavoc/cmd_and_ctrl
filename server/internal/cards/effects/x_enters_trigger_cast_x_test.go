@@ -117,8 +117,10 @@ func TestSpringleafParadeEntersTriggerReadsCastX(t *testing.T) {
 	if got := b16CountNamed(g, "Shapeshifter"); got != 3 {
 		t.Errorf("Shapeshifters = %d, want X=3", got)
 	}
-	if spec, _ := Lookup(b18SpringleafParadeOracle); spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
-		t.Error("only the own-tokens-only mana-ability grant should remain declared")
+	// ADR 0093 made the mana-ability grant real, so nothing is
+	// declared any more.
+	if spec, _ := Lookup(b18SpringleafParadeOracle); spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Error("Springleaf Parade has no simplification left — CompletenessFull")
 	}
 }
 
