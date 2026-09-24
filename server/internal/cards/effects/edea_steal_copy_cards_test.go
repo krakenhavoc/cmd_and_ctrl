@@ -359,8 +359,8 @@ func TestHostageTakerExilesUntilItLeavesAndReturnsToTheOwner(t *testing.T) {
 		t.Fatalf("the creature is in %q, want exile", z)
 	}
 	perm := e2Permission(g, victim)
-	if perm == nil || perm.Player != me.ID || !perm.CastOnly || !perm.AnyColor {
-		t.Fatalf("permission %+v, want a cast-only any-colour grant to the Taker's controller", perm)
+	if perm == nil || perm.Player != me.ID || !perm.CastOnly || !perm.AnyType {
+		t.Fatalf("permission %+v, want a cast-only any-type grant to the Taker's controller", perm)
 	}
 
 	e2Destroy(t, g, taker)
@@ -443,9 +443,10 @@ func TestGontiExilesTheTopCardForTheCreaturesController(t *testing.T) {
 		t.Fatalf("the opponent's top card is in %q, want exile", z)
 	}
 	perm := e2Permission(g, top)
-	if perm == nil || perm.Player != me.ID || perm.CastOnly || !perm.AnyColor {
-		t.Errorf("permission %+v, want a play (not cast-only) any-colour grant to you", perm)
+	if perm == nil || perm.Player != me.ID || perm.CastOnly || !perm.AnyType {
+		t.Errorf("permission %+v, want a play (not cast-only) any-type grant to you", perm)
 	}
+	e2AssertFaceDownFor(t, g, top, me.ID)
 }
 
 // TestGontiHandsTheCardToTheOtherCreaturesController pins the
@@ -512,9 +513,79 @@ func TestOutrageousRobberyExilesXForYouToPlay(t *testing.T) {
 	}
 	for _, id := range top {
 		perm := e2Permission(g, id)
-		if perm == nil || perm.Player != me.ID || perm.CastOnly || !perm.AnyColor {
-			t.Errorf("card %s permission %+v, want a play grant to the caster", id, perm)
+		if perm == nil || perm.Player != me.ID || perm.CastOnly || !perm.AnyType {
+			t.Errorf("card %s permission %+v, want an any-type play grant to the caster", id, perm)
 		}
+		e2AssertFaceDownFor(t, g, id, me.ID)
+	}
+}
+
+// e2AssertFaceDownFor checks a card was exiled face down with `holder`
+// as its only viewer (#1573, game.FaceDownPermitted).
+func e2AssertFaceDownFor(t *testing.T, g *game.Game, id, holder uuid.UUID) {
+	t.Helper()
+	c := e2Card(t, g, id)
+	if !c.FaceDown || c.FaceDownKind != game.FaceDownPermitted {
+		t.Errorf("card %s: face_down=%v kind=%q, want face down %q", id, c.FaceDown, c.FaceDownKind, game.FaceDownPermitted)
+	}
+	for _, p := range g.Seats {
+		if got, want := c.IsKnownTo(p.ID), p.ID == holder; got != want {
+			t.Errorf("card %s: seat %s knows it = %v, want %v", id, p.Name, got, want)
+		}
+	}
+}
+
+// TestOutrageousRobberyCardIsCastableWithAnyType casts a stolen {2}{C}
+// card off three Swamps — "mana of any type", {C} included (#1573).
+func TestOutrageousRobberyCardIsCastableWithAnyType(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	seer := game.NewCard("Their Seer", opp.ID)
+	seer.TypeLine = "Creature — Eldrazi"
+	seer.ManaCost = "{2}{C}"
+	opp.Library.PushTop(seer)
+	b12PlayFromHand(t, g, "Outrageous Robbery", "Instant", "5b194438-6946-45dd-8d77-c9de8c115d09",
+		game.CastSpellParams{XValue: 1, Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}}})
+	passPriorityAroundTable(t, g)
+	e2AssertFaceDownFor(t, g, seer.InstanceID, me.ID)
+	e2Swamps(g, me.ID, 3)
+	if err := g.CastSpell(me.ID, seer.InstanceID, game.CastSpellParams{FromZone: "exile", AutoTap: true}); err != nil {
+		t.Fatalf("cast the stolen {2}{C} card off three Swamps: %v", err)
+	}
+	if c := e2Card(t, g, seer.InstanceID); c.FaceDown {
+		t.Error("the cast card is still face down")
+	}
+}
+
+// e2Swamps puts n untapped Swamps on `player`'s side.
+func e2Swamps(g *game.Game, player uuid.UUID, n int) {
+	for i := 0; i < n; i++ {
+		g.Battlefield.PushTop(game.Card{
+			InstanceID: uuid.New(), Name: "Swamp", TypeLine: "Basic Land — Swamp",
+			Owner: player, Controller: player,
+		})
+	}
+}
+
+// TestHostageTakerCardIsCastableWithAnyType: a stolen {2}{C} creature
+// is castable off three Swamps (#1573).
+func TestHostageTakerCardIsCastableWithAnyType(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	victim := ctrlPushCreature(g, opp.ID, "Their Seer")
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == victim {
+				g.Battlefield.Cards[i].ManaCost = "{2}{C}"
+			}
+		}
+	})
+	castAndResolveCreature(t, g, "Hostage Taker", "Creature — Human Pirate", hostageTakerOracle)
+	pickCard(t, g, me.ID, victim)
+	passPriorityAroundTable(t, g)
+	e2Swamps(g, me.ID, 3)
+	if err := g.CastSpell(me.ID, victim, game.CastSpellParams{FromZone: "exile", AutoTap: true}); err != nil {
+		t.Fatalf("cast the stolen {2}{C} creature off three Swamps: %v", err)
 	}
 }
 
