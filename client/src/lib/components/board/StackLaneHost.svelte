@@ -41,6 +41,8 @@
   import { metaFor } from "../../cardMetaCache";
   import Icon from "../Icon.svelte";
   import StackLanePlaceholder from "./StackLanePlaceholder.svelte";
+  import StackLaneSpotlight from "./StackLaneSpotlight.svelte";
+  import StackLaneRibbon from "./StackLaneRibbon.svelte";
 
   interface Props {
     view: GameView;
@@ -71,8 +73,8 @@
   type StyleBody = Component<StackLaneStyleProps & { styleName: StackLaneStyle }>;
   const STYLE_BODIES: Record<StackLaneStyle, StyleBody> = {
     fan: StackLanePlaceholder,
-    spotlight: StackLanePlaceholder,
-    ribbon: StackLanePlaceholder,
+    spotlight: StackLaneSpotlight,
+    ribbon: StackLaneRibbon,
   };
   const Body = $derived(STYLE_BODIES[style]);
 
