@@ -391,6 +391,11 @@ func (g *Game) cloneLocked() *Game {
 	// struct is replaced wholesale at each event batch and never
 	// mutated in place, so nothing can diverge.
 	out.resolving = g.resolving
+	// #1289: an undo across a paused resolution restores it paused.
+	// The depth is not copied: it is zero between actions, and a clone
+	// taken inside a resolution must not inherit a function it is not
+	// running.
+	out.resolutionOpen = g.resolutionOpen
 	if len(g.replacementsAppliedThisEvent) > 0 {
 		out.replacementsAppliedThisEvent = make(map[ReplacementEventID]map[ReplacementEffectID]bool, len(g.replacementsAppliedThisEvent))
 		for evID, set := range g.replacementsAppliedThisEvent {
@@ -932,6 +937,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	// #920: the resolving item rewinds with the prompt that is reading
 	// it — see cloneLocked.
 	g.resolving = src.resolving
+	g.resolutionOpen = src.resolutionOpen
 	// The randomness rewinds with everything else: the key, the
 	// per-stream draw counters and the turn they belong to (ADR 0054
 	// Decision 4). Adopted like the other fields — src is consumed.

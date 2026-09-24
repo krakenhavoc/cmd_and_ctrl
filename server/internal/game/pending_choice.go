@@ -791,6 +791,14 @@ type PendingChoice struct {
 	// effect. Captures only IDs and scalars. Not serialised; counted
 	// in the snapshot census. See library_order.go.
 	libraryOrderResume func(g *Game, top, bottom []uuid.UUID) error
+
+	// midResolution says the prompt was queued while a stack item was
+	// resolving and is part of that resolution (#1289, CR 608.2 /
+	// CR 704.3): while it is open and blocks the table, the resolution
+	// has not finished, so state-based actions and the trigger drain
+	// wait for it. Stamped by QueueChoiceForEffect, never by a caller.
+	// Carried by the snapshot. See resolution_pause.go.
+	midResolution bool
 }
 
 // payUnlessFrame carries a pay-unless prompt's parsed cost and the
@@ -1072,6 +1080,8 @@ func (g *Game) QueueChoiceForEffect(choice PendingChoice) uuid.UUID {
 	if choice.ID == uuid.Nil {
 		choice.ID = uuid.New()
 	}
+	// #1289: a prompt a resolution asks is part of that resolution.
+	choice.midResolution = g.resolutionOpen && choiceBelongsToResolution(&choice)
 	g.PendingChoices = append(g.PendingChoices, &choice)
 	return choice.ID
 }

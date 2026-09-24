@@ -298,12 +298,13 @@ func TestEliminatedDuringOwnResolutionReachesDecidedState(t *testing.T) {
 		SourceCardID: uuid.New(),
 		Label:        "test — dies while its own ability resolves",
 		Effect: func(g *Game, it *StackItem) error {
-			// The ability's own resolution knocks its controller to 0
-			// life (standing in for "a state-based action fires in the
-			// same window this ability resolves in" — #864's reported
-			// sequence).
+			// The ability's controller leaves the game while it
+			// resolves. #864's reported sequence reached this through a
+			// state-based action fired inside the resolution; since
+			// #1289 runStateChecksLocked holds until the resolution has
+			// finished (CR 704.3), so the departure is made directly.
 			dying.Life = 0
-			g.runStateChecksLocked()
+			g.eliminatePlayerLocked(dying)
 			// Something the resolving ability's own harvester chain
 			// still tries to ask ITS controller, after that controller
 			// has already left. Must be refused, not queued.

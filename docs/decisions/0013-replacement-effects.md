@@ -3357,6 +3357,7 @@ covers it.
   zero. That is a different wrong answer with a different fix, and it has
   its own follow-up issue:
   [#1289](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1289).
+  **Closed by §5ae.**
 - **Card-side placements through the `AddCounter` primitive** that read
   the counters on the next line: Assemble the Legion, Krenko Tin Street
   Kingpin, Caldera Pyremaw, Invigorating Surge, Fangs of Kalonia, Insight
@@ -3545,6 +3546,61 @@ unchanged.
 - **The leaving-player cleanup** moves spells with a raw `MoveCard` and
   deletes their records itself (`cleanupStackForEliminatedLocked`). It
   emits no zone-change event, so it has no cause to carry.
+
+
+### 5ae. Amendment, 2026-09-23: a paused window is part of the resolution that opened it
+
+**Issue [#1289](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1289).**
+Trackers [#882](https://github.com/krakenhavoc/cmd_and_ctrl/issues/882)
+(replacements) and [#879](https://github.com/krakenhavoc/cmd_and_ctrl/issues/879)
+(tables that wedge). The state-based-action half is
+[ADR 0007 §7's amendment of the same date](0007-stack-foundation.md#7-five-sbas-in-one-loop-with-the-placeholder-creature-exemption).
+
+#### The gap
+
+§5ac made a paused counter placement carry its continuation, and
+listed what that did not fix: the resolution bookend swept while the
+CR 616 prompt was open. CR 616.1 has the affected player choose the
+order *during* the event, and the event is inside a resolving spell or
+ability, so the resolution has not finished. CR 704.3 checks nothing
+until it has. The sweep killed the fresh 0/0 the placement was for (an
+earthbent bare land, a newly created Army), and the tail then ran with
+zero.
+
+#### Decision
+
+Every CR 614 window that pauses mid-resolution queues its prompt
+through `QueueChoiceForEffect`, so every one of them is stamped
+`PendingChoice.midResolution`: the CR 616 ordering prompt, the CR 614.10
+optional replacement, the entry payment and entry reveal, and the copy
+choice. While one is open the CR 704.3 boundary is held, and the answer
+that settles the event runs it (`finishReplacementResumeLocked`, and the
+RepEventCounter arm of `applyResolvedReplacementEventLocked`, already end
+in `runStateChecksLocked`). A second pause chained from the first answer
+(amass's choose-an-Army prompt and then its counter-order prompt) is
+queued while the resolution is still open and holds in turn.
+
+Nothing in the pipeline changed. The rule lives in
+`game/resolution_pause.go` and applies to every prompt kind a
+resolution can raise, not only this family; the replacement windows
+are the case that found it.
+
+What is observable on the two boards #1289 named:
+
+- **Earthbend onto a bare land** (Earthshape, Doubling Season, Hardened
+  Scales): the land is a 0/0 for the whole of the pause, and the same
+  object gets its 7 counters. `TestEarthshapeReadsTheLandAfterAPausedPlacement`
+  now uses the bare land; §5ac's version started the land with a counter
+  to step around this.
+- **Amass with no Army** (Widespread Brutality on the same board): the
+  doubled creation makes two 0/0 Armies, both survive to be chosen, the
+  chosen one gets its 5 counters and deals 5, and the other dies to
+  CR 704.5f once the resolution is over.
+
+#### §5ac's "Not closed here", updated
+
+The first bullet (state-based actions inside a paused resolution) is
+closed by this amendment. The other two (#1290, #1291) are unchanged.
 
 
 ### 6. Six pipeline integration points (five mutations + step transition)

@@ -400,7 +400,19 @@ var playerScopedActions = map[Type]struct{}{
 // Dispatch applies an action to a game. Returns nil on success, an
 // action-specific error on failure. Dispatch itself is stateless; all
 // state lives on the game.
+//
+// #1289, CR 704.3: an action can be the answer that finishes a paused
+// resolution, and a finished resolution is owed state-based actions
+// and the trigger drain before anyone acts again. Most answer paths
+// run that boundary themselves. SettleResolution is the backstop for
+// the ones that do not, and a no-op otherwise.
 func Dispatch(g *game.Game, a Action) error {
+	err := dispatch(g, a)
+	g.SettleResolution()
+	return err
+}
+
+func dispatch(g *game.Game, a Action) error {
 	// Player-scoped guard: a seated player may not target a different
 	// seat. Admin / spectator (Caller == uuid.Nil) bypasses so a
 	// trusted moderator can advance any seat.

@@ -527,6 +527,23 @@ type Game struct {
 	// frame is already counted in ContinuationCensus.ChoiceResumeFrames.
 	resolving *resolvingItem
 
+	// resolutionOpen says a stack item has begun to resolve and the
+	// CR 704.3 boundary after it has not run yet (#1289). Set with the
+	// resolving slot, cleared by runStateChecksLocked once no prompt the
+	// resolution queued is still open. While it is set, a prompt queued is stamped
+	// PendingChoice.midResolution, and an open stamped prompt holds the
+	// state-based actions and the trigger drain. See
+	// resolution_pause.go.
+	//
+	// resolutionDepth counts the resolution functions currently on the
+	// Go stack. Inside one, the item has not finished resolving
+	// whatever it has queued, so the boundary is held there too.
+	//
+	// Clone and the persisted snapshot carry resolutionOpen; the depth
+	// is zero between actions by construction.
+	resolutionOpen  bool
+	resolutionDepth int
+
 	// The game's randomness: a secret key plus per-stream draw
 	// counters for the current turn (ADR 0054 Decision 2). Every
 	// random draw goes through randForLocked in rng.go, which derives

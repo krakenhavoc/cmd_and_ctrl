@@ -85,43 +85,49 @@ func TestEarthshapeShieldsCreaturesUpToTheLandsPower(t *testing.T) {
 }
 
 // TestEarthshapeReadsTheLandAfterAPausedPlacement is #1282 on the
-// card ADR 0081 deferred for it. Doubling Season and Hardened Scales
-// both apply to the earthbend counters, so the placement waits on the
-// CR 616 prompt; read on the next line, "that land's power" was the
-// 0/0 body with only the counter it already had, and the 5-power creature
-// was left unshielded.
+// card ADR 0081 deferred for it, on the board #1289 was filed for.
+// Doubling Season and Hardened Scales both apply to the earthbend
+// counters, so the placement waits on the CR 616 prompt; read on the
+// next line, "that land's power" was the bare 0/0 body and the 5-power
+// creature was left unshielded.
 //
-// The land starts with one +1/+1 counter (an earlier earthbend's). On a
-// bare land the pause has a second, separate problem: the resolution
-// ends while the prompt is open, the state-based sweep runs, and the
-// fresh 0/0 dies before its counters land — #1289, not this one.
+// The land has no counters, which is the real case: it is a 0/0
+// creature for the whole of the pause. Before #1289 the state-based
+// sweep ran while the prompt was open, killed it to CR 704.5f, and the
+// earthbend return brought it back as a new object with nothing on it.
+// CR 704.3 holds the sweep until the resolution has finished.
 func TestEarthshapeReadsTheLandAfterAPausedPlacement(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	hs := seedReplacementPermanent(g, hardenedScalesOracle, "Hardened Scales", me.ID)
 	ds := seedReplacementPermanent(g, doublingSeasonOracle, "Doubling Season", me.ID)
 	land := pushEarthbendLand(g, me.ID, "Plains", "Basic Land — Plains")
-	findBattlefieldCardByID(g, land).Counters = map[string]int{game.CounterPlusOne: 1}
 	five := b39Creature(g, me.ID, "Five", "Creature — Beast", 5, 5)
 
 	castCatalogSpell(t, g, "Earthshape", "Instant", earthshapeOracle,
 		[]game.TargetRef{{Kind: game.TargetCard, ID: land}})
 	passPriorityAroundTable(t, g)
 
+	if findBattlefieldCardByID(g, land) == nil {
+		t.Fatal("the 0/0 land died to CR 704.5f while its counters were still owed (#1289)")
+	}
+	if !g.ResolutionPaused() {
+		t.Fatal("Earthshape's resolution is not paused on its CR 616 prompt")
+	}
 	if hasKeywordOnBattlefield(t, g, five, "hexproof") {
 		t.Fatal("the sweep ran with the earthbend counters still owed to the CR 616 prompt")
 	}
 	if playerHasHexproof(g, me) {
 		t.Fatal("the rest of the sentence ran before the counters landed")
 	}
-	// Doubling Season first: 3 → 6 → 7, onto the one it had.
+	// Doubling Season first: 3 → 6 → 7, onto the same land.
 	answerOrderBySource(t, g, ds, hs)
 
-	if p, _, _, _ := earthbentBody(t, g, land); p != 8 {
-		t.Fatalf("that land's power = %d, want 8", p)
+	if p, _, _, _ := earthbentBody(t, g, land); p != 7 {
+		t.Fatalf("that land's power = %d, want 7", p)
 	}
 	if !hasKeywordOnBattlefield(t, g, five, "hexproof") || !hasKeywordOnBattlefield(t, g, five, "indestructible") {
-		t.Error("the 5-power creature is not shielded by an 8-power land")
+		t.Error("the 5-power creature is not shielded by a 7-power land")
 	}
 	if !playerHasHexproof(g, me) {
 		t.Error("you gain hexproof once the sentence runs")
@@ -166,6 +172,60 @@ func TestWidespreadBrutalityDealsThePowerTheCountersLandedAt(t *testing.T) {
 	}
 	if findBattlefieldCardByID(g, wall) != nil {
 		t.Error("the 0/6 wall survived a 6-power Army — the sweep read the pre-amass power")
+	}
+}
+
+// TestWidespreadBrutalityWithNoArmyKeepsTheFreshArmyThroughThePause is
+// #1289's amass half on the real card. With no Army the amass creates
+// 0/0 tokens (two: Doubling Season doubles the creation too), the
+// choose-an-Army prompt pauses, and then the counter placement pauses
+// on the CR 616 prompt. Before #1289 the sweep ran during the first
+// pause and killed both 0/0s before either could be chosen, so CR
+// 701.47c's "the Army you amassed" was nobody and nothing was dealt.
+func TestWidespreadBrutalityWithNoArmyKeepsTheFreshArmyThroughThePause(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
+	hs := seedReplacementPermanent(g, hardenedScalesOracle, "Hardened Scales", me.ID)
+	ds := seedReplacementPermanent(g, doublingSeasonOracle, "Doubling Season", me.ID)
+	wall := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Wall", TypeLine: "Creature — Wall",
+		Power: 0, Toughness: 5, PrintedPTKnown: true, Owner: opp.ID, Controller: opp.ID,
+	})
+
+	castCatalogSpell(t, g, "Widespread Brutality", "Sorcery", widespreadBrutalityOracl, nil)
+	passPriorityAroundTable(t, g)
+
+	var armies []uuid.UUID
+	for _, c := range g.Battlefield.Cards {
+		if c.Controller == me.ID && c.HasSubtype(game.ArmySubtype) {
+			armies = append(armies, c.InstanceID)
+		}
+	}
+	if len(armies) != 2 {
+		t.Fatalf("%d Armies during the pause, want the two fresh 0/0s (#1289)", len(armies))
+	}
+	pick := g.PendingChoices[0]
+	if pick.Kind != game.PendingChoiceChooseCards {
+		t.Fatalf("first prompt = %q, want the choose-an-Army prompt", pick.Kind)
+	}
+	if err := g.ResolveChooseCards(pick.ID, me.ID, []uuid.UUID{armies[0]}); err != nil {
+		t.Fatalf("ResolveChooseCards: %v", err)
+	}
+	if findBattlefieldCardByID(g, armies[0]) == nil {
+		t.Fatal("the chosen 0/0 Army died while its counters were still owed (#1289)")
+	}
+
+	// Doubling Season first: amass 2 → 4 → 5.
+	answerOrderBySource(t, g, ds, hs)
+
+	if got := countersOn(g, armies[0], game.CounterPlusOne); got != 5 {
+		t.Fatalf("Army counters = %d, want 5", got)
+	}
+	if findBattlefieldCardByID(g, armies[1]) != nil {
+		t.Error("the Army that got no counters is still a 0/0 on the battlefield after the resolution")
+	}
+	if findBattlefieldCardByID(g, wall) != nil {
+		t.Error("the 0/5 wall survived a 5-power Army: the Army was read before its counters landed")
 	}
 }
 

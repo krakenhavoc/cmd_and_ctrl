@@ -197,6 +197,9 @@ creature check, so it did not catch this. Second, the claim above that
 only when nothing pauses. The state-based sweep runs while a CR 616 prompt
 is open, so a bare land dies before its counters arrive. That is
 [#1289](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1289).
+*Closed 2026-09-23 (#1289):* state-based actions now wait for a
+resolution paused on its own prompt (ADR 0007 §7's amendment, ADR 0013
+§5ae), so the claim above holds on a pausing board too.
 
 ## Decision 5 — The return is a delayed trigger keyed to the OBJECT, with a derived identity
 
