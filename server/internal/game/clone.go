@@ -356,6 +356,9 @@ func (g *Game) cloneLocked() *Game {
 		out.ScopedStatics = make([]ScopedStatic, len(g.ScopedStatics))
 		copy(out.ScopedStatics, g.ScopedStatics)
 	}
+	// ADR 0041 phase 3's data twin: same immutability contract, same
+	// fresh backing array.
+	out.ScopedEffects = cloneScopedEffects(g.ScopedEffects)
 	// CR 603.10 LKI snapshots (S19). Values are Characteristic copies
 	// that are never mutated after being stored, so a per-entry value
 	// copy is sufficient. Usually empty — entries live only for the
@@ -973,6 +976,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.TurnScopedReplacements = src.TurnScopedReplacements
 	g.TurnScopedBlockRules = src.TurnScopedBlockRules
 	g.ScopedStatics = src.ScopedStatics
+	g.ScopedEffects = src.ScopedEffects
 	g.lastKnownBattlefield = src.lastKnownBattlefield
 	g.lastKnownTriggerIdentity = src.lastKnownTriggerIdentity
 	g.lastKnownCounters = src.lastKnownCounters

@@ -102,23 +102,14 @@ func enduringCuriosityReturnAsEnchantment(g *game.Game, item *game.StackItem) er
 		// so there is nothing left to keep from being a creature.
 		return nil
 	}
-	return StaticForDuration{
-		Ability: game.StaticAbility{
-			Layer: game.Layer4Type,
-			AppliesTo: func(target *game.Card, _ *game.Game, _ *game.Card) bool {
-				return target.InstanceID == id
-			},
-			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-				kept := c.Types[:0]
-				for _, t := range c.Types {
-					if t != "Creature" {
-						kept = append(kept, t)
-					}
-				}
-				c.Types = kept
-			},
-		},
-		Duration: d,
-		Label:    "Enduring Curiosity — it's an enchantment (it's not a creature)",
-	}.Apply(ctx)
+	// A data record (ADR 0041 phase 3, #1497): the effect lasts as long
+	// as the permanent does, and as a closure it kept the table off the
+	// restore path for all of it. Registered straight onto the game,
+	// not through ScopedEffectFor: the permanent IS this trigger's
+	// source, returned as a new object, which ScopedEffectFor's "this"
+	// guard (#1432) would rightly refuse to call "this".
+	ctx.Game.RegisterScopedEffectForEffect(ctx.Source(), ctx.Game.PinnedObjectsLocked(id),
+		[]game.Mod{game.RemoveTypesMod("Creature")}, d,
+		"Enduring Curiosity — it's an enchantment (it's not a creature)")
+	return nil
 }

@@ -726,6 +726,15 @@ type Game struct {
 	// turn-scoped (ADR 0063).
 	ScopedStatics []ScopedStatic
 
+	// ScopedEffects is the same slot's DATA twin (ADR 0041 phase 3,
+	// #1497): a continuous effect from a resolution recorded as an
+	// affected set, a list of operations from a closed vocabulary and
+	// a duration, so the snapshot carries it and a game holding one is
+	// still a restore point. Adapted into the layer pass beside
+	// ScopedStatics and swept by the same duration sweep. See
+	// scoped_effects.go.
+	ScopedEffects []ScopedEffect
+
 	// testReplacements is the test-only replacement injection slot
 	// populated by RegisterReplacementForTest. Unexported so
 	// production code has no path to it. Walked after built-ins +
