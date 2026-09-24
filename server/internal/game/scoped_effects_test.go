@@ -312,3 +312,57 @@ func TestAmassedArmyIsARestorePoint(t *testing.T) {
 		}
 	}
 }
+
+// TestAPinnedRecordSurvivesItsObjectPhasing: the pin is garbage
+// collection for an object that is GONE, and a phased-out permanent is
+// not gone (CR 702.26d). The record stops applying while the object is
+// out — the layer pass cannot see it — and applies again when it
+// phases in.
+func TestAPinnedRecordSurvivesItsObjectPhasing(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	me := g.Seats[0].ID
+	bear := pushPhasingTestCard(g, me, "Grizzly Bears", "Creature — Bear")
+	var d Duration
+	g.WithWriteLock(func() { d = g.PinnedTo(IndefiniteDuration(), bear) })
+	registerScopedEffectForTest(t, g, bear, []Mod{AddSubtypesMod("Orc")}, d)
+
+	g.WithWriteLock(func() { _ = g.PhaseOutForEffect(uuid.Nil, bear) })
+	g.WithWriteLock(func() { g.RecomputeLayersIfStaleLocked(); g.ClearExpiredScopedStaticsLocked() })
+	if n := len(g.ScopedEffects); n != 1 {
+		t.Fatalf("%d scoped effects after the phase-out, want 1 — phasing is not a zone change", n)
+	}
+	g.WithWriteLock(func() { g.performPhasingLocked(me) })
+	if c := scopedEffectChar(t, g, bear); !typeListHas(c.Subtypes, "Orc") {
+		t.Errorf("after phasing in: subtypes %v, want Orc", c.Subtypes)
+	}
+}
+
+// TestAForAsLongAsDurationEndsWhenItsSourcePhasesOut is CR 702.26f,
+// and the reason only the PIN looks in g.PhasedOut: a "for as long as
+// ~ remains on the battlefield" duration tracks its source, and a
+// phased-out source can no longer be seen, so the effect ends — a
+// Sower of Temptation that phases out gives the creature back.
+func TestAForAsLongAsDurationEndsWhenItsSourcePhasesOut(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	me, opp := g.Seats[0].ID, g.Seats[1].ID
+	sower := pushPhasingTestCard(g, me, "Sower of Temptation", "Creature — Faerie Wizard")
+	victim := pushPhasingTestCard(g, opp, "Grizzly Bears", "Creature — Bear")
+	g.WithWriteLock(func() {
+		d, ok := g.ForAsLongAsOnBattlefieldDuration(sower)
+		if !ok {
+			t.Fatal("setup: the Sower is not on the battlefield")
+		}
+		g.GainControlForEffect(sower, victim, me, d, "Sower of Temptation")
+	})
+	if got := controllerOfCard(t, g, victim); got != me {
+		t.Fatalf("setup: controller %s, want %s", got, me)
+	}
+	g.WithWriteLock(func() { _ = g.PhaseOutForEffect(uuid.Nil, sower) })
+	g.WithWriteLock(func() { g.RecomputeLayersIfStaleLocked() })
+	if got := controllerOfCard(t, g, victim); got != opp {
+		t.Errorf("the Sower phased out and the theft survived: controller %s, want %s (CR 702.26f)", got, opp)
+	}
+	if n := len(g.ScopedEffects); n != 0 {
+		t.Errorf("%d scoped effects survive their source phasing out, want 0", n)
+	}
+}
