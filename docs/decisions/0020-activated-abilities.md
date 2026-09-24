@@ -2629,4 +2629,4 @@ Endures** (`full`, via `effects.ChannelDiscountPerLegendaryCreature`).
   prices by target on one; the view omits the map rather than guess.
 - **The auto-tap preview's ability branch** (`/games/:id/auto-tap-preview?ability=`)
   still prices the printed cost with no modifiers at all — stale since #1184,
-  filed separately.
+  filed as [#1405](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1405).
