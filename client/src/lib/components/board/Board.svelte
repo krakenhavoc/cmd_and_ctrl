@@ -58,6 +58,7 @@
   import { cardMenu, closeCardMenu } from "../../contextMenu";
   import ManaSourcePicker from "./ManaSourcePicker.svelte";
   import { manaSourcePicker, closeManaSourcePicker } from "../../manaSourcePicker";
+  import { manaColorParams } from "../../manaSource";
   import type { MenuActivate } from "../../contextMenu.logic";
   import {
     targeting,
@@ -1291,7 +1292,15 @@
   // answer, handed up by PlayerPanel because the pickers are
   // board-wide. Sacrifice first, then counters — the order the engine
   // validates and pays them in.
-  function handleManaAbilityCost(card: CardView, ability: ManaAbilityView): void {
+  function handleManaAbilityCost(
+    card: CardView,
+    ability: ManaAbilityView,
+    colors: string[] = [],
+  ): void {
+    // #1443: the colour the anchored picker already has, held for the
+    // one action at the end of the chain. Set at the chain's start, so
+    // a chain that was cancelled cannot leak its colour into the next.
+    manaColors = colors;
     // #1213: the discard pick first, as the CR 602 chain asks its own
     // — it is the cost most likely to make a player back out — and
     // skipped when the hand holds exactly what the clause demands.
@@ -1371,6 +1380,9 @@
     ability: ManaAbilityView;
   } | null>(null);
   let manaDiscardIDs: string[] = [];
+  // #1443: the colours named at the card for the mana ability whose
+  // cost chain is open (see handleManaAbilityCost).
+  let manaColors: string[] = [];
 
   const manaDiscardOptions = $derived.by(() => {
     const p = manaDiscardPrompt;
@@ -1424,11 +1436,14 @@
         // #1283: the same posture — absent unless the ability exiles.
         ...(manaExileIDs.length > 0 ? { exile_ids: manaExileIDs } : {}),
         ...counter,
+        // #1443: absent unless the picker named a colour.
+        ...manaColorParams(manaColors),
       },
       viewerID ?? undefined,
     );
     manaDiscardIDs = [];
     manaExileIDs = [];
+    manaColors = [];
   }
 
   // #170: an ability row picked from the admin context menu. Same two
@@ -1441,10 +1456,15 @@
     }
     const ability = (card.mana_abilities ?? []).find((a) => a.index === activate.index);
     if (ability && manaAbilityNeedsPrompt(ability)) {
-      handleManaAbilityCost(card, ability);
+      handleManaAbilityCost(card, ability, activate.colors);
       return;
     }
-    const params = { card_id: card.instance_id, ability_index: activate.index };
+    // #1443: the anchored picker's colour rides the activation.
+    const params = {
+      card_id: card.instance_id,
+      ability_index: activate.index,
+      ...manaColorParams(activate.colors),
+    };
     guardedSendAction("activate_mana_ability", params, card.controller);
   }
 
@@ -2263,7 +2283,7 @@
     <ManaSourcePicker
       {view}
       open={$manaSourcePicker}
-      onPick={(card, index) => handleMenuActivate(card, { kind: "mana", index })}
+      onPick={(card, index, colors) => handleMenuActivate(card, { kind: "mana", index, colors })}
       onClose={closeManaSourcePicker}
     />
   {/if}

@@ -6,18 +6,24 @@
 // nothing (#1296's reporter). Now a left-click on an untapped permanent
 // you control that has a mana ability activates it:
 //
-//   - one mana ability → `activate_mana_ability` straight away. That
-//     covers a Swamp and a Sol Ring, and ALSO a Birds of Paradise or a
-//     Command Tower: their one ability produces a choice, and the
-//     server asks it as a `mana_pick` prompt once the ability has been
-//     activated, with the colours it computed (commander identity
-//     narrowing, CR 903.4f) in the order it chose (#843). The client
-//     never works out which colours a source can make.
-//   - several mana abilities (a painland's {C} and its coloured
-//     ability; Tarnished Citadel) → a picker anchored at the card, one
-//     option per ABILITY, built from the server's own
-//     `mana_abilities` list. Escape there cancels before anything is
-//     sent, so nothing is tapped.
+//   - one fixed output (a Swamp, a Sol Ring) → `activate_mana_ability`
+//     straight away.
+//   - anything else → a picker anchored at the card, one option per
+//     FINAL RESULT. Escape there cancels before anything is sent, so
+//     nothing is tapped.
+//
+// #1443 made the result final. An ability whose output is a choice of
+// colours (Birds of Paradise, Command Tower, a painland's "{R|W}")
+// publishes `color_options`: the colours each picking slot would
+// offer, narrowed (CR 903.4f) and ordered (#843) by the same server
+// function the `mana_pick` prompt uses. The picker expands the ability
+// into one option per colour, and the pick rides the activation as
+// `color` / `colors`, so the server produces it with no second
+// question. A painland is {C}, {R} (1 damage) and {W} (1 damage);
+// Birds is its five colours; Command Tower the identity's. The client
+// still never works out which colours a source can make: an ability
+// that publishes no `color_options` (an older server) stays one option
+// and the server asks the colour after the tap, as before.
 //
 // Everything below is pure so it can be tested without a DOM. The
 // components are ManaSymbolPicker (the row of symbols, shared with the
@@ -56,6 +62,12 @@ export interface ManaPickOption {
   abilityIndex?: number;
   /** Which colour this option answers (mana_pick / choose_color). */
   color?: string;
+  /**
+   * #1443: the colour each picking slot of the ability adds, named up
+   * front — one entry per `color_options` list. Sent with the
+   * activation, so no `mana_pick` follows.
+   */
+  colors?: string[];
 }
 
 // The server's own "can't" flags on a mana ability, in words. These
@@ -146,9 +158,106 @@ export function manaAbilityOption(card: CardView, a: ManaAbilityView): ManaPickO
   };
 }
 
-/** Every mana ability on `card`, in the server's order. */
+// The most options one ability may expand into before the picker gives
+// up and falls back to the server's own prompt. Five colours is the
+// widest single slot; Orcish Lumberjack's three {R|G} slots make four.
+const MAX_COLOR_OPTIONS = 12;
+
+/**
+ * colorCombos is every distinct answer to `slots` (one list per
+ * picking slot), in the server's order. Mana in a pool is unordered, so
+ * {W}{U} and {U}{W} are one answer, kept at its first appearance:
+ * Mystic Gate's [[W,U],[W,U]] is WW, WU, UU. Null past the cap.
+ */
+export function colorCombos(slots: readonly (readonly string[])[]): string[][] | null {
+  let combos: string[][] = [[]];
+  for (const slot of slots) {
+    const next: string[][] = [];
+    const seen = new Set<string>();
+    for (const combo of combos) {
+      for (const c of slot) {
+        const out = [...combo, c];
+        const key = [...out].sort().join("");
+        if (seen.has(key)) continue;
+        seen.add(key);
+        next.push(out);
+        if (next.length > MAX_COLOR_OPTIONS) return null;
+      }
+    }
+    combos = next;
+  }
+  return combos;
+}
+
+// The symbols one answer adds: the ability's printed output with each
+// pipe slot replaced by its chosen colour, repeated by that option's
+// amount ("{W3|U3|…}" is three of the chosen colour, #742). When the
+// output was not published (a computed ability) or does not line up
+// with the answer, just the chosen colours.
+function symbolsForAnswer(produced: string, colors: readonly string[]): string[] {
+  const slots = manaSymbols(produced);
+  if (slots.filter((s) => s.includes("|")).length !== colors.length) return [...colors];
+  const out: string[] = [];
+  let next = 0;
+  for (const slot of slots) {
+    if (!slot.includes("|")) {
+      out.push(slot);
+      continue;
+    }
+    const color = colors[next++];
+    const opt = slot.split("|").find((o) => o[0] === color) ?? color;
+    const n = Math.min(Math.max(1, Number(opt.slice(1)) || 1), 5);
+    for (let i = 0; i < n; i++) out.push(color);
+  }
+  return out;
+}
+
+/**
+ * manaAbilityOptionsFor is the picker's options for one ability: the
+ * one ability option for a fixed output, or — when the server
+ * published `color_options` (#1443) — one option per answer, each
+ * naming its colours so the activation needs no second question. A
+ * greyed ability stays one greyed option, so its reason is read once.
+ */
+export function manaAbilityOptionsFor(card: CardView, a: ManaAbilityView): ManaPickOption[] {
+  const base = manaAbilityOption(card, a);
+  const slots = a.color_options ?? [];
+  if (base.disabled || slots.length === 0 || slots.some((s) => s.length === 0)) return [base];
+  const combos = colorCombos(slots);
+  if (!combos) return [base];
+  return combos.map((colors) => {
+    const symbols = symbolsForAnswer(a.produced ?? "", colors);
+    const adds = `Add ${symbols.map((sym) => `{${sym}}`).join("")}`;
+    return {
+      key: `ability-${a.index}-${colors.join("")}`,
+      symbols,
+      caption: captionFor(symbols, false),
+      rider: base.rider,
+      title: base.rider ? `${adds} — ${base.rider}` : adds,
+      abilityIndex: a.index,
+      colors,
+    };
+  });
+}
+
+/** Every final result `card`'s mana abilities offer, in the server's order. */
 export function manaAbilityOptions(card: CardView): ManaPickOption[] {
-  return (card.mana_abilities ?? []).map((a) => manaAbilityOption(card, a));
+  return (card.mana_abilities ?? []).flatMap((a) => manaAbilityOptionsFor(card, a));
+}
+
+/**
+ * manaColorParams is the `activate_mana_ability` params for an answer
+ * named up front: `color` for the one-slot case (every source but the
+ * filter lands), `colors` for several, nothing for none — so a payload
+ * with no answer is byte-for-byte what it was before #1443.
+ */
+export function manaColorParams(colors?: readonly string[]): {
+  color?: string;
+  colors?: string[];
+} {
+  if (!colors || colors.length === 0) return {};
+  if (colors.length === 1) return { color: colors[0] };
+  return { colors: [...colors] };
 }
 
 /** Whether `card` publishes at least one battlefield mana ability. */
@@ -157,22 +266,27 @@ export function hasManaAbility(card: CardView): boolean {
 }
 
 export type ManaClickPlan =
-  /** Send activate_mana_ability for this index now. */
-  | { kind: "activate"; index: number }
+  /** Send activate_mana_ability for this index now (with its colours). */
+  | { kind: "activate"; index: number; colors?: string[] }
   /** Open the anchored picker over these options. */
   | { kind: "pick"; options: ManaPickOption[] };
 
 /**
  * manaClickPlan decides what a left-click on an untapped mana source
  * does. Null when the card has no mana ability (the caller keeps its
- * old click). A lone ability the server has greyed still opens the
- * picker, so the player reads WHY instead of seeing nothing happen.
+ * old click). One live result goes out at once — a Swamp, and also a
+ * Command Tower whose identity names one colour. A lone ability the
+ * server has greyed still opens the picker, so the player reads WHY
+ * instead of seeing nothing happen.
  */
 export function manaClickPlan(card: CardView): ManaClickPlan | null {
   const options = manaAbilityOptions(card);
   if (options.length === 0) return null;
-  if (options.length === 1 && !options[0].disabled && options[0].abilityIndex !== undefined) {
-    return { kind: "activate", index: options[0].abilityIndex };
+  const [only] = options;
+  if (options.length === 1 && !only.disabled && only.abilityIndex !== undefined) {
+    return only.colors
+      ? { kind: "activate", index: only.abilityIndex, colors: only.colors }
+      : { kind: "activate", index: only.abilityIndex };
   }
   return { kind: "pick", options };
 }

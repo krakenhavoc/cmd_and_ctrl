@@ -7,10 +7,12 @@ import { describe, it, expect } from "vitest";
 import { battlefieldClickIntent, buildMenuSections } from "./contextMenu.logic";
 import { colorButtons } from "./manaPick";
 import {
+  colorCombos,
   colorPickOptions,
   labelRider,
   manaAbilityOptions,
   manaClickPlan,
+  manaColorParams,
   placePopover,
 } from "./manaSource";
 import { MANA_SYMBOL_META, manaSymbolMeta } from "./manaSymbol";
@@ -65,9 +67,10 @@ describe("manaClickPlan", () => {
     expect(manaClickPlan(solRing)).toEqual({ kind: "activate", index: 0 });
   });
 
-  it("activates a single any-colour ability at once — the SERVER asks the colour", () => {
-    // Birds / Command Tower: one ability, and the colours are the
-    // server's mana_pick prompt, narrowed and ordered there (#843).
+  it("activates a single any-colour ability at once when the server publishes no colours", () => {
+    // A server from before #1443 publishes no color_options: the
+    // colours are then its mana_pick prompt after the tap, narrowed
+    // and ordered there (#843), and the client guesses nothing.
     const birds = card({
       name: "Birds of Paradise",
       type_line: "Creature — Bird",
@@ -330,5 +333,142 @@ describe("the override menu's raw tap", () => {
 
   it("stays 'Tap' on a permanent with no mana ability", () => {
     expect(tapLabel(card({ type_line: "Creature — Bear" }))).toBe("Tap");
+  });
+});
+
+// #1443: the server publishes each ability's color_options (the list
+// the mana_pick would carry), so the picker offers FINAL results and
+// the colour rides the activation.
+describe("colour chosen before the tap (#1443)", () => {
+  const forgeWithColors = (): CardView =>
+    card({
+      instance_id: "forge",
+      name: "Battlefield Forge",
+      type_line: "Land",
+      mana_abilities: [
+        ability(0, { produced: "{C}", label: "Add {C}" }),
+        ability(1, {
+          produced: "{R|W}",
+          label: "Add {R} or {W}. This land deals 1 damage to you.",
+          color_options: [["R", "W"]],
+        }),
+      ],
+    });
+
+  it("expands a painland into {C}, {R} and {W}, the coloured two with the damage", () => {
+    const plan = manaClickPlan(forgeWithColors());
+    expect(plan?.kind).toBe("pick");
+    if (plan?.kind !== "pick") return;
+    expect(plan.options.map((o) => [o.abilityIndex, o.symbols, o.colors, o.rider])).toEqual([
+      [0, ["C"], undefined, undefined],
+      [1, ["R"], ["R"], "deals 1 damage to you"],
+      [1, ["W"], ["W"], "deals 1 damage to you"],
+    ]);
+    expect(plan.options[1]).toMatchObject({
+      caption: "Red",
+      title: "Add {R} — deals 1 damage to you",
+    });
+    expect(plan.options[1].choice).toBeFalsy();
+  });
+
+  it("keeps the server's colour order for Birds of Paradise (#843)", () => {
+    const opts = manaAbilityOptions(
+      card({
+        mana_abilities: [
+          ability(0, { produced: "{W|U|B|R|G}", color_options: [["G", "W", "U", "B", "R"]] }),
+        ],
+      }),
+    );
+    expect(opts.map((o) => o.colors)).toEqual([["G"], ["W"], ["U"], ["B"], ["R"]]);
+  });
+
+  it("taps a one-colour answer at once and names the colour (mono-green Command Tower)", () => {
+    const tower = card({
+      name: "Command Tower",
+      type_line: "Land",
+      mana_abilities: [ability(0, { produced: "{W|U|B|R|G}", color_options: [["G"]] })],
+    });
+    expect(manaClickPlan(tower)).toEqual({ kind: "activate", index: 0, colors: ["G"] });
+  });
+
+  it("offers each distinct result of a two-slot filter land once (Mystic Gate)", () => {
+    const [, ...opts] = manaAbilityOptions(
+      card({
+        mana_abilities: [
+          ability(0, { produced: "{C}" }),
+          ability(1, {
+            produced: "{W|U}{W|U}",
+            mana_cost: "{W/U}",
+            color_options: [
+              ["W", "U"],
+              ["W", "U"],
+            ],
+          }),
+        ],
+      }),
+    );
+    expect(opts.map((o) => o.colors)).toEqual([
+      ["W", "W"],
+      ["W", "U"],
+      ["U", "U"],
+    ]);
+    expect(opts[1]).toMatchObject({ symbols: ["W", "U"], caption: "White and Blue" });
+    expect(opts[0].rider).toBe("pay {W/U}");
+  });
+
+  it("draws an 'N mana of one color' answer N times (Gilded Lotus, #742)", () => {
+    const opts = manaAbilityOptions(
+      card({
+        mana_abilities: [
+          ability(0, {
+            produced: "{W3|U3|B3|R3|G3}",
+            color_options: [["W", "U", "B", "R", "G"]],
+          }),
+        ],
+      }),
+    );
+    expect(opts[4]).toMatchObject({ symbols: ["G", "G", "G"], caption: "3 Green", colors: ["G"] });
+  });
+
+  it("leaves a greyed ability one greyed option, so its reason is read once", () => {
+    const opts = manaAbilityOptions(
+      card({
+        mana_abilities: [
+          ability(0, {
+            produced: "{W|U|B|R|G}",
+            exhausted: true,
+            color_options: [["W", "U", "B", "R", "G"]],
+          }),
+        ],
+      }),
+    );
+    expect(opts).toHaveLength(1);
+    expect(opts[0].disabled).toBeTruthy();
+    expect(opts[0].colors).toBeUndefined();
+  });
+
+  it("falls back to the server's prompt past the option cap", () => {
+    const five = ["W", "U", "B", "R", "G"];
+    expect(colorCombos([five, five, five])).toBeNull();
+    const opts = manaAbilityOptions(
+      card({
+        mana_abilities: [
+          ability(0, {
+            produced: "{W|U|B|R|G}{W|U|B|R|G}{W|U|B|R|G}",
+            color_options: [five, five, five],
+          }),
+        ],
+      }),
+    );
+    expect(opts).toHaveLength(1);
+    expect(opts[0].choice).toBe(true);
+    expect(opts[0].colors).toBeUndefined();
+  });
+
+  it("sends color for one slot, colors for several, nothing for none", () => {
+    expect(manaColorParams(undefined)).toEqual({});
+    expect(manaColorParams([])).toEqual({});
+    expect(manaColorParams(["R"])).toEqual({ color: "R" });
+    expect(manaColorParams(["W", "U"])).toEqual({ colors: ["W", "U"] });
   });
 });
