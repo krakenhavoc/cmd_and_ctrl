@@ -94,9 +94,9 @@ type GameEndGrant struct {
 	Causes   []LossCause `json:"causes,omitempty"`
 }
 
-// IsZero reports whether the grant says nothing. PlayerStatic's
-// `omitzero` reads it, and so does the reader, which skips an entry
-// with no GameEnd payload.
+// IsZero reports whether the grant says nothing. The reader skips an
+// entry whose GameEnd payload is zero — every PlayerStatic of another
+// kind.
 func (gr GameEndGrant) IsZero() bool {
 	return gr.Scope == 0 && !gr.CantLose && !gr.CantWin && len(gr.Causes) == 0
 }

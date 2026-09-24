@@ -193,7 +193,10 @@ type PlayerStatic struct {
 	// forEachGameEndGateLocked. A GameEndGrant rather than a
 	// GameEndGate because it carries no While: a granted gate has no
 	// permanent to read a condition off.
-	GameEnd GameEndGrant `json:"gameEnd,omitzero"`
+	//
+	// No `omitzero`, for Timing's reason above (#1492): it is always
+	// written, and a zero grant reads back as "says nothing".
+	GameEnd GameEndGrant `json:"gameEnd"`
 
 	// Source is the card that granted it, for the log and for the
 	// view's attribution. Never read by any rule: a granted ability
