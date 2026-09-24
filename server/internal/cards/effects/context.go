@@ -490,6 +490,44 @@ func (c *Context) TriggeringPermanent() (game.PermanentInfo, bool) {
 	return c.Game.PermanentForEffect(obj.Ref())
 }
 
+// SourceRef names the OBJECT this ability came from (#1418, CR 400.7):
+// its source card plus the epoch that card had when the ability
+// triggered or was activated. Source() is the card; this is the
+// object, which is what "this permanent" means in the text. A source
+// that left and came back while the ability waited is a new object,
+// and this ref does not name it.
+//
+// False for a spell and for an ability with no source card.
+func (c *Context) SourceRef() (game.ObjectRef, bool) {
+	if c.Item == nil {
+		return game.ObjectRef{}, false
+	}
+	return c.Game.SourceObjectForEffect(c.Item)
+}
+
+// SourcePermanent is "this permanent" read at RESOLUTION (#1418,
+// CR 608.2h): as it is now while the object the ability came from is
+// still on the battlefield, and as it last existed there once it has
+// gone — including when its card is back on the battlefield as a new
+// object. PermanentInfo.Left says which, and a clause that ACTS on
+// the permanent ("untap this artifact") must check it first:
+// last-known information is something to read, not something to
+// change.
+//
+// Mana Vault's "if this artifact is tapped" is `info.Tapped`.
+//
+// False for a spell, for an ability whose source was never a
+// permanent (a trigger from a graveyard, an ability activated from a
+// hand), and for a permanent that left by a route the engine keeps no
+// record of.
+func (c *Context) SourcePermanent() (game.PermanentInfo, bool) {
+	ref, ok := c.SourceRef()
+	if !ok {
+		return game.PermanentInfo{}, false
+	}
+	return c.Game.PermanentForEffect(ref)
+}
+
 // PayloadCards is Payload narrowed to its card refs, in the order the
 // creating effect listed them. The common read: "the creatures that
 // were tapped this way", "the cards revealed this way".

@@ -594,6 +594,7 @@ func (g *Game) buildOrPickTriggerLocked(tc TriggerContext, source Card, lki Char
 	item.modeSpec = t.Modes
 	item.DoubledBy, item.DoubledByName = doubledBy.id, doubledBy.name
 	stampTriggerContext(item, t, tc)
+	stampTriggerSource(item, source, tc)
 	g.queueHarvestedTriggerLocked(item)
 }
 
@@ -624,6 +625,39 @@ func stampTriggerContext(item *StackItem, t TriggeredAbility, tc TriggerContext)
 		return
 	}
 	item.Trigger = cloneTriggerContext(&tc)
+}
+
+// stampTriggerSource names the OBJECT a harvested trigger came from
+// on the item Build returned (#1418, CR 400.7) — the sibling of
+// stampTriggerContext, at the same two call sites and for the same
+// reason: ~2,200 catalog Builds would each have had to remember.
+//
+// `source` is the dispatch's VALUE copy of the source card, taken
+// when the ability triggered and carried through every prompt frame,
+// so its epoch is the object's even if the card has moved while an
+// optional or target prompt was open. The one case the copy cannot
+// answer is a trigger about its source's own departure ("when this
+// dies"): the harvest reads that card in its new zone, and the object
+// the ability belongs to is the permanent that left. The event's
+// object snapshot already names that permanent (objectSnapshotLocked
+// reads its battlefield epoch off the record), so when the event is
+// about the source, its ref is the answer.
+//
+// Left alone: an item that already names its source object (a
+// reflexive trigger inherits its parent's, a delayed trigger carries
+// the one it was scheduled with), and an item whose Build pointed it
+// at a card other than `source` — queueHarvestedTriggerLocked stamps
+// that one from the board.
+func stampTriggerSource(item *StackItem, source Card, tc TriggerContext) {
+	if item == nil || item.SourceObject.ID != uuid.Nil ||
+		source.InstanceID == uuid.Nil || item.SourceCardID != source.InstanceID {
+		return
+	}
+	if obj := tc.Object; obj != nil && obj.ID == source.InstanceID {
+		item.SourceObject = obj.Ref()
+		return
+	}
+	item.SourceObject = ObjectRef{ID: source.InstanceID, Epoch: source.ObjectEpoch}
 }
 
 // harvestLTB walks LTB triggers for a card whose battlefield exit
@@ -720,6 +754,10 @@ func (g *Game) queueHarvestedTriggerLocked(item *StackItem) {
 	if item.Kind == "" {
 		item.Kind = StackItemTriggered
 	}
+	// #1418: a trigger that reached the queue without naming its
+	// source object (a game-built item, or a Build that pointed it at
+	// another card) names the object its source is now.
+	g.stampSourceObjectLocked(item)
 	g.PendingTriggers = append(g.PendingTriggers, item)
 	g.EmitEvent(Event{
 		Kind:   EventTrigger,

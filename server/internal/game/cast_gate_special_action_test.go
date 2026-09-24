@@ -187,3 +187,135 @@ func TestTheSpecialActionItselfIsNotGated(t *testing.T) {
 		t.Errorf("the foretold card is still in hand")
 	}
 }
+
+// TestLandPlayIsNotGatedByATotalCastBan is #1439's headline
+// regression: playing a land is a special action (CR 305.1,
+// CR 116.2a), not a cast, so CastGateLocked must never see it. Before
+// the fix, CastSpell ran the gate on every card unconditionally, so
+// a board-wide "players can't cast spells" static (seedTotalBan)
+// refused a basic land played straight from hand.
+func TestLandPlayIsNotGatedByATotalCastBan(t *testing.T) {
+	g := newWrapGame(t, 2)
+	advanceToMainByPriority(t, g)
+	active := g.Seats[g.Turn.ActiveSeat]
+
+	g.WithWriteLock(func() {
+		seedTotalBan(t, g, active.ID)
+	})
+
+	if got := g.LandDropsRemainingFor(active.ID); got != 1 {
+		t.Fatalf("land drops remaining before any play: %d, want 1", got)
+	}
+	if err := dropLandFromHand(t, g, active); err != nil {
+		t.Fatalf("a land play was refused by a total cast ban (CR 116.2a): %v", err)
+	}
+	if got := g.LandDropsRemainingFor(active.ID); got != 0 {
+		t.Errorf("land drops remaining after the play: %d, want 0", got)
+	}
+
+	// The regression check: a SPELL under the same ban is still
+	// refused, so the fix is "skip the gate for a land" and not
+	// "skip the gate".
+	id := uuid.New()
+	active.Hand.PushTop(Card{
+		InstanceID: id, Name: "Test Bolt", TypeLine: "Instant", ManaCost: "{R}",
+		Owner: active.ID, Controller: active.ID,
+	})
+	err := g.CastSpell(active.ID, id, CastSpellParams{})
+	if !errors.Is(err, ErrCantCast) {
+		t.Errorf("a spell under a total cast ban = %v, want ErrCantCast", err)
+	}
+}
+
+// TestLandPlayIsNotGatedByAOneSpellPerTurnRestriction is Rule of
+// Law's shape (EachPlayerMaxSpellsPerTurn): a player who has already
+// cast their one spell this turn still gets their land drop.
+func TestLandPlayIsNotGatedByAOneSpellPerTurnRestriction(t *testing.T) {
+	g := newWrapGame(t, 2)
+	advanceToMainByPriority(t, g)
+	active := g.Seats[g.Turn.ActiveSeat]
+
+	const oracle = "test-1439-rule-of-law"
+	stubCastRestrictions(t, oracle, []CastRestriction{{
+		Label: "Test Rule of Law — each player can't cast more than one spell each turn.",
+		Forbids: func(q CastQuery) bool {
+			return q.Game.CastTallyFor(q.Controller).Total >= 1
+		},
+	}})
+	g.WithWriteLock(func() {
+		g.Battlefield.PushTop(Card{
+			InstanceID: uuid.New(), Name: "Test Rule of Law", TypeLine: "Enchantment",
+			OracleID: oracle, Owner: active.ID, Controller: active.ID,
+		})
+		if g.SpellsCastThisTurn == nil {
+			g.SpellsCastThisTurn = make(map[uuid.UUID]CastTally)
+		}
+		g.SpellsCastThisTurn[active.ID] = CastTally{Total: 1}
+	})
+
+	if err := dropLandFromHand(t, g, active); err != nil {
+		t.Fatalf("a land play was refused after a spell was already cast this turn (Rule of Law shape): %v", err)
+	}
+}
+
+// TestPermittedGraveyardLandPlayIsNotGatedByAGraveyardCastRestriction
+// is Grafdigger's Cage's shape (PlayersCantCastFrom): a land a
+// Crucible-of-Worlds-shaped permission opens out of the graveyard
+// still plays with a "players can't cast spells from graveyards or
+// libraries" restriction on the battlefield, because playing that
+// land is not casting it.
+func TestPermittedGraveyardLandPlayIsNotGatedByAGraveyardCastRestriction(t *testing.T) {
+	g := newWrapGame(t, 2)
+	advanceToMainByPriority(t, g)
+	active := g.Seats[g.Turn.ActiveSeat]
+
+	const cageOracle = "test-1439-grafdiggers-cage"
+	stubCastRestrictions(t, cageOracle, []CastRestriction{{
+		Label: "Test Grafdigger's Cage — players can't cast spells from graveyards or libraries.",
+		Forbids: func(q CastQuery) bool {
+			return q.FromZone == ZoneGraveyard || q.FromZone == ZoneLibrary
+		},
+	}})
+
+	const crucibleOracle = "test-1439-crucible"
+	prevPerms := CatalogCastPermissions
+	CatalogCastPermissions = func(id string) []CastPermission {
+		if id == crucibleOracle {
+			return []CastPermission{{
+				Zone:     ZoneGraveyard,
+				Scope:    ScopeStanding,
+				Duration: WhileInZoneDuration(),
+				Filter:   PermissionFilter{LandsOnly: true},
+				Label:    "Test Crucible — play lands from your graveyard",
+			}}
+		}
+		if prevPerms != nil {
+			return prevPerms(id)
+		}
+		return nil
+	}
+	t.Cleanup(func() { CatalogCastPermissions = prevPerms })
+
+	landID := uuid.New()
+	g.WithWriteLock(func() {
+		g.Battlefield.PushTop(Card{
+			InstanceID: uuid.New(), Name: "Test Crucible", TypeLine: "Artifact",
+			OracleID: crucibleOracle, Owner: active.ID, Controller: active.ID,
+		})
+		g.Battlefield.PushTop(Card{
+			InstanceID: uuid.New(), Name: "Test Grafdigger's Cage", TypeLine: "Artifact",
+			OracleID: cageOracle, Owner: active.ID, Controller: active.ID,
+		})
+		active.Graveyard.PushTop(Card{
+			InstanceID: landID, Name: "Forest", TypeLine: "Basic Land — Forest",
+			Owner: active.ID, Controller: active.ID,
+		})
+	})
+
+	if err := g.CastSpell(active.ID, landID, CastSpellParams{FromZone: "graveyard"}); err != nil {
+		t.Fatalf("a permitted graveyard land play was refused by a graveyard cast restriction (Grafdigger's Cage shape): %v", err)
+	}
+	if !g.Battlefield.Contains(landID) {
+		t.Errorf("the land did not reach the battlefield")
+	}
+}

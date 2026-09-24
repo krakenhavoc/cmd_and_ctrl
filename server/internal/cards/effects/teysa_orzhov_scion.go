@@ -36,15 +36,7 @@ func init() {
 			Label:   "Sacrifice three white creatures: Exile target creature.",
 			Cost:    SacrificeN(3, "three white creatures", Creature(), OfColor("W")),
 			Targets: TargetCreature("target creature"),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				for _, t := range ctx.LegalTargets() {
-					if t.Kind == game.TargetCard {
-						return ExileTarget{Target: t.ID}.Apply(ctx)
-					}
-				}
-				return nil
-			},
+			Effect:  exileFirstLegalCardTarget,
 		}},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

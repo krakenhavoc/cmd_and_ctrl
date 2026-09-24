@@ -82,8 +82,8 @@ function mount(cards: CardView[], withHandler = true) {
   return { container: view.container, sent, handed };
 }
 
-const impulseButton = (c: HTMLElement): HTMLElement | null =>
-  c.querySelector("[aria-label='play from exile'] button");
+const impulseButton = (c: HTMLElement): HTMLButtonElement | null =>
+  c.querySelector<HTMLButtonElement>("[aria-label='play from exile'] button");
 
 const grant = (extras: Partial<ExilePlayView> = {}): ExilePlayView => ({
   player: ME,
@@ -92,7 +92,9 @@ const grant = (extras: Partial<ExilePlayView> = {}): ExilePlayView => ({
 
 describe("the exile impulse button — #874", () => {
   it("hands the cast to the Board's chain instead of dispatching one", () => {
-    const { container, sent, handed } = mount([exiled({ exile_play: grant() })]);
+    const { container, sent, handed } = mount([
+      exiled({ exile_play: grant(), castable_here: true }),
+    ]);
     const button = impulseButton(container);
     expect(button).not.toBeNull();
     click(button!);
@@ -115,13 +117,14 @@ describe("the exile impulse button — #874", () => {
       name: "Invasion of New Phyrexia",
       type_line: "Battle — Siege",
       exile_play: grant({ faces: [1], cast_only: true, cost_override: "{0}" }),
+      castable_here: true,
     });
     const { container, handed } = mount([siege]);
     click(impulseButton(container)!);
     expect(handed[0].face).toBe(1);
 
     cleanup();
-    const plain = mount([exiled({ exile_play: grant() })]);
+    const plain = mount([exiled({ exile_play: grant(), castable_here: true })]);
     click(impulseButton(plain.container)!);
     expect(plain.handed[0].face).toBeUndefined();
   });
@@ -143,6 +146,7 @@ describe("the exile impulse button — #874", () => {
         { name: "Profane Insight", type_line: "Instant — Adventure", mana_cost: "{2}{B}" },
       ],
       exile_play: grant({ faces: [0], cast_only: true }),
+      castable_here: true,
     });
     const { container, handed } = mount([knight]);
     click(impulseButton(container)!);
@@ -157,6 +161,66 @@ describe("the exile impulse button — #874", () => {
 
   it("still shows no button for a card whose grant names somebody else", () => {
     const { container } = mount([exiled({ exile_play: grant({ player: THEM }) })]);
+    expect(impulseButton(container)).toBeNull();
+  });
+});
+
+// --- #1406: the button now reads castable_here, not just the grant ---
+//
+// Before this, the button showed and dispatched whenever a live grant
+// named the viewer, whatever the timing — the server then refused the
+// cast and it read as a bug. These pin the fix at the one boundary
+// that changed: the button itself, disabled rather than hidden or
+// live, with a tooltip explaining why.
+
+describe("the exile impulse button reads castable_here — #1406", () => {
+  it("disables the button when a live grant's timing window is shut (a sorcery at end step)", () => {
+    const sorcery = exiled({
+      type_line: "Sorcery",
+      exile_play: grant(),
+      castable_here: false,
+      cast_prices: [{ cost: "{X}{R}" }],
+    });
+    const { container, handed } = mount([sorcery]);
+    const button = impulseButton(container);
+    expect(button).not.toBeNull();
+    expect(button!.disabled).toBe(true);
+    expect(button!.title).toBe("Not castable from exile right now");
+    click(button!);
+    expect(handed).toEqual([]);
+  });
+
+  it("names the card's own cant_cast clause on the disabled tooltip", () => {
+    const blocked = exiled({
+      type_line: "Sorcery",
+      exile_play: grant(),
+      castable_here: false,
+      cast_prices: [{ cost: "{X}{R}" }],
+      cant_cast: "Cast this spell only during combat",
+    });
+    const { container } = mount([blocked]);
+    expect(impulseButton(container)!.title).toBe("Cast this spell only during combat");
+  });
+
+  it("enables the button when the window is open", () => {
+    const open = exiled({ exile_play: grant(), castable_here: true });
+    const { container, handed } = mount([open]);
+    const button = impulseButton(container);
+    expect(button).not.toBeNull();
+    expect(button!.disabled).toBe(false);
+    expect(button!.title).toBe("playable until end of turn");
+    click(button!);
+    expect(handed).toHaveLength(1);
+  });
+
+  it("strands a cast-only land — no button at all, timing aside", () => {
+    const land = exiled({
+      type_line: "Basic Land — Island",
+      mana_cost: "",
+      exile_play: grant({ cast_only: true }),
+      castable_here: false,
+    });
+    const { container } = mount([land]);
     expect(impulseButton(container)).toBeNull();
   });
 });

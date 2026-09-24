@@ -940,14 +940,24 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// "Can't beats may" needs no rule of its own here. Cascade, a
 	// granted permission and an impulse grant all reach CastSpell, so
 	// a free cast passes through this gate like any other.
-	if err := g.CastGateLocked(playerID, card, src.Kind, params); err != nil {
-		slog.Warn("cast_spell rejected: an effect prevents this cast",
-			"card_name", card.Name,
-			"oracle_id", card.OracleID,
-			"from_zone", src.Kind,
-			"err", err,
-		)
-		return err
+	//
+	// #1439: a LAND is not gated here at all. Playing a land is a
+	// special action (CR 305.1, CR 116.2a), not a cast, and every
+	// clause CastGateLocked enforces is written about casting (its
+	// own doc says so). The land branch further down runs its own
+	// CR 305 checks; asking this gate first made Rule of Law and
+	// Grafdigger's Cage — both spell-only restrictions — refuse a
+	// land drop from hand or from the graveyard.
+	if !card.IsLand() {
+		if err := g.CastGateLocked(playerID, card, src.Kind, params); err != nil {
+			slog.Warn("cast_spell rejected: an effect prevents this cast",
+				"card_name", card.Name,
+				"oracle_id", card.OracleID,
+				"from_zone", src.Kind,
+				"err", err,
+			)
+			return err
+		}
 	}
 	// CR 702.16b: the source of a SPELL is the spell itself, so the
 	// quality protection is tested against is the card's own colour
@@ -1153,6 +1163,11 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// the card still where it was; the answer casts it again. See
 	// cost_commander_choice.go.
 	moving := append(append(append([]uuid.UUID(nil), params.DiscardIDs...), params.SacrificeIDs...), params.AltCostIDs...)
+	// #1445: a card an EFFECT has already paused on its way out
+	// cannot pay. See refusePausedCostCardsLocked.
+	if err := g.refusePausedCostCardsLocked(moving); err != nil {
+		return err
+	}
 	asked, answers := g.askCostCommanderLocked(playerID, moving, params.commanderAnswers, card.Name,
 		func(g *Game, answers map[uuid.UUID]bool) error {
 			again := params
@@ -1712,6 +1727,11 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 		if manaSourceTappedOut(card, ab) {
 			continue
 		}
+		// #1445: the planner's paused-exit check, re-asked because a
+		// plan can arrive stale.
+		if ab.SacrificeCost && g.zoneChangePausedLocked(cardID) {
+			continue
+		}
 		// #540: CR 302.6, enforced here as well as in the planner.
 		// This executor taps `card.Tapped = true` directly rather
 		// than routing through ActivateManaAbility, so the gate that
@@ -2069,6 +2089,10 @@ func (g *Game) materializeExiledManaSourceLocked(
 	}
 	ab := g.autoManaExileAbilityFor(p.ID, *card, ManaAbilitiesForCard(*card), zone)
 	if ab == nil {
+		return
+	}
+	// #1445: the planner's paused-exit check, re-asked for a stale plan.
+	if g.zoneChangePausedLocked(cardID) {
 		return
 	}
 	if g.ActivationGateLocked(p.ID, *card, zone, ActivationAbility{Label: ab.Label, Mana: true}) != nil {
@@ -3215,6 +3239,7 @@ func (g *Game) ActivateAbility(playerID, sourceCardID uuid.UUID, params AbilityP
 		// which OBJECT the ability came from. See
 		// StackItem.SourceEpoch.
 		SourceEpoch:  g.cardObjectEpochLocked(sourceCardID),
+		SourceObject: g.sourceObjectRefLocked(sourceCardID),
 		Label:        params.Label,
 		Targets:      append([]TargetRef(nil), params.Targets...),
 		Modes:        append([]int(nil), params.Modes...),
@@ -3420,6 +3445,7 @@ func (g *Game) AnnounceTrigger(playerID, sourceCardID uuid.UUID, params AbilityP
 		Controller:   playerID,
 		Owner:        playerID,
 		SourceCardID: sourceCardID,
+		SourceObject: g.sourceObjectRefLocked(sourceCardID),
 		Label:        params.Label,
 		Targets:      append([]TargetRef(nil), params.Targets...),
 		Modes:        append([]int(nil), params.Modes...),
@@ -5344,6 +5370,19 @@ type ManaAbilityParams struct {
 	// sends none.
 	ExileIDs []uuid.UUID
 
+	// Colors names, up front, the colour each PICKING slot of the
+	// output adds (#1443): one entry per entry of
+	// ManaAbilityColorOptions, in output order — a painland's "{R|W}"
+	// takes one, a filter land's "{W|U}{W|U}" two. Each must be one the
+	// slot offers right now, checked before anything is paid
+	// (ErrIllegalManaColor). A named slot is produced straight into
+	// the pool and queues no mana_pick.
+	//
+	// Empty is the ordinary activation, unchanged: every picking slot
+	// queues its mana_pick. The auto-tapper and the bot seats never
+	// set it.
+	Colors []string
+
 	// commanderAnswers are the CR 903.9 answers the owners of the
 	// commanders this activation's cost moves gave before it began
 	// (#1397, cost_commander_choice.go). Unexported: only the parked
@@ -5463,6 +5502,13 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// is paid, so a failed gate costs the player nothing.
 	if ab.Condition != nil && !ab.Condition(g, playerID, cardID) {
 		return ErrConditionNotMet
+	}
+	// #1443: a colour named up front has to be one the slot offers,
+	// asked of the same list the view published and the mana_pick
+	// would have carried. Before any cost is validated, so a refused
+	// colour costs nothing and taps nothing.
+	if err := g.validateUpfrontManaColors(playerID, cardID, ab, params.Colors); err != nil {
+		return err
 	}
 	// --- validate every cost before paying any ------------------
 	//
@@ -5617,6 +5663,11 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	moving := append(append(append([]uuid.UUID(nil), sacrifices...), discards...), exiles...)
 	if ab.ExileSelf {
 		moving = append(moving, cardID)
+	}
+	// #1445: a card an EFFECT has already paused on its way out
+	// cannot pay. See refusePausedCostCardsLocked.
+	if err := g.refusePausedCostCardsLocked(moving); err != nil {
+		return err
 	}
 	asked, answers := g.askCostCommanderLocked(playerID, moving, params.commanderAnswers, card.Name,
 		func(g *Game, answers map[uuid.UUID]bool) error {
@@ -5922,6 +5973,9 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// function. A slot that queued a pick contributes nothing here —
 	// its colour is not known yet, and ResolveManaChoice fires for it.
 	var addedColors []string
+	// #1443: the colours named up front, consumed one per picking slot
+	// in output order — the order ManaAbilityColorOptions lists them.
+	upfront := params.Colors
 	for _, slot := range slots {
 		// The printed option set, commander identity first (Birds of
 		// Paradise offers all five colours), or narrowed to the
@@ -5956,6 +6010,29 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 				nil,
 			)...)
 			continue
+		}
+		// #1443: the activator named this slot's colour before the
+		// cost was paid. Produce it here, through the same production
+		// body the answered pick uses (the CR 106.12b window, the
+		// restrictions, the source snapshot, the slot's amount), and
+		// queue nothing. Re-checked against the list read NOW, after
+		// the cost: a derived output the payment itself changed falls
+		// back to the prompt rather than minting a colour it no longer
+		// offers.
+		if len(upfront) > 0 {
+			color := upfront[0]
+			upfront = upfront[1:]
+			if containsColor(options, color) {
+				addedColors = append(addedColors, g.produceManaLocked(
+					p, cardID,
+					repeatColor(color, slot.AmountFor(color)),
+					restrictionsFor(g, &ab, playerID, cardID),
+					srcKinds,
+					ab.TapCost,
+					nil,
+				)...)
+				continue
+			}
 		}
 		// Multi-option slot — see manaPickOptions above.
 		// Queue the pick. The restrictions ride ON THE CHOICE, not

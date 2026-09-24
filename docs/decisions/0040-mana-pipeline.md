@@ -903,3 +903,71 @@ corrects what "no simplification" already claimed rather than narrowing it.
 `TestB39AutogeneratorUnaffectedByHardenedScalesAlone`
 (`batch39_test.go`) are the proof, alongside the unchanged
 `TestB39AutogeneratorAddsOneOnItsFirstTapAndGrows` for the no-doubler case.
+
+## Amendment — 2026-09-24 (#1443): the colour of a pipe slot, named before the tap
+
+**The gap.** #1438 made a left-click on a mana source tap it for mana. For
+a source whose output is a choice of colours, the colour was still asked
+AFTER the activation, as the `mana_pick` §8 queues: a painland was two
+picks (the ability, then the colour), and Birds of Paradise / Command Tower
+asked in the centred prompt with the source already tapped, so the
+question could not be cancelled. The client could not offer the colour up
+front itself without guessing, because the list is the server's: Command
+Tower's is narrowed at activation (CR 903.4f, the #844 amendment above) and
+every pipe is ordered identity first (the 2026-09-17 addendum above).
+
+**Decision 1 — the view publishes the list the prompt would carry.**
+`ManaAbilityView.color_options` (`[][]string`) is, per ability, one list per
+PICKING slot of its output, in output order. `game.ManaAbilityColorOptions`
+computes it: the output as every "what would this make" reader reads it
+(`manaAbilityProducedLocked` with the largest counter payment, as
+`ManaAbilityAddsNoMana` does), parsed, and each slot of printed width > 1
+passed through `manaPickOptions` — the one narrowing-and-ordering function
+the activation's own `mana_pick` uses. A slot that narrows to nothing adds
+no mana and asks nothing, so it contributes no list. The test that pins the
+agreement compares the published list with the queued prompt's
+`ColorOptions` for Birds (two identities), Command Tower (two), Arcane
+Signet and a painland (`TestUpfrontColorOptionsMatchTheManaPickPrompt`).
+
+**Decision 2 — the activation takes the answer up front, and refuses a bad
+one before paying.** `ManaAbilityParams.Colors` (wire: `color` for one slot,
+`colors` for several) names one colour per picking slot. It is checked
+right after the activation gates and before any cost is validated, against
+the same `ManaAbilityColorOptions` list: wrong count or a colour the slot
+does not offer is `ErrIllegalManaColor`, with nothing tapped, paid or
+produced. At materialisation a named slot is produced through
+`produceManaLocked` exactly as `ResolveManaChoice` would have produced the
+answered pick — the ability's restrictions, #1212's source snapshot, the
+slot's amount (#742), the CR 106.12b window — and its colours join the
+ones the triggered mana abilities fire on at the bottom of the activation
+(ADR 0074 §3's "one branch per card" still holds: a named slot takes the
+direct branch). The name is re-checked against the slot's options read
+AFTER the cost, and a derived output the payment itself changed falls back
+to queueing the prompt rather than minting a colour it no longer offers.
+
+**Decision 3 — absent is unchanged.** No colour named is the two-step
+activation exactly as before, and it is what the auto-tapper (which picks
+its own colours, §7) and the bot seats use. The legal-move enumerator is
+unchanged: it offers the activation without a colour and the bot answers
+the `mana_pick` it queues, as it always has — expanding each pipe ability
+into colour variants would multiply the move list for no decision the bot
+does not already make one step later.
+
+**Client.** The anchored picker #1438 opens at the card now offers FINAL
+results: each ability with `color_options` is expanded into one option per
+distinct answer (a painland is `{C}`, `{R}` and `{W}`, the coloured two
+carrying the damage rider; Birds its five colours in the server's order;
+Command Tower the identity's; Mystic Gate WW / WU / UU), and the pick is
+sent with its colour. One live result taps at once, so a mono-identity
+Command Tower is one click. Escape, an outside click or a second click on
+the card still closes the picker with nothing sent — and since every
+colour is now chosen there, nothing is tapped. An ability with no
+`color_options` (an older server) stays one option and the server asks
+after the tap, as before.
+
+Where it lands: `game/mana_color_upfront.go` (`ManaAbilityColorOptions`,
+the check), `ActivateManaAbility` (`game/mutations.go`), the
+`activate_mana_ability` dispatcher (`actions/actions.go`),
+`stampManaIdentity` (`protocol/view.go`); `client/src/lib/manaSource.ts`
+(`manaAbilityOptionsFor`, `colorCombos`, `manaColorParams`),
+`ManaSourcePicker.svelte`, `Board.svelte`, `PlayerPanel.svelte`.

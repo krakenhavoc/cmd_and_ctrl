@@ -612,6 +612,7 @@ type stackItemSnapshot struct {
 	Owner         uuid.UUID     `json:"owner"`
 	SourceCardID  uuid.UUID     `json:"sourceCardId"`
 	SourceEpoch   int           `json:"sourceEpoch,omitempty"`
+	SourceObject  *ObjectRef    `json:"sourceObject,omitempty"` // #1418; nil = unstamped
 	Label         string        `json:"label,omitempty"`
 	DoubledBy     uuid.UUID     `json:"doubledBy,omitempty"`
 	DoubledByName string        `json:"doubledByName,omitempty"`
@@ -667,6 +668,7 @@ type delayedTriggerSnapshot struct {
 	ID                 uuid.UUID   `json:"id"`
 	Controller         uuid.UUID   `json:"controller"`
 	SourceCardID       uuid.UUID   `json:"sourceCardId"`
+	SourceObject       *ObjectRef  `json:"sourceObject,omitempty"` // #1418
 	Label              string      `json:"label,omitempty"`
 	At                 Step        `json:"at"`
 	ControllerTurnOnly bool        `json:"controllerTurnOnly"`
@@ -1367,6 +1369,7 @@ func snapshotStackItem(g *Game, s *StackItem, cen *ContinuationCensus) stackItem
 		Owner:         s.Owner,
 		SourceCardID:  s.SourceCardID,
 		SourceEpoch:   s.SourceEpoch,
+		SourceObject:  s.SourceObject.stamped(),
 		Label:         s.Label,
 		DoubledBy:     s.DoubledBy,
 		DoubledByName: s.DoubledByName,
@@ -1439,6 +1442,7 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 		ID:                 d.ID,
 		Controller:         d.Controller,
 		SourceCardID:       d.SourceCardID,
+		SourceObject:       d.SourceObject.stamped(),
 		Label:              d.Label,
 		At:                 d.At,
 		ControllerTurnOnly: d.ControllerTurnOnly,
@@ -2018,6 +2022,7 @@ func restoreStackItem(s *stackItemSnapshot) *StackItem {
 		Owner:         s.Owner,
 		SourceCardID:  s.SourceCardID,
 		SourceEpoch:   s.SourceEpoch,
+		SourceObject:  s.SourceObject.value(),
 		Label:         s.Label,
 		DoubledBy:     s.DoubledBy,
 		DoubledByName: s.DoubledByName,
@@ -2064,6 +2069,7 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 		ID:                 d.ID,
 		Controller:         d.Controller,
 		SourceCardID:       d.SourceCardID,
+		SourceObject:       d.SourceObject.value(),
 		Label:              d.Label,
 		At:                 d.At,
 		ControllerTurnOnly: d.ControllerTurnOnly,
