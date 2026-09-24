@@ -479,31 +479,35 @@ func TestB20HornOfGreedSeesALandPlayedFromExile(t *testing.T) {
 		t.Errorf("hand %d → %d: a land played from exile is a land play", hand, got)
 	}
 
-	// The declared gap, pinned: once an effect has RETURNED a land
-	// from exile this turn, a later play from exile is
-	// indistinguishable from another return and draws nothing.
+	// #1326: a land RETURNED from exile by an effect is still not a
+	// play, and the engine's own Event.Played marker (not a land-drop
+	// tally guess) tells it apart from a later genuine play from
+	// exile even in the same turn.
 	plains := b20HandCard(me, "Plains", "Basic Land — Plains")
 	g.WithWriteLock(func() {
 		_ = g.ExileCardForEffect(plains)
 		_, _ = g.ReturnFromExileToBattlefieldForEffect(plains, me.ID, false)
 	})
 	passPriorityAroundTable(t, g)
+	if got := me.Hand.Size(); got != hand+1 {
+		t.Errorf("hand %d → %d: a land returned from exile by an effect is not a land play", hand, got)
+	}
 	island := b20HandCard(me, "Island", "Basic Land — Island")
 	g.WithWriteLock(func() { _ = g.ExileCardWithPermissionForEffect(island, grant) })
 	hand = me.Hand.Size()
 	// #500: two land PLAYS in one turn, which the engine now refuses
-	// by default. The subject here is the Horn's tally reading, not
+	// by default. The subject here is the Horn's read of the play, not
 	// CR 305.2, so the seat is given the second land play outright.
 	me.LandDropsPerTurn++
 	if err := g.CastSpell(me.ID, island, game.CastSpellParams{FromZone: "exile"}); err != nil {
 		t.Fatalf("playing the second exiled land: %v", err)
 	}
 	passPriorityAroundTable(t, g)
-	if got := me.Hand.Size(); got != hand {
-		t.Errorf("hand %d → %d: after an exile return the tally is ambiguous and the Horn stays quiet (weaker, declared)", hand, got)
+	if got := me.Hand.Size(); got != hand+1 {
+		t.Errorf("hand %d → %d: a second genuine land play from exile in the same turn still draws", hand, got)
 	}
-	if spec, _ := Lookup(b20HornOfGreedOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the gap must be declared")
+	if spec, _ := Lookup(b20HornOfGreedOracle); spec.Completeness != CompletenessFull {
+		t.Error("the gap is closed (#1326): no caveat")
 	}
 }
 

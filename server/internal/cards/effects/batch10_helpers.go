@@ -97,23 +97,14 @@ func b10LandYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool 
 }
 
 // b10AnotherLandPlayedByYou is City of Traitors' "when you play
-// another land". The engine emits no land-play event, so the trigger
-// watches the EventZoneMove that precedes every battlefield entry and
-// reads where the land came FROM: a land played from hand (or from an
-// impulse-exile grant, or a graveyard permission) arrives from that
-// zone, while the "put onto the battlefield" effects — Cultivate,
-// Rampant Growth, every fetchland — arrive from the LIBRARY, which is
-// the one origin a land play can never have.
-//
-// The residual gap runs the weaker way for the City's controller: a
-// land RETURNED from a graveyard or exile by an effect (Titania's ETB,
-// Splendid Reclamation, a flickered land) reads as a play and costs
-// the City too. Declared on the card.
+// another land". Since #1326 the engine stamps CR 305.4's distinction
+// on the settled entry itself (Event.Played), so the trigger reads
+// that directly rather than guessing from the zone the land came
+// from: a land RETURNED to the battlefield from a graveyard or exile
+// by an effect (Titania's ETB, Splendid Reclamation, a flickered
+// land) no longer reads as a play.
 func b10AnotherLandPlayedByYou(ev game.Event, source *game.Card, g *game.Game) bool {
-	if ev.Kind != game.EventZoneMove || ev.NewZone != game.ZoneBattlefield || ev.CardID == source.InstanceID {
-		return false
-	}
-	if ev.OldZone == game.ZoneLibrary || ev.OldZone == game.ZoneBattlefield || ev.OldZone == game.ZoneStack {
+	if ev.Kind != game.EventZoneMove || !ev.Played || ev.CardID == source.InstanceID {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)

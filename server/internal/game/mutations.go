@@ -1106,41 +1106,25 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 			return nil
 		}
 
-		moved, err := MoveCard(src, g.Battlefield, cardID)
-		if err != nil {
+		// #1326 (following #653's precedent at the stack-resolution
+		// site above): THE push, rather than a second copy of it.
+		// This branch used to reproduce executeEntryToBattlefieldLocked
+		// inline — the move, the controller, the tapped stamp, the
+		// counters, the land-drop tally, the zone move and the ETB
+		// hook — while the RESUME of the very same event (the
+		// shockland's "pay 2 life") went through the finisher. Two
+		// copies of "a land enters the battlefield" is how the
+		// land-drop tally (#478) and now the entry's Played marker
+		// (#1326, CR 305.4) could apply to a PAUSED land and silently
+		// not to an ordinary one — the common case. ev.landPlay is
+		// still true on `out` (applyReplacementsLocked only settles
+		// the replacement chain; it never clears the caller's own
+		// fields), so the finisher bumps LandsPlayedThisTurn and
+		// stamps Event.Played exactly as the resume path does.
+		if _, err := g.executeEntryToBattlefieldLocked(out); err != nil {
 			setFaceInZoneLocked(src, cardID, wasFace)
 			return err
 		}
-		for i := range g.Battlefield.Cards {
-			if g.Battlefield.Cards[i].InstanceID == moved.InstanceID {
-				g.Battlefield.Cards[i].Controller = playerID
-				if out.EntersTapped {
-					g.Battlefield.Cards[i].Tapped = true
-				}
-			}
-		}
-		g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
-		g.applyEntryCountersLocked(moved.InstanceID, out.EntersWithCounters)
-		// S31 sub-PR 1: per-turn land-drop tally. Since #500 this is
-		// what the gate at the top of this branch reads, so the bump
-		// has to happen on every successful play and nowhere else.
-		if g.LandsPlayedThisTurn == nil {
-			g.LandsPlayedThisTurn = make(map[uuid.UUID]int)
-		}
-		g.LandsPlayedThisTurn[playerID]++
-		g.EmitEvent(Event{
-			Kind:    EventZoneMove,
-			Actor:   playerID,
-			CardID:  moved.InstanceID,
-			OldZone: src.Kind,
-			NewZone: ZoneBattlefield,
-		})
-		g.EmitEvent(Event{
-			Kind:   EventETB,
-			Actor:  playerID,
-			CardID: moved.InstanceID,
-		})
-		g.fireETBHookLocked(moved.InstanceID, CatalogKey(moved))
 		// Playing a land is a special action (CR 116.2a); the player
 		// keeps priority and CR 117.5 drains any landfall-style
 		// triggers onto the stack here rather than at the next wrap.

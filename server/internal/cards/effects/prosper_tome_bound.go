@@ -19,23 +19,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // through b20ExileTopUntilEndOfNextTurn. Pact Boon watches
 // two kinds on one ability: a spell cast from exile (EventCast
 // carries the origin — the Appa shape) and a land played from exile
-// (the EventZoneMove b20LandPlayed reads). Any grant counts, not
-// just Prosper's own — a card an opponent's Ragavan handed you, a
-// warped creature recast — as printed.
+// (the EventZoneMove b20LandPlayed reads, off Event.Played since
+// #1326). Any grant counts, not just Prosper's own — a card an
+// opponent's Ragavan handed you, a warped creature recast — as
+// printed.
 //
-// Sandbox simplification, declared (Horn of Greed's): a land played
-// from exile is told apart from a land an effect returned from
-// exile by the engine's land-drop tally, and when a land already
-// came back from exile or a graveyard by an effect earlier in the
-// same turn the tally is ambiguous and the play makes no Treasure.
-// Weaker than printed, never stronger. A spell cast from exile is
-// always seen.
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:        "1e9b0fd6-5aae-401a-8df5-d94ce6442696",
 		Name:            "Prosper, Tome-Bound",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"A land played from exile makes no Treasure if another land already came back to the battlefield from exile or a graveyard earlier that turn."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"deathtouch"},
 		Triggered: []game.TriggeredAbility{
 			AtYourEndStep("Prosper, Tome-Bound — exile the top card of your library; you may play it until the end of your next turn", func(g *game.Game, item *game.StackItem) error {

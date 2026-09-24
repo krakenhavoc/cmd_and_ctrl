@@ -1292,9 +1292,9 @@ func TestB10CityOfTraitorsGoesWhenYouPlayALandButNotWhenYouFetchOne(t *testing.T
 	}
 }
 
-// Pins the declared gap: a land RETURNED from a graveyard reads as a
-// land play and costs the City. Flips when a land-play event lands.
-func TestB10CityOfTraitorsAlsoGoesWhenALandReturnsFromTheGraveyard(t *testing.T) {
+// #1326: a land RETURNED from a graveyard by an effect is not a play
+// (CR 305.4, Event.Played), and the City survives it.
+func TestB10CityOfTraitorsSurvivesALandReturnedFromTheGraveyard(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	city := pushCatalogPermanent(g, me.ID, "City of Traitors", "Land", b10CityOfTraitorsOracle, false)
@@ -1303,8 +1303,8 @@ func TestB10CityOfTraitorsAlsoGoesWhenALandReturnsFromTheGraveyard(t *testing.T)
 		_ = g.ReturnFromGraveyardUnderControlForEffect(forest, game.ZoneBattlefield, uuid.Nil)
 	})
 	passPriorityAroundTable(t, g)
-	if g.Battlefield.Contains(city) {
-		t.Error("declared gap: a land returned from the graveyard counts as a play (weaker than printed); if this now passes, close the caveat")
+	if !g.Battlefield.Contains(city) {
+		t.Error("a land returned from the graveyard by an effect is not a land play; the City should still be there")
 	}
 }
 
