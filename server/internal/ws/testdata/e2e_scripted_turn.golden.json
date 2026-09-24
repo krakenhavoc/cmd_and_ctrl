@@ -1,5 +1,6 @@
 {
   "seq": 4,
+  "generation": 0,
   "game": {
     "id": "\u003cuuid-001\u003e",
     "state": "active",

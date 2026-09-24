@@ -109,7 +109,8 @@
   // their improvisations over it, and an announcement nobody can see
   // is not an announcement. BotFeed renders those lines and nothing
   // else. A full chat panel, when it returns, subsumes it.
-  const { status, snapshot, lastSeq, lastError, log, chat, reconnectAttempt } = client;
+  const { status, snapshot, lastSeq, lastError, log, chat, reconnectAttempt, rewindNotice } =
+    client;
 
   $effect(() => {
     client.disconnect();
@@ -1636,6 +1637,29 @@
               </div>
             {/if}
 
+            {#if $rewindNotice}
+              <!-- #523: the table rewound (a restore-generation change
+                   whose seq went backwards from what this client had
+                   already rendered) rather than merely reconnected.
+                   A generation change with no rewind shows nothing —
+                   see ws.ts's dispatchFrame. -->
+              <div class="att toast rewind-notice" role="status" aria-live="polite">
+                <span class="att-label gold">
+                  <Icon name="undo" size={12} />
+                  restored
+                </span>
+                <span class="att-text">{$rewindNotice.message}</span>
+                <button
+                  type="button"
+                  class="ghost att-close"
+                  onclick={() => rewindNotice.set(null)}
+                  aria-label="dismiss"
+                >
+                  <Icon name="x" size={12} />
+                </button>
+              </div>
+            {/if}
+
             {#if manaOverride}
               <div class="att toast mana-override" role="alert" aria-live="polite">
                 <span class="att-label gold">mana</span>
@@ -2413,6 +2437,7 @@
   .combat-hint,
   .mana-override,
   .attack-tax-override,
+  .rewind-notice,
   .game-end {
     border-color: rgba(217, 180, 92, 0.45);
   }

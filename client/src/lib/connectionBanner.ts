@@ -36,6 +36,15 @@ export const OFFLINE_ERROR_CODE = "not_connected";
 export const STALE_BOARD_SENTENCE =
   "The board below is the last state the server sent, not live play.";
 
+// REWIND_NOTICE is the one sentence ws.ts shows when a restore
+// generation change actually moved the table backwards (#523, ADR
+// 0044 decision 5, the 2026-09-24 owner decision on #515). It is
+// shown ONLY when the rewind is real — a generation change alone
+// (the common case: most restores land at or after what a connected
+// client already had) says nothing. Exact copy is the owner's; do
+// not paraphrase it.
+export const REWIND_NOTICE = "The table was restored to an earlier point after a server restart";
+
 // FREEZE_WORDS is the vocabulary that belongs to #266 — the real
 // board-freeze bug, where the client throws mid-render and the table
 // stops updating with the socket perfectly healthy.

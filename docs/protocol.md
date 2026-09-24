@@ -625,6 +625,7 @@ diffs; new frame kinds can be added inside v0 additively.
   "id": "",
   "payload": {
     "seq": 42,
+    "generation": 0,
     "game": { "id": "...", "state": "active", "seats": [ ... ], "turn": { ... }, "battlefield": { ... }, "stack": { ... }, "exile": { ... } }
   }
 }
@@ -632,7 +633,8 @@ diffs; new frame kinds can be added inside v0 additively.
 
 | Field | Type | Required | Notes |
 |---|---|---|---|
-| `payload.seq` | uint64 | yes | Per-room monotonically **non-decreasing** sequence number. Clients use it to detect dropped or out-of-order frames. `seq` is bumped only on successful `action` dispatches (see `Room.Apply` in the server); the initial snapshot a joining client receives reuses the current (not-yet-bumped) value, so a new joiner during an action race may briefly see two consecutive snapshots with identical `seq` — both carrying the same state. Clients must treat snapshots idempotently: duplicate `seq` always means "same state, re-apply is a no-op". |
+| `payload.seq` | uint64 | yes | Per-room sequence number, monotonically **non-decreasing only within one `generation`** (#523, [ADR 0044](decisions/0044-surviving-a-deploy.md) decision 5 — see [Connection lifecycle (v0)](#connection-lifecycle-v0) below for the full rewind story). Clients use it, together with `generation`, to detect dropped or out-of-order frames. `seq` is bumped only on successful `action` dispatches (see `Room.Apply` in the server); the initial snapshot a joining client receives reuses the current (not-yet-bumped) value, so a new joiner during an action race may briefly see two consecutive snapshots with identical `seq` — both carrying the same state. Clients must treat snapshots idempotently: duplicate `seq` always means "same state, re-apply is a no-op". |
+| `payload.generation` | uint64 | yes | This room's restore generation: 0 for a room that has never been rebuilt from disk, incremented by one every time a server restart restores it from its last written restore point. A change from the generation of the last snapshot a client rendered means the server rebuilt this room from an earlier point — accept and render the frame regardless of its `seq`, and discard whatever ordering state was being tracked for the old generation. |
 | `payload.game` | object | yes | Complete `GameView`. See the schema below. |
 
 The `id` field on a snapshot is always empty — snapshots are not correlated
@@ -791,28 +793,105 @@ state; no partial merge is needed.
 
 ## Connection lifecycle (v0)
 
-1. Client opens WebSocket to `/ws`.
-2. Server accepts, optionally logs client IP.
-3. Client and server exchange frames. No authentication at v0 (S04 adds it).
-4. Either side may close at any time. Server closes with a standard close
-   code; client handles reconnection itself.
+1. Client opens WebSocket to `/ws`, authenticated as described under
+   [Connection lifecycle (S04)](#connection-lifecycle-s04) above.
+2. Server accepts, stages the initial `snapshot` frame, and admits the
+   client to the room's broadcast set.
+3. Client and server exchange `action` / `snapshot` / `chat` / `ping`
+   frames until either side closes.
+4. The socket closes. What happens next depends on the close CODE, not
+   on whether the closure was "expected" — see the table below.
 
-**Client reconnect states (#1475).** This section predates the S33+
-reconnect ladder ([ADR 0044](decisions/0044-surviving-a-deploy.md)) and
-is due a fuller rewrite alongside #523's rewind/generation work — kept
-minimal here on purpose. The client's `ConnectionStatus` adds a fifth,
-terminal state to the four above: after a run of failed dials (default
-3, `DEAD_SESSION_CHECK_AFTER_FAILURES` in `client/src/lib/ws.ts`), the
-client asks `GET /me` — the cheapest authenticated route, echoing the
-principal — whether the session it is holding is still good. A
-definite 401 moves it to `session_ended` and the backoff ladder stops
-for good; anything else (a 5xx, a network failure, a timeout) is
-treated as "still trying" and the ladder is unaffected, because a
-server that is only restarting must never be mistaken for a revoked
-session. The connection banner renders `session_ended` as "Your
-session ended — sign in again", linking to Login, or to My games
-(`GET /me/games`, `POST /me/games/{id}/session`) for a signed-in
-identity.
+This section was a stub from before S04 added authentication, restated
+here now that [ADR 0044](decisions/0044-surviving-a-deploy.md) (S33,
+"surviving a deploy") gave the close path, the reconnect ladder, and
+the rewind case above real behaviour to describe.
+
+### Close codes: which ones redial
+
+| Code | Sender | Meaning | Client behaviour |
+|---|---|---|---|
+| 1000 (normal closure) | `hub.EvictGame` ("game deleted"), or a session revocation ("session revoked" — [ADR 0051](decisions/0051-user-database.md) decision 6) | The game is gone, or this credential no longer works. Nothing on the other end of a redial. | **Terminal.** `isTerminalClose` (`client/src/lib/ws.ts`) is true only for 1000. The client stops and renders an ended state; the backoff ladder never starts. |
+| 1001 (going away) | `hub.Shutdown`, on every `systemctl restart` | The process is restarting. [ADR 0041](decisions/0041-game-persistence.md) persists and restores the room across it — the game is emphatically not gone. | **Reconnect.** Joins the same ladder as 1006. |
+| 1006 (abnormal closure) | the browser, for any closure with no close frame — a network blip, a crash, or (from the browser's point of view) a rejected upgrade | Unknown cause; may or may not resolve itself. | **Reconnect.** |
+
+1001 and 1006 used to be indistinguishable in practice: `hub.Shutdown`
+wrote the close frame and then called `Close()` immediately after, so
+whether the browser observed 1001 or 1006 depended on a race between
+that write reaching the peer and the FIN that followed it — the same
+shutdown binary could produce either code from one deploy to the next.
+`closeAndDrop` (`server/internal/ws/hub.go`, #518) now waits up to
+`closeGracePeriod` (250ms) for the write to actually leave, or for the
+peer's own close response to land, before tearing the connection down
+— so a deploy is reliably 1001.
+
+### The reconnect ladder
+
+A close that is not terminal moves `ConnectionStatus` to `reconnecting`
+and schedules a redial. `reconnectDelayMs(attempt)` (exported from
+`client/src/lib/ws.ts`) is exponential backoff with half-jitter,
+doubling from a `RECONNECT_BASE_MS` (500ms) nominal delay up to a
+`RECONNECT_CAP_MS` ceiling (30s) — attempt *n*'s delay lands uniformly
+in `[nominal/2, nominal]` where `nominal = min(cap, base * 2^n)`. There
+is no cap on the number of *attempts*; the delay itself is what caps
+the ladder's growth. Each socket open resets `reconnectAttempt` (the
+store a "reconnecting (attempt N)" banner reads) back to 0.
+
+**The dead-session check (#1475).** After `DEAD_SESSION_CHECK_AFTER_FAILURES`
+(3) consecutive failed dials in one run, the client asks `GET /me` —
+the cheapest authenticated route, echoing the principal — whether the
+session it is holding is still good, once per run of failures. A
+definite 401 moves `ConnectionStatus` to `session_ended`, a fifth and
+final state, and the ladder stops for good: nothing further will make
+a dead credential valid. Anything else the probe can report — a 5xx, a
+network failure, a timeout — is treated as "still trying" and the
+ladder is unaffected, because a server that is only restarting must
+never be mistaken for a revoked session. The connection banner renders
+`session_ended` as "Your session ended — sign in again", linking to
+Login, or to My games (`GET /me/games`, `POST /me/games/{id}/session`)
+for a signed-in identity.
+
+### `seq` is non-decreasing only WITHIN a generation, and a change means rewind
+
+Restated from the `snapshot` frame's field table above, because it is
+part of the connection contract, not just a field note: `payload.seq`
+is guaranteed monotonically non-decreasing only *within one restore
+generation* (`payload.generation`). [ADR 0041](decisions/0041-game-persistence.md)
+persists a room's state so it survives `systemctl restart`, but a
+restore point is only ever written from a state with no live Go
+continuations — a game that ran on through states that were never
+restorable rewinds, on restart, to the last state that could be
+rebuilt exactly. That restore point's `seq` can be — and after any
+nontrivial game, usually is — lower than the `seq` a connected client
+had already rendered. `payload.generation` names this: 0 for a room
+that has never been rebuilt from disk, and incremented by one every
+time it is. See [ADR 0044](decisions/0044-surviving-a-deploy.md)
+decision 5.
+
+A client tracks the generation of the last snapshot it rendered.
+Within an unchanged generation, the ordinary guard applies: a `seq`
+lower than the highest one already seen is a dropped or out-of-order
+frame and is ignored. A **generation change is a different case
+entirely** and bypasses that guard outright — the frame is accepted
+and rendered regardless of its `seq`, because the server is not
+reporting disorder, it is reporting that this room was just rebuilt
+from an earlier point on purpose. The client discards whatever it was
+tracking (its seq watermark, the rendered snapshot) and starts fresh
+from the new frame.
+
+**The rewind toast.** A generation change is not itself shown to the
+player — most restores land at or after the last thing a connected
+client had already rendered (a clean shutdown, or a game that never
+walked into an unrestorable continuation), and that is not a rewind
+worth mentioning. The toast fires only when the generation change
+*and* the new `seq` is lower than the highest `seq` this client had
+already rendered — a real rewind, visible cards or actions
+disappearing from the board — with the exact copy:
+
+> The table was restored to an earlier point after a server restart
+
+See `client/src/lib/ws.ts` (`dispatchFrame`'s `"snapshot"` case) and
+`client/src/lib/connectionBanner.ts` (`REWIND_NOTICE`).
 
 ---
 
@@ -827,9 +906,6 @@ bump unless they turn out to be wire-breaking:
   contents. At S03 every client sees every card face-up.
 - **Incremental deltas** — S03's choice is full-snapshot broadcast. Deltas
   can arrive as a new frame kind without breaking v0.
-- **Reconnection and session resume** — crash-recovery dumps let a
-  restarted server reload state, but live client sessions drop on
-  disconnect and must be re-established.
 - **Spectator mode** (S11) — read-only connections.
 
 ### Auto-tap preview (S15)
