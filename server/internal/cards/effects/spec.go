@@ -594,6 +594,22 @@ type Spec struct {
 	// nearly every card.
 	BlockRules []game.BlockRule
 
+	// AttackLimits are the CR 508.1c count limits on an attack
+	// declaration this permanent imposes while it is on the
+	// battlefield: "no more than one creature can attack each combat"
+	// (Silent Arbiter, Dueling Grounds), "no more than two creatures
+	// can attack you each combat" (Crawlspace). #1507, ADR 0045
+	// Decision 44.
+	//
+	// Build them with NoMoreThanNCanAttackEachCombat /
+	// NoMoreThanNCanAttackYouEachCombat in attack_limits.go. The
+	// "you" is structural — the limit protects this permanent's
+	// controller — so a card file cannot limit attacks on anybody
+	// else. The block half of the same printed line ("no more than one
+	// creature can block each combat") is a BlockRule, built with
+	// NoMoreThanNCanBlockEachCombat. Nil for nearly every card.
+	AttackLimits []game.AttackLimit
+
 	// CastableZones is the S29 "you may cast this card from
 	// somewhere other than your hand" declaration (CR 601.2, and
 	// every keyword in CR 702 that grants an alternative cast
