@@ -678,6 +678,8 @@ func cloneStackItem(s *StackItem) *StackItem {
 		// snapshot is safe — an undo that restores this item
 		// resolves it against the restored game.
 		Effect:     s.Effect,
+		Body:       s.Body,
+		Params:     cloneEffectParams(s.Params),
 		Ordered:    s.Ordered,
 		Commutes:   s.Commutes,
 		targetSpec: s.targetSpec,

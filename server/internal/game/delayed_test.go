@@ -37,10 +37,10 @@ func scheduleProbe(g *Game, at Step, controller uuid.UUID, fired *int) uuid.UUID
 			Controller: controller,
 			Label:      "probe — delayed trigger",
 			At:         at,
-			Effect: func(_ *Game, _ *StackItem) error {
+			Body: testBody(func(_ *Game, _ *StackItem) error {
 				*fired++
 				return nil
-			},
+			}),
 		})
 	})
 	return id
@@ -162,12 +162,12 @@ func TestDelayedTriggerStampsPayloadOntoTheStackItem(t *testing.T) {
 			Label:      "probe — payload",
 			At:         StepEnd,
 			Cards:      []uuid.UUID{cardID},
-			Effect: func(_ *Game, item *StackItem) error {
+			Body: testBody(func(_ *Game, item *StackItem) error {
 				for _, ref := range item.Targets {
 					seen = append(seen, ref.ID)
 				}
 				return nil
-			},
+			}),
 		})
 	})
 
@@ -231,7 +231,7 @@ func TestScheduleDelayedTriggerRejectsMalformed(t *testing.T) {
 			t.Errorf("queued a trigger with no Effect: %v", id)
 		}
 		if id := g.ScheduleDelayedTriggerForEffect(DelayedTrigger{
-			Effect: func(_ *Game, _ *StackItem) error { return nil },
+			Body: testBody(func(_ *Game, _ *StackItem) error { return nil }),
 		}); id != uuid.Nil {
 			t.Errorf("queued a trigger with no step: %v", id)
 		}

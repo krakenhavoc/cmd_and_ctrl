@@ -193,7 +193,32 @@ var carriedFixture = map[string]any{
 	// A mod's kind is a closed vocabulary, and restore REFUSES a kind
 	// it does not know (ErrUnknownEffectKey, ADR 0041 P4) — so an
 	// invented one would fail the restore, not test the carry.
-	"ScopedEffect.Mods": []Mod{AddSubtypesMod("drift-ScopedEffect.Mods"), ModifyPTMod(4, 2)},
+	// Effect keys are a closed, REGISTERED set (#1497): restore refuses
+	// a key it has no body or condition for, so an invented one would
+	// fail the restore rather than test the carry.
+	"DelayedTrigger.Body": carriedTestBodyKey,
+	// The two containers holding keyed elements: a generated element
+	// would carry an invented key and be refused.
+	"Game.DelayedTriggers": func(g *Game) any {
+		return []*DelayedTrigger{{
+			ID: uuid.NewSHA1(uuid.Nil, []byte("Game.DelayedTriggers")), Controller: g.Seats[0].ID,
+			Label: "drift-Game.DelayedTriggers", At: StepEnd, CreatedSeq: 4848,
+			Body: carriedTestBodyKey, Params: EffectParams{Amount: 48},
+		}}
+	},
+	"Game.PendingTriggers": func(g *Game) any {
+		return []*StackItem{{
+			ID: uuid.NewSHA1(uuid.Nil, []byte("Game.PendingTriggers")), Kind: StackItemTriggered,
+			Controller: g.Seats[0].ID, Label: "drift-Game.PendingTriggers", Seq: 4949,
+			// No Body: a keyed item comes back with an Effect derived
+			// from it, which a value comparison cannot see past. Its
+			// Body and Params rows are probed on the StackItem probe.
+			Params: EffectParams{Amount: 49},
+		}}
+	},
+	"DelayedTrigger.Condition": carriedTestConditionKey,
+	"StackItem.Body":           carriedTestBodyKey,
+	"ScopedEffect.Mods":        []Mod{AddSubtypesMod("drift-ScopedEffect.Mods"), ModifyPTMod(4, 2)},
 	// A duration's kind and condition are closed sets too (#1497
 	// review): restore refuses an unknown one, so an invented 4242
 	// would fail the restore rather than test the carry. Every other
@@ -718,3 +743,10 @@ func render(v reflect.Value) string {
 	}
 	return fmt.Sprintf("%v", v.Interface())
 }
+
+// The keys the carried probes use for the effect-key fields: registered
+// once, in the test namespace the ledger ignores.
+var (
+	carriedTestBodyKey      = testBody(func(*Game, *StackItem) error { return nil })
+	carriedTestConditionKey = testCondition(func(Event, *DelayedTrigger, *Game) bool { return false })
+)

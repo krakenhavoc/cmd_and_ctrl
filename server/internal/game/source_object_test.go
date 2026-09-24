@@ -374,7 +374,7 @@ func TestDelayedAndReflexiveTriggersInheritTheCreatorsSourceObject(t *testing.T)
 		defer g.beginResolvingLocked(nil)
 		id := g.ScheduleDelayedTriggerForEffect(DelayedTrigger{
 			Controller: me.ID, SourceCardID: src, Label: "later", At: StepEnd,
-			Effect: func(*Game, *StackItem) error { return nil },
+			Body: testBody(func(*Game, *StackItem) error { return nil }),
 		})
 		for _, d := range g.DelayedTriggers {
 			if d.ID == id {
@@ -409,7 +409,7 @@ func TestDelayedAndReflexiveTriggersInheritTheCreatorsSourceObject(t *testing.T)
 	g.WithWriteLock(func() {
 		id := g.ScheduleDelayedTriggerForEffect(DelayedTrigger{
 			Controller: me.ID, SourceCardID: src, Label: "later", At: StepEnd,
-			Effect: func(*Game, *StackItem) error { return nil },
+			Body: testBody(func(*Game, *StackItem) error { return nil }),
 		})
 		for _, d := range g.DelayedTriggers {
 			if d.ID == id {
@@ -438,7 +438,7 @@ func TestSourceObjectRidesCloneAndSnapshot(t *testing.T) {
 		onStack.SourceObject = first
 		dtID = g.ScheduleDelayedTriggerForEffect(DelayedTrigger{
 			Controller: me.ID, SourceCardID: src, Label: "later", At: StepEnd,
-			Effect: func(*Game, *StackItem) error { return nil },
+			Body: testBody(func(*Game, *StackItem) error { return nil }),
 		})
 	})
 	flickerRaw(t, g, me.ID, src)

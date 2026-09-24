@@ -151,7 +151,7 @@ func saheeliHastyArtifactCopy(g *game.Game, item *game.StackItem) error {
 		Controller: item.Controller,
 		Label:      "Saheeli Rai — exile the copy",
 		Cards:      made,
-		Effect:     b06ExileListedCards,
+		Body:       exileListedCardsBody,
 	}.Apply(ctx)
 }
 
