@@ -3918,8 +3918,12 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// Hand and the command zone never carry the bit: every card in
 	// them is a cast candidate and an always-true flag would be noise
 	// the client had to ignore. Exile carries it since #1389, for the
-	// castable-from-exile strip, with a land answered by the land-play
-	// rule rather than the cast gate (exileCastableNow).
+	// castable-from-exile strip.
+	//
+	// #1407: in EVERY zone that carries it, a LAND is answered by the
+	// land-play rule rather than by the spell rules (castableNow). A
+	// land is played, not cast (CR 305.1, CR 116.2a): the land drop
+	// is part of its window and no timing statement reaches it.
 	//
 	// #1195: and the THIRD input, game.CastTimingOpenLocked — the one
 	// CR 307.1 read CastSpell and the bot enumerator also call. Until
@@ -3933,15 +3937,14 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// out of a rule it reimplemented.
 	switch kind {
 	case game.ZoneGraveyard, game.ZoneLibrary:
-		out.CastableHere = out.CantCast == "" && len(offers) > 0 &&
-			haveLive && g.CastTimingOpenLocked(caster, live, kind, grant)
+		out.CastableHere = haveLive && castableNow(g, caster, live, kind, grant, out.CantCast, offers)
 	case game.ZoneExile:
 		// #1389: exile joins them, for the castable-from-exile strip.
 		// A seat reaches this only through stampGrantedPermissions,
 		// which asks the engine for a LIVE permission first, so warp's
 		// and foretell's "on a later turn" never gets here early.
 		if haveLive {
-			out.CastableHere = exileCastableNow(g, caster, live, grant, out.CantCast, offers)
+			out.CastableHere = castableNow(g, caster, live, kind, grant, out.CantCast, offers)
 			out.CastPrices = viewOfCastPrices(g, caster, live, offers)
 		}
 	}
@@ -3974,20 +3977,37 @@ func phyrexianSymbolsIn(costStr string) int {
 	return cost.PhyrexianSymbols()
 }
 
-// exileCastableNow is `castable_here` for a card in exile (#1389):
-// the graveyard's three inputs — no cast gate refuses it, a price is
-// claimable, and game.CastTimingOpenLocked says the window is open —
-// with a LAND answered by the land rule instead. A land is played,
-// not cast (CR 305.1): a cast-only grant (Ragavan) strands it, and a
-// play grant (Breeches) opens it only when CastSpell's land branch
-// would accept it.
+// castableNow is `castable_here` for a card in a graveyard, on a
+// library top or in exile: no cast gate refuses it, a price is
+// claimable, and game.CastTimingOpenLocked says the window is open.
+//
+// A LAND is answered by the land-play rule instead (#1389 for exile,
+// #1407 for the graveyard and the library top). Playing a land is a
+// special action, not a cast (CR 305.1, CR 116.2a), so the inputs are
+// the ones CastSpell's land branch refuses with. Whether the zone is
+// open at all is the caller's gate: a graveyard or library card
+// reaches castStampsFor only under a permission or its own text, and
+// an exiled one only under a live permission.
+//
+//   - a cast-only grant strands it (Ragavan, Realmwalker) —
+//     ErrNoPlayPermission;
+//   - CR 305.1's window and a land drop left (CR 305.2), through
+//     game.LandPlayOpenForEffect — never CastTimingOpenLocked, whose
+//     timing statements (an Orrery, Dosan) are written about casting
+//     and must not reach a land. The drop is the half the spell rules
+//     missed: a land a Courser opens stayed lit after the turn's land
+//     was played, and the button was refused with
+//     ErrLandDropUnavailable.
 //
 // Caller must hold g.mu.
-func exileCastableNow(g *game.Game, caster uuid.UUID, card game.Card, grant *game.CastPermission, cantCast string, offers []*game.AlternativeCost) bool {
+func castableNow(g *game.Game, caster uuid.UUID, card game.Card, kind game.ZoneKind, grant *game.CastPermission, cantCast string, offers []*game.AlternativeCost) bool {
 	if card.IsLand() {
-		return grant != nil && !grant.CastOnly && g.LandPlayOpenForEffect(caster)
+		if grant != nil && grant.CastOnly {
+			return false
+		}
+		return g.LandPlayOpenForEffect(caster)
 	}
-	return cantCast == "" && len(offers) > 0 && g.CastTimingOpenLocked(caster, card, game.ZoneExile, grant)
+	return cantCast == "" && len(offers) > 0 && g.CastTimingOpenLocked(caster, card, kind, grant)
 }
 
 // viewOfCastPrices prices every offer a cast out of exile may claim,
