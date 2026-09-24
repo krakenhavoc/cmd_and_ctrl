@@ -213,9 +213,7 @@ func b43GrantToAttachedWhen(when func(target *game.Card, g *game.Game, source *g
 		AppliesTo: when,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			for _, kw := range granted {
-				if !keywordSliceContains(c.Abilities, kw) {
-					c.Abilities = append(c.Abilities, kw)
-				}
+				c.Abilities = game.AppendKeywordAbility(c.Abilities, kw)
 			}
 		},
 	}

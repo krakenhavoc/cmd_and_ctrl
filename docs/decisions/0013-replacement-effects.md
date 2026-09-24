@@ -3662,7 +3662,8 @@ discard-this, exile-this).
   the first answer riding into the second.
 - The payment that follows is the ordinary indivisible one. The discard,
   return and exile moves keep `MustSettleNow`; the sacrifice and
-  alternative-cost moves keep the posture they had. Each commander's
+  alternative-cost moves keep the posture they had. *(Superseded for
+  non-commander replacement questions by §5ag.)* Each commander's
   move carries its owner's answer on `zoneRoute.commanderAnswer` onto
   `ReplacementEvent.commanderAnswer`, and the gather reads it: a "no"
   keeps the CR 903.9 built-in from being gathered; a "yes" gathers it as
@@ -3735,6 +3736,51 @@ decline and the payment goes ahead.
   payment half way, with the double-spend exposure described above.
   The commander no longer does. Filed as
   [#1420](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1420).
+  **Closed by §5ag.**
+
+### 5ag. Amendment, 2026-09-24: every cost move settles its replacement window before the announcement commits
+
+**Issue [#1420](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1420).**
+Trackers [#882](https://github.com/krakenhavoc/cmd_and_ctrl/issues/882)
+(replacements) and [#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887)
+(mana and costs). Closes §5af's remaining non-commander replacement
+question.
+
+#### Decision
+
+The sacrifice and alternative-cost card payers set
+`zoneRoute.MustSettleNow`, matching every other card moved to pay a cost.
+The battlefield-exit bridge carries that bit from the sacrifice route to
+its `ReplacementEvent`; the alternative-cost payer sets it on each exile,
+return or escape route directly.
+
+This is the existing CR 601.2h / 602.2b policy, not a new default. A cost is
+one indivisible payment step: it cannot leave a spell or ability on the
+stack while a CR 616 ordering prompt holds the paying card in its old zone.
+When multiple mandatory replacements apply, their gathered order stands
+and the apply-loop re-gathers after each one, as every other settle-now
+cost already does. A replacement that asks its own optional question is
+skipped in the weaker direction under §5b's existing rule. CR 903.9 is
+unchanged: §5af asks the commander's owner before payment and carries that
+answer onto the settle-now move.
+
+Ordinary effect-driven and manual sacrifices remain prompt-capable. Only
+the `sacrificeAnsweredLocked` cost path sets the bit; the shared
+`sacrificePermanentLocked` effect path does not.
+
+#### Proof
+
+`cost_payment_settle_test.go` opens two genuinely different mandatory
+replacement effects over each of the two formerly pausing routes:
+
+- an activated ability paid by sacrificing a creature settles the move,
+  creates one stack item, queues no ordering prompt, and cannot spend that
+  creature again;
+- a spell paid by pitching a card to an alternative cost settles the move
+  before returning from `CastSpell`, with the spell on the stack and no
+  ordering prompt.
+
+No wire or client shape changes.
 
 #### Addendum, 2026-09-24: a card an EFFECT has paused cannot pay ([#1445](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1445))
 

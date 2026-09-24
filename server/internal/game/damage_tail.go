@@ -166,6 +166,27 @@ type damageTail struct {
 	// have died to blocker damage before a paused event resumes.
 	commanderSource uuid.UUID
 
+	// result is what the source's infect, wither and toxic make of
+	// its damage (ADR 0056 Decision 2, CR 120.3b / 120.3d / 120.3g):
+	// -1/-1 counters on a creature, poison on a player, and toxic's
+	// extra poison on combat damage to a player. Snapshotted with
+	// deathtouch and lifelink, by the same readers, for the same
+	// died-before-the-prompt-was-answered reason.
+	result DamageResultSource
+
+	// controller is the source's controller: the player CR 120.3b and
+	// CR 120.3d say PUTS the -1/-1 counters and GIVES the poison. It
+	// rides the counter event as CounterPlacer, which is what
+	// Vorinclex, Lae'zel and Doubling Season read.
+	//
+	// Separate from actor on purpose (ADR 0056 Decision 2): actor is
+	// what EventDealDamage is attributed to, and the non-combat paths
+	// have always left it unset — a log decision this does not change.
+	// The placer is a rules fact every path needs. uuid.Nil means the
+	// source's controller is unknown (a source the engine cannot see),
+	// and a "you put" replacement then falls back to its heuristic.
+	controller uuid.UUID
+
 	// then is the CALLER's half of the tail (#807): the rest of the
 	// effect that asked for the damage, run with the amount that
 	// ACTUALLY landed once the CR 614 window has settled it. The exact
@@ -212,14 +233,61 @@ func (g *Game) combatDamageTailLocked(kind damageTailKind, sourceID uuid.UUID, s
 		return t
 	}
 	t.actor = src.Controller
-	t.deathtouch = HasKeyword(src, "deathtouch")
-	if HasKeyword(src, "lifelink") {
-		t.lifelinkTo = src.Controller
-	}
+	t.adoptSourceTraits(damageSourceTraitsOfCard(src), src.Controller)
 	if src.IsCommander {
 		t.commanderSource = src.InstanceID
 	}
 	return t
+}
+
+// damageSourceTraits is every keyword of a damage source the tail
+// snapshots: the two riders (CR 702.2b deathtouch, CR 702.15b
+// lifelink) and the three results (ADR 0056). One struct, filled by
+// one of two readers below that differ only in what they are handed —
+// a card, or a departed object's last-known ability list — so the
+// keywords can never be read one way for the riders and another way
+// for the results (the #711 lesson: two readers drift).
+type damageSourceTraits struct {
+	deathtouch bool
+	lifelink   bool
+	result     DamageResultSource
+}
+
+// damageSourceTraitsOfCard reads the traits off a source card in
+// whatever zone holds it: Effective() on the battlefield, and off it
+// the printed keywords (HasKeyword's and ToxicTotal's own fallback),
+// which is CR 702.80c / 702.90e's "from any zone" for a spell on the
+// stack. nil card has none.
+func damageSourceTraitsOfCard(c *Card) damageSourceTraits {
+	if c == nil {
+		return damageSourceTraits{}
+	}
+	return damageSourceTraits{
+		deathtouch: HasKeyword(c, "deathtouch"),
+		lifelink:   HasKeyword(c, "lifelink"),
+		result:     SourceDamageResultTraits(c),
+	}
+}
+
+// damageSourceTraitsOfAbilities reads the same traits off a departed
+// object's last-known ability list (#1396, CR 608.2h).
+func damageSourceTraitsOfAbilities(abilities []string) damageSourceTraits {
+	return damageSourceTraits{
+		deathtouch: slices.Contains(abilities, "deathtouch"),
+		lifelink:   slices.Contains(abilities, "lifelink"),
+		result:     DamageResultTraitsOfAbilities(abilities),
+	}
+}
+
+// adoptSourceTraits copies a source's traits onto the tail, crediting
+// lifelink to — and placing result counters as — `controller`.
+func (t *damageTail) adoptSourceTraits(tr damageSourceTraits, controller uuid.UUID) {
+	t.deathtouch = tr.deathtouch
+	if tr.lifelink {
+		t.lifelinkTo = controller
+	}
+	t.result = tr.result
+	t.controller = controller
 }
 
 // effectDamageTailLocked snapshots a permanent source, live or as it
@@ -240,11 +308,12 @@ func (g *Game) combatDamageTailLocked(kind damageTailKind, sourceID uuid.UUID, s
 // Soul's Fire and Chandra's Ignition all say the damage carries the
 // creature's deathtouch and lifelink "as printed"); now they are right.
 //
-// A source that is not and never was a battlefield permanent — a
-// spell, an emblem, uuid.Nil — has no permanent characteristics to
-// read and carries neither keyword. That is what "a source with
-// lifelink" means, and it is why Lightning Bolt still just deals 3.
-// A permanent that HAS left is the #1396 paragraph below.
+// A source that is not and never was a battlefield permanent — an
+// emblem, uuid.Nil — has no characteristics to read and carries no
+// keyword. A SPELL is read off the stack (ADR 0056 Decision 2 step 2,
+// #748): its own printed keywords, which is how Puncture Blast's
+// wither works and why Lightning Bolt, which prints none, still just
+// deals 3. A permanent that HAS left is the #1396 paragraph below.
 //
 // Unlike combatDamageTailLocked this sets no actor and no commander
 // source. The non-combat paths have never attributed their
@@ -286,14 +355,25 @@ func (g *Game) effectDamageTailLocked(kind damageTailKind, sourceID uuid.UUID, o
 	// (#1417).
 	t.sourceLKI = g.damageSourceLKILocked(sourceID)
 	if src := findBattlefieldCard(g, sourceID); src != nil && (obj == nil || src.ObjectEpoch == obj.Epoch) {
-		t.deathtouch = HasKeyword(src, "deathtouch")
-		if HasKeyword(src, "lifelink") {
-			t.lifelinkTo = src.Controller
-		}
+		t.adoptSourceTraits(damageSourceTraitsOfCard(src), src.Controller)
 		return t
 	}
 	rec, ok := g.departedDamageSourceLocked(sourceID, obj)
 	if !ok {
+		// ADR 0056 Decision 2 step 2, CR 702.80c / 702.90e: infect and
+		// wither work from any zone, and a SPELL deals its damage from
+		// the stack — Puncture Blast is an instant with wither. Its
+		// printed keywords are read off the card as it is on the stack
+		// (or as it last was there, while it resolves), and the placer
+		// is the spell's controller. Deathtouch and lifelink get the
+		// same read (CR 702.2d, 702.15d): one reader for every source
+		// keyword. A named OBJECT is a permanent the caller means, never
+		// a spell, so obj skips this.
+		if obj == nil {
+			if card, item, ok := g.stackSpellLocked(sourceID); ok && item != nil {
+				t.adoptSourceTraits(damageSourceTraitsOfCard(&card), item.Controller)
+			}
+		}
 		return t
 	}
 	// #1417, CR 608.2h: the characteristics CR 702.16e protection and
@@ -308,11 +388,9 @@ func (g *Game) effectDamageTailLocked(kind damageTailKind, sourceID uuid.UUID, o
 	t.sourceLKI = lastKnownSourceCharacteristics(rec)
 	// The record's Characteristic is Effective() as it last stood, so
 	// its ability tokens are exactly what HasKeyword read off the live
-	// card.
-	t.deathtouch = slices.Contains(rec.Characteristic.Abilities, "deathtouch")
-	if slices.Contains(rec.Characteristic.Abilities, "lifelink") {
-		t.lifelinkTo = rec.Controller
-	}
+	// card — infect, wither and toxic included, which is the reader
+	// ADR 0056's 2026-09-24 amendment said they would join.
+	t.adoptSourceTraits(damageSourceTraitsOfAbilities(rec.Characteristic.Abilities), rec.Controller)
 	return t
 }
 
@@ -406,6 +484,16 @@ func damageTailFromFrame(kind damageTailKind, frame *DamageAssignmentFrame) *dam
 	if frame.SourceIsCommander {
 		t.commanderSource = frame.AttackerID
 	}
+	// ADR 0056 Decision 2: the frame caches the results for the same
+	// reason it caches lifelink. A frame restored from a snapshot
+	// written before these fields existed has zeros and resumes as
+	// ordinary damage — the fallback ADR 0053 chose for CombatStep.
+	t.result = DamageResultSource{
+		Infect:     frame.SourceInfect,
+		Wither:     frame.SourceWither,
+		ToxicTotal: frame.SourceToxic,
+	}
+	t.controller = frame.SourceController
 	return t
 }
 
@@ -624,10 +712,20 @@ func (g *Game) applyResolvedDamageToPlayerLocked(ev *ReplacementEvent, t *damage
 	// Emperion's printed ruling, and the reason this is a branch here
 	// rather than an arm of the life built-in: damage does not fire
 	// the CR 614 life window at all, so the rule has two consumers.
-	loseLife := !g.playerLifeTotalCantChangeLocked(p)
+	//
+	// ADR 0056 Decision 4, CR 120.3a / 120.3b / 120.3g: infect turns
+	// the life loss into that much poison, and toxic adds its total in
+	// poison on COMBAT damage, on top of the life loss. Everything else
+	// about the damage is unchanged — the event, the CR 903.10a tally
+	// (a commander with infect runs both clocks), lifelink crediting
+	// the damage amount — because the damage is still dealt; only its
+	// result differs. Infect damage changes no life total, so no
+	// "whenever a player loses life" trigger sees it.
+	poison, lifeLoss := t.result.DamageToPlayer(ev.DamageAmount, t.combat)
+	loseLife := lifeLoss > 0 && !g.playerLifeTotalCantChangeLocked(p)
 	if t.combat {
 		if loseLife {
-			p.ChangeLife(-ev.DamageAmount)
+			p.ChangeLife(-lifeLoss)
 			g.invalidateLayersForLifeChangeLocked()
 		}
 		// CR 903.10a: combat damage from a commander accrues toward
@@ -639,10 +737,14 @@ func (g *Game) applyResolvedDamageToPlayerLocked(ev *ReplacementEvent, t *damage
 	} else {
 		g.emitDealDamageLocked(ev, t)
 		if loseLife {
-			p.ChangeLife(-ev.DamageAmount)
+			p.ChangeLife(-lifeLoss)
 			g.invalidateLayersForLifeChangeLocked()
 		}
 	}
+	// ONE placement for infect and toxic together (ADR 0056 Decision
+	// 4): CR 120.4c processes a damage event into its results in one
+	// step, so a halving replacement rounds the sum once.
+	g.placeDamageResultCountersLocked(ev, t, CounterPoison, poison)
 	g.creditLifelinkLocked(t, ev.DamageSource, ev.DamageAmount)
 	return ev.DamageAmount, nil
 }
@@ -662,12 +764,88 @@ func (g *Game) applyResolvedDamageToPermanentLocked(ev *ReplacementEvent, t *dam
 		// "whenever ~ is dealt damage" trigger must not see it.
 		return 0, nil
 	}
-	if !g.applyDamageToPermanentLocked(ev.DamageTarget, ev.DamageAmount, t.deathtouch) {
+	ok, minusOne := g.applyDamageToPermanentLocked(ev.DamageTarget, ev.DamageAmount, t)
+	if !ok {
 		return 0, ErrCardNotFound
 	}
 	g.emitDealDamageLocked(ev, t)
+	// ADR 0056 Decision 3, CR 120.3d: damage to a creature from a
+	// source with infect or wither is -1/-1 counters rather than marked
+	// damage. They are a RESULT, not a write, so they go through the
+	// CR 614 counter window as a separate event (the Vizier of
+	// Remedies ruling). The damage event does not wait on them: the
+	// continuation below is told the DAMAGE amount, which the Solemnity
+	// ruling says was dealt however many counters land.
+	g.placeDamageResultCountersLocked(ev, t, CounterMinusOne, minusOne)
 	g.creditLifelinkLocked(t, ev.DamageSource, ev.DamageAmount)
 	return ev.DamageAmount, nil
+}
+
+// placeDamageResultCountersLocked puts the counters a settled damage
+// event's RESULT calls for — -1/-1 counters on a creature (infect,
+// wither; CR 120.3d) or poison on a player (infect, toxic; CR 120.3b,
+// 120.3g) — through the CR 614 counter window, placed by the source's
+// controller (CR 120.3b / 120.3d) and flagged as combat damage when it
+// is, so Doubling Season's "an effect" leaves it alone.
+//
+// It is a NEW, separate replacement event, not a nested one (ADR 0056
+// Decision 3): the damage event's own window has already settled, so
+// nothing about the damage rides it. When two different counter
+// replacements apply (a Winding Constrictor beside a Vizier of
+// Remedies), it pauses on its own CR 616 prompt and lands from its own
+// resume, which sweeps state-based actions at the answer — and the
+// damage tail carries on without it, because nothing the tail still
+// owes (the event, lifelink, the caller's continuation) depends on how
+// many counters land.
+//
+// The target is read off the damage event: a player when the event's
+// tail is a player tail, the permanent otherwise. n <= 0 places
+// nothing and opens no window.
+//
+// Caller must hold g.mu.
+func (g *Game) placeDamageResultCountersLocked(ev *ReplacementEvent, t *damageTail, name string, n int) {
+	if n <= 0 || ev == nil || t == nil {
+		return
+	}
+	cev := &ReplacementEvent{
+		Kind:                    RepEventCounter,
+		Source:                  ev.DamageSource,
+		CounterName:             name,
+		CounterDelta:            n,
+		CounterPlacer:           t.controller,
+		CounterFromCombatDamage: t.combat,
+	}
+	if t.kind == damageTailPlayer {
+		cev.CounterPlayer = ev.DamageTarget
+	} else {
+		cev.CounterTarget = ev.DamageTarget
+	}
+	out, err := g.applyReplacementsLocked(cev)
+	if errors.Is(err, errReplacementPending) {
+		// The resume owns the placement now (ADR 0056 Decision 3).
+		return
+	}
+	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
+		g.clearReplacementEventLocked(cev.ID)
+		g.EmitEvent(Event{
+			Kind:     EventEffectError,
+			ErrorMsg: "damage result counters: " + err.Error(),
+		})
+		return
+	}
+	defer g.clearReplacementEventLocked(cev.ID)
+	if out == nil || out.Canceled {
+		// A Solemnity-shaped replacement stopped the counters. The
+		// damage was still dealt (the Solemnity ruling), so nothing
+		// else changes.
+		return
+	}
+	if err := g.applyResolvedCounterLocked(out); err != nil {
+		g.EmitEvent(Event{
+			Kind:     EventEffectError,
+			ErrorMsg: "damage result counters: " + err.Error(),
+		})
+	}
 }
 
 // emitDealDamageLocked emits the one EventDealDamage a settled damage

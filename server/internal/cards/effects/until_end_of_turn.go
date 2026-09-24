@@ -176,14 +176,15 @@ func (b BoostUntilEOT) Apply(ctx *Context) error {
 // (game/indestructible.go). Hexproof's consumer, the targeting gate
 // in game/targets.go, shipped in S23.
 //
-// Granting a token OUTSIDE the canonical set — protection, ward,
-// wither, infect — still appends a string that nothing reads, so such
+// Granting a token OUTSIDE the canonical set — ward, say — still
+// appends a string that nothing reads, so such
 // a card ships weaker than printed and MUST say so in its comment.
 // This primitive deliberately does not reject unknown tokens: a
 // declared-but-inert grant is how The Wandering Rescuer was written,
 // so that the day the keyword lands in its consumer the card starts
 // working untouched. Boros Charm's indestructible mode and Darksteel
-// Citadel both took that bet and both collected in S25 without a
+// Citadel both took that bet and both collected in S25 (and an infect
+// or wither grant collected with #748) without a
 // line of card code changing.
 type GrantKeywordUntilEOT struct {
 	// Target pins the effect to one permanent. Ignored when Match
@@ -215,9 +216,7 @@ func (k GrantKeywordUntilEOT) Apply(ctx *Context) error {
 		AppliesTo: set.appliesTo(),
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			for _, kw := range granted {
-				if !eotHasAbility(c.Abilities, kw) {
-					c.Abilities = append(c.Abilities, kw)
-				}
+				c.Abilities = game.AppendKeywordAbility(c.Abilities, kw)
 			}
 		},
 	}, ctx.Source(), eotLabel(k.Label, "keyword grant until end of turn"),

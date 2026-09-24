@@ -105,9 +105,7 @@ func GrantToAttachedWhile(cond func(host *game.Card, g *game.Game, source *game.
 		},
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			for _, kw := range keywords {
-				if !keywordSliceContains(c.Abilities, kw) {
-					c.Abilities = append(c.Abilities, kw)
-				}
+				c.Abilities = game.AppendKeywordAbility(c.Abilities, kw)
 			}
 		},
 	}
