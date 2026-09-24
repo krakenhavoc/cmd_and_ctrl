@@ -3534,11 +3534,14 @@ unchanged.
   [#1341](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1341).**
   `PerformSpecialAction` now opens its own event batch (CR 116.2 is
   itself an event), so two foretells with nothing resolving between
-  them are two occurrences, as CR 603.2c asks. Ranar's caveat is gone
-  and `TestRanarTwoForetellsInOneWindowMakeTwoSpirits` pins the fixed
-  behaviour.
-- **Ranar's foretell discount** waits on
-  [#1319](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1319).
+  them are two occurrences, as CR 603.2c asks. Ranar's second caveat
+  is gone and `TestRanarTwoForetellsInOneWindowMakeTwoSpirits` pins
+  the fixed behaviour.
+- ~~**Ranar's foretell discount** waits on #1319.~~ **Closed by
+  [#1319](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1319)
+  (`SpecialActionCostsLess`, `TheFirstOneThisTurn`).** With #1341
+  also closed, Ranar the Ever-Watchful carries no caveat and is
+  `full`.
 - **The leaving-player cleanup** moves spells with a raw `MoveCard` and
   deletes their records itself (`cleanupStackForEliminatedLocked`). It
   emits no zone-change event, so it has no cause to carry.

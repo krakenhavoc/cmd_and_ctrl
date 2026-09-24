@@ -406,3 +406,15 @@ shipped with the gap as a declared caveat and a pinned test
   `TestRanarTriggersOnceForOneExileOfMany` (one resolution exiling two
   permanents is still one Spirit) is unchanged, pinning the boundary
   that special actions did NOT move.
+- **Rebased onto #1355 (2026-09-24):** #1319's foretell discount
+  (`SpecialActionCostsLess`, `TheFirstOneThisTurn`) landed on `develop`
+  while this branch was in flight. That was Ranar's other caveat, so
+  with both closed the card carries none: `Completeness` moves to
+  `CompletenessFull` and the `Caveats` slice is removed rather than
+  left empty (`Register` rejects `CompletenessCaveats` with no
+  caveats, and an empty-but-present slice would be the same lie in a
+  different shape). The one remaining gap named in its doc comment —
+  the destroy/SBA exit carrying no cause, so Rest in Peace still
+  doesn't count — is a general engine limitation tracked in ADR 0013
+  and `docs/engine-seams.md`, not a Ranar-specific simplification, so
+  it does not reopen the caveat.
