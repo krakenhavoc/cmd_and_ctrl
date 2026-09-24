@@ -107,7 +107,7 @@ func aoTwoCountersOnEachCreatureOrVehicle(ctx *Context, controller uuid.UUID) er
 		}
 	}
 	for _, id := range ids {
-		if err := (AddCounter{Target: id, Kind: "+1/+1", N: 2}).Apply(ctx); err != nil {
+		if err := (AddCounter{Target: id, Kind: "+1/+1", N: 2}).Apply(ctx.asGroupMember()); err != nil {
 			return err
 		}
 	}

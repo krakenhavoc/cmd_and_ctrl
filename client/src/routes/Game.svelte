@@ -65,6 +65,7 @@
   import ModalLayer from "../lib/components/ModalLayer.svelte";
   import { devFeature } from "../lib/env";
   import { gameWSURL } from "../lib/gameURL";
+  import { openingRollText, openingRollWinner } from "../lib/startingPlayer";
   import DevDock from "../lib/components/dev/DevDock.svelte";
   import type { ReplayFrame } from "../lib/replay";
 
@@ -80,6 +81,16 @@
   // may omit ?player= and fall through to the spectator view.
   const baseURL = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws";
   const sess = $derived($session);
+  // lastKnownSignedIn remembers whether the last live session held a
+  // signed-in identity (#1475). It has to be remembered rather than
+  // read live: by the time the connection banner reaches
+  // "session_ended", authFetch's own 401 handling has already cleared
+  // the (now-dead) session, so `sess` itself can no longer answer
+  // "was this a My games kind of session, or a guest one?".
+  let lastKnownSignedIn = $state(false);
+  $effect(() => {
+    if (sess) lastKnownSignedIn = signedInUserID(sess) !== null;
+  });
   // Dev seat swap (ADR 0023): the seat an admin has chosen to view
   // and act as, or null for the spectator view. Always null outside a
   // dev deployment — nothing sets it, because DevDock only renders
@@ -598,6 +609,7 @@
   // KeptHand. The dialog blocks the viewer's normal toolbar until
   // they commit. The viewer can still see the table, chat, etc.
   const mulligansOpen = $derived(view?.mulligans_open === true);
+  const openingRoll = $derived(openingRollWinner(view));
   const viewerNeedsToDecide = $derived(
     mulligansOpen && !!viewerSeat && !viewerSeat.eliminated && !viewerSeat.hand_kept,
   );
@@ -1091,7 +1103,9 @@
       >
     {/if}
     <span class={`status status-${$status}`} title={`seq ${$lastSeq}`}>
-      <i class="dot" aria-hidden="true"></i>{$status}
+      <i class="dot" aria-hidden="true"></i>{$status === "session_ended"
+        ? "session ended"
+        : $status}
       <span class="seq">· seq {$lastSeq}</span>
     </span>
     <!-- Withheld while the dev replay scrubber is showing a past frame:
@@ -1417,6 +1431,7 @@
     status={$status}
     attempt={$reconnectAttempt}
     onRetry={() => client.retryNow()}
+    signedIn={lastKnownSignedIn}
   />
 
   <div class="play-area">
@@ -1599,6 +1614,12 @@
             {#if mulligansOpen && !gameEnded}
               <div class="att mulligan-banner" aria-label="opening hand decisions">
                 <span class="att-label">Opening hands</span>
+                {#if openingRoll}
+                  <span class="opening-roll" style="--seat-color: {seatColor(openingRoll.seat)}">
+                    <span class="seat-dot" style="background:{seatColor(openingRoll.seat)}"></span>
+                    <strong>{openingRollText(openingRoll)}</strong>
+                  </span>
+                {/if}
                 {#each seats as seat (seat.id)}
                   <span
                     class="mull"
@@ -1766,6 +1787,12 @@
         >
           <header>
             <h2>Your opening hand</h2>
+            {#if openingRoll}
+              <p class="opening-roll-copy">
+                <span class="seat-dot" style="background:{seatColor(openingRoll.seat)}"></span>
+                {openingRollText(openingRoll)}.
+              </p>
+            {/if}
             {#if (viewerSeat?.mulligans_taken ?? 0) > 0}
               <p class="muted">
                 Mulligans taken: {viewerSeat?.mulligans_taken}. You'll redraw 7 cards (simplified
@@ -2026,7 +2053,8 @@
       opacity: 0.45;
     }
   }
-  .status-disconnected .dot {
+  .status-disconnected .dot,
+  .status-session_ended .dot {
     background: var(--danger);
     box-shadow: 0 0 8px var(--danger);
   }
@@ -2431,6 +2459,17 @@
     flex-wrap: wrap;
     gap: 8px;
   }
+  .opening-roll {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 9px;
+    border: 1px solid color-mix(in srgb, var(--seat-color) 58%, var(--border));
+    border-radius: 999px;
+    color: var(--fg);
+    background: color-mix(in srgb, var(--seat-color) 12%, transparent);
+    font-size: 12px;
+  }
   .mull {
     display: inline-flex;
     align-items: center;
@@ -2506,6 +2545,13 @@
   .mulligan-dialog header p {
     margin: 0;
     font-size: 14px;
+  }
+  .mulligan-dialog header .opening-roll-copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--gold-strong);
+    font-weight: 600;
   }
   .mulligan-cards {
     display: grid;

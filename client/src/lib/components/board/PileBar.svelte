@@ -16,7 +16,11 @@
   import PileButton from "./PileButton.svelte";
   import CommandZone from "./CommandZone.svelte";
   import { openZoneBrowser } from "../../zoneBrowser";
-  import { libraryTopActionLabel, visibleLibraryTop } from "../../libraryTop";
+  import {
+    libraryTopActionLabel,
+    libraryTopSpecialActions,
+    visibleLibraryTop,
+  } from "../../libraryTop";
   import type { CastSourceZone } from "../../targeting";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
@@ -75,6 +79,13 @@
     onPlayCard(libraryTop, "library");
   }
 
+  // #1391: special actions on the top card — Fblthp, Lost on the
+  // Range's plot. A pill beside the cast pill, fired straight from the
+  // row like the hand menu's special-action rows (no targets, no
+  // picker). Only on the viewer's OWN pile: the action is the library
+  // owner's, and the server already sends the rows to nobody else.
+  const libraryTopSpecial = $derived(isSelf ? libraryTopSpecialActions(seat.library) : []);
+
   // S18.5 — graveyard + exile chips open the browser modal. Always
   // available to every viewer (public-info zones). Library's own
   // click stays owner-only as a "draw the top card" affordance; a
@@ -100,22 +111,41 @@
       disabled={!isSelf || !onDrawCard}
       onClick={isSelf ? onDrawCard : undefined}
     />
-    {#if libraryTopAction}
-      <!-- #1440: the same always-visible pill treatment as the
-           graveyard's flashback button and the exile impulse button —
-           a permission is a resource, and a player who has to hover a
-           tiny pile thumb to discover it will not discover it. A
-           sibling of PileButton's own <button>, never nested inside
-           it (button-in-button is invalid markup). -->
-      <button
-        type="button"
-        class="pile-action"
-        title={`${libraryTopAction} from the top of your library`}
-        aria-label={`${libraryTopAction} ${libraryTop?.name || "card"} from the top of the library`}
-        onclick={playLibraryTop}
-      >
-        {libraryTopAction}
-      </button>
+    {#if libraryTopAction || libraryTopSpecial.length > 0}
+      <div class="pile-actions">
+        {#if libraryTopAction}
+          <!-- #1440: the same always-visible pill treatment as the
+               graveyard's flashback button and the exile impulse
+               button — a permission is a resource, and a player who
+               has to hover a tiny pile thumb to discover it will not
+               discover it. A sibling of PileButton's own <button>,
+               never nested inside it (button-in-button is invalid
+               markup). -->
+          <button
+            type="button"
+            class="pile-action"
+            title={`${libraryTopAction} from the top of your library`}
+            aria-label={`${libraryTopAction} ${libraryTop?.name || "card"} from the top of the library`}
+            onclick={playLibraryTop}
+          >
+            {libraryTopAction}
+          </button>
+        {/if}
+        {#each libraryTopSpecial as sa (sa.key)}
+          <!-- #1391: a special action on the top card (Fblthp's plot),
+               sent as `special_action` exactly as the hand menu's row
+               sends it. -->
+          <button
+            type="button"
+            class="pile-action special"
+            title={`${sa.label} from the top of your library`}
+            aria-label={`${sa.label}: ${libraryTop?.name || "card"} from the top of the library`}
+            onclick={() => sendAction("special_action", sa.params, seat.id)}
+          >
+            {sa.text}
+          </button>
+        {/each}
+      </div>
     {/if}
   </div>
   <PileButton label="grave" zone={seat.graveyard} onClick={openGraveyard} />
@@ -141,18 +171,25 @@
     gap: 4px;
     width: 100%;
   }
-  /* Wraps the library PileButton so the #1440 play/cast pill can sit
-     over its bottom edge as a sibling — never nested inside
+  /* Wraps the library PileButton so the #1440 play/cast pill and the
+     #1391 special-action pills can sit over its bottom edge as
+     siblings — never nested inside
      PileButton's own <button>, which button-in-button markup forbids. */
   .pile-slot {
     position: relative;
     width: 100%;
   }
-  .pile-action {
+  /* The row of pills over the library's bottom edge: the #1440
+     play/cast pill and the #1391 special-action pills side by side. */
+  .pile-actions {
     position: absolute;
     left: 50%;
     bottom: -3px;
     transform: translate(-50%, 50%);
+    display: flex;
+    gap: 3px;
+  }
+  .pile-action {
     height: 15px;
     padding: 0 6px;
     border-radius: 999px;

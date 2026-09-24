@@ -153,9 +153,30 @@ type costCommanderFrame struct {
 // that moves is asked CR 903.9 by askCostCommanderLocked; tapping a
 // live commander asks nothing.
 //
+// #1474: and the same holds for the two uses of a paused card that are
+// in neither list, which is why the gate takes any number of them:
+//
+//   - CASTING it, or playing it as a land. CR 601.2a moves the spell
+//     to the stack before a single cost is paid, so the card being
+//     cast was never in `moving`, and a commander an effect was
+//     exiling out of its owner's hand went onto the stack with the
+//     exile's prompt still open. castSpellLocked asks the gate about
+//     the card itself before anything else is judged, from whatever
+//     zone it is being cast or played out of.
+//   - ACTIVATING an ability of it, whatever the cost. A counter it
+//     removes or adds, a loyalty cost, and an ability that costs
+//     nothing at all neither move nor tap the source, and each is the
+//     same use of an object that is already gone. So both activation
+//     paths pass the SOURCE, together with every permanent a
+//     counter-removal component names ("remove a +1/+1 counter from a
+//     creature you control").
+//
+// Every list gets the same answer. They are separate arguments only
+// because the callers build them for different reasons.
+//
 // Caller must hold g.mu.
-func (g *Game) refusePausedCostCardsLocked(moving, tapping []uuid.UUID) error {
-	for _, ids := range [][]uuid.UUID{moving, tapping} {
+func (g *Game) refusePausedCostCardsLocked(lists ...[]uuid.UUID) error {
+	for _, ids := range lists {
 		for _, id := range ids {
 			if g.zoneChangePausedLocked(id) {
 				return ErrChoicePending
@@ -163,6 +184,17 @@ func (g *Game) refusePausedCostCardsLocked(moving, tapping []uuid.UUID) error {
 		}
 	}
 	return nil
+}
+
+// CardExitPausedForEffect is the gate above asked about one card, for
+// the readers that have to agree with it without being an announcement:
+// the protocol view clears `castable_here` on a card the gate would
+// refuse to cast (#1474), so the zone browser never renders a button
+// CastSpell answers with ErrChoicePending.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) CardExitPausedForEffect(cardID uuid.UUID) bool {
+	return g.refusePausedCostCardsLocked([]uuid.UUID{cardID}) != nil
 }
 
 // askCostCommanderLocked is the one gate every cost-paying

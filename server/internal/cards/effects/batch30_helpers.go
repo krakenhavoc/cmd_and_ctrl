@@ -305,7 +305,7 @@ func b30PutCounterOnEachArtifactCreatureOrVehicleYouControl(g *game.Game, item *
 		}
 	}
 	for _, id := range ids {
-		if err := (AddCounter{Target: id, Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
+		if err := (AddCounter{Target: id, Kind: "+1/+1", N: 1}).Apply(ctx.asGroupMember()); err != nil {
 			return err
 		}
 	}

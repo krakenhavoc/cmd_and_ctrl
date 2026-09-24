@@ -63,7 +63,7 @@ func (r ReturnOneYouControl) Apply(ctx *Context) error {
 // entered) can't be expressed as a Match predicate.
 func bouncePickedToHand(ctx *Context, picked game.PromptedPicks) error {
 	for _, id := range picked.Cards() {
-		if err := (BounceToHand{Target: id}).Apply(ctx); err != nil {
+		if err := (BounceToHand{Target: id}).Apply(ctx.asGroupMember()); err != nil {
 			return err
 		}
 	}

@@ -2373,6 +2373,7 @@ round trip. `legal/block_defender_lki_test.go`
   the live read already resolves it to nothing; only the return is wrong,
   and no catalogued card produces it. It would need a type-delta hook in the
   layer pass. Filed as [#1387](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1387).
+  *Closed by the amendment below, Decision 37.*
 - **A battle's protector changing mid-combat.** The engine sets
   `ProtectorPlayerID` only when the battle enters (`battle.go`), so there is
   no path to hook.
@@ -2380,3 +2381,110 @@ round trip. `legal/block_defender_lki_test.go`
   hands the ninja the returned creature's target; a target that resolves to
   nothing leaves the ninja on the battlefield not attacking, as it already did
   for a walker that died. Unchanged here.
+
+## Amendment (2026-09-24, [#1387](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1387)): an attacked planeswalker or battle that stops being one leaves combat for good
+
+Decision 36 closed the control-change and phasing clauses of CR 506.4 and left
+the type clause open. This closes it. Decisions 1-36 stand. Sprint S37 (combat
+correctness), tracker [#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880).
+CR numbers checked against the pinned edition (`MagicCompRules 20260819.txt`).
+
+### The rules
+
+- **CR 506.4** — a permanent is removed from combat "if it is a planeswalker
+  that stops being a planeswalker or a battle that stops being a battle".
+- **CR 506.4c** (Decisions 35-36) — its attackers keep attacking, attack
+  nothing, may be blocked by the player defending before the removal
+  (CR 802.2a), and deal no combat damage if unblocked.
+
+The removal is a one-way event. Nothing in CR 506 puts a permanent back into
+combat when its type comes back, so a walker that is a planeswalker again later
+in the same combat is not attacked.
+
+### What was wrong
+
+`classifyAttackTargetLocked` reads effective types, so while the permanent was
+not a planeswalker or battle its attackers already resolved to nothing. The
+wrong part was the return: when the type-changing effect ended inside the same
+combat (an "until end of turn" effect cannot end before cleanup, but a "for as
+long as" one can, CR 611.2b), the attackers still named the permanent, resolved
+to it again, and dealt it their damage.
+
+### Decision 37: the layer recompute is the type-change door
+
+**The shape.** `recomputeLayersLocked` (`server/internal/game/layers.go`) calls
+`removeTypeLostAttackTargetsLocked` (`server/internal/game/attack_target.go`)
+once per pass. It walks the announced attackers, takes each distinct target
+that resolves to a battlefield permanent, and hands any that the pass left as
+neither a planeswalker nor a battle to `removeAttackedFromCombatLocked`, the
+Decision 36 helper. The attackers are re-pointed at `game.AttackingNothing` at
+the moment of loss, so a later pass that restores the type finds nothing
+naming the permanent. The third row of Decision 36's door table:
+
+| Door | Call site |
+|---|---|
+| the permanent stopped being a planeswalker or battle (layer 4, CR 613.1d) | `recomputeLayersLocked` (`layers.go`), after the layer pass and the `lastResolvedVersion` store |
+
+**Why the recompute, and not a before/after type diff.** The layer pass is the
+only place an effective type changes, and every type change bumps the layer
+version, so the recompute is guaranteed to run between a loss and any reader
+that could see it. What the check needs is the post-pass state and nothing
+else: an attacked permanent that is not a planeswalker or battle NOW was one
+when it was attacked (the declaration verbs refuse anything else), so it has
+stopped being one. No "before" snapshot of the types is kept, which is one
+fewer thing to carry through `Clone`.
+
+**Why this is cheap.** Outside combat `announcedAttacks` is empty and the call
+returns at once. Inside combat it looks only at what announced attackers name:
+a seat, the sentinel, or an id that no longer resolves costs a lookup and
+nothing else, and each attacked permanent is classified once however many
+creatures attack it. No per-card work is added to the pass itself.
+
+**After the store, unlike the control-change door.** The rewrite bumps the
+layer version when an attacking-status static is live
+(`invalidateLayersForAttackChangeLocked`). A bump made before
+`lastResolvedVersion.Store` would be swallowed by it; made after, it asks for
+one more pass, which rewrites nothing (the rewrite changes no type) and
+settles. `materialiseControlLocked` still calls the helper before the store;
+no attacking-status static reads the attack's target today (Ohran Frostfang
+reads only "is attacking"), so that ordering is harmless there.
+
+**What a permanent that merely GAINS a type does.** Nothing. An animated
+walker (Planeswalker Creature) or an artifact battle is still a planeswalker or
+battle and stays attacked.
+
+**Only announced attackers**, as in Decision 36: a staged declaration at a
+walker that loses its type is still the active player's to change.
+
+**A pass that never sees the loss.** The check reads the state each pass
+produces. A type removed and restored between two recomputes, with no reader
+in between, is never observed as lost — but then no reader ever saw the
+permanent as anything but a planeswalker either, so no player could have acted
+on the loss. Any board read in between (a snapshot, a legality check, combat
+damage) forces the pass that sees it.
+
+**Lifetime, undo and restore.** Nothing new to carry, for the reasons in
+Decision 36: the rewrite is an ordinary value of `AttackingTarget`. A clone
+taken before the loss restores the original attack.
+
+**The wire.** Unchanged from Decision 36.
+
+### Tests
+
+`server/internal/game/attacked_loses_type_test.go`: a walker that loses its
+type and gets it back before damage (both attackers attack nothing; the
+walker's controller blocks and a bystander is refused; no loyalty or life
+lost), the same for a battle (its protector blocks, the controller is refused,
+no defense lost), a walker that gains the creature type and a battle that
+gains the artifact type (both stay attacked and take the damage), a staged
+attack left alone, and the undo round trip (a clone from before the loss
+restores the attack and the walker takes the damage; a clone, undo and
+persisted restore from after it keep the attackers attacking nothing).
+
+### What this does NOT decide
+
+- **A card that produces this.** No catalogued card removes the planeswalker
+  or battle type from a permanent, so the tests build the effect from a
+  floating layer-4 static. No proof cards.
+- **The control-change door's ordering** relative to the store, discussed
+  above. Left as it is.

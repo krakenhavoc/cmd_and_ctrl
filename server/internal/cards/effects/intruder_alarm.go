@@ -20,7 +20,7 @@ func init() {
 			return ok && c.IsCreature()
 		}, "Intruder Alarm — untap all creatures", func(g *game.Game, item *game.StackItem) error {
 			for _, id := range b751CreatureIDs(g, uuid.Nil) {
-				if err := (UntapTarget{Target: id}).Apply(NewContext(g, item)); err != nil {
+				if err := (UntapTarget{Target: id}).Apply(NewContext(g, item).asGroupMember()); err != nil {
 					return err
 				}
 			}

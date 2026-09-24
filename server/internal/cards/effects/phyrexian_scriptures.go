@@ -72,7 +72,7 @@ func scripturesWipeNonartifacts(g *game.Game, item *game.StackItem) error {
 		}
 	}
 	for _, c := range doomed {
-		if err := (DestroyTarget{Target: c.InstanceID}).Apply(ctx); err != nil {
+		if err := (DestroyTarget{Target: c.InstanceID}).Apply(ctx.asGroupMember()); err != nil {
 			return err
 		}
 	}

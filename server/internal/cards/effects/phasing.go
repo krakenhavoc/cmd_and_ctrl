@@ -79,7 +79,7 @@ func (p PhaseOutUntilLeaves) Apply(ctx *Context) error {
 	// already left and came back is over before it starts (CR 611.2b)
 	// — the new object is not the one the duration names.
 	targets := ctx.withoutNewSourceObject(p.Targets)
-	if len(targets) == 0 || p.Until == uuid.Nil || ctx.isNewSourceObject(p.Until) {
+	if len(targets) == 0 || p.Until == uuid.Nil || ctx.isNewSourceObjectAsThis(p.Until) {
 		return nil
 	}
 	return ctx.Game.PhaseOutUntilLeavesForEffect(

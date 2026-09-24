@@ -1226,9 +1226,15 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if ab.Cost.Tap {
 		tapping = append(tapping, cardID)
 	}
-	// #1445 / #1427: a card an EFFECT has already paused on its way
-	// out cannot pay. See refusePausedCostCardsLocked.
-	if err := g.refusePausedCostCardsLocked(moving, tapping); err != nil {
+	// #1474: the SOURCE, whatever the cost — a counter it removes or
+	// adds, a loyalty cost, or nothing at all — and every permanent the
+	// counter-removal component takes counters off. None of them moves
+	// or taps, and each spends an object a paused exit has taken.
+	spending := append([]uuid.UUID{cardID}, counters.cardIDs()...)
+	// #1445 / #1427 / #1474: a card an EFFECT has already paused on
+	// its way out cannot pay, or activate. See
+	// refusePausedCostCardsLocked.
+	if err := g.refusePausedCostCardsLocked(moving, tapping, spending); err != nil {
 		return err
 	}
 	asked, answers := g.askCostCommanderLocked(playerID, moving, params.commanderAnswers, source.Name,

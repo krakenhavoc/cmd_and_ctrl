@@ -2760,12 +2760,145 @@ first is not followed, and a spell moving itself is allowed.
 
 ### Still not covered
 
-- **The "each" loop corner** (Decision 17, the cost). Weaker, never
-  stronger, and it needs the source to leave and return in response to
-  its own "each" ability.
+- ~~**The "each" loop corner**~~ (Decision 17, the cost). Closed by
+  [#1463](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1463) —
+  Decision 20, below.
 - **Durations keyed on the source outside the builders.** A card that
   builds a `game.Duration` by hand from `ctx.Source()` instead of
   `DurationWhileSourceRemains` is not asked.
 - **Damage to "this".** `DealDamage` with the source as its target is
   exempt (above), so "deals N damage to itself" is not refused on a new
   object.
+
+## Amendment 2026-09-24 — an "each" loop reaches its source's new object (CR 400.7, CR 611.2c) · Accepted · S38
+
+Issue [#1463](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1463),
+the cost Decision 17 stated.
+
+### What was missing
+
+Decision 17 keys the #1432 question on "the target is this item's own
+source". The ID cannot say whether the card meant "this" or "each
+creature you control", so every per-permanent primitive applied in a
+loop over a set the card read off the board skipped one member: the
+source's new object, when the source left and came back in response to
+that very ability. Per CR 400.7 that object knows nothing of the
+ability, but it is a creature you control like any other, and a set
+the effect reads at resolution includes it (CR 611.2c). Weaker than
+printed. Measured: 28 functions read a set off the board and loop a
+guarded primitive over it, among them three whose source is a member
+of its own set — **Steel Overseer** ("each artifact creature you
+control"), **Mazirek, Kraul Death Priest** and **Kalonian Hydra**
+("each creature you control"). A fourth shape hit it the same way: a
+permanent CHOSEN at resolution from the ones you control
+(`ReturnOneYouControl` — **Whitemane Lion**, the bounce lands —
+`UntapUpToLands`, Gluntch's counters, Teferi, Akosa's taps), where the
+new object is on offer and a player who picks it saw nothing happen.
+
+### Decision 20. The group call site says so: `ctx.asGroupMember()`; "this" stays the default
+
+```go
+func (c *Context) asGroupMember() *Context                   // effects/source_object_guard.go
+func (c *Context) isNewSourceObjectAsThis(target uuid.UUID) bool
+```
+
+`asGroupMember` returns a copy of the Context with one unexported flag
+set. `isNewSourceObject` — the question every guarded primitive already
+asks, directly or through `withoutNewSourceObject` and `eotSnapshot` —
+answers false under that flag. A loop over a set read off the board,
+and a continuation acting on a permanent chosen at resolution, applies
+its primitive with `ctx.asGroupMember()`. The 28 loop sites and 4 pick
+sites are one-token edits; the only primitive touched is crew's
+zero-`Target` path (below).
+
+**The three shapes considered.**
+
+1. *A `Self()` marker on the "this" call sites*, so the primitive
+   guards only a target that was marked. Exact, but it flips the
+   default: the 109 "this" literals, the ~20 direct-mutator bodies and
+   every card written after would have to remember the marker, and one
+   that forgets acts on a stranger — stronger than printed, the #259
+   direction, which is exactly what #1432 closed. Decision 17 already
+   rejected it for reach; it is rejected again for its failure
+   direction.
+2. *An opt-out field on each per-permanent primitive*
+   (`AddCounter{…, AnyObject: true}`). Same default as the choice
+   below, but one field on ~25 structs, every one of which must honour
+   it, and a new primitive that forgets to read the field silently
+   ignores the opt-out. The #1465 scan would also have to learn the
+   field.
+3. *Chosen: the mark rides the Context.* How the text reached the
+   target is a fact about the call site, and the Context is the one
+   thing the call site hands every primitive. One field, one
+   constructor, one check, and every primitive — current or future —
+   honours it for free, because it already asks through
+   `isNewSourceObject`. The default stays guarded, so a loop that
+   forgets the mark fails in the stated direction: weaker, never
+   stronger.
+
+**A copy, not a mutation.** The caller's own Context keeps asking, so
+an ability that does "put a counter on each creature you control, then
+sacrifice this" is judged correctly on both halves. A `Then` handed
+the marked Context inherits it — it continues the act on the same
+member. A continuation that rebuilds `NewContext(g, item)` later (a
+queued prompt's answer) starts unmarked, which is again the safe side.
+
+**Sites that name the source by construction ignore the mark.**
+`isNewSourceObjectAsThis` is the unmarked question, and it is what the
+"for as long as ~" duration builders, `PhaseOutUntilLeaves.Until`,
+`TapAndHoldWhileThisRemainsTapped`, fight, Eden's and Overlook's
+self-sacrifice, and crew's zero-`Target` `BecomeCreatureUntilEOT{}`
+ask. Each of those is "this" whatever Context it was handed, so a
+duration built inside a group loop still never begins on a stranger
+(CR 611.2b).
+
+**Chosen targets keep the default.** A target is chosen as an object;
+one that left and came back is already an illegal target at
+resolution (CR 608.2b, the #1429 re-check), so asking again is
+redundant and harmless. Spells are never judged at all (Decision 18),
+so a spell's "destroy all creatures" loop behaves identically with or
+without the mark; it carries the mark anyway so the rule reads the
+same everywhere.
+
+### Cards
+
+Proof, one test each with its no-flicker control
+(`cards/effects/source_group_member_test.go`):
+
+- **Steel Overseer** (activated): the Overseer bounced and replayed in
+  response still gets its counter, as does the other artifact creature.
+- **Mazirek, Kraul Death Priest** (triggered): Mazirek back in response
+  still counts himself.
+- **Kalonian Hydra** (attack trigger, `b08DoubleCountersOnEachCreatureYouControl`):
+  a Hydra back in response is no longer attacking but is still a
+  creature you control, and its counters double.
+- **Whitemane Lion** (a choice at resolution, `ReturnOneYouControl`):
+  the new Lion is offered, and picking it returns it.
+
+Primitive level: `TestAPrimitiveReachedAsAGroupMemberActsOnTheSourcesNewObject`
+runs every #1432 primitive case four ways — live or flickered, "this"
+or group-marked — and only "this" + flickered does nothing (the zero
+`Target` crew case stays guarded under the mark).
+`TestWithoutNewSourceObjectKeepsAGroupMember` pins the list primitives,
+the copy semantics, and a duration built under the mark.
+
+Regression: `TestEveryEachLoopReachesItsMembersAsAGroup` parses the
+package and fails for any function that reads a set off the board
+(`BattlefieldCardsForEffect`, a range over `Battlefield.Cards`, or a
+package function returning `[]uuid.UUID` that does either) and applies
+a guarded per-permanent primitive inside a loop without saying
+`asGroupMember`, unless it is in the test's exemption table with its
+reason (Rakdos Charm: the loop exiles a graveyard; the board read is
+mode three's damage). It shares its parse with #1465's
+`TestEveryPrimitiveThatActsOnACardAsksAboutItsSource` (`scanPrimitives`),
+which still holds unchanged.
+
+### Still not covered
+
+- **Choices at resolution are not scanned.** The four pick sites were
+  found by hand; a new `ChoosePermanents` / `ChooseCardsPrompt`
+  continuation that forgets the mark skips a picked new object —
+  weaker, never stronger.
+- **A set built without a board read the scan recognises** (a zone's
+  `Cards` other than the battlefield, a helper returning `[]game.Card`)
+  is not followed. Same direction.
