@@ -24,6 +24,14 @@ describe("tapOthersShortfall", () => {
   it("counts against the clause's floor, not against one", () => {
     expect(tapOthersShortfall({ cards: ["a", "b"], min: 3, max: 3 })).not.toBe("");
   });
+
+  it("requires one useful payment for a count announced as X", () => {
+    const variable = { min: 0, max: 0, count_from_x: true };
+    expect(tapOthersShortfall({ ...variable, cards: [] }, "X untapped Foods you control")).toBe(
+      "nothing to tap (X untapped Foods you control)",
+    );
+    expect(tapOthersShortfall({ ...variable, cards: ["food"] })).toBe("");
+  });
 });
 
 describe("abilityBlocked with a tap-another cost", () => {

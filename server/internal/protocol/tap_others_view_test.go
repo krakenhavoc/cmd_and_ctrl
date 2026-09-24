@@ -142,6 +142,44 @@ func TestActivatedAbilityViewCarriesTapOthersCostAndOptions(t *testing.T) {
 	}
 }
 
+func TestActivatedAbilityViewCarriesTapOthersCountFromX(t *testing.T) {
+	g := buildActiveGame(t)
+	owner := g.Seats[0].ID
+	filter := artifactCostClause("X untapped artifacts you control", 0, 0)
+	filter.CountFromX = true
+	src := uuid.New()
+	g.Battlefield.PushTop(game.Card{
+		InstanceID: src, Name: "Variable Tap Source", TypeLine: "Artifact", Owner: owner, Controller: owner,
+		ActivatedAbilities: []game.ActivatedAbilityShape{{
+			Label: "Tap X untapped artifacts you control: mark",
+			Cost: game.AbilityCost{Tap: true, TapOthers: &game.TapOthersCost{
+				Filter: filter,
+				Label:  "X untapped artifacts you control",
+			}},
+			Effect: func(*game.Game, *game.StackItem) error { return nil },
+		}},
+	})
+	one := seatArtifactFor(g, owner, "Rock One")
+	two := seatArtifactFor(g, owner, "Rock Two")
+	g.BumpLayerVersionForTest()
+
+	ab := vehicleView(t, g, src).ActivatedAbilities[0]
+	if !ab.DemandsX || ab.XSlots != 0 {
+		t.Errorf("X projection: demands=%v slots=%d, want true/0", ab.DemandsX, ab.XSlots)
+	}
+	if ab.TapOthersOptions == nil || !ab.TapOthersOptions.CountFromX ||
+		ab.TapOthersOptions.Min != 0 || ab.TapOthersOptions.Max != 0 {
+		t.Fatalf("tap-X options = %+v, want count_from_x with unknown bounds", ab.TapOthersOptions)
+	}
+	got := append([]string(nil), ab.TapOthersOptions.Cards...)
+	sort.Strings(got)
+	want := []string{one.String(), two.String()}
+	sort.Strings(want)
+	if !sameStrings(got, want) {
+		t.Errorf("tap-X options = %v, want the two other artifacts", got)
+	}
+}
+
 // CR 118.3 where {T} and the clause meet: a source that the {T} half
 // already spends is not offered for the other half, even though the
 // clause itself (no "another") would admit it.

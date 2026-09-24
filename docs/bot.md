@@ -1303,13 +1303,14 @@ as a mistake. It also closes #673's declared gap — a non-hand cast
 still costs no card in HAND, and what it really spends is now the
 alternative cost's own price rather than nothing.
 
-### A cost whose COUNT the activator announces (#1213)
+### A cost whose COUNT the activator announces (#1213 / #1421)
 
-"Sacrifice one or more artifacts" (Radiant Lotus) and "Sacrifice X
-Treasures" (Grim Hireling) are the third variable in a cost, after the
-card-shaped payment above and multikicker's repeat. Unlike either, what
-varies is a NUMBER the activator names at announce, and every value of
-it is the same ability with the same target at a different size.
+"Sacrifice one or more artifacts" (Radiant Lotus), "Sacrifice X
+Treasures" (Grim Hireling), and "Tap X untapped Foods" (Apothecary
+White) are the third variable in a cost, after the card-shaped payment
+above and multikicker's repeat. Unlike either, what varies is a NUMBER
+the activator names at announce, and every value of it is the same
+ability with the same target at a different size.
 
 **Up to THREE counts are enumerated per ability** —
 `legal.maxEnumeratedVariableCounts`, beside `maxEnumeratedCostPayments`
@@ -1330,11 +1331,14 @@ card-shaped payments use, then by
 the counts NEST: a bot asked to sacrifice three eats the same two it
 would have eaten to sacrifice two.
 
-For a `CountFromX` clause the announced X IS the count, so the move's
-`x_value` is the size of the payment it carries rather than a value
-solved from the mana cost — and `effects.Register` refuses a cost that
-also puts `{X}` in its mana component, because one announced number
-cannot pay both.
+For a `CountFromX` sacrifice or tap-others clause the announced X IS
+the count, so the move's `x_value` is the size of the payment it
+carries rather than a value solved from the mana cost. The tap-others
+enumerator uses the same three-count ceiling and nested, cheapest-first
+payments. `effects.Register` refuses a cost that also puts `{X}` in its
+mana component, or that has two CountFromX components, because one
+announced number cannot pay two independently chosen counts. It also
+refuses CountFromX on a mana ability, which has no X announcement.
 
 The RETURN-to-hand component (`return_ids`) has no count to vary: every
 printed clause returns exactly one permanent, and the enumerator offers

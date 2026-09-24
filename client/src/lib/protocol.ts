@@ -1657,7 +1657,8 @@ export interface ActivatedAbilityView {
   // creature that arrived this turn is on the list; not a target, so
   // a hexproof one is too. The picks ride activate_ability as
   // `tap_ids`; fewer options than `min` means the server refuses
-  // (CR 118.3).
+  // (CR 118.3). #1421: `count_from_x` means the number picked is the
+  // activation's `x_value`; min / max are then unset (0 / 0).
   tap_others_label?: string;
   tap_others_options?: LegalTargetsView;
   // #660: the discard cost components (CR 702.29a and the general
@@ -2403,7 +2404,8 @@ export interface ManaAbilityView {
   // #758: "Tap an untapped creature you control" on a mana ability
   // (Springleaf Drum). Same fields as an activated ability's
   // TapOthers component; the answer rides activate_mana_ability as
-  // `tap_ids`.
+  // `tap_ids`. This surface is fixed-count: CR 605.3b gives a mana
+  // ability no X announcement, so `count_from_x` is never set here.
   tap_others_label?: string;
   tap_others_options?: LegalTargetsView;
   // #1213: a "Discard N cards" component on a MANA ability — Skirge

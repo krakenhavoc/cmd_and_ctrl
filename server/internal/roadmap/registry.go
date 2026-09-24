@@ -795,13 +795,20 @@ var items = []Item{
 		Examples: []string{"Springleaf Drum", "Heritage Druid", "Relic of Legends", "The Seriema"},
 	},
 	{
-		Slug: "variable-count-tap-others-cost", Name: "Variable-count tap-others cost", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Costs that tap a fixed number of other permanents work, but a cost that taps X of them does not.",
-		Missing:     "The chosen value of X needs to determine how many permanents the payment picker, validator and bot require.",
-		Issue:       1421,
-		Unblocks:    2,
-		Waiting:     []string{"Secluded Starforge", "Apothecary White"},
-		EngineNotes: "announcement shape: fixed-count `TapOthersCost` is closed by #758, but \"Tap X untapped … you control\" must announce X and derive the payment width from it, as variable sacrifice costs do. It must preserve the fixed component's one candidate walk, CR 118.3 overlap checks, wire picker and bot enumeration.",
+		Slug: "variable-count-tap-others-cost", Name: "Variable-count tap-others cost", Kind: KindSeam, Status: StatusImplemented,
+		Summary: "An activated ability can tap X eligible permanents as a cost, with the number picked becoming its announced X.",
+		Issue:   1421,
+		ADR:     "0073-optional-additional-costs-and-the-cast-gate.md",
+		Rules:   []string{"107.3", "118.3", "602.2b"},
+		Probe: func(s effects.Spec) bool {
+			for _, ab := range s.Activated {
+				if game.TapOthersCountFromX(ab.Cost.TapOthers) {
+					return true
+				}
+			}
+			return false
+		},
+		Examples: []string{"Secluded Starforge", "Apothecary White"},
 	},
 	{
 		Slug: "blocking-restrictions", Name: "Conditional blocking restrictions", Kind: KindSeam, Status: StatusMissing,
