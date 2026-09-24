@@ -898,15 +898,16 @@ type ReplacementEvent struct {
 	// returns, because the caller has no resume and no way to be
 	// rewound once it has.
 	//
-	// Two things set it today, and they are the two halves of one cost
-	// line: paying life as a cost (CR 118.3, payLifeAsCostLocked in
-	// life_tail.go, which carries the full argument) and discarding a
-	// card as a cost (CR 701.8a, discard.go, which sets it through
-	// zoneRoute.MustSettleNow). CR 601.2h pays a spell's costs as one
-	// indivisible step of casting it and CR 601.2 rewinds the
-	// announcement if they cannot all be paid, so a CR 616 ordering
-	// prompt — or a CR 903.9 "may" — in the middle leaves a spell on
-	// the stack with its cost half paid.
+	// Several things set it, and they fall into two families: paying a
+	// cost (life, CR 118.3, payLifeAsCostLocked in life_tail.go; a
+	// discard, CR 701.8a, discard.go, through zoneRoute.MustSettleNow;
+	// a counter placement mid-ability, #1370,
+	// AddCounterMustSettleNowForEffect in counter_tail.go) — CR 601.2h
+	// pays a spell's costs as one indivisible step and CR 601.2 rewinds
+	// the announcement if they cannot all be paid, so a CR 616 ordering
+	// prompt in the middle would leave it half paid — and a mana
+	// ability's own resolution (CR 605.3a, produce_mana.go), which has
+	// no priority window at all for a prompt to occupy.
 	//
 	// What it costs the affected player is the CR 616 ordering choice
 	// and any CR 614.10 "may" on the event: the apply-loop applies the

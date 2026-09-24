@@ -1164,6 +1164,30 @@ type ManaAbility struct {
 	// Added in the S22 mana-ability-rider pass.
 	Rider func(g *game.Game, controller, source uuid.UUID) error
 
+	// PreRider is Rider's mirror image: everything the oracle text
+	// says BEFORE the "Add …" clause, run once the cost is paid and
+	// BEFORE Produced / ProducedFunc / ProducedForPaid is evaluated —
+	// Empowered Autogenerator's "Put a charge counter on this
+	// artifact. Add X mana of any one color, where X is the number of
+	// charge counters on this artifact." Without it, X is a guess at
+	// what the counter placement is about to do rather than a read of
+	// what it did (#1370).
+	//
+	// A card declares Rider or PreRider for a given clause, never
+	// both — whichever the printed sentence's own word order needs.
+	//
+	// Same locking contract as Rider. A mutation this makes that
+	// ProducedFunc then reads back — a counter placement — MUST go
+	// through a mustSettleNow entry point
+	// (game.AddCounterMustSettleNowForEffect), because CR 605.3a's
+	// mana ability resolution has no priority window for a CR 616
+	// ordering prompt (two counter doublers) to occupy.
+	//
+	// Nil for every mana ability but Empowered Autogenerator today.
+	//
+	// Added in the #1370 fix.
+	PreRider func(g *game.Game, controller, source uuid.UUID) error
+
 	// NarrowToCommanderIdentity intersects a pipe-syntax Produced
 	// string ("{W|U|B|R|G}") with the controller's commander colour
 	// identity before the colour pick is offered.
