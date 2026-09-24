@@ -117,6 +117,9 @@ export type ActionType =
   // entry, one broadcast, however wide the board.
   | "declare_attackers"
   | "declare_blocker"
+  // #1279: complete the caller's CR 509.1 block declaration — the
+  // "Done blocking" / "No blocks" button. Not priority-gated.
+  | "finish_blocks"
   // Set-shaped block declaration (#750). Not a batching convenience:
   // a block COUNT (menace's minimum of two) is a property of the whole
   // declaration, so a two-creature menace block is legal only as a
@@ -2552,7 +2555,20 @@ export interface TurnView {
   // must not re-derive in TypeScript. It exists because blocking is a
   // turn-based action rather than a response, so the auto-pass
   // "legal response?" predicate structurally could not see it.
+  //
+  // #1279: a seat leaves this list once its block declaration is
+  // COMPLETE (it passed, sent finish_blocks, or had no legal block as
+  // the step began), even while it still has a creature that could
+  // block.
   block_decision_seats?: number[];
+  // #1279: where each DEFENDING seat's block declaration stands.
+  // `block_pending_seats` — still declaring; `blocks_declared_seats` —
+  // finished, with or without blocks. A defending seat is in exactly
+  // one; a seat nothing is attacking is in neither. Both absent
+  // outside declare_blockers. The "Done blocking" / "No blocks"
+  // control shows while the viewer's seat is pending.
+  block_pending_seats?: number[];
+  blocks_declared_seats?: number[];
   // S27: what the ACTIVE player's creatures may attack right now —
   // the other seats, the planeswalkers they don't control, and the
   // battles they don't protect (CR 506.2, 508.1d). Present only

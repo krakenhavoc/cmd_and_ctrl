@@ -63,8 +63,9 @@ import (
 // The whole of the rule is Game.UnblockedAttackerForEffect's, so the
 // predicate cannot drift from the engine's own answer: attacking, the
 // cursor at the declare-blockers step or later, no blocked record and
-// no blocker staged against it. That function's doc comment carries
-// the sandbox caveat that comes with it.
+// no blocker staged against it — and, since #1279, a defending player
+// who has FINISHED declaring blockers, so an attacker whose defender is
+// still deciding pays nothing.
 func UnblockedAttacker() CardPredicate {
 	return func(g *game.Game, _ uuid.UUID, c game.Card) bool {
 		return g.UnblockedAttackerForEffect(c.InstanceID)

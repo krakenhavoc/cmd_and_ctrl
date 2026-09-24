@@ -2739,7 +2739,27 @@ type TurnView struct {
 	// consults to refuse to auto-pass the window. Public
 	// information — attackers and untapped creatures are both on the
 	// board — so it survives per-viewer filtering unredacted.
+	//
+	// #1279: a seat drops out of it once its block declaration is
+	// COMPLETE — it passed, sent finish_blocks, or had no legal block
+	// as the step began — even while it still has a creature that
+	// could block. It lists the defenders still deciding who have
+	// something to decide.
 	BlockDecisionSeats []int `json:"block_decision_seats,omitempty"`
+	// BlockPendingSeats / BlocksDeclaredSeats are where each DEFENDING
+	// player's CR 509.1 block declaration stands (#1279, ADR 0045
+	// Decision 38): pending — not finished yet — or declared, with or
+	// without blocks. A defending seat is in exactly one of the two; a
+	// seat nothing is attacking is in neither. Both are empty and
+	// omitted outside the declare_blockers step.
+	//
+	// This is the distinction an empty set of blockers cannot carry:
+	// "has not declared yet" and "declared no blocks" look the same on
+	// the battlefield. The client's "Done blocking" / "No blocks"
+	// control (finish_blocks) shows while the viewer's seat is in
+	// BlockPendingSeats. Public information, like BlockDecisionSeats.
+	BlockPendingSeats   []int `json:"block_pending_seats,omitempty"`
+	BlocksDeclaredSeats []int `json:"blocks_declared_seats,omitempty"`
 	// AttackTargets is the set of things the ACTIVE player's
 	// creatures may be declared against right now (CR 506.2,
 	// 508.1d) — the other seated players, the planeswalkers they do
@@ -2858,6 +2878,8 @@ func ViewOfGame(g *game.Game) GameView {
 			PendingChoices:    viewOfPendingChoices(g),
 			LoopNotice:        viewOfLoopNotice(g.LoopNotice),
 		}
+		// #1279: where each defender's block declaration stands.
+		view.Turn.BlockPendingSeats, view.Turn.BlocksDeclaredSeats = g.BlockDeclarationSeatsLocked()
 		// ADR 0066. Asked ONCE per frame and threaded down, not per
 		// seat and not per card: the answer is "nobody may play this"
 		// in almost every game, it costs a walk of the battlefield,

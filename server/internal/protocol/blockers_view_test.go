@@ -109,3 +109,40 @@ func TestViewOmitsBlockDecisionSeatsOutsideTheStep(t *testing.T) {
 		t.Errorf("outside declare_blockers: got %v, want none", got)
 	}
 }
+
+// #1279: the turn cursor says where each defender's block declaration
+// stands — pending until they finish, then declared — and a finished
+// defender leaves block_decision_seats even with a creature at home.
+func TestViewCarriesBlockDeclarationStatus(t *testing.T) {
+	g := buildActiveGame(t)
+	stageBlockingWindow(t, g, 1, 0)
+
+	v := ViewOfGame(g)
+	if got := v.Turn.BlockPendingSeats; len(got) != 1 || got[0] != 0 {
+		t.Fatalf("block_pending_seats = %v, want [0]", got)
+	}
+	if len(v.Turn.BlocksDeclaredSeats) != 0 {
+		t.Fatalf("blocks_declared_seats = %v, want none yet", v.Turn.BlocksDeclaredSeats)
+	}
+
+	if err := g.FinishBlocks(g.Seats[0].ID); err != nil {
+		t.Fatalf("FinishBlocks: %v", err)
+	}
+	v = ViewOfGame(g)
+	if len(v.Turn.BlockPendingSeats) != 0 {
+		t.Errorf("block_pending_seats = %v, want none after finishing", v.Turn.BlockPendingSeats)
+	}
+	if got := v.Turn.BlocksDeclaredSeats; len(got) != 1 || got[0] != 0 {
+		t.Errorf("blocks_declared_seats = %v, want [0]", got)
+	}
+	if len(v.Turn.BlockDecisionSeats) != 0 {
+		t.Errorf("block_decision_seats = %v: a defender who has declared owes nothing", v.Turn.BlockDecisionSeats)
+	}
+	raw, err := json.Marshal(FilterViewFor(v, g.Seats[1].ID.String()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(raw, []byte(`"blocks_declared_seats":[0]`)) {
+		t.Errorf("the status is public: it must survive the per-viewer filter; got %s", raw)
+	}
+}

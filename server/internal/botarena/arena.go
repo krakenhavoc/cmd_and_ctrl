@@ -129,13 +129,15 @@ type Config struct {
 	// BlockGrace is the ONE field where zero does not mean the arena
 	// default: it is filled with PRODUCTION's 4s. It is how long an
 	// attacking runner holds its pass during declare-blockers while
-	// some defender still has a legal block, and aiseat's own
-	// withDefaults does not fill it. With MinThink at 0 and no grace
-	// the attacker re-steps on its own commit and races the
-	// defenders, so every combat resolves with systematically fewer
-	// blocks than the same policies would declare at a real table —
-	// and combat is where policies differ, so the bias lands squarely
-	// on the one number this harness exists to produce. A NEGATIVE
+	// some defender is still declaring with a legal block to make, and
+	// aiseat's own withDefaults does not fill it. Before #1279, with
+	// MinThink at 0 and no grace the attacker re-stepped on its own
+	// commit and raced the defenders, so combats resolved with
+	// systematically fewer blocks than a real table. The engine now
+	// completes each defender's declaration explicitly and returns
+	// priority to the attacker after the last one (ADR 0045 Decision
+	// 38), so no block is lost without it; production's value is kept
+	// so a run matches a live table's pacing. A NEGATIVE
 	// duration turns the hold off (aiseat treats <= 0 as off), which
 	// is the only way to buy back the wall clock it costs;
 	// `boteval arena --block-grace 0` spells exactly that.

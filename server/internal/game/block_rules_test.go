@@ -239,7 +239,7 @@ func TestBlockRuleMaximumRefusesAnOverfullBlockAtDeclaration(t *testing.T) {
 	if got := refusal.Sentence(g.Seats[1].ID); got != "Hungering Hydra can't be blocked by more than one creature." {
 		t.Errorf("the defender reads %q", got)
 	}
-	g.WithWriteLock(func() { g.commitBlockDeclarationLocked() })
+	g.WithWriteLock(func() { g.completeAllBlockDeclarationsLocked(); g.commitBlockDeclarationLocked() })
 
 	// All or nothing: neither blocker was stored, so neither
 	// announced and the attacker never became blocked.
@@ -314,7 +314,7 @@ func TestBlockRuleMaximumAcceptsASingleBlocker(t *testing.T) {
 	if err := g.DeclareBlocker(lone, attacker); err != nil {
 		t.Fatalf("DeclareBlocker: %v", err)
 	}
-	g.WithWriteLock(func() { g.commitBlockDeclarationLocked() })
+	g.WithWriteLock(func() { g.completeAllBlockDeclarationsLocked(); g.commitBlockDeclarationLocked() })
 
 	if c := findCard(g, lone); c == nil || c.BlockingTarget != attacker {
 		t.Fatal("a legal single block was reverted")
@@ -344,7 +344,7 @@ func TestMenaceLoneBlockFiresNoBlockTriggers(t *testing.T) {
 	if err := g.DeclareBlocker(lone, attacker); !errors.Is(err, ErrIllegalBlock) {
 		t.Fatalf("DeclareBlocker on a menace attacker = %v, want an illegal-block refusal", err)
 	}
-	g.WithWriteLock(func() { g.commitBlockDeclarationLocked() })
+	g.WithWriteLock(func() { g.completeAllBlockDeclarationsLocked(); g.commitBlockDeclarationLocked() })
 
 	if c := findCard(g, lone); c == nil || c.BlockingTarget != uuid.Nil {
 		t.Fatalf("the illegal lone block against menace was stored (CR 509.1b)")
@@ -380,7 +380,7 @@ func TestMenaceTwoBlockersAnnounceNormally(t *testing.T) {
 			t.Fatalf("a legal menace block was not stored")
 		}
 	}
-	g.WithWriteLock(func() { g.commitBlockDeclarationLocked() })
+	g.WithWriteLock(func() { g.completeAllBlockDeclarationsLocked(); g.commitBlockDeclarationLocked() })
 
 	for _, b := range []uuid.UUID{first, second} {
 		if n := len(blockDeclEvents(g, EventBlock, b)); n != 1 {

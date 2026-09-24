@@ -417,6 +417,12 @@ var (
 	// sent an empty list. #750.
 	ErrEmptyBlockerSet = errors.New("game: a block declaration needs at least one blocker")
 
+	// ErrNotDefending is returned by FinishBlocks for a seat that is
+	// not a defending player this combat — nothing is attacking it, a
+	// planeswalker it controls or a battle it protects — so it has no
+	// block declaration to finish (CR 509.1, #1279).
+	ErrNotDefending = errors.New("game: this player is not a defending player")
+
 	// ErrIllegalAttackTarget is returned by DeclareAttacker when the
 	// named target is not something this player's creature may attack
 	// (CR 506.2, 508.1d): a seat that is not seated or is eliminated,

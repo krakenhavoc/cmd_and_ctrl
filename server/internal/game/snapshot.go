@@ -356,6 +356,15 @@ type GameSnapshot struct {
 	// already carries. No schema bump.
 	AnnouncedAttacks map[uuid.UUID]bool `json:"announcedAttacks,omitempty"`
 
+	// BlocksDeclared is the set of defending players whose CR 509.1
+	// block declaration is complete this combat (#1279,
+	// Game.blocksDeclared). Empty outside the declare-blockers step's
+	// combat, and a file written before it restores as empty — which
+	// reads as "every defender still pending", the conservative
+	// direction: the defender is asked again and ninjutsu waits. No
+	// schema bump.
+	BlocksDeclared map[uuid.UUID]bool `json:"blocksDeclared,omitempty"`
+
 	// AttackDefenders is each attacker's defending player as its
 	// attack was last pointed (#1364, Game.attackDefenders) — what
 	// lets a creature whose planeswalker or battle has left still be
@@ -1236,6 +1245,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	s.BlockedAttackers = copyBoolMap(g.blockedAttackers)
 	s.AnnouncedAttacks = copyBoolMap(g.announcedAttacks)
 	s.AttackDefenders = copyUUIDPairMap(g.attackDefenders)
+	s.BlocksDeclared = copyBoolMap(g.blocksDeclared)
 	s.FirstStrikeStepParticipants = copyBoolMap(g.firstStrikeStepParticipants)
 	cen := &s.Continuations
 
@@ -1948,6 +1958,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.blockedAttackers = copyBoolMap(s.BlockedAttackers)
 	g.announcedAttacks = copyBoolMap(s.AnnouncedAttacks)
 	g.attackDefenders = copyUUIDPairMap(s.AttackDefenders)
+	g.blocksDeclared = copyBoolMap(s.BlocksDeclared)
 	g.firstStrikeStepParticipants = copyBoolMap(s.FirstStrikeStepParticipants)
 
 	g.Battlefield = restoreZone(s.Battlefield, ZoneBattlefield)

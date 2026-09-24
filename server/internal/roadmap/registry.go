@@ -175,12 +175,12 @@ var items = []Item{
 	},
 	{
 		Slug: "fear", Name: "Fear", Kind: KindKeyword, Status: StatusImplemented,
-		Summary:          "A creature with fear can be blocked only by artifact creatures and black creatures.",
-		Rules:            []string{"702.36"},
-		Keywords:         []string{"fear"},
-		Probe:            hasKeyword("fear"),
-		Printed:          printedKeyword("fear"),
-		NoCatalogExample: "A creature whose only ability is fear needs no card file, so the catalog has none to show.",
+		Summary:  "A creature with fear can be blocked only by artifact creatures and black creatures.",
+		Rules:    []string{"702.36"},
+		Keywords: []string{"fear"},
+		Probe:    hasKeyword("fear"),
+		Printed:  printedKeyword("fear"),
+		Examples: []string{"Guiltfeeder"},
 	},
 	{
 		Slug: "intimidate", Name: "Intimidate", Kind: KindKeyword, Status: StatusImplemented,

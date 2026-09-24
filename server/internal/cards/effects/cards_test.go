@@ -149,7 +149,9 @@ func passPriorityAroundTable(t *testing.T, g *game.Game) {
 }
 
 // lockInBlocks completes the block declaration the way play does:
-// priority passes around the table, and the wrap is the lock-in
+// priority passes around the table, and the defender's pass completes
+// their declaration (#1279; the wrap completes anyone left), which is
+// the lock-in
 // (CR 509.1 / 509.2a, #830) — the point where the engine announces
 // the final assignment and harvests the "becomes blocked" / "blocks"
 // triggers off it. Nothing is announced by DeclareBlocker itself, so

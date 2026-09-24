@@ -193,6 +193,8 @@ battlefield.cards[].typeLine	string
 battlefield.cards[].variableToughness	bool
 battlefield.kind	string
 battlefield.owner	custom(uuid.UUID)
+blocksDeclared	map:array
+blocksDeclared{}	bool
 continuations	object
 continuations.choiceResumeFrames	number:int
 continuations.delayedTriggerEffects	number:int

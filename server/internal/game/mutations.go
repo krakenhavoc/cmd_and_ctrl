@@ -6877,6 +6877,21 @@ func (g *Game) passPriorityLocked() error {
 	if g.Turn.PriorityHolder == NoPriority {
 		return ErrNoPriority
 	}
+	// #1279 / CR 509.1: a defending player who passes in the
+	// declare-blockers step has finished declaring blockers — the pass
+	// is how a table that blocks by hand has always said "done". When
+	// that completes the LAST pending declaration, the turn-based
+	// action is over: its triggers go on the stack and the ACTIVE
+	// player receives priority (CR 509.2, 117.3a), rather than the
+	// rotation carrying on as if the attacker had already had its
+	// post-declaration window.
+	if g.Turn.Step == StepDeclareBlockers {
+		if h := g.Turn.PriorityHolder; h >= 0 && h < numSeats && g.Seats[h] != nil {
+			if g.completeBlockDeclarationLocked(g.Seats[h].ID) && g.closeBlockDeclarationIfCompleteLocked() {
+				return nil
+			}
+		}
+	}
 	// Walk forward to the next non-eliminated seat. Bounded by
 	// numSeats iterations so a fully-eliminated table can't infinite-
 	// loop (the surrounding game-end check in Concede flips State to
@@ -6904,7 +6919,13 @@ func (g *Game) passPriorityLocked() error {
 	// the active player (CR 508.2 / 509.2a) and the table gets a
 	// window to respond before those triggers resolve — the step does
 	// not advance on this pass.
-	if g.blockDeclarationPendingLocked() || g.attackDeclarationPendingLocked() {
+	//
+	// #1279: a defender still pending as the step would end has
+	// declared whatever is staged — the step cannot end on an
+	// unfinished turn-based action. Completing announces it, so the
+	// boundary below runs for it exactly as for a staged lock-in.
+	blocksCompleted := g.completeAllBlockDeclarationsLocked()
+	if blocksCompleted || g.blockDeclarationPendingLocked() || g.attackDeclarationPendingLocked() {
 		g.runStateChecksLocked()
 		// A blocking choice counts as much as a stack item here: an
 		// optional declaration trigger (Grazilaxx, Legion Loyalty's

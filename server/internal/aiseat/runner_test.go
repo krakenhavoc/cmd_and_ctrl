@@ -719,6 +719,74 @@ func TestActiveBotHoldsPassForBlockers(t *testing.T) {
 	}
 }
 
+// TestActiveBotBlockGraceEndsWhenTheDefenderFinishes is #1279: the
+// grace reads the engine's completion signal, not "does the defender
+// still have a legal block". The defender keeps a second creature at
+// home and says so with finish_blocks; the active bot's hold ends at
+// once, where before it sat out the whole grace because an untapped
+// creature was still a legal block.
+func TestActiveBotBlockGraceEndsWhenTheDefenderFinishes(t *testing.T) {
+	room := newRoom(t, 2, 9)
+	g := room.Game
+	bot := g.Seats[0]
+	def := g.Seats[1]
+	for _, p := range g.Seats {
+		if err := g.KeepHand(p.ID); err != nil {
+			t.Fatal(err)
+		}
+	}
+	atk := uuid.New()
+	g.Battlefield.PushTop(game.Card{InstanceID: atk, Name: "Attacker", TypeLine: "Creature — Bear", Power: 2, Toughness: 2, Owner: bot.ID, Controller: bot.ID})
+	blk := uuid.New()
+	g.Battlefield.PushTop(game.Card{InstanceID: blk, Name: "Blocker", TypeLine: "Creature — Bear", Power: 2, Toughness: 2, Owner: def.ID, Controller: def.ID})
+	home := uuid.New()
+	g.Battlefield.PushTop(game.Card{InstanceID: home, Name: "Homebody", TypeLine: "Creature — Bear", Power: 2, Toughness: 2, Owner: def.ID, Controller: def.ID})
+	for g.Turn.Step != game.StepDeclareAttackers {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := g.DeclareAttacker(atk, def.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := g.AdvanceStep(); err != nil {
+		t.Fatal(err)
+	}
+	if g.Turn.Step != game.StepDeclareBlockers {
+		t.Fatalf("at %s", g.Turn.Step)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	grace := 3 * time.Second
+	aiseat.Start(ctx, room, bot.ID, &scripted{}, aiseat.Config{BlockGrace: grace}, nil, testLogger())
+	time.Sleep(300 * time.Millisecond)
+	if s := g.Snapshot().Turn.Step; s != game.StepDeclareBlockers {
+		t.Fatalf("active bot passed out of declare_blockers inside the grace window (now %s)", s)
+	}
+	// One block, and the Homebody stays home: a legal block is still
+	// available, so only the completion signal can end the hold early.
+	if _, _, err := room.Apply(def.ID, func() error { return g.DeclareBlocker(blk, atk) }); err != nil {
+		t.Fatal(err)
+	}
+	if !g.SeatOwesBlockDecision(def.ID) {
+		t.Fatal("setup: the Homebody is still a legal block")
+	}
+	if _, _, err := room.Apply(def.ID, func() error { return g.FinishBlocks(def.ID) }); err != nil {
+		t.Fatal(err)
+	}
+	finished := time.Now()
+	// No runner on the defender's seat: the only thing that can move
+	// priority off the active player is the active bot's own pass, so
+	// when priority reaches the defender is when the hold ended.
+	waitFor(t, "the active bot to pass", func() bool {
+		snap := g.Snapshot()
+		return snap.Turn.Step != game.StepDeclareBlockers || snap.Turn.PriorityHolder != snap.Turn.ActiveSeat
+	})
+	if el := time.Since(finished); el > grace/2 {
+		t.Errorf("pass took %v after finish_blocks; the hold should end when the declaration completes", el)
+	}
+}
+
 // isStepRace recognises the rejections that are races between seats
 // rather than enumerator errors: a combat declaration enumerated
 // during its step and dispatched after another seat's pass wrapped

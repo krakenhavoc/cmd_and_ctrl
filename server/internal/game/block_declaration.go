@@ -403,6 +403,14 @@ func (g *Game) blockOptionsLocked(seat uuid.UUID, perAttackerCap, maxTotal int) 
 	if g.Battlefield == nil || seat == uuid.Nil {
 		return nil
 	}
+	// #1279: a defender whose declaration is complete is offered
+	// nothing more. The verb still takes a late block (the sandbox
+	// allowance ADR 0045 Decision 38 records), but the enumerator, the
+	// bot and the #328 auto-pass signal stop asking — "has this seat
+	// still got a block to make" is now "is this seat still declaring".
+	if g.blocksDeclared[seat] {
+		return nil
+	}
 	if perAttackerCap <= 0 {
 		perAttackerCap = 1
 	}

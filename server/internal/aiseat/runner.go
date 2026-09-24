@@ -49,11 +49,13 @@ type Config struct {
 	// streak means the board is changing under the bot. Default 3.
 	MaxConsecutiveRejects int
 	// BlockGrace is how long an ACTIVE bot holds its pass during the
-	// declare-blockers step while any defending seat still has a legal
-	// block to declare. The engine takes blocks during the step rather
-	// than as a turn-based action before priority, so without this a
-	// bot would pass, the table would wrap, and the step would end
-	// before a human (or a slower bot) had blocked. Zero disables;
+	// declare-blockers step while any defending seat is still declaring
+	// blockers with a legal block to make (the turn cursor's
+	// block_decision_seats). Before #1279 this was what stopped a bot's
+	// pass from ending the step before a human had blocked; the engine
+	// now completes each defender's declaration explicitly and hands the
+	// active player priority after the last one, so the grace only saves
+	// the extra round of passes that follows. Zero disables;
 	// DefaultConfig sets 4s.
 	BlockGrace time.Duration
 	// Narrate posts the policy's Decision.Reason for every non-pass
@@ -881,8 +883,8 @@ func (r *Runner) hold(ctx context.Context, d time.Duration) {
 }
 
 // holdForBlockers waits up to BlockGrace, re-checking every 100ms so
-// the pass goes through as soon as every defender has blocked or run
-// out of blocks.
+// the pass goes through as soon as every defender has finished
+// declaring blockers (#1279) or run out of blocks.
 func (r *Runner) holdForBlockers(ctx context.Context) {
 	deadline := time.Now().Add(r.cfg.BlockGrace)
 	for time.Now().Before(deadline) && ctx.Err() == nil {
@@ -893,12 +895,23 @@ func (r *Runner) holdForBlockers(ctx context.Context) {
 	}
 }
 
-// shouldHoldForBlockers reports whether passing now would end a
-// declare-blockers step that a defending seat may still want to act
-// in: this seat is the active player, attackers are declared, and
-// some other live seat has a legal block it has not made. Uses the
-// same enumerator the defenders do, so "may still want to" is exact
-// rather than a guess about untapped creatures.
+// shouldHoldForBlockers reports whether this seat should hold its pass
+// because a defending seat is still DECLARING blockers: this seat is
+// the active player, the cursor is in declare_blockers, and some other
+// seat is listed in the turn cursor's block_decision_seats.
+//
+// #1279 moved this onto the engine's completion signal. That list is
+// the defenders whose block declaration is still PENDING and who have a
+// legal block to make, so the hold ends the moment every such defender
+// has finished — sent finish_blocks, passed, or run out of blocks —
+// rather than, as before, holding for the whole grace while a defender
+// who had already chosen kept an untapped creature at home. The grace
+// is a courtesy now, not a correctness guard: a pass from here no
+// longer ends the step before a defender blocks, because the engine
+// returns priority to the active player once the last declaration
+// completes (block_completion.go). What it still buys is the active
+// player's window AFTER the declaration without a full extra round of
+// passes — the window ninjutsu is activated in.
 func (r *Runner) shouldHoldForBlockers(view protocol.GameView) bool {
 	if r.cfg.BlockGrace <= 0 || view.Turn.Step != string(game.StepDeclareBlockers) {
 		return false
@@ -907,19 +920,15 @@ func (r *Runner) shouldHoldForBlockers(view protocol.GameView) bool {
 	if as < 0 || as >= len(view.Seats) || view.Seats[as].ID != r.seat.String() {
 		return false
 	}
-	for _, seat := range view.Seats {
+	for _, idx := range view.Turn.BlockDecisionSeats {
+		if idx < 0 || idx >= len(view.Seats) {
+			continue
+		}
+		seat := view.Seats[idx]
 		if seat.ID == r.seat.String() || seat.Eliminated {
 			continue
 		}
-		id, err := uuid.Parse(seat.ID)
-		if err != nil {
-			continue
-		}
-		for _, m := range legal.EnumerateFor(r.room.Game, id) {
-			if m.Kind == legal.KindBlock {
-				return true
-			}
-		}
+		return true
 	}
 	return false
 }

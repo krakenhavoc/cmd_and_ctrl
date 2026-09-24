@@ -22,7 +22,7 @@ import (
 // leaving the step) have their own tests below.
 func lockInBlockDeclaration(t *testing.T, g *Game) {
 	t.Helper()
-	g.WithWriteLock(func() { g.commitBlockDeclarationLocked() })
+	g.WithWriteLock(func() { g.completeAllBlockDeclarationsLocked(); g.commitBlockDeclarationLocked() })
 }
 
 // blockDeclEvents returns the logged events of `kind` naming `card` in
