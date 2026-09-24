@@ -39,6 +39,7 @@
   import Icon from "../lib/components/Icon.svelte";
   import { cancel as cancelTargeting, confirm as confirmTargeting } from "../lib/targeting";
   import type { ActionType, PlayerView } from "../lib/protocol";
+  import { attackersDefendedBy } from "../lib/attackTargets";
   import { stopKeyFor, type StepID } from "../lib/turn";
   import { armAudioOnFirstGesture, isMuted, play, toggleMuted } from "../lib/sounds";
   import { openSettings, settings } from "../lib/settings";
@@ -700,12 +701,14 @@
     | null;
   let combatSelection = $state<CombatSelection>(null);
 
-  // Creatures on the battlefield currently declared as attacking the
-  // viewer — used to gate the block-mode flag below so the canvas
-  // doesn't enter block mode when there's nothing to block.
+  // Creatures on the battlefield the viewer is defending against —
+  // attacking them, a planeswalker they control or a battle they
+  // protect (CR 802.4a, #1339) — used to gate the block-mode flag
+  // below so the canvas doesn't enter block mode when there's nothing
+  // to block.
   const incomingAttackers = $derived.by(() => {
     if (!viewerID || !view) return [];
-    return view.battlefield.cards.filter((c) => c.attacking_target === viewerID);
+    return attackersDefendedBy(view, viewerID);
   });
 
   // Step-based gating mirrors the server's MTG-rules check. Attackers

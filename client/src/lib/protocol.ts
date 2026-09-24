@@ -80,7 +80,16 @@ export type BlockRefusalReason =
   | "intimidate"
   | "shadow"
   | "horsemanship"
-  | "skulk";
+  | "skulk"
+  | "protection"
+  | "cant_be_blocked_by"
+  | "cant_be_blocked_except_by"
+  | "cant_block_attacker"
+  | "too_few_blockers"
+  | "too_many_blockers"
+  // #1339: the blocker's controller is not defending against that
+  // attacker (CR 802.4a).
+  | "not_defending";
 
 // ActionType is the string-literal union of every action name this
 // client sends. Each literal is validated against the server's
@@ -2055,6 +2064,13 @@ export interface CardView extends CastSurfaceView {
   // id is a seat id or an instance id and this says which. Absent
   // when nothing is declared.
   attacking_target_kind?: "player" | "planeswalker" | "battle";
+  // #1339: the seat defending against this attack — the only seat
+  // whose creatures may block it (CR 802.4a): the player attacked, the
+  // planeswalker's controller, or the battle's PROTECTOR. Absent when
+  // nothing is declared and when the attacked planeswalker or battle
+  // has left (CR 506.4c: nobody can block it). Read it through
+  // defendingPlayerOf (attackTargets.ts), which covers older frames.
+  defending_player?: string;
   // S27: the seat protecting this battle (CR 310.9a). Absent for every
   // other card type and for a battle whose protector prompt has not
   // been answered. Public — it decides who may attack it.

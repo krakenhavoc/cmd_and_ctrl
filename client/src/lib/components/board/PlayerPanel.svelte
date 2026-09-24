@@ -39,6 +39,7 @@
     PlayerView,
     ZoneView,
   } from "../../protocol";
+  import { defendingPlayerOf } from "../../attackTargets";
   import { bucketForBattlefield, isCreature } from "../../cardTypes";
   import { battlefieldClickIntent } from "../../contextMenu.logic";
   import { canActivateSorcerySpeedAbility } from "../../timing";
@@ -323,7 +324,9 @@
       return;
     }
     // Block-mode click on an incoming attacker commits the block.
-    if (combatMode === "block" && card.attacking_target === viewerID) {
+    // "Incoming" is CR 802.4a's: attacking the viewer, a planeswalker
+    // they control or a battle they protect (#1339).
+    if (combatMode === "block" && defendingPlayerOf(card) === viewerID) {
       onDeclareBlock(card.instance_id);
       return;
     }

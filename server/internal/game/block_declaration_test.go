@@ -303,6 +303,10 @@ func TestClearCombatForgetsBlockAnnouncements(t *testing.T) {
 	if err := g.ClearCombat(); err != nil {
 		t.Fatalf("ClearCombat: %v", err)
 	}
+	// "Next combat": A attacks seat 1 again. ClearCombat took it out
+	// of combat, and a creature that is attacking nobody has no
+	// defending player to block it (CR 802.4a, #1339).
+	g.WithWriteLock(func() { findCard(g, attackerA).AttackingTarget = g.Seats[1].ID })
 	if err := g.DeclareBlocker(blockerX, attackerA); err != nil {
 		t.Fatalf("DeclareBlocker again: %v", err)
 	}

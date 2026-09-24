@@ -117,6 +117,42 @@ func TestAttackingTargetKindDistinguishesSeatsFromPermanents(t *testing.T) {
 	}
 }
 
+// TestAttackerCarriesItsDefendingPlayer — #1339. The block picker
+// offers a creature only the attackers its controller defends
+// (CR 802.4a), and a battle's defender is its PROTECTOR, which the
+// client should not have to know. The server names the seat.
+func TestAttackerCarriesItsDefendingPlayer(t *testing.T) {
+	g := buildActiveGame(t)
+	owner, other := g.Seats[0].ID, g.Seats[1].ID
+	walker := seatWalker(g, other, 4)
+	// Controlled by the attacker's own seat, protected by the other:
+	// the controller is the WRONG answer here.
+	siege := seatSiege(g, owner, other, 5)
+	gone := uuid.New() // a planeswalker that has left (CR 506.4c)
+	attackers := map[string]uuid.UUID{}
+	for name, target := range map[string]uuid.UUID{"player": other, "walker": walker, "siege": siege, "gone": gone} {
+		id := uuid.New()
+		g.Battlefield.PushTop(game.Card{
+			InstanceID: id, Name: "At " + name, TypeLine: "Creature — Test",
+			Power: 2, Toughness: 2, Owner: owner, Controller: owner, AttackingTarget: target,
+		})
+		attackers[name] = id
+	}
+
+	v := ViewOfGame(g)
+	for _, name := range []string{"player", "walker", "siege"} {
+		if got := cardInView(t, v, attackers[name]).DefendingPlayer; got != other.String() {
+			t.Errorf("attacking the %s: defending_player = %q, want the other seat", name, got)
+		}
+	}
+	if got := cardInView(t, v, attackers["gone"]).DefendingPlayer; got != "" {
+		t.Errorf("attacking a walker that left: defending_player = %q, want omitted", got)
+	}
+	if got := cardInView(t, v, walker).DefendingPlayer; got != "" {
+		t.Errorf("a permanent that is not attacking carries defending_player %q", got)
+	}
+}
+
 // TestTurnViewPublishesTheActivePlayersAttackTargets — present only
 // during declare_attackers, because that is the only step where it
 // means anything.

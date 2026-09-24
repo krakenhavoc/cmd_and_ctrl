@@ -28,7 +28,7 @@ import {
   planAttackAll,
   seatLabel,
 } from "./attackAll";
-import { attackTargetHint, permanentAttackTargets } from "./attackTargets";
+import { attackersDefendedBy, attackTargetHint, permanentAttackTargets } from "./attackTargets";
 import { isCreature, isLand, isPlaneswalker } from "./cardTypes";
 import { counterCostBlocked } from "./counterCost";
 import type { ActionType, CardView, GameView } from "./protocol";
@@ -1019,9 +1019,11 @@ function combatItems(view: GameView, card: CardView): MenuItem[] {
       });
     }
   }
-  const attackers = (view.battlefield?.cards ?? []).filter(
-    (c) => !!c.attacking_target && c.controller !== card.controller,
-  );
+  // #1339 (CR 802.4a): only the attackers this card's controller is
+  // DEFENDING against — attacking them, a planeswalker they control or
+  // a battle they protect. Every other attacker is somebody else's to
+  // block, and the server refuses it with not_defending.
+  const attackers = attackersDefendedBy(view, card.controller);
   if (attackers.length > 0) {
     items.push({
       id: "combat-block",

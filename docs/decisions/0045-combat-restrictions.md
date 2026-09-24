@@ -393,7 +393,7 @@ type BlockRefusal struct {
 `Restriction.Names()`: `cant_block`, `cant_be_blocked`, `flying`,
 `landwalk`, `cant_be_blocked_by`, `cant_be_blocked_except_by`,
 `cant_block_attacker`, `too_few_blockers`, `too_many_blockers`,
-`declaration_limit`, `not_defending`, `tapped`, and a reserved
+`declaration_limit`, `not_defending` (claimed by #1339, Decision 34), `tapped`, and a reserved
 `protection`.
 
 The engine returns a `*BlockRefusedError` that wraps `ErrIllegalBlock`,
@@ -2057,3 +2057,98 @@ and the per-creature chaining (Windshaper Planetar) are catalog-side, in
 - **Capricopian** ("only the player this creature is attacking may activate
   this ability") needs an activator that is not the controller, which
   `ActivatedAbility` has no shape for. Its reselect half would work unchanged.
+
+## Amendment (2026-09-23, [#1339](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1339)): a creature blocks only what its controller is defending against
+
+Found while testing #1329's reselect. `DeclareBlockers` took a pairing whose
+blocker belonged to a player who was **not** defending against that attacker:
+at a four-seat table, seat 1's 1/1 could block the 3/3 attacking seat 2, and
+seat 2 took nothing. Decisions 1-33 stand. Sprint S37 (combat correctness),
+tracker [#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880). CR
+numbers checked against the pinned edition (`MagicCompRules 20260819.txt`).
+
+The rule is CR 802.4a — "A defending player can block only with creatures
+they control. Those creatures can block only creatures attacking that player,
+a planeswalker that player controls, or a battle that player protects" — with
+CR 509.1a saying the same thing for one defending player. Commander plays the
+attack multiple players option (CR 903.2), so there are up to three defending
+players in every combat this engine runs.
+
+### Decision 34: the declaration checks the defending player, and the generator was already right
+
+**The check.** `checkBlockDeclarationLocked` (Decision 13's validator) gains
+one per-entry check, `blockDefenderRefusalLocked`
+(`server/internal/game/block_declaration.go`), run before the CR 509.1b pair
+check: the blocker's controller must equal
+`defendingPlayerForAttackLocked(attacker.AttackingTarget)` — the player
+attacked, the planeswalker's **controller**, or the battle's **protector**
+(CR 310.9d). That is the same function `blockOptionsLocked` has always used
+to decide which attackers a seat is offered (Decision 14), so the verb, the
+enumerator and the #328 auto-pass signal now give one answer, which is
+Decision 13's "the engine never holds a block it would refuse" restored in the
+one direction it had been broken.
+
+**Not in `BlockPairRefusalLocked`.** That function is the per-pair CR 509.1b
+question about two creatures, and its contract already says "who controls the
+blocker" is the declaration's business. Its other callers restrict the blocker
+set to the defending seat before they ask it. Putting the defender check there
+would make the enumerator ask it twice and change nothing.
+
+**The refusal** is the reserved token `not_defending` (Decision 8's list),
+claimed here: `BlockReasonNotDefending`, returned only by the declaration
+verbs, never by a pair query — the same shape as the two count reasons. The
+sentence says where the attacker **is** pointed, because that is what tells
+the player whose creatures could block it: "Grizzly Bears is attacking P3, so
+only P3 can block it", "…is attacking Jace, a planeswalker P4 controls, …",
+"…is attacking Invasion of Ixalan, a battle P3 protects, …". `BlockRefusedError`
+gains `TargetKind` and `TargetName` to carry the permanent.
+
+**An attacker with no defending player cannot be blocked.** Two shapes reach
+that: a creature not attacking at all, and one attacking a planeswalker or
+battle that has left the battlefield (CR 506.4c). The generator never offered
+either; the verb now refuses both with `not_defending` ("… isn't attacking
+anything, so no one can block it."). The first ends the sandbox's
+"pre-emptive block", which the old doc comment on `DeclareBlockers` promised
+and one test (`TestClearCombatForgetsBlockAnnouncements`) leaned on — it now
+re-points the attacker before its second block, which is what "next combat"
+means. The second is **weaker than printed** for the defender: CR 506.4c says
+such a creature "may be blocked", and in a multiplayer game the natural reading
+(CR 802.2a's last-known defender) is the walker's former controller. The engine
+keeps no record of that player once the walker is gone, so nobody may block it
+— the answer the generator gave before this change too. Filed as
+[#1364](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1364) rather than widened here.
+
+**A standing pairing is not re-judged.** The check is skipped when the pairing
+is already in the declaration's `base`. CR 508.7a and 509.1h: an attacker
+reselected onto another player after it was blocked (#1329, Decision 33) stays
+blocked by the same creatures, and a declaration that repeats that pairing —
+alone, or inside a set beside a new pairing — must not be refused for a block
+the rules say is still standing. A **new** pairing from the old defender is
+refused; the new defender's is accepted.
+
+**The wire and the client.** The view stamps `defending_player` on every
+attacking card (`stampCombatTargets`, `server/internal/protocol/view.go`),
+from the same function, and omits it when there is none. The client's block
+pickers — the card menu's "Declare blocker" rows, the panel and seat-summary
+click-to-block, and the canvas's block-mode gate — read it through
+`defendingPlayerOf` / `attackersDefendedBy` (`client/src/lib/attackTargets.ts`),
+so none of them offers a block the server refuses, and the click paths now
+offer the attacks on a planeswalker the viewer controls or a battle they
+protect, which they missed before. The client does not re-derive who defends a
+battle (ADR 0045 §6's posture, applied to the defender): a frame that predates
+the field falls back to a player attack's target and to nothing otherwise.
+
+### What this does NOT decide
+
+- **CR 506.4c's "it may be blocked"** for an attacker whose planeswalker or
+  battle has left: see above. It needs the last-known defending player
+  recorded when the permanent leaves ([#1364](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1364)).
+- **CR 506.3e**, a creature put onto the battlefield blocking an attacker that
+  is not attacking its controller: the engine has no "enters blocking" path
+  yet, so there is nothing to gate.
+- **CR 802.4's APNAP order of declarations** — each defending player declaring
+  all of their blocks in turn — is still not modelled: every defending seat
+  declares during the one declare-blockers window, and the lock-in (Decision
+  19) announces the whole table's blocks at once. Legality does not depend on
+  the order (CR 802.4b: a defending player's blocks are judged ignoring the
+  attackers aimed at other players), which is why this check is enough.

@@ -31,6 +31,7 @@
   // screen reader user is told the full board is reachable.
 
   import type { ActionPayload, ActionType, CardView, GameView, PlayerView } from "../../protocol";
+  import { defendingPlayerOf } from "../../attackTargets";
   import { buildSeatSummary, manaLabel, MANA_ORDER } from "../../seatSummary";
   import { COLOR_META } from "../../manaPick";
   import { KEYWORD_ICONS } from "../../keywordIcons";
@@ -187,7 +188,7 @@
   // this only asks.
   function handlePipClick(c: CardView): void {
     if (onTargetCard?.(c)) return;
-    if (combatMode === "block" && c.attacking_target === viewerID) {
+    if (combatMode === "block" && defendingPlayerOf(c) === viewerID) {
       onDeclareBlock(c.instance_id);
       return;
     }
