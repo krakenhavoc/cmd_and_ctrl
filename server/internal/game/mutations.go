@@ -2596,6 +2596,11 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// while the copy decision is still an open prompt — so they are
 	// parked for the rest of this occurrence. See resolving_item.go.
 	g.beginResolvingSpellLocked(item, top)
+	// #1289, CR 704.3: nothing is checked until this resolution has
+	// finished, including any part of it that waits on a prompt. See
+	// resolution_pause.go.
+	g.beginResolutionLocked()
+	defer g.endResolutionLocked()
 	defer g.recomputeSplitSecondLocked()
 
 	// Target re-check (CR 608.2b). If the spell declared at least one
@@ -2958,6 +2963,9 @@ func (g *Game) resolveTopAbilityLocked() {
 	// (that is the ability-copy seam), but "the item currently
 	// resolving" has one answer or the next reader finds a hole.
 	g.beginResolvingLocked(top)
+	// #1289: the same CR 704.3 hold the spell path takes.
+	g.beginResolutionLocked()
+	defer g.endResolutionLocked()
 	g.recomputeSplitSecondLocked()
 	if spellAllTargetsIllegalLocked(g, top) {
 		g.EmitEvent(Event{
@@ -3807,6 +3815,14 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 //
 // Caller must hold g.mu.
 func (g *Game) runStateChecksLocked() (sbaFired bool) {
+	// #1289, CR 704.3: a player gets priority only once the resolving
+	// item has finished, and a resolution waiting on one of its own
+	// prompts has not. Hold the whole boundary (the sweep and the
+	// CR 603.3 drain) until the answer finishes it. See
+	// resolution_pause.go.
+	if g.holdForOpenResolutionLocked() {
+		return false
+	}
 	// #830 / CR 509.2a: a player is about to receive priority, so the
 	// block declaration is complete. Lock it in first, so the
 	// "becomes blocked" and "blocks" triggers it produces are on
@@ -7673,6 +7689,10 @@ func (g *Game) Concede(playerID uuid.UUID) error {
 	// fires the same stack cleanup + cursor advance + game-end
 	// check as an SBA-driven loss.
 	g.eliminatePlayerLocked(p)
+	// #1289: the departure may have dropped the last prompt a paused
+	// resolution was waiting on (ADR 0018 §6's departure table), which
+	// finishes that resolution. Its CR 704.3 boundary is owed now.
+	g.settleResolutionLocked()
 	return nil
 }
 

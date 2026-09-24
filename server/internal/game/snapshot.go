@@ -279,6 +279,13 @@ type GameSnapshot struct {
 	EventBatch        uint64            `json:"eventBatch,omitempty"`
 	OncePerBatchFired map[string]uint64 `json:"oncePerBatchFired,omitempty"`
 
+	// ResolutionOpen is Game.resolutionOpen (#1289,
+	// resolution_pause.go): a resolution has begun and the CR 704.3
+	// boundary after it has not run. Read with each choice's
+	// MidResolution. A file written before it restores false, which is
+	// the old behaviour (the boundary is not held). No schema bump.
+	ResolutionOpen bool `json:"resolutionOpen,omitempty"`
+
 	// AnnouncedBlocks / BlockedAttackers are what the block
 	// declaration's lock-in produced (#830, #715, blockers.go): which
 	// blocker has had its EventBlock announced against which
@@ -738,6 +745,8 @@ type pendingChoiceSnapshot struct {
 	LoopShortcutKey    string `json:"loopShortcutKey,omitempty"`
 	LoopShortcutCount  int    `json:"loopShortcutCount,omitempty"`
 	LoopShortcutRepeat bool   `json:"loopShortcutRepeat,omitempty"`
+	// MidResolution is PendingChoice.midResolution (#1289).
+	MidResolution bool `json:"midResolution,omitempty"`
 
 	// ResumeFrames names the continuation slots that were populated.
 	// Diagnostic only — nothing rebuilds them in this schema.
@@ -946,6 +955,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 		SplitSecondActive: g.SplitSecondActive,
 		EventSeq:          g.eventSeq,
 		EventBatch:        g.eventBatch,
+		ResolutionOpen:    g.resolutionOpen,
 	}
 	s.OncePerBatchFired = copyStringUint64Map(g.oncePerBatchFired)
 	s.AnnouncedBlocks = copyUUIDPairMap(g.announcedBlocks)
@@ -1479,6 +1489,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		LoopShortcutKey:      c.LoopShortcutKey,
 		LoopShortcutCount:    c.LoopShortcutCount,
 		LoopShortcutRepeat:   c.LoopShortcutRepeat,
+		MidResolution:        c.midResolution,
 	}
 	if c.DamageAssignment != nil {
 		// Pure data (see the type), so a value copy with its own
@@ -1630,6 +1641,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.SplitSecondActive = s.SplitSecondActive
 	g.eventSeq = s.EventSeq
 	g.eventBatch = s.EventBatch
+	g.resolutionOpen = s.ResolutionOpen
 	g.oncePerBatchFired = copyStringUint64Map(s.OncePerBatchFired)
 	g.announcedBlocks = copyUUIDPairMap(s.AnnouncedBlocks)
 	g.blockedAttackers = copyBoolMap(s.BlockedAttackers)
@@ -2088,6 +2100,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		LoopShortcutKey:      c.LoopShortcutKey,
 		LoopShortcutCount:    c.LoopShortcutCount,
 		LoopShortcutRepeat:   c.LoopShortcutRepeat,
+		midResolution:        c.MidResolution,
 		// Every resume frame stays nil. This is the phase-1 line in
 		// the sand, and the census is how it is enforced rather than
 		// hoped for.

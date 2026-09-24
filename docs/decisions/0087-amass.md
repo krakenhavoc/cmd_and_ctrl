@@ -282,6 +282,10 @@ so it runs exactly once and an undone-then-redone answer replays it. Still open,
 with its own follow-up: a freshly created 0/0 Army whose counters pause is
 killed by the state-based sweep that runs while the prompt is open
 ([#1289](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1289)).
+*Closed 2026-09-23 (#1289):* the sweep waits for the resolution (ADR 0007
+§7's amendment, ADR 0013 §5ae), and
+`TestWidespreadBrutalityWithNoArmyKeepsTheFreshArmyThroughThePause` pins the
+doubled-creation case the issue described.
 
 ---
 
