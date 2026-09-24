@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 
 import {
   autopassSuspended,
+  blockDeclarationPending,
   hasDeclaredAttackers,
   loopNoticeText,
   owesBlockDecision,
@@ -229,6 +230,48 @@ describe("owesBlockDecision", () => {
     const s = blockSnap([0]);
     s.turn.priority_holder = 1;
     expect(owesBlockDecision(s, "p0")).toBe(true);
+  });
+});
+
+describe("blockDeclarationPending (#1279)", () => {
+  beforeEach(() => _resetCacheForTests());
+
+  function pendingSnap(pending: number[] | undefined, declared?: number[]): GameView {
+    const s = snap({
+      step: "declare_blockers",
+      activeSeat: 1,
+      priorityHolder: 1,
+    });
+    s.turn.block_pending_seats = pending;
+    s.turn.blocks_declared_seats = declared;
+    return s;
+  }
+
+  it("is true while the viewer's declaration is still open", () => {
+    expect(blockDeclarationPending(pendingSnap([0]), "p0")).toBe(true);
+  });
+
+  it("is false once the viewer has declared, even with no blocks", () => {
+    expect(blockDeclarationPending(pendingSnap(undefined, [0]), "p0")).toBe(false);
+  });
+
+  it("is false when only another seat is still declaring", () => {
+    expect(blockDeclarationPending(pendingSnap([1]), "p0")).toBe(false);
+  });
+
+  it("is independent of the #328 decision list", () => {
+    // A defender who has blocked with everything owes no decision but
+    // still has to say they are done.
+    const s = pendingSnap([0]);
+    s.turn.block_decision_seats = [];
+    expect(owesBlockDecision(s, "p0")).toBe(false);
+    expect(blockDeclarationPending(s, "p0")).toBe(true);
+  });
+
+  it("is false for a null snap, a null viewer, or an unseated viewer", () => {
+    expect(blockDeclarationPending(null, "p0")).toBe(false);
+    expect(blockDeclarationPending(pendingSnap([0]), null)).toBe(false);
+    expect(blockDeclarationPending(pendingSnap([0]), "nobody")).toBe(false);
   });
 });
 

@@ -155,3 +155,34 @@ func TestDispatchDeclareBlockersBadUUID(t *testing.T) {
 		t.Fatal("a malformed blocker ID was accepted")
 	}
 }
+
+// #1279: finish_blocks completes the caller's own declaration and
+// nobody else's.
+func TestDispatchFinishBlocks(t *testing.T) {
+	g, _, _ := menaceCombat(t)
+	def := g.Seats[1].ID
+
+	other, err := Decode(string(TypeFinishBlocks), def.String(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	other.Caller = g.Seats[0].ID
+	if err := Dispatch(g, other); !errors.Is(err, ErrPlayerCallerMismatch) {
+		t.Fatalf("finishing another seat's declaration: %v, want ErrPlayerCallerMismatch", err)
+	}
+	if got := g.BlockDeclarationStatusOf(def); got != game.BlockDeclarationPending {
+		t.Fatalf("status %q after a refused finish, want pending", got)
+	}
+
+	own, err := Decode(string(TypeFinishBlocks), def.String(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	own.Caller = def
+	if err := Dispatch(g, own); err != nil {
+		t.Fatalf("finish_blocks: %v", err)
+	}
+	if got := g.BlockDeclarationStatusOf(def); got != game.BlockDeclarationDeclared {
+		t.Errorf("status %q, want declared", got)
+	}
+}

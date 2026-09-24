@@ -1072,6 +1072,9 @@ func classifyActionError(err error) (code, message string) {
 		return protocol.CodeBadRequest, "action is not legal in the current step"
 	case errors.Is(err, game.ErrNotACreature):
 		return protocol.CodeBadRequest, "card is not a creature"
+	case errors.Is(err, game.ErrNotDefending):
+		// #1279: finish_blocks from a seat nothing is attacking.
+		return protocol.CodeBadRequest, "you are not a defending player this combat"
 	case errors.Is(err, game.ErrUnparseableCost):
 		// #289: the card's cost is one the parser can't read. Split
 		// and adventure cards used to import the joined

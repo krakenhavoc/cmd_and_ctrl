@@ -63,8 +63,15 @@ const (
 	// ineligible entries, this is all-or-nothing — game.DeclareBlockers
 	// refuses the set whole and stores none of it.
 	TypeDeclareBlockers Type = "declare_blockers"
-	TypeClearCombat     Type = "clear_combat"
-	TypeAdvanceStep     Type = "advance_step"
+	// TypeFinishBlocks completes the caller's CR 509.1 block
+	// declaration — the "done blocking" / "no blocks" button (#1279,
+	// ADR 0045 Decision 38). Whatever the seat has staged is its
+	// declaration. Player-scoped and NOT priority-gated: the
+	// declaration is a turn-based action a defender takes while the
+	// active player still holds priority.
+	TypeFinishBlocks Type = "finish_blocks"
+	TypeClearCombat  Type = "clear_combat"
+	TypeAdvanceStep  Type = "advance_step"
 	// S10 Commander UX additions.
 	TypeSetMonarch    Type = "set_monarch"
 	TypeSetInitiative Type = "set_initiative"
@@ -397,6 +404,10 @@ var playerScopedActions = map[Type]struct{}{
 	// initiator is `Player`) but the "any caller may start a vote"
 	// posture matches set_monarch / set_initiative — not scoped.
 	TypeCastVote: {},
+	// #1279: a seat finishes its OWN block declaration, never
+	// another seat's — finishing a defender early would decide their
+	// blocks for them.
+	TypeFinishBlocks: {},
 }
 
 // Dispatch applies an action to a game. Returns nil on success, an
@@ -904,6 +915,12 @@ func dispatch(g *game.Game, a Action) error {
 			decls = append(decls, game.BlockDeclaration{Blocker: blockerID, Attacker: attackerID})
 		}
 		return g.DeclareBlockers(decls)
+
+	case TypeFinishBlocks:
+		if a.Player == uuid.Nil {
+			return ErrInvalidPlayer
+		}
+		return g.FinishBlocks(a.Player)
 
 	case TypeClearCombat:
 		return g.ClearCombat()

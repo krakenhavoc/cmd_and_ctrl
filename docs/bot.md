@@ -918,7 +918,7 @@ the filtered `aiseat.Input` it would see at a real table.
 | `--out` | artifacts directory. Each run gets its own `<out>/<RFC3339 start>/`. |
 | `--decision-log`, `--decision-log-mode` | per-game decision logs under `<out>/decisions`. **Operator-only** — see the section above. |
 | `--replays` | per-game replay JSONL under `<out>/replays`. Off by default: a four-seat replay is ~320 MiB — and this flag hands the directory to `ws.Room`, which also writes `games/<id>.json` (the full authoritative state, rewritten on **every committed move**) and `restore/<id>.json` while a game is live. Budget for all three. |
-| `--block-grace` | how long an attacking bot holds its pass in declare-blockers while a defender still has a legal block. Defaults to production's value. `0` turns it off, which is faster and declares systematically fewer blocks than a real table — see below. |
+| `--block-grace` | how long an attacking bot holds its pass in declare-blockers while a defender is still declaring blockers with a legal block to make. Defaults to production's value. `0` turns it off — see below. |
 | `--md`, `--json` | what to print. Markdown by default. |
 
 Env fallbacks match the server's: `CMDCTRL_OPENAI_ENDPOINT`,
@@ -958,12 +958,16 @@ auditable on the point. Turn order in Commander is worth real
 percentage points, the same order as the differences being measured,
 so prefer 12 games over 10 on a four-seat table.
 
-**`--block-grace` is a fidelity knob, not a speed knob.** Without it
-an attacking bot re-steps the moment it commits, and the step can end
-before a slower seat has declared a block; combat is where policy
-differences actually show, so a run with it off understates every
-difference. It defaults to production's value and should stay there
-for any number that goes into an ADR.
+**`--block-grace` used to be a fidelity knob; since #1279 it is a
+speed knob.** Before #1279 an attacking bot that passed at once could
+let the step end before a slower seat had declared a block, so a run
+with it off understated every combat difference. The engine now
+completes each defender's declaration explicitly — their own pass, a
+`finish_blocks`, or having no legal block — and hands the attacker
+priority back after the last one ([ADR 0045](decisions/0045-combat-restrictions.md)
+Decision 38), so no block is lost either way; the grace only saves the
+extra round of passes. It still defaults to production's value, so a
+run matches what a live table does.
 
 #### Wall clock
 

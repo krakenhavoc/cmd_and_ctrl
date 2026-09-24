@@ -118,7 +118,7 @@ func parseArenaFlags(args []string, out io.Writer) (*arenaFlags, error) {
 	decLog := fs.Bool("decision-log", false, "write a per-game decision log under <out>/decisions (operator-only: see docs/bot.md)")
 	decMode := fs.String("decision-log-mode", "", "escalated (default) | all | model")
 	replays := fs.Bool("replays", false, "write per-game replays under <out>: replays/<id>.jsonl (~320 MiB per four-seat game) plus games/<id>.json, a full authoritative-state marshal rewritten on every committed move, and restore/<id>.json while a game is live")
-	blockGrace := fs.Duration("block-grace", aiseat.DefaultConfig().BlockGrace, "how long an attacking bot holds its pass in declare-blockers while a defender still has a legal block; 0 or less turns it off, which is faster but declares systematically fewer blocks than a real table")
+	blockGrace := fs.Duration("block-grace", aiseat.DefaultConfig().BlockGrace, "how long an attacking bot holds its pass in declare-blockers while a defender is still declaring blockers; 0 or less turns it off, which is faster and (since #1279) loses no blocks")
 	dump := fs.String("dump", "", "Scryfall bulk dump, needed by curated decks (default: $CMDCTRL_SCRYFALL_DUMP)")
 	note := fs.String("note", "", "free-form note recorded in the report (model quantisation, what is being tested)")
 	printMD := fs.Bool("md", false, "print the Markdown report to stdout (the default when neither --md nor --json is given)")

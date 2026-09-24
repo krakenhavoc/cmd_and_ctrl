@@ -86,6 +86,11 @@ func TestCommanderNinjutsuRowRidesTheCommandZoneForItsOwnerOnly(t *testing.T) {
 		}
 	})
 	g.BumpLayerVersionForTest()
+	// #1279: an attacker is unblocked only once its defending player has
+	// DECLARED — here, declared no blocks beyond what is staged.
+	if err := g.FinishBlocks(them.ID); err != nil {
+		t.Fatalf("FinishBlocks: %v", err)
+	}
 
 	mine := FilterViewFor(ViewOfGame(g), me.ID.String())
 	c := commandCardView(t, mine, 0, yuriko)

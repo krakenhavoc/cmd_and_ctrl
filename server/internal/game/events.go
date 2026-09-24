@@ -810,6 +810,25 @@ const (
 	// batch as the EventBlock events of the same declaration, so a
 	// OncePerBatch ability sees one occurrence. Added in #830.
 	EventBecomesBlocked EventKind = "becomes_blocked"
+
+	// EventBlockersDeclared — the defending player named by Actor has
+	// COMPLETED their CR 509.1 block declaration (#1279, ADR 0045
+	// Decision 38). One per defending player per combat, however many
+	// creatures they blocked with — Amount is that count, and 0 is
+	// "declared, none", which is the fact no other event carries: an
+	// empty blocked record means the same thing before the defender
+	// has acted as after they decided not to block.
+	//
+	// Emitted by completeBlockDeclarationLocked (block_completion.go),
+	// AFTER that defender's EventBlock / EventBecomesBlocked in the same
+	// batch, so the blocked record is written by the time the harvester
+	// asks it. It is the trigger point for CR 509.3's "whenever ~
+	// attacks and isn't blocked": such an ability watches this kind and
+	// asks whether its creature is attacking Actor and unblocked
+	// (effects.attacksAndIsNotBlocked). A creature put onto the
+	// battlefield attacking after the declaration never sees one, which
+	// is what the rule says.
+	EventBlockersDeclared EventKind = "blockers_declared"
 	// EventBattleDefeated — a battle's last defense counter came off
 	// (CR 310.12b). Source / Target / CardID = the battle, Actor = its
 	// controller.

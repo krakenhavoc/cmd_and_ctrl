@@ -90,6 +90,11 @@ func TestNinjutsuReturnOptionsAreTheUnblockedAttackersOnly(t *testing.T) {
 		}
 	})
 	g.BumpLayerVersionForTest()
+	// #1279: an attacker is unblocked only once its defending player has
+	// DECLARED — here, declared no blocks beyond what is staged.
+	if err := g.FinishBlocks(them.ID); err != nil {
+		t.Fatalf("FinishBlocks: %v", err)
+	}
 
 	v := FilterViewFor(ViewOfGame(g), me.ID.String())
 	c := handCardView(t, v, 0, ninja)

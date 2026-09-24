@@ -4,6 +4,8 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
 )
@@ -22,10 +24,6 @@ func TestEvasionBlocksAgreeWithDeclarationsAndDecisionSignal(t *testing.T) {
 		{"skulk", game.Card{Keywords: []string{"skulk"}, Power: 2}, game.Card{Power: 3}, game.Card{Power: 2}, "skulk"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			g := newTable(t)
-			attackerSeat, defender := g.Seats[0], g.Seats[1]
-			clearHand(attackerSeat)
-			clearHand(defender)
 			creature := func(c game.Card, name string) game.Card {
 				c.Name, c.TypeLine, c.Toughness = name, "Creature — Test", 4
 				if c.Power == 0 {
@@ -33,14 +31,34 @@ func TestEvasionBlocksAgreeWithDeclarationsAndDecisionSignal(t *testing.T) {
 				}
 				return c
 			}
-			attacker := battlefieldCard(g, attackerSeat, creature(tc.attacker, "Attacker"))
-			refused := battlefieldCard(g, defender, creature(tc.refused, "Refused blocker"))
-			advanceTo(t, g, game.StepDeclareAttackers)
-			if err := g.DeclareAttacker(attacker, defender.ID); err != nil {
-				t.Fatal(err)
+			// setup seats the attacker and the given defending
+			// creatures, and walks into declare_blockers with the
+			// attack declared. The defending creatures exist BEFORE the
+			// step begins: #1279 completes a defender's declaration as
+			// the step begins when they have no legal block, so a
+			// creature pushed afterwards is not asked about.
+			setup := func(defending ...game.Card) (*game.Game, *game.Player, uuid.UUID, []uuid.UUID) {
+				g := newTable(t)
+				attackerSeat, defender := g.Seats[0], g.Seats[1]
+				clearHand(attackerSeat)
+				clearHand(defender)
+				attacker := battlefieldCard(g, attackerSeat, creature(tc.attacker, "Attacker"))
+				var ids []uuid.UUID
+				for _, c := range defending {
+					ids = append(ids, battlefieldCard(g, defender, c))
+				}
+				advanceTo(t, g, game.StepDeclareAttackers)
+				if err := g.DeclareAttacker(attacker, defender.ID); err != nil {
+					t.Fatal(err)
+				}
+				advanceTo(t, g, game.StepDeclareBlockers)
+				return g, defender, attacker, ids
 			}
-			advanceTo(t, g, game.StepDeclareBlockers)
 
+			// Only the refused blocker: no legal block, nothing owed,
+			// and the declaration — none — is already complete.
+			g, defender, attacker, ids := setup(creature(tc.refused, "Refused blocker"))
+			refused := ids[0]
 			moves := legal.EnumerateFor(g, defender.ID)
 			if n := blocksBy(moves, refused); n != 0 {
 				t.Fatalf("offered %d illegal blocks: %v", n, labels(moves))
@@ -48,13 +66,18 @@ func TestEvasionBlocksAgreeWithDeclarationsAndDecisionSignal(t *testing.T) {
 			if g.SeatOwesBlockDecision(defender.ID) {
 				t.Fatal("decision signal says a defender with no legal block owes a choice")
 			}
+			if got := g.BlockDeclarationStatusOf(defender.ID); got != game.BlockDeclarationDeclared {
+				t.Fatalf("a defender with no legal block has declared none: status %q", got)
+			}
 			err := g.DeclareBlocker(refused, attacker)
 			var refusal *game.BlockRefusedError
 			if !errors.As(err, &refusal) || refusal.Reason != tc.reason {
 				t.Fatalf("declaration refusal = %v, want %s", err, tc.reason)
 			}
 
-			allowed := battlefieldCard(g, defender, creature(tc.allowed, "Allowed blocker"))
+			// Both: the legal one is offered, the other is not.
+			g, defender, attacker, ids = setup(creature(tc.refused, "Refused blocker"), creature(tc.allowed, "Allowed blocker"))
+			refused, allowed := ids[0], ids[1]
 			moves = legal.EnumerateFor(g, defender.ID)
 			if blocksBy(moves, allowed) != 1 || blocksBy(moves, refused) != 0 {
 				t.Fatalf("wrong block choices: %v", labels(moves))

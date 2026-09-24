@@ -44,7 +44,12 @@
   import { stopKeyFor, type StepID } from "../lib/turn";
   import { armAudioOnFirstGesture, isMuted, play, toggleMuted } from "../lib/sounds";
   import { openSettings, settings } from "../lib/settings";
-  import { autopassSuspended, loopNoticeText, owesBlockDecision } from "../lib/priority";
+  import {
+    autopassSuspended,
+    blockDeclarationPending,
+    loopNoticeText,
+    owesBlockDecision,
+  } from "../lib/priority";
   import { hasPlay, hasResponse, keyWindow, type ResponseCategories } from "../lib/responseWindow";
   import {
     attackAllLabel,
@@ -939,6 +944,24 @@
     client.sendAction("undo");
   }
 
+  // #1279: the viewer is a defender whose block declaration is still
+  // open. The engine completes it when they pass priority, but a
+  // defender does not hold priority while the active player does —
+  // this is how they say "done" from there. Whatever they have staged
+  // is the declaration; nothing staged is "no blocks".
+  const viewerBlocksPending = $derived(blockDeclarationPending(view, viewerID));
+  const viewerStagedBlocks = $derived(
+    viewerID && view
+      ? view.battlefield.cards.filter((c) => c.controller === viewerID && !!c.blocking_target)
+          .length
+      : 0,
+  );
+  function finishBlocks(): void {
+    if (!viewerID) return;
+    combatSelection = null;
+    client.sendAction("finish_blocks", viewerID);
+  }
+
   function declareBlockTarget(attackerCardID: string): void {
     if (!viewerID || combatSelection?.kind !== "blocker") return;
     client.sendAction("declare_blocker", undefined, {
@@ -1584,6 +1607,35 @@
                     <Icon name="undo" size={12} /> Undo
                   </button>
                 {/if}
+              </div>
+            {/if}
+
+            <!-- #1279: a defender still declaring blockers can finish
+                 without holding priority. Present for the whole of
+                 their open declaration, so the count stays live as
+                 blocks are staged; gone once it is complete. -->
+            {#if viewerBlocksPending && !mulligansOpen && !gameEnded}
+              <div class="att block-finish" aria-label="declare blockers">
+                <span class="att-label">
+                  <Icon name="sword" size={12} />
+                  block
+                </span>
+                <span class="att-text">
+                  {#if viewerStagedBlocks > 0}
+                    <strong>{viewerStagedBlocks}</strong>
+                    {viewerStagedBlocks === 1 ? "blocker" : "blockers"} declared
+                  {:else}
+                    Choose blockers, or declare none
+                  {/if}
+                </span>
+                <button
+                  type="button"
+                  class="primary att-btn"
+                  title="finish declaring blockers — the attacking player gets priority once every defender is done"
+                  onclick={finishBlocks}
+                >
+                  {viewerStagedBlocks > 0 ? "Done blocking" : "No blocks"}
+                </button>
               </div>
             {/if}
 
