@@ -768,6 +768,56 @@ func (g *Game) AbilityManaCostForTargetsForEffect(activator uuid.UUID, source Ca
 	return g.applyCostModifiersLocked(base, g.abilityCostQueryLocked(activator, source, zone, ab, targets))
 }
 
+// ActivationPrice is PriceActivation's answer: the source and the
+// ability it priced (the handler needs both for the spend context and
+// the printed string), and what the activation will charge in mana.
+type ActivationPrice struct {
+	Source  Card
+	Ability ActivatedAbilityShape
+	Total   ParsedCost
+}
+
+// PriceActivation prices one activation of the ability at `index` on
+// `cardID`, for `activator`, with the announced `targets` (nil before
+// any are chosen) — the number ActivateCatalogAbility will charge
+// before the Phyrexian strike and the waterbend taps, which are claims
+// about how the cost is paid rather than part of it (#1405). The
+// PriceCast of activations, and the only supported way to ask that
+// question from outside the package: the auto-tap preview used to
+// parse the printed cost itself and missed every board modifier
+// (#1184) and the ability's own clause (#1296).
+//
+// The source is found and priced exactly as the activation finds and
+// prices it — findCardAndZoneLocked for the zone, the same ability
+// list, AbilityManaCostForTargetsForEffect for the number. It does not
+// ask whether the activation is LEGAL (timing, controller, zone
+// gates); a preview answers "what would this cost".
+//
+// Takes the read lock, through ReadSnapshot so the layers the
+// modifiers read are fresh — the activation recomputes them first too.
+func (g *Game) PriceActivation(activator, cardID uuid.UUID, index int, targets []TargetRef) (ActivationPrice, error) {
+	var (
+		out ActivationPrice
+		err error
+	)
+	g.ReadSnapshot(func() {
+		source, zone := g.findCardAndZoneLocked(cardID)
+		if source == nil {
+			err = ErrCardNotFound
+			return
+		}
+		abilities := ActivatedAbilitiesForCard(*source)
+		if index < 0 || index >= len(abilities) {
+			err = ErrInvalidParam
+			return
+		}
+		out.Source = *source
+		out.Ability = abilities[index]
+		out.Total, err = g.AbilityManaCostForTargetsForEffect(activator, *source, zone, out.Ability, targets)
+	})
+	return out, err
+}
+
 // AbilityPriceReadsTargetsForEffect reports whether pricing an
 // activation of `ab` could depend on the targets announced for it: the
 // ability's own cost clause, or any activation-scoped modifier on the

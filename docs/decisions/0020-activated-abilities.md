@@ -2628,6 +2628,9 @@ Endures** (`full`, via `effects.ChannelDiscountPerLegendaryCreature`).
   Plate Armor, Mirror of Galadriel, …) are ordinary card work now.
 - **Per-target prices for a multi-target or modal ability.** No printed card
   prices by target on one; the view omits the map rather than guess.
-- **The auto-tap preview's ability branch** (`/games/:id/auto-tap-preview?ability=`)
-  still prices the printed cost with no modifiers at all — stale since #1184,
-  filed as [#1405](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1405).
+- ~~**The auto-tap preview's ability branch**~~ — closed by
+  [#1405](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1405).
+  `/games/:id/auto-tap-preview?ability=` now prices through
+  `Game.PriceActivation`, which calls `AbilityManaCostForTargetsForEffect`,
+  so it applies board modifiers and the ability's own clause. It also takes an
+  optional `targets=<kind>:<uuid>,…` for the target-keyed price.

@@ -1410,6 +1410,16 @@ func gameCreator(c Config, w http.ResponseWriter, r *http.Request) error {
 //	                            "{4}" in the card's corner). Every
 //	                            cast-shaped param above is ignored on
 //	                            this branch — an ability is not a cast.
+//	                            Priced as ActivateCatalogAbility
+//	                            charges it (#1405): board modifiers
+//	                            and the ability's own clause.
+//	?targets=<kind>:<uuid>,…  — optional, with ?ability= only (#1405).
+//	                            The announced targets, kind `card` or
+//	                            `player`, so a target-keyed price
+//	                            (Dragonfire Blade's "{1} less for each
+//	                            color of the creature it targets") is
+//	                            previewed at the target's price.
+//	                            Omitted, the no-target price.
 //	?exclude=<uuid>,<uuid>... — optional. Comma-separated lock-tap
 //	                            permanent IDs the auto-tapper must
 //	                            NOT consider; lets the client
@@ -1509,34 +1519,50 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 	// the {4} printed in the corner — a live readout that is wrong
 	// in both directions is worse than none.
 	//
-	// Abilities take no commander tax and no cost modifiers: the
-	// engine's payAbilityManaCostLocked applies neither, so neither
-	// does the preview. The two agreeing is the whole point of the
-	// endpoint.
+	// #1405: priced by g.PriceActivation, which calls the function
+	// ActivateCatalogAbility pays (AbilityManaCostForTargetsForEffect)
+	// — the board's activation modifiers (#1184, Boom Scholar), the
+	// ability's own clause (#1296, the channel lands) and, when the
+	// request names them, the target-dependent price (Dragonfire
+	// Blade). No commander tax: an ability is not a cast. This branch
+	// used to parse the printed cost itself, on the claim that the
+	// engine applied no modifier to an ability — untrue since #1184.
 	if as := r.URL.Query().Get("ability"); as != "" {
 		idx, err := strconv.Atoi(as)
 		if err != nil || idx < 0 {
 			return httpError(http.StatusBadRequest, "ability must be a non-negative integer")
 		}
-		abilities := game.ActivatedAbilitiesForCard(card)
-		if idx >= len(abilities) {
-			return httpError(http.StatusNotFound, "ability index out of range")
-		}
-		ab := abilities[idx]
-		cost, err := game.ParseCost(ab.Cost.Mana)
+		// ?targets= is optional. The X and Phyrexian pickers open
+		// before targeting (CR 601.2b before 601.2c), so they send
+		// none and read the no-target price — for a target-keyed
+		// reduction, the printed cost, which is what the activation
+		// charges when it names no target.
+		targets, err := previewTargetsParam(r.URL.Query().Get("targets"))
 		if err != nil {
-			return httpError(http.StatusBadRequest, "ability's cost cannot be parsed: "+err.Error())
+			return err
 		}
-		spend := game.ManaSpendForAbility(card)
-		cost = strikePhyrexianForPreview(g, p.PlayerID, cost, spend, phyrexian)
+		price, err := g.PriceActivation(p.PlayerID, cardID, idx, targets)
+		switch {
+		case errors.Is(err, game.ErrCardNotFound):
+			return httpError(http.StatusNotFound, "card not found in game")
+		case errors.Is(err, game.ErrInvalidParam):
+			return httpError(http.StatusNotFound, "ability index out of range")
+		case err != nil:
+			return httpError(http.StatusBadRequest, "this activation cannot be priced: "+err.Error())
+		}
+		spend := game.ManaSpendForAbility(price.Source)
+		cost := strikePhyrexianForPreview(g, p.PlayerID, price.Total, spend, phyrexian)
 		// #1212: no source wish for an ability. "If mana from a
 		// Treasure was spent to activate this ability" (Forsworn
 		// Paladin, Jetmir's Fixer) is real printed text and is
 		// declared out of scope there — the record will carry the
 		// kinds, nothing reads them off an activation yet, and the
 		// catalog declaration is per CARD rather than per ability.
+		//
+		// `cost` stays the printed string, as on the cast branch: the
+		// modifiers are generic, and plan / missing carry the total.
 		return writeAutoTapPreview(g, p.PlayerID, cost, xValue, excluded,
-			ab.Cost.Mana, spend, 0, w)
+			price.Ability.Cost.Mana, spend, 0, w)
 	}
 	// #696: the whole of the cast's price, from the engine's one
 	// pricer. The alternative cost claimed at announce, a granted
@@ -1664,6 +1690,37 @@ func uuidListParam(raw, name string) ([]uuid.UUID, error) {
 			return nil, httpError(http.StatusBadRequest, name+" must be a comma-separated UUID list")
 		}
 		out = append(out, id)
+	}
+	return out, nil
+}
+
+// previewTargetsParam parses the activation preview's ?targets= list
+// (#1405): comma-separated `<kind>:<uuid>` entries, kind `card` or
+// `player` — the two kinds a target-reading cost can look at. A
+// TargetRef's Slot and Mode are not carried: no cost modifier reads
+// them, and the preview asks only for the price.
+func previewTargetsParam(raw string) ([]game.TargetRef, error) {
+	if raw == "" {
+		return nil, nil
+	}
+	const malformed = "targets must be a comma-separated list of card:<uuid> or player:<uuid>"
+	var out []game.TargetRef
+	for _, entry := range strings.Split(raw, ",") {
+		entry = strings.TrimSpace(entry)
+		if entry == "" {
+			continue
+		}
+		kind, idStr, ok := strings.Cut(entry, ":")
+		ref := game.TargetRef{Kind: game.TargetRefKind(kind)}
+		if !ok || (ref.Kind != game.TargetCard && ref.Kind != game.TargetPlayer) {
+			return nil, httpError(http.StatusBadRequest, malformed)
+		}
+		id, err := uuid.Parse(idStr)
+		if err != nil {
+			return nil, httpError(http.StatusBadRequest, malformed)
+		}
+		ref.ID = id
+		out = append(out, ref)
 	}
 	return out, nil
 }
