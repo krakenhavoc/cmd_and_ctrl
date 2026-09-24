@@ -328,6 +328,16 @@ var (
 	// before the printed condition, so nothing is paid.
 	ErrAbilityExhausted = errors.New("game: this exhaust ability has already been activated")
 
+	// ErrStaleAbilityRef is returned by ActivateCatalogAbility and
+	// ActivateManaAbility when the announcement names an ability by a
+	// ref (ADR 0093 Decision 5) and the row at its index is no longer
+	// that ability — a granted ability appeared or vanished between
+	// the view and the announcement, and the positional index now
+	// points somewhere else. Checked before anything is validated or
+	// paid, so the move costs nothing; the next view carries fresh
+	// refs, so it is never a wedge (#544).
+	ErrStaleAbilityRef = errors.New("game: that ability is no longer at that position — the board changed")
+
 	// ErrIllegalManaColor is returned by ActivateManaAbility when the
 	// activator named the colour of a pipe slot up front (#1443,
 	// ManaAbilityParams.Colors) and the naming is not one the slot

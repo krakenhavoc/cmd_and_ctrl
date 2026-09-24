@@ -1684,6 +1684,21 @@ type CardView struct {
 	// S15 sub-PR 2.
 	ManaAbilities []ManaAbilityView `json:"mana_abilities,omitempty"`
 
+	// GrantedAbilities are the abilities OTHER effects gave this
+	// permanent (ADR 0093 Decision 8): a layer-6 grant (Cryptolith
+	// Rite's "{T}: Add one mana of any color." on every creature you
+	// control) and a copy's CR 707.9a grant (Phantasmal Image's
+	// sacrifice trigger), each with the text the granting card prints.
+	// It is the ONE place a granted TRIGGER reaches the wire — a
+	// trigger has no ability row — and the granted mana and activated
+	// rows are also marked individually by their `granted_by`.
+	//
+	// Public on every viewer's copy of a card that viewer can see; like
+	// the ability rows it describes, it is cleared for a viewer who
+	// cannot (a face-down permanent's non-controllers). Absent — which
+	// is nearly always — means nothing granted this permanent anything.
+	GrantedAbilities []GrantedAbilityView `json:"granted_abilities,omitempty"`
+
 	// Abilities is the card's effective keyword list — strings like
 	// "flying", "first strike", "trample". Layered effects (Lord of
 	// Atlantis grants flying to other Merfolk) populate this in
@@ -2200,6 +2215,20 @@ type ExilePlayView struct {
 type ActivatedAbilityView struct {
 	Index int    `json:"index"`
 	Label string `json:"label,omitempty"`
+	// Ref is this row's stable name (ADR 0093 Decision 5): "own:<i>"
+	// for the permanent's own ability, "grant:<bundle>:<i>:<n>" for one
+	// another effect granted it. activate_ability sends it back beside
+	// `ability_index`; the server refuses a ref that no longer names
+	// the row at that index (ErrStaleAbilityRef) instead of firing
+	// whatever moved there. Always present.
+	Ref string `json:"ref"`
+	// GrantedBy names the object that granted this ability, for a row
+	// another effect gave the permanent (ADR 0093 Decision 8 — "from
+	// Cryptolith Rite"). Absent for the permanent's own abilities. The
+	// client opens its ability picker on left-click for a permanent
+	// with any granted row, and never picks a silent default between
+	// two mana abilities.
+	GrantedBy *GrantedByView `json:"granted_by,omitempty"`
 	// Cost components. TapCost greys the entry when the source is
 	// tapped or summoning-sick; ManaCost / LifeCost are advisory
 	// (the server does the real check).
@@ -2583,6 +2612,15 @@ type ManaAbilityView struct {
 	// Index is the 0-based position in the card's ability list;
 	// what the activate_mana_ability payload carries.
 	Index int `json:"index"`
+	// Ref is this row's stable name (ADR 0093 Decision 5): "own:<i>",
+	// "land:<colour>" for a CR 305.6 intrinsic land ability, or
+	// "grant:<bundle>:<i>:<n>" for a granted one. activate_mana_ability
+	// sends it back beside `ability_index`. Always present.
+	Ref string `json:"ref"`
+	// GrantedBy names the object that granted this mana ability (ADR
+	// 0093 Decision 8). Absent for the permanent's own and intrinsic
+	// abilities. See ActivatedAbilityView.GrantedBy.
+	GrantedBy *GrantedByView `json:"granted_by,omitempty"`
 	// Label is the human-readable menu entry ("Add {C}{C}",
 	// "Add one mana of any color"). Empty falls back to the raw
 	// Produced string on the client side.
@@ -4591,6 +4629,9 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 			continue
 		}
 		c.ActivatedAbilities = viewOfActivatedAbilities(g, card, controller, game.ZoneBattlefield, restricted)
+		// ADR 0093 Decision 8: the grantor's name on each granted mana
+		// row, and the granted-ability text list.
+		stampGrantedAbilities(g, card, c)
 		// ADR 0082 decision 9: a FACE-DOWN permanent carries its
 		// CR 116.2g "turn face up" row, from the same projection the
 		// hand's foretell and suspend rows come from and with the
@@ -6484,6 +6525,13 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.TargetMode = ""
 	out.ManaAbilities = nil
 	out.ActivatedAbilities = nil
+	// ADR 0093: the granted-ability list goes with the rows it
+	// describes. A grant is decided on the layered object, which for a
+	// face-down permanent is the nameless 2/2, so it would rarely name
+	// anything — but a grantor's "applies to" is a closure that can read
+	// the card underneath, and "rarely" is not the bar this function
+	// holds a field to.
+	out.GrantedAbilities = nil
 	// #660: a hand ability quotes the card's text as loudly as its
 	// mana cost — "Cycling {3}" on an opponent's face-down hand card
 	// would name the Triome. It is also the only ability list on the
@@ -7198,7 +7246,7 @@ func equalStrings(a, b []string) bool {
 // `restricted` is g.AnyActivationRestrictionsForEffect(), taken ONCE
 // per view by the caller (#1261) — see stampActivatedAbilities.
 func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone game.ZoneKind, restricted bool) []ActivatedAbilityView {
-	raw := game.ActivatedAbilitiesForCard(c)
+	raw, origins := game.ActivatedAbilitiesWithOrigins(c)
 	if len(raw) == 0 {
 		return nil
 	}
@@ -7212,7 +7260,11 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			continue
 		}
 		v := ActivatedAbilityView{
-			Index:         i,
+			Index: i,
+			// ADR 0093 Decision 5 / 8: the row's stable ref, and who
+			// granted it when another effect did.
+			Ref:           origins.Ref(i),
+			GrantedBy:     grantedByView(g, origins.At(i)),
 			Label:         a.Label,
 			TapCost:       a.Cost.Tap,
 			SacrificeSelf: a.Cost.SacrificeSelf,
@@ -7718,7 +7770,7 @@ func viewOfManaAbilities(c game.Card) []ManaAbilityView {
 // list never renumbers, exactly as viewOfActivatedAbilities' does
 // not.
 func viewOfManaAbilitiesFromZone(c game.Card, zone game.ZoneKind) []ManaAbilityView {
-	raw := game.ManaAbilitiesForCard(c)
+	raw, origins := game.ManaAbilitiesWithOrigins(c)
 	if len(raw) == 0 {
 		return nil
 	}
@@ -7728,7 +7780,12 @@ func viewOfManaAbilitiesFromZone(c game.Card, zone game.ZoneKind) []ManaAbilityV
 			continue
 		}
 		out = append(out, ManaAbilityView{
-			Index:         i,
+			Index: i,
+			// ADR 0093 Decision 5 / 8. No game handle here, so a
+			// granted row carries the grantor's ID alone and the
+			// battlefield pass (stampGrantedAbilities) names it.
+			Ref:           origins.Ref(i),
+			GrantedBy:     grantedByView(nil, origins.At(i)),
 			Label:         a.Label,
 			TapCost:       a.TapCost,
 			SacrificeCost: a.SacrificeCost,

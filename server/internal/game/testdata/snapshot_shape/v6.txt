@@ -474,6 +474,10 @@ lastKnownBattlefield{}.Colors	array
 lastKnownBattlefield{}.Colors[]	string
 lastKnownBattlefield{}.ControlSource	custom(uuid.UUID)
 lastKnownBattlefield{}.Controller	custom(uuid.UUID)
+lastKnownBattlefield{}.GrantedAbilities	array
+lastKnownBattlefield{}.GrantedAbilities[]	object
+lastKnownBattlefield{}.GrantedAbilities[].Key	string
+lastKnownBattlefield{}.GrantedAbilities[].Source	custom(uuid.UUID)
 lastKnownBattlefield{}.Name	string
 lastKnownBattlefield{}.PTDefined	bool
 lastKnownBattlefield{}.Power	number:int
@@ -505,6 +509,10 @@ lastKnownPermanents{}[].characteristic.Colors	array
 lastKnownPermanents{}[].characteristic.Colors[]	string
 lastKnownPermanents{}[].characteristic.ControlSource	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.Controller	custom(uuid.UUID)
+lastKnownPermanents{}[].characteristic.GrantedAbilities	array
+lastKnownPermanents{}[].characteristic.GrantedAbilities[]	object
+lastKnownPermanents{}[].characteristic.GrantedAbilities[].Key	string
+lastKnownPermanents{}[].characteristic.GrantedAbilities[].Source	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.Name	string
 lastKnownPermanents{}[].characteristic.PTDefined	bool
 lastKnownPermanents{}[].characteristic.Power	number:int
@@ -592,6 +600,10 @@ pendingChoices[].damageAssignment.SourceLKI.Colors	array
 pendingChoices[].damageAssignment.SourceLKI.Colors[]	string
 pendingChoices[].damageAssignment.SourceLKI.ControlSource	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.Controller	custom(uuid.UUID)
+pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities	array
+pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities[]	object
+pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities[].Key	string
+pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities[].Source	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.Name	string
 pendingChoices[].damageAssignment.SourceLKI.PTDefined	bool
 pendingChoices[].damageAssignment.SourceLKI.Power	number:int
