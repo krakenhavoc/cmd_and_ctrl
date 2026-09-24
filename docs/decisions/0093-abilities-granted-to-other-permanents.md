@@ -1,6 +1,7 @@
 # ADR 0093 — Abilities granted to other permanents: a layer-6 grant writes a catalog bundle key onto the recipient
 
 **Status:** Proposed · 2026-09-24 · S38 — Layers: dependency ordering, ability grants, ability removal
+**Amended:** 2026-09-24 — the owner answered four of the five open questions; see "Owner decisions".
 **Issue:** [#754](https://github.com/krakenhavoc/cmd_and_ctrl/issues/754) (this seam — the public roadmap's
 top missing seam, `abilities-granted-to-other-permanents` in `server/internal/roadmap/registry.go`)
 **Numbering:** swept with the AGENTS.md §4 check on 2026-09-24 — `git fetch origin`, then every
@@ -291,8 +292,15 @@ ability**, so the solver may pick the granted any-colour ability when the cost n
 
 Until PR 2 lands, the gap is declared at the ADR level, as ADR 0074 §7 declared the triggered-mana
 surplus: the planner may fail to find a payment that exists. That is weaker than printed and safe,
-and a manual tap always works. Whether the planner should tap **creatures** for granted mana at all
-is an open question (Open question 3).
+and a manual tap always works.
+
+**Creatures are planned last (owner decision, 2026-09-24).** Cryptolith Rite turns every creature
+into a mana source, and an auto-paid cast must not tap the creatures the player meant to attack or
+block with. So a **creature's granted** mana ability is planned only as a last resort. It comes after
+every land, mana rock and other ordinary source, in the same late tier #1215 gave Treasures and other
+sacrifice-cost sources. A granted mana ability on a noncreature permanent (a Forest under Chromatic
+Lantern) is an ordinary source and is planned normally. The per-ability candidate fix above stays in
+PR 2 either way.
 
 ## Decision 7 — Grants from a resolving spell or ability are DATA: `ScopedGrant`
 
@@ -342,8 +350,24 @@ creature's controller. A delayed trigger has none of those properties.
 - All of it is public. The grantor is on the battlefield or is a spell that resolved in front of
   everyone.
 
-How the client presents it is Open questions 1, 2 and 4. `aiseat` needs nothing. It reads the view
-and the move list, and still imports nothing from `internal/game`.
+**Click behaviour (owner decision, 2026-09-24).** A permanent that has a granted mana or activated
+ability opens its ability menu or picker on **left-click**. This extends #368's rule (a land with a
+non-mana activated ability is clicked for that ability) to granted abilities on any permanent. The
+sandbox tap stays in the context menu. There is **never a silent default** between two mana
+abilities:
+- a creature under Cryptolith Rite opens the picker;
+- a Birds of Paradise under the Rite, with its own ability and the granted one, opens the picker;
+- a Forest under Chromatic Lantern opens the picker;
+- a land enchanted by Squirrel Nest opens its menu.
+
+The client derives this from `granted_by` on the rows. The server needs no new flag.
+
+**Rows (working default, not decided).** Until the owner answers the open question below, each
+grantor gets one row, labelled with the grantor's name: two Cryptolith Rites mean two rows,
+"from Cryptolith Rite". There is no board-level marker.
+
+`aiseat` needs nothing. It reads the view and the move list, and still imports nothing from
+`internal/game`.
 
 ## Decision 9 — Card-side vocabulary
 
@@ -423,14 +447,17 @@ names a key no card registered, or if a layer-6 grant names a bundle with a `Sta
    `granted_by` / `granted_abilities` on the wire; `AbilityGrant.Mana` / `.Text`;
    `TestEveryGrantKeyResolves`; registry moves for Rhythm of the Wild and Marvin. Tested with
    fixture bundles.
-2. **Static and attached grants, mana and activated.** The constructors, the auto-tapper's
-   per-ability candidates (Decision 6), and client rendering. Cards: Cryptolith Rite, Chromatic
+2. **Static and attached grants, mana and activated — the first slice players see (owner decision,
+   2026-09-24).** The constructors, the auto-tapper's per-ability candidates with creatures' granted
+   mana in the last tier (Decision 6), and client rendering with the left-click picker (Decision 8). Cards: Cryptolith Rite, Chromatic
    Lantern, Gemhide Sliver, Manaweft Sliver (lifting `batch31_test.go`'s hold), Rishkar, Jaheira,
    Insidious Roots, Great Divide Guide, The World Tree, Paradise Mantle, Necrotic Sliver, Squirrel
    Nest. Springleaf Parade moves off its token-template workaround.
 3. **Granted triggers.** LKI dies triggers through `abilityKeyFromLKI`; Thornbite Staff (both
-   halves); and, depending on Open question 5, Dionus and Agent of the Iron Throne moved onto the
-   seam.
+   halves); and Dionus and Agent of the Iron Throne moved off their source-side approximations onto
+   the seam (owner decision, 2026-09-24). Tests pin the two behaviour changes: after a control
+   change the trigger belongs to the recipient's controller, and a recipient whose own abilities are
+   removed later loses the grant.
 4. **Duration grants.** `ScopedGrant` with persistence and the drift test;
    `GrantAbilitiesUntilEOT` / `ForDuration`; the blight-counter `DurationCondition`. Cards: Feign
    Death, Fake Your Own Death, Malakir Rebirth (the spell face), Retraction Helix, Urza's
@@ -456,36 +483,43 @@ names a key no card registered, or if a layer-6 grant names a bundle with a `Sta
   `ErrStaleAbilityRef` with nothing paid, and an absent ref is accepted.
 - `legal/granted_abilities_test.go`: every enumerated granted move dispatches (`dispatchAll`), and a
   removed grant is not offered (#544).
-- `game/autotap_granted_test.go`: Llanowar Elves under Cryptolith Rite pays `{U}` (PR 2).
+- `game/autotap_granted_test.go` (PR 2):
+  - Llanowar Elves under Cryptolith Rite pays `{U}`.
+  - A cost that lands, rocks and Treasures can pay taps no creature for granted mana.
+  - A creature's granted mana is used only when nothing else can pay.
+  - A Forest under Chromatic Lantern is planned as an ordinary source.
+- Client (PR 2): left-click on a permanent with a granted mana or activated ability opens the menu
+  or picker, including a creature under Cryptolith Rite, a Birds with both kinds and a Squirrel
+  Nest land; the sandbox tap is still in the context menu.
+- Card tests for Dionus and Agent of the Iron Throne (PR 3): the trigger's controller after the
+  recipient changes control, and the grant lost to a later removal on the recipient.
 - `game/scoped_grant_test.go`: until-end-of-turn expiry at cleanup, the pin on a flicker, and a
   snapshot round trip with an empty census (PR 4).
 - `protocol/granted_abilities_view_test.go`: `granted_by`, `ref` and `granted_abilities` on every
   viewer.
 - Card tests per PR, asserting behaviour rather than labels.
 
+## Owner decisions (2026-09-24)
+
+The owner answered four of the five open questions this ADR was proposed with. The ADR stays
+**Proposed** until the owner accepts it.
+
+1. **Slice 1.** PR 2 as proposed. Mana and activated static grants (about a dozen cards) are the
+   first slice players see, and triggers follow in PR 3.
+2. **Click behaviour.** A permanent with a granted mana or activated ability opens its ability menu
+   or picker on left-click. This is #368 extended to granted abilities, and the sandbox tap stays
+   in the context menu. It covers a permanent with its own and a granted mana ability (always the
+   picker, never a silent default) and Squirrel Nest's land. See Decision 8.
+3. **Auto-tapper.** A creature's granted mana abilities are planned only as a last resort, in the
+   late tier #1215 gave Treasures. The per-ability fix stays in PR 2. See Decision 6.
+4. **Dionus and Agent of the Iron Throne.** They move onto the seam in PR 3, with tests pinning the
+   changed control and removal behaviour.
+
 ## Open questions for the owner
 
-These are product decisions the code and the rules do not settle. The ADR does not answer them.
+This is a product decision the code and the rules do not settle. The ADR does not answer it.
 
-1. **Slice 1 scope.** Is PR 2 (mana plus activated static grants, about a dozen cards) the right
-   first shippable slice? Or should the first player-visible PR be smaller (Cryptolith Rite,
-   Chromatic Lantern and Gemhide Sliver only), or wait for triggers (PR 3) so Thornbite Staff ships
-   whole?
-2. **Choosing which mana ability to tap.** A left-click on a creature is the sandbox tap today, and
-   a left-click on a land with a non-mana activated ability opens its menu (#368). Under Cryptolith
-   Rite, what should a left-click on a creature do: tap it for the granted mana, open a picker, or
-   stay a plain tap? For a permanent with its own mana ability and a granted one (Birds under the
-   Rite; a Forest under Chromatic Lantern), should a click pick one by default (which?) or always ask?
-   And under Squirrel Nest, the enchanted land gains a non-mana activated ability: should that switch
-   the land's left-click to the menu, as #368 does for a printed one?
-3. **May the auto-tapper tap creatures for granted mana?** Cryptolith Rite turns every creature into
-   a mana source. An auto-paid cast could tap the creatures the player meant to attack or block with.
-   Should the planner use granted mana abilities on creatures always, only after every other source,
-   or never (manual only)?
-4. **Presentation of granted abilities.** Should identical grants from two sources (two Cryptolith
+1. **Presentation of granted abilities.** Should identical grants from two sources (two Cryptolith
    Rites) show as one row or two? Should a permanent carrying a granted ability get a board-level
-   marker, or is the labelled row in its menu enough?
-5. **Migrate the source-side approximations?** Dionus and Agent of the Iron Throne work today, with
-   the trigger controlled by the granting card's controller. Moving them onto the seam changes who
-   controls the trigger after a control change, and lets a recipient's own ability removal take the
-   grant away. Do it in PR 3, or leave them as they are?
+   marker, or is the labelled row in its menu enough? *Working default until decided:* one row per
+   grantor, labelled with the grantor's name, and no board marker (Decision 8).
