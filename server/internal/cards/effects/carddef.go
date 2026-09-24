@@ -68,6 +68,7 @@ func buildDef(spec Spec) *game.CardDef {
 		SelfCostModifiers:          spec.SelfCostModifiers,
 		ExhaustPermissions:         spec.ExhaustPermissions,
 		AttackTaxes:                spec.AttackTaxes,
+		BlockRules:                 spec.BlockRules,
 		CastableZones:              spec.CastableZones,
 		SpecialActions:             spec.SpecialActions,
 		SpecialActionGrants:        spec.SpecialActionGrants,

@@ -1645,6 +1645,16 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"infect"` | Infect (CR 702.90) — #748, the damage tail: -1/-1 counters on a creature, poison on a player |
 | `"wither"` | Wither (CR 702.80) — #748, the damage tail: -1/-1 counters on a creature |
 | `"toxic N"` | Toxic (CR 702.164) — #748, N extra poison on combat damage to a player. Numbered AND cumulative: read it with `game.ToxicTotal`, never `HasKeyword`, and grant it through `game.AppendKeywordAbility` so a second instance adds up ([ADR 0056](docs/decisions/0056-infect-wither-toxic.md)) |
+| `"prowess"` | Prowess (CR 702.108) — #706, the first TRIGGERED keyword in the table: `TriggersForCard` turns each instance on the effective ability list into one trigger (`game/prowess.go`). Cumulative like toxic, so grant it through `game.AppendKeywordAbility`. Never write a prowess trigger by hand — declare the token ([ADR 0014 amendment 2026-09-24](docs/decisions/0014-combat-keywords.md)) |
+
+**A keyword that is a trigger** has two shapes, and ADR 0014's
+2026-09-24 amendment says which to use. A constructor on
+`Spec.Triggered` (`Cascade()`, `Storm()`, `Ward(...)`) when the keyword
+carries a parameter a bare token cannot hold or triggers from the
+stack; a token here with an engine-side trigger (prowess) when it lives
+on permanents, is granted and printed on tokens, and needs to work on a
+card with no catalog entry. Either way the trigger carries its name in
+`game.TriggeredAbility.Keyword`, which `cards/coverage` reads (#1258).
 
 Hexproof, shroud, indestructible and changeling are not combat
 keywords, but they ride the same `PrintedKeywords` slot and the same
@@ -1932,6 +1942,50 @@ around, and almost every ability should carry on from last known
 information — "{T}: this deals 2 damage to any target" deals its damage
 from the graveyard. Consult it only where the effect genuinely cannot
 be performed without the source as a permanent.
+
+### Adding a block-rule card (S37+, #750)
+
+"Can't be blocked except by Walls", "can't be blocked by creatures with
+power 2 or less", "creatures with power less than this creature's power
+can't block creatures you control", "can't be blocked by more than one
+creature" are CR 509.1b block rules with a PARAMETER. They go in
+`Spec.BlockRules`, built from
+[block_rules.go](server/internal/cards/effects/block_rules.go): a
+**scope** (whose creatures the rule binds, relative to this permanent)
+plus a **rule**.
+
+```go
+BlockRules: []game.BlockRule{
+    CantBeBlockedExceptBy(OnAttached(), OfCreatureType("Wall"), "Walls"),     // Prowler's Helm
+    CantBeBlockedBy(OnSelf(), PowerLE(2), "creatures with power 2 or less"),   // Legolas Greenleaf
+    CantBlockAttackers(PowerLessThanSource(), ControlledBySourceController(),
+        "creatures with power less than Champion of Lambholt's can't block creatures its controller controls"),
+    CantBeBlockedWhile(OnAttached(), PowerLE(3)),                             // Thieves' Tools
+    MaxBlockers(OnAttached(), 1),                                             // Vorrac Battlehorns
+    MinBlockers(OnSelf(), 3),                                                 // Rampaging Ceratops
+},
+```
+
+- **The scope is never optional.** A rule is read off every permanent
+  for every pair the engine checks, so a hand-written `Pair` that
+  forgets "is this attacker mine?" binds the whole table.
+- **The label is the printed parameter.** The player reads it in the
+  refusal sentence ("can't be blocked except by Walls, and Llanowar
+  Elves is not one").
+- **Flat "can't block" / "can't be blocked" is still a `Restriction`
+  bit** (`RestrictSelf`, `RestrictAttached`). A rule is for a clause
+  with a parameter.
+- **"This turn"** is `BlockRuleUntilEOT{Target: id, Rule: func(s
+  BlockScope) game.BlockRule { … }}` (Gingerbrute, Departed Deckhand).
+  It snapshots the set at resolution (CR 611.2c).
+- **A token that prints one** declares it on its `tokenTemplate`'s
+  `BlockRules` slot (Avatar Kuruk's Spirit).
+- **Not yet:** "no more than one creature can block each combat"
+  (Silent Arbiter) has no shape. That is `BlockRule.Limit`, #1507.
+
+Tests: [block_rules_test.go](server/internal/cards/effects/block_rules_test.go)
+pins every shape through the verb, `legal.EnumerateFor` and
+`block_decision_seats`.
 
 ### Adding a triggered ability (S19+)
 

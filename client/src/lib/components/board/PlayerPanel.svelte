@@ -85,8 +85,14 @@
     onDeclareBlock: (attackerCardID: string) => void;
     onTapToggle: (card: CardView) => void;
     // `fromZone` / `face` ride along for a cast out of the #1389
-    // exile strip; a hand cast passes the card alone.
-    onPlayCard: (card: CardView, fromZone?: CastSourceZone, face?: number) => void;
+    // exile strip; a hand cast passes the card alone. #1508: `viaDrag`
+    // is set by the hand's drag-to-cast gesture only.
+    onPlayCard: (
+      card: CardView,
+      fromZone?: CastSourceZone,
+      face?: number,
+      viaDrag?: boolean,
+    ) => void;
     onDrawCard: () => void;
     onTargetPlayer?: (targetPlayerID: string) => void;
     // onTargetCard returns true when a cast-targeting prompt
@@ -476,6 +482,7 @@
         hand={seat.hand}
         {isSelf}
         onPlayCard={isSelf ? onPlayCard : undefined}
+        onDragCast={isSelf ? (c) => onPlayCard(c, undefined, undefined, true) : undefined}
         onActivateAbility={isSelf ? onActivateAbility : undefined}
         onActivateManaAbility={activateManaAbility}
         {sorcerySpeedBlocked}

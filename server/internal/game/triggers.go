@@ -221,6 +221,23 @@ type TriggeredAbility struct {
 	// Added in S28.
 	FromStack bool
 
+	// Keyword is the machine-readable name of the KEYWORD ability this
+	// trigger is — "cascade" (CR 702.85), "storm" (CR 702.40),
+	// "prowess" (CR 702.108) — and empty for every hand-written
+	// trigger, which is almost all of them (#1258).
+	//
+	// Stamped by the keyword's constructor (effects.Cascade,
+	// effects.Storm) or by the engine's own keyword-trigger table
+	// (prowess.go), never by a card file, so it cannot disagree with
+	// what the ability does. It exists to be READ: the caveat drift
+	// guard (cards/coverage) asks "does this card have cascade" by
+	// walking the card's triggers for the name, the way it already
+	// asks about flashback through an alternative cost's key.
+	//
+	// Catalog data, not persisted, and not a behaviour switch —
+	// nothing in the harvest path branches on it.
+	Keyword string
+
 	// Zones is WHERE this ability watches from (CR 113.6, #925). Nil
 	// — the answer for all but a handful of cards — means the
 	// battlefield, which is where abilities live. {ZoneGraveyard} is

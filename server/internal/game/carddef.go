@@ -87,7 +87,14 @@ type CardDef struct {
 	// controller pays {N}" statics this permanent contributes
 	// (CR 508.1a, ADR 0080) — Propaganda, Ghostly Prison, Windborn
 	// Muse. Read from the battlefield through AttackTaxesForCard.
-	AttackTaxes   []AttackTax
+	AttackTaxes []AttackTax
+	// BlockRules are the CR 509.1b block restrictions with a
+	// parameter this permanent imposes while it is on the battlefield
+	// — "can't be blocked except by Walls" (Prowler's Helm), "can't
+	// be blocked by more than one creature" (Vorrac Battlehorns). Read
+	// through CatalogBlockRules, keyed by CatalogAbilityKey; see
+	// block_rules.go and ADR 0045's addendum, Decision 11.
+	BlockRules    []BlockRule
 	CastableZones []ZoneKind
 
 	// SpecialActions are the CR 116.2 special actions the card offers
@@ -434,6 +441,12 @@ func init() {
 	CatalogAttackTaxes = func(key string) []AttackTax {
 		if d := catalogDef(key); d != nil {
 			return d.AttackTaxes
+		}
+		return nil
+	}
+	CatalogBlockRules = func(key string) []BlockRule {
+		if d := catalogDef(key); d != nil {
+			return d.BlockRules
 		}
 		return nil
 	}
