@@ -54,7 +54,11 @@ type activateParams struct {
 	// TapIDs are the creatures a "Tap another untapped creature you
 	// control" cost taps — station's (#759).
 	TapIDs []string `json:"tap_ids"`
-	XValue int      `json:"x_value"`
+	// ExileIDs are the cards an "Exile N cards from your graveyard /
+	// hand" cost spends (#1297) — the same resource escape's exiled
+	// graveyard is, priced the same way.
+	ExileIDs []string `json:"exile_ids"`
+	XValue   int      `json:"x_value"`
 }
 
 type specialActionParams struct {

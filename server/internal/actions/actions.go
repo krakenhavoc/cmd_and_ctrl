@@ -1148,6 +1148,12 @@ func dispatch(g *game.Game, a Action) error {
 			// ability (CR 602.2b). Cycling's "Discard this card"
 			// needs none: the source IS the payment.
 			DiscardIDs []string `json:"discard_ids,omitempty"`
+			// #1297 — exile_ids names the cards paid to an "Exile
+			// two cards from your graveyard" / "Exile a card from
+			// your hand" cost (Grim Lavamancer, Holistic Wisdom).
+			// Its own field, as on activate_mana_ability (#1283):
+			// an exiled card is not discarded.
+			ExileIDs []string `json:"exile_ids,omitempty"`
 			// #1213 — return_ids names the permanents paid to a
 			// "Return a permanent you control to its owner's hand"
 			// cost (Quirion Ranger, Master Transmuter, Meloku).
@@ -1216,6 +1222,14 @@ func dispatch(g *game.Game, a Action) error {
 				}
 				discardIDs = append(discardIDs, id)
 			}
+			exileIDs := make([]uuid.UUID, 0, len(p.ExileIDs))
+			for _, raw := range p.ExileIDs {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("activate_ability exile_ids: %w", err)
+				}
+				exileIDs = append(exileIDs, id)
+			}
 			returnIDs := make([]uuid.UUID, 0, len(p.ReturnIDs))
 			for _, raw := range p.ReturnIDs {
 				id, err := uuid.Parse(raw)
@@ -1248,6 +1262,7 @@ func dispatch(g *game.Game, a Action) error {
 				CounterKind:      p.CounterKind,
 				CounterKinds:     p.CounterKinds,
 				DiscardIDs:       discardIDs,
+				ExileIDs:         exileIDs,
 				ReturnIDs:        returnIDs,
 				WaterbendIDs:     waterbendIDs,
 				Targets:          refs,

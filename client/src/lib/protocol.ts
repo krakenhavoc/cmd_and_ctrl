@@ -1543,6 +1543,10 @@ export interface ExilePlayView {
   x_locked_at_zero?: boolean;
 }
 
+// #1297: the pile an "Exile N cards from your …" cost reads — always
+// the activator's own. The server stamps it with `exile_cost_n`.
+export type ExileCostZone = "hand" | "graveyard";
+
 // ActivatedAbilityView is one CR 602 activated ability on a
 // battlefield permanent (S21 sub-PR 2). Public information, so it
 // rides every viewer's snapshot; the client only offers the menu on
@@ -1657,6 +1661,17 @@ export interface ActivatedAbilityView {
   discard_cost_n?: number;
   discard_cost_label?: string;
   discard_cost_options?: string[];
+  // #1297: an "Exile N cards from your graveyard" / "… from your hand"
+  // component — Grim Lavamancer's "Exile two cards from your graveyard",
+  // Holistic Wisdom's "Exile a card from your hand". The mana ability's
+  // four exile fields (#1283) under the same names: the count, the
+  // clause as printed, the cards that could pay right now, and the pile
+  // they are in. NOT a discard — the picks ride activate_ability as
+  // `exile_ids`, never `discard_ids`.
+  exile_cost_n?: number;
+  exile_cost_label?: string;
+  exile_cost_options?: string[];
+  exile_cost_zone?: ExileCostZone;
   // S27: a Vehicle's crew cost (CR 702.122a). crew_cost is the
   // number that the tapped creatures' TOTAL POWER must reach;
   // crew_options lists the creatures that could pay it right now —
@@ -2342,9 +2357,11 @@ export interface ManaAbilityView {
   // discard triple's shape under its OWN names, because an exiled
   // card is not discarded (no discard event, nothing for madness to
   // see). The picks ride activate_mana_ability as `exile_ids`.
+  // #1297: `exile_cost_zone` names the pile the options are in.
   exile_cost_n?: number;
   exile_cost_label?: string;
   exile_cost_options?: string[];
+  exile_cost_zone?: ExileCostZone;
   // S22: a "Pay N life" component of the activation cost — Mana
   // Confluence's "{T}, Pay 1 life:". Advisory only; the server does
   // the real CR 119.4 check. A damage RIDER ("This land deals 1

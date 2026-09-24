@@ -362,15 +362,15 @@ func TestActivateAbilityDoesNotCrackTheSpawnItSacrifices(t *testing.T) {
 // The activation twin: the source of an ability that sacrifices itself,
 // and the permanents it names, are not mana for it.
 func TestAbilityAutoTapExclusionsCoverTheSacrificedSource(t *testing.T) {
-	src, named, pitched, tapped := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+	src, named, pitched, tapped, exiled := uuid.New(), uuid.New(), uuid.New(), uuid.New(), uuid.New()
 	got := AbilityAutoTapExclusions(src, AbilityCost{SacrificeSelf: true},
-		[]uuid.UUID{tapped}, []uuid.UUID{named}, []uuid.UUID{pitched})
-	for _, id := range []uuid.UUID{src, named, pitched, tapped} {
+		[]uuid.UUID{tapped}, []uuid.UUID{named}, []uuid.UUID{pitched}, []uuid.UUID{exiled})
+	for _, id := range []uuid.UUID{src, named, pitched, tapped, exiled} {
 		if !got[id] {
 			t.Errorf("exclusions %v miss %v", got, id)
 		}
 	}
-	if AbilityAutoTapExclusions(src, AbilityCost{}, nil, nil, nil) != nil {
+	if AbilityAutoTapExclusions(src, AbilityCost{}, nil, nil, nil, nil) != nil {
 		t.Error("an ability that spends nothing excluded something")
 	}
 }

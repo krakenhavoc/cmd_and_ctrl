@@ -2280,3 +2280,113 @@ ability stays unregistered only because extra turns (#753) do not exist.
 - **An ability whose waterbend is only part of a larger mana cost.** The shape
   is supported (`Plus` sums, the budget is the waterbend's own generic) and
   tested; no printed card uses it yet.
+
+## Amendment (2026-09-23, [#1297](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1297)): "Exile N cards from your graveyard / hand" as an activated ability's cost
+
+**Sprint:** S44 — mana and cost components. Tracker [#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887).
+The vocabulary half — one component, two owners, one new field — is in
+[ADR 0073](0073-optional-additional-costs-and-the-cast-gate.md)'s amendment of
+the same date (Decision 7).
+
+#1283 built `game.ExileCost` for a MANA ability — Cadaverous Bloom's "Exile a
+card from your hand: Add {B}{B} or {G}{G}" — and said in its own doc comment
+that the CR 602 owner would be "a second caller and not a second
+implementation". The CR 602 form is far commoner, and nearly all of it reads the
+GRAVEYARD, not the hand:
+
+```
+Grim Lavamancer    {R}, {T}, Exile two cards from your graveyard: 2 damage to any target.
+Moorland Haunt     {W}{U}, {T}, Exile a creature card from your graveyard: a 1/1 flying Spirit.
+Tome Shredder      {T}, Exile an instant or sorcery card from your graveyard: a +1/+1 counter.
+Mines of Moria     {3}{R}, {T}, Exile three cards from your graveyard: two Treasures.
+Holistic Wisdom    {2}, Exile a card from your hand: return a card that shares a type with it.
+```
+
+`AbilityCost` had `ExileSelf` (#1221, the SOURCE — scavenge, embalm) and
+`DiscardCards` (#660, a discard), and neither is this. Mines of Moria shipped
+with the ability left out and a caveat naming the gap, the #259 posture.
+
+### Decision 35: `AbilityCost.ExileCards` is the mana ability's component, with a pile
+
+`AbilityCost.ExileCards *game.ExileCost` — the same struct
+`ManaAbilityShape.ExileCards` carries, and the same three functions:
+`ExileCostOptionsForEffect` (the candidate walk the view stamps and the
+enumerator pays from), `validateExileCardsCostLocked` (exactly N, distinct, in
+the pile, matching, never the source, never also a discard) and
+`payExileCardsCostLocked` (the one exit primitive with `MustSettleNow`, so a
+commander exiled this way still gets CR 903.9 and the CR 602.2b indivisible step
+never pauses). What the component learned is WHERE: `ExileCost.From`, the hand
+or the graveyard, read through `Zone()` so the zero value stays the hand and
+every #1283 declaration means what it meant.
+
+A field and not a second type because the two printed forms are one rule read
+against two piles of the activator's own cards: both are plain CR 406 moves,
+neither is a keyword action, neither targets (CR 601.2h), and "your" (CR 108.4)
+means no other player's pile is ever readable. A second type would have been a
+second validator with its own opinion about overlap and the source.
+
+The source is never a legal pick, which is what makes a graveyard ability's
+"Exile ANOTHER creature card from your graveyard" (Scrapheap Scrounger) need no
+predicate of its own. Cards are constructed with `ExileFromGraveyard(n, label,
+match)` / `ExileFromHand(...)`, which compose with `Plus` (and `Plus` learned the
+field — a composed "{R}, {T}, Exile two cards" that dropped it would be a
+Lavamancer pinging for {R} forever).
+
+### Decision 36: the activation path — validate beside the discard, pay beside it, record what was paid
+
+In `ActivateCatalogAbility`:
+
+1. **Validated** right after the discard component and against it, before
+   anything is paid.
+2. **Excluded from the auto-tapper**: `AbilityAutoTapExclusions` takes the exile
+   ids. For the HAND form this is live — a Simian Spirit Guide named to Holistic
+   Wisdom's cost is a mana source (#1228), and without the exclusion the planner
+   would exile it for the {2} first and leave the cost paying with a card that
+   is already gone. For the graveyard form it is the list being right in advance
+   (no card functions as a mana source from a graveyard today).
+3. **Paid** after the discards and before the exile-self: it moves cards, never
+   the source, so it keeps the discard's slot in the order.
+4. **Recorded** on `PaidCost.Exiled` (the ids, in the order named), read by
+   `Context.Exiled()`. Every printed reader asks about the card itself — Holistic
+   Wisdom's "shares a card type with the card exiled this way", Dread Defiler's
+   "the exiled card's power" — and the card is findable in exile by the same
+   instance ID, so an id list is the whole answer and a count would be
+   `Sacrificed`'s shape answering a question nobody on this component asks.
+
+### Decision 37: the view, the enumerator, the bot, the client
+
+- **View.** `activated_abilities[i]` (and `zone_abilities[i]`) carry
+  `exile_cost_n` / `_label` / `_options` / `_zone`, the mana view's fields under
+  the same names; the mana view gained `_zone` too. The answer is `exile_ids`,
+  never `discard_ids`.
+- **Enumerator.** ONE payment, not one move per subset (the discard's and crew's
+  discipline), from the engine's own walk minus the discard picks, CHEAPEST FUEL
+  FIRST when the policy supplies `Options.OrderCostFuel` — the price escape's
+  exiled graveyard is already paid by (#1013), which is the same resource spent
+  the same way. The mana owner's arm now calls the same solver.
+- **Heuristic.** `activateParams.ExileIDs`, each priced with `fuelValue`, so the
+  payment offered first is the one priced cheapest.
+- **Client.** Board's announce chain asks after the discard and before the
+  return / sacrifice / crew pickers, through `DiscardCostModal` with the verb
+  changed and the pile named (`exileCost.ts`, shared with the mana path), and
+  skips the question when the pile holds exactly N options.
+
+### Cards
+
+**Mines of Moria** (caveat removed — `full`), **Grim Lavamancer**, **Moorland
+Haunt**, **Tome Shredder** and **Holistic Wisdom**, all `full`.
+
+### Still out of scope
+
+- **A variable count** — "Exile X cards from your graveyard" (Necropolis Fiend,
+  Taigam, Sidisi's Hand, Ludevic), "one or more" (Corpseweft), and The
+  Capitoline Triad's "any number … with total mana value 30 or greater". These
+  are an ANNOUNCED number, the #1213 variable-sacrifice question one component
+  over, and `ExileCost.N` is a fixed count; `Register` refuses a zero.
+- **Craft** (CR 702.167) — "Exile this artifact, Exile a creature you control or
+  a creature card from your graveyard" spans the battlefield AND the graveyard in
+  one clause, and returns the card transformed; its own seam.
+- **A graveyard exile on a MANA ability** (Molt Tender, Titans' Nest, Sunken
+  Palace). The component expresses it (`ExileCardsFromGraveyard`) and the view
+  ships the zone; no catalog card declares one yet, and the auto-tapper already
+  refuses any source with an exile-cards cost.

@@ -215,6 +215,15 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 				v -= st.permanentValue(c)
 			}
 		}
+		// #1297: an exile-N-cards cost spends real cards — a graveyard
+		// card the seat might have recast, a card in hand. One price
+		// for both, and it is the SAME one the enumerator ordered the
+		// payment by (Options.OrderCostFuel), so the payment offered is
+		// the one priced cheapest and the two cannot disagree — escape's
+		// argument (#1013), one cost site over.
+		for _, id := range cp.ExileIDs {
+			v -= p.fuelValue(st, id)
+		}
 		// An {X} ability does more the bigger X is, and the
 		// enumerator has already picked the largest X the seat can
 		// actually pay (legal/abilities.go) — so the policy never

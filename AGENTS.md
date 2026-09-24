@@ -2106,6 +2106,16 @@ stack above the ability and resolve first. Mana abilities do NOT go
 here (they skip the stack, CR 605.3b); they stay in `ManaAbilities`.
 See [ADR 0020](docs/decisions/0020-activated-abilities.md).
 
+**"Exile N cards from your graveyard" / "… from your hand" (#1297):**
+`ExileFromGraveyard(n, label, match)` / `ExileFromHand(n, label, match)`,
+composed with `Plus` — Grim Lavamancer is
+`Plus(ManaCost("{R}"), TapCost(), ExileFromGraveyard(2, "two cards", nil))`,
+Moorland Haunt passes `MatchCreature`. The activator picks the cards at
+announce (`exile_ids`); they are exiled, not discarded, and the effect
+reads which ones through `ctx.Exiled()` (Holistic Wisdom). Not
+`ExileThis()`, which is the SOURCE. A variable count ("Exile X cards")
+has no shape yet.
+
 **An `{X}` in the cost:** put it in the mana component, read it back
 with `ctx.X()`, and declare `XMatters: true` on the Spec (#810). The
 engine still derives "this ability prompts for X" from the cost

@@ -226,6 +226,13 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.TapOthers != nil {
 			out.TapOthers = c.TapOthers
 		}
+		// #1297: and the exile-N-cards component. A composed "{R},
+		// {T}, Exile two cards from your graveyard" that dropped the
+		// exile would be a Grim Lavamancer that pings for {R} forever
+		// — stronger than printed, the #259 direction.
+		if c.ExileCards != nil {
+			out.ExileCards = c.ExileCards
+		}
 	}
 	return out
 }
@@ -327,15 +334,53 @@ func DiscardN(n int, label string) game.AbilityCost {
 // cost component (#1283). The label is the clause as printed, without
 // the verb, for the client's picker; a nil match takes any card.
 //
-// It returns the component rather than an AbilityCost because its one
-// owner today is ManaAbilityCost.ExileCards:
+// It returns the COMPONENT, for a mana ability's cost:
 //
 //	Cost: ManaAbilityCost{ExileCards: ExileACardFromHand()},
+//
+// A CR 602 ability takes ExileFromHand, which wraps the same component
+// in an AbilityCost for Plus.
 //
 // Not DiscardCardsMatching with a different verb: an exiled card is
 // not discarded (game.ExileCost).
 func ExileCardsFromHand(n int, label string, match func(game.Card) bool) *game.ExileCost {
-	return &game.ExileCost{N: n, Label: label, Match: match}
+	return &game.ExileCost{N: n, Label: label, From: game.ZoneHand, Match: match}
+}
+
+// ExileCardsFromGraveyard is ExileCardsFromHand one pile over — "Exile
+// N <kind> cards from your graveyard" as a cost COMPONENT (#1297), for
+// a mana ability's cost. No catalog mana ability prints it yet (Molt
+// Tender and Titans' Nest are the ones waiting); the constructor exists
+// because the component's two owners share one shape.
+func ExileCardsFromGraveyard(n int, label string, match func(game.Card) bool) *game.ExileCost {
+	return &game.ExileCost{N: n, Label: label, From: game.ZoneGraveyard, Match: match}
+}
+
+// ExileFromGraveyard is "Exile N <kind> cards from your graveyard" as
+// a CR 602 activated ability's cost (#1297):
+//
+//	Plus(ManaCost("{R}"), TapCost(), ExileFromGraveyard(2, "two cards", nil))  // Grim Lavamancer
+//	Plus(ManaCost("{W}{U}"), TapCost(),
+//	    ExileFromGraveyard(1, "a creature card", isCreatureCard))                // Moorland Haunt
+//
+// The label is the clause as printed, without the verb; the client
+// shows it in the picker and the activator names the cards at announce
+// (CR 602.2b). A nil match takes any card. The source is never a legal
+// pick, so a graveyard ability's "another" needs no predicate.
+//
+// Not a discard and not ExileThis: the cards are OTHER cards, chosen by
+// the activator, and nothing about the move is a keyword action
+// (game.ExileCost).
+func ExileFromGraveyard(n int, label string, match func(game.Card) bool) game.AbilityCost {
+	return game.AbilityCost{ExileCards: ExileCardsFromGraveyard(n, label, match)}
+}
+
+// ExileFromHand is "Exile N <kind> cards from your hand" as a CR 602
+// activated ability's cost (#1297) — Holistic Wisdom's "{2}, Exile a
+// card from your hand:". The mana ability's component (#1283) wrapped
+// for Plus.
+func ExileFromHand(n int, label string, match func(game.Card) bool) game.AbilityCost {
+	return game.AbilityCost{ExileCards: ExileCardsFromHand(n, label, match)}
 }
 
 // ExileACardFromHand is "Exile a card from your hand" — Cadaverous
