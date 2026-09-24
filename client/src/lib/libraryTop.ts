@@ -54,3 +54,20 @@ export function libraryTopPlayable(zone: ZoneView | undefined): boolean {
   const top = visibleLibraryTop(zone);
   return top !== null && top.castable_here === true;
 }
+
+// libraryTopActionLabel is the verb for the affordance on a visible,
+// playable library top, or null when there is nothing to offer —
+// either the top isn't visible or `libraryTopPlayable` says no.
+//
+// A land is PLAYED, not cast (CR 305.1, CR 116.2a): the same wording
+// nit the graveyard's flashback button has always had to mind
+// (ZoneBrowserModal's castLabelFor). `castable_here` on a land already
+// answers the land-play rule rather than the spell rules (#1407,
+// #1441), so this reads the type line and nothing else — no second
+// legality check.
+export function libraryTopActionLabel(zone: ZoneView | undefined): "play" | "cast" | null {
+  if (!libraryTopPlayable(zone)) return null;
+  const top = visibleLibraryTop(zone);
+  if (!top) return null;
+  return (top.type_line ?? "").toLowerCase().includes("land") ? "play" : "cast";
+}
