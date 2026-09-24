@@ -1375,6 +1375,19 @@ type ManaAbilityCost struct {
 	// mana rocks" — they are all live now.
 	SacrificeOther *game.TargetSpec
 
+	// TapOthers taps a fixed number of untapped permanents the
+	// activator controls as part of the cost (#758) — Springleaf
+	// Drum's "Tap an untapped creature you control" and Heritage
+	// Druid's three Elves. It is the same component an ordinary
+	// activated ability carries; build it with TapAnotherUntapped (or
+	// a game.TapOthersCost for a count above one) and copy the field.
+	//
+	// This is not the {T} symbol, so summoning sickness does not stop
+	// a creature paying it. The auto-tapper never chooses one of these
+	// abilities because selecting which other permanent to tap is a
+	// player decision.
+	TapOthers *game.TapOthersCost
+
 	// Life is a "Pay N life" component of the activation cost (CR
 	// 119.4) — Mana Confluence's "{T}, Pay 1 life: Add one mana of
 	// any color". Mirrors game.AbilityCost.Life, which CR 602

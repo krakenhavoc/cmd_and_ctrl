@@ -413,6 +413,7 @@ func Register(spec Spec) {
 		checkCounterCost(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.RemoveCounters, ab.Cost.AddCounter)
 		checkSacrificeClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.SacrificeOther, true, true)
 		checkReturnClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ReturnToHand)
+		checkTapOthersClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.TapOthers)
 		// #660: a discard clause that discards nothing would make
 		// the ability free, the way a zero-counter cost would.
 		if dc := ab.Cost.DiscardCards; dc != nil && dc.N <= 0 {
@@ -495,6 +496,7 @@ func Register(spec Spec) {
 		// announced X (CR 605.3b), so a "Sacrifice X …" clause there
 		// has nothing to read its count from.
 		checkSacrificeClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.SacrificeOther, true, false)
+		checkTapOthersClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.TapOthers)
 		// #1228 / CR 113.6: the MANA half of the zone dimension, held
 		// to the same three rules the activated half is held to —
 		// every one of them a boot-time refusal rather than a
@@ -638,6 +640,7 @@ func shapeOfManaAbility(ma ManaAbility) game.ManaAbilityShape {
 		TapCost:        ma.Cost.Tap,
 		SacrificeCost:  ma.Cost.Sacrifice,
 		SacrificeOther: ma.Cost.SacrificeOther,
+		TapOthers:      ma.Cost.TapOthers,
 		RemoveCounters: ma.Cost.RemoveCounters,
 		AddCounter:     ma.Cost.AddCounter,
 		ExileSelf:      ma.Cost.ExileSelf,
@@ -809,6 +812,28 @@ func checkReturnClause(card, where string, rc *game.ReturnToHandCost) {
 		panic(fmt.Sprintf("effects.Register: %q %s lets one permanent pay a return twice (AllowSame)", card, where))
 	case rc.Filter.Players:
 		panic(fmt.Sprintf("effects.Register: %q %s admits players — a return clause matches permanents only", card, where))
+	}
+}
+
+// checkTapOthersClause is the boot-time refusal for #758's fixed-count
+// tap-others component. TapOthersCost.Empty intentionally treats a malformed
+// zero value as inert so engine call sites can be nil-safe; a catalog
+// declaration cannot be allowed to turn that into a free ability.
+func checkTapOthersClause(card, where string, tc *game.TapOthersCost) {
+	if tc == nil {
+		return
+	}
+	if tc.Count < 1 || tc.Filter == nil || tc.Label == "" {
+		panic(fmt.Sprintf("effects.Register: %q %s taps %d permanents — a tap-others cost needs a positive fixed count, clause and label",
+			card, where, tc.Count))
+	}
+	switch {
+	case tc.Filter.CountFromX:
+		panic(fmt.Sprintf("effects.Register: %q %s taps X permanents — variable tap-others costs are tracked by #1421", card, where))
+	case tc.Filter.AllowSame:
+		panic(fmt.Sprintf("effects.Register: %q %s lets one permanent pay a tap-others cost twice (AllowSame)", card, where))
+	case tc.Filter.Players:
+		panic(fmt.Sprintf("effects.Register: %q %s admits players — a tap-others clause matches permanents only", card, where))
 	}
 }
 

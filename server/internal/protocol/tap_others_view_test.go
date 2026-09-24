@@ -57,6 +57,32 @@ func seatTapOthersSource(g *game.Game, owner uuid.UUID, alsoTap bool) uuid.UUID 
 	return id
 }
 
+// seatTapOthersManaSource is Springleaf Drum's mana-ability spelling
+// of the same component. Its clause does not print "another", but the
+// source is still unavailable to that half because {T} spends it
+// first (CR 118.3).
+func seatTapOthersManaSource(g *game.Game, owner uuid.UUID) uuid.UUID {
+	id := uuid.New()
+	g.Battlefield.PushTop(game.Card{
+		InstanceID: id,
+		Name:       "Springleaf Drum",
+		TypeLine:   "Artifact",
+		Owner:      owner,
+		Controller: owner,
+		ManaAbilities: []game.ManaAbilityShape{{
+			TapCost: true,
+			TapOthers: &game.TapOthersCost{
+				Count:  1,
+				Filter: creatureCostClause(),
+				Label:  "an untapped creature you control",
+			},
+			Produced: "{W|U|B|R|G}",
+			Label:    "Add one mana of any color",
+		}},
+	})
+	return id
+}
+
 func seatTapBearFor(g *game.Game, controller uuid.UUID, name string, tapped bool, keywords ...string) uuid.UUID {
 	id := uuid.New()
 	g.Battlefield.PushTop(game.Card{
@@ -226,5 +252,72 @@ func TestTapOthersEnumeratorNeverTapsASourceTheTapSymbolSpends(t *testing.T) {
 	}
 	if offered == 0 {
 		t.Fatal("the enumerator offered no activation, though the bear can pay")
+	}
+}
+
+func TestManaAbilityViewCarriesTapOthersCostAndAgreesWithEnumerator(t *testing.T) {
+	g := busyTable(t, 0)
+	me := g.Seats[g.Turn.ActiveSeat]
+	src := seatTapOthersManaSource(g, me.ID)
+	plain := seatTapBearFor(g, me.ID, "Plain Bear", false)
+	hexproof := seatTapBearFor(g, me.ID, "Hexproof Bear", false, "hexproof")
+	seatTapBearFor(g, me.ID, "Tired Bear", true)
+	seatTapBearFor(g, g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)].ID, "Their Bear", false)
+	g.BumpLayerVersionForTest()
+
+	rows := vehicleView(t, g, src).ManaAbilities
+	if len(rows) != 1 {
+		t.Fatalf("mana ability rows = %d, want 1", len(rows))
+	}
+	row := rows[0]
+	if row.TapOthersLabel != "an untapped creature you control" {
+		t.Errorf("tap_others_label = %q", row.TapOthersLabel)
+	}
+	if row.TapOthersOptions == nil || row.TapOthersOptions.Min != 1 || row.TapOthersOptions.Max != 1 {
+		t.Fatalf("tap_others_options = %+v, want a fixed one-card choice", row.TapOthersOptions)
+	}
+	shown := map[string]bool{}
+	for _, id := range row.TapOthersOptions.Cards {
+		shown[id] = true
+	}
+	for _, id := range []uuid.UUID{plain, hexproof} {
+		if !shown[id.String()] {
+			t.Errorf("view omitted payable creature %s", id)
+		}
+	}
+
+	paid := map[string]bool{}
+	for _, m := range legal.EnumerateLocked(g, me.ID, legal.Options{}) {
+		if m.Type != legal.TypeActivateManaAbility {
+			continue
+		}
+		var p struct {
+			CardID string   `json:"card_id"`
+			TapIDs []string `json:"tap_ids"`
+		}
+		if err := json.Unmarshal(m.Params, &p); err != nil {
+			t.Fatalf("unmarshal mana params: %v", err)
+		}
+		if p.CardID != src.String() {
+			continue
+		}
+		if len(p.TapIDs) != 1 {
+			t.Errorf("mana move names %d tap payments, want 1", len(p.TapIDs))
+			continue
+		}
+		paid[p.TapIDs[0]] = true
+	}
+	if len(paid) == 0 {
+		t.Fatal("enumerator offered no payable Springleaf Drum move")
+	}
+	for id := range paid {
+		if !shown[id] {
+			t.Errorf("enumerator taps %s, which the view did not offer", id)
+		}
+	}
+	for id := range shown {
+		if !paid[id] {
+			t.Errorf("view offers %s, but the enumerator did not", id)
+		}
 	}
 }

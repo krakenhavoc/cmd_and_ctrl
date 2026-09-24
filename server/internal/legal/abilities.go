@@ -1231,6 +1231,8 @@ type manaParams struct {
 	CardID       string   `json:"card_id"`
 	AbilityIndex int      `json:"ability_index"`
 	SacrificeIDs []string `json:"sacrifice_ids,omitempty"`
+	// #758: permanents paying the mana ability's TapOthers component.
+	TapIDs []string `json:"tap_ids,omitempty"`
 	// #789: a mana ability's counter cost is paid with exactly the
 	// fields an activated ability's is — one component, one payment
 	// shape, whichever ability kind carries it.
@@ -1416,6 +1418,13 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 				continue
 			}
 		}
+		tapSets := [][]uuid.UUID{nil}
+		if tc := ab.TapOthers; !tc.Empty() {
+			tapSets = e.tapOthersPayments(g.TapOthersOptionsForEffect(e.seat, source.InstanceID, tc), tc, source.InstanceID, ab.TapCost)
+			if len(tapSets) == 0 {
+				continue
+			}
+		}
 		// #1213: a "Discard N cards" cost on a mana ability
 		// (Skirge Familiar). Solved exactly as the activated
 		// path solves its own — ONE payment, the cheapest set in
@@ -1457,40 +1466,44 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 			continue
 		}
 		for _, sacs := range sacrificeSets {
-			for _, cc := range counterChoices {
-				label := source.Name + ": " + ab.Label
-				if ab.Label == "" {
-					label = source.Name + ": add " + ab.Produced
+			for _, taps := range tapSets {
+				for _, cc := range counterChoices {
+					label := source.Name + ": " + ab.Label
+					if ab.Label == "" {
+						label = source.Name + ": add " + ab.Produced
+					}
+					label += sacrificeLabel(g, sacs)
+					label += tapLabel(g, taps)
+					label += cc.label(g)
+					// Mana Confluence's "Pay 1 life" is the same
+					// invisible cost an activated ability's is (#74),
+					// and so is a charge counter: the params name the
+					// permanent but never the price.
+					cost := moveCost(ab.LifeCost, 0)
+					for _, price := range cc.prices() {
+						cost = withCounterPrice(cost, price)
+					}
+					e.add(Move{
+						Type:   TypeActivateManaAbility,
+						Player: e.seat,
+						Kind:   KindMana,
+						Label:  label,
+						Source: source.InstanceID,
+						Cost:   cost,
+						Params: mustJSON(manaParams{
+							CardID:           source.InstanceID.String(),
+							AbilityIndex:     idx,
+							SacrificeIDs:     idStrings(sacs),
+							TapIDs:           idStrings(taps),
+							CounterSourceIDs: cc.wireIDs(),
+							CounterCounts:    cc.wireCounts(),
+							CounterKind:      cc.wireKind(),
+							CounterKinds:     cc.wireKinds(),
+							DiscardIDs:       idStrings(manaDiscardIDs),
+							ExileIDs:         idStrings(manaExileIDs),
+						}),
+					})
 				}
-				label += sacrificeLabel(g, sacs)
-				label += cc.label(g)
-				// Mana Confluence's "Pay 1 life" is the same
-				// invisible cost an activated ability's is (#74),
-				// and so is a charge counter: the params name the
-				// permanent but never the price.
-				cost := moveCost(ab.LifeCost, 0)
-				for _, price := range cc.prices() {
-					cost = withCounterPrice(cost, price)
-				}
-				e.add(Move{
-					Type:   TypeActivateManaAbility,
-					Player: e.seat,
-					Kind:   KindMana,
-					Label:  label,
-					Source: source.InstanceID,
-					Cost:   cost,
-					Params: mustJSON(manaParams{
-						CardID:           source.InstanceID.String(),
-						AbilityIndex:     idx,
-						SacrificeIDs:     idStrings(sacs),
-						CounterSourceIDs: cc.wireIDs(),
-						CounterCounts:    cc.wireCounts(),
-						CounterKind:      cc.wireKind(),
-						CounterKinds:     cc.wireKinds(),
-						DiscardIDs:       idStrings(manaDiscardIDs),
-						ExileIDs:         idStrings(manaExileIDs),
-					}),
-				})
 			}
 		}
 	}

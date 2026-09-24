@@ -796,12 +796,14 @@ func Station() ActivatedAbility {
 
 ### Decision 3: the wire, the enumerator and the bot
 
-- **View:** `activated_abilities[i].tap_others_label` / `tap_others_options`,
-  built from `TapOthersOptionsForEffect`, the same walk the validator uses
-  (#544). The source is left off when the ability also prints `{T}`
-  (CR 118.3). The names are kept apart from the cast-side `tap_cost` (convoke,
-  waterbend), which is a different component.
-- **Payload:** `tap_ids` on `activate_ability` already existed (#1102).
+- **View:** `activated_abilities[i]` and `mana_abilities[i]` carry the same
+  `tap_others_label` / `tap_others_options`, built from
+  `TapOthersOptionsForEffect`, the same walk the validator uses (#544). The
+  source is left off when the ability also prints `{T}` (CR 118.3). The names
+  are kept apart from the cast-side `tap_cost` (convoke, waterbend), which is a
+  different component.
+- **Payload:** `tap_ids` rides the matching `activate_ability` or
+  `activate_mana_ability` action (#1102 / #758).
 - **Enumerator:** one move per candidate creature for a one-permanent clause, in
   battlefield order. This is deliberately NOT the fuel order the sacrifice and
   return payments use: tapping spends nothing, and which creature is best to tap
@@ -814,7 +816,7 @@ func Station() ActivatedAbility {
   station buys. So a bot stations after combat, or with a summoning-sick
   creature, and not with its attackers.
 - **Client:** the sacrifice picker with the verb "Tap", asked after the return
-  pick and skipped when the board offers exactly one creature. Both ability
+  pick and skipped when the board offers exactly one permanent. Both ability
   menus grey the row when nothing can pay.
 
 This supersedes Decision 5's "station is not offered".
@@ -833,8 +835,9 @@ This supersedes Decision 5's "station is not offered".
 - **CR 702.184c** modifiers (Tapestry Warden's "toughness instead of power").
   They are a static over this ability, and no catalog card has one.
 - **CR 721.2c**, no P/T outside the battlefield. Unchanged from Decision 2.
-- **The mana-ability wire** for the same component (Springleaf Drum). That is
-  #758.
+- **Variable-count tap-others costs** (#1421), such as "Tap X untapped Foods you
+  control". The fixed `TapOthersCost.Count` cannot represent an announced X;
+  that needs the announce path used by variable sacrifice costs.
 - **Planets whose threshold line is a MANA ability** (Evendo, Waking Haven;
   Uthros, Titanic Godcore). `ActiveWhen` is not on mana abilities (Decision 1,
   note 3).

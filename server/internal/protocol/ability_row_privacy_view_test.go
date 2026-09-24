@@ -103,6 +103,7 @@ var manaRowScopes = map[string]rowScope{
 	"SacrificeCost": rowPublic, "ExileSelf": rowPublic, "LifeCost": rowPublic,
 	"ManaCost": rowPublic, "Produced": rowPublic, "Restrictions": rowPublic,
 	"SacrificeLabel": rowPublic, "SacrificeOptions": rowPublic,
+	"TapOthersLabel": rowPublic, "TapOthersOptions": rowPublic,
 	"ChargedManaCost": rowPublic, "ConditionUnmet": rowPublic, "Exhausted": rowPublic,
 	"CantActivate": rowPublic, "AddsNoMana": rowPublic,
 	// #1443: the commander identity it is narrowed and ordered by is

@@ -2554,6 +2554,13 @@ type ManaAbilityView struct {
 	// the pass that has the game handle to compute a legal set.
 	SacrificeLabel   string            `json:"sacrifice_label,omitempty"`
 	SacrificeOptions *LegalTargetsView `json:"sacrifice_options,omitempty"`
+	// TapOthersLabel / TapOthersOptions are the mana-ability half of
+	// #758's fixed-count TapOthers component — Springleaf Drum's
+	// "Tap an untapped creature you control". Same wire names and
+	// option shape as ActivatedAbilityView, so the client reuses the
+	// Tap picker and sends the answer as activate_mana_ability.tap_ids.
+	TapOthersLabel   string            `json:"tap_others_label,omitempty"`
+	TapOthersOptions *LegalTargetsView `json:"tap_others_options,omitempty"`
 	// LifeCost is a "Pay N life" component of the activation cost —
 	// Mana Confluence's "{T}, Pay 1 life:". Advisory, exactly like
 	// ActivatedAbilityView.LifeCost: the client renders the cost
@@ -4952,6 +4959,10 @@ func stampManaSacrificeOptions(g *game.Game, card game.Card, controller uuid.UUI
 		if raw[i].SacrificeOther != nil {
 			views[i].SacrificeLabel = raw[i].SacrificeOther.Label
 			views[i].SacrificeOptions = sacrificeCostOptions(g, controller, raw[i].SacrificeOther, card.InstanceID, raw[i].SacrificeCost)
+		}
+		if tc := raw[i].TapOthers; !tc.Empty() {
+			views[i].TapOthersLabel = tc.Label
+			views[i].TapOthersOptions = tapOthersCostOptions(g, controller, card.InstanceID, tc, raw[i].TapCost)
 		}
 		// #1213: the same three fields the activated view carries,
 		// off the same walk, so the client's picker is one component
