@@ -13,6 +13,16 @@ import { guardedWritable } from "./guardedStore";
 export type Route =
   | { name: "login" }
   | { name: "adminLogin" }
+  // The site portal (#1386, ADR 0092): a public sitemap of link cards
+  // to everywhere else on the site, grouped by what you're trying to
+  // do. Exists alongside SiteHeader as a second entry point — the
+  // owner will pick between the two later.
+  | { name: "home" }
+  // The public roadmap (PR 2 of the same plan): what the rules engine
+  // automates today, what's partial, what's missing, and what's next.
+  // Public like /catalog was meant to be closed — see ADR 0092 for why
+  // this one is the opposite call.
+  | { name: "roadmap" }
   | { name: "lobby" }
   | { name: "join"; gameID: string; inviteToken: string; spectator: boolean }
   // Seat reclaim: an admin-minted, single-use, short-lived link that
@@ -70,6 +80,10 @@ export function parseHash(hash: string): Route {
       return { name: "login" };
     case "admin":
       return { name: "adminLogin" };
+    case "home":
+      return { name: "home" };
+    case "roadmap":
+      return { name: "roadmap" };
     case "lobby":
       return { name: "lobby" };
     case "catalog":

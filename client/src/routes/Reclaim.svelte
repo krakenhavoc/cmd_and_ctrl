@@ -4,6 +4,7 @@
   import { navigate } from "../lib/router";
   import { LobbyApiError } from "../lib/session";
   import Icon from "../lib/components/Icon.svelte";
+  import SiteHeader from "../lib/components/SiteHeader.svelte";
 
   // Reclaim is the landing page for an admin-minted seat-reclaim
   // link (#/games/:id/reclaim?t=<ticket>). The host generates one
@@ -55,10 +56,9 @@
   }
 </script>
 
+<SiteHeader />
+
 <section class="entry">
-  <header class="topbar">
-    <a class="wordmark" href="#/login" aria-label="cmd_and_ctrl home"><i></i>CMD &amp; CTRL</a>
-  </header>
   <div class="stack">
     <div class="head">
       <p class="eyebrow">Returning you to your seat</p>
@@ -93,48 +93,16 @@
      different products. */
   .entry {
     position: relative;
-    min-height: calc(100vh - 3rem);
+    min-height: calc(100vh - 3rem - 68px);
     display: flex;
     justify-content: center;
-    margin: -1.5rem;
-    padding: 1.5rem;
-  }
-  .topbar {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 44px;
-    display: flex;
-    align-items: center;
-    padding: 0 14px;
-  }
-  .wordmark {
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: 14px;
-    letter-spacing: 0.18em;
-    color: var(--fg);
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    text-decoration: none;
-  }
-  .wordmark i {
-    display: inline-block;
-    width: 14px;
-    height: 14px;
-    border: 2px solid var(--gold);
-    transform: rotate(45deg);
-    border-radius: 3px;
-    box-sizing: border-box;
   }
   .stack {
     width: min(860px, 100%);
     display: flex;
     flex-direction: column;
     gap: 22px;
-    margin-top: clamp(60px, 12vh, 110px);
+    margin-top: clamp(24px, 6vh, 60px);
     align-items: center;
   }
   .head {

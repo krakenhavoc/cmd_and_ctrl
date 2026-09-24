@@ -14,6 +14,8 @@
   import Game from "./routes/Game.svelte";
   import Catalog from "./routes/Catalog.svelte";
   import MyGames from "./routes/MyGames.svelte";
+  import Home from "./routes/Home.svelte";
+  import Roadmap from "./routes/Roadmap.svelte";
   import Settings from "./lib/components/Settings.svelte";
   import ShortcutLayer from "./lib/components/ShortcutLayer.svelte";
   import UpdatePrompt from "./lib/components/UpdatePrompt.svelte";
@@ -50,7 +52,12 @@
       // session yet — gating it behind one would bounce them to the
       // login page they cannot get past.
       r.name === "reclaim" ||
-      r.name === "oauthComplete";
+      r.name === "oauthComplete" ||
+      // The site portal and the public roadmap (#1386): neither shows
+      // card art or anything else session-gated, so a signed-out
+      // visitor should be able to reach both from a cold link.
+      r.name === "home" ||
+      r.name === "roadmap";
     if (!s && !isPublic) {
       navigate("#/login");
     }
@@ -120,6 +127,10 @@
   <Login />
 {:else if $route.name === "adminLogin"}
   <Login admin />
+{:else if $route.name === "home"}
+  <Home />
+{:else if $route.name === "roadmap"}
+  <Roadmap />
 {:else if $route.name === "lobby"}
   <Lobby />
 {:else if $route.name === "catalog"}
