@@ -82,9 +82,9 @@ func reflectionOfKikiJikiCopyWithHaste(g *game.Game, item *game.StackItem) error
 		return nil
 	}
 	return ScheduleDelayedTrigger{
-		Label:  "Reflection of Kiki-Jiki — sacrifice the token",
-		Cards:  tokens,
-		Effect: b33SacrificeListedCards,
+		Label: "Reflection of Kiki-Jiki — sacrifice the token",
+		Cards: tokens,
+		Body:  sacrificeListedCardsBody,
 	}.Apply(ctx)
 }
 

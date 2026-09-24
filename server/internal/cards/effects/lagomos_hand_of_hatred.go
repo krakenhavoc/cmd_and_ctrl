@@ -42,9 +42,9 @@ func init() {
 					return nil
 				}
 				return ScheduleDelayedTrigger{
-					Label:  "Lagomos, Hand of Hatred — sacrifice the Elemental",
-					Cards:  tokens,
-					Effect: b33SacrificeListedCards,
+					Label: "Lagomos, Hand of Hatred — sacrifice the Elemental",
+					Cards: tokens,
+					Body:  sacrificeListedCardsBody,
 				}.Apply(NewContext(g, item))
 			}),
 		},

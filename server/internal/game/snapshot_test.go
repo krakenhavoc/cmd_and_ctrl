@@ -611,10 +611,13 @@ func TestCensusCountsEveryContinuationKind(t *testing.T) {
 			expect: func(c ContinuationCensus) int { return c.StackTargetSpecs },
 		},
 		{
-			name: "delayed trigger effect",
+			// Tier 2 (#1497) retired this counter for every real path:
+			// ScheduleDelayedTriggerForEffect refuses a trigger with no
+			// body. A hand-built one with nothing to do still counts.
+			name: "delayed trigger with no body",
 			set: func(g *Game) {
 				g.DelayedTriggers = []*DelayedTrigger{
-					{ID: uuid.New(), Label: "at end step", At: StepEnd, Effect: noop},
+					{ID: uuid.New(), Label: "at end step", At: StepEnd},
 				}
 			},
 			expect: func(c ContinuationCensus) int { return c.DelayedTriggerEffects },

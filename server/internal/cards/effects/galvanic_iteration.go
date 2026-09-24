@@ -30,8 +30,8 @@ func init() {
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return WhenYouNextCast(
 				"Galvanic Iteration — copy that spell",
-				Or(Instant(), Sorcery()),
-				copyTheSpellYouJustCast,
+				game.CastFilter{Types: []string{"Instant", "Sorcery"}},
+				copyTheSpellBody,
 			).Apply(ctx)
 		},
 	})

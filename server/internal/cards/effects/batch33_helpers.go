@@ -679,9 +679,9 @@ func b33DalkovanWarriors(defender uuid.UUID) func(g *game.Game, item *game.Stack
 			return nil
 		}
 		return ScheduleDelayedTrigger{
-			Label:  "Dalkovan Encampment — sacrifice the Warriors",
-			Cards:  tokens,
-			Effect: b33SacrificeListedCards,
+			Label: "Dalkovan Encampment — sacrifice the Warriors",
+			Cards: tokens,
+			Body:  sacrificeListedCardsBody,
 		}.Apply(ctx)
 	}
 }
@@ -800,7 +800,7 @@ func b33GoadChosenIfControlledBy(victim uuid.UUID) func(g *game.Game, item *game
 			ControllerTurnOnly: true,
 			Label:              "Alela, Cunning Conqueror — the goad ends",
 			Cards:              []uuid.UUID{id},
-			Effect:             b33ClearListedGoads,
+			Body:               clearListedGoadsBody,
 		}.Apply(ctx)
 	}
 }
