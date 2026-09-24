@@ -2018,3 +2018,133 @@ CASTER too would say "each player", which neither proof card does.
 **Cards shipped:** Avatar's Wrath (`full`) and Mandate of Peace (`full` —
 CR 724.2's "end the combat phase" (#1317) landed alongside this seam via PR #1343, so
 the card ships with neither half caveated).
+
+---
+
+## Amendment (2026-09-23, [#1369](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1369)): a permanent's ability rows keep their hidden-zone lists for the controller
+
+Every amendment since #1055 drew one line through the announce surface of a
+card in a PILE: a fact about the card is public, and what one seat may
+announce or pay rides `castOffers` to that seat alone. The BATTLEFIELD never
+had the line drawn, because nothing there needed it. `stampActivatedAbilities`
+computes a permanent's `activated_abilities` and `mana_abilities` once, with
+the controller as "you", and a permanent is known to every seat — so every
+row reached every viewer intact, and `FilterViewFor`'s per-card redaction
+(#95) only ever removes them from a card the viewer cannot identify.
+
+That was true until three fields started reading the controller's HAND:
+
+- `activated_abilities[i].discard_cost_options` — "Discard a creature card"
+  (Fauna Shaman, #660);
+- `mana_abilities[i].discard_cost_options` — "Discard a card" (Skirge
+  Familiar, #1213);
+- `mana_abilities[i].exile_cost_options` — "Exile a card from your hand"
+  (Cadaverous Bloom, #1283);
+- and, since #1297 landed while this was in flight,
+  `activated_abilities[i].exile_cost_options` when its `exile_cost_zone` is
+  `"hand"` — "Exile a card from your hand" (Holistic Wisdom).
+
+For an unfiltered clause the list's LENGTH is the hand size, which is public
+(CR 402.3 hides the cards, not the count). For a filtered clause it is not:
+Fauna Shaman's list told every opponent how many creature cards its
+controller held, and its instance IDs were a handle on specific cards that
+had been revealed, bounced or seen in another zone — the "the ID alone is
+the leak" argument PR #513 made about pending-choice options, arriving on a
+permanent.
+
+### Decision 1 — the same carrier, one zone over
+
+`CardView.abilityOffers` is `castOffers`' twin for the battlefield: a map
+keyed by seat, holding that seat's WHOLE `activated_abilities` /
+`mana_abilities` rows. `CardView.fileAbilityOffers` runs last in
+`stampActivatedAbilities`, after every mana stamp that writes into the rows
+in place; it leaves the public half on the exported fields and files the
+controller's full rows under their seat. `FilterViewFor` promotes one seat's
+entry through `applyAbilityOffersFor`, which is `applyCastStampsFor`'s rules
+unchanged:
+
+- **Only the controller's seat has an entry.** A battlefield ability is
+  activated by its controller alone (CR 602.2), so no other seat has an
+  answer to file, and an opponent's frame keeps the public rows.
+- **The empty viewerID gets nothing private.** A spectator, an admin and a
+  replay reader get the public rows — the same posture `legal_moves` and the
+  cast surface take, and the one place this departs from the issue's text,
+  which proposed leaving spectators on "see everything". A spectator is not a
+  seat, and no seat's hand is theirs to count; the unseated viewer who most
+  needs this redaction is the one watching over a player's shoulder.
+- **Only a knower is promoted**, so a face-down permanent's rows that the
+  redaction has just cleared are never handed back to a non-knower. Its
+  controller is always a knower (CR 708.5).
+
+Promotion is two slice-header assignments on this viewer's copy of the card,
+and the public copies are ALLOCATED rather than blanked in place, because the
+controller's rows are the slice already on the card — #1172's "the copy is
+load-bearing", one surface over. Nothing is filed or allocated for a
+permanent whose rows carry no hidden list, which is nearly all of them.
+
+### Decision 2 — the line is "does this field read a zone the viewer cannot see"
+
+`publicActivatedAbilityRow` and `publicManaAbilityRow` are the one place the
+hidden fields are named, and a scope table in
+`ability_row_privacy_view_test.go` places EVERY field of both views
+(the embedded `CounterCostView` included) as public or hidden-zone, failing
+on a field nobody placed. The sweep that table records:
+
+- **Hidden-zone, now per seat:** the discard lists always, and the exile
+  lists whenever `exile_cost_zone` is not `"graveyard"`. Nothing on either
+  view reads a LIBRARY.
+- **Public by zone:** an exile list stamped `exile_cost_zone: "graveyard"`
+  (Grim Lavamancer, Moorland Haunt) lists cards in a pile every viewer may
+  pick up and read, so it stays on the public row on both views.
+- **Public, and why:** the counts (`discard_cost_n`, `exile_cost_n`,
+  `counter_cost_n`) are the numbers PRINTED in the clause; the labels are
+  the clause's words; `counter_cost_max` and every other option list —
+  `sacrifice_options`, `crew_options`, `return_options`,
+  `tap_others_options`, `waterbend.options`, `counter_cost_options` — is read
+  off the battlefield, which every viewer can count for themselves; the
+  verdicts (`condition_unmet`, `timing_closed`, `cant_activate`,
+  `exhausted`, `charged_mana_cost`) read public state, as their own field
+  comments already say; and an activated ability's `legal_targets` never
+  reaches a hand (`game.zonesOfKindLocked`'s hidden-zone caution: nothing in
+  the catalog targets a card in hand).
+
+`exile_cost_options` is split BY THE ZONE it names, through one predicate,
+`exileListIsHidden`, which both strips call. It is written as "anything but
+the graveyard" rather than "the hand", so a row stamped with no zone — or
+with a pile added tomorrow — is private until somebody decides otherwise.
+That is the direction that does not leak. The graveyard list stays public
+because this amendment's line is "does it read a zone the viewer cannot
+see", and a graveyard is not one. #1172 moved a graveyard `pay_options` onto
+the asking seat's frame for a different reason: a cast surface on a pile
+answers for whichever seat asks, and that seat varies. A battlefield ability
+has exactly one payer, and its graveyard is on the table for everyone.
+
+The battlefield-read option lists stay public on purpose. They are also only
+the controller's to pay with, and by #1172's rule they could move too; they
+name nothing an opponent cannot already see, and moving them would make every
+permanent with a sacrifice or crew clause file a per-seat copy for no
+information gain. The table is where that decision is written down, so the
+day one of them starts reading a hidden zone is a table edit somebody has to
+make.
+
+### Consequences
+
+- The wire moves only in the safe direction: three fields go out on fewer
+  frames and never on more, so `v` does not move. Every client reader of the
+  lists opens a picker on the viewer's OWN permanent, which reads the
+  viewer's own frame; nothing renders an opponent's cost options.
+- The enumerator is untouched — it reads the game, not the view — and
+  `TestControllerFrameAndEnumeratorAgreeOnHandCosts` pins that the
+  controller's frame still offers every card the enumerator would pay with,
+  for all three fields that read the hand on a fixture.
+- The catalog proof test covers Fauna Shaman, Skirge Familiar, Cadaverous
+  Bloom and Holistic Wisdom (hidden), with Grim Lavamancer as the control
+  (graveyard, public on every frame).
+- The crash-recovery dump and a pinned replay marshal the UNFILTERED view, so
+  they now carry the public rows: a replay reader sees no hand lists, which
+  is what an unseated viewer should see anyway.
+- #1297 (PR #1373) merged first and added `ExileCostN` / `ExileCostLabel` /
+  `ExileCostOptions` / `ExileCostZone` to the activated view and
+  `ExileCostZone` to the mana view. They are placed in the scope table:
+  the count, label and zone are public, and the options fall under the zone
+  rule above.

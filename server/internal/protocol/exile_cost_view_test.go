@@ -40,7 +40,8 @@ func TestManaAbilityViewCarriesExileCostAndOptions(t *testing.T) {
 	b := seatHandCardFor(g, me, "Pitch B")
 	g.BumpLayerVersionForTest()
 
-	ma := vehicleView(t, g, src).ManaAbilities[0]
+	// #1369: the controller's frame, where the hand list now lives.
+	ma := controllerFrameCard(t, g, src).ManaAbilities[0]
 	if ma.ExileCostN != 1 || ma.ExileCostLabel != "a card" {
 		t.Errorf("exile cost shape: n=%d label=%q", ma.ExileCostN, ma.ExileCostLabel)
 	}

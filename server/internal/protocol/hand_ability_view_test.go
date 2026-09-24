@@ -155,24 +155,19 @@ func TestActivatedAbilityViewCarriesDiscardCostOptions(t *testing.T) {
 		}},
 	})
 
-	for _, c := range ViewOfGame(g).Battlefield.Cards {
-		if c.InstanceID != src.String() {
-			continue
-		}
-		if len(c.ActivatedAbilities) != 1 {
-			t.Fatalf("activated_abilities = %+v, want one", c.ActivatedAbilities)
-		}
-		a := c.ActivatedAbilities[0]
-		if a.DiscardCostN != 1 || a.DiscardCostLabel != "a creature card" {
-			t.Errorf("discard cost = %d %q, want 1 \"a creature card\"", a.DiscardCostN, a.DiscardCostLabel)
-		}
-		if len(a.DiscardCostOptions) != 1 || a.DiscardCostOptions[0] != bear.String() {
-			t.Errorf("discard_cost_options = %v, want only the creature card %v", a.DiscardCostOptions, bear)
-		}
-		if a.DiscardSelf {
-			t.Error("discard_self set on an ability that does not discard its source")
-		}
-		return
+	// #1369: the controller's frame, where the hand list now lives.
+	c := controllerFrameCard(t, g, src)
+	if len(c.ActivatedAbilities) != 1 {
+		t.Fatalf("activated_abilities = %+v, want one", c.ActivatedAbilities)
 	}
-	t.Fatal("the source is missing from the battlefield view")
+	a := c.ActivatedAbilities[0]
+	if a.DiscardCostN != 1 || a.DiscardCostLabel != "a creature card" {
+		t.Errorf("discard cost = %d %q, want 1 \"a creature card\"", a.DiscardCostN, a.DiscardCostLabel)
+	}
+	if len(a.DiscardCostOptions) != 1 || a.DiscardCostOptions[0] != bear.String() {
+		t.Errorf("discard_cost_options = %v, want only the creature card %v", a.DiscardCostOptions, bear)
+	}
+	if a.DiscardSelf {
+		t.Error("discard_self set on an ability that does not discard its source")
+	}
 }

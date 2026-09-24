@@ -1287,6 +1287,24 @@ type CardView struct {
 	// cleared on the way out like `knowers` so repeated FilterViewFor
 	// calls stay stable.
 	castOffers map[string]castStamps
+	// abilityOffers holds a battlefield permanent's ability rows as its
+	// CONTROLLER receives them, keyed by seat UUID string (#1369): the
+	// same rows the exported ActivatedAbilities / ManaAbilities carry,
+	// plus the cost-option lists read out of that player's HAND —
+	// `discard_cost_options`, `exile_cost_options`.
+	//
+	// castOffers' carrier one zone over, and for the same sentence: an
+	// option list answers "what may YOU pay", and "the creature cards
+	// in your hand" is also a count and a set of instance IDs out of a
+	// zone CR 402.3 hides from everybody else. The exported fields
+	// carry the public half (publicActivatedAbilityRow,
+	// publicManaAbilityRow) and FilterViewFor hands the controller
+	// their own rows back (applyAbilityOffersFor).
+	//
+	// Filed only when a row actually carries a hidden list, which is
+	// a handful of permanents in a whole game. Unexported, and cleared
+	// on the way out like castOffers.
+	abilityOffers map[string]abilityOfferRows
 	// BattleX, BattleY are the normalised battlefield position in
 	// [0, 1] stamped by the `set_battlefield_position` action.
 	//
@@ -3465,6 +3483,117 @@ func (c *CardView) stampZoneManaAbilitiesFor(seat uuid.UUID, rows []ManaAbilityV
 	c.castOffers[key] = s
 }
 
+// abilityOfferRows is one seat's copy of a battlefield permanent's two
+// ability lists (#1369) — what CardView.abilityOffers files and
+// applyAbilityOffersFor promotes. Both lists, wholesale, so the
+// promotion is two assignments and cannot forget a field: the
+// exported rows and these differ only in the fields the public*Row
+// functions below clear.
+type abilityOfferRows struct {
+	ActivatedAbilities []ActivatedAbilityView
+	ManaAbilities      []ManaAbilityView
+}
+
+// publicActivatedAbilityRow is the half of a battlefield ability row
+// every viewer may read (#1369). THE place the hidden-zone fields of
+// ActivatedAbilityView are named; ability_row_privacy_view_test.go
+// places every field of the view and fails on one nobody has placed.
+//
+// The line is "does this field read a zone the viewer cannot see".
+// Everything else on the row is either the printed ability (label,
+// costs, counts — `discard_cost_n` is the number printed in "Discard
+// two cards") or read off the battlefield, which is public. Those
+// board-read lists — sacrifice, crew, return, tap-others, counters,
+// waterbend — are also only the controller's to pay with, but they
+// name nothing an opponent cannot already count on the table.
+//
+// `private` reports whether anything was cleared, so the caller files
+// a per-seat copy only for a row that needs one.
+func publicActivatedAbilityRow(v ActivatedAbilityView) (out ActivatedAbilityView, private bool) {
+	// "Discard a creature card" (Fauna Shaman): the matching cards in
+	// the controller's hand. The count alone is how many creature
+	// cards they hold, and the IDs are a handle on specific cards a
+	// viewer may have seen in another zone.
+	private = len(v.DiscardCostOptions) > 0
+	v.DiscardCostOptions = nil
+	// #1297's "Exile N cards from your hand" (Holistic Wisdom): the
+	// same leak one verb over. The graveyard form (Grim Lavamancer,
+	// Moorland Haunt) lists cards in a pile every viewer may read and
+	// stays public.
+	if exileListIsHidden(v.ExileCostZone) {
+		private = private || len(v.ExileCostOptions) > 0
+		v.ExileCostOptions = nil
+	}
+	return v, private
+}
+
+// publicManaAbilityRow is publicActivatedAbilityRow for a mana
+// ability (#1369): Skirge Familiar's "Discard a card", Cadaverous
+// Bloom's "Exile a card from your hand".
+func publicManaAbilityRow(v ManaAbilityView) (out ManaAbilityView, private bool) {
+	private = len(v.DiscardCostOptions) > 0
+	v.DiscardCostOptions = nil
+	if exileListIsHidden(v.ExileCostZone) {
+		private = private || len(v.ExileCostOptions) > 0
+		v.ExileCostOptions = nil
+	}
+	return v, private
+}
+
+// exileListIsHidden reports whether an exile-cost option list, stamped
+// with `exile_cost_zone`, is read out of a zone other viewers cannot
+// see (#1369). Written as "anything but the graveyard" rather than "the
+// hand", so a clause stamped with no zone, or a zone added tomorrow,
+// is private until somebody says otherwise — the direction that does
+// not leak.
+func exileListIsHidden(zone string) bool {
+	return zone != string(game.ZoneGraveyard)
+}
+
+// fileAbilityOffers splits a battlefield permanent's ability rows into
+// the public half, left on the exported fields, and the controller's
+// whole rows, filed under their seat for FilterViewFor to promote
+// (#1369).
+//
+// Runs AFTER every stamp that writes into the rows — the mana stamps
+// write through the slice in place — and allocates the public copies
+// rather than blanking in place, because the controller's copy IS the
+// slice already on the card. Nothing is filed, and nothing allocated,
+// for a permanent whose rows carry no hidden list.
+func (c *CardView) fileAbilityOffers(controller uuid.UUID) {
+	var act []ActivatedAbilityView
+	var mana []ManaAbilityView
+	private := false
+	if len(c.ActivatedAbilities) > 0 {
+		act = make([]ActivatedAbilityView, len(c.ActivatedAbilities))
+		for i, a := range c.ActivatedAbilities {
+			var p bool
+			act[i], p = publicActivatedAbilityRow(a)
+			private = private || p
+		}
+	}
+	if len(c.ManaAbilities) > 0 {
+		mana = make([]ManaAbilityView, len(c.ManaAbilities))
+		for i, m := range c.ManaAbilities {
+			var p bool
+			mana[i], p = publicManaAbilityRow(m)
+			private = private || p
+		}
+	}
+	if !private {
+		return
+	}
+	if c.abilityOffers == nil {
+		c.abilityOffers = make(map[string]abilityOfferRows, 1)
+	}
+	c.abilityOffers[controller.String()] = abilityOfferRows{
+		ActivatedAbilities: c.ActivatedAbilities,
+		ManaAbilities:      c.ManaAbilities,
+	}
+	c.ActivatedAbilities = act
+	c.ManaAbilities = mana
+}
+
 // castFace names the printed half ONE cast surface is computed for
 // (#992): its index on the card, the catalog key that half registers
 // under (ADR 0034's "<oracle_id>#N") and the mana cost it prints.
@@ -4085,9 +4214,16 @@ func viewOfClauses(g *game.Game, src game.TargetSource, spec *game.TargetSpec) [
 // every battlefield permanent, computed from its CONTROLLER's point
 // of view (they're the only player who can activate it). A
 // permanent's abilities are public information in Magic, so unlike
-// hand-card legal targets these are not stripped per viewer — the
+// hand-card legal targets the rows are not stripped per viewer — the
 // client simply doesn't offer the menu on permanents you don't
-// control. Runs under the read lock ViewOfGame already holds.
+// control.
+//
+// Except the fields that read a HIDDEN zone (#1369): "Discard a
+// creature card" lists the creature cards in the controller's hand,
+// and that list goes to the controller alone through
+// CardView.abilityOffers. See publicActivatedAbilityRow.
+//
+// Runs under the read lock ViewOfGame already holds.
 func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 	for i := range bf.Cards {
 		c := &bf.Cards[i]
@@ -4142,6 +4278,11 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 		stampManaIdentity(g, card, controller, c.ManaAbilities)
 		stampManaCounterCosts(g, card, controller, c.ManaAbilities)
 		stampManaChargedCost(g, card, controller, c.ManaAbilities)
+		// #1369: last, after every stamp above has written into the
+		// rows. The option lists read out of the controller's HAND go
+		// to the controller alone; every other viewer, spectators
+		// included, gets the rows without them.
+		c.fileAbilityOffers(controller)
 	}
 }
 
@@ -5363,10 +5504,13 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		seats[i] = out
 	}
 	return GameView{
-		ID:          v.ID,
-		State:       v.State,
-		Seats:       seats,
-		Battlefield: redactZone(v.Battlefield, isKnower),
+		ID:    v.ID,
+		State: v.State,
+		Seats: seats,
+		// #1369: a permanent is public, but the cost options its
+		// ability rows read out of its controller's HAND are not, so
+		// they reach the controller's frame alone.
+		Battlefield: applyAbilityOffersFor(redactZone(v.Battlefield, isKnower), viewerID),
 		Stack:       redactZone(v.Stack, isKnower),
 		// #978: exile is the one SHARED zone that carries
 		// announce-time cast stamps, and they were computed for one
@@ -5648,6 +5792,39 @@ func applyCastStampsFor(z ZoneView, viewerID string) ZoneView {
 			}
 		}
 		applyFaceCastStampsFor(c, viewerID, mine)
+	}
+	return z
+}
+
+// applyAbilityOffersFor hands a battlefield permanent's CONTROLLER
+// their own ability rows — the ones carrying the cost options read out
+// of their hand — and leaves every other viewer the public rows
+// already on the card (#1369).
+//
+// applyCastStampsFor's rules, one zone over: the empty viewerID
+// (spectator, admin, replay reader) gets nothing private, because
+// "the creature cards in this hand" is not a view of the board and no
+// seat's hand is an unseated viewer's to count; and only a KNOWER is
+// promoted, so a face-down permanent whose rows redactCardForViewer
+// has just cleared is not handed them back. The controller of a
+// face-down permanent is always one (CR 708.5).
+//
+// Two slice-header assignments on this viewer's copy of the card and
+// nothing written through them, so the unfiltered view and every other
+// viewer's frame are untouched. The map is cleared on the way out, as
+// castOffers is, so repeated FilterViewFor calls stay stable.
+func applyAbilityOffersFor(z ZoneView, viewerID string) ZoneView {
+	for i := range z.Cards {
+		c := &z.Cards[i]
+		if c.abilityOffers == nil {
+			continue
+		}
+		rows, ok := c.abilityOffers[viewerID]
+		c.abilityOffers = nil
+		if ok && viewerID != "" && c.KnownByYou {
+			c.ActivatedAbilities = rows.ActivatedAbilities
+			c.ManaAbilities = rows.ManaAbilities
+		}
 	}
 	return z
 }
