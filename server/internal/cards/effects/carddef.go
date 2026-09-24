@@ -84,6 +84,7 @@ func manaShapes(in []ManaAbility) []game.ManaAbilityShape {
 			DerivedColorsOnly:         a.DerivedColorsOnly,
 			Restrictions:              a.Restrictions,
 			RestrictionsFunc:          a.RestrictionsFunc,
+			SpendRiders:               a.SpendRiders,
 		}
 	}
 	return out

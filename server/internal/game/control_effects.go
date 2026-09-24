@@ -22,9 +22,15 @@ import "github.com/google/uuid"
 //     summoning sickness under the new controller (CR 302.6) and
 //     removal from combat (CR 506.4).
 //
-// So a gain of control is not a new mechanism. It is one
-// `ScopedStatic` in the layer-2 bucket with a `Duration` on it, and
-// the whole of this file is the two ways a spell can ask for one.
+// So a gain of control is not a new mechanism. It is one continuous
+// effect in the layer-2 bucket with a `Duration` on it, and the whole
+// of this file is the two ways a spell can ask for one.
+//
+// Since ADR 0041 phase 3 (#1497) that effect is a `ScopedEffect`, a
+// data record with one `setController` mod (scoped_effects.go), not
+// a closure-bearing `ScopedStatic`. An Agent of Treachery's theft
+// lasts the rest of the game, and as a closure it kept the table off
+// the restore path for all of it.
 
 // GainControlForEffect registers a layer-2 continuous effect handing
 // control of `target` to `controller` for `d` (CR 613.1b).
@@ -53,14 +59,11 @@ func (g *Game) GainControlForEffect(sourceID, target, controller uuid.UUID, d Du
 	if controller == uuid.Nil {
 		return false
 	}
-	c, ok := g.battlefieldCardLocked(target)
-	if !ok {
+	if _, ok := g.battlefieldCardLocked(target); !ok {
 		return false
 	}
-	g.RegisterScopedStaticForEffect(
-		controlStatic(target, c.EnteredBattlefieldAt, controller),
-		sourceID, label, g.PinnedTo(d, target))
-	return true
+	return g.RegisterScopedEffectForEffect(sourceID, g.PinnedObjectsLocked(target),
+		[]Mod{SetControllerMod(controller)}, g.PinnedTo(d, target), label)
 }
 
 // ExchangeControlForEffect exchanges control of two permanents
@@ -94,39 +97,15 @@ func (g *Game) ExchangeControlForEffect(sourceID, a, b uuid.UUID, label string) 
 		return false
 	}
 	aTo, bTo := cb.Controller, ca.Controller
-	aStamp, bStamp := ca.EnteredBattlefieldAt, cb.EnteredBattlefieldAt
 	if aTo == uuid.Nil || bTo == uuid.Nil {
 		return false
 	}
 	ts := timeNowUnixNano()
-	g.registerScopedStaticLocked(controlStatic(a, aStamp, aTo), sourceID, label,
-		g.PinnedTo(IndefiniteDuration(), a), ts)
-	g.registerScopedStaticLocked(controlStatic(b, bStamp, bTo), sourceID, label,
-		g.PinnedTo(IndefiniteDuration(), b), ts)
+	g.registerScopedEffectLocked(sourceID, g.PinnedObjectsLocked(a), []Mod{SetControllerMod(aTo)},
+		g.PinnedTo(IndefiniteDuration(), a), label, ts)
+	g.registerScopedEffectLocked(sourceID, g.PinnedObjectsLocked(b), []Mod{SetControllerMod(bTo)},
+		g.PinnedTo(IndefiniteDuration(), b), label, ts)
 	return true
-}
-
-// controlStatic is the layer-2 continuous effect itself: "that
-// permanent is controlled by this player". Both closures capture
-// values only — an instance ID, a stamp and a player ID — per the
-// closure contract on ScopedStatic.
-func controlStatic(target uuid.UUID, enteredAt int64, controller uuid.UUID) StaticAbility {
-	return StaticAbility{
-		Layer: Layer2Control,
-		AppliesTo: func(c *Card, _ *Game, _ *Card) bool {
-			return c.InstanceID == target && c.EnteredBattlefieldAt == enteredAt
-		},
-		Apply: func(ch *Characteristic, _ *Card, _ *Game, src *Card) {
-			ch.Controller = controller
-			// #930: whoever wrote Controller last in this bucket is
-			// the effect that won CR 613.7, and the event names it.
-			// `src` is the ScopedStatic's stored source card, so this
-			// is the spell or ability that took the permanent.
-			if src != nil {
-				ch.ControlSource = src.InstanceID
-			}
-		},
-	}
 }
 
 // controlChange is one permanent's layer-2 control delta, collected

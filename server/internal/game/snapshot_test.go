@@ -204,6 +204,30 @@ func enrich(t *testing.T, g *Game) {
 			Cards:              []uuid.UUID{uuid.New()},
 		}}
 
+		// --- a data-backed scoped effect (ADR 0041 phase 3) -------
+		// The first battlefield permanent stolen by seat 1 for the
+		// rest of the game, animated a little. Pure data, so the game
+		// stays a restore point and the exact round trip covers it.
+		stolen := g.Battlefield.Cards[0]
+		g.ScopedEffects = []ScopedEffect{{
+			Affected: []AffectedObject{{ID: stolen.InstanceID, EnteredAt: stolen.EnteredBattlefieldAt}},
+			Mods: []Mod{
+				SetControllerMod(p1.ID),
+				AddKeywordsMod("haste"),
+				ModifyPTMod(1, 0),
+			},
+			Source:     ObjectRef{ID: spellID, Epoch: 1},
+			SourceName: "Test Theft",
+			Controller: p1.ID,
+			Timestamp:  4242,
+			Duration: Duration{
+				Kind:            Indefinite,
+				Pinned:          stolen.InstanceID,
+				PinnedEnteredAt: stolen.EnteredBattlefieldAt,
+			},
+			Label: "test theft",
+		}}
+
 		// --- a paused choice carrying data but no continuation ----
 		g.PendingChoices = []*PendingChoice{{
 			ID:                uuid.New(),

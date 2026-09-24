@@ -809,19 +809,18 @@ var items = []Item{
 	},
 	{
 		Slug: "mana-spend-riders", Name: "Mana that does something when it's spent", Kind: KindSeam, Status: StatusPartial,
-		Summary:  "Cards that read the mana spent on a spell: converge, sunburst, adamant, and \"if it was paid with Treasure\" all work.",
-		Missing:  "Mana with a rider doesn't work yet: \"when that mana is spent\" bonuses, spells cast with it becoming uncounterable, and granted sunburst.",
-		Issue:    1212,
-		Tracked:  "#761 (record shipped), #1212 (source snapshot + entry-side read shipped); riders open",
-		ADR:      "0068-the-mana-spent-on-a-spell.md",
-		Unblocks: 20,
+		Summary:  "Cards that read the mana spent on a spell work: converge, sunburst, adamant, \"if it was paid with Treasure\", and mana that does something when it's spent — Cavern of Souls, Pyromancer's Goggles, Hall of the Bandit Lord.",
+		Missing:  "Other permanents can't yet grant a spell something based on the mana spent on it: Lux Artillery's granted sunburst and Coin of Mastery's extra counters. Satoru, the Infiltrator doesn't yet count a creature cast without spending mana.",
+		Issue:    1552,
+		Tracked:  "#761 (record shipped), #1212 (source snapshot + entry-side read shipped), #1547 (spend riders shipped); granted readers open in #1552",
+		ADR:      "0040-mana-pipeline.md",
+		Unblocks: 0,
 		Waiting: []string{
-			"Scaled Nurturer", "Path of Ancestry", "Cavern of Souls", "Delighted Halfling",
 			"Lux Artillery", "Satoru, the Infiltrator", "Coin of Mastery",
 		},
 		Phrases:          []string{"which mana you spent", "spend its mana", "mana spent"},
-		NoCatalogExample: "Every catalogued card that reads spent mana carries a caveat, so none is listed as fully automated yet.",
-		EngineNotes:      "primitive: **the record shipped in #761** — `StackItem.Paid` carries the tokens that paid, and converge, sunburst, adamant and \"if no mana was spent\" all read it (see Closed seams). Still missing: SPEND RIDERS — a tag on the token fired after a payment, for \"when that mana is spent\" (Pyromancer's Goggles, Scaled Nurturer), entry riders (Biophagus, Opal Palace), haste grants (Hall of the Bandit Lord) and per-spell \"can't be countered\" (Cavern of Souls, Delighted Halfling) — and sunburst GRANTED by another permanent (Lux Artillery). **The SOURCE snapshot shipped in #1212**: `ManaToken.SourceKinds` records snow / Treasure / creature / land / artifact / enchantment at mint time — before the cost that sacrifices the source runs — the tokens ride `Card.Provenance` onto the permanent (CR 400.7d) so an enters trigger can read them, and `game.ManaSpent` is the one vocabulary both homes hand out (`Count`, `Colors`, `Total`, `CountFrom`, `FromTreasure`, `Snow`). Shipped on Hired Hexblade, Gruul Scrapper and Ribbons of Night. Re-checked 2026-09-24: no spend rider on `ManaToken`.",
+		NoCatalogExample: "Every catalogued card that reads spent mana carries the strict-mana caveat, so none is listed as fully automated yet.",
+		EngineNotes:      "primitive: **the record shipped in #761** — `StackItem.Paid` carries the tokens that paid, and converge, sunburst, adamant and \"if no mana was spent\" all read it (see Closed seams). **The SOURCE snapshot shipped in #1212** — `ManaToken.SourceKinds`, carried onto the permanent by `Card.Provenance` (CR 400.7d) and read through `game.ManaSpent`. **SPEND RIDERS shipped in #1547** (ADR 0040 amendment 2026-09-24): `ManaToken.Riders []ManaSpendRider` — data (kind, a spend filter in the restriction vocabulary, a production id), copied from `ManaAbilityShape.SpendRiders` at mint (through `PendingChoice.ManaRiders` for a pick), fired by `applyManaSpendRidersLocked` where a payment becomes a stack object (cast and activation, manual and auto-tap alike) and stamped `Applied` on `StackItem.Paid.Mana`. Readers: `spellCantBeCounteredLocked` (Cavern of Souls, Delighted Halfling, Boseiju), `applyCastEntryCountersLocked` (Biophagus), a layer-6 gather over `Card.Provenance` (Hall of the Bandit Lord), and trigger riders queued at the spend from a key registry (Pyromancer's Goggles, Scaled Nurturer, Path of Ancestry). Still missing: a rider GRANTED by another permanent over someone else's cast — Lux Artillery's sunburst, Coin of Mastery's per-artifact-mana counters — and Satoru's \"no mana was spent to cast them\" read on an entering creature. Not catalogued and one small step away: Opal Palace (an entry rider whose count reads the command-zone tally and whose filter is \"your commander\") and Generator Servant (haste until end of turn, a duration the haste rider does not carry).",
 	},
 	{
 		Slug: "tap-another-permanent-cost", Name: "Tapping your other permanents as a cost", Kind: KindSeam, Status: StatusImplemented,
@@ -878,6 +877,22 @@ var items = []Item{
 		Probe:    func(s effects.Spec) bool { return len(s.AttackLimits) > 0 },
 		Examples: []string{"Silent Arbiter", "Crawlspace"},
 		Phrases:  []string{"no more than one creature can", "no more than two creatures can"},
+	},
+	{
+		Slug: "conditional-combat-limits", Name: "Conditional and per-player combat limits", Kind: KindSeam, Status: StatusImplemented,
+		Summary: "Combat limits that apply only under a condition or to one player or permanent, such as Mirri, Weatherlight Duelist's \"each opponent can't block with more than one creature this combat\" and The Eternal Wanderer's \"no more than one creature can attack The Eternal Wanderer each combat\".",
+		Rules:   []string{"508.1c", "509.1b"},
+		Issue:   1534,
+		ADR:     "0045-combat-restrictions.md",
+		Probe: func(s effects.Spec) bool {
+			for _, l := range s.AttackLimits {
+				if l.While != nil || l.Scope == game.AttackLimitAttackingThis {
+					return true
+				}
+			}
+			return false
+		},
+		Examples: []string{"Mirri, Weatherlight Duelist"},
 	},
 	{
 		Slug: "extra-turns", Name: "Extra turns", Kind: KindSeam, Status: StatusPartial,

@@ -58,6 +58,16 @@ type ShutdownGameReport struct {
 	// Clean is true, since a clean capture IS the restore point that
 	// would be written next).
 	SeqBehind uint64
+
+	// SkippedByKind, SkipRun and LongestSkipRun are ADR 0041 P7's
+	// tally (#1497): every capture this process skipped because it was
+	// not a restore point, by census kind, plus the current and the
+	// longest run of consecutive skipped actions. Unlike Census, which
+	// is this one instant, they cover the room's whole life in this
+	// process — which is what orders the rest of phase 3.
+	SkippedByKind  map[string]int
+	SkipRun        int
+	LongestSkipRun int
 }
 
 // ShutdownReport captures r's current state and pairs it with the
@@ -79,6 +89,10 @@ func (r *Room) shutdownReportLocked() ShutdownGameReport {
 		LiveSeq: r.seq,
 		Clean:   snap.Restorable(),
 		Census:  snap.Continuations,
+
+		SkippedByKind:  r.skips.copyByKind(),
+		SkipRun:        r.skips.Run,
+		LongestSkipRun: r.skips.LongestRun,
 	}
 	if !r.lastRestorePoint.At.IsZero() {
 		rep.HasRestorePoint = true
@@ -127,6 +141,14 @@ func LogShutdownCensus(log *slog.Logger, rooms []*Room, archived func(gameID uui
 				"restore_seq", rep.RestoreSeq,
 				"seq_behind", rep.SeqBehind,
 				"restore_age", rep.RestoreAge.Round(time.Second).String(),
+			)
+		}
+
+		if len(rep.SkippedByKind) > 0 {
+			args = append(args,
+				"skipped_by_kind", rep.SkippedByKind,
+				"skip_run", rep.SkipRun,
+				"longest_skip_run", rep.LongestSkipRun,
 			)
 		}
 

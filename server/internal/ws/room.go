@@ -110,6 +110,13 @@ type Room struct {
 	// legitimate for a brand-new room and read that way by
 	// ShutdownReport.
 	lastRestorePoint restorePointRecord
+
+	// skips is the per-kind tally of captures that were NOT restore
+	// points (ADR 0041 phase 3, P7, #1497): the evidence the shutdown
+	// census cannot give, since it reads one instant per deploy and an
+	// idle table at that instant hides everything that happened
+	// mid-game. Guarded by mu; written only by writeRestorePointLocked.
+	skips skipTally
 }
 
 // restorePointRecord is Room's bookkeeping about its own last written
@@ -117,6 +124,51 @@ type Room struct {
 type restorePointRecord struct {
 	Seq uint64
 	At  time.Time
+}
+
+// skipTally counts the captures writeRestorePointLocked skipped, by
+// census kind, and the runs of consecutive skips between two written
+// restore points. In-memory only; it dies with the process, which is
+// fine, because the shutdown census logs it on the way out.
+type skipTally struct {
+	// ByKind is skipped captures per census counter name
+	// (game.ContinuationCensus.Kinds). A capture blocked by two kinds
+	// counts once under each.
+	ByKind map[string]int
+	// Run is the current run of consecutive skipped captures, in
+	// actions; zero right after a restore point is written.
+	Run int
+	// LongestRun is the longest run this process has seen.
+	LongestRun int
+}
+
+// noteSkip records one skipped capture.
+func (s *skipTally) noteSkip(c game.ContinuationCensus) {
+	if s.ByKind == nil {
+		s.ByKind = map[string]int{}
+	}
+	for kind := range c.Kinds() {
+		s.ByKind[kind]++
+	}
+	s.Run++
+	if s.Run > s.LongestRun {
+		s.LongestRun = s.Run
+	}
+}
+
+// noteWrite records a written restore point: the current run ends.
+func (s *skipTally) noteWrite() { s.Run = 0 }
+
+// copyByKind returns a copy of the per-kind map for a report.
+func (s *skipTally) copyByKind() map[string]int {
+	if len(s.ByKind) == 0 {
+		return nil
+	}
+	out := make(map[string]int, len(s.ByKind))
+	for k, v := range s.ByKind {
+		out[k] = v
+	}
+	return out
 }
 
 // undoEntry is one slot on Room.undoStack — the pre-action game

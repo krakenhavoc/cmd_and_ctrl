@@ -62,6 +62,7 @@
   import ManaSourcePicker from "./ManaSourcePicker.svelte";
   import { manaSourcePicker, closeManaSourcePicker } from "../../manaSourcePicker";
   import { manaColorParams } from "../../manaSource";
+  import { activatedAbilityRef, manaAbilityRef } from "../../abilityRef";
   import type { MenuActivate } from "../../contextMenu.logic";
   import {
     targeting,
@@ -877,6 +878,8 @@
       const params: Record<string, unknown> = {
         source_card_id: state.card.instance_id,
         ability_index: state.ability.index,
+        // ADR 0093: the row the activation meant, so a stale one is refused.
+        ...activatedAbilityRef(state.card, state.ability.index),
         sacrifice_ids: state.ability.sacrificeIDs,
         crew_ids: state.ability.crewIDs,
         // #660: the discard picks were made at announce, before the
@@ -1494,6 +1497,8 @@
       {
         card_id: card.instance_id,
         ability_index: ability.index,
+        // ADR 0093: the row this click meant, so a stale one is refused.
+        ...manaAbilityRef(card, ability.index),
         ...(sacrificeIDs && sacrificeIDs.length > 0 ? { sacrifice_ids: sacrificeIDs } : {}),
         // #758: absent on ordinary mana abilities, as every optional
         // cost-payment field is.
@@ -1536,6 +1541,7 @@
     const params = {
       card_id: card.instance_id,
       ability_index: activate.index,
+      ...manaAbilityRef(card, activate.index),
       ...manaColorParams(activate.colors),
     };
     guardedSendAction("activate_mana_ability", params, card.controller);
@@ -1653,6 +1659,8 @@
     const params: Record<string, unknown> = {
       source_card_id: card.instance_id,
       ability_index: ability.index,
+      // ADR 0093: the row the activation meant, so a stale one is refused.
+      ...activatedAbilityRef(card, ability.index),
       sacrifice_ids: sacrificeIDs,
       crew_ids: crewIDs,
       discard_ids: abilityDiscardIDs,

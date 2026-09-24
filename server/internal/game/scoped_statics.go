@@ -204,6 +204,10 @@ func (g *Game) ClearExpiredScopedStaticsLocked() {
 //
 // Caller must hold g.mu.
 func (g *Game) sweepScopedStaticsLocked(endOfTurn bool) {
+	// ADR 0041 phase 3's data records ride the same sweep (#1497).
+	if g.sweepScopedEffectsLocked(endOfTurn) {
+		g.layerVersion.Add(1)
+	}
 	if len(g.ScopedStatics) == 0 {
 		return
 	}
@@ -237,10 +241,14 @@ func (g *Game) sweepScopedStaticsLocked(endOfTurn bool) {
 //
 // Caller must hold g.mu in write mode (the recompute pass does).
 func (g *Game) scopedContinuousEffectsLocked() []ContinuousEffect {
+	// The data records first (#1497); order within a bucket is decided
+	// by timestamp, not by which registry an effect came from.
+	data := g.scopedEffectContinuousEffectsLocked()
 	if len(g.ScopedStatics) == 0 {
-		return nil
+		return data
 	}
-	out := make([]ContinuousEffect, 0, len(g.ScopedStatics))
+	out := make([]ContinuousEffect, 0, len(data)+len(g.ScopedStatics))
+	out = append(out, data...)
 	for i := range g.ScopedStatics {
 		s := &g.ScopedStatics[i]
 		out = append(out, staticContinuousEffect{

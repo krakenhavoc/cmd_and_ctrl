@@ -171,6 +171,12 @@ func (g *Game) applyCastEntryCountersLocked(ev *ReplacementEvent, card Card, ite
 	if ev == nil || item == nil {
 		return
 	}
+	// #1547: "if this mana is spent to cast a creature spell, that
+	// creature enters with an additional +1/+1 counter on it"
+	// (Biophagus) — a spend rider on the mana that paid, seeded in the
+	// same place and for the same reason as the card's own clause, so
+	// the two compose and Doubling Season sees both.
+	riderEntryCounters(ev, item)
 	clauses := EntersWithCountersFromCastFor(CatalogKey(card))
 	if len(clauses) == 0 {
 		return

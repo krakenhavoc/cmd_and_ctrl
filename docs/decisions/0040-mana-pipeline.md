@@ -971,3 +971,111 @@ the check), `ActivateManaAbility` (`game/mutations.go`), the
 `stampManaIdentity` (`protocol/view.go`); `client/src/lib/manaSource.ts`
 (`manaAbilityOptionsFor`, `colorCombos`, `manaColorParams`),
 `ManaSourcePicker.svelte`, `Board.svelte`, `PlayerPanel.svelte`.
+
+## Amendment — 2026-09-24 (#1547): mana spend riders
+
+**The gap.** §2 made a spend *restriction* data on the token: where the mana
+may go. The other half of "mana with text on it" was still missing — what the
+mana does once it has gone somewhere. "And that spell can't be countered"
+(Cavern of Souls, Delighted Halfling, Boseiju, Who Shelters All), "if that mana
+is spent on a creature spell, it gains haste" (Hall of the Bandit Lord), "when
+that mana is spent to cast a red instant or sorcery spell, copy that spell"
+(Pyromancer's Goggles), "…that creature enters with an additional +1/+1
+counter" (Biophagus), and the scry and life-gain triggers on Path of Ancestry
+and Scaled Nurturer. ADR 0068 (#761) made the payment a record
+(`StackItem.Paid.Mana`) and #1212 snapshotted the source onto each token; what
+neither had was a way for a token to carry an instruction from the moment it
+is made to the moment it is spent.
+
+**Decision 1 — a rider is data on the token, for §2's reasons.**
+`ManaToken.Riders []ManaSpendRider` (`game/mana_spend_rider.go`). A rider is a
+`Kind` — `cant_be_countered`, `haste`, `enters_with_counters`, `trigger` — a
+`When` filter in §2's tag vocabulary, the kind's payload (counter kind and
+count, or a trigger key), a `Production` id and an `Applied` stamp. It sits in
+a pool across undo, rides the snapshot, and is read back after the source that
+made it has gone, which is exactly why §2 refused closures for restrictions.
+The one part that must be code — what a "when that mana is spent" trigger
+*does* — is named by a string key into a process-lifetime registry the catalog
+fills at init (`RegisterManaSpendTrigger`, called by
+`effects.WhenManaSpent`). The key survives the snapshot; the new binary
+rebuilds the closure, the way a catalog hook is rebuilt from an oracle ID. A
+key this binary does not know fires nothing.
+
+**Decision 2 — a rider is not a restriction, and the two filters are stated
+separately.** `Restrictions` decide whether a token may pay at all; `When`
+decides whether the rider fires once it has. Hall of the Bandit Lord's {C} pays
+for anything and hastes only a creature; Cavern's coloured mana pays only for a
+creature of the chosen type, so its rider's filter is just "a spell". A
+consequence worth stating: a rider does NOT hide an ability from the
+auto-tapper (§7). A planned Goggles is still a red source.
+
+The filter vocabulary grows by two, both needed by a printed clause and both
+available to restrictions too: `color:X` ("a red instant or sorcery", built by
+`ManaRestrictColor`) and `|` alternation within one keyed tag ("an instant or
+sorcery", `ManaRestrictAnyType`), because tags AND and the clause is an OR. An
+unknown tag still denies, so an unreadable filter fires nothing.
+
+**Decision 3 — it fires at the one place a payment becomes a stack object.**
+`applyManaSpendRidersLocked` runs right after the item is registered, in
+`castSpellLocked` and in the CR 602 activation path, against the SAME
+`ManaSpendContext` the payment was solved under, so a rider's filter and the
+restriction that let the token pay can never disagree about what the object
+is. Manual payment and the auto-tapper reach it identically: the auto-tapper
+only puts mana in the pool — `materializePlanLocked` mints through
+`produceManaLocked` with the ability's riders, exactly as a click does — and the
+spend is the ordinary strict-mode spend either way. A colour pick carries the
+riders on `PendingChoice.ManaRiders`, §8's reason for `ManaRestrictions`.
+
+Firing stamps `Applied` on the rider's copy in `StackItem.Paid.Mana`, and that
+copy is the record every reader consults:
+
+| Kind | Reader |
+|---|---|
+| `cant_be_countered` | `spellCantBeCounteredLocked` — the one gate every counter verb asks (`CounterTargetForEffect`, the to-zone and to-library counters, and the `put_in_library` prompt's `counterableSpellOnStackLocked`), in front of #1318's shared stack exit |
+| `enters_with_counters` | `applyCastEntryCountersLocked` — seeded onto the entry event beside the card's own CR 614.1c clauses, so a counter doubler sees it |
+| `haste` | a layer-6 gather over `Card.Provenance.Mana` (#1212 carries the payment onto the permanent, CR 400.7d) — built fresh each pass from data, so nothing is registered and the snapshot stays a restore point; not `live`, so an ability removal strips the keyword in layer 6 rather than silencing it as a source |
+| `trigger` | queued on `PendingTriggers` at the spend, with the spell or ability as its `Payload[0]`; the state check at the end of the cast places it above the spell (CR 603.3) |
+
+**Decision 4 — "that mana" is one production.** `produceManaLocked` stamps one
+`Production` id on every rider it mints, and firing deduplicates on it: a Mana
+Reflection that doubles a Goggles' {R} is still one Goggles activation and one
+copy, and a doubled Biophagus pick is still one extra counter. Two separate
+activations are two.
+
+**What does not fire a rider, deliberately.**
+
+- An `OnPaper` payment — permissive mode, the table's default, and `ForceCast`.
+  The engine spent nothing, so no token pays. Weaker than printed, ADR 0068 §3's
+  posture; every rider card declares the strict-mana caveat, as the converge and
+  #1212 cards do.
+- A mana ability's own mana cost (a Signet's {1}): no stack object to mark or
+  copy, and no printed rider asks about one.
+- A pay-unless tax (`payCostLocked`): the zero context admits no filter.
+- A copy of a spell: CR 707.10, the copy was not cast and `copiedPaidCost`
+  carries no tokens, so a Goggles copy is neither uncounterable nor
+  re-triggering.
+- The manual `CounterSpell` sandbox action, which honours neither the printed
+  "can't be countered" nor the rider: it is the table's override, not a rules
+  verb.
+
+**Snapshot.** Additive: `riders` on every token home (pool, payment record,
+provenance) and `manaRiders` on a pending choice, recorded in
+`testdata/snapshot_shape/v7.txt` (current once #1555 bumped to v7);
+`PendingChoice.ManaRiders` is `carried` in the drift test. No bump. A file written before this change has no riders and
+restores as it always did. A binary from before it reading a newer file drops
+them, which makes those spells counterable and that creature slow again. That
+is weaker than printed and local to the riders, not the whole-board loss that
+forced v2, v5 and v6.
+
+**Cards.** Cavern of Souls, Delighted Halfling, Path of Ancestry and Scaled
+Nurturer lose their "rider is inert" caveats for the strict-mana one; Pyromancer's
+Goggles, Hall of the Bandit Lord (a declared batch-28 skip until now), Boseiju,
+Who Shelters All and Biophagus are new. Tests:
+`cards/effects/mana_spend_rider_test.go`, `game/mana_spend_rider_test.go`.
+
+**Still open** ([#1552](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1552)):
+a reader GRANTED by another permanent over someone else's cast — Lux
+Artillery's sunburst, Coin of Mastery's per-artifact-mana counters — and
+Satoru's "no mana was spent to cast them". Opal Palace (a count read off the
+command-zone tally) and Generator Servant (haste until end of turn) fit this
+shape with one more field each and are not catalogued.

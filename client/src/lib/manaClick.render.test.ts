@@ -160,6 +160,44 @@ describe("left-click on your own permanents (#1438)", () => {
     expect(get(manaSourcePicker)).toBeNull();
   });
 
+  // ADR 0093 Decision 5: the row's ref rides the activation, so a row
+  // that moved since this snapshot is refused rather than fired.
+  it("sends the row's ref with the activation", () => {
+    const p = mountPanel([
+      swamp({ mana_abilities: [ability(0, { produced: "{B}", label: "Add {B}", ref: "land:B" })] }),
+    ]);
+    click(p.tile("swamp"));
+    expect(p.sent).toEqual([
+      {
+        type: "activate_mana_ability",
+        params: { card_id: "swamp", ability_index: 0, ref: "land:B" },
+        player: ME,
+      },
+    ]);
+  });
+
+  // ADR 0093 owner decision: a creature under Cryptolith Rite opens the
+  // picker — its granted ability is never fired silently, and the
+  // creature is not just tapped sideways.
+  it("opens the picker for a creature with a granted mana ability", () => {
+    const p = mountPanel([
+      permanent("bear", "Grizzly Bears", "Creature — Bear", {
+        mana_abilities: [
+          ability(0, {
+            produced: "{G}",
+            label: "Add {G}",
+            ref: "grant:jaheira/tap-for-green:0:0",
+            granted_by: { id: "j", name: "Jaheira, Friend of the Forest" },
+          }),
+        ],
+      }),
+    ]);
+    click(p.tile("bear"));
+    expect(p.sent).toEqual([]);
+    expect(p.tapped).toEqual([]);
+    expect(get(manaSourcePicker)?.cardID).toBe("bear");
+  });
+
   it("opens the anchored picker for a painland and sends nothing yet", () => {
     const p = mountPanel([forge()]);
     click(p.tile("forge"));

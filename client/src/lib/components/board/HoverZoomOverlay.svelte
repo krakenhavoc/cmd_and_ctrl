@@ -201,6 +201,21 @@
       {:else if meta === null}
         <div class="oracle dim">…</div>
       {/if}
+      <!-- ADR 0093 Decision 8: the abilities OTHER permanents gave this
+           one, each as its granting card prints it, one row per
+           grantor. The oracle text above cannot say them — the card
+           never printed them — and a granted trigger has no menu row,
+           so this is the only place it is visible. -->
+      {#if card.granted_abilities && card.granted_abilities.length > 0}
+        <ul class="granted" aria-label="granted abilities">
+          {#each card.granted_abilities as g, i (i)}
+            <li>
+              <span class="granted-text">{g.text}</span>
+              {#if g.source_name}<span class="granted-from">from {g.source_name}</span>{/if}
+            </li>
+          {/each}
+        </ul>
+      {/if}
       <!-- Directly under the oracle text, which is the text it is
            about. Inspecting a card is the one moment a player is
            already asking what it does, so it costs nothing to answer
@@ -425,6 +440,26 @@
   .oracle.dim {
     color: var(--fg-dim);
     font-style: italic;
+  }
+  /* ADR 0093: granted abilities, read like oracle text but set apart
+     from it — the card did not print them. */
+  .granted {
+    list-style: none;
+    margin: 4px 0 0;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px dashed var(--border, var(--fg-dim));
+    font-size: 11px;
+    line-height: 1.35;
+    color: var(--fg);
+  }
+  .granted li + li {
+    margin-top: 3px;
+  }
+  .granted-from {
+    margin-left: 6px;
+    color: var(--fg-dim);
+    font-size: 10px;
   }
   /* Deliberately quiet — dim, small, no colour of its own. This is a
      statement about the engine, not about the card, and it sits

@@ -80,11 +80,13 @@ func hasKind(moves []legal.Move, k legal.Kind) bool {
 	return false
 }
 
-// combatTally is the most creatures seen attacking, attacking one seat,
-// and blocking at any point of the drive.
+// combatTally is the most creatures seen attacking, attacking one
+// target, blocking, and blocking for one seat, at any point of the
+// drive.
 type combatTally struct {
 	attackers, blockers int
 	perDefender         map[uuid.UUID]int
+	blockersBy          map[uuid.UUID]int
 }
 
 // driveOneCombat plays from declare attackers until the cursor leaves
@@ -95,7 +97,7 @@ type combatTally struct {
 func driveOneCombat(t *testing.T, g *game.Game, pol aiseat.Policy) combatTally {
 	t.Helper()
 	advanceToStep(t, g, game.StepDeclareAttackers)
-	tally := combatTally{perDefender: map[uuid.UUID]int{}}
+	tally := combatTally{perDefender: map[uuid.UUID]int{}, blockersBy: map[uuid.UUID]int{}}
 	declined := map[uuid.UUID]bool{}
 	for step := 0; step < 120; step++ {
 		switch g.Turn.Step {
@@ -159,7 +161,7 @@ func driveOneCombat(t *testing.T, g *game.Game, pol aiseat.Policy) combatTally {
 
 func observeCombat(g *game.Game, tally *combatTally) {
 	attackers, blockers := 0, 0
-	per := map[uuid.UUID]int{}
+	per, by := map[uuid.UUID]int{}, map[uuid.UUID]int{}
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
 		if c.AttackingTarget != uuid.Nil {
@@ -168,12 +170,16 @@ func observeCombat(g *game.Game, tally *combatTally) {
 		}
 		if c.BlockingTarget != uuid.Nil {
 			blockers++
+			by[c.Controller]++
 		}
 	}
 	tally.attackers = max(tally.attackers, attackers)
 	tally.blockers = max(tally.blockers, blockers)
 	for d, n := range per {
 		tally.perDefender[d] = max(tally.perDefender[d], n)
+	}
+	for s, n := range by {
+		tally.blockersBy[s] = max(tally.blockersBy[s], n)
 	}
 }
 
