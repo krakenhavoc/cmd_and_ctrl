@@ -1257,8 +1257,10 @@ func TestB10TheShireEntersUntappedWithALegendaryCreature(t *testing.T) {
 	if got := batch01PoolColors(me2); len(got) != 1 || got[0] != "G" {
 		t.Errorf("pool %v, want [G]", got)
 	}
-	if n := len(game.ActivatedAbilitiesForCard(game.Card{OracleID: b10TheShireOracle})); n != 0 {
-		t.Errorf("the Food ability is declared missing; found %d activated abilities", n)
+	// #1381: the Food ability is registered now (the_shire_test.go
+	// proves it works).
+	if n := len(game.ActivatedAbilitiesForCard(game.Card{OracleID: b10TheShireOracle})); n != 1 {
+		t.Errorf("the Food ability should be registered; found %d activated abilities, want 1", n)
 	}
 }
 

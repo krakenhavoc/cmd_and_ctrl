@@ -13,27 +13,33 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // legendary creature" entry, read post-layer so an animated legendary
 // artifact counts, and a plain {G}.
 //
-// DECLARED SIMPLIFICATION: the Food ability is not implemented. "Tap
-// an untapped creature you control" is a cost component the engine
-// cannot express — AbilityCost carries tap-this, sacrifice, mana,
-// life, loyalty and crew, and nothing that taps ANOTHER permanent
-// (the Springleaf Drum / Relic of Legends gap) — and shipping the
-// ability with that cost omitted would make the card STRONGER than
-// printed (#259). The land is still recognisably itself without it
-// (a conditional-untapped Forest for a legends deck), which is the
-// Mines of Moria posture, and the gap runs the weaker way. The
-// ability lands when a tap-another-creature cost component does.
+// The Food ability is a CR 602 activation with a tap-another cost
+// (#1381): Plus(ManaCost("{1}{G}"), TapCost(), TapAnotherUntapped(...)),
+// the same TapOthers component the station ability pays one file
+// over.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "9abf9a0e-8e7d-406b-a01d-d4870b30134e",
 		Name:         "The Shire",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The Food-making ability isn't implemented — the land can only be played and tapped for {G}."},
+		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{SelfEntersTappedUnless(b08ControlsLegendaryCreature)},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{G}",
 			Label:    "Add {G}",
+		}},
+		Activated: []ActivatedAbility{{
+			Label: "{1}{G}, {T}, Tap an untapped creature you control: Create a Food token.",
+			Cost:  Plus(ManaCost("{1}{G}"), TapCost(), TapAnotherUntapped("an untapped creature you control", Creature())),
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return CreateToken{
+					Controller: item.Controller,
+					Template:   FoodToken(),
+					N:          1,
+				}.Apply(NewContext(g, item))
+			},
 		}},
 	})
 }

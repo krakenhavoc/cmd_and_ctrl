@@ -13,24 +13,50 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // for 1 and gains the controller 1 — one life, not one per opponent,
 // as printed (eachOpponentLosesLife then GainLife).
 //
-// DECLARED SIMPLIFICATION, weaker than printed: the second ability
-// is not offered. It is an activated ability that works from the
-// GRAVEYARD, and the engine's CR 602 abilities are battlefield-only
-// (ActivateCatalogAbility looks the source up on the battlefield);
-// there is no zone slot on an activated ability the way CastableZones
-// gives a spell one. An ability with no way to activate is left out
-// rather than faked, and the card is still recognisably itself: a
-// one-mana Cat that drains on entry, and comes back through any
-// reanimation the deck already has. The loop lands when activated
-// abilities gain a from-graveyard zone.
+// The second ability is a CR 602 activation from the GRAVEYARD
+// (CR 113.6), reaching it through ActivatedAbility.Zones exactly as
+// Reassembling Skeleton's does — a sacrifice cost rather than a mana
+// one, but the same activation path, the same cost validation, the
+// same stack item (#1381). The Cat returns to the battlefield as a
+// NEW object, under its owner's control (no "under your control"
+// clause is printed), and its ETB trigger above fires again — which
+// is the whole Cat-Oven loop.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "a7dc2e62-1c50-4ed7-b71f-2d782a447a5e",
 		Name:         "Cauldron Familiar",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The Cat can't be returned from your graveyard by sacrificing a Food — abilities can only be activated from the battlefield."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Cauldron Familiar — each opponent loses 1 life and you gain 1 life", drainEachOpponent),
 		},
+		Activated: []ActivatedAbility{{
+			Label: "Sacrifice a Food: Return this card from your graveyard to the battlefield.",
+			Cost:  game.AbilityCost{SacrificeOther: sacrificeSpec("a Food", HasSubtype("Food"))},
+			Zones: []game.ZoneKind{game.ZoneGraveyard},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return returnThisFromGraveyardToBattlefield(g, item)
+			},
+		}},
 	})
+}
+
+// returnThisFromGraveyardToBattlefield is returnThisFromGraveyardTapped's
+// untapped sibling (reassembling_skeleton.go) — "<cost>: Return this
+// card from your graveyard to the battlefield," no "tapped" clause.
+// Cauldron Familiar is the first card to need it (#1381); package-level
+// for the same undo-safety reason every other Effect closure is.
+func returnThisFromGraveyardToBattlefield(g *game.Game, item *game.StackItem) error {
+	id := item.SourceCardID
+	// CR 602.5 / 608.2a: the card may have left the graveyard between
+	// activation and resolution.
+	if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneGraveyard {
+		return nil
+	}
+	return (ReturnFromGraveyard{
+		Target:     id,
+		Dest:       game.ZoneBattlefield,
+		Controller: item.Controller,
+	}).Apply(NewContext(g, item))
 }
