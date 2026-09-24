@@ -127,6 +127,16 @@ const (
 	LogAttack LogKind = "attack"
 	// LogBlock — a creature was declared as a blocker.
 	LogBlock LogKind = "block"
+	// LogNoBlocks — a defending player completed their CR 509.1 block
+	// declaration with zero blockers (game.EventBlockersDeclared,
+	// Amount == 0; #1279, #1500). The blocks a defender DID make are
+	// already LogBlock lines above; this is the one fact those can't
+	// carry — that the defender was asked and chose to take the hit,
+	// rather than the silence a step with no combat at all produces.
+	// Amount > 0 (the defender blocked with N creatures) is still
+	// silent: those LogBlock lines already say it, and a second line
+	// for the same declaration would repeat them.
+	LogNoBlocks LogKind = "no_blocks"
 	// LogToken — a token was created.
 	LogToken LogKind = "token"
 	// LogSacrifice — a permanent was sacrificed. Distinct from the
@@ -949,6 +959,18 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Target = uuidStringOrEmpty(ev.Target)
 		return base, true
 
+	case game.EventBlockersDeclared:
+		// Amount > 0 is already said: every blocker that defender
+		// declared produced its own LogBlock line above, and repeating
+		// the count here would say the same combat twice. Amount == 0
+		// is the one fact no other line carries — the defender was
+		// asked and chose to take it (#1279, #1500).
+		if ev.Amount != 0 {
+			return LogEvent{}, false
+		}
+		base.Kind = LogNoBlocks
+		return base, true
+
 	case game.EventTokenCreated:
 		base.Kind = LogToken
 		base.CardID = uuidStringOrEmpty(ev.CardID)
@@ -1617,6 +1639,8 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		return fmt.Sprintf("%s attacks %s", card, target)
 	case LogBlock:
 		return fmt.Sprintf("%s blocks %s", card, target)
+	case LogNoBlocks:
+		return fmt.Sprintf("%s declares no blockers", actor)
 	case LogToken:
 		return fmt.Sprintf("%s created %s", actor, card)
 	case LogEliminated:

@@ -493,6 +493,13 @@ export type LogKind =
   | "damage"
   | "attack"
   | "block"
+  // #1279 / #1500: a defending player completed their block
+  // declaration with zero blockers. The blocks a defender DID make
+  // are already `block` entries above; this is the one fact those
+  // can't carry — that the defender was asked and chose to take it.
+  // Carries no `card_id` — `seat` is the defender, and the same
+  // sentence for every viewer.
+  | "no_blocks"
   | "token"
   | "sacrifice"
   | "eliminated"

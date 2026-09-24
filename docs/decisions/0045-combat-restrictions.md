@@ -2645,7 +2645,10 @@ they finish); the wire in `blockers_view_test.go`; dispatch in
   it would make `pass_priority` unavailable to the defenders who use it to
   finish and would need a bot move kind for `finish_blocks`; the priority
   return above gives the active player the window that matters without either.
-- **A log line for "declares no blockers"**, above.
+- **A log line for "declares no blockers"**, above. *Closed by #1500: a
+  `no_blocks` log kind, narrated from `EventBlockersDeclared` only when
+  `Amount == 0` — the declaration's blocks stay on the `block` lines, which
+  is the reasoning this amendment already gave.*
 
 ---
 
