@@ -16,7 +16,7 @@ package effects
 // of which come off the printed card, and a clone family whose members
 // are one call each is cheaper to read than an indirection.
 //
-// No simplification. (See Disallow for the CR 701.5c note on where a
+// No simplification. (See Disallow for the CR 701.6a note on where a
 // countered ability goes, which is nowhere.)
 func init() {
 	Register(Spec{

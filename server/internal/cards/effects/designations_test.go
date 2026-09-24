@@ -46,7 +46,7 @@ func levelOf(g *game.Game, id uuid.UUID) int {
 
 // levelUpTo activates the Class's "Level N" ability and resolves it,
 // paying with mana conjured into the pool. Returns the activation
-// error so the timing and CR 716.2e tests can assert on it.
+// error so the timing and CR 716.2a tests can assert on it.
 func levelUpTo(t *testing.T, g *game.Game, controller, classID uuid.UUID, index int, mana string) error {
 	t.Helper()
 	g.WithWriteLock(func() { _ = g.AddManaForEffect(controller, uuid.Nil, mana) })
@@ -159,17 +159,17 @@ func TestWizardClassLevelThreeActivatesEveryLine(t *testing.T) {
 }
 
 // TestWizardClassLevelUpIsSorceryTimedAndInOrder — CR 716.2d and
-// 716.2e, the two rules LevelUp carries so no card file has to.
+// 716.2a, the two rules LevelUp carries so no card file has to.
 func TestWizardClassLevelUpIsSorceryTimedAndInOrder(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	id := pushClass(g, me.ID, "Wizard Class", "Enchantment — Class", wizardClassOracle)
 	advanceTo(t, g, game.StepPrecombatMain)
 
-	// CR 716.2e: level 3 cannot be activated from level 1.
+	// CR 716.2a: level 3 cannot be activated from level 1.
 	g.WithWriteLock(func() { _ = g.AddManaForEffect(me.ID, uuid.Nil, "{4}{U}") })
 	if err := g.ActivateCatalogAbility(me.ID, id, 1, game.ActivateAbilityParams{}); err == nil {
-		t.Error("level 3 from level 1 must be refused (CR 716.2e)")
+		t.Error("level 3 from level 1 must be refused (CR 716.2a)")
 	}
 	if got := levelOf(g, id); got != 1 {
 		t.Errorf("a refused activation must not change the level: %d", got)

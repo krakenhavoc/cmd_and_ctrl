@@ -163,7 +163,7 @@ func TestTwoShieldsSurviveTwoDestructionsWithNoPrompt(t *testing.T) {
 
 // --- "can't be regenerated" ---------------------------------------
 
-// CR 701.19c: Damnation ignores the shield. CR 701.19d: it does NOT
+// CR 701.19c: Damnation ignores the shield. CR 701.19c: it does NOT
 // spend it — which is only observable because the creature could have
 // been saved some other way, so the test reads the shield off the
 // card while it is still there by cancelling the move separately.
@@ -190,7 +190,7 @@ func TestCantBeRegeneratedIgnoresTheShieldAndDoesNotSpendIt(t *testing.T) {
 		t.Error("CR 701.19c: the shield did not apply, so nothing tapped it")
 	}
 	if c.RegenerationShields != 1 {
-		t.Errorf("shields = %d, want 1 — CR 701.19d leaves an ignored shield unused", c.RegenerationShields)
+		t.Errorf("shields = %d, want 1 — CR 701.19c leaves an ignored shield unused", c.RegenerationShields)
 	}
 	if n := countEvents(g, EventRegenerated); n != 0 {
 		t.Errorf("EventRegenerated fired %d times; nothing regenerated", n)

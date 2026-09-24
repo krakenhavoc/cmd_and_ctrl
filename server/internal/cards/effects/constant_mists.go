@@ -20,7 +20,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // stack (CR 601.2h): a Blood Artist or a landfall-adjacent death
 // payoff sees it and triggers ABOVE the Fog.
 //
-// The return to hand is the ENGINE's, not this file's. CR 702.27b
+// The return to hand is the ENGINE's, not this file's. CR 702.27a
 // replaces the resolving spell's destination, and
 // routeStackCardToGraveyardLocked reads the paid record and routes to
 // the owner's hand through the same stack-exit primitive flashback

@@ -183,7 +183,7 @@ func castFlashbackFromGraveyard(t *testing.T, g *game.Game, oracleID string) (uu
 	})
 }
 
-// TestUrzasRuinousBlastNeedsALegendary is CR 307.6 — the spell's own
+// TestUrzasRuinousBlastNeedsALegendary is CR 205.4e — the spell's own
 // condition, the gate's other source.
 func TestUrzasRuinousBlastNeedsALegendary(t *testing.T) {
 	g := newCatalogGame(t)

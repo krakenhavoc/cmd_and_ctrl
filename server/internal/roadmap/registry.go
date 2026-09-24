@@ -568,7 +568,7 @@ var items = []Item{
 	{
 		Slug: "impending", Name: "Impending", Kind: KindMechanic, Status: StatusImplemented,
 		Summary: "Cast a creature for its impending cost and it arrives as a non-creature with time counters, becoming a creature when they run out.",
-		Rules:   []string{"702.175"},
+		Rules:   []string{"702.176"},
 		Probe:   altCost(effects.AltCostKeyImpending),
 	},
 	{

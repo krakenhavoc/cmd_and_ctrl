@@ -20,7 +20,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // "It can't be regenerated" is ENFORCED as of #667 (CR 701.19c):
 // the rider rides the destroy route onto the CR 614 event and the
 // regeneration built-in declines. The shield is not spent
-// (CR 701.19d).
+// (CR 701.19c).
 func init() {
 	Register(Spec{
 		OracleID: "324824cb-f938-401c-b9b5-d8908b431ef0",

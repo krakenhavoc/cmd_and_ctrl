@@ -83,7 +83,7 @@ Three separate kinds of "no" are waiting on one gate:
    of a battlefield permanent, read at cast time with the caster and the face
    already chosen — which is `CatalogCostModifiers` / `CostQuery`
    (`cost_modifier.go:197` / `:113`) exactly, one field different.
-2. **A spell's own condition.** CR 307.6's legendary sorcery ("you may cast
+2. **A spell's own condition.** CR 205.4e's legendary sorcery ("you may cast
    this spell only if you control a legendary creature or planeswalker",
    Urza's Ruinous Blast), and the "cast only if" family generally.
 3. **Bans with a duration** created by a resolving spell (Silence's "this
@@ -202,7 +202,7 @@ than pretending the seam closed.
 
 ### 6. Buyback replaces the resolution destination, and only that one
 
-CR 702.27b: "if the buyback cost was paid, put this card into its owner's
+CR 702.27a: "if the buyback cost was paid, put this card into its owner's
 hand as it resolves instead of putting it into that player's graveyard."
 
 `routeStackCardToGraveyardLocked` already takes the stack item because
@@ -261,7 +261,7 @@ It consults two sources, in this order:
 
 2. **The spell's own condition**, `Spec.CastCondition func(g *Game,
    controller uuid.UUID, card Card) bool`. The legendary-sorcery helper
-   `LegendarySorcery()` is one call of it (CR 307.6); Urza's Ruinous Blast is
+   `LegendarySorcery()` is one call of it (CR 205.4e); Urza's Ruinous Blast is
    the proof card.
 
 The gate returns `*CantCastError`, which wraps the new `ErrCantCast` sentinel

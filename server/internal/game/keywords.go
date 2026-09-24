@@ -144,7 +144,7 @@ var canonicalKeywords = map[string]bool{
 	// teaches the engine to honour it: the special action, the time
 	// counters, the exile-zone upkeep countdown (#925's
 	// TriggeredAbility.Zones), the free cast when the last one comes
-	// off and CR 702.62e's haste. Same reasoning as foretell above —
+	// off and CR 702.62a's haste. Same reasoning as foretell above —
 	// the consumer is the card, not a table in this file, so the
 	// token's job is the badge and the ADR 0037 coverage signal, and
 	// it must not arrive before the mechanic does.

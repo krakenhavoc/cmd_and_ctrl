@@ -35,7 +35,7 @@ out of it:
 | cast it face down for {3} | CR 708.4, CR 702.37b | a cast that produces an object with no text |
 | put it there from a library | CR 701.34a | the effect-side primitive exists; no card calls it |
 | turn it face up | CR 116.2g, CR 708.6 | the special action, and what it costs |
-| megamorph's counter | CR 702.109b | — |
+| megamorph's counter | CR 702.37b | — |
 | disguise / cloak's ward {2} | CR 702.168a, CR 701.58a | `FaceDownKind.HasWard` has no consumer |
 
 and one question none of the five answers on its own, which is the question
@@ -73,7 +73,7 @@ FaceDown *FaceDownCast
 type FaceDownCast struct {
     Kind          FaceDownKind // morphed (CR 702.37b) or disguised (CR 702.168a)
     FaceUpCost    string       // the morph / disguise cost (CR 702.37b)
-    FaceUpCounter bool         // megamorph's +1/+1 counter (CR 702.109b)
+    FaceUpCounter bool         // megamorph's +1/+1 counter (CR 702.37b)
 }
 ```
 
@@ -89,7 +89,7 @@ the card's declaration of "I may be cast face down" is the only place in the
 catalog that already knows which face-down state this card produces.
 
 **The alternative-cost price is the KEYWORD's, not the card's.** Morph,
-megamorph and disguise all cast for {3} (CR 702.37b, CR 702.109a, CR 702.168a),
+megamorph and disguise all cast for {3} (CR 702.37b, CR 702.37b, CR 702.168a),
 so `effects.Morph("{1}{U}")` takes only the *face-up* cost and fills the `{3}`
 in itself — the same division `effects.Foretell` already draws between
 foretell's fixed {2} and the card's own foretell cost.
@@ -211,7 +211,7 @@ function of the KIND and the CARD:
 |---|---|---|---|
 | `morphed` | if the card declares a morph cast | its morph cost | CR 702.37b |
 | `disguised` | if the card declares a disguise cast | its disguise cost | CR 702.168b |
-| `manifested` | if the card is a **creature card** | its mana cost | CR 701.34d |
+| `manifested` | if the card is a **creature card** | its mana cost | CR 701.40b |
 | `cloaked` | if the card is a **creature card** | its mana cost | CR 701.58b |
 
 ```go
@@ -229,11 +229,11 @@ readers, one rule, and the rule is in the engine.
 
 **"Creature card" is `PrintedIsCreature`, deliberately.** ADR 0069 left that
 accessor unpatched because it is the copiable-value surface (CR 707.2) and
-answers "what does this card say" — precisely the question CR 701.34d asks. The
+answers "what does this card say" — precisely the question CR 701.40b asks. The
 face-down projection would answer "yes, it's a 2/2 creature" for a manifested
 Island, and that is the wrong question.
 
-**CR 701.34e is out of scope and caveated.** A manifested card that also has
+**CR 701.40c is out of scope and caveated.** A manifested card that also has
 morph may be turned face up for *either* its mana cost or its morph cost. This
 ADR's offer is one row per permanent; the second row would need a per-offer key
 on the wire and a picker in the client, for a case no card in the catalog
@@ -293,7 +293,7 @@ g.InvalidateLayersLocked()                         // the real characteristics a
 g.EmitEvent(Event{Kind: EventTurnedFaceUp, ...})   // CR 708.8's trigger
 ```
 
-plus megamorph's `+1/+1` counter (CR 702.109b) between the clear and the event,
+plus megamorph's `+1/+1` counter (CR 702.37b) between the clear and the event,
 so a "when turned face up" trigger already sees it.
 
 **`EventTurnedFaceUp` is a new event kind, not a reuse.** The candidates were
@@ -357,7 +357,7 @@ section, built today only for a hand card, is built for a battlefield card too.
   *Built by the 2026-09-23 amendment below (#1209), which also corrects the
   second half of this bullet: `nil` is right for an Ixidron'd Sheoldred and
   wrong for a Backslid morph (CR 702.37e).*
-- **CR 701.34e** (a manifested card with morph, turnable two ways) — decision 5.
+- **CR 701.40c** (a manifested card with morph, turnable two ways) — decision 5.
 - **A face-down permanent's LTB trigger** still fires off the real card, because
   the harvester reads the card after `MoveCard` cleared the flag. ADR 0069
   recorded it as a known gap and it stays one; it belongs with the CR 603.10
@@ -602,7 +602,7 @@ forbids.
 - **CR 613.7f's timestamp** (**#1271**) — A2.
 - **A "when this is turned face down" trigger on the permanent itself** —
   A4. No printed card has one.
-- **CR 701.34e**, still, and hideaway, still — decision 10 is unchanged
+- **CR 701.40c**, still, and hideaway, still — decision 10 is unchanged
   about both.
 
 ## Amendment (2026-09-23, #1270 and #1271): LISTED face-down characteristics (CR 708.2), and the face-change timestamp (CR 613.7f) · Accepted · S46
@@ -683,7 +683,7 @@ Cyberman.
 ### B2. The kind for an effect's face-down ENTRY is `turned`
 
 Yedora and Cybership put a card onto the battlefield face down, and neither is
-a keyword. Manifest (CR 701.40) is a keyword action, and CR 701.34d, which lets
+a keyword. Manifest (CR 701.40) is a keyword action, and CR 701.40b, which lets
 a creature card be turned up for its mana cost, applies to manifest alone. A
 manifested Yedora Forest would have walked straight into that arm. That is the
 `PrintedIsCreature` read #1270 flagged.
@@ -759,4 +759,4 @@ is now 1/1. Before this change it stayed 4/4.
   that reports what it milled. They are ordinary card work now.
 - **A copy of a face-down SPELL** is CR 708.2's copiable values like any other
   copy. What the copy then does on resolution is not revisited here.
-- **CR 701.34e** and hideaway: decision 10 still holds for both.
+- **CR 701.40c** and hideaway: decision 10 still holds for both.

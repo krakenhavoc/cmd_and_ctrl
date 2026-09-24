@@ -1053,7 +1053,7 @@ func init() {
 | Token creation (CR 701.7b) | `RepEventCreateTokens` | `TokenController`, `TokenGroups`, `TokenAttacking` |
 | Discard (CR 701.8) | `RepEventDiscard` | `DiscardPlayer`, `DiscardCause`, `CardID`, `NewZone`, `NewZoneOwner` |
 | Keyword action with a count — proliferate (CR 701.34), scry (CR 701.22), surveil (CR 701.25) | `RepEventKeywordAction` | `KeywordAction`, `KeywordActionCount`, `Actor`, `Source` |
-| Mill amount (CR 701.13a) | `RepEventMill` | `MillPlayer`, `MillCount` |
+| Mill amount (CR 701.17a) | `RepEventMill` | `MillPlayer`, `MillCount` |
 | Mana produced (CR 106.12b) | `RepEventProduceMana` | `ManaPlayer`, `ManaSource`, `ManaColors`, `ManaFromTap` |
 | Step entry (skip-step) | `RepEventStepTransition` | `StepTransitionStep`, `StepTransitionSeat` |
 
@@ -1244,11 +1244,11 @@ one is `graveyard_replacements.go`; this one is
 and `OpponentsMillPlus(n, label)` as the named wrappers.
 
 The window opens only for something the rules call a mill: a
-GRAVEYARD destination (CR 701.13a defines the keyword action by where
+GRAVEYARD destination (CR 701.17a defines the keyword action by where
 the cards go, so `MillToZone{To: game.ZoneExile}` is not a mill and
 opens none) and a POSITIVE count (an unbounded `until` run names no
 number to double). The count a replacement sees is the one the
-INSTRUCTION named, not what the library can supply — CR 701.13b's
+INSTRUCTION named, not what the library can supply — CR 701.17b's
 "mill as many as possible" clamp happens afterwards. A surveil's
 graveyard leg is NOT a mill (CR 701.14a) and no mill replacement
 touches it.
@@ -1433,7 +1433,7 @@ Wrath of God, Winds of Rath, Shatterstorm do — and leave it off the
 printings that don't (Day of Judgment, Supreme Verdict, Vanquish the
 Horde). The rider rides the route onto the event and gates the
 built-in's `AppliesTo`, so an ignored shield is NOT spent
-(CR 701.19d). `"regenerate"` is still not a keyword and is not in
+(CR 701.19c). `"regenerate"` is still not a keyword and is not in
 `canonicalKeywords`: it is a keyword ACTION, and the closed keyword
 list is for keyword abilities.
 
@@ -2423,7 +2423,7 @@ dies and is reanimated is not kicked.
 **Buyback's return is the engine's, not the card's.** Declare the cost
 and stop. `routeStackCardToGraveyardLocked` reads the paid record and
 routes the resolving spell to its owner's hand through the same
-stack-exit primitive flashback uses (CR 702.27b) — only on a
+stack-exit primitive flashback uses (CR 702.27a) — only on a
 RESOLUTION, so a bought-back spell countered by game rules still goes
 to the graveyard. A card that also returned itself in `OnResolve`
 would be moving a card that is still on the stack.
@@ -2455,7 +2455,7 @@ printed clause beside it — `Register` refuses either half alone,
 because the clause is the message the player is shown:
 
 ```go
-CastCondition:      LegendarySorcery(),      // Urza's Ruinous Blast, CR 307.6
+CastCondition:      LegendarySorcery(),      // Urza's Ruinous Blast, CR 205.4e
 CastConditionLabel: LegendarySorceryLabel,
 ```
 
@@ -4922,7 +4922,7 @@ target — so do not write one.
 
 **Use the constructors for the lifecycle, too.** `LevelUp(n, cost)`
 is the whole "{cost}: Level N" ability, carrying CR 716.2d's sorcery
-timing and CR 716.2e's "only from level N-1"; `ToSolve(label, cond)`
+timing and CR 716.2a's "only from level N-1"; `ToSolve(label, cond)`
 is the whole "To solve —" clause, an end-step trigger whose condition
 is re-checked on resolution (CR 603.4). `SpacecraftAt(n, p, t)` and
 `ThresholdKeywords(n, kw…)` are the two station threshold shapes.

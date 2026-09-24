@@ -389,7 +389,7 @@ type Spec struct {
 	AlternativeCosts []game.AlternativeCost
 
 	// CastCondition is "you may cast this spell only if …" — CR
-	// 307.6's legendary sorcery ("only if you control a legendary
+	// 205.4e's legendary sorcery ("only if you control a legendary
 	// creature or planeswalker"), and the "cast only if" family
 	// generally. Checked once, at announce, by the one cast gate
 	// (ADR 0073 §7), and never at resolution: a condition that

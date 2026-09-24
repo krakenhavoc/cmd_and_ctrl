@@ -121,7 +121,7 @@ type SpecialAction struct {
 	Counters int
 
 	// FaceUpCounter is megamorph's "turn it face up, then put a +1/+1
-	// counter on it" (CR 702.109b) — the one thing turning a
+	// counter on it" (CR 702.37b) — the one thing turning a
 	// permanent face up does beyond turning it face up. False for
 	// plain morph, for disguise, and for every other kind.
 	//

@@ -15,7 +15,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // It is the PERMANENT half of suspend's proof: the free cast puts an
 // artifact onto the battlefield, so the time counters must be gone
 // from the permanent that arrives (CR 400.7 — MoveCard clears
-// counters on the way out of exile) and CR 702.62e's haste has
+// counters on the way out of exile) and CR 702.62a's haste has
 // nothing to do, because an artifact's {T} ability is not gated on
 // summoning sickness.
 //

@@ -16,10 +16,10 @@ import "github.com/google/uuid"
 //	"Whenever a creature deals combat damage to the monarch, that
 //	creature's controller becomes the monarch."
 //
-//	724.3. Only one player can be the monarch at a time. As a player
+//	725.3. Only one player can be the monarch at a time. As a player
 //	becomes the monarch, the current monarch ceases to be the monarch.
 //
-//	724.4. If the monarch leaves the game, the active player becomes
+//	725.4. If the monarch leaves the game, the active player becomes
 //	the monarch at the same time as that player leaves the game. If
 //	the active player is leaving the game or if there is no active
 //	player, the next player in turn order becomes the monarch. If no
@@ -77,7 +77,7 @@ func (monarchTriggers) OnEvent(g *Game, ev Event) {
 // only way to see all of them at once, and it is why a first-strike
 // hit and a regular hit both count.
 //
-// One trigger per creature that connects, which is what CR 724.3
+// One trigger per creature that connects, which is what CR 725.3
 // means by "as a player becomes the monarch, the current monarch
 // ceases to be": two creatures under different controllers both
 // connecting put two triggers on the stack, the monarch orders them
@@ -121,7 +121,7 @@ func (g *Game) monarchCombatDamageTriggerLocked(ev Event) {
 		// the ability triggered — the one losing the crown, not the
 		// one taking it. That is what makes CR 800.4a correct when
 		// the hit is lethal: the trigger leaves with its controller
-		// and the crown is handed on by CR 724.4 below instead.
+		// and the crown is handed on by CR 725.4 below instead.
 		Controller: g.Monarch,
 		Owner:      g.Monarch,
 		Label:      "the monarch — " + claimant.Name + " becomes the monarch",
@@ -167,7 +167,7 @@ func (g *Game) monarchEndStepTriggerLocked(ev Event) {
 	})
 }
 
-// monarchLeftTheGameLocked is CR 724.4: the crown never falls off the
+// monarchLeftTheGameLocked is CR 725.4: the crown never falls off the
 // table. When the monarch leaves, the active player takes it; if the
 // active player is the one leaving, the next player in turn order
 // does.
@@ -176,7 +176,7 @@ func (g *Game) monarchEndStepTriggerLocked(ev Event) {
 // AFTER advancePastEliminatedLocked has already walked the cursor off
 // an eliminated active seat. So "the active player" here is by
 // construction a player still in the game, and the two halves of
-// CR 724.4 collapse into one lookup.
+// CR 725.4 collapse into one lookup.
 //
 // This is a reassignment by game rule, not a triggered ability: it
 // happens immediately, not on the stack ("at the same time as that
