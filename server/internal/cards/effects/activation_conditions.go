@@ -146,6 +146,16 @@ func NoCardsInHand() ActivationCondition {
 	}
 }
 
+// HandSizeAtLeast — "Activate only if you have seven or more cards in
+// your hand" (Resonating Lute). A hand's size is public; its contents
+// are not read.
+func HandSizeAtLeast(n int) ActivationCondition {
+	return func(g *game.Game, controller, _ uuid.UUID) bool {
+		p := g.PlayerByIDForEffect(controller)
+		return p != nil && p.Hand != nil && len(p.Hand.Cards) >= n
+	}
+}
+
 // SourceHasCountersAtLeast — "Activate only if this enchantment has
 // four or more quest counters on it" (Luminarch Ascension).
 func SourceHasCountersAtLeast(kind string, n int) ActivationCondition {

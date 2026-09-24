@@ -41,26 +41,13 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			ChapterTriggerTargeting(1, "Phyrexian Scriptures — I: +1/+1 counter on up to one creature",
 				TargetCreature("up to one target creature").WithCount(0, 1),
-				scripturesCounter),
+				putPlusOneCounterOnEachLegalTarget),
 			ChapterTrigger(2, "Phyrexian Scriptures — II: destroy all nonartifact creatures",
 				scripturesWipeNonartifacts),
 			ChapterTrigger(3, "Phyrexian Scriptures — III: exile all opponents' graveyards",
 				scripturesExileOpponentGraveyards),
 		},
 	})
-}
-
-func scripturesCounter(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind != game.TargetCard {
-			continue
-		}
-		if err := (AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func scripturesWipeNonartifacts(g *game.Game, item *game.StackItem) error {

@@ -918,6 +918,25 @@ func destroyEachLegalTarget(_ *game.StackItem, ctx *Context) error {
 	return nil
 }
 
+// putPlusOneCounterOnEachLegalTarget places one +1/+1 counter on each
+// still-legal target, skipping one that left or stopped qualifying in
+// response (CR 608.2b). Shared by Phyrexian Scriptures ("put a +1/+1
+// counter on each of X target creatures") and Rishkar, Peema Renegade
+// ("put a +1/+1 counter on each of up to two target creatures") — the
+// same loop as destroyEachLegalTarget, one primitive over.
+func putPlusOneCounterOnEachLegalTarget(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetCard {
+			continue
+		}
+		if err := (AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // plusOneCounterPlacementOnYourCreature is Hardened Scales' and
 // Branching Evolution's shared predicate: "if one or more +1/+1
 // counters would be PUT ON a creature you control" (CR 122.6 / CR
