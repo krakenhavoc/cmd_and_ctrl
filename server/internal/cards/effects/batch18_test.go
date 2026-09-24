@@ -339,9 +339,12 @@ func TestB18SpringleafParadeMakesXChangelingsThatTapForAnyColour(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, token, 0, game.ManaAbilityParams{}); err == nil {
 		t.Error("without a Springleaf Parade the token has no mana ability")
 	}
+	// #1357: the ETB tokens now come from a real trigger reading
+	// CastX(), so only the own-tokens-only mana-ability grant remains
+	// a declared caveat.
 	spec, _ := Lookup(b18SpringleafParadeOracle)
-	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 2 {
-		t.Error("the resolution-time tokens and the own-tokens-only grant must be declared")
+	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
+		t.Error("the own-tokens-only grant must be declared")
 	}
 }
 

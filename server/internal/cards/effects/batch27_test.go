@@ -678,8 +678,10 @@ func TestB27FarmerCottonMakesXHalflingsAndXFood(t *testing.T) {
 	if b27CountNamed(g, me.ID, "Farmer Cotton") != 1 {
 		t.Error("Cotton himself is on the battlefield")
 	}
-	if spec, _ := Lookup(b27FarmerCottonOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the resolve-time posture must be declared")
+	// #1357: the ETB tokens now come from a real trigger reading
+	// CastX(), closing the last declared gap.
+	if spec, _ := Lookup(b27FarmerCottonOracle); spec.Completeness != CompletenessFull {
+		t.Error("no caveat should remain now that the ETB trigger reads CastX()")
 	}
 }
 
