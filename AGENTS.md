@@ -2072,13 +2072,25 @@ BlockRules: []game.BlockRule{
   enumerator read the same check, so a bot is never offered a refused
   attack ([ADR 0045](docs/decisions/0045-combat-restrictions.md)
   Decisions 43-45).
+- **The narrower and conditional variants** (#1534, Decision 47):
+  "no more than N creatures can attack <this planeswalker>" (The
+  Eternal Wanderer) is `NoMoreThanNCanAttackThisEachCombat(n)`; "as
+  long as <this> is tapped, …" (Mirri, Weatherlight Duelist) wraps any
+  limit as `AsLongAs(ThisIsTapped, …)`, read live; "each opponent
+  can't block with more than N creatures this combat" is the
+  `EachOpponentCantBlockWithMoreThanN{N, Label}` primitive in a
+  trigger's effect, a turn-scoped `BlockRule.Limit` with
+  `LimitPerDefender`, so each defending player is counted on their
+  own.
 
 Tests: [block_rules_test.go](server/internal/cards/effects/block_rules_test.go)
 pins every shape through the verb, `legal.EnumerateFor` and
 `block_decision_seats`;
 [combat_limits_test.go](server/internal/cards/effects/combat_limits_test.go)
 pins the whole-combat limits, checking the enumerator against the verb
-on a clone for every candidate.
+on a clone for every candidate, and
+[conditional_combat_limits_test.go](server/internal/cards/effects/conditional_combat_limits_test.go)
+does the same for the #1534 variants, planeswalker targets included.
 
 ### Adding a triggered ability (S19+)
 
