@@ -1219,17 +1219,25 @@ func seatIndexer(v *GameView) func(uuid.UUID) int {
 	if v == nil {
 		return func(uuid.UUID) int { return NoSeat }
 	}
-	ids := make([]string, len(v.Seats))
+	// Parsed once, compared as UUIDs (#1261). publicLogOf asks this
+	// for every event of the game on every frame, and formatting the
+	// event's actor as a string to compare it was ~8% of a bot table's
+	// CPU. PlayerView.ID is always a UUID's canonical String(), so the
+	// parsed comparison answers exactly what the string one did; a seat
+	// ID that somehow did not parse stays uuid.Nil, which nothing can
+	// match because of the early return below.
+	ids := make([]uuid.UUID, len(v.Seats))
 	for i, s := range v.Seats {
-		ids[i] = s.ID
+		if parsed, err := uuid.Parse(s.ID); err == nil {
+			ids[i] = parsed
+		}
 	}
 	return func(id uuid.UUID) int {
 		if id == uuid.Nil {
 			return NoSeat
 		}
-		s := id.String()
 		for i, seatID := range ids {
-			if seatID == s {
+			if seatID == id {
 				return i
 			}
 		}

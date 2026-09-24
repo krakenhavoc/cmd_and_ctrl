@@ -4395,6 +4395,12 @@ func viewOfClauses(g *game.Game, src game.TargetSource, spec *game.TargetSpec) [
 //
 // Runs under the read lock ViewOfGame already holds.
 func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
+	// #1261: the board-wide "can't be activated" fast negative, taken
+	// ONCE for the whole battlefield. It is itself a walk of the
+	// battlefield, and asking it per permanent — which is what the
+	// per-card stampers below did — made every view quadratic in the
+	// size of the board.
+	restricted := g.AnyActivationRestrictionsForEffect()
 	for i := range bf.Cards {
 		c := &bf.Cards[i]
 		// #521: this guard used to be `c.oracleID == ""`, which
@@ -4425,7 +4431,7 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 		if !ok {
 			continue
 		}
-		c.ActivatedAbilities = viewOfActivatedAbilities(g, card, controller, game.ZoneBattlefield)
+		c.ActivatedAbilities = viewOfActivatedAbilities(g, card, controller, game.ZoneBattlefield, restricted)
 		// ADR 0082 decision 9: a FACE-DOWN permanent carries its
 		// CR 116.2g "turn face up" row, from the same projection the
 		// hand's foretell and suspend rows come from and with the
@@ -4444,7 +4450,7 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 		c.SpecialActions = viewOfSpecialActions(g, card, controller)
 		c.LoyaltyActivated = g.LoyaltyActivatedThisTurn[instanceID]
 		stampManaSacrificeOptions(g, card, controller, c.ManaAbilities)
-		stampManaConditions(g, card, controller, c.ManaAbilities)
+		stampManaConditions(g, card, controller, c.ManaAbilities, restricted)
 		stampManaIdentity(g, card, controller, c.ManaAbilities)
 		stampManaCounterCosts(g, card, controller, c.ManaAbilities)
 		stampManaChargedCost(g, card, controller, c.ManaAbilities)
@@ -4493,6 +4499,10 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 //
 // Runs under the read lock ViewOfGame already holds.
 func stampZoneAbilities(g *game.Game, seats []PlayerView, exile *ZoneView) {
+	// #1261: once per view, for the reason stampActivatedAbilities
+	// gives — every hand, graveyard and exile card with an ability
+	// asked it again otherwise.
+	restricted := g.AnyActivationRestrictionsForEffect()
 	for si := range seats {
 		seat := &seats[si]
 		owner, err := uuid.Parse(seat.ID)
@@ -4505,7 +4515,7 @@ func stampZoneAbilities(g *game.Game, seats []PlayerView, exile *ZoneView) {
 			if !ok {
 				continue
 			}
-			c.stampZoneAbilitiesFor(owner, viewOfActivatedAbilities(g, card, owner, game.ZoneHand))
+			c.stampZoneAbilitiesFor(owner, viewOfActivatedAbilities(g, card, owner, game.ZoneHand, restricted))
 			// #1228: the CR 605 rows beside the CR 602 ones. The same
 			// pass, because it is the same question about the same
 			// card — "what may you activate here" — and a second walk
@@ -4513,13 +4523,13 @@ func stampZoneAbilities(g *game.Game, seats []PlayerView, exile *ZoneView) {
 			c.stampZoneManaAbilitiesFor(owner, viewOfManaAbilitiesFromZone(card, game.ZoneHand))
 			c.SpecialActions = viewOfSpecialActions(g, card, owner)
 		}
-		stampZoneAbilitiesInPile(g, &seat.Graveyard, game.ZoneGraveyard, owner)
-		stampZoneAbilitiesInPile(g, &seat.Command, game.ZoneCommand, owner)
+		stampZoneAbilitiesInPile(g, &seat.Graveyard, game.ZoneGraveyard, owner, restricted)
+		stampZoneAbilitiesInPile(g, &seat.Command, game.ZoneCommand, owner, restricted)
 	}
 	// Exile last, and with no seat of its own: it is one shared pile
 	// and each card's owner is its "you" (CR 108.4), so the walk reads
 	// the owner off the card rather than off the loop.
-	stampZoneAbilitiesInPile(g, exile, game.ZoneExile, uuid.Nil)
+	stampZoneAbilitiesInPile(g, exile, game.ZoneExile, uuid.Nil, restricted)
 }
 
 // stampZoneAbilitiesInPile is stampZoneAbilities' per-pile body.
@@ -4530,7 +4540,7 @@ func stampZoneAbilities(g *game.Game, seats []PlayerView, exile *ZoneView) {
 // CardView.Owner instead of assuming one.
 //
 // Runs under the read lock ViewOfGame already holds.
-func stampZoneAbilitiesInPile(g *game.Game, zone *ZoneView, kind game.ZoneKind, owner uuid.UUID) {
+func stampZoneAbilitiesInPile(g *game.Game, zone *ZoneView, kind game.ZoneKind, owner uuid.UUID, restricted bool) {
 	if zone == nil {
 		return
 	}
@@ -4548,7 +4558,7 @@ func stampZoneAbilitiesInPile(g *game.Game, zone *ZoneView, kind game.ZoneKind, 
 		if !ok {
 			continue
 		}
-		c.stampZoneAbilitiesFor(you, viewOfActivatedAbilities(g, card, you, kind))
+		c.stampZoneAbilitiesFor(you, viewOfActivatedAbilities(g, card, you, kind, restricted))
 		// #1228: nil for every pile today — game.supportedManaAbilityZones
 		// is the hand alone, so the zone predicate answers no here —
 		// and the call is made anyway so that adding a zone to that
@@ -4626,11 +4636,12 @@ func viewOfSpecialActions(g *game.Game, card game.Card, owner uuid.UUID) []Speci
 // "you". Split from viewOfManaAbilities for the reason the sacrifice
 // options are — that projection has no game handle. Caller must hold
 // g's read lock.
-func stampManaConditions(g *game.Game, card game.Card, controller uuid.UUID, views []ManaAbilityView) {
+//
+// `restricted` is g.AnyActivationRestrictionsForEffect(), which the
+// caller takes ONCE per view (#1261): it walks the battlefield, and
+// this runs for every permanent on it.
+func stampManaConditions(g *game.Game, card game.Card, controller uuid.UUID, views []ManaAbilityView, restricted bool) {
 	raw := game.ManaAbilitiesForCard(card)
-	// #1210: the board-wide "can't be activated" fast negative, taken
-	// once per card rather than once per row.
-	restricted := g.AnyActivationRestrictionsForEffect()
 	for i := range views {
 		if i >= len(raw) {
 			continue
@@ -4814,6 +4825,9 @@ func stampNoUntap(g *game.Game, view *ZoneView) {
 	if g == nil || g.Battlefield == nil || view == nil {
 		return
 	}
+	// #1261: the board's restrictions gathered once for the whole
+	// battlefield, not once per permanent.
+	restricted := g.UntapStepRestrictedCheckerLocked()
 	for i := range view.Cards {
 		if i >= len(g.Battlefield.Cards) {
 			break
@@ -4823,7 +4837,7 @@ func stampNoUntap(g *game.Game, view *ZoneView) {
 		// restriction reads false — but a hold (#1313) comes from
 		// ANOTHER object's resolved ability and applies face-down or
 		// not, like a next-step marker.
-		static := (!card.FaceDown && g.UntapStepRestrictedLocked(card)) || g.UntapHeldLocked(card)
+		static := (!card.FaceDown && restricted(card)) || g.UntapHeldLocked(card)
 		next := projectedUntapSkipPlayers(g, card)
 		if !static && len(next) == 0 {
 			continue
@@ -6871,7 +6885,10 @@ func equalStrings(a, b []string) bool {
 // offers nothing but one. The index is the ability's index in the
 // card's FULL list either way, which is what the engine validates
 // against — so a filtered list never renumbers.
-func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone game.ZoneKind) []ActivatedAbilityView {
+//
+// `restricted` is g.AnyActivationRestrictionsForEffect(), taken ONCE
+// per view by the caller (#1261) — see stampActivatedAbilities.
+func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone game.ZoneKind, restricted bool) []ActivatedAbilityView {
 	raw := game.ActivatedAbilitiesForCard(c)
 	if len(raw) == 0 {
 		return nil
@@ -6880,9 +6897,6 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 	// permanent, or since #660 the hand card whose cycling ability
 	// this is — so the protection check has the source it needs.
 	abilitySrc := game.SourceObject(caster, &c)
-	// #1210: the board-wide "can't be activated" fast negative, taken
-	// once per card rather than once per ability row.
-	restricted := g.AnyActivationRestrictionsForEffect()
 	var out []ActivatedAbilityView
 	for i, a := range raw {
 		if !game.AbilityFunctionsFromZone(a, zone) {
