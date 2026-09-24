@@ -240,7 +240,10 @@ func b08OverlookLand(oracleID, name string, subtypes ...string) Spec {
 func b08OverlookSacrifice(fetchLabel, reason string, pred func(game.Card) bool) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneBattlefield {
+		// #1432: a land that left and came back is a new object — the
+		// sacrifice does nothing, so there is no "when you do" either.
+		if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneBattlefield ||
+			ctx.isNewSourceObject(item.SourceCardID) {
 			return nil
 		}
 		if err := (SacrificePermanent{Target: item.SourceCardID}).Apply(ctx); err != nil {

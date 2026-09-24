@@ -35,7 +35,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			AtYourUpkeep("Replicating Ring — put a night counter on it; at eight, replicate", func(g *game.Game, item *game.StackItem) error {
 				ring := item.SourceCardID
-				if z := g.FindCardZoneForEffect(ring); z == nil || z.Kind != game.ZoneBattlefield {
+				if z := g.FindCardZoneForEffect(ring); z == nil || z.Kind != game.ZoneBattlefield || sourceIsNewObject(g, item) { // #1432
 					return nil
 				}
 				// #1290: the payout check reads the count AFTER the

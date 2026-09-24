@@ -51,7 +51,7 @@ func init() {
 			Label: "Put a -1/-1 counter on this creature: Untap this creature.",
 			Cost:  AddCounterToThis(game.CounterMinusOne, 1),
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				return g.UntapTargetForEffect(item.SourceCardID)
+				return UntapTarget{Target: item.SourceCardID}.Apply(NewContext(g, item)) // #1432: the primitive knows "this"
 			},
 		}},
 	})

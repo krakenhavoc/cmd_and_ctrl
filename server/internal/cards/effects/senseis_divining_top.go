@@ -55,6 +55,11 @@ func init() {
 					if err := g.DrawNForEffect(item.Controller, 1); err != nil {
 						return err
 					}
+					// #1432: a Top that left and came back is not
+					// "this artifact".
+					if sourceIsNewObject(g, item) {
+						return nil
+					}
 					return g.TuckToLibraryForEffect(item.SourceCardID, false)
 				},
 			},

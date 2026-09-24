@@ -65,6 +65,15 @@ type resolvingItem struct {
 	// on the stack at all.
 	card    Card
 	hasCard bool
+
+	// sourceEpoch is the Card.ObjectEpoch the item's SOURCE card had
+	// as the resolution began, or -1 when it was in no zone (#1432).
+	// A source whose epoch has changed since was moved by this
+	// resolution's own effect — nothing else can move a card while an
+	// item resolves — and CR 400.7's exception lets the rest of that
+	// effect find the object it moved. Read by
+	// resolvingSourceEpochLocked; recorded for ability items only.
+	sourceEpoch int
 }
 
 // beginResolvingLocked parks an item in the resolving slot. Caller
@@ -74,7 +83,26 @@ func (g *Game) beginResolvingLocked(item *StackItem) {
 		g.resolving = nil
 		return
 	}
-	g.resolving = &resolvingItem{item: item}
+	g.resolving = &resolvingItem{item: item, sourceEpoch: -1}
+	if item.SourceCardID != uuid.Nil {
+		g.resolving.sourceEpoch = g.cardObjectEpochLocked(item.SourceCardID)
+	}
+}
+
+// resolvingSourceEpochLocked is the epoch `item`'s source card had
+// when `item` began to resolve (#1432), and false when `item` is not
+// the item the resolving slot holds — nothing resolving, a spell, or
+// a different item. Matched by ID as well as pointer, because Clone
+// shares the slot and an undo's item is a copy. Caller must hold g.mu.
+func (g *Game) resolvingSourceEpochLocked(item *StackItem) (int, bool) {
+	r := g.resolving
+	if r == nil || r.hasCard || r.item == nil || item == nil {
+		return 0, false
+	}
+	if r.item != item && r.item.ID != item.ID {
+		return 0, false
+	}
+	return r.sourceEpoch, true
 }
 
 // beginResolvingSpellLocked parks a spell item together with the card

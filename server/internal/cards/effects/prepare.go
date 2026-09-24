@@ -58,6 +58,9 @@ type BecomePrepared struct {
 }
 
 func (b BecomePrepared) Apply(ctx *Context) error {
+	if ctx.isNewSourceObject(b.Target) { // #1432
+		return nil
+	}
 	if _, err := ctx.Game.BecomePreparedForEffect(b.Target); err != nil && !errors.Is(err, game.ErrCardNotFound) {
 		return err
 	}

@@ -43,7 +43,7 @@ type Transform struct {
 }
 
 func (t Transform) Apply(ctx *Context) error {
-	if t.Target == uuid.Nil {
+	if t.Target == uuid.Nil || ctx.isNewSourceObject(t.Target) { // #1432
 		return nil
 	}
 	return ctx.Game.TransformPermanentForEffect(t.Target)
@@ -80,7 +80,7 @@ type ExileAndReturnTransformed struct {
 }
 
 func (e ExileAndReturnTransformed) Apply(ctx *Context) error {
-	if e.Target == uuid.Nil {
+	if e.Target == uuid.Nil || ctx.isNewSourceObject(e.Target) { // #1432
 		return nil
 	}
 	return ctx.Game.ExileAndReturnTransformedForEffect(e.Target, e.Controller)

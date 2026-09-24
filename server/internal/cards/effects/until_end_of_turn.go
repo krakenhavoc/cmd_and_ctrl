@@ -67,6 +67,12 @@ type eotAffected map[uuid.UUID]int64
 //
 // Caller must be inside the resolution frame (holds g.mu write).
 func eotSnapshot(ctx *Context, target uuid.UUID, match CardPredicate) eotAffected {
+	// #1432: "this creature gets +1/+1" pinned to a source that left
+	// and came back pins nothing — the new object is not "this". A
+	// Match selection is a set, not "this", and is not asked.
+	if match == nil && ctx.isNewSourceObject(target) {
+		return nil
+	}
 	out := eotAffected{}
 	caster := ctx.Controller()
 	for _, c := range ctx.Game.BattlefieldCardsForEffect() {

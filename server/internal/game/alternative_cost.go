@@ -803,8 +803,11 @@ func (g *Game) queueAltCostEntryTriggerLocked(card Card, item *StackItem) {
 			// The permanent may already have left — the trigger sat
 			// on the stack and anyone could answer it. Nothing to
 			// sacrifice is not an error; the ability simply does as
-			// much as it can (CR 608.2c).
-			if g.controllerOfBattlefieldCardLocked(it.SourceCardID) == uuid.Nil {
+			// much as it can (CR 608.2c). Left and COME BACK is the
+			// same answer (#1432, CR 400.7): an evoked creature
+			// flickered in response is a new object, cast for nothing
+			// in particular, and is not sacrificed.
+			if g.AbilitySourceGoneForEffect(it) {
 				return nil
 			}
 			return g.sacrificePermanentLocked(it.SourceCardID)

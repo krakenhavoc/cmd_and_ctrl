@@ -14,7 +14,7 @@ func init() {
 		Name:         "Vexing Puzzlebox",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{WheneverYouRollDice("Vexing Puzzlebox — put charge counters on it", func(g *game.Game, item *game.StackItem, total int) error {
-			if zone := g.FindCardZoneForEffect(item.SourceCardID); zone == nil || zone.Kind != game.ZoneBattlefield {
+			if zone := g.FindCardZoneForEffect(item.SourceCardID); zone == nil || zone.Kind != game.ZoneBattlefield || sourceIsNewObject(g, item) { // #1432
 				return nil
 			}
 			return g.AddCounterForEffect(item.SourceCardID, "charge", total)

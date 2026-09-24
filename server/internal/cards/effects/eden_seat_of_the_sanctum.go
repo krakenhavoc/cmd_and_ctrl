@@ -90,7 +90,9 @@ func edenMillTwoThenMaySacrifice(g *game.Game, item *game.StackItem) error {
 // Caller holds g.mu.
 func edenSacrificeThenReturn(ctx *Context) error {
 	source := ctx.Source()
-	if source == uuid.Nil {
+	// #1432: an Eden that left and came back is not "it": nothing is
+	// sacrificed, so there is no "when you do".
+	if source == uuid.Nil || ctx.isNewSourceObject(source) {
 		return nil
 	}
 	if err := ctx.Game.SacrificePermanentForEffect(source); err != nil {

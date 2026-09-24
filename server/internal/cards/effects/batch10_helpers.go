@@ -331,6 +331,12 @@ func b10ReturnAllLandCardsFromGraveyardTapped(ctx *Context, player uuid.UUID) er
 // prevention shield or a damage doubler sees it; lethal damage is the
 // SBA's business at the next check, as for every other effect.
 func b10Fight(ctx *Context, a, b uuid.UUID) error {
+	// #1432, CR 701.12b: a fighter that is no longer on the
+	// battlefield — including a source that left and came back as a
+	// new object — means no damage is dealt at all.
+	if ctx.isNewSourceObject(a) || ctx.isNewSourceObject(b) {
+		return nil
+	}
 	ctx.Game.RecomputeLayersIfStaleLocked()
 	ca, okA := ctx.Game.LookupCardForEffect(a)
 	cb, okB := ctx.Game.LookupCardForEffect(b)

@@ -70,6 +70,9 @@ type ExileWithPermission struct {
 }
 
 func (e ExileWithPermission) Apply(ctx *Context) error {
+	if ctx.isNewSourceObject(e.Target) { // #1432
+		return nil
+	}
 	return exileAllWithPermission(ctx.Game, []uuid.UUID{e.Target}, e.permission())
 }
 
@@ -155,10 +158,11 @@ type AirbendAll struct {
 }
 
 func (a AirbendAll) Apply(ctx *Context) error {
-	if len(a.Targets) == 0 {
+	targets := ctx.withoutNewSourceObject(a.Targets) // #1432
+	if len(targets) == 0 {
 		return nil
 	}
-	return exileAllWithPermission(ctx.Game, a.Targets, ExileWithPermission{
+	return exileAllWithPermission(ctx.Game, targets, ExileWithPermission{
 		CastOnly:     true,
 		WhileExiled:  true,
 		CostOverride: AirbendCost,

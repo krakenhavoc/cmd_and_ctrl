@@ -73,7 +73,7 @@ type Earthbend struct {
 }
 
 func (e Earthbend) Apply(ctx *Context) error {
-	if e.Target == uuid.Nil {
+	if e.Target == uuid.Nil || ctx.isNewSourceObject(e.Target) { // #1432
 		return nil
 	}
 	var then func(g *game.Game) error

@@ -159,6 +159,11 @@ type DestroyTarget struct {
 }
 
 func (d DestroyTarget) Apply(ctx *Context) error {
+	// #1432: "this permanent" after a flicker in response is a new
+	// object; see source_object_guard.go.
+	if ctx.isNewSourceObject(d.Target) {
+		return nil
+	}
 	return ctx.Game.DestroyPermanentForEffect(d.Target,
 		game.DestroyOptions{CantBeRegenerated: d.CantBeRegenerated})
 }
@@ -185,7 +190,7 @@ type Regenerate struct {
 }
 
 func (r Regenerate) Apply(ctx *Context) error {
-	if r.Target == uuid.Nil {
+	if r.Target == uuid.Nil || ctx.isNewSourceObject(r.Target) { // #1432
 		return nil
 	}
 	if err := ctx.Game.RegenerateForEffect(r.Target); err != nil {
@@ -229,6 +234,15 @@ type SacrificePermanent struct {
 }
 
 func (s SacrificePermanent) Apply(ctx *Context) error {
+	// #1432: "this permanent" after a flicker in response is a new
+	// object; see source_object_guard.go.
+	// "If you do" is told no: nothing was sacrificed.
+	if ctx.isNewSourceObject(s.Target) {
+		if s.Then != nil {
+			return s.Then(ctx, false)
+		}
+		return nil
+	}
 	if s.Then == nil {
 		return ctx.Game.SacrificePermanentForEffect(s.Target)
 	}
@@ -271,6 +285,15 @@ type ExileTarget struct {
 }
 
 func (e ExileTarget) Apply(ctx *Context) error {
+	// #1432: "this permanent" after a flicker in response is a new
+	// object; see source_object_guard.go.
+	// Flicker and ExileThenIfItWas route through here.
+	if ctx.isNewSourceObject(e.Target) {
+		if e.Then != nil {
+			return e.Then(ctx, false)
+		}
+		return nil
+	}
 	if e.Then == nil {
 		return ctx.Game.ExileCardForEffect(e.Target)
 	}
@@ -562,6 +585,14 @@ type BounceToHand struct {
 }
 
 func (b BounceToHand) Apply(ctx *Context) error {
+	// #1432: "this permanent" after a flicker in response is a new
+	// object; see source_object_guard.go.
+	if ctx.isNewSourceObject(b.Target) {
+		if b.Then != nil {
+			return b.Then(ctx, false)
+		}
+		return nil
+	}
 	if b.Then == nil {
 		return ctx.Game.BounceToHandForEffect(b.Target)
 	}
@@ -582,6 +613,9 @@ type TapTarget struct {
 }
 
 func (t TapTarget) Apply(ctx *Context) error {
+	if ctx.isNewSourceObject(t.Target) { // #1432
+		return nil
+	}
 	return ctx.Game.TapTargetForEffect(t.Target)
 }
 
@@ -591,6 +625,9 @@ type UntapTarget struct {
 }
 
 func (u UntapTarget) Apply(ctx *Context) error {
+	if ctx.isNewSourceObject(u.Target) { // #1432
+		return nil
+	}
 	return ctx.Game.UntapTargetForEffect(u.Target)
 }
 
@@ -722,6 +759,12 @@ type AddCounter struct {
 }
 
 func (a AddCounter) Apply(ctx *Context) error {
+	// #1432: "this permanent" after a flicker in response is a new
+	// object; see source_object_guard.go.
+	// Removal (N < 0) is the same act on the same object.
+	if ctx.isNewSourceObject(a.Target) {
+		return nil
+	}
 	return ctx.Game.AddCounterForEffect(a.Target, a.Kind, a.N)
 }
 

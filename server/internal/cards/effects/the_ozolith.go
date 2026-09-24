@@ -84,6 +84,11 @@ func init() {
 						frozen[kind] = n
 					}
 					return game.NewTriggeredItem(source, "The Ozolith — put those counters on it", func(g *game.Game, item *game.StackItem) error {
+						// #1432: an Ozolith that left and came back is
+						// not "it".
+						if sourceIsNewObject(g, item) {
+							return nil
+						}
 						for kind, n := range frozen {
 							if n <= 0 {
 								continue
@@ -127,7 +132,7 @@ func ozolithMoveCounters(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	target := item.Targets[0].ID
-	if _, ok := g.LookupCardForEffect(target); !ok {
+	if _, ok := g.LookupCardForEffect(target); !ok || sourceIsNewObject(g, item) { // #1432
 		return nil
 	}
 	source, ok := g.LookupCardForEffect(item.SourceCardID)

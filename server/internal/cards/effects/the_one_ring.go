@@ -119,7 +119,7 @@ func theOneRingUpkeepBurden(g *game.Game, item *game.StackItem) error {
 // CR 616 prompt, and reading before it resumes would draw for the
 // pre-placement count.
 func theOneRingTapDraw(g *game.Game, item *game.StackItem) error {
-	if !onBattlefield(g, item.SourceCardID) {
+	if !onBattlefield(g, item.SourceCardID) || sourceIsNewObject(g, item) { // #1432
 		return nil
 	}
 	return g.AddCounterThenForEffect(item.SourceCardID, theOneRingBurden, 1, func(g *game.Game, _ int) error {

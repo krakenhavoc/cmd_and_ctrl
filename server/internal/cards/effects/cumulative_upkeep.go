@@ -65,7 +65,8 @@ func CumulativeUpkeep(label, cost string) game.TriggeredAbility {
 		// CR 702.24a's "if this permanent is on the battlefield": a
 		// permanent that left in response has nothing to age and
 		// nothing to sacrifice, and its controller is not billed.
-		if !onBattlefield(g, source) {
+		// Left and came back is the same answer (#1432, CR 400.7).
+		if !onBattlefield(g, source) || sourceIsNewObject(g, item) {
 			return nil
 		}
 		// #1290: what the rule charges for is the counters that are

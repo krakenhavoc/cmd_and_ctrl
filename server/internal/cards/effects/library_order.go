@@ -161,7 +161,7 @@ type PutIntoLibraryAtDepthOrBottom struct {
 func (p PutIntoLibraryAtDepthOrBottom) Apply(ctx *Context) error {
 	c, ok := ctx.Game.LookupCardForEffect(p.Card)
 	z := ctx.Game.FindCardZoneForEffect(p.Card)
-	if !ok || z == nil {
+	if !ok || z == nil || ctx.isNewSourceObject(p.Card) { // #1432
 		if p.Then != nil {
 			return p.Then(ctx.Game)
 		}
@@ -361,6 +361,12 @@ type PutIntoLibrary struct {
 }
 
 func (p PutIntoLibrary) Apply(ctx *Context) error {
+	if ctx.isNewSourceObject(p.Card) { // #1432
+		if p.Then != nil {
+			return p.Then(ctx.Game, false)
+		}
+		return nil
+	}
 	return ctx.Game.TuckToLibraryThenForEffect(p.Card, game.TuckOptions{
 		ToBottom: p.ToBottom,
 		Depth:    p.Depth,
