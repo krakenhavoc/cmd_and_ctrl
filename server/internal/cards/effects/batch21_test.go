@@ -451,8 +451,10 @@ func TestB21SpitefulBanditrySweepsForXAndTreasuresOncePerTurn(t *testing.T) {
 	if n := b16CountNamed(g, "Treasure"); n != 2 {
 		t.Errorf("a new turn: 2 Treasures, got %d", n)
 	}
-	if spec, _ := Lookup(b21SpitefulBanditryOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the X-as-the-spell-resolves gap must be declared")
+	// #1357: the ETB damage now comes from a real trigger reading
+	// CastX(), closing the last declared gap.
+	if spec, _ := Lookup(b21SpitefulBanditryOracle); spec.Completeness != CompletenessFull {
+		t.Error("no caveat should remain now that the ETB trigger reads CastX()")
 	}
 }
 
