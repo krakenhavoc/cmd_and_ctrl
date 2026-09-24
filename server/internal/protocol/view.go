@@ -1464,9 +1464,24 @@ type CardView struct {
 	// Cleared on zone exit and by clear_combat. Added in S08.
 	BlockingTarget string `json:"blocking_target,omitempty"`
 	// GoadedBy is the player ID who goaded this creature, or empty
-	// when not goaded. Cleared on zone exit. Sandbox marker — the
-	// must-attack-not-the-goader rule is not enforced. Added in S10.
+	// when not goaded. Cleared on zone exit. Added in S10; enforced
+	// since #1571 — a goaded creature attacks each combat if able and
+	// attacks a player other than the goader if able (CR 701.15b),
+	// judged with every other CR 508.1d requirement.
 	GoadedBy string `json:"goaded_by,omitempty"`
+	// MustAttack is true on a creature the active player owes an
+	// attack with right now (#1571, CR 508.1d): during
+	// declare_attackers, while the declaration could still obey a
+	// requirement it does not — Zurgo not yet declared, a goaded
+	// creature at home, Grand Melee — and this creature is one of the
+	// attacks that would answer it. Under a limit that only lets one
+	// of two such creatures attack, both are marked until one does.
+	// It clears the moment the active player's pass would be
+	// accepted. Public, like the declarations themselves: the
+	// requirement's sources are on the board. The server computes it
+	// (game.MustAttackForEffect, the enumerator's own answer); the
+	// client renders it and never derives a requirement.
+	MustAttack bool `json:"must_attack,omitempty"`
 	// AttachedTo is the CR 301.5c / CR 303.4 attachment relation for
 	// an Equipment or an Aura: the permanent or player this card is
 	// attached to. Omitted for the overwhelming majority of cards,
@@ -5080,6 +5095,15 @@ func stampCombatTargets(g *game.Game, view *GameView) {
 	}
 	if g.Turn.Step != game.StepDeclareAttackers {
 		return
+	}
+	// #1571: the creatures the active player owes an attack with.
+	if owed := g.MustAttackForEffect(); len(owed) > 0 {
+		for i := range view.Battlefield.Cards {
+			c := &view.Battlefield.Cards[i]
+			if id, err := uuid.Parse(c.InstanceID); err == nil && len(owed[id]) > 0 {
+				c.MustAttack = true
+			}
+		}
 	}
 	if g.Turn.ActiveSeat < 0 || g.Turn.ActiveSeat >= len(g.Seats) {
 		return

@@ -1036,6 +1036,12 @@ func (c *Client) handleAction(frame protocol.Frame) {
 			c.sendErrorPayload(frame.ID, body)
 			return
 		}
+		// #1571: a declaration or pass refused for a CR 508.1d
+		// requirement, with its sentence addressed to the caller.
+		if body, ok := attackRequirementPayload(err, c.playerID); ok {
+			c.sendErrorPayload(frame.ID, body)
+			return
+		}
 		code, msg := classifyActionError(err)
 		c.sendError(frame.ID, code, msg)
 		return
@@ -1125,6 +1131,12 @@ func classifyActionError(err error) (code, message string) {
 		// arm is the same code and a viewer-neutral sentence for any
 		// other caller.
 		body, _ := attackLimitPayload(err, uuid.Nil)
+		return body.Code, body.Message
+	case errors.Is(err, game.ErrAttackRequirement):
+		// #1571. The hub sends the structured frame
+		// (attackRequirementPayload) before reaching this classifier;
+		// this arm is the same code and a viewer-neutral sentence.
+		body, _ := attackRequirementPayload(err, uuid.Nil)
 		return body.Code, body.Message
 	case errors.Is(err, game.ErrAttackTaxUnpaid):
 		// ADR 0080. The hub sends the structured frame
@@ -1234,6 +1246,32 @@ func attackLimitPayload(err error, viewer uuid.UUID) (protocol.ErrorPayload, boo
 		body.Message = le.Sentence(viewer)
 		if le.Attacker != uuid.Nil {
 			body.CardID = le.Attacker.String()
+		}
+	}
+	return body, true
+}
+
+// attackRequirementPayload builds the `illegal_attack` error frame for
+// a declaration — or the active player's pass that ends it — refused
+// by CR 508.1d (#1571): reason `attack_requirement`, the creature
+// carrying the requirement in card_id, and the engine's sentence
+// addressed to `viewer` ("Grizzly Bears is goaded by you and must
+// attack a player other than you if able."). ok is false for any error
+// that is not a requirement refusal.
+func attackRequirementPayload(err error, viewer uuid.UUID) (protocol.ErrorPayload, bool) {
+	if !errors.Is(err, game.ErrAttackRequirement) {
+		return protocol.ErrorPayload{}, false
+	}
+	body := protocol.ErrorPayload{
+		Code:    protocol.CodeIllegalAttack,
+		Message: "a creature must attack this combat if able",
+		Reason:  protocol.AttackRefusalRequirement,
+	}
+	var re *game.AttackRequirementError
+	if errors.As(err, &re) {
+		body.Message = re.Sentence(viewer)
+		if re.Attacker != uuid.Nil {
+			body.CardID = re.Attacker.String()
 		}
 	}
 	return body, true

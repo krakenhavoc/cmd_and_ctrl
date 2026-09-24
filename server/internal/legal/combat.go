@@ -55,6 +55,10 @@ func (e *enumerator) combatMoves() {
 		if !isActiveSeat(g, e.seat) {
 			return
 		}
+		// #1571 / CR 508.1d: while the declaration owes a requirement,
+		// the attacks that would answer it. Nil at every table with no
+		// requirement to meet, which is nearly all of them.
+		owed := g.MustAttackForEffect()
 		for i := range g.Battlefield.Cards {
 			c := &g.Battlefield.Cards[i]
 			// S24: the attacker-side eligibility rule is
@@ -87,6 +91,15 @@ func (e *enumerator) combatMoves() {
 				// until one creature is attacking, then none; under
 				// Crawlspace, attacks at that player until two are.
 				if g.AttackLimitRefusalForEffect(decl) != nil {
+					continue
+				}
+				// #1571, CR 508.1d: a declaration that makes a
+				// requirement unobeyable (a goaded creature at its
+				// goader while another opponent is open; a creature
+				// with no requirement into the one slot Zurgo needs)
+				// is refused by the verb, so it is not offered — the
+				// same function (#544).
+				if g.AttackRequirementRefusalForEffect(decl) != nil {
 					continue
 				}
 				// ADR 0080 / #1063: the CR 508.1a attack tax. Priced
@@ -122,7 +135,14 @@ func (e *enumerator) combatMoves() {
 					Kind:   KindAttack,
 					Label:  attackMoveLabel(g, t, c.Name, price),
 					Source: c.InstanceID,
-					Cost:   withAttackTax(nil, price.Cost),
+					// #1571: an attack that answers an owed
+					// requirement is the declaration's unconditional
+					// answer while the pass is withheld — nothing else
+					// can act in the active player's priority window to
+					// make the engine refuse it — so a seat whose
+					// policy declines is not left holding the table.
+					AlwaysLegal: owedPair(owed, c.InstanceID, t.ID),
+					Cost:        withAttackTax(nil, price.Cost),
 					Params: mustJSON(attackParams{
 						Attacker: c.InstanceID.String(),
 						Target:   t.ID.String(),
@@ -218,6 +238,28 @@ func (e *enumerator) combatMoves() {
 			})
 		}
 	}
+}
+
+// attackRequirementOwed reports whether `seat` is the active player in
+// declare_attackers with a CR 508.1d requirement their declaration
+// could still obey and does not (#1571) — the case the engine refuses
+// their pass in. Caller holds the enumerator's read lock.
+func attackRequirementOwed(g *game.Game, seat uuid.UUID) bool {
+	if g.Turn.Step != game.StepDeclareAttackers || !isActiveSeat(g, seat) {
+		return false
+	}
+	return g.AttackRequirementsUnmetForEffect() != nil
+}
+
+// owedPair reports whether (attacker, target) is one of the attacks
+// that answers an owed requirement.
+func owedPair(owed map[uuid.UUID][]uuid.UUID, attacker, target uuid.UUID) bool {
+	for _, t := range owed[attacker] {
+		if t == target {
+			return true
+		}
+	}
+	return false
 }
 
 // cardByID finds a battlefield permanent by instance ID. Caller holds

@@ -524,6 +524,13 @@ func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Mov
 	if best >= 0 && bestVal > 0 {
 		return aiseat.Decision{Index: best, Reason: bestReason + " (no pass on offer)"}
 	}
+	// #1571: no pass, but an answer the enumerator marks always-legal
+	// — the attack a CR 508.1d requirement owes while the active
+	// player's pass is withheld. This seat holds priority, so a
+	// decline would stall the table; take the owed answer.
+	if si := aiseat.SafeIndex(moves); si >= 0 {
+		return aiseat.Decision{Index: si, Reason: "owed: " + moves[si].Label}
+	}
 	// No pass means this seat does not hold priority — a combat
 	// declaration window, most likely. Declining is safe there and
 	// the runner turns a decline into a pass whenever one exists.

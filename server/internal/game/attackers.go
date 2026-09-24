@@ -151,6 +151,9 @@ func (g *Game) noteAttackAnnouncedLocked(id uuid.UUID) {
 // announces again. Caller must hold g.mu.
 func (g *Game) clearAttackAnnouncementsLocked() {
 	g.announcedAttacks = nil
+	// #1571: and the CR 508.1d checkpoint — next combat's declaration
+	// is judged afresh.
+	g.attacksDeclared = false
 	// #1364: the last-known defending players describe this combat's
 	// attacks too.
 	g.attackDefenders = nil

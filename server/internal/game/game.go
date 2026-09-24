@@ -468,6 +468,21 @@ type Game struct {
 	// declaration whose triggers have already fired.
 	blocksDeclared map[uuid.UUID]bool
 
+	// attacksDeclared is the ATTACK side's completion point for CR
+	// 508.1d (#1571, attack_requirements.go): true once the active
+	// player's declaration this combat has passed its requirement
+	// checkpoint — their pass in declare_attackers, or AdvanceStep
+	// leaving the step. After it nothing re-judges the declaration, so
+	// a creature that arrives, or is goaded, once the declaration is
+	// over is never asked to attack late.
+	//
+	// Cleared with the rest of combat, and carried by Clone /
+	// RestoreFrom and the persisted snapshot for blocksDeclared's
+	// reason: an undo across the pass that kept it would let the
+	// re-made declaration skip its requirements, and one that dropped
+	// it would re-judge a declaration whose triggers have already fired.
+	attacksDeclared bool
+
 	// firstStrikeStepParticipants is THIS combat's CR 510.4 / 702.7c
 	// participation record: the attacking and blocking creatures that
 	// had first strike or double strike as the FIRST combat damage
@@ -1145,6 +1160,16 @@ func (g *Game) AdvanceStep() (Turn, error) {
 	defer g.mu.Unlock()
 	if g.State != StateActive {
 		return Turn{}, ErrGameNotActive
+	}
+	// #1571 / CR 508.1d: leaving declare_attackers ends the attack
+	// declaration, so it runs the same requirement checkpoint as the
+	// active player's pass. The sandbox's skip-ahead is not a way to
+	// wave off Zurgo or a goad: refused while a free addition would
+	// still obey a requirement, with the requirement named.
+	if g.Turn.Step == StepDeclareAttackers {
+		if err := g.attackCheckpointLocked(); err != nil {
+			return g.Turn, err
+		}
 	}
 	// #830 / CR 509.2a, and #859 / CR 508.2: leaving a step completes
 	// whatever turn-based action was staged in it. A combat

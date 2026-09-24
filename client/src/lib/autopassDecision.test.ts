@@ -13,6 +13,7 @@ function gates(overrides: Partial<AutopassGates> = {}): AutopassGates {
     tableBusy: false,
     hasPendingChoice: false,
     owesBlockDecision: false,
+    owesAttackRequirement: false,
     loopSuspended: false,
     step: "upkeep",
     autopassToggle: false,
@@ -178,6 +179,12 @@ describe("autopassDecision — guards above every toggle", () => {
 
   it("holds an owed declare-blockers decision (#328), toggle or not", () => {
     expect(autopassDecision(gates({ owesBlockDecision: true }))).toBe("hold");
+    // #1571: an owed attack requirement holds too — the server would
+    // refuse the pass, even with the autopass toggle armed.
+    expect(autopassDecision(gates({ owesAttackRequirement: true }))).toBe("hold");
+    expect(autopassDecision(gates({ owesAttackRequirement: true, autopassToggle: true }))).toBe(
+      "hold",
+    );
     expect(autopassDecision(gates({ owesBlockDecision: true, autopassToggle: true }))).toBe("hold");
   });
 

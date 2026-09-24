@@ -35,6 +35,9 @@ func (s *GameSnapshot) checkEffectKeys() error {
 				unknown = append(unknown, "mod kind "+string(m.Kind))
 			}
 		}
+		if !KnownAffectedScope(e.Scope) {
+			unknown = append(unknown, "scoped-effect scope "+string(e.Scope))
+		}
 		if !e.Duration.Known() {
 			unknown = append(unknown, fmt.Sprintf("scoped-effect duration kind %d / condition %d",
 				e.Duration.Kind, e.Duration.Condition))
