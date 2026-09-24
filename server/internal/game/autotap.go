@@ -594,6 +594,13 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 		if manaSourceTappedOut(&c, picked) {
 			continue
 		}
+		// #1445: a source this ability would SACRIFICE is not one while
+		// an effect has its exit paused on a CR 903.9 prompt — the
+		// card is already spent. See refusePausedCostCardsLocked; the
+		// executor asks the same question.
+		if picked.SacrificeCost && g.zoneChangePausedLocked(c.InstanceID) {
+			continue
+		}
 		// #540: CR 302.6. A mana creature that entered this turn
 		// cannot pay a {T} cost, and the auto-tapper is not a way
 		// around the rule the hand-click path enforces — a Delighted
@@ -724,6 +731,11 @@ func gatherManaZoneSources(
 			}
 			picked := g.autoManaExileAbilityFor(controller, c, ManaAbilitiesForCard(c), kind)
 			if picked == nil {
+				continue
+			}
+			// #1445: every source here leaves its zone to pay, so one
+			// whose exit is already paused is already spent.
+			if g.zoneChangePausedLocked(c.InstanceID) {
 				continue
 			}
 			// #1210, CR 602.5: the board-wide "can't be activated"

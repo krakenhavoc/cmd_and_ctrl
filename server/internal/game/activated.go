@@ -1219,6 +1219,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if ab.Cost.ExileSelf {
 		moving = append(moving, cardID)
 	}
+	// #1445: a card an EFFECT has already paused on its way out
+	// cannot pay. See refusePausedCostCardsLocked.
+	if err := g.refusePausedCostCardsLocked(moving); err != nil {
+		return err
+	}
 	asked, answers := g.askCostCommanderLocked(playerID, moving, params.commanderAnswers, source.Name,
 		func(g *Game, answers map[uuid.UUID]bool) error {
 			again := params
