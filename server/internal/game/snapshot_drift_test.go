@@ -166,6 +166,11 @@ var gameFields = plan(
 	"lastKnownBattlefield", carried, "",
 	"lastKnownTriggerIdentity", carried, "",
 	"lastKnownCounters", carried, "",
+	// #1379: CR 608.2h LKI for permanents that left the battlefield
+	// this turn. Carried, unlike lastKnownStack: a restore that lands
+	// with an ability on the stack that names a departed permanent must
+	// still be able to read how it last existed.
+	"lastKnownPermanents", carried, "",
 	// #1255: CR 608.2h LKI for spells that left the stack this turn.
 	// Its only readers are copy effects that name a spell without
 	// targeting it — a storm trigger, Thousand-Year Storm, Doublecast's
