@@ -1153,6 +1153,11 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// the card still where it was; the answer casts it again. See
 	// cost_commander_choice.go.
 	moving := append(append(append([]uuid.UUID(nil), params.DiscardIDs...), params.SacrificeIDs...), params.AltCostIDs...)
+	// #1445: a card an EFFECT has already paused on its way out
+	// cannot pay. See refusePausedCostCardsLocked.
+	if err := g.refusePausedCostCardsLocked(moving); err != nil {
+		return err
+	}
 	asked, answers := g.askCostCommanderLocked(playerID, moving, params.commanderAnswers, card.Name,
 		func(g *Game, answers map[uuid.UUID]bool) error {
 			again := params
@@ -1712,6 +1717,11 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 		if manaSourceTappedOut(card, ab) {
 			continue
 		}
+		// #1445: the planner's paused-exit check, re-asked because a
+		// plan can arrive stale.
+		if ab.SacrificeCost && g.zoneChangePausedLocked(cardID) {
+			continue
+		}
 		// #540: CR 302.6, enforced here as well as in the planner.
 		// This executor taps `card.Tapped = true` directly rather
 		// than routing through ActivateManaAbility, so the gate that
@@ -2069,6 +2079,10 @@ func (g *Game) materializeExiledManaSourceLocked(
 	}
 	ab := g.autoManaExileAbilityFor(p.ID, *card, ManaAbilitiesForCard(*card), zone)
 	if ab == nil {
+		return
+	}
+	// #1445: the planner's paused-exit check, re-asked for a stale plan.
+	if g.zoneChangePausedLocked(cardID) {
 		return
 	}
 	if g.ActivationGateLocked(p.ID, *card, zone, ActivationAbility{Label: ab.Label, Mana: true}) != nil {
@@ -5617,6 +5631,11 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	moving := append(append(append([]uuid.UUID(nil), sacrifices...), discards...), exiles...)
 	if ab.ExileSelf {
 		moving = append(moving, cardID)
+	}
+	// #1445: a card an EFFECT has already paused on its way out
+	// cannot pay. See refusePausedCostCardsLocked.
+	if err := g.refusePausedCostCardsLocked(moving); err != nil {
+		return err
 	}
 	asked, answers := g.askCostCommanderLocked(playerID, moving, params.commanderAnswers, card.Name,
 		func(g *Game, answers map[uuid.UUID]bool) error {
