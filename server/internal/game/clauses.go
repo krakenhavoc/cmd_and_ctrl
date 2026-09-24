@@ -102,7 +102,11 @@ func (g *Game) itemAnnouncedClauses(item *StackItem) []AnnouncedClause {
 			ms = ModeSpecFor(oracle)
 		}
 	}
-	return AnnouncedClauses(spec, ms, item.Modes)
+	steps := AnnouncedClauses(spec, ms, item.Modes)
+	// #1559: an X-bounded clause is re-checked under the X the item
+	// was announced with, which is the one it was validated under.
+	bindStepsX(steps, item.XValue)
+	return steps
 }
 
 // oracleKeyOfStackItemLocked is the catalog key of the card behind a
@@ -281,6 +285,9 @@ func (g *Game) validateAnnouncedTargetsWithLocked(src TargetSource, steps []Anno
 	counts := make([]int, len(steps))
 	earlier := make(map[uuid.UUID]bool, len(targets))
 	perStep := make([]map[uuid.UUID]bool, len(steps))
+	// #1559: per step, the set-rule key each pick holds and whether
+	// that pick's predicate was waived (an unchanged retarget slot).
+	keys := make([]map[string]bool, len(steps))
 	cursor := 0
 	for i, t := range targets {
 		if t.Kind == TargetSelf || t.Kind == TargetNone {
@@ -323,11 +330,25 @@ func (g *Game) validateAnnouncedTargetsWithLocked(src TargetSource, steps []Anno
 		}
 		perStep[idx][t.ID] = true
 		counts[idx]++
-		if waive != nil && waive(i, t) {
-			continue
-		}
-		if !g.targetLegalLocked(src, clause, t) {
+		waived := waive != nil && waive(i, t)
+		if !waived && !g.targetLegalLocked(src, clause, t) {
 			return ErrIllegalTarget
+		}
+		// #1559, CR 601.2c: the clause's rule about the SET. Checked
+		// over the whole list — a retarget may not move a slot onto a
+		// key an unchanged slot holds (CR 115.7c's "must not cause
+		// any unchanged targets to become illegal") — but two
+		// UNCHANGED slots that already collide are left alone: CR
+		// 115.7c lets them stay even if illegal, and it is not the
+		// retarget's doing.
+		if k, ok := g.targetDifferenceKeyLocked(clause, t); ok {
+			if keys[idx] == nil {
+				keys[idx] = make(map[string]bool, 2)
+			}
+			if prevWaived, seen := keys[idx][k]; seen && !(prevWaived && waived) {
+				return targetSetError(clause.Different)
+			}
+			keys[idx][k] = waived
 		}
 	}
 	for i := range steps {
@@ -355,7 +376,7 @@ func (g *Game) anyClauseUnfillableLocked(src TargetSource, steps []AnnouncedClau
 			continue
 		}
 		lt := g.legalTargetsLocked(src, c)
-		if len(lt.Players)+len(lt.Cards) < c.Min {
+		if g.fillableCountLocked(c, lt) < c.Min {
 			return true
 		}
 	}

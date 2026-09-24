@@ -1948,6 +1948,27 @@ export interface LegalTargetsView {
   // #764: this clause's picks must differ from every EARLIER
   // clause's ("a second target permanent you control").
   distinct?: boolean;
+  // #1559: the clause's rule over the chosen SET (CR 601.2c) — no two
+  // picks may share a key ("that each have a different mana value",
+  // "controlled by different players"). The picker greys a candidate
+  // whose key a pick of THIS clause already holds, and says the rule.
+  // A card missing from `keys` collides with nothing.
+  different?: TargetDifferenceView;
+  // #1559: "with mana value X or less", X the announced X. Like
+  // count_from_x, the server built this legal set before X was chosen,
+  // so it is a superset: the picker drops every card whose
+  // `mana_values` entry exceeds the X collected in the cost prompts,
+  // and a card with no entry (an unreadable cost) meets no bound.
+  mana_value_at_most_x?: boolean;
+  mana_values?: Record<string, number>;
+}
+
+// TargetDifferenceView is a clause's set rule (#1559): `label`
+// completes "those targets must …", and `keys` maps each legal card
+// to the value no two picks may share.
+export interface TargetDifferenceView {
+  label: string;
+  keys?: Record<string, string>;
 }
 
 /**

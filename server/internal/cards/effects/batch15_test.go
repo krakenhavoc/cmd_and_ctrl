@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -846,14 +847,17 @@ func TestB15RunAwayTogetherBouncesTwoCreaturesOfDifferentControllers(t *testing.
 	if !me.Hand.Contains(mine) || !opp.Hand.Contains(theirs) {
 		t.Error("both creatures return to their owners' hands")
 	}
-	// The declared gap: a same-controller pair is accepted and does
-	// nothing.
+	// #1559: "controlled by different players" is the clause's set
+	// rule, so a same-controller pair is refused at announce (CR
+	// 601.2c), with the rule in the message.
 	a, b := seedCreature(g, "Bear A", opp.ID), seedCreature(g, "Bear B", opp.ID)
-	castCatalogSpell(t, g, "Run Away Together", "Instant", b15RunAwayTogetherOracle,
+	err := castCatalogSpellErr(t, g, "Run Away Together", "Instant", b15RunAwayTogetherOracle,
 		[]game.TargetRef{{Kind: game.TargetCard, ID: a}, {Kind: game.TargetCard, ID: b}})
-	passPriorityAroundTable(t, g)
+	if !errors.Is(err, game.ErrIllegalTarget) || !strings.Contains(err.Error(), "controlled by different players") {
+		t.Errorf("a same-controller pair is refused naming the rule, got %v", err)
+	}
 	if !g.Battlefield.Contains(a) || !g.Battlefield.Contains(b) {
-		t.Error("two creatures with the same controller are not a legal pair")
+		t.Error("the refused cast touches nothing")
 	}
 	// One target gone in response: the other still returns.
 	c, d := seedCreature(g, "Bear C", me.ID), seedCreature(g, "Bear D", opp.ID)

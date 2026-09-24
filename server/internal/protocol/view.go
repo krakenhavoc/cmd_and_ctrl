@@ -487,6 +487,32 @@ type LegalTargetsView struct {
 	// EARLIER clause's ("a second target permanent you control"), so
 	// the picker can grey what is already taken. Added by #764.
 	Distinct bool `json:"distinct,omitempty"`
+
+	// Different is the clause's rule over the chosen SET (#1559, CR
+	// 601.2c): no two picks may share a key — "that each have a
+	// different mana value", "controlled by different players". The
+	// picker greys a candidate whose key an earlier pick of THIS
+	// clause holds, and says the rule in its banner. Absent for every
+	// clause without one, which is nearly all of them.
+	Different *TargetDifferenceView `json:"different,omitempty"`
+
+	// ManaValueAtMostX marks a clause bounded by the announced X —
+	// "with mana value X or less" (#1559). Like CountFromX, the
+	// server builds this legal set before X is chosen, so it is a
+	// superset: the client drops every card whose entry in
+	// ManaValues exceeds the X it collected, and a card with no entry
+	// (an unreadable cost) meets no bound.
+	ManaValueAtMostX bool           `json:"mana_value_at_most_x,omitempty"`
+	ManaValues       map[string]int `json:"mana_values,omitempty"`
+}
+
+// TargetDifferenceView is the wire shape of game.TargetDifference: the
+// printed rule, completing "those targets must …", and each legal
+// card's key. A card with no key (an unreadable cost) is absent and
+// collides with nothing. Added by #1559.
+type TargetDifferenceView struct {
+	Label string            `json:"label"`
+	Keys  map[string]string `json:"keys,omitempty"`
 }
 
 // clausesView projects every clause of a multi-clause statement,
@@ -4120,7 +4146,7 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	if spec == nil {
 		return out
 	}
-	out.LegalTargets = viewOfLegalTargets(g.LegalTargetsForEffect(src, spec), spec)
+	out.LegalTargets = viewOfTargetClause(g, g.LegalTargetsForEffect(src, spec), spec)
 	out.Clauses = viewOfClauses(g, src, spec)
 	return out
 }
@@ -4309,6 +4335,43 @@ func viewOfProtection(c *game.Card) []ProtectionView {
 	return out
 }
 
+// viewOfTargetClause is viewOfLegalTargets for a TARGET clause, with
+// the clause's set rule and X bound stamped on (#1559). Cost-payment
+// projections keep viewOfLegalTargets: a cost is not targeting and
+// carries neither. Caller must hold g.mu.
+func viewOfTargetClause(g *game.Game, lt game.LegalTargets, spec *game.TargetSpec) *LegalTargetsView {
+	v := viewOfLegalTargets(lt, spec)
+	stampTargetSetRule(g, v, lt.Cards, spec)
+	return v
+}
+
+// stampTargetSetRule writes a clause's set rule and X bound onto its
+// view, keyed by the legal cards' wire ids. Caller must hold g.mu.
+func stampTargetSetRule(g *game.Game, v *LegalTargetsView, cards []uuid.UUID, spec *game.TargetSpec) {
+	if spec == nil {
+		return
+	}
+	if d := spec.Different; d != nil {
+		dv := &TargetDifferenceView{Label: d.Label}
+		if keys := g.TargetDifferenceKeysForEffect(spec, cards); len(keys) > 0 {
+			dv.Keys = make(map[string]string, len(keys))
+			for id, k := range keys {
+				dv.Keys[id.String()] = k
+			}
+		}
+		v.Different = dv
+	}
+	if spec.ManaValueAtMostX {
+		v.ManaValueAtMostX = true
+		if mvs := g.ManaValuesForEffect(cards); len(mvs) > 0 {
+			v.ManaValues = make(map[string]int, len(mvs))
+			for id, mv := range mvs {
+				v.ManaValues[id.String()] = mv
+			}
+		}
+	}
+}
+
 func viewOfLegalTargets(lt game.LegalTargets, spec *game.TargetSpec) *LegalTargetsView {
 	view := &LegalTargetsView{Min: spec.Min, Max: spec.Max, CountFromX: spec.CountFromX, Distinct: spec.Distinct}
 	for _, id := range lt.Players {
@@ -4431,7 +4494,7 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 		}
 		if spec := game.TargetSpecUnderAlternativeCost(base, &ac); spec != nil {
 			v.TargetMode = spec.Mode
-			v.LegalTargets = viewOfLegalTargets(g.LegalTargetsForEffect(src, spec), spec)
+			v.LegalTargets = viewOfTargetClause(g, g.LegalTargetsForEffect(src, spec), spec)
 		}
 		// The card-shaped half. SpecCandidatesForEffect, not
 		// LegalTargetsForEffect, for the same reason the additional
@@ -4528,7 +4591,7 @@ func viewOfOptionalCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, 
 		}
 		if spec := oc.Targets; spec != nil {
 			v.TargetMode = spec.Mode
-			v.LegalTargets = viewOfLegalTargets(g.LegalTargetsForEffect(src, spec), spec)
+			v.LegalTargets = viewOfTargetClause(g, g.LegalTargetsForEffect(src, spec), spec)
 			v.Clauses = viewOfClauses(g, src, spec)
 		}
 		out = append(out, v)
@@ -4551,7 +4614,7 @@ func viewOfModeSpec(g *game.Game, src game.TargetSource, ms *game.ModeSpec) *Mod
 		ov := ModeOptionView{Label: o.Label, Cost: o.Cost}
 		if o.Targets != nil {
 			ov.TargetMode = o.Targets.Mode
-			ov.LegalTargets = viewOfLegalTargets(g.LegalTargetsForEffect(src, o.Targets), o.Targets)
+			ov.LegalTargets = viewOfTargetClause(g, g.LegalTargetsForEffect(src, o.Targets), o.Targets)
 			ov.Clauses = viewOfClauses(g, src, o.Targets)
 		}
 		out.Options = append(out.Options, ov)
@@ -4570,7 +4633,7 @@ func viewOfClauses(g *game.Game, src game.TargetSource, spec *game.TargetSpec) [
 	out := make([]LegalTargetsView, 0, spec.ClauseCount())
 	for i := 0; i < spec.ClauseCount(); i++ {
 		c := spec.Clause(i)
-		v := viewOfLegalTargets(g.LegalTargetsForEffect(src, c), c)
+		v := viewOfTargetClause(g, g.LegalTargetsForEffect(src, c), c)
 		v.Label = c.Label
 		out = append(out, *v)
 	}
@@ -5461,6 +5524,18 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			}
 			for _, id := range c.PickTargetCards {
 				pt.Cards = append(pt.Cards, id.String())
+			}
+			// #1559: a trigger clause's set rule rides its prompt, so
+			// the picker greys a colliding candidate here too.
+			if d, keys := g.PickTargetSetRuleForEffect(c); d != nil {
+				dv := &TargetDifferenceView{Label: d.Label}
+				if len(keys) > 0 {
+					dv.Keys = make(map[string]string, len(keys))
+					for id, k := range keys {
+						dv.Keys[id.String()] = k
+					}
+				}
+				pt.Different = dv
 			}
 			v.PickTarget = pt
 		}
@@ -7494,7 +7569,10 @@ func counterCostOptions(g *game.Game, caster, sourceID uuid.UUID, rc *game.Count
 // only for clauses whose text says "target". A cost clause goes
 // through sacrificeCostOptions instead. Caller must hold g.mu.
 func abilityLegalTargets(g *game.Game, src game.TargetSource, spec *game.TargetSpec) *LegalTargetsView {
-	return abilityClauseView(g.LegalTargetsForEffect(src, spec), spec)
+	lt := g.LegalTargetsForEffect(src, spec)
+	v := abilityClauseView(lt, spec)
+	stampTargetSetRule(g, v, lt.Cards, spec)
+	return v
 }
 
 // targetChargedManaCosts prices an activation of `a` once per legal

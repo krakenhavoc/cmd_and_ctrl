@@ -107,6 +107,11 @@
       {#if count >= 0}
         <span class="count">· {count} legal</span>
       {/if}
+      {#if state.different}
+        <!-- #1559: the clause's rule over the chosen set. Candidates
+             that would break it are greyed; this says why. -->
+        <span class="count">· targets must {state.different.label}</span>
+      {/if}
       {#if doubledLabel}
         <span class="count">· {doubledLabel}</span>
       {/if}
