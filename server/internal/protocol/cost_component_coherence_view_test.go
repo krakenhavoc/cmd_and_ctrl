@@ -180,7 +180,8 @@ func TestManaAbilityViewCarriesDiscardCostAndOptions(t *testing.T) {
 	b := seatHandCardFor(g, me, "Pitch B")
 	g.BumpLayerVersionForTest()
 
-	ma := vehicleView(t, g, src).ManaAbilities[0]
+	// #1369: the controller's frame, where the hand list now lives.
+	ma := controllerFrameCard(t, g, src).ManaAbilities[0]
 	if ma.DiscardCostN != 1 || ma.DiscardCostLabel != "a card" {
 		t.Errorf("discard cost shape: n=%d label=%q", ma.DiscardCostN, ma.DiscardCostLabel)
 	}
@@ -361,7 +362,8 @@ func TestAbilityCostViewAndEnumeratorAgree(t *testing.T) {
 	}
 
 	// --- the mana-ability discard ---
-	manaView := vehicleView(t, g, mana).ManaAbilities[0]
+	// #1369: the hand list reaches the controller's frame alone.
+	manaView := controllerFrameCard(t, g, mana).ManaAbilities[0]
 	shownDiscards := map[string]bool{}
 	for _, id := range manaView.DiscardCostOptions {
 		shownDiscards[id] = true
