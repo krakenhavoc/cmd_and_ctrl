@@ -869,7 +869,7 @@ func (g *Game) scheduleWarpExileLocked(card Card, item *StackItem, alt *Alternat
 		Label:        card.Name + " — " + alt.Label + ", exile it",
 		At:           StepEnd,
 		Cards:        []uuid.UUID{card.InstanceID},
-		Body:         warpExileBodyKey,
+		Body:         warpExileBody,
 		// The "later turn" floor, computed now (see above).
 		Params: EffectParams{Amount: notBefore},
 	})
@@ -877,11 +877,11 @@ func (g *Game) scheduleWarpExileLocked(card Card, item *StackItem, alt *Alternat
 
 // warpExileBody is the delayed trigger's body, a registered key (ADR
 // 0041 phase 3, #1497): the floor it used to capture is Params.Amount.
-const warpExileBodyKey = "warp/exile"
+// warpExileBody is assigned in init: a var initialiser would be an
+// initialisation cycle through the exit primitives.
+var warpExileBody BodyRef
 
-// Registered in init: a var initialiser would be an initialisation
-// cycle through the exit primitives.
-func init() { DelayedBody(warpExileBodyKey, warpExile) }
+func init() { warpExileBody = DelayedBody("warp/exile", warpExile) }
 
 func warpExile(g *Game, it *StackItem, p EffectParams) error {
 	for _, t := range it.Targets {
