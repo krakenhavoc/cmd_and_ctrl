@@ -29,6 +29,7 @@
 // a creature the server declines to declare — never a failed action.
 
 import { isCreature } from "./cardTypes";
+import { ErrorCode } from "./protocol";
 import type { CardView, GameView, PlayerView } from "./protocol";
 
 // AttackBlocker is why a creature the viewer controls can't be added
@@ -253,4 +254,125 @@ export function seatLabel(seat: PlayerView): string {
 export function attackAllLabel(plan: AttackAllPlan, seat: PlayerView): string {
   const n = plan.eligible.length;
   return `Attack ${seatLabel(seat)} with all ${n} creature${n === 1 ? "" : "s"}`;
+}
+
+// ---- #1533: attack-with-all under a CR 508.1c count limit ----------
+//
+// Silent Arbiter ("no more than one creature can attack each combat")
+// and Crawlspace ("no more than two creatures can attack you each
+// combat") make the bulk verb refuse an over-full swing WHOLE, with
+// `illegal_attack` / `attack_limit`: which creatures stay home is the
+// attacking player's choice (ADR 0045 Decision 44). The answer is the
+// attack-tax picker (AttackDeclarationModal.svelte), capped at the
+// room the server publishes per target. Nothing here derives a limit.
+// Who a limit protects and how many are already attacking are the
+// engine's to count (ADR 0045 §6), and `attack_targets[].attack_limit`
+// is that count.
+
+// attackLimitOn is how many MORE creatures may be declared attacking
+// one seat this combat, read off the turn's attack_targets (ADR 0045
+// Decision 46). null when no limit counts that seat, or when the field
+// is absent (an older server, or a step that is not declare_attackers).
+// 0 is a real answer (the limit is used up), so callers test for
+// null, never for truthiness.
+export function attackLimitOn(
+  view: GameView | null | undefined,
+  defenderSeatID: string,
+): number | null {
+  const row = view?.turn?.attack_targets?.find(
+    (t) => t.kind === "player" && t.id === defenderSeatID,
+  );
+  return row?.attack_limit ?? null;
+}
+
+// attackLimitBinds reports whether a limit keeps "attack with all"
+// from sending every eligible creature at one seat: the room is
+// smaller than the eligible set.
+export function attackLimitBinds(
+  view: GameView | null | undefined,
+  plan: AttackAllPlan,
+  defenderSeatID: string,
+): boolean {
+  const room = attackLimitOn(view, defenderSeatID);
+  return room !== null && room < plan.eligible.length;
+}
+
+// offersAttackPicker is whether the attack-all cluster shows the
+// "choose attackers…" control beside a seat: when attacking it is
+// taxed (#1162, the seat may afford only some of the swing), or when a
+// limit binds and still has room (#1533, only some of it may attack at
+// all). A used-up limit (room 0) leaves nothing to choose.
+export function offersAttackPicker(
+  view: GameView | null | undefined,
+  plan: AttackAllPlan,
+  defenderSeatID: string,
+): boolean {
+  if (attackTaxOn(view, defenderSeatID)) return true;
+  return attackLimitBinds(view, plan, defenderSeatID) && attackLimitOn(view, defenderSeatID) !== 0;
+}
+
+// seedAttackSelection is what the picker checks when it opens: every
+// eligible creature or, under a limit, the first `cap` of them, so the
+// confirm button is live at once and sends a declaration the server
+// accepts. Board order, the order the rows are listed in.
+export function seedAttackSelection(eligible: readonly CardView[], cap: number | null): string[] {
+  const ids = eligible.map((c) => c.instance_id);
+  return cap === null ? ids : ids.slice(0, Math.max(0, cap));
+}
+
+// toggleAttackSelection checks or unchecks one attacker, refusing to
+// check one more than `cap` allows. The picker disables those rows as
+// well; this is the rule it disables them by, kept in one place.
+export function toggleAttackSelection(
+  selected: readonly string[],
+  id: string,
+  cap: number | null,
+): string[] {
+  if (selected.includes(id)) return selected.filter((x) => x !== id);
+  if (cap !== null && selected.length >= cap) return [...selected];
+  return [...selected, id];
+}
+
+// attackLimitSentence is the picker's explanation when it opens without
+// the server's refusal sentence (from the proactive "choose attackers…"
+// control): the number and the seat, both read off the view.
+export function attackLimitSentence(room: number, seatName: string): string {
+  if (room <= 0) return `No more creatures can attack ${seatName} this combat.`;
+  return `Only ${room} more creature${room === 1 ? "" : "s"} can attack ${seatName} this combat.`;
+}
+
+// BulkAttackAttempt is the one "attack with all" declaration that can
+// be in flight: the seat it aimed at, and the action frame id
+// sendAction returned for it.
+export interface BulkAttackAttempt {
+  defenderSeatID: string;
+  frameID: string;
+}
+
+// BulkAttackRefusal is a refusal of that declaration the client can
+// answer with the attackers picker: an unpaid tax (#1162) or a count
+// limit (#1533).
+export interface BulkAttackRefusal {
+  kind: "tax" | "limit";
+  defenderSeatID: string;
+}
+
+// bulkAttackRefusal claims the current error for the last "attack with
+// all" only when it is the server's answer to THAT frame (an error
+// frame echoes the refused action's id). Anything else stays with the
+// generic toast. Under Silent Arbiter the usual refusal is a single
+// click-declared attacker, and offering a picker for a bulk swing sent
+// earlier would answer the wrong action.
+export function bulkAttackRefusal(
+  err: { code: string; reason?: string; replyTo?: string } | null | undefined,
+  attempt: BulkAttackAttempt | null | undefined,
+): BulkAttackRefusal | null {
+  if (!err || !attempt || !err.replyTo || err.replyTo !== attempt.frameID) return null;
+  if (err.code === ErrorCode.AttackTaxUnpaid) {
+    return { kind: "tax", defenderSeatID: attempt.defenderSeatID };
+  }
+  if (err.code === ErrorCode.IllegalAttack && err.reason === "attack_limit") {
+    return { kind: "limit", defenderSeatID: attempt.defenderSeatID };
+  }
+  return null;
 }
