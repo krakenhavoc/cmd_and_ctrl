@@ -796,6 +796,23 @@ state; no partial merge is needed.
 4. Either side may close at any time. Server closes with a standard close
    code; client handles reconnection itself.
 
+**Client reconnect states (#1475).** This section predates the S33+
+reconnect ladder ([ADR 0044](decisions/0044-surviving-a-deploy.md)) and
+is due a fuller rewrite alongside #523's rewind/generation work — kept
+minimal here on purpose. The client's `ConnectionStatus` adds a fifth,
+terminal state to the four above: after a run of failed dials (default
+3, `DEAD_SESSION_CHECK_AFTER_FAILURES` in `client/src/lib/ws.ts`), the
+client asks `GET /me` — the cheapest authenticated route, echoing the
+principal — whether the session it is holding is still good. A
+definite 401 moves it to `session_ended` and the backoff ladder stops
+for good; anything else (a 5xx, a network failure, a timeout) is
+treated as "still trying" and the ladder is unaffected, because a
+server that is only restarting must never be mistaken for a revoked
+session. The connection banner renders `session_ended` as "Your
+session ended — sign in again", linking to Login, or to My games
+(`GET /me/games`, `POST /me/games/{id}/session`) for a signed-in
+identity.
+
 ---
 
 ## Out of scope for v0

@@ -34,11 +34,17 @@
     attempt?: number;
     /** Dial now instead of waiting out the backoff — GameClient.retryNow. */
     onRetry?: () => void;
+    /**
+     * Whether the last session this tab held belonged to a signed-in
+     * identity (#1475) — steers the "session_ended" banner's link
+     * between My games and Login. Ignored by every other status.
+     */
+    signedIn?: boolean;
   }
 
-  let { status, attempt = 0, onRetry }: Props = $props();
+  let { status, attempt = 0, onRetry, signedIn = false }: Props = $props();
 
-  const banner = $derived(connectionBanner(status, attempt));
+  const banner = $derived(connectionBanner(status, attempt, signedIn));
   const announcement = $derived(connectionAnnouncement(status, attempt));
 
   // S11.5 animations toggle, same gate the rest of the board uses: the
@@ -67,13 +73,18 @@
     class="connection-banner"
     class:tone-retrying={banner.tone === "retrying"}
     class:tone-lost={banner.tone === "lost"}
+    class:tone-ended={banner.tone === "ended"}
   >
     <span class="dot" class:animate aria-hidden="true"></span>
     <div class="copy">
       <strong class="headline">{banner.headline}</strong>
       <span class="detail">{banner.detail}</span>
     </div>
-    {#if onRetry}
+    {#if banner.link}
+      <!-- A dead session cannot be fixed by dialling harder (#1475) —
+           this replaces the retry button with a real navigation. -->
+      <a class="retry" href={banner.link.href}>{banner.link.label}</a>
+    {:else if onRetry}
       <button type="button" class="retry" onclick={() => onRetry?.()}>{banner.retryLabel}</button>
     {/if}
   </div>
@@ -117,6 +128,10 @@
   }
 
   .tone-lost {
+    --tone-color: var(--danger, #ff6b6b);
+  }
+
+  .tone-ended {
     --tone-color: var(--danger, #ff6b6b);
   }
 
@@ -172,6 +187,11 @@
     font: inherit;
     font-weight: 600;
     cursor: pointer;
+    /* .retry is also used as an <a> (#1475's session_ended link) —
+       these two only matter for that case, a <button> ignores them. */
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
   }
 
   .retry:hover,
