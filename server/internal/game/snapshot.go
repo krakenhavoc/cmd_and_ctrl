@@ -919,6 +919,7 @@ type stackItemSnapshot struct {
 	IsCopy        bool         `json:"isCopy,omitempty"`
 	Seq           uint64       `json:"seq"`
 	Ordered       bool         `json:"ordered"`
+	Commutes      bool         `json:"commutes,omitempty"` // #1511
 
 	// Paid is what the announcement cost (#789 / #761). Carried: a
 	// restore that lost it would resolve a converge spell for zero
@@ -1675,6 +1676,7 @@ func snapshotStackItem(g *Game, s *StackItem, cen *ContinuationCensus) stackItem
 		IsCopy:        s.IsCopy,
 		Seq:           s.Seq,
 		Ordered:       s.Ordered,
+		Commutes:      s.Commutes,
 		Paid:          clonePaidCost(s.Paid),
 		HasEffect:     s.Effect != nil,
 		HasTargetSpec: s.targetSpec != nil,
@@ -2372,6 +2374,7 @@ func restoreStackItem(s *stackItemSnapshot) *StackItem {
 		IsCopy:        s.IsCopy,
 		Seq:           s.Seq,
 		Ordered:       s.Ordered,
+		Commutes:      s.Commutes,
 		Paid:          clonePaidCost(s.Paid),
 		// Effect stays nil. A SPELL does not need one — resolution
 		// dispatches through EffectResolver by oracle ID — but an

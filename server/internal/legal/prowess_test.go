@@ -11,13 +11,14 @@ import (
 )
 
 // prowess_test.go — #706. Prowess adds no prompt kind: its triggers are
-// mandatory, untargeted and modeless, so what a bot seat sees is the
-// CR 603.3b ordering prompt when two prowess creatures trigger on one
-// cast, and then ordinary priority. This walks a bot's-eye cast end to
-// end — every enumerated answer accepted by the engine, never an empty
-// move list — and checks the result on the board.
+// mandatory, untargeted and modeless. Since #1511 two prowess
+// creatures triggering on one cast do not even raise the CR 603.3b
+// ordering prompt — the batch commutes, so the engine orders it — and
+// what a bot seat sees is ordinary priority. This walks a bot's-eye
+// cast end to end — every enumerated answer accepted by the engine,
+// never an empty move list — and checks the result on the board.
 
-func TestProwessTriggersAreOrderedAndPassedLikeAnyOther(t *testing.T) {
+func TestProwessTriggersAreAutoOrderedAndPassedLikeAnyOther(t *testing.T) {
 	// The harvester runs only with a catalog hook installed; this
 	// package has no catalog, and prowess needs none — the triggers
 	// come from the ability list.
@@ -40,18 +41,30 @@ func TestProwessTriggersAreOrderedAndPassedLikeAnyOther(t *testing.T) {
 		t.Fatalf("CastSpell: %v", err)
 	}
 
-	// Two prowess triggers from two different creatures: the caster
-	// orders them, and the order prompt is all they are offered.
+	// Two prowess triggers from two different creatures commute
+	// (#1511): no ordering prompt is queued, so the caster's move list
+	// holds no choice at all — only what they may do with priority.
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == game.PendingChoiceTriggerOrder {
+			t.Fatalf("an all-prowess batch queued a trigger_order prompt for %d items", len(c.TriggerOrderIDs))
+		}
+	}
 	moves := legal.EnumerateFor(g, me.ID)
 	if len(moves) == 0 {
 		t.Fatal("the caster has no legal move with two prowess triggers waiting")
 	}
+	passable := false
 	for _, m := range moves {
-		if m.Type != legal.TypeResolveChoice {
-			t.Fatalf("move %q offered while the trigger order is open", m.Label)
+		if m.Type == legal.TypeResolveChoice {
+			t.Fatalf("choice move %q offered for an auto-ordered prowess batch", m.Label)
+		}
+		if m.Kind == legal.KindPass {
+			passable = true
 		}
 	}
-	dispatchAll(t, g, me.ID, moves)
+	if !passable {
+		t.Fatal("the caster cannot pass priority over the auto-ordered prowess batch")
+	}
 
 	// Walk it the way a bot does until the stack is empty.
 	for i := 0; i < 64; i++ {

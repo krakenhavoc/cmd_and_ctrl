@@ -3,6 +3,7 @@
 **Status:** Implemented · 2026-09-02 · Branch `feat/s19-triggers-on-stack`
 **Addendum:** 2026-09-17 · **Accepted** · [Trigger doubling (CR 603.2d)](#addendum-2026-09-17-trigger-doubling-cr-6032d--accepted) · tracked on [#752](https://github.com/krakenhavoc/cmd_and_ctrl/issues/752)
 **Amendment:** 2026-09-24 · **Accepted** · [Resolution-time LKI for a permanent that has left (CR 608.2h)](#amendment-2026-09-24--resolution-time-lki-for-a-permanent-that-has-left-cr-6082h--accepted--s38) · [#1379](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1379)
+**Amendment:** 2026-09-24 · **Accepted** · [A batch that commutes needs no CR 603.3b order](#amendment-2026-09-24--a-batch-that-commutes-needs-no-cr-6033b-order--accepted--s48) · [#1511](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1511)
 
 ## Context
 
@@ -1157,7 +1158,8 @@ outcome, made here, did.
 - ~~**Trigger ordering UI** for one player's simultaneous triggers
   (CR 603.3b)~~ — shipped in sub-PR 8: `PendingChoiceTriggerOrder`
   holds the APNAP drain until each seat with ≥2 *differing*
-  triggers has ordered them (identical ones auto-order; the
+  triggers has ordered them (identical ones auto-order, and since
+  #1511 so does a batch that is all prowess — see that amendment; the
   submitted order is resolution order). A trigger arriving while a
   prompt is open re-asks with the full list.
 - ~~**Cast / combat-damage triggers**~~ — shipped in sub-PRs 6 and 7
@@ -2902,3 +2904,116 @@ which still holds unchanged.
 - **A set built without a board read the scan recognises** (a zone's
   `Cards` other than the battlefield, a helper returning `[]game.Card`)
   is not followed. Same direction.
+
+## Amendment 2026-09-24 — a batch that commutes needs no CR 603.3b order · Accepted · S48
+
+Issue [#1511](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1511).
+Follow-ups: [#1530](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1530).
+Found alongside it: [#1529](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1529).
+
+### What was wrong
+
+Sub-PR 8 skipped the CR 603.3b prompt for one shape only: every item in
+the seat's batch had the same source and the same label (two Bident
+draws). Prowess (#706, ADR 0014 amendment 2026-09-24) fires on every
+noncreature spell, one trigger per instance per creature. So two prowess
+creatures asked their controller to order two "+1/+1 until end of turn"
+triggers on every spell, and every answer gave the same board. That
+prompt is rules-correct, but it cost a click per spell for a choice with
+no consequence.
+
+### Decision
+
+**A seat's batch drains without a prompt when every item in it is a
+`StackItem.Commutes` item.** `seatNeedsTriggerOrder` (`game/mutations.go`)
+now skips the prompt for either of two shapes: all identical (unchanged)
+or all commutative. A commutative item counts only while it carries no
+targets and no modes (`commutesForOrdering`). An auto-ordered batch
+keeps its queue order, which is harvest order, and the APNAP drain
+places it exactly as it would place an answered prompt.
+
+**`Commutes` is a closed, engine-owned class. Prowess is its only
+member.** The prowess trigger's `Build` (`game/prowess.go`) sets it; no
+card file may. Commutativity is a property of a PAIR of effects, so a
+new member needs an argument against every existing member, recorded
+here, before it joins. The flag is carried by `cloneStackItem` (undo)
+and by the snapshot (`commutes`, additive and omitempty: a file written
+before it restores with the flag false, which is the safe direction and
+just prompts again).
+
+**Why two prowess triggers commute.** Each one:
+
+- reads only its own source, asking "is this still the object that
+  triggered, on the battlefield" (the #1432 new-object check), and no
+  prowess changes that for another creature;
+- writes only a layer-7c +1/+1 until end of turn, pinned to its own
+  source's instance ID and battlefield-entry stamp. Layer-7c
+  modifications add up whatever their timestamps (CR 613.4c), and 7d
+  switching runs after all of 7c whatever the order;
+- emits no event: `registerScopedStaticLocked` appends to the registry
+  and bumps the layer version, and nothing watches for a P/T change or
+  for an ability resolving.
+
+So every order leaves the same board, the same effects and the same
+end-of-turn expiry. The only thing that differs is the sequence of
+`EventResolve` breadcrumbs in the log.
+
+**What the skip gives up, stated honestly.** Opponents get priority
+between resolutions. Order therefore still decides which creature is
+already pumped when someone responds halfway through the batch, for
+example Shocking the second creature before its pump resolves. That is
+a sliver of strategy, not a difference in the final board. The skip
+takes it away. #1530 tracks an "always ask me" per-player preference
+to give it back.
+
+### Rejected
+
+- **"All commutative items plus at most one other trigger"** (the shape
+  #1511 suggested). The other trigger's position among the pumps is a
+  real choice whenever it reads what they change. Caldera Pyremaw
+  granted prowess is the example: "deals damage equal to its power"
+  deals one more after its own pump than before it. The engine can't
+  see what an `Effect` closure reads, so it can't tell a Pyremaw from
+  a harmless trigger. Even Monastery Mentor's untargeted token trigger
+  doesn't provably commute with a pump: the token's entry can trigger
+  an ability that resolves between the pumps and reads them. **So
+  Mentor and Sokka, Tenacious Tactician boards still prompt**, since
+  each is prowess plus a token trigger. #1530 records the narrowest
+  way to go further.
+- **"Identical-effect triggers from copies of the same card with no
+  targets."** A shared oracle ID and label say the closures are the
+  same code, not that they commute. An untargeted trigger that reads
+  its own source and writes shared state can resolve differently per
+  order. Same-source, same-label batches were already skipped by
+  sub-PR 8, and that shape is unchanged.
+- **A client-side "always this order" memory.** The prompt is queued
+  by the server, and the client's Settings are local (`settings.ts`).
+  With no server-side per-seat preference seam, a client toggle could
+  only answer the prompt faster, not skip it. The preference belongs
+  with #1530.
+
+### Bot
+
+A skipped prompt is never queued, so `legal.EnumerateFor` offers the
+caster ordinary priority instead of a `trigger_order` answer.
+`legal/prowess_test.go` (`TestProwessTriggersAreAutoOrderedAndPassedLikeAnyOther`)
+pins it: no `resolve_choice` move, and a pass is available.
+
+### Tests
+
+- `game/trigger_order_commutes_test.go`: the prowess `Build` marks its
+  item; a table over `seatNeedsTriggerOrder` (two or three commuting →
+  no prompt; commuting plus one untargeted other, plus a targeted one,
+  or plus a moded one → prompt); the real drain with three prowess
+  items (drains) and with three plus a targeted trigger (held, four
+  IDs); and Clone + RestoreFrom keeping the flag.
+- `cards/effects/prowess_order_test.go`: two and then three prowess
+  creatures cast through with no prompt and pump once each. A Mentor
+  board still prompts. Undo, restored from before the cast and from
+  mid-batch, settles without a prompt and pumps exactly once.
+
+The targeted case is pinned at the drain rather than end to end,
+because of #1529. A targeted trigger picks its target before it joins
+the queue, and by then the untargeted part of its batch has already
+drained, so it never gets ordered at all. That gap predates this
+amendment, and this amendment doesn't change it.

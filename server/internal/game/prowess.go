@@ -47,7 +47,9 @@ const KeywordProwess = "prowess"
 // Identical on every instance of one creature on purpose: CR 603.3b's
 // ordering prompt (seatNeedsTriggerOrder) is skipped when every item a
 // player has is the same source and label, and asking someone to order
-// two identical +1/+1s would be a question with no meaning.
+// two identical +1/+1s would be a question with no meaning. Instances
+// on DIFFERENT creatures skip it too, through StackItem.Commutes
+// (#1511) rather than the label.
 const prowessLabel = "Prowess — +1/+1 until end of turn"
 
 // prowessTrigger is the one TriggeredAbility a single instance of
@@ -69,7 +71,18 @@ var prowessTrigger = TriggeredAbility{
 		return ok && !spell.IsCreature()
 	},
 	Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-		return NewTriggeredItem(source, prowessLabel, resolveProwess)
+		item := NewTriggeredItem(source, prowessLabel, resolveProwess)
+		// #1511: prowess instances commute with each other, so a batch
+		// of nothing but prowess needs no CR 603.3b ordering prompt.
+		// Each one reads only its own source (is this object still on
+		// the battlefield, and the same object) and writes only a
+		// layer-7c +1/+1 pinned to that source; no prowess changes
+		// what another reads, layer-7c modifications add whatever
+		// their timestamps, and registering one emits no event. The
+		// full argument, and what it leaves out, is ADR 0018's #1511
+		// amendment.
+		item.Commutes = true
+		return item
 	},
 }
 
