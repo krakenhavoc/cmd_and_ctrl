@@ -13,7 +13,7 @@ import "github.com/google/uuid"
 // CR 601.2 casts a spell from wherever the effect that allows it
 // says, and the permission is nearly always a property of the CARD:
 // "you may cast this card from your graveyard" is printed on
-// Gravecrawler, and flashback (CR 702.34b) is the same permission
+// Gravecrawler, and flashback (CR 702.34a) is the same permission
 // with a price attached. So the whitelist becomes a per-card
 // declaration — CastableZones — defaulting to hand for the ~99% of
 // cards that print nothing.
@@ -58,7 +58,7 @@ import "github.com/google/uuid"
 var CatalogCastableZones func(oracleID string) []ZoneKind
 
 // defaultCastableZones is what a card that declares nothing gets:
-// its owner's hand, and nowhere else (CR 601.1).
+// its owner's hand, and nowhere else (CR 601.2).
 var defaultCastableZones = []ZoneKind{ZoneHand}
 
 // CastableZonesFor returns the zones a card declares itself castable
@@ -286,7 +286,7 @@ func (g *Game) CastOffersForLocked(playerID uuid.UUID, card Card, zone ZoneKind,
 //     the player's favour.
 //  2. A zone neither the card nor a permission opens is not
 //     castable — except hand and the command zone, whose permissions
-//     come from CR 601.1 and CR 903.4.
+//     come from CR 601.2 and CR 903.4.
 //  3. A zone the CARD declares and prices must be paid for. If
 //     Faithless Looting offers a graveyard-bound flashback cost, a
 //     graveyard cast that claims nothing would otherwise get the

@@ -10,7 +10,7 @@ import (
 
 // block_declaration_test.go — #830 at the card level. The block
 // declaration is announced once, when it is locked in (CR 509.1), so
-// "becomes blocked" (CR 509.1h, afflict CR 702.131) fires once per
+// "becomes blocked" (CR 509.1h, afflict CR 702.130) fires once per
 // blocked ATTACKER of the final assignment and "whenever this
 // creature blocks" (CR 509.3a) once per blocker.
 //

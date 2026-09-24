@@ -19,7 +19,7 @@ import (
 // trigger goes on the stack ABOVE the spell that targeted, so it
 // resolves first. That falls out of emitting EventBecomesTarget at
 // announce rather than at resolution; see the kind's doc comment in
-// events.go for why that is also what CR 115.7 says.
+// events.go for why that is also what CR 115.3 says.
 //
 // "That creature" is not a target — the trigger names it by
 // reference to the event, so there is no target clause here and
@@ -42,7 +42,7 @@ import (
 //   - One prompt per target slot. A spell that targets two of your
 //     creatures asks twice, which is right; a spell that targets the
 //     same creature twice would also ask twice, which is also right
-//     (CR 115.7 counts instances of the word "target").
+//     (CR 115.3 counts instances of the word "target").
 func init() {
 	Register(Spec{
 		OracleID:     "ff92fa60-f0fe-496e-8155-d9d6f5af651b",

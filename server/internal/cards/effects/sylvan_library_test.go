@@ -53,7 +53,7 @@ func sylvanOpening(t *testing.T, g *game.Game) (*game.Player, *game.PendingChoic
 
 	advanceToDrawStepOf(t, g, 1)
 	// Link 1: "you may draw two additional cards" — the trigger's own
-	// CR 603.4 prompt, offered before the trigger is even built.
+	// CR 603.5 prompt, offered before the trigger is even built.
 	offer := latestTriggerPromptFor(g, owner.ID)
 	if offer == nil {
 		t.Fatal("Sylvan Library offered no draw-step prompt")
@@ -216,7 +216,7 @@ func TestSylvanLibraryCannotPayLifeItDoesNotHave(t *testing.T) {
 // life to pay for one.
 //
 // That is also the right answer under the rules. The cards the ability
-// operates on are ones DRAWN THIS TURN that are in hand (CR 121.3 —
+// operates on are ones DRAWN THIS TURN that are in hand (CR 121.1 —
 // the draw is what put them there, and a card that has since been
 // discarded is not one this ability can choose), and the put-back it
 // would otherwise perform is a move to a library, whose CR 616

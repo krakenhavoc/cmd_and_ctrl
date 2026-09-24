@@ -25,7 +25,7 @@ import (
 // thing being checked is not a number in the scorer — the unit tests
 // in heuristic/life_cost_test.go cover those. It is the whole chain:
 // the ability is registered in the catalog, the enumerator offers it
-// (CR 118.4 makes paying down to zero legal, so the engine WOULD take
+// (CR 119.4 makes paying down to zero legal, so the engine WOULD take
 // it), the cost reaches the policy on legal.Move, and the policy
 // declines. Break any link and the bot removes itself from the game.
 //

@@ -16,7 +16,7 @@
   //     ("choose two", every bullet targets) could not be cast at
   //     all, because the server could not carry two target groups.
   //   - It SORTED the chosen indexes ascending, which threw away the
-  //     order the modes resolve in (CR 700.2c).
+  //     order the modes resolve in (CR 608.2c).
   //   - It had no notion of choosing the same bullet twice
   //     (CR 700.2d, Mystic Confluence), which is a count per option
   //     rather than a toggle.
@@ -40,7 +40,7 @@
   const repeatable = $derived(spec?.repeatable ?? false);
 
   // chosen is the multiset of option indexes IN THE ORDER CHOSEN —
-  // which is the order they resolve in (CR 700.2c) and the order
+  // which is the order they resolve in (CR 608.2c) and the order
   // their targets are asked for.
   let chosen = $state<number[]>([]);
 
@@ -90,7 +90,7 @@
     }
     if (spec.max > 0 && chosen.length >= spec.max) return;
     // Appended, never sorted: the order the player clicks in is the
-    // order CR 700.2c resolves in and the order the targets are
+    // order CR 608.2c resolves in and the order the targets are
     // asked for (#764).
     chosen = [...chosen, i];
   }

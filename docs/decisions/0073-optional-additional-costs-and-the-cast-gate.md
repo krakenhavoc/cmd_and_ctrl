@@ -413,7 +413,7 @@ window on a field that is a week old, and it errs weaker than printed.
 
 §7 built one announce-time answer to "may this player cast this spell at
 all?". This amendment builds its twin — "may this player activate this
-ability at all?" (CR 602.5a) — in the same shape, in a new file beside it,
+ability at all?" (CR 602.5) — in the same shape, in a new file beside it,
 and adds the one piece of state §7 named as missing and then went without.
 
 ### Why a twin and not a widened `CastGateLocked`

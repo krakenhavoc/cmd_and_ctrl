@@ -19,7 +19,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // targets rather than one target the second bounce has to share.
 //
 // Each bullet's body runs once per occurrence in announce order
-// (CR 700.2c), which is what makes three draws three draws.
+// (CR 608.2c), which is what makes three draws three draws.
 //
 // No simplification.
 func init() {

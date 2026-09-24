@@ -39,7 +39,7 @@ import "github.com/google/uuid"
 //	CR 704.5i  a planeswalker at 0 loyalty — also "put into its
 //	           owner's graveyard", which is why an indestructible
 //	           planeswalker still dies to its own minus ability.
-//	CR 704.5v  a battle at 0 defense counters — sacrificed.
+//	CR 704.5v/w  a battle at 0 defense counters — sacrificed.
 //	CR 701.21a sacrifice, which is never destruction. This is the
 //	           reason the check CANNOT live in
 //	           routeBattlefieldCardToOwnerGraveyardLocked: that
@@ -159,7 +159,7 @@ func (g *Game) destroyBattlefieldPermanentLocked(cardID uuid.UUID, opts DestroyO
 //     sweep in mutations.go, and that sweep's `doomed` set contains
 //     three kinds of permanent indestructible does NOT save: a
 //     creature at 0 toughness (CR 704.5f), a planeswalker at 0
-//     loyalty (CR 704.5i), a battle at 0 defense (CR 704.5v). All
+//     loyalty (CR 704.5i), a battle at 0 defense (CR 704.5v/w). All
 //     three are "put into a graveyard", not "destroy". A filter one
 //     level down would wrongly protect every one of them. The SBA
 //     already filters the two branches that ARE destruction while it

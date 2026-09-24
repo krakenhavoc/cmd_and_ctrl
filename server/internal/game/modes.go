@@ -24,7 +24,7 @@ import "fmt"
 // target group through TargetRef.Mode. The catalog reads the choice
 // back through effects.Context.HasMode / ModeCount / Modes, or lets
 // the engine dispatch each chosen bullet's ModeOption.Effect in
-// announce order (CR 700.2c).
+// announce order (CR 608.2c).
 
 // ModeOption is one bullet of a modal spell or ability.
 type ModeOption struct {
@@ -39,7 +39,7 @@ type ModeOption struct {
 	Targets *TargetSpec
 
 	// Effect is this bullet's body, run at resolution in announce
-	// order (CR 700.2c), once per OCCURRENCE — a mode chosen twice
+	// order (CR 608.2c), once per OCCURRENCE — a mode chosen twice
 	// under CR 700.2d runs twice. `occurrence` is the index into
 	// StackItem.Modes, so the effect reads its own target group
 	// (effects.Context.ModeTargets) rather than the item's whole
@@ -193,7 +193,7 @@ func castTargetSpecForItem(oracleID string, item *StackItem) *TargetSpec {
 }
 
 // runChosenModeEffectsLocked runs each chosen bullet's ModeOption
-// Effect in announce order, once per occurrence (CR 700.2c, and CR
+// Effect in announce order, once per occurrence (CR 608.2c, and CR
 // 700.2d for a repeated mode). A nil Effect means the card resolves
 // its modes inside its own OnResolve instead, which is the older and
 // still-supported shape.

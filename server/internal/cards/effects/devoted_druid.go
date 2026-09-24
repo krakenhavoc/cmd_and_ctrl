@@ -21,7 +21,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Two rules the engine enforces rather than the card:
 //
-//   - CR 121.1: paying a cost is not an effect, so the counter is NOT
+//   - CR 614.16: a counter-doubling replacement applies only to a
+//     counter placed by an EFFECT, so the counter is NOT
 //     replaceable. A Doubling Season does not make the untapper cost
 //     two counters, and nothing stops the counter going on.
 //   - CR 118.3: a permanent that cannot have the counter put on it

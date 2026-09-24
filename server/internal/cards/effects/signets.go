@@ -25,7 +25,7 @@ package effects
 //     Ancient Tomb.)
 //   - There is no auto-tap into it. ActivateManaAbility deliberately
 //     will not tap other permanents to fund a mana ability: a mana
-//     ability resolves with no priority window (CR 605.3a), and the
+//     ability resolves with no priority window (CR 605.3b), and the
 //     planner cannot weigh "tap three lands to filter one". The
 //     player floats the {1} and clicks the Signet, which is exactly
 //     how the card is played on paper.

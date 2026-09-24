@@ -67,7 +67,7 @@ const (
 	// permutation and resumes the pipeline. Added in S17 sub-PR 2.
 	PendingChoiceReplacementOrder PendingChoiceKind = "replacement_order"
 
-	// PendingChoiceOptionalReplacement — CR 614.10 yes/no prompt
+	// PendingChoiceOptionalReplacement — "may" yes/no prompt
 	// for an Optional replacement effect (today: CR 903.9
 	// commander-zone). Owner answers yes → Replace runs; no →
 	// effect is marked applied without running, event proceeds.
@@ -1535,7 +1535,7 @@ func keepSeats(in []ChoiceOption, keep func(uuid.UUID) bool) ([]ChoiceOption, bo
 	return out, true
 }
 
-// queueOptionalReplacementPromptLocked queues a CR 614.10 yes/no
+// queueOptionalReplacementPromptLocked queues a "may" yes/no
 // prompt for a single optional replacement effect. The chooser is
 // the effect's Controller (for CR 903.9 commander-zone: the
 // commander's owner). The resume path in ResolveOptionalReplacement
@@ -1563,7 +1563,7 @@ func (g *Game) queueOptionalReplacementPromptLocked(ev *ReplacementEvent, chosen
 	g.QueueChoiceForEffect(choice)
 }
 
-// optionalReplacementChooserLocked is who answers a CR 614.10 "may"
+// optionalReplacementChooserLocked is who answers a "may"
 // prompt: the effect's Controller when it names one (the commander's
 // owner for CR 903.9), else the event's affected player. Caller must
 // hold g.mu.
@@ -1578,7 +1578,7 @@ func (g *Game) optionalReplacementChooserLocked(ev *ReplacementEvent, chosen act
 	return chooser
 }
 
-// offerOptionalReplacementLocked handles an applicable CR 614.10
+// offerOptionalReplacementLocked handles an applicable
 // "may" replacement. Returns true when the yes/no prompt was queued
 // and the caller must stop where it is — errReplacementPending from
 // the apply-loop, a bare nil from the chosen-order resume — which is
@@ -1586,7 +1586,7 @@ func (g *Game) optionalReplacementChooserLocked(ev *ReplacementEvent, chosen act
 // offerEntryLifePaymentLocked already have.
 //
 // Returns false — the "may" is DECLINED, and marked applied so the
-// apply-loop does not gather it a second time (CR 614.10: the
+// apply-loop does not gather it a second time (CR 614.5: the
 // decision is once per event) — in the two cases where there is no
 // question to ask:
 //
@@ -1667,7 +1667,7 @@ func (g *Game) ResolveOptionalReplacement(choiceID, chooserID uuid.UUID, apply b
 		g.replacementsAppliedThisEvent[ev.ID] = make(map[ReplacementEffectID]bool)
 	}
 	// Mark applied regardless of yes/no so the apply-loop doesn't
-	// re-evaluate this effect again for this event (CR 614.10: the
+	// re-evaluate this effect again for this event (CR 614.5: the
 	// decision is once per event).
 	g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
 	if apply && chosen.effect.Replace != nil {
@@ -1846,7 +1846,7 @@ func affectedPlayerForEvent(ev *ReplacementEvent, applicable []activeReplacement
 		// replacements — the same reading the mill arm above takes.
 		//
 		// The prompt it would order is never actually put to them: a
-		// production sets mustSettleNow (CR 605.3a), so the apply-loop
+		// production sets mustSettleNow (CR 605.3b), so the apply-loop
 		// applies the gathered order inline. The arm is still the
 		// honest answer to "who would be asked", it is what the
 		// eliminated-chooser branch reads before the mustSettleNow one,
@@ -1999,7 +1999,7 @@ func (g *Game) ResolveReplacementOrder(choiceID, chooserID uuid.UUID, ordered []
 			continue
 		}
 		if chosen.effect.Optional {
-			// #847: and a CR 614.10 "may" is the third of them. This
+			// #847: and a "may" is the third of them. This
 			// branch was missing, so a "may" ordered alongside any
 			// other effect fired without ever being offered — the
 			// engine said yes on its controller's behalf, which is
@@ -2103,7 +2103,7 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		return g.actuallyDrawCardsLocked(ev.DrawPlayer, ev.DrawCount)
 	case RepEventProduceMana:
 		// #1222: unreachable, and that is the decision rather than an
-		// oversight. A production sets mustSettleNow (CR 605.3a — a
+		// oversight. A production sets mustSettleNow (CR 605.3b — a
 		// mana ability resolves as one indivisible step with no
 		// priority window inside it, and the auto-tapper may raise no
 		// prompt at all), so no event of this kind ever queues a
@@ -2359,8 +2359,8 @@ func (g *Game) stepEntryStillPendingLocked(ev *ReplacementEvent) bool {
 }
 
 // finishSettledReplacementLocked is the single "the apply-loop has
-// settled — now finish the event" call the CR 616 / CR 614.10 resumes
-// make. `ev` is the event the resume has been holding; `out` is what
+// settled — now finish the event" call the CR 616 / "may" replacement
+// resumes make. `ev` is the event the resume has been holding; `out` is what
 // applyReplacementsLocked handed back (nil when cancelled).
 //
 // Cancelling means "the mutation simply does not happen" for every
@@ -2868,7 +2868,7 @@ func (g *Game) finishPickTargetLocked(f *pickTargetFrame) {
 	item.modeSpec = f.modeSpec
 	item.DoubledBy, item.DoubledByName = f.doubledBy.id, f.doubledBy.name
 	g.queueHarvestedTriggerLocked(item)
-	// CR 603.3d / 115.7: a triggered ability's targets are chosen as
+	// CR 603.3d / 115.3: a triggered ability's targets are chosen as
 	// it is put on the stack, which is right here. Emitted after the
 	// queue so a "becomes the target" trigger stacks above the
 	// ability that targeted. Added in S22 for Monk Gyatso.

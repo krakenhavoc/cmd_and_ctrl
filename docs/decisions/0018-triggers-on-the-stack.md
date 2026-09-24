@@ -53,7 +53,7 @@ item from `StackMeta`, run `spellAllTargetsIllegalLocked` (every
 targeted slot illegal → `EventFizzle`, no effect), emit
 `EventResolve`, then run `Effect`. An error from `Effect` surfaces
 as `EventEffectError` and does not wedge the stack — the ability
-has ceased to exist either way (CR 608.2m). `nil` keeps the S13.1
+has ceased to exist either way (CR 608.2n). `nil` keeps the S13.1
 manual-sandbox meaning: the players resolve it by hand.
 
 Why a closure on the item rather than routing through the
@@ -104,7 +104,7 @@ step late:
   put on the stack (CR 603.3).
 - `MoveCardByID` (the sandbox move_card verb) and the land branch
   of `CastSpell` now call `runStateChecksLocked`. Both are special
-  actions after which the actor keeps priority (CR 116.3c), and
+  actions after which the actor keeps priority (CR 116.3), and
   CR 117.5 puts SBAs + the trigger drain at exactly that boundary.
   A catalog creature dropped straight onto the battlefield gets its
   ETB trigger on the stack immediately.
@@ -2088,7 +2088,7 @@ One engine line did change, and a back-out is what found it:
 `EventManaAbilityActivated` set `Source` but not `CardID`, so a
 source predicate looking the ability's object up by `CardID` matched
 nothing on the mana path — a silent miss, not an error. Both emit
-sites (the hand click and the auto-tapper's executor, CR 605.3a) now
+sites (the hand click and the auto-tapper's executor, CR 605.3) now
 carry the same stamps `EventActivateAbility` always has, which is
 what #1184 intended when it said a watcher can read the same fields
 off either kind.

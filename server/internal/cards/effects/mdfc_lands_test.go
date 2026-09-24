@@ -353,7 +353,7 @@ func TestCastRejectsAFaceTheCardDoesNotHave(t *testing.T) {
 	}
 }
 
-// TestTransformBackFaceIsNotCastable is CR 712.4. A transform card
+// TestTransformBackFaceIsNotCastable is CR 712.11. A transform card
 // is always cast as its front face; its back is reached by
 // transforming the permanent, which is a later PR. Offering the back
 // at announce would be strictly wrong rules, so it is refused.

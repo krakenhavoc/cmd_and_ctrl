@@ -9,7 +9,7 @@ package effects
 // A five-mana 5/5 flier that cannot be targeted — the archetypal
 // voltron commander, and the one whose body is closest to fully
 // modelled today. Five evasive power is five turns to the 21-damage
-// clock (CR 903.14a), or three with any two pump spells from this
+// clock (CR 903.10a), or three with any two pump spells from this
 // sprint's protection suite.
 //
 // Both printed keywords are real: `hexproof` has been enforced at

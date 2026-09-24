@@ -36,7 +36,7 @@ import (
 //
 // Three clauses, all of them load-bearing and none of them new:
 //
-//   - SorcerySpeed is CR 702.6b's "any time you could cast a
+//   - SorcerySpeed is CR 702.6a's "any time you could cast a
 //     sorcery", gated by the engine's existing main-phase /
 //     empty-stack / active-player check.
 //   - The target clause is "creature you control", validated at
@@ -46,7 +46,7 @@ import (
 //     once attached, control of the creature may change and the
 //     Equipment stays put (see attachmentLegalLocked in the game
 //     package for the other half of that rule).
-//   - Re-activating moves the Equipment (CR 702.6d), which the
+//   - Re-activating moves the Equipment (CR 701.3a), which the
 //     attach primitive gets right by overwriting.
 func EquipAbility(cost string) ActivatedAbility {
 	return ActivatedAbility{

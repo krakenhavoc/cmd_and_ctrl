@@ -13,7 +13,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // attack. With the commander looting every turn this is a slow but
 // inevitable clock on the whole table.
 //
-// Batching (CR 603.1): the card reads "one or more cards… that
+// Batching: the card reads "one or more cards… that
 // much damage", one trigger per batch. The engine emits one
 // EventDiscardCard per card, so a two-card discard deals 1 twice
 // rather than 2 once. Same total, two log lines.

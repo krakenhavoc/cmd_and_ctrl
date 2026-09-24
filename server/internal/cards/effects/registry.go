@@ -919,7 +919,7 @@ func checkExhaustAbilities(spec Spec) {
 		checkOneExhaustAbility(spec.Name, "activated ability", i, a.Label, a.Exhaust, seen)
 	}
 	// #1183: the mana half. A mana ability takes the other entry
-	// point (ActivateManaAbility, CR 605.3a) and the same record, so
+	// point (ActivateManaAbility, CR 605.3) and the same record, so
 	// it answers to the same three rules.
 	for i, a := range spec.ManaAbilities {
 		checkOneExhaustAbility(spec.Name, "mana ability", i, a.Label, a.Exhaust, seen)

@@ -29,7 +29,7 @@ const (
 
 // TestLeoninShikariPutsEquipOnTheListOutsideTheSorceryWindow is the
 // grant's #544 half: an equip ability is sorcery-speed on its own
-// (CR 702.6b), and the Shikari's static opens it.
+// (CR 702.6a), and the Shikari's static opens it.
 func TestLeoninShikariPutsEquipOnTheListOutsideTheSorceryWindow(t *testing.T) {
 	g := newTable(t)
 	active := g.Seats[g.Turn.ActiveSeat]

@@ -203,7 +203,7 @@ Three deliberate limits:
   Scales → Season → Season (8) can reach. Collapsing would remove a
   legal outcome, which is worse than one extra prompt.
 - **An effect that asks its controller a question is never
-  collapsed** — a CR 614.10 "may", a shockland's pay-life, a copy
+  collapsed** — a "may", a shockland's pay-life, a copy
   selector. Skipping the ordering prompt would skip its question too.
   Shared by both exceptions as `asksItsOwnQuestion`.
 - **An effect whose `Replace` writes its own SOURCE into the event is
@@ -301,7 +301,7 @@ apply-loop settles without prompting:
   an eliminated chooser — one effect at a time, re-gathering after each
   (CR 616.1f; §5e);
 - anything that would ask its own question (`asksItsOwnQuestion`: a
-  CR 614.10 "may", a shockland's pay-life, a copy selector) is skipped
+  "may", a shockland's pay-life, a copy selector) is skipped
   un-applied, the weaker-never-stronger posture
   `optionalReplacementResumableLocked` takes for an entry with nothing
   to resume it.
@@ -481,7 +481,7 @@ life or damage event:
 - when the departed player is the one the event happens to (the CR 616
   chooser always is), nothing lands — CR 800.4a takes them out of the
   game — and the continuation runs with zero;
-- when they only owned a CR 614.10 "may" on somebody else's event, the
+- when they only owned a "may" on somebody else's event, the
   pipeline resumes and the existing gone-chooser escapes decide for them
   (the "may" is declined), and the event lands with its continuation.
 
@@ -528,7 +528,7 @@ Closes [#707](https://github.com/krakenhavoc/cmd_and_ctrl/issues/707),
 noticed while fixing [#605](https://github.com/krakenhavoc/cmd_and_ctrl/issues/605)
 (PR #701).*
 
-§8 makes the commander-zone rewrite a CR 614.10 "may", and #529 (see
+§8 makes the commander-zone rewrite a "may", and #529 (see
 the note in `zone_route.go`) moved the window that offers it down into
 the shared exit primitive so CR 903.9's "from ANYWHERE" holds for every
 route: countered, fizzled, exiled, bounced, tucked, milled. Asking is
@@ -673,7 +673,7 @@ noticed by the #802/#801 agent in PR #845 and not fixed there.*
 never collapsed, "because skipping the ordering prompt would skip its
 question too". That was true of the two paths §5a was about. It was not
 true of the two paths that apply several effects once the prompt has
-been answered or ruled out, and both of them answered a CR 614.10 "may"
+been answered or ruled out, and both of them answered a "may"
 on its controller's behalf, in the direction that favours it.
 
 **1. The chosen-order loop asks.** `ResolveReplacementOrder` fires the
@@ -1532,7 +1532,7 @@ waits for the next destruction.
 battlefield goes through one exit primitive — destroy, sacrifice
 (CR 701.21a), the legend rule, an illegally attached Aura (CR 704.5m),
 zero toughness (CR 704.5f), zero loyalty (CR 704.5i), zero defense
-(CR 704.5v) — and every one of them ends in the same graveyard, so
+(CR 704.5v/w) — and every one of them ends in the same graveyard, so
 there was nothing a reader could have looked at to tell them apart.
 Indestructible sidesteps the question by filtering BEFORE the window
 opens; a replacement cannot. So the destroy route sets the flag
@@ -1967,7 +1967,7 @@ instruction is the card's, so it runs inside the catalog's `OnResolve`,
 which is BEFORE the resolution frame decides where the spell goes next.
 All three of that frame's post-effect exits assume the spell is still
 on the stack: the battlefield entry for a permanent, CR 707.10's
-cease-to-exist for a copy, and CR 608.2m's "as the final part of an
+cease-to-exist for a copy, and CR 608.2n's "as the final part of an
 instant or sorcery spell's resolution, the spell is put into its
 owner's graveyard".
 
@@ -1986,7 +1986,7 @@ out loud**, and that is the general lesson worth recording beside §5f.
 **Decision: one check, in the resolution frame** —
 `spellMovedItselfLocked` (`game/mutations.go`), immediately after the
 card's own body and its chosen modes have run, before the three exits
-branch. CR 608.2m is the rule that licenses it: the thing put into a
+branch. CR 608.2n is the rule that licenses it: the thing put into a
 graveyard is the spell ON THE STACK, and there is none.
 
 It sits in the frame rather than in `routeStackCardToGraveyardLocked`
@@ -2920,7 +2920,7 @@ untouched.
 #### Context
 
 The entry pipeline could stop and ask three questions, and all three are
-yes/no-shaped: a CR 614.10 "may" (`Optional`, §5h), a shockland's
+yes/no-shaped: a "may" (`Optional`, §5h), a shockland's
 "you may pay 2 life" (`EntryLifeCost`, `entry_choice.go`) and a copy
 selector's "enter as a copy of what?" (`CopySelector`, §5o). None of them
 can express the one sentence twelve catalog-waiting cards print:
@@ -3146,7 +3146,7 @@ colour, so it cannot pay `{W}{U}`.
 #### Decision 2 — A production can never pause, and that is a rule
 
 Every `RepEventProduceMana` sets `mustSettleNow`. For the two halves of
-#793's cost line that flag is a cost argument; here it is CR 605.3a:
+#793's cost line that flag is a cost argument; here it is CR 605.3b:
 activating a mana ability is a single indivisible step with no stack and
 no priority window inside it, so there is no point between paying the
 cost and producing the mana at which anybody can be asked anything. The
@@ -3312,7 +3312,7 @@ already have:
    and the resume has nothing else to go on.
 2. **One settled exit.** `applyResolvedCounterThenLocked` lands the
    counters and then runs the tail with the delta the window settled on.
-   The inline path uses it, and so does the CR 616 / CR 614.10 resume
+   The inline path uses it, and so does the CR 616 / "may" replacement resume
    (`applyResolvedReplacementEventLocked`'s RepEventCounter arm). So a
    paused placement and an unpaused one cannot disagree about when the
    rest of the effect runs.
@@ -3571,7 +3571,7 @@ zero.
 
 Every CR 614 window that pauses mid-resolution queues its prompt
 through `QueueChoiceForEffect`, so every one of them is stamped
-`PendingChoice.midResolution`: the CR 616 ordering prompt, the CR 614.10
+`PendingChoice.midResolution`: the CR 616 ordering prompt, the "may"
 optional replacement, the entry payment and entry reveal, and the copy
 choice. While one is open the CR 704.3 boundary is held, and the answer
 that settles the event runs it (`finishReplacementResumeLocked`, and the
@@ -3926,7 +3926,7 @@ the catalog.
 - **`Spec.Replacements []game.ReplacementEffect`** new field on the
   catalog spec; parallel to `Static`.
 - **Two new PendingChoiceKinds**: `replacement_order` (CR 616
-  multi-effect ordering) + `optional_replacement` (CR 614.10 yes/no).
+  multi-effect ordering) + `optional_replacement` (a "may" yes/no).
   Each has a resume method (`ResolveReplacementOrder`,
   `ResolveOptionalReplacement`) and a dispatcher leg. Wire
   projection adds `ReplacementOptions`.

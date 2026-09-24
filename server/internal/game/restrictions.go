@@ -120,7 +120,7 @@ const (
 	CantBeBlocked
 
 	// CantActivate is "its activated abilities can't be activated"
-	// for everything that is not a mana ability (CR 602.5a),
+	// for everything that is not a mana ability (CR 602.5),
 	// including loyalty abilities, which are activated abilities
 	// (CR 606.1).
 	CantActivate

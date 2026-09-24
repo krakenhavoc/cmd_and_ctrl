@@ -1682,7 +1682,7 @@ func (g *Game) ActivationTimingOpenLocked(activator uuid.UUID, card Card,
 1. **Mana abilities are not asked about** (Decision 3).
 2. **The ability's own timing** — `SorcerySpeed` (CR 602.5d) or `Loyalty`
    (CR 606.3) answer to the sorcery window; everything else is instant-speed
-   (CR 602.5a).
+   (CR 117.1b).
 3. **The per-player GRANTS.**
 4. **The per-player RESTRICTIONS, last, because CR 101.2 says "can't" beats
    "can".** Nothing declares them today; the placement is the rule stated once

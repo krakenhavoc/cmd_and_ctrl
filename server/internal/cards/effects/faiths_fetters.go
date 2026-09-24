@@ -22,7 +22,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //   - "can't attack or block" — the same pair Pacifism carries.
 //     Inert on a non-creature host, which is the printed behaviour;
 //     Fetters on a Sol Ring is a worse Fetters, not a broken one.
-//   - "activated abilities can't be activated" — CR 602.5a, checked
+//   - "activated abilities can't be activated" — CR 602.5, checked
 //     at announce before any cost is validated. On a planeswalker
 //     this is the whole card: loyalty abilities ARE activated
 //     abilities (CR 606.1), so a Fettered walker sits there doing

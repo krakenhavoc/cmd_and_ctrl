@@ -27,7 +27,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     is an alternative cost (CR 118.9) with a life component (CR
 //     119.4), computed per card. It is a COST, so a player without the
 //     life cannot claim it — a Citadel cast is refused rather than
-//     resolving and killing you, which is what CR 118.4 means by
+//     resolving and killing you, which is what CR 119.4 means by
 //     paying life down to exactly zero being legal and further being
 //     not.
 //   - "lands AND spells", so the permission is not cast-only and no

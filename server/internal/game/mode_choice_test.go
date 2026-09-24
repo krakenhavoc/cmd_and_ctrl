@@ -228,7 +228,7 @@ func TestModalTriggerWithNoTakeableBulletIsRemoved(t *testing.T) {
 	}
 }
 
-// CR 700.2c: the chosen bullets' bodies run at resolution, in
+// CR 608.2c: the chosen bullets' bodies run at resolution, in
 // announce order — including twice for a repeated bullet (CR 700.2d).
 func TestChosenModeEffectsRunInAnnounceOrder(t *testing.T) {
 	var ran []string

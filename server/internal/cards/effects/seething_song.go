@@ -11,7 +11,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // This is the AddMana primitive's exact shape and the reason that
 // primitive exists: "Add {R}{R}{R}{R}{R}" is a SPELL that resolves
-// off the stack, so it cannot be a ManaAbility (CR 605.3a — mana
+// off the stack, so it cannot be a ManaAbility (CR 605.3b — mana
 // abilities never use the stack), and until AddMana landed with the
 // roadmap's batch 01 every mana in the engine came from
 // ActivateManaAbility.

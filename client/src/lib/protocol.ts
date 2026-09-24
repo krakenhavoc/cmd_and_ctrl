@@ -1833,7 +1833,7 @@ export interface LegalTargetsView {
  * It is carried twice (#992). `CardView` extends it for the face that
  * is UP, which is what every reader in this client has always read.
  * `CardFaceView` extends it for each face a cast may CHOOSE — both
- * halves of a modal DFC (CR 712.12a) and of an adventure card
+ * halves of a modal DFC (CR 712.11b) and of an adventure card
  * (CR 715.3) — so `cardAsFace` can swap the block in when the player
  * picks a half instead of clearing what the front published. Clearing
  * it is why casting Stomp from this client never opened a target

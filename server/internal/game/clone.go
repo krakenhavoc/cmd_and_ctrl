@@ -371,7 +371,7 @@ func (g *Game) cloneLocked() *Game {
 	// the permanent it describes.
 	out.lastKnownPermanents = cloneLastKnownPermanents(g.lastKnownPermanents)
 	// CR 614.5 once-per-event marks for events PAUSED on a CR 616 /
-	// CR 614.10 prompt (#808). Between actions the map holds an entry
+	// "may" replacement prompt (#808). Between actions the map holds an entry
 	// only for an event whose prompt is still open, and that entry is
 	// part of the prompt's state: an effect that applied on its own
 	// before the prompt was queued is marked there, and nowhere else.

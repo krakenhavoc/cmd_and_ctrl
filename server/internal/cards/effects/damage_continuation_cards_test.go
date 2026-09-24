@@ -56,7 +56,7 @@ func TestCreepingBloodsuckerGainsWhatWasActuallyDealtAcrossACR616Prompt(t *testi
 
 	b12ToMyNextUpkeep(t, g)
 
-	// The shield is turn-scoped (CR 615.6), so it is registered after
+	// The shield is turn-scoped (CR 514.2), so it is registered after
 	// the turn it has to survive has begun — the cleanup step of the
 	// previous turn sweeps anything registered earlier.
 	g.WithWriteLock(func() {

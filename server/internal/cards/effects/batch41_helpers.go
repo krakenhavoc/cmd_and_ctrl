@@ -233,7 +233,7 @@ func b41ZombieYouControlDealtCombatDamageToAnOpponent(ev game.Event, source *gam
 // `ev.Actor != source.Controller` is the "an opponent controls" half,
 // and it means your own Giant Growth on your own Sliver does not tax
 // you. Per target INSTANCE, because EventBecomesTarget is emitted per
-// target slot (CR 115.7) — a spell targeting two of your Slivers is
+// target slot (CR 115.3) — a spell targeting two of your Slivers is
 // taxed twice.
 func b41SliverYouControlBecameAnOpponentsTarget(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Actor == uuid.Nil || ev.Actor == source.Controller {

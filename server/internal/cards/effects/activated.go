@@ -482,7 +482,7 @@ func RemoveCountersAmong(kind string, n int, label string, preds ...CardPredicat
 // COST — Devoted Druid's "Put a -1/-1 counter on this creature:
 // Untap this creature" (#789).
 //
-// A cost, not an effect, with everything that follows from CR 121.1:
+// A cost, not an effect, with everything that follows from CR 614.16:
 // nothing doubles it (Doubling Season does not make the Druid's
 // untapper cost two counters), nothing replaces it, and an activator
 // who cannot have the counter put on cannot activate at all

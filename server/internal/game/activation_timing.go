@@ -277,7 +277,7 @@ func (g *Game) activationTimingVerdictLocked(q ActivationQuery) activationTiming
 //     (CR 602.5d, `ActivationAbility.SorcerySpeed`) and a loyalty
 //     ability (CR 606.3, `ActivationAbility.Loyalty`) answer to the
 //     sorcery window; every other activated ability is instant-speed
-//     on its own (CR 602.5a).
+//     on its own (CR 117.1b).
 //
 //  3. THE PER-PLAYER GRANTS. The Wandering Emperor, Teferi, Master
 //     of Time, Leonin Shikari. CR 101.1: a card beats a rule, which

@@ -394,7 +394,7 @@ func (g *Game) landedInZoneLocked(cardID uuid.UUID, dst ZoneKind, dstOwner uuid.
 // sacrifice (CR 701.21a), the legend rule (CR 704.5j), an illegally
 // attached Aura (CR 704.5m), a creature at zero toughness (CR 704.5f),
 // a planeswalker at zero loyalty (CR 704.5i), a battle at zero defense
-// (CR 704.5v). None of those is a destruction, so none of them may be
+// (CR 704.5v/w). None of those is a destruction, so none of them may be
 // regenerated — and the flag is the only thing that says so, because
 // all of them end in the same graveyard through the same primitive
 // (#667, regeneration.go).
@@ -627,7 +627,7 @@ func (g *Game) routeAllLandedLocked(r zoneRoute, ids []uuid.UUID) []uuid.UUID {
 // two rules that DESTROY a permanent (CR 704.5g lethal damage,
 // CR 704.5h deathtouch) with three that merely put it into a
 // graveyard (CR 704.5f zero toughness, CR 704.5i zero loyalty,
-// CR 704.5v zero defense). They have to leave together — a Blood
+// CR 704.5v/w zero defense). They have to leave together — a Blood
 // Artist must see the whole pass — and they have to leave by
 // different routes, because a regeneration shield may replace the
 // first two and must not touch the last three (#667).
@@ -746,7 +746,7 @@ func (g *Game) routeLegLandedLocked(r zoneRoute, id uuid.UUID) bool {
 // they are different rules. The effect path drops every
 // indestructible permanent (CR 702.12b); the SBA path drops them only
 // from the two damage-driven branches, because CR 704.5f / 704.5i /
-// 704.5v put a permanent into a graveyard rather than destroying it
+// 704.5v/w put a permanent into a graveyard rather than destroying it
 // and indestructible is no help there.
 //
 // #815: the count is taken from the LANDED outcome
@@ -768,7 +768,7 @@ func (g *Game) destroyPermanentsLocked(ids []uuid.UUID, opts DestroyOptions) int
 // doomedPermanent is one entry of the state-based-action sweep's
 // doomed set: the permanent, and whether the rule that doomed it
 // DESTROYS it (CR 704.5g lethal damage, CR 704.5h deathtouch) or
-// merely puts it into a graveyard (CR 704.5f, CR 704.5i, CR 704.5v).
+// merely puts it into a graveyard (CR 704.5f, CR 704.5i, CR 704.5v/w).
 //
 // The distinction was invisible before regeneration, because all five
 // end in the same graveyard by the same route. It is visible now: a

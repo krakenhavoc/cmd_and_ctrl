@@ -10,7 +10,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 3 life.)"
 //
 // The artifact deck's "block or lose 3". Afflict is a triggered
-// ability (CR 702.131), and the printed card GRANTS it; a static
+// ability (CR 702.130a), and the printed card GRANTS it; a static
 // cannot grant a trigger (the layer engine rewrites characteristics,
 // and the harvester reads triggers off the catalog by oracle ID), so
 // the ability lives on the Patrol — the Agent of the Iron Throne
@@ -26,7 +26,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // that leaves between the block and the trigger resolving still
 // makes the player lose 3 (the ability had already triggered), and
 // two Patrols give afflict 3 twice, since two instances of afflict
-// trigger separately (CR 702.131b).
+// trigger separately (CR 702.130b).
 //
 // The #388 timing gap is closed on both halves and the card prints
 // as printed. The lock-in (#830) drains the trigger onto the stack

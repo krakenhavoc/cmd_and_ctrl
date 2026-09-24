@@ -30,7 +30,7 @@ const (
 )
 
 // advanceToMain walks the turn to a main phase, which is where the
-// sorcery-speed equip gate opens (CR 702.6b).
+// sorcery-speed equip gate opens (CR 702.6a).
 func advanceToMain(t *testing.T, g *game.Game) {
 	t.Helper()
 	for i := 0; i < 32; i++ {
@@ -129,7 +129,7 @@ func TestEquipAttachesAndPumps(t *testing.T) {
 	}
 }
 
-// CR 702.6d — a second activation MOVES the Equipment, and the bonus
+// CR 701.3a — a second activation MOVES the Equipment, and the bonus
 // moves with it in the same beat.
 func TestReEquipMovesTheBonus(t *testing.T) {
 	g := newCatalogGame(t)
@@ -159,7 +159,7 @@ func TestReEquipMovesTheBonus(t *testing.T) {
 	}
 }
 
-// CR 702.6b — equip is sorcery-speed.
+// CR 702.6a — equip is sorcery-speed.
 func TestEquipIsSorcerySpeed(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
@@ -180,7 +180,7 @@ func TestEquipIsSorcerySpeed(t *testing.T) {
 	}
 }
 
-// CR 702.6b — "target creature you control".
+// CR 702.6a — "target creature you control".
 func TestEquipRejectsACreatureYouDoNotControl(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]

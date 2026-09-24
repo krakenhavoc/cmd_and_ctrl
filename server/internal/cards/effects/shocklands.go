@@ -32,7 +32,7 @@ import (
 // it. EntryLifeCost tells the apply-loop to stop and ask the
 // controller before anything moves (see entry_choice.go): paying
 // means the replacement never fires and the land enters untapped;
-// declining — or being unable to pay, CR 118.4 — fires it and the
+// declining — or being unable to pay, CR 119.4 — fires it and the
 // land ENTERS tapped. No tapped window, no untap event, no priority
 // pass. The tests count tap events rather than reading Tapped,
 // because that is the only thing that tells the two implementations

@@ -88,7 +88,7 @@ activation of creature abilities (e.g. mana abilities on a
 creature) rejects sick creatures. Land tap is exempt per CR 302.6
 (not a creature).
 
-### 3. Combat damage rewrite: split into two substeps (CR 510.2 + 510.3)
+### 3. Combat damage rewrite: split into two substeps (CR 510.4)
 
 Today `resolveCombatDamageLocked` is one pass. S18 rewrites it as:
 
@@ -308,7 +308,7 @@ doesn't queue it until an S18-capable block happens. Additive.
   `RecomputeLayersIfStaleLocked` first so mid-turn haste grants
   take effect immediately.
 - **`resolveCombatDamageLocked` rewritten** into two substeps
-  (CR 510.2 first-strike + CR 510.3 regular). SBA runs between;
+  (CR 510.4). SBA runs between;
   dead creatures don't participate in the second pass. Double
   strike participates in both; first strike only the first.
 - **`assignAndDealCombatDamageLocked`** is the per-substep
@@ -368,7 +368,7 @@ doesn't queue it until an S18-capable block happens. Additive.
 1. Keywords represented as strings in `Characteristic.Abilities`; no richer keyword type.
 2. `Spec.PrintedKeywords` separate from `Spec.Static` so flash works on hand cards.
 3. Summoning sickness is a per-card bool cleared at controller's untap step; haste bypass is read-time.
-4. Combat damage rewritten to two substeps (510.2 + 510.3); double-strike participates in both.
+4. Combat damage rewritten to two substeps (CR 510.4); double-strike participates in both.
 5. Deathtouch implemented via `Card.MarkedLethalByDeathtouch`, not SBA short-circuit.
 6. Lifelink applies to all damage from the source, not combat damage only.
 7. Damage-assignment prompt single-stage (order + amounts merged).

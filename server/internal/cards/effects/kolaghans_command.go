@@ -20,7 +20,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Now each chosen bullet is its own mode OCCURRENCE with its own
 // target group (TargetRef.Mode), the picker walks them in the order
 // they were chosen, and resolution runs the chosen bullets in that
-// same order (CR 700.2c). Choosing "destroy target artifact" and
+// same order (CR 608.2c). Choosing "destroy target artifact" and
 // "deals 2 damage to any target" announces two targets, and each is
 // re-checked against ITS OWN clause at resolution (CR 608.2b) — an
 // artifact that stopped being one is skipped while the damage still

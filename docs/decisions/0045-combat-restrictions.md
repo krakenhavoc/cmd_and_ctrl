@@ -1239,7 +1239,7 @@ emits both, in one event batch:
   once, at the moment the declaration is complete). Actor is the
   defending player; Source, CardID and Target are all the attacker,
   the way `EventBattleDefeated` names the battle three ways. Cyberman
-  Patrol (afflict, CR 702.131) and Grazilaxx watch this and need no
+  Patrol (afflict, CR 702.130) and Grazilaxx watch this and need no
   dedupe; `b18AttackerAlreadyBlocked` is deleted.
 
 Not logged: `EventBecomesBlocked` has no `protocol.LogEvent`

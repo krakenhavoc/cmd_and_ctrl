@@ -38,7 +38,7 @@ func DurationUntilEndOfTurn(ctx *Context) game.Duration {
 
 // DurationUntilYourNextTurn is "until <player>'s next turn"
 // (CR 611.2b). The effect ends as that player's next turn begins,
-// before anything untaps (CR 500.1, CR 502.1) — and, if that player
+// before anything untaps (CR 500.1, CR 502.3) — and, if that player
 // has left the game by then, at the moment their turn would have
 // begun (CR 800.4m).
 func DurationUntilYourNextTurn(ctx *Context, player uuid.UUID) game.Duration {

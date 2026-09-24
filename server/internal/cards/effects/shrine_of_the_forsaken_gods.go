@@ -12,7 +12,7 @@ package effects
 // either one missing would make this a land that is better than
 // printed — the second ability with neither is a free Ancient Tomb.
 //
-// The gate is checked first, before any cost (CR 602.5a), so an
+// The gate is checked first, before any cost (CR 602.5), so an
 // activation at six lands fails with the land untapped. The
 // restriction is stamped onto the tokens and enforced by the spend
 // solver when a spell's cost is paid.

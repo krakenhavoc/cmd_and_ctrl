@@ -17,7 +17,7 @@ package effects
 //     ManaAbilityCost carries both components, the engine validates
 //     both before paying either, and the sacrifice fires
 //     EventSacrifice plus the dies-triggers before the mana is spent
-//     (CR 605.3a — the ability doesn't use the stack, but the
+//     (CR 605.3b — the ability doesn't use the stack, but the
 //     sacrifice still triggers).
 //
 // No simplification.

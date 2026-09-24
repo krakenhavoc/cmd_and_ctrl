@@ -79,7 +79,7 @@ spell", and both clauses are real — the printed one is enforced, not
 waved through.
 
 Evoke's rewrite is not a targeting one: *it's sacrificed when it
-enters*. Modelled as a triggered ability (CR 702.74b) queued by the
+enters*. Modelled as a triggered ability (CR 702.74a) queued by the
 engine as the permanent lands, **not** as a sacrifice folded into
 resolution. The difference is the entire reason to evoke a Slithermuse:
 the creature genuinely enters, the sacrifice uses the stack so opponents

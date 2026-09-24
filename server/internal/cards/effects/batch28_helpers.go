@@ -99,8 +99,8 @@ func b28CreatureWasDealtDamage(ev game.Event, g *game.Game) (game.Card, bool) {
 // b28DragonYouControlTargetedByOpponent is Thunderbreak Regent's
 // condition: a Dragon the source's controller controls became the
 // target of a spell or ability whose controller is an opponent.
-// EventBecomesTarget fires once per target slot at announce (CR
-// 115.7), with the targeting player in Actor and the targeted card
+// EventBecomesTarget fires once per target slot (CR 115.3) at
+// announce, with the targeting player in Actor and the targeted card
 // in CardID (uuid.Nil for a player target, which is what keeps a
 // player-targeting spell from matching). The Regent is a Dragon and
 // counts for its own trigger.

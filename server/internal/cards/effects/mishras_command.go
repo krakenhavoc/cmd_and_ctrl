@@ -15,7 +15,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // per-mode target slots #764 shipped (ADR 0065 §3, Kolaghan's
 // Command's pattern): each chosen bullet gets its own target group,
 // picked in the order chosen, and resolved in that same order (CR
-// 700.2c). Choosing "deal X damage to target creature" and "target
+// 608.2c). Choosing "deal X damage to target creature" and "target
 // creature gets +X/+0 and gains haste" announces two creature
 // targets that may be the same creature or different ones, and each
 // bullet re-checks ITS OWN target at resolution (CR 608.2b).

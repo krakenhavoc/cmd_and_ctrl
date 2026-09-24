@@ -19,10 +19,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Steam-Kin is, with two components that DO exist and together
 // enforce the cost: a Condition gating activation on a mining
 // counter being there (checked before anything is paid, so an empty
-// Mine cannot activate — CR 602.5a), and a Rider that removes the
+// Mine cannot activate — CR 602.5), and a Rider that removes the
 // counter as the mana lands and sacrifices the Mine when it was the
 // last (b31RemoveMiningCounterOrSacrifice). A mana ability resolves
-// as one atomic step without the stack (CR 605.3a), so nothing can
+// as one atomic step without the stack (CR 605.3b), so nothing can
 // observe that the counter left after the mana arrived rather than
 // before. The auto-tapper never reaches for an ability with a rider,
 // so a counter is only ever spent on purpose. "Any color" is the

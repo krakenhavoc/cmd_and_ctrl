@@ -102,9 +102,9 @@ classifies `AttachedTo` and `AttachedAt` as carried.)*
 shape as `findCardOnBattlefield` (`layers.go:244-254`). The battlefield
 is tens of cards; this is not a cost worth a second data structure.
 
-### 2. A second field: `Card.AttachedAt int64` (CR 613.7d)
+### 2. A second field: `Card.AttachedAt int64` (CR 613.7e)
 
-CR 613.7d gives an Equipment's or Aura's continuous effect a **new
+CR 613.7e gives an Equipment's or Aura's continuous effect a **new
 timestamp** when it becomes attached. Today `activeStaticAbilitiesLocked`
 binds every static's timestamp to `src.EnteredBattlefieldAt`
 (`layers.go:165`). The fix is one line at that site: prefer
@@ -130,7 +130,7 @@ battlefield. An Aura is cast targeting (CR 303.4a) and attaches as it
 enters. Different code paths entirely — decisions 4 and 5.
 
 **(b) The restriction.** Equip targets "creature **you control**"
-(CR 702.6b) — but only *at activation*. Once attached, control of the
+(CR 702.6a) — but only *at activation*. Once attached, control of the
 creature may change and the Equipment stays put; only "is it still a
 creature" matters afterwards (CR 301.5c). An Aura's "enchant" clause is
 both a cast restriction and an ongoing legality condition, and it says
@@ -145,7 +145,7 @@ on the battlefield** (CR 704.5n). An Aura is put into its owner's
 **graveyard** (CR 704.5m). Same trigger condition, opposite outcome.
 
 **(d) Re-attachment.** Equip may be activated again and moves the
-Equipment (CR 702.6d) — the second equip is an ordinary activation that
+Equipment (CR 701.3a) — the second equip is an ordinary activation that
 overwrites `AttachedTo`. An Aura on the battlefield never moves itself.
 
 Net: one relation, one SBA site with two branches, two attach paths.
@@ -166,7 +166,7 @@ Every piece already exists and was checked:
 
 - `ActivatedAbilityShape.SorcerySpeed` (`activated.go:78-79`) is gated
   by `sorcerySpeedOpenLocked` (`mutations.go:1122-1133`): main phase,
-  empty stack, caller is the active player. That is CR 702.6b's "any
+  empty stack, caller is the active player. That is CR 702.6a's "any
   time you could cast a sorcery", and the rejection is
   `ErrSorcerySpeedRequired` (`activated.go:166-168`).
 - `ActivatedAbilityShape.Targets` (`activated.go:74-76`) is validated
@@ -615,7 +615,7 @@ arc: a lot of surfaces, very little new machinery.
 | 5 | Client render + sorcery-speed grey-out | ~200 | 1 |
 | 6 | One Curse (player attachment, the `TargetPlayer` branch end to end) | ~150 | 1, 3, 5 |
 
-`AttachedAt` / CR 613.7d (decision 2) is a cuttable half-day inside
+`AttachedAt` / CR 613.7e (decision 2) is a cuttable half-day inside
 sub-PR 1.
 
 **Split recommendation: equipment first.** Four reasons:

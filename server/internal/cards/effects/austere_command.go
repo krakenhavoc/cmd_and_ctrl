@@ -11,7 +11,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 • Destroy all creatures with mana value 4 or greater."
 //
 // S20 sub-PR 4's "choose N" example: four untargeted options, Min =
-// Max = 2. The modes resolve in printed order (CR 700.2c), and each
+// Max = 2. The modes resolve in printed order (CR 608.2c), and each
 // sweep re-snapshots the battlefield, so a card destroyed by an
 // earlier option is no longer there for a later one and an artifact
 // creature is destroyed once rather than twice.

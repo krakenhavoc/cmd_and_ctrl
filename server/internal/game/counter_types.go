@@ -29,7 +29,7 @@ const (
 	CounterLoyalty = "loyalty"
 	// CounterDefense is the battle defense counter (post-MoM).
 	// SBA: a battle with 0 defense counters → graveyard
-	// (CR 704.5v).
+	// (CR 704.5v/w).
 	CounterDefense = "defense"
 	// CounterCharge is a generic resource counter (Aether Vial,
 	// Coalition Relic, etc.). No SBA.
@@ -47,7 +47,8 @@ const (
 	CounterStun = "stun"
 	// CounterShield is the shield counter (post-MOM).
 	CounterShield = "shield"
-	// CounterAge is the age counter (CR 122.1d), placed by cumulative
+	// CounterAge is the age counter (CR 122.1 — no lettered subrule of
+	// its own), placed by cumulative
 	// upkeep (CR 702.24a) and by nothing else in the catalog. No SBA:
 	// its whole job is to be COUNTED, once a turn, by the keyword's
 	// own upkeep trigger, which then charges its cost that many
@@ -58,7 +59,8 @@ const (
 	// its controller (CR 704.5s). The advance-chapter trigger
 	// lands in S14+ with the effect catalog.
 	CounterLore = "lore"
-	// CounterTime is the time counter (CR 122.1d), placed by suspend
+	// CounterTime is the time counter (CR 122.1 — no lettered subrule
+	// of its own), placed by suspend
 	// (CR 702.62a) and removed one per upkeep by the suspended card's
 	// own exile trigger. No SBA: it is a countdown that one trigger
 	// reads, and having any at all is what "suspended" MEANS
@@ -72,8 +74,8 @@ const (
 // Player-level counter type identifiers.
 const (
 	// CounterPoison is the poison counter (CR 122.1f — 122.1d is the
-	// age / time counter in the pinned Aug 2026 CR, and this line
-	// said 122.1d until ADR 0056 checked it). 10 poison
+	// stun counter in the pinned Aug 2026 CR, and this line said
+	// 122.1d until ADR 0056 checked it). 10 poison
 	// counters lose the game (CR 704.5c). Player.Poison stays as
 	// a duplicate int field for backwards-compat with the S10
 	// SetPoison action — both fields are kept in sync.
@@ -83,11 +85,15 @@ const (
 	// stays as a duplicate int field for backwards-compat.
 	CounterEnergy = "energy"
 	// CounterExperience is the experience counter (Commander
-	// 2015; CR 122.1d).
+	// 2015; CR 122.1 — no lettered subrule of its own).
 	CounterExperience = "experience"
 	// CounterRad is the rad counter (Fallout / Warhammer 40K
-	// crossover; CR 122.1d). Triggers a draw + life-loss as the
-	// player draws — the trigger is S14+ territory.
+	// crossover; CR 122.1i / CR 728). The inherent triggered ability
+	// fires at the beginning of that player's precombat main phase:
+	// they mill a number of cards equal to their rad counters, then
+	// lose 1 life and remove one rad counter for each NONLAND card
+	// milled that way — not a draw-based trigger. The trigger is
+	// S14+ territory.
 	CounterRad = "rad"
 )
 

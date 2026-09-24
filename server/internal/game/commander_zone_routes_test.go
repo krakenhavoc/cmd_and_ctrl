@@ -410,7 +410,7 @@ func hasEventFor(g *Game, kind EventKind, cardID uuid.UUID) bool {
 // --- #359: an Optional replacement must not pause an entry that has
 // no resume ---------------------------------------------------------
 
-// registerOptionalEntryReplacementForTest registers a CR 614.10 "may"
+// registerOptionalEntryReplacementForTest registers a "may"
 // that taps `cardID` on its way onto the battlefield, controlled by
 // `owner`. Caller must hold g.mu.
 func registerOptionalEntryReplacementForTest(g *Game, cardID, owner uuid.UUID) {
@@ -435,7 +435,7 @@ func registerOptionalEntryReplacementForTest(g *Game, cardID, owner uuid.UUID) {
 
 // TestOptionalReplacementDoesNotStrandAnUnresumableEntry is #359.
 //
-// The CR 614.10 "may" branch of the apply-loop used to queue its
+// The "may" branch of the apply-loop used to queue its
 // yes/no prompt unconditionally, while the EntryLifeCost branch
 // beside it has checked entryResumable since #268. A permanent
 // entering the battlefield by a route that cannot be resumed would

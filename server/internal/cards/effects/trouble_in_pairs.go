@@ -14,7 +14,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // does twice. The second sentence is one printed ability with three
 // trigger conditions; it is declared here as three entries rather
 // than one watching three event kinds, because they key on different
-// per-event data and only the attack half wants the CR 603.1 batch
+// per-event data and only the attack half wants the "one or more" batch
 // collapse. No event can satisfy two of them, so the behaviour is
 // the same and each condition reads as its own sentence.
 //

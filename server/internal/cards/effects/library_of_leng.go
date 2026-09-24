@@ -37,7 +37,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // ended up changed. So Megrim, Containment Construct and every other
 // "whenever you discard" payoff still sees it.
 //
-// It is a "may", so the CR 614.10 yes/no prompt is offered per card,
+// It is a "may", so a yes/no prompt is offered per card,
 // which is the printed granularity when one effect discards several.
 //
 // Sandbox simplification, declared: when one effect discards several

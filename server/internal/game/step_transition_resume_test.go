@@ -328,7 +328,7 @@ func TestStaleStepTransitionResumeIsDropped(t *testing.T) {
 
 // TestPureCancelIsIgnoredWhenTheEffectAlsoAsksAQuestion — the
 // short-circuit fires Replace without prompting, which would swallow a
-// CR 614.10 "may" decision. An Optional effect is never treated as a
+// "may" decision. An Optional effect is never treated as a
 // pure cancel however it is declared, so the ordering prompt still
 // queues and the "may" prompt still gets asked.
 func TestPureCancelIsIgnoredWhenTheEffectAlsoAsksAQuestion(t *testing.T) {

@@ -12,8 +12,8 @@ import (
 // Why it exists. A battlefield entry runs the CR 614 pipeline before
 // the card leaves its old zone, and that pipeline can PAUSE: a CR 616
 // ordering prompt between two enters-tapped replacements, a shockland's
-// "you may pay 2 life", Clone's "choose what to copy", a CR 614.10
-// "may". Two entry sites — the land play and stack resolution — carried
+// "you may pay 2 life", Clone's "choose what to copy", a
+// "may" replacement. Two entry sites — the land play and stack resolution — carried
 // `entryResumable` and were finished from
 // executeEntryToBattlefieldLocked when the answer arrived. Every OTHER
 // entry site dropped the move on a pause, and said so in a comment.

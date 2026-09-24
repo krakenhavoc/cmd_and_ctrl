@@ -15,7 +15,7 @@
   // #1012: "leaves the printed cost available" is not true of every
   // cast, and the modal used to assume it was. A flashback cast out
   // of the graveyard may not be announced at the cost in the card's
-  // corner (CR 702.34b, rule 3 of validateCastPathLocked), so "Its
+  // corner (CR 702.34a, rule 3 of validateCastPathLocked), so "Its
   // mana cost" was a preselected default the server would refuse with
   // ErrCastCostRequired. The server now says so —
   // `alternative_cost_required` — and the row is dropped rather than

@@ -96,7 +96,7 @@ type WardSacrificeCost struct {
 	// as one, so every ward that shipped before the field existed
 	// keeps charging exactly what it charged.
 	//
-	// A count rather than a repeated prompt: CR 118.4 is one payment,
+	// A count rather than a repeated prompt: CR 118.3 is one payment,
 	// so a payer who cannot produce all of them has not paid at all
 	// and the spell is countered — never "sacrifice two of the three
 	// and keep the spell". The pick is one ChooseCards prompt with
@@ -174,7 +174,7 @@ func (c WardCost) validate() {
 //     warded creature does not trigger it, which is the difference
 //     between ward and shroud.
 //   - The trigger fires per target INSTANCE, because
-//     EventBecomesTarget is emitted per target slot (CR 115.7). A
+//     EventBecomesTarget is emitted per target slot (CR 115.3). A
 //     spell that targets the same warded creature twice triggers
 //     ward twice, and the controller pays twice or the spell is
 //     countered. That is correct and it falls out of the event
@@ -479,7 +479,7 @@ func wardSacrificeLegal(g *game.Game, payer uuid.UUID, sac WardSacrificeCost, id
 // the payer controls and each still matching the cost.
 //
 // Distinctness is checked here rather than assumed, because the
-// payment is one cost (CR 118.4) and the same permanent cannot pay
+// payment is one cost (CR 118.3) and the same permanent cannot pay
 // for itself twice — a repeated ID would otherwise sacrifice one
 // permanent and silently discharge a three-permanent cost.
 func wardSacrificePickComplete(g *game.Game, payer uuid.UUID, sac WardSacrificeCost, picked []uuid.UUID, n int) bool {

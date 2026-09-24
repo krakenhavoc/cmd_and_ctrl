@@ -117,7 +117,7 @@ A shockland is *played*; a Clone is *cast*. The land-play branch was
 the only `entryResumable` site, because the generic resume could not
 reproduce two things stack resolution does: attaching a resolved Aura
 to what it targeted (CR 303.4a) and queueing evoke's sacrifice trigger
-(CR 702.74b). `ReplacementEvent.stackItem` carries the `StackItem`
+(CR 702.74a). `ReplacementEvent.stackItem` carries the `StackItem`
 across the pause and `executeEntryToBattlefieldLocked` does both.
 
 That closed a latent bug older than this ADR and unrelated to copying:
@@ -256,7 +256,7 @@ slot answers for both:
   `resolveTopOfStackLocked` carries on and routes the spell to its
   owner's graveyard, and the answer arrives afterwards. The copy is
   therefore built from last-known information. In the rules the spell
-  is still on the stack at that moment — CR 608.2m puts it into the
+  is still on the stack at that moment — CR 608.2n puts it into the
   graveyard as the final step of its own resolution — and LKI is how
   that difference is spelled here.
 

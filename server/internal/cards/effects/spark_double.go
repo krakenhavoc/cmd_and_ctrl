@@ -27,7 +27,7 @@ import (
 //     CR 306.5b stamp refuses to run on a walker that already has
 //     loyalty counters (effect_hooks.go) and would otherwise leave
 //     a copied Teferi on 1. Bumping the printed value it stamps
-//     from gets the same total, and keeps the CR 121.3 counter
+//     from gets the same total, and keeps the CR 122.6 counter
 //     doubling (Doubling Season) applying to the whole of it,
 //     which is the ruling.
 func init() {

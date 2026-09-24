@@ -8,7 +8,7 @@ import (
 )
 
 // combat_test.go covers the S18 sub-PR 3 combat damage rewrite:
-// two-substep flow (CR 510.2 first-strike + CR 510.3 regular),
+// two-substep flow (CR 510.4),
 // deathtouch flag, lifelink life gain, trample overflow, menace
 // revert, and the multi-blocker damage-assignment prompt.
 
@@ -481,7 +481,7 @@ func TestDeclareBlockerFlyingCanBlockFlying(t *testing.T) {
 	}
 }
 
-// TestCombatFirstStrikeBlockerDamagesVanillaAttacker verifies CR 510.2:
+// TestCombatFirstStrikeBlockerDamagesVanillaAttacker verifies CR 510.4:
 // a first-strike blocker deals damage in the first-strike substep even
 // when the attacker itself has no first strike or double strike.
 // Regression for the post-S18 bug where assignAndDealCombatDamageLocked

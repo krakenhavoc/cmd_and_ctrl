@@ -275,7 +275,7 @@ func TestSameModificationBoundaries(t *testing.T) {
 			with(replacementIdentity{}, plain),
 		}, false},
 		{"one identified, one not", []activeReplacement{with(base, plain), with(replacementIdentity{}, plain)}, false},
-		{"CR 614.10 may", []activeReplacement{
+		{"\"may\" replacement", []activeReplacement{
 			with(base, ReplacementEffect{Optional: true}),
 			with(base, ReplacementEffect{Optional: true}),
 		}, false},

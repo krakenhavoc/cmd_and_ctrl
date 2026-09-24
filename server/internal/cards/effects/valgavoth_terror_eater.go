@@ -18,7 +18,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The WARD is the reason WardSacrificeCost grew a count: every ward
 // in the catalog before this one demanded a single permanent, and the
-// pick was hardcoded to one. It is one payment (CR 118.4), so a payer
+// pick was hardcoded to one. It is one payment (CR 118.3), so a payer
 // with only two nonland permanents cannot pay at all — the spell is
 // countered with no prompt, rather than taking two and letting the
 // removal through.

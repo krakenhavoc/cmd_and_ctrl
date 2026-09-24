@@ -25,7 +25,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // "You may activate" is the SHIKARI's controller, so an opponent's
 // Equipment keeps its sorcery-speed window. The clause opens the
-// window; it does not touch the equip COST, CR 702.6d's "re-activate
+// window; it does not touch the equip COST, CR 701.3a's "re-activate
 // to move it", or the target clause.
 //
 // No simplification, and no caveat: there is nothing else on the

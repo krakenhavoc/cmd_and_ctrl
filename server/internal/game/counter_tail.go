@@ -33,7 +33,7 @@ import (
 // MillToZoneThenForEffect, SacrificeAllThenForEffect): the entry point
 // takes `then`, the event carries it across the pause, and the ONE
 // settled exit — applyResolvedCounterThenLocked — runs it, from both
-// the inline path and the CR 616 / CR 614.10 resume.
+// the inline path and the CR 616 / "may" replacement resume.
 
 // counterTail is what a counter placement owes its CALLER once the
 // CR 614 window settles: the rest of the effect.
@@ -81,7 +81,7 @@ func (g *Game) runCounterTailLocked(ev *ReplacementEvent, placed int) error {
 // applyResolvedCounterThenLocked lands a settled RepEventCounter and
 // then runs its continuation. The one settled exit that carries a
 // tail: the inline path in AddCounterByThenForEffect and the CR 616 /
-// CR 614.10 resume in applyResolvedReplacementEventLocked both come
+// "may" replacement resume in applyResolvedReplacementEventLocked both come
 // through here, so a paused placement and an unpaused one cannot
 // disagree about when the rest of the effect runs.
 //
@@ -182,7 +182,7 @@ func (g *Game) AddCounterByThenForEffect(placer, cardID uuid.UUID, name string, 
 // that needs the settled count back synchronously rather than through
 // a continuation.
 //
-// CR 605.3a: activating a mana ability is one indivisible step with no
+// CR 605.3b: activating a mana ability is one indivisible step with no
 // priority window inside it, so a CR 616 ordering prompt (a Doubling
 // Season beside a Hardened Scales both watching this placement) cannot
 // be raised here any more than it can inside produce_mana.go's own

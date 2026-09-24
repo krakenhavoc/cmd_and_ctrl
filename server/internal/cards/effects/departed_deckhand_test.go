@@ -15,7 +15,7 @@ const (
 )
 
 // A spell that targets the Deckhand kills it. The trigger fires at
-// announce (CR 115.7), so it is on the stack above the spell and
+// announce (CR 601.2c), so it is on the stack above the spell and
 // resolves first — which is why the spell then finds no legal target.
 func TestDepartedDeckhandSacrificesItselfToASpell(t *testing.T) {
 	g := newCatalogGame(t)

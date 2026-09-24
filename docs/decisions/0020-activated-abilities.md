@@ -1142,7 +1142,8 @@ and inventing the clause would mean inventing a picker for it.
 Two rules ride with it, both already this file's:
 
 - **Not replaceable.** `applyCounterLocked`, not `AddCounterForEffect`.
-  Paying a cost is not an effect (CR 121.1), so Doubling Season does NOT
+  A counter-doubling replacement applies only to a counter placed by
+  an effect (CR 614.16), so Doubling Season does NOT
   double Devoted Druid's -1/-1 — which would double the price of a card
   that is meant to be pure upside.
 - **Ordering.** Paid at announce with everything else (CR 118.3 / 602.2b),
@@ -1228,7 +1229,7 @@ Written in ONE place: `ActivateCatalogAbility`, beside
 through one function — `Game.AbilityExhausted(source, shape)`.
 
 **Mana abilities are deliberately not counted.** They take the other
-entry point (`ActivateManaAbility`, CR 605.3a — no stack, no
+entry point (`ActivateManaAbility`, CR 605.3b — no stack, no
 priority), so `effects.ManaAbility` carries no `Exhaust` field and the
 combination is unspellable rather than silently ignored. One printed
 card wants it — **Loot, the Pathfinder**'s "Exhaust — {G}, {T}: Add
@@ -1362,7 +1363,7 @@ decision in the addendum stays accepted and unchanged.
 ### Context
 
 Decision 1 above says mana abilities are deliberately not counted:
-they take the other entry point (`ActivateManaAbility`, CR 605.3a — no
+they take the other entry point (`ActivateManaAbility`, CR 605.3b — no
 stack, no priority, no announcement to hang a record on), so
 `effects.ManaAbility` carried no `Exhaust` field and the combination
 was **unspellable** rather than silently ignored. One printed card
@@ -1415,7 +1416,7 @@ rather than a line in #1181:
    ends the object and carries `Card.ObjectEpoch` with it), the gate
    is read from it immediately, and the record is written at the point
    every gate has passed and the first payment is about to be made.
-   CR 605.3a makes the activation one indivisible step with no
+   CR 605.3b makes the activation one indivisible step with no
    priority window inside it, so there is no later "announcement
    finished" to hang the write on — and an activation that begins
    paying has happened. That is #1181's "an exhaust ability countered

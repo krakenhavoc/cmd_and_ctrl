@@ -25,7 +25,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     it does not use the stack, so it goes in ManaAbilities with the
 //     life as a COST component (ManaAbilityCost.Life), the same shape
 //     Mana Confluence uses — the activation is rejected outright, and
-//     the artifact stays tapped, if the life can't be paid (CR 118.8).
+//     the artifact stays tapped, if the life can't be paid (CR 119.4).
 //   - The other three are ordinary CR 602 activated abilities: they
 //     use the stack, so a Stifle can answer the destroy or the draw
 //     in response.
