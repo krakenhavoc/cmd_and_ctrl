@@ -77,7 +77,7 @@ func readEffectKeyLedger(path string) (map[string]bool, error) {
 		}
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	sc := bufio.NewScanner(f)
 	for sc.Scan() {
 		line := strings.TrimSpace(sc.Text())
@@ -96,13 +96,13 @@ func appendEffectKeyLedger(path string, fresh bool, lines []string) error {
 	}
 	if fresh {
 		if _, err := fmt.Fprint(f, effectKeysHeader); err != nil {
-			f.Close()
+			_ = f.Close()
 			return err
 		}
 	}
 	for _, line := range lines {
 		if _, err := fmt.Fprintln(f, line); err != nil {
-			f.Close()
+			_ = f.Close()
 			return err
 		}
 	}
