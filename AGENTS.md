@@ -3655,11 +3655,31 @@ now:
 
 ```go
 ScheduleDelayedTrigger{
-    Label:  "Waterbender's Restoration — return the exiled creatures",
-    Cards:  exiled,                      // instance IDs, stamped onto the fired item's Targets
-    Effect: returnExiledCardsToOwners,   // a package-level func, NOT a closure
+    Label: "Waterbender's Restoration — return the exiled creatures",
+    Cards: exiled,                    // instance IDs, stamped onto the fired item's Targets
+    Body:  returnExiledToOwnersBody,  // a registered game.BodyRef (delayed_bodies.go)
+}.Apply(ctx)
+
+ScheduleDelayedTrigger{              // a body with data: what a factory used to capture
+    Label:  "Mana Drain — add {C} × 3", At: game.StepPrecombatMain, ControllerTurnOnly: true,
+    Body:   manaDrainRefundBody,
+    Params: game.EffectParams{Amount: mv},
 }.Apply(ctx)
 ```
+
+**What a delayed trigger does is DATA** ([ADR 0041](docs/decisions/0041-game-persistence.md)
+phase 3, tier 2, #1497). `Body` is a `game.BodyRef` — a key into the
+registry in `game/effect_bodies.go` — never a function, so a func
+literal there does not compile. Register a new body ONCE, in
+[delayed_bodies.go](server/internal/cards/effects/delayed_bodies.go),
+as `game.SimpleDelayedBody("<area>/<name>", fn)` (or `game.DelayedBody`
+for one that reads `game.EffectParams`: `Player`, `Object`, `Amount`,
+`Cost`, `Name`, `Filter`), and append the key to the ledger with
+`cd server && go test ./internal/cards/effects -run TestEveryPersistedEffectKeyResolves -args -update-effect-keys`.
+Keys are on-disk identities, like token slugs: never renamed, never
+deleted — `game.EffectAlias(old, new)` keeps an old one resolving. A
+table with a delayed trigger waiting is therefore a restore point, and
+so is one whose fired trigger is on the stack.
 
 `At` defaults to `game.StepEnd`; the queue is drained on step **entry**,
 so an ability scheduled during an end step waits for the following one.
@@ -3671,21 +3691,23 @@ upkeep at the table satisfies.
 The instruction lives on the `Game`, not on a card — the spell that
 created it is usually in a graveyard by the time it fires — and it goes
 on the stack when the step begins, so every player gets a response
-window. Declare `Effect` as a package-level func so it captures nothing:
-a delayed trigger survives `Clone` / undo by sharing its `Effect` with
-the snapshot, and reads its payload off the item it is handed.
+window. The body reads its payload off the item it is handed
+(`item.Targets`, `item.Controller`) and its data off its params, and
+captures nothing — it cannot.
 
 **Event-conditioned delayed triggers (#663, CR 603.7b):** "When you
 next cast an instant or sorcery spell this turn, copy that spell"
 (Doublecast, Galvanic Iteration) waits for a THING TO HAPPEN rather
 than for a step, and it is the same queue with a different condition —
-`WhenYouNextCast(label, pred, effect)`, or the general
-`DelayedOnEvent{Label, On, Matches, Effect}`, both in
-[delayed_on_event.go](server/internal/cards/effects/delayed_on_event.go):
+`WhenYouNextCast(label, filter, body)`, or the general
+`DelayedOnEvent{Label, On, Condition, CondParams, Body, Params}`, both in
+[delayed_on_event.go](server/internal/cards/effects/delayed_on_event.go).
+The condition is a registered `game.ConditionRef` and the spell filter is
+DATA, a `game.CastFilter` — not a `CardPredicate`, which is a closure:
 
 ```go
 return WhenYouNextCast("Doublecast — copy that spell",
-    Or(Instant(), Sorcery()), copyTheSpellYouJustCast).Apply(ctx)
+    game.CastFilter{Types: []string{"Instant", "Sorcery"}}, copyTheSpellBody).Apply(ctx)
 ```
 
 Four things it gets for free and must not re-implement. It fires
@@ -3699,8 +3721,8 @@ before the resolution that scheduled it. And the fired trigger goes
 through `dispatchTriggerLocked`, the harvester's own dispatch, so the
 CR 603.5 "you may", the CR 603.3d drop and the APNAP drain are the same
 code an ETB uses. The triggering event's object rides on the item as
-`Payload` — `ctx.PayloadCards()[0]` is "that spell" — so the `Effect`
-stays a package-level func that captures nothing. This reverses
+`Payload` — `ctx.PayloadCards()[0]` is "that spell" — so the body
+reads it off the item and captures nothing. This reverses
 [ADR 0026](docs/decisions/0026-delayed-triggers.md) §1-2 for this one
 case; the 2026-09-18 amendment there is the record.
 

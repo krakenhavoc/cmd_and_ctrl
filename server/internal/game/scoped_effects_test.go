@@ -209,7 +209,8 @@ func corruptAndRestore(t *testing.T, corrupt func(s *GameSnapshot)) (error, erro
 	id := pushScopedTestCreature(g, g.Seats[0].ID, 2, 2)
 	registerScopedEffectForTest(t, g, id, []Mod{ModifyPTMod(1, 1)}, IndefiniteDuration())
 	g.WithWriteLock(func() {
-		g.DelayedTriggers = []*DelayedTrigger{{ID: uuid.New(), Controller: g.Seats[0].ID, At: StepEnd}}
+		g.DelayedTriggers = []*DelayedTrigger{{ID: uuid.New(), Controller: g.Seats[0].ID, At: StepEnd,
+			Body: carriedTestBodyKey}}
 	})
 	snap := g.CaptureSnapshot()
 	corrupt(snap)
@@ -227,13 +228,13 @@ func TestAnUnknownEffectKeyIsRefused(t *testing.T) {
 	cases := map[string]func(s *GameSnapshot){
 		"mod kind": func(s *GameSnapshot) { s.ScopedEffects[0].Mods[0].Kind = "grantAbilitiesFromTheFuture" },
 		"delayed-trigger body": func(s *GameSnapshot) {
-			s.DelayedTriggers[0].Body = "flicker/return-exiled-to-owners"
+			s.DelayedTriggers[0].Body = "nobody/registered-this-body"
 		},
 		"delayed-trigger condition": func(s *GameSnapshot) {
-			s.DelayedTriggers[0].Condition = "earthbend/this-object-left"
+			s.DelayedTriggers[0].Condition = "nobody/registered-this-condition"
 		},
 		"stack-item body": func(s *GameSnapshot) {
-			s.PendingTriggers = append(s.PendingTriggers, stackItemSnapshot{ID: uuid.New(), Body: "warp/exile"})
+			s.PendingTriggers = append(s.PendingTriggers, stackItemSnapshot{ID: uuid.New(), Body: "nobody/registered-this-body"})
 		},
 	}
 	for name, corrupt := range cases {

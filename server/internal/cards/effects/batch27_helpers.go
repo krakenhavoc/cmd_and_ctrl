@@ -422,10 +422,10 @@ func b27MyriadCopies(g *game.Game, item *game.StackItem, attacker, defender uuid
 		return nil
 	}
 	return ScheduleDelayedTrigger{
-		At:     game.StepEndCombat,
-		Label:  "Legion Loyalty — exile the myriad tokens",
-		Cards:  tokens,
-		Effect: b06ExileListedCards,
+		At:    game.StepEndCombat,
+		Label: "Legion Loyalty — exile the myriad tokens",
+		Cards: tokens,
+		Body:  exileListedCardsBody,
 	}.Apply(ctx)
 }
 

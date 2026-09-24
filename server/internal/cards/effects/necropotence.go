@@ -99,7 +99,7 @@ func init() {
 					ControllerTurnOnly: true,
 					Label:              "Necropotence — put the exiled card into your hand",
 					Cards:              exiled,
-					Effect:             necropotenceDeliverExiled,
+					Body:               necropotenceDeliverBody,
 				}.Apply(ctx)
 			},
 		}},

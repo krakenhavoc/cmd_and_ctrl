@@ -467,7 +467,7 @@ func TestTriggerDoublerDoesNotApplyToManualOrReflexiveTriggers(t *testing.T) {
 	}
 	g.WithWriteLock(func() {
 		g.QueueReflexiveTriggerForEffect(&StackItem{SourceCardID: source, Controller: owner.ID, Label: "parent"}, ReflexiveTrigger{Label: "reflexive", Effect: func(*Game, *StackItem) error { return nil }})
-		g.ScheduleDelayedTriggerForEffect(DelayedTrigger{Controller: owner.ID, SourceCardID: source, Label: "delayed", At: StepEnd, Effect: func(*Game, *StackItem) error { return nil }})
+		g.ScheduleDelayedTriggerForEffect(DelayedTrigger{Controller: owner.ID, SourceCardID: source, Label: "delayed", At: StepEnd, Body: testBody(func(*Game, *StackItem) error { return nil })})
 		g.fireDelayedTriggersLocked(StepEnd)
 	})
 	// The manual one is already on the stack: #974's announce drains at

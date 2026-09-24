@@ -87,10 +87,10 @@ func exileTargetsThenScheduleReturn(ctx *Context, label string) error {
 			return nil
 		}
 		return ScheduleDelayedTrigger{
-			At:     game.StepEnd,
-			Label:  label,
-			Cards:  exiled,
-			Effect: returnExiledCardsToOwners,
+			At:    game.StepEnd,
+			Label: label,
+			Cards: exiled,
+			Body:  returnExiledToOwnersBody,
 		}.Apply(NewContext(g, item))
 	})
 }
