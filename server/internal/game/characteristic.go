@@ -149,7 +149,7 @@ type Characteristic struct {
 	// by leaving Event.Source nil (#930).
 	//
 	// Written by the layer-2 Apply closures themselves (the engine's
-	// controlStatic, the catalog's ControlAttachedBySource), so the
+	// setController mod, the catalog's ControlAttachedBySource), so the
 	// last write in the bucket's timestamp order is the effect that
 	// won CR 613.7 — the same rule that decided Controller, read off
 	// the same assignment rather than re-derived.
