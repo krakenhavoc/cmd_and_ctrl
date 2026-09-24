@@ -45,7 +45,6 @@ const (
 	b30DocksideChefOracle           = "fed12a16-8920-403c-be63-0601a9d864b0"
 	b30GrimGuardianOracle           = "c1f1babf-13d0-4fc4-b192-127d2d5db7f1"
 	b30UltimaSkipOracle             = "baa337ce-edc6-4ee5-a898-68e9dbb4ab93"
-	b30GemhideSliverSkipOracle      = "2c09ca09-8e62-4fe3-9b3d-61573dd2ffbc"
 	b30ChainOfSmogSkipOracle        = "ea14c26b-bf2f-48b4-b879-6e63069ded1f"
 	b30ZimoneParadoxSculptorSkipOID = "9dd674a7-becf-4106-b53f-bca88426d92d"
 )
@@ -171,12 +170,13 @@ func TestBatch30CardsAreRegistered(t *testing.T) {
 			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
 		}
 	}
-	// The three declared skips must NOT be registered — each needs a
+	// The two declared skips must NOT be registered — each needs a
 	// seam the engine does not have, and a spec would ship the card
 	// stronger than printed or as something other than itself.
+	// Gemhide Sliver came off this list with ADR 0093 and ships in
+	// gemhide_sliver.go.
 	for _, skipped := range []string{
 		b30UltimaSkipOracle,             // a land losing all types and abilities and gaining a mana ability; a tap-for-{C} rider
-		b30GemhideSliverSkipOracle,      // a mana ability granted to other permanents by a static
 		b30ZimoneParadoxSculptorSkipOID, // a beginning-of-combat trigger event
 	} {
 		if _, ok := Lookup(skipped); ok {

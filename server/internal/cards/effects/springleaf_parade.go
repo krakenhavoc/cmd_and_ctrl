@@ -28,23 +28,23 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // last-known-X, CR 603.10), which the resolve-time shortcut could not
 // model.
 //
-// One sandbox simplification remains, declared and weaker: the mana
-// ability is granted only to the Shapeshifters the Parade makes, not
-// to every creature token you control. A mana ability cannot be
-// granted to another permanent by a static (ManaAbilitiesForCard
-// reads the token's own list or the catalog by oracle ID, and
-// nothing in between), so it lives on the token template with a
-// Condition that the token's controller still controls a Springleaf
-// Parade — off when the Parade leaves, back when another arrives,
-// never on a Goblin from Krenko's Command.
+// The mana ability is ADR 0093's layer-6 grant to every creature token
+// you control — the Shapeshifters, and a Goblin from Krenko's Command
+// too. Until ADR 0093 it lived on the Shapeshifter's token template,
+// gated on the controller still controlling a Parade, and reached no
+// other token; the template is gone and the Shapeshifter is a plain
+// changeling row.
+//
+// No simplification.
+const springleafParadeGrant = "springleaf-parade/any-color"
+
 func init() {
 	Register(Spec{
 		OracleID:     "b1305916-53cc-4021-897e-bbefc65dce78",
 		Name:         "Springleaf Parade",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Only the Shapeshifters it makes get \"{T}: Add one mana of any color\" — other creature tokens you control don't.",
-		},
+		Completeness: CompletenessFull,
+		Grants:       []AbilityGrant{AnyColorManaGrant(springleafParadeGrant)},
+		Static:       []game.StaticAbility{GrantAbilities(creatureTokensYouControl, springleafParadeGrant)},
 		Triggered: []game.TriggeredAbility{{
 			Watches:   []game.EventKind{game.EventETB},
 			AppliesTo: Self,
@@ -62,7 +62,7 @@ func init() {
 						}
 						return CreateToken{
 							Controller: item.Controller,
-							Template:   b18SpringleafShapeshifterToken(),
+							Template:   TokenCard("1/1 colorless Shapeshifter with changeling"),
 							N:          x,
 						}.Apply(NewContext(g, item))
 					})

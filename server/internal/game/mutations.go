@@ -1728,7 +1728,7 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 		if card.Controller != p.ID {
 			continue
 		}
-		ab := g.autoTapAbilityFor(p.ID, *card, ManaAbilitiesForCard(*card))
+		ab := g.autoTapAbilityForRef(p.ID, *card, planned.Ref)
 		if ab == nil {
 			continue
 		}

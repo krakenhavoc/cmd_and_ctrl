@@ -121,6 +121,46 @@ func GrantAbilities(appliesTo func(target *game.Card, g *game.Game, source *game
 	}
 }
 
+// TapForManaGrant is the commonest granted bundle, "{T}: Add <mana>."
+// — Jaheira's "{T}: Add {G}.", and with AnyColorManaGrant below,
+// Cryptolith Rite's and Chromatic Lantern's. `produced` is the
+// ordinary ParseProducedMana grammar; `text` is the quoted ability as
+// the granting card prints it.
+func TapForManaGrant(key, produced, label, text string) AbilityGrant {
+	return AbilityGrant{
+		Key:  key,
+		Mana: []ManaAbility{{Cost: ManaAbilityCost{Tap: true}, Produced: produced, Label: label}},
+		Text: text,
+	}
+}
+
+// AnyColorManaGrant is "{T}: Add one mana of any color." as a granted
+// bundle. The picker lists the controller's commander identity first,
+// as every "any color" pipe does, and never narrows it (AGENTS.md §7).
+func AnyColorManaGrant(key string) AbilityGrant {
+	return TapForManaGrant(key, "{W|U|B|R|G}", "Add one mana of any color", "{T}: Add one mana of any color.")
+}
+
+// TribalAbilityGrant is GrantAbilities over a TribeFilter — the
+// TribalKeywordGrant twin (ADR 0093 Decision 9). "All Slivers have …"
+// (Gemhide Sliver) is TribeFilter{Tribes: []string{"Sliver"}}, which
+// reaches every player's Slivers and the source itself; "Sliver
+// creatures you control have …" (Manaweft Sliver) adds YoursOnly.
+func TribalAbilityGrant(f TribeFilter, keys ...string) game.StaticAbility {
+	return GrantAbilities(f.Matches, keys...)
+}
+
+// GrantAbilitiesToAttached is GrantAbilities over the permanent this
+// Equipment or Aura is attached to — the GrantToAttached twin (ADR 0093
+// Decision 9). "Equipped creature has '{T}: Add one mana of any
+// color.'" (Paradise Mantle) and "Enchanted land has '{T}: Create a 1/1
+// green Squirrel creature token.'" (Squirrel Nest). The grant follows
+// the attachment: it ends the moment the Equipment is moved or the
+// Aura falls off, because AttachedToSource is re-read every layer pass.
+func GrantAbilitiesToAttached(keys ...string) game.StaticAbility {
+	return GrantAbilities(AttachedToSource, keys...)
+}
+
 // checkGrants is the registration guard. Each failure is a card file
 // that is wrong in a way no test of the card would catch — a recipient
 // naming a bundle nobody registered gets a silent no-ability grant — so
