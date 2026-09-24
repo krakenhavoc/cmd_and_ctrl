@@ -287,6 +287,10 @@
   .tile.as-button {
     width: 100%;
     text-align: left;
+    /* app.css gives every button align-items/justify-content: center,
+       which in this column flexbox centres the title and description. */
+    align-items: stretch;
+    justify-content: flex-start;
     font: inherit;
     letter-spacing: normal;
     cursor: pointer;
