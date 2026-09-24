@@ -159,7 +159,7 @@ func AppendKeywordAbility(abilities []string, kw string) []string {
 	if kw == "" {
 		return abilities
 	}
-	if !keywordIsCumulative(kw) {
+	if !KeywordIsCumulative(kw) {
 		for _, a := range abilities {
 			if a == kw {
 				return abilities
@@ -169,12 +169,21 @@ func AppendKeywordAbility(abilities []string, kw string) []string {
 	return append(abilities, kw)
 }
 
-// keywordIsCumulative reports whether repeating this token means
+// KeywordIsCumulative reports whether repeating this token means
 // something: prowess, by name, and toxic (CR 702.164b), which is
 // recognised by its grammar rather than by a second table, so a
 // `toxic 2` that nothing has taught this file about still counts
 // twice when it is granted twice.
-func keywordIsCumulative(kw string) bool {
+//
+// Exported so it is the single source of truth for the question
+// outside this package too — the deck importer (#1510) reads it to
+// decide whether a keyword printed twice on one card ("Prowess,
+// prowess") should import as one instance or two, and
+// printedCharacteristic's merge reads it to decide whether the
+// catalog's own PrintedKeywords and the imported Card.Keywords should
+// be unioned (present at most once) or taken as the higher of the
+// two counts.
+func KeywordIsCumulative(kw string) bool {
 	// Prowess (CR 702.108b, #706): "if a creature has multiple
 	// instances of prowess, each triggers separately", so a second
 	// grant is a second trigger and must survive the append.

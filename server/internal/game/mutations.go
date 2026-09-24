@@ -645,7 +645,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// the card moves: CR 406.3a turns a foretold card face up as it is
 	// cast, which ADR 0069 decision 5 makes MoveCard's business.
 	foretold := CardIsForetold(card)
-	// CR 702.62e (#659): a permanent cast from a suspended card has
+	// CR 702.62a (#659): a permanent cast from a suspended card has
 	// haste. It is the PERMISSION that says so, not the card, so it is
 	// read here where the permission is consumed and registered
 	// against the object the cast produces. See
@@ -1336,7 +1336,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		targetSpec: spec,
 		modeSpec:   modeSpec,
 	}
-	// CR 702.62e (#659): the permanent this cast produces has haste.
+	// CR 702.62a (#659): the permanent this cast produces has haste.
 	// Registered here rather than at resolution because the grant that
 	// says so has been consumed by now — the card has left exile and
 	// the permission no longer covers the object. The static matches
@@ -2742,7 +2742,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 		// S29: a flashed-back spell that fizzles is still exiled —
 		// CR 702.34a replaces every way out of the stack, not just
 		// the resolution. A BOUGHT-BACK one is not returned to hand,
-		// for the mirror-image reason: CR 702.27b says "as it
+		// for the mirror-image reason: CR 702.27a says "as it
 		// resolves", and a spell countered by game rules never
 		// resolves. Hence `false`.
 		return g.routeStackCardToGraveyardLocked(top, item, false)
@@ -2891,7 +2891,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// Instants / sorceries: resolve to the owner's graveyard — or to
 	// exile, when the flashback cost was paid (CR 702.34a) or the
 	// spell went on an Adventure (CR 715.3d), or to the owner's HAND,
-	// when the buyback cost was paid (CR 702.27b). This is the one
+	// when the buyback cost was paid (CR 702.27a). This is the one
 	// call site that resolves, so it is the one that passes `true`.
 	return g.routeStackCardToGraveyardLocked(top, item, true)
 }
@@ -3012,7 +3012,7 @@ func targetStillExistsLocked(g *Game, t TargetRef) bool {
 		// permanent stays where it is and the item is a StackMeta
 		// entry alone. It exists while it is still on the stack, and
 		// stops existing the moment it resolves or is countered
-		// (CR 701.5c), which is exactly the question this asks.
+		// (CR 701.6a), which is exactly the question this asks.
 		//
 		// Only reached for a ref with no announced clause behind it (a
 		// free-form S13.1 announcement); a structured clause is
@@ -3117,7 +3117,7 @@ func (g *Game) resolveTopAbilityLocked() {
 //     exit, which is why `resolved` does not gate it.
 //   - BUYBACK — "if the buyback cost was paid, put this card into its
 //     owner's hand as it resolves instead of putting it into that
-//     player's graveyard" (CR 702.27b, ADR 0073 §6). AS IT RESOLVES
+//     player's graveyard" (CR 702.27a, ADR 0073 §6). AS IT RESOLVES
 //     and no other exit, which is what `resolved` is for: a bought-back
 //     Capsize whose only target left in response is countered by game
 //     rules, does not resolve, and goes to the graveyard.
@@ -3125,9 +3125,10 @@ func (g *Game) resolveTopAbilityLocked() {
 //     owner's graveyard as that spell finishes resolving", CR 715.3d,
 //     with CR 715.4's cast permission landing on it there (#719,
 //     adventure.go). Resolution only, for the same reason buyback is:
-//     CR 715.3e leaves a countered, fizzled, discarded or milled
-//     adventure card an ordinary card in an ordinary graveyard, and
-//     `resolved` is the fact that tells them apart. Before #988 gave
+//     CR 715.3d's "instead of" only fires on a resolution, so a
+//     countered, fizzled, discarded or milled adventure card is an
+//     ordinary card in an ordinary graveyard, and `resolved` is the
+//     fact that tells them apart. Before #988 gave
 //     this helper that fact, the adventure leg had to live one frame
 //     up to get it.
 //
@@ -3175,7 +3176,7 @@ func (g *Game) routeStackCardToGraveyardLocked(c Card, item *StackItem, resolved
 		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, c.Owner
 	case resolved && item != nil &&
 		OptionalCostTimesPaid(c, item.Paid.OptionalCosts, BuybackKey) > 0:
-		// CR 702.27b. Through the SAME exit primitive, so a
+		// CR 702.27a. Through the SAME exit primitive, so a
 		// bought-back commander still gets its CR 903.9 choice and a
 		// replacement watching the stack exit still sees one.
 		r.Dst = ZoneHand
@@ -4785,8 +4786,11 @@ func (g *Game) markDamageWithKind(source, cardID uuid.UUID, delta int, isCombat 
 // Caller must hold g.mu.
 //
 // Returns false when the queue is being held behind a CR 603.3b
-// ordering prompt (S19 sub-PR 8) — the caller's loop should stop
-// spinning until ResolveTriggerOrder re-runs the drain. Returns
+// ordering prompt (S19 sub-PR 8), or behind a trigger of the same
+// batch that is still choosing its targets, modes or "you may"
+// (#1529) — the caller's loop should stop spinning until the answer
+// (ResolveTriggerOrder, ResolvePickTargets, ResolveModePick,
+// ResolveTriggerPrompt) re-runs the drain. Returns
 // true when the queue is empty or was drained.
 //
 // S13.1.
@@ -4797,6 +4801,16 @@ func (g *Game) drainPendingTriggersAPNAPLocked() bool {
 	numSeats := len(g.Seats)
 	if numSeats == 0 {
 		return true
+	}
+	// #1529 / CR 603.3b: a triggered ability still being put on the
+	// stack (its "you may", its mode pick or its target pick is open)
+	// belongs to this batch. Hold the WHOLE queue until it has joined,
+	// so its controller orders it with the rest and the APNAP
+	// placement below sees every seat's complete batch. Draining
+	// around the prompt is what put a targeted trigger above its
+	// untargeted siblings every time. See ADR 0018's #1529 amendment.
+	if g.triggerAnnouncementOpenLocked() {
+		return false
 	}
 	// Bucket triggers by controller seat so we can drain in seat
 	// order. Preserves per-controller queue order via stable
@@ -4930,6 +4944,28 @@ func seatNeedsTriggerOrder(items []*StackItem) bool {
 // modes.
 func commutesForOrdering(t *StackItem) bool {
 	return t.Commutes && len(t.Targets) == 0 && len(t.Modes) == 0
+}
+
+// triggerAnnouncementOpenLocked reports whether some triggered
+// ability is still on its way onto the stack: a prompt is open that
+// the harvest queued for it and whose answer ends with the ability
+// joining PendingTriggers. Those are the CR 603.5 optional-trigger
+// yes/no (triggerResume), the CR 603.3c mode pick (modePickResume)
+// and the CR 603.3d target pick (pickTargetResume). A pick_target for
+// a spell COPY (copyResume, CR 707.10c) is not one: it builds no
+// triggered ability.
+//
+// Every such prompt blocks the table (choice_gate.go), so holding the
+// drain behind one stops nothing that was not already stopped.
+//
+// Caller must hold g.mu.
+func (g *Game) triggerAnnouncementOpenLocked() bool {
+	for _, c := range g.PendingChoices {
+		if c != nil && (c.triggerResume != nil || c.pickTargetResume != nil || c.modePickResume != nil) {
+			return true
+		}
+	}
+	return false
 }
 
 // hasTriggerOrderPromptLocked reports whether chooser already has a
@@ -5079,7 +5115,7 @@ func (g *Game) CounterSpell(spellID uuid.UUID, dst *ZoneRef) error {
 
 // CounterAbility removes an activated / triggered ability from the
 // stack. Abilities cease to exist on resolution (CR 608.2n); a
-// counter is the same destinationless removal (CR 701.5c). Returns
+// counter is the same destinationless removal (CR 701.6a). Returns
 // ErrCardNotOnStack if the ID doesn't reference an ability item.
 //
 // Caller must NOT hold g.mu — this method takes the write lock.
@@ -5434,6 +5470,13 @@ func (g *Game) TapCard(cardID uuid.UUID, tapped bool) error {
 // ActivateAbilityParams there is no target list here: a mana ability
 // that targeted would have to resolve, and none does.
 type ManaAbilityParams struct {
+	// Ref is the stable ref of the row the activator meant (ADR 0093
+	// Decision 5): "own:<i>", "land:<colour>", "grant:<bundle>:<i>:<n>".
+	// A mismatch with the row at the index is ErrStaleAbilityRef,
+	// before anything is paid. Empty is accepted — the auto-tapper and
+	// every client that predates the field send none.
+	Ref string
+
 	// SacrificeIDs names the permanents paying a SacrificeOther
 	// component. Exactly one for a single-permanent clause; empty
 	// when the ability has no such cost.
@@ -5555,7 +5598,13 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// fallback second. A catalog spec with ManaAbilities overrides
 	// the synthetic path wholesale (Dryad Arbor, if it ever lands,
 	// would declare its own; basic Forest just uses the synthetic).
-	abilities := ManaAbilitiesForCard(*card)
+	abilities, origins := ManaAbilitiesWithOrigins(*card)
+	// ADR 0093 Decision 5: the ref names the row the activator meant.
+	// A grant appearing or vanishing since the view moved the rows;
+	// refuse the stale move before anything is paid (#544).
+	if staleAbilityRef(params.Ref, abilityIdx, len(abilities), origins) {
+		return ErrStaleAbilityRef
+	}
 	if abilityIdx < 0 || abilityIdx >= len(abilities) {
 		return ErrInvalidParam
 	}
@@ -6243,62 +6292,14 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 // static "would apply cleanly and do nothing" — the synthetic mana
 // ability read the printed TypeLine, so a Mountain that the layer
 // engine had made a Swamp still only tapped for {R}.
+//
+// And since ADR 0093 a THIRD half, always last: the mana abilities a
+// layer-6 effect granted the object (Cryptolith Rite, Chromatic
+// Lantern). The body — and each row's stable ref — is manaAbilityRows
+// in granted_abilities.go.
 func ManaAbilitiesForCard(c Card) []ManaAbilityShape {
-	var declared []ManaAbilityShape
-	switch {
-	// S24 layer 6: an ability-removing effect takes the DECLARED
-	// half and leaves the INTRINSIC half, and the split is the whole
-	// of CR 305.7. "Enchanted permanent is a colorless Forest land"
-	// removes the abilities the permanent's rules text generated —
-	// Sol Ring's "{T}: Add {C}{C}", a Signet's filter — and grants
-	// the mana ability that comes with the new land type. That
-	// second half is not printed on the card and is not in the
-	// catalog: it is derived from the effective subtypes, below, by
-	// the same effect that did the removing, so it survives on the
-	// other side of this switch rather than being re-granted.
-	case c.HasLostAllAbilities():
-		declared = nil
-	// CR 708.2a: a face-down permanent has no text, so nothing it
-	// carries declares a mana ability — CatalogKey is already silent,
-	// and this closes the other door, a TOKEN's card-carried slice (a
-	// Treasure turned face down by Cyber Conversion is not a Treasure).
-	// A listed Forest still taps for {G}: that is the intrinsic half
-	// below, read off the listed subtype (#1270).
-	case c.FaceDownIsPermanent():
-		declared = nil
-	// S21 sub-PR 1: instance abilities win — a token has no oracle
-	// ID for the catalog to key on.
-	case len(c.ManaAbilities) > 0:
-		declared = c.ManaAbilities
-	// CatalogAbilityKey, not c.OracleID: an MDFC back face keys on
-	// "<oracle_id>#N" (#357). A bare OracleID here would silently
-	// resolve a back face to face 0's spec.
-	case CatalogManaAbilities != nil:
-		declared = CatalogManaAbilities(CatalogAbilityKey(c))
-	}
-	intrinsic := intrinsicLandManaAbilities(c)
-	if len(intrinsic) == 0 {
-		return declared
-	}
-	if len(declared) == 0 {
-		return intrinsic
-	}
-	// A declared ability and an intrinsic one can name the same
-	// colour — every catalog dual land ("{T}: Add {B} or {G}") is
-	// printed with the land types that would have produced the
-	// same mana, and doubling it up would put two ways to make {B}
-	// in the client's ability row. Keep the declared shape (it may
-	// carry a rider or a pipe) and add only colours it cannot make.
-	covered := producibleColors(declared)
-	out := make([]ManaAbilityShape, 0, len(declared)+len(intrinsic))
-	out = append(out, declared...)
-	for _, ab := range intrinsic {
-		if covered[landTypeColorOf(ab)] {
-			continue
-		}
-		out = append(out, ab)
-	}
-	return out
+	abs, _ := manaAbilityRows(c, false)
+	return abs
 }
 
 // landTypeMana lists the five basic land types (CR 305.6) with the
@@ -8076,6 +8077,9 @@ func (g *Game) Concede(playerID uuid.UUID) error {
 		return ErrPlayerEliminated
 	}
 	g.EmitEvent(Event{Kind: EventConcede, Actor: playerID})
+	// #1529: whether the trigger queue is being held for a trigger
+	// that is still announcing (see drainPendingTriggersAPNAPLocked).
+	heldForAnnouncement := g.triggerAnnouncementOpenLocked()
 	// S13.1: delegate to the unified elimination path so concede
 	// fires the same stack cleanup + cursor advance + game-end
 	// check as an SBA-driven loss. eliminatePlayerLocked leaves with
@@ -8085,6 +8089,13 @@ func (g *Game) Concede(playerID uuid.UUID) error {
 	// resolution was waiting on (ADR 0018 §6's departure table), which
 	// finishes that resolution. Its CR 704.3 boundary is owed now.
 	g.settleResolutionLocked()
+	// #1529: the same for a trigger batch. If the departure dropped
+	// the last announcement prompt the drain was holding for, the rest
+	// of the batch goes on the stack now rather than waiting for an
+	// unrelated action.
+	if heldForAnnouncement && g.State == StateActive && !g.triggerAnnouncementOpenLocked() {
+		g.runStateChecksLocked()
+	}
 	return nil
 }
 

@@ -1858,7 +1858,7 @@ func affectedPlayerForEvent(ev *ReplacementEvent, applicable []activeReplacement
 		// ordering prompt to the Primal Vigor player.
 		return ev.TokenController
 	case RepEventMill:
-		// #569. CR 701.13a: the player who mills is the one whose
+		// #569. CR 701.17a: the player who mills is the one whose
 		// library is being read, and they are the affected player
 		// whoever controls the replacements. Bruvac the Grandiloquent
 		// and The Water Crystal both replace an OPPONENT's mill, so
@@ -2344,7 +2344,7 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		// Answering a prompt is an action boundary, like every other
 		// Resolve* handler, so the sweep the effect-time helpers
 		// deliberately skip happens here. Running a library out is NOT
-		// a loss (CR 701.13b, #767), but the cards that landed can be —
+		// a loss (CR 701.17b, #767), but the cards that landed can be —
 		// a milled Aura loses its host and a mill payoff's trigger has
 		// to be put on the stack against a swept board.
 		g.runStateChecksLocked()
@@ -2987,6 +2987,8 @@ func (g *Game) ResolvePickTargets(choiceID, chooserID uuid.UUID, targets []Targe
 	step := frame.currentClause()
 	if frame == nil || frame.build == nil || step == nil {
 		g.dequeueChoiceLocked(idx)
+		// #1529: the batch this trigger belonged to was held for it.
+		g.runStateChecksLocked()
 		return nil
 	}
 	for _, t := range targets {
@@ -3020,6 +3022,15 @@ func (g *Game) ResolvePickTargets(choiceID, chooserID uuid.UUID, targets []Targe
 	frame.picked = append(frame.picked, stamped...)
 	frame.step++
 	g.queuePickTargetStepLocked(frame)
+	// #1529: the drain holds the whole trigger queue while this walk
+	// is open. finishPickTargetLocked runs the boundary when the item
+	// joins; a walk that ended because CR 603.3d removed the ability
+	// (a later required clause with nothing left to pick) has to run
+	// it too, or the batch waits for an unrelated action. A no-op
+	// while a further step's prompt is open.
+	if !g.triggerAnnouncementOpenLocked() {
+		g.runStateChecksLocked()
+	}
 	return nil
 }
 
@@ -3059,6 +3070,9 @@ func (g *Game) ResolveTriggerPrompt(choiceID, chooserID uuid.UUID, apply bool) e
 	frame := choice.triggerResume
 	g.dequeueChoiceLocked(idx)
 	if !apply || frame == nil || frame.build == nil {
+		// #1529: declining still releases the batch the drain was
+		// holding for this trigger (CR 603.3b).
+		g.runStateChecksLocked()
 		return nil
 	}
 	// S20: a targeted optional trigger continues into the target

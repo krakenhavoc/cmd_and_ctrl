@@ -421,6 +421,8 @@ func TestGiftScrapshooterPromisedGivesOnEntryAndDestroys(t *testing.T) {
 		t.Fatalf("the permanent must remember the promise (CR 400.7d), got %+v", c.Provenance)
 	}
 	pickTriggerTarget(t, g, me.ID, rock)
+	// #1529: the gift draw and the destroy trigger are one batch.
+	answerTriggerOrderLastQueuedFirst(t, g)
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(rock) {
 		t.Error("the promised Scrapshooter destroys the artifact")

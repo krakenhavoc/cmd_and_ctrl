@@ -346,6 +346,25 @@ seconds each, so 5–15 minutes per game, and four model seats serialise
 on one GPU. Ten games is an afternoon, not a CI job, and the arena is
 never wired into CI.
 
+**Amendment (2026-09-24, #1503): a lockstep schedule, opt-in.** A seed
+here fixed the deal and the policies' randomness, never the game: every
+seat is a runner goroutine, and which seat acts first after a commit is
+the scheduler's choice, so a rerun forks at the first contested
+window. #1409 fixed the heuristic gate through a test-only door;
+`aiseat` now exports that door as a small production API —
+`NewStepped` builds a runner with no goroutine and no subscription, and
+`Runner.Step` runs one wake of its ordinary act-loop on the caller's
+goroutine (it panics on a runner built by `Start`, whose own goroutine
+already steps it). `botarena.Config.Lockstep` / `boteval arena
+--lockstep` steps the seats in chair order, round after round, so a seed
+replays move for move; the stall there is exact (a round with no
+commit) rather than timed, and the runner's wall-clock holds (MinThink,
+BlockGrace) are off because nobody else can act while a seat holds. The
+concurrent schedule stays the default, because it is the schedule a live
+table runs and discussion #1390 keeps concurrent liveness and
+deterministic quality as separate questions. A model seat is only as
+reproducible as its endpoint.
+
 ### 5. `probe` becomes a command, and the transport fix that could not wait
 
 The hand-run probe that produced the Context numbers becomes

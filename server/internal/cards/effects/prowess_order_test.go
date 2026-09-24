@@ -14,10 +14,9 @@ import (
 // skipped for it (ADR 0018's #1511 amendment). Anything else in the
 // batch — even one untargeted trigger of another kind — keeps the
 // prompt. The targeted case is pinned at the drain in
-// game/trigger_order_commutes_test.go: a targeted trigger picks its
-// target before it joins the queue, and by then the untargeted batch
-// has already drained (a pre-existing CR 603.3b gap, #1529), so it
-// cannot be reached end to end from a cast.
+// game/trigger_order_commutes_test.go and, since #1529 held the drain
+// for a trigger that is still choosing its target, end to end from a
+// cast in trigger_batch_order_test.go (prowess plus Caldera Pyremaw).
 
 // settleWithoutPrompts passes priority until the stack settles and
 // fails on ANY pending choice — the whole point of the auto-ordered

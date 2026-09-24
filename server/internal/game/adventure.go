@@ -18,21 +18,25 @@ import "github.com/google/uuid"
 //	           being put into its owner's graveyard;
 //	CR 715.4   its owner may then cast it as a creature spell from
 //	           exile, for as long as it stays there;
-//	CR 715.3e  everything else — countered, fizzled, discarded,
-//	           milled — is an ordinary card going to an ordinary
-//	           graveyard, and the grant never happens.
+//	(715.3d's "instead of") everything else — countered, fizzled,
+//	           discarded, milled — is an ordinary card going to an
+//	           ordinary graveyard, and the grant never happens: CR
+//	           715.3d only redirects a spell that actually resolves,
+//	           so anything else falls through to the ordinary rule
+//	           for wherever it left the stack.
 //
 // The exile is one case of the destination switch in
 // routeStackCardToGraveyardLocked, beside flashback's CR 702.34a exile
-// and buyback's CR 702.27b return to hand — the one place a spell
+// and buyback's CR 702.27a return to hand — the one place a spell
 // leaving the stack picks where it goes. It is gated on that helper's
-// `resolved` flag (#988), which is exactly the fact CR 715.3e turns
-// on: a countered or fizzled adventure card is an ordinary card in an
-// ordinary graveyard, and so is one that left the stack through the
-// defensive no-StackMeta path. Before `resolved` existed this branch
-// had to sit one frame up in resolveTopOfStackLocked to know the
-// difference; it no longer does, and the precedence between the three
-// is written down where they meet rather than spread across two files.
+// `resolved` flag (#988), which is exactly the distinction CR 715.3d's
+// "as it resolves" draws: a countered or fizzled adventure card is an
+// ordinary card in an ordinary graveyard, and so is one that left the
+// stack through the defensive no-StackMeta path. Before `resolved`
+// existed this branch had to sit one frame up in
+// resolveTopOfStackLocked to know the difference; it no longer does,
+// and the precedence between the three is written down where they
+// meet rather than spread across two files.
 //
 // It is BELOW #995's spellMovedItselfLocked guard and unaffected by
 // it: an Adventure card exiled by CR 715.3d is not a spell that moved

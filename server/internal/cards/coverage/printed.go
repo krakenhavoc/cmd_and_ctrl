@@ -1,8 +1,7 @@
 package coverage
 
 import (
-	_ "embed"
-	"encoding/json"
+	"embed"
 	"regexp"
 	"sync"
 )
@@ -22,8 +21,8 @@ import (
 // roadmap publishes card names only, never oracle text (ADR 0092
 // Decision 1).
 
-//go:embed testdata/oracle_text.json
-var oracleFixtureJSON []byte
+//go:embed testdata/oracle/*.json
+var oracleFixtureFS embed.FS
 
 var (
 	printedOnce sync.Once
@@ -34,14 +33,14 @@ var (
 // oracle ID, parsed once per binary. The map is shared: callers must
 // not modify it.
 //
-// It is the same file LoadOracleFixture reads, so the same freshness
-// guard covers it (TestOracleFixtureIsCurrent, nightly). A card
-// missing from the fixture simply has no printed text here; it is
+// It is the same directory LoadOracleFixture reads, so the same
+// freshness guard covers it (TestOracleFixtureIsCurrent, nightly). A
+// card missing from the fixture simply has no printed text here; it is
 // never an error.
 func PrintedOracle() map[string]OracleCard {
 	printedOnce.Do(func() {
-		out := map[string]OracleCard{}
-		if err := json.Unmarshal(oracleFixtureJSON, &out); err != nil {
+		out, _, err := LoadOracleFixtureFS(oracleFixtureFS, OracleFixtureDir)
+		if err != nil {
 			// The fixture is compiled in and parsed by the oracle
 			// tests on every CI run, so this cannot happen on a
 			// build that passed them. An empty map errs towards

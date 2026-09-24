@@ -52,6 +52,7 @@
                 "mana_abilities": [
                   {
                     "index": 0,
+                    "ref": "land:G",
                     "label": "Add {G}",
                     "tap_cost": true,
                     "produced": "{G}"
@@ -203,6 +204,7 @@
             "mana_abilities": [
               {
                 "index": 0,
+                "ref": "land:R",
                 "label": "Add {R}",
                 "tap_cost": true,
                 "produced": "{R}"
@@ -221,6 +223,7 @@
             "mana_abilities": [
               {
                 "index": 0,
+                "ref": "land:R",
                 "label": "Add {R}",
                 "tap_cost": true,
                 "produced": "{R}"
@@ -239,6 +242,7 @@
             "mana_abilities": [
               {
                 "index": 0,
+                "ref": "land:B",
                 "label": "Add {B}",
                 "tap_cost": true,
                 "produced": "{B}"
@@ -392,7 +396,8 @@
           "player": "00000001-0000-4000-8000-000000000000",
           "params": {
             "card_id": "0000000e-0000-4000-8000-000000000000",
-            "ability_index": 0
+            "ability_index": 0,
+            "ref": "land:R"
           },
           "kind": "mana",
           "label": "Mountain: Add {R}",
@@ -403,7 +408,8 @@
           "player": "00000001-0000-4000-8000-000000000000",
           "params": {
             "card_id": "0000000f-0000-4000-8000-000000000000",
-            "ability_index": 0
+            "ability_index": 0,
+            "ref": "land:R"
           },
           "kind": "mana",
           "label": "Mountain: Add {R}",
@@ -414,7 +420,8 @@
           "player": "00000001-0000-4000-8000-000000000000",
           "params": {
             "card_id": "00000010-0000-4000-8000-000000000000",
-            "ability_index": 0
+            "ability_index": 0,
+            "ref": "land:B"
           },
           "kind": "mana",
           "label": "Swamp: Add {B}",
@@ -650,6 +657,7 @@
             "mana_abilities": [
               {
                 "index": 0,
+                "ref": "land:G",
                 "label": "Add {G}",
                 "tap_cost": true,
                 "produced": "{G}"
@@ -668,6 +676,7 @@
             "mana_abilities": [
               {
                 "index": 0,
+                "ref": "land:G",
                 "label": "Add {G}",
                 "tap_cost": true,
                 "produced": "{G}"
@@ -686,6 +695,7 @@
             "mana_abilities": [
               {
                 "index": 0,
+                "ref": "land:G",
                 "label": "Add {G}",
                 "tap_cost": true,
                 "produced": "{G}"
@@ -704,6 +714,7 @@
             "mana_abilities": [
               {
                 "index": 0,
+                "ref": "land:G",
                 "label": "Add {G}",
                 "tap_cost": true,
                 "produced": "{G}"
@@ -799,7 +810,8 @@
           "player": "00000012-0000-4000-8000-000000000000",
           "params": {
             "card_id": "0000001c-0000-4000-8000-000000000000",
-            "ability_index": 0
+            "ability_index": 0,
+            "ref": "land:G"
           },
           "kind": "mana",
           "label": "Forest: Add {G}",
@@ -810,7 +822,8 @@
           "player": "00000012-0000-4000-8000-000000000000",
           "params": {
             "card_id": "0000001d-0000-4000-8000-000000000000",
-            "ability_index": 0
+            "ability_index": 0,
+            "ref": "land:G"
           },
           "kind": "mana",
           "label": "Forest: Add {G}",
@@ -821,7 +834,8 @@
           "player": "00000012-0000-4000-8000-000000000000",
           "params": {
             "card_id": "0000001e-0000-4000-8000-000000000000",
-            "ability_index": 0
+            "ability_index": 0,
+            "ref": "land:G"
           },
           "kind": "mana",
           "label": "Forest: Add {G}",
@@ -832,7 +846,8 @@
           "player": "00000012-0000-4000-8000-000000000000",
           "params": {
             "card_id": "0000001f-0000-4000-8000-000000000000",
-            "ability_index": 0
+            "ability_index": 0,
+            "ref": "land:G"
           },
           "kind": "mana",
           "label": "Forest: Add {G}",
@@ -946,6 +961,7 @@
                 "mana_abilities": [
                   {
                     "index": 0,
+                    "ref": "land:G",
                     "label": "Add {G}",
                     "tap_cost": true,
                     "produced": "{G}"
@@ -1080,6 +1096,7 @@
             "mana_abilities": [
               {
                 "index": 0,
+                "ref": "land:R",
                 "label": "Add {R}",
                 "tap_cost": true,
                 "produced": "{R}"
@@ -1098,6 +1115,7 @@
             "mana_abilities": [
               {
                 "index": 0,
+                "ref": "land:R",
                 "label": "Add {R}",
                 "tap_cost": true,
                 "produced": "{R}"
@@ -1116,6 +1134,7 @@
             "mana_abilities": [
               {
                 "index": 0,
+                "ref": "land:R",
                 "label": "Add {R}",
                 "tap_cost": true,
                 "produced": "{R}"
@@ -1134,6 +1153,7 @@
             "mana_abilities": [
               {
                 "index": 0,
+                "ref": "land:R",
                 "label": "Add {R}",
                 "tap_cost": true,
                 "produced": "{R}"
@@ -1234,7 +1254,8 @@
           "player": "00000020-0000-4000-8000-000000000000",
           "params": {
             "card_id": "0000002b-0000-4000-8000-000000000000",
-            "ability_index": 0
+            "ability_index": 0,
+            "ref": "land:R"
           },
           "kind": "mana",
           "label": "Mountain: Add {R}",
@@ -1245,7 +1266,8 @@
           "player": "00000020-0000-4000-8000-000000000000",
           "params": {
             "card_id": "0000002c-0000-4000-8000-000000000000",
-            "ability_index": 0
+            "ability_index": 0,
+            "ref": "land:R"
           },
           "kind": "mana",
           "label": "Mountain: Add {R}",
@@ -1256,7 +1278,8 @@
           "player": "00000020-0000-4000-8000-000000000000",
           "params": {
             "card_id": "0000002d-0000-4000-8000-000000000000",
-            "ability_index": 0
+            "ability_index": 0,
+            "ref": "land:R"
           },
           "kind": "mana",
           "label": "Mountain: Add {R}",
@@ -1267,7 +1290,8 @@
           "player": "00000020-0000-4000-8000-000000000000",
           "params": {
             "card_id": "0000002e-0000-4000-8000-000000000000",
-            "ability_index": 0
+            "ability_index": 0,
+            "ref": "land:R"
           },
           "kind": "mana",
           "label": "Mountain: Add {R}",
@@ -1405,6 +1429,7 @@
                 "mana_abilities": [
                   {
                     "index": 0,
+                    "ref": "land:G",
                     "label": "Add {G}",
                     "tap_cost": true,
                     "produced": "{G}"
@@ -1539,6 +1564,7 @@
             "mana_abilities": [
               {
                 "index": 0,
+                "ref": "land:R",
                 "label": "Add {R}",
                 "tap_cost": true,
                 "produced": "{R}"
@@ -1557,6 +1583,7 @@
             "mana_abilities": [
               {
                 "index": 0,
+                "ref": "land:R",
                 "label": "Add {R}",
                 "tap_cost": true,
                 "produced": "{R}"
@@ -1575,6 +1602,7 @@
             "mana_abilities": [
               {
                 "index": 0,
+                "ref": "land:R",
                 "label": "Add {R}",
                 "tap_cost": true,
                 "produced": "{R}"
@@ -1593,6 +1621,7 @@
             "mana_abilities": [
               {
                 "index": 0,
+                "ref": "land:R",
                 "label": "Add {R}",
                 "tap_cost": true,
                 "produced": "{R}"
@@ -1694,7 +1723,8 @@
           "player": "0000002f-0000-4000-8000-000000000000",
           "params": {
             "card_id": "0000003a-0000-4000-8000-000000000000",
-            "ability_index": 0
+            "ability_index": 0,
+            "ref": "land:R"
           },
           "kind": "mana",
           "label": "Mountain: Add {R}",
@@ -1705,7 +1735,8 @@
           "player": "0000002f-0000-4000-8000-000000000000",
           "params": {
             "card_id": "0000003b-0000-4000-8000-000000000000",
-            "ability_index": 0
+            "ability_index": 0,
+            "ref": "land:R"
           },
           "kind": "mana",
           "label": "Mountain: Add {R}",
@@ -1716,7 +1747,8 @@
           "player": "0000002f-0000-4000-8000-000000000000",
           "params": {
             "card_id": "0000003c-0000-4000-8000-000000000000",
-            "ability_index": 0
+            "ability_index": 0,
+            "ref": "land:R"
           },
           "kind": "mana",
           "label": "Mountain: Add {R}",
@@ -1727,7 +1759,8 @@
           "player": "0000002f-0000-4000-8000-000000000000",
           "params": {
             "card_id": "0000003d-0000-4000-8000-000000000000",
-            "ability_index": 0
+            "ability_index": 0,
+            "ref": "land:R"
           },
           "kind": "mana",
           "label": "Mountain: Add {R}",
@@ -1893,6 +1926,7 @@
                 "mana_abilities": [
                   {
                     "index": 0,
+                    "ref": "land:G",
                     "label": "Add {G}",
                     "tap_cost": true,
                     "produced": "{G}"
@@ -1969,6 +2003,7 @@
             "mana_abilities": [
               {
                 "index": 0,
+                "ref": "land:R",
                 "label": "Add {R}",
                 "tap_cost": true,
                 "produced": "{R}"
@@ -1987,6 +2022,7 @@
             "mana_abilities": [
               {
                 "index": 0,
+                "ref": "land:R",
                 "label": "Add {R}",
                 "tap_cost": true,
                 "produced": "{R}"
@@ -2005,6 +2041,7 @@
             "mana_abilities": [
               {
                 "index": 0,
+                "ref": "land:R",
                 "label": "Add {R}",
                 "tap_cost": true,
                 "produced": "{R}"
@@ -2023,6 +2060,7 @@
             "mana_abilities": [
               {
                 "index": 0,
+                "ref": "land:R",
                 "label": "Add {R}",
                 "tap_cost": true,
                 "produced": "{R}"
@@ -2172,6 +2210,7 @@
                 "mana_abilities": [
                   {
                     "index": 0,
+                    "ref": "land:G",
                     "label": "Add {G}",
                     "tap_cost": true,
                     "produced": "{G}"
@@ -2272,6 +2311,7 @@
             "mana_abilities": [
               {
                 "index": 0,
+                "ref": "land:R",
                 "label": "Add {R}",
                 "tap_cost": true,
                 "produced": "{R}"
@@ -2290,6 +2330,7 @@
             "mana_abilities": [
               {
                 "index": 0,
+                "ref": "land:R",
                 "label": "Add {R}",
                 "tap_cost": true,
                 "produced": "{R}"
@@ -2359,7 +2400,8 @@
           "player": "0000004d-0000-4000-8000-000000000000",
           "params": {
             "card_id": "00000056-0000-4000-8000-000000000000",
-            "ability_index": 0
+            "ability_index": 0,
+            "ref": "land:R"
           },
           "kind": "mana",
           "label": "Mountain: Add {R}",
@@ -2370,7 +2412,8 @@
           "player": "0000004d-0000-4000-8000-000000000000",
           "params": {
             "card_id": "00000057-0000-4000-8000-000000000000",
-            "ability_index": 0
+            "ability_index": 0,
+            "ref": "land:R"
           },
           "kind": "mana",
           "label": "Mountain: Add {R}",
@@ -2582,6 +2625,7 @@
             "mana_abilities": [
               {
                 "index": 0,
+                "ref": "land:B",
                 "label": "Add {B}",
                 "tap_cost": true,
                 "produced": "{B}"
@@ -2600,6 +2644,7 @@
             "mana_abilities": [
               {
                 "index": 0,
+                "ref": "land:B",
                 "label": "Add {B}",
                 "tap_cost": true,
                 "produced": "{B}"
@@ -2669,7 +2714,8 @@
           "player": "00000058-0000-4000-8000-000000000000",
           "params": {
             "card_id": "00000061-0000-4000-8000-000000000000",
-            "ability_index": 0
+            "ability_index": 0,
+            "ref": "land:B"
           },
           "kind": "mana",
           "label": "Swamp: Add {B}",
@@ -2680,7 +2726,8 @@
           "player": "00000058-0000-4000-8000-000000000000",
           "params": {
             "card_id": "00000062-0000-4000-8000-000000000000",
-            "ability_index": 0
+            "ability_index": 0,
+            "ref": "land:B"
           },
           "kind": "mana",
           "label": "Swamp: Add {B}",
@@ -2895,6 +2942,7 @@
             "mana_abilities": [
               {
                 "index": 0,
+                "ref": "land:B",
                 "label": "Add {B}",
                 "tap_cost": true,
                 "produced": "{B}"
@@ -2913,6 +2961,7 @@
             "mana_abilities": [
               {
                 "index": 0,
+                "ref": "land:B",
                 "label": "Add {B}",
                 "tap_cost": true,
                 "produced": "{B}"
@@ -3014,7 +3063,8 @@
           "player": "00000063-0000-4000-8000-000000000000",
           "params": {
             "card_id": "0000006d-0000-4000-8000-000000000000",
-            "ability_index": 0
+            "ability_index": 0,
+            "ref": "land:B"
           },
           "kind": "mana",
           "label": "Swamp: Add {B}",
@@ -3025,7 +3075,8 @@
           "player": "00000063-0000-4000-8000-000000000000",
           "params": {
             "card_id": "0000006e-0000-4000-8000-000000000000",
-            "ability_index": 0
+            "ability_index": 0,
+            "ref": "land:B"
           },
           "kind": "mana",
           "label": "Swamp: Add {B}",

@@ -70,6 +70,7 @@ type arenaFlags struct {
 	games    int
 	seed     uint64
 	rotate   bool
+	lockstep bool // one goroutine, seat by seat: botarena.Config.Lockstep (#1503)
 	turns    int
 	wall     time.Duration
 	stall    time.Duration
@@ -107,6 +108,7 @@ func parseArenaFlags(args []string, out io.Writer) (*arenaFlags, error) {
 	games := fs.Int("games", 10, "how many games to play")
 	seed := fs.Uint64("seed", 1, "seed of the first game; game i uses seed+i")
 	rotate := fs.Bool("rotate", false, "move each contestant one chair along per game, so turn order cancels")
+	lockstep := fs.Bool("lockstep", false, "play each game on one goroutine, seat by seat, so the same --seed replays the same games move for move (default: one goroutine per seat, as a live table runs; the seed then fixes the deals, not the games)")
 	turns := fs.Int("turn-budget", 60, "stop a game that has not ended by this turn")
 	wall := fs.Duration("wall", 30*time.Minute, "per-game wall clock")
 	stall := fs.Duration("stall", 0, "declare a stall after this long with no committed move (default 3×max-think+15s)")
@@ -128,7 +130,7 @@ func parseArenaFlags(args []string, out io.Writer) (*arenaFlags, error) {
 	}
 
 	a := &arenaFlags{
-		games: *games, seed: *seed, rotate: *rotate, turns: *turns, wall: *wall,
+		games: *games, seed: *seed, rotate: *rotate, lockstep: *lockstep, turns: *turns, wall: *wall,
 		stall: *stall, maxThink: *maxThink, blockGrace: *blockGrace, out: *out2,
 		decLog: *decLog, decMode: *decMode,
 		replays: *replays, note: *note, printMD: *printMD, printJSON: *printJSON,
@@ -277,7 +279,7 @@ func (a *arenaFlags) config(idx *cards.Index, client model.Client, dl *decisionl
 		seats = append(seats, botarena.SeatSpec{Tier: t, Deck: a.decks[i], Name: a.names[i]})
 	}
 	cfg := botarena.Config{
-		Seats: seats, Games: a.games, Seed: a.seed, Rotate: a.rotate,
+		Seats: seats, Games: a.games, Seed: a.seed, Rotate: a.rotate, Lockstep: a.lockstep,
 		TurnBudget: a.turns, Wall: a.wall, Stall: a.stall,
 		Index: idx, Client: client, MaxThink: a.maxThink,
 		Models:      tiers.Models{Routine: a.modelID, Frontier: a.frontier},
@@ -397,8 +399,8 @@ func runArena(args []string) int {
 		say(progress, "games.jsonl IS OPERATOR-ONLY: a stalled game's entry dumps every seat's legal moves, so the file names castable cards in every hand at the table; never attach it to a bug report.\n")
 	}
 
-	say(progress, "arena: %d games, seats [%s], seed %d, rotation %s\n",
-		a.games, strings.Join(tierNames(a.seats), ", "), a.seed, onOff(a.rotate))
+	say(progress, "arena: %d games, seats [%s], seed %d, rotation %s, schedule %s\n",
+		a.games, strings.Join(tierNames(a.seats), ", "), a.seed, onOff(a.rotate), botarena.Schedule(a.lockstep))
 	// The operator's --games is never changed for them; the run says
 	// what the seating will actually be, and the report keeps the
 	// histogram.

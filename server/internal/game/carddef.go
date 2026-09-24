@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"strings"
+
+	"github.com/google/uuid"
+)
 
 // carddef.go — the one place the engine reads the card catalog
 // (#622, Discussion #561 option A).
@@ -133,7 +137,7 @@ type CardDef struct {
 	DrawStep []DrawStepPermission
 
 	// CastCondition is the card's own "you may cast this only if …"
-	// (CR 307.6's legendary sorcery, and the "cast only if" family),
+	// (CR 205.4e's legendary sorcery, and the "cast only if" family),
 	// checked by CastGateLocked at announce and never at resolution.
 	// Nil for every card that prints no such clause. ADR 0073 §7.
 	CastCondition func(g *Game, controller uuid.UUID, card Card) bool
@@ -208,6 +212,19 @@ type CardDef struct {
 	// through CatalogTokenText / TokenTextForCard; see token_key.go
 	// and ADR 0083.
 	TokenText string
+
+	// GrantText is a granted ability BUNDLE's printed text (ADR 0093
+	// Decision 8) — the quoted ability as the granting card prints it,
+	// "{T}: Add one mana of any color." Set only on a bundle's own def,
+	// the one effects files under GrantKey(name), from
+	// effects.AbilityGrant.Text.
+	//
+	// It is here for TokenText's reason: the recipient has no printing
+	// that says it has the ability, and a granted trigger has no row on
+	// the wire at all, so this string is the only thing that tells a
+	// player what their permanent can now do. Read through
+	// GrantTextFor.
+	GrantText string
 
 	// XMatters says everything the card does scales with the
 	// announced X, so X=0 does nothing at all. Read only by the
@@ -299,8 +316,11 @@ func catalogDef(key string) *CardDef {
 	// is why every existing reader — the trigger harvest, the layer
 	// pass, the activation path, the view — needed no change of its
 	// own. See copy_grants.go.
-	if base, grants := splitCatalogKeyGrants(key); len(grants) > 0 {
-		return mergedCatalogDef(base, grants)
+	//
+	// Since ADR 0093 the same composite carries LAYER-6 grants too
+	// (CatalogAbilityKey), and its base may be empty ("|grant:<a>").
+	if strings.IndexByte(key, grantKeySeparator[0]) >= 0 {
+		return mergedCatalogDef(key)
 	}
 	return CatalogLookup(key)
 }

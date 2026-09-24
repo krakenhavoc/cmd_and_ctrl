@@ -5,10 +5,10 @@ import (
 	"testing"
 )
 
-// The embedded fixture is the checked-in file, byte for byte in
+// The embedded fixture is the checked-in directory, file for file in
 // meaning: one freshness guard (TestOracleFixtureIsCurrent) covers both.
 func TestPrintedOracleIsTheFixture(t *testing.T) {
-	want, err := LoadOracleFixture(OracleFixturePath)
+	want, err := LoadOracleFixture(OracleFixtureDir)
 	if err != nil {
 		t.Fatalf("load fixture: %v", err)
 	}
@@ -17,7 +17,7 @@ func TestPrintedOracleIsTheFixture(t *testing.T) {
 		t.Fatal("the embedded oracle fixture parsed to nothing")
 	}
 	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("the embedded fixture (%d cards) differs from %s (%d cards)", len(got), OracleFixturePath, len(want))
+		t.Fatalf("the embedded fixture (%d cards) differs from %s (%d cards)", len(got), OracleFixtureDir, len(want))
 	}
 }
 

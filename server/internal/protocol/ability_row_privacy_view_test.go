@@ -60,6 +60,9 @@ const (
 var activatedRowScopes = map[string]rowScope{
 	// The printed ability and its printed cost.
 	"Index": rowPublic, "Label": rowPublic, "TapCost": rowPublic,
+	// ADR 0093: the row's stable ref and its grantor, who is on the
+	// battlefield for every viewer to see.
+	"Ref": rowPublic, "GrantedBy": rowPublic,
 	"SacrificeSelf": rowPublic, "ManaCost": rowPublic, "LifeCost": rowPublic,
 	"SorcerySpeed": rowPublic, "LoyaltyCost": rowPublic, "DiscardSelf": rowPublic,
 	"ExileSelf": rowPublic, "CrewCost": rowPublic, "DemandsX": rowPublic,
@@ -100,6 +103,7 @@ var activatedRowScopes = map[string]rowScope{
 // manaRowScopes is activatedRowScopes for ManaAbilityView.
 var manaRowScopes = map[string]rowScope{
 	"Index": rowPublic, "Label": rowPublic, "TapCost": rowPublic,
+	"Ref": rowPublic, "GrantedBy": rowPublic,
 	"SacrificeCost": rowPublic, "ExileSelf": rowPublic, "LifeCost": rowPublic,
 	"ManaCost": rowPublic, "Produced": rowPublic, "Restrictions": rowPublic,
 	"SacrificeLabel": rowPublic, "SacrificeOptions": rowPublic,

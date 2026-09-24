@@ -556,7 +556,10 @@ func Register(spec Spec) {
 	// declaration the engine silently ignored — the card would
 	// register, look complete on the catalog page, and never apply.
 	checkStaticZones(spec.Name, "static", spec.Static)
+	// ADR 0093: an ability grant is a layer-6 effect and names a bundle.
+	checkStaticGrants(spec.Name, "static", spec.Static)
 	if spec.Emblem != nil {
+		checkStaticGrants(spec.Name, "emblem static", spec.Emblem.Static)
 		checkTriggerZones(spec.Name, "emblem trigger", spec.Emblem.Triggered)
 	}
 	checkEmblemSpec(spec.Name, spec.Emblem)

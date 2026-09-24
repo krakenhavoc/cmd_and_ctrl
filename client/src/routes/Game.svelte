@@ -56,10 +56,15 @@
     attackAllLabel,
     attackAllParams,
     attackAllTaxLabel,
+    attackLimitOn,
     attackTaxOn,
     blockedSummary,
+    bulkAttackRefusal,
+    offersAttackPicker,
     planAttackAll,
     seatLabel,
+    type AttackAllParams,
+    type BulkAttackAttempt,
   } from "../lib/attackAll";
   import { hasPassMove, stackEmpty } from "../lib/timing";
   import { consumeManualStop, manualStops } from "../lib/priorityStops";
@@ -860,15 +865,24 @@
   // either, so this is the same optimistic-stash shape
   // lastCastByCardID uses for a cast retry, sized down to "the one
   // bulk attack that can be in flight at a time."
-  let lastAttackAllAttempt = $state<string | null>(null);
+  //
+  // #1533: with the action frame's id beside it, so only the server's
+  // answer to THAT frame opens a picker (bulkAttackRefusal). Under
+  // Silent Arbiter the common refusal is a single click-declared
+  // attacker, and it must stay the plain toast.
+  let lastAttackAllAttempt = $state<BulkAttackAttempt | null>(null);
+
+  function sendBulkAttack(defenderSeatID: string, params: AttackAllParams): void {
+    combatSelection = null;
+    const frameID = client.sendAction("declare_attackers", undefined, params);
+    lastAttackAllAttempt = frameID ? { defenderSeatID, frameID } : null;
+    play("attack");
+  }
 
   function attackAllAt(defenderSeatID: string): void {
     const params = attackAllParams(attackPlan, defenderSeatID);
     if (!params) return;
-    combatSelection = null;
-    lastAttackAllAttempt = defenderSeatID;
-    client.sendAction("declare_attackers", undefined, params);
-    play("attack");
+    sendBulkAttack(defenderSeatID, params);
   }
 
   // ADR 0080 (#1063): the button's tooltip names the CR 508.1a price
@@ -894,22 +908,37 @@
   // the rejection first.
   let attackPickerDefenderID = $state<string | null>(null);
 
-  // attackTaxRefusalDefenderID is non-null exactly when the LAST
-  // "attack with all" attempt is the thing $lastError is currently
-  // complaining about — a derived read rather than an effect that
-  // writes its own dependency, so there is nothing here to loop.
-  const attackTaxRefusalDefenderID = $derived.by(() => {
-    const err = $lastError;
-    if (!err || err.code !== "attack_tax_unpaid" || !lastAttackAllAttempt) return null;
-    return lastAttackAllAttempt;
-  });
+  // #1533: the server's sentence for the limit refusal the picker was
+  // opened from, shown at its top. Null for any other opening.
+  let attackPickerLimitReason = $state<string | null>(null);
+
+  // bulkRefusal is non-null exactly when $lastError is the server's
+  // answer to the LAST "attack with all" frame and is one the picker
+  // can answer: an unpaid tax (#1162) or a count limit (#1533). A
+  // derived read rather than an effect that writes its own dependency,
+  // so there is nothing here to loop.
+  const bulkRefusal = $derived(bulkAttackRefusal($lastError, lastAttackAllAttempt));
+  const attackTaxRefusalDefenderID = $derived(
+    bulkRefusal?.kind === "tax" ? bulkRefusal.defenderSeatID : null,
+  );
+  const attackLimitRefusalDefenderID = $derived(
+    bulkRefusal?.kind === "limit" ? bulkRefusal.defenderSeatID : null,
+  );
+  // A used-up limit (room 0) leaves nothing to pick; the toast then
+  // explains and offers no picker. An unpublished room (null) still
+  // offers it: the server refuses an over-full pick again and says so.
+  const attackLimitRefusalRoom = $derived(
+    attackLimitRefusalDefenderID ? attackLimitOn(view, attackLimitRefusalDefenderID) : null,
+  );
 
   function openAttackPicker(defenderSeatID: string): void {
+    attackPickerLimitReason = null;
     attackPickerDefenderID = defenderSeatID;
   }
   function openAttackPickerFromRefusal(): void {
-    if (!attackTaxRefusalDefenderID) return;
-    attackPickerDefenderID = attackTaxRefusalDefenderID;
+    if (!bulkRefusal) return;
+    attackPickerLimitReason = bulkRefusal.kind === "limit" ? ($lastError?.message ?? null) : null;
+    attackPickerDefenderID = bulkRefusal.defenderSeatID;
     client.lastError.set(null);
   }
   function dismissAttackTaxRefusal(): void {
@@ -919,18 +948,17 @@
     const defenderSeatID = attackPickerDefenderID;
     attackPickerDefenderID = null;
     if (!defenderSeatID) return;
+    attackPickerLimitReason = null;
     const params = attackAllParams(attackPlan, defenderSeatID, {
       only: attackerIDs,
       lockedSources,
     });
     if (!params) return;
-    combatSelection = null;
-    lastAttackAllAttempt = defenderSeatID;
-    client.sendAction("declare_attackers", undefined, params);
-    play("attack");
+    sendBulkAttack(defenderSeatID, params);
   }
   function cancelAttackPicker(): void {
     attackPickerDefenderID = null;
+    attackPickerLimitReason = null;
   }
 
   // The inverse of a wide declaration is undo, not a bulk "unattack":
@@ -1554,15 +1582,18 @@
                         >
                       {/if}
                     </button>
-                    {#if attackTaxOn(view, attackPlan.defenders[0].id)}
+                    {#if offersAttackPicker(view, attackPlan, attackPlan.defenders[0].id)}
                       <!-- #1162: the seat can only afford SOME of a wide
                            swing under a tax — offered up front rather
                            than only after the full-batch button is
-                           refused. -->
+                           refused. #1533: likewise when a count limit
+                           lets only some of it attack. -->
                       <button
                         type="button"
                         class="ghost att-btn"
-                        title="pick which attackers to send, and lock a land against the auto-tapper"
+                        title={attackTaxOn(view, attackPlan.defenders[0].id)
+                          ? "pick which attackers to send, and lock a land against the auto-tapper"
+                          : "pick which attackers to send — an effect limits how many can attack"}
                         onclick={() => openAttackPicker(attackPlan.defenders[0].id)}
                       >
                         Choose attackers…
@@ -1586,11 +1617,13 @@
                           <span class="muted">{attackTaxOn(view, opp.id)}</span>
                         {/if}
                       </button>
-                      {#if attackTaxOn(view, opp.id)}
+                      {#if offersAttackPicker(view, attackPlan, opp.id)}
                         <button
                           type="button"
                           class="ghost att-btn"
-                          title={`pick which attackers to send at ${seatLabel(opp)}, and lock a land against the auto-tapper`}
+                          title={attackTaxOn(view, opp.id)
+                            ? `pick which attackers to send at ${seatLabel(opp)}, and lock a land against the auto-tapper`
+                            : `pick which attackers to send at ${seatLabel(opp)} — an effect limits how many can attack`}
                           onclick={() => openAttackPicker(opp.id)}
                           aria-label={`Choose attackers against ${seatLabel(opp)}`}
                         >
@@ -1776,6 +1809,40 @@
                   <Icon name="x" size={12} />
                 </button>
               </div>
+            {:else if attackLimitRefusalDefenderID}
+              <!-- #1533: a wide swing refused by a CR 508.1c count limit
+                   (Silent Arbiter, Crawlspace — ADR 0045 Decision 45)
+                   offers the same attackers picker, capped at the room
+                   the server publishes. The server's sentence is the
+                   reason, shown verbatim. -->
+              <div class="att toast attack-limit-override" role="alert" aria-live="polite">
+                <span class="att-label gold">attack limit</span>
+                <span class="att-text">
+                  <strong>{$lastError?.message}</strong>
+                  {#if attackLimitRefusalRoom === 0}
+                    <span class="muted">· no more creatures can attack this combat</span>
+                  {/if}
+                </span>
+                {#if attackLimitRefusalRoom !== 0}
+                  <button
+                    type="button"
+                    class="primary att-btn"
+                    onclick={openAttackPickerFromRefusal}
+                  >
+                    {attackLimitRefusalRoom === null
+                      ? "Choose attackers…"
+                      : `Choose up to ${attackLimitRefusalRoom}…`}
+                  </button>
+                {/if}
+                <button
+                  type="button"
+                  class="ghost att-close"
+                  onclick={dismissAttackTaxRefusal}
+                  aria-label="dismiss"
+                >
+                  <Icon name="x" size={12} />
+                </button>
+              </div>
             {:else if $lastError}
               <div class="att toast error" role="alert" aria-live="polite">
                 <span class="att-label danger">rejected</span>
@@ -1918,6 +1985,7 @@
         {view}
         {viewerID}
         defenderSeatID={attackPickerDefenderID}
+        limitReason={attackPickerLimitReason}
         onConfirm={confirmAttackPicker}
         onCancel={cancelAttackPicker}
       />
@@ -2459,6 +2527,18 @@
     flex: 1;
     min-width: 0;
   }
+  /* #1533: the limit sentence is the server's and can run long
+     ("… can attack Player 3 each combat (Crawlspace)."). At phone
+     width the text takes the whole first line and the actions wrap
+     under it, rather than squeezing it into a column a word wide. */
+  @media (max-width: 599px) {
+    .attack-limit-override {
+      flex-wrap: wrap;
+    }
+    .attack-limit-override .att-text {
+      flex-basis: calc(100% - 110px);
+    }
+  }
   .att-text strong {
     color: var(--fg);
     font-weight: 700;
@@ -2507,6 +2587,7 @@
   .combat-hint,
   .mana-override,
   .attack-tax-override,
+  .attack-limit-override,
   .rewind-notice,
   .game-end {
     border-color: rgba(217, 180, 92, 0.45);

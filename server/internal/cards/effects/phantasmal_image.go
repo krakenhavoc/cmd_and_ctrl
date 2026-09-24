@@ -39,7 +39,8 @@ func init() {
 		// the placeholder convention for unparseable stats.
 		Caveats: []string{"If you decline the copy, the 0/0 Phantasmal Image stays on the battlefield instead of dying."},
 		Grants: []AbilityGrant{{
-			Key: phantasmalImageIllusionGrant,
+			Key:  phantasmalImageIllusionGrant,
+			Text: "When this creature becomes the target of a spell or ability, sacrifice it.",
 			Triggered: []game.TriggeredAbility{
 				On(game.EventBecomesTarget, Self,
 					"Phantasmal Image — sacrifice it",

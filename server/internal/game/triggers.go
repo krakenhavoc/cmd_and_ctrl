@@ -695,33 +695,35 @@ func (g *Game) harvestLTB(pass *harvestPass) {
 	if batch, ok := g.simultaneousExitCardLocked(ev.CardID); ok {
 		source = batch
 	}
-	oracle := CatalogKey(source)
-	if oracle == "" {
-		return
-	}
-	// TriggersForKey, not TriggersForCard: this path has already
-	// chosen its key (CatalogKey plus the AbilitiesRemoved read off
-	// the LKI snapshot below), and the designation gate is evaluated
-	// against the SNAPSHOT for the same CR 603.10 reason — a Case
-	// that was solved when it died has its solved dies-trigger, one
-	// that was not does not. ADR 0071.
-	triggers := TriggersForKey(oracle, source)
-	if len(triggers) == 0 {
-		return
-	}
 	lki, ok := g.lastKnownBattlefield[ev.CardID]
 	if batch, inBatch := g.simultaneousExitCardLocked(ev.CardID); inBatch {
 		lki, ok = batch.Effective(), true
 	}
-	// S24 layer 6: read the removal off the LKI SNAPSHOT, not off the
-	// card. CatalogAbilityKey cannot answer here — the permanent has
-	// already left the battlefield and clearEffectiveCacheLocked has
-	// dropped its layer cache — and CR 603.10 says an LTB trigger is
-	// judged on what the permanent looked like while it was still
-	// there. A creature that died under a Kenrith's Transformation
-	// has no dies-trigger, and that stays true for the beat between
-	// the death and the Aura falling off.
-	if ok && lki.AbilitiesRemoved {
+	// S24 layer 6 / ADR 0093 Decision 2: the key is read off the LKI
+	// SNAPSHOT, not off the card. CatalogAbilityKey cannot answer here
+	// — the permanent has already left the battlefield and
+	// clearEffectiveCacheLocked has dropped its layer cache — and
+	// CR 603.10a says an LTB trigger is judged on what the permanent
+	// looked like while it was still there. A creature that died under
+	// a Kenrith's Transformation has none of its OWN dies-triggers,
+	// and that stays true for the beat between the death and the Aura
+	// falling off; one that died carrying a granted "when this
+	// creature dies" still has that one (AbilityKeyFromLKI composes
+	// both halves).
+	oracle := CatalogKey(source)
+	if ok {
+		oracle = AbilityKeyFromLKI(source, lki)
+	}
+	if oracle == "" {
+		return
+	}
+	// TriggersForKey, not TriggersForCard: this path has already
+	// chosen its key, and the designation gate is evaluated against
+	// the SNAPSHOT for the same CR 603.10 reason — a Case that was
+	// solved when it died has its solved dies-trigger, one that was
+	// not does not. ADR 0071.
+	triggers := TriggersForKey(oracle, source)
+	if len(triggers) == 0 {
 		return
 	}
 	if !ok {

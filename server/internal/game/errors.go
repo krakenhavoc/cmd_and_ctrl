@@ -290,7 +290,7 @@ var (
 	// ErrCantCast is the sentinel for a cast refused by the
 	// announce-time gate (CR 101.2, ADR 0073 §7): a "can't cast"
 	// static on a permanent (Rule of Law, Grafdigger's Cage, Rakdos)
-	// or the spell's own "cast only if" condition (CR 307.6's
+	// or the spell's own "cast only if" condition (CR 205.4e's
 	// legendary sorcery).
 	//
 	// The error actually returned is a *CantCastError carrying the
@@ -327,6 +327,16 @@ var (
 	// a new object (CR 400.7). Checked after the timing check and
 	// before the printed condition, so nothing is paid.
 	ErrAbilityExhausted = errors.New("game: this exhaust ability has already been activated")
+
+	// ErrStaleAbilityRef is returned by ActivateCatalogAbility and
+	// ActivateManaAbility when the announcement names an ability by a
+	// ref (ADR 0093 Decision 5) and the row at its index is no longer
+	// that ability — a granted ability appeared or vanished between
+	// the view and the announcement, and the positional index now
+	// points somewhere else. Checked before anything is validated or
+	// paid, so the move costs nothing; the next view carries fresh
+	// refs, so it is never a wedge (#544).
+	ErrStaleAbilityRef = errors.New("game: that ability is no longer at that position — the board changed")
 
 	// ErrIllegalManaColor is returned by ActivateManaAbility when the
 	// activator named the colour of a pipe slot up front (#1443,

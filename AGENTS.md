@@ -308,7 +308,7 @@ A restore point written by yesterday's binary has to restore in today's. Three t
 - **The arena lives OUTSIDE `aiseat/`**, at `server/internal/botarena/`, and that is not a style choice: `heuristic/imports_test.go` bans `internal/game` from every subpackage of `aiseat/` — including their `_test.go` files, over Imports, TestImports *and* XTestImports — because a **policy** holding authoritative state could read an opponent's hand. An arena has to hold the `*game.Game` and the `*ws.Room`, so it sits above the ban and hands each policy nothing but the filtered `aiseat.Input` a runner would. `botarena.BattleDeck` is the whole-game tests' deck moved here verbatim; the copy in `heuristic_game_test.go` stays where it is, because those tests may not import this package.
 - **The whole-game tests are gated off by default** and the package owns the longest tests in the tree (CI runs `go test` with a 30m timeout because of them):
   - `AISEAT_GAME_TESTS=1` — the master gate. Without it every whole-game test in `internal/aiseat` skips. The nightly `bot-games` job runs `go test ./internal/aiseat/... -race -timeout 30m -skip 'TestFourRandomBotsPlayToAWinner|TestFourHeuristicBotsPlayToAWinner'`, then the random-table step. The catalog soak is its own job, `catalog-soak` (#1456; it needs `CMDCTRL_SCRYFALL_DUMP` from disk, which is why it is the one bot job that stays self-hosted while `bot-games` and `bot-soak` run on GitHub-hosted runners). The two skipped tests are the `bot-soak` job's, which runs them without `-race` (`.github/workflows/e2e-nightly.yml`).
-  - `AISEAT_HEURISTIC_GAMES=N` / `AISEAT_H2H_GAMES=N` — widen the four-heuristic and heuristic-vs-random samples (defaults 3 and small, for CI). The nightly `bot-soak` job sets `AISEAT_HEURISTIC_GAMES=20`, which is S31 exit criterion 2 (#685); the seeds are fixed at 101..120, so it plays the same twenty tables every night. It sets no `AISEAT_H2H_GAMES`. Both tests play **lockstep** since #1409 (`playLockstepGame` in `heuristic_game_test.go`: the seats' ordinary act-loop called in seat order on one goroutine, through the test-only `lockstep_export_test.go`), so a seed replays move for move; the soak keeps the production one-goroutine-per-seat schedule, because concurrent liveness is what it tests (discussion #1390).
+  - `AISEAT_HEURISTIC_GAMES=N` / `AISEAT_H2H_GAMES=N` — widen the four-heuristic and heuristic-vs-random samples (defaults 3 and small, for CI). The nightly `bot-soak` job sets `AISEAT_HEURISTIC_GAMES=20`, which is S31 exit criterion 2 (#685); the seeds are fixed at 101..120, so it plays the same twenty tables every night. It sets no `AISEAT_H2H_GAMES`. Both tests play **lockstep** since #1409 (`playLockstepGame` in `heuristic_game_test.go`: the seats' ordinary act-loop called in seat order on one goroutine, through `aiseat.NewStepped` / `Runner.Step` since #1503), so a seed replays move for move — and `boteval arena --lockstep` plays the same schedule; the soak keeps the production one-goroutine-per-seat schedule, because concurrent liveness is what it tests (discussion #1390).
   - `AISEAT_HEURISTIC_SCHEDULE=concurrent` — plays the heuristic gate the old way, one runner goroutine per seat. For comparing the two schedules; the nightly does not set it.
   - `AISEAT_RANDOM_GAMES=N` / `AISEAT_RANDOM_SEED=<uint64>` — `TestFourRandomBotsPlayToAWinner`, S31's four-`random`-bots test: N consecutive games to a winner, default 3, from base seed 31000. The nightly runs it at `AISEAT_RANDOM_GAMES=20` in its own step without `-race`.
   - `AISEAT_REPLAY_DIR=<path>` — where that test writes each game's replay JSONL. It sets the location only, not whether replays are kept. Unset uses a temp dir. Either way a passing game's replay is deleted and a failing one kept, since one game is hundreds of MiB. The nightly points it at the workspace and uploads it on failure.
@@ -649,12 +649,32 @@ surface tiny.
    (which uses `PushBottom` so the "first match" sandbox pick is
    deterministic).
 
-6. **Verify.** `cd server && go test ./internal/cards/effects/...` and
+6. **Add the card's oracle-text file.** Every catalogued card needs its
+   own generated file, `server/internal/cards/coverage/testdata/oracle/<oracle_id>.json`
+   (one per base oracle ID, whether or not the card has an activated
+   ability). `TestAbilitiesMatchOracleText` checks ability labels
+   against it, and `TestOracleFixtureCoversRegistry` fails in plain PR CI
+   when a registered card has no file. Generate only your cards' files,
+   never by hand, with the Scryfall dump (from `server/`):
+   ```bash
+   CMDCTRL_SCRYFALL_DUMP=$PWD/../data/scryfall/default-cards.json \
+     go test ./internal/cards/coverage/ -run TestOracleFixtureIsCurrent \
+     -update-oracle -oracle-ids=<oracle_id>,<oracle_id>
+   ```
+   Commit only the files for the cards you added. Two card PRs never
+   share a file, so they no longer conflict here
+   ([#1542](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1542)).
+   Dropping `-oracle-ids` regenerates every file and deletes the files
+   of cards that left the catalog. That is the nightly's job, and a
+   card PR should not do it: if files for other cards change, your dump
+   is older or newer than the one the fixture came from.
+
+7. **Verify.** `cd server && go test ./internal/cards/effects/... ./internal/cards/coverage/...` and
    `gofmt -l internal/cards/effects/` should both be clean. The
    `TestNonCatalogSpellStaysSandbox` canary should still pass — it's the
    opt-in invariant.
 
-7. **Manual smoke-test.** `CMDCTRL_DEV_SKIP_DECK_VALIDATION=1 make server-dev`
+8. **Manual smoke-test.** `CMDCTRL_DEV_SKIP_DECK_VALIDATION=1 make server-dev`
    plus a small deck (`make dev-skip-validation` target on the top-level
    Makefile) so the library is small enough to find your card quickly.
    Cast it, verify the AUTO badge renders, verify the effect resolves.
@@ -920,6 +940,38 @@ Reach for `BoostUntilEOT` / `GrantKeywordUntilEOT` / `StaticUntilEOT` for the fi
 
 **Control from effects (CR 613.1b, CR 701.12, S38).** "Gain control of target permanent" is `GainControl{Target, Controller, Duration, Label}` and "exchange control" is `ExchangeControl{A, B}`. Both are layer-2 scoped statics in the same bucket Mind Control's Aura uses, which is what makes control revert by itself (`Card.BaseController`) and makes two control effects sort by timestamp (CR 613.7) with no card-side work. Do NOT write `Card.Controller`. Three things ride along and are why the printed cards look the way they do: the permanent leaves combat (CR 506.4, declaration and announcement both), it is summoning-sick under its new controller however long it has been in play (CR 302.6 — which is why Act of Treason also grants haste), and ownership never changes (CR 108.3). An exchange is ONE effect: both objects are checked before either half is registered and the two halves share a timestamp, so it fails whole (CR 701.12b). `Controller` defaults to the effect's controller; pass it explicitly for "target opponent gains control of ~" — that card still waits on the choose-a-player prompt, not on this primitive.
 
+### Granting an ability to another permanent (ADR 0093, #754)
+
+"Creatures you control have '{T}: Add one mana of any color.'" is a
+layer-6 grant of a catalog BUNDLE, never a closure on the recipient.
+Declare the bundle in `Spec.Grants` (the #665 `AbilityGrant`, now with
+`Mana` and a required `Text`) and name it from a static built with
+`GrantAbilities(appliesTo, key)`:
+
+```go
+Grants: []AbilityGrant{{
+    Key:  "cryptolith-rite/any-color",
+    Mana: []ManaAbility{{Cost: ManaAbilityCost{Tap: true}, Produced: "{W|U|B|R|G}", Label: "Add one mana of any color"}},
+    Text: "{T}: Add one mana of any color.",
+}},
+Static: []game.StaticAbility{GrantAbilities(creaturesYouControl, "cryptolith-rite/any-color")},
+```
+
+The engine does the rest: the grant lands on the recipient's
+`Characteristic.GrantedAbilities` in the static's timestamp slot, the
+ability readers return it after the recipient's own abilities with a
+`grant:` ref, and "this creature" is the recipient everywhere (its
+controller activates it, `{T}` taps it, CR 302.6 reads it). A removal
+on the recipient takes an earlier grant and not a later one (CR
+613.6); a removal on the GRANTOR takes the grant from everything
+(CR 613.8a). A layer-6 grant is not copied (CR 707.2). `Register`
+refuses a bundle ability with `ActiveWhen` (gate the grantor's static
+instead) or a non-battlefield zone, and `TestEveryGrantKeyResolves`
+refuses a grant naming an unregistered bundle or a bundle with a
+`Static` slot. Attached / tribal constructors, the client picker and
+the auto-tapper's handling arrive with the first cards (ADR 0093 PR 2);
+duration grants from a resolving spell are PR 4 and have no shape yet.
+
 ### Adding a replacement effect (S17+)
 
 Replacement effects ("enters tapped", "if that would place counters,
@@ -1054,7 +1106,7 @@ func init() {
 | Token creation (CR 701.7b) | `RepEventCreateTokens` | `TokenController`, `TokenGroups`, `TokenAttacking` |
 | Discard (CR 701.8) | `RepEventDiscard` | `DiscardPlayer`, `DiscardCause`, `CardID`, `NewZone`, `NewZoneOwner` |
 | Keyword action with a count — proliferate (CR 701.34), scry (CR 701.22), surveil (CR 701.25) | `RepEventKeywordAction` | `KeywordAction`, `KeywordActionCount`, `Actor`, `Source` |
-| Mill amount (CR 701.13a) | `RepEventMill` | `MillPlayer`, `MillCount` |
+| Mill amount (CR 701.17a) | `RepEventMill` | `MillPlayer`, `MillCount` |
 | Mana produced (CR 106.12b) | `RepEventProduceMana` | `ManaPlayer`, `ManaSource`, `ManaColors`, `ManaFromTap` |
 | Step entry (skip-step) | `RepEventStepTransition` | `StepTransitionStep`, `StepTransitionSeat` |
 
@@ -1245,11 +1297,11 @@ one is `graveyard_replacements.go`; this one is
 and `OpponentsMillPlus(n, label)` as the named wrappers.
 
 The window opens only for something the rules call a mill: a
-GRAVEYARD destination (CR 701.13a defines the keyword action by where
+GRAVEYARD destination (CR 701.17a defines the keyword action by where
 the cards go, so `MillToZone{To: game.ZoneExile}` is not a mill and
 opens none) and a POSITIVE count (an unbounded `until` run names no
 number to double). The count a replacement sees is the one the
-INSTRUCTION named, not what the library can supply — CR 701.13b's
+INSTRUCTION named, not what the library can supply — CR 701.17b's
 "mill as many as possible" clamp happens afterwards. A surveil's
 graveyard leg is NOT a mill (CR 701.14a) and no mill replacement
 touches it.
@@ -1434,7 +1486,7 @@ Wrath of God, Winds of Rath, Shatterstorm do — and leave it off the
 printings that don't (Day of Judgment, Supreme Verdict, Vanquish the
 Horde). The rider rides the route onto the event and gates the
 built-in's `AppliesTo`, so an ignored shield is NOT spent
-(CR 701.19d). `"regenerate"` is still not a keyword and is not in
+(CR 701.19c). `"regenerate"` is still not a keyword and is not in
 `canonicalKeywords`: it is a keyword ACTION, and the closed keyword
 list is for keyword abilities.
 
@@ -2441,7 +2493,7 @@ dies and is reanimated is not kicked.
 **Buyback's return is the engine's, not the card's.** Declare the cost
 and stop. `routeStackCardToGraveyardLocked` reads the paid record and
 routes the resolving spell to its owner's hand through the same
-stack-exit primitive flashback uses (CR 702.27b) — only on a
+stack-exit primitive flashback uses (CR 702.27a) — only on a
 RESOLUTION, so a bought-back spell countered by game rules still goes
 to the graveyard. A card that also returned itself in `OnResolve`
 would be moving a card that is still on the stack.
@@ -2473,7 +2525,7 @@ printed clause beside it — `Register` refuses either half alone,
 because the clause is the message the player is shown:
 
 ```go
-CastCondition:      LegendarySorcery(),      // Urza's Ruinous Blast, CR 307.6
+CastCondition:      LegendarySorcery(),      // Urza's Ruinous Blast, CR 205.4e
 CastConditionLabel: LegendarySorceryLabel,
 ```
 
@@ -4972,7 +5024,7 @@ target — so do not write one.
 
 **Use the constructors for the lifecycle, too.** `LevelUp(n, cost)`
 is the whole "{cost}: Level N" ability, carrying CR 716.2d's sorcery
-timing and CR 716.2e's "only from level N-1"; `ToSolve(label, cond)`
+timing and CR 716.2a's "only from level N-1"; `ToSolve(label, cond)`
 is the whole "To solve —" clause, an end-step trigger whose condition
 is re-checked on resolution (CR 603.4). `SpacecraftAt(n, p, t)` and
 `ThresholdKeywords(n, kw…)` are the two station threshold shapes.

@@ -1136,7 +1136,12 @@ func dispatch(g *game.Game, a Action) error {
 			// S21 sub-PR 2 — catalog activated abilities. AbilityIndex
 			// selects the entry in Spec.Activated; sacrifice_ids names
 			// the permanents paid to a "Sacrifice a creature" cost.
-			AbilityIndex *int     `json:"ability_index,omitempty"`
+			AbilityIndex *int `json:"ability_index,omitempty"`
+			// ADR 0093 Decision 5 — the row's stable ref, from the
+			// view's ActivatedAbilityView.Ref or the legal move's
+			// params. Optional: a stale one is refused before anything
+			// is paid (ErrStaleAbilityRef), an absent one is accepted.
+			Ref          string   `json:"ref,omitempty"`
 			SacrificeIDs []string `json:"sacrifice_ids,omitempty"`
 			// #758 — the permanents paying a TapOthers component on this
 			// CR 602 activation (station, The Shire).
@@ -1285,6 +1290,7 @@ func dispatch(g *game.Game, a Action) error {
 				refs = append(refs, ref)
 			}
 			return g.ActivateCatalogAbility(a.Player, srcID, *p.AbilityIndex, game.ActivateAbilityParams{
+				Ref:              p.Ref,
 				SacrificeIDs:     sacIDs,
 				TapIDs:           tapIDs,
 				CrewIDs:          crewIDs,
@@ -1817,6 +1823,9 @@ func dispatch(g *game.Game, a Action) error {
 		var p struct {
 			CardID       string `json:"card_id"`
 			AbilityIndex int    `json:"ability_index"`
+			// ADR 0093 Decision 5 — the row's stable ref
+			// (ManaAbilityView.Ref). Optional, as on activate_ability.
+			Ref string `json:"ref,omitempty"`
 			// sacrifice_ids names the permanents paid to a
 			// sacrifice-another cost (Ashnod's Altar). Same field
 			// name and shape as activate_ability's, so the client
@@ -1915,6 +1924,7 @@ func dispatch(g *game.Game, a Action) error {
 			manaExileIDs = append(manaExileIDs, id)
 		}
 		return g.ActivateManaAbility(a.Player, cardID, p.AbilityIndex, game.ManaAbilityParams{
+			Ref:              p.Ref,
 			SacrificeIDs:     sacIDs,
 			TapIDs:           manaTapIDs,
 			CounterSourceIDs: manaCounterIDs,

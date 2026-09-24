@@ -2947,4 +2947,84 @@ ships with the world-rule caveat Concordant Crossroads already declares.
   the declaration verbs and does not consult the limits.
 - **The client's "attack with all"** under a limit is refused whole with the
   sentence. It does not offer the tax picker's "choose attackers…" flow:
-  [#1533](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1533).
+  [#1533](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1533). *Since
+  closed by the amendment below (Decision 46).*
+
+## Amendment (2026-09-24, [#1533](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1533)): the attack limit's room on the wire
+
+Decisions 1-45 stand. Sprint S37 (combat correctness), tracker
+[#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880); the client half
+rides tracker [#891](https://github.com/krakenhavoc/cmd_and_ctrl/issues/891).
+
+### Context
+
+Decision 44 makes the bulk verb refuse an over-full swing whole, and leaves the
+choice of which creatures stay home to the attacking player. The client's answer
+to the same refusal for a tax (ADR 0080, #1162) is a subset picker. A limit
+needs the same picker, but capped, and the cap is a count only the engine can
+make: which limits are on the battlefield, which of them count an attack on
+this seat ("you" is the player, not their planeswalkers), and how many
+creatures are already attacking. §6 forbids the client from re-deriving any of
+that.
+
+### Decision 46: `attack_targets[].attack_limit` is the room left, per target
+
+- **The field.** `AttackTargetView.AttackLimit *int`, `attack_limit` on the
+  wire, omitempty. It is how many MORE creatures may be declared attacking that
+  target this combat. It is absent when no limit counts an attack on it, and it
+  is sent as `0` when a limit is used up. It is a pointer so omitempty does not
+  drop the 0 and let a client read it as "unlimited".
+- **The number** is `game.AttackLimitRoomForEffect(target)`
+  (`game/attack_limits.go`): the smallest `Max - count(now)` among the limits
+  that count an attack on the target, floored at 0. It is
+  `attackLimitRefusalLocked`'s arithmetic for creatures that are not attacking
+  yet, and it shares that function's "attacking now" map and counter. So `k` new
+  attackers at the target are accepted exactly when `k <= room`, and a limit
+  that arrived late (over its Max) leaves room 0.
+- **Remaining, not Max.** The picker needs the remainder. Publishing `Max` would
+  make the client count the creatures already attacking under each limit's
+  scope, which is the re-derivation §6 rules out.
+- **Per target, beside `tax`.** A limit's scope is a defending seat or the
+  whole combat, and the attack-all control is per seat. An each-combat limit
+  therefore puts the same number on every row, and a Crawlspace puts it on its
+  controller's row alone.
+- **Re-pointing** a creature that is already attacking is not covered by the
+  number. The client's "attack with all" never re-points, because declared
+  creatures are left alone (#318). The verbs stay the only authority there.
+
+### The client
+
+- `illegal_attack` / `attack_limit` in answer to the "attack with all" frame
+  opens a toast offering "Choose up to N…". It is correlated by the frame's id,
+  which the server echoes on its error frame, so a refused single-creature
+  declaration stays the plain toast. The toast opens `AttackDeclarationModal`
+  (#1162's picker). The picker caps its selection at `attack_limit`, opens at
+  the first N, disables rows past the cap, and shows the server's refusal
+  sentence as the reason. With room 0 the toast explains and offers no picker.
+- A seat whose room is smaller than the eligible set gets the "choose
+  attackers…" control up front, as a taxed seat already does. The lock-a-land
+  rows show only when a tax applies, because a limit alone charges nothing.
+- `protocol.ts` gains `ErrorCode.IllegalAttack`, the `attack_limit` reason and
+  the `declaration_limit` block reason. `refusalTokens.test.ts` diffs all three
+  lists against the Go constants.
+
+### Tests
+
+- `game/attack_limit_room_test.go` checks the room against the bulk verb:
+  `room` new attackers are accepted and `room + 1` refused. It covers each
+  combat, "attacking you" per defender in four seats (including planeswalkers),
+  the tightest of two limits, a late limit (room 0) and no limit.
+- `protocol/attack_limit_view_test.go` checks the room on the Crawlspace row
+  only, `0` sent under a used-up Silent Arbiter, and the field absent with no
+  limit.
+- `client/src/lib/attackLimit.test.ts` covers the helpers and the frame-id
+  correlation through a real `GameClient`.
+  `client/src/lib/attackLimitPicker.render.test.ts` covers the capped picker.
+
+### What this does NOT decide
+
+- **Capping the "attack with all" button itself.** It still sends every
+  eligible creature, and a limit that binds is answered by the refusal and the
+  picker. A seat that knows beforehand uses the up-front control.
+- **Spreading one swing across seats.** The picker aims at one seat, as
+  attack-with-all always has (#318).

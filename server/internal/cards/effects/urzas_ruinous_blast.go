@@ -8,7 +8,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 creature or planeswalker.)
 //	 Exile all nonland permanents that aren't legendary."
 //
-// CR 307.6, and the other half of #760: a restriction printed on the
+// CR 205.4e, and the other half of #760: a restriction printed on the
 // SPELL rather than on somebody's permanent. It is the same gate
 // (ADR 0073 §7) with the other of its two sources — which is why the
 // two issues are one ADR: a design that only did statics would have
@@ -16,7 +16,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Checked once, at announce, and NEVER at resolution. A legendary
 // creature that dies with the Blast on the stack does not counter it:
-// CR 307.6 restricts the CAST, and nothing in the rules re-checks it.
+// CR 205.4e restricts the CAST, and nothing in the rules re-checks it.
 // That is why this is a CastCondition rather than something the
 // OnResolve asks.
 //

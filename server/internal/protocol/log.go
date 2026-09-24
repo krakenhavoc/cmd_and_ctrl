@@ -881,7 +881,7 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		// Source is the counter; Target the countered item.
 		base.CardID = uuidStringOrEmpty(ev.Source)
 		base.Target = uuidStringOrEmpty(ev.Target)
-		// #1211, CR 701.5c: a countered ABILITY has no card of its
+		// #1211, CR 701.6a: a countered ABILITY has no card of its
 		// own — its id names a StackMeta entry the client cannot look
 		// up, and its source permanent is still standing on the
 		// battlefield. So the item's label goes where the target name

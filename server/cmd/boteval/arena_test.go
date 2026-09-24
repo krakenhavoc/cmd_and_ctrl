@@ -345,3 +345,23 @@ func TestParseArenaFlagsBlockGrace(t *testing.T) {
 		t.Errorf("--block-grace 1500ms reached the arena as %s", got)
 	}
 }
+
+// #1503: --lockstep reaches the arena, and leaving it off leaves the
+// arena on its concurrent default — one runner goroutine per seat, the
+// schedule a live table runs.
+func TestParseArenaFlagsLockstep(t *testing.T) {
+	def, err := parseArenaFlags([]string{"--seats", "heuristic,heuristic"}, io.Discard)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if def.lockstep || def.config(nil, nil, nil, "", nil).Lockstep {
+		t.Error("a run without --lockstep must stay on the concurrent schedule")
+	}
+	on, err := parseArenaFlags([]string{"--seats", "heuristic,heuristic", "--lockstep"}, io.Discard)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if !on.config(nil, nil, nil, "", nil).Lockstep {
+		t.Error("--lockstep did not reach the arena's config")
+	}
+}

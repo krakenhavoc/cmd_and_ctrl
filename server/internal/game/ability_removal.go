@@ -119,11 +119,24 @@ package game
 // Off the battlefield `Card.effective` is nil, so this degrades to
 // `CatalogKey` exactly — which is CR 113.6 (a static ability does
 // nothing while its source is elsewhere) falling out for free.
+//
+// ADR 0093 Decision 2: it is also the COMPOSITION of an object's own
+// key with the abilities other effects granted it in layer 6:
+//
+//	CatalogAbilityKey(c) = own + layered grants
+//	own = "" under a removal (or face down, or uncatalogued), else CatalogKey(c)
+//
+// so an object whose own abilities are gone still answers with the
+// grants the layer pass let survive ("|grant:<a>"), and catalogDef
+// merges each bundle into whatever the own half resolves to. An object
+// with no layered grant — every card off the battlefield and nearly
+// every card on it — takes the first return and allocates nothing.
 func CatalogAbilityKey(c Card) string {
-	if c.HasLostAllAbilities() {
-		return ""
+	own := ownAbilityKey(c)
+	if c.effective == nil || len(c.effective.GrantedAbilities) == 0 {
+		return own
 	}
-	return CatalogKey(c)
+	return composeAbilityKey(own, c.effective.GrantedAbilities)
 }
 
 // HasLostAllAbilities reports whether a CR 613.1f ability-removing

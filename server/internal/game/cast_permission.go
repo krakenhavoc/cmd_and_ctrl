@@ -410,7 +410,7 @@ type CastPermission struct {
 	Timing GrantTiming `json:"timing,omitempty"`
 
 	// GrantsHaste gives the permanent this cast produces haste —
-	// suspend's CR 702.62e. A property of the PERMISSION rather than
+	// suspend's CR 702.62a. A property of the PERMISSION rather than
 	// of the card, because it is the effect that granted the cast
 	// that grants the haste: the same Rift Bolt hard-cast from hand
 	// has none.

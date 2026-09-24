@@ -29,6 +29,16 @@ export const ErrorCode = {
   // the symbols the pool and the tapper together could not cover.
   // No `card_id`: the refusal is about the declaration, not one card.
   AttackTaxUnpaid: "attack_tax_unpaid",
+  // #1507 (ADR 0045 Decision 45): a declare_attacker / declare_attackers
+  // refused because the declaration breaks a CR 508.1c count limit
+  // (Silent Arbiter's "no more than one creature can attack each
+  // combat", Crawlspace's "… can attack you …"). `reason` is one of
+  // AttackRefusalReason, `message` a server-built sentence addressed to
+  // the caller, `card_id` a creature from the refused declaration.
+  // Nothing was declared, tapped or paid; a declare_attackers batch is
+  // refused whole. #1533: an "attack with all" refused this way offers
+  // the attackers picker, capped at `attack_targets[].attack_limit`.
+  IllegalAttack: "illegal_attack",
 } as const;
 
 export type ErrorCodeValue = (typeof ErrorCode)[keyof typeof ErrorCode];
@@ -65,31 +75,52 @@ export interface ErrorPayload {
   // string ("{2}{2}") when code === "attack_tax_unpaid" — a second
   // shape on the same key, not a second field, because the server's
   // ErrorPayload.Reason is a bare string on the wire either way.
-  reason?: BlockRefusalReason | string;
+  // #1507: and one of AttackRefusalReason when code === "illegal_attack".
+  reason?: BlockRefusalReason | AttackRefusalReason | string;
 }
 
-// BlockRefusalReason mirrors game.BlockReason (server/internal/game/
+// BLOCK_REFUSAL_REASONS mirrors game.BlockReason (server/internal/game/
 // block_legality.go): the tokens the server sends today. Stable once
-// shipped; new ones join in the change that first sends them.
-export type BlockRefusalReason =
-  | "cant_block"
-  | "cant_be_blocked"
-  | "flying"
-  | "landwalk"
-  | "fear"
-  | "intimidate"
-  | "shadow"
-  | "horsemanship"
-  | "skulk"
-  | "protection"
-  | "cant_be_blocked_by"
-  | "cant_be_blocked_except_by"
-  | "cant_block_attacker"
-  | "too_few_blockers"
-  | "too_many_blockers"
+// shipped; new ones join in the change that first sends them. A
+// runtime list rather than a bare union so refusalTokens.test.ts can
+// diff it against the Go const block (#1533) — the union below is
+// derived from it, so the two cannot drift apart.
+export const BLOCK_REFUSAL_REASONS = [
+  "cant_block",
+  "cant_be_blocked",
+  "flying",
+  "landwalk",
+  "fear",
+  "intimidate",
+  "shadow",
+  "horsemanship",
+  "skulk",
+  "protection",
+  "cant_be_blocked_by",
+  "cant_be_blocked_except_by",
+  "cant_block_attacker",
+  "too_few_blockers",
+  "too_many_blockers",
   // #1339: the blocker's controller is not defending against that
   // attacker (CR 802.4a).
-  | "not_defending";
+  "not_defending",
+  // #1507 (ADR 0045 Decision 43): one more blocker would break a
+  // whole-combat count limit — Silent Arbiter's "no more than one
+  // creature can block each combat" (CR 509.1b).
+  "declaration_limit",
+] as const;
+export type BlockRefusalReason = (typeof BLOCK_REFUSAL_REASONS)[number];
+
+// ATTACK_REFUSAL_REASONS mirrors the AttackRefusal* constants in
+// server/internal/protocol/protocol.go: the `reason` tokens an
+// `illegal_attack` frame carries today. Stable once shipped; new ones
+// join in the change that first sends them.
+export const ATTACK_REFUSAL_REASONS = [
+  // #1507 (ADR 0045 Decision 45): a CR 508.1c count limit refused the
+  // declaration.
+  "attack_limit",
+] as const;
+export type AttackRefusalReason = (typeof ATTACK_REFUSAL_REASONS)[number];
 
 // ActionType is the string-literal union of every action name this
 // client sends. Each literal is validated against the server's
@@ -2600,6 +2631,14 @@ export interface AttackTargetView {
   // in the client re-derives what an attack costs, for the same
   // reason nothing re-derives who may attack (#429, ADR 0045 §6).
   tax?: string;
+  // #1533 (ADR 0045 Decision 46): how many MORE creatures may be
+  // declared attacking this target this combat under a CR 508.1c count
+  // limit (Silent Arbiter, Crawlspace), after the ones already
+  // attacking. Absent when no limit counts this target; 0 is a real
+  // answer (the limit is used up), so test with `!== undefined`, never
+  // truthiness. Engine-computed: n new attackers at this target are
+  // accepted exactly when n <= attack_limit. Read it, don't derive it.
+  attack_limit?: number;
 }
 
 export interface TurnView {

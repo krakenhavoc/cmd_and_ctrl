@@ -261,8 +261,11 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		ChosenName:    "Sol Ring",
 		ManaCost:      "{2}{U}",
 		ManaAbilities: []ManaAbilityView{{Index: 0, Label: "Add {U}"}},
-		Abilities:     []string{"flying"},
-		Restrictions:  []string{"cant_block"},
+		// ADR 0093: the granted-ability text list. Redacted with the
+		// ability rows it describes.
+		GrantedAbilities: []GrantedAbilityView{{Text: "{T}: Add one mana of any color.", SourceID: "grantor", SourceName: "Cryptolith Rite"}},
+		Abilities:        []string{"flying"},
+		Restrictions:     []string{"cant_block"},
 		// ADR 0083. Public on a token the viewer can see, and a token
 		// is known to every seat, so this cell can never fire in a
 		// real game — it is here because the field is a catalog read
