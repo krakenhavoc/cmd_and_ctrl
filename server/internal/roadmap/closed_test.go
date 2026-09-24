@@ -100,31 +100,14 @@ func TestClosedSeamsAreCurrent(t *testing.T) {
 			"  go test ./internal/roadmap/ -run TestClosedSeamsAreCurrent -update-closed", SeamsDocPath)
 	}
 
-	heading := strings.Index(doc, "\n## Closed seams\n")
-	begin := strings.Index(doc, ClosedBeginMarker)
-	if heading < 0 || heading > begin {
-		t.Fatalf("%s: the closed-seams block must sit under a \"## Closed seams\" heading", SeamsDocPath)
+	if problems := handWrittenClosedEntries(doc, seams); len(problems) > 0 {
+		t.Fatalf("%s's Closed seams section has entries that did not come from a fragment:\n\n  %s\n\n"+
+			"The list is generated from docs/engine-seams/closed/*.md and CI regenerates it on develop, "+
+			"so an entry written into the list by hand is deleted by the next refresh. Put each in its own "+
+			"fragment instead (see the section intro) and drop it from the list.",
+			SeamsDocPath, strings.Join(problems, "\n  "))
 	}
-	for _, line := range strings.Split(doc[heading:begin], "\n") {
-		if strings.HasPrefix(line, "- **") {
-			t.Errorf("%s lists a closed seam by hand above the generated block:\n\n  %.100s…\n\n"+
-				"Move it into a fragment under docs/engine-seams/closed/ (see the section intro); "+
-				"the list is generated from those files.", SeamsDocPath, line)
-		}
-	}
-	fromFragments := map[string]bool{}
-	for _, s := range seams {
-		fromFragments[s.Title] = true
-	}
-	for _, title := range closedEntryTitles(got) {
-		if !fromFragments[title] {
-			t.Errorf("%s's Closed seams list has an entry no fragment produces: %q.\n\n"+
-				"The list is generated from docs/engine-seams/closed/*.md and CI regenerates it on develop, "+
-				"so an entry written into the list by hand is deleted by the next refresh. "+
-				"Put it in its own fragment instead, and drop it from the list.", SeamsDocPath, title)
-		}
-	}
-	if t.Failed() || got == want {
+	if got == want {
 		return
 	}
 
@@ -347,5 +330,33 @@ func TestClosedSeamsBlockRendering(t *testing.T) {
 	}
 	if _, ok := SpliceClosedSeams("no markers", block); ok {
 		t.Error("splice without markers reported ok")
+	}
+}
+
+// An entry typed into the list, or above it, has no fragment, and CI's
+// next refresh would delete it; the drift test fails on it in a PR too.
+func TestHandWrittenClosedEntries(t *testing.T) {
+	seams := []ClosedSeam{{Title: "From a fragment", Body: "**From a fragment** x"}}
+	block := ClosedSeamsBlock(seams)
+	doc := func(above, inBlock string) string {
+		b := block
+		if inBlock != "" {
+			b = strings.Replace(b, ClosedBeginMarker+"\n\n", ClosedBeginMarker+"\n\n"+inBlock+"\n\n", 1)
+		}
+		return "# Engine seams\n\n## Closed seams\n\nIntro.\n\n" + above + b + "\n"
+	}
+	if got := handWrittenClosedEntries(doc("", ""), seams); len(got) != 0 {
+		t.Errorf("a generated doc reported %q", got)
+	}
+	if got := handWrittenClosedEntries(doc("", "- **Typed into the list** by hand"), seams); len(got) != 1 ||
+		!strings.Contains(got[0], "Typed into the list") {
+		t.Errorf("an entry added inside the block: %q", got)
+	}
+	if got := handWrittenClosedEntries(doc("- **Above the block** by hand\n\n", ""), seams); len(got) != 1 ||
+		!strings.Contains(got[0], "above the generated block") {
+		t.Errorf("an entry added above the block: %q", got)
+	}
+	if got := handWrittenClosedEntries("## Other\n\n"+block+"\n", seams); len(got) != 1 {
+		t.Errorf("a block with no Closed seams heading: %q", got)
 	}
 }

@@ -311,6 +311,38 @@ func ExtractClosedSeams(doc string) (string, bool) {
 	return doc[start : end+len(ClosedEndMarker)], true
 }
 
+// handWrittenClosedEntries reports what in doc's Closed seams section
+// did not come from a fragment: an entry inside the generated block
+// whose title no fragment has, or any entry listed between the
+// "## Closed seams" heading and the block. Either is the old habit of
+// writing the list by hand, and CI's next refresh would delete it
+// without a word, so TestClosedSeamsAreCurrent fails on it everywhere,
+// PR included. doc must hold the markers.
+func handWrittenClosedEntries(doc string, seams []ClosedSeam) []string {
+	var out []string
+	begin := strings.Index(doc, ClosedBeginMarker)
+	heading := strings.Index(doc, "\n## Closed seams\n")
+	if heading < 0 || heading > begin {
+		return []string{"the closed-seams block is not under a \"## Closed seams\" heading"}
+	}
+	for _, line := range strings.Split(doc[heading:begin], "\n") {
+		if strings.HasPrefix(line, "- **") {
+			out = append(out, fmt.Sprintf("listed by hand above the generated block: %.100s…", line))
+		}
+	}
+	fromFragments := map[string]bool{}
+	for _, s := range seams {
+		fromFragments[s.Title] = true
+	}
+	block, _ := ExtractClosedSeams(doc)
+	for _, title := range closedEntryTitles(block) {
+		if !fromFragments[title] {
+			out = append(out, fmt.Sprintf("an entry in the generated list that no fragment produces: %q", title))
+		}
+	}
+	return out
+}
+
 // closedEntryTitles returns the bold title of every list entry in a
 // rendered closed-seams block, in order.
 func closedEntryTitles(block string) []string {
