@@ -320,11 +320,14 @@ type AbilityCost struct {
 	// that wanted "discard this from your graveyard" would be
 	// writing a card that does not exist.
 	//
-	// The source has to be IN A GRAVEYARD — every card that prints
-	// the component says "from your graveyard" — and Register
-	// refuses the component on an ability that does not declare
-	// ZoneGraveyard, exactly as it refuses DiscardSelf off the hand.
-	// Paid last, with the discards, because it moves the source and
+	// It FOLLOWS THE ABILITY'S ZONE (#1404): from the graveyard it is
+	// scavenge's and embalm's "from your graveyard", and from the
+	// battlefield it is Perpetual Timepiece's "Exile this artifact" —
+	// a permanent leaving the battlefield, which fires leaves-the-
+	// battlefield triggers and never dies triggers. Register refuses
+	// the component on an ability that functions from any other zone
+	// (ExileSelfZoneSupported), exactly as it refuses DiscardSelf off
+	// the hand. Paid last, with the discards, because it moves the source and
 	// invalidates it; the effect that follows reads the card back
 	// out of EXILE by instance ID (LookupCardForEffect), which is
 	// where the cost has just put it.
@@ -1164,10 +1167,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		return err
 	}
 	// #1221: the discard component's sibling one zone over —
-	// scavenge's and embalm's "Exile this card from your graveyard".
-	// Nothing to resolve (the source IS the payment), so this is the
-	// zone check alone, made here with the rest so a refusal costs
-	// nothing.
+	// scavenge's and embalm's "Exile this card from your graveyard",
+	// and since #1404 Perpetual Timepiece's "Exile this artifact" off
+	// the battlefield. Nothing to resolve (the source IS the payment),
+	// so this is the zone check alone, made here with the rest so a
+	// refusal costs nothing.
 	if err := g.validateExileSelfCostLocked(srcZone, ab.Cost); err != nil {
 		return err
 	}
@@ -1391,9 +1395,13 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		return err
 	}
 	paid.Exiled = exiles
-	// #1221: and the graveyard half. Last of all, because it moves
-	// the source out of the graveyard and the effect that follows
-	// reads it back out of exile. See exile_cost.go.
+	// #1221: and the exile-this half. Last of all, because it moves
+	// the source out of the zone it was activated from and the effect
+	// that follows reads it back out of exile. From the battlefield
+	// (#1404) it is a permanent leaving the battlefield — LTB, not
+	// dies — and it lands before the stack item is built, so the
+	// leaves-triggers it queues sit ABOVE the ability (CR 603.3b),
+	// the sacrifice cost's order. See exile_cost.go.
 	if err := g.payAbilityExileSelfLocked(playerID, cardID, ab, params.commanderAnswers); err != nil {
 		return err
 	}
