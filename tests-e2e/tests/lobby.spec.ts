@@ -69,7 +69,10 @@ test.describe("lobby — admin flow", () => {
 
     const row = page.locator("ul.games > li").filter({ hasText: name });
     await expect(row.getByRole("button", { name: "copy invite" })).toBeVisible();
-    await expect(row.getByRole("button", { name: "Spectator link" })).toBeVisible();
+    // exact: true — the row's rotate control ("new spectator link")
+    // contains this string as a substring and getByRole matches
+    // substrings by default (#1468).
+    await expect(row.getByRole("button", { name: "Spectator link", exact: true })).toBeVisible();
   });
 
   test("the table card renders four seats and fills them as players join", async ({
