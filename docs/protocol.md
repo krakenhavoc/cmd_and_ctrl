@@ -1028,6 +1028,12 @@ Four additive changes, none of them breaking (`v` unchanged):
   `castable_here` now respects it — a granted graveyard or library
   card the gate refuses is no longer marked a cast surface.
 
+  Since #1474 it is also clear on a card whose exit an effect has
+  paused on its owner's CR 903.9 prompt: a commander Bojuka Bog is
+  exiling out of a graveyard, for example. `cast_spell` refuses that
+  card with the pending-prompt error until the owner answers, so the
+  bit says the same. No field was added.
+
 **A graveyard card somebody ELSE may cast is stamped for THEM (#1022).**
 A `ScopeCards` permission names an object, not a pile — Wrexial's "you
 may cast target instant or sorcery card from that player's graveyard" —

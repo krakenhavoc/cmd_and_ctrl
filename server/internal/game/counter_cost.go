@@ -326,6 +326,19 @@ type counterPayment struct {
 	total int
 }
 
+// cardIDs lists the permanents this payment removes counters from, one
+// entry per part (a permanent paying in two kinds appears twice). The
+// paused-exit gate reads it (#1474): a counter taken off a permanent an
+// effect has already sent on its way is a cost paid by an object that
+// is gone.
+func (p counterPayment) cardIDs() []uuid.UUID {
+	out := make([]uuid.UUID, 0, len(p.parts))
+	for _, part := range p.parts {
+		out = append(out, part.cardID)
+	}
+	return out
+}
+
 // counterPartKey is the identity of one part of a payment. A
 // permanent may appear in two parts only with two different kinds
 // (#943); naming the same (permanent, kind) twice is refused, so a

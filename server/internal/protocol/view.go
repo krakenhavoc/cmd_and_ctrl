@@ -4040,6 +4040,14 @@ func phyrexianSymbolsIn(costStr string) int {
 //
 // Caller must hold g.mu.
 func castableNow(g *game.Game, caster uuid.UUID, card game.Card, kind game.ZoneKind, grant *game.CastPermission, cantCast string, offers []*game.AlternativeCost) bool {
+	// #1474: a card an effect has paused on its way out — a commander
+	// Bojuka Bog is exiling while its owner answers CR 903.9 — is
+	// neither cast nor played until the answer is in. The same gate
+	// CastSpell asks first, and the enumerator agrees because the
+	// prompt blocks the table.
+	if g.CardExitPausedForEffect(card.InstanceID) {
+		return false
+	}
 	if card.IsLand() {
 		if grant != nil && grant.CastOnly {
 			return false

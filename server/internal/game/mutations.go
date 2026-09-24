@@ -594,6 +594,15 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	if !found {
 		return ErrCardNotFound
 	}
+	// #1474: a card an EFFECT has paused on its way out cannot be
+	// cast or played. CR 601.2a moves the spell before any cost is
+	// paid, so it is in none of the cost lists the gate is asked about
+	// further down; it is asked here instead, before anything is
+	// judged, moved or paid, and for every source zone and the land
+	// play alike. See refusePausedCostCardsLocked.
+	if err := g.refusePausedCostCardsLocked([]uuid.UUID{cardID}); err != nil {
+		return err
+	}
 	// ADR 0034, and the single highest-leverage line in the whole
 	// multi-face model. `card` is a VALUE COPY taken out of the
 	// source zone, and everything below reads that copy ten more
@@ -3360,6 +3369,14 @@ func (g *Game) ActivateLoyalty(playerID, planeswalkerID uuid.UUID, label string,
 	if pw.Controller != playerID {
 		return ErrCardCallerMismatch
 	}
+	// #1474: a planeswalker an effect has already paused on its way
+	// out is gone as far as the rules are concerned, and its loyalty
+	// cost is paid by that object. The catalogued path refuses it in
+	// activateCatalogAbilityLocked; this sandbox verb asks the same
+	// gate.
+	if err := g.refusePausedCostCardsLocked([]uuid.UUID{planeswalkerID}); err != nil {
+		return err
+	}
 	// CR 606.6: can't remove more loyalty than is there. The old
 	// comment here argued for letting the counter go negative so the
 	// SBA could see the intent, but the SBA reads "loyalty <= 0" and
@@ -5676,9 +5693,14 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	if ab.TapCost {
 		tapping = append(tapping, cardID)
 	}
-	// #1445 / #1427: a card an EFFECT has already paused on its way
-	// out cannot pay. See refusePausedCostCardsLocked.
-	if err := g.refusePausedCostCardsLocked(moving, tapping); err != nil {
+	// #1474: the source whatever the cost, and every permanent the
+	// counter components take counters off — the same list the CR 602
+	// path builds.
+	spending := append([]uuid.UUID{cardID}, counters.cardIDs()...)
+	// #1445 / #1427 / #1474: a card an EFFECT has already paused on
+	// its way out cannot pay, or activate. See
+	// refusePausedCostCardsLocked.
+	if err := g.refusePausedCostCardsLocked(moving, tapping, spending); err != nil {
 		return err
 	}
 	asked, answers := g.askCostCommanderLocked(playerID, moving, params.commanderAnswers, card.Name,
