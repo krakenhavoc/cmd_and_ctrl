@@ -38,7 +38,7 @@ import (
 // The race commits when NOW + NEXT is at least the defender's life and
 // CRACK-BACK is less than mine. The last condition is what makes it
 // never suicidal, and it is pessimistic on purpose on every axis the
-// estimate has: every one of my blocked attackers is counted dead, the
+// estimate has: none of my blocked attackers is home to block, the
 // defender keeps every creature it did not have to lose, it is assumed
 // to both attack with all of them AND keep all of them home, every
 // opponent swings at me rather than at each other, a trampler is only
@@ -52,6 +52,15 @@ import (
 // was invisible, where a one-Drake edge was not. Where that count has
 // to guess at the defender's blocks it takes a lower bound
 // (trampleBound), so it too errs toward not racing.
+//
+// NEXT also keeps a blocked attacker of mine that lives (#1527). It
+// used to count every one of them dead, so the Wurm a Bear chumped this
+// turn was gone by the next, and a trampler's edge was cashed only when
+// this turn's overflow closed the gap alone. A blocked attacker now
+// lives into NEXT when neither the blockers the defender's model put in
+// front of it nor any one blocker it left spare can kill it (survives)
+// — the defender is assumed to block to kill whenever it can. It is
+// still never home: the crack-back check does not change.
 //
 // The swing it sends is the SMALLEST that wins: attackers are tried
 // evasive-first (fewest possible blockers, then biggest), and the plan
@@ -175,22 +184,32 @@ func (p *Policy) raceAgainst(st *state, moves []legal.Move, def *SeatEval) *race
 
 // raceNumbers is the three-number estimate for one swing at def.
 func (p *Policy) raceNumbers(st *state, def *SeatEval, swing, blockers []*protocol.CardView) (now, next, crack int) {
-	now, deadDef, blockedMine := p.blockToSurvive(st, def, swing, blockers)
+	d := p.blockToSurvive(st, def, swing, blockers)
+	now = d.through
 
 	inSwing := make(map[string]bool, len(swing))
 	for _, c := range swing {
 		inSwing[c.InstanceID] = true
 	}
 	// Home: what I will have untapped on the turn in between. A swing
-	// attacker stays untapped only with vigilance, and only if it lived.
+	// attacker stays untapped only with vigilance, and only if nothing
+	// blocked it. A blocked attacker is never home, even one that lives
+	// (#1527): the crack-back check stays exactly as pessimistic as it
+	// was, and only NEXT hears about the survivors.
 	var home, second []*protocol.CardView
 	for i := range st.view.Battlefield.Cards {
 		c := &st.view.Battlefield.Cards[i]
 		if c.Controller != st.me || !isCreature(c) {
 			continue
 		}
-		if blockedMine[c.InstanceID] {
-			continue // counted dead: every blocked attacker is
+		if d.blockedMine[c.InstanceID] {
+			// Counted dead unless no block the defender could make
+			// kills it (#1527): a Wurm chumped by the last Bear
+			// tramples over again next turn.
+			if d.survives(st, def.ID, c) {
+				second = append(second, c)
+			}
+			continue
 		}
 		if c.AttackingTarget != "" && !inSwing[c.InstanceID] {
 			continue // attacking somebody else, and may die doing it
@@ -219,7 +238,7 @@ func (p *Policy) raceNumbers(st *state, def *SeatEval, swing, blockers []*protoc
 			if c.Controller != o.ID || !isCreature(c) || hasKeyword(c, "defender") {
 				continue
 			}
-			if o.ID == def.ID && deadDef[c.InstanceID] {
+			if o.ID == def.ID && d.deadDef[c.InstanceID] {
 				continue
 			}
 			theirs = append(theirs, c)
@@ -231,7 +250,7 @@ func (p *Policy) raceNumbers(st *state, def *SeatEval, swing, blockers []*protoc
 	var kept []*protocol.CardView
 	for i := range st.view.Battlefield.Cards {
 		c := &st.view.Battlefield.Cards[i]
-		if c.Controller == def.ID && isCreature(c) && !deadDef[c.InstanceID] {
+		if c.Controller == def.ID && isCreature(c) && !d.deadDef[c.InstanceID] {
 			kept = append(kept, c)
 		}
 	}
@@ -241,28 +260,161 @@ func (p *Policy) raceNumbers(st *state, def *SeatEval, swing, blockers []*protoc
 	return now, next, crack
 }
 
+// defence is blockToSurvive's answer to one swing.
+type defence struct {
+	// through is the damage that connects.
+	through int
+	// deadDef is the defender's creatures that die blocking.
+	deadDef map[string]bool
+	// blockedMine is every attacker of mine that was blocked at all.
+	blockedMine map[string]bool
+	// blockedBy is, per blocked attacker, the blockers the model put in
+	// front of it; spare is every blocker the model left unassigned.
+	blockedBy map[string][]*protocol.CardView
+	spare     []*protocol.CardView
+	// guessed marks the fallback answer, where the model did not find
+	// the defender's blocks and assumed every attacker was blocked by
+	// something it cannot name.
+	guessed bool
+}
+
+// survives reports whether my blocked attacker a lives through the
+// defender's blocks (#1527). A blocked attacker used to be counted dead
+// whatever blocked it, so a Wurm chumped by a Bear was as gone as one
+// traded with a Wurm, and a trampler's edge was cashed only when this
+// turn's overflow alone closed the gap.
+//
+// It says yes only when neither of these kills it:
+//
+//   - the blockers the model put in front of it (blockersKill), and
+//   - any one blocker the model left spare that could block it instead.
+//     The model picks the cheapest chump, and a defender that has a
+//     creature able to kill the attacker in that spot is assumed to
+//     use it: it blocks to kill when it can.
+//
+// Where the model only guessed at the blocks, nothing survives.
+//
+// What it does not ask is whether the defender could add spare
+// blockers to a block it is already making, ganging up until their
+// damage adds up to the attacker's toughness. The rest of the model
+// blocks one-for-one too (matchBlocks, blockToSurvive's greedy), and
+// so does the heuristic's own decideBlock, which credits a gang block
+// with a kill only when the blocker it adds kills alone. Counting gang
+// blocks here would put every blocked attacker in front of a wide
+// board back in the grave — the full seed-1409 mirror's spare Wurm,
+// chumped by one Ogre with five more behind it, is exactly that board.
+func (d *defence) survives(st *state, defender string, a *protocol.CardView) bool {
+	if d.guessed {
+		return false
+	}
+	if blockersKill(d.blockedBy[a.InstanceID], a) {
+		return false
+	}
+	for _, b := range d.spare {
+		if couldBlock(st, defender, a, b) && blockerKills(b, a) {
+			return false
+		}
+	}
+	return true
+}
+
+// blockersKill reports whether these blockers, together, kill attacker
+// a. One blocker is asked exactly (blockerKills). Several are asked
+// pessimistically: any deathtouch among them kills, and so does their
+// combined damage reaching a's toughness, a double striker's power
+// counted twice — ignoring what a's own first strike would kill before
+// they deal damage and what a's protection would prevent, both of
+// which only ever make it say "dead" about an attacker that lives.
+func blockersKill(blockers []*protocol.CardView, a *protocol.CardView) bool {
+	if len(blockers) == 1 {
+		return blockerKills(blockers[0], a)
+	}
+	if hasKeyword(a, "indestructible") {
+		return false
+	}
+	total := 0
+	for _, b := range blockers {
+		if b.Power <= 0 {
+			continue
+		}
+		if hasKeyword(b, "deathtouch") {
+			return true
+		}
+		total += combatDamage(b)
+	}
+	return total >= effectiveToughness(a)
+}
+
+// blockerKills reports whether blocker b, blocking a alone, kills it.
+// It is kills with the two timing rules kills does not read:
+//
+//   - a double striker deals its power twice (CR 702.4b), so a 2/2
+//     double striker kills a 4/4;
+//   - an attacker with first strike that kills a blocker without it
+//     does so in the first combat damage step, and the blocker, gone,
+//     deals no damage in the second (CR 510.4).
+func blockerKills(b, a *protocol.CardView) bool {
+	if hasKeyword(a, "indestructible") || b.Power <= 0 || protectedFrom(a, b) {
+		return false
+	}
+	if firstStrikes(a) && !firstStrikes(b) && kills(a, b) {
+		return false
+	}
+	if hasKeyword(b, "deathtouch") {
+		return true
+	}
+	return combatDamage(b) >= effectiveToughness(a)
+}
+
+// combatDamage is all the damage creature c deals in one combat: its
+// power, twice over with double strike.
+func combatDamage(c *protocol.CardView) int {
+	if hasKeyword(c, "double strike") {
+		return 2 * c.Power
+	}
+	return c.Power
+}
+
 // blockToSurvive is the defender's answer to a swing: first every
 // block it survives (those cost it nothing), and only if the damage
 // still getting through would kill it, the cheapest blocks it does not
 // survive, biggest attacker first, until it would live. It returns the
 // damage that connects, the defender's creatures that die blocking,
-// and every attacker of mine that was blocked at all. A blocked
-// trampler connects for what its blockers do not absorb (#1504), so a
-// chump in front of one saves only the chump's toughness.
+// every attacker of mine that was blocked at all and who blocked it,
+// and the blockers it left spare. A blocked trampler connects for what
+// its blockers do not absorb (#1504), so a chump in front of one saves
+// only the chump's toughness.
 //
 // It is an estimate of a player trying to lose as little as possible,
 // not a proof: where the greedy second step cannot get the defender
 // below lethal but unblockedPower — exact without trample, a lower
 // bound with it — says it might live, the answer falls back to the
 // pessimistic one: the defender loses nothing and every attacker is
-// blocked.
-func (p *Policy) blockToSurvive(st *state, def *SeatEval, swing, blockers []*protocol.CardView) (through int, deadDef, blockedMine map[string]bool) {
-	deadDef, blockedMine = map[string]bool{}, map[string]bool{}
+// blocked (guessed).
+func (p *Policy) blockToSurvive(st *state, def *SeatEval, swing, blockers []*protocol.CardView) defence {
+	d := defence{
+		deadDef:     map[string]bool{},
+		blockedMine: map[string]bool{},
+		blockedBy:   map[string][]*protocol.CardView{},
+	}
 	survives := func(a, b *protocol.CardView) bool {
 		return couldBlock(st, def.ID, a, b) && !kills(a, b)
 	}
 	_, blockerOf := matchBlocks(swing, blockers, survives)
 	used := make([]bool, len(blockers))
+	block := func(a *protocol.CardView, bi int) {
+		used[bi] = true
+		d.blockedMine[a.InstanceID] = true
+		d.blockedBy[a.InstanceID] = append(d.blockedBy[a.InstanceID], blockers[bi])
+	}
+	done := func() defence {
+		for bi, b := range blockers {
+			if !used[bi] {
+				d.spare = append(d.spare, b)
+			}
+		}
+		return d
+	}
 	// left is what each attacker still connects for under the blocks
 	// chosen so far. A blocked attacker connects for nothing — unless
 	// it tramples (#1504), when it connects for whatever its blockers
@@ -274,14 +426,13 @@ func (p *Policy) blockToSurvive(st *state, def *SeatEval, swing, blockers []*pro
 	for ai, a := range swing {
 		left[ai] = a.Power
 		if bi := blockerOf[ai]; bi >= 0 {
-			used[bi] = true
-			blockedMine[a.InstanceID] = true
+			block(a, bi)
 			left[ai] = overflowPast(a, blockers[bi], left[ai])
 		}
-		through += left[ai]
+		d.through += left[ai]
 	}
-	if through < def.Life {
-		return through, deadDef, blockedMine
+	if d.through < def.Life {
+		return done()
 	}
 	// Chump or trade until the defender would live: each time the one
 	// block that saves the most, biggest attacker first on a tie, with
@@ -289,7 +440,7 @@ func (p *Policy) blockToSurvive(st *state, def *SeatEval, swing, blockers []*pro
 	// takes one blocker and stops; a trampler can take a second and a
 	// third while its overflow is still what kills.
 	order := byPower(swing)
-	for through >= def.Life {
+	for d.through >= def.Life {
 		bestA, bestB, bestSave := -1, -1, 0
 		for _, ai := range order {
 			if left[ai] <= 0 {
@@ -314,8 +465,7 @@ func (p *Policy) blockToSurvive(st *state, def *SeatEval, swing, blockers []*pro
 			break
 		}
 		a, b := swing[bestA], blockers[bestB]
-		used[bestB] = true
-		blockedMine[a.InstanceID] = true
+		block(a, bestB)
 		// The blocker dies only when it is assigned lethal damage: all
 		// of a non-trampler's power, or its share of a trampler's —
 		// and not when it strikes first at a trampler, since that
@@ -329,24 +479,24 @@ func (p *Policy) blockToSurvive(st *state, def *SeatEval, swing, blockers []*pro
 			dies = dies && bestSave >= need && !(firstStrikes(b) && !firstStrikes(a))
 		}
 		if dies {
-			deadDef[b.InstanceID] = true
+			d.deadDef[b.InstanceID] = true
 		}
 		left[bestA] -= bestSave
-		through -= bestSave
+		d.through -= bestSave
 	}
-	if through >= def.Life {
+	if d.through >= def.Life {
 		best := unblockedPower(st, def.ID, swing, blockers)
 		if best < def.Life {
 			// The greedy missed a way to live that the defender may
 			// have: assume it finds one and loses nothing doing so.
-			all := map[string]bool{}
+			g := defence{through: best, deadDef: map[string]bool{}, blockedMine: map[string]bool{}, guessed: true}
 			for _, a := range swing {
-				all[a.InstanceID] = true
+				g.blockedMine[a.InstanceID] = true
 			}
-			return best, map[string]bool{}, all
+			return g
 		}
 	}
-	return through, deadDef, blockedMine
+	return done()
 }
 
 // cheaperBlocker is the defender's tie-break between two blocks that

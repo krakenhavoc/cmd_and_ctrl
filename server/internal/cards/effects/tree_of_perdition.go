@@ -36,17 +36,20 @@ import (
 // Two consequences worth stating:
 //
 //   - REPEATED ACTIVATIONS ACCUMULATE. Each one registers a NEW
-//     scoped static rather than replacing the previous one. That is
+//     scoped effect rather than replacing the previous one. That is
 //     correct — CR 613.6 orders effects in the same sublayer by
 //     timestamp, so the newest set wins and the board is right — but
-//     the superseded entries stay in Game.ScopedStatics and are
-//     walked by every recompute for the rest of the game. A Tree that
-//     untaps every turn leaves a slow trail of dead 7b entries. Not
-//     worth a sweep for one card; worth knowing before someone writes
-//     the second one.
-//   - The static is pinned to (InstanceID, EnteredBattlefieldAt), so
+//     the superseded entries stay in Game.ScopedEffects and are
+//     walked by every recompute for as long as the Tree stays. A Tree
+//     that untaps every turn leaves a slow trail of dead 7b entries.
+//     Not worth a sweep for one card; worth knowing before someone
+//     writes the second one.
+//   - The effect is pinned to (InstanceID, EnteredBattlefieldAt), so
 //     a Tree that is flickered comes back as its printed 0/13 rather
-//     than keeping the set (CR 400.7).
+//     than keeping the set (CR 400.7), and its entries are swept.
+//
+// The set is a data record (ADR 0041 phase 3, #1497), so a table
+// with an activated Tree is still a restore point.
 //
 // The toughness is READ before the static is registered and read
 // through CurrentToughness, so it is the post-layer value with
@@ -106,13 +109,13 @@ func treeOfPerditionExchange(g *game.Game, item *game.StackItem) error {
 	if toughness == life {
 		return nil
 	}
-	g.RegisterScopedStaticForEffect(game.StaticAbility{
-		Layer:     game.Layer7PT,
-		SubLayer:  game.SubLayer7B_Set,
-		AppliesTo: affected.appliesTo(),
-		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-			c.Toughness = life
-		},
-	}, source, fmt.Sprintf("Tree of Perdition — toughness becomes %d", life), game.IndefiniteDuration())
+	// A data record (ADR 0041 phase 3, #1497): the set lasts the rest
+	// of the game, and as a closure it kept the table off the restore
+	// path for all of it. Pinned to the Tree, so a Tree that leaves
+	// takes its entries with it.
+	g.RegisterScopedEffectForEffect(source, affected.affectedObjects(),
+		[]game.Mod{game.SetBaseToughnessMod(life)},
+		g.PinnedTo(game.IndefiniteDuration(), source),
+		fmt.Sprintf("Tree of Perdition — toughness becomes %d", life))
 	return b31LifeBecomes(ctx, victim, toughness)
 }

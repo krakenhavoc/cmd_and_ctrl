@@ -88,6 +88,10 @@ func (r *Room) writeRestorePointLocked(seq uint64) (bool, error) {
 	}
 	snap := r.Game.CaptureSnapshot()
 	if !snap.Restorable() {
+		// ADR 0041 P7 (#1497): count what blocked it, by kind, so the
+		// shutdown census can say what keeps restore points stale
+		// between deploys rather than only at the instant of one.
+		r.skips.noteSkip(snap.Continuations)
 		return false, nil
 	}
 
@@ -108,6 +112,7 @@ func (r *Room) writeRestorePointLocked(seq uint64) (bool, error) {
 	// above already succeeded, so this cannot be the thing that fails
 	// a caller's Apply.
 	r.lastRestorePoint = restorePointRecord{Seq: seq, At: time.Now().UTC()}
+	r.skips.noteWrite()
 	return true, nil
 }
 
@@ -186,6 +191,7 @@ const (
 	ReasonSchemaTooNew      = "schema_too_new"
 	ReasonSchemaUnsupported = "schema_unsupported"
 	ReasonNotRestorable     = "not_restorable"
+	ReasonUnknownEffectKey  = "unknown_effect_key"
 	ReasonOther             = "other"
 )
 
@@ -284,6 +290,14 @@ func (m *RoomManager) restoreOne(path string) RestoreOutcome {
 			// returns.
 			res.Reason = ReasonSchemaTooNew
 			m.log.Error("restore point written by a newer server; game abandoned (file kept for roll-forward)",
+				"game_id", res.GameID, "path", path, "err", err)
+		case errors.Is(err, game.ErrUnknownEffectKey):
+			// ADR 0041 P4 (#1497): the file names an effect this
+			// binary cannot interpret, which only a newer binary can
+			// have written. The rollback case, so ErrSchemaTooNew's
+			// answer: keep the file for the roll-forward.
+			res.Reason = ReasonUnknownEffectKey
+			m.log.Error("restore point names an effect this build cannot interpret; game abandoned (file kept for roll-forward)",
 				"game_id", res.GameID, "path", path, "err", err)
 		case errors.Is(err, game.ErrSchemaUnsupported):
 			res.Reason = ReasonSchemaUnsupported

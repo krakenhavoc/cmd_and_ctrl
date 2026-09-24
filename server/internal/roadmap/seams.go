@@ -8,10 +8,11 @@ import (
 // seams.go — docs/engine-seams.md's open table, generated from the
 // registry.
 //
-// The doc is otherwise hand-written: its intro and its Closed seams
-// list are history a person wrote, and nothing here touches them. The
-// one machine-owned part is the block between the two markers, the
-// same fence coverage/census.go draws around the roadmap census.
+// The doc is otherwise hand-written: its intro is prose a person wrote,
+// and nothing here touches it. This file owns the block between the two
+// OPEN SEAMS markers, the same fence coverage/census.go draws around the
+// roadmap census. The Closed seams list below it is a second generated
+// block, assembled from one fragment per closure (closed.go, #1461).
 //
 // Unlike the census, this block is a function of the REGISTRY alone —
 // no catalog count, no clock — so it changes only in the PR that edits

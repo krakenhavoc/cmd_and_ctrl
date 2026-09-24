@@ -325,15 +325,9 @@ func (p PaidCost) IsZero() bool {
 // mutate the game it was taken from.
 func clonePaidCost(p PaidCost) PaidCost {
 	out := p
-	if len(p.Mana) > 0 {
-		out.Mana = make([]ManaToken, len(p.Mana))
-		for i, t := range p.Mana {
-			out.Mana[i] = t
-			if len(t.Restrictions) > 0 {
-				out.Mana[i].Restrictions = append([]string(nil), t.Restrictions...)
-			}
-		}
-	}
+	// ManaToken.clone deep-copies the restrictions and (#1547) the spend
+	// riders, whose Applied stamps are part of this record.
+	out.Mana = cloneManaTokens(p.Mana)
 	if len(p.OptionalCosts) > 0 {
 		out.OptionalCosts = append([]int(nil), p.OptionalCosts...)
 	}

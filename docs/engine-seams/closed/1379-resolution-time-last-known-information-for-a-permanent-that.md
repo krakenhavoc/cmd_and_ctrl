@@ -1,0 +1,8 @@
+---
+title: "Resolution-time last-known information for a permanent that has left the battlefield"
+date: 2026-09-24
+issues: [1379]
+pr: 1403
+legacy_order: 9
+---
+**Resolution-time last-known information for a permanent that has left the battlefield** (#1379, CR 608.2h / 400.7, [ADR 0018 amendment 2026-09-24](decisions/0018-triggers-on-the-stack.md) Decisions 12-13). The CR 603.10 store (`lastKnownBattlefield`, `lastKnownCounters`) is deleted when the exit's trigger harvest ends. An ability that read a permanent at RESOLUTION ("where X is that creature's power") found the card in its new zone, with printed power and no counters. `Game.lastKnownPermanents` (`server/internal/game/permanent_lki.go`) is the second store. `battlefieldExitLocked` writes it at the same moment as the CR 603.10 snapshot: one `PermanentInfo` per departed OBJECT, keyed by instance ID and told apart by `Card.ObjectEpoch`. Each record holds post-layer characteristics, power and toughness with counters, the counters, the controller and the attachment. It lasts for the rest of the turn (cleared with `lastKnownStack`) and is carried by Clone, RestoreFrom and the persisted snapshot. `PermanentForEffect(ObjectRef)` returns the live permanent while that object is still on the battlefield, and the record once it has gone. It never returns a new object that has the same card. `ObjectSnapshot` gains `Epoch`, the battlefield epoch for a departed object, so `effects.Context.TriggeringPermanent()` gives the ref to any trigger. Proof cards: Cream of the Crop, Tribute to the World Tree and Claustrophobia now ship `full`. Warstorm Surge and Murderous Redcap now deal the last-known damage, and their caveats were narrowed to the damage-source keywords, which #1396 then closed (next entry).

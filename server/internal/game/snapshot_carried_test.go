@@ -142,6 +142,17 @@ func carriedProbes() []carriedProbe {
 				return reflect.ValueOf(g.PendingChoices[0]).Elem()
 			},
 		},
+		{
+			typeName: "ScopedEffect", plan: scopedEffectFields,
+			capture: "captureSnapshotLocked (deepCopyScopedEffects)", restore: "restoreGame (deepCopyScopedEffects)",
+			at: func(t *testing.T, g *Game) reflect.Value {
+				t.Helper()
+				if len(g.ScopedEffects) != 1 {
+					t.Fatalf("the probe wants exactly one scoped effect, the fixture has %d", len(g.ScopedEffects))
+				}
+				return reflect.ValueOf(&g.ScopedEffects[0]).Elem()
+			},
+		},
 		// ScopedStatic has no probe on purpose: the whole entry is
 		// `dropped` and censused, so its one `carried` row (Duration) is
 		// carried by CLONE and not by the snapshot — see
@@ -179,6 +190,44 @@ var carriedFixture = map[string]any{
 	"DelayedTrigger.At": StepEnd,
 	// The prompt kind, which decides which Resolve* call may answer it.
 	"PendingChoice.Kind": PendingChoiceDiscardFromHand,
+	// A mod's kind is a closed vocabulary, and restore REFUSES a kind
+	// it does not know (ErrUnknownEffectKey, ADR 0041 P4) — so an
+	// invented one would fail the restore, not test the carry.
+	"ScopedEffect.Mods": []Mod{AddSubtypesMod("drift-ScopedEffect.Mods"), ModifyPTMod(4, 2)},
+	// A duration's kind and condition are closed sets too (#1497
+	// review): restore refuses an unknown one, so an invented 4242
+	// would fail the restore rather than test the carry. Every other
+	// field is non-zero, so a projection dropping any of them shows.
+	"ScopedEffect.Duration": Duration{
+		Kind: ForAsLongAs, Condition: WhileSourceRemainsTapped,
+		Player:              uuid.NewSHA1(uuid.Nil, []byte("ScopedEffect.Duration/player")),
+		ExpiresAtTurnsBegun: 7, ExpiresAfterTurnsBegun: 6,
+		Source:          uuid.NewSHA1(uuid.Nil, []byte("ScopedEffect.Duration/source")),
+		SourceEnteredAt: 4444,
+		Pinned:          uuid.NewSHA1(uuid.Nil, []byte("ScopedEffect.Duration/pinned")),
+		PinnedEnteredAt: 4545,
+	},
+	"DelayedTrigger.Duration": &Duration{
+		Kind: UntilYourNextTurn, Condition: WhileYouControlSource,
+		Player:              uuid.NewSHA1(uuid.Nil, []byte("DelayedTrigger.Duration/player")),
+		ExpiresAtTurnsBegun: 9, ExpiresAfterTurnsBegun: 8,
+		Source:          uuid.NewSHA1(uuid.Nil, []byte("DelayedTrigger.Duration/source")),
+		SourceEnteredAt: 4646,
+		Pinned:          uuid.NewSHA1(uuid.Nil, []byte("DelayedTrigger.Duration/pinned")),
+		PinnedEnteredAt: 4747,
+	},
+	"Game.ScopedEffects": func(g *Game) any {
+		c := g.Battlefield.Cards[0]
+		return []ScopedEffect{{
+			Affected:   []AffectedObject{{ID: c.InstanceID, EnteredAt: c.EnteredBattlefieldAt}},
+			Mods:       []Mod{SetColorsMod("U")},
+			Source:     ObjectRef{ID: uuid.NewSHA1(uuid.Nil, []byte("Game.ScopedEffects")), Epoch: 3},
+			SourceName: "drift-Game.ScopedEffects",
+			Timestamp:  4343,
+			Duration:   Duration{Kind: Indefinite},
+			Label:      "drift-Game.ScopedEffects",
+		}}
+	},
 	// The zone a spell was cast from (CR 400.7g / ADR 0066).
 	"StackItem.CastFromZone": ZoneGraveyard,
 	// ADR 0069's face-down rule. An invented kind has no viewers row.

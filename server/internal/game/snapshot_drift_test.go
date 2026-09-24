@@ -140,6 +140,10 @@ var gameFields = plan(
 	// Events from scratch, so there is nothing to serialise.
 	"eventLogGen", rebuilt, "names this *Game's log history; a restored game is a new receiver and starts a new one",
 	"logProjection", rebuilt, "derived cache of the public log; the first view of a restored game refolds Events",
+	// #1479: the card-location hint table. Every answer it gives is
+	// checked against the live zones, so a restored game's first lookup
+	// simply builds a new one.
+	"cardIndex", rebuilt, "derived hint table over the zones; the first lookup of a restored game builds it",
 	// #829 event batches. Carried for the same reason the per-turn
 	// tallies are, and carried TOGETHER: the counter names the batch
 	// the marks are recorded against, so a restore that kept one and
@@ -213,6 +217,7 @@ var gameFields = plan(
 	"mu", rebuilt, "a fresh receiver owns its own lock, exactly as Clone does",
 
 	"ScopedStatics", dropped, "StaticAbility is two closures; counted in ContinuationCensus.ScopedStatics",
+	"ScopedEffects", carried, "GameSnapshot.ScopedEffects — ADR 0041 phase 3's data twin of ScopedStatics (#1497)",
 	"TurnScopedReplacements", dropped, "ReplacementEffect is three closures; counted in ContinuationCensus.TurnScopedReplacements",
 	"TurnScopedBlockRules", dropped, "BlockRule is two closures; counted in ContinuationCensus.TurnScopedBlockRules",
 	"testReplacements", dropped, "test-only injection slot; production has no path to it",
@@ -488,6 +493,21 @@ var scopedStaticFields = plan(
 	"Label", dropped, "reaches the operator through ContinuationCensus.Labels",
 )
 
+// scopedEffectFields classifies ADR 0041 phase 3's data record
+// (#1497). Every field is carried: the record exists precisely so that
+// nothing about a continuous effect from a resolution has to be
+// dropped.
+var scopedEffectFields = plan(
+	"Affected", carried, "",
+	"Mods", carried, "",
+	"Source", carried, "",
+	"SourceName", carried, "",
+	"Controller", carried, "",
+	"Timestamp", carried, "",
+	"Duration", carried, "",
+	"Label", carried, "",
+)
+
 var zoneFields = plan(
 	"Kind", carried, "",
 	"Owner", carried, "",
@@ -623,6 +643,10 @@ var pendingChoiceFields = plan(
 	// game would let the player spend restricted mana on anything.
 	"ManaRestrictions", carried, "",
 	"ManaSourceKinds", carried, "",
+	// #1547: the spend riders the pick's token will carry (Cavern of
+	// Souls' "that spell can't be countered"). Without it a restored
+	// pick mints mana that does nothing when it is spent.
+	"ManaRiders", carried, "",
 	// #742: how many tokens each colour of a one-pick-N-mana choice
 	// mints (Gilded Lotus). Without it a restored pick adds one.
 	"ManaAmounts", carried, "",
@@ -751,6 +775,7 @@ var driftPlans = []struct {
 	{DelayedTrigger{}, delayedTriggerFields},
 	{PendingChoice{}, pendingChoiceFields},
 	{ScopedStatic{}, scopedStaticFields},
+	{ScopedEffect{}, scopedEffectFields},
 }
 
 // driftPlanName is the type name a plan is keyed and reported under.

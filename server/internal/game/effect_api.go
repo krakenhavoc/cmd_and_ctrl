@@ -81,7 +81,7 @@ func (g *Game) StackItemPaidForEffect(id uuid.UUID) PaidCost {
 // power before exile; Path to Exile → read controller before
 // exile to drive the search clause).
 func (g *Game) LookupCardForEffect(cardID uuid.UUID) (Card, bool) {
-	z := g.findCardZoneLocked(cardID)
+	z, pos := g.locateCardLocked(cardID)
 	if z == nil {
 		// #762: a token whose entry window is open is in no zone at
 		// all — it is minted and not yet pushed. An entry replacement
@@ -90,12 +90,7 @@ func (g *Game) LookupCardForEffect(cardID uuid.UUID) (Card, bool) {
 		// to see one. See Game.enteringTokens.
 		return g.enteringTokenLocked(cardID)
 	}
-	for _, c := range z.Cards {
-		if c.InstanceID == cardID {
-			return c, true
-		}
-	}
-	return Card{}, false
+	return z.Cards[pos], true
 }
 
 // LastKnownCountersForEffect is the CR 603.10 LKI reader for a
@@ -3481,7 +3476,7 @@ func (g *Game) addManaSlotsLocked(
 			// own output (ADR 0074), and neither taps a permanent for
 			// mana, so neither is doubled by Mana Reflection. That is
 			// what the card says, not a simplification.
-			g.produceManaLocked(p, source, []string{colorOptions[0]}, nil, srcKinds, false, pending)
+			g.produceManaLocked(p, source, []string{colorOptions[0]}, nil, nil, srcKinds, false, pending)
 			continue
 		}
 		if pending != nil {
@@ -3494,7 +3489,7 @@ func (g *Game) addManaSlotsLocked(
 			for k := 1; k < slot.AmountFor(color); k++ {
 				bookColorRequirement(color, pending)
 			}
-			g.produceManaLocked(p, source, repeatColor(color, slot.AmountFor(color)), nil, srcKinds, false, pending)
+			g.produceManaLocked(p, source, repeatColor(color, slot.AmountFor(color)), nil, nil, srcKinds, false, pending)
 			continue
 		}
 		g.QueueChoiceForEffect(PendingChoice{

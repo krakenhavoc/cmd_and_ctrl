@@ -367,6 +367,16 @@ type PendingChoice struct {
 	// S32 mana-pipeline pass (#352).
 	ManaRestrictions []string
 
+	// ManaRiders are the spend riders the token minted by this
+	// PendingChoiceMana will carry (#1547) — Cavern of Souls' "and that
+	// spell can't be countered", Path of Ancestry's scry. On the choice
+	// for ManaRestrictions' reason: the token is minted later, in
+	// ResolveManaChoice, when the ability shape is out of scope. The
+	// Production id is stamped at that mint, not here.
+	//
+	// Deep-copied by clone.go and mirrored by the snapshot.
+	ManaRiders []ManaSpendRider
+
 	// ManaSourceKinds is what the permanent producing this mana WAS
 	// at the moment the pick was queued — snow, Treasure, creature,
 	// land, artifact, enchantment (#1212, mana_source.go).
@@ -1259,6 +1269,8 @@ func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) er
 		p, choice.Source,
 		repeatColor(color, n),
 		copyRestrictions(choice.ManaRestrictions),
+		// #1547: and its spend riders, carried the same way.
+		choice.ManaRiders,
 		// #1212: the snapshot the CHOICE carried, not a live lookup —
 		// the source may have been sacrificed to pay for the ability
 		// whose colour is being answered here.

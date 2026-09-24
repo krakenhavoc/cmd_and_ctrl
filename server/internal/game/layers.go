@@ -452,6 +452,10 @@ func (g *Game) activeStaticAbilitiesLocked() []ContinuousEffect {
 	// table with no such card pays one slice read. See
 	// static_zones.go.
 	out = append(out, g.declaredZoneStaticsLocked()...)
+	// #1547: Hall of the Bandit Lord's "it gains haste", read off the
+	// permanent's provenance — data, so it needs no catalog hook and
+	// survives the snapshot. See mana_spend_rider.go.
+	out = append(out, g.manaRiderContinuousEffectsLocked()...)
 	if g.Battlefield == nil || CatalogStaticAbilities == nil {
 		return out
 	}

@@ -96,42 +96,13 @@ func AbilityNeedsPermanentSource(cost AbilityCost) string {
 //
 // Caller must hold g.mu.
 func (g *Game) findCardAndZoneLocked(cardID uuid.UUID) (*Card, ZoneKind) {
-	scan := func(z *Zone) *Card {
-		if z == nil {
-			return nil
-		}
-		for i := range z.Cards {
-			if z.Cards[i].InstanceID == cardID {
-				return &z.Cards[i]
-			}
-		}
-		return nil
+	// #1479: through the card index, not a walk of every zone. The
+	// walk this replaced looked at a seat's hand before its library;
+	// the index's order differs, which cannot matter while an
+	// instance ID is in one zone at a time.
+	z, pos := g.locateCardLocked(cardID)
+	if z == nil {
+		return nil, ""
 	}
-	if c := scan(g.Battlefield); c != nil {
-		return c, ZoneBattlefield
-	}
-	if c := scan(g.Stack); c != nil {
-		return c, ZoneStack
-	}
-	if c := scan(g.Exile); c != nil {
-		return c, ZoneExile
-	}
-	for _, p := range g.Seats {
-		if p == nil {
-			continue
-		}
-		if c := scan(p.Hand); c != nil {
-			return c, ZoneHand
-		}
-		if c := scan(p.Graveyard); c != nil {
-			return c, ZoneGraveyard
-		}
-		if c := scan(p.Command); c != nil {
-			return c, ZoneCommand
-		}
-		if c := scan(p.Library); c != nil {
-			return c, ZoneLibrary
-		}
-	}
-	return nil, ""
+	return &z.Cards[pos], z.Kind
 }

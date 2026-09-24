@@ -1,0 +1,8 @@
+---
+title: "A discard is a replaceable event with a cause"
+date: 2026-09-18
+issues: [650]
+pr: 923
+legacy_order: 72
+---
+**A discard is a replaceable event with a cause** (#650, [ADR 0061](decisions/0061-token-creation-and-discard-are-replaceable-events.md)): the shared exit primitive opens `RepEventDiscard` rather than an anonymous hand → graveyard move, carrying `DiscardPlayer`, `DiscardCause` (`"effect"` / `"cost"` / `"cleanup"` — the distinction the rules draw, per ADR 0013 §10a, not "voluntary") and the causing `Source`, alongside the move payload a `Replace` rewrites. `EventDiscardCard` still fires wherever the card lands (CR 701.8a defines a discard by the move OUT of the hand), now carrying the cause, and the CR 903.9 built-in watches both kinds so a discarded commander is still offered the command zone. A COST discard still settles without asking (CR 601.2h), so an `Optional` replacement on one is skipped un-applied. Cards declare it through `DiscardBecomes{Dst, Causes, Optional, …}.Build()`. Shipped on **Library of Leng** (1 card, caveat: no ordering choice when one effect saves several cards), which batch 28 (#390) had skipped. Madness (#657) has since landed on it and took the last two cards off that row (Fiery Temper, Big Game Hunter) — the row is gone from the open table and its own bullet is below. The two graveyard arrivals this left outside the window — search-to-graveyard (`effect_api.go`) and surveil (`ResolveSurveil`) — were closed by #931 (row below), which took **Rest in Peace** off #383's skip list. A public "discard these card IDs" primitive (Kroxa, the Obstinate Baloth redirect) is still unwritten.

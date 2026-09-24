@@ -111,27 +111,15 @@ func kyoshiChapterTwo(g *game.Game, item *game.StackItem) error {
 // indefinite; CR 611.2c pins it to the one permanent targeted, so a
 // land that leaves and returns is a new object this effect no longer
 // follows).
+//
+// A data record (ADR 0041 phase 3, #1497): an indefinite effect, and
+// as a closure it kept the table off the restore path for the rest of
+// the game. Pinned, so it is swept when the land leaves.
 func kyoshiChapterTwoBecomesIsland(ctx *Context, target uuid.UUID) error {
-	applies := SnapshotAffected(ctx, func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
-		return c.InstanceID == target
-	})
-	if applies == nil {
-		return nil
-	}
-	return StaticForDuration{
+	return ScopedEffectFor{
+		Target:   target,
+		Mods:     []game.Mod{game.AddSubtypesMod("Island")},
+		Duration: ctx.Game.PinnedTo(game.IndefiniteDuration(), target),
 		Label:    "The Legend of Kyoshi — that land becomes an Island in addition to its other types",
-		Duration: game.IndefiniteDuration(),
-		Ability: game.StaticAbility{
-			Layer:     game.Layer4Type,
-			AppliesTo: applies,
-			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-				for _, t := range c.Subtypes {
-					if t == "Island" {
-						return
-					}
-				}
-				c.Subtypes = append(c.Subtypes, "Island")
-			},
-		},
 	}.Apply(ctx)
 }

@@ -833,7 +833,7 @@ func (g *Game) snapshotLKILocked(cardID uuid.UUID) {
 	}
 }
 
-// findCardByIDLocked scans every zone for a card with the given
+// findCardByIDLocked finds the card with the given
 // instance ID and returns a pointer into the slice (or nil if not
 // found). Used by harvestLTB to locate a card whose zone is unknown
 // to the harvester — the LTB destination depends on the cause
@@ -843,41 +843,12 @@ func (g *Game) snapshotLKILocked(cardID uuid.UUID) {
 // callers MUST NOT mutate the card through it (the harvester only
 // reads).
 func (g *Game) findCardByIDLocked(cardID uuid.UUID) *Card {
-	scan := func(z *Zone) *Card {
-		if z == nil {
-			return nil
-		}
-		for i := range z.Cards {
-			if z.Cards[i].InstanceID == cardID {
-				return &z.Cards[i]
-			}
-		}
+	// #1479: through the card index, not a walk of every zone.
+	z, pos := g.locateCardLocked(cardID)
+	if z == nil {
 		return nil
 	}
-	if c := scan(g.Battlefield); c != nil {
-		return c
-	}
-	if c := scan(g.Stack); c != nil {
-		return c
-	}
-	if c := scan(g.Exile); c != nil {
-		return c
-	}
-	for _, p := range g.Seats {
-		if c := scan(p.Hand); c != nil {
-			return c
-		}
-		if c := scan(p.Library); c != nil {
-			return c
-		}
-		if c := scan(p.Graveyard); c != nil {
-			return c
-		}
-		if c := scan(p.Command); c != nil {
-			return c
-		}
-	}
-	return nil
+	return &z.Cards[pos]
 }
 
 // triggerWatches reports whether kinds contains kind. Linear scan;
