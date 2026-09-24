@@ -4453,6 +4453,11 @@ func (g *Game) routeBattlefieldExitInBatchThenLocked(cardID uuid.UUID, r zoneRou
 		// and nothing else can tell a destruction from a sacrifice.
 		Destruction:       r.Destruction,
 		CantBeRegenerated: r.CantBeRegenerated,
+		// A sacrifice paid as a cost is an indivisible CR 602.2b
+		// payment. Carry the route's posture onto the replacement
+		// event just as routeCardToZoneLocked does for non-battlefield
+		// moves, so a CR 616 ordering window settles inline.
+		mustSettleNow: r.MustSettleNow,
 		// #1397: a sacrifice paid as a cost carries its owner's
 		// CR 903.9 answer, given before the payment.
 		commanderAnswer: r.commanderAnswer,

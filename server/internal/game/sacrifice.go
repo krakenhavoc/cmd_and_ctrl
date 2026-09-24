@@ -41,7 +41,7 @@ import "github.com/google/uuid"
 //
 // Caller must hold g.mu.
 func (g *Game) sacrificePermanentLocked(cardID uuid.UUID) error {
-	return g.sacrificeAnsweredLocked(cardID, commanderZoneUnasked)
+	return g.sacrificeWithAnswerLocked(cardID, commanderZoneUnasked, false)
 }
 
 // sacrificeAnsweredLocked is sacrificePermanentLocked for a sacrifice
@@ -49,15 +49,27 @@ func (g *Game) sacrificePermanentLocked(cardID uuid.UUID) error {
 // payment began (#1397, cost_commander_choice.go). The answer rides the
 // route onto the battlefield exit's event, so a sacrificed commander no
 // longer pauses the payment half way through it — the pause that let
-// the same commander be spent twice while its prompt was open.
+// the same commander be spent twice while its prompt was open. The route
+// also settles CR 616 ordering inline: CR 602.2b makes the whole payment
+// one indivisible step, so it cannot stop on any replacement prompt.
 //
 // Caller must hold g.mu.
 func (g *Game) sacrificeAnsweredLocked(cardID uuid.UUID, answer commanderZoneAnswer) error {
+	return g.sacrificeWithAnswerLocked(cardID, answer, true)
+}
+
+// sacrificeWithAnswerLocked is the shared sacrifice body. Cost callers
+// pass mustSettleNow; effect and manual callers do not, because their CR
+// 614/616 window is allowed to ask the affected player a question.
+//
+// Caller must hold g.mu.
+func (g *Game) sacrificeWithAnswerLocked(cardID uuid.UUID, answer commanderZoneAnswer, mustSettleNow bool) error {
 	if g.controllerOfBattlefieldCardLocked(cardID) == uuid.Nil {
 		return ErrCardNotFound
 	}
 	r := sacrificeRoute(uuid.Nil)
 	r.commanderAnswer = answer
+	r.MustSettleNow = mustSettleNow
 	return g.routeLegLocked(r, cardID, nil, nil)
 }
 
