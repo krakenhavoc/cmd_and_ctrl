@@ -68,13 +68,33 @@ import "github.com/google/uuid"
 // elsewhere (a commander taking CR 903.9's offer), and the caller that
 // cares asks through ExileSpellThenForEffect's `exiled`.
 //
+// It emits EventBecomesPlotted once the permission is in place (#1382),
+// which is what "when this card becomes plotted" watches. The plotter
+// — the event's Actor — is the resolving item's controller, since an
+// effect is the only thing that calls this from outside the package;
+// with nothing resolving it falls back to the owner.
+//
 // Caller must hold g.mu.
 func (g *Game) PlotExiledCardForEffect(cardID uuid.UUID, source uuid.UUID) {
+	g.plotExiledCardLocked(cardID, source, g.resolutionCauseLocked().Controller)
+}
+
+// plotExiledCardLocked is PlotExiledCardForEffect with the plotter
+// named. The special action names it (plotLocked): Game.resolving can
+// be stale in the window between a resolution and play moving on,
+// which is exactly when a special action is taken (move_cause.go), so
+// inferring it there could credit the previous spell's controller.
+//
+// Caller must hold g.mu.
+func (g *Game) plotExiledCardLocked(cardID, source, plotter uuid.UUID) {
 	exiled := exiledCardByIDLocked(g, cardID)
 	if exiled == nil {
 		return
 	}
 	owner := exiled.Owner
+	if plotter == uuid.Nil {
+		plotter = owner
+	}
 	notBefore := g.Turn.Number
 	if g.activeSeatIDLocked() == owner {
 		notBefore++
@@ -90,6 +110,19 @@ func (g *Game) PlotExiledCardForEffect(cardID uuid.UUID, source uuid.UUID) {
 		Source:        source,
 		Label:         "Plotted — cast it without paying its mana cost",
 	}, []Card{*exiled})
+	// #1382: CR 702.170c/d — the card has now become plotted. Emitted
+	// AFTER the grant so a watcher sees a card that is already
+	// plotted, and emitted here rather than in either caller so the
+	// special action and every "it becomes plotted" effect fire it
+	// alike. The card is in exile, which is where "when this card
+	// becomes plotted" watches from (effects.WhenThisBecomesPlotted).
+	g.EmitEvent(Event{
+		Kind:   EventBecomesPlotted,
+		Actor:  plotter,
+		Source: source,
+		CardID: cardID,
+		Target: cardID,
+	})
 }
 
 // plotLocked is the plot special action's performer, run by
@@ -119,7 +152,7 @@ func (g *Game) plotLocked(p *Player, cardID uuid.UUID, _ SpecialAction) error {
 		if len(landed) != 1 {
 			return nil
 		}
-		g.PlotExiledCardForEffect(landed[0], landed[0])
+		g.plotExiledCardLocked(landed[0], landed[0], owner)
 		return nil
 	})
 }

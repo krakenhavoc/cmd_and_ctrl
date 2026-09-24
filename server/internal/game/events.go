@@ -114,6 +114,28 @@ const (
 	// #658 / #659.
 	EventSpecialAction EventKind = "special_action"
 
+	// EventBecomesPlotted — CardID, a card in exile, became plotted
+	// (CR 702.170c/d). Actor is the player who plotted it: the owner
+	// for the plot special action (CR 702.170a), the resolving item's
+	// controller for an effect ("exile target spell. It becomes
+	// plotted" — Aven Interrupter plots an OPPONENT's spell, and the
+	// actor is Aven's controller, not the spell's owner). Source is
+	// what did it: the card itself for the keyword, the effect's
+	// source card otherwise.
+	//
+	// Emitted from Game.PlotExiledCardForEffect, the one function both
+	// routes end in, and only once the card is in exile with its
+	// permission granted — a card that never landed (a commander whose
+	// owner took the CR 903.9 offer) is not plotted and fires nothing.
+	// A plain exile never emits it.
+	//
+	// "When this card becomes plotted" (Longhorn Sharpshooter, Aloe
+	// Alchemist) watches it from EXILE — #925's TriggeredAbility.Zones,
+	// the zone suspend's triggers watch from — through
+	// effects.WhenThisBecomesPlotted. Added for #1382 (ADR 0062
+	// amendment 2026-09-24).
+	EventBecomesPlotted EventKind = "becomes_plotted"
+
 	// EventMill — Actor milled CardID from the top of their library.
 	// Fires per card.
 	EventMill EventKind = "mill"
