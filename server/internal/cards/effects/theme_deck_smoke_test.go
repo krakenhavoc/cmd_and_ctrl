@@ -400,12 +400,20 @@ func TestThemeDeckPlaysFourTurns(t *testing.T) {
 	if got := counterOn(g, elspeth, game.CounterLoyalty); got != 5 {
 		t.Errorf("loyalty after +1 = %d, want 5 — the cost is paid at announce (CR 606.4)", got)
 	}
-	// CR 606.3: one loyalty ability per planeswalker per turn.
+	// CR 307.1 / 606.3: with the +1 still on the stack the stack is
+	// not empty, so a second loyalty activation is outside its window
+	// (#1352) before the once-per-turn clause is even asked.
 	err := g.ActivateCatalogAbility(me.ID, elspeth, 0, game.ActivateAbilityParams{})
+	if !errors.Is(err, game.ErrSorcerySpeedRequired) {
+		t.Errorf("loyalty activation over the +1 on the stack returned %v, want ErrSorcerySpeedRequired", err)
+	}
+	passPriorityAroundTable(t, g)
+	// CR 606.3: one loyalty ability per planeswalker per turn — asked
+	// once the stack is empty again.
+	err = g.ActivateCatalogAbility(me.ID, elspeth, 0, game.ActivateAbilityParams{})
 	if !errors.Is(err, game.ErrLoyaltyAlreadyActivated) {
 		t.Errorf("second loyalty activation in one turn returned %v, want ErrLoyaltyAlreadyActivated", err)
 	}
-	passPriorityAroundTable(t, g)
 	if got := countNamed(g, "Soldier"); got != 3 {
 		t.Errorf("Soldiers after Elspeth's +1 = %d, want 3", got)
 	}

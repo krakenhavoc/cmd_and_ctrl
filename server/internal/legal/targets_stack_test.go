@@ -88,7 +88,7 @@ func TestBurnSpellNeverFlagsTargetsStack(t *testing.T) {
 // Stifle targeting an activated or triggered ability on the stack
 // (CR 115.4, #1211) sets targets_stack even though its target is not
 // a card in any zone — StackMeta's synthetic id is what the flag
-// reads, exactly as game.stackEmpty does.
+// reads, exactly as the engine's empty-stack test does.
 func TestStifleTargetingAnAbilityFlagsTargetsStack(t *testing.T) {
 	g := newTable(t)
 	seat := g.Seats[g.Turn.ActiveSeat]

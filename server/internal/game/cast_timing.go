@@ -355,7 +355,7 @@ func castTimingAffects(a CastTimingAffects, controller, caster uuid.UUID) bool {
 // A LAND PLAY IS NOT HERE. CR 305.1 and CR 116.2a make playing a land
 // a special action rather than a cast, and every card this function
 // exists for writes about casting SPELLS. CastSpell's land branch
-// keeps its own sorcerySpeedOpenLocked check beside this call — the
+// keeps its own SorcerySpeedOpenLocked check beside this call — the
 // same split cast_gate.go documents, for the same reason: a Dosan
 // that stopped a land play would be a rule nobody printed.
 //
@@ -370,7 +370,7 @@ func (g *Game) CastTimingOpenLocked(playerID uuid.UUID, card Card, zone ZoneKind
 	// below cannot narrow it either — Dosan's "only during your turn"
 	// and Teferi's "only as a sorcery" are both already true of it.
 	if perm != nil && perm.Timing == TimingPlot {
-		return g.sorcerySpeedOpenLocked(playerID)
+		return g.SorcerySpeedOpenLocked(playerID)
 	}
 	// 1. The card's own timing.
 	instantSpeed := card.IsInstant() || HasKeyword(&card, "flash")
@@ -401,5 +401,5 @@ func (g *Game) CastTimingOpenLocked(playerID uuid.UUID, card Card, zone ZoneKind
 	if instantSpeed {
 		return true
 	}
-	return g.sorcerySpeedOpenLocked(playerID)
+	return g.SorcerySpeedOpenLocked(playerID)
 }

@@ -478,23 +478,11 @@ func isActiveSeat(g *game.Game, seat uuid.UUID) bool {
 	return g.Seats[as].ID == seat
 }
 
-func stackEmpty(g *game.Game) bool {
-	if g.Stack != nil && len(g.Stack.Cards) > 0 {
-		return false
-	}
-	for _, item := range g.StackMeta {
-		if item != nil {
-			return false
-		}
-	}
-	return true
-}
-
 // targetsStackObject reports whether any of the chosen refs names an
 // object currently on the stack — a spell or an activated / triggered
-// ability (CR 115.4). It mirrors the two representations stackEmpty
-// checks: a spell is a game.Card in g.Stack.Cards, and an ability has
-// no card at all, only a synthetic id minted as a g.StackMeta entry
+// ability (CR 115.4). It checks the two representations the engine's
+// empty-stack test reads: a spell is a game.Card in g.Stack.Cards,
+// and an ability has no card at all, only a synthetic id minted as a g.StackMeta entry
 // (#1269, "targeting an activated or triggered ability on the
 // stack"). There is no separate TargetRefKind for an ability — both
 // halves resolve through TargetCard, exactly as specMatchLocked reads
@@ -517,16 +505,6 @@ func targetsStackObject(g *game.Game, refs []game.TargetRef) bool {
 		}
 	}
 	return false
-}
-
-func isMainPhase(g *game.Game) bool {
-	return g.Turn.Step == game.StepPrecombatMain || g.Turn.Step == game.StepPostcombatMain
-}
-
-// sorcerySpeedOpen mirrors game.sorcerySpeedOpenLocked (CR 307.1):
-// main phase, empty stack, and the seat is the active player.
-func sorcerySpeedOpen(g *game.Game, seat uuid.UUID) bool {
-	return isMainPhase(g) && stackEmpty(g) && isActiveSeat(g, seat)
 }
 
 // anyBlockingChoiceOpen reports whether a prompt that stops the whole
