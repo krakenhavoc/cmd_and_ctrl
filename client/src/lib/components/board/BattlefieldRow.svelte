@@ -25,6 +25,9 @@
     // Card.svelte so the right-click / context menu can hit it.
     // Undefined suppresses the menu entirely (opponent panels).
     onActivateManaAbility?: (card: CardView, abilityIndex: number) => void;
+    // #1438: "Tap (no mana)" in the same menu — a left-click on a
+    // mana source now taps it FOR mana, so the raw tap moved here.
+    onRawTap?: (card: CardView) => void;
     // S21 sub-PR 2: CR 602 activated abilities, same menu.
     onActivateAbility?: (card: CardView, abilityIndex: number) => void;
     // S31: why the CR 307.1 sorcery-speed window is shut, or "" when
@@ -62,6 +65,7 @@
     selectedCombatCardID = null,
     onCardClick,
     onActivateManaAbility,
+    onRawTap,
     onActivateAbility,
     sorcerySpeedBlocked = "",
     compact = false,
@@ -142,6 +146,7 @@
                     onActivateManaAbility={onActivateManaAbility
                       ? (idx) => onActivateManaAbility(a, idx)
                       : undefined}
+                    onRawTap={onRawTap ? () => onRawTap(a) : undefined}
                     onActivateAbility={onActivateAbility
                       ? (idx) => onActivateAbility(a, idx)
                       : undefined}
@@ -159,6 +164,7 @@
                 onActivateManaAbility={onActivateManaAbility
                   ? (idx) => onActivateManaAbility(c, idx)
                   : undefined}
+                onRawTap={onRawTap ? () => onRawTap(c) : undefined}
                 onActivateAbility={onActivateAbility
                   ? (idx) => onActivateAbility(c, idx)
                   : undefined}

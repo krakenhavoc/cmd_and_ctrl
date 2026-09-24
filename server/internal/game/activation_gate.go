@@ -8,7 +8,7 @@ import (
 
 // activation_gate.go — #1210, ADR 0073's amendment of 2026-09-22: the
 // one announce-time answer to "may this player activate this ability
-// at all?" (CR 602.5a, CR 101.2).
+// at all?" (CR 602.5, CR 101.2).
 //
 // It is the TWIN of cast_gate.go, deliberately and visibly: the same
 // three shapes, the same two sources, the same "can't beats may"

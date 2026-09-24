@@ -53,7 +53,7 @@ const (
 	UntilEndOfTurn DurationKind = iota
 
 	// UntilYourNextTurn ends as the named player's next turn begins
-	// (CR 500.1: a turn begins with its untap step; CR 502.1 puts
+	// (CR 500.1: a turn begins with its untap step; CR 502.3 puts
 	// the untapping inside that step, so the turn has begun before
 	// anything untaps). Mass Diminish, Teferi's Protection.
 	UntilYourNextTurn

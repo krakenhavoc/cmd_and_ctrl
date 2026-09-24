@@ -169,7 +169,7 @@ func TestLifeChangeForAnEliminatedPlayerIsANoOpWithZero(t *testing.T) {
 }
 
 // TestAnsweredPromptForAnEliminatedPlayersLifeLandsNothing — the resume
-// half of (2). The prompt is a CR 614.10 "may" controlled by C on A's
+// half of (2). The prompt is a "may" controlled by C on A's
 // life change, so it is C's to answer and A conceding does not drop it.
 // When C answers, the event resumes for a player who has left:
 // applyResolvedLifeChangeLocked must treat them as gone and run the
@@ -532,7 +532,7 @@ func TestOrderingResumeAtTheIterationCapStillLandsAndRunsTheTail(t *testing.T) {
 }
 
 // TestOptionalResumeAtTheIterationCapStillLandsAndRunsTheTail — the
-// same for the CR 614.10 "may" resume.
+// same for the "may" resume.
 func TestOptionalResumeAtTheIterationCapStillLandsAndRunsTheTail(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0].ID

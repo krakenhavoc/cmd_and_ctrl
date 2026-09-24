@@ -173,13 +173,16 @@ func SacrificeCountLegal(spec *TargetSpec, x, named int) bool {
 //
 // Caller must hold g.mu in write mode, and must have validated the
 // payment with validateSacrificeCostLocked.
-func (g *Game) payCostSacrificesLocked(ids []uuid.UUID) error {
+func (g *Game) payCostSacrificesLocked(ids []uuid.UUID, answers map[uuid.UUID]bool) error {
 	if len(ids) == 0 {
 		return nil
 	}
 	defer g.beginSimultaneousExitLocked(ids)()
 	for _, id := range ids {
-		if err := g.sacrificePermanentLocked(id); err != nil {
+		// #1397: `answers` are the CR 903.9 answers the commanders'
+		// owners gave before the payment began; nil for a payer that
+		// asks nobody (the auto-tapper), which is "unasked".
+		if err := g.sacrificeAnsweredLocked(id, commanderAnswerFor(answers, id)); err != nil {
 			return err
 		}
 	}

@@ -53,7 +53,7 @@ item from `StackMeta`, run `spellAllTargetsIllegalLocked` (every
 targeted slot illegal → `EventFizzle`, no effect), emit
 `EventResolve`, then run `Effect`. An error from `Effect` surfaces
 as `EventEffectError` and does not wedge the stack — the ability
-has ceased to exist either way (CR 608.2m). `nil` keeps the S13.1
+has ceased to exist either way (CR 608.2n). `nil` keeps the S13.1
 manual-sandbox meaning: the players resolve it by hand.
 
 Why a closure on the item rather than routing through the
@@ -104,7 +104,7 @@ step late:
   put on the stack (CR 603.3).
 - `MoveCardByID` (the sandbox move_card verb) and the land branch
   of `CastSpell` now call `runStateChecksLocked`. Both are special
-  actions after which the actor keeps priority (CR 116.3c), and
+  actions after which the actor keeps priority (CR 116.3), and
   CR 117.5 puts SBAs + the trigger drain at exactly that boundary.
   A catalog creature dropped straight onto the battlefield gets its
   ETB trigger on the stack immediately.
@@ -2088,7 +2088,7 @@ One engine line did change, and a back-out is what found it:
 `EventManaAbilityActivated` set `Source` but not `CardID`, so a
 source predicate looking the ability's object up by `CardID` matched
 nothing on the mana path — a silent miss, not an error. Both emit
-sites (the hand click and the auto-tapper's executor, CR 605.3a) now
+sites (the hand click and the auto-tapper's executor, CR 605.3) now
 carry the same stamps `EventActivateAbility` always has, which is
 what #1184 intended when it said a watcher can read the same fields
 off either kind.
@@ -2433,3 +2433,124 @@ changed here:
   applied to the damage source). A bare instance ID reads the last
   object the card was, and only while the card has not moved since it
   left (ADR 0056 Decision 10).
+
+## Amendment 2026-09-24 — every ability item names its source OBJECT (CR 400.7) · Accepted · S38
+
+Issue [#1418](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1418),
+found while building #1396. This ADR owns the trigger dispatch and the
+two object reads Decisions 12–13 added, so the fix lands here.
+
+### What was missing
+
+A triggered stack item carried its source's instance ID
+(`StackItem.SourceCardID`) and nothing that said which OBJECT that card
+was. `StackItem.SourceEpoch` existed (#812) but only the two activation
+announce paths stamped it, and `AbilitySourceGoneForEffect` asked it of
+activated items only.
+
+Decision 13 gave a trigger one way to name an object: the triggering
+event's snapshot, `ctx.TriggeringPermanent()`. That covers a trigger
+whose event is ABOUT its own source (an enter trigger, a dies trigger).
+An upkeep, draw-step, cast or "another creature enters" trigger has no
+source on its event. The only read left was
+`PermanentRefForEffect(item.SourceCardID)`, which answers with the object
+the card is now. A source that left and came back before its trigger
+resolved was read as the new object.
+
+- **Mana Vault** (its caveat after #1396): a Vault flickered in response
+  to its draw-step trigger was judged as the new, untapped Vault and
+  dealt no damage.
+- **Living weapon, Hero's Blade** and any "attach this" trigger: the
+  Equipment on the battlefield after a flicker is a new object (CR
+  400.7), and the trigger attached it anyway. Only activated equip was
+  refused.
+- **Uthros Research Craft**'s "put a charge counter on this" landed on
+  the new, counterless Craft.
+
+### Decision 14. `StackItem.SourceObject ObjectRef`, stamped on every ability item where it is made
+
+```go
+type StackItem struct {
+        …
+        SourceEpoch  int       // unchanged: post-cost, activated only
+        SourceObject ObjectRef // #1418: the object the ability came from
+}
+```
+
+A new field rather than widening `SourceEpoch`, for two reasons.
+`SourceEpoch`'s readers (ninjutsu, hideaway) want the reading taken
+AFTER the costs are paid. And zero is a real epoch, so an int alone
+cannot say "not stamped", which an item restored from an older
+snapshot needs to say. The ref's ID is that bit.
+
+Where the stamp is made. None of these is in catalog code, which is
+the Decision 11 rule again: ~2,200 Builds would each have to remember.
+
+| Path | What it names |
+|---|---|
+| Trigger dispatch, after `Build` (`stampTriggerSource`, beside `stampTriggerContext` at both call sites) | the dispatch's VALUE copy of the source, taken when the ability triggered and carried through every prompt frame. When the event is about the source itself (a dies trigger), the event snapshot's ref instead: the permanent that left, not the graveyard card |
+| `queueHarvestedTriggerLocked`, when the item has none | the object the source card is now (`sourceObjectRefLocked`): live permanent, the permanent it was while its exit is being dispatched, the card in another zone, or a ceased token's last record |
+| Catalog activation (`activated.go`) | the object read BEFORE any cost is paid, so a source sacrificed to its own ability is still "this permanent", as its record |
+| Manual `ActivateAbility`, `AnnounceTrigger` | the object the card is now |
+| `ScheduleDelayedTriggerForEffect` (new `DelayedTrigger.SourceObject`) | CR 603.7d: the resolving ability's own `SourceObject` when that ability is scheduling it from the same card, otherwise the object now. Copied onto the fired item |
+| `QueueReflexiveTriggerForEffect` | CR 603.12: the parent's `SourceObject` |
+| `createAbilityCopyLocked` | CR 707.10: the original's |
+
+Spells carry none: a spell is its own source, and "this spell" is not a
+permanent read. Clone, `RestoreFrom` and the persisted snapshot carry
+the field on `StackItem` and `DelayedTrigger` (`sourceObject`, nil when
+unstamped; `carried` in `snapshot_drift_test.go`).
+
+### Decision 15. One read: `SourceObjectForEffect`, and `SourcePermanent()` on the card side
+
+```go
+func (g *Game) SourceObjectForEffect(item *StackItem) (ObjectRef, bool)
+
+func (c *Context) SourceRef() (game.ObjectRef, bool)
+func (c *Context) SourcePermanent() (game.PermanentInfo, bool) // = PermanentForEffect(SourceRef())
+```
+
+`SourcePermanent` is Decision 13's rule applied to "this": the live
+permanent while the object is still there, and its record once it has
+gone, including when the card is back as a new object. Like
+`TriggeringPermanent`, it is something to read, never something to act
+on. A clause that changes the permanent checks `Left` first.
+
+An unstamped ability item (a pre-#1418 snapshot) falls back to
+`PermanentRefForEffect`, which is what every reader had before. A spell
+answers false.
+
+### Decision 16. `AbilitySourceGoneForEffect` asks the object of every stamped item
+
+The kind gate from [ADR 0036 decision 19](0036-attachments.md) (#812,
+"Why the kind, not a sentinel") existed because only activated items had
+an epoch. Every ability item has one now, so the gate reads the stamp
+instead. The sentinel argument still holds: the ref's ID, not the epoch,
+is what says an item was stamped. A stamped item whose source's epoch no longer matches is
+gone. An unstamped one keeps the rule it was put on the stack under.
+
+This is a deliberate behaviour change for every trigger that attaches or
+counters its own source: living weapon (Batterskull, Batterbone, Kaldra
+Compleat), Maul of the Skyclaves, Mithril Coat, Hero's Blade and Uthros
+Research Craft. A source flickered in response is not the object the
+trigger names, so those effects now do nothing. Each did it to the new
+object before. That was stronger than printed (the #259 direction),
+because CR 400.7 says the new object has no memory of the ability.
+
+### Cards
+
+Mana Vault ships `full`. Its caveat was this issue, and its upkeep untap
+now checks the object too. Batterskull, Hero's Blade and Uthros Research
+Craft were already `full` and now honour CR 400.7, one test each
+(`cards/effects/source_object_test.go`).
+
+### Still not covered
+
+- **A spell's own object.** A spell item carries no `SourceObject`. "This
+  spell" is never a permanent read, and CR 707.10's self-copy has its own
+  slot (`Game.resolving`). Nothing asks yet.
+- **Continuations frozen before a prompt.** A pause frame that captured an
+  instance ID before #1418 still reads the card, not the object. The
+  pick-target and trigger-prompt frames carry the source `Card` by value,
+  which is why the stamp can be taken from them. Frames are not persisted
+  anyway (`ChoiceResumeFrames` in the census).

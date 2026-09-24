@@ -39,7 +39,7 @@ func TestTekuthalDeclaresAnAnyKindAmongCounterCost(t *testing.T) {
 
 // The headline: three counters of two different kinds, off two
 // different permanents, buy Tekuthal an indestructible counter — and
-// the counter makes it indestructible (CR 122.1e).
+// the counter makes it indestructible (CR 122.1b).
 func TestTekuthalRemovesThreeCountersOfAnyKindsForIndestructible(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
@@ -66,7 +66,7 @@ func TestTekuthalRemovesThreeCountersOfAnyKindsForIndestructible(t *testing.T) {
 	if got := counterCount(g, tekuthal, "indestructible"); got != 1 {
 		t.Fatalf("Tekuthal has %d indestructible counters, want 1", got)
 	}
-	// CR 122.1e: the counter grants the keyword. The engine reads no
+	// CR 122.1b: the counter grants the keyword. The engine reads no
 	// keyword counters of its own, so Tekuthal's own static carries
 	// the rule (b24KeywordCounterGrant).
 	if !containsString(effectiveAbilities(t, g, tekuthal), "indestructible") {

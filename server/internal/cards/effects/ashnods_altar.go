@@ -9,8 +9,8 @@ package effects
 // other sacrifice outlet in the catalog either eats itself (Treasure)
 // or uses the stack (Goblin Bombardment). The Altar does neither — it
 // is a MANA ability, so it resolves immediately without the stack
-// (CR 605.3a) and can be activated any number of times while
-// something else is resolving.
+// (CR 605.3b) and can be activated any number of times while
+// something else is resolving (CR 605.3a).
 //
 // That immediacy is exactly what makes it a combo engine: with a
 // token producer and a payoff, the Altar converts creatures into mana

@@ -640,6 +640,7 @@ type stackItemSnapshot struct {
 	Owner         uuid.UUID     `json:"owner"`
 	SourceCardID  uuid.UUID     `json:"sourceCardId"`
 	SourceEpoch   int           `json:"sourceEpoch,omitempty"`
+	SourceObject  *ObjectRef    `json:"sourceObject,omitempty"` // #1418; nil = unstamped
 	Label         string        `json:"label,omitempty"`
 	DoubledBy     uuid.UUID     `json:"doubledBy,omitempty"`
 	DoubledByName string        `json:"doubledByName,omitempty"`
@@ -695,6 +696,7 @@ type delayedTriggerSnapshot struct {
 	ID                 uuid.UUID   `json:"id"`
 	Controller         uuid.UUID   `json:"controller"`
 	SourceCardID       uuid.UUID   `json:"sourceCardId"`
+	SourceObject       *ObjectRef  `json:"sourceObject,omitempty"` // #1418
 	Label              string      `json:"label,omitempty"`
 	At                 Step        `json:"at"`
 	ControllerTurnOnly bool        `json:"controllerTurnOnly"`
@@ -1397,6 +1399,7 @@ func snapshotStackItem(g *Game, s *StackItem, cen *ContinuationCensus) stackItem
 		Owner:         s.Owner,
 		SourceCardID:  s.SourceCardID,
 		SourceEpoch:   s.SourceEpoch,
+		SourceObject:  s.SourceObject.stamped(),
 		Label:         s.Label,
 		DoubledBy:     s.DoubledBy,
 		DoubledByName: s.DoubledByName,
@@ -1469,6 +1472,7 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 		ID:                 d.ID,
 		Controller:         d.Controller,
 		SourceCardID:       d.SourceCardID,
+		SourceObject:       d.SourceObject.stamped(),
 		Label:              d.Label,
 		At:                 d.At,
 		ControllerTurnOnly: d.ControllerTurnOnly,
@@ -1563,13 +1567,17 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 	// The continuation slots, one by one. Each is a paused effect.
 	for name, present := range map[string]bool{
 		"replacementResume": c.replacementResume != nil,
-		"pickTargetResume":  c.pickTargetResume != nil,
-		"copyResume":        c.copyResume != nil,
-		"triggerResume":     c.triggerResume != nil,
-		"payUnlessResume":   c.payUnlessResume != nil,
-		"mayCastResume":     c.mayCastResume != nil,
-		"searchResume":      c.searchResume != nil,
-		"scryResume":        c.scryResume != nil,
+		// #1397: a parked cost announcement waiting on a commander's
+		// owner. Dropping it drops the announcement, not half of it —
+		// nothing was paid — but the census still says so.
+		"costCommanderResume": c.costCommanderResume != nil,
+		"pickTargetResume":    c.pickTargetResume != nil,
+		"copyResume":          c.copyResume != nil,
+		"triggerResume":       c.triggerResume != nil,
+		"payUnlessResume":     c.payUnlessResume != nil,
+		"mayCastResume":       c.mayCastResume != nil,
+		"searchResume":        c.searchResume != nil,
+		"scryResume":          c.scryResume != nil,
 		// ADR 0088's ordered placement: handed the answer, then
 		// places the pile and runs the rest of the card.
 		"libraryOrderResume": c.libraryOrderResume != nil,
@@ -2076,6 +2084,7 @@ func restoreStackItem(s *stackItemSnapshot) *StackItem {
 		Owner:         s.Owner,
 		SourceCardID:  s.SourceCardID,
 		SourceEpoch:   s.SourceEpoch,
+		SourceObject:  s.SourceObject.value(),
 		Label:         s.Label,
 		DoubledBy:     s.DoubledBy,
 		DoubledByName: s.DoubledByName,
@@ -2122,6 +2131,7 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 		ID:                 d.ID,
 		Controller:         d.Controller,
 		SourceCardID:       d.SourceCardID,
+		SourceObject:       d.SourceObject.value(),
 		Label:              d.Label,
 		At:                 d.At,
 		ControllerTurnOnly: d.ControllerTurnOnly,

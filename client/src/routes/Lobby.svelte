@@ -35,6 +35,7 @@
   import TableSettingsPanel from "../lib/components/TableSettingsPanel.svelte";
   import TablematePicker from "../lib/components/TablematePicker.svelte";
   import Icon from "../lib/components/Icon.svelte";
+  import SiteHeader from "../lib/components/SiteHeader.svelte";
 
   // Lobby is the admin + player landing page. Admins see a create-
   // game form and the invite token for each game they've created;
@@ -535,6 +536,12 @@
     return () => clearInterval(t);
   });
 </script>
+
+<!-- Site nav (#1386, ADR 0092's dual-portal experiment) sits above the
+     lobby's own command bar, which keeps its session chip, settings
+     gear and sign-out controls for now — the two overlap on purpose
+     until the owner picks one. -->
+<SiteHeader />
 
 <section class="lobby">
   <header class="bar">
@@ -1153,7 +1160,9 @@
     align-items: center;
     gap: 12px;
     height: 44px;
-    margin: -1.5rem -1.5rem 8px;
+    /* Only the sides bleed now — SiteHeader already occupies the top
+       gap #app's padding used to leave for this bar alone. */
+    margin: 0 -1.5rem 8px;
     padding: 0 14px;
     background: var(--bg-1);
     border-bottom: 1px solid var(--border);

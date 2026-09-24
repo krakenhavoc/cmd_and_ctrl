@@ -115,6 +115,18 @@ func (g *Game) LandDropsRemainingLocked(playerID uuid.UUID) int {
 	return n
 }
 
+// LandPlayOpenForEffect reports whether playerID may play a land right
+// now: CR 305.1's window (their main phase, the stack empty) and a
+// land drop left (CR 305.2) — the two checks CastSpell's land branch
+// refuses with. The view reads it for a land a "you may play" grant
+// left in exile (#1389). No timing statement reaches it: playing a
+// land is a special action, not a cast.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) LandPlayOpenForEffect(playerID uuid.UUID) bool {
+	return g.SorcerySpeedOpenLocked(playerID) && g.LandDropsRemainingLocked(playerID) > 0
+}
+
 // LandDropsRemainingFor is LandDropsRemainingLocked for callers
 // outside a locked frame — the legal-move enumerator and the
 // snapshot view builder both ask it whether to offer a land play.

@@ -3,7 +3,7 @@ package effects
 // Sol Ring — "{T}: Add {C}{C}." Colorless Medallion-tier artifact.
 //
 // Fully implemented. The ManaAbilities slot below is live: the S15
-// mana pipeline resolves it off-stack per CR 605.3a and puts {C}{C}
+// mana pipeline resolves it off-stack per CR 605.3b and puts {C}{C}
 // in the controller's pool.
 //
 // The S14 note this file used to carry — "mana abilities are

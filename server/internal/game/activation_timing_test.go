@@ -59,7 +59,7 @@ func alwaysCovers(ActivationQuery) bool { return true }
 // --- the ability's own timing ---------------------------------------
 
 // Step 2 of the fold, with nothing declared: an ordinary activated
-// ability is instant-speed (CR 602.5a) and a sorcery-speed one is
+// ability is instant-speed (CR 117.1b) and a sorcery-speed one is
 // not (CR 602.5d).
 func TestActivationTimingWithoutStatements(t *testing.T) {
 	g := newActiveGame(t)
@@ -68,7 +68,7 @@ func TestActivationTimingWithoutStatements(t *testing.T) {
 	src := activationTimingSource(g, me, "Test Source", "test-activation-timing-none")
 
 	if !activationOpen(t, g, me, src, ActivationAbility{Label: "{T}: Add {C}."}) {
-		t.Error("a plain activated ability is instant-speed (CR 602.5a)")
+		t.Error("a plain activated ability is instant-speed (CR 117.1b)")
 	}
 	if activationOpen(t, g, me, src, ActivationAbility{Label: "Equip {2}", SorcerySpeed: true}) {
 		t.Error("a sorcery-speed ability is not activatable in an upkeep step")

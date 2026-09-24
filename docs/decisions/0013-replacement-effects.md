@@ -203,7 +203,7 @@ Three deliberate limits:
   Scales → Season → Season (8) can reach. Collapsing would remove a
   legal outcome, which is worse than one extra prompt.
 - **An effect that asks its controller a question is never
-  collapsed** — a CR 614.10 "may", a shockland's pay-life, a copy
+  collapsed** — a "may", a shockland's pay-life, a copy
   selector. Skipping the ordering prompt would skip its question too.
   Shared by both exceptions as `asksItsOwnQuestion`.
 - **An effect whose `Replace` writes its own SOURCE into the event is
@@ -301,7 +301,7 @@ apply-loop settles without prompting:
   an eliminated chooser — one effect at a time, re-gathering after each
   (CR 616.1f; §5e);
 - anything that would ask its own question (`asksItsOwnQuestion`: a
-  CR 614.10 "may", a shockland's pay-life, a copy selector) is skipped
+  "may", a shockland's pay-life, a copy selector) is skipped
   un-applied, the weaker-never-stronger posture
   `optionalReplacementResumableLocked` takes for an entry with nothing
   to resume it.
@@ -481,7 +481,7 @@ life or damage event:
 - when the departed player is the one the event happens to (the CR 616
   chooser always is), nothing lands — CR 800.4a takes them out of the
   game — and the continuation runs with zero;
-- when they only owned a CR 614.10 "may" on somebody else's event, the
+- when they only owned a "may" on somebody else's event, the
   pipeline resumes and the existing gone-chooser escapes decide for them
   (the "may" is declined), and the event lands with its continuation.
 
@@ -528,7 +528,7 @@ Closes [#707](https://github.com/krakenhavoc/cmd_and_ctrl/issues/707),
 noticed while fixing [#605](https://github.com/krakenhavoc/cmd_and_ctrl/issues/605)
 (PR #701).*
 
-§8 makes the commander-zone rewrite a CR 614.10 "may", and #529 (see
+§8 makes the commander-zone rewrite a "may", and #529 (see
 the note in `zone_route.go`) moved the window that offers it down into
 the shared exit primitive so CR 903.9's "from ANYWHERE" holds for every
 route: countered, fizzled, exiled, bounced, tucked, milled. Asking is
@@ -646,6 +646,8 @@ Three things fell out of it:
   graveyard. Weaker than printed, never stronger; the same posture and
   the same rule (CR 601.2h) as `payLifeAsCostLocked` (§5b), which is
   the other half of the same cost line.
+  *(2026-09-24: superseded for a commander by §5af — the owner is now
+  asked BEFORE the payment, and the payment still settles.)*
 - **The undo snapshot needs its own copy of the route.**
   `cloneReplacementResume` shared the `zoneRoute` on the stated grounds
   that it is written once and only read afterwards. That stopped being
@@ -673,7 +675,7 @@ noticed by the #802/#801 agent in PR #845 and not fixed there.*
 never collapsed, "because skipping the ordering prompt would skip its
 question too". That was true of the two paths §5a was about. It was not
 true of the two paths that apply several effects once the prompt has
-been answered or ruled out, and both of them answered a CR 614.10 "may"
+been answered or ruled out, and both of them answered a "may"
 on its controller's behalf, in the direction that favours it.
 
 **1. The chosen-order loop asks.** `ResolveReplacementOrder` fires the
@@ -1532,7 +1534,7 @@ waits for the next destruction.
 battlefield goes through one exit primitive — destroy, sacrifice
 (CR 701.21a), the legend rule, an illegally attached Aura (CR 704.5m),
 zero toughness (CR 704.5f), zero loyalty (CR 704.5i), zero defense
-(CR 704.5v) — and every one of them ends in the same graveyard, so
+(CR 704.5v/w) — and every one of them ends in the same graveyard, so
 there was nothing a reader could have looked at to tell them apart.
 Indestructible sidesteps the question by filtering BEFORE the window
 opens; a replacement cannot. So the destroy route sets the flag
@@ -1967,7 +1969,7 @@ instruction is the card's, so it runs inside the catalog's `OnResolve`,
 which is BEFORE the resolution frame decides where the spell goes next.
 All three of that frame's post-effect exits assume the spell is still
 on the stack: the battlefield entry for a permanent, CR 707.10's
-cease-to-exist for a copy, and CR 608.2m's "as the final part of an
+cease-to-exist for a copy, and CR 608.2n's "as the final part of an
 instant or sorcery spell's resolution, the spell is put into its
 owner's graveyard".
 
@@ -1986,7 +1988,7 @@ out loud**, and that is the general lesson worth recording beside §5f.
 **Decision: one check, in the resolution frame** —
 `spellMovedItselfLocked` (`game/mutations.go`), immediately after the
 card's own body and its chosen modes have run, before the three exits
-branch. CR 608.2m is the rule that licenses it: the thing put into a
+branch. CR 608.2n is the rule that licenses it: the thing put into a
 graveyard is the spell ON THE STACK, and there is none.
 
 It sits in the frame rather than in `routeStackCardToGraveyardLocked`
@@ -2920,7 +2922,7 @@ untouched.
 #### Context
 
 The entry pipeline could stop and ask three questions, and all three are
-yes/no-shaped: a CR 614.10 "may" (`Optional`, §5h), a shockland's
+yes/no-shaped: a "may" (`Optional`, §5h), a shockland's
 "you may pay 2 life" (`EntryLifeCost`, `entry_choice.go`) and a copy
 selector's "enter as a copy of what?" (`CopySelector`, §5o). None of them
 can express the one sentence twelve catalog-waiting cards print:
@@ -3146,7 +3148,7 @@ colour, so it cannot pay `{W}{U}`.
 #### Decision 2 — A production can never pause, and that is a rule
 
 Every `RepEventProduceMana` sets `mustSettleNow`. For the two halves of
-#793's cost line that flag is a cost argument; here it is CR 605.3a:
+#793's cost line that flag is a cost argument; here it is CR 605.3b:
 activating a mana ability is a single indivisible step with no stack and
 no priority window inside it, so there is no point between paying the
 cost and producing the mana at which anybody can be asked anything. The
@@ -3312,7 +3314,7 @@ already have:
    and the resume has nothing else to go on.
 2. **One settled exit.** `applyResolvedCounterThenLocked` lands the
    counters and then runs the tail with the delta the window settled on.
-   The inline path uses it, and so does the CR 616 / CR 614.10 resume
+   The inline path uses it, and so does the CR 616 / "may" replacement resume
    (`applyResolvedReplacementEventLocked`'s RepEventCounter arm). So a
    paused placement and an unpaused one cannot disagree about when the
    rest of the effect runs.
@@ -3571,7 +3573,7 @@ zero.
 
 Every CR 614 window that pauses mid-resolution queues its prompt
 through `QueueChoiceForEffect`, so every one of them is stamped
-`PendingChoice.midResolution`: the CR 616 ordering prompt, the CR 614.10
+`PendingChoice.midResolution`: the CR 616 ordering prompt, the "may"
 optional replacement, the entry payment and entry reveal, and the copy
 choice. While one is open the CR 704.3 boundary is held, and the answer
 that settles the event runs it (`finishReplacementResumeLocked`, and the
@@ -3602,6 +3604,166 @@ What is observable on the two boards #1289 named:
 The first bullet (state-based actions inside a paused resolution) is
 closed by this amendment. The other two (#1290, #1291) are unchanged.
 
+
+### 5af. Amendment, 2026-09-24: a commander paid as a COST is asked before the payment, not during it
+
+**Issue [#1397](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1397).**
+Trackers [#882](https://github.com/krakenhavoc/cmd_and_ctrl/issues/882)
+(replacements) and [#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887)
+(mana and costs). Supersedes the commander half of §5g's "the cost site
+settles instead of asking" and of
+[ADR 0062 Decision 3](0062-abilities-and-special-actions-from-the-hand.md#3-a-cost-settles-now--cr-6012h--cr-6022b--including-for-a-commander).
+
+#### The gap
+
+CR 903.9 gives a commander's OWNER the command zone whenever the
+commander would be put into a hand, library, graveyard or exile "from
+anywhere". Paying a cost moves cards, and any of them can be a
+commander. The engine answered that two incompatible ways:
+
+- **The discard, return and exile payers skipped the question.** Each
+  set `zoneRoute.MustSettleNow` for CR 601.2h / 602.2b (costs are one
+  indivisible step) and CR 605.3a (a mana ability has no window at all),
+  and `mustSettleNow` skips anything that asks. A commander discarded to
+  Thrill of Possibility or cycled, returned by ninjutsu or Quirion
+  Ranger, exiled to Cadaverous Bloom, Grim Lavamancer, a scavenge or a
+  Spirit Guide went to the graveyard, the hand or exile, and its owner
+  was never asked. Weaker than printed — and routinely, for ninjutsu,
+  whose whole point is returning an attacker, very often a commander.
+- **The sacrifice and alternative-cost payers PAUSED half way through
+  the payment.** Neither set the bit, so a sacrificed commander (Viscera
+  Seer, Ashnod's Altar, Village Rites) or a pitched / returned / escaped
+  one opened the ordinary CR 903.9 prompt mid-payment. The ability went
+  on the stack, or the mana into the pool, with the commander still
+  where it was — and it could be spent AGAIN. A second Ashnod's Altar
+  activation naming the same stolen commander was accepted and paid
+  while the first prompt was open. Stronger than printed, which is the
+  direction the engine never errs in.
+
+#### Decision
+
+**Ask first, then pay.** Every announcement that moves cards as a cost —
+`ActivateCatalogAbility`, `CastSpell`, `ActivateManaAbility` — validates
+its whole payload, then passes the one gate
+`askCostCommanderLocked` (`cost_commander_choice.go`) before anything is
+paid. The gate is handed every card the payment is about to move: the
+sacrifices, the returns, the discards, the exiles, an alternative cost's
+card(s), and the source itself when the cost moves it (sacrifice-this,
+discard-this, exile-this).
+
+- If one is a commander whose owner has not answered, the announcement
+  is **parked**: nothing is tapped, spent, moved or put on the stack,
+  and a CR 903.9 prompt is queued to the card's **owner** — the
+  opponent, when the commander was stolen.
+- The owner's answer **re-makes the whole announcement** with the answer
+  attached (`params.commanderAnswers`, unexported on all three params
+  types so no payload can answer for somebody else's commander). A
+  payment that moves two commanders asks twice, one card per prompt,
+  the first answer riding into the second.
+- The payment that follows is the ordinary indivisible one. The discard,
+  return and exile moves keep `MustSettleNow`; the sacrifice and
+  alternative-cost moves keep the posture they had. Each commander's
+  move carries its owner's answer on `zoneRoute.commanderAnswer` onto
+  `ReplacementEvent.commanderAnswer`, and the gather reads it: a "no"
+  keeps the CR 903.9 built-in from being gathered; a "yes" gathers it as
+  a MANDATORY replacement for that one event, so a settle-now event
+  applies it rather than skipping it as a question, in the ordinary
+  CR 616 company of any other replacement (Rest in Peace still meets it,
+  and the command zone still wins because the owner chose it).
+
+**Why this is the rules-correct direction, not a default.** The two
+alternatives were a documented default (the old skip — weaker than
+printed and invisible to the player, so rejected) and a genuine
+mid-payment pause with a continuation. The continuation machinery can
+pause a *move* — the sacrifice path proved it — but the pause is the
+problem: it leaves a committed card in its old zone, available, while
+the question is open, and there is no cheap way to make "this card is
+already spent" true of every entry point that could reach it. Asking
+first has none of that. Nothing between the answer and the payment can
+change what the payment is, because the payment is re-validated from
+scratch when the announcement is re-made; if the payer spent the card,
+the mana or the source on something else meanwhile, the re-run is
+refused and nothing is paid. The owner's decision is the same decision
+paper asks for — where does this card go — made at the moment paper
+would make it known: when the payer names it.
+
+**The question is the existing `optional_replacement` prompt.** No new
+kind, so the client modal, the legal enumerator (yes / no) and the bot
+heuristic answer it unchanged, and it blocks the table like every
+CR 614.10 prompt. `ResolveOptionalReplacement` tells it apart by the
+frame it carries (`PendingChoice.costCommanderResume`) and routes the
+answer to `resolveCostCommanderChoiceLocked`. The frame is immutable and
+captures its arguments by value, so the undo snapshot shares it safely
+and a rewind into the open prompt replays the same announcement with
+either answer; the persisted snapshot drops it and counts it in the
+continuation census, as every other resume frame is.
+
+**A refused re-run goes back only to the payer.** When the payer is the
+one answering, the refusal is returned to them (they can act on it).
+When the owner is an opponent, the answer is accepted and the refusal
+is logged as an `EventEffectError` — an opponent is not handed
+"insufficient mana" for someone else's ability. An owner who has left
+the game (CR 800.4a) is not asked; their commander is recorded as a
+decline and the payment goes ahead.
+
+#### What it costs, stated
+
+- **The payer's intent is visible early.** The owner sees "Atraxa is
+  paying Viscera Seer's cost" before the payment exists. In paper the
+  payer names the card and the owner answers at once, so this is the
+  same information at the same moment.
+- **An unpayable announcement can still ask.** The gate runs after
+  validation and before the mana is spent, so a CR 602 activation whose
+  mana turns out to be short asks its question and is then refused on
+  the re-run. The mana ability path checks its mana before the gate and
+  does not have this.
+- **The payer keeps priority while the owner decides.** The engine does
+  not refuse the payer's other actions (it never has, for any prompt);
+  whatever they do is simply in the past when the announcement is
+  re-made, which is re-validated against it.
+
+#### Not closed here
+
+- **The auto-tapper's cost moves.** A mana source the auto-tapper cracks
+  (a Treasure's sacrifice, a Spirit Guide's exile from hand) is paid
+  with no answers, i.e. unasked, inside a cast. No commander carries
+  such a self-costed mana ability, so this is recorded rather than
+  built.
+- **Other questions on a sacrifice or alternative-cost move.** Those two
+  payers still do not set `MustSettleNow`, so a CR 616 ordering between
+  two OTHER replacements on a sacrificed permanent can still pause the
+  payment half way, with the double-spend exposure described above.
+  The commander no longer does. Filed as
+  [#1420](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1420).
+
+#### Addendum, 2026-09-24: a card an EFFECT has paused cannot pay ([#1445](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1445))
+
+Asking first closed the double spend for a card a COST moves. An effect
+still pauses. A commander that Doom Blade destroys, that Bojuka Bog exiles
+out of a graveyard, or that Mind Rot discards waits where it is while its
+owner answers. Before this addendum, any cost could name it in that
+window. Ashnod's Altar would sacrifice the destroyed commander for
+{C}{C}, and the destroy's own prompt was then withdrawn as stale, so one
+object was both destroyed and spent.
+
+**Decision.** The three announcement sites hand the same `moving` list to
+a second gate, `refusePausedCostCardsLocked`, immediately before
+`askCostCommanderLocked`. A card whose exit is already paused
+(`zoneChangePausedLocked`, the read the SBA sweep has used since #605)
+refuses the whole announcement with `ErrChoicePending`. Nothing is paid
+and nothing is asked. It is a refusal rather than a park because the
+question blocking this payment belongs to someone else and is already on
+the table. Once it is answered, the card has gone.
+
+The auto-tapper never passes through those sites, so it asks the same
+thing itself. The planner (`gatherTapSources`, `gatherManaZoneSources`)
+does not offer a paused source whose ability would sacrifice or exile it.
+The executor (`materializePlanLocked` and its hand arm) drops one from a
+stale plan.
+
+Tapping a paused permanent (`{T}`, crew, convoke) does not move it and is
+not covered. That half is
+[#1427](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1427).
 
 ### 6. Six pipeline integration points (five mutations + step transition)
 
@@ -3926,7 +4088,7 @@ the catalog.
 - **`Spec.Replacements []game.ReplacementEffect`** new field on the
   catalog spec; parallel to `Static`.
 - **Two new PendingChoiceKinds**: `replacement_order` (CR 616
-  multi-effect ordering) + `optional_replacement` (CR 614.10 yes/no).
+  multi-effect ordering) + `optional_replacement` (a "may" yes/no).
   Each has a resume method (`ResolveReplacementOrder`,
   `ResolveOptionalReplacement`) and a dispatcher leg. Wire
   projection adds `ReplacementOptions`.

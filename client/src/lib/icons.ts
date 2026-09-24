@@ -34,6 +34,11 @@ for (let i = 0; i < 8; i++) {
 
 export const ICONS = {
   gear,
+  // Site-nav hamburger toggle (PR #1386, the shared header).
+  menu: [p("M4 7h16"), p("M4 12h16"), p("M4 17h16")],
+  // A house glyph for the site portal's "Home" link — distinct from
+  // the diamond brand `mark` so the two never read as duplicates.
+  home: [p("M4 11.5 12 4l8 7.5"), p("M6 10v10h12V10")],
   bug: [
     p("M8 7a4 4 0 0 1 8 0v2H8z"),
     { t: "rect", x: 7, y: 9, w: 10, h: 10, rx: 5 } as IconPrimitive,

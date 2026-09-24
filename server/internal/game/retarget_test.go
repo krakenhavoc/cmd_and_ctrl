@@ -175,9 +175,9 @@ func TestRetargetMovesTheSpellToTheNewTarget(t *testing.T) {
 	if findRetargetPrompt(g, opp.ID) != nil {
 		t.Error("the prompt should be gone once it is answered")
 	}
-	// CR 115.7: the new pick has become the target of the spell, so a
-	// ward or Monk Gyatso sees it — attributed to the SPELL's
-	// controller, not to the seat that moved it.
+	// The CR 115.7 retarget makes the new pick become the target of
+	// the spell (CR 115.3), so a ward or Monk Gyatso sees it —
+	// attributed to the SPELL's controller, not to the seat that moved it.
 	var saw bool
 	for _, ev := range g.Events {
 		if ev.Kind == EventBecomesTarget && ev.Target == second {

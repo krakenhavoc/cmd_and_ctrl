@@ -58,7 +58,7 @@ import (
 // CR 608.2b fizzles a spell whose targets are all illegal before
 // OnResolve runs. The self-exile still happens, because it is part of
 // the spell's own text — but a fizzled spell never reaches this
-// function at all, and the CR 608.2m graveyard route takes it instead,
+// function at all, and the CR 608.2n graveyard route takes it instead,
 // which is what the rules say.
 //
 // No simplifications.

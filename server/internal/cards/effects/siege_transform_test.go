@@ -75,7 +75,7 @@ func importToHand(row cards.Card, p *game.Player) uuid.UUID {
 }
 
 // defeatBattle takes the last defense counter off a battle and walks
-// the game far enough for the CR 704.5v sweep and the defeated
+// the game far enough for the CR 704.5v/w sweep and the defeated
 // trigger to have run.
 func defeatBattle(t *testing.T, g *game.Game, id uuid.UUID, defense int) {
 	t.Helper()

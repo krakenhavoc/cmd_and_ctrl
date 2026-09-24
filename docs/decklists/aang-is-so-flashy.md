@@ -151,7 +151,7 @@ flight".
 | Meticulous Archive | [#258](https://github.com/krakenhavoc/cmd_and_ctrl/pull/258) | surveil land — enters tapped + duals; **surveil is not implemented** |
 | Aang, the Last Airbender | [#269](https://github.com/krakenhavoc/cmd_and_ctrl/pull/269) | first airbend — `ExileWithPermission` + an unbounded grant (`WhileExiled`) carrying a `CostOverride` |
 | Appa, Steadfast Guardian | [#269](https://github.com/krakenhavoc/cmd_and_ctrl/pull/269) | airbends **any number** of targets, and "whenever you cast a spell **from exile**" — `EventCast` now carries `OldZone` |
-| Monk Gyatso | [#269](https://github.com/krakenhavoc/cmd_and_ctrl/pull/269) | first `EventBecomesTarget` consumer (CR 115.7) — the trigger lands *above* the spell that targeted, so the removal fizzles |
+| Monk Gyatso | [#269](https://github.com/krakenhavoc/cmd_and_ctrl/pull/269) | first `EventBecomesTarget` consumer (CR 115.3) — the trigger lands *above* the spell that targeted, so the removal fizzles |
 | The Wandering Rescuer | [#271](https://github.com/krakenhavoc/cmd_and_ctrl/pull/271) | first convoke — `Spec.TapCost`, creatures tapped at cast time pay {1} or one mana of their colour |
 
 ### Corrections to batch 2's engine findings
@@ -216,7 +216,7 @@ previous revision had the old number.
   made the whole cycle a real CR 614 self-replacement with the decision
   inside it (`EntryLifeCost` → the apply-loop stops and asks before
   anything moves). Paying means the replacement never fires and the land
-  enters untapped; declining, or being unable to pay (CR 118.4), fires it
+  enters untapped; declining, or being unable to pay (CR 119.4), fires it
   and the land *enters* tapped. No tapped window, no untap event, no
   priority pass. One declared limit remains, and it is the fetch case
   below.
@@ -361,7 +361,7 @@ cards that motivated them:
 - **`EventCast` now carries the source zone** (`OldZone` / `NewZone`) —
   Appa's "whenever you cast a spell from exile", and anything else that
   cares where a spell came from.
-- **`EventBecomesTarget`** (CR 115.7,
+- **`EventBecomesTarget`** (CR 115.3,
   [events.go:196–225](../../server/internal/game/events.go)) — fires once
   per target **slot** at announce, from four sites (cast, two activated
   paths, and the triggered-ability target pick). Announce rather than
@@ -613,7 +613,7 @@ The static half (printing the word) is cheap; the behaviour is the work.
 Herald of Eternal Dawn (can't-lose / can't-win replacement), Mandate of
 Peace (end the combat phase + a cast restriction), Rabble Rousing (hideaway, plus
 "whenever you attack with **one or more** creatures", which over-fires
-against per-creature `EventAttack` — the CR 603.1 batching gap
+against per-creature `EventAttack` — the "one or more" batching gap
 `events.go` documents at `:162`), The Seriema (station), Misleading
 Signpost (re-select an attacker's target), Hullbreaker Horror (can't be
 countered, plus returning a **spell** from the stack to hand — no

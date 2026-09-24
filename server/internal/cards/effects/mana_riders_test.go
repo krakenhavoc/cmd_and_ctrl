@@ -297,7 +297,7 @@ func TestManaConfluenceRefusesAtZeroLifeWithoutTapping(t *testing.T) {
 	g.WithWriteLock(func() { me.Life = 0 })
 
 	if err := g.ActivateManaAbility(me.ID, land, 0, game.ManaAbilityParams{}); err == nil {
-		t.Fatal("activated Mana Confluence at 0 life; CR 118.8 forbids paying life you don't have")
+		t.Fatal("activated Mana Confluence at 0 life; CR 119.4 forbids paying life you don't have")
 	}
 	card, ok := battlefieldCard(g, land)
 	if !ok {
@@ -311,7 +311,7 @@ func TestManaConfluenceRefusesAtZeroLifeWithoutTapping(t *testing.T) {
 	}
 }
 
-// Paying down to exactly 0 is legal (CR 118.8) and then you lose to
+// Paying down to exactly 0 is legal (CR 119.4) and then you lose to
 // SBAs. The activation itself must succeed.
 func TestManaConfluenceMayPayDownToZero(t *testing.T) {
 	g := newCatalogGame(t)

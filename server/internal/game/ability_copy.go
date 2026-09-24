@@ -195,6 +195,7 @@ func (g *Game) createAbilityCopyLocked(item *StackItem, controller uuid.UUID, ta
 		Owner:        controller,
 		SourceCardID: item.SourceCardID,
 		SourceEpoch:  item.SourceEpoch,
+		SourceObject: item.SourceObject,
 		Label:        item.Label,
 		Targets:      append([]TargetRef(nil), targets...),
 		Payload:      append([]TargetRef(nil), item.Payload...),
@@ -219,7 +220,7 @@ func (g *Game) createAbilityCopyLocked(item *StackItem, controller uuid.UUID, ta
 	//
 	// EventBecomesTarget still fans out — the copy is an ability and
 	// the things it points at have become the target of one
-	// (CR 115.7), which is what a ward trigger or Monk Gyatso is
+	// (CR 115.3), which is what a ward trigger or Monk Gyatso is
 	// watching for, and what the ordinary activation path emits at
 	// the same point in its own announcement.
 	g.emitBecameTargetLocked(controller, meta.SourceCardID, meta.ID, meta.Targets)

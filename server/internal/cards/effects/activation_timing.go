@@ -91,7 +91,7 @@ func ThisSourcesLoyaltyAbilitiesAtInstantSpeed(label string, when func(g *game.G
 //
 // "You" is the SHIKARI's controller and the activator both: the
 // clause says "you may activate", so it opens nothing for an
-// opponent, and CR 702.6b's window is the activator's either way.
+// opponent, and CR 702.6a's window is the activator's either way.
 //
 // `onlyDuringYourTurn` is Forge Anew's extra clause ("DURING YOUR
 // TURN, you may activate equip abilities any time you could cast an

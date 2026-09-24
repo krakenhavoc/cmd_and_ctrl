@@ -7,7 +7,7 @@ import (
 // activation_restriction.go — #1210, ADR 0073's amendment of
 // 2026-09-22: constructors for Spec.ActivationRestrictions, the
 // board-wide "activated abilities of … can't be activated" statics
-// (CR 602.5a, CR 101.2).
+// (CR 602.5, CR 101.2).
 //
 // The twin of cast_restriction.go and written the same way: one
 // constructor per printed SHAPE rather than a generic builder,
@@ -69,7 +69,7 @@ func SourcesCantActivate(label string, match CardPredicate, exemptMana bool) gam
 //
 // The seat compared is the object's CONTROLLER rather than the
 // activator, because the clause says "creatures your opponents
-// control" and CR 602.5a asks about the ability's source. On the
+// control" and CR 602.5 asks about the ability's source. On the
 // battlefield the two are the same player; off it (a cycling ability,
 // CR 108.4) there is no controller to be an opponent of, and such a
 // card is not on the battlefield for "creatures ... control" to reach

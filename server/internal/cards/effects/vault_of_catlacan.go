@@ -11,7 +11,7 @@ package effects
 //
 // The parenthetical is reminder text and needs no code: a back face is
 // reached by transforming, and nothing else can put this one onto the
-// battlefield (CR 712.4 — a transform card is always cast as its front
+// battlefield (CR 712.11 — a transform card is always cast as its front
 // face, which CastableFaces enforces).
 //
 // Two mana abilities, both plain {T} costs. The second is why this face

@@ -174,7 +174,7 @@ func TestTransformImportsCostAndColour(t *testing.T) {
 		t.Errorf("back-face colours = %v, want [U] from the colour "+
 			"indicator", cols)
 	}
-	// A transform card is not castable as its back face (CR 712.4).
+	// A transform card is not castable as its back face (CR 712.11).
 	if faces := got.CastableFaces(); len(faces) != 1 {
 		t.Errorf("CastableFaces = %v, want just the front", faces)
 	}

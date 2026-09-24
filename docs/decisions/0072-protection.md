@@ -627,3 +627,41 @@ TEXT and not a keyword-ability line, so there is nothing for the
 deck importer to stamp. That is the same posture §1 takes toward a
 quality the grammar cannot parse: err weaker, and let the card carry
 the ADR 0037 unimplemented badge until somebody writes it.
+
+## Amendment (2026-09-24, #1417): a source that left BEFORE its damage event is read as it last existed
+
+The third bullet of §3 says: "a source whose characteristics changed on
+the way out … CR 608.2h says use the last existing characteristics".
+The code kept that promise only for a source that left *after* its
+damage event was created, such as the #694 pause, the CR 510.1c frame,
+or an SBA sweep mid-step. A source that had *already* left, such as a
+"when this dies" trigger or a creature killed in response to its own
+ability, was snapshotted from its current zone. That meant its
+graveyard card, which is a new object with printed characteristics
+(CR 400.7). So a creature painted red that died dealt colourless damage
+through protection from red.
+
+**Decision.** The non-combat tail (`effectDamageTailLocked`) now takes
+`sourceLKI` from `Game.lastKnownPermanents`, the per-object record
+that ADR 0056's 2026-09-24 amendment already reads a departed source's
+lifelink and deathtouch from. It uses the same object rules: by
+`ObjectRef` when the caller named the object, and by "last object,
+card not moved since" for a bare instance ID. A spell on the stack and
+a live permanent keep the current-zone read, so a Lightning Bolt's
+colour is still the one on the stack. Details are in
+[ADR 0056 Decision 12](0056-infect-wither-toxic.md).
+
+The catalog's "a red source you control" damage replacements (Torbran,
+Ojer Axonil, Mechanized Warfare) now read the same `SourceLKI` through
+`effects.damageSourceCharacteristics`, so protection and those cards
+agree on a source's colour.
+
+**Still open.** §2's DECLARED LIMITATION is narrower than it reads, and
+it is tracked as
+[#1429](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1429). For
+an ability whose source has left, `stackItemSourceLocked` does not
+return a source-less value. It returns the source's **graveyard card**.
+So the CR 608.2b target re-check tests protection against the wrong
+object. The damage half is now correct either way, but a target can
+still be declared illegal (the ability fizzles) when the source that
+last existed would have been allowed to target it.

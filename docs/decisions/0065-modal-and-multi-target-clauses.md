@@ -47,7 +47,7 @@ at RESOLUTION (CR 608.2), is frequently addressed to somebody other
 than the controller, and its options carry cards — its own commit
 message says a modal spell's "choose one" is deliberately not that
 kind. `mode_pick` is answered with a bounded MULTISET of indices in
-the order chosen (CR 700.2c, and CR 700.2d lets one repeat), is asked
+the order chosen (CR 608.2c, and CR 700.2d lets one repeat), is asked
 as the ability is put on the stack (CR 603.3c), always goes to the
 ability's controller, and each option carries a target clause rather
 than a card list. If a later change gives `option_pick` bounds and an
@@ -90,7 +90,7 @@ Four gaps, one shape. Measured on `develop` at `11f4c3d5`:
    `TargetingState` (`client/src/lib/targeting.ts:131`) has one
    `legal` set, one `min`/`max`, one `picked`; `ModePickerModal`
    (`:63`) hard-refuses a second targeted mode and sorts the chosen
-   indices ascending, which destroys the order CR 700.2c resolves in.
+   indices ascending, which destroys the order CR 608.2c resolves in.
 
 The issue's audit counts 54 cards where this is the only core blocker
 and 58 where it is any core blocker, with a verified estimate of
@@ -241,7 +241,7 @@ The same struct is read by `Spec.Modes` (spells, unchanged),
   own target group (`ref.Mode == 0, 1, 2`). `ctx.HasMode(i)` keeps
   its meaning ("some occurrence chose option i"); `ctx.ModeCount(i)`
   is the count, and `ctx.Modes()` is the ordered multiset.
-- **Resolution order is announce order (CR 700.2c).** Options with an
+- **Resolution order is announce order (CR 608.2c).** Options with an
   `Effect` run in `item.Modes` order, once per occurrence. A card that
   prefers the old shape keeps writing `if ctx.HasMode(0) { … }` in
   `OnResolve`; both read the same data, and `Effect` exists so a

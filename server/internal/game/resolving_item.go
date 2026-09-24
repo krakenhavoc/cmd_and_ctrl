@@ -29,7 +29,7 @@ import "github.com/google/uuid"
 //     resolution, resolveTopOfStackLocked carries on and routes the
 //     spell to its owner's graveyard, and the answer arrives later.
 //     What the copy is made from is therefore last-known information
-//     (CR 608.2m — the spell is put into the graveyard as the final
+//     (CR 608.2n — the spell is put into the graveyard as the final
 //     step of its own resolution, so in the rules it is still on the
 //     stack when the copy is created; here it is not, and LKI is how
 //     that difference is spelled).
@@ -60,7 +60,7 @@ type resolvingItem struct {
 	// every continuation it queued are holding.
 	item *StackItem
 
-	// card is the spell as the stack held it (CR 608.2m LKI), and
+	// card is the spell as the stack held it (CR 608.2n LKI), and
 	// hasCard says whether there was one: an ability item has no card
 	// on the stack at all.
 	card    Card

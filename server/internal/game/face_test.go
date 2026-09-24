@@ -217,7 +217,7 @@ func TestCastableFacesPerLayout(t *testing.T) {
 
 func TestFaceOnResolve(t *testing.T) {
 	// A modal DFC keeps the face it was cast as, and since S32 so
-	// does a transform card: CR 712.4's "always cast as its front
+	// does a transform card: CR 712.11's "always cast as its front
 	// face" is enforced by CastableFaces refusing to offer the back,
 	// so a non-zero transform cast face can only have come from an
 	// effect that said "cast it TRANSFORMED" — a defeated Siege — and

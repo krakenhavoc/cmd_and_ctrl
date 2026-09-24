@@ -16,7 +16,9 @@
 
   import { onMount } from "svelte";
   import Icon from "../lib/components/Icon.svelte";
+  import SiteHeader from "../lib/components/SiteHeader.svelte";
   import { cardArt } from "../lib/cardArt";
+  import { route } from "../lib/router";
   import {
     fetchCatalog,
     filterCatalog,
@@ -40,6 +42,16 @@
   let error = $state("");
 
   let query = $state("");
+
+  // #/catalog?q=<text> pre-fills the search (the roadmap links its
+  // example card names here). Re-applied when the hash changes while
+  // the page is open, so a second link lands on its own card.
+  $effect(() => {
+    const r = $route;
+    if (r.name === "catalog" && r.query !== undefined) {
+      query = r.query;
+    }
+  });
   let colors = $state<ColorFilter[]>([]);
   let types = $state<TypeFilter[]>([]);
   let completeness = $state<Completeness[]>([]);
@@ -81,11 +93,9 @@
   });
 </script>
 
-<section class="entry">
-  <header class="topbar">
-    <a class="wordmark" href="#/login" aria-label="cmd_and_ctrl home"><i></i>CMD &amp; CTRL</a>
-  </header>
+<SiteHeader />
 
+<section class="entry">
   <div class="stack">
     <div class="head">
       <p class="eyebrow">What the engine plays</p>
@@ -239,52 +249,20 @@
 </section>
 
 <style>
-  /* Shell copied from Join.svelte, the other public route, so the two
-     pages a signed-out visitor can reach look like the same product. */
+  /* Shell shared with Join.svelte and Reclaim.svelte via SiteHeader;
+     the centering wrapper below is otherwise unchanged. */
   .entry {
     position: relative;
-    min-height: calc(100vh - 3rem);
+    min-height: calc(100vh - 3rem - 68px);
     display: flex;
     justify-content: center;
-    margin: -1.5rem;
-    padding: 1.5rem;
-  }
-  .topbar {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 44px;
-    display: flex;
-    align-items: center;
-    padding: 0 14px;
-  }
-  .wordmark {
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: 14px;
-    letter-spacing: 0.18em;
-    color: var(--fg);
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    text-decoration: none;
-  }
-  .wordmark i {
-    display: inline-block;
-    width: 14px;
-    height: 14px;
-    border: 2px solid var(--gold);
-    transform: rotate(45deg);
-    border-radius: 3px;
-    box-sizing: border-box;
   }
   .stack {
     width: min(1180px, 100%);
     display: flex;
     flex-direction: column;
     gap: 22px;
-    margin-top: clamp(56px, 9vh, 90px);
+    margin-top: clamp(8px, 2vh, 24px);
   }
 
   .eyebrow {

@@ -530,7 +530,7 @@ type Game struct {
 	enteringTokens []Card
 
 	// resolving is the stack item whose resolution is in flight, plus
-	// the card it was (CR 608.2m last-known information), held for
+	// the card it was (CR 608.2n last-known information), held for
 	// exactly one event batch — see resolving_item.go (#920).
 	//
 	// resolveTopOfStackLocked removes an item from StackMeta BEFORE it
@@ -1420,7 +1420,7 @@ func (g *Game) runStepEntryHooksLocked() {
 	}
 	out, err := g.applyReplacementsLocked(stepEv)
 	if errors.Is(err, errReplacementPending) {
-		// A CR 616 ordering (or CR 614.10 "may") prompt is queued.
+		// A CR 616 ordering (or "may") prompt is queued.
 		// The step does NOT begin: nothing below runs, nothing
 		// announces, and the tracking-map entry stays alive for the
 		// resume, which clears it.

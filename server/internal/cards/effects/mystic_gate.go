@@ -8,8 +8,8 @@ package effects
 // The first Shadowmoor filter land in the catalog, and the shape the
 // roadmap's batch 02 skipped five of — writable since #356 gave
 // ManaAbilityCost a mana component. The hybrid {W/U} parses as a
-// requirement either colour satisfies, paid from the pool (no
-// auto-tap into a mana ability's cost, CR 605.3a).
+// requirement either colour satisfies, paid from the pool (the
+// engine has no auto-tap into a mana ability's cost).
 //
 // The three-way OUTPUT — the question batch 02 left open — is two
 // independent pipe slots: "{W|U}{W|U}" resolves to WW, WU, UW or UU,

@@ -147,7 +147,7 @@ type AlternativeCost struct {
 	PayLabel string
 
 	// SacrificeOnEntry is evoke's "it's sacrificed when it enters".
-	// Modelled as what CR 702.74b says it is — a triggered ability —
+	// Modelled as what CR 702.74a says it is — a triggered ability —
 	// rather than as an immediate sacrifice inside the resolution.
 	// The difference is observable and is the entire reason to evoke
 	// a Slithermuse: the sacrifice uses the stack, so opponents get
@@ -669,7 +669,7 @@ func (g *Game) AltCostCandidatesLocked(playerID, castID uuid.UUID, alt *Alternat
 // would make Force of Will free.
 //
 // Caller must hold g.mu.
-func (g *Game) payAlternativeCostLocked(playerID uuid.UUID, alt *AlternativeCost, ids []uuid.UUID) error {
+func (g *Game) payAlternativeCostLocked(playerID uuid.UUID, alt *AlternativeCost, ids []uuid.UUID, answers map[uuid.UUID]bool) error {
 	if alt == nil {
 		return nil
 	}
@@ -685,11 +685,24 @@ func (g *Game) payAlternativeCostLocked(playerID uuid.UUID, alt *AlternativeCost
 	if len(ids) == 0 {
 		return nil
 	}
+	// #1397: each card's move carries the CR 903.9 answer its owner
+	// gave before the cast was paid for (cost_commander_choice.go), so
+	// a pitched, returned or escaped commander no longer pauses the
+	// payment half way through it. The routes are otherwise the
+	// ExileCardForEffect / BounceToHandForEffect ones they always were.
+	move := func(id uuid.UUID, dst ZoneKind) error {
+		_, err := g.routeCardToZoneLocked(zoneRoute{
+			CardID:          id,
+			Dst:             dst,
+			commanderAnswer: commanderAnswerFor(answers, id),
+		})
+		return err
+	}
 	switch {
 	case alt.ExileFromHand != nil:
-		return g.ExileCardForEffect(ids[0])
+		return move(ids[0], ZoneExile)
 	case alt.ReturnToHand != nil:
-		return g.BounceToHandForEffect(ids[0])
+		return move(ids[0], ZoneHand)
 	case alt.ExileFromGraveyard != nil:
 		// Escape's exiles are a cost, so they happen with the spell
 		// already on the stack — which is what makes an escaped Uro
@@ -697,7 +710,7 @@ func (g *Game) payAlternativeCostLocked(playerID uuid.UUID, alt *AlternativeCost
 		// what makes the cards stay exiled when the spell is
 		// countered.
 		for _, id := range ids {
-			if err := g.ExileCardForEffect(id); err != nil {
+			if err := move(id, ZoneExile); err != nil {
 				return err
 			}
 		}
@@ -751,7 +764,7 @@ func TargetSpecUnderAlternativeCost(base *TargetSpec, alt *AlternativeCost) *Tar
 
 // queueAltCostEntryTriggerLocked applies the clauses an alternative
 // cost attaches to the permanent's ENTRY: evoke's "it's sacrificed
-// when it enters" (CR 702.74b) and warp's "exile this at the
+// when it enters" (CR 702.74a) and warp's "exile this at the
 // beginning of the next end step, then you may cast it from exile on
 // a later turn" (CR 702.185a).
 //

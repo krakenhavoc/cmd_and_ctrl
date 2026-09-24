@@ -15,7 +15,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // white card at instant speed.
 //
 // The evoke sacrifice is the part that makes the card work and the
-// part a hand-written AlternativeCost would forget. CR 702.74b makes
+// part a hand-written AlternativeCost would forget. CR 702.74a makes
 // it a TRIGGERED ability, so the sequence is: Solitude enters → its
 // own ETB trigger goes on the stack → the sacrifice trigger goes on
 // the stack → the creature is exiled and its controller gains life →

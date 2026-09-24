@@ -13,7 +13,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The Izzet charm on the "choose two" template — Kolaghan's
 // Command's shape (#764, ADR 0065 §3): three of the four bullets
 // target, each chosen bullet gets its own target group, picked in
-// the order chosen and resolved in that order (CR 700.2c), and each
+// the order chosen and resolved in that order (CR 608.2c), and each
 // bullet's target is re-checked against ITS OWN clause at resolution
 // (CR 608.2b) — an artifact that stopped being one is skipped while
 // the other chosen bullet still happens.

@@ -594,6 +594,13 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 		if manaSourceTappedOut(&c, picked) {
 			continue
 		}
+		// #1445: a source this ability would SACRIFICE is not one while
+		// an effect has its exit paused on a CR 903.9 prompt — the
+		// card is already spent. See refusePausedCostCardsLocked; the
+		// executor asks the same question.
+		if picked.SacrificeCost && g.zoneChangePausedLocked(c.InstanceID) {
+			continue
+		}
 		// #540: CR 302.6. A mana creature that entered this turn
 		// cannot pay a {T} cost, and the auto-tapper is not a way
 		// around the rule the hand-click path enforces — a Delighted
@@ -603,7 +610,7 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 		if manaTapBlockedBySickness(&c, picked) {
 			continue
 		}
-		// #1210, CR 602.5a: the board-wide "can't be activated"
+		// #1210, CR 602.5: the board-wide "can't be activated"
 		// gate — Cursed Totem does not exempt mana abilities, so a
 		// Birds of Paradise under one is not a mana source. THE
 		// caller the cast gate has no equivalent of: the auto-tapper
@@ -726,7 +733,12 @@ func gatherManaZoneSources(
 			if picked == nil {
 				continue
 			}
-			// #1210, CR 602.5a: the board-wide "can't be activated"
+			// #1445: every source here leaves its zone to pay, so one
+			// whose exit is already paused is already spent.
+			if g.zoneChangePausedLocked(c.InstanceID) {
+				continue
+			}
+			// #1210, CR 602.5: the board-wide "can't be activated"
 			// gate, asked of the zone the card is in — the same call
 			// ActivateManaAbility now makes, so a restriction that
 			// reaches a hand activation reaches the planner too.

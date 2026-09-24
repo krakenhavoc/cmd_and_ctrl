@@ -37,46 +37,67 @@ import "github.com/google/uuid"
 // a bool.
 //
 // The payment goes through routeCardToZoneLocked like every other
-// exit, so a commander scavenged out of its owner's graveyard still
-// gets its CR 903.9 answer, and MustSettleNow is set for the reason
-// the discard cost sets it: CR 602.2b activates an ability in one
-// indivisible step, so a cost may not stop to ask a question.
+// exit, and MustSettleNow is set for the reason the discard cost sets
+// it: CR 602.2b activates an ability in one indivisible step, so a
+// cost may not stop to ask a question. A commander scavenged out of
+// its owner's graveyard still gets its CR 903.9 answer: the owner is
+// asked BEFORE the payment (#1397, cost_commander_choice.go) and the
+// move carries what they said.
+//
+// #1404 gave the CR 602 owner a second zone: "Exile this artifact:"
+// (Perpetual Timepiece, Feldon's Cane), "Exile this creature:"
+// (Hanged Executioner, Nyx Weaver) — the component paid by a PERMANENT
+// leaving the battlefield. The bit is the same and so is the rule it
+// states (the source is the payment, nothing is picked, nothing goes on
+// the wire); what the ability's declared zone decides is where the card
+// is exiled FROM. On the battlefield leg the one exit primitive takes
+// its battlefield arm (battlefieldExitLocked: the CR 603.10 last-known
+// information and the CR 400.7 forget) and emits the ordinary
+// leaves-the-battlefield event. It is not a sacrifice (no
+// EventSacrifice) and it does not die (exile is not a graveyard), so
+// "whenever a creature dies" never sees it and "whenever a permanent
+// leaves the battlefield" always does. A commander paid this way is
+// asked exactly as a scavenged one is — before the payment, by the
+// #1397 gate, which already lists the source among the cards the
+// payment moves — so both legs settle now and neither pauses.
 
-// validateExileSelfFromLocked checks an ExileSelf component without
-// moving anything — the validate-all-then-pay discipline both
-// activation paths keep, so a refused activation never leaves a
-// half-paid cost behind.
+// ExileSelfZoneSupported reports whether a CR 602 activated ability's
+// ExileSelf component can be paid from `z` (#1404): the graveyard
+// (scavenge, embalm and eternalize's "Exile this card from your
+// graveyard", #1221) or the battlefield (Perpetual Timepiece's "Exile
+// this artifact", #1404). effects.Register refuses the component on an
+// ability that functions from anywhere else, at boot, and the validator
+// below refuses an activation from anywhere else at runtime — one
+// predicate, so the two cannot disagree.
 //
-// What it enforces is one rule: the source has to be in the zone the
-// ability says the card is exiled FROM. Every card that prints the
-// component names a zone in the same breath ("from your graveyard"
-// for scavenge, embalm and eternalize; "from your hand" for the
-// Spirit Guides), and both activation paths have already checked that
-// a non-battlefield source is the activator's own card (CR 108.4), so
-// "your" needs no second test here.
-//
-// srcZone is the zone the activation was validated against and `want`
-// the zone the component is printed against, so this is a free check
-// rather than a second lookup.
-//
-// Caller must hold g.mu.
-func (g *Game) validateExileSelfFromLocked(srcZone, want ZoneKind, exileSelf bool) error {
-	if !exileSelf {
-		return nil
-	}
-	if srcZone != want {
-		return ErrActivationZoneNotAllowed
-	}
-	return nil
+// The HAND is not here, and not by accident: the only printed "Exile
+// this card from your hand" is a MANA ability (the Spirit Guides,
+// #1228), which has its own owner and its own validator below.
+func ExileSelfZoneSupported(z ZoneKind) bool {
+	return z == ZoneBattlefield || z == ZoneGraveyard
 }
 
-// validateExileSelfCostLocked is validateExileSelfFromLocked for a
-// CR 602 activated ability's cost: scavenge, embalm and eternalize
-// all print "Exile this card from your GRAVEYARD".
+// validateExileSelfCostLocked checks a CR 602 activated ability's
+// ExileSelf component without moving anything — the validate-all-then-
+// pay discipline, so a refused activation never leaves a half-paid
+// cost behind.
+//
+// The component FOLLOWS THE ABILITY'S ZONE (#1404): the source is
+// exiled from wherever the ability was activated, which the activation
+// path has already checked is a zone the ability functions from (CR
+// 113.6), and whose non-battlefield arm has already checked the card is
+// the activator's own (CR 108.4). So the one rule left here is that the
+// zone is one the component can be paid from.
 //
 // Caller must hold g.mu.
 func (g *Game) validateExileSelfCostLocked(srcZone ZoneKind, cost AbilityCost) error {
-	return g.validateExileSelfFromLocked(srcZone, ZoneGraveyard, cost.ExileSelf)
+	if !cost.ExileSelf {
+		return nil
+	}
+	if !ExileSelfZoneSupported(srcZone) {
+		return ErrActivationZoneNotAllowed
+	}
+	return nil
 }
 
 // validateManaExileSelfCostLocked is the same check for a CR 605 mana
@@ -113,7 +134,7 @@ func (g *Game) validateManaExileSelfCostLocked(srcZone ZoneKind, ab ManaAbilityS
 // ManaSourceKinds) rather than reading a pointer this invalidated.
 //
 // Caller must hold g.mu.
-func (g *Game) payExileSelfCostLocked(playerID, sourceID uuid.UUID, exileSelf bool) error {
+func (g *Game) payExileSelfCostLocked(playerID, sourceID uuid.UUID, exileSelf bool, answers map[uuid.UUID]bool) error {
 	if !exileSelf {
 		return nil
 	}
@@ -128,14 +149,20 @@ func (g *Game) payExileSelfCostLocked(playerID, sourceID uuid.UUID, exileSelf bo
 		// itself rather than pausing on a player prompt — the bit
 		// DiscardCauseCost sets for the discard half.
 		MustSettleNow: true,
+		// #1397: the owner's CR 903.9 answer, asked before the
+		// payment began (cost_commander_choice.go).
+		commanderAnswer: commanderAnswerFor(answers, sourceID),
 	})
 	return err
 }
 
 // payAbilityExileSelfLocked is payExileSelfCostLocked for a CR 602
-// activated ability. Caller must hold g.mu.
-func (g *Game) payAbilityExileSelfLocked(playerID, sourceID uuid.UUID, ab ActivatedAbilityShape) error {
-	return g.payExileSelfCostLocked(playerID, sourceID, ab.Cost.ExileSelf)
+// activated ability, exiling the source from the zone the ability was
+// activated from — its graveyard (#1221) or the battlefield (#1404).
+// routeCardToZoneLocked finds the zone itself, so the two legs are one
+// call. Caller must hold g.mu.
+func (g *Game) payAbilityExileSelfLocked(playerID, sourceID uuid.UUID, ab ActivatedAbilityShape, answers map[uuid.UUID]bool) error {
+	return g.payExileSelfCostLocked(playerID, sourceID, ab.Cost.ExileSelf, answers)
 }
 
 // ExileCost is "Exile N cards from your hand" or "Exile N cards from
@@ -347,13 +374,15 @@ func findZoneCard(z *Zone, id uuid.UUID) *Card {
 
 // payExileCardsCostLocked pays an ExileCards component: each named card
 // leaves its owner's hand or graveyard for exile through the one exit
-// primitive with MustSettleNow — a commander exiled to Cadaverous Bloom
-// or to Grim Lavamancer still gets its CR 903.9 answer, and the CR
-// 601.2h / CR 602.2b indivisible step cannot pause on a prompt. NOT
-// through discardCardsLocked: this is not a discard (see ExileCost).
+// primitive with MustSettleNow, so the CR 601.2h / CR 602.2b
+// indivisible step cannot pause on a prompt. A commander exiled to
+// Cadaverous Bloom or to Grim Lavamancer still gets its CR 903.9
+// answer — asked before the payment (#1397) and carried in `answers`.
+// NOT through discardCardsLocked: this is not a discard (see
+// ExileCost).
 //
 // Caller must hold g.mu and have validated the list.
-func (g *Game) payExileCardsCostLocked(playerID, sourceID uuid.UUID, ids []uuid.UUID) error {
+func (g *Game) payExileCardsCostLocked(playerID, sourceID uuid.UUID, ids []uuid.UUID, answers map[uuid.UUID]bool) error {
 	for _, id := range ids {
 		if _, err := g.routeCardToZoneLocked(zoneRoute{
 			CardID:        id,
@@ -362,6 +391,8 @@ func (g *Game) payExileCardsCostLocked(playerID, sourceID uuid.UUID, ids []uuid.
 			Source:        sourceID,
 			Cause:         MoveCause{Kind: MoveCauseCost, Controller: playerID},
 			MustSettleNow: true,
+			// #1397: see payExileSelfCostLocked.
+			commanderAnswer: commanderAnswerFor(answers, id),
 		}); err != nil {
 			return err
 		}

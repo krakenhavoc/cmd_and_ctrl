@@ -77,8 +77,8 @@ func (c Card) IsAttachedTo(hostID uuid.UUID) bool {
 // standing rule for anything that runs off the stack.
 //
 // Re-attaching an already-attached permanent is legal and is what a
-// second equip activation does (CR 702.6d): the old link is simply
-// overwritten, and the CR 613.7d timestamp is refreshed.
+// second equip activation does (CR 701.3a): the old link is simply
+// overwritten, and the CR 613.7e timestamp is refreshed.
 //
 // # An attach that cannot happen does nothing (CR 701.3b)
 //

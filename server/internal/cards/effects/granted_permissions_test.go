@@ -323,7 +323,7 @@ func TestBolassCitadelCastsFromTheTopForLife(t *testing.T) {
 	}
 }
 
-// CR 118.4 / 119.4: paying life is a COST, so a player who cannot pay
+// CR 119.4: paying life is a COST, so a player who cannot pay
 // it cannot claim the offer — the cast is refused rather than
 // resolving and killing them.
 func TestBolassCitadelRefusesACastYouCannotPayFor(t *testing.T) {

@@ -145,6 +145,11 @@ func NewRandomPolicy(src rand.Source) *RandomPolicy {
 
 func (p *RandomPolicy) Name() string { return "random" }
 
+// decidesWithoutView marks RandomPolicy view-blind (#1261): Decide
+// reads Input.Moves and nothing else, so the runner need not build a
+// projection for it. See viewBlind.
+func (p *RandomPolicy) decidesWithoutView() {}
+
 func (p *RandomPolicy) Decide(_ context.Context, in Input) (Decision, error) {
 	if len(in.Moves) == 0 {
 		return Decision{}, ErrNoMoves

@@ -20,7 +20,7 @@ const invasionOfInnistradOracle = invasionOfInnistradOracleID
 // TestBattleSpecFallbackStampsDefense covers the path a card that
 // never went through deck import takes — a fixture, a token, the demo
 // seed. The Card carries no StartingDefense, so the engine falls back
-// to the catalog's BattleSpec rather than letting the CR 704.5v
+// to the catalog's BattleSpec rather than letting the CR 704.5v/w
 // state-based action eat the battle on arrival.
 func TestBattleSpecFallbackStampsDefense(t *testing.T) {
 	g := newCatalogGame(t)

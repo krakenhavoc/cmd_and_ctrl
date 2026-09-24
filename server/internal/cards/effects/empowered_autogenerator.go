@@ -41,7 +41,7 @@ import (
 // so X reads the count the placement actually landed on rather than
 // predicting it. The placement itself goes through
 // AddCounterMustSettleNowForEffect, not the ordinary
-// AddCounterForEffect / AddCounterThenForEffect: CR 605.3a's mana
+// AddCounterForEffect / AddCounterThenForEffect: CR 605.3b's mana
 // ability resolution has no priority window inside it, so a CR 616
 // ordering prompt (Doubling Season next to a Hardened Scales — which
 // does not apply here; see below) cannot pause here even though it
@@ -93,7 +93,7 @@ func b39AutogeneratorOutput(g *game.Game, _, source uuid.UUID) int {
 // artifact" half, run as the ability's PreRider so it lands BEFORE
 // b39AutogeneratorOutput reads the count — the printed order, and the
 // only order that reports what a counter doubler actually placed.
-// mustSettleNow because CR 605.3a's mana-ability resolution cannot
+// mustSettleNow because CR 605.3b's mana-ability resolution cannot
 // pause for the CR 616 ordering prompt a second doubler would raise.
 func b39AutogeneratorCharge(g *game.Game, _, source uuid.UUID) error {
 	_, err := g.AddCounterMustSettleNowForEffect(source, game.CounterCharge, 1)

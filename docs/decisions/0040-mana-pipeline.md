@@ -109,7 +109,7 @@ token compared equal because nothing ever set `Restrictions`.
 Both families are "the produced string is not known until activation":
 Exotic Orchard's colours come from the opposing board, Cabal Coffers'
 count from your Swamps. One `func(*Game, controller, source) string`
-serves both, evaluated after the cost is paid (CR 605.3a — a mana
+serves both, evaluated after the cost is paid (CR 605.3b — a mana
 ability resolves the instant it is activated, all of it).
 
 Returning `""` is a first-class answer meaning "produced no mana".
@@ -120,7 +120,7 @@ taps, nothing arrives.
 **The recursion guard.** Deriving "what could that land produce"
 SKIPS any ability that itself has a `ProducedFunc`. Two Exotic
 Orchards, or an Orchard and a Reflecting Pool, would otherwise recurse
-until the stack ran out. CR 106.6b answers the circular case with "no
+until the stack ran out. CR 106.7 answers the circular case with "no
 mana" and so does this; where the real rules would resolve a one-way
 chain it is one colour short, which is the weaker-than-printed
 direction and is declared on all four card files.
@@ -134,7 +134,7 @@ cards, and a decklist's other 60 lands only have the Scryfall field.
 ### 6. A `Condition` predicate for activation gates
 
 `func(*Game, controller, source) bool`, checked before any cost is
-validated (CR 602.5a), returning `ErrConditionNotMet`. A failed gate
+validated (CR 602.5), returning `ErrConditionNotMet`. A failed gate
 taps nothing and spends nothing.
 
 Both this and `ProducedFunc` are **read-only and run under `g.mu`** —
@@ -563,7 +563,7 @@ construction rather than by a second implementation kept in step.
   `ManaAbility.DerivesFromOtherSources` marks the three abilities that
   read what OTHER permanents could produce — Exotic Orchard, Fellwar
   Stone, Reflecting Pool — and `ProducibleManaLocked` skips exactly
-  those. CR 106.6b answers the circular case with "no mana" and so
+  those. CR 106.7 answers the circular case with "no mana" and so
   does the guard. The alternative, a re-entrancy counter, is undo
   state on a snapshotted struct if it lives on `Game` and a data race
   between two games in one process if it does not.
@@ -857,7 +857,7 @@ window that can PAUSE on a CR 616 ordering prompt when two different
 counter replacements apply (Doubling Season beside a Hardened Scales) — the
 `#1282` continuation shape this file's sibling ADRs already lean on
 elsewhere. A mana ability's resolution has no such pause available
-(CR 605.3a: one indivisible step, no stack, no priority window inside it) —
+(CR 605.3b: one indivisible step, no stack, no priority window inside it) —
 exactly the reasoning §6's `Condition` / `ProducedFunc` read-only contract
 and `produce_mana.go`'s `mustSettleNow` on `RepEventProduceMana` already
 rest on for the mana side of the same activation. `PreRider` needs the

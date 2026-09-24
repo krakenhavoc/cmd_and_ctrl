@@ -7,12 +7,12 @@ import (
 )
 
 // entry_choice.go — "as this permanent enters, you may pay N life"
-// (the Ravnica shockland cycle, CR 614.1c + CR 118.4).
+// (the Ravnica shockland cycle, CR 614.1c + CR 119.4).
 //
 // The shape is a replacement effect with a decision inside it, which
 // is the one thing the CR 614 pipeline could not previously express.
 // The pipeline is synchronous, but it already knows how to STOP: the
-// CR 616 ordering prompt and the CR 614.10 "may" prompt both bail
+// CR 616 ordering prompt and the "may" prompt both bail
 // with errReplacementPending and resume from a stashed frame. This
 // file adds a third bail of the same family — the difference is that
 // answering it costs life, and that the replacement applies when the

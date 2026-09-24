@@ -41,7 +41,9 @@ import (
 // Both are the rules, not simplifications. If the Equipment has left
 // the battlefield in response to the trigger, nothing is attached
 // (CR 701.3b) and the Germ dies on the next state-based check — the
-// ability still resolved. And if some effect stops the token being
+// ability still resolved. The same goes for an Equipment that left and
+// came back: it is a new object (CR 400.7), and the trigger names the
+// one that entered (StackItem.SourceObject, #1418). And if some effect stops the token being
 // created, there is nothing to attach to and the ability does as
 // much as it can.
 

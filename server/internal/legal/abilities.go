@@ -83,7 +83,7 @@ func (e *enumerator) activatedMoves() {
 		if source.Controller != e.seat {
 			continue
 		}
-		// CR 602.5a: an Arrested or Fettered permanent's activated
+		// CR 602.5: an Arrested or Fettered permanent's activated
 		// abilities are not moves. Same predicate
 		// ActivateCatalogAbility gates on, so the engine can never
 		// refuse an activation this list offered (#544).
@@ -194,7 +194,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// ability is sorcery-speed" cannot be spelled differently
 		// here than there.
 		abilityID := game.ActivationAbilityOf(ab)
-		// #1210, CR 602.5a: the board-wide "can't be activated"
+		// #1210, CR 602.5: the board-wide "can't be activated"
 		// gate — Cursed Totem, Linvala, Collector Ouphe, Pithing
 		// Needle. The SAME function ActivateCatalogAbility calls,
 		// in the same place relative to the zone and timing checks,
@@ -1269,7 +1269,7 @@ func (e *enumerator) manaMoves() {
 		if source.Controller != e.seat {
 			continue
 		}
-		// CR 602.5a, the mana half: Arrest stops these too, Faith's
+		// CR 602.5, the mana half: Arrest stops these too, Faith's
 		// Fetters deliberately does not. Same predicate
 		// ActivateManaAbility gates on (#544).
 		if !game.CanActivateManaAbilities(source) {
@@ -1346,7 +1346,7 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 		if g.ManaAbilityExhausted(e.seat, source.InstanceID, ab) {
 			continue
 		}
-		// #1210, CR 602.5a: the board-wide "can't be activated"
+		// #1210, CR 602.5: the board-wide "can't be activated"
 		// gate. Cursed Totem does NOT exempt mana abilities, so a
 		// Birds of Paradise under one is not a move — the same
 		// function ActivateManaAbility calls, with Mana: true, so

@@ -18,7 +18,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Four untargeted modes, so ChooseOne carries no target clauses: the
 // engine validates the pick at announce and OnResolve reads it back
-// with ctx.HasMode in printed order (CR 700.2c). Only one can be
+// with ctx.HasMode in printed order (CR 608.2c). Only one can be
 // chosen here, but the loop is written for the general case because
 // Farewell is these same sweeps under ChooseN.
 func init() {

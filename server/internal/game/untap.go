@@ -457,6 +457,26 @@ func (g *Game) UntapStepRestrictedLocked(c *Card) bool {
 	return untapStepRestrictedBy(c, g, g.activeUntapStepRestrictionsLocked())
 }
 
+// UntapStepRestrictedCheckerLocked is UntapStepRestrictedLocked for a
+// caller asking about MANY permanents at one instant: it gathers the
+// board's untap-step restrictions once and answers each card against
+// that one set.
+//
+// It exists because gathering is a walk of the battlefield, so asking
+// UntapStepRestrictedLocked for every permanent is quadratic in the
+// size of the board — and the view asks for every permanent on every
+// frame (#1261). The checker is only good for as long as the lock the
+// caller holds: a permanent entering or leaving afterwards is not in
+// the set it gathered.
+//
+// Caller holds g.mu; it deliberately does not recompute layers.
+func (g *Game) UntapStepRestrictedCheckerLocked() func(c *Card) bool {
+	restrictions := g.activeUntapStepRestrictionsLocked()
+	return func(c *Card) bool {
+		return untapStepRestrictedBy(c, g, restrictions)
+	}
+}
+
 func (g *Game) consumeUntapSkipsLocked(activePlayer uuid.UUID) {
 	if g.Battlefield == nil {
 		return

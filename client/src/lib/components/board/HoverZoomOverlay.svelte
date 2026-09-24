@@ -97,7 +97,7 @@
   // until S25 (#77) the server keyed `commander_damage` by the
   // OPPOSING PLAYER's ID, so every row here read 0 no matter how hard
   // a commander had connected. S25 rekeyed the map to commander
-  // instance IDs (CR 903.14a), which is what this code always wanted.
+  // instance IDs (CR 903.10a), which is what this code always wanted.
   const playerColors = $state<Record<string, string>>({});
   $effect(() => {
     if (!card?.is_commander) return;

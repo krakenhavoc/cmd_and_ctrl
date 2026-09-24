@@ -11,8 +11,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 that player."
 //
 // The Dragon tax. Flying rides PrintedKeywords. The trigger watches
-// EventBecomesTarget — emitted once per target SLOT at announce (CR
-// 115.7), with the targeting player in Actor — for a Dragon the
+// EventBecomesTarget — emitted once per target SLOT (CR 115.3) at
+// announce, with the targeting player in Actor — for a Dragon the
 // controller controls, the Regent itself included, targeted by an
 // opponent (b28DragonYouControlTargetedByOpponent). It goes on the
 // stack ABOVE the spell that targeted and resolves first: the Regent

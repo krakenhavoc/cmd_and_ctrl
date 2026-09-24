@@ -401,8 +401,9 @@ func b33SacrificeLandsThenSearchBasicsTapped(item *game.StackItem, ctx *Context,
 
 // b33DoubleUnspentMana is Doubling Cube's ProducedFunc: one slot of
 // the same colour for every token in the controller's pool, read
-// AFTER the {3} was paid (CR 605.3a — the activation's cost is paid
-// before the ability's effect happens). The mana it adds is
+// AFTER the {3} was paid (CR 601.2h — the total cost is paid before
+// the ability is considered activated, and CR 605.3b — a mana
+// ability resolves immediately once activated). The mana it adds is
 // unrestricted, as the printed card's is: a restricted token in the
 // pool is doubled by a plain token of its colour.
 func b33DoubleUnspentMana(g *game.Game, controller, _ uuid.UUID) string {

@@ -237,7 +237,7 @@ nothing tracks which tokens paid which spell.
 **Becomes-the-target triggers + evasion restrictions** — 1 card:
 Departed Deckhand.
 
-**Batched triggers (CR 603.1)** — cosmetic for most of this deck.
+**Batched triggers** — cosmetic for most of this deck.
 "Whenever one or more X" fires once per X instead of once per batch.
 Same totals everywhere here **except** Malcolm and Breeches, where
 two Pirates hitting the *same* opponent produces two payouts instead

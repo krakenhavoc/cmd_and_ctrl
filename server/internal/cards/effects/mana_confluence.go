@@ -10,7 +10,7 @@ package effects
 // testable:
 //
 //   - a cost is validated before anything is paid, so an activation
-//     at 0 life is rejected and the land does NOT tap (CR 118.8: you
+//     at 0 life is rejected and the land does NOT tap (CR 119.4: you
 //     can't pay more life than you have; paying down to exactly 0 is
 //     legal);
 //   - Ancient Tomb, by contrast, taps happily at 1 life and then

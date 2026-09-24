@@ -542,8 +542,8 @@ func OfSubtype(subtype string) CardPredicate {
 // (Triumph of Gerrard's "target creature you control with the
 // greatest power").
 //
-// Ties all match, which is the rule (CR 700.3 — "the greatest" picks
-// out a SET, and the player chooses among it); that is why this is a
+// Ties all match — "the greatest" picks
+// out a SET, and the player chooses among it — which is why this is a
 // target predicate rather than a lookup that returns one card.
 //
 // Reads CurrentPower so counters and anthems count, and re-runs at

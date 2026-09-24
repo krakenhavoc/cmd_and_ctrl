@@ -2647,7 +2647,7 @@ func TestS132SBAPlaneswalkerZeroLoyalty(t *testing.T) {
 	}
 }
 
-// TestS132SBABattleZeroDefense covers CR 704.5v — a battle with 0
+// TestS132SBABattleZeroDefense covers CR 704.5v/w — a battle with 0
 // defense counters is moved to its owner's graveyard.
 func TestS132SBABattleZeroDefense(t *testing.T) {
 	g := newActiveGame(t)

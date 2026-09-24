@@ -591,7 +591,7 @@ type ManaAbilityShape struct {
 	// *ForEffect helpers only. Any mutation this makes and ProducedFunc
 	// then reads back MUST go through a mustSettleNow entry point —
 	// AddCounterMustSettleNowForEffect for a counter placement — because
-	// CR 605.3a leaves no priority window inside a mana ability's
+	// CR 605.3b leaves no priority window inside a mana ability's
 	// resolution for a CR 616 ordering prompt (two counter doublers) to
 	// occupy. The pipeline settles on the gathered order instead of
 	// asking, exactly as RepEventProduceMana already does for a

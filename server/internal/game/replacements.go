@@ -156,7 +156,7 @@ const (
 	// — and not at the activation. See produce_mana.go and ADR 0013
 	// §5ab.
 	//
-	// It is the one kind that can NEVER pause. CR 605.3a makes
+	// It is the one kind that can NEVER pause. CR 605.3b makes
 	// activating a mana ability one indivisible step with no stack and
 	// no priority window inside it, and the auto-tapper's contract is
 	// "no further player decisions", so every event of this kind sets
@@ -599,6 +599,14 @@ type ReplacementEvent struct {
 	// the catalog should never read or set it.
 	asCommanderMove bool
 
+	// commanderAnswer is the CR 903.9 answer the commander's owner gave
+	// before this move was made (#1397, cost_commander_choice.go),
+	// copied off zoneRoute.commanderAnswer. Unasked leaves the built-in
+	// as it always was; accept makes it mandatory for this event, so a
+	// cost move that cannot pause applies it instead of skipping it as
+	// a question; decline keeps it from being gathered at all.
+	commanderAnswer commanderZoneAnswer
+
 	// --- RepEventDiscard fields ---
 	//
 	// A discard also fills in the RepEventMove fields above: CardID is
@@ -906,15 +914,20 @@ type ReplacementEvent struct {
 	// pays a spell's costs as one indivisible step and CR 601.2 rewinds
 	// the announcement if they cannot all be paid, so a CR 616 ordering
 	// prompt in the middle would leave it half paid — and a mana
-	// ability's own resolution (CR 605.3a, produce_mana.go), which has
+	// ability's own resolution (CR 605.3b, produce_mana.go), which has
 	// no priority window at all for a prompt to occupy.
 	//
 	// What it costs the affected player is the CR 616 ordering choice
-	// and any CR 614.10 "may" on the event: the apply-loop applies the
+	// and any "may" on the event: the apply-loop applies the
 	// gathered order inline (the escape an eliminated chooser has
 	// always taken) and skips anything that would ask a question
 	// un-applied. Weaker than printed on the "may", arbitrary but
 	// deterministic on the ordering, and never a wedged table.
+	//
+	// The one "may" a cost does NOT lose is CR 903.9's: the owner of a
+	// commander a cost moves is asked BEFORE the payment begins, and
+	// the answer rides in as commanderAnswer (#1397,
+	// cost_commander_choice.go).
 	//
 	// Unexported engine plumbing — the catalog never sets or reads it.
 	mustSettleNow bool
@@ -1020,7 +1033,7 @@ type ReplacementEffect struct {
 	// ordering ever lands).
 	SelfReplacement bool
 
-	// Optional flags a CR 614.10 "may" replacement — the owner
+	// Optional flags a "may" replacement — the owner
 	// decides each time whether to apply it. When true, the apply-
 	// loop queues a yes/no prompt (PendingChoiceOptionalReplacement)
 	// before firing Replace. "Yes" → Replace runs normally; "No" →
@@ -1039,7 +1052,7 @@ type ReplacementEffect struct {
 	// Optional "yes" applies the replacement, and here "yes" is what
 	// avoids it, at a price.
 	//
-	// A player who can't legally pay (CR 118.4 — life total below
+	// A player who can't legally pay (CR 119.4 — life total below
 	// the cost) is not prompted; the replacement applies. Takes
 	// precedence over Optional, which is meaningless alongside it.
 	// See entry_choice.go. Added with the shockland cycle.
@@ -1133,6 +1146,12 @@ type ReplacementEffect struct {
 	// ("Doubling Season: double counters"). Kept server-side so
 	// the wire carries it; no localisation yet.
 	Label string
+
+	// commanderZone marks the CR 903.9 built-in
+	// (commanderZoneReplacement) so the gather can honour an answer
+	// its owner gave BEFORE the move (ReplacementEvent.commanderAnswer,
+	// #1397). Unexported: no catalog effect is the commander rule.
+	commanderZone bool
 }
 
 // activeReplacement binds one declared ReplacementEffect to its
@@ -1370,7 +1389,7 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 			// #847: through skipQuestionsLocked, exactly as the
 			// mustSettleNow branch below does. An effect that asks its
 			// own question cannot ride an order nobody chose either —
-			// firing a CR 614.10 "may" or a copy selector here would
+			// firing a "may" or a copy selector here would
 			// answer it blind, in the direction that favours it, on
 			// an event whose affected player is no longer at the
 			// table. Skipped un-applied is the weaker branch, which is
@@ -1440,7 +1459,7 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 			continue
 		}
 		if chosen.effect.Optional {
-			// CR 614.10 "may" — owner decides each time. Queue a
+			// "may" — owner decides each time. Queue a
 			// yes/no prompt; the resume path either fires Replace
 			// (yes) or marks applied and skips (no). The two cases
 			// that decline it inline instead — a chooser who has left
@@ -1555,8 +1574,8 @@ func sameModification(applicable []activeReplacement) bool {
 }
 
 // asksItsOwnQuestion reports whether firing this effect puts a
-// question to a player before it changes anything — a CR 614.10
-// "may", a shockland's pay-life, a reveal-land's pick from hand, a
+// question to a player before it changes anything — a
+// "may" replacement, a shockland's pay-life, a reveal-land's pick from hand, a
 // copy selector.
 //
 // Every caller here is deciding whether to skip the CR 616 ordering
@@ -1611,7 +1630,7 @@ func (g *Game) applyFirstGatheredLocked(ev *ReplacementEvent, applicable []activ
 }
 
 // skipQuestionsLocked drops the gathered replacements that would ask
-// their controller a question — a CR 614.10 "may", a shockland's
+// their controller a question — a "may", a shockland's
 // pay-life, a reveal-land's pick from hand, a copy selector —
 // marking each applied so the apply-loop
 // does not gather it again, and returns the rest in gather order.
@@ -1638,7 +1657,7 @@ func (g *Game) skipQuestionsLocked(ev *ReplacementEvent, applicable []activeRepl
 }
 
 // optionalReplacementResumableLocked reports whether pausing on ev
-// for a CR 614.10 yes/no prompt has something that can finish the
+// for a "may" yes/no prompt has something that can finish the
 // underlying mutation afterwards.
 //
 // Only a battlefield ENTRY can lack one. Every other event kind is
@@ -1740,6 +1759,20 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 		}
 		if eff.AppliesTo != nil && !eff.AppliesTo(ev, g, nil) {
 			continue
+		}
+		if eff.commanderZone {
+			// #1397: the owner has already answered CR 903.9 for this
+			// move — before a cost that cannot pause was paid. A "no"
+			// is not a question to ask again; a "yes" is no longer a
+			// question at all, so it applies like any mandatory
+			// replacement, in the gathered order a settle-now event
+			// uses. `eff` is this gather's own copy.
+			switch ev.commanderAnswer {
+			case commanderZoneDecline:
+				continue
+			case commanderZoneAccept:
+				eff.Optional = false
+			}
 		}
 		out = append(out, activeReplacement{effect: eff, source: nil, id: id})
 	}

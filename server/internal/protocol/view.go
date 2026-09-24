@@ -1714,7 +1714,7 @@ type NoUntapView struct {
 // zone.
 //
 // It exists because a card can be TWO castable objects (ADR 0034). A
-// modal DFC's faces are independently playable (CR 712.12a) and an
+// modal DFC's faces are independently playable (CR 712.11b) and an
 // adventure card's are too (CR 715.3), and the two halves have
 // different catalog entries, different costs and different target
 // clauses — Bonecrusher Giant targets nothing and Stomp deals 2 damage
@@ -1792,7 +1792,7 @@ type CastSurfaceView struct {
 	// of the prices this cast may claim out of the zone the card is
 	// in right now, so the caster must name one of
 	// `alternative_costs` — a Faithless Looting in the graveyard is
-	// castable at its flashback cost and at nothing else (CR 702.34b,
+	// castable at its flashback cost and at nothing else (CR 702.34a,
 	// rule 3 of validateCastPathLocked), and a card a permission
 	// PRICES is the same shape (rule 4).
 	//
@@ -1852,12 +1852,15 @@ type CastSurfaceView struct {
 	TargetCostNotes []string `json:"target_cost_notes,omitempty"`
 	// CastableHere is the S29 "this card can be cast from the zone
 	// you are looking at it in" bit, for the zones where that is not
-	// already implied by the surface: the graveyard, today. Hand and
-	// command-zone cards never carry it — every card in a hand is a
-	// cast candidate, and the command zone has its own button.
+	// already implied by the surface: the graveyard, a library top
+	// and (since #1389) exile. Hand and command-zone cards never carry
+	// it — every card in a hand is a cast candidate, and the command
+	// zone has its own button.
 	//
-	// It is the flag the zone browser keys its cast button off, the
-	// way exile keys its impulse button off `exile_play`. The cost
+	// It is the flag the zone browser keys its cast button off, and
+	// in exile the one the castable-from-exile strip lights a card
+	// by (#1389): "you may cast it NOW", timing included, where
+	// `exile_play` only says who holds the grant. The cost
 	// to pay rides `alternative_costs`, already filtered to the
 	// offers claimable from this zone — so a Faithless Looting in
 	// the graveyard carries flashback and nothing else, while the
@@ -1922,6 +1925,46 @@ type CastSurfaceView struct {
 	// is not hidden information. Cleared with the other announce
 	// hints on the non-knower redaction.
 	CantCast string `json:"cant_cast,omitempty"`
+	// CastPrices is what THIS viewer would be charged to cast the card
+	// out of EXILE right now, one entry per price the cast may claim,
+	// cheapest first (#1389). Each is the total after every CR 601.2f
+	// cost modifier, from game.PriceCastForEffect — the pricer the
+	// cast path, the auto-tap preview and the bot enumerator already
+	// share — so the badge on the client's castable-from-exile strip
+	// is the number the auto-tapper will then tap for.
+	//
+	// Exile only, and only on the frame of a seat holding a LIVE
+	// permission over the card: a warp or foretell grant whose later
+	// turn has not come yet has no price, because the engine would
+	// not accept the cast at any. PER VIEWER, like `castable_here`: a
+	// cost modifier can be scoped to one player ("spells you cast
+	// cost {1} less"), so one seat's price is not another's.
+	CastPrices []CastPriceView `json:"cast_prices,omitempty"`
+}
+
+// CastPriceView is one price a cast may claim, as the engine will
+// charge it (#1389).
+type CastPriceView struct {
+	// AlternativeCost is the `alternative_costs[i].key` this price
+	// claims, and the value the cast sends as `alternative_cost`.
+	// Empty for the path that claims none: the printed mana cost, or
+	// the flat price a permission charges in its place (airbend's
+	// {2}, a plotted card's {0}).
+	AlternativeCost string `json:"alternative_cost,omitempty"`
+	// Label names the price for a tooltip — the offer's own label
+	// ("Foretell"), or empty for the unclaimed path.
+	Label string `json:"label,omitempty"`
+	// Cost is the mana charged, in Scryfall brace notation, after
+	// every cost modifier. Never empty: a cast that charges no mana
+	// reads "{0}", so a free cast is a value rather than an absence.
+	Cost string `json:"cost"`
+	// Life is the life a Bolas's-Citadel-shaped price charges on top
+	// (CR 119.4). Absent for every exile price today.
+	Life int `json:"life,omitempty"`
+	// Printed is true when this price IS the card's printed mana cost,
+	// untouched: no alternative cost, no permission's own price, and
+	// no modifier moved it. The client shows no badge for it.
+	Printed bool `json:"printed,omitempty"`
 }
 
 // CardFaceView is one printed face on the wire (ADR 0034). Enough
@@ -2153,7 +2196,7 @@ type ActivatedAbilityView struct {
 	Exhausted bool `json:"exhausted,omitempty"`
 	// CantActivate is the printed clause of a board-wide "can't be
 	// activated" static that refuses THIS ability right now (CR
-	// 602.5a, #1210) — "Activated abilities of creatures can't be
+	// 602.5, #1210) — "Activated abilities of creatures can't be
 	// activated" (Cursed Totem), "…of sources with the chosen name …
 	// unless they're mana abilities" (Pithing Needle). Absent, which
 	// is nearly always, means nothing refuses it.
@@ -3341,6 +3384,9 @@ func (s castStamps) publicIn(kind game.ZoneKind) castStamps {
 	s.CastableHere = false
 	s.LegalTargets = nil
 	s.Clauses = nil
+	// #1389: a price is one seat's answer — a cost modifier may be
+	// scoped to one player.
+	s.CastPrices = nil
 	// #1221: an activation row is the same kind of answer as
 	// `castable_here` — "what may YOU announce from here" — and it
 	// carries legal sets of its own. None of it is public.
@@ -3648,7 +3694,7 @@ type castFace struct {
 
 // activeFace is the castFace for the half the view is SHOWING — every
 // stamp that existed before #992. A pile's cards are front-up (CR
-// 712.8, MoveCard), so for all of them this is face 0 and the key is
+// 712.8a, MoveCard), so for all of them this is face 0 and the key is
 // the bare oracle ID, exactly as the pre-#992 call sites passed.
 func activeFace(c *CardView) castFace {
 	return castFace{
@@ -3873,9 +3919,13 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	//
 	// Hand and the command zone never carry the bit: every card in
 	// them is a cast candidate and an always-true flag would be noise
-	// the client had to ignore. Exile keys its button off `exile_play`
-	// instead, whose per-viewer stamps this bit — public since S29 —
-	// is not part of.
+	// the client had to ignore. Exile carries it since #1389, for the
+	// castable-from-exile strip.
+	//
+	// #1407: in EVERY zone that carries it, a LAND is answered by the
+	// land-play rule rather than by the spell rules (castableNow). A
+	// land is played, not cast (CR 305.1, CR 116.2a): the land drop
+	// is part of its window and no timing statement reaches it.
 	//
 	// #1195: and the THIRD input, game.CastTimingOpenLocked — the one
 	// CR 307.1 read CastSpell and the bot enumerator also call. Until
@@ -3889,8 +3939,16 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// out of a rule it reimplemented.
 	switch kind {
 	case game.ZoneGraveyard, game.ZoneLibrary:
-		out.CastableHere = out.CantCast == "" && len(offers) > 0 &&
-			haveLive && g.CastTimingOpenLocked(caster, live, kind, grant)
+		out.CastableHere = haveLive && castableNow(g, caster, live, kind, grant, out.CantCast, offers)
+	case game.ZoneExile:
+		// #1389: exile joins them, for the castable-from-exile strip.
+		// A seat reaches this only through stampGrantedPermissions,
+		// which asks the engine for a LIVE permission first, so warp's
+		// and foretell's "on a later turn" never gets here early.
+		if haveLive {
+			out.CastableHere = castableNow(g, caster, live, kind, grant, out.CantCast, offers)
+			out.CastPrices = viewOfCastPrices(g, caster, live, offers)
+		}
 	}
 	if spec == nil {
 		return out
@@ -3919,6 +3977,103 @@ func phyrexianSymbolsIn(costStr string) int {
 		return 0
 	}
 	return cost.PhyrexianSymbols()
+}
+
+// castableNow is `castable_here` for a card in a graveyard, on a
+// library top or in exile: no cast gate refuses it, a price is
+// claimable, and game.CastTimingOpenLocked says the window is open.
+//
+// A LAND is answered by the land-play rule instead (#1389 for exile,
+// #1407 for the graveyard and the library top). Playing a land is a
+// special action, not a cast (CR 305.1, CR 116.2a), so the inputs are
+// the ones CastSpell's land branch refuses with. Whether the zone is
+// open at all is the caller's gate: a graveyard or library card
+// reaches castStampsFor only under a permission or its own text, and
+// an exiled one only under a live permission.
+//
+//   - a cast-only grant strands it (Ragavan, Realmwalker) —
+//     ErrNoPlayPermission;
+//   - CR 305.1's window and a land drop left (CR 305.2), through
+//     game.LandPlayOpenForEffect — never CastTimingOpenLocked, whose
+//     timing statements (an Orrery, Dosan) are written about casting
+//     and must not reach a land. The drop is the half the spell rules
+//     missed: a land a Courser opens stayed lit after the turn's land
+//     was played, and the button was refused with
+//     ErrLandDropUnavailable.
+//
+// Caller must hold g.mu.
+func castableNow(g *game.Game, caster uuid.UUID, card game.Card, kind game.ZoneKind, grant *game.CastPermission, cantCast string, offers []*game.AlternativeCost) bool {
+	if card.IsLand() {
+		if grant != nil && grant.CastOnly {
+			return false
+		}
+		return g.LandPlayOpenForEffect(caster)
+	}
+	return cantCast == "" && len(offers) > 0 && g.CastTimingOpenLocked(caster, card, kind, grant)
+}
+
+// viewOfCastPrices prices every offer a cast out of exile may claim,
+// through game.PriceCastForEffect (#1389) — the pricer CastSpell's
+// payment, the auto-tap preview and the bot enumerator read, so the
+// strip's badge cannot name a number the auto-tapper then disagrees
+// with. `offers` is castStampsFor's own game.CastOffersForLocked list;
+// a nil entry is the path that claims no alternative cost.
+//
+// Priced with no targets and X = 0, as the auto-tap preview's first
+// readout is: a per-target surcharge (strive) reads as its one-target
+// price, and an {X} stays in the string.
+//
+// Cheapest first by mana value, then by life, so the client's badge is
+// entry 0. A land has no price (it is played, not cast) and gets nil.
+//
+// Caller must hold g.mu.
+func viewOfCastPrices(g *game.Game, caster uuid.UUID, card game.Card, offers []*game.AlternativeCost) []CastPriceView {
+	if card.IsLand() {
+		return nil
+	}
+	type priced struct {
+		v  CastPriceView
+		mv int
+	}
+	var rows []priced
+	for _, o := range offers {
+		params := game.CastSpellParams{FromZone: "exile", Face: card.ActiveFace}
+		var v CastPriceView
+		if o != nil {
+			params.AlternativeCost = o.Key
+			v.AlternativeCost = o.Key
+			v.Label = o.Label
+			v.Life = o.Life
+		}
+		price, err := g.PriceCastForEffect(caster, card, params)
+		if err != nil {
+			// A price the engine cannot compute is a cast it would
+			// refuse; showing a guess would be worse than no badge.
+			continue
+		}
+		v.Cost = price.Total.String()
+		if v.Cost == "" {
+			v.Cost = "{0}"
+		}
+		// The printed cost, untouched: the cost string this cast pays
+		// is the one in the corner (an airbend {2} on a two-drop is;
+		// a granted flashback at "its mana cost" is), no modifier
+		// moved it, and no life rides on top.
+		v.Printed = price.Paid == price.Printed && v.Life == 0 &&
+			price.Total.String() == price.Base.String()
+		rows = append(rows, priced{v: v, mv: price.Total.ManaValue()})
+	}
+	sort.SliceStable(rows, func(i, j int) bool {
+		if rows[i].mv != rows[j].mv {
+			return rows[i].mv < rows[j].mv
+		}
+		return rows[i].v.Life < rows[j].v.Life
+	})
+	var out []CastPriceView
+	for _, r := range rows {
+		out = append(out, r.v)
+	}
+	return out
 }
 
 // ProtectionView is one "protection from <quality>" on a permanent,
@@ -4262,6 +4417,12 @@ func viewOfClauses(g *game.Game, src game.TargetSource, spec *game.TargetSpec) [
 //
 // Runs under the read lock ViewOfGame already holds.
 func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
+	// #1261: the board-wide "can't be activated" fast negative, taken
+	// ONCE for the whole battlefield. It is itself a walk of the
+	// battlefield, and asking it per permanent — which is what the
+	// per-card stampers below did — made every view quadratic in the
+	// size of the board.
+	restricted := g.AnyActivationRestrictionsForEffect()
 	for i := range bf.Cards {
 		c := &bf.Cards[i]
 		// #521: this guard used to be `c.oracleID == ""`, which
@@ -4292,7 +4453,7 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 		if !ok {
 			continue
 		}
-		c.ActivatedAbilities = viewOfActivatedAbilities(g, card, controller, game.ZoneBattlefield)
+		c.ActivatedAbilities = viewOfActivatedAbilities(g, card, controller, game.ZoneBattlefield, restricted)
 		// ADR 0082 decision 9: a FACE-DOWN permanent carries its
 		// CR 116.2g "turn face up" row, from the same projection the
 		// hand's foretell and suspend rows come from and with the
@@ -4311,7 +4472,7 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 		c.SpecialActions = viewOfSpecialActions(g, card, controller)
 		c.LoyaltyActivated = g.LoyaltyActivatedThisTurn[instanceID]
 		stampManaSacrificeOptions(g, card, controller, c.ManaAbilities)
-		stampManaConditions(g, card, controller, c.ManaAbilities)
+		stampManaConditions(g, card, controller, c.ManaAbilities, restricted)
 		stampManaIdentity(g, card, controller, c.ManaAbilities)
 		stampManaCounterCosts(g, card, controller, c.ManaAbilities)
 		stampManaChargedCost(g, card, controller, c.ManaAbilities)
@@ -4360,6 +4521,10 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 //
 // Runs under the read lock ViewOfGame already holds.
 func stampZoneAbilities(g *game.Game, seats []PlayerView, exile *ZoneView) {
+	// #1261: once per view, for the reason stampActivatedAbilities
+	// gives — every hand, graveyard and exile card with an ability
+	// asked it again otherwise.
+	restricted := g.AnyActivationRestrictionsForEffect()
 	for si := range seats {
 		seat := &seats[si]
 		owner, err := uuid.Parse(seat.ID)
@@ -4372,7 +4537,7 @@ func stampZoneAbilities(g *game.Game, seats []PlayerView, exile *ZoneView) {
 			if !ok {
 				continue
 			}
-			c.stampZoneAbilitiesFor(owner, viewOfActivatedAbilities(g, card, owner, game.ZoneHand))
+			c.stampZoneAbilitiesFor(owner, viewOfActivatedAbilities(g, card, owner, game.ZoneHand, restricted))
 			// #1228: the CR 605 rows beside the CR 602 ones. The same
 			// pass, because it is the same question about the same
 			// card — "what may you activate here" — and a second walk
@@ -4380,13 +4545,13 @@ func stampZoneAbilities(g *game.Game, seats []PlayerView, exile *ZoneView) {
 			c.stampZoneManaAbilitiesFor(owner, viewOfManaAbilitiesFromZone(card, game.ZoneHand))
 			c.SpecialActions = viewOfSpecialActions(g, card, owner)
 		}
-		stampZoneAbilitiesInPile(g, &seat.Graveyard, game.ZoneGraveyard, owner)
-		stampZoneAbilitiesInPile(g, &seat.Command, game.ZoneCommand, owner)
+		stampZoneAbilitiesInPile(g, &seat.Graveyard, game.ZoneGraveyard, owner, restricted)
+		stampZoneAbilitiesInPile(g, &seat.Command, game.ZoneCommand, owner, restricted)
 	}
 	// Exile last, and with no seat of its own: it is one shared pile
 	// and each card's owner is its "you" (CR 108.4), so the walk reads
 	// the owner off the card rather than off the loop.
-	stampZoneAbilitiesInPile(g, exile, game.ZoneExile, uuid.Nil)
+	stampZoneAbilitiesInPile(g, exile, game.ZoneExile, uuid.Nil, restricted)
 }
 
 // stampZoneAbilitiesInPile is stampZoneAbilities' per-pile body.
@@ -4397,7 +4562,7 @@ func stampZoneAbilities(g *game.Game, seats []PlayerView, exile *ZoneView) {
 // CardView.Owner instead of assuming one.
 //
 // Runs under the read lock ViewOfGame already holds.
-func stampZoneAbilitiesInPile(g *game.Game, zone *ZoneView, kind game.ZoneKind, owner uuid.UUID) {
+func stampZoneAbilitiesInPile(g *game.Game, zone *ZoneView, kind game.ZoneKind, owner uuid.UUID, restricted bool) {
 	if zone == nil {
 		return
 	}
@@ -4415,7 +4580,7 @@ func stampZoneAbilitiesInPile(g *game.Game, zone *ZoneView, kind game.ZoneKind, 
 		if !ok {
 			continue
 		}
-		c.stampZoneAbilitiesFor(you, viewOfActivatedAbilities(g, card, you, kind))
+		c.stampZoneAbilitiesFor(you, viewOfActivatedAbilities(g, card, you, kind, restricted))
 		// #1228: nil for every pile today — game.supportedManaAbilityZones
 		// is the hand alone, so the zone predicate answers no here —
 		// and the call is made anyway so that adding a zone to that
@@ -4493,16 +4658,17 @@ func viewOfSpecialActions(g *game.Game, card game.Card, owner uuid.UUID) []Speci
 // "you". Split from viewOfManaAbilities for the reason the sacrifice
 // options are — that projection has no game handle. Caller must hold
 // g's read lock.
-func stampManaConditions(g *game.Game, card game.Card, controller uuid.UUID, views []ManaAbilityView) {
+//
+// `restricted` is g.AnyActivationRestrictionsForEffect(), which the
+// caller takes ONCE per view (#1261): it walks the battlefield, and
+// this runs for every permanent on it.
+func stampManaConditions(g *game.Game, card game.Card, controller uuid.UUID, views []ManaAbilityView, restricted bool) {
 	raw := game.ManaAbilitiesForCard(card)
-	// #1210: the board-wide "can't be activated" fast negative, taken
-	// once per card rather than once per row.
-	restricted := g.AnyActivationRestrictionsForEffect()
 	for i := range views {
 		if i >= len(raw) {
 			continue
 		}
-		// #1210, CR 602.5a: the board-wide gate's reason, from the
+		// #1210, CR 602.5: the board-wide gate's reason, from the
 		// one function the engine, the enumerator and the auto-tapper
 		// all call. Mana: true, and the RESTRICTION decides what that
 		// means — Cursed Totem reaches a Birds of Paradise's {G},
@@ -4681,6 +4847,9 @@ func stampNoUntap(g *game.Game, view *ZoneView) {
 	if g == nil || g.Battlefield == nil || view == nil {
 		return
 	}
+	// #1261: the board's restrictions gathered once for the whole
+	// battlefield, not once per permanent.
+	restricted := g.UntapStepRestrictedCheckerLocked()
 	for i := range view.Cards {
 		if i >= len(g.Battlefield.Cards) {
 			break
@@ -4690,7 +4859,7 @@ func stampNoUntap(g *game.Game, view *ZoneView) {
 		// restriction reads false — but a hold (#1313) comes from
 		// ANOTHER object's resolved ability and applies face-down or
 		// not, like a next-step marker.
-		static := (!card.FaceDown && g.UntapStepRestrictedLocked(card)) || g.UntapHeldLocked(card)
+		static := (!card.FaceDown && restricted(card)) || g.UntapHeldLocked(card)
 		next := projectedUntapSkipPlayers(g, card)
 		if !static && len(next) == 0 {
 			continue
@@ -5994,6 +6163,9 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// card the same weak way `unimplemented` does. Cleared with the
 	// rest of the cost surface.
 	out.CastableHere = false
+	// #1389: a foretold card's price is its foretell cost, which names
+	// the card as loudly as its mana cost does.
+	out.CastPrices = nil
 	// ADR 0073 §7: "Cast this spell only if you control a legendary
 	// creature or planeswalker" says the card is a legendary sorcery,
 	// which is more than its mana cost gives away. CR 708.2 also
@@ -6631,7 +6803,7 @@ func stampLibraryTop(g *game.Game, seats []PlayerView) {
 // names face 0 (CR 715.4's Adventure creature) is a real answer here
 // and not the "no opinion" a bare integer made of it. SetFace(0) is a
 // no-op on a card already showing its front, which is every card in
-// exile (CR 712.8, MoveCard) — the call is what makes the code say
+// exile (CR 712.8a, MoveCard) — the call is what makes the code say
 // the rule rather than rely on the coincidence.
 func grantedFace(c game.Card, perm *game.CastPermission) game.Card {
 	face, ok := perm.NamedFace()
@@ -6735,7 +6907,10 @@ func equalStrings(a, b []string) bool {
 // offers nothing but one. The index is the ability's index in the
 // card's FULL list either way, which is what the engine validates
 // against — so a filtered list never renumbers.
-func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone game.ZoneKind) []ActivatedAbilityView {
+//
+// `restricted` is g.AnyActivationRestrictionsForEffect(), taken ONCE
+// per view by the caller (#1261) — see stampActivatedAbilities.
+func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone game.ZoneKind, restricted bool) []ActivatedAbilityView {
 	raw := game.ActivatedAbilitiesForCard(c)
 	if len(raw) == 0 {
 		return nil
@@ -6744,9 +6919,6 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 	// permanent, or since #660 the hand card whose cycling ability
 	// this is — so the protection check has the source it needs.
 	abilitySrc := game.SourceObject(caster, &c)
-	// #1210: the board-wide "can't be activated" fast negative, taken
-	// once per card rather than once per ability row.
-	restricted := g.AnyActivationRestrictionsForEffect()
 	var out []ActivatedAbilityView
 	for i, a := range raw {
 		if !game.AbilityFunctionsFromZone(a, zone) {
@@ -6790,7 +6962,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		if g.AbilityExhausted(caster, c.InstanceID, a) {
 			v.Exhausted = true
 		}
-		// #1210, CR 602.5a: the board-wide "can't be activated"
+		// #1210, CR 602.5: the board-wide "can't be activated"
 		// gate's reason, from the one function the engine and the
 		// enumerator call. Behind the fast negative taken once for
 		// the whole card, because almost no board restricts anything.

@@ -116,7 +116,7 @@ func init() {
 				return err
 			}
 			// "Exile Teferi's Protection." The spell moves ITSELF, so
-			// the resolution frame's CR 608.2m graveyard route is
+			// the resolution frame's CR 608.2n graveyard route is
 			// skipped by spellMovedItselfLocked (#489) — which is
 			// exactly the case that check was written for.
 			return ctx.Game.ExileCardForEffect(item.SourceCardID)

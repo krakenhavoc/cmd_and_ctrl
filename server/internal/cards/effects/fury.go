@@ -13,7 +13,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The red incarnation — Solitude's shape with a sweep instead of an
 // exile. The evoke is EvokePitch (a red card from hand rather than
-// mana, and the CR 702.74b sacrifice trigger bundled with it, so an
+// mana, and the CR 702.74a sacrifice trigger bundled with it, so an
 // evoked Fury's damage trigger resolves before it dies). The ETB is
 // a multi-target clause, one to four targets: "any number" bounded
 // above by the four points, since every target must be assigned at

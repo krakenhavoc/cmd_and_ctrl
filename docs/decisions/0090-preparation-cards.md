@@ -79,7 +79,7 @@ flash creature's copy of its sorcery would otherwise be castable at instant spee
 Two new fields on the copy:
 
 - `PrepareCopy bool` — this object is not a card (CR 707.10). It is what the sweep in Decision 5
-  reads, what `MoveCard`'s CR 712.8 front-face reset now skips (CR 722.3c makes the prepare spell
+  reads, what `MoveCard`'s CR 712.8a front-face reset now skips (CR 722.3c makes the prepare spell
   the copy's *normal* characteristics, so a countered All Aboard is never, even for a moment, a
   Skycoach Conductor in a graveyard), and what `CastSpell` reads to cast it as a copy.
 - `PreparedBy PermissionCardRef` — the permanent **object** (instance and CR 400.7 epoch) that keeps

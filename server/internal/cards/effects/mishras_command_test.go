@@ -112,7 +112,7 @@ func TestMishrasCommandPumpsOneCreatureWhileBurningAnother(t *testing.T) {
 
 // The pump bullet resolves even though the discard bullet's own
 // question is still open: the mode-effect loop runs every chosen
-// bullet in one pass (CR 700.2c); only the discard's OWN
+// bullet in one pass (CR 608.2c); only the discard's OWN
 // continuation waits on the target player's answer. And the draw
 // counts what was REALLY discarded, not X (#1027,
 // PlayerDiscardsThenForEffect).

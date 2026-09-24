@@ -1836,7 +1836,7 @@ export interface LegalTargetsView {
  * It is carried twice (#992). `CardView` extends it for the face that
  * is UP, which is what every reader in this client has always read.
  * `CardFaceView` extends it for each face a cast may CHOOSE — both
- * halves of a modal DFC (CR 712.12a) and of an adventure card
+ * halves of a modal DFC (CR 712.11b) and of an adventure card
  * (CR 715.3) — so `cardAsFace` can swap the block in when the player
  * picks a half instead of clearing what the front published. Clearing
  * it is why casting Stomp from this client never opened a target
@@ -1961,6 +1961,37 @@ export interface CastSurfaceView {
   // `target_cost_notes`, `phyrexian_symbols` and `cant_cast`, because
   // a card in a graveyard is a card every player may read.
   castable_here?: boolean;
+  // #1389: what THIS viewer would be charged to cast the card out of
+  // EXILE right now — one entry per price the cast may claim, cheapest
+  // first, each the total AFTER every CR 601.2f cost modifier (the
+  // same pricer the cast path and the auto-tap preview use). Exile
+  // only, and only on the frame of a seat holding a LIVE permission:
+  // a warp or foretell grant whose later turn has not come carries
+  // none. Read it through exileStrip.ts, which decides the badge.
+  //
+  // Since #1389 `castable_here` is stamped in exile too, with the same
+  // meaning it has in a graveyard — "YOU may cast this from here NOW",
+  // timing included — and is what the castable-from-exile strip
+  // lights a card by.
+  cast_prices?: CastPriceView[];
+}
+
+// CastPriceView is one price a cast out of exile may claim (#1389).
+export interface CastPriceView {
+  // The `alternative_costs[i].key` this price claims — "foretell", a
+  // granted "flashback" — and the value the cast sends as
+  // `alternative_cost`. Absent for the path that claims none: the
+  // printed cost, or a permission's own flat price (airbend's {2}, a
+  // plotted card's {0}).
+  alternative_cost?: string;
+  label?: string;
+  // Brace notation, never empty: a free cast reads "{0}".
+  cost: string;
+  // Life charged on top (CR 119.4). Absent for every exile price today.
+  life?: number;
+  // True when this price IS the printed mana cost, untouched — the
+  // strip draws no badge for it.
+  printed?: boolean;
 }
 
 /**

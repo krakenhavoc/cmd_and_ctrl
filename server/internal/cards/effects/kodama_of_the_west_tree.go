@@ -19,7 +19,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (Bident of Thassa's shape) gated on the dealer being modified, one
 // basic per connecting creature, as printed.
 //
-// "Modified" is the full CR 122.10 word since #379 gave the engine an
+// "Modified" is the full CR 700.9 word since #379 gave the engine an
 // attachment relation: a counter of any kind, an Equipment attached,
 // or an Aura the creature's controller controls attached
 // (b07IsModified). The layer listener bumps on attach and unattach,

@@ -279,8 +279,8 @@ func b08OverlookFetch(reason string, pred func(game.Card) bool) Effect {
 //	"{T}: Add {C}.
 //	 {A/B}, {T}: Add {A}{A}, {A}{B}, or {B}{B}."
 //
-// The hybrid cost is paid from the pool as printed (no auto-tap into
-// it — CR 605.3a), and the output is two independent {A|B} picks,
+// The hybrid cost is paid from the pool as printed (the engine has no
+// auto-tap into it), and the output is two independent {A|B} picks,
 // which is exactly the printed three-way choice. The colorless half
 // sits at index 0 so the auto-tapper reaches for it and never spends
 // floating mana on a filter.

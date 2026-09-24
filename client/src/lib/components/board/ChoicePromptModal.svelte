@@ -30,6 +30,8 @@
   } from "../../choiceRejection";
   import { doubledTriggerLabel } from "../../triggerDoubling";
   import { colorButtons, colorPromptAnswerable, colorPromptCopy } from "../../manaPick";
+  import { colorPickOptions } from "../../manaSource";
+  import ManaSymbolPicker from "./ManaSymbolPicker.svelte";
   import { payUnlessAnswer, waterbendLimit } from "../../waterbend";
 
   interface Props {
@@ -410,7 +412,7 @@
     return elsewhere === "Triggered ability" ? "" : elsewhere;
   }
 
-  // S17 sub-PR 6 optional-replacement branch — CR 614.10 "may"
+  // S17 sub-PR 6 optional-replacement branch — "may"
   // prompt. Used by CR 903.9 commander-zone replacement today:
   // commander's owner picks yes (route to command zone) or no
   // (let the event proceed to graveyard/exile/hand/library).
@@ -528,7 +530,7 @@
   const modeMin = $derived(active?.mode_min ?? 1);
   const modeMax = $derived(active?.mode_max ?? 1);
   const modeRepeatable = $derived(active?.mode_repeatable ?? false);
-  // The chosen bullets IN THE ORDER CHOSEN — CR 700.2c resolves them
+  // The chosen bullets IN THE ORDER CHOSEN — CR 608.2c resolves them
   // in that order, and CR 700.2d lets the same one appear twice.
   let modePicks = $state<number[]>([]);
   const modeSingle = $derived(modeMax === 1 && !modeRepeatable);
@@ -1103,21 +1105,15 @@
             Choose a color to add to your mana pool.
           {/if}
         </p>
-        <div class="color-row">
-          {#each buttons as b (b.color)}
-            <button
-              type="button"
-              class="color-pick"
-              style:--fill={b.fill}
-              title={b.label}
-              aria-label={b.amount > 1 ? `add ${b.amount} ${b.label} mana` : `add ${b.label} mana`}
-              onclick={() => pickColor(b.color)}
-            >
-              <span class="color-letter">{b.amount > 1 ? `${b.amount}×${b.color}` : b.color}</span>
-              <span class="color-name">{b.label}</span>
-            </button>
-          {/each}
-        </div>
+        <!-- #1438: the same symbol picker a click on a multi-ability
+             source opens, so Birds, Treasure, Command Tower and an
+             auto-tap colour question all look alike. No onCancel: the
+             source is already tapped when the server asks. -->
+        <ManaSymbolPicker
+          options={colorPickOptions(buttons, "add")}
+          onPick={(o) => o.color && pickColor(o.color)}
+          label="mana colors"
+        />
       {:else if isColorChoice}
         <h2 id="choice-title">
           {active.reason || colorCopy.title}
@@ -1129,21 +1125,11 @@
              not know whether the colour is remembered on a permanent
              or used once as a spell resolves. -->
         <p class="prompt-hint">{colorCopy.hint}</p>
-        <div class="color-row">
-          {#each buttons as b (b.color)}
-            <button
-              type="button"
-              class="color-pick"
-              style:--fill={b.fill}
-              title={b.label}
-              aria-label={`choose ${b.label}`}
-              onclick={() => pickColor(b.color)}
-            >
-              <span class="color-letter">{b.color}</span>
-              <span class="color-name">{b.label}</span>
-            </button>
-          {/each}
-        </div>
+        <ManaSymbolPicker
+          options={colorPickOptions(buttons, "choose")}
+          onPick={(o) => o.color && pickColor(o.color)}
+          label="colors"
+        />
       {:else if isCoinCall}
         <h2 id="choice-title">
           {active.reason || "Call the flip"}
@@ -1267,7 +1253,7 @@
       {:else if isOptionalReplacement}
         <h2 id="choice-title">
           {active.reason || "Apply replacement?"}
-          <span class="prompt-src" aria-hidden="true">optional replacement · CR 614.10</span>
+          <span class="prompt-src" aria-hidden="true">optional replacement</span>
         </h2>
         <p class="prompt-hint">
           You (the affected player) decide whether this substitution applies.
@@ -1871,49 +1857,6 @@
   .card-pick:disabled {
     opacity: 0.4;
     cursor: not-allowed;
-  }
-  .color-row {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-  .color-pick {
-    display: inline-flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    padding: 14px 18px;
-    background: var(--fill);
-    color: #0a0e1a;
-    border: 1px solid rgba(0, 0, 0, 0.35);
-    border-radius: 10px;
-    font-weight: 800;
-    cursor: pointer;
-    min-width: 88px;
-    box-shadow: var(--shadow-sm);
-    transition:
-      transform 120ms var(--ease),
-      box-shadow 120ms var(--ease),
-      filter 120ms var(--ease);
-  }
-  .color-pick:hover,
-  .color-pick:focus-visible {
-    background: var(--fill);
-    border-color: rgba(0, 0, 0, 0.35);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow);
-    filter: brightness(1.05);
-  }
-  .color-letter {
-    font-size: 22px;
-    line-height: 1;
-  }
-  .color-name {
-    font-size: 10px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    opacity: 0.8;
   }
   /* S26 creature-type picker. The list is the whole CR 205.3m
      vocabulary, so it scrolls inside a fixed box rather than growing

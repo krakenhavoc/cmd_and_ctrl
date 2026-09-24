@@ -412,7 +412,7 @@ const (
 	// produces three events, so "whenever a creature you control
 	// attacks" (Hellrider) triggers three times rather than once with
 	// a count. Cards printed as "whenever one or more creatures you
-	// control attack" therefore over-fire — the same CR 603.1 batching
+	// control attack" therefore over-fire — the same "one or more" batching
 	// gap EventETB already has, and no card in the catalog has that
 	// wording.
 	//
@@ -447,7 +447,7 @@ const (
 	EventAttack EventKind = "attack"
 
 	// EventBecomesTarget — an object or player became the target of
-	// a spell or ability (CR 115.7). Actor is the controller of the
+	// a spell or ability (CR 115.3). Actor is the controller of the
 	// spell / ability, Source is its source card, Target is the
 	// thing that was targeted, and CardID repeats Target when the
 	// target is a card (uuid.Nil when it is a player) so a consumer
@@ -465,7 +465,7 @@ const (
 	//
 	// A two-target spell emits two events; a spell that targets the
 	// same object twice (AllowSame) likewise emits two, matching CR
-	// 115.7's per-instance-of-the-word-"target" reading.
+	// 115.3's per-instance-of-the-word-"target" reading.
 	//
 	// Known gap: an effect that CHANGES a spell's targets after
 	// announce (Deflecting Swat, Redirect) does not re-emit, because
@@ -642,7 +642,7 @@ const (
 	// uuid.Nil CardID matched nothing at all — a silent miss rather
 	// than an error. Both emit sites set it: the hand click and the
 	// AUTO-TAPPER's executor, which activates the ability too
-	// (CR 605.3a).
+	// (CR 605.3 — a mana ability is activated like any other).
 	EventManaAbilityActivated EventKind = "mana_ability_activated"
 
 	// EventManaAdded — one mana token landed in a player's pool.
@@ -793,7 +793,7 @@ const (
 	// it: CR 506.4 says an attacking creature is blocked once, at the
 	// moment the declaration is complete, so a double block is one
 	// "whenever this creature becomes blocked" and one afflict
-	// trigger (CR 702.131). That is the whole reason this kind is
+	// trigger (CR 702.130). That is the whole reason this kind is
 	// separate from EventBlock, which is per BLOCKER — before #830
 	// each card that wanted the per-attacker reading deduplicated by
 	// walking the event log back to the attacker's EventAttack, and a
@@ -815,7 +815,7 @@ const (
 	// controller.
 	//
 	// Emitted from the state-based-action pass IMMEDIATELY BEFORE the
-	// CR 704.5v move that puts the battle in the graveyard, so a
+	// CR 704.5v/w move that puts the battle in the graveyard, so a
 	// defeated trigger's source is still findable on the battlefield
 	// when the harvester walks it. A dies-trigger shape (EventLTB
 	// plus the LKI snapshot) would also work and would be lossier:

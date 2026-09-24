@@ -248,7 +248,7 @@ unused — they can be removed in a later cleanup PR.)
 - `boteval suite render --pos path/to/position.json [--deck ID]` — prints the exact prompt a model would see for one position and the move list with `<- accept / reject / heuristic / model@capture` markers. This is the labelling screen. See [docs/bot.md](docs/bot.md#position-suite).
 - `boteval arena --seats a,b,c,d [--decks …] --games N --rotate --out DIR` — headless bot-vs-bot games with the report block ADR 0052 asks every bot PR to carry: win rate with a **Wilson 95% interval** against the table's null rate (1/seats), the funnel's layer/escalation/timeout counters, and decision + model-call latency tails. Rotation seats contestant `k` at position `(k+i)%n` in game `i`, so turn order cancels. A model tier with **no endpoint is refused, not downgraded** (an `assisted` seat with no client plays the heuristic under a model tier's name). A stall is **reported, not fatal**. Artifacts land in `<out>/<RFC3339 start>/`: `summary.md`, `summary.json`, `games.jsonl` (streamed per game), `decisions/`, `replays/`. Wall clock: ~0.2 s per two-seat heuristic game, ~3.5 s per four-seat curated-deck game, 5–15 min per game with one local-model seat. See [docs/bot.md](docs/bot.md#arena).
 - `cd server && go run ./cmd/gamecli -addr ws://localhost:8080/ws` — drive the demo game from a terminal; reads action JSON on stdin or via `-script path.json`
-- Endpoints: `GET /healthz`, `GET /ws` (protocol v0, see [docs/protocol.md](docs/protocol.md)), `POST /admin/login`, `/games*` lobby routes (see [docs/lobby.md](docs/lobby.md)), `GET /me/games` + `POST /me/games/{id}/session` (a signed-in user's games and seat reclaim, ADR 0051 sub-PR 4), `GET /me/tablemates` + `POST /games/{id}/invites/dm` (the people you have played with, and DMing one of them this table's existing invite link — ADR 0051 decisions 8 and 5, S34 sub-PR 6), `GET /auth/discord/link` (link Discord to a held seat), `/cards/*` image + metadata routes, `GET /catalog` + `GET /catalog/image/{id}` (signed-in session required — the card catalogue, [ADR 0042](docs/decisions/0042-card-catalog-page.md); `main.go` says why it is not public)
+- Endpoints: `GET /healthz`, `GET /ws` (protocol v0, see [docs/protocol.md](docs/protocol.md)), `POST /admin/login`, `/games*` lobby routes (see [docs/lobby.md](docs/lobby.md)), `GET /me/games` + `POST /me/games/{id}/session` (a signed-in user's games and seat reclaim, ADR 0051 sub-PR 4), `GET /me/tablemates` + `POST /games/{id}/invites/dm` (the people you have played with, and DMing one of them this table's existing invite link — ADR 0051 decisions 8 and 5, S34 sub-PR 6), `GET /auth/discord/link` (link Discord to a held seat), `/cards/*` image + metadata routes, `GET /catalog` + `GET /catalog/image/{id}` (signed-in session required — the card catalogue, [ADR 0042](docs/decisions/0042-card-catalog-page.md); `main.go` says why it is not public), `GET /roadmap` (public, no session — the engine roadmap: card names and caveats only, never art or oracle text, [ADR 0092](docs/decisions/0092-public-roadmap-and-site-portal.md))
 - Env vars:
   - `CMDCTRL_ADDR` — listen addr (default `:8080`)
   - `CMDCTRL_DATA_DIR` — data root (default `./data`; empty string disables disk writes + card cache). Holds `db/cmdctrl.sqlite` (ADR 0051, S34 sub-PR 1 — the persistent user/game/deck store, `internal/db`) and its `db/cmdctrl.backup.sqlite` VACUUM INTO copy, alongside the existing `scryfall/`, `images/`, `avatars/`, `bugreports/`, `restore/`, `replays/` and `games/`. Since S34 sub-PR 3 the lobby's games, seats and invites are rows in that database, and invites are stored as hashes. `lobby/` holds only the `<id>.json.imported` files the one-time importer renamed and left for a rollback (docs/environments.md).
@@ -498,7 +498,7 @@ surface tiny.
    // "Choose two —": ChooseN("Choose two", 2, 2, Mode(…), Mode(…), …)
    ```
    `OnResolve` is a run of `if ctx.HasMode(i) { … }` blocks in
-   printed order (CR 700.2c). The engine validates the choice at
+   printed order (CR 608.2c). The engine validates the choice at
    announce and applies the chosen option's target clause exactly as
    it would a card-level one; the client shows a mode picker before
    targeting.
@@ -1265,7 +1265,7 @@ are the printed cards' doing:
   "Add {B}{B}{B}", a mana ability with no `{T}` and a triggered mana
   ability's own output are all productions and none of them is doubled.
   A card that really is symmetrical leaves the check out.
-- **It never pauses.** CR 605.3a makes activating a mana ability one
+- **It never pauses.** CR 605.3b makes activating a mana ability one
   indivisible step with no priority window inside it, so every event of
   this kind sets `mustSettleNow` and the CR 616 ordering prompt is never
   asked. An `Optional` mana-production replacement would therefore be
@@ -1320,7 +1320,7 @@ shipping it quietly — the fix is a declared flag in the `PureCancel`
 mould. See [ADR 0013 §5a](docs/decisions/0013-replacement-effects.md).
 
 **A `may` is always offered, however many effects share the window.**
-`Optional: true` (CR 614.10) queues a yes/no prompt for the effect's
+`Optional: true` queues a yes/no prompt for the effect's
 controller before `Replace` runs, and that is now true on the
 multi-effect paths too: an effect ordered alongside others by a CR 616
 prompt pauses for its own question when the chain reaches it
@@ -1349,7 +1349,7 @@ otherwise, but it may never run at all. See
 leaves its old zone, and that window can stop to ask: a CR 616 ordering
 prompt between two enters-tapped effects (Kismet plus Thalia, Heretic
 Cathar), a shockland's "you may pay 2 life", Clone's "choose what to
-copy", any CR 614.10 "may". The library search, the exile return and the
+copy", any "may". The library search, the exile return and the
 reanimation are `entryResumable` now, so a fetched shockland IS offered
 its payment and two replacements on one fetched Guildgate no longer eat
 the card. What the effect still owed rides across the pause on
@@ -1424,7 +1424,7 @@ list is for keyword abilities.
 **What a shield does not stop**, and why each one is a separate
 branch rather than one check: a sacrifice (CR 701.21a), a creature at
 zero toughness (CR 704.5f), a planeswalker at zero loyalty
-(CR 704.5i), a battle at zero defense (CR 704.5v), the legend rule,
+(CR 704.5i), a battle at zero defense (CR 704.5v/w), the legend rule,
 an illegally attached Aura, an exile, a bounce. All of those take the
 same battlefield exit a destruction does, so the exit carries a
 declared `Destruction` flag — `destroyRoute` sets it,
@@ -2798,7 +2798,7 @@ recorded. See
 Genesis Ultimatum", "shuffle this into your library": the instruction
 runs in `OnResolve`, which is before the resolution frame picks the
 spell's destination, so `spellMovedItselfLocked` stops the frame from
-moving a card its own effect has already placed (CR 608.2m — the spell
+moving a card its own effect has already placed (CR 608.2n — the spell
 put into a graveyard is the one ON THE STACK). Nothing on the card side
 is needed: write the self-move as an ordinary `ExileTarget` or tuck on
 the spell's own ID and the frame leaves it alone. A resolution that
@@ -3687,7 +3687,7 @@ and still unimplemented: that is CR 613 layer 1, deferred to S16.5.
 | "Whenever ~ enters or attacks" | `EventETB` + `EventAttack` on **one** ability | `ev.CardID == source.InstanceID` — one printed ability with two trigger conditions is one `TriggeredAbility` watching two kinds, not two declarations (Sun Titan) |
 | "Whenever a spell or ability you control exiles one or more permanents" | `EventZoneMove` | `ev.OldZone == ZoneBattlefield && game.ExiledBySpellOrAbilityOf(ev, source.Controller)` plus `OncePerBatch` (Ranar the Ever-Watchful, #1320). Reads `ev.Cause` / `ev.CauseController`, which a routed move fills from the resolving item; a cost, a special action or a manual move names its own cause and never matches |
 | "Whenever ~ becomes the target of a spell or ability" | `EventBecomesTarget` | `ev.CardID == source.InstanceID` — `CardID` repeats `Target` when the target is a card and is `uuid.Nil` for a player, so reading `CardID` is what keeps a player-targeting spell from matching. `ev.Actor` is the targeting player, `ev.Source` its source |
-| "Whenever another creature you control becomes the target…" | `EventBecomesTarget` | `targetedAnotherCreatureYouControl(ev, source, g)` (Monk Gyatso) — excludes the source, checks the target is still on the battlefield, then reads its type and controller. Fires once per target **slot**, at **announce** (CR 115.7), so the trigger goes on the stack ABOVE the spell that targeted and resolves first — which is the whole card |
+| "Whenever another creature you control becomes the target…" | `EventBecomesTarget` | `targetedAnotherCreatureYouControl(ev, source, g)` (Monk Gyatso) — excludes the source, checks the target is still on the battlefield, then reads its type and controller. Fires once per target **slot** (CR 115.3), at **announce** (CR 601.2c), so the trigger goes on the stack ABOVE the spell that targeted and resolves first — which is the whole card |
 | "At the beginning of your upkeep" | `EventBeginUpkeep` | `ev.Actor == source.Controller` |
 | "At the beginning of your end step" | `EventBeginEndStep` | `ev.Actor == source.Controller` — drop the check for "the beginning of the end step" (any player's) |
 | "At the beginning of combat on your turn" / "your postcombat main phase" / "end of combat" (any step without a kind of its own) | `EventStepBegan` | `StepBegan(game.StepBeginCombat, true)` — or the constructors `AtBeginningOfYourCombat`, `AtYourPostcombatMain`, `AtEndOfYourCombat`, `AtYourStep(step, …)`, `AtEachStep(step, …)` (#588) |
@@ -4523,7 +4523,7 @@ commander-identity narrowing and a plain "any colour" all read exactly
 as the tap would. Scryfall's `produced_mana` answers only for a card
 with no catalog mana ability at all. A `ProducedFunc` that reads OTHER
 permanents' producible mana must set
-`ManaAbility.DerivesFromOtherSources` — that is the CR 106.6b
+`ManaAbility.DerivesFromOtherSources` — that is the CR 106.7
 recursion guard, `TestDerivedManaAbilitiesDeclareTheGuard` enforces it
 both ways, and it is the only `ProducedFunc` shape "could produce"
 skips.

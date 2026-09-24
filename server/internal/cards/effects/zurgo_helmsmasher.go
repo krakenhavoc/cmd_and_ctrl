@@ -12,7 +12,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The voltron commander that dares you to block it. Seven power on a
 // four-mana commander is three hits to the 21-damage clock
-// (CR 903.14a), and the two-toughness body that should make that
+// (CR 903.10a), and the two-toughness body that should make that
 // suicidal is covered by conditional indestructible — but only on
 // YOUR turn, which is the entire design.
 //

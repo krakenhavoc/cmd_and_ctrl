@@ -103,7 +103,7 @@ describe("needsFacePicker", () => {
     expect(needsFacePicker(bears())).toBe(false);
   });
 
-  it("is false for a transform card — CR 712.4 casts the front face", () => {
+  it("is false for a transform card — CR 712.11 casts the front face", () => {
     const jace = { ...seaGate(), layout: "transform" };
     expect(needsFacePicker(jace)).toBe(false);
   });

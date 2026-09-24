@@ -19,7 +19,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // "Choose one or more" is ChooseN with Min 1 and Max 4 — every
 // subset of the four is a legal cast. The three battlefield modes
-// are Merciless Eviction's, resolved in printed order (CR 700.2c);
+// are Merciless Eviction's, resolved in printed order (CR 608.2c);
 // the fourth walks every seat's graveyard, the caster's included,
 // through the same helper Bojuka Bog uses.
 //

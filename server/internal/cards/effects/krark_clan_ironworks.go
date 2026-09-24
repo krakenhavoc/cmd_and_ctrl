@@ -5,8 +5,8 @@ package effects
 //	"Sacrifice an artifact: Add {C}{C}."
 //
 // Ashnod's Altar for artifacts, and the engine behind every "KCI"
-// combo deck: a mana ability (no stack, CR 605.3a, activatable any
-// number of times while something else resolves) that turns any
+// combo deck: a mana ability (no stack, CR 605.3b, activatable any
+// number of times while something else resolves, CR 605.3a) that turns any
 // artifact — a Treasure, a Clue, a Myr Retriever, the Ironworks
 // itself — into two colourless mana. The sacrifice-another clause is
 // the same one the Altar uses, so it opens the same picker and fires

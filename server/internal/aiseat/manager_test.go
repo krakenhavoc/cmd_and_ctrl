@@ -66,17 +66,6 @@ func TestManagerPlaysALobbySeatedTable(t *testing.T) {
 	if snap.State == game.StateActive && snap.Turn.Round <= 60 {
 		t.Fatalf("table did not finish: turn %d step %s", snap.Turn.Round, snap.Turn.Step)
 	}
-	// Every applied move was broadcast to the hub as a room commit.
-	var applied int64
-	for _, r := range runners {
-		applied += r.Stats().Applied
-	}
-	bc.mu.Lock()
-	broadcasts := len(bc.seqs)
-	bc.mu.Unlock()
-	if int64(broadcasts) != applied || applied == 0 {
-		t.Errorf("broadcasts %d vs applied %d", broadcasts, applied)
-	}
 	// The runners exited on their own when the game ended …
 	//
 	// waitForRunner, which is what this package has for exactly this
@@ -87,6 +76,24 @@ func TestManagerPlaysALobbySeatedTable(t *testing.T) {
 	// happened to every literal of this shape).
 	for _, r := range runners {
 		waitForRunner(t, "the runner to exit after the game ended", r)
+	}
+	// Every applied move was broadcast to the hub as a room commit.
+	//
+	// Counted only once every runner has exited (#1261). The game
+	// reads as ended the instant the last move COMMITS, and the runner
+	// that made it counts the move and broadcasts it a beat later, so
+	// counting straight off the snapshot raced it: the nightly read
+	// applied before that runner's increment and broadcasts after its
+	// broadcast, and reported 4868 vs 4867 for a table that was fine.
+	var applied int64
+	for _, r := range runners {
+		applied += r.Stats().Applied
+	}
+	bc.mu.Lock()
+	broadcasts := len(bc.seqs)
+	bc.mu.Unlock()
+	if int64(broadcasts) != applied || applied == 0 {
+		t.Errorf("broadcasts %d vs applied %d", broadcasts, applied)
 	}
 	// … and Delete is still a clean stop.
 	if err := l.Delete(meta.ID); err != nil {

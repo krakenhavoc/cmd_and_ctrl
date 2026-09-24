@@ -97,6 +97,12 @@ type discardOptions struct {
 	// madness card went to exile rather than to a graveyard, and the
 	// CR 614 window may have cancelled a leg outright.
 	then func(g *Game, landed []uuid.UUID) error
+
+	// commanderAnswers are the CR 903.9 answers a COST discard's
+	// commanders' owners gave before the payment (#1397,
+	// cost_commander_choice.go), keyed by card. Only a cost discard
+	// sets it: every other discard can pause, and asks at the move.
+	commanderAnswers map[uuid.UUID]bool
 }
 
 // discardedThisWayLocked reports whether a settled discard of cardID
@@ -188,9 +194,11 @@ func (g *Game) discardedThisWayLocked(playerID, cardID uuid.UUID) bool {
 // indivisible step and CR 602.2b says the same for an activated
 // ability, so DiscardCauseCost sets zoneRoute.MustSettleNow: the
 // window still runs — a discard replacement would still see it — but
-// it settles without asking, and CR 903.9 being a "may" means a
-// commander pitched to a cost goes to the graveyard. The argument, and
-// the other half of the same cost line, is payLifeAsCostLocked.
+// it settles without asking. A commander pitched to a cost is still
+// offered CR 903.9: its owner is asked BEFORE the payment begins
+// (#1397, cost_commander_choice.go) and opts.commanderAnswers carries
+// the answer onto the move. The argument for settling, and the other
+// half of the same cost line, is payLifeAsCostLocked.
 //
 // A card that is no longer in the hand is skipped rather than
 // erroring: the answer paths re-check the live zone before they
@@ -236,6 +244,10 @@ func (g *Game) discardBatchLocked(playerID uuid.UUID, cards, landed []uuid.UUID,
 			Source:        opts.source,
 			Cause:         discardMoveCause(opts.cause, playerID),
 			MustSettleNow: opts.cause == DiscardCauseCost,
+			// #1397: a cost discard's CR 903.9 answer, asked before
+			// the payment (cost_commander_choice.go). Nil everywhere
+			// else, which is "unasked".
+			commanderAnswer: commanderAnswerFor(opts.commanderAnswers, next),
 			then: func(g *Game) error {
 				// Asked once this leg has reached a TERMINAL outcome,
 				// which is the only moment the answer is stable: the

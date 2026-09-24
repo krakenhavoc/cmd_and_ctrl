@@ -24,7 +24,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // creatures you control with total power 2 or more, and the Chariot
 // becomes an artifact creature until end of turn (CR 702.122).
 //
-// DECLARED SIMPLIFICATION (batching, CR 603.1): the card reads "one
+// DECLARED SIMPLIFICATION (batching): the card reads "one
 // or more cards … that many", one trigger for the whole batch. The
 // engine emits one EventDiscardCard per card, so discarding three
 // cards to a single Windfall fires three triggers of one Zombie each

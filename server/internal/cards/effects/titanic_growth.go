@@ -8,7 +8,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Giant Growth for one more mana and one more point. It earns its
 // slot in this sprint rather than looking like filler because of
-// what it does to a COMMANDER: the 21-damage clock (CR 903.14a)
+// what it does to a COMMANDER: the 21-damage clock (CR 903.10a)
 // makes every point of power on a commander worth roughly two, and a
 // single Titanic Growth turns a 5/5 commander's four connections
 // into three.

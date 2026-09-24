@@ -413,7 +413,7 @@ window on a field that is a week old, and it errs weaker than printed.
 
 §7 built one announce-time answer to "may this player cast this spell at
 all?". This amendment builds its twin — "may this player activate this
-ability at all?" (CR 602.5a) — in the same shape, in a new file beside it,
+ability at all?" (CR 602.5) — in the same shape, in a new file beside it,
 and adds the one piece of state §7 named as missing and then went without.
 
 ### Why a twin and not a widened `CastGateLocked`
@@ -686,6 +686,10 @@ Not a new kind of thing, and deliberately not folded into an existing one:
   "a discard paid as a COST"). A commander returned to its owner's hand as a
   cost goes to the hand without asking; CR 903.9 is a *may*, and a cost that
   cannot ask falls back to the ordinary result.
+  *(2026-09-24, [#1397](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1397):
+  no longer — the owner is asked before the payment begins and the return
+  carries the answer; see
+  [ADR 0013 §5af](0013-replacement-effects.md#5af-amendment-2026-09-24-a-commander-paid-as-a-cost-is-asked-before-the-payment-not-during-it).)*
 
 Paid with the sacrifices, BEFORE the stack item is built, so a leaves-the-
 battlefield trigger queued by the payment is drained by the closing

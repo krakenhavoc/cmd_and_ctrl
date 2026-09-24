@@ -68,7 +68,7 @@ func ExileTopNUntilYourNextTurn(ctx *Context, n int) error {
 // ("whenever one or more Pirates you control deal damage to your
 // opponents").
 //
-// Batching caveat (CR 603.1, the same one the rest of the catalog
+// Batching caveat (the same one the rest of the catalog
 // carries): the engine emits one damage event per source, so a
 // two-Pirate strike fires the trigger twice with one player each
 // rather than once with two. Every card here does per-player work,

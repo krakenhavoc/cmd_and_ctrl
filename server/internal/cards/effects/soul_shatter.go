@@ -12,8 +12,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // per-player predicate: the fan-out hands each opponent's own ID to
 // the clause, which admits a creature or planeswalker whose mana
 // value no other creature or planeswalker THAT player controls
-// exceeds — ties all qualify and the player picks among them (CR
-// 700.3). Not targeted, so hexproof does not help, and an opponent
+// exceeds — ties all qualify and the player picks among them.
+// Not targeted, so hexproof does not help, and an opponent
 // with no creature or planeswalker sacrifices nothing. Mana value is
 // read off the battlefield, where a token is zero and X is zero.
 //

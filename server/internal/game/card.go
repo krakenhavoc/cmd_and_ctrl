@@ -393,7 +393,7 @@ type Card struct {
 	// sites and 389 Card{} literals, whereas leaving them as fields
 	// means all 74 Is*() call sites keep compiling and START being
 	// right, since "the characteristics of the face that's currently
-	// up" is exactly CR 712.8.
+	// up" is exactly CR 712.8a.
 	Faces []Face
 
 	// ActiveFace indexes Faces.
@@ -671,7 +671,7 @@ type Card struct {
 	// like Power / Toughness / ManaCost, not card-effect data, and
 	// while the only source was the catalog every battle outside the
 	// opt-in catalog entered with zero defense counters and was
-	// swept into the graveyard by the CR 704.5v SBA before anyone
+	// swept into the graveyard by the CR 704.5v/w SBA before anyone
 	// could attack it. That was live on `main` for every battle a
 	// player could import. The catalog's BattleSpec.Defense survives
 	// as a fallback for cards with no printed data — tokens,
@@ -968,7 +968,7 @@ type Card struct {
 	// cast, is a StackItem with IsCopy set and ceases to exist as it
 	// leaves the stack. It also keeps the copy wearing its prepare
 	// spell in every zone: CR 722.3c makes those characteristics its
-	// NORMAL ones, so MoveCard's CR 712.8 front-face reset skips it.
+	// NORMAL ones, so MoveCard's CR 712.8a front-face reset skips it.
 	// Carried by the snapshot.
 	PrepareCopy bool
 

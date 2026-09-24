@@ -10,7 +10,7 @@ import (
 // exhaust_mana_test.go — #1183, the MANA half of the exhaust keyword.
 //
 // #1181 built the record and deliberately left this out: a mana
-// ability takes the other entry point (ActivateManaAbility, CR 605.3a
+// ability takes the other entry point (ActivateManaAbility, CR 605.3b
 // — no stack, no priority, no announcement to hang a record on), so
 // `ManaAbility` carried no Exhaust marker and the combination was
 // unspellable. Loot, the Pathfinder prints "Exhaust — {G}, {T}: Add

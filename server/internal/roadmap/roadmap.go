@@ -150,11 +150,26 @@ type Roadmap struct {
 	Items  []Entry  `json:"items"`
 }
 
-// Counts is items by status.
+// Counts is items by status, plus the card catalog's own completeness
+// tally so the page can put the two side by side.
 type Counts struct {
 	Implemented int `json:"implemented"`
 	Partial     int `json:"partial"`
 	Missing     int `json:"missing"`
+	// Cards is catalog.Build's count of automated cards by declared
+	// completeness: the same numbers the signed-in catalog page shows,
+	// published here as bare numbers.
+	Cards CardCounts `json:"cards"`
+}
+
+// CardCounts is the catalog's cards by completeness. It leaves out
+// catalog.Counts.Missing on purpose: that counts cards the Scryfall
+// dump lacks, and Build reads the catalog without an index.
+type CardCounts struct {
+	Total      int `json:"total"`
+	Full       int `json:"full"`
+	Caveats    int `json:"caveats"`
+	Unreviewed int `json:"unreviewed"`
 }
 
 // Entry is one published item.
@@ -232,6 +247,7 @@ func (c *card) full() bool {
 type cardSet struct {
 	cards  []*card // sorted by name
 	byName map[string]*card
+	counts CardCounts
 }
 
 // loadCards groups the live registry by card. The completeness verdict
@@ -254,14 +270,20 @@ func loadCards() cardSet {
 			c.name = s.Name
 		}
 	}
-	for _, e := range catalog.Build(nil).Cards {
+	cat := catalog.Build(nil)
+	for _, e := range cat.Cards {
 		if c := byID[e.OracleID]; c != nil {
 			c.verdict = e.Completeness
 			c.caveats = e.Caveats
 		}
 	}
 	printed := coverage.PrintedOracle()
-	set := cardSet{byName: map[string]*card{}}
+	set := cardSet{byName: map[string]*card{}, counts: CardCounts{
+		Total:      cat.Counts.Total,
+		Full:       cat.Counts.Full,
+		Caveats:    cat.Counts.Caveats,
+		Unreviewed: cat.Counts.Unreviewed,
+	}}
 	for id, c := range byID {
 		sort.Slice(c.specs, func(i, j int) bool { return c.specs[i].OracleID < c.specs[j].OracleID })
 		if oc, ok := printed[id]; ok {
@@ -344,6 +366,7 @@ func mechanicByName(name string) (coverage.Mechanic, bool) {
 
 func build(reg []Item, cs cardSet) Roadmap {
 	var out Roadmap
+	out.Counts.Cards = cs.counts
 	for _, it := range reg {
 		m := compile(it)
 		e := Entry{

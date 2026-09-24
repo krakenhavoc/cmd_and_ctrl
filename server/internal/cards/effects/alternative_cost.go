@@ -316,7 +316,7 @@ func Pitch(label string, life int, from *game.TargetSpec, payLabel string) game.
 // is the same keyword, and a card offers one or the other, never
 // both. What it keeps from Evoke() is the half a card file would
 // forget — SacrificeOnEntry, the triggered ability that makes the
-// creature enter, fire its ETB and only then die (CR 702.74b). Without
+// creature enter, fire its ETB and only then die (CR 702.74a). Without
 // it Solitude would be a five-mana Swords to Plowshares that stays on
 // the battlefield.
 func EvokePitch(from *game.TargetSpec, payLabel string) game.AlternativeCost {

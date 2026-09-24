@@ -136,7 +136,7 @@ func TestAdventureSpellExilesOnResolutionWithTheGrant(t *testing.T) {
 	if me.Graveyard.Contains(id) {
 		t.Error("CR 715.3d: the card went to the graveyard as well")
 	}
-	// CR 712.8 does the rest for free: a card in exile is front face
+	// CR 712.8a does the rest for free: a card in exile is front face
 	// up, so the exile pile shows the creature the grant opens.
 	exiled := findCardForTest(g.Exile, id)
 	if exiled == nil || exiled.ActiveFace != 0 || exiled.Name != "Fixture Knight" {
@@ -372,7 +372,7 @@ func TestBuybackBeatsTheAdventureExile(t *testing.T) {
 // TestARulesExiledAdventureIsNotASelfMove is the #995 interaction, and
 // it is a real hazard rather than a formality. `spellMovedItselfLocked`
 // sits in the resolution frame ABOVE every post-effect exit and returns
-// early when the spell is no longer on the stack (CR 608.2m, ADR 0013
+// early when the spell is no longer on the stack (CR 608.2n, ADR 0013
 // §5t). An Adventure card exiled by CR 715.3d must not be read that
 // way: the card is still on the stack when its effect finishes, and the
 // exile is the GAME's replacement of "put it into its owner's

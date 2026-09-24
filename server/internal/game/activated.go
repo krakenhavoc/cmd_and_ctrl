@@ -226,8 +226,9 @@ type AbilityCost struct {
 	//	           answers "can this permanent have that counter",
 	//	           and the place a Solemnity-style prohibition
 	//	           plugs in.
-	//	CR 121.1   paying a cost is not an effect, so the placement
-	//	           is not replaceable: Doubling Season does NOT
+	//	CR 614.16  a counter-doubling replacement applies only to a
+	//	           counter placed by an EFFECT, so a cost payment
+	//	           isn't replaceable: Doubling Season does NOT
 	//	           double the Druid's -1/-1. Same rule the loyalty
 	//	           cost and the removal half already follow.
 	//
@@ -319,11 +320,14 @@ type AbilityCost struct {
 	// that wanted "discard this from your graveyard" would be
 	// writing a card that does not exist.
 	//
-	// The source has to be IN A GRAVEYARD — every card that prints
-	// the component says "from your graveyard" — and Register
-	// refuses the component on an ability that does not declare
-	// ZoneGraveyard, exactly as it refuses DiscardSelf off the hand.
-	// Paid last, with the discards, because it moves the source and
+	// It FOLLOWS THE ABILITY'S ZONE (#1404): from the graveyard it is
+	// scavenge's and embalm's "from your graveyard", and from the
+	// battlefield it is Perpetual Timepiece's "Exile this artifact" —
+	// a permanent leaving the battlefield, which fires leaves-the-
+	// battlefield triggers and never dies triggers. Register refuses
+	// the component on an ability that functions from any other zone
+	// (ExileSelfZoneSupported), exactly as it refuses DiscardSelf off
+	// the hand. Paid last, with the discards, because it moves the source and
 	// invalidates it; the effect that follows reads the card back
 	// out of EXILE by instance ID (LookupCardForEffect), which is
 	// where the cost has just put it.
@@ -838,6 +842,13 @@ type ActivateAbilityParams struct {
 	// component of the cost the same way a cast is gated.
 	Strict  bool
 	AutoTap bool
+
+	// commanderAnswers are the CR 903.9 answers the owners of the
+	// commanders this payment moves gave before it began (#1397,
+	// cost_commander_choice.go). Unexported, so no payload can answer
+	// for somebody else's commander: only the parked announcement's
+	// resume sets it.
+	commanderAnswers map[uuid.UUID]bool
 }
 
 // ActivateCatalogAbility activates ability `index` on a permanent
@@ -853,6 +864,13 @@ type ActivateAbilityParams struct {
 func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, params ActivateAbilityParams) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	return g.activateCatalogAbilityLocked(playerID, cardID, index, params)
+}
+
+// activateCatalogAbilityLocked is ActivateCatalogAbility's body, split
+// out so a parked announcement (#1397) can make it again from the
+// CR 903.9 answer's resume. Caller must hold g.mu.
+func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index int, params ActivateAbilityParams) error {
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
@@ -922,7 +940,7 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	if !AbilityFunctionsFromZone(ab, srcZone) {
 		return ErrActivationZoneNotAllowed
 	}
-	// #1210, CR 602.5a / CR 101.2: the board-wide "can't be
+	// #1210, CR 602.5 / CR 101.2: the board-wide "can't be
 	// activated" gate — Cursed Totem, Linvala, Collector Ouphe,
 	// Pithing Needle. ONE function, four callers; see
 	// activation_gate.go.
@@ -1149,10 +1167,11 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		return err
 	}
 	// #1221: the discard component's sibling one zone over —
-	// scavenge's and embalm's "Exile this card from your graveyard".
-	// Nothing to resolve (the source IS the payment), so this is the
-	// zone check alone, made here with the rest so a refusal costs
-	// nothing.
+	// scavenge's and embalm's "Exile this card from your graveyard",
+	// and since #1404 Perpetual Timepiece's "Exile this artifact" off
+	// the battlefield. Nothing to resolve (the source IS the payment),
+	// so this is the zone check alone, made here with the rest so a
+	// refusal costs nothing.
 	if err := g.validateExileSelfCostLocked(srcZone, ab.Cost); err != nil {
 		return err
 	}
@@ -1190,6 +1209,39 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	if err := g.validateAnnouncedTargetsLocked(SourceObject(playerID, source), steps, params.Targets); err != nil {
 		return err
 	}
+
+	// #1397: every card this payment is about to move, asked about
+	// BEFORE anything is paid. A commander among them whose owner has
+	// not answered CR 903.9 parks the announcement on that question;
+	// the answer makes it again, and the payment below then settles
+	// with the answer on each move. See cost_commander_choice.go.
+	moving := append(append(append(append([]uuid.UUID(nil), sacrifices...), params.ReturnIDs...), discards...), exiles...)
+	if ab.Cost.ExileSelf {
+		moving = append(moving, cardID)
+	}
+	// #1445: a card an EFFECT has already paused on its way out
+	// cannot pay. See refusePausedCostCardsLocked.
+	if err := g.refusePausedCostCardsLocked(moving); err != nil {
+		return err
+	}
+	asked, answers := g.askCostCommanderLocked(playerID, moving, params.commanderAnswers, source.Name,
+		func(g *Game, answers map[uuid.UUID]bool) error {
+			again := params
+			again.commanderAnswers = answers
+			return g.activateCatalogAbilityLocked(playerID, cardID, index, again)
+		})
+	if asked {
+		return nil
+	}
+	params.commanderAnswers = answers
+
+	// #1418: the OBJECT this ability comes from, read BEFORE any cost
+	// is paid. A source sacrificed or discarded to its own ability
+	// has ended that object by the time the item is built, and
+	// "this permanent" at resolution is the one that paid (its
+	// last-known record), not the card in its new zone. SourceEpoch
+	// below keeps the post-cost reading its readers want.
+	sourceObject := g.sourceObjectRefLocked(cardID)
 
 	// --- pay ----------------------------------------------------
 	//
@@ -1272,8 +1324,8 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		paid.LifePaid += ab.Cost.Life
 	}
 	if ab.Cost.Loyalty != nil {
-		// applyCounterLocked, not AddCounterForEffect: paying a cost
-		// is not an effect (CR 121.1 / 606.2), so counter-doubling
+		// applyCounterLocked, not AddCounterForEffect: a counter placed
+		// by a COST isn't placed by an effect (CR 614.16), so counter-doubling
 		// replacements do NOT apply to a loyalty ability's + cost.
 		// Doubling Season really does nothing here, and routing
 		// through the CR 614 pipeline would silently make it.
@@ -1307,7 +1359,7 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	}
 	// Sacrifices last: they move cards, which invalidates `source`.
 	// One payment is one simultaneous exit (#747, CR 603.10a).
-	if err := g.payCostSacrificesLocked(sacrifices); err != nil {
+	if err := g.payCostSacrificesLocked(sacrifices, params.commanderAnswers); err != nil {
 		return err
 	}
 	// #1213: how many this announcement actually sacrificed, recorded
@@ -1321,7 +1373,7 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	// before the stack item is built so the leaves-triggers it queues
 	// are drained ABOVE the ability by the closing state-check pass
 	// (CR 603.3b).
-	returnedAttacking, err := g.payReturnToHandCostLocked(playerID, cardID, params.ReturnIDs)
+	returnedAttacking, err := g.payReturnToHandCostLocked(playerID, cardID, params.ReturnIDs, params.commanderAnswers)
 	if err != nil {
 		return err
 	}
@@ -1343,7 +1395,7 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	// has been paid for, so the card HAS been cycled, and the
 	// watchers see it with the card already in the graveyard, which
 	// is where CR 702.29c says it is.
-	if err := g.payAbilityDiscardsLocked(playerID, cardID, ab, discards); err != nil {
+	if err := g.payAbilityDiscardsLocked(playerID, cardID, ab, discards, params.commanderAnswers); err != nil {
 		return err
 	}
 	// #1297: the exile-N-cards component, beside the discards and for
@@ -1352,14 +1404,18 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	// door: nothing here is discarded. Recorded on the payment so an
 	// effect that reads "the card exiled this way" can find it in exile
 	// by instance ID, where this just put it.
-	if err := g.payExileCardsCostLocked(playerID, cardID, exiles); err != nil {
+	if err := g.payExileCardsCostLocked(playerID, cardID, exiles, params.commanderAnswers); err != nil {
 		return err
 	}
 	paid.Exiled = exiles
-	// #1221: and the graveyard half. Last of all, because it moves
-	// the source out of the graveyard and the effect that follows
-	// reads it back out of exile. See exile_cost.go.
-	if err := g.payAbilityExileSelfLocked(playerID, cardID, ab); err != nil {
+	// #1221: and the exile-this half. Last of all, because it moves
+	// the source out of the zone it was activated from and the effect
+	// that follows reads it back out of exile. From the battlefield
+	// (#1404) it is a permanent leaving the battlefield — LTB, not
+	// dies — and it lands before the stack item is built, so the
+	// leaves-triggers it queues sit ABOVE the ability (CR 603.3b),
+	// the sacrifice cost's order. See exile_cost.go.
+	if err := g.payAbilityExileSelfLocked(playerID, cardID, ab, params.commanderAnswers); err != nil {
 		return err
 	}
 
@@ -1379,10 +1435,11 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		// cost that moved the source (sacrifice, discard) has already
 		// ended the object the ability belonged to and the stamp must
 		// say so. See StackItem.SourceEpoch.
-		SourceEpoch: g.cardObjectEpochLocked(cardID),
-		Label:       ab.Label,
-		Targets:     append([]TargetRef(nil), params.Targets...),
-		Modes:       append([]int(nil), params.Modes...),
+		SourceEpoch:  g.cardObjectEpochLocked(cardID),
+		SourceObject: sourceObject,
+		Label:        ab.Label,
+		Targets:      append([]TargetRef(nil), params.Targets...),
+		Modes:        append([]int(nil), params.Modes...),
 		// CR 602.2b: X was announced above and is locked here. The
 		// effect reads it back through Context.X(), the same
 		// accessor an X spell's OnResolve uses, and the wire ships
@@ -1456,7 +1513,7 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		Label:       ab.Label,
 		Exhaust:     ab.Exhaust,
 	})
-	// CR 602.2b / 115.7: the ability's targets were chosen as it was
+	// CR 602.2b / 115.3: the ability's targets were chosen as it was
 	// put on the stack. S22, for "whenever ~ becomes the target of a
 	// spell or ability" (Monk Gyatso) — the clause names abilities as
 	// well as spells, so the activated path has to emit too.

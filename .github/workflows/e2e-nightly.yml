@@ -310,8 +310,14 @@ jobs:
       # a failure is replayable from the artifact alone.
       #
       # The heuristic gate's seeds are fixed in the test (101..120), so
-      # it plays the same twenty tables every night and a regression
-      # there is unambiguous. The soak's base seed is derived from the
+      # it DEALS the same twenty tables every night. It does not play
+      # the same twenty games: four runner goroutines interleave
+      # differently on every run (a defender's late block can land or
+      # miss the step): one binary played seed 107 to a winner on turn
+      # 13 eight times out of nine and stopped at turn 51 on the ninth
+      # (#1261, #1409). A game the turn budget stops
+      # prints the board it stopped on, because the artifact is the
+      # only look anyone gets at it. The soak's base seed is derived from the
       # UTC date instead, the way the catalog soak's is (#601): a fixed
       # soak seed would fuzz the same hundred tables for ever and stop
       # finding anything after the first green night. The x1000 is what

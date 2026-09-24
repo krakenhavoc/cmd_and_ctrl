@@ -12,7 +12,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // in Commander: the format's threats are rarely the ones that attack.
 // A pacified Krenko still makes Goblins; an arrested one does not.
 //
-// The activation half is CR 602.5a and it is absolute here —
+// The activation half is CR 602.5 and it is absolute here —
 // "its activated abilities" with no carve-out, so a Birds of
 // Paradise under Arrest taps for nothing. That is the difference
 // from Faith's Fetters, which spells out an exception for mana

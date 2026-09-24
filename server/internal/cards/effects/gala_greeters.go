@@ -53,7 +53,7 @@ func init() {
 // b15GalaGreetersTrigger is the alliance trigger with its three
 // bullets. Each bullet declares its own body (ModeDoing), so the
 // engine dispatches the chosen one at resolution in announce order
-// (CR 700.2c) and the card file writes no switch.
+// (CR 608.2c) and the card file writes no switch.
 func b15GalaGreetersTrigger() game.TriggeredAbility {
 	t := WheneverAnotherCreatureEntersUnderYourControl(b15GalaGreetersLabel,
 		func(g *game.Game, item *game.StackItem) error { return nil })

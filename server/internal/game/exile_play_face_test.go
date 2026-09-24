@@ -145,7 +145,7 @@ func TestFaceForCastUnderAGrant(t *testing.T) {
 	me := uuid.New()
 	card := transformFixture(me)
 
-	// No grant: CR 712.4, front only.
+	// No grant: CR 712.11, front only.
 	if face, ok := faceForCastLocked(card, 0, nil, me); !ok || face != 0 {
 		t.Errorf("ungranted face 0 = (%d, %v), want (0, true)", face, ok)
 	}
@@ -256,7 +256,7 @@ func TestCastFromExileUnderAFaceGrant(t *testing.T) {
 	AssertFaceInvariant(t, g)
 }
 
-// TestBackFacePermanentGoesToTheGraveyardFrontUp is CR 712.8, and it
+// TestBackFacePermanentGoesToTheGraveyardFrontUp is CR 712.8a, and it
 // is the "stronger than printed" hole the back-face cast opened.
 //
 // A back-face permanent that dies must be the FRONT face's card in
@@ -310,7 +310,7 @@ func TestBackFacePermanentGoesToTheGraveyardFrontUp(t *testing.T) {
 }
 
 // TestBackFaceSurvivesTheMoveOntoTheBattlefield is the other half of
-// CR 712.8: the battlefield and the stack are exactly the two zones
+// CR 712.8a: the battlefield and the stack are exactly the two zones
 // that keep a back face, and a reset written on the source side
 // instead of the destination would have broken the cast itself.
 func TestBackFaceSurvivesTheMoveOntoTheBattlefield(t *testing.T) {

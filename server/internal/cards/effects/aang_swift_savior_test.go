@@ -78,7 +78,7 @@ func TestAangSwiftSaviorImportsAsARealCard(t *testing.T) {
 	if len(eff.Colors) != 2 {
 		t.Errorf("colours = %v, want two", eff.Colors)
 	}
-	// CR 712.4: his back face is reached by transforming him (his
+	// CR 712.11: his back face is reached by transforming him (his
 	// Waterbend {8} ability), never by casting it.
 	if faces := c.CastableFaces(); len(faces) != 1 || faces[0] != 0 {
 		t.Errorf("CastableFaces = %v, want [0]", faces)

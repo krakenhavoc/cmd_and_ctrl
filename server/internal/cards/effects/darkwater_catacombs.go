@@ -7,8 +7,8 @@ package effects
 // An Odyssey "tap-and-a-tax" dual: no colourless option at all, one
 // ability, {1} to filter into a fixed two colours. Mechanically the
 // Signet cycle's mana component (`ManaAbilityCost.Mana`, closed by
-// #356) on a land instead of an artifact — no auto-tap into it (CR
-// 605.3a), same as every card built on that field.
+// #356) on a land instead of an artifact — the engine has no auto-tap
+// into it, same as every card built on that field.
 //
 // No simplification.
 func init() {

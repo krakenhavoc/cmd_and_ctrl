@@ -130,7 +130,7 @@ func TestNyxbloomAncientTriplesYourLand(t *testing.T) {
 }
 
 // Both out is ×6, and the CR 616.1 ordering is never put to anybody: a
-// production cannot pause (CR 605.3a, ADR 0013 §5ab), and the answer is
+// production cannot pause (CR 605.3b, ADR 0013 §5ab), and the answer is
 // the same in either order.
 func TestManaReflectionAndNyxbloomCompose(t *testing.T) {
 	g := newCatalogGame(t)

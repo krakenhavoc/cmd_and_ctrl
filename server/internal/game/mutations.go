@@ -498,6 +498,13 @@ type CastSpellParams struct {
 	// gather pass; LockedSources is for *untapped* permanents the
 	// player wants kept available. Added in S15 sub-PR 5.
 	LockedSources []uuid.UUID
+
+	// commanderAnswers are the CR 903.9 answers the owners of the
+	// commanders this cast's costs move gave before the payment began
+	// (#1397, cost_commander_choice.go). Unexported: only the parked
+	// announcement's resume sets it, so no payload answers for
+	// another player's commander.
+	commanderAnswers map[uuid.UUID]bool
 }
 
 // InsufficientManaError is returned by CastSpell when the Strict
@@ -544,6 +551,13 @@ func (e *InsufficientManaError) Unwrap() error { return ErrInsufficientMana }
 func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	return g.castSpellLocked(playerID, cardID, params)
+}
+
+// castSpellLocked is CastSpell's body, split out so a parked cast
+// (#1397) can be made again from the CR 903.9 answer's resume. Caller
+// must hold g.mu.
+func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParams) error {
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
@@ -872,7 +886,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	spec = TargetSpecUnderOptionalCosts(spec, optionalCosts, params.OptionalCosts)
 	// #764: the announcement's target STEPS — one per clause of the
 	// card-level list, or one per clause of each chosen mode
-	// occurrence (CR 700.2c). A card with neither keeps the S13.1
+	// occurrence (CR 608.2c). A card with neither keeps the S13.1
 	// free-form behaviour; a modal card whose chosen modes take no
 	// target must arrive with none.
 	steps := AnnouncedClauses(spec, modeSpec, params.Modes)
@@ -1131,6 +1145,30 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		g.runStateChecksLocked()
 		return nil
 	}
+	// #1397: every card this cast's costs are about to move — the
+	// additional cost's discards and sacrifices, the alternative
+	// cost's pitched, returned or escaped cards — asked about BEFORE
+	// anything is tapped or paid. A commander among them whose owner
+	// has not answered CR 903.9 parks the cast on that question, with
+	// the card still where it was; the answer casts it again. See
+	// cost_commander_choice.go.
+	moving := append(append(append([]uuid.UUID(nil), params.DiscardIDs...), params.SacrificeIDs...), params.AltCostIDs...)
+	// #1445: a card an EFFECT has already paused on its way out
+	// cannot pay. See refusePausedCostCardsLocked.
+	if err := g.refusePausedCostCardsLocked(moving); err != nil {
+		return err
+	}
+	asked, answers := g.askCostCommanderLocked(playerID, moving, params.commanderAnswers, card.Name,
+		func(g *Game, answers map[uuid.UUID]bool) error {
+			again := params
+			again.commanderAnswers = answers
+			return g.castSpellLocked(playerID, cardID, again)
+		})
+	if asked {
+		return nil
+	}
+	params.commanderAnswers = answers
+
 	// S15 sub-PR 5 auto-tap. When AutoTap is set, plan a tap of the
 	// caller's untapped permanents and materialise the produced mana
 	// into the pool BEFORE the strict-mode cost gate runs. Failure
@@ -1286,7 +1324,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	if addCost != nil && addCost.PayLifeX {
 		payLife = params.XValue
 	}
-	if err := g.payAdditionalCostLocked(playerID, params.DiscardIDs, params.SacrificeIDs, payLife); err != nil {
+	if err := g.payAdditionalCostLocked(playerID, params.DiscardIDs, params.SacrificeIDs, payLife, params.commanderAnswers); err != nil {
 		slog.Error("cast_spell: additional cost failed after validation",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
@@ -1299,7 +1337,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// is a card leaving hand while the counterspell is on the stack,
 	// and a Daze returns its Island before the spell it is answering
 	// has resolved.
-	if err := g.payAlternativeCostLocked(playerID, alt, params.AltCostIDs); err != nil {
+	if err := g.payAlternativeCostLocked(playerID, alt, params.AltCostIDs, params.commanderAnswers); err != nil {
 		slog.Error("cast_spell: alternative cost failed after validation",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
@@ -1365,7 +1403,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		OldZone: src.Kind,
 		NewZone: ZoneStack,
 	})
-	// CR 115.7: the objects named at 601.2c have now become targets.
+	// CR 115.3: the objects named at 601.2c have now become targets.
 	// Emitted after EventCast so a "becomes the target" trigger and
 	// a "whenever a player casts a spell" trigger queue in printed
 	// order.
@@ -1679,6 +1717,11 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 		if manaSourceTappedOut(card, ab) {
 			continue
 		}
+		// #1445: the planner's paused-exit check, re-asked because a
+		// plan can arrive stale.
+		if ab.SacrificeCost && g.zoneChangePausedLocked(cardID) {
+			continue
+		}
 		// #540: CR 302.6, enforced here as well as in the planner.
 		// This executor taps `card.Tapped = true` directly rather
 		// than routing through ActivateManaAbility, so the gate that
@@ -1789,7 +1832,8 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 		// #789: the counters come off as part of the same payment as
 		// the tap, and first, so a refusal leaves the land untapped.
 		// applyCounterLocked for the same reason the activation path
-		// uses it — paying a cost is not an effect (CR 121.1), so
+		// uses it — a counter-doubling replacement applies only to a
+		// counter placed by an effect (CR 614.16), so
 		// nothing doubles or cancels it.
 		if rc := ab.RemoveCounters; rc != nil {
 			if err := g.applyCounterLocked(cardID, rc.Counter, -rc.N); err != nil {
@@ -1851,7 +1895,10 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 		// rewritten. Nothing below reads it: the mana half works off
 		// cardID, ab and tappedForMana.
 		if len(sacrifices) > 0 {
-			if err := g.payCostSacrificesLocked(sacrifices); err != nil {
+			// #1397: nil answers — the auto-tapper asks nobody, and a
+			// commander whose own mana ability sacrifices it is not a
+			// source it plans with.
+			if err := g.payCostSacrificesLocked(sacrifices, nil); err != nil {
 				continue
 			}
 		}
@@ -1859,8 +1906,9 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 		// so "whenever you activate an exhaust ability" sees Loot, the
 		// Pathfinder's exhaust MANA ability through the auto-tapper as
 		// well as through a click. The auto-tapper really does
-		// activate the ability (CR 605.3a), which is why #1183 made it
-		// write the record here.
+		// activate the ability (CR 605.3 — a mana ability is activated
+		// like any other), which is why #1183 made it write the
+		// record here.
 		g.EmitEvent(Event{
 			Kind:   EventManaAbilityActivated,
 			Actor:  p.ID,
@@ -2033,6 +2081,10 @@ func (g *Game) materializeExiledManaSourceLocked(
 	if ab == nil {
 		return
 	}
+	// #1445: the planner's paused-exit check, re-asked for a stale plan.
+	if g.zoneChangePausedLocked(cardID) {
+		return
+	}
 	if g.ActivationGateLocked(p.ID, *card, zone, ActivationAbility{Label: ab.Label, Mana: true}) != nil {
 		return
 	}
@@ -2081,11 +2133,13 @@ func (g *Game) materializeExiledManaSourceLocked(
 	// tap's place.
 	g.noteAbilityActivationLocked(g.activationTallyKeyLocked(cardID, ab.Label))
 	// The payment. Through the one exit primitive with MustSettleNow
-	// (payExileSelfCostLocked), so a commander spent this way still
-	// gets its CR 903.9 answer and the CR 601.2h indivisible step
-	// cannot pause. A failure mints nothing and leaves the card where
-	// it was; nothing above this line has changed the board.
-	if err := g.payExileSelfCostLocked(p.ID, cardID, true); err != nil {
+	// (payExileSelfCostLocked), so the CR 601.2h indivisible step
+	// cannot pause. The auto-tapper asks nobody (nil answers, #1397):
+	// no commander carries a Spirit Guide's ability, so the CR 903.9
+	// question the hand-clicked activation asks first is not asked
+	// here. A failure mints nothing and leaves the card where it was;
+	// nothing above this line has changed the board.
+	if err := g.payExileSelfCostLocked(p.ID, cardID, true, nil); err != nil {
 		return
 	}
 	// `card` is DANGLING from here — the pile it points into has been
@@ -2376,7 +2430,7 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 // CastSpell before anything moves.
 //
 // Hand and the command zone resolve to the CALLER's own zone, which
-// is what CR 601.1 and CR 903.4 mean by them. The graveyard and the
+// is what CR 601.2 and CR 903.4 mean by them. The graveyard and the
 // library are the caller's own too, UNLESS a permission the caller
 // holds names this card where it sits — see the branch for why
 // (#1022, #1035).
@@ -2672,12 +2726,12 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// spells fire their effect here. Errors emit EventEffectError
 	// via fireEffectResolverLocked and do not wedge resolution.
 	g.fireEffectResolverLocked(item, CatalogKey(top), top.InstanceID)
-	// CR 700.2c / 700.2d: each chosen bullet's own body, in announce
+	// CR 608.2c / 700.2d: each chosen bullet's own body, in announce
 	// order, once per occurrence. A modal card that branches inside
 	// its OnResolve on ctx.HasMode declares no ModeOption.Effect and
 	// this is a no-op for it (#764).
 	g.runChosenModeEffectsLocked(item, ModeSpecFor(CatalogKey(top)))
-	// #489, CR 608.2m: the spell may have MOVED ITSELF. Everything
+	// #489, CR 608.2n: the spell may have MOVED ITSELF. Everything
 	// below this line routes the object that is still on the stack —
 	// to the battlefield, out of existence, or to a graveyard — and a
 	// spell whose own effect put it somewhere else has no such object
@@ -2821,10 +2875,10 @@ func (g *Game) resolveTopOfStackLocked() error {
 // spell goes next. Everything after that decision point is about an
 // object on the stack: the battlefield entry for a permanent, the
 // token a resolving copy of a permanent spell becomes (CR 608.3f,
-// #967), and CR 608.2m's "as the final part of an instant or sorcery
+// #967), and CR 608.2n's "as the final part of an instant or sorcery
 // spell's resolution, the spell is put into its owner's graveyard". A
 // spell that has already left has none of those left to do, and
-// CR 608.2m is the rule that says so: the thing it puts into a
+// CR 608.2n is the rule that says so: the thing it puts into a
 // graveyard is the spell ON THE STACK. For the copy the rule is
 // CR 707.10a — a copy in any zone other than the stack has already
 // ceased to exist, so it never resolves and never becomes a token.
@@ -3009,7 +3063,7 @@ func (g *Game) resolveTopAbilityLocked() {
 			})
 		}
 	}
-	// CR 700.2c: a modal triggered or activated ability resolves its
+	// CR 608.2c: a modal triggered or activated ability resolves its
 	// chosen bullets in announce order, after whatever body the item
 	// itself carries (#764).
 	g.runChosenModeEffectsLocked(top, top.modeSpec)
@@ -3175,6 +3229,7 @@ func (g *Game) ActivateAbility(playerID, sourceCardID uuid.UUID, params AbilityP
 		// which OBJECT the ability came from. See
 		// StackItem.SourceEpoch.
 		SourceEpoch:  g.cardObjectEpochLocked(sourceCardID),
+		SourceObject: g.sourceObjectRefLocked(sourceCardID),
 		Label:        params.Label,
 		Targets:      append([]TargetRef(nil), params.Targets...),
 		Modes:        append([]int(nil), params.Modes...),
@@ -3182,7 +3237,7 @@ func (g *Game) ActivateAbility(playerID, sourceCardID uuid.UUID, params AbilityP
 		Distribution: cloneDistributionLocked(params.Distribution),
 		Seq:          g.nextStackSeqLocked(),
 	}
-	// CR 115.7: the targets are chosen as the ability goes on the
+	// CR 115.3: the targets are chosen as the ability goes on the
 	// stack, and becoming a target is an event whether the ability
 	// came out of the catalog or off a player's own reading of the
 	// card (#968). Same call, same place as the catalog activation
@@ -3305,7 +3360,8 @@ func (g *Game) ActivateLoyalty(playerID, planeswalkerID uuid.UUID, label string,
 	// applyCounterLocked deletes the key at zero and emits the
 	// counter event, which is what every other counter mutation in
 	// the engine does; the hand-rolled map write here predated it.
-	// Paying a cost is not an effect (CR 121.1), so this
+	// A counter-doubling replacement applies only to a counter placed
+	// by an effect (CR 614.16), so this
 	// deliberately bypasses the CR 614 counter-replacement pipeline.
 	if err := g.applyCounterLocked(planeswalkerID, CounterLoyalty, delta); err != nil {
 		return err
@@ -3379,6 +3435,7 @@ func (g *Game) AnnounceTrigger(playerID, sourceCardID uuid.UUID, params AbilityP
 		Controller:   playerID,
 		Owner:        playerID,
 		SourceCardID: sourceCardID,
+		SourceObject: g.sourceObjectRefLocked(sourceCardID),
 		Label:        params.Label,
 		Targets:      append([]TargetRef(nil), params.Targets...),
 		Modes:        append([]int(nil), params.Modes...),
@@ -3400,7 +3457,7 @@ func (g *Game) AnnounceTrigger(playerID, sourceCardID uuid.UUID, params AbilityP
 	// stack and ADVANCED THE STEP, and the announced trigger landed a
 	// step late.
 	g.runStateChecksLocked()
-	// CR 603.3d / 115.7: a manually-announced trigger chooses its
+	// CR 603.3d / 115.3: a manually-announced trigger chooses its
 	// targets as it goes on the stack, same as the harvested kind —
 	// and it has just gone on the stack, which is why this is after
 	// the drain rather than before it (#974). The catalog activation
@@ -3499,7 +3556,7 @@ func clearKnownInZoneLocked(zone *Zone) {
 // Counter SBAs (S13.2):
 //   - 704.5i: a planeswalker with 0 loyalty counters is moved to its
 //     owner's graveyard
-//   - 704.5v: a battle with 0 defense counters is moved to its
+//   - 704.5v/w: a battle with 0 defense counters is moved to its
 //     owner's graveyard
 //   - 704.5q: +1/+1 and -1/-1 counters on the same creature
 //     cancel out — remove min(N, M) of each
@@ -3709,7 +3766,7 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 			}
 			continue
 		}
-		// 704.5v — battle with 0 defense counters.
+		// 704.5v/w — battle with 0 defense counters.
 		if c.IsBattle() {
 			if c.Counters == nil || c.Counters[CounterDefense] <= 0 {
 				doomed = append(doomed, doomedPermanent{id: c.InstanceID})
@@ -3722,7 +3779,7 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 	// here — after the doomed set is collected and before any of it
 	// moves — so the harvester finds a live source, and so a Siege's
 	// "exile it, then cast it transformed" reads a card that still
-	// exists. The battle is in `doomed` already via the 704.5v arm
+	// exists. The battle is in `doomed` already via the 704.5v/w arm
 	// above; this only adds the announcement.
 	for _, c := range g.Battlefield.Cards {
 		if c.IsBattle() && c.Counters[CounterDefense] <= 0 {
@@ -4205,7 +4262,7 @@ func (g *Game) sweepEliminatedChoicesLocked() {
 //     permanent (the CR 616 chooser is always that player). CR 800.4a
 //     takes them and their objects out of the game, so nothing lands
 //     and the continuation runs with zero.
-//   - They were only the chooser of a CR 614.10 "may" on somebody
+//   - They were only the chooser of a "may" on somebody
 //     ELSE's event. That event still happens. The pipeline is resumed,
 //     and the apply-loop's existing gone-chooser escapes decide for the
 //     player who left (the "may" is declined, an ordering stands as
@@ -4386,6 +4443,9 @@ func (g *Game) routeBattlefieldExitInBatchThenLocked(cardID uuid.UUID, r zoneRou
 		// and nothing else can tell a destruction from a sacrifice.
 		Destruction:       r.Destruction,
 		CantBeRegenerated: r.CantBeRegenerated,
+		// #1397: a sacrifice paid as a cost carries its owner's
+		// CR 903.9 answer, given before the payment.
+		commanderAnswer: r.commanderAnswer,
 	}
 	if then != nil {
 		r.CardID = cardID
@@ -5299,11 +5359,24 @@ type ManaAbilityParams struct {
 	// with separate exits (game.ExileCost); every other mana ability
 	// sends none.
 	ExileIDs []uuid.UUID
+
+	// commanderAnswers are the CR 903.9 answers the owners of the
+	// commanders this activation's cost moves gave before it began
+	// (#1397, cost_commander_choice.go). Unexported: only the parked
+	// activation's resume sets it.
+	commanderAnswers map[uuid.UUID]bool
 }
 
 func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, params ManaAbilityParams) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	return g.activateManaAbilityLocked(playerID, cardID, abilityIdx, params)
+}
+
+// activateManaAbilityLocked is ActivateManaAbility's body, split out
+// so a parked activation (#1397) can be made again from the CR 903.9
+// answer's resume. Caller must hold g.mu.
+func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx int, params ManaAbilityParams) error {
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
@@ -5372,7 +5445,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	}
 	// --- gate ----------------------------------------------------
 	//
-	// #1210, CR 602.5a: the board-wide "can't be activated" gate, the
+	// #1210, CR 602.5: the board-wide "can't be activated" gate, the
 	// same one ActivateCatalogAbility calls and the same placement —
 	// before anything is validated or paid. ActivationAbility.Mana is
 	// true here and the RESTRICTION decides what that means: Pithing
@@ -5550,6 +5623,33 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		}
 	}
 
+	// #1397: every card this cost is about to move, asked about
+	// BEFORE the activation begins. CR 605.3a leaves a mana ability no
+	// window to pause in once it has started — which is why every move
+	// below settles — but nothing has started yet: a commander whose
+	// owner has not answered CR 903.9 parks the activation on that
+	// question, and the answer activates it again. See
+	// cost_commander_choice.go.
+	moving := append(append(append([]uuid.UUID(nil), sacrifices...), discards...), exiles...)
+	if ab.ExileSelf {
+		moving = append(moving, cardID)
+	}
+	// #1445: a card an EFFECT has already paused on its way out
+	// cannot pay. See refusePausedCostCardsLocked.
+	if err := g.refusePausedCostCardsLocked(moving); err != nil {
+		return err
+	}
+	asked, answers := g.askCostCommanderLocked(playerID, moving, params.commanderAnswers, card.Name,
+		func(g *Game, answers map[uuid.UUID]bool) error {
+			again := params
+			again.commanderAnswers = answers
+			return g.activateManaAbilityLocked(playerID, cardID, abilityIdx, again)
+		})
+	if asked {
+		return nil
+	}
+	params.commanderAnswers = answers
+
 	// needStateChecks is set by any component of this activation
 	// that can kill a player or a permanent — a sacrifice, a life
 	// payment, a damage rider. A single deferred pass covers all of
@@ -5583,7 +5683,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 
 	// #1183: the activation record, in both scopes, written HERE —
 	// the moment every gate and every cost has been checked and the
-	// first payment is about to be made. CR 605.3a makes activating a
+	// first payment is about to be made. CR 605.3b makes activating a
 	// mana ability one indivisible step with no stack and no priority
 	// window inside it, so there is no later "announcement finished"
 	// to hang this on, and an activation that begins paying has
@@ -5676,7 +5776,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	if len(sacrifices) > 0 {
 		// One payment, one simultaneous exit (#747): a Blood Artist
 		// paid in alongside another creature sees both deaths.
-		if err := g.payCostSacrificesLocked(sacrifices); err != nil {
+		if err := g.payCostSacrificesLocked(sacrifices, params.commanderAnswers); err != nil {
 			return err
 		}
 		// A sacrificed source leaves `card` dangling. Nothing below
@@ -5698,8 +5798,9 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	// MustSettleNow is the route's, not this call site's.
 	if len(discards) > 0 {
 		if err := g.discardCardsLocked(playerID, discards, discardOptions{
-			cause:  DiscardCauseCost,
-			source: cardID,
+			cause:            DiscardCauseCost,
+			source:           cardID,
+			commanderAnswers: params.commanderAnswers,
 		}); err != nil {
 			return err
 		}
@@ -5716,7 +5817,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	// see (game.ExileCost). The exit can still queue leave-the-hand
 	// triggers, so drain on the way out as the discard does.
 	if len(exiles) > 0 {
-		if err := g.payExileCardsCostLocked(playerID, cardID, exiles); err != nil {
+		if err := g.payExileCardsCostLocked(playerID, cardID, exiles, params.commanderAnswers); err != nil {
 			return err
 		}
 		needStateChecks = true
@@ -5732,7 +5833,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	// snapshot taken before the first payment; `card` is deliberately
 	// dangling from here, exactly as it is after a sacrifice.
 	if ab.ExileSelf {
-		if err := g.payExileSelfCostLocked(playerID, cardID, true); err != nil {
+		if err := g.payExileSelfCostLocked(playerID, cardID, true, params.commanderAnswers); err != nil {
 			return err
 		}
 		card = nil
@@ -5776,7 +5877,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	//
 	// Runs under g.mu held for write, exactly like Rider, and any
 	// mutation it makes (a counter placement) goes through a
-	// mustSettleNow entry point: CR 605.3a leaves no priority window
+	// mustSettleNow entry point: CR 605.3b leaves no priority window
 	// inside a mana ability's resolution for a CR 616 ordering prompt
 	// to occupy, so a Doubling Season beside a Hardened Scales settles
 	// on the gathered order instead of asking (see
@@ -7263,7 +7364,7 @@ func (g *Game) resolveFirstStrikeCombatDamageLocked() {
 	g.assignAndDealCombatDamageLocked(CombatStepFirstStrike)
 	// SBA + trigger drain so creatures that died to first-strike
 	// damage exit, and the triggers that damage caused go on the
-	// stack, BEFORE priority (CR 510.3 puts them there first).
+	// stack, BEFORE priority (CR 510.3a puts them there first).
 	g.runStateChecksLocked()
 }
 
@@ -7407,7 +7508,7 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 		// reverted) set. Per-step participation is checked later
 		// per-blocker so a first-strike blocker can still hit a
 		// vanilla attacker in the first-strike step even when the
-		// attacker itself doesn't participate (CR 510.2; blocker
+		// attacker itself doesn't participate (CR 510.4; blocker
 		// damage is independent of the attacker's keywords).
 		blkIdxs := blockersByAttacker[atkID]
 		liveBlockers := make([]uuid.UUID, 0, len(blkIdxs))
@@ -7485,7 +7586,7 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 		// the attacker's split — and independently of whether the
 		// attacker itself participates in this step, so a first-
 		// strike blocker can still hit a vanilla attacker in the
-		// first-strike step (CR 510.2).
+		// first-strike step (CR 510.4).
 		for _, blkID := range liveBlockers {
 			blk := findBattlefieldCard(g, blkID)
 			if blk == nil || !g.participatesInStepLocked(blk, firstStrike) {

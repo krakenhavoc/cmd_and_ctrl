@@ -17,7 +17,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // permanent the controller controls — the tokens, or a Spirit card —
 // for {R}, no tap in the cost, so a Spirit that arrived this turn can
 // be cracked at once, and the dies-triggers of the sacrifice land on
-// the stack after the mana is in the pool (CR 605.3a).
+// the stack after the mana is in the pool (CR 605.3b).
 //
 // No simplification.
 func init() {

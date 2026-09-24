@@ -694,7 +694,7 @@ Gap analysis behind this sprint: `Card.Counters` exists today ([server/internal/
 **Counter-specific state-based actions (server):**
 
 - [x] CR 704.5i — planeswalker with 0 loyalty counters → owner's graveyard
-- [x] CR 704.5v — battle with 0 defense counters → owner's graveyard
+- [x] CR 704.5v/w — battle with 0 defense counters → owner's graveyard
 - [x] CR 704.5q — `+1/+1` and `-1/-1` cancel 1-for-1; runs BEFORE the lethal-damage / 0-toughness destruction passes (CR 704.3)
 - [x] CR 704.5c — player with ≥10 poison counters loses the game
 - [ ] CR 704.5s — saga final-chapter sacrifice: deferred to S14+ alongside the effect catalog (needs per-card final-chapter metadata)
@@ -1507,7 +1507,7 @@ Triggered by a Clone-class card reaching the catalog — and by [#335](https://g
 
 ## S17 — Replacement effects engine (CR 614)
 
-**Phase:** 7 · **Goal:** ship a pre-event replacement pipeline (CR 614/616) layered onto the five rules-visible mutation functions, plus step-transition hooks for skip-step. `ReplacementEvent` tagged-union value type is mutated or canceled by registered `ReplacementEffect`s declared on `Spec.Replacements`. CR 616.1 iterative apply-loop, CR 614.5 once-per-event tracking, CR 616 affected-player-chooses-order, and CR 614.10 "may" optional replacements all enforced centrally so card files stay declarative. S13.1's hand-rolled commander-zone replacement is refactored into a built-in that fires for EVERY commander move (spell-driven, SBA-driven, admin-driven) — closing a pre-existing gap.
+**Phase:** 7 · **Goal:** ship a pre-event replacement pipeline (CR 614/616) layered onto the five rules-visible mutation functions, plus step-transition hooks for skip-step. `ReplacementEvent` tagged-union value type is mutated or canceled by registered `ReplacementEffect`s declared on `Spec.Replacements`. CR 616.1 iterative apply-loop, CR 614.5 once-per-event tracking, CR 616 affected-player-chooses-order, and "may" optional replacements all enforced centrally so card files stay declarative. S13.1's hand-rolled commander-zone replacement is refactored into a built-in that fires for EVERY commander move (spell-driven, SBA-driven, admin-driven) — closing a pre-existing gap.
 
 The second-most structural rules subsystem after the stack. Unblocks S18 combat keywords (replaceable triggers), S21 tokens, S22 draw manipulation, and S30 damage prevention. After this sprint, the catalog can describe cards whose effects intercept events _before_ they happen.
 
@@ -1524,7 +1524,7 @@ See [ADR 0013](decisions/0013-replacement-effects.md). Abbreviated:
 - **CR 616.1 iterative apply-loop, centrally enforced.** Engine owns iteration, the once-per-event map, and the CR 616 ordering prompt. Cards declare `AppliesTo` + `Replace`.
 - **Once-per-event tracking applies to all fired replacements**, not only `SelfReplacement`-flagged ones. Per-call scope, keyed on `(ReplacementEventID, ReplacementEffectID)`.
 - **CR 616 order-choose via new `replacement_order` PendingChoice kind.** Queue-and-return pattern reused from S13/S15 (synchronous, no goroutines). Wire surface is additive — no protocol bump.
-- **CR 614.10 optional replacements** via new `optional_replacement` PendingChoice kind (yes/no prompt). Added mid-sprint in [sub-PR 6](#s17-sub-pr-6) after manual testing surfaced the CR 903.9 auto-route gap. `ReplacementEffect.Optional bool` flags effects that need the owner's opt-in before firing.
+- **"May" optional replacements** via new `optional_replacement` PendingChoice kind (yes/no prompt). Added mid-sprint in [sub-PR 6](#s17-sub-pr-6) after manual testing surfaced the CR 903.9 auto-route gap. `ReplacementEffect.Optional bool` flags effects that need the owner's opt-in before firing.
 - **Six integration points**: `AddCounter`, `MoveCardByID`, `DrawCard`, `ChangePlayerLife`, `MarkDamage`, plus `runStepEntryHooksLocked` for skip-step. Parallel `*ForEffect` hooks in `effect_api.go` so catalog-driven mutations route through replacements too.
 - **Battlefield-entry pipeline routing** lives inline at each entry site (cast resolution, land play, `MoveCardByIDAsCommander`, `SearchLibrary` battlefield branch). The planned `enterBattlefieldLocked` shared helper refactor was scoped out in favor of targeted pipeline calls at each site — less risk, same behavior.
 - **S13.1 commander-zone replacement refactored** into a built-in in `builtin_replacements.go`, registered at `NewGame`. Bespoke `applyCommanderZoneReplacementLocked` deleted. Sub-PR 6 widened the `AppliesTo` (dropped the `asCommanderMove` gate) and flipped the effect to `Optional=true` so commanders dying to spells / SBAs / wrath now prompt the owner instead of going to graveyard silently.
@@ -1539,7 +1539,7 @@ See [ADR 0013](decisions/0013-replacement-effects.md). Abbreviated:
 - [x] New `server/internal/game/replacements.go` — `ReplacementEffect`, `ReplacementEvent`, `ReplacementEventKind`, `ReplacementEventID`, `ReplacementEffectID`, `applyReplacementsLocked`, iterative apply-loop with per-call once-per-event map.
 - [x] New `server/internal/game/builtin_replacements.go` — `commanderZoneReplacement` built-in; `Game.BuiltinReplacements []ReplacementEffect` field populated at `NewGame`.
 - [x] `server/internal/game/pending_choice.go` — `PendingChoiceReplacementOrder` kind + `ReplacementEffectIDs` field + server-only `replacementResume` frame + `ResolveReplacementOrder` method.
-- [x] `server/internal/game/pending_choice.go` — `PendingChoiceOptionalReplacement` kind + `ResolveOptionalReplacement` method (sub-PR 6, CR 614.10 yes/no).
+- [x] `server/internal/game/pending_choice.go` — `PendingChoiceOptionalReplacement` kind + `ResolveOptionalReplacement` method (sub-PR 6, "may" yes/no).
 - [x] `server/internal/game/effect_hooks.go` — 7th function-var hook `CatalogReplacements`.
 - [x] `server/internal/cards/effects/spec.go` — `Replacements []game.ReplacementEffect` field.
 - [x] `server/internal/cards/effects/wire.go` — populate `game.CatalogReplacements`.
@@ -1677,7 +1677,7 @@ See [ADR 0013](decisions/0013-replacement-effects.md). Abbreviated:
 - **One helper file** — [server/internal/game/keywords.go](../server/internal/game/keywords.go) with `HasKeyword`, `HasSummoningSickness`, `CanBlock`, `BlockerCountValid`. All combat consumers route through this; no inline `for _, a := range c.Effective().Abilities` loops.
 - **Summoning sickness** — `Card.SummonedThisTurn bool`, set on battlefield entry, cleared at controller's untap step. Haste is a read-time bypass in `HasSummoningSickness`, not a clear-on-ETB. CR 302.6 / 702.10.
 - **Flash reads off-battlefield** — new `Spec.PrintedKeywords []string` slot so `HasKeyword` works on cards in hand. Dedicated catalog hook `CatalogPrintedKeywords`. [ADR 0014 §8](decisions/0014-combat-keywords.md#8-flash-needs-a-keyword-reader-that-works-on-cards-in-hand).
-- **Combat damage rewrite** — `resolveCombatDamageLocked` splits into first-strike (CR 510.2) and regular (CR 510.3) substeps. SBA fires between; dead creatures exit. Double-strike participates in both.
+- **Combat damage rewrite** — `resolveCombatDamageLocked` splits into first-strike and regular substeps (CR 510.4). SBA fires between; dead creatures exit. Double-strike participates in both.
 - **Damage assignment prompt** — new `PendingChoiceDamageAssignment` kind for multi-blocker lethals; single-stage (blocker order + amounts + trample-to-player all in one payload). `ResolveDamageAssignment` validator enforces at-least-lethal prefix rule.
 - **Deathtouch via `Card.MarkedLethalByDeathtouch`** flag, read by SBA. Cleaner than short-circuiting `DamageMarked >= Toughness`.
 - **Lifelink applies universally** — CR 702.15 covers all damage from the source, not combat only. Routed through the mark-damage code path so `DealDamage*ForEffect` catalog helpers credit life too.
@@ -1701,7 +1701,7 @@ See [ADR 0013](decisions/0013-replacement-effects.md). Abbreviated:
 - [x] Keyword detection helpers (`HasKeyword`, `HasSummoningSickness`, `CanBlock`, `BlockerCountValid`) — sub-PR 2
 - [x] Summoning sickness (`Card.SummonedThisTurn`), cleared at controller's untap step — sub-PR 2
 - [x] `Spec.PrintedKeywords` slot + `CatalogPrintedKeywords` hook (for off-battlefield flash gating) — sub-PR 2
-- [x] Combat damage flow rewrite — first-strike substep (CR 510.2) + regular substep (CR 510.3) — sub-PR 3
+- [x] Combat damage flow rewrite — first-strike substep + regular substep (CR 510.4) — sub-PR 3
 - [x] Damage assignment order prompt (`PendingChoiceDamageAssignment`, CR 510.1c) — sub-PR 3
 - [x] Deathtouch (`Card.MarkedLethalByDeathtouch` flag → SBA) — sub-PR 3
 - [x] Lifelink (life gain on any damage from source, not just combat) — sub-PR 3
@@ -1979,7 +1979,7 @@ land. The theme-deck smoke test is the one checklist item still open.
 
 **Phase:** 7 · **Goal:** equipment + auras work as attached state on creatures.
 
-- [x] ~~`Card.AttachedTo *uuid.UUID`~~ `Card.AttachedTo TargetRef` field + wire shape — a value `TargetRef`, not a pointer, because a pointer is the one shape `cloneCard` silently aliases and a card ID cannot name a Curse's player host ([ADR 0036](decisions/0036-attachments.md) decision 1). Shipped with `Card.AttachedAt` (CR 613.7d) and `CardView.attached_to` in [#374](https://github.com/krakenhavoc/cmd_and_ctrl/pull/374); there is deliberately no reverse `attachments[]` on the wire (decision 13)
+- [x] ~~`Card.AttachedTo *uuid.UUID`~~ `Card.AttachedTo TargetRef` field + wire shape — a value `TargetRef`, not a pointer, because a pointer is the one shape `cloneCard` silently aliases and a card ID cannot name a Curse's player host ([ADR 0036](decisions/0036-attachments.md) decision 1). Shipped with `Card.AttachedAt` (CR 613.7e) and `CardView.attached_to` in [#374](https://github.com/krakenhavoc/cmd_and_ctrl/pull/374); there is deliberately no reverse `attachments[]` on the wire (decision 13)
 - [x] `Attach`, `Detach`, `EquipPay`, `EnchantTarget` primitives — shipped under other names. `Game.AttachForEffect` / `UnattachForEffect` and the CR 704.5m/n state-based actions came in #374; equip is an ordinary sorcery-speed activated ability built by `effects.EquipAbility`, and Enchant is a cast-time target (`EnchantCreature` / `EnchantPermanent` / `EnchantPlayer`) stamped on resolution, both in [#379](https://github.com/krakenhavoc/cmd_and_ctrl/pull/379) with the client render and the sorcery-speed grey-out. Layer 2 control change (Mind Control, `ControlAttachedBySource`) is [#392](https://github.com/krakenhavoc/cmd_and_ctrl/pull/392), ADR 0036 decision 17; the Aura "attached to nothing" branch and the Curse badge are [#511](https://github.com/krakenhavoc/cmd_and_ctrl/pull/511), decision 18
 - [x] ~30 cards: Sword of Feast and Famine, Sword of Fire and Ice, Lightning Greaves, Swiftfoot Boots, Skullclamp (extended), Rancor, Curse-style auras, … — all named cards are registered (Curse of Opulence is the Curse), across eight in #379, Mind Control in #392, eight in #511 and 23 more in [#555](https://github.com/krakenhavoc/cmd_and_ctrl/pull/555). Enablers outside the attachment PRs: #353 (shroud / hexproof, so Greaves and Boots ship whole), #380 (S25's indestructible, for Darksteel Plate) and #562 (the restriction vocabulary Pacifism uses). The cards left out, by seam, are the cut tables in the [#76](https://github.com/krakenhavoc/cmd_and_ctrl/issues/76) issue body and the #555 PR body; some of their rows have since shipped (#562, #563)
 - [x] Theme-deck smoke test (equipment / voltron-adjacent deck plays 3 turns) — `TestAttachmentThemeDeckPlaysThreeTurns` in `server/internal/cards/effects/theme_deck_attachments_test.go`, filed as [#726](https://github.com/krakenhavoc/cmd_and_ctrl/issues/726) and written in the [#506](https://github.com/krakenhavoc/cmd_and_ctrl/pull/506) / [#678](https://github.com/krakenhavoc/cmd_and_ctrl/issues/678) shape: Boots, Greaves, Rancor, Darksteel Plate, Skullclamp and Mind Control on the theme seat, Pacifism and a Bonesplitter on the opponent's, three of the theme seat's turns with the opponent casting their own attachments in between
@@ -2079,7 +2079,7 @@ and convoke respectively.
 - [x] `declare_attacker` polymorphic target — attack player OR planeswalker OR battle (CR 506.4, 508.1d) — `server/internal/game/attack_target.go` (#415, which also closed #406: damage to a planeswalker removed no loyalty)
 - [x] Saga chapter triggers + lore counter advance as turn-based action (CR 714) — `ChapterTrigger` / `ChapterTriggerTargeting` (`server/internal/cards/effects/saga.go`); the CR 714.3 entry and precombat-main lore counters and the CR 704.5s sacrifice in `server/internal/game/sagas.go` (#378)
 - [x] `CrewCost{N}` cost component + `BecomeCreatureUntilEOT(P, T)` effect (CR 702.122) — `AbilityCost.Crew` plus `CrewCost` / `BecomeCreatureUntilEOT` / `CrewEffect` in `server/internal/cards/effects/vehicles.go` (#407)
-- [x] `BattleSpec{Defense, Subtype}` + `Card.ProtectorPlayerID` + ETB protector prompt + defeating triggers (CR 310) — `BattleSpec` / `DefeatedTrigger` / `SiegeDefeated` in `server/internal/cards/effects/battles.go`; `ProtectorPlayerID` and the `choose_protector` prompt in `server/internal/game/battle.go` (#415). Two pieces the line did not name were needed: `Card.StartingDefense`, stamped at deck import (without it every battle entered with zero defense and died to CR 704.5v — #274's battle twin), and a per-instance face on the exile-play grant so a Siege casts its back face (#574)
+- [x] `BattleSpec{Defense, Subtype}` + `Card.ProtectorPlayerID` + ETB protector prompt + defeating triggers (CR 310) — `BattleSpec` / `DefeatedTrigger` / `SiegeDefeated` in `server/internal/cards/effects/battles.go`; `ProtectorPlayerID` and the `choose_protector` prompt in `server/internal/game/battle.go` (#415). Two pieces the line did not name were needed: `Card.StartingDefense`, stamped at deck import (without it every battle entered with zero defense and died to CR 704.5v/w — #274's battle twin), and a per-instance face on the exile-play grant so a Siege casts its back face (#574)
 - [x] ~30 cards: 8 planeswalkers, 8 sagas, 6 vehicles, 4 battles, 4 counter-payoff bridges — **30 of 30 registered.** Planeswalkers 8/8 (#418, #572; Teferi, Hero of Dominaria replaces "Atraxa", which is not a planeswalker). Sagas 8/8 with four substituted (#378). Vehicles 6/6 (#407). Battles 4/4 (#415, #574, and Invasion of New Phyrexia in #626). Counter-payoff bridges 4/4 (#418; Hardened Scales and Doubling Season were already in). Heart of Kiran's alternative crew cost shipped with #625
 - [x] Theme-deck smoke test (Superfriends/sagas/vehicles deck plays through 4 turns) — `TestThemeDeckPlaysFourTurns` (`server/internal/cards/effects/theme_deck_smoke_test.go`, #506). Cards come off the real `deck.ToGameCard` import road, casts pay through Strict + AutoTap, and the turns are real turns
 
@@ -2110,7 +2110,7 @@ Everything else in the list is untouched and verified absent on `f26c961`: CR 70
 **Phase:** 7 · **Goal:** the cost engine that the auto-tapper hooks before pool validation.
 
 - [ ] `CostModifier interface { Modify(*Cost, *Card, *Game, uuid.UUID) *Cost }` registered per static ability
-- [ ] Modifier ordering per CR 601.2f: alternative cost → additional costs → increasers → reducers, floor at {1} (CR 117.13)
+- [ ] Modifier ordering per CR 601.2f: alternative cost → additional costs → increasers → reducers, floor at {1} (CR 117.13 — no such rule exists; the plan changed to a generic-only floor of zero under CR 601.2f, see [ADR 0048](decisions/0048-cost-modification.md))
 - [ ] Alternative-cost slots in cast dialog (Force of Will pitch, Fierce Guardianship "if you control a commander")
 - [ ] Additional-cost slots (Snuff Out's "pay 4 life", Cabal Therapy's "sacrifice")
 - [x] Cascade primitive (CR 702.85) — exile-until-CMC-less, may cast for free — `server/internal/game/cascade.go` plus the `effects.Cascade()` / `GrantsCascade()` constructors ([#426](https://github.com/krakenhavoc/cmd_and_ctrl/pull/426), which merged into a deleted base branch and reached `main` through the recovery PR [#433](https://github.com/krakenhavoc/cmd_and_ctrl/pull/433))

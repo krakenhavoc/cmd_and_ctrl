@@ -34,7 +34,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // # Interaction with the 21-damage clock
 //
 // +2/+2 on a commander is worth more than +2/+2 on anything else,
-// because CR 903.14a makes commander damage a second, much shorter
+// because CR 903.10a makes commander damage a second, much shorter
 // life total. This card is why the S25 commander-damage rekey
 // (per-commander rather than per-opponent keys) landed in the same
 // sprint: with two partners both pumped, the two clocks have to be

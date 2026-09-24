@@ -99,7 +99,7 @@ describe("an impulse cast of a granted FACE", () => {
 
   it("is never sent to the face picker — the grant leaves no choice", () => {
     // `transform`, not `modal_dfc`: the picker is for a card whose
-    // faces are independently playable (CR 712.12a), and this one's
+    // faces are independently playable (CR 712.11b), and this one's
     // back face is reachable only through the grant.
     expect(needsFacePicker(siege)).toBe(false);
   });

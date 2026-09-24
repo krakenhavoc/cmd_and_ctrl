@@ -213,7 +213,7 @@ func damageToPlayerBy(ev game.Event, controller uuid.UUID, g *game.Game) bool {
 // condition shared by Reckless Fireweaver, Ingenious Artillerist and
 // Quicksmith Genius.
 //
-// Batching gap (CR 603.1): the real cards read "whenever one or more
+// Batching gap: the real cards read "whenever one or more
 // artifacts you control enter", one trigger for a simultaneous
 // batch. The engine emits one EventETB per card, so a mass token
 // creation fires the trigger once per artifact instead of once with
@@ -478,6 +478,20 @@ func destroyFirstLegalCardTarget(g *game.Game, item *game.StackItem) error {
 	return nil
 }
 
+// exileFirstLegalCardTarget is destroyFirstLegalCardTarget's sibling
+// for "Exile target [permanent]." — the first card target still legal
+// at resolution (CR 608.2b) is exiled, and nothing happens when none
+// is. Teysa, Orzhov Scion's and Hanged Executioner's activations.
+func exileFirstLegalCardTarget(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, ref := range ctx.LegalTargets() {
+		if ref.Kind == game.TargetCard {
+			return ExileTarget{Target: ref.ID}.Apply(ctx)
+		}
+	}
+	return nil
+}
+
 // targetOpponentLosesAndYouGain is "target opponent loses n life and
 // you gain n life" for a trigger whose target clause is a player. A
 // target that is no longer legal is skipped, and the gain happens only
@@ -699,7 +713,7 @@ func damageToFirstTarget(amount int) func(item *game.StackItem, ctx *Context) er
 // Inquiry Dominus; Solphim, Mayhem Dominus): a no-op if something
 // killed the source before the ability resolves, otherwise a counter
 // on the source itself. Both cards pair it with b24KeywordCounterGrant
-// so the counter carries CR 122.1e's keyword.
+// so the counter carries CR 122.1b's keyword.
 // plusOneCountersOnThis is "Put N +1/+1 counters on this creature" —
 // the body most of the exhaust cards print (Prowcatcher Specialist,
 // Greenbelt Guardian, Afterburner Expert, Elvish Refueler, Boom

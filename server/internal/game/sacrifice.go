@@ -41,10 +41,24 @@ import "github.com/google/uuid"
 //
 // Caller must hold g.mu.
 func (g *Game) sacrificePermanentLocked(cardID uuid.UUID) error {
+	return g.sacrificeAnsweredLocked(cardID, commanderZoneUnasked)
+}
+
+// sacrificeAnsweredLocked is sacrificePermanentLocked for a sacrifice
+// paid as a COST, whose commander's owner answered CR 903.9 before the
+// payment began (#1397, cost_commander_choice.go). The answer rides the
+// route onto the battlefield exit's event, so a sacrificed commander no
+// longer pauses the payment half way through it — the pause that let
+// the same commander be spent twice while its prompt was open.
+//
+// Caller must hold g.mu.
+func (g *Game) sacrificeAnsweredLocked(cardID uuid.UUID, answer commanderZoneAnswer) error {
 	if g.controllerOfBattlefieldCardLocked(cardID) == uuid.Nil {
 		return ErrCardNotFound
 	}
-	return g.routeLegLocked(sacrificeRoute(uuid.Nil), cardID, nil, nil)
+	r := sacrificeRoute(uuid.Nil)
+	r.commanderAnswer = answer
+	return g.routeLegLocked(r, cardID, nil, nil)
 }
 
 // announceSacrificeLocked emits EventSacrifice for the permanent's

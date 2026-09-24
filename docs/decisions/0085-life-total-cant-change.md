@@ -179,7 +179,7 @@ posture `CastPermissionActiveForEffect` and `playerAbilityTokensLocked` both tak
 for exactly this reason.
 
 **"Until your next turn" ends as that player's next turn BEGINS** (CR 611.2b,
-CR 500.1 — a turn begins with its untap step, and CR 502.1 puts the untapping
+CR 500.1 — a turn begins with its untap step, and CR 502.3 puts the untapping
 inside that step, so the turn has begun before anything untaps). `Duration` already
 expresses that: `UntilYourNextTurn` is stamped `Player.TurnsBegun + 1` and
 `durationExpiredLocked` compares against the seat-turn counter, not `Turn.Number`.

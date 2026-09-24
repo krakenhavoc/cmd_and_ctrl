@@ -47,6 +47,10 @@
     // clickable all through combat and an opponent's turn and came
     // back rejected. The flag had been on the wire since S21.
     sorcerySpeedBlocked?: string;
+    // #1438: a left-click on a mana source taps it FOR mana now, so
+    // turning it sideways WITHOUT making mana lives here, labelled so
+    // nobody mistakes it for the mana row. Undefined hides it.
+    onRawTap?: () => void;
     onClose?: () => void;
   }
 
@@ -58,6 +62,7 @@
     onActivateAbility,
     summoningSick = false,
     sorcerySpeedBlocked = "",
+    onRawTap,
     onClose,
   }: Props = $props();
 
@@ -181,7 +186,7 @@
       {/if}
       {#if a.life_cost}
         <!-- S22: a "Pay N life" cost component (Mana Confluence).
-             Advisory — the server does the CR 118.8 check. The
+             Advisory — the server does the CR 119.4 check. The
              painlands' "deals 1 damage to you" is a RIDER, not a
              cost, so it shows up in the label instead of here. -->
         <span class="cost" aria-label={`pay ${a.life_cost} life`}>♥{a.life_cost}</span>
@@ -221,6 +226,24 @@
         {/if}
       </button>
     {/each}
+  {/if}
+  {#if onRawTap}
+    <div class="divider" role="separator"></div>
+    <button
+      type="button"
+      class="menu-item"
+      role="menuitem"
+      title="Turn it sideways without adding mana"
+      data-raw-tap
+      onclick={(ev) => {
+        ev.stopPropagation();
+        onRawTap?.();
+        onClose?.();
+      }}
+    >
+      <span class="label">Tap (no mana)</span>
+      <span class="cost" aria-hidden="true">↻</span>
+    </button>
   {/if}
 </div>
 

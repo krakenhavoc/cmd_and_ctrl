@@ -490,7 +490,7 @@ func TestB15GalaGreetersPromptsForItsModeAsItGoesOnTheStack(t *testing.T) {
 		t.Fatal("the chosen mode resolved: a tapped Treasure")
 	}
 	if counterCount(g, greeters, "+1/+1") != 0 || me.Life != life {
-		t.Error("only the chosen bullet happens (CR 700.2c)")
+		t.Error("only the chosen bullet happens (CR 608.2c)")
 	}
 
 	// A second creature, and the controller takes a different bullet.

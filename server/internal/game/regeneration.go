@@ -47,7 +47,7 @@ import "github.com/google/uuid"
 //	CR 704.5f   toughness 0 or less — the creature is PUT INTO a
 //	            graveyard, not destroyed.
 //	CR 704.5i   a planeswalker at 0 loyalty — likewise.
-//	CR 704.5v   a battle at 0 defense — sacrificed.
+//	CR 704.5v/w   a battle at 0 defense — sacrificed.
 //	CR 704.5j   the legend rule — put into a graveyard.
 //	CR 704.5m   an illegally attached Aura — put into a graveyard.
 //	            Exile, bounce, tuck and mill, obviously.

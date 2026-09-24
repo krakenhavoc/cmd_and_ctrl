@@ -1072,7 +1072,7 @@ func classifyActionError(err error) (code, message string) {
 		// does not offer. Either a stale client sending a face for a
 		// single-faced card, or an attempt at a transform card's
 		// back — which is reached by transforming the permanent, not
-		// by casting it (CR 712.4).
+		// by casting it (CR 712.11).
 		return protocol.CodeBadRequest,
 			"that isn't a face you can play on this card"
 	case errors.Is(err, game.ErrIllegalBlock):

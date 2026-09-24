@@ -29,7 +29,7 @@ import (
 // first shipped. The {R/P} half was answered by #917
 // (ActivateAbilityParams.PhyrexianLife, CR 602.2b, 2 life each per
 // pip); the DISCARD component landed with #660's AbilityCost.DiscardCards
-// (DiscardN). The counter it places is CR 122.1e: an indestructible
+// (DiscardN). The counter it places is CR 122.1b: an indestructible
 // counter grants indestructible for as long as it's there, carried by
 // b24KeywordCounterGrant exactly as Tekuthal, Inquiry Dominus's own
 // indestructible counter is. The counter and the static live on the

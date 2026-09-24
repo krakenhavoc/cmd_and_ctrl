@@ -262,6 +262,15 @@
         <Icon name="library" size={12} /> See which cards the engine plays
       </a>
     </p>
+
+    <!-- #1386: the login layout is one centred brand column, and a
+         full SiteHeader would fight it — a small link to the site
+         portal instead of the shared nav. -->
+    <p class="foot">
+      <a class="ghost-link" href="#/home">
+        <Icon name="link" size={12} /> Site map
+      </a>
+    </p>
   </div>
 </section>
 

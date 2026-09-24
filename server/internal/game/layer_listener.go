@@ -294,7 +294,7 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 	case EventAttach, EventUnattach:
 		// S24: attachment is an AppliesTo input for every
 		// "equipped creature" / "enchanted creature" static, and
-		// CR 613.7d gives the attachment a fresh timestamp when it
+		// CR 613.7e gives the attachment a fresh timestamp when it
 		// lands. Without this bump the cached resolution survives
 		// the equip and the sword grants nothing until some
 		// unrelated event invalidates.

@@ -24,7 +24,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the stack (SelfTargetedByASpell) — a spell's stack item shares its ID
 // with the source card, an ability's does not.
 //
-// The trigger fires at ANNOUNCE (CR 115.7), so it goes on the stack
+// The trigger fires at ANNOUNCE (CR 601.2c), so it goes on the stack
 // above the spell that targeted and resolves first. The Deckhand is
 // therefore already in its owner's graveyard when that spell tries to
 // resolve, and the spell is countered on resolution for having no

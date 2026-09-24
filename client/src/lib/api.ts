@@ -19,7 +19,7 @@ import type { MyDecksResponse } from "./myDecks";
 import type { InviteDMResponse, Tablemate } from "./tablemates";
 import type { AutoTapCastParams } from "./castPreview";
 import type { TableSettingsPatch, SpawnZone } from "./tableSettings";
-import type { TableSettingsView } from "./protocol";
+import type { TableSettingsView, TargetRefView } from "./protocol";
 
 // Re-export the violation shape so consumers of api.ts don't also
 // have to import from session.ts. ApiViolation is the canonical
@@ -838,6 +838,14 @@ export async function fetchAutoTapPreview(
     xValue?: number;
     excluded?: string[];
     abilityIndex?: number;
+    // #1405: the targets an activation has announced, when the caller
+    // has them. Read only with `abilityIndex`: a price that reads the
+    // target (Dragonfire Blade's "{1} less for each color of the
+    // creature it targets") is previewed at that target's price.
+    // Omitted, the server prices the no-target activation — which is
+    // what the X and Phyrexian pickers want, since they open before
+    // targeting.
+    targets?: TargetRefView[];
     phyrexianLife?: number;
     // #696: the announce-time half of the cast being previewed, as
     // castPreviewParams builds it. Every field changes the PRICE, so
@@ -877,6 +885,12 @@ export async function fetchAutoTapPreview(
   // Obedience's corner rather than on the {X} being announced.
   if (opts.abilityIndex !== undefined) {
     params.set("ability", String(opts.abilityIndex));
+    // #1405: `<kind>:<uuid>` per target. Only card and player refs
+    // name something a cost can read; self / none carry no ID.
+    const targets = (opts.targets ?? [])
+      .filter((t) => (t.kind === "card" || t.kind === "player") && t.id)
+      .map((t) => `${t.kind}:${t.id}`);
+    if (targets.length > 0) params.set("targets", targets.join(","));
   }
   // #916: the Phyrexian symbols the announcement will pay with 2 life
   // each. The server strikes them before planning, so the preview
