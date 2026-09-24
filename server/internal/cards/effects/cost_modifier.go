@@ -131,6 +131,20 @@ func ActivationCostsLess(n int, label string, when ...CostPredicate) game.CostMo
 	return m
 }
 
+// ChannelDiscountPerLegendaryCreature is the Kamigawa: Neon Dynasty
+// channel lands' "This ability costs {1} less to activate for each
+// legendary creature you control" (Boseiju, Otawara, Takenuma, …).
+// Declared on the channel ability's own CostModifiers (#1296), so it
+// prices from the HAND, where the ability functions — the board scan
+// a Spec.CostModifiers entry gets would never see a card in hand.
+//
+// "You" is the activator (q.Controller): a channel land is activated
+// by its owner (CR 108.4), who is the player whose legends count.
+func ChannelDiscountPerLegendaryCreature() game.CostModifier {
+	return CostsLessEach(PermanentsYouControl(And(Creature(), Legendary())),
+		"This ability costs {1} less to activate for each legendary creature you control.")
+}
+
 // AnExhaustAbilityCost — the ability being priced prints the exhaust
 // keyword (#1181). Reads the bit off the query rather than the
 // ability's label, for the same reason the trigger predicate does:

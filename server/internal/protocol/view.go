@@ -2379,6 +2379,22 @@ type ActivatedAbilityView struct {
 	// fields for an ability that targets.
 	TargetMode   string            `json:"target_mode,omitempty"`
 	LegalTargets *LegalTargetsView `json:"legal_targets,omitempty"`
+	// TargetChargedManaCosts is what the engine charges for the mana
+	// component if the ability targets each legal target — keyed by
+	// the target's ID (a card instance ID or a player ID), valued as
+	// ChargedManaCost is (ParsedCost.String(), "" for free). #1296.
+	//
+	// Present only when the PRICE reads the target — Dragonfire
+	// Blade's "Equip {4}. This ability costs {1} less to activate for
+	// each color of the creature it targets" — and the ability has one
+	// single-pick target clause and no modes, the shape every printed
+	// card of that family has. ChargedManaCost stays the price with no
+	// target chosen (the printed cost for such a reduction), so a
+	// client that ignores this field still shows an honest upper
+	// bound; one that reads it shows each candidate's price before the
+	// click that commits the activation. Each entry is priced by the
+	// same AbilityManaCostForTargetsForEffect the payment charges.
+	TargetChargedManaCosts map[string]string `json:"target_charged_mana_costs,omitempty"`
 	// Clauses is every clause of the ability's statement when it has
 	// more than one; Modes is its CR 700.2 mode clause when it is
 	// modal. Both absent for the ordinary ability. Added by #764.
@@ -6852,6 +6868,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			// protection from that permanent's colour or type.
 			v.LegalTargets = abilityLegalTargets(g, abilitySrc, a.Targets)
 			v.Clauses = viewOfClauses(g, abilitySrc, a.Targets)
+			v.TargetChargedManaCosts = targetChargedManaCosts(g, caster, c, zone, a, v.LegalTargets)
 		}
 		// #764: a modal activated ability announces its modes with
 		// its targets, so the menu needs the same picker a modal
@@ -6965,6 +6982,47 @@ func counterCostOptions(g *game.Game, caster, sourceID uuid.UUID, rc *game.Count
 // through sacrificeCostOptions instead. Caller must hold g.mu.
 func abilityLegalTargets(g *game.Game, src game.TargetSource, spec *game.TargetSpec) *LegalTargetsView {
 	return abilityClauseView(g.LegalTargetsForEffect(src, spec), spec)
+}
+
+// targetChargedManaCosts prices an activation of `a` once per legal
+// target, for ActivatedAbilityView.TargetChargedManaCosts (#1296). Nil
+// unless the price reads the target and the ability is the one shape
+// a per-target price describes exactly: a mana cost, one clause, one
+// pick, no modes. A target whose price cannot be computed is left out
+// rather than guessed, which the client reads as "no price for this
+// one" and falls back to charged_mana_cost.
+//
+// Caller must hold g's read lock.
+func targetChargedManaCosts(g *game.Game, caster uuid.UUID, c game.Card, zone game.ZoneKind, a game.ActivatedAbilityShape, legal *LegalTargetsView) map[string]string {
+	if legal == nil || a.Cost.Mana == "" || a.Modes != nil || a.Targets == nil ||
+		a.Targets.ClauseCount() != 1 || legal.Max != 1 || legal.CountFromX {
+		return nil
+	}
+	if !g.AbilityPriceReadsTargetsForEffect(a) {
+		return nil
+	}
+	out := map[string]string{}
+	price := func(kind game.TargetRefKind, raw string) {
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			return
+		}
+		charged, err := g.AbilityManaCostForTargetsForEffect(caster, c, zone, a, []game.TargetRef{{Kind: kind, ID: id}})
+		if err != nil {
+			return
+		}
+		out[raw] = charged.String()
+	}
+	for _, id := range legal.Cards {
+		price(game.TargetCard, id)
+	}
+	for _, id := range legal.Players {
+		price(game.TargetPlayer, id)
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 // castSourceOf is the TargetSource for a card a player is about to

@@ -134,7 +134,9 @@ export interface Settings {
     // Defaults seeded by defaultStepStops().
     stepStops: Record<string, boolean>;
     // S15: opt-in mana-cost enforcement. When true, the client
-    // tags every cast_spell action with `strict: true` and the
+    // tags every cast_spell action with `strict: true` (and, since
+    // #1296, every catalog activate_ability with `strict: true,
+    // auto_tap: true` — manaEnforcement.ts) and the
     // server gates the cast on the caster's ManaPool actually
     // covering the printed cost (plus commander tax for casts
     // from the command zone). Default false (sandbox / paper

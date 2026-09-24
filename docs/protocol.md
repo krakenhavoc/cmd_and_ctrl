@@ -161,7 +161,11 @@ empty string.
 
 Emitted only when a `cast_spell` arrives with `strict: true` and the
 caller's mana pool cannot cover the effective cost (printed cost +
-commander tax for command-zone casts). The `missing` list carries the
+commander tax for command-zone casts) — or, since #1296, when a
+catalog `activate_ability` arrives with `strict` / `auto_tap` and
+neither the pool nor the auto-tapper can pay; that frame says
+"insufficient mana to activate that ability" and carries no
+`card_id`, so the two cast buttons below are never offered for it. The `missing` list carries the
 remaining unpaid symbols; the client's error-toast override surfaces
 them and offers two buttons:
 
@@ -1559,6 +1563,43 @@ gap Boom Scholar shipped as two declared caveats while #1184 closed.
   modifier written for one family can never discount the other. A
   client reads `charged_cost` in the row exactly as it reads
   `charged_mana_cost`, `cost` as the tooltip only when they differ.
+
+- **`activated_abilities[i].target_charged_mana_costs`** (#1296,
+  `omitempty`, [ADR 0020](decisions/0020-activated-abilities.md)
+  amendment 2026-09-24) is `{ "<target id>": "<charged cost>" }` — what
+  the mana component costs if the ability targets each of its
+  `legal_targets` (a card instance ID or a player ID), valued as
+  `charged_mana_cost` is (`""` is free). It exists for an ability whose
+  PRICE reads its target: Dragonfire Blade's "Equip {4}. This ability
+  costs {1} less to activate for each color of the creature it
+  targets", Ghostfire Blade's "{2} less if it targets a colorless
+  creature". CR 602.2b runs 601.2c (targets) before 601.2f (the total
+  cost), so such an ability has no single price, and
+  `charged_mana_cost` on its row is the price with no target chosen —
+  the printed cost for a reduction, an honest upper bound for a client
+  that ignores the new field. Present only when the price reads the
+  target AND the ability is one target clause with one pick and no
+  modes (every printed card of the family); each entry is priced by the
+  same `Game.AbilityManaCostForTargetsForEffect` the payment charges. A
+  target whose price could not be computed is left out. The client
+  shows the range in the menu row's hint ("{2}–{4} depending on the
+  target") and each price with its targets in the targeting banner,
+  because an equip's one click is also its confirm.
+
+- **`activate_ability`'s `strict` / `auto_tap`** (#1296). The server
+  has always read both on the catalog path (`ability_index`) and, with
+  neither set, taken the sandbox posture: spend what the pool covers
+  and, if it does not cover the cost, waive the charge and mark it paid
+  on paper. The client stamped its `gameplay.strictMana` setting only
+  on `cast_spell`, so every activated ability a player clicked was
+  paper-paid whatever the setting said — an equip onto Vivi Ornitier
+  with an empty pool was free (the report). A client with strict mana
+  on now sends `strict: true, auto_tap: true` on every catalog
+  `activate_ability`: the engine taps lands for the shortfall, as it
+  does for every bot activation, special action and attack tax, and
+  refuses with `insufficient_mana` ("insufficient mana to activate
+  that ability", no `card_id` — the cast-only override toast stays
+  away) when the board cannot pay. Strict mana off is unchanged.
 
 - **The `{S}` (snow) round trip.** `ParsedCost.String()` is a full
   renderer — `{X}` × `XSlots`, then the generic component, then each

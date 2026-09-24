@@ -2108,6 +2108,11 @@ Activated: []ActivatedAbility{{
 ```
 
 Compose multi-part costs with `Plus(ManaCost("{2}"), TapCost())`.
+"This ability costs {1} less to activate …" is the ability's own
+`CostModifiers` slot (#1296), not `Spec.CostModifiers` — the slot
+prices that one ability wherever it functions (a channel land's hand
+included), and `CostsLessForTheCardItTargets(label, ColorsOf)` is the
+clause that reads the ability's target (Dragonfire Blade).
 The engine validates every component before paying any of them, and
 pays at announce — so a sacrifice cost's dies-triggers land on the
 stack above the ability and resolve first. Mana abilities do NOT go

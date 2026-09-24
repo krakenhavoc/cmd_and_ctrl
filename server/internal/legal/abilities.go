@@ -284,72 +284,24 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// nothing, and comes straight back, which is CR 732.2a's
 		// repeatable no-op. Neither is a move worth offering, so
 		// both are answered by the same floor.
-		xValue := 0
-		phyrexianLife := 0
-		// #1242: the priced mana component and the base exclusion set,
-		// kept for the per-payment affordability check in the
-		// expansion below.
-		var (
-			abilityMana     game.ParsedCost
-			abilityExcluded map[uuid.UUID]bool
-			// #1310: the permanents a waterbend cost taps.
-			waterbendIDs []uuid.UUID
-		)
+		//
+		// #1296: when the PRICE reads the targets — Dragonfire Blade's
+		// "{1} less for each color of the creature it targets" — one
+		// up-front price is not the price, and a nil-targets price is
+		// not even a usable gate: a target-reading reduction makes the
+		// real activation cheaper than it. So the up-front solve and
+		// its early return run only when nothing reads targets, and
+		// otherwise each announcement below is priced on its own —
+		// ADR 0048 addendum §14's rule for a cast, one path over.
+		var basePay abilityManaPayment
+		perTarget := false
 		if ab.Cost.Mana != "" {
-			// #1184: the PRICED cost, not the printed one — the same
-			// function ActivateCatalogAbility pays through, so a Boom
-			// Scholar's "{2} less to activate" is visible to the
-			// policy as an activation it can now afford rather than
-			// one it is never offered. #544's rule with the sign the
-			// other way round: an enumerator that priced at the
-			// printed cost would silently hide legal moves.
-			cost, err := g.AbilityManaCostForEffect(e.seat, *source, zone, ab)
-			if err != nil {
-				continue
-			}
-			// #352: an activated ability's mana is paid under an
-			// activation context keyed on the SOURCE permanent,
-			// mirroring payAbilityManaCostLocked. So is the
-			// exclusion: a {T} ability cannot tap its own source
-			// for mana, and an enumerator that thought it could
-			// would offer activations the engine refuses.
-			//
-			// #1242: through the engine's own list, which also
-			// excludes the source when the cost SACRIFICES it — a
-			// sacrifice-only mana source is plannable now, so the
-			// planner must not crack the permanent the ability is
-			// about to sacrifice anyway. The per-payment half (the
-			// permanents and cards the move names) is checked
-			// below, once those payments are chosen.
-			excluded := game.AbilityAutoTapExclusions(source.InstanceID, ab.Cost, nil, nil, nil, nil)
-			abilityMana, abilityExcluded = cost, excluded
-			floor := enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX())
-			// #917, CR 107.4f: the announcement has TWO numbers
-			// when the cost prints a Phyrexian symbol — the X and
-			// how many symbols are paid with 2 life each — and
-			// they are solved together, because striking a symbol
-			// changes what X the pool can afford.
-			if !ab.Cost.Waterbend.Empty() {
-				// #1310, CR 701.67a: a waterbend cost may be paid
-				// partly by tapping artifacts and creatures, so the
-				// affordability question is the pair (X, taps) rather
-				// than X alone — see waterbend.go. The move carries
-				// the taps, and every later affordability re-check
-				// reads the REDUCED cost with the taps excluded, the
-				// two things the engine will charge.
-				x, taps, ok := e.waterbendAbilityPayment(source, ab, cost, floor, excluded)
-				if !ok {
+			perTarget = g.AbilityPriceReadsTargetsForEffect(ab)
+			if !perTarget {
+				var ok bool
+				if basePay, ok = e.abilityManaPayment(source, zone, ab, nil); !ok {
 					continue
 				}
-				xValue, waterbendIDs = x, taps
-				abilityMana = game.WaterbendReduced(cost, x, len(taps))
-				abilityExcluded = game.WithAutoTapExclusions(excluded, taps)
-			} else {
-				x, life, ok := e.affordablePayment(cost, game.ManaSpendForAbility(*source), floor, ab.Cost.Life, excluded)
-				if !ok {
-					continue
-				}
-				xValue, phyrexianLife = x, life
 			}
 		} else if ab.Cost.DemandsX() {
 			// Unreachable — DemandsX reads the same string — but
@@ -502,13 +454,28 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		}
 		for _, ann := range announcements {
 			targets := ann.targets
+			pay := basePay
+			if perTarget {
+				// #1296: priced with THIS announcement's targets, the
+				// ones ActivateCatalogAbility will price with. An
+				// unaffordable set is skipped before any budget is
+				// spent on it, so a Dragonfire Blade the seat can pay
+				// for on its two-colour commander is not hidden
+				// behind the colourless creature it cannot.
+				var ok bool
+				if pay, ok = e.abilityManaPayment(source, zone, ab, targets); !ok {
+					continue
+				}
+			}
+			abilityMana, abilityExcluded := pay.mana, pay.excluded
+			phyrexianLife, waterbendIDs := pay.phyrexianLife, pay.waterbendIDs
 			for _, sacs := range sacrificeSets {
 				// #1213: "Sacrifice X Treasures" announces its count
 				// as X (CR 602.2b), so the move's x_value IS the
 				// payment it carries. Register refuses a cost that
 				// also puts {X} in its mana component, so there is
 				// never a second claimant on this number.
-				xValue := xValue
+				xValue := pay.xValue
 				if game.SacrificeCountFromX(ab.Cost.SacrificeOther) {
 					xValue = len(sacs)
 				}
@@ -604,6 +571,83 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 			}
 		}
 	}
+}
+
+// abilityManaPayment is the solved mana half of one activation: the
+// priced mana component, the auto-tap exclusions, and the announcement's
+// X, Phyrexian life and waterbend taps. The zero value is the answer
+// for an ability with no mana component.
+type abilityManaPayment struct {
+	// mana and excluded are kept for the per-payment affordability
+	// check in the expansion (#1242).
+	mana     game.ParsedCost
+	excluded map[uuid.UUID]bool
+	xValue   int
+	// phyrexianLife is how many Phyrexian symbols are paid with life.
+	phyrexianLife int
+	// waterbendIDs are the permanents a waterbend cost taps (#1310).
+	waterbendIDs []uuid.UUID
+}
+
+// abilityManaPayment solves the mana half of activating `ab` from
+// `source` with `targets` announced, or reports false when the seat
+// cannot pay it. Split out of abilityMovesForSource by #1296 so the
+// same solve runs once up front, or once per target set when the price
+// reads the targets (game.AbilityPriceReadsTargetsForEffect). Nil
+// targets is the up-front price.
+func (e *enumerator) abilityManaPayment(source *game.Card, zone game.ZoneKind, ab game.ActivatedAbilityShape, targets []game.TargetRef) (abilityManaPayment, bool) {
+	// #1184: the PRICED cost, not the printed one — the same function
+	// ActivateCatalogAbility pays through, so a Boom Scholar's "{2}
+	// less to activate" is visible to the policy as an activation it
+	// can now afford rather than one it is never offered. #544's rule
+	// with the sign the other way round: an enumerator that priced at
+	// the printed cost would silently hide legal moves. #1296: with the
+	// announcement's targets, for the same reason.
+	cost, err := e.g.AbilityManaCostForTargetsForEffect(e.seat, *source, zone, ab, targets)
+	if err != nil {
+		return abilityManaPayment{}, false
+	}
+	// #352: an activated ability's mana is paid under an activation
+	// context keyed on the SOURCE permanent, mirroring
+	// payAbilityManaCostLocked. So is the exclusion: a {T} ability
+	// cannot tap its own source for mana, and an enumerator that
+	// thought it could would offer activations the engine refuses.
+	//
+	// #1242: through the engine's own list, which also excludes the
+	// source when the cost SACRIFICES it — a sacrifice-only mana source
+	// is plannable now, so the planner must not crack the permanent the
+	// ability is about to sacrifice anyway. The per-payment half (the
+	// permanents and cards the move names) is checked by the caller,
+	// once those payments are chosen.
+	excluded := game.AbilityAutoTapExclusions(source.InstanceID, ab.Cost, nil, nil, nil, nil)
+	pay := abilityManaPayment{mana: cost, excluded: excluded}
+	floor := enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX())
+	// #917, CR 107.4f: the announcement has TWO numbers when the cost
+	// prints a Phyrexian symbol — the X and how many symbols are paid
+	// with 2 life each — and they are solved together, because
+	// striking a symbol changes what X the pool can afford.
+	if !ab.Cost.Waterbend.Empty() {
+		// #1310, CR 701.67a: a waterbend cost may be paid partly by
+		// tapping artifacts and creatures, so the affordability
+		// question is the pair (X, taps) rather than X alone — see
+		// waterbend.go. The move carries the taps, and every later
+		// affordability re-check reads the REDUCED cost with the taps
+		// excluded, the two things the engine will charge.
+		x, taps, ok := e.waterbendAbilityPayment(source, ab, cost, floor, excluded)
+		if !ok {
+			return abilityManaPayment{}, false
+		}
+		pay.xValue, pay.waterbendIDs = x, taps
+		pay.mana = game.WaterbendReduced(cost, x, len(taps))
+		pay.excluded = game.WithAutoTapExclusions(excluded, taps)
+		return pay, true
+	}
+	x, life, ok := e.affordablePayment(cost, game.ManaSpendForAbility(*source), floor, ab.Cost.Life, excluded)
+	if !ok {
+		return abilityManaPayment{}, false
+	}
+	pay.xValue, pay.phyrexianLife = x, life
+	return pay, true
 }
 
 // maxEnumeratedVariableCounts caps how many different COUNTS the
