@@ -264,8 +264,9 @@ type GameSnapshot struct {
 	turnSeqPresent bool
 
 	// unknownEffectFields lists JSON keys on a scopedEffects record, an
-	// affected member, a mod or a duration that this binary's types do
-	// not have (#1497 review, ADR 0041 P4). encoding/json would drop
+	// affected member, a mod or a duration — or on any delayed trigger's
+	// or stack item's params, down through its filter and object — that
+	// this binary's types do not have (#1497, #1568 reviews; ADR 0041 P4). encoding/json would drop
 	// them silently; checkEffectKeys refuses them instead. Decode
 	// metadata only; not game state and never written.
 	unknownEffectFields []string
@@ -416,6 +417,15 @@ type GameSnapshot struct {
 	// direction: the defender is asked again and ninjutsu waits. No
 	// schema bump.
 	BlocksDeclared map[uuid.UUID]bool `json:"blocksDeclared,omitempty"`
+
+	// AttacksDeclared is whether this combat's attack declaration has
+	// passed its CR 508.1d requirement checkpoint (#1571,
+	// Game.attacksDeclared). False outside the declare-attackers step's
+	// combat, and a file written before it restores as false — the
+	// declaration is judged again at the active player's next pass,
+	// which can only ask for an attack the requirements already asked
+	// for. No schema bump.
+	AttacksDeclared bool `json:"attacksDeclared,omitempty"`
 
 	// AttackDefenders is each attacker's defending player as its
 	// attack was last pointed (#1364, Game.attackDefenders) — what
@@ -964,6 +974,7 @@ type stackItemSnapshot struct {
 	AltCostExiles bool         `json:"altCostExiles,omitempty"`
 	SplitSecond   bool         `json:"splitSecond"`
 	IsCopy        bool         `json:"isCopy,omitempty"`
+	Uncopyable    bool         `json:"uncopyable,omitempty"` // #1574
 	Seq           uint64       `json:"seq"`
 	Ordered       bool         `json:"ordered"`
 	Commutes      bool         `json:"commutes,omitempty"` // #1511
@@ -1362,6 +1373,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	s.AnnouncedAttacks = copyBoolMap(g.announcedAttacks)
 	s.AttackDefenders = copyUUIDPairMap(g.attackDefenders)
 	s.BlocksDeclared = copyBoolMap(g.blocksDeclared)
+	s.AttacksDeclared = g.attacksDeclared
 	s.FirstStrikeStepParticipants = copyBoolMap(g.firstStrikeStepParticipants)
 	cen := &s.Continuations
 
@@ -1768,6 +1780,7 @@ func snapshotStackItem(g *Game, s *StackItem, cen *ContinuationCensus) stackItem
 		AltCostExiles: s.AltCostExiles,
 		SplitSecond:   s.SplitSecond,
 		IsCopy:        s.IsCopy,
+		Uncopyable:    s.Uncopyable,
 		Seq:           s.Seq,
 		Ordered:       s.Ordered,
 		Commutes:      s.Commutes,
@@ -1834,10 +1847,10 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 		At:                 d.At,
 		ControllerTurnOnly: d.ControllerTurnOnly,
 		CreatedSeq:         d.CreatedSeq,
-		HasEffect:          d.Body != "",
-		Body:               d.Body,
+		HasEffect:          d.Body.key != "",
+		Body:               d.Body.key,
 		Params:             effectParamsOrNil(d.Params),
-		Condition:          d.Condition,
+		Condition:          d.Condition.key,
 		CondParams:         effectParamsOrNil(d.CondParams),
 		OptionalQuestion:   d.OptionalQuestion,
 	}
@@ -1856,7 +1869,7 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 	// with no Body, and no other path builds one. The only way to meet
 	// one here is a hand-built test fixture, and it is still counted,
 	// because a trigger with nothing to do cannot be restored exactly.
-	if d.Body == "" {
+	if d.Body.key == "" {
 		cen.DelayedTriggerEffects++
 		cen.note("delayed trigger without a body: %s", labelOr(d.Label, d.ID.String()))
 	}
@@ -2101,6 +2114,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.announcedAttacks = copyBoolMap(s.AnnouncedAttacks)
 	g.attackDefenders = copyUUIDPairMap(s.AttackDefenders)
 	g.blocksDeclared = copyBoolMap(s.BlocksDeclared)
+	g.attacksDeclared = s.AttacksDeclared
 	g.firstStrikeStepParticipants = copyBoolMap(s.FirstStrikeStepParticipants)
 
 	g.Battlefield = restoreZone(s.Battlefield, ZoneBattlefield)
@@ -2487,6 +2501,7 @@ func restoreStackItem(s *stackItemSnapshot) *StackItem {
 		AltCostExiles: s.AltCostExiles,
 		SplitSecond:   s.SplitSecond,
 		IsCopy:        s.IsCopy,
+		Uncopyable:    s.Uncopyable,
 		Seq:           s.Seq,
 		Ordered:       s.Ordered,
 		Commutes:      s.Commutes,
@@ -2527,11 +2542,13 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 		At:                 d.At,
 		ControllerTurnOnly: d.ControllerTurnOnly,
 		CreatedSeq:         d.CreatedSeq,
-		Body:               d.Body,
-		Params:             effectParamsValue(d.Params),
-		Condition:          d.Condition,
-		CondParams:         effectParamsValue(d.CondParams),
-		OptionalQuestion:   d.OptionalQuestion,
+		// checkEffectKeys has already refused a key this binary has
+		// no body or condition for, so these refs are registered ones.
+		Body:             BodyRef{key: d.Body},
+		Params:           effectParamsValue(d.Params),
+		Condition:        ConditionRef{key: d.Condition},
+		CondParams:       effectParamsValue(d.CondParams),
+		OptionalQuestion: d.OptionalQuestion,
 	}
 	if d.Duration != nil {
 		dur := *d.Duration

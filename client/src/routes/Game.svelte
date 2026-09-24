@@ -53,6 +53,7 @@
     blockDeclarationPending,
     loopNoticeText,
     owesBlockDecision,
+    owesAttackRequirement,
   } from "../lib/priority";
   import { hasPlay, hasResponse, keyWindow, type ResponseCategories } from "../lib/responseWindow";
   import {
@@ -355,6 +356,9 @@
       // explicit pass is how you decline — but a human has to be the
       // one who does it, and a skipped block cannot be undone.
       owesBlockDecision: owesBlockDecision(view, viewerID),
+      // #1571: nor a declare-attackers window with a creature the
+      // server marks must_attack — the pass would be refused.
+      owesAttackRequirement: owesAttackRequirement(view, viewerID),
       // #628 (CR 726): the server has spotted a trigger loop and
       // suspended AUTOMATIC passing for the whole table. The "next"
       // button still passes by hand.

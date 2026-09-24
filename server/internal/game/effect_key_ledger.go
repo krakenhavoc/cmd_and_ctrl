@@ -43,7 +43,7 @@ func CheckEffectKeyLedger(path string, update, complete bool) (missing, stale []
 	}
 	sort.Strings(missing)
 	if update && len(missing) > 0 {
-		if err := appendEffectKeyLedger(path, len(ledger) == 0, missing); err != nil {
+		if err := appendEffectKeyLedger(path, missing); err != nil {
 			return nil, nil, err
 		}
 		for _, line := range missing {
@@ -58,8 +58,7 @@ func CheckEffectKeyLedger(path string, update, complete bool) (missing, stale []
 		if registered[line] {
 			continue
 		}
-		fields := strings.Fields(line)
-		if len(fields) >= 2 && (KnownEffectBody(fields[1]) || KnownEffectCondition(fields[1])) {
+		if ledgerLineResolves(line) {
 			continue // still resolves, through an alias
 		}
 		stale = append(stale, line)
@@ -89,7 +88,36 @@ func readEffectKeyLedger(path string) (map[string]bool, error) {
 	return out, sc.Err()
 }
 
-func appendEffectKeyLedger(path string, fresh bool, lines []string) error {
+// ledgerLineResolves reports whether a ledger line still resolves, by
+// its OWN kind: a "body X" line is not kept alive by a condition named
+// X (#1568 review).
+func ledgerLineResolves(line string) bool {
+	fields := strings.Fields(line)
+	if len(fields) < 2 {
+		return false
+	}
+	switch fields[0] {
+	case "body":
+		return KnownEffectBody(fields[1])
+	case "condition":
+		return KnownEffectCondition(fields[1])
+	case "alias":
+		effectRegistryMu.RLock()
+		defer effectRegistryMu.RUnlock()
+		to, ok := effectAliases[fields[1]]
+		return ok && (len(fields) < 3 || to == fields[2])
+	}
+	return false
+}
+
+// appendEffectKeyLedger appends lines, writing the header first only
+// when the file does not exist or is empty — never again into a file
+// that already holds it, even one holding nothing but the header.
+func appendEffectKeyLedger(path string, lines []string) error {
+	fresh := true
+	if st, err := os.Stat(path); err == nil && st.Size() > 0 {
+		fresh = false
+	}
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		return err

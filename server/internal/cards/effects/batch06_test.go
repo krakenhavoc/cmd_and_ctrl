@@ -805,6 +805,39 @@ func TestB06WhipOfErebosExilesInsteadOfLettingItDie(t *testing.T) {
 	}
 }
 
+// TestB06WhipOfErebosExilesInsteadOfBouncing pins the fix for the
+// caveat #539's exit-primitive rework closed: BounceToHandForEffect
+// now routes through routeCardToZoneLocked / executeZoneRouteLocked,
+// the same CR 614 replacement window every other exit takes, so a
+// whipped creature bounced to hand in response to the end-step exile
+// is redirected to exile exactly like a sacrifice or a destroy.
+func TestB06WhipOfErebosExilesInsteadOfBouncing(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMainOf(t, g, g.Turn.ActiveSeat)
+	whip := pushCatalogPermanent(g, me.ID, "Whip of Erebos", "Legendary Enchantment Artifact", b06WhipOfErebosOracle, false)
+	dead := seedGraveyardCreature(me, "Giant", "{4}{B}")
+	b06AddMana(me, "B", "B", "C", "C")
+	if err := g.ActivateCatalogAbility(me.ID, whip, 0, game.ActivateAbilityParams{
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: dead}},
+	}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+
+	// Bounced in response to something: it goes to exile, not to hand
+	// where it could be replayed for a second whip.
+	if err := g.BounceToHandForEffect(dead); err != nil {
+		t.Fatalf("BounceToHandForEffect: %v", err)
+	}
+	if me.Hand.Contains(dead) {
+		t.Error("the whipped creature must not return to hand")
+	}
+	if !exileHas(g, dead) {
+		t.Error("it is exiled instead")
+	}
+}
+
 func TestB06WhipOfErebosIsSorcerySpeed(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]

@@ -733,17 +733,17 @@ var items = []Item{
 	{
 		Slug: "abilities-granted-to-other-permanents", Name: "Abilities granted to other permanents", Kind: KindSeam, Status: StatusPartial,
 		Summary:  "Effects that give other permanents a new activated, triggered or mana ability, such as Cryptolith Rite letting your creatures tap for mana.",
-		Missing:  "Permanents can give other permanents mana and activated abilities, but not triggered abilities, and a spell can't grant an ability for a while yet.",
+		Missing:  "Permanents can give other permanents mana, activated and triggered abilities, but a spell or ability can't yet grant one for a while, such as until end of turn.",
 		Issue:    754,
 		Tracked:  "#754 (related: #665, #669)",
 		ADR:      "0093-abilities-granted-to-other-permanents.md",
 		Mechanic: "an ability granted to another permanent",
-		Examples: []string{"Cryptolith Rite", "Chromatic Lantern", "Necrotic Sliver"},
+		Examples: []string{"Cryptolith Rite", "Chromatic Lantern", "Thornbite Staff"},
 		Waiting: []string{
 			"Urza's Saga", "Ultima, Origin of Oblivion", "Teferi's Talent",
 		},
 		Phrases:     []string{"gains the ability", "have the ability"},
-		EngineNotes: "**static and attached grants of mana and activated abilities ship (ADR 0093 PRs 1-2).** A layer-6 static declares `StaticAbility.GrantAbilities` (card side: `effects.GrantAbilities`, `TribalAbilityGrant`, `GrantAbilitiesToAttached`) naming an `effects.AbilityGrant` bundle; the recipient carries `Characteristic.GrantedAbilities`, `CatalogAbilityKey` composes own + layered grants, the ability readers return own + intrinsic + granted with a stable `ref` per row, and the auto-tapper offers every acceptable ability of a permanent as mutually exclusive candidates with a creature's granted mana in the last-resort tier. Shipped on Cryptolith Rite, Chromatic Lantern, Gemhide and Manaweft Sliver, Necrotic Sliver, Rishkar, Jaheira, Insidious Roots, Great Divide Guide, The World Tree, Paradise Mantle, Squirrel Nest and Springleaf Parade. Still missing: granted-trigger cards and the Dionus / Agent of the Iron Throne migration (PR 3, the LKI harvest is already wired), duration grants from a resolving spell (PR 4 — Urza's Saga, Ultima; waits on #1545's ScopedEffect decision), and the client's left-click picker (the rows reach the existing ability menus already).",
+		EngineNotes: "**static and attached grants of mana, activated and triggered abilities ship (ADR 0093 PRs 1-3), with the client's picker (#1567).** A layer-6 static declares `StaticAbility.GrantAbilities` (card side: `effects.GrantAbilities`, `TribalAbilityGrant`, `GrantAbilitiesToAttached`) naming an `effects.AbilityGrant` bundle; the recipient carries `Characteristic.GrantedAbilities`, `CatalogAbilityKey` composes own + layered grants, the ability readers return own + intrinsic + granted with a stable `ref` per row, and the auto-tapper offers every acceptable ability of a permanent as mutually exclusive candidates with a creature's granted mana in the last-resort tier. Granted triggers are harvested from the host, whose controller controls them; a granted dies trigger fires from last-known information (`AbilityKeyFromLKI`) in a single death and in a wipe; and the ETB harvest catches the layers up first, so a creature entering under a grant has it (CR 603.6a). Shipped on Cryptolith Rite, Chromatic Lantern, Gemhide, Manaweft and Necrotic Sliver, Rishkar, Jaheira, Insidious Roots, Great Divide Guide, The World Tree, Paradise Mantle, Squirrel Nest, Springleaf Parade and Thornbite Staff; Dionus and Agent of the Iron Throne moved off their source-side approximations. Still missing: duration grants from a resolving spell or ability (ADR 0093 PR 4 — Urza's Saga, Ultima, Feign Death — to land as a `grantAbilities` mod on ADR 0041 phase 3's ScopedEffect, #1545), and granted loyalty abilities (Teferi's Talent, ADR 0093 Decision 10).",
 	},
 	{
 		Slug: "riot", Name: "Riot", Kind: KindSeam, Status: StatusMissing,

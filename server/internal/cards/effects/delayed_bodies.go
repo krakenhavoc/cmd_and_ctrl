@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -64,6 +65,10 @@ var (
 	pheliaReturnBody        = game.SimpleDelayedBody("phelia/return", pheliaReturn)
 	teferiUntapLandsBody    = game.SimpleDelayedBody("teferi-hero/untap-two-lands", teferiHeroUntapTwoLands)
 
+	// Zara, Renegade Recruiter: return the creature <Object> to its
+	// owner's hand at the next end step, if it is still that object.
+	zaraReturnToHandBody = game.DelayedBody("zara/return-to-hand", zaraReturnToHand)
+
 	// Copy the spell the event-conditioned trigger fired on (Doublecast,
 	// Galvanic Iteration).
 	copyTheSpellBody = game.SimpleDelayedBody("copy/the-spell-you-just-cast", copyTheSpellYouJustCast)
@@ -83,6 +88,11 @@ var (
 			if p.Amount <= 0 {
 				return nil
 			}
+			// The amount is read off disk after a restore; a mana value
+			// no card has is a corrupt file, not a refund (#1568 review).
+			if p.Amount > maxManaDrainRefund {
+				return fmt.Errorf("mana-drain/refund: implausible amount %d", p.Amount)
+			}
 			return AddMana{Produced: strings.Repeat("{C}", p.Amount)}.Apply(NewContext(g, item))
 		})
 
@@ -91,3 +101,7 @@ var (
 	// passes CondParams.Filter.
 	youNextCastCondition = game.DelayedCondition("cast/you-next-cast", youNextCast)
 )
+
+// maxManaDrainRefund bounds the refund a restored Mana Drain may add. No
+// printed card has a mana value anywhere near it.
+const maxManaDrainRefund = 1000

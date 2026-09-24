@@ -28,12 +28,14 @@ import (
 // mattered — combat damage and the block-decision scan — are routed
 // through defendingPlayerForAttackLocked here.
 //
-// WHAT IS NOT MODELLED. "Attacks each combat if able" redirection and
-// the requirement that a battle be attacked by someone other than its
-// protector's controller are enforcement questions the sandbox has
-// never taken on for attacks; the one restriction that IS enforced is
-// the protector's own, because a player attacking a battle they
-// protect is nonsense rather than a judgement call (CR 310.9b).
+// WHAT IS NOT MODELLED. The requirement that a battle be attacked by
+// someone other than its protector's controller is an enforcement
+// question the sandbox has never taken on for attacks; the one
+// restriction that IS enforced is the protector's own, because a
+// player attacking a battle they protect is nonsense rather than a
+// judgement call (CR 310.9b). "Attacks each combat if able" and goad
+// are enforced since #1571 — as CR 508.1d requirements over the whole
+// declaration, not as target legality (attack_requirements.go).
 //
 // Propaganda-style attack TAXES used to be on that list and are not
 // any more: they ship in attack_tax.go, charged by the declaration
@@ -351,11 +353,13 @@ func (g *Game) defendingPlayerForAttackerLocked(attacker *Card) uuid.UUID {
 //	           attackable by you either, for the same reason the
 //	           fallback above makes you its defender)
 //
-// Everything else about attack LEGALITY — goad, "attacks if able" —
-// remains the sandbox's to arbitrate, exactly as it was for player
-// attacks. The propaganda tax is no longer among them: it is a COST,
-// not a legality, and the declaration verbs charge it through
-// attack_tax.go (ADR 0080).
+// Goad and "attacks if able" are not here: they are CR 508.1d
+// REQUIREMENTS, judged over the whole declaration by the verbs through
+// attack_requirements.go (#1571), because goad's "a player other than
+// the goader" is a preference that yields when nobody else can be
+// attacked, not a prohibition. The propaganda tax is not here either:
+// it is a COST, not a legality, and the declaration verbs charge it
+// through attack_tax.go (ADR 0080).
 //
 // Caller must hold g.mu.
 func (g *Game) canAttackTargetLocked(attackerController, target uuid.UUID) error {

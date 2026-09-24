@@ -2442,10 +2442,11 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	// S21 sub-PR 6: "you may spend mana as though it were mana of any
 	// color to cast those spells" (Breeches, Brazen Plunderer). Folds
 	// the colored slots into the generic demand, which is exactly
-	// equivalent for the solver.
-	if grant != nil && grant.AnyColor {
-		cost = asAnyColorCost(cost)
-	}
+	// equivalent for the solver. #1573: "mana of any TYPE" (Hostage
+	// Taker) folds the {C} slots too — colorless is a type, not a
+	// color (CR 106.1b). Here, in the one pricer, so the payment, the
+	// auto-tapper, the preview and the view all read the same fold.
+	cost = spendAsThoughAny(grant, cost)
 	return cost, chosen, nil
 }
 
@@ -6961,6 +6962,20 @@ func (g *Game) passPriorityLocked() error {
 	if g.Turn.PriorityHolder == NoPriority {
 		return ErrNoPriority
 	}
+	// #1571 / CR 508.1d: the ACTIVE player's pass in declare_attackers
+	// is where they say their attack declaration is done, so it is the
+	// declaration's requirement checkpoint — refused, with the unmet
+	// requirement named, while a free addition would still obey one
+	// more ("Zurgo Helmsmasher attacks each combat if able"). Only
+	// once per combat: after it is accepted the declaration is judged,
+	// and priority coming back round in the step asks nothing again.
+	// A table with no requirement on the board never gets past the
+	// fast path. See attack_requirements.go.
+	if g.Turn.Step == StepDeclareAttackers && g.Turn.PriorityHolder == g.Turn.ActiveSeat {
+		if err := g.attackCheckpointLocked(); err != nil {
+			return err
+		}
+	}
 	// #1279 / CR 509.1: a defending player who passes in the
 	// declare-blockers step has finished declaring blockers — the pass
 	// is how a table that blocks by hand has always said "done". When
@@ -7105,7 +7120,10 @@ func (g *Game) stackHasItemsLocked() bool {
 // without haste (CR 302.6, 702.10), ErrDefender for a defender
 // creature (CR 702.3), and an *AttackLimitError (wrapping
 // ErrAttackLimit) when one more attacker would break a CR 508.1c
-// count limit such as Silent Arbiter's (#1507). Re-declaring the same attacker against a
+// count limit such as Silent Arbiter's (#1507), and an
+// *AttackRequirementError (wrapping ErrAttackRequirement) when the
+// declaration would make a CR 508.1d requirement unobeyable (#1571).
+// Re-declaring the same attacker against a
 // different target overwrites the previous target.
 //
 // Caller authorization (was-it-the-controller) is intentionally
@@ -7207,6 +7225,17 @@ func (g *Game) DeclareAttackerWith(attackerID, targetPlayerID uuid.UUID, params 
 			// for the sandbox's hand-forcing, for the reason
 			// "can't attack" above is not — see attack_limits.go.
 			if err := g.attackLimitRefusalLocked(decl); err != nil {
+				return err
+			}
+			// CR 508.1d, #1571: a declaration that makes a requirement
+			// that could still be obeyed unobeyable — a goaded creature
+			// at its goader while another opponent is open, a creature
+			// with no requirement into the only slot a creature that
+			// must attack needs. Not relaxed for hand-forcing either:
+			// a requirement ignored is the card played as a blank,
+			// Zurgo's drawback and goad's whole point. Before the tax,
+			// for the limit's reason. See attack_requirements.go.
+			if err := g.attackRequirementRefusalLocked(decl); err != nil {
 				return err
 			}
 			price := g.priceAttackDeclarationLocked(decl)
@@ -7385,6 +7414,13 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 	// ADR 0080 has it for a tax the seat can only partly afford.
 	// Judged before the tax so a refused declaration is not priced.
 	if err := g.attackLimitRefusalLocked(eligible); err != nil {
+		return nil, err
+	}
+	// CR 508.1d, #1571: ALL OR NOTHING like the limit — a swing that
+	// leaves a requirement unobeyable (every creature at the goader
+	// while another opponent is open) is refused whole, and which
+	// creatures to point elsewhere is the player's choice.
+	if err := g.attackRequirementRefusalLocked(eligible); err != nil {
 		return nil, err
 	}
 	// CR 508.1a, before anything is staged and before the CR 508.1f
@@ -8505,8 +8541,9 @@ func (g *Game) SetInitiative(playerID uuid.UUID) error {
 // Pass uuid.Nil for `by` to clear the goad. The card must be on the
 // battlefield; goading a card in any other zone is meaningless.
 //
-// Sandbox-only: the must-attack-and-not-the-goader constraint is not
-// enforced — the marker is the affordance for players to remember.
+// Since #1571 the marker is enforced: the goaded creature's two
+// CR 701.15b requirements are judged with every other CR 508.1d
+// requirement (attack_requirements.go).
 func (g *Game) SetGoaded(cardID, by uuid.UUID) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()

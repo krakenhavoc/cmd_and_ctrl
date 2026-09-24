@@ -11,21 +11,20 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // and the first pay-unless card. EventCast carries the caster in
 // Actor; AppliesTo gates on Actor != Controller. The trigger goes
 // on the stack; on resolution it asks the caster "pay {1}?" via
-// PayUnless. Declining (or answering yes without the mana) draws
-// the Study's controller a card.
-//
-// Sandbox simplification: the controller's "you may draw" is
-// treated as "draw" — a Rhystic player who doesn't want the card
-// is rare enough that the extra prompt isn't worth the click. If
-// that ever matters (empty library), DrawCards no-ops on an empty
-// library and the player loses at the next SBA per CR 704.5b —
-// exactly what "drawing from an empty library" does in paper.
+// PayUnless. Declining (or answering yes without the mana) asks the
+// Study's controller a second, independent question — "draw a
+// card?" — via MayChoice (#796), which is exactly the "you may [do
+// X] mid-resolution" primitive this needed: the decision comes
+// after the caster's answer, addressed to a different seat, neither
+// a search nor a cost the engine already prompts for. A controller
+// with an empty library can decline and stay alive; declining a
+// "you may draw" that would kill you is a real line in paper and
+// now a real choice here.
 func init() {
 	Register(Spec{
 		OracleID:     "53236dd7-845a-444c-96d5-f41ed7325d8f",
 		Name:         "Rhystic Study",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The draw is mandatory when the opponent declines to pay — you can't choose to skip it, which matters on an empty library."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventCast},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
@@ -40,7 +39,12 @@ func init() {
 							Cost:     "{1}",
 							Question: "Rhystic Study — pay {1}?",
 							OnDecline: func(ctx *Context) error {
-								return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
+								return MayChoice{
+									Question: "Rhystic Study — draw a card?",
+									OnYes: func(ctx *Context) error {
+										return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
+									},
+								}.Apply(ctx)
 							},
 						}.Apply(NewContext(g, item))
 					})

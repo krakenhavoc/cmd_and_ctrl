@@ -205,6 +205,25 @@ type Characteristic struct {
 	// cannot strip a Pacifism, which is the rules-correct outcome.
 	// restrictions.go has the taxonomy.
 	Restrictions Restriction
+
+	// AttackRequirements are the CR 508.1d requirements on this
+	// object — "attacks each combat if able" (Zurgo Helmsmasher's own,
+	// Grand Melee's on every creature, Bident of Thassa's floating one)
+	// and "attacks a player other than P if able" (Kardur). #1571,
+	// attack_requirements.go.
+	//
+	// Restrictions' twin, for Restrictions' reasons: not a
+	// characteristic in the CR 109.3 sense, written by ordinary static
+	// Apply funcs because the layer pass is what knows which
+	// permanents an effect reaches, only ever appended to, and never
+	// cleared by a layer-6 ability removal — a creature that loses all
+	// abilities under Grand Melee still has to attack, because the
+	// requirement is Grand Melee's. (A creature's OWN "attacks each
+	// combat if able" does go with its abilities: the catalog static
+	// that writes it is not applied once CatalogAbilityKey answers
+	// empty, CR 613.1f.) One entry per requirement, because CR 508.1d
+	// COUNTS them. Goad's pair is not here: it rides Card.GoadedBy.
+	AttackRequirements []AttackRequirement
 }
 
 // printedCharacteristic builds a Characteristic from the card's
@@ -322,6 +341,7 @@ func (c Characteristic) clone() Characteristic {
 	out.Colors = append([]string(nil), c.Colors...)
 	out.Abilities = append([]string(nil), c.Abilities...)
 	out.GrantedAbilities = append([]GrantedAbility(nil), c.GrantedAbilities...)
+	out.AttackRequirements = append([]AttackRequirement(nil), c.AttackRequirements...)
 	return out
 }
 

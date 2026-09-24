@@ -5,6 +5,7 @@ import {
   blockDeclarationPending,
   hasDeclaredAttackers,
   loopNoticeText,
+  owesAttackRequirement,
   owesBlockDecision,
   _resetCacheForTests,
 } from "./priority";
@@ -388,6 +389,44 @@ describe("hasDeclaredAttackers", () => {
   it("is false for a null snapshot or viewer", () => {
     expect(hasDeclaredAttackers(null, "p0")).toBe(false);
     expect(hasDeclaredAttackers(snap({ step: "declare_attackers" }), null)).toBe(false);
+  });
+});
+
+// #1571 (CR 508.1d): the attack a requirement owes holds autopass,
+// read off the server's must_attack stamp and nothing else.
+describe("owesAttackRequirement", () => {
+  it("is true for the active viewer with a must_attack creature in declare_attackers", () => {
+    const s = snap({
+      step: "declare_attackers",
+      activeSeat: 0,
+      priorityHolder: 0,
+      battlefield: [card("zurgo", "Creature — Orc", { controller: "p0", must_attack: true })],
+    });
+    expect(owesAttackRequirement(s, "p0")).toBe(true);
+  });
+
+  it("is false for another seat, another step, or no stamp", () => {
+    const owed = card("zurgo", "Creature — Orc", { controller: "p0", must_attack: true });
+    expect(
+      owesAttackRequirement(
+        snap({ step: "declare_attackers", activeSeat: 0, battlefield: [owed] }),
+        "p1",
+      ),
+    ).toBe(false);
+    expect(
+      owesAttackRequirement(
+        snap({ step: "declare_blockers", activeSeat: 0, battlefield: [owed] }),
+        "p0",
+      ),
+    ).toBe(false);
+    const plain = card("bear", "Creature — Bear", { controller: "p0" });
+    expect(
+      owesAttackRequirement(
+        snap({ step: "declare_attackers", activeSeat: 0, battlefield: [plain] }),
+        "p0",
+      ),
+    ).toBe(false);
+    expect(owesAttackRequirement(null, "p0")).toBe(false);
   });
 });
 

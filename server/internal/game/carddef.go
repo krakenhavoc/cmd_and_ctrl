@@ -38,6 +38,14 @@ type CardDef struct {
 	// AsEnters runs the card's CR 614.12 "as enters" hook; nil for
 	// nearly every card.
 	AsEnters func(g *Game, cardID uuid.UUID) error
+	// AsTransformsInto runs the face's "As this permanent transforms
+	// into <this face>, …" clause (Sephiroth, One-Winged Angel's Super
+	// Nova), registered on the face being turned TO. The transform
+	// counterpart of AsEnters: off the stack, run by the in-place verb
+	// (TransformPermanentForEffect) whatever effect asked for the
+	// transform. Nil for nearly every face. #1574, ADR 0079 amendment
+	// 2026-09-24.
+	AsTransformsInto func(g *Game, cardID uuid.UUID) error
 
 	StartingLoyalty int
 	BattleDefense   int

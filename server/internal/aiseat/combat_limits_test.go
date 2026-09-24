@@ -96,6 +96,13 @@ type combatTally struct {
 // dispatch, or a combat that does not end.
 func driveOneCombat(t *testing.T, g *game.Game, pol aiseat.Policy) combatTally {
 	t.Helper()
+	return driveOneCombatWatching(t, g, pol, nil)
+}
+
+// driveOneCombatWatching is driveOneCombat with a hook run before every
+// move (#1571 watches a goaded creature's target through it).
+func driveOneCombatWatching(t *testing.T, g *game.Game, pol aiseat.Policy, watch func()) combatTally {
+	t.Helper()
 	advanceToStep(t, g, game.StepDeclareAttackers)
 	tally := combatTally{perDefender: map[uuid.UUID]int{}, blockersBy: map[uuid.UUID]int{}}
 	declined := map[uuid.UUID]bool{}
@@ -107,6 +114,9 @@ func driveOneCombat(t *testing.T, g *game.Game, pol aiseat.Policy) combatTally {
 			return tally
 		}
 		observeCombat(g, &tally)
+		if watch != nil {
+			watch()
+		}
 
 		seat := uuid.Nil
 		if g.Turn.Step == game.StepDeclareBlockers {

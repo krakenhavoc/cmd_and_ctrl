@@ -1,11 +1,5 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
-
 // Mona Lisa, Science Geek — Legendary Creature — Lizard Mutant {2}{G}, 1/3:
 //
 //	"Reach
@@ -24,15 +18,9 @@ func init() {
 		Name:         "Mona Lisa, Science Geek",
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
-			Cost: ManaAbilityCost{Tap: true},
-			ProducedFunc: ProducedOneColor(func(g *game.Game, _, source uuid.UUID) int {
-				c, ok := g.LookupCardForEffect(source)
-				if !ok {
-					return 0
-				}
-				return c.CurrentPower()
-			}),
-			Label: "Add X mana of any one color, where X is Mona Lisa's power",
+			Cost:         ManaAbilityCost{Tap: true},
+			ProducedFunc: ProducedOneColor(SourcePower),
+			Label:        "Add X mana of any one color, where X is Mona Lisa's power",
 		}},
 	})
 }

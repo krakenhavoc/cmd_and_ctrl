@@ -66,14 +66,27 @@ const (
 	// AttackRefusalLimit. The message is a server-built sentence
 	// addressed to the caller; CardID is a creature from the refused
 	// declaration. Nothing was declared, tapped or paid. #1507.
+	//
+	// #1571 adds CR 508.1d requirements (Reason
+	// AttackRefusalRequirement), refused on a declaration AND on the
+	// active player's pass_priority / advance_step in
+	// declare_attackers, which is the declaration's checkpoint.
 	CodeIllegalAttack = "illegal_attack"
 )
 
 // AttackRefusalLimit is the ErrorPayload.Reason of an `illegal_attack`
 // frame refused by a CR 508.1c count limit (#1507). A stable token,
-// like the illegal_block reasons; it is the only attack refusal reason
-// today, and a second joins in the change that first sends it.
+// like the illegal_block reasons. AttackRefusalRequirement (#1571) is
+// the second.
 const AttackRefusalLimit = "attack_limit"
+
+// AttackRefusalRequirement is the ErrorPayload.Reason of an
+// `illegal_attack` frame refused by CR 508.1d (#1571): the declaration
+// — or the active player's pass that ends it in declare_attackers —
+// would leave unobeyed an attack requirement it could obey
+// ("attacks each combat if able", goad). CardID is the creature
+// carrying the requirement; the message names the requirement.
+const AttackRefusalRequirement = "attack_requirement"
 
 // Frame is the envelope around every message. Payload is left as raw JSON
 // and decoded by whichever handler owns the Kind.
@@ -133,7 +146,9 @@ type ErrorPayload struct {
 	//
 	// And `code: "illegal_attack"`, where it is AttackRefusalLimit
 	// ("attack_limit") for a declaration a CR 508.1c count limit
-	// refused (#1507).
+	// refused (#1507), or AttackRefusalRequirement
+	// ("attack_requirement") for a declaration or pass that leaves a
+	// CR 508.1d requirement unobeyed (#1571).
 	Reason string `json:"reason,omitempty"`
 }
 

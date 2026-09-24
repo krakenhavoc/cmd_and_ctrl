@@ -546,15 +546,23 @@ func b33ReanimateChosenWithCounters(n int) func(g *game.Game, item *game.StackIt
 
 // b33DamageChosenOpponentByDeadCreaturesPower is Rakdos Joins Up's
 // dies body: damage equal to the dead legend's last-known power to
-// the announced opponent, if still legal. The power is the printed
-// value plus its +1/+1 and -1/-1 counters read off the log
-// (b17LastKnownPowerOffBattlefield); a static bonus from another
-// permanent is not in it — the harvester hands a card's own
-// dies-trigger the LKI characteristic, but not a watcher's.
+// the announced opponent, if still legal. #1379's resolution-time LKI
+// (ctx.TriggeringPermanent, backed by Game.lastKnownPermanents rather
+// than the harvest-only Game.lastKnownBattlefield) answers this for a
+// WATCHER, not just a card's own dies-trigger: PermanentInfo.Power is
+// PowerForComparison as the legend last existed on the battlefield —
+// layers (an anthem's bonus) and counters both included, uncapped.
+// `dead` is kept only as the fallback for an item restored from a
+// snapshot written before StackItem.Trigger existed.
 func b33DamageChosenOpponentByDeadCreaturesPower(dead uuid.UUID) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		n := b17LastKnownPowerOffBattlefield(g, dead)
+		n := 0
+		if info, ok := ctx.TriggeringPermanent(); ok {
+			n = info.Power
+		} else {
+			n = b17LastKnownPowerOffBattlefield(g, dead)
+		}
 		if n <= 0 {
 			return nil
 		}
@@ -740,10 +748,10 @@ const b33AlelaGoadLabel = "Alela, Cunning Conqueror — goad a creature that pla
 // b33Goad stamps the engine's goad marker on a battlefield creature:
 // `by` is the goading player. The engine surfaces the marker (the
 // client badges the creature and the context menu offers to clear
-// it) but does not enforce the must-attack constraint for anyone —
-// SetGoaded says so — so this is exactly the sandbox's goad, written
-// from an effect under the lock the effect already holds. Nothing to
-// stamp is not an error.
+// it) and, since #1571, enforces goad's two CR 701.15b requirements
+// from it (game/attack_requirements.go) — so this is exactly the
+// sandbox's goad, written from an effect under the lock the effect
+// already holds. Nothing to stamp is not an error.
 func b33Goad(g *game.Game, cardID, by uuid.UUID) {
 	if g.Battlefield == nil {
 		return

@@ -512,3 +512,108 @@ func TestCurseOfOpulenceAttachesToAPlayerAndPays(t *testing.T) {
 		t.Errorf("Gold tokens for the Curse's controller: %d, want 1", golds)
 	}
 }
+
+// TestCurseOfOpulenceEachAttackingOpponentAlsoGetsAGold pins the
+// closed caveat: "each opponent attacking that player does the same"
+// (#1565). The active seat is neither the Curse's controller nor the
+// enchanted player, so their attack should mint the Curse's controller
+// their usual Gold PLUS a second Gold for the attacking opponent
+// themselves — and the enchanted victim gets none.
+func TestCurseOfOpulenceEachAttackingOpponentAlsoGetsAGold(t *testing.T) {
+	g := newCatalogGame(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	victim := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	curseCtl := g.Seats[(g.Turn.ActiveSeat+2)%len(g.Seats)]
+
+	pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Curse of Opulence", TypeLine: curseAuraTypeLine,
+		OracleID: curseOpulenceOracle, Owner: curseCtl.ID, Controller: curseCtl.ID,
+		AttachedTo: game.TargetRef{Kind: game.TargetPlayer, ID: victim.ID},
+	})
+	attacker := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Bear", TypeLine: testCreatureTypeLine,
+		Power: 2, Toughness: 2, Owner: active.ID, Controller: active.ID,
+	})
+	for g.Turn.Step != game.StepDeclareAttackers {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+	if err := g.DeclareAttacker(attacker, victim.ID); err != nil {
+		t.Fatalf("DeclareAttacker: %v", err)
+	}
+	lockInAttacks(t, g)
+	passPriorityAroundTable(t, g)
+
+	goldsFor := func(id uuid.UUID) int {
+		n := 0
+		g.ReadSnapshot(func() {
+			for _, c := range g.Battlefield.Cards {
+				if c.Name == "Gold" && c.Controller == id {
+					n++
+				}
+			}
+		})
+		return n
+	}
+	if got := goldsFor(curseCtl.ID); got != 1 {
+		t.Errorf("Gold tokens for the Curse's controller: %d, want 1", got)
+	}
+	if got := goldsFor(active.ID); got != 1 {
+		t.Errorf("Gold tokens for the attacking opponent: %d, want 1", got)
+	}
+	if got := goldsFor(victim.ID); got != 0 {
+		t.Errorf("Gold tokens for the enchanted victim: %d, want 0", got)
+	}
+}
+
+// TestCurseOfOpulenceAttackingOpponentGetsOnlyOneGoldPerCombat proves
+// the OncePerBatch dedup on the attacking-opponent ability: a
+// two-creature swing from the same non-controller opponent still
+// mints exactly one Gold for them, matching the "is attacked" batching
+// the Curse's own bullet already had.
+func TestCurseOfOpulenceAttackingOpponentGetsOnlyOneGoldPerCombat(t *testing.T) {
+	g := newCatalogGame(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	victim := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	curseCtl := g.Seats[(g.Turn.ActiveSeat+2)%len(g.Seats)]
+
+	pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Curse of Opulence", TypeLine: curseAuraTypeLine,
+		OracleID: curseOpulenceOracle, Owner: curseCtl.ID, Controller: curseCtl.ID,
+		AttachedTo: game.TargetRef{Kind: game.TargetPlayer, ID: victim.ID},
+	})
+	a1 := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Bear One", TypeLine: testCreatureTypeLine,
+		Power: 2, Toughness: 2, Owner: active.ID, Controller: active.ID,
+	})
+	a2 := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Bear Two", TypeLine: testCreatureTypeLine,
+		Power: 2, Toughness: 2, Owner: active.ID, Controller: active.ID,
+	})
+	for g.Turn.Step != game.StepDeclareAttackers {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+	if _, err := g.DeclareAttackers([]game.AttackDeclaration{
+		{Attacker: a1, Target: victim.ID},
+		{Attacker: a2, Target: victim.ID},
+	}); err != nil {
+		t.Fatalf("DeclareAttackers: %v", err)
+	}
+	lockInAttacks(t, g)
+	passPriorityAroundTable(t, g)
+
+	n := 0
+	g.ReadSnapshot(func() {
+		for _, c := range g.Battlefield.Cards {
+			if c.Name == "Gold" && c.Controller == active.ID {
+				n++
+			}
+		}
+	})
+	if n != 1 {
+		t.Errorf("Gold tokens for the two-creature attacker: %d, want 1", n)
+	}
+}

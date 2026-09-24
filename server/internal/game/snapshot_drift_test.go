@@ -180,6 +180,11 @@ var gameFields = plan(
 	// invented it would read an attacker unblocked before the
 	// defender chose.
 	"blocksDeclared", carried, "",
+	// #1571: the attack declaration's CR 508.1d checkpoint. Carried
+	// with blocksDeclared: a restore that dropped it would re-judge a
+	// declaration whose triggers have fired, and one that invented it
+	// would let a re-made declaration skip its requirements.
+	"attacksDeclared", carried, "",
 	// #716 combat damage step participation. Carried for the reason
 	// the three above are, and for one more: the window between the
 	// two combat damage steps is a priority window, so an undo or a
@@ -499,6 +504,9 @@ var scopedStaticFields = plan(
 // dropped.
 var scopedEffectFields = plan(
 	"Affected", carried, "",
+	// #1571: a live-rule affected set ("creatures your opponents
+	// control") instead of Affected.
+	"Scope", carried, "",
 	"Mods", carried, "",
 	"Source", carried, "",
 	"SourceName", carried, "",
@@ -581,6 +589,9 @@ var stackItemFields = plan(
 	// as though it were a card, putting a phantom Twincast in
 	// somebody's yard where Tarmogoyf can count it.
 	"IsCopy", carried, "",
+	// #1574: "this ability can't be copied". Carried: a restore that
+	// lost it would let a copy effect copy Gogo's activation.
+	"Uncopyable", carried, "",
 	"Seq", carried, "",
 	"Ordered", carried, "",
 	// #1511: which pending triggers may skip the CR 603.3b prompt.

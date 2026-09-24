@@ -119,6 +119,11 @@ export const ATTACK_REFUSAL_REASONS = [
   // #1507 (ADR 0045 Decision 45): a CR 508.1c count limit refused the
   // declaration.
   "attack_limit",
+  // #1571 (ADR 0045 Decision 51): a CR 508.1d requirement ("attacks
+  // each combat if able", goad) — the declaration would make one
+  // unobeyable, or the active player's pass in declare_attackers would
+  // leave one unmet. `card_id` is the creature that carries it.
+  "attack_requirement",
 ] as const;
 export type AttackRefusalReason = (typeof ATTACK_REFUSAL_REASONS)[number];
 
@@ -1630,6 +1635,11 @@ export interface ExilePlayView {
   cast_only?: boolean;
   // "Spend mana as though it were mana of any color" (Breeches).
   any_color?: boolean;
+  // #1573: "mana of any TYPE can be spent" (Hostage Taker) — colorless
+  // counts too, so a {C} in the cost is payable with anything. Set
+  // with `any_color` alongside it. A label only: `cast_prices` and
+  // `castable_here` already reflect it.
+  any_type?: boolean;
   // S22 airbend: the mana cost the holder pays INSTEAD of the card's
   // printed one ("{2} rather than its mana cost"). Absent for
   // impulse exile, which charges the printed cost. Note that
@@ -2216,7 +2226,9 @@ export interface CardView extends CastSurfaceView {
   face_down?: boolean;
   // WHY it is face down (ADR 0069): "exiled" (CR 406.3, Necropotence),
   // "foretold" (CR 702.143b), "hideaway" (CR 702.75a, ADR 0091 — the
-  // controller of the permanent that hid it may look), or one of the
+  // controller of the permanent that hid it may look), "permitted"
+  // (#1573 — the holder of the cast permission over it may look:
+  // Gonti, Night Minister; Outrageous Robbery), or one of the
   // CR 708.2 permanent states
   // "manifested" / "morphed" / "disguised" / "cloaked". PUBLIC —
   // everyone can see that a permanent is a morph — so it survives the
@@ -2299,9 +2311,16 @@ export interface CardView extends CastSurfaceView {
   // by clear_combat. Added in S08.
   blocking_target?: string;
   // Player ID who goaded this creature, or omitted when not goaded.
-  // Cleared on zone exit. Sandbox marker; must-attack-not-the-goader
-  // is not enforced server-side. Added in S10.
+  // Cleared on zone exit. Added in S10; enforced server-side since
+  // #1571 (CR 701.15b — attacks each combat if able, and a player
+  // other than the goader if able).
   goaded_by?: string;
+  // #1571 (ADR 0045 Decision 51): true on a creature the active player
+  // owes an attack with right now — during declare_attackers, while the
+  // declaration could still obey a CR 508.1d requirement it does not
+  // (Zurgo, goad, Bident of Thassa). Server-computed; the client
+  // renders it and never derives a requirement. Omitted otherwise.
+  must_attack?: boolean;
   // S24 (ADR 0036): the attachment relation for an Equipment or an
   // Aura — the permanent (`kind: "card"`) or player
   // (`kind: "player"`) this card is attached to. Omitted for every

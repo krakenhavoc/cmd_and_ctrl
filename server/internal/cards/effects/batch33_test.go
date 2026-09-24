@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -983,6 +984,40 @@ func TestB33RakdosJoinsUpReanimatesWithTwoCountersAndPunishesLegendaryDeaths(t *
 	}
 }
 
+// TestB33RakdosJoinsUpDamageIncludesAnthemBonusOnTheDeadLegend closes
+// the caveat #1565 audited: the dead legend's power now comes from
+// #1379's resolution-time LKI (ctx.TriggeringPermanent,
+// PowerForComparison), which folds in a static bonus from another
+// permanent — not just printed power and counters, as the old
+// b17LastKnownPowerOffBattlefield-only read did.
+func TestB33RakdosJoinsUpDamageIncludesAnthemBonusOnTheDeadLegend(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	castCatalogSpell(t, g, "Rakdos Joins Up", "Legendary Enchantment", b33RakdosJoinsUpOracle, nil)
+	passPriorityAroundTable(t, g)
+
+	pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Glorious Anthem", TypeLine: "Enchantment",
+		OracleID: gloriousAnthemOracle, Owner: me.ID, Controller: me.ID,
+	})
+	legend := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Legend", TypeLine: "Legendary Creature — Human",
+		Power: 2, Toughness: 2, Owner: me.ID, Controller: me.ID,
+	})
+	if got := effectivePower(t, g, legend); got != 3 {
+		t.Fatalf("effective power before death = %d, want 3 (the anthem's +1/+1 applied)", got)
+	}
+
+	life := opp.Life
+	b25Destroy(g, legend)
+	b04WaitForPick(t, g, me.ID)
+	b16PickPlayer(t, g, me.ID, opp.ID)
+	passPriorityAroundTable(t, g)
+	if opp.Life != life-3 {
+		t.Errorf("a 2/2 with an anthem's +1/+1 should deal 3, not just its printed 2: %d → %d", life, opp.Life)
+	}
+}
+
 // #1337: the sacrifice is a resolution-time choice (ChoosePermanents,
 // Sacrifice mode), not a target picked when the trigger goes on the
 // stack, so the prompt is an own_permanents choose-cards pick rather
@@ -1143,6 +1178,25 @@ func TestB33AlelaGoadsACreatureOfThePlayerHerFaeriesHit(t *testing.T) {
 	}
 	if b33Goaded(t, g, theirs) != me.ID {
 		t.Fatal("the chosen creature is goaded by you")
+	}
+	// #1571: the goad is enforced (CR 701.15b). On the victim's turn
+	// the Bear must attack, and a player other than you: the pass that
+	// ends the declaration is refused while it stays home, an attack
+	// on you is refused while another opponent is open, and one on the
+	// other opponent is the answer.
+	for i := 0; i < 40 && (g.Turn.Step != game.StepDeclareAttackers || g.Turn.ActiveSeat != 1); i++ {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep toward the victim's declare attackers: %v", err)
+		}
+	}
+	if err := g.PassPriority(); !errors.Is(err, game.ErrAttackRequirement) {
+		t.Fatalf("pass with the goaded Bear at home = %v, want ErrAttackRequirement", err)
+	}
+	if err := g.DeclareAttacker(theirs, me.ID); !errors.Is(err, game.ErrAttackRequirement) {
+		t.Fatalf("the goaded Bear at its goader = %v, want ErrAttackRequirement", err)
+	}
+	if err := g.DeclareAttacker(theirs, other.ID); err != nil {
+		t.Fatalf("the goaded Bear at the other opponent: %v", err)
 	}
 	// Until your next turn: still goaded through the opponents'
 	// turns, cleared at your upkeep.

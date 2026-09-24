@@ -217,8 +217,16 @@ var carriedFixture = map[string]any{
 		}}
 	},
 	"DelayedTrigger.Condition": carriedTestConditionKey,
-	"StackItem.Body":           carriedTestBodyKey,
-	"ScopedEffect.Mods":        []Mod{AddSubtypesMod("drift-ScopedEffect.Mods"), ModifyPTMod(4, 2)},
+	// A spell filter's types are CR 205.2a's closed list (#1568
+	// review), refused at restore otherwise; every other param field is
+	// generated-distinct by hand so a dropped one still shows.
+	"DelayedTrigger.Params":     carriedTestParams("DelayedTrigger.Params", "Sorcery"),
+	"DelayedTrigger.CondParams": carriedTestParams("DelayedTrigger.CondParams", "Instant"),
+	"StackItem.Params":          carriedTestParams("StackItem.Params", "Artifact"),
+	"StackItem.Body":            carriedTestBodyKey.Key(),
+	"ScopedEffect.Mods":         []Mod{AddSubtypesMod("drift-ScopedEffect.Mods"), ModifyPTMod(4, 2)},
+	// #1571: a scope is a closed vocabulary too, refused when unknown.
+	"ScopedEffect.Scope": ScopeOpponentsCreatures,
 	// A duration's kind and condition are closed sets too (#1497
 	// review): restore refuses an unknown one, so an invented 4242
 	// would fail the restore rather than test the carry. Every other
@@ -750,3 +758,16 @@ var (
 	carriedTestBodyKey      = testBody(func(*Game, *StackItem) error { return nil })
 	carriedTestConditionKey = testCondition(func(Event, *DelayedTrigger, *Game) bool { return false })
 )
+
+// carriedTestParams is a fully populated EffectParams whose filter is
+// valid, for the carried probes.
+func carriedTestParams(seed, cardType string) EffectParams {
+	return EffectParams{
+		Player: uuid.NewSHA1(uuid.Nil, []byte(seed+"/player")),
+		Object: ObjectRef{ID: uuid.NewSHA1(uuid.Nil, []byte(seed+"/object")), Epoch: 7},
+		Amount: 42,
+		Cost:   "{" + seed + "}",
+		Name:   seed,
+		Filter: CastFilter{Types: []string{cardType}},
+	}
+}

@@ -39,6 +39,12 @@ import (
 // Min/Max integers read at Register time. Offering both
 // unconditionally would be stronger than printed (#259), so the card
 // asks for one bullet, always — the same seam Akroma's Will records.
+//
+// Re-audited for #1565: still true on current develop.
+// `game.CatalogModeSpec` takes only an oracle ID (no game or player
+// state), so there is nowhere for "as you cast this" to be evaluated.
+// The seam is the same conditional-mode-count gap both cards share;
+// no new engine work has closed it.
 func init() {
 	Register(Spec{
 		OracleID:     "0fd114c4-092b-4e28-b0dc-ef529f3bc73e",

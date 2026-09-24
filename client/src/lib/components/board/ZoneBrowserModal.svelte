@@ -387,9 +387,11 @@
                   class="act impulse"
                   disabled={!leg.legal}
                   title={leg.legal
-                    ? grantFor(card)?.any_color
-                      ? "spend mana as though it were any colour"
-                      : "playable until end of turn"
+                    ? grantFor(card)?.any_type
+                      ? "spend mana as though it were mana of any type"
+                      : grantFor(card)?.any_color
+                        ? "spend mana as though it were any colour"
+                        : "playable until end of turn"
                     : (leg.reason ?? "Not castable from exile right now")}
                   aria-label={`${labelFor(card)} ${grantedName(card)} from exile`}
                   onclick={() => playFromExile(card)}

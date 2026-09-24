@@ -30,19 +30,7 @@ func init() {
 			Targets: TargetPlayer("target opponent", Opponent()),
 			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
 				return game.NewTriggeredItem(source, "Vengeful Bloodwitch — target opponent loses 1 life and you gain 1 life",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						for _, t := range ctx.LegalTargets() {
-							if t.Kind != game.TargetPlayer {
-								continue
-							}
-							if err := g.ChangePlayerLifeForEffect(item.SourceCardID, t.ID, -1); err != nil {
-								return err
-							}
-							return GainLife{Player: item.Controller, Amount: 1}.Apply(ctx)
-						}
-						return nil
-					})
+					drainTargetOpponentOne)
 			},
 		}},
 	})

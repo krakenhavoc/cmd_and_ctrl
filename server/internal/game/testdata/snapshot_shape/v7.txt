@@ -19,6 +19,7 @@ announcedBlocks	map:array
 announcedBlocks{}	custom(uuid.UUID)
 attackDefenders	map:array
 attackDefenders{}	custom(uuid.UUID)
+attacksDeclared	bool
 battlefield	object
 battlefield.cards	array
 battlefield.cards[]	object
@@ -515,6 +516,12 @@ lastKnownBattlefield{}.Abilities	array
 lastKnownBattlefield{}.AbilitiesRemoved	bool
 lastKnownBattlefield{}.Abilities[]	string
 lastKnownBattlefield{}.AllCreatureTypes	bool
+lastKnownBattlefield{}.AttackRequirements	array
+lastKnownBattlefield{}.AttackRequirements[]	object
+lastKnownBattlefield{}.AttackRequirements[].GoadedBy	custom(uuid.UUID)
+lastKnownBattlefield{}.AttackRequirements[].OtherThan	custom(uuid.UUID)
+lastKnownBattlefield{}.AttackRequirements[].Source	custom(uuid.UUID)
+lastKnownBattlefield{}.AttackRequirements[].SourceName	string
 lastKnownBattlefield{}.Colors	array
 lastKnownBattlefield{}.Colors[]	string
 lastKnownBattlefield{}.ControlSource	custom(uuid.UUID)
@@ -550,6 +557,12 @@ lastKnownPermanents{}[].characteristic.Abilities	array
 lastKnownPermanents{}[].characteristic.AbilitiesRemoved	bool
 lastKnownPermanents{}[].characteristic.Abilities[]	string
 lastKnownPermanents{}[].characteristic.AllCreatureTypes	bool
+lastKnownPermanents{}[].characteristic.AttackRequirements	array
+lastKnownPermanents{}[].characteristic.AttackRequirements[]	object
+lastKnownPermanents{}[].characteristic.AttackRequirements[].GoadedBy	custom(uuid.UUID)
+lastKnownPermanents{}[].characteristic.AttackRequirements[].OtherThan	custom(uuid.UUID)
+lastKnownPermanents{}[].characteristic.AttackRequirements[].Source	custom(uuid.UUID)
+lastKnownPermanents{}[].characteristic.AttackRequirements[].SourceName	string
 lastKnownPermanents{}[].characteristic.Colors	array
 lastKnownPermanents{}[].characteristic.Colors[]	string
 lastKnownPermanents{}[].characteristic.ControlSource	custom(uuid.UUID)
@@ -641,6 +654,12 @@ pendingChoices[].damageAssignment.SourceLKI.Abilities	array
 pendingChoices[].damageAssignment.SourceLKI.AbilitiesRemoved	bool
 pendingChoices[].damageAssignment.SourceLKI.Abilities[]	string
 pendingChoices[].damageAssignment.SourceLKI.AllCreatureTypes	bool
+pendingChoices[].damageAssignment.SourceLKI.AttackRequirements	array
+pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[]	object
+pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].GoadedBy	custom(uuid.UUID)
+pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].OtherThan	custom(uuid.UUID)
+pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].Source	custom(uuid.UUID)
+pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].SourceName	string
 pendingChoices[].damageAssignment.SourceLKI.Colors	array
 pendingChoices[].damageAssignment.SourceLKI.Colors[]	string
 pendingChoices[].damageAssignment.SourceLKI.ControlSource	custom(uuid.UUID)
@@ -882,6 +901,7 @@ pendingTriggers[].trigger.Object.Supertypes[]	string
 pendingTriggers[].trigger.Object.Token	bool
 pendingTriggers[].trigger.Object.Types	array
 pendingTriggers[].trigger.Object.Types[]	string
+pendingTriggers[].uncopyable	bool
 pendingTriggers[].xValue	number:int
 phasedOut	object
 phasedOut.cards	array
@@ -1116,6 +1136,7 @@ scopedEffects[].mods[].subtypes[]	string
 scopedEffects[].mods[].toughness	number:int
 scopedEffects[].mods[].types	array
 scopedEffects[].mods[].types[]	string
+scopedEffects[].scope	string
 scopedEffects[].source	object
 scopedEffects[].source.epoch	number:int
 scopedEffects[].source.id	custom(uuid.UUID)
@@ -1129,6 +1150,7 @@ seats[].castPermissions	array
 seats[].castPermissions[]	object
 seats[].castPermissions[].altCostKey	string
 seats[].castPermissions[].anyColor	bool
+seats[].castPermissions[].anyType	bool
 seats[].castPermissions[].cards	array
 seats[].castPermissions[].cards[]	object
 seats[].castPermissions[].cards[].epoch	number:int
@@ -2538,6 +2560,7 @@ stackMeta[].trigger.Object.Supertypes[]	string
 stackMeta[].trigger.Object.Token	bool
 stackMeta[].trigger.Object.Types	array
 stackMeta[].trigger.Object.Types[]	string
+stackMeta[].uncopyable	bool
 stackMeta[].xValue	number:int
 startingSeat	number:int
 state	string

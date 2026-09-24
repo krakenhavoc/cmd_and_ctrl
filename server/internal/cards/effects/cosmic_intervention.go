@@ -97,7 +97,7 @@ func init() {
 						Label:        "Cosmic Intervention — return the exiled permanent",
 						At:           game.StepEnd,
 						Cards:        []uuid.UUID{ev.CardID},
-						Body:         returnExiledToOwnersBody.Key(),
+						Body:         returnExiledToOwnersBody,
 					})
 					return nil
 				},

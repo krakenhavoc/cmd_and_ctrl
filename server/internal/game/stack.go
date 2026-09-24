@@ -388,6 +388,22 @@ type StackItem struct {
 	// Added in S30 (#95).
 	IsCopy bool
 
+	// Uncopyable is "This ability can't be copied" as a fact about
+	// this stack object (#1574, ADR 0043 Decision 20). Set at
+	// activation from ActivatedAbilityShape.Uncopyable; a triggered
+	// ability that printed the clause would set it in its Build, since
+	// the item is the declaration there. CopyAbilityForEffect refuses
+	// an item that carries it, and nothing else reads it: the item
+	// stays a legal target for "copy target ability" (the copy is
+	// simply not made) and for "counter target ability".
+	//
+	// On the item rather than re-derived from the catalog at copy
+	// time for AltCostExiles' reason (CR 400.7g): the ability belongs
+	// to the object that activated it, and that object may have left,
+	// changed face or lost the grant by the time something tries to
+	// copy it.
+	Uncopyable bool
+
 	// SplitSecond marks an item as having split second (CR 702.61).
 	// While any stack item has SplitSecond set, no further casts /
 	// activations are legal except mana abilities and special

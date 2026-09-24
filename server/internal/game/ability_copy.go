@@ -90,6 +90,18 @@ func (g *Game) CopyAbilityForEffect(itemID, controller uuid.UUID, mayChooseNewTa
 	if item.Kind == StackItemSpell {
 		return ErrInvalidParam
 	}
+	// "This ability can't be copied" (Gogo, Master of Mimicry; #1574,
+	// ADR 0043 Decision 20). Refused HERE, before the CR 707.10c
+	// re-target prompt, because this is the one door every ability
+	// copy comes through: a targeted copier (Lithoform Engine,
+	// Strionic Resonator, another Gogo) and an untargeted one (Rings
+	// of Brighthearth) both end at this call. Nil, not an error: the
+	// copy effect resolved and did nothing, which is CR 101.2's
+	// "can't" winning, not a card that threw — the same posture a
+	// counterspell aimed at an uncounterable spell has.
+	if item.Uncopyable {
+		return nil
+	}
 	// The object the copy's targeting legality is judged from: the
 	// SOURCE PERMANENT, because an ability's characteristics for
 	// CR 702.16b are its source's (docs/decisions/0072-protection.md
@@ -213,10 +225,15 @@ func (g *Game) createAbilityCopyLocked(item *StackItem, controller uuid.UUID, ta
 		Distribution: cloneDistributionLocked(item.Distribution),
 		Paid:         copiedPaidCost(item.Paid),
 		Effect:       item.Effect,
-		targetSpec:   item.targetSpec,
-		modeSpec:     item.modeSpec,
-		IsCopy:       true,
-		Seq:          g.nextStackSeqLocked(),
+		// A copy of a keyed item (a fired delayed trigger, #1497) is
+		// keyed too, so it stays data on the stack and the table stays
+		// a restore point while it waits (#1568 review).
+		Body:       item.Body,
+		Params:     cloneEffectParams(item.Params),
+		targetSpec: item.targetSpec,
+		modeSpec:   item.modeSpec,
+		IsCopy:     true,
+		Seq:        g.nextStackSeqLocked(),
 	}
 	g.StackMeta[copyID] = meta
 

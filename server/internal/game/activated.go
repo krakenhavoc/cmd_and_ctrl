@@ -609,6 +609,18 @@ type ActivatedAbilityShape struct {
 	// mean nothing in this slot; effects.Register refuses the last two.
 	CostModifiers []CostModifier
 
+	// Uncopyable is the ability's own "This ability can't be copied"
+	// (Gogo, Master of Mimicry). #1574, ADR 0043 amendment
+	// 2026-09-24, Decision 20.
+	//
+	// Stamped onto the stack item at activation (StackItem.Uncopyable)
+	// and read in ONE place: CopyAbilityForEffect, the only door an
+	// ability copy is made through, refuses the item. It is not a
+	// targeting restriction. "Copy target activated ability" can still
+	// target it, exactly as a counterspell can target a spell that
+	// can't be countered: the copy simply isn't made.
+	Uncopyable bool
+
 	// Effect runs at resolution against the live game. Same contract
 	// as TriggeredAbility's stack items: never capture a *Card,
 	// read what you need off the item and the game.
@@ -1464,6 +1476,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		// through Context.CountersRemoved — the counters are off the
 		// board by then, so nothing downstream could recompute it.
 		Paid:       paid,
+		Uncopyable: ab.Uncopyable,
 		Effect:     ab.Effect,
 		targetSpec: ab.Targets,
 		modeSpec:   ab.Modes,

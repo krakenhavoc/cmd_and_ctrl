@@ -175,6 +175,7 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedReefWormWhaleToken,
 	printedDragonEggToken,
 	printedNestingDragonDragonToken,
+	printedUrzaConstructToken,
 
 	// #750: the first token whose printed text is a block rule.
 	printedKurukSpiritToken,

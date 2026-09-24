@@ -125,13 +125,14 @@ type DelayedTrigger struct {
 	// erroring.
 	Cards []uuid.UUID
 
-	// Body is the key of what the trigger does when its stack item
-	// resolves — a function registered with DelayedBody
-	// (effect_bodies.go). It reads the payload from item.Targets, the
+	// Body is what the trigger does when its stack item resolves — a
+	// function registered with DelayedBody (effect_bodies.go). A typed
+	// BodyRef, not a string: the only way to hold one is to register the
+	// body, so an unregistered or typo'd key cannot be written here at
+	// all (#1568 review). It reads the payload from item.Targets, the
 	// controller from item.Controller and anything else from Params.
-	// Required: ScheduleDelayedTriggerForEffect drops a trigger with
-	// none and panics on a key that is not registered.
-	Body string
+	// Required: the zero BodyRef is refused by the scheduler.
+	Body BodyRef
 
 	// Params is the body's plain data: the factory arguments a closure
 	// used to capture (Mana Drain's mana value, Arcane Denial's
@@ -156,7 +157,7 @@ type DelayedTrigger struct {
 	// sibling of TriggeredAbility.AppliesTo with a DelayedTrigger in
 	// the source's place because there is no source card to hand it.
 	// Empty means every event of a watched kind matches.
-	Condition string
+	Condition ConditionRef
 
 	// CondParams is the condition's plain data: the spell filter a
 	// "when you next cast" reads, for instance.
@@ -202,14 +203,18 @@ type DelayedTrigger struct {
 // CR 614 replacement pipeline, where an EmitEvent would re-enter the
 // trigger harvester in the middle of replacing an event.
 func (g *Game) ScheduleDelayedTriggerForEffect(dt DelayedTrigger) uuid.UUID {
-	if dt.Body == "" || (dt.At == "" && len(dt.On) == 0) {
+	if dt.Body.key == "" {
+		// A forgotten Body: still compiles, would silently do nothing.
+		// Loud in a test binary, logged (never fatal) in production.
+		effectKeyFault(fmt.Sprintf("game: delayed trigger %q has no body — dropped", dt.Label))
 		return uuid.Nil
 	}
-	if !KnownEffectBody(dt.Body) {
-		panic(fmt.Sprintf("game: delayed trigger %q names unregistered body %q", dt.Label, dt.Body))
+	if dt.At == "" && len(dt.On) == 0 {
+		return uuid.Nil
 	}
-	if dt.Condition != "" && !KnownEffectCondition(dt.Condition) {
-		panic(fmt.Sprintf("game: delayed trigger %q names unregistered condition %q", dt.Label, dt.Condition))
+	if !dt.Params.Filter.Valid() || !dt.CondParams.Filter.Valid() {
+		effectKeyFault(fmt.Sprintf("game: delayed trigger %q names a spell filter outside CR 205.2a's card types — dropped", dt.Label))
+		return uuid.Nil
 	}
 	if dt.ID == uuid.Nil {
 		dt.ID = uuid.New()
@@ -303,9 +308,9 @@ func (dt *DelayedTrigger) stackItem() *StackItem {
 		SourceCardID: dt.SourceCardID,
 		SourceObject: dt.SourceObject,
 		Label:        dt.Label,
-		Effect:       bodyEffect(dt.Body, dt.Params),
-		Body:         dt.Body,
-		Params:       dt.Params,
+		Effect:       bodyEffect(dt.Body.key, dt.Params),
+		Body:         dt.Body.key,
+		Params:       cloneEffectParams(dt.Params),
 	}
 	for _, cardID := range dt.Cards {
 		if cardID == uuid.Nil {
@@ -419,10 +424,10 @@ func (dt *DelayedTrigger) matchesEventLocked(ev Event, g *Game) bool {
 	if len(dt.On) == 0 || !triggerWatches(dt.On, ev.Kind) {
 		return false
 	}
-	if dt.Condition == "" {
+	if dt.Condition.key == "" {
 		return true
 	}
-	fn, ok := lookupCondition(dt.Condition)
+	fn, ok := lookupCondition(dt.Condition.key)
 	return ok && fn(ev, dt, g, dt.CondParams)
 }
 
@@ -444,7 +449,7 @@ func (dt *DelayedTrigger) matchesEventLocked(ev Event, g *Game) bool {
 // Caller must hold g.mu in write mode.
 func (g *Game) dispatchEventDelayedTriggerLocked(ev Event, dt *DelayedTrigger) {
 	source, lki := g.triggerSourceLocked(dt.SourceCardID, dt.Controller)
-	label, body, params := dt.Label, dt.Body, cloneEffectParams(dt.Params)
+	label, body, params := dt.Label, dt.Body.key, cloneEffectParams(dt.Params)
 	cards := append([]uuid.UUID(nil), dt.Cards...)
 	sourceObject := dt.SourceObject
 	var optional *TriggerOptionalPrompt
