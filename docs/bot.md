@@ -911,7 +911,7 @@ the filtered `aiseat.Input` it would see at a real table.
 | `--seats` | one tier per chair, comma-separated. 2–4 chairs. |
 | `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump. |
 | `--names` | one tally name per chair. Use it when every chair is the same tier and the thing being compared is the deck or the configuration. |
-| `--games`, `--seed` | game *i* uses `seed+i`, so a run is exactly reproducible and two policies can be compared on the same deals. |
+| `--games`, `--seed` | game *i* uses `seed+i`, so two policies can be compared on the same deals. The seats still run one goroutine each, so the seed fixes the deal and the policies' randomness, not the interleaving — a rerun is the same deals, not always the same games (#1409). |
 | `--rotate` | moves each contestant one chair along per game (contestant *k* sits at position `(k+i) mod n`). **Use it.** Turn order in Commander is worth real percentage points; without rotation you are measuring the chair. |
 | `--turn-budget`, `--wall`, `--stall` | when to stop a game that will not end (default 60 turns, 30 minutes, `3×max-think+15s` with no committed move). |
 | `--max-think`, `--model`, `--frontier-model`, `--endpoint` | the model tiers' deadline and transport. With an endpoint set and no `--max-think`, the deadline defaults to **20s**, the same local default `cmd/server` applies and for the same reason. |
@@ -1495,6 +1495,62 @@ The human client reads the same price from
 `turn.attack_targets[].tax` and labels its attack controls with it, so
 what the bot is refused and what a person is warned about come from one
 number.
+
+## Cashing an edge two turns out (#1409)
+
+The heuristic plans an attack one creature at a time, and two checks
+used to decide it: `lethalPush` ("does everything I have kill them
+now?") and `attackValue` ("is this one attack a good trade?"). Between
+them sat the board that stalled the S31 gate: two seats under 7 life
+behind full, even boards, one side a Drake up. All-in puts one Drake
+through for 3, which is not lethal, and every single attack is blocked
+at a loss, so neither seat declares the first attacker and the game
+waits for a library to run out.
+
+`heuristic/race.go` adds the two-turn race, three numbers computed
+with the same blocker matching `lethalPush` uses:
+
+- **now**: what the swing connects for after the defender blocks to
+  survive, losing as few creatures as it can;
+- **next**: what the bot's survivors connect for next turn into what
+  the defender kept;
+- **crack-back**: what every opponent's creatures connect for on the
+  turn in between, all of them swinging at the bot, into what it kept
+  home.
+
+The bot commits when now + next is at least the defender's life and
+the crack-back is less than its own. The swing is the smallest one that
+does it, tried evasive-first, and every creature outside it stays home,
+because that reserve is what the crack-back check counted on. The
+decision's reason says so in those numbers: `attack: two-turn race — 3
+now + 3 next turn ≥ their 6 life; crack-back 0 < my 6`.
+
+It is deliberately pessimistic wherever the estimate could make the bot
+suicidal: every blocked attacker of its own counts as dead, the
+defender counts as both attacking with everything and keeping
+everything home, a trampler is held only by a blocker that absorbs all
+of it, and menace counts as unblockable. A perfect mirror has no race —
+nothing is left over for next turn — and the bot does not invent one.
+
+The gate that measures this plays **lockstep** (next section), so a
+change to the race term moves the same forty games every time it runs.
+
+## Replaying a heuristic gate seed (#1409)
+
+`TestFourHeuristicBotsPlayToAWinner`, `TestTwoHeuristicBotsPlayToAWinner`
+and `TestHeuristicBeatsRandomHeadToHead` run their seats on one
+goroutine, in seat order: each seat's ordinary act-loop (the runner's
+own `step`, reached through the test-only `lockstep_export_test.go`),
+round after round. A seed is then a whole game rather than a deal, and a
+red night replays move for move. The soak (`TestRandomBotSoak`) keeps
+one goroutine per seat on purpose: it tests concurrent liveness, and the
+races lockstep removes are exactly what it exists to find (discussion
+#1390). `AISEAT_HEURISTIC_SCHEDULE=concurrent` plays the gate the old
+way, for comparing the two.
+
+The arena (`boteval arena`) still starts one goroutine per seat, so its
+`--seed` fixes the deals and the policies' randomness but not the
+interleaving.
 
 ## Known limitations
 

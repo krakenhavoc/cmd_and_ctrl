@@ -262,6 +262,16 @@ func (p *Policy) decideAttack(st *state, moves []legal.Move) (aiseat.Decision, b
 		}
 	}
 
+	// #1409: no kill this turn, but maybe one next turn that nothing
+	// can stop in between. A committed race decides the whole attack —
+	// who swings, at whom, and that everyone else stays home — because
+	// its crack-back check counted on exactly that reserve (race.go).
+	if len(push) == 0 {
+		if plan := p.planRace(st, moves, focus); plan != nil {
+			return p.raceAttack(moves, plan)
+		}
+	}
+
 	best, bestVal, bestReason := -1, 0.0, ""
 	for i := range moves {
 		if moves[i].Kind != legal.KindAttack {
@@ -412,20 +422,24 @@ func (p *Policy) lethalPush(st *state, def *SeatEval) bool {
 // trample overflow and no damage prevention, so it errs toward "not
 // lethal" wherever it errs.
 func unblockedPower(st *state, defender string, attackers, blockers []*protocol.CardView) int {
-	order := make([]int, len(attackers))
-	for i := range order {
-		order[i] = i
-	}
-	// Biggest threat first; stable so equal powers keep board order and
-	// the answer never depends on a sort's whim.
-	sort.SliceStable(order, func(i, j int) bool {
-		return attackers[order[i]].Power > attackers[order[j]].Power
+	through, _ := matchBlocks(attackers, blockers, func(a, b *protocol.CardView) bool {
+		return couldBlock(st, defender, a, b)
 	})
-	can := make([][]int, len(attackers))
+	return through
+}
+
+// matchBlocks is unblockedPower's matching with the edge test as a
+// parameter, so the two-turn race (race.go) can ask the same question
+// about a narrower set of blocks — the ones a blocker survives, or the
+// ones that hold a trampler in full. It returns the power that goes
+// unblocked and, per attacker, the index of the blocker stopping it
+// (-1 when none does).
+func matchBlocks(attackers, blockers []*protocol.CardView, can func(a, b *protocol.CardView) bool) (int, []int) {
+	edges := make([][]int, len(attackers))
 	for ai, a := range attackers {
 		for bi, b := range blockers {
-			if couldBlock(st, defender, a, b) {
-				can[ai] = append(can[ai], bi)
+			if can(a, b) {
+				edges[ai] = append(edges[ai], bi)
 			}
 		}
 	}
@@ -435,7 +449,7 @@ func unblockedPower(st *state, defender string, attackers, blockers []*protocol.
 	}
 	var augment func(ai int, seen []bool) bool
 	augment = func(ai int, seen []bool) bool {
-		for _, bi := range can[ai] {
+		for _, bi := range edges[ai] {
 			if seen[bi] {
 				continue
 			}
@@ -448,12 +462,34 @@ func unblockedPower(st *state, defender string, attackers, blockers []*protocol.
 		return false
 	}
 	through := 0
-	for _, ai := range order {
+	for _, ai := range byPower(attackers) {
 		if !augment(ai, make([]bool, len(blockers))) {
 			through += attackers[ai].Power
 		}
 	}
-	return through
+	stoppedBy := make([]int, len(attackers))
+	for i := range stoppedBy {
+		stoppedBy[i] = -1
+	}
+	for bi, ai := range blockerOf {
+		if ai >= 0 {
+			stoppedBy[ai] = bi
+		}
+	}
+	return through, stoppedBy
+}
+
+// byPower is the attackers' indexes, biggest threat first; stable, so
+// equal powers keep board order and no answer depends on a sort's whim.
+func byPower(attackers []*protocol.CardView) []int {
+	order := make([]int, len(attackers))
+	for i := range order {
+		order[i] = i
+	}
+	sort.SliceStable(order, func(i, j int) bool {
+		return attackers[order[i]].Power > attackers[order[j]].Power
+	})
+	return order
 }
 
 // attackValue prices one attacker against one defending seat. The
