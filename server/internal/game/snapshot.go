@@ -1533,13 +1533,17 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 	// The continuation slots, one by one. Each is a paused effect.
 	for name, present := range map[string]bool{
 		"replacementResume": c.replacementResume != nil,
-		"pickTargetResume":  c.pickTargetResume != nil,
-		"copyResume":        c.copyResume != nil,
-		"triggerResume":     c.triggerResume != nil,
-		"payUnlessResume":   c.payUnlessResume != nil,
-		"mayCastResume":     c.mayCastResume != nil,
-		"searchResume":      c.searchResume != nil,
-		"scryResume":        c.scryResume != nil,
+		// #1397: a parked cost announcement waiting on a commander's
+		// owner. Dropping it drops the announcement, not half of it —
+		// nothing was paid — but the census still says so.
+		"costCommanderResume": c.costCommanderResume != nil,
+		"pickTargetResume":    c.pickTargetResume != nil,
+		"copyResume":          c.copyResume != nil,
+		"triggerResume":       c.triggerResume != nil,
+		"payUnlessResume":     c.payUnlessResume != nil,
+		"mayCastResume":       c.mayCastResume != nil,
+		"searchResume":        c.searchResume != nil,
+		"scryResume":          c.scryResume != nil,
 		// ADR 0088's ordered placement: handed the answer, then
 		// places the pile and runs the rest of the card.
 		"libraryOrderResume": c.libraryOrderResume != nil,

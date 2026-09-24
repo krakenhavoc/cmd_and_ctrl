@@ -186,14 +186,16 @@ type zoneRoute struct {
 	// would ask a question rather than queueing one (see
 	// ReplacementEvent.mustSettleNow).
 	//
-	// One thing sets it today: a discard paid as a COST (CR 601.2h /
-	// CR 602.2b). Costs are paid as one indivisible step, so a
-	// CR 903.9 prompt in the middle would leave a spell on the stack
-	// with its cost half paid — the argument payLifeAsCostLocked makes
-	// for the other half of the same cost line. A cost discard of a
-	// commander therefore goes to the graveyard without asking:
-	// CR 903.9 is a "may", and a cost that cannot ask falls back to
-	// the ordinary result.
+	// What sets it is a card moved to pay a COST (CR 601.2h /
+	// CR 602.2b): a discard, a return to hand, an exile from hand or
+	// graveyard. Costs are paid as one indivisible step, so a prompt in
+	// the middle would leave a spell on the stack with its cost half
+	// paid — the argument payLifeAsCostLocked makes for the other half
+	// of the same cost line. A commander among those cards is not
+	// denied CR 903.9 by it: the owner is asked BEFORE the payment
+	// begins (#1397, cost_commander_choice.go), and commanderAnswer
+	// below carries the answer onto the move, where the gather applies
+	// it without asking.
 	MustSettleNow bool
 
 	// Countered flags a counterspell, whose completed move emits
@@ -279,6 +281,13 @@ type zoneRoute struct {
 	// (ReplacementEvent.asCommanderMove) survives a pause along with
 	// everything else the move was asked for.
 	AsCommander bool
+
+	// commanderAnswer is the CR 903.9 answer the card's owner gave
+	// BEFORE the move (#1397): a cost payment asks first and then
+	// settles (cost_commander_choice.go), so the question cannot be
+	// asked here. It rides onto ReplacementEvent.commanderAnswer, where
+	// the gather reads it. Zero — unasked — everywhere else.
+	commanderAnswer commanderZoneAnswer
 
 	// then is the rest of whatever asked for the move, run once this
 	// one has reached a TERMINAL outcome — landed, replaced away
@@ -552,6 +561,7 @@ func (g *Game) routeCardToZoneLocked(r zoneRoute) (paused bool, err error) {
 		zoneRoute:       &r,
 		asCommanderMove: r.AsCommander,
 		mustSettleNow:   r.MustSettleNow,
+		commanderAnswer: r.commanderAnswer,
 	}
 	if r.Discard {
 		// #650: a discard is its own event kind, because what a discard

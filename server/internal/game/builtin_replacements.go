@@ -93,6 +93,8 @@ var commanderZoneReplacement = ReplacementEffect{
 		return card.Owner
 	},
 	Label: "Commander zone replacement",
+	// #1397: lets the gather honour an answer given before the move.
+	commanderZone: true,
 }
 
 // regenerationShieldReplacement implements CR 701.19a: "The next time

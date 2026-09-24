@@ -839,6 +839,13 @@ type ActivateAbilityParams struct {
 	// component of the cost the same way a cast is gated.
 	Strict  bool
 	AutoTap bool
+
+	// commanderAnswers are the CR 903.9 answers the owners of the
+	// commanders this payment moves gave before it began (#1397,
+	// cost_commander_choice.go). Unexported, so no payload can answer
+	// for somebody else's commander: only the parked announcement's
+	// resume sets it.
+	commanderAnswers map[uuid.UUID]bool
 }
 
 // ActivateCatalogAbility activates ability `index` on a permanent
@@ -854,6 +861,13 @@ type ActivateAbilityParams struct {
 func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, params ActivateAbilityParams) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	return g.activateCatalogAbilityLocked(playerID, cardID, index, params)
+}
+
+// activateCatalogAbilityLocked is ActivateCatalogAbility's body, split
+// out so a parked announcement (#1397) can make it again from the
+// CR 903.9 answer's resume. Caller must hold g.mu.
+func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index int, params ActivateAbilityParams) error {
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
@@ -1192,6 +1206,26 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		return err
 	}
 
+	// #1397: every card this payment is about to move, asked about
+	// BEFORE anything is paid. A commander among them whose owner has
+	// not answered CR 903.9 parks the announcement on that question;
+	// the answer makes it again, and the payment below then settles
+	// with the answer on each move. See cost_commander_choice.go.
+	moving := append(append(append(append([]uuid.UUID(nil), sacrifices...), params.ReturnIDs...), discards...), exiles...)
+	if ab.Cost.ExileSelf {
+		moving = append(moving, cardID)
+	}
+	asked, answers := g.askCostCommanderLocked(playerID, moving, params.commanderAnswers, source.Name,
+		func(g *Game, answers map[uuid.UUID]bool) error {
+			again := params
+			again.commanderAnswers = answers
+			return g.activateCatalogAbilityLocked(playerID, cardID, index, again)
+		})
+	if asked {
+		return nil
+	}
+	params.commanderAnswers = answers
+
 	// --- pay ----------------------------------------------------
 	//
 	// #789 / #761: one record of what this announcement paid, built
@@ -1308,7 +1342,7 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	}
 	// Sacrifices last: they move cards, which invalidates `source`.
 	// One payment is one simultaneous exit (#747, CR 603.10a).
-	if err := g.payCostSacrificesLocked(sacrifices); err != nil {
+	if err := g.payCostSacrificesLocked(sacrifices, params.commanderAnswers); err != nil {
 		return err
 	}
 	// #1213: how many this announcement actually sacrificed, recorded
@@ -1322,7 +1356,7 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	// before the stack item is built so the leaves-triggers it queues
 	// are drained ABOVE the ability by the closing state-check pass
 	// (CR 603.3b).
-	returnedAttacking, err := g.payReturnToHandCostLocked(playerID, cardID, params.ReturnIDs)
+	returnedAttacking, err := g.payReturnToHandCostLocked(playerID, cardID, params.ReturnIDs, params.commanderAnswers)
 	if err != nil {
 		return err
 	}
@@ -1344,7 +1378,7 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	// has been paid for, so the card HAS been cycled, and the
 	// watchers see it with the card already in the graveyard, which
 	// is where CR 702.29c says it is.
-	if err := g.payAbilityDiscardsLocked(playerID, cardID, ab, discards); err != nil {
+	if err := g.payAbilityDiscardsLocked(playerID, cardID, ab, discards, params.commanderAnswers); err != nil {
 		return err
 	}
 	// #1297: the exile-N-cards component, beside the discards and for
@@ -1353,14 +1387,14 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	// door: nothing here is discarded. Recorded on the payment so an
 	// effect that reads "the card exiled this way" can find it in exile
 	// by instance ID, where this just put it.
-	if err := g.payExileCardsCostLocked(playerID, cardID, exiles); err != nil {
+	if err := g.payExileCardsCostLocked(playerID, cardID, exiles, params.commanderAnswers); err != nil {
 		return err
 	}
 	paid.Exiled = exiles
 	// #1221: and the graveyard half. Last of all, because it moves
 	// the source out of the graveyard and the effect that follows
 	// reads it back out of exile. See exile_cost.go.
-	if err := g.payAbilityExileSelfLocked(playerID, cardID, ab); err != nil {
+	if err := g.payAbilityExileSelfLocked(playerID, cardID, ab, params.commanderAnswers); err != nil {
 		return err
 	}
 

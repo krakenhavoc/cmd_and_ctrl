@@ -498,6 +498,13 @@ type CastSpellParams struct {
 	// gather pass; LockedSources is for *untapped* permanents the
 	// player wants kept available. Added in S15 sub-PR 5.
 	LockedSources []uuid.UUID
+
+	// commanderAnswers are the CR 903.9 answers the owners of the
+	// commanders this cast's costs move gave before the payment began
+	// (#1397, cost_commander_choice.go). Unexported: only the parked
+	// announcement's resume sets it, so no payload answers for
+	// another player's commander.
+	commanderAnswers map[uuid.UUID]bool
 }
 
 // InsufficientManaError is returned by CastSpell when the Strict
@@ -544,6 +551,13 @@ func (e *InsufficientManaError) Unwrap() error { return ErrInsufficientMana }
 func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	return g.castSpellLocked(playerID, cardID, params)
+}
+
+// castSpellLocked is CastSpell's body, split out so a parked cast
+// (#1397) can be made again from the CR 903.9 answer's resume. Caller
+// must hold g.mu.
+func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParams) error {
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
@@ -1131,6 +1145,25 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		g.runStateChecksLocked()
 		return nil
 	}
+	// #1397: every card this cast's costs are about to move — the
+	// additional cost's discards and sacrifices, the alternative
+	// cost's pitched, returned or escaped cards — asked about BEFORE
+	// anything is tapped or paid. A commander among them whose owner
+	// has not answered CR 903.9 parks the cast on that question, with
+	// the card still where it was; the answer casts it again. See
+	// cost_commander_choice.go.
+	moving := append(append(append([]uuid.UUID(nil), params.DiscardIDs...), params.SacrificeIDs...), params.AltCostIDs...)
+	asked, answers := g.askCostCommanderLocked(playerID, moving, params.commanderAnswers, card.Name,
+		func(g *Game, answers map[uuid.UUID]bool) error {
+			again := params
+			again.commanderAnswers = answers
+			return g.castSpellLocked(playerID, cardID, again)
+		})
+	if asked {
+		return nil
+	}
+	params.commanderAnswers = answers
+
 	// S15 sub-PR 5 auto-tap. When AutoTap is set, plan a tap of the
 	// caller's untapped permanents and materialise the produced mana
 	// into the pool BEFORE the strict-mode cost gate runs. Failure
@@ -1286,7 +1319,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	if addCost != nil && addCost.PayLifeX {
 		payLife = params.XValue
 	}
-	if err := g.payAdditionalCostLocked(playerID, params.DiscardIDs, params.SacrificeIDs, payLife); err != nil {
+	if err := g.payAdditionalCostLocked(playerID, params.DiscardIDs, params.SacrificeIDs, payLife, params.commanderAnswers); err != nil {
 		slog.Error("cast_spell: additional cost failed after validation",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
@@ -1299,7 +1332,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// is a card leaving hand while the counterspell is on the stack,
 	// and a Daze returns its Island before the spell it is answering
 	// has resolved.
-	if err := g.payAlternativeCostLocked(playerID, alt, params.AltCostIDs); err != nil {
+	if err := g.payAlternativeCostLocked(playerID, alt, params.AltCostIDs, params.commanderAnswers); err != nil {
 		slog.Error("cast_spell: alternative cost failed after validation",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
@@ -1852,7 +1885,10 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 		// rewritten. Nothing below reads it: the mana half works off
 		// cardID, ab and tappedForMana.
 		if len(sacrifices) > 0 {
-			if err := g.payCostSacrificesLocked(sacrifices); err != nil {
+			// #1397: nil answers — the auto-tapper asks nobody, and a
+			// commander whose own mana ability sacrifices it is not a
+			// source it plans with.
+			if err := g.payCostSacrificesLocked(sacrifices, nil); err != nil {
 				continue
 			}
 		}
@@ -2083,11 +2119,13 @@ func (g *Game) materializeExiledManaSourceLocked(
 	// tap's place.
 	g.noteAbilityActivationLocked(g.activationTallyKeyLocked(cardID, ab.Label))
 	// The payment. Through the one exit primitive with MustSettleNow
-	// (payExileSelfCostLocked), so a commander spent this way still
-	// gets its CR 903.9 answer and the CR 601.2h indivisible step
-	// cannot pause. A failure mints nothing and leaves the card where
-	// it was; nothing above this line has changed the board.
-	if err := g.payExileSelfCostLocked(p.ID, cardID, true); err != nil {
+	// (payExileSelfCostLocked), so the CR 601.2h indivisible step
+	// cannot pause. The auto-tapper asks nobody (nil answers, #1397):
+	// no commander carries a Spirit Guide's ability, so the CR 903.9
+	// question the hand-clicked activation asks first is not asked
+	// here. A failure mints nothing and leaves the card where it was;
+	// nothing above this line has changed the board.
+	if err := g.payExileSelfCostLocked(p.ID, cardID, true, nil); err != nil {
 		return
 	}
 	// `card` is DANGLING from here — the pile it points into has been
@@ -4389,6 +4427,9 @@ func (g *Game) routeBattlefieldExitInBatchThenLocked(cardID uuid.UUID, r zoneRou
 		// and nothing else can tell a destruction from a sacrifice.
 		Destruction:       r.Destruction,
 		CantBeRegenerated: r.CantBeRegenerated,
+		// #1397: a sacrifice paid as a cost carries its owner's
+		// CR 903.9 answer, given before the payment.
+		commanderAnswer: r.commanderAnswer,
 	}
 	if then != nil {
 		r.CardID = cardID
@@ -5302,11 +5343,24 @@ type ManaAbilityParams struct {
 	// with separate exits (game.ExileCost); every other mana ability
 	// sends none.
 	ExileIDs []uuid.UUID
+
+	// commanderAnswers are the CR 903.9 answers the owners of the
+	// commanders this activation's cost moves gave before it began
+	// (#1397, cost_commander_choice.go). Unexported: only the parked
+	// activation's resume sets it.
+	commanderAnswers map[uuid.UUID]bool
 }
 
 func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, params ManaAbilityParams) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	return g.activateManaAbilityLocked(playerID, cardID, abilityIdx, params)
+}
+
+// activateManaAbilityLocked is ActivateManaAbility's body, split out
+// so a parked activation (#1397) can be made again from the CR 903.9
+// answer's resume. Caller must hold g.mu.
+func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx int, params ManaAbilityParams) error {
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
@@ -5553,6 +5607,28 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		}
 	}
 
+	// #1397: every card this cost is about to move, asked about
+	// BEFORE the activation begins. CR 605.3a leaves a mana ability no
+	// window to pause in once it has started — which is why every move
+	// below settles — but nothing has started yet: a commander whose
+	// owner has not answered CR 903.9 parks the activation on that
+	// question, and the answer activates it again. See
+	// cost_commander_choice.go.
+	moving := append(append(append([]uuid.UUID(nil), sacrifices...), discards...), exiles...)
+	if ab.ExileSelf {
+		moving = append(moving, cardID)
+	}
+	asked, answers := g.askCostCommanderLocked(playerID, moving, params.commanderAnswers, card.Name,
+		func(g *Game, answers map[uuid.UUID]bool) error {
+			again := params
+			again.commanderAnswers = answers
+			return g.activateManaAbilityLocked(playerID, cardID, abilityIdx, again)
+		})
+	if asked {
+		return nil
+	}
+	params.commanderAnswers = answers
+
 	// needStateChecks is set by any component of this activation
 	// that can kill a player or a permanent — a sacrifice, a life
 	// payment, a damage rider. A single deferred pass covers all of
@@ -5679,7 +5755,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	if len(sacrifices) > 0 {
 		// One payment, one simultaneous exit (#747): a Blood Artist
 		// paid in alongside another creature sees both deaths.
-		if err := g.payCostSacrificesLocked(sacrifices); err != nil {
+		if err := g.payCostSacrificesLocked(sacrifices, params.commanderAnswers); err != nil {
 			return err
 		}
 		// A sacrificed source leaves `card` dangling. Nothing below
@@ -5701,8 +5777,9 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	// MustSettleNow is the route's, not this call site's.
 	if len(discards) > 0 {
 		if err := g.discardCardsLocked(playerID, discards, discardOptions{
-			cause:  DiscardCauseCost,
-			source: cardID,
+			cause:            DiscardCauseCost,
+			source:           cardID,
+			commanderAnswers: params.commanderAnswers,
 		}); err != nil {
 			return err
 		}
@@ -5719,7 +5796,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	// see (game.ExileCost). The exit can still queue leave-the-hand
 	// triggers, so drain on the way out as the discard does.
 	if len(exiles) > 0 {
-		if err := g.payExileCardsCostLocked(playerID, cardID, exiles); err != nil {
+		if err := g.payExileCardsCostLocked(playerID, cardID, exiles, params.commanderAnswers); err != nil {
 			return err
 		}
 		needStateChecks = true
@@ -5735,7 +5812,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	// snapshot taken before the first payment; `card` is deliberately
 	// dangling from here, exactly as it is after a sacrifice.
 	if ab.ExileSelf {
-		if err := g.payExileSelfCostLocked(playerID, cardID, true); err != nil {
+		if err := g.payExileSelfCostLocked(playerID, cardID, true, params.commanderAnswers); err != nil {
 			return err
 		}
 		card = nil
