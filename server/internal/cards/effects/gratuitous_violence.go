@@ -12,12 +12,15 @@ import (
 //	 player, it deals double that damage instead."
 //
 // Angrath's Marauders' replacement narrowed to CREATURE sources: a
-// Bolt is not doubled, an attacker is. The source is looked up
-// wherever it now is (combat damage is dealt before SBAs run, so a
-// creature that traded is still on the battlefield when its damage
-// is replaced) and must be a creature the enchantment's controller
-// controls. With a second doubler the affected player orders them,
-// and x4 is x4 either way.
+// Bolt is not doubled, an attacker is. The source's type and
+// controller are read from the damage event's last-known
+// characteristics (#1430, CR 608.2h) — the same value protection and
+// the catalog's colour-testing doublers read — so a creature that
+// traded is still on the battlefield when its damage is replaced,
+// and a creature that dealt "when this dies" damage after changing
+// type or control is still judged by what it was when it died, not
+// by its graveyard card. With a second doubler the affected player
+// orders them, and x4 is x4 either way.
 //
 // No simplification.
 func init() {
@@ -31,8 +34,8 @@ func init() {
 				if ev.Kind != game.RepEventDamage || ev.DamageAmount <= 0 || ev.DamageSource == uuid.Nil {
 					return false
 				}
-				c, ok := g.LookupCardForEffect(ev.DamageSource)
-				return ok && c.IsCreature() && c.Controller == src.Controller
+				ch, ok := damageSourceCharacteristics(ev, g)
+				return ok && hasFold(ch.Types, "Creature") && ch.Controller == src.Controller
 			},
 			Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
 				ev.DamageAmount *= 2
