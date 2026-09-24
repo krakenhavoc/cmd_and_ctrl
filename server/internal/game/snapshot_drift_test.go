@@ -340,6 +340,11 @@ var cardFields = plan(
 	// wrong and say nothing about it.
 	"ClassLevel", carried, "",
 	"Solved", carried, "",
+	// ADR 0071 amendment (#1321): the CR 701.64 harnessed designation.
+	// Carried for Solved's reason — the zero value ("not harnessed")
+	// is a legal state, so a restore that dropped it would come back
+	// wrong and say nothing.
+	"Harnessed", carried, "",
 	// ADR 0090 (#1328): the CR 722.3a prepared designation, the
 	// CR 722.3c copy's not-a-card marker, and the permanent object the
 	// copy is kept in exile by. Carried for Solved's reason — every

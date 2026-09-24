@@ -1546,6 +1546,16 @@ type CardView struct {
 	// that list is built from, and an inactive static or trigger has
 	// no per-ability representation on the wire to grey out.
 	Solved bool `json:"solved,omitempty"`
+	// Harnessed is a permanent's CR 701.64 harnessed designation
+	// (ADR 0071 amendment, #1321) — the marker that switches its
+	// printed "∞ — [ability]" lines on. Public for the same reason
+	// Solved is: a harnessed permanent is visible to everyone in
+	// paper. Unlike ClassLevel / Solved it is not gated on a subtype
+	// probe (there is no "is this an Infinity Stone" reader, and none
+	// is needed): any permanent can print "Harness [this permanent]",
+	// so the field is set straight off the card, the same way
+	// Prepared is below.
+	Harnessed bool `json:"harnessed,omitempty"`
 	// Prepared is a permanent's CR 722.3a prepared designation
 	// (ADR 0090): while it is set, its controller may cast the copy of
 	// its prepare spell that sits in exile — which the wire already
@@ -6020,6 +6030,10 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// neither. Cleared with the rest of the type-derived bits.
 	out.ClassLevel = 0
 	out.Solved = false
+	// ADR 0071 amendment (#1321): a face-down permanent (CR 708.2)
+	// prints none of its own abilities, so it cannot have harnessed
+	// one on.
+	out.Harnessed = false
 	// ADR 0090: a face-down permanent has no prepare spell (CR 708.2)
 	// and cannot be prepared, but the field is cleared with the other
 	// designations rather than trusted to be false.
@@ -6333,6 +6347,7 @@ func viewOfCard(c game.Card) CardView {
 		if game.IsCase(c) {
 			view.Solved = c.Solved
 		}
+		view.Harnessed = c.Harnessed
 		view.Prepared = c.Prepared
 	}
 	if c.BlockingTarget != uuid.Nil {

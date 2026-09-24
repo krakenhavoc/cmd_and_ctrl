@@ -838,3 +838,103 @@ This supersedes Decision 5's "station is not offered".
 - **Planets whose threshold line is a MANA ability** (Evendo, Waking Haven;
   Uthros, Titanic Godcore). `ActiveWhen` is not on mana abilities (Decision 1,
   note 3).
+
+---
+
+## Addendum (2026-09-23): a fifth designation, Harnessed (CR 701.64, #1321)
+
+**Status:** Accepted · 2026-09-23 · tracked on
+[#1321](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1321),
+tracker [#889](https://github.com/krakenhavoc/cmd_and_ctrl/issues/889).
+
+### Context
+
+CR 701.64 prints a fifth designation, same shape as the four Decision
+1 named:
+
+> **701.64a** "Harness [this permanent]" means "If this permanent
+> isn't harnessed, it becomes harnessed."
+> **701.64b** Harnessed is a designation… Once a permanent becomes
+> harnessed, it stays harnessed until it leaves the battlefield.
+> **702.186b** "∞ — [Ability]" means "As long as this permanent is
+> harnessed, it has [ability]."
+
+The Mind Stone is the first (and, in the dump checked for this ADR,
+only) printed card that uses it: `{5}{W}, {T}: Harness The Mind
+Stone.` gates `∞ — At the beginning of your end step, exile up to one
+other target nonland permanent you control, then return that card to
+the battlefield under its owner's control.` Nothing about it needed a
+new mechanism — CR 701.64b is CR 719.3b's sentence with a different
+noun — so this addendum is Decision 2's Case-solved section, copied
+for the fifth kind, not a new design.
+
+### Decision: `DesignationHarnessed`, `Card.Harnessed`, `HarnessForEffect` — Solved's three pieces, verbatim
+
+- **`DesignationHarnessed`** joins the `DesignationKind` enum
+  (`game/designations.go`), `Active` gains `case
+  DesignationHarnessed: return c.Harnessed`, and `Harnessed()`
+  constructs the gate — the same three lines `DesignationCaseSolved` /
+  `CaseSolved()` are.
+- **`Card.Harnessed bool`** sits in the bool block next to `Solved`,
+  for `TestCardHasNoInteriorPadding`'s reason (Decision 6's "8 bytes
+  for `ClassLevel`, `Solved` costs nothing" arithmetic — a bool costs
+  nothing here either). Not copiable (CR 701.64 says nothing about a
+  copy inheriting it, and it is battlefield state next to `Tapped`,
+  not a printed characteristic — the same non-argument that makes
+  `ClassLevel` / `Solved` non-copiable), cleared on battlefield exit
+  in the same two places (`zone.go`, `entry_tail.go`), carried by the
+  snapshot (`cardSnapshot.Harnessed`, both projection sites).
+- **`HarnessForEffect` / `IsHarnessed`** are `SolveCaseForEffect` /
+  `IsSolved` with the noun changed, including the idempotency:
+  CR 701.64a is worded "if this permanent ISN'T harnessed, it
+  becomes" — an "if", not a legality restriction — so nothing in the
+  engine refuses a second activation of "Harness [this permanent]",
+  and `HarnessForEffect` simply does nothing the second time, exactly
+  as `SolveCaseForEffect` does for a Case solved twice.
+- **`EventHarnessed`** joins `EventClassLevel` / `EventCaseSolved` in
+  the layer listener's designation-bump case. Silent on the public
+  log (`silentEventKinds["EventHarnessed"] =
+  silentBoardStateIsVisible`), for `EventCaseSolved`'s reason: the
+  state is a wire badge, not a narrated line.
+
+**Wire:** `CardView.harnessed` (omitempty), unconditional once a
+permanent is on the battlefield — unlike `class_level` / `solved` it
+carries no subtype probe, because CR 701.64 names no card type the
+way CR 716 names Class and CR 719 names Case; any permanent can print
+a Harness ability. Cleared on the non-knower redaction with
+`class_level`, `solved` and `prepared`. See
+[docs/protocol.md](../protocol.md).
+
+**Catalog side** (`cards/effects/designations.go`): `Harnessed()`
+wraps `game.Harnessed()` exactly as `Solved()` wraps `game.CaseSolved()`,
+and `Harness(label, cost)` is the "Harness [this permanent]" activated
+ability — no `ActiveWhen`, no `Condition`, for the idempotency argument
+above; a `Condition` that refused the second activation would make the
+ability unactivatable rather than a no-op, which CR 701.64a does not
+say. The "∞ — [ability]" line itself is an ordinary `TriggeredAbility`
+with `ActiveWhen: Harnessed()` — no new catalog machinery, which is
+the whole point of Decision 1's one-gate design paying off a fifth
+time.
+
+**Proof card:** The Mind Stone
+([the_mind_stone.go](../../server/internal/cards/effects/the_mind_stone.go)),
+`CompletenessFull` — indestructible, `{T}: Add {W}`, the Harness
+ability and the ∞ end-step flicker (Thassa, Deep-Dwelling's blink,
+CR 400.7 new-object semantics and all, with `Flicker.Controller` left
+at its zero value for "under its OWNER's control" rather than
+Thassa's "under YOUR control").
+
+### Consequences
+
+Good: a fifth designation is three fields and a constructor, and every
+consumer that already reads a gate (the layer pass, the harvester, the
+enumerator, the wire) needed no change to honour it — Decision 1's
+whole argument, paid off again. `DesignationDoorUnlocked` stays
+reserved and unbuilt; this addendum does not touch Decision 3.
+
+Nothing here builds a general "Harness" cost component analogous to
+`AbilityCost.Loyalty` — The Mind Stone's cost is an ordinary
+`Plus(ManaCost, TapCost)`, because CR 701.64a is a printed EFFECT
+("harness [this permanent]"), not a cost syntax, and no card prints
+"Harness" as part of a larger cost the way a Class's level-up is
+printed as part of an activation instruction.

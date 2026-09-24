@@ -910,6 +910,19 @@ type Card struct {
 	// Carried by the snapshot. Added in S46 (#757).
 	Solved bool
 
+	// Harnessed is the CR 701.64 designation on a permanent — the
+	// marker that switches its printed "∞ — [ability]" clauses on
+	// (CR 702.186b, ADR 0071 amendment #1321).
+	//
+	// Set by HarnessForEffect, from the "Harness [this permanent]"
+	// activated ability's resolution, and by nothing else. Once set it
+	// STAYS set for as long as the permanent is on the battlefield
+	// (CR 701.64b: "it stays harnessed until it leaves the
+	// battlefield") — the same two sentences as Solved, for the same
+	// reasons: not copiable, cleared when the permanent leaves the
+	// battlefield (CR 400.7), carried by the snapshot.
+	Harnessed bool
+
 	// Prepared is the CR 722.3a designation on a permanent with a
 	// prepare spell (ADR 0090): while it is set, the permanent's
 	// controller may cast the CR 722.3c copy of its prepare spell that
