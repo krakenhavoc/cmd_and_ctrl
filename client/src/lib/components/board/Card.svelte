@@ -29,6 +29,7 @@
   import { play } from "../../sounds";
   import { settings } from "../../settings";
   import { targeting, isLegalCardTarget, isPicked } from "../../targeting";
+  import { autoTapHighlight } from "../../dragCast";
   import { noUntapAppliesToController } from "../../noUntap";
   import { openCardMenu } from "../../contextMenu";
   import CounterPips from "./CounterPips.svelte";
@@ -354,6 +355,7 @@
   class:selected
   class:targetable
   class:picked
+  class:autotap-planned={$autoTapHighlight.has(card.instance_id)}
   class:attacking
   class:blocking
   class:clickable={interactive}
@@ -941,6 +943,13 @@
       0 0 18px rgba(111, 227, 164, 0.6),
       0 6px 16px rgba(0, 0, 0, 0.5);
     cursor: crosshair;
+  }
+  /* #1508: a mana source the auto-tapper would spend on the card being
+     dragged out of the hand. A light dashed ring, deliberately quieter
+     than a target or a selection — it is a preview, not a prompt. */
+  .card.autotap-planned {
+    outline: 2px dashed rgba(241, 211, 138, 0.85);
+    outline-offset: 2px;
   }
   .card.picked {
     box-shadow:

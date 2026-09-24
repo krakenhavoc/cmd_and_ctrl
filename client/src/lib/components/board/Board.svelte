@@ -83,6 +83,7 @@
     castTargetOverride,
     altCostPayOptions,
     applyCastChoices,
+    castChoicesBase,
     isLegalCardTarget,
     isLegalPlayerTarget,
     isMultiPick,
@@ -655,12 +656,14 @@
   // this one — costs, modes, targets, even whether the card touches
   // the stack at all — depends on which of them the player meant.
   let facePromptCard = $state<CardView | null>(null);
-  let facePromptZone: CastSourceZone | undefined;
+  // #1508: the choices the cast started with — its zone and whether it
+  // was dragged — so the face picker's confirm carries both on.
+  let facePromptBase: CastChoices = {};
   function confirmFace(face: number): void {
     const card = facePromptCard;
-    const fromZone = facePromptZone;
+    const base = facePromptBase;
     facePromptCard = null;
-    facePromptZone = undefined;
+    facePromptBase = {};
     if (!card) return;
     // Run the rest of the chain against the CHOSEN face, so the
     // prompts and the cast-timing checks see its type line, its cost
@@ -675,7 +678,7 @@
     // now, and face 0's block is the same answer the card's top-level
     // block carries, so the special case the old code needed is gone
     // — and one path is one path.
-    afterFace(cardAsFace(card, face), fromZone ? { face, fromZone } : { face });
+    afterFace(cardAsFace(card, face), { ...base, face });
   }
 
   function afterFace(card: CardView, choices: CastChoices): void {
@@ -721,17 +724,28 @@
   // choices object, so the zone has to be seeded here rather than at
   // the end — otherwise a modal DFC cast out of the graveyard would
   // lose it.
-  function handlePlayCard(card: CardView, fromZone?: CastSourceZone, face?: number): void {
+  //
+  // #1508: `viaDrag` is set only by the hand's drag-to-cast gesture. It
+  // rides CastChoices through every prompt and applyCastChoices turns
+  // it into `strict: true, auto_tap: true` on whichever cast_spell the
+  // chain finally sends.
+  function handlePlayCard(
+    card: CardView,
+    fromZone?: CastSourceZone,
+    face?: number,
+    viaDrag = false,
+  ): void {
+    const base = castChoicesBase(fromZone, viaDrag);
     if (face !== undefined) {
-      afterFace(cardAsFace(card, face), fromZone ? { face, fromZone } : { face });
+      afterFace(cardAsFace(card, face), { ...base, face });
       return;
     }
     if (needsFacePicker(card)) {
-      facePromptZone = fromZone;
+      facePromptBase = base;
       facePromptCard = card;
       return;
     }
-    afterFace(card, fromZone ? { fromZone } : {});
+    afterFace(card, base);
   }
 
   // S20 sub-PR 4: a modal spell asks for its mode(s) after X and
