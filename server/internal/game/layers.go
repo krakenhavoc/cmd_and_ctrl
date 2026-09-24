@@ -440,7 +440,7 @@ func (g *Game) activeStaticAbilitiesLocked() []ContinuousEffect {
 		if len(abilities) == 0 {
 			continue
 		}
-		// CR 613.7d: an Equipment's or Aura's continuous effect
+		// CR 613.7e: an Equipment's or Aura's continuous effect
 		// takes a NEW timestamp when it becomes attached, not the
 		// one it got when it entered the battlefield. Unobservable
 		// for every card in the S24 catalog (layer 6 grants and 7c

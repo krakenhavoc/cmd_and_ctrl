@@ -1714,7 +1714,7 @@ type NoUntapView struct {
 // zone.
 //
 // It exists because a card can be TWO castable objects (ADR 0034). A
-// modal DFC's faces are independently playable (CR 712.12a) and an
+// modal DFC's faces are independently playable (CR 712.11b) and an
 // adventure card's are too (CR 715.3), and the two halves have
 // different catalog entries, different costs and different target
 // clauses — Bonecrusher Giant targets nothing and Stomp deals 2 damage
@@ -1792,7 +1792,7 @@ type CastSurfaceView struct {
 	// of the prices this cast may claim out of the zone the card is
 	// in right now, so the caster must name one of
 	// `alternative_costs` — a Faithless Looting in the graveyard is
-	// castable at its flashback cost and at nothing else (CR 702.34b,
+	// castable at its flashback cost and at nothing else (CR 702.34a,
 	// rule 3 of validateCastPathLocked), and a card a permission
 	// PRICES is the same shape (rule 4).
 	//
@@ -2153,7 +2153,7 @@ type ActivatedAbilityView struct {
 	Exhausted bool `json:"exhausted,omitempty"`
 	// CantActivate is the printed clause of a board-wide "can't be
 	// activated" static that refuses THIS ability right now (CR
-	// 602.5a, #1210) — "Activated abilities of creatures can't be
+	// 602.5, #1210) — "Activated abilities of creatures can't be
 	// activated" (Cursed Totem), "…of sources with the chosen name …
 	// unless they're mana abilities" (Pithing Needle). Absent, which
 	// is nearly always, means nothing refuses it.
@@ -3646,7 +3646,7 @@ type castFace struct {
 
 // activeFace is the castFace for the half the view is SHOWING — every
 // stamp that existed before #992. A pile's cards are front-up (CR
-// 712.8, MoveCard), so for all of them this is face 0 and the key is
+// 712.8a, MoveCard), so for all of them this is face 0 and the key is
 // the bare oracle ID, exactly as the pre-#992 call sites passed.
 func activeFace(c *CardView) castFace {
 	return castFace{
@@ -4500,7 +4500,7 @@ func stampManaConditions(g *game.Game, card game.Card, controller uuid.UUID, vie
 		if i >= len(raw) {
 			continue
 		}
-		// #1210, CR 602.5a: the board-wide gate's reason, from the
+		// #1210, CR 602.5: the board-wide gate's reason, from the
 		// one function the engine, the enumerator and the auto-tapper
 		// all call. Mana: true, and the RESTRICTION decides what that
 		// means — Cursed Totem reaches a Birds of Paradise's {G},
@@ -6629,7 +6629,7 @@ func stampLibraryTop(g *game.Game, seats []PlayerView) {
 // names face 0 (CR 715.4's Adventure creature) is a real answer here
 // and not the "no opinion" a bare integer made of it. SetFace(0) is a
 // no-op on a card already showing its front, which is every card in
-// exile (CR 712.8, MoveCard) — the call is what makes the code say
+// exile (CR 712.8a, MoveCard) — the call is what makes the code say
 // the rule rather than rely on the coincidence.
 func grantedFace(c game.Card, perm *game.CastPermission) game.Card {
 	face, ok := perm.NamedFace()
@@ -6788,7 +6788,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		if g.AbilityExhausted(caster, c.InstanceID, a) {
 			v.Exhausted = true
 		}
-		// #1210, CR 602.5a: the board-wide "can't be activated"
+		// #1210, CR 602.5: the board-wide "can't be activated"
 		// gate's reason, from the one function the engine and the
 		// enumerator call. Behind the fast negative taken once for
 		// the whole card, because almost no board restricts anything.

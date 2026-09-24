@@ -17,7 +17,7 @@ import (
 // could stop and ask three questions before this file, and all three
 // are yes/no-shaped:
 //
-//	Optional      — "do you apply this?"            (CR 614.10)
+//	Optional      — "do you apply this?"            (a "may" replacement)
 //	EntryLifeCost — "do you pay 2 life?"            (the shocklands)
 //	CopySelector  — "which permanent do you copy?"  (CR 707.2, Clone)
 //

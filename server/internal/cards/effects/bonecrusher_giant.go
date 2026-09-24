@@ -64,7 +64,7 @@ import (
 // Bonecrusher Giant, which is the one direction this catalog does not
 // ship.
 //
-// The trigger fires at ANNOUNCE (CR 115.7), so it goes on the stack
+// The trigger fires at ANNOUNCE (CR 601.2c), so it goes on the stack
 // ABOVE the spell that targeted and resolves first. That is exactly
 // why the card is played: the two damage is dealt before the removal
 // spell resolves, and a Giant that survives is still there when it
@@ -84,7 +84,7 @@ func init() {
 			AppliesTo: SelfTargetedByASpell,
 			// "THAT SPELL'S CONTROLLER" is Event.Actor, captured in
 			// Build rather than looked up in the effect. The trigger
-			// is harvested at announce (CR 115.7) and resolves later,
+			// is harvested at announce (CR 601.2c) and resolves later,
 			// by which time the spell may have been countered and its
 			// stack item gone — and the ability names the player it
 			// named when it triggered, not whoever is left. Actor is

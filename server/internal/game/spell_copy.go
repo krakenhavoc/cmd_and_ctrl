@@ -241,7 +241,7 @@ func (g *Game) createCopyLocked(src Card, item *StackItem, controller uuid.UUID,
 // the copy decision pauses on a prompt, its card is out of the Stack
 // zone and in a graveyard. In the RULES it is still there — a spell is
 // put into its owner's graveyard as the final step of its own
-// resolution (CR 608.2m) — so the copy is made from last-known
+// resolution (CR 608.2n) — so the copy is made from last-known
 // information, which is what Game.resolving holds.
 //
 // It is narrow on purpose: resolvingSpellLocked answers only for the
@@ -366,7 +366,7 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 
 	// No EventCast: a copy is created, not cast. EventBecomesTarget
 	// still fans out — the copy is a spell and the things it points
-	// at have become the target of one (CR 115.7), which is what a
+	// at have become the target of one (CR 115.3), which is what a
 	// ward trigger or Monk Gyatso is watching for.
 	g.emitBecameTargetLocked(controller, copyCard.InstanceID, copyCard.InstanceID, meta.Targets)
 }

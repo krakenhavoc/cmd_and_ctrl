@@ -84,7 +84,7 @@ describe("castableFromZone — who gets the graveyard cast button", () => {
   // printed on the BACK face (#1171) — the front half of such a card
   // is not a cast surface here, and reading the card's own top-level
   // block alone (always face 0's answer for a front-up pile, CR
-  // 712.8) missed it. Latent today — no catalog card prints a
+  // 712.8a) missed it. Latent today — no catalog card prints a
   // back-face graveyard permission yet — but the union is the
   // documented rule (docs/protocol.md, "castable_here… for every
   // castable FACE") and the fixture below is exactly the shape #1171

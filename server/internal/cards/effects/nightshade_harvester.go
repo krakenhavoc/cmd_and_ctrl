@@ -26,7 +26,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Harvester killed in response drains and gets no counter. The drain
 // is life LOSS, not damage, so no prevention shield stops it.
 //
-// Batching gap (CR 603.1): the engine emits one EventETB per land, so
+// Batching gap: the engine emits one EventETB per land, so
 // two lands entering simultaneously under one opponent trigger twice.
 // The printed card says "a land", singular, so twice is correct here.
 //

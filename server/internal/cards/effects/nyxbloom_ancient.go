@@ -16,7 +16,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Nyxblooms, not a Nyxbloom and a Reflection). With both on the
 // battlefield a Forest makes six, in either order, which is why the
 // ordering is never actually put to anybody: a production cannot pause
-// (CR 605.3a, ADR 0013 §5ab) and multiplication commutes.
+// (CR 605.3b, ADR 0013 §5ab) and multiplication commutes.
 //
 // Trample rides PrintedKeywords. Everything else about the mana half
 // is written on Mana Reflection's card file — where the window opens

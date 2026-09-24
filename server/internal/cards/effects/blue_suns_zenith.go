@@ -14,7 +14,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // resolving card is still on the stack when OnResolve runs (the
 // engine only routes it away AFTER OnResolve returns), so tucking it
 // here is exactly the "the spell may have moved itself" case
-// resolveTopOfStackLocked already special-cases (CR 608.2m) — it
+// resolveTopOfStackLocked already special-cases (CR 608.2n) — it
 // notices the card left the stack on its own and skips the graveyard
 // route.
 //

@@ -12,8 +12,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the pirates share; the edict is EachPlayerSacrifices with the
 // GreatestPowerYouControl predicate evaluated per opponent — each
 // opponent is offered exactly the creatures tied for the greatest
-// power they control (CR 700.3, the set, and the player picks among
-// it), read with counters and anthems, and an opponent with no
+// power they control ("the greatest" picks out the whole tied set,
+// and the player picks among it), read with counters and anthems, and an opponent with no
 // creature sacrifices nothing.
 //
 // No simplification.

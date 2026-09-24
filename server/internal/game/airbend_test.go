@@ -248,7 +248,7 @@ func TestCastEventCarriesTheSourceZone(t *testing.T) {
 	}
 }
 
-// "Becomes the target of a spell or ability" (CR 115.7) fires at
+// "Becomes the target of a spell or ability" (CR 115.3) fires at
 // announce, once per slot, for spells and for abilities alike — and
 // for every VERB that announces one.
 //

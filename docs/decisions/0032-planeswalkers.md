@@ -326,8 +326,9 @@ exactly zero is legal and is not an overpayment — the 704.5i SBA of
 **Payment goes through `applyCounterLocked`, not
 `AddCounterForEffect`** — the opposite of §5, and deliberately so.
 §5 is about a planeswalker *entering*, which is an effect, so
-Doubling Season applies. Paying a loyalty cost is a cost payment (CR
-121.1 / 606.2), not an effect, so counter-doubling replacements must
+Doubling Season applies. Paying a loyalty cost is a cost payment, not
+an effect (CR 614.16 applies only to a counter placed by an effect),
+so counter-doubling replacements must
 **not** apply: Doubling Season really does nothing to a `+1`. Routing
 the payment through the CR 614 pipeline would have silently made it
 double.

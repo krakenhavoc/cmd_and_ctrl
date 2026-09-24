@@ -109,7 +109,7 @@ button only when `player` is the viewer.
 
 ## Known gaps
 
-- **Batching (CR 603.1).** Breeches reads "whenever one or more
+- **Batching.** Breeches reads "whenever one or more
   Pirates you control deal damage to your opponents… exile the top
   card of each of those opponents' libraries" — one trigger for the
   whole combat. The engine emits one damage event per source, so

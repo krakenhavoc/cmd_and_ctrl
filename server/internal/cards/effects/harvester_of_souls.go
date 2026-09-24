@@ -13,7 +13,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // table, not just yours. "Another" excludes its own death by ID;
 // "nontoken" reads the dead card's printed type line, which is how
 // every token in the catalog is stamped. The draw is optional, so
-// the trigger prompts before it goes on the stack (CR 603.4).
+// the trigger prompts before it goes on the stack (CR 603.5).
 //
 // No simplification.
 func init() {

@@ -205,7 +205,7 @@ func b24ExiledCardWithCounterOwnedBy(g *game.Game, owner uuid.UUID, kind string)
 
 // --- statics -----------------------------------------------------
 
-// b24KeywordCounterGrant is CR 122.1e for one keyword: a creature
+// b24KeywordCounterGrant is CR 122.1b for one keyword: a creature
 // with a `keyword` counter on it has that keyword. The engine reads
 // no keyword counters of its own, so Vraska Joins Up carries the
 // rule for the counters it places, while it is on the battlefield —

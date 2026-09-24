@@ -44,7 +44,7 @@ import (
 // The copy is made while the answer arrives, which is after this
 // spell has already been routed to its owner's graveyard — so the
 // copy is built from last-known information. In the rules the spell
-// is still on the stack at that moment (CR 608.2m puts it in the
+// is still on the stack at that moment (CR 608.2n puts it in the
 // graveyard as the final step of its own resolution); see
 // resolving_item.go on why the difference is spelled as LKI here.
 func init() {

@@ -91,7 +91,7 @@ func (g *Game) applyDamageToPermanentLocked(cardID uuid.UUID, amount int, deatht
 		_ = g.applyCounterLocked(cardID, CounterLoyalty, -amount)
 	}
 	if isBattle {
-		// CR 120.3h, and the same clamping. The CR 704.5v SBA takes a
+		// CR 120.3h, and the same clamping. The CR 704.5v/w SBA takes a
 		// battle at zero defense; a Siege's defeated trigger fires off
 		// that exit, not off this line.
 		_ = g.applyCounterLocked(cardID, CounterDefense, -amount)

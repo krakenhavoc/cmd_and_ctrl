@@ -165,7 +165,7 @@ export function grantedFace(card: CardView, grant: ExilePlayView | null): CardVi
   // instead of clearing the card's, and for the face that is up the
   // two blocks are the same answer. CR 715.4's Adventure grant is
   // this case — face 0, on a card exile is already showing front-up
-  // (CR 712.8).
+  // (CR 712.8a).
   if (i === undefined || i === (card.active_face ?? 0)) return card;
   return cardAsFace(card, i);
 }

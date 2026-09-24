@@ -36,7 +36,7 @@ import "github.com/google/uuid"
 // Scryfall's top-level record. Everything that already reads
 // c.TypeLine / c.ManaCost / c.Power keeps compiling and starts being
 // right, because "the characteristics of the face that is currently
-// up" is exactly what CR 711.2 says a double-faced permanent has.
+// up" is exactly what CR 712.8 says a double-faced permanent has.
 
 // Face is one printed side of a multi-face card, in engine terms.
 // Values arrive already parsed — the deck importer does the Scryfall
@@ -111,7 +111,7 @@ const (
 	LayoutModalDFC = "modal_dfc"
 
 	// LayoutTransform is an ordinary double-faced card. It is always
-	// cast as its front face (CR 712.4); the back face is reached
+	// cast as its front face (CR 712.11); the back face is reached
 	// only by an effect that transforms the permanent in place.
 	// 401 oracle IDs.
 	LayoutTransform = "transform"
@@ -203,7 +203,7 @@ func (c Card) FaceCount() int {
 // This is where the per-layout semantics of "choose a face" live:
 //
 //	modal_dfc          both — the faces are independently playable
-//	                   (CR 712.12a), and this is the whole reason
+//	                   (CR 712.11b), and this is the whole reason
 //	                   the picker exists.
 //	adventure          both — CR 715.3 lets the caster choose whether
 //	                   to cast the creature or the Adventure, and the
@@ -214,7 +214,7 @@ func (c Card) FaceCount() int {
 //	                   and an impulse grant over the same card names
 //	                   none, so a zone rule here would be wrong for
 //	                   one of them.
-//	transform          front only (CR 712.4). The back is reached by
+//	transform          front only (CR 712.11). The back is reached by
 //	                   transforming the permanent, not by casting it.
 //	split              front only for now — split needs fusing.
 //	                   Deferred.
@@ -351,11 +351,11 @@ func faceForCastLocked(c Card, want int, grant *CastPermission, playerID uuid.UU
 //
 // A `transform` card keeps it too, and that is the S32 half of the
 // battle seam. The rule it was written to enforce — "a transform card
-// always enters front-up (CR 712.4)" — is really a rule about CASTING
+// always enters front-up (CR 712.11)" — is really a rule about CASTING
 // and it is already enforced where it belongs, by CastableFaces
 // refusing to offer the back. So face 1 can only ever arrive here
 // through an effect that said "cast it TRANSFORMED", and for such a
-// cast CR 712.4 does not apply: the object that was put on the stack
+// cast CR 712.11 does not apply: the object that was put on the stack
 // was the back face and the permanent it resolves into is the back
 // face. Returning 0 here was what made the Siege seam unfixable from
 // the grant side alone — the cast would have announced Refraction

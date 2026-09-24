@@ -39,7 +39,7 @@ import (
 // the printed one, and that is the rules' own composition: CR 616.1
 // applies one replacement and then re-gathers, so a Mana Reflection and
 // a Nyxbloom Ancient on one battlefield are ×6. The order between them
-// is not put to anybody — a production cannot pause (CR 605.3a), so the
+// is not put to anybody — a production cannot pause (CR 605.3b), so the
 // engine applies the gathered order inline — and it does not matter,
 // because multiplication commutes. See ADR 0013 §5ab.
 //

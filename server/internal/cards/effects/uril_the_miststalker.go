@@ -39,7 +39,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // two-for-one risk: sink three of them into a creature, lose the
 // creature to a Doom Blade, lose everything. Hexproof means the
 // opponent has to answer Uril with a wrath or an edict, and the
-// commander-damage clock (CR 903.14a) means they have about three
+// commander-damage clock (CR 903.10a) means they have about three
 // turns to find one — a 5/5 with two Auras is a 9/9 and kills in
 // three connections.
 //

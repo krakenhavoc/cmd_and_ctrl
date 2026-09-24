@@ -95,7 +95,7 @@ func TestKolaghansCommandResolvesItsModesInAnnounceOrder(t *testing.T) {
 	_ = opp
 
 	// Modes [0, 1]: return the creature card, then the opponent
-	// discards. CR 700.2c resolves them in the order announced.
+	// discards. CR 608.2c resolves them in the order announced.
 	castModal(t, g, "Kolaghan's Command", "Instant", kolaghansCommandOracle,
 		[]int{0, 1},
 		[]game.TargetRef{

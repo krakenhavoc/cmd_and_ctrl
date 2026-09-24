@@ -147,7 +147,7 @@ type AlternativeCost struct {
 	PayLabel string
 
 	// SacrificeOnEntry is evoke's "it's sacrificed when it enters".
-	// Modelled as what CR 702.74b says it is — a triggered ability —
+	// Modelled as what CR 702.74a says it is — a triggered ability —
 	// rather than as an immediate sacrifice inside the resolution.
 	// The difference is observable and is the entire reason to evoke
 	// a Slithermuse: the sacrifice uses the stack, so opponents get
@@ -751,7 +751,7 @@ func TargetSpecUnderAlternativeCost(base *TargetSpec, alt *AlternativeCost) *Tar
 
 // queueAltCostEntryTriggerLocked applies the clauses an alternative
 // cost attaches to the permanent's ENTRY: evoke's "it's sacrificed
-// when it enters" (CR 702.74b) and warp's "exile this at the
+// when it enters" (CR 702.74a) and warp's "exile this at the
 // beginning of the next end step, then you may cast it from exile on
 // a later turn" (CR 702.185a).
 //

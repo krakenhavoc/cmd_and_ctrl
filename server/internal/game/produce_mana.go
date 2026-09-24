@@ -47,7 +47,7 @@ import (
 //
 // Every event of this kind sets mustSettleNow, and this is the one
 // kind for which that is a rules fact rather than a cost argument.
-// CR 605.3a makes activating a mana ability a single indivisible step
+// CR 605.3b makes activating a mana ability a single indivisible step
 // with no stack and no priority window inside it, so there is no point
 // between paying the cost and producing the mana at which a player
 // could be asked anything; and the auto-tapper's contract is "no
@@ -171,7 +171,7 @@ func (g *Game) replaceProducedManaLocked(playerID, source uuid.UUID, colors []st
 		// catalog's or a loop variable's, and a doubler rewrites this
 		// field in place.
 		ManaColors: append([]string(nil), colors...),
-		// CR 605.3a: no prompt can be raised inside a mana ability's
+		// CR 605.3b: no prompt can be raised inside a mana ability's
 		// resolution, and the auto-tapper may not raise one at all.
 		// See the file comment.
 		mustSettleNow: true,

@@ -428,7 +428,7 @@ type Spec struct {
 
 	// ActivationRestrictions are the "can't be activated" statics
 	// this PERMANENT imposes on other objects' activated abilities
-	// (CR 602.5a) — Cursed Totem's "activated abilities of creatures
+	// (CR 602.5) — Cursed Totem's "activated abilities of creatures
 	// can't be activated", Linvala's "…of creatures your opponents
 	// control…", Collector Ouphe's "…of artifacts…", Pithing
 	// Needle's "…of sources with the chosen name … unless they're
@@ -1189,7 +1189,7 @@ type ManaAbility struct {
 	// Same locking contract as Rider. A mutation this makes that
 	// ProducedFunc then reads back — a counter placement — MUST go
 	// through a mustSettleNow entry point
-	// (game.AddCounterMustSettleNowForEffect), because CR 605.3a's
+	// (game.AddCounterMustSettleNowForEffect), because CR 605.3b's
 	// mana ability resolution has no priority window for a CR 616
 	// ordering prompt (two counter doublers) to occupy.
 	//

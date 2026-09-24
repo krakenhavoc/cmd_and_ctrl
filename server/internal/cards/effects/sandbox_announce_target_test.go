@@ -8,7 +8,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-// sandbox_announce_target_test.go — #968 / CR 115.7 from the card
+// sandbox_announce_target_test.go — #968 / CR 602.2b from the card
 // side. Game.ActivateAbility is the MANUAL announce, the one ADR 0032
 // keeps for the ~thousand cards the catalog cannot express: a player
 // clicks "activate" on a permanent, types what the ability does and

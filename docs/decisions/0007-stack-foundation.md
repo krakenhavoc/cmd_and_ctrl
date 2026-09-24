@@ -129,7 +129,7 @@ canonical CR 704.5 SBAs:
   eliminated
 
 `runStateChecksLocked()` is the loop wrapper that pairs SBAs with
-APNAP trigger drain (CR 704.4 + 603.3b) and runs at every priority-
+APNAP trigger drain (CR 704.3 + 603.3b) and runs at every priority-
 grant boundary. Bounded at 32 iterations as a safety belt against
 unintended SBA / trigger ping-pong.
 

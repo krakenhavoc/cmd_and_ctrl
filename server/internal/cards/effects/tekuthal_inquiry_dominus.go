@@ -30,7 +30,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // because the legend rule would not let the copy live under the same
 // controller (CR 704.5j).
 //
-// The indestructible counter is CR 122.1e: a permanent with an
+// The indestructible counter is CR 122.1b: a permanent with an
 // indestructible counter on it has indestructible. The engine reads no
 // keyword counters of its own, so Tekuthal carries the rule for the
 // counters it places, exactly as Vraska Joins Up carries it for its

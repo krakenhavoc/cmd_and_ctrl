@@ -497,7 +497,7 @@ surface tiny.
    // "Choose two —": ChooseN("Choose two", 2, 2, Mode(…), Mode(…), …)
    ```
    `OnResolve` is a run of `if ctx.HasMode(i) { … }` blocks in
-   printed order (CR 700.2c). The engine validates the choice at
+   printed order (CR 608.2c). The engine validates the choice at
    announce and applies the chosen option's target clause exactly as
    it would a card-level one; the client shows a mode picker before
    targeting.
@@ -1264,7 +1264,7 @@ are the printed cards' doing:
   "Add {B}{B}{B}", a mana ability with no `{T}` and a triggered mana
   ability's own output are all productions and none of them is doubled.
   A card that really is symmetrical leaves the check out.
-- **It never pauses.** CR 605.3a makes activating a mana ability one
+- **It never pauses.** CR 605.3b makes activating a mana ability one
   indivisible step with no priority window inside it, so every event of
   this kind sets `mustSettleNow` and the CR 616 ordering prompt is never
   asked. An `Optional` mana-production replacement would therefore be
@@ -1319,7 +1319,7 @@ shipping it quietly — the fix is a declared flag in the `PureCancel`
 mould. See [ADR 0013 §5a](docs/decisions/0013-replacement-effects.md).
 
 **A `may` is always offered, however many effects share the window.**
-`Optional: true` (CR 614.10) queues a yes/no prompt for the effect's
+`Optional: true` queues a yes/no prompt for the effect's
 controller before `Replace` runs, and that is now true on the
 multi-effect paths too: an effect ordered alongside others by a CR 616
 prompt pauses for its own question when the chain reaches it
@@ -1348,7 +1348,7 @@ otherwise, but it may never run at all. See
 leaves its old zone, and that window can stop to ask: a CR 616 ordering
 prompt between two enters-tapped effects (Kismet plus Thalia, Heretic
 Cathar), a shockland's "you may pay 2 life", Clone's "choose what to
-copy", any CR 614.10 "may". The library search, the exile return and the
+copy", any "may". The library search, the exile return and the
 reanimation are `entryResumable` now, so a fetched shockland IS offered
 its payment and two replacements on one fetched Guildgate no longer eat
 the card. What the effect still owed rides across the pause on
@@ -1423,7 +1423,7 @@ list is for keyword abilities.
 **What a shield does not stop**, and why each one is a separate
 branch rather than one check: a sacrifice (CR 701.21a), a creature at
 zero toughness (CR 704.5f), a planeswalker at zero loyalty
-(CR 704.5i), a battle at zero defense (CR 704.5v), the legend rule,
+(CR 704.5i), a battle at zero defense (CR 704.5v/w), the legend rule,
 an illegally attached Aura, an exile, a bounce. All of those take the
 same battlefield exit a destruction does, so the exit carries a
 declared `Destruction` flag — `destroyRoute` sets it,
@@ -2797,7 +2797,7 @@ recorded. See
 Genesis Ultimatum", "shuffle this into your library": the instruction
 runs in `OnResolve`, which is before the resolution frame picks the
 spell's destination, so `spellMovedItselfLocked` stops the frame from
-moving a card its own effect has already placed (CR 608.2m — the spell
+moving a card its own effect has already placed (CR 608.2n — the spell
 put into a graveyard is the one ON THE STACK). Nothing on the card side
 is needed: write the self-move as an ordinary `ExileTarget` or tuck on
 the spell's own ID and the frame leaves it alone. A resolution that
@@ -3686,7 +3686,7 @@ and still unimplemented: that is CR 613 layer 1, deferred to S16.5.
 | "Whenever ~ enters or attacks" | `EventETB` + `EventAttack` on **one** ability | `ev.CardID == source.InstanceID` — one printed ability with two trigger conditions is one `TriggeredAbility` watching two kinds, not two declarations (Sun Titan) |
 | "Whenever a spell or ability you control exiles one or more permanents" | `EventZoneMove` | `ev.OldZone == ZoneBattlefield && game.ExiledBySpellOrAbilityOf(ev, source.Controller)` plus `OncePerBatch` (Ranar the Ever-Watchful, #1320). Reads `ev.Cause` / `ev.CauseController`, which a routed move fills from the resolving item; a cost, a special action or a manual move names its own cause and never matches |
 | "Whenever ~ becomes the target of a spell or ability" | `EventBecomesTarget` | `ev.CardID == source.InstanceID` — `CardID` repeats `Target` when the target is a card and is `uuid.Nil` for a player, so reading `CardID` is what keeps a player-targeting spell from matching. `ev.Actor` is the targeting player, `ev.Source` its source |
-| "Whenever another creature you control becomes the target…" | `EventBecomesTarget` | `targetedAnotherCreatureYouControl(ev, source, g)` (Monk Gyatso) — excludes the source, checks the target is still on the battlefield, then reads its type and controller. Fires once per target **slot**, at **announce** (CR 115.7), so the trigger goes on the stack ABOVE the spell that targeted and resolves first — which is the whole card |
+| "Whenever another creature you control becomes the target…" | `EventBecomesTarget` | `targetedAnotherCreatureYouControl(ev, source, g)` (Monk Gyatso) — excludes the source, checks the target is still on the battlefield, then reads its type and controller. Fires once per target **slot** (CR 115.3), at **announce** (CR 601.2c), so the trigger goes on the stack ABOVE the spell that targeted and resolves first — which is the whole card |
 | "At the beginning of your upkeep" | `EventBeginUpkeep` | `ev.Actor == source.Controller` |
 | "At the beginning of your end step" | `EventBeginEndStep` | `ev.Actor == source.Controller` — drop the check for "the beginning of the end step" (any player's) |
 | "At the beginning of combat on your turn" / "your postcombat main phase" / "end of combat" (any step without a kind of its own) | `EventStepBegan` | `StepBegan(game.StepBeginCombat, true)` — or the constructors `AtBeginningOfYourCombat`, `AtYourPostcombatMain`, `AtEndOfYourCombat`, `AtYourStep(step, …)`, `AtEachStep(step, …)` (#588) |
@@ -4522,7 +4522,7 @@ commander-identity narrowing and a plain "any colour" all read exactly
 as the tap would. Scryfall's `produced_mana` answers only for a card
 with no catalog mana ability at all. A `ProducedFunc` that reads OTHER
 permanents' producible mana must set
-`ManaAbility.DerivesFromOtherSources` — that is the CR 106.6b
+`ManaAbility.DerivesFromOtherSources` — that is the CR 106.7
 recursion guard, `TestDerivedManaAbilitiesDeclareTheGuard` enforces it
 both ways, and it is the only `ProducedFunc` shape "could produce"
 skips.

@@ -73,7 +73,7 @@ type LifeChange struct {
 // NOTE on commander damage: S25 (#77) rekeyed CommanderDamage from
 // the opponent *player ID* to the commander *instance ID*. S02 chose
 // the player key and every sprint since carried a note saying it was
-// wrong; CR 903.14a is explicitly per-commander ("damage dealt to a
+// wrong; CR 903.10a is explicitly per-commander ("damage dealt to a
 // player by ONE commander"), so a partner pair sharing a seat was
 // pooling two commanders' damage into one 21-point clock and killing
 // its controller early.
@@ -123,7 +123,7 @@ type Player struct {
 
 	// CommanderDamage maps commander INSTANCE ID → total damage that
 	// one commander has dealt to this player across the game
-	// (CR 903.14a). See the note above the struct.
+	// (CR 903.10a). See the note above the struct.
 	//
 	// The key is an instance ID and survives zone changes, which is
 	// the behaviour the rule wants: a commander that dies, returns to
@@ -397,7 +397,7 @@ func (p *Player) RecordCommanderDamage(fromCommander uuid.UUID, amount int) int 
 }
 
 // IsDeadByCommanderDamage reports whether any SINGLE commander has
-// dealt `lethal` or more damage to this player (CR 903.14a; 21 by
+// dealt `lethal` or more damage to this player (CR 903.10a; 21 by
 // default, the table's Settings.CommanderDamage in a game). Totals are
 // never summed across commanders — two partners at 15 apiece is 30
 // damage and not a loss.

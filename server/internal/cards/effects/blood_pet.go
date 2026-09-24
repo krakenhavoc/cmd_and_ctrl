@@ -10,7 +10,7 @@ package effects
 // Petal's shape): it never uses the stack, the {B} lands in the pool
 // at once, and the Thrull's death fires every dies-trigger and
 // "whenever you sacrifice" payoff after the mana is already there
-// (CR 605.3a). No tap in the cost, so summoning sickness does not
+// (CR 605.3b). No tap in the cost, so summoning sickness does not
 // apply — it can be cracked the turn it enters, as printed.
 //
 // No simplification.

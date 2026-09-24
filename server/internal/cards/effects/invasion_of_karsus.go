@@ -13,7 +13,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // A four-mana sweeper that leaves a 4/4 behind if anyone can be
 // bothered to attack it. The bracketed reminder text is not
 // card-effect data — the defense counters, the protector prompt and
-// the CR 704.5v sweep are engine behaviour keyed on the card TYPE
+// the CR 704.5v/w sweep are engine behaviour keyed on the card TYPE
 // (server/internal/game/battle.go) and happen to a battle the catalog
 // has never heard of. What this Spec carries is the sweep, and the
 // defeated trigger that hands over Refraction Elemental.

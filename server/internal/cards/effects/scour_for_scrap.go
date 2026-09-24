@@ -12,7 +12,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The artifact deck's two-for-one tutor. "Choose one or both" is a
 // ChooseN(1, 2) mode clause; only the second option targets, which
 // is the one-targeted-option limit the modal engine has. Modes
-// resolve in printed order (CR 700.2c): the search first — through
+// resolve in printed order (CR 608.2c): the search first — through
 // the S22 chooser, revealed — then the graveyard return, so a card
 // tutored to hand and a card returned to hand are two different
 // cards, as printed.

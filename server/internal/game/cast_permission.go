@@ -223,7 +223,7 @@ type CastPermission struct {
 	Player uuid.UUID `json:"player"`
 
 	// Zone is where the cast comes FROM: exile, a graveyard, or a
-	// library. Never hand (CR 601.1 already allows it) and never the
+	// library. Never hand (CR 601.2 already allows it) and never the
 	// command zone (CR 903.4 is the format's, not an effect's).
 	Zone ZoneKind `json:"zone"`
 
@@ -310,8 +310,8 @@ type CastPermission struct {
 	Cost string `json:"cost,omitempty"`
 
 	// LifeEqualToManaValue is Bolas's Citadel: "pay life equal to its
-	// mana value rather than pay its mana cost". A COST (CR 118.4,
-	// 119.4), so a player without the life cannot claim it at all —
+	// mana value rather than pay its mana cost". A COST (CR 119.4),
+	// so a player without the life cannot claim it at all —
 	// which is why it becomes an AlternativeCost.Life rather than a
 	// drawback on resolution.
 	//
@@ -720,7 +720,7 @@ func (g *Game) GrantCastPermissionToCardsForEffect(perm CastPermission, cards []
 // CastPermissionForLocked is THE query: does an effect let playerID
 // cast or play this card out of this zone right now?
 //
-// It returns nil for hand and the command zone (CR 601.1 and CR 903.4
+// It returns nil for hand and the command zone (CR 601.2 and CR 903.4
 // need no effect); otherwise the stored or derived permission that
 // opens the cast. The cast path, the view and the bot enumerator all
 // read this one function, so none of them can disagree about what is

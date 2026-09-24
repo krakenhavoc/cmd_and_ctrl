@@ -19,7 +19,7 @@ import (
 //
 // The exile is unconditional and happens in EITHER branch, and it's
 // the resolving card exiling ITSELF — the same "the spell may have
-// moved itself" shape Blue Sun's Zenith's self-tuck uses (CR 608.2m):
+// moved itself" shape Blue Sun's Zenith's self-tuck uses (CR 608.2n):
 // Finale is still on the stack when OnResolve runs, so ExileTarget on
 // ctx.Source() here is what the printed last sentence means, and the
 // engine notices the card already left the stack and skips the

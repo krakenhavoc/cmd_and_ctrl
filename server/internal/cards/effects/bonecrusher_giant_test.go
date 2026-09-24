@@ -92,7 +92,7 @@ func TestStompDealsTwoAndExilesTheCard(t *testing.T) {
 }
 
 // The creature half's trigger: a spell that targets the Giant is
-// answered before it resolves (CR 115.7 puts the trigger on the stack
+// answered before it resolves (CR 601.2c puts the trigger on the stack
 // above it), and the two damage goes to THAT SPELL'S controller rather
 // than to the Giant's controller or to the spell's own target.
 func TestBonecrusherGiantAnswersASpellThatTargetsIt(t *testing.T) {

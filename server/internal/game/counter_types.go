@@ -29,7 +29,7 @@ const (
 	CounterLoyalty = "loyalty"
 	// CounterDefense is the battle defense counter (post-MoM).
 	// SBA: a battle with 0 defense counters → graveyard
-	// (CR 704.5v).
+	// (CR 704.5v/w).
 	CounterDefense = "defense"
 	// CounterCharge is a generic resource counter (Aether Vial,
 	// Coalition Relic, etc.). No SBA.

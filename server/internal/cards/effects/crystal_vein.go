@@ -9,7 +9,7 @@ package effects
 // artifact deck's turn-three four-drop. Two mana abilities: the tap
 // is Sol Ring's shape for one, the cash-in is Lotus Petal's
 // sacrifice-the-source cost with two. Both resolve without the
-// stack (CR 605.3a).
+// stack (CR 605.3b).
 //
 // No simplification.
 func init() {

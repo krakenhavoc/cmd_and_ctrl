@@ -349,7 +349,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// exile. Any move ends that object, and a card that comes back to
 	// exile by some other route was not exiled by the hideaway.
 	c.HiddenBy = PermissionCardRef{}
-	// CR 712.8: a double-faced card is FRONT face up in every zone
+	// CR 712.8a: a double-faced card is FRONT face up in every zone
 	// except the battlefield and the stack. Keyed on the DESTINATION
 	// rather than the source, because that is how the rule is written
 	// — it is a property of where the card is, not of where it came

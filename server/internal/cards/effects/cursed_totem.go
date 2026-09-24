@@ -7,7 +7,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	"Activated abilities of creatures can't be activated."
 //
 // #1210's headline card and the simplest possible activation
-// restriction (CR 602.5a): one predicate over the object whose
+// restriction (CR 602.5): one predicate over the object whose
 // ability is being announced. Nothing is stored on any permanent —
 // the restriction is DERIVED from this artifact being on the
 // battlefield, so it lifts the moment Cursed Totem leaves and a

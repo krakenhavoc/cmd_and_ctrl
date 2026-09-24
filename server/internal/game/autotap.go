@@ -603,7 +603,7 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 		if manaTapBlockedBySickness(&c, picked) {
 			continue
 		}
-		// #1210, CR 602.5a: the board-wide "can't be activated"
+		// #1210, CR 602.5: the board-wide "can't be activated"
 		// gate — Cursed Totem does not exempt mana abilities, so a
 		// Birds of Paradise under one is not a mana source. THE
 		// caller the cast gate has no equivalent of: the auto-tapper
@@ -726,7 +726,7 @@ func gatherManaZoneSources(
 			if picked == nil {
 				continue
 			}
-			// #1210, CR 602.5a: the board-wide "can't be activated"
+			// #1210, CR 602.5: the board-wide "can't be activated"
 			// gate, asked of the zone the card is in — the same call
 			// ActivateManaAbility now makes, so a restriction that
 			// reaches a hand activation reaches the planner too.

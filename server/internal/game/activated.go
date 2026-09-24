@@ -226,8 +226,9 @@ type AbilityCost struct {
 	//	           answers "can this permanent have that counter",
 	//	           and the place a Solemnity-style prohibition
 	//	           plugs in.
-	//	CR 121.1   paying a cost is not an effect, so the placement
-	//	           is not replaceable: Doubling Season does NOT
+	//	CR 614.16  a counter-doubling replacement applies only to a
+	//	           counter placed by an EFFECT, so a cost payment
+	//	           isn't replaceable: Doubling Season does NOT
 	//	           double the Druid's -1/-1. Same rule the loyalty
 	//	           cost and the removal half already follow.
 	//
@@ -922,7 +923,7 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	if !AbilityFunctionsFromZone(ab, srcZone) {
 		return ErrActivationZoneNotAllowed
 	}
-	// #1210, CR 602.5a / CR 101.2: the board-wide "can't be
+	// #1210, CR 602.5 / CR 101.2: the board-wide "can't be
 	// activated" gate — Cursed Totem, Linvala, Collector Ouphe,
 	// Pithing Needle. ONE function, four callers; see
 	// activation_gate.go.
@@ -1272,8 +1273,8 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		paid.LifePaid += ab.Cost.Life
 	}
 	if ab.Cost.Loyalty != nil {
-		// applyCounterLocked, not AddCounterForEffect: paying a cost
-		// is not an effect (CR 121.1 / 606.2), so counter-doubling
+		// applyCounterLocked, not AddCounterForEffect: a counter placed
+		// by a COST isn't placed by an effect (CR 614.16), so counter-doubling
 		// replacements do NOT apply to a loyalty ability's + cost.
 		// Doubling Season really does nothing here, and routing
 		// through the CR 614 pipeline would silently make it.
@@ -1456,7 +1457,7 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		Label:       ab.Label,
 		Exhaust:     ab.Exhaust,
 	})
-	// CR 602.2b / 115.7: the ability's targets were chosen as it was
+	// CR 602.2b / 115.3: the ability's targets were chosen as it was
 	// put on the stack. S22, for "whenever ~ becomes the target of a
 	// spell or ability" (Monk Gyatso) — the clause names abilities as
 	// well as spells, so the activated path has to emit too.

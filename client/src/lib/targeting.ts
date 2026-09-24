@@ -494,7 +494,7 @@ export function beginForModes(card: CardView, modes: number[], choices?: CastCho
 
 // modeSteps is the walk a modal announcement asks for: every clause
 // of every chosen OCCURRENCE, in the order the modes were chosen
-// (CR 700.2c). A repeated mode (CR 700.2d) contributes its clauses
+// (CR 608.2c). A repeated mode (CR 700.2d) contributes its clauses
 // once per occurrence, each with its own modeIndex, which is what
 // gives each occurrence its own targets.
 export function modeSteps(card: CardView, modes: number[], choices?: CastChoices): TargetStep[] {

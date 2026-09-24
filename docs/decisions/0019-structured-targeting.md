@@ -139,7 +139,7 @@ one consolidated dialog, because each has exactly one thing to ask.
 than `Min` remain (targeted options need a legal target to count).
 
 Effects read the choice back with `ctx.HasMode(i)` and resolve the
-chosen bullets in printed order (CR 700.2c).
+chosen bullets in printed order (CR 608.2c).
 
 ### 8. One clause, N slots; partial illegality resolves (sub-PR 5)
 

@@ -1366,8 +1366,8 @@ func dispatch(g *game.Game, a Action) error {
 			Order []string `json:"order"`
 			// OptionalApply populates an S17 sub-PR 6
 			// PendingChoiceOptionalReplacement yes/no pick — the
-			// client returns {apply: true|false} for the CR 614.10
-			// "may" prompt (today: CR 903.9 commander-zone).
+			// client returns {apply: true|false} for the "may"
+			// replacement prompt (today: CR 903.9 commander-zone).
 			// Pointer so we can disambiguate "absent" (nil) from
 			// "false" (&false) in the routing check.
 			OptionalApply *bool `json:"apply"`

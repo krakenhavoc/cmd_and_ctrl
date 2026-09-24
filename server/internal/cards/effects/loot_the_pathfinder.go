@@ -28,7 +28,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     untap).
 //   - The FIRST ability is a MANA ability (CR 605.1a: no target,
 //     could add mana, not a loyalty ability), which takes the other
-//     entry point — ActivateManaAbility, CR 605.3a, no stack and no
+//     entry point — ActivateManaAbility, CR 605.3b, no stack and no
 //     priority — and so had no activation record at all until #1183.
 //     `ManaAbility.Exhaust` is the marker; ActivateManaAbility and
 //     the auto-tapper's executor both write the record now, and the

@@ -15,7 +15,7 @@ package effects
 //
 // The count is taken at activation, after the tap — so a creature
 // that dies in response to something else is already gone, and one
-// that entered a moment ago is already counted. CR 605.3a: a mana
+// that entered a moment ago is already counted. CR 605.3b: a mana
 // ability resolves the instant it is activated, so there is no window
 // for the board to change between the count and the mana.
 //

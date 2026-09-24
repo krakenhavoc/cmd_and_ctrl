@@ -30,14 +30,14 @@ ordering rule:
 - **704.5i** — planeswalker with 0 loyalty counters → owner's
   graveyard. The S13.1 placeholder-creature exemption doesn't apply
   here; planeswalkers always die at 0.
-- **704.5v** — battle with 0 defense counters → owner's graveyard.
+- **704.5v/w** — battle with 0 defense counters → owner's graveyard.
   Symmetric with the planeswalker SBA.
 - **704.5c** — player with ≥ 10 poison counters loses. Reads the
   unified `Player.Counters["poison"]` map; falls back to the legacy
   `Player.Poison` int field if the map is empty (so pre-S13.2
   replays decode correctly).
 
-Saga final-chapter sacrifice (CR 704.5u) is the last SBA the plan
+Saga final-chapter sacrifice (CR 704.5s) is the last SBA the plan
 called out; the SBA *half* is trivial (any saga whose `lore` counter
 ≥ its final chapter index is sacrificed) but requires per-card
 final-chapter metadata that the engine doesn't have yet. Deferred to

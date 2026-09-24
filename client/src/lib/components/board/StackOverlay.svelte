@@ -394,7 +394,7 @@
                   </span>
                 {/if}
                 <!-- #764: the chosen bullets, in announce order (CR
-                     700.2c) and with repeats (CR 700.2d). This used to
+                     608.2c) and with repeats (CR 700.2d). This used to
                      print the raw indexes ("modes: 0, 2"), which nobody
                      at the table could read: the caster's hand card is
                      gone once the spell is on the stack, so the labels

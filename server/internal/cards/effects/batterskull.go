@@ -18,7 +18,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The bounce ability is an ordinary Spec.Activated entry with a mana
 // cost and no target: BounceToHand on the ability's own source. It
-// is deliberately NOT sorcery-speed — equip is gated by CR 702.6b
+// is deliberately NOT sorcery-speed — equip is gated by CR 702.6a
 // and this is not equip, so returning Batterskull in response to a
 // Disenchant is a real play the card is famous for.
 //

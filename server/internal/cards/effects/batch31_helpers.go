@@ -374,8 +374,8 @@ func b31RemoveMiningCounterOrSacrifice(g *game.Game, _, source uuid.UUID) error 
 }
 
 // b31HasMiningCounter gates Gemstone Mine's activation: at least one
-// mining counter must be there to remove (CR 602.5a — a cost that
-// cannot be paid cannot be announced).
+// mining counter must be there to remove (CR 601.2h — unpayable
+// costs can't be paid).
 func b31HasMiningCounter(g *game.Game, _, source uuid.UUID) bool {
 	c, ok := g.LookupCardForEffect(source)
 	return ok && c.Counters["mining"] > 0

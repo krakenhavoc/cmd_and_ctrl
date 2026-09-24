@@ -16,7 +16,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // instant speed if you have a way to flash it in.
 //
 // The sacrifice is a triggered ability rather than part of the
-// resolution (CR 702.74b), which is what makes the sequence work: the
+// resolution (CR 702.74a), which is what makes the sequence work: the
 // creature genuinely enters, the sacrifice goes on the stack where it
 // can be responded to, and the leave-trigger then goes on the stack
 // above the empty board and draws. Folding the sacrifice into

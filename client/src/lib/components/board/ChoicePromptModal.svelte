@@ -410,7 +410,7 @@
     return elsewhere === "Triggered ability" ? "" : elsewhere;
   }
 
-  // S17 sub-PR 6 optional-replacement branch — CR 614.10 "may"
+  // S17 sub-PR 6 optional-replacement branch — "may"
   // prompt. Used by CR 903.9 commander-zone replacement today:
   // commander's owner picks yes (route to command zone) or no
   // (let the event proceed to graveyard/exile/hand/library).
@@ -528,7 +528,7 @@
   const modeMin = $derived(active?.mode_min ?? 1);
   const modeMax = $derived(active?.mode_max ?? 1);
   const modeRepeatable = $derived(active?.mode_repeatable ?? false);
-  // The chosen bullets IN THE ORDER CHOSEN — CR 700.2c resolves them
+  // The chosen bullets IN THE ORDER CHOSEN — CR 608.2c resolves them
   // in that order, and CR 700.2d lets the same one appear twice.
   let modePicks = $state<number[]>([]);
   const modeSingle = $derived(modeMax === 1 && !modeRepeatable);
@@ -1267,7 +1267,7 @@
       {:else if isOptionalReplacement}
         <h2 id="choice-title">
           {active.reason || "Apply replacement?"}
-          <span class="prompt-src" aria-hidden="true">optional replacement · CR 614.10</span>
+          <span class="prompt-src" aria-hidden="true">optional replacement</span>
         </h2>
         <p class="prompt-hint">
           You (the affected player) decide whether this substitution applies.

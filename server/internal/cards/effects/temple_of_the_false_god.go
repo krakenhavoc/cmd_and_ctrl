@@ -13,7 +13,7 @@ package effects
 // better Ancient Tomb with no drawback. That is the #259 direction and
 // the reason the gate had to land before the card.
 //
-// CR 602.5a: an activation restriction is checked before any cost is
+// CR 602.5: an activation restriction is checked before any cost is
 // paid, so a Temple activated on four lands fails with the land
 // untapped and nothing spent. ErrConditionNotMet, not a half-paid
 // activation.

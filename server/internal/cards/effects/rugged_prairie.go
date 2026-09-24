@@ -14,8 +14,8 @@ package effects
 // colours.
 //
 // The hybrid {R/W} parses as a requirement either colour satisfies,
-// paid from the pool (no auto-tap into a mana ability's cost, CR
-// 605.3a). The three-way output is two independent pipe slots —
+// paid from the pool (the engine has no auto-tap into a mana
+// ability's cost). The three-way output is two independent pipe slots —
 // "{R|W}{R|W}" resolves to RR, RW, WR or WW, exactly the printed
 // three outcomes (WR and RW are the same choice twice), one colour
 // pick per slot.

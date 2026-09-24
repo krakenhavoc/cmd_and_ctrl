@@ -732,7 +732,7 @@
   let modePromptCard = $state<CardView | null>(null);
   let modePromptChoices: CastChoices = {};
   // #764: EVERY chosen bullet contributes its clauses to the walk,
-  // in the order they were chosen (CR 700.2c), and a repeated bullet
+  // in the order they were chosen (CR 608.2c), and a repeated bullet
   // (CR 700.2d) contributes them once per occurrence. The old shape
   // took the FIRST targeted option and dropped the rest, which is
   // why Kolaghan's Command could not be cast.

@@ -7,7 +7,7 @@ import (
 )
 
 // optional_in_order_test.go pins #847: the multi-effect CR 616 order
-// path asks a CR 614.10 "may" its own question, and an order nobody
+// path asks a "may" its own question, and an order nobody
 // chose never fires one at all.
 //
 // Two gaps, one shape. The single-effect branch of
@@ -31,7 +31,7 @@ const (
 )
 
 // optionalCounterBonus is "if counters would be put on a permanent,
-// you MAY put ten more on it instead" — a CR 614.10 "may" with an
+// you MAY put ten more on it instead" — a "may" with an
 // arithmetic fingerprint, so a test can tell "the player said yes"
 // from "the engine said yes for them".
 //
@@ -57,12 +57,12 @@ func optionalCounterBonus(label string, fired *int) ReplacementEffect {
 	}
 }
 
-// expectOptionalPrompt asserts exactly one CR 614.10 yes/no prompt is
+// expectOptionalPrompt asserts exactly one "may" yes/no prompt is
 // queued, for `chooser`, and returns it.
 func expectOptionalPrompt(t *testing.T, g *Game, chooser uuid.UUID) *PendingChoice {
 	t.Helper()
 	if len(g.PendingChoices) != 1 {
-		t.Fatalf("pending choices = %d, want one CR 614.10 \"may\" prompt", len(g.PendingChoices))
+		t.Fatalf("pending choices = %d, want one \"may\" prompt", len(g.PendingChoices))
 	}
 	c := g.PendingChoices[0]
 	if c.Kind != PendingChoiceOptionalReplacement {
@@ -136,8 +136,8 @@ func TestOptionalEffectInAChosenOrderIsStillOffered(t *testing.T) {
 				wantFired = 1
 			}
 			if fired != wantFired {
-				t.Errorf("the \"may\" fired %d times, want %d — a declined CR 614.10 "+
-					"effect is marked applied without firing", fired, wantFired)
+				t.Errorf("the \"may\" fired %d times, want %d — a declined "+
+					"optional replacement effect is marked applied without firing", fired, wantFired)
 			}
 			if len(g.PendingChoices) != 0 {
 				t.Errorf("%d prompts left over after the chain settled", len(g.PendingChoices))

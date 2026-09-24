@@ -12,7 +12,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Marauding Mako with evasion, which in a deck that loots every turn
 // matters more than the extra mana: the counters actually connect.
 //
-// Same per-card batching as the Mako (CR 603.1). Cycling arrived with
+// Same per-card batching as the Mako. Cycling arrived with
 // #660: an activated ability from hand (CR 702.29a), not a cast.
 func init() {
 	Register(Spec{

@@ -83,7 +83,7 @@ func (g *Game) stampBattleEntryLocked(cardID uuid.UUID, oracleID string) {
 			}
 		}
 		// A battle with nothing printed and nothing in the catalog
-		// enters at zero and the CR 704.5v SBA takes it, exactly as a
+		// enters at zero and the CR 704.5v/w SBA takes it, exactly as a
 		// planeswalker with no loyalty is taken by 704.5i. Inventing a
 		// number here would make battles unbeatable.
 	}
@@ -197,7 +197,7 @@ func (g *Game) ResolveChooseProtector(choiceID, chooserID, protectorID uuid.UUID
 // DefeatedTrigger can harvest it (CR 310.12b).
 //
 // Emitted from the state-based-action pass IMMEDIATELY BEFORE the
-// CR 704.5v move that puts the battle in the graveyard, which is what
+// CR 704.5v/w move that puts the battle in the graveyard, which is what
 // makes the trigger's source findable on the battlefield when the
 // harvester walks it. Doing it after the move would send the harvest
 // down the LTB path, where the only characteristics available are the

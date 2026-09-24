@@ -15,7 +15,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // #764 the shape was declarable but useless: at most one chosen
 // bullet could target, so the only legal "one or more" was one.
 // Now every chosen bullet is its own occurrence with its own target
-// group, and they resolve in the order chosen (CR 700.2c) — the
+// group, and they resolve in the order chosen (CR 608.2c) — the
 // order that decides whether the token copy sees the creature the
 // bounce is about to return.
 //

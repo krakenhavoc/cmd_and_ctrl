@@ -22,12 +22,12 @@ export const LAYOUT_ADVENTURE = "adventure";
  * which half first.
  *
  * Two layouts do. A modal DFC, because its faces are independently
- * playable (CR 712.12a) — the reason the picker exists. And an
+ * playable (CR 712.11b) — the reason the picker exists. And an
  * adventure card, because CR 715.3 lets the caster choose between the
  * creature and the Adventure, which is the same question with a
  * different rules number.
  *
- * A transform card is always cast as its front face (CR 712.4) and
+ * A transform card is always cast as its front face (CR 712.11) and
  * its back is reached by transforming the permanent; split carries two
  * faces on the wire but fusing is deferred. Both report false, and so
  * does every single-faced card, which is why this gate opening the
@@ -153,7 +153,7 @@ export function cardAsFace(card: CardView, i: number): CardView {
  * mistake in two files, reading a multi-face card's own top-level
  * block for a question that is really "does ANY face answer yes".
  * That block is the face that HAPPENS TO BE UP — always face 0, for a
- * card in hand or a front-up graveyard pile (CR 712.8) — and answering
+ * card in hand or a front-up graveyard pile (CR 712.8a) — and answering
  * from it alone silently drops every other face's answer. Sharing this
  * enumeration is what keeps `castableFromZone` (zoneBrowser.logic.ts)
  * and `canCastFromHand`'s announce gates (timing.ts) from drifting

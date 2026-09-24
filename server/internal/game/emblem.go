@@ -122,7 +122,7 @@ type EmblemView struct {
 // ability still resolves (CR 608.2), so the card is usually in a
 // graveyard by the time this runs. CatalogKey is face-stable across
 // that move for every single-faced card, and a card that changed face
-// on the way out has already been reset by MoveCard (CR 712.8).
+// on the way out has already been reset by MoveCard (CR 712.8a).
 //
 // Caller must hold g.mu in write mode — this is an effect-side helper
 // and the resolution path already holds it.

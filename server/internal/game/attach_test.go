@@ -8,7 +8,7 @@ import (
 
 // attach_test.go pins the S24 attachment relation (ADR 0036): the
 // primitives, the CR 704.5m/n state-based action's two opposite
-// branches, the CR 400.7 clear on battlefield exit, the CR 613.7d
+// branches, the CR 400.7 clear on battlefield exit, the CR 613.7e
 // timestamp, and the undo/clone carry that clone.go gets for free
 // and therefore has nothing enforcing it.
 
@@ -81,7 +81,7 @@ func TestAttachForEffectLinksAndEmits(t *testing.T) {
 		t.Fatalf("AttachedTo = %+v, want card %s", got.AttachedTo, bear)
 	}
 	if got.AttachedAt == 0 {
-		t.Error("AttachedAt not stamped — CR 613.7d timestamp is missing")
+		t.Error("AttachedAt not stamped — CR 613.7e timestamp is missing")
 	}
 
 	var attached *Event
@@ -176,8 +176,8 @@ func countEventsOfKind(g *Game, kind EventKind) int {
 	return n
 }
 
-// Equip is re-activatable (CR 702.6d) and the second activation
-// simply moves the Equipment — including a refreshed CR 613.7d
+// Equip is re-activatable (CR 701.3a) and the second activation
+// simply moves the Equipment — including a refreshed CR 613.7e
 // timestamp.
 func TestAttachForEffectReattachOverwrites(t *testing.T) {
 	g := newActiveGame(t)
@@ -411,7 +411,7 @@ func TestCloneAndRestoreCarryAttachment(t *testing.T) {
 	}
 }
 
-// CR 613.7d: the continuous effect of an attached permanent is
+// CR 613.7e: the continuous effect of an attached permanent is
 // timestamped when it became attached, not when it entered.
 func TestAttachedAtWinsTheLayerTimestamp(t *testing.T) {
 	g := newActiveGame(t)

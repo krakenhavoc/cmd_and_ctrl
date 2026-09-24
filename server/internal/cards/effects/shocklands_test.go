@@ -165,7 +165,7 @@ func TestShocklandDeclinedEntersTapped(t *testing.T) {
 	}
 }
 
-// TestShocklandBelowTheCostIsNotPrompted pins CR 118.4: a player may
+// TestShocklandBelowTheCostIsNotPrompted pins CR 119.4: a player may
 // pay 2 life only with a life total of at least 2. At 1 life there is
 // no decision to offer, so the land just enters tapped — and it must
 // not cost the player their last life either.
@@ -194,7 +194,7 @@ func TestShocklandBelowTheCostIsNotPrompted(t *testing.T) {
 	}
 }
 
-// TestShocklandExactlyTheCostMayPay is the other side of CR 118.4:
+// TestShocklandExactlyTheCostMayPay is the other side of CR 119.4:
 // at exactly 2 life the payment is legal, and taking it to 0 is the
 // player's business (state-based actions handle the rest).
 func TestShocklandExactlyTheCostMayPay(t *testing.T) {

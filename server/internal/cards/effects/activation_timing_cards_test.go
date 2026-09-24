@@ -48,7 +48,7 @@ func TestLeoninShikariEquipsAtInstantSpeed(t *testing.T) {
 }
 
 // The clause is "YOU may activate", so an opponent's Equipment keeps
-// its printed window (CR 702.6b).
+// its printed window (CR 702.6a).
 func TestLeoninShikariDoesNotOpenAnOpponentsEquip(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]

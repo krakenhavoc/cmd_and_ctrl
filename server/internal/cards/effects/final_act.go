@@ -11,7 +11,7 @@ package effects
 //
 // Farewell in black. "Choose one or more" is ChooseN with Min 1 and
 // Max 5 — every subset of the five is a legal cast — and the chosen
-// modes resolve in printed order (CR 700.2c). The three sweeps go
+// modes resolve in printed order (CR 608.2c). The three sweeps go
 // through the mass destroy, which drops indestructible permanents
 // before the move (CR 702.12b) and fires the survivors' dies
 // triggers as one batch; the fourth walks every seat's graveyard,

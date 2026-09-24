@@ -262,7 +262,7 @@ func (c *Context) Modes() []int {
 
 // HasMode reports whether option i of the spell's ModeSpec was
 // chosen at announce. A modal card's OnResolve is a sequence of
-// `if ctx.HasMode(0) { … }` blocks in option order (CR 700.2c:
+// `if ctx.HasMode(0) { … }` blocks in option order (CR 608.2c:
 // modes resolve in printed order). Added in S20 sub-PR 4.
 func (c *Context) HasMode(i int) bool {
 	for _, m := range c.Modes() {
@@ -283,7 +283,7 @@ func (c *Context) ModeCount(i int) int {
 
 // Mode is the OPTION index chosen at occurrence `n` of the announced
 // mode list, or -1 when there is no such occurrence. Modes resolve in
-// announce order (CR 700.2c), so a card that walks its occurrences
+// announce order (CR 608.2c), so a card that walks its occurrences
 // walks this. Added by #764.
 func (c *Context) Mode(n int) int {
 	modes := c.Modes()

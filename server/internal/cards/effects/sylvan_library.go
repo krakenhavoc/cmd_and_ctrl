@@ -19,7 +19,7 @@ import (
 // needs the answer to the one before it, which is a shape the choice
 // queue had no composition for until #74's chained-choice work:
 //
-//  1. "you may draw two additional cards" — the trigger's own CR 603.4
+//  1. "you may draw two additional cards" — the trigger's own CR 603.5
 //     optional prompt, which the harvester has offered since S19.
 //  2. "choose two cards in your hand drawn this turn" — a card-set pick
 //     over a candidate list that does not exist until step 1 has been

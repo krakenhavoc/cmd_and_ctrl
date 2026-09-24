@@ -213,7 +213,7 @@ func damageToPlayerBy(ev game.Event, controller uuid.UUID, g *game.Game) bool {
 // condition shared by Reckless Fireweaver, Ingenious Artillerist and
 // Quicksmith Genius.
 //
-// Batching gap (CR 603.1): the real cards read "whenever one or more
+// Batching gap: the real cards read "whenever one or more
 // artifacts you control enter", one trigger for a simultaneous
 // batch. The engine emits one EventETB per card, so a mass token
 // creation fires the trigger once per artifact instead of once with
@@ -699,7 +699,7 @@ func damageToFirstTarget(amount int) func(item *game.StackItem, ctx *Context) er
 // Inquiry Dominus; Solphim, Mayhem Dominus): a no-op if something
 // killed the source before the ability resolves, otherwise a counter
 // on the source itself. Both cards pair it with b24KeywordCounterGrant
-// so the counter carries CR 122.1e's keyword.
+// so the counter carries CR 122.1b's keyword.
 // plusOneCountersOnThis is "Put N +1/+1 counters on this creature" —
 // the body most of the exhaust cards print (Prowcatcher Specialist,
 // Greenbelt Guardian, Afterburner Expert, Elvish Refueler, Boom

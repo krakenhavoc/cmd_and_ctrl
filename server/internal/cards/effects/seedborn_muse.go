@@ -17,7 +17,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // It is not a trigger and is not implemented as one. Nothing is
 // announced, nothing goes on the stack and there is nothing to
 // respond to — the untap step grants no priority (CR 502.4). The
-// clause widens CR 502.1's "the active player determines which
+// clause widens CR 502.3's "the active player determines which
 // permanents they control untap", and Spec.UntapStep is exactly that
 // widening. See game/untap.go.
 //

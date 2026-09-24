@@ -256,7 +256,7 @@ creations; a creation with no source card (a test fixture, an admin verb) leaves
   today, because that path does not exist yet; the note is here so the one who
   writes it does not reach for `CreateTokensThenForEffect`.
 - **No new prompt kind.** Both events reuse the CR 616 ordering prompt and the
-  CR 614.10 optional prompt, so the bots and the client need nothing new.
+  optional prompt, so the bots and the client need nothing new.
 
 ### Note, 2026-09-22: decision 1's shape has now been reused four times, and the family is closed
 
@@ -286,7 +286,7 @@ between them they mark the two edges of the shape:
 - **A count does not always need a tail.** Every event in the first three
   rows carries one, because it can pause and the resume has to finish
   what the caller asked for. A mana production sets `mustSettleNow`
-  (CR 605.3a) and therefore cannot pause, so it carries none — and the
+  (CR 605.3b) and therefore cannot pause, so it carries none — and the
   three switches that name what a kind owes on a pause, a cancellation
   or a dropped prompt say "nothing, and here is why" instead.
 
