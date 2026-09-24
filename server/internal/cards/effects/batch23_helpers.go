@@ -91,72 +91,6 @@ func b23SacrificeSelfWhenNoCreatures(g *game.Game, item *game.StackItem) error {
 	return SacrificePermanent{Target: item.SourceCardID}.Apply(NewContext(g, item))
 }
 
-// b23IsYourTurn reports whether the source's controller is the
-// active player — "during your turn". The body moved to IsYourTurn
-// (activation_conditions.go, #743), which the activation conditions
-// share; this name stays for its existing callers.
-func b23IsYourTurn(g *game.Game, controller uuid.UUID) bool {
-	return IsYourTurn(g, controller)
-}
-
-// b23ElfYouControlBecameTappedFirstTimeThisTurn is the condition of
-// the ability Dionus, Elvish Archdruid grants — "whenever this
-// creature becomes tapped during your turn … This ability triggers
-// only once each turn" — hung on Dionus itself and read against
-// every Elf its controller controls (Dionus included; he is an Elf).
-//
-// Two event kinds feed it, for the reason b11DwarfYouControlBecameTapped
-// gives: the engine taps an attacker without an EventTapCard, so an
-// EventAttack whose creature is now tapped is "became tapped" and a
-// vigilance Elf is not.
-//
-// "Only once each turn" is per Elf — each Elf carries its own copy
-// of the granted ability. The engine's trigger tally
-// (b11TriggeredThisTurn) is keyed by source and label, which cannot
-// tell two Elf Warrior tokens apart, so the tally here is the event
-// log itself: the ability fires on the FIRST tap or tapped-attack
-// event for this Elf this turn and on no later one. Every earlier
-// tap of the Elf this turn is walked, whether or not it triggered
-// the ability then, which errs weaker — an Elf tapped before Dionus
-// arrived does not fire later that turn — and never stronger: a
-// trigger is impossible on any but the first event.
-func b23ElfYouControlBecameTappedFirstTimeThisTurn(ev game.Event, source *game.Card, g *game.Game) bool {
-	switch ev.Kind {
-	case game.EventTapCard, game.EventAttack:
-	default:
-		return false
-	}
-	if !b23IsYourTurn(g, source.Controller) {
-		return false
-	}
-	c, ok := g.LookupCardForEffect(ev.CardID)
-	if !ok || c.Controller != source.Controller || !c.IsCreature() || !c.HasSubtype("Elf") {
-		return false
-	}
-	if ev.Kind == game.EventAttack && !c.Tapped {
-		return false
-	}
-	return !b23TappedEarlierThisTurn(g, ev)
-}
-
-// b23TappedEarlierThisTurn walks the event log back to the start of
-// the current turn looking for a tap or attack event naming the same
-// card as `ev`, ignoring `ev` itself and anything after it. The turn
-// boundary is the first EventStepBegan carrying an earlier turn
-// number: the cursor stamps one on every step it enters, so every
-// event above that mark belongs to this turn.
-func b23TappedEarlierThisTurn(g *game.Game, ev game.Event) bool {
-	for _, prev := range g.EventsThisTurn() {
-		if prev.Seq >= ev.Seq {
-			break
-		}
-		if (prev.Kind == game.EventTapCard || prev.Kind == game.EventAttack) && prev.CardID == ev.CardID {
-			return true
-		}
-	}
-	return false
-}
-
 // --- effect bodies -----------------------------------------------
 
 // b23DoublePlusOneCountersOn puts as many +1/+1 counters on `target`
@@ -316,17 +250,4 @@ func b23SearchCreaturesWithTotalManaValue(g *game.Game, item *game.StackItem, li
 		Validate:  b23TotalManaValueAtMost(limit),
 		Reason:    reason,
 	}.Apply(ctx)
-}
-
-// b23UntapAndGrow is the granted ability's body: untap the Elf and
-// put a +1/+1 counter on it, if it is still on the battlefield.
-func b23UntapAndGrow(g *game.Game, item *game.StackItem, elf uuid.UUID) error {
-	if !onBattlefield(g, elf) {
-		return nil
-	}
-	ctx := NewContext(g, item)
-	if err := (UntapTarget{Target: elf}).Apply(ctx); err != nil {
-		return err
-	}
-	return AddCounter{Target: elf, Kind: "+1/+1", N: 1}.Apply(ctx)
 }

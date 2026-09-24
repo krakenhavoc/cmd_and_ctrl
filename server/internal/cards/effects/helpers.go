@@ -461,6 +461,17 @@ func destroyChosenPermanent(g *game.Game, item *game.StackItem) error {
 	return DestroyTarget{Target: item.Targets[0].ID}.Apply(NewContext(g, item))
 }
 
+// sourceDealsOneToFirstTarget is "{T}: this creature deals 1 damage to
+// any target" — Goblin Sharpshooter's own ping and the ping Thornbite
+// Staff GRANTS (ADR 0093), where the source is the equipped host. The
+// ability's source deals 1 damage to the first chosen target.
+func sourceDealsOneToFirstTarget(g *game.Game, item *game.StackItem) error {
+	if len(item.Targets) == 0 {
+		return nil
+	}
+	return DealDamage{Source: item.SourceCardID, Target: item.Targets[0].ID, Amount: 1}.Apply(NewContext(g, item))
+}
+
 // destroyFirstLegalCardTarget is the whole Effect of an activated
 // ability whose printed text is "Destroy target [permanent]." — it
 // re-checks legality through ctx.LegalTargets() (CR 608.2b) rather

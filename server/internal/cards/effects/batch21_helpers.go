@@ -114,21 +114,6 @@ func b21ArtifactOrCreatureYouControlDied(ev game.Event, source *game.Card, g *ga
 
 // --- board reads -------------------------------------------------
 
-// b21ControlsCommanderCreatureYouOwn reports whether `player`
-// controls a creature that is a commander THEY OWN — the permanent a
-// Background's "Commander creatures you own have …" hangs its
-// granted ability on. Owner matters: a stolen opponent's commander is
-// not yours, and your own commander under an opponent's control is
-// not something you control.
-func b21ControlsCommanderCreatureYouOwn(g *game.Game, player uuid.UUID) bool {
-	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.IsCommander && c.Owner == player && c.Controller == player && c.IsCreature() {
-			return true
-		}
-	}
-	return false
-}
-
 // b21AnyGraveyardHasACard reports whether any seated player's
 // graveyard holds at least one card — the legal-target set of
 // "target card from a graveyard" is non-empty. Hazel's Brewmaster
