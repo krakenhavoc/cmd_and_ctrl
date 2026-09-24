@@ -54,6 +54,20 @@ On a PR, `changes` skips the Go jobs when only `client/` or
 `cmdctrl-ci` is a small job that passes when the others passed or
 were skipped, so it stays the one required check.
 
+The CI jobs (`changes` through `census-publish`) run on GitHub-hosted
+`ubuntu-latest` runners (#1433), which are free for a public
+repository. The self-hosted runners do only what needs the LAN: the
+two CD jobs, the Scryfall refresh and the nightly workflows. Two
+safeguards keep the hosted jobs free:
+
+- If the repository is ever made private, the CI jobs go back to
+  `self-hosted` automatically.
+- Setting the repository variable `CI_RUNNER` to `self-hosted` moves
+  them back on purpose, without a PR.
+
+Keep `CI_RUNNER` to a standard label. Larger-runner labels are billed
+even on public repositories.
+
 Promotion is a `develop` → `main` PR, merged with a **merge commit** —
 the only method `main` allows. A squash would give `main` a commit
 `develop` does not have, and the two drift further apart with every
