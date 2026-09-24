@@ -61,31 +61,34 @@ import (
 // life / sacrifice payment shapes rather than being approximated here.
 func CumulativeUpkeep(label, cost string) game.TriggeredAbility {
 	return AtYourUpkeep(label, func(g *game.Game, item *game.StackItem) error {
-		ctx := NewContext(g, item)
-		source := ctx.Source()
+		source := item.SourceCardID
 		// CR 702.24a's "if this permanent is on the battlefield": a
 		// permanent that left in response has nothing to age and
 		// nothing to sacrifice, and its controller is not billed.
-		if !onBattlefield(g, source) {
+		// Left and came back is the same answer (#1432, CR 400.7).
+		if !onBattlefield(g, source) || sourceIsNewObject(g, item) {
 			return nil
 		}
-		if err := (AddCounter{Target: source, Kind: game.CounterAge, N: 1}).Apply(ctx); err != nil {
-			return err
-		}
-		// Re-read: the counter may have been replaced or doubled on
-		// the way in (AddCounterForEffect goes through the CR 614
-		// window), and what the rule charges for is the counters that
-		// are actually there.
-		age := counterCountOn(g, source, game.CounterAge)
-		if age <= 0 {
-			return nil
-		}
-		return UpkeepPayUnless{
-			Chooser:   ctx.Controller(),
-			Cost:      strings.Repeat(cost, age),
-			Question:  label,
-			OnDecline: func(ctx *Context) error { return SacrificePermanent{Target: source}.Apply(ctx) },
-		}.Apply(ctx)
+		// #1290: what the rule charges for is the counters that are
+		// actually there once the placement LANDS, via
+		// AddCounterThenForEffect's continuation — not on the next
+		// line. The counter may be replaced or doubled on the way in
+		// (a Doubling Season / Hardened Scales board), which can pause
+		// it on a CR 616 prompt; reading before that resumes would
+		// charge for the pre-placement age count.
+		return g.AddCounterThenForEffect(source, game.CounterAge, 1, func(g *game.Game, _ int) error {
+			ctx := NewContext(g, item)
+			age := counterCountOn(g, source, game.CounterAge)
+			if age <= 0 {
+				return nil
+			}
+			return UpkeepPayUnless{
+				Chooser:   ctx.Controller(),
+				Cost:      strings.Repeat(cost, age),
+				Question:  label,
+				OnDecline: func(ctx *Context) error { return SacrificePermanent{Target: source}.Apply(ctx) },
+			}.Apply(ctx)
+		})
 	})
 }
 

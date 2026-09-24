@@ -627,3 +627,231 @@ TEXT and not a keyword-ability line, so there is nothing for the
 deck importer to stamp. That is the same posture §1 takes toward a
 quality the grammar cannot parse: err weaker, and let the card carry
 the ADR 0037 unimplemented badge until somebody writes it.
+
+## Amendment (2026-09-24, #1417): a source that left BEFORE its damage event is read as it last existed
+
+The third bullet of §3 says: "a source whose characteristics changed on
+the way out … CR 608.2h says use the last existing characteristics".
+The code kept that promise only for a source that left *after* its
+damage event was created, such as the #694 pause, the CR 510.1c frame,
+or an SBA sweep mid-step. A source that had *already* left, such as a
+"when this dies" trigger or a creature killed in response to its own
+ability, was snapshotted from its current zone. That meant its
+graveyard card, which is a new object with printed characteristics
+(CR 400.7). So a creature painted red that died dealt colourless damage
+through protection from red.
+
+**Decision.** The non-combat tail (`effectDamageTailLocked`) now takes
+`sourceLKI` from `Game.lastKnownPermanents`, the per-object record
+that ADR 0056's 2026-09-24 amendment already reads a departed source's
+lifelink and deathtouch from. It uses the same object rules: by
+`ObjectRef` when the caller named the object, and by "last object,
+card not moved since" for a bare instance ID. A spell on the stack and
+a live permanent keep the current-zone read, so a Lightning Bolt's
+colour is still the one on the stack. Details are in
+[ADR 0056 Decision 12](0056-infect-wither-toxic.md).
+
+The catalog's "a red source you control" damage replacements (Torbran,
+Ojer Axonil, Mechanized Warfare) now read the same `SourceLKI` through
+`effects.damageSourceCharacteristics`, so protection and those cards
+agree on a source's colour.
+
+~~**Still open.**~~ **Closed by #1429**, see the next amendment. §2's DECLARED LIMITATION is narrower than it reads, and
+it is tracked as
+[#1429](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1429). For
+an ability whose source has left, `stackItemSourceLocked` does not
+return a source-less value. It returns the source's **graveyard card**.
+So the CR 608.2b target re-check tests protection against the wrong
+object. The damage half is now correct either way, but a target can
+still be declared illegal (the ability fizzles) when the source that
+last existed would have been allowed to target it.
+
+## Amendment (2026-09-24, #1429): the CR 608.2b re-check reads a departed ability source as it last existed
+
+Issue [#1429](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1429),
+the "Still open" paragraph of the #1417 amendment above. §2's table
+says the resolution re-check's source is "the stack item's card, looked
+up live and falling back to `StackItem.SourceLKI`". No such field was
+ever added. The code looked the source up with `LookupCardForEffect`,
+which finds the card in whatever zone holds it now. For an ability
+whose source had left the battlefield, that was the source's graveyard
+card: a new object with printed characteristics (CR 400.7). The comment
+on `stackItemSourceLocked` said it returned a source-less value, which
+was also wrong.
+
+So protection (CR 702.16b), and every other restriction that reads the
+source's qualities, was judged against the wrong object at resolution:
+
+- a source painted red that died could keep a pro-red target, and its
+  ability resolved (#1417 then prevented the damage, so only the fizzle
+  was missing);
+- a printed-red source made colourless that died lost a pro-red target
+  it was allowed to have, and its ability fizzled. That direction is
+  weaker than printed and visible on the board.
+
+**Decision.** `stackItemSourceLocked` (`server/internal/game/targets.go`)
+returns `SourceSnapshot(item.Controller, …)` of the source's
+`Game.lastKnownPermanents` record when the item is an ABILITY and
+`departedAbilitySourceLocked` finds a record. CR 608.2h is the rule:
+information about an object that has left the zone it was expected in
+is its last-known information. Which object an item names is
+`StackItem.SourceObject`, the exact source object that #1418 (ADR 0018
+Decisions 14-16) stamps on every ability item, read through
+`SourceObjectForEffect`:
+
+- **That object is still on the battlefield**: it is read live. This
+  check comes first, because an exit that a replacement stopped
+  part-way can leave a record at a live epoch.
+- **That object has left**: its record. This finds the right object
+  even when the card is back on the battlefield as a new one. An
+  activation's stamp is taken *before* its costs, so a source
+  sacrificed to its own ability is still the object its record
+  describes, even if the card has since come back.
+- **That object was never a permanent** (a trigger from a card in a
+  graveyard, an ability activated from a hand): there is no record, so
+  the card is read where it is. That card *is* the source. This matters
+  when the card was also a permanent earlier in the turn: it is judged
+  as the graveyard card, not as the permanent it used to be.
+- **An item with no stamp**, restored from a snapshot written before
+  #1418, keeps the instance-ID rule from ADR 0056 Decision 10: the
+  card's last battlefield record, only while its current epoch is
+  exactly one past it. That rule never answers for a card on the
+  battlefield, so a live source is read live.
+
+The snapshot's controller comes from the record when the characteristic
+has none, the same rule `SourceCharacteristics` uses. That is now one
+helper, `lastKnownSourceCharacteristics`, shared with the damage tail
+(#1417).
+
+What does not change:
+
+- **A spell** is its own source and is read on the stack. It never
+  consults the record, because a spell is not a permanent and a card that
+  was one earlier in the turn is a different object now. A spell item
+  carries no `SourceObject`, so the guard in `stackItemSourceLocked` is
+  what keeps it away from the unstamped fallback.
+- **An ability with no matching record** keeps the lookup. That covers a
+  channel or graveyard ability whose card was never on the battlefield,
+  and a source that left by a route that writes no record (CR 800.4a).
+- **Retargeting** (`retargetSourceLocked`) reads the same function, so a
+  Deflecting Swat pointed at an ability whose source died is judged by
+  the same object.
+
+The §2 table row should read: "resolution re-check
+(`TargetStillLegalForEffect`, CR 608.2b): a spell's own card on the
+stack; an ability's source permanent live, or its last-known record
+once it has left."
+
+**Proof.** No catalog caveat named this gap. The proof uses #1417's
+line through real cards: Murderous Redcap's enter trigger targets a
+creature, Cerulean Wisps turns the Redcap blue in response, the Redcap
+dies, and then Mother of Runes gives the creature protection.
+
+| Mother of Runes names | Before | After |
+|---|---|---|
+| red | the trigger fizzles (graveyard card is red) | resolves, 2 damage |
+| blue | the trigger resolves, damage prevented | fizzles (CR 608.2b) |
+
+**Also covered, because #1418 landed first.** Two cases that the
+instance-ID rule alone gets wrong are right, and each has a test:
+
+- a graveyard trigger from a card that died earlier this turn is judged
+  as the graveyard card, not as the permanent it was;
+- an activation whose cost sacrificed its source, and whose card has
+  since come back, is judged as the sacrificed object, not as the new
+  one.
+
+**Still open.**
+
+- **Unstamped items** from a pre-#1418 snapshot keep the instance-ID
+  rule, and with it both of the imprecisions above. That is a
+  compatibility path, not a new gap.
+- ~~**The re-target prompt for a COPY of an ability**
+  (`abilitySourceCardLocked`, `server/internal/game/ability_copy.go`)
+  still judges its picks against the source's current-zone card. The
+  copy frame carries a `Card`, not a `Characteristic`. Its comment
+  now says so. Filed as [#1449](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1449).~~
+  **Closed by #1449**, the amendment below.
+- **Hexproof from a quality** is not implemented as a keyword. When it
+  is, it reads `TargetSource.Characteristics()` like protection does,
+  so it will get the last-known source for free.
+
+## Amendment (2026-09-24, #1449): an ability copy's new targets are judged against the departed source as it last existed
+
+Issue [#1449](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1449),
+the copy half the #1429 amendment above left open. When an ability is
+copied and the copy's controller may choose new targets (CR 707.10c,
+which is CR 115.7c by reference), three places judge the new targets:
+
+1. the **offer**, which computes the prompt's legal set
+   (`offerCopyTargetsLocked`, `server/internal/game/spell_copy.go`);
+2. the **#809 refresh**, which re-reads an open prompt's legal set at
+   every state check (`refreshTargetChoicesLocked`,
+   `server/internal/game/trigger_target_timing.go`);
+3. the **answer**, the CR 115.7 check on the chosen targets
+   (`resolveCopyTargetsLocked`, `spell_copy.go`).
+
+All three judged against the copy frame's `src`. For an ability copy
+that is `abilitySourceCardLocked(item)`: the source looked up in its
+current zone. Once the source had left the battlefield, that was its
+graveyard card, a new object with printed characteristics (CR 400.7),
+not the source as it last existed (CR 608.2h). So a copy of an ability
+whose source was painted red and then died could be pointed at a
+pro-red creature, and a copy whose printed-red source was made
+colourless before it died could not. The original's CR 608.2b re-check
+had been right since #1429, so the two disagreed about the same source.
+
+**Decision.** One function, `copyTargetSourceLocked(cf *copyFrame)`
+(`spell_copy.go`), is the `TargetSource` for all three places. For an
+ABILITY copy whose source `departedAbilitySourceLocked` finds a record
+for, it returns `SourceSnapshot(controller,
+lastKnownSourceCharacteristics(rec))`. That is the read
+`stackItemSourceLocked` makes for the original, from the same
+`StackItem.SourceObject` (#1418): the frame keeps a value copy of the
+original's item, and `createAbilityCopyLocked` gives the copy that same
+`SourceObject`, so the prompt, the answer and the copy's own CR 608.2b
+re-check at resolution all name the same object. Otherwise it returns a
+snapshot of the frame's `src`, as before. A new field on `copyFrame`
+(the issue's suggested `srcChars`) was not needed.
+
+The read happens at each check rather than being frozen at the offer.
+So a source that leaves while the prompt is open is judged as it last
+existed when the prompt is refreshed and answered.
+
+What does not change:
+
+- **A spell copy** is judged against the copied spell. The guard is
+  `cf.item.Kind != StackItemSpell`, the same one `stackItemSourceLocked`
+  has, for the same reason: a spell's source is the spell, and a spell
+  item carries no `SourceObject`, so without the guard it would reach
+  `departedAbilitySourceLocked`'s unstamped instance-ID fallback and
+  could be read as the permanent its card was earlier in the turn.
+- **A live source**, and an ability whose source has no record, keep
+  the snapshot of `src`. At the offer that replaces
+  `SourceObject(controller, &src)`. The two are the same for legality:
+  `TargetSource.Characteristics()` answers `SourceCharacteristics(Object)`
+  for the one and the snapshot for the other, and nothing else reads
+  `TargetSource.Object`.
+
+**Fixed along the way.** When the #809 refresh finds an open copy prompt
+with nothing left to offer, it withdraws the prompt and creates the copy
+with the original's targets. It called `createSpellCopyLocked` for every
+copy frame, so an ability copy's frame put a SPELL copy of the source
+permanent's card on the stack. The refresh now calls `createCopyLocked`,
+the one branch on `item.Kind` that the offer and the answer already use.
+The LKI read above makes this path easier to reach, because the refresh
+can now narrow a set that the old read left open.
+
+**Proof.** No catalog caveat named this gap. The proof is #1429's line
+through real cards, with a real copy effect: Murderous Redcap's enter
+trigger targets a creature, Cerulean Wisps turns the Redcap blue in
+response, the Redcap dies (black-red again in the graveyard), and
+Strionic Resonator copies the trigger.
+
+| Copy's new target | Before (graveyard card, black-red) | After (last known, blue) |
+|---|---|---|
+| a creature with protection from red | not offered, refused | offered, 2 damage |
+| a creature with protection from blue | offered | not offered, refused |
+
+**Still open.** Nothing on this path. Hexproof from a quality is still
+not a keyword (the #1429 amendment's last bullet).

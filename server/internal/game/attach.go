@@ -77,8 +77,8 @@ func (c Card) IsAttachedTo(hostID uuid.UUID) bool {
 // standing rule for anything that runs off the stack.
 //
 // Re-attaching an already-attached permanent is legal and is what a
-// second equip activation does (CR 702.6d): the old link is simply
-// overwritten, and the CR 613.7d timestamp is refreshed.
+// second equip activation does (CR 701.3a): the old link is simply
+// overwritten, and the CR 613.7e timestamp is refreshed.
 //
 // # An attach that cannot happen does nothing (CR 701.3b)
 //
@@ -350,9 +350,10 @@ func (g *Game) attachmentLegalLocked(c *Card) bool {
 	// is Curse of Opulence's clause and the reason Card.AttachedTo is
 	// a TargetRef rather than a card ID at all.
 	//
-	// Equipment and Fortifications never reach this: CR 301.5c and
-	// CR 301.6c both attach only to a permanent, so a player host is
-	// always an Aura's.
+	// Equipment and Fortifications never reach this: CR 301.5 and
+	// CR 301.6 both attach only to a permanent (a creature or a land,
+	// respectively — never a player), so a player host is always an
+	// Aura's.
 	//
 	// The test is against the ATTACHMENT, not against its controller,
 	// for the same reason the permanent branch above is.

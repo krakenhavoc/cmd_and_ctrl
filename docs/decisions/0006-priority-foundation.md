@@ -76,11 +76,28 @@ lock.
 
 ### 3. `Game.StartingSeat int` for the turn-1 skip-draw rule
 
-**Decision:** Add a new `Game.StartingSeat int` field, set in `Start()` to
-the active seat at game start (always `0` today). The `StepDraw` hook
+**Decision:** Add a new `Game.StartingSeat int` field, set at game start to
+the active seat that takes the first turn. The `StepDraw` hook
 checks `Turn.Number == 1 && Turn.ActiveSeat == StartingSeat` and skips the
 auto-draw per CR 103.8a. The field is carried in `GameView` so spectators
 and reconnects see the same skip-draw decision.
+
+**Amendment (2026-09-24, #1480):** a production start no longer makes join
+order into turn order. Every seated player rolls a d20 through ADR 0054's
+seeded, persisted random-effect path. Only players tied for the highest result
+reroll, repeatedly, until one winner remains. The winner becomes
+`StartingSeat`, `Turn.ActiveSeat` and `Turn.OrderSeat` before the mulligan
+window opens. Every roll is a public, source-less `EventRollDie`, so the game
+log is the durable audit trail and a reconnecting opening-hand client can show
+the same result. `Turn.Round` advances when normal rotation returns to
+`StartingSeat`, rather than when it passes numeric seat 0; otherwise a game
+starting at seat 2 would display round 2 halfway through its first rotation.
+
+`Game.Start` remains the fixed-seat fixture/replay entry point for callers
+that already chose seat 0. Real game constructors — the lobby, demo server,
+bot arena and model probe — call `StartWithFirstPlayerRoll`. The split keeps
+unrelated engine fixtures explicit and deterministic without giving any live
+table a join-order first player.
 
 **Amendment (2026-09-16, #692):** the skip is gated on the game having
 exactly two players. CR 103.8a covers only a two-player game and CR 103.8b
@@ -146,7 +163,7 @@ Outside the window, they behave exactly as before.
 (mulligans are open then — the active seat hasn't even kept their opening
 hand). Instead, the moment the last seated, non-eliminated player calls
 `KeepHand` and `MulligansOpen` flips false, `KeepHand` invokes
-`runStepEntryHooksLocked` itself. That fires seat 0's auto-untap and walks
+`runStepEntryHooksLocked` itself. That fires the starting seat's auto-untap and walks
 the cursor on to Upkeep.
 
 **Why not at Start():**

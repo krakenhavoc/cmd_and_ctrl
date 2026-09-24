@@ -25,13 +25,19 @@ import "github.com/google/uuid"
 // # The boundary
 //
 // A batch is every event the engine emits between two points where
-// PLAY MOVES ON — and there are exactly two such points:
+// PLAY MOVES ON — and there are exactly three such points:
 //
 //   - a stack item begins to resolve (resolveTopOfStackLocked), and
 //   - the turn cursor enters a new step (advanceCursorLocked), plus
 //     the one step the RULES begin again where the cursor does not
 //     move: the extra cleanup step CR 514.3a asks for, which
-//     repeatCleanupStepLocked opens (#661, cleanup.go).
+//     repeatCleanupStepLocked opens (#661, cleanup.go), and
+//   - a special action is taken (PerformSpecialAction, #1341). CR
+//     116.2 makes each one — foretell, suspend, turning a face-down
+//     permanent up — its own event with no stack and no priority
+//     pass around it, so it is a third point where play moves on:
+//     two foretells taken back to back, before anything resolves,
+//     are two occurrences (CR 603.2c), not one.
 //
 // The step half used to carry a second exception. The first-strike
 // and regular combat damage steps are TWO combat damage steps
@@ -44,7 +50,10 @@ import "github.com/google/uuid"
 // around.
 //
 // Nothing else opens a batch. That is deliberate, and the two
-// consequences are the ones the rules want:
+// consequences below are unchanged by the special-action point added
+// in #1341 — a special action is never inside a resolution or a
+// turn-based action, so it only ever adds a boundary, never removes
+// one:
 //
 //   - Everything one resolution emits is one batch. A Cyclonic Rift
 //     that bounces four creatures is one occurrence, and Dour
@@ -85,11 +94,12 @@ import "github.com/google/uuid"
 // OncePerBatch ability that already fired for an earlier batch fires
 // again for this one.
 //
-// Called from resolveTopOfStackLocked, advanceCursorLocked and
-// repeatCleanupStepLocked — a resolution beginning, the cursor
-// entering a step, and the one step that begins again without the
-// cursor moving (CR 514.3a). Together they are "play moved on". See
-// the file comment for why those and nothing else.
+// Called from resolveTopOfStackLocked, advanceCursorLocked,
+// repeatCleanupStepLocked and PerformSpecialAction — a resolution
+// beginning, the cursor entering a step, the one step that begins
+// again without the cursor moving (CR 514.3a), and a special action
+// being taken (CR 116.2, #1341). Together they are "play moved on".
+// See the file comment for why those and nothing else.
 //
 // It is also where the RESOLVING-ITEM slot is cleared (#920,
 // resolving_item.go). The two are the same question asked twice: a

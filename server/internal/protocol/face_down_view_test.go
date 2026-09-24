@@ -63,6 +63,9 @@ var redactedCardKeys = map[string]bool{
 	"goaded_by":             true,
 	"attached_to":           true,
 	"no_untap":              true,
+	// #1339: who is defending against an attack is as public as what
+	// it is attacking — it is derived from it.
+	"defending_player": true,
 }
 
 // assertRedacted fails on any key outside redactedCardKeys and on a
@@ -221,6 +224,7 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		BattleY:             &y,
 		AttackingTarget:     "defender",
 		AttackingTargetKind: "player",
+		DefendingPlayer:     "defender",
 		ProtectorPlayer:     "protector",
 		Defense:             4,
 		BlockingTarget:      "attacker",
@@ -237,11 +241,16 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		ExilePlay:          &ExilePlayView{Player: owner, CostOverride: "{1}{U}"},
 		ActivatedAbilities: []ActivatedAbilityView{{Index: 0, Label: "{T}: Draw", LoyaltyCost: &one}},
 		ZoneAbilities:      []ActivatedAbilityView{{Index: 0, Label: "Cycling {2}", DiscardSelf: true, ManaCost: "{2}"}},
-		SpecialActions:     []SpecialActionView{{Kind: "foretell", Label: "Foretell {2}", Cost: "{2}", Available: true}},
-		SummoningSick:      true,
-		LoyaltyActivated:   true,
-		ClassLevel:         3,
-		Solved:             true,
+		// #1228: the CR 605 half of the same secret — "Exile this
+		// card from your hand: Add {R}" names Simian Spirit Guide.
+		ZoneManaAbilities: []ManaAbilityView{{Index: 0, Label: "Exile this card from your hand: Add {R}", ExileSelf: true, Produced: "{R}"}},
+		SpecialActions:    []SpecialActionView{{Kind: "foretell", Label: "Foretell {2}", Cost: "{2}", Available: true}},
+		SummoningSick:     true,
+		LoyaltyActivated:  true,
+		ClassLevel:        3,
+		Solved:            true,
+		Harnessed:         true,
+		Prepared:          true,
 		// #781. Deliberately NOT added to redactedCardKeys: both are
 		// public on a card the viewer can see and both are stripped
 		// from one they cannot, because "Elf" names Cavern of Souls
@@ -252,8 +261,11 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		ChosenName:    "Sol Ring",
 		ManaCost:      "{2}{U}",
 		ManaAbilities: []ManaAbilityView{{Index: 0, Label: "Add {U}"}},
-		Abilities:     []string{"flying"},
-		Restrictions:  []string{"cant_block"},
+		// ADR 0093: the granted-ability text list. Redacted with the
+		// ability rows it describes.
+		GrantedAbilities: []GrantedAbilityView{{Text: "{T}: Add one mana of any color.", SourceID: "grantor", SourceName: "Cryptolith Rite"}},
+		Abilities:        []string{"flying"},
+		Restrictions:     []string{"cant_block"},
 		// ADR 0083. Public on a token the viewer can see, and a token
 		// is known to every seat, so this cell can never fire in a
 		// real game — it is here because the field is a catalog read
@@ -288,6 +300,7 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 		// a strip rather than a struct that was empty anyway.
 		Modes: &ModeSpecView{Prompt: "Choose one", Min: 1, Max: 1, Options: []ModeOptionView{{
 			Label: "mode", TargetMode: "creature", LegalTargets: lt, Clauses: []LegalTargetsView{*lt, *lt},
+			Cost: "{1}{U}",
 		}}},
 		AdditionalCost: &AdditionalCostView{DiscardCards: 1},
 		AlternativeCosts: []AlternativeCostView{{
@@ -308,6 +321,8 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 		// of the cost surface — a legendary-sorcery clause says more
 		// about a face-down card than its mana cost does.
 		CantCast: "Each player can't cast more than one spell each turn.",
+		// #1389: the viewer's own exile price list.
+		CastPrices: []CastPriceView{{AlternativeCost: "foretell", Label: "Foretell", Cost: "{1}{U}", Life: 1, Printed: true}},
 	}
 }
 
@@ -663,6 +678,9 @@ var castSurfaceScopes = map[string]castSurfaceScope{
 	"CastableHere": surfacePrivate,
 	"LegalTargets": surfacePrivate,
 	"Clauses":      surfacePrivate,
+	// #1389: what the asking seat would be charged. A cost modifier
+	// may be scoped to one player, so it is theirs alone.
+	"CastPrices": surfacePrivate,
 	// #1169: cost-shaped facts about the card. Public on a public
 	// pile — an escape offer is priced by a graveyard everybody can
 	// count — and not on a hand card the viewer was shown one of.
@@ -717,6 +735,10 @@ var modeOptionScopes = map[string]castSurfaceScope{
 	// Printed text: the bullet and the shape of its prompt.
 	"Label":      surfacePublicPile,
 	"TargetMode": surfacePublicPile,
+	// CR 702.172a, ADR 0065's 2026-09-23 amendment: Spree's per-mode
+	// cost is the printed clause ("+ {1}{U} — ..."), not a board-
+	// derived answer, so it travels with Label and TargetMode.
+	"Cost": surfacePublicPile,
 	// #1172: the legal sets. Narrowed by hexproof, shroud, protection
 	// and "target opponent", so seat A's is not seat B's to read.
 	"LegalTargets": surfacePrivate,

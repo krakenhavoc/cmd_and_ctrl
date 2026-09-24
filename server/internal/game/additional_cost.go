@@ -126,6 +126,40 @@ type AdditionalCost struct {
 	// independent card payments per cast is a wire shape nothing asks
 	// for (ADR 0073 §4).
 	Repeat int
+
+	// ChoosesOpponent is gift's cost (CR 702.174a): "As an additional
+	// cost to cast this spell, you may choose an opponent." Paying it
+	// is NAMING a player rather than handing anything over — the
+	// caster sends the opponent on CastSpellParams.GiftOpponent, the
+	// engine checks it is an opponent still in the game, and the
+	// choice lands on PaidCost.GiftOpponent. ADR 0089 §1.
+	//
+	// A component of this struct for the reason Optional is a flag
+	// rather than a type: CR 702.174a says paying it "follows the
+	// rules for paying additional costs in rules 601.2b and
+	// 601.2f–h", so it is announced, recorded, copied and carried
+	// onto a permanent exactly as a kicker is — only what it is made
+	// of differs. Register allows it only on an optional cost keyed
+	// GiftKey, and only on its own.
+	ChoosesOpponent bool
+
+	// Targets, when non-nil, REPLACES the spell's target clause when
+	// this optional cost is paid — Long River's Pull's "counter target
+	// creature spell. If the gift was promised, instead counter target
+	// spell", Wear Down's "instead destroy two target artifacts and/or
+	// enchantments". The same shape AlternativeCost.Targets gives
+	// cleave, for the same reason: the cost is announced at CR 601.2b
+	// and the targets at 601.2c, so the clause the targets are judged
+	// against is the one the announcement produced (CR 702.174m, ADR
+	// 0089 §3).
+	//
+	// A clause the unpaid spell does not have at all (Mind Spiral's
+	// "if the gift was promised, tap target creature an opponent
+	// controls") is the printed clause list with the extra clause
+	// appended — CR 702.174m's "chooses those targets only if the gift
+	// was promised" is exactly a clause list that differs by the
+	// cost.
+	Targets *TargetSpec
 }
 
 // MaxPayments is how many times this cost may be paid for one cast:
@@ -140,7 +174,7 @@ func (c *AdditionalCost) MaxPayments() int {
 
 // Empty reports whether the cost demands nothing. Nil-safe.
 func (c *AdditionalCost) Empty() bool {
-	return c == nil || (c.DiscardCards == 0 && c.Sacrifice == nil && !c.PayLifeX && c.ManaCost == "")
+	return c == nil || (c.DiscardCards == 0 && c.Sacrifice == nil && !c.PayLifeX && c.ManaCost == "" && !c.ChoosesOpponent)
 }
 
 // CardsDemanded reports whether paying this cost needs the caster to
@@ -189,7 +223,7 @@ func OptionalCostsFor(oracleID string) []AdditionalCost {
 // may use any key it likes — the engine only ever compares strings —
 // but these three are the ones the ENGINE reads rather than the card:
 // kicker and multikicker because CR 702.33 counts them together, and
-// buyback because CR 702.27b changes where the spell goes.
+// buyback because CR 702.27a changes where the spell goes.
 const (
 	// KickerKey is CR 702.33's kicker, paid at most once.
 	KickerKey = "kicker"
@@ -200,6 +234,11 @@ const (
 	// BuybackKey is CR 702.27's buyback. Read by the stack-exit route
 	// and by nothing else.
 	BuybackKey = "buyback"
+	// GiftKey is CR 702.174's gift. The engine reads it in one place:
+	// the announce check that a gift cost names an opponent
+	// (validateGiftChoiceLocked). Everything the gift DOES is the
+	// card's, grown by effects.Gift (ADR 0089).
+	GiftKey = "gift"
 )
 
 // OptionalCostTimesPaid counts how many times the optional cost whose
@@ -303,6 +342,14 @@ func paidWithOptionalCosts(paid PaidCost, plan []costPayment) PaidCost {
 			paid.OptionalCosts = append(paid.OptionalCosts, pay.index)
 		}
 	}
+	return paid
+}
+
+// paidWithGift folds the gift recipient into the record (ADR 0089
+// §2). Already validated: non-nil exactly when a gift cost was
+// announced.
+func paidWithGift(paid PaidCost, to uuid.UUID) PaidCost {
+	paid.GiftOpponent = to
 	return paid
 }
 
@@ -474,7 +521,7 @@ func AddOptionalCostMana(cost ParsedCost, optional []AdditionalCost, chosen []in
 // before 601.2h), so a discard trigger sees the spell above it.
 //
 // Caller must hold g.mu.
-func (g *Game) payAdditionalCostLocked(playerID uuid.UUID, discardIDs, sacrificeIDs []uuid.UUID, payLife int) error {
+func (g *Game) payAdditionalCostLocked(playerID uuid.UUID, discardIDs, sacrificeIDs []uuid.UUID, payLife int, answers map[uuid.UUID]bool) error {
 	// Life first: it is the component with no choice attached, and
 	// paying it before the sacrifices keeps the event order matching
 	// the way the clauses are read aloud.
@@ -493,7 +540,7 @@ func (g *Game) payAdditionalCostLocked(playerID uuid.UUID, discardIDs, sacrifice
 	// The N permanents of a "sacrifice two creatures" clause leave as
 	// one simultaneous exit (#747, ADR 0021 addendum), so the order
 	// the IDs arrived in cannot change what the watchers see.
-	if err := g.payCostSacrificesLocked(sacrificeIDs); err != nil {
+	if err := g.payCostSacrificesLocked(sacrificeIDs, answers); err != nil {
 		return err
 	}
 	if len(discardIDs) == 0 {
@@ -504,8 +551,11 @@ func (g *Game) payAdditionalCostLocked(playerID uuid.UUID, discardIDs, sacrifice
 	}
 	// Through the COST path of the one discard helper (discard.go):
 	// a discard is a discard, but CR 601.2h pays a spell's costs as
-	// one indivisible step, so this one may not pause.
+	// one indivisible step, so this one may not pause. A commander
+	// among the discards carries the CR 903.9 answer its owner gave
+	// before the cast was paid for (#1397).
 	return g.discardCardsLocked(playerID, discardIDs, discardOptions{
-		cause: DiscardCauseCost,
+		cause:            DiscardCauseCost,
+		commanderAnswers: answers,
 	})
 }

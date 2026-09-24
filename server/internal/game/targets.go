@@ -91,23 +91,36 @@ func (s TargetSource) Characteristics() *Characteristic {
 }
 
 // stackItemSourceLocked names the source of an item that is already
-// on the stack — the CR 608.2b re-check's TargetSource.
+// on the stack — the CR 608.2b re-check's TargetSource, and the one a
+// retarget is judged under (retargetSourceLocked).
 //
 // For a SPELL the item's card is the spell itself and it is on the
-// stack, so the lookup always succeeds. For an ABILITY the source is
-// the permanent that produced it, and that permanent can have left
-// between announce and resolution; the ability still resolves
-// (CR 603.3d / CR 608.2), and this returns a source-less value for
-// it.
+// stack, so the lookup always succeeds and reads the spell as it is
+// now. A spell never consults the departed-permanent record below: it
+// is not a permanent, and a card that was one earlier in the turn is a
+// different object now (CR 400.7).
 //
-// DECLARED LIMITATION: protection is then not re-checked for that
-// ability, so a creature that gains protection from red in response
-// to a red permanent's ability, where the permanent ALSO leaves
-// before resolution, is still hit. The announce gate caught the
-// ordinary case and the damage half catches the damage; giving the
-// stack item its own last-known-information snapshot would be a
-// second LKI store next to the damage event's, for one ordering of
-// two rare events. See docs/decisions/0072-protection.md §2.
+// For an ABILITY the source is the permanent that produced it, and
+// that permanent can have left between announce and resolution; the
+// ability still resolves (CR 603.3d / CR 608.2). Its targets are then
+// re-checked against the source AS IT LAST EXISTED ON THE BATTLEFIELD
+// (CR 608.2h), which is the Game.lastKnownPermanents record, returned
+// as a snapshot. Before #1429 this fell through to the lookup and
+// read the card in the zone it went to — its graveyard card, a new
+// object with printed characteristics — so protection, hexproof-from
+// and "can't be the target of <quality> sources" were judged against
+// the wrong object: a source painted red that died could target past
+// protection from red, and a red source bleached colourless that died
+// made its target illegal. See departedAbilitySourceLocked for which
+// object an item names (StackItem.SourceObject, #1418).
+//
+// An ability whose source object has no record (it was never on the
+// battlefield — a graveyard trigger, a channel ability — or it left by
+// a route that writes none, CR 800.4a) keeps the lookup, as before.
+//
+// The spell guard is load-bearing: a spell carries no SourceObject, so
+// without it a spell would reach departedAbilitySourceLocked's
+// unstamped fallback.
 //
 // Caller must hold g.mu.
 func (g *Game) stackItemSourceLocked(item *StackItem) TargetSource {
@@ -115,11 +128,72 @@ func (g *Game) stackItemSourceLocked(item *StackItem) TargetSource {
 		return TargetSource{}
 	}
 	if item.SourceCardID != uuid.Nil {
+		if item.Kind != StackItemSpell {
+			if rec, ok := g.departedAbilitySourceLocked(item); ok {
+				return SourceSnapshot(item.Controller, lastKnownSourceCharacteristics(rec))
+			}
+		}
 		if c, ok := g.LookupCardForEffect(item.SourceCardID); ok {
 			return SourceObject(item.Controller, &c)
 		}
 	}
 	return SourceChooser(item.Controller)
+}
+
+// departedAbilitySourceLocked is the last-known record of the
+// permanent an ABILITY item came from, once that permanent has left
+// the battlefield (#1429, CR 608.2h), or false while it is still there
+// or when there is no record to read.
+//
+// The object is StackItem.SourceObject (#1418), read through
+// SourceObjectForEffect: the exact object the ability came from,
+// stamped when the item was made — before costs for an activation, so
+// a source sacrificed to its own ability is still "this permanent".
+//
+//   - That object still on the battlefield: false, and the caller
+//     reads it live. Checked first because a record CAN exist for a
+//     live epoch — an exit a replacement stopped part-way leaves one
+//     (rememberDepartingPermanentLocked).
+//   - That object gone: its record, even when the card is back on the
+//     battlefield as a new object, which is never the source (CR 400.7).
+//   - An object that was never a permanent (a trigger from a card in a
+//     graveyard, an ability activated from a hand) has no record, so
+//     the caller reads the card where it is — which IS that object.
+//
+// An item with no stamp was restored from a snapshot written before
+// #1418. It keeps the instance-ID rule departedDamageSourceLocked
+// applies to a damage source (#1419): the card's last battlefield
+// object, only while the card has not moved since it left (current
+// epoch = recorded + 1). That rule names the LAST permanent the card
+// was, which is not always the ability's source, and is the reason
+// the stamp exists.
+//
+// Caller must hold g.mu.
+func (g *Game) departedAbilitySourceLocked(item *StackItem) (PermanentInfo, bool) {
+	if item.SourceObject.ID != item.SourceCardID {
+		return g.departedDamageSourceLocked(item.SourceCardID, nil)
+	}
+	ref, ok := g.SourceObjectForEffect(item)
+	if !ok {
+		return PermanentInfo{}, false
+	}
+	if c := findBattlefieldCard(g, ref.ID); c != nil && c.ObjectEpoch == ref.Epoch {
+		return PermanentInfo{}, false
+	}
+	return g.lastKnownPermanentLocked(ref)
+}
+
+// lastKnownSourceCharacteristics is a departed permanent's record as a
+// source's characteristics: a copy of what it last had on the
+// battlefield, with the controller filled from the record when the
+// characteristic has none — SourceCharacteristics' rule, since
+// CR 702.16k and "your opponents control" read it off the snapshot.
+func lastKnownSourceCharacteristics(rec PermanentInfo) *Characteristic {
+	ch := copyCharacteristic(&rec.Characteristic)
+	if ch.Controller == uuid.Nil {
+		ch.Controller = rec.Controller
+	}
+	return ch
 }
 
 // TargetClause is ONE clause of a target statement: one predicate,
@@ -149,9 +223,16 @@ type TargetClause = TargetSpec
 type TargetSpec struct {
 	// Mode is the client-facing hint derived from the spec: "any",
 	// "player", "creature", "permanent", "stack_spell",
-	// "card_in_graveyard". Drives banner copy and which surfaces
-	// enter targeting mode; legality itself comes from
-	// LegalTargets, not from Mode.
+	// "stack_ability", "stack_item", "card_in_graveyard". Drives
+	// banner copy and which surfaces enter targeting mode; legality
+	// itself comes from LegalTargets, not from Mode.
+	//
+	// The three stack hints differ only in the sentence the banner
+	// writes — "a spell on the stack", "an ability on the stack", "a
+	// spell or ability on the stack" (#1211). All three light up the
+	// same surface (the stack overlay) and all three obey the same
+	// legal set; a picker that read Mode for legality would be
+	// reading a hint as a rule.
 	Mode string
 
 	// Label is the human-readable targeting clause, shown in the

@@ -90,6 +90,9 @@ describe("service worker routing", () => {
     "/cards/",
     "/cards/search?q=sol+ring",
     "/catalog",
+    // The public engine roadmap (ADR 0092). Same reasoning as /decks:
+    // a cached copy would show last deploy's roadmap.
+    "/roadmap",
     "/admin/games",
     "/auth/discord/callback",
     "/avatars/123.png",

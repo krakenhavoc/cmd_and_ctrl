@@ -97,6 +97,11 @@ const (
 	// a continuous "as long as", not an event.
 	DesignationChargeCounters
 
+	// DesignationHarnessed is CR 701.64's "harnessed" designation:
+	// "∞ — [Ability]" (CR 702.186b) means "as long as this permanent
+	// is harnessed, it has [ability]". #1321.
+	DesignationHarnessed
+
 	// DesignationDoorUnlocked is CR 709.5's locked half — an ability
 	// printed on a Room's door exists only while that door is
 	// unlocked.
@@ -158,6 +163,8 @@ func (d Designation) Active(c Card) bool {
 		return c.Solved
 	case DesignationChargeCounters:
 		return c.Counters[CounterCharge] >= d.N
+	case DesignationHarnessed:
+		return c.Harnessed
 	case DesignationDoorUnlocked:
 		// Reserved. Nothing can unlock a door yet, so nothing is
 		// unlocked — and no registered card declares this gate, so
@@ -187,6 +194,10 @@ func CaseSolved() Designation { return Designation{Kind: DesignationCaseSolved} 
 func ChargeCounters(n int) Designation {
 	return Designation{Kind: DesignationChargeCounters, N: n}
 }
+
+// Harnessed builds a CR 701.64 / 702.186b gate: the ability exists
+// while the permanent is harnessed.
+func Harnessed() Designation { return Designation{Kind: DesignationHarnessed} }
 
 // ClassLevelOf is the permanent's current Class level (CR 716.2b): a
 // Class permanent with no level designation is level 1, so the zero
@@ -292,16 +303,27 @@ func TriggersForCard(c Card) []TriggeredAbility {
 	if ward := faceDownWardLocked(c); len(ward) > 0 {
 		return ward
 	}
+	// #706: keyword triggers the engine derives from the ability LIST
+	// rather than from the catalog — prowess (prowess.go). Read off the
+	// effective abilities, so a printed, token or granted instance all
+	// count, one trigger per instance (CR 702.108b), and an object
+	// with no key at all (an uncatalogued Monastery Swiftspear, a Monk
+	// token) still has them.
+	keyword := keywordTriggersFor(&c)
 	if CatalogTriggers == nil {
-		return nil
+		return keyword
 	}
 	key := CatalogAbilityKey(c)
 	if key == "" {
-		return nil
+		return keyword
 	}
-	return activeOnly(c, CatalogTriggers(key), func(t TriggeredAbility) Designation {
+	printed := activeOnly(c, CatalogTriggers(key), func(t TriggeredAbility) Designation {
 		return t.ActiveWhen
 	})
+	if len(keyword) == 0 {
+		return printed
+	}
+	return append(keyword, printed...)
 }
 
 // TriggersForKey is TriggersForCard for a harvest that holds a
@@ -417,7 +439,7 @@ func (g *Game) IsSolved(cardID uuid.UUID) bool {
 
 // ClassLevelFor is the current level of the named battlefield
 // permanent, or 0 when it is not on the battlefield. Read by the
-// level-up ability's CR 716.2e condition and by the wire view.
+// level-up ability's CR 716.2a condition and by the wire view.
 //
 // Zero rather than 1 for "not found" on purpose: the caller asking is
 // asking about a permanent, and "there is no permanent" is not
@@ -430,4 +452,45 @@ func (g *Game) ClassLevelFor(cardID uuid.UUID) int {
 		return 0
 	}
 	return ClassLevelOf(*card)
+}
+
+// HarnessForEffect marks a permanent harnessed (CR 701.64a: "if this
+// permanent isn't harnessed, it becomes harnessed") and announces it.
+// The one writer of Card.Harnessed outside the snapshot restore.
+//
+// Idempotent, and that matters exactly as it does for
+// SolveCaseForEffect: CR 701.64a is worded as "if … isn't", so
+// activating "Harness [this permanent]" a second time (nothing stops
+// it — CR 701.64a is an effect, not a legality restriction) must not
+// re-announce and must not re-fire whatever watches EventHarnessed.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) HarnessForEffect(cardID uuid.UUID) error {
+	card := findBattlefieldCard(g, cardID)
+	if card == nil {
+		return ErrCardNotFound
+	}
+	if card.Harnessed {
+		return nil
+	}
+	card.Harnessed = true
+	g.EmitEvent(Event{
+		Kind:   EventHarnessed,
+		Actor:  card.Controller,
+		Source: cardID,
+		CardID: cardID,
+		Target: cardID,
+	})
+	return nil
+}
+
+// IsHarnessed reports whether the named battlefield permanent is
+// harnessed. False for anything not on the battlefield, which is
+// CR 400.7 — a permanent that left is a new object and is not
+// harnessed.
+//
+// Caller must hold g.mu.
+func (g *Game) IsHarnessed(cardID uuid.UUID) bool {
+	card := findBattlefieldCard(g, cardID)
+	return card != nil && card.Harnessed
 }

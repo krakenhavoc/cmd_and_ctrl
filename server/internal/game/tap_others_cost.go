@@ -14,10 +14,10 @@ import "github.com/google/uuid"
 //	optional, its size is bounded by the cost, and tapping nothing is
 //	a legal cast.
 //
-//	TapOthersCost (#758) answers "what does this ACTIVATION owe". It
-//	is a component of AbilityCost in the sense ADR 0020 §2 means:
-//	a fixed number of permanents must be tapped or the ability cannot
-//	be activated at all (CR 118.3).
+//	TapOthersCost (#758, #1421) answers "what does this ACTIVATION
+//	owe". It is a component of AbilityCost in the sense ADR 0020 §2
+//	means: the fixed or announced number of permanents must be tapped
+//	or the ability cannot be activated at all (CR 118.3).
 //
 // Earthcraft, Opposition, Azami, Springleaf Drum, Heritage Druid and
 // the station ability (CR 702.184a) all print it. ADR 0071 §2 names
@@ -68,10 +68,8 @@ type TapOthersCost struct {
 	// Earthcraft and Springleaf Drum; 2 for Clock of Omens; 3 for
 	// Heritage Druid; 4 for Nullmage Shepherd.
 	//
-	// Fixed. A VARIABLE count ("tap X untapped Foods you control",
-	// Apothecary White) is not modelled here and is not a matter of
-	// reading this field differently: it would need the announce
-	// path MinX uses, and it is stated out of scope on #758.
+	// Fixed unless Filter.CountFromX is set. In that variable form
+	// Count is zero and the announced X is the payment width (#1421).
 	Count int
 
 	// Filter is what may be tapped ("an untapped creature you
@@ -101,16 +99,53 @@ type TapOthersCost struct {
 	// because of a rule of its own.
 	ExcludeSource bool
 
-	// Label is the clause as printed, shown above the client's
-	// picker so the prompt reads like the card. "Tap three untapped
-	// Elves you control", not "choose 3".
+	// Label is the clause as printed WITHOUT the verb, shown in the
+	// client's picker so the prompt reads like the card — "another
+	// untapped creature you control", which the picker renders as
+	// "Tap another untapped creature you control to pay for this
+	// ability" (#759), exactly as a return clause's label is. Not
+	// "choose 1".
 	Label string
 }
 
 // Empty reports whether the cost demands nothing. Nil-safe, so the
 // activation path can ask without a guard.
 func (c *TapOthersCost) Empty() bool {
-	return c == nil || c.Count < 1 || c.Filter == nil
+	return c == nil || c.Filter == nil || (c.Count < 1 && !c.Filter.CountFromX)
+}
+
+// TapOthersCountFromX reports the "Tap X untapped ..." form. The
+// count belongs to the announcement, while Filter remains the one
+// candidate walk shared by the view, validator and enumerator.
+func TapOthersCountFromX(c *TapOthersCost) bool {
+	return c != nil && c.Filter != nil && c.Filter.CountFromX
+}
+
+// TapOthersCostBounds is the payment width at an announced X. A
+// fixed clause returns Count / Count; a CountFromX clause returns X /
+// X. Negative X is clamped to zero because the announce path rejects
+// it separately.
+func TapOthersCostBounds(c *TapOthersCost, x int) (lo, hi int) {
+	if c == nil || c.Filter == nil {
+		return 0, 0
+	}
+	if TapOthersCountFromX(c) {
+		if x < 0 {
+			x = 0
+		}
+		return x, x
+	}
+	return c.Count, c.Count
+}
+
+// TapOthersCountLegal is the single count predicate used by the
+// validator, protocol view and legal enumerator (#544).
+func TapOthersCountLegal(c *TapOthersCost, x, named int) bool {
+	if c == nil || c.Filter == nil {
+		return named == 0
+	}
+	lo, hi := TapOthersCostBounds(c, x)
+	return named >= lo && named <= hi
 }
 
 // TapOthersOptionsForEffect is the set of permanents that could pay
@@ -158,10 +193,16 @@ func (g *Game) TapOthersOptionsForEffect(playerID, sourceID uuid.UUID, tc *TapOt
 //
 // Caller must hold g.mu (read or write).
 func (g *Game) TapOthersPayable(playerID, sourceID uuid.UUID, tc *TapOthersCost) bool {
+	return g.TapOthersPayableAtX(playerID, sourceID, tc, 0)
+}
+
+// TapOthersPayableAtX is TapOthersPayable for an announced X.
+func (g *Game) TapOthersPayableAtX(playerID, sourceID uuid.UUID, tc *TapOthersCost, x int) bool {
 	if tc.Empty() {
 		return true
 	}
-	return len(g.TapOthersOptionsForEffect(playerID, sourceID, tc)) >= tc.Count
+	lo, _ := TapOthersCostBounds(tc, x)
+	return len(g.TapOthersOptionsForEffect(playerID, sourceID, tc)) >= lo
 }
 
 // validateTapOthersCostLocked checks that every permanent the
@@ -192,13 +233,19 @@ func (g *Game) TapOthersPayable(playerID, sourceID uuid.UUID, tc *TapOthersCost)
 //
 // Caller must hold g.mu.
 func (g *Game) validateTapOthersCostLocked(playerID, sourceID uuid.UUID, tc *TapOthersCost, ids []uuid.UUID) error {
+	return g.validateTapOthersCostAtXLocked(playerID, sourceID, tc, ids, 0)
+}
+
+// validateTapOthersCostAtXLocked validates the component against the
+// X announced for this activation. Fixed costs ignore x.
+func (g *Game) validateTapOthersCostAtXLocked(playerID, sourceID uuid.UUID, tc *TapOthersCost, ids []uuid.UUID, x int) error {
 	if tc.Empty() {
 		if len(ids) > 0 {
 			return ErrInvalidParam
 		}
 		return nil
 	}
-	if len(ids) != tc.Count {
+	if !TapOthersCountLegal(tc, x, len(ids)) {
 		return ErrInvalidParam
 	}
 	seen := make(map[uuid.UUID]bool, len(ids))
@@ -270,4 +317,101 @@ func (g *Game) payTapOthersCostLocked(playerID uuid.UUID, ids []uuid.UUID) []Car
 		g.EmitEvent(Event{Kind: EventTapCard, Actor: playerID, CardID: id})
 	}
 	return paid
+}
+
+// --- The payment record (#759) ----------------------------------------
+
+// paidTapsFrom turns payTapOthersCostLocked's snapshot into the
+// payment record's entries: which object was tapped, and its power as
+// it was tapped.
+//
+// The power is the FALLBACK, not the answer — see PaidTap. It is kept
+// because the object may leave the battlefield by a route that never
+// reaches battlefieldExitLocked (a player leaving the game takes their
+// permanents with them, CR 800.4a), and then the power it was tapped
+// with is the best last-known value the engine has.
+//
+// The cards must be the as-tapped snapshot, read with a fresh layer
+// cache — ActivateCatalogAbility recomputes at the top of the
+// activation, and nothing between there and the payment changes a
+// characteristic.
+func paidTapsFrom(cards []Card) []PaidTap {
+	if len(cards) == 0 {
+		return nil
+	}
+	out := make([]PaidTap, 0, len(cards))
+	for _, c := range cards {
+		out = append(out, PaidTap{ID: c.InstanceID, Epoch: c.ObjectEpoch, Power: c.PowerForComparison()})
+	}
+	return out
+}
+
+// freezePaidTapsOnExitLocked is the CR 608.2h half of the record:
+// as a permanent leaves the battlefield, every stack item whose
+// payment tapped THAT object has its power rewritten to the power the
+// object has right now — its last-known power — and is marked Left,
+// so the resolution reads the number instead of looking for a
+// creature that is gone (or, worse, finding the new object a recast
+// made under the same instance ID).
+//
+// Called from battlefieldExitLocked, the one place every battlefield
+// exit passes through, with the card still on the battlefield — so
+// its layer cache and its counters are still the ones it had. That is
+// the same moment, and the same Effective() read, as the CR 603.10
+// snapshot the leave-the-battlefield triggers are judged on.
+//
+// The stack is a handful of items and almost none of them carry a
+// tap record, so the walk costs nothing on the common exit.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) freezePaidTapsOnExitLocked(cardID uuid.UUID) {
+	if len(g.StackMeta) == 0 {
+		return
+	}
+	c := findBattlefieldCard(g, cardID)
+	if c == nil {
+		return
+	}
+	for _, item := range g.StackMeta {
+		if item == nil {
+			continue
+		}
+		for i := range item.Paid.TappedOthers {
+			t := &item.Paid.TappedOthers[i]
+			if t.ID != cardID || t.Left || t.Epoch != c.ObjectEpoch {
+				continue
+			}
+			t.Power = c.PowerForComparison()
+			t.Left = true
+		}
+	}
+}
+
+// PaidTapPowerForEffect is the power a resolving effect reads for a
+// permanent its cost tapped (#759) — station's "charge counters equal
+// to the tapped creature's power" (CR 702.184a).
+//
+// CR 608.2h, and the Edge of Eternities release notes on station:
+// the tapped creature's power AS THE ABILITY RESOLVES if it is still
+// on the battlefield as the same object, and its power as it last
+// existed there if it is not. The first half is a live read; the
+// second is the number freezePaidTapsOnExitLocked wrote as it left.
+//
+// NOT clamped. A negative power is a real answer and the reader
+// decides what it means — for station, "no charge counters are put
+// onto or removed from" the permanent.
+//
+// Caller must hold g.mu in write mode (the live half may recompute
+// the layer cache).
+func (g *Game) PaidTapPowerForEffect(t PaidTap) int {
+	if t.Left {
+		return t.Power
+	}
+	g.RecomputeLayersIfStaleLocked()
+	if c := findBattlefieldCard(g, t.ID); c != nil && c.ObjectEpoch == t.Epoch {
+		return c.PowerForComparison()
+	}
+	// Gone by a route that never reached the exit choke point. The
+	// power it was tapped with is the last value the engine saw.
+	return t.Power
 }

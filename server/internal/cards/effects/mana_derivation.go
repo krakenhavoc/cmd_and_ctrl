@@ -14,11 +14,9 @@ import (
 //
 // Two card families, one mechanism:
 //
-//   - DERIVED colours. Exotic Orchard ("one mana of any color that a
-//     land an opponent controls could produce") is the highest-ranked
-//     card the catalog does not have — rank 9 of the whole format.
-//     Reflecting Pool, Fellwar Stone and Mox Amber are the same
-//     question asked of a different set of permanents.
+//   - A colour or set read directly off the board: Mox Amber ("one
+//     mana of any color among legendary creatures and planeswalkers
+//     you control").
 //   - SCALED amounts. Cabal Coffers ("{B} for each Swamp you
 //     control"), Gaea's Cradle.
 //
@@ -27,23 +25,23 @@ import (
 // BattlefieldCardsForEffect and plain field reads; a public locking
 // mutator deadlocks.
 //
-// ## Where "could produce" lives
+// ## Where "could produce ANOTHER permanent's mana" lives
 //
-// CR 106.7 is game.ProducibleManaLocked, in
-// game/producible_mana.go — it asks each of the permanent's mana
-// abilities what it would add NOW (a chosen colour, a board count, a
-// commander-identity narrowing) through the same seam the activation
-// reads, and falls back to Scryfall's `produced_mana` only for an
-// imported card the catalog has never heard of. That file carries the
-// rule, the fallback and the recursion guard; everything below is the
-// card-side wrapper that turns its answer into a pipe string.
-//
-// Only the guard matters here: an ability marked
-// DerivesFromOtherSources is skipped, which is exactly the three
-// abilities in this file's own family (Exotic Orchard, Reflecting
-// Pool, Fellwar Stone). Two of them facing each other would otherwise
-// recurse until the stack ran out; CR 106.6b answers the circular
-// case with "no mana" and so does the guard.
+// Exotic Orchard ("one mana of any color that a land an opponent
+// controls could produce" — the highest-ranked card the catalog did
+// not have, rank 9 of the whole format), Reflecting Pool and Fellwar
+// Stone are NOT built from a ProducedFunc closure here. CR 106.7 is
+// game.ProducibleManaLocked, in game/producible_mana.go, and asking it
+// about ANOTHER permanent is itself recursive whenever that permanent
+// is ALSO one of these three — answering it correctly needs a visited
+// set threaded the whole way down (#1323), which a
+// `func(*Game, controller, source uuid.UUID) string` closure has no
+// fourth argument to carry across the package boundary. So these three
+// declare DerivedMatch instead — DerivedFromOpponentLands() /
+// DerivedFromOwnLands() below, a plain predicate — and
+// game.ProducibleManaLocked walks the board and recurses itself, where
+// the visited set is an ordinary parameter. See that file's "recursion
+// guard" section for the full account.
 
 // Spend-restriction tags, re-exported from the game package so a card
 // file reads `ManaRestrictSupertype("Legendary")` rather than
@@ -73,23 +71,6 @@ func ManaRestrictSubtype(t string) string { return game.ManaRestrictSubtype(t) }
 // supertype — ManaRestrictSupertype("Legendary") for Delighted
 // Halfling.
 func ManaRestrictSupertype(t string) string { return game.ManaRestrictSupertype(t) }
-
-// producibleAcross unions CR 106.7's answer for every permanent on
-// the battlefield that `match` accepts, in canonical WUBRGC order.
-// The three derivations below differ only in their match and in
-// whether they keep {C}.
-func producibleAcross(g *game.Game, match func(game.Card) bool) []string {
-	seen := map[string]bool{}
-	for _, c := range g.BattlefieldCardsForEffect() {
-		if !match(c) {
-			continue
-		}
-		for _, m := range g.ProducibleManaLocked(c) {
-			seen[m] = true
-		}
-	}
-	return orderedManaSymbols(seen)
-}
 
 // orderedManaSymbols flattens a symbol set into canonical WUBRGC
 // order, so a derived pipe string is stable across activations and a
@@ -133,41 +114,43 @@ func pipeString(symbols []string) string {
 	return "{" + strings.Join(symbols, "|") + "}"
 }
 
-// ProducedFromOpponentLands is Exotic Orchard's and Fellwar Stone's
-// "one mana of any color that a land an opponent controls could
-// produce".
+// DerivedFromOpponentLands is Exotic Orchard's and Fellwar Stone's
+// DerivedMatch: "a land an opponent controls" — pair it with
+// DerivedColorsOnly: true, since "any COLOR" cannot make colorless
+// (CR 105.1).
 //
 // CR 106.7 / the Exotic Orchard rulings: "could produce" asks what
 // the land's abilities would add if activated, NOT whether it could
 // legally be activated right now. A tapped opposing Island still
 // offers {U}; a Temple of the False God its controller cannot
-// activate still offers {C}, which then drops out because {C} is not
-// a colour. What it does respect is the land's CURRENT choice: an
-// opposing Thriving Isle that chose red offers {U} and {R}, and one
-// with no colour chosen yet offers {U} alone (#782).
+// activate still offers {C}, which then drops out via
+// DerivedColorsOnly. What it does respect is the land's CURRENT
+// choice: an opposing Thriving Isle that chose red offers {U} and
+// {R}, and one with no colour chosen yet offers {U} alone (#782). The
+// recursion itself, and the visited set that keeps it from running
+// forever, live in game.ProducibleManaLocked (#1323) — this is only
+// the "which candidates" half.
 //
-// Declare it with DerivesFromOtherSources: true — this is the
-// recursion guard's whole membership list.
-func ProducedFromOpponentLands() func(*game.Game, uuid.UUID, uuid.UUID) string {
-	return func(g *game.Game, controller, _ uuid.UUID) string {
-		return pipeString(colorsOnly(producibleAcross(g, func(c game.Card) bool {
-			return c.Controller != controller && c.IsLand()
-		})))
+// Declare it with DerivesFromOtherSources: true, so CR 106.7's reader
+// knows to route through the visited set rather than a plain
+// ProducedFunc call.
+func DerivedFromOpponentLands() func(game.Card, uuid.UUID) bool {
+	return func(c game.Card, controller uuid.UUID) bool {
+		return c.Controller != controller && c.IsLand()
 	}
 }
 
-// ProducedFromOwnLands is Reflecting Pool's "one mana of any TYPE
-// that a land you control could produce" — type, so {C} counts.
+// DerivedFromOwnLands is Reflecting Pool's DerivedMatch: "a land you
+// control" — DerivedColorsOnly stays false, since "any TYPE" includes
+// colorless.
 //
-// The Pool sees itself only through the recursion guard, which is to
-// say not at all: its own ability is marked DerivesFromOtherSources
-// and is skipped. That matches the printed card, whose ruling is that
-// a lone Reflecting Pool produces nothing.
-func ProducedFromOwnLands() func(*game.Game, uuid.UUID, uuid.UUID) string {
-	return func(g *game.Game, controller, _ uuid.UUID) string {
-		return pipeString(producibleAcross(g, func(c game.Card) bool {
-			return c.Controller == controller && c.IsLand()
-		}))
+// A lone Reflecting Pool sees only itself among "lands you control",
+// and game.derivedManaLocked excludes the source from its own match —
+// the printed ruling is that a lone Reflecting Pool produces nothing,
+// and that holds independently of the visited-set cycle guard.
+func DerivedFromOwnLands() func(game.Card, uuid.UUID) bool {
+	return func(c game.Card, controller uuid.UUID) bool {
+		return c.Controller == controller && c.IsLand()
 	}
 }
 
@@ -272,6 +255,11 @@ func MatchLand(c game.Card) bool { return c.IsLand() }
 // MatchArtifact matches any artifact permanent — Mox Opal's
 // metalcraft.
 func MatchArtifact(c game.Card) bool { return c.IsArtifact() }
+
+// MatchInstantOrSorcery matches an instant or sorcery card — Tome
+// Shredder's "Exile an instant or sorcery card from your graveyard"
+// (#1297).
+func MatchInstantOrSorcery(c game.Card) bool { return c.IsInstant() || c.IsSorcery() }
 
 // hasFold is a case-insensitive membership test over a type-line
 // slice.

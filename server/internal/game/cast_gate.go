@@ -27,7 +27,7 @@ import (
 //     IS the duration: the source leaving stops the restriction on
 //     the next query.
 //
-//  2. THE SPELL'S OWN CONDITION. CR 307.6's legendary sorcery ("you
+//  2. THE SPELL'S OWN CONDITION. CR 205.4e's legendary sorcery ("you
 //     may cast this spell only if you control a legendary creature
 //     or planeswalker"), and the "cast only if" family generally. It
 //     is declared on the card because it is printed on the card, and
@@ -42,14 +42,17 @@ import (
 //     either change the land rule or make this function carry an
 //     exception with nothing to do with casting. CastSpell and the
 //     enumerator keep their own check, beside the gate call.
-//   - BANS WITH A DURATION. Silence's "this turn" and Reflector
-//     Mage's "until your next turn" want the turn-scoped and
-//     permanent-duration registries (#755). A third source slots into
-//     castRestrictionsLocked without changing this function's
-//     signature; that is the extension point.
 //   - A BAN ON A CHOSEN CARD NAME. Meddling Mage and Nevermore need a
 //     choose-a-card-name prompt, and the engine has NamedTribe and
 //     ChosenColor but no name.
+//
+// #1316 filled the "bans with a duration" gap this list used to name:
+// Silence's "this turn" and Reflector Mage's "until your next turn"
+// are Avatar's Wrath's and Mandate of Peace's own shape, and the third
+// source is castBanForbidsLocked (cast_ban.go) — a PlayerStatic rather
+// than anything on the battlefield, because a resolved spell that
+// grants the ban is gone (often exiled by its own text) a moment after
+// it resolves and has no battlefield presence left to be the duration.
 
 // CastQuery is everything a cast restriction may look at. Passed by
 // value for the reason CostQuery is: a restriction is consulted
@@ -150,7 +153,7 @@ func CastRestrictionsForCard(c Card) []CastRestriction {
 }
 
 // CastConditionFor returns the card's own "you may cast this only
-// if …" condition (CR 307.6 and the "cast only if" family), or nil.
+// if …" condition (CR 205.4e and the "cast only if" family), or nil.
 // Read off the CardDef under CatalogKey, so a multi-face card answers
 // for the face being cast and no other.
 func CastConditionFor(card Card) func(g *Game, controller uuid.UUID, card Card) bool {
@@ -249,7 +252,19 @@ func (g *Game) CastGateLocked(caster uuid.UUID, card Card, zone ZoneKind, params
 			}
 		}
 	}
-	// Then the spell's own condition (CR 307.6). Last because a card
+	// Then the per-player GRANTED bans (#1316): a resolved spell's
+	// "until your next turn, opponents can't cast spells from anywhere
+	// other than their hands" or "opponents can't cast spells this
+	// turn" outlives its source, so it is stored on the player rather
+	// than derived from anything still on the battlefield. Checked
+	// after the board's own statics and before the spell's own
+	// condition, for the same reason those two are already in that
+	// order: an external "can't" is a more useful refusal to report
+	// than "this card refuses itself" when both apply.
+	if label, banSource, ok := g.castBanForbidsLocked(caster, card, zone); ok {
+		return &CantCastError{Reason: label, Source: banSource}
+	}
+	// Then the spell's own condition (CR 205.4e). Last because a card
 	// that is legal to cast on its own terms is still stopped by the
 	// board, and reporting the board's reason is the more useful
 	// message when both apply.
@@ -259,24 +274,27 @@ func (g *Game) CastGateLocked(caster uuid.UUID, card Card, zone ZoneKind, params
 	return nil
 }
 
-// AnyCastRestrictionsForEffect reports whether anything on the
-// battlefield restricts casting at all. The fast negative the view
-// and the enumerator take before walking a zone card by card — in
-// almost every game nothing restricts anything, and the gate is
-// otherwise pure cost on a hand of seven.
+// AnyCastRestrictionsForEffect reports whether anything restricts
+// casting at all — a static on the battlefield, or a granted ban
+// (#1316) stored on any seat. The fast negative the view and the
+// enumerator take before walking a zone card by card — in almost
+// every game nothing restricts anything, and the gate is otherwise
+// pure cost on a hand of seven.
 //
 // Deliberately ignores the spell's own condition: that is a per-card
 // read the caller is already doing when it looks the card up.
 //
 // Caller must hold g.mu (read or write).
 func (g *Game) AnyCastRestrictionsForEffect() bool {
-	if g == nil || g.Battlefield == nil || CatalogCastRestrictions == nil {
+	if g == nil {
 		return false
 	}
-	for i := range g.Battlefield.Cards {
-		if len(CastRestrictionsForCard(g.Battlefield.Cards[i])) > 0 {
-			return true
+	if g.Battlefield != nil && CatalogCastRestrictions != nil {
+		for i := range g.Battlefield.Cards {
+			if len(CastRestrictionsForCard(g.Battlefield.Cards[i])) > 0 {
+				return true
+			}
 		}
 	}
-	return false
+	return g.anyLiveCastBanForEffect()
 }

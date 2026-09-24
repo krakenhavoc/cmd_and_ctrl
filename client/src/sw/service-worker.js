@@ -84,7 +84,7 @@ const CARD_IMAGE_PATH = /^\/(?:cards\/[^/]+\/image|catalog\/image\/[^/]+)$/;
 // than under /games — the code alone names the table — so /games does not
 // cover it and it needs its own entry here, as in the @api matcher.
 const API_PATH =
-  /^\/(ws|healthz|me|logout|config|games|join|cards|admin|auth|avatars|bugreport|dev|bot|catalog|decks)(\/|$)/;
+  /^\/(ws|healthz|me|logout|config|games|join|cards|admin|auth|avatars|bugreport|dev|bot|catalog|roadmap|decks)(\/|$)/;
 
 // Hashed build output. Vite content-hashes these filenames, so a given URL's
 // bytes never change and cache-first is always correct.

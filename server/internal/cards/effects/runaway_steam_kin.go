@@ -26,9 +26,9 @@ import (
 // with two components that DO exist and together enforce the cost:
 // a Condition gating activation on three or more +1/+1 counters
 // (checked before anything is paid, so a two-counter Steam-Kin
-// cannot activate — CR 602.5a), and a Rider that removes three
+// cannot activate — CR 602.5), and a Rider that removes three
 // counters as the mana lands. A mana ability resolves as one atomic
-// step without the stack (CR 605.3a), so nothing can observe that
+// step without the stack (CR 605.3b), so nothing can observe that
 // the counters left after the mana arrived rather than before. The
 // auto-tapper never reaches for an ability with a rider, so the
 // counters are only ever spent on purpose.

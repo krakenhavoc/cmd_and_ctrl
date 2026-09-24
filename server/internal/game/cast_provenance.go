@@ -120,6 +120,12 @@ type CastProvenance struct {
 	// change shape, only where they look.
 	OptionalCosts []int `json:"optionalCosts,omitempty"`
 
+	// GiftOpponent is PaidCost.GiftOpponent carried across the entry
+	// (CR 400.7d, ADR 0089 §2): the opponent a gift was promised to,
+	// or uuid.Nil. What a gift PERMANENT's "when this enters, if the
+	// gift was promised" reads, and who its gift trigger gives to.
+	GiftOpponent uuid.UUID `json:"giftOpponent,omitempty"`
+
 	// Mana is the tokens that paid for the spell, copied off
 	// StackItem.Paid.Mana at the entry finisher (#1212) — each still
 	// carrying the colour it was and the SourceKinds snapshot of the
@@ -130,6 +136,31 @@ type CastProvenance struct {
 	// payment are already written down once, on ManaSpent. Read it
 	// through Spent() and never by ranging this slice.
 	Mana []ManaToken `json:"mana,omitempty"`
+
+	// X is StackItem.XValue at the moment the spell became this
+	// permanent (CR 107.3m, #1312): "if an object's enters-the-
+	// battlefield triggered ability … refers to X, and the spell that
+	// became that object … had a value of X chosen for any of its
+	// costs, the value of X for that ability is the same as the value
+	// of X for that spell." An entry REPLACEMENT can read
+	// StackItem.XValue directly (EntryCountersFromCast / CastCounts.X
+	// already do, for "enters with X counters"); an entry TRIGGER
+	// cannot, because the item is gone by the time it resolves — the
+	// same wall AltCost and Mana hit, and the same answer: it rides
+	// the permanent.
+	//
+	// Zero for a permanent that came from a spell with no {X} in its
+	// cost, and a real zero for one announced at X=0 (CR 107.3) — the
+	// same documented ambiguity CastCounts.X already carries, and
+	// harmless for the same reason: every printed clause that reads X
+	// computes the same answer (draw zero, deal zero) whether X was
+	// truly zero or absent.
+	//
+	// Placed before the bool below rather than after it: an int here
+	// and a bool there is the layout TestCardHasNoInteriorPadding
+	// wants, and the reverse order leaves 7 bytes of alignment padding
+	// between them.
+	X int `json:"x,omitempty"`
 
 	// ManaOnPaper is PaidCost.OnPaper carried across the entry: the
 	// engine WAIVED the charge (permissive mode, a strict-mode
@@ -159,7 +190,7 @@ func (p CastProvenance) Spent() ManaSpent {
 // Any reports whether this record says anything at all.
 func (p CastProvenance) Any() bool {
 	return p.AltCost != "" || p.FromZone != "" || len(p.OptionalCosts) > 0 ||
-		len(p.Mana) > 0 || p.ManaOnPaper
+		len(p.Mana) > 0 || p.ManaOnPaper || p.GiftOpponent != uuid.Nil || p.X != 0
 }
 
 // Clone deep-copies the record. Two reference-typed fields now —
@@ -213,6 +244,18 @@ func (c Card) Escaped() bool { return c.Provenance.Escaped() }
 // question the weaker way.
 func (c Card) ManaSpentToCast() ManaSpent { return c.Provenance.Spent() }
 
+// CastX is CR 107.3m's X for the spell that became this permanent —
+// "put X +1/+1 counters on him. Then draw half X cards" (Wan Shi
+// Tong, Librarian, #1312). On Card for the same reason Escaped and
+// ManaSpentToCast are: a triggered ability's Build closure is handed
+// `source *Card` and nothing else, and the effect it returns should
+// capture the plain int this returns rather than the card itself.
+//
+// Zero for a permanent that was not cast, or cast with no {X} in its
+// cost — see CastProvenance.X for the one documented ambiguity that
+// leaves unclaimed.
+func (c Card) CastX() int { return c.Provenance.X }
+
 // CastProvenanceForEffect returns what the permanent with this ID
 // remembers about the spell it came from, or the zero record when the
 // card is not on the battlefield.
@@ -262,11 +305,17 @@ func (g *Game) stampCastProvenanceLocked(cardID uuid.UUID, item *StackItem) {
 		// on the undo stack, and a permanent that shared it would see
 		// a rewind edit its own record.
 		OptionalCosts: append([]int(nil), item.Paid.OptionalCosts...),
+		// ADR 0089: and who the gift was promised to, the same
+		// announcement fact one field over.
+		GiftOpponent: item.Paid.GiftOpponent,
 		// #1212: the mana, for the same reason and with the same
 		// copy. Taken off the item here rather than looked up later,
 		// because this is the last moment it exists — the item is
 		// discarded the instant resolution finishes.
 		ManaOnPaper: item.Paid.OnPaper,
+		// #1312 (CR 107.3m): X, for the same reason and at the same
+		// last moment.
+		X: item.XValue,
 	}
 	if len(item.Paid.Mana) > 0 {
 		prov.Mana = make([]ManaToken, len(item.Paid.Mana))

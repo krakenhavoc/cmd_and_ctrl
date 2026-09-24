@@ -27,15 +27,27 @@ import (
 // (player eliminated, card moved off the battlefield) silently
 // emits EventEffectError and returns nil so the rest of a composed
 // effect can still run.
+//
+// SourceObject, when set, names the source as an OBJECT rather than a
+// card (#1396, CR 400.7) and Source is ignored. Set it when the source
+// is a permanent the effect already holds a ref for — the creature a
+// trigger was about, `ctx.Trigger().Object.Ref()` — so that a source
+// that has left deals its damage with the lifelink and deathtouch it
+// had, and a source that left and came back is not mistaken for the new
+// object. See game.DealDamageFromObjectForEffect.
 type DealDamage struct {
-	Source uuid.UUID
-	Target uuid.UUID
-	Amount int
+	Source       uuid.UUID
+	SourceObject *game.ObjectRef
+	Target       uuid.UUID
+	Amount       int
 }
 
 func (d DealDamage) Apply(ctx *Context) error {
 	if d.Amount <= 0 {
 		return nil
+	}
+	if d.SourceObject != nil {
+		return ctx.Game.DealDamageFromObjectForEffect(*d.SourceObject, d.Target, d.Amount)
 	}
 	if p := ctx.Game.PlayerByIDForEffect(d.Target); p != nil {
 		return ctx.Game.DealDamageToPlayerForEffect(d.Source, d.Target, d.Amount)
@@ -138,7 +150,7 @@ type DestroyTarget struct {
 	// CantBeRegenerated is the clause printed on Mortify, Putrefy,
 	// Pongify, Terminate, Snuff Out and the rest: this destruction
 	// ignores regeneration shields (CR 701.19c). The shields are not
-	// spent — CR 701.19d leaves an ignored one on the permanent.
+	// spent — CR 701.19c leaves an ignored one on the permanent.
 	//
 	// It was cosmetic on every card that printed it until #667 gave
 	// the engine a shield to ignore. Set it wherever the oracle text
@@ -147,6 +159,11 @@ type DestroyTarget struct {
 }
 
 func (d DestroyTarget) Apply(ctx *Context) error {
+	// #1432: "this permanent" after a flicker in response is a new
+	// object; see source_object_guard.go.
+	if ctx.isNewSourceObject(d.Target) {
+		return nil
+	}
 	return ctx.Game.DestroyPermanentForEffect(d.Target,
 		game.DestroyOptions{CantBeRegenerated: d.CantBeRegenerated})
 }
@@ -173,7 +190,7 @@ type Regenerate struct {
 }
 
 func (r Regenerate) Apply(ctx *Context) error {
-	if r.Target == uuid.Nil {
+	if r.Target == uuid.Nil || ctx.isNewSourceObject(r.Target) { // #1432
 		return nil
 	}
 	if err := ctx.Game.RegenerateForEffect(r.Target); err != nil {
@@ -217,6 +234,15 @@ type SacrificePermanent struct {
 }
 
 func (s SacrificePermanent) Apply(ctx *Context) error {
+	// #1432: "this permanent" after a flicker in response is a new
+	// object; see source_object_guard.go.
+	// "If you do" is told no: nothing was sacrificed.
+	if ctx.isNewSourceObject(s.Target) {
+		if s.Then != nil {
+			return s.Then(ctx, false)
+		}
+		return nil
+	}
 	if s.Then == nil {
 		return ctx.Game.SacrificePermanentForEffect(s.Target)
 	}
@@ -259,6 +285,15 @@ type ExileTarget struct {
 }
 
 func (e ExileTarget) Apply(ctx *Context) error {
+	// #1432: "this permanent" after a flicker in response is a new
+	// object; see source_object_guard.go.
+	// Flicker and ExileThenIfItWas route through here.
+	if ctx.isNewSourceObject(e.Target) {
+		if e.Then != nil {
+			return e.Then(ctx, false)
+		}
+		return nil
+	}
 	if e.Then == nil {
 		return ctx.Game.ExileCardForEffect(e.Target)
 	}
@@ -393,12 +428,26 @@ type ReturnFromExile struct {
 	Target     uuid.UUID
 	Controller uuid.UUID
 	Tapped     bool
+
+	// Then is the rest of the sentence about the permanent that
+	// returned (#1327) — Phelia, Exuberant Shepherd's "if it entered
+	// under your control, put a +1/+1 counter on Phelia". `entered` is
+	// the NEW object's ID (CR 400.7), uuid.Nil when nothing entered.
+	// It runs once the entry is complete, which is one action later
+	// when the entry stopped to ask something (a returning Clone, a
+	// blinked shockland), so never read the result on the next line.
+	// Not run when the card is no longer in exile, which is "nothing to
+	// return". Capture only scalars.
+	Then func(g *game.Game, entered uuid.UUID) error
 }
 
 func (r ReturnFromExile) Apply(ctx *Context) error {
 	z := ctx.Game.FindCardZoneForEffect(r.Target)
 	if z == nil || z.Kind != game.ZoneExile {
 		return nil
+	}
+	if r.Then != nil {
+		return ctx.Game.ReturnFromExileToBattlefieldThenForEffect(r.Target, r.Controller, r.Tapped, r.Then)
 	}
 	_, err := ctx.Game.ReturnFromExileToBattlefieldForEffect(r.Target, r.Controller, r.Tapped)
 	return err
@@ -536,6 +585,14 @@ type BounceToHand struct {
 }
 
 func (b BounceToHand) Apply(ctx *Context) error {
+	// #1432: "this permanent" after a flicker in response is a new
+	// object; see source_object_guard.go.
+	if ctx.isNewSourceObject(b.Target) {
+		if b.Then != nil {
+			return b.Then(ctx, false)
+		}
+		return nil
+	}
 	if b.Then == nil {
 		return ctx.Game.BounceToHandForEffect(b.Target)
 	}
@@ -556,6 +613,9 @@ type TapTarget struct {
 }
 
 func (t TapTarget) Apply(ctx *Context) error {
+	if ctx.isNewSourceObject(t.Target) { // #1432
+		return nil
+	}
 	return ctx.Game.TapTargetForEffect(t.Target)
 }
 
@@ -565,6 +625,9 @@ type UntapTarget struct {
 }
 
 func (u UntapTarget) Apply(ctx *Context) error {
+	if ctx.isNewSourceObject(u.Target) { // #1432
+		return nil
+	}
 	return ctx.Game.UntapTargetForEffect(u.Target)
 }
 
@@ -604,6 +667,51 @@ type ReturnSpellToHand struct {
 
 func (r ReturnSpellToHand) Apply(ctx *Context) error {
 	return ctx.Game.ReturnSpellToHandForEffect(r.StackID)
+}
+
+// ExileTargetSpell exiles a spell from the stack WITHOUT countering it
+// (#1318) — CounterTarget's and ReturnSpellToHand's third sibling, on
+// the same engine body: a spell that can't be countered is exiled all
+// the same, nothing keyed to "countered" fires, and the spell's stack
+// record goes with it.
+//
+// Then, if set, is told whether the spell actually reached exile, once
+// the move has settled — a commander spell's owner may send it to the
+// command zone instead (CR 903.9), and "it becomes plotted" (Aven
+// Interrupter) has nothing to plot then. A spell that already left the
+// stack in response is not an error; Then hears false.
+type ExileTargetSpell struct {
+	StackID uuid.UUID
+	Then    func(ctx *Context, exiled bool) error
+}
+
+func (e ExileTargetSpell) Apply(ctx *Context) error {
+	if e.Then == nil {
+		return ctx.Game.ExileSpellThenForEffect(e.StackID, nil)
+	}
+	// Rebuilt from the live *Game inside the continuation — the
+	// contract massEffect.apply explains.
+	item := ctx.Item
+	return ctx.Game.ExileSpellThenForEffect(e.StackID, func(g *game.Game, exiled bool) error {
+		return e.Then(NewContext(g, item), exiled)
+	})
+}
+
+// PlotExiled makes a card already in exile plotted (CR 702.170c/d):
+// its owner may cast it without paying its mana cost during their main
+// phase while the stack is empty, on any later turn, for as long as it
+// stays in exile. A card not in exile is left alone.
+type PlotExiled struct {
+	Card uuid.UUID
+}
+
+func (p PlotExiled) Apply(ctx *Context) error {
+	var source uuid.UUID
+	if ctx.Item != nil {
+		source = ctx.Item.SourceCardID
+	}
+	ctx.Game.PlotExiledCardForEffect(p.Card, source)
+	return nil
 }
 
 // CounterAllMatching counters every spell on the stack matching
@@ -651,6 +759,12 @@ type AddCounter struct {
 }
 
 func (a AddCounter) Apply(ctx *Context) error {
+	// #1432: "this permanent" after a flicker in response is a new
+	// object; see source_object_guard.go.
+	// Removal (N < 0) is the same act on the same object.
+	if ctx.isNewSourceObject(a.Target) {
+		return nil
+	}
 	return ctx.Game.AddCounterForEffect(a.Target, a.Kind, a.N)
 }
 
@@ -690,9 +804,19 @@ type ReturnFromGraveyard struct {
 	// second. Reanimating an opponent's creature and handing it back
 	// to the opponent is the failure mode this field exists to stop.
 	Controller uuid.UUID
+
+	// Tapped stamps the CR 614 entry with EntersTapped when Dest ==
+	// ZoneBattlefield (#1284) — Reassembling Skeleton, Drownyard
+	// Temple: "Return this card from your graveyard to the
+	// battlefield tapped." Matches SearchLibrary.TappedOnEntry's
+	// shape one primitive over. Meaningless for any other Dest.
+	Tapped bool
 }
 
 func (r ReturnFromGraveyard) Apply(ctx *Context) error {
+	if r.Tapped {
+		return ctx.Game.ReturnFromGraveyardTappedForEffect(r.Target, r.Dest, r.Controller, true)
+	}
 	return ctx.Game.ReturnFromGraveyardUnderControlForEffect(r.Target, r.Dest, r.Controller)
 }
 
@@ -751,6 +875,10 @@ type SearchLibrary struct {
 	// is placed after the shuffle, which is what makes the clause
 	// mean anything.
 	ToTop bool
+	// Depth is where ToTop puts the card: "then shuffle and put that
+	// card THIRD from the top" is Depth 3 (Long-Term Plans). Zero is
+	// the top. Meaningful only with ToTop.
+	Depth int
 	// LibraryOwner is the seat whose library is actually searched,
 	// when that is not Player (#1230) — Bribery's "search TARGET
 	// OPPONENT's library", where the caster (Player) chooses and the
@@ -787,6 +915,7 @@ func (s SearchLibrary) Apply(ctx *Context) error {
 		Validate:      s.Validate,
 		Then:          s.Then,
 		ToTop:         s.ToTop,
+		Depth:         s.Depth,
 		LibraryOwner:  s.LibraryOwner,
 		Unbounded:     s.Unbounded,
 		FaceDown:      s.FaceDown,
@@ -1179,7 +1308,7 @@ type MillToZone struct {
 	// both conditions in it, UntilAny(UntilCard(…), UntilCount(x)).
 	//
 	// A landed count is not N. N is the mill AMOUNT the instruction
-	// names (CR 701.13b), the number Bruvac the Grandiloquent doubles,
+	// names (CR 701.17b), the number Bruvac the Grandiloquent doubles,
 	// and it would be spent on a card a replacement diverted on the
 	// way; a bound that counts arrivals is the clause, and a card the
 	// CR 614 window sent elsewhere costs it nothing.
@@ -1301,7 +1430,7 @@ func UntilCard(pred func(c game.Card) bool) func([]game.Card) bool {
 // been put into their graveyard this way".
 //
 // #1161, and the reason it is a clause rather than MillToZone.N. N is
-// the mill AMOUNT: CR 701.13b counts the cards the instruction moves,
+// the mill AMOUNT: CR 701.17b counts the cards the instruction moves,
 // so a card a replacement diverts on the way to the graveyard (a
 // commander taking the command zone, Rest in Peace's "exile it
 // instead") spends one of it without ever arriving — and it is the

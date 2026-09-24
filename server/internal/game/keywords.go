@@ -28,7 +28,10 @@ package game
 //
 // Added in S18 sub-PR 2.
 
-import "strings"
+import (
+	"sort"
+	"strings"
+)
 
 // canonicalKeywords is the set of keyword abilities this engine
 // actually enforces — the S18 table, one entry per consumer in the
@@ -141,7 +144,7 @@ var canonicalKeywords = map[string]bool{
 	// teaches the engine to honour it: the special action, the time
 	// counters, the exile-zone upkeep countdown (#925's
 	// TriggeredAbility.Zones), the free cast when the last one comes
-	// off and CR 702.62e's haste. Same reasoning as foretell above —
+	// off and CR 702.62a's haste. Same reasoning as foretell above —
 	// the consumer is the card, not a table in this file, so the
 	// token's job is the badge and the ADR 0037 coverage signal, and
 	// it must not arrive before the mechanic does.
@@ -156,6 +159,14 @@ var canonicalKeywords = map[string]bool{
 	// job is the badge and the ADR 0037 coverage signal, and it must
 	// not arrive before the mechanic does.
 	"madness": true,
+	// plot (CR 702.170) joins with #1342, in the same change that
+	// teaches the engine to honour it: the CR 116.2 special action
+	// from hand (SpecialActionPlot, plot.go) and the free later cast
+	// out of exile that #1318's PlotExiledCardForEffect already
+	// granted. Same reasoning as foretell and suspend above — the
+	// consumer is the card, not a table in this file, so the token's
+	// job is the badge and the ADR 0037 coverage signal.
+	"plot": true,
 	// phasing (CR 702.26) joins with #1199, in the same change that
 	// teaches the engine to honour it — which is the closedness rule
 	// this table states. Unlike foretell, suspend and madness above,
@@ -174,6 +185,44 @@ var canonicalKeywords = map[string]bool{
 	// cycle are correct with no catalog entry at all. See
 	// KeywordPhasing in phasing.go and ADR 0084.
 	KeywordPhasing: true,
+	// infect (CR 702.90), wither (CR 702.80) and toxic (CR 702.164)
+	// join with #748, in the same change that teaches the one damage
+	// tail to honour them (damage_tail.go, ADR 0056): damage from a
+	// source with infect or wither becomes -1/-1 counters on a
+	// creature, infect damage to a player becomes poison counters,
+	// and toxic adds its total in poison on combat damage to a player
+	// — all placed through the CR 614 counter window.
+	//
+	// Toxic is stored as its FAMILY key, the way protection is, and
+	// is not itself a wire token: the tokens are "toxic N", minted by
+	// CanonicalToxicToken, and CanonicalKeywords refuses a bare
+	// "toxic" because it names no amount. It is also the table's one
+	// CUMULATIVE keyword (CR 702.164b), read only through ToxicTotal.
+	KeywordInfect: true,
+	KeywordWither: true,
+	KeywordToxic:  true,
+	// prowess (CR 702.108) joins with #706, in the same change that
+	// teaches the engine to honour it — and it is the table's first
+	// TRIGGERED keyword. Its consumer is keywordTriggersFor
+	// (prowess.go), which TriggersForCard asks for one trigger per
+	// instance in the effective ability list, so a printed prowess
+	// (stamped by the deck importer, no catalog entry needed), a
+	// token's and a layer-6 grant all fire. It is CUMULATIVE, like
+	// toxic (CR 702.108b: each instance triggers separately), so
+	// AppendKeywordAbility keeps every granted instance. ADR 0014
+	// amendment 2026-09-24 records why it is a token and not a
+	// constructor like ward and cascade.
+	KeywordProwess: true,
+	// split second (CR 702.61) joins with #1519, in the same change
+	// that teaches the engine to READ it. The rule itself was built in
+	// S13.1 — CastSpell, both activation paths, the enumerator and the
+	// wire all ask Game.SplitSecondActive — but only a sandbox flag no
+	// client sends ever set it, so a Krosan Grip could be answered.
+	// Its consumer is castHasSplitSecond (split_second.go), which
+	// stamps StackItem.SplitSecond at announce from HasKeyword. A
+	// spell's keyword, so it is read off the card as it is cast, never
+	// off a layer-6 list: nothing in print grants it.
+	KeywordSplitSecond: true,
 }
 
 // KeywordChangeling is the canonical token for changeling (CR
@@ -252,6 +301,25 @@ func CanBeTargetedBy(c *Card, zone ZoneKind, src TargetSource) bool {
 	return true
 }
 
+// CanonicalKeywordTable returns every entry of canonicalKeywords,
+// sorted. It is a copy: the table stays closed, and nothing outside
+// this file can add to it.
+//
+// The entries are the table's KEYS, which is not quite the set of
+// wire tokens: protection and toxic are stored as their bare family
+// names (KeywordProtection, KeywordToxic) and every real token is
+// "protection from <quality>" or "toxic N" (see CanonicalKeywords). The public roadmap
+// (internal/roadmap) reads this to prove that every keyword the
+// engine enforces has an entry on the page.
+func CanonicalKeywordTable() []string {
+	out := make([]string, 0, len(canonicalKeywords))
+	for kw := range canonicalKeywords {
+		out = append(out, kw)
+	}
+	sort.Strings(out)
+	return out
+}
+
 // CanonicalKeyword normalises one printed keyword string to the
 // engine's wire token, reporting whether the engine knows it.
 // Scryfall capitalises its keyword arrays as the card prints them
@@ -284,7 +352,7 @@ func CanonicalKeyword(s string) (string, bool) {
 // Protection (CR 702.16) is the only keyword that can yield more than
 // one token, and the only one whose token carries a parameter. The
 // three readers that scan printed TEXT — deck.printedKeywords,
-// deck.keywordLines and coverage.keywordOnlyLine — call this, so what
+// deck.keywordLineCounts and coverage.keywordOnlyLine — call this, so what
 // the importer stamps and what the ADR 0037 coverage signal believes
 // can never drift. A quality protection.go's closed grammar cannot
 // parse yields NOTHING, which leaves the card flagged unimplemented
@@ -297,11 +365,18 @@ func CanonicalKeyword(s string) (string, bool) {
 // same call for "Hexproof from").
 func CanonicalKeywords(s string) ([]string, bool) {
 	kw := strings.ToLower(strings.TrimSpace(s))
-	if kw == KeywordProtection {
+	if kw == KeywordProtection || kw == KeywordToxic {
 		return nil, false
 	}
 	if canonicalKeywords[kw] {
 		return []string{kw}, true
+	}
+	// Toxic (CR 702.164) is the other parameterised keyword: "Toxic 2"
+	// is one token, "toxic 2", and a bare "toxic" was refused above
+	// because Scryfall's array carries only the word and the amount
+	// lives in the oracle line (ADR 0056 Decision 1).
+	if tok, ok := CanonicalToxicToken(s); ok {
+		return []string{tok}, true
 	}
 	if toks, ok := ProtectionTokens(s); ok {
 		return toks, true
@@ -315,8 +390,10 @@ func CanonicalKeywords(s string) ([]string, bool) {
 // "first strike", "double strike", "deathtouch", "lifelink",
 // "trample", "vigilance", "menace", "defender", "haste", "flash",
 // "hexproof", "shroud", "indestructible", "changeling", fear,
-// intimidate, shadow, horsemanship, skulk, and the landwalk tokens
-// ("islandwalk", "nonbasic landwalk", …).
+// intimidate, shadow, horsemanship, skulk, infect, wither, prowess,
+// "split second", and the landwalk tokens ("islandwalk", "nonbasic landwalk", …). Toxic is NOT
+// asked through here: its token carries an amount, so it is read with
+// ToxicTotal.
 //
 // On-battlefield: reads c.Effective().Abilities, so keywords granted
 // by static abilities (Lord of Atlantis's islandwalk on other

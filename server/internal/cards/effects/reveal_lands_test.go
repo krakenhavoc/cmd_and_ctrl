@@ -387,9 +387,8 @@ func TestRevealLandDepartureSettlesTheEntry(t *testing.T) {
 }
 
 // TestEveryRevealLandIsRegistered holds the cycle against the
-// catalog: ten cards, one clause, and each of them declares the
-// put-onto-the-battlefield caveat rather than claiming to be
-// complete.
+// catalog: ten cards, one clause, and — since #1322 made the "put onto
+// the battlefield" batch ask its question — each of them complete.
 func TestEveryRevealLandIsRegistered(t *testing.T) {
 	for name, oracleID := range revealLandOracleIDs {
 		spec, ok := Lookup(oracleID)
@@ -403,7 +402,7 @@ func TestEveryRevealLandIsRegistered(t *testing.T) {
 		if len(spec.Replacements) != 1 || spec.Replacements[0].EntryHandReveal == nil {
 			t.Errorf("%s: no EntryHandReveal clause", name)
 		}
-		if spec.Completeness != CompletenessCaveats || len(spec.Caveats) == 0 {
+		if spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
 			t.Errorf("%s: completeness %q with %d caveats", name, spec.Completeness, len(spec.Caveats))
 		}
 	}

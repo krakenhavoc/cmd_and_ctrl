@@ -149,7 +149,9 @@ func passPriorityAroundTable(t *testing.T, g *game.Game) {
 }
 
 // lockInBlocks completes the block declaration the way play does:
-// priority passes around the table, and the wrap is the lock-in
+// priority passes around the table, and the defender's pass completes
+// their declaration (#1279; the wrap completes anyone left), which is
+// the lock-in
 // (CR 509.1 / 509.2a, #830) — the point where the engine announces
 // the final assignment and harvests the "becomes blocked" / "blocks"
 // triggers off it. Nothing is announced by DeclareBlocker itself, so
@@ -1096,6 +1098,38 @@ func TestCultivateFetchesOneToFieldOneToHand(t *testing.T) {
 	}
 	if caster.Hand.Contains(forest1) && caster.Hand.Contains(forest2) {
 		t.Errorf("both forests in hand (expected one each to bf + hand)")
+	}
+}
+
+// TestCultivateFindsSnowCoveredBasic is the #1334 regression at the
+// card level: a Snow-Covered Forest's type line is "Basic Snow Land —
+// Forest", which the old IsBasicLand substring check ("basic land")
+// missed because the words are not adjacent. Cultivate is one of the
+// 16 call sites the issue named.
+func TestCultivateFindsSnowCoveredBasic(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	forest1 := pushLibraryCardForTest(caster, game.Card{
+		Name: "Snow-Covered Forest", TypeLine: "Basic Snow Land — Forest",
+	})
+	forest2 := pushLibraryCardForTest(caster, game.Card{
+		Name: "Snow-Covered Forest", TypeLine: "Basic Snow Land — Forest",
+	})
+
+	castCatalogSpell(t, g, "Cultivate", "Sorcery",
+		"8b755881-a72d-4e21-a369-d2924eb4585a",
+		nil,
+	)
+	passPriorityAroundTable(t, g)
+	answerSearchByID(t, g, caster.ID, forest1)
+
+	onField := g.Battlefield.Contains(forest1) || g.Battlefield.Contains(forest2)
+	inHand := caster.Hand.Contains(forest1) || caster.Hand.Contains(forest2)
+	if !onField {
+		t.Errorf("no Snow-Covered Forest reached the battlefield")
+	}
+	if !inHand {
+		t.Errorf("no Snow-Covered Forest reached the hand")
 	}
 }
 
@@ -2307,6 +2341,7 @@ func TestFinaleOfRevelationHighXShufflesDrawsUntapsAndGrantsNoMaxHandSize(t *tes
 	if got, want := caster.Library.Size(), libBefore+2-10; got != want {
 		t.Errorf("library size %d, want %d (2 shuffled in, 10 drawn)", got, want)
 	}
+	answerChooseCards(t, g, caster.ID, lands[:5]...) // "untap up to five lands", 6 tapped offered
 	untapped := 0
 	for _, c := range g.Battlefield.Cards {
 		for _, lid := range lands {

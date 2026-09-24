@@ -86,21 +86,27 @@ const malcolmChorusThreshold = 4
 // card that really left the hand (#1027) rather than guessing at it
 // from a hand-size subtraction.
 func malcolmChorusAndLoot(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
 	source, controller := item.SourceCardID, item.Controller
-	if err := (AddCounter{Target: source, Kind: malcolmChorusCounter, N: 1}).Apply(ctx); err != nil {
-		return err
-	}
-	if err := (DrawCards{Player: controller, N: 1}).Apply(ctx); err != nil {
-		return err
-	}
-	return g.PlayerDiscardsThenForEffect(game.DiscardPrompt{
-		Player:   controller,
-		Source:   source,
-		N:        1,
-		Question: "Malcolm, Alluring Scoundrel — discard a card",
-	}, func(g *game.Game, discarded game.PromptedDiscards) error {
-		return malcolmOfferFreeCast(g, controller, source, discarded.Cards())
+	// #1290: the draw/discard/offer sequence must not start until the
+	// chorus counter has LANDED — a Doubling Season / Hardened Scales
+	// board can pause the placement on a CR 616 ordering prompt, and
+	// starting the discard prompt before that resolves would leave
+	// two independent prompts open with no guaranteed order, so
+	// malcolmOfferFreeCast's "four or more" check could read the
+	// pre-placement count.
+	return g.AddCounterThenForEffect(source, malcolmChorusCounter, 1, func(g *game.Game, _ int) error {
+		ctx := NewContext(g, item)
+		if err := (DrawCards{Player: controller, N: 1}).Apply(ctx); err != nil {
+			return err
+		}
+		return g.PlayerDiscardsThenForEffect(game.DiscardPrompt{
+			Player:   controller,
+			Source:   source,
+			N:        1,
+			Question: "Malcolm, Alluring Scoundrel — discard a card",
+		}, func(g *game.Game, discarded game.PromptedDiscards) error {
+			return malcolmOfferFreeCast(g, controller, source, discarded.Cards())
+		})
 	})
 }
 

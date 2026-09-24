@@ -141,6 +141,11 @@ func TestE2BetorCountersAndReanimatesOffTheTurnsLifeSwing(t *testing.T) {
 	if !sawCounters || !sawReturn {
 		t.Fatalf("both end-step clauses ask for a target (counters=%v return=%v)", sawCounters, sawReturn)
 	}
+	// #1529: the two targeted end-step triggers are one CR 603.3b
+	// batch, ordered once both targets are chosen.
+	if !answerTriggerOrderLastQueuedFirst(t, g) {
+		t.Error("Betor's two end-step triggers were not offered for ordering")
+	}
 	passPriorityAroundTable(t, g)
 
 	if got := e2CountersOn(g, ally); got != 3 {

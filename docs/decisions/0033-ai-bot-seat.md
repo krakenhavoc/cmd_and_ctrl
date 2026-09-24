@@ -1374,3 +1374,93 @@ No bug was found, and that is the point #1096 made when it filed this:
 250 games were cheap, they passed, and they are worth having as a
 tripwire rather than as something re-derived the next time two-player
 seating regresses.
+
+## Amendment (2026-09-24, #1401): the public log is a resumable fold
+
+§4 put a bounded public log on every `GameView` and chose to derive it
+rather than store it: `protocol.publicLogOf` projected `g.Events` from
+event 0 on every view. That made each view O(events) and a game
+O(events²). After #1425 it was about a quarter of a random table's CPU,
+and the share grew as the game went on, because production pays it on
+every `Room.Apply` and every bot seat's own view.
+
+### The choice: fold state kept on the game, and thrown away on any doubt
+
+The projection has two halves, and only the first is cached.
+
+- **The fold** (`projectEvent` over each event, the 200-entry ring and
+  its in-place collapses) depends on nothing but the events and the seat
+  order. Its state after event N is the ring, the running turn and step,
+  the pending-sacrifice marker, and the reveal and roll/flip grouping
+  maps. That state lives on the `*Game` (`protocol.logFold`, in the
+  opaque `game.ProjectionCache` slot). Each view resumes it from the
+  cursor, so a view folds only the events emitted since the last one.
+- **The finish** (names, knower sets, rendered text) depends on the
+  board as it is now. It runs on a fresh copy of the ring's entries on
+  every view, as before. Per-viewer redaction is unchanged:
+  `FilterViewFor` still runs `redactLogForViewer` over the same entries.
+
+A fold is reused only while the game's log **extends** what it folded.
+That needs three checks, and the first is the one that matters:
+
+1. **The event-log generation.** Undo (`RestoreFrom`) truncates
+   `g.Events` to a snapshot's length and rewinds `eventSeq`, so the next
+   emit regrows the log under the **same** Seq values. An undo followed by
+   the same number of new events is then indistinguishable by length or
+   Seq. `RestoreFrom` bumps `Game.eventLogGen`, and a fold made under
+   another generation is discarded.
+2. **Length and last Seq.** A log shorter than the cursor, or a
+   different Seq where the last folded event was, is a replacement the
+   generation missed. These checks are cheap witnesses, not the contract.
+3. **Seat order.** Entries carry seat indices, so a fold is discarded if
+   the view's seat order is not the one it folded under.
+
+A persisted-snapshot restore and every `Clone` make a **new** `*Game`
+with an empty slot, so they need no bump. After an undo, the first view
+pays for a full refold once, and the views after it are incremental
+again.
+
+The two facts this rests on are owned by the package that writes
+`Events`: `EmitEvent` only appends, and the only function that replaces
+the log with another history bumps the generation.
+`TestEventLogIsReplacedOnlyWhereTheGenerationMoves` holds both against
+the source. Any write to a Game's `.Events` outside `EmitEvent`,
+`RestoreFrom` (which must contain the bump) or a function filling a
+fresh object fails CI and names the function.
+
+### Rejected
+
+- **Start the walk at a recent step boundary** (#1401's second shape).
+  This needs a proof that no collapse crosses the boundary. The reveal
+  and roll maps are keyed rather than adjacent, and a reveal whose head
+  was evicted must stay closed, so that proof doesn't hold. It would
+  also still be O(events per step).
+- **Keep the log on `Game` as stored state.** That is a second copy of
+  the same facts, which clone, snapshot and undo would each have to keep
+  in step with `Events`. §4 rejected that. The cache is the same fold
+  stopped at a cursor, and it is discarded, not repaired.
+- **Validate by the backing array's address.** It catches every
+  reallocating replacement without a generation, but ordinary append
+  growth also reallocates, so every doubling of the log would force a
+  full refold. It also says nothing about an in-place truncate and
+  regrow.
+
+### What pins it
+
+- `TestPublicLogCacheMatchesAFreshFold` generates random event streams
+  built to put each piece of carried state across a view boundary: step
+  dedup, draw runs, sacrifice→zone suppression, cycling's replace,
+  reveal and roll groups including a group reopened after its head was
+  evicted. It adds random undos to random depths and persisted-snapshot
+  restores. Every view's log must equal a fresh fold's, raw and after
+  `FilterViewFor` for every seat and a spectator.
+  `TestPublicLogCacheMatchesAFreshFoldInPlayedGames` checks the same
+  property over enumerator-driven games with undos and a restore.
+- `TestPublicLogCacheSeesAnUndoThatRegrowsToTheSameLength` covers the
+  case only the generation catches.
+- `TestPublicLogViewFoldsOnlyNewEvents` is #1401's acceptance test. At
+  histories of 500 and 5,000 events, a view after k new events folds
+  exactly k.
+
+The smaller item #1401 also noted, `LookupCardForEffect`'s linear zone
+scan per card in the view, is not addressed here.

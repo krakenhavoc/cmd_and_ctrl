@@ -133,17 +133,17 @@ func TestRandomBotSoak(t *testing.T) {
 			lastSeq, lastMove := room.Seq(), time.Now()
 			for {
 				snap := g.Snapshot()
-				if snap.State != game.StateActive || snap.Turn.Number > 80 {
+				if snap.State != game.StateActive || snap.Turn.Round > 80 {
 					break
 				}
 				if seq := room.Seq(); seq != lastSeq {
 					lastSeq, lastMove = seq, time.Now()
 				} else if time.Since(lastMove) > stall {
 					t.Fatalf("STALL (no seq movement in %s; reproduce with AISEAT_SOAK_SEED=%d AISEAT_SOAK_GAMES=1 AISEAT_SOAK_SEATS=%d) turn %d step %s prio=%d pending=%d\n%s",
-						stall, seed, seats, snap.Turn.Number, snap.Turn.Step, snap.Turn.PriorityHolder, len(g.PendingChoices), describeSeats(g))
+						stall, seed, seats, snap.Turn.Round, snap.Turn.Step, snap.Turn.PriorityHolder, len(g.PendingChoices), describeSeats(g))
 				}
 				if ctx.Err() != nil {
-					t.Fatalf("wall clock exhausted at turn %d (seed %d)", snap.Turn.Number, seed)
+					t.Fatalf("wall clock exhausted at turn %d (seed %d)", snap.Turn.Round, seed)
 				}
 				time.Sleep(5 * time.Millisecond)
 			}

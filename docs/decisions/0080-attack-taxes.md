@@ -316,7 +316,11 @@ client can subset) is already shipped in `AttackTaxPrice.Lines`.
   different seam and keep their own row in `docs/engine-seams.md`. The
   enumerator problem is also genuinely harder for them — a per-move
   enumerator has to reason about a set — and nothing in this ADR makes
-  it easier or harder.
+  it easier or harder. *(Built by
+  [#1507](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1507):
+  [ADR 0045](0045-combat-restrictions.md) Decisions 43-45. The limit is
+  judged before the tax is priced, so a refused declaration owes
+  nothing.)*
 - **A non-mana tax.** No printed attack tax charges anything but mana
   (Norn's Annex's `{W/P}` is mana with a life alternative, which the
   Phyrexian machinery already handles). `AttackTax` carries the mana

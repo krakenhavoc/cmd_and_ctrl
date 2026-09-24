@@ -35,7 +35,7 @@ import (
 //   - A new Game-level registry. That is a second lifetime to get
 //     right (created when? cleared when?) next to one that already
 //     has the answer: TurnScopedReplacements is swept at
-//     StepCleanup, which is exactly "this turn" (CR 615.6).
+//     StepCleanup, which is exactly "this turn" (CR 514.2).
 //
 // The cost of the closure is that undo does not rewind a charge:
 // clone.go shares replacement closures rather than copying them, so
@@ -124,7 +124,7 @@ type PreventNextDamage struct {
 }
 
 func (p PreventNextDamage) Apply(ctx *Context) error {
-	if p.Target == uuid.Nil || p.Amount < 0 {
+	if p.Target == uuid.Nil || p.Amount < 0 || ctx.isNewSourceObject(p.Target) { // #1432
 		return nil
 	}
 	label := p.Label

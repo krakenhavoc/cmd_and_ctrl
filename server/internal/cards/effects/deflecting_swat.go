@@ -34,26 +34,23 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // OPPONENT controls, and protection is tested against the spell being
 // redirected rather than against the Swat.
 //
-// DECLARED CAVEAT — SPELLS ONLY. "Target spell or ability" needs the
-// ability half, and the engine cannot target an ABILITY on the stack
-// at all: TargetSpell walks the stack ZONE, which holds spell cards,
-// and an ability item has no card there. That is ADR 0065's existing
-// open item, not a new one, and it is strictly narrower than printed
-// (#259) — a Swat that can redirect a spell is a Swat that has lost
-// one of its two modes, never one that has gained anything.
+// The "OR ABILITY" half landed with #1211 and the caveat this card
+// shipped with is gone. It cost one constructor: `TargetSpellOrAbility`
+// enumerates the spell cards in the stack zone and the ability items in
+// StackMeta into one legal set, and `RetargetStackItemForEffect` was
+// written over StackMeta from the start — so redirecting an opponent's
+// triggered ability is the same call the spell half already made. A
+// Swat now answers the Bolt and the Deathrite.
 //
-// A spell with no targets is still a legal thing to point this at
-// (nothing in the printed text says otherwise) and redirecting it
-// does nothing, which is what ChangeTargets absorbs.
+// A spell or ability with no targets is still a legal thing to point
+// this at (nothing in the printed text says otherwise) and redirecting
+// it does nothing, which is what ChangeTargets absorbs.
 func init() {
 	Register(Spec{
 		OracleID:     "ae120613-97d6-4393-b39d-c3e6c076f5d6",
 		Name:         "Deflecting Swat",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Only a SPELL can be chosen, not an activated or triggered ability on the stack — the engine cannot target an ability item.",
-		},
-		Targets: TargetSpell("target spell"),
+		Completeness: CompletenessFull,
+		Targets:      TargetSpellOrAbility("target spell or ability"),
 		AlternativeCosts: []game.AlternativeCost{
 			FreeIfYouControlCommander("Cast without paying its mana cost (you control a commander)"),
 		},

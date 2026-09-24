@@ -17,7 +17,7 @@ package effects
 // lines for battlefield permanents.
 //
 // The count happens AFTER the {2} is paid and the land is tapped, per
-// CR 605.3a (a mana ability resolves immediately, all of it, with no
+// CR 605.3b (a mana ability resolves immediately, all of it, with no
 // window in between). With no Swamps out the ability is still
 // activatable: it costs {2}, taps the land, and adds nothing. That is
 // the printed card.

@@ -180,3 +180,106 @@ func TestCantCastIsStampedFromTheSameGate(t *testing.T) {
 		t.Errorf("the engine allowed a cast the view greyed out")
 	}
 }
+
+// TestCantCastIsStampedFromAGrantedBan is #1316's view half: the same
+// `cant_cast` stamp, this time from a PLAYER-scoped grant rather than
+// a permanent's static — Avatar's Wrath and Mandate of Peace's shape,
+// with no card on the battlefield at all to explain the refusal.
+func TestCantCastIsStampedFromAGrantedBan(t *testing.T) {
+	g := buildActiveGame(t)
+	me := g.Seats[0]
+	const clause = "Test Mandate — can't cast spells this turn"
+
+	id := uuid.New()
+	g.WithWriteLock(func() {
+		me.Hand.PushTop(game.Card{
+			InstanceID: id,
+			Name:       "Any Instant",
+			TypeLine:   "Instant",
+			ManaCost:   "{R}",
+			Owner:      me.ID,
+			Controller: me.ID,
+			KnownBy:    map[uuid.UUID]bool{me.ID: true},
+		})
+	})
+
+	if got := handCardIn(t, ViewOfGameFor(g, me.ID.String()), me.ID.String(), id.String()).CantCast; got != "" {
+		t.Errorf("before any grant, cant_cast = %q, want empty", got)
+	}
+
+	g.WithWriteLock(func() {
+		g.GrantCastBanForEffect(me.ID, game.CastBanRule{Kind: game.CastBanOutright}, clause, uuid.Nil, game.Duration{})
+	})
+
+	c := handCardIn(t, ViewOfGameFor(g, me.ID.String()), me.ID.String(), id.String())
+	if c.CantCast != clause {
+		t.Errorf("cant_cast = %q, want %q", c.CantCast, clause)
+	}
+	if c.CastableHere {
+		t.Error("a card a granted ban refuses is still marked castable_here")
+	}
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{}); err == nil {
+		t.Error("the engine allowed a cast the view greyed out")
+	}
+}
+
+// TestCantCastIsNeverStampedOnALand is #1439's view half. Playing a
+// land is a special action (CR 305.1, CR 116.2a), never a cast, so
+// CastGateLocked must never even be asked about one. Before the fix
+// castStampsFor asked it unconditionally, so a restriction shaped
+// like Rule of Law stamped `cant_cast` onto a land in hand — which
+// every reader of that field (`castIsForbidden` and friends) would
+// then read as "this land can't be played", even though it always
+// could.
+func TestCantCastIsNeverStampedOnALand(t *testing.T) {
+	g := buildActiveGame(t)
+	for _, p := range g.Seats {
+		if err := g.KeepHand(p.ID); err != nil {
+			t.Fatalf("KeepHand: %v", err)
+		}
+	}
+	advanceTo(t, g, game.StepPrecombatMain)
+	active := g.Seats[g.Turn.ActiveSeat]
+
+	const clause = "Test Warden — each player can't cast more than one spell each turn."
+	stubViewCastRestrictions(t, viewRestrictionOracle, []game.CastRestriction{{
+		Label: clause,
+		Forbids: func(q game.CastQuery) bool {
+			return q.Game.CastTallyFor(q.Controller).Total >= 1
+		},
+	}})
+
+	land := uuid.New()
+	g.WithWriteLock(func() {
+		active.Hand.PushTop(game.Card{
+			InstanceID: land,
+			Name:       "Forest",
+			TypeLine:   "Basic Land — Forest",
+			Owner:      active.ID,
+			Controller: active.ID,
+			// The owner knows their own hand card — otherwise the
+			// redaction pass strips the whole card and the test
+			// would pass for the wrong reason.
+			KnownBy: map[uuid.UUID]bool{active.ID: true},
+		})
+		g.Battlefield.PushTop(game.Card{
+			InstanceID: uuid.New(), Name: "Test Warden", TypeLine: "Enchantment",
+			OracleID: viewRestrictionOracle, Owner: active.ID, Controller: active.ID,
+		})
+		if g.SpellsCastThisTurn == nil {
+			g.SpellsCastThisTurn = make(map[uuid.UUID]game.CastTally)
+		}
+		g.SpellsCastThisTurn[active.ID] = game.CastTally{Total: 1}
+	})
+
+	c := handCardIn(t, ViewOfGameFor(g, active.ID.String()), active.ID.String(), land.String())
+	if c.CantCast != "" {
+		t.Errorf("a land carries cant_cast = %q, want empty — playing a land is not a cast (CR 116.2a)", c.CantCast)
+	}
+
+	// And the engine agrees: CastSpell actually accepts the play the
+	// view left un-greyed.
+	if err := g.CastSpell(active.ID, land, game.CastSpellParams{}); err != nil {
+		t.Errorf("the engine refused the land play the view left un-greyed: %v", err)
+	}
+}

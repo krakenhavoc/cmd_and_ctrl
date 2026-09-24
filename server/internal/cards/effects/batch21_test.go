@@ -451,8 +451,10 @@ func TestB21SpitefulBanditrySweepsForXAndTreasuresOncePerTurn(t *testing.T) {
 	if n := b16CountNamed(g, "Treasure"); n != 2 {
 		t.Errorf("a new turn: 2 Treasures, got %d", n)
 	}
-	if spec, _ := Lookup(b21SpitefulBanditryOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the X-as-the-spell-resolves gap must be declared")
+	// #1357: the ETB damage now comes from a real trigger reading
+	// CastX(), closing the last declared gap.
+	if spec, _ := Lookup(b21SpitefulBanditryOracle); spec.Completeness != CompletenessFull {
+		t.Error("no caveat should remain now that the ETB trigger reads CastX()")
 	}
 }
 
@@ -722,6 +724,11 @@ func TestB21EnchantressesDrawOnEnchantmentSpells(t *testing.T) {
 	castCatalogSpell(t, g, "Shrine", "Enchantment", "", nil)
 	// The Satyr's draw is mandatory; the Enchantress asks.
 	answerLatestTriggerPrompt(t, g, me.ID, true)
+	// #1529: accepted, the Enchantress's draw joins the Satyr's in one
+	// CR 603.3b batch.
+	if !answerTriggerOrderLastQueuedFirst(t, g) {
+		t.Error("the Satyr's and the Enchantress's draws were not offered for ordering")
+	}
 	passPriorityAroundTable(t, g)
 	if me.Hand.Size() != hand+2 {
 		t.Errorf("the seeded card was cast and two were drawn: hand %d, want %d", me.Hand.Size(), hand+2)

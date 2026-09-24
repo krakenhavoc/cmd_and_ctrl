@@ -34,22 +34,27 @@ func init() {
 		}},
 		Triggered: []game.TriggeredAbility{
 			AtYourUpkeep("Replicating Ring — put a night counter on it; at eight, replicate", func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
 				ring := item.SourceCardID
-				if z := g.FindCardZoneForEffect(ring); z == nil || z.Kind != game.ZoneBattlefield {
+				if z := g.FindCardZoneForEffect(ring); z == nil || z.Kind != game.ZoneBattlefield || sourceIsNewObject(g, item) { // #1432
 					return nil
 				}
-				if err := (AddCounter{Target: ring, Kind: "night", N: 1}).Apply(ctx); err != nil {
-					return err
-				}
-				c, ok := g.LookupCardForEffect(ring)
-				if !ok || c.Counters["night"] < 8 {
-					return nil
-				}
-				if err := (AddCounter{Target: ring, Kind: "night", N: -c.Counters["night"]}).Apply(ctx); err != nil {
-					return err
-				}
-				return CreateToken{Controller: item.Controller, Template: b14ReplicatedRingToken(), N: 8}.Apply(ctx)
+				// #1290: the payout check reads the count AFTER the
+				// counter LANDS, via AddCounterThenForEffect's
+				// continuation, not on the next line — a Doubling
+				// Season / Hardened Scales board pauses the placement
+				// on a CR 616 prompt, and reading before it resumes
+				// would see the pre-placement count.
+				return g.AddCounterThenForEffect(ring, "night", 1, func(g *game.Game, _ int) error {
+					ctx := NewContext(g, item)
+					c, ok := g.LookupCardForEffect(ring)
+					if !ok || c.Counters["night"] < 8 {
+						return nil
+					}
+					if err := (AddCounter{Target: ring, Kind: "night", N: -c.Counters["night"]}).Apply(ctx); err != nil {
+						return err
+					}
+					return CreateToken{Controller: item.Controller, Template: b14ReplicatedRingToken(), N: 8}.Apply(ctx)
+				})
 			}),
 		},
 	})

@@ -29,6 +29,16 @@ export const ErrorCode = {
   // the symbols the pool and the tapper together could not cover.
   // No `card_id`: the refusal is about the declaration, not one card.
   AttackTaxUnpaid: "attack_tax_unpaid",
+  // #1507 (ADR 0045 Decision 45): a declare_attacker / declare_attackers
+  // refused because the declaration breaks a CR 508.1c count limit
+  // (Silent Arbiter's "no more than one creature can attack each
+  // combat", Crawlspace's "… can attack you …"). `reason` is one of
+  // AttackRefusalReason, `message` a server-built sentence addressed to
+  // the caller, `card_id` a creature from the refused declaration.
+  // Nothing was declared, tapped or paid; a declare_attackers batch is
+  // refused whole. #1533: an "attack with all" refused this way offers
+  // the attackers picker, capped at `attack_targets[].attack_limit`.
+  IllegalAttack: "illegal_attack",
 } as const;
 
 export type ErrorCodeValue = (typeof ErrorCode)[keyof typeof ErrorCode];
@@ -65,22 +75,52 @@ export interface ErrorPayload {
   // string ("{2}{2}") when code === "attack_tax_unpaid" — a second
   // shape on the same key, not a second field, because the server's
   // ErrorPayload.Reason is a bare string on the wire either way.
-  reason?: BlockRefusalReason | string;
+  // #1507: and one of AttackRefusalReason when code === "illegal_attack".
+  reason?: BlockRefusalReason | AttackRefusalReason | string;
 }
 
-// BlockRefusalReason mirrors game.BlockReason (server/internal/game/
+// BLOCK_REFUSAL_REASONS mirrors game.BlockReason (server/internal/game/
 // block_legality.go): the tokens the server sends today. Stable once
-// shipped; new ones join in the change that first sends them.
-export type BlockRefusalReason =
-  | "cant_block"
-  | "cant_be_blocked"
-  | "flying"
-  | "landwalk"
-  | "fear"
-  | "intimidate"
-  | "shadow"
-  | "horsemanship"
-  | "skulk";
+// shipped; new ones join in the change that first sends them. A
+// runtime list rather than a bare union so refusalTokens.test.ts can
+// diff it against the Go const block (#1533) — the union below is
+// derived from it, so the two cannot drift apart.
+export const BLOCK_REFUSAL_REASONS = [
+  "cant_block",
+  "cant_be_blocked",
+  "flying",
+  "landwalk",
+  "fear",
+  "intimidate",
+  "shadow",
+  "horsemanship",
+  "skulk",
+  "protection",
+  "cant_be_blocked_by",
+  "cant_be_blocked_except_by",
+  "cant_block_attacker",
+  "too_few_blockers",
+  "too_many_blockers",
+  // #1339: the blocker's controller is not defending against that
+  // attacker (CR 802.4a).
+  "not_defending",
+  // #1507 (ADR 0045 Decision 43): one more blocker would break a
+  // whole-combat count limit — Silent Arbiter's "no more than one
+  // creature can block each combat" (CR 509.1b).
+  "declaration_limit",
+] as const;
+export type BlockRefusalReason = (typeof BLOCK_REFUSAL_REASONS)[number];
+
+// ATTACK_REFUSAL_REASONS mirrors the AttackRefusal* constants in
+// server/internal/protocol/protocol.go: the `reason` tokens an
+// `illegal_attack` frame carries today. Stable once shipped; new ones
+// join in the change that first sends them.
+export const ATTACK_REFUSAL_REASONS = [
+  // #1507 (ADR 0045 Decision 45): a CR 508.1c count limit refused the
+  // declaration.
+  "attack_limit",
+] as const;
+export type AttackRefusalReason = (typeof ATTACK_REFUSAL_REASONS)[number];
 
 // ActionType is the string-literal union of every action name this
 // client sends. Each literal is validated against the server's
@@ -108,6 +148,9 @@ export type ActionType =
   // entry, one broadcast, however wide the board.
   | "declare_attackers"
   | "declare_blocker"
+  // #1279: complete the caller's CR 509.1 block declaration — the
+  // "Done blocking" / "No blocks" button. Not priority-gated.
+  | "finish_blocks"
   // Set-shaped block declaration (#750). Not a batching convenience:
   // a block COUNT (menace's minimum of two) is a property of the whole
   // declaration, so a two-creature menace block is legal only as a
@@ -156,8 +199,16 @@ export interface ActionPayload {
 
 // SnapshotPayload is the server's authoritative view of the game,
 // broadcast after every successful action and sent once on connect.
+//
+// `seq` is non-decreasing only WITHIN one `generation` (#523, ADR
+// 0044 decision 5) — a restart that rewinds the room to an earlier
+// restore point bumps `generation` and can hand out a `seq` lower
+// than one this client already rendered. ws.ts tracks `generation`
+// and treats a change as "discard and re-render", never as a dropped
+// or out-of-order frame. See docs/protocol.md.
 export interface SnapshotPayload {
   seq: number;
+  generation: number;
   game: GameView;
 }
 
@@ -322,6 +373,39 @@ export interface GameView {
   // person has to ask for the next iteration, with the loop's trigger
   // still on the stack. Table-wide and identical for every seat.
   loop_notice?: LoopNoticeView;
+  // ADR 0057 (#749): the result of an ended game — who won, or a draw,
+  // and why. Absent while the game is active and for a table an admin
+  // closed with no result. An effect win ends the game with the other
+  // seats still seated, so read the winner from here; gameOutcome.ts
+  // falls back to "the one seat left standing" only when this is
+  // absent on an ended view.
+  outcome?: OutcomeView;
+}
+
+// OutcomeView is GameView.outcome (ADR 0057 Decisions 5 and 7).
+export interface OutcomeView {
+  kind: "win" | "draw";
+  // The winner of a win.
+  winner?: string;
+  winner_seat?: number;
+  // "last_standing" (every opponent left, CR 104.2a), "effect" (an
+  // effect said this player wins, CR 104.2b) or "all_lost" (everyone
+  // left lost at once, CR 104.4a — a draw).
+  cause: "last_standing" | "effect" | "all_lost";
+  // The object whose effect won, for an effect win.
+  source?: string;
+  source_name?: string;
+}
+
+// GameEndGateView is one "can't lose" / "can't win" gate on a seat
+// (ADR 0057 Decision 7): where it comes from and what it stops.
+export interface GameEndGateView {
+  source?: string;
+  source_name: string;
+  cant_lose?: string[];
+  cant_win?: boolean;
+  // A gate a resolved spell granted until end of turn (Angel's Grace).
+  this_turn?: boolean;
 }
 
 // LoopNoticeView is the CR 726 loop breaker's notice. `label` is the
@@ -418,6 +502,12 @@ export interface LegalMoveView {
   // list already promises. Automated seats use it as the way out of a
   // prompt whose other answers keep being rejected.
   always_legal?: boolean;
+  // #1307: true on a cast or activation whose chosen targets include
+  // an object on the stack — a counterspell, a Stifle, a redirect.
+  // Smart autopass reads it to tell "can answer the thing on the
+  // stack" from "has some instant". Absent on older servers, which
+  // the client treats as a plain instant-speed move.
+  targets_stack?: boolean;
   // What the move charges beyond its mana, in the components `params`
   // cannot name — the ones the engine reads off the ability rather
   // than off the payload. Absent for the overwhelming majority of
@@ -467,9 +557,27 @@ export type LogKind =
   | "damage"
   | "attack"
   | "block"
+  // #1279 / #1500: a defending player completed their block
+  // declaration with zero blockers. The blocks a defender DID make
+  // are already `block` entries above; this is the one fact those
+  // can't carry — that the defender was asked and chose to take it.
+  // Carries no `card_id` — `seat` is the defender, and the same
+  // sentence for every viewer.
+  | "no_blocks"
   | "token"
   | "sacrifice"
+  // A player left the game. `cause` says why ("life", "empty_draw",
+  // "poison", "commander_damage", "effect", "concede"); `card_id` is
+  // the source of an effect loss. One line per departure (ADR 0057).
   | "eliminated"
+  // The game ended with a result: `seat` is the winner (-1 for a
+  // draw), `cause` the outcome cause, `card_id` the winning source of
+  // an effect win (ADR 0057).
+  | "game_over"
+  // An effect would have made `seat` win and a "can't win the game"
+  // gate stopped it: `card_id` is the winning source, `target` the
+  // gate's (ADR 0057).
+  | "win_prevented"
   // A player revealed cards (CR 701.20): one entry per reveal, however
   // many cards it showed. Never carries card_id; `amount` is the card
   // count, `old_zone` where they were revealed from, and `target_seat`
@@ -489,6 +597,12 @@ export type LogKind =
   | "choose_color"
   | "choose_type"
   | "choose_player"
+  // A player answered an "as this enters, choose a card name" prompt
+  // (CR 614.12): Pithing Needle, Phyrexian Revoker, Sorcerous
+  // Spyglass. `choice` is the name as the player typed it, trimmed
+  // and otherwise untouched — CR 201.2 admits any card name, so
+  // there is no canonical spelling to report (#1210).
+  | "choose_name"
   // #1214: a player answered one of the three resolution-time picks
   // (CR 608.2) — an opponent choosing from a revealed set, a seat
   // choosing among another player's permanents, a seat choosing N of
@@ -524,7 +638,41 @@ export type LogKind =
   // the count, `new_zone` where they went and `target_seat` whose
   // zone it was. A spawn into a hidden zone names the zone and NOT
   // the card, so `label` is absent there for everyone.
-  | "spawn";
+  | "spawn"
+  // ADR 0086 (#1238): a storm trigger settled on its count
+  // (CR 702.40a). `card_id` is the storm spell and `amount` the
+  // number of OTHER spells cast before it this turn, which is how
+  // many copies are about to be created. Emitted at zero too, so a
+  // trigger that found nothing to copy is distinguishable from one
+  // that never fired. `text` reads "Grapeshot — storm count 3".
+  // Unlike `counters` / `saga_chapter` / `class_level`, `amount`
+  // survives redaction: the count is a fact about the turn's casts,
+  // not a value read off the card.
+  | "storm"
+  // S46 (ADR 0079, #343): a permanent was turned over to its other
+  // face (CR 701.27a). `label` is the name of the face it turned
+  // FROM — the only place that name survives, since the card's own
+  // name is already the new face by the time the entry is rendered.
+  // Narrated, not silent: a card physically turning over is a thing
+  // a player announces out loud, and a reader scrolling back wants
+  // to know when it happened.
+  | "transform"
+  // #1199, ADR 0084: a permanent phased out or in (CR 702.26).
+  // Narrated for `transform`'s reason and one more that is stronger
+  // here — phasing out is not a zone change (CR 702.26d), so no
+  // `zone` entry says it, and the board simply stops showing the
+  // permanent, indistinguishable from a permanent that died unless
+  // the log says which.
+  | "phase_out"
+  | "phase_in"
+  // #1209, ADR 0082's 2026-09-23 amendment: a permanent that was
+  // face up was turned face down (CR 708.2a). `card_id` is the
+  // permanent; `target` is the object that did it (Ixidron, Cyber
+  // Conversion). Names nobody — a CR 708.2 object has no name for
+  // any viewer, its controller included — so `text` reads "a card"
+  // and `card_id` is still present for the client to point at the
+  // permanent on the board.
+  | "turn_face_down";
 
 // LogEvent mirrors `protocol.LogEvent` — one line of the public game
 // log. `text` is the rendered, already-redacted sentence; the
@@ -535,9 +683,12 @@ export interface LogEvent {
   // use it as the keyed-each key.
   seq: number;
   kind: LogKind;
-  // Turn number the entry happened on. Absent (0) for entries that
+  // Turn sequence the entry happened on. Absent (0) for entries that
   // precede the first step announcement of a game.
   turn?: number;
+  // Table-facing round, present on step entries. `turn` is the
+  // per-turn sequence identity; this is the number shown to people.
+  round?: number;
   // Step name — present ONLY on `step` entries. Everything after a
   // step entry belongs to that step until the next one.
   step?: string;
@@ -586,6 +737,9 @@ export interface LogEvent {
   // `counters` one. Redacted with the card's name exactly as `choice`
   // is: both price or characterise the card the line no longer names.
   label?: string;
+  // ADR 0057: why an `eliminated` player left, or how a `game_over`
+  // game ended. Absent on every other kind.
+  cause?: string;
   // ADR 0075 §2.4: the actor held the table when they took this
   // action. Set only on `spawn` entries, and stamped by the room
   // rather than the projection — the host is a room property, so the
@@ -651,6 +805,13 @@ export interface PendingChoiceView {
     // third member and the one with no away lane — answered with
     // {top_order} alone, naming every looked-at card exactly once.
     | "look_at_top"
+    // #996 / ADR 0088: "put these cards on top of / on the bottom of
+    // the library in any order" (Brainstorm's put-back, "the rest on
+    // the bottom in any order", Aetherspouts' "top or bottom"). The
+    // family's fourth member: options are the cards, `placement` says
+    // which lanes are open, and the answer is {top_order, bottom} with
+    // BOTH lists top-first.
+    | "put_in_library"
     // Shocklands: "as this land enters, you may pay 2 life. If you
     // don't, it enters tapped." Answered with the shared yes/no
     // {choice_id, apply} payload — apply=true pays and the land
@@ -865,12 +1026,31 @@ export interface PendingChoiceView {
   // "unless" consequence fires. Also carries the life payment ("2
   // life") for kind "entry_pay_life".
   pay_cost?: string;
+  // #1311: populated for a "pay_unless" whose payment is a WATERBEND
+  // cost ("Ward—Waterbend {4}", The Unagi of Kyoshi Island): the
+  // chooser's untapped artifacts and creatures that may each pay {1}
+  // of pay_cost's generic (CR 701.67a), and `max`, how many. The
+  // "Pay" answer names them as `tap_ids` beside `apply: true`; the
+  // rest is paid from the pool and auto-tap as usual. Absent for
+  // every other pay-unless.
+  tap_cost?: TapCostView;
   // S22: populated for kind "search_library" — how many of `options`
   // the searcher may take. The minimum is always zero, so the submit
   // button is live from the first render. Absent for every other
   // kind, and absent for non-chooser viewers, who are not told what
   // the search is for.
   search_max?: number;
+  // #996 / ADR 0088: populated for kind "put_in_library" — which lanes
+  // the answer may use. "top" answers {top_order} alone, "bottom"
+  // answers {bottom} alone (top-first), "top_or_bottom" answers both.
+  placement?: "top" | "bottom" | "top_or_bottom";
+  // #1298: refine a put_in_library's top lane. `top_count` is EXACTLY
+  // how many cards `top_order` must hold (Cream of the Crop's "put one
+  // of those cards on top"; absent is any number). `top_depth` is where
+  // the top lane lands, counted from the top (2 is Temporal Cleansing's
+  // "second from the top"; absent is the top). Both public.
+  top_count?: number;
+  top_depth?: number;
   // #74: populated for kind "confirm" — the card's own words for the
   // accept and decline branches. Absent means the client renders Yes /
   // No, which is right for a prompt that really is a yes/no.
@@ -995,7 +1175,7 @@ export interface DelayedTriggerView {
   source?: string;
   label?: string;
   at: string;
-  created_turn?: number;
+  created_seq?: number;
   cards?: string[];
   on?: string[];
 }
@@ -1025,6 +1205,11 @@ export interface StackItemView {
   // for anyone deciding whether to respond: an overloaded Cyclonic
   // Rift is a one-sided wipe, a hard-cast one is a single bounce.
   alt_cost?: string;
+  // CR 702.174 (#1267): the player the gift was promised to. Absent
+  // when no gift was promised, which includes every spell without
+  // one. Public — the promise is announced at CR 601.2b, and whether
+  // it was made changes what the spell does.
+  gift_to?: string;
   // S30: a CR 707.10 spell copy rather than a cast card. The copy
   // and its source look identical on the stack, and which is which
   // decides what countering one leaves behind.
@@ -1088,8 +1273,9 @@ export interface PlayerView {
   // (possibly empty); each entry is server-stamped at the moment of
   // change. Added in S08.
   life_history: LifeChangeView[];
-  // Set when the player has conceded (S08) or, in the future, lost
-  // to a state-based action. Eliminated players still appear in the
+  // Set when the player has left the game: a concession (S08), a
+  // state-based loss, or an effect loss (ADR 0057). An effect WIN
+  // eliminates nobody. Eliminated players still appear in the
   // seats list and may continue to spectate; the UI greys them out
   // and disables their action buttons. Omitempty on the wire — only
   // present when true.
@@ -1191,6 +1377,34 @@ export interface PlayerView {
   // granting a player some other quality reaches a badge without a
   // wire change.
   keywords?: string[];
+  // #1200 (CR 119.7, CR 119.8): "your life total can't change" on
+  // this seat — Platinum Emperion's printed static, or a grant that
+  // lasts until this player's next turn (Teferi's Protection,
+  // Teferi's Reproach). Absent for a seat with none, which is nearly
+  // every seat.
+  //
+  // EFFECTIVE and PUBLIC, same posture as `keywords` above. It is a
+  // separate field rather than another token in that list because a
+  // life-total lock is not an ability the player HAS — the list is
+  // engine ability tokens and the client parses "protection from
+  // <quality>" out of it. See ADR 0085 Decision 7.
+  //
+  // What it means at the table: no life gain, no life loss, no life
+  // PAYMENT (so a Phyrexian symbol, a shockland's 2 life and Snuff
+  // Out are all off the table for this seat). Damage is still dealt
+  // and still triggers; it just moves no life. Poison still lands.
+  life_total_locked?: boolean;
+  // ADR 0057 (#749, CR 104.3): the "can't lose the game" / "can't win
+  // the game" gates on this seat. `cant_lose` lists the causes that
+  // can't make this player lose right now ("life", "empty_draw",
+  // "poison", "commander_damage", "effect") — all five under a
+  // Platinum Angel; concession is never in it. `cant_win` is true when
+  // an effect can't make this player win. `end_gates` names the
+  // sources for the badge's tooltip. Derived, public, and absent for
+  // nearly every seat.
+  cant_lose?: string[];
+  cant_win?: boolean;
+  end_gates?: GameEndGateView[];
 }
 
 // One emblem (CR 114). `label` is the board name ("Elspeth, Sun's
@@ -1283,6 +1497,22 @@ export interface OptionalCostView {
   // sacrifice_options means the offer cannot be taken right now.
   discard_cards?: number;
   sacrifice_options?: LegalTargetsView;
+  // CR 702.174a (#1267): a gift offer. Taking it means naming one
+  // opponent to promise the gift to, and that choice rides cast_spell
+  // as `gift_opponent`. `opponent_options` is who may be named — the
+  // opponents still in the game. On a gift offer an absent or empty
+  // list means nobody is left to promise it to, so the offer cannot
+  // be taken right now (the server's `omitempty` drops an empty
+  // list).
+  chooses_opponent?: boolean;
+  opponent_options?: string[];
+  // #1267: the target clause the spell has WHEN THIS COST IS PAID —
+  // Long River's Pull counters any spell once the gift is promised.
+  // Same shape and meaning as AlternativeCostView's trio; absent when
+  // the cost leaves the card's own clause alone (every kicker).
+  target_mode?: string;
+  legal_targets?: LegalTargetsView;
+  clauses?: LegalTargetsView[];
 }
 
 // AlternativeCostView is one "you may cast this spell for its
@@ -1367,16 +1597,26 @@ export interface TapCostView {
 }
 
 // SpecialActionView is one CR 116.2 special action offered on a card
-// in the viewer's own hand — foretell, suspend. A row and nothing
+// in the viewer's own hand — foretell, suspend, plot — and, since
+// #1391, on the top card of their own library when a permanent grants
+// one there (Fblthp, Lost on the Range's plot). A row and nothing
 // more: no targets, no modes, no cost picker, so the client sends
 // `special_action { card_id, kind, strict, auto_tap }` straight from
-// it. `available` is the server's own per-kind timing answer, so the
+// it, plus `cost` when the card offers the same kind twice (a plot
+// card under Fblthp: its own plot cost or its mana cost). `available` is the server's own per-kind timing answer, so the
 // client greys the row rather than re-deriving a rule it would get
 // backwards (foretell is legal under split second; suspend is not).
 export interface SpecialActionView {
   kind: string;
   label: string;
   cost?: string;
+  // #1319: what the engine actually charges for `cost` right now,
+  // after every CR 601.2f cost modifier on the battlefield — Ranar
+  // the Ever-Watchful's "The first card you foretell each turn costs
+  // {0} to foretell". Same contract as ActivatedAbilityView's
+  // charged_mana_cost: absent means "not priced" (fall back to
+  // `cost`), an empty string is a real "this now costs nothing".
+  charged_cost?: string;
   available?: boolean;
 }
 
@@ -1395,11 +1635,11 @@ export interface ExilePlayView {
   // impulse exile, which charges the printed cost. Note that
   // `mana_cost` on the card still carries the printed value.
   cost_override?: string;
-  // S29 warp: the earliest turn number the grant is live on — "you
+  // S29 warp: the earliest turn sequence the grant is live on — "you
   // may cast it from exile ON A LATER TURN". Absent for every grant
   // that is live as soon as it is made, which is all of impulse
   // exile and airbend.
-  not_before_turn?: number;
+  not_before_seq?: number;
   // S32: the printed faces this grant opens, when it opens any.
   // Absent for every grant that does not speak about faces (impulse
   // exile, airbend, warp, cascade), which is all of them before S32.
@@ -1424,6 +1664,10 @@ export interface ExilePlayView {
   x_locked_at_zero?: boolean;
 }
 
+// #1297: the pile an "Exile N cards from your …" cost reads — always
+// the activator's own. The server stamps it with `exile_cost_n`.
+export type ExileCostZone = "hand" | "graveyard";
+
 // ActivatedAbilityView is one CR 602 activated ability on a
 // battlefield permanent (S21 sub-PR 2). Public information, so it
 // rides every viewer's snapshot; the client only offers the menu on
@@ -1445,8 +1689,29 @@ export interface ActivatedAbilityView {
   // show mana_cost as a tooltip only when the two differ (see
   // chargedCostNote in contextMenu.logic.ts).
   charged_mana_cost?: string;
+  // #1296: what the mana component costs if the ability targets each
+  // legal target, keyed by the target's ID (card instance or player),
+  // valued as charged_mana_cost is ("" = free). Present only when the
+  // PRICE reads the target — Dragonfire Blade's "{1} less for each
+  // color of the creature it targets" — on a one-target, non-modal
+  // ability; charged_mana_cost is then the price before a target is
+  // chosen. See targetPrices.ts.
+  target_charged_mana_costs?: Record<string, string>;
   life_cost?: number;
   sorcery_speed?: boolean;
+  // #1208: true when the engine will refuse this activation RIGHT NOW
+  // for timing (CR 602.5d, CR 606.3), as modified by any per-player
+  // statement on the board — The Wandering Emperor's "you may
+  // activate her loyalty abilities any time you could cast an
+  // instant", Leonin Shikari's "you may activate equip abilities any
+  // time you could cast an instant".
+  //
+  // It is the ROW's verdict where sorcery_speed is the ability's
+  // printed clause, and it is the one to grey on: the client no
+  // longer derives the window for a catalogued ability. Absent means
+  // the engine has no timing objection, which is every instant-speed
+  // ability, always.
+  timing_closed?: boolean;
   // #743: true while the ability's activation condition (CR 602.1b —
   // "Activate only if an opponent controls four or more lands",
   // "Activate only during your turn") is false. Absent when there is
@@ -1485,6 +1750,28 @@ export interface ActivatedAbilityView {
   // the cost cannot be paid (CR 118.3) and the server refuses.
   return_label?: string;
   return_options?: LegalTargetsView;
+  // #1310: the CR 701.67 clause of a "Waterbend {N}:" cost (Aang,
+  // Swift Savior; Katara, Water Tribe's Hope), in the same TapCostView
+  // shape a hand card's convoke / waterbend ships as `tap_cost`, so
+  // TapCostModal serves both. `options` are the untapped artifacts and
+  // creatures that could pay (the source among them unless the cost
+  // also prints {T}); `max` is how many — 0 with `demands_x` means
+  // "as many as the X you announce". Optional in both directions:
+  // tapping none pays the whole cost with mana. The picks ride
+  // activate_ability as `waterbend_ids`.
+  waterbend?: TapCostView;
+  // #759: a "Tap another untapped creature you control" cost — the
+  // station ability's (CR 702.184a), #758's tap-another component.
+  // `tap_others_label` is the clause without the verb and
+  // `tap_others_options` the untapped permanents that could pay it
+  // right now, min / max the clause's count. Not the {T} symbol, so a
+  // creature that arrived this turn is on the list; not a target, so
+  // a hexproof one is too. The picks ride activate_ability as
+  // `tap_ids`; fewer options than `min` means the server refuses
+  // (CR 118.3). #1421: `count_from_x` means the number picked is the
+  // activation's `x_value`; min / max are then unset (0 / 0).
+  tap_others_label?: string;
+  tap_others_options?: LegalTargetsView;
   // #660: the discard cost components (CR 702.29a and the general
   // "Discard a creature card" clause). `discard_self` is cycling's
   // "Discard this card" — advisory only, there is nothing to pick,
@@ -1504,6 +1791,17 @@ export interface ActivatedAbilityView {
   discard_cost_n?: number;
   discard_cost_label?: string;
   discard_cost_options?: string[];
+  // #1297: an "Exile N cards from your graveyard" / "… from your hand"
+  // component — Grim Lavamancer's "Exile two cards from your graveyard",
+  // Holistic Wisdom's "Exile a card from your hand". The mana ability's
+  // four exile fields (#1283) under the same names: the count, the
+  // clause as printed, the cards that could pay right now, and the pile
+  // they are in. NOT a discard — the picks ride activate_ability as
+  // `exile_ids`, never `discard_ids`.
+  exile_cost_n?: number;
+  exile_cost_label?: string;
+  exile_cost_options?: string[];
+  exile_cost_zone?: ExileCostZone;
   // S27: a Vehicle's crew cost (CR 702.122a). crew_cost is the
   // number that the tapped creatures' TOTAL POWER must reach;
   // crew_options lists the creatures that could pay it right now —
@@ -1613,6 +1911,12 @@ export interface ModeOptionView {
   // that is nearly every bullet, where legal_targets is the whole
   // answer.
   clauses?: LegalTargetsView[];
+  // Spree (CR 702.172a, ADR 0065's 2026-09-23 amendment): this
+  // bullet's own additional mana cost, in brace notation, paid only
+  // if it is chosen — on top of the card's printed cost and every
+  // OTHER chosen bullet's. Absent for an ordinary modal bullet, which
+  // is every modal card before S45.
+  cost?: string;
 }
 
 // LegalTargetsView is a clause's legal set right now plus its
@@ -1644,7 +1948,7 @@ export interface LegalTargetsView {
  * It is carried twice (#992). `CardView` extends it for the face that
  * is UP, which is what every reader in this client has always read.
  * `CardFaceView` extends it for each face a cast may CHOOSE — both
- * halves of a modal DFC (CR 712.12a) and of an adventure card
+ * halves of a modal DFC (CR 712.11b) and of an adventure card
  * (CR 715.3) — so `cardAsFace` can swap the block in when the player
  * picks a half instead of clearing what the front published. Clearing
  * it is why casting Stomp from this client never opened a target
@@ -1769,6 +2073,37 @@ export interface CastSurfaceView {
   // `target_cost_notes`, `phyrexian_symbols` and `cant_cast`, because
   // a card in a graveyard is a card every player may read.
   castable_here?: boolean;
+  // #1389: what THIS viewer would be charged to cast the card out of
+  // EXILE right now — one entry per price the cast may claim, cheapest
+  // first, each the total AFTER every CR 601.2f cost modifier (the
+  // same pricer the cast path and the auto-tap preview use). Exile
+  // only, and only on the frame of a seat holding a LIVE permission:
+  // a warp or foretell grant whose later turn has not come carries
+  // none. Read it through exileStrip.ts, which decides the badge.
+  //
+  // Since #1389 `castable_here` is stamped in exile too, with the same
+  // meaning it has in a graveyard — "YOU may cast this from here NOW",
+  // timing included — and is what the castable-from-exile strip
+  // lights a card by.
+  cast_prices?: CastPriceView[];
+}
+
+// CastPriceView is one price a cast out of exile may claim (#1389).
+export interface CastPriceView {
+  // The `alternative_costs[i].key` this price claims — "foretell", a
+  // granted "flashback" — and the value the cast sends as
+  // `alternative_cost`. Absent for the path that claims none: the
+  // printed cost, or a permission's own flat price (airbend's {2}, a
+  // plotted card's {0}).
+  alternative_cost?: string;
+  label?: string;
+  // Brace notation, never empty: a free cast reads "{0}".
+  cost: string;
+  // Life charged on top (CR 119.4). Absent for every exile price today.
+  life?: number;
+  // True when this price IS the printed mana cost, untouched — the
+  // strip draws no badge for it.
+  printed?: boolean;
 }
 
 /**
@@ -1849,7 +2184,9 @@ export interface CardView extends CastSurfaceView {
   // viewer who knows it still sees the face.
   face_down?: boolean;
   // WHY it is face down (ADR 0069): "exiled" (CR 406.3, Necropotence),
-  // "foretold" (CR 702.143b), or one of the CR 708.2 permanent states
+  // "foretold" (CR 702.143b), "hideaway" (CR 702.75a, ADR 0091 — the
+  // controller of the permanent that hid it may look), or one of the
+  // CR 708.2 permanent states
   // "manifested" / "morphed" / "disguised" / "cloaked". PUBLIC —
   // everyone can see that a permanent is a morph — so it survives the
   // non-knower redaction and labels the card back.
@@ -1905,6 +2242,19 @@ export interface CardView extends CastSurfaceView {
   // id is a seat id or an instance id and this says which. Absent
   // when nothing is declared.
   attacking_target_kind?: "player" | "planeswalker" | "battle";
+  // #1339: the seat defending against this attack — the only seat
+  // whose creatures may block it (CR 802.4a): the player attacked, the
+  // planeswalker's controller, or the battle's PROTECTOR. Absent when
+  // nothing is declared. #1364: once the attacked planeswalker or
+  // battle has left, it still names the player who was defending it
+  // (CR 506.4c "it may be blocked"), and attacking_target_kind is
+  // absent. #1376: the same holds when the planeswalker or battle is
+  // removed from combat WITHOUT leaving — a control change or phasing
+  // out — and attacking_target is then the reserved id
+  // "00000000-0000-0000-0000-000000000506", which names no seat or
+  // card. Read it through defendingPlayerOf (attackTargets.ts), which
+  // covers older frames.
+  defending_player?: string;
   // S27: the seat protecting this battle (CR 310.9a). Absent for every
   // other card type and for a battle whose protector prompt has not
   // been answered. Public — it decides who may attack it.
@@ -1976,6 +2326,16 @@ export interface CardView extends CastSurfaceView {
   // is the ability's index in the card's FULL list, so the same
   // activate_ability payload works for both.
   zone_abilities?: ActivatedAbilityView[];
+  // #1228: MANA abilities this card offers while it is IN HAND —
+  // "Exile this card from your hand: Add {R}" (the Spirit Guides,
+  // CR 113.6). `zone_abilities`' twin one ability kind over, and a
+  // separate field for the reason `mana_abilities` is separate from
+  // `activated_abilities`: the wire payload differs
+  // (`activate_mana_ability`, not `activate_ability`), so a client
+  // sends the verb that matches the row it read. `index` is the
+  // ability's index in the card's FULL mana-ability list. Stripped
+  // from every seat but the hand's owner, like `zone_abilities`.
+  zone_mana_abilities?: ManaAbilityView[];
   // #658 / #659: CR 116.2 special actions this card offers while it
   // is IN HAND — "Foretell {2}", "Suspend 1—{R}". Not abilities and
   // not casts: they use no stack and there is nothing to respond to,
@@ -2006,6 +2366,11 @@ export interface CardView extends CastSurfaceView {
   // `activated_abilities`, and an inactive static or trigger has no
   // per-ability representation here to grey out.
   solved?: boolean;
+  // ADR 0090 (CR 722.3a): this permanent is prepared — its controller
+  // may cast the copy of its prepare spell that sits in exile, which
+  // arrives as an ordinary exile card with an `exile_play` stamp
+  // naming face 1. Absent — not `false` — for everything else.
+  prepared?: boolean;
   // #781 (CR 105.4 / CR 614.12): the answers this permanent's
   // controller gave to its "as this enters, choose a color" and "as
   // this enters, choose a creature type" instructions — one uppercase
@@ -2130,6 +2495,12 @@ export interface ManaAbilityView {
   label?: string;
   tap_cost?: boolean;
   sacrifice_cost?: boolean;
+  // #1228: the "Exile this card from your hand" component of a mana
+  // ability that functions from a hand (CR 113.6) — the Spirit
+  // Guides. The same wire name ActivatedAbilityView carries it under,
+  // so one cost chip serves both ability kinds. Advisory; the server
+  // validates the zone and pays the exile.
+  exile_self?: boolean;
   produced?: string;
   // S21: "Sacrifice a creature: Add {C}{C}" (Ashnod's Altar) — a
   // mana ability whose cost sacrifices ANOTHER permanent. Mirrors
@@ -2141,6 +2512,13 @@ export interface ManaAbilityView {
   // on ActivatedAbilityView.
   sacrifice_label?: string;
   sacrifice_options?: LegalTargetsView;
+  // #758: "Tap an untapped creature you control" on a mana ability
+  // (Springleaf Drum). Same fields as an activated ability's
+  // TapOthers component; the answer rides activate_mana_ability as
+  // `tap_ids`. This surface is fixed-count: CR 605.3b gives a mana
+  // ability no X announcement, so `count_from_x` is never set here.
+  tap_others_label?: string;
+  tap_others_options?: LegalTargetsView;
   // #1213: a "Discard N cards" component on a MANA ability — Skirge
   // Familiar's "Discard a card: Add {B}". Exactly the three fields
   // ActivatedAbilityView carries under exactly the same names,
@@ -2150,6 +2528,16 @@ export interface ManaAbilityView {
   discard_cost_n?: number;
   discard_cost_label?: string;
   discard_cost_options?: string[];
+  // #1283: an "Exile N cards from your hand" component — Cadaverous
+  // Bloom's "Exile a card from your hand: Add {B}{B} or {G}{G}". The
+  // discard triple's shape under its OWN names, because an exiled
+  // card is not discarded (no discard event, nothing for madness to
+  // see). The picks ride activate_mana_ability as `exile_ids`.
+  // #1297: `exile_cost_zone` names the pile the options are in.
+  exile_cost_n?: number;
+  exile_cost_label?: string;
+  exile_cost_options?: string[];
+  exile_cost_zone?: ExileCostZone;
   // S22: a "Pay N life" component of the activation cost — Mana
   // Confluence's "{T}, Pay 1 life:". Advisory only; the server does
   // the real CR 119.4 check. A damage RIDER ("This land deals 1
@@ -2192,6 +2580,16 @@ export interface ManaAbilityView {
   // tapping the land would just lose it. Absent for every other
   // ability.
   adds_no_mana?: boolean;
+  // #1443: for each slot of the output that asks for a colour, the
+  // colours that pick would offer — one list per picking slot, in
+  // output order, narrowed (Command Tower, CR 903.4f) and ordered
+  // (#843, commander identity first) by the SAME server function the
+  // `mana_pick` prompt uses. A painland's "{R|W}" is [["R","W"]], a
+  // filter land's "{W|U}{W|U}" two lists. Absent when nothing is
+  // picked. The picker at the card offers these directly and sends the
+  // answer up front as `activate_mana_ability`'s `color` / `colors`, so
+  // nothing is tapped until the player has chosen.
+  color_options?: string[][];
   // S32 (#352): spend restrictions the produced mana will carry —
   // Ancient Ziggurat's "only to cast a creature spell", Eldrazi
   // Temple's "only colorless Eldrazi". Informational; the server's
@@ -2233,9 +2631,18 @@ export interface AttackTargetView {
   // in the client re-derives what an attack costs, for the same
   // reason nothing re-derives who may attack (#429, ADR 0045 §6).
   tax?: string;
+  // #1533 (ADR 0045 Decision 46): how many MORE creatures may be
+  // declared attacking this target this combat under a CR 508.1c count
+  // limit (Silent Arbiter, Crawlspace), after the ones already
+  // attacking. Absent when no limit counts this target; 0 is a real
+  // answer (the limit is used up), so test with `!== undefined`, never
+  // truthiness. Engine-computed: n new attackers at this target are
+  // accepted exactly when n <= attack_limit. Read it, don't derive it.
+  attack_limit?: number;
 }
 
 export interface TurnView {
+  seq: number;
   number: number;
   active_seat: number;
   // priority_holder is the seat index that currently holds priority
@@ -2253,7 +2660,20 @@ export interface TurnView {
   // must not re-derive in TypeScript. It exists because blocking is a
   // turn-based action rather than a response, so the auto-pass
   // "legal response?" predicate structurally could not see it.
+  //
+  // #1279: a seat leaves this list once its block declaration is
+  // COMPLETE (it passed, sent finish_blocks, or had no legal block as
+  // the step began), even while it still has a creature that could
+  // block.
   block_decision_seats?: number[];
+  // #1279: where each DEFENDING seat's block declaration stands.
+  // `block_pending_seats` — still declaring; `blocks_declared_seats` —
+  // finished, with or without blocks. A defending seat is in exactly
+  // one; a seat nothing is attacking is in neither. Both absent
+  // outside declare_blockers. The "Done blocking" / "No blocks"
+  // control shows while the viewer's seat is pending.
+  block_pending_seats?: number[];
+  blocks_declared_seats?: number[];
   // S27: what the ACTIVE player's creatures may attack right now —
   // the other seats, the planeswalkers they don't control, and the
   // battles they don't protect (CR 506.2, 508.1d). Present only

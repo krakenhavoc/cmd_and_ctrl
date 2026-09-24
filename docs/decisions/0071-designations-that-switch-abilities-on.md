@@ -202,7 +202,7 @@ func LevelUp(level int, cost game.AbilityCost) ActivatedAbility
 ```
 
 It produces `SorcerySpeed: true` (CR 716.2d) and a `Condition` that reads the
-source's current level and demands exactly `level-1` (CR 716.2e). Nothing else
+source's current level and demands exactly `level-1` (CR 716.2a). Nothing else
 is special: it is announced, paid and put on the stack by the same
 `ActivateCatalogAbility` path every other activation uses, its cost is an
 ordinary `AbilityCost` (mana, since #958 also counters), the legal-move
@@ -659,3 +659,285 @@ call would make the pass quadratic in the board.
 - **Mana abilities and replacement effects still have no zone field**,
   unchanged from Decision 1 note 3 — and the mana half now has a
   card asking (#1228).
+
+---
+
+## Addendum (2026-09-23): the station ability, and which power it reads (#759)
+
+**Status:** Accepted · 2026-09-23 · tracked on
+[#759](https://github.com/krakenhavoc/cmd_and_ctrl/issues/759), trackers
+[#889](https://github.com/krakenhavoc/cmd_and_ctrl/issues/889) (permanents that
+change what they are) and [#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887)
+(mana and costs). This status covers this section only. It **amends** two
+things above: Decision 2's "The station ability itself", in which power the
+ability reads, and Decision 5's "station is not offered until #758 gives its
+cost a payment shape". Everything else stays accepted and unchanged.
+
+### Context
+
+Decision 2 designed `Station()` on a cost that did not exist yet, and named the
+field #758 should add. #758 has since added it: `AbilityCost.TapOthers
+*TapOthersCost` (#1092, wired into both activation paths by #1102), with the
+four fields named here. It deliberately shipped no consumer. Two things were
+still owed:
+
+1. **A record of what the cost tapped.** `payTapOthersCostLocked` returned the
+   tapped cards and `ActivateCatalogAbility` threw them away. It runs AFTER the
+   stack item is built (ADR 0020 §4: a tap-watching trigger must sit above the
+   ability), so nothing on the item could say which creature paid.
+2. **The wire.** No view options, no enumerator payment and no client picker
+   existed for the component on an activated ability. An ability with this cost
+   was reachable from Go and from nothing else, which is ADR 0037 §5's "a card
+   nobody can activate".
+
+Decision 2 also got one thing wrong. It said the ability reads the tapped
+creature's power **at the moment the cost is paid**, by analogy with crew. The
+analogy does not hold. Crew's power is part of the COST (CR 702.122a taps
+"any number of untapped creatures you control with total power N or greater").
+Station's power is in the EFFECT: "put a number of charge counters on this
+permanent equal to the tapped creature's power" (CR 702.184a, pinned August 7,
+2026 edition). CR 608.2h says an effect that needs information from a specific
+object reads it when the effect is applied. It uses the object if the object is
+still in the zone it was expected to be in, and the object's last-known
+information if not. The Edge of Eternities release notes say the same of station
+directly: *"Use the tapped creature's power as the station ability resolves …
+If that creature isn't on the battlefield at that time, use its power as it
+last existed on the battlefield,"* and *"If the tapped creature has negative
+power, no charge counters are put onto or removed from the permanent with
+station."*
+
+The difference is observable. Pump the tapped creature in response and it
+stations for more. Shrink it in response and it stations for less.
+
+### Decision 1: the payment record carries the tapped OBJECT, with a last-known fallback
+
+`PaidCost` gains one field. It sits next to `Sacrificed` (#1213) and
+`ReturnedAttacking` (#1227) and was added for the same reason: it is a fact
+about the announcement that nothing at resolution could recompute.
+
+```go
+TappedOthers []PaidTap   // one per permanent the TapOthers component tapped
+
+type PaidTap struct {
+	ID    uuid.UUID // the instance tapped
+	Epoch int       // Card.ObjectEpoch as it was tapped: WHICH object (CR 400.7)
+	Power int       // PowerForComparison as tapped; rewritten once as it leaves
+	Left  bool      // Power is now last-known and final
+}
+```
+
+`ActivateCatalogAbility` stamps it from `payTapOthersCostLocked`'s snapshot,
+AFTER the item exists. That is the one line Luke's handoff on #759 named. Clone
+and snapshot carry it like the rest of the record. A CR 707.10 ability copy
+carries it too, in a slice of its own, because the choice of what to tap was
+made when the original was put on the stack.
+
+**The reader** is `Game.PaidTapPowerForEffect(PaidTap)`. A card reaches it as
+`Context.TappedPower()`.
+
+- If the creature is on the battlefield as the SAME object (instance ID and
+  epoch both match), it returns the creature's power now, read after a layer
+  recompute.
+- If the creature has left, it returns the `Power` frozen as it left.
+
+**The freeze** is `freezePaidTapsOnExitLocked`, called from
+`battlefieldExitLocked`. That is the one place every battlefield exit passes
+through, and it runs with the card still on the battlefield, next to the
+CR 603.10 snapshot that leave-the-battlefield triggers are judged on. It
+rewrites `Power` on every stack item whose record names the leaving object and
+marks it `Left`. The engine's own `lastKnownBattlefield` cannot do this job: it
+lives for one mutation and is gone by the time the ability resolves.
+
+Rejected:
+
+- **Banking the number at payment** (Decision 2's reading). Simpler, and wrong
+  in both directions against the release notes.
+- **Storing only the ID and reading `LookupCardForEffect` at resolution.** A
+  creature that is bounced and replayed keeps its instance ID, and the new
+  object's power is not the tapped creature's (CR 400.7). The epoch tells the
+  two apart, and the freeze keeps the answer once the object is gone.
+
+The fallback `Power` is the power at payment. It is used only if an object
+leaves by a route that never reaches the exit choke point, such as a player
+leaving the game.
+
+### Decision 2: `Station()` is a constructor over existing shapes
+
+```go
+func Station() ActivatedAbility {
+	return ActivatedAbility{
+		Label:        StationLabel,
+		Cost:         TapAnotherUntapped("another untapped creature you control", Creature()),
+		SorcerySpeed: true,
+		Effect:       stationEffect,
+	}
+}
+```
+
+- `TapAnotherUntapped` is a `TapOthersCost` with a count of one and
+  `ExcludeSource` set, which is the printed word "another". It is not the `{T}`
+  symbol, so a creature that arrived this turn may station (CR 302.6). It does
+  not target, so a hexproof creature may too.
+- There is no `ActiveWhen`. CR 721.4: every station card has its station
+  ability at every counter count.
+- The effect puts `TappedPower()` charge counters on the source through the
+  CR 614 counter window, so Doubling Season doubles them. When the power is zero
+  or negative it puts nothing on. A negative `AddCounter` would REMOVE counters,
+  which is the one outcome the ruling forbids.
+- A source that has stopped being this permanent gets nothing: destroyed in
+  response, or replayed as a new object. That check is
+  `AbilitySourceGoneForEffect`. Its doc named attaching as the only effect that
+  cannot happen without its source. "Put counters on THIS permanent" is the
+  second, because `AddCounterForEffect` would otherwise stamp the counters onto
+  a card in a graveyard.
+- `effects.Plus` now carries `TapOthers`. It used to drop the field silently,
+  so a composed "{T}, tap another untapped creature" would have become the bare
+  `{T}` ability, which is the #259 direction.
+
+### Decision 3: the wire, the enumerator and the bot
+
+- **View:** `activated_abilities[i]` and `mana_abilities[i]` carry the same
+  `tap_others_label` / `tap_others_options`, built from
+  `TapOthersOptionsForEffect`, the same walk the validator uses (#544). The
+  source is left off when the ability also prints `{T}` (CR 118.3). The names
+  are kept apart from the cast-side `tap_cost` (convoke, waterbend), which is a
+  different component.
+- **Payload:** `tap_ids` rides the matching `activate_ability` or
+  `activate_mana_ability` action (#1102 / #758).
+- **Enumerator:** one move per candidate creature for a one-permanent clause, in
+  battlefield order. This is deliberately NOT the fuel order the sacrifice and
+  return payments use: tapping spends nothing, and which creature is best to tap
+  is the POLICY's call. The named creatures are excluded from the mana
+  affordability probe (#1242's rule).
+- **Heuristic:** a tapped creature costs a blocker (the same price as crew). It
+  also costs the creature's attack when the move comes before combat on the
+  bot's own turn and the creature could swing. The payoff is a small amount per
+  point of power, which is the one number on the move that measures what
+  station buys. So a bot stations after combat, or with a summoning-sick
+  creature, and not with its attackers.
+- **Client:** the sacrifice picker with the verb "Tap", asked after the return
+  pick and skipped when the board offers exactly one permanent. Both ability
+  menus grey the row when nothing can pay.
+
+This supersedes Decision 5's "station is not offered".
+
+### Cards
+
+| Card | What it proves |
+|---|---|
+| The Seriema (#337) | the station ability end to end, to 7+; goes **Full** |
+| Galvanizing Sawship | the smallest complete station card: one threshold, a P/T box, haste |
+| Uthros Research Craft | a gated **trigger** (3+) that adds a charge counter itself, and 12+ with a layer-7c modifier over the 7b base |
+| Adagia, Windswept Bastion | a **Planet**, which is a land with station: enters tapped, taps for mana, stations from another creature, and has a gated activated ability at 12+ that makes a legendary token copy |
+
+### Still out of scope
+
+- **CR 702.184c** modifiers (Tapestry Warden's "toughness instead of power").
+  They are a static over this ability, and no catalog card has one.
+- **CR 721.2c**, no P/T outside the battlefield. Unchanged from Decision 2.
+- **Variable-count tap-others costs** (#1421), such as "Tap X untapped Foods you
+  control". The fixed `TapOthersCost.Count` cannot represent an announced X;
+  that needs the announce path used by variable sacrifice costs.
+- **Planets whose threshold line is a MANA ability** (Evendo, Waking Haven;
+  Uthros, Titanic Godcore). `ActiveWhen` is not on mana abilities (Decision 1,
+  note 3).
+
+---
+
+## Addendum (2026-09-23): a fifth designation, Harnessed (CR 701.64, #1321)
+
+**Status:** Accepted · 2026-09-23 · tracked on
+[#1321](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1321),
+tracker [#889](https://github.com/krakenhavoc/cmd_and_ctrl/issues/889).
+
+### Context
+
+CR 701.64 prints a fifth designation, same shape as the four Decision
+1 named:
+
+> **701.64a** "Harness [this permanent]" means "If this permanent
+> isn't harnessed, it becomes harnessed."
+> **701.64b** Harnessed is a designation… Once a permanent becomes
+> harnessed, it stays harnessed until it leaves the battlefield.
+> **702.186b** "∞ — [Ability]" means "As long as this permanent is
+> harnessed, it has [ability]."
+
+The Mind Stone is the first (and, in the dump checked for this ADR,
+only) printed card that uses it: `{5}{W}, {T}: Harness The Mind
+Stone.` gates `∞ — At the beginning of your end step, exile up to one
+other target nonland permanent you control, then return that card to
+the battlefield under its owner's control.` Nothing about it needed a
+new mechanism — CR 701.64b is CR 719.3b's sentence with a different
+noun — so this addendum is Decision 2's Case-solved section, copied
+for the fifth kind, not a new design.
+
+### Decision: `DesignationHarnessed`, `Card.Harnessed`, `HarnessForEffect` — Solved's three pieces, verbatim
+
+- **`DesignationHarnessed`** joins the `DesignationKind` enum
+  (`game/designations.go`), `Active` gains `case
+  DesignationHarnessed: return c.Harnessed`, and `Harnessed()`
+  constructs the gate — the same three lines `DesignationCaseSolved` /
+  `CaseSolved()` are.
+- **`Card.Harnessed bool`** sits in the bool block next to `Solved`,
+  for `TestCardHasNoInteriorPadding`'s reason (Decision 6's "8 bytes
+  for `ClassLevel`, `Solved` costs nothing" arithmetic — a bool costs
+  nothing here either). Not copiable (CR 701.64 says nothing about a
+  copy inheriting it, and it is battlefield state next to `Tapped`,
+  not a printed characteristic — the same non-argument that makes
+  `ClassLevel` / `Solved` non-copiable), cleared on battlefield exit
+  in the same two places (`zone.go`, `entry_tail.go`), carried by the
+  snapshot (`cardSnapshot.Harnessed`, both projection sites).
+- **`HarnessForEffect` / `IsHarnessed`** are `SolveCaseForEffect` /
+  `IsSolved` with the noun changed, including the idempotency:
+  CR 701.64a is worded "if this permanent ISN'T harnessed, it
+  becomes" — an "if", not a legality restriction — so nothing in the
+  engine refuses a second activation of "Harness [this permanent]",
+  and `HarnessForEffect` simply does nothing the second time, exactly
+  as `SolveCaseForEffect` does for a Case solved twice.
+- **`EventHarnessed`** joins `EventClassLevel` / `EventCaseSolved` in
+  the layer listener's designation-bump case. Silent on the public
+  log (`silentEventKinds["EventHarnessed"] =
+  silentBoardStateIsVisible`), for `EventCaseSolved`'s reason: the
+  state is a wire badge, not a narrated line.
+
+**Wire:** `CardView.harnessed` (omitempty), unconditional once a
+permanent is on the battlefield — unlike `class_level` / `solved` it
+carries no subtype probe, because CR 701.64 names no card type the
+way CR 716 names Class and CR 719 names Case; any permanent can print
+a Harness ability. Cleared on the non-knower redaction with
+`class_level`, `solved` and `prepared`. See
+[docs/protocol.md](../protocol.md).
+
+**Catalog side** (`cards/effects/designations.go`): `Harnessed()`
+wraps `game.Harnessed()` exactly as `Solved()` wraps `game.CaseSolved()`,
+and `Harness(label, cost)` is the "Harness [this permanent]" activated
+ability — no `ActiveWhen`, no `Condition`, for the idempotency argument
+above; a `Condition` that refused the second activation would make the
+ability unactivatable rather than a no-op, which CR 701.64a does not
+say. The "∞ — [ability]" line itself is an ordinary `TriggeredAbility`
+with `ActiveWhen: Harnessed()` — no new catalog machinery, which is
+the whole point of Decision 1's one-gate design paying off a fifth
+time.
+
+**Proof card:** The Mind Stone
+([the_mind_stone.go](../../server/internal/cards/effects/the_mind_stone.go)),
+`CompletenessFull` — indestructible, `{T}: Add {W}`, the Harness
+ability and the ∞ end-step flicker (Thassa, Deep-Dwelling's blink,
+CR 400.7 new-object semantics and all, with `Flicker.Controller` left
+at its zero value for "under its OWNER's control" rather than
+Thassa's "under YOUR control").
+
+### Consequences
+
+Good: a fifth designation is three fields and a constructor, and every
+consumer that already reads a gate (the layer pass, the harvester, the
+enumerator, the wire) needed no change to honour it — Decision 1's
+whole argument, paid off again. `DesignationDoorUnlocked` stays
+reserved and unbuilt; this addendum does not touch Decision 3.
+
+Nothing here builds a general "Harness" cost component analogous to
+`AbilityCost.Loyalty` — The Mind Stone's cost is an ordinary
+`Plus(ManaCost, TapCost)`, because CR 701.64a is a printed EFFECT
+("harness [this permanent]"), not a cost syntax, and no card prints
+"Harness" as part of a larger cost the way a Class's level-up is
+printed as part of an activation instruction.

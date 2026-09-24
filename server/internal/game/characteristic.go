@@ -92,7 +92,37 @@ type Characteristic struct {
 	// granted KEYWORDS ride in `Abilities` and are governed by the
 	// layer-6 bucket's timestamp sort, which clears the slice in the
 	// removal's slot and lets a later grant append after it.
+	//
+	// Since ADR 0093 it means "its OWN abilities are gone" — printed,
+	// copy-granted (CR 707.9a) and token-template — and not "it has no
+	// abilities": a layer-6 grant sorted after the removal survives in
+	// GrantedAbilities below, and every reader keeps that half.
 	AbilitiesRemoved bool
+
+	// GrantedAbilities are the abilities OTHER effects gave this
+	// object in layer 6 (CR 113.10, CR 613.1f) — Cryptolith Rite's
+	// "{T}: Add one mana of any color" on every creature you control,
+	// Chromatic Lantern's on every land. ADR 0093 Decision 1.
+	//
+	// Each entry names a catalog bundle by key, never a closure: a
+	// grant is static catalog data (effects.AbilityGrant), registered
+	// under GrantKey, and the reader that wants the abilities asks the
+	// catalog for that key exactly as it asks for a card's own. So the
+	// last-known-information copy of this struct (the dies harvest)
+	// and a snapshot of it both carry nothing but strings and IDs.
+	//
+	// Written only by GrantAbility, from a layer-6 effect's Apply, in
+	// that effect's timestamp slot — the order of this slice IS the
+	// layer-6 order. A CR 613.1f removal empties it in its own slot,
+	// which is what lets a grant with a LATER timestamp survive the
+	// removal (CR 613.6), exactly as a granted keyword does in
+	// Abilities above.
+	//
+	// NOT copiable (CR 707.2): a copy effect reads PrintedValues, never
+	// the layered result, so nothing has to remember to leave these
+	// out. The copiable grant is Card.GrantedAbilities, a different
+	// field on a different struct (#665).
+	GrantedAbilities []GrantedAbility
 
 	// Controller is the post-layer-2 controller (CR 613.1b). It is
 	// the one field here that is NOT a characteristic in the CR 109.3
@@ -226,26 +256,21 @@ func (c Card) printedCharacteristic() Characteristic {
 	// states a keyword Scryfall doesn't.
 	//
 	// The two sources overlap for every catalog card that is also
-	// imported from a decklist, so the merge dedupes: a doubled
-	// "flash" is harmless to HasKeyword but renders as two badges
-	// on the client's keyword row.
+	// imported from a decklist, so the merge (mergePrintedKeywords)
+	// dedupes: a doubled "flash" is harmless to HasKeyword but renders
+	// as two badges on the client's keyword row. A CUMULATIVE keyword
+	// (prowess, toxic) is the one exception — see that function.
 	//
 	// The gate is the catalog KEY and not an oracle ID (ADR 0083
 	// decision 3): a token has a key of its own since #521, so a
 	// template that declares PrintedKeywords in its catalog entry is
 	// read here like any card's. CatalogKey already answers "" for
 	// an uncatalogued object.
-	var abilities []string
+	var catalogKeywords []string
 	if key := CatalogKey(c); CatalogPrintedKeywords != nil && key != "" {
-		if kws := CatalogPrintedKeywords(key); len(kws) > 0 {
-			abilities = append(abilities, kws...)
-		}
+		catalogKeywords = CatalogPrintedKeywords(key)
 	}
-	for _, kw := range c.Keywords {
-		if !containsKeyword(abilities, kw) {
-			abilities = append(abilities, kw)
-		}
-	}
+	abilities := mergePrintedKeywords(catalogKeywords, c.Keywords)
 	return Characteristic{
 		Power:      c.Power,
 		Toughness:  c.Toughness,
@@ -296,6 +321,7 @@ func (c Characteristic) clone() Characteristic {
 	out.Supertypes = append([]string(nil), c.Supertypes...)
 	out.Colors = append([]string(nil), c.Colors...)
 	out.Abilities = append([]string(nil), c.Abilities...)
+	out.GrantedAbilities = append([]GrantedAbility(nil), c.GrantedAbilities...)
 	return out
 }
 
@@ -315,10 +341,11 @@ func (c Card) baseController() uuid.UUID {
 	return c.Controller
 }
 
-// containsKeyword reports whether xs already holds kw. Used by the
-// printed-characteristic merge; the battlefield's Layer 6 keyword
-// synth keeps its own copy over in cards/effects, where the name
-// would otherwise collide with that package's test helpers.
+// containsKeyword reports whether xs already holds kw. Used to read
+// the changeling type fact off the merged printed abilities; the
+// battlefield's Layer 6 keyword synth keeps its own copy over in
+// cards/effects, where the name would otherwise collide with that
+// package's test helpers.
 func containsKeyword(xs []string, kw string) bool {
 	for _, x := range xs {
 		if x == kw {
@@ -326,6 +353,80 @@ func containsKeyword(xs []string, kw string) bool {
 		}
 	}
 	return false
+}
+
+// mergePrintedKeywords combines the catalog's own Spec.PrintedKeywords
+// with the deck-imported Card.Keywords into the one printed-keyword
+// baseline printedCharacteristic starts from. The two sources overlap
+// for every catalog card that is also imported from a decklist (see
+// the caller's comment), and how they combine depends on whether the
+// keyword is CUMULATIVE (KeywordIsCumulative — prowess, toxic,
+// CR 702.108b / 702.164b):
+//
+//   - a keyword that is NOT cumulative is a plain union: present in
+//     either source, it appears once in the result, same as before
+//     this function existed.
+//   - a CUMULATIVE keyword takes the HIGHER of the two sources' own
+//     repeat counts, never their sum. A catalog entry that declares
+//     one "prowess" and an import that counts two off a doubled
+//     oracle line ("Prowess, prowess", #1510) describe the same two
+//     abilities, not three — summing would double what the import
+//     already counted correctly, and a card that is ONLY imported (no
+//     catalog entry) still gets exactly the import's own count.
+//
+// Catalog keywords are walked first so a card's own PrintedKeywords
+// keep first-seen order ahead of the imported ones, matching the
+// order the pre-#1510 loop produced for the common case of no
+// repeats.
+func mergePrintedKeywords(catalog, imported []string) []string {
+	if len(catalog) == 0 && len(imported) == 0 {
+		return nil
+	}
+	catalogCounts := countKeywords(catalog)
+	importedCounts := countKeywords(imported)
+
+	out := make([]string, 0, len(catalog)+len(imported))
+	seen := map[string]bool{}
+	add := func(kw string) {
+		if seen[kw] {
+			return
+		}
+		seen[kw] = true
+		n := 1
+		if KeywordIsCumulative(kw) {
+			n = catalogCounts[kw]
+			if importedCounts[kw] > n {
+				n = importedCounts[kw]
+			}
+			if n < 1 {
+				n = 1
+			}
+		}
+		for i := 0; i < n; i++ {
+			out = append(out, kw)
+		}
+	}
+	for _, kw := range catalog {
+		add(kw)
+	}
+	for _, kw := range imported {
+		add(kw)
+	}
+	return out
+}
+
+// countKeywords tallies how many times each token appears in xs — the
+// per-source repeat count mergePrintedKeywords compares to decide a
+// cumulative keyword's merged count.
+func countKeywords(xs []string) map[string]int {
+	if len(xs) == 0 {
+		return nil
+	}
+	counts := make(map[string]int, len(xs))
+	for _, x := range xs {
+		counts[x]++
+	}
+	return counts
 }
 
 // printedColors is the printed-colour rule for a whole card: the

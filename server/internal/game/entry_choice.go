@@ -7,12 +7,12 @@ import (
 )
 
 // entry_choice.go — "as this permanent enters, you may pay N life"
-// (the Ravnica shockland cycle, CR 614.1c + CR 118.4).
+// (the Ravnica shockland cycle, CR 614.1c + CR 119.4).
 //
 // The shape is a replacement effect with a decision inside it, which
 // is the one thing the CR 614 pipeline could not previously express.
 // The pipeline is synchronous, but it already knows how to STOP: the
-// CR 616 ordering prompt and the CR 614.10 "may" prompt both bail
+// CR 616 ordering prompt and the "may" prompt both bail
 // with errReplacementPending and resume from a stashed frame. This
 // file adds a third bail of the same family — the difference is that
 // answering it costs life, and that the replacement applies when the
@@ -49,10 +49,12 @@ const PendingChoiceEntryPayLife PendingChoiceKind = "entry_pay_life"
 //
 // Returns false when no prompt is possible:
 //
-//   - the payer can't be identified, or can't legally pay (CR 118.4:
+//   - the payer can't be identified, or can't legally pay (CR 119.4:
 //     a player may pay N life only if their life total is at least
-//     N). A player at 1 life does not get to pay 2, and asking a
-//     question whose only answer is "no" is worse than not asking.
+//     N; CR 119.8: a player whose life total can't change may not pay
+//     any of it, #1200). A player at 1 life does not get to pay 2, and
+//     asking a question whose only answer is "no" is worse than not
+//     asking.
 //   - the entry can't be resumed (see ReplacementEvent.entryResumable).
 //     Pausing an entry site that has no resume would strand the card
 //     in its old zone; taking the un-paid branch instead costs the
@@ -68,7 +70,7 @@ func (g *Game) offerEntryLifePaymentLocked(ev *ReplacementEvent, chosen activeRe
 	cost := chosen.effect.EntryLifeCost
 	payer := g.entryChoicePlayerLocked(ev, chosen)
 	p := g.playerByIDLocked(payer)
-	if cost > 0 && ev.entryResumable && p != nil && !p.Eliminated && p.Life >= cost {
+	if cost > 0 && ev.entryResumable && p != nil && !p.Eliminated && g.CanPayLifeLocked(p, cost) {
 		g.queueEntryPayLifePromptLocked(ev, chosen, payer, cost)
 		return true
 	}
@@ -204,7 +206,7 @@ func (g *Game) ResolveEntryPayLife(choiceID, chooserID uuid.UUID, pay bool) erro
 	paid := false
 	if pay {
 		cost := chosen.effect.EntryLifeCost
-		if p := g.playerByIDLocked(chooserID); cost > 0 && p != nil && p.Life >= cost {
+		if p := g.playerByIDLocked(chooserID); cost > 0 && g.CanPayLifeLocked(p, cost) {
 			var source uuid.UUID
 			if chosen.source != nil {
 				source = chosen.source.InstanceID
@@ -311,6 +313,75 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) (entered uu
 			err = tailErr
 		}
 	}()
+	if g.findCardZoneLocked(ev.CardID) == g.Battlefield {
+		// Something already resolved the entry; don't double-push.
+		return ev.CardID, nil
+	}
+	l, ok, err := g.landEntryLocked(ev)
+	if err != nil || !ok {
+		return uuid.Nil, err
+	}
+	g.announceEntryLocked(l)
+	g.runEntryHooksLocked(l)
+	// #1069: the card has left the zone it came from, and an open
+	// choose_cards prompt that still offers it there is offering an
+	// answer its own resolver would refuse — a graveyard pick whose
+	// candidate this reanimation just took. The entry side's one prune
+	// door (battlefield_entry.go). Last, and before the deferred entry
+	// tail for the reason executeZoneRouteLocked runs its route tail
+	// after its prunes: a withdrawal settles a run leg, and that
+	// continuation is the rest of somebody's card.
+	g.pruneChoicesAfterArrivalLocked()
+	return l.entered, nil
+}
+
+// entryLanding is one permanent that has LANDED on the battlefield and
+// not yet been announced: the first half of
+// executeEntryToBattlefieldLocked, handed to the second.
+//
+// The finisher used to be one function, which is right for one card
+// and wrong for a simultaneous entry (#1322, #1324): CR 603.6a checks
+// every permanent on the battlefield "including the newcomers" against
+// the event that put them there, so a batch has to land ALL of its
+// cards before it announces ANY of them. Splitting the finisher at that
+// seam lets the batch (entry_batch.go) run the same landing and the
+// same announcement the single-card entry runs, rather than a copy of
+// each that drifts — the batch's old phase 2 had already missed the
+// CR 707.2 copy and the CR 400.7 reset, the two things a Clone put by
+// Genesis Wave and a creature returned from exile by Sword of Hearth
+// and Home need.
+type entryLanding struct {
+	ev *ReplacementEvent
+	// moved is the permanent as it landed — after the CR 400.7 reset,
+	// the provenance stamp and the CR 707.2 copy — which is the value
+	// the ETB hook is keyed on.
+	moved Card
+	// srcKind is the zone it came from; "" for a created token, which
+	// comes from no zone (CR 111.1).
+	srcKind ZoneKind
+	// entered is its battlefield ID: the NEW one when the entry minted
+	// a new object.
+	entered uuid.UUID
+	// played is CR 305.4's distinction, carried from the settled
+	// event's landPlay flag to the record announceEntryLocked reads
+	// rather than reaching back into ev for it: true for the one
+	// entry that is a land PLAY (CR 305.1), false for every "put"
+	// path and for a token, which was never played. See Event.Played.
+	played bool
+}
+
+// landEntryLocked performs the move a settled entry event describes and
+// applies everything that has to be true of the permanent BEFORE any
+// event about it fires: controller, tapped, attacking, face-down state
+// or public knowledge, provenance, copy, counters and the land-drop
+// tally. It emits nothing; announceEntryLocked does.
+//
+// ok is false, with a nil error, when nothing entered: the card is
+// already on the battlefield, or it left the zone the window opened
+// over while the question was open.
+//
+// Caller must hold g.mu.
+func (g *Game) landEntryLocked(ev *ReplacementEvent) (l entryLanding, ok bool, err error) {
 	var (
 		srcKind ZoneKind
 		moved   Card
@@ -318,8 +389,7 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) (entered uu
 	src := g.findCardZoneLocked(ev.CardID)
 	switch {
 	case src == g.Battlefield:
-		// Something already resolved the entry; don't double-push.
-		return ev.CardID, nil
+		return entryLanding{}, false, nil
 	case src == nil:
 		// #762: a CREATED TOKEN, staged in Game.enteringTokens while
 		// its entry window was open. It is minted rather than moved —
@@ -328,30 +398,24 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) (entered uu
 		// rather than a zone move. Everything after that point is the
 		// entry every other permanent takes, which is the whole point
 		// of it being on this path.
-		tok, ok := g.takeEnteringTokenLocked(ev.CardID)
-		if !ok {
-			return uuid.Nil, ErrCardNotFound
-		}
-		if tok.AttackingTarget != uuid.Nil {
-			// CR 506.3c: PUT onto the battlefield attacking, never
-			// declared, so the attack-declaration lock-in must not
-			// mistake this for a staged declaration and announce it.
-			g.noteAttackAnnouncedLocked(tok.InstanceID)
+		tok, found := g.takeEnteringTokenLocked(ev.CardID)
+		if !found {
+			return entryLanding{}, false, ErrCardNotFound
 		}
 		g.Battlefield.PushTop(tok)
 		moved = tok
 	default:
 		if src.Kind != ev.OldZone {
-			return uuid.Nil, nil
+			return entryLanding{}, false, nil
 		}
 		srcKind = src.Kind
 		m, err := MoveCard(src, g.Battlefield, ev.CardID)
 		if err != nil {
-			return uuid.Nil, err
+			return entryLanding{}, false, err
 		}
 		moved = m
 	}
-	entered = moved.InstanceID
+	entered := moved.InstanceID
 	if ev.entryTail != nil && ev.entryTail.newObject {
 		// CR 400.7, and it happens FIRST: the reset zeroes the tapped
 		// flag and the counters, so the settled EntersTapped and
@@ -376,6 +440,15 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) (entered uu
 		}
 		break
 	}
+	// CR 506.3c (#1227): PUT onto the battlefield attacking, never
+	// declared — so the attack-declaration lock-in must not mistake
+	// this for a staged declaration and announce it. Read off the
+	// settled EVENT for the reason EntersTapped is, which is what
+	// makes this one line serve both the minted-token branch above
+	// (whose creation seeded EntersAttacking off the token) and every
+	// card that reaches this door. Before phase 3's EventETB, so an
+	// entering attacker's own ETB trigger finds it attacking.
+	g.stampEntryAttackerLocked(entered, ev.EntersAttacking)
 	if ev.FaceDown != FaceDownNone {
 		// CR 708.5, ADR 0082 decision 3: a FACE-DOWN entry — a
 		// manifest, or a spell cast face down — lands as a CR 708.2
@@ -390,8 +463,8 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) (entered uu
 		// ETB trigger and no "as enters" hook, which is CR 708.2a
 		// falling out rather than a special case. `moved` is stamped
 		// too because that copy is what the ETB hook is keyed on.
-		g.applyFaceDownLandingLocked(g.Battlefield, entered, ev.FaceDown)
-		moved.SetFaceDown(ev.FaceDown)
+		g.applyFaceDownLandingLocked(g.Battlefield, entered, ev.FaceDown, ev.FaceDownListed)
+		moved.SetFaceDownListed(ev.FaceDown, ev.FaceDownListed)
 	} else {
 		g.markCardKnownInZoneLocked(g.Battlefield, entered)
 	}
@@ -414,6 +487,10 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) (entered uu
 		moved = copied
 	}
 	g.applyEntryCountersLocked(entered, ev.EntersWithCounters)
+	// ADR 0090, CR 722.3a: "this creature enters prepared". After the
+	// copy above, so a Clone copying a preparation card prepares the
+	// prepare spell it copied, and before EventETB.
+	g.applyEntersPreparedLocked(entered, ev.EntersPrepared)
 	// Per-turn land-drop tally. The land branch in CastSpell bumps
 	// this on the path where nothing pauses; this branch is the same
 	// land play finishing after a prompt, and it was never bumping
@@ -433,7 +510,19 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) (entered uu
 		}
 		g.LandsPlayedThisTurn[ev.Actor]++
 	}
-	if srcKind == "" {
+	return entryLanding{ev: ev, moved: moved, srcKind: srcKind, entered: entered, played: ev.landPlay}, true, nil
+}
+
+// announceEntryLocked emits what a landed permanent's arrival owes the
+// event log — the zone move (or, for a created token, the creation),
+// the resolved Aura's attach and EventETB — in the order the single
+// entry has always used. The catalog's AsEnters hook is not here; see
+// runEntryHooksLocked.
+//
+// Caller must hold g.mu.
+func (g *Game) announceEntryLocked(l entryLanding) {
+	ev := l.ev
+	if l.srcKind == "" {
 		// #762: a created token arrived from no zone, so the
 		// announcement is the creation itself (CR 111.1). One event,
 		// never two — a token that also emitted a zone move would be
@@ -442,15 +531,17 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) (entered uu
 			Kind:   EventTokenCreated,
 			Actor:  ev.Actor,
 			Source: ev.Source,
-			CardID: entered,
+			CardID: l.entered,
+			Played: l.played,
 		})
 	} else {
 		g.EmitEvent(Event{
 			Kind:    EventZoneMove,
 			Actor:   ev.Actor,
-			CardID:  entered,
-			OldZone: srcKind,
+			CardID:  l.entered,
+			OldZone: l.srcKind,
 			NewZone: ZoneBattlefield,
+			Played:  l.played,
 		})
 	}
 	// S16.5: the two jobs stack resolution does that no other entry
@@ -460,25 +551,25 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) (entered uu
 	// ETB trigger already sees the attachment, exactly as the
 	// un-paused path orders it.
 	if ev.stackItem != nil {
-		g.attachResolvedAuraLocked(entered, ev.stackItem)
+		g.attachResolvedAuraLocked(l.entered, ev.stackItem)
 	}
 	g.EmitEvent(Event{
 		Kind:   EventETB,
 		Actor:  ev.Actor,
-		CardID: entered,
+		CardID: l.entered,
 	})
-	g.fireETBHookLocked(entered, CatalogKey(moved))
-	if ev.stackItem != nil {
-		g.queueAltCostEntryTriggerLocked(moved, ev.stackItem)
+}
+
+// runEntryHooksLocked runs the catalog's AsEnters hook for a landed and
+// announced permanent, and evoke's sacrifice trigger for a resolved
+// spell. It is a step of its own because a simultaneous entry announces
+// every card before it runs the first hook (entry_batch.go), so a hook
+// that looks at the board sees the whole batch.
+//
+// Caller must hold g.mu.
+func (g *Game) runEntryHooksLocked(l entryLanding) {
+	g.fireETBHookLocked(l.entered, CatalogKey(l.moved))
+	if l.ev.stackItem != nil {
+		g.queueAltCostEntryTriggerLocked(l.moved, l.ev.stackItem)
 	}
-	// #1069: the card has left the zone it came from, and an open
-	// choose_cards prompt that still offers it there is offering an
-	// answer its own resolver would refuse — a graveyard pick whose
-	// candidate this reanimation just took. The entry side's one prune
-	// door (battlefield_entry.go). Last, and before the deferred entry
-	// tail for the reason executeZoneRouteLocked runs its route tail
-	// after its prunes: a withdrawal settles a run leg, and that
-	// continuation is the rest of somebody's card.
-	g.pruneChoicesAfterArrivalLocked()
-	return entered, nil
 }

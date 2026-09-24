@@ -29,13 +29,9 @@ import (
 // spelling once shipped. The zero value means the block is legal.
 //
 // Only the reasons some check actually produces are declared. The
-// addendum reserves more (too_few_blockers, too_many_blockers,
-// declaration_limit, not_defending, tapped); each joins
-// this list in the PR that first returns it, so the wire never
-// advertises a refusal nothing can send. The count reasons are still
-// reserved on purpose: a bound is judged on a whole declaration, and
-// this engine's per-pair DeclareBlocker has no set to judge, so
-// nothing can send them yet (see blockers.go).
+// addendum reserves more (tapped); each joins this list in the PR that
+// first returns it, so the wire never advertises a refusal nothing can
+// send. declaration_limit joined with #1507.
 type BlockReason string
 
 const (
@@ -99,6 +95,25 @@ const (
 	// (Hungering Hydra's "can't be blocked by more than one
 	// creature"). BlockRefusal.N carries that maximum. #750.
 	BlockReasonTooManyBlockers BlockReason = "too_many_blockers"
+
+	// BlockReasonNotDefending — the blocker's controller is not the
+	// defending player of the attack: the attacker is attacking
+	// another player, a planeswalker another player controls, or a
+	// battle another player protects (CR 802.4a, 509.1a) — or it is
+	// attacking nothing at all. Like the count reasons it is the
+	// declaration's business rather than the pair's, so it comes from
+	// DeclareBlockers and never from BlockPairRefusalLocked. #1339.
+	BlockReasonNotDefending BlockReason = "not_defending"
+
+	// BlockReasonDeclarationLimit — the declaration would put more
+	// creatures into blocks in this COMBAT than a whole-combat limit
+	// allows: Silent Arbiter's "no more than one creature can block
+	// each combat" (CR 509.1b, BlockRule.Limit). BlockRefusal.N
+	// carries the bound and Source the permanent that prints it. Like
+	// the count reasons it is a property of the declaration, so it
+	// comes only from the declaration verbs. The token was reserved by
+	// ADR 0045's addendum (Decision 8) and first sent by #1507.
+	BlockReasonDeclarationLimit BlockReason = "declaration_limit"
 )
 
 // BlockReasons lists every reason the engine can return today, in the
@@ -121,6 +136,8 @@ func BlockReasons() []BlockReason {
 		BlockReasonCantBlockAttacker,
 		BlockReasonTooFewBlockers,
 		BlockReasonTooManyBlockers,
+		BlockReasonNotDefending,
+		BlockReasonDeclarationLimit,
 	}
 }
 
@@ -139,7 +156,8 @@ type BlockRefusal struct {
 	// creature rather than the effect's source.
 	Source uuid.UUID
 	// N is the bound a count refusal broke: the minimum for
-	// too_few_blockers, the maximum for too_many_blockers (#750).
+	// too_few_blockers, the maximum for too_many_blockers (#750), the
+	// whole-combat bound for declaration_limit (#1507).
 	// Zero for every per-pair reason, none of which has a number.
 	N int
 	// Label is the block rule's parameter as its card prints it —
@@ -254,8 +272,9 @@ func (g *Game) BlockPairRefusalLocked(attacker, blocker *Card) BlockRefusal {
 	// refusal is the more specific answer for the player.
 	//
 	// Block COUNTS are not here. A bound is a property of a whole
-	// declaration, not of a pair, so it is judged at the declaration's
-	// lock-in (revertIllegalBlockCountsLocked, blockers.go).
+	// declaration, not of a pair, so it is judged on the whole
+	// declaration by DeclareBlockers (blockCountRefusalLocked,
+	// block_declaration.go), which refuses an illegal count.
 	if r := g.blockRuleRefusalLocked(attacker, blocker); !r.Legal() {
 		return r
 	}
@@ -297,6 +316,20 @@ type BlockRefusedError struct {
 	// the attacker's token prints it: "red", "Demons". Empty for
 	// every other reason. #662.
 	Quality string
+	// TargetKind and TargetName say what the attacker is attacking,
+	// for not_defending: a player (TargetName empty — DefenderName
+	// is the player), or the planeswalker or battle by name. Empty
+	// for every other reason. #1339. AttackTargetNone with a Defender
+	// set is #1364's shape: what it attacked has left combat, and the
+	// Defender is the player who was defending it (CR 506.4c).
+	TargetKind AttackTargetKind
+	TargetName string
+	// SourceName names the permanent a declaration_limit refusal was
+	// read from ("Silent Arbiter"), because a whole-combat limit is
+	// printed on a card that is neither of the two creatures and the
+	// player needs to know which one to answer. Empty for every other
+	// reason. #1507.
+	SourceName string
 }
 
 // Error is the debug form. It is the sentence as a third party would
@@ -368,14 +401,69 @@ func (e *BlockRefusedError) Sentence(viewer uuid.UUID) string {
 		return attacker + " can't be blocked by fewer than " + blockerCountPhrase(e.N) + "."
 	case BlockReasonTooManyBlockers:
 		return attacker + " can't be blocked by more than " + blockerCountPhrase(e.N) + "."
+	case BlockReasonNotDefending:
+		// #1339, CR 802.4a. The sentence says where the attacker IS
+		// pointed, because that is what tells the player whose
+		// creatures could block it.
+		return e.notDefendingSentence(attacker, viewer)
+	case BlockReasonDeclarationLimit:
+		// #1507. The clause as printed, then the card that prints it:
+		// "No more than one creature can block each combat (Silent
+		// Arbiter)." It names neither creature, because the limit is
+		// about the combat and every blocker counts the same.
+		clause := "No more than " + blockerCountPhrase(e.N) + " can block each combat"
+		if e.Label != "" {
+			clause = upperFirst(e.Label)
+		}
+		if e.SourceName != "" {
+			clause += " (" + e.SourceName + ")"
+		}
+		return clause + "."
 	}
 	return blocker + " can't block " + attacker + "."
+}
+
+// notDefendingSentence is Sentence's not_defending arm: "Grizzly Bears
+// is attacking P3, so only P3 can block it." The defending player
+// reads "you"; an attack on a planeswalker or battle names the
+// permanent and its controller or protector.
+func (e *BlockRefusedError) notDefendingSentence(attacker string, viewer uuid.UUID) string {
+	if e.Defender == uuid.Nil {
+		return attacker + " isn't attacking anything, so no one can block it."
+	}
+	who, controls, protects := "another player", "another player controls", "another player protects"
+	switch {
+	case e.Defender == viewer:
+		who, controls, protects = "you", "you control", "you protect"
+	case e.DefenderName != "":
+		who, controls, protects = e.DefenderName, e.DefenderName+" controls", e.DefenderName+" protects"
+	}
+	target := who
+	switch e.TargetKind {
+	case AttackTargetNone:
+		// #1364, CR 506.4c: the planeswalker or battle it attacked has
+		// left combat. It is attacking nothing, but it may still be
+		// blocked — by the player who was defending it.
+		return attacker + " is still attacking, though what it attacked is gone, so only " + who + " can block it."
+	case AttackTargetPlaneswalker:
+		target = nameOr(e.TargetName, "a planeswalker") + ", a planeswalker " + controls
+	case AttackTargetBattle:
+		target = nameOr(e.TargetName, "a battle") + ", a battle " + protects
+	}
+	return attacker + " is attacking " + target + ", so only " + who + " can block it."
 }
 
 // blockRefusedErrorLocked builds the error for a refused pair. Caller
 // holds g.mu with fresh layers; reads only.
 func (g *Game) blockRefusedErrorLocked(attacker, blocker *Card, r BlockRefusal) *BlockRefusedError {
 	e := &BlockRefusedError{BlockRefusal: r}
+	if r.Reason == BlockReasonDeclarationLimit {
+		// #1507: the limit is printed on a third card. Named here so
+		// it is read the way every other name in the refusal is.
+		if src := findBattlefieldCard(g, r.Source); src != nil {
+			e.SourceName = src.Effective().Name
+		}
+	}
 	if blocker != nil {
 		e.Blocker, e.BlockerName = blocker.InstanceID, blocker.Effective().Name
 	}
@@ -383,7 +471,7 @@ func (g *Game) blockRefusedErrorLocked(attacker, blocker *Card, r BlockRefusal) 
 		return e
 	}
 	e.Attacker, e.AttackerName = attacker.InstanceID, attacker.Effective().Name
-	if e.Defender = g.defendingPlayerForAttackLocked(attacker.AttackingTarget); e.Defender != uuid.Nil {
+	if e.Defender = g.defendingPlayerForAttackerLocked(attacker); e.Defender != uuid.Nil {
 		if p := g.playerByIDLocked(e.Defender); p != nil {
 			e.DefenderName = p.Name
 		}
@@ -403,6 +491,13 @@ func (g *Game) blockRefusedErrorLocked(attacker, blocker *Card, r BlockRefusal) 
 		e.Keyword = string(r.Reason)
 		if q, ok := MatchedProtection(attacker, SourceCharacteristics(blocker)); ok {
 			e.Quality = q.Printed
+		}
+	case BlockReasonNotDefending:
+		e.TargetKind = g.classifyAttackTargetLocked(attacker.AttackingTarget)
+		if e.TargetKind == AttackTargetPlaneswalker || e.TargetKind == AttackTargetBattle {
+			if c := findBattlefieldCard(g, attacker.AttackingTarget); c != nil {
+				e.TargetName = c.Effective().Name
+			}
 		}
 	}
 	return e
@@ -437,6 +532,15 @@ func blockerCountPhrase(n int) string {
 		return words[n] + unit
 	}
 	return strconv.Itoa(n) + unit
+}
+
+// upperFirst capitalises the first letter of a printed clause so it
+// can open a sentence. ASCII only: every clause it is handed is.
+func upperFirst(s string) string {
+	if s == "" || s[0] < 'a' || s[0] > 'z' {
+		return s
+	}
+	return string(s[0]-'a'+'A') + s[1:]
 }
 
 func nameOr(s, fallback string) string {

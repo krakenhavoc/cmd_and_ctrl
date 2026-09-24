@@ -11,39 +11,29 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (two Retrievers and a sacrifice outlet). A dies trigger with a
 // graveyard target, Sun Titan's shape.
 //
-// "ANOTHER" is enforced at resolution, not in the picker: the
-// Retriever is itself an artifact card in your graveyard by the time
-// the trigger targets, and TargetSpec.CardOK never sees the trigger's
-// source, so the zone browser will offer it. Picking it does nothing
-// — a wasted trigger, which is weaker than printed; returning it
-// would be the loop the printed word exists to forbid, and that is
-// the direction #259 rules out. Declared here rather than hidden.
+// "ANOTHER" is exact. The clause is built per trigger through
+// AnotherTarget (TriggeredAbility.TargetsFrom, which is handed the
+// source), so the picker excludes THIS Retriever by instance rather
+// than by name: a second Myr Retriever — a Clone or a token copy of
+// this one — is a legal target, as printed, and the Retriever whose
+// trigger it is never is. The resolution re-check (CR 608.2b) runs
+// the same clause.
 func init() {
 	Register(Spec{
 		OracleID:     "d07d3be3-f69d-4484-8467-cffd43871788",
 		Name:         "Myr Retriever",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The trigger can be pointed at Myr Retriever itself, which returns nothing — pick another artifact card."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventLTB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return cardDied(ev, source)
 			},
-			Targets: TargetCardInGraveyard("another target artifact card in your graveyard", Artifact(), YouOwn()),
+			TargetsFrom: AnotherTarget(func(other CardPredicate) *game.TargetSpec {
+				return TargetCardInGraveyard("another target artifact card in your graveyard", Artifact(), YouOwn(), other)
+			}),
 			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
 				return game.NewTriggeredItem(source, "Myr Retriever — return an artifact card to hand",
-					func(g *game.Game, item *game.StackItem) error {
-						if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-							return nil
-						}
-						if item.Targets[0].ID == item.SourceCardID {
-							return nil // "another" — see the card comment
-						}
-						return ReturnFromGraveyard{
-							Target: item.Targets[0].ID,
-							Dest:   game.ZoneHand,
-						}.Apply(NewContext(g, item))
-					})
+					returnTargetedCardToHand)
 			},
 		}},
 	})

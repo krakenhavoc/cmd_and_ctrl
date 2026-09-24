@@ -97,11 +97,13 @@ type AlternativeCost struct {
 	// A COST, not a drawback: it is validated before anything is
 	// paid, so a player below N life cannot claim the offer at all —
 	// and #695 made that true of the OFFER as well as the payment.
-	// AlternativeCostPayableLocked is the predicate; LifePayableBy is
-	// the line. (CR 119.4 lets a player pay life down to exactly
-	// zero, and the state-based action kills them afterwards — that
-	// is a legal, if unwise, Force of Will. The stale 118.4 citation
-	// here was the #693 renumbering tail.)
+	// AlternativeCostPayableLocked is the predicate; lifePayableBy is
+	// the line, and since #1200 it also carries CR 119.8 — a player
+	// whose life total can't change cannot pay any of it. (CR 119.4
+	// lets a player pay life down to exactly zero, and the
+	// state-based action kills them afterwards — that is a legal, if
+	// unwise, Force of Will. The stale 118.4 citation here was the
+	// #693 renumbering tail.)
 	Life int
 
 	// ExileFromHand is "exile a blue card from your hand" (Force of
@@ -145,7 +147,7 @@ type AlternativeCost struct {
 	PayLabel string
 
 	// SacrificeOnEntry is evoke's "it's sacrificed when it enters".
-	// Modelled as what CR 702.74b says it is — a triggered ability —
+	// Modelled as what CR 702.74a says it is — a triggered ability —
 	// rather than as an immediate sacrifice inside the resolution.
 	// The difference is observable and is the entire reason to evoke
 	// a Slithermuse: the sacrifice uses the stack, so opponents get
@@ -199,7 +201,7 @@ type AlternativeCost struct {
 	// Evoke queues a triggered ability; warp schedules a CR 603.7
 	// delayed trigger, and the grant it leaves behind is the same
 	// CastPermission airbend uses — CR 611.2b's "for as long as it
-	// remains exiled" (Duration.WhileInZone) with a NotBeforeTurn
+	// remains exiled" (Duration.WhileInZone) with a NotBeforeSeq
 	// floor for the "on a later turn" clause.
 	//
 	// A warped creature is therefore a two-for-one paid in tempo:
@@ -238,7 +240,7 @@ type AlternativeCost struct {
 
 	// FaceDown is CR 708.4: paying this cost casts the card FACE
 	// DOWN. Morph's "you may cast this card as a 2/2 face-down
-	// creature spell for {3}" (CR 702.37b), megamorph's (CR 702.109a)
+	// creature spell for {3}" (CR 702.37b), megamorph's (CR 702.37b)
 	// and disguise's (CR 702.168a) — nil for every other alternative
 	// cost in the game.
 	//
@@ -411,26 +413,25 @@ func (a *AlternativeCost) Available(g *Game, controller uuid.UUID) bool {
 	return a.Condition == nil || a.Condition(g, controller)
 }
 
-// LifePayableBy is CR 119.4: a player may pay life only if their life
-// total is greater than or equal to the payment. Exactly equal is
-// payable — paying down to zero is legal, and the state-based action
-// that follows is a separate rule (CR 704.5a).
+// lifePayableBy is CR 119.4 and CR 119.8 on this offer's life
+// component: may `p` pay it right now?
 //
 // One line, and it is a FUNCTION rather than a comparison spelled out
 // at each reader because it had been spelled out at only one of them
 // (#695): announce refused the cast, the view showed the offer anyway,
-// and a Force of Will at 0 life was a button that could only fail.
+// and a Force of Will at 0 life was a button that could only fail. It
+// forwards to g.CanPayLifeLocked (life_lock.go), the one predicate
+// every life-cost validator in the engine reads, so a player whose
+// life total can't change (#1200) is refused Snuff Out's "pay 4 life"
+// here as well as at the payment.
 //
 // Nil-safe on both sides. An offer with no life component is payable
-// by anybody.
-func (a *AlternativeCost) LifePayableBy(p *Player) bool {
+// by anybody. Caller must hold g.mu.
+func (g *Game) lifePayableBy(a *AlternativeCost, p *Player) bool {
 	if a == nil {
 		return false
 	}
-	if a.Life <= 0 {
-		return true
-	}
-	return p != nil && p.Life >= a.Life
+	return g.CanPayLifeLocked(p, a.Life)
 }
 
 // AlternativeCostPayableLocked reports whether a player could pay
@@ -474,7 +475,7 @@ func (g *Game) AlternativeCostPayableLocked(playerID, castID uuid.UUID, alt *Alt
 	if p == nil {
 		return false
 	}
-	if !alt.LifePayableBy(p) {
+	if !g.lifePayableBy(alt, p) {
 		return false
 	}
 	spec, zone, want := alt.cardComponent()
@@ -543,10 +544,10 @@ func (g *Game) validateAlternativeCostPaymentLocked(playerID, castID uuid.UUID, 
 	if p == nil {
 		return ErrPlayerNotFound
 	}
-	// CR 119.4, through the same one-line predicate the view's offer
-	// stamp and the bot enumerator read (#695), so an offer the client
-	// can see is one this validator will accept.
-	if !alt.LifePayableBy(p) {
+	// CR 119.4 and CR 119.8, through the same one-line predicate the
+	// view's offer stamp and the bot enumerator read (#695), so an
+	// offer the client can see is one this validator will accept.
+	if !g.lifePayableBy(alt, p) {
 		return ErrInvalidParam
 	}
 	spec, zone, want := alt.cardComponent()
@@ -668,7 +669,7 @@ func (g *Game) AltCostCandidatesLocked(playerID, castID uuid.UUID, alt *Alternat
 // would make Force of Will free.
 //
 // Caller must hold g.mu.
-func (g *Game) payAlternativeCostLocked(playerID uuid.UUID, alt *AlternativeCost, ids []uuid.UUID) error {
+func (g *Game) payAlternativeCostLocked(playerID uuid.UUID, alt *AlternativeCost, ids []uuid.UUID, answers map[uuid.UUID]bool) error {
 	if alt == nil {
 		return nil
 	}
@@ -684,11 +685,27 @@ func (g *Game) payAlternativeCostLocked(playerID uuid.UUID, alt *AlternativeCost
 	if len(ids) == 0 {
 		return nil
 	}
+	// #1397: each card's move carries the CR 903.9 answer its owner
+	// gave before the cast was paid for (cost_commander_choice.go), so
+	// a pitched, returned or escaped commander no longer pauses the
+	// payment half way through it. #1420: MustSettleNow extends that
+	// indivisible-payment rule to CR 616 ordering prompts; a spell may
+	// not sit on the stack while the card paying for it is still in its
+	// old zone.
+	move := func(id uuid.UUID, dst ZoneKind) error {
+		_, err := g.routeCardToZoneLocked(zoneRoute{
+			CardID:          id,
+			Dst:             dst,
+			MustSettleNow:   true,
+			commanderAnswer: commanderAnswerFor(answers, id),
+		})
+		return err
+	}
 	switch {
 	case alt.ExileFromHand != nil:
-		return g.ExileCardForEffect(ids[0])
+		return move(ids[0], ZoneExile)
 	case alt.ReturnToHand != nil:
-		return g.BounceToHandForEffect(ids[0])
+		return move(ids[0], ZoneHand)
 	case alt.ExileFromGraveyard != nil:
 		// Escape's exiles are a cost, so they happen with the spell
 		// already on the stack — which is what makes an escaped Uro
@@ -696,7 +713,7 @@ func (g *Game) payAlternativeCostLocked(playerID uuid.UUID, alt *AlternativeCost
 		// what makes the cards stay exiled when the spell is
 		// countered.
 		for _, id := range ids {
-			if err := g.ExileCardForEffect(id); err != nil {
+			if err := move(id, ZoneExile); err != nil {
 				return err
 			}
 		}
@@ -750,7 +767,7 @@ func TargetSpecUnderAlternativeCost(base *TargetSpec, alt *AlternativeCost) *Tar
 
 // queueAltCostEntryTriggerLocked applies the clauses an alternative
 // cost attaches to the permanent's ENTRY: evoke's "it's sacrificed
-// when it enters" (CR 702.74b) and warp's "exile this at the
+// when it enters" (CR 702.74a) and warp's "exile this at the
 // beginning of the next end step, then you may cast it from exile on
 // a later turn" (CR 702.185a).
 //
@@ -786,8 +803,11 @@ func (g *Game) queueAltCostEntryTriggerLocked(card Card, item *StackItem) {
 			// The permanent may already have left — the trigger sat
 			// on the stack and anyone could answer it. Nothing to
 			// sacrifice is not an error; the ability simply does as
-			// much as it can (CR 608.2c).
-			if g.controllerOfBattlefieldCardLocked(it.SourceCardID) == uuid.Nil {
+			// much as it can (CR 608.2c). Left and COME BACK is the
+			// same answer (#1432, CR 400.7): an evoked creature
+			// flickered in response is a new object, cast for nothing
+			// in particular, and is not sacrificed.
+			if g.AbilitySourceGoneForEffect(it) {
 				return nil
 			}
 			return g.sacrificePermanentLocked(it.SourceCardID)
@@ -842,7 +862,7 @@ func (g *Game) applyAltCostEntryCountersLocked(ev *ReplacementEvent, card Card, 
 //
 // Caller must hold g.mu.
 func (g *Game) scheduleWarpExileLocked(card Card, item *StackItem, alt *AlternativeCost) {
-	notBefore := g.Turn.Number + 1
+	notBefore := g.Turn.Seq + 1
 	g.ScheduleDelayedTriggerForEffect(DelayedTrigger{
 		Controller:   item.Controller,
 		SourceCardID: card.InstanceID,
@@ -865,9 +885,9 @@ func (g *Game) scheduleWarpExileLocked(card Card, item *StackItem, alt *Alternat
 					// Zero Player means "the card's owner", which is
 					// what warp says: YOU cast it later, and the
 					// warping player owns the card.
-					Duration:      WhileInZoneDuration(),
-					NotBeforeTurn: notBefore,
-					Label:         "Warp — cast it from exile",
+					Duration:     WhileInZoneDuration(),
+					NotBeforeSeq: notBefore,
+					Label:        "Warp — cast it from exile",
 				}); err != nil {
 					return err
 				}

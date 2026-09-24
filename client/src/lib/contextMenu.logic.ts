@@ -28,11 +28,12 @@ import {
   planAttackAll,
   seatLabel,
 } from "./attackAll";
-import { attackTargetHint, permanentAttackTargets } from "./attackTargets";
+import { attackersDefendedBy, attackTargetHint, permanentAttackTargets } from "./attackTargets";
 import { isCreature, isLand, isPlaneswalker } from "./cardTypes";
 import { counterCostBlocked } from "./counterCost";
 import type { ActionType, CardView, GameView } from "./protocol";
 import { sacrificeRangeShortfall } from "./sacrificeCost";
+import { targetPriceRange } from "./targetPrices";
 import {
   canActivateLoyalty,
   canActivateSorcerySpeedAbility,
@@ -136,6 +137,10 @@ export type MenuPrompt = "custom_counter" | "mark_damage";
 export interface MenuActivate {
   kind: "mana" | "ability";
   index: number;
+  // #1443: a mana ability's colours, named up front by the anchored
+  // picker so the server queues no mana_pick. Absent from the menu's
+  // own rows, which keep the two-step activation.
+  colors?: string[];
 }
 
 export interface MenuItem {
@@ -242,9 +247,20 @@ export function canOverride(card: CardView, viewerID: string | null, isAdmin: bo
 // battlefield permanent should do.
 //
 //	"abilities" — open this card's menu so the player can pick one
+//	"mana"      — tap it FOR mana (#1438): activate its mana ability,
+//	              or open the mana picker when it has several
 //	"tap"       — the historic default: toggle tapped / untapped
 //	"none"      — the viewer may not drive this card at all
-export type BattlefieldClickIntent = "abilities" | "tap" | "none";
+export type BattlefieldClickIntent = "abilities" | "mana" | "tap" | "none";
+
+// BattlefieldClickOptions carries what the click router cannot read
+// off the card: whether this panel may activate mana abilities at all
+// (only the viewer's own panel wires the activation), and whether the
+// click was an Alt-click, which always means "just turn it sideways".
+export interface BattlefieldClickOptions {
+  manaClick?: boolean;
+  rawTap?: boolean;
+}
 
 // battlefieldClickIntent routes a left-click. Issue #329: "I cast
 // teferi and when I click on him to choose one of his abilities it
@@ -265,13 +281,35 @@ export type BattlefieldClickIntent = "abilities" | "tap" | "none";
 // planeswalker with none still has the manual loyalty +/− rows
 // there, which beats a meaningless tap. Tap and untap remain in that
 // same menu for the rare effect that wants them.
+//
+// #1438, Ian: "when you click on mana and it taps can you have it tap
+// for that mana and put it in the floating mana pool". A raw tap of a
+// Forest adds nothing, and that is exactly how #1296's reporter tapped
+// a land and then wondered where the mana was. So an UNTAPPED
+// permanent with a mana ability is clicked FOR mana — lands, rocks
+// and dorks alike, and utility lands that also make mana (Rogue's
+// Passage): making mana is what they are clicked for nearly every
+// time, and the utility ability stays on right-click. What keeps the
+// old behaviour:
+//   - a TAPPED permanent: the click untaps it, one click as before;
+//   - a permanent with no mana ability: click-to-tap as before;
+//   - Alt-click: a raw tap, for the sandbox cases that want one
+//     (the right-click menu has it too, as "Tap (no mana)");
+//   - a planeswalker: still its menu (#329).
+// Summoning sickness is NOT checked here. The activation goes out and
+// the server's refusal is shown; the client does not pre-empt it.
 export function battlefieldClickIntent(
   card: CardView,
   viewerID: string | null,
   isAdmin: boolean,
+  opts: BattlefieldClickOptions = {},
 ): BattlefieldClickIntent {
   if (!canOverride(card, viewerID, isAdmin)) return "none";
+  if (opts.rawTap) return "tap";
   if (isPlaneswalker(card)) return "abilities";
+  if (opts.manaClick && !card.tapped && (card.mana_abilities?.length ?? 0) > 0) {
+    return "mana";
+  }
   // #368, the same shape one rung down. Fabled Passage's only act is
   // "{T}, Sacrifice this land: search for a basic" — a CR 602
   // activated ability, not a mana ability — and left-clicking it
@@ -395,6 +433,10 @@ interface AbilityCost {
   // before.
   return_label?: string;
   return_options?: { players?: string[]; cards?: string[]; min?: number; max?: number };
+  // #759: a tap-another cost (station). Greyed on the same terms as
+  // the return cost: fewer untapped creatures than the clause needs.
+  tap_others_label?: string;
+  tap_others_options?: { players?: string[]; cards?: string[]; min?: number; max?: number };
   // #1157: `min` is part of the clause and not decoration. "Up to one
   // target creature you control" is min 0, and a clause with min 0 is
   // satisfied by an empty candidate list — see hasSatisfiableTargets.
@@ -406,6 +448,19 @@ interface AbilityCost {
   // catalog's first; a loyalty ability gets the same window from its
   // own arm below rather than from this flag.
   sorcery_speed?: boolean;
+  // #1208: true when the engine will refuse this activation RIGHT NOW
+  // for timing (CR 602.5d, CR 606.3), as modified by any per-player
+  // statement on the board — The Wandering Emperor's "you may
+  // activate her loyalty abilities any time you could cast an
+  // instant", Leonin Shikari's "you may activate equip abilities any
+  // time you could cast an instant".
+  //
+  // It is the ROW's verdict where sorcery_speed is the ability's
+  // printed clause, and it is the one to grey on: the client no
+  // longer derives the window for a catalogued ability. Absent means
+  // the engine has no timing objection, which is every instant-speed
+  // ability, always.
+  timing_closed?: boolean;
   // #743: the ability's "Activate only if …" condition is false right
   // now. Carried by both mana and activated abilities.
   condition_unmet?: boolean;
@@ -493,6 +548,47 @@ export function chargedManaCostLabel(a: AbilityCost): string {
   return a.charged_mana_cost || "free";
 }
 
+// ReturnOptionsShape is the part of a LegalTargetsView a return-to-hand
+// cost ships (#1213). `min` and `max` are both the clause's count.
+export interface ReturnOptionsShape {
+  players?: string[];
+  cards?: string[];
+  min?: number;
+  max?: number;
+  count_from_x?: boolean;
+}
+
+// returnShortfall is the reason a return-to-hand cost can't be paid
+// right now, or "" when it can — sacrificeShortfall one verb over.
+// The clause's count is 1 on every printed card, so an option list
+// shorter than `min` is the whole of "this cannot be paid" (CR 118.3).
+//
+// ONE definition, two menus (#1227). The right-click menu had it
+// inline and the hand / zone-browser popover had nothing at all, which
+// is exactly the row ninjutsu needs greyed: a ninjutsu ability is
+// unpayable for the whole game except the declare-blockers window with
+// an unblocked attacker on the board, so a row that never greys is a
+// row that is almost always wrong.
+export function returnShortfall(opts: ReturnOptionsShape | undefined, label?: string): string {
+  if (!opts) return "";
+  const have = opts.cards?.length ?? 0;
+  if (have >= (opts.min ?? 1)) return "";
+  return `nothing to return (${label ?? "a permanent you control"})`;
+}
+
+// tapOthersShortfall is returnShortfall for a tap-another cost (#759):
+// the reason it can't be paid right now, or "" when it can. The
+// server's option list already excludes tapped creatures, other
+// players' creatures and — for "another" — the source, so its length
+// against `min` is the whole of CR 118.3.
+export function tapOthersShortfall(opts: ReturnOptionsShape | undefined, label?: string): string {
+  if (!opts) return "";
+  const have = opts.cards?.length ?? 0;
+  const need = opts.count_from_x ? 1 : (opts.min ?? 1);
+  if (have >= need) return "";
+  return `nothing to tap (${label ?? "another untapped creature you control"})`;
+}
+
 // abilityBlocked returns the reason an ability can't be activated
 // right now, or "" when it can. Advisory only — the server re-checks
 // every cost; this just greys the row and explains why.
@@ -511,12 +607,12 @@ export function abilityBlocked(
     a.sacrifice_label ?? "a permanent",
   );
   if (sacrifice) return sacrifice;
-  // #1213: the same question one verb over. The clause's count is 1
-  // on every printed card, so an empty option list is the whole of
-  // "this cannot be paid".
-  if (a.return_options && (a.return_options.cards?.length ?? 0) < (a.return_options.min ?? 1)) {
-    return `nothing to return (${a.return_label ?? "a permanent you control"})`;
-  }
+  // #1213: the same question one verb over.
+  const returned = returnShortfall(a.return_options, a.return_label);
+  if (returned) return returned;
+  // #759: and the tap-another cost.
+  const tapOthers = tapOthersShortfall(a.tap_others_options, a.tap_others_label);
+  if (tapOthers) return tapOthers;
   // CR 702.122a: a crew cost with no untapped creature to pay it is
   // unpayable. Only the empty case is judged here — whether the
   // creatures that DO exist add up to the crew number is arithmetic
@@ -540,18 +636,29 @@ export function abilityBlocked(
   // CR 606: a loyalty ability answers to the sorcery-speed window,
   // the once-per-turn flag, and "you have enough counters to pay".
   // The value 0 is a real cost, so this tests for presence.
+  //
+  // #1208: WHETHER the window is shut is the server's answer
+  // (timing_closed, the stamp of game.ActivationTimingOpenLocked);
+  // the client only puts it into words. That split is the point: a
+  // per-player statement — The Wandering Emperor's "you may activate
+  // her loyalty abilities any time you could cast an instant" — is
+  // board state the client cannot see, and before this the row stayed
+  // greyed on activations the engine accepts.
   if (a.loyalty_cost !== undefined && loyalty) {
-    const timing = canActivateLoyalty(loyalty.card, loyalty.view, loyalty.viewerID);
-    if (!timing.legal) return timing.reason ?? "can't activate right now";
+    if (a.timing_closed) return timingReason(loyalty);
+    if (loyalty.card.loyalty_activated) return "Already activated this turn";
     const unpayable = canPayLoyaltyCost(loyalty.card, a.loyalty_cost);
     if (unpayable) return unpayable;
   }
   // CR 602.5d — "activate only as a sorcery". Equip is the first
   // catalog ability to declare it. Checked after the loyalty arm so
   // a loyalty row keeps its more specific reason.
-  if (a.sorcery_speed && a.loyalty_cost === undefined && loyalty) {
-    const timing = canActivateSorcerySpeedAbility(loyalty.view, loyalty.viewerID);
-    if (!timing.legal) return timing.reason ?? "sorcery-speed only";
+  //
+  // timing_closed outranks sorcery_speed, which is only the ability's
+  // PRINTED clause: a Leonin Shikari's controller's equip row carries
+  // sorcery_speed, no timing_closed, and is live.
+  if (a.timing_closed && a.loyalty_cost === undefined) {
+    return loyalty ? timingReason(loyalty) : "sorcery-speed only";
   }
   // #743, CR 602.1b: an "Activate only if …" condition the server says
   // is false. After the timing arms, which is the order the server
@@ -589,6 +696,21 @@ export interface LoyaltyContext {
   viewerID: string | null;
 }
 
+// timingReason puts the server's `timing_closed` into words (#1208).
+//
+// The BIT is the engine's and the SENTENCE is the client's, which is
+// the only division of labour that survives a per-player timing
+// statement: whether the window is shut depends on board state the
+// client cannot see, but WHY it is shut — no priority, split second,
+// a non-empty stack, somebody else's turn — is all in the snapshot
+// and is what the player wants to read. `canActivateSorcerySpeedAbility`
+// can say "legal" here (a restriction shut the window rather than the
+// phase), in which case the generic sentence is the honest one.
+function timingReason(loyalty: LoyaltyContext): string {
+  const timing = canActivateSorcerySpeedAbility(loyalty.view, loyalty.viewerID);
+  return timing.reason ?? "Can't activate right now";
+}
+
 // abilityItems folds the permanent's mana abilities and CR 602
 // activated abilities into the menu. Right-click used to open the
 // dedicated ManaAbilityMenu popover; with the admin menu bound to
@@ -610,7 +732,13 @@ function abilityItems(card: CardView, view: GameView, viewerID: string | null): 
     ? "an effect stops its abilities"
     : "";
   const items: MenuItem[] = [];
-  for (const a of card.mana_abilities ?? []) {
+  // #1228: a card projects EITHER the battlefield mana list or the
+  // in-zone one, never both — the server filters by the zone the card
+  // is in (CR 113.6) — so one loop covers a permanent's "{T}: Add {G}"
+  // and a Spirit Guide's "Exile this card from your hand: Add {R}",
+  // and the index means the same thing to the engine either way. The
+  // same shape the activated loop below has had since #660.
+  for (const a of card.mana_abilities ?? card.zone_mana_abilities ?? []) {
     // Mana abilities never carry a loyalty cost, so the context is
     // inert for them — passed anyway to keep one call shape.
     const blocked = manaRestricted || abilityBlocked(a, tapped, sick, loyalty);
@@ -632,10 +760,16 @@ function abilityItems(card: CardView, view: GameView, viewerID: string | null): 
   // engine either way.
   for (const a of card.activated_abilities ?? card.zone_abilities ?? []) {
     const blocked = restricted || abilityBlocked(a, tapped, sick, loyalty);
+    // #1296: a price that depends on the target (Dragonfire Blade)
+    // says its range here; the targeting banner names each target's.
     items.push({
       id: `ability-${a.index}`,
       label: a.label || "activate",
-      hint: blocked || chargedManaCostNote(a) || undefined,
+      hint:
+        blocked ||
+        targetPriceRange(a.target_charged_mana_costs) ||
+        chargedManaCostNote(a) ||
+        undefined,
       disabled: !!blocked,
       activate: { kind: "ability", index: a.index },
     });
@@ -711,10 +845,14 @@ function loyaltyAbilityItems(card: CardView, view: GameView, viewerID: string | 
 
 function tapItems(card: CardView): MenuItem[] {
   const tapped = !!card.tapped;
+  // #1438: a left-click on a mana source now taps it FOR mana, so the
+  // plain tap here is the one that makes none — and says so.
+  const makesMana = (card.mana_abilities?.length ?? 0) > 0;
   return [
     {
       id: "tap",
-      label: "Tap",
+      label: makesMana ? "Tap (no mana)" : "Tap",
+      hint: makesMana ? "turn it sideways without adding mana" : undefined,
       disabled: tapped,
       action: { type: "tap", params: { instance_id: card.instance_id } },
     },
@@ -931,9 +1069,11 @@ function combatItems(view: GameView, card: CardView): MenuItem[] {
       });
     }
   }
-  const attackers = (view.battlefield?.cards ?? []).filter(
-    (c) => !!c.attacking_target && c.controller !== card.controller,
-  );
+  // #1339 (CR 802.4a): only the attackers this card's controller is
+  // DEFENDING against — attacking them, a planeswalker they control or
+  // a battle they protect. Every other attacker is somebody else's to
+  // block, and the server refuses it with not_defending.
+  const attackers = attackersDefendedBy(view, card.controller);
   if (attackers.length > 0) {
     items.push({
       id: "combat-block",
@@ -981,9 +1121,9 @@ function moveItems(card: CardView, location: CardLocation): MenuItem[] {
 }
 
 // specialActionItems is the CR 116.2 special-action rows on one card —
-// "Foretell {2}" and "Suspend 1—{R}" in the viewer's own hand (#658,
-// #659, ADR 0062 Decision 4), "Turn face up {1}{U}" on a face-down
-// permanent they control (#1194, ADR 0082).
+// "Foretell {2}", "Suspend 1—{R}" and "Plot {3}{U}" in the viewer's
+// own hand (#658, #659, #1342, ADR 0062 Decision 4), "Turn face up
+// {1}{U}" on a face-down permanent they control (#1194, ADR 0082).
 //
 // A row fires the `special_action` verb DIRECTLY, with no targeting
 // or cost picker in between, because no kind has a choice to make:
@@ -1003,18 +1143,35 @@ function moveItems(card: CardView, location: CardLocation): MenuItem[] {
 // not (CR 702.62c) — and a row that disagreed with the engine would
 // be a rejection toast. An unavailable row is greyed rather than
 // dropped, so a player can still see the card has the keyword.
+//
+// #1319: `sa.label` bakes the printed price in by hand ("Foretell
+// {2}"), which goes stale the moment a cost modifier reaches the
+// action — Ranar's "the first card you foretell each turn costs {0}".
+// The hint is the ONE place that discount is visible, reusing the
+// same chargedManaCostNote the activated-ability menu shows its own
+// discount in, since the two fields are named for the same contract
+// one level up (`cost` / `charged_cost` vs. `mana_cost` /
+// `charged_mana_cost`). Availability still wins the hint slot when
+// the row is greyed — a player needs to know it's not their turn
+// more than they need the price note.
 function specialActionItems(card: CardView, actor: string): MenuItem[] {
-  return (card.special_actions ?? []).map((sa) => ({
-    id: `special-${sa.kind}`,
-    label: sa.label || sa.kind,
-    hint: sa.available ? undefined : "not right now",
-    disabled: !sa.available,
-    action: {
-      type: "special_action" as ActionType,
-      params: { card_id: card.instance_id, kind: sa.kind, strict: true, auto_tap: true },
-      player: actor,
-    },
-  }));
+  return (card.special_actions ?? []).map((sa) => {
+    const costNote = chargedManaCostNote({
+      mana_cost: sa.cost,
+      charged_mana_cost: sa.charged_cost,
+    });
+    return {
+      id: `special-${sa.kind}`,
+      label: sa.label || sa.kind,
+      hint: sa.available ? costNote || undefined : "not right now",
+      disabled: !sa.available,
+      action: {
+        type: "special_action" as ActionType,
+        params: { card_id: card.instance_id, kind: sa.kind, strict: true, auto_tap: true },
+        player: actor,
+      },
+    };
+  });
 }
 
 // buildMenuSections is the whole menu for one card, in render order.

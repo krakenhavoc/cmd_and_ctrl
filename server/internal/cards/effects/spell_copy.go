@@ -31,7 +31,8 @@ import (
 // nothing.
 //
 // A target that is no longer on the stack — countered, or already
-// resolved, in response to this spell — is skipped silently. That
+// resolved, in response to this spell — is skipped silently, unless
+// FromLastKnown says the effect does not target it. That
 // is the CR 608.2b outcome for the whole spell in the single-target
 // case, and the engine's re-check has already handled it by the
 // time OnResolve runs; the guard here is for the multi-copy loop,
@@ -64,6 +65,19 @@ type CopySpell struct {
 	// multi-copy card with an except clause would mean. Nil for the
 	// plain copies, which is every card in the family but one.
 	Except func(v *game.PrintedValues)
+
+	// FromLastKnown copies the spell from last-known information when
+	// it has already left the stack (CR 608.2h, #1255) — the storm
+	// spell countered in response to its own trigger still gets its
+	// copies.
+	//
+	// Set it ONLY for an effect that names the spell without TARGETING
+	// it: storm, Thousand-Year Storm, Doublecast's "copy that spell".
+	// A copy effect that targets the spell (Reverberate, Twincast,
+	// Dualcaster Mage) is governed by CR 608.2b instead — a target that
+	// has left the stack is illegal and the copy must not happen — so
+	// it leaves this false and keeps the strict lookup.
+	FromLastKnown bool
 }
 
 func (c CopySpell) Apply(ctx *Context) error {
@@ -76,7 +90,11 @@ func (c CopySpell) Apply(ctx *Context) error {
 		controller = ctx.Controller()
 	}
 	for i := 0; i < n; i++ {
-		err := ctx.Game.CopySpellForEffect(c.StackID, controller, c.ChooseNewTargets, c.Except)
+		copyFn := ctx.Game.CopySpellForEffect
+		if c.FromLastKnown {
+			copyFn = ctx.Game.CopyLastKnownSpellForEffect
+		}
+		err := copyFn(c.StackID, controller, c.ChooseNewTargets, c.Except)
 		if err == game.ErrCardNotFound {
 			// The copied spell left the stack between copies. The
 			// copies already made stand; there is nothing left to

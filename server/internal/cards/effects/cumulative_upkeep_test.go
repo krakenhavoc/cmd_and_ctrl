@@ -127,9 +127,9 @@ func TestCumulativeUpkeepPromptBlocksTheTable(t *testing.T) {
 	// Anchored to the upkeep it was asked in, and blocking because the
 	// cursor is still standing there (#997). Nothing on the card says
 	// "block": the engine reads the step.
-	if choice.OwedInStep.Step != game.StepUpkeep || choice.OwedInStep.Turn != g.Turn.Number {
+	if choice.OwedInStep.Step != game.StepUpkeep || choice.OwedInStep.Turn != g.Turn.Seq {
 		t.Fatalf("the cumulative-upkeep prompt is anchored to %v, want turn %d's upkeep",
-			choice.OwedInStep, g.Turn.Number)
+			choice.OwedInStep, g.Turn.Seq)
 	}
 	if !g.ChoicePromptBlocksTable(choice) {
 		t.Fatal("ChoicePromptBlocksTable says the cumulative-upkeep prompt does not block")

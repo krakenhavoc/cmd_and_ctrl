@@ -31,7 +31,7 @@ func lengDiscard(t *testing.T, g *game.Game, who *game.Player, cards ...uuid.UUI
 	}
 }
 
-// answerLengPrompt answers the single queued CR 614.10 "may".
+// answerLengPrompt answers the single queued "may".
 func answerLengPrompt(t *testing.T, g *game.Game, chooser uuid.UUID, apply bool) {
 	t.Helper()
 	if len(g.PendingChoices) != 1 {

@@ -24,13 +24,7 @@ func init() {
 			Label: "{2}{G}{W}, {T}: Put a +1/+1 counter on each creature you control.",
 			Cost:  Plus(ManaCost("{2}{G}{W}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				for _, id := range b04CreatureIDsControlledBy(g, item.Controller) {
-					if err := (AddCounter{Target: id, Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
-						return err
-					}
-				}
-				return nil
+				return b11PutCountersOnEachCreatureYouControl(g, item, 1)
 			},
 		}},
 	})

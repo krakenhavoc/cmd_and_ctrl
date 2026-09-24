@@ -13,7 +13,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // attack. With the commander looting every turn this is a slow but
 // inevitable clock on the whole table.
 //
-// Batching (CR 603.1): the card reads "one or more cards… that
+// Batching: the card reads "one or more cards… that
 // much damage", one trigger per batch. The engine emits one
 // EventDiscardCard per card, so a two-card discard deals 1 twice
 // rather than 2 once. Same total, two log lines.
@@ -22,22 +22,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // from hand (CR 702.29a) whose discard feeds the damage trigger above
 // on every OTHER Artillerist on the board.
 //
-// DECLARED SIMPLIFICATION — the card's OWN cycle trigger. "When you
-// cycle this card" fires from the zone the card ends up in, which is
-// the graveyard (CR 702.29c), and the trigger harvester's zone scan
-// is the battlefield plus two narrow special cases. Teaching it a
-// third needs a zone dimension on TriggeredAbility — the same one
-// suspend's exile triggers want — and ADR 0062 Decision 7 defers it
-// rather than build it twice. The discard trigger fires either way,
-// so cycling this card still deals 1 to each opponent; what is
-// missing is the SECOND 1 the cycle trigger would add.
+// The card's OWN cycle trigger fires from the GRAVEYARD (CR 702.29c —
+// the card is already there when the ability triggers), watching via
+// `InGraveyard`, #925's zone dimension on TriggeredAbility. That
+// closed the gap ADR 0062 Decision 7 deferred (its 2026-09-18
+// amendment). Cycling this card now deals 2 total: 1 from the
+// discard trigger above (the discard IS the cycling activation's
+// cost) and 1 from the cycle trigger below.
 func init() {
 	Register(Spec{
 		OracleID:     "900b9409-9c16-414d-8674-2ea42c2415a1",
 		Name:         "Magmakin Artillerist",
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
-			"Cycling it deals 1 damage to each opponent from the discard trigger, but its own \"when you cycle this card\" trigger doesn't fire, so it deals 1 rather than 2.",
 			"Discarding several cards at once deals the damage as separate 1s.",
 		},
 		Triggered: []game.TriggeredAbility{
@@ -46,6 +43,11 @@ func init() {
 			}, "Magmakin Artillerist — 1 damage to each opponent", func(g *game.Game, item *game.StackItem) error {
 				return damageToEachOpponent(g, item, 1)
 			}),
+			InGraveyard(On(game.EventCycle, Self,
+				"Magmakin Artillerist — cycled: 1 damage to each opponent",
+				func(g *game.Game, item *game.StackItem) error {
+					return damageToEachOpponent(g, item, 1)
+				})),
 		},
 		Activated: []ActivatedAbility{Cycling("{1}{R}")},
 	})

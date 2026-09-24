@@ -184,8 +184,8 @@ func b31YouSacrificedAFood(ev game.Event, source *game.Card, g *game.Game) bool 
 
 // b31YouPlayedALandOrCastASpell is The Endstone's condition — one
 // printed ability with two trigger conditions, watching the land
-// play (b20LandPlayed, with the play-versus-return arithmetic that
-// helper documents) and the cast on one declaration.
+// play (b20LandPlayed, off Event.Played since #1326) and the cast on
+// one declaration.
 func b31YouPlayedALandOrCastASpell(ev game.Event, source *game.Card, g *game.Game) bool {
 	switch ev.Kind {
 	case game.EventCast:
@@ -357,20 +357,25 @@ func b31FetchPlainsTapped(g *game.Game, item *game.StackItem) error {
 // Mine is sacrificed — the printed "If there are no mining counters
 // on this land, sacrifice it", which is why the third activation
 // both taps for mana and loses the land.
+//
+// The zero check is the removal's continuation (#1282), not the next
+// line: the removal runs the CR 614 counter window, and a window that
+// pauses on a CR 616 ordering prompt removes nothing until the prompt
+// is answered — read early, the check would see the counter still
+// there and never sacrifice.
 func b31RemoveMiningCounterOrSacrifice(g *game.Game, _, source uuid.UUID) error {
-	if err := g.AddCounterForEffect(source, "mining", -1); err != nil {
-		return err
-	}
-	c, ok := g.LookupCardForEffect(source)
-	if !ok || c.Counters["mining"] > 0 {
-		return nil
-	}
-	return g.SacrificePermanentForEffect(source)
+	return g.AddCounterThenForEffect(source, "mining", -1, func(g *game.Game, _ int) error {
+		c, ok := g.LookupCardForEffect(source)
+		if !ok || c.Counters["mining"] > 0 {
+			return nil
+		}
+		return g.SacrificePermanentForEffect(source)
+	})
 }
 
 // b31HasMiningCounter gates Gemstone Mine's activation: at least one
-// mining counter must be there to remove (CR 602.5a — a cost that
-// cannot be paid cannot be announced).
+// mining counter must be there to remove (CR 601.2h — unpayable
+// costs can't be paid).
 func b31HasMiningCounter(g *game.Game, _, source uuid.UUID) bool {
 	c, ok := g.LookupCardForEffect(source)
 	return ok && c.Counters["mining"] > 0

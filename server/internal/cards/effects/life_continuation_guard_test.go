@@ -104,6 +104,7 @@ var damageReadBacks = readBackPattern{
 	calls: map[string]bool{
 		"DealDamageToPlayerForEffect":   true,
 		"DealDamageToCreatureForEffect": true,
+		"DealDamageFromObjectForEffect": true,
 	},
 	primitives: map[string]bool{"DealDamage": true},
 	reads:      map[string]bool{"Life": true, "DamageMarked": true},

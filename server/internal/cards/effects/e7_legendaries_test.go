@@ -579,7 +579,7 @@ func TestValgavothWardDemandsThreeNonlandPermanents(t *testing.T) {
 }
 
 // Fewer than three nonland permanents is not a payment at all: the
-// spell is countered without ever offering a prompt (CR 118.4).
+// spell is countered without ever offering a prompt (CR 118.3).
 func TestValgavothWardCountersWhenTheCasterCannotPayAllThree(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]

@@ -41,7 +41,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // A second doubler composes: with Nyxbloom Ancient out, a Forest makes
 // six. The CR 616.1 ordering is not put to anybody — a production
-// cannot pause (CR 605.3a) — and it does not need to be, because
+// cannot pause (CR 605.3b) — and it does not need to be, because
 // multiplication commutes. Two Mana Reflections are ×4 with no prompt
 // either, by #792's identical-window skip.
 //

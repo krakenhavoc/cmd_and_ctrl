@@ -37,7 +37,7 @@ type DiscardBecomes struct {
 	// madness replaces.
 	Causes []game.DiscardCause
 
-	// Optional makes it a CR 614.10 "may" — the controller is asked
+	// Optional makes it a "may" — the controller is asked
 	// each time, per card. Library of Leng's "you MAY put it on top of
 	// your library instead" is one.
 	Optional bool

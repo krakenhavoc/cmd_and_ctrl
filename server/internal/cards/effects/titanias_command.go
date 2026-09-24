@@ -27,7 +27,7 @@ import (
 // target slot). Austere Command is the untargeted version of the same
 // structure; this is the version with a target in it.
 //
-// The modes resolve in PRINTED ORDER (CR 700.2c) regardless of which
+// The modes resolve in PRINTED ORDER (CR 608.2c) regardless of which
 // order they were picked in, which matters for exactly one pairing
 // here: bullets three and four together make the Bears first and then
 // put counters on them, so two 2/2s become two 4/4s. Picking them the
@@ -139,7 +139,7 @@ func titaniasCommandCountersOnYourCreatures(ctx *Context) error {
 		}
 	}
 	for _, id := range yours {
-		if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 2}).Apply(ctx); err != nil {
+		if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 2}).Apply(ctx.asGroupMember()); err != nil {
 			return err
 		}
 	}

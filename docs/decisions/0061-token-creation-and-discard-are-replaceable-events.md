@@ -256,7 +256,7 @@ creations; a creation with no source card (a test fixture, an admin verb) leaves
   today, because that path does not exist yet; the note is here so the one who
   writes it does not reach for `CreateTokensThenForEffect`.
 - **No new prompt kind.** Both events reuse the CR 616 ordering prompt and the
-  CR 614.10 optional prompt, so the bots and the client need nothing new.
+  optional prompt, so the bots and the client need nothing new.
 
 ### Note, 2026-09-22: decision 1's shape has now been reused four times, and the family is closed
 
@@ -269,7 +269,7 @@ every amount replacement the engine grew:
 |---|---|---|---|
 | `RepEventCreateTokens` | "create N tokens" (CR 701.7b) | `TokenGroups` | this one, decision 1 |
 | `RepEventKeywordAction` | proliferate / scry / surveil | `KeywordActionCount` | [0013 §5s](0013-replacement-effects.md) |
-| `RepEventMill` | "mill N cards" (CR 701.13a) | `MillCount` | [0013 §5u](0013-replacement-effects.md), §5aa |
+| `RepEventMill` | "mill N cards" (CR 701.17a) | `MillCount` | [0013 §5u](0013-replacement-effects.md), §5aa |
 | `RepEventProduceMana` | one mana production (CR 106.12b) | `ManaColors` | [0013 §5ab](0013-replacement-effects.md) |
 | `RepEventDraw` | one card draw (CR 121.2) | `DrawCount` | [0013 §5ab](0013-replacement-effects.md) |
 
@@ -286,9 +286,186 @@ between them they mark the two edges of the shape:
 - **A count does not always need a tail.** Every event in the first three
   rows carries one, because it can pause and the resume has to finish
   what the caller asked for. A mana production sets `mustSettleNow`
-  (CR 605.3a) and therefore cannot pause, so it carries none — and the
+  (CR 605.3b) and therefore cannot pause, so it carries none — and the
   three switches that name what a kind owes on a pause, a cancellation
   or a dropped prompt say "nothing, and here is why" instead.
+
+### Amendment, 2026-09-23: a simultaneous entry can ask, can come from two zones, and the exile return reports what arrived
+
+**Issues:** [#1322](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1322),
+[#1324](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1324),
+[#1327](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1327) (tracker
+[#882](https://github.com/krakenhavoc/cmd_and_ctrl/issues/882); deck tracker
+[#1306](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1306)).
+**Rules:** CR 614.12, 614.12a, 614.12b, 603.6a, 603.4, 400.7, 712.14, 708.2a.
+
+Decision 3 made each created token's entry resumable and carried the rest of the
+creation on the entry tail. The other batch entry — "put … onto the battlefield",
+`putOntoBattlefieldFromZoneLocked` (#654, #745) — stayed the one effect-side entry
+built without `entryResumable`, and [ADR 0013 §5o](0013-replacement-effects.md)
+item 7 recorded why: it runs every card's CR 614 window against the pre-entry board
+and lands them together, and the only resume the engine had finishes ONE card, so a
+card whose window paused would have landed after its siblings were announced. Every
+question an entry can ask took its un-asked branch there: a shockland or a pay-life
+MDFC back entered tapped, a reveal-land entered tapped, a Clone copied nothing.
+That is the caveat ten shocklands, fifteen MDFC backs and ten reveal-lands carried.
+
+**1. The batch is a value carried across its questions** (`game/entry_batch.go`).
+`entryBatch` holds the batch's members (card, source zone, controller, the
+controller to restore, and — once its window settles — the settled event), a cursor
+and the caller's continuation. `continueEntryBatchLocked` opens the next member's
+window; when it asks something, the member's event carries the batch on
+`entryTail.batch` inside the ordinary `replacementResume` frame, and the walk stops.
+The answer's resume reaches `applyResolvedReplacementEventLocked`, which — FIRST in
+its move arm — hands a batch member's settled event back to the batch
+(`resumeEntryBatchLocked`) instead of landing it, and the walk carries on. A
+member's terminal outcome with nothing entering (a cancel, a pruned prompt, a
+departed chooser) reaches `runEntryTailLocked`, which tells the batch that member is
+out. When the last window has settled the batch lands, announces and runs its hooks
+exactly as before, then calls the continuation once.
+
+CR 614.12a is satisfied by construction (every choice is made before any member
+enters), and CR 614.12b falls out of the order: a player asked to pay 2 life for the
+first of two shocklands pays at once, so the second question is asked against what
+is left, and a combined cost that is not payable cannot be chosen.
+
+**2. The finisher is split at the seam a batch needs.**
+`executeEntryToBattlefieldLocked` is now `landEntryLocked` (move, CR 400.7 reset,
+controller, tapped, attacking, face-down or public knowledge, provenance, CR 707.2
+copy, counters, land-drop tally — no events), `announceEntryLocked` (zone move or
+token creation, Aura attach, `EventETB`) and `runEntryHooksLocked` (`AsEnters`,
+evoke). The single entry calls the three in a row; the batch calls the first for
+every member, then the second for every member, then the third. The batch's old
+phase 2 was a hand copy of the first half and had already missed the copy and the
+CR 400.7 reset; it is gone.
+
+**3. One entry from two zones** (#1324). The batch takes a `BatchEntry{CardID,
+From}` per card rather than one source zone per call:
+`Game.PutOntoBattlefieldTogetherThenForEffect(cards, opts, then)`, with `From` one
+of hand, library or exile. A card put from exile returns as a new object, as
+`ReturnFromExileToBattlefieldForEffect`'s does, and the continuation is told its new
+ID. The old hand / library doors are thin wrappers over the same body. Sword of
+Hearth and Home's "put both cards onto the battlefield" is one event, so CR 603.6a
+checks both newcomers against it: a Loyal Warhound returned with the Sword's basic
+land reads the land already on the battlefield, and its intervening-if (CR 603.4)
+does not trigger. Two entries in a row would trigger it.
+
+**4. The exile return has a continuation** (#1327).
+`Game.ReturnFromExileToBattlefieldThenForEffect(card, controller, tapped, then)`
+sets `entryTail.then`, which the landing runs with the NEW object's ID — inline when
+nothing paused, from the resume when something did, and with `uuid.Nil` from every
+outcome where nothing entered (including a card no longer in exile, which also
+returns `ErrCardNotFound`). `effects.ReturnFromExile.Then` exposes it. Phelia,
+Exuberant Shepherd's "if it entered under your control, put a +1/+1 counter on
+Phelia" is asked there, of the permanent that arrived.
+
+**5. The doors a caller reads the result of.** A paused batch returns nothing from
+the synchronous doors, so the two catalog callers whose sentence continues past the
+put — `effects.PutFromLibraryOntoBattlefield` (Genesis Wave's "the rest") and
+`effects.PutFromHandOntoBattlefield` (Spelunking's Cave rider) — now use
+`PutCardsFromLibraryOntoBattlefieldThenForEffect` and
+`PutFromHandOntoBattlefieldThenForEffect`. Without that, "put the rest on the
+bottom" would run while a card of the batch was still waiting to enter, and take it
+along. Callers that stop at the put (Coiling Oracle, Ninjutsu, Cybership, manifest)
+are unchanged.
+
+**6. Two fixes the batch exposed.**
+- *A face-down entry does not apply the entering card's own replacements*
+  (`gatherActiveReplacementsLocked`). CR 614.12 decides which replacements apply
+  from the permanent "as it would exist on the battlefield", and a face-down
+  permanent has no abilities (CR 708.2a). A manifested shockland used to take the
+  un-asked branch and enter tapped; with the batch resumable it would have asked
+  for life on a card the table cannot see. It does neither now.
+- *The copy prompt's resume goes through the shared finisher.* It returned nil for
+  a cancelled entry, which dropped whatever the entry's tail was carrying — the rest
+  of a batch, a search's shuffle. And a paused entry the window REDIRECTED used to
+  fall out of the resume's move arm with its tail unrun; it runs, told nothing
+  entered.
+
+**7. What is still not resumable.** The sandbox `move_card` verb
+(`moveCardByRefLocked`), a manual move with nothing behind it to finish. Its
+questions take their un-asked branch, as before.
+
+**8. Undo.** `cloneReplacementResume` gives a snapshot its own copy of the batch
+(`cloneEntryBatch`), settled events included, for the reason it copies the entry
+tail: the batch's cursor moves as the resume walks it, so sharing it would let the
+live game's answer walk the snapshot on, and an answer undone and given again would
+skip the rest of the entry. Nothing new is persisted: the batch rides a frame
+`ContinuationCensus` already counts.
+
+**Not a proof card, and why.** The pay-life MDFC backs' caveat named a case that
+cannot arise for any of the fifteen: a double-faced card put onto the battlefield
+from anywhere but the stack enters front face up (CR 712.14), and in a hand or a
+library it has only its front face's characteristics (CR 712.8a). Sea Gate
+Restoration and Sink into Stupor are a sorcery and an instant, so a put refuses them
+(CR 110.4); the creature-front backs enter as the creature. The back faces enter by
+being played, which has always asked. The caveat goes because it was never true,
+and the batch fix makes the general claim behind it untrue as well.
+
+### Amendment, 2026-09-23: the entry event says whether it was a PLAY (CR 305.4)
+
+**Issues:** [#1326](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1326)
+(trackers [#884](https://github.com/krakenhavoc/cmd_and_ctrl/issues/884),
+[#882](https://github.com/krakenhavoc/cmd_and_ctrl/issues/882); deck tracker
+[#1306](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1306)).
+**Rules:** CR 305.1, 305.4.
+
+CR 305.4: "Effects may also allow players to 'put' lands onto the battlefield. This
+isn't the same as 'playing a land' and doesn't count as a land played during the
+current turn." The engine has always kept the two apart internally — the land-drop
+tally (`Game.LandsPlayedThisTurn`, #478) is bumped by exactly one entry site — but
+it never said so on anything a card could read. Three catalog readers therefore
+GUESSED the distinction from the entry's origin zone and the tally's arithmetic
+(`b20LandPlayed`, `b10AnotherLandPlayedByYou`): a hand origin was always a play, and
+an exile or graveyard origin was a play only when the tally implied it, which broke
+the moment an earlier RETURN from the same zone made the arithmetic ambiguous. Horn
+of Greed, Prosper, Tome-Bound and City of Traitors each carried a caveat for exactly
+that ambiguity, and Deep Gnome Terramancer's Mold Earth — "whenever one or more
+lands enter under an opponent's control **without being played**" — could not be
+written against a guess at all, because it reads the false side on purpose.
+
+**The marker rides the settled entry, not a new event kind.** `Event.Played`
+(`events.go`) is stamped by `announceEntryLocked` — the shared finisher Decision 2
+above split out — from the settled `ReplacementEvent.landPlay` flag the land-drop
+tally already reads (`replacements.go`), carried across the finisher's own record,
+`entryLanding.played` (`entry_choice.go`). One flag, one place it is set (the
+land-play branch of `CastSpell`, `mutations.go` — true for a play from hand, an
+impulse-exile grant or a graveyard permission alike, whichever zone `cast_spell`
+draws the land from since [ADR 0066](0066-granted-cast-and-play-permissions.md) put
+library-top and impulse plays through the same branch), and every other entry —
+`landEntryLocked`'s zero value — leaves it unset: a search, a reanimation, a hand or
+library put, an exile return with no play permission, and a token, which comes from
+no zone at all (CR 111.1) and was never played.
+
+**A second copy of the land-play push had to close first.** `CastSpell`'s land
+branch is one of the finisher's five sites, but only in the sense that
+`landEntryLocked` was written to reproduce it — the branch never actually CALLED the
+finisher for the common, unpaused case, unlike the stack-resolution site
+[#653](https://github.com/krakenhavoc/cmd_and_ctrl/issues/653) already migrated. It
+duplicated the move, the tapped stamp, the counters, the tally bump, the zone-move
+and ETB events and the `AsEnters` hook inline, and would have stamped `Played` only
+on the rare PAUSED land (a shockland's "pay 2 life") while leaving an ordinary land
+drop unmarked. It now calls `executeEntryToBattlefieldLocked(out)` exactly as the
+resumed path does, and the duplicate is gone.
+
+**Three catalog readers get simpler, not more caveated.** `b20LandPlayed` (Horn of
+Greed, the land half of Prosper's Pact Boon) and `b10AnotherLandPlayedByYou` (City
+of Traitors) drop their zone-origin walks and their `g.EventsThisTurn()` tally
+arithmetic for one field read. All three caveats close: Horn of Greed, Prosper,
+Tome-Bound and City of Traitors are `CompletenessFull`. Deep Gnome Terramancer
+registers against the real marker from the start.
+
+**One more pair landed on `develop` while this was in flight.** #1360's triage
+declared the hand-put half of the same gap on Horn of Greed and The Endstone — a
+land `PutFromHandOntoBattlefieldForEffect` puts from hand (Eureka Moment,
+Spelunking, Chulane) still read as a play, drawing a card it shouldn't, which is
+STRONGER than printed — and pinned The Endstone's half with
+`TestB31TheEndstoneOverdrawsOnALandPutFromHandNotPlayed`. `Event.Played` closes
+that gap the same way: unset for `PutFromHandOntoBattlefieldForEffect` regardless
+of which zone it moves from, since the flag is set in exactly one place (the land
+branch of `CastSpell`) and nowhere else. Both caveats are gone; the pinned test is
+flipped to assert no draw and renamed
+`TestB31TheEndstoneDoesNotDrawOnALandPutFromHandNotPlayed`.
 
 ## Consequences
 

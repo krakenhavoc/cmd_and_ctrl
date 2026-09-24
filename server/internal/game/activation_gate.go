@@ -8,7 +8,7 @@ import (
 
 // activation_gate.go — #1210, ADR 0073's amendment of 2026-09-22: the
 // one announce-time answer to "may this player activate this ability
-// at all?" (CR 602.5a, CR 101.2).
+// at all?" (CR 602.5, CR 101.2).
 //
 // It is the TWIN of cast_gate.go, deliberately and visibly: the same
 // three shapes, the same two sources, the same "can't beats may"
@@ -85,6 +85,56 @@ type ActivationAbility struct {
 	// so it belongs to the restriction; a call site that decided it
 	// would make Cursed Totem unwritable without a second gate.
 	Mana bool
+
+	// SorcerySpeed is the ability's own "Activate only as a sorcery"
+	// clause (CR 602.5d) — `ActivatedAbilityShape.SorcerySpeed`.
+	//
+	// Read by ActivationTimingOpenLocked (#1208) and by nothing in
+	// this file: a BAN does not care how fast the ability is. It
+	// rides this struct rather than a second identity type because
+	// the two reads are asked about the same ability at the same
+	// moment, and two spellings of "which ability" would be one
+	// thing for the activation path to get out of step with itself.
+	SorcerySpeed bool
+
+	// Loyalty marks a loyalty ability (CR 606.1), which CR 606.3
+	// makes sorcery-speed whatever the catalog entry says.
+	//
+	// The bool ADR 0073's #1210 scope note predicted — "a
+	// restriction on LOYALTY abilities as a class … is a bool on
+	// ActivationAbility, not a second gate" — arriving for the
+	// timing read first. Derived from `AbilityCost.Loyalty != nil`
+	// by ActivationAbilityOf, never set by a card file.
+	Loyalty bool
+
+	// Equip marks the CR 702.6 equip ability, because Leonin
+	// Shikari's clause names the keyword: "you may activate EQUIP
+	// abilities any time you could cast an instant".
+	//
+	// Set by EquipAbility (effects/attachments.go) and by nothing
+	// else. It does NOT make equip a Spec field — attachments.go's
+	// "equip is an ordinary activated ability" is unchanged; what is
+	// new is that the keyword can be NAMED by a card that speaks
+	// about it, which is a different claim.
+	Equip bool
+}
+
+// ActivationAbilityOf is the one place an activated ability's shape
+// becomes the identity the gate and the timing read ask about.
+//
+// A function rather than four struct literals, because the two
+// derived fields are the ones a call site gets wrong: CR 606.3 rides
+// the loyalty COST component and not a flag (so a catalog entry
+// cannot forget it), and `Mana` is false here by construction — a
+// mana ability is a ManaAbilityShape and takes the other entry point,
+// which builds its own identity with `Mana: true`.
+func ActivationAbilityOf(ab ActivatedAbilityShape) ActivationAbility {
+	return ActivationAbility{
+		Label:        ab.Label,
+		SorcerySpeed: ab.SorcerySpeed,
+		Loyalty:      ab.Cost.Loyalty != nil,
+		Equip:        ab.Equip,
+	}
 }
 
 // ActivationQuery is everything an activation restriction may look

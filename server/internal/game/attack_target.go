@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"slices"
+
+	"github.com/google/uuid"
+)
 
 // attack_target.go is S27's polymorphic attack declaration: an
 // attacking creature may be declared against a PLAYER, a
@@ -130,6 +134,210 @@ func (g *Game) defendingPlayerForAttackLocked(target uuid.UUID) uuid.UUID {
 	return uuid.Nil
 }
 
+// setAttackTargetLocked points `c`'s attack at `target` and records
+// the defending player that attack has right now (#1364). Every write
+// that makes a creature attack something goes through it — the two
+// declaration verbs, an entry "attacking" (CR 506.3c) and a reselect
+// (CR 508.7) — so the record cannot lag the target it describes.
+//
+// A target with no defending player (uuid.Nil, or one that no longer
+// resolves) drops the record rather than keeping the previous one: a
+// record names the attack the creature is making, never an older one.
+//
+// Caller must hold g.mu.
+func (g *Game) setAttackTargetLocked(c *Card, target uuid.UUID) {
+	if c == nil {
+		return
+	}
+	c.AttackingTarget = target
+	defender := g.defendingPlayerForAttackLocked(target)
+	if defender == uuid.Nil {
+		g.forgetAttackDefenderLocked(c.InstanceID)
+		return
+	}
+	if g.attackDefenders == nil {
+		g.attackDefenders = map[uuid.UUID]uuid.UUID{}
+	}
+	g.attackDefenders[c.InstanceID] = defender
+}
+
+// AttackingNothing is the Card.AttackingTarget of a creature that is
+// still attacking though what it attacked has been removed from
+// combat without leaving the battlefield (CR 506.4c, #1376, ADR 0045
+// Decisions 36-37): the planeswalker or battle changed control, phased
+// out, or stopped being a planeswalker or battle.
+//
+// WHY A SENTINEL RATHER THAN A FLAG. A creature attacking nothing must
+// still read as attacking (every `AttackingTarget != uuid.Nil` check —
+// dozens of them, in the engine, the enumerator, the view, the bots
+// and the catalog), and must read as attacking NOTHING everywhere the
+// target is resolved: combat damage, the card-side "attacking you"
+// readers, the view's attacking_target_kind, the reselect label. Both
+// are true of an id that names no seat and no card, with no edit at
+// any of those readers. That is the shape a creature whose walker DIED
+// has had all along — its target is the id of a card no longer on the
+// battlefield — and it is the shape Decision 35's block fallback
+// already handles. A flag beside a live walker id would have had to
+// be consulted by every reader that resolves the id, and one that
+// forgot would deal the damage.
+//
+// The value is a version-0 uuid, so it cannot collide with a seat or
+// instance id (both uuid.New, version 4).
+var AttackingNothing = uuid.MustParse("00000000-0000-0000-0000-000000000506")
+
+// removeAttackedFromCombatLocked is CR 506.4 for the ATTACKED side: the
+// planeswalker or battle `target` has been removed from combat while
+// staying on the battlefield, so every creature attacking it "continues
+// to be an attacking creature, although it is not attacking any player,
+// planeswalker, or battle" (CR 506.4c).
+//
+// Each such attacker is re-pointed at AttackingNothing. Nothing else
+// about it changes: it stays announced (it attacked, CR 508.7a's
+// reasoning), stays blocked or unblocked, and keeps its
+// Game.attackDefenders row — which is why this writes the field
+// directly rather than through setAttackTargetLocked, whose Nil-defender
+// arm would drop that row. The row still names the player who was
+// defending "before it was removed from combat" (CR 802.2a), so the
+// block path needs no change; damage resolves the sentinel to nothing.
+//
+// Only ANNOUNCED attackers. A creature merely staged in the
+// declare-attackers step is not in combat yet, and its declaration is
+// still the active player's to change (the reselect verb refuses it
+// for the same reason).
+//
+// Called from materialiseControlLocked (a control change),
+// phaseOutLocked, and removeTypeLostAttackTargetsLocked (a planeswalker
+// or battle that stopped being one, #1387). Not from removeFromCombatLocked, whose other caller
+// is regeneration — CR 701.19a removes only an attacking or blocking
+// CREATURE from combat. A permanent LEAVING the battlefield needs no call:
+// its instance id stops resolving on its own, and a return is a new
+// object (CR 400.7).
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) removeAttackedFromCombatLocked(target uuid.UUID) {
+	if target == uuid.Nil || g.Battlefield == nil {
+		return
+	}
+	changed := false
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.AttackingTarget != target || c.InstanceID == target || !g.announcedAttacks[c.InstanceID] {
+			continue
+		}
+		c.AttackingTarget = AttackingNothing
+		changed = true
+	}
+	if changed {
+		// "Is this creature attacking player P" just changed for every
+		// one of them (#1218's reasoning).
+		g.invalidateLayersForAttackChangeLocked()
+	}
+}
+
+// removeTypeLostAttackTargetsLocked is CR 506.4's TYPE clause for the
+// attacked side (#1387, ADR 0045 Decision 37): "a planeswalker that
+// stops being a planeswalker or a battle that stops being a battle" is
+// removed from combat. Run once per layer recompute, after the pass,
+// because the pass is the only place an effective type changes; any
+// attacked permanent that the pass left as neither a planeswalker nor a
+// battle has its announced attackers re-pointed at AttackingNothing
+// through removeAttackedFromCombatLocked, exactly as a control change
+// or a phase-out does.
+//
+// WHY THE REWRITE AND NOT THE LIVE READ. classifyAttackTargetLocked
+// already reads effective types, so while the permanent is not a
+// planeswalker its attackers resolve to nothing. That is right only
+// until the type comes back: an "until end of turn" or "for as long
+// as" effect that ends inside the same combat made it a planeswalker
+// again, and the attackers, still naming it, resumed attacking it and
+// dealt it damage. CR 506.4 removed it for good. Rewriting the target
+// at the moment of loss is what makes the removal stick.
+//
+// CHEAP BY CONSTRUCTION. Outside combat announcedAttacks is empty and
+// this returns at once. Inside combat it looks only at what announced
+// attackers name: a seat, the sentinel, or an id that no longer
+// resolves costs nothing but the lookup, and each attacked permanent
+// is classified once however many creatures attack it.
+//
+// A permanent that has LEFT the battlefield is skipped: its id stops
+// resolving on its own (CR 400.7), which is Decision 35's shape.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) removeTypeLostAttackTargetsLocked() {
+	if len(g.announcedAttacks) == 0 || g.Battlefield == nil {
+		return
+	}
+	var checked, lost []uuid.UUID
+	for i := range g.Battlefield.Cards {
+		a := &g.Battlefield.Cards[i]
+		target := a.AttackingTarget
+		if target == uuid.Nil || target == AttackingNothing || !g.announcedAttacks[a.InstanceID] {
+			continue
+		}
+		if slices.Contains(checked, target) {
+			continue
+		}
+		checked = append(checked, target)
+		c := findBattlefieldCard(g, target)
+		if c == nil || c.IsPlaneswalker() || c.IsBattle() {
+			continue
+		}
+		lost = append(lost, target)
+	}
+	for _, id := range lost {
+		g.removeAttackedFromCombatLocked(id)
+	}
+}
+
+// forgetAttackDefenderLocked drops one attacker's last-known defending
+// player. Caller must hold g.mu.
+func (g *Game) forgetAttackDefenderLocked(id uuid.UUID) {
+	delete(g.attackDefenders, id)
+	if len(g.attackDefenders) == 0 {
+		g.attackDefenders = nil
+	}
+}
+
+// defendingPlayerForAttackerLocked is the defending player of
+// `attacker`'s attack FOR BLOCKING (CR 802.4a, 509.1a): the live
+// defendingPlayerForAttackLocked answer while the target resolves, and
+// the player recorded when the attack was pointed once it does not.
+//
+// The fallback is CR 506.4c plus CR 802.2a. A creature attacking a
+// planeswalker or battle that has been removed from combat "continues
+// to be an attacking creature … It may be blocked", and the player who
+// may block it is the one it was attacking "before it was removed from
+// combat" — the walker's controller or the battle's protector at the
+// time. The live read cannot name that player once the permanent has
+// gone; attackDefenders can.
+//
+// BLOCKING ONLY. Combat damage keeps reading the live target through
+// dealCombatDamageToAttackTargetLocked, so an unblocked creature whose
+// target left still deals its damage to nothing (CR 506.4c, 510.1b);
+// and the card-side "attacking you" readers keep the live answer,
+// because such a creature "is not attacking any player".
+//
+// Returns uuid.Nil for a creature not attacking, and when the recorded
+// player has left the game (CR 800.4a).
+//
+// Caller must hold g.mu. Reads only.
+func (g *Game) defendingPlayerForAttackerLocked(attacker *Card) uuid.UUID {
+	if attacker == nil || attacker.AttackingTarget == uuid.Nil {
+		return uuid.Nil
+	}
+	if d := g.defendingPlayerForAttackLocked(attacker.AttackingTarget); d != uuid.Nil {
+		return d
+	}
+	d, ok := g.attackDefenders[attacker.InstanceID]
+	if !ok {
+		return uuid.Nil
+	}
+	if p := g.playerByIDLocked(d); p == nil || p.Eliminated {
+		return uuid.Nil
+	}
+	return d
+}
+
 // canAttackTargetLocked reports whether `attacker`'s controller may
 // declare an attack at `target`, and why not when they may not.
 //
@@ -245,6 +453,22 @@ func (g *Game) dealCombatDamageToAttackTargetLocked(target, source uuid.UUID, am
 // caller runs inside ReadSnapshot or the enumerator's own frame.
 func (g *Game) DefendingPlayerForAttackForEffect(target uuid.UUID) uuid.UUID {
 	return g.defendingPlayerForAttackLocked(target)
+}
+
+// DefendingPlayerForAttackerForEffect is the exported read of
+// defendingPlayerForAttackerLocked: the seat whose creatures may block
+// the attacking creature `attacker` — including one whose planeswalker
+// or battle has left combat (CR 506.4c, #1364). The view's
+// defending_player and the enumerator's block pre-filter read it, so
+// they agree with the declaration verb. uuid.Nil when nobody may.
+//
+// For "is this creature attacking player P" use
+// DefendingPlayerForAttackForEffect on its target instead: a creature
+// whose target left is not attacking any player.
+//
+// Read-only. Caller must hold g.mu (read or write).
+func (g *Game) DefendingPlayerForAttackerForEffect(attacker uuid.UUID) uuid.UUID {
+	return g.defendingPlayerForAttackerLocked(findBattlefieldCard(g, attacker))
 }
 
 // ClassifyAttackTargetForEffect is the exported read of

@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // God-Eternal Bontu — Legendary Creature — Zombie God {3}{B}{B}, 5/6
 // (EDHREC rank 3546):
@@ -16,44 +20,34 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // is God-Eternal Oketra's, unchanged — the same two-condition
 // EventLTB, the same "you may", the same tuck under the top two.
 //
-// The entry ability is where the sandbox differs, and the difference
-// is declared. "Sacrifice any number of other permanents" is a
-// choice made as the ability RESOLVES; the engine's only
-// self-choose-permanents prompt picks one permanent and carries no
-// continuation, so "then draw that many" could not follow it. The
-// permanents are therefore chosen as the ability's TARGETS instead —
-// "any number of other target permanents you control", Appa,
-// Steadfast Guardian's Min-0 unbounded clause, Bontu himself kept
-// out by name — and every announced permanent that is still legal
-// and still the controller's when the ability resolves is
-// sacrificed, then that many cards are drawn. Lich-Knights'
-// Conquest's trade, on a trigger.
+// "Sacrifice any number of other permanents, then draw that many
+// cards" is a CHOICE, not a target — there is no "target" in the
+// printed text — made on resolution (CR 608.2, ChoosePermanents's
+// Sacrifice mode, #1214, #1337). It used to be modelled as "any
+// number of other TARGET permanents you control" so the controller
+// got the existing board picker; the resolution-time picker retired
+// that. Bontu himself is excluded by instance ID rather than by name,
+// which the ChoosePermanents Candidates closure can do directly —
+// TargetsFrom exists for a trigger's target clause, and this is not
+// one any more.
 //
-// What that costs, all weaker than printed and never stronger:
-// opponents see the picks before the ability resolves and can
-// respond to them; a permanent of the controller's with shroud
-// cannot be chosen; a permanent that became illegal in response is
-// skipped and draws nothing; and "becomes the target" triggers on
-// the controller's own permanents fire, which the printed sacrifice
-// never does. With nothing else on the battlefield the trigger is
-// dropped before the prompt (CR 603.3d) — the printed card would put
-// it on the stack to do nothing.
+// With nothing else on the battlefield, ChoosePermanents skips the
+// controller's leg entirely (CR 608.2c) and Then draws zero cards,
+// which is the same outcome "the printed card would put it on the
+// stack to do nothing" described under the old model.
 func init() {
 	Register(Spec{
 		OracleID:        "183891b0-b5ec-47f4-8d09-b9d3cfc4e7f1",
 		Name:            "God-Eternal Bontu",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"You choose the permanents to sacrifice when the entry trigger goes on the stack rather than as it resolves, so opponents can respond to the picks and a permanent with shroud can't be chosen."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"menace"},
 		Triggered: []game.TriggeredAbility{
 			{
 				Watches:   []game.EventKind{game.EventETB},
 				AppliesTo: b06SelfETB,
-				Targets: TargetPermanent("any number of other target permanents you control",
-					YouControl(), b03NotNamed("God-Eternal Bontu")).WithCount(0, 0),
 				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "God-Eternal Bontu — sacrifice the chosen permanents, then draw that many cards",
-						b33SacrificeChosenThenDrawThatMany)
+					return game.NewTriggeredItem(source, "God-Eternal Bontu — sacrifice any number of other permanents, then draw that many cards",
+						bontuSacrificeThenDraw)
 				},
 			},
 			Optional(On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
@@ -61,4 +55,35 @@ func init() {
 			}, "God-Eternal Bontu — put it into its owner's library third from the top", tuckSelfThirdFromTop), "God-Eternal Bontu — put it into its owner's library third from the top?"),
 		},
 	})
+}
+
+// bontuSacrificeThenDraw is the entry ability's resolution: every
+// OTHER permanent the controller controls is a candidate, "any
+// number" of them (0..all) may be chosen, the chosen set is
+// sacrificed together, and the controller draws one card per
+// permanent actually sacrificed.
+func bontuSacrificeThenDraw(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	self := item.SourceCardID
+	controller := item.Controller
+	return ChoosePermanents{
+		Question:  "God-Eternal Bontu — sacrifice any number of other permanents",
+		Sacrifice: true,
+		Candidates: func(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
+			var out []uuid.UUID
+			for _, c := range g.BattlefieldCardsForEffect() {
+				if c.Controller == of && c.InstanceID != self {
+					out = append(out, c.InstanceID)
+				}
+			}
+			return out, 0, 0 // "any number" — 0 min, uncapped max
+		},
+		Then: func(ctx *Context, picked game.PromptedPicks) error {
+			n := picked.Count()
+			if n == 0 {
+				return nil
+			}
+			return DrawCards{Player: controller, N: n}.Apply(ctx)
+		},
+	}.Apply(ctx)
 }

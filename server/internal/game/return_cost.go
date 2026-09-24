@@ -29,7 +29,9 @@ import "github.com/google/uuid"
 //     ONE INDIVISIBLE STEP — so the move may not stop on a CR 903.9
 //     prompt with the ability half announced. The payer sets
 //     zoneRoute.MustSettleNow, which is the same bit, set for the same
-//     reason, that a discard paid as a cost sets.
+//     reason, that a discard paid as a cost sets. The CR 903.9 question
+//     is asked before the payment instead (#1397,
+//     cost_commander_choice.go).
 //
 // And one it shares with every other cost component: paying a cost
 // does not TARGET (CR 601.2h / 602.2b), so the filter is matched with
@@ -208,13 +210,23 @@ func (g *Game) validateReturnToHandCostLocked(playerID, sourceID uuid.UUID, rc *
 // one route each, so a leaves-the-battlefield watcher sees every one of
 // them.
 //
+// Returns what the first returned permanent that was ATTACKING was
+// attacking, for PaidCost.ReturnedAttacking (#1227). It is read HERE,
+// before the bounce, because it cannot be read anywhere else: the exit
+// clears Card.AttackingTarget (zone.go) and LKI carries no combat
+// state, so ninjutsu's "attacking the same player or planeswalker that
+// the returned creature was attacking" (CR 702.49a) would be
+// unanswerable one line later. uuid.Nil for every other printed return
+// cost, whose permanent is a Forest or an artifact and is attacking
+// nothing.
+//
 // Through the ONE exit door (routeCardToZoneLocked) rather than through
 // BounceToHandForEffect, and with MustSettleNow set: CR 601.2h /
-// 602.2b pay an announcement's costs as one indivisible step, so a
-// commander returned this way takes its owner's hand without opening
-// the CR 903.9 prompt. CR 903.9 is a "may", and a cost that cannot ask
-// falls back to the ordinary result — the argument the cost discard
-// already makes one component over.
+// 602.2b pay an announcement's costs as one indivisible step, so the
+// move may not stop on a prompt. A commander returned this way is still
+// offered CR 903.9 — its owner was asked BEFORE the payment began
+// (askCostCommanderLocked, #1397), and `answers` carries what they
+// said onto the move.
 //
 // Call only after validateReturnToHandCostLocked has passed, and —
 // as with payCostSacrificesLocked — BEFORE the ability's stack item is
@@ -227,20 +239,29 @@ func (g *Game) validateReturnToHandCostLocked(playerID, sourceID uuid.UUID, rc *
 // ever stops being true.
 //
 // Caller must hold g.mu.
-func (g *Game) payReturnToHandCostLocked(playerID, sourceID uuid.UUID, ids []uuid.UUID) error {
+func (g *Game) payReturnToHandCostLocked(playerID, sourceID uuid.UUID, ids []uuid.UUID, answers map[uuid.UUID]bool) (uuid.UUID, error) {
+	var attacking uuid.UUID
 	for _, id := range ids {
-		if findBattlefieldCard(g, id) == nil {
+		c := findBattlefieldCard(g, id)
+		if c == nil {
 			continue
+		}
+		if attacking == uuid.Nil {
+			attacking = c.AttackingTarget
 		}
 		if _, err := g.routeCardToZoneLocked(zoneRoute{
 			CardID:        id,
 			Dst:           ZoneHand,
 			Actor:         playerID,
 			Source:        sourceID,
+			Cause:         MoveCause{Kind: MoveCauseCost, Controller: playerID},
 			MustSettleNow: true,
+			// #1397: the owner's CR 903.9 answer, asked before the
+			// payment by askCostCommanderLocked.
+			commanderAnswer: commanderAnswerFor(answers, id),
 		}); err != nil {
-			return err
+			return attacking, err
 		}
 	}
-	return nil
+	return attacking, nil
 }

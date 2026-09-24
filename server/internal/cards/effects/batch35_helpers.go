@@ -571,7 +571,7 @@ func b35EachOpponentLosesAllCounters(ctx *Context) error {
 }
 
 // b35FinalAct is Final Act's body: the chosen modes in printed order
-// (CR 700.2c) — destroy all creatures, destroy all planeswalkers,
+// (CR 608.2c) — destroy all creatures, destroy all planeswalkers,
 // destroy all battles, exile all graveyards, each opponent loses all
 // counters. The three sweeps go through the mass destroy, so an
 // indestructible permanent survives its mode.

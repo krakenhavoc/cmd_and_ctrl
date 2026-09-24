@@ -201,6 +201,31 @@ func HasKeyword(kw string) CardPredicate {
 // "creature without flying" is how the clause reads on the card.
 func WithoutKeyword(kw string) CardPredicate { return Not(HasKeyword(kw)) }
 
+// WithMorphAbility — "target creature with a morph ability"
+// (CR 702.37a), the clause Backslide and Master of the Veil print.
+//
+// Not HasKeyword("morph"): morph is not a token in canonicalKeywords
+// and could not be, because a bare token has nowhere to put the cost
+// (morph.go). The card's declaration of the CR 708.4 face-down cast
+// IS the ability, so the predicate asks for that.
+//
+// MEGAMORPH COUNTS AND DISGUISE DOES NOT. CR 702.37b: "a megamorph
+// cost is a morph cost", and both declare FaceDownMorphed. Disguise
+// is its own keyword with its own rule (CR 702.168), and a card that
+// asks for "a morph ability" does not reach it — which is why the
+// kind is compared rather than the presence of any face-down cast.
+//
+// A FACE-DOWN permanent answers false, because CatalogKey answers ""
+// for one (CR 708.2a: it has no text to read the declaration off).
+// That is also the only useful answer: CR 708.2b says turning a
+// face-down permanent face down does nothing at all.
+func WithMorphAbility() CardPredicate {
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+		alt := game.FaceDownCastFor(game.CatalogKey(c))
+		return alt != nil && alt.FaceDown != nil && alt.FaceDown.Kind == game.FaceDownMorphed
+	}
+}
+
 // --- controller / owner predicates ------------------------------
 
 // YouControl passes for cards the caster controls.
@@ -266,6 +291,31 @@ func CastFromOwnersHand() CardPredicate {
 // counter themselves.
 func NotSelf(selfID uuid.UUID) CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.InstanceID != selfID }
+}
+
+// AnotherTarget is a triggered ability's "another target …" clause
+// that excludes the trigger's OWN source by instance — for
+// game.TriggeredAbility.TargetsFrom, which is handed the source, as a
+// static Targets clause is not.
+//
+// `build` receives NotSelf(source) and returns the clause with it
+// among its predicates:
+//
+//	TargetsFrom: AnotherTarget(func(other CardPredicate) *game.TargetSpec {
+//		return TargetCreature("another target creature you control", YouControl(), other)
+//	}),
+//
+// Exact where b03NotNamed is an approximation: a second permanent with
+// the same name — a Clone or token copy of the source — stays a legal
+// target, as printed, and the source itself never is.
+func AnotherTarget(build func(other CardPredicate) *game.TargetSpec) func(game.TriggerContext, *game.Card, *game.Game) *game.TargetSpec {
+	return func(_ game.TriggerContext, source *game.Card, _ *game.Game) *game.TargetSpec {
+		self := uuid.Nil
+		if source != nil {
+			self = source.InstanceID
+		}
+		return build(NotSelf(self))
+	}
 }
 
 // Opponent passes for players other than the caster.
@@ -354,6 +404,34 @@ func TargetSpell(label string, preds ...CardPredicate) *game.TargetSpec {
 		Zones: []game.ZoneKind{game.ZoneStack},
 		CardOK: func(g *game.Game, caster uuid.UUID, c game.Card, _ game.ZoneKind) bool {
 			return pred(g, caster, c)
+		},
+		Min: 1, Max: 1,
+	}
+}
+
+// TargetSpellOrPermanent — "target spell or permanent": ONE pick that
+// may be a spell on the stack or a permanent on the battlefield
+// (Venser, Shaper Savant; Sink into Stupor). `spell` narrows the stack
+// half and `permanent` the battlefield half; nil admits every spell /
+// every permanent.
+//
+// Mode is "any" because the client's Mode string decides which
+// SURFACES enter targeting and this clause needs both the stack and
+// the battlefield (Aang, Swift Savior's shape); legality still comes
+// from CardOK. Players stays false, so "any" never points at a player.
+// Only a spell is a card on the stack — an ability is a StackMeta item
+// with no card — so an ability is never offered.
+func TargetSpellOrPermanent(label string, spell, permanent CardPredicate) *game.TargetSpec {
+	return &game.TargetSpec{
+		Mode:  "any",
+		Label: label,
+		Zones: []game.ZoneKind{game.ZoneStack, game.ZoneBattlefield},
+		CardOK: func(g *game.Game, caster uuid.UUID, c game.Card, zone game.ZoneKind) bool {
+			pred := permanent
+			if zone == game.ZoneStack {
+				pred = spell
+			}
+			return pred == nil || pred(g, caster, c)
 		},
 		Min: 1, Max: 1,
 	}
@@ -464,8 +542,8 @@ func OfSubtype(subtype string) CardPredicate {
 // (Triumph of Gerrard's "target creature you control with the
 // greatest power").
 //
-// Ties all match, which is the rule (CR 700.3 — "the greatest" picks
-// out a SET, and the player chooses among it); that is why this is a
+// Ties all match — "the greatest" picks
+// out a SET, and the player chooses among it — which is why this is a
 // target predicate rather than a lookup that returns one card.
 //
 // Reads CurrentPower so counters and anthems count, and re-runs at

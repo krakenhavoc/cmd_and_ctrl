@@ -14,7 +14,7 @@ func init() {
 		Name:         "Vexing Puzzlebox",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{WheneverYouRollDice("Vexing Puzzlebox — put charge counters on it", func(g *game.Game, item *game.StackItem, total int) error {
-			if zone := g.FindCardZoneForEffect(item.SourceCardID); zone == nil || zone.Kind != game.ZoneBattlefield {
+			if zone := g.FindCardZoneForEffect(item.SourceCardID); zone == nil || zone.Kind != game.ZoneBattlefield || sourceIsNewObject(g, item) { // #1432
 				return nil
 			}
 			return g.AddCounterForEffect(item.SourceCardID, "charge", total)
@@ -28,7 +28,7 @@ func init() {
 			},
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "Remove 100 charge counters: search for an artifact",
+			Label: "{T}, Remove 100 charge counters from this artifact: Search your library for an artifact card, put that card onto the battlefield, then shuffle.",
 			Cost:  Plus(TapCost(), RemoveCountersFromThis("charge", 100)),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return (SearchLibrary{Player: item.Controller, Predicate: func(c game.Card) bool { return c.IsArtifact() }, Dest: game.ZoneBattlefield, Limit: 1, Shuffle: true, Reason: "Vexing Puzzlebox — an artifact"}).Apply(NewContext(g, item))

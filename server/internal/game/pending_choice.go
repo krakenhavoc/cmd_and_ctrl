@@ -67,7 +67,7 @@ const (
 	// permutation and resumes the pipeline. Added in S17 sub-PR 2.
 	PendingChoiceReplacementOrder PendingChoiceKind = "replacement_order"
 
-	// PendingChoiceOptionalReplacement — CR 614.10 yes/no prompt
+	// PendingChoiceOptionalReplacement — "may" yes/no prompt
 	// for an Optional replacement effect (today: CR 903.9
 	// commander-zone). Owner answers yes → Replace runs; no →
 	// effect is marked applied without running, event proceeds.
@@ -220,6 +220,26 @@ const (
 	// `graveyard` key with it is a client bug — those are the other
 	// two keywords, and this one has no away lane. Added in S22.
 	PendingChoiceLookAtTop PendingChoiceKind = "look_at_top"
+
+	// PendingChoicePutInLibrary — "put these cards into their owners'
+	// libraries in the order you choose" (CR 401.4, ADR 0088). The
+	// placement half of the library-top row (#996): "put the rest on
+	// the bottom of your library in any order" (Goblin Ringleader,
+	// Impulse), "put two cards from your hand on top of your library
+	// in any order" (Brainstorm), "its owner puts it on their choice
+	// of the top or bottom of their library" (Aetherspouts).
+	//
+	// The fourth member of the scry family: same ScryCards, same
+	// chooser-only projection, same dialog, same answer keys. It is
+	// its own kind because it is not a look at the top of a library —
+	// the cards may be in a hand, on the battlefield or on the stack,
+	// and LibraryPlacement says which lanes the answer may use.
+	//
+	// Answered with {top_order, bottom}, both TOP-FIRST (the first
+	// entry of `bottom` is the one nearest the top of the pile that
+	// goes under the library). Every card appears in exactly one list,
+	// and a lane the placement does not open must be empty.
+	PendingChoicePutInLibrary PendingChoiceKind = "put_in_library"
 
 	// PendingChoiceSearchLibrary — "search your library for ..."
 	// (CR 701.23). The searcher picks which of the matching cards
@@ -405,6 +425,14 @@ type PendingChoice struct {
 	// on submit. Added in S17 sub-PR 2.
 	replacementResume *replacementResumeFrame
 
+	// costCommanderResume is the parked announcement behind a CR 903.9
+	// prompt asked BEFORE a cost is paid (#1397, cost_commander_choice.go).
+	// The prompt is an ordinary PendingChoiceOptionalReplacement on the
+	// wire; this frame is what tells ResolveOptionalReplacement to re-run
+	// the announcement with the answer rather than resume a paused event.
+	// Mutually exclusive with replacementResume. Not serialised.
+	costCommanderResume *costCommanderFrame
+
 	// DamageAssignment is the client-facing payload for a
 	// PendingChoiceDamageAssignment entry: the attacker's instance
 	// ID, ordered blocker instance IDs (in declared order; the
@@ -553,6 +581,24 @@ type PendingChoice struct {
 	// moves). Wire-serialised via PendingChoiceView.Options,
 	// redacted to the chooser alone.
 	ScryCards []uuid.UUID
+
+	// LibraryPlacement is which lanes a PendingChoicePutInLibrary's
+	// answer may use — top, bottom, or either (ADR 0088). Plain data,
+	// carried by the clone and the snapshot: the prompt has to mean
+	// the same thing after an undo and after a restart. Empty on every
+	// other kind.
+	LibraryPlacement LibraryPlacement
+
+	// LibraryTopCount / LibraryTopDepth refine a put_in_library's top
+	// lane (#1298, ADR 0088's 2026-09-23 amendment): the count is
+	// EXACTLY how many cards the answer's top lane must hold (Cream of
+	// the Crop's "put one of those cards on top"; zero is any number),
+	// and the depth is where that lane starts, counted from the top
+	// (Temporal Cleansing's "second from the top"; zero and one are
+	// the top). Plain data, carried by the clone and the snapshot like
+	// LibraryPlacement. Zero on every other kind.
+	LibraryTopCount int
+	LibraryTopDepth int
 
 	// TriggerOrderIDs is the set of pending-trigger item IDs a
 	// PendingChoiceTriggerOrder entry asks the chooser to order.
@@ -757,6 +803,21 @@ type PendingChoice struct {
 	// happens before the reorder is a different card. Not
 	// serialised to the wire.
 	scryResume func(g *Game) error
+
+	// libraryOrderResume is a PendingChoicePutInLibrary's
+	// continuation: it is handed the validated answer (both lanes
+	// top-first) and places the cards, then runs the rest of the
+	// effect. Captures only IDs and scalars. Not serialised; counted
+	// in the snapshot census. See library_order.go.
+	libraryOrderResume func(g *Game, top, bottom []uuid.UUID) error
+
+	// midResolution says the prompt was queued while a stack item was
+	// resolving and is part of that resolution (#1289, CR 608.2 /
+	// CR 704.3): while it is open and blocks the table, the resolution
+	// has not finished, so state-based actions and the trigger drain
+	// wait for it. Stamped by QueueChoiceForEffect, never by a caller.
+	// Carried by the snapshot. See resolution_pause.go.
+	midResolution bool
 }
 
 // payUnlessFrame carries a pay-unless prompt's parsed cost and the
@@ -779,6 +840,25 @@ type payUnlessFrame struct {
 	cost      ParsedCost
 	onDecline func(g *Game) error
 	onPay     func(g *Game) error
+
+	// tap is the CR 701.67 "you can tap your artifacts and creatures
+	// to help" clause of a waterbend payment — "Ward—Waterbend {4}"
+	// (The Unagi of Kyoshi Island, #1311). Nil for every other
+	// pay-unless, which is nearly all of them. Its Extra names the
+	// part of `cost` the taps may cover; see waterbend_cost.go.
+	tap *TapPermanentsCost
+}
+
+// PayTapCost is the waterbend clause of a PendingChoicePayUnless —
+// the permanents the chooser may tap instead of paying some of the
+// generic mana (#1311) — or nil when the payment is mana only. Read by
+// the protocol view (the picker) and the legal-move enumerator (the
+// bot's payment); ResolvePayUnlessWithTaps is the one validator.
+func (c *PendingChoice) PayTapCost() *TapPermanentsCost {
+	if c == nil || c.payUnlessResume == nil {
+		return nil
+	}
+	return c.payUnlessResume.tap
 }
 
 // mayCastFrame carries the two branches of a PendingChoiceMayCast.
@@ -959,6 +1039,22 @@ type DamageAssignmentFrame struct {
 	// by owning player, AttackerID is already the key and a cached
 	// owner had no remaining reader.)
 	SourceIsCommander bool
+
+	// SourceInfect, SourceWither and SourceToxic are the attacker's
+	// ADR 0056 damage-result keywords at prompt-queue time (CR 702.90,
+	// 702.80, and the CR 702.164b toxic total), cached for the same
+	// died-before-resume reason as SourceLifelink: an infect attacker
+	// killed by first-strike damage before its assignment is answered
+	// still puts -1/-1 counters and gives poison. Copied onto the tail
+	// by damageTailFromFrame.
+	//
+	// Zero in a frame restored from a snapshot written before the
+	// fields existed, which resumes as ordinary damage — the fallback
+	// CombatStep has, and why there is no schema bump. Server-side
+	// only: not projected onto DamageAssignmentView.
+	SourceInfect bool `json:",omitempty"`
+	SourceWither bool `json:",omitempty"`
+	SourceToxic  int  `json:",omitempty"`
 }
 
 // replacementResumeFrame is the unexported per-prompt continuation
@@ -1019,6 +1115,8 @@ func (g *Game) QueueChoiceForEffect(choice PendingChoice) uuid.UUID {
 	if choice.ID == uuid.Nil {
 		choice.ID = uuid.New()
 	}
+	// #1289: a prompt a resolution asks is part of that resolution.
+	choice.midResolution = g.resolutionOpen && choiceBelongsToResolution(&choice)
 	g.PendingChoices = append(g.PendingChoices, &choice)
 	return choice.ID
 }
@@ -1461,7 +1559,7 @@ func keepSeats(in []ChoiceOption, keep func(uuid.UUID) bool) ([]ChoiceOption, bo
 	return out, true
 }
 
-// queueOptionalReplacementPromptLocked queues a CR 614.10 yes/no
+// queueOptionalReplacementPromptLocked queues a "may" yes/no
 // prompt for a single optional replacement effect. The chooser is
 // the effect's Controller (for CR 903.9 commander-zone: the
 // commander's owner). The resume path in ResolveOptionalReplacement
@@ -1489,7 +1587,7 @@ func (g *Game) queueOptionalReplacementPromptLocked(ev *ReplacementEvent, chosen
 	g.QueueChoiceForEffect(choice)
 }
 
-// optionalReplacementChooserLocked is who answers a CR 614.10 "may"
+// optionalReplacementChooserLocked is who answers a "may"
 // prompt: the effect's Controller when it names one (the commander's
 // owner for CR 903.9), else the event's affected player. Caller must
 // hold g.mu.
@@ -1504,7 +1602,7 @@ func (g *Game) optionalReplacementChooserLocked(ev *ReplacementEvent, chosen act
 	return chooser
 }
 
-// offerOptionalReplacementLocked handles an applicable CR 614.10
+// offerOptionalReplacementLocked handles an applicable
 // "may" replacement. Returns true when the yes/no prompt was queued
 // and the caller must stop where it is — errReplacementPending from
 // the apply-loop, a bare nil from the chosen-order resume — which is
@@ -1512,7 +1610,7 @@ func (g *Game) optionalReplacementChooserLocked(ev *ReplacementEvent, chosen act
 // offerEntryLifePaymentLocked already have.
 //
 // Returns false — the "may" is DECLINED, and marked applied so the
-// apply-loop does not gather it a second time (CR 614.10: the
+// apply-loop does not gather it a second time (CR 614.5: the
 // decision is once per event) — in the two cases where there is no
 // question to ask:
 //
@@ -1575,6 +1673,13 @@ func (g *Game) ResolveOptionalReplacement(choiceID, chooserID uuid.UUID, apply b
 	if choice.Chooser != chooserID {
 		return ErrNotTheChooser
 	}
+	if parked := choice.costCommanderResume; parked != nil {
+		// #1397: a CR 903.9 question asked BEFORE a cost is paid.
+		// There is no paused event behind it — the announcement it is
+		// about has not been made yet — so the answer re-makes it.
+		g.dequeueChoiceLocked(idx)
+		return g.resolveCostCommanderChoiceLocked(parked, chooserID, apply)
+	}
 	frame := choice.replacementResume
 	g.dequeueChoiceLocked(idx)
 	if frame == nil || frame.ev == nil || len(frame.applicable) == 0 {
@@ -1593,7 +1698,7 @@ func (g *Game) ResolveOptionalReplacement(choiceID, chooserID uuid.UUID, apply b
 		g.replacementsAppliedThisEvent[ev.ID] = make(map[ReplacementEffectID]bool)
 	}
 	// Mark applied regardless of yes/no so the apply-loop doesn't
-	// re-evaluate this effect again for this event (CR 614.10: the
+	// re-evaluate this effect again for this event (CR 614.5: the
 	// decision is once per event).
 	g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
 	if apply && chosen.effect.Replace != nil {
@@ -1753,7 +1858,7 @@ func affectedPlayerForEvent(ev *ReplacementEvent, applicable []activeReplacement
 		// ordering prompt to the Primal Vigor player.
 		return ev.TokenController
 	case RepEventMill:
-		// #569. CR 701.13a: the player who mills is the one whose
+		// #569. CR 701.17a: the player who mills is the one whose
 		// library is being read, and they are the affected player
 		// whoever controls the replacements. Bruvac the Grandiloquent
 		// and The Water Crystal both replace an OPPONENT's mill, so
@@ -1772,7 +1877,7 @@ func affectedPlayerForEvent(ev *ReplacementEvent, applicable []activeReplacement
 		// replacements — the same reading the mill arm above takes.
 		//
 		// The prompt it would order is never actually put to them: a
-		// production sets mustSettleNow (CR 605.3a), so the apply-loop
+		// production sets mustSettleNow (CR 605.3b), so the apply-loop
 		// applies the gathered order inline. The arm is still the
 		// honest answer to "who would be asked", it is what the
 		// eliminated-chooser branch reads before the mustSettleNow one,
@@ -1925,7 +2030,7 @@ func (g *Game) ResolveReplacementOrder(choiceID, chooserID uuid.UUID, ordered []
 			continue
 		}
 		if chosen.effect.Optional {
-			// #847: and a CR 614.10 "may" is the third of them. This
+			// #847: and a "may" is the third of them. This
 			// branch was missing, so a "may" ordered alongside any
 			// other effect fired without ever being offered — the
 			// engine said yes on its controller's behalf, which is
@@ -2004,7 +2109,12 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		// die here — which is exactly what ADR 0056's damage results
 		// make routine, and why the hardening lands in this PR rather
 		// than the one that branches the tail.
-		err := g.applyResolvedCounterLocked(ev)
+		//
+		// #1282: through the tail-running exit, so a caller sequenced
+		// behind the placement (amass's "the Army you amassed", a
+		// Saga's chapter check) runs now that the counters are really
+		// there, and is told zero when the target has gone.
+		err := g.applyResolvedCounterThenLocked(ev)
 		if errors.Is(err, ErrCardNotFound) || errors.Is(err, ErrPlayerNotFound) || errors.Is(err, ErrPlayerEliminated) {
 			g.EmitEvent(Event{
 				Kind:     EventEffectError,
@@ -2024,7 +2134,7 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		return g.actuallyDrawCardsLocked(ev.DrawPlayer, ev.DrawCount)
 	case RepEventProduceMana:
 		// #1222: unreachable, and that is the decision rather than an
-		// oversight. A production sets mustSettleNow (CR 605.3a — a
+		// oversight. A production sets mustSettleNow (CR 605.3b — a
 		// mana ability resolves as one indivisible step with no
 		// priority window inside it, and the auto-tapper may raise no
 		// prompt at all), so no event of this kind ever queues a
@@ -2124,6 +2234,21 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		// sacrifice / SBA exit, which keeps its own mover and carries
 		// a route only to hold a continuation (#815, ViaBattlefieldLeave).
 		// It falls through to the battlefield-leave branch below.
+		//
+		// #1322: one card of a SIMULTANEOUS entry is not landed here.
+		// Its window has settled, so the settled event goes back to the
+		// batch, which opens the next card's window and lands the whole
+		// batch together once the last one settles (entry_batch.go).
+		// First, because a batch card is an entry the branches below
+		// would otherwise finish on its own.
+		if b, i, ok := ev.takeEntryBatch(); ok {
+			if err := g.resumeEntryBatchLocked(b, i, ev); err != nil {
+				return err
+			}
+			// An action boundary, as for the single entry below.
+			g.runStateChecksLocked()
+			return nil
+		}
 		if ev.zoneRoute != nil && !ev.zoneRoute.ViaBattlefieldLeave {
 			return g.executeZoneRouteLocked(ev)
 		}
@@ -2157,16 +2282,19 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 			return nil
 		}
 		if ev.OldZone != ZoneBattlefield {
-			// What is left here is a battlefield ENTRY that is not
-			// entryResumable: putOntoBattlefieldFromZoneLocked's batch,
-			// which runs every card's pipeline against the pre-entry
-			// board and then moves them together — a simultaneity a
-			// per-card resume would break. It bails before moving
-			// anything and is documented as not happening when it
-			// pauses; see ReplacementEvent.entryResumable. Since #707 no
+			// What is left here is a battlefield entry the window
+			// REDIRECTED (it settled on some zone other than the
+			// battlefield), or one that is not entryResumable at all —
+			// since #1322 that is only the sandbox move_card verb,
+			// which never pauses. A redirected effect-side entry is
+			// treated as a cancel, the posture
+			// enterBattlefieldThroughPipelineLocked takes inline, so
+			// the caller's continuation is still told nothing entered;
+			// it used to be dropped here, which stranded a search whose
+			// fetched card a paused window redirected. Since #707 no
 			// EXIT lands here: every one of them carries a zoneRoute or
 			// comes off the battlefield.
-			return nil
+			return g.runEntryTailLocked(ev, uuid.Nil)
 		}
 		var owner *Player
 		if card, ok := g.LookupCardForEffect(ev.CardID); ok {
@@ -2216,7 +2344,7 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		// Answering a prompt is an action boundary, like every other
 		// Resolve* handler, so the sweep the effect-time helpers
 		// deliberately skip happens here. Running a library out is NOT
-		// a loss (CR 701.13b, #767), but the cards that landed can be —
+		// a loss (CR 701.17b, #767), but the cards that landed can be —
 		// a milled Aura loses its host and a mill payoff's trigger has
 		// to be put on the stack against a swept board.
 		g.runStateChecksLocked()
@@ -2262,8 +2390,8 @@ func (g *Game) stepEntryStillPendingLocked(ev *ReplacementEvent) bool {
 }
 
 // finishSettledReplacementLocked is the single "the apply-loop has
-// settled — now finish the event" call the CR 616 / CR 614.10 resumes
-// make. `ev` is the event the resume has been holding; `out` is what
+// settled — now finish the event" call the CR 616 / "may" replacement
+// resumes make. `ev` is the event the resume has been holding; `out` is what
 // applyReplacementsLocked handed back (nil when cancelled).
 //
 // Cancelling means "the mutation simply does not happen" for every
@@ -2350,12 +2478,16 @@ func (g *Game) finishSettledReplacementLocked(ev, out *ReplacementEvent) error {
 		// The one kind whose cancellation is not nothing — see the
 		// doc comment above.
 		return g.applyResolvedReplacementEventLocked(ev)
-	case RepEventDraw, RepEventCounter, RepEventProduceMana:
-		// Nothing is sequenced behind any of the three: a cancelled
-		// draw, a cancelled counter placement and a production replaced
-		// away simply do not happen, and no entry point carries a
-		// continuation, so there is nobody to tell. A draw tail or a
-		// counter tail, if one is ever added, belongs here.
+	case RepEventCounter:
+		// #1282: a cancelled COUNTER placement places nothing, but the
+		// rest of the effect behind it ("amass, then the Army deals
+		// damage equal to its power") still runs, told zero.
+		return g.runCounterTailLocked(ev, 0)
+	case RepEventDraw, RepEventProduceMana:
+		// Nothing is sequenced behind either: a cancelled draw and a
+		// production replaced away simply do not happen, and no entry
+		// point carries a continuation, so there is nobody to tell. A
+		// draw tail, if one is ever added, belongs here.
 		//
 		// #1222: a production additionally cannot even reach this
 		// function — it sets mustSettleNow, so it never pauses and
@@ -2761,13 +2893,14 @@ func (g *Game) finishPickTargetLocked(f *pickTargetFrame) {
 		return
 	}
 	stampTriggerContext(item, TriggeredAbility{Watches: f.watches}, f.tc)
+	stampTriggerSource(item, f.source, f.tc)
 	item.Targets = append([]TargetRef(nil), f.picked...)
 	item.Modes = append([]int(nil), f.modes...)
 	item.targetSpec = f.spec
 	item.modeSpec = f.modeSpec
 	item.DoubledBy, item.DoubledByName = f.doubledBy.id, f.doubledBy.name
 	g.queueHarvestedTriggerLocked(item)
-	// CR 603.3d / 115.7: a triggered ability's targets are chosen as
+	// CR 603.3d / 115.3: a triggered ability's targets are chosen as
 	// it is put on the stack, which is right here. Emitted after the
 	// queue so a "becomes the target" trigger stacks above the
 	// ability that targeted. Added in S22 for Monk Gyatso.
@@ -2854,6 +2987,8 @@ func (g *Game) ResolvePickTargets(choiceID, chooserID uuid.UUID, targets []Targe
 	step := frame.currentClause()
 	if frame == nil || frame.build == nil || step == nil {
 		g.dequeueChoiceLocked(idx)
+		// #1529: the batch this trigger belonged to was held for it.
+		g.runStateChecksLocked()
 		return nil
 	}
 	for _, t := range targets {
@@ -2887,6 +3022,15 @@ func (g *Game) ResolvePickTargets(choiceID, chooserID uuid.UUID, targets []Targe
 	frame.picked = append(frame.picked, stamped...)
 	frame.step++
 	g.queuePickTargetStepLocked(frame)
+	// #1529: the drain holds the whole trigger queue while this walk
+	// is open. finishPickTargetLocked runs the boundary when the item
+	// joins; a walk that ended because CR 603.3d removed the ability
+	// (a later required clause with nothing left to pick) has to run
+	// it too, or the batch waits for an unrelated action. A no-op
+	// while a further step's prompt is open.
+	if !g.triggerAnnouncementOpenLocked() {
+		g.runStateChecksLocked()
+	}
 	return nil
 }
 
@@ -2926,6 +3070,9 @@ func (g *Game) ResolveTriggerPrompt(choiceID, chooserID uuid.UUID, apply bool) e
 	frame := choice.triggerResume
 	g.dequeueChoiceLocked(idx)
 	if !apply || frame == nil || frame.build == nil {
+		// #1529: declining still releases the batch the drain was
+		// holding for this trigger (CR 603.3b).
+		g.runStateChecksLocked()
 		return nil
 	}
 	// S20: a targeted optional trigger continues into the target
@@ -2962,7 +3109,7 @@ func (g *Game) QueuePayUnlessForEffect(
 	cost, question string,
 	onDecline func(g *Game) error,
 ) error {
-	return g.queuePayUnlessLocked(chooser, source, cost, question, onDecline, TurnStep{}, uuid.Nil)
+	return g.queuePayUnlessLocked(chooser, source, cost, question, onDecline, TurnStep{}, uuid.Nil, nil)
 }
 
 // queuePayUnlessLocked is the one body behind every pay-unless.
@@ -2981,6 +3128,7 @@ func (g *Game) queuePayUnlessLocked(
 	onDecline func(g *Game) error,
 	owed TurnStep,
 	guards uuid.UUID,
+	tap *TapPermanentsCost,
 ) error {
 	parsed, err := ParseCost(cost)
 	if err != nil {
@@ -3012,6 +3160,7 @@ func (g *Game) queuePayUnlessLocked(
 		payUnlessResume: &payUnlessFrame{
 			cost:      parsed,
 			onDecline: onDecline,
+			tap:       tap,
 		},
 	})
 	return nil
@@ -3176,6 +3325,32 @@ func (g *Game) ResolveMayCast(choiceID, chooserID uuid.UUID, apply bool) error {
 // Caller must NOT hold g.mu — this method takes the write lock.
 // Added in S19 sub-PR 6.
 func (g *Game) ResolvePayUnless(choiceID, chooserID uuid.UUID, apply bool) error {
+	return g.ResolvePayUnlessWithTaps(choiceID, chooserID, apply, nil)
+}
+
+// ResolvePayUnlessWithTaps is ResolvePayUnless with the permanents the
+// chooser taps to help pay a waterbend cost (#1311, CR 701.67a) —
+// "Ward—Waterbend {4}". Each tapped untapped artifact or creature the
+// chooser controls pays {1} of the cost's generic mana; the rest is
+// paid from the pool and the auto-tapper exactly as before, with the
+// tapped permanents kept out of the auto-tapper's reach (CR 118.3).
+//
+// A malformed tap list is REFUSED, with the prompt left in place,
+// rather than read as a decline: tap IDs on a prompt with no waterbend
+// clause, on a "Don't pay" answer, or naming a permanent that cannot
+// pay (not the chooser's, already tapped, not an artifact or creature,
+// named twice, more than the generic). That is the posture every other
+// cost validator takes — a client bug must not cost the payer their
+// spell — and the rule the tap_ids of a cast and the waterbend_ids of
+// an activation follow.
+//
+// A well-formed payment that still cannot be funded (the remaining
+// mana isn't there) degrades to a decline with NOTHING tapped: the
+// mana half is settled first and the taps only happen once it has
+// been.
+//
+// Caller must NOT hold g.mu — this method takes the write lock.
+func (g *Game) ResolvePayUnlessWithTaps(choiceID, chooserID uuid.UUID, apply bool, tapIDs []uuid.UUID) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
@@ -3199,6 +3374,15 @@ func (g *Game) ResolvePayUnless(choiceID, chooserID uuid.UUID, apply bool) error
 		return ErrNotTheChooser
 	}
 	frame := choice.payUnlessResume
+	if len(tapIDs) > 0 {
+		if !apply || frame == nil {
+			return ErrInvalidParam
+		}
+		budget := WaterbendBudget(frame.tap, frame.cost, 0)
+		if err := g.validateTapPermanentsCostLocked(chooserID, frame.tap, tapIDs, budget); err != nil {
+			return err
+		}
+	}
 	g.dequeueChoiceLocked(idx)
 	if frame == nil {
 		return nil
@@ -3206,7 +3390,11 @@ func (g *Game) ResolvePayUnless(choiceID, chooserID uuid.UUID, apply bool) error
 	paid := false
 	if apply {
 		if p := g.playerByIDLocked(chooserID); p != nil {
-			paid = g.payCostLocked(p, frame.cost, choice.Source)
+			cost := WaterbendReduced(frame.cost, 0, len(tapIDs))
+			paid = g.payCostLocked(p, cost, choice.Source, unionIDs(tapIDs))
+			if paid {
+				g.payTapPermanentsCostLocked(chooserID, tapIDs)
+			}
 		}
 	}
 	// Exactly one of the two branches runs. `paid` is the real
@@ -3284,10 +3472,16 @@ func (g *Game) declineDepartedChoiceLocked(c *PendingChoice) {
 // Returns false — with nothing tapped or spent — when the cost
 // can't be met. Emits EventManaSpent on success so the client's
 // pool display and the event log line up with the cast path.
+//
+// `excluded` is sources the auto-tapper may not reach for — the
+// permanents a waterbend payment is tapping instead of paying mana
+// (#1311), which cannot also tap for the rest (CR 118.3). Nil for
+// every other pay-unless.
+//
 // Caller must hold g.mu.
-func (g *Game) payCostLocked(p *Player, cost ParsedCost, source uuid.UUID) bool {
+func (g *Game) payCostLocked(p *Player, cost ParsedCost, source uuid.UUID, excluded map[uuid.UUID]bool) bool {
 	if !p.ManaPool.CanPay(cost, 0) {
-		plan, ok := g.autoTapLocked(p.ID, cost, 0, nil)
+		plan, ok := g.autoTapLocked(p.ID, cost, 0, excluded)
 		if !ok {
 			return false
 		}
@@ -3583,9 +3777,12 @@ func (g *Game) pruneSacrificeChoicesLocked() {
 // kind, so a prompt that is one leg of a prompted RUN settles that leg
 // with "nothing discarded" (#1016's dropDefault, ADR 0013 §5y item 5)
 // and the rest of the printed instruction still happens. A pick that
-// is no run's leg has no continuation to run, exactly as it has none
-// when its chooser leaves the game; that is the departure table's
-// existing answer for the kind and this does not widen it.
+// is no run's leg has no run to settle, but since #1225 it still runs
+// the rest of the card: its frame's continuation is called with
+// nothing picked, exactly as it is when its chooser leaves the game,
+// because a mid-card choose_cards is asked from inside a resolution
+// that is paused waiting for it and the drop must not be where the
+// card stops (Torment of Hailfire's sacrifice branch is the case).
 //
 // The bounds move with the list (setCardSetCandidates): a pick of two
 // from a hand that now holds one is CR 701.8a's "as many as you can",
@@ -3597,21 +3794,29 @@ func (g *Game) pruneSacrificeChoicesLocked() {
 // the table, and a stall dump has to say where it went.
 //
 // untap_choice carries the same payload (isCardSetPickKind) and is
-// deliberately NOT swept. Its continuation is the rest of the UNTAP
-// STEP (finishUntapStepLocked), its departure row is dropDiscard, so a
-// withdrawal here would end the question by stranding the step — and
-// it cannot need this: CR 502.3's determination is about the active
-// player's own permanents during their own untap step, where nothing
-// has priority to move them.
+// deliberately NOT swept — excluded BY KIND, below, since #1263.
+// (Before #1263 this comment claimed the exclusion was automatic
+// because untap_choice "sets no zone", which was never true —
+// queueUntapChoiceLocked has stamped Zone: ZoneBattlefield on it
+// since #826, so the loop examined and could WITHDRAW it exactly like
+// any other card-set pick, contradicting this very paragraph and ADR
+// 0018 §6's #1045 amendment.) Its continuation is the rest of the
+// UNTAP STEP (finishUntapStepLocked), its departure row is
+// dropDiscard, so a withdrawal here would end the question by
+// stranding the step — and it cannot need this: CR 502.3's
+// determination is about the active player's own permanents during
+// their own untap step, where nothing has priority to move them.
 //
 // #1198's entry_reveal_from_hand is out for the same reason and one
-// of its own. The drop would strand a paused CR 614 ENTRY, which is
-// worse than the untap step it would strand above; and the prompt
-// cannot need the prune, because its floor is zero — "reveal nothing"
-// is an answer no emptied candidate list can take away, which is
-// exactly the property untap_choice lacks and a choose_cards with a
-// floor of one lacks. A stale candidate is still refused on submit by
-// pickStillInPickZoneLocked, so the worst an un-pruned list costs is
+// of its own (also excluded by kind, below, since #1263 — its frame's
+// zone is ZoneHand, not empty either). The drop would strand a paused
+// CR 614 ENTRY, which is worse than the untap step it would strand
+// above; and the prompt cannot need the prune, because its floor is
+// zero — "reveal nothing" is an answer no emptied candidate list can
+// take away, which is exactly the property untap_choice lacks and a
+// choose_cards with a floor of one lacks. A stale candidate is still
+// refused on submit by pickStillInPickZoneLocked, so the worst an
+// un-pruned list costs is
 // one rejected click.
 //
 // Called where pruneSacrificeChoicesLocked is called, and for its
@@ -3644,9 +3849,20 @@ func (g *Game) pruneCardSetChoicesLocked() {
 		// Every kind carrying the choose-cards payload, not just
 		// choose_cards itself (#1214): a their_permanents prompt over
 		// a board that empties under it is exactly the prompt this
-		// sweep exists for, and untap_choice sets no zone so it falls
-		// out at the next line.
+		// sweep exists for.
 		if c == nil || !isCardSetPickKind(c.Kind) {
+			continue
+		}
+		// #1263: untap_choice and entry_reveal_from_hand are excluded
+		// BY KIND, not by an absent zone — both stamp a real Zone on
+		// their frame (ZoneBattlefield, ZoneHand), so the zone check
+		// below does not exclude them and never did. See the doc
+		// comment above for why neither needs (and neither can
+		// survive) this sweep: both would be WITHDRAWN by it, and
+		// each one's drop action is dropDiscard, which strands the
+		// paused untap step or the paused CR 614 entry it is
+		// pausing — forever, with nothing to settle it.
+		if c.Kind == PendingChoiceUntapChoice || c.Kind == PendingChoiceEntryRevealFromHand {
 			continue
 		}
 		frame := c.chooseCardsResume
@@ -4017,18 +4233,21 @@ func (g *Game) ResolveScry(choiceID, chooserID uuid.UUID, bottom, topOrder []uui
 }
 
 // IsLookAtTopKind reports whether a choice kind belongs to the scry
-// family: the prompts that show their chooser the top N cards of
-// their own library and ask where they go.
+// family: the prompts that show their chooser a set of cards and ask
+// where in a library they go. Three of them are a look at the top of
+// the chooser's own library; the fourth, put_in_library (ADR 0088),
+// orders cards on their way into a library from wherever they are.
 //
-// The three share PendingChoice.ScryCards, scryResume, the
-// chooser-only wire redaction and the client dialog — so the places
+// The four share PendingChoice.ScryCards, the chooser-only wire
+// redaction and the client dialog (put_in_library has its own resume
+// slot, because its continuation is handed the answer) — so the places
 // that care about the family rather than the individual keyword (the
 // view projection, the legal-move enumerator, the dispatcher) ask
-// here instead of listing the kinds and going stale when a fourth
-// arrives. Added in S22.
+// here instead of listing the kinds. Added in S22; the fourth member
+// in #996.
 func IsLookAtTopKind(k PendingChoiceKind) bool {
 	switch k {
-	case PendingChoiceScry, PendingChoiceSurveil, PendingChoiceLookAtTop:
+	case PendingChoiceScry, PendingChoiceSurveil, PendingChoiceLookAtTop, PendingChoicePutInLibrary:
 		return true
 	}
 	return false
@@ -4126,21 +4345,9 @@ func (g *Game) ResolveLookAtTop(choiceID, chooserID uuid.UUID, topOrder []uuid.U
 //
 // Caller must hold g.mu.
 func partitionLookedAtCards(p *Player, lookedAt, away, topOrder []uuid.UUID) (map[uuid.UUID]bool, error) {
-	want := make(map[uuid.UUID]bool, len(lookedAt))
-	for _, id := range lookedAt {
-		want[id] = true
-	}
-	seen := make(map[uuid.UUID]bool, len(want))
-	for _, list := range [][]uuid.UUID{away, topOrder} {
-		for _, id := range list {
-			if !want[id] || seen[id] {
-				return nil, ErrInvalidParam
-			}
-			seen[id] = true
-		}
-	}
-	if len(seen) != len(want) {
-		return nil, ErrInvalidParam
+	want, err := partitionChoiceCards(lookedAt, away, topOrder)
+	if err != nil {
+		return nil, err
 	}
 	for id := range want {
 		if !p.Library.Contains(id) {

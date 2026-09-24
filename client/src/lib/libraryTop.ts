@@ -54,3 +54,80 @@ export function libraryTopPlayable(zone: ZoneView | undefined): boolean {
   const top = visibleLibraryTop(zone);
   return top !== null && top.castable_here === true;
 }
+
+// libraryTopActionLabel is the verb for the affordance on a visible,
+// playable library top, or null when there is nothing to offer —
+// either the top isn't visible or `libraryTopPlayable` says no.
+//
+// A land is PLAYED, not cast (CR 305.1, CR 116.2a): the same wording
+// nit the graveyard's flashback button has always had to mind
+// (ZoneBrowserModal's castLabelFor). `castable_here` on a land already
+// answers the land-play rule rather than the spell rules (#1407,
+// #1441), so this reads the type line and nothing else — no second
+// legality check.
+export function libraryTopActionLabel(zone: ZoneView | undefined): "play" | "cast" | null {
+  if (!libraryTopPlayable(zone)) return null;
+  const top = visibleLibraryTop(zone);
+  if (!top) return null;
+  return (top.type_line ?? "").toLowerCase().includes("land") ? "play" : "cast";
+}
+
+// LibraryTopSpecialAction is one pill beside the library pile for a
+// CR 116.2 special action the server offers on the visible top card.
+export interface LibraryTopSpecialAction {
+  // Stable per row: the kind plus the printed price, which is what
+  // tells two offers of one kind apart.
+  key: string;
+  // The pill's own text: the kind, plus the price when the card offers
+  // the kind more than once.
+  text: string;
+  // The full row label, for the tooltip and the screen reader.
+  label: string;
+  // The `special_action` params, sent unaltered.
+  params: {
+    card_id: string;
+    kind: string;
+    strict: true;
+    auto_tap: true;
+    cost?: string;
+  };
+}
+
+// libraryTopSpecialActions is the special actions the viewer may take
+// on the visible top card of their library right now (#1391: Fblthp,
+// Lost on the Range lets its controller plot the top card).
+//
+// The server decides everything. `special_actions` arrives on the top
+// card only in its owner's own frame, and only while the owner can see
+// the card. `available` is the engine's timing answer. So this shows
+// the available rows and nothing else, the same way
+// `libraryTopPlayable` reads `castable_here`. An unavailable row is
+// left out rather than greyed: the pill is a shortcut, and Fblthp's
+// text is on the battlefield for anyone who wants to know why.
+//
+// A card can offer one kind twice. A Djinn of Fool's Fall on top under
+// Fblthp may be plotted for its own plot cost or for its mana cost, so
+// each of those pills names its price and sends it as `cost`, which is
+// how the server tells them apart. The price shown is `charged_cost`
+// when the server priced it (so a discount shows), else the printed
+// `cost`. The `cost` sent is always the printed one, because that is
+// what the server matches on.
+export function libraryTopSpecialActions(zone: ZoneView | undefined): LibraryTopSpecialAction[] {
+  const top = visibleLibraryTop(zone);
+  if (!top) return [];
+  const rows = (top.special_actions ?? []).filter((sa) => sa.available === true);
+  const perKind = new Map<string, number>();
+  for (const sa of rows) perKind.set(sa.kind, (perKind.get(sa.kind) ?? 0) + 1);
+  return rows.map((sa) => {
+    const price = sa.charged_cost === undefined ? (sa.cost ?? "") : sa.charged_cost || "{0}";
+    const text = (perKind.get(sa.kind) ?? 0) > 1 ? `${sa.kind} ${price}` : sa.kind;
+    const params: LibraryTopSpecialAction["params"] = {
+      card_id: top.instance_id,
+      kind: sa.kind,
+      strict: true,
+      auto_tap: true,
+    };
+    if (sa.cost) params.cost = sa.cost;
+    return { key: `${sa.kind}:${sa.cost ?? ""}`, text, label: sa.label || sa.kind, params };
+  });
+}

@@ -71,3 +71,43 @@ func TestNoUntapViewStampsMarkersAndFaceDownPrivacy(t *testing.T) {
 		t.Fatalf("face-down no_untap = %+v, want next marker and no static bit", hidden.NoUntap)
 	}
 }
+
+// #1313: a live "for as long as" hold projects as static — also on a
+// face-down permanent, because the hold comes from another object —
+// and never as a next-step entry. An expired hold projects nothing.
+func TestNoUntapViewProjectsHoldsAsStatic(t *testing.T) {
+	g := buildActiveGame(t)
+	owner, other := g.Seats[0], g.Seats[1]
+	sourceID, heldID, hiddenID, staleID := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+	g.WithWriteLock(func() {
+		g.Battlefield.PushTop(game.Card{InstanceID: sourceID, Name: "Source", Owner: owner.ID, Controller: owner.ID})
+		g.Battlefield.PushTop(game.Card{InstanceID: heldID, Name: "Held", Owner: other.ID, Controller: other.ID, Tapped: true})
+		g.Battlefield.PushTop(game.Card{InstanceID: hiddenID, Name: "Hidden", Owner: other.ID, Controller: other.ID, Tapped: true, FaceDown: true})
+		g.Battlefield.PushTop(game.Card{InstanceID: staleID, Name: "Stale", Owner: other.ID, Controller: other.ID, Tapped: true})
+		live, ok := g.ForAsLongAsYouControlDuration(sourceID, owner.ID)
+		if !ok {
+			t.Fatal("duration did not start")
+		}
+		stale := live
+		stale.Player = other.ID // "for as long as other controls Source": already false
+		for _, id := range []uuid.UUID{heldID, hiddenID} {
+			_ = g.HoldUntappedForEffect(id, live)
+		}
+		_ = g.HoldUntappedForEffect(staleID, stale)
+	})
+
+	v := ViewOfGameFor(g, other.ID.String())
+	byID := map[string]CardView{}
+	for _, c := range v.Battlefield.Cards {
+		byID[c.InstanceID] = c
+	}
+	for _, id := range []uuid.UUID{heldID, hiddenID} {
+		got := byID[id.String()].NoUntap
+		if got == nil || !got.Static || len(got.Next) != 0 {
+			t.Errorf("%s no_untap = %+v, want static only", id, got)
+		}
+	}
+	if got := byID[staleID.String()].NoUntap; got != nil {
+		t.Errorf("expired hold projected no_untap = %+v, want none", got)
+	}
+}

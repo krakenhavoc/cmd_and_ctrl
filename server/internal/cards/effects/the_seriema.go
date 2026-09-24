@@ -16,43 +16,34 @@ import (
 //
 // #337, reported in-app as "the enter the battlefield effect did not
 // trigger": there was no catalog entry at all, because ADR 0037 §5
-// refuses to ship half a card and three of the four lines were
-// unbuildable. Two of those three are buildable now (ADR 0071):
+// refuses to ship half a card. Every line is buildable now:
 //
 //   - "7+ | Flying" is ThresholdKeywords(7, "flying") — a layer-6
-//     self-grant with a charge-counter gate.
+//     self-grant with a charge-counter gate (ADR 0071).
 //   - "It's an artifact creature at 7+" is SpacecraftAt(7, 5, 5) — a
 //     layer-4 type add plus a layer-7b base-P/T set, same gate. Since
 //     ADR 0039 made layer 4 authoritative, that is a real creature to
 //     combat, targeting and the state-based actions, and the printed
 //     5/5 is its base P/T rather than a number on the wire.
+//   - Station itself is Station() (#759, ADR 0071 addendum
+//     2026-09-23): #758's tap-another cost, sorcery timing, and
+//     charge counters equal to the tapped creature's power as the
+//     ability resolves (CR 608.2h).
 //
-// Both read the counter count LIVE (CR 721.2a is an "as long as"), so
-// a Seriema whose charge counters are removed stops being a creature
-// and loses flying in the same recompute.
-//
-// The station ABILITY is the one line still missing, and it is a COST
-// gap rather than a Station gap: "tap another untapped creature you
-// control" is a cost component AbilityCost cannot express (#758).
-// ADR 0071 names the field #758 should add and the constructor that
-// will sit on it; until then the charge counters go on by hand from
-// the counter menu and the caveat says so. Nothing about the
-// thresholds waits on it.
+// The thresholds read the counter count LIVE (CR 721.2a is an "as
+// long as"), so a Seriema whose charge counters are removed stops
+// being a creature and loses flying in the same recompute.
 //
 // CR 721.2c — "a station card has no power or toughness outside the
-// battlefield" — is also not modelled: The Seriema shows its printed
-// 5/5 in hand and in the graveyard. That is a view and importer rule
-// with no rules consequence on the battlefield, and it is noted in
-// ADR 0071 rather than caveated, because it changes nothing a player
-// can do.
+// battlefield" — is not modelled: The Seriema shows its printed 5/5
+// in hand and in the graveyard. That is a view and importer rule with
+// no rules consequence anywhere a player can act on it, and it is
+// noted in ADR 0071 rather than caveated.
 func init() {
 	Register(Spec{
 		OracleID:     "a6bcec1f-f515-4e63-9e84-8eb04cc582ff",
 		Name:         "The Seriema",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Station is not implemented — the ability that taps another creature you control to add charge counters equal to its power cannot be activated. Add charge counters by hand; everything printed at 7+ then works.",
-		},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("The Seriema — search for a legendary creature card",
 				func(g *game.Game, item *game.StackItem) error {
@@ -67,6 +58,7 @@ func init() {
 					}.Apply(NewContext(g, item))
 				}),
 		},
+		Activated: []ActivatedAbility{Station()},
 		Static: append(
 			SpacecraftAt(7, 5, 5),
 			ThresholdKeywords(7, "flying"),
@@ -82,8 +74,9 @@ func init() {
 //
 // "Tapped" is an AppliesTo input like any other, and the layer
 // listener already bumps on EventTapCard / EventUntapCard, so a
-// creature that taps to attack gains indestructible in the same
-// recompute rather than at the next unrelated event.
+// creature that taps to attack — or to station The Seriema itself —
+// gains indestructible in the same recompute rather than at the next
+// unrelated event.
 func otherTappedLegendaryCreaturesYouControlHaveIndestructible() game.StaticAbility {
 	return game.StaticAbility{
 		Layer: game.Layer6Ability,

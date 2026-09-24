@@ -31,6 +31,16 @@ func (g *Game) PlayerByIDForEffect(id uuid.UUID) *Player {
 	return g.playerByIDLocked(id)
 }
 
+// TurnsBegunFor reports the per-seat turn count from an already-locked
+// effect callback. It is the card-facing meaning of "your Nth turn".
+func (g *Game) TurnsBegunFor(player uuid.UUID) int {
+	return g.turnsBegunForLocked(player)
+}
+
+// IsExtraTurn reports whether the current turn came from an effect.
+// Like the rest of this file, it is for already-locked card callbacks.
+func (g *Game) IsExtraTurn() bool { return g.Turn.Extra }
+
 // StackItemForEffect looks up a stack item by its ID. Returns nil
 // if no such item is on the stack. Used by effects that need to
 // peek at a countered spell's controller / owner before
@@ -649,6 +659,14 @@ func (g *Game) DealDamageToPlayerForEffect(source, playerID uuid.UUID, amount in
 // dealt and `then` runs with zero (CR 800.4a, #808). The batch form
 // skips both rather than failing on them.
 func (g *Game) DealDamageToPlayerThenForEffect(source, playerID uuid.UUID, amount int, then func(g *Game, dealt int) error) error {
+	return g.dealDamageToPlayerLocked(source, nil, playerID, amount, then)
+}
+
+// dealDamageToPlayerLocked is DealDamageToPlayerThenForEffect's body,
+// with the source OBJECT when the caller knows it (#1396,
+// DealDamageFromObjectForEffect). obj only changes where the tail reads
+// the source's lifelink from; see effectDamageTailLocked.
+func (g *Game) dealDamageToPlayerLocked(source uuid.UUID, obj *ObjectRef, playerID uuid.UUID, amount int, then func(g *Game, dealt int) error) error {
 	if amount <= 0 {
 		// Not an event at all — "deals 0 damage" deals no damage
 		// (CR 120.8) and fires no window. The continuation is still an
@@ -697,7 +715,7 @@ func (g *Game) DealDamageToPlayerThenForEffect(source, playerID uuid.UUID, amoun
 		// answered after the source has left still credits the life
 		// it dealt. Still no actor and no CR 903.10a commander tally:
 		// those are combat-damage business.
-		damageTail: g.effectDamageTailLocked(damageTailPlayer, source),
+		damageTail: g.effectDamageTailLocked(damageTailPlayer, source, obj),
 	}
 	ev.damageTail.then = then
 	_, err := g.damageThroughReplacementsLocked(ev)
@@ -760,6 +778,13 @@ func (g *Game) DealDamageToCreatureForEffect(source, cardID uuid.UUID, amount in
 // much life" is the sentence this exists for; a card that only deals
 // the damage keeps using DealDamageToCreatureForEffect.
 func (g *Game) DealDamageToCreatureThenForEffect(source, cardID uuid.UUID, amount int, then func(g *Game, dealt int) error) error {
+	return g.dealDamageToPermanentLocked(source, nil, cardID, amount, then)
+}
+
+// dealDamageToPermanentLocked is DealDamageToCreatureThenForEffect's
+// body, with the source OBJECT when the caller knows it (#1396). The
+// sibling of dealDamageToPlayerLocked.
+func (g *Game) dealDamageToPermanentLocked(source uuid.UUID, obj *ObjectRef, cardID uuid.UUID, amount int, then func(g *Game, dealt int) error) error {
 	if amount <= 0 {
 		if then != nil {
 			return then(g, 0)
@@ -781,7 +806,7 @@ func (g *Game) DealDamageToCreatureThenForEffect(source, cardID uuid.UUID, amoun
 		// #711: it carries the source's CR 702.2b deathtouch and
 		// CR 702.15b lifelink, snapshotted here so a prompt answered
 		// after the source has died still applies what it dealt with.
-		damageTail: g.effectDamageTailLocked(damageTailPermanent, source),
+		damageTail: g.effectDamageTailLocked(damageTailPermanent, source, obj),
 	}
 	ev.damageTail.then = then
 	// Through the permanent-aware tail: a creature marks damage, a
@@ -791,6 +816,38 @@ func (g *Game) DealDamageToCreatureThenForEffect(source, cardID uuid.UUID, amoun
 	// planeswalker.
 	_, err := g.damageThroughReplacementsLocked(ev)
 	return err
+}
+
+// DealDamageFromObjectForEffect deals damage from a named permanent
+// OBJECT (#1396, CR 400.7 / 608.2h) to a player or to a battlefield
+// permanent — the target is dispatched exactly as the effects package's
+// DealDamage primitive does, and a target that is neither deals nothing.
+//
+// The difference from the instance-ID entry points is only where the
+// source's lifelink and deathtouch come from. While `source` is still
+// on the battlefield as that object, they are read live. Once it has
+// left, they are read off that object's last-known record — even if
+// the card has since come back, because the permanent on the
+// battlefield then is a new object that dealt nothing. Warstorm Surge
+// is the case: the creature that entered is blinked in response, and
+// the damage is the departed creature's, with the departed creature's
+// keywords.
+//
+// Use it whenever the damage source is an object the effect already
+// names by ref (effects.Context.Trigger().Object.Ref()). An instance ID
+// alone keeps using DealDamageToPlayerForEffect /
+// DealDamageToCreatureForEffect, which read the most recent departed
+// object instead (departedDamageSourceLocked).
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) DealDamageFromObjectForEffect(source ObjectRef, target uuid.UUID, amount int) error {
+	if g.playerByIDLocked(target) != nil {
+		return g.dealDamageToPlayerLocked(source.ID, &source, target, amount, nil)
+	}
+	if findBattlefieldCard(g, target) != nil {
+		return g.dealDamageToPermanentLocked(source.ID, &source, target, amount, nil)
+	}
+	return nil
 }
 
 // DealDamageEachThenForEffect is the batch form: `source` deals
@@ -931,30 +988,6 @@ func (g *Game) DiscardRandomThenForEffect(playerID uuid.UUID, n int, then func(g
 	return g.discardCardsLocked(playerID, picked, discardOptions{cause: DiscardCauseEffect, then: then})
 }
 
-// LoseTheGameForEffect marks a player as losing the game — the
-// consequence half of "pay {3}{U}{U}. If you don't, you lose the
-// game" (Pact of Negation and the rest of the Pact cycle), and of
-// every other card that says those words outright.
-//
-// Routed through the AttemptedEmptyDraw flag rather than eliminating
-// the player on the spot, so the ability finishes resolving first and
-// the loss lands at the next SBA check alongside the empty-library
-// and zero-life losses. That borrows the CR 704.5b flag for a loss
-// that is not a draw, and CR 104.3e actually makes an effect loss
-// immediate; ADR 0057 sub-PR 2 replaces this writer with
-// loseGameLocked, after which actuallyDrawCardLocked is the flag's
-// only writer.
-//
-// Caller must hold g.mu. Added in S28.
-func (g *Game) LoseTheGameForEffect(playerID uuid.UUID) error {
-	p := g.playerByIDLocked(playerID)
-	if p == nil {
-		return ErrPlayerNotFound
-	}
-	p.AttemptedEmptyDraw = true
-	return nil
-}
-
 // MillNForEffect moves n cards from the top of playerID's library
 // to their graveyard. Emits EventMill per card. A library holding
 // fewer than n mills what it has (CR 701.17b) and nobody loses for
@@ -1026,7 +1059,7 @@ func (g *Game) MillNForEffect(playerID uuid.UUID, n int) error {
 // #569: the AMOUNT is replaceable. A mill into a graveyard opens a
 // RepEventMill window on n before any card moves, so Bruvac the
 // Grandiloquent doubles the instruction; an exile of the top N is not a
-// mill (CR 701.13a) and opens none. That window can PAUSE, on a CR 616
+// mill (CR 701.17a) and opens none. That window can PAUSE, on a CR 616
 // ordering prompt between two amount replacements, and then this
 // returns an EMPTY slice with the mill still owed — the contract
 // CreateTokensForEffect's empty ID slice already carries, and the
@@ -1080,7 +1113,7 @@ func (g *Game) MillToZoneForEffect(playerID uuid.UUID, n int, dest ZoneKind) ([]
 // of the repetition that ended it all move.
 //
 // That is what makes a mill-amount replacement double the right thing.
-// Bruvac the Grandiloquent doubles a MILL (CR 701.13b) and each
+// Bruvac the Grandiloquent doubles a MILL (CR 701.17b) and each
 // repetition is one, so Helm of Obedience at X=3 with Bruvac out mills
 // 2 + 2 = four cards and overshoots its bound by one, exactly as it
 // does in paper. It does NOT double the bound: "until a creature card
@@ -1513,6 +1546,72 @@ func (g *Game) CounterTargetToZoneForEffect(stackID uuid.UUID, dst ZoneRef) erro
 	}
 }
 
+// CounterSpellToLibraryThenForEffect is "counter target spell. If that
+// spell is countered this way, put it on the bottom of / on top of its
+// owner's library instead of into that player's graveyard" — Spell
+// Crumple's bottom, and each leg of Hinder's "your choice of the top or
+// bottom" once the choice is made (#1298, ADR 0088's 2026-09-23
+// amendment). `at` is the position: ToBottom, or Depth from the top.
+//
+// It is a COUNTER (CR 701.6a) with a destination, so it has
+// CounterTargetToZoneForEffect's gates: a spell that can't be countered
+// is untouched, and a countered ability simply ceases to exist
+// (CR 701.6b) — neither reaches a library. The move is the shared stack
+// exit, so CR 903.9 offers a commander the command zone and
+// flashback's CR 702.34a exile still wins.
+//
+// `then` hears whether the card is in its owner's library once the
+// move settles (CR 400.7) — false for every outcome above, and for a
+// commander whose owner took the command zone. Nil is allowed.
+//
+// Caller must hold g.mu in write mode (resolution frame).
+func (g *Game) CounterSpellToLibraryThenForEffect(stackID uuid.UUID, at TuckOptions, then func(g *Game, placed bool) error) error {
+	tell := func(g *Game, placed bool) error {
+		if then == nil {
+			return nil
+		}
+		return then(g, placed)
+	}
+	item, ok := g.StackMeta[stackID]
+	if !ok || item == nil {
+		return tell(g, false)
+	}
+	if item.Kind == StackItemActivated || item.Kind == StackItemTriggered {
+		if err := g.counterAbilityLocked(stackID); err != nil {
+			return err
+		}
+		return tell(g, false)
+	}
+	if !g.counterableSpellOnStackLocked(stackID) {
+		if item.Kind == StackItemSpell {
+			slog.Info("counter had no effect: spell can't be countered", "spell_id", stackID)
+		}
+		return tell(g, false)
+	}
+	return g.exitSpellFromStackAtLocked(stackID, &ZoneRef{Kind: ZoneLibrary, Owner: item.Owner}, ZoneGraveyard, true, at,
+		func(g *Game) error {
+			return tell(g, g.landedInZoneLocked(stackID, ZoneLibrary, uuid.Nil))
+		})
+}
+
+// counterableSpellOnStackLocked reports whether `stackID` is a spell on
+// the stack that a counter would actually counter — what "if that
+// spell is countered this way" can be true of. The put_in_library
+// prompt asks it before offering a Hinder'd spell's position, so a
+// spell that can't be countered is never asked about.
+//
+// Caller must hold g.mu.
+func (g *Game) counterableSpellOnStackLocked(stackID uuid.UUID) bool {
+	item, ok := g.StackMeta[stackID]
+	if !ok || item == nil || item.Kind != StackItemSpell {
+		return false
+	}
+	if g.Stack == nil || !g.Stack.Contains(stackID) {
+		return false
+	}
+	return !g.spellCantBeCounteredLocked(stackID)
+}
+
 // ReturnSpellToHandForEffect returns a spell on the stack to its
 // owner's hand WITHOUT countering it: CR 701.6 never applies, so a
 // spell printed "can't be countered" is unaffected and nothing
@@ -1530,7 +1629,65 @@ func (g *Game) CounterTargetToZoneForEffect(stackID uuid.UUID, dst ZoneRef) erro
 //
 // Caller must hold g.mu.
 func (g *Game) ReturnSpellToHandForEffect(stackID uuid.UUID) error {
-	return g.exitSpellFromStackLocked(stackID, nil, ZoneHand, false)
+	return g.exitSpellFromStackLocked(stackID, nil, ZoneHand, false, nil)
+}
+
+// ExileSpellForEffect exiles a spell from the stack WITHOUT countering
+// it — "exile target spell" (#1318). CR 701.6 never applies, so a
+// spell printed "can't be countered" is exiled all the same and
+// nothing watching "whenever a spell is countered" fires. The third
+// verb over exitSpellFromStackLocked, beside the counter and the
+// return to hand, and it exists for the reason those two share one
+// body: a spell leaving the stack owes the CR 903.9 window, the
+// CR 608.2h last-known record and the retirement of its stack record,
+// and three spellings of that drift.
+//
+// Before this there was no exported way to say it, so the one card
+// that needed it — airbend, which targets "a creature or spell" —
+// went through ExileCardForEffect, and that route did not retire the
+// StackMeta entry. The spell's card went to exile, its record stayed,
+// and the table could never resolve past it. The route now retires the
+// record by source zone (zone_route.go), so both spellings are
+// correct; this one is the one that SAYS spell, and refuses anything
+// else.
+//
+// Returns ErrCardNotOnStack for an ID that is not a spell on the
+// stack, like its siblings.
+//
+// Caller must hold g.mu.
+func (g *Game) ExileSpellForEffect(stackID uuid.UUID) error {
+	return g.exitSpellFromStackLocked(stackID, &ZoneRef{Kind: ZoneExile}, ZoneExile, false, nil)
+}
+
+// ExileSpellThenForEffect is ExileSpellForEffect with the rest of the
+// instruction handed over rather than written on the next line: `then`
+// is told whether the spell actually reached exile. Aven Interrupter's
+// "exile target spell. It becomes plotted." is the caller — the plot
+// is a property of the card in exile, and a commander spell whose
+// owner takes CR 903.9's offer went to the command zone instead, so
+// there is nothing to plot.
+//
+// `exiled` is CR 400.7's reading (landedInZoneLocked): true only when
+// the card is in exile once the move settles. A spell that has already
+// left the stack — countered or resolved in response — is not an error
+// here: the move is "nothing happened" and `then` hears false, the
+// same terminal outcome a cancelled route reports.
+//
+// Caller must hold g.mu.
+func (g *Game) ExileSpellThenForEffect(stackID uuid.UUID, then func(g *Game, exiled bool) error) error {
+	tell := func(g *Game, exiled bool) error {
+		if then == nil {
+			return nil
+		}
+		return then(g, exiled)
+	}
+	if item, ok := g.StackMeta[stackID]; !ok || item == nil || item.Kind != StackItemSpell ||
+		g.Stack == nil || !g.Stack.Contains(stackID) {
+		return tell(g, false)
+	}
+	return g.exitSpellFromStackLocked(stackID, &ZoneRef{Kind: ZoneExile}, ZoneExile, false, func(g *Game) error {
+		return tell(g, g.landedInZoneLocked(stackID, ZoneExile, uuid.Nil))
+	})
 }
 
 // counterSpellLocked is the lock-free body of CounterSpell. Caller
@@ -1548,7 +1705,7 @@ func (g *Game) ReturnSpellToHandForEffect(stackID uuid.UUID) error {
 // prompt is queued nothing has moved, the stack item is still
 // registered, and both complete when the owner answers.
 func (g *Game) counterSpellLocked(spellID uuid.UUID, dst *ZoneRef) error {
-	return g.exitSpellFromStackLocked(spellID, dst, ZoneGraveyard, true)
+	return g.exitSpellFromStackLocked(spellID, dst, ZoneGraveyard, true, nil)
 }
 
 // exitSpellFromStackLocked is the shared body behind counterSpellLocked
@@ -1567,8 +1724,27 @@ func (g *Game) counterSpellLocked(spellID uuid.UUID, dst *ZoneRef) error {
 // vs. an ordinary zone move; it is the one bit the two callers
 // disagree about.
 //
+// `then` is the caller's continuation, run once the move reaches a
+// terminal outcome (zoneRoute.then) — nil for the fire-and-forget
+// verbs. ExileSpellThenForEffect is the one caller that needs it.
+//
 // Caller must hold g.mu.
-func (g *Game) exitSpellFromStackLocked(spellID uuid.UUID, dst *ZoneRef, fallback ZoneKind, countered bool) error {
+func (g *Game) exitSpellFromStackLocked(spellID uuid.UUID, dst *ZoneRef, fallback ZoneKind, countered bool, then func(*Game) error) error {
+	return g.exitSpellFromStackAtLocked(spellID, dst, fallback, countered, TuckOptions{}, then)
+}
+
+// exitSpellFromStackAtLocked is exitSpellFromStackLocked with a library
+// POSITION: `at` rides the route exactly as it does on a tuck, so a
+// library destination can be the bottom or N from the top. It exists
+// for #1298's counters — Spell Crumple's "put it on the bottom of its
+// owner's library" and Hinder's "your choice of the top or bottom" —
+// and is ignored for every other destination. The position rides the
+// route rather than being applied afterwards for the reason
+// zoneRoute.Depth gives: a commander whose owner declines CR 903.9's
+// offer still lands where the counter said.
+//
+// Caller must hold g.mu.
+func (g *Game) exitSpellFromStackAtLocked(spellID uuid.UUID, dst *ZoneRef, fallback ZoneKind, countered bool, at TuckOptions, then func(*Game) error) error {
 	item, ok := g.StackMeta[spellID]
 	if !ok || item == nil || item.Kind != StackItemSpell {
 		return ErrCardNotOnStack
@@ -1606,17 +1782,33 @@ func (g *Game) exitSpellFromStackLocked(spellID uuid.UUID, dst *ZoneRef, fallbac
 			break
 		}
 	}
-	_, err := g.routeCardToZoneLocked(zoneRoute{
-		CardID:        spellID,
-		Dst:           destKind,
-		DstOwner:      destOwner,
-		Countered:     countered,
-		DropStackMeta: true,
-	})
+	r := zoneRoute{
+		CardID:    spellID,
+		Dst:       destKind,
+		DstOwner:  destOwner,
+		Countered: countered,
+		then:      then,
+	}
+	if destKind == ZoneLibrary {
+		r.ToBottom, r.Depth = at.ToBottom, at.Depth
+	}
+	_, err := g.routeCardToZoneLocked(r)
 	return err
 }
 
-// counterAbilityLocked is the lock-free body of CounterAbility.
+// counterAbilityLocked is the lock-free body of CounterAbility, and
+// the ONE place an ability leaves the stack without resolving.
+//
+// CR 701.6a: "an ability that's countered doesn't go anywhere" — it is
+// a DELETION, not a zone change. There is no routeCardToZoneLocked
+// call here and there must not be one: the ability's source permanent
+// is standing on the battlefield and stays there, the item itself has
+// no card, and so none of the exits a countered SPELL contends with
+// (the CR 903.9 commander window, flashback's CR 702.34a exile, a
+// destination override) has anything to act on. That is also why
+// CounterTargetToZoneForEffect's `dst` is meaningless for an ability
+// and routes here unchanged.
+//
 // Caller must hold g.mu.
 func (g *Game) counterAbilityLocked(abilityID uuid.UUID) error {
 	item, ok := g.StackMeta[abilityID]
@@ -1626,13 +1818,27 @@ func (g *Game) counterAbilityLocked(abilityID uuid.UUID) error {
 	if item.Kind != StackItemActivated && item.Kind != StackItemTriggered {
 		return ErrCardNotOnStack
 	}
-	source := item.SourceCardID
+	source, controller, label := item.SourceCardID, item.Controller, item.Label
 	delete(g.StackMeta, abilityID)
 	g.recomputeSplitSecondLocked()
+	// #1211: the event shape events.go documents — Source is THE
+	// COUNTER, Target is the countered item. This used to put the
+	// countered ability's own source card in Source, which the game
+	// log reads as "who countered it": the line came out as "Llanowar
+	// Elves countered <uuid>", the victim in the attacker's place and
+	// an unresolvable stack-item id in the victim's. The emit site
+	// does not know the counter (CounterTargetForEffect is called from
+	// a resolving effect that has its own item), so Source is left
+	// unset exactly as the spell path leaves it, and what the ability
+	// CAN say travels instead: the permanent whose ability it was, and
+	// the item's label, which is the only name a countered ability has
+	// (protocol/log.go renders it).
 	g.EmitEvent(Event{
 		Kind:   EventCounterSpell,
-		Source: source,
+		Actor:  controller,
+		CardID: source,
 		Target: abilityID,
+		Label:  label,
 	})
 	return nil
 }
@@ -1663,34 +1869,12 @@ func (g *Game) AddCounterForEffect(cardID uuid.UUID, name string, delta int) err
 //
 // Caller must already hold g.mu.
 func (g *Game) AddCounterByForEffect(placer, cardID uuid.UUID, name string, delta int) error {
-	if delta == 0 {
-		return nil
-	}
-	if name == "" {
-		return ErrInvalidParam
-	}
-	ev := &ReplacementEvent{
-		Kind:          RepEventCounter,
-		CounterTarget: cardID,
-		CounterName:   name,
-		CounterDelta:  delta,
-		CounterPlacer: placer,
-	}
-	out, err := g.applyReplacementsLocked(ev)
-	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
-		// errReplacementPending: the prompt queue is the caller's
-		// problem; return nil so the primitive keeps moving.
-		if errors.Is(err, errReplacementPending) {
-			return nil
-		}
-		g.clearReplacementEventLocked(ev.ID)
-		return err
-	}
-	defer g.clearReplacementEventLocked(ev.ID)
-	if out == nil || out.Canceled {
-		return nil
-	}
-	return g.applyResolvedCounterLocked(out)
+	// #1282: one body with the continuation form, so the two cannot
+	// drift. A caller that does anything after the placement that reads
+	// the counters wants AddCounterByThenForEffect instead — this
+	// returns nil with NOTHING placed when the window pauses on a
+	// CR 616 ordering prompt.
+	return g.AddCounterByThenForEffect(placer, cardID, name, delta, nil)
 }
 
 // ReturnFromGraveyardForEffect moves a card from a player's
@@ -1732,6 +1916,29 @@ func (g *Game) ReturnFromGraveyardForEffect(cardID uuid.UUID, dest ZoneKind) err
 // Caller must hold g.mu.
 func (g *Game) ReturnFromGraveyardUnderControlForEffect(cardID uuid.UUID, dest ZoneKind, controller uuid.UUID) error {
 	_, err := g.returnFromGraveyardLocked(cardID, dest, controller, false)
+	return err
+}
+
+// ReturnFromGraveyardTappedForEffect is
+// ReturnFromGraveyardUnderControlForEffect with the CR 614
+// "enters tapped" clause riding the same event
+// ReturnToBattlefieldForEffect's `tapped` already does for the
+// exile-return path (#1178) — Reassembling Skeleton and Drownyard
+// Temple's own printed "return this card from your graveyard to the
+// battlefield tapped" (#1284).
+//
+// A separate function rather than a fourth parameter on
+// ReturnFromGraveyardUnderControlForEffect on purpose: that one has
+// call sites across the catalog and the engine's own tests today, all
+// of them meaning "untapped", and a bare positional bool at the end
+// of an existing signature is the kind of change a diff reviews past
+// without noticing which call sites silently kept the old meaning and
+// which needed the new one. `tapped` is meaningless for anything but
+// Dest == ZoneBattlefield, same as ReturnToBattlefieldForEffect's.
+//
+// Caller must hold g.mu.
+func (g *Game) ReturnFromGraveyardTappedForEffect(cardID uuid.UUID, dest ZoneKind, controller uuid.UUID, tapped bool) error {
+	_, err := g.returnFromGraveyardLocked(cardID, dest, controller, tapped)
 	return err
 }
 
@@ -1787,6 +1994,41 @@ func (g *Game) ReturnToBattlefieldForEffect(cardID, controller uuid.UUID, tapped
 //
 // Caller must hold g.mu.
 func (g *Game) returnFromGraveyardLocked(cardID uuid.UUID, dest ZoneKind, controller uuid.UUID, tapped bool) (uuid.UUID, error) {
+	return g.returnFromGraveyardFaceLocked(cardID, dest, controller, tapped, FaceDownNone, nil)
+}
+
+// ReturnFromGraveyardFaceDownForEffect is "return it to the
+// battlefield FACE DOWN under its owner's control. It's a Forest land."
+// — Yedora, Grave Gardener; and, with a controller and `tapped`,
+// Missy's "under your control face down and tapped. It's a 2/2
+// Cyberman artifact creature."
+//
+// It is the reanimation door (the CR 614 entry pipeline, the resume,
+// the controller stamped before the pipeline runs) with the face-down
+// state riding the entry EVENT, exactly as a morph's does — so the
+// one entry finisher lands it as a CR 708.2 object whose controller
+// is its only knower, and no ETB trigger or "as enters" hook fires
+// because CatalogKey has already gone silent (CR 708.2a).
+//
+// The kind is FaceDownTurned: an effect put it here, not a keyword,
+// so only the card's own morph or disguise brings it back up
+// (CR 708.7, CR 702.37e). `listed` is the body the card lists
+// (CR 708.2); nil is the default nameless 2/2.
+//
+// `controller` uuid.Nil means "under its owner's control". Returns
+// the entering permanent's ID, uuid.Nil when nothing entered, and
+// ErrCardNotFound when the card is not in a graveyard any more —
+// the CR 400.7 answer a "return it" trigger swallows.
+//
+// Caller must hold g.mu. Added for #1270.
+func (g *Game) ReturnFromGraveyardFaceDownForEffect(cardID, controller uuid.UUID, tapped bool, listed *FaceDownListing) (uuid.UUID, error) {
+	return g.returnFromGraveyardFaceLocked(cardID, ZoneBattlefield, controller, tapped, FaceDownTurned, listed)
+}
+
+// returnFromGraveyardFaceLocked is returnFromGraveyardLocked with the
+// face-down state a battlefield entry lands in. FaceDownNone is every
+// face-up return.
+func (g *Game) returnFromGraveyardFaceLocked(cardID uuid.UUID, dest ZoneKind, controller uuid.UUID, tapped bool, faceDown FaceDownKind, listed *FaceDownListing) (uuid.UUID, error) {
 	src := g.findCardZoneLocked(cardID)
 	if src == nil || src.Kind != ZoneGraveyard {
 		return uuid.Nil, ErrCardNotFound
@@ -1848,12 +2090,16 @@ func (g *Game) returnFromGraveyardLocked(cardID uuid.UUID, dest ZoneKind, contro
 		// ev.EntersTapped and nothing else knows what asked for the
 		// return.
 		return g.enterBattlefieldThroughPipelineLocked(&ReplacementEvent{
-			Kind:           RepEventMove,
-			Actor:          newController,
-			CardID:         cardID,
-			OldZone:        ZoneGraveyard,
-			NewZone:        ZoneBattlefield,
-			EntersTapped:   tapped,
+			Kind:         RepEventMove,
+			Actor:        newController,
+			CardID:       cardID,
+			OldZone:      ZoneGraveyard,
+			NewZone:      ZoneBattlefield,
+			EntersTapped: tapped,
+			// #1270: a face-down return rides the event the way a
+			// morph's entry does, so the one finisher lands it.
+			FaceDown:       faceDown,
+			FaceDownListed: listed,
 			entryResumable: true,
 		})
 	}
@@ -2001,6 +2247,13 @@ type SearchLibrarySpec struct {
 	// "leave it where it is", which is a search that only reveals.
 	// Ignored for any other destination. Added in S22.
 	ToTop bool
+
+	// Depth is ToTop's position, for "then shuffle and put that card
+	// THIRD from the top" (Long-Term Plans, ADR 0088 Decision 4): the
+	// found card goes Depth cards down, through Zone.InsertFromTop, so
+	// 0 and 1 are the top and a library shorter than Depth takes the
+	// card on the bottom. Meaningful only with ToTop.
+	Depth int
 }
 
 // libraryOwnerID is the seat whose library this search actually reads
@@ -2443,8 +2696,15 @@ func (g *Game) revealLibraryCardsLocked(spec SearchLibrarySpec, p *Player, ids [
 // said to, and runs the continuation. Caller must hold g.mu.
 func (g *Game) finishSearchLocked(spec SearchLibrarySpec, p *Player, found []uuid.UUID) error {
 	g.EmitEvent(Event{
-		Kind:   EventSearchLibrary,
-		Actor:  spec.Player,
+		Kind:  EventSearchLibrary,
+		Actor: spec.Player,
+		// #1335: `p` is always the library owner (SearchLibraryThenForEffect
+		// resolves it via libraryOwnerID before calling here), which
+		// differs from the searcher (spec.Player) for Bribery-style
+		// search of another player's library. Without this, "an
+		// opponent searches THEIR library" (Archivist of Oghma) could
+		// not be told apart from "an opponent searches YOUR library".
+		Target: p.ID,
 		Amount: len(found),
 	})
 	if spec.Shuffle {
@@ -2477,7 +2737,7 @@ func (g *Game) finishSearchLocked(spec SearchLibrarySpec, p *Player, found []uui
 					c.AddKnower(seat.ID)
 				}
 			}
-			p.Library.PushTop(c)
+			p.Library.InsertFromTop(c, spec.Depth)
 		}
 	}
 	if spec.Then != nil {
@@ -2824,7 +3084,8 @@ func (g *Game) ShuffleLibraryForEffect(playerID uuid.UUID) error {
 	}
 	p.Library.Shuffle(g.randForLocked(rngStream{kind: rngStreamShuffle, player: p.ID}))
 	clearKnownInZoneLocked(p.Library)
-	g.EmitEvent(Event{Kind: EventSearchLibrary, Actor: playerID, Label: "shuffle"})
+	// #1335: a plain shuffle is always the player's own library.
+	g.EmitEvent(Event{Kind: EventSearchLibrary, Actor: playerID, Target: playerID, Label: "shuffle"})
 	return nil
 }
 
@@ -2923,7 +3184,47 @@ func lookAtTopReasonFor(kind PendingChoiceKind) func(int) string {
 //
 // Caller must hold g.mu. Added in S22.
 func (g *Game) ReturnFromExileToBattlefieldForEffect(cardID, controller uuid.UUID, tapped bool) (uuid.UUID, error) {
+	return g.returnFromExileToBattlefieldLocked(cardID, controller, tapped, nil)
+}
+
+// ReturnFromExileToBattlefieldThenForEffect is the exile return with the
+// rest of the effect as a continuation (#1327): `then` is told the
+// permanent's NEW instance ID once the entry is complete, or uuid.Nil
+// when nothing entered.
+//
+// The synchronous door cannot answer "did it enter, and under whose
+// control?" when the entry pauses — a returning Clone asks what to
+// copy, a blinked shockland asks for its life — because it has
+// returned uuid.Nil by the time the answer arrives. Phelia, Exuberant
+// Shepherd's "if it entered under your control, put a +1/+1 counter on
+// Phelia" is that question, and asking it on the next line is wrong
+// both ways: no counter on a paused entry, or a counter before an
+// entry that could still be cancelled.
+//
+// `then` runs exactly once, from every terminal outcome: at once when
+// nothing paused, from the resume when something did, and with
+// uuid.Nil when the card is not in exile (with ErrCardNotFound
+// returned), when a replacement cancelled or redirected the entry, or
+// when the prompt was taken away. It takes the live *Game, on the
+// undo-safety contract every continuation follows.
+//
+// Caller must hold g.mu.
+func (g *Game) ReturnFromExileToBattlefieldThenForEffect(cardID, controller uuid.UUID, tapped bool, then func(g *Game, entered uuid.UUID) error) error {
+	_, err := g.returnFromExileToBattlefieldLocked(cardID, controller, tapped, then)
+	return err
+}
+
+// returnFromExileToBattlefieldLocked is the body of both exile-return
+// doors.
+//
+// Caller must hold g.mu.
+func (g *Game) returnFromExileToBattlefieldLocked(cardID, controller uuid.UUID, tapped bool, then func(g *Game, entered uuid.UUID) error) (uuid.UUID, error) {
 	if g.Exile == nil || !g.Exile.Contains(cardID) {
+		if then != nil {
+			if err := then(g, uuid.Nil); err != nil {
+				return uuid.Nil, errors.Join(ErrCardNotFound, err)
+			}
+		}
 		return uuid.Nil, ErrCardNotFound
 	}
 	// Resolve the destination controller before the pipeline runs: a
@@ -2961,7 +3262,11 @@ func (g *Game) ReturnFromExileToBattlefieldForEffect(cardID, controller uuid.UUI
 		// battlefield state, on the inline path and the resumed one
 		// alike — which is what the old "an exile return cannot be
 		// resumed generically" note was about.
-		entryTail: &entryTail{newObject: true},
+		//
+		// #1327: and the caller's continuation, run from the landing
+		// with the NEW ID, whether the entry settled inline or on a
+		// resume.
+		entryTail: &entryTail{newObject: true, then: then},
 	})
 }
 
@@ -3002,24 +3307,24 @@ type HandEntryOptions = ZoneEntryOptions
 //  4. EventZoneMove, EventETB, then the catalog's AsEnters hook, so
 //     the permanent triggers everything an ordinary entry triggers.
 //
-// Three things it deliberately does NOT do:
+// Two things it deliberately does NOT do:
 //
 //   - It does not count a land drop. A land an effect puts onto the
 //     battlefield was not PLAYED (CR 305.4), so LandsPlayedThisTurn
 //     is untouched and the enumerator still offers the turn's land
-//     play. That is also why this event is not flagged
-//     entryResumable: the generic resume in
-//     executeEntryToBattlefieldLocked bumps the tally for any land
-//     arriving with no stack item, which is right for the land-play
-//     branch it was written for and wrong here.
+//     play. The event carries no landPlay flag, which is the only
+//     thing the finisher bumps the tally on (#478).
 //   - It does not run state checks. Like its neighbours it leaves
 //     them to the resolution boundary the caller is already inside,
 //     so a permanent that enters and dies does so once, together
 //     with everything else that effect did.
-//   - It does not offer the Clone choice. That prompt needs a
-//     resumable entry site (copy_choice.go), and this is not one for
-//     the reason above — the same declared simplification the search
-//     path carries, and weaker than printed rather than stronger.
+//
+// It DOES offer the entry's own questions since #1322 — the Clone
+// choice, a shockland's life, a reveal-land's reveal — because the put
+// batch it runs through is resumable now (entry_batch.go). On such a
+// pause it returns uuid.Nil and the card lands when the answer
+// arrives; PutFromHandOntoBattlefieldThenForEffect is the door for a
+// caller that needs the result.
 //
 // Returns the entering permanent's ID. It is the InstanceID the card
 // had in hand: every non-exile move keeps it, and only the exile

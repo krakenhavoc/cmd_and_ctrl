@@ -19,11 +19,12 @@ on:
     # 08:30 UTC = 01:30 PT / 04:30 ET — quiet window, avoids colliding
     # with the hourly Scryfall mirror refresh and most push traffic.
     - cron: "30 8 * * *"
-  # The inputs are the bot-soak job's knobs (#685), and every one of
-  # them has a default that is what the schedule uses, so a hand run
-  # with nothing filled in is the nightly. They exist for the two things
-  # a hand run is for: shrinking the job while checking the wiring
-  # (soak_games: 2), and replaying a night that went red
+  # The inputs are the bot-soak job's knobs (#685), plus catalog_policy
+  # for the catalog-soak job (#1456), and every one of them has a
+  # default that is what the schedule uses, so a hand run with nothing
+  # filled in is the nightly. They exist for the two things a hand run
+  # is for: shrinking the job while checking the wiring (soak_games: 2),
+  # and replaying a night that went red
   # (soak_seed: <the seed the artifact printed>).
   #
   # `inputs` is empty on a schedule, so every consumer below reads
@@ -58,6 +59,10 @@ on:
         description: "AISEAT_WALLCLOCK — wall-clock backstop per game"
         required: false
         default: "300s"
+      catalog_policy:
+        description: "What fills the catalog soak's seats: random | heuristic | mixed"
+        required: false
+        default: "heuristic"
 
 # One e2e run per ref; a newer merge supersedes an in-flight run.
 # Safe to cancel (unlike ci-cd.yml's deploy) — nothing here mutates
@@ -66,6 +71,26 @@ on:
 concurrency:
   group: cmdctrl-e2e-${{ github.ref }}
   cancel-in-progress: true
+
+# The ref every job below checks out and tests (#1456). A SCHEDULED
+# run's `github.ref` is always the repository's default branch
+# (`main`), which is not what "nightly" is supposed to mean here: the
+# suite exists to catch a regression on `develop` before it reaches a
+# promotion, and #1425's fix for #1261 sat on `develop`, untested, for
+# five days waiting on one. So a schedule pins `develop` explicitly. A
+# `workflow_dispatch` run keeps testing whatever ref it was dispatched
+# against — that's what lets a branch (this one included) validate its
+# own workflow change before it reaches `develop` — and a
+# `merge_group`/PR-style ref would fall through the same `github.ref`
+# branch, though this workflow carries neither trigger today.
+#
+# Every checkout below reads TESTED_REF instead of picking its own
+# default, and the soak-tracker issue names TESTED_BRANCH plus the
+# commit `bot-soak` actually tested, so the four jobs can never
+# disagree about what ran.
+env:
+  TESTED_REF: ${{ github.event_name == 'schedule' && 'develop' || github.ref }}
+  TESTED_BRANCH: ${{ github.event_name == 'schedule' && 'develop' || github.ref_name }}
 
 jobs:
   # The whole-game bot tests, which ci-cd.yml skips.
@@ -88,22 +113,38 @@ jobs:
   # -race on purpose: these are the only tests that exercise the runner
   # goroutine against a live room, so they are where a concurrency bug
   # in the bot seat would actually show up.
+  # Hosted since #1456, on #1434's guardrails verbatim (see the
+  # `changes` job's comment block in ci-cd.yml for the full reasoning):
+  # free and unmetered on a public repo, `github.event.repository.private`
+  # falls back to self-hosted automatically if that ever changes, and
+  # `vars.CI_RUNNER` overrides the hosted label without a PR. These
+  # whole-game tests need nothing the hosted image doesn't have — no
+  # Scryfall dump, no LAN access. The catalog soak used to be this
+  # job's last three steps; it does need the dump, so it moved to its
+  # own self-hosted job (`catalog-soak`, below) rather than pinning
+  # this whole job back down for one step.
   bot-games:
-    runs-on: self-hosted
+    runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
     env:
       AISEAT_GAME_TESTS: "1"
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          ref: ${{ env.TESTED_REF }}
 
-      # cache: false for the same reason as the job below — $HOME
-      # persists on a self-hosted runner and actions/cache untarring
-      # over Go's read-only module cache fails on every run.
+      # Cached on a hosted runner only (#1434): a hosted runner starts
+      # cold, so restoring the module cache (keyed on server/go.sum)
+      # saves the download and most of the compile. A self-hosted one
+      # is already warm, and actions/cache untarring over Go's
+      # read-only module cache fails on every run (see ci-cd.yml's
+      # `Set up Go` comment for the exact tar error this avoids).
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
           go-version: "1.22"
-          cache: false
+          cache: ${{ runner.environment == 'github-hosted' }}
+          cache-dependency-path: server/go.sum
 
       - name: Bot whole-game tests
         working-directory: server
@@ -151,12 +192,53 @@ jobs:
           AISEAT_REPLAY_DIR: ${{ github.workspace }}/bot-replays
         run: go test ./internal/aiseat/ -run TestFourRandomBotsPlayToAWinner -v -timeout 30m
 
-      # The catalog soak (#601) needs the Scryfall dump: a registered
-      # Spec carries an oracle ID and a name, not a type line or a
-      # mana cost, so without the dump there is no card to deal and
-      # the test skips. Same cache key as the playwright job below --
-      # both jobs run on the same day's dump, and whichever starts
-      # first populates it.
+      - name: Upload bot replays
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: bot-replays
+          path: bot-replays/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # The catalog soak (#601) needs the local Scryfall dump: a registered
+  # Spec carries an oracle ID and a name, not a type line or a mana
+  # cost, so without the dump there is no card to deal and the test
+  # skips. That is the one thing the hosted image above can't supply,
+  # so this job stays self-hosted (#1456) rather than pinning all of
+  # `bot-games` back down for it. Same cache key as the playwright job
+  # below — both jobs run on the same day's dump, and whichever starts
+  # first populates it.
+  catalog-soak:
+    runs-on: self-hosted
+    env:
+      AISEAT_GAME_TESTS: "1"
+      AISEAT_CATALOG_GAMES: "2"
+      # #1456: `random` is still the default everywhere else this
+      # policy is read (see soakPolicy's doc comment in soak_test.go),
+      # but a heuristic bot builds a board — blockers up, equipment
+      # attached, auras out — that `random` rarely sets up, which is
+      # exactly the board state most catalog cards need to be reached
+      # at all. The nightly opts in explicitly; a local run of
+      # TestCatalogSoak without this variable is unchanged.
+      AISEAT_CATALOG_POLICY: ${{ inputs.catalog_policy || 'heuristic' }}
+      CMDCTRL_SCRYFALL_DUMP: ${{ github.workspace }}/data/scryfall/default-cards.json
+      AISEAT_CATALOG_REPORT: ${{ github.workspace }}/catalog-report/per-card.json
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.TESTED_REF }}
+
+      # cache: false — self-hosted, so $HOME persists between runs and
+      # actions/cache untarring over Go's read-only module cache fails
+      # (see ci-cd.yml's `Set up Go` comment for the exact error).
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.22"
+          cache: false
+
       - name: Compute Scryfall cache key
         id: scryfall-stamp
         run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
@@ -179,14 +261,10 @@ jobs:
       #
       # No -race: this is about the cards the games REACH, and the
       # runner-goroutine concurrency the detector would watch is the
-      # same code every whole-game test above already drives under it.
+      # same code every whole-game test in `bot-games` already drives
+      # under it.
       - name: Catalog soak (decks dealt from the catalog)
         working-directory: server
-        env:
-          AISEAT_GAME_TESTS: "1"
-          AISEAT_CATALOG_GAMES: "2"
-          CMDCTRL_SCRYFALL_DUMP: ${{ github.workspace }}/data/scryfall/default-cards.json
-          AISEAT_CATALOG_REPORT: ${{ github.workspace }}/catalog-report/per-card.json
         run: go test ./internal/aiseat/ -run TestCatalogSoak -v -timeout 30m
 
       # Uploaded on success too: the useful half of this report is the
@@ -197,15 +275,6 @@ jobs:
         with:
           name: catalog-report
           path: catalog-report/
-          if-no-files-found: ignore
-          retention-days: 14
-
-      - name: Upload bot replays
-        if: failure()
-        uses: actions/upload-artifact@v5
-        with:
-          name: bot-replays
-          path: bot-replays/
           if-no-files-found: ignore
           retention-days: 14
 
@@ -240,8 +309,13 @@ jobs:
   # the model tiers are out of scope by construction: the seats are
   # filled by `heuristic.New()` and `aiseat.NewRandomPolicy`, both of
   # which decide in microseconds against the local engine.
+  # Hosted since #1456, same guardrails as bot-games above. Measured on
+  # a self-hosted 24-core developer machine (below); a hosted runner's
+  # 4 vCPU is slower, but 100 minutes stays comfortably inside GitHub's
+  # 360-minute (6h) hard cap for a hosted job, so the budget is
+  # unchanged rather than raised pre-emptively.
   bot-soak:
-    runs-on: self-hosted
+    runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
     # Measured 2026-09-19 on an idle 24-core developer machine: the
     # heuristic gate 112s for 20 games, the soak 679s for 100. 100
     # minutes is ~8x that, and it is deliberately ABOVE the
@@ -255,6 +329,8 @@ jobs:
     # it ~100s on top of ~790s, which leaves the 100-minute ceiling
     # roughly 6x the expected run rather than 8x.
     timeout-minutes: 100
+    outputs:
+      tested_sha: ${{ steps.tested.outputs.sha }}
     env:
       AISEAT_GAME_TESTS: "1"
       # The budgets, and the whole reason #685 asked for them before
@@ -277,21 +353,36 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          ref: ${{ env.TESTED_REF }}
 
-      # cache: false for the same reason as every other job here: $HOME
-      # persists on a self-hosted runner and actions/cache untarring
-      # over Go's read-only module cache fails on every run.
+      # #1456: the soak-tracker issue names the commit this job
+      # actually tested. `github.sha` isn't it on a schedule — that
+      # context is always the default branch's tip, not TESTED_REF —
+      # so record what checkout put in the working tree instead.
+      - name: Record the tested commit
+        id: tested
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      # Cached on a hosted runner only (#1434); see bot-games above for
+      # why a self-hosted one stays cache: false.
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
           go-version: "1.22"
-          cache: false
+          cache: ${{ runner.environment == 'github-hosted' }}
+          cache-dependency-path: server/go.sum
 
-      # Verbatim from ci-cd.yml (#942, #892). This job is a second
-      # ~15-minute `go test` on the same shared runner whose disk
+      # Verbatim from ci-cd.yml (#942, #892). Self-hosted only: a
+      # hosted runner is a fresh VM every run with no accumulated
+      # build cache or orphaned /tmp/go-build* trees to trim, and
+      # `go clean -cache -testcache` there would just pay the hosted
+      # cache's own download cost right back. On the shared self-hosted
+      # runner this job is a second ~15-minute `go test` whose disk
       # filled mid-test three branches in a row on 2026-09-18, and a
       # soak that dies on ENOSPC files a bug about the engine.
       - name: Free runner disk
+        if: runner.environment == 'self-hosted'
         shell: bash
         run: |
           df -h / /tmp | sed 's/^/before: /'
@@ -306,12 +397,23 @@ jobs:
           fi
           df -h / /tmp | sed 's/^/after: /'
 
-      # Every game in this job is seeded, and every seed is printed, so
-      # a failure is replayable from the artifact alone.
+      # Every game in this job is seeded, and every seed is printed.
       #
-      # The heuristic gate's seeds are fixed in the test (101..120), so
-      # it plays the same twenty tables every night and a regression
-      # there is unambiguous. The soak's base seed is derived from the
+      # The heuristic gate's seeds are fixed in the test (101..120), and
+      # since #1409 the gate plays its seats in LOCKSTEP — one
+      # goroutine, seat order — so a seed is a whole game, not just a
+      # deal: the same twenty games every night, and a red one replays
+      # move for move with `AISEAT_HEURISTIC_GAMES` covering its seed.
+      # (Before, four runner goroutines interleaved differently on every
+      # run: one binary played seed 107 to a winner on turn 13 eight
+      # times out of nine and stopped at turn 51 on the ninth, #1261.) A
+      # game the turn budget stops still prints the board it stopped on.
+      #
+      # The soak below is the other half of that split (discussion
+      # #1390): it keeps the production schedule, one goroutine per
+      # seat, because concurrent liveness is what it is for — so its
+      # seed fixes the deal and the policies' randomness, and the
+      # interleaving is the scheduler's. The soak's base seed is derived from the
       # UTC date instead, the way the catalog soak's is (#601): a fixed
       # soak seed would fuzz the same hundred tables for ever and stop
       # finding anything after the first green night. The x1000 is what
@@ -487,7 +589,15 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           API: ${{ github.api_url }}/repos/${{ github.repository }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          SHA: ${{ github.sha }}
+          # #1456: `github.sha` is the default branch's tip on a
+          # schedule, not what this run tested (TESTED_REF pins
+          # `develop`). `bot-soak`'s own checkout recorded the real
+          # commit; this job only runs on a schedule (see the `if:`
+          # above), so TESTED_BRANCH is always "develop" here too, but
+          # it's named explicitly rather than hard-coded so this stays
+          # correct if the trigger condition ever widens.
+          SHA: ${{ needs.bot-soak.outputs.tested_sha }}
+          BRANCH: ${{ env.TESTED_BRANCH }}
           TITLE: "Nightly bot soak is red (S31 standing gates)"
         run: |
           set -euo pipefail
@@ -516,7 +626,7 @@ jobs:
             'claims only while this job is green.' \
             '' \
             "- Run: ${RUN_URL}" \
-            "- Commit: \`${SHA}\`" \
+            "- Tested: \`${SHA}\` on \`${BRANCH}\`" \
             '' \
             'The `bot-soak-logs` artifact on that run holds both `go test -v`' \
             'logs. Every game is seeded and every seed is printed, including' \
@@ -553,6 +663,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          ref: ${{ env.TESTED_REF }}
 
       # cache: false on purpose. These are self-hosted runners, so
       # $HOME survives between jobs and ~/go/pkg/mod is already warm --
@@ -634,6 +746,19 @@ jobs:
         env:
           CMDCTRL_SCRYFALL_DUMP: ${{ github.workspace }}/data/scryfall/default-cards.json
         run: go test ./internal/cards/effects/ -run RealDumpEveryTokenTemplate -v
+
+      # The oracle-text fixture behind TestAbilitiesMatchOracleText
+      # (#1276, ADR 0042 amendment). PR CI has no dump, so the check
+      # reads a checked-in, generated copy of every catalogued card's
+      # printed text; this is where that copy is compared with the
+      # dump. It fails on an erratum, a catalogued card missing from
+      # the fixture, or a row for a card that left the catalog. Fix:
+      # regenerate with -update-oracle (the failure prints the command).
+      - name: Oracle-text fixture — match against the real Scryfall dump
+        working-directory: server
+        env:
+          CMDCTRL_SCRYFALL_DUMP: ${{ github.workspace }}/data/scryfall/default-cards.json
+        run: go test ./internal/cards/coverage/ -run TestOracleFixtureIsCurrent -v
 
       - name: Client — npm ci
         working-directory: client

@@ -1,5 +1,7 @@
 package game
 
+import "github.com/google/uuid"
+
 // paid_cost.go — #789 / #761: ONE record of what an announcement
 // actually paid.
 //
@@ -98,6 +100,43 @@ type PaidCost struct {
 	// looking at.
 	Sacrificed int
 
+	// ReturnedAttacking is what the permanent a ReturnToHand component
+	// returned was ATTACKING when it was returned — the player,
+	// planeswalker or battle, in Card.AttackingTarget's own overloaded
+	// domain. uuid.Nil when the cost returned nothing, or returned a
+	// permanent that was not attacking, which is every printed return
+	// cost but one.
+	//
+	// The one is ninjutsu (CR 702.49a, #1227): "Return an unblocked
+	// attacker you control to hand: Put this card onto the battlefield
+	// from your hand tapped and attacking" — attacking THE SAME player
+	// or planeswalker the returned creature was attacking. Nothing at
+	// resolution could recompute that: the exit clears
+	// Card.AttackingTarget (zone.go) and LKI carries no combat state,
+	// so the fact has to be read BEFORE the bounce and carried here.
+	// Exactly the argument CountersRemoved (#789) and Sacrificed
+	// (#1213) were added under, which is why it is the neighbouring
+	// field of the same record rather than a second mechanism.
+	//
+	// For a clause that returns more than one permanent — none is
+	// printed — this is the FIRST returned permanent that was
+	// attacking, in the order the activator named them. Read through
+	// Context.ReturnedAttacking().
+	ReturnedAttacking uuid.UUID
+
+	// Exiled is the cards an ExileCards component exiled (#1297), in
+	// the order the activator named them — "the card exiled this way"
+	// (Holistic Wisdom: "if it shares a card type with the card exiled
+	// this way"; Dread Defiler: "the exiled card's power"). Nil when
+	// the cost exiled nothing, which is almost every payment.
+	//
+	// A LIST of instance IDs rather than a count, because every reader
+	// printed so far asks about the card itself, and the card is still
+	// findable: it is in exile, by the same instance ID, because the
+	// cost put it there. A count would be Sacrificed's shape answering
+	// a question nobody on this component asks.
+	Exiled []uuid.UUID `json:"exiled,omitempty"`
+
 	// OptionalCosts is which of the card's optional additional costs
 	// the caster chose to pay (CR 601.2b), as positions in the card's
 	// OptionalCosts slice, ascending. A cost paid N times appears N
@@ -117,6 +156,75 @@ type PaidCost struct {
 	// field differs from Mana above: CopySpellForEffect carries it
 	// and clears the rest. Added in ADR 0073 (#664).
 	OptionalCosts []int `json:"optionalCosts,omitempty"`
+
+	// GiftOpponent is the opponent the caster chose while paying a
+	// gift cost (CR 702.174a) — the player the gift was PROMISED to —
+	// or uuid.Nil when no gift was promised. Non-nil is exactly CR
+	// 702.174k's "that spell's gift was promised", read through
+	// GiftPromised().
+	//
+	// A fact about the announcement for the reason OptionalCosts is:
+	// "choose an opponent" is how the gift cost is paid, and by
+	// resolution nothing on the board records the choice. It is the
+	// same kind of fact as "was it kicked" and travels the same way —
+	// a CR 707.10 copy keeps it, and CR 400.7d carries it onto the
+	// permanent as CastProvenance.GiftOpponent. ADR 0089 §2.
+	GiftOpponent uuid.UUID `json:"giftOpponent,omitempty"`
+
+	// TappedOthers is what a TapOthers component tapped (#759): one
+	// entry per permanent the activator named, in the order named.
+	// Nil for every cost without the component, which is nearly all
+	// of them.
+	//
+	// It exists for station (CR 702.184a), whose effect puts "charge
+	// counters equal to the tapped creature's power" on the source —
+	// the first printed effect that reads a fact about a permanent
+	// tapped to PAY for it. Exactly the argument Sacrificed (#1213)
+	// and ReturnedAttacking (#1227) were added under, which is why it
+	// is a field of this record and not a second mechanism. Read
+	// through PaidTapPowerForEffect, never off Power directly — see
+	// PaidTap for why the number here is a fallback and not the
+	// answer. ADR 0071, addendum 2026-09-23.
+	TappedOthers []PaidTap `json:"tappedOthers,omitempty"`
+}
+
+// PaidTap is one permanent a TapOthers cost tapped, as the payment
+// record keeps it (#759).
+//
+// WHICH power a station ability reads is CR 608.2h's question, not
+// the payment's: the effect "uses the current information of that
+// object if it's in the public zone it was expected to be in", and
+// its last-known information if it is not. The Edge of Eternities
+// release notes say the same thing of station in so many words — the
+// power is read AS THE ABILITY RESOLVES, and a creature that left
+// the battlefield is read as it last existed there. So a creature
+// pumped in response puts more counters on, and one shrunk in
+// response puts fewer.
+//
+// That makes this a record of IDENTITY first and a number second:
+//
+//   - ID and Epoch name the object (CR 400.7). A creature that
+//     leaves and comes back under the same instance ID is a new
+//     object, and the epoch is what says so.
+//   - Power is the power the object had when it was tapped, and it
+//     is rewritten ONCE, to the power it had as it left the
+//     battlefield, by the exit choke point (battlefieldExitLocked).
+//     Left marks that the rewrite happened, and from then on Power
+//     is the object's last-known power and final.
+//
+// The engine's own CR 603.10 snapshot (lastKnownBattlefield) cannot
+// serve here: it lives for one mutation and is gone by the time the
+// ability resolves, so the record keeps its own.
+type PaidTap struct {
+	ID    uuid.UUID `json:"id"`
+	Epoch int       `json:"epoch,omitempty"`
+	// Power is PowerForComparison — layers AND +1/+1 / -1/-1
+	// counters, NOT clamped at zero, because a negative power is a
+	// real answer (the release notes: "no charge counters are put
+	// onto or removed from" the permanent) and clamping belongs to
+	// the reader.
+	Power int  `json:"power"`
+	Left  bool `json:"left,omitempty"`
 }
 
 // PaidOptionalCost reports whether the optional cost at `index` was
@@ -207,7 +315,8 @@ func (p PaidCost) Known() bool { return !p.OnPaper }
 func (p PaidCost) IsZero() bool {
 	return len(p.Mana) == 0 && !p.OnPaper &&
 		p.CountersRemoved == 0 && p.CountersAdded == 0 && p.LifePaid == 0 &&
-		p.Sacrificed == 0 && len(p.OptionalCosts) == 0
+		p.Sacrificed == 0 && p.ReturnedAttacking == uuid.Nil && len(p.OptionalCosts) == 0 &&
+		len(p.TappedOthers) == 0 && len(p.Exiled) == 0
 }
 
 // clonePaidCost deep-copies the record. The ManaToken slice is
@@ -227,6 +336,12 @@ func clonePaidCost(p PaidCost) PaidCost {
 	}
 	if len(p.OptionalCosts) > 0 {
 		out.OptionalCosts = append([]int(nil), p.OptionalCosts...)
+	}
+	if len(p.TappedOthers) > 0 {
+		out.TappedOthers = append([]PaidTap(nil), p.TappedOthers...)
+	}
+	if len(p.Exiled) > 0 {
+		out.Exiled = append([]uuid.UUID(nil), p.Exiled...)
 	}
 	return out
 }

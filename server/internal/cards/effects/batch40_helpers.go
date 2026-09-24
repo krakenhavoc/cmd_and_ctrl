@@ -115,23 +115,18 @@ func b40NotActivatedForManaThisTurn() func(g *game.Game, controller, source uuid
 // b40RedOrArtifactSourceControlledBy is the first half of Mechanized
 // Warfare's condition: "a red or artifact source you control".
 //
-// The source is looked up wherever it now is — a burn spell is in its
-// owner's graveyard by the time its damage resolves — so its colour
-// and its controller stay readable. Effective characteristics, so an
+// The source is the damage event's snapshot of it
+// (damageSourceCharacteristics): a burn spell as it stands on the
+// stack, and a permanent that has left the battlefield as it last
+// existed there (#1417, CR 608.2h). Effective characteristics, so an
 // artifact creature an effect has turned blue still qualifies as an
-// artifact, and a creature an effect has turned red qualifies as red.
+// artifact, and a creature an effect had turned red qualifies as red
+// even after it dies.
 //
-// A source the engine cannot look up at all is not boosted, which is
+// A source the engine cannot read at all is not boosted, which is
 // weaker than printed and never stronger.
 func b40RedOrArtifactSourceControlledBy(ev *game.ReplacementEvent, g *game.Game, controller uuid.UUID) bool {
-	if ev.DamageSource == uuid.Nil {
-		return false
-	}
-	c, ok := g.LookupCardForEffect(ev.DamageSource)
-	if !ok || c.Controller != controller {
-		return false
-	}
-	return c.HasColor("R") || c.IsArtifact()
+	return damageSourceIsRedControlledBy(ev, g, controller, true)
 }
 
 // b40DamageHitsAnOpponentOf is the second half: "to an opponent or a
@@ -244,19 +239,24 @@ func b40DrainEachOpponent(n int) Effect {
 
 // b40ChaosSpillover is Vincent, Vengeful Atoner's Chaos ability: the
 // source deals `amount` damage to each opponent OTHER than `hit`, but
-// only if its effective power is at least `minPower`.
+// only if its power is at least `minPower`.
 //
 // The power check happens here, at RESOLUTION, because that is where
 // the printed text puts it — after the effect clause rather than as
 // an intervening-if. So Vincent can be pumped in response and the
 // spillover happens; a Vincent who has shrunk, or who has left the
 // battlefield and has no power to read at all, does nothing.
+//
+// CurrentPower(), not Effective().Power (#1281): the gate is "if its
+// power is 7 or greater", and Effective().Power excludes +1/+1 / -1/-1
+// counters, so a Vincent pumped by counters rather than by an anthem
+// never reached the threshold.
 func b40ChaosSpillover(g *game.Game, item *game.StackItem, hit uuid.UUID, amount, minPower int) error {
 	if amount <= 0 {
 		return nil
 	}
 	src, ok := g.LookupCardForEffect(item.SourceCardID)
-	if !ok || src.Effective().Power < minPower {
+	if !ok || src.CurrentPower() < minPower {
 		return nil
 	}
 	ctx := NewContext(g, item)

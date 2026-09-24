@@ -173,6 +173,16 @@ func tokenTemplatesUnderTest() []labelledTemplate {
 	} {
 		out = append(out, labelledTemplate{key: bt.name, display: bt.name, card: bt.card})
 	}
+	// #1236: the Army token is DERIVED from the amass keyword's
+	// subtype rather than tabled (ADR 0087 decision 2), so the dump is
+	// the only thing that can say the derivation is right. Every
+	// species printed today, which is the whole set a card can ask
+	// for — a ninth from a future set becomes a row here on the day
+	// the card that amasses it is registered.
+	for _, subtype := range []string{"Zombie", "Orc", "Goblin", "Sliver"} {
+		name := "ArmyToken(" + strconv.Quote(subtype) + ")"
+		out = append(out, labelledTemplate{key: name, display: name, card: ArmyToken(subtype)})
+	}
 	return out
 }
 

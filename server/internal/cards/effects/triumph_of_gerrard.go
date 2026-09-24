@@ -10,8 +10,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	       flying, first strike, and lifelink until end of turn."
 //
 // "With the greatest power" picks out a SET, not a card: on a tie
-// every tied creature is a legal target and the controller chooses
-// (CR 700.3). GreatestPowerYouControl is written as a target
+// every tied creature is a legal target and the controller chooses.
+// GreatestPowerYouControl is written as a target
 // predicate for exactly that reason, and it is re-evaluated at
 // resolution like any other, so a pump in response can legally take
 // the chosen creature out of the set and fizzle the chapter.

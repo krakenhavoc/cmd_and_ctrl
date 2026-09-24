@@ -67,8 +67,10 @@ type colorBoard struct {
 }
 
 // colorBoardOf walks the battlefield once. Post-layer characteristics
-// throughout (EffectiveColors, Effective().Power), because a Kenrith's
-// Transformation'd creature is green to the player looking at it.
+// throughout (EffectiveColors, CurrentPower — #1281: Effective().Power
+// excludes +1/+1 / -1/-1 counters, which is not what "the biggest
+// thing pointed this way" means), because a Kenrith's Transformation'd
+// creature is green to the player looking at it.
 //
 // Caller must hold g's read lock.
 func colorBoardOf(g *game.Game, chooser uuid.UUID) colorBoard {
@@ -95,7 +97,7 @@ func colorBoardOf(g *game.Game, chooser uuid.UUID) colorBoard {
 		if !c.IsCreature() {
 			continue
 		}
-		power := c.Effective().Power
+		power := c.CurrentPower()
 		for _, col := range colors {
 			if power > b.threat[col] {
 				b.threat[col] = power

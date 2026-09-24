@@ -194,10 +194,11 @@ func TestB40CyclingLandsEnterTappedAndTapForTheirColour(t *testing.T) {
 		if got := poolColors(me); len(got) != 1 || got[0] != row.colour {
 			t.Errorf("%s: tapped for {%s}: pool %v", row.name, row.colour, got)
 		}
-		// The caveat is declared, not silently dropped.
+		// #1412: cycling is real (#660 shipped it), so the card ships
+		// complete rather than caveated.
 		spec, _ := Lookup(row.oracle)
-		if spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
-			t.Errorf("%s ships with the cycling caveat declared", row.name)
+		if spec.Completeness != CompletenessFull {
+			t.Errorf("%s: completeness %v, want CompletenessFull now that cycling is registered", row.name, spec.Completeness)
 		}
 	}
 }
@@ -557,6 +558,34 @@ func TestB40VincentGrowsOnCombatDamageAndSpillsOverAtSeven(t *testing.T) {
 	}
 }
 
+// TestB40VincentChaosCountsCounterPumpedPower is #1281: the Chaos
+// gate read src.Effective().Power, which excludes +1/+1 / -1/-1
+// counters, so a Vincent pumped to 7 by counters rather than by an
+// anthem never reached the threshold. A printed 6/6 with one +1/+1
+// counter already on it (CurrentPower 7, Effective().Power still 6 —
+// no anthem in play) deals combat damage AS a 7/7 (the counter is
+// real, CR 613.4 layer 7d applies before combat) and the Chaos
+// ability must still spill that 7 over.
+func TestB40VincentChaosCountsCounterPumpedPower(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp, other := g.Seats[0], g.Seats[1], g.Seats[2]
+	vincent := b12Push(g, me.ID, "Vincent, Vengeful Atoner", "Legendary Creature — Assassin", b40VincentOracle, 6, 6)
+	if err := g.AddCounterForEffect(vincent, game.CounterPlusOne, 1); err != nil {
+		t.Fatalf("AddCounterForEffect: %v", err)
+	}
+	oppLife, otherLife := opp.Life, other.Life
+	attackWith(t, g, opp.ID, vincent)
+	answerAnyTriggerOrderPrompt(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	if opp.Life != oppLife-7 {
+		t.Fatalf("the defender takes 7 in combat (6 printed + the counter): %d → %d", oppLife, opp.Life)
+	}
+	if other.Life != otherLife-7 {
+		t.Errorf("a Vincent at CURRENT power 7 (6 printed + one +1/+1 counter, no anthem) must still "+
+			"spill its 7 over: %d → %d", otherLife, other.Life)
+	}
+}
+
 func TestB40MurderousRedcapDealsDamageEqualToItsPower(t *testing.T) {
 	g := newCatalogGame(t)
 	opp := g.Seats[1]
@@ -573,6 +602,30 @@ func TestB40MurderousRedcapDealsDamageEqualToItsPower(t *testing.T) {
 	spec, _ := Lookup(b40MurderousRedcapOracle)
 	if spec.Completeness != CompletenessCaveats {
 		t.Error("persist is not implemented and the card says so")
+	}
+}
+
+// TestB40MurderousRedcapCountersItsDamage is #1281: the ETB read
+// src.Effective().Power, which excludes +1/+1 / -1/-1 counters, so a
+// Redcap pumped by a counter (rather than an anthem) dealt the wrong
+// amount. A counter placed while the trigger is still on the stack —
+// resolution reads power fresh, per the card's own doc comment — must
+// count.
+func TestB40MurderousRedcapCountersItsDamage(t *testing.T) {
+	g := newCatalogGame(t)
+	opp := g.Seats[1]
+	me := g.Seats[0]
+	before := opp.Life
+	redcap := b36CastCreature(t, g, "Murderous Redcap", "Creature — Goblin Assassin", b40MurderousRedcapOracle, 2, 2)
+	b16PickPlayer(t, g, me.ID, opp.ID)
+	// The trigger is on the stack, un-resolved: a +1/+1 counter lands
+	// on the Redcap before it fires.
+	if err := g.AddCounterForEffect(redcap, game.CounterPlusOne, 1); err != nil {
+		t.Fatalf("AddCounterForEffect: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if opp.Life != before-3 {
+		t.Errorf("a 2/2 with a +1/+1 counter pings for 3: %d → %d", before, opp.Life)
 	}
 }
 
@@ -886,5 +939,97 @@ func b40TapForMana(t *testing.T, g *game.Game, controller, card uuid.UUID, idx i
 	}
 	if color != "" {
 		b10ResolveAllManaPicks(t, g, controller, color)
+	}
+}
+
+// --- #1412: cycling ---------------------------------------------------
+
+// Polluted Mire and Remote Isle: cycling {2} from hand discards the
+// land and draws a card, and is refused without the mana to pay it.
+func TestB40CyclingLandsCycleForACard(t *testing.T) {
+	for _, row := range []struct{ name, oracle string }{
+		{"Polluted Mire", b40PollutedMireOracle},
+		{"Remote Isle", b40RemoteIsleOracle},
+	} {
+		g := newCatalogGame(t)
+		me := g.Seats[g.Turn.ActiveSeat]
+
+		refused := pushCatalogHandCard(me, row.name, "Land", row.oracle)
+		if err := g.ActivateCatalogAbility(me.ID, refused, 0, game.ActivateAbilityParams{Strict: true}); err == nil {
+			t.Fatalf("%s: {2} must be paid to cycle", row.name)
+		}
+		if !me.Hand.Contains(refused) {
+			t.Errorf("%s: discarded despite the unpaid cost", row.name)
+		}
+		g.WithWriteLock(func() { me.Hand.Cards = nil })
+
+		id, _ := cycleFromHand(t, g, row.name, "Land", row.oracle, "{C}{C}")
+		if !me.Graveyard.Contains(id) {
+			t.Fatalf("%s: the cycled land is not in the graveyard", row.name)
+		}
+		before := len(me.Hand.Cards)
+		passPriorityAroundTable(t, g)
+		if got := len(me.Hand.Cards); got != before+1 {
+			t.Errorf("%s: hand %d -> %d, want the cycling draw", row.name, before, got)
+		}
+	}
+}
+
+// Oliphaunt: mountaincycling {1} discards it and fetches a Mountain
+// card (any land with the Mountain type, not only a basic one),
+// reveals it and shuffles; refused without the mana.
+func TestB40OliphauntMountaincyclesForAMountain(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+
+	refused := pushCatalogHandCard(me, "Oliphaunt", "Creature — Elephant", b40OliphauntOracle)
+	if err := g.ActivateCatalogAbility(me.ID, refused, 0, game.ActivateAbilityParams{Strict: true}); err == nil {
+		t.Fatal("{1} must be paid to mountaincycle")
+	}
+	if !me.Hand.Contains(refused) {
+		t.Error("discarded despite the unpaid cost")
+	}
+	g.WithWriteLock(func() { me.Hand.Cards = nil })
+
+	ids := seedSearchLibrary(me,
+		searchTestLand("Mountain", "Basic Land — Mountain"),
+		searchTestLand("Rugged Prairie", "Land — Mountain Plains"),
+		searchTestLand("Island", "Basic Land — Island"),
+		game.Card{Name: "Bear", TypeLine: "Creature — Bear"},
+	)
+	mountain, dual := ids[0], ids[1]
+
+	id, _ := cycleFromHand(t, g, "Oliphaunt", "Creature — Elephant", b40OliphauntOracle, "{C}")
+	if !me.Graveyard.Contains(id) {
+		t.Fatal("the mountaincycled Oliphaunt is not in the graveyard")
+	}
+	handBefore := len(me.Hand.Cards)
+	libraryBefore := len(me.Library.Cards)
+	passPriorityAroundTable(t, g)
+
+	c := searchChoiceFor(g, me.ID)
+	if c == nil {
+		t.Fatal("no search prompt after mountaincycling")
+	}
+	if len(c.SearchCards) != 2 {
+		t.Fatalf("search offers %d cards, want the two Mountain-typed lands %v %v", len(c.SearchCards), mountain, dual)
+	}
+	for _, got := range c.SearchCards {
+		if got != mountain && got != dual {
+			t.Errorf("search offers %v, which is not a Mountain card", got)
+		}
+	}
+	if err := g.ResolveSearchLibrary(c.ID, me.ID, []uuid.UUID{dual}); err != nil {
+		t.Fatalf("ResolveSearchLibrary: %v", err)
+	}
+	if got := len(me.Hand.Cards); got != handBefore+1 {
+		t.Errorf("hand %d -> %d, want the fetched Mountain", handBefore, got)
+	}
+	if !me.Hand.Contains(dual) {
+		t.Error("the fetched land did not reach the hand")
+	}
+	// "then shuffle" — CR 702.29e. One card left the library.
+	if got := len(me.Library.Cards); got != libraryBefore-1 {
+		t.Errorf("library %d -> %d, want one card taken", libraryBefore, got)
 	}
 }

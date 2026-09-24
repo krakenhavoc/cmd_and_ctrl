@@ -14,7 +14,7 @@ import (
 // One test per kind a permission can carry, each driven through the
 // REAL rotation (PassTurn goes through rotation.go's seam, so the
 // cleanup sweep and the turn-begin sweep both run) rather than by
-// poking Turn.Number — the round counter is exactly the thing the
+// poking Turn.Round — the round counter is exactly the thing the
 // swap stopped being the answer.
 
 // exiledWithGrant drops a fresh instant into exile carrying `perm`
@@ -137,23 +137,21 @@ func TestPermissionUntilYourNextTurnEndsAsThatTurnBegins(t *testing.T) {
 // Warp and foretell print a FLOOR, not a duration: "you may cast it
 // from exile on a later turn" (CR 702.185a, CR 702.143a). Duration
 // has no vocabulary for when an effect STARTS, which is why
-// NotBeforeTurn survived the swap — and it composes with the
+// NotBeforeSeq survived the swap — and it composes with the
 // zone-bound window rather than replacing it.
-func TestPermissionNotBeforeTurnIsAFloorUnderAZoneBoundWindow(t *testing.T) {
+func TestPermissionNotBeforeSeqIsAFloorUnderAZoneBoundWindow(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	id := exiledWithGrant(t, g, me, "Warped Bear", CastPermission{
-		Player:        me.ID,
-		Duration:      WhileInZoneDuration(),
-		NotBeforeTurn: g.Turn.Number + 1,
+		Player:       me.ID,
+		Duration:     WhileInZoneDuration(),
+		NotBeforeSeq: g.Turn.Seq + 1,
 	})
 
 	if castableFromExileBy(g, id, me.ID) {
 		t.Error("a foretold / warped card is castable on the turn it was exiled")
 	}
-	// Round the table once: Turn.Number goes up as the rotation wraps
-	// past seat 0, which is the counter CR 702.185a's floor is read
-	// against.
+	// Rotate once; the very next turn lifts the CR 702.185a floor.
 	for i := 0; i < len(g.Seats); i++ {
 		if err := g.PassTurn(); err != nil {
 			t.Fatalf("PassTurn %d: %v", i, err)
@@ -161,7 +159,7 @@ func TestPermissionNotBeforeTurnIsAFloorUnderAZoneBoundWindow(t *testing.T) {
 	}
 	if !castableFromExileBy(g, id, me.ID) {
 		t.Errorf("the floor never lifted: turn %d, grant %+v",
-			g.Turn.Number, exilePlayOf(g, id))
+			g.Turn.Seq, exilePlayOf(g, id))
 	}
 }
 

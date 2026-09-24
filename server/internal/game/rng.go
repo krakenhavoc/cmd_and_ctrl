@@ -143,17 +143,11 @@ func (g *Game) noteCreatedSourceLocked(id uuid.UUID) {
 
 // rngTurnIndexLocked is the turn a stream's counters are scoped to.
 //
-// ADR 0054 Decision 2 writes this as Turn.Number, but in this engine
-// Turn.Number counts ROUNDS: it only goes up when play wraps back to
-// seat 0 (turn.go advance). Scoping to it would let what an undo
-// taught a player survive every other seat's turn in the round, which
-// is the opposite of the decision's reason for turn scoping ("at the
-// next turn the key changes and that knowledge is gone"). So the index
-// is the round times MaxPlayers plus the active seat: it changes on
-// every turn, and it is 0..MaxPlayers-1 before the first round (the
-// opening shuffle runs at Number 0, seat 0).
+// Turn.Seq changes at every turn boundary, including consecutive turns
+// taken by the same seat. That is exactly the boundary at which a new
+// deterministic stream must replace anything an undo exposed.
 func (g *Game) rngTurnIndexLocked() int {
-	return g.Turn.Number*MaxPlayers + g.Turn.ActiveSeat
+	return g.Turn.Seq
 }
 
 // rngPlayerIdentityLocked returns the 16 bytes that stand for a

@@ -83,7 +83,7 @@ func zoneKindOf(t *testing.T, g *Game, id uuid.UUID) ZoneKind {
 }
 
 // TestASorceryThatExilesItselfStaysInExile is the issue's own repro.
-// CR 608.2m puts the SPELL into its owner's graveyard, and a spell that
+// CR 608.2n puts the SPELL into its owner's graveyard, and a spell that
 // is no longer on the stack is not one.
 func TestASorceryThatExilesItselfStaysInExile(t *testing.T) {
 	g, self, err := castSelfMover(t, "Sorcery", func(g *Game, self uuid.UUID) error {
@@ -97,7 +97,7 @@ func TestASorceryThatExilesItselfStaysInExile(t *testing.T) {
 			"a spell its own effect has already placed", got)
 	}
 	if g.Seats[0].Graveyard.Contains(self) {
-		t.Error("and it is NOT in its owner's graveyard: CR 608.2m puts the spell ON THE STACK there, " +
+		t.Error("and it is NOT in its owner's graveyard: CR 608.2n puts the spell ON THE STACK there, " +
 			"and there was none by the time the frame looked")
 	}
 }

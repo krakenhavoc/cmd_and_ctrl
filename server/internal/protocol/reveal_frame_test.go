@@ -37,7 +37,7 @@ func revealTopOf(tb testing.TB, g *game.Game, seat *game.Player, source uuid.UUI
 		// current, so the this-turn window keeps it.
 		g.EmitEvent(game.Event{
 			Kind: game.EventStepBegan, Actor: seat.ID,
-			Amount: g.Turn.Number, Label: string(g.Turn.Step),
+			Amount: g.Turn.Seq, Label: string(g.Turn.Step),
 		})
 		ids = g.RevealTopOfLibraryForEffect(seat.ID, source, n, reason)
 	})
@@ -187,7 +187,7 @@ func TestRevealWindowIsBoundedAndThisTurn(t *testing.T) {
 	g.WithWriteLock(func() {
 		g.EmitEvent(game.Event{
 			Kind: game.EventStepBegan, Actor: revealer.ID,
-			Amount: g.Turn.Number - 1, Label: string(g.Turn.Step),
+			Amount: g.Turn.Seq - 1, Label: string(g.Turn.Step),
 		})
 		g.RevealTopOfLibraryForEffect(revealer.ID, uuid.Nil, 1, "last turn")
 	})
@@ -195,7 +195,7 @@ func TestRevealWindowIsBoundedAndThisTurn(t *testing.T) {
 	g.WithWriteLock(func() {
 		g.EmitEvent(game.Event{
 			Kind: game.EventStepBegan, Actor: revealer.ID,
-			Amount: g.Turn.Number, Label: string(g.Turn.Step),
+			Amount: g.Turn.Seq, Label: string(g.Turn.Step),
 		})
 		for i := 0; i < PublicRevealMax+2; i++ {
 			g.RevealTopOfLibraryForEffect(revealer.ID, uuid.Nil, 1, fmt.Sprintf("this turn #%d", i))
@@ -207,8 +207,8 @@ func TestRevealWindowIsBoundedAndThisTurn(t *testing.T) {
 		t.Fatalf("window holds %d reveals, want the cap of %d", len(v.Reveals), PublicRevealMax)
 	}
 	for _, r := range v.Reveals {
-		if r.Turn != g.Turn.Number {
-			t.Errorf("a reveal from turn %d survived into turn %d's window", r.Turn, g.Turn.Number)
+		if r.Turn != g.Turn.Seq {
+			t.Errorf("a reveal from turn %d survived into turn %d's window", r.Turn, g.Turn.Seq)
 		}
 		if r.Reason == "last turn" {
 			t.Error("last turn's reveal is still on the wire")
@@ -316,7 +316,7 @@ func TestRevealFrameWireCost(t *testing.T) {
 		}
 		g.EmitEvent(game.Event{
 			Kind: game.EventStepBegan, Actor: revealer.ID,
-			Amount: g.Turn.Number, Label: string(g.Turn.Step),
+			Amount: g.Turn.Seq, Label: string(g.Turn.Step),
 		})
 		for range PublicRevealMax {
 			g.RevealTopOfLibraryForEffect(revealer.ID, uuid.Nil, RevealCardsMax,
@@ -364,7 +364,7 @@ func BenchmarkPublicRevealsProjection(b *testing.B) {
 	g.WithWriteLock(func() {
 		g.EmitEvent(game.Event{
 			Kind: game.EventStepBegan, Actor: revealer.ID,
-			Amount: g.Turn.Number, Label: string(g.Turn.Step),
+			Amount: g.Turn.Seq, Label: string(g.Turn.Step),
 		})
 		for i := 0; i < PublicRevealMax; i++ {
 			g.RevealTopOfLibraryForEffect(revealer.ID, uuid.Nil, RevealCardsMax, "bench")

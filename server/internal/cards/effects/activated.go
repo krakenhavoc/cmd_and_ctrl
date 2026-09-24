@@ -148,7 +148,30 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 			out.SacrificeOther = c.SacrificeOther
 		}
 		if c.Mana != "" {
-			out.Mana = c.Mana
+			// #1310, CR 701.67b: a waterbend cost is PART of the
+			// total, so composing it with a mana component sums the
+			// two strings — "{1}{U}, Waterbend {2}" owes {1}{U}{2}.
+			// Everywhere else the later component wins, as it always
+			// has.
+			if out.Mana != "" && (c.Waterbend != nil || out.Waterbend != nil) {
+				out.Mana += c.Mana
+			} else {
+				out.Mana = c.Mana
+			}
+		}
+		// #1310: without this a composed "Waterbend {X}, …" keeps its
+		// mana and silently loses the taps — harder to pay than
+		// printed, but a card that says waterbend and never offers it.
+		if c.Waterbend != nil {
+			out.Waterbend = c.Waterbend
+		}
+		// #758: the same failure for the tap-another component, which
+		// Plus never learned — a composed "{T}, Tap an untapped
+		// creature you control" dropped its second half and became a
+		// plain {T}, the #259 direction. No card composes one yet;
+		// the first would have shipped stronger than printed.
+		if c.TapOthers != nil {
+			out.TapOthers = c.TapOthers
 		}
 		if c.Life != 0 {
 			out.Life = c.Life
@@ -197,8 +220,58 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.ExileSelf {
 			out.ExileSelf = true
 		}
+		// #759: and the tap-another half (#758). A composed "{T},
+		// Tap another untapped creature you control" that dropped it
+		// would be the bare {T} ability — the #259 direction again.
+		if c.TapOthers != nil {
+			out.TapOthers = c.TapOthers
+		}
+		// #1297: and the exile-N-cards component. A composed "{R},
+		// {T}, Exile two cards from your graveyard" that dropped the
+		// exile would be a Grim Lavamancer that pings for {R} forever
+		// — stronger than printed, the #259 direction.
+		if c.ExileCards != nil {
+			out.ExileCards = c.ExileCards
+		}
 	}
 	return out
+}
+
+// TapAnotherUntapped is "Tap another untapped <permanent> you control"
+// as a COST (#758's TapOthersCost, #759) — station's
+//
+//	TapAnotherUntapped("another untapped creature you control", Creature())
+//
+// Jaspera Sentinel's creature, and every other clause that prints the
+// word "another". The label is the clause as printed, without the
+// verb, exactly as ReturnAPermanentToHand's is: the client's picker
+// says "Tap <label> to pay for this ability".
+//
+// It is not the {T} symbol (CR 302.6): a creature that arrived this
+// turn may be tapped to pay it, and the engine's validator carries no
+// sickness check. It does not target, so a hexproof creature you
+// control pays it.
+func TapAnotherUntapped(label string, preds ...CardPredicate) game.AbilityCost {
+	return game.AbilityCost{TapOthers: &game.TapOthersCost{
+		Count:         1,
+		Filter:        TargetPermanent(label, preds...),
+		ExcludeSource: true,
+		Label:         label,
+	}}
+}
+
+// TapXUntapped is "Tap X untapped <permanents> you control" as a
+// cost (#1421). The picked count is the activation's announced X;
+// there is no {X} mana symbol and therefore no extra mana demand.
+func TapXUntapped(label string, preds ...CardPredicate) game.AbilityCost {
+	filter := TargetPermanent(label, preds...)
+	filter.Min = 0
+	filter.Max = 0
+	filter.CountFromX = true
+	return game.AbilityCost{TapOthers: &game.TapOthersCost{
+		Filter: filter,
+		Label:  label,
+	}}
 }
 
 // ReturnAPermanentToHand is "Return a <permanent> you control to its
@@ -234,12 +307,21 @@ func ReturnNToHand(n int, label string, preds ...CardPredicate) game.AbilityCost
 	}}
 }
 
-// ExileThis is scavenge's and embalm's "Exile this card from your
-// graveyard" cost component (CR 702.96a, CR 702.128a). Like
-// DiscardThis it only means anything on an ability that functions
-// from the zone it names, and Register refuses it anywhere but the
-// graveyard — build the ability with Scavenge / Embalm / Eternalize
-// rather than composing this by hand.
+// ExileThis is the "Exile this <permanent/card>" cost component, and
+// it exiles the source from the zone the ability functions from:
+//
+//   - from the BATTLEFIELD (the default, #1404) — Perpetual
+//     Timepiece's "{2}, Exile this artifact:", Hanged Executioner's
+//     "{3}{W}, Exile this creature:". The permanent leaves the
+//     battlefield, so leaves-the-battlefield triggers see it; it does
+//     not die and it is not sacrificed. Compose it with Plus like any
+//     other component.
+//   - from the GRAVEYARD — scavenge's and embalm's "Exile this card
+//     from your graveyard" (CR 702.96a, CR 702.128a). Build those with
+//     Scavenge / Embalm / Eternalize rather than by hand.
+//
+// Register refuses it on an ability that functions from any other
+// zone (game.ExileSelfZoneSupported).
 func ExileThis() game.AbilityCost { return game.AbilityCost{ExileSelf: true} }
 
 // DiscardThis is cycling's "Discard this card" cost component
@@ -269,6 +351,65 @@ func DiscardCardsMatching(n int, label string, match func(game.Card) bool) game.
 // DiscardN(2, "two cards").
 func DiscardN(n int, label string) game.AbilityCost {
 	return DiscardCardsMatching(n, label, nil)
+}
+
+// ExileCardsFromHand is "Exile N <kind> cards from your hand" as a
+// cost component (#1283). The label is the clause as printed, without
+// the verb, for the client's picker; a nil match takes any card.
+//
+// It returns the COMPONENT, for a mana ability's cost:
+//
+//	Cost: ManaAbilityCost{ExileCards: ExileACardFromHand()},
+//
+// A CR 602 ability takes ExileFromHand, which wraps the same component
+// in an AbilityCost for Plus.
+//
+// Not DiscardCardsMatching with a different verb: an exiled card is
+// not discarded (game.ExileCost).
+func ExileCardsFromHand(n int, label string, match func(game.Card) bool) *game.ExileCost {
+	return &game.ExileCost{N: n, Label: label, From: game.ZoneHand, Match: match}
+}
+
+// ExileCardsFromGraveyard is ExileCardsFromHand one pile over — "Exile
+// N <kind> cards from your graveyard" as a cost COMPONENT (#1297), for
+// a mana ability's cost. No catalog mana ability prints it yet (Molt
+// Tender and Titans' Nest are the ones waiting); the constructor exists
+// because the component's two owners share one shape.
+func ExileCardsFromGraveyard(n int, label string, match func(game.Card) bool) *game.ExileCost {
+	return &game.ExileCost{N: n, Label: label, From: game.ZoneGraveyard, Match: match}
+}
+
+// ExileFromGraveyard is "Exile N <kind> cards from your graveyard" as
+// a CR 602 activated ability's cost (#1297):
+//
+//	Plus(ManaCost("{R}"), TapCost(), ExileFromGraveyard(2, "two cards", nil))  // Grim Lavamancer
+//	Plus(ManaCost("{W}{U}"), TapCost(),
+//	    ExileFromGraveyard(1, "a creature card", isCreatureCard))                // Moorland Haunt
+//
+// The label is the clause as printed, without the verb; the client
+// shows it in the picker and the activator names the cards at announce
+// (CR 602.2b). A nil match takes any card. The source is never a legal
+// pick, so a graveyard ability's "another" needs no predicate.
+//
+// Not a discard and not ExileThis: the cards are OTHER cards, chosen by
+// the activator, and nothing about the move is a keyword action
+// (game.ExileCost).
+func ExileFromGraveyard(n int, label string, match func(game.Card) bool) game.AbilityCost {
+	return game.AbilityCost{ExileCards: ExileCardsFromGraveyard(n, label, match)}
+}
+
+// ExileFromHand is "Exile N <kind> cards from your hand" as a CR 602
+// activated ability's cost (#1297) — Holistic Wisdom's "{2}, Exile a
+// card from your hand:". The mana ability's component (#1283) wrapped
+// for Plus.
+func ExileFromHand(n int, label string, match func(game.Card) bool) game.AbilityCost {
+	return game.AbilityCost{ExileCards: ExileCardsFromHand(n, label, match)}
+}
+
+// ExileACardFromHand is "Exile a card from your hand" — Cadaverous
+// Bloom.
+func ExileACardFromHand() *game.ExileCost {
+	return ExileCardsFromHand(1, "a card", nil)
 }
 
 // sacrificeSpec builds the "what may I sacrifice" clause. It reuses
@@ -364,7 +505,7 @@ func RemoveCountersAmong(kind string, n int, label string, preds ...CardPredicat
 // COST — Devoted Druid's "Put a -1/-1 counter on this creature:
 // Untap this creature" (#789).
 //
-// A cost, not an effect, with everything that follows from CR 121.1:
+// A cost, not an effect, with everything that follows from CR 614.16:
 // nothing doubles it (Doubling Season does not make the Druid's
 // untapper cost two counters), nothing replaces it, and an activator
 // who cannot have the counter put on cannot activate at all

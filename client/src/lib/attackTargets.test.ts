@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CardView, GameView, PlayerView, ZoneView } from "./protocol";
-import { attackTargetHint, permanentAttackTargets } from "./attackTargets";
+import { attackTargetHint, defendingPlayerOf, permanentAttackTargets } from "./attackTargets";
 import { buildMenuSections } from "./contextMenu.logic";
 
 // attackTargets.test.ts — S27, CR 506.2 / 508.1d.
@@ -154,5 +154,47 @@ describe("the declare-attacker menu", () => {
       target: "c-walker",
       auto_tap: true,
     });
+  });
+});
+
+// #1339, CR 802.4a: who may block an attacker.
+describe("defendingPlayerOf", () => {
+  const attacker = (extra: Partial<CardView>): CardView => ({ ...bear, ...extra });
+
+  it("reads the server's defending_player — a battle's protector, not its controller", () => {
+    expect(
+      defendingPlayerOf(
+        attacker({
+          attacking_target: "c-siege",
+          attacking_target_kind: "battle",
+          defending_player: third.id,
+        }),
+      ),
+    ).toBe(third.id);
+  });
+
+  it("falls back to a player attack's target for a frame that predates the field", () => {
+    expect(defendingPlayerOf(attacker({ attacking_target: them.id }))).toBe(them.id);
+    expect(
+      defendingPlayerOf(attacker({ attacking_target: them.id, attacking_target_kind: "player" })),
+    ).toBe(them.id);
+  });
+
+  // #1364, CR 506.4c: the walker left combat, so the creature attacks
+  // nothing (no kind), but it may still be blocked by the player who was
+  // defending it — the server keeps naming that seat.
+  it("keeps the recorded defender for a creature whose walker left combat", () => {
+    expect(
+      defendingPlayerOf(attacker({ attacking_target: "c-gone", defending_player: third.id })),
+    ).toBe(third.id);
+  });
+
+  it("names nobody for a creature that is not attacking or whose walker is gone", () => {
+    expect(defendingPlayerOf(bear)).toBeUndefined();
+    expect(
+      defendingPlayerOf(
+        attacker({ attacking_target: "c-gone", attacking_target_kind: "planeswalker" }),
+      ),
+    ).toBeUndefined();
   });
 });

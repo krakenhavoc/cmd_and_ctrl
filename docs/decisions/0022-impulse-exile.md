@@ -2,6 +2,10 @@
 
 **Status:** accepted (S21 sub-PR 6)
 **Extends:** [ADR 0021](0021-additional-costs.md) (announce-time gates on `CastSpell`).
+**Turn-identity amendment:** [ADR 0059](0059-turn-machinery.md) sub-PR 1
+separates the per-turn `Seq` from display `Round`; the surviving
+later-turn floor on `CastPermission` is `NotBeforeSeq` and compares
+against `Turn.Seq`. ADR 0066 supersedes this ADR's permission shape.
 
 ## Context
 
@@ -109,7 +113,7 @@ button only when `player` is the viewer.
 
 ## Known gaps
 
-- **Batching (CR 603.1).** Breeches reads "whenever one or more
+- **Batching.** Breeches reads "whenever one or more
   Pirates you control deal damage to your opponents… exile the top
   card of each of those opponents' libraries" — one trigger for the
   whole combat. The engine emits one damage event per source, so

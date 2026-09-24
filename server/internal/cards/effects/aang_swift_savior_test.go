@@ -78,8 +78,8 @@ func TestAangSwiftSaviorImportsAsARealCard(t *testing.T) {
 	if len(eff.Colors) != 2 {
 		t.Errorf("colours = %v, want two", eff.Colors)
 	}
-	// CR 712.4: his back face is reached by transforming him, never
-	// by casting it. The Waterbend {8} verb is a later PR.
+	// CR 712.11: his back face is reached by transforming him (his
+	// Waterbend {8} ability), never by casting it.
 	if faces := c.CastableFaces(); len(faces) != 1 || faces[0] != 0 {
 		t.Errorf("CastableFaces = %v, want [0]", faces)
 	}
@@ -183,10 +183,12 @@ func TestAangSwiftSaviorSpecKeysOnFaceZero(t *testing.T) {
 }
 
 // TestAangTransformsThroughWaterbend is the Waterbend {8} ability's
-// card-level proof: paying the flat mana cost (the declared
-// simplification — no tap-artifacts-and-creatures discount) flips
-// Aang onto Aang and La, Ocean's Fury IN PLACE (CR 712.18 — same
-// object, ADR 0079's first verb, not the Sagas' exile-and-return).
+// transform half: activating it (here in permissive mode, with no
+// taps — paying the whole {8} in mana is always a legal way to
+// waterbend) flips Aang onto Aang and La, Ocean's Fury IN PLACE
+// (CR 712.18 — same object, ADR 0079's first verb, not the Sagas'
+// exile-and-return). The tap half is
+// TestAangWaterbendsEightByTappingTheTeamAndHimself.
 func TestAangTransformsThroughWaterbend(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]

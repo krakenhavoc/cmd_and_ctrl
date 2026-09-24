@@ -5,6 +5,7 @@ import { setMusicMuted, setMusicVolumeMultiplier } from "./music";
 import { setAnimationConfig } from "./animations";
 import { STEP_IDS, NO_PRIORITY_STEPS, hasOwnStop, type StepID } from "./turn";
 import { sanitizeOverrides } from "./shortcuts";
+import { isStackStyle, type StackStyle } from "./stackLane";
 
 // Settings is the client-wide preferences schema. Every toggle the
 // Settings panel surfaces maps to a field here. Persisted to
@@ -78,6 +79,15 @@ export interface Settings {
     // arrangement worth having. This setting only distinguishes the
     // 4-player table.
     tableLayout: "row" | "quadrant";
+    // #1467: how the stack is drawn. "compact" (the default) is the
+    // docked card in the top-left attention strip, as it has always
+    // been. The other three float a lane over the middle of the table
+    // while the stack or pending triggers are live — "fan" (cards with
+    // arrows to their targets), "spotlight" (the next item large, the
+    // queue beside it) and "ribbon" (a numbered row). The board grid
+    // never reflows for any of them. All four ship so they can be
+    // compared on a live table; see lib/stackLane.ts.
+    stackStyle: StackStyle;
     // How an opponent's board is drawn. "summary" (the default)
     // renders a dense read-out — life, untapped mana by colour,
     // creature pips carrying P/T — and expands that seat to a full
@@ -123,8 +133,9 @@ export interface Settings {
   gameplay: {
     // Confirm-before-exit when navigating away from an active game.
     confirmExit: boolean;
-    // When the stack is empty and no legal plays exist, auto-pass
-    // priority. Held Shift on the pass button overrides.
+    // Pass priority automatically outside the stops grid and the
+    // #1307 key windows. Off means every priority window waits for a
+    // click. The rules live in autopassDecision.ts.
     autoPassPriority: boolean;
     // Per-step stops (S13). For each priority-granting step, true
     // means "stop here when priority lands on me" and false means
@@ -133,7 +144,9 @@ export interface Settings {
     // Defaults seeded by defaultStepStops().
     stepStops: Record<string, boolean>;
     // S15: opt-in mana-cost enforcement. When true, the client
-    // tags every cast_spell action with `strict: true` and the
+    // tags every cast_spell action with `strict: true` (and, since
+    // #1296, every catalog activate_ability with `strict: true,
+    // auto_tap: true` — manaEnforcement.ts) and the
     // server gates the cast on the caster's ManaPool actually
     // covering the printed cost (plus commander tax for casts
     // from the command zone). Default false (sandbox / paper
@@ -149,6 +162,39 @@ export interface Settings {
     // "stop every time regardless." Flip off to restore strict
     // pre-S13.6 behaviour where every stop demands a click.
     smartAutoPass: boolean;
+    // #1307: what counts as a response for smartAutoPass. Each is a
+    // category of the viewer's own legal moves; mana abilities and
+    // land plays are never responses. All on by default.
+    //   respondCounterspells  — casts / activations that target the stack
+    //   respondInstants       — any other instant-speed cast
+    //   respondAbilities      — any other non-mana activated ability
+    //   respondSpecialActions — foretell, suspend, turning face up
+    respondCounterspells: boolean;
+    respondInstants: boolean;
+    respondAbilities: boolean;
+    respondSpecialActions: boolean;
+    // #1307: stop for every opponent item on the stack, answer or
+    // not — the pre-#1307 behaviour. Off by default: with smart
+    // autopass on, a spell you can't respond to now passes.
+    alwaysStopOpponentStack: boolean;
+    // #1307 bluffing. When smart autopass would pass a window you
+    // cannot answer, act as if you could instead, so a pause gives
+    // nothing away.
+    //   bluffCounterspell — represent a counter: bluff at an
+    //                       opponent's item on the stack.
+    //   bluffInstant      — represent an instant: bluff there and in
+    //                       the other key windows (combat, an
+    //                       opponent's end step).
+    //   bluffMode         — "timed" holds for a random delay between
+    //                       the two bounds then passes; "manual"
+    //                       holds until you click next.
+    // Both bluffs also need the in-game bluff toggle (bluff.ts),
+    // which starts on at game load when either is set.
+    bluffCounterspell: boolean;
+    bluffInstant: boolean;
+    bluffMode: "timed" | "manual";
+    bluffDelayMinMs: number;
+    bluffDelayMaxMs: number;
     // #323: when every item on the stack is one the viewer put
     // there, auto-pass instead of asking "Counter or Pass?" about
     // your own spell. Defaults on — casting is already the
@@ -222,7 +268,7 @@ export interface Settings {
   };
 }
 
-export const SETTINGS_VERSION = 11;
+export const SETTINGS_VERSION = 14;
 const STORAGE_KEY = "cmdctrl.settings.v1";
 const LEGACY_MUTED_KEY = "cmdctrl.muted";
 
@@ -291,6 +337,9 @@ export function defaultSettings(): Settings {
       cardSize: "medium",
       handLayout: "fan",
       tableLayout: "quadrant",
+      // v14 default: compact — the docked card players already know,
+      // until the owner picks one of the floating lanes (#1467).
+      stackStyle: "compact",
       // v11 default: summary. The full-card rendering clips at small
       // panel sizes and has no headroom left to shrink into (#956),
       // so the dense read-out is the one that works at every table
@@ -323,6 +372,20 @@ export function defaultSettings(): Settings {
       // affordance; smartAutoPass lets it mean "stop if I
       // might want to respond" instead of "stop every time."
       smartAutoPass: true,
+      // #1307 defaults: every response category counts, and an
+      // opponent's spell you can't answer passes.
+      respondCounterspells: true,
+      respondInstants: true,
+      respondAbilities: true,
+      respondSpecialActions: true,
+      alwaysStopOpponentStack: false,
+      // #1307 bluff defaults: off, timed, 1.5–4 s. A bluff slows the
+      // table, so nobody gets one they didn't ask for.
+      bluffCounterspell: false,
+      bluffInstant: false,
+      bluffMode: "timed",
+      bluffDelayMinMs: 1500,
+      bluffDelayMaxMs: 4000,
       // #323 default: ON. "I cast it" is already the decision; the
       // client shouldn't ask you to confirm it. Opponent items on
       // the stack still stop, and the in-game "hold" toggle is the
@@ -502,6 +565,33 @@ function migrate(raw: unknown): Settings {
   // expansion mechanisms; a stored value for it is expected to stop
   // being honoured, which is fine because the shallow merge will
   // simply drop an unknown field at v12.
+  //
+  // v11 → v12 (#1307): gameplay.respondCounterspells,
+  // respondInstants, respondAbilities, respondSpecialActions (all
+  // true) and alwaysStopOpponentStack (false). The shallow merge
+  // fills them. Nothing is stored to rescue, but the upgrade does
+  // change behaviour for a player who touched nothing: with smart
+  // autopass on, an opponent's spell they cannot answer now passes
+  // instead of stopping, and a mana ability no longer counts as a
+  // response. alwaysStopOpponentStack puts the old stop back.
+  //
+  // v12 → v13 (#1307 bluffing): gameplay.bluffCounterspell,
+  // bluffInstant (false), bluffMode ("timed"), bluffDelayMinMs (1500)
+  // and bluffDelayMaxMs (4000). The shallow merge fills them, and
+  // with both bluffs off nothing behaves differently. The delay
+  // bounds are clamped where they are read (bluff.ts), so a
+  // hand-edited blob cannot stall the table.
+  //
+  // v13 → v14 (#1467): display.stackStyle. The shallow merge fills it
+  // from defaults ("compact"), so nobody's stack moves on upgrade —
+  // the floating lanes are opt-in. Unlike the enums before it, the
+  // value is also checked: this one picks which component the board
+  // mounts, and an unknown string (a style that was tried and
+  // removed, a hand-edited blob) must fall back to the docked card
+  // rather than to no stack at all.
+  if (!isStackStyle(merged.display.stackStyle)) {
+    merged.display.stackStyle = "compact";
+  }
   merged.shortcuts = {
     enabled: merged.shortcuts?.enabled !== false,
     bindings: sanitizeOverrides(merged.shortcuts?.bindings),

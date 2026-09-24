@@ -48,6 +48,21 @@ type Game struct {
 	CreatedAt time.Time
 	State     State
 
+	// Outcome is the result of an ended game — who won, or a draw, and
+	// why (ADR 0057 Decision 5, game_end.go). Nil while the game is
+	// active, and nil for a game ended by End() with no result (an
+	// abandoned table). Written only by endGameLocked.
+	Outcome *GameOutcome
+
+	// ActiveSeatLeftPending is set when the ACTIVE player loses the
+	// game by an effect in the middle of a resolution (ADR 0057
+	// Decision 3). They leave at once, but the game-over check and the
+	// turn rotation wait for the next SBA loss pass, which consumes
+	// the flag: beginning the next turn must never run inside a
+	// resolving callback (ADR 0059 Decision 6). Plain data, carried by
+	// Clone and the snapshot.
+	ActiveSeatLeftPending bool
+
 	// Seats is the ordered list of players. Index matches Turn.ActiveSeat.
 	Seats []*Player
 
@@ -181,6 +196,18 @@ type Game struct {
 	// ID. Added in S19 sub-PR 6.
 	SpellsCastThisTurn map[uuid.UUID]CastTally
 
+	// ForetoldThisTurn tallies, per player, how many cards that
+	// player has foretold this turn (CR 702.143a's special action,
+	// not a cast) — SpellsCastThisTurn's shape, one zone over.
+	// Bumped in foretellLocked once the card has actually landed in
+	// exile, so a special action refused before payment never counts.
+	// Read by SpecialActionManaCostForEffect's cost modifiers —
+	// Ranar the Ever-Watchful's "The first card you foretell each
+	// turn costs {0} to foretell" (#1319) is FirstForetellEachTurn()
+	// asking whether this count is still zero. Cleared on
+	// Turn.advance to a new turn, alongside SpellsCastThisTurn.
+	ForetoldThisTurn map[uuid.UUID]int
+
 	// LandsPlayedThisTurn counts, per player, the lands that player
 	// has played this turn via CastSpell's land branch. Cleared on
 	// Turn.advance to a new turn. Keyed by player ID. Added in S31
@@ -307,6 +334,19 @@ type Game struct {
 	// the sequence rather than restarting at 1.
 	eventSeq uint64
 
+	// eventLogGen names the history Events holds (#1401): bumped by
+	// RestoreFrom, which replaces the log with a shorter one that the
+	// next emit regrows under the same Seq values. Never copied — it
+	// belongs to this *Game, not to the history — so it only moves
+	// forward. See projection_cache.go.
+	eventLogGen uint64
+
+	// logProjection is the public log's fold state between views
+	// (#1401). Opaque to this package; see projection_cache.go. Not
+	// cloned, not restored, not snapshotted: a fresh *Game starts with
+	// an empty slot and the first view refolds from event 0.
+	logProjection ProjectionCache
+
 	// eventBatch is the monotonic counter stamped into Event.Batch on
 	// each EmitEvent: the identity of the run of events the engine is
 	// emitting as ONE occurrence (CR 603.2c). It advances at exactly
@@ -383,6 +423,43 @@ type Game struct {
 	// block maps above are.
 	announcedAttacks map[uuid.UUID]bool
 
+	// attackDefenders is each attacker's DEFENDING PLAYER as it was
+	// when its attack was last pointed (#1364, ADR 0045 Decision 35):
+	// written by setAttackTargetLocked at the declaration, at an entry
+	// "attacking" (CR 506.3c) and at a reselect (CR 508.7), and never
+	// rewritten when the planeswalker or battle it attacks leaves.
+	//
+	// It exists for CR 506.4c's "it may be blocked": once the attacked
+	// permanent is gone the live resolution (defendingPlayerForAttack-
+	// Locked) has nobody to name, and CR 802.2a says the defending
+	// player is still the one it was attacking before the permanent
+	// was removed from combat. Read ONLY by the block path through
+	// defendingPlayerForAttackerLocked — damage still goes nowhere
+	// (CR 510.1b).
+	//
+	// Cleared with the rest of combat, dropped per object with
+	// announcedAttacks, and carried by Clone / RestoreFrom and the
+	// persisted snapshot for the same reasons.
+	attackDefenders map[uuid.UUID]uuid.UUID
+
+	// blocksDeclared is the set of DEFENDING PLAYERS whose CR 509.1
+	// block declaration is complete this combat (#1279, ADR 0045
+	// Decision 38, block_completion.go). Written only by
+	// completeBlockDeclarationLocked — at the step's entry for a
+	// defender with no legal block, when the defender passes priority
+	// or sends finish_blocks, and for everyone still pending as the
+	// cursor leaves the step — and it is what tells "this defender has
+	// not declared yet" from "this defender declared no blocks", which
+	// an empty blockedAttackers cannot.
+	//
+	// Cleared with the rest of combat, and carried by Clone /
+	// RestoreFrom and the persisted snapshot for the reason
+	// announcedBlocks is: an undo across the declaration that kept the
+	// bit would make an attacker read unblocked to ninjutsu before the
+	// defender had chosen, and one that dropped it would reopen a
+	// declaration whose triggers have already fired.
+	blocksDeclared map[uuid.UUID]bool
+
 	// firstStrikeStepParticipants is THIS combat's CR 510.4 / 702.7c
 	// participation record: the attacking and blocking creatures that
 	// had first strike or double strike as the FIRST combat damage
@@ -450,6 +527,25 @@ type Game struct {
 	// two boundaries lastKnownBattlefield is.
 	lastKnownCounters map[uuid.UUID]map[string]int
 
+	// lastKnownStack is CR 608.2h last-known information for spells
+	// that left the stack WITHOUT resolving this turn — countered,
+	// returned, moved by hand — keyed by the spell's instance ID and
+	// holding the card and its stack item as they last stood. Read
+	// only by CopyLastKnownSpellForEffect, the copy entry point for
+	// effects that name a spell without targeting it (storm). Cleared
+	// at the turn boundary. See stack_lki.go (#1255).
+	lastKnownStack map[uuid.UUID]lastKnownSpell
+
+	// lastKnownPermanents is CR 608.2h last-known information for
+	// permanents that left the battlefield this turn, one entry per
+	// departed OBJECT (instance ID + ObjectEpoch). Unlike
+	// lastKnownBattlefield it outlives the exit's trigger harvest, so
+	// an ability that resolves later can read the power a creature had
+	// as it left. Written by battlefieldExitLocked, read by
+	// PermanentForEffect, cleared at the turn boundary. See
+	// permanent_lki.go (#1379).
+	lastKnownPermanents map[uuid.UUID][]PermanentInfo
+
 	// simultaneousExit holds copies of the permanents currently
 	// leaving the battlefield as ONE event — a board wipe, or one
 	// state-based-action sweep. Non-empty only for the duration of
@@ -480,7 +576,7 @@ type Game struct {
 	enteringTokens []Card
 
 	// resolving is the stack item whose resolution is in flight, plus
-	// the card it was (CR 608.2m last-known information), held for
+	// the card it was (CR 608.2n last-known information), held for
 	// exactly one event batch — see resolving_item.go (#920).
 	//
 	// resolveTopOfStackLocked removes an item from StackMeta BEFORE it
@@ -505,6 +601,23 @@ type Game struct {
 	// for a resolution paused on a prompt, and that prompt's resume
 	// frame is already counted in ContinuationCensus.ChoiceResumeFrames.
 	resolving *resolvingItem
+
+	// resolutionOpen says a stack item has begun to resolve and the
+	// CR 704.3 boundary after it has not run yet (#1289). Set with the
+	// resolving slot, cleared by runStateChecksLocked once no prompt the
+	// resolution queued is still open. While it is set, a prompt queued is stamped
+	// PendingChoice.midResolution, and an open stamped prompt holds the
+	// state-based actions and the trigger drain. See
+	// resolution_pause.go.
+	//
+	// resolutionDepth counts the resolution functions currently on the
+	// Go stack. Inside one, the item has not finished resolving
+	// whatever it has queued, so the boundary is held there too.
+	//
+	// Clone and the persisted snapshot carry resolutionOpen; the depth
+	// is zero between actions by construction.
+	resolutionOpen  bool
+	resolutionDepth int
 
 	// The game's randomness: a secret key plus per-stream draw
 	// counters for the current turn (ADR 0054 Decision 2). Every
@@ -715,6 +828,14 @@ func NewGame() *Game {
 		// puts it ahead of every other applicable replacement and
 		// keeps a charged prevention shield unspent (ADR 0072 §4).
 		protectionPreventsDamageReplacement,
+		// #1200, CR 119.7 / CR 119.8 (ADR 0085, life_lock.go). Also
+		// Preemptive, and for the same reasons one event kind over:
+		// there is only one answer once an amount replacement has
+		// been applied, and a life PAYMENT cannot pause to be asked.
+		// It watches the LIFE event; the damage half of the rule is
+		// in applyResolvedDamageToPlayerLocked, because damage does
+		// not fire this window (CR 120.3).
+		lifeTotalCantChangeReplacement,
 	)
 	return g
 }
@@ -812,9 +933,10 @@ func (g *Game) ReplaceDeck(playerID uuid.UUID, deck []Card) error {
 	return nil
 }
 
-// Start transitions the game from lobby to active, initialises the
-// turn cursor at seat 0 / turn 1 / untap step, and shuffles each
-// player's library.
+// Start transitions the game from lobby to active with seat 0 as the starting
+// player and shuffles each player's library. It is the stable fixture/replay
+// entry point retained for callers that already chose a starting seat.
+// Production game creation uses StartWithFirstPlayerRoll instead.
 //
 // The RNG argument no longer IS the game's source; it seeds the
 // game's secret key (ADR 0054 Decision 2). A caller-supplied source
@@ -830,10 +952,22 @@ func (g *Game) ReplaceDeck(playerID uuid.UUID, deck []Card) error {
 // and ErrGameAlreadyStarted if the game is not in lobby.
 func (g *Game) Start(r *rand.Rand) error {
 	if r == nil {
-		return g.start(nil)
+		return g.start(nil, false)
 	}
 	key := rngKeyFrom(r)
-	return g.start(&key)
+	return g.start(&key, false)
+}
+
+// StartWithFirstPlayerRoll is Start plus the real-table pregame procedure:
+// every seat rolls a d20, tied leaders reroll, and the winner takes turn 1.
+// The rolls use the same seeded, persisted RNG as card effects and are emitted
+// to the public log. Production callers should use this entry point.
+func (g *Game) StartWithFirstPlayerRoll(r *rand.Rand) error {
+	if r == nil {
+		return g.start(nil, true)
+	}
+	key := rngKeyFrom(r)
+	return g.start(&key, true)
 }
 
 // StartWithSource is Start on a caller-supplied PCG source. It used
@@ -845,15 +979,16 @@ func (g *Game) Start(r *rand.Rand) error {
 // Pass nil to get the same crypto-minted key Start(nil) mints.
 func (g *Game) StartWithSource(src *rand.PCG) error {
 	if src == nil {
-		return g.start(nil)
+		return g.start(nil, false)
 	}
 	key := rngKeyFrom(src)
-	return g.start(&key)
+	return g.start(&key, false)
 }
 
-// start is the shared body. key is the game's RNG key, or nil to keep
-// a key already set and otherwise mint one.
-func (g *Game) start(key *[32]byte) error {
+// start is the shared body. key is the game's RNG key, or nil to keep a key
+// already set and otherwise mint one. rollForFirst selects whether this caller
+// already chose seat 0 or wants the table's public opening roll.
+func (g *Game) start(key *[32]byte, rollForFirst bool) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
@@ -909,8 +1044,11 @@ func (g *Game) start(key *[32]byte) error {
 			p.Command.Cards[i].AddKnowersAll(allSeatedIDs)
 		}
 	}
-	g.Turn = newStartingTurn()
-	g.StartingSeat = g.Turn.ActiveSeat
+	g.StartingSeat = 0
+	if rollForFirst {
+		g.StartingSeat = g.rollStartingSeatLocked()
+	}
+	g.Turn = newStartingTurn(g.StartingSeat)
 	// The one turn that does not begin through the rotation seam
 	// still counts as a turn begun (ADR 0063 Decision 3).
 	g.noteTurnBegunLocked(g.StartingSeat)
@@ -937,11 +1075,15 @@ const DefaultUndoLimit = 1
 
 // End transitions the game to the ended state. Idempotent: calling
 // End on an already-ended game is a no-op.
+//
+// An admin closing a table, not a result: Outcome stays nil, and the
+// wire has no winner for it (ADR 0057 Decision 5). Every rules-driven
+// end goes through endGameLocked instead.
 func (g *Game) End() {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateEnded {
-		// CR 702.143f, #658. The same sweep endGameIfDecidedLocked
+		// CR 702.143f, #658. The same sweep endGameLocked
 		// runs, on the other door out of an active game — an admin
 		// ending the table, and every caller that ends it outright.
 		g.revealForetoldAtGameEndLocked()
@@ -956,7 +1098,8 @@ func (g *Game) End() {
 // player has passed in succession with an empty stack — so whatever
 // the step owed resolves INSIDE the step instead of after the next
 // one's turn-based actions (#914). After the cleanup step the cursor
-// wraps to the next seat's untap step and the turn number increments.
+// wraps to the next seat's untap step, the turn sequence increments,
+// and the round increments on a rotation.
 // Returns the Turn the call ends on.
 //
 // Side effects on step transitions:
@@ -996,7 +1139,12 @@ func (g *Game) AdvanceStep() (Turn, error) {
 	// Legion Loyalty's myriad) queues its yes/no here, and the gate
 	// then holds the cursor until it is answered rather than walking
 	// the table past it. No-op whenever nothing is staged.
-	if g.blockDeclarationPendingLocked() || g.attackDeclarationPendingLocked() {
+	//
+	// #1279: and every defender still declaring blockers completes
+	// here, as whatever they have staged — AdvanceStep is the cursor
+	// leaving the step (completion point 4, block_completion.go).
+	blocksCompleted := g.completeAllBlockDeclarationsLocked()
+	if blocksCompleted || g.blockDeclarationPendingLocked() || g.attackDeclarationPendingLocked() {
 		g.runStateChecksLocked()
 	}
 	// #730: an unanswered prompt gates the table. Checked before the
@@ -1108,7 +1256,7 @@ func (g *Game) driveStepToEndLocked() driveResult {
 			return driveHalted
 		}
 		if g.Turn.Step != start.Step ||
-			g.Turn.Number != start.Number ||
+			g.Turn.Seq != start.Seq ||
 			g.Turn.ActiveSeat != start.ActiveSeat {
 			return driveStepEnded
 		}
@@ -1161,7 +1309,7 @@ func (g *Game) advanceCursorLocked() {
 		g.beginNextTurnLocked()
 		return
 	}
-	g.Turn = g.Turn.advance(len(g.Seats))
+	g.Turn = g.Turn.advance(len(g.Seats), g.StartingSeat)
 }
 
 // CardsDrawnThisTurnFor returns the instance IDs playerID has drawn
@@ -1217,6 +1365,18 @@ func (g *Game) CastTallyFor(playerID uuid.UUID) CastTally {
 		return CastTally{}
 	}
 	return g.SpellsCastThisTurn[playerID]
+}
+
+// ForetoldCountThisTurn returns how many cards p has foretold this
+// turn (zero when they haven't foretold anything) — CastTallyFor's
+// shape, one zone over. Read by SpecialAction cost modifiers deciding
+// whether "the first card you foretell each turn" still applies.
+// Caller must hold g.mu.
+func (g *Game) ForetoldCountThisTurn(playerID uuid.UUID) int {
+	if g.ForetoldThisTurn == nil {
+		return 0
+	}
+	return g.ForetoldThisTurn[playerID]
 }
 
 // stepExistsLocked reports whether the step the cursor has landed on
@@ -1332,7 +1492,7 @@ func (g *Game) runStepEntryHooksLocked() {
 	}
 	out, err := g.applyReplacementsLocked(stepEv)
 	if errors.Is(err, errReplacementPending) {
-		// A CR 616 ordering (or CR 614.10 "may") prompt is queued.
+		// A CR 616 ordering (or "may") prompt is queued.
 		// The step does NOT begin: nothing below runs, nothing
 		// announces, and the tracking-map entry stays alive for the
 		// resume, which clears it.
@@ -1396,7 +1556,8 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 		g.EmitEvent(Event{
 			Kind:   EventStepBegan,
 			Actor:  g.Seats[g.Turn.ActiveSeat].ID,
-			Amount: g.Turn.Number,
+			Amount: g.Turn.Seq,
+			Round:  g.Turn.Round,
 			Label:  string(g.Turn.Step),
 			Step:   g.Turn.Step,
 		})
@@ -1409,6 +1570,15 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 	// step, so it waits for the following one. See delayed.go.
 	g.fireDelayedTriggersLocked(g.Turn.Step)
 	switch g.Turn.Step {
+	case StepDeclareBlockers:
+		// #1279 / CR 509.1: the declaration is taken as the step
+		// begins. A defending player with no legal block has nothing
+		// to decide, so their declaration — none — is complete now,
+		// and nothing that waits on it (ninjutsu, "attacks and isn't
+		// blocked", the bot's block grace) waits for a pass that means
+		// nothing. A defender with a block to make stays pending; see
+		// block_completion.go for how they finish.
+		g.autoCompleteBlockDeclarationsLocked()
 	case StepPrecombatMain:
 		// S27 / CR 714.3: "after your draw step, put a lore counter
 		// on each Saga you control" is a turn-based action performed
@@ -1455,9 +1625,8 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 		}
 	case StepUntap:
 		if g.Turn.ActiveSeat >= 0 && g.Turn.ActiveSeat < len(g.Seats) {
-			g.Seats[g.Turn.ActiveSeat].UndosRemaining = g.Settings.UndoLimit
 			// CR 502.1-502.3, in untap.go: the active seat's
-			// permanents untap and stop being summoning-sick, plus
+			// permanents untap, plus
 			// whatever an UntapStepPermission (Seedborn Muse)
 			// adds. Each untap emits EventUntapCard, so the
 			// harvester sees "whenever a permanent becomes
@@ -1490,7 +1659,7 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 		// 4-player table's starting seat draws like everyone else.
 		// (CR 103.8b's Two-Headed Giant case does not apply — the
 		// engine has no team format.) Subsequent turns are normal.
-		if g.Turn.Number == 1 && g.Turn.ActiveSeat == g.StartingSeat &&
+		if g.Turn.Seq == 1 && g.Turn.ActiveSeat == g.StartingSeat &&
 			g.startingPlayerCountLocked() == 2 {
 			return
 		}
@@ -1499,7 +1668,25 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 		// SBA that lands in S13.1). The drawCardLocked helper surfaces
 		// ErrZoneEmpty, which we swallow so the cursor keeps moving —
 		// the losing player will be caught by the SBA once it exists.
-		_ = g.drawCardLocked(g.Seats[g.Turn.ActiveSeat].ID)
+		activeSeatID := g.Seats[g.Turn.ActiveSeat].ID
+		_ = g.drawCardLocked(activeSeatID)
+		// #1315 / CR 504.1 widened: "you draw a card during each
+		// opponent's draw step" (Teferi, Who Slows the Sunset's
+		// emblem) is part of the SAME turn-based action as the active
+		// player's own draw — no stack, no priority window in
+		// between — so it runs here, before the trigger-eligible
+		// announcement below. This is untap.go's Seedborn Muse
+		// widening one turn-based action over; see draw_step.go.
+		for _, extra := range g.activeDrawStepPermissionsLocked(activeSeatID) {
+			drawer := extra.permission.Drawer(g, extra.source)
+			n := extra.permission.N
+			if n <= 0 {
+				n = 1
+			}
+			for i := 0; i < n; i++ {
+				_ = g.drawCardLocked(drawer)
+			}
+		}
 		// S22: announce the draw step so "at the beginning of each
 		// player's draw step" triggers auto-fire (Howling Mine).
 		// AFTER the draw, per CR 504.1/504.2 — the turn-based draw
@@ -1606,17 +1793,29 @@ func (g *Game) CurrentState() State {
 	return g.State
 }
 
-// WinnerSeat returns the seat of the one player left standing in an
-// ended game. ok is false while the game is not over, and for an
-// ended game with no single survivor (a draw, or an ended table with
-// nobody seated). The engine keeps no winner field — the game ends
-// when exactly one seat is not Eliminated — so this derives it the
-// same way, under the read lock. Read by the lobby to fill
+// WinnerSeat returns the seat of the winner of an ended game, read
+// from Game.Outcome (ADR 0057 Decision 5) — which is what makes an
+// effect win, where several seats are still standing, name the right
+// player. ok is false while the game is not over, for a draw, and for
+// an ended game with no single survivor. Read by the lobby to fill
 // games.winner_seat (ADR 0051 decision 4).
+//
+// A game ended with no Outcome — End(), or a snapshot written before
+// the engine recorded one — falls back to the one seat left standing,
+// which is how the winner was derived before ADR 0057.
 func (g *Game) WinnerSeat() (seat int, ok bool) {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
 	if g.State != StateEnded {
+		return 0, false
+	}
+	if g.Outcome != nil {
+		if g.Outcome.Kind != OutcomeWin {
+			return 0, false
+		}
+		if p := g.playerByIDLocked(g.Outcome.Winner); p != nil {
+			return p.Seat, true
+		}
 		return 0, false
 	}
 	found := -1

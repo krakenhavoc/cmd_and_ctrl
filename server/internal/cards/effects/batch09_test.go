@@ -307,6 +307,14 @@ func TestB09RewindCountersAndUntapsFourOfYourLands(t *testing.T) {
 	if !opp.Graveyard.Contains(bolt) || me.Life != before {
 		t.Fatal("the Bolt was not countered")
 	}
+	pick := chooseCardsChoiceFor(g, me.ID)
+	if pick == nil {
+		t.Fatal("no untap prompt: \"untap up to four lands\" is a resolution-time choice")
+	}
+	if pick.ChooseMin != 0 || pick.ChooseMax != 4 {
+		t.Errorf("bounds %d..%d, want 0..4", pick.ChooseMin, pick.ChooseMax)
+	}
+	answerChooseCards(t, g, me.ID, mine[:4]...) // 5 tapped lands offered, pick 4
 	if got := b09UntappedCount(g, mine); got != 4 {
 		t.Errorf("%d of my lands untapped, want 4", got)
 	}
@@ -329,6 +337,7 @@ func TestB09UnwindCountersANoncreatureAndUntapsThree(t *testing.T) {
 	if !opp.Graveyard.Contains(bolt) {
 		t.Fatal("the Bolt was not countered")
 	}
+	answerChooseCards(t, g, me.ID, mine[:3]...) // 5 tapped lands offered, pick 3
 	if got := b09UntappedCount(g, mine); got != 3 {
 		t.Errorf("%d of my lands untapped, want 3", got)
 	}

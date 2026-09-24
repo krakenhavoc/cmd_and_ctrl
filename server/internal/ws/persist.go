@@ -35,6 +35,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -54,9 +55,23 @@ func restorePointPath(dumpDir string, id uuid.UUID) string {
 // Seq is here because the client resyncs by it. A restored room that
 // restarted its counter at zero would hand reconnecting clients a seq
 // lower than the one they already hold.
+//
+// Generation is the restore generation this file's Seq belongs to
+// (#523, ADR 0044 decision 5). It is bumped by restoreOne every time
+// this file is actually used to rebuild a room, then carried forward
+// verbatim by every later write until the next restore bumps it
+// again — so it answers "how many times has this room been rebuilt
+// from disk", not "how many times has this file been written". A
+// file with no Generation field decodes it as the Go zero value, 0,
+// which is exactly right for every restore point ever written before
+// this field existed: those rooms have never been restored, so
+// generation 0 is their true generation too. See TestRestorePointFileFields
+// for the field-drift guard this struct sits outside of
+// (snapshot_drift_test.go only covers game.GameSnapshot).
 type restorePointFile struct {
-	Seq      uint64             `json:"seq"`
-	Snapshot *game.GameSnapshot `json:"snapshot"`
+	Seq        uint64             `json:"seq"`
+	Generation uint64             `json:"generation"`
+	Snapshot   *game.GameSnapshot `json:"snapshot"`
 }
 
 // writeRestorePointLocked captures the game and publishes it as this
@@ -76,13 +91,23 @@ func (r *Room) writeRestorePointLocked(seq uint64) (bool, error) {
 		return false, nil
 	}
 
-	payload, err := json.Marshal(restorePointFile{Seq: seq, Snapshot: snap})
+	// r.generation is read under r.mu (the caller already holds it) —
+	// every later write in this room's life carries forward the
+	// generation the room is CURRENTLY serving, so the file always
+	// answers "if the process died and came back right now, what
+	// generation would clients already holding this room's frames be
+	// told about". Only restoreOne ever advances it.
+	payload, err := json.Marshal(restorePointFile{Seq: seq, Generation: r.generation, Snapshot: snap})
 	if err != nil {
 		return false, fmt.Errorf("marshal restore point: %w", err)
 	}
 	if err := writeFileAtomic(restorePointPath(r.dumpDir, r.Game.ID), payload); err != nil {
 		return false, err
 	}
+	// Bookkeeping only, for the shutdown census (#524) — the write
+	// above already succeeded, so this cannot be the thing that fails
+	// a caller's Apply.
+	r.lastRestorePoint = restorePointRecord{Seq: seq, At: time.Now().UTC()}
 	return true, nil
 }
 
@@ -138,7 +163,31 @@ type RestoreOutcome struct {
 	Room    *Room // nil unless Restored
 	Skipped string
 	Err     error
+
+	// Reason categorises Err for LogRestoreSummary's tally (#524), so
+	// an operator can see AT A GLANCE how many abandonments were a
+	// rollback (schema_too_new — expected, rolls forward and comes
+	// back) versus something that needs attention. Empty unless Err
+	// is set.
+	Reason string
+
+	// AbilityShortfalls are the cards this game came back with fewer
+	// catalog abilities than its restore point recorded (#522). The
+	// game is restored anyway and each card is flagged as not
+	// automated; this is the census of them the summary line counts.
+	AbilityShortfalls []game.AbilityShortfall
 }
+
+// Restore-abandonment reasons. See RestoreOutcome.Reason.
+const (
+	ReasonReadError         = "read_error"
+	ReasonDecodeError       = "decode_error"
+	ReasonEmptySnapshot     = "empty_snapshot"
+	ReasonSchemaTooNew      = "schema_too_new"
+	ReasonSchemaUnsupported = "schema_unsupported"
+	ReasonNotRestorable     = "not_restorable"
+	ReasonOther             = "other"
+)
 
 // Restored reports whether this game is live again.
 func (o RestoreOutcome) Restored() bool { return o.Room != nil }
@@ -198,17 +247,20 @@ func (m *RoomManager) restoreOne(path string) RestoreOutcome {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		res.Err = fmt.Errorf("read %s: %w", path, err)
+		res.Reason = ReasonReadError
 		m.log.Error("restore point unreadable; game abandoned", "path", path, "err", err)
 		return res
 	}
 	var file restorePointFile
 	if err := json.Unmarshal(raw, &file); err != nil {
 		res.Err = fmt.Errorf("decode %s: %w", path, err)
+		res.Reason = ReasonDecodeError
 		m.log.Error("restore point undecodable; game abandoned", "path", path, "err", err)
 		return res
 	}
 	if file.Snapshot == nil {
 		res.Err = fmt.Errorf("%s: no snapshot in file", path)
+		res.Reason = ReasonEmptySnapshot
 		m.log.Error("restore point empty; game abandoned", "path", path)
 		return res
 	}
@@ -230,9 +282,11 @@ func (m *RoomManager) restoreOne(path string) RestoreOutcome {
 			// A rollback, or a mixed-version fleet. The file stays
 			// put: roll the binary forward again and the game
 			// returns.
+			res.Reason = ReasonSchemaTooNew
 			m.log.Error("restore point written by a newer server; game abandoned (file kept for roll-forward)",
 				"game_id", res.GameID, "path", path, "err", err)
 		case errors.Is(err, game.ErrSchemaUnsupported):
+			res.Reason = ReasonSchemaUnsupported
 			m.log.Error("restore point too old to migrate; game abandoned",
 				"game_id", res.GameID, "path", path, "err", err)
 		case errors.Is(err, game.ErrSnapshotNotRestorable):
@@ -241,36 +295,80 @@ func (m *RoomManager) restoreOne(path string) RestoreOutcome {
 			// a census counter that this binary added. Loud, because
 			// it is the shape of bug this whole design exists to
 			// make visible.
+			res.Reason = ReasonNotRestorable
 			m.log.Error("restore point holds continuations this build cannot rebuild; game abandoned",
 				"game_id", res.GameID, "path", path, "continuations", file.Snapshot.Continuations.Labels)
 		default:
+			res.Reason = ReasonOther
 			m.log.Error("restore failed; game abandoned", "game_id", res.GameID, "path", path, "err", err)
 		}
 		return res
 	}
 
+	// #522: the rebuilt-parity check. A card whose catalog entry this
+	// binary no longer has in full comes back anyway — the owner's
+	// call on #515 is to restore the table and say so loudly, not to
+	// abandon it — and restore has already flagged it as not
+	// automated. Each one is an ERROR, because it is a card that will
+	// silently stop doing something mid-game unless somebody looks.
+	res.AbilityShortfalls = file.Snapshot.AbilityShortfalls()
+	for _, sf := range res.AbilityShortfalls {
+		m.log.Error("restored card has fewer catalog abilities than its restore point recorded; flagged manual for this game",
+			"game_id", res.GameID,
+			"card_id", sf.CardID,
+			"card", sf.Name,
+			"oracle_id", sf.OracleID,
+			"token_key", sf.TokenKey,
+			"zone", sf.Zone,
+			"entry_missing", sf.EntryMissing,
+			"captured", sf.Captured,
+			"restored", sf.Restored,
+		)
+	}
+
 	room := NewRoom(g, m.log, m.dumpDir)
 	room.seq = file.Seq
+	// This IS a restore: the room this process is about to serve is
+	// one generation past what the file recorded, whether the file's
+	// own Generation is a real prior value or the zero-valued
+	// "never restored before" default (#523, ADR 0044 decision 5).
+	// Every client dialling in gets this generation on its first
+	// snapshot frame, and any client that already held a HIGHER seq
+	// under a lower generation number knows — from the generation
+	// change alone — that it just got rewound.
+	room.generation = file.Generation + 1
+	// Seed the bookkeeping this restore point itself represents (#524)
+	// — nothing has run yet, so the room's own last-written restore
+	// point IS this file, and its age is read straight off the
+	// snapshot's own capture time rather than invented.
+	room.lastRestorePoint = restorePointRecord{Seq: file.Seq, At: file.Snapshot.TakenAt}
 	m.Register(room)
 	res.Room = room
+	restorePointAge := time.Since(file.Snapshot.TakenAt)
 	m.log.Info("game restored",
 		"game_id", g.ID,
 		"seq", file.Seq,
+		"generation", room.generation,
 		"state", file.Snapshot.State,
-		"turn", file.Snapshot.Turn.Number,
+		"turn", file.Snapshot.Turn.Round,
 		"seats", len(file.Snapshot.Seats),
 		"captured_at", file.Snapshot.TakenAt,
+		"restore_point_age", restorePointAge.Round(time.Second).String(),
 	)
 	return res
 }
 
 // LogRestoreSummary writes one line an operator can read after a
-// deploy: how many tables came back, and how many did not.
+// deploy: how many tables came back, how many did not, and — for the
+// ones that didn't — WHY, so a fleet of ordinary schema_too_new
+// rollback games doesn't read the same as a fleet of decode failures
+// that need attention (#524).
 func LogRestoreSummary(log *slog.Logger, outcomes []RestoreOutcome) {
 	if len(outcomes) == 0 {
 		return
 	}
-	var restored, ended, failed int
+	var restored, ended, failed, degradedGames, degradedCards int
+	reasons := map[string]int{}
 	for _, o := range outcomes {
 		switch {
 		case o.Restored():
@@ -279,7 +377,29 @@ func LogRestoreSummary(log *slog.Logger, outcomes []RestoreOutcome) {
 			ended++
 		default:
 			failed++
+			reason := o.Reason
+			if reason == "" {
+				reason = ReasonOther
+			}
+			reasons[reason]++
+		}
+		if n := len(o.AbilityShortfalls); n > 0 {
+			degradedGames++
+			degradedCards += n
 		}
 	}
-	log.Info("restore pass complete", "restored", restored, "ended", ended, "abandoned", failed)
+	attrs := []any{"restored", restored, "ended", ended, "abandoned", failed}
+	if failed > 0 {
+		attrs = append(attrs, "abandoned_reasons", reasons)
+	}
+	// #522: a restore that stripped abilities from a card is a
+	// restored table, not an abandoned one, so it is counted beside
+	// the verdicts rather than as one — and escalated to ERROR,
+	// because each per-card line above it is one.
+	if degradedCards > 0 {
+		attrs = append(attrs, "games_with_lost_abilities", degradedGames, "cards_with_lost_abilities", degradedCards)
+		log.Error("restore pass complete; some cards came back with fewer abilities than captured", attrs...)
+		return
+	}
+	log.Info("restore pass complete", attrs...)
 }

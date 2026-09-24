@@ -75,7 +75,7 @@ func importToHand(row cards.Card, p *game.Player) uuid.UUID {
 }
 
 // defeatBattle takes the last defense counter off a battle and walks
-// the game far enough for the CR 704.5v sweep and the defeated
+// the game far enough for the CR 704.5v/w sweep and the defeated
 // trigger to have run.
 func defeatBattle(t *testing.T, g *game.Game, id uuid.UUID, defense int) {
 	t.Helper()
@@ -117,7 +117,7 @@ func battlefieldCardFor(g *game.Game, id uuid.UUID) *game.Card {
 // the next turn would test the expiry rather than the cast.
 func toMainPhaseSameTurn(t *testing.T, g *game.Game) {
 	t.Helper()
-	turn := g.Turn.Number
+	turn := g.Turn.Seq
 	for i := 0; i < 12; i++ {
 		if g.Turn.Step == game.StepPrecombatMain || g.Turn.Step == game.StepPostcombatMain {
 			return
@@ -125,7 +125,7 @@ func toMainPhaseSameTurn(t *testing.T, g *game.Game) {
 		if _, err := g.AdvanceStep(); err != nil {
 			t.Fatalf("AdvanceStep: %v", err)
 		}
-		if g.Turn.Number != turn {
+		if g.Turn.Seq != turn {
 			t.Fatal("crossed a turn boundary before reaching a main phase")
 		}
 	}

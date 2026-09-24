@@ -84,20 +84,19 @@ func b09IsCheapInstantOrSorceryCard(c game.Card) bool {
 // target predicate does not check, in which case "untap" is still
 // the printed instruction.
 //
-// "Untap up to n lands" is the Snap posture: the printed clause is
-// a resolution-time choice with no "you control", and no
-// pick-a-permanent prompt exists for a spell, so it untaps the
-// first n tapped lands the caster controls in battlefield order —
-// never an opponent's, never stronger than printed, and declared on
-// both cards.
-func b09CounterThenUntapLands(n int) func(item *game.StackItem, ctx *Context) error {
+// "Untap up to n lands" prints no "target" and no "you control", so
+// on paper it is a resolution-time choice among every land at the
+// table — UntapUpToLands (untap_lands.go) is the real chooser: a
+// choose_cards prompt over every TAPPED land, any controller's.
+// `question` is the per-card prompt header.
+func b09CounterThenUntapLands(n int, question string) func(item *game.StackItem, ctx *Context) error {
 	return func(item *game.StackItem, ctx *Context) error {
 		if len(item.Targets) > 0 && item.Targets[0].Kind == game.TargetCard {
 			if err := (CounterTarget{StackID: item.Targets[0].ID}).Apply(ctx); err != nil {
 				return err
 			}
 		}
-		return untapUpToLands(ctx.Game, ctx.Controller(), n)
+		return UntapUpToLands{N: n, Question: question}.Apply(ctx)
 	}
 }
 
@@ -177,8 +176,12 @@ func b09ArchonOfCrueltyPayout(g *game.Game, item *game.StackItem, victim uuid.UU
 // b09SourceStillOnBattlefield is the guard every "put a counter on
 // this creature" trigger needs: the source may have left between
 // the trigger going on the stack and resolving, and AddCounter does
-// not gate on zone.
+// not gate on zone. "Still" means the same OBJECT (#1432, CR 400.7):
+// a source that left and came back while the trigger waited is a new
+// permanent, and the clauses behind this guard — the counter, the
+// untap, the fight, the mana for the counters it removed — are about
+// the one that triggered.
 func b09SourceStillOnBattlefield(g *game.Game, item *game.StackItem) bool {
 	z := g.FindCardZoneForEffect(item.SourceCardID)
-	return z != nil && z.Kind == game.ZoneBattlefield
+	return z != nil && z.Kind == game.ZoneBattlefield && !sourceIsNewObject(g, item)
 }

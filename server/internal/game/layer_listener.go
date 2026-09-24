@@ -49,6 +49,16 @@ import (
 //     card; see invalidateLayersForAttackChangeLocked, called
 //     directly from removeFromCombatLocked and clearCombatLocked.
 //
+// A fourth CONDITIONAL bump, added for #1325 in the same mould:
+//   - EventCast, while something declares
+//     StaticAbility.DependsOnSpellsCast. Stoic Sphinx's "hexproof as
+//     long as you haven't cast a spell this turn" is the card. The
+//     tally the condition reads (Game.SpellsCastThisTurn) is bumped
+//     BEFORE EventCast fires (mutations.go), so the listener sees the
+//     count this spell just added. The turn-advance exit that resets
+//     the tally back to zero needs no arm here — S25's unconditional
+//     bump in onTurnBeganLocked already covers every turn change.
+//
 // Things this listener INTENTIONALLY does NOT bump on:
 //   - Turn advance. Handled, but not here: S25 (#77) put the bump in
 //     `onTurnBeganLocked` (rotation.go) exactly as this note used to
@@ -238,11 +248,24 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		// site (turnFaceUpLocked) rather than here, for the window
 		// between the two, exactly as the transform arm explains.
 		g.layerVersion.Add(1)
+	case EventTurnedFaceDown:
+		// ADR 0082 amendment / CR 708.2a, #1209: the same
+		// invalidation input as the arm above, travelling the other
+		// way. The real card at layer 0 is replaced by the nameless
+		// 2/2, so every anthem, every AppliesTo and every "creatures
+		// you control" count has a new answer while the permanent has
+		// not moved an inch.
+		//
+		// Nilled at the mutation site (TurnFaceDownForEffect) for the
+		// window the transform arm explains, and nilled there for
+		// every card in an Ixidron-sized batch BEFORE the first event
+		// goes out, so no listener reads a half-turned board.
+		g.layerVersion.Add(1)
 	case EventControlChanged:
 		// #990: who controls a permanent is an AppliesTo input for
 		// every "creatures you control" static and for every
 		// ForAsLongAs duration keyed on control (suspend's haste,
-		// CR 702.62e). The pass that MOVES control cannot see its own
+		// CR 702.62a). The pass that MOVES control cannot see its own
 		// answer — materialiseControlLocked writes Card.Controller
 		// after the layer walk has already run against the old one —
 		// so without this bump the stale resolution survives until
@@ -256,7 +279,7 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		// second pass produces no further delta and so no further
 		// bump.
 		g.layerVersion.Add(1)
-	case EventClassLevel, EventCaseSolved:
+	case EventClassLevel, EventCaseSolved, EventHarnessed:
 		// ADR 0071: a designation switches printed statics on and off,
 		// so a level-up or a solve changes which continuous effects
 		// are in play. Charge-counter thresholds need no arm of their
@@ -271,7 +294,7 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 	case EventAttach, EventUnattach:
 		// S24: attachment is an AppliesTo input for every
 		// "equipped creature" / "enchanted creature" static, and
-		// CR 613.7d gives the attachment a fresh timestamp when it
+		// CR 613.7e gives the attachment a fresh timestamp when it
 		// lands. Without this bump the cached resolution survives
 		// the equip and the sword grants nothing until some
 		// unrelated event invalidates.
@@ -308,6 +331,21 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		// ends) have no event of their own; see
 		// invalidateLayersForAttackChangeLocked.
 		if attackingStatusStaticIsLiveLocked(g) {
+			g.layerVersion.Add(1)
+		}
+	case EventCast:
+		// #1325: a static reading "you haven't cast a spell this
+		// turn" (Stoic Sphinx) has a new answer the instant a spell
+		// is cast, and nothing else on this listener's switch fires
+		// for a cast that doesn't also cross a hand boundary in a way
+		// the hand-size gate above would catch — casting from the
+		// graveyard (flashback) or exile (foretell, impulse) crosses
+		// no hand boundary at all, and even a hand cast is caught
+		// there only while a HAND-size static happens to be live,
+		// which is a different card's gate. Game.SpellsCastThisTurn
+		// (the tally this condition reads) is bumped before EventCast
+		// is emitted, so the count is already current here.
+		if spellsCastStaticIsLiveLocked(g) {
 			g.layerVersion.Add(1)
 		}
 	case EventTapCard, EventUntapCard:
@@ -378,6 +416,13 @@ func lifeTotalStaticIsLiveLocked(g *Game) bool {
 // control have deathtouch" is the card that makes it matter.
 func attackingStatusStaticIsLiveLocked(g *Game) bool {
 	return staticOnBattlefieldLocked(g, func(ab StaticAbility) bool { return ab.DependsOnAttackingStatus })
+}
+
+// spellsCastStaticIsLiveLocked is handSizeStaticIsLiveLocked for the
+// per-turn spells-cast count. Stoic Sphinx's "hexproof as long as you
+// haven't cast a spell this turn" is the card that makes it matter.
+func spellsCastStaticIsLiveLocked(g *Game) bool {
+	return staticOnBattlefieldLocked(g, func(ab StaticAbility) bool { return ab.DependsOnSpellsCast })
 }
 
 // staticOnBattlefieldLocked reports whether any permanent on the
@@ -543,3 +588,15 @@ func findCardInNonBattlefieldZoneLocked(g *Game, cardID uuid.UUID) *Card {
 // ever produces same-nanosecond entries, the stable sort in the
 // layer engine resolves the tie deterministically.
 var timeNowUnixNano = func() int64 { return time.Now().UnixNano() }
+
+// SetClockForTest replaces the clock the engine stamps battlefield
+// entries, attachments and layer timestamps with, and returns the
+// function that puts the previous one back. It exists for the #522
+// snapshot corpus writer, which has to produce byte-identical fixtures
+// from a scripted board, and it is never called by production code.
+// Not safe to call while another goroutine is driving a game.
+func SetClockForTest(now func() int64) (restore func()) {
+	prev := timeNowUnixNano
+	timeNowUnixNano = now
+	return func() { timeNowUnixNano = prev }
+}

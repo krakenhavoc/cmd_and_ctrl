@@ -15,27 +15,32 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // creature", read post-layer so an animated legendary artifact
 // counts — and the mana is a plain {R}.
 //
-// DECLARED SIMPLIFICATION: the Treasure ability is not implemented.
-// "Exile three cards from your graveyard" is a cost component the
-// engine cannot express — AbilityCost carries tap, sacrifice, mana,
-// life and loyalty, and nothing that picks cards out of a graveyard
-// — and shipping the ability with the cost omitted would make the
-// card STRONGER than printed (#259). The land is still recognisably
-// itself without it (a conditional-untapped Mountain for a legends
-// deck), which is the Ketria Triome / Raffine's Tower posture, and
-// the gap runs the weaker way. The ability lands when a
-// graveyard-exile cost component does.
+// #1297: the Treasure ability is live. "Exile three cards from your
+// graveyard" is AbilityCost.ExileCards read against the graveyard —
+// the activator names the three cards at announce, they leave for
+// exile before the ability is on the stack, and a graveyard with fewer
+// than three cards offers nothing to pay with. Until the component
+// existed the ability was left out rather than shipped with its cost
+// omitted (#259), which is what the caveat this replaced said.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "583cdebe-0195-45be-bd2e-5765f07cb902",
 		Name:         "Mines of Moria",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The Treasure-making ability isn't implemented — the land can only be played and tapped for {R}."},
+		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{SelfEntersTappedUnless(b08ControlsLegendaryCreature)},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{R}",
 			Label:    "Add {R}",
+		}},
+		Activated: []ActivatedAbility{{
+			Label: "{3}{R}, {T}, Exile three cards from your graveyard: Create two Treasure tokens.",
+			Cost:  Plus(ManaCost("{3}{R}"), TapCost(), ExileFromGraveyard(3, "three cards", nil)),
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return CreateToken{Controller: item.Controller, Template: TreasureToken(), N: 2}.Apply(NewContext(g, item))
+			},
 		}},
 	})
 }

@@ -8,11 +8,13 @@ import (
 //
 // A special action is a game action a player takes WITHOUT using the
 // stack and without passing priority. CR 116.2 lists seven of them;
-// three are built here:
+// four are built here:
 //
 //	foretell      CR 116.2h, 702.143a  pay {2}, exile the card face down
 //	suspend       CR 116.2f, 702.62a   pay the suspend cost, exile it with
 //	                                   N time counters
+//	plot          CR 702.170a          pay the plot cost, exile the card
+//	                                   face up; it becomes plotted
 //	turn_face_up  CR 116.2g, 708.6     pay a face-down permanent's morph
 //	                                   cost and turn it face up
 //
@@ -43,6 +45,10 @@ import (
 //	                                   turn, with anything on the stack;
 //	                                   LEGAL under split second, for the
 //	                                   same reason foretell is
+//	plot          CR 702.170a          any time you have priority during
+//	                                   YOUR main phase while the stack is
+//	                                   empty — sorcery timing, whatever
+//	                                   the card's own type or flash says
 //
 // The split-second asymmetry is the one thing in this file that is
 // easy to get wrong and invisible when you do. CR 702.61b stops
@@ -76,6 +82,13 @@ const (
 	// owner (CR 708.5). That is one more per-kind table
 	// (specialActionZone) and nothing else — see ADR 0082 decision 6.
 	SpecialActionTurnFaceUp SpecialActionKind = "turn_face_up"
+
+	// SpecialActionPlot is CR 702.170a (a CR 116.2 special action) — pay the plot
+	// cost and exile a card from your hand face up; it becomes
+	// plotted, castable for free on a later turn (CR 702.170d). The
+	// cast half is PlotExiledCardForEffect, shared with "it becomes
+	// plotted" on Aven Interrupter (#1318); #1342 added the keyword.
+	SpecialActionPlot SpecialActionKind = "plot"
 )
 
 // SpecialAction is one CR 116.2 special action a card offers, as the
@@ -108,7 +121,7 @@ type SpecialAction struct {
 	Counters int
 
 	// FaceUpCounter is megamorph's "turn it face up, then put a +1/+1
-	// counter on it" (CR 702.109b) — the one thing turning a
+	// counter on it" (CR 702.37b) — the one thing turning a
 	// permanent face up does beyond turning it face up. False for
 	// plain morph, for disguise, and for every other kind.
 	//
@@ -122,6 +135,15 @@ type SpecialAction struct {
 	// Label is the menu row and the log line: "Foretell {2}",
 	// "Suspend 1—{R}", "Turn face up {1}{U}".
 	Label string
+
+	// Zone is where this OFFER is taken from when that is not the
+	// kind's own zone (specialActionZone). Empty on every declared or
+	// derived offer. Set only on an offer that a permanent's
+	// SpecialActionGrant opened somewhere else, such as Fblthp, Lost on
+	// the Range's plot from the top of your library (#1391, ADR 0062
+	// amendment 2026-09-24). The cost query reads it, so a cost
+	// modifier sees where the action is taken from.
+	Zone ZoneKind
 }
 
 // CatalogSpecialActions is the catalog hook the effects package wires
@@ -196,10 +218,14 @@ func SpecialActionOffered(c Card, kind SpecialActionKind) *SpecialAction {
 // switch, and the only thing a kind that is not a hand keyword
 // forks — ADR 0062 Decision 4's "one verb" survives intact.
 //
+// It is the kind's OWN zone. A permanent can grant one more zone for a
+// kind (SpecialActionGrant, #1391), and that zone is not in this table
+// because it belongs to the grant rather than to the kind.
+//
 // The empty zone is a kind the engine does not carry out.
 func specialActionZone(kind SpecialActionKind) ZoneKind {
 	switch kind {
-	case SpecialActionForetell, SpecialActionSuspend:
+	case SpecialActionForetell, SpecialActionSuspend, SpecialActionPlot:
 		return ZoneHand
 	case SpecialActionTurnFaceUp:
 		return ZoneBattlefield
@@ -210,8 +236,17 @@ func specialActionZone(kind SpecialActionKind) ZoneKind {
 // SpecialActionParams is the announce-time payload. A special action
 // has no targets, no modes and no choices — the only thing the caller
 // can say is how the mana is found, which is the same pair every
-// other payment on the wire carries.
+// other payment on the wire carries. When a card offers the same kind
+// twice, it can also say which offer it means.
 type SpecialActionParams struct {
+	// Cost picks between two offers of the SAME kind on one card, by
+	// the offer's printed cost (SpecialAction.Cost). Empty takes the
+	// first. #1391: under Fblthp, Lost on the Range, a Djinn of Fool's
+	// Fall on top of your library may be plotted for its own plot cost
+	// ({3}{U}) or for its mana cost ({4}{U}). Every other card offers
+	// each kind at most once, so nothing else needs to send it.
+	Cost string
+
 	// Strict refuses the action when the pool cannot cover the cost,
 	// rather than waving it through with an EventCostWarning.
 	Strict bool
@@ -257,7 +292,7 @@ func (g *Game) SpecialActionTimingOKLocked(playerID uuid.UUID, card Card, kind S
 		if card.IsInstant() || HasKeyword(&card, "flash") {
 			return true
 		}
-		return g.sorcerySpeedOpenLocked(playerID)
+		return g.SorcerySpeedOpenLocked(playerID)
 
 	case SpecialActionTurnFaceUp:
 		// CR 702.37c / CR 708.6: "any time you have priority". No
@@ -276,6 +311,21 @@ func (g *Game) SpecialActionTimingOKLocked(playerID uuid.UUID, card Card, kind S
 		// is SpecialActionOffered's answer and PerformSpecialAction's
 		// re-check. Nothing left for the window itself to say.
 		return true
+
+	case SpecialActionPlot:
+		// CR 702.170a: "any time you have priority during your main
+		// phase while the stack is empty" — sorcery timing, and the
+		// SAME predicate an ordinary sorcery cast asks, so the two
+		// cannot drift. It is the KEYWORD's window, not the card's:
+		// a plotted instant or a card with flash is plotted at
+		// sorcery speed all the same (the reminder text's "Plot only
+		// as a sorcery"), which is why this row does not read `card`
+		// the way suspend's does.
+		//
+		// Split second needs no clause of its own: it only ever
+		// matters while a split-second spell is ON the stack, and
+		// this window requires the stack to be empty.
+		return g.SorcerySpeedOpenLocked(playerID)
 	}
 	return false
 }
@@ -311,7 +361,11 @@ func (g *Game) PerformSpecialAction(playerID, cardID uuid.UUID, kind SpecialActi
 	// BATTLEFIELD permanent, which holds everybody's cards, so that
 	// arm checks CONTROL instead — CR 708.6 names the controller, and
 	// a stolen morph is turned up by the thief.
-	card, err := g.specialActionCardLocked(p, cardID, kind)
+	//
+	// #1391: a GRANT can open one more zone for a kind (Fblthp's plot
+	// from the top of your library), so the lookup reports where it
+	// found the card and the offer is asked about that zone.
+	card, zone, err := g.specialActionCardLocked(p, cardID, kind)
 	if err != nil {
 		return err
 	}
@@ -319,7 +373,7 @@ func (g *Game) PerformSpecialAction(playerID, cardID uuid.UUID, kind SpecialActi
 	// window, and whether it has flash. Fast-path no-op when nothing
 	// changed.
 	g.RecomputeLayersIfStaleLocked()
-	sa := SpecialActionOffered(card, kind)
+	sa := g.specialActionOfferLocked(playerID, card, zone, kind, params.Cost)
 	if sa == nil {
 		return ErrSpecialActionNotOffered
 	}
@@ -335,6 +389,15 @@ func (g *Game) PerformSpecialAction(playerID, cardID uuid.UUID, kind SpecialActi
 	if !g.SpecialActionTimingOKLocked(playerID, card, kind) {
 		return ErrSpecialActionTiming
 	}
+	// #1341: a special action is its own CR 116.2 event, so it opens
+	// its own event batch exactly as a resolution or a step entry
+	// does (event_batch.go) — everything IT emits (the payment, the
+	// performer's zone move, EventSpecialAction below) is one
+	// occurrence, and the next special action, however soon after, is
+	// a different one. Placed after the checks above so a refused
+	// special action (wrong window, not offered) opens no batch and
+	// costs the caller nothing to retry with correct timing.
+	g.beginEventBatchLocked()
 	// CR 116.2: taking a special action means paying its cost. The
 	// mana goes through the same helper an activated ability's mana
 	// component uses, so auto-tap, permissive mode and the
@@ -345,11 +408,15 @@ func (g *Game) PerformSpecialAction(playerID, cardID uuid.UUID, kind SpecialActi
 	// either ("spend this mana only to cast creature spells") cannot
 	// pay for it. Conservative in the direction #259 requires.
 	if sa.Cost != "" {
-		// #1184: the helper takes a parsed cost now. A special action
-		// is not an activation (CR 116.2), so nothing prices it
-		// through the CR 601.2f pass — it parses its printed string
-		// and pays that, exactly as before.
-		saCost, perr := ParseCost(sa.Cost)
+		// #1319: a special action IS priced through the CR 601.2f pass
+		// now — Ranar the Ever-Watchful's "The first card you foretell
+		// each turn costs {0} to foretell" is a cost modifier on the
+		// special action, not a performer-side special case, so it has
+		// to be visible wherever a foretell cost is quoted: the charge
+		// below and the legal-move enumerator's affordability check
+		// alike. CostModifier.SpecialActions keeps this pass from also
+		// reaching an ordinary cast or activation.
+		saCost, perr := g.SpecialActionManaCostForEffect(playerID, card, kind, *sa)
 		if perr != nil {
 			return ErrInvalidParam
 		}
@@ -389,29 +456,36 @@ func specialActionPerformer(kind SpecialActionKind) func(*Game, *Player, uuid.UU
 		return (*Game).suspendLocked
 	case SpecialActionTurnFaceUp:
 		return (*Game).turnFaceUpLocked
+	case SpecialActionPlot:
+		return (*Game).plotLocked
 	}
 	return nil
 }
 
 // specialActionCardLocked finds the card a special action would be
 // taken on, in the zone its kind names, and refuses it when the actor
-// has no claim to it.
+// has no claim to it. It also reports the zone it found the card in.
+//
+// #1391: after the kind's own zone it tries every zone that a
+// permanent the actor controls GRANTS the kind in
+// (SpecialActionGrant.Zone), and only those. A card on top of the
+// library of a player who controls no Fblthp is "not found", exactly
+// as it was before grants existed.
 //
 // Caller must hold g.mu.
-func (g *Game) specialActionCardLocked(p *Player, cardID uuid.UUID, kind SpecialActionKind) (Card, error) {
-	switch specialActionZone(kind) {
+func (g *Game) specialActionCardLocked(p *Player, cardID uuid.UUID, kind SpecialActionKind) (Card, ZoneKind, error) {
+	switch zone := specialActionZone(kind); zone {
 	case ZoneHand:
-		if p.Hand == nil {
-			return Card{}, ErrCardNotFound
-		}
-		for _, c := range p.Hand.Cards {
-			if c.InstanceID == cardID {
-				return c, nil
+		if p.Hand != nil {
+			for _, c := range p.Hand.Cards {
+				if c.InstanceID == cardID {
+					return c, zone, nil
+				}
 			}
 		}
 	case ZoneBattlefield:
 		if g.Battlefield == nil {
-			return Card{}, ErrCardNotFound
+			return Card{}, "", ErrCardNotFound
 		}
 		for _, c := range g.Battlefield.Cards {
 			if c.InstanceID != cardID {
@@ -422,12 +496,18 @@ func (g *Game) specialActionCardLocked(p *Player, cardID uuid.UUID, kind Special
 			// not theirs — a face-down permanent's identity is not
 			// theirs to probe.
 			if c.Controller != p.ID {
-				return Card{}, ErrCardNotFound
+				return Card{}, "", ErrCardNotFound
 			}
-			return c, nil
+			return c, zone, nil
+		}
+		return Card{}, "", ErrCardNotFound
+	}
+	for _, zone := range g.specialActionGrantZonesLocked(p.ID, kind) {
+		if c, ok := grantedZoneCard(p, zone); ok && c.InstanceID == cardID {
+			return c, zone, nil
 		}
 	}
-	return Card{}, ErrCardNotFound
+	return Card{}, "", ErrCardNotFound
 }
 
 // SpecialActionKindBuilt reports whether the engine can carry out

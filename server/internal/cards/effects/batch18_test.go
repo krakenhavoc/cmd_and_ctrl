@@ -257,7 +257,9 @@ func TestB18DreamstoneHedronTapsForThreeAndCashesInForThree(t *testing.T) {
 	}
 }
 
-func TestB18PerpetualTimepieceMillsTwoAndDeclaresTheShuffleGap(t *testing.T) {
+// The mill half. The exile-to-shuffle half landed with #1404 and is
+// tested in exile_this_permanent_test.go.
+func TestB18PerpetualTimepieceMillsTwo(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	piece := b12Push(g, me.ID, "Perpetual Timepiece", "Artifact", b18PerpetualTimepieceOracle, 0, 0)
@@ -269,10 +271,6 @@ func TestB18PerpetualTimepieceMillsTwoAndDeclaresTheShuffleGap(t *testing.T) {
 	}
 	if !b16Tapped(t, g, piece) {
 		t.Error("the Timepiece taps as its cost")
-	}
-	spec, _ := Lookup(b18PerpetualTimepieceOracle)
-	if spec.Completeness != CompletenessCaveats || len(spec.Activated) != 1 {
-		t.Error("the exile-to-shuffle gap must be declared, and only the mill ships")
 	}
 }
 
@@ -339,9 +337,12 @@ func TestB18SpringleafParadeMakesXChangelingsThatTapForAnyColour(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, token, 0, game.ManaAbilityParams{}); err == nil {
 		t.Error("without a Springleaf Parade the token has no mana ability")
 	}
+	// #1357: the ETB tokens now come from a real trigger reading
+	// CastX(), so only the own-tokens-only mana-ability grant remains
+	// a declared caveat.
 	spec, _ := Lookup(b18SpringleafParadeOracle)
-	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 2 {
-		t.Error("the resolution-time tokens and the own-tokens-only grant must be declared")
+	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
+		t.Error("the own-tokens-only grant must be declared")
 	}
 }
 
@@ -724,7 +725,7 @@ func TestB18WindsOfAbandonOverloadedExilesEachCreatureYouDontControl(t *testing.
 	}
 }
 
-func TestB18VenserBouncesATargetPermanentAndDeclaresTheSpellGap(t *testing.T) {
+func TestB18VenserBouncesATargetPermanent(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	theirs := b16Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2, "G")
@@ -734,13 +735,6 @@ func TestB18VenserBouncesATargetPermanentAndDeclaresTheSpellGap(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	if !opp.Hand.Contains(theirs) {
 		t.Error("the target permanent returns to its owner's hand")
-	}
-	spec, _ := Lookup(b18VenserShaperSavantOracle)
-	if spec.Completeness != CompletenessCaveats {
-		t.Error("the spell-half gap must be declared")
-	}
-	if len(spec.Triggered) != 1 || spec.Triggered[0].Targets == nil || len(spec.Triggered[0].Targets.Zones) != 1 || spec.Triggered[0].Targets.Zones[0] != game.ZoneBattlefield {
-		t.Error("the target clause offers the battlefield only")
 	}
 }
 
@@ -929,13 +923,20 @@ func TestB18JunkDiverReturnsAnotherArtifactCardWhenItDies(t *testing.T) {
 	if hasID(p.PickTargetCards, bear) || !hasID(p.PickTargetCards, relic) {
 		t.Error("artifact cards in your graveyard are offered, creature cards are not")
 	}
+	// #1337: the picker excludes the Diver ITSELF too — TargetsFrom /
+	// AnotherTarget by instance rather than the old resolution-time
+	// self-decline — so the gap that used to be a declared caveat is
+	// closed.
+	if hasID(p.PickTargetCards, diver) {
+		t.Error("Junk Diver itself is not offered — \"another\" excludes it by instance")
+	}
 	pickCard(t, g, me.ID, relic)
 	passPriorityAroundTable(t, g)
 	if !me.Hand.Contains(relic) {
 		t.Error("the artifact card returns to hand")
 	}
-	if spec, _ := Lookup(b18JunkDiverOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the self-pick gap must be declared")
+	if spec, _ := Lookup(b18JunkDiverOracle); spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Error("the self-pick gap (#1337) is closed")
 	}
 }
 

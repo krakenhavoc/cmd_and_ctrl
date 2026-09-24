@@ -63,8 +63,15 @@ const (
 	// ineligible entries, this is all-or-nothing — game.DeclareBlockers
 	// refuses the set whole and stores none of it.
 	TypeDeclareBlockers Type = "declare_blockers"
-	TypeClearCombat     Type = "clear_combat"
-	TypeAdvanceStep     Type = "advance_step"
+	// TypeFinishBlocks completes the caller's CR 509.1 block
+	// declaration — the "done blocking" / "no blocks" button (#1279,
+	// ADR 0045 Decision 38). Whatever the seat has staged is its
+	// declaration. Player-scoped and NOT priority-gated: the
+	// declaration is a turn-based action a defender takes while the
+	// active player still holds priority.
+	TypeFinishBlocks Type = "finish_blocks"
+	TypeClearCombat  Type = "clear_combat"
+	TypeAdvanceStep  Type = "advance_step"
 	// S10 Commander UX additions.
 	TypeSetMonarch    Type = "set_monarch"
 	TypeSetInitiative Type = "set_initiative"
@@ -129,7 +136,9 @@ const (
 	// priority. Params carry `{card_id, kind}` plus the usual
 	// `{strict, auto_tap}` payment pair; `kind` is one of `foretell`
 	// (CR 702.143a) and `suspend` (CR 702.62a), with `turn_face_up`
-	// (CR 116.2g) reserved for #95.
+	// (CR 116.2g) reserved for #95. An optional `cost` picks between two
+	// offers of the same kind on one card (#1391: a plot card on top of
+	// the library under Fblthp, Lost on the Range).
 	//
 	// ONE verb rather than one per keyword, because CR 116 groups
 	// these actions precisely because their contract is identical —
@@ -395,12 +404,28 @@ var playerScopedActions = map[Type]struct{}{
 	// initiator is `Player`) but the "any caller may start a vote"
 	// posture matches set_monarch / set_initiative — not scoped.
 	TypeCastVote: {},
+	// #1279: a seat finishes its OWN block declaration, never
+	// another seat's — finishing a defender early would decide their
+	// blocks for them.
+	TypeFinishBlocks: {},
 }
 
 // Dispatch applies an action to a game. Returns nil on success, an
 // action-specific error on failure. Dispatch itself is stateless; all
 // state lives on the game.
+//
+// #1289, CR 704.3: an action can be the answer that finishes a paused
+// resolution, and a finished resolution is owed state-based actions
+// and the trigger drain before anyone acts again. Most answer paths
+// run that boundary themselves. SettleResolution is the backstop for
+// the ones that do not, and a no-op otherwise.
 func Dispatch(g *game.Game, a Action) error {
+	err := dispatch(g, a)
+	g.SettleResolution()
+	return err
+}
+
+func dispatch(g *game.Game, a Action) error {
 	// Player-scoped guard: a seated player may not target a different
 	// seat. Admin / spectator (Caller == uuid.Nil) bypasses so a
 	// trusted moderator can advance any seat.
@@ -475,6 +500,10 @@ func Dispatch(g *game.Game, a Action) error {
 			// ordinary "decline them all" case, and absent on a card
 			// that offers none is every cast the engine has ever had.
 			OptionalCosts []int `json:"optional_costs,omitempty"`
+			// ADR 0089 (#1267) — the opponent a gift is promised to
+			// (CR 702.174a). Present exactly when optional_costs
+			// names the card's gift cost.
+			GiftOpponent string `json:"gift_opponent,omitempty"`
 			// S22 — the untapped permanents tapped to help pay
 			// (convoke, waterbend). Optional even on a card that
 			// offers the cost: tapping nothing and paying the whole
@@ -549,6 +578,13 @@ func Dispatch(g *game.Game, a Action) error {
 		// engine stamps this slice onto a stack item that does.
 		if len(p.OptionalCosts) > 0 {
 			params.OptionalCosts = append([]int(nil), p.OptionalCosts...)
+		}
+		if p.GiftOpponent != "" {
+			id, err := uuid.Parse(p.GiftOpponent)
+			if err != nil {
+				return fmt.Errorf("cast_spell gift_opponent: %w", err)
+			}
+			params.GiftOpponent = id
 		}
 		if len(p.AltCostIDs) > 0 {
 			params.AltCostIDs = make([]uuid.UUID, 0, len(p.AltCostIDs))
@@ -880,6 +916,12 @@ func Dispatch(g *game.Game, a Action) error {
 		}
 		return g.DeclareBlockers(decls)
 
+	case TypeFinishBlocks:
+		if a.Player == uuid.Nil {
+			return ErrInvalidPlayer
+		}
+		return g.FinishBlocks(a.Player)
+
 	case TypeClearCombat:
 		return g.ClearCombat()
 
@@ -1094,8 +1136,16 @@ func Dispatch(g *game.Game, a Action) error {
 			// S21 sub-PR 2 — catalog activated abilities. AbilityIndex
 			// selects the entry in Spec.Activated; sacrifice_ids names
 			// the permanents paid to a "Sacrifice a creature" cost.
-			AbilityIndex *int     `json:"ability_index,omitempty"`
+			AbilityIndex *int `json:"ability_index,omitempty"`
+			// ADR 0093 Decision 5 — the row's stable ref, from the
+			// view's ActivatedAbilityView.Ref or the legal move's
+			// params. Optional: a stale one is refused before anything
+			// is paid (ErrStaleAbilityRef), an absent one is accepted.
+			Ref          string   `json:"ref,omitempty"`
 			SacrificeIDs []string `json:"sacrifice_ids,omitempty"`
+			// #758 — the permanents paying a TapOthers component on this
+			// CR 602 activation (station, The Shire).
+			TapIDs []string `json:"tap_ids,omitempty"`
 			// S27 — crew_ids names the creatures tapped to pay a
 			// Vehicle's crew cost (CR 702.122a). Any number of them;
 			// what the server checks is the total power.
@@ -1125,12 +1175,23 @@ func Dispatch(g *game.Game, a Action) error {
 			// ability (CR 602.2b). Cycling's "Discard this card"
 			// needs none: the source IS the payment.
 			DiscardIDs []string `json:"discard_ids,omitempty"`
+			// #1297 — exile_ids names the cards paid to an "Exile
+			// two cards from your graveyard" / "Exile a card from
+			// your hand" cost (Grim Lavamancer, Holistic Wisdom).
+			// Its own field, as on activate_mana_ability (#1283):
+			// an exiled card is not discarded.
+			ExileIDs []string `json:"exile_ids,omitempty"`
 			// #1213 — return_ids names the permanents paid to a
 			// "Return a permanent you control to its owner's hand"
 			// cost (Quirion Ranger, Master Transmuter, Meloku).
 			// Exactly the clause's count, each once, each on the
 			// battlefield under the activator's control.
 			ReturnIDs []string `json:"return_ids,omitempty"`
+			// #1310 — waterbend_ids names the untapped artifacts and
+			// creatures tapped to pay part of a "Waterbend {N}" cost
+			// (CR 701.67a), each covering {1} of its generic mana.
+			// Optional: zero taps pays the whole cost with mana.
+			WaterbendIDs []string `json:"waterbend_ids,omitempty"`
 			// CR 107.4f / CR 602.2b (#917) — how many of the mana
 			// component's Phyrexian symbols are being paid with 2
 			// life each instead of mana (Birthing Pod's {1}{G/P}).
@@ -1164,6 +1225,14 @@ func Dispatch(g *game.Game, a Action) error {
 				}
 				sacIDs = append(sacIDs, id)
 			}
+			tapIDs := make([]uuid.UUID, 0, len(p.TapIDs))
+			for _, raw := range p.TapIDs {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("activate_ability tap_ids: %w", err)
+				}
+				tapIDs = append(tapIDs, id)
+			}
 			crewIDs := make([]uuid.UUID, 0, len(p.CrewIDs))
 			for _, raw := range p.CrewIDs {
 				id, err := uuid.Parse(raw)
@@ -1188,6 +1257,14 @@ func Dispatch(g *game.Game, a Action) error {
 				}
 				discardIDs = append(discardIDs, id)
 			}
+			exileIDs := make([]uuid.UUID, 0, len(p.ExileIDs))
+			for _, raw := range p.ExileIDs {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("activate_ability exile_ids: %w", err)
+				}
+				exileIDs = append(exileIDs, id)
+			}
 			returnIDs := make([]uuid.UUID, 0, len(p.ReturnIDs))
 			for _, raw := range p.ReturnIDs {
 				id, err := uuid.Parse(raw)
@@ -1195,6 +1272,14 @@ func Dispatch(g *game.Game, a Action) error {
 					return fmt.Errorf("activate_ability return_ids: %w", err)
 				}
 				returnIDs = append(returnIDs, id)
+			}
+			waterbendIDs := make([]uuid.UUID, 0, len(p.WaterbendIDs))
+			for _, raw := range p.WaterbendIDs {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("activate_ability waterbend_ids: %w", err)
+				}
+				waterbendIDs = append(waterbendIDs, id)
 			}
 			refs := make([]game.TargetRef, 0, len(p.Targets))
 			for _, t := range p.Targets {
@@ -1205,14 +1290,18 @@ func Dispatch(g *game.Game, a Action) error {
 				refs = append(refs, ref)
 			}
 			return g.ActivateCatalogAbility(a.Player, srcID, *p.AbilityIndex, game.ActivateAbilityParams{
+				Ref:              p.Ref,
 				SacrificeIDs:     sacIDs,
+				TapIDs:           tapIDs,
 				CrewIDs:          crewIDs,
 				CounterSourceIDs: counterIDs,
 				CounterCounts:    p.CounterCounts,
 				CounterKind:      p.CounterKind,
 				CounterKinds:     p.CounterKinds,
 				DiscardIDs:       discardIDs,
+				ExileIDs:         exileIDs,
 				ReturnIDs:        returnIDs,
+				WaterbendIDs:     waterbendIDs,
 				Targets:          refs,
 				// #764, CR 602.2b: a modal activated ability announces
 				// its modes with its targets, in one indivisible step.
@@ -1314,11 +1403,18 @@ func Dispatch(g *game.Game, a Action) error {
 			Order []string `json:"order"`
 			// OptionalApply populates an S17 sub-PR 6
 			// PendingChoiceOptionalReplacement yes/no pick — the
-			// client returns {apply: true|false} for the CR 614.10
-			// "may" prompt (today: CR 903.9 commander-zone).
+			// client returns {apply: true|false} for the "may"
+			// replacement prompt (today: CR 903.9 commander-zone).
 			// Pointer so we can disambiguate "absent" (nil) from
 			// "false" (&false) in the routing check.
 			OptionalApply *bool `json:"apply"`
+			// TapIDs rides a PendingChoicePayUnless "pay" answer whose
+			// cost is a waterbend cost (#1311, "Ward—Waterbend {4}"):
+			// the untapped artifacts and creatures the chooser taps,
+			// each paying {1} of the generic mana. Absent for every
+			// other answer, and refused on one that has no waterbend
+			// clause. The same wire name a cast's convoke taps use.
+			TapIDs []string `json:"tap_ids,omitempty"`
 			// Assignments populates an S18 sub-PR 3
 			// PendingChoiceDamageAssignment pick — each entry is
 			// {blocker_id, amount}. The attacker's controller
@@ -1338,7 +1434,9 @@ func Dispatch(g *game.Game, a Action) error {
 			// Bottom / TopOrder answer a PendingChoiceScry (CR
 			// 701.22): the looked-at cards going under the library,
 			// and the ones staying on top listed TOP-FIRST. Every
-			// looked-at card must appear in exactly one list.
+			// looked-at card must appear in exactly one list. A
+			// put_in_library (ADR 0088) answers on the same two keys,
+			// with Bottom top-first as well.
 			Bottom   []string `json:"bottom"`
 			TopOrder []string `json:"top_order"`
 			// CreatureType answers an S26 PendingChoiceCreatureType
@@ -1459,6 +1557,15 @@ func Dispatch(g *game.Game, a Action) error {
 				return g.ResolveSurveil(choiceID, a.Player, gy, top)
 			case game.PendingChoiceLookAtTop:
 				return g.ResolveLookAtTop(choiceID, a.Player, top)
+			case game.PendingChoicePutInLibrary:
+				// ADR 0088: scry's two keys, each lane top-first;
+				// the resolver refuses a lane the prompt's
+				// placement does not open.
+				bottom, err := parseUUIDs(p.Bottom, "bottom")
+				if err != nil {
+					return err
+				}
+				return g.ResolvePutInLibrary(choiceID, a.Player, bottom, top)
 			default:
 				bottom, err := parseUUIDs(p.Bottom, "bottom")
 				if err != nil {
@@ -1558,7 +1665,17 @@ func Dispatch(g *game.Game, a Action) error {
 			case game.PendingChoicePayUnless:
 				// S19 sub-PR 6: "unless that player pays {N}" — apply
 				// means "I pay".
-				return g.ResolvePayUnless(choiceID, a.Player, *p.OptionalApply)
+				// #1311: a waterbend payment names the permanents
+				// it taps beside the apply.
+				tapIDs := make([]uuid.UUID, 0, len(p.TapIDs))
+				for i, raw := range p.TapIDs {
+					id, err := uuid.Parse(raw)
+					if err != nil {
+						return fmt.Errorf("resolve_choice tap_ids[%d]: %w", i, err)
+					}
+					tapIDs = append(tapIDs, id)
+				}
+				return g.ResolvePayUnlessWithTaps(choiceID, a.Player, *p.OptionalApply, tapIDs)
 			case game.PendingChoiceMayCast:
 				// S28 cascade: "you may cast it without paying its
 				// mana cost" — apply means "I'll take it", and the
@@ -1706,11 +1823,18 @@ func Dispatch(g *game.Game, a Action) error {
 		var p struct {
 			CardID       string `json:"card_id"`
 			AbilityIndex int    `json:"ability_index"`
+			// ADR 0093 Decision 5 — the row's stable ref
+			// (ManaAbilityView.Ref). Optional, as on activate_ability.
+			Ref string `json:"ref,omitempty"`
 			// sacrifice_ids names the permanents paid to a
 			// sacrifice-another cost (Ashnod's Altar). Same field
 			// name and shape as activate_ability's, so the client
 			// reuses one picker for both ability kinds.
 			SacrificeIDs []string `json:"sacrifice_ids,omitempty"`
+			// #758 — the permanents paying a TapOthers component on a
+			// mana ability (Springleaf Drum). Same field as the CR 602
+			// activation path because it is the same cost component.
+			TapIDs []string `json:"tap_ids,omitempty"`
 			// #789 — the counter component of a mana ability's cost,
 			// with exactly the field names and shapes
 			// activate_ability uses. One component, one payload
@@ -1728,6 +1852,22 @@ func Dispatch(g *game.Game, a Action) error {
 			// activate_ability's, so the client reuses one picker
 			// for both ability kinds.
 			DiscardIDs []string `json:"discard_ids,omitempty"`
+			// #1283 — exile_ids names the cards paid to an
+			// exile-a-card cost on a MANA ability (Cadaverous Bloom's
+			// "Exile a card from your hand"). Its own field rather
+			// than discard_ids, because it is its own component: an
+			// exiled card is not discarded.
+			ExileIDs []string `json:"exile_ids,omitempty"`
+			// #1443 — the colour a pipe slot adds, named BEFORE the
+			// source is tapped, so no mana_pick is queued. `color` is
+			// the one-slot spelling (a painland, Birds of Paradise,
+			// Command Tower); `colors` names one per picking slot of
+			// a multi-slot output ("{W|U}{W|U}"), in output order.
+			// Never both. Each must be in the ability's published
+			// `color_options`; absent is the ordinary two-step
+			// activation, which the auto-tapper and the bots use.
+			Color  string   `json:"color,omitempty"`
+			Colors []string `json:"colors,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -1736,6 +1876,13 @@ func Dispatch(g *game.Game, a Action) error {
 		if err != nil {
 			return fmt.Errorf("activate_mana_ability card_id: %w", err)
 		}
+		manaColors := p.Colors
+		if p.Color != "" {
+			if len(p.Colors) > 0 {
+				return fmt.Errorf("activate_mana_ability: send color or colors, not both: %w", game.ErrInvalidParam)
+			}
+			manaColors = []string{p.Color}
+		}
 		sacIDs := make([]uuid.UUID, 0, len(p.SacrificeIDs))
 		for _, raw := range p.SacrificeIDs {
 			id, err := uuid.Parse(raw)
@@ -1743,6 +1890,14 @@ func Dispatch(g *game.Game, a Action) error {
 				return fmt.Errorf("activate_mana_ability sacrifice_ids: %w", err)
 			}
 			sacIDs = append(sacIDs, id)
+		}
+		manaTapIDs := make([]uuid.UUID, 0, len(p.TapIDs))
+		for _, raw := range p.TapIDs {
+			id, err := uuid.Parse(raw)
+			if err != nil {
+				return fmt.Errorf("activate_mana_ability tap_ids: %w", err)
+			}
+			manaTapIDs = append(manaTapIDs, id)
 		}
 		manaCounterIDs := make([]uuid.UUID, 0, len(p.CounterSourceIDs))
 		for _, raw := range p.CounterSourceIDs {
@@ -1760,13 +1915,25 @@ func Dispatch(g *game.Game, a Action) error {
 			}
 			manaDiscardIDs = append(manaDiscardIDs, id)
 		}
+		manaExileIDs := make([]uuid.UUID, 0, len(p.ExileIDs))
+		for _, raw := range p.ExileIDs {
+			id, err := uuid.Parse(raw)
+			if err != nil {
+				return fmt.Errorf("activate_mana_ability exile_ids: %w", err)
+			}
+			manaExileIDs = append(manaExileIDs, id)
+		}
 		return g.ActivateManaAbility(a.Player, cardID, p.AbilityIndex, game.ManaAbilityParams{
+			Ref:              p.Ref,
 			SacrificeIDs:     sacIDs,
+			TapIDs:           manaTapIDs,
 			CounterSourceIDs: manaCounterIDs,
 			CounterCounts:    p.CounterCounts,
 			CounterKind:      p.CounterKind,
 			CounterKinds:     p.CounterKinds,
 			DiscardIDs:       manaDiscardIDs,
+			ExileIDs:         manaExileIDs,
+			Colors:           manaColors,
 		})
 
 	case TypeSetMaxHandSize:
@@ -1800,6 +1967,9 @@ func Dispatch(g *game.Game, a Action) error {
 			Kind    string `json:"kind"`
 			Strict  bool   `json:"strict,omitempty"`
 			AutoTap bool   `json:"auto_tap,omitempty"`
+			// #1391: which offer of this kind, by its printed cost,
+			// when the card has two (a plot card under Fblthp).
+			Cost string `json:"cost,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -1811,6 +1981,7 @@ func Dispatch(g *game.Game, a Action) error {
 		return g.PerformSpecialAction(a.Player, cardID, game.SpecialActionKind(p.Kind), game.SpecialActionParams{
 			Strict:  p.Strict,
 			AutoTap: p.AutoTap,
+			Cost:    p.Cost,
 		})
 
 	case TypeSacrificePermanent:

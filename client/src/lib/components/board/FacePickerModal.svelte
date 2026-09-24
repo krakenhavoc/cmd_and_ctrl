@@ -100,7 +100,7 @@
   onDestroy(() => document.removeEventListener("keydown", handleKey));
 
   // "Play" for a land face, "Cast" for a spell — the CR 305.1 /
-  // 601.1 distinction, and the difference a player is actually
+  // 601.2 distinction, and the difference a player is actually
   // choosing between on a land-backed MDFC.
   const verb = $derived(
     (faces[chosen]?.type_line ?? "").toLowerCase().includes("land") ? "Play" : "Cast",

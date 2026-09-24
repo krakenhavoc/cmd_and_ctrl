@@ -703,8 +703,11 @@ func TestB17MultaniCountsLandsYouControlAndInYourGraveyard(t *testing.T) {
 	if !hasEffectiveKeyword(t, g, multani, "reach") || !hasEffectiveKeyword(t, g, multani, "trample") {
 		t.Error("reach, trample")
 	}
-	if spec, _ := Lookup(b17MultaniOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the graveyard ability gap must be declared")
+	// #1381: the graveyard ability is registered now
+	// (multani_yavimayas_avatar_test.go proves it works) and the card
+	// is complete.
+	if spec, _ := Lookup(b17MultaniOracle); spec.Completeness != CompletenessFull {
+		t.Error("the card should be complete")
 	}
 }
 

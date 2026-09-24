@@ -18,49 +18,66 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (CR 400.7), Avatar Kuruk is always summoning sick the turn it
 // arrives — printed and correct, not a gap.
 //
-// SANDBOX SIMPLIFICATIONS, and this is why the card is not Full:
+// # The Spirit token
 //
-//   - The Spirit token's own clause — "can't block or be blocked by
-//     non-Spirit creatures" — is not implemented, and since ADR 0083
-//     (#1248) the reason is no longer that a token cannot carry an
-//     ability. It can: the Goblin Shaman and the Pest do. This clause
-//     is a PAIR RULE, `game.BlockRule.Pair`, and `CardDef` has no
-//     `BlockRules` slot for any object to declare one — ADR 0045's
-//     addendum, PR 4's card half, tracked on the "Conditional blocking
-//     restrictions" row of docs/engine-seams.md (#750). #1248 fixed
-//     the half that was this card's: `forEachBlockRuleLocked` used to
-//     skip every token by construction, so a token could not have
-//     carried the rule even once the Spec field exists. The token
-//     itself — a 1/1 colorless Spirit — is created in full; only its
-//     restriction text is missing, which is weaker than printed
-//     (#259), and the day `Spec.BlockRules` lands this is one
-//     `tokenTemplate` away.
+// "This token can't block or be blocked by non-Spirit creatures" is a
+// pair rule on the TOKEN (#750, ADR 0045 addendum Decision 11 and its
+// 2026-09-24 amendment), declared on its catalog template below and
+// read off the battlefield through the token's key like any card's
+// Spec.BlockRules. It is two rules, one per side of the pair: a
+// non-Spirit can't block the token, and the token can't block a
+// non-Spirit. "Spirit" is read as an EFFECTIVE creature type, so a
+// changeling is a Spirit for both.
+//
+// SANDBOX SIMPLIFICATION, and this is why the card is not Full:
+//
 //   - "Exhaust — Waterbend {20}: Take an extra turn after this one."
-//     is not registered at all, for two independent reasons, either
-//     one enough on its own: extra turns have no primitive anywhere in
-//     this engine (Turn.IsNewTurn compares seats and Turn.Number
-//     counts rounds, not turns — the "Extra turns primitive" seam,
-//     docs/engine-seams.md, #753), and waterbend on an ACTIVATED
-//     ability has no cost shape (AbilityCost prices tap-this /
-//     sacrifice-self / sacrifice-other / mana / life; Spec.TapCost
-//     prices a SPELL, not an ability — see aang_swift_savior.go's own
-//     Waterbend {8}, which ships because "take an extra turn" isn't
-//     the effect it's paying for). An ability that costs mana and
-//     does nothing when activated would not be a weaker card, it
-//     would be a broken one, so it stays off entirely rather than
-//     half-shipped.
+//     is not registered, and the reason is now ONE, not two: extra
+//     turns have no queue/insertion primitive anywhere in this engine
+//     (the identity foundation is present, but the "Extra turns
+//     primitive" seam remains in docs/engine-seams.md, #753). The
+//     COST is expressible since #1310: `WaterbendCost("{20}")`
+//     with `Exhaust: true` is the whole declaration, the same
+//     component Aang's "Waterbend {8}" and Katara's "Waterbend {X}"
+//     use, and Boom Scholar's exhaust discount already reaches it
+//     through the ability's mana component. An ability that costs
+//     twenty and does nothing when activated would not be a weaker
+//     card, it would be a broken one, so it stays off entirely until
+//     #753 lands the effect.
 func init() {
 	Register(Spec{
 		OracleID:     theLegendOfKurukOracleID + "#1",
 		Name:         "Avatar Kuruk",
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
-			"The Spirit token doesn't have its \"can't block or be blocked by non-Spirit creatures\" ability — a token that isn't a copy has no way to carry one.",
 			"\"Exhaust — Waterbend {20}: Take an extra turn after this one\" isn't implemented — extra turns don't exist in the engine yet.",
 		},
 		Triggered: []game.TriggeredAbility{
 			WheneverYouCast(nil, "Avatar Kuruk — create a 1/1 colorless Spirit",
-				Do(CreateToken{Template: TokenCard("1/1 colorless Spirit"), N: 1})),
+				Do(CreateToken{Template: kurukSpiritToken(), N: 1})),
 		},
 	})
+}
+
+// kurukSpiritToken is Avatar Kuruk's 1/1 colorless Spirit with "This
+// token can't block or be blocked by non-Spirit creatures."
+func kurukSpiritToken() game.Card { return tokenFromCatalog(printedKurukSpiritToken) }
+
+// printedKurukSpiritToken is the Spirit as PRINTED — its block rule
+// included. Not the plain "1/1 colorless Spirit" row Forbidden
+// Orchard makes: that one prints no text, and a row shared between
+// the two would hand Orchard's Spirits a restriction they don't have,
+// or strip Kuruk's of the one they do.
+func printedKurukSpiritToken() tokenTemplate {
+	return tokenTemplate{
+		Slug: "spirit-only-spirits",
+		Card: game.Card{
+			Name:      "Spirit",
+			TypeLine:  "Token Creature — Spirit",
+			Power:     1,
+			Toughness: 1,
+		},
+		BlockRules: CantBlockOrBeBlockedBy(OnSelf(), Not(OfCreatureType("Spirit")), "non-Spirit creatures"),
+		Text:       "This token can't block or be blocked by non-Spirit creatures.",
+	}
 }

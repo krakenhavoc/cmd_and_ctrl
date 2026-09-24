@@ -88,7 +88,7 @@ activation of creature abilities (e.g. mana abilities on a
 creature) rejects sick creatures. Land tap is exempt per CR 302.6
 (not a creature).
 
-### 3. Combat damage rewrite: split into two substeps (CR 510.2 + 510.3)
+### 3. Combat damage rewrite: split into two substeps (CR 510.4)
 
 Today `resolveCombatDamageLocked` is one pass. S18 rewrites it as:
 
@@ -113,10 +113,11 @@ to the next. S18 adds a fifth `PendingChoiceKind` alongside S13's
 `discard_from_hand` / S15's `mana_pick` / S17's
 `replacement_order` / `optional_replacement`.
 
-**Single-stage prompt** (versus two-stage). The CR 509.2 blocker
-ordering step is merged into the same prompt: the client can
-reorder blockers *and* assign amounts in one panel; server
-validates the ordered prefix-lethal rule atomically.
+**Single-stage prompt** (versus two-stage). The CR 510.1c / 510.1d
+damage-assignment order among multiple blockers is merged into the
+same prompt: the client can reorder blockers *and* assign amounts
+in one panel; server validates the ordered prefix-lethal rule
+atomically.
 
 **Why one stage:** two-stage doubles the client round-trips
 without adding any info the server needs earlier. If a user
@@ -263,7 +264,7 @@ doesn't queue it until an S18-capable block happens. Additive.
 - **Protection** (CR 702.16) → **S24** [#76](https://github.com/krakenhavoc/cmd_and_ctrl/issues/76) alongside Mind Control. *(Update 2026-09-16: not delivered by S24 or S30; tracked in [#662](https://github.com/krakenhavoc/cmd_and_ctrl/issues/662).)*
 - **Indestructible** (CR 702.12), **damage-prevention shields with charges** (CR 615) → **S30** [#95](https://github.com/krakenhavoc/cmd_and_ctrl/issues/95). *(Update 2026-09-16: both shipped. Indestructible in [#380](https://github.com/krakenhavoc/cmd_and_ctrl/pull/380) (S25), `server/internal/game/indestructible.go`; charged prevention shields in [#420](https://github.com/krakenhavoc/cmd_and_ctrl/pull/420) (S30), `server/internal/cards/effects/prevention.go`.)*
 - **Hexproof, shroud, ward** — umbrella issue below. *(Update 2026-09-16: all three shipped. Hexproof and shroud are enforced at targeting by [#353](https://github.com/krakenhavoc/cmd_and_ctrl/pull/353), [ADR 0038](0038-protection-style-keywords.md). Ward is a triggered pay-or-counter, `effects.Ward` in `server/internal/cards/effects/ward.go`, from [#421](https://github.com/krakenhavoc/cmd_and_ctrl/pull/421) (recovered onto `main` by [#433](https://github.com/krakenhavoc/cmd_and_ctrl/pull/433)); [#647](https://github.com/krakenhavoc/cmd_and_ctrl/pull/647) added life and sacrifice ward costs.)*
-- **Legacy/evergreen tail** — banding, rampage, flanking, fear, intimidate, shadow, exalted, annihilator, persist, undying, tribute, prowess, cascade. Umbrella issue below. *(Update 2026-09-16: cascade shipped in [#426](https://github.com/krakenhavoc/cmd_and_ctrl/pull/426) (S28, recovered by [#433](https://github.com/krakenhavoc/cmd_and_ctrl/pull/433)), `server/internal/game/cascade.go`. The umbrella, [#176](https://github.com/krakenhavoc/cmd_and_ctrl/issues/176), closed on 2026-09-16, and what it left open moved: prowess to [#706](https://github.com/krakenhavoc/cmd_and_ctrl/issues/706), landwalk (never on this list, but granted inert by Lord of Atlantis) to [#705](https://github.com/krakenhavoc/cmd_and_ctrl/issues/705), regeneration to [#667](https://github.com/krakenhavoc/cmd_and_ctrl/issues/667), protection to [#662](https://github.com/krakenhavoc/cmd_and_ctrl/issues/662). Banding, rampage, flanking, fear, intimidate, shadow, exalted, annihilator, persist and undying as keywords, and tribute have no tracker and get built on demand, when a card needs one. So do phasing and totem armor, which the coverage roadmap had also filed under #176; infect (with wither and toxic) is tracked in [#748](https://github.com/krakenhavoc/cmd_and_ctrl/issues/748) since 2026-09-17.)*
+- **Legacy/evergreen tail** — banding, rampage, flanking, fear, intimidate, shadow, exalted, annihilator, persist, undying, tribute, prowess, cascade. Umbrella issue below. *(Update 2026-09-16: cascade shipped in [#426](https://github.com/krakenhavoc/cmd_and_ctrl/pull/426) (S28, recovered by [#433](https://github.com/krakenhavoc/cmd_and_ctrl/pull/433)), `server/internal/game/cascade.go`. The umbrella, [#176](https://github.com/krakenhavoc/cmd_and_ctrl/issues/176), closed on 2026-09-16, and what it left open moved: prowess to [#706](https://github.com/krakenhavoc/cmd_and_ctrl/issues/706), landwalk (never on this list, but granted inert by Lord of Atlantis) to [#705](https://github.com/krakenhavoc/cmd_and_ctrl/issues/705), regeneration to [#667](https://github.com/krakenhavoc/cmd_and_ctrl/issues/667), protection to [#662](https://github.com/krakenhavoc/cmd_and_ctrl/issues/662). Banding, rampage, flanking, fear, intimidate, shadow, exalted, annihilator, persist and undying as keywords, and tribute have no tracker and get built on demand, when a card needs one. So do phasing and totem armor, which the coverage roadmap had also filed under #176; infect (with wither and toxic) is tracked in [#748](https://github.com/krakenhavoc/cmd_and_ctrl/issues/748) since 2026-09-17. 2026-09-24: prowess shipped with #706, as a keyword token whose trigger the engine derives — see the amendment at the end of this ADR.)*
 - **Champion of Lambholt** (both halves) → **S19** [#69](https://github.com/krakenhavoc/cmd_and_ctrl/issues/69).
 - **Flash-in-hand badge** — server gating is sufficient for S18; hand-view keyword surface follows with S20 smart-cast UI.
 - **Mycosynth Lattice mana-ability clauses** — originally slotted here per S17 planning. On review, the clauses ("lands tap for any color" + "no land's mana ability adds non-colorless") are mana-system work that predates the S15 mana-pool auto-tapper's final shape. Re-homed to the backlog pending a dedicated mana rewrite sprint; does not block S18 combat work.
@@ -308,7 +309,7 @@ doesn't queue it until an S18-capable block happens. Additive.
   `RecomputeLayersIfStaleLocked` first so mid-turn haste grants
   take effect immediately.
 - **`resolveCombatDamageLocked` rewritten** into two substeps
-  (CR 510.2 first-strike + CR 510.3 regular). SBA runs between;
+  (CR 510.4). SBA runs between;
   dead creatures don't participate in the second pass. Double
   strike participates in both; first strike only the first.
 - **`assignAndDealCombatDamageLocked`** is the per-substep
@@ -368,7 +369,7 @@ doesn't queue it until an S18-capable block happens. Additive.
 1. Keywords represented as strings in `Characteristic.Abilities`; no richer keyword type.
 2. `Spec.PrintedKeywords` separate from `Spec.Static` so flash works on hand cards.
 3. Summoning sickness is a per-card bool cleared at controller's untap step; haste bypass is read-time.
-4. Combat damage rewritten to two substeps (510.2 + 510.3); double-strike participates in both.
+4. Combat damage rewritten to two substeps (CR 510.4); double-strike participates in both.
 5. Deathtouch implemented via `Card.MarkedLethalByDeathtouch`, not SBA short-circuit.
 6. Lifelink applies to all damage from the source, not combat damage only.
 7. Damage-assignment prompt single-stage (order + amounts merged).
@@ -377,3 +378,91 @@ doesn't queue it until an S18-capable block happens. Additive.
 10. Baneslayer Angel ships without protection clauses.
 11. Mycosynth Lattice mana-ability clauses dropped from S18 scope (re-homed to backlog).
 12. No protocol version bump; `damage_assignment` PendingChoice + view field additive.
+
+## Amendment 2026-09-24 — prowess, and the pattern for keyword triggers (#706)
+
+Prowess (CR 702.108a: "Whenever you cast a noncreature spell, this
+creature gets +1/+1 until end of turn") is the first TRIGGERED keyword
+to join `canonicalKeywords`. Two patterns were available, and the
+choice applies to exalted, annihilator, persist, undying and the rest
+of the keyword triggers when they are built, so it is written down.
+
+**A. A card-side constructor on `Spec.Triggered`** — `effects.Cascade()`,
+`effects.Storm()`, `effects.Ward(...)`. No token in the table; a card
+has the keyword because its file says so.
+
+**B. A token in `canonicalKeywords` with an engine consumer** — the
+token is the declaration, the engine turns it into the trigger. This
+is how every other enforced keyword works.
+
+**Decision: B, for prowess.** The deciding fact is where prowess comes
+from. It is printed on ~100 creatures, most of them with nothing else
+to implement, and GRANTED by Bria, Riptide Rogue, Sokka, Tenacious
+Tactician, Narset, Enlightened Exile and Wizard's Staff, and carried by
+every Monk and Otter token "with prowess". A constructor reaches none
+of the grants or tokens and needs a card file per printed creature. A
+token reaches all of them through machinery that already exists: the
+deck importer stamps it off Scryfall (Monastery Swiftspear needs no
+catalog entry, and ADR 0037's coverage signal stops flagging it), a
+token template's `Keywords` carries it, and a layer-6 grant appends it.
+
+How the engine honours it (`server/internal/game/prowess.go`):
+
+1. `TriggersForCard` asks `keywordTriggersFor` for one
+   `TriggeredAbility` per prowess token on the object's EFFECTIVE
+   ability list, before the catalog read. So an uncatalogued creature,
+   a token and a granted instance all have it; a CR 613.1f "loses all
+   abilities" empties the list in its own timestamp slot; a face-down
+   permanent has none.
+2. The trigger watches `EventCast` with the controller as `Actor` and
+   a noncreature spell as the card. `EventCast` is emitted only by
+   `CastSpell`, so a copy (storm, Twincast — CR 707.10) never triggers
+   it and a cascaded or free cast does.
+3. It resolves as a turn-scoped layer-7c +1/+1 pinned to the object
+   (instance ID and battlefield-entry stamp), after the CR 400.7
+   new-object check (#1432): a creature that left in response gets
+   nothing.
+4. Prowess is CUMULATIVE in `AppendKeywordAbility`, beside toxic (ADR
+   0056 Decision 1), because CR 702.108b says each instance triggers
+   separately. Ty Lee under Sokka has two instances and gets +2/+2.
+   Every instance carries the same label, so a creature's own
+   instances never raise a CR 603.3b ordering prompt. Since #1511,
+   prowess triggers from DIFFERENT creatures don't raise one either
+   when nothing else triggered alongside them: a batch of nothing but
+   prowess commutes (ADR 0018 amendment 2026-09-24, #1511). Prowess
+   beside any other trigger still asks, as for any triggers.
+5. The trigger goes through the ordinary harvest path, so trigger
+   doublers (Harmonic Prodigy, Wizard's Staff) and the response window
+   apply to it unchanged.
+
+**When A is still right.** A keyword stays a constructor when it has a
+parameter a bare token has nowhere to put (ward's cost, ADR 0038 §7),
+or when it triggers from somewhere a static never grants it (cascade
+and storm trigger from the stack, on the spell). A keyword trigger that
+lives on permanents and has no parameter (exalted is the next one)
+takes pattern B and a row next to prowess in `keywordTriggersFor`. One
+with a number (annihilator N) takes B too, with a numbered token minted
+the way toxic's is.
+
+**#1258, in the same change.** `game.TriggeredAbility` gains a
+`Keyword` field: the machine-readable name of the keyword a trigger IS.
+`effects.Cascade`, `effects.GrantsCascade`, `effects.Storm` and the
+prowess trigger set it, and `cards/coverage` gains exact `cascade`,
+`storm` and `prowess` probes, so a caveat claiming a card lacks a
+keyword it has fails the build.
+
+**What used to be weaker than printed (#1510, fixed).** Scryfall's
+`keywords` array is a set, so a creature that prints "Prowess,
+prowess" (Thor Odinson, Ruric Thar, Biomagus, Cursed Firebreathing
+Yogurt) used to import with ONE instance. The deck importer now counts
+a cumulative keyword's own repeats off the oracle line instead of
+taking the array at its word (`deck.keywordLineCounts`,
+`deck.printedKeywords`), and `printedCharacteristic`'s merge of
+Card.Keywords with the catalog's own PrintedKeywords keeps the higher
+of the two sources' own counts for a cumulative keyword
+(`game.mergePrintedKeywords`) rather than deduping every repeat to
+one. A catalog entry declaring `PrintedKeywords: {"prowess",
+"prowess"}` still gets both, and combining it with an import that
+also counts two does not triple it. The client's badge row dedupes by
+token, so two instances still show one badge.
+

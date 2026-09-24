@@ -49,7 +49,7 @@ import (
 //
 //	"draw"         — RepEventDraw    — DrawPlayer, DrawCount (CR 121.2)
 //	"produce_mana" — RepEventProduceMana — ManaPlayer, ManaSource, ManaColors (CR 106.12b)
-//	"move"         — RepEventMove    — CardID, OldZone, NewZone, NewZoneOwner, EntersTapped, EntersWithCounters, asCommanderMove
+//	"move"         — RepEventMove    — CardID, OldZone, NewZone, NewZoneOwner, EntersTapped, EntersAttacking, EntersWithCounters, asCommanderMove
 //	"discard"      — RepEventDiscard — CardID, DiscardPlayer, DiscardCause, NewZone, NewZoneOwner (CR 701.8)
 //	"counter"      — RepEventCounter — CounterTarget OR CounterPlayer,
 //	                 CounterName, CounterDelta, CounterPlacer,
@@ -58,7 +58,7 @@ import (
 //	"damage"       — RepEventDamage  — DamageSource, DamageTarget, DamageAmount, IsCombatDamage
 //	"create_tokens"— RepEventCreateTokens — TokenController, TokenGroups, TokenAttacking (CR 701.7b)
 //	"keyword_action"— RepEventKeywordAction — KeywordAction, KeywordActionCount (CR 701.22 / 701.25 / 701.34)
-//	"mill"         — RepEventMill    — MillPlayer, MillCount (CR 701.13a)
+//	"mill"         — RepEventMill    — MillPlayer, MillCount (CR 701.17a)
 //	"step"         — RepEventStepTransition — StepTransitionStep, StepTransitionSeat
 type ReplacementEventKind string
 
@@ -115,7 +115,7 @@ const (
 	// written on the KeywordAction constants.
 	RepEventKeywordAction ReplacementEventKind = "keyword_action"
 
-	// RepEventMill is one "mill N cards" INSTRUCTION (CR 701.13a),
+	// RepEventMill is one "mill N cards" INSTRUCTION (CR 701.17a),
 	// opened once per instruction before any card moves — the third
 	// member of the count-carrying family, after RepEventCreateTokens
 	// and RepEventKeywordAction, and opened for the same reason: "if an
@@ -129,7 +129,7 @@ const (
 	// a milled commander is offered the command zone (CR 903.9). What
 	// had no seam was the amount. See #569 and mill.go.
 	//
-	// Opened only for a real mill: a graveyard destination (CR 701.13a
+	// Opened only for a real mill: a graveyard destination (CR 701.17a
 	// defines the keyword action by where the cards go, so "exile the
 	// top N cards of your library" is not a mill and opens no window)
 	// and a positive count (there is nothing to replace about milling
@@ -156,7 +156,7 @@ const (
 	// — and not at the activation. See produce_mana.go and ADR 0013
 	// §5ab.
 	//
-	// It is the one kind that can NEVER pause. CR 605.3a makes
+	// It is the one kind that can NEVER pause. CR 605.3b makes
 	// activating a mana ability one indivisible step with no stack and
 	// no priority window inside it, and the auto-tapper's contract is
 	// "no further player decisions", so every event of this kind sets
@@ -393,7 +393,7 @@ type ReplacementEvent struct {
 	// destruction ignores regeneration shields (CR 701.19c).
 	//
 	// It gates the built-in's AppliesTo rather than being consumed
-	// inside its Replace, because CR 701.19d leaves an ignored shield
+	// inside its Replace, because CR 701.19c leaves an ignored shield
 	// UNUSED — a creature with a shield that Damnation kills would
 	// still have had that shield if something had saved it. Only
 	// meaningful alongside Destruction.
@@ -404,6 +404,37 @@ type ReplacementEvent struct {
 	// The battlefield-entry path reads this and sets Card.Tapped
 	// before emitting EventETB.
 	EntersTapped bool
+
+	// EntersPrepared is CR 722.3a's "this creature enters prepared",
+	// a CR 614.1d replacement (ADR 0090): set by the entering card's
+	// own self-replacement (effects.SelfEntersPrepared) and read by
+	// every battlefield landing, which gives the permanent the
+	// designation — and makes its CR 722.3c copy in exile — before
+	// EventETB, so the permanent is never on the battlefield
+	// unprepared. Rides the event for EntersTapped's reason. Only
+	// meaningful when NewZone == ZoneBattlefield, and ignored for a
+	// permanent with no prepare spell (CR 722.3a).
+	EntersPrepared bool
+
+	// EntersAttacking is the player, planeswalker or battle the
+	// permanent is put onto the battlefield ATTACKING (CR 506.3c,
+	// #1227) — ninjutsu's "put this card onto the battlefield from
+	// your hand tapped and attacking" (CR 702.49a) and the attack a
+	// token is created making (Parhelion II). uuid.Nil, which is every
+	// other entry in the game, enters not attacking.
+	//
+	// It rides the EVENT rather than a local for the reason
+	// EntersTapped and FaceDown do: both battlefield-entry doors carry
+	// the same fact in the same field, a replacement effect inspecting
+	// the entry sees it, and a CR 616 resume that only has the event
+	// still knows what the entry was for. Both doors hand it to
+	// stampEntryAttackerLocked (attackers.go), which is the one place
+	// CR 506.3c's "never declared" marking happens.
+	//
+	// Only meaningful when NewZone == ZoneBattlefield. Nothing
+	// REPLACES it today; it is seeded by the caller and read by the
+	// entry.
+	EntersAttacking uuid.UUID
 
 	// FaceDown is the CR 708.2 state the permanent ENTERS in —
 	// FaceDownManifested for a manifest (CR 701.34a), FaceDownMorphed
@@ -427,6 +458,16 @@ type ReplacementEvent struct {
 	// meaningful when NewZone == ZoneBattlefield. Added for #1194
 	// (ADR 0082 decision 3).
 	FaceDown FaceDownKind
+
+	// FaceDownListed is the CR 708.2 body the putting effect LISTED
+	// for a face-down entry — Yedora's "It's a Forest land",
+	// Cybership's "They're 2/2 Cyberman artifact creatures". nil is
+	// CR 708.2a's default nameless 2/2. Rides the event beside
+	// FaceDown for FaceDown's reason: the one entry finisher reads it,
+	// whichever door the permanent came through, and a paused entry's
+	// resume still knows it. Never mutated through the pointer, so the
+	// undo clone may share it. Meaningless without FaceDown. #1270.
+	FaceDownListed *FaceDownListing
 
 	// EntersAsCopyOf is the CR 707 copy a permanent enters wearing —
 	// the copiable values settled by a CopySelector replacement,
@@ -489,12 +530,15 @@ type ReplacementEvent struct {
 	// below is. With one the generic resume is faithful, so they are
 	// flagged and the entry can ask its question.
 	//
-	// Off by default still. putOntoBattlefieldFromZoneLocked (the
-	// hand / library "put onto the battlefield" batch) is the remaining
-	// unflagged entry: it runs every card's pipeline against the
-	// pre-entry board and then moves them together, a simultaneity a
-	// per-card resume would break. A card of that batch whose pipeline
-	// pauses stays where it was — weaker than printed, never stronger.
+	// Since #1322 the hand / library / exile "put onto the battlefield"
+	// batch is flagged too (entry_batch.go). It could not be while its
+	// only resume was the single-card finisher, which would land one
+	// card after its siblings had been announced; its events carry the
+	// batch on entryTail instead, and the resume hands each settled
+	// event back to the batch rather than landing it. The one entry
+	// left unflagged is the sandbox move_card verb
+	// (moveCardByRefLocked), a manual move with nothing behind it to
+	// finish, whose questions take their un-asked branch.
 	//
 	// An effect that WOULD pause consults this before prompting: a
 	// pay-life entry choice on an unflagged event takes the un-paid
@@ -554,6 +598,14 @@ type ReplacementEvent struct {
 	// flavor flag on the manual move_card action. Unexported because
 	// the catalog should never read or set it.
 	asCommanderMove bool
+
+	// commanderAnswer is the CR 903.9 answer the commander's owner gave
+	// before this move was made (#1397, cost_commander_choice.go),
+	// copied off zoneRoute.commanderAnswer. Unasked leaves the built-in
+	// as it always was; accept makes it mandatory for this event, so a
+	// cost move that cannot pause applies it instead of skipping it as
+	// a question; decline keeps it from being gathered at all.
+	commanderAnswer commanderZoneAnswer
 
 	// --- RepEventDiscard fields ---
 	//
@@ -671,7 +723,7 @@ type ReplacementEvent struct {
 	//
 	// It is the number the instruction ASKED for, not what the library
 	// can supply. A player told to mill more cards than they have mills
-	// as many as possible (CR 701.13b) and the clamp happens in
+	// as many as possible (CR 701.17b) and the clamp happens in
 	// millPlanLocked, after this window settles — so a Bruvac doubling
 	// a mill of twenty against a library of twelve doubles twenty,
 	// which is what the card says and is observable through any
@@ -723,6 +775,22 @@ type ReplacementEvent struct {
 	// It is also the CR 616.1 affected player: see
 	// affectedPlayerForEvent.
 	CounterPlayer uuid.UUID
+
+	// counterTail is the counter half's answer to lifeTail and
+	// tokenTail: the rest of the effect that asked for the placement,
+	// run with the delta the window settled on once the counters land.
+	// Set by AddCounterByThenForEffect and read only by
+	// runCounterTailLocked, which both the inline path and the CR 616
+	// resume reach.
+	//
+	// #1282: a placement can PAUSE on a CR 616 ordering prompt (a
+	// Doubling Season beside a Hardened Scales), and "amass, then the
+	// Army deals damage equal to its power" cannot be written on the
+	// next line.
+	//
+	// Unexported engine plumbing — the catalog never sets or reads it.
+	// See counter_tail.go.
+	counterTail *counterTail
 
 	// CounterPlacer is who PUTS or GIVES the counters — the player
 	// CR 120.3b and CR 120.3d name when damage from a source with
@@ -838,22 +906,28 @@ type ReplacementEvent struct {
 	// returns, because the caller has no resume and no way to be
 	// rewound once it has.
 	//
-	// Two things set it today, and they are the two halves of one cost
-	// line: paying life as a cost (CR 118.3, payLifeAsCostLocked in
-	// life_tail.go, which carries the full argument) and discarding a
-	// card as a cost (CR 701.8a, discard.go, which sets it through
-	// zoneRoute.MustSettleNow). CR 601.2h pays a spell's costs as one
-	// indivisible step of casting it and CR 601.2 rewinds the
-	// announcement if they cannot all be paid, so a CR 616 ordering
-	// prompt — or a CR 903.9 "may" — in the middle leaves a spell on
-	// the stack with its cost half paid.
+	// Several things set it, and they fall into two families: paying a
+	// cost (life, CR 118.3, payLifeAsCostLocked in life_tail.go; a
+	// discard, CR 701.8a, discard.go, through zoneRoute.MustSettleNow;
+	// a counter placement mid-ability, #1370,
+	// AddCounterMustSettleNowForEffect in counter_tail.go) — CR 601.2h
+	// pays a spell's costs as one indivisible step and CR 601.2 rewinds
+	// the announcement if they cannot all be paid, so a CR 616 ordering
+	// prompt in the middle would leave it half paid — and a mana
+	// ability's own resolution (CR 605.3b, produce_mana.go), which has
+	// no priority window at all for a prompt to occupy.
 	//
 	// What it costs the affected player is the CR 616 ordering choice
-	// and any CR 614.10 "may" on the event: the apply-loop applies the
+	// and any "may" on the event: the apply-loop applies the
 	// gathered order inline (the escape an eliminated chooser has
 	// always taken) and skips anything that would ask a question
 	// un-applied. Weaker than printed on the "may", arbitrary but
 	// deterministic on the ordering, and never a wedged table.
+	//
+	// The one "may" a cost does NOT lose is CR 903.9's: the owner of a
+	// commander a cost moves is asked BEFORE the payment begins, and
+	// the answer rides in as commanderAnswer (#1397,
+	// cost_commander_choice.go).
 	//
 	// Unexported engine plumbing — the catalog never sets or reads it.
 	mustSettleNow bool
@@ -959,7 +1033,7 @@ type ReplacementEffect struct {
 	// ordering ever lands).
 	SelfReplacement bool
 
-	// Optional flags a CR 614.10 "may" replacement — the owner
+	// Optional flags a "may" replacement — the owner
 	// decides each time whether to apply it. When true, the apply-
 	// loop queues a yes/no prompt (PendingChoiceOptionalReplacement)
 	// before firing Replace. "Yes" → Replace runs normally; "No" →
@@ -978,7 +1052,7 @@ type ReplacementEffect struct {
 	// Optional "yes" applies the replacement, and here "yes" is what
 	// avoids it, at a price.
 	//
-	// A player who can't legally pay (CR 118.4 — life total below
+	// A player who can't legally pay (CR 119.4 — life total below
 	// the cost) is not prompted; the replacement applies. Takes
 	// precedence over Optional, which is meaningless alongside it.
 	// See entry_choice.go. Added with the shockland cycle.
@@ -1072,6 +1146,12 @@ type ReplacementEffect struct {
 	// ("Doubling Season: double counters"). Kept server-side so
 	// the wire carries it; no localisation yet.
 	Label string
+
+	// commanderZone marks the CR 903.9 built-in
+	// (commanderZoneReplacement) so the gather can honour an answer
+	// its owner gave BEFORE the move (ReplacementEvent.commanderAnswer,
+	// #1397). Unexported: no catalog effect is the commander rule.
+	commanderZone bool
 }
 
 // activeReplacement binds one declared ReplacementEffect to its
@@ -1309,7 +1389,7 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 			// #847: through skipQuestionsLocked, exactly as the
 			// mustSettleNow branch below does. An effect that asks its
 			// own question cannot ride an order nobody chose either —
-			// firing a CR 614.10 "may" or a copy selector here would
+			// firing a "may" or a copy selector here would
 			// answer it blind, in the direction that favours it, on
 			// an event whose affected player is no longer at the
 			// table. Skipped un-applied is the weaker branch, which is
@@ -1379,7 +1459,7 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 			continue
 		}
 		if chosen.effect.Optional {
-			// CR 614.10 "may" — owner decides each time. Queue a
+			// "may" — owner decides each time. Queue a
 			// yes/no prompt; the resume path either fires Replace
 			// (yes) or marks applied and skips (no). The two cases
 			// that decline it inline instead — a chooser who has left
@@ -1494,8 +1574,8 @@ func sameModification(applicable []activeReplacement) bool {
 }
 
 // asksItsOwnQuestion reports whether firing this effect puts a
-// question to a player before it changes anything — a CR 614.10
-// "may", a shockland's pay-life, a reveal-land's pick from hand, a
+// question to a player before it changes anything — a
+// "may" replacement, a shockland's pay-life, a reveal-land's pick from hand, a
 // copy selector.
 //
 // Every caller here is deciding whether to skip the CR 616 ordering
@@ -1550,7 +1630,7 @@ func (g *Game) applyFirstGatheredLocked(ev *ReplacementEvent, applicable []activ
 }
 
 // skipQuestionsLocked drops the gathered replacements that would ask
-// their controller a question — a CR 614.10 "may", a shockland's
+// their controller a question — a "may", a shockland's
 // pay-life, a reveal-land's pick from hand, a copy selector —
 // marking each applied so the apply-loop
 // does not gather it again, and returns the rest in gather order.
@@ -1577,7 +1657,7 @@ func (g *Game) skipQuestionsLocked(ev *ReplacementEvent, applicable []activeRepl
 }
 
 // optionalReplacementResumableLocked reports whether pausing on ev
-// for a CR 614.10 yes/no prompt has something that can finish the
+// for a "may" yes/no prompt has something that can finish the
 // underlying mutation afterwards.
 //
 // Only a battlefield ENTRY can lack one. Every other event kind is
@@ -1680,6 +1760,20 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 		if eff.AppliesTo != nil && !eff.AppliesTo(ev, g, nil) {
 			continue
 		}
+		if eff.commanderZone {
+			// #1397: the owner has already answered CR 903.9 for this
+			// move — before a cost that cannot pause was paid. A "no"
+			// is not a question to ask again; a "yes" is no longer a
+			// question at all, so it applies like any mandatory
+			// replacement, in the gathered order a settle-now event
+			// uses. `eff` is this gather's own copy.
+			switch ev.commanderAnswer {
+			case commanderZoneDecline:
+				continue
+			case commanderZoneAccept:
+				eff.Optional = false
+			}
+		}
 		out = append(out, activeReplacement{effect: eff, source: nil, id: id})
 	}
 
@@ -1741,7 +1835,20 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 	// Only consulted for a card that is NOT already on the
 	// battlefield, so a permanent already in play can never match here
 	// as well as in the walk above and apply the same effect twice.
-	if CatalogReplacements != nil && ev.CardID != uuid.Nil && !g.Battlefield.Contains(ev.CardID) {
+	//
+	// And not for a card entering FACE DOWN (#1322). CR 614.12 decides
+	// which replacements apply from the permanent "as it would exist on
+	// the battlefield", and a face-down permanent is a 2/2 with no
+	// abilities (CR 708.2a). A face-down CAST already reads "" here —
+	// the card is face down on the stack — but a manifest takes a card
+	// that is face UP in its library, so without this a manifested
+	// shockland asked its controller for 2 life, on a card the rest of
+	// the table was not allowed to see. That question could not be put
+	// while the put batch was unresumable, so it took the un-asked
+	// branch and the manifest entered TAPPED instead — wrong the other
+	// way, and silently.
+	if CatalogReplacements != nil && ev.CardID != uuid.Nil && !g.Battlefield.Contains(ev.CardID) &&
+		!(ev.Kind == RepEventMove && ev.NewZone == ZoneBattlefield && ev.FaceDown != FaceDownNone) {
 		if entering, ok := g.LookupCardForEffect(ev.CardID); ok {
 			key := CatalogKey(entering)
 			reps := CatalogReplacements(key)
@@ -1958,7 +2065,7 @@ func eventKindMatches(watches []EventKind, kind ReplacementEventKind) bool {
 		// like EventStepTransition rather than a logged event.
 		want = EventKeywordAction
 	case RepEventMill:
-		// CR 701.13a. EventMill is the post-event twin and it fires per
+		// CR 701.17a. EventMill is the post-event twin and it fires per
 		// CARD, after the move, while this window is one per
 		// INSTRUCTION and opens before any card has left the library.
 		// Reusing the key rather than minting a sentinel is what

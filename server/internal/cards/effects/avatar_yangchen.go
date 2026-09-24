@@ -21,9 +21,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Airbender's shape with the count on the clause instead of an
 // OptionalPrompt: this trigger has no printed "may" on whether it
 // goes on the stack, only on how many targets it takes, so Min 0 on
-// the target spec is what "up to one" means here. "Other" is enforced
-// at resolution — TargetSpec is built once at Register, with no
-// InstanceID yet to exclude.
+// the target spec is what "up to one" means here. "Other" is exact:
+// the clause is built per trigger through AnotherTarget
+// (TriggeredAbility.TargetsFrom, which is handed the source), so the
+// picker excludes THIS Yangchen by instance rather than relying on
+// AirbendOtherTarget's resolution-time self-check to decline a pick
+// that should never have been offered.
 //
 // No simplification.
 func init() {
@@ -35,7 +38,9 @@ func init() {
 		Triggered: []game.TriggeredAbility{{
 			Watches:   []game.EventKind{game.EventCast},
 			AppliesTo: YouCastYourSecondSpellEachTurn,
-			Targets:   TargetPermanent("up to one other target nonland permanent", Nonland()).WithCount(0, 1),
+			TargetsFrom: AnotherTarget(func(other CardPredicate) *game.TargetSpec {
+				return TargetPermanent("up to one other target nonland permanent", Nonland(), other).WithCount(0, 1)
+			}),
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
 				return game.NewTriggeredItem(source, "Avatar Yangchen — airbend a nonland permanent",
 					AirbendOtherTarget)

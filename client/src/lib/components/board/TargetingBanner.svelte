@@ -14,8 +14,27 @@
   } from "../../targeting";
   import Icon from "../Icon.svelte";
   import { doubledTriggerLabel } from "../../triggerDoubling";
+  import { targetPriceSummary } from "../../targetPrices";
+  import type { GameView } from "../../protocol";
+
+  // `view` names the targets in the #1296 price line. Optional: a
+  // banner mounted without it simply shows no price line.
+  let { view }: { view?: GameView | null } = $props();
 
   const state = $derived($targeting);
+  // #1296: an ability whose price reads its target (Dragonfire
+  // Blade's "{1} less for each color of the creature it targets")
+  // shows each price with the targets that pay it. An equip's one
+  // click is also its confirm, so this is the last place the price is
+  // visible before it is paid.
+  const priceLine = $derived.by(() => {
+    const prices = state?.ability?.prices;
+    if (!prices || !view) return "";
+    const names = new Map<string, string>();
+    for (const c of view.battlefield.cards) names.set(c.instance_id, c.name);
+    for (const p of view.seats) names.set(p.id, p.name);
+    return targetPriceSummary(prices, (id) => names.get(id));
+  });
   const count = $derived(state ? legalTargetCount(state) : -1);
   // S20 sub-PR 5: multi-target clauses show the pick tally and a
   // Done button instead of completing on the first click.
@@ -41,6 +60,13 @@
         return "a permanent";
       case "stack_spell":
         return "a spell on the stack";
+      // #1211, CR 115.4. An ability on the stack is drawn in the same
+      // overlay row a spell is, so the sentence is the only thing that
+      // tells a player which half of the stack they may click.
+      case "stack_ability":
+        return "an ability on the stack";
+      case "stack_item":
+        return "a spell or ability on the stack";
       case "card_in_graveyard":
         return "a card in a graveyard";
       default:
@@ -86,6 +112,9 @@
       {/if}
       {#if multi}
         <span class="count">· {tally}</span>
+      {/if}
+      {#if priceLine}
+        <span class="count">· costs {priceLine}</span>
       {/if}
     </span>
     {#if multi}

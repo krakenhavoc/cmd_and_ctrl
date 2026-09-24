@@ -269,6 +269,9 @@ looks for the source in this order:
    this dies, it deals 2 damage" from a creature with infect deals ordinary
    damage. A card with that shape ships with a caveat or waits.
    *In scope:* the stack read. *Out of scope:* durable LKI.
+   **Since 2026-09-24 (#1396, amendment at the end of this ADR) the
+   engine has durable LKI, and the non-combat tail reads lifelink and
+   deathtouch off it; this step is closed for those two.**
 
 A source that is a stack **ability** reads its source permanent, which is
 what "this creature deals damage" means. An ability whose source has left
@@ -553,6 +556,9 @@ No legal-move enumerator changes. None of this adds a move or a prompt kind.
 ## Decision 8 — Out of scope, stated
 
 - Durable post-departure LKI for damage sources (Decision 2, step 4).
+  **Closed for lifelink and deathtouch by the
+  [2026-09-24 amendment](#amendment-2026-09-24--decision-2-step-4-is-closed-a-departed-source-keeps-its-lifelink-and-deathtouch-1396--accepted--s38)
+  (#1396).**
 - Batched counter replacements across simultaneous damage (Decision 5).
 - Damage dealt "as though its source had wither" or "as though its source
   had infect" when the source has neither keyword: game-level (Everlasting
@@ -833,3 +839,372 @@ this ADR's: [ADR 0057](0057-win-and-lose-by-effect.md) Decision 7 gives
 every elimination its cause, and for poison that cause is `"poison"`,
 shown as "(10 poison counters)", whether or not this ADR ships. No
 reveal-strip cue.
+
+## Amendment 2026-09-24 — Decision 2 step 4 is closed: a departed source keeps its lifelink and deathtouch (#1396) · Accepted · S38
+
+Issue [#1396](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1396).
+Decision 2 step 4 and Decision 8's first bullet deferred "durable
+post-departure LKI for damage sources", because the engine had no store
+to read it from. [ADR 0018's 2026-09-24 amendment](0018-triggers-on-the-stack.md)
+(#1379, Decisions 12-13) added one: `Game.lastKnownPermanents`, one
+`PermanentInfo` per departed permanent OBJECT for the rest of the turn,
+holding its post-layer `Characteristic` (abilities included) and its
+controller. This amendment wires it into the non-combat damage tail.
+Infect, wither and toxic are not wired into the tail on `develop` yet
+(PR 2 of this ADR), so the amendment covers lifelink and deathtouch
+only; the reader it adds is the one PR 2 extends.
+
+### What was wrong
+
+`effectDamageTailLocked` (`server/internal/game/damage_tail.go`) read
+the source's keywords through `findBattlefieldCard` and nothing else. A
+source that had left carried neither keyword. "When this creature dies,
+it deals 2 damage to any target" from a creature wearing a Basilisk
+Collar dealt plain damage. A lifelinker killed in response to Warstorm
+Surge dealt its last-known power (#1379) and gained nobody anything.
+Weaker than printed (CR 608.2h, CR 702.15b, CR 702.2b).
+
+### Decision 9. The tail reads the departed object's record
+
+`effectDamageTailLocked(kind, sourceID, obj *ObjectRef)` now reads, in
+order:
+
+1. **The live permanent**, exactly as before, while the source is on
+   the battlefield — and, when `obj` is given, only if the live card is
+   that object (same `ObjectEpoch`).
+2. **Otherwise the departed object's record**
+   (`departedDamageSourceLocked`): `deathtouch` from its
+   `Characteristic.Abilities`, and `lifelinkTo` = its recorded
+   `Controller`. The controller that is credited is the one the object
+   had, not the card's owner and not whoever controls the card now.
+3. **Otherwise nothing**, as before: a spell, an emblem, a card that
+   was never on the battlefield this turn.
+
+The combat tail is unchanged. A combat damage source is on the
+battlefield when its tail is built, or has a CR 510.1c frame that
+snapshotted it already.
+
+### Decision 10. Which object a source names
+
+A damage call names its source two ways, and the record is keyed by
+object (CR 400.7), so each way needs a rule.
+
+- **By object** — the new `Game.DealDamageFromObjectForEffect(ObjectRef,
+  target, amount)`, reached from the catalog as
+  `effects.DealDamage{SourceObject: &ref}`. The answer is that object's
+  record and nothing else. A card that left and came back is a new
+  object; the permanent on the battlefield is not read, because it
+  dealt nothing. Warstorm Surge and Murderous Redcap take the ref from
+  `ctx.Trigger().Object.Ref()`, the #1379 object snapshot, so the
+  damage is the departed creature's even after a blink in response.
+- **By instance ID** — every existing caller. The source is the LAST
+  battlefield object the card was, and only while the card has not moved
+  since it left: its current epoch is exactly one past the record's.
+  That is the dies trigger's case (the creature is in the graveyard it
+  went to). It excludes a card that has moved on — bounced and then cast,
+  died and then exiled from the graveyard — and it can never answer for
+  an older object once the card has been on the battlefield again,
+  because the newer record is the last one. A token that died is in no
+  zone at all (CR 704.5d) and cannot come back (CR 111.8), so its last
+  record answers.
+
+The instance-ID rule is what #1396 proposed. The by-object entry point
+is added because the instance-ID rule cannot tell "the creature the
+trigger was about" from "the same card, back as a new object, now on
+the battlefield": the live read answers first. Warstorm Surge's
+creature blinked in response would otherwise deal the old object's
+damage with the new object's keywords, which is stronger than printed
+whenever the new object has a keyword the old one lacked.
+
+### Decision 11. Tapped status rides the record
+
+`PermanentInfo` gains `Tapped`. Tapped is a status (CR 110.5), not a
+characteristic, but it is last-known information all the same, and one
+card needs it: Mana Vault's draw-step trigger re-checks "if this
+artifact is tapped" when it resolves (CR 603.4). A Vault destroyed in
+response is judged tapped or untapped as it last existed, and deals its
+damage from the departed object. The field rides Clone, RestoreFrom and
+the persisted snapshot with the rest of the record, and adds no wire
+field.
+
+### Cards
+
+- **Warstorm Surge** ships `full`: the caveat about lifelink and
+  deathtouch is gone.
+- **Murderous Redcap** loses the same caveat. Persist is still not
+  implemented and its caveat stands.
+- **Mana Vault**'s caveat narrows. A Vault that left now deals its
+  damage. A triggered item carries its source's card and not its object
+  epoch (`StackItem.SourceEpoch` is stamped on activated items only), so
+  a Vault that leaves and comes back before the trigger resolves is
+  judged as the new Vault, which normally enters untapped.
+
+No other catalog card declared this gap. Every "when this dies, it
+deals damage" card now carries the departed creature's lifelink and
+deathtouch through the instance-ID rule with no change to its file.
+
+### Still not covered
+
+- ~~**The source's other last-known characteristics on the damage
+  event.**~~ **Closed by #1417**, Decision 12 below. The damage
+  event's `SourceLKI` now comes from the same record.
+  [#1417](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1417).
+- ~~**A trigger's source object.**~~ **Closed by
+  [#1418](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1418)**:
+  every ability item carries `StackItem.SourceObject`, and Mana Vault
+  reads its draw-step "this artifact" through
+  `effects.Context.SourceRef()`. See
+  [ADR 0018's 2026-09-24 source-object amendment](0018-triggers-on-the-stack.md).
+- **Infect, wither and toxic** join the same reader when PR 2 wires them
+  into the tail. `departedDamageSourceLocked` returns the whole record,
+  so they need no new lookup.
+
+## Amendment 2026-09-24 (follow-up) — the damage event's source characteristics come from the same record (#1417) · Accepted · S38
+
+Issue [#1417](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1417),
+the first "Still not covered" bullet above. Decision 9 read a departed
+source's lifelink and deathtouch from its `lastKnownPermanents` record.
+The same tail also takes `sourceLKI`, the characteristics CR 702.16e
+protection reads, and that still came from `damageSourceLKILocked`,
+which reads the card in whatever zone holds it now. A creature painted
+red that died dealt colourless damage through protection from red. A
+printed-red creature made colourless had its damage prevented. Both are
+wrong under CR 608.2h. The first is stronger than printed for the
+damage.
+
+### Decision 12. One record answers every source question
+
+When `departedDamageSourceLocked` answers in `effectDamageTailLocked`
+(`server/internal/game/damage_tail.go`), `t.sourceLKI` becomes a copy
+of `rec.Characteristic` (colours, types, abilities, controller). The
+controller comes from `rec.Controller` when the characteristic has
+none, which is the rule `SourceCharacteristics` uses. The epoch rules
+are Decision 10's, unchanged:
+
+- **By object** (`DealDamageFromObjectForEffect`, `DealDamage{SourceObject}`):
+  the named object's record. A card that came back is a new object,
+  and its colour is never read for damage the old object dealt.
+- **By instance ID**: the card's last record, and only while its
+  current epoch is exactly one past it.
+
+Everything else keeps the current-zone read from #662:
+
+- a spell on the stack, which has no record;
+- a card that has moved on, for example bounced and then cast, which
+  is two zone changes past its record;
+- a live permanent.
+
+The keywords and the characteristics now come from the same record,
+so they cannot describe different objects.
+
+The catalog's colour-testing damage replacements read the same value.
+`effects.damageSourceCharacteristics` (`server/internal/cards/effects/damage_source.go`)
+returns `ReplacementEvent.SourceLKI`, and falls back to a lookup only for
+an event created without one, which no engine entry point does. Torbran,
+Thane of Red Fell, Ojer Axonil, Deepest Might and Mechanized Warfare
+use it for "a red (or artifact) source you control". Before this they
+looked the card up in its current zone.
+
+### Cards
+
+No catalog caveat named this gap. The proof is played through real
+cards (`server/internal/cards/effects/departed_source_colour_test.go`).
+A black-red Murderous Redcap is turned blue by Cerulean Wisps in
+response to its enter trigger and then dies:
+
+- a creature with protection from blue takes none of its damage;
+- Torbran, Ojer Axonil and Mechanized Warfare do not raise it.
+
+### Still not covered
+
+- ~~**Target re-checks at resolution.**~~ **Closed by #1429**
+  ([ADR 0072 amendment 2026-09-24 (#1429)](0072-protection.md)).
+  `stackItemSourceLocked` (`game/targets.go`) re-checked an ability's
+  targets (CR 608.2b) against its source's current-zone card, not its
+  last-known one. It now reads the same `lastKnownPermanents` record,
+  by the item's `SourceObject`.
+  [#1429](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1429).
+- ~~**Controller and type matchers.** Four catalog damage
+  replacements that test only the source's controller or type
+  (Angrath's Marauders, the batch 28 helper, Gratuitous Violence,
+  Inquisitor's Flail) still look the card up.~~ **The four
+  replacements are closed by #1430**, Decision 13 below.
+  `EventDealDamage` **triggers are still not covered** — their event
+  carries no snapshot at all, so the fix needs a `SourceLKI` on
+  `game.Event` first.
+  [#1430](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1430).
+- **Combat and the manual mark.** These keep `damageSourceLKILocked`.
+  A combat source is on the battlefield or has a CR 510.1c frame, and
+  the sandbox mark is not a rules path.
+
+## Amendment 2026-09-24 (PR 2) — the write side ships, with the first card wave · Accepted · S40
+
+Issue [#748](https://github.com/krakenhavoc/cmd_and_ctrl/issues/748).
+PR 2 is built as Decisions 1 to 4 describe it. This records where the
+code differs from the text above, and what was pulled forward or left.
+
+### What differs from the text
+
+- **The tail's fields.** Decision 2 lists `infect`, `wither` and
+  `toxicTotal` as three fields. They are one, `damageTail.result`, of
+  the read side's `DamageResultSource` type (#1082), so the tail's two
+  landing functions call the pure `DamageToCreature` / `DamageToPlayer`
+  that the read side already pinned. `controller` is its own field, as
+  written.
+- **The reader.** Decision 2 names one `damageSourceTraitsLocked(sourceID)`.
+  The engine has one TRAITS struct and two readers that differ only in
+  what they are handed: `damageSourceTraitsOfCard` (a live permanent,
+  or a spell on the stack) and `damageSourceTraitsOfAbilities` (a
+  departed object's #1396 record). Where the source is FOUND stays in
+  the two builders, because the combat and the effect builders already
+  look in different places for the reasons the 2026-09-24 amendments
+  give. Deathtouch, lifelink and the three results come out of the same
+  call either way, which is the #711 point.
+- **Counters are placed after `EventDealDamage`, on both targets.**
+  Decision 3's pseudocode put the -1/-1 placement inside
+  `applyDamageToPermanentLocked`, ahead of the event; Decision 4 put the
+  poison after it. Both now come after the event, from one helper
+  (`placeDamageResultCountersLocked`): `applyDamageToPermanentLocked`
+  reports how many -1/-1 counters are owed rather than placing them. The
+  log reads "dealt 2 damage", then the counters. Nothing a rule can see
+  depends on the order inside the one action.
+- **Seven of the "eight dedupe sites" move, not eight.** Every keyword
+  GRANT helper appends through `game.AppendKeywordAbility`:
+  `GrantToAttached`, `LoseAllAbilities`' keep list, `KeywordGrant` (so
+  `TribalKeywordGrant`), `GrantKeywordUntilEOT`, `b16GrantKeywords`,
+  `b43`'s conditional grant and `attachments_batch3`'s. The synthesised
+  static that re-applies a card's own PRINTED keywords
+  (`appendKeywordsTo`) keeps its plain dedupe on purpose:
+  `printedCharacteristic` has already put the printed keywords in the
+  layer-0 baseline, so appending a printed `toxic 1` through the
+  cumulative rule would count it twice. The single-keyword grants that
+  name a fixed redundant keyword (Intangible Virtue's vigilance, Whip of
+  Erebos' lifelink and the like) are left as they are; no toxic grant
+  goes through them.
+- **The importer** reads toxic's amount off the keyword-ability LINES,
+  the path protection already takes, and stamps each `toxic N` it finds.
+
+### Pulled forward from PR 3 and PR 5
+
+- **Client:** `KEYWORD_ICONS` has infect and wither (Decision 6's PR 2
+  item). The rest of PR 3 — the "(as poison)" / "(as -1/-1 counters)"
+  log suffixes, the `poison` log line, the `N/10` chip and the one
+  `TOX N` badge — is still to come. The poison chip, the stepper and
+  the marker already existed, so a player sees their poison count
+  today.
+- **Cards.** Owner policy says every new seam path ships with a real
+  card, so eight of PR 5's cards ship with the engine: Plague Myr,
+  Blighted Agent, Ichor Rats, Puncture Blast (wither from the stack),
+  Tainted Strike (infect granted until end of turn), Triumph of the
+  Hordes, Karumonix, the Rat King (the cumulative toxic grant) and
+  Bloated Contaminator (toxic, with the standard proliferate caveat).
+  Grafted Exoskeleton moves out of the wave, as the PR split allows: its
+  "whenever this becomes unattached" trigger has no event. The rest of
+  PR 5 and all of PR 6 remain.
+
+### Test plan status
+
+Items 1-6, 9-11, 14, 16, 17 and 20-21 are engine or importer tests
+(`game/infect_wither_toxic_tail_test.go`, `deck/infect_import_test.go`);
+item 8 and item 13's Doubling Season half are played through Tainted
+Strike, Puncture Blast and Plague Myr
+(`cards/effects/infect_wither_toxic_cards_test.go`). Item 7 (double
+strike) has no dedicated test: each combat damage step is its own damage
+event and so its own placement by construction. Items 22 and 23 are PR
+4's and PR 3's.
+
+The "Still not covered" bullet under the first 2026-09-24 amendment that
+says infect, wither and toxic "join the same reader when PR 2 wires
+them" is done: they read the departed record through
+`damageSourceTraitsOfAbilities`.
+
+## Amendment 2026-09-24 (follow-up 2) — the controller and type matchers read the same record (#1430) · Accepted · S38
+
+Issue [#1430](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1430),
+the second "Still not covered" bullet above. Decision 12 landed
+`effects.damageSourceCharacteristics` for the catalog's THREE
+COLOUR-testing damage doublers (Torbran, Ojer Axonil, Mechanized
+Warfare), but four more catalog damage replacements test only the
+source's controller or its type, and still called
+`g.LookupCardForEffect(ev.DamageSource)` directly at apply time
+instead of going through the helper:
+
+- `damageSourceControlledBy` (Angrath's Marauders and three siblings
+  — Solphim, Mayhem Dominus; Twinflame Tyrant; the batch 07 triple
+  doubler — that all share it), `angraths_marauders.go`.
+- `b28DamageSourceControlledBy` (Fated Firepower; also read by
+  Uncivil Unrest's counter-gated doubler, though that caller's own
+  `onBattlefield` check already excludes a departed source),
+  `batch28_helpers.go`.
+- Gratuitous Violence's own controller-and-type check,
+  `gratuitous_violence.go`.
+- Inquisitor's Flail's "another creature" dealer-type check,
+  `inquisitors_flail.go`.
+
+A direct current-zone lookup at apply time is wrong for the same
+reason Decision 12 fixed the colour readers: a source whose
+controller or type changed on the way out of the battlefield is a
+new object in its new zone (CR 400.7), and CR 608.2h says the
+question is asked about the object as it last existed. A stolen
+creature's "when this dies" damage is still attributed to the player
+who controlled it when it died, even though the graveyard card goes
+home to its owner the moment it leaves the battlefield. An animated
+permanent that dealt damage as a creature is still a creature's
+damage even though the animation does not follow the card to its new
+zone.
+
+### Decision 13. The controller and type matchers move onto the same helper
+
+Each of the four sites above now reads
+`effects.damageSourceCharacteristics(ev, g)` — the same `ev.SourceLKI`
+read Decision 12 already wired up — for the field it tests
+(`Characteristic.Controller`, or `Characteristic.Types` via the
+existing `hasFold` case-insensitive membership check), rather than a
+fresh lookup. `b28DamageSourceControlledBy` keeps its
+`g.LookupCardForEffect` lookup too, unchanged in shape, because two of
+its three call sites still need the live `game.Card` for fields the
+snapshot does not carry (instance ID, counters) — but only ever read
+it after also confirming the source is presently on the battlefield,
+so a departed source's wrong-zone card never reaches them under the
+wrong identity.
+
+No engine change: every fix is inside a catalog `AppliesTo` closure in
+`server/internal/cards/effects`.
+
+### Cards
+
+No catalog caveat named this gap, the same as Decision 12. The proof
+is a direct test of each registered `Spec`'s `AppliesTo` closure
+(`server/internal/cards/effects/departed_source_matcher_test.go`),
+the same technique `TestOjerAxonilLeavesCombatDamageAlone` already
+uses: a hand-built `ReplacementEvent` whose `DamageSource` names a
+REAL, contradicting current-zone card (an opponent's, or a
+noncreature's) and whose `SourceLKI` names the departed identity the
+source actually had when it dealt the damage.
+
+- Angrath's Marauders and Fated Firepower: a source I controlled when
+  it dealt the damage still triggers the doubler / the fire counters,
+  even though its current-zone card belongs to the opponent.
+- Gratuitous Violence: both halves of its test (creature, and mine)
+  are read from the snapshot independently — a source that was a
+  creature I controlled doubles; a source that was mine but NOT a
+  creature, or was a creature but the opponent's, does not.
+- Inquisitor's Flail: a dealer that was a creature when it dealt
+  combat damage to the equipped creature doubles the damage coming
+  back, even though its current-zone card is a plain artifact.
+
+Every test also drives the live-source fallback path (no `SourceLKI`,
+a real live card at `DamageSource`) to confirm the ordinary case is
+unchanged.
+
+### Still not covered
+
+- **`EventDealDamage` triggers.** Unchanged from the bullet above:
+  `game.Event` (as opposed to `game.ReplacementEvent`) carries no
+  source snapshot, so `combatDamageToPlayerBy`, `damageToPlayerBy` and
+  every trigger condition that reads `g.LookupCardForEffect(ev.Source)`
+  (`helpers.go`, `triggers_common.go`, several batch helpers) still
+  read the source's current zone. Needs a `SourceLKI` on `game.Event`
+  first, which is engine work, not a catalog fix.
+- **Combat and the manual mark**, unchanged from Decision 12's note:
+  both keep `damageSourceLKILocked`, a current-zone read, by design.

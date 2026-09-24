@@ -75,7 +75,7 @@ import (
 //	            (CR 400.7).
 //	Fog         combat damage that turn is prevented, non-combat
 //	            damage on the same turn is not, and the prevention is
-//	            gone the next turn (CR 615.6).
+//	            gone the next turn (CR 514.2).
 //
 // Plus the two whole-run checks #678 asks for: no EventEffectError
 // anywhere in the four turns, and a round-number check on every turn
@@ -274,7 +274,7 @@ func TestAvacynThemeDeckPlaysFourTurns(t *testing.T) {
 	// CR 702.12b land at once: the printed keyword on her, and the
 	// static grant on everything else you control.
 	advanceToMainOf(t, g, themeSeat)
-	firstRound := g.Turn.Number
+	firstRound := g.Turn.Round
 
 	bear := seedThemeCreature(g, me.ID, "Grizzly Bears", "Creature — Bear", 2, 2)
 	ogre := seedThemeCreature(g, opponent.ID, "Hulking Ogre", "Creature — Ogre", 5, 5)
@@ -311,8 +311,8 @@ func TestAvacynThemeDeckPlaysFourTurns(t *testing.T) {
 	// that every Wrath in the catalog destroyed an Avacyn.
 	advanceToStepOf(t, g, themeSeat, game.StepUpkeep)
 	advanceToMainOf(t, g, themeSeat)
-	if g.Turn.Number != firstRound+1 {
-		t.Fatalf("round at the second main phase = %d, want %d", g.Turn.Number, firstRound+1)
+	if g.Turn.Round != firstRound+1 {
+		t.Fatalf("round at the second main phase = %d, want %d", g.Turn.Round, firstRound+1)
 	}
 
 	castThemeSpell(t, g, me, hand["Wrath of God"])
@@ -372,8 +372,8 @@ func TestAvacynThemeDeckPlaysFourTurns(t *testing.T) {
 	// --- turn 3: Clone ----------------------------------------------
 	advanceToStepOf(t, g, themeSeat, game.StepUpkeep)
 	advanceToMainOf(t, g, themeSeat)
-	if g.Turn.Number != firstRound+2 {
-		t.Fatalf("round at the third main phase = %d, want %d", g.Turn.Number, firstRound+2)
+	if g.Turn.Round != firstRound+2 {
+		t.Fatalf("round at the third main phase = %d, want %d", g.Turn.Round, firstRound+2)
 	}
 
 	clone := hand["Clone"]
@@ -455,10 +455,10 @@ func TestAvacynThemeDeckPlaysFourTurns(t *testing.T) {
 	// --- turn 4: Reverberate, and the Clone goes home ----------------
 	advanceToStepOf(t, g, themeSeat, game.StepUpkeep)
 	advanceToMainOf(t, g, themeSeat)
-	if g.Turn.Number != firstRound+3 {
-		t.Fatalf("round at the fourth main phase = %d, want %d", g.Turn.Number, firstRound+3)
+	if g.Turn.Round != firstRound+3 {
+		t.Fatalf("round at the fourth main phase = %d, want %d", g.Turn.Round, firstRound+3)
 	}
-	// CR 615.6 / ADR 0013: the fog was turn-scoped and the cleanup
+	// CR 514.2 / ADR 0013: the fog was turn-scoped and the cleanup
 	// swept it.
 	if got := len(g.TurnScopedReplacements); got != 0 {
 		t.Errorf("turn-scoped replacements a turn after the fog = %d, want 0", got)
@@ -555,7 +555,7 @@ func TestAvacynThemeDeckPlaysFourTurns(t *testing.T) {
 	lockInAttacks(t, g)
 	advanceToStepOf(t, g, themeSeat, game.StepCombatDamage)
 	if got := oppLifeBeforeSwing - opponent.Life; got != 8 {
-		t.Errorf("combat damage the turn after a fog = %d, want 8 (CR 615.6 — the "+
+		t.Errorf("combat damage the turn after a fog = %d, want 8 (CR 514.2 — the "+
 			"prevention was 'this turn')", got)
 	}
 	// Vigilance came off the Scryfall record too, so she is still

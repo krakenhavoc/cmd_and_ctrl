@@ -48,7 +48,6 @@ func init() {
 			On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return attackDeclared(ev, source)
 			}, "Finneas, Ace Archer — a +1/+1 counter on each other token or Rabbit, then draw on total power 10", func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
 				var ids []uuid.UUID
 				for _, c := range g.BattlefieldCardsForEffect() {
 					if c.InstanceID == item.SourceCardID || c.Controller != item.Controller || !c.IsCreature() {
@@ -58,13 +57,18 @@ func init() {
 						ids = append(ids, c.InstanceID)
 					}
 				}
-				if err := b13PutCounterOnEach(ctx, ids); err != nil {
-					return err
-				}
-				if b43TotalPowerControlled(g, item.Controller) < 10 {
-					return nil
-				}
-				return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
+				// #1290: total power has to be read AFTER every
+				// counter in the batch has LANDED, not on the next
+				// line — any one of them can pause on a CR 616
+				// ordering prompt (a Doubling Season / Hardened
+				// Scales board), and reading before it resumes would
+				// undercount.
+				return b13PutCounterOnEachThen(NewContext(g, item), ids, func(g *game.Game) error {
+					if b43TotalPowerControlled(g, item.Controller) < 10 {
+						return nil
+					}
+					return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
+				})
 			}),
 		},
 	})

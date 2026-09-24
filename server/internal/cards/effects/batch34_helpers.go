@@ -366,18 +366,23 @@ func b34PutCounterThenDoubleCounters(ctx *Context) error {
 	if !ok {
 		return nil
 	}
-	if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
-		return err
-	}
-	c, found := ctx.Game.LookupCardForEffect(id)
-	if !found || !onBattlefield(ctx.Game, id) {
-		return nil
-	}
-	n := c.Counters[game.CounterPlusOne]
-	if n <= 0 {
-		return nil
-	}
-	return AddCounter{Target: id, Kind: game.CounterPlusOne, N: n}.Apply(ctx)
+	item := ctx.Item
+	// #1290: "double the number of +1/+1 counters" reads the count
+	// AFTER the first counter LANDS, not on the next line — a
+	// Doubling Season / Hardened Scales board pauses that placement
+	// on a CR 616 prompt, and reading the count before it resumes
+	// would double the pre-placement number.
+	return ctx.Game.AddCounterThenForEffect(id, game.CounterPlusOne, 1, func(g *game.Game, _ int) error {
+		c, found := g.LookupCardForEffect(id)
+		if !found || !onBattlefield(g, id) {
+			return nil
+		}
+		n := c.Counters[game.CounterPlusOne]
+		if n <= 0 {
+			return nil
+		}
+		return AddCounter{Target: id, Kind: game.CounterPlusOne, N: n}.Apply(NewContext(g, item))
+	})
 }
 
 // b34DrawPerCreatureYouControlMatching is "draw a card for each
@@ -477,7 +482,7 @@ func b34DestroyChosenAndAllOthersWithItsName(ctx *Context) error {
 		if !onBattlefield(ctx.Game, target) {
 			continue
 		}
-		if err := (DestroyTarget{Target: target}).Apply(ctx); err != nil {
+		if err := (DestroyTarget{Target: target}).Apply(ctx.asGroupMember()); err != nil {
 			return err
 		}
 	}

@@ -79,7 +79,7 @@ func TestTwoStasisSkipTheUntapStepOnce(t *testing.T) {
 	})
 
 	trace := walkSteps(t, g, 200, func() bool {
-		return g.Turn.ActiveSeat == 0 && g.Turn.Step == game.StepUpkeep && g.Turn.Number >= 2
+		return g.Turn.ActiveSeat == 0 && g.Turn.Step == game.StepUpkeep && g.Turn.Round >= 2
 	})
 
 	// Only ordering prompts are counted: two Stasis also queue their

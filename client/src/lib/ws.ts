@@ -1,9 +1,9 @@
 import { type Writable } from "svelte/store";
 import { recordClientError } from "./clientErrors";
-import { OFFLINE_ERROR_CODE, offlineSendMessage } from "./connectionBanner";
+import { OFFLINE_ERROR_CODE, offlineSendMessage, REWIND_NOTICE } from "./connectionBanner";
 import { describeThrown, guardedWritable } from "./guardedStore";
 import { redactSecrets, redactURL } from "./redact";
-import { currentSession } from "./session";
+import { checkSessionAlive, currentSession } from "./session";
 import {
   PROTOCOL_VERSION,
   uuid,
@@ -21,7 +21,19 @@ import {
 // "reconnecting" is the automatic-retry state after a non-deliberate
 // close (network blip, server restart). Deliberate teardown via
 // disconnect() lands on "disconnected" and never retries.
-export type ConnectionStatus = "connecting" | "connected" | "reconnecting" | "disconnected";
+//
+// "session_ended" is the other terminal state (#1475, per the
+// owner's 2026-09-24 decision 5 on #515): the backoff ladder gave up
+// asking "is the server just restarting?" and asked the server
+// directly instead — GET /me came back 401, so the credential this
+// socket is dialling with is gone, not merely unreachable. Nothing
+// redials from here; the player has to sign in again.
+export type ConnectionStatus =
+  | "connecting"
+  | "connected"
+  | "reconnecting"
+  | "disconnected"
+  | "session_ended";
 
 export type LogDirection = "sent" | "received" | "error" | "info";
 
@@ -114,6 +126,15 @@ export function reconnectDelayMs(attempt: number, rand: () => number = Math.rand
   const nominal = Math.min(RECONNECT_CAP_MS, RECONNECT_BASE_MS * 2 ** attempt);
   return Math.floor(nominal / 2 + rand() * (nominal / 2));
 }
+
+// DEAD_SESSION_CHECK_AFTER_FAILURES is how many consecutive failed
+// dials the ladder serves before it stops guessing and asks the
+// server directly whether this session is still good (#1475, per the
+// owner's 2026-09-24 decision 5 on #515). Small enough to catch a
+// revoked or expired session quickly; large enough that one ordinary
+// drop — the close that opens every reconnect, deploy included —
+// never fires a network call nobody asked for.
+export const DEAD_SESSION_CHECK_AFTER_FAILURES = 3;
 
 // Close codes the server sends on purpose. They used to share one
 // terminal branch, which is the whole of #518: hub.Shutdown writes
@@ -220,6 +241,12 @@ export class GameClient {
     // the error frame's `reason` field carries for this code. See
     // ErrorPayload.reason (protocol.ts).
     reason?: string;
+    // #1533: the id of the action frame this error answers — the
+    // server echoes the refused frame's id on its error frame, and
+    // sendAction returns it. Lets a caller claim the refusal of ITS
+    // action rather than whatever was refused last (the attack-with-all
+    // pickers). Absent for a client-side error (offline).
+    replyTo?: string;
   } | null> = guardedWritable(null, "lastError");
   // reconnectAttempt is how many automatic reconnects have been
   // scheduled since the last successful open, and 0 whenever the
@@ -228,16 +255,39 @@ export class GameClient {
   // number a "reconnecting (attempt 3)" banner reads (#518, rendered
   // by #519).
   readonly reconnectAttempt: Writable<number> = guardedWritable(0, "reconnectAttempt");
+  // rewindNotice publishes the "the table rewound" toast (#523, ADR
+  // 0044 decision 5): set only when a snapshot's restore generation
+  // changed AND its seq is lower than the highest seq this client had
+  // already rendered — a real rewind, never an ordinary generation
+  // bump that landed at or after what was already shown. Auto-clears
+  // on its own timer, same shape as lastError, so it never lingers.
+  readonly rewindNotice: Writable<{ message: string; at: Date } | null> = guardedWritable(
+    null,
+    "rewindNotice",
+  );
   private errorClearTimer: ReturnType<typeof setTimeout> | null = null;
+  private rewindNoticeClearTimer: ReturnType<typeof setTimeout> | null = null;
 
   private socket: WebSocket | null = null;
-  // highestSeq tracks the largest `seq` seen so far. The protocol
-  // guarantees monotonically non-decreasing seq; a duplicate is
-  // possible during a join-while-action race and is treated as a
-  // no-op state refresh (same state, same seq). Reset on setURL /
-  // connect / socket open — the watermark only orders frames within
-  // one connection to one server incarnation.
+  // highestSeq tracks the largest `seq` seen so far, WITHIN the
+  // current restore generation (#523, ADR 0044 decision 5). The
+  // protocol guarantees seq is monotonically non-decreasing only
+  // within one generation; a duplicate is possible during a
+  // join-while-action race and is treated as a no-op state refresh
+  // (same state, same seq). Reset on setURL / connect (a deliberate
+  // switch to a different game or a fresh mount) and, within
+  // dispatchFrame, explicitly whenever a snapshot's `generation`
+  // differs from `this.generation` — NOT reset on every socket open
+  // any more. See `generation` below for why.
   private highestSeq = 0;
+  // generation is the restore generation of the last snapshot this
+  // client rendered, or null before the first one. It persists across
+  // a reconnect to the SAME game (unlike highestSeq's old behaviour)
+  // so that when the first post-reconnect snapshot arrives, dispatchFrame
+  // can tell a genuine rewind (generation changed, seq went backwards)
+  // apart from an ordinary resumed connection (generation unchanged).
+  // Reset only by resetSnapshotTracking, i.e. a deliberate setURL/connect.
+  private generation: number | null = null;
   // reconnectTimer is the pending automatic-reconnect timeout, or
   // null when none is scheduled. Non-null doubles as the "we are in
   // a retry loop" flag; deliberate disconnect()/connect() cancel it.
@@ -245,6 +295,30 @@ export class GameClient {
   // reconnectAttempts counts consecutive failed opens since the last
   // successful one — the exponent for the backoff ladder.
   private reconnectAttempts = 0;
+  // reconnectGeneration increments every time the backoff ladder is
+  // reset for real — a successful open, or a deliberate connect() /
+  // disconnect() — never on a mere failed dial. A dead-session check
+  // captures it before making its network call; if it no longer
+  // matches when the check resolves, the world has moved on (the
+  // socket came back, or the client was torn down) and the stale
+  // verdict is discarded rather than acted on.
+  private reconnectGeneration = 0;
+  // sessionCheckDone / sessionCheckInFlight bound the dead-session
+  // probe to ONE per failure streak: done once a probe has resolved
+  // (so a long outage doesn't keep hitting the server), and in-flight
+  // while its fetch is still out (so two probes never race). Both are
+  // cleared alongside reconnectAttempts on the next successful open,
+  // so a fresh run of failures after a healthy stretch gets a fresh
+  // probe.
+  private sessionCheckDone = false;
+  private sessionCheckInFlight = false;
+  // actionsSent counts action frames that left the socket. A timed
+  // bluff (#1307) reads it to tell whether the viewer did anything
+  // while it was waiting, whichever of the many send paths they used.
+  private sentActions = 0;
+  get actionsSent(): number {
+    return this.sentActions;
+  }
   // recordFrames gates every capture. Kept as a plain boolean rather
   // than reading a store per frame so the disabled path is a single
   // branch on the hot receive loop.
@@ -346,13 +420,26 @@ export class GameClient {
       if (!isCurrent()) return;
       this.status.set("connected");
       this.resetReconnectAttempts();
-      // Reset the seq watermark on every open, including automatic
-      // reconnects to the same URL: a server restart restarts seq from
-      // scratch, and keeping the old watermark would silently drop
-      // every snapshot on the new connection. Snapshots are idempotent
-      // full states, so re-accepting one duplicate frame after a
-      // same-incarnation reconnect is harmless — a frozen board is not.
-      this.highestSeq = 0;
+      // #523: this used to unconditionally zero highestSeq here, on
+      // every open including automatic reconnects to the same URL —
+      // because a server restart restarts seq from an earlier value,
+      // and without SOME reset a rewound snapshot would look like a
+      // dropped frame and get ignored. That masking worked, but only
+      // by accident: it also meant the guard below was toothless for
+      // one whole connection after every reconnect, and "fixing" that
+      // by making the watermark durable would have permanently wedged
+      // every rewound game against a stale board (see docs/protocol.md
+      // and ADR 0044 decision 5).
+      //
+      // The real fix is explicit: dispatchFrame now tracks `generation`
+      // (persists across a reconnect, unlike the old highestSeq reset)
+      // and treats a generation CHANGE as the signal to discard and
+      // re-render, regardless of highestSeq. That is a correct trigger
+      // even when highestSeq is left exactly as it was — a genuine
+      // rewind always shows up as a generation change, and within an
+      // UNCHANGED generation seq is guaranteed non-decreasing, so there
+      // is nothing left for a blind reset here to protect against.
+      // Deliberately not resetting highestSeq on open any more.
       this.append("info", connectLogLine(url));
     });
 
@@ -395,6 +482,7 @@ export class GameClient {
     this.reconnectAttempts += 1;
     this.reconnectAttempt.set(this.reconnectAttempts);
     this.append("info", `reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
+    this.maybeCheckDeadSession();
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       // A deliberate connect() may have raced the timer; don't stack
@@ -404,12 +492,61 @@ export class GameClient {
     }, delay);
   }
 
+  // maybeCheckDeadSession fires the #1475 probe once a streak of
+  // failed dials reaches DEAD_SESSION_CHECK_AFTER_FAILURES, and runs
+  // ALONGSIDE the backoff ladder rather than instead of it — a server
+  // that is only restarting must keep being retried at full speed
+  // while the probe is in flight, so this never delays or cancels the
+  // reconnect timer scheduleReconnect just set. Only a definite "dead"
+  // verdict changes anything, from inside the probe's own resolution.
+  private maybeCheckDeadSession(): void {
+    if (this.sessionCheckDone || this.sessionCheckInFlight) return;
+    if (this.reconnectAttempts < DEAD_SESSION_CHECK_AFTER_FAILURES) return;
+    this.sessionCheckInFlight = true;
+    const generation = this.reconnectGeneration;
+    void checkSessionAlive().then((result) => {
+      this.sessionCheckInFlight = false;
+      this.sessionCheckDone = true;
+      // Stale: a successful open or a deliberate connect()/disconnect()
+      // happened while the fetch was out. Whatever it found no longer
+      // describes the world this client is in.
+      if (generation !== this.reconnectGeneration) return;
+      if (result === "dead") {
+        this.append("info", "session check: server says 401 — the session is gone");
+        this.enterSessionEnded();
+        return;
+      }
+      this.append("info", `session check: ${result} — keeping the reconnect ladder`);
+    });
+  }
+
+  // enterSessionEnded stops the reconnect ladder for good and moves to
+  // the terminal "session_ended" status the connection banner reads as
+  // "sign in again" (#1475). It closes any live socket the same way
+  // disconnect() does, so a close event that socket still delivers is
+  // ignored (isCurrent() below is keyed off `this.socket`) rather than
+  // scheduling one more reconnect on top of this.
+  private enterSessionEnded(): void {
+    this.cancelReconnect();
+    const socket = this.socket;
+    this.socket = null;
+    this.status.set("session_ended");
+    socket?.close();
+  }
+
   // resetReconnectAttempts zeroes the backoff exponent and the store
-  // the UI reads off it. The two must move together — a stale attempt
-  // count on a healthy connection is a banner that lies.
+  // the UI reads off it, and — since #1475 — the dead-session probe's
+  // own bookkeeping and generation counter. The three must move
+  // together: a stale attempt count on a healthy connection is a
+  // banner that lies, and a probe left "in flight" or "done" from a
+  // previous failure streak would either never fire again or fire on
+  // top of a connection that has since recovered.
   private resetReconnectAttempts(): void {
     this.reconnectAttempts = 0;
     this.reconnectAttempt.set(0);
+    this.sessionCheckDone = false;
+    this.sessionCheckInFlight = false;
+    this.reconnectGeneration += 1;
   }
 
   // dialURL is the URL to dial right now: the target this client was
@@ -452,13 +589,17 @@ export class GameClient {
     this.open();
   }
 
-  // resetSnapshotTracking clears the seq watermark and the rendered
-  // snapshot — used on deliberate retarget (setURL) / connect so a
-  // new game's frames are never compared against an old game's seqs.
-  // NOT used on automatic reconnect: the stale board stays rendered
-  // under the "reconnecting" tag until the fresh snapshot lands.
+  // resetSnapshotTracking clears the seq watermark, the tracked
+  // generation, and the rendered snapshot — used on deliberate
+  // retarget (setURL) / connect so a new game's frames are never
+  // compared against an old game's seqs or generation. NOT used on
+  // automatic reconnect: the stale board stays rendered under the
+  // "reconnecting" tag until the fresh snapshot lands, and a rewind on
+  // an automatic reconnect is handled explicitly by dispatchFrame's
+  // generation check instead (#523).
   private resetSnapshotTracking(): void {
     this.highestSeq = 0;
+    this.generation = null;
     this.snapshot.set(null);
     this.lastSeq.set(0);
   }
@@ -501,7 +642,7 @@ export class GameClient {
   private raiseError(
     code: string,
     message: string,
-    extra: { missing?: string[]; cardID?: string; reason?: string } = {},
+    extra: { missing?: string[]; cardID?: string; reason?: string; replyTo?: string } = {},
   ): void {
     this.lastError.set({ code, message, at: new Date(), ...extra });
     if (this.errorClearTimer !== null) {
@@ -510,6 +651,23 @@ export class GameClient {
     this.errorClearTimer = setTimeout(() => {
       this.lastError.set(null);
       this.errorClearTimer = null;
+    }, ERROR_TOAST_TTL_MS);
+  }
+
+  // raiseRewindNotice publishes the "the table rewound" toast (#523)
+  // and (re)starts its own auto-clear timer. Deliberately its own
+  // store and its own timer rather than reusing lastError: a rewind
+  // is not a rejection of anything the player did, and a real error
+  // arriving moments later must not be starved of the toast slot by
+  // a rewind notice that is still counting down.
+  private raiseRewindNotice(): void {
+    this.rewindNotice.set({ message: REWIND_NOTICE, at: new Date() });
+    if (this.rewindNoticeClearTimer !== null) {
+      clearTimeout(this.rewindNoticeClearTimer);
+    }
+    this.rewindNoticeClearTimer = setTimeout(() => {
+      this.rewindNotice.set(null);
+      this.rewindNoticeClearTimer = null;
     }, ERROR_TOAST_TTL_MS);
   }
 
@@ -580,6 +738,7 @@ export class GameClient {
     };
     const wire = JSON.stringify(frame);
     this.socket.send(wire);
+    this.sentActions++;
     this.recordFrame("out", frame, wire);
     this.append("sent", `action ${type} id=${id.slice(0, 8)}`);
     return id;
@@ -635,17 +794,43 @@ export class GameClient {
           this.append("error", "snapshot frame had no payload");
           break;
         }
-        // Protocol guarantees seq is monotonically non-decreasing.
+        // #523 / ADR 0044 decision 5: seq is monotonically
+        // non-decreasing only WITHIN one restore generation. A
+        // generation this client has not seen before means the
+        // server rebuilt the room from an earlier restore point on
+        // purpose (a restart), and the frame must be accepted
+        // regardless of its seq — that is a deliberate rewind, not a
+        // dropped or out-of-order frame. `this.generation === null`
+        // is "no snapshot rendered yet on this connection lifetime"
+        // (a fresh connect/setURL), which is never itself a change.
+        const generationChanged = this.generation !== null && p.generation !== this.generation;
+
         // Duplicate seqs can legitimately occur during a join-while-
-        // action race (same state captured twice); only older seqs
-        // indicate a real out-of-order delivery.
-        if (p.seq < this.highestSeq) {
+        // action race (same state captured twice); only an older seq
+        // under the SAME generation indicates a real out-of-order
+        // delivery. Skip the guard entirely on a generation change —
+        // that is exactly the case it must not catch.
+        if (!generationChanged && p.seq < this.highestSeq) {
           this.append(
             "error",
             `snapshot seq=${p.seq} older than highest=${this.highestSeq}; ignored`,
           );
           break;
         }
+
+        // The rewind toast fires only when the generation change
+        // actually moved the table backwards from what this client
+        // had already rendered — not on every restart, since most
+        // restore points land at or after the last thing a connected
+        // client saw. `highestSeq` here is still the PRE-this-frame
+        // watermark (it is not reset on open any more, see the "open"
+        // listener above), so it is exactly "the highest seq this
+        // client held" the owner decision asks for.
+        if (generationChanged && p.seq < this.highestSeq) {
+          this.raiseRewindNotice();
+        }
+        this.generation = p.generation;
+
         // Log the frame BEFORE applying it. #266: with the log line
         // last, a frame whose application throws is never logged, so
         // the attached log ends at the last frame that worked and the
@@ -655,7 +840,7 @@ export class GameClient {
         // out the log line that would have named the malformed frame.
         this.append(
           "received",
-          `snapshot seq=${p.seq} turn=${p.game?.turn?.number} seat=${p.game?.turn?.active_seat} step=${p.game?.turn?.step}`,
+          `snapshot seq=${p.seq} generation=${p.generation} turn=${p.game?.turn?.number} seat=${p.game?.turn?.active_seat} step=${p.game?.turn?.step}`,
         );
         this.highestSeq = p.seq;
         this.snapshot.set(p.game);
@@ -697,6 +882,7 @@ export class GameClient {
           missing: p?.missing,
           cardID: p?.card_id,
           reason: p?.reason,
+          replyTo: frame.id || undefined,
         });
         break;
       }

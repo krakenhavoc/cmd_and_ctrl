@@ -410,7 +410,7 @@ func hasEventFor(g *Game, kind EventKind, cardID uuid.UUID) bool {
 // --- #359: an Optional replacement must not pause an entry that has
 // no resume ---------------------------------------------------------
 
-// registerOptionalEntryReplacementForTest registers a CR 614.10 "may"
+// registerOptionalEntryReplacementForTest registers a "may"
 // that taps `cardID` on its way onto the battlefield, controlled by
 // `owner`. Caller must hold g.mu.
 func registerOptionalEntryReplacementForTest(g *Game, cardID, owner uuid.UUID) {
@@ -435,7 +435,7 @@ func registerOptionalEntryReplacementForTest(g *Game, cardID, owner uuid.UUID) {
 
 // TestOptionalReplacementDoesNotStrandAnUnresumableEntry is #359.
 //
-// The CR 614.10 "may" branch of the apply-loop used to queue its
+// The "may" branch of the apply-loop used to queue its
 // yes/no prompt unconditionally, while the EntryLifeCost branch
 // beside it has checked entryResumable since #268. A permanent
 // entering the battlefield by a route that cannot be resumed would
@@ -444,12 +444,11 @@ func registerOptionalEntryReplacementForTest(g *Game, cardID, owner uuid.UUID) {
 // answerable to no effect.
 //
 // The vehicle used to be the reanimation path. #478 gave that one a
-// resume, so the last unresumable entry is
-// putOntoBattlefieldFromZoneLocked — the hand / library "put onto the
-// battlefield" batch, which runs every card's pipeline against the
-// pre-entry board and then moves them together, a simultaneity a
-// per-card resume would break. The defect this pins is in the
-// apply-loop, not in any one entry site.
+// resume, and #1322 gave one to the hand / library "put onto the
+// battlefield" batch, so the last unresumable entry is the sandbox
+// move_card verb (moveCardByRefLocked), a manual move with no effect
+// behind it to finish. The defect this pins is in the apply-loop, not
+// in any one entry site.
 func TestOptionalReplacementDoesNotStrandAnUnresumableEntry(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[0]
@@ -461,10 +460,10 @@ func TestOptionalReplacementDoesNotStrandAnUnresumableEntry(t *testing.T) {
 
 	g.mu.Lock()
 	registerOptionalEntryReplacementForTest(g, cardID, owner.ID)
-	_, err := g.PutFromHandOntoBattlefieldForEffect(cardID, HandEntryOptions{})
 	g.mu.Unlock()
-	if err != nil {
-		t.Fatalf("PutFromHandOntoBattlefieldForEffect: %v", err)
+	if err := g.MoveCardByID(ZoneRef{Kind: ZoneHand, Owner: owner.ID},
+		ZoneRef{Kind: ZoneBattlefield}, cardID); err != nil {
+		t.Fatalf("MoveCardByID: %v", err)
 	}
 
 	if len(g.PendingChoices) != 0 {

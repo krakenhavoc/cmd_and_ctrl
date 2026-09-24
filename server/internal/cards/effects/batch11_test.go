@@ -843,18 +843,23 @@ func TestB11HauntedMireEntersTappedAndTapsForEither(t *testing.T) {
 	}
 }
 
+// #1337: the bounce is a resolution-time choice (ReturnOneYouControl
+// / ChoosePermanents), not a target picked when the trigger goes on
+// the stack.
 func TestB11GuildlessCommonsIsAColourlessKaroo(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	other := seedLandOnBattlefield(g, me.ID, "Forest", "Basic Land — Forest")
 	commons := playLandFromHand(t, g, "Guildless Commons", b11GuildlessCommonsOracle)
 	top100AssertEnteredTapped(t, g, commons, "Guildless Commons")
-	prompt := latestPickTarget(g, me.ID)
+	passPriorityAroundTable(t, g)
+	prompt := latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, me.ID)
 	if prompt == nil {
 		t.Fatal("the bounce trigger must ask which land to return")
 	}
-	pickCard(t, g, me.ID, other)
-	passPriorityAroundTable(t, g)
+	if err := g.ResolveOwnPermanents(prompt.ID, me.ID, []uuid.UUID{other}); err != nil {
+		t.Fatalf("ResolveOwnPermanents: %v", err)
+	}
 	if g.Battlefield.Contains(other) || !me.Hand.Contains(other) {
 		t.Error("the chosen land should be back in hand")
 	}

@@ -355,3 +355,66 @@ JSON on `uuid.UUID`'s `MarshalText`).
 never the turn boundary; `g.TurnTally.FirstEvent` and
 `g.EventsThisTurn()` are. AGENTS.md §"This turn" carries the same
 sentence for the catalog side.
+
+## Amendment (2026-09-23, #1341): a special action is a third batch boundary
+
+*Branch `fix/1341-special-action-batch`. Closes
+[#1341](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1341).*
+
+The batch boundary's own file comment (`event_batch.go`, #829) already
+declared its scope precisely: "there are exactly two such points" where
+play moves on, a resolution beginning and the cursor entering a step.
+That was one short. CR 116.2 special actions — foretell, suspend,
+turning a face-down permanent up — take place with no stack and no
+priority pass, so nothing about them was a resolution or a step change,
+and two of them taken back to back fell into the SAME batch. CR 603.2c
+counts an occurrence per event; two foretells are two events. Ranar the
+Ever-Watchful, built alongside #1320, is the card that found it and
+shipped with the gap as a declared caveat and a pinned test
+(`TestRanarTwoForetellsInOneWindowMakeOneSpirit`, now
+`TestRanarTwoForetellsInOneWindowMakeTwoSpirits`).
+
+- **`PerformSpecialAction` calls `beginEventBatchLocked`** after its
+  refusal checks (not offered, wrong window) and before it pays the
+  action's cost or its performer runs — so a refused special action
+  opens no batch, and everything a taken one emits (the mana payment,
+  the performer's own zone move, the terminal `EventSpecialAction`) is
+  one occurrence. The next special action, however soon after, opens
+  another.
+- **This is not a fourth exception bolted onto the rule; it is the
+  third instance of the same one.** "A batch is every event between two
+  points where play moves on" already covered it in spirit — a special
+  action is CR 116.2's own instance of "play moving on," parallel to a
+  resolution beginning and a step changing, and simply had no call site
+  yet. `event_batch.go`'s file comment, `beginEventBatchLocked`'s doc
+  comment and `resolving_item.go`'s doc comment (which shares the same
+  boundary for a different reason — clearing the CR 707.10 resolving
+  slot) are updated to say three points, not two plus a special case.
+- **The known SANDBOX-MANUAL gap, above, is unchanged.** A special
+  action has a rules occurrence to count; a hand-shoved `move_card`
+  bounce does not. Closing the special-action gap does not touch the
+  declared sandbox one — they were always two different claims, one
+  "no rules event, correctly one batch" and one "a real event, wrongly
+  sharing a batch," and only the second is what #1341 fixed.
+- **No new state.** The fix is a second call site for a function that
+  already existed; `Game.eventBatch`, `Game.oncePerBatchFired` and
+  their carry-through in `Clone` / `RestoreFrom` / the snapshot are
+  untouched.
+- **Proof card:** Ranar the Ever-Watchful
+  (`cards/effects/ranar_the_ever_watchful.go`) drops the caveat and its
+  test now asserts two Spirits for two foretells in one window;
+  `TestRanarTriggersOnceForOneExileOfMany` (one resolution exiling two
+  permanents is still one Spirit) is unchanged, pinning the boundary
+  that special actions did NOT move.
+- **Rebased onto #1355 (2026-09-24):** #1319's foretell discount
+  (`SpecialActionCostsLess`, `TheFirstOneThisTurn`) landed on `develop`
+  while this branch was in flight. That was Ranar's other caveat, so
+  with both closed the card carries none: `Completeness` moves to
+  `CompletenessFull` and the `Caveats` slice is removed rather than
+  left empty (`Register` rejects `CompletenessCaveats` with no
+  caveats, and an empty-but-present slice would be the same lie in a
+  different shape). The one remaining gap named in its doc comment —
+  the destroy/SBA exit carrying no cause, so Rest in Peace still
+  doesn't count — is a general engine limitation tracked in ADR 0013
+  and `docs/engine-seams.md`, not a Ranar-specific simplification, so
+  it does not reopen the caveat.

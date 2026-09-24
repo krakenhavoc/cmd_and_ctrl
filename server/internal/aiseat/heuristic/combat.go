@@ -262,6 +262,16 @@ func (p *Policy) decideAttack(st *state, moves []legal.Move) (aiseat.Decision, b
 		}
 	}
 
+	// #1409: no kill this turn, but maybe one next turn that nothing
+	// can stop in between. A committed race decides the whole attack —
+	// who swings, at whom, and that everyone else stays home — because
+	// its crack-back check counted on exactly that reserve (race.go).
+	if len(push) == 0 {
+		if plan := p.planRace(st, moves, focus); plan != nil {
+			return p.raceAttack(moves, plan)
+		}
+	}
+
 	best, bestVal, bestReason := -1, 0.0, ""
 	for i := range moves {
 		if moves[i].Kind != legal.KindAttack {
@@ -368,6 +378,11 @@ func (p *Policy) lethalPush(st *state, def *SeatEval) bool {
 	if def.Life <= 0 {
 		return false
 	}
+	// ADR 0057 Decision 6: damage can't finish a seat whose life
+	// can't make it lose, so an all-in swing at it is never lethal.
+	if def.CantLoseLife {
+		return false
+	}
 	blockers := defenderBlockers(st, def.ID)
 	// The swing is what is already committed to this seat plus
 	// everything still able to join it.
@@ -384,28 +399,117 @@ func (p *Policy) lethalPush(st *state, def *SeatEval) bool {
 		}
 	}
 
-	through := 0
-	var stoppable []int
+	return unblockedPower(st, def.ID, attackers, blockers) >= def.Life
+}
+
+// unblockedPower is the damage that connects when the defender blocks
+// as well as it can: each blocker stops at most one attacker, and only
+// an attacker it could legally block (couldBlock).
+//
+// The defender stops the biggest threats it is ABLE to stop. That is a
+// matching, not a count, and #1261 is what counting got wrong: the old
+// model let every untapped creature stand in front of any attacker, so
+// 22 attackers into 22 defenders connected for nothing even when seven
+// of the attackers were Drakes and five of the defenders could fly. A
+// Bear cannot block a Drake. Two heuristic seats sat behind exactly
+// that board, each with lethal on it, until the turn budget ran out.
+//
+// Greedy over attackers by power, keeping one only if the blocks
+// chosen so far can be re-matched to make room for it (Kuhn's
+// augmenting path). With the weight on the attacker side alone this
+// is exact — the blockable sets form a transversal matroid, where
+// greedy by weight is optimal — so the answer is the defender's true
+// best, never a guess in either direction. Boards are a few dozen
+// creatures a side, so the cubic worst case is nothing.
+//
+// Trample (#1504): a blocked trampler still connects for whatever its
+// blockers do not absorb (CR 702.19b), and a matching that counts it
+// as stopped never sees a one-Wurm edge — a Bear in front of a 7/7 is
+// 5 to the face, every turn. When the swing has a trampler, the answer
+// is the larger of two lower bounds: the matching's (every block holds
+// in full, which a blocked trampler's overflow can only add to) and
+// trampleBound's (the overflow, with the defender's blocks relaxed so
+// that it can only be undercounted). Both are lower bounds on the
+// defender's true best, so their maximum is too, and a swing without a
+// trampler never computes the second.
+//
+// Still deliberately simple about the rest of combat: menace would
+// only make the defender's job harder, and damage prevention is not
+// modelled, so it errs toward "not lethal" wherever it errs.
+func unblockedPower(st *state, defender string, attackers, blockers []*protocol.CardView) int {
+	through, _ := matchBlocks(attackers, blockers, func(a, b *protocol.CardView) bool {
+		return couldBlock(st, defender, a, b)
+	})
 	for _, a := range attackers {
-		n := 0
-		for _, b := range blockers {
-			if couldBlock(st, def.ID, a, b) {
-				n++
+		if hasKeyword(a, "trample") && a.Power > 0 {
+			return max(through, trampleBound(st, defender, attackers, blockers))
+		}
+	}
+	return through
+}
+
+// matchBlocks is unblockedPower's matching with the edge test as a
+// parameter, so the two-turn race (race.go) can ask the same question
+// about a narrower set of blocks — the ones a blocker survives, or the
+// ones that hold a trampler in full. It returns the power that goes
+// unblocked and, per attacker, the index of the blocker stopping it
+// (-1 when none does).
+func matchBlocks(attackers, blockers []*protocol.CardView, can func(a, b *protocol.CardView) bool) (int, []int) {
+	edges := make([][]int, len(attackers))
+	for ai, a := range attackers {
+		for bi, b := range blockers {
+			if can(a, b) {
+				edges[ai] = append(edges[ai], bi)
 			}
 		}
-		if n == 0 {
-			through += a.Power // nothing they have can stand in its way
-			continue
+	}
+	blockerOf := make([]int, len(blockers)) // blocker index → attacker it stops, or -1
+	for i := range blockerOf {
+		blockerOf[i] = -1
+	}
+	var augment func(ai int, seen []bool) bool
+	augment = func(ai int, seen []bool) bool {
+		for _, bi := range edges[ai] {
+			if seen[bi] {
+				continue
+			}
+			seen[bi] = true
+			if blockerOf[bi] < 0 || augment(blockerOf[bi], seen) {
+				blockerOf[bi] = ai
+				return true
+			}
 		}
-		stoppable = append(stoppable, a.Power)
+		return false
 	}
-	// The defender spends its blockers on the biggest threats first;
-	// whatever is left over connects.
-	sort.Sort(sort.Reverse(sort.IntSlice(stoppable)))
-	for i := len(blockers); i < len(stoppable); i++ {
-		through += stoppable[i]
+	through := 0
+	for _, ai := range byPower(attackers) {
+		if !augment(ai, make([]bool, len(blockers))) {
+			through += attackers[ai].Power
+		}
 	}
-	return through >= def.Life
+	stoppedBy := make([]int, len(attackers))
+	for i := range stoppedBy {
+		stoppedBy[i] = -1
+	}
+	for bi, ai := range blockerOf {
+		if ai >= 0 {
+			stoppedBy[ai] = bi
+		}
+	}
+	return through, stoppedBy
+}
+
+// byPower is the attackers' indexes, biggest threat first; stable, so
+// equal powers keep board order and no answer depends on a sort's whim.
+func byPower(attackers []*protocol.CardView) []int {
+	order := make([]int, len(attackers))
+	for i := range order {
+		order[i] = i
+	}
+	sort.SliceStable(order, func(i, j int) bool {
+		return attackers[order[i]].Power > attackers[order[j]].Power
+	})
+	return order
 }
 
 // attackValue prices one attacker against one defending seat. The

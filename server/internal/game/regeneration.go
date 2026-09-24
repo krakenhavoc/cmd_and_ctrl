@@ -47,7 +47,7 @@ import "github.com/google/uuid"
 //	CR 704.5f   toughness 0 or less — the creature is PUT INTO a
 //	            graveyard, not destroyed.
 //	CR 704.5i   a planeswalker at 0 loyalty — likewise.
-//	CR 704.5v   a battle at 0 defense — sacrificed.
+//	CR 704.5v/w   a battle at 0 defense — sacrificed.
 //	CR 704.5j   the legend rule — put into a graveyard.
 //	CR 704.5m   an illegally attached Aura — put into a graveyard.
 //	            Exile, bounce, tuck and mill, obviously.
@@ -61,7 +61,7 @@ import "github.com/google/uuid"
 // # "Can't be regenerated"
 //
 // CR 701.19c: an effect that says a permanent can't be regenerated
-// ignores regeneration shields. CR 701.19d adds the part that is easy
+// ignores regeneration shields. CR 701.19c adds the part that is easy
 // to get wrong: the shield is NOT used up. Damnation destroys a
 // creature with a shield on it; if somehow it survived, the shield
 // would still be there for the next destruction. So the rider gates
@@ -96,7 +96,7 @@ import "github.com/google/uuid"
 // shape of rider when they land.
 type DestroyOptions struct {
 	// CantBeRegenerated makes this destruction ignore regeneration
-	// shields (CR 701.19c). The shields are not spent — CR 701.19d
+	// shields (CR 701.19c). The shields are not spent — CR 701.19c
 	// leaves them on the permanent for a later destruction that does
 	// not say this.
 	CantBeRegenerated bool
@@ -172,7 +172,7 @@ func (g *Game) RegenerationShieldsOn(cardID uuid.UUID) int {
 //	                      battlefield exit and is not one.
 //	!ev.CantBeRegenerated CR 701.19c — the destroying effect said no.
 //	                      Gated here rather than inside Replace so
-//	                      the shield is not spent (CR 701.19d).
+//	                      the shield is not spent (CR 701.19c).
 //	shields > 0           there is a shield to spend.
 //
 // Caller must hold g.mu.

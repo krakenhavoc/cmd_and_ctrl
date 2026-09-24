@@ -263,6 +263,16 @@ activation's atomicity to fix one card in one hand. #903's
 resolution-time prompt work is where that question gets reopened, if it
 ever should be.
 
+**Note (2026-09-24, [#1397](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1397)):
+the commander half of this decision is superseded by
+[ADR 0013 §5af](0013-replacement-effects.md#5af-amendment-2026-09-24-a-commander-paid-as-a-cost-is-asked-before-the-payment-not-during-it).
+The discard still settles now — `MustSettleNow` is unchanged — but the
+announce is no longer uninterruptible in the sense this section feared:
+it is interrupted BEFORE anything is paid, not during the payment. A
+cycled commander's owner is asked, the announcement is re-made with the
+answer, and the discard carries it. Nothing about the payment's
+atomicity changed.
+
 ### 4. Special actions (CR 116.2): the verb, designed here, built on #658 / #659
 
 **One `special_action` verb with a kind, not one verb per keyword.**
@@ -551,3 +561,291 @@ was answered by #925 before either keyword needed it, and suspend's
 upkeep countdown rides `TriggeredAbility.Zones = {ZoneExile}` exactly
 as that issue predicted. Open question 2 (per-instance activation
 grants, Greater Gargadon) is still open.
+
+## Amendment — 2026-09-23: the special action's cost is priced through CR 601.2f (#1319)
+
+The amendment above built the verb's payment as a bare parse-and-pay:
+`sa.Cost` in, `payAbilityManaCostLocked` charges it, and the doc
+comment on that call said outright that "a special action is not an
+activation … nothing prices it through the CR 601.2f pass." Ranar the
+Ever-Watchful's "The first card you foretell each turn costs {0} to
+foretell" (deck tracker #1306) needed exactly that pass, and this is
+the third door it opens — [ADR 0020](0020-activated-abilities.md)'s
+2026-09-22 `#1184` note already opened the second one, for activated
+abilities, in the identical shape.
+
+**`CostQuery.SpecialAction` (`*SpecialActionCostSubject`, one field:
+`Kind`)** is `CostQuery.Ability`'s twin, naming which CR 116.2 action
+is being priced. **`CostModifier.SpecialActions`** is the third
+partition bit, beside `.Activations`: `activeCostModifiersLocked` now
+switches on which of `q.Ability` / `q.SpecialAction` is set (or
+neither, for a cast) and shows a modifier only the announcements its
+own bit claims. A card written as "spells cost {1} more" — Sphere of
+Resistance's `AppliesTo` is nil, meaning "every spell" — could not
+otherwise be trusted not to start taxing every foretell in the game
+the day the field appeared, exactly the risk the #1184 note names for
+activations.
+
+**`Game.SpecialActionManaCostForEffect(actor, card, kind, sa)`** is
+`AbilityManaCostForEffect`'s special-action twin and the one function
+three readers share: `PerformSpecialAction` pays it,
+`legal.specialActionMovesForCard` prices affordability against it
+(replacing a bare `game.ParseCost(sa.Cost)` that could have offered a
+move the engine then refused, #544's rule again), and
+`SpecialActionView.ChargedCost` renders it on the wire beside the
+printed `Cost` — `ActivatedAbilityView.ChargedManaCost`'s shape,
+one door over, so a discounted row and its real price can never
+disagree.
+
+**The per-turn tally the clause reads** is `Game.ForetoldThisTurn` /
+`ForetoldCountThisTurn(player)`, `Game.SpellsCastThisTurn`'s shape one
+zone over. It is bumped inside `foretellLocked`, after the card has
+actually landed in exile — a special action a replacement window only
+PAUSED has not foretold anything yet, and one that never lands must
+not spend the discount a player never got to use.
+
+**Self modifiers stay cast-only.** `activeCostModifiersLocked`'s self
+slot ("THIS SPELL costs {N} less to cast", CR 113.6d) is skipped
+whenever `q.Ability` OR `q.SpecialAction` is set, for the reason the
+#1184 note gives for activations: a spell's own printed reduction is
+about the card as a spell on the stack, and neither a permanent's
+ability nor a card's own special action is that.
+
+`effects.SpecialActionCostsLess` (`ASpecialActionOfKind`,
+`TheFirstOneThisTurn`) is the card-file constructor, `ActivationCostsLess`'s
+shape one door over. Shipped on **Ranar the Ever-Watchful** (its
+"create a Spirit" trigger stays a caveat, waiting on the exile-cause
+event #1320 brings). See
+[docs/engine-seams.md](../engine-seams.md)'s "Special actions from the
+hand, and foretell" entry for the closed-seam summary.
+
+## Amendment — 2026-09-23: plot is the fourth kind (#1342)
+
+Plot (CR 702.170a) is a hand special action: "any time you have priority
+during your main phase while the stack is empty, you may exile this card from
+your hand and pay [cost]. It becomes a plotted card." It needed a row in each
+of Decision 4's per-kind tables and nothing else:
+
+| table | plot's row |
+|---|---|
+| `specialActionZone` | the actor's **hand**, like foretell and suspend |
+| `SpecialActionTimingOKLocked` | `sorcerySpeedOpenLocked` — the owner's main phase, stack empty. It is the **keyword's** window, not the card's, so an instant or a card with flash is plotted at sorcery speed too (the reminder text's "Plot only as a sorcery"). That is where plot and suspend differ: suspend asks the card's own casting window (CR 702.62c). No split-second clause is needed, because split second only matters while a spell is on the stack and this window needs an empty one. |
+| `specialActionPerformer` | `plotLocked` (`game/plot.go`): route the card to exile **face up** with `MoveCauseSpecialAction` (#1320), then call `PlotExiledCardForEffect` on what landed |
+
+The plotted state is #1318's, unchanged: [ADR 0066's 2026-09-23
+amendment](0066-granted-cast-and-play-permissions.md) gives a card in exile a
+free, per-instance `CastPermission` with `TimingPlot` and a `NotBeforeTurn`
+floor. A card plotted from hand and a card Aven Interrupter plotted are the
+same object with the same permission. A commander whose owner sends it to the
+command zone instead (CR 903.9) never landed in exile, so nothing is plotted.
+
+The catalog line is `effects.Plot("{cost}")`: `Cost` is the plot cost and
+`CastCost` stays empty, because the later cast is free and the grant sets the
+price. `"plot"` joined `canonicalKeywords` in the same change, as foretell and
+suspend did. The enumerator, the wire's `special_actions` row, and the
+client's menu row needed no code: each walks `SpecialActionsOfferedByCard` and
+asks the timing table, which is Decision 4's "one verb" claim holding for a
+fourth time.
+
+Proof cards: Djinn of Fool's Fall, Spinewoods Paladin, Beastbond Outcaster and
+Plan the Heist, all `full`. Still open on this family (#1382): "when this card becomes
+plotted" triggers (Longhorn Sharpshooter, Aloe Alchemist) need an event for the
+plotted state. Fblthp, Lost on the Range, which plots from the top of the
+library, needs the special action to reach a zone other than the hand.
+
+## Amendment — 2026-09-24: "when this card becomes plotted" is an event (#1382)
+
+The plot amendment above left one clause of the keyword's family unbuilt:
+Longhorn Sharpshooter's "When this card becomes plotted, it deals 2 damage to
+any target" and Aloe Alchemist's "When this card becomes plotted, target
+creature gets +3/+2 and gains trample until end of turn". Nothing was emitted
+when a card became plotted, so both cards were left out: shipping them with
+the trigger dropped would have made them weaker than printed. The fresh
+Scryfall dump has no third card with the clause.
+
+**One emitter.** `game.EventBecomesPlotted` is emitted in exactly one place,
+`Game.PlotExiledCardForEffect` (`game/plot.go`), and only after the card is
+confirmed in exile and its plotted `CastPermission` is granted. Both ways a
+card becomes plotted end there, so both fire it:
+
+- the plot special action (CR 702.170a) — `plotLocked` routes the card to
+  exile and calls the shared body on what landed;
+- an "it becomes plotted" effect (CR 702.170c) — Aven Interrupter's
+  `effects.PlotExiled`.
+
+A plain exile never reaches the function, and a card that did not land in
+exile (a commander whose owner took the CR 903.9 offer) returns before the
+emit. That is the same guard that stops the permission from being granted.
+
+**The payload.** `CardID` (and `Target`) is the plotted card. `Source` is
+what plotted it: the card itself for the keyword, the effect's source card
+otherwise. `Actor` is the **plotter**: the owner for the special action, and
+the resolving item's controller for an effect. Aven Interrupter plots an
+opponent's spell, so plotter and owner really do differ. The special action
+passes its actor explicitly (`plotExiledCardLocked`) and does not infer it
+from `Game.resolving`. `move_cause.go` names the window where that slot is
+stale: after a resolution and before play moves on. That window is exactly
+when a special action is taken.
+
+**The trigger watches from exile.** `effects.WhenThisBecomesPlotted(label,
+effect)` is `InExile(On(EventBecomesPlotted, Self, …))`. It uses #925's
+`TriggeredAbility.Zones`, the zone dimension suspend already watches from, so
+it needed no harvester change. The harvest makes the exiled source's
+`Controller` its `Owner` (CR 108.4), so the trigger is the owner's. That holds
+even when an opponent's Aven Interrupter did the plotting, which is the
+printed result.
+
+**The log is silent on it, on purpose.** The special action's
+`LogSpecialAction` line already says "Plot {3}{R}". An effect's plot is told
+by the effect's `LogResolve` plus the `LogZone` exile. The plotted state is on
+the wire as the card's cast permission. The row in `silentEventKinds`
+(`protocol/log_event_kind_gate_test.go`) records that decision.
+
+Proof cards: **Longhorn Sharpshooter** and **Aloe Alchemist**, both `full`.
+
+**Still open: Fblthp, Lost on the Range.** "The top card of your library has
+plot. The plot cost is equal to its mana cost. You may plot nonland cards from
+the top of your library." This is not a row in the per-kind tables. It needs
+three things:
+
+- a **granted** special action on an arbitrary card, where
+  `SpecialActionOffered(c Card)` today reads only the card's own declaration
+  and takes no `*Game`;
+- a kind whose zone depends on what a permanent grants (`specialActionZone`
+  answers per kind, with no game state);
+- a wire and client surface for a special action on the library's top card.
+
+Filed as #1391 rather than done here. Closed by the "special action granted to
+another card" amendment below.
+
+## Amendment — 2026-09-24: Magmakin Artillerist's own cycle trigger fires from the graveyard (#1392)
+
+Decision 7 and its Consequences deliberately left Magmakin Artillerist with
+one caveat: "When you cycle this card, it deals 1 damage to each opponent"
+does not fire, because the ability lives in the graveyard (CR 702.29c) and the
+harvester's zone scan did not reach there. #925 built exactly that scan —
+`TriggeredAbility.Zones` plus `effects.InGraveyard` — after this ADR but
+before either keyword needed it (the 2026-09-18 amendment above already notes
+this for Decision 7's open question 1 in general terms). #1392 is the card
+that cashes it in.
+
+The card's trigger is now `InGraveyard(On(game.EventCycle, Self, …))`, the same
+shape Bloodghast's landfall and Narcomoeba's arrival use. Cycling the
+Artillerist deals 2 total: 1 from the discard trigger (unchanged, and it is
+what "the discard IS the cost" already made fire before this amendment) and 1
+from the card's own cycle trigger, now that it can see itself in the
+graveyard. The remaining caveat — CR 603.1 batching, "one or more cards…
+that much damage" resolving as separate 1s per discarded card — is unrelated
+to this gap and stays.
+
+`docs/engine-seams.md`'s "Triggered abilities that watch from another zone"
+and "Abilities from the hand, and a discard cost component" rows are updated
+to say so. Decree of Pain, "nothing but a cycle trigger," is unaffected by
+this amendment and is still not added — its gap was `EventCycle` itself
+(closed by #660), not the zone scan, so it is now unblocked but not yet
+written; that is ordinary catalog work, not a seam.
+
+Proof card: **Magmakin Artillerist**, still `caveats` (the batching note),
+never `full` — it never had only the one caveat this amendment closes.
+
+## Amendment — 2026-09-24: a special action granted to another card (#1391)
+
+The 2026-09-24 plotted-event amendment above filed Fblthp, Lost on the Range
+as #1391 because it is not a row in Decision 4's per-kind tables:
+
+> The top card of your library has plot. The plot cost is equal to its mana
+> cost.
+> You may plot nonland cards from the top of your library.
+
+Every special action before it belonged to the card it acts on. It was either
+printed (foretell, suspend, plot) or derived from the card's face-down state
+(turn face up). Fblthp is a permanent that gives one to a **different** card,
+in a zone the kind does not work from, at a price the permanent sets. This
+amendment adds that one shape and changes nothing else about the verb.
+
+**The shape: `game.SpecialActionGrant`** (`game/special_action_grant.go`).
+Pure data, like `SpecialAction`, carried on `CardDef.SpecialActionGrants` and
+read through `CatalogSpecialActionGrants`:
+
+| field | meaning | Fblthp |
+|---|---|---|
+| `Kind` | the special action granted | `plot` |
+| `Zone` | the extra zone it may be taken from. `ZoneLibrary` means the **top card** of the controller's own library and no other card in it | `library` |
+| `Nonland` | only nonland cards | yes |
+| `CostIsManaCost` | also **gives** the card the kind, at a cost equal to its own mana cost | yes |
+
+Fblthp's two sentences are two separate things, and the fields keep them
+separate. The second sentence is the **zone**: plot works from the hand
+(CR 702.170a), and Fblthp adds the top of your library for *any* plot the card
+has, including one it prints itself. The first sentence is the **offer**: plot
+at the card's mana cost. On its own that would do nothing, because plot works
+only from the hand. It matters only because of the second sentence.
+
+So a Djinn of Fool's Fall (plot {3}{U}, mana cost {4}{U}) on top of the library
+offers **two** plots. That is the one new wire field: `special_action` takes an
+optional `cost`, which picks an offer by its printed price
+(`SpecialActionParams.Cost`). Empty takes the first offer, so every existing
+caller is unchanged. A card that offers each kind once never needs it.
+
+**Where each of the issue's four gaps went:**
+
+1. *A granted special action.* `SpecialActionOffered(c Card, kind)` could not
+   see a grant, because it has no `*Game`. The engine, the enumerator and the
+   view now ask `Game.SpecialActionsOfferedLocked(actor, card, zone)`. In the
+   kind's own zone it returns exactly what `SpecialActionsOfferedByCard`
+   returned, so no existing card changes. In a granted zone it returns the
+   card's own offers of the granted kind, moved to that zone, plus the grant's
+   mana-cost offer when that price is not already offered. The grant sources
+   are the permanents the actor controls, read through `CatalogAbilityKey`, so
+   a Fblthp that has lost its abilities grants nothing. Two grants make one
+   offer. The pure `SpecialActionOffered` and `SpecialActionsOfferedByCard`
+   stay as the card's-own-offers half.
+2. *A zone that depends on the grant.* `specialActionZone` is unchanged: it is
+   still the kind's **own** zone. `specialActionCardLocked` tries that zone
+   first and then every zone a permanent the actor controls grants the kind
+   in. A card on top of the library of a player with no Fblthp is still "card
+   not found", exactly as before. The lookup reports the zone it found the card
+   in, and the offer is asked about that zone. An offer from a granted zone
+   carries `SpecialAction.Zone`, and the CR 601.2f cost query reports that zone
+   as `FromZone`, so a cost modifier sees a plot from the library as one.
+3. *A plot cost equal to the card's mana cost.* `manaCostOffer`. A card with no
+   mana cost is offered nothing (CR 118.6: a cost based on the mana cost of an
+   object with no mana cost is unpayable). {X} is 0: nothing lets the player
+   choose it, and the plotted cast is free, so paying more would buy nothing. A
+   split card costs both halves combined (CR 709.4b). The deck import
+   materialises face 0, so `Card.ManaCost` alone would have plotted Fire // Ice
+   for {1}{R}, cheaper than printed. A {0} card's offer is written `"{0}"`
+   rather than `""`, so `cost` can still name it.
+4. *Wire and client.* The view stamps `special_actions` on the top card of each
+   seat's library (`stampLibraryTopSpecialActions`), from the same engine
+   accessor. It reveals nothing: the rows sit on the projected card, so the
+   owner sees them only while they can see the card, and an opponent never
+   gets the card unless it is revealed. When it *is* revealed (Courser of
+   Kruphix), `FilterViewFor` still drops the rows from every other seat's
+   frame, because they are the owner's to take. On the client, #1447's
+   library-top pill became a row of pills: the cast pill, and one pill per
+   available special-action row (`libraryTopSpecialActions`), which fires
+   `special_action` exactly as the hand menu's row does. The enumerator walks
+   the seat's library top beside its hand and face-down permanents, and a
+   granted-zone move carries `cost`.
+
+**What did not change.** The timing table is the kind's: plot is sorcery-speed
+wherever the card is. The performer is the kind's: `plotLocked` routes the card
+to exile from any zone through the ordinary zone route, and
+`PlotExiledCardForEffect` makes it plotted and fires `EventBecomesPlotted`. The
+cost is paid through the same CR 601.2f pass. Decision 4's "one verb" still
+holds. What a grant adds is only **where** and **at what price**.
+
+**Deliberately narrow.** `SpecialActionGrantBuilt` accepts plot from the
+library and nothing else. `effects.Register` panics at boot on any other grant.
+Foretell's and suspend's performers take the card from a hand, so granting them
+elsewhere needs performer work first. No other printed card grants a special
+action to another card today.
+
+The catalog line is `SpecialActionGrants: []game.SpecialActionGrant{effects.PlotFromTopOfLibrary()}`.
+It is one constructor, because Fblthp's two sentences always come together.
+
+Proof card: **Fblthp, Lost on the Range**, `full`. Scryfall lists Plot among
+its keywords, but Fblthp itself does not have plot. It gives plot to the top
+card of your library. So it declares no `Plot(...)` of its own, and a Fblthp in
+hand cannot be plotted.

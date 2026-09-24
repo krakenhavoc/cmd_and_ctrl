@@ -36,9 +36,9 @@ func TestStasisUpkeepPromptHaltsTheTurn(t *testing.T) {
 
 	// Anchored to the upkeep it was asked in. Nothing on the card says
 	// "block": the engine reads the cursor (#997).
-	if prompt.OwedInStep.Step != game.StepUpkeep || prompt.OwedInStep.Turn != g.Turn.Number {
+	if prompt.OwedInStep.Step != game.StepUpkeep || prompt.OwedInStep.Turn != g.Turn.Seq {
 		t.Fatalf("Stasis's prompt is anchored to %v, want turn %d's upkeep",
-			prompt.OwedInStep, g.Turn.Number)
+			prompt.OwedInStep, g.Turn.Seq)
 	}
 
 	// The moves the bug was: somebody passes, or the step is advanced.
@@ -88,9 +88,9 @@ func TestPactOfNegationUpkeepDebtHaltsTheTurn(t *testing.T) {
 	walkToUpkeepOfSeat0(t, g)
 	passPriorityAroundTable(t, g)
 	prompt := upkeepPromptFor(t, g, me.ID)
-	if prompt.OwedInStep.Step != game.StepUpkeep || prompt.OwedInStep.Turn != g.Turn.Number {
+	if prompt.OwedInStep.Step != game.StepUpkeep || prompt.OwedInStep.Turn != g.Turn.Seq {
 		t.Fatalf("the Pact's debt is anchored to %v, want turn %d's upkeep",
-			prompt.OwedInStep, g.Turn.Number)
+			prompt.OwedInStep, g.Turn.Seq)
 	}
 
 	if err := g.PassPriority(); !errors.Is(err, game.ErrChoicePending) {

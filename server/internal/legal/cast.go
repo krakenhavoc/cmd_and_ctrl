@@ -35,8 +35,12 @@ type castParams struct {
 	// (CR 601.2b, ADR 0073), as positions in the card's OptionalCosts
 	// slice, repeated once per payment for a multikicker.
 	OptionalCosts []int `json:"optional_costs,omitempty"`
-	Strict        bool  `json:"strict,omitempty"`
-	AutoTap       bool  `json:"auto_tap,omitempty"`
+	// GiftOpponent is the opponent a gift is promised to (CR
+	// 702.174a, ADR 0089) — set exactly when OptionalCosts names the
+	// card's gift cost.
+	GiftOpponent string `json:"gift_opponent,omitempty"`
+	Strict       bool   `json:"strict,omitempty"`
+	AutoTap      bool   `json:"auto_tap,omitempty"`
 	// Face is the printed face being cast or played (ADR 0034).
 	// Omitted — the front — for every single-faced card.
 	Face int `json:"face,omitempty"`
@@ -119,7 +123,11 @@ func (e *enumerator) castMoves() {
 	if g.SplitSecondActive {
 		return
 	}
-	speed := sorcerySpeedOpen(g, e.seat)
+	// CR 305.1's land window, asked of the engine's one sorcery-timing
+	// read rather than a copy of it (#1352: the copy that used to live
+	// here was right about abilities on the stack while the engine was
+	// not, and a copy that is right today is the one that drifts).
+	speed := g.SorcerySpeedOpenLocked(e.seat)
 	// #500: the allowance is the player's, not a literal one — a
 	// controlled Exploration or a one-turn grant raises it. Same
 	// helper the engine's own refusal reads, so the enumerator can
@@ -338,9 +346,49 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, kind game.Zon
 	// optionalCostSets is [nil] for every card that offers none,
 	// which is every card in the catalog before #664 — so this loop
 	// runs exactly once for them and the enumeration is unchanged.
-	for _, chosen := range optionalCostSets(game.OptionalCostsFor(game.CatalogKey(card)), e.opts.MaxExpansionPerSource) {
-		e.castMovesPayingOptional(card, from, perm, offer, chosen)
+	optional := game.OptionalCostsFor(game.CatalogKey(card))
+	for _, chosen := range optionalCostSets(optional, e.opts.MaxExpansionPerSource) {
+		// ADR 0089: a set that promises a gift is one announcement
+		// per opponent who could receive it — "which opponent" is
+		// part of paying the cost (CR 702.174a), and a bot offered
+		// only the first seat could never choose to feed the player
+		// who is furthest behind.
+		for _, to := range giftRecipients(e.g, e.seat, optional, chosen) {
+			e.castMovesPayingOptional(card, from, perm, offer, chosen, to)
+		}
 	}
+}
+
+// giftWire is the wire form of a gift recipient: omitted for
+// uuid.Nil, which is every cast that promises nothing.
+func giftWire(id uuid.UUID) string {
+	if id == uuid.Nil {
+		return ""
+	}
+	return id.String()
+}
+
+// giftRecipients is the gift half of one announced optional-cost set:
+// [uuid.Nil] when the set promises no gift, one entry per opponent
+// who may receive it when it does, and nothing at all when a gift is
+// announced and nobody is left to promise it to — that set is not a
+// legal announcement (the engine's validateGiftChoiceLocked).
+//
+// The list is game.GiftOpponentsLocked verbatim, the one the engine
+// and the view read, so a bot can never be offered a recipient the
+// server refuses.
+func giftRecipients(g *game.Game, seat uuid.UUID, optional []game.AdditionalCost, chosen []int) []uuid.UUID {
+	gift := false
+	for _, i := range chosen {
+		if i >= 0 && i < len(optional) && optional[i].ChoosesOpponent {
+			gift = true
+			break
+		}
+	}
+	if !gift {
+		return []uuid.UUID{uuid.Nil}
+	}
+	return g.GiftOpponentsLocked(seat)
 }
 
 // maxEnumeratedCostPayments caps how many ways the enumerator will
@@ -489,7 +537,10 @@ func costPaymentDemands(mandatory *game.AdditionalCost, optional []game.Addition
 // castMovesPayingOptional is castMovesForCard for ONE announced set
 // of optional additional costs — the unkicked cast, or the kicked
 // one. `chosen` is nil for every card that offers none.
-func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *game.CastPermission, offer *game.AlternativeCost, chosen []int) {
+//
+// `giftTo` is the opponent a gift is promised to when `chosen` names a
+// gift cost, and uuid.Nil otherwise (ADR 0089).
+func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *game.CastPermission, offer *game.AlternativeCost, chosen []int, giftTo uuid.UUID) {
 	g, p := e.g, e.p
 	// #662: the spell IS its own source (CR 702.16b), so every legal
 	// set below is computed against the card's colour and type. An
@@ -513,6 +564,10 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// an overloaded Cyclonic Rift with a target would have every one
 	// of those moves refused with ErrInvalidParam.
 	cardSpec := game.TargetSpecUnderAlternativeCost(game.TargetSpecFor(game.CatalogKey(card)), offer)
+	// ADR 0089 §3: and a paid optional cost may swap it again — a
+	// promised gift's "instead … target …" (CR 702.174m). The same
+	// function, in the same order, the engine applies at announce.
+	cardSpec = game.TargetSpecUnderOptionalCosts(cardSpec, game.OptionalCostsFor(game.CatalogKey(card)), chosen)
 
 	// A card the catalog marks as targeted the S13.1 way (free-form
 	// target_mode, no structured spec) cannot be enumerated: the
@@ -563,6 +618,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		FromZone:        from,
 		AlternativeCost: offerKey(offer),
 		OptionalCosts:   chosen,
+		GiftOpponent:    giftTo,
 		// ADR 0034: `card` has already had SetFace applied by the
 		// caller, so this is the face the move announces.
 		Face: card.ActiveFace,
@@ -643,28 +699,19 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// sweep). Both live in x.go.
 	xFloor := enumeratedXFloor(game.CatalogKey(card), 0)
 	xLifeCeiling := xCeilingFromCost(addCost, p.Life)
-	x := 0
-	if !perTarget {
-		priced, err := e.g.ApplyCostModifiersForEffect(cost, game.CostQuery{
-			Card:       card,
-			Controller: e.seat,
-			FromZone:   fromZone,
-		})
-		if err != nil {
-			return
-		}
-		var ok bool
-		x, ok = e.announcedX(priced, spend, xFloor, xLifeCeiling)
-		if !ok {
-			return
-		}
-	}
 
 	// Modes → each choice of modes yields its own clause list, and
 	// each clause its own picks (#764). Options with no legal target
 	// are dropped before any combination is built, so the budget is
 	// never spent on selections the engine would refuse (ADR 0065
 	// §6).
+	//
+	// Computed BEFORE the price search below, which used to run once
+	// for the whole card: ADR 0065's 2026-09-23 amendment lets a mode
+	// carry its own cost (CR 702.172a, Spree), so — unlike every modal
+	// card before it — the price this cast owes can depend on WHICH
+	// modes are chosen, and the search has to run once per mode
+	// selection rather than once for the card.
 	modeSpec := game.ModeSpecFor(game.CatalogKey(card))
 	modeSets := [][]int{nil}
 	if modeSpec != nil {
@@ -756,11 +803,44 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	}
 
 	budget := e.opts.MaxExpansionPerSource
-	emit := e.castMoveEmitter(g, card, from, offer, optional, chosen)
+	emit := e.castMoveEmitter(g, card, from, offer, optional, chosen, giftTo)
 	// #1013: the first announcement the expansion makes, kept so the
 	// ALTERNATIVE cost payments can be offered against it below.
 	var first *announcedCast
 	for _, modes := range modeSets {
+		// Spree (CR 702.172a): this selection's own mana joins the
+		// base cost at the same point printedCostLocked adds it
+		// (ADR 0073 §3's precedence), so the price this candidate is
+		// judged against is exactly what CastSpell will charge for it
+		// (#544). A no-op — modeCost equals cost — for a ModeSpec with
+		// no Cost on any option, which is every modal card before S45.
+		modeCost, err := game.AddModeCostMana(cost, modeSpec, modes)
+		if err != nil {
+			continue
+		}
+		x := 0
+		// #1242: the priced cost the X was solved against, kept for the
+		// per-payment affordability check in the expansion below. Solved
+		// per MODE SELECTION now rather than once for the card, because
+		// modeCost — and so this price — can differ between selections
+		// (Spree, S45).
+		var pricedAll game.ParsedCost
+		if !perTarget {
+			priced, err := e.g.ApplyCostModifiersForEffect(modeCost, game.CostQuery{
+				Card:       card,
+				Controller: e.seat,
+				FromZone:   fromZone,
+			})
+			if err != nil {
+				continue
+			}
+			var ok bool
+			x, ok = e.announcedX(priced, spend, xFloor, xLifeCeiling)
+			if !ok {
+				continue
+			}
+			pricedAll = priced
+		}
 		// The budget is spent MODES-outermost: every mode selection
 		// gets at least one target set before any gets a second, so a
 		// bot is never offered only the first bullet of a charm
@@ -774,7 +854,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		// and the X it announces is how many it picked.
 		xSteps := stepsCountedByX(steps)
 		if len(xSteps) > 0 {
-			if cost.XSlots == 0 {
+			if modeCost.XSlots == 0 {
 				// The step's X is announced by a cost this package
 				// cannot price — Waterbender's Restoration's
 				// waterbend {X}, paid by tapping artifacts and
@@ -807,12 +887,13 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		}
 		for _, targets := range targetSets {
 			setX := x
+			setCost := pricedAll
 			if perTarget {
 				// §14: priced with this set's targets. An unaffordable
 				// set is skipped before any budget is spent on it, so
 				// a Fireball the seat can pay for at one target is not
 				// crowded out by the three-target sets it cannot.
-				priced, err := e.g.ApplyCostModifiersForEffect(cost, game.CostQuery{
+				priced, err := e.g.ApplyCostModifiersForEffect(modeCost, game.CostQuery{
 					Card:       card,
 					Controller: e.seat,
 					FromZone:   fromZone,
@@ -826,6 +907,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 				if !ok {
 					continue
 				}
+				setCost = priced
 			}
 			if len(xSteps) > 0 {
 				// setX is the largest announcement this seat can pay
@@ -843,6 +925,20 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 				for _, sacs := range sacrificeSets {
 					if budget <= 0 {
 						return
+					}
+					// #1242: CastSpell's auto-tap will not spend a card
+					// or permanent this cast names to its additional cost
+					// (game.CastAutoTapExclusions), so the affordability
+					// solved above — with nothing named — has to hold with
+					// these named. Village Rites naming the Eldrazi Spawn
+					// that was also its {B} is a cast the engine refuses;
+					// offering it is #544.
+					if len(discards)+len(sacs) > 0 &&
+						!e.canPayExcluding(setCost, setX, spend, game.CastAutoTapExclusions(game.CastSpellParams{
+							DiscardIDs:   discards,
+							SacrificeIDs: sacs,
+						})) {
+						continue
 					}
 					budget--
 					if first == nil {
@@ -911,6 +1007,7 @@ func (e *enumerator) castMoveEmitter(
 	offer *game.AlternativeCost,
 	optional []game.AdditionalCost,
 	chosen []int,
+	giftTo uuid.UUID,
 ) castEmitter {
 	return func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX int, discards, sacs []uuid.UUID) {
 		label := "Cast " + card.Name
@@ -932,6 +1029,9 @@ func (e *enumerator) castMoveEmitter(
 		// same line in the move log, and a bot eval that cannot tell
 		// them apart cannot explain why the bot kicked.
 		label += optionalCostLabel(optional, chosen)
+		if giftTo != uuid.Nil {
+			label += " → " + playerName(g, giftTo)
+		}
 		label += targetLabel(g, targets)
 		e.add(Move{
 			Type:   TypeCastSpell,
@@ -943,6 +1043,11 @@ func (e *enumerator) castMoveEmitter(
 			// cannot name, so a policy reading only the payload would
 			// price Force of Will's pitch as free. See MoveCost.
 			Cost: moveCost(offerLife(offer), 0),
+			// A modal spell may have a counter mode and a burn mode
+			// in the same expansion (Cryptic Command); the flag is
+			// per ANNOUNCEMENT, not per card, so only the modes that
+			// actually chose a stack target come back flagged.
+			TargetsStack: targetsStackObject(g, targets),
 			Params: mustJSON(castParams{
 				InstanceID:      card.InstanceID.String(),
 				FromZone:        from,
@@ -954,6 +1059,7 @@ func (e *enumerator) castMoveEmitter(
 				DiscardIDs:      idStrings(discards),
 				SacrificeIDs:    idStrings(sacs),
 				OptionalCosts:   chosen,
+				GiftOpponent:    giftWire(giftTo),
 				Strict:          true,
 				AutoTap:         true,
 				// ADR 0034: `card` has already had SetFace applied by

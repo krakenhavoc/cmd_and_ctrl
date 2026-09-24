@@ -99,8 +99,8 @@ func b28CreatureWasDealtDamage(ev game.Event, g *game.Game) (game.Card, bool) {
 // b28DragonYouControlTargetedByOpponent is Thunderbreak Regent's
 // condition: a Dragon the source's controller controls became the
 // target of a spell or ability whose controller is an opponent.
-// EventBecomesTarget fires once per target slot at announce (CR
-// 115.7), with the targeting player in Actor and the targeted card
+// EventBecomesTarget fires once per target slot (CR 115.3) at
+// announce, with the targeting player in Actor and the targeted card
 // in CardID (uuid.Nil for a player target, which is what keeps a
 // player-targeting spell from matching). The Regent is a Dragon and
 // counts for its own trigger.
@@ -217,14 +217,26 @@ func b28OtherCreaturesYouControlGetAnExtraCounter(label string) game.Replacement
 // b28DamageSourceControlledBy resolves the card a damage replacement
 // event names as its source and reports whether `controller`
 // controls it — a permanent on the battlefield, or a spell on the
-// stack whose Controller is its caster. A source that cannot be found
-// (it left every tracked zone) is nobody's, which errs weaker.
+// stack whose Controller is its caster. The "controls it" test reads
+// damageSourceCharacteristics (#1430), so a source that has already
+// left the battlefield is judged by the controller it had there (CR
+// 608.2h), not by whoever the card in its new zone belongs to now.
+// The Card itself is still the current-zone lookup, for callers that
+// need live-only fields (instance ID, counters); those are only ever
+// read after also confirming the source is presently on the
+// battlefield, so a departed source never reaches them under the
+// wrong identity. A source that cannot be found (it left every
+// tracked zone) is nobody's, which errs weaker.
 func b28DamageSourceControlledBy(ev *game.ReplacementEvent, g *game.Game, controller uuid.UUID) (game.Card, bool) {
 	if ev.Kind != game.RepEventDamage || ev.DamageAmount <= 0 || ev.DamageSource == uuid.Nil {
 		return game.Card{}, false
 	}
 	c, ok := g.LookupCardForEffect(ev.DamageSource)
-	if !ok || c.Controller != controller {
+	if !ok {
+		return game.Card{}, false
+	}
+	ch, chOk := damageSourceCharacteristics(ev, g)
+	if !chOk || ch.Controller != controller {
 		return game.Card{}, false
 	}
 	return c, true
@@ -379,7 +391,7 @@ func b28PutCountersOnEachCreatureYouControl(g *game.Game, item *game.StackItem, 
 		}
 	}
 	for _, id := range ids {
-		if err := (AddCounter{Target: id, Kind: "+1/+1", N: n}).Apply(ctx); err != nil {
+		if err := (AddCounter{Target: id, Kind: "+1/+1", N: n}).Apply(ctx.asGroupMember()); err != nil {
 			return err
 		}
 	}

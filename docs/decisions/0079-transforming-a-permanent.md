@@ -22,7 +22,7 @@ H1 above were both changed, and nothing links to this ADR yet. 0005, 0024, 0029 
 than free.
 
 **Related:** [ADR 0034](0034-multi-face-cards.md) (the face model this builds the verb
-on — `Card.Faces`, `Card.ActiveFace`, `Card.SetFace`, and the CR 712.8 reset in
+on — `Card.Faces`, `Card.ActiveFace`, `Card.SetFace`, and the CR 712.8a reset in
 `MoveCard`), [ADR 0039](0039-layer-4-authoritative.md) (why a printed-characteristic
 change has to invalidate the layer cache rather than patch `Characteristic`),
 [ADR 0018](0018-triggers-on-the-stack.md) (the harvester that makes `EventTransform`
@@ -58,7 +58,7 @@ built:
 - `CatalogKey`, which appends `#<face>` for a non-zero active face, so a back face
   registered as `"<oracle_id>#1"` gets its triggers, statics, replacements, mana
   abilities and activated abilities **for free** the instant the face flips;
-- `MoveCard`'s CR 712.8 reset — a card whose destination is neither the battlefield
+- `MoveCard`'s CR 712.8a reset — a card whose destination is neither the battlefield
   nor the stack is put back to face 0 — so a transformed permanent that dies is
   already a front-face card in the graveyard;
 - the wire: `CardView.layout`, `CardView.faces[]` (name, type line, mana cost,

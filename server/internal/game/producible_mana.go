@@ -2,6 +2,8 @@ package game
 
 import (
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 // producible_mana.go — CR 106.7's "the type of mana a permanent could
@@ -80,15 +82,62 @@ import (
 // reason that is not about its output: ADR 0020's exhaust addendum
 // (#1183) is where the decision lives.
 //
-// # The recursion guard
+// # The recursion guard is CR 106.7 itself, exactly (#1323)
 //
-// An ability that reads OTHER permanents' producible mana is skipped
-// (ManaAbilityShape.DerivesFromOtherSources — Exotic Orchard,
-// Reflecting Pool, Fellwar Stone, and nothing else). Two of them
-// facing each other would otherwise recurse until the stack ran out;
-// CR 106.6b answers the circular case with "no mana" and so does
-// this. Where the real rules would resolve a one-way chain it is one
-// colour short, which is the weaker-than-printed direction.
+// There is no CR 106.6b in the pinned edition (MagicCompRules
+// 20260819) — the circular case is the last sentence of 106.7 itself:
+// "If that permanent wouldn't produce any mana under these
+// conditions, OR NO TYPE OF MANA CAN BE DEFINED THIS WAY, there's no
+// type of mana it could produce." A chain of "could produce" reads
+// that loops back on itself is exactly a type that "can't be defined
+// this way" — asking for it never bottoms out — so the rule's own
+// answer for it is the same "no type of mana" as every other
+// undefined case. Every prior comment on this file and on the three
+// card files that cited "CR 106.6b" was citing a rule number that
+// does not exist in the pinned edition; this amendment corrects them
+// to 106.7.
+//
+// The card's own official ruling (Exotic Orchard, WotC, 2009-02-01)
+// gives the worked example this engine now matches move for move:
+//
+//	"Lands that produce mana based only on what other lands 'could
+//	 produce' won't help each other unless SOME OTHER LAND allows one
+//	 of them to actually produce some type of mana. For example, if
+//	 you control an Exotic Orchard and your opponent controls an
+//	 Exotic Orchard and a Reflecting Pool, none of those lands would
+//	 produce mana if their mana abilities were activated. On the other
+//	 hand, if you control a Forest and an Exotic Orchard, and your
+//	 opponent controls an Exotic Orchard and a Reflecting Pool, then
+//	 each of those lands can be tapped to produce {G}."
+//
+// That is a REACHABILITY question over the "derives from" graph — a
+// permanent produces a colour iff there is a path from it, through
+// derived sources, to a REAL (non-derived) source of that colour,
+// and a loop with no real source anywhere along it produces nothing
+// because no such path exists (there IS no such path — every route
+// out of it leads back into the loop). `producibleManaVisitingLocked`
+// marks `c.InstanceID` on entry and (`defer`) UNMARKS it on return,
+// so `visiting` tracks the ANCESTOR PATH rather than "every permanent
+// this query has ever touched" — the textbook shape for cycle
+// detection in a reachability walk (a node ON the current path is a
+// real cycle; a node already fully resolved on a SIBLING branch is
+// not, and gets walked again rather than being told it doesn't
+// exist). A permanently-growing set gives the same TOP-LEVEL answer
+// here too, because the aggregation is a monotone union with nothing
+// ever discarded — a colour found via any one path is retained by
+// that path's own return value regardless of what a redundant,
+// masked reference elsewhere would have found — but the ancestor-path
+// version is the one that is correct BY CONSTRUCTION rather than by
+// an argument about this specific aggregation, so it is what ships.
+//
+// A `DerivesFromOtherSources` ability (ManaAbilityShape — Exotic
+// Orchard, Reflecting Pool, Fellwar Stone, and nothing else) declares
+// DerivedMatch instead of ProducedFunc, and this file walks the
+// battlefield and recurses ITSELF rather than going through the
+// generic ProducedFunc closure, because the path set has to thread
+// the whole way down and a `func(*Game, controller, source uuid.UUID)
+// string` closure (the shape every OTHER mana ability's ProducedFunc
+// uses) has no fourth argument to carry it.
 //
 // Every other ProducedFunc IS evaluated, which is the half #782
 // added: a chosen colour (the Thriving lands, the Gates, Uncharted
@@ -108,6 +157,32 @@ import (
 //
 // Caller must hold g.mu.
 func (g *Game) ProducibleManaLocked(c Card) []string {
+	return g.producibleManaVisitingLocked(c, map[uuid.UUID]bool{})
+}
+
+// producibleManaVisitingLocked is ProducibleManaLocked's real body,
+// carrying the set of instance IDs currently ON THE PATH from the
+// original top-level query (#1323). A card already on that path
+// contributes nothing — CR 106.7's "no type of mana can be defined
+// this way" — and everything else works exactly as
+// ProducibleManaLocked always did.
+//
+// The `defer` unmark keeps `visiting` an ANCESTOR path rather than
+// "every permanent this query has ever asked about" — the shape that
+// is correct by construction for a reachability walk with cycles,
+// rather than by an argument specific to this file's aggregation (see
+// the recursion-guard comment above the file's imports for why a
+// permanently-growing set would answer the same TOP-LEVEL question
+// here too, and why the ancestor-path version ships anyway).
+//
+// Caller must hold g.mu.
+func (g *Game) producibleManaVisitingLocked(c Card, visiting map[uuid.UUID]bool) []string {
+	if visiting[c.InstanceID] {
+		return nil
+	}
+	visiting[c.InstanceID] = true
+	defer delete(visiting, c.InstanceID)
+
 	abilities := ManaAbilitiesForCard(c)
 	if len(abilities) == 0 {
 		// Nothing in the catalog, no instance ability and no basic
@@ -124,9 +199,6 @@ func (g *Game) ProducibleManaLocked(c Card) []string {
 	var haveIdentity bool
 	seen := map[string]bool{}
 	for _, ab := range abilities {
-		if ab.DerivesFromOtherSources {
-			continue
-		}
 		// #1183: a SPENT exhaust ability. The one place this function
 		// looks past "if the ability were to resolve" at something
 		// that stops it being activated, and it is a deliberate,
@@ -134,6 +206,17 @@ func (g *Game) ProducibleManaLocked(c Card) []string {
 		// "Exhaust is the one restriction this asks about" section
 		// above.
 		if g.ManaAbilityExhausted(c.Controller, c.InstanceID, ab) {
+			continue
+		}
+		if ab.DerivesFromOtherSources {
+			// #1323: recurse through the SAME visiting set, rather
+			// than the blanket skip this used to be. A card already
+			// in `visiting` (the circular case) contributes nothing
+			// from inside derivedManaLocked; anything else is a
+			// one-way chain and resolves normally.
+			for _, m := range g.derivedManaLocked(c, &ab, visiting) {
+				seen[m] = true
+			}
 			continue
 		}
 		// #789: an ability whose output depends on what its cost paid
@@ -163,6 +246,47 @@ func (g *Game) ProducibleManaLocked(c Card) []string {
 		}
 	}
 	return orderedManaSymbols(seen)
+}
+
+// derivedManaLocked is the CR 106.7 union for a DerivesFromOtherSources
+// ability: every permanent on the battlefield `ab.DerivedMatch`
+// accepts, asked with the SAME visited set the caller is already
+// carrying, then filtered by DerivedColorsOnly. Shared by the CR 106.7
+// reader above and by a real activation (manaAbilityProducedLocked,
+// ActivateManaAbility), so the two can never disagree about what an
+// ability adds — the same guarantee #782 built for every other
+// ProducedFunc.
+//
+// Caller must hold g.mu.
+func (g *Game) derivedManaLocked(c Card, ab *ManaAbilityShape, visiting map[uuid.UUID]bool) []string {
+	if ab.DerivedMatch == nil {
+		return nil
+	}
+	seen := map[string]bool{}
+	for _, cand := range g.BattlefieldCardsForEffect() {
+		if cand.InstanceID == c.InstanceID || !ab.DerivedMatch(cand, c.Controller) {
+			continue
+		}
+		for _, m := range g.producibleManaVisitingLocked(cand, visiting) {
+			if ab.DerivedColorsOnly && m == "C" {
+				continue
+			}
+			seen[m] = true
+		}
+	}
+	return orderedManaSymbols(seen)
+}
+
+// pipeString renders a symbol set as a single produced-mana slot —
+// ["W","U"] becomes "{W|U}". Empty input returns "", which
+// ActivateManaAbility and manaAbilityProducedLocked both treat as
+// "this ability produced no mana": the printed outcome for Exotic
+// Orchard facing no opposing lands.
+func pipeString(symbols []string) string {
+	if len(symbols) == 0 {
+		return ""
+	}
+	return "{" + strings.Join(symbols, "|") + "}"
 }
 
 // scryfallProducibleMana is the import-only fallback: the

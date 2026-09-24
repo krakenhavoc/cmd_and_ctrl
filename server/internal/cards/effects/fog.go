@@ -15,7 +15,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // an instant: it resolves, registers a transient replacement, and
 // goes to the graveyard. The pipeline keeps firing the registered
 // replacement on every combat-damage event until StepCleanup clears
-// the turn-scoped registry — which is exactly CR 615.6's "this
+// the turn-scoped registry — which is exactly CR 514.2's "this
 // turn".
 //
 // Combat damage only. A Lightning Bolt cast after the Fog resolves

@@ -58,7 +58,7 @@ func TestPublicLogProjectsTableEvents(t *testing.T) {
 			Controller: caster.ID,
 		})
 		g.EmitEvent(game.Event{
-			Kind: game.EventStepBegan, Actor: caster.ID, Amount: 3, Label: string(game.StepPrecombatMain),
+			Kind: game.EventStepBegan, Actor: caster.ID, Amount: 3, Round: 2, Label: string(game.StepPrecombatMain),
 		})
 		g.EmitEvent(game.Event{
 			Kind: game.EventCast, Actor: caster.ID, Source: boltID, CardID: boltID,
@@ -80,10 +80,10 @@ func TestPublicLogProjectsTableEvents(t *testing.T) {
 	}
 
 	step := findLog(t, log, LogStep)
-	if step.Turn != 3 || step.Step != "precombat_main" {
+	if step.Turn != 3 || step.Round != 2 || step.Step != "precombat_main" {
 		t.Errorf("step entry: turn %d step %q, want 3 / precombat_main", step.Turn, step.Step)
 	}
-	if want := "Turn 3 — P1 · precombat main"; step.Text != want {
+	if want := "Turn 2 — P1 · precombat main"; step.Text != want {
 		t.Errorf("step text: got %q, want %q", step.Text, want)
 	}
 
@@ -441,14 +441,31 @@ func deflatedLen(t *testing.T, b []byte) int {
 }
 
 // BenchmarkPublicLogProjection isolates what the log adds to a
-// broadcast: the projection runs once per frame (not once per viewer),
-// over every event the game has ever emitted.
+// broadcast: the projection runs once per frame (not once per viewer).
+// Since #1401 a frame with no new events folds nothing and pays only
+// for copying and naming the ring; BenchmarkPublicLogProjectionCold is
+// the cost of a full refold, which is what every frame paid before.
 func BenchmarkPublicLogProjection(b *testing.B) {
 	g := buildFourPlayerBoardB(b)
 	v := ViewOfGame(g)
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
+		_ = publicLogOf(g, &v)
+	}
+}
+
+// BenchmarkPublicLogProjectionCold drops the fold before every call, so
+// each iteration projects every event the game has emitted — the
+// pre-#1401 cost of every frame, and today's cost of the first view
+// after an undo.
+func BenchmarkPublicLogProjectionCold(b *testing.B) {
+	g := buildFourPlayerBoardB(b)
+	v := ViewOfGame(g)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		g.LogProjectionCache().Do(func(slot *any) { *slot = nil })
 		_ = publicLogOf(g, &v)
 	}
 }
@@ -545,6 +562,14 @@ func fourPlayerBoard(tb testing.TB) *game.Game {
 				g.EmitEvent(game.Event{
 					Kind: game.EventZoneMove, Actor: active.ID, CardID: card,
 					OldZone: game.ZoneStack, NewZone: game.ZoneBattlefield,
+				})
+				// #1257: an ETB trigger resolving, the way the engine
+				// emits it — source and label, no CardID — so the
+				// budget below prices the label an ability's line now
+				// carries on the wire.
+				g.EmitEvent(game.Event{
+					Kind: game.EventResolve, Actor: active.ID, Source: card,
+					Label: fmt.Sprintf("Permanent %d-%d — draw a card", (turn*4+i)%len(perms)/12+1, (turn*4+i)%12+1),
 				})
 				g.EmitEvent(game.Event{
 					Kind: game.EventAttack, Actor: active.ID, CardID: card, Target: victim.ID,

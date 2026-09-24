@@ -46,7 +46,7 @@ func levelOf(g *game.Game, id uuid.UUID) int {
 
 // levelUpTo activates the Class's "Level N" ability and resolves it,
 // paying with mana conjured into the pool. Returns the activation
-// error so the timing and CR 716.2e tests can assert on it.
+// error so the timing and CR 716.2a tests can assert on it.
 func levelUpTo(t *testing.T, g *game.Game, controller, classID uuid.UUID, index int, mana string) error {
 	t.Helper()
 	g.WithWriteLock(func() { _ = g.AddManaForEffect(controller, uuid.Nil, mana) })
@@ -159,17 +159,17 @@ func TestWizardClassLevelThreeActivatesEveryLine(t *testing.T) {
 }
 
 // TestWizardClassLevelUpIsSorceryTimedAndInOrder — CR 716.2d and
-// 716.2e, the two rules LevelUp carries so no card file has to.
+// 716.2a, the two rules LevelUp carries so no card file has to.
 func TestWizardClassLevelUpIsSorceryTimedAndInOrder(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	id := pushClass(g, me.ID, "Wizard Class", "Enchantment — Class", wizardClassOracle)
 	advanceTo(t, g, game.StepPrecombatMain)
 
-	// CR 716.2e: level 3 cannot be activated from level 1.
+	// CR 716.2a: level 3 cannot be activated from level 1.
 	g.WithWriteLock(func() { _ = g.AddManaForEffect(me.ID, uuid.Nil, "{4}{U}") })
 	if err := g.ActivateCatalogAbility(me.ID, id, 1, game.ActivateAbilityParams{}); err == nil {
-		t.Error("level 3 from level 1 must be refused (CR 716.2e)")
+		t.Error("level 3 from level 1 must be refused (CR 716.2a)")
 	}
 	if got := levelOf(g, id); got != 1 {
 		t.Errorf("a refused activation must not change the level: %d", got)
@@ -222,6 +222,53 @@ func TestClassLevelIsNotCopiedByACopyEffect(t *testing.T) {
 
 // --- Fortune Teller's Talent (#333) ----------------------------------
 
+// TestFortuneTellersTalentOwnerSeesTheTopCardAtLevelOne is level 1's
+// "you may look at the top card of your library any time" (CR 401.5):
+// with the Talent on the battlefield at level 1 its controller — and
+// only its controller — knows the top card of their own library. The
+// opponent's library is untouched, and without the Talent nobody sees
+// anything.
+func TestFortuneTellersTalentOwnerSeesTheTopCardAtLevelOne(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	if me.Library.Size() == 0 {
+		t.Fatalf("test needs a non-empty library")
+	}
+
+	visible := func(owner, viewer uuid.UUID) bool {
+		var ok bool
+		g.ReadSnapshot(func() { ok = g.LibraryTopVisibleToLocked(owner, viewer) })
+		return ok
+	}
+	knowers := func(owner uuid.UUID) []uuid.UUID {
+		var out []uuid.UUID
+		g.ReadSnapshot(func() { out, _ = g.LibraryTopKnowersLocked(owner) })
+		return out
+	}
+
+	if visible(me.ID, me.ID) {
+		t.Fatalf("the top card is visible before the Talent is on the battlefield")
+	}
+
+	talent := pushClass(g, me.ID, "Fortune Teller's Talent", "Enchantment — Class", fortuneTellersTalentOracle)
+	if got := levelOf(g, talent); got != 1 {
+		t.Fatalf("the Talent should be level 1, got %d", got)
+	}
+
+	if !visible(me.ID, me.ID) {
+		t.Errorf("at level 1 the Talent's controller should see the top card of their library")
+	}
+	if visible(me.ID, opp.ID) {
+		t.Errorf("an opponent sees the top card; the Talent's look is private, not a reveal")
+	}
+	if got := knowers(me.ID); len(got) != 1 || got[0] != me.ID {
+		t.Errorf("top-card knowers = %v, want exactly the owner %v", got, me.ID)
+	}
+	if visible(opp.ID, me.ID) || visible(opp.ID, opp.ID) {
+		t.Errorf("the Talent opened the top of an OPPONENT's library")
+	}
+}
+
 // TestFortuneTellersTalentReductionWaitsForLevelThree is the gated
 // COST MODIFIER, the fourth slot the gate covers. The reduction must
 // not apply at level 1 or 2 and must apply at level 3 — and only to
@@ -271,22 +318,90 @@ func TestFortuneTellersTalentReductionWaitsForLevelThree(t *testing.T) {
 	}
 }
 
-// TestFortuneTellersTalentDeclaresItsLibraryTopCaveats — the two
-// clauses that are NOT implemented are declared, not approximated
-// (ADR 0037 §5). If #765 lands and the clauses are built, this test
-// is the one that should be deleted along with the caveats.
-func TestFortuneTellersTalentDeclaresItsLibraryTopCaveats(t *testing.T) {
+// TestFortuneTellersTalentIsFull — #1314 closed the last gap (level
+// 2's play, gated by a Designation and a Condition together), so the
+// card ships with no simplification at all.
+func TestFortuneTellersTalentIsFull(t *testing.T) {
 	spec, ok := Lookup(fortuneTellersTalentOracle)
 	if !ok {
 		t.Fatal("Fortune Teller's Talent is not registered")
 	}
-	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 2 {
-		t.Fatalf("want CompletenessCaveats with 2 caveats, got %s with %d", spec.Completeness, len(spec.Caveats))
+	if spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Fatalf("want CompletenessFull with no caveats, got %s with %d", spec.Completeness, len(spec.Caveats))
 	}
-	for _, cv := range spec.Caveats {
-		if !containsFoldASCII(cv, "top card of your library") && !containsFoldASCII(cv, "top of your library") {
-			t.Errorf("caveat does not name the library-top clause it covers: %q", cv)
+}
+
+// TestFortuneTellersTalentLevelTwoGatesOnLevelAndACastThisTurn is
+// #1314's proof: the level-2 line is a `game.CastPermission` gated by
+// BOTH a Designation (CR 716.2a, Level(2)) and a Condition ("as long
+// as you've cast a spell this turn") — neither alone is what the
+// printed card says, and the card must not open the top of the
+// library on either one by itself.
+func TestFortuneTellersTalentLevelTwoGatesOnLevelAndACastThisTurn(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	classID := pushClass(g, me.ID, "Fortune Teller's Talent", "Enchantment — Class", fortuneTellersTalentOracle)
+	advanceTo(t, g, game.StepPrecombatMain)
+
+	var top uuid.UUID
+	g.WithWriteLock(func() {
+		c := game.NewCard("On Top", me.ID)
+		c.TypeLine = "Instant"
+		me.Library.PushTop(c)
+		top = c.InstanceID
+	})
+
+	permissionGranted := func() bool {
+		granted := false
+		g.ReadSnapshot(func() {
+			card, ok := g.LookupCardForEffect(top)
+			if !ok {
+				return
+			}
+			granted = g.CastPermissionForLocked(me.ID, card, game.ZoneLibrary).Granted()
+		})
+		return granted
+	}
+
+	// Level 1, nothing cast: level 1's own line ("look at the top card
+	// any time") is live, but level 2's is not — neither the gate nor
+	// the condition is satisfied.
+	if got := g.LibraryTopVisibilityForEffect(me.ID); got != game.LibraryTopOwner {
+		t.Fatalf("level 1's look should be live from the start, got %v", got)
+	}
+	if permissionGranted() {
+		t.Error("the top of the library is playable at level 1")
+	}
+
+	// Level 2, still nothing cast this turn: the DESIGNATION is
+	// satisfied and the CONDITION is not.
+	if err := levelUpTo(t, g, me.ID, classID, 0, "{3}{U}"); err != nil {
+		t.Fatalf("level 2: %v", err)
+	}
+	if permissionGranted() {
+		t.Error("the top of the library is playable at level 2 with no spell cast this turn")
+	}
+
+	// A spell cast this turn: both halves are satisfied.
+	g.WithWriteLock(func() {
+		if g.SpellsCastThisTurn == nil {
+			g.SpellsCastThisTurn = make(map[uuid.UUID]game.CastTally)
 		}
+		g.SpellsCastThisTurn[me.ID] = game.CastTally{Total: 1}
+	})
+	if !permissionGranted() {
+		t.Error("the top of the library should be playable at level 2 after casting a spell this turn")
+	}
+
+	// An opponent gets nothing from someone else's Talent.
+	them := g.Seats[1]
+	opponentGranted := false
+	g.ReadSnapshot(func() {
+		card, _ := g.LookupCardForEffect(top)
+		opponentGranted = g.CastPermissionForLocked(them.ID, card, game.ZoneLibrary).Granted()
+	})
+	if opponentGranted {
+		t.Error("an opponent should not be able to play off this Talent's controller's library")
 	}
 }
 

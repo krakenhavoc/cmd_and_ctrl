@@ -83,7 +83,7 @@ func TestSawItComingIsForetoldAndCastLaterForItsForetellCost(t *testing.T) {
 
 	// A later turn. The permission's floor is a turn NUMBER, which
 	// counts rounds, so this is the seat's next turn.
-	g.WithWriteLock(func() { g.Turn.Number++ })
+	g.WithWriteLock(func() { g.Turn.Seq++ })
 
 	// Something to counter.
 	victim := castCatalogSpell(t, g, "Filler Bolt", "Instant", "test-foretell-victim", nil)
@@ -138,15 +138,17 @@ func TestBeholdTheMultiverseScriesAndDrawsTwo(t *testing.T) {
 	}
 }
 
-// Cosmic Intervention's caveat no longer claims foretell is missing,
-// and the card still says what IS missing.
+// Cosmic Intervention's caveats no longer claim foretell is missing.
+// Its last caveat (the dying commander) went with #1306, so the card
+// is full; the foretell check stays as the guard against the old
+// claim coming back.
 func TestCosmicInterventionCaveatsDropTheForetellClaim(t *testing.T) {
 	spec, ok := Lookup(cosmicInterventionOracle)
 	if !ok {
 		t.Fatal("Cosmic Intervention is not registered")
 	}
-	if len(spec.Caveats) == 0 {
-		t.Fatal("Cosmic Intervention declares no caveats at all")
+	if spec.Completeness != CompletenessFull {
+		t.Errorf("Cosmic Intervention completeness = %v, want full", spec.Completeness)
 	}
 	for _, cv := range spec.Caveats {
 		if containsFold(cv, "foretell") {

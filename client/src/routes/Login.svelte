@@ -254,12 +254,21 @@
       {/if}
     </p>
 
-    <!-- The one entry point to the public catalogue. Login is the
-         page a signed-out visitor lands on, so a link that needs no
-         session belongs here rather than in the lobby. -->
+    <!-- A link to the card catalogue. The catalogue needs a session
+         (main.go mounts it behind auth.Middleware), so a signed-out
+         visitor who follows it is sent back here to sign in first. -->
     <p class="foot">
       <a class="ghost-link" href="#/catalog">
         <Icon name="library" size={12} /> See which cards the engine plays
+      </a>
+    </p>
+
+    <!-- #1386: the login layout is one centred brand column, and a
+         full SiteHeader would fight it — a small link to the site
+         portal instead of the shared nav. -->
+    <p class="foot">
+      <a class="ghost-link" href="#/home">
+        <Icon name="link" size={12} /> Site map
       </a>
     </p>
   </div>

@@ -38,6 +38,13 @@ import (
 // Winding Constrictor, Primal Vigor — name no effect and are
 // deliberately NOT gated the same way.
 //
+// "WOULD PUT" is a placement, not a removal (CR 122.6, CR 614.1): a
+// negative ev.CounterDelta (a counter coming OFF) is gated out before
+// anything else runs. #1291 found this half missing — a "remove N
+// counters" cost or effect was getting doubled, and two removal
+// replacements on the same board could pause on a CR 616 ordering
+// prompt that a removal should never see.
+//
 // And the token half (CR 701.7b, #762):
 //
 //   - Watches EventTokenCreated (pre-event, via
@@ -63,6 +70,12 @@ func init() {
 				Watches: []game.EventKind{game.EventCounterPlaced},
 				AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
 					if ev.Kind != game.RepEventCounter {
+						return false
+					}
+					if ev.CounterDelta <= 0 {
+						// "If AN EFFECT WOULD PUT" — CR 122.6 / CR
+						// 614.1 only replace the named event. A
+						// removal is not a placement (#1291).
 						return false
 					}
 					if ev.CounterFromCombatDamage {

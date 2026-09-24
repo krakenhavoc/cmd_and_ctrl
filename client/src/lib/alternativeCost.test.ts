@@ -118,6 +118,7 @@ describe("canCastFromHand — alternative costs", () => {
       stack: zone("stack"),
       exile: zone("exile"),
       turn: {
+        seq: 1,
         number: 1,
         active_seat: 0,
         priority_holder: 0,

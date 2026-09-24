@@ -5,7 +5,7 @@ import (
 )
 
 // morph.go — #1194 / ADR 0082: morph (CR 702.37), megamorph
-// (CR 702.109) and disguise (CR 702.168).
+// (CR 702.37) and disguise (CR 702.168).
 //
 // Each of the three is printed as TWO permissions on one line, and a
 // card file should spell out only the half that varies:
@@ -25,7 +25,7 @@ import (
 // seven.
 
 // MorphCastCost is what casting a card face down costs — {3} on every
-// card that prints morph (CR 702.37b), megamorph (CR 702.109a) or
+// card that prints morph (CR 702.37b), megamorph (CR 702.37b) or
 // disguise (CR 702.168a). The card's own printed cost is what it
 // costs to turn the permanent back FACE UP, which is the argument
 // each constructor takes.
@@ -45,8 +45,8 @@ func Morph(cost string) game.AlternativeCost {
 	return faceDownCast("morph", "Morph", game.FaceDownMorphed, cost, false)
 }
 
-// Megamorph is "Megamorph <cost>" — CR 702.109a. Morph, plus a +1/+1
-// counter when the permanent is turned face up (CR 702.109b).
+// Megamorph is "Megamorph <cost>" — CR 702.37b. Morph, plus a +1/+1
+// counter when the permanent is turned face up (CR 702.37b).
 func Megamorph(cost string) game.AlternativeCost {
 	return faceDownCast("megamorph", "Megamorph", game.FaceDownMorphed, cost, true)
 }

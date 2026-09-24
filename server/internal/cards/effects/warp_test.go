@@ -149,7 +149,7 @@ func TestWarpExilesAtTheNextEndStep(t *testing.T) {
 func TestWarpGrantIsDarkUntilTheNextTurn(t *testing.T) {
 	g := newCatalogGame(t)
 	id, active := warpCreature(t, g)
-	warpTurn := g.Turn.Number
+	warpTurn := g.Turn.Seq
 	advanceThroughEndStep(t, g)
 
 	var grant game.CastPermission
@@ -169,17 +169,17 @@ func TestWarpGrantIsDarkUntilTheNextTurn(t *testing.T) {
 	if grant.Duration.Kind != game.WhileInZone {
 		t.Errorf("warp's grant is %v, want CR 611.2b's \"for as long as it remains exiled\"", grant.Duration.Kind)
 	}
-	if grant.NotBeforeTurn != warpTurn+1 {
-		t.Errorf("NotBeforeTurn: got %d, want %d", grant.NotBeforeTurn, warpTurn+1)
+	if grant.NotBeforeSeq != warpTurn+1 {
+		t.Errorf("NotBeforeSeq: got %d, want %d", grant.NotBeforeSeq, warpTurn+1)
 	}
 	if permissionLive(g, &grant, active.ID) {
 		t.Errorf("the grant is live on the turn the creature was warped")
 	}
 	// CR 702.185a's floor is a round number, so a later round opens
 	// it — the one thing Duration cannot say, and the reason
-	// NotBeforeTurn survived #945.
+	// NotBeforeSeq survived #945.
 	later := g.Clone()
-	later.Turn.Number = warpTurn + 1
+	later.Turn.Seq = warpTurn + 1
 	if !permissionLive(later, &grant, active.ID) {
 		t.Errorf("the grant is not live on the next turn")
 	}
@@ -214,6 +214,93 @@ func TestWarpedCreatureIsRecastableFromExileLater(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	if !g.Battlefield.Contains(id) {
 		t.Errorf("the recast creature is not on the battlefield")
+	}
+}
+
+// #1336: warping a COMMANDER. Exiling it at the next end step opens
+// the CR 903.9 window, so its owner is asked about the command zone
+// before the delayed trigger's Effect (scheduleWarpExileLocked) can
+// grant the recast permission. The old ExileCardWithPermissionForEffect
+// stamped the grant on the line after a fire-and-forget exile call,
+// found nothing in exile because the move was still paused on the
+// prompt, and a "no" answer stranded the commander in exile with no
+// way to cast it back — the same root cause #1332 fixed for airbend
+// (TestAirbendingACommanderKeepsTheRebuyWhenItsOwnerDeclines). A "yes"
+// sends it home, where there is nothing to grant.
+func TestWarpedCommanderKeepsTheRecastWhenItsOwnerDeclines(t *testing.T) {
+	for _, takeCommandZone := range []bool{false, true} {
+		g := newCatalogGame(t)
+		active := g.Seats[g.Turn.ActiveSeat]
+		id := uuid.New()
+		active.Hand.PushTop(game.Card{
+			InstanceID: id, Name: "Weftstalker Ardent",
+			TypeLine: "Creature — Drix Artificer", ManaCost: "{2}{R}",
+			OracleID: weftstalkerWarpOracle, Owner: active.ID, Controller: active.ID,
+			IsCommander: true,
+		})
+		for g.Turn.Step != game.StepPrecombatMain {
+			if _, err := g.AdvanceStep(); err != nil {
+				t.Fatalf("AdvanceStep: %v", err)
+			}
+		}
+		if err := g.CastSpell(active.ID, id, game.CastSpellParams{AlternativeCost: "warp"}); err != nil {
+			t.Fatalf("warp cast: %v", err)
+		}
+		passPriorityAroundTable(t, g)
+
+		for g.Turn.Step != game.StepEnd {
+			if _, err := g.AdvanceStep(); err != nil {
+				t.Fatalf("AdvanceStep: %v", err)
+			}
+		}
+		passPriorityAroundTable(t, g)
+
+		offer := latestChoiceOfKind(g, game.PendingChoiceOptionalReplacement)
+		if offer == nil || offer.Chooser != active.ID {
+			t.Fatalf("the commander's owner was not asked about the command zone (CR 903.9)")
+		}
+		if err := g.ResolveOptionalReplacement(offer.ID, active.ID, takeCommandZone); err != nil {
+			t.Fatalf("ResolveOptionalReplacement: %v", err)
+		}
+		passPriorityAroundTable(t, g)
+
+		if takeCommandZone {
+			if !active.Command.Contains(id) {
+				t.Fatalf("a commander whose owner took the offer is not in the command zone")
+			}
+			if perm := g.CastPermissionOnCardByIDForEffect(id); perm != nil {
+				t.Errorf("a commander back in the command zone carries a warp recast grant: %+v", perm)
+			}
+			continue
+		}
+
+		if !g.Exile.Contains(id) {
+			t.Fatalf("the warped commander is not in exile")
+		}
+		grant := g.CastPermissionOnCardByIDForEffect(id)
+		if grant == nil || !grant.Granted() {
+			t.Fatalf("the warped commander that stayed in exile has no recast grant")
+		}
+		if grant.Player != active.ID {
+			t.Errorf("grant names %v, want the warping player %v", grant.Player, active.ID)
+		}
+
+		// The rebuy itself: on a later turn, the printed cost recasts it.
+		for i := 0; i < 64 && !(g.Turn.Step == game.StepPrecombatMain && g.Seats[g.Turn.ActiveSeat].ID == active.ID); i++ {
+			if _, err := g.AdvanceStep(); err != nil {
+				t.Fatalf("AdvanceStep: %v", err)
+			}
+		}
+		active.ManaPool.AddMana(game.ManaToken{Color: "R"})
+		active.ManaPool.AddMana(game.ManaToken{Color: "R"})
+		active.ManaPool.AddMana(game.ManaToken{Color: "R"})
+		if err := g.CastSpell(active.ID, id, game.CastSpellParams{Strict: true, FromZone: "exile"}); err != nil {
+			t.Fatalf("recast from exile: %v", err)
+		}
+		passPriorityAroundTable(t, g)
+		if !g.Battlefield.Contains(id) {
+			t.Errorf("the recast commander is not on the battlefield")
+		}
 	}
 }
 

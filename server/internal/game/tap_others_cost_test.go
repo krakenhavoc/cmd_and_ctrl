@@ -72,6 +72,38 @@ func tapOthersDruidCost() *TapOthersCost {
 	}
 }
 
+func tapOthersXArtifactCost() *TapOthersCost {
+	filter := &TargetSpec{
+		Mode: "permanent", Label: "X untapped artifacts you control", Zones: []ZoneKind{ZoneBattlefield},
+		CardOK:     func(_ *Game, _ uuid.UUID, c Card, _ ZoneKind) bool { return c.IsArtifact() },
+		CountFromX: true,
+	}
+	return &TapOthersCost{Filter: filter, Label: filter.Label}
+}
+
+func TestTapOthersCountFromXBoundsAndLegality(t *testing.T) {
+	tc := tapOthersXArtifactCost()
+	if tc.Empty() || !TapOthersCountFromX(tc) {
+		t.Fatalf("Tap-X cost was treated as empty or fixed: %+v", tc)
+	}
+	for _, test := range []struct {
+		x, named int
+		want     bool
+	}{
+		{x: 0, named: 0, want: true},
+		{x: 2, named: 2, want: true},
+		{x: 2, named: 1, want: false},
+		{x: 2, named: 3, want: false},
+	} {
+		if got := TapOthersCountLegal(tc, test.x, test.named); got != test.want {
+			t.Errorf("X=%d named=%d: legal=%v, want %v", test.x, test.named, got, test.want)
+		}
+	}
+	if lo, hi := TapOthersCostBounds(tc, 3); lo != 3 || hi != 3 {
+		t.Errorf("bounds at X=3 = %d/%d, want 3/3", lo, hi)
+	}
+}
+
 // The nil and zero costs demand nothing and must not be asked for a
 // guard by every caller. A cost with a count but no filter is not a
 // printed clause either.
@@ -439,6 +471,46 @@ func TestTapOthersOnAnActivatedAbility(t *testing.T) {
 	passBothForTest(g)
 	if counterOf(g, src, "effect-ran") != 1 {
 		t.Error("the ability did not resolve")
+	}
+}
+
+func TestTapOthersCountFromXIsAnnouncedAndPaidAtomically(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	me := g.Seats[0]
+	src := pushTapOthersAbilitySource(g, me, AbilityCost{TapOthers: tapOthersXArtifactCost()})
+	one := pushTapOthersPermanent(g, me, "Rock One", "Artifact", false)
+	two := pushTapOthersPermanent(g, me, "Rock Two", "Artifact", false)
+	three := pushTapOthersPermanent(g, me, "Rock Three", "Artifact", false)
+
+	if err := g.ActivateCatalogAbility(me.ID, src, 0, ActivateAbilityParams{
+		XValue: 2,
+		TapIDs: []uuid.UUID{one},
+	}); !errors.Is(err, ErrInvalidParam) {
+		t.Fatalf("short X payment: %v, want ErrInvalidParam", err)
+	}
+	for _, id := range []uuid.UUID{one, two, three} {
+		if c := findBattlefieldCard(g, id); c == nil || c.Tapped {
+			t.Fatalf("refused payment tapped %v", id)
+		}
+	}
+
+	if err := g.ActivateCatalogAbility(me.ID, src, 0, ActivateAbilityParams{
+		XValue: 2,
+		TapIDs: []uuid.UUID{one, two},
+	}); err != nil {
+		t.Fatalf("activate at X=2: %v", err)
+	}
+	if len(g.StackMeta) != 1 {
+		t.Fatalf("stack announcement = %+v, want one item at X=2", g.StackMeta)
+	}
+	for _, item := range g.StackMeta {
+		if item == nil || item.XValue != 2 {
+			t.Fatalf("stack announcement = %+v, want X=2", item)
+		}
+	}
+	if !findBattlefieldCard(g, one).Tapped || !findBattlefieldCard(g, two).Tapped || findBattlefieldCard(g, three).Tapped {
+		t.Error("the payment did not tap exactly the two IDs named")
 	}
 }
 

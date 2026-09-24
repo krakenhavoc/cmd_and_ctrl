@@ -149,7 +149,7 @@ func b08DoubleCountersOnEachCreatureYouControl(g *game.Game, item *game.StackIte
 		}
 	}
 	for _, t := range todo {
-		if err := (AddCounter{Target: t.id, Kind: "+1/+1", N: t.n}).Apply(ctx); err != nil {
+		if err := (AddCounter{Target: t.id, Kind: "+1/+1", N: t.n}).Apply(ctx.asGroupMember()); err != nil {
 			return err
 		}
 	}
@@ -240,7 +240,10 @@ func b08OverlookLand(oracleID, name string, subtypes ...string) Spec {
 func b08OverlookSacrifice(fetchLabel, reason string, pred func(game.Card) bool) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneBattlefield {
+		// #1432: a land that left and came back is a new object — the
+		// sacrifice does nothing, so there is no "when you do" either.
+		if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneBattlefield ||
+			ctx.isNewSourceObjectAsThis(item.SourceCardID) {
 			return nil
 		}
 		if err := (SacrificePermanent{Target: item.SourceCardID}).Apply(ctx); err != nil {
@@ -279,8 +282,8 @@ func b08OverlookFetch(reason string, pred func(game.Card) bool) Effect {
 //	"{T}: Add {C}.
 //	 {A/B}, {T}: Add {A}{A}, {A}{B}, or {B}{B}."
 //
-// The hybrid cost is paid from the pool as printed (no auto-tap into
-// it — CR 605.3a), and the output is two independent {A|B} picks,
+// The hybrid cost is paid from the pool as printed (the engine has no
+// auto-tap into it), and the output is two independent {A|B} picks,
 // which is exactly the printed three-way choice. The colorless half
 // sits at index 0 so the auto-tapper reaches for it and never spends
 // floating mana on a filter.

@@ -170,6 +170,32 @@ var CatalogTargetMode func(oracleID string) string
 // activate_mana_ability call to look up the ability's cost shape +
 // produced-mana string.
 type ManaAbilityShape struct {
+	// Zones is the CR 113.6 dimension on a MANA ability: the zones
+	// this ability functions from. Nil means the battlefield and
+	// nowhere else, which is every mana ability the catalog held
+	// before #1228.
+	//
+	// `ActivatedAbilityShape.Zones`' sibling (ability_zone.go, #660)
+	// and `TriggeredAbility.Zones`' (#922) and `StaticAbility.Zones`'
+	// (#1221), read through the same shape of predicate —
+	// ManaAbilityFunctionsFromZone — by the same four consumers: the
+	// activation path, the legal-move enumerator, the view's stamp
+	// and, uniquely to this ability kind, the auto-tapper.
+	//
+	// The one printed family is the Spirit Guides' "Exile this card
+	// from your hand: Add {R}" (CR 605.1a makes that a mana ability
+	// and CR 113.6 is what lets it work from a hand). ADR 0071
+	// Decision 1 note 3 predicted this day from the designation side:
+	// "the field plus its accessor is the same two lines on the day
+	// one does".
+	//
+	// Only the HAND is supported — supportedManaAbilityZones — and
+	// effects.Register refuses anything else at boot, for the reason
+	// StaticZoneUnsupported exists: a zone no consumer walks is a
+	// declaration the engine silently ignores, and the card would
+	// register, look complete on the catalog page and never work.
+	Zones []ZoneKind
+
 	TapCost bool
 	// SacrificeCost sacrifices the SOURCE as part of the cost
 	// (Treasure, Lotus Petal, an Eldrazi Spawn).
@@ -302,6 +328,56 @@ type ManaAbilityShape struct {
 	// Skirge Familiar is a mana source; an auto-tapped one is not.
 	DiscardCards *DiscardCost
 
+	// ExileCards is an "Exile N cards from your hand" component of the
+	// activation cost (#1283) — Cadaverous Bloom's "Exile a card from
+	// your hand: Add {B}{B} or {G}{G}". The activator names the cards
+	// in ManaAbilityParams.ExileIDs.
+	//
+	// DiscardCards' sibling one keyword action over, and NOT a discard:
+	// the cards leave through the one exit primitive with
+	// MustSettleNow, fire no EventDiscardCard and are invisible to
+	// madness — see game.ExileCost for why the two are two components.
+	// Nor is it ExileSelf below, which exiles the SOURCE and asks
+	// nothing.
+	//
+	// The AUTO-TAPPER never plans an ability that has one, on the
+	// discard's ground: which card to exile is a decision, and the
+	// planner makes none.
+	ExileCards *ExileCost
+
+	// ExileSelf exiles the SOURCE CARD out of the zone the ability
+	// was activated from, as part of the activation cost (#1228):
+	//
+	//	Simian Spirit Guide  "Exile this card from your hand: Add {R}."
+	//	Elvish Spirit Guide  "Exile this card from your hand: Add {G}."
+	//
+	// The SAME clause AbilityCost.ExileSelf carries (#1221,
+	// exile_cost.go), with the same validator and the same payer,
+	// because it is the same cost — scavenge exiles a card from a
+	// graveyard to put counters on something, a Spirit Guide exiles
+	// one from a hand to make mana, and a component declared twice is
+	// a component that can be paid two ways. The ZONE it is validated
+	// against comes off the ability's own Zones, not off the
+	// component: the clause names "this card", and which pile it is
+	// in is CR 113.6's business.
+	//
+	// It pays through the one exit primitive (routeCardToZoneLocked)
+	// with MustSettleNow, so a commander exiled to a Spirit Guide's
+	// cost still gets its CR 903.9 answer and the CR 601.2h /
+	// CR 602.2b indivisible step cannot pause on a prompt.
+	//
+	// Refused at BOOT on an ability that declares no non-battlefield
+	// zone, and required on one that does: a mana ability off the
+	// battlefield has no {T} and no permanent to sacrifice, so
+	// without this it would have no cost at all and CR 106.7's
+	// "could produce" would be reading a free mana source.
+	//
+	// The AUTO-TAPPER does plan it, as the LAST-resort tier below
+	// even a sacrifice source — see tapSource.LeavesHand. A card in
+	// hand is worth more than a Treasure, and both are worth less
+	// than an untapped land.
+	ExileSelf bool
+
 	// ProducedForPaid computes the produced-mana string from what
 	// the cost actually PAID, for an ability whose output the
 	// printed text derives from the payment rather than from the
@@ -366,14 +442,10 @@ type ManaAbilityShape struct {
 	// Added in the S32 mana-pipeline pass (#352 sub-gaps 3 and 4).
 	ProducedFunc func(g *Game, controller, source uuid.UUID) string
 
-	// DerivesFromOtherSources marks a ProducedFunc that asks OTHER
-	// permanents what THEY could produce — Exotic Orchard,
-	// Reflecting Pool, Fellwar Stone. It is the recursion guard:
-	// ProducibleManaLocked (CR 106.7) evaluates every other
-	// ProducedFunc and skips these, because two Exotic Orchards
-	// facing each other would otherwise recurse until the stack ran
-	// out. CR 106.6b answers the circular case with "no mana" and so
-	// does the guard.
+	// DerivesFromOtherSources marks an ability that asks OTHER
+	// permanents what THEY could produce — Exotic Orchard, Reflecting
+	// Pool, Fellwar Stone. Such an ability declares DerivedMatch
+	// (below) instead of ProducedFunc.
 	//
 	// A declaration rather than something inferred at run time: the
 	// alternative is a re-entrancy counter, which on a snapshotted
@@ -382,6 +454,39 @@ type ManaAbilityShape struct {
 	//
 	// Added in S44 (#782).
 	DerivesFromOtherSources bool
+
+	// DerivedMatch computes CR 106.7's "could produce" derivation
+	// directly, for exactly the three abilities DerivesFromOtherSources
+	// marks (#1323). ProducedFunc cannot do this itself: the
+	// derivation is recursive whenever the source it asks about is
+	// ITSELF derived (Fellwar Stone asking an opposing Exotic
+	// Orchard), and answering that correctly — a one-way chain
+	// resolves, two copy-mana lands facing each other do not recurse
+	// forever (CR 106.7's own closing sentence, not "106.6b" — that
+	// number does not exist in the pinned edition) — needs the
+	// ancestor path threaded the whole way down. A closure with
+	// ProducedFunc's fixed three-argument shape (g, controller,
+	// source) has no room to carry one across the package boundary
+	// into a card-side helper, so this field is a plain predicate
+	// instead — "candidate is a land an opponent controls" (Exotic
+	// Orchard, Fellwar Stone), "candidate is a land you control"
+	// (Reflecting Pool) — and producibleManaVisitingLocked
+	// (producible_mana.go, this package) walks the battlefield and
+	// recurses itself, with the ancestor path as an ordinary
+	// parameter.
+	//
+	// Wins over ProducedFunc for BOTH the CR 106.7 reader and a real
+	// activation — manaAbilityProducedLocked and ActivateManaAbility
+	// both check it first — so the two can never compute a different
+	// answer for the same board.
+	DerivedMatch func(candidate Card, controller uuid.UUID) bool
+
+	// DerivedColorsOnly drops {C} from a DerivedMatch union: "any
+	// COLOR that a land an opponent controls could produce" (Exotic
+	// Orchard, Fellwar Stone) cannot make colorless mana (CR 105.1);
+	// "any TYPE that a land you control could produce" (Reflecting
+	// Pool) can.
+	DerivedColorsOnly bool
 
 	// Restrictions are the tags stamped onto every ManaToken this
 	// ability produces — "spend this mana only to cast a creature
@@ -467,6 +572,35 @@ type ManaAbilityShape struct {
 	//
 	// Added in the S22 mana-ability-rider pass.
 	Rider func(g *Game, controller, source uuid.UUID) error
+
+	// PreRider is Rider's mirror image: everything the oracle text
+	// says BEFORE the "Add …" clause, run once the cost is paid and
+	// BEFORE the produced string is computed (Produced / ProducedFunc
+	// / ProducedForPaid, in that precedence) — Empowered Autogenerator's
+	// "Put a charge counter on this artifact. Add X mana of any one
+	// color, where X is the number of charge counters on this
+	// artifact." The counter has to land before X is read, or X is a
+	// guess at what the placement will do rather than a fact about
+	// what it did.
+	//
+	// A card declares Rider or PreRider, never both for the same
+	// clause — whichever one matches where its own printed sentence
+	// puts the non-mana instruction relative to "Add …".
+	//
+	// Same locking contract as Rider: runs under g.mu held for write,
+	// *ForEffect helpers only. Any mutation this makes and ProducedFunc
+	// then reads back MUST go through a mustSettleNow entry point —
+	// AddCounterMustSettleNowForEffect for a counter placement — because
+	// CR 605.3b leaves no priority window inside a mana ability's
+	// resolution for a CR 616 ordering prompt (two counter doublers) to
+	// occupy. The pipeline settles on the gathered order instead of
+	// asking, exactly as RepEventProduceMana already does for a
+	// production-side doubler stack (see produce_mana.go).
+	//
+	// Nil for every mana ability but Empowered Autogenerator today.
+	//
+	// Added in the #1370 fix.
+	PreRider func(g *Game, controller, source uuid.UUID) error
 
 	// NarrowToCommanderIdentity intersects a multi-option ("pipe")
 	// produced string with the controller's commander's colour

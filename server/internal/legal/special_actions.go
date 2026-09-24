@@ -13,6 +13,8 @@ type specialActionParams struct {
 	Kind    string `json:"kind"`
 	Strict  bool   `json:"strict,omitempty"`
 	AutoTap bool   `json:"auto_tap,omitempty"`
+	// Cost picks between two offers of one kind on one card (#1391).
+	Cost string `json:"cost,omitempty"`
 }
 
 // specialActionMoves enumerates the CR 116.2 special actions the seat
@@ -39,8 +41,15 @@ func (e *enumerator) specialActionMoves() {
 	}
 	if p.Hand != nil {
 		for i := range p.Hand.Cards {
-			e.specialActionMovesForCard(p.Hand.Cards[i])
+			e.specialActionMovesForCard(p.Hand.Cards[i], game.ZoneHand)
 		}
+	}
+	// #1391: the top of the seat's own library, the one card a granted
+	// zone reaches (Fblthp, Lost on the Range's plot). Without a grant
+	// SpecialActionsOfferedLocked answers nothing here, so this costs
+	// one lookup per seat in every game without a Fblthp.
+	if p.Library != nil && len(p.Library.Cards) > 0 {
+		e.specialActionMovesForCard(p.Library.Cards[len(p.Library.Cards)-1], game.ZoneLibrary)
 	}
 	// ADR 0082 decision 6: turn_face_up is the first kind whose card
 	// is not in a hand. The seat's own FACE-DOWN permanents are the
@@ -55,16 +64,16 @@ func (e *enumerator) specialActionMoves() {
 			if !card.FaceDownIsPermanent() || card.Controller != e.seat {
 				continue
 			}
-			e.specialActionMovesForCard(card)
+			e.specialActionMovesForCard(card, game.ZoneBattlefield)
 		}
 	}
 }
 
 // specialActionMovesForCard emits one move per special action `card`
-// offers that the seat may take and afford right now.
-func (e *enumerator) specialActionMovesForCard(card game.Card) {
+// offers in `zone` that the seat may take and afford right now.
+func (e *enumerator) specialActionMovesForCard(card game.Card, zone game.ZoneKind) {
 	g := e.g
-	for _, sa := range game.SpecialActionsOfferedByCard(card) {
+	for _, sa := range g.SpecialActionsOfferedLocked(e.seat, card, zone) {
 		if !game.SpecialActionKindBuilt(sa.Kind) {
 			continue
 		}
@@ -74,11 +83,15 @@ func (e *enumerator) specialActionMovesForCard(card game.Card) {
 		// The cost is mana and nothing else, and it is the only
 		// way a special action can be unaffordable — there is no
 		// target to be missing and no choice to be unanswerable.
-		// Priced through the same zero spend context the engine
-		// pays with, so restricted mana counts here exactly as
-		// little as it does there.
+		// Priced through the same CR 601.2f pass the engine charges
+		// with (#1319: SpecialActionManaCostForEffect), so a discount
+		// like Ranar's "first foretell each turn costs {0}" is never
+		// offered as an ordinary {2} the engine then charges less
+		// for, or the reverse. Priced with the same zero spend
+		// context the engine pays with, so restricted mana counts
+		// here exactly as little as it does there.
 		if sa.Cost != "" {
-			cost, err := game.ParseCost(sa.Cost)
+			cost, err := g.SpecialActionManaCostForEffect(e.seat, card, sa.Kind, sa)
 			if err != nil {
 				continue
 			}
@@ -97,18 +110,30 @@ func (e *enumerator) specialActionMovesForCard(card game.Card) {
 		if card.Name != "" {
 			label += " " + card.Name
 		}
+		params := specialActionParams{
+			CardID:  card.InstanceID.String(),
+			Kind:    string(sa.Kind),
+			Strict:  true,
+			AutoTap: true,
+		}
+		// #1391: an offer a grant opened in another zone names its
+		// price, because the card may offer the same kind twice
+		// there (a Djinn of Fool's Fall under Fblthp: its own plot
+		// cost and its mana cost). A card in its own zone offers each
+		// kind once, and its params stay exactly as they were.
+		if sa.Zone != "" {
+			params.Cost = sa.Cost
+		}
+		if sa.Zone == game.ZoneLibrary {
+			label += " from the top of your library"
+		}
 		e.add(Move{
 			Type:   TypeSpecialAction,
 			Player: e.seat,
 			Kind:   KindSpecialAction,
 			Label:  label,
 			Source: card.InstanceID,
-			Params: mustJSON(specialActionParams{
-				CardID:  card.InstanceID.String(),
-				Kind:    string(sa.Kind),
-				Strict:  true,
-				AutoTap: true,
-			}),
+			Params: mustJSON(params),
 		})
 	}
 }

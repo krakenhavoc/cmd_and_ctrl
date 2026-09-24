@@ -26,11 +26,12 @@ import (
 // The damage clause is a CR 614 replacement, and all three of its
 // conditions are load-bearing:
 //
-//   - "a red SOURCE YOU CONTROL" — the source is looked up wherever
-//     it now is, since a burn spell is already in a graveyard by the
-//     time its damage resolves, and its colour is read post-layers.
-//     A source the engine cannot find is left alone, which errs
-//     weaker and never stronger.
+//   - "a red SOURCE YOU CONTROL" — the source is the damage event's
+//     snapshot of it: a burn spell as it stands on the stack, and a
+//     creature that has already left as it last existed on the
+//     battlefield (#1417, CR 608.2h), its colour and controller read
+//     post-layers. A source the engine cannot read is left alone,
+//     which errs weaker and never stronger.
 //   - "NONCOMBAT damage" — the whole reason the card is not simply a
 //     Gratuitous Violence. A 1/1 attacker still deals 1 in combat;
 //     only damage from spells, abilities and triggers is raised.
@@ -92,16 +93,13 @@ func init() {
 // than Mechanized Warfare's red-OR-ARTIFACT reader on purpose: a
 // colourless artifact pinging an opponent is not raised by Ojer.
 //
-// The source is looked up wherever it has landed, so a spell already
-// in its owner's graveyard still answers for its colour, and the
-// colour is the effective one — a creature an effect has turned red
-// counts.
+// The source is the damage event's snapshot of it
+// (damageSourceCharacteristics): a burn spell as it stands on the
+// stack, and a creature that has left the battlefield as it last
+// existed there (#1417, CR 608.2h), so a creature an effect had turned
+// red still counts after it dies, and the colour is the effective one.
 func ojerRedSourceControlledBy(ev *game.ReplacementEvent, g *game.Game, controller uuid.UUID) bool {
-	if ev.DamageSource == uuid.Nil {
-		return false
-	}
-	c, ok := g.LookupCardForEffect(ev.DamageSource)
-	return ok && c.Controller == controller && c.HasColor("R")
+	return damageSourceIsRedControlledBy(ev, g, controller, false)
 }
 
 // ojerDamageHitsAnOpponentOf is "to an opponent" — a seated,

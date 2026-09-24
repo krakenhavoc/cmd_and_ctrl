@@ -1142,7 +1142,8 @@ and inventing the clause would mean inventing a picker for it.
 Two rules ride with it, both already this file's:
 
 - **Not replaceable.** `applyCounterLocked`, not `AddCounterForEffect`.
-  Paying a cost is not an effect (CR 121.1), so Doubling Season does NOT
+  A counter-doubling replacement applies only to a counter placed by
+  an effect (CR 614.16), so Doubling Season does NOT
   double Devoted Druid's -1/-1 — which would double the price of a card
   that is meant to be pure upside.
 - **Ordering.** Paid at announce with everything else (CR 118.3 / 602.2b),
@@ -1228,7 +1229,7 @@ Written in ONE place: `ActivateCatalogAbility`, beside
 through one function — `Game.AbilityExhausted(source, shape)`.
 
 **Mana abilities are deliberately not counted.** They take the other
-entry point (`ActivateManaAbility`, CR 605.3a — no stack, no
+entry point (`ActivateManaAbility`, CR 605.3b — no stack, no
 priority), so `effects.ManaAbility` carries no `Exhaust` field and the
 combination is unspellable rather than silently ignored. One printed
 card wants it — **Loot, the Pathfinder**'s "Exhaust — {G}, {T}: Add
@@ -1348,8 +1349,9 @@ as a sorcery" and repeats every turn). All four `full`.
   Bombardiers and boast are one `Condition` each away and are not in
   this PR.
 - **Avatar Kuruk**'s "Exhaust — Waterbend {20}: Take an extra turn
-  after this one" still waits on extra turns (#753) and on the
-  waterbend cost, neither of which is this seam.
+  after this one" still waits on extra turns (#753), which is not this
+  seam. (The waterbend cost it also waited on landed in #1310 — see the
+  2026-09-23 waterbend amendment at the foot of this ADR.)
 
 ## Note (2026-09-22, #1183): the mana half, and the two write sites
 
@@ -1361,7 +1363,7 @@ decision in the addendum stays accepted and unchanged.
 ### Context
 
 Decision 1 above says mana abilities are deliberately not counted:
-they take the other entry point (`ActivateManaAbility`, CR 605.3a — no
+they take the other entry point (`ActivateManaAbility`, CR 605.3b — no
 stack, no priority, no announcement to hang a record on), so
 `effects.ManaAbility` carried no `Exhaust` field and the combination
 was **unspellable** rather than silently ignored. One printed card
@@ -1414,7 +1416,7 @@ rather than a line in #1181:
    ends the object and carries `Card.ObjectEpoch` with it), the gate
    is read from it immediately, and the record is written at the point
    every gate has passed and the first payment is about to be made.
-   CR 605.3a makes the activation one indivisible step with no
+   CR 605.3b makes the activation one indivisible step with no
    priority window inside it, so there is no later "announcement
    finished" to hang the write on — and an activation that begins
    paying has happened. That is #1181's "an exhaust ability countered
@@ -1640,9 +1642,12 @@ against it, and a test reads it. That is #544's rule with the sign
 reversed — an enumerator pricing at the printed cost would silently
 HIDE legal moves rather than offer illegal ones.
 `payAbilityManaCostLocked` therefore takes a `ParsedCost` now; the
-attack tax (CR 508.1a is a cost to attack) and the special-action path
-(CR 116.2 is not an activation) parse their own strings and stay
-unpriced.
+attack tax (CR 508.1a is a cost to attack) still parses its own string
+and stays unpriced. **The special-action path is priced too, since
+#1319** — CR 116.2 is not an activation, so it does not share
+`CostQuery.Ability`'s door, but it wanted the identical third one; see
+[ADR 0062](0062-abilities-and-special-actions-from-the-hand.md)'s
+2026-09-23 note.
 
 ### Cards
 
@@ -1886,7 +1891,8 @@ without running the CR 614 pipeline.
   control, and an entry that puts a card onto the battlefield
   **attacking** (`ZoneEntryOptions` has `Tapped` and no `Attacking`;
   only the token path can do it, `entry_choice.go`'s minted-token
-  branch). Filed separately.
+  branch). Filed separately. *(Delivered by the 2026-09-23 amendment
+  below, #1227.)*
 - **Statics that function from a graveyard** — `StaticAbility.Zones`,
   the layer pass's own half of CR 113.6c (Anger, Wonder, Brawn). The
   other row of the same seam issue, and the next PR.
@@ -1896,3 +1902,821 @@ without running the CR 614 pipeline.
   object.
 - **Cost modification for activated abilities**, unchanged from the
   #1181 addendum.
+
+---
+
+## Amendment (2026-09-23, [#1227](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1227)): ninjutsu, a hand activation whose cost reads combat
+
+The #1221 addendum above listed **Ninjutsu** under "Still out of scope" with
+its two missing halves named. Both exist now —
+[ADR 0045](0045-combat-restrictions.md)'s 2026-09-23 amendment has the combat
+half (the attacking entry, and an exported "unblocked attacker") and
+[ADR 0073](0073-optional-additional-costs-and-the-cast-gate.md)'s has the
+paid-cost half — and what is left for this ADR is the part that turned out to
+be nothing at all.
+
+### Decision 29: the keyword is a constructor, and the activation path is untouched
+
+`effects.Ninjutsu(cost)` is `effects.Cycling(cost)`'s shape with a different
+cost component and a different verb:
+
+```go
+Label:  "Ninjutsu {1}{U} (…)",
+Cost:   Plus(ManaCost("{1}{U}"), ReturnAnUnblockedAttacker()),
+Zones:  []game.ZoneKind{game.ZoneHand},
+Effect: ninjutsuEnter,
+```
+
+Not one line of `ActivateCatalogAbility` changed. The zone dimension reached
+the hand in #660 (Decision 1 of [ADR 0062](0062-abilities-and-special-actions-from-the-hand.md)),
+the return component landed in #1213, and the boot-time guard that refuses a
+cost naming the source as a permanent on a non-battlefield ability
+(`AbilityNeedsPermanentSource`) already admits `ReturnToHand`, because the
+permanent it returns is not the source. That is the zone dimension paying off:
+the keyword that most obviously wanted a fork needed none.
+
+### Decision 30: the timing restriction is the COST, not a `Condition`
+
+Ninjutsu is activatable only from the declare-blockers step onward, while an
+unblocked attacker you control exists. That is a real restriction and it is
+deliberately NOT expressed as `ActivatedAbilityShape.Condition`.
+
+CR 118.3 already says a player can't begin to activate an ability whose cost
+they can't pay, and outside that window no creature is an unblocked attacker —
+so the cost IS the restriction, and a `Condition` would be the same sentence
+said twice in two places that could drift. The three consumers all get the
+right answer from the one clause: the validator refuses the activation
+(`ErrIllegalTarget`), `returnCostOptions` ships an empty picker, and the
+legal-move enumerator offers no move at all, because `returnPayments` returns
+nil when the pool cannot reach the clause's count (#544).
+
+The one thing that gets worse is the greyed ROW, and that is fixed on the
+client rather than by bending the ability's shape — see Decision 31.
+
+### Decision 31: one shortfall predicate, both menus
+
+`returnShortfall(options, label)` is factored out of `contextMenu.logic.ts`'s
+`abilityBlocked` and is now asked by `ManaAbilityMenu.svelte` too — the
+pop-over a HAND card and the zone browser open, which had no return arm at all.
+
+It matters more for ninjutsu than for any earlier card with the component.
+Quirion Ranger's row is unpayable when you control no Forest, which is rare;
+a ninjutsu row is unpayable for nearly the whole game and payable only inside
+one step with an unblocked attacker on the board. A row that never greyed
+would have been clickable and refused far more often than it worked.
+
+No other client change, and none was needed: `return_options` / `return_label`
+have been on `ActivatedAbilityView` since #1213 and `return_ids` on the
+`activate_ability` payload since the same PR, and Board's announce chain
+(`afterAbilityDiscardCost` → the return picker → `continueActivation`) never
+inspects the card's zone. Zone-ness is decided once, in `abilitiesOf`.
+
+### Cards
+
+**Ninja of the Deep Hours** (the canonical proof — draw a card on connect),
+**Ingenious Infiltrator** ("whenever a Ninja you control deals combat damage to
+a player", which fires off the keyword's own arrival because the Infiltrator is
+a Ninja), **Moonblade Shinobi** (an Illusion token) and **Prosperous Thief**
+(the batch form — "one or more Ninja or Rogue creatures you control deal combat
+damage", one Treasure per player connected with). All four `full`; all four are
+one `Ninjutsu(cost)` entry plus an ordinary combat-damage trigger.
+
+### Still out of scope
+
+- **Commander ninjutsu** (CR 702.49c) — Yuriko, the Tiger's Shadow. The entry
+  would come from the COMMAND ZONE as well as the hand, and
+  `putOntoBattlefieldFromZoneLocked` is already generic in its source zone, so
+  the ENTRY is free. What is not free is the commander bookkeeping around a
+  command-zone exit that is not a cast, which nothing in the engine does today;
+  it did not fall out, so it is not here. *Shipped by #1278 — see the
+  2026-09-24 amendment below.*
+- **Ninjutsu on a card whose other half needs machinery.** Fallen Shinobi
+  ("you may play those cards without paying their mana costs" over another
+  player's exiled cards) and Silent-Blade Oni (cast a spell from an opponent's
+  hand) are ordinary catalog work behind other seams, not ninjutsu work.
+
+---
+
+## Addendum (2026-09-23): a MANA ability that functions from the hand (#1228)
+
+The 2026-09-22 addendum above closed the CR 602 half of CR 113.6 and named
+what was left: "`ManaAbilityShape` has no zone dimension, so the Spirit Guides
+stay blocked." This closes that.
+
+```
+Simian Spirit Guide   Exile this card from your hand: Add {R}.
+Elvish Spirit Guide   Exile this card from your hand: Add {G}.
+```
+
+CR 605.1a makes both of those mana abilities — they could add mana, they are
+not loyalty abilities, they target nothing — so they take the OTHER entry
+point. `ActivateManaAbility` found its source on the battlefield and nowhere
+else, `ManaAbilityShape` had neither the zone field nor an exile-this cost, and
+[ADR 0071](0071-designations-that-switch-abilities-on.md) Decision 1 note 3 had
+already written the sentence this issue is the answer to: mana abilities do not
+get the field, "not a principle — the field plus its accessor is the same two
+lines on the day one does".
+
+Six decisions. The auto-tapper is the seventh reader and has an amendment of
+its own on [ADR 0011](0011-mana-pool-and-auto-tapper.md), because it is the
+consumer with no CR 602 counterpart: nothing plans a cycling activation on the
+player's behalf, and a mana source is exactly the thing the planner exists to
+find.
+
+### 1. `ManaAbilityShape.Zones`, with the same nil default and the same posture
+
+`ActivatedAbilityShape.Zones`' sibling (#660), `TriggeredAbility.Zones`' (#922)
+and `StaticAbility.Zones`' (#1221). Nil means the battlefield and nowhere else,
+which is every mana ability the catalog held before this, the synthetic
+basic-land ability included.
+
+The posture is the one `AbilityFunctionsFromZone` takes and is worth restating
+because it is the half that surprises: **a declared zone is not an ADDITION to
+the battlefield.** A Simian Spirit Guide that got cast is a 2/2 Ape with no
+abilities, which is the paper card — "from your hand" is the ability, not a
+permission bolted onto one. The predicate is
+`game.ManaAbilityFunctionsFromZone`, a separate function from the CR 602 one
+rather than a generic over both, because the two ability kinds carry their cost
+components in different shapes (`ManaAbilityShape` holds them directly,
+`ActivatedAbilityShape` holds an `AbilityCost`) and a shared signature would
+have to take an interface to hide a four-line loop.
+
+What IS shared is the rule underneath: `ManaAbilityNeedsPermanentSource` is
+`AbilityNeedsPermanentSource` with the mana shape's field names mapped onto the
+CR 602 cost's, so "a tap cost needs a permanent" is written once and a
+component that becomes unpayable off the battlefield becomes unpayable for both
+kinds at once.
+
+### 2. Only the HAND is supported, and `effects.Register` refuses the rest at boot
+
+`game.supportedManaAbilityZones` is `{ZoneHand}`, the exact shape
+`supportedStaticZones` took for the graveyard in #1221 and for the same reason:
+a zone the planner's gather, the enumerator's walk and the view's stamp do not
+visit would be a declaration the engine silently ignores. The card would
+register, look complete on the catalog page, and never make a mana.
+
+The graveyard, exile and the command zone are each one line in that list plus
+one pile in `gatherManaZoneSources` on the day a printed card asks. Nothing
+does: a scan of the Scryfall dump finds exactly two cards with a mana ability
+that functions off the battlefield, and they are the two above.
+
+### 3. `ManaAbilityCost.ExileSelf` is #1221's clause with a second owner
+
+`AbilityCost.ExileSelf` is scavenge's and embalm's "Exile this card from your
+graveyard". This is the same clause, and it is the same `bool` in a second
+struct rather than a new component, for the reason `SacrificeOther`,
+`RemoveCounters`, `TapOthers` and `DiscardCards` are each one type with two
+owners: a component declared twice is a component that can be paid two ways.
+`exile_cost.go`'s validator and payer now take the zone and the bit rather than
+an `AbilityCost`, and both ability kinds call them.
+
+The ZONE it is validated against comes off the ability's own `Zones`, not off
+the component. The clause names "this card"; which pile the card is in is
+CR 113.6's business, and duplicating the zone on the cost would be two places
+that can disagree. (The CR 602 side keeps its hard-coded graveyard: every card
+that prints it there says "from your graveyard", and changing that was not this
+issue's to do.)
+
+It pays through the one exit primitive with `MustSettleNow`, so a commander
+spent as a Spirit Guide's cost gets its CR 903.9 window and settles without
+pausing — CR 601.2h and CR 602.2b make paying a cost one indivisible step, and
+a cost may not stop to ask a question. That is the same answer #660 gave for a
+commander pitched to a cost discard.
+
+### 4. The zone and the cost imply each other, at boot
+
+`checkManaAbilityZones` panics in both directions:
+
+- a non-battlefield zone with NO exile cost is a free repeatable mana source,
+  which is not a card anybody printed;
+- an exile cost with no non-battlefield zone has nothing to exile from.
+
+The first is the one that matters. Every other cost component a mana ability
+can carry is refused off the battlefield (there is nothing to tap, sacrifice or
+put a counter on), so without this rule the only way to declare a hand mana
+ability would be to declare a costless one. Stating the implication at boot is
+cheaper than discovering it as an infinite mana engine, and the auto-tapper's
+picker states it a second time rather than trusting a check two packages away.
+
+### 5. One activation path, and the CR 108.4 "you"
+
+`ActivateManaAbility` finds its source in whatever zone holds it —
+`findCardAndZoneLocked`, the same helper `ActivateCatalogAbility` has used
+since #660 — and branches exactly where the CR 602 path branches: on the
+battlefield the CONTROLLER is "you" and `CanActivateManaAbilities` applies; off
+it the OWNER is "you" (CR 108.4) and the layer-6 restriction is not asked,
+because Arrest and Cursed Totem restrict a permanent.
+
+The zone check goes after the index lookup and before everything else, so the
+ability judged is the one the view and the enumerator published and a refusal
+costs nothing. The exile is paid LAST, after the discards, because it moves the
+source and invalidates every pointer the payment block holds — and #1212's
+`ManaSourceKinds` snapshot is taken before the first payment, for the reason it
+already was on the Treasure path: by the time the {R} is minted the card is in
+exile. Off the battlefield the snapshot reads printed characteristics, which is
+the honest answer, because nothing outside the battlefield has layers.
+
+### 6. The wire gets `zone_mana_abilities`, and `mana_abilities` means the battlefield
+
+`zone_abilities`' twin one ability kind over, riding the same per-seat carrier
+(`castOffers`) and dropped by the same `publicIn`. A separate field rather than
+a reuse of `mana_abilities`, for the reason `zone_abilities` is separate from
+`activated_abilities` **and one reason more**: the two lists take different wire
+verbs (`activate_mana_ability` against `activate_ability`), so a client sends
+the verb that matches the row it read.
+
+The half that is a behaviour change for existing clients:
+**`mana_abilities` is now filtered to the battlefield.** It has always been
+stamped on every card in every zone, which was harmless while every mana ability
+functioned from the battlefield — a Forest in hand publishing "{T}: Add {G}" is
+a true statement about the permanent it would become. It stops being harmless
+the moment a card's mana ability does NOT function there, so the exported field
+now means what it always said it meant: what does this permanent do. A Forest in
+hand is unaffected; a Spirit Guide on the battlefield publishes neither list.
+
+A hand is hidden wholesale, so the per-seat scoping is belt-and-braces today.
+It is written that way because `supportedManaAbilityZones` is one entry away
+from a public pile, and a public pile publishing one seat's rows is #1055 and
+#1167 arriving one field over.
+
+### Shipped on
+
+**Simian Spirit Guide** and **Elvish Spirit Guide**, both `full`. They are the
+entire printed family — a scan of the Scryfall dump for "exile this card from
+your hand" finds nine other cards, and all nine are CR 602 activated abilities
+that GRANT a mana ability to a land (the OTJ "Outlaw" cycle, Emrakul, the
+Exigent Doom), which is a different seam. Cadaverous Bloom's "Exile a card from
+your hand: Add {B}{B}" is a BATTLEFIELD mana ability whose cost exiles a card
+from hand — a component `ManaAbilityCost` still does not have, and the sibling
+of the discard clause #1213 added.
+
+### Still out of scope
+
+- **A mana ability from a GRAVEYARD, exile or the command zone.** One line in
+  `supportedManaAbilityZones` and one pile in `gatherManaZoneSources`; no
+  printed card asks.
+- **`ManaAbilityCost.ExileCards`** — "Exile A CARD from your hand" as a cost
+  (Cadaverous Bloom). `DiscardCards`' sibling, on the battlefield, and a
+  different component from this one for exactly the reason `ExileSelf` is a
+  different component from `DiscardSelf`.
+- **A mana ability with a `Rider` off the battlefield.** The picker refuses one
+  and nothing prints one; it would be a rider on an object that no longer
+  exists by the time it ran.
+- Everything the #1221 addendum left open and #1227 did not take — the
+  per-instance exile grant (Greater Gargadon while suspended) and cost
+  modification for activated abilities — is unchanged. Ninjutsu closed in the
+  amendment above, which landed while this one was in flight.
+
+---
+
+## Amendment (2026-09-23, [#1310](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1310)): waterbend as an activated ability's cost
+
+**Sprint:** S44 — mana and cost components. Tracker [#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887).
+Deck tracker [#1306](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1306).
+The ward half (#1311) is in [ADR 0073](0073-optional-additional-costs-and-the-cast-gate.md)'s
+amendment of the same date.
+
+CR 701.67a (checked against the pinned edition, effective August 7, 2026):
+*"Waterbend [cost]" means "Pay [cost]. For each generic mana in that cost, you
+may tap an untapped artifact or creature you control rather than pay that
+mana."* S22 built it for a SPELL (`Spec.TapCost`, `game.TapPermanentsCost`,
+tap_cost.go). Three printed activated abilities waited on the other half —
+Aang, Swift Savior's "Waterbend {8}: Transform Aang" (shipped at a flat {8},
+weaker than printed), Katara, Water Tribe's Hope's "Waterbend {X}", and Avatar
+Kuruk's "Exhaust — Waterbend {20}" — and `AbilityCost` had no waterbend
+component. #758's `TapOthers` is not it: that is a fixed count a cost DEMANDS,
+this is an optional discount a cost OFFERS.
+
+### Decision 32: `AbilityCost.Waterbend` is the spell's component, and the mana stays in `Mana`
+
+`AbilityCost.Waterbend *game.TapPermanentsCost` — the same struct a spell's
+convoke and waterbend use, a third owner rather than a new kind. One reading
+differs, deliberately, and it is where the mana lives:
+
+- On a **spell** the waterbend is an additional cost, so `Extra` is ADDED to
+  the printed cost.
+- On an **ability** the waterbend IS the cost ("Waterbend {8}:" has no other
+  mana), so the mana goes in `AbilityCost.Mana` and `Extra` names the part of it
+  the taps may cover (CR 701.67b: the waterbend's own generic, never the rest of
+  the total).
+
+Keeping the mana in `Mana` is the point. X detection (`DemandsX`, `MinX`), the
+CR 601.2f cost-modifier pass (Boom Scholar's exhaust discount reaches Kuruk's
+{20}), the view's cost chip and every affordability check already read it, and
+none of them needed to learn that waterbend exists. The only new question is
+"how many permanents, and which", and it has one answer shared by three readers
+(`server/internal/game/waterbend_cost.go`):
+
+- `game.WaterbendBudget(clause, priced, x)` — the clause's generic at the
+  announced X, capped by the PRICED cost's generic (a discount that already
+  removed a symbol leaves nothing for another tap to pay);
+- `game.WaterbendReduced(priced, x, n)` — the priced cost with `n` generic paid
+  by tapping, applied AFTER the cost-modifier pass (CR 601.2f before 601.2h, the
+  cast path's order);
+- `Game.WaterbendOptionsForEffect` — the non-targeting candidate walk the
+  validator, the view's picker and the enumerator all read (#544).
+
+`effects.WaterbendCost(cost)` builds both halves; a card file never writes
+either by hand. `Plus` SUMS a waterbend's mana with another mana component
+instead of letting the later one win — "{1}{U}, Waterbend {2}" owes {1}{U}{2} —
+and `Register` refuses, at boot, a clause with no pool, an unparseable cost, or
+more generic (or more {X}) than the mana component charges. `Plus` also learned
+the `TapOthers` component it had silently dropped since #758.
+
+### Decision 33: the activation path — validate with the rest, subtract after pricing, tap on the stack
+
+`ActivateAbilityParams.WaterbendIDs` (wire `waterbend_ids`, its own field rather
+than `tap_ids` because an ability printing both would need to say which tap paid
+which). In `ActivateCatalogAbility`:
+
+1. **Validated with every other component**, before anything is paid, through
+   tap_cost.go's own validator (controlled, untapped, artifact or creature, named
+   once, no more than the budget) plus what only the activation path can see: the
+   source when the cost also prints {T} (CR 118.3), and a permanent another
+   component of the same cost already spends (crew, tap-another, sacrifice,
+   return). The last two are refused rather than sequenced: paper lets you tap
+   then sacrifice, no card prints both, and refusing is the weaker direction.
+2. **Excluded from the auto-tapper** (`WithAutoTapExclusions`), so a Birds of
+   Paradise named to the waterbend cannot also make the {G} for the rest.
+3. **Subtracted from the priced mana**, and the remainder paid through the
+   ordinary strict / permissive / auto-tap path.
+4. **Tapped after the ability is on the stack**, with the tap-another taps, so a
+   "becomes tapped" payoff resolves first (§4, CR 603.3b).
+
+Tapping to waterbend is not the {T} symbol (CR 302.6), so there is no
+summoning-sickness check, and a source whose cost prints no {T} may pay for its
+own ability — Aang, who has flash and is often freshly arrived, may be one of
+the eight.
+
+### Decision 34: the view, the enumerator, the client
+
+- **View.** `ActivatedAbilityView.Waterbend` is the `TapCostView` a hand card's
+  convoke / waterbend already ships as `tap_cost`, so the client's one picker
+  (TapCostModal) serves both. `Max` is the budget at X=0; a Waterbend {X} ships 0
+  with `demands_x`, the client's cue to size it from the X it collects first.
+- **Enumerator.** `legal/waterbend.go` offers ONE payment, not every subset —
+  crew's discipline. Free permanents first (a non-creature artifact that makes
+  no mana, which costs the seat nothing), then non-mana creatures, then mana
+  sources; the smallest affordable prefix is offered, always taking the free
+  ones. For {X} it offers the largest X the taps and the mana reach together,
+  never below the printed floor. The heuristic prices each tapped creature as a
+  spent blocker, as it prices crew.
+- **Client.** Board's announce chain asks after X and the Phyrexian stepper and
+  before modes and targets — the position the cast chain asks its own taps in —
+  and skips the question when nothing could help.
+
+### Cards
+
+**Aang, Swift Savior** (`full` — the caveat is gone), **Katara, Water Tribe's
+Hope** (`full` — ETB Ally, "Waterbend {X}" with `MinX(1)` and
+`DuringYourTurn()`, base X/X in layer 7b with the affected set locked at
+resolution). **Avatar Kuruk** keeps its extra-turn caveat and nothing else: the
+cost is now expressible as `WaterbendCost("{20}")` with `Exhaust: true`, and the
+ability stays unregistered only because extra turns (#753) do not exist.
+
+### Still out of scope
+
+- **CR 701.67c** — "whenever a player waterbends". No catalog card asks, and
+  neither the cast path nor this one emits an event for it.
+- **Waterbend on a MANA ability.** No printed card.
+- **An ability whose waterbend is only part of a larger mana cost.** The shape
+  is supported (`Plus` sums, the budget is the waterbend's own generic) and
+  tested; no printed card uses it yet.
+
+## Amendment (2026-09-23, [#1297](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1297)): "Exile N cards from your graveyard / hand" as an activated ability's cost
+
+**Sprint:** S44 — mana and cost components. Tracker [#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887).
+The vocabulary half — one component, two owners, one new field — is in
+[ADR 0073](0073-optional-additional-costs-and-the-cast-gate.md)'s amendment of
+the same date (Decision 7).
+
+#1283 built `game.ExileCost` for a MANA ability — Cadaverous Bloom's "Exile a
+card from your hand: Add {B}{B} or {G}{G}" — and said in its own doc comment
+that the CR 602 owner would be "a second caller and not a second
+implementation". The CR 602 form is far commoner, and nearly all of it reads the
+GRAVEYARD, not the hand:
+
+```
+Grim Lavamancer    {R}, {T}, Exile two cards from your graveyard: 2 damage to any target.
+Moorland Haunt     {W}{U}, {T}, Exile a creature card from your graveyard: a 1/1 flying Spirit.
+Tome Shredder      {T}, Exile an instant or sorcery card from your graveyard: a +1/+1 counter.
+Mines of Moria     {3}{R}, {T}, Exile three cards from your graveyard: two Treasures.
+Holistic Wisdom    {2}, Exile a card from your hand: return a card that shares a type with it.
+```
+
+`AbilityCost` had `ExileSelf` (#1221, the SOURCE — scavenge, embalm) and
+`DiscardCards` (#660, a discard), and neither is this. Mines of Moria shipped
+with the ability left out and a caveat naming the gap, the #259 posture.
+
+### Decision 35: `AbilityCost.ExileCards` is the mana ability's component, with a pile
+
+`AbilityCost.ExileCards *game.ExileCost` — the same struct
+`ManaAbilityShape.ExileCards` carries, and the same three functions:
+`ExileCostOptionsForEffect` (the candidate walk the view stamps and the
+enumerator pays from), `validateExileCardsCostLocked` (exactly N, distinct, in
+the pile, matching, never the source, never also a discard) and
+`payExileCardsCostLocked` (the one exit primitive with `MustSettleNow`, so a
+commander exiled this way still gets CR 903.9 and the CR 602.2b indivisible step
+never pauses). What the component learned is WHERE: `ExileCost.From`, the hand
+or the graveyard, read through `Zone()` so the zero value stays the hand and
+every #1283 declaration means what it meant.
+
+A field and not a second type because the two printed forms are one rule read
+against two piles of the activator's own cards: both are plain CR 406 moves,
+neither is a keyword action, neither targets (CR 601.2h), and "your" (CR 108.4)
+means no other player's pile is ever readable. A second type would have been a
+second validator with its own opinion about overlap and the source.
+
+The source is never a legal pick, which is what makes a graveyard ability's
+"Exile ANOTHER creature card from your graveyard" (Scrapheap Scrounger) need no
+predicate of its own. Cards are constructed with `ExileFromGraveyard(n, label,
+match)` / `ExileFromHand(...)`, which compose with `Plus` (and `Plus` learned the
+field — a composed "{R}, {T}, Exile two cards" that dropped it would be a
+Lavamancer pinging for {R} forever).
+
+### Decision 36: the activation path — validate beside the discard, pay beside it, record what was paid
+
+In `ActivateCatalogAbility`:
+
+1. **Validated** right after the discard component and against it, before
+   anything is paid.
+2. **Excluded from the auto-tapper**: `AbilityAutoTapExclusions` takes the exile
+   ids. For the HAND form this is live — a Simian Spirit Guide named to Holistic
+   Wisdom's cost is a mana source (#1228), and without the exclusion the planner
+   would exile it for the {2} first and leave the cost paying with a card that
+   is already gone. For the graveyard form it is the list being right in advance
+   (no card functions as a mana source from a graveyard today).
+3. **Paid** after the discards and before the exile-self: it moves cards, never
+   the source, so it keeps the discard's slot in the order.
+4. **Recorded** on `PaidCost.Exiled` (the ids, in the order named), read by
+   `Context.Exiled()`. Every printed reader asks about the card itself — Holistic
+   Wisdom's "shares a card type with the card exiled this way", Dread Defiler's
+   "the exiled card's power" — and the card is findable in exile by the same
+   instance ID, so an id list is the whole answer and a count would be
+   `Sacrificed`'s shape answering a question nobody on this component asks.
+
+### Decision 37: the view, the enumerator, the bot, the client
+
+- **View.** `activated_abilities[i]` (and `zone_abilities[i]`) carry
+  `exile_cost_n` / `_label` / `_options` / `_zone`, the mana view's fields under
+  the same names; the mana view gained `_zone` too. The answer is `exile_ids`,
+  never `discard_ids`.
+- **Enumerator.** ONE payment, not one move per subset (the discard's and crew's
+  discipline), from the engine's own walk minus the discard picks, CHEAPEST FUEL
+  FIRST when the policy supplies `Options.OrderCostFuel` — the price escape's
+  exiled graveyard is already paid by (#1013), which is the same resource spent
+  the same way. The mana owner's arm now calls the same solver.
+- **Heuristic.** `activateParams.ExileIDs`, each priced with `fuelValue`, so the
+  payment offered first is the one priced cheapest.
+- **Client.** Board's announce chain asks after the discard and before the
+  return / sacrifice / crew pickers, through `DiscardCostModal` with the verb
+  changed and the pile named (`exileCost.ts`, shared with the mana path), and
+  skips the question when the pile holds exactly N options.
+
+### Cards
+
+**Mines of Moria** (caveat removed — `full`), **Grim Lavamancer**, **Moorland
+Haunt**, **Tome Shredder** and **Holistic Wisdom**, all `full`.
+
+### Still out of scope
+
+- **A variable count** — "Exile X cards from your graveyard" (Necropolis Fiend,
+  Taigam, Sidisi's Hand, Ludevic), "one or more" (Corpseweft), and The
+  Capitoline Triad's "any number … with total mana value 30 or greater". These
+  are an ANNOUNCED number, the #1213 variable-sacrifice question one component
+  over, and `ExileCost.N` is a fixed count; `Register` refuses a zero.
+- **Craft** (CR 702.167) — "Exile this artifact, Exile a creature you control or
+  a creature card from your graveyard" spans the battlefield AND the graveyard in
+  one clause, and returns the card transformed; its own seam.
+- **A graveyard exile on a MANA ability** (Molt Tender, Titans' Nest, Sunken
+  Palace). The component expresses it (`ExileCardsFromGraveyard`) and the view
+  ships the zone; no catalog card declares one yet, and the auto-tapper already
+  refuses any source with an exile-cards cost.
+
+## Amendment (2026-09-24, [#1278](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1278)): commander ninjutsu, a non-cast exit from the command zone
+
+**Sprint:** S42 — casting from non-hand zones. Tracker
+[#885](https://github.com/krakenhavoc/cmd_and_ctrl/issues/885) (the issue's own
+tracker; the keyword is also hand-special-action adjacent, #886, and a combat
+entry, #880).
+
+The #1227 amendment above left **commander ninjutsu** (CR 702.49c) out with one
+sentence: the entry from the command zone would work, but "the commander
+bookkeeping around a command-zone exit that is not a cast" was unexamined.
+Examined, it is almost entirely things that already do not happen:
+
+> Commander ninjutsu [cost] means "[cost], Return an unblocked attacker you
+> control to hand: Put this card onto the battlefield from your hand **or the
+> command zone** tapped and attacking."
+
+### Decision 38: the keyword is Ninjutsu with a second zone
+
+`effects.CommanderNinjutsu(cost)` is `Ninjutsu(cost)` with
+`Zones: {ZoneHand, ZoneCommand}` and CR 702.49c's reminder text, and shares its
+effect body (`ninjutsuEnter`). As with #1227, **not one line of
+`ActivateCatalogAbility` changed**: `findCardAndZoneLocked` has scanned the
+command zone since #660, `AbilityFunctionsFromZone` is the CR 113.6 gate, and
+the CR 108.4 "you" off the command zone is the card's owner — the same
+`source.Owner != playerID` arm the hand takes. The timing restriction is still
+the COST (Decision 30); nothing about the command zone changes that.
+
+### Decision 39: one more door into the shared entry batch, keeping the ID
+
+`Game.PutFromCommandZoneOntoBattlefieldForEffect(cardID, ZoneEntryOptions)` is
+the hand door with `ZoneCommand` for `ZoneHand`: `startEntryBatchLocked` now
+admits the command zone as a `BatchEntry.From`, so the arrival runs the one
+CR 614 entry window, lands through `landEntryLocked`, stamps the CR 506.3c
+attacker, and announces `EventZoneMove` / `EventETB` like every other put. The
+card **keeps its instance ID**, as a hand or library card does, and here the
+reason is load-bearing: `Player.CommanderCasts` is keyed by it, so a fresh ID
+would quietly reset the CR 903.8 tax.
+
+What the door does NOT do is the answer to the issue's question:
+
+- **No commander tax, and nothing added to the next one.** CR 903.8 taxes
+  CASTING from the command zone. The tally is bumped by the cast path alone
+  (`mutations.go`, after `CastSpell` succeeds); a put never reaches it, and an
+  activation's cost is not a spell's cost, so no tax is priced either.
+- **No CR 903.9 prompt on the way in.** `commanderZoneReplacement`'s
+  `AppliesTo` is destination-only (library, hand, graveyard, exile), so an
+  arrival on the battlefield is none of its business. PR #539 moved that window
+  into the shared exit primitive (`routeCardToZoneLocked`), and it applies on
+  the way OUT: `Card.IsCommander` rides the card through the non-cast exit, so
+  a ninjutsu'd Yuriko that is bounced, killed or exiled is offered the command
+  zone exactly as a cast one is, and deals commander damage while she is out
+  (CR 903.10a).
+- **No colour-identity check.** CR 903.4 is deck construction and mana; it
+  says nothing about which card may leave the command zone.
+
+The return cost's bounce was already on the shared exit primitive (#1227) with
+`MustSettleNow`, so returning a COMMANDER as the ninjutsu cost does not stop
+for CR 903.9 — a cost cannot pause (the posture `payLifeAsCostLocked` and the
+discard cost take). That is unchanged and not new here.
+
+### Decision 40: the effect checks the OBJECT, not just the zone
+
+With two zones, `ninjutsuEnter`'s old "is it still in its owner's hand"
+check stopped being enough. A commander discarded in response to her own hand
+ninjutsu takes CR 903.9's command zone — a zone the same ability also names,
+with the same instance ID. By CR 400.7 she is a new object and the ability has
+lost her. The effect now compares `Card.ObjectEpoch` against
+`StackItem.SourceEpoch` (stamped at announce for every catalog activation) and
+does nothing on a mismatch, which also guarantees the zone it reads is the zone
+the ability was activated from — so plain ninjutsu can never reach the
+command-zone arm. This tightens plain ninjutsu too (a ninja discarded and
+returned to hand in response no longer enters), which is the printed rule.
+
+### The rest is already built
+
+The enumerator's `abilityZones()` has walked the command zone since #1221, and
+the view's `stampZoneAbilities` ships its rows on `zone_abilities`, owner-only.
+No wire change. The client's one change is where the command zone's actions
+live: `CommandZone.svelte` hands `zone_abilities` to its `Card` the way
+`Hand.svelte` does, so right-clicking the commander opens the same popover
+(with #1227's shortfall greying) that a hand card and the zone browser open,
+and the tile shows an `ability` hint beside `cast` while a row is present.
+
+### Cards
+
+**Yuriko, the Tiger's Shadow** (`full`) — the only non-joke printing of the
+keyword. Her trigger is Dark Confidant's flip with the life lost by each
+opponent, on Ingenious Infiltrator's per-Ninja combat-damage condition. The two
+"Fixed commander ninjutsu" cards (The Multifaceted Phyrexian, Monet) are
+playtest / Un printings whose whole point is that the tax DOES apply; neither is
+catalogued.
+
+### Still out of scope
+
+- **"Put onto the battlefield blocking"** — unchanged from #1227.
+- **A commander returned as a ninjutsu COST** goes to hand without the CR 903.9
+  offer, because costs cannot pause (see Decision 39). Weaker for the player
+  than printed in the rare case it matters; the same posture every cost exit
+  takes. Filed as [#1397](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1397).
+
+## Amendment (2026-09-24, [#1296](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1296)): an ability's own cost clause, and a price that reads the target
+
+**Sprint:** S44 — mana and cost components. Tracker [#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887).
+Decisions 38–40 are the commander-ninjutsu amendment above (#1399); this
+one starts at 41.
+
+### Context
+
+An in-app report: *"Equip costs were not paid when equipping to Vivi Ornitier"*,
+with Dragonfire Blade:
+
+```
+Dragonfire Blade   Equipped creature gets +2/+2 and has hexproof from monocolored.
+                   Equip {4}. This ability costs {1} less to activate for each
+                   color of the creature it targets.
+```
+
+Two things were wrong, and only one of them was the card.
+
+1. **Nothing was charged.** The client stamps its `gameplay.strictMana` setting
+   on `cast_spell` and on nothing else, so every `activate_ability` a player
+   clicked reached `payAbilityManaCostLocked` with neither `Strict` nor
+   `AutoTap` — the sandbox paper path, which spends what the pool covers and
+   otherwise waives the charge (`PaidCost.OnPaper`). The reporter had strict
+   mana on (their casts were refused with `insufficient_mana` minutes earlier),
+   tapped a land by hand (a raw tap, no mana), and equipped for free. This has
+   been true of every activated ability since S21; the bots never saw it because
+   `internal/legal` sends `strict` + `auto_tap` on every move.
+2. **The discount could not be said.** The card shipped with the full {4} and a
+   caveat. #1184 put activations through the CR 601.2f pass, but only for BOARD
+   modifiers (`CostModifier.Activations`, Boom Scholar), and a board modifier
+   has two problems here: it never sees the target, and it is gathered from the
+   battlefield. The second one had already bitten: Takenuma's channel discount
+   was written as a board modifier scoped to its own ability, and channel is
+   activated from the HAND, so the scan never found it — its caveat said "the
+   discount applies when you pay for it", and it did not.
+
+### Decision 41: `ActivatedAbilityShape.CostModifiers` — the ability's own clause
+
+"This ability costs {1} less to activate …" is part of the ability, so it lives
+on the ability: `ActivatedAbilityShape.CostModifiers` (card side
+`ActivatedAbility.CostModifiers`), the activation twin of a spell's
+`SelfCostModifiers` (ADR 0048 addendum). `abilityCostQueryLocked` carries the
+list on `AbilityCostSubject` (unexported — a predicate cannot reach another
+modifier's hooks), and `activeCostModifiersLocked` binds each one to the
+ability's source **with the activator as its controller** (CR 602.2) after the
+board's activation-scoped modifiers. Consequences:
+
+- It prices this ability and no other — the slot is the scope, so no
+  `q.Card.InstanceID == q.Source.InstanceID` predicate to get wrong.
+- It works wherever the ability does (CR 113.6): the channel lands price their
+  discount from the hand.
+- The CR 601.2f rules are the same pass: increases before reductions, the
+  generic floor at zero, the negative-amount refusal. Boseiju with five legends
+  still costs {G}.
+
+`effects.Register` refuses the shapes the engine would ignore: a clause on an
+ability with no mana component (the pass never runs), a `CostFloor` (no printed
+ability sets a floor on its own cost — Power Artifact's "can't reduce … to less
+than one mana" is a board clause about other abilities, and is still open),
+`SpecialActions`, or a designation gate.
+
+### Decision 42: the price is determined after the targets, with them
+
+CR 602.2b runs activation through 601.2b–i, so the targets (601.2c) are chosen
+before the total cost is determined (601.2f). `CostQuery.Targets` already
+existed for casts (ADR 0048 addendum §13), shown only to a modifier that sets
+`ReadsTargets`. The activation door now fills it:
+
+- `Game.AbilityManaCostForTargetsForEffect(activator, source, zone, ab, targets)`
+  is the pricer; `AbilityManaCostForEffect` is it with nil targets.
+- `ActivateCatalogAbility` prices with `params.Targets` **after** validating
+  them, in the one place it pays (and in the waterbend budget, which is sized
+  against the same priced cost).
+- A target-reading clause with no target (a query before one is chosen, or a
+  target that has left) reads zero — for a reduction, the printed cost, the
+  #259 direction.
+
+`effects.CostsLessForTheCardItTargets(label, per)` reads the first card target
+("the creature it targets" — every printed clause has one target) and sets
+`ReadsTargets`; `ColorsOf` (layer-5 colours) and `CountersOf(kind)` are the two
+readers the cards use. `CostsLessIfItTargets` (Price of Fame's constructor)
+works in the new slot unchanged.
+
+### Decision 43: the enumerator and the view price per target
+
+A nil-targets price is not the price of a target-reading ability, and for a
+reduction it is not even a usable gate — it is higher than the real one, so it
+would hide legal moves (#544 with the sign reversed). The cast path's §14 rule,
+one path over:
+
+- `Game.AbilityPriceReadsTargetsForEffect(ab)` is true when the ability's own
+  clause, or any activation-scoped board modifier, reads targets (it ignores
+  `AppliesTo`, erring toward true).
+- `internal/legal` solves the mana half (`abilityManaPayment`, split out of
+  `abilityMovesForSource`) once up front when nothing reads targets, and
+  otherwise once per announcement, skipping an unaffordable set before any
+  budget is spent on it.
+- The view keeps `charged_mana_cost` as the no-target price and adds
+  `activated_abilities[i].target_charged_mana_costs` — one price per legal
+  target, from the same pricer — when the price reads the target and the
+  ability is one clause, one pick, no modes. The client shows the range in the
+  menu row ("{2}–{4} depending on the target") and each price with its targets
+  in the targeting banner, because an equip's single click is also its confirm.
+
+### Decision 44: the client charges activations when the player enforces mana
+
+`client/src/lib/manaEnforcement.ts` stamps a catalog `activate_ability`
+(`ability_index` present) with `strict: true, auto_tap: true` when
+`gameplay.strictMana` is on, and leaves it untouched when it is off. `auto_tap`
+as well as `strict`, because a cast has the "Auto-tap & cast" override toast to
+fall back on and an activation has no retry path; the engine taps for the
+shortfall exactly as it does for every bot activation, special action and
+attack tax, and refuses only when the board cannot pay — with "insufficient
+mana to activate that ability" and no `card_id`, so the cast-only override is
+never offered for it. Strict mana off keeps the paper posture it always had.
+
+### Cards
+
+**Dragonfire Blade** (equip discount ships; the hexproof-from-monocolored
+caveat stays), **Ghostfire Blade** and **Warrior's Blades** (new, `full`),
+and **Takenuma, Abandoned Mire**, **Otawara, Soaring City** and **Boseiju, Who
+Endures** (`full`, via `effects.ChannelDiscountPerLegendaryCreature`).
+
+### Still out of scope
+
+- **Board reductions with a per-reduction floor** — Training Grounds, Power
+  Artifact ("can't reduce the mana in that cost to less than one mana"). A
+  `CostFloor` is a total-mana minimum (Trinisphere), not this.
+- **Belt of Giant Strength** ("{X} less, where X is the power of the creature
+  it targets") is one `CostsLessForTheCardItTargets` away and was not added;
+  the non-target members of the family (Arm-Mounted Anchor, Crown of Gondor,
+  Plate Armor, Mirror of Galadriel, …) are ordinary card work now.
+- **Per-target prices for a multi-target or modal ability.** No printed card
+  prices by target on one; the view omits the map rather than guess.
+- ~~**The auto-tap preview's ability branch**~~ — closed by
+  [#1405](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1405).
+  `/games/:id/auto-tap-preview?ability=` now prices through
+  `Game.PriceActivation`, which calls `AbilityManaCostForTargetsForEffect`,
+  so it applies board modifiers and the ability's own clause. It also takes an
+  optional `targets=<kind>:<uuid>,…` for the target-keyed price.
+
+## Amendment (2026-09-24, [#1404](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1404)): "Exile this <permanent>" paid from the battlefield
+
+**Sprint:** S44 — Mana and cost components. Tracker [#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887).
+
+Decision 25 made `AbilityCost.ExileSelf` a graveyard component: scavenge,
+embalm and eternalize all print "Exile this card from your graveyard", and both
+`effects.Register` and `validateExileSelfCostLocked` hard-coded the graveyard.
+The same words appear on permanents, paid from the battlefield:
+
+```
+Perpetual Timepiece   {2}, Exile this artifact: Shuffle any number of target cards from your graveyard into your library.
+Hanged Executioner    {3}{W}, Exile this creature: Exile target creature.
+Nyx Weaver            {1}{B}{G}, Exile this creature: Return target card from your graveyard to your hand.
+Feldon's Cane         {T}, Exile this artifact: Shuffle your graveyard into your library.
+```
+
+Perpetual Timepiece shipped with its second ability left out (#1381), and its
+pin in `knownOracleMismatches` named this gap. The scan behind this amendment
+found about 40 printed cards with the clause and none in the catalog apart from
+the Timepiece.
+
+### Decision 45: `ExileSelf` follows the ability's zone
+
+The component is the same bit on the same struct. What changed is where the
+source is exiled FROM: the zone the ability was activated from, which the
+activation path has already checked is one the ability functions from (CR 113.6).
+`game.ExileSelfZoneSupported` lists the zones the component can be paid from,
+the graveyard and the battlefield. `effects.Register` checks every zone the
+ability declares against it at boot (nil `Zones` means the battlefield), and
+`validateExileSelfCostLocked` checks the activation zone against it at runtime.
+Because both use the one predicate, the boot check and the runtime check cannot
+disagree. The HAND is not in the list: the only printed "exile this card from
+your hand" is a mana ability (the Spirit Guides, #1228), which has its own
+owner.
+
+A new bit, `ExileSelfFromBattlefield`, was not needed. The printed clause is the
+same clause, the source is the payment in both zones, and nothing goes on the
+wire in either. A second bit would give a card file two ways to say one thing
+and the validator two places to be wrong.
+
+### Decision 46: the battlefield leg is a battlefield exit, asked about first like every other cost
+
+The payment is the same `payAbilityExileSelfLocked` call the graveyard leg
+makes. `routeCardToZoneLocked` finds the zone itself, and for a battlefield
+source it takes its battlefield arm (`battlefieldExitLocked`: CR 603.10
+last-known information and the CR 400.7 forget) and emits one `EventLTB` naming
+exile. So:
+
+- **Leaves-the-battlefield watchers fire, and dies watchers do not.** Every dies
+  predicate reads `NewZone == ZoneGraveyard`, and the card went to exile.
+- **It is not a sacrifice.** No `EventSacrifice` fires, so "whenever you
+  sacrifice" payoffs never see it. This is why the Timepiece could not be
+  shipped as `SacrificeThis()`.
+- **It is paid last and before the stack item is built.** The leaves-triggers it
+  queues are drained ABOVE the ability (CR 603.3b), which is the sacrifice
+  cost's order.
+- **The auto-tapper excludes the source.** `AbilityAutoTapExclusions` adds the
+  source when the cost exiles it, for the reason #1242 gave for a sacrifice: a
+  planner that cracked the permanent for the mana half would leave the exile
+  with nothing to pay. The legal enumerator builds from the same list, so the
+  bot is offered only activations the engine accepts.
+- **A commander is asked BEFORE the payment**, by the gate [ADR 0013
+  §5af](0013-replacement-effects.md) put in front of every cost (#1397,
+  `askCostCommanderLocked`). The activation path already lists the source among
+  the cards the payment moves whenever the cost has `ExileSelf`, so the
+  battlefield leg needed nothing new. The announcement parks with nothing paid;
+  the owner's answer makes it again, and the move then settles with
+  `MustSettleNow` and the answer on the route. Both legs therefore behave the
+  same way: neither pauses mid-payment, and a commander cannot be spent twice
+  while its owner decides.
+
+### Cards
+
+**Perpetual Timepiece** (caveat and pin removed, `full`), **Hanged
+Executioner**, **Nyx Weaver**, **Feldon's Cane**, all `full`.
+
+### Still out of scope
+
+- **Exile this AND other permanents in one cost.** Mechtitan Core prints "Exile
+  this Vehicle and four other artifact creatures and/or Vehicles you control",
+  and craft (CR 702.167) prints "Exile this artifact, Exile a creature you
+  control or a creature card from your graveyard". Both need a
+  battlefield-picking exile clause with a count. Neither is `ExileSelf`, and one
+  cost that moves several permanents would need the simultaneous-exit batch
+  `payCostSacrificesLocked` uses. The exile-self leg is a single-card exit.

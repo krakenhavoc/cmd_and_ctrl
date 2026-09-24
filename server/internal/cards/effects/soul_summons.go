@@ -9,7 +9,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the catalog: everything manifest does — the CR 614 entry window, the
 // 2/2 with no name or text, the controller as its only knower
 // (CR 708.5), no ETB trigger off the card underneath (CR 708.2a), and
-// the CR 701.34d permission to turn it face up for its mana cost IF it
+// the CR 701.40b permission to turn it face up for its mana cost IF it
 // is a creature card — is the engine's, and the card file is one line.
 //
 // The card it manifests is not revealed, and that is the point of the

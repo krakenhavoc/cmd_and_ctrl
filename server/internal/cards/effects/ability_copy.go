@@ -87,10 +87,12 @@ func (c CopyAbility) Apply(ctx *Context) error {
 func AbilityOnStack(label string, preds ...AbilityPredicate) *game.TargetSpec {
 	pred := AllAbilities(preds...)
 	return &game.TargetSpec{
-		// The client picker has no ability mode of its own yet, so
-		// the hint names the surface the item is drawn on: an ability
-		// row sits in the stack overlay beside the spells.
-		Mode:      "stack_spell",
+		// #1211 gave the ability its own hint. It still draws the
+		// same surface — an ability row sits in the stack overlay
+		// beside the spells — but the banner's sentence is now "click
+		// an ability on the stack" rather than a claim about spells
+		// that the legal set then contradicts.
+		Mode:      "stack_ability",
 		Label:     label,
 		Abilities: true,
 		AbilityOK: func(g *game.Game, chooser uuid.UUID, item *game.StackItem) bool {
@@ -102,10 +104,15 @@ func AbilityOnStack(label string, preds ...AbilityPredicate) *game.TargetSpec {
 
 // AbilityPredicate narrows an AbilityOnStack clause. The ability
 // twin of CardPredicate, over the stack item rather than a card.
-type AbilityPredicate = func(g *game.Game, chooser uuid.UUID, item *game.StackItem) bool
+//
+// The same Go type as StackItemPredicate (stack_targets.go), which is
+// the name to use when the clause admits spells too — a "target spell
+// or ability" clause narrows both halves with one function.
+type AbilityPredicate = StackItemPredicate
 
 // AllAbilities composes predicates with AND. A clause with none
-// admits every activated and triggered ability on the stack.
+// admits every activated and triggered ability on the stack — and,
+// under TargetSpellOrAbility, every spell as well.
 func AllAbilities(preds ...AbilityPredicate) AbilityPredicate {
 	return func(g *game.Game, chooser uuid.UUID, item *game.StackItem) bool {
 		for _, p := range preds {

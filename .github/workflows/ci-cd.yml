@@ -16,9 +16,9 @@ on:
   # build, no tests and no gofmt. That is a real gap when work is prepared on
   # a branch before anyone is ready to open a PR for it.
   #
-  # This is deploy-safe by construction: cmdctrl-cd is gated on
+  # This is deploy-safe by construction: both CD jobs are gated on
   # `github.event_name == 'push'`, so a manual run can only ever execute
-  # cmdctrl-ci. The artifact-upload steps are gated the same way, so a
+  # CI. The artifact-upload steps are gated the same way, so a
   # dispatch also publishes nothing -- it compiles, tests and typechecks,
   # and stops there.
   workflow_dispatch:
@@ -41,8 +41,8 @@ on:
 
 concurrency:
   group: cmdctrl-cd-${{ github.ref }}
-  # Cancel superseded runs on PRs/topic branches so the single
-  # self-hosted runner doesn't queue stale builds. Keep both deploy
+  # Cancel superseded runs on PRs/topic branches so stale builds
+  # don't hold runners. Keep both deploy
   # branches serialized (never cancel) so an in-flight deploy can't be
   # aborted mid-rsync -- that would leave a host with a new binary and
   # a half-written client bundle.
@@ -52,30 +52,90 @@ concurrency:
   cancel-in-progress: ${{ github.event_name != 'merge_group' && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop' }}
 
 jobs:
-  cmdctrl-ci:
-    runs-on: self-hosted
-    # Job-level override of the workflow's `contents: read` above.
-    # Discussion #1231 P1a: "Census -- commit refresh" below pushes a
-    # docs-only commit back to develop/main on a push, using the
-    # default GITHUB_TOKEN actions/checkout already wired up for this
-    # checkout. Scoped to this job -- cmdctrl-cd never touches git and
-    # keeps contents: read.
+  # Which of the jobs below a pull request needs. A push to develop or
+  # main, a manual run and a merge-queue run always get everything:
+  # those are the runs that test what actually merged. A PR that only
+  # touches client/ or tests-e2e/ skips the Go jobs; one that touches
+  # neither skips the client job. Anything outside those two (docs,
+  # deploy, scripts, workflows, root files) counts as server, because
+  # the Go tests read docs/ (the census, docsguard, coverage).
+  #
+  # Fork PRs never run here. The hosted runners would be safe for
+  # them, but the self-hosted fallback above keeps state between jobs
+  # and can reach the deploy hosts, and opening CI to forks is its own
+  # decision. Every other
+  # job needs this one and skips with it, and cmdctrl-ci then fails
+  # rather than passing untested code. A fork's code can still edit
+  # this line, which is why fork PR workflows also need maintainer
+  # approval (repo settings) -- read any workflow diff before
+  # approving. To CI a fork PR, push its branch to this repo.
+  # Where the CI jobs run (#1433). Every job up to and including
+  # census-publish needs only a checkout, Go, Node and the GitHub API,
+  # so it runs on a GitHub-hosted `ubuntu-latest`: free and unmetered
+  # for a PUBLIC repository, 4 vCPU / 16 GB, and no queue behind the
+  # six self-hosted runners, which stay for the CD jobs (they rsync
+  # and ssh to hosts on the LAN) and the nightly workflows.
+  #
+  # Hosted minutes are only free while the repository is public. If
+  # it is ever made private, `github.event.repository.private` sends
+  # every one of these jobs back to `self-hosted` with no edit, so a
+  # visibility change can never start spending the plan's quota. The
+  # repository variable CI_RUNNER overrides the hosted label (set it
+  # to `self-hosted` to move CI back without a PR). Keep it a STANDARD
+  # label: larger-runner labels are billed even on public repos.
+  #
+  # Steps that differ by runner key off `runner.environment`: the Go
+  # and npm caches are restored only on a hosted runner (a hosted
+  # runner starts cold; a self-hosted one is already warm, and
+  # restoring over its read-only module cache fails), and the disk
+  # trim runs only on a self-hosted runner.
+  changes:
+    runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
     permissions:
-      contents: write
-    # The repo is public and these runners keep state between jobs and
-    # can reach the deploy hosts, so fork PRs never run here. A fork's
-    # code can still edit this line, which is why fork PR workflows also
-    # need maintainer approval (repo settings) -- read any workflow diff
-    # before approving. To CI a fork PR, push its branch to this repo.
+      contents: read
+      pull-requests: read
     if: >-
       github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name == github.repository
+    outputs:
+      server: ${{ steps.paths.outputs.server }}
+      client: ${{ steps.paths.outputs.client }}
+    steps:
+      - name: Classify changed paths
+        id: paths
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const set = (server, client) => {
+              core.info(`server: ${server}, client: ${client}`);
+              core.setOutput('server', String(server));
+              core.setOutput('client', String(client));
+            };
+            if (!pr) return set(true, true);
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              ...context.repo, pull_number: pr.number, per_page: 100,
+            });
+            // The API stops listing at 3000 files; build everything past that.
+            if (files.length < pr.changed_files) return set(true, true);
+            const names = files.flatMap((f) => [f.filename, f.previous_filename]).filter(Boolean);
+            const frontend = (n) => n.startsWith('client/') || n.startsWith('tests-e2e/');
+            const shared = (n) => n.startsWith('.github/') || !n.includes('/');
+            set(names.some((n) => !frontend(n)), names.some((n) => frontend(n) || shared(n)));
+
+  server-check:
+    needs: changes
+    if: needs.changes.outputs.server == 'true'
+    runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      # cache: false on purpose. These are self-hosted runners, so
-      # $HOME survives between jobs and ~/go/pkg/mod is already warm --
+      # The cache is on for a GitHub-hosted runner only (#1433). A
+      # hosted runner starts cold, so restoring the module and build
+      # cache (keyed on server/go.sum) saves the download and most of
+      # the compile. A self-hosted runner is the opposite: $HOME
+      # survives between jobs and ~/go/pkg/mod is already warm --
       # there is nothing for a cache to restore that is not already
       # there. Worse, Go marks the module cache read-only (files 0444,
       # dirs 0555), so actions/cache untarring over it fails with
@@ -84,11 +144,13 @@ jobs:
       # on every run, then silently re-downloads the whole module set.
       # Note the Scryfall cache below is NOT affected and stays on: its
       # path is inside the workspace, not $HOME.
-      - name: Set up Go
+      - &setup-go
+        name: Set up Go
         uses: actions/setup-go@v6
         with:
           go-version: "1.22"
-          cache: false
+          cache: ${{ runner.environment == 'github-hosted' }}
+          cache-dependency-path: server/go.sum
 
       # One self-hosted runner, no job-level cleanup: the Go build cache
       # under $HOME and orphaned /tmp/go-build* trees left by cancelled
@@ -97,7 +159,9 @@ jobs:
       # The cache is only dropped when the disk is actually low, so a
       # healthy runner keeps its warm cache and the ~1-2 min rebuild
       # cost is paid only when it would otherwise fail.
-      - name: Free runner disk
+      - &free-disk
+        name: Free runner disk
+        if: runner.environment == 'self-hosted'
         shell: bash
         run: |
           df -h / /tmp | sed 's/^/before: /'
@@ -111,17 +175,6 @@ jobs:
             docker system prune -f >/dev/null 2>&1 || true
           fi
           df -h / /tmp | sed 's/^/after: /'
-
-      # No `cache:` input, for the same reason as Go above -- ~/.npm
-      # persists on a self-hosted runner and restoring over it fails the
-      # same way. Note setup-node's `cache` is an enum of package
-      # managers (npm/yarn/pnpm), NOT a boolean: `cache: false` is a
-      # hard error ("Caching for 'false' is not supported"). Omitting
-      # the input is how you turn it off.
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: "22"
 
       - name: Server — gofmt check
         working-directory: server
@@ -158,6 +211,28 @@ jobs:
         env:
           GOTOOLCHAIN: auto
         run: make lint
+
+  server-test:
+    needs: changes
+    if: needs.changes.outputs.server == 'true'
+    runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
+    # Explicit rather than relying on the workflow-level default above,
+    # so it stays true if that default ever changes. Discussion #1231
+    # review point 2 (Luke, 2026-09-23): the `contents: write` this job
+    # used to carry (#1247) was broader than the one thing it existed
+    # for (pushing the census refresh), and it applied to every run of
+    # this job, including same-repository PR runs that never push
+    # anything. Publication now lives in its own job, `census-publish`,
+    # gated to push events on develop/main and holding the only write
+    # permission in this workflow. Ordinary CI stays read-only.
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - *setup-go
+      - *free-disk
 
       # Discussion #1231 P1a: the generated catalog census block in
       # docs/decklists/card-coverage-roadmap.md carries absolute counts
@@ -247,15 +322,47 @@ jobs:
           CENSUS_ENFORCE: ${{ github.event_name == 'push' && '1' || '' }}
         run: go test -race -cover -timeout 30m ./...
 
-      - name: Server — build
-        working-directory: server
-        run: |
-          mkdir -p bin
-          go build -o bin/cmd_and_ctrl-server ./cmd/server
+      # The commit-and-push half of this used to live here (Discussion
+      # #1231 P1a / #1247: "Census -- commit refresh"). Luke's review
+      # (2026-09-23, points 2 and 3) found that shape wrong on two
+      # counts: the `contents: write` it needed applied to the whole
+      # job rather than just this step, and pushing with the workflow's
+      # own GITHUB_TOKEN meant the only way to make the push succeed
+      # was an `always` ruleset bypass for the GitHub Actions app --
+      # broader than census publication, on both develop and main.
+      # Publication is now `census-publish` below: its own job, gated
+      # to push events on develop/main, holding the only write
+      # permission in this workflow, and pushing with a dedicated
+      # deploy-key credential the ruleset can scope a bypass to
+      # narrowly. This job's role stops at "Census -- refresh" and
+      # "Server -- test" above: prove the regenerated tree is what
+      # CENSUS_ENFORCE=1 expects, and stop. It does not push.
 
-      - name: Bot — build
-        working-directory: server
-        run: go build -o bin/cmd_and_ctrl-bot ./cmd/bot
+  client:
+    needs: changes
+    if: needs.changes.outputs.client == 'true'
+    runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      # npm cache on a hosted runner only, for the same reason as "Set
+      # up Go" -- ~/.npm persists on a self-hosted runner and restoring
+      # over it fails the same way. Note setup-node's `cache` is an enum of package
+      # managers (npm/yarn/pnpm), NOT a boolean: `cache: false` is a
+      # hard error ("Caching for 'false' is not supported"). Omitting
+      # the input is how you turn it off.
+      - &setup-node
+        name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          # 'npm' on a hosted runner, and the empty string -- which
+          # setup-node reads as "no cache" -- on a self-hosted one.
+          cache: ${{ runner.environment == 'github-hosted' && 'npm' || '' }}
+          cache-dependency-path: |
+            client/package-lock.json
+            tests-e2e/package-lock.json
 
       - name: Client — npm ci
         working-directory: client
@@ -273,13 +380,6 @@ jobs:
         working-directory: client
         run: npm run lint
 
-      # `npm run build` is `svelte-check && vite build`; the typecheck
-      # step above already ran svelte-check, so invoke vite directly to
-      # avoid running it twice. Local `npm run build` is unchanged.
-      - name: Client — build
-        working-directory: client
-        run: npx vite build
-
       - name: Tests-e2e — npm ci
         working-directory: tests-e2e
         run: npm ci
@@ -288,56 +388,47 @@ jobs:
         working-directory: tests-e2e
         run: npx tsc --noEmit
 
-      # Discussion #1231 P1a, the other half of "Census -- refresh"
-      # near the top of this job: a push to develop or main that moved
-      # the catalog just rewrote the census block in place (via
-      # -update, before the test suite ran), and if that rewrite
-      # actually changed bytes it needs to land on the branch, not
-      # evaporate when this runner's workspace is thrown away. This
-      # commits and pushes it back with [skip ci] -- the change is
-      # docs-only, and a docs-only push must not trigger a second,
-      # redundant cmdctrl-cd deploy of the commit that just deployed.
-      #
-      # Placed after every gate step and before the artifact uploads
-      # on purpose: nothing above depends on this file, and the
-      # binaries and dist about to be uploaded were already built from
-      # the tree "Census -- refresh" produced, so this push (or its
-      # rejection) cannot change what gets deployed.
-      #
-      # continue-on-error: true is load-bearing, not a shortcut. Branch
-      # protection today has no bypass actor for the GitHub Actions app
-      # (id 15368, Discussion #1231), so a ruleset that requires PRs on
-      # develop/main can legitimately refuse this push -- and a
-      # rejected docs-only push must never fail the job that already
-      # built and tested real artifacts and is about to hand them to
-      # cmdctrl-cd. The script below already turns a rejected push into
-      # an `exit 0` after a ::warning::; continue-on-error is the
-      # backstop for anything it does not anticipate (git itself
-      # missing, a config error), not the primary way this succeeds.
-      - name: Census — commit refresh
-        if: >-
-          github.event_name == 'push' &&
-          (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
-        continue-on-error: true
-        run: |
-          set +e +o pipefail
-          if git diff --quiet -- docs/decklists/card-coverage-roadmap.md; then
-            echo "census block unchanged; nothing to commit"
-            exit 0
-          fi
-          short_sha=$(git rev-parse --short HEAD)
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/decklists/card-coverage-roadmap.md
-          git commit -m "chore(census): refresh the catalog census for ${short_sha} [skip ci]"
-          if git push origin "HEAD:${{ github.ref_name }}"; then
-            echo "census refresh pushed for ${short_sha}"
-          else
-            echo "::warning::census refresh could not be pushed; the ruleset needs the GitHub Actions app as a bypass actor (Discussion #1231)"
-          fi
-          exit 0
+  # What the CD jobs deploy, and nothing else, so it finishes in a
+  # minute or two: cmdctrl-cd-dev waits only for this. On a PR it
+  # builds whichever half the PR touched; on a push it builds and
+  # uploads everything.
+  build:
+    needs: changes
+    runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
 
-      # Only cmdctrl-cd in this same run downloads these. develop sees
+      - *setup-go
+      - *free-disk
+      - *setup-node
+
+      - name: Server — build
+        if: needs.changes.outputs.server == 'true'
+        working-directory: server
+        run: |
+          mkdir -p bin
+          go build -o bin/cmd_and_ctrl-server ./cmd/server
+
+      - name: Bot — build
+        if: needs.changes.outputs.server == 'true'
+        working-directory: server
+        run: go build -o bin/cmd_and_ctrl-bot ./cmd/bot
+
+      - name: Client — npm ci
+        if: needs.changes.outputs.client == 'true'
+        working-directory: client
+        run: npm ci
+
+      # `npm run build` is `svelte-check && vite build`; the typecheck
+      # step above already ran svelte-check, so invoke vite directly to
+      # avoid running it twice. Local `npm run build` is unchanged.
+      - name: Client — build
+        if: needs.changes.outputs.client == 'true'
+        working-directory: client
+        run: npx vite build
+
+      # Only the CD jobs in this same run download these. develop sees
       # hundreds of pushes a week, so anything longer than a day piles
       # up gigabytes of dead artifacts against the storage quota.
       - name: Upload server binary
@@ -364,25 +455,286 @@ jobs:
           path: client/dist/
           retention-days: 1
 
-  cmdctrl-cd:
-    runs-on: self-hosted
+  # The required status check on develop and main (both rulesets name
+  # it), so it keeps the name the single CI job used to have. It passes
+  # when every job above passed or was skipped as not needed for this
+  # PR, and fails if `changes` did not run at all (a fork PR).
+  cmdctrl-ci:
+    needs: [changes, server-check, server-test, client, build]
+    if: always()
+    runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
+    steps:
+      - name: Check CI results
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          SERVER_CHECK: ${{ needs.server-check.result }}
+          SERVER_TEST: ${{ needs.server-test.result }}
+          CLIENT: ${{ needs.client.result }}
+          BUILD: ${{ needs.build.result }}
+        run: |
+          failed=0
+          for pair in "changes=$CHANGES" "server-check=$SERVER_CHECK" \
+              "server-test=$SERVER_TEST" "client=$CLIENT" "build=$BUILD"; do
+            job="${pair%%=*}"
+            result="${pair#*=}"
+            echo "$job: $result"
+            case "$job:$result" in
+              changes:success | *:success) ;;
+              changes:*)
+                echo "::error::changes did not run ($result). Fork PRs are not built on these runners; push the branch to this repo."
+                failed=1 ;;
+              *:skipped) ;;
+              *) failed=1 ;;
+            esac
+          done
+          exit "$failed"
+
+  # Discussion #1231 P1a / #1247, repaired per Luke's review
+  # (2026-09-23, points 2 and 3). This job holds the ONLY write
+  # permission in this workflow, and only for a push to develop or
+  # main -- a same-repository pull_request run of cmdctrl-ci never
+  # reaches it, because it `needs` that job to have already confirmed
+  # `server-test` passed (gofmt, vet, lint live in `server-check`;
+  # CENSUS_ENFORCE=1 lives in `server-test`) on this exact commit.
+  #
+  # It pushes with its own credential (a repository deploy key,
+  # `secrets.CENSUS_DEPLOY_KEY`) rather than the workflow's GITHUB_TOKEN,
+  # so the ruleset bypass this needs can be scoped to "the census
+  # publisher" -- a `Deploy keys` bypass actor on develop and main --
+  # instead of `always` for the whole GitHub Actions app, which is what
+  # #1247 asked for and Luke's review point 2 correctly rejected: that
+  # bypass would have covered every push this workflow makes, not just
+  # this one docs-only commit.
+  census-publish:
+    runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
     needs: cmdctrl-ci
+    permissions:
+      # The push below authenticates with the deploy key over SSH, not
+      # with GITHUB_TOKEN, so this job needs nothing more than the
+      # workflow-level default. Declared explicitly rather than left
+      # implicit so a future job added near this one cannot inherit a
+      # wider permission by copy-pasting from the wrong neighbour.
+      contents: read
+    if: >-
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
+    # One publisher per branch at a time, so two runs finishing close
+    # together don't race the same push (the retry below handles one
+    # lost race, not a pile-up). Its own group on purpose: reusing the
+    # workflow-level `cmdctrl-cd-<ref>` group from inside the run that
+    # holds it gets the job cancelled as a concurrency deadlock. It
+    # can't collide with the deploy job's workspace either -- a runner
+    # takes one job at a time.
+    concurrency:
+      group: census-publish-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          # Full history: the non-fast-forward retry path below needs
+          # to `git reset --hard` onto whatever origin/<branch> becomes
+          # after a fetch, and a shallow clone can leave that commit
+          # unreachable.
+          fetch-depth: 0
+          # This job never uses GITHUB_TOKEN to talk to git -- it pushes
+          # with the deploy key below -- so there is nothing for
+          # checkout to leave wired into the local credential helper.
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.22"
+          cache: ${{ runner.environment == 'github-hosted' }}
+          cache-dependency-path: server/go.sum
+
+      # One step, in numbered sections, for the same reason "Ensure
+      # off-site backup" below (in the shared CD steps) is one step: the
+      # sections share state (the working tree, the ssh-agent socket,
+      # the deploy-key credential) that splitting across `- name:` steps
+      # would have to round-trip through $GITHUB_ENV or job outputs for
+      # no benefit -- nothing here is meaningfully retryable on its own.
+      - name: Regenerate, validate and publish the census
+        env:
+          CENSUS_DEPLOY_KEY: ${{ secrets.CENSUS_DEPLOY_KEY }}
+        run: |
+          set +e +o pipefail
+
+          CENSUS_FILE="docs/decklists/card-coverage-roadmap.md"
+          BEGIN_MARKER='<!-- BEGIN GENERATED CATALOG CENSUS'
+          END_MARKER='<!-- END GENERATED CATALOG CENSUS -->'
+          BRANCH="${{ github.ref_name }}"
+          REMOTE_URL="git@github.com:krakenhavoc/cmd_and_ctrl.git"
+
+          # 1. The credential. Absent is a real error, not a warning:
+          # without it this job can never publish on either branch, and
+          # failing quietly here would look exactly like "the census is
+          # current" when it has actually just stopped being checked.
+          if [ -z "${CENSUS_DEPLOY_KEY}" ]; then
+            echo "::error::CENSUS_DEPLOY_KEY is not set; see Discussion #1231"
+            exit 1
+          fi
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          key_file="${RUNNER_TEMP}/census_deploy_key"
+          printf '%s\n' "${CENSUS_DEPLOY_KEY}" > "${key_file}"
+          chmod 600 "${key_file}"
+          eval "$(ssh-agent -s)" >/dev/null
+          if ! ssh-add "${key_file}" 2>"${RUNNER_TEMP}/ssh-add.err"; then
+            rm -f "${key_file}"
+            echo "::error::CENSUS_DEPLOY_KEY did not load into ssh-agent; it must be an unencrypted ed25519 (or other OpenSSH-format) private key:"
+            cat "${RUNNER_TEMP}/ssh-add.err" >&2
+            exit 1
+          fi
+          rm -f "${key_file}"
+          export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # 2. Regenerate and validate. `server-test` already ran this
+          # exact `-update` against this exact commit (its "Census --
+          # refresh" step, judged fresh by CENSUS_ENFORCE=1 in "Server
+          # -- test") -- this job's checkout is that same commit, so
+          # re-running it here is not "might the catalog have changed
+          # since CI ran", it can't have within one push's worth of
+          # jobs, it is "produce the exact bytes to commit" without
+          # trusting an artifact handoff for something this cheap to
+          # recompute.
+          regenerate_census() {
+            (cd server && go test ./internal/cards/coverage/ -run TestRoadmapCensusIsCurrent -update)
+          }
+
+          # Confirms the working tree differs from HEAD in no file
+          # other than $CENSUS_FILE, and within that file in no line
+          # outside the BEGIN/END GENERATED CATALOG CENSUS markers.
+          # Anything else means the test changed shape or the checkout
+          # is wrong, not that the catalog moved -- abort rather than
+          # publish it. Prints its own ::error:: and returns non-zero;
+          # the caller decides whether that is fatal.
+          validate_census_only_diff() {
+            local changed
+            changed=$(git diff --name-only -- .)
+            if [ -z "${changed}" ]; then
+              return 0
+            fi
+            if [ "${changed}" != "${CENSUS_FILE}" ]; then
+              echo "::error::regenerating the census touched more than ${CENSUS_FILE}:"
+              echo "${changed}"
+              return 1
+            fi
+            strip_block() {
+              awk -v b="${BEGIN_MARKER}" -v e="${END_MARKER}" '
+                index($0, b) == 1 { inblock=1; print "<<CENSUS BLOCK>>"; next }
+                index($0, e) == 1 { inblock=0; next }
+                inblock { next }
+                { print }
+              ' "$1"
+            }
+            strip_block <(git show HEAD:"${CENSUS_FILE}") > "${RUNNER_TEMP}/outside-before.md"
+            strip_block "${CENSUS_FILE}" > "${RUNNER_TEMP}/outside-after.md"
+            if ! diff -q "${RUNNER_TEMP}/outside-before.md" "${RUNNER_TEMP}/outside-after.md" >/dev/null; then
+              echo "::error::regenerating the census changed ${CENSUS_FILE} outside the BEGIN/END GENERATED CATALOG CENSUS markers; refusing to publish"
+              diff "${RUNNER_TEMP}/outside-before.md" "${RUNNER_TEMP}/outside-after.md"
+              return 1
+            fi
+            return 0
+          }
+
+          regenerate_census
+          validate_census_only_diff || exit 1
+          changed=$(git diff --name-only -- .)
+          if [ -z "${changed}" ]; then
+            echo "census block unchanged; nothing to publish"
+            exit 0
+          fi
+
+          short_sha=$(git rev-parse --short HEAD)
+          git add "${CENSUS_FILE}"
+          git commit -m "chore(census): refresh the catalog census for ${short_sha} [skip ci]"
+
+          push_once() {
+            git push "${REMOTE_URL}" "HEAD:${BRANCH}" 2>"${RUNNER_TEMP}/push.err"
+          }
+          push_denied() {
+            grep -qiE 'permission denied|denied to|protected branch|required status check|hook declined|refusing to allow' "${RUNNER_TEMP}/push.err"
+          }
+          push_stale() {
+            grep -qiE 'non-fast-forward|fetch first|stale info' "${RUNNER_TEMP}/push.err"
+          }
+
+          if push_once; then
+            echo "census refresh pushed for ${short_sha}"
+            exit 0
+          fi
+          cat "${RUNNER_TEMP}/push.err" >&2
+
+          if push_denied; then
+            echo "::error::the census-publish push was rejected on permission or ruleset grounds; the deploy key needs write access to this repository, and 'Deploy keys' must be added as a bypass actor on the ${BRANCH} ruleset (Discussion #1231)"
+            exit 1
+          fi
+          if ! push_stale; then
+            echo "::error::the census-publish push failed for a reason this job does not recognise; see the git error above"
+            exit 1
+          fi
+
+          # 3. Exactly one retry. Non-fast-forward means another push
+          # landed on $BRANCH while cmdctrl-ci was running -- the
+          # ordinary case, since develop sees dozens of pushes a day --
+          # so reset to the new tip, regenerate against it, and try
+          # once more. A second failure is treated as real rather than
+          # retried again: either something is landing faster than this
+          # job can keep up with, or the ruleset rejected the retry too,
+          # and both are worth a human looking at rather than a job
+          # that loops forever chasing a moving tip.
+          echo "push rejected as non-fast-forward; ${BRANCH} moved during this run -- fetching the new tip and retrying once"
+          git fetch origin "${BRANCH}"
+          git reset --hard "origin/${BRANCH}"
+          regenerate_census
+          validate_census_only_diff || exit 1
+          changed=$(git diff --name-only -- .)
+          if [ -z "${changed}" ]; then
+            echo "census is already current on origin/${BRANCH} after the retry; nothing to publish"
+            exit 0
+          fi
+          short_sha=$(git rev-parse --short HEAD)
+          git add "${CENSUS_FILE}"
+          git commit -m "chore(census): refresh the catalog census for ${short_sha} [skip ci]"
+
+          if push_once; then
+            echo "census refresh pushed for ${short_sha} (after one retry)"
+            exit 0
+          fi
+          cat "${RUNNER_TEMP}/push.err" >&2
+          if push_denied; then
+            echo "::error::the census-publish retry push was rejected on permission or ruleset grounds; the deploy key needs write access to this repository, and 'Deploy keys' must be added as a bypass actor on the ${BRANCH} ruleset (Discussion #1231)"
+          else
+            echo "::error::the census-publish push failed again after retrying once against the new tip of ${BRANCH}"
+          fi
+          exit 1
+
+  # develop: deploys as soon as `build` is done, without waiting for the
+  # tests. The PR was tested, but against whatever develop was when its
+  # CI ran (there is no merge queue, see docs/environments.md), so this
+  # run's test jobs are the first to see the merged tree, and they keep
+  # running after the preview updates. A merge that breaks them turns
+  # develop red with the broken build on the preview until the fix
+  # lands, which is what the preview is for.
+  cmdctrl-cd-dev:
+    runs-on: self-hosted
+    needs: build
     # actions: write is only for deleting this run's artifacts at the end.
     permissions:
       contents: read
       actions: write
-    if: >-
-      github.event_name == 'push' &&
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
     # GitHub environment, for secrets and variables that differ per host
     # (today: the off-site backup's). `prod` accepts deployments from main
     # only and `dev` from develop only (deployment branch policies), so a
-    # topic branch can never read production's values. Both arms are
-    # non-empty literals, so the ternary fall-through hazard described on
-    # "Resolve deploy target" cannot occur here. Repo-level secrets and
-    # variables are still visible to the job exactly as before.
-    environment: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
-    env:
+    # topic branch can never read production's values. Repo-level secrets
+    # and variables are still visible to the job exactly as before.
+    environment: dev
+    env: &cd-env
       # Production and the develop preview are two VMs on the same
       # Proxmox node, identical below the fqdn (ADR 0023). So this job
       # branches on exactly two things -- which host it talks to, and
@@ -432,7 +784,7 @@ jobs:
 
       # CMDCTRL_HOST is deliberately NOT declared here. It is resolved
       # in the first step and exported through $GITHUB_ENV; see there.
-    steps:
+    steps: &cd-steps
       - name: Checkout code
         uses: actions/checkout@v6
 
@@ -1288,3 +1640,17 @@ jobs:
               await github.rest.actions.deleteArtifact({ ...context.repo, artifact_id: a.id });
               core.info(`deleted ${a.name} (${a.size_in_bytes} bytes)`);
             }
+
+  # main: the same deploy (the aliases below are cmdctrl-cd-dev's env and
+  # steps), gated on the whole of CI passing. Production only moves on a
+  # promotion, so it can afford to wait.
+  cmdctrl-cd-prod:
+    runs-on: self-hosted
+    needs: [build, cmdctrl-ci]
+    permissions:
+      contents: read
+      actions: write
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: prod
+    env: *cd-env
+    steps: *cd-steps

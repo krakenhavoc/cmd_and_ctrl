@@ -32,7 +32,7 @@ import (
 // it. EntryLifeCost tells the apply-loop to stop and ask the
 // controller before anything moves (see entry_choice.go): paying
 // means the replacement never fires and the land enters untapped;
-// declining — or being unable to pay, CR 118.4 — fires it and the
+// declining — or being unable to pay, CR 119.4 — fires it and the
 // land ENTERS tapped. No tapped window, no untap event, no priority
 // pass. The tests count tap events rather than reading Tapped,
 // because that is the only thing that tells the two implementations
@@ -53,25 +53,21 @@ import (
 // ReplacementEvent.entryTail, so the payment is offered and the fetch
 // finishes when it is answered. See entry_tail.go.
 //
-// Where the pipeline DOES run but the entry site still has no resume
-// — putOntoBattlefieldFromZoneLocked's batch is the last one — the
-// engine takes the un-paid branch and the land enters tapped: weaker
-// than printed, never stronger. See ReplacementEvent.entryResumable.
+// # And so does one a spell PUTS onto the battlefield (#1322)
 //
-// # The caveat says the second of those, not the first (#1051)
+// The last entry site without a resume was the hand / library "put"
+// batch — Warp World, Genesis Wave, Coiling Oracle, Arboreal Grazer —
+// which runs every card's window against the pre-entry board and lands
+// them together, so a per-card resume would have broken the
+// simultaneity it exists for. The caveat said so ("a shockland a spell
+// PUTS onto the battlefield always enters tapped"). The batch is now a
+// value that asks one card's question at a time and lands everything
+// once the last answer is in (server/internal/game/entry_batch.go), so
+// the caveat is gone and the cycle is complete.
 //
-// The caveat below used to read "put onto the battlefield by another
-// spell always enters tapped", which #478 made an overstatement: a
-// SEARCH is the biggest "another spell" there is, and a fetched
-// shockland is prompted. What is left is the hand / library PUT —
-// Warp World, Genesis Wave, Coiling Oracle, Arboreal Grazer — whose
-// batch cannot pause without losing the simultaneity it exists for
-// (server/internal/game/battlefield_put.go:313, the one entry event
-// in the tree built without entryResumable).
-//
-// TestWhichShocklandEntrySitesOfferThePayment (shocklands_test.go)
-// holds the caveat's two halves against the engine, so the words
-// cannot go stale again without a test going red.
+// TestEveryShocklandEntrySiteOffersThePayment (shocklands_test.go)
+// holds every entry site against the engine: the land play, the
+// search, the library put and the hand put all ask.
 
 // EntersTappedUnlessYouPayLife is "as this permanent enters, you may
 // pay N life. If you don't, it enters tapped." The prompt is queued
@@ -133,8 +129,7 @@ func init() {
 		Register(Spec{
 			OracleID:     t.oracleID,
 			Name:         name,
-			Completeness: CompletenessCaveats,
-			Caveats:      []string{"A shockland a spell PUTS onto the battlefield out of a hand or library — Genesis Wave, Coiling Oracle, Arboreal Grazer — always enters tapped. Playing it as a land, or fetching it with a search (a fetchland, Farseek), does offer the 2 life."},
+			Completeness: CompletenessFull,
 			Replacements: []game.ReplacementEffect{
 				EntersTappedUnlessYouPayLife(name, shocklandLifeCost),
 			},

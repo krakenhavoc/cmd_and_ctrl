@@ -65,6 +65,7 @@ function view(seats: PlayerView[], opts: ViewOpts = {}): GameView {
     stack: zone("stack", undefined, opts.stack ?? []),
     exile: zone("exile", undefined, opts.exile ?? []),
     turn: {
+      seq: 1,
       number: 1,
       active_seat: 0,
       priority_holder: 0,
@@ -393,6 +394,26 @@ describe("buildMenuSections — battlefield", () => {
     expect(itemById(sections, "mana-0")?.disabled).toBe(false);
   });
 
+  // #1296: Dragonfire Blade's equip has no single price — it is {1}
+  // cheaper for each colour of the creature it targets — so the row
+  // names the range, not a printed-cost note that would read {4}/{4}.
+  it("hints the price range on an ability whose price reads its target", () => {
+    const blade = card("c13", "a", {
+      activated_abilities: [
+        {
+          index: 0,
+          label: "Equip {4}",
+          mana_cost: "{4}",
+          charged_mana_cost: "{4}",
+          target_charged_mana_costs: { vivi: "{2}", golem: "{4}", queen: "" },
+        },
+      ],
+    });
+    const v2 = view([seat("a", "Alice")], { battlefield: [blade] });
+    const sections = buildMenuSections(v2, blade, "a", false);
+    expect(itemById(sections, "ability-0")?.hint).toBe("free–{4} depending on the target");
+  });
+
   it("is silent about the cost on an undiscounted ability", () => {
     const plain = card("c12", "a", {
       activated_abilities: [
@@ -483,6 +504,61 @@ describe("buildMenuSections — combat", () => {
       type: "declare_blocker",
       params: { blocker: "c1", attacker: "c2" },
     });
+  });
+
+  // #1339, CR 802.4a: at a four-seat table a creature may block only
+  // what its controller is defending against. The server names that
+  // seat on each attacker as defending_player — for a battle it is the
+  // PROTECTOR, not the controller.
+  it("offers only the attackers the blocker's controller defends against", () => {
+    const mine = card("c1", "b");
+    const atB = card("x-b", "a", {
+      attacking_target: "b",
+      attacking_target_kind: "player",
+      defending_player: "b",
+    });
+    const atC = card("x-c", "a", {
+      attacking_target: "c",
+      attacking_target_kind: "player",
+      defending_player: "c",
+    });
+    const atMyWalker = card("x-w", "a", {
+      attacking_target: "walker",
+      attacking_target_kind: "planeswalker",
+      defending_player: "b",
+    });
+    // Seat d controls the battle; seat b protects it.
+    const atBattle = card("x-s", "a", {
+      attacking_target: "siege",
+      attacking_target_kind: "battle",
+      defending_player: "b",
+    });
+    const atTheirBattle = card("x-t", "a", {
+      attacking_target: "siege2",
+      attacking_target_kind: "battle",
+      defending_player: "d",
+    });
+    const v = view([seat("a", "Alice"), seat("b", "Bob"), seat("c", "Carol"), seat("d", "Dan")], {
+      battlefield: [mine, atB, atC, atMyWalker, atBattle, atTheirBattle],
+      step: "declare_blockers",
+    });
+    const sections = buildMenuSections(v, mine, "b", false);
+    const offered = (itemById(sections, "combat-block")?.items ?? []).map((i) => i.id);
+    expect(offered.sort()).toEqual(["combat-block-x-b", "combat-block-x-s", "combat-block-x-w"]);
+  });
+
+  it("offers no block row when every attacker is aimed at somebody else", () => {
+    const mine = card("c1", "b");
+    const atC = card("x-c", "a", {
+      attacking_target: "c",
+      attacking_target_kind: "player",
+      defending_player: "c",
+    });
+    const v = view([seat("a", "Alice"), seat("b", "Bob"), seat("c", "Carol")], {
+      battlefield: [mine, atC],
+      step: "declare_blockers",
+    });
+    expect(itemById(buildMenuSections(v, mine, "b", false), "combat-block")).toBeUndefined();
   });
 
   // #318: the bulk affordance sits next to the per-card one and
@@ -631,6 +707,25 @@ describe("buildMenuSections — non-battlefield zones", () => {
   // player has to be able to see the card has the keyword, and the
   // client must not re-derive a rule (split second differs per kind)
   // it would get backwards.
+  // #1342: plot (CR 702.170a) is one more kind on the same surface -
+  // the row is the plot button, fired with the kind the server sent.
+  it("offers plot as a special-action row", () => {
+    const c = {
+      ...card("h1", "a"),
+      special_actions: [{ kind: "plot", label: "Plot {3}{U}", cost: "{3}{U}", available: true }],
+    };
+    const v = view([seat("a", "Alice", { hand: [c] })]);
+    const sections = buildMenuSections(v, c, "a", false);
+    const row = itemById(sections, "special-plot");
+    expect(row?.label).toBe("Plot {3}{U}");
+    expect(row?.disabled).toBeFalsy();
+    expect(row?.action).toEqual({
+      type: "special_action",
+      params: { card_id: "h1", kind: "plot", strict: true, auto_tap: true },
+      player: "a",
+    });
+  });
+
   it("greys a special action the server says is unavailable", () => {
     const c = {
       ...card("h1", "a"),
@@ -642,6 +737,47 @@ describe("buildMenuSections — non-battlefield zones", () => {
     expect(row).toBeDefined();
     expect(row?.disabled).toBe(true);
     expect(row?.hint).toBe("not right now");
+  });
+
+  // #1319: Ranar the Ever-Watchful's "the first card you foretell
+  // each turn costs {0} to foretell" is a cost modifier, not a
+  // rewrite of the row's static label — "Foretell {2}" stays the
+  // label, and the discount surfaces as the hint, exactly as an
+  // activated ability's charged_mana_cost does.
+  it("notes the printed cost as a hint when a discount makes charged_cost differ", () => {
+    const c = {
+      ...card("h1", "a"),
+      special_actions: [
+        { kind: "foretell", label: "Foretell {2}", cost: "{2}", charged_cost: "", available: true },
+      ],
+    };
+    const v = view([seat("a", "Alice", { hand: [c] })]);
+    const sections = buildMenuSections(v, c, "a", false);
+    const row = itemById(sections, "special-foretell");
+    expect(row?.label).toBe("Foretell {2}");
+    expect(row?.disabled).toBeFalsy();
+    expect(row?.hint).toBe("printed cost {2}");
+  });
+
+  // The common case: no modifier reached this action, charged_cost
+  // equals cost, and there is nothing worth a hint.
+  it("shows no cost hint when charged_cost matches the printed cost", () => {
+    const c = {
+      ...card("h1", "a"),
+      special_actions: [
+        {
+          kind: "foretell",
+          label: "Foretell {2}",
+          cost: "{2}",
+          charged_cost: "{2}",
+          available: true,
+        },
+      ],
+    };
+    const v = view([seat("a", "Alice", { hand: [c] })]);
+    const sections = buildMenuSections(v, c, "a", false);
+    const row = itemById(sections, "special-foretell");
+    expect(row?.hint).toBeUndefined();
   });
 
   it("gives a graveyard card a route back to hand and battlefield", () => {

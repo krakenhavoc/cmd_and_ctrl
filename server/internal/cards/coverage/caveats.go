@@ -2,7 +2,6 @@ package coverage
 
 import (
 	"fmt"
-	"regexp"
 	"sort"
 	"strings"
 
@@ -390,33 +389,178 @@ var mechanics = []Mechanic{
 		Confidence: Exact,
 		Adopt:      `RemoveCountersFromThis / RemoveCountersFrom / RemoveCountersXFromThis / RemoveCountersAmong — see effects/activated.go`,
 	},
+	{
+		// #1273: exactly the #412 failure mode. Force of Negation's
+		// caveat said the countered spell "goes to its owner's
+		// graveyard instead of being exiled" for a sprint after #1230
+		// closed the gap — `Game.CounterTargetToZoneForEffect` (rode
+		// onto the card catalog as `CounterTarget.Dest`) has shipped
+		// on Devious Cover-Up, Remand, Memory Lapse and Dissipate
+		// since. This row is the durable half: the caveat text was
+		// fixed by hand, but the curated table had no entry for the
+		// mechanic it names, so nothing would have caught the NEXT
+		// card that ships the same stale sentence.
+		//
+		// Heuristic, and narrower than "adamant"'s bare OnResolve
+		// check: CounterTarget.Dest is set inside an opaque OnResolve
+		// closure, so there is no declared Spec field an Exact probe
+		// could point at the way AlternativeCosts or a Static ability
+		// gives one. What IS observable is that the card targets a
+		// spell on the stack at all (TargetSpell's "stack_spell"
+		// mode) and has grown a resolution body — which at least
+		// excludes every card whose caveat happens to share the
+		// phrase for an unrelated reason (Whip of Erebos' "graveyard
+		// instead of being exiled" is about a returned creature, and
+		// declares a graveyard target, not a stack one).
+		//
+		// The false positive is an ordinary "Counter target spell."
+		// card whose caveat is about something else and happens to
+		// contain one of these phrases; the fix then is to tighten
+		// the phrase list, not delete the row. When counter-to-zone
+		// becomes a declared Spec field, probe for the field and
+		// promote to Exact.
+		Name: "counter to a zone",
+		Phrases: []string{
+			"graveyard instead of being exiled", "graveyard instead of exile",
+			"countered this way",
+		},
+		Implements: func(s effects.Spec) bool {
+			return s.Targets != nil && s.Targets.Mode == "stack_spell" && s.OnResolve != nil
+		},
+		Evidence:   `the spec targets a spell on the stack (Targets.Mode == "stack_spell") and declares an OnResolve body`,
+		Confidence: Heuristic,
+		Adopt:      `CounterTarget{StackID: …, Dest: game.ZoneRef{Kind: game.ZoneExile}} (or ZoneHand / ZoneLibrary) inside OnResolve — see effects/force_of_negation.go, effects/devious_cover_up.go`,
+	},
+	{
+		// ADR 0089 (#1267): gift is one declaration, Spec.Gift, and
+		// the keyword's cost and gift both grow from it — so the probe
+		// is exact. Six catalog cards carried "the gift can't be
+		// promised" when it landed; the ones it did not adopt are
+		// pinned in caveats_test.go.
+		Name:    "gift",
+		Phrases: []string{"gift"},
+		Implements: func(s effects.Spec) bool {
+			return s.Gift != nil
+		},
+		Evidence:   "the spec declares Spec.Gift",
+		Confidence: Exact,
+		Adopt:      `Gift: GiftACard() / GiftAFood() / GiftATappedFish() / GiftATreasure(), plus .Instead(clause) when the promise swaps the target — see effects/gift.go`,
+	},
+	{
+		// #1258: a keyword TRIGGER had no machine-readable name, so
+		// nothing could ask whether a card has cascade. The
+		// constructors now stamp game.TriggeredAbility.Keyword, and
+		// this reads it back through the same catalog hook the
+		// harvester uses.
+		Name:       "cascade",
+		Phrases:    []string{"cascade"},
+		Implements: keywordTrigger(effects.KeywordCascade),
+		Evidence:   `a trigger in game.CatalogTriggers(oracleID) is named "cascade"`,
+		Confidence: Exact,
+		Adopt:      `Triggered: []game.TriggeredAbility{Cascade()} — or GrantsCascade(label, when) for a permanent that gives it`,
+	},
+	{
+		Name:       "storm",
+		Phrases:    []string{"storm"},
+		Implements: keywordTrigger(effects.KeywordStorm),
+		Evidence:   `a trigger in game.CatalogTriggers(oracleID) is named "storm"`,
+		Confidence: Exact,
+		Adopt:      `Triggered: []game.TriggeredAbility{Storm()}`,
+	},
+	{
+		// #706: prowess is a canonicalKeywords token, not a
+		// constructor — the engine derives the trigger from the
+		// ability list (game/prowess.go). A card that DECLARES it in
+		// PrintedKeywords has it; the probe reads that declaration
+		// through the hook printedCharacteristic reads. A card that
+		// relies on the deck importer alone is invisible here, which
+		// is the direction a curated table is allowed to miss in.
+		Name:       "prowess",
+		Phrases:    []string{"prowess"},
+		Implements: printedKeywordProbe(game.KeywordProwess),
+		Evidence:   `game.CatalogPrintedKeywords(oracleID) contains "prowess"`,
+		Confidence: Exact,
+		Adopt:      `PrintedKeywords: []string{"prowess"} — the engine does the rest`,
+	},
+	{
+		// #1519: split second is a canonicalKeywords token read off
+		// the spell at announce (game/split_second.go). Same probe as
+		// prowess, for the same reason: the declaration is the fact,
+		// and a card relying on the importer alone is the direction a
+		// curated table may miss in. Krosan Grip carried "Split second
+		// is not implemented" for as long as the flag had no writer.
+		Name:       "split second",
+		Phrases:    []string{"split second"},
+		Implements: printedKeywordProbe(game.KeywordSplitSecond),
+		Evidence:   `game.CatalogPrintedKeywords(oracleID) contains "split second"`,
+		Confidence: Exact,
+		Adopt:      `PrintedKeywords: []string{"split second"} — the engine does the rest`,
+	},
+}
+
+// printedKeywordProbe is the exact probe for a canonical keyword token
+// whose consumer is the engine, not a constructor (#706 prowess, #1519
+// split second): does the card's catalog declaration print it? Read
+// through game.CatalogPrintedKeywords, the hook the engine itself
+// reads, so a broken wiring silences the probe and
+// TestEveryExactMechanicHasAnImplementor notices.
+func printedKeywordProbe(token string) func(effects.Spec) bool {
+	return func(s effects.Spec) bool {
+		if game.CatalogPrintedKeywords == nil {
+			return false
+		}
+		for _, kw := range game.CatalogPrintedKeywords(s.OracleID) {
+			if kw == token {
+				return true
+			}
+		}
+		return false
+	}
+}
+
+// keywordTrigger builds the exact probe for a keyword that ships as a
+// triggered-ability constructor (#1258): does any of this card's
+// catalog triggers carry that keyword's name? Routed through the
+// game.CatalogTriggers hook, not spec.Triggered, for the reason altCost
+// gives — if the wiring breaks, the probe goes quiet and
+// TestEveryExactMechanicHasAnImplementor notices.
+func keywordTrigger(name string) func(effects.Spec) bool {
+	return func(s effects.Spec) bool {
+		if game.CatalogTriggers == nil {
+			return false
+		}
+		for _, t := range game.CatalogTriggers(s.OracleID) {
+			if t.Keyword == name {
+				return true
+			}
+		}
+		return false
+	}
 }
 
 // Mechanics returns the curated table. Exported so a card author can
 // read the coverage without reading the tests.
 func Mechanics() []Mechanic { return mechanics }
 
-// matcher caches the compiled word-boundary patterns for one
-// mechanic's phrases.
-var matchers = func() map[string][]*regexp.Regexp {
-	out := map[string][]*regexp.Regexp{}
+// matchers caches the compiled word-boundary patterns for each
+// mechanic's phrases (see PhraseMatcher).
+var matchers = func() map[string]func(string) bool {
+	out := map[string]func(string) bool{}
 	for _, m := range mechanics {
-		for _, p := range m.Phrases {
-			out[m.Name] = append(out[m.Name], regexp.MustCompile(`(?i)\b`+regexp.QuoteMeta(p)+`\b`))
-		}
+		out[m.Name] = PhraseMatcher(m.Phrases)
 	}
 	return out
 }()
 
 // names reports whether a caveat names this mechanic.
 func (m Mechanic) names(caveat string) bool {
-	for _, re := range matchers[m.Name] {
-		if re.MatchString(caveat) {
-			return true
-		}
-	}
-	return false
+	match, ok := matchers[m.Name]
+	return ok && match(caveat)
 }
+
+// Names is names, exported: whether a caveat names this mechanic,
+// under the same word-boundary rule the guards apply.
+func (m Mechanic) Names(caveat string) bool { return m.names(caveat) }
 
 // Finding is one (card, mechanic, caveat) triple the guards object
 // to.

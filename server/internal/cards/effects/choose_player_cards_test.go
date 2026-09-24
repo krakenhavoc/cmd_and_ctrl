@@ -183,6 +183,48 @@ func TestGluntchSkipsTheCounterPickWhenThatPlayerHasNoCreature(t *testing.T) {
 	}
 }
 
+// TestGluntchCarriesOnWhenItsCounterPickIsWithdrawn — #1225, and the
+// drop-time twin of the test above.
+//
+// The chosen player's creature leaves the battlefield while "put two
+// +1/+1 counters on a creature you control" is in front of them, so
+// the prompt has no legal answer left and is withdrawn (#1045). The
+// drop now runs that pick's continuation with nothing picked — which
+// is the SAME closure the test above reaches at queue time, with the
+// same empty answer — so one printed sentence has one behaviour
+// whether the board was empty when the question was asked or emptied
+// while it was open. Before #1225 the trigger stopped here and the
+// second and third players were never chosen.
+func TestGluntchCarriesOnWhenItsCounterPickIsWithdrawn(t *testing.T) {
+	g := newCatalogGame(t)
+	me, chosen := g.Seats[0], g.Seats[1]
+	pushCatalogPermanent(g, me.ID, "Gluntch, the Bestower",
+		"Legendary Creature — Jellyfish", gluntchOracle, false)
+	bear := pushTribalCreature(g, chosen.ID, "Their Bear", "Creature — Bear", 2, 2)
+
+	advanceToEndStep(t, g)
+	passPriorityAroundTable(t, g)
+	answerChoosePlayer(t, g, me.ID, chosen)
+
+	if latestChooseCardsFor(g, chosen.ID) == nil {
+		t.Fatalf("the chosen player is asked which creature: %+v", g.PendingChoices)
+	}
+
+	g.WithWriteLock(func() {
+		if err := g.ExileCardForEffect(bear); err != nil {
+			t.Fatalf("ExileCardForEffect: %v", err)
+		}
+	})
+
+	if c := latestChooseCardsFor(g, chosen.ID); c != nil {
+		t.Fatalf("the pick survives a board with none of its candidates on it: %+v", c)
+	}
+	if latestOptionPickFor(g, me.ID) == nil {
+		t.Fatalf("the trigger stopped at the withdrawn pick — the second and third clauses "+
+			"went with it (#1225): %+v", g.PendingChoices)
+	}
+}
+
 // --- Skullwinder ---------------------------------------------------
 
 // TestSkullwinderSharesTheRegrowthWithTheChosenOpponent — two prompts

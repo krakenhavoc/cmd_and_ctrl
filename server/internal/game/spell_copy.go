@@ -28,7 +28,10 @@ import "github.com/google/uuid"
 //     Without the branch, casting Twincast on your own Lightning
 //     Bolt would leave two Bolts in your graveyard: countable by
 //     Tarmogoyf, returnable by Regrowth, and flashback-castable if
-//     the copied spell happened to have flashback.
+//     the copied spell happened to have flashback. A copy that leaves
+//     the stack WITHOUT resolving — countered, bounced, exiled — is
+//     ended the same way at the shared exit, routeCardToZoneLocked
+//     (#1340, CR 707.10a): see spellCopyLeavesStackLocked below.
 //
 //  3. THE TARGETS ARE RE-CHOSEN BEFORE IT LANDS. "You may choose new
 //     targets for the copy" is resolved by the copy's controller as
@@ -101,7 +104,11 @@ import "github.com/google/uuid"
 // Errors: ErrCardNotFound when the spell is no longer on the stack
 // (its controller may have had it countered in response to the copy
 // effect, which is a normal outcome and not an engine fault —
-// callers should treat it as "the copy effect did nothing").
+// callers should treat it as "the copy effect did nothing"). That is
+// the CR 608.2b outcome for a copy effect that TARGETS the spell. One
+// that merely names it — storm, Doublecast's "copy that spell" —
+// copies from last-known information instead (CR 608.2h) and calls
+// CopyLastKnownSpellForEffect (stack_lki.go, #1255).
 //
 // Caller must hold g.mu. Added in S30 (#95); `except` in S45 (#666).
 func (g *Game) CopySpellForEffect(spellID, controller uuid.UUID, mayChooseNewTargets bool, except func(v *PrintedValues)) error {
@@ -109,6 +116,15 @@ func (g *Game) CopySpellForEffect(spellID, controller uuid.UUID, mayChooseNewTar
 	if !ok {
 		return ErrCardNotFound
 	}
+	g.copySpellFromLocked(src, item, controller, mayChooseNewTargets, except)
+	return nil
+}
+
+// copySpellFromLocked is everything CopySpellForEffect does once it has
+// found the spell, shared with CopyLastKnownSpellForEffect (#1255),
+// which differs only in WHERE it may find it. `src` is a value copy
+// the caller owns; `item` is only read. Caller must hold g.mu.
+func (g *Game) copySpellFromLocked(src Card, item *StackItem, controller uuid.UUID, mayChooseNewTargets bool, except func(v *PrintedValues)) {
 	if except != nil {
 		v := CopiableValuesOf(src)
 		except(&v)
@@ -118,7 +134,6 @@ func (g *Game) CopySpellForEffect(spellID, controller uuid.UUID, mayChooseNewTar
 	}
 	spec := castTargetSpecForItem(CatalogKey(src), item)
 	g.offerCopyTargetsLocked(src, item, controller, spec, mayChooseNewTargets)
-	return nil
 }
 
 // offerCopyTargetsLocked is CR 707.10c, shared by the spell copy
@@ -131,9 +146,10 @@ func (g *Game) CopySpellForEffect(spellID, controller uuid.UUID, mayChooseNewTar
 // characteristics, so protection is tested against the original's
 // colour and type), and the ability's SOURCE PERMANENT for an ability
 // copy (CR 702.16b tests an ability's quality against the permanent
-// it came from). `item` decides which copy gets built on the far
-// side, off its Kind, which is the only thing the two paths do
-// differently.
+// it came from; when that permanent has left, the copy is judged
+// against its last-known record instead, see copyTargetSourceLocked,
+// #1449). `item` decides which copy gets built on the far side, off
+// its Kind, which is the only thing the two paths do differently.
 //
 // Creating the copy NOW is the right answer in three cases and they
 // are all the printed outcome rather than a shortcut: the card does
@@ -150,7 +166,13 @@ func (g *Game) offerCopyTargetsLocked(src Card, item *StackItem, controller uuid
 		g.createCopyLocked(src, item, controller, item.Targets)
 		return
 	}
-	lt := g.legalTargetsLocked(SourceObject(controller, &src), spec)
+	frame := &copyFrame{
+		src:        src,
+		item:       *item,
+		controller: controller,
+		spec:       spec,
+	}
+	lt := g.legalTargetsLocked(g.copyTargetSourceLocked(frame), spec)
 	if len(lt.Players) == 0 && len(lt.Cards) == 0 {
 		g.createCopyLocked(src, item, controller, item.Targets)
 		return
@@ -169,12 +191,7 @@ func (g *Game) offerCopyTargetsLocked(src Card, item *StackItem, controller uuid
 		PickTargetCards:   lt.Cards,
 		PickTargetMin:     spec.Min,
 		PickTargetMax:     spec.Max,
-		copyResume: &copyFrame{
-			src:        src,
-			item:       *item,
-			controller: controller,
-			spec:       spec,
-		},
+		copyResume:        frame,
 	})
 }
 
@@ -197,6 +214,41 @@ type copyFrame struct {
 	item       StackItem
 	controller uuid.UUID
 	spec       *TargetSpec
+}
+
+// copyTargetSourceLocked is the TargetSource a copy's new targets are
+// judged under (CR 707.10c), at all three places that judge them: the
+// offer above, the answer (resolveCopyTargetsLocked) and the #809
+// refresh of an open prompt (refreshTargetChoicesLocked).
+//
+// Ordinarily that is a snapshot of the frame's `src`: the copied spell
+// for a spell copy, the source permanent for an ability copy.
+//
+// The exception is an ABILITY whose source permanent has left the
+// battlefield (#1449). Then `src` is whatever card the lookup found in
+// the zone it went to — its graveyard card, a new object with printed
+// characteristics (CR 400.7) — and the copy's targets are judged
+// against the source as it LAST EXISTED on the battlefield (CR 608.2h),
+// read the way the CR 608.2b re-check of the original reads it
+// (stackItemSourceLocked, #1429): departedAbilitySourceLocked on the
+// frame's item, whose SourceObject is the original's (#1418) and is the
+// copy's too (createAbilityCopyLocked carries it).
+//
+// It is read afresh at each check rather than frozen at the offer, so
+// a source that leaves while the prompt is open is judged as it last
+// existed by the answer. A spell never takes the branch: a spell's
+// source is the spell, and a card that was a permanent earlier in the
+// turn is a different object now — the same guard stackItemSourceLocked
+// carries, for the same reason.
+//
+// Caller must hold g.mu.
+func (g *Game) copyTargetSourceLocked(cf *copyFrame) TargetSource {
+	if cf.item.Kind != StackItemSpell && cf.item.SourceCardID != uuid.Nil {
+		if rec, ok := g.departedAbilitySourceLocked(&cf.item); ok {
+			return SourceSnapshot(cf.controller, lastKnownSourceCharacteristics(rec))
+		}
+	}
+	return SourceSnapshot(cf.controller, SourceCharacteristics(&cf.src))
 }
 
 // createCopyLocked puts the copy on the stack: a new spell object for
@@ -226,7 +278,7 @@ func (g *Game) createCopyLocked(src Card, item *StackItem, controller uuid.UUID,
 // the copy decision pauses on a prompt, its card is out of the Stack
 // zone and in a graveyard. In the RULES it is still there — a spell is
 // put into its owner's graveyard as the final step of its own
-// resolution (CR 608.2m) — so the copy is made from last-known
+// resolution (CR 608.2n) — so the copy is made from last-known
 // information, which is what Game.resolving holds.
 //
 // It is narrow on purpose: resolvingSpellLocked answers only for the
@@ -292,6 +344,17 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 	copyCard.LostLastCounter = false
 	copyCard.AttachedTo = TargetRef{}
 	copyCard.effective = nil
+	// CR 903.3: the commander designation is an attribute of the
+	// physical card, not a copiable characteristic (CR 707.2), so a
+	// copy is never a commander — issue #1363. Left uncleared, a copy
+	// of a commander spell would carry `is_commander` onto the stack
+	// object, which is wrong even though the CR 903.9 command-zone
+	// prompt is separately skipped for every copy leaving the stack
+	// (#1340, zone_route.go's stackCopyLocked check): anything else
+	// that reads IsCommander off a stack object — commander damage
+	// attribution, tax, a future "commander spell" check — would see
+	// the copy as one.
+	copyCard.IsCommander = false
 	g.Stack.PushTop(copyCard)
 	// A spell on the stack is public information, copy or not.
 	g.markCardKnownInZoneLocked(g.Stack, copyCard.InstanceID)
@@ -331,12 +394,16 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 	if len(item.Paid.OptionalCosts) > 0 {
 		meta.Paid.OptionalCosts = append([]int(nil), item.Paid.OptionalCosts...)
 	}
+	// ADR 0089 §2: and so is "was the gift promised, and to whom" —
+	// the gift cost is paid by that choice (CR 702.174a), and a copy
+	// of a promised spell gives its gift to the same opponent.
+	meta.Paid.GiftOpponent = item.Paid.GiftOpponent
 	g.StackMeta[copyCard.InstanceID] = meta
 	g.recomputeSplitSecondLocked()
 
 	// No EventCast: a copy is created, not cast. EventBecomesTarget
 	// still fans out — the copy is a spell and the things it points
-	// at have become the target of one (CR 115.7), which is what a
+	// at have become the target of one (CR 115.3), which is what a
 	// ward trigger or Monk Gyatso is watching for.
 	g.emitBecameTargetLocked(controller, copyCard.InstanceID, copyCard.InstanceID, meta.Targets)
 }
@@ -367,8 +434,10 @@ func (g *Game) resolveCopyTargetsLocked(idx int, cf *copyFrame, targets []Target
 	// A SNAPSHOT, deliberately: the original spell can be countered
 	// between the prompt and the answer, and the copy's
 	// characteristics are the original's as they were (CR 707.10).
-	// cf.src is the value copy the frame kept for exactly this.
-	src := SourceSnapshot(cf.controller, SourceCharacteristics(&cf.src))
+	// cf.src is the value copy the frame kept for exactly this — or,
+	// for an ability whose source has left, the source's last-known
+	// record (#1449).
+	src := g.copyTargetSourceLocked(cf)
 	steps := AnnouncedClauses(cf.spec, nil, nil)
 	stamped := assignAnnouncedSlots(steps, targets)
 	if err := g.retargetCheckLocked(src, steps, cf.item.Targets, stamped, RetargetChooseNew); err != nil {
@@ -430,6 +499,7 @@ func (g *Game) resolvePermanentSpellCopyLocked(top Card, item *StackItem) error 
 	if len(item.Paid.OptionalCosts) > 0 {
 		tmpl.Provenance.OptionalCosts = append([]int(nil), item.Paid.OptionalCosts...)
 	}
+	tmpl.Provenance.GiftOpponent = item.Paid.GiftOpponent
 	return g.CreateTokensThenForEffect(TokenCreation{
 		Controller: item.Controller,
 		Groups:     []TokenGroup{{Template: tmpl, Count: 1}},
@@ -485,4 +555,83 @@ func (g *Game) ceaseToExistLocked(cardID uuid.UUID) {
 		CardID:  cardID,
 		OldZone: ZoneStack,
 	})
+}
+
+// stackCopyLocked reports whether the object `cardID` on the stack is
+// a COPY of a spell (StackItem.IsCopy) — whether it is still waiting on
+// the stack (StackMeta) or is the item currently resolving, whose meta
+// the resolver has already taken out of StackMeta while the card is
+// still standing on the stack (#920's slot). The second case is a copy
+// whose own effect moves it ("shuffle this spell into its owner's
+// library"): it leaves the stack by the same route a counterspell
+// uses, and it is no more a card for having done it itself.
+//
+// Caller must hold g.mu.
+func (g *Game) stackCopyLocked(cardID uuid.UUID) bool {
+	if item, ok := g.StackMeta[cardID]; ok && item != nil {
+		return item.IsCopy
+	}
+	_, item, ok := g.resolvingSpellLocked(cardID)
+	return ok && item.IsCopy
+}
+
+// spellCopyLeavesStackLocked is the exit route's answer for a COPY of a
+// spell (#1340): countered, returned to hand, exiled, tucked, or moved
+// by hand in the sandbox, it goes nowhere. CR 707.10a: "If a copy of a
+// spell is in a zone other than the stack, it ceases to exist"; CR
+// 704.5e says the same as a state-based action. The engine never lets
+// the copy reach the other zone at all, rather than landing it there
+// and sweeping it a beat later, because nothing may observe it in
+// between — a copy is not a card, so no "put into a graveyard from
+// anywhere" trigger, no Tarmogoyf, no Regrowth and no flashback may
+// ever see it.
+//
+// What it owes is the route's EVENT, minus the landing:
+//
+//   - a counterspell still COUNTERED it, so a Countered route emits
+//     EventCounterSpell exactly as it does for a card (CR 701.6a — the
+//     counter happened; only the destination is missing), and every
+//     "whenever a spell is countered" watcher sees it;
+//   - every other route emits the ceasing-to-exist shape
+//     ceaseToExistLocked and prepareCopyCeasesLocked already use: an
+//     EventZoneMove out of the stack with NO NewZone. Never a move to a
+//     graveyard, a hand or exile — the copy was never there.
+//
+// The stack record goes with it, as it does on every stack exit
+// (#1318). The last-known record has already been taken by the caller
+// (routeCardToZoneLocked), so a copy that is countered can itself still
+// be copied from last-known information by an effect that names it
+// (CR 608.2h).
+//
+// Caller must hold g.mu.
+func (g *Game) spellCopyLeavesStackLocked(cardID uuid.UUID, r zoneRoute) {
+	if g.Stack == nil {
+		return
+	}
+	if _, err := g.Stack.Remove(cardID); err != nil {
+		return
+	}
+	if _, ok := g.StackMeta[cardID]; ok {
+		delete(g.StackMeta, cardID)
+		g.recomputeSplitSecondLocked()
+	}
+	var out Event
+	if r.Countered {
+		out = Event{Kind: EventCounterSpell, Target: cardID, CardID: cardID}
+	} else {
+		out = Event{
+			Kind:    EventZoneMove,
+			Actor:   r.Actor,
+			Source:  r.Source,
+			CardID:  cardID,
+			OldZone: ZoneStack,
+		}
+	}
+	r.Cause.stampCause(&out)
+	g.EmitEvent(out)
+	// The two prunes every landed exit runs: a prompt that still offers
+	// the copy as a candidate, or asks about another move of it, is
+	// asking about an object that no longer exists.
+	g.pruneCardSetChoicesLocked()
+	g.pruneStaleZoneChangeChoicesLocked()
 }

@@ -29,6 +29,7 @@
   import { play } from "../../sounds";
   import { settings } from "../../settings";
   import { targeting, isLegalCardTarget, isPicked } from "../../targeting";
+  import { autoTapHighlight } from "../../dragCast";
   import { noUntapAppliesToController } from "../../noUntap";
   import { openCardMenu } from "../../contextMenu";
   import CounterPips from "./CounterPips.svelte";
@@ -56,10 +57,18 @@
     // onActivateManaAbility — when supplied, right-click / context-menu
     // opens the ManaAbilityMenu for the card's mana_abilities and
     // this callback fires with the chosen index. Parents set it on
-    // battlefield cards the viewer controls; undefined suppresses
-    // the menu entirely (hand cards, opponent permanents, zones
-    // where activations aren't meaningful).
+    // battlefield cards the viewer controls, and since #1228 on the
+    // viewer's own hand cards — a Spirit Guide's "Exile this card
+    // from your hand: Add {R}" is a mana ability that functions there
+    // (CR 113.6) and rides `zone_mana_abilities`. Undefined
+    // suppresses the menu entirely (opponent permanents, zones where
+    // activations aren't meaningful).
     onActivateManaAbility?: (abilityIndex: number) => void;
+    // #1438: a left-click on a mana source now taps it FOR mana, so
+    // the menu carries the plain tap as "Tap (no mana)". Set by
+    // BattlefieldRow on the viewer's own permanents; undefined hides
+    // the row (hand cards, opponents).
+    onRawTap?: () => void;
     // S21 sub-PR 2: same menu, CR 602 activated abilities. Set by
     // parents for battlefield permanents the viewer controls, and
     // since #660 by Hand.svelte for the viewer's own hand — a card in
@@ -112,6 +121,7 @@
     size = "small",
     showManaCost = false,
     onActivateManaAbility,
+    onRawTap,
     onActivateAbility,
     sorcerySpeedBlocked = "",
     enchantedPlayer,
@@ -129,8 +139,13 @@
   // filters by the zone the card is in (CR 113.6) — so one menu reads
   // whichever is present and the indices stay the card's own.
   const menuAbilities = $derived(card.activated_abilities ?? card.zone_abilities ?? []);
+  // #1228: and the same sentence for the CR 605 list. A permanent
+  // publishes `mana_abilities`; a card in hand whose mana ability
+  // functions there (a Spirit Guide) publishes `zone_mana_abilities`,
+  // and the index means the same thing on the wire either way.
+  const menuManaAbilities = $derived(card.mana_abilities ?? card.zone_mana_abilities ?? []);
   const hasManaAbilities = $derived(
-    (!!onActivateManaAbility && !!card.mana_abilities && card.mana_abilities.length > 0) ||
+    (!!onActivateManaAbility && menuManaAbilities.length > 0) ||
       (!!onActivateAbility && menuAbilities.length > 0),
   );
 
@@ -204,11 +219,26 @@
   // One badge slot, not two: no printed permanent is both a Class and
   // a Case, so they cannot collide, and giving them one slot keeps
   // the top edge of the card readable next to CMD and GOAD.
+  //
+  // ADR 0090 adds a third tenant: a preparation creature's PREPARED
+  // designation (CR 722.3a), which says its prepare spell is waiting
+  // in exile to be cast. A Class or a Case is never a preparation
+  // card, so the slot still holds one badge at most.
   const designationBadge = $derived(
-    card.solved ? "SOLVED" : (card.class_level ?? 0) > 0 ? `LVL ${card.class_level}` : "",
+    card.solved
+      ? "SOLVED"
+      : (card.class_level ?? 0) > 0
+        ? `LVL ${card.class_level}`
+        : card.prepared
+          ? "PREPARED"
+          : "",
   );
   const designationTitle = $derived(
-    card.solved ? "this Case is solved" : `Class level ${card.class_level ?? 1}`,
+    card.solved
+      ? "this Case is solved"
+      : card.prepared
+        ? "prepared — you may cast a copy of its spell from exile"
+        : `Class level ${card.class_level ?? 1}`,
   );
 
   // Hover delay (settings.display.hoverDelayMs) defers the write to
@@ -325,6 +355,7 @@
   class:selected
   class:targetable
   class:picked
+  class:autotap-planned={$autoTapHighlight.has(card.instance_id)}
   class:attacking
   class:blocking
   class:clickable={interactive}
@@ -552,13 +583,16 @@
   {#if manaMenuOpen && hasManaAbilities}
     <div class="mana-menu-anchor">
       <ManaAbilityMenu
-        abilities={onActivateManaAbility ? (card.mana_abilities ?? []) : []}
+        abilities={onActivateManaAbility ? menuManaAbilities : []}
         tapped={!!card.tapped}
         onActivate={(idx) => onActivateManaAbility?.(idx)}
         activated={onActivateAbility ? menuAbilities : []}
         onActivateAbility={(idx) => onActivateAbility?.(idx)}
         summoningSick={!!card.summoning_sick}
         {sorcerySpeedBlocked}
+        onRawTap={onRawTap && onActivateManaAbility && menuManaAbilities.length > 0 && !card.tapped
+          ? onRawTap
+          : undefined}
         onClose={() => (manaMenuOpen = false)}
       />
     </div>
@@ -909,6 +943,13 @@
       0 0 18px rgba(111, 227, 164, 0.6),
       0 6px 16px rgba(0, 0, 0, 0.5);
     cursor: crosshair;
+  }
+  /* #1508: a mana source the auto-tapper would spend on the card being
+     dragged out of the hand. A light dashed ring, deliberately quieter
+     than a target or a selection — it is a preview, not a prompt. */
+  .card.autotap-planned {
+    outline: 2px dashed rgba(241, 211, 138, 0.85);
+    outline-offset: 2px;
   }
   .card.picked {
     box-shadow:

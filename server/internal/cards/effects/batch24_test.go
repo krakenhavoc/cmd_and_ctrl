@@ -31,6 +31,7 @@ const (
 	b24AjanisWelcomeOracle       = "4a782bf9-4051-4613-8852-33b0d85a0edd"
 	b24MegrimOracle              = "633ad9e2-9f55-4a1c-9248-661ad4b0e1dc"
 	b24SceneOfTheCrimeOracle     = "ba11a517-1dbd-4797-9f5e-46ce0f6c77c0"
+	b24SurvivorsEncampmentOracle = "152e7e91-4eda-4e72-a9fb-bd5cb2e68239"
 	b24SoulsFireOracle           = "62d7ed6e-c386-477e-b155-982c3790f842"
 	b24AjanisPridemateOracle     = "95e94dea-5ac0-4d6f-adec-ca147aee861f"
 	b24LichKnightsConquestOracle = "b0e533dd-baf2-482a-b9e1-872eb5e47439"
@@ -99,6 +100,7 @@ func TestBatch24CardsAreRegistered(t *testing.T) {
 		b24AjanisWelcomeOracle:         "Ajani's Welcome",
 		b24MegrimOracle:                "Megrim",
 		b24SceneOfTheCrimeOracle:       "Scene of the Crime",
+		b24SurvivorsEncampmentOracle:   "Survivors' Encampment",
 		b24SoulsFireOracle:             "Soul's Fire",
 		b24AjanisPridemateOracle:       "Ajani's Pridemate",
 		b24LichKnightsConquestOracle:   "Lich-Knights' Conquest",
@@ -118,8 +120,8 @@ func TestBatch24CardsAreRegistered(t *testing.T) {
 		b24LinvalaOracle:               "Linvala, Keeper of Silence",
 		b24CursedTotemOracle:           "Cursed Totem",
 	}
-	if len(want) != 33 {
-		t.Fatalf("the batch registers 32 cards plus Goblin Chieftain, the table lists %d", len(want))
+	if len(want) != 34 {
+		t.Fatalf("the batch registers 33 cards plus Goblin Chieftain, the table lists %d", len(want))
 	}
 	for oracle, name := range want {
 		spec, ok := Lookup(oracle)
@@ -131,7 +133,7 @@ func TestBatch24CardsAreRegistered(t *testing.T) {
 			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
 		}
 	}
-	// The seven remaining declared skips must NOT be registered —
+	// The six remaining declared skips must NOT be registered —
 	// each needs a trigger mode, a cost or a gate the engine cannot
 	// express, and a spec would ship the card stronger than printed.
 	// Linvala and Cursed Totem came off this list with #1210's
@@ -143,11 +145,28 @@ func TestBatch24CardsAreRegistered(t *testing.T) {
 		"451e8ece-7389-4d52-8bc9-450cb5e53e6a", // Ascend from Avernus — a spell exiling itself as it resolves
 		"10c31317-71e8-42e0-85e0-3e64bd0c3dd3", // Vat of Rebirth — remove-counters cost
 		"be6155de-c5b2-415c-ad83-142f9926462a", // Khalni Heart Expedition — remove-counters cost
-		"152e7e91-4eda-4e72-a9fb-bd5cb2e68239", // Survivors' Encampment — tap-another-creature cost
 	} {
 		if _, ok := Lookup(skipped); ok {
 			t.Errorf("%s is a declared skip and must not be registered", skipped)
 		}
+	}
+}
+
+func TestB24SurvivorsEncampmentPaysItsCreatureTapCost(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	land := playLandFromHand(t, g, "Survivors' Encampment", b24SurvivorsEncampmentOracle)
+	bear := pushVanillaCreature(g, me.ID, "Fresh Bear", 2, 2)
+
+	if err := g.ActivateManaAbility(me.ID, land, 1, game.ManaAbilityParams{TapIDs: []uuid.UUID{bear}}); err != nil {
+		t.Fatalf("ActivateManaAbility: %v", err)
+	}
+	if !b20Tapped(t, g, land) || !b20Tapped(t, g, bear) {
+		t.Error("the land and the chosen creature both pay the ability")
+	}
+	pick := riderLatestManaPick(g, me.ID)
+	if pick == nil || len(pick.ColorOptions) != 5 {
+		t.Fatalf("mana choice = %+v, want five colors", pick)
 	}
 }
 
@@ -205,7 +224,7 @@ func TestB24AgnaQelaEntersTappedWithoutABasicAndLoots(t *testing.T) {
 	}
 }
 
-func TestB24SceneOfTheCrimeEntersTappedTapsForColorlessAndCracks(t *testing.T) {
+func TestB24SceneOfTheCrimeEntersTappedTapsForManaAndCracks(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	scene := playLandFromHand(t, g, "Scene of the Crime", b24SceneOfTheCrimeOracle)
@@ -220,6 +239,25 @@ func TestB24SceneOfTheCrimeEntersTappedTapsForColorlessAndCracks(t *testing.T) {
 		t.Errorf("pool %v, want [C]", got)
 	}
 	me.ManaPool.EmptyPool()
+	b22Untap(g, scene)
+	bear := pushVanillaCreature(g, me.ID, "Fresh Bear", 2, 2)
+	if err := g.ActivateManaAbility(me.ID, scene, 1, game.ManaAbilityParams{TapIDs: []uuid.UUID{bear}}); err != nil {
+		t.Fatalf("ActivateManaAbility colored: %v", err)
+	}
+	if !b20Tapped(t, g, scene) || !b20Tapped(t, g, bear) {
+		t.Error("the land and the chosen creature both pay the colored ability")
+	}
+	pick := riderLatestManaPick(g, me.ID)
+	if pick == nil || len(pick.ColorOptions) != 5 {
+		t.Fatalf("colored ability choice = %+v, want five colors", pick)
+	}
+	if err := g.ResolveManaChoice(pick.ID, me.ID, "G"); err != nil {
+		t.Fatalf("ResolveManaChoice: %v", err)
+	}
+	if got := batch01PoolColors(me); len(got) != 1 || got[0] != "G" {
+		t.Errorf("pool %v, want [G]", got)
+	}
+	me.ManaPool.EmptyPool()
 	// The crack needs no tap: a tapped Scene can still be sacrificed.
 	b06AddMana(me, "C", "C")
 	hand := me.Hand.Size()
@@ -230,8 +268,8 @@ func TestB24SceneOfTheCrimeEntersTappedTapsForColorlessAndCracks(t *testing.T) {
 	if got := me.Hand.Size(); got != hand+1 {
 		t.Errorf("drew %d, want 1", got-hand)
 	}
-	if spec, _ := Lookup(b24SceneOfTheCrimeOracle); spec.Completeness != CompletenessCaveats || len(spec.ManaAbilities) != 1 {
-		t.Error("the creature-tap mana ability is a declared gap, not a second mana ability")
+	if spec, _ := Lookup(b24SceneOfTheCrimeOracle); spec.Completeness != CompletenessFull || len(spec.ManaAbilities) != 2 {
+		t.Error("Scene should be full with both printed mana abilities")
 	}
 }
 

@@ -21,6 +21,7 @@
   import { STEP_IDS, STEP_LABELS, type StepID } from "../../turn";
   import { canManuallyStop, manualStops, toggleManualStop } from "../../priorityStops";
   import { holdPriority, toggleHoldPriority } from "../../holdPriority";
+  import { bluffArmed, bluffStatus, bluffStatusText, toggleBluffArmed } from "../../bluff";
   import { settings } from "../../settings";
   import { effectiveBindings, formatChord, isMacLike } from "../../shortcuts";
   import PhaseIcon from "./PhaseIcon.svelte";
@@ -114,6 +115,22 @@
   // think / bluff / respond even when the engine sees nothing to do.
   // Consumed on step transition by the consumer in Game.svelte.
   const pinned = $derived($manualStops);
+
+  // #1307: the bluff switch and the running bluff's line. Only offered
+  // when a bluff setting is on, since the switch does nothing without
+  // one. The countdown ticks twice a second while a timed bluff runs.
+  const bluffConfigured = $derived(
+    $settings.gameplay.bluffCounterspell || $settings.gameplay.bluffInstant,
+  );
+  let now = $state(Date.now());
+  $effect(() => {
+    const s = $bluffStatus;
+    if (!s || s.manual) return;
+    now = Date.now();
+    const id = setInterval(() => (now = Date.now()), 500);
+    return () => clearInterval(id);
+  });
+  const bluffLine = $derived(bluffStatusText($bluffStatus, now));
   function onIconClick(id: StepID): void {
     if (!canManuallyStop(id)) return;
     toggleManualStop(id);
@@ -205,6 +222,20 @@
     >
       {$holdPriority ? "hold ✓" : "hold"}
     </button>
+    {#if bluffConfigured}
+      <button
+        type="button"
+        class="action hold bluff"
+        class:on={$bluffArmed}
+        aria-pressed={$bluffArmed}
+        onclick={toggleBluffArmed}
+        title={$bluffArmed
+          ? "bluff ON — when you have no answer, pause anyway so a pause gives nothing away; click to stop bluffing this game"
+          : "bluff OFF — windows you can't answer pass instantly; click to bluff for the rest of this game"}
+      >
+        {$bluffArmed ? "bluff ✓" : "bluff"}
+      </button>
+    {/if}
     <button
       type="button"
       class="action autopass"
@@ -222,6 +253,10 @@
       {autopassPaused ? "autopass ⏸" : autopassEnabled ? "autopass ✓" : "autopass"}
     </button>
   </div>
+
+  {#if bluffLine}
+    <div class="row bluff-status" role="status">{bluffLine}</div>
+  {/if}
 
   <!-- #628 (CR 726): the loop breaker. Lives directly under the
        toggle it is talking about, because "why has autopass stopped
@@ -462,6 +497,12 @@
     border-color: rgba(255, 107, 107, 0.5);
     color: var(--danger);
     font-weight: 700;
+  }
+  /* Only the viewer sees this line; it is a reminder, so it stays quiet. */
+  .bluff-status {
+    font-size: 0.72rem;
+    color: var(--magenta);
+    opacity: 0.85;
   }
   .loop-notice {
     align-items: flex-start;

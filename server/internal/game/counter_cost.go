@@ -45,7 +45,8 @@ import (
 // own small type rather than a sixth answer here.
 //
 // Both halves share one rule with the loyalty cost that predates
-// them: paying a cost is NOT an effect (CR 121.1), so neither the
+// them: a counter-doubling replacement applies only to a counter
+// placed by an EFFECT (CR 614.16), so neither the
 // removal nor the placement is a replaceable event. Doubling Season
 // does nothing to a Devoted Druid's -1/-1, and Vorinclex does
 // nothing to a Vivid land's charge counter.
@@ -323,6 +324,19 @@ type counterPaymentPart struct {
 type counterPayment struct {
 	parts []counterPaymentPart
 	total int
+}
+
+// cardIDs lists the permanents this payment removes counters from, one
+// entry per part (a permanent paying in two kinds appears twice). The
+// paused-exit gate reads it (#1474): a counter taken off a permanent an
+// effect has already sent on its way is a cost paid by an object that
+// is gone.
+func (p counterPayment) cardIDs() []uuid.UUID {
+	out := make([]uuid.UUID, 0, len(p.parts))
+	for _, part := range p.parts {
+		out = append(out, part.cardID)
+	}
+	return out
 }
 
 // counterPartKey is the identity of one part of a payment. A
@@ -648,8 +662,9 @@ func (g *Game) CanPlaceCounterForEffect(playerID, cardID uuid.UUID, ac *CounterA
 // payCounterAddLocked puts the cost's counter on the source.
 //
 // applyCounterLocked, not AddCounterForEffect, for the third time in
-// this file and for the same rule: a cost is not an effect (CR
-// 121.1), so a Doubling Season does NOT double the -1/-1 counter a
+// this file and for the same rule: a counter-doubling replacement
+// applies only to a counter placed by an effect (CR
+// 614.16), so a Doubling Season does NOT double the -1/-1 counter a
 // Devoted Druid puts on itself to untap. Routing it through the CR
 // 614 pipeline would silently make it — and it would make the
 // untapper cost twice as much under a card that is supposed to be

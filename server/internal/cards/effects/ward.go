@@ -44,11 +44,14 @@ import (
 // not in the catalog still flags as unimplemented, which is the
 // honest answer.
 //
-// SCOPE. Three printed cost shapes ship, and each one is charged by
+// SCOPE. Four printed cost shapes ship, and each one is charged by
 // the prompt that already fits it:
 //
 //   - "Ward {N}" (Hulking Raptor) — PendingChoicePayUnless, which
 //     parses a mana cost and auto-taps for it.
+//   - "Ward—Waterbend {N}" (The Unagi of Kyoshi Island, #1311) — the
+//     same prompt carrying a waterbend clause, so the payer may tap
+//     artifacts and creatures for the generic (CR 701.67a).
 //   - "Ward—Pay N life" (Refraction Elemental, Sedgemoor Witch) — a
 //     PendingChoiceConfirm with LifeCost declared, Sylvan Library's
 //     "pay 4 life or put it back" shape (#552).
@@ -56,18 +59,25 @@ import (
 //     whose accept branch chains a PendingChoiceChooseCards over the
 //     payer's own creatures.
 //
-// None of the three needed engine work: the Confirm and ChooseCards
-// kinds take any Chooser, have bot enumerator cases in legal/, and are
-// rendered by the client. What a ward cost still cannot be is a mix of
+// The mana, life and sacrifice shapes needed no engine work: the
+// Confirm and ChooseCards kinds take any Chooser, have bot enumerator
+// cases in legal/, and are rendered by the client. The waterbend shape
+// did — the pay-unless prompt learned a tap list (game.
+// CounterUnlessPaidPrompt.Waterbend, ResolvePayUnlessWithTaps). What a ward cost still cannot be is a mix of
 // components ("{1}, pay 1 life" is not a printed ward), and Ward()
 // refuses one rather than charging half of it.
 
 // WardCost is the payment a ward demands. Exactly one field is set;
-// build it with WardMana, WardLife or WardSacrifice rather than by
-// hand.
+// build it with WardMana, WardWaterbend, WardLife or WardSacrifice
+// rather than by hand.
 type WardCost struct {
 	// Mana is "ward {N}": a mana cost string for the pay-unless prompt.
 	Mana string
+	// Waterbend is "Ward—Waterbend {N}" (The Unagi of Kyoshi Island,
+	// #1311): the same mana payment, where the payer may tap untapped
+	// artifacts and creatures they control, each paying {1} of the
+	// generic (CR 701.67a). A mana cost string, like Mana.
+	Waterbend string
 	// Life is "ward—pay N life".
 	Life int
 	// Sacrifice is "ward—sacrifice a <thing>".
@@ -86,7 +96,7 @@ type WardSacrificeCost struct {
 	// as one, so every ward that shipped before the field existed
 	// keeps charging exactly what it charged.
 	//
-	// A count rather than a repeated prompt: CR 118.4 is one payment,
+	// A count rather than a repeated prompt: CR 118.3 is one payment,
 	// so a payer who cannot produce all of them has not paid at all
 	// and the spell is countered — never "sacrifice two of the three
 	// and keep the spell". The pick is one ChooseCards prompt with
@@ -105,6 +115,12 @@ func (s WardSacrificeCost) count() int {
 
 // WardMana builds the "ward {N}" cost.
 func WardMana(cost string) WardCost { return WardCost{Mana: cost} }
+
+// WardWaterbend builds the "Ward—Waterbend {N}" cost (#1311). The
+// payment is the pay-unless prompt's mana payment with a tap picker
+// beside it: charging a plain {N} instead would make the ward harder to
+// pay than printed, the card stronger than it is (#259).
+func WardWaterbend(cost string) WardCost { return WardCost{Waterbend: cost} }
 
 // WardLife builds the "ward—pay N life" cost.
 func WardLife(n int) WardCost { return WardCost{Life: n} }
@@ -131,6 +147,9 @@ func (c WardCost) validate() {
 	if c.Mana != "" {
 		n++
 	}
+	if c.Waterbend != "" {
+		n++
+	}
 	if c.Life > 0 {
 		n++
 	}
@@ -138,7 +157,7 @@ func (c WardCost) validate() {
 		n++
 	}
 	if n != 1 || (c.Sacrifice != nil && c.Sacrifice.OK == nil) {
-		panic(fmt.Sprintf("effects: a ward cost needs exactly one of Mana, Life or Sacrifice: %+v", c))
+		panic(fmt.Sprintf("effects: a ward cost needs exactly one of Mana, Waterbend, Life or Sacrifice: %+v", c))
 	}
 }
 
@@ -155,7 +174,7 @@ func (c WardCost) validate() {
 //     warded creature does not trigger it, which is the difference
 //     between ward and shroud.
 //   - The trigger fires per target INSTANCE, because
-//     EventBecomesTarget is emitted per target slot (CR 115.7). A
+//     EventBecomesTarget is emitted per target slot (CR 115.3). A
 //     spell that targets the same warded creature twice triggers
 //     ward twice, and the controller pays twice or the spell is
 //     countered. That is correct and it falls out of the event
@@ -293,6 +312,22 @@ func wardPayOrCounter(g *game.Game, item *game.StackItem, targetingItem, payer u
 		return wardPayLifeOrCounter(g, item.SourceCardID, payer, cost.Life, targetingItem, counter)
 	case cost.Sacrifice != nil:
 		return wardSacrificeOrCounter(g, item.SourceCardID, payer, *cost.Sacrifice, targetingItem, counter)
+	}
+	if cost.Waterbend != "" {
+		// #1311: "Ward—Waterbend {N}" is the mana payment below with
+		// CR 701.67a's second way to cover each generic symbol. The
+		// clause is effects.Waterbend — the one a spell's waterbend
+		// uses — so "you control" means the PAYER's permanents: the
+		// validator reads it for the chooser, not for the warded
+		// permanent's controller.
+		return g.QueueCounterUnlessPaidForEffect(game.CounterUnlessPaidPrompt{
+			StackItem: targetingItem,
+			Chooser:   payer,
+			Source:    item.SourceCardID,
+			Cost:      cost.Waterbend,
+			Question:  "Ward — waterbend " + cost.Waterbend + " or the spell is countered",
+			Waterbend: Waterbend(cost.Waterbend),
+		})
 	}
 	return g.QueueCounterUnlessPaidForEffect(game.CounterUnlessPaidPrompt{
 		StackItem: targetingItem,
@@ -444,7 +479,7 @@ func wardSacrificeLegal(g *game.Game, payer uuid.UUID, sac WardSacrificeCost, id
 // the payer controls and each still matching the cost.
 //
 // Distinctness is checked here rather than assumed, because the
-// payment is one cost (CR 118.4) and the same permanent cannot pay
+// payment is one cost (CR 118.3) and the same permanent cannot pay
 // for itself twice — a repeated ID would otherwise sacrifice one
 // permanent and silently discharge a three-permanent cost.
 func wardSacrificePickComplete(g *game.Game, payer uuid.UUID, sac WardSacrificeCost, picked []uuid.UUID, n int) bool {

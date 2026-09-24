@@ -69,6 +69,17 @@ type DelayedTrigger struct {
 	// the normal case (the instant that made it is in a graveyard).
 	SourceCardID uuid.UUID
 
+	// SourceObject is the OBJECT that source was when the trigger was
+	// scheduled (#1418). CR 603.7d makes a delayed trigger's source
+	// the source of the ability that created it, so when the creating
+	// item is resolving and names SourceCardID, this is that item's
+	// own StackItem.SourceObject; otherwise it is the object the card
+	// was at scheduling time (a resolving spell on the stack).
+	// Stamped by ScheduleDelayedTriggerForEffect when left zero, and
+	// copied onto the fired item, so a "this" in the delayed effect
+	// never names a new object the card became while it waited.
+	SourceObject ObjectRef
+
 	// Label is the stack-overlay copy, in the same shape ordinary
 	// triggers use: "Waterbender's Restoration — return the exiled
 	// creatures".
@@ -87,11 +98,11 @@ type DelayedTrigger struct {
 	// queued instead of firing it.
 	ControllerTurnOnly bool
 
-	// CreatedTurn is the turn number the trigger was scheduled on.
+	// CreatedSeq identifies the turn the trigger was scheduled on.
 	// Not used for firing (see the "next is free" note above) —
 	// it's there for the wire view and for debugging a queue that
 	// somehow never drains.
-	CreatedTurn int
+	CreatedSeq int
 
 	// Cards is the trigger's payload: the card instances the effect
 	// acts on, captured when the trigger was created. Stamped onto
@@ -179,7 +190,10 @@ func (g *Game) ScheduleDelayedTriggerForEffect(dt DelayedTrigger) uuid.UUID {
 	if dt.ID == uuid.Nil {
 		dt.ID = uuid.New()
 	}
-	dt.CreatedTurn = g.Turn.Number
+	dt.CreatedSeq = g.Turn.Seq
+	if dt.SourceObject.ID == uuid.Nil {
+		dt.SourceObject = g.delayedSourceObjectLocked(dt.SourceCardID)
+	}
 	// #663: "this turn" is the printed duration of every
 	// event-conditioned delayed trigger there is, and CR 514.2 ends
 	// it at cleanup whether or not it fired. A caller that means
@@ -194,6 +208,23 @@ func (g *Game) ScheduleDelayedTriggerForEffect(dt DelayedTrigger) uuid.UUID {
 	}
 	g.DelayedTriggers = append(g.DelayedTriggers, &queued)
 	return queued.ID
+}
+
+// delayedSourceObjectLocked is the object a delayed trigger scheduled
+// now has as its source (CR 603.7d): the resolving ability's own
+// SourceObject when that ability is the one scheduling it from the
+// same card, and the object the card is right now otherwise.
+//
+// Caller must hold g.mu.
+func (g *Game) delayedSourceObjectLocked(cardID uuid.UUID) ObjectRef {
+	if r := g.resolving; r != nil && r.item != nil && r.item.SourceCardID == cardID &&
+		r.item.SourceObject.ID == cardID {
+		// #1432: the stamp, or the permanent this resolution has just
+		// put onto the battlefield (unearth) — see
+		// followedSourceObjectLocked.
+		return g.followedSourceObjectLocked(r.item)
+	}
+	return g.sourceObjectRefLocked(cardID)
 }
 
 // fireDelayedTriggersLocked drains every queued trigger whose `At`
@@ -246,6 +277,7 @@ func (dt *DelayedTrigger) stackItem() *StackItem {
 		Controller:   dt.Controller,
 		Owner:        dt.Controller,
 		SourceCardID: dt.SourceCardID,
+		SourceObject: dt.SourceObject,
 		Label:        dt.Label,
 		Effect:       dt.Effect,
 	}
@@ -269,10 +301,11 @@ func cloneDelayedTrigger(dt *DelayedTrigger) *DelayedTrigger {
 		ID:                 dt.ID,
 		Controller:         dt.Controller,
 		SourceCardID:       dt.SourceCardID,
+		SourceObject:       dt.SourceObject,
 		Label:              dt.Label,
 		At:                 dt.At,
 		ControllerTurnOnly: dt.ControllerTurnOnly,
-		CreatedTurn:        dt.CreatedTurn,
+		CreatedSeq:         dt.CreatedSeq,
 		Effect:             dt.Effect,
 		// #663: the event condition. AppliesTo and Optional are
 		// shared, not copied, on exactly the contract Effect above
@@ -385,6 +418,7 @@ func (g *Game) dispatchEventDelayedTriggerLocked(ev Event, dt *DelayedTrigger) {
 	source, lki := g.triggerSourceLocked(dt.SourceCardID, dt.Controller)
 	label, effect := dt.Label, dt.Effect
 	cards := append([]uuid.UUID(nil), dt.Cards...)
+	sourceObject := dt.SourceObject
 	ability := TriggeredAbility{
 		// Watches / AppliesTo stay empty for the same reason a
 		// reflexive trigger leaves them empty: the dispatch is handed
@@ -393,6 +427,7 @@ func (g *Game) dispatchEventDelayedTriggerLocked(ev Event, dt *DelayedTrigger) {
 		OptionalPrompt: dt.Optional,
 		Build: func(ev Event, source *Card, _ Characteristic, _ *Game) *StackItem {
 			item := NewTriggeredItem(source, label, effect)
+			item.SourceObject = sourceObject
 			for _, cardID := range cards {
 				if cardID != uuid.Nil {
 					item.Targets = append(item.Targets, TargetRef{Kind: TargetCard, ID: cardID})

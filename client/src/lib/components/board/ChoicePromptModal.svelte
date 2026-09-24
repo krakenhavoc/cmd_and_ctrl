@@ -30,6 +30,9 @@
   } from "../../choiceRejection";
   import { doubledTriggerLabel } from "../../triggerDoubling";
   import { colorButtons, colorPromptAnswerable, colorPromptCopy } from "../../manaPick";
+  import { colorPickOptions } from "../../manaSource";
+  import ManaSymbolPicker from "./ManaSymbolPicker.svelte";
+  import { payUnlessAnswer, waterbendLimit } from "../../waterbend";
 
   interface Props {
     snap: GameView;
@@ -409,7 +412,7 @@
     return elsewhere === "Triggered ability" ? "" : elsewhere;
   }
 
-  // S17 sub-PR 6 optional-replacement branch — CR 614.10 "may"
+  // S17 sub-PR 6 optional-replacement branch — "may"
   // prompt. Used by CR 903.9 commander-zone replacement today:
   // commander's owner picks yes (route to command zone) or no
   // (let the event proceed to graveyard/exile/hand/library).
@@ -430,6 +433,36 @@
   // auto-taps untapped sources if the pool is short; a "Pay" the
   // player can't cover degrades to a decline server-side.
   const isPayUnless = $derived(active?.kind === "pay_unless");
+
+  // #1311: a pay-unless whose payment is a WATERBEND cost ("Ward—
+  // Waterbend {4}", The Unagi of Kyoshi Island) ships tap_cost: the
+  // chooser may tap untapped artifacts and creatures they control,
+  // each paying {1} of the generic (CR 701.67a), and pays the rest
+  // with mana. The picks ride the "Pay" answer as tap_ids. Optional —
+  // tapping none pays it all with mana, as an ordinary ward would.
+  let payTaps = $state<string[]>([]);
+  let payTapsFor: string | null = null;
+  $effect(() => {
+    const id = active?.id ?? null;
+    if (id !== payTapsFor) {
+      payTapsFor = id;
+      payTaps = [];
+    }
+  });
+  const payTapCost = $derived(isPayUnless ? (active?.tap_cost ?? null) : null);
+  const payTapLimit = $derived(payTapCost ? waterbendLimit(payTapCost, undefined) : 0);
+  const payTapOptions = $derived.by((): CardView[] => {
+    if (!payTapCost) return [];
+    const ids = new Set(payTapCost.options?.cards ?? []);
+    return snap.battlefield.cards.filter((c) => ids.has(c.instance_id));
+  });
+  function togglePayTap(id: string): void {
+    if (payTaps.includes(id)) {
+      payTaps = payTaps.filter((c) => c !== id);
+    } else if (payTaps.length < payTapLimit) {
+      payTaps = [...payTaps, id];
+    }
+  }
 
   // S28 cascade branch — "you may cast it without paying its mana
   // cost". Same {choice_id, apply} payload; the server routes to
@@ -497,7 +530,7 @@
   const modeMin = $derived(active?.mode_min ?? 1);
   const modeMax = $derived(active?.mode_max ?? 1);
   const modeRepeatable = $derived(active?.mode_repeatable ?? false);
-  // The chosen bullets IN THE ORDER CHOSEN — CR 700.2c resolves them
+  // The chosen bullets IN THE ORDER CHOSEN — CR 608.2c resolves them
   // in that order, and CR 700.2d lets the same one appear twice.
   let modePicks = $state<number[]>([]);
   const modeSingle = $derived(modeMax === 1 && !modeRepeatable);
@@ -606,22 +639,64 @@
   // member and the one with NO away lane: every card goes back on
   // top, so the away column and its buttons are hidden entirely and
   // the answer is a pure reorder.
-  const isReorderOnly = $derived(active?.kind === "look_at_top");
+  // #996 / ADR 0088: "put these cards on top of / on the bottom of
+  // the library in any order". The family's fourth member, and the
+  // one whose lanes come off the prompt: `placement` says whether the
+  // answer is a reorder on top (Brainstorm's put-back), a reorder of a
+  // pile going UNDER the library ("the rest on the bottom in any
+  // order"), or scry's two lanes without the keyword (Aetherspouts'
+  // "top or bottom").
+  const isPutInLibrary = $derived(active?.kind === "put_in_library");
+  const placement = $derived(isPutInLibrary ? (active?.placement ?? "top") : null);
 
-  // The shared branch. Everything below keys off this; the three
-  // flags above only pick the wording and the payload.
-  const isLookAtTop = $derived(isScry || isSurveil || isReorderOnly);
+  const isReorderOnly = $derived(
+    active?.kind === "look_at_top" || (isPutInLibrary && placement === "top"),
+  );
+
+  // Everything goes under the library: the top lane is hidden and the
+  // bottom lane is the whole answer.
+  const isBottomOnly = $derived(isPutInLibrary && placement === "bottom");
+
+  // The shared branch. Everything below keys off this; the flags
+  // above only pick the wording, the lanes and the payload.
+  const isLookAtTop = $derived(isScry || isSurveil || isReorderOnly || isPutInLibrary);
 
   // The lane the cards leaving the top go to, as the card prints it.
   // Unused when there is no away lane.
   const awayLabel = $derived(isSurveil ? "graveyard" : "bottom");
 
+  // #1298: the put_in_library top lane's refinements. `topCount` is
+  // EXACTLY how many cards stay on top (Cream of the Crop: one), and
+  // Done waits for it; `topDepth` is where that lane lands (Temporal
+  // Cleansing: second from the top), which only changes its name.
+  const topCount = $derived(isPutInLibrary ? (active?.top_count ?? 0) : 0);
+  const topDepth = $derived(isPutInLibrary ? (active?.top_depth ?? 0) : 0);
+  const topLaneLabel = $derived(topDepth > 1 ? `${ordinal(topDepth)} from the top` : "On top");
+
+  // Whose library the cards go back to, for the hint's wording: Jace's
+  // +2 and Portent order ANOTHER player's library, so "your next draw"
+  // would be wrong there.
+  const ownLibrary = $derived(
+    (active?.options ?? []).every((c) => !c.owner || !viewerID || c.owner === viewerID),
+  );
+  const nextDraw = $derived(ownLibrary ? "your next draw" : "that player's next draw");
+
+  function ordinal(n: number): string {
+    const words = ["", "", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh"];
+    return words[n] ?? `#${n}`;
+  }
+
   let scryTop = $state<string[]>([]);
   let scryBottom = $state<string[]>([]);
 
+  // An exact top count holds Done until the top lane has that many.
+  const canSubmitLookAtTop = $derived(topCount === 0 || scryTop.length === topCount);
+
   // Seed the default whenever a scry / surveil prompt opens:
   // everything stays on top, in the order the server listed it (which
-  // is current library order).
+  // is current library order) — or, with an exact top count, the first
+  // that many stay and the rest start on the bottom, so the seed is
+  // already an answer the server accepts.
   let lastScryID: string | null = null;
   $effect(() => {
     if (!isLookAtTop || !active) {
@@ -630,8 +705,10 @@
     }
     if (active.id === lastScryID) return;
     lastScryID = active.id;
-    scryTop = (active.options ?? []).map((c) => c.instance_id);
-    scryBottom = [];
+    const all = (active.options ?? []).map((c) => c.instance_id);
+    const keep = isBottomOnly ? 0 : topCount > 0 ? topCount : all.length;
+    scryTop = all.slice(0, keep);
+    scryBottom = all.slice(keep);
   });
 
   function scryToBottom(id: string): void {
@@ -655,6 +732,18 @@
     scryTop = next;
   }
 
+  // The same control on the bottom lane. CR 701.22a puts a scry's
+  // bottom cards there "in any order" too, and ADR 0088's "the rest on
+  // the bottom in any order" is nothing BUT this lane. The list is
+  // top-first: the last entry is the bottom card of the library.
+  function scryBottomMoveUp(id: string): void {
+    const i = scryBottom.indexOf(id);
+    if (i <= 0) return;
+    const next = [...scryBottom];
+    [next[i - 1], next[i]] = [next[i], next[i - 1]];
+    scryBottom = next;
+  }
+
   function scryCardName(id: string): string {
     const c = (active?.options ?? []).find((o) => o.instance_id === id);
     return c?.name || "card";
@@ -668,11 +757,16 @@
     if (!active || !viewerID) return;
     const total = (active.options ?? []).length;
     if (scryTop.length + scryBottom.length !== total) return;
-    const away = isReorderOnly
-      ? {}
-      : isSurveil
-        ? { graveyard: scryBottom }
-        : { bottom: scryBottom };
+    if (!canSubmitLookAtTop) return;
+    // put_in_library sends both lanes whatever its placement; the one
+    // the placement does not open is empty, which the server accepts.
+    const away = isPutInLibrary
+      ? { bottom: scryBottom }
+      : isReorderOnly
+        ? {}
+        : isSurveil
+          ? { graveyard: scryBottom }
+          : { bottom: scryBottom };
     answer({ ...away, top_order: scryTop });
   }
 
@@ -724,6 +818,11 @@
 
   function answerOptional(apply: boolean): void {
     if (!active || !viewerID) return;
+    // #1311: a waterbend pay-unless names its taps beside the apply.
+    if (isPayUnless) {
+      answer(payUnlessAnswer(active, apply, payTaps));
+      return;
+    }
     answer({ apply });
   }
 
@@ -844,60 +943,89 @@
     <div class="prompt-modal">
       {#if isLookAtTop}
         <h2 id="choice-title">
-          {active.reason || (isSurveil ? "Surveil" : isReorderOnly ? "Look at the top" : "Scry")}
-          {#if !isReorderOnly}
+          {active.reason ||
+            (isPutInLibrary
+              ? "Put them in your library"
+              : isSurveil
+                ? "Surveil"
+                : isReorderOnly
+                  ? "Look at the top"
+                  : "Scry")}
+          {#if isPutInLibrary}
+            <span class="prompt-src" aria-hidden="true">CR 401.4</span>
+          {:else if !isReorderOnly}
             <span class="prompt-src" aria-hidden="true"
               >{isSurveil ? "CR 701.25" : "CR 701.22"}</span
             >
           {/if}
         </h2>
         <p class="prompt-hint">
-          {#if isReorderOnly}
-            Put them back in any order — the topmost is your next draw.
+          {#if isBottomOnly}
+            Put them on the bottom of the library in any order — the last one listed is the very
+            bottom card.
+          {:else if isReorderOnly && topDepth > 1}
+            Put them in any order, the first {topLaneLabel.toLowerCase()}.
+          {:else if isReorderOnly}
+            Put them {isPutInLibrary ? "on top" : "back"} in any order — the topmost is {nextDraw}.
+          {:else if topCount > 0}
+            Keep exactly {topCount} on top — the topmost is {nextDraw} — and put the rest on the bottom
+            in any order.
+          {:else if scryTop.length + scryBottom.length === 1 && topDepth > 1}
+            Put it {topLaneLabel.toLowerCase()}, or on the bottom of {ownLibrary
+              ? "your library"
+              : "its owner's library"}.
           {:else if scryTop.length + scryBottom.length === 1}
             Keep it on top, or put it {isSurveil
               ? "into your graveyard"
-              : "on the bottom of your library"}.
+              : ownLibrary
+                ? "on the bottom of your library"
+                : "on the bottom of its owner's library"}.
           {:else}
-            Keep any of these on top — the topmost is your next draw — and put the rest {isSurveil
+            Keep any of these on top — the topmost is {nextDraw} — and put the rest {isSurveil
               ? "into your graveyard"
               : "on the bottom"}.
           {/if}
-          Only you can see them.
+          {isPutInLibrary ? "Nobody else learns the order." : "Only you can see them."}
         </p>
-        <div class="scry-lane">
-          <h3 class="lane-label">On top ({scryTop.length})</h3>
-          {#if scryTop.length === 0}
-            <p class="lane-empty">Nothing — your next draw comes from under these.</p>
-          {:else}
-            <ol class="scry-list">
-              {#each scryTop as id, i (id)}
-                <li>
-                  <span class="prompt-num">{i + 1}</span>
-                  <span class="scry-name">{scryCardName(id)}</span>
-                  <button
-                    type="button"
-                    class="lane-btn"
-                    disabled={i === 0}
-                    title="move closer to the top"
-                    aria-label={`move ${scryCardName(id)} up`}
-                    onclick={() => scryMoveUp(id)}>↑</button
-                  >
-                  {#if !isReorderOnly}
+        {#if !isBottomOnly}
+          <div class="scry-lane">
+            <h3 class="lane-label">
+              {topLaneLabel} ({scryTop.length}{topCount > 0 ? ` of ${topCount}` : ""})
+            </h3>
+            {#if scryTop.length === 0}
+              <p class="lane-empty">
+                {ownLibrary ? "Nothing — your next draw comes from under these." : "Nothing."}
+              </p>
+            {:else}
+              <ol class="scry-list">
+                {#each scryTop as id, i (id)}
+                  <li>
+                    <span class="prompt-num">{i + 1}</span>
+                    <span class="scry-name">{scryCardName(id)}</span>
                     <button
                       type="button"
                       class="lane-btn"
-                      onclick={() => scryToBottom(id)}
-                      aria-label={`put ${scryCardName(id)} ${
-                        isSurveil ? "into your graveyard" : "on the bottom"
-                      }`}>To {awayLabel}</button
+                      disabled={i === 0}
+                      title="move closer to the top"
+                      aria-label={`move ${scryCardName(id)} up`}
+                      onclick={() => scryMoveUp(id)}>↑</button
                     >
-                  {/if}
-                </li>
-              {/each}
-            </ol>
-          {/if}
-        </div>
+                    {#if !isReorderOnly}
+                      <button
+                        type="button"
+                        class="lane-btn"
+                        onclick={() => scryToBottom(id)}
+                        aria-label={`put ${scryCardName(id)} ${
+                          isSurveil ? "into your graveyard" : "on the bottom"
+                        }`}>To {awayLabel}</button
+                      >
+                    {/if}
+                  </li>
+                {/each}
+              </ol>
+            {/if}
+          </div>
+        {/if}
         {#if !isReorderOnly}
           <div class="scry-lane">
             <h3 class="lane-label">
@@ -906,19 +1034,35 @@
             {#if scryBottom.length === 0}
               <p class="lane-empty">None.</p>
             {:else}
-              <ul class="scry-list">
-                {#each scryBottom as id (id)}
+              <ol class="scry-list">
+                {#each scryBottom as id, i (id)}
                   <li>
+                    {#if !isSurveil}
+                      <span class="prompt-num">{i + 1}</span>
+                    {/if}
                     <span class="scry-name">{scryCardName(id)}</span>
-                    <button
-                      type="button"
-                      class="lane-btn"
-                      onclick={() => scryToTop(id)}
-                      aria-label={`keep ${scryCardName(id)} on top`}>Keep on top</button
-                    >
+                    {#if !isSurveil}
+                      <button
+                        type="button"
+                        class="lane-btn"
+                        disabled={i === 0}
+                        title="move closer to the top of the pile"
+                        aria-label={`move ${scryCardName(id)} up in the bottom pile`}
+                        onclick={() => scryBottomMoveUp(id)}>↑</button
+                      >
+                    {/if}
+                    {#if !isBottomOnly}
+                      <button
+                        type="button"
+                        class="lane-btn"
+                        onclick={() => scryToTop(id)}
+                        aria-label={`keep ${scryCardName(id)} on top`}
+                        >{topDepth > 1 ? topLaneLabel : "Keep on top"}</button
+                      >
+                    {/if}
                   </li>
                 {/each}
-              </ul>
+              </ol>
             {/if}
           </div>
         {/if}
@@ -931,14 +1075,23 @@
         </div>
         <div class="prompt-foot">
           <span class="prompt-count">
-            {#if isReorderOnly}
-              {scryTop.length} back on top
+            {#if isBottomOnly}
+              {scryBottom.length} on the bottom
+            {:else if isReorderOnly}
+              {scryTop.length} {isPutInLibrary ? "on top" : "back on top"}
             {:else}
-              {scryTop.length} on top · {scryBottom.length}
+              {scryTop.length}{topCount > 0 ? ` of ${topCount}` : ""}
+              {topDepth > 1 ? topLaneLabel.toLowerCase() : "on top"} · {scryBottom.length}
               {isSurveil ? "in the graveyard" : "on the bottom"}
             {/if}
           </span>
-          <button type="button" class="primary" onclick={submitScry}>Done</button>
+          <button
+            type="button"
+            class="primary"
+            disabled={!canSubmitLookAtTop}
+            title={canSubmitLookAtTop ? undefined : `Keep exactly ${topCount} on top`}
+            onclick={submitScry}>Done</button
+          >
         </div>
       {:else if isManaPick}
         <h2 id="choice-title">
@@ -952,21 +1105,15 @@
             Choose a color to add to your mana pool.
           {/if}
         </p>
-        <div class="color-row">
-          {#each buttons as b (b.color)}
-            <button
-              type="button"
-              class="color-pick"
-              style:--fill={b.fill}
-              title={b.label}
-              aria-label={b.amount > 1 ? `add ${b.amount} ${b.label} mana` : `add ${b.label} mana`}
-              onclick={() => pickColor(b.color)}
-            >
-              <span class="color-letter">{b.amount > 1 ? `${b.amount}×${b.color}` : b.color}</span>
-              <span class="color-name">{b.label}</span>
-            </button>
-          {/each}
-        </div>
+        <!-- #1438: the same symbol picker a click on a multi-ability
+             source opens, so Birds, Treasure, Command Tower and an
+             auto-tap colour question all look alike. No onCancel: the
+             source is already tapped when the server asks. -->
+        <ManaSymbolPicker
+          options={colorPickOptions(buttons, "add")}
+          onPick={(o) => o.color && pickColor(o.color)}
+          label="mana colors"
+        />
       {:else if isColorChoice}
         <h2 id="choice-title">
           {active.reason || colorCopy.title}
@@ -978,21 +1125,11 @@
              not know whether the colour is remembered on a permanent
              or used once as a spell resolves. -->
         <p class="prompt-hint">{colorCopy.hint}</p>
-        <div class="color-row">
-          {#each buttons as b (b.color)}
-            <button
-              type="button"
-              class="color-pick"
-              style:--fill={b.fill}
-              title={b.label}
-              aria-label={`choose ${b.label}`}
-              onclick={() => pickColor(b.color)}
-            >
-              <span class="color-letter">{b.color}</span>
-              <span class="color-name">{b.label}</span>
-            </button>
-          {/each}
-        </div>
+        <ManaSymbolPicker
+          options={colorPickOptions(buttons, "choose")}
+          onPick={(o) => o.color && pickColor(o.color)}
+          label="colors"
+        />
       {:else if isCoinCall}
         <h2 id="choice-title">
           {active.reason || "Call the flip"}
@@ -1116,7 +1253,7 @@
       {:else if isOptionalReplacement}
         <h2 id="choice-title">
           {active.reason || "Apply replacement?"}
-          <span class="prompt-src" aria-hidden="true">optional replacement · CR 614.10</span>
+          <span class="prompt-src" aria-hidden="true">optional replacement</span>
         </h2>
         <p class="prompt-hint">
           You (the affected player) decide whether this substitution applies.
@@ -1271,6 +1408,34 @@
           Pay {active.pay_cost ?? "the cost"} from your pool (untapped sources auto-tap if it's short),
           or don't and let {triggerSourceName(active.source)} do its thing.
         </p>
+        {#if payTapCost}
+          <p class="prompt-hint sub">
+            {payTapCost.label ?? "Waterbend"}: tap your untapped artifacts and creatures to help —
+            each pays for {"{1}"}. Mana pays the rest.
+          </p>
+          {#if payTapOptions.length === 0}
+            <p class="prompt-hint">You control nothing untapped that can help.</p>
+          {:else}
+            <ul class="prompt-options">
+              {#each payTapOptions as c (c.instance_id)}
+                <li>
+                  <button
+                    type="button"
+                    class="prompt-opt"
+                    class:on={payTaps.includes(c.instance_id)}
+                    disabled={payTaps.length >= payTapLimit && !payTaps.includes(c.instance_id)}
+                    aria-pressed={payTaps.includes(c.instance_id)}
+                    onclick={() => togglePayTap(c.instance_id)}
+                  >
+                    <span class="prompt-radio" aria-hidden="true"></span>
+                    <span class="name">{c.name}</span>
+                  </button>
+                </li>
+              {/each}
+            </ul>
+            <p class="prompt-hint sub">{payTaps.length} / {payTapLimit} tapped</p>
+          {/if}
+        {/if}
         <div class="prompt-foot">
           <span class="prompt-count"><span class="kbd">Y</span> / <span class="kbd">N</span></span>
           <button type="button" onclick={() => answerOptional(false)}>Don't pay</button>
@@ -1692,49 +1857,6 @@
   .card-pick:disabled {
     opacity: 0.4;
     cursor: not-allowed;
-  }
-  .color-row {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-  .color-pick {
-    display: inline-flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    padding: 14px 18px;
-    background: var(--fill);
-    color: #0a0e1a;
-    border: 1px solid rgba(0, 0, 0, 0.35);
-    border-radius: 10px;
-    font-weight: 800;
-    cursor: pointer;
-    min-width: 88px;
-    box-shadow: var(--shadow-sm);
-    transition:
-      transform 120ms var(--ease),
-      box-shadow 120ms var(--ease),
-      filter 120ms var(--ease);
-  }
-  .color-pick:hover,
-  .color-pick:focus-visible {
-    background: var(--fill);
-    border-color: rgba(0, 0, 0, 0.35);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow);
-    filter: brightness(1.05);
-  }
-  .color-letter {
-    font-size: 22px;
-    line-height: 1;
-  }
-  .color-name {
-    font-size: 10px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    opacity: 0.8;
   }
   /* S26 creature-type picker. The list is the whole CR 205.3m
      vocabulary, so it scrolls inside a fixed box rather than growing

@@ -16,7 +16,7 @@
   //     ("choose two", every bullet targets) could not be cast at
   //     all, because the server could not carry two target groups.
   //   - It SORTED the chosen indexes ascending, which threw away the
-  //     order the modes resolve in (CR 700.2c).
+  //     order the modes resolve in (CR 608.2c).
   //   - It had no notion of choosing the same bullet twice
   //     (CR 700.2d, Mystic Confluence), which is a count per option
   //     rather than a toggle.
@@ -40,7 +40,7 @@
   const repeatable = $derived(spec?.repeatable ?? false);
 
   // chosen is the multiset of option indexes IN THE ORDER CHOSEN —
-  // which is the order they resolve in (CR 700.2c) and the order
+  // which is the order they resolve in (CR 608.2c) and the order
   // their targets are asked for.
   let chosen = $state<number[]>([]);
 
@@ -57,6 +57,14 @@
   const count = $derived(chosen.length);
   const canConfirm = $derived(
     spec !== null && count >= spec.min && count <= (spec.max > 0 ? spec.max : count),
+  );
+
+  // Spree (CR 702.172a, ADR 0065's 2026-09-23 amendment): the chosen
+  // modes' own costs, in announce order, for the "what am I paying"
+  // summary beside Confirm. Plain concatenation — the server prices
+  // the actual sum (#544); this is a preview, not a computation.
+  const extraCosts = $derived(
+    chosen.map((i) => spec?.options[i]?.cost).filter((c): c is string => !!c),
   );
 
   function targetedCount(indexes: number[]): number {
@@ -82,7 +90,7 @@
     }
     if (spec.max > 0 && chosen.length >= spec.max) return;
     // Appended, never sorted: the order the player clicks in is the
-    // order CR 700.2c resolves in and the order the targets are
+    // order CR 608.2c resolves in and the order the targets are
     // asked for (#764).
     chosen = [...chosen, i];
   }
@@ -154,6 +162,9 @@
             >
               <span class="prompt-radio" aria-hidden="true"></span>
               <span class="label">{option.label}</span>
+              {#if option.cost}
+                <span class="cost" title={`additional cost ${option.cost}`}>+{option.cost}</span>
+              {/if}
               {#if repeatable && times > 0}
                 <span class="times">&times;{times}</span>
               {/if}
@@ -175,6 +186,11 @@
       <div class="prompt-foot">
         {#if !single}
           <span class="prompt-count">{count} / {spec.max} modes</span>
+        {/if}
+        {#if extraCosts.length > 0}
+          <span class="cost extra-cost" title="additional cost of the chosen modes"
+            >+{extraCosts.join(" ")}</span
+          >
         {/if}
         <button type="button" class="ghost" onclick={onCancel}
           >Cancel <span class="kbd">Esc</span></button
@@ -202,5 +218,14 @@
   }
   .minus {
     padding: 0 0.5rem;
+  }
+  .cost {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--fg-dim);
+    white-space: nowrap;
+  }
+  .extra-cost {
+    margin-right: auto;
   }
 </style>

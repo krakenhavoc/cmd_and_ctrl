@@ -49,10 +49,11 @@ type PhaseOut struct {
 }
 
 func (p PhaseOut) Apply(ctx *Context) error {
-	if len(p.Targets) == 0 {
+	targets := ctx.withoutNewSourceObject(p.Targets) // #1432
+	if len(targets) == 0 {
 		return nil
 	}
-	return ctx.Game.PhaseOutForEffect(ctx.Source(), p.Targets...)
+	return ctx.Game.PhaseOutForEffect(ctx.Source(), targets...)
 }
 
 // PhaseOutUntilLeaves is "[that permanent] phases out until ~ leaves
@@ -74,11 +75,15 @@ type PhaseOutUntilLeaves struct {
 }
 
 func (p PhaseOutUntilLeaves) Apply(ctx *Context) error {
-	if len(p.Targets) == 0 || p.Until == uuid.Nil {
+	// #1432: "until THIS leaves the battlefield" with a source that
+	// already left and came back is over before it starts (CR 611.2b)
+	// — the new object is not the one the duration names.
+	targets := ctx.withoutNewSourceObject(p.Targets)
+	if len(targets) == 0 || p.Until == uuid.Nil || ctx.isNewSourceObjectAsThis(p.Until) {
 		return nil
 	}
 	return ctx.Game.PhaseOutUntilLeavesForEffect(
-		ctx.Source(), p.Until, p.TapOnPhaseIn, p.Targets...)
+		ctx.Source(), p.Until, p.TapOnPhaseIn, targets...)
 }
 
 // legalTargetCards is the list of this item's card targets that are

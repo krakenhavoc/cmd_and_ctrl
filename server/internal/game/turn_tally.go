@@ -183,6 +183,34 @@ type TurnTally struct {
 	// loopSuspectedLocked over LoopRun; this says whether the answer
 	// it gives is news. See loop_breaker.go (#804).
 	LoopAllowance map[string]int `json:"loopAllowance,omitempty"`
+	// Casts is every spell cast this turn, TABLE-WIDE, in cast order:
+	// the instance ID of each spell as it went on the stack. Read
+	// through Game.SpellsCastBeforeThisTurn.
+	//
+	// The one cell of this struct that is a LIST rather than a count,
+	// because the question it answers is about an object's POSITION.
+	// Storm (CR 702.40a) copies a spell "for each other spell that was
+	// cast before it this turn", and no total can say which casts came
+	// before a named one. See ADR 0086.
+	//
+	// Three properties, each of them a thing a count or a log scan
+	// gets wrong (ADR 0086 Decision 1):
+	//
+	//   - Table-wide. CR 702.40a says "each other spell", not "each
+	//     other spell you cast". Game.SpellsCastThisTurn is the
+	//     per-player tally and stays exactly what it was.
+	//   - Recorded AT THE CAST, like EnteredSubtypes and
+	//     SacrificedSubtypes above and for the same reason (#596): a
+	//     spell that was cast and then COUNTERED was still cast, and
+	//     by the time storm asks, the card may be in a graveyard, in
+	//     exile or (a token copy) nowhere at all. An ID recorded here
+	//     is immune to every one of those.
+	//   - Spells only. Playing a land is a special action (CR 116.2a)
+	//     and emits no EventCast, so the land branch of CastSpell
+	//     never reaches this list; a spell COPY is created and not
+	//     cast (CR 707.10) and emits no EventCast either, so a storm
+	//     chain counts only the real casts, as printed.
+	Casts []uuid.UUID `json:"casts,omitempty"`
 	// FirstEvent is the index into Game.Events at which this turn
 	// began; EventsThisTurn slices from it.
 	FirstEvent int `json:"firstEvent,omitempty"`
@@ -553,6 +581,48 @@ func (g *Game) EventsThisTurn() []Event {
 	return g.Events[start:]
 }
 
+// SpellsCastBeforeThisTurn reports how many spells were cast this
+// turn, by any player, BEFORE the spell `spellID` was cast — storm's
+// count (CR 702.40a, "copy it for each other spell that was cast
+// before it this turn"). See ADR 0086.
+//
+// It reads TurnTally.Casts, which is append-only within a turn, so a
+// spell's index is frozen by its own cast and the answer does not
+// move under a caller. A spell cast in RESPONSE to the storm trigger
+// is appended AFTER the storm spell and leaves that index alone,
+// which is the rule and the reason storm can read this at resolution
+// (CR 608.2h) instead of capturing a number at announce.
+//
+// "Other" is free: the spell's own entry is at the index this
+// returns, so it is never counted.
+//
+// The MOST RECENT cast of that ID, which matters for exactly one
+// shape: a spell countered or bounced back to its owner's hand
+// (Remand) and cast again the same turn is two casts of one card, and
+// a card keeps its instance ID across the round trip — so the list
+// holds the ID twice. The question is always about the later one. The
+// earlier cast's own trigger cannot still be waiting for an answer:
+// CR 603.3 puts it on the stack ABOVE its spell, so it resolves
+// before anything can bounce that spell. Taking the first index
+// instead would undercount every recast, which is the case that
+// actually happens at a table.
+//
+// A spell this turn's casts do not name answers zero. That is the
+// honest answer for the two ways it happens — a spell cast on an
+// earlier turn, and a COPY, which was created and not cast
+// (CR 707.10) — and it is what a storm trigger on a copy would want:
+// a copy has no storm trigger, because nothing was cast.
+//
+// Caller must hold g.mu.
+func (g *Game) SpellsCastBeforeThisTurn(spellID uuid.UUID) int {
+	for i := len(g.TurnTally.Casts) - 1; i >= 0; i-- {
+		if g.TurnTally.Casts[i] == spellID {
+			return i
+		}
+	}
+	return 0
+}
+
 // resetTurnTallyLocked starts a fresh tally at the current end of the
 // event log. Caller must hold g.mu.
 func (g *Game) resetTurnTallyLocked() {
@@ -581,6 +651,13 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	out.Triggered = copyStringIntMap(t.Triggered)
 	out.LoopRun = copyStringIntMap(t.LoopRun)
 	out.LoopAllowance = copyStringIntMap(t.LoopAllowance)
+	// #1238: a fresh backing array, not the same slice header. The
+	// clone is an undo restore point and the live game keeps
+	// appending to its own list; sharing the array would let a cast
+	// made after the snapshot reach the snapshot's view of the turn.
+	if len(t.Casts) > 0 {
+		out.Casts = append([]uuid.UUID(nil), t.Casts...)
+	}
 	return out
 }
 
@@ -646,10 +723,26 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.AttacksDeclared++ })
 		g.notePlayerDecisionLocked()
 	case EventCast, EventBlock:
-		// #628: these two bump no counter — they are here only as
-		// decision events for the CR 726 loop breaker. Casting a
-		// spell and declaring a blocker are both "a player did
-		// something other than pass", which restarts the loop run.
+		// #1238 / CR 702.40a: the turn's cast ORDER, table-wide. Taken
+		// here rather than in CastSpell so it is one record off one
+		// event, beside the rest of the tally, and so an engine-driven
+		// cast (a cascade hit, a "you may cast it" grant) is counted
+		// exactly like a hand cast — both emit this event and both are
+		// spells that were cast. The listener is registered ahead of
+		// the trigger harvester (see NewGame), so a spell's own entry
+		// is already here when its storm trigger is built.
+		//
+		// The CardID guard is not defensive: EventBlock shares this
+		// arm, and a hand-written EventCast in a test may carry only
+		// an Actor.
+		if ev.Kind == EventCast && ev.CardID != uuid.Nil {
+			g.TurnTally.Casts = append(g.TurnTally.Casts, ev.CardID)
+		}
+		// #628: the OTHER reason these two share an arm, and until
+		// #1238 the only one — they are decision events for the CR 726
+		// loop breaker. Casting a spell and declaring a blocker are
+		// both "a player did something other than pass", which
+		// restarts the loop run.
 		// Activations and answered prompts have no event of their own
 		// and notch notePlayerDecisionLocked directly; see
 		// loop_breaker.go.

@@ -31,6 +31,7 @@
   // screen reader user is told the full board is reachable.
 
   import type { ActionPayload, ActionType, CardView, GameView, PlayerView } from "../../protocol";
+  import { defendingPlayerOf } from "../../attackTargets";
   import { buildSeatSummary, manaLabel, MANA_ORDER } from "../../seatSummary";
   import { COLOR_META } from "../../manaPick";
   import { KEYWORD_ICONS } from "../../keywordIcons";
@@ -58,6 +59,9 @@
     onTargetCard?: (card: CardView) => boolean;
     /** Pin this seat open. Board owns the pin; the summary just asks. */
     onExpand?: () => void;
+    // #1307: threaded straight through to PlayerIdentity — see its
+    // prop doc.
+    considering?: boolean;
   }
 
   const {
@@ -77,6 +81,7 @@
     onTargetPlayer,
     onTargetCard,
     onExpand,
+    considering = false,
   }: Props = $props();
 
   const summary = $derived(buildSeatSummary(seat, controlledCards, view.battlefield?.cards ?? []));
@@ -183,7 +188,7 @@
   // this only asks.
   function handlePipClick(c: CardView): void {
     if (onTargetCard?.(c)) return;
-    if (combatMode === "block" && c.attacking_target === viewerID) {
+    if (combatMode === "block" && defendingPlayerOf(c) === viewerID) {
       onDeclareBlock(c.instance_id);
       return;
     }
@@ -211,6 +216,7 @@
       {sendAction}
       {onDeclareAttack}
       {onTargetPlayer}
+      {considering}
     />
     <button
       class="expand"

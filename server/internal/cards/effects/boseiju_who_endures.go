@@ -35,31 +35,26 @@ import (
 // land TYPE, not the basic supertype — a Sacred Foundry is a legal
 // find, which is most of why the compensation is real.
 //
-// DECLARED SIMPLIFICATION, weaker than printed: "This ability costs
-// {1} less to activate for each legendary creature you control" is
-// not applied. Cost modification reaches spells only — an activated
-// ability never passes through the CR 601.2f-style pricing pass (the
-// open "Cost modification for activated abilities" seam) — so the
-// channel always costs the printed {1}{G}. A Boseiju that is harder
-// to use than printed is the acceptable direction (#259); the other
-// way round would not be.
+// "This ability costs {1} less to activate for each legendary
+// creature you control" is the channel ability's OWN cost clause
+// (ActivatedAbility.CostModifiers, #1296), priced from the hand where
+// channel is activated. It reduces GENERIC mana only (CR 601.2f), so
+// with any number of legends out the channel still costs {G}.
 func init() {
 	Register(Spec{
 		OracleID:     "bf1341dd-41a3-49f6-87ec-63170dde4324",
 		Name:         "Boseiju, Who Endures",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The channel ability always costs {1}{G}; it doesn't get cheaper for each legendary creature you control.",
-		},
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{G}",
 			Label:    "Add {G}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "Channel — {1}{G}, Discard this card: Destroy target artifact, enchantment, or nonbasic land an opponent controls",
-			Cost:  game.AbilityCost{Mana: "{1}{G}", DiscardSelf: true},
-			Zones: []game.ZoneKind{game.ZoneHand},
+			Label:         "Channel — {1}{G}, Discard this card: Destroy target artifact, enchantment, or nonbasic land an opponent controls",
+			Cost:          game.AbilityCost{Mana: "{1}{G}", DiscardSelf: true},
+			Zones:         []game.ZoneKind{game.ZoneHand},
+			CostModifiers: []game.CostModifier{ChannelDiscountPerLegendaryCreature()},
 			Targets: TargetPermanent("target artifact, enchantment, or nonbasic land an opponent controls",
 				Or(Artifact(), Enchantment(), NonbasicLand()), OpponentControls()),
 			Effect: boseijuChannel,

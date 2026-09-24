@@ -118,9 +118,9 @@ func TestForetoldCardIsCastableNextTurnForTheForetellCost(t *testing.T) {
 		t.Fatalf("cast on the turn it was foretold: got %v, want ErrNoPlayPermission", err)
 	}
 
-	// A later turn. Turn.Number counts rounds, so the next number is
-	// this seat's next turn — the same floor warp's grant uses.
-	g.Turn.Number++
+	// A later turn. Turn.Seq changes at every turn boundary — the same
+	// floor warp's grant uses.
+	g.Turn.Seq++
 	perm := grantOn(g, me.ID, id, ZoneExile)
 	if perm == nil {
 		t.Fatal("no foretell permission on a later turn")
@@ -161,7 +161,7 @@ func TestForetoldSpellIsMarkedOnTheStack(t *testing.T) {
 	advanceTo(t, g, StepPrecombatMain)
 
 	id := foretellIt(t, g, me)
-	g.Turn.Number++
+	g.Turn.Seq++
 	me.ManaPool.AddMana(ManaToken{Color: "C"}, ManaToken{Color: "U"})
 	if err := g.CastSpell(me.ID, id, CastSpellParams{Strict: true, FromZone: "exile", AlternativeCost: AltCostKeyForetell}); err != nil {
 		t.Fatalf("cast: %v", err)
@@ -235,7 +235,7 @@ func TestASecondCopyInExileIsNotCastable(t *testing.T) {
 	other.ManaCost = "{1}{U}{U}"
 	g.Exile.PushTop(other)
 
-	g.Turn.Number++
+	g.Turn.Seq++
 	if perm := grantOn(g, me.ID, other.InstanceID, ZoneExile); perm != nil {
 		t.Error("a second copy in exile is covered by the first one's foretell permission")
 	}
@@ -298,7 +298,7 @@ func TestForetoldStateSurvivesASnapshotRoundTrip(t *testing.T) {
 	id := foretellIt(t, g, me)
 
 	_, restored := roundTrip(t, g)
-	restored.Turn.Number++
+	restored.Turn.Seq++
 
 	c := exiledCardByIDLocked(restored, id)
 	if c == nil {

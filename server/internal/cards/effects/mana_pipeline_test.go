@@ -341,6 +341,59 @@ func TestFellwarStoneNoLongerOffersColoursNoOpponentCanMake(t *testing.T) {
 	}
 }
 
+// TestFellwarStoneSeesThroughAnOpposingExoticOrchard — #1323. Before
+// this, ProducibleManaLocked skipped every DerivesFromOtherSources
+// ability unconditionally, so an opposing Exotic Orchard contributed
+// nothing to Fellwar Stone.
+//
+// The proof has to rule out Fellwar Stone finding the colour directly:
+// its own match is "a land an OPPONENT controls", so any land not
+// controlled by ME already qualifies on its own, chain or no chain.
+// Putting the colour-producing Forest under MY OWN control closes that
+// hole — Fellwar Stone's direct scan never matches my land at all, so
+// the only way {G} can reach the pool is through the Orchard's OWN
+// derivation, which reads "a land an opponent of THAT Orchard's
+// controller controls" — and I am one, so it reaches my Forest one hop
+// further out. That one-way chain must now resolve to the real
+// colour, exactly as CR 106.7 asks.
+func TestFellwarStoneSeesThroughAnOpposingExoticOrchard(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opponent := g.Seats[0], g.Seats[1]
+	stone := seedPermanentWithOracle(g, me.ID, "Fellwar Stone", "Artifact", fellwarStoneOracle)
+	seedPermanentWithOracle(g, opponent.ID, "Exotic Orchard", "Land", exoticOrchardOracle)
+	seedManaLand(g, me.ID, "Forest", "Basic Land — Forest", "G")
+
+	if err := g.ActivateManaAbility(me.ID, stone, 0, game.ManaAbilityParams{}); err != nil {
+		t.Fatalf("ActivateManaAbility: %v", err)
+	}
+	if len(me.ManaPool) != 1 || me.ManaPool[0].Color != "G" {
+		t.Errorf("pool = %v, pick = %v; Fellwar Stone should see {G} through the Orchard's one-way derivation of MY OWN Forest",
+			me.ManaPool, manaPickFor(g, me.ID))
+	}
+}
+
+// TestFellwarStoneVersusFellwarStoneIsNotACycle — Fellwar Stone is an
+// ARTIFACT, so it never appears as a candidate in anyone's "a land …
+// controls" match; two Fellwar Stones facing opposing Exotic Orchards
+// each resolve the other's Orchard normally rather than tripping the
+// cycle guard meant for two LANDS.
+func TestFellwarStoneVersusFellwarStoneIsNotACycle(t *testing.T) {
+	g := newCatalogGame(t)
+	me, them := g.Seats[0], g.Seats[1]
+	mine := seedPermanentWithOracle(g, me.ID, "Fellwar Stone", "Artifact", fellwarStoneOracle)
+	seedPermanentWithOracle(g, them.ID, "Fellwar Stone", "Artifact", fellwarStoneOracle)
+	seedManaLand(g, them.ID, "Island", "Basic Land — Island", "U")
+	seedManaLand(g, me.ID, "Forest", "Basic Land — Forest", "G")
+
+	if err := g.ActivateManaAbility(me.ID, mine, 0, game.ManaAbilityParams{}); err != nil {
+		t.Fatalf("ActivateManaAbility: %v", err)
+	}
+	if len(me.ManaPool) != 1 || me.ManaPool[0].Color != "U" {
+		t.Errorf("pool = %v, pick = %v; my Fellwar Stone should see {U} off their Island — their own Fellwar Stone is not a land and never enters the derivation",
+			me.ManaPool, manaPickFor(g, me.ID))
+	}
+}
+
 // --- Mox Amber ----------------------------------------------------
 
 func TestMoxAmberReadsLegendaryPermanentColours(t *testing.T) {

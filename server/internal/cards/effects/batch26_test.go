@@ -253,8 +253,10 @@ func TestB26PeerlessRecyclingReturnsAPermanentCardWithoutTheGift(t *testing.T) {
 	if !me.Hand.Contains(rock) {
 		t.Error("the permanent card returns to hand")
 	}
-	if spec, _ := Lookup(b26PeerlessRecyclingOracle); spec.Completeness != CompletenessCaveats || spec.Targets.Max != 1 {
-		t.Error("the gift is a declared gap — one card, never two")
+	// ADR 0089: unpromised, one card; the gift's clause is the
+	// two-card one (TestGiftPeerlessRecyclingPromisedReturnsTwo).
+	if spec, _ := Lookup(b26PeerlessRecyclingOracle); spec.Targets.Max != 1 || spec.Gift == nil || spec.Gift.Targets.Max != 2 {
+		t.Error("one card without the gift, two with it")
 	}
 }
 
@@ -351,19 +353,25 @@ func TestB26AetherspoutsTucksAttackersByTheirOwnersChoice(t *testing.T) {
 	if a.Library.Size() != libBefore+2 || !a.Library.Contains(raider) || !a.Library.Contains(brute) {
 		t.Fatal("the attackers are in their owner's library")
 	}
-	c := scryChoiceFor(g, a.ID)
-	if c == nil || len(c.ScryCards) != 2 {
-		t.Fatalf("the owner chooses top or bottom for each, as a scry over exactly those two: %+v", c)
+	c := putInLibraryChoiceFor(g, a.ID)
+	if c == nil || len(c.ScryCards) != 2 || c.LibraryPlacement != game.LibraryPlaceTopOrBottom {
+		t.Fatalf("the owner chooses top or bottom for each, over exactly those two: %+v", c)
 	}
 	if !hasID(c.ScryCards, raider) || !hasID(c.ScryCards, brute) {
-		t.Fatal("the scry looks at the attackers and nothing else")
+		t.Fatal("the prompt names the attackers and nothing else")
 	}
-	if scryChoiceFor(g, me.ID) != nil || scryChoiceFor(g, b.ID) != nil {
+	if putInLibraryChoiceFor(g, me.ID) != nil || putInLibraryChoiceFor(g, b.ID) != nil {
 		t.Error("only the owner is asked")
 	}
+	if scryChoiceFor(g, a.ID) != nil {
+		t.Error("#996: Aetherspouts prints no scry")
+	}
 	// Raider to the bottom, Brute kept on top.
-	if err := g.ResolveScry(c.ID, a.ID, []uuid.UUID{raider}, []uuid.UUID{brute}); err != nil {
-		t.Fatalf("ResolveScry: %v", err)
+	if err := g.ResolvePutInLibrary(c.ID, a.ID, []uuid.UUID{raider}, []uuid.UUID{brute}); err != nil {
+		t.Fatalf("ResolvePutInLibrary: %v", err)
+	}
+	if n := countEvents(g, game.EventScry); n != 0 {
+		t.Errorf("#996: Aetherspouts emitted %d scry events; it is not a scry", n)
 	}
 	if got := a.Library.Cards[len(a.Library.Cards)-1].InstanceID; got != brute {
 		t.Error("the kept card is on top")

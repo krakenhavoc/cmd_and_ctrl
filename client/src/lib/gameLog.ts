@@ -68,9 +68,18 @@ const LOG_TONE: Record<LogKind, string> = {
   damage: "tone-damage",
   attack: "tone-damage",
   block: "tone-combat",
+  // #1279 / #1500: the completion of a block declaration with nothing
+  // to show for it. Toned like the blocks it sits beside rather than
+  // like a whisper — a defender choosing to take a hit is a beat of
+  // combat, not bookkeeping.
+  no_blocks: "tone-combat",
   token: "tone-zone",
   sacrifice: "tone-bad",
   eliminated: "tone-bad",
+  // ADR 0057: the end of the game is the spine of the log, not a
+  // whisper; a prevented win is a swing that didn't happen.
+  game_over: "tone-step",
+  win_prevented: "tone-bad",
   reveal: "tone-cast",
   roll: "tone-cast",
   flip: "tone-cast",
@@ -81,6 +90,7 @@ const LOG_TONE: Record<LogKind, string> = {
   choose_color: "tone-quiet",
   choose_type: "tone-quiet",
   choose_player: "tone-quiet",
+  choose_name: "tone-quiet",
   // #1214: a resolution-time pick over cards or permanents. Quiet for
   // the same reason — the choice itself moves nothing, and whatever
   // the card then does to what was chosen has its own line.
@@ -103,11 +113,36 @@ const LOG_TONE: Record<LogKind, string> = {
   // A spawn is not a play. It reads like one on the board, which is
   // exactly why the line has to stand out from the turn around it.
   spawn: "tone-cast",
+  // ADR 0086 (#1238). A storm count is the announcement that N copies
+  // of the spell above it are on their way, so it is toned like the
+  // cast it belongs to rather than like a whisper: the copies each
+  // get their own resolve line and this is the one that explains
+  // them.
+  storm: "tone-cast",
+  // A permanent turning over, phasing, or being turned face down is a
+  // board-state change a player announces out loud rather than a
+  // whisper (#1256) — louder than the quiet choose_* / scry-family
+  // tones, toned like the other permanent motions (token, cycle).
+  transform: "tone-zone",
+  phase_out: "tone-zone",
+  phase_in: "tone-zone",
+  turn_face_down: "tone-zone",
 };
 
 export function logTone(kind: LogKind): string {
   return LOG_TONE[kind] ?? "tone-quiet";
 }
+
+// ALL_LOG_KINDS is the client's runtime enumeration of every LogKind
+// value, derived from LOG_TONE's keys rather than re-listed by hand:
+// TypeScript already refuses to compile `Record<LogKind, string>`
+// unless every union member has an entry, so LOG_TONE's key set IS
+// the union at runtime. logKind.test.ts diffs this against the
+// server's own const block in protocol/log.go so the client union
+// can't silently fall behind again the way #1256 found it (missing
+// `transform`, `phase_out`, `phase_in`, `choose_name` and
+// `turn_face_down`, with no build error to catch it).
+export const ALL_LOG_KINDS: LogKind[] = Object.keys(LOG_TONE) as LogKind[];
 
 // seatName resolves a seat index to a display name, or null when the
 // index names nobody (the -1 "no actor" sentinel, or a seat the view

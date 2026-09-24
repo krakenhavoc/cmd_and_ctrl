@@ -73,7 +73,7 @@ type LifeChange struct {
 // NOTE on commander damage: S25 (#77) rekeyed CommanderDamage from
 // the opponent *player ID* to the commander *instance ID*. S02 chose
 // the player key and every sprint since carried a note saying it was
-// wrong; CR 903.14a is explicitly per-commander ("damage dealt to a
+// wrong; CR 903.10a is explicitly per-commander ("damage dealt to a
 // player by ONE commander"), so a partner pair sharing a seat was
 // pooling two commanders' damage into one 21-point clock and killing
 // its controller early.
@@ -123,7 +123,7 @@ type Player struct {
 
 	// CommanderDamage maps commander INSTANCE ID → total damage that
 	// one commander has dealt to this player across the game
-	// (CR 903.14a). See the note above the struct.
+	// (CR 903.10a). See the note above the struct.
 	//
 	// The key is an instance ID and survives zone changes, which is
 	// the behaviour the rule wants: a commander that dies, returns to
@@ -145,7 +145,7 @@ type Player struct {
 	// (CR 800.4k / CR 800.4m).
 	//
 	// It is the counter an "until your next turn" continuous effect
-	// ends on (ADR 0063 Decision 3, #755): `Turn.Number` counts
+	// ends on (ADR 0063 Decision 3, #755): `Turn.Round` counts
 	// ROUNDS, so all four seats in a Commander game share one number
 	// and "your next turn" cannot be expressed with it. Defined by
 	// ADR 0059 Decision 1, which reserves the rest of that decision
@@ -156,11 +156,11 @@ type Player struct {
 	// seam.
 	TurnsBegun int
 
-	// Eliminated is set when the player concedes (S08) or, in the
-	// future, loses to a state-based action (S13+ rules graft). An
-	// eliminated player still occupies their seat for spectating; the
-	// game's State transitions to StateEnded once exactly one
-	// non-eliminated seat remains.
+	// Eliminated is set when the player leaves the game: a concession,
+	// a state-based loss or an effect loss (ADR 0057, game_end.go). An
+	// eliminated player still occupies their seat for spectating. The
+	// game ends when one non-eliminated seat or none remains — or when
+	// an effect wins it (CR 104.2b), which eliminates nobody.
 	Eliminated bool
 
 	// HandKept is true once the player has committed to their opening
@@ -216,17 +216,22 @@ type Player struct {
 	// AttemptedEmptyDraw records the one fact CR 704.5b reads: this
 	// player has attempted to draw a card from an empty library since
 	// the last state-based-action check. The SBA loop eliminates a
-	// player with it set. Set by actuallyDrawCardLocked (every draw
-	// path: the draw step, the DrawCard action, draw effects) when
-	// PopTop returns ErrZoneEmpty; cleared on elimination. A mill,
-	// an "exile the top N" or any other run off the bottom of the
+	// player with it set unless a "can't lose the game" gate stops
+	// the loss. Set by actuallyDrawCardLocked (every draw path: the
+	// draw step, the DrawCard action, draw effects) when PopTop
+	// returns ErrZoneEmpty, and that is its only writer. A mill, an
+	// "exile the top N" or any other run off the bottom of the
 	// library never sets it (CR 701.17b, #767).
 	//
+	// CLEARED ON EVERY SBA PASS, gated or not (ADR 0057 Decision 2):
+	// CR 704.5b reads only draws "since the last time state-based
+	// actions were checked", so a flag left set under a Platinum
+	// Angel would kill the player the moment the Angel left, long
+	// after the draw.
+	//
 	// Named LosesAtNextSBA until ADR 0057 sub-PR 1; the JSON tag
-	// keeps the old name so snapshots need no schema bump. One other
-	// writer remains until ADR 0057 sub-PR 2 makes an effect loss
-	// immediate: LoseTheGameForEffect (the Pact cycle) borrows the
-	// flag to defer its loss to the next SBA check. Added in S13.1.
+	// keeps the old name so snapshots need no schema bump. Added in
+	// S13.1.
 	AttemptedEmptyDraw bool
 
 	// CommanderCasts tracks the per-commander cast count from the
@@ -397,7 +402,7 @@ func (p *Player) RecordCommanderDamage(fromCommander uuid.UUID, amount int) int 
 }
 
 // IsDeadByCommanderDamage reports whether any SINGLE commander has
-// dealt `lethal` or more damage to this player (CR 903.14a; 21 by
+// dealt `lethal` or more damage to this player (CR 903.10a; 21 by
 // default, the table's Settings.CommanderDamage in a game). Totals are
 // never summed across commanders — two partners at 15 apiece is 30
 // damage and not a loss.

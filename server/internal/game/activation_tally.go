@@ -74,7 +74,7 @@ import "github.com/google/uuid"
 //
 // # Mana abilities write here too (#1183)
 //
-// They take the other entry point — ActivateManaAbility, CR 605.3a: no
+// They take the other entry point — ActivateManaAbility, CR 605.3b: no
 // stack, no priority, no announcement to hang a record on — so #1181
 // left them out and `effects.ManaAbility` carried no Exhaust marker at
 // all. Loot, the Pathfinder prints "Exhaust — {G}, {T}: Add three mana

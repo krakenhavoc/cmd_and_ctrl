@@ -13,7 +13,7 @@ import (
 // `CardView` carries the announce surface of the face that is UP, and
 // for a card in hand that is always face 0. A modal DFC and an
 // adventure card are two castable objects sharing one instance
-// (CR 712.12a, CR 715.3), the halves have different catalog entries,
+// (CR 712.11b, CR 715.3), the halves have different catalog entries,
 // and most printed Adventure halves TARGET — so a client asked to cast
 // face 1 had `cardAsFace` clear the front's answers and nothing to put
 // back. It reached cast_spell with no target picker ever opening.

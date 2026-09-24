@@ -184,12 +184,12 @@ func graveyardCard(p *game.Player, name, oracle string) uuid.UUID {
 }
 
 // multiFaceGraveyardCard seeds one MULTI-FACE card into a seat's
-// graveyard, front face up (CR 712.8, MoveCard), each half's catalog
+// graveyard, front face up (CR 712.8a, MoveCard), each half's catalog
 // entry keyed the way ADR 0034 keys them: the bare oracle ID for the
 // front and "<oracle_id>#1" for the back.
 //
 // A modal DFC, because its halves are independently castable
-// (CR 712.12a) — which is what makes "the BACK face opens the
+// (CR 712.11b) — which is what makes "the BACK face opens the
 // graveyard" something a cast can act on. Built from a test spec
 // rather than seeded from the catalog because no catalog card
 // declares it yet: #1171 is latent, and a fixture is how a latent
@@ -450,7 +450,7 @@ func TestPrintedCostClaimableFromHandAndNotFromTheGraveyard(t *testing.T) {
 
 	hand := cardInSeatZone(t, v.Seats[0].Hand, inHand.InstanceID)
 	if hand.AlternativeCostRequired {
-		t.Errorf("hand copy: alternative_cost_required is set, but every hand cast may pay the printed cost (CR 601.1)")
+		t.Errorf("hand copy: alternative_cost_required is set, but every hand cast may pay the printed cost (CR 601.2)")
 	}
 	if got := keysOf(hand.AlternativeCosts); !sameStrings(got, []string{"overload"}) {
 		t.Errorf("hand offers = %v, want [overload]", got)
@@ -551,7 +551,7 @@ func enumeratedPrices(t *testing.T, g *game.Game, seat uuid.UUID) map[string]cas
 //
 // ACROSS THE CASTABLE FACES as well as the card (#1171, #992). The
 // card's own block describes the face that is UP, and a pile is
-// front-up (CR 712.8) — so a card whose BACK face alone opens the
+// front-up (CR 712.8a) — so a card whose BACK face alone opens the
 // zone has a front that is no cast surface and a back that is, and
 // the union over the blocks is what the client's face picker reads.
 // It is the shape of the other side of this comparison too: the

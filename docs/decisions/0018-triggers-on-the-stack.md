@@ -2,6 +2,9 @@
 
 **Status:** Implemented · 2026-09-02 · Branch `feat/s19-triggers-on-stack`
 **Addendum:** 2026-09-17 · **Accepted** · [Trigger doubling (CR 603.2d)](#addendum-2026-09-17-trigger-doubling-cr-6032d--accepted) · tracked on [#752](https://github.com/krakenhavoc/cmd_and_ctrl/issues/752)
+**Amendment:** 2026-09-24 · **Accepted** · [Resolution-time LKI for a permanent that has left (CR 608.2h)](#amendment-2026-09-24--resolution-time-lki-for-a-permanent-that-has-left-cr-6082h--accepted--s38) · [#1379](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1379)
+**Amendment:** 2026-09-24 · **Accepted** · [A batch that commutes needs no CR 603.3b order](#amendment-2026-09-24--a-batch-that-commutes-needs-no-cr-6033b-order--accepted--s48) · [#1511](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1511)
+**Amendment:** 2026-09-24 · **Accepted** · [A trigger still announcing holds its batch (CR 603.3b / 603.3d)](#amendment-2026-09-24--a-trigger-still-announcing-holds-its-batch-cr-6033b--6033d--accepted--s39) · [#1529](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1529)
 
 ## Context
 
@@ -52,7 +55,7 @@ item from `StackMeta`, run `spellAllTargetsIllegalLocked` (every
 targeted slot illegal → `EventFizzle`, no effect), emit
 `EventResolve`, then run `Effect`. An error from `Effect` surfaces
 as `EventEffectError` and does not wedge the stack — the ability
-has ceased to exist either way (CR 608.2m). `nil` keeps the S13.1
+has ceased to exist either way (CR 608.2n). `nil` keeps the S13.1
 manual-sandbox meaning: the players resolve it by hand.
 
 Why a closure on the item rather than routing through the
@@ -103,7 +106,7 @@ step late:
   put on the stack (CR 603.3).
 - `MoveCardByID` (the sandbox move_card verb) and the land branch
   of `CastSpell` now call `runStateChecksLocked`. Both are special
-  actions after which the actor keeps priority (CR 116.3c), and
+  actions after which the actor keeps priority (CR 116.3), and
   CR 117.5 puts SBAs + the trigger drain at exactly that boundary.
   A catalog creature dropped straight onto the battlefield gets its
   ETB trigger on the stack immediately.
@@ -705,6 +708,30 @@ own untap step, where nothing has priority to move them. A pick with no
 zone on its frame is left alone too: it re-checks nothing on submit, so
 there is no live list for the engine to be right about.
 
+**Amendment (2026-09-23, #1263): the exclusion above was aspirational,
+not enforced.** `pruneCardSetChoicesLocked`'s loop excluded a kind with
+no zone on its frame (the sentence just above, correctly) but had no
+kind check at all for `untap_choice` or `entry_reveal_from_hand` — and
+both of them DO set a real zone (`ZoneBattlefield`, `ZoneHand`), so the
+loop's comment claiming untap_choice "sets no zone so it falls out at
+the next line" was never true (`queueUntapChoiceLocked` has stamped
+`Zone: ZoneBattlefield` since #826) and both kinds were examined and
+could be WITHDRAWN exactly like a discard prompt. Neither kind's
+departure row survives that: `untap_choice`'s `dropDiscard` runs
+nothing, stranding the untap step, and `entry_reveal_from_hand`'s
+paused `replacementResume` is settled only by
+`dropChoicesForPlayerLocked` (a player's departure), never by the
+plain withdrawal `dropChoiceLocked` performs here — so a withdrawal
+strands the paused CR 614 entry too, with no path back. The fix is an
+explicit kind check (`c.Kind == PendingChoiceUntapChoice ||
+PendingChoiceEntryRevealFromHand`) rather than any change to the zone
+logic, so this paragraph's claim is now what the code does rather than
+what it was supposed to do. `TestAnUntapChoiceIsNotWithdrawnWhen-
+ItsCandidateLeavesTheBattlefield` and
+`TestAnEntryRevealFromHandIsNotWithdrawnWhenItsCandidateLeavesTheHand`
+(`card_set_prune_test.go`) pin both shapes and fail without the kind
+check.
+
 **The reachability, stated.** No catalog card empties a hand under
 another player's open discard prompt today, and the same is true of the
 graveyard and library picks; this is the wedge closed before a card
@@ -747,7 +774,11 @@ be folded into the first. So the prune gets one named home,
 `Game.pruneChoicesAfterArrivalLocked` in `battlefield_entry.go`, that
 all three call — the shape `battlefieldExitLocked` already has on the
 other side, where a landing added later is covered by the rule rather
-than by a code review.
+than by a code review. (*2026-09-23, #1322:* the batch is resumable now
+and lands through the same halves of the finisher — see the
+[ADR 0061 amendment](0061-token-creation-and-discard-are-replaceable-events.md) —
+but it still announces a whole batch after landing it, so it keeps its own
+call to the prune. The sandbox move is the one unresumable landing.)
 
 It takes no card ID: the prune re-reads every open pick against the
 live board, so one call answers for a whole batch of arrivals, which is
@@ -1005,6 +1036,118 @@ before the pick and a different effect per seat. Neither is blocked on a
 kind any more; both are card work plus a sequencing shape, and they
 stay on their rows.
 
+**Amendment (2026-09-23, #1225): a withdrawn mid-card `choose_cards`
+runs the rest of the card. The #1045 amendment's "unwidened here" is
+repealed.**
+
+That amendment closed the wedge and then declined the second half of
+it, in one sentence: *"A pick that is no run's leg has no continuation
+to run — the table's existing answer for the kind, unwidened here."*
+It is wrong, and it is wrong about the commonest shape this kind has.
+
+**The shape it missed.** Three things can be waiting on a dropped
+prompt, and `defaultDroppedChoiceLocked` knew two of them. A RUN LINK
+(#1019 / #1027): the leg settles with nothing moved. An OPTION FRAME
+(#1006): the continuation runs with `NoChoiceIndex`. The third is a
+`choose_cards` carrying **only a `chooseCardsFrame`** — a pick chained
+from inside a resolution that is paused waiting for it, which is what
+`effects.SacrificeChoice` is and what its own doc comment says it is
+for: *"a sacrifice in the MIDDLE of an effect — Torment of Hailfire
+repeats X times, and the next repetition must not be asked until this
+one has finished."* `optionPickResume` is nil there,
+`runWithNoChoice` returns nil on a nil receiver, and the rest of the
+card never ran. **Torment of Hailfire stopped at the victim whose
+board emptied and never asked the opponents after them** — the same
+sentence the #1006 amendment to ADR 0060 wrote about the `option_pick`
+half of the very same card, one prompt further in. The floor of one is
+what makes it reachable: a zero-floor pick keeps "choose nothing" when
+its list shrinks, so `pruneCardSetChoicesLocked` leaves it standing.
+
+**The decision: the drop runs the frame with NOTHING PICKED.** One
+case added to `defaultDroppedChoiceLocked`
+(`server/internal/game/option_pick.go`), performed by
+`chooseCardsFrame.runWithNoChoice`
+(`server/internal/game/chained_choice.go`) — the sibling of
+`optionPickFrame.runWithNoChoice`, and the one place "nobody chose" is
+handed to this payload.
+
+Three reasons it is the right answer rather than a flag on the frame
+or a run wrapped around each caller, which were the two shapes #1225
+proposed:
+
+1. **The empty pick is not a new outcome.** `QueueChooseCardsForEffect`
+   deliberately has no empty-candidate short-circuit, so every caller
+   of it already wrote the "there was nothing to ask" path by hand —
+   and every one of them runs *the same closure* with *the same empty
+   answer*. `SacrificeChoice` runs `Then` immediately for a player with
+   no candidate permanent; `PutFromLibraryOntoBattlefield` and
+   `TakeFromLibraryToHand` call `finish(g, nil)`; Ward's sacrifice
+   counters the spell. The drop was the one path into those
+   continuations that did not reach them. What this fixes is a
+   card that behaves one way when the board was empty as the question
+   was asked and another way when it emptied while the question was
+   open.
+2. **`Validate` is untouched, because it was already excluded.**
+   `ChooseCardsPrompt.Validate` is documented as never being called for
+   an empty pick, since a floor of zero has to keep "choose nothing" as
+   an answer the engine cannot refuse. So there is no set rule for the
+   drop to be judged against and none to bypass.
+3. **#1027's rule survives intact: branch on the PROMPT, not on the
+   kind.** The run link is asked FIRST and exclusively, because a run
+   leg's own frame settles the run from inside itself (the discard's
+   `discardCardsLocked` → `opts.then`) and running both would settle
+   the leg twice and pay the run out before its other legs were
+   answered — `TestARunWhoseLegWasWithdrawnStillCompletes` is the guard.
+   A prompt with neither a run nor a `then` still runs nothing, which
+   is Thoughtseize's pick and is unchanged.
+
+**What changes for the catalog, swept site by site.** Twenty catalog
+`choose_cards` sites plus the engine's two. Seven move; thirteen
+cannot.
+
+- **Two cards stopped halfway and now finish** — Torment of Hailfire
+  (`effects.SacrificeChoice`; the next repetition and every later
+  victim) and Gluntch, the Bestower (the second and third players were
+  never chosen). Both are the #544 shape.
+- **Four clauses now run their remainder with nothing chosen**, which
+  is byte for byte the call their own empty-candidate path already
+  makes: `PutFromHandOntoBattlefield` (`then` with `Entered` unset),
+  `PutFromLibraryOntoBattlefield` and `TakeFromLibraryToHand` (both
+  `finish(g, nil)`), and Invasion of Tarkir (its reflexive damage
+  trigger with X = 0 revealed Dragons).
+- **One card was neither paid nor countered and now resolves the
+  "unless"** — Vein Ripper's `ward—sacrifice a creature`. A payer
+  whose last creature leaves mid-pick has not paid, so the spell is
+  countered, which is exactly the branch the queue-time guard takes
+  for a payer who had no creature to begin with. This is the one
+  behaviour change that is not simply "more of the card happens", and
+  it is CR 800.4f's shape reached through `dropDefault` rather than
+  `dropDecline`.
+- **Thirteen sites are unchanged by construction** — the ones whose
+  continuation opens `if len(picked) == 0 { return nil }` or loops
+  over the picks and so does nothing with none, and Sylvan Library,
+  whose `sylvanLibrarySettle(…, nil)` returns immediately. Sylvan
+  Library is pinned by a test of its own rather than by argument,
+  because its continuation is the one that recurses into further
+  prompts.
+
+**The prompt kinds that are NOT touched, and why the table is still
+what decides.** `untap_choice` and `entry_reveal_from_hand` carry the
+same payload (`isCardSetPickKind`) and both are `dropDiscard` rows, so
+neither reaches this action at all; `entry_reveal_from_hand` also
+carries no `then`. The three #1214 picks are always run legs and take
+case 1 unchanged. The four-table contract this section states for a
+new kind is unchanged: what moved is the meaning of ONE cell of one
+table, for one kind.
+
+**Where the departure table is printed**, and the two gates in front
+of the action, are ADR 0060's: the row is still
+`{reassign: true, onDrop: dropDefault}` and `dropDefault`'s definition
+there — *"the frame runs with the outcome the kind reserves for
+'nobody chose'"* — needed no change, because an empty pick is that
+outcome for this payload. Only the claim that this kind had no such
+outcome, made here, did.
+
 ## Out of scope (explicit deferrals)
 
 - **Treasure's sac-for-mana** is inert until S21 ships sacrifice
@@ -1016,7 +1159,8 @@ stay on their rows.
 - ~~**Trigger ordering UI** for one player's simultaneous triggers
   (CR 603.3b)~~ — shipped in sub-PR 8: `PendingChoiceTriggerOrder`
   holds the APNAP drain until each seat with ≥2 *differing*
-  triggers has ordered them (identical ones auto-order; the
+  triggers has ordered them (identical ones auto-order, and since
+  #1511 so does a batch that is all prowess — see that amendment; the
   submitted order is resolution order). A trigger arriving while a
   prompt is open re-asks with the full list.
 - ~~**Cast / combat-damage triggers**~~ — shipped in sub-PRs 6 and 7
@@ -1947,7 +2091,7 @@ One engine line did change, and a back-out is what found it:
 `EventManaAbilityActivated` set `Source` but not `CardID`, so a
 source predicate looking the ability's object up by `CardID` matched
 nothing on the mana path — a silent miss, not an error. Both emit
-sites (the hand click and the auto-tapper's executor, CR 605.3a) now
+sites (the hand click and the auto-tapper's executor, CR 605.3) now
 carry the same stamps `EventActivateAbility` always has, which is
 what #1184 intended when it said a watcher can read the same fields
 off either kind.
@@ -2131,3 +2275,937 @@ next to this and are NOT replaced by it, each for a stated reason:
 `EventETB` does not carry; `b30CastFromHand` wants a different,
 earlier `EventCast`; and `random_effects.WheneverYouRollDice` wants
 the whole die BATCH, of which the triggering event is one member.
+
+## Amendment 2026-09-24 — resolution-time LKI for a permanent that has left (CR 608.2h) · Accepted · S38
+
+Issue [#1379](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1379).
+This ADR owns the engine's CR 603.10 last-known-information store
+(`Game.lastKnownBattlefield`, written by `snapshotLKILocked` at every
+battlefield exit and read by the harvester), so the resolution-time
+sibling lands here rather than under a new number.
+
+### What was missing
+
+CR 603.10 looks back in time when a trigger is HARVESTED. CR 608.2h
+is a different rule, applied when an ability RESOLVES: "where X is
+that creature's power" is read then, and if the creature has left
+the battlefield by that point, the ability uses the creature's
+last-known information. The engine had nothing to answer that with.
+
+- `lastKnownBattlefield` is deleted by `harvestLTB` as soon as the
+  exit's dispatch ends, a priority round before anything resolves.
+- `lastKnownCounters` (#1218) has the same lifetime and holds
+  counters only.
+- `LookupCardForEffect` finds the card in its new zone, with printed
+  power, no counters and no continuous effects.
+
+So every card that read a permanent at resolution chose one of two
+wrong answers when the permanent had gone. Cream of the Crop fell back
+to the power the creature had when the ability TRIGGERED, which misses
+a pump in response. Tribute to the World Tree, Warstorm Surge and
+Murderous Redcap did nothing. Claustrophobia could not find the
+creature it had enchanted. Each shipped a caveat that said so.
+
+Decision 9 above left "power and toughness on the object snapshot"
+open for the same reason: the number was gone from both stores before
+a trigger was even built.
+
+### Decision 12. A second LKI store, per departed OBJECT, for the rest of the turn
+
+```go
+lastKnownPermanents map[uuid.UUID][]PermanentInfo // game.go
+
+type PermanentInfo struct {
+        Epoch          int            // Card.ObjectEpoch while on the battlefield
+        Left           bool           // true on a record; false on a live read
+        Controller     uuid.UUID
+        Characteristic Characteristic // Effective(), as the CR 603.10 snapshot
+        Power, Toughness int          // counters included, not clamped
+        Counters       map[string]int
+        AttachedTo     TargetRef
+}
+```
+
+Written by `rememberDepartingPermanentLocked` from
+`battlefieldExitLocked`, in the same beat, from the same live card and
+the same layer cache as the CR 603.10 snapshot. There is no recompute,
+for the reason the paid-tap freeze (#759) gives: in a board wipe the
+permanents leave one at a time, and a recompute part-way through would
+read a creature after its lord had already gone.
+
+**Keyed by object, not by card.** The map key is the instance ID,
+which survives a zone change. The value is a list, one entry per
+battlefield object that card has been this turn, told apart by
+`Card.ObjectEpoch` (CR 400.7). A creature bounced and replayed twice
+in response to a trigger is two departed objects, and the trigger
+names only the first.
+
+**Power and toughness include counters.** `Characteristic` excludes
+them by design, and `MoveCard` zeroes `Card.Counters` a line after the
+snapshot. So the record takes `PowerForComparison()` and
+`CurrentToughness()` while the counters are still there. This is the
+number Decision 9 could not supply.
+
+**Lifetime: the turn.** Cleared at the turn boundary alongside
+`lastKnownStack` (#1255), for the argument that record makes. Whatever
+refers to a departed permanent is a stack object or a pending trigger,
+and the stack is empty before a turn can end. The size is bounded by
+the turn's battlefield exits. A card leaving the GAME (CR 800.4a)
+drops its records in `forgetObjectLocked`, with the other per-object
+maps.
+
+**Carried everywhere.** Clone and RestoreFrom copy it, so an undo
+across the removal spell rewinds it. The persisted snapshot carries it
+too (`GameSnapshot.LastKnownPermanents`, `carried` in
+`snapshot_drift_test.go`). This is unlike `lastKnownStack`, whose only
+readers are closures: the object ref below is plain data on the item,
+so a data-driven reader can use the record after a restore.
+
+### Decision 13. One read, live-or-last-known: `PermanentForEffect(ObjectRef)`
+
+```go
+type ObjectRef struct{ ID uuid.UUID; Epoch int }
+
+func (g *Game) PermanentForEffect(ref ObjectRef) (PermanentInfo, bool)
+func (g *Game) PermanentRefForEffect(cardID uuid.UUID) (ObjectRef, bool)
+```
+
+The read returns the LIVE permanent (after a layer recompute) while
+the named object is still on the battlefield, so a Giant Growth in
+response counts. Once the object has left, it returns the record. A
+live card with a different epoch is a new object, and the read never
+answers with it: the record is the answer.
+
+The ref comes from the trigger context. `ObjectSnapshot` (Decision 9)
+gains `Epoch`, the epoch of the object the event was about. For an
+exit, that is the epoch the object had ON THE BATTLEFIELD, taken from
+the record. It is not the epoch its card has now in the graveyard.
+`ObjectSnapshot.Ref()` hands it to the read. On the card side,
+`effects.Context.TriggeringPermanent()` is the one-line spelling, and
+the proof cards use nothing else. An effect that is not a trigger takes
+`PermanentRefForEffect` when it is built.
+
+**Read, never written to.** Last-known information answers questions
+about an object. It cannot receive counters, be tapped or be moved.
+Tribute to the World Tree's "otherwise put two +1/+1 counters on it"
+checks `Left` and does nothing for a creature that has gone. That
+includes the case where the card is back on the battlefield as a new
+object.
+
+### Cards
+
+Cream of the Crop, Tribute to the World Tree and Claustrophobia ship
+`full`. Warstorm Surge and Murderous Redcap keep a narrower caveat.
+A creature that has left now deals damage equal to its last-known
+power. It deals that damage as a plain source, because the damage
+tail reads lifelink and deathtouch off the battlefield only.
+
+### Still not covered
+
+- ~~**Damage-source keywords from a departed source.**~~ **Closed by
+  [#1396](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1396)**
+  (see the 2026-09-24 note below and
+  [ADR 0056's 2026-09-24 amendment](0056-infect-wither-toxic.md)).
+- **An exit that bypasses `battlefieldExitLocked`.** A player leaving
+  the game takes their permanents with them (CR 800.4a), and those
+  permanents get no record. The read answers false, and each card
+  chooses the weaker answer.
+- **`ObjectSnapshot` still has no power field.** A clause judged at
+  HARVEST ("a creature with power equal to the power of the creature
+  that died") can now read `PermanentForEffect(snapshot.Ref())` while
+  it builds. No card needs it yet.
+
+### Note 2026-09-24 — the record's first engine reader (#1396)
+
+The non-combat damage tail now reads Decision 12's record when the
+damage source has left the battlefield: `deathtouch` from the recorded
+abilities and `lifelinkTo` from the recorded controller. The decision
+belongs to [ADR 0056](0056-infect-wither-toxic.md) (its Decision 2 step
+4), so the amendment lives there as Decisions 9-11. Two things it
+changed here:
+
+- **`PermanentInfo` gains `Tapped`** (ADR 0056 Decision 11). A status,
+  not a characteristic, and last-known information all the same: Mana
+  Vault's "if this artifact is tapped" is re-checked at resolution.
+  It is written with the rest of the record, from the live card, before
+  `MoveCard` clears the flag.
+- **An object ref can now name a damage source.**
+  `Game.DealDamageFromObjectForEffect(ObjectRef, target, amount)` and
+  `effects.DealDamage{SourceObject: &ref}` read the named object's
+  record, never a new object the card has become (Decision 13's rule,
+  applied to the damage source). A bare instance ID reads the last
+  object the card was, and only while the card has not moved since it
+  left (ADR 0056 Decision 10).
+
+## Amendment 2026-09-24 — every ability item names its source OBJECT (CR 400.7) · Accepted · S38
+
+Issue [#1418](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1418),
+found while building #1396. This ADR owns the trigger dispatch and the
+two object reads Decisions 12–13 added, so the fix lands here.
+
+### What was missing
+
+A triggered stack item carried its source's instance ID
+(`StackItem.SourceCardID`) and nothing that said which OBJECT that card
+was. `StackItem.SourceEpoch` existed (#812) but only the two activation
+announce paths stamped it, and `AbilitySourceGoneForEffect` asked it of
+activated items only.
+
+Decision 13 gave a trigger one way to name an object: the triggering
+event's snapshot, `ctx.TriggeringPermanent()`. That covers a trigger
+whose event is ABOUT its own source (an enter trigger, a dies trigger).
+An upkeep, draw-step, cast or "another creature enters" trigger has no
+source on its event. The only read left was
+`PermanentRefForEffect(item.SourceCardID)`, which answers with the object
+the card is now. A source that left and came back before its trigger
+resolved was read as the new object.
+
+- **Mana Vault** (its caveat after #1396): a Vault flickered in response
+  to its draw-step trigger was judged as the new, untapped Vault and
+  dealt no damage.
+- **Living weapon, Hero's Blade** and any "attach this" trigger: the
+  Equipment on the battlefield after a flicker is a new object (CR
+  400.7), and the trigger attached it anyway. Only activated equip was
+  refused.
+- **Uthros Research Craft**'s "put a charge counter on this" landed on
+  the new, counterless Craft.
+
+### Decision 14. `StackItem.SourceObject ObjectRef`, stamped on every ability item where it is made
+
+```go
+type StackItem struct {
+        …
+        SourceEpoch  int       // unchanged: post-cost, activated only
+        SourceObject ObjectRef // #1418: the object the ability came from
+}
+```
+
+A new field rather than widening `SourceEpoch`, for two reasons.
+`SourceEpoch`'s readers (ninjutsu, hideaway) want the reading taken
+AFTER the costs are paid. And zero is a real epoch, so an int alone
+cannot say "not stamped", which an item restored from an older
+snapshot needs to say. The ref's ID is that bit.
+
+Where the stamp is made. None of these is in catalog code, which is
+the Decision 11 rule again: ~2,200 Builds would each have to remember.
+
+| Path | What it names |
+|---|---|
+| Trigger dispatch, after `Build` (`stampTriggerSource`, beside `stampTriggerContext` at both call sites) | the dispatch's VALUE copy of the source, taken when the ability triggered and carried through every prompt frame. When the event is about the source itself (a dies trigger), the event snapshot's ref instead: the permanent that left, not the graveyard card |
+| `queueHarvestedTriggerLocked`, when the item has none | the object the source card is now (`sourceObjectRefLocked`): live permanent, the permanent it was while its exit is being dispatched, the card in another zone, or a ceased token's last record |
+| Catalog activation (`activated.go`) | the object read BEFORE any cost is paid, so a source sacrificed to its own ability is still "this permanent", as its record |
+| Manual `ActivateAbility`, `AnnounceTrigger` | the object the card is now |
+| `ScheduleDelayedTriggerForEffect` (new `DelayedTrigger.SourceObject`) | CR 603.7d: the resolving ability's own `SourceObject` when that ability is scheduling it from the same card, otherwise the object now. Copied onto the fired item |
+| `QueueReflexiveTriggerForEffect` | CR 603.12: the parent's `SourceObject` |
+| `createAbilityCopyLocked` | CR 707.10: the original's |
+
+Spells carry none: a spell is its own source, and "this spell" is not a
+permanent read. Clone, `RestoreFrom` and the persisted snapshot carry
+the field on `StackItem` and `DelayedTrigger` (`sourceObject`, nil when
+unstamped; `carried` in `snapshot_drift_test.go`).
+
+### Decision 15. One read: `SourceObjectForEffect`, and `SourcePermanent()` on the card side
+
+```go
+func (g *Game) SourceObjectForEffect(item *StackItem) (ObjectRef, bool)
+
+func (c *Context) SourceRef() (game.ObjectRef, bool)
+func (c *Context) SourcePermanent() (game.PermanentInfo, bool) // = PermanentForEffect(SourceRef())
+```
+
+`SourcePermanent` is Decision 13's rule applied to "this": the live
+permanent while the object is still there, and its record once it has
+gone, including when the card is back as a new object. Like
+`TriggeringPermanent`, it is something to read, never something to act
+on. A clause that changes the permanent checks `Left` first.
+
+An unstamped ability item (a pre-#1418 snapshot) falls back to
+`PermanentRefForEffect`, which is what every reader had before. A spell
+answers false.
+
+### Decision 16. `AbilitySourceGoneForEffect` asks the object of every stamped item
+
+The kind gate from [ADR 0036 decision 19](0036-attachments.md) (#812,
+"Why the kind, not a sentinel") existed because only activated items had
+an epoch. Every ability item has one now, so the gate reads the stamp
+instead. The sentinel argument still holds: the ref's ID, not the epoch,
+is what says an item was stamped. A stamped item whose source's epoch no longer matches is
+gone. An unstamped one keeps the rule it was put on the stack under.
+
+This is a deliberate behaviour change for every trigger that attaches or
+counters its own source: living weapon (Batterskull, Batterbone, Kaldra
+Compleat), Maul of the Skyclaves, Mithril Coat, Hero's Blade and Uthros
+Research Craft. A source flickered in response is not the object the
+trigger names, so those effects now do nothing. Each did it to the new
+object before. That was stronger than printed (the #259 direction),
+because CR 400.7 says the new object has no memory of the ability.
+
+### Cards
+
+Mana Vault ships `full`. Its caveat was this issue, and its upkeep untap
+now checks the object too. Batterskull, Hero's Blade and Uthros Research
+Craft were already `full` and now honour CR 400.7, one test each
+(`cards/effects/source_object_test.go`).
+
+### Still not covered
+
+- **A spell's own object.** A spell item carries no `SourceObject`. "This
+  spell" is never a permanent read, and CR 707.10's self-copy has its own
+  slot (`Game.resolving`). Nothing asks yet.
+- **Continuations frozen before a prompt.** A pause frame that captured an
+  instance ID before #1418 still reads the card, not the object. The
+  pick-target and trigger-prompt frames carry the source `Card` by value,
+  which is why the stamp can be taken from them. Frames are not persisted
+  anyway (`ChoiceResumeFrames` in the census).
+
+### Note 2026-09-24 — the record's second engine reader: the CR 608.2b re-check (#1429)
+
+Decision 12's record now also answers the CR 608.2b target re-check
+for an ability whose source has left the battlefield.
+`stackItemSourceLocked` (`server/internal/game/targets.go`) used to
+look the source up in whatever zone held it, which is its graveyard
+card, so protection was tested against the wrong object. It now returns
+a snapshot of the record, found by `departedAbilitySourceLocked`:
+
+- **A stamped item** (every ability item since Decision 14) names its
+  object through `SourceObjectForEffect`. The object is read live while
+  it is on the battlefield. Once it has left, its record is used. An
+  object that was never a permanent (a graveyard trigger) has no record,
+  and its card is read where it is. This is Decision 14's stamp doing
+  what it was built for: a graveyard trigger from a card that died
+  earlier this turn is judged as the graveyard card, and an activation
+  that sacrificed its own source is judged as that source even after
+  the card comes back.
+- **An unstamped item**, restored from a snapshot written before
+  Decision 14, keeps ADR 0056 Decision 10's instance-ID rule ("current
+  epoch = recorded + 1").
+
+Spells never consult the record. The decision belongs to ADR 0072
+(protection's targeting source, §2), so the amendment lives there:
+[ADR 0072 amendment 2026-09-24 (#1429)](0072-protection.md).
+
+## Amendment 2026-09-24 — the primitives that act on "this" ask for the object (CR 400.7) · Accepted · S38
+
+Issue [#1432](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1432),
+the follow-on Decision 16 left open. Decisions 14–16 gave every ability
+item its source's OBJECT and gave two readers (`AbilitySourceGoneForEffect`
+for attach and station, `SourcePermanent()` for "this" as data). The
+primitives that ACT on "this" did not ask.
+
+### What was missing
+
+About a hundred catalog files resolve an ability with its source's
+instance ID as the target: `AddCounter{Target: item.SourceCardID}` (64
+literals), `SacrificePermanent` (13), `UntapTarget` (12),
+`BoostUntilEOT` / `GrantKeywordUntilEOT` (9), `BounceToHand`,
+`ExileTarget`, `Transform`, `BecomePrepared`, crew's
+`BecomeCreatureUntilEOT{}` (a zero target means the source), and a
+further ~20 bodies that call a game mutator on the source directly
+(`AddCounterThenForEffect`, `UntapTargetForEffect`,
+`TuckToLibraryForEffect`, `SetClassLevelForEffect`, …). An instance ID
+survives a zone change. A source that left and came back under the same
+ID while its ability waited — bounced and replayed, died and
+reanimated — is a NEW object (CR 400.7) with no memory of the ability,
+and every one of those acts landed on it anyway: the counter, the
+untap, the sacrifice that removed the wrong permanent. Stronger than
+printed, the #259 direction. (The engine's own exile-and-return mints a
+fresh instance ID, so `Flicker` itself never reached this; every route
+that keeps the ID did.)
+
+### Decision 17. The question lives in the primitive, keyed on "target == this item's source"
+
+```go
+func (g *Game) AbilitySourceIsNewObjectForEffect(item *StackItem) bool // game/ability_source.go
+func (c *Context) isNewSourceObject(target uuid.UUID) bool             // effects/source_object_guard.go
+func sourceIsNewObject(g *game.Game, item *game.StackItem) bool        // same, for (g, item) bodies
+```
+
+Every effects primitive that acts on a permanent asks
+`ctx.isNewSourceObject(target)` before it acts and does nothing when
+the answer is yes: `AddCounter` (both signs), `SacrificePermanent`,
+`TapTarget`, `UntapTarget`, `BounceToHand`, `ExileTarget` (so `Flicker`
+and `ExileThenIfItWas`), `DestroyTarget`, `Regenerate`, `GainControl`,
+`Transform` (so `TransformThis`), `ExileAndReturnTransformed`,
+`PreventNextDamage`, `PutIntoLibrary`, `PutIntoLibraryAtDepthOrBottom`,
+`ExileWithPermission`, `Airbend` / `AirbendAll`, `Earthbend`,
+`BecomePrepared`, `BecomeCreatureUntilEOT` / `BecomeArtifactCreature`,
+the pinned-target path of `eotSnapshot` (so `BoostUntilEOT`,
+`GrantKeywordUntilEOT`, `GrantAllCreatureTypesUntilEOT`,
+`RestrictUntilEOT` and every card-local caller), the list primitives
+through `withoutNewSourceObject` (`TurnFaceDown`, `PhaseOut`,
+`PhaseOutUntilLeaves` — which also refuses an `Until` that is a new
+object — `DoesntUntapNextUntapStep`, `TapAndFreeze`,
+`DoesntUntapWhile`), fight (`b10Fight`, CR 701.12b: no damage at all),
+and the "for as long as ~" duration builders (`DurationWhileSourceRemains`,
+`DurationWhileYouControlSource`, the hold in
+`TapAndHoldWhileThisRemainsTapped`: CR 611.2b, the effect never begins).
+A skipped act with a `Then` tells it `false`: nothing was sacrificed,
+exiled or bounced, so "if you do" does not pay.
+
+`b09SourceStillOnBattlefield(g, item)`, the "is this still here" guard
+~20 bodies put in front of an act on the source and its payoff
+(Coalition Relic's mana, Caldera Pyremaw's damage), now means the same
+object. The direct-mutator bodies ask `sourceIsNewObject(g, item)`
+themselves, and the two "sacrifice it. When you do / If you do" bodies
+that only checked the zone (`b08OverlookSacrifice`,
+`b27SacrificeSelfThenTutorColorlessCreature`) ask before the payoff.
+Devoted Druid moved onto `UntapTarget`. The engine's own evoke trigger
+(`queueAltCostEntryTriggerLocked`) now asks `AbilitySourceGoneForEffect`,
+so an evoked creature that left and came back is not sacrificed.
+
+**Why the primitive and not a `Self()` target.** A `Self()` helper that
+carries the ref is exact — it knows the card MEANT "this" — but it only
+reaches the call sites someone edits: 109 literals in 103 files, plus
+the direct-mutator bodies, plus every card written after. Keying on "the
+target is this item's own source" reaches all of them with no card edit,
+including the ones not written yet, and the regression tests below make
+a new primitive decide. **Why not the game mutators**, keyed on the
+resolving slot: the slot outlives its resolution until the next event
+batch (resolving_item.go), so a mana ability of the new object activated
+in that window would be misjudged, and engine-internal calls made during
+a resolution would be caught with it.
+
+**The cost, stated.** The ID cannot tell "this" from "each creature you
+control" when the loop happens to reach the source. A card that loops
+over its own "each" set with a per-permanent primitive, whose source
+left and came back in response to that very ability, skips the new
+object. That is weaker than printed, never stronger, and it needs both
+halves at once. Mass primitives that select with a `Match` predicate are
+not asked, so they are not affected.
+
+### Decision 18. The card-following rule: the check governs a PERMANENT that came back without this effect's help
+
+`AbilitySourceIsNewObjectForEffect` is true only when all four hold: the
+item is a stamped ability (never a spell; an unstamped pre-#1418 item
+keeps today's behaviour), the target is its source card, that card is
+**on the battlefield** as an object other than the stamp, and **this
+resolution did not put it there**. The last two are the exceptions, and
+they are one rule — *text that follows the card is not asked*:
+
+1. **Off the battlefield, the primitive follows the card.** "When this
+   dies, return it to its owner's hand", "put it on the bottom of its
+   owner's library", "return this card from your graveyard", suspend's
+   time counters in exile. The first two name the card in the zone it
+   went to (the CR 400.7 exception for a leaves-the-battlefield
+   trigger); the rest name a card that was never a permanent. None of
+   them is a permanent that left and came back, and the primitive keeps
+   its own rule for that zone.
+2. **A move this resolution made is followed.** CR 400.7 lets the rest
+   of an effect find the object the effect itself moved: unearth returns
+   the card and then gives IT haste; "return this card from your
+   graveyard to the battlefield, then put a +1/+1 counter on it" puts
+   the counter on. `beginResolvingLocked` records the source's epoch as
+   the item starts to resolve (`resolvingItem.sourceEpoch`). Nothing
+   else can move a card while an item resolves, so a source whose epoch
+   has changed since was moved by the effect. A source that was already
+   a new object when the resolution began is the case the guard exists
+   for.
+
+A game restored from a snapshot in the middle of a paused resolution has
+no resolving slot, and falls back to the stamp alone.
+
+### Decision 19. A delayed or reflexive trigger follows a source its creator put onto the battlefield
+
+Decision 14 made a delayed trigger (CR 603.7d) and a reflexive trigger
+(CR 603.12) inherit their creator's stamp. With Decision 17 that stamp
+is acted on, and unearth shows why inheriting it verbatim is wrong: the
+ability is activated from the graveyard, so its stamp is the graveyard
+card, and the "exile it at the beginning of the next end step" it
+schedules is about the creature it has just returned. Inherited as-is,
+the returned creature would be a stranger to its own delayed trigger
+and never be exiled.
+
+`followedSourceObjectLocked(item)` is the stamp, unless the resolving
+item's own resolution has moved its source ONTO THE BATTLEFIELD — then
+the permanent that move made. Only a battlefield arrival is followed: a
+source the resolution moved anywhere else keeps its stamp, so a "when
+you do" after "exile this" still reads the permanent it was through
+`SourcePermanent()`. A creature that leaves and comes back before the
+delayed trigger fires is, correctly, a new object to it (CR 603.7c).
+
+### Cards
+
+Proof, one test each (`cards/effects/source_object_primitives_test.go`),
+each with its no-flicker control:
+
+- **Bartolomé del Presidio** (`AddCounter` on self, activated): no
+  counter on a Bartolomé that came back.
+- **Underworld Breach** (`SacrificePermanent` on self, end-step
+  trigger): a Breach that came back is not sacrificed.
+- **Devoted Druid** (untap self, activated): the new Druid stays tapped.
+- **Mulldrifter**, evoked (the engine's sacrifice-on-entry trigger): the
+  new Mulldrifter stays, and the draw still happens.
+- **Krenko, Tin Street Kingpin** ships `full`: a Krenko that is not the
+  attacker any more (removed, or back as a new object) takes no counter,
+  and the Goblins are its last-known power through `SourcePermanent()`.
+  Its caveat — the counter landing on the card in the graveyard — was
+  this issue.
+
+Exceptions: the unearth pair (`TestDregscapeZombieUnearthsWithHaste`,
+`TestUnearthedCreatureIsExiledAtTheNextEndStep`) are the regression for
+Decisions 18.2 and 19, and two test-only specs pin Decision 18
+(`TestAnEffectThatMovedItsOwnSourceStillFindsIt`,
+`TestADiesTriggerStillActsOnTheCardInTheZoneItWentTo`).
+
+Regression: `TestEveryPrimitiveThatActsOnACardAsksAboutItsSource` parses
+the package and fails for any `Apply` on a type with a `Target`, `Card`
+or `Targets` uuid field that neither asks nor delegates to a primitive
+that does, unless the type is in the test's exemption table with its
+reason (`DealDamage`: damage FROM the source reads last-known
+information, and damage TO it is dealt by loops as often as by "this";
+`ReturnFromGraveyard`, `ReturnFromExile`, `GrantFlashbackToCard`,
+`PlotExiled`: the card is in another zone; `CreateTokenCopy`: copiable
+values, for which last-known information is the answer).
+`TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking` does the
+same for a card body that calls a game mutator on `item.SourceCardID` /
+`ctx.Source()` directly. It is best effort: an ID copied into a variable
+first is not followed, and a spell moving itself is allowed.
+
+### Still not covered
+
+- ~~**The "each" loop corner**~~ (Decision 17, the cost). Closed by
+  [#1463](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1463) —
+  Decision 20, below.
+- **Durations keyed on the source outside the builders.** A card that
+  builds a `game.Duration` by hand from `ctx.Source()` instead of
+  `DurationWhileSourceRemains` is not asked.
+- **Damage to "this".** `DealDamage` with the source as its target is
+  exempt (above), so "deals N damage to itself" is not refused on a new
+  object.
+
+## Amendment 2026-09-24 — an "each" loop reaches its source's new object (CR 400.7, CR 611.2c) · Accepted · S38
+
+Issue [#1463](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1463),
+the cost Decision 17 stated.
+
+### What was missing
+
+Decision 17 keys the #1432 question on "the target is this item's own
+source". The ID cannot say whether the card meant "this" or "each
+creature you control", so every per-permanent primitive applied in a
+loop over a set the card read off the board skipped one member: the
+source's new object, when the source left and came back in response to
+that very ability. Per CR 400.7 that object knows nothing of the
+ability, but it is a creature you control like any other, and a set
+the effect reads at resolution includes it (CR 611.2c). Weaker than
+printed. Measured: 28 functions read a set off the board and loop a
+guarded primitive over it, among them three whose source is a member
+of its own set — **Steel Overseer** ("each artifact creature you
+control"), **Mazirek, Kraul Death Priest** and **Kalonian Hydra**
+("each creature you control"). A fourth shape hit it the same way: a
+permanent CHOSEN at resolution from the ones you control
+(`ReturnOneYouControl` — **Whitemane Lion**, the bounce lands —
+`UntapUpToLands`, Gluntch's counters, Teferi, Akosa's taps), where the
+new object is on offer and a player who picks it saw nothing happen.
+
+### Decision 20. The group call site says so: `ctx.asGroupMember()`; "this" stays the default
+
+```go
+func (c *Context) asGroupMember() *Context                   // effects/source_object_guard.go
+func (c *Context) isNewSourceObjectAsThis(target uuid.UUID) bool
+```
+
+`asGroupMember` returns a copy of the Context with one unexported flag
+set. `isNewSourceObject` — the question every guarded primitive already
+asks, directly or through `withoutNewSourceObject` and `eotSnapshot` —
+answers false under that flag. A loop over a set read off the board,
+and a continuation acting on a permanent chosen at resolution, applies
+its primitive with `ctx.asGroupMember()`. The 28 loop sites and 4 pick
+sites are one-token edits; the only primitive touched is crew's
+zero-`Target` path (below).
+
+**The three shapes considered.**
+
+1. *A `Self()` marker on the "this" call sites*, so the primitive
+   guards only a target that was marked. Exact, but it flips the
+   default: the 109 "this" literals, the ~20 direct-mutator bodies and
+   every card written after would have to remember the marker, and one
+   that forgets acts on a stranger — stronger than printed, the #259
+   direction, which is exactly what #1432 closed. Decision 17 already
+   rejected it for reach; it is rejected again for its failure
+   direction.
+2. *An opt-out field on each per-permanent primitive*
+   (`AddCounter{…, AnyObject: true}`). Same default as the choice
+   below, but one field on ~25 structs, every one of which must honour
+   it, and a new primitive that forgets to read the field silently
+   ignores the opt-out. The #1465 scan would also have to learn the
+   field.
+3. *Chosen: the mark rides the Context.* How the text reached the
+   target is a fact about the call site, and the Context is the one
+   thing the call site hands every primitive. One field, one
+   constructor, one check, and every primitive — current or future —
+   honours it for free, because it already asks through
+   `isNewSourceObject`. The default stays guarded, so a loop that
+   forgets the mark fails in the stated direction: weaker, never
+   stronger.
+
+**A copy, not a mutation.** The caller's own Context keeps asking, so
+an ability that does "put a counter on each creature you control, then
+sacrifice this" is judged correctly on both halves. A `Then` handed
+the marked Context inherits it — it continues the act on the same
+member. A continuation that rebuilds `NewContext(g, item)` later (a
+queued prompt's answer) starts unmarked, which is again the safe side.
+
+**Sites that name the source by construction ignore the mark.**
+`isNewSourceObjectAsThis` is the unmarked question, and it is what the
+"for as long as ~" duration builders, `PhaseOutUntilLeaves.Until`,
+`TapAndHoldWhileThisRemainsTapped`, fight, Eden's and Overlook's
+self-sacrifice, and crew's zero-`Target` `BecomeCreatureUntilEOT{}`
+ask. Each of those is "this" whatever Context it was handed, so a
+duration built inside a group loop still never begins on a stranger
+(CR 611.2b).
+
+**Chosen targets keep the default.** A target is chosen as an object;
+one that left and came back is already an illegal target at
+resolution (CR 608.2b, the #1429 re-check), so asking again is
+redundant and harmless. Spells are never judged at all (Decision 18),
+so a spell's "destroy all creatures" loop behaves identically with or
+without the mark; it carries the mark anyway so the rule reads the
+same everywhere.
+
+### Cards
+
+Proof, one test each with its no-flicker control
+(`cards/effects/source_group_member_test.go`):
+
+- **Steel Overseer** (activated): the Overseer bounced and replayed in
+  response still gets its counter, as does the other artifact creature.
+- **Mazirek, Kraul Death Priest** (triggered): Mazirek back in response
+  still counts himself.
+- **Kalonian Hydra** (attack trigger, `b08DoubleCountersOnEachCreatureYouControl`):
+  a Hydra back in response is no longer attacking but is still a
+  creature you control, and its counters double.
+- **Whitemane Lion** (a choice at resolution, `ReturnOneYouControl`):
+  the new Lion is offered, and picking it returns it.
+
+Primitive level: `TestAPrimitiveReachedAsAGroupMemberActsOnTheSourcesNewObject`
+runs every #1432 primitive case four ways — live or flickered, "this"
+or group-marked — and only "this" + flickered does nothing (the zero
+`Target` crew case stays guarded under the mark).
+`TestWithoutNewSourceObjectKeepsAGroupMember` pins the list primitives,
+the copy semantics, and a duration built under the mark.
+
+Regression: `TestEveryEachLoopReachesItsMembersAsAGroup` parses the
+package and fails for any function that reads a set off the board
+(`BattlefieldCardsForEffect`, a range over `Battlefield.Cards`, or a
+package function returning `[]uuid.UUID` that does either) and applies
+a guarded per-permanent primitive inside a loop without saying
+`asGroupMember`, unless it is in the test's exemption table with its
+reason (Rakdos Charm: the loop exiles a graveyard; the board read is
+mode three's damage). It shares its parse with #1465's
+`TestEveryPrimitiveThatActsOnACardAsksAboutItsSource` (`scanPrimitives`),
+which still holds unchanged.
+
+### Still not covered
+
+- **Choices at resolution are not scanned.** The four pick sites were
+  found by hand; a new `ChoosePermanents` / `ChooseCardsPrompt`
+  continuation that forgets the mark skips a picked new object —
+  weaker, never stronger.
+- **A set built without a board read the scan recognises** (a zone's
+  `Cards` other than the battlefield, a helper returning `[]game.Card`)
+  is not followed. Same direction.
+
+## Amendment 2026-09-24 — a batch that commutes needs no CR 603.3b order · Accepted · S48
+
+Issue [#1511](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1511).
+Follow-ups: [#1530](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1530).
+Found alongside it: [#1529](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1529).
+
+### What was wrong
+
+Sub-PR 8 skipped the CR 603.3b prompt for one shape only: every item in
+the seat's batch had the same source and the same label (two Bident
+draws). Prowess (#706, ADR 0014 amendment 2026-09-24) fires on every
+noncreature spell, one trigger per instance per creature. So two prowess
+creatures asked their controller to order two "+1/+1 until end of turn"
+triggers on every spell, and every answer gave the same board. That
+prompt is rules-correct, but it cost a click per spell for a choice with
+no consequence.
+
+### Decision
+
+**A seat's batch drains without a prompt when every item in it is a
+`StackItem.Commutes` item.** `seatNeedsTriggerOrder` (`game/mutations.go`)
+now skips the prompt for either of two shapes: all identical (unchanged)
+or all commutative. A commutative item counts only while it carries no
+targets and no modes (`commutesForOrdering`). An auto-ordered batch
+keeps its queue order, which is harvest order, and the APNAP drain
+places it exactly as it would place an answered prompt.
+
+**`Commutes` is a closed, engine-owned class. Prowess is its only
+member.** The prowess trigger's `Build` (`game/prowess.go`) sets it; no
+card file may. Commutativity is a property of a PAIR of effects, so a
+new member needs an argument against every existing member, recorded
+here, before it joins. The flag is carried by `cloneStackItem` (undo)
+and by the snapshot (`commutes`, additive and omitempty: a file written
+before it restores with the flag false, which is the safe direction and
+just prompts again).
+
+**Why two prowess triggers commute.** Each one:
+
+- reads only its own source, asking "is this still the object that
+  triggered, on the battlefield" (the #1432 new-object check), and no
+  prowess changes that for another creature;
+- writes only a layer-7c +1/+1 until end of turn, pinned to its own
+  source's instance ID and battlefield-entry stamp. Layer-7c
+  modifications add up whatever their timestamps (CR 613.4c), and 7d
+  switching runs after all of 7c whatever the order;
+- emits no event: `registerScopedStaticLocked` appends to the registry
+  and bumps the layer version, and nothing watches for a P/T change or
+  for an ability resolving.
+
+So every order leaves the same board, the same effects and the same
+end-of-turn expiry. The only thing that differs is the sequence of
+`EventResolve` breadcrumbs in the log.
+
+**What the skip gives up, stated honestly.** Opponents get priority
+between resolutions. Order therefore still decides which creature is
+already pumped when someone responds halfway through the batch, for
+example Shocking the second creature before its pump resolves. That is
+a sliver of strategy, not a difference in the final board. The skip
+takes it away. #1530 tracks an "always ask me" per-player preference
+to give it back.
+
+### Rejected
+
+- **"All commutative items plus at most one other trigger"** (the shape
+  #1511 suggested). The other trigger's position among the pumps is a
+  real choice whenever it reads what they change. Caldera Pyremaw
+  granted prowess is the example: "deals damage equal to its power"
+  deals one more after its own pump than before it. The engine can't
+  see what an `Effect` closure reads, so it can't tell a Pyremaw from
+  a harmless trigger. Even Monastery Mentor's untargeted token trigger
+  doesn't provably commute with a pump: the token's entry can trigger
+  an ability that resolves between the pumps and reads them. **So
+  Mentor and Sokka, Tenacious Tactician boards still prompt**, since
+  each is prowess plus a token trigger. #1530 records the narrowest
+  way to go further.
+- **"Identical-effect triggers from copies of the same card with no
+  targets."** A shared oracle ID and label say the closures are the
+  same code, not that they commute. An untargeted trigger that reads
+  its own source and writes shared state can resolve differently per
+  order. Same-source, same-label batches were already skipped by
+  sub-PR 8, and that shape is unchanged.
+- **A client-side "always this order" memory.** The prompt is queued
+  by the server, and the client's Settings are local (`settings.ts`).
+  With no server-side per-seat preference seam, a client toggle could
+  only answer the prompt faster, not skip it. The preference belongs
+  with #1530.
+
+### Bot
+
+A skipped prompt is never queued, so `legal.EnumerateFor` offers the
+caster ordinary priority instead of a `trigger_order` answer.
+`legal/prowess_test.go` (`TestProwessTriggersAreAutoOrderedAndPassedLikeAnyOther`)
+pins it: no `resolve_choice` move, and a pass is available.
+
+### Tests
+
+- `game/trigger_order_commutes_test.go`: the prowess `Build` marks its
+  item; a table over `seatNeedsTriggerOrder` (two or three commuting →
+  no prompt; commuting plus one untargeted other, plus a targeted one,
+  or plus a moded one → prompt); the real drain with three prowess
+  items (drains) and with three plus a targeted trigger (held, four
+  IDs); and Clone + RestoreFrom keeping the flag.
+- `cards/effects/prowess_order_test.go`: two and then three prowess
+  creatures cast through with no prompt and pump once each. A Mentor
+  board still prompts. Undo, restored from before the cast and from
+  mid-batch, settles without a prompt and pumps exactly once.
+
+The targeted case is pinned at the drain rather than end to end,
+because of #1529. A targeted trigger picks its target before it joins
+the queue, and by then the untargeted part of its batch has already
+drained, so it never gets ordered at all. That gap predates this
+amendment, and this amendment doesn't change it. (Closed by the #1529
+amendment below, which also pins the targeted case end to end.)
+
+## Amendment 2026-09-24 — a trigger still announcing holds its batch (CR 603.3b / 603.3d) · Accepted · S39
+
+Issue [#1529](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1529).
+Filed while building: [#1539](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1539).
+
+### What was wrong
+
+A triggered ability that has something to announce doesn't reach
+`PendingTriggers` when it fires. The harvest opens a prompt first:
+the CR 603.5 "you may" (`trigger_prompt`), the CR 603.3c mode pick
+(`mode_pick`) or the CR 603.3d target pick (`pick_target`). The item
+is built from the answer. Meanwhile the next priority boundary drained
+the rest of the queue, so the batch-mates that had nothing to announce
+went onto the stack alone. The announcing trigger then drained by
+itself, on top.
+
+The result was that an announcing trigger always resolved first and
+was never offered in a CR 603.3b ordering prompt. The issue's repro
+was a prowess creature plus Caldera Pyremaw, and that board has no
+choice to lose. It matters when one trigger reads what another
+changes: a Pyremaw that has prowess itself deals 5 damage if it is
+pumped and then burns, and 4 if it burns and then is pumped. The
+engine always chose 4. The same drain also broke APNAP across seats:
+a non-active player's plain trigger drained first, and the active
+player's targeted trigger landed above it.
+
+### Decision
+
+**Targets (and modes, and the "you may") first; then the whole batch
+is ordered.** `drainPendingTriggersAPNAPLocked` (`game/mutations.go`)
+returns "held" without placing anything while
+`triggerAnnouncementOpenLocked` reports an open prompt that carries a
+trigger continuation: `triggerResume`, `modePickResume` or
+`pickTargetResume`. A `pick_target` for a spell copy (`copyResume`,
+CR 707.10c) builds no triggered ability, so it doesn't count. When the
+last announcement is answered, the item joins `PendingTriggers`, and
+the ordinary drain runs `seatNeedsTriggerOrder` over the complete
+batch. The announced item is then in the `trigger_order` prompt like
+any other.
+
+**The hold covers the whole queue, not only the announcing seat.**
+This is the rule the ordering prompt already follows (sub-PR 8), and
+for the same reason: APNAP placement has to see every seat's complete
+batch. A seat-only hold would let the non-active player's triggers go
+on the stack before the active player's, which is the second bug
+above.
+
+**Every blocking prompt already stops the table, so the hold stops
+nothing new.** All three announcement kinds block (`choice_gate.go`),
+and every pass is already refused while one is open. So the hold
+changes only which items are on `StackMeta` and which are on
+`PendingTriggers` during a window in which nobody can act anyway.
+Each kind has an always-legal answer in the enumerator. A seat that
+leaves has its prompts dropped by the departure table.
+
+**Every way an announcement ends now runs the boundary.** An answer
+that queues the item already did so (`finishPickTargetLocked`,
+`ResolveTriggerPrompt` "yes", `ResolveModePick`). The paths that end
+the announcement without an item now run it too, or the held batch
+would wait for an unrelated action:
+- `ResolveTriggerPrompt` answered "no".
+- A frame-less answer to `ResolvePickTargets` or `ResolveModePick`.
+- A target walk that CR 603.3d removes at a later required clause.
+- `Concede` by the chooser of the last open announcement. Here the
+  drain runs only when the concession closed an announcement that was
+  open before it, so a concession at any other moment is unchanged.
+
+The CR 704.3 checks inside the loop (`refreshTargetChoicesLocked`,
+`sweepEliminatedChoicesLocked`, an elimination by state-based action)
+already continue the loop, and the loop drains once nothing is
+announcing.
+
+**Why choosing targets before ordering is rules-correct.** CR 603.3b
+has the player put each trigger on the stack in the order they choose.
+CR 603.3d chooses each trigger's targets as it is put on the stack.
+Between the first target choice and the last placement, no player
+receives priority, no state-based action is checked and nothing
+resolves. Putting an ability on the stack changes nothing a target
+clause reads except the stack itself. So the legal set computed before
+the order is chosen is the set the rules would compute at each
+placement, and every answer the player can give under one scheme they
+can also give under the other. The one exception is under *Still not
+covered*.
+
+**#1511's commuting-batch skip is unchanged.** `seatNeedsTriggerOrder`
+and `commutesForOrdering` are untouched. An all-prowess batch still
+drains without a prompt. A batch of prowess plus a targeted trigger
+now reaches the prompt end to end from a cast, with the targeted item
+in it, where #1511 could pin it only at the drain.
+
+**Undo mid-announcement.** `Clone` used to share the
+`pickTargetFrame` pointer between the live game and the undo snapshot.
+`ResolvePickTargets` advances `step` and appends to `picked` in place,
+so undoing an answered pick restored a prompt whose walk was already
+finished, and answering it again silently dropped the trigger. This
+predates #1529. It became easy to reach once the answer to a pick was
+routinely followed by an ordering prompt the player might want to take
+back. `clonePickTargetFrame` (`game/clone.go`) gives the snapshot its
+own cursor, picks and modes. Everything else on the frame is read-only
+once the walk starts and stays shared, like every other server-only
+continuation.
+
+### Rejected
+
+- **Order first, then choose targets as each item is placed.** This is
+  the literal reading of CR 603.3b/d, and the outcome is identical
+  except for the case under *Still not covered*. But no `StackItem`
+  exists until the announcement is answered: `Build` runs at the end
+  of the target walk, and a "you may" hasn't been asked yet. The
+  ordering prompt would need placeholder items and a drain that pauses
+  halfway through placement across N further prompts. A CR 603.3d
+  removal in the middle of placement would have to shrink an order the
+  player already gave. And both the clone and the snapshot would have
+  to carry a half-placed batch. That is a new continuation shape on
+  the one path every trigger in the game takes, bought for no
+  observable difference on any card in the catalog.
+- **Hold only the announcing seat's items.** This fixes the issue's
+  single-seat repro and keeps the APNAP bug. See above.
+- **Build the item before the target pick and stamp targets later.**
+  `Build` is catalog code (~2,200 declarations), and some of it reads
+  the board when it builds. Running it before the pick would change
+  what those Builds see. It still wouldn't answer the "you may" or the
+  mode pick, which decide whether there is an item at all.
+
+### Bot
+
+The enumerator needed no change: `trigger_order` was already
+enumerated as the queue order and its reverse (`canonicalOrders`).
+`legal/trigger_batch_order_test.go`
+(`TestBotOrdersATargetedTriggerWithItsBatch`) pins the new position.
+A bot seat answers the target prompt, is then offered only the
+ordering prompt, every offered order names the targeted item, and the
+engine accepts each one, putting the first-to-resolve item on top.
+
+### Wire
+
+Unchanged. `pending_triggers` now also holds a batch while one of its
+triggers is still announcing, and `docs/protocol.md` says so. The
+client already renders the queue in the stack lane.
+
+### Tests
+
+- `game/trigger_batch_hold_test.go`:
+  - `TestAnnouncingTriggerHoldsItsBatch` covers each of the three
+    announcement kinds: the plain batch-mate is held, then both are
+    ordered and placed as answered.
+  - Declining a "you may" releases the batch.
+  - Whole-queue APNAP: the active player's targeted trigger lands
+    under the non-active player's plain one.
+  - A target walk that CR 603.3d removes at its second clause
+    releases the batch.
+  - A concession releases a batch held for the conceder's trigger.
+  - The pick frame is not shared with an undo snapshot.
+- `cards/effects/trigger_batch_order_test.go`:
+  - The issue's prowess plus Caldera Pyremaw repro: held, one prompt
+    with both items, burn ordered under the pump.
+  - A Pyremaw with prowess deals 5 pump-first and 4 burn-first.
+  - An illegal "target opponent" pick is still refused and the batch
+    stays held.
+  - Undo to the ordering prompt and to the open target prompt, each
+    re-answered.
+- Eight existing card tests (Phlage ×2, Fury's evoke, Satyr Enchanter
+  with Verduran Enchantress, Scrapshooter's gift, Betor, the
+  aristocrats and blue-draw theme decks) had relied on the old stack.
+  Each now answers the new prompt with `answerTriggerOrderLastQueuedFirst`,
+  which rebuilds exactly the stack the old drain produced, so their
+  assertions are unchanged.
+
+### Still not covered
+
+- **A trigger that targets an ability on the stack (CR 115.6) can't
+  target a batch-mate.** Under strict placement, a batch-mate placed
+  earlier would be on the stack when a later trigger chose its
+  targets. Here the whole batch is still on `PendingTriggers` when
+  targets are chosen. No catalogued triggered ability targets a
+  triggered ability today.
+- **Becomes-the-target triggers join the batch that targeted.**
+  `finishPickTargetLocked` emits `EventBecomesTarget` when the item
+  joins the queue, so Monk Gyatso's or a ward trigger lands in the
+  same drain. When it shares a controller with the batch, it is
+  offered in that batch's ordering prompt, although CR 603.3 would put
+  it above the whole batch. This predates #1529, which only widens the
+  set of orders it can reach. Tracked in #1539.
+- The snapshot can't carry a trigger continuation. This is unchanged:
+  the census in `snapshot.go` already reports it, and such a snapshot
+  is not a full-fidelity restore point. The hold keys on the
+  continuation rather than on the prompt kind, so a prompt restored
+  without one doesn't hold anything: the batch drains at the next
+  boundary, and answering the prompt builds nothing.

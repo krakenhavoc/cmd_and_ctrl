@@ -48,6 +48,7 @@ func Register(spec Spec) {
 				panic(fmt.Sprintf("effects.Register: %q mode %d has no label — the bullet is the whole of what the picker shows", spec.Name, i))
 			}
 			checkFlatClauses(spec.Name, o.Targets)
+			checkModeCost(spec.Name, "mode", i, o.Cost, true)
 		}
 	}
 	checkFlatClauses(spec.Name, spec.Targets)
@@ -64,6 +65,7 @@ func Register(spec Spec) {
 					panic(fmt.Sprintf("effects.Register: %q activated mode %d has no label", spec.Name, i))
 				}
 				checkFlatClauses(spec.Name, o.Targets)
+				checkModeCost(spec.Name, "activated mode", i, o.Cost, false)
 			}
 		}
 	}
@@ -71,6 +73,11 @@ func Register(spec Spec) {
 		checkFlatClauses(spec.Name, t.Targets)
 		if t.Modes != nil && t.Targets != nil {
 			panic(fmt.Sprintf("effects.Register: %q declares a trigger with both Targets and Modes — put the target clause on the mode", spec.Name))
+		}
+		if t.Modes != nil {
+			for i, o := range t.Modes.Options {
+				checkModeCost(spec.Name, "trigger mode", i, o.Cost, false)
+			}
 		}
 	}
 	// S22: an alternative cost is claimed by name on the wire, so a
@@ -154,6 +161,22 @@ func Register(spec Spec) {
 	if spec.AdditionalCost != nil && spec.AdditionalCost.Optional {
 		panic(fmt.Sprintf("effects.Register: %q puts an Optional cost in AdditionalCost — the mandatory slot is never optional; declare it in OptionalCosts", spec.Name))
 	}
+	// ADR 0089: gift is declared once, in Spec.Gift, and buildDef grows
+	// its cost. A hand-rolled one in OptionalCosts would have no gift
+	// effect behind it and no entry trigger — a promise that gives
+	// nothing — and a Gift built outside the constructors would have
+	// no effect at all.
+	if g := spec.Gift; g != nil {
+		if g.give == nil || g.Label == "" {
+			panic(fmt.Sprintf("effects.Register: %q declares a Gift built by hand — use GiftACard / GiftAFood / GiftATappedFish / GiftATreasure", spec.Name))
+		}
+		if g.Targets != nil {
+			if spec.Modes != nil {
+				panic(fmt.Sprintf("effects.Register: %q is modal and its gift rewrites the target clause — put the clause on the mode", spec.Name))
+			}
+			checkFlatClauses(spec.Name, g.Targets)
+		}
+	}
 	seenOptional := make(map[string]bool, len(spec.OptionalCosts))
 	for i, oc := range spec.OptionalCosts {
 		// Without the flag the cast path prices it and never offers
@@ -165,6 +188,18 @@ func Register(spec Spec) {
 		// blank or duplicated one is unaddressable.
 		if oc.Key == "" {
 			panic(fmt.Sprintf("effects.Register: %q declares an optional cost with no Key", spec.Name))
+		}
+		// An optional cost that rewrites the target clause is
+		// read against the card-level clause (ADR 0089 §3); a modal
+		// card's clauses live on its modes, where no rewrite reaches.
+		if oc.Targets != nil {
+			if spec.Modes != nil {
+				panic(fmt.Sprintf("effects.Register: %q is modal and optional cost %q rewrites the target clause — put the clause on the mode", spec.Name, oc.Key))
+			}
+			checkFlatClauses(spec.Name, oc.Targets)
+		}
+		if oc.ChoosesOpponent || oc.Key == game.GiftKey {
+			panic(fmt.Sprintf("effects.Register: %q declares a gift cost in OptionalCosts — declare Spec.Gift and let buildDef grow the cost (ADR 0089)", spec.Name))
 		}
 		if seenOptional[oc.Key] {
 			panic(fmt.Sprintf("effects.Register: %q declares two optional costs keyed %q", spec.Name, oc.Key))
@@ -242,6 +277,16 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q activation restriction %q forbids nothing", spec.Name, r.Label))
 		}
 	}
+	// #1208, ADR 0066's and ADR 0073's amendments of 2026-09-23: the
+	// same two checks again for an activation-timing statement, plus
+	// the one CastTimings needs — a statement that says nothing.
+	// TimingNormal is the zero value and the read ignores it, so a
+	// Spec slot carrying one is a card file that meant to say
+	// something and failed SILENTLY. The Label is what the next
+	// reader matches against the oracle text; a nil Covers is a
+	// statement about nothing. The emblem slot (#1275) runs the same
+	// guard from checkEmblemSpec.
+	checkActivationTimings(spec.Name, spec.ActivationTimings)
 	// #1195: the same bargain for a timing statement. TimingNormal is
 	// the zero value and says nothing, so a Spec slot carrying one is
 	// a card file that meant to say something and did not — and the
@@ -331,6 +376,15 @@ func Register(spec Spec) {
 				spec.Name, sa.Counters))
 		}
 	}
+	// #1391: a grant the engine cannot carry out would put a row on a
+	// card and then refuse it, so it fails at boot. Only plot from the
+	// top of the library is built (game.SpecialActionGrantBuilt).
+	for i, gr := range spec.SpecialActionGrants {
+		if !game.SpecialActionGrantBuilt(gr.Kind, gr.Zone) {
+			panic(fmt.Sprintf("effects.Register: %q special action grant %d gives %q in zone %q, which the engine cannot carry out (ADR 0062 amendment 2026-09-24, #1391)",
+				spec.Name, i, gr.Kind, gr.Zone))
+		}
+	}
 	// #657 / CR 702.35a: the madness cost is the price of a cast the
 	// engine will offer, so an unparseable one is refused at boot
 	// rather than at the moment the offer is taken — which is after
@@ -359,12 +413,17 @@ func Register(spec Spec) {
 		checkCounterCost(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.RemoveCounters, ab.Cost.AddCounter)
 		checkSacrificeClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.SacrificeOther, true, true)
 		checkReturnClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ReturnToHand)
+		checkTapOthersClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.TapOthers, true)
 		// #660: a discard clause that discards nothing would make
 		// the ability free, the way a zero-counter cost would.
 		if dc := ab.Cost.DiscardCards; dc != nil && dc.N <= 0 {
 			panic(fmt.Sprintf("effects.Register: %q ability %d discards %d cards — a discard cost discards at least one",
 				spec.Name, i, dc.N))
 		}
+		// #1297: the exile-N-cards component, held to the rules its
+		// mana owner is held to (checkExileCardsClause).
+		checkExileCardsClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ExileCards)
+		checkAbilityCostModifiers(spec.Name, i, ab)
 		// CR 113.6 / ADR 0062 Decision 1: an ability that functions
 		// somewhere other than the battlefield has no permanent to
 		// tap, sacrifice, crew or put loyalty counters on. Such a
@@ -398,15 +457,42 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q ability %d has {X} in its mana cost %q AND sacrifices X permanents — one announced X cannot pay both",
 				spec.Name, i, ab.Cost.Mana))
 		}
-		// #1221: the same rule one zone over. ExileSelf is scavenge's
-		// and embalm's "Exile this card from YOUR GRAVEYARD"
-		// (CR 702.96a, CR 702.128a), so an ability that declares it
-		// without declaring the graveyard could never pay it — and
-		// would look complete on the catalog page while refusing
-		// every activation.
-		if ab.Cost.ExileSelf && !zoneDeclared(ab.Zones, game.ZoneGraveyard) {
-			panic(fmt.Sprintf("effects.Register: %q ability %d declares an exile-this cost but does not function from the graveyard — build it with Scavenge / Embalm / Eternalize",
+		if ab.Cost.XSlots() > 0 && game.TapOthersCountFromX(ab.Cost.TapOthers) {
+			panic(fmt.Sprintf("effects.Register: %q ability %d has {X} in its mana cost %q AND taps X permanents — one announced X cannot pay both",
+				spec.Name, i, ab.Cost.Mana))
+		}
+		if game.SacrificeCountFromX(ab.Cost.SacrificeOther) && game.TapOthersCountFromX(ab.Cost.TapOthers) {
+			panic(fmt.Sprintf("effects.Register: %q ability %d both sacrifices X permanents and taps X permanents — one announced X cannot pay both",
 				spec.Name, i))
+		}
+		// #1221 / #1404: the same rule one zone over. ExileSelf
+		// follows the ability's zone — scavenge's and embalm's
+		// "Exile this card from YOUR GRAVEYARD" (CR 702.96a,
+		// CR 702.128a) from the graveyard, Perpetual Timepiece's
+		// "Exile this artifact" from the battlefield (the default
+		// when Zones is nil). Every zone the ability functions from
+		// has to be one the component can be paid from
+		// (game.ExileSelfZoneSupported); an ability that declares
+		// the hand or exile could never pay it, and would look
+		// complete on the catalog page while refusing every
+		// activation.
+		if ab.Cost.ExileSelf {
+			for _, z := range game.AbilityZones(game.ActivatedAbilityShape{Zones: ab.Zones}) {
+				if !game.ExileSelfZoneSupported(z) {
+					panic(fmt.Sprintf("effects.Register: %q ability %d declares an exile-this cost but functions from the %s — the component is paid from the battlefield or the graveyard",
+						spec.Name, i, z))
+				}
+			}
+		}
+		// #1310, CR 701.67b: a waterbend clause names part of the
+		// mana component — the part its taps may cover — so the mana
+		// component must contain it. A clause with no key or no pool
+		// could never be paid, one whose cost does not parse would
+		// cover nothing, and one larger than the mana would let a
+		// tap pay for mana the ability never charged. Build it with
+		// WaterbendCost, which cannot get any of these wrong.
+		if ab.Cost.Waterbend != nil {
+			checkAbilityWaterbend(spec.Name, i, ab.Cost)
 		}
 		if ab.Cost.MinX > 0 && !ab.Cost.DemandsX() {
 			panic(fmt.Sprintf("effects.Register: %q ability %d sets MinX %d but its cost %q has no {X} — a floor on a variable that cannot vary makes the ability unactivatable",
@@ -418,9 +504,22 @@ func Register(spec Spec) {
 		// announced X (CR 605.3b), so a "Sacrifice X …" clause there
 		// has nothing to read its count from.
 		checkSacrificeClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.SacrificeOther, true, false)
+		checkTapOthersClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.TapOthers, false)
+		// #1228 / CR 113.6: the MANA half of the zone dimension, held
+		// to the same three rules the activated half is held to —
+		// every one of them a boot-time refusal rather than a
+		// mysteriously-dead card.
+		checkManaAbilityZones(spec.Name, i, ma)
 		// #789: the counter components are one declaration with two
 		// owners, so they are checked by one function in both places.
 		checkCounterCost(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.RemoveCounters, ma.Cost.AddCounter)
+		// #1213 / #1283: a card-picking clause that picks nothing would
+		// make the ability free — the refusal the CR 602 discard gets.
+		if dc := ma.Cost.DiscardCards; dc != nil && dc.N <= 0 {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d discards %d cards — a discard cost discards at least one",
+				spec.Name, i, dc.N))
+		}
+		checkExileCardsClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.ExileCards)
 		if ma.Cost.Mana != "" {
 			if _, err := game.ParseCost(ma.Cost.Mana); err != nil {
 				panic(fmt.Sprintf("effects.Register: %q mana ability %d declares an unparseable mana cost %q: %v",
@@ -457,7 +556,10 @@ func Register(spec Spec) {
 	// declaration the engine silently ignored — the card would
 	// register, look complete on the catalog page, and never apply.
 	checkStaticZones(spec.Name, "static", spec.Static)
+	// ADR 0093: an ability grant is a layer-6 effect and names a bundle.
+	checkStaticGrants(spec.Name, "static", spec.Static)
 	if spec.Emblem != nil {
+		checkStaticGrants(spec.Name, "emblem static", spec.Emblem.Static)
 		checkTriggerZones(spec.Name, "emblem trigger", spec.Emblem.Triggered)
 	}
 	checkEmblemSpec(spec.Name, spec.Emblem)
@@ -496,6 +598,66 @@ func Register(spec Spec) {
 	}
 }
 
+// checkManaAbilityZones is #1228's registration guard for a CR 605
+// mana ability's CR 113.6 declaration. Three rules, and each one
+// makes an otherwise-silent failure loud at boot:
+//
+//  1. a declared zone has to be one every consumer walks
+//     (game.ManaAbilityZoneUnsupported) — otherwise the card
+//     registers, looks complete on the catalog page, and never
+//     offers the ability anywhere;
+//  2. a non-battlefield declaration may not carry a component only a
+//     permanent could pay (game.ManaAbilityNeedsPermanentSource) —
+//     the same refusal an activated ability's Zones already gets, and
+//     the same reason: the cost could never be paid;
+//  3. an exile-this cost and a non-battlefield zone imply each other.
+//     Without the zone there is nothing to exile FROM; without the
+//     cost the ability is a free, repeatable mana source, which is
+//     not a card anybody printed.
+func checkManaAbilityZones(card string, i int, ma ManaAbility) {
+	offBattlefield := false
+	for _, zone := range ma.Zones {
+		if why := game.ManaAbilityZoneUnsupported(zone); why != "" {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d functions from %s — %s",
+				card, i, zone, why))
+		}
+		if zone == game.ZoneBattlefield {
+			continue
+		}
+		offBattlefield = true
+		if why := game.ManaAbilityNeedsPermanentSource(shapeOfManaAbility(ma)); why != "" {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d functions from the %s but declares %s — that component needs a permanent on the battlefield",
+				card, i, zone, why))
+		}
+	}
+	if ma.Cost.ExileSelf && !offBattlefield {
+		panic(fmt.Sprintf("effects.Register: %q mana ability %d declares an exile-this cost but does not function from a non-battlefield zone — build it with ExileFromHandForMana",
+			card, i))
+	}
+	if offBattlefield && !ma.Cost.ExileSelf {
+		panic(fmt.Sprintf("effects.Register: %q mana ability %d functions off the battlefield but exiles nothing — a mana ability with no cost is a free repeatable source; build it with ExileFromHandForMana",
+			card, i))
+	}
+}
+
+// shapeOfManaAbility projects the declared cost onto the game-package
+// shape the zone rules are written against, so the boot check asks
+// game.ManaAbilityNeedsPermanentSource exactly the question the
+// engine will ask of the built ability. Only the cost components
+// matter here; the produced-mana half is not a zone question.
+func shapeOfManaAbility(ma ManaAbility) game.ManaAbilityShape {
+	return game.ManaAbilityShape{
+		Zones:          ma.Zones,
+		TapCost:        ma.Cost.Tap,
+		SacrificeCost:  ma.Cost.Sacrifice,
+		SacrificeOther: ma.Cost.SacrificeOther,
+		TapOthers:      ma.Cost.TapOthers,
+		RemoveCounters: ma.Cost.RemoveCounters,
+		AddCounter:     ma.Cost.AddCounter,
+		ExileSelf:      ma.Cost.ExileSelf,
+	}
+}
+
 // checkTriggerZones is #925's registration guard: every zone a
 // triggered ability declares has to be one the harvest actually
 // walks, or the ability is dead text the catalog page would still
@@ -511,6 +673,24 @@ func checkStaticZones(card, what string, statics []game.StaticAbility) {
 				panic(fmt.Sprintf("effects.Register: %q %s %d functions from %s — %s",
 					card, what, i, zone, why))
 			}
+		}
+	}
+}
+
+// checkActivationTimings is #1208's guard for a list of activation
+// timing statements, shared by Spec.ActivationTimings and
+// EmblemSpec.ActivationTimings (#1275) so the two homes cannot drift
+// in what they refuse. `card` names the declarer in the panic.
+func checkActivationTimings(card string, timings []game.ActivationTiming) {
+	for i, t := range timings {
+		if t.Timing == game.TimingNormal {
+			panic(fmt.Sprintf("effects.Register: %q activation timing %d says nothing — set TimingFlash, TimingSorcery or TimingYourTurnOnly", card, i))
+		}
+		if t.Label == "" {
+			panic(fmt.Sprintf("effects.Register: %q activation timing %d has no printed Label", card, i))
+		}
+		if t.Covers == nil {
+			panic(fmt.Sprintf("effects.Register: %q activation timing %q covers nothing", card, t.Label))
 		}
 	}
 }
@@ -664,6 +844,33 @@ func checkReturnClause(card, where string, rc *game.ReturnToHandCost) {
 	}
 }
 
+// checkTapOthersClause is the boot-time refusal for #758's fixed-count
+// and #1421's X-count tap-others component. TapOthersCost.Empty
+// intentionally treats a malformed zero value as inert so engine call
+// sites can be nil-safe; a catalog declaration cannot be allowed to
+// turn that into a free ability.
+func checkTapOthersClause(card, where string, tc *game.TapOthersCost, allowX bool) {
+	if tc == nil {
+		return
+	}
+	if tc.Filter == nil || tc.Label == "" {
+		panic(fmt.Sprintf("effects.Register: %q %s taps %d permanents — a tap-others cost needs a clause and label",
+			card, where, tc.Count))
+	}
+	switch {
+	case tc.Filter.CountFromX && !allowX:
+		panic(fmt.Sprintf("effects.Register: %q %s taps X permanents but a mana ability has no X announcement", card, where))
+	case tc.Filter.CountFromX && tc.Count != 0:
+		panic(fmt.Sprintf("effects.Register: %q %s taps both fixed %d and X permanents — choose one count", card, where, tc.Count))
+	case !tc.Filter.CountFromX && tc.Count < 1:
+		panic(fmt.Sprintf("effects.Register: %q %s taps %d permanents — a fixed tap-others cost needs a positive count", card, where, tc.Count))
+	case tc.Filter.AllowSame:
+		panic(fmt.Sprintf("effects.Register: %q %s lets one permanent pay a tap-others cost twice (AllowSame)", card, where))
+	case tc.Filter.Players:
+		panic(fmt.Sprintf("effects.Register: %q %s admits players — a tap-others clause matches permanents only", card, where))
+	}
+}
+
 // zoneDeclared reports whether `zone` appears in a Spec's
 // CastableZones. S29's Register guard, kept out of the loop body so
 // the panic message above reads as one thought.
@@ -726,6 +933,28 @@ func checkFlatClauses(name string, spec *game.TargetSpec) {
 	}
 }
 
+// checkModeCost validates one mode option's Spree cost (CR 702.172a,
+// ADR 0065's 2026-09-23 amendment) at boot. `owner` names what is
+// being checked in the panic message.
+//
+// `allowed` is false for an activated ability's or a trigger's mode:
+// CR 702.172a is a static ability found on modal SPELLS, and no
+// printed activated or triggered ability prices a chosen mode. A
+// silent no-op cost on either of those owners would be a card that
+// compiles and never charges what it means to — the same failure
+// mode ADR 0073 guards against everywhere else in this file.
+func checkModeCost(name, owner string, i int, cost string, allowed bool) {
+	if cost == "" {
+		return
+	}
+	if !allowed {
+		panic(fmt.Sprintf("effects.Register: %q %s %d declares a Cost — Spree (CR 702.172a) prices a spell's own modes; only Spec.Modes may", name, owner, i))
+	}
+	if _, err := game.ParseCost(cost); err != nil {
+		panic(fmt.Sprintf("effects.Register: %q %s %d declares an unparseable Cost %q: %v", name, owner, i, cost, err))
+	}
+}
+
 // checkExhaustAbilities holds the exhaust declaration to the two
 // things the engine's record needs from it (#1181), over BOTH ability
 // lists (#1183).
@@ -758,7 +987,7 @@ func checkExhaustAbilities(spec Spec) {
 		checkOneExhaustAbility(spec.Name, "activated ability", i, a.Label, a.Exhaust, seen)
 	}
 	// #1183: the mana half. A mana ability takes the other entry
-	// point (ActivateManaAbility, CR 605.3a) and the same record, so
+	// point (ActivateManaAbility, CR 605.3) and the same record, so
 	// it answers to the same three rules.
 	for i, a := range spec.ManaAbilities {
 		checkOneExhaustAbility(spec.Name, "mana ability", i, a.Label, a.Exhaust, seen)
@@ -834,5 +1063,83 @@ func checkPlayerKeywords(spec Spec) {
 		panic(fmt.Sprintf("effects.Register: %q PlayerKeywords[%d] = %q is not a player ability the engine honours — "+
 			"use %q or a \"protection from <quality>\" token the closed grammar parses (ADR 0072, #1197)",
 			spec.Name, i, kw, game.KeywordHexproof))
+	}
+}
+
+// checkAbilityWaterbend refuses, at boot, an activated ability whose
+// waterbend clause (#1310) could not be paid as printed: no key or no
+// pool of permanents, an unparseable clause, or a clause asking for
+// more generic (or more {X}) than the mana component charges.
+func checkAbilityWaterbend(name string, i int, cost game.AbilityCost) {
+	wb := cost.Waterbend
+	if wb.Key == "" || wb.Spec == nil || wb.Extra == "" {
+		panic(fmt.Sprintf("effects.Register: %q ability %d declares a waterbend clause with no key, pool or cost — build it with WaterbendCost", name, i))
+	}
+	clause, err := game.ParseCost(wb.Extra)
+	if err != nil {
+		panic(fmt.Sprintf("effects.Register: %q ability %d declares an unparseable waterbend cost %q: %v", name, i, wb.Extra, err))
+	}
+	mana, err := game.ParseCost(cost.Mana)
+	if err != nil || cost.Mana == "" || clause.Generic > mana.Generic || clause.XSlots > mana.XSlots {
+		panic(fmt.Sprintf("effects.Register: %q ability %d waterbends %q but its mana component %q does not contain it — CR 701.67b lets the taps pay only mana the ability charges",
+			name, i, wb.Extra, cost.Mana))
+	}
+}
+
+// checkExileCardsClause is the boot-time refusal for an ExileCards cost
+// component, shared by its two owners (#1283's mana ability, #1297's CR
+// 602 ability) so the rules cannot drift between them:
+//
+//   - a clause that exiles no cards makes the ability free, the refusal
+//     a zero-card discard gets;
+//   - a clause that names a pile other than the hand or the graveyard
+//     would never find a card to pay with, and would look complete on
+//     the catalogue page while refusing every activation.
+func checkExileCardsClause(name, where string, ec *game.ExileCost) {
+	if ec == nil {
+		return
+	}
+	if ec.N <= 0 {
+		panic(fmt.Sprintf("effects.Register: %q %s exiles %d cards — an exile cost exiles at least one",
+			name, where, ec.N))
+	}
+	if !game.ExileCostZoneSupported(ec.Zone()) {
+		panic(fmt.Sprintf("effects.Register: %q %s exiles cards from the %s — an exile cost reads the hand or the graveyard",
+			name, where, ec.Zone()))
+	}
+}
+
+// checkAbilityCostModifiers is the boot-time refusal for an activated
+// ability's OWN cost clause (ActivatedAbility.CostModifiers, #1296).
+// Every shape it refuses is one the engine would silently ignore or
+// refuse at every activation, so it fails here instead:
+//
+//   - a clause on an ability with no mana component prices nothing —
+//     the CR 601.2f pass never runs for it — and would read as a real
+//     discount on the catalogue page;
+//   - a CostFloor: no printed ability sets a floor on its own cost
+//     ("can't reduce … to less than one mana" is Power Artifact's, a
+//     board clause about OTHER abilities);
+//   - SpecialActions or a designation gate, which mean nothing in a
+//     slot that prices exactly one ability;
+//   - a mana Unit the engine would refuse (ADR 0048 addendum §16).
+func checkAbilityCostModifiers(name string, i int, ab ActivatedAbility) {
+	for j, m := range ab.CostModifiers {
+		where := fmt.Sprintf("ability %d cost modifier %d (%q)", i, j, m.Label)
+		if ab.Cost.Mana == "" {
+			panic(fmt.Sprintf("effects.Register: %q %s modifies an ability with no mana cost — there is nothing to price", name, where))
+		}
+		if m.Kind == game.CostFloor {
+			panic(fmt.Sprintf("effects.Register: %q %s is a CostFloor — an ability's own cost clause increases or reduces", name, where))
+		}
+		if m.SpecialActions {
+			panic(fmt.Sprintf("effects.Register: %q %s sets SpecialActions — an ability's own clause prices that ability", name, where))
+		}
+		if m.ActiveWhen != (game.Designation{}) {
+			panic(fmt.Sprintf("effects.Register: %q %s declares a designation gate — gate the ability (ActivatedAbility.ActiveWhen) instead", name, where))
+		}
+		if why := m.UnitProblem(); why != "" {
+			panic(fmt.Sprintf("effects.Register: %q %s declares %s (ADR 0048 addendum §16)", name, where, why))
+		}
 	}
 }

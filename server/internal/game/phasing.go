@@ -255,6 +255,16 @@ func (g *Game) phaseOutLocked(source uuid.UUID, ids []uuid.UUID, opts phaseOutOp
 		g.PhasedOut.Cards = append(g.PhasedOut.Cards, c)
 		moved = append(moved, id)
 	}
+	// #1376: a planeswalker or battle that phases out is removed from
+	// combat too, so the creatures attacking it attack nothing — and
+	// keep attacking nothing if it phases back in this combat
+	// (CR 506.4c). Its absence from the slice already stopped the
+	// damage; this is what stops it resuming. After the move loop, so
+	// an attacker phasing out in the same batch has already cleared
+	// its own target.
+	for _, id := range moved {
+		g.removeAttackedFromCombatLocked(id)
+	}
 	for _, id := range moved {
 		g.EmitEvent(Event{
 			Kind:   EventPhaseOut,
@@ -306,6 +316,16 @@ func (g *Game) phaseInLocked(ids []uuid.UUID) []uuid.UUID {
 		actors[id] = c.Controller
 		moved = append(moved, id)
 	}
+	// CR 722.3c (ADR 0090): a permanent that "phases in prepared"
+	// makes a fresh copy of its prepare spell. The designation itself
+	// rode through the phase-out untouched (CR 702.26d), but the copy
+	// did not: while the permanent was out it was treated as though it
+	// did not exist, so the CR 704.5e sweep took the copy out of exile.
+	for _, id := range moved {
+		if c := findBattlefieldCard(g, id); c != nil && c.Prepared {
+			g.createPrepareCopyLocked(*c)
+		}
+	}
 	for _, id := range moved {
 		g.EmitEvent(Event{
 			Kind:   EventPhaseIn,
@@ -346,6 +366,7 @@ func (g *Game) forgetCombatRecordLocked(cardID uuid.UUID) {
 	if len(g.announcedAttacks) == 0 {
 		g.announcedAttacks = nil
 	}
+	g.forgetAttackDefenderLocked(cardID)
 	delete(g.announcedBlocks, cardID)
 	if len(g.announcedBlocks) == 0 {
 		g.announcedBlocks = nil

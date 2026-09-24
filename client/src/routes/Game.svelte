@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import { GameClient } from "../lib/ws";
+  import { endCueFor, gameOverText } from "../lib/gameOutcome";
   import { recordClientError } from "../lib/clientErrors";
   import { describeThrown } from "../lib/guardedStore";
   import { navigate } from "../lib/router";
@@ -11,6 +12,7 @@
   import { discordAuthEnabled, discordLinkHref, fetchBugReportConfig } from "../lib/api";
   import { canLinkDiscord, linkDiscordLabel, signedInUserID } from "../lib/myGames";
   import { castPreviewParamsFromPayload } from "../lib/castPreview";
+  import { stampManaEnforcement } from "../lib/manaEnforcement";
   import {
     canManageTable,
     canSpawn,
@@ -39,33 +41,42 @@
   import Icon from "../lib/components/Icon.svelte";
   import { cancel as cancelTargeting, confirm as confirmTargeting } from "../lib/targeting";
   import type { ActionType, PlayerView } from "../lib/protocol";
+  import { attackersDefendedBy } from "../lib/attackTargets";
   import { stopKeyFor, type StepID } from "../lib/turn";
   import { armAudioOnFirstGesture, isMuted, play, toggleMuted } from "../lib/sounds";
   import { openSettings, settings } from "../lib/settings";
   import {
     autopassSuspended,
-    hasAnyLegalResponse,
+    blockDeclarationPending,
     loopNoticeText,
     owesBlockDecision,
   } from "../lib/priority";
+  import { hasPlay, hasResponse, keyWindow, type ResponseCategories } from "../lib/responseWindow";
   import {
     attackAllLabel,
     attackAllParams,
     attackAllTaxLabel,
+    attackLimitOn,
     attackTaxOn,
     blockedSummary,
+    bulkAttackRefusal,
+    offersAttackPicker,
     planAttackAll,
     seatLabel,
+    type AttackAllParams,
+    type BulkAttackAttempt,
   } from "../lib/attackAll";
   import { hasPassMove, stackEmpty } from "../lib/timing";
   import { consumeManualStop, manualStops } from "../lib/priorityStops";
-  import { autopassDecision } from "../lib/autopassDecision";
+  import { autopassDecision, isBluff, type AutopassGates } from "../lib/autopassDecision";
+  import { bluffArmed, bluffDelayMs, initBluffArmed, setBluffStatus } from "../lib/bluff";
   import { holdPriority, ownsEveryStackItem, toggleHoldPriority } from "../lib/holdPriority";
   import { registerShortcutHandlers, setShortcutContext } from "../lib/shortcutRuntime";
   import { effectiveBindings, formatChord, isMacLike } from "../lib/shortcuts";
   import ModalLayer from "../lib/components/ModalLayer.svelte";
   import { devFeature } from "../lib/env";
   import { gameWSURL } from "../lib/gameURL";
+  import { openingRollText, openingRollWinner } from "../lib/startingPlayer";
   import DevDock from "../lib/components/dev/DevDock.svelte";
   import type { ReplayFrame } from "../lib/replay";
 
@@ -81,6 +92,16 @@
   // may omit ?player= and fall through to the spectator view.
   const baseURL = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws";
   const sess = $derived($session);
+  // lastKnownSignedIn remembers whether the last live session held a
+  // signed-in identity (#1475). It has to be remembered rather than
+  // read live: by the time the connection banner reaches
+  // "session_ended", authFetch's own 401 handling has already cleared
+  // the (now-dead) session, so `sess` itself can no longer answer
+  // "was this a My games kind of session, or a guest one?".
+  let lastKnownSignedIn = $state(false);
+  $effect(() => {
+    if (sess) lastKnownSignedIn = signedInUserID(sess) !== null;
+  });
   // Dev seat swap (ADR 0023): the seat an admin has chosen to view
   // and act as, or null for the spectator view. Always null outside a
   // dev deployment — nothing sets it, because DevDock only renders
@@ -100,7 +121,8 @@
   // their improvisations over it, and an announcement nobody can see
   // is not an announcement. BotFeed renders those lines and nothing
   // else. A full chat panel, when it returns, subsumes it.
-  const { status, snapshot, lastSeq, lastError, log, chat, reconnectAttempt } = client;
+  const { status, snapshot, lastSeq, lastError, log, chat, reconnectAttempt, rewindNotice } =
+    client;
 
   $effect(() => {
     client.disconnect();
@@ -249,9 +271,74 @@
   // toggle); the module decides.
   let autopassEnabled = $state(false);
   let lastAutoPassedSeq = $state(-1);
+
+  // #1307 timed bluff. Plain (non-reactive) on purpose: the timer is a
+  // side effect of the decision, not an input to it. `seq` is the frame
+  // the bluff was rolled on, so a re-run on the same frame keeps the
+  // same delay; `sent` is the client's action count at that moment, so
+  // any action the viewer sends in the meantime calls the pass off.
+  let pendingBluff: { seq: number; sent: number; timer: ReturnType<typeof setTimeout> } | null =
+    null;
+  let latestGates: AutopassGates | null = null;
+
+  function cancelBluffTimer(): void {
+    if (pendingBluff) clearTimeout(pendingBluff.timer);
+    pendingBluff = null;
+  }
+  function cancelBluff(): void {
+    cancelBluffTimer();
+    setBluffStatus(null);
+  }
+
+  // armTimedBluff starts the countdown for this frame, once.
+  function armTimedBluff(minMs: number, maxMs: number): void {
+    const seq = $lastSeq;
+    if (seq === lastAutoPassedSeq) return;
+    if (pendingBluff?.seq === seq) return;
+    cancelBluffTimer();
+    const delay = bluffDelayMs(minMs, maxMs);
+    pendingBluff = { seq, sent: client.actionsSent, timer: setTimeout(fireBluff, delay) };
+    setBluffStatus({ manual: false, passesAt: Date.now() + delay });
+  }
+
+  // fireBluff is the end of a timed bluff. It passes only if nothing
+  // moved while it waited: the same frame, no pass already sent for
+  // it, no action from the viewer, and the decision still says bluff
+  // (or pass). Anything else and the window belongs to the player.
+  function fireBluff(): void {
+    const p = pendingBluff;
+    pendingBluff = null;
+    setBluffStatus(null);
+    if (!p) return;
+    const seq = $lastSeq;
+    if (seq !== p.seq || seq === lastAutoPassedSeq) return;
+    if (client.actionsSent !== p.sent) return;
+    if (!latestGates) return;
+    const v = autopassDecision(latestGates);
+    if (!(v === "pass" || (isBluff(v) && !v.manual))) return;
+    lastAutoPassedSeq = seq;
+    client.sendAction("pass_priority");
+  }
+
+  onMount(() => {
+    // The in-game bluff switch starts from the settings each game.
+    initBluffArmed($settings.gameplay);
+    setBluffStatus(null);
+  });
+  onDestroy(cancelBluff);
+
   $effect(() => {
     const step = view?.turn?.step;
-    const verdict = autopassDecision({
+    const gp = $settings.gameplay;
+    // #1307: what counts as a response, per the "Stop for" settings.
+    const cats: ResponseCategories = {
+      counter: gp.respondCounterspells,
+      instant: gp.respondInstants,
+      ability: gp.respondAbilities,
+      special: gp.respondSpecialActions,
+    };
+    const kw = keyWindow(view, viewerID);
+    const gates: AutopassGates = {
       viewerHasPriority,
       tableBusy: mulligansOpen || gameEnded || viewerEliminated,
       // Never auto-pass while the viewer has an open choice to make
@@ -288,9 +375,32 @@
       // first-strike step too, which is the window a player who asked
       // to see damage most wants.
       stepStop: step ? $settings.gameplay.stepStops[stopKeyFor(step as StepID)] : undefined,
-      smartAutoPass: $settings.gameplay.smartAutoPass,
-      hasLegalResponse: hasAnyLegalResponse(view, viewerID, $lastSeq),
-    });
+      smartAutoPass: gp.smartAutoPass,
+      alwaysStopOpponentStack: gp.alwaysStopOpponentStack,
+      hasResponse: hasResponse(view, viewerID, cats),
+      hasPlay: hasPlay(view, viewerID, cats),
+      combatWindow: kw.combat,
+      oppEndWindow: kw.oppEnd,
+      // #1307: a bluff needs the setting AND the in-game switch.
+      bluffCounter: gp.bluffCounterspell && $bluffArmed,
+      bluffInstant: gp.bluffInstant && $bluffArmed,
+      bluffManual: gp.bluffMode === "manual",
+    };
+    latestGates = gates;
+    const verdict = autopassDecision(gates);
+
+    if (isBluff(verdict)) {
+      if (verdict.manual) {
+        // A manual bluff is a hold the phase widget labels; next is
+        // the pass.
+        cancelBluffTimer();
+        setBluffStatus({ manual: true });
+      } else {
+        armTimedBluff(gp.bluffDelayMinMs, gp.bluffDelayMaxMs);
+      }
+      return;
+    }
+    cancelBluff();
 
     if (verdict === "hold") return;
     if (verdict === "clear-toggle") {
@@ -340,7 +450,9 @@
   // preference auto-stamped onto the params unless the caller has
   // already set `strict` (e.g. the override toast injects
   // force_cast=true and we want to skip the auto-stamp on that
-  // path). Other action types pass through unchanged.
+  // path). #1296: a catalog activate_ability is stamped from the same
+  // setting (strict + auto_tap), so an equip is charged like a cast;
+  // see manaEnforcement.ts. Other action types pass through unchanged.
   // lastCastByCardID stashes the most recent cast_spell payload per
   // instance_id so retry dispatchers (castAnyway after insufficient_mana,
   // confirmAutoTap) can replay the ORIGINAL payload with added flags.
@@ -350,12 +462,17 @@
   const lastCastByCardID = new Map<string, Record<string, unknown>>();
 
   const sendAction = (type: ActionType, params?: unknown, player?: string): void => {
+    // Acting ends a bluff: the viewer has taken the window.
+    cancelBluff();
+    // #1296: activate_ability is stamped too — see manaEnforcement.ts.
+    if (type === "cast_spell" || type === "activate_ability") {
+      params = stampManaEnforcement(
+        type,
+        (params ?? {}) as Record<string, unknown>,
+        $settings.gameplay.strictMana,
+      );
+    }
     if (type === "cast_spell") {
-      const strict = $settings.gameplay.strictMana;
-      const incoming = (params ?? {}) as Record<string, unknown>;
-      if (incoming.strict === undefined) {
-        params = { ...incoming, strict };
-      }
       // Stash by instance_id so retry paths can replay targets etc.
       const stash = params as Record<string, unknown>;
       const instanceID = stash.instance_id;
@@ -487,9 +604,10 @@
   const viewerIsActive = $derived(viewerID !== null && activePlayer?.id === viewerID);
   const viewerEliminated = $derived(viewerSeat?.eliminated === true);
 
-  // Game-end state. The server transitions State to "ended" once
-  // exactly one non-eliminated seat remains; the survivor is the
-  // implicit winner.
+  // Game-end state. The server names the result on GameView.outcome
+  // (ADR 0057): an effect win ends the game with the other seats still
+  // seated, so the winner comes from there, and "the one seat left
+  // standing" is only the fallback for a view with no outcome.
   const gameEnded = $derived(view?.state === "ended");
   // #628 (CR 726): the server's loop notice. While it stands, nothing
   // on this table passes priority automatically — see the autopass
@@ -497,13 +615,14 @@
   // toggle.
   const loopSuspended = $derived(autopassSuspended(view));
   const loopNotice = $derived(loopNoticeText(view));
-  const survivors = $derived(seats.filter((s) => !s.eliminated));
-  const winner = $derived(gameEnded && survivors.length === 1 ? survivors[0] : null);
+  const gameOver = $derived(gameOverText(view));
+  const winner = $derived(gameOver.winner);
 
   // Mulligan window: open between Start and the moment everyone has
   // KeptHand. The dialog blocks the viewer's normal toolbar until
   // they commit. The viewer can still see the table, chat, etc.
   const mulligansOpen = $derived(view?.mulligans_open === true);
+  const openingRoll = $derived(openingRollWinner(view));
   const viewerNeedsToDecide = $derived(
     mulligansOpen && !!viewerSeat && !viewerSeat.eliminated && !viewerSeat.hand_kept,
   );
@@ -553,8 +672,9 @@
   let prevEnded = false;
   $effect(() => {
     const ended = gameEnded;
-    if (ended && !prevEnded && viewerID) {
-      play(winner?.id === viewerID ? "win" : "loss");
+    const cue = endCueFor(view, viewerID);
+    if (ended && !prevEnded && cue) {
+      play(cue);
     }
     prevEnded = ended;
   });
@@ -569,6 +689,7 @@
   }
 
   function passPriority(): void {
+    cancelBluff();
     client.sendAction("pass_priority");
   }
 
@@ -612,12 +733,14 @@
     | null;
   let combatSelection = $state<CombatSelection>(null);
 
-  // Creatures on the battlefield currently declared as attacking the
-  // viewer — used to gate the block-mode flag below so the canvas
-  // doesn't enter block mode when there's nothing to block.
+  // Creatures on the battlefield the viewer is defending against —
+  // attacking them, a planeswalker they control or a battle they
+  // protect (CR 802.4a, #1339) — used to gate the block-mode flag
+  // below so the canvas doesn't enter block mode when there's nothing
+  // to block.
   const incomingAttackers = $derived.by(() => {
     if (!viewerID || !view) return [];
-    return view.battlefield.cards.filter((c) => c.attacking_target === viewerID);
+    return attackersDefendedBy(view, viewerID);
   });
 
   // Step-based gating mirrors the server's MTG-rules check. Attackers
@@ -742,15 +865,24 @@
   // either, so this is the same optimistic-stash shape
   // lastCastByCardID uses for a cast retry, sized down to "the one
   // bulk attack that can be in flight at a time."
-  let lastAttackAllAttempt = $state<string | null>(null);
+  //
+  // #1533: with the action frame's id beside it, so only the server's
+  // answer to THAT frame opens a picker (bulkAttackRefusal). Under
+  // Silent Arbiter the common refusal is a single click-declared
+  // attacker, and it must stay the plain toast.
+  let lastAttackAllAttempt = $state<BulkAttackAttempt | null>(null);
+
+  function sendBulkAttack(defenderSeatID: string, params: AttackAllParams): void {
+    combatSelection = null;
+    const frameID = client.sendAction("declare_attackers", undefined, params);
+    lastAttackAllAttempt = frameID ? { defenderSeatID, frameID } : null;
+    play("attack");
+  }
 
   function attackAllAt(defenderSeatID: string): void {
     const params = attackAllParams(attackPlan, defenderSeatID);
     if (!params) return;
-    combatSelection = null;
-    lastAttackAllAttempt = defenderSeatID;
-    client.sendAction("declare_attackers", undefined, params);
-    play("attack");
+    sendBulkAttack(defenderSeatID, params);
   }
 
   // ADR 0080 (#1063): the button's tooltip names the CR 508.1a price
@@ -776,22 +908,37 @@
   // the rejection first.
   let attackPickerDefenderID = $state<string | null>(null);
 
-  // attackTaxRefusalDefenderID is non-null exactly when the LAST
-  // "attack with all" attempt is the thing $lastError is currently
-  // complaining about — a derived read rather than an effect that
-  // writes its own dependency, so there is nothing here to loop.
-  const attackTaxRefusalDefenderID = $derived.by(() => {
-    const err = $lastError;
-    if (!err || err.code !== "attack_tax_unpaid" || !lastAttackAllAttempt) return null;
-    return lastAttackAllAttempt;
-  });
+  // #1533: the server's sentence for the limit refusal the picker was
+  // opened from, shown at its top. Null for any other opening.
+  let attackPickerLimitReason = $state<string | null>(null);
+
+  // bulkRefusal is non-null exactly when $lastError is the server's
+  // answer to the LAST "attack with all" frame and is one the picker
+  // can answer: an unpaid tax (#1162) or a count limit (#1533). A
+  // derived read rather than an effect that writes its own dependency,
+  // so there is nothing here to loop.
+  const bulkRefusal = $derived(bulkAttackRefusal($lastError, lastAttackAllAttempt));
+  const attackTaxRefusalDefenderID = $derived(
+    bulkRefusal?.kind === "tax" ? bulkRefusal.defenderSeatID : null,
+  );
+  const attackLimitRefusalDefenderID = $derived(
+    bulkRefusal?.kind === "limit" ? bulkRefusal.defenderSeatID : null,
+  );
+  // A used-up limit (room 0) leaves nothing to pick; the toast then
+  // explains and offers no picker. An unpublished room (null) still
+  // offers it: the server refuses an over-full pick again and says so.
+  const attackLimitRefusalRoom = $derived(
+    attackLimitRefusalDefenderID ? attackLimitOn(view, attackLimitRefusalDefenderID) : null,
+  );
 
   function openAttackPicker(defenderSeatID: string): void {
+    attackPickerLimitReason = null;
     attackPickerDefenderID = defenderSeatID;
   }
   function openAttackPickerFromRefusal(): void {
-    if (!attackTaxRefusalDefenderID) return;
-    attackPickerDefenderID = attackTaxRefusalDefenderID;
+    if (!bulkRefusal) return;
+    attackPickerLimitReason = bulkRefusal.kind === "limit" ? ($lastError?.message ?? null) : null;
+    attackPickerDefenderID = bulkRefusal.defenderSeatID;
     client.lastError.set(null);
   }
   function dismissAttackTaxRefusal(): void {
@@ -801,18 +948,17 @@
     const defenderSeatID = attackPickerDefenderID;
     attackPickerDefenderID = null;
     if (!defenderSeatID) return;
+    attackPickerLimitReason = null;
     const params = attackAllParams(attackPlan, defenderSeatID, {
       only: attackerIDs,
       lockedSources,
     });
     if (!params) return;
-    combatSelection = null;
-    lastAttackAllAttempt = defenderSeatID;
-    client.sendAction("declare_attackers", undefined, params);
-    play("attack");
+    sendBulkAttack(defenderSeatID, params);
   }
   function cancelAttackPicker(): void {
     attackPickerDefenderID = null;
+    attackPickerLimitReason = null;
   }
 
   // The inverse of a wide declaration is undo, not a bulk "unattack":
@@ -827,6 +973,24 @@
   );
   function undoDeclaration(): void {
     client.sendAction("undo");
+  }
+
+  // #1279: the viewer is a defender whose block declaration is still
+  // open. The engine completes it when they pass priority, but a
+  // defender does not hold priority while the active player does —
+  // this is how they say "done" from there. Whatever they have staged
+  // is the declaration; nothing staged is "no blocks".
+  const viewerBlocksPending = $derived(blockDeclarationPending(view, viewerID));
+  const viewerStagedBlocks = $derived(
+    viewerID && view
+      ? view.battlefield.cards.filter((c) => c.controller === viewerID && !!c.blocking_target)
+          .length
+      : 0,
+  );
+  function finishBlocks(): void {
+    if (!viewerID) return;
+    combatSelection = null;
+    client.sendAction("finish_blocks", viewerID);
   }
 
   function declareBlockTarget(attackerCardID: string): void {
@@ -994,7 +1158,9 @@
       >
     {/if}
     <span class={`status status-${$status}`} title={`seq ${$lastSeq}`}>
-      <i class="dot" aria-hidden="true"></i>{$status}
+      <i class="dot" aria-hidden="true"></i>{$status === "session_ended"
+        ? "session ended"
+        : $status}
       <span class="seq">· seq {$lastSeq}</span>
     </span>
     <!-- Withheld while the dev replay scrubber is showing a past frame:
@@ -1320,6 +1486,7 @@
     status={$status}
     attempt={$reconnectAttempt}
     onRetry={() => client.retryNow()}
+    signedIn={lastKnownSignedIn}
   />
 
   <div class="play-area">
@@ -1357,7 +1524,7 @@
                combat hint, opening-hand roll-call, toasts, game end.
                Nothing here pushes the table around. -->
           {#snippet attention()}
-            <TargetingBanner />
+            <TargetingBanner {view} />
 
             <!-- Bot disclosures. Improvisation announcements always
                  show; per-move reasoning only with the S11.5 "show bot
@@ -1415,15 +1582,18 @@
                         >
                       {/if}
                     </button>
-                    {#if attackTaxOn(view, attackPlan.defenders[0].id)}
+                    {#if offersAttackPicker(view, attackPlan, attackPlan.defenders[0].id)}
                       <!-- #1162: the seat can only afford SOME of a wide
                            swing under a tax — offered up front rather
                            than only after the full-batch button is
-                           refused. -->
+                           refused. #1533: likewise when a count limit
+                           lets only some of it attack. -->
                       <button
                         type="button"
                         class="ghost att-btn"
-                        title="pick which attackers to send, and lock a land against the auto-tapper"
+                        title={attackTaxOn(view, attackPlan.defenders[0].id)
+                          ? "pick which attackers to send, and lock a land against the auto-tapper"
+                          : "pick which attackers to send — an effect limits how many can attack"}
                         onclick={() => openAttackPicker(attackPlan.defenders[0].id)}
                       >
                         Choose attackers…
@@ -1447,11 +1617,13 @@
                           <span class="muted">{attackTaxOn(view, opp.id)}</span>
                         {/if}
                       </button>
-                      {#if attackTaxOn(view, opp.id)}
+                      {#if offersAttackPicker(view, attackPlan, opp.id)}
                         <button
                           type="button"
                           class="ghost att-btn"
-                          title={`pick which attackers to send at ${seatLabel(opp)}, and lock a land against the auto-tapper`}
+                          title={attackTaxOn(view, opp.id)
+                            ? `pick which attackers to send at ${seatLabel(opp)}, and lock a land against the auto-tapper`
+                            : `pick which attackers to send at ${seatLabel(opp)} — an effect limits how many can attack`}
                           onclick={() => openAttackPicker(opp.id)}
                           aria-label={`Choose attackers against ${seatLabel(opp)}`}
                         >
@@ -1471,6 +1643,35 @@
                     <Icon name="undo" size={12} /> Undo
                   </button>
                 {/if}
+              </div>
+            {/if}
+
+            <!-- #1279: a defender still declaring blockers can finish
+                 without holding priority. Present for the whole of
+                 their open declaration, so the count stays live as
+                 blocks are staged; gone once it is complete. -->
+            {#if viewerBlocksPending && !mulligansOpen && !gameEnded}
+              <div class="att block-finish" aria-label="declare blockers">
+                <span class="att-label">
+                  <Icon name="sword" size={12} />
+                  block
+                </span>
+                <span class="att-text">
+                  {#if viewerStagedBlocks > 0}
+                    <strong>{viewerStagedBlocks}</strong>
+                    {viewerStagedBlocks === 1 ? "blocker" : "blockers"} declared
+                  {:else}
+                    Choose blockers, or declare none
+                  {/if}
+                </span>
+                <button
+                  type="button"
+                  class="primary att-btn"
+                  title="finish declaring blockers — the attacking player gets priority once every defender is done"
+                  onclick={finishBlocks}
+                >
+                  {viewerStagedBlocks > 0 ? "Done blocking" : "No blocks"}
+                </button>
               </div>
             {/if}
 
@@ -1502,6 +1703,12 @@
             {#if mulligansOpen && !gameEnded}
               <div class="att mulligan-banner" aria-label="opening hand decisions">
                 <span class="att-label">Opening hands</span>
+                {#if openingRoll}
+                  <span class="opening-roll" style="--seat-color: {seatColor(openingRoll.seat)}">
+                    <span class="seat-dot" style="background:{seatColor(openingRoll.seat)}"></span>
+                    <strong>{openingRollText(openingRoll)}</strong>
+                  </span>
+                {/if}
                 {#each seats as seat (seat.id)}
                   <span
                     class="mull"
@@ -1523,6 +1730,29 @@
                     {/if}
                   </span>
                 {/each}
+              </div>
+            {/if}
+
+            {#if $rewindNotice}
+              <!-- #523: the table rewound (a restore-generation change
+                   whose seq went backwards from what this client had
+                   already rendered) rather than merely reconnected.
+                   A generation change with no rewind shows nothing —
+                   see ws.ts's dispatchFrame. -->
+              <div class="att toast rewind-notice" role="status" aria-live="polite">
+                <span class="att-label gold">
+                  <Icon name="undo" size={12} />
+                  restored
+                </span>
+                <span class="att-text">{$rewindNotice.message}</span>
+                <button
+                  type="button"
+                  class="ghost att-close"
+                  onclick={() => rewindNotice.set(null)}
+                  aria-label="dismiss"
+                >
+                  <Icon name="x" size={12} />
+                </button>
               </div>
             {/if}
 
@@ -1579,6 +1809,40 @@
                   <Icon name="x" size={12} />
                 </button>
               </div>
+            {:else if attackLimitRefusalDefenderID}
+              <!-- #1533: a wide swing refused by a CR 508.1c count limit
+                   (Silent Arbiter, Crawlspace — ADR 0045 Decision 45)
+                   offers the same attackers picker, capped at the room
+                   the server publishes. The server's sentence is the
+                   reason, shown verbatim. -->
+              <div class="att toast attack-limit-override" role="alert" aria-live="polite">
+                <span class="att-label gold">attack limit</span>
+                <span class="att-text">
+                  <strong>{$lastError?.message}</strong>
+                  {#if attackLimitRefusalRoom === 0}
+                    <span class="muted">· no more creatures can attack this combat</span>
+                  {/if}
+                </span>
+                {#if attackLimitRefusalRoom !== 0}
+                  <button
+                    type="button"
+                    class="primary att-btn"
+                    onclick={openAttackPickerFromRefusal}
+                  >
+                    {attackLimitRefusalRoom === null
+                      ? "Choose attackers…"
+                      : `Choose up to ${attackLimitRefusalRoom}…`}
+                  </button>
+                {/if}
+                <button
+                  type="button"
+                  class="ghost att-close"
+                  onclick={dismissAttackTaxRefusal}
+                  aria-label="dismiss"
+                >
+                  <Icon name="x" size={12} />
+                </button>
+              </div>
             {:else if $lastError}
               <div class="att toast error" role="alert" aria-live="polite">
                 <span class="att-label danger">rejected</span>
@@ -1603,9 +1867,10 @@
                 <span class="att-text">
                   {#if winner}
                     <span class="seat-dot" style="background:{seatColor(winner.seat)}"></span>
-                    <strong>{winner.name}</strong> wins the game.
+                    <strong>{winner.name}</strong>
+                    {gameOver.text}
                   {:else}
-                    Game ended — no survivors.
+                    {gameOver.text}
                   {/if}
                 </span>
                 <button type="button" class="primary att-btn" onclick={back}>
@@ -1661,9 +1926,20 @@
       {#if viewerNeedsToDecide}
         <ModalLayer />
         <div class="mulligan-scrim"></div>
-        <div class="mulligan-dialog" role="dialog" aria-label="keep or mulligan your hand">
+        <div
+          class="mulligan-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-label="keep or mulligan your hand"
+        >
           <header>
             <h2>Your opening hand</h2>
+            {#if openingRoll}
+              <p class="opening-roll-copy">
+                <span class="seat-dot" style="background:{seatColor(openingRoll.seat)}"></span>
+                {openingRollText(openingRoll)}.
+              </p>
+            {/if}
             {#if (viewerSeat?.mulligans_taken ?? 0) > 0}
               <p class="muted">
                 Mulligans taken: {viewerSeat?.mulligans_taken}. You'll redraw 7 cards (simplified
@@ -1709,6 +1985,7 @@
         {view}
         {viewerID}
         defenderSeatID={attackPickerDefenderID}
+        limitReason={attackPickerLimitReason}
         onConfirm={confirmAttackPicker}
         onCancel={cancelAttackPicker}
       />
@@ -1924,7 +2201,8 @@
       opacity: 0.45;
     }
   }
-  .status-disconnected .dot {
+  .status-disconnected .dot,
+  .status-session_ended .dot {
     background: var(--danger);
     box-shadow: 0 0 8px var(--danger);
   }
@@ -2249,6 +2527,18 @@
     flex: 1;
     min-width: 0;
   }
+  /* #1533: the limit sentence is the server's and can run long
+     ("… can attack Player 3 each combat (Crawlspace)."). At phone
+     width the text takes the whole first line and the actions wrap
+     under it, rather than squeezing it into a column a word wide. */
+  @media (max-width: 599px) {
+    .attack-limit-override {
+      flex-wrap: wrap;
+    }
+    .attack-limit-override .att-text {
+      flex-basis: calc(100% - 110px);
+    }
+  }
   .att-text strong {
     color: var(--fg);
     font-weight: 700;
@@ -2297,6 +2587,8 @@
   .combat-hint,
   .mana-override,
   .attack-tax-override,
+  .attack-limit-override,
+  .rewind-notice,
   .game-end {
     border-color: rgba(217, 180, 92, 0.45);
   }
@@ -2329,6 +2621,17 @@
     flex-wrap: wrap;
     gap: 8px;
   }
+  .opening-roll {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 9px;
+    border: 1px solid color-mix(in srgb, var(--seat-color) 58%, var(--border));
+    border-radius: 999px;
+    color: var(--fg);
+    background: color-mix(in srgb, var(--seat-color) 12%, transparent);
+    font-size: 12px;
+  }
   .mull {
     display: inline-flex;
     align-items: center;
@@ -2355,9 +2658,9 @@
     font-size: 10px;
   }
 
-  /* The viewer's own keep-or-mulligan decision: the table dims and
-     the dialog docks low with large cards, so the hand is the only
-     thing in focus. */
+  /* Give the opening hand the table's width so all seven cards can
+     be read together. On smaller screens only the cards scroll;
+     the heading and keep/mulligan controls stay in view. */
   .mulligan-scrim {
     /* Sits under Board's attention strip (z 40) so the opening-hand
        roll-call stays readable while the table behind it dims. */
@@ -2371,11 +2674,12 @@
   .mulligan-dialog {
     position: absolute;
     left: 50%;
-    bottom: 24px;
-    transform: translateX(-50%);
+    top: 50%;
+    transform: translate(-50%, -50%);
     z-index: 71;
-    width: min(880px, calc(100% - 48px));
-    padding: 16px 18px 14px;
+    width: min(2400px, calc(100% - clamp(24px, 6vw, 160px)));
+    max-height: calc(100% - 96px);
+    padding: clamp(16px, 2vw, 28px);
     background: var(--surface);
     border: 1px solid rgba(217, 180, 92, 0.4);
     border-radius: var(--radius-xl);
@@ -2384,10 +2688,12 @@
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 18px;
+    overflow: hidden;
   }
   .mulligan-dialog header {
     display: flex;
+    flex-shrink: 0;
     align-items: baseline;
     gap: 12px;
     flex-wrap: wrap;
@@ -2395,26 +2701,36 @@
   .mulligan-dialog header h2 {
     margin: 0;
     font-family: var(--font-display);
-    font-size: 18px;
+    font-size: clamp(18px, 1.5vw, 24px);
     font-weight: 700;
   }
   .mulligan-dialog header p {
     margin: 0;
-    font-size: 12.5px;
+    font-size: 14px;
+  }
+  .mulligan-dialog header .opening-roll-copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--gold-strong);
+    font-weight: 600;
   }
   .mulligan-cards {
-    display: flex;
-    gap: 8px;
-    overflow-x: auto;
-    padding: 2px 0;
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-auto-rows: max-content;
+    gap: clamp(8px, 1vw, 16px);
+    min-height: 0;
+    overflow-y: auto;
+    padding: 2px;
   }
   .mulligan-card {
     /* positioned for the failed-art pip (#33) */
     position: relative;
-    flex: 0 0 auto;
-    width: 112px;
-    height: 157px;
-    border-radius: 7px;
+    min-width: 0;
+    aspect-ratio: 5 / 7;
+    border-radius: 10px;
+    box-sizing: border-box;
     overflow: hidden;
     background: var(--surface-sunken);
     border: 1px solid var(--border);
@@ -2424,7 +2740,7 @@
     display: block;
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
   }
   .mulligan-card-fallback {
     display: flex;
@@ -2432,16 +2748,53 @@
     height: 100%;
     align-items: center;
     justify-content: center;
-    padding: 6px;
+    padding: 12px;
     text-align: center;
-    font-size: 11px;
+    font-size: 16px;
     color: var(--fg-muted);
     box-sizing: border-box;
   }
   .mulligan-actions {
     display: flex;
+    flex-shrink: 0;
     justify-content: flex-end;
-    gap: 6px;
+    gap: 10px;
+  }
+  .mulligan-actions button {
+    min-height: 44px;
+    padding-inline: 20px;
+  }
+
+  @media (max-width: 1279px) {
+    .mulligan-cards {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 767px) {
+    .mulligan-cards {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 599px) {
+    .mulligan-dialog {
+      gap: 12px;
+    }
+    .mulligan-dialog header {
+      gap: 6px;
+    }
+    .mulligan-cards {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .mulligan-actions button {
+      flex: 1;
+    }
+  }
+  @media (max-height: 600px) {
+    .mulligan-dialog {
+      max-height: calc(100% - 24px);
+      padding: 12px;
+      gap: 10px;
+    }
   }
 
   .life-history-popover {

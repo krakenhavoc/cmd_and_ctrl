@@ -354,7 +354,7 @@ func TestPayLifeNeverPausesOnACR616Prompt(t *testing.T) {
 }
 
 // TestPayLifeSkipsAReplacementThatWouldAskAQuestion — the same rule for
-// a CR 614.10 "may". The payment cannot pause to ask, and firing the
+// a "may". The payment cannot pause to ask, and firing the
 // effect blind would answer for its controller in the direction that
 // favours it, so it is skipped un-applied: weaker than printed, never
 // stronger.

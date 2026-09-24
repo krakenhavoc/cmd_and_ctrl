@@ -66,8 +66,14 @@ is a comment on its card file.
 | 34 | #397 | **32** | — | — | PR #532 — the "no new machinery" group (32 of the 42 it listed) |
 | 35 | #398 | **23** | — | — | PR #538 — the "no new machinery" group (23 of the 28 it listed) |
 | 36 | #399 | **27** | — | — | PR #542 — the "no new machinery" group (27 of the 33 it listed) |
-| 37–40 | #400–#403 | 0 | 0 | — | not started |
-| 41–60 | #448–#467 | 0 | 0 | — | not started — ranked against `b5a3055`, 2026-09-13 |
+| 37 | #400 | **6** | — | — | partial — 4 in #933; Voyage Home and Lilypad Village had landed separately; stale claim cleared 2026-09-24 |
+| 38 | #401 | **40** | 22 | 38 | complete pass in #953/#966 |
+| 39 | #402 | **31** | 31 | 38 | complete pass in #950/#966 |
+| 40 | #403 | **34** | 26 | 40 | 1 pre-existing plus 33 in #954/#966 |
+| 41 | #448 | **46** | 25 | 29 | complete pass in #949/#966 |
+| 42 | #449 | **30** | — | — | partial — 29 in #947/#948 plus Price of Fame pre-existing; stale claim cleared 2026-09-24 |
+| 43 | #450 | **48** | 19 | 33 | 1 pre-existing plus 47 in #955/#966 |
+| 44–60 | #451–#467 | 0 | 0 | — | not started — ranked against `b5a3055`, 2026-09-13 |
 
 ### Where the work actually is — measured 2026-09-18
 
@@ -75,15 +81,15 @@ The Progress table above says what has been *registered*. It does not say
 what is *available*, and the two have drifted apart because a batch only
 ever harvests its "no new machinery" group.
 
-**Read the status comment on a batch issue, not the issue body.** Every
-one of the sixty issues carries a per-card `Status 2026-09-1x` comment
-checked against `develop`, and that comment — not the body — is the
-current triage. The bodies were written against the frozen batch-01
-detector set and still file cards under the five mechanics above; the
-status comments already correct for that, list each card's *other*
-blockers in parentheses, and carry a refutation checklist. A re-sort of
-the bodies alone overcounts, because dominant-blocker filing hides
-second blockers.
+**Read the latest status and progress comments on a batch issue, not the
+issue body.** Every one of the sixty issues carries a per-card
+`Status 2026-09-1x` comment checked against that day's `develop`; later
+progress comments record what actually landed. Those comments are historical,
+not a permanent claim that a card is still ready: revalidate against current
+`develop` before starting a new pass. The bodies were written against the
+frozen batch-01 detector set and still file cards under the five mechanics
+above. A re-sort of the bodies alone overcounts, because dominant-blocker
+filing hides second blockers.
 
 **What the first six batches actually measured.** Batches 37–43 were
 worked on 2026-09-18 against today's `develop`:
@@ -136,12 +142,12 @@ registry disagree.
 
 | Measured | Count |
 |---|---:|
-| Registry keys (`len(effects.All())`) | **2252** |
-| — whole cards (bare `oracle_id`) | **2178** |
-| — back faces (`<oracle_id>#1`) | 74 |
-| Declared `full` | 1758 |
-| Declared `caveats` | 433 |
-| Declared `unreviewed` | 61 |
+| Registry keys (`len(effects.All())`) | **2451** |
+| — whole cards (bare `oracle_id`) | **2373** |
+| — back faces (`<oracle_id>#1`) | 78 |
+| Declared `full` | 2118 |
+| Declared `caveats` | 276 |
+| Declared `unreviewed` | 57 |
 
 A back face is usually half a card: the modal-DFC land cycle registers
 only its sixty land backs, and those cards are still gap cards on their
@@ -673,7 +679,7 @@ comments; a card can sit in two):
   **mana-production replacement** (2: Nyxbloom Ancient, Mana
   Reflection).
 - Singles worth naming: attack- and block-count restrictions (Silent
-  Arbiter, Crawlspace), a die roll over the seeded RNG (Ancient
+  Arbiter, Crawlspace — closed by #1507), a die roll over the seeded RNG (Ancient
   Copper Dragon, Ancient Gold Dragon) and a search replacement (Aven
   Mindcensor). The mill replacement (Bruvac) closed with #569.
 
@@ -1006,7 +1012,7 @@ Ordered by "unlocks alone", because that is the column that answers
 | 4 | Until-end-of-turn continuous effects (turn-scoped statics) | **59** | 232 | 171 | #279 — **shipped** (S32) |
 | 5 | Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse) | **59** | 106 | 95 | — |
 | 6 | Attachments — Equipment and Auras | **47** | 105 | 104 | #280 — **shipped** (S33) |
-| 7 | Library-top placement and ordered look (Brainstorm / tutors / Ponder) | **45** | 98 | 61 | #996 |
+| 7 | Library-top placement and ordered look (Brainstorm / tutors / Ponder) | **45** | 98 | 61 | #996 — placement **shipped** (ADR 0088); #1298 leftovers **shipped** (ADR 0088 amendment) |
 | 8 | Player-scoped and game-rule effects (hand size, extra turns / combats / land drops, command zone) | **39** | 95 | 45 | — |
 | 9 | Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling…) | **28** | 96 | 28 | #705 / #706 / #748 ¹ |
 | 10 | Keyword actions with no primitive (proliferate, surveil, explore, connive, amass…) | **24** | 54 | 28 | — |
@@ -1040,7 +1046,7 @@ and the other legacy keywords have no tracker and are built on demand,
 when a card needs one. *Update 2026-09-17:* infect, with wither and
 toxic, now has one,
 [#748](https://github.com/krakenhavoc/cmd_and_ctrl/issues/748), filed
-from the card-coverage audit. In the last row, regeneration is
+from the card-coverage audit, and shipped on 2026-09-24. In the last row, regeneration is
 [#667](https://github.com/krakenhavoc/cmd_and_ctrl/issues/667); phasing
 and totem armor are on demand too. The same footnote applies to the
 two tables below.
@@ -1128,7 +1134,7 @@ Same detectors, ranks 2,235–4,253.
 | 6 | Mana pipeline — restricted / derived mana, mana from a spell, gated or scaled mana abilities | **47** | 113 | 59 | #352 — **shipped** (S32) |
 | 7 | Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse) | **40** | 116 | 93 | — |
 | 8 | Player-scoped and game-rule effects (hand size, extra turns / combats / land drops, command zone) | **35** | 86 | 46 | — |
-| 9 | Library-top placement and ordered look (Brainstorm / tutors / Ponder) | **31** | 91 | 40 | #996 |
+| 9 | Library-top placement and ordered look (Brainstorm / tutors / Ponder) | **31** | 91 | 40 | #996 — placement **shipped** (ADR 0088); #1298 leftovers **shipped** (ADR 0088 amendment) |
 | 10 | Attack / block restrictions and taxes (can't be blocked, attack taxes, must attack) | **30** | 105 | 42 | — |
 | 11 | Card-type completeness — planeswalkers, sagas, vehicles, battles, classes | **26** | 87 | 72 | #92 — **shipped** (S27) |
 | 12 | Exile-and-return (blink) and exile-until-leaves | **23** | 58 | 32 | — |
@@ -1156,7 +1162,8 @@ format you go, the weirder the card. Two rows move enough to matter:
   *(Update 2026-09-16: the bucket's umbrella, #176, is closed. Landwalk
   is #705, prowess is #706, changeling shipped in S26, and the rest are
   built on demand; see note ¹ under the first table. Update 2026-09-17:
-  infect, wither and toxic are #748.)*
+  infect, wither and toxic are #748. Update 2026-09-24: #748 shipped
+  them — the keywords are enforced and imported.)*
 - **Attachments (#280) move from 6th to 5th and the count rises** — 55
   sole, 123 touched. Equipment and Auras are a mid-rarity staple shape,
   not a top-of-format one.
@@ -1176,7 +1183,7 @@ Same detectors, ranks 4,254–6,289.
 | 4 | Protection / hexproof / ward / indestructible / shroud, damage prevention, copying | **57** | 216 | 106 | #662 / #665 / #666 ¹ |
 | 5 | Attachments — Equipment and Auras | **49** | 114 | 111 | #280 — **shipped** (S33) |
 | 6 | Mana pipeline — restricted / derived mana, mana from a spell, gated or scaled mana abilities | **40** | 98 | 60 | #352 — **shipped** (S32) |
-| 7 | Library-top placement and ordered look (Brainstorm / tutors / Ponder) | **37** | 108 | 53 | #996 |
+| 7 | Library-top placement and ordered look (Brainstorm / tutors / Ponder) | **37** | 108 | 53 | #996 — placement **shipped** (ADR 0088); #1298 leftovers **shipped** (ADR 0088 amendment) |
 | 8 | Attack / block restrictions and taxes (can't be blocked, attack taxes, must attack) | **35** | 114 | 44 | — |
 | 9 | Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse) | **31** | 111 | 85 | — |
 | 10 | Keyword actions with no primitive (proliferate, surveil, explore, connive, amass…) | **26** | 67 | 30 | — |

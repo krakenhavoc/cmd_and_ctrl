@@ -17,7 +17,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // one card per legendary creature that connects.
 //
 // DECLARED SIMPLIFICATION, weaker than printed: the engine reads no
-// keyword counters of its own (CR 122.1e), so Vraska carries that
+// keyword counters of its own (CR 122.1b), so Vraska carries that
 // rule for the counters it places — a Layer 6 static granting
 // deathtouch to every creature with a deathtouch counter
 // (b24KeywordCounterGrant), any creature's, anyone's, exactly the
@@ -40,7 +40,7 @@ func init() {
 					if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneBattlefield {
 						continue
 					}
-					if err := (AddCounter{Target: id, Kind: "deathtouch", N: 1}).Apply(ctx); err != nil {
+					if err := (AddCounter{Target: id, Kind: "deathtouch", N: 1}).Apply(ctx.asGroupMember()); err != nil {
 						return err
 					}
 				}

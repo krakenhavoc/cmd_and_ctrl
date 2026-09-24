@@ -46,7 +46,7 @@ func blockAfterLockIn(t *testing.T, g *Game, attacker uuid.UUID, blockers ...uui
 	if err := g.DeclareBlockers(decls); err != nil {
 		t.Fatalf("DeclareBlockers: %v", err)
 	}
-	g.WithWriteLock(func() { g.commitBlockDeclarationLocked() })
+	g.WithWriteLock(func() { g.completeAllBlockDeclarationsLocked(); g.commitBlockDeclarationLocked() })
 	if !g.blockedAttackers[attacker] {
 		t.Fatalf("setup: the attacker was not recorded as blocked by the lock-in")
 	}

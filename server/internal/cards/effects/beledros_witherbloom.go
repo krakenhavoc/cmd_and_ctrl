@@ -39,6 +39,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // applies — that rule is keyed off the {T} cost component
 // (AbilityCost.Tap), which this ability has none of. A freshly cast
 // Beledros can pay 10 life and untap lands the same turn it enters.
+//
+// The label is the printed line (#1276's oracle check reads its cost
+// prefix), and it is a const because OncePerTurnActivation keys the
+// per-object tally on the exact Label string.
+const beledrosUntapLabel = "Pay 10 life: Untap all lands you control. Activate only once each turn."
+
 func init() {
 	Register(Spec{
 		OracleID:        "90194ff1-db61-463f-b5a3-15cd85311d0e",
@@ -49,9 +55,9 @@ func init() {
 			AtEachUpkeep("Beledros Witherbloom — create a Pest", Do(CreateToken{Template: PestToken(), N: 1})),
 		},
 		Activated: []ActivatedAbility{{
-			Label:     "Beledros Witherbloom — untap all lands you control",
+			Label:     beledrosUntapLabel,
 			Cost:      PayLife(10),
-			Condition: OncePerTurnActivation("Beledros Witherbloom — untap all lands you control"),
+			Condition: OncePerTurnActivation(beledrosUntapLabel),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return untapAllLandsControlledBy(g, item.Controller, NewContext(g, item))
 			},

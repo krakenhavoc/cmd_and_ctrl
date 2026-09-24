@@ -139,7 +139,7 @@ one consolidated dialog, because each has exactly one thing to ask.
 than `Min` remain (targeted options need a legal target to count).
 
 Effects read the choice back with `ctx.HasMode(i)` and resolve the
-chosen bullets in printed order (CR 700.2c).
+chosen bullets in printed order (CR 608.2c).
 
 ### 8. One clause, N slots; partial illegality resolves (sub-PR 5)
 
@@ -334,3 +334,147 @@ application — which is the honest seam between the two.
   may have you lose life instead" was a second prompt addressed
   across the table. The current oracle text is an unconditional life
   loss and is what ships.
+
+## Amendment (2026-09-23, #1211): targeting an ability on the stack (CR 115.4)
+
+The amendment above ends with **"targeting an ability on the stack"**
+in its Out of scope, and so does ADR 0065 §*Still open*, and so does
+the `Modal and multi-target clauses` seam row. This closes it.
+
+The gap was never about the RULE. CR 115.4 is one sentence — "some
+spells and abilities can target abilities on the stack; such a spell
+or ability can only target an activated or triggered ability" — and
+the engine has been able to *counter* one since S13.1
+(`counterAbilityLocked`). What it could not do was **name** one: every
+target clause walked ZONES, the stack zone holds spell cards, and an
+ability item is an entry in `Game.StackMeta` with a synthetic id and
+no card anywhere.
+
+#1223 built the half of the answer it needed for Strionic Resonator
+(`TargetSpec.Abilities` + `AbilityOK`, recorded as decisions 12–15 of
+[ADR 0043](0043-copy-effects.md)'s 2026-09-22 amendment). This
+amendment says what generalising it to the whole catalog cost, which
+was almost nothing, and states the three decisions that were actually
+open.
+
+### 1. A stack clause is TWO enumerations over ONE id space
+
+`TargetSpellOrAbility` (`server/internal/cards/effects/stack_targets.go`)
+sets `Zones: {ZoneStack}` **and** `Abilities: true` on one spec. The
+zone walk finds the spell cards; `abilityItemsBySeqLocked` finds the
+ability items; both append to `LegalTargets.Cards`, and both answer a
+`TargetRef{Kind: TargetCard}`.
+
+There is no fifth `TargetRefKind` and there will not be one. The wire
+projection, the client picker, `internal/legal`'s enumerator, the
+CR 601.2c gate and the CR 608.2b re-check all key on *"a uuid that has
+to still be there"*, which is exactly as true of a stack item as of a
+card; a new kind would have had to be taught to every one of them to
+say the same thing. The two id spaces overlap **by design** — a spell
+item's id IS its card's instance id — and `specMatchLocked` resolves
+the ambiguity by checking `StackMeta` first and excluding
+`StackItemSpell` there, so a clause admitting both still resolves each
+ref to exactly one object.
+
+**A mana ability is unreachable for free.** CR 605.3b keeps it off the
+stack, so there is no item to enumerate and Stifle's, Disallow's and
+Voidslime's printed "(Mana abilities can't be targeted.)" needs no
+predicate, no check and no caveat.
+
+### 2. The predicate vocabulary is over the ITEM, not over the card
+
+A "target spell or ability" clause narrows both halves at once — Bolt
+Bend's "with a single target" is a fact about the *announcement*, and
+a spell and an ability have the same announcement record. So the
+predicate the catalog writes is a `StackItemPredicate` over
+`*game.StackItem`, and `TargetSpellOrAbility` runs it on **both**
+halves: the ability half directly, the spell half after looking the
+card's own item up in `StackMeta`.
+
+That is what lets the three printed shapes be three call sites and no
+new machinery:
+
+| Printed | Written |
+|---|---|
+| "target spell or ability" | `TargetSpellOrAbility(label)` |
+| "target spell or ability **with a single target**" | `TargetSpellOrAbility(label, ItemHasASingleTarget())` |
+| "target **activated ability, triggered ability, or legendary spell**" | `TargetSpellOrAbility(label, AnyStackItem(AnAbilityItem(), ASpellItem(Legendary())))` |
+
+`HasASingleTarget()` (the `CardPredicate`, #1196) stays for the cards
+that print "target **spell** with a single target" — Misdirection,
+Ricochet Trap, Imp's Mischief — and both read the same
+`StackItemTargetCountForEffect`, so they cannot drift.
+
+The spell half REFUSES a stack card with no `StackMeta` entry, which
+is strictly narrower than the old `TargetSpell` walk and deliberately
+so: the only object in that state is a spell that is *mid-resolution*
+(the meta is deleted before the card is routed away), and nothing may
+target it.
+
+### 3. The CR 702 keyword gate stays off, and CR 701.5 is a deletion
+
+An ability on the stack is neither a permanent nor a player, so
+nothing about it can have hexproof, shroud or protection, and
+`specMatchesLocked` applies `CanBeTargetedBy` only to the zone walk.
+Protection still governs the ability's own SOURCE by way of
+`retargetSourceLocked` when the ability is retargeted, which is the
+one place it can matter.
+
+Countering one is a **deletion, not a zone change** (CR 701.6a: "an
+ability that's countered doesn't go anywhere"). `counterAbilityLocked`
+drops the `StackMeta` entry and recomputes split second; there is no
+`routeCardToZoneLocked` call, no CR 903.9 window, no flashback
+override and no destination to redirect — which is why
+`CounterTargetToZoneForEffect` treats an ability exactly as
+`CounterTargetForEffect` does and Dest is meaningless for one.
+
+Two things were wrong on that path and are fixed here rather than
+worked around at the card:
+
+- **`CounterAbility` (the public, locking entry) was a second copy of
+  the body**, the #529 shape that let the two counter paths drift on
+  flashback. It now delegates, so there is one deletion.
+- **The emitted `EventCounterSpell` claimed the countered ability's
+  own source as `Source`**, which `events.go` documents as *the
+  counter itself*. The game log reads that field as "who countered
+  it" and therefore printed *"Llanowar Elves countered
+  `<uuid>`"* — the victim in the attacker's place and an unresolvable
+  id in the victim's. The event now carries `Target` (the item),
+  `CardID` (the permanent whose ability it was) and `Label`, and
+  `protocol/log.go` renders the label, because a countered ability has
+  no card of its own to name.
+
+### 4. What needed nothing
+
+Stated because the measurement is the point: `RetargetStackItemForEffect`,
+`OfferRetargetForEffect` and `retargetCheckLocked` (#1196) are written
+over `StackMeta` and `itemAnnouncedClauses`, both of which serve an
+ability item already — so Deflecting Swat's and Bolt Bend's "or
+ability" half needed **one word in a clause constructor** and not one
+line of retarget code. `CounterTargetForEffect` has discriminated on
+`item.Kind` since S13.1. `internal/legal`'s target enumerator and the
+protocol's `stampLegalTargets` are id-agnostic. The stack overlay
+already lights up any item whose id is in the legal set.
+
+The client's share is **three strings**: the `stack_ability` and
+`stack_item` target modes beside `stack_spell` (the banner's sentence
+and `isTargetingStack`'s membership), and the cast flow's mode
+allowlist, which is an allowlist and would otherwise have fired
+`cast_spell` with no targets rather than opening the picker.
+
+### Out of scope
+
+- **Trickbind's second sentence** — "activated abilities of that
+  permanent can't be activated this turn" is a per-permanent
+  activation restriction with a turn duration, which
+  [ADR 0073](0073-optional-additional-costs-and-the-cast-gate.md) §*A
+  restriction with a DURATION* already prices. The card is not shipped.
+- **Spellskite** — changing a target TO a named object, unchanged from
+  the #1196 amendment's Out of scope.
+- **"Counter target ability unless its controller pays"** — the
+  `counter_unless_paid` guard is keyed to a spell's stack card
+  (`server/internal/game/counter_unless_paid.go:105`); no catalog card
+  in the gap needs it yet.
+- **A per-KIND target mode on the wire.** `stack_ability` and
+  `stack_item` are hints for the banner's sentence, not legality; the
+  legal set is still the only thing the picker obeys.

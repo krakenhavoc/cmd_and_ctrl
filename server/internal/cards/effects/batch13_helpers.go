@@ -74,7 +74,16 @@ func b13CreatureDealtDamageToYou(ev game.Event, source *game.Card, g *game.Game)
 // a layer effect, or a stolen creature that went back to its owner's
 // hand, is not counted — weaker than printed, never stronger.
 func b13OtherCreatureYouControlLeftWithoutDying(ev game.Event, source *game.Card, g *game.Game) bool {
-	if ev.Kind != game.EventLTB || ev.NewZone == game.ZoneGraveyard || ev.CardID == source.InstanceID {
+	return ev.CardID != source.InstanceID && creatureYouControlLeftWithoutDying(ev, source, g)
+}
+
+// creatureYouControlLeftWithoutDying is the same condition without
+// the word "other" — Aang, Airbending Master counts himself. When the
+// departing creature IS the source, the harvester's CR 603.10a
+// look-back hands this the card that left, so the controller test is
+// trivially the source's own.
+func creatureYouControlLeftWithoutDying(ev game.Event, source *game.Card, g *game.Game) bool {
+	if ev.Kind != game.EventLTB || ev.NewZone == game.ZoneGraveyard {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
@@ -274,15 +283,34 @@ func b13AttackingCreaturesYouControl(g *game.Game, controller uuid.UUID) []uuid.
 // b13PutCounterOnEach puts one +1/+1 counter on every listed
 // permanent still on the battlefield, in the given order.
 func b13PutCounterOnEach(ctx *Context, ids []uuid.UUID) error {
-	for _, id := range ids {
-		if z := ctx.Game.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneBattlefield {
-			continue
+	return b13PutCounterOnEachThen(ctx, ids, nil)
+}
+
+// b13PutCounterOnEachThen is b13PutCounterOnEach with a continuation
+// that runs once every counter in the list has SETTLED (#1290) —
+// Finneas, Ace Archer's "then if creatures you control have total
+// power 10 or greater, draw a card" has to read power AFTER all of
+// the counters have landed, and any one of them can pause on a CR 616
+// ordering prompt (a Doubling Season / Hardened Scales board). The
+// placements are chained one at a time — the next one is only
+// attempted from inside the previous one's own continuation — so
+// `then` cannot run until the whole list, not just the first
+// placement, has landed. Nil `then` is b13PutCounterOnEach.
+func b13PutCounterOnEachThen(ctx *Context, ids []uuid.UUID, then func(g *game.Game) error) error {
+	if len(ids) == 0 {
+		if then == nil {
+			return nil
 		}
-		if err := (AddCounter{Target: id, Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
-			return err
-		}
+		return then(ctx.Game)
 	}
-	return nil
+	id, rest := ids[0], ids[1:]
+	item := ctx.Item
+	if z := ctx.Game.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneBattlefield {
+		return b13PutCounterOnEachThen(ctx, rest, then)
+	}
+	return ctx.Game.AddCounterThenForEffect(id, "+1/+1", 1, func(g *game.Game, _ int) error {
+		return b13PutCounterOnEachThen(NewContext(g, item), rest, then)
+	})
 }
 
 // b13CreateTappedTreasures is "create N tapped Treasure tokens" —

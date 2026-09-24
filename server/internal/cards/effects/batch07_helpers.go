@@ -16,7 +16,7 @@ import (
 // "nonbasic" is b03Nonbasic, "another" by name is b03NotNamed, and
 // the 1/1 flying Thopter is tokens.go's ThopterToken.
 
-// b07IsModified is CR 122.10's "modified": a creature with a counter
+// b07IsModified is CR 700.9's "modified": a creature with a counter
 // on it, equipped, or enchanted by an Aura its controller controls —
 // Kodama of the West Tree's word. Counters are read off the card;
 // the two attachment halves walk the battlefield for anything whose

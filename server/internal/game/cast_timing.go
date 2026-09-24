@@ -122,7 +122,11 @@ type CastTimingRule struct {
 	// rejected: a land PLAY is not a cast (CR 305.1) and never
 	// reaches this read at all, so a filter that named one would
 	// simply match nothing a cast can be.
-	Filter PermissionFilter `json:"filter,omitzero"`
+	//
+	// No `omitzero`: this is part of GameSnapshot's serialization
+	// graph (PlayerStatic.Timing.Filter) and its presence would
+	// otherwise depend on the building Go toolchain (#1492).
+	Filter PermissionFilter `json:"filter"`
 
 	// FromZone narrows the statement to casts out of one zone. Zero
 	// (`ZoneKind("")`) is "from anywhere", which is every card on the
@@ -352,10 +356,21 @@ func castTimingAffects(a CastTimingAffects, controller, caster uuid.UUID) bool {
 //     past your Teferi, and that falls out of the placement rather
 //     than needing a rule of its own.
 //
+// SPLIT SECOND SHUTS IT (#1519, CR 702.61a), ahead of all four steps:
+// while a split-second spell is on the stack nobody may begin a cast,
+// whatever the card, the permission or an Orrery says. CastSpell and
+// the enumerator each return earlier on the same cache with their own
+// answer (ErrSplitSecondActive, no moves); the check is here as well
+// so `castable_here` — the third caller, which has no earlier return
+// — cannot light a graveyard, exile or library-top card the engine
+// would refuse. It is a statement about CASTING, so it belongs to
+// this function and not to the land branch below: a land cannot be
+// played with a non-empty stack in the first place.
+//
 // A LAND PLAY IS NOT HERE. CR 305.1 and CR 116.2a make playing a land
 // a special action rather than a cast, and every card this function
 // exists for writes about casting SPELLS. CastSpell's land branch
-// keeps its own sorcerySpeedOpenLocked check beside this call — the
+// keeps its own SorcerySpeedOpenLocked check beside this call — the
 // same split cast_gate.go documents, for the same reason: a Dosan
 // that stopped a land play would be a rule nobody printed.
 //
@@ -363,6 +378,19 @@ func castTimingAffects(a CastTimingAffects, controller, caster uuid.UUID) bool {
 //
 // Caller must hold g.mu (read or write).
 func (g *Game) CastTimingOpenLocked(playerID uuid.UUID, card Card, zone ZoneKind, perm *CastPermission) bool {
+	// CR 702.61a — no cast begins under split second.
+	if g.SplitSecondActive {
+		return false
+	}
+	// 0. A plotted card (CR 702.170d, #1318) is cast in its owner's
+	// main phase with the stack empty and at no other time: the window
+	// belongs to the permission, so neither the card's own flash nor a
+	// per-player grant opens it wider. The per-player restrictions
+	// below cannot narrow it either — Dosan's "only during your turn"
+	// and Teferi's "only as a sorcery" are both already true of it.
+	if perm != nil && perm.Timing == TimingPlot {
+		return g.SorcerySpeedOpenLocked(playerID)
+	}
 	// 1. The card's own timing.
 	instantSpeed := card.IsInstant() || HasKeyword(&card, "flash")
 	// 2. The permission's override, if it carries one.
@@ -392,5 +420,5 @@ func (g *Game) CastTimingOpenLocked(playerID uuid.UUID, card Card, zone ZoneKind
 	if instantSpeed {
 		return true
 	}
-	return g.sorcerySpeedOpenLocked(playerID)
+	return g.SorcerySpeedOpenLocked(playerID)
 }

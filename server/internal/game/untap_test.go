@@ -157,11 +157,10 @@ func TestUntapStepPermissionWidensTheSet(t *testing.T) {
 	}
 }
 
-// CR 302.6 ends summoning sickness for the ACTIVE player's
-// permanents, and has nothing to do with untapping. The two used to
-// be one loop because the two sets were the same set; a permission
-// makes them different sets.
-func TestUntapStepSicknessClearIsScopedToTheActiveSeat(t *testing.T) {
+// An untap permission can untap a creature on an opponent's turn, but
+// CR 302.6 still keys summoning sickness to its controller's turn-began
+// boundary. The permission must not clear the marker as a side effect.
+func TestOpponentUntapPermissionDoesNotClearSummoningSickness(t *testing.T) {
 	const oracle = "test-seedborn-probe"
 	withCatalogUntapStepPermissions(t, func(id string) []UntapStepPermission {
 		if id != oracle {

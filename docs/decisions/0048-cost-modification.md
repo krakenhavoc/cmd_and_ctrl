@@ -141,7 +141,7 @@ permanent misbehaved.
 `effectiveCostLocked`'s order is now:
 
 1. printed mana cost, or the alternative cost claimed at announce
-   (CR 601.2e / CR 118.9);
+   (CR 601.2b / CR 118.9);
 2. an exile-play grant's cost override (airbend);
 3. commander tax (CR 903.8);
 4. **cost modifiers — increases, reductions, floor (CR 601.2f)**;

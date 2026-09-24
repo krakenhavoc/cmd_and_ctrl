@@ -63,7 +63,7 @@ func aangAndLaCounterEachTappedCreature(g *game.Game, item *game.StackItem) erro
 		if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneBattlefield {
 			continue
 		}
-		if err := (AddCounter{Target: id, Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
+		if err := (AddCounter{Target: id, Kind: "+1/+1", N: 1}).Apply(ctx.asGroupMember()); err != nil {
 			return err
 		}
 	}

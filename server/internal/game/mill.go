@@ -33,7 +33,7 @@ import (
 // Only for something the rules call a mill, which is narrower than
 // what the mill helpers express:
 //
-//	graveyard destination   CR 701.13a defines the keyword action by
+//	graveyard destination   CR 701.17a defines the keyword action by
 //	                        where the cards go. "Exile the top four
 //	                        cards of your library" uses the same
 //	                        helper and is not a mill, so no window.
@@ -43,7 +43,7 @@ import (
 //	                        names no number to double.
 //
 // The count is the number the INSTRUCTION asked for, not the number
-// the library can supply. CR 701.13b makes a player told to mill more
+// the library can supply. CR 701.17b makes a player told to mill more
 // cards than they have mill as many as possible, and that clamp is
 // millPlanLocked's, applied after this window settles.
 //
@@ -97,7 +97,7 @@ import (
 // Peace the Helm mills the whole library.
 //
 // The amount and the bound are different rules and this is the line
-// between them. CR 701.13b's number is the one the INSTRUCTION names —
+// between them. CR 701.17b's number is the one the INSTRUCTION names —
 // "mill three" — and it is the number a mill-amount replacement
 // doubles; a bound that counts arrivals is not one, and Bruvac the
 // Grandiloquent does not double it.
@@ -162,7 +162,7 @@ import (
 // replacement rewrites MillCount on the event and nothing else.
 type millTail struct {
 	// dest is where the cards were asked to go — a graveyard for
-	// CR 701.13a's mill, exile for "exile the top N cards of your
+	// CR 701.17a's mill, exile for "exile the top N cards of your
 	// library". It is also what landedInZoneLocked measures "milled
 	// this way" against (CR 400.7, ADR 0013 §5l).
 	dest ZoneKind
@@ -310,7 +310,7 @@ func (g *Game) millThroughReplacementsLocked(
 //
 // Each repetition is now its own one-card mill instruction, so it
 // opens its own RepEventMill window and a mill-amount replacement
-// rewrites it (CR 701.13b). Both cards of a doubled repetition are
+// rewrites it (CR 701.17b). Both cards of a doubled repetition are
 // milled — one instruction, one simultaneous batch — and the clause is
 // asked AFTER the repetition, which is where the card asks it. That is
 // the whole of the paper numbers:
@@ -341,7 +341,7 @@ func (g *Game) millUntilRunLocked(run *millRun) error {
 		return run.finish(g)
 	}
 	if len(p.Library.Cards) == 0 {
-		// CR 701.13b: the run ends when the library does, with no error
+		// CR 701.17b: the run ends when the library does, with no error
 		// and no loss. The caller's continuation still owes an answer.
 		return run.finish(g)
 	}

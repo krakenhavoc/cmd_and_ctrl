@@ -64,13 +64,19 @@ const (
 // rows that remain are the ones whose silence survived being read.
 var silentEventKinds = map[string]string{
 	// --- already told, by another line -------------------------------
+	"EventConcede":        "the EventPlayerEliminated that follows it (Label \"concede\") is the one line a concession writes (ADR 0057 Decision 1)",
 	"EventETB":            silentAlreadyToldAsAZoneMove,
 	"EventLTB":            silentAlreadyToldAsAZoneMove,
 	"EventMill":           silentAlreadyToldAsAZoneMove,
 	"EventDiscardCard":    silentAlreadyToldAsAZoneMove,
 	"EventBecomesTarget":  "the cast or activation line already named the spell; targeting is announce-time bookkeeping the stack view carries",
 	"EventBecomesBlocked": "the LogBlock entry for the blocker is the same fact from the other side",
-	"EventTrigger":        "a trigger reaching the stack is told by the LogResolve of the ability it becomes",
+	// #1257: this reason was not true when it was written. The
+	// ability's LogResolve carried no card and no label and rendered
+	// as "a card resolved". It now names the ability by its stack
+	// label and its source (projectAbilityItem), redacted with the
+	// source — log_ability_resolve_test.go pins both halves.
+	"EventTrigger": "a trigger reaching the stack is told by the LogResolve of the ability it becomes, which names it by its label and source (#1257)",
 	// #1184: the same argument as the row above, for the other half of
 	// the same announcement. An activation reaching the stack is told
 	// by the LogResolve of the ability it becomes, and the stack view
@@ -78,10 +84,11 @@ var silentEventKinds = map[string]string{
 	// say the same thing twice about one click. The kind exists so
 	// TRIGGERS can watch an activation, not so the log can narrate
 	// one.
-	"EventActivateAbility": "an activation reaching the stack is told by the LogResolve of the ability it becomes",
+	"EventActivateAbility": "an activation reaching the stack is told by the LogResolve of the ability it becomes, which names it by its label and source (#1257)",
 	"EventKeywordAction":   silentImpliedByAnotherLine,
 
 	// --- the step spine ----------------------------------------------
+	"EventTurnBegan":          "the first EventStepBegan announces the same boundary to the table; this kind exists for engine consumers after per-turn resets",
 	"EventStepTransition":     silentStepSpine,
 	"EventBeginUpkeep":        silentStepSpine,
 	"EventBeginDrawStep":      silentStepSpine,
@@ -120,6 +127,15 @@ var silentEventKinds = map[string]string{
 	// face up without a special action — this row stops being true
 	// and the kind needs an arm.
 	"EventTurnedFaceUp": "the CR 116.2g special action that turns a permanent face up is the only emitter, and its LogSpecialAction line already names the card and the price",
+	// #1382. A card becomes plotted two ways and the table is told
+	// both: the plot special action's LogSpecialAction line names the
+	// card and the price ("Plot {3}{R}"), and an "it becomes plotted"
+	// effect is the resolution of a spell or ability whose LogResolve
+	// names it, with the LogZone line for the exile beside it. The
+	// plotted state itself is on the wire as the card's cast
+	// permission. The kind exists for "when this card becomes plotted"
+	// to watch, not for the log to say a third time.
+	"EventBecomesPlotted": "the plot special action's LogSpecialAction line, or the LogResolve of the effect that plotted it plus its LogZone exile, already tells the table (#1382)",
 
 	// --- visible board state -------------------------------------------
 	"EventTapCard":        silentBoardStateIsVisible,
@@ -128,6 +144,7 @@ var silentEventKinds = map[string]string{
 	"EventUnattach":       silentBoardStateIsVisible,
 	"EventCopyApplied":    silentBoardStateIsVisible,
 	"EventCaseSolved":     silentBoardStateIsVisible,
+	"EventHarnessed":      silentBoardStateIsVisible,
 	"EventRegenerated":    silentImpliedByAnotherLine,
 	"EventBattleDefeated": silentBoardStateIsVisible,
 

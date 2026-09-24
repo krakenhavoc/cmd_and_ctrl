@@ -34,20 +34,32 @@ func init() {
 				lastKnown := source.Counters["muster"]
 				return game.NewTriggeredItem(source, "Assemble the Legion — add a muster counter, then muster the Soldiers",
 					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						n := lastKnown
-						if b15OnBattlefield(g, item.SourceCardID) {
-							if err := (AddCounter{Target: item.SourceCardID, Kind: "muster", N: 1}).Apply(ctx); err != nil {
-								return err
+						muster := func(g *game.Game, n int) error {
+							if n <= 0 {
+								return nil
 							}
+							return CreateToken{Controller: item.Controller, Template: TokenCard("1/1 red and white Soldier with haste"), N: n}.Apply(NewContext(g, item))
+						}
+						// #1432: a new object the card became is not
+						// "this enchantment" — it gets no counter, and
+						// the muster reads the one that triggered.
+						if !b15OnBattlefield(g, item.SourceCardID) || sourceIsNewObject(g, item) {
+							return muster(g, lastKnown)
+						}
+						// #1290: the count that matters is what the
+						// counter LANDED AT, not the pre-placement
+						// value — a Doubling Season / Hardened Scales
+						// board pauses the placement on a CR 616
+						// prompt, and reading Counters["muster"] on
+						// the next line would see the pre-placement
+						// count.
+						return g.AddCounterThenForEffect(item.SourceCardID, "muster", 1, func(g *game.Game, _ int) error {
+							n := lastKnown
 							if c, ok := g.LookupCardForEffect(item.SourceCardID); ok {
 								n = c.Counters["muster"]
 							}
-						}
-						if n <= 0 {
-							return nil
-						}
-						return CreateToken{Controller: item.Controller, Template: TokenCard("1/1 red and white Soldier with haste"), N: n}.Apply(ctx)
+							return muster(g, n)
+						})
 					})
 			},
 		}},

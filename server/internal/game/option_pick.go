@@ -198,6 +198,30 @@ type optionPickFrame struct {
 	// chooser actually picked cannot drift from what they were shown,
 	// because it IS what they were shown.
 	thenSeat func(g *Game, seat uuid.UUID) error
+
+	// thenSubject is thenSeat for an option list whose branches are
+	// seats AND permanents — CR 508.7's "reselect which player or
+	// permanent that creature is attacking" (attack_reselect.go,
+	// #1329). It receives the chosen option's SUBJECT: its Player when
+	// it names a seat, else its first card, else uuid.Nil — which is
+	// what an option naming neither (the "keep attacking" branch) and
+	// a dropped prompt (runWithNoChoice) both hand it. Same #994
+	// reason as thenSeat: read the answer off the option the chooser
+	// picked, never off an index into a list the prune may have
+	// renumbered. At most one of the three continuations is set.
+	thenSubject func(g *Game, subject uuid.UUID) error
+}
+
+// subject is what an option is ABOUT, for thenSubject: its seat, or
+// its first card, or nothing.
+func (o ChoiceOption) subject() uuid.UUID {
+	if o.Player != uuid.Nil {
+		return o.Player
+	}
+	if len(o.Cards) > 0 {
+		return o.Cards[0]
+	}
+	return uuid.Nil
 }
 
 // runWithNoChoice runs the frame as though nobody chose. Reports the
@@ -217,6 +241,8 @@ func (f *optionPickFrame) runWithNoChoice(g *Game) error {
 		return nil
 	case f.thenSeat != nil:
 		return f.thenSeat(g, uuid.Nil)
+	case f.thenSubject != nil:
+		return f.thenSubject(g, uuid.Nil)
 	case f.then != nil:
 		return f.then(g, NoChoiceIndex)
 	}
@@ -258,12 +284,41 @@ func (f *optionPickFrame) runWithNoChoice(g *Game) error {
 // drop paths because the departure table has one second column, and a
 // kind settled in two places is a kind settled two ways.
 //
-// The branch is on the RUN LINK rather than on the kind (#1027). Two
-// kinds carry one today and the discard's is a PendingChoiceChooseCards
-// — the same kind Thoughtseize's revealed-hand pick uses, which is no
-// run's leg — so "is this prompt part of a run" is a question about
-// the prompt, not about its kind. A fourth verb then needs no fourth
-// case here.
+// The branch is on the PROMPT rather than on the kind (#1027). Two
+// kinds carried a run link when that rule was written and the
+// discard's is a PendingChoiceChooseCards — the same kind
+// Thoughtseize's revealed-hand pick uses, which is no run's leg — so
+// "what is waiting on this prompt" is a question about the prompt, not
+// about its kind. A fourth verb then needs no fourth case here.
+//
+// THREE SHAPES A DROPPED PROMPT CAN HAVE, in the order they are asked
+// (#1225):
+//
+//  1. It is one LEG OF A RUN. The leg settles with nothing moved and
+//     the run's continuation runs after the last of them. Asked FIRST
+//     and exclusively: a run leg's own frame is the leg's sentence and
+//     settles the run from inside itself (the discard's
+//     discardCardsLocked into opts.then), so running that frame here
+//     as well would settle the leg twice and pay the run out early.
+//  2. It carries a CARD-SET FRAME whose continuation is a plain
+//     closure — a chained pick asked from inside a resolution that is
+//     paused waiting for it, which is every mid-card choose_cards:
+//     effects.SacrificeChoice's "Torment of Hailfire repeats X times",
+//     Gluntch's counters before the second player draws, Ward's
+//     sacrifice before the spell is or is not countered. The frame
+//     runs with NOTHING PICKED, which is the outcome this payload
+//     reserves for "nobody chose" and the one every such continuation
+//     already has to handle: with no short-circuit in
+//     QueueChooseCardsForEffect, each caller wrote the empty-candidate
+//     path itself and it runs the same closure with the same empty
+//     answer. Validate is not consulted — it is documented as never
+//     being called for an empty pick, because a floor of zero has to
+//     keep "choose nothing" as an answer the engine cannot refuse.
+//  3. It carries an OPTION-PICK FRAME. NoChoiceIndex, as since #1006.
+//
+// A prompt with none of the three — a Thoughtseize-shaped pick whose
+// caller wanted nothing after it — still runs nothing, which is what
+// the nil receivers say.
 //
 // Caller must hold g.mu, and must already have taken the prompt out of
 // the queue: the continuation may queue the next link of the chain and
@@ -276,6 +331,8 @@ func (g *Game) defaultDroppedChoiceLocked(c *PendingChoice) {
 	switch {
 	case c.promptRun != uuid.Nil:
 		err = g.settleRunLegLocked(c.promptRun, c.Chooser, nil)
+	case c.chooseCardsResume != nil:
+		err = c.chooseCardsResume.runWithNoChoice(g)
 	default:
 		err = c.optionPickResume.runWithNoChoice(g)
 	}
@@ -411,6 +468,7 @@ func (g *Game) ResolveOptionPick(choiceID, chooserID uuid.UUID, index int) error
 	// pruned since it was built, so the index is only meaningful
 	// against the list the chooser was shown, which is this one.
 	seat := choice.PickOptions[index].Player
+	subject := choice.PickOptions[index].subject()
 	if frame != nil && frame.thenSeat != nil && seat == uuid.Nil {
 		// A seat continuation answered with an option that names no
 		// seat is a bug in whoever built the list, and it must not
@@ -421,15 +479,18 @@ func (g *Game) ResolveOptionPick(choiceID, chooserID uuid.UUID, index int) error
 		return ErrInvalidParam
 	}
 	g.dequeueChoiceLocked(idx)
-	if frame == nil || (frame.then == nil && frame.thenSeat == nil) {
+	if frame == nil || (frame.then == nil && frame.thenSeat == nil && frame.thenSubject == nil) {
 		// Nothing to run. The prompt is gone either way rather than
 		// stuck: an option pick with no frame is a bug in whoever
 		// queued it, and refusing the answer would wedge the seat.
 		return nil
 	}
 	run := frame.then
-	if frame.thenSeat != nil {
+	switch {
+	case frame.thenSeat != nil:
 		run = func(g *Game, _ int) error { return frame.thenSeat(g, seat) }
+	case frame.thenSubject != nil:
+		run = func(g *Game, _ int) error { return frame.thenSubject(g, subject) }
 	}
 	if err := run(g, index); err != nil {
 		g.EmitEvent(Event{

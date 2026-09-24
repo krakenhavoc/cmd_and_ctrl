@@ -74,6 +74,35 @@ func ChooseNRepeating(prompt string, min, max int, options ...game.ModeOption) *
 	return &game.ModeSpec{Prompt: prompt, Options: options, Min: min, Max: max, Repeatable: true}
 }
 
+// SpreeMode declares one Spree bullet (CR 702.172a): its own printed
+// additional cost — mana, brace notation — paid only if this bullet
+// is chosen, on top of the spell's own cost and every other chosen
+// bullet's. Its OnResolve branches on ctx.HasMode(i), the older
+// modal-spell shape; use SpreeModeDoing when the bullet reads better
+// as its own closure.
+func SpreeMode(label, cost string, targets ...*game.TargetSpec) game.ModeOption {
+	o := Mode(label, targets...)
+	o.Cost = cost
+	return o
+}
+
+// SpreeModeDoing is SpreeMode plus ModeDoing's own body — Three Steps
+// Ahead's three unrelated bullets are easier to read as three
+// closures than as one long if-chain in OnResolve.
+func SpreeModeDoing(label, cost string, targets *game.TargetSpec, effect func(item *game.StackItem, ctx *Context, occurrence int) error) game.ModeOption {
+	o := ModeDoing(label, targets, effect)
+	o.Cost = cost
+	return o
+}
+
+// Spree — CR 702.172a: "Choose one or more modes. As an additional
+// cost to cast this spell, pay the costs associated with those modes
+// chosen this way." Not repeatable: no printed Spree card allows
+// choosing the same bullet twice.
+func Spree(options ...game.ModeOption) *game.ModeSpec {
+	return &game.ModeSpec{Prompt: "Spree (choose one or more)", Options: options, Min: 1, Max: len(options)}
+}
+
 // ManaValueGE passes when the card's mana value is ≥ n (Austere
 // Command's "mana value 4 or greater").
 // Same reading as ManaValueLE: game.(*Game).ManaValueForEffect.
@@ -110,6 +139,18 @@ func DestroyTheModesTarget(item *game.StackItem, ctx *Context, occ int) error {
 	return DestroyTarget{Target: t.ID}.Apply(ctx)
 }
 
+// TokenCopyTheModesTarget is "create a token that's a copy of target
+// <thing> you control" as a modal bullet's body — Sublime Epiphany's
+// creature bullet and Three Steps Ahead's artifact-or-creature bullet
+// differ only in the clause on the option.
+func TokenCopyTheModesTarget(item *game.StackItem, ctx *Context, occ int) error {
+	t, ok := ModeTarget(ctx, occ)
+	if !ok {
+		return nil
+	}
+	return CreateTokenCopy{Controller: item.Controller, Copy: t.ID, N: 1}.Apply(ctx)
+}
+
 // BounceTheModesTarget is "return target <thing> to its owner's
 // hand" as a modal bullet's body — Mystic Confluence's and Sublime
 // Epiphany's, likewise differing only in the clause.
@@ -119,6 +160,21 @@ func BounceTheModesTarget(item *game.StackItem, ctx *Context, occ int) error {
 		return nil
 	}
 	return BounceToHand{Target: t.ID}.Apply(ctx)
+}
+
+// CounterTheModesTarget is "counter target <thing on the stack>" as a
+// modal bullet's body — Sublime Epiphany's first TWO bullets, which
+// differ only in their clause ("target spell" and "target activated
+// or triggered ability") and not at all in what they do, because
+// CounterTarget takes a stack ITEM id and discriminates on
+// StackItem.Kind (#1211). Three Steps Ahead's Spree bullet (S45)
+// reuses it too, differing only in the mode's own Cost.
+func CounterTheModesTarget(item *game.StackItem, ctx *Context, occ int) error {
+	t, ok := ModeTarget(ctx, occ)
+	if !ok {
+		return nil
+	}
+	return CounterTarget{StackID: t.ID}.Apply(ctx)
 }
 
 // DealFixedDamageToModesTarget is "<source> deals `amount` damage to

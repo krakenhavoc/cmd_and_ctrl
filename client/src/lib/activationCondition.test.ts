@@ -42,7 +42,7 @@ function view(battlefield: CardView[], step = "precombat_main"): GameView {
     battlefield: zone("battlefield", undefined, battlefield),
     stack: zone("stack", undefined, []),
     exile: zone("exile", undefined, []),
-    turn: { number: 1, active_seat: 0, priority_holder: 0, phase: "main1", step },
+    turn: { seq: 1, number: 1, active_seat: 0, priority_holder: 0, phase: "main1", step },
     mulligans_open: false,
   };
 }
@@ -112,11 +112,14 @@ describe("abilityBlocked and condition_unmet", () => {
   it("lets a shut sorcery-speed window keep its own, more specific reason", () => {
     const card: CardView = { instance_id: "s", name: "Speaker", owner: "a", controller: "a" };
     const v = view([card], "upkeep");
-    const reason = abilityBlocked({ sorcery_speed: true, condition_unmet: true }, false, false, {
-      card,
-      view: v,
-      viewerID: "a",
-    });
+    // #1208: `timing_closed` is the server's verdict and what the
+    // row greys on; `sorcery_speed` alone is only the printed clause.
+    const reason = abilityBlocked(
+      { sorcery_speed: true, timing_closed: true, condition_unmet: true },
+      false,
+      false,
+      { card, view: v, viewerID: "a" },
+    );
     expect(reason).toBe("Sorcery-speed only");
   });
 

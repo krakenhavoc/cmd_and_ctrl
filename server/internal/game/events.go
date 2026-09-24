@@ -2,6 +2,7 @@ package game
 
 import (
 	"log/slog"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -44,8 +45,11 @@ const (
 	// same fact recorded on the stack item.
 	EventCast EventKind = "cast"
 
-	// EventResolve — a stack item successfully resolved. CardID is
-	// the card whose spell or ability resolved.
+	// EventResolve — a stack item successfully resolved. For a SPELL,
+	// CardID (and Source) is the spell's card. For an ABILITY, CardID
+	// is empty — the item has no card on the stack — Source is the
+	// ability's source and Label the item's label; the public log
+	// names the ability off those two (#1257).
 	EventResolve EventKind = "resolve"
 
 	// EventFizzle — a spell or ability resolved but did nothing
@@ -110,6 +114,28 @@ const (
 	// already in exile when a watcher sees it. ADR 0062 Decision 4,
 	// #658 / #659.
 	EventSpecialAction EventKind = "special_action"
+
+	// EventBecomesPlotted — CardID, a card in exile, became plotted
+	// (CR 702.170c/d). Actor is the player who plotted it: the owner
+	// for the plot special action (CR 702.170a), the resolving item's
+	// controller for an effect ("exile target spell. It becomes
+	// plotted" — Aven Interrupter plots an OPPONENT's spell, and the
+	// actor is Aven's controller, not the spell's owner). Source is
+	// what did it: the card itself for the keyword, the effect's
+	// source card otherwise.
+	//
+	// Emitted from Game.PlotExiledCardForEffect, the one function both
+	// routes end in, and only once the card is in exile with its
+	// permission granted — a card that never landed (a commander whose
+	// owner took the CR 903.9 offer) is not plotted and fires nothing.
+	// A plain exile never emits it.
+	//
+	// "When this card becomes plotted" (Longhorn Sharpshooter, Aloe
+	// Alchemist) watches it from EXILE — #925's TriggeredAbility.Zones,
+	// the zone suspend's triggers watch from — through
+	// effects.WhenThisBecomesPlotted. Added for #1382 (ADR 0062
+	// amendment 2026-09-24).
+	EventBecomesPlotted EventKind = "becomes_plotted"
 
 	// EventMill — Actor milled CardID from the top of their library.
 	// Fires per card.
@@ -250,10 +276,39 @@ const (
 	// happened. Added in S16.5 (#159).
 	EventCopyApplied EventKind = "copy_applied"
 
-	// EventSearchLibrary — Actor searched their library. Reserved
-	// for S14 catalog effects that fire SearchLibrary; the log
-	// entry is the "you searched your library" trigger source
-	// that S19 listens for (Panoptic Mirror, etc.).
+	// EventStorm — a storm trigger resolved and settled on its count
+	// (CR 702.40a). Actor is the player who cast the storm spell,
+	// Source and CardID are that spell, and Amount is how many other
+	// spells were cast before it this turn — which is how many copies
+	// the trigger is about to create, and is zero for the turn's
+	// first spell.
+	//
+	// It exists because nothing else says the number. A spell COPY is
+	// created and not cast, so createSpellCopyLocked deliberately
+	// emits no EventCast (CR 707.10) and emits nothing else either;
+	// and the ability's own EventResolve names the ability ("Grapeshot
+	// — storm resolved", #1257) but not the count. The table would
+	// otherwise watch N Grapeshots appear from nowhere
+	// with nothing written down about why there are N. The count is
+	// the card, so it gets a line — the same argument saga chapters
+	// and Class levels get theirs. See ADR 0086 Decision 5.
+	//
+	// Emitted once per storm trigger, by StormCountForEffect
+	// (storm.go), as the trigger resolves and before the first copy
+	// is created. Nothing watches it.
+	EventStorm EventKind = "storm"
+
+	// EventSearchLibrary — Actor searched a library; Target names
+	// WHOSE library it was. The two agree for an ordinary tutor, but
+	// not for Bribery-style search of another player's library
+	// (#1230) — Target is what tells "an opponent searched THEIR
+	// library" (Actor == Target) apart from "an opponent searched
+	// YOUR library" (Target == the watcher, Actor someone else),
+	// which #1335 found EventSearchLibrary could not do at all before
+	// this. Reserved for S14 catalog effects that fire
+	// SearchLibrary; the log entry is the "you searched your library"
+	// trigger source that S19 listens for (Panoptic Mirror,
+	// Archivist of Oghma, etc.).
 	EventSearchLibrary EventKind = "search_library"
 
 	// EventCounterSpell — a stack item was countered (spell or
@@ -263,14 +318,35 @@ const (
 	EventCounterSpell EventKind = "counter_spell"
 
 	// EventConcede — Actor conceded the game. Precedes the
-	// eliminate-via-SBA path.
+	// EventPlayerEliminated (Label "concede") the concession causes;
+	// the public log projects only that one, so a concession is one
+	// line (ADR 0057 Decision 1).
 	EventConcede EventKind = "concede"
 
-	// EventPlayerEliminated — Actor was eliminated from the game
-	// (0 life, empty library draw, 21+ commander damage, poison >= 10,
-	// concede, or manual eliminate). The single terminating event
-	// for a player's participation in the game.
+	// EventPlayerEliminated — Actor left the game. The single
+	// terminating event for a player's participation in the game.
+	// Label is the game.LossCause ("life", "empty_draw", "poison",
+	// "commander_damage", "effect", "concede"); Source and CardID name
+	// the object whose effect made them lose, for an "effect" loss
+	// (ADR 0057 Decisions 1 and 7).
 	EventPlayerEliminated EventKind = "player_eliminated"
+
+	// EventGameOver — the game ended with a result (ADR 0057
+	// Decision 5). Actor is the winner (uuid.Nil for a draw); Label is
+	// the outcome cause ("last_standing", "effect", "all_lost");
+	// Source and CardID name the object whose effect won the game, for
+	// an "effect" win. Not emitted by Game.End(), which records no
+	// result.
+	EventGameOver EventKind = "game_over"
+
+	// EventWinPrevented — an effect said Actor wins the game, and a
+	// "can't win the game" gate stopped it (CR 104.2b, CR 104.3 —
+	// an opponent's Platinum Angel). Source and CardID are the object
+	// whose effect would have won; Target is the gate's source (a
+	// permanent, or the spell that granted a "this turn" gate). The
+	// game goes on, and nothing is remembered for later. Once per
+	// prevented win (ADR 0057 Decision 7).
+	EventWinPrevented EventKind = "win_prevented"
 
 	// EventETB — a permanent entered the battlefield. CardID is the
 	// new permanent. Distinct from ZoneMove so listeners can key
@@ -358,7 +434,7 @@ const (
 	// produces three events, so "whenever a creature you control
 	// attacks" (Hellrider) triggers three times rather than once with
 	// a count. Cards printed as "whenever one or more creatures you
-	// control attack" therefore over-fire — the same CR 603.1 batching
+	// control attack" therefore over-fire — the same "one or more" batching
 	// gap EventETB already has, and no card in the catalog has that
 	// wording.
 	//
@@ -393,7 +469,7 @@ const (
 	EventAttack EventKind = "attack"
 
 	// EventBecomesTarget — an object or player became the target of
-	// a spell or ability (CR 115.7). Actor is the controller of the
+	// a spell or ability (CR 115.3). Actor is the controller of the
 	// spell / ability, Source is its source card, Target is the
 	// thing that was targeted, and CardID repeats Target when the
 	// target is a card (uuid.Nil when it is a player) so a consumer
@@ -411,7 +487,7 @@ const (
 	//
 	// A two-target spell emits two events; a spell that targets the
 	// same object twice (AllowSame) likewise emits two, matching CR
-	// 115.7's per-instance-of-the-word-"target" reading.
+	// 115.3's per-instance-of-the-word-"target" reading.
 	//
 	// Known gap: an effect that CHANGES a spell's targets after
 	// announce (Deflecting Swat, Redirect) does not re-emit, because
@@ -588,7 +664,7 @@ const (
 	// uuid.Nil CardID matched nothing at all — a silent miss rather
 	// than an error. Both emit sites set it: the hand click and the
 	// AUTO-TAPPER's executor, which activates the ability too
-	// (CR 605.3a).
+	// (CR 605.3 — a mana ability is activated like any other).
 	EventManaAbilityActivated EventKind = "mana_ability_activated"
 
 	// EventManaAdded — one mana token landed in a player's pool.
@@ -670,9 +746,28 @@ const (
 	// Added in S46 (#757).
 	EventCaseSolved EventKind = "case_solved"
 
+	// EventHarnessed — a permanent became harnessed (CR 701.64).
+	// Source / CardID / Target = the permanent, Actor = its
+	// controller.
+	//
+	// Emitted once: CR 701.64b says a harnessed permanent stays
+	// harnessed while it is on the battlefield, and HarnessForEffect
+	// is idempotent, so nothing watching this fires twice. Bumps the
+	// layer version for the reason EventClassLevel / EventCaseSolved
+	// do (ADR 0071 amendment, #1321).
+	EventHarnessed EventKind = "harnessed"
+
+	// EventTurnBegan — one real (not skipped) turn began. Actor is the
+	// active player, Amount is Turn.Seq, and Label is "extra" for an
+	// extra turn. Emitted after every per-turn reset and before the new
+	// turn's first EventStepBegan. It is an engine boundary event, not a
+	// second public-log line beside the step spine (ADR 0059).
+	EventTurnBegan EventKind = "turn_began"
+
 	// EventStepBegan — the turn cursor entered a step. Actor is the
-	// active player, Step the step (typed), Amount the turn number and
-	// Label the step name. Emitted from runStepEntryHooksLocked AFTER
+	// active player, Step the step (typed), Amount the turn sequence,
+	// Round the table-facing rotation, and Label the step name. Emitted
+	// from runStepEntryHooksLocked AFTER
 	// the S17 skip-step replacement window has had its say, so a step
 	// that Stasis cancelled never announces, and never while the
 	// mulligan window holds the cursor at Untap, so it fires exactly
@@ -720,7 +815,7 @@ const (
 	// it: CR 506.4 says an attacking creature is blocked once, at the
 	// moment the declaration is complete, so a double block is one
 	// "whenever this creature becomes blocked" and one afflict
-	// trigger (CR 702.131). That is the whole reason this kind is
+	// trigger (CR 702.130). That is the whole reason this kind is
 	// separate from EventBlock, which is per BLOCKER — before #830
 	// each card that wanted the per-attacker reading deduplicated by
 	// walking the event log back to the attacker's EventAttack, and a
@@ -737,12 +832,31 @@ const (
 	// batch as the EventBlock events of the same declaration, so a
 	// OncePerBatch ability sees one occurrence. Added in #830.
 	EventBecomesBlocked EventKind = "becomes_blocked"
+
+	// EventBlockersDeclared — the defending player named by Actor has
+	// COMPLETED their CR 509.1 block declaration (#1279, ADR 0045
+	// Decision 38). One per defending player per combat, however many
+	// creatures they blocked with — Amount is that count, and 0 is
+	// "declared, none", which is the fact no other event carries: an
+	// empty blocked record means the same thing before the defender
+	// has acted as after they decided not to block.
+	//
+	// Emitted by completeBlockDeclarationLocked (block_completion.go),
+	// AFTER that defender's EventBlock / EventBecomesBlocked in the same
+	// batch, so the blocked record is written by the time the harvester
+	// asks it. It is the trigger point for CR 509.3's "whenever ~
+	// attacks and isn't blocked": such an ability watches this kind and
+	// asks whether its creature is attacking Actor and unblocked
+	// (effects.attacksAndIsNotBlocked). A creature put onto the
+	// battlefield attacking after the declaration never sees one, which
+	// is what the rule says.
+	EventBlockersDeclared EventKind = "blockers_declared"
 	// EventBattleDefeated — a battle's last defense counter came off
 	// (CR 310.12b). Source / Target / CardID = the battle, Actor = its
 	// controller.
 	//
 	// Emitted from the state-based-action pass IMMEDIATELY BEFORE the
-	// CR 704.5v move that puts the battle in the graveyard, so a
+	// CR 704.5v/w move that puts the battle in the graveyard, so a
 	// defeated trigger's source is still findable on the battlefield
 	// when the harvester walks it. A dies-trigger shape (EventLTB
 	// plus the LKI snapshot) would also work and would be lossier:
@@ -822,6 +936,38 @@ const (
 	// the permanent is face up and its catalog entry answers again.
 	// Added in S43 (ADR 0082, #1194).
 	EventTurnedFaceUp EventKind = "turned_face_up"
+
+	// EventTurnedFaceDown — the permanent CardID was turned face down
+	// by Source (CR 708.2a). Actor is the permanent's OWN controller,
+	// not the effect's: it is the seat whose board just changed, and
+	// Ixidron turns a whole table's creatures over in one batch.
+	// Source is the object that did it, which is the only half of
+	// "why" the event can carry — CR 708.7's other half, whether
+	// there is a way back up, is TurnFaceUpOffer's to answer off the
+	// card underneath.
+	//
+	// The twin of EventTurnedFaceUp, and a second kind rather than a
+	// direction flag on the first, because the two are not the same
+	// transition read backwards. CR 701.27b spells the distinction
+	// out for transform — "abilities that trigger when a permanent is
+	// turned face down won't trigger when that permanent transforms"
+	// — and a card watching one direction must not fire on the other.
+	//
+	// Two consumers, the same two EventTurnedFaceUp has:
+	// layerVersionBump invalidates on it, because the permanent's
+	// printed characteristics have just been replaced wholesale by
+	// the CR 708.2 body while it sits still; and a trigger on any
+	// OTHER permanent can watch it with no new constructor.
+	//
+	// What it cannot do is carry the turned permanent's OWN "when
+	// this is turned face down" trigger, because by the time it is
+	// emitted that permanent has no text (CR 708.2a) and the
+	// harvester reads a source's abilities through CatalogKey. That
+	// is the rule's asymmetry rather than the engine's — no printed
+	// card has such an ability — and it is written down in ADR 0082's
+	// 2026-09-23 amendment, decision A4.
+	// Added in S46 (ADR 0082 amendment, #1209).
+	EventTurnedFaceDown EventKind = "turned_face_down"
 
 	// EventRevealCards — Actor showed CardID to the whole table (CR
 	// 701.20). Fires once per card, so "reveal the top five cards of
@@ -949,6 +1095,12 @@ type Event struct {
 	// delta, number of cards, counter count after the change.
 	Amount int `json:"amount,omitempty"`
 
+	// Round is the table-facing round for EventStepBegan. Amount carries
+	// the turn sequence on EventStepBegan and EventTurnBegan; keeping the
+	// display value separate lets same-seat and extra turns retain distinct
+	// identities.
+	Round int `json:"round,omitempty"`
+
 	// LookedAt is the SIZE of a finished keyword action that looks at
 	// the top of a library — the "2" in "scry 2" — on EventScry and
 	// EventSurveil, and zero on every other kind.
@@ -1009,6 +1161,28 @@ type Event struct {
 	OldZone ZoneKind `json:"old_zone,omitempty"`
 	NewZone ZoneKind `json:"new_zone,omitempty"`
 
+	// Played marks a battlefield entry as a PLAY (CR 305.1) rather
+	// than an effect PUTTING the permanent onto the battlefield
+	// (CR 305.4: "This isn't the same as 'playing a land' and doesn't
+	// count as a land played during the current turn"). Set on
+	// EventZoneMove and EventTokenCreated when the entry landed —
+	// never on the earlier EventCast/EventTrigger that led to it.
+	//
+	// It mirrors the settled entry's internal landPlay flag
+	// (replacements.go), stamped by announceEntryLocked from the
+	// entryLanding record every battlefield entry produces
+	// (entry_choice.go) — one finisher, so the marker can never drift
+	// from the land-drop tally that flag already gates. False, the
+	// zero value, is correct for every "put" path (a search, a
+	// reanimation, PutFromHandOntoBattlefieldForEffect, an exile or
+	// graveyard return with no play permission) AND for a token,
+	// which comes from no zone at all and was never played.
+	//
+	// Meaningful only on a land's own entry — nothing stops it being
+	// read off a nonland permanent, but nothing prints a nonland
+	// clause that cares. Added for #1326.
+	Played bool `json:"played,omitempty"`
+
 	// DiscardCause is why a discard happened, on EventDiscardCard: an
 	// effect's instruction, a cost, or the cleanup step's turn-based
 	// action (CR 701.8a, 601.2h, 514.1). Empty on every other kind.
@@ -1019,6 +1193,20 @@ type Event struct {
 	// cares reads it beside Source, which names the card that asked.
 	// Added with #650.
 	DiscardCause DiscardCause `json:"discard_cause,omitempty"`
+
+	// Cause, CauseController and CauseItem say WHAT moved a card, on
+	// the events a routed zone change emits (EventZoneMove, EventMill,
+	// EventDiscardCard, EventCounterSpell and the EventLTB beside
+	// them): a resolving spell or ability and its controller, a cost
+	// and its payer, a special action, a rule, or a manual sandbox
+	// move. Empty when nothing was recorded. "A spell or ability you
+	// control exiles one or more permanents" (Ranar the Ever-Watchful)
+	// reads it — see move_cause.go and ExiledBySpellOrAbilityOf.
+	// Engine-internal: protocol/log.go does not project it. Added with
+	// #1320.
+	Cause           MoveCauseKind `json:"cause,omitempty"`
+	CauseController uuid.UUID     `json:"cause_controller,omitempty"`
+	CauseItem       uuid.UUID     `json:"cause_item,omitempty"`
 
 	// ErrorMsg carries the failure reason on EventEffectError.
 	ErrorMsg string `json:"error_msg,omitempty"`
@@ -1162,6 +1350,15 @@ func (g *Game) emitBecameTargetLocked(actor, source, itemID uuid.UUID, targets [
 // trigger a follow-on event sees state consistent with the event
 // it's reacting to.
 func (g *Game) EmitEvent(ev Event) {
+	// ADR 0057 Decision 3: ErrStopResolution is a clean stop — the
+	// game ended, or the resolving item's controller left the game —
+	// not a failure. Every site that turns a catalog callback's error
+	// into an EventEffectError reaches here, so the one filter covers
+	// all of them (the 2026-09-24 amendment: there are dozens now, not
+	// the six the ADR listed).
+	if ev.Kind == EventEffectError && strings.Contains(ev.ErrorMsg, ErrStopResolution.Error()) {
+		return
+	}
 	if ev.Kind == EventTokenCreated {
 		g.noteCreatedSourceLocked(ev.CardID)
 	}

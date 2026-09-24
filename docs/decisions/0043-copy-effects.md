@@ -117,7 +117,7 @@ A shockland is *played*; a Clone is *cast*. The land-play branch was
 the only `entryResumable` site, because the generic resume could not
 reproduce two things stack resolution does: attaching a resolved Aura
 to what it targeted (CR 303.4a) and queueing evoke's sacrifice trigger
-(CR 702.74b). `ReplacementEvent.stackItem` carries the `StackItem`
+(CR 702.74a). `ReplacementEvent.stackItem` carries the `StackItem`
 across the pause and `executeEntryToBattlefieldLocked` does both.
 
 That closed a latent bug older than this ADR and unrelated to copying:
@@ -256,7 +256,7 @@ slot answers for both:
   `resolveTopOfStackLocked` carries on and routes the spell to its
   owner's graveyard, and the answer arrives afterwards. The copy is
   therefore built from last-known information. In the rules the spell
-  is still on the stack at that moment — CR 608.2m puts it into the
+  is still on the stack at that moment — CR 608.2n puts it into the
   graveyard as the final step of its own resolution — and LKI is how
   that difference is spelled here.
 
@@ -679,3 +679,212 @@ on a different axis again and are still open. A copy of an ability
 whose source has left is judged against a source-less `TargetSource`
 for its re-target prompt, which is the declared limitation ADR 0072 §2
 already records for the CR 608.2b re-check.
+
+## Amendment (2026-09-23, #1211): the ability-target clause is general targeting
+
+Decision 14 above ("a chosen ability rides an ordinary
+`TargetRef{Kind: TargetCard}`") was written for the copy family, which
+was the only family that could use it. It is not a copy decision and
+it no longer lives here: **`TargetSpec.Abilities` / `AbilityOK` are
+the targeting vocabulary's**, and the whole of CR 115.4 — "counter
+target activated or triggered ability", "target spell or ability" —
+is written on them.
+
+Nothing above changes. `AbilityOnStack` is still the copy family's
+clause and still means "target activated or triggered ability"; what
+joined it is `TargetSpellOrAbility`, a spec that sets `Zones:
+{ZoneStack}` **and** `Abilities: true` so one clause enumerates both
+halves of the stack, and a `StackItemPredicate` vocabulary that
+narrows a spell and an ability with the same function.
+
+The canonical statement is now
+[ADR 0019's 2026-09-23 amendment](0019-structured-targeting.md#amendment-2026-09-23-1211-targeting-an-ability-on-the-stack-cr-1154);
+read this section as the copy family's use of it.
+
+## Amendment 2026-09-23 (#1255): a spell that left the stack is copied from last-known information (CR 608.2h)
+
+Issue [#1255](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1255),
+filed from [ADR 0086](0086-storm-and-the-turns-cast-order.md)
+Decision 6. Builds on the #920 amendment above (`Game.resolving`) and
+on #1206 / #1235 (`copyFrame`, `resolveCopyTargetsLocked`,
+`createCopyLocked`), none of which changes.
+
+### The line CR 608 draws
+
+Two rules answer "what does a copy effect do when the spell it is about
+has left the stack", and which one applies is decided by the **wording**
+of the copy effect, not by the copy:
+
+- **CR 608.2b** governs a copy effect that TARGETS the spell —
+  Reverberate, Twincast, Dualcaster Mage, Lithoform Engine. The target
+  is illegal once it has left the stack, and a spell or ability whose
+  every target is illegal does nothing at all. The engine's CR 608.2b
+  re-check already counters such an item before its effect runs, and
+  `CopySpellForEffect`'s `ErrCardNotFound` is the backstop for a
+  multi-target item.
+- **CR 608.2h** governs a copy effect that NAMES the spell without
+  targeting it — storm ("copy it"), Thousand-Year Storm, Doublecast and
+  Galvanic Iteration ("copy that spell"). The effect uses the spell's
+  last-known information, so the copies are made.
+
+The #920 amendment already took one step down the second road: a
+spell copying ITSELF ("copy this spell") reads `Game.resolving`, whose
+card is last-known information once the copy decision has paused. This
+amendment takes the rest of it, and keeps the first road where it was.
+
+### Decision 16. A last-known-stack record, taken at the one exit choke point
+
+`Game.lastKnownStack` (`server/internal/game/stack_lki.go`) holds a
+VALUE copy of the card and stack item of every spell that leaves the
+stack **without resolving** this turn. It is written by
+`routeCardToZoneLocked` when the source zone is the stack — the path
+every counterspell, every Remand-style return, every "exile target
+spell" and airbend, and the sandbox's manual move all share — and
+before the replacement pipeline runs, while the card and item are still
+the spell's.
+
+*Note, 2026-09-23 (#1318):* the condition used to be "the route has
+`DropStackMeta` and the source zone is the stack". Only the counter,
+return-to-hand and sandbox routes set that flag, so an airbent spell was
+neither recorded here nor retired from `StackMeta`. The flag is gone and
+the source zone decides both — see
+[ADR 0013 §5ad](0013-replacement-effects.md).
+
+Resolution is deliberately not a writer. The only effect that can name
+a spell after it resolves is its own, and `Game.resolving` answers for
+that. It is cleared at the turn boundary: every copy effect that names
+a spell is a stack object created while the spell was on the stack, and
+the stack is empty before a turn can end.
+
+**Clone carries it; the snapshot does not.** `RestoreFrom` COPIES the
+map rather than sharing it, unlike `resolving`, because the record is
+inserted into in place and an undo snapshot can be restored twice. The
+snapshot drops it with a census reason: every reader is a stack item or
+delayed trigger whose behaviour is a closure (`ContinuationCensus.StackEffects`,
+`.DelayedTriggerEffects`), so a snapshot that could need it is not a
+restore point anyway.
+
+### Decision 17. The lookup is a second entry point, chosen by the card
+
+`CopyLastKnownSpellForEffect` finds the spell on the stack, then in the
+resolving slot, then in the record; everything after the lookup is
+`copySpellFromLocked`, the body `CopySpellForEffect` now shares.
+`CopySpellForEffect` is unchanged and still strict. On the catalog side
+the choice is `CopySpell.FromLastKnown`, set by the card file, because
+the card's wording is the only thing that knows which rule applies —
+a flag on the shared lookup would have to guess.
+
+Nothing past the lookup needed to change, which is the #920 payoff:
+the "except" clause, the CR 707.10c offer, `copyFrame` and
+`createSpellCopyLocked` all work from value copies of the card and the
+item, so a copy of a countered spell is built exactly like a copy of a
+spell still on the stack — a new object with a fresh instance ID and
+the original's targets, modes, X and optional-cost record.
+
+### Cards
+
+Grapeshot and Brain Freeze (through `Storm()`, and so every storm card:
+Empty the Warrens, Flusterstorm, Tendrils of Agony), Thousand-Year
+Storm, Doublecast and Galvanic Iteration. Reverberate is pinned
+unchanged by `TestReverberateOnACounteredSpellCopiesNothing`.
+
+### Still not covered
+
+Breeches, the Blastmaker's reflexive "copy that spell" is the same
+non-targeting shape and has not opted in; it is one field and a test,
+filed as #1288. A spell that left the stack on an EARLIER turn cannot
+be copied from last-known information — nothing in the catalog can ask.
+
+*Note, 2026-09-23 (#1288):* Breeches has since opted in — Decision 19
+below.
+
+## Amendment 2026-09-23 (#1340, #1288): a copy that leaves the stack goes nowhere, and Breeches copies from last-known information
+
+Issues [#1340](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1340)
+(found while building [ADR 0090](0090-preparation-cards.md)) and
+[#1288](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1288) (the
+"Still not covered" line of the #1255 amendment above). Tracker #888.
+No new ADR number: both are this ADR's copy path.
+
+### Decision 18. The stack exit ends a copy; it does not land it
+
+CR 707.10a: "If a copy of a spell is in a zone other than the stack, it
+ceases to exist." CR 704.5e says the same as a state-based action. The
+resolution frame has honoured that on both of ITS exits since S30
+(resolve, and the CR 608.2b fizzle → `ceaseToExistLocked`). The OTHER
+exits — counter, Remand-style return, "exile target spell", airbend,
+the sandbox move — all reach `routeCardToZoneLocked`
+(`server/internal/game/zone_route.go`) since #1318 / #1345, and it never
+asked whether the spell was a copy. A countered Twincast copy was a real
+Lightning Bolt in its controller's graveyard, and nothing removed it:
+the CR 704.5d sweep looks at tokens, and the CR 704.5e sweep ADR 0090
+added looks only at `Card.PrepareCopy`.
+
+The fix is at the choke point, not in a sweep:
+
+- `routeCardToZoneLocked` takes the last-known record (Decision 16) as
+  before, fills the move's cause, and then — for a stack object whose
+  item says `IsCopy` — goes straight to `executeZoneRouteLocked`
+  **without opening the replacement window**. No replacement has a card
+  to act on, and a copy must not pause on a prompt about a zone it will
+  never reach. The concrete case is CR 903.9: `createSpellCopyLocked`
+  copies the whole `Card`, `IsCommander` included, so a countered copy
+  of a commander spell used to ask its owner about the command zone.
+- `executeZoneRouteLocked` owns the drop (`spellCopyLeavesStackLocked`,
+  `spell_copy.go`), before it resolves a destination, so the inline path
+  and the resume path cannot drift and a departed owner cannot turn a
+  drop into an error. The copy leaves the stack and its `StackMeta`
+  record, and the route's continuation runs from the terminal outcome as
+  it does for every exit — `ExileSpellThenForEffect`'s caller hears
+  "not exiled", so Aven Interrupter plots nothing.
+- **The event is the route's, minus the landing.** A counter still
+  countered the copy (CR 701.6a), so a `Countered` route emits
+  `EventCounterSpell` exactly as it does for a card. Every other route
+  emits the ceasing-to-exist shape `ceaseToExistLocked` and
+  `prepareCopyCeasesLocked` already use: `EventZoneMove` out of the
+  stack with no `NewZone`. Never a move into a graveyard, hand or exile.
+- **"Is this a copy" reads the resolving slot too** (`stackCopyLocked`).
+  A copy whose own effect moves it has already had its `StackMeta` entry
+  taken by the resolver while its card still stands on the stack; only
+  #920's `Game.resolving` still knows it is a copy.
+
+Why not the issue's other suggestion — mark the copy's `Card` and let a
+CR 704.5e sweep remove it, the way ADR 0090 does for prepare copies: the
+brief landing is observable. A copy that sits in a graveyard until the
+next state-based check is seen by every "put into a graveyard from
+anywhere" watcher in between, and by a `then` that reads the board. The
+prepare copy keeps its sweep, because a prepare copy legitimately lives
+outside the stack (in exile, CR 722.3c); a spell copy never does. A cast
+prepare copy is `IsCopy` on the stack, so it now ceases at the exit too,
+and the sweep stays its backstop for the other zones.
+
+`exileStackObjectLocked` (`end_combat.go`, CR 724.2b) loses the `IsCopy`
+branch it carried for the same reason: both of its routes end at
+`routeCardToZoneLocked`, which now ends a copy — the resolving one
+included — so the branch was a second copy of the rule.
+
+### Decision 19. Breeches opts in to last-known information
+
+Breeches, the Blastmaker's "when you win the flip, copy that spell"
+names the spell and does not target it, so CR 608.2h governs, as
+Decision 17 describes. `breechesCopyThatSpell` sets
+`CopySpell.FromLastKnown`. A Bolt countered after the flip is won and
+before the reflexive trigger resolves is copied from the record, with
+its target, and the copy deals 3.
+
+### Cards
+
+Twincast, Grapeshot (storm), Aven Interrupter and Breeches, the
+Blastmaker — `server/internal/cards/effects/spell_copy_exit_test.go` and
+`breeches_the_blastmaker_test.go`. The engine shape is
+`server/internal/game/spell_copy_exit_test.go`; the prepare copy is
+`TestACounteredPrepareCopyCeasesToExist`.
+
+### Still not covered
+
+A copy of a commander spell still carries `IsCommander` on the stack
+(`createSpellCopyLocked` copies the whole `Card`). CR 903.3 makes the
+commander designation an attribute of the card, not a copiable value.
+The one engine reader that mattered, the CR 903.9 exit, no longer sees
+the copy; clearing the field on the copy is
+[#1363](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1363).

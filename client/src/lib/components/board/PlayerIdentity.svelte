@@ -40,6 +40,12 @@
     // battlefield), for the art-crop avatar when the seat has no
     // Discord avatar. Precedence: Discord → commander art → seat disc.
     commanderScryfallID?: string | null;
+    // #1307: true while this (human, non-viewer, non-eliminated) seat
+    // is holding priority in a public response window for longer than
+    // an automatic pass would take. Board.svelte owns the timer and
+    // the threshold; this component only renders the chip. Bots keep
+    // their own botThinking chip regardless of this prop.
+    considering?: boolean;
   }
 
   const {
@@ -54,6 +60,7 @@
     onDeclareAttack,
     onTargetPlayer,
     commanderScryfallID = null,
+    considering = false,
   }: Props = $props();
 
   const targetableByCast = $derived.by(() => {
@@ -95,9 +102,13 @@
   const displayLabel = $derived(seat.display_name ?? seat.name);
 
   // #1201: hexproof / protection-on-a-player badges (CR 702.11d, CR
-  // 702.16i). See playerKeywordBadges.ts for the token → badge
-  // mapping; this component only renders what it returns.
-  const keywordBadges = $derived(playerKeywordBadges(seat.keywords));
+  // 702.16i), and since #1200 the life-total lock (CR 119.7, CR
+  // 119.8) that arrives as its own bool rather than as a token. See
+  // playerKeywordBadges.ts for the mapping; this component only
+  // renders what it returns.
+  // ADR 0057 (#749): and the "can't lose" / "can't win" badges, whose
+  // tooltip names the sources.
+  const keywordBadges = $derived(playerKeywordBadges(seat.keywords, seat.life_total_locked, seat));
 
   // --- bot seats (S31, ADR 0033) ---------------------------------
   //
@@ -200,7 +211,7 @@
   class:cast-picked={pickedByCast}
   class:eliminated={seat.eliminated}
   class:bot={isBot}
-  class:thinking={botThinking && animateThinking}
+  class:thinking={(botThinking || considering) && animateThinking}
   style:--seat-color={seatColor(seat.seat)}
 >
   <span class="name" title={displayLabel}>{displayLabel}</span>
@@ -221,6 +232,13 @@
   {/if}
   {#if isBot}
     <span class="tag bot" title={botTitle}>{botThinking ? "thinking…" : botLabel}</span>
+  {:else if considering}
+    <!-- #1307: same slot the bot chip sits in, on a human seat that
+         has been holding priority in a public response window longer
+         than an automatic pass would take. Derived from public timing
+         alone, so a real hold, a bluff and someone away from the
+         keyboard all show exactly this. -->
+    <span class="tag considering" title="holding priority">considering…</span>
   {/if}
 
   <div class="core-row">
@@ -713,6 +731,8 @@
     text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
     min-width: 14px;
     text-align: center;
+    /* ADR 0057's "CAN'T LOSE" / "CAN'T WIN" are two words. */
+    white-space: nowrap;
   }
   /* Protection is a shield rather than an ability the seat uses, so
      it reads as a different thing — same tint KeywordBadgeRow gives
@@ -1016,5 +1036,15 @@
     color: color-mix(in srgb, var(--seat-color, #888) 60%, var(--fg));
     border-color: color-mix(in srgb, var(--seat-color, #888) 45%, transparent);
     background: rgba(0, 0, 0, 0.28);
+  }
+  /* #1307: same shell as .tag.bot, gold like the priority ring rather
+     than seat-tinted — this chip is about the response window, not
+     about whose seat it is. */
+  .tag.considering {
+    margin-top: 0;
+    margin-bottom: 2px;
+    color: var(--gold, #ffd07a);
+    border-color: rgba(255, 208, 122, 0.4);
+    background: rgba(255, 208, 122, 0.12);
   }
 </style>

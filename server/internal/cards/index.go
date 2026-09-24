@@ -105,7 +105,7 @@ type Card struct {
 	// Carried here — rather than only in the effect catalog — for
 	// the same reason Loyalty is: without it, a battle outside the
 	// opt-in catalog enters with zero defense counters and the
-	// CR 704.5v state-based action sweeps it into the graveyard
+	// CR 704.5v/w state-based action sweeps it into the graveyard
 	// before anyone can attack it. That is #274 one card type over.
 	// Added in S27.
 	Defense string `json:"defense"`

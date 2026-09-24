@@ -87,7 +87,7 @@ func init() {
 						}
 					}
 					for _, c := range doomed {
-						if err := (DestroyTarget{Target: c.InstanceID}).Apply(ctx); err != nil {
+						if err := (DestroyTarget{Target: c.InstanceID}).Apply(ctx.asGroupMember()); err != nil {
 							return err
 						}
 					}

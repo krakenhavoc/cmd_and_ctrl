@@ -66,6 +66,28 @@ type AbilityCost struct {
 	// (Opposition into a tap-watcher) resolves above it.
 	TapOthers *TapOthersCost
 
+	// Waterbend is the CR 701.67 clause on an activated ability —
+	// "Waterbend {8}: Transform Aang", Katara's "Waterbend {X}",
+	// Avatar Kuruk's "Exhaust — Waterbend {20}" (#1310). Nil means no
+	// such component, which is every other ability.
+	//
+	// The SAME game.TapPermanentsCost a spell's convoke / waterbend
+	// uses (tap_cost.go), with one reading that differs and is the
+	// point of the field: the waterbend mana is INSIDE Mana, and
+	// Extra names the part of it the taps may cover (CR 701.67b —
+	// the generic in the waterbend cost and nothing else). Every
+	// reader of an ability's mana therefore sees the whole cost
+	// without knowing waterbend exists; the only thing this field
+	// adds is a second way to pay some of it. See waterbend_cost.go.
+	//
+	// The activator names the permanents in
+	// ActivateAbilityParams.WaterbendIDs at announce. Tapping them is
+	// not the {T} symbol (CR 302.6), so a creature that arrived this
+	// turn may pay, and the source may pay for its own ability
+	// unless the cost also prints {T}. Build it with
+	// effects.WaterbendCost.
+	Waterbend *TapPermanentsCost
+
 	// SacrificeSelf sacrifices the source as part of the cost.
 	SacrificeSelf bool
 
@@ -204,8 +226,9 @@ type AbilityCost struct {
 	//	           answers "can this permanent have that counter",
 	//	           and the place a Solemnity-style prohibition
 	//	           plugs in.
-	//	CR 121.1   paying a cost is not an effect, so the placement
-	//	           is not replaceable: Doubling Season does NOT
+	//	CR 614.16  a counter-doubling replacement applies only to a
+	//	           counter placed by an EFFECT, so a cost payment
+	//	           isn't replaceable: Doubling Season does NOT
 	//	           double the Druid's -1/-1. Same rule the loyalty
 	//	           cost and the removal half already follow.
 	//
@@ -297,37 +320,63 @@ type AbilityCost struct {
 	// that wanted "discard this from your graveyard" would be
 	// writing a card that does not exist.
 	//
-	// The source has to be IN A GRAVEYARD — every card that prints
-	// the component says "from your graveyard" — and Register
-	// refuses the component on an ability that does not declare
-	// ZoneGraveyard, exactly as it refuses DiscardSelf off the hand.
-	// Paid last, with the discards, because it moves the source and
+	// It FOLLOWS THE ABILITY'S ZONE (#1404): from the graveyard it is
+	// scavenge's and embalm's "from your graveyard", and from the
+	// battlefield it is Perpetual Timepiece's "Exile this artifact" —
+	// a permanent leaving the battlefield, which fires leaves-the-
+	// battlefield triggers and never dies triggers. Register refuses
+	// the component on an ability that functions from any other zone
+	// (ExileSelfZoneSupported), exactly as it refuses DiscardSelf off
+	// the hand. Paid last, with the discards, because it moves the source and
 	// invalidates it; the effect that follows reads the card back
 	// out of EXILE by instance ID (LookupCardForEffect), which is
 	// where the cost has just put it.
 	ExileSelf bool
+
+	// ExileCards is "Exile N <kind> cards from your graveyard" or
+	// "… from your hand" as a cost (#1297) — Grim Lavamancer's
+	// "Exile two cards from your graveyard", Moorland Haunt's "a
+	// creature card", Holistic Wisdom's "a card from your hand". Nil
+	// means no such component. See ExileCost in exile_cost.go, which
+	// #1283 built for the mana ability's owner (Cadaverous Bloom);
+	// this is the CR 602 owner of the same component, with the same
+	// candidate walk, validator and payer.
+	//
+	// ExileSelf's sibling and not the same thing: ExileSelf names the
+	// source and asks nothing, this names OTHER cards and the
+	// activator chooses them. DiscardCards' sibling and not the same
+	// thing either: an exiled card is not discarded, fires no
+	// EventDiscardCard, and madness never sees it.
+	//
+	// The activator names the cards in ActivateAbilityParams.ExileIDs
+	// at announce (CR 602.2b), beside the discard picks. Paid with the
+	// discards, after every component that needs the source where it
+	// was, and recorded on PaidCost.Exiled so an effect that reads
+	// "the exiled card" (Holistic Wisdom, Dread Defiler) finds it.
+	ExileCards *ExileCost
 }
 
 // DemandsX reports whether the ability's mana component contains
 // {X}, and is therefore an ability the activator announces a value
 // for at CR 602.2b.
 //
-// X used to live in the MANA component and nowhere else. #1213 added
-// the second place, and it is the same second place the cast path has
-// always had: a spell grows an X outside its printed cost with Toxic
+// X used to live in the MANA component and nowhere else. #1213 and
+// #1421 added two cost-component owners, the same shape the cast path
+// has always had: a spell grows an X outside its printed cost with Toxic
 // Deluge's "pay X life" (AdditionalCost.PayLifeX) and with waterbend
-// (TapPermanentsCost), and Grim Hireling's "{B}, Sacrifice X
-// Treasures" is that on an ability. So the question is asked of the
-// COST rather than of the cost string, and every consumer — the view,
+// (TapPermanentsCost); Grim Hireling's "{B}, Sacrifice X Treasures"
+// and Apothecary White's "Tap X untapped Foods" are that on an
+// ability. So the question is asked of the COST rather than of the
+// cost string, and every consumer — the view,
 // the enumerator, the client — still derives "does this prompt for X"
 // from the declared components rather than from a flag a card file
 // could forget to set.
 //
-// XSlots is deliberately NOT widened with it: a sacrifice clause's X
-// buys permanents, not generic mana, so Grim Hireling's {B} stays {B}
-// at every announced X.
+// XSlots is deliberately NOT widened with them: a sacrifice or tap
+// clause's X buys permanents, not generic mana, so the mana component
+// stays the same at every announced X.
 func (c AbilityCost) DemandsX() bool {
-	return c.XSlots() > 0 || SacrificeCountFromX(c.SacrificeOther)
+	return c.XSlots() > 0 || SacrificeCountFromX(c.SacrificeOther) || TapOthersCountFromX(c.TapOthers)
 }
 
 // XSlots is how many {X} tokens the mana component carries. Usually
@@ -390,7 +439,27 @@ type ActivatedAbilityShape struct {
 	Modes *ModeSpec
 
 	// SorcerySpeed marks "activate only as a sorcery" (CR 602.5d).
+	//
+	// It is the ability's OWN clause and not the verdict: since
+	// #1208 a per-player statement may open the window on an ability
+	// that declares this (The Wandering Emperor, Leonin Shikari) or
+	// shut one that does not. `Game.ActivationTimingOpenLocked` is
+	// the verdict, and it is the only thing that should be asked
+	// "may this be activated right now".
 	SorcerySpeed bool
+
+	// Equip marks the CR 702.6 equip ability. Set by
+	// effects.EquipAbility and by no other card file.
+	//
+	// It names a keyword rather than adding a kind: equip is still
+	// an ordinary activated ability with a mana cost, a target
+	// clause and a sorcery-speed gate (attachments.go says so at
+	// length, and that is unchanged). What this field buys is that
+	// a card which speaks ABOUT equip abilities — Leonin Shikari's
+	// "you may activate equip abilities any time you could cast an
+	// instant" (#1208) — can find them, instead of matching on the
+	// label's spelling.
+	Equip bool
 
 	// Zones is the set of zones this ability functions from
 	// (CR 113.6 — an ability works only where it says it does).
@@ -473,7 +542,7 @@ type ActivatedAbilityShape struct {
 	//
 	// The level-up ability itself takes a Condition, not this: "{3}{U}:
 	// Level 2" is printed on the Class from the moment it enters, and
-	// CR 716.2e's "activate only if this Class is level 1" is an
+	// CR 716.2a's "activate only if this Class is level 1" is an
 	// activation instruction word for word.
 	//
 	// See designations.go and ADR 0071.
@@ -514,6 +583,32 @@ type ActivatedAbilityShape struct {
 	// are checked in that order.
 	Exhaust bool
 
+	// CostModifiers are the ability's OWN cost clauses — "This ability
+	// costs {1} less to activate for each legendary creature you
+	// control" (Takenuma, Otawara, Boseiju), "This ability costs {1}
+	// less to activate for each color of the creature it targets"
+	// (Dragonfire Blade). #1296, ADR 0020 amendment 2026-09-24.
+	//
+	// The activation twin of CardDef.SelfCostModifiers ("THIS SPELL
+	// costs …"), and for the same reason a separate slot rather than a
+	// board modifier: the clause is part of the ability, so it prices
+	// this ability and no other, and it functions wherever the ability
+	// does (CR 113.6) — a channel land prices its discount from the
+	// HAND, where a battlefield scan would never find it. Nil for
+	// nearly every ability.
+	//
+	// Joined to the CR 601.2f pass beside the board's
+	// activation-scoped modifiers (activeCostModifiersLocked), bound
+	// to the ability's source with the activator as its controller, so
+	// the order, the generic floor and the negative-amount refusal are
+	// the same rules. A modifier here that reads the announced targets
+	// sets ReadsTargets, and the price is then determined after the
+	// targets (CR 602.2b → 601.2c before 601.2f) — the activation path
+	// hands the targets in, and the enumerator and the view price per
+	// target. CostModifier.Activations, SpecialActions and ActiveWhen
+	// mean nothing in this slot; effects.Register refuses the last two.
+	CostModifiers []CostModifier
+
 	// Effect runs at resolution against the live game. Same contract
 	// as TriggeredAbility's stack items: never capture a *Card,
 	// read what you need off the item and the game.
@@ -526,63 +621,45 @@ type ActivatedAbilityShape struct {
 var CatalogActivatedAbilities func(oracleID string) []ActivatedAbilityShape
 
 // ActivatedAbilitiesForCard returns the activated abilities a card
-// offers right now. Catalog-only: unlike mana abilities there's no
-// synthetic fallback, because there's no ability every card of some
-// type implicitly has.
+// offers right now: its OWN (the instance-carried list, else its
+// catalog entry's, designation-gated), then every ability a layer-6
+// effect granted it (ADR 0093), in layer-6 order. Catalog-only: unlike
+// mana abilities there's no synthetic fallback, because there's no
+// ability every card of some type implicitly has.
+//
+// This one accessor is why internal/legal needs no change of its own:
+// legal.Move enumeration, the client's context menu
+// (protocol.CardView), the lobby's ability lookup and
+// ActivateCatalogAbility itself all read through here, so the
+// enumerator can never offer a bot a move the engine will refuse — the
+// #544 hung-table failure mode. A permanent a CR 613.1f removal applies
+// to offers none of its OWN abilities (a Clue token's crack is an
+// activated ability like any other, and Darksteel Mutation takes it as
+// it takes Sol Ring's) but keeps a grant the layer pass let survive.
+//
+// ADR 0071: an ability gated on a designation the permanent does not
+// have is not on the permanent. Because every consumer reads through
+// this one accessor, a Case's "Solved — {1}{B}, Sacrifice this Case: …"
+// is absent from the activation path, the legal-move enumerator, the
+// lobby lookup and the wire together.
+//
+// The body, and each row's stable ref, is activatedAbilityRows in
+// granted_abilities.go.
 func ActivatedAbilitiesForCard(c Card) []ActivatedAbilityShape {
-	// S24 layer 6: a permanent an ability-removing effect applies to
-	// offers nothing, and that has to be checked BEFORE the
-	// instance-carried list as well as before the catalog. A Clue
-	// token's "{2}, Sacrifice this: Draw a card" is an activated
-	// ability like any other, and Darksteel Mutation takes it away
-	// exactly as it takes away Sol Ring's.
-	//
-	// This one accessor is why internal/legal needs no change:
-	// legal.Move enumeration, the client's context menu
-	// (protocol.CardView), the lobby's ability lookup and
-	// ActivateCatalogAbility itself all read through here, so the
-	// enumerator can never offer a bot a move the engine will refuse
-	// — the #544 hung-table failure mode.
-	if c.HasLostAllAbilities() {
-		return nil
-	}
-	// S21 sub-PR 4: intrinsic abilities win — a token has no oracle
-	// ID for the catalog to key on, and Food / Clue / Blood ARE
-	// their activated ability.
-	if len(c.ActivatedAbilities) > 0 {
-		return c.ActivatedAbilities
-	}
-	if CatalogActivatedAbilities == nil {
-		return nil
-	}
-	// #521: the guard used to be `c.OracleID == ""` as well, which
-	// made a token unreachable here by construction. A token now has
-	// a catalog key of its own, so the question is the one the key
-	// already answers — an object with no entry has the empty key,
-	// whether because it is uncatalogued or because CR 708.2a has
-	// silenced it.
-	key := CatalogAbilityKey(c)
-	if key == "" {
-		return nil
-	}
-	// ADR 0071: an ability gated on a designation the permanent does
-	// not have is not on the permanent. Because every consumer reads
-	// through this one accessor, a Case's "Solved — {1}{B}, Sacrifice
-	// this Case: …" is absent from the activation path, the legal-move
-	// enumerator, the lobby lookup and the wire together — greying it
-	// in one of them and offering it in another is not representable.
-	//
-	// The intrinsic list above is deliberately NOT gated: a token
-	// carries its own abilities and has no catalog entry to print a
-	// designation on.
-	return activeOnly(c, CatalogActivatedAbilities(key), func(a ActivatedAbilityShape) Designation {
-		return a.ActiveWhen
-	})
+	abs, _ := activatedAbilityRows(c, false)
+	return abs
 }
 
 // ActivateAbilityParams carries the announce-time choices for a
 // catalog activated ability.
 type ActivateAbilityParams struct {
+	// Ref is the stable ref of the row the activator meant (ADR 0093
+	// Decision 5): "own:<i>", "grant:<bundle>:<i>:<n>". Checked against
+	// the row at the index BEFORE anything is validated or paid; a
+	// mismatch is ErrStaleAbilityRef and costs nothing. Empty is
+	// accepted, as every client that predates it sends.
+	Ref string
+
 	// SacrificeIDs names the permanents paid to a SacrificeOther
 	// cost: exactly the clause's count (SacrificeCostCount), each
 	// once. Their order does not matter — the permanents leave as
@@ -596,14 +673,29 @@ type ActivateAbilityParams struct {
 	CrewIDs []uuid.UUID
 
 	// TapIDs names the permanents tapped to pay a TapOthers cost
-	// (#758): exactly the clause's Count, each once, each untapped
-	// and controlled by the activator, and never the source when
-	// the clause prints "another". Their order does not matter.
+	// (#758, #1421): exactly the clause's fixed Count, or exactly
+	// XValue when its filter says CountFromX; each once, each untapped
+	// and controlled by the activator, and never the source when the
+	// clause prints "another". Their order does not matter.
 	//
 	// On the wire as `tap_ids`, the same name the cast path's
 	// convoke taps ride under (CastSpellParams.TapIDs) — the same
 	// question, asked of an activation instead of a cast.
 	TapIDs []uuid.UUID
+
+	// WaterbendIDs names the permanents tapped to pay part of a
+	// Waterbend cost (#1310, CR 701.67a): any number from zero up to
+	// the clause's budget (WaterbendBudget), each once, each an
+	// untapped artifact or creature the activator controls. Each one
+	// pays {1} of the waterbend cost's generic mana; the rest is paid
+	// with mana as usual.
+	//
+	// Its own field and its own wire name (`waterbend_ids`) rather
+	// than `tap_ids`, because the two are different questions:
+	// TapIDs is a count a TapOthers cost DEMANDS (fixed or announced
+	// as X), this is an optional discount a waterbend cost OFFERS, and
+	// an ability printing both would need to say which tap paid which.
+	WaterbendIDs []uuid.UUID
 
 	// CounterSourceIDs names the permanents a RemoveCounters cost
 	// removes from (#625). Exactly one for the "from a planeswalker
@@ -637,6 +729,17 @@ type ActivateAbilityParams struct {
 	// (CR 602.2b), on the wire as `discard_ids`, exactly as a cast's
 	// additional discard cost rides CastSpellParams.DiscardIDs.
 	DiscardIDs []uuid.UUID
+
+	// ExileIDs names the cards paid to an ExileCards cost (#1297):
+	// exactly the clause's count, each once, each in the activator's
+	// own hand or graveyard (the pile the clause names), each matching
+	// the clause, never the source and never a card also named in
+	// DiscardIDs (CR 118.3).
+	//
+	// Its own field and its own wire name (`exile_ids`) rather than
+	// riding `discard_ids`, because the component is not a discard —
+	// the same split activate_mana_ability made in #1283.
+	ExileIDs []uuid.UUID
 
 	// ReturnIDs names the permanents paid to a ReturnToHand cost
 	// (#1213): exactly the clause's Count, each once, each on the
@@ -723,6 +826,13 @@ type ActivateAbilityParams struct {
 	// component of the cost the same way a cast is gated.
 	Strict  bool
 	AutoTap bool
+
+	// commanderAnswers are the CR 903.9 answers the owners of the
+	// commanders this payment moves gave before it began (#1397,
+	// cost_commander_choice.go). Unexported, so no payload can answer
+	// for somebody else's commander: only the parked announcement's
+	// resume sets it.
+	commanderAnswers map[uuid.UUID]bool
 }
 
 // ActivateCatalogAbility activates ability `index` on a permanent
@@ -738,6 +848,13 @@ type ActivateAbilityParams struct {
 func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, params ActivateAbilityParams) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	return g.activateCatalogAbilityLocked(playerID, cardID, index, params)
+}
+
+// activateCatalogAbilityLocked is ActivateCatalogAbility's body, split
+// out so a parked announcement (#1397) can make it again from the
+// CR 903.9 answer's resume. Caller must hold g.mu.
+func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index int, params ActivateAbilityParams) error {
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
@@ -793,7 +910,15 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		// nothing to say about a card in a hand.
 		return ErrCardCallerMismatch
 	}
-	abilities := ActivatedAbilitiesForCard(*source)
+	abilities, origins := ActivatedAbilitiesWithOrigins(*source)
+	// ADR 0093 Decision 5: the row the activator meant, named by its
+	// ref, before anything else about it is asked. A grant appearing or
+	// vanishing between the view and this announcement moves the rows
+	// under their indexes; a stale move is REFUSED, never fired on
+	// whatever sits at that index now (#544). Nothing is paid.
+	if staleAbilityRef(params.Ref, index, len(abilities), origins) {
+		return ErrStaleAbilityRef
+	}
 	if index < 0 || index >= len(abilities) {
 		return ErrInvalidParam
 	}
@@ -807,7 +932,7 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	if !AbilityFunctionsFromZone(ab, srcZone) {
 		return ErrActivationZoneNotAllowed
 	}
-	// #1210, CR 602.5a / CR 101.2: the board-wide "can't be
+	// #1210, CR 602.5 / CR 101.2: the board-wide "can't be
 	// activated" gate — Cursed Totem, Linvala, Collector Ouphe,
 	// Pithing Needle. ONE function, four callers; see
 	// activation_gate.go.
@@ -822,15 +947,24 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	//
 	// Separate from CanActivateAbilities above, which is the
 	// per-PERMANENT Arrest bit layer 6 already answered.
-	if err := g.ActivationGateLocked(playerID, *source, srcZone, ActivationAbility{Label: ab.Label}); err != nil {
+	// #1208: ONE identity, built once, for both reads below — the
+	// ban and the timing. CR 606.3 rides the loyalty cost component
+	// inside it, so a catalog entry still cannot forget it.
+	abilityID := ActivationAbilityOf(ab)
+	if err := g.ActivationGateLocked(playerID, *source, srcZone, abilityID); err != nil {
 		return err
 	}
 
 	// --- timing -------------------------------------------------
-	// CR 606.3: a loyalty ability is sorcery-speed whether or not
-	// the catalog entry bothered to say so — the loyalty component
-	// carries the restriction, so a card can't forget it.
-	if (ab.SorcerySpeed || ab.Cost.Loyalty != nil) && !g.sorcerySpeedOpenLocked(playerID) {
+	// CR 602.5d and CR 606.3, through the one read the bot
+	// enumerator and the view share (#1208, activation_timing.go):
+	// the ability's own clause, then any per-player statement that
+	// opens the window (The Wandering Emperor, Leonin Shikari) or
+	// narrows it, then the sorcery-speed gate. It replaced the
+	// inline `(ab.SorcerySpeed || ab.Cost.Loyalty != nil) &&
+	// !g.SorcerySpeedOpenLocked(playerID)` that used to live here
+	// and in two other files.
+	if !g.ActivationTimingOpenLocked(playerID, *source, srcZone, abilityID) {
 		return ErrSorcerySpeedRequired
 	}
 	// #1181: "Activate each exhaust ability only once". The key is
@@ -947,7 +1081,7 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	// #758: the tap-another component. Validated here with every
 	// other cost and paid at the foot of the announce, so a refusal
 	// leaves the board entirely untapped (ADR 0020 §3).
-	if err := g.validateTapOthersCostLocked(playerID, cardID, ab.Cost.TapOthers, params.TapIDs); err != nil {
+	if err := g.validateTapOthersCostAtXLocked(playerID, cardID, ab.Cost.TapOthers, params.TapIDs, params.XValue); err != nil {
 		return err
 	}
 	// CR 118.3: the source can only be tapped once. A cost that
@@ -970,6 +1104,25 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	// other cost and paid with the sacrifices below, so a refusal
 	// leaves the board entirely untouched (ADR 0020 §3).
 	if err := g.validateReturnToHandCostLocked(playerID, cardID, ab.Cost.ReturnToHand, params.ReturnIDs); err != nil {
+		return err
+	}
+	// #1310, CR 701.67: the waterbend taps. The budget is measured
+	// against the PRICED mana — the same number the payment below
+	// charges — so a discount that has already removed generic mana
+	// leaves fewer symbols for a tap to cover. An ability with no
+	// waterbend clause that arrives with waterbend_ids is refused
+	// inside the validator, as a stray tap_ids or crew_ids is.
+	waterbendBudget := 0
+	if !ab.Cost.Waterbend.Empty() {
+		// #1296: with the announced targets, so a target-keyed
+		// discount sizes the budget as it sizes the payment below.
+		priced, err := g.AbilityManaCostForTargetsForEffect(playerID, *source, srcZone, ab, params.Targets)
+		if err != nil {
+			return ErrInvalidParam
+		}
+		waterbendBudget = WaterbendBudget(ab.Cost.Waterbend, priced, params.XValue)
+	}
+	if err := g.validateAbilityWaterbendLocked(playerID, cardID, ab.Cost, params, waterbendBudget); err != nil {
 		return err
 	}
 	counters, err := g.validateCounterRemovalCostLocked(playerID, cardID, ab.Cost, CounterCostPayment{
@@ -995,18 +1148,30 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	if err != nil {
 		return err
 	}
+	// #1297: "Exile two cards from your graveyard" (Grim Lavamancer)
+	// and "Exile a card from your hand" (Holistic Wisdom). The SAME
+	// validator the mana ability's owner uses (#1283), against the
+	// discards — a card named to both would pay two components
+	// (CR 118.3) — and against the source, so a graveyard ability can
+	// never pay its "exile another card" with itself.
+	exiles, err := g.validateExileCardsCostLocked(playerID, cardID, ab.Cost.ExileCards, params.ExileIDs, discards)
+	if err != nil {
+		return err
+	}
 	// #1221: the discard component's sibling one zone over —
-	// scavenge's and embalm's "Exile this card from your graveyard".
-	// Nothing to resolve (the source IS the payment), so this is the
-	// zone check alone, made here with the rest so a refusal costs
-	// nothing.
+	// scavenge's and embalm's "Exile this card from your graveyard",
+	// and since #1404 Perpetual Timepiece's "Exile this artifact" off
+	// the battlefield. Nothing to resolve (the source IS the payment),
+	// so this is the zone check alone, made here with the rest so a
+	// refusal costs nothing.
 	if err := g.validateExileSelfCostLocked(srcZone, ab.Cost); err != nil {
 		return err
 	}
-	if ab.Cost.Life > 0 && p.Life < ab.Cost.Life {
+	if !g.CanPayLifeLocked(p, ab.Cost.Life) {
 		// CR 119.4 forbids paying more life than you have. Paying
 		// down to exactly 0 is legal; the SBA loop ends the game
-		// after.
+		// after. CR 119.8 forbids it outright while the player's life
+		// total can't change (#1200, life_lock.go).
 		return ErrInvalidParam
 	}
 	// CR 602.2b / 700.2: the modes are announced with the targets, in
@@ -1037,6 +1202,52 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		return err
 	}
 
+	// #1397: every card this payment is about to move, asked about
+	// BEFORE anything is paid. A commander among them whose owner has
+	// not answered CR 903.9 parks the announcement on that question;
+	// the answer makes it again, and the payment below then settles
+	// with the answer on each move. See cost_commander_choice.go.
+	moving := append(append(append(append([]uuid.UUID(nil), sacrifices...), params.ReturnIDs...), discards...), exiles...)
+	if ab.Cost.ExileSelf {
+		moving = append(moving, cardID)
+	}
+	// #1427: every permanent the payment TAPS — the {T}, the crew,
+	// the tap-another and waterbend picks. Not asked CR 903.9 (a
+	// tapped card goes nowhere), only checked below.
+	tapping := append(append(append([]uuid.UUID(nil), crew...), params.TapIDs...), params.WaterbendIDs...)
+	if ab.Cost.Tap {
+		tapping = append(tapping, cardID)
+	}
+	// #1474: the SOURCE, whatever the cost — a counter it removes or
+	// adds, a loyalty cost, or nothing at all — and every permanent the
+	// counter-removal component takes counters off. None of them moves
+	// or taps, and each spends an object a paused exit has taken.
+	spending := append([]uuid.UUID{cardID}, counters.cardIDs()...)
+	// #1445 / #1427 / #1474: a card an EFFECT has already paused on
+	// its way out cannot pay, or activate. See
+	// refusePausedCostCardsLocked.
+	if err := g.refusePausedCostCardsLocked(moving, tapping, spending); err != nil {
+		return err
+	}
+	asked, answers := g.askCostCommanderLocked(playerID, moving, params.commanderAnswers, source.Name,
+		func(g *Game, answers map[uuid.UUID]bool) error {
+			again := params
+			again.commanderAnswers = answers
+			return g.activateCatalogAbilityLocked(playerID, cardID, index, again)
+		})
+	if asked {
+		return nil
+	}
+	params.commanderAnswers = answers
+
+	// #1418: the OBJECT this ability comes from, read BEFORE any cost
+	// is paid. A source sacrificed or discarded to its own ability
+	// has ended that object by the time the item is built, and
+	// "this permanent" at resolution is the one that paid (its
+	// last-known record), not the card in its new zone. SourceEpoch
+	// below keeps the post-cost reading its readers want.
+	sourceObject := g.sourceObjectRefLocked(cardID)
+
 	// --- pay ----------------------------------------------------
 	//
 	// #789 / #761: one record of what this announcement paid, built
@@ -1048,29 +1259,15 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		// S32 (#352): "activate abilities of colorless Eldrazi" is a
 		// restriction on the SOURCE permanent, so the spend context
 		// is built from it.
-		// An ability whose cost includes {T} cannot tap its own
-		// source for mana to help pay itself — the {T} and the mana
-		// are components of the same cost, and the source can only
-		// be tapped once. Without the exclusion the auto-tapper is
-		// free to spend Treasure Vault's own "{T}: Add {C}" on its
-		// "{X}{X}, {T}" ability, which is a free mana on every
-		// activation of every tap ability with a mana component.
-		var excluded map[uuid.UUID]bool
-		if ab.Cost.Tap {
-			excluded = map[uuid.UUID]bool{cardID: true}
-		}
-		// #758, the same rule one component over: a permanent named
-		// to pay the TapOthers half is already spent, so the
-		// auto-tapper must not also tap it for mana. Without this
-		// the payment below would find it tapped and skip it, and
-		// the cost would be paid with one permanent fewer than the
-		// clause prints (CR 118.3).
-		for _, id := range params.TapIDs {
-			if excluded == nil {
-				excluded = make(map[uuid.UUID]bool, len(params.TapIDs))
-			}
-			excluded[id] = true
-		}
+		// The auto-tapper must not spend what this activation has already
+		// spent: see AbilityAutoTapExclusions, which the legal-move
+		// enumerator calls too, so the two exclude one list. #1310:
+		// that includes a permanent tapped to waterbend (CR 118.3).
+		// #1422: ActivationAutoTapExclusions is also what the auto-tap
+		// preview's ?ability= branch excludes, so the plan it shows is
+		// this one. params.ExileIDs is `exiles`: the validator above
+		// refused anything else.
+		excluded := ActivationAutoTapExclusions(cardID, ab.Cost, params)
 		// #1184: the CR 601.2f pass over the ability's mana component
 		// — "Exhaust abilities of other permanents you control cost
 		// {2} less to activate" (Boom Scholar). The same function the
@@ -1078,10 +1275,22 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		// offered an activation the engine then refuses for want of
 		// mana. A board with no activation-scoped modifier on it
 		// returns the printed cost and walks nothing.
-		manaCost, err := g.AbilityManaCostForEffect(playerID, *source, srcZone, ab)
+		//
+		// #1296: priced HERE, after the targets were announced and
+		// validated above, and with them — CR 602.2b runs 601.2c
+		// before 601.2f, so "{1} less for each color of the creature
+		// it targets" (Dragonfire Blade) is sized against the target
+		// this activation actually named.
+		manaCost, err := g.AbilityManaCostForTargetsForEffect(playerID, *source, srcZone, ab, params.Targets)
 		if err != nil {
 			return ErrInvalidParam
 		}
+		// #1310, CR 701.67a: each waterbend tap pays {1} of the
+		// waterbend cost instead of mana. Subtracted AFTER the
+		// cost-modifier pass, because a discount reduces what is
+		// owed and a tap pays part of what is owed — CR 601.2f
+		// before 601.2h, the order the cast path already follows.
+		manaCost = WaterbendReduced(manaCost, params.XValue, len(params.WaterbendIDs))
 		spent, err := g.payAbilityManaCostLocked(p, cardID, source.Name, manaCost, params, ManaSpendForAbility(*source), excluded)
 		if err != nil {
 			return err
@@ -1119,8 +1328,8 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		paid.LifePaid += ab.Cost.Life
 	}
 	if ab.Cost.Loyalty != nil {
-		// applyCounterLocked, not AddCounterForEffect: paying a cost
-		// is not an effect (CR 121.1 / 606.2), so counter-doubling
+		// applyCounterLocked, not AddCounterForEffect: a counter placed
+		// by a COST isn't placed by an effect (CR 614.16), so counter-doubling
 		// replacements do NOT apply to a loyalty ability's + cost.
 		// Doubling Season really does nothing here, and routing
 		// through the CR 614 pipeline would silently make it.
@@ -1154,7 +1363,7 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	}
 	// Sacrifices last: they move cards, which invalidates `source`.
 	// One payment is one simultaneous exit (#747, CR 603.10a).
-	if err := g.payCostSacrificesLocked(sacrifices); err != nil {
+	if err := g.payCostSacrificesLocked(sacrifices, params.commanderAnswers); err != nil {
 		return err
 	}
 	// #1213: how many this announcement actually sacrificed, recorded
@@ -1168,9 +1377,15 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	// before the stack item is built so the leaves-triggers it queues
 	// are drained ABOVE the ability by the closing state-check pass
 	// (CR 603.3b).
-	if err := g.payReturnToHandCostLocked(playerID, cardID, params.ReturnIDs); err != nil {
+	returnedAttacking, err := g.payReturnToHandCostLocked(playerID, cardID, params.ReturnIDs, params.commanderAnswers)
+	if err != nil {
 		return err
 	}
+	// #1227: what the returned permanent was attacking, read by the
+	// payer BEFORE the bounce because the exit clears it and LKI
+	// carries no combat state. Ninjutsu's entry reads it back through
+	// Context.ReturnedAttacking(); see PaidCost.ReturnedAttacking.
+	paid.ReturnedAttacking = returnedAttacking
 	source = nil
 	// Discards last (#660). They move cards out of the hand, which
 	// invalidates `source` for a DiscardSelf cost, and they go
@@ -1184,13 +1399,27 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	// has been paid for, so the card HAS been cycled, and the
 	// watchers see it with the card already in the graveyard, which
 	// is where CR 702.29c says it is.
-	if err := g.payAbilityDiscardsLocked(playerID, cardID, ab, discards); err != nil {
+	if err := g.payAbilityDiscardsLocked(playerID, cardID, ab, discards, params.commanderAnswers); err != nil {
 		return err
 	}
-	// #1221: and the graveyard half. Last of all, because it moves
-	// the source out of the graveyard and the effect that follows
-	// reads it back out of exile. See exile_cost.go.
-	if err := g.payAbilityExileSelfLocked(playerID, cardID, ab); err != nil {
+	// #1297: the exile-N-cards component, beside the discards and for
+	// the same reason — it moves cards, never the source. The one exit
+	// primitive with MustSettleNow (exile_cost.go), not the discard
+	// door: nothing here is discarded. Recorded on the payment so an
+	// effect that reads "the card exiled this way" can find it in exile
+	// by instance ID, where this just put it.
+	if err := g.payExileCardsCostLocked(playerID, cardID, exiles, params.commanderAnswers); err != nil {
+		return err
+	}
+	paid.Exiled = exiles
+	// #1221: and the exile-this half. Last of all, because it moves
+	// the source out of the zone it was activated from and the effect
+	// that follows reads it back out of exile. From the battlefield
+	// (#1404) it is a permanent leaving the battlefield — LTB, not
+	// dies — and it lands before the stack item is built, so the
+	// leaves-triggers it queues sit ABOVE the ability (CR 603.3b),
+	// the sacrifice cost's order. See exile_cost.go.
+	if err := g.payAbilityExileSelfLocked(playerID, cardID, ab, params.commanderAnswers); err != nil {
 		return err
 	}
 
@@ -1210,10 +1439,11 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		// cost that moved the source (sacrifice, discard) has already
 		// ended the object the ability belonged to and the stamp must
 		// say so. See StackItem.SourceEpoch.
-		SourceEpoch: g.cardObjectEpochLocked(cardID),
-		Label:       ab.Label,
-		Targets:     append([]TargetRef(nil), params.Targets...),
-		Modes:       append([]int(nil), params.Modes...),
+		SourceEpoch:  g.cardObjectEpochLocked(cardID),
+		SourceObject: sourceObject,
+		Label:        ab.Label,
+		Targets:      append([]TargetRef(nil), params.Targets...),
+		Modes:        append([]int(nil), params.Modes...),
 		// CR 602.2b: X was announced above and is locked here. The
 		// effect reads it back through Context.X(), the same
 		// accessor an X spell's OnResolve uses, and the wire ships
@@ -1287,7 +1517,7 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		Label:       ab.Label,
 		Exhaust:     ab.Exhaust,
 	})
-	// CR 602.2b / 115.7: the ability's targets were chosen as it was
+	// CR 602.2b / 115.3: the ability's targets were chosen as it was
 	// put on the stack. S22, for "whenever ~ becomes the target of a
 	// spell or ability" (Monk Gyatso) — the clause names abilities as
 	// well as spells, so the activated path has to emit too.
@@ -1300,7 +1530,17 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	// ability and resolve first (ADR 0020 §4, CR 603.3b). Every
 	// named permanent was validated before anything was paid, so
 	// there is nothing left that can fail.
-	g.payTapOthersCostLocked(playerID, params.TapIDs)
+	//
+	// #759: and what it tapped is written onto the item's payment
+	// record — here, after the item exists, because this is where the
+	// taps are paid — so station's effect can read the tapped
+	// creature back at resolution (CR 702.184a). See PaidTap.
+	item.Paid.TappedOthers = paidTapsFrom(g.payTapOthersCostLocked(playerID, params.TapIDs))
+	// #1310: the waterbend taps, paid here for the same reason and
+	// through the same payer the cast path's convoke / waterbend taps
+	// use. Validated above with every other component; the mana they
+	// stood in for was already subtracted from the mana component.
+	g.payTapPermanentsCostLocked(playerID, params.WaterbendIDs)
 	// The cost may have queued dies-triggers (a sacrifice outlet
 	// feeding Blood Artist). Drain them so they sit ABOVE the
 	// ability on the stack, which is where paying a cost puts them.

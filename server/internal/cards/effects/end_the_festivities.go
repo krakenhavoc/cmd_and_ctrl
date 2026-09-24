@@ -10,7 +10,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The one-mana one-sided sweeper: every opponent takes one, and so
 // does every creature and planeswalker they control — a 1/1 token
 // army dies at the state-based sweep, a planeswalker loses a
-// loyalty counter (CR 120.3d), and the caster's own board is
+// loyalty counter (CR 120.3c), and the caster's own board is
 // untouched. Damage from the spell as its source, so it is red
 // noncombat damage and a prevention shield sees it.
 //

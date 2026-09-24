@@ -20,37 +20,48 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // resolution counts — a pump spell, an anthem, a second Krenko
 // trigger from an earlier combat phase.
 //
-// Sandbox simplification: if Krenko has left the battlefield by the
-// time the trigger resolves, the ability makes no tokens. Paper uses
-// last-known information (CR 608.2h) and would still make Goblins
-// equal to its last power; the LKI snapshot the engine keeps is
-// scoped to the dying card's own LTB triggers and isn't reachable
-// from a resolution callback.
+// A Krenko that is not the attacking object any more — removed in
+// response, or flickered and back as a NEW object (CR 400.7) — takes
+// no counter, and the Goblins are made from its last-known power
+// (CR 608.2h), read through Context.SourcePermanent (#1418, #1432).
+// That is the paper answer: the counter has nothing to go on, and
+// "Krenko's power" is the power it had as it last existed.
 func init() {
 	Register(Spec{
 		OracleID:     "e8065e1d-e937-4b56-8011-78f0d07328a0",
 		Name:         "Krenko, Tin Street Kingpin",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"If Krenko is removed in response to its attack trigger, the +1/+1 counter still lands on the card in the graveyard and you get two Goblins — one more than the real card's last known power would make."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WheneverThisAttacks("Krenko, Tin Street Kingpin — +1/+1 counter, then Goblins", func(g *game.Game, item *game.StackItem) error {
+				// #1290: the power that matters is Krenko's power AFTER
+				// the +1/+1 counter LANDS, not on the next line — a
+				// Doubling Season / Hardened Scales board pauses the
+				// placement on a CR 616 prompt, and reading power
+				// before that resumes would make Goblins equal to the
+				// pre-placement power.
 				ctx := NewContext(g, item)
-				if err := (AddCounter{
-					Target: item.SourceCardID,
-					Kind:   game.CounterPlusOne,
-					N:      1,
-				}).Apply(ctx); err != nil {
-					return err
-				}
-				krenko, ok := g.LookupCardForEffect(item.SourceCardID)
+				krenko, ok := ctx.SourcePermanent()
 				if !ok {
 					return nil
 				}
-				return CreateToken{
-					Controller: item.Controller,
-					Template:   RedGoblinToken(),
-					N:          krenko.CurrentPower(),
-				}.Apply(ctx)
+				if krenko.Left {
+					return CreateToken{
+						Controller: item.Controller,
+						Template:   RedGoblinToken(),
+						N:          max(krenko.Power, 0),
+					}.Apply(ctx)
+				}
+				return g.AddCounterThenForEffect(item.SourceCardID, game.CounterPlusOne, 1, func(g *game.Game, _ int) error {
+					krenko, ok := g.LookupCardForEffect(item.SourceCardID)
+					if !ok {
+						return nil
+					}
+					return CreateToken{
+						Controller: item.Controller,
+						Template:   RedGoblinToken(),
+						N:          krenko.CurrentPower(),
+					}.Apply(NewContext(g, item))
+				})
 			}),
 		},
 	})

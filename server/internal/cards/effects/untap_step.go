@@ -23,7 +23,7 @@ import (
 //
 // "Each OTHER player" is how all of them are printed, and it is not
 // a restriction the engine could skip — the controller's own
-// permanents already untap during their own untap step by CR 502.1,
+// permanents already untap during their own untap step by CR 502.3,
 // so a permission that also fired there would be dead weight on
 // every one of their turns.
 func eachOtherPlayersUntapStep(_ *game.Game, source *game.Card, activePlayer uuid.UUID) bool {

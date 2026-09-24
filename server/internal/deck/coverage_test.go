@@ -137,12 +137,12 @@ func clone() cards.Card {
 	}
 }
 
-// theSeriema — #337. Four printed lines. Since S46 (#759, ADR 0071)
-// three of them work: the ETB tutor (SearchLibrary takes an arbitrary
-// predicate), the 7+ threshold and the artifact-creature type change
-// it implies (a charge-counter gate over layers 4, 6 and 7b), and the
-// indestructible grant. Station itself is still a caveat — its cost
-// taps another creature, which is #758.
+// theSeriema — #337. Four printed lines, all working: the ETB tutor
+// (SearchLibrary takes an arbitrary predicate), the 7+ threshold and
+// the artifact-creature type change it implies (a charge-counter gate
+// over layers 4, 6 and 7b, S46 / ADR 0071), the indestructible grant,
+// and since #759 the station ability itself, on #758's tap-another
+// cost.
 //
 // It stays in this table for fortuneTellersTalent's reason: this
 // fixture pins the Scryfall half of the predicate, which does not
@@ -169,15 +169,10 @@ func theSeriema() cards.Card {
 }
 
 // tyLeeChiBlocker — #339 and #340, the same card and the same ETB
-// reported twice. Flash works (printed keyword, #319's fix). Prowess
-// does not, and neither does the lockdown. #74 gave the untap step a
-// hook, but it is the wrong DIRECTION: UntapStepPermission ADDS
-// permanents to CR 502.1's set (Seedborn Muse), and "it doesn't
-// untap during its controller's next untap step" has to remove one.
-// The place for that is untapStepSetLocked, alongside the permission
-// leg. The duration is the other half of the problem: #314's
-// TurnScopedStatics is swept at cleanup, which is the wrong clock for
-// "for as long as you control Ty Lee".
+// reported twice. NeedsEffect is the Scryfall half of the predicate
+// only, so the stamp stays true now that the card is catalogued: #1313
+// shipped its "doesn't untap for as long as you control Ty Lee" hold
+// (ADR 0058's 2026-09-23 amendment). Prowess is still #706.
 func tyLeeChiBlocker() cards.Card {
 	return cards.Card{
 		ID:        uuid.New(),

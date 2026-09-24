@@ -90,8 +90,12 @@ type Spec struct {
 	//                  (Lightning Bolt, Shock, Helix)
 	//   "player"       seated player only
 	//   "creature"     battlefield creature only
-	//   "stack_spell"  an item currently on the stack (Counterspell,
+	//   "stack_spell"  a SPELL currently on the stack (Counterspell,
 	//                  Negate, Swan Song)
+	//   "stack_ability" an activated or triggered ABILITY on the
+	//                  stack (Stifle, Strionic Resonator) — #1211
+	//   "stack_item"   either (Disallow, Voidslime, Deflecting Swat,
+	//                  Bolt Bend, Tale's End) — #1211
 	//   "card_in_graveyard" a card in any graveyard (Regrowth, Eternal
 	//                       Witness)
 	//
@@ -335,6 +339,27 @@ type Spec struct {
 	// was kicked" trigger reads game.CardKickedTimes(*source).
 	OptionalCosts []game.AdditionalCost
 
+	// Gift is the card's "Gift a [something]" (CR 702.174, ADR 0089),
+	// built with GiftACard / GiftAFood / GiftATappedFish /
+	// GiftATreasure, plus .Instead(clause) when a promised gift swaps
+	// the target clause:
+	//
+	//	Gift: GiftACard(),                                     // Dawn's Truce
+	//	Gift: GiftACard().Instead(TargetSpell("target spell")), // Long River's Pull
+	//
+	// ONE declaration, and buildDef grows everything from it: the
+	// optional cost the caster pays by choosing an opponent (appended
+	// after OptionalCosts, so a kicker keeps its index), the gift
+	// itself BEFORE OnResolve on an instant or sorcery (CR 702.174j),
+	// and the "when this enters, if the gift was promised" trigger on a
+	// permanent (CR 702.174b). Do not also declare a gift cost in
+	// OptionalCosts — Register refuses it.
+	//
+	// The card's own "if the gift was promised" branches read
+	// ctx.GiftPromised() in OnResolve, or source.GiftPromised() from a
+	// permanent's own trigger.
+	Gift *Gift
+
 	// CantBeCountered is the S23 "This spell can't be countered"
 	// rider (Supreme Verdict). A spell that declares it is still a
 	// legal target for Counterspell — the counter resolves and does
@@ -364,7 +389,7 @@ type Spec struct {
 	AlternativeCosts []game.AlternativeCost
 
 	// CastCondition is "you may cast this spell only if …" — CR
-	// 307.6's legendary sorcery ("only if you control a legendary
+	// 205.4e's legendary sorcery ("only if you control a legendary
 	// creature or planeswalker"), and the "cast only if" family
 	// generally. Checked once, at announce, by the one cast gate
 	// (ADR 0073 §7), and never at resolution: a condition that
@@ -403,7 +428,7 @@ type Spec struct {
 
 	// ActivationRestrictions are the "can't be activated" statics
 	// this PERMANENT imposes on other objects' activated abilities
-	// (CR 602.5a) — Cursed Totem's "activated abilities of creatures
+	// (CR 602.5) — Cursed Totem's "activated abilities of creatures
 	// can't be activated", Linvala's "…of creatures your opponents
 	// control…", Collector Ouphe's "…of artifacts…", Pithing
 	// Needle's "…of sources with the chosen name … unless they're
@@ -418,6 +443,29 @@ type Spec struct {
 	// activation_restriction.go. #1210, ADR 0073's amendment of
 	// 2026-09-22.
 	ActivationRestrictions []game.ActivationRestriction
+
+	// ActivationTimings declares the per-player activation-TIMING
+	// statements this PERMANENT makes while it is on the battlefield
+	// (#1208, ADR 0066's and ADR 0073's amendments of 2026-09-23) —
+	// The Wandering Emperor's "as long as she entered this turn, you
+	// may activate her loyalty abilities any time you could cast an
+	// instant", Teferi, Master of Time's clause without the
+	// condition, Leonin Shikari's "you may activate equip abilities
+	// any time you could cast an instant".
+	//
+	// The ACTIVATION twin of CastTimings, and it has only this one
+	// home: every card that prints such a statement is a permanent
+	// that says it for as long as it is there, so nothing is stored
+	// and the window is the source's presence — the same argument
+	// CastPermissions and CastTimings make, with no second half.
+	//
+	// Read from the BATTLEFIELD through CatalogAbilityKey, so a
+	// permanent that has lost its abilities stops saying it and one
+	// whose designation gate is unsatisfied is not there at all.
+	// Build with the constructors in activation_timing.go rather
+	// than by hand: they carry the printed label and the predicate,
+	// which are the two halves a card file gets wrong.
+	ActivationTimings []game.ActivationTiming
 
 	// TapCost is the S22 "tap permanents you control to help pay"
 	// cost component — convoke (CR 702.51) and waterbend, which are
@@ -525,6 +573,43 @@ type Spec struct {
 	// attack_tax.go. Nil for nearly every card.
 	AttackTaxes []game.AttackTax
 
+	// BlockRules are the CR 509.1b block restrictions with a
+	// PARAMETER this permanent imposes while it is on the battlefield
+	// (ADR 0045 addendum, Decision 11): "can't be blocked except by
+	// Walls" (Prowler's Helm), "can't be blocked by creatures with
+	// power 2 or less" (Legolas Greenleaf), "creatures with power less
+	// than this creature's power can't block creatures you control"
+	// (Champion of Lambholt), "can't be blocked by more than one
+	// creature" (Vorrac Battlehorns).
+	//
+	// Build them with the constructors in block_rules.go, never by
+	// hand: each one pairs a SCOPE (whose attackers or blockers the
+	// rule binds, relative to this permanent) with the rule, and the
+	// scope is the part a hand-written closure gets wrong. A flat
+	// "can't be blocked" or "can't block" with no parameter is a
+	// Restriction bit (RestrictSelf / RestrictAttached), not a rule.
+	//
+	// Read live at every block check, keyed by CatalogAbilityKey, so a
+	// permanent that loses all abilities imposes nothing. Nil for
+	// nearly every card.
+	BlockRules []game.BlockRule
+
+	// AttackLimits are the CR 508.1c count limits on an attack
+	// declaration this permanent imposes while it is on the
+	// battlefield: "no more than one creature can attack each combat"
+	// (Silent Arbiter, Dueling Grounds), "no more than two creatures
+	// can attack you each combat" (Crawlspace). #1507, ADR 0045
+	// Decision 44.
+	//
+	// Build them with NoMoreThanNCanAttackEachCombat /
+	// NoMoreThanNCanAttackYouEachCombat in attack_limits.go. The
+	// "you" is structural — the limit protects this permanent's
+	// controller — so a card file cannot limit attacks on anybody
+	// else. The block half of the same printed line ("no more than one
+	// creature can block each combat") is a BlockRule, built with
+	// NoMoreThanNCanBlockEachCombat. Nil for nearly every card.
+	AttackLimits []game.AttackLimit
+
 	// CastableZones is the S29 "you may cast this card from
 	// somewhere other than your hand" declaration (CR 601.2, and
 	// every keyword in CR 702 that grants an alternative cast
@@ -562,6 +647,17 @@ type Spec struct {
 	// Register refuses a kind the engine cannot carry out, and a
 	// suspend declaring no time counters, at boot.
 	SpecialActions []game.SpecialAction
+
+	// SpecialActionGrants are special actions this PERMANENT gives to
+	// OTHER cards, which SpecialActions above cannot say because it
+	// describes only the card's own keywords (#1391). One constructor
+	// per printed clause, never a hand-built struct:
+	//
+	//	SpecialActionGrants: []game.SpecialActionGrant{PlotFromTopOfLibrary()}, // Fblthp, Lost on the Range
+	//
+	// Register refuses at boot a grant whose kind or zone the engine
+	// cannot carry out (game.SpecialActionGrantBuilt).
+	SpecialActionGrants []game.SpecialActionGrant
 
 	// Madness is the card's madness cost (CR 702.35), as printed:
 	//
@@ -659,6 +755,48 @@ type Spec struct {
 	// Issue #1197, ADR 0072's 2026-09-22 amendment.
 	PlayerKeywords []string
 
+	// PlayerLifeTotalLocked declares the printed static "Your life
+	// total can't change" (CR 119.7, CR 119.8 — Platinum Emperion),
+	// about this permanent's CONTROLLER. True while the permanent is
+	// on the battlefield and nowhere else.
+	//
+	//	PlayerLifeTotalLocked: true,
+	//
+	// NOT a `Static` entry, and DERIVED rather than written, for
+	// exactly the reasons NoMaxHandSize and PlayerKeywords above give:
+	// game.StaticAbility's Apply takes a *Characteristic and a target
+	// *Card and a player is neither, and a "set on enter, restore on
+	// leave" design cannot answer "restore to what?" when a second
+	// copy is out. The engine asks the battlefield on every query,
+	// through the game.CatalogPlayerLifeTotalLocked hook.
+	//
+	// The GRANTED half of the same rule — "until your next turn, your
+	// life total can't change" (Teferi's Protection, Teferi's
+	// Reproach) — is stored instead, on game.Player.Statics, and is
+	// written from a card file with the LockLifeTotal primitive.
+	//
+	// Issue #1200, ADR 0085.
+	PlayerLifeTotalLocked bool
+
+	// GameEndGates declares a printed static "you can't lose the
+	// game" / "your opponents can't win the game" (CR 104.3 —
+	// Platinum Angel, Herald of Eternal Dawn, Abyssal Persecutor).
+	// True while the permanent is on the battlefield and nowhere else.
+	//
+	//	GameEndGates: YouCantLoseOpponentsCantWin(),
+	//
+	// Scopes are relative to the permanent's CONTROLLER. DERIVED
+	// rather than written, for the reasons PlayerLifeTotalLocked
+	// above gives: the engine asks the battlefield at every loss and
+	// every win through game.CatalogGameEndGates, keyed by
+	// CatalogAbilityKey, so two Angels compose, one leaving can't
+	// revoke the other's gate, and an Angel that lost its abilities
+	// gates nothing. The GRANTED half — "you can't lose the game this
+	// turn" (Angel's Grace) — is game.Game.GrantGameEndGateForEffect.
+	//
+	// Issue #749, ADR 0057 Decision 4.
+	GameEndGates []game.GameEndGate
+
 	// WantsDistinctColors declares a spell that READS the colours of
 	// the mana that paid for it: converge (CR 702.86 — Painful
 	// Truths, Bring to Light) and sunburst (CR 702.44 — Etched
@@ -752,6 +890,26 @@ type Spec struct {
 	// cannot play, and every printed card carries both halves.
 	CastPermissions []game.CastPermission
 
+	// GatedCastPermissions is CastPermissions for a permission gated by
+	// an ADR 0071 designation and/or a card Condition (#1314) —
+	// Fortune Teller's Talent's level-2 line, gated by BOTH `Level(2)`
+	// and "as long as you've cast a spell this turn":
+	//
+	//	GatedCastPermissions: []game.CastPermissionGate{{
+	//	    Permission: game.CastPermission{Zone: game.ZoneLibrary, TopOfLibraryOnly: true},
+	//	    ActiveWhen: Level(2),
+	//	    Condition:  hasCastASpellThisTurn,
+	//	}},
+	//
+	// A separate slot from CastPermissions rather than a gate field on
+	// the same struct, because game.CastPermission is ALSO the type
+	// STORED on a player and mirrored into the snapshot —
+	// game.CastPermissionGate's own doc comment has the argument.
+	// Everything else about a gated entry — Scope, Duration, the
+	// LibraryTopVisible requirement for a library permission — is
+	// exactly as CastPermissions above.
+	GatedCastPermissions []game.CastPermissionGate
+
 	// CastTimings declares the per-player cast-TIMING statements this
 	// permanent makes while it is on the battlefield (#1195, ADR 0066's
 	// 2026-09-22 amendment) — "you may cast spells as though they had
@@ -834,6 +992,21 @@ type Spec struct {
 	// Such a permanent joins the same prompt the caps raise, exempt
 	// from the rule that untapping is otherwise mandatory.
 	UntapOptOuts []game.UntapOptOut
+
+	// DrawStep declares the printed clause "you draw a card during
+	// each opponent's draw step" — Teferi, Who Slows the Sunset's
+	// emblem (#1315). UntapStep's argument for why its clause is not
+	// a Triggered entry applies word for word here, one turn-based
+	// action over: the draw step's turn-based action is CR 504.1's
+	// "the active player draws a card", and this widens who else
+	// draws as PART of that action — no stack, no announce, no
+	// response window. Written as a trigger, it would land a step
+	// late, on the stack, answerable by a counter or a tap effect
+	// that has no printed basis. See game/draw_step.go.
+	//
+	// Nil for every card that does not print the clause, which is
+	// nearly all of them.
+	DrawStep []game.DrawStepPermission
 
 	// Completeness declares how faithfully this spec implements the
 	// card as printed — the machine-readable form of the prose
@@ -949,6 +1122,12 @@ type ActivatedAbility struct {
 	// activating it emits EventCycle. Set by the Cycling /
 	// Typecycling constructors; no card file sets it directly.
 	Cycling bool
+	// Equip marks the CR 702.6 equip ability, so a card that speaks
+	// ABOUT equip abilities can find them — Leonin Shikari's "you
+	// may activate equip abilities any time you could cast an
+	// instant" (#1208). Set by EquipAbility; no card file sets it
+	// directly, exactly as none sets Cycling.
+	Equip bool
 	// Condition is the "Activate only if …" / "Activate only during
 	// your turn" gate (CR 602.1b, #743). Same contract and helpers as
 	// ManaAbility.Condition — see game.ActivatedAbilityShape.Condition
@@ -975,7 +1154,17 @@ type ActivatedAbility struct {
 	// path does not write the activation record, so the combination
 	// is unspellable rather than silently ignored.
 	Exhaust bool
-	Effect  func(g *game.Game, item *game.StackItem) error
+	// CostModifiers is the ability's OWN cost clause — "This ability
+	// costs {1} less to activate for each legendary creature you
+	// control" (the channel lands), "…for each color of the creature
+	// it targets" (Dragonfire Blade). #1296, ADR 0020 amendment
+	// 2026-09-24. Build it with the ordinary constructors
+	// (CostsLessEach, CostsLessIfItTargets) or the target-reading
+	// CostsLessForTheCardItTargets; the SLOT is what makes it price
+	// this ability and nothing else, exactly as Spec.SelfCostModifiers
+	// does for a spell. See game.ActivatedAbilityShape.CostModifiers.
+	CostModifiers []game.CostModifier
+	Effect        func(g *game.Game, item *game.StackItem) error
 }
 
 // ManaAbility is one mana-producing activated ability on a permanent.
@@ -992,6 +1181,22 @@ type ManaAbility struct {
 	Cost     ManaAbilityCost
 	Produced string
 	Label    string
+
+	// Zones is the CR 113.6 dimension: the zones this mana ability
+	// functions from (#1228). Nil means the battlefield and nowhere
+	// else, which is every mana ability in the catalog but the two
+	// Spirit Guides.
+	//
+	// `ActivatedAbility.Zones`' sibling (#660) and
+	// `TriggeredAbility.Zones`' (#922) and `StaticAbility.Zones`'
+	// (#1221). Build one with ExileFromHandForMana rather than by
+	// hand — the zone, the exile cost and the label travel together
+	// and a declaration missing any of them is refused at boot.
+	//
+	// Only the hand is supported (game.supportedManaAbilityZones);
+	// Register refuses the rest, because a zone no consumer walks is
+	// a mana ability the engine would silently never offer.
+	Zones []game.ZoneKind
 
 	// Exhaust marks an exhaust mana ability — "Exhaust — {G}, {T}:
 	// Add three mana of any one color. (Activate each exhaust ability
@@ -1036,6 +1241,30 @@ type ManaAbility struct {
 	// Added in the S22 mana-ability-rider pass.
 	Rider func(g *game.Game, controller, source uuid.UUID) error
 
+	// PreRider is Rider's mirror image: everything the oracle text
+	// says BEFORE the "Add …" clause, run once the cost is paid and
+	// BEFORE Produced / ProducedFunc / ProducedForPaid is evaluated —
+	// Empowered Autogenerator's "Put a charge counter on this
+	// artifact. Add X mana of any one color, where X is the number of
+	// charge counters on this artifact." Without it, X is a guess at
+	// what the counter placement is about to do rather than a read of
+	// what it did (#1370).
+	//
+	// A card declares Rider or PreRider for a given clause, never
+	// both — whichever the printed sentence's own word order needs.
+	//
+	// Same locking contract as Rider. A mutation this makes that
+	// ProducedFunc then reads back — a counter placement — MUST go
+	// through a mustSettleNow entry point
+	// (game.AddCounterMustSettleNowForEffect), because CR 605.3b's
+	// mana ability resolution has no priority window for a CR 616
+	// ordering prompt (two counter doublers) to occupy.
+	//
+	// Nil for every mana ability but Empowered Autogenerator today.
+	//
+	// Added in the #1370 fix.
+	PreRider func(g *game.Game, controller, source uuid.UUID) error
+
 	// NarrowToCommanderIdentity intersects a pipe-syntax Produced
 	// string ("{W|U|B|R|G}") with the controller's commander colour
 	// identity before the colour pick is offered.
@@ -1062,13 +1291,17 @@ type ManaAbility struct {
 	// declaring it. Two card families need it and they are the same
 	// mechanism (#352 sub-gaps 3 and 4):
 	//
-	//   - DERIVED colours: Exotic Orchard ("one mana of any color
-	//     that a land an opponent controls could produce"),
-	//     Reflecting Pool, Fellwar Stone, Mox Amber. Return a pipe
-	//     string — "{W|U|G}".
+	//   - A colour or set read directly off the board: Mox Amber
+	//     ("one mana of any color among legendary creatures and
+	//     planeswalkers you control"). Return a pipe string —
+	//     "{W|U|G}".
 	//   - SCALED amounts: Cabal Coffers ("{B} for each Swamp you
 	//     control"), Gaea's Cradle. Return the slot repeated —
 	//     "{B}{B}{B}".
+	//
+	// Exotic Orchard, Reflecting Pool and Fellwar Stone — the DERIVED
+	// colours family, "a land could produce" — do NOT use this slot;
+	// see DerivedMatch below.
 	//
 	// Wins over Produced when non-nil. Returning "" adds no mana,
 	// which is the printed behaviour when the derivation finds
@@ -1101,26 +1334,50 @@ type ManaAbility struct {
 	// three counters could produce {C} and one with none could not.
 	ProducedForPaid func(g *game.Game, controller, source uuid.UUID, paid game.PaidCost) string
 
-	// DerivesFromOtherSources marks a ProducedFunc that asks OTHER
+	// DerivesFromOtherSources marks an ability that asks OTHER
 	// permanents what THEY could produce — Exotic Orchard, Reflecting
-	// Pool, Fellwar Stone, and nothing else in the catalog. It is the
-	// recursion guard, and it is a declaration rather than something
-	// inferred because the alternative is a re-entrancy counter on a
-	// snapshotted struct.
+	// Pool, Fellwar Stone, and nothing else in the catalog. Such an
+	// ability declares DerivedMatch (below) instead of ProducedFunc.
 	//
-	// CR 106.7's "could produce" reader (game.ProducibleManaLocked)
-	// evaluates every OTHER ProducedFunc — a chosen colour, a board
-	// count, a devotion — and skips these, because two Exotic Orchards
-	// facing each other would otherwise recurse until the stack ran
-	// out. CR 106.6b answers the circular case with "no mana" and so
-	// does the guard.
+	// A declaration rather than something inferred, because the
+	// alternative is a re-entrancy counter on a snapshotted struct.
 	//
-	// Pair it with ProducedFromOpponentLands / ProducedFromOwnLands
-	// and nothing else; TestDerivedManaAbilitiesDeclareTheGuard holds
-	// the catalog to that in both directions.
+	// Pair it with DerivedMatch and nothing else;
+	// TestDerivedManaAbilitiesDeclareTheGuard holds the catalog to
+	// that in both directions.
 	//
 	// Added in S44 (#782).
 	DerivesFromOtherSources bool
+
+	// DerivedMatch computes CR 106.7's "could produce" derivation
+	// directly, for exactly the three abilities DerivesFromOtherSources
+	// marks (#1323). ProducedFunc cannot do this itself: the
+	// derivation is recursive whenever the source it asks about is
+	// ITSELF derived (Fellwar Stone asking an opposing Exotic
+	// Orchard), and answering that correctly — a one-way chain
+	// resolves, two copy-mana lands facing each other do not recurse
+	// forever (CR 106.7's own closing sentence, not "106.6b" — that
+	// number does not exist in the pinned edition) — needs the
+	// ancestor path threaded the whole way down, which ProducedFunc's
+	// fixed three-argument shape has no room for. This is a plain
+	// predicate instead — "candidate is a land an opponent controls"
+	// (Exotic Orchard, Fellwar Stone), "candidate is a land you
+	// control" (Reflecting Pool) — and game.ProducibleManaLocked walks
+	// the battlefield and recurses itself, in the game package, where
+	// the ancestor path is an ordinary parameter.
+	//
+	// Wins over ProducedFunc for BOTH the CR 106.7 reader and a real
+	// activation, so the two can never compute a different answer for
+	// the same board. Build one with DerivedFromOpponentLands /
+	// DerivedFromOwnLands in mana_derivation.go rather than by hand.
+	DerivedMatch func(candidate game.Card, controller uuid.UUID) bool
+
+	// DerivedColorsOnly drops {C} from a DerivedMatch union: "any
+	// COLOR that a land an opponent controls could produce" (Exotic
+	// Orchard, Fellwar Stone) cannot make colorless mana (CR 105.1);
+	// "any TYPE that a land you control could produce" (Reflecting
+	// Pool) can.
+	DerivedColorsOnly bool
 
 	// Condition gates activation — "Activate only if you control
 	// five or more lands" (Temple of the False God), "…three or
@@ -1184,6 +1441,21 @@ type ManaAbilityCost struct {
 	// the S15 note that sacrifice costs were "reserved for future
 	// mana rocks" — they are all live now.
 	SacrificeOther *game.TargetSpec
+
+	// TapOthers taps a fixed or X-announced number of untapped permanents the
+	// activator controls as part of the cost (#758) — Springleaf
+	// Drum's "Tap an untapped creature you control" and Heritage
+	// Druid's three Elves. It is the same component an ordinary
+	// activated ability carries; build fixed counts with
+	// TapAnotherUntapped (or a game.TapOthersCost above one). A
+	// variable count is refused here because mana abilities have no X
+	// announcement (CR 605.3b).
+	//
+	// This is not the {T} symbol, so summoning sickness does not stop
+	// a creature paying it. The auto-tapper never chooses one of these
+	// abilities because selecting which other permanent to tap is a
+	// player decision.
+	TapOthers *game.TapOthersCost
 
 	// Life is a "Pay N life" component of the activation cost (CR
 	// 119.4) — Mana Confluence's "{T}, Pay 1 life: Add one mana of
@@ -1269,6 +1541,41 @@ type ManaAbilityCost struct {
 	// The auto-tapper never plans a source that has one: which card
 	// to pitch is a decision, and the planner makes none.
 	DiscardCards *game.DiscardCost
+
+	// ExileCards is an "Exile N cards from your hand" component of the
+	// activation cost (#1283) — Cadaverous Bloom's "Exile a card from
+	// your hand: Add {B}{B} or {G}{G}". Build it with ExileACardFromHand
+	// or ExileCardsFromHand; ExileCardsFromGraveyard is the same
+	// component one pile over (#1297), for Molt Tender's "{T}, Exile a
+	// card from your graveyard: Add one mana of any color." when it
+	// lands. A CR 602 ability declares the component through
+	// ExileFromGraveyard / ExileFromHand instead.
+	//
+	// DiscardCards' sibling and NOT a discard: the cards go to exile
+	// through the one exit primitive, fire no discard event and are
+	// invisible to madness (game.ExileCost). Nor is it ExileSelf below,
+	// which exiles the SOURCE and asks no question.
+	//
+	// The auto-tapper never plans a source that has one: which card to
+	// exile is a decision, and the planner makes none.
+	ExileCards *game.ExileCost
+
+	// ExileSelf exiles the card that has the ability, out of the zone
+	// the ability functions from, as the activation cost (#1228):
+	//
+	//	Simian Spirit Guide  "Exile this card from your hand: Add {R}."
+	//	Elvish Spirit Guide  "Exile this card from your hand: Add {G}."
+	//
+	// The SAME clause AbilityCost.ExileSelf carries (#1221) — build
+	// it with ExileThis().ExileSelf if you are writing one by hand,
+	// though ExileFromHandForMana is the constructor that exists for
+	// it.
+	//
+	// Register refuses it on a mana ability that declares no
+	// non-battlefield zone (there would be nothing to exile from) and
+	// requires it on one that does (there would be no cost at all,
+	// and a free repeatable mana source is not a card).
+	ExileSelf bool
 }
 
 // ZeroUUID is an alias for uuid.Nil. Mostly used in tests to

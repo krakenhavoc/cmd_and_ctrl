@@ -55,10 +55,10 @@ import (
 //
 // WHAT IT ASSERTS
 //
-//	Equip        sorcery speed (CR 702.6b) — refused in an upkeep,
+//	Equip        sorcery speed (CR 702.6a) — refused in an upkeep,
 //	             taken in a main phase; "target creature you control";
 //	             the attachment stamped, the static reaching the host,
-//	             and a second activation MOVING it (CR 702.6d).
+//	             and a second activation MOVING it (CR 701.3a).
 //	Aura         Enchant creature as an announce-time target
 //	             (CR 303.4a), the attachment stamped as the Aura
 //	             ENTERS and not at announce, and the
@@ -162,7 +162,7 @@ func TestAttachmentThemeDeckPlaysThreeTurns(t *testing.T) {
 
 	// --- turn 1: the pile goes together ------------------------------
 	advanceToMainOf(t, g, themeSeat)
-	firstRound := g.Turn.Number
+	firstRound := g.Turn.Round
 
 	// The opponent's body. Placed, not cast: see the file comment.
 	theirs := seedThemeCreature(g, opponent.ID, "Pikeman", "Creature — Human Soldier", 3, 3)
@@ -269,19 +269,19 @@ func TestAttachmentThemeDeckPlaysThreeTurns(t *testing.T) {
 
 	// --- turn 2: the sorcery-speed gate, and undo/replay -------------
 	advanceToStepOf(t, g, themeSeat, game.StepUpkeep)
-	// CR 702.6b. The Boots are already attached; re-equipping them to
+	// CR 702.6a. The Boots are already attached; re-equipping them to
 	// the Squire would be a legal MOVE in a main phase, and is not one
 	// here.
 	if err := tryEquip(t, g, me.ID, boots, squire); err != game.ErrSorcerySpeedRequired {
-		t.Errorf("equip in an upkeep returned %v, want ErrSorcerySpeedRequired (CR 702.6b)", err)
+		t.Errorf("equip in an upkeep returned %v, want ErrSorcerySpeedRequired (CR 702.6a)", err)
 	}
 	if host := attachmentHostOf(t, g, boots); host.ID != hero {
 		t.Errorf("the refused equip moved the Boots to %+v", host)
 	}
 
 	advanceToMainOf(t, g, themeSeat)
-	if g.Turn.Number != firstRound+1 {
-		t.Fatalf("round at the second main phase = %d, want %d", g.Turn.Number, firstRound+1)
+	if g.Turn.Round != firstRound+1 {
+		t.Fatalf("round at the second main phase = %d, want %d", g.Turn.Round, firstRound+1)
 	}
 
 	castThemeSpell(t, g, me, hand["Darksteel Plate"])
@@ -290,7 +290,7 @@ func TestAttachmentThemeDeckPlaysThreeTurns(t *testing.T) {
 	// Undo and replay, on the road the room's undo stack actually
 	// uses: Game.Clone before the action, Game.RestoreFrom after. An
 	// attach is the interesting case for it, because the state it
-	// writes is a relation between two cards plus a CR 613.7d
+	// writes is a relation between two cards plus a CR 613.7e
 	// timestamp — a shallow copy would leave the restored game with
 	// the attachment still stamped on one side of it.
 	beforeEquip := g.Clone()
@@ -347,7 +347,7 @@ func TestAttachmentThemeDeckPlaysThreeTurns(t *testing.T) {
 		t.Errorf("the refused equip attached the Clamp to %+v", host)
 	}
 
-	// CR 702.6d: a second activation MOVES the Equipment, and the
+	// CR 701.3a: a second activation MOVES the Equipment, and the
 	// grant moves with it in the same beat.
 	equipTo(t, g, me.ID, greaves, hero)
 	if ab := effectiveAbilities(t, g, squire); containsString(ab, "shroud") {
@@ -360,8 +360,8 @@ func TestAttachmentThemeDeckPlaysThreeTurns(t *testing.T) {
 	// --- turn 3: Mind Control, then the two SBAs ---------------------
 	advanceToStepOf(t, g, themeSeat, game.StepUpkeep)
 	advanceToMainOf(t, g, themeSeat)
-	if g.Turn.Number != firstRound+2 {
-		t.Fatalf("round at the third main phase = %d, want %d", g.Turn.Number, firstRound+2)
+	if g.Turn.Round != firstRound+2 {
+		t.Fatalf("round at the third main phase = %d, want %d", g.Turn.Round, firstRound+2)
 	}
 
 	castThemeSpellTargeting(t, g, me, mindControl,

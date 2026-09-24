@@ -183,3 +183,57 @@ This ships in production, which is the whole point.
   because it is also false: it tells a player Mind Stone has a
   known gap when it does not, and it erases the distinction that makes
   the remaining work legible.
+
+## Amendment (2026-09-24, #1276): the wiring is now checked against the printed card
+
+`Completeness` and `Caveats` say what is wired. Nothing checked that the
+wiring matched the card. The Wandering Emperor shipped from S27 to #1208
+with three loyalty abilities at the wrong costs, one of them invented,
+and four tests asserted the wrong card. The coverage package couldn't see
+it because it reads the catalog, not the card.
+
+`server/internal/cards/coverage/oracle.go` is the check.
+`TestAbilitiesMatchOracleText` runs it in the default `go test`. For
+every `Spec.Activated` ability it checks two things. **Cost:** the
+label's cost prefix, or its keyword form ("Crew 3"), is printed on the
+card. **Effect:** at least half of the label's words appear in an oracle
+line printed at that cost. It also checks the reverse. **Missing:** every
+loyalty line and every non-mana `<cost>:` line on the Spec's face has a
+registered ability, or a caveat that quotes the cost ("the −7"), or a
+pinned row in `knownOracleMismatches`. The effect half is what catches
+the Emperor. All three of her costs are printed on the card, so a
+cost-only check passes a permuted set.
+
+Three decisions:
+
+- **The oracle text is a checked-in, generated fixture.** CI has no
+  Scryfall dump. `testdata/oracle_text.json` holds the printed text of
+  every catalogued oracle ID, one card per line (~520 KB). It is
+  generated through `cards.Index.FindByOracleID`, the join the server
+  itself uses, so placeholder printings never win. The regen command is
+  `CMDCTRL_SCRYFALL_DUMP=… go test ./internal/cards/coverage/ -run
+  TestOracleFixtureIsCurrent -update-oracle`. It uses its own flag
+  because `-update` also rewrites the census block, which CI owns.
+  `TestOracleFixtureIsCurrent` compares the fixture with the dump and
+  runs nightly in `e2e-nightly.yml`, where the dump is available. A Spec
+  that registers an activated ability but has no fixture entry fails
+  at PR time, not nightly.
+- **Normalisation, not equality.** Reminder text is dropped. U+2212 is
+  treated as `-`. The card's name, its short name and "this
+  creature"-style self-references all become `~`. Loyalty brackets,
+  leading ability words and station thresholds are stripped. A modal
+  line absorbs its bullets. Labels abbreviate, so the effect score is
+  word containment, and the floor is 0.5. On the catalog, every correct
+  label scored ≥ 0.8 and the Emperor's three scored 0.14, 0.33 and 0.20.
+- **Out of scope, on purpose.** Mana abilities: their labels carry no
+  cost, and basic lands have no Spec. Abilities granted in quotes. The
+  missing-ability check on a second face that has no Spec of its own.
+
+The first run over 2,380 Specs (548 abilities) produced 17 findings on
+14 cards. Three of those cards had label typos (two findings each), and
+the labels are fixed: Brass Squire and Vexing
+Puzzlebox omitted `{T}`, and Beledros Witherbloom's label wasn't the
+printed line. The other 11 are pinned. One is Heart of Kiran's
+alternative crew, which the card prints as prose. Ten are unregistered
+abilities on caveated cards. Five of those have a cost shape that
+now exists (#1381).

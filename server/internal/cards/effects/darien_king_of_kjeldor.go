@@ -23,7 +23,7 @@ import (
 //
 //   - "You're dealt DAMAGE", not "you lose life". Paying life for a
 //     Mana Confluence, a Vizkopa drain and a Necropotence activation
-//     are all life loss, and Darien sees none of them (CR 119.3c).
+//     are all life loss, and Darien sees none of them (CR 119.3).
 //   - "THAT MANY" is the damage that was actually APPLIED. A
 //     prevention shield or a damage-halving replacement changes the
 //     number before the event is emitted, so a fogged hit makes no

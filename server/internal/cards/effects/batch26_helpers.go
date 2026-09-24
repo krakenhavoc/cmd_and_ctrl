@@ -264,15 +264,15 @@ func b26DamageEachPlayerTwiceTheirNonbasicLands(ctx *Context) error {
 
 // b26TuckAttackersTopOrBottomByOwnersChoice is Aetherspouts: every
 // attacking creature goes onto its owner's library, and the owner
-// chooses top or bottom. The choice is asked as a scry — each
-// owner's attackers are put on top of their library and the owner
-// then scries that many, which is exactly "for each of these cards,
-// top or bottom, and the order of the ones on top" (CR 401.4 gives
-// the owner the order anyway). The scry looks at nothing new: the
-// cards were public permanents a moment ago. Owners are asked in
-// seat order; a player with no attacker is not asked.
+// chooses top or bottom. Each owner's attackers are put on top of
+// their library together, and the owner is then asked a
+// put_in_library with the top_or_bottom placement over exactly those
+// cards (ADR 0088) — "for each of these cards, top or bottom, and the
+// order of each pile". Not a scry: Aetherspouts prints no keyword
+// action, and a scry fired "whenever you scry" payoffs (#996). Owners
+// are asked in seat order; a player with no attacker is not asked.
 //
-// #783: the scry is the tuck's CONTINUATION and it counts what LANDED.
+// #783: the ordering is the tuck's CONTINUATION and it counts what LANDED.
 // A library is a CR 903.9 destination, so an attacking commander stops
 // to ask its owner about the command zone — and the old per-card loop
 // counted the question rather than the answer. The owner scried a
@@ -293,18 +293,24 @@ func b26TuckAttackersTopOrBottomByOwnersChoice(ctx *Context) error {
 	// would be the wrong one.
 	return ctx.Game.TuckCardsToLibraryThenForEffect(ids, game.TuckOptions{}, func(g *game.Game, tucked []uuid.UUID) error {
 		ctx := NewContext(g, item)
-		byOwner := map[uuid.UUID]int{}
+		byOwner := map[uuid.UUID][]uuid.UUID{}
 		for _, id := range tucked {
 			if c, ok := g.LookupCardForEffect(id); ok {
-				byOwner[c.Owner]++
+				byOwner[c.Owner] = append(byOwner[c.Owner], id)
 			}
 		}
 		for _, p := range g.Seats {
 			if p == nil || p.Eliminated {
 				continue
 			}
-			if n := byOwner[p.ID]; n > 0 {
-				if err := (Scry{Player: p.ID, N: n}).Apply(ctx); err != nil {
+			if own := byOwner[p.ID]; len(own) > 0 {
+				if err := (PutInLibraryInAnyOrder{
+					Chooser:   p.ID,
+					Cards:     own,
+					From:      game.ZoneLibrary,
+					Placement: game.LibraryPlaceTopOrBottom,
+					Label:     "Aetherspouts — put each on the top or the bottom of your library",
+				}).Apply(ctx); err != nil {
 					return err
 				}
 			}

@@ -28,6 +28,12 @@ type Context struct {
 	// Nil for AsEnters callbacks (which fire after the spell has
 	// already resolved and routed to the battlefield).
 	Item *game.StackItem
+
+	// groupMember marks a Context the text reaches its permanents
+	// through as members of a set ("each creature you control"), not
+	// as "this" — so the #1432 new-object question is not asked of
+	// them. Set only by asGroupMember (source_object_guard.go, #1463).
+	groupMember bool
 }
 
 // NewContext constructs a Context bound to a game + stack item.
@@ -104,6 +110,56 @@ func (c *Context) CountersRemoved() int {
 // cannot say.
 func (c *Context) Sacrificed() int {
 	return c.Paid().Sacrificed
+}
+
+// ReturnedAttacking is what the permanent the announcement's
+// return-to-hand cost returned was ATTACKING — the player,
+// planeswalker or battle, uuid.Nil when it was attacking nothing.
+// A fact about the ANNOUNCEMENT, read back the way X, CountersRemoved
+// and Sacrificed are, and for a stronger reason than any of them: the
+// returned permanent's exit CLEARS Card.AttackingTarget and LKI
+// carries no combat state, so by resolution there is nowhere else the
+// answer could come from. Added in #1227.
+//
+// Ninjutsu is the clause that asks (CR 702.49a): the ninja is put
+// onto the battlefield attacking the same player or planeswalker the
+// returned creature was attacking.
+func (c *Context) ReturnedAttacking() uuid.UUID {
+	return c.Paid().ReturnedAttacking
+}
+
+// TappedPower is the power of the permanent the announcement's
+// tap-another cost tapped (#759) — station's "charge counters equal
+// to the tapped creature's power" (CR 702.184a). ok is false when
+// the cost tapped nothing, which is every ability without the
+// component.
+//
+// NOT a number off the payment record: CR 608.2h reads the tapped
+// creature AS THE ABILITY RESOLVES if it is still on the battlefield
+// (pump it in response and more counters go on), and as it last
+// existed there if it is not — game.PaidTapPowerForEffect answers
+// both. The one printed clause taps a single permanent; for a cost
+// that taps more this is the first one named.
+//
+// Not clamped: a negative power is returned as negative, and the
+// caller decides what "that many counters" means for it.
+func (c *Context) TappedPower() (power int, ok bool) {
+	taps := c.Paid().TappedOthers
+	if len(taps) == 0 || c.Game == nil {
+		return 0, false
+	}
+	return c.Game.PaidTapPowerForEffect(taps[0]), true
+}
+
+// Exiled is the cards the announcement's ExileCards cost exiled, in the
+// order the activator named them — "the card exiled this way" (Holistic
+// Wisdom), "the exiled card's power" (Dread Defiler). A fact about the
+// ANNOUNCEMENT, read back the way Sacrificed and ReturnedAttacking are
+// (#1297). The cards themselves are in exile under the same instance
+// IDs, so an effect looks them up with LookupCardForEffect; nil when the
+// cost exiled nothing. The returned slice is a copy.
+func (c *Context) Exiled() []uuid.UUID {
+	return append([]uuid.UUID(nil), c.Paid().Exiled...)
 }
 
 // ManaSpent is what the payment for THIS stack item can be asked
@@ -212,7 +268,7 @@ func (c *Context) Modes() []int {
 
 // HasMode reports whether option i of the spell's ModeSpec was
 // chosen at announce. A modal card's OnResolve is a sequence of
-// `if ctx.HasMode(0) { … }` blocks in option order (CR 700.2c:
+// `if ctx.HasMode(0) { … }` blocks in option order (CR 608.2c:
 // modes resolve in printed order). Added in S20 sub-PR 4.
 func (c *Context) HasMode(i int) bool {
 	for _, m := range c.Modes() {
@@ -233,7 +289,7 @@ func (c *Context) ModeCount(i int) int {
 
 // Mode is the OPTION index chosen at occurrence `n` of the announced
 // mode list, or -1 when there is no such occurrence. Modes resolve in
-// announce order (CR 700.2c), so a card that walks its occurrences
+// announce order (CR 608.2c), so a card that walks its occurrences
 // walks this. Added by #764.
 func (c *Context) Mode(n int) int {
 	modes := c.Modes()
@@ -416,6 +472,66 @@ func (c *Context) Trigger() game.TriggerContext {
 		return game.TriggerContext{}
 	}
 	return *c.Item.Trigger
+}
+
+// TriggeringPermanent is the permanent the trigger's event was about —
+// the creature that entered, the permanent that left — read at
+// RESOLUTION under CR 608.2h (#1379): as it is now while that object is
+// still on the battlefield, so a pump in response counts, and as it last
+// existed there once it has gone. PermanentInfo.Left says which.
+//
+// "Where X is that creature's power" is `info.Power` (counters included,
+// not clamped). A clause that ACTS on the permanent — "put two +1/+1
+// counters on it" — must check Left first: last-known information is
+// something to read, not something to change.
+//
+// False when the event named no permanent, the item is not a trigger,
+// or the object left by a route the engine keeps no record of (its
+// owner left the game).
+func (c *Context) TriggeringPermanent() (game.PermanentInfo, bool) {
+	obj := c.Trigger().Object
+	if obj == nil {
+		return game.PermanentInfo{}, false
+	}
+	return c.Game.PermanentForEffect(obj.Ref())
+}
+
+// SourceRef names the OBJECT this ability came from (#1418, CR 400.7):
+// its source card plus the epoch that card had when the ability
+// triggered or was activated. Source() is the card; this is the
+// object, which is what "this permanent" means in the text. A source
+// that left and came back while the ability waited is a new object,
+// and this ref does not name it.
+//
+// False for a spell and for an ability with no source card.
+func (c *Context) SourceRef() (game.ObjectRef, bool) {
+	if c.Item == nil {
+		return game.ObjectRef{}, false
+	}
+	return c.Game.SourceObjectForEffect(c.Item)
+}
+
+// SourcePermanent is "this permanent" read at RESOLUTION (#1418,
+// CR 608.2h): as it is now while the object the ability came from is
+// still on the battlefield, and as it last existed there once it has
+// gone — including when its card is back on the battlefield as a new
+// object. PermanentInfo.Left says which, and a clause that ACTS on
+// the permanent ("untap this artifact") must check it first:
+// last-known information is something to read, not something to
+// change.
+//
+// Mana Vault's "if this artifact is tapped" is `info.Tapped`.
+//
+// False for a spell, for an ability whose source was never a
+// permanent (a trigger from a graveyard, an ability activated from a
+// hand), and for a permanent that left by a route the engine keeps no
+// record of.
+func (c *Context) SourcePermanent() (game.PermanentInfo, bool) {
+	ref, ok := c.SourceRef()
+	if !ok {
+		return game.PermanentInfo{}, false
+	}
+	return c.Game.PermanentForEffect(ref)
 }
 
 // PayloadCards is Payload narrowed to its card refs, in the order the

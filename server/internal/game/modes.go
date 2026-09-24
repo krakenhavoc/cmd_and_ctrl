@@ -1,5 +1,7 @@
 package game
 
+import "fmt"
+
 // modes.go — modal spells, triggers and activated abilities
 // (CR 700.2). A card with "Choose one —" / "Choose two —" text
 // declares a ModeSpec: the option labels, how many must be chosen,
@@ -22,7 +24,7 @@ package game
 // target group through TargetRef.Mode. The catalog reads the choice
 // back through effects.Context.HasMode / ModeCount / Modes, or lets
 // the engine dispatch each chosen bullet's ModeOption.Effect in
-// announce order (CR 700.2c).
+// announce order (CR 608.2c).
 
 // ModeOption is one bullet of a modal spell or ability.
 type ModeOption struct {
@@ -37,7 +39,7 @@ type ModeOption struct {
 	Targets *TargetSpec
 
 	// Effect is this bullet's body, run at resolution in announce
-	// order (CR 700.2c), once per OCCURRENCE — a mode chosen twice
+	// order (CR 608.2c), once per OCCURRENCE — a mode chosen twice
 	// under CR 700.2d runs twice. `occurrence` is the index into
 	// StackItem.Modes, so the effect reads its own target group
 	// (effects.Context.ModeTargets) rather than the item's whole
@@ -53,6 +55,29 @@ type ModeOption struct {
 	// Runs under g.mu held in write mode: MUST NOT call public
 	// locking mutators. Added by #764.
 	Effect func(g *Game, item *StackItem, occurrence int) error
+
+	// Cost is CR 702.172a's Spree: "As an additional cost to cast
+	// this spell, pay the costs associated with those modes chosen
+	// this way." Brace notation ("{1}{U}"), paid IF AND ONLY IF this
+	// bullet is chosen, on top of the spell's own cost and every
+	// OTHER chosen bullet's. Empty for an ordinary modal bullet —
+	// every modal card before S45 leaves it unset and pays nothing
+	// extra for choosing it.
+	//
+	// Mana only, on purpose: every printed Spree card (Three Steps
+	// Ahead, Explosive Derailment, Insatiable Avarice, Caught in the
+	// Crossfire and the rest of the cycle) prices its bullets in mana
+	// alone. A card-shaped mode cost ("discard a card" per bullet)
+	// would need the enumerator's cost-payment search widened to a
+	// THIRD axis beside modes and targets, and the flat discard /
+	// sacrifice wire lists extended to carry a per-mode slice —
+	// neither of which any catalog card asks for yet. Left as a
+	// string rather than an *AdditionalCost for the same reason: a
+	// mostly-empty struct enforced-empty by a boot panic is worse
+	// than the honest field, and swapping the type is the whole of
+	// what the future PR would do. Added by ADR 0065's 2026-09-23
+	// amendment.
+	Cost string
 }
 
 // ModeSpec declares a modal spell's or ability's choice.
@@ -160,11 +185,15 @@ func castTargetSpecForItem(oracleID string, item *StackItem) *TargetSpec {
 			}
 		}
 	}
-	return TargetSpecUnderAlternativeCost(spec, AlternativeCostByKey(oracleID, item.AltCost))
+	spec = TargetSpecUnderAlternativeCost(spec, AlternativeCostByKey(oracleID, item.AltCost))
+	// ADR 0089 §3: the same rewrite the announce path applied, so a
+	// restored or copied promised Long River's Pull is still judged
+	// under "target spell".
+	return TargetSpecUnderOptionalCosts(spec, OptionalCostsFor(oracleID), item.Paid.OptionalCosts)
 }
 
 // runChosenModeEffectsLocked runs each chosen bullet's ModeOption
-// Effect in announce order, once per occurrence (CR 700.2c, and CR
+// Effect in announce order, once per occurrence (CR 608.2c, and CR
 // 700.2d for a repeated mode). A nil Effect means the card resolves
 // its modes inside its own OnResolve instead, which is the older and
 // still-supported shape.
@@ -254,4 +283,41 @@ func EnoughChoosableModes(n int, ms *ModeSpec) bool {
 		return true
 	}
 	return n >= ms.Min
+}
+
+// AddModeCostMana is CR 702.172a's Spree, the mana half: the sum of
+// every CHOSEN mode's own Cost, added into `cost` at CR 601.2f beside
+// AddOptionalCostMana (ADR 0073 §3) — the same point in the
+// precedence and the same reason. Thalia taxes a Spree spell once for
+// the whole announced total, and the cast path, the bot enumerator
+// and the auto-tap preview must price one mode selection identically
+// (#544), so there is exactly one walk of this arithmetic.
+//
+// A nil ModeSpec, or one where no chosen option carries a Cost,
+// changes nothing — every modal card that predates S45 reprices to
+// the exact number it always did.
+//
+// `modes` is a MULTISET in announce order (CR 700.2d): a repeated
+// option pays its Cost once per occurrence, which is correct by
+// construction since the loop walks the multiset rather than a set of
+// distinct indices.
+func AddModeCostMana(cost ParsedCost, ms *ModeSpec, modes []int) (ParsedCost, error) {
+	if ms == nil {
+		return cost, nil
+	}
+	for _, m := range modes {
+		if m < 0 || m >= len(ms.Options) || ms.Options[m].Cost == "" {
+			continue
+		}
+		add, err := ParseCost(ms.Options[m].Cost)
+		if err != nil {
+			return cost, fmt.Errorf("%w for %s: %w", ErrUnparseableCost, ms.Options[m].Label, err)
+		}
+		cost.Generic += add.Generic
+		cost.Required = append(cost.Required, add.Required...)
+		cost.XSlots += add.XSlots
+		cost.HasPhyrexian = cost.HasPhyrexian || add.HasPhyrexian
+		cost.HasSnow = cost.HasSnow || add.HasSnow
+	}
+	return cost, nil
 }

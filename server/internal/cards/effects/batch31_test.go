@@ -382,6 +382,35 @@ func TestB31TheEndstoneDrawsOnLandsAndSpellsAndResetsLife(t *testing.T) {
 	}
 }
 
+// #1337: b20LandPlayed still reads every hand-origin entry as a play,
+// which stopped being exact once #654 shipped
+// PutFromHandOntoBattlefield. A land Eureka Moment PUTS from hand
+// (never played) still draws a card here — the declared, stronger-
+// than-printed gap tracked as #1326. This test pins the gap so it
+// gets noticed and cleared the day #1326 lands, not silently
+// widened.
+// #1326: Event.Played tells a PUT apart from a PLAY (CR 305.4), so a
+// land Eureka Moment puts onto the battlefield draws nothing.
+func TestB31TheEndstoneDoesNotDrawOnALandPutFromHandNotPlayed(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	b31Push(g, me.ID, "The Endstone", "Legendary Artifact", b31TheEndstoneOracle, "{7}", 0, 0)
+	land := handCardForTest(me, "Forest", "Basic Land — Forest", "")
+
+	castCatalogSpell(t, g, "Eureka Moment", "Instant", putFromHandEurekaOracle, nil)
+	passPriorityAroundTable(t, g)
+	beforePut := me.Hand.Size()
+	answerChooseCards(t, g, me.ID, land)
+	if !g.Battlefield.Contains(land) {
+		t.Fatal("the chosen land did not reach the battlefield")
+	}
+	passPriorityAroundTable(t, g)
+
+	if got := me.Hand.Size(); got != beforePut-1 {
+		t.Errorf("hand %d → %d, want -1 (the land left, no draw — it was PUT, not played)", beforePut, got)
+	}
+}
+
 func TestB31TillerEngineUntapsOrTapsWhenALandEntersTapped(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]

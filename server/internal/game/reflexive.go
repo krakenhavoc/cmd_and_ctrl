@@ -145,6 +145,13 @@ func (g *Game) QueueReflexiveTriggerForEffect(parent *StackItem, rt ReflexiveTri
 	label := rt.Label
 	effect := rt.Effect
 	payload := append([]TargetRef(nil), rt.Payload...)
+	// CR 603.12: the reflexive trigger's source is the parent's, and
+	// so is the OBJECT (#1418) — the resolving parent already names
+	// it, and the card may have moved since. A move the parent itself
+	// made onto the battlefield is followed (#1432,
+	// followedSourceObjectLocked): "return this to the battlefield.
+	// When you do, …" is about the permanent it returned.
+	sourceObject := g.followedSourceObjectLocked(parent)
 	ability := TriggeredAbility{
 		// Watches / AppliesTo stay empty: this ability is never
 		// harvested off an event, so nothing ever looks at them. The
@@ -155,6 +162,7 @@ func (g *Game) QueueReflexiveTriggerForEffect(parent *StackItem, rt ReflexiveTri
 		OptionalPrompt: rt.Optional,
 		Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
 			item := NewTriggeredItem(source, label, effect)
+			item.SourceObject = sourceObject
 			item.Payload = append([]TargetRef(nil), payload...)
 			return item
 		},

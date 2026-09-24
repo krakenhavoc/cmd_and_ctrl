@@ -57,7 +57,7 @@ func TestUntappedManaBeatsTapped(t *testing.T) {
 func TestKeywordTableIsApplied(t *testing.T) {
 	w := heuristic.DefaultWeights()
 	vanilla := creature(cardID(1), 0, "Bear", 2, 2)
-	for _, kw := range []string{"flying", "deathtouch", "lifelink", "trample", "double strike", "indestructible", "ward {2}"} {
+	for _, kw := range []string{"flying", "deathtouch", "lifelink", "trample", "double strike", "indestructible", "ward {2}", "prowess"} {
 		flashy := creature(cardID(1), 0, "Bear", 2, 2, keywords(kw))
 		if w.CreatureValue(&flashy) <= w.CreatureValue(&vanilla) {
 			t.Errorf("%q did not raise the creature's value", kw)
@@ -76,6 +76,13 @@ func TestKeywordTableIsApplied(t *testing.T) {
 	unparsed := creature(cardID(1), 0, "Bear", 2, 2, keywords("protection from monocolored"))
 	if w.CreatureValue(&unparsed) != w.CreatureValue(&vanilla) {
 		t.Error("a protection the engine does not enforce must not raise the creature's value")
+	}
+	// #706: prowess is cumulative (CR 702.108b), so a second instance
+	// is worth a second bonus rather than a duplicate badge.
+	one := creature(cardID(1), 0, "Monk", 1, 1, keywords("prowess"))
+	two := creature(cardID(1), 0, "Monk", 1, 1, keywords("prowess", "prowess"))
+	if w.CreatureValue(&two) <= w.CreatureValue(&one) {
+		t.Error("a second instance of prowess did not raise the creature's value")
 	}
 	wall := creature(cardID(1), 0, "Wall", 0, 4, keywords("defender"))
 	plain := creature(cardID(1), 0, "Plain", 0, 4)

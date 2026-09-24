@@ -393,7 +393,7 @@ type BlockRefusal struct {
 `Restriction.Names()`: `cant_block`, `cant_be_blocked`, `flying`,
 `landwalk`, `cant_be_blocked_by`, `cant_be_blocked_except_by`,
 `cant_block_attacker`, `too_few_blockers`, `too_many_blockers`,
-`declaration_limit`, `not_defending`, `tapped`, and a reserved
+`declaration_limit`, `not_defending` (claimed by #1339, Decision 34), `tapped`, and a reserved
 `protection`.
 
 The engine returns a `*BlockRefusedError` that wraps `ErrIllegalBlock`,
@@ -562,7 +562,8 @@ func (g *Game) blockerBoundsLocked(attacker *Card) (min, max int, src uuid.UUID)
   **not built in PR 4**. They land with Silent Arbiter, which also needs
   the attack-side count limit that Decision 18 leaves out. The validator
   in Decision 13 is written as a list of set checks, so the limit is one
-  more entry there.
+  more entry there. *(Built by [#1507](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1507):
+  [Decision 43](#decision-43-blockrulelimit-is-a-third-set-check-in-the-block-validator).)*
 
 #### 13. The stored declaration is always legal, and the menace close-out is deleted
 
@@ -753,7 +754,9 @@ never contains that string. The restriction is in `restrictions` as
   since `BlockingTarget` is a single ID.
 - Attack-side count limits (Crawlspace, Silent Arbiter's first line).
   `DeclareAttackers` already receives the set, and the same all-or-nothing
-  shape would work, but no card in this wave needs it.
+  shape would work, but no card in this wave needs it. *(Built by
+  [#1507](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1507):
+  [Decision 44](#decision-44-the-attack-side-twin-is-gameattacklimit-a-scope-and-a-number).)*
 - Creatures put onto the battlefield blocking (CR 509.4b) and "becomes
   blocked" by an effect.
 - Goad (§"What this deliberately does not express" still applies).
@@ -1239,7 +1242,7 @@ emits both, in one event batch:
   once, at the moment the declaration is complete). Actor is the
   defending player; Source, CardID and Target are all the attacker,
   the way `EventBattleDefeated` names the battle three ways. Cyberman
-  Patrol (afflict, CR 702.131) and Grazilaxx watch this and need no
+  Patrol (afflict, CR 702.130) and Grazilaxx watch this and need no
   dedupe; `b18AttackerAlreadyBlocked` is deleted.
 
 Not logged: `EventBecomesBlocked` has no `protocol.LogEvent`
@@ -1797,3 +1800,1231 @@ Unchanged: the two combat damage steps, the blocked state (Decision 26)
 and the declarations' announcements. They are all cleared by the same
 `clearCombatLocked`, so they all now last exactly as long as the
 combat does.
+
+---
+
+## Amendment (2026-09-23, [#1227](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1227)): an entry that puts a CARD onto the battlefield attacking, and an exported "unblocked attacker"
+
+Ninjutsu (CR 702.49) is a hand activation, and [ADR 0020](0020-activated-abilities.md)'s
+2026-09-23 amendment carries that half. The two halves that are COMBAT's are
+here, because both are facts this ADR already owns — `announcedAttacks`
+(Decision 25) and `blockedAttackers` (Decision 26).
+
+### Context
+
+Decision 25 named `announcedAttacks` as the record that keeps a permanent PUT
+onto the battlefield attacking out of the declaration (CR 506.3c), and named
+the two token entry points as the only things that could mint one. That was
+true: `ZoneEntryOptions` carried `Controller`, `Tapped` and `FaceDown` and had
+nowhere to say "attacking", so a CARD moved from a real zone took
+`executeEntryToBattlefieldLocked`'s `default:` branch and arrived with
+`AttackingTarget == uuid.Nil`. The CR 506.3c marking lived in the minted-token
+branch alone.
+
+Decision 26's `blockedAttackers` had the mirror-image gap: one reader
+(`attackerBlockedLocked`), unexported, consulted by the combat damage steps and
+by nothing in `internal/cards/effects`. A cost clause could not ask whether an
+attacker was blocked, so "Return an unblocked attacker you control to hand"
+could not be written at all.
+
+### Decision 29: the attack rides the ENTRY EVENT, and both doors read it
+
+`ZoneEntryOptions.Attacking uuid.UUID` is seeded onto
+`ReplacementEvent.EntersAttacking` by `putOntoBattlefieldFromZoneLocked`,
+exactly as `Tapped` is seeded onto `EntersTapped` and `FaceDown` onto
+`FaceDown`. The reason is the one those two already give: the entry's ONE
+settled record carries the fact, a replacement effect inspecting the entry can
+see it, and a CR 616 resume that holds only the event still knows what the
+entry was for.
+
+The token door now carries the same field. `enterCreatedTokensLocked` copies the
+minted token's own `AttackingTarget` onto the entry event it builds, so
+`executeEntryToBattlefieldLocked` reads `ev.EntersAttacking` for a token and a
+card alike and the minted-token branch has no combat code left in it. The token
+object keeps its own `AttackingTarget` — that is what a replacement inspecting
+the staged token reads, and what the copy is taken from — but the RULE is now
+stated once.
+
+**`DeclareAttackerWith` is not the route, and this is the load-bearing half.**
+It refuses outside `StepDeclareAttackers`, it taps, it checks summoning sickness
+and it emits `EventAttack`. CR 506.3c is explicit that a permanent put onto the
+battlefield attacking was never declared as an attacker, so all four would be
+wrong — and the fourth is the one that would be invisible until an Adeline
+trigger fired off a ninja.
+
+### Decision 30: one marking function, three facts, and #1218's fourth exit
+
+`stampEntryAttackerLocked(id, defender)` (attackers.go) is that one place. It
+stamps `Card.AttackingTarget`, marks the permanent announced
+(`noteAttackAnnouncedLocked` — CR 506.3c itself), and drops the layer cache.
+
+The third is new and it was a real hole. #1218 gave
+`StaticAbility.DependsOnAttackingStatus` three bumps: the `EventAttack` arm in
+the layer listener, plus `invalidateLayersForAttackChangeLocked` at the two
+exits that have no event of their own (a control change removing a permanent
+from combat, and combat ending). An ENTRY is the fourth, and neither door had
+it — a Parhelion II Angel became an attacking creature with no event naming it,
+so an Ohran Frostfang reading "attacking creature" kept the stale answer until
+something unrelated invalidated. Making the marking one function is what makes
+that a one-line fix for both doors instead of two.
+
+A `defender` that is no longer attackable (an eliminated seat, a planeswalker
+that died while the ability was on the stack) leaves the permanent on the
+battlefield NOT attacking rather than erroring. That is
+`CreateTokensAttackingForEffect`'s existing posture — the effect has resolved
+and the body is the part that can still be delivered — said once for both doors.
+
+### Decision 31: `UnblockedAttackerForEffect` is CR 509.1h plus the step plus the staged block
+
+The exported reader is not a getter on `blockedAttackers`. It answers the
+question a cost clause actually asks, and it takes three facts to answer:
+
+1. **Attacking** — `Card.AttackingTarget` is set. Removal from combat and the
+   end of combat both clear it.
+2. **The cursor is at declare blockers or later in this combat.** "Unblocked"
+   is not a property an attacker has beforehand: CR 509.1h decides it as PART
+   of the declaration, which is why the Gatherer ruling on Ninja of the Deep
+   Hours says a ninjutsu ability can be activated only once blockers have been
+   declared. Without this clause the blocked record is simply empty in the
+   declare-attackers step and every attacker would read as unblocked — ninjutsu
+   would become a "swing and always get the best creature back" ability.
+3. **Nothing is blocking it**, which is two reads rather than one. The blocked
+   RECORD (Decision 26 — the fact that outlives a blocker that has since died),
+   AND a block that is staged and not yet announced. The second matters because
+   `DeclareBlocker` only stages the pairing and the lock-in runs at the next
+   priority boundary (Decision 27): in that window the record is still empty,
+   and an attacker with a blocker already pointed at it must not read as
+   unblocked.
+
+**The sandbox simplification is inherited whole and is named rather than
+papered over.** Nothing in this engine's step machinery marks the
+declare-blockers turn-based action COMPLETE — `blockers.go`'s file header has
+said so since #328 — so an attacker at the top of the step, before the
+defending seat has clicked anything, reads as unblocked. That is a window in
+which ninjutsu is available a beat early. It is never a window in which it is
+available after the defender has blocked, which is the direction that would
+matter. *Closed by #1279 (Decision 38): the declaration now has a completion
+point per defending player, and the reader waits for it.*
+
+### What this does NOT decide
+
+- **A generic "put onto the battlefield blocking".** CR 509.1 has no such
+  entry and no printed card asks for one; `TokenEntryOptions` has no blocking
+  field either. Brimaz's Cat is created attacking on one branch and created
+  plain on the other.
+- **Commander ninjutsu** (CR 702.49c), whose entry may also come from the
+  COMMAND ZONE. `putOntoBattlefieldFromZoneLocked` is generic in its source
+  zone, so the entry itself would work; what is unexamined is the commander
+  bookkeeping around a command-zone exit that is not a cast. See ADR 0020's
+  amendment. *Shipped by #1278 (ADR 0020's 2026-09-24 amendment): the entry
+  above is used unchanged, from the command zone.*
+
+---
+
+## Amendment (2026-09-23, [#1317](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1317), [#1329](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1329)): ending the combat phase, and reselecting an attack
+
+Two effects that reach into a combat already under way, both found by the
+*Aang is so flashy* deck triage (tracker
+[#1306](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1306)). Decisions
+1-31 stand. Sprint S37 (combat correctness), tracker
+[#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880); the phase
+skip is turn machinery too, tracker
+[#884](https://github.com/krakenhavoc/cmd_and_ctrl/issues/884). CR numbers
+checked against the pinned edition (`MagicCompRules 20260819.txt`).
+
+### Decision 32: `EndCombatPhaseForEffect` is CR 724.2 in order, and 724.2c is folded
+
+`server/internal/game/end_combat.go`. One printed card does this (CR 724.2
+names it: Mandate of Peace), and the rule is a fixed procedure, so the verb
+is the procedure:
+
+1. **724.2g first:** outside the combat phase (`PhaseOf(step) != PhaseCombat`)
+   it returns having done nothing.
+2. **724.2a:** `PendingTriggers` is emptied. That queue *is* "triggered but
+   not yet put onto the stack". A trigger that fires during the steps below
+   lands on it afresh and is drained in the postcombat main phase, which is
+   724.2f.
+3. **724.2b:** every object on the stack is exiled, the resolving one
+   included. Spells go through the shared stack-exit door,
+   `exitSpellFromStackLocked(id, nil, ZoneExile, false)`, which retires the
+   `StackMeta` record with the card (`DropStackMeta`). That is the door
+   [#1318](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1318) is about:
+   a plain exile route leaves the record behind and wedges the table. #1318's
+   exported "exile target spell" had not merged when this landed, so this
+   uses the same unexported door directly; the two are one door and do not
+   conflict. The **resolving** spell has no `StackMeta` entry any more (the
+   resolution frame took it before `OnResolve`), so it is found through the
+   #920 resolving slot and routed with the same zone route; the frame then
+   finds it gone and routes nothing (#489's `spellMovedItselfLocked`). A
+   **copy** ceases to exist at once — 724.2b says an object "not represented
+   by a card" ceases to exist at the next SBA check, and no zone this engine
+   has can hold one. **Ability items** are deleted, exactly as CR 800.4a's
+   stack cleanup deletes them: exiled, not countered, so no
+   `EventCounterSpell` and nothing watching counters fires. A commander's exit
+   can pause on the CR 903.9 prompt; it then sits on the stack under its
+   prompt exactly as a paused counter does, and the prompt gates the table.
+4. **724.2c is folded into the check that follows.** The verb only runs inside
+   a resolution, and the resolution frame runs the SBA + trigger loop the
+   moment it returns, with nobody having received priority in between. A
+   check here would need an SBA pass that neither drains triggers nor moves a
+   departed active player's turn on, and what it would buy is SBAs taken
+   before the phase jump rather than after it — observable only as a
+   trigger's slot in one APNAP drain that happens either way.
+5. **724.2d:** `clearCombatLocked`, then the cursor walks forward through
+   `advanceCursorLocked` — the seam every transition takes (Decision 27) —
+   **without** running the entry hooks of the steps it passes, and the
+   postcombat main phase is entered through `runStepEntryHooksLocked` like any
+   other step. The engine has no "until end of combat" duration (a grep finds
+   none), so that clause has nothing to expire today.
+6. **724.2e falls out of 5:** the end of combat step is never entered, so it
+   is never announced and nothing harvested off `EventStepBegan{end_combat}`
+   fires. A CR 603.7 delayed trigger scheduled `At: StepEndCombat` is not
+   drained either; it stays queued for the next end of combat step that
+   begins.
+
+It must be the **last** instruction of the effect that calls it, because it
+exiles that effect's own object. On Mandate of Peace it is.
+
+The resolution frame needed no change. `passPriorityLocked` resolves, runs
+state checks and gives the active player priority — in whatever step the
+cursor is now in, which is the postcombat main phase. `AdvanceStep`'s CR 117.4
+drive sees the step change and stops (`driveStepEnded`).
+
+### Decision 33: reselecting an attack writes `AttackingTarget` and nothing else
+
+`server/internal/game/attack_reselect.go`. CR 508.7 has four clauses that
+matter here; three of them are about what does **not** happen, and they are
+the reason this is not `DeclareAttackerWith`:
+
+- **508.7a** — not removed from combat, not "attacked a second time". No
+  `EventAttack`, so no "whenever ~ attacks" trigger and no second Adeline
+  batch; `announcedAttacks` (Decision 23) keeps the creature, so a later
+  lock-in has nothing to announce; `blockedAttackers` (Decision 26) is
+  untouched, so a blocked creature stays blocked by the same blockers. The
+  second sentence — "still considered to have attacked the player … chosen as
+  it was declared" — holds for free: the declaration's triggers were harvested
+  at the lock-in, off the defender it was declared against.
+- **508.7b** — no requirements or restrictions: no summoning-sickness,
+  defender or tapped check, no tap, and no Propaganda tax (ADR 0080 charges
+  the DECLARATION, which this is not).
+- **508.7c** — the new target is checked with `canAttackTargetLocked`
+  against the **attacking creature's** controller — the same function the
+  declaration uses, because 508.7c and CR 506.2 name the same set. A
+  defending player flashing in Misleading Signpost can push the attack onto
+  any other opponent of the attacker, never back onto the attacker's side.
+- **508.7d** does not apply: CR 903.2 makes Commander's default multiplayer
+  setup Free-for-All with the attack multiple players option, which is the
+  only setup this engine plays.
+
+A creature that is only **staged** (declared by click, not yet locked in) is
+refused with `ErrNotAttacking`: the declaration is still the active player's
+to change, and a reselection landing before the lock-in would make the lock-in
+announce the reselected defender, which 508.7a forbids. No effect can resolve
+in that window, so the refusal only reaches a caller that is not one.
+
+Everything downstream reads `AttackingTarget` live and follows with no change:
+the new defender's creatures are the ones the block option generator
+(Decision 14) offers, and an unblocked creature's damage goes to the new
+target (CR 510.1b). The layer cache is dropped, as #1218 does at every
+attack-status change with no event of its own.
+
+**The prompt is the engine's**, `QueueReselectAttackForEffect`, and it is an
+ordinary `option_pick`: "Keep attacking <current>" first — the "you may", and
+the branch the enumerator marks always-legal — then every other legal target,
+a seat as a seat option and a planeswalker or battle as a card option. Its
+answer is read off the **option picked**, not an index into a captured list,
+through a third continuation beside #994's `thenSeat`: `thenSubject` hands the
+frame the option's seat, else its first card, else `uuid.Nil`. #994's hazard is
+real here — a seat that concedes while the question is open is pruned off it
+and renumbers the options after it — and an index frame would move the attack
+onto the wrong player. The picked target is re-validated by the verb, so an
+answer the board has since made illegal changes nothing. No wire change:
+`option_pick` already carries `Player` and `Cards` per option.
+
+The trigger condition ("when this enters during the declare attackers step")
+and the per-creature chaining (Windshaper Planetar) are catalog-side, in
+`effects/attack_reselect.go`.
+
+### What this does NOT decide
+
+- **"Your opponents can't cast spells this turn"**, Mandate of Peace's other
+  sentence, is a cast restriction created by a resolving spell with a
+  duration — [#1316](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1316),
+  a separate PR. The card ships `caveats` until it lands.
+- **Extra combat phases.** "The next phase, usually the postcombat main phase"
+  is always the postcombat main phase here, because the turn has one combat
+  (the "Extra combat and main phases" seam row).
+- **A trigger already parked on a prompt** — a "you may" yes/no or a
+  pick_target queued by the harvester during the same resolution, before the
+  process began — is not withdrawn by 724.2a. It cannot exist in practice (an
+  open prompt stops priority, so nothing resolves under one), and the only
+  way to reach it is a trigger off Mandate of Peace's own resolution event.
+- **Capricopian** ("only the player this creature is attacking may activate
+  this ability") needs an activator that is not the controller, which
+  `ActivatedAbility` has no shape for. Its reselect half would work unchanged.
+
+## Amendment (2026-09-23, [#1339](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1339)): a creature blocks only what its controller is defending against
+
+Found while testing #1329's reselect. `DeclareBlockers` took a pairing whose
+blocker belonged to a player who was **not** defending against that attacker:
+at a four-seat table, seat 1's 1/1 could block the 3/3 attacking seat 2, and
+seat 2 took nothing. Decisions 1-33 stand. Sprint S37 (combat correctness),
+tracker [#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880). CR
+numbers checked against the pinned edition (`MagicCompRules 20260819.txt`).
+
+The rule is CR 802.4a — "A defending player can block only with creatures
+they control. Those creatures can block only creatures attacking that player,
+a planeswalker that player controls, or a battle that player protects" — with
+CR 509.1a saying the same thing for one defending player. Commander plays the
+attack multiple players option (CR 903.2), so there are up to three defending
+players in every combat this engine runs.
+
+### Decision 34: the declaration checks the defending player, and the generator was already right
+
+**The check.** `checkBlockDeclarationLocked` (Decision 13's validator) gains
+one per-entry check, `blockDefenderRefusalLocked`
+(`server/internal/game/block_declaration.go`), run before the CR 509.1b pair
+check: the blocker's controller must equal
+`defendingPlayerForAttackLocked(attacker.AttackingTarget)` — the player
+attacked, the planeswalker's **controller**, or the battle's **protector**
+(CR 310.9d). That is the same function `blockOptionsLocked` has always used
+to decide which attackers a seat is offered (Decision 14), so the verb, the
+enumerator and the #328 auto-pass signal now give one answer, which is
+Decision 13's "the engine never holds a block it would refuse" restored in the
+one direction it had been broken.
+
+**Not in `BlockPairRefusalLocked`.** That function is the per-pair CR 509.1b
+question about two creatures, and its contract already says "who controls the
+blocker" is the declaration's business. Its other callers restrict the blocker
+set to the defending seat before they ask it. Putting the defender check there
+would make the enumerator ask it twice and change nothing.
+
+**The refusal** is the reserved token `not_defending` (Decision 8's list),
+claimed here: `BlockReasonNotDefending`, returned only by the declaration
+verbs, never by a pair query — the same shape as the two count reasons. The
+sentence says where the attacker **is** pointed, because that is what tells
+the player whose creatures could block it: "Grizzly Bears is attacking P3, so
+only P3 can block it", "…is attacking Jace, a planeswalker P4 controls, …",
+"…is attacking Invasion of Ixalan, a battle P3 protects, …". `BlockRefusedError`
+gains `TargetKind` and `TargetName` to carry the permanent.
+
+**An attacker with no defending player cannot be blocked.** Two shapes reach
+that: a creature not attacking at all, and one attacking a planeswalker or
+battle that has left the battlefield (CR 506.4c). The generator never offered
+either; the verb now refuses both with `not_defending` ("… isn't attacking
+anything, so no one can block it."). The first ends the sandbox's
+"pre-emptive block", which the old doc comment on `DeclareBlockers` promised
+and one test (`TestClearCombatForgetsBlockAnnouncements`) leaned on — it now
+re-points the attacker before its second block, which is what "next combat"
+means. The second is **weaker than printed** for the defender: CR 506.4c says
+such a creature "may be blocked", and in a multiplayer game the natural reading
+(CR 802.2a's last-known defender) is the walker's former controller. The engine
+keeps no record of that player once the walker is gone, so nobody may block it
+— the answer the generator gave before this change too. Filed as
+[#1364](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1364) rather than widened here.
+
+**A standing pairing is not re-judged.** The check is skipped when the pairing
+is already in the declaration's `base`. CR 508.7a and 509.1h: an attacker
+reselected onto another player after it was blocked (#1329, Decision 33) stays
+blocked by the same creatures, and a declaration that repeats that pairing —
+alone, or inside a set beside a new pairing — must not be refused for a block
+the rules say is still standing. A **new** pairing from the old defender is
+refused; the new defender's is accepted.
+
+**The wire and the client.** The view stamps `defending_player` on every
+attacking card (`stampCombatTargets`, `server/internal/protocol/view.go`),
+from the same function, and omits it when there is none. The client's block
+pickers — the card menu's "Declare blocker" rows, the panel and seat-summary
+click-to-block, and the canvas's block-mode gate — read it through
+`defendingPlayerOf` / `attackersDefendedBy` (`client/src/lib/attackTargets.ts`),
+so none of them offers a block the server refuses, and the click paths now
+offer the attacks on a planeswalker the viewer controls or a battle they
+protect, which they missed before. The client does not re-derive who defends a
+battle (ADR 0045 §6's posture, applied to the defender): a frame that predates
+the field falls back to a player attack's target and to nothing otherwise.
+
+### What this does NOT decide
+
+- **CR 506.4c's "it may be blocked"** for an attacker whose planeswalker or
+  battle has left: see above. It needs the last-known defending player
+  recorded when the permanent leaves ([#1364](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1364)).
+  *Closed by the amendment below, Decision 35.*
+- **CR 506.3e**, a creature put onto the battlefield blocking an attacker that
+  is not attacking its controller: the engine has no "enters blocking" path
+  yet, so there is nothing to gate.
+- **CR 802.4's APNAP order of declarations** — each defending player declaring
+  all of their blocks in turn — is still not modelled: every defending seat
+  declares during the one declare-blockers window, and the lock-in (Decision
+  19) announces the whole table's blocks at once. Legality does not depend on
+  the order (CR 802.4b: a defending player's blocks are judged ignoring the
+  attackers aimed at other players), which is why this check is enough.
+
+## Amendment (2026-09-23, [#1364](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1364)): an attacker whose planeswalker or battle has left may still be blocked
+
+Decision 34 left one shape weaker than printed on purpose: a creature attacking
+a planeswalker or battle that has left combat could be blocked by nobody,
+because the engine could not say who had been defending it. This closes it.
+Decisions 1-34 stand. Sprint S37 (combat correctness), tracker
+[#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880). CR numbers
+checked against the pinned edition (`MagicCompRules 20260819.txt`).
+
+### The rules
+
+- **CR 506.4c** — "If a creature is attacking a planeswalker or battle,
+  removing that planeswalker or battle from combat doesn't remove that
+  creature from combat. It continues to be an attacking creature, although it
+  is not attacking any player, planeswalker, or battle. It may be blocked. If
+  it is unblocked, it will deal no combat damage."
+- **CR 802.2a** — the defending player of such a creature is the player it was
+  attacking, the controller of the planeswalker, or the protector of the battle
+  it was attacking **before that permanent was removed from combat**.
+- **CR 802.4a** (Decision 34) — only that player's creatures may block it.
+
+### Decision 35: the defending player is recorded when the attack is pointed, and only the block path reads it
+
+**The record.** `Game.attackDefenders`, attacker → defending player, written
+by one helper, `setAttackTargetLocked` (`server/internal/game/attack_target.go`),
+which every write that makes a creature attack something now goes through:
+the two declaration verbs (`DeclareAttackerWith`, `DeclareAttackersWith`), the
+CR 506.3c entry door (`stampEntryAttackerLocked` — ninjutsu, tokens created
+attacking) and the CR 508.7 reselect (`ReselectAttackTargetForEffect`, #1343).
+It stores `defendingPlayerForAttackLocked(target)` as it resolves at that
+moment. A target with no defending player drops the row rather than keeping an
+older one, so the record always describes the attack the creature is making.
+
+**Why at pointing time, not when the permanent leaves.** CR 802.2a wants the
+defender "before it was removed from combat", and CR 506.4 removes an attacked
+planeswalker or battle from combat on every change that could alter that
+answer — leaving the battlefield, phasing out, a control change, ceasing to be
+a planeswalker or battle. So the defender at the last pointing IS the defender
+at removal, and there is no exit hook to keep in sync with every door a
+permanent can leave through (the battlefield exit, phasing, a type change that
+is only a layer result). The one engine gap this leans on is noted below.
+
+**The read.** `defendingPlayerForAttackerLocked(attacker)` returns the live
+`defendingPlayerForAttackLocked` answer while the target resolves and the
+recorded player once it does not — unless that player has left the game
+(CR 800.4a). It replaces the live read at **every block-side caller and no
+other**:
+
+| Caller | File |
+|---|---|
+| the one option generator (Decision 14), and so the #328 signal | `block_declaration.go` `blockOptionsLocked` |
+| the declaration's defender check (Decision 34) | `block_declaration.go` `blockDefenderRefusalLocked` |
+| the refusal's `Defender` | `block_legality.go` `blockRefusedErrorLocked` |
+| landwalk's "defending player controls a land" (CR 702.14c) | `landwalk.go` `landwalkBlockingLandLocked` |
+| the enumerator's pre-filter | `legal/combat.go`, via `DefendingPlayerForAttackerForEffect` |
+| the wire's `defending_player` | `protocol/view.go` `stampCombatTargets` |
+
+Combat damage keeps its live read (`dealCombatDamageToAttackTargetLocked`), so
+an unblocked creature whose target left still deals its damage to nothing
+(CR 506.4c, 510.1b). The card-side "is this creature attacking you" readers
+(`b17AttackersAllAvoid`, Horn of the Mark, the opponent-politics helpers) keep
+theirs too: such a creature "is not attacking any player", and the fallback
+would make it one.
+
+**The refusal sentence.** `not_defending` for such an attacker says why the
+player may be surprised: "Grizzly Bears is still attacking, though what it
+attacked is gone, so only P3 can block it." (`TargetKind` is
+`AttackTargetNone` with a `Defender` set — the new shape.)
+
+**Lifetime.** Combat-scoped, like `announcedAttacks` (Decision 23): cleared by
+`clearCombatLocked`, dropped per object by `removeFromCombatLocked`,
+`forgetCombatRecordLocked` (phasing) and `forgetPerObjectTurnStateLocked` (the
+battlefield exit), and carried by `Clone` / `RestoreFrom` and the persisted
+snapshot (`attackDefenders`, omitempty — a file written before it restores
+empty, which is the old behaviour until combat ends; no schema bump).
+
+**The wire and the client.** No new field. `defending_player` is now present
+on such an attacker, with `attacking_target_kind` absent; the client's block
+pickers already read `defending_player` first (`defendingPlayerOf`), so they
+offer the block with no code change beyond the comments and a test.
+
+### What this does NOT decide
+
+- **A control change of an attacked planeswalker** (or a protector change of
+  a battle) mid-combat. CR 506.4 removes that permanent from combat, but the
+  engine does not: the live read keeps resolving it, now to the new
+  controller. That is a separate gap in removal-from-combat, not in this
+  record, and the record would give the right answer the day the removal is
+  modelled ([#1376](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1376)).
+  *Closed by the amendment below, Decision 36* (the control-change half; the
+  engine has no path that changes a battle's protector mid-game).
+- **A planeswalker that phases back in** in the same combat still resolves
+  live as the attack's target — the same removal-from-combat gap (#1376).
+  *Closed by the amendment below, Decision 36.*
+- **The bot's pressure estimate** (`aiseat/heuristic` `decideBlock`) counts
+  only attacks aimed at its seat as incoming damage, which is right for such a
+  creature (it deals none). The block moves themselves come from the
+  enumerator, so a bot is offered and may take the block.
+
+## Amendment (2026-09-24, [#1376](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1376)): an attacked planeswalker or battle that changes control or phases out leaves combat
+
+Decision 35 recorded who was defending an attack so that the block path could
+name that player once the attacked permanent had gone. It left the other half
+of CR 506.4 open: an attacked planeswalker or battle that is removed from
+combat **without leaving the battlefield** stayed in combat, because nothing
+touched the creatures attacking it. This closes it. Decisions 1-35 stand.
+Sprint S37 (combat correctness), tracker
+[#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880). CR numbers
+checked against the pinned edition (`MagicCompRules 20260819.txt`).
+
+### The rules
+
+- **CR 506.4** — a permanent is removed from combat if it leaves the
+  battlefield, **if its controller changes, if it phases out**, if an effect
+  specifically removes it from combat, if it is a planeswalker that stops being
+  a planeswalker or a battle that stops being a battle, or if it is an
+  attacking or blocking creature that regenerates or stops being a creature.
+  A planeswalker or battle removed from combat stops being attacked.
+- **CR 506.4c** (Decision 35) — the creatures attacking it keep attacking,
+  attack nothing, may be blocked, and deal no combat damage if unblocked.
+- **CR 802.2a** (Decision 35) — the player who may block them is the one
+  defending before the removal.
+- **CR 701.19a** — a regenerating permanent is removed from combat only "if
+  it's an attacking or blocking creature".
+
+### Decision 36: the attackers are re-pointed at a reserved id that names nothing
+
+**The shape.** When an attacked planeswalker or battle is removed from combat
+and stays on the battlefield, every ANNOUNCED creature attacking it has its
+`Card.AttackingTarget` rewritten to `game.AttackingNothing`, the reserved id
+`00000000-0000-0000-0000-000000000506`. One helper does it,
+`removeAttackedFromCombatLocked` (`server/internal/game/attack_target.go`),
+called from the two removal doors that keep the permanent on the battlefield:
+
+| Door | Call site |
+|---|---|
+| a control change (layer 2 materialised, CR 613.1b) | `materialiseControlLocked` (`layers.go`), right after the stolen permanent's own `removeFromCombatLocked` |
+| phasing out (CR 702.26b) | `phaseOutLocked` (`phasing.go`), after the batch has moved and before the events |
+
+The attackers change in nothing else. They stay announced (they attacked),
+stay blocked or unblocked (Decision 26), and keep their
+`Game.attackDefenders` row — which is why the helper writes the field directly
+rather than through `setAttackTargetLocked`, whose nil-defender arm would drop
+the row Decision 35 exists to keep.
+
+**Why a sentinel rather than a flag beside the walker's id.** A creature
+attacking nothing has to satisfy two families of readers at once:
+
+- every "is this creature attacking" test, `AttackingTarget != uuid.Nil` —
+  the bulk of the field's ~140 non-test reads, across the engine, the enumerator, the view, the
+  bots and the catalog — must still say yes (CR 506.4c: "it continues to be an
+  attacking creature");
+- every reader that RESOLVES the target — combat damage
+  (`dealCombatDamageToAttackTargetLocked`), the card-side "attacking you"
+  readers, the view's `attacking_target_kind`, the reselect label, the bot's
+  per-defender tallies — must find nothing.
+
+An id that names no seat and no card satisfies both with no edit at any
+reader. It is also exactly the state a creature whose walker DIED has been in
+since S27 (its target is an instance id no longer on the battlefield), which is
+the state Decision 35's block fallback already handles — so blocking needed no
+change at all: the live read resolves nothing, and
+`defendingPlayerForAttackerLocked` falls back to the recorded defender. A flag
+beside a still-live walker id would have had to be consulted by every
+resolving reader, and one that forgot would deal the damage — the failure this
+issue is about. The value is a version-0 uuid, so it cannot collide with a
+seat or instance id (both `uuid.New`, version 4).
+
+**Why not the walker's id left as it was.** It still resolves: under a control
+change to the new controller (who is then "being attacked" and takes the
+walker's damage), and after a phase-in to the walker again. Phasing out alone
+already stopped the damage while the walker was out of the battlefield slice
+(ADR 0084); the rewrite is what stops it resuming.
+
+**Only announced attackers.** A creature merely staged in the
+declare-attackers step (Decision 22) is not in combat yet, and its declaration
+is still the active player's to change — the reselect verb refuses it for the
+same reason (Decision 33). A staged attack on a walker that changes control
+keeps naming the walker.
+
+**Not inside `removeFromCombatLocked`.** Its other caller is regeneration,
+and CR 701.19a removes a regenerating permanent from combat only if it is an
+attacking or blocking creature. An attacked planeswalker that is also a
+creature (an animated Gideon) and regenerates stays attacked, and still takes
+the damage.
+
+**Lifetime, undo and restore.** Nothing new to carry: the sentinel is an
+ordinary value of a field that `Clone`, `RestoreFrom` and the persisted
+snapshot already carry, and `clearCombatLocked` wipes it with every other
+`AttackingTarget` when combat ends.
+
+**The wire.** No new field. Such an attacker ships `attacking_target` set to
+the reserved id (so every client check for "is attacking" still holds), no
+`attacking_target_kind`, and `defending_player` naming the seat that was
+defending before the removal. The client's combat arrows find no seat for the
+id and draw nothing, as they already did for a walker that died.
+
+### Tests
+
+`server/internal/game/attacked_leaves_combat_test.go`: a walker stolen by the
+attacking player (blocks by the former controller; bystander refused; no
+damage), a walker stolen by a third player (no loyalty lost, no life lost), a
+battle stolen mid-combat (the protector blocks; the old and new controllers
+are refused; no defense lost), a walker that phases out and back in (blocks,
+no damage), a staged attack left alone, a regenerating walker-creature that
+stays attacked, and the clone / undo (`RestoreFrom`) / persisted-snapshot
+round trip. `legal/block_defender_lki_test.go`
+`TestBlockMovesOfferAnAttackerWhoseWalkerWasStolen` (the enumerator and
+`actions.Dispatch` agree); `protocol/defender_lki_view_test.go`
+`TestAttackerWhoseWalkerWasStolenAttacksNothingOnTheWire`.
+
+### What this does NOT decide
+
+- **A planeswalker or battle that stops being one and becomes one again
+  inside one combat** (CR 506.4's type clause). While it is not a planeswalker
+  the live read already resolves it to nothing; only the return is wrong,
+  and no catalogued card produces it. It would need a type-delta hook in the
+  layer pass. Filed as [#1387](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1387).
+  *Closed by the amendment below, Decision 37.*
+- **A battle's protector changing mid-combat.** The engine sets
+  `ProtectorPlayerID` only when the battle enters (`battle.go`), so there is
+  no path to hook.
+- **Ninjutsu from an attacker that attacks nothing.** `stampEntryAttackerLocked`
+  hands the ninja the returned creature's target; a target that resolves to
+  nothing leaves the ninja on the battlefield not attacking, as it already did
+  for a walker that died. Unchanged here.
+
+## Amendment (2026-09-24, [#1387](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1387)): an attacked planeswalker or battle that stops being one leaves combat for good
+
+Decision 36 closed the control-change and phasing clauses of CR 506.4 and left
+the type clause open. This closes it. Decisions 1-36 stand. Sprint S37 (combat
+correctness), tracker [#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880).
+CR numbers checked against the pinned edition (`MagicCompRules 20260819.txt`).
+
+### The rules
+
+- **CR 506.4** — a permanent is removed from combat "if it is a planeswalker
+  that stops being a planeswalker or a battle that stops being a battle".
+- **CR 506.4c** (Decisions 35-36) — its attackers keep attacking, attack
+  nothing, may be blocked by the player defending before the removal
+  (CR 802.2a), and deal no combat damage if unblocked.
+
+The removal is a one-way event. Nothing in CR 506 puts a permanent back into
+combat when its type comes back, so a walker that is a planeswalker again later
+in the same combat is not attacked.
+
+### What was wrong
+
+`classifyAttackTargetLocked` reads effective types, so while the permanent was
+not a planeswalker or battle its attackers already resolved to nothing. The
+wrong part was the return: when the type-changing effect ended inside the same
+combat (an "until end of turn" effect cannot end before cleanup, but a "for as
+long as" one can, CR 611.2b), the attackers still named the permanent, resolved
+to it again, and dealt it their damage.
+
+### Decision 37: the layer recompute is the type-change door
+
+**The shape.** `recomputeLayersLocked` (`server/internal/game/layers.go`) calls
+`removeTypeLostAttackTargetsLocked` (`server/internal/game/attack_target.go`)
+once per pass. It walks the announced attackers, takes each distinct target
+that resolves to a battlefield permanent, and hands any that the pass left as
+neither a planeswalker nor a battle to `removeAttackedFromCombatLocked`, the
+Decision 36 helper. The attackers are re-pointed at `game.AttackingNothing` at
+the moment of loss, so a later pass that restores the type finds nothing
+naming the permanent. The third row of Decision 36's door table:
+
+| Door | Call site |
+|---|---|
+| the permanent stopped being a planeswalker or battle (layer 4, CR 613.1d) | `recomputeLayersLocked` (`layers.go`), after the layer pass and the `lastResolvedVersion` store |
+
+**Why the recompute, and not a before/after type diff.** The layer pass is the
+only place an effective type changes, and every type change bumps the layer
+version, so the recompute is guaranteed to run between a loss and any reader
+that could see it. What the check needs is the post-pass state and nothing
+else: an attacked permanent that is not a planeswalker or battle NOW was one
+when it was attacked (the declaration verbs refuse anything else), so it has
+stopped being one. No "before" snapshot of the types is kept, which is one
+fewer thing to carry through `Clone`.
+
+**Why this is cheap.** Outside combat `announcedAttacks` is empty and the call
+returns at once. Inside combat it looks only at what announced attackers name:
+a seat, the sentinel, or an id that no longer resolves costs a lookup and
+nothing else, and each attacked permanent is classified once however many
+creatures attack it. No per-card work is added to the pass itself.
+
+**After the store, unlike the control-change door.** The rewrite bumps the
+layer version when an attacking-status static is live
+(`invalidateLayersForAttackChangeLocked`). A bump made before
+`lastResolvedVersion.Store` would be swallowed by it; made after, it asks for
+one more pass, which rewrites nothing (the rewrite changes no type) and
+settles. `materialiseControlLocked` still calls the helper before the store;
+no attacking-status static reads the attack's target today (Ohran Frostfang
+reads only "is attacking"), so that ordering is harmless there.
+
+**What a permanent that merely GAINS a type does.** Nothing. An animated
+walker (Planeswalker Creature) or an artifact battle is still a planeswalker or
+battle and stays attacked.
+
+**Only announced attackers**, as in Decision 36: a staged declaration at a
+walker that loses its type is still the active player's to change.
+
+**A pass that never sees the loss.** The check reads the state each pass
+produces. A type removed and restored between two recomputes, with no reader
+in between, is never observed as lost — but then no reader ever saw the
+permanent as anything but a planeswalker either, so no player could have acted
+on the loss. Any board read in between (a snapshot, a legality check, combat
+damage) forces the pass that sees it.
+
+**Lifetime, undo and restore.** Nothing new to carry, for the reasons in
+Decision 36: the rewrite is an ordinary value of `AttackingTarget`. A clone
+taken before the loss restores the original attack.
+
+**The wire.** Unchanged from Decision 36.
+
+### Tests
+
+`server/internal/game/attacked_loses_type_test.go`: a walker that loses its
+type and gets it back before damage (both attackers attack nothing; the
+walker's controller blocks and a bystander is refused; no loyalty or life
+lost), the same for a battle (its protector blocks, the controller is refused,
+no defense lost), a walker that gains the creature type and a battle that
+gains the artifact type (both stay attacked and take the damage), a staged
+attack left alone, and the undo round trip (a clone from before the loss
+restores the attack and the walker takes the damage; a clone, undo and
+persisted restore from after it keep the attackers attacking nothing).
+
+### What this does NOT decide
+
+- **A card that produces this.** No catalogued card removes the planeswalker
+  or battle type from a permanent, so the tests build the effect from a
+  floating layer-4 static. No proof cards.
+- **The control-change door's ordering** relative to the store, discussed
+  above. Left as it is.
+
+---
+
+## Amendment (2026-09-24, [#1279](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1279)): the block declaration gets a completion point
+
+Decisions 1-37 stand; Decision 31's declared simplification is closed by this
+one. Sprint S37 (combat correctness), tracker
+[#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880).
+
+### Context
+
+CR 509.1 makes declaring blockers one turn-based action, taken as the step
+begins and before anyone receives priority. This engine has always kept the
+sandbox's shape instead: entering `declare_blockers` hands the ACTIVE player
+priority, and a defender's `declare_blocker(s)` is a verb accepted while that
+window is open (#328). #830 moved the announcement to a lock-in at the first
+priority boundary, and Decisions 26 and 31 built on it.
+
+What none of that had was a moment at which a defender's declaration is
+DONE. `Game.blockedAttackers` was empty at the top of the step for two
+reasons that look the same — the defender decided not to block, or has not
+been asked — so every reader that cared had to guess:
+
+- **Ninjutsu** (Decision 31) read an attacker as unblocked the instant the step
+  began, before the defender had clicked anything — "a beat early".
+- **"Becomes blocked"** was announced at whichever priority boundary came first
+  after the click, so a trick the active player cast in the step locked in a
+  defender's half-made declaration.
+- **"Whenever ~ attacks and isn't blocked"** (CR 509.3) had no moment to fire
+  on at all, so every card printing it was left out.
+- **The #328 auto-pass guard** (`block_decision_seats`) kept stopping a
+  defender who had already declared, every time priority came back to them in
+  the step, for as long as they had an untapped creature at home.
+- **The bot's block grace** held the active bot's pass while any defender
+  "still had a legal block", which a defender keeping a creature home always
+  does, so it sat out the whole grace.
+- **The client** had no way for a defender to say "done" without holding
+  priority.
+
+### Decision 38: a completion point per defending player
+
+**State.** `Game.blocksDeclared map[uuid.UUID]bool` — the defending players
+whose declaration is complete this combat (`server/internal/game/block_completion.go`).
+Cleared by `clearBlockStateLocked` with the rest of combat; carried by
+Clone / RestoreFrom and the persisted snapshot (`blocksDeclared`, additive, no
+schema bump — a file written before it restores every defender as pending,
+which is the conservative direction).
+
+**Status.** `BlockDeclarationStatusOf(seat)` answers `none` (not defending, or
+not in the combat steps from declare blockers on), `pending` or `declared`. A
+defending player is one some attacker's attack is defended by, through the
+same `defendingPlayerForAttackerLocked` read the verb and the option generator
+use (Decisions 34-35), so "who declares blockers" has one answer.
+
+**The four completion points.** A defender's declaration completes:
+
+1. **as the step begins, when they have no legal block** —
+   `autoCompleteBlockDeclarationsLocked`, a new `StepDeclareBlockers` case in
+   the step-entry hook. "Declared, none", with nothing to ask;
+2. **when they send `finish_blocks`** (`Game.FinishBlocks`, player-scoped, NOT
+   priority-gated — a defender does not hold priority while the active player
+   does, the reason `declare_blocker` is not either);
+3. **when they pass priority in the step** — how a table that blocks by hand
+   has always said "done", and still does;
+4. **as the cursor leaves the step** with them still pending — the priority
+   wrap and `AdvanceStep` complete everyone left, as whatever is staged, because
+   the step cannot end on an unfinished turn-based action.
+
+**Completing announces.** `completeBlockDeclarationLocked` marks the defender,
+runs the #830 lock-in — which now announces only blocks whose controller's
+declaration is complete — and then emits **`EventBlockersDeclared`** (Actor =
+the defender, Amount = how many creatures they blocked with, 0 for "declared,
+none"). One per defender per combat, after their `EventBlock` /
+`EventBecomesBlocked` in the same batch, so the blocked record is written
+before anything reading the new event asks it.
+
+**The active player gets priority back.** When a completion by (2) or (3) is
+the LAST one pending, the whole CR 509.1 action is over: state-based actions
+and the trigger drain run and the ACTIVE player receives priority
+(CR 509.2 / 117.3a). Concretely, a two-player step now runs: active player
+passes (before blocks — the sandbox still allows it), defender blocks and
+passes, **active player has priority again**, both pass, the step ends. Before,
+the defender's pass wrapped and ended the step, and the attacker never had a
+window after blockers — the window ninjutsu is activated in. Completion points
+(1) and (4) do not move priority: at (1) the active player already holds it,
+and (4) is the step ending.
+
+**What stays permissive.** `declare_blocker(s)` is NOT refused after the
+seat's declaration completes. A table that blocks by hand and passed a beat
+early can still put the block down (it is announced at the next boundary,
+#830's "a late block announces its own block"), and every test and client that
+blocks without finishing keeps working. What changes is that nothing OFFERS a
+block after completion: `blockOptionsLocked` answers empty for a declared
+defender, so the enumerator, the bot and the #328 signal stop asking. This is
+a sandbox allowance, not a rule, and a manual late block on a ninja that
+entered attacking after the declaration is exactly as possible as it was.
+
+### Decision 39: which consumers change
+
+| Consumer | Before | After |
+|---|---|---|
+| `UnblockedAttackerForEffect` (ninjutsu's cost, Decision 31) | attacking, step, nothing blocking | the same **plus the attacker's defending player has declared**; while they are pending the attacker is neither blocked nor unblocked |
+| "becomes blocked" / "blocks" (`EventBecomesBlocked`, `EventBlock` — afflict, Cyberman Patrol, Grazilaxx) | announced at the first priority boundary after the click | announced when the blocking player's declaration completes; a staged block by a pending defender waits through unrelated boundaries |
+| "attacks and isn't blocked" (CR 509.3) | could not be written | `effects.WhenAttacksAndIsNotBlocked` watches `EventBlockersDeclared` and asks `UnblockedAttackerForEffect` of a creature attacking the event's Actor |
+| #328 auto-pass (`block_decision_seats`, `SeatOwesBlockDecision`) | "under attack and has a legal block" | "still declaring and has a legal block" — a declared defender drops out even with a creature at home |
+| Legal-move enumerator (block moves) | offered while any legal block remained | offered only while the seat is still declaring |
+| Bot block grace (`aiseat.Runner.shouldHoldForBlockers`) | enumerated every other seat's moves for a `KindBlock` | reads `block_decision_seats` off the frame; the hold ends when the defender finishes. No longer a correctness guard — the engine returns priority to the active player after the last declaration — only a saving of the extra round |
+| Client (`Game.svelte`, `priority.ts`) | no way to finish without priority | a "Done blocking" / "No blocks" control while the viewer's seat is in `block_pending_seats`, sending `finish_blocks` |
+
+**The wire.** `TurnView` gains `block_pending_seats` and
+`blocks_declared_seats` (public, omitted outside the step); a defending seat is
+in exactly one. `block_decision_seats` keeps its key with the narrowed meaning
+above. New action `finish_blocks`; new event kind `blockers_declared`, a
+deliberate silence in the public log (its blocks are the `block` lines, its
+completion is on the turn cursor) — a "declares no blockers" line is a
+reasonable follow-up that needs a log kind and client copy.
+
+### Proof cards
+
+Four, all `full`: **Swamp Mosquito** and **Guiltfeeder** (poison / life loss to
+the defending player), **Abyssal Nightstalker** (the defender's chosen discard),
+and **Eternal of Harsh Truths**, whose afflict and "isn't blocked" draw are the
+two answers one completed declaration gives — exactly one of them fires.
+
+### Tests
+
+`server/internal/game/block_completion_test.go`: declared-none at step start
+for a defender with no legal block (and the event's Amount 0); pending for one
+who has not acted (attacker neither blocked nor unblocked, listed pending);
+`finish_blocks` with nothing staged; a staged block announced at completion and
+not at an unrelated boundary, the declaration event after the block events;
+the defender's pass completing and returning priority to the active player;
+`AdvanceStep` completing a pending declaration; two defenders, where only the
+second completion moves priority; a declared defender offered no blocks but
+still able to block by hand; the refusals; undo and snapshot round trips;
+combat end forgetting who declared. `declare_blockers_test.go` and the legal
+package's evasion test now pin that a creature arriving after a no-legal-block
+declaration does not reopen it. Card tests in `attacks_unblocked_test.go` and
+`ninjutsu_test.go` (ninjutsu refused while the defender is declaring, paid once
+they finish); the wire in `blockers_view_test.go`; dispatch in
+`actions/declare_blockers_test.go`; the bot grace in
+`aiseat/runner_test.go`; the client helper in `priority.test.ts`.
+
+### What this does NOT decide
+
+- **Refusing a late block.** Decision 38 keeps the verb permissive. Refusing a
+  block after the seat's declaration is complete would be the rules-exact
+  posture and would make "a ninja cannot be blocked" an engine fact rather
+  than a table convention; it is a one-line gate in `declareBlockersLocked`
+  when someone wants it, and it would retire #830's late-block paths.
+- **Priority at the step's start.** The active player still receives priority
+  on entry, before any declaration, which CR 509.1 does not give them. Parking
+  priority (`NoPriority`) until every defender has declared would be exact, but
+  it would make `pass_priority` unavailable to the defenders who use it to
+  finish and would need a bot move kind for `finish_blocks`; the priority
+  return above gives the active player the window that matters without either.
+- **A log line for "declares no blockers"**, above. *Closed by #1500: a
+  `no_blocks` log kind, narrated from `EventBlockersDeclared` only when
+  `Amount == 0` — the declaration's blocks stay on the `block` lines, which
+  is the reasoning this amendment already gave.*
+
+---
+
+## Amendment (2026-09-24, [#750](https://github.com/krakenhavoc/cmd_and_ctrl/issues/750)): the card half of block rules
+
+Decisions 11-13 built the engine half of block rules: slot 4 of
+`BlockPairRefusalLocked`, the bounds `blockerBoundsLocked` combines, the
+whole-declaration refusal in `DeclareBlockers`, and the two registries
+(`CatalogBlockRules`, `Game.TurnScopedBlockRules`). No card could declare a
+rule, because nothing set `CatalogBlockRules`. This amendment is the card half
+Decision 11 and the PR split's PR 4 and PR 6+ describe. Decisions 1-39 stand.
+Sprint S37 (combat correctness), tracker
+[#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880). The deck that
+asked for it is *Aang is so flashy*
+([#1306](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1306)): Avatar
+Kuruk's Spirit token prints "can't block or be blocked by non-Spirit
+creatures".
+
+### Decision 40: one slot on the Spec, one on the token template, one on `CardDef`
+
+- **`effects.Spec.BlockRules []game.BlockRule`**, projected by `buildDef` onto
+  **`game.CardDef.BlockRules`**, which carddef.go publishes through
+  `CatalogBlockRules`. The hook was always keyed by `CatalogAbilityKey`, so a
+  permanent that loses all abilities imposes nothing (Decision 11's "losing
+  abilities works without extra code" holds with no new code).
+- **A token template has the same slot** (`tokenTemplate.BlockRules`,
+  `effects/token_catalog.go`), registered under the token's key like its
+  triggers and statics (ADR 0083). #1249 already made `forEachBlockRuleLocked`
+  skip on an empty key rather than an empty oracle ID, so a token's rule is
+  found exactly as a card's is. A template whose only ability is a block rule
+  is registrable: `checkTokenTemplate` counts the slot.
+- **Kuruk's Spirit is its own template** (`spirit-only-spirits`), not the plain
+  `"1/1 colorless Spirit"` row Forbidden Orchard makes. The Orchard's Spirit
+  prints nothing, and a shared row would either give it a restriction or take
+  Kuruk's away.
+
+### Decision 41: a rule is a scope plus a rule, and the scope is never optional
+
+Every rule is read off every permanent on the battlefield for every pair the
+engine checks. A `Pair` closure that forgets to ask "is this attacker mine?"
+binds every attacker at the table. So `effects/block_rules.go` builds every
+rule from a **scope** that says whose creatures it binds relative to its source,
+and takes the scope as an argument:
+
+| Scope | Printed as |
+|---|---|
+| `OnSelf()` | "this creature", "Legolas" |
+| `OnAttached()` | "equipped creature", "enchanted creature" |
+| `ControlledBySourceController()` | "creatures you control" |
+| `OnMatching(pred)` | "Slivers", "non-Spirit creatures" — either side of the pair |
+| `PowerLessThanSource()` | "creatures with power less than this creature's power" |
+
+| Rule | Reason on the wire | First card |
+|---|---|---|
+| `CantBeBlockedExceptBy(scope, allowed, label)` | `cant_be_blocked_except_by` | Prowler's Helm, Departed Deckhand, Canopy Cover |
+| `CantBeBlockedBy(scope, forbidden, label)` | `cant_be_blocked_by` | Legolas Greenleaf |
+| `CantBeBlockedWhile(scope, cond)` | `cant_be_blocked` | Thieves' Tools |
+| `CantBlockAttackers(blockers, attackers, label)` | `cant_block_attacker` | Champion of Lambholt |
+| `CantBlockOrBeBlockedBy(scope, other, label)` — both of the above, one per side | both | Avatar Kuruk's Spirit token |
+| `MaxBlockers(scope, n)` | `too_many_blockers` | Vorrac Battlehorns |
+| `MinBlockers(scope, n)` | `too_few_blockers` | Rampaging Ceratops |
+
+Decision 11 named the blocker-side scope `BlockerMatching(pred)`. It is
+`OnMatching(pred)`, because a scope is a predicate on a creature and does not
+care which side of the pair it is asked about. `CantBlockOrBeBlockedBy` uses the
+same one on both sides.
+
+Predicates are the targeting vocabulary (`CardPredicate`), evaluated with the
+rule source's controller as the caster, so `YouControl()` in a rule means "the
+controller of the permanent that prints it". Everything reads effective
+characteristics live when the block is checked (§5, CR 509.1b).
+
+`CantBeBlockedWhile` is a block rule and not a `Restriction` bit behind a
+layer-6 condition, because Thieves' Tools' condition is the equipped creature's
+power. Power is finished in layer 7, after a layer-6 static has already run. A
+block rule reads it after every layer.
+
+### Decision 42: the until-end-of-turn twin is one applier, not one per rule
+
+Decision 11 foresaw an `…UntilEOT` twin per builder. There is one,
+`BlockRuleUntilEOT{Target | Match, Rule}`: it snapshots the affected set exactly
+as `RestrictUntilEOT` does (CR 611.2c: the instance ID plus its entry stamp, so
+a creature that leaves and returns is a new object and is not covered), hands
+`Rule` a scope for that set, and registers the result in
+`Game.TurnScopedBlockRules`. Gingerbrute's `{1}` and Departed Deckhand's `{3}{U}`
+are each one line with it. A turn-scoped rule has no source permanent (the
+effect outlives the ability that made it, CR 611.2b), so predicates inside it
+see no caster. No printed turn-scoped rule needs one.
+
+### What this does NOT decide
+
+- **`BlockRule.Limit`** (Silent Arbiter's "no more than one creature can block
+  each combat") is still unbuilt, as Decision 12 left it, and so is the
+  attack-side twin Decision 18 puts out of scope (Crawlspace). Silent Arbiter
+  needs both, so they ship together: [#1507](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1507),
+  its own seam row.
+- **PR 5's per-card stamps** (`blockable_attackers`, `blockers_min`,
+  `blockers_max`, Decision 16) are not added. The wire already carries every
+  refusal's reason and label in the `illegal_block` frame, and
+  `block_decision_seats` is computed from the same option generator the
+  enumerator uses, so the three agree without them.
+- **Hungering Hydra and Alpha Authority** are not in this change. Both are one
+  `MaxBlockers` line; the Hydra also needs "whenever this creature is dealt
+  damage, put that many +1/+1 counters on it", which is a card-side trigger,
+  not this seam.
+
+### Tests
+
+`server/internal/cards/effects/block_rules_test.go`: for each rule shape, a
+legal block accepted and an illegal one refused with its reason, label and
+source; the legal-move enumerator never offers a refused block and
+`SeatOwesBlockDecision` agrees; the token carries its rule both ways; the
+turn-scoped rule binds for the turn, is swept at its end, and does not follow a
+creature that left and came back; a creature that loses its abilities loses
+its rule.
+
+---
+
+## Amendment (2026-09-24, [#1507](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1507)): combat-wide attack and block limits
+
+Builds what Decision 12 reserved (`BlockRule.Limit`) and what Decision 18 put
+out of scope (the attack-side count limit), together, because their first card
+needs both. Decisions 1-42 stand. Sprint S37 (combat correctness), tracker
+[#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880). ADR 0080 §8
+pointed here for the same two cards.
+
+### The rules
+
+- **CR 509.1b** lets a restriction bound the number of creatures that block.
+  Silent Arbiter's "No more than one creature can block each combat" bounds
+  the WHOLE combat rather than one attacker (Hungering Hydra's bound is per
+  attacker, and is `Count`, Decision 12).
+- **CR 508.1c** does the same for attacks: "No more than one creature can
+  attack each combat" (Silent Arbiter, Dueling Grounds), "No more than two
+  creatures can attack you each combat" (Crawlspace). The declaration as a
+  whole must obey it. No single creature is forbidden to attack.
+- A restriction is checked when attackers or blockers are declared, and only
+  then (§5). A limit that arrives afterwards unmakes nothing.
+
+### Decision 43: `BlockRule.Limit` is a third set check in the block validator
+
+```go
+// Limit returns the bound `blocker` counts toward, or 0 when this rule
+// does not count it.
+Limit func(g *Game, blocker, source *Card) int
+```
+
+- **Where it is judged.** `checkBlockDeclarationLocked` builds the
+  assignment the action would leave behind (`after`) and checks it after the
+  per-pair checks and the per-attacker bounds. The Limit check is the third
+  entry in that list of set checks (`blockLimitRefusalLocked`,
+  `game/block_rules.go`). It counts every blocker in the combat, whichever
+  attacker it blocks and whichever defender declared it.
+- **When it refuses.** A rule refuses only when it counts more blockers in
+  `after` than its bound **and** more than it counts in the assignment the
+  action starts from. The second half follows the same idea as the
+  "attackers the action does not touch are not re-judged" rule in the
+  per-attacker bounds. A Silent Arbiter flashed in after two blocks leaves
+  both blocks standing, and re-pointing one of them is not refused for a
+  count it does not raise.
+- **The reason** is `declaration_limit`. Decision 8 reserved the token, and
+  this is the first change to send it. `BlockRefusal.N` is the bound and
+  `Source` is the permanent that prints it. The refusal also carries a new
+  `SourceName`, because the limit is printed on a third card that the
+  player has to answer. The sentence is "No more than one creature can
+  block each combat (Silent Arbiter)." A rule's `Label`, when set, replaces
+  the clause.
+- **Several limits.** Each rule is judged on its own, so the tightest bound
+  wins: a Caverns of Despair beside a Silent Arbiter allows one blocker. All
+  the blockers one rule counts share one bound, the smallest any of them
+  reported.
+- **Multiplayer.** This engine stages each defender's declaration separately
+  (Decision 38). Under a combat-wide limit, the first defender to block uses
+  it up, and a later defender's block is refused. In the rules, all
+  defending players declare at once and have to agree. When declarations are
+  staged one at a time, first-come is the only order the engine can give.
+  The option generator runs every candidate through the validator
+  (Decision 14), so it stops offering the second defender anything, and the
+  #328 signal releases them.
+- **The constructor** is `effects.NoMoreThanNCanBlockEachCombat(n)`. It takes
+  no scope, unlike every other rule constructor (Decision 41), because the
+  printed line has none: it binds every creature at the table, including
+  those of the permanent's own controller.
+
+### Decision 44: the attack-side twin is `game.AttackLimit`, a scope and a number
+
+```go
+type AttackLimit struct {
+	Scope AttackLimitScope // AttackLimitAttackingYou (zero value) | AttackLimitEachCombat
+	Max   int
+}
+```
+
+It is not a `BlockRule`, for two reasons. An attack has no blocker to hand a
+rule. And the "you" family is scoped by the DEFENDING SEAT, which is the axis
+`AttackTax` already keys on (ADR 0080). So the struct follows `AttackTax`:
+
+- **The "you" is structural.** `AttackLimitAttackingYou` counts attacks on the
+  limit's controller, and "you" means the PLAYER. An attack on a planeswalker
+  they control does not count. This is ADR 0080's reading of Propaganda's
+  same word, and the reading of every printed card in the family.
+- **The zero value is the narrower scope**, so a card file that forgets to
+  choose limits less than printed, never more.
+- **Collection.** Limits come from `CardDef.AttackLimits` and reach the engine
+  through `CatalogAttackLimits`, keyed by `CatalogAbilityKey`. A permanent
+  that has lost all its abilities (CR 613.1f) therefore limits nothing.
+  `Spec.AttackLimits` is built with `NoMoreThanNCanAttackEachCombat(n)` /
+  `NoMoreThanNCanAttackYouEachCombat(n)`.
+- **The one check** is `attackLimitRefusalLocked` (`game/attack_limits.go`).
+  It applies the declaration on top of every creature attacking now and uses
+  the same raise-the-count rule as Decision 43. Re-pointing an attacker from
+  one opponent to a Crawlspace player counts against the Crawlspace player,
+  and moving one away is never refused.
+- **Both verbs enforce it,** before the CR 508.1a tax is priced, so a refused
+  declaration owes nothing:
+  - `DeclareAttackerWith` refuses the one creature. The verb is lax about
+    eligibility for the sandbox's hand-forcing, but a limit is not
+    eligibility. It is the card doing its whole job, the same reason "can't
+    attack" is not relaxed.
+  - `DeclareAttackersWith` refuses **all or nothing**. The verb skips
+    INELIGIBLE entries, but an over-full swing has none: each creature is
+    fine on its own. Which creatures stay home is the attacking player's
+    choice, as ADR 0080 has it for a tax the seat can only partly afford.
+- **The enumerator** asks the same function of every candidate
+  (attacker, target) move and withholds the refused ones (#544). Its attacks
+  are one creature at a time, so under Silent Arbiter a seat is offered
+  attacks until one creature is attacking, and then none. Under Crawlspace it
+  is offered attacks at that player until two creatures are attacking them,
+  and it keeps being offered attacks at everyone else.
+- **What counts as attacking.** Every creature with an `AttackingTarget`
+  counts, including one put onto the battlefield attacking, which CR 506.3c
+  says was never declared. That cannot matter to any declaration the rules
+  allow: such a creature can only arrive after the lock-in, when the rules'
+  declaration is already over. It can only refuse a sandbox LATE
+  declaration, which is the weaker direction.
+
+### Decision 45: the wire
+
+- A refused block is `illegal_block` / `declaration_limit`, as in
+  Decision 8, with `card_id` set to the first blocker in the declaration that
+  the limit counts.
+- A refused attack gets a new code, **`illegal_attack`**, with `reason`
+  **`attack_limit`** and `card_id` set to the first attacker in the refused
+  declaration that the limit counts. The sentence is built by the engine and
+  addressed to the reader: the protected seat reads "No more than two
+  creatures can attack you each combat (Crawlspace)", and anyone else reads
+  that seat's name. It is a new code rather than `bad_request` so that a
+  client can tell an attack the rules refuse from a malformed request. The
+  client needs no change: it shows any error frame's message.
+
+### Proof cards
+
+**Silent Arbiter**, **Dueling Grounds** (both halves, one), **Crawlspace**
+(attacking you, two) and **Judoon Enforcers** (attacking you, one, beside
+trample and suspend) ship `full`. **Caverns of Despair** (both halves, two)
+ships with the world-rule caveat Concordant Crossroads already declares.
+
+### Tests
+
+- `game/combat_limits_test.go` covers the engine with the hooks stubbed. The
+  second attacker is refused, with nothing staged. The bulk verb is all or
+  nothing. "Attacking you" is per defender in a four-seat game, re-pointing
+  onto the Crawlspace player is refused and re-pointing off it is allowed,
+  and planeswalker attacks are not counted. A late limit unmakes nothing, on
+  both sides. On the block side: a block is limited across attackers and
+  across defenders (the generator and the #328 signal agree), menace under a
+  one-blocker combat is unblockable, and the tightest bound wins.
+- `cards/effects/combat_limits_test.go` runs one test per proof card. Each
+  checks that the enumerator offers EXACTLY what the verb accepts, by trying
+  every candidate on a clone. It also covers a Silent Arbiter that has lost
+  its abilities and a Crawlspace that does not limit its own controller.
+- `aiseat/combat_limits_test.go` drives one combat move by move with the
+  heuristic and with a scripted policy that attacks and blocks with
+  everything, under Silent Arbiter (two seats) and Crawlspace (four seats).
+  The combat ends, every enumerated move is accepted, and the limits hold.
+- `ws/attack_limit_error_test.go` covers the `illegal_attack` frame and the
+  classifier. `ws/block_refusal_error_test.go` picks up `declaration_limit`
+  through `BlockReasons()`.
+
+### What this does NOT decide
+
+- **Conditional and per-player variants.** Mirri, Weatherlight Duelist
+  ("as long as Mirri is tapped, no more than one creature can attack you";
+  "each opponent can't block with more than one creature this combat") would
+  need a `While` gate on `AttackLimit` and a per-player group on
+  `BlockRule.Limit`. The Eternal Wanderer ("no more than one creature can
+  attack The Eternal Wanderer") would need a third `AttackLimitScope`. Each
+  is one field, and none of them is built without its card:
+  [#1534](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1534).
+- **Turn-scoped attack limits.** No printed card needs one, so there is no
+  `TurnScopedAttackLimits` registry.
+- **Reselection** (CR 508.7, `game/attack_reselect.go`) does not go through
+  the declaration verbs and does not consult the limits.
+- **The client's "attack with all"** under a limit is refused whole with the
+  sentence. It does not offer the tax picker's "choose attackers…" flow:
+  [#1533](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1533). *Since
+  closed by the amendment below (Decision 46).*
+
+## Amendment (2026-09-24, [#1533](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1533)): the attack limit's room on the wire
+
+Decisions 1-45 stand. Sprint S37 (combat correctness), tracker
+[#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880); the client half
+rides tracker [#891](https://github.com/krakenhavoc/cmd_and_ctrl/issues/891).
+
+### Context
+
+Decision 44 makes the bulk verb refuse an over-full swing whole, and leaves the
+choice of which creatures stay home to the attacking player. The client's answer
+to the same refusal for a tax (ADR 0080, #1162) is a subset picker. A limit
+needs the same picker, but capped, and the cap is a count only the engine can
+make: which limits are on the battlefield, which of them count an attack on
+this seat ("you" is the player, not their planeswalkers), and how many
+creatures are already attacking. §6 forbids the client from re-deriving any of
+that.
+
+### Decision 46: `attack_targets[].attack_limit` is the room left, per target
+
+- **The field.** `AttackTargetView.AttackLimit *int`, `attack_limit` on the
+  wire, omitempty. It is how many MORE creatures may be declared attacking that
+  target this combat. It is absent when no limit counts an attack on it, and it
+  is sent as `0` when a limit is used up. It is a pointer so omitempty does not
+  drop the 0 and let a client read it as "unlimited".
+- **The number** is `game.AttackLimitRoomForEffect(target)`
+  (`game/attack_limits.go`): the smallest `Max - count(now)` among the limits
+  that count an attack on the target, floored at 0. It is
+  `attackLimitRefusalLocked`'s arithmetic for creatures that are not attacking
+  yet, and it shares that function's "attacking now" map and counter. So `k` new
+  attackers at the target are accepted exactly when `k <= room`, and a limit
+  that arrived late (over its Max) leaves room 0.
+- **Remaining, not Max.** The picker needs the remainder. Publishing `Max` would
+  make the client count the creatures already attacking under each limit's
+  scope, which is the re-derivation §6 rules out.
+- **Per target, beside `tax`.** A limit's scope is a defending seat or the
+  whole combat, and the attack-all control is per seat. An each-combat limit
+  therefore puts the same number on every row, and a Crawlspace puts it on its
+  controller's row alone.
+- **Re-pointing** a creature that is already attacking is not covered by the
+  number. The client's "attack with all" never re-points, because declared
+  creatures are left alone (#318). The verbs stay the only authority there.
+
+### The client
+
+- `illegal_attack` / `attack_limit` in answer to the "attack with all" frame
+  opens a toast offering "Choose up to N…". It is correlated by the frame's id,
+  which the server echoes on its error frame, so a refused single-creature
+  declaration stays the plain toast. The toast opens `AttackDeclarationModal`
+  (#1162's picker). The picker caps its selection at `attack_limit`, opens at
+  the first N, disables rows past the cap, and shows the server's refusal
+  sentence as the reason. With room 0 the toast explains and offers no picker.
+- A seat whose room is smaller than the eligible set gets the "choose
+  attackers…" control up front, as a taxed seat already does. The lock-a-land
+  rows show only when a tax applies, because a limit alone charges nothing.
+- `protocol.ts` gains `ErrorCode.IllegalAttack`, the `attack_limit` reason and
+  the `declaration_limit` block reason. `refusalTokens.test.ts` diffs all three
+  lists against the Go constants.
+
+### Tests
+
+- `game/attack_limit_room_test.go` checks the room against the bulk verb:
+  `room` new attackers are accepted and `room + 1` refused. It covers each
+  combat, "attacking you" per defender in four seats (including planeswalkers),
+  the tightest of two limits, a late limit (room 0) and no limit.
+- `protocol/attack_limit_view_test.go` checks the room on the Crawlspace row
+  only, `0` sent under a used-up Silent Arbiter, and the field absent with no
+  limit.
+- `client/src/lib/attackLimit.test.ts` covers the helpers and the frame-id
+  correlation through a real `GameClient`.
+  `client/src/lib/attackLimitPicker.render.test.ts` covers the capped picker.
+
+### What this does NOT decide
+
+- **Capping the "attack with all" button itself.** It still sends every
+  eligible creature, and a limit that binds is answered by the refusal and the
+  picker. A seat that knows beforehand uses the up-front control.
+- **Spreading one swing across seats.** The picker aims at one seat, as
+  attack-with-all always has (#318).

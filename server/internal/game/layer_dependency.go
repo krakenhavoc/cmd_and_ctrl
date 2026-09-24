@@ -157,6 +157,14 @@ func (st *layerPassState) stillApplies(src *Card, target *Card, bucketIndex int,
 // run. On a board with no dependency at all that is one relation
 // computation per bucket and nothing else.
 func (g *Game) applyBucketLocked(bucket []ContinuousEffect, l Layer, bucketIndex int, st *layerPassState) {
+	// ADR 0093 Decision 3: in the layer-6 bucket a removal goes before
+	// every effect whose SOURCE it silences, whatever the timestamps.
+	// Only on a board where something removes abilities at all — which
+	// `st.track` has already decided — so every other pass pays one
+	// bool test.
+	if l == Layer6Ability && len(bucket) > 1 && st != nil && st.track && g.Battlefield != nil {
+		bucket = g.orderRemovalsBeforeTheirVictimsLocked(bucket)
+	}
 	if len(bucket) > 1 && dependencyOrderedLayers[l] && g.Battlefield != nil {
 		remaining := bucket
 		for len(remaining) > 1 {
@@ -176,6 +184,95 @@ func (g *Game) applyBucketLocked(bucket []ContinuousEffect, l Layer, bucketIndex
 	for _, eff := range bucket {
 		g.applyOneEffectLocked(eff, bucketIndex, st)
 	}
+}
+
+// orderRemovalsBeforeTheirVictimsLocked is ADR 0093 Decision 3's
+// structural pre-sort of the layer-6 bucket — CR 613.8a(b) for the one
+// dependency this engine can have in layer 6:
+//
+//	A removal effect is applied before every effect whose SOURCE it
+//	applies to. If two removals each apply to the other's source, that
+//	is a dependency loop (CR 613.8b) and timestamp order decides.
+//
+// The EXISTENCE of a grantor's effect depends on a removal that would
+// take the grantor's abilities away, so a Kenrith's Transformation on
+// Gemhide Sliver strips the grant from every Sliver, and a Lord of
+// Atlantis under a Darksteel Mutation stops granting islandwalk, however
+// the timestamps fall. Before this, the bucket was timestamp order alone
+// and a lord whose grant happened to sort first kept granting.
+//
+// Applying the removal first is all it takes: applyOneEffectLocked then
+// finds the grantor silenced in this very bucket and skips its effects,
+// as it always has for a removal that sorted earlier. Effects no removal
+// waits on keep their timestamp order relative to each other, and the
+// input is already timestamp-sorted, so a board with no such pair gets
+// the input back. It is not ADR 0067's trial application: the relation
+// is read off the removals' own AppliesTo, once per pass.
+//
+// Other layer-6 dependencies — a grant whose "applies to" reads another
+// grant's output — are NOT ordered; no catalogued pair reaches them.
+func (g *Game) orderRemovalsBeforeTheirVictimsLocked(bucket []ContinuousEffect) []ContinuousEffect {
+	var removals []int
+	for i, e := range bucket {
+		if e.RemovesAbilities() {
+			removals = append(removals, i)
+		}
+	}
+	if len(removals) == 0 {
+		return bucket
+	}
+	n := len(bucket)
+	var waits [][]int
+	for i, e := range bucket {
+		src := effectSourceLocked(e)
+		if src == nil {
+			continue
+		}
+		for _, r := range removals {
+			if r == i || !bucket[r].AppliesTo(src, g) {
+				continue
+			}
+			if waits == nil {
+				waits = make([][]int, n)
+			}
+			waits[i] = append(waits[i], r)
+		}
+	}
+	if waits == nil {
+		return bucket
+	}
+	out := make([]ContinuousEffect, 0, n)
+	done := make([]bool, n)
+	for len(out) < n {
+		pick, first := -1, -1
+		for i := 0; i < n; i++ {
+			if done[i] {
+				continue
+			}
+			if first < 0 {
+				first = i
+			}
+			ready := true
+			for _, r := range waits[i] {
+				if !done[r] {
+					ready = false
+					break
+				}
+			}
+			if ready {
+				pick = i
+				break
+			}
+		}
+		if pick < 0 {
+			// CR 613.8b: every remaining effect waits on another — the
+			// loop — so timestamp order, which is the earliest left.
+			pick = first
+		}
+		done[pick] = true
+		out = append(out, bucket[pick])
+	}
+	return out
 }
 
 // firstIndependent returns the index of the first effect that depends
@@ -333,6 +430,7 @@ func (g *Game) installTrialLocked(eff ContinuousEffect, idxs []int) func() {
 func applyRaw(eff ContinuousEffect, c *Characteristic, target *Card, g *Game) {
 	if eff.RemovesAbilities() {
 		c.Abilities = nil
+		c.GrantedAbilities = nil
 		c.AbilitiesRemoved = true
 	}
 	eff.Apply(c, target, g)
@@ -386,7 +484,22 @@ func sameCharacteristic(a, b Characteristic) bool {
 		sameStringSlice(a.Subtypes, b.Subtypes) &&
 		sameStringSlice(a.Supertypes, b.Supertypes) &&
 		sameStringSlice(a.Colors, b.Colors) &&
-		sameStringSlice(a.Abilities, b.Abilities)
+		sameStringSlice(a.Abilities, b.Abilities) &&
+		sameGrants(a.GrantedAbilities, b.GrantedAbilities)
+}
+
+// sameGrants compares two layered-grant lists; nil equals empty, for
+// sameStringSlice's reason.
+func sameGrants(a, b []GrantedAbility) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // sameStringSlice compares element by element; nil equals empty.

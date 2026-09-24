@@ -11,11 +11,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Raise Dead that becomes a Zombify once the graveyard is full. One
 // target clause; the destination is decided at resolution by the
-// graveyard count (CR 702.39 — threshold is a static that checks at
-// resolution), which excludes the spell itself: it is on the stack,
-// not in the graveyard, while it resolves. "From your graveyard"
-// means the card returns under its owner's control, which is the
-// caster's.
+// graveyard count (CR 608.2, CR 608.2h — the count is read once, when
+// the effect is applied), which excludes the spell itself: it is on
+// the stack, not in the graveyard, while it resolves. Threshold is an
+// ability word with no rules meaning of its own (CR 207.2c). "From
+// your graveyard" means the card returns under its owner's control,
+// which is the caster's.
 //
 // No simplification.
 func init() {

@@ -1,6 +1,10 @@
 # ADR 0054 — Dice rolls and coin flips from effects
 
 **Status:** Accepted · 2026-09-17 · unscheduled (card-coverage audit, wave 1) · tracked on [#744](https://github.com/krakenhavoc/cmd_and_ctrl/issues/744)
+**Turn-identity amendment:** [ADR 0059](0059-turn-machinery.md) sub-PR 1
+replaces the derived `Turn.Number*MaxPlayers + ActiveSeat` stream index
+with `Turn.Seq`. It preserves the intended next-turn reset and also
+distinguishes consecutive turns taken by the same seat.
 **Numbering:** 0052 is reserved for the emblems ADR
 ([#623](https://github.com/krakenhavoc/cmd_and_ctrl/issues/623)) and is
 skipped here, as ADR 0053 also skips it. On 2026-09-17 every remote

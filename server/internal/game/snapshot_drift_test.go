@@ -77,6 +77,14 @@ var gameFields = plan(
 	"ID", carried, "",
 	"CreatedAt", carried, "",
 	"State", carried, "",
+	// ADR 0057 Decision 5: the result of an ended game. Carried so a
+	// fixture or a forensic restore of an ended game still names its
+	// winner.
+	"Outcome", carried, "",
+	// ADR 0057 Decision 3: the active player's deferred departure,
+	// waiting on the next SBA loss pass. Carried: a restore between
+	// the effect loss and that pass must still move the turn on.
+	"ActiveSeatLeftPending", carried, "",
 	"Seats", carried, "",
 	"Battlefield", carried, "",
 	"Stack", carried, "",
@@ -94,6 +102,7 @@ var gameFields = plan(
 	"SplitSecondActive", carried, "",
 	"LoyaltyActivatedThisTurn", carried, "",
 	"SpellsCastThisTurn", carried, "",
+	"ForetoldThisTurn", carried, "",
 	"LandsPlayedThisTurn", carried, "",
 	"ExtraLandDropsThisTurn", carried, "",
 	// Per-turn draw log (Sylvan Library's "cards in your hand drawn
@@ -125,6 +134,12 @@ var gameFields = plan(
 	// what "carried" means here.
 	"Events", carried, "shared with the live log by Clone, copied by the persisted snapshot",
 	"eventSeq", carried, "",
+	// #1401: the public log's projection cache and the generation it
+	// validates against. A restored game is a NEW *Game — zero
+	// generation, empty slot — and its first view refolds the carried
+	// Events from scratch, so there is nothing to serialise.
+	"eventLogGen", rebuilt, "names this *Game's log history; a restored game is a new receiver and starts a new one",
+	"logProjection", rebuilt, "derived cache of the public log; the first view of a restored game refolds Events",
 	// #829 event batches. Carried for the same reason the per-turn
 	// tallies are, and carried TOGETHER: the counter names the batch
 	// the marks are recorded against, so a restore that kept one and
@@ -132,6 +147,10 @@ var gameFields = plan(
 	// trigger or swallow it.
 	"eventBatch", carried, "",
 	"oncePerBatchFired", carried, "",
+	// #1289: a resolution paused on one of its own prompts holds the
+	// CR 704.3 boundary. Carried with each choice's midResolution.
+	"resolutionOpen", carried, "",
+	"resolutionDepth", dropped, "not game state: it counts resolution functions on the Go stack, so it is zero between actions (#1289)",
 	// #830 block-declaration lock-in, and #715's blocked state.
 	// Carried for the same reason and in the same pair-wise way: the
 	// map of announced pairings names what the blocked marks were
@@ -147,6 +166,16 @@ var gameFields = plan(
 	// that has already attacked, and one that invented it would
 	// swallow a declaration the battlefield is still carrying.
 	"announcedAttacks", carried, "",
+	// #1364: the last-known defending player of each attack. Carried
+	// with announcedAttacks: a restore that dropped it would leave an
+	// attacker whose planeswalker has left unblockable (CR 506.4c).
+	"attackDefenders", carried, "",
+	// #1279: which defenders have completed their block declaration.
+	// Carried with the block maps above: a restore that dropped it
+	// would re-ask a defender who had already declared, and one that
+	// invented it would read an attacker unblocked before the
+	// defender chose.
+	"blocksDeclared", carried, "",
 	// #716 combat damage step participation. Carried for the reason
 	// the three above are, and for one more: the window between the
 	// two combat damage steps is a priority window, so an undo or a
@@ -157,6 +186,17 @@ var gameFields = plan(
 	"lastKnownBattlefield", carried, "",
 	"lastKnownTriggerIdentity", carried, "",
 	"lastKnownCounters", carried, "",
+	// #1379: CR 608.2h LKI for permanents that left the battlefield
+	// this turn. Carried, unlike lastKnownStack: a restore that lands
+	// with an ability on the stack that names a departed permanent must
+	// still be able to read how it last existed.
+	"lastKnownPermanents", carried, "",
+	// #1255: CR 608.2h LKI for spells that left the stack this turn.
+	// Its only readers are copy effects that name a spell without
+	// targeting it — a storm trigger, Thousand-Year Storm, Doublecast's
+	// delayed trigger — and every one of those is a closure the
+	// snapshot already refuses to carry. Clone copies it for undo.
+	"lastKnownStack", dropped, "read only by stack items and delayed triggers whose behaviour is a closure, counted in ContinuationCensus.StackEffects and ContinuationCensus.DelayedTriggerEffects; with no such reader the record is dead and restores empty",
 	// ADR 0054: the key and the per-turn stream counters ARE the
 	// randomness. Clone copies them (undo rewinds) and rngSnapshot
 	// carries them (a restore continues every stream).
@@ -238,6 +278,13 @@ var cardFields = plan(
 	// reads an ABSENT kind on a face-down card as FaceDownExiled, the
 	// only face-down object that could exist before the field did.
 	"FaceDownKind", carried, "",
+	// #1270 / CR 708.2: the body an effect LISTED for a face-down
+	// object. Carried — nothing can re-derive that Yedora's face-down
+	// card is a Forest land rather than the default 2/2.
+	"FaceDownListed", carried, "",
+	// #1271 / CR 613.7f: the face-change timestamp. Carried with
+	// EnteredBattlefieldAt, which it competes with for the layer sort.
+	"FaceTurnedAt", carried, "",
 	"KnownBy", carried, "",
 	"EnteredBattlefieldAt", carried, "",
 	// #936 / CR 400.7: the object's serial number, and the epoch half
@@ -322,6 +369,23 @@ var cardFields = plan(
 	// wrong and say nothing about it.
 	"ClassLevel", carried, "",
 	"Solved", carried, "",
+	// ADR 0071 amendment (#1321): the CR 701.64 harnessed designation.
+	// Carried for Solved's reason — the zero value ("not harnessed")
+	// is a legal state, so a restore that dropped it would come back
+	// wrong and say nothing.
+	"Harnessed", carried, "",
+	// ADR 0090 (#1328): the CR 722.3a prepared designation, the
+	// CR 722.3c copy's not-a-card marker, and the permanent object the
+	// copy is kept in exile by. Carried for Solved's reason — every
+	// zero value is a legal state, so a restore that dropped them would
+	// come back wrong and say nothing.
+	"Prepared", carried, "",
+	"PrepareCopy", carried, "",
+	"PreparedBy", carried, "",
+	// ADR 0091 (#1331): the hideaway link. Carried — the zero value is
+	// a legal state ("not hidden by anything"), so a restore that
+	// dropped it would say nothing and leave the card orphaned.
+	"HiddenBy", carried, "",
 	// #1199 / CR 702.26, ADR 0084. All four are the phased-out status
 	// and all four are legal zero values, so a restore that dropped
 	// them would bring a phased board back under the wrong player's
@@ -337,6 +401,11 @@ var cardFields = plan(
 	// defends and everybody may attack.
 	"StartingDefense", carried, "",
 	"ProtectorPlayerID", carried, "",
+	// #522: a restore brought this card back with fewer catalog
+	// abilities than were captured. Carried, and it has to be: the
+	// owner's rule is that nothing but the card leaving the game
+	// clears it, and a later restore point is not the card leaving.
+	"AbilitiesLostOnRestore", carried, "",
 
 	"ManaAbilities", rebuilt, "closures; re-looked-up from the catalog by oracle ID, or by TokenKey for a token (#521), and censused only when the catalog cannot return them",
 	"ActivatedAbilities", rebuilt, "same as ManaAbilities",
@@ -439,6 +508,10 @@ var stackItemFields = plan(
 	// it, and a restore that lost it would let a bounced-and-replayed
 	// Equipment be equipped by the old ability.
 	"SourceEpoch", carried, "",
+	// #1418: the same reading for EVERY ability item, triggers
+	// included — the object "this" names. Carried for SourceEpoch's
+	// reason: it is a reading of a card that has since moved.
+	"SourceObject", carried, "",
 	"Label", carried, "",
 	"DoubledBy", carried, "",
 	"DoubledByName", carried, "",
@@ -486,6 +559,10 @@ var stackItemFields = plan(
 	"IsCopy", carried, "",
 	"Seq", carried, "",
 	"Ordered", carried, "",
+	// #1511: which pending triggers may skip the CR 603.3b prompt.
+	// Carried for Ordered's reason — it is a fact about a pending
+	// item that the restored drain reads.
+	"Commutes", carried, "",
 	// #789 / #761: what the announcement paid — the counters
 	// removed, the life, and the mana tokens that left the pool.
 	// Carried, and it has to be: the counters are off the board and
@@ -510,10 +587,11 @@ var delayedTriggerFields = plan(
 	"ID", carried, "",
 	"Controller", carried, "",
 	"SourceCardID", carried, "",
+	"SourceObject", carried, "", // #1418, CR 603.7d
 	"Label", carried, "",
 	"At", carried, "",
 	"ControllerTurnOnly", carried, "",
-	"CreatedTurn", carried, "",
+	"CreatedSeq", carried, "",
 	"Cards", carried, "",
 	// #663's event condition. The data half comes back so a restored
 	// game still knows WHAT was owed and until when.
@@ -583,6 +661,9 @@ var pendingChoiceFields = plan(
 	"SacrificeOptions", carried, "",
 	"CopyOptions", carried, "",
 	"ScryCards", carried, "",
+	"LibraryPlacement", carried, "",
+	"LibraryTopCount", carried, "",
+	"LibraryTopDepth", carried, "",
 	"TriggerOrderIDs", carried, "",
 	"PayCost", carried, "",
 	// #997: the step a pay-or-else prompt has to be answered in
@@ -630,6 +711,7 @@ var pendingChoiceFields = plan(
 	"LoopShortcutRepeat", carried, "",
 
 	"replacementResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
+	"costCommanderResume", dropped, "a parked cost announcement (#1397); counted in ContinuationCensus.ChoiceResumeFrames",
 	"modePickResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"pickTargetResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"copyResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
@@ -639,6 +721,8 @@ var pendingChoiceFields = plan(
 	"optionPickResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"searchResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"scryResume", dropped, "continuation closure; counted in ContinuationCensus.ChoiceResumeFrames",
+	"libraryOrderResume", dropped, "continuation closure; counted in ContinuationCensus.ChoiceResumeFrames",
+	"midResolution", carried, "",
 	"confirmResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"chooseColorResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"chooseCardsResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",

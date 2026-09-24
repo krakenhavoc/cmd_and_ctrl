@@ -13,6 +13,8 @@
     fingerprintSettings,
   } from "../settings";
   import { STEP_IDS, STEP_LABELS, hasOwnStop, type StepID } from "../turn";
+  import { BLUFF_MAX_MS, BLUFF_MIN_MS } from "../bluff";
+  import type { StackStyle } from "../stackLane";
   import {
     SHORTCUTS,
     GROUP_ORDER,
@@ -597,6 +599,29 @@
               {#if isFresh("display.handLayout")}<span class="saved">✓</span>{/if}
             </label>
 
+            <!-- #1467: four ways to draw the stack, shipped side by side
+                 so they can be compared on a live table. -->
+            <label class="slider-row">
+              <span>Stack <span class="experimental">experimental</span></span>
+              <select
+                value={$settings.display.stackStyle}
+                onchange={(e) =>
+                  change("display", "stackStyle", e.currentTarget.value as StackStyle)}
+              >
+                <option value="compact">Compact (default)</option>
+                <option value="fan">Fan</option>
+                <option value="spotlight">Spotlight</option>
+                <option value="ribbon">Ribbon</option>
+              </select>
+              {#if isFresh("display.stackStyle")}<span class="saved">✓</span>{/if}
+            </label>
+            <p class="help">
+              Compact keeps the stack in the small card at the top left. The others show it across
+              the middle of the table while something is on it: Fan lays the cards out with arrows
+              to what they target, Spotlight shows the next spell large with the rest queued beside
+              it, and Ribbon is a numbered row. The table itself never moves to make room.
+            </p>
+
             <label class="slider-row">
               <span>Hover preview delay (ms)</span>
               <input
@@ -643,9 +668,11 @@
               {#if isFresh("gameplay.autoPassPriority")}<span class="saved">✓ saved</span>{/if}
             </label>
             <p class="help">
-              Pairs with the stops grid below: priority auto-passes through any step you haven't
-              pinned. Use the &ldquo;&rarr; next stop&rdquo; toolbar button to fast-forward one stop
-              at a time without enabling auto-pass globally.
+              Priority passes for you everywhere except the steps you tick below and, with smart
+              auto-pass on, the moments you can actually respond: an opponent's spell or ability on
+              the stack, combat once attackers are declared, and an opponent's end step. Click
+              <strong>next</strong> in the phase widget to pass by hand, or click a step icon to stop
+              there once.
             </p>
 
             <fieldset class="step-stops">
@@ -675,15 +702,148 @@
                 checked={$settings.gameplay.smartAutoPass}
                 onchange={(e) => change("gameplay", "smartAutoPass", e.currentTarget.checked)}
               />
-              Smart auto-pass (skip stops with no legal response)
+              Smart auto-pass (stop only when you can do something)
               {#if isFresh("gameplay.smartAutoPass")}<span class="saved">✓ saved</span>{/if}
             </label>
             <p class="help">
-              Pairs with the stops grid. Auto-passes even at a pinned stop when the legality engine
-              can't find anything you could cast or activate — so &ldquo;stop on upkeep&rdquo; means
-              &ldquo;stop here if I have something to consider,&rdquo; not &ldquo;stop every time
-              regardless.&rdquo; Turn off to demand a click at every stop.
+              Two things. A ticked step passes when you have nothing to play there, so &ldquo;stop
+              on upkeep&rdquo; means &ldquo;stop if I have something to do,&rdquo; not &ldquo;stop
+              every time.&rdquo; And outside the ticked steps, it stops you in the key windows
+              &mdash; an opponent's spell or ability on the stack, declared attackers or blockers,
+              an opponent's end step &mdash; only when you hold a response from the list below. Mana
+              abilities and land drops never count as a response. Turn this off to stop on every
+              ticked step and every opponent stack item.
             </p>
+
+            <fieldset class="step-stops" disabled={!$settings.gameplay.smartAutoPass}>
+              <legend>Stop for</legend>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={$settings.gameplay.respondCounterspells}
+                  onchange={(e) =>
+                    change("gameplay", "respondCounterspells", e.currentTarget.checked)}
+                />
+                Counterspells (anything that targets a spell or ability on the stack)
+                {#if isFresh("gameplay.respondCounterspells")}<span class="saved">✓</span>{/if}
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={$settings.gameplay.respondInstants}
+                  onchange={(e) => change("gameplay", "respondInstants", e.currentTarget.checked)}
+                />
+                Instants and flash spells
+                {#if isFresh("gameplay.respondInstants")}<span class="saved">✓</span>{/if}
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={$settings.gameplay.respondAbilities}
+                  onchange={(e) => change("gameplay", "respondAbilities", e.currentTarget.checked)}
+                />
+                Activated abilities (not mana abilities)
+                {#if isFresh("gameplay.respondAbilities")}<span class="saved">✓</span>{/if}
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={$settings.gameplay.respondSpecialActions}
+                  onchange={(e) =>
+                    change("gameplay", "respondSpecialActions", e.currentTarget.checked)}
+                />
+                Special actions (foretell, suspend, turning a card face up)
+                {#if isFresh("gameplay.respondSpecialActions")}<span class="saved">✓</span>{/if}
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={$settings.gameplay.alwaysStopOpponentStack}
+                  onchange={(e) =>
+                    change("gameplay", "alwaysStopOpponentStack", e.currentTarget.checked)}
+                />
+                Always stop for opponents' spells and abilities
+                {#if isFresh("gameplay.alwaysStopOpponentStack")}<span class="saved">✓</span>{/if}
+              </label>
+              <p class="help">
+                The last one stops on every opponent item on the stack even when you can't answer
+                it, which is how auto-pass worked before. Stopping every time also means a pause
+                never tells the table you have an answer.
+              </p>
+            </fieldset>
+
+            <fieldset class="step-stops" disabled={!$settings.gameplay.smartAutoPass}>
+              <legend>Bluff</legend>
+              <p class="help">
+                Smart auto-pass passes the moment you have no answer, so a pause tells the table you
+                do. A bluff pauses anyway when you have nothing, and the other players see the same
+                pause either way. Turn bluffing on or off mid-game with the
+                <strong>bluff</strong> button in the phase widget.
+              </p>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={$settings.gameplay.bluffCounterspell}
+                  onchange={(e) => change("gameplay", "bluffCounterspell", e.currentTarget.checked)}
+                />
+                Represent a counterspell (pause on opponents' spells and abilities)
+                {#if isFresh("gameplay.bluffCounterspell")}<span class="saved">✓</span>{/if}
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={$settings.gameplay.bluffInstant}
+                  onchange={(e) => change("gameplay", "bluffInstant", e.currentTarget.checked)}
+                />
+                Represent an instant (also pause in combat and on opponents' end steps)
+                {#if isFresh("gameplay.bluffInstant")}<span class="saved">✓</span>{/if}
+              </label>
+              <label class="slider-row">
+                <span>Bluff style</span>
+                <select
+                  value={$settings.gameplay.bluffMode}
+                  onchange={(e) =>
+                    change("gameplay", "bluffMode", e.currentTarget.value as "timed" | "manual")}
+                >
+                  <option value="timed">Timed — pass after a random pause</option>
+                  <option value="manual">Manual — wait for me to click next</option>
+                </select>
+                {#if isFresh("gameplay.bluffMode")}<span class="saved">✓</span>{/if}
+              </label>
+              <label class="slider-row">
+                <span>Shortest pause (ms)</span>
+                <input
+                  type="range"
+                  min={BLUFF_MIN_MS}
+                  max={BLUFF_MAX_MS}
+                  step="250"
+                  value={$settings.gameplay.bluffDelayMinMs}
+                  oninput={(e) =>
+                    change("gameplay", "bluffDelayMinMs", Number(e.currentTarget.value))}
+                />
+                <span class="value">{$settings.gameplay.bluffDelayMinMs}</span>
+                {#if isFresh("gameplay.bluffDelayMinMs")}<span class="saved">✓</span>{/if}
+              </label>
+              <label class="slider-row">
+                <span>Longest pause (ms)</span>
+                <input
+                  type="range"
+                  min={BLUFF_MIN_MS}
+                  max={BLUFF_MAX_MS}
+                  step="250"
+                  value={$settings.gameplay.bluffDelayMaxMs}
+                  oninput={(e) =>
+                    change("gameplay", "bluffDelayMaxMs", Number(e.currentTarget.value))}
+                />
+                <span class="value">{$settings.gameplay.bluffDelayMaxMs}</span>
+                {#if isFresh("gameplay.bluffDelayMaxMs")}<span class="saved">✓</span>{/if}
+              </label>
+              <p class="help">
+                Every bluff slows the table down, and a timed bluff always ends inside its range, so
+                a long pause still means a real answer. Manual bluffs have no ceiling: they wait for
+                you, the same as a real hold.
+              </p>
+            </fieldset>
 
             <label>
               <input

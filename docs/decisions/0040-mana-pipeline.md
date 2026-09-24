@@ -109,7 +109,7 @@ token compared equal because nothing ever set `Restrictions`.
 Both families are "the produced string is not known until activation":
 Exotic Orchard's colours come from the opposing board, Cabal Coffers'
 count from your Swamps. One `func(*Game, controller, source) string`
-serves both, evaluated after the cost is paid (CR 605.3a — a mana
+serves both, evaluated after the cost is paid (CR 605.3b — a mana
 ability resolves the instant it is activated, all of it).
 
 Returning `""` is a first-class answer meaning "produced no mana".
@@ -120,7 +120,7 @@ taps, nothing arrives.
 **The recursion guard.** Deriving "what could that land produce"
 SKIPS any ability that itself has a `ProducedFunc`. Two Exotic
 Orchards, or an Orchard and a Reflecting Pool, would otherwise recurse
-until the stack ran out. CR 106.6b answers the circular case with "no
+until the stack ran out. CR 106.7 answers the circular case with "no
 mana" and so does this; where the real rules would resolve a one-way
 chain it is one colour short, which is the weaker-than-printed
 direction and is declared on all four card files.
@@ -134,7 +134,7 @@ cards, and a decklist's other 60 lands only have the Scryfall field.
 ### 6. A `Condition` predicate for activation gates
 
 `func(*Game, controller, source) bool`, checked before any cost is
-validated (CR 602.5a), returning `ErrConditionNotMet`. A failed gate
+validated (CR 602.5), returning `ErrConditionNotMet`. A failed gate
 taps nothing and spends nothing.
 
 Both this and `ProducedFunc` are **read-only and run under `g.mu`** —
@@ -563,7 +563,7 @@ construction rather than by a second implementation kept in step.
   `ManaAbility.DerivesFromOtherSources` marks the three abilities that
   read what OTHER permanents could produce — Exotic Orchard, Fellwar
   Stone, Reflecting Pool — and `ProducibleManaLocked` skips exactly
-  those. CR 106.6b answers the circular case with "no mana" and so
+  those. CR 106.7 answers the circular case with "no mana" and so
   does the guard. The alternative, a re-entrancy counter, is undo
   state on a snapshotted struct if it lives on `Game` and a data race
   between two games in one process if it does not.
@@ -695,3 +695,279 @@ for the same reason the cast's is not.
 - **Still open.** The bot's cast enumerator still advertises no life
   payment for a CAST (above), and Solphim's ability still waits on an
   activation-cost discard component.
+
+## Amendment — 2026-09-23 (#1323): the recursion guard becomes CR 106.7's own reachability rule, and the three cards go to full
+
+Found by the *Aang is so flashy* deck triage (#1306): Fellwar Stone facing an
+opposing Exotic Orchard or Reflecting Pool saw nothing from it, even on a
+board with no cycle at all. The #782 amendment's guard — "an ability that
+reads OTHER permanents' producible mana is skipped
+(`ManaAbilityShape.DerivesFromOtherSources`)" — was unconditional: any
+`DerivesFromOtherSources` ability contributed nothing to a derivation,
+whether or not asking it would actually loop.
+
+**There is no CR 106.6b.** The #782 amendment (and every comment written
+against it since) cited "CR 106.6b" for the circular case. Checked against
+the pinned edition (`MagicCompRules 20260819.txt`), 106.6 has one subrule,
+106.6a, about replacement effects that scale a mana-producing ability's
+output — nothing about circularity. The circular case is the LAST SENTENCE
+of **106.7 itself**: "If that permanent wouldn't produce any mana under
+these conditions, **or no type of mana can be defined this way**, there's no
+type of mana it could produce." A "could produce" chain that loops back on
+itself is exactly a type that "can't be defined this way" — evaluating it
+never bottoms out — so the rule answers it the same way it answers every
+other undefined case: nothing. Every citation of "106.6b" in this file, in
+`game/producible_mana.go`, `game/effect_hooks.go`, `effects/spec.go` and the
+three card files is corrected to 106.7 by this amendment.
+
+**The official ruling settles what "weaker than printed" would have meant,
+and the answer is: it wouldn't have meant anything, because there IS no
+stronger answer.** Exotic Orchard's own ruling (WotC, 2009-02-01) gives the
+worked example directly:
+
+> "Lands that produce mana based only on what other lands 'could produce'
+> won't help each other unless some other land allows one of them to
+> actually produce some type of mana. For example, if you control an Exotic
+> Orchard and your opponent controls an Exotic Orchard and a Reflecting
+> Pool, none of those lands would produce mana if their mana abilities were
+> activated. On the other hand, if you control a Forest and an Exotic
+> Orchard, and your opponent controls an Exotic Orchard and a Reflecting
+> Pool, then each of those lands can be tapped to produce {G}."
+
+A genuine circle with no real land anywhere in it produces **nothing**, full
+stop — not "one colour short of what the real rules would resolve," which is
+what every version of these three cards' doc comments claimed before this
+amendment. That claim was simply wrong: there is no printed resolution for a
+pure cycle to fall short of. The engine's answer for that case was already
+correct; only the CITATION and the CAVEAT WORDING were not.
+
+### The fix has to leave `mana_derivation.go`'s closures, because the ancestor path doesn't fit through them
+
+The three derived abilities (Exotic Orchard, Reflecting Pool, Fellwar Stone)
+used to be `ProducedFunc` closures built by `ProducedFromOpponentLands()` /
+`ProducedFromOwnLands()`, which called a package-level `producibleAcross`
+that in turn called the exported `game.ProducibleManaLocked` for each
+candidate. Answering "one-way chains resolve, cycles don't" needs the set of
+instance IDs currently ON THE PATH from the original query threaded the whole
+way down that call chain — and `ProducedFunc`'s fixed shape, `func(*Game,
+controller, source uuid.UUID) string`, used by every OTHER mana ability in
+the catalog too, has no fourth argument to carry it. Widening that type to
+thread a path set through thirty-odd unrelated cards' closures for three
+cards' benefit was rejected outright.
+
+So the three derived abilities declare a NEW field instead —
+`ManaAbilityShape.DerivedMatch func(candidate Card, controller uuid.UUID)
+bool` plus `DerivedColorsOnly bool` — a plain predicate ("a land an opponent
+controls", "a land you control") rather than a closure that does its own
+board walk. `game/producible_mana.go` owns the walk and the recursion
+entirely: `producibleManaVisitingLocked(c, visiting)` marks `c.InstanceID`
+on entry and (`defer`) UNMARKS it on return, so `visiting` tracks the
+ANCESTOR PATH — the textbook-correct shape for cycle detection in a
+reachability walk — rather than "every permanent this query has ever asked
+about." `derivedManaLocked` scans the battlefield for `DerivedMatch` and
+recurses back into `producibleManaVisitingLocked` for each candidate with the
+SAME map. A candidate currently on the path — the circular case — contributes
+nothing; everything else is an ordinary chain and resolves.
+`ProducibleManaLocked(c)`, the public entry point, is now a one-line wrapper
+seeding a fresh empty set.
+
+(A permanently-growing "seen" set — never unmarked — turns out to answer the
+same TOP-LEVEL question correctly too, because this aggregation is a
+monotone union with nothing ever discarded: a colour found via any one path
+is retained by that path's own return value regardless of what a redundant,
+masked reference elsewhere would separately have found. An adversarial
+four-controller board built specifically to try to break that property
+during this amendment's own review gave an identical answer under both
+implementations. The ancestor-path version ships anyway, because it is
+correct by construction rather than by an argument specific to one
+aggregation shape, and it is what the code says on its face.)
+
+**One shared implementation for both readers.** A real ACTIVATION (someone
+taps Fellwar Stone for actual mana) goes through the identical
+`derivedManaLocked` call, from `manaAbilityProducedLocked` and
+`ActivateManaAbility`'s produced-string computation, each seeding the path
+with the activating permanent's OWN instance ID before recursing — the same
+seed `producibleManaVisitingLocked` gives itself at the top of an ordinary
+CR 106.7 query. Two Reflecting Pools cross-referencing each other at real
+activation time is exactly as unbounded a recursion as the same board asked
+about abstractly, and it needed the identical guard.
+
+### What actually changes for the three cards
+
+- **Exotic Orchard / Fellwar Stone** ("a land an opponent controls"): now see
+  through an opposing derived land to whatever IT could derive, as long as
+  that chain doesn't loop back to an already-visited permanent — exactly the
+  official ruling's second worked example (a Forest on your side lights up
+  every land in the chain).
+- **Reflecting Pool** ("a land you control"): the SAME controller running a
+  Pool and an Orchard is no longer a false cycle — the Pool's own-lands match
+  reaches the Orchard, but the Orchard's opponent-lands match (relative to
+  the SAME controller) does not reach back to the Pool, so the chain resolves
+  through a real opposing land.
+- A genuine circle — two Exotic Orchards facing each other, two Reflecting
+  Pools, or an Orchard and a Pool that end up asking about each other, with
+  no real land anywhere in the loop — still answers "no mana" for every
+  permanent in it, matching the ruling's FIRST worked example exactly. This
+  is the printed card's own behaviour, not a simplification, so **all three
+  cards move to `CompletenessFull` with no caveat.**
+
+`TestFellwarStoneSeesThroughAnOpposingExoticOrchard`,
+`TestOwnOrchardAndPoolSeeThroughEachOther` and
+`TestFellwarStoneVersusFellwarStoneIsNotACycle` are the one-way-chain proofs;
+`TestTwoExoticOrchardsStillSeeNothing` (the original #782 test, unchanged) is
+the guard's own back-out proof — it still passes, because a genuine
+3-permanent circle still resolves to nothing, which is now documented as the
+rule's own answer rather than an engine limitation.
+
+## Amendment — 2026-09-23 (#1370): `PreRider`, for a printed order Rider cannot express
+
+**The bug.** Empowered Autogenerator — "{T}: Put a charge counter on this
+artifact. Add X mana of any one color, where X is the number of charge
+counters on this artifact." — computed X as `existing charge counters + 1`,
+a guess at what its own counter placement was about to do, and placed the
+counter through `Rider`, which this pipeline runs AFTER `ProducedFunc`
+(§5's "evaluated after the cost is paid"). With no counter doubler in play
+the guess and the read agree by arithmetic accident: `existing + 1` and
+`(existing + 1 placed, then read)` are the same number. With a Doubling
+Season on the board they diverge — the placement lands doubled, the guess
+does not — and the ability added less mana than the charge counters on the
+card, at the moment it finished resolving, actually justify.
+
+**Rider's contract only covers half the printed sentences.** Every mana
+ability that has used `Rider` so far — the painland cycle's "Add {C}. This
+land deals 1 damage to you," Ancient Tomb's "Add {C}{C}. This land deals 2
+damage to you" — prints the "Add …" clause FIRST and the side effect
+SECOND, so "compute output, mint mana, then run the rest" is exactly
+printed order. Empowered Autogenerator prints the other order: the
+non-mana instruction comes first and the output depends on its result.
+`Rider` has no way to say that, because by the time it runs the output is
+already computed and the mana is already in the pool.
+
+**`ManaAbilityShape.PreRider` / `effects.ManaAbility.PreRider`** is Rider's
+mirror image: the same signature (`func(g *Game, controller, source
+uuid.UUID) error`), run at the same point in `ActivateManaAbility` `Rider`
+occupies, just BEFORE the produced string is computed instead of after. A
+card declares one or the other for a given clause, matching whichever side
+of "Add …" its own printed sentence puts the instruction on — never both,
+and nothing in the catalog needs both today.
+
+**The mutation a PreRider makes cannot go through the ordinary counter
+path.** `AddCounterForEffect` / `AddCounterThenForEffect` open a real CR 614
+window that can PAUSE on a CR 616 ordering prompt when two different
+counter replacements apply (Doubling Season beside a Hardened Scales) — the
+`#1282` continuation shape this file's sibling ADRs already lean on
+elsewhere. A mana ability's resolution has no such pause available
+(CR 605.3b: one indivisible step, no stack, no priority window inside it) —
+exactly the reasoning §6's `Condition` / `ProducedFunc` read-only contract
+and `produce_mana.go`'s `mustSettleNow` on `RepEventProduceMana` already
+rest on for the mana side of the same activation. `PreRider` needs the
+identical guarantee on the COUNTER side, and there was no synchronous,
+non-pausing counter-placement entry point to give it one.
+
+**`AddCounterMustSettleNowForEffect` / `AddCounterByMustSettleNowForEffect`**
+(`counter_tail.go`) are that entry point: the same `RepEventCounter` window
+every other counter placement opens, with `mustSettleNow` set. Two or more
+applicable counter doublers settle on the gathered order instead of
+queuing a prompt — the same escape an eliminated chooser already takes
+(CR 616.1f) and the same posture `payLifeAsCostLocked` takes for a life
+payment as a cost. Unlike the `...ThenForEffect` continuation shape, this
+returns the settled delta SYNCHRONOUSLY, because `mustSettleNow` forecloses
+the one case (`errReplacementPending`) a continuation exists to survive.
+
+**Hardened Scales was never the risk here, and that is worth stating
+precisely rather than assuming.** It replaces placement of a `+1/+1`
+counter on a creature (`hardened_scales.go`'s `AppliesTo`); Empowered
+Autogenerator places a `charge` counter on an artifact, so Hardened Scales'
+predicate never matches this card at all, with or without the fix.
+Doubling Season has no such name or type restriction — CR-uncategorised
+"counters" — and is the doubler that actually interacts.
+
+**Where the fix lands, precisely:**
+
+- `game.ManaAbilityShape.PreRider` (`effect_hooks.go`) and
+  `effects.ManaAbility.PreRider` (`spec.go`), wired through in
+  `carddef.go`.
+- `ActivateManaAbility` (`mutations.go`) runs `ab.PreRider` right after
+  `EventManaAbilityActivated` and before `Produced` / `ProducedFunc` /
+  `ProducedForPaid` is evaluated, marking `needStateChecks` exactly as
+  `Rider` does.
+- `game.AddCounterMustSettleNowForEffect` /
+  `AddCounterByMustSettleNowForEffect` (`counter_tail.go`).
+- `empowered_autogenerator.go`: `b39AutogeneratorCharge` moves from
+  `Rider` to `PreRider` and calls the new settle-now entry point;
+  `b39AutogeneratorOutput` drops the `+ 1` guess and reads the board.
+
+No card moves off `CompletenessFull` and none gains a caveat — this
+corrects what "no simplification" already claimed rather than narrowing it.
+`TestB39AutogeneratorReadsCounterCountAfterDoublingSeason` and
+`TestB39AutogeneratorUnaffectedByHardenedScalesAlone`
+(`batch39_test.go`) are the proof, alongside the unchanged
+`TestB39AutogeneratorAddsOneOnItsFirstTapAndGrows` for the no-doubler case.
+
+## Amendment — 2026-09-24 (#1443): the colour of a pipe slot, named before the tap
+
+**The gap.** #1438 made a left-click on a mana source tap it for mana. For
+a source whose output is a choice of colours, the colour was still asked
+AFTER the activation, as the `mana_pick` §8 queues: a painland was two
+picks (the ability, then the colour), and Birds of Paradise / Command Tower
+asked in the centred prompt with the source already tapped, so the
+question could not be cancelled. The client could not offer the colour up
+front itself without guessing, because the list is the server's: Command
+Tower's is narrowed at activation (CR 903.4f, the #844 amendment above) and
+every pipe is ordered identity first (the 2026-09-17 addendum above).
+
+**Decision 1 — the view publishes the list the prompt would carry.**
+`ManaAbilityView.color_options` (`[][]string`) is, per ability, one list per
+PICKING slot of its output, in output order. `game.ManaAbilityColorOptions`
+computes it: the output as every "what would this make" reader reads it
+(`manaAbilityProducedLocked` with the largest counter payment, as
+`ManaAbilityAddsNoMana` does), parsed, and each slot of printed width > 1
+passed through `manaPickOptions` — the one narrowing-and-ordering function
+the activation's own `mana_pick` uses. A slot that narrows to nothing adds
+no mana and asks nothing, so it contributes no list. The test that pins the
+agreement compares the published list with the queued prompt's
+`ColorOptions` for Birds (two identities), Command Tower (two), Arcane
+Signet and a painland (`TestUpfrontColorOptionsMatchTheManaPickPrompt`).
+
+**Decision 2 — the activation takes the answer up front, and refuses a bad
+one before paying.** `ManaAbilityParams.Colors` (wire: `color` for one slot,
+`colors` for several) names one colour per picking slot. It is checked
+right after the activation gates and before any cost is validated, against
+the same `ManaAbilityColorOptions` list: wrong count or a colour the slot
+does not offer is `ErrIllegalManaColor`, with nothing tapped, paid or
+produced. At materialisation a named slot is produced through
+`produceManaLocked` exactly as `ResolveManaChoice` would have produced the
+answered pick — the ability's restrictions, #1212's source snapshot, the
+slot's amount (#742), the CR 106.12b window — and its colours join the
+ones the triggered mana abilities fire on at the bottom of the activation
+(ADR 0074 §3's "one branch per card" still holds: a named slot takes the
+direct branch). The name is re-checked against the slot's options read
+AFTER the cost, and a derived output the payment itself changed falls back
+to queueing the prompt rather than minting a colour it no longer offers.
+
+**Decision 3 — absent is unchanged.** No colour named is the two-step
+activation exactly as before, and it is what the auto-tapper (which picks
+its own colours, §7) and the bot seats use. The legal-move enumerator is
+unchanged: it offers the activation without a colour and the bot answers
+the `mana_pick` it queues, as it always has — expanding each pipe ability
+into colour variants would multiply the move list for no decision the bot
+does not already make one step later.
+
+**Client.** The anchored picker #1438 opens at the card now offers FINAL
+results: each ability with `color_options` is expanded into one option per
+distinct answer (a painland is `{C}`, `{R}` and `{W}`, the coloured two
+carrying the damage rider; Birds its five colours in the server's order;
+Command Tower the identity's; Mystic Gate WW / WU / UU), and the pick is
+sent with its colour. One live result taps at once, so a mono-identity
+Command Tower is one click. Escape, an outside click or a second click on
+the card still closes the picker with nothing sent — and since every
+colour is now chosen there, nothing is tapped. An ability with no
+`color_options` (an older server) stays one option and the server asks
+after the tap, as before.
+
+Where it lands: `game/mana_color_upfront.go` (`ManaAbilityColorOptions`,
+the check), `ActivateManaAbility` (`game/mutations.go`), the
+`activate_mana_ability` dispatcher (`actions/actions.go`),
+`stampManaIdentity` (`protocol/view.go`); `client/src/lib/manaSource.ts`
+(`manaAbilityOptionsFor`, `colorCombos`, `manaColorParams`),
+`ManaSourcePicker.svelte`, `Board.svelte`, `PlayerPanel.svelte`.

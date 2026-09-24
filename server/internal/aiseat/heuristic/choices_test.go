@@ -98,6 +98,82 @@ func TestChoicesReadTheKindNotThePayloadShape(t *testing.T) {
 		}
 	})
 
+	// ADR 0088: on "top or bottom", an opponent's card is buried — the
+	// Hinder / Aetherspouts shape — while the bot's own best card stays
+	// on top.
+	t.Run("put_in_library buries the opponent's card", func(t *testing.T) {
+		theirs := creature(cardID(50), 1, "Their Dragon", 6, 6)
+		v := newView([]protocol.PlayerView{newSeat(0), newSeat(1)},
+			withChoice(protocol.PendingChoiceView{
+				ID: choiceID, Kind: "put_in_library", Chooser: seatID(0).String(), Reason: "Hinder",
+				Placement: "top_or_bottom",
+				Options:   []protocol.CardView{theirs},
+			}))
+		in := input(0, v,
+			choiceMove(t, 0, choiceID, "leave it on top", map[string]any{"top_order": []string{cardID(50)}, "bottom": []string{}}),
+			choiceMove(t, 0, choiceID, "bury it", map[string]any{"bottom": []string{cardID(50)}, "top_order": []string{}}),
+		)
+		if got := chose(t, in, decide(t, heuristic.New(), in)); got != "bury it" {
+			t.Fatalf("chose %q", got)
+		}
+	})
+
+	t.Run("put_in_library puts the bot's best card on top", func(t *testing.T) {
+		v := newView([]protocol.PlayerView{newSeat(0), newSeat(1)},
+			withChoice(protocol.PendingChoiceView{
+				ID: choiceID, Kind: "put_in_library", Chooser: seatID(0).String(), Reason: "Brainstorm",
+				Placement: "top",
+				Options:   []protocol.CardView{mountain, dragon},
+			}))
+		in := input(0, v,
+			choiceMove(t, 0, choiceID, "land first", map[string]any{"top_order": []string{cardID(2), cardID(1)}, "bottom": []string{}}),
+			choiceMove(t, 0, choiceID, "dragon first", map[string]any{"top_order": []string{cardID(1), cardID(2)}, "bottom": []string{}}),
+		)
+		if got := chose(t, in, decide(t, heuristic.New(), in)); got != "dragon first" {
+			t.Fatalf("chose %q", got)
+		}
+	})
+
+	// #1298: Cream of the Crop's exact count — every answer the
+	// enumerator offers holds one card on top, so the choice is WHICH
+	// one, and it is the bot's best.
+	t.Run("put_in_library with a top count keeps the best card on top", func(t *testing.T) {
+		wurm := creature(cardID(3), 0, "Wurm", 4, 4)
+		v := newView([]protocol.PlayerView{newSeat(0), newSeat(1)},
+			withChoice(protocol.PendingChoiceView{
+				ID: choiceID, Kind: "put_in_library", Chooser: seatID(0).String(), Reason: "Cream of the Crop",
+				Placement: "top_or_bottom", TopCount: 1,
+				Options: []protocol.CardView{mountain, wurm, dragon},
+			}))
+		in := input(0, v,
+			choiceMove(t, 0, choiceID, "land on top", map[string]any{"top_order": []string{cardID(2)}, "bottom": []string{cardID(3), cardID(1)}}),
+			choiceMove(t, 0, choiceID, "wurm on top", map[string]any{"top_order": []string{cardID(3)}, "bottom": []string{cardID(2), cardID(1)}}),
+			choiceMove(t, 0, choiceID, "dragon on top", map[string]any{"top_order": []string{cardID(1)}, "bottom": []string{cardID(2), cardID(3)}}),
+		)
+		if got := chose(t, in, decide(t, heuristic.New(), in)); got != "dragon on top" {
+			t.Fatalf("chose %q", got)
+		}
+	})
+
+	// #1298: Jace, the Mind Sculptor's +2 on an opponent — the card on
+	// top of THEIR library is their next draw, so the bot buries it.
+	t.Run("put_in_library buries the top of an opponent's library", func(t *testing.T) {
+		theirs := creature(cardID(51), 1, "Their Titan", 6, 6)
+		v := newView([]protocol.PlayerView{newSeat(0), newSeat(1)},
+			withChoice(protocol.PendingChoiceView{
+				ID: choiceID, Kind: "put_in_library", Chooser: seatID(0).String(), Reason: "Jace, the Mind Sculptor",
+				Placement: "top_or_bottom",
+				Options:   []protocol.CardView{theirs},
+			}))
+		in := input(0, v,
+			choiceMove(t, 0, choiceID, "leave it", map[string]any{"top_order": []string{cardID(51)}, "bottom": []string{}}),
+			choiceMove(t, 0, choiceID, "bury it", map[string]any{"bottom": []string{cardID(51)}, "top_order": []string{}}),
+		)
+		if got := chose(t, in, decide(t, heuristic.New(), in)); got != "bury it" {
+			t.Fatalf("chose %q", got)
+		}
+	})
+
 	// #742: Nyx Lotus offers four {G} or one {U}. A hand full of blue
 	// symbols must not talk the bot into the smaller pick; with equal
 	// amounts the hand's need still decides.

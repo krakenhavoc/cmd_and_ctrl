@@ -116,6 +116,16 @@ const (
 	// rather than on a second one so the engine has ONE timing
 	// vocabulary. Exactly the posture TimingFlash was added under.
 	TimingYourTurnOnly GrantTiming = "your_turn"
+
+	// TimingPlot is a plotted card's window (CR 702.170d, #1318): its
+	// owner's main phase while the stack is empty — and NOTHING widens
+	// it. That is the difference from TimingSorcery, which a per-player
+	// flash grant (Vedalken Orrery, Leyline of Anticipation) overrides:
+	// the plot rule is the permission's own timing, not the card's, so
+	// a plotted instant or a plotted card with flash is still cast only
+	// in that window. Only a CastPermission carries it; no per-player
+	// statement may (CastTimingOpenLocked reads it first and stops).
+	TimingPlot GrantTiming = "plot"
 )
 
 // PermissionCardRef is one card OBJECT a ScopeCards permission names:
@@ -213,7 +223,7 @@ type CastPermission struct {
 	Player uuid.UUID `json:"player"`
 
 	// Zone is where the cast comes FROM: exile, a graveyard, or a
-	// library. Never hand (CR 601.1 already allows it) and never the
+	// library. Never hand (CR 601.2 already allows it) and never the
 	// command zone (CR 903.4 is the format's, not an effect's).
 	Zone ZoneKind `json:"zone"`
 
@@ -243,9 +253,14 @@ type CastPermission struct {
 	// Filter for ScopeStanding; the other is ignored rather than
 	// asserted, because a permission is data and a half-filled one
 	// should grant less, never panic.
+	//
+	// Filter carries no `omitzero`: it is part of GameSnapshot's graph
+	// (GameSnapshot.CastPermissions[].Filter), and that option's
+	// effect depends on the building Go toolchain below 1.24 (#1492)
+	// — CI is pinned to 1.22.
 	Scope  PermissionScope     `json:"scope,omitempty"`
 	Cards  []PermissionCardRef `json:"cards,omitempty"`
-	Filter PermissionFilter    `json:"filter,omitzero"`
+	Filter PermissionFilter    `json:"filter"`
 
 	// TopOfLibraryOnly restricts a ZoneLibrary permission to the card
 	// currently on top (CR 401.5). Every library permission sets it;
@@ -300,8 +315,8 @@ type CastPermission struct {
 	Cost string `json:"cost,omitempty"`
 
 	// LifeEqualToManaValue is Bolas's Citadel: "pay life equal to its
-	// mana value rather than pay its mana cost". A COST (CR 118.4,
-	// 119.4), so a player without the life cannot claim it at all —
+	// mana value rather than pay its mana cost". A COST (CR 119.4),
+	// so a player without the life cannot claim it at all —
 	// which is why it becomes an AlternativeCost.Life rather than a
 	// drawback on resolution.
 	//
@@ -361,9 +376,11 @@ type CastPermission struct {
 	// caller who forgets gets the shortest window rather than an
 	// unbounded grant, which is the trap the old `UntilTurn int`
 	// sprang (0 was both the zero value and a turn number).
-	Duration Duration `json:"duration,omitzero"`
+	//
+	// No `omitzero`, for Filter's reason above (#1492).
+	Duration Duration `json:"duration"`
 
-	// NotBeforeTurn is the earliest turn NUMBER the permission is
+	// NotBeforeSeq is the earliest turn sequence the permission is
 	// live on — warp's "you may cast it from exile ON A LATER TURN"
 	// (CR 702.185a), and the same clause foretell prints
 	// (CR 702.143a). Zero means "from now".
@@ -378,12 +395,12 @@ type CastPermission struct {
 	// it applies whatever the Duration says: "for as long as it
 	// remains exiled" does not weaken "on a later turn".
 	//
-	// Turn.Number is a ROUND counter, so this reads as "not before
-	// round N" rather than "not on the turn it was granted". Every
-	// printed warp card is cast at sorcery speed on its controller's
-	// own turn, where the two agree; see #945's PR for the case where
-	// they do not.
-	NotBeforeTurn int `json:"notBeforeTurn,omitempty"`
+	NotBeforeSeq int `json:"notBeforeSeq,omitempty"`
+
+	// LegacyNotBeforeTurn is populated only while decoding a snapshot
+	// written before ADR 0059. restoreGame converts the old round unit
+	// to NotBeforeSeq and clears it before the game can be captured again.
+	LegacyNotBeforeTurn int `json:"notBeforeTurn,omitempty"`
 
 	// --- what, and when --------------------------------------------
 
@@ -393,7 +410,7 @@ type CastPermission struct {
 	Timing GrantTiming `json:"timing,omitempty"`
 
 	// GrantsHaste gives the permanent this cast produces haste —
-	// suspend's CR 702.62e. A property of the PERMISSION rather than
+	// suspend's CR 702.62a. A property of the PERMISSION rather than
 	// of the card, because it is the effect that granted the cast
 	// that grants the haste: the same Rift Bolt hard-cast from hand
 	// has none.
@@ -464,8 +481,8 @@ func (g *Game) CastPermissionActiveForEffect(p *CastPermission, playerID uuid.UU
 		return false
 	}
 	// The floor is checked first because it applies to an unbounded
-	// window too (see NotBeforeTurn).
-	if p.NotBeforeTurn > 0 && g.Turn.Number < p.NotBeforeTurn {
+	// window too (see NotBeforeSeq).
+	if p.NotBeforeSeq > 0 && g.Turn.Seq < p.NotBeforeSeq {
 		return false
 	}
 	// `false`: this is a query, not the cleanup sweep. An
@@ -710,7 +727,7 @@ func (g *Game) GrantCastPermissionToCardsForEffect(perm CastPermission, cards []
 // CastPermissionForLocked is THE query: does an effect let playerID
 // cast or play this card out of this zone right now?
 //
-// It returns nil for hand and the command zone (CR 601.1 and CR 903.4
+// It returns nil for hand and the command zone (CR 601.2 and CR 903.4
 // need no effect); otherwise the stored or derived permission that
 // opens the cast. The cast path, the view and the bot enumerator all
 // read this one function, so none of them can disagree about what is
@@ -736,6 +753,18 @@ func (g *Game) CastPermissionForLocked(playerID uuid.UUID, card Card, zone ZoneK
 	}
 	p := g.playerByIDLocked(playerID)
 	if p == nil {
+		return nil
+	}
+	// ADR 0090: a CR 722.3c prepare copy answers for itself, and ONLY
+	// for itself. Its permission is derived from the prepared
+	// permanent (prepare.go), and nothing else may open it — an
+	// impulse grant or a standing rule over exile reaching a copy
+	// would cast an object CR 722.3c keeps castable only by the
+	// prepared permanent's controller, and only while it is prepared.
+	if card.PrepareCopy {
+		if perm := g.prepareCopyPermissionLocked(card, zone); perm != nil && perm.Player == playerID {
+			return perm
+		}
 		return nil
 	}
 	// Stored permissions first: a named object beats a standing rule,
@@ -872,6 +901,54 @@ func (g *Game) permissionPositionOKLocked(holder uuid.UUID, perm *CastPermission
 	return g.LibraryTopVisibleToLocked(owner.ID, holder)
 }
 
+// CastPermissionGate pairs a standing permission with an ADR 0071
+// designation and/or a card-specific Condition (#1314) — Fortune
+// Teller's Talent's level-2 line: "as long as this Class is level 2 or
+// greater" (ActiveWhen) AND "as long as you've cast a spell this turn"
+// (Condition), together.
+//
+// CATALOG-ONLY, deliberately a SEPARATE type from CastPermission
+// rather than two more fields on it: CastPermission is dual-purpose —
+// a catalog declaration on one path and a value STORED on
+// Player.CastPermissions, mirrored verbatim into GameSnapshot, on the
+// other — and a func field on the shared type would make every
+// snapshotted permission carry one, whether any instance actually set
+// it or not. snapshot_drift_test.go's TestSnapshotMirrorsHaveNoFuncs
+// enforces exactly this: GameSnapshot must be serialisable all the way
+// down, and Condition is a closure. CastPermissionGate is reachable
+// only from CardDef and CatalogGatedCastPermissions, neither of which
+// the snapshot ever touches — the same posture ActivatedAbility.Condition
+// and TriggeredAbility.AppliesTo already have, one struct over.
+type CastPermissionGate struct {
+	// Permission is the standing permission itself, exactly as an
+	// entry in CatalogCastPermissions's slice would be.
+	Permission CastPermission
+
+	// ActiveWhen is the ADR 0071 designation gate, read by the same
+	// activeOnly filter StaticAbilitiesForCard and CostModifiersForCard
+	// already use.
+	ActiveWhen Designation
+
+	// Condition is a further "as long as …" clause that is not one of
+	// ADR 0071's four designations. Nil means no further condition.
+	// The mirror of ActivatedAbility.Condition (activated.go) one slot
+	// over, and the same signature: *ForEffect reads only, under the
+	// lock standingCastPermissionsLocked already holds. `source` is
+	// the permanent contributing the permission — the "you" of "you've
+	// cast a spell" is `controller`, not necessarily this card's
+	// controller (a stolen Talent still asks about ITS new
+	// controller).
+	Condition func(g *Game, controller, source uuid.UUID) bool
+}
+
+// CatalogGatedCastPermissions returns the GATED standing permissions a
+// battlefield permanent with this catalog key grants its controller —
+// separate from CatalogCastPermissions so that hook's existing
+// signature, and every test already stubbing it, is untouched. Nil,
+// or a nil return, means every permission this card grants is
+// ungated, which is every card but Fortune Teller's Talent today.
+var CatalogGatedCastPermissions func(oracleID string) []CastPermissionGate
+
 // standingCastPermissionsLocked derives every ScopeStanding
 // permission the player currently holds, from the permanents they
 // control. Nothing is stored, which IS the duration: a source that
@@ -882,9 +959,21 @@ func (g *Game) permissionPositionOKLocked(holder uuid.UUID, perm *CastPermission
 // graveyard has escape" is a static ability, and an Underworld Breach
 // that has lost its abilities grants nothing.
 //
+// Two catalog hooks, walked in the same loop: the ordinary
+// (ungated) permissions first, then the gated ones (#1314) — activeOnly
+// applies the ADR 0071 gate and Condition runs right after, BEFORE
+// either kind reaches the ZoneOwner/Source/Duration stamping
+// stampStandingPermissionLocked shares between them. A level-1
+// Fortune Teller's Talent never reaches that stamping for its level-2
+// line, exactly as it never reaches the layer pass for an anthem it
+// does not have yet.
+//
 // Caller must hold g.mu.
 func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
-	if p == nil || g.Battlefield == nil || CatalogCastPermissions == nil {
+	if p == nil || g.Battlefield == nil {
+		return nil
+	}
+	if CatalogCastPermissions == nil && CatalogGatedCastPermissions == nil {
 		return nil
 	}
 	var out []CastPermission
@@ -899,40 +988,68 @@ func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
 		if key == "" {
 			continue
 		}
-		for _, perm := range CatalogCastPermissions(key) {
-			perm.Player = p.ID
-			perm.Scope = ScopeStanding
-			// #1035: a catalog entry is static and cannot name a SEAT,
-			// so a derived permission is always about its holder's own
-			// pile. Zeroed rather than trusted, because the view's
-			// per-holder stamp relies on it: a foreign holder can only
-			// come from a stored permission, which is what lets the
-			// per-card walk rule one out without deriving every seat's
-			// standing set.
-			perm.ZoneOwner = uuid.Nil
-			perm.Source = c.InstanceID
-			if perm.SourceName == "" {
-				perm.SourceName = c.Name
-			}
-			// A permission unbounded in turns, because its duration is
-			// the source's presence and this slice is rebuilt from the
-			// battlefield on every query. CR 611.2b's "for as long
-			// as", spelled the way a derived permission can afford to
-			// spell it: nothing stored, so nothing to expire.
-			perm.Duration = WhileInZoneDuration()
-			if perm.Filter.FromChosenType {
-				// Realmwalker: "the chosen type". A permanent whose
-				// entry choice has not been answered yet names no
-				// type and grants nothing (CR 614.12).
-				if c.NamedTribe == "" {
-					continue
+		if CatalogCastPermissions != nil {
+			for _, perm := range CatalogCastPermissions(key) {
+				if stamped, ok := stampStandingPermissionLocked(perm, p, c); ok {
+					out = append(out, stamped)
 				}
-				perm.Filter.CreatureType = c.NamedTribe
 			}
-			out = append(out, perm)
+		}
+		if CatalogGatedCastPermissions == nil {
+			continue
+		}
+		gated := activeOnly(*c, CatalogGatedCastPermissions(key), func(gp CastPermissionGate) Designation {
+			return gp.ActiveWhen
+		})
+		for _, gp := range gated {
+			if gp.Condition != nil && !gp.Condition(g, p.ID, c.InstanceID) {
+				continue
+			}
+			if stamped, ok := stampStandingPermissionLocked(gp.Permission, p, c); ok {
+				out = append(out, stamped)
+			}
 		}
 	}
 	return out
+}
+
+// stampStandingPermissionLocked turns a catalog-declared permission
+// into the derived, player-scoped value standingCastPermissionsLocked
+// hands out — the stamping both of its callers share, so a gated and
+// an ungated permission from the same card can never disagree about
+// what a "standing" permission means.
+//
+// Caller must hold g.mu.
+func stampStandingPermissionLocked(perm CastPermission, p *Player, c *Card) (CastPermission, bool) {
+	perm.Player = p.ID
+	perm.Scope = ScopeStanding
+	// #1035: a catalog entry is static and cannot name a SEAT, so a
+	// derived permission is always about its holder's own pile. Zeroed
+	// rather than trusted, because the view's per-holder stamp relies
+	// on it: a foreign holder can only come from a stored permission,
+	// which is what lets the per-card walk rule one out without
+	// deriving every seat's standing set.
+	perm.ZoneOwner = uuid.Nil
+	perm.Source = c.InstanceID
+	if perm.SourceName == "" {
+		perm.SourceName = c.Name
+	}
+	// A permission unbounded in turns, because its duration is the
+	// source's presence and this slice is rebuilt from the battlefield
+	// on every query. CR 611.2b's "for as long as", spelled the way a
+	// derived permission can afford to spell it: nothing stored, so
+	// nothing to expire.
+	perm.Duration = WhileInZoneDuration()
+	if perm.Filter.FromChosenType {
+		// Realmwalker: "the chosen type". A permanent whose entry
+		// choice has not been answered yet names no type and grants
+		// nothing (CR 614.12).
+		if c.NamedTribe == "" {
+			return CastPermission{}, false
+		}
+		perm.Filter.CreatureType = c.NamedTribe
+	}
+	return perm, true
 }
 
 // sweepCastPermissionsLocked drops permissions whose CR 611.2
@@ -1039,8 +1156,8 @@ func (g *Game) permissionZoneLocked(playerID uuid.UUID, kind ZoneKind) *Zone {
 }
 
 // AnyCastPermissionsForEffect reports whether ANY permission could be
-// in play right now — a stored one on any seat, or a standing one from
-// a permanent on the battlefield.
+// in play right now — a stored one on any seat, or a standing one
+// (gated or not, #1314) from a permanent on the battlefield.
 //
 // A fast negative for the view and the bot enumerator, and it is not a
 // micro-optimisation: without it every frame walked every graveyard,
@@ -1050,6 +1167,14 @@ func (g *Game) permissionZoneLocked(playerID uuid.UUID, kind ZoneKind) *Zone {
 // the seats plus, only if that finds nothing, one over the
 // battlefield.
 //
+// Deliberately does NOT evaluate a gated permission's ActiveWhen or
+// Condition — this is "could anything open one of the expensive
+// zones", not "does one actually apply right now", and a card whose
+// gate is not yet satisfied still has to make the enumerator walk the
+// zone once to find that out. Answering "no" for an unsatisfied gate
+// would be the wrong direction: it would make the fast path decide the
+// question the walk exists to ask.
+//
 // Caller must hold g.mu (read or write).
 func (g *Game) AnyCastPermissionsForEffect() bool {
 	for _, p := range g.Seats {
@@ -1057,7 +1182,12 @@ func (g *Game) AnyCastPermissionsForEffect() bool {
 			return true
 		}
 	}
-	if g.Battlefield == nil || CatalogCastPermissions == nil {
+	// ADR 0090: a prepared permanent grants a cast of its CR 722.3c
+	// copy out of exile, derived rather than stored.
+	if g.anyPreparedPermanentLocked() {
+		return true
+	}
+	if g.Battlefield == nil {
 		return false
 	}
 	for i := range g.Battlefield.Cards {
@@ -1066,7 +1196,10 @@ func (g *Game) AnyCastPermissionsForEffect() bool {
 		if key == "" {
 			continue
 		}
-		if len(CatalogCastPermissions(key)) > 0 {
+		if CatalogCastPermissions != nil && len(CatalogCastPermissions(key)) > 0 {
+			return true
+		}
+		if CatalogGatedCastPermissions != nil && len(CatalogGatedCastPermissions(key)) > 0 {
 			return true
 		}
 	}
@@ -1081,6 +1214,11 @@ func (g *Game) AnyCastPermissionsForEffect() bool {
 //
 // Caller must hold g.mu (read or write).
 func (g *Game) CastPermissionOnCardForEffect(card Card, zone ZoneKind) *CastPermission {
+	// ADR 0090: the CR 722.3c copy's permission is derived, and it is
+	// the only one that may name the copy (see CastPermissionForLocked).
+	if card.PrepareCopy {
+		return g.prepareCopyPermissionLocked(card, zone)
+	}
 	var fallback *CastPermission
 	for _, p := range g.Seats {
 		if p == nil {
@@ -1101,7 +1239,7 @@ func (g *Game) CastPermissionOnCardForEffect(card Card, zone ZoneKind) *CastPerm
 			// of the turn the creature was warped in, and a client
 			// that could not see it until the next turn would show a
 			// blank card in exile with no explanation. The client
-			// reads NotBeforeTurn and greys the button.
+			// reads NotBeforeSeq and greys the button.
 			if fallback == nil {
 				out := *perm
 				fallback = &out

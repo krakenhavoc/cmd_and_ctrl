@@ -58,7 +58,22 @@ const (
 	// override, because a tax waived is the card played as a blank.
 	// ADR 0080 (#1063).
 	CodeAttackTaxUnpaid = "attack_tax_unpaid"
+	// CodeIllegalAttack — a declare_attacker or declare_attackers was
+	// refused because the declaration breaks a CR 508.1c restriction
+	// on the whole declaration: today only a count limit (Silent
+	// Arbiter's "no more than one creature can attack each combat",
+	// Crawlspace's "… can attack you …"), whose ErrorPayload.Reason is
+	// AttackRefusalLimit. The message is a server-built sentence
+	// addressed to the caller; CardID is a creature from the refused
+	// declaration. Nothing was declared, tapped or paid. #1507.
+	CodeIllegalAttack = "illegal_attack"
 )
+
+// AttackRefusalLimit is the ErrorPayload.Reason of an `illegal_attack`
+// frame refused by a CR 508.1c count limit (#1507). A stable token,
+// like the illegal_block reasons; it is the only attack refusal reason
+// today, and a second joins in the change that first sends it.
+const AttackRefusalLimit = "attack_limit"
 
 // Frame is the envelope around every message. Payload is left as raw JSON
 // and decoded by whichever handler owns the Kind.
@@ -115,6 +130,10 @@ type ErrorPayload struct {
 	// for two attackers into Propaganda) rather than a token. One
 	// field, two codes, because both answer "why" in the shape their
 	// own code documents. ADR 0080 (#1063).
+	//
+	// And `code: "illegal_attack"`, where it is AttackRefusalLimit
+	// ("attack_limit") for a declaration a CR 508.1c count limit
+	// refused (#1507).
 	Reason string `json:"reason,omitempty"`
 }
 
@@ -191,11 +210,28 @@ const MaxChatTextLen = 1000
 // deltas. Bandwidth is not a concern at four clients; diff-based
 // delta frames can be added later without a protocol version bump.
 type SnapshotPayload struct {
-	// Seq is a monotonically increasing per-game sequence number,
-	// incremented before each broadcast. Clients can use it to detect
-	// dropped or out-of-order frames.
-	Seq  uint64   `json:"seq"`
-	Game GameView `json:"game"`
+	// Seq is a per-game sequence number, incremented before each
+	// broadcast, monotonically increasing WITHIN one Generation
+	// (#523, ADR 0044 decision 5). Clients use it to detect dropped
+	// or out-of-order frames — but only against another frame of the
+	// same Generation; a lower Seq under a NEW Generation is not a
+	// dropped frame, it is a deliberate rewind (see Generation below)
+	// and must be accepted.
+	Seq uint64 `json:"seq"`
+	// Generation is this room's restore generation: 0 for a room
+	// that has never been rebuilt from disk, and bumped by one every
+	// time the server restarts and restores it from its last written
+	// restore point. Because a restore point is only ever written
+	// from a state with no live continuations (see
+	// internal/game/snapshot.go), a restart can rewind Seq to an
+	// earlier value than a connected client already rendered — the
+	// game ran on through states the restart cannot rebuild exactly.
+	// A client that tracks Generation can tell that apart from an
+	// out-of-order delivery: same Generation, Seq must not decrease;
+	// a Generation change means "discard what you were tracking and
+	// render this frame regardless of its Seq". See docs/protocol.md.
+	Generation uint64   `json:"generation"`
+	Game       GameView `json:"game"`
 	// Annotation tags the replay line this payload produced with an
 	// out-of-band note about what caused it. Set only on the replay /
 	// crash-dump path (ws.Room.captureLocked); the WebSocket snapshot

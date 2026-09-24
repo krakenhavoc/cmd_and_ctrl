@@ -19,7 +19,7 @@ import type { MyDecksResponse } from "./myDecks";
 import type { InviteDMResponse, Tablemate } from "./tablemates";
 import type { AutoTapCastParams } from "./castPreview";
 import type { TableSettingsPatch, SpawnZone } from "./tableSettings";
-import type { TableSettingsView } from "./protocol";
+import type { TableSettingsView, TargetRefView } from "./protocol";
 
 // Re-export the violation shape so consumers of api.ts don't also
 // have to import from session.ts. ApiViolation is the canonical
@@ -802,8 +802,27 @@ export async function submitBugReport(draft: BugReportDraft): Promise<BugReportR
 export interface AutoTapPreview {
   ok: boolean;
   plan?: string[];
+  // #1285: `plan`, described, in the same order. A planned source is
+  // no longer always an untapped permanent: a Spirit Guide is a card
+  // in HAND that the payment exiles (#1228), and a Gold or an Eldrazi
+  // Spawn is sacrificed without being tapped (#1242). Absent from a
+  // server that predates it, in which case the plan IDs are all there
+  // is.
+  sources?: AutoTapPreviewSource[];
   missing?: string[];
   cost: string;
+}
+
+// AutoTapPreviewSource is one planned source: where it is and what
+// paying with it costs. `tap` / `sacrifice` / `exile` each say one
+// component — a Treasure is tap + sacrifice, a Spirit Guide exile.
+export interface AutoTapPreviewSource {
+  card_id: string;
+  name?: string;
+  zone?: string;
+  tap?: boolean;
+  sacrifice?: boolean;
+  exile?: boolean;
 }
 
 // fetchAutoTapPreview asks the server which permanents the auto-
@@ -819,6 +838,14 @@ export async function fetchAutoTapPreview(
     xValue?: number;
     excluded?: string[];
     abilityIndex?: number;
+    // #1405: the targets an activation has announced, when the caller
+    // has them. Read only with `abilityIndex`: a price that reads the
+    // target (Dragonfire Blade's "{1} less for each color of the
+    // creature it targets") is previewed at that target's price.
+    // Omitted, the server prices the no-target activation — which is
+    // what the X and Phyrexian pickers want, since they open before
+    // targeting.
+    targets?: TargetRefView[];
     phyrexianLife?: number;
     // #696: the announce-time half of the cast being previewed, as
     // castPreviewParams builds it. Every field changes the PRICE, so
@@ -844,6 +871,13 @@ export async function fetchAutoTapPreview(
       params.set("tap_ids", cast.tapIDs.join(","));
     }
     if (cast.face) params.set("face", String(cast.face));
+    // #1242: named payments the plan must not also spend on mana.
+    if (cast.sacrificeIDs && cast.sacrificeIDs.length > 0) {
+      params.set("sacrifice_ids", cast.sacrificeIDs.join(","));
+    }
+    if (cast.discardIDs && cast.discardIDs.length > 0) {
+      params.set("discard_ids", cast.discardIDs.join(","));
+    }
   }
   // `abilityIndex` prices a CR 602 activated ability's own mana
   // component instead of the card's printed cast cost. Without it
@@ -851,6 +885,12 @@ export async function fetchAutoTapPreview(
   // Obedience's corner rather than on the {X} being announced.
   if (opts.abilityIndex !== undefined) {
     params.set("ability", String(opts.abilityIndex));
+    // #1405: `<kind>:<uuid>` per target. Only card and player refs
+    // name something a cost can read; self / none carry no ID.
+    const targets = (opts.targets ?? [])
+      .filter((t) => (t.kind === "card" || t.kind === "player") && t.id)
+      .map((t) => `${t.kind}:${t.id}`);
+    if (targets.length > 0) params.set("targets", targets.join(","));
   }
   // #916: the Phyrexian symbols the announcement will pay with 2 life
   // each. The server strikes them before planning, so the preview

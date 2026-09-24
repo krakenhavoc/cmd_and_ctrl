@@ -61,7 +61,7 @@ func protectorOf(g *Game, battleID uuid.UUID) uuid.UUID {
 // TestBattleEntersWithItsPrintedDefense is the #274 lesson applied to
 // battles: printed data on the card, stamped by the engine, so a
 // battle nobody wrote a Spec for is playable. Before this, every
-// battle entered with zero defense counters and the CR 704.5v
+// battle entered with zero defense counters and the CR 704.5v/w
 // state-based action swept it into the graveyard on the next priority
 // boundary.
 func TestBattleEntersWithItsPrintedDefense(t *testing.T) {
@@ -151,7 +151,7 @@ func TestResolveChooseProtectorRejectsANonOpponent(t *testing.T) {
 
 // TestBattleAtZeroDefenseIsSweptAndAnnounced covers both halves of a
 // defeat: the CR 310.12b announcement that a defeated trigger harvests,
-// and the CR 704.5v sweep that follows it in the same pass.
+// and the CR 704.5v/w sweep that follows it in the same pass.
 func TestBattleAtZeroDefenseIsSweptAndAnnounced(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
 	owner := g.Seats[0].ID
@@ -180,7 +180,7 @@ func TestBattleAtZeroDefenseIsSweptAndAnnounced(t *testing.T) {
 		t.Error("no battle_defeated event was emitted")
 	}
 	if counterOn(g, b, CounterDefense) >= 0 {
-		t.Error("a battle at zero defense survived the CR 704.5v sweep")
+		t.Error("a battle at zero defense survived the CR 704.5v/w sweep")
 	}
 }
 

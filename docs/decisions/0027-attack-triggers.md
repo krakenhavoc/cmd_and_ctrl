@@ -52,7 +52,7 @@ Three attackers produce three events, so Hellrider stacks three
 separate pings with a response window between each — paper behaviour.
 The known gap is the same one `EventETB` has: cards worded "whenever
 one or more creatures you control attack" (Grand Warlord Radha,
-Adeline) would over-fire, because CR 603.1 batching has no
+Adeline) would over-fire, because printed "one or more" batching has no
 representation anywhere in the engine. No catalog card has that
 wording today.
 
@@ -131,11 +131,15 @@ rather than for deck coverage:
   (CR 608.2h) and would still make Goblins equal to its last power.
   The engine's LKI snapshot (`lastKnownBattlefield`) is scoped to the
   dying card's own LTB triggers and is not reachable from a resolution
-  callback.
+  callback. **Closed 2026-09-24 (#1432, [ADR 0018](0018-triggers-on-the-stack.md)
+  Decision 17):** a Krenko that is not the attacker any more — removed,
+  or back as a new object — takes no counter, and the Goblins are its
+  last-known power through `Context.SourcePermanent()` (#1379, #1418).
+  Krenko ships `full`.
 
 ## Out of scope (explicit deferrals)
 
-- **Batched attacks** (CR 603.1) — "whenever one or more creatures you
+- **Batched attacks** — "whenever one or more creatures you
   control attack" is one trigger in paper and N here. Shared with the
   existing `EventETB` gap.
 - **Attacking a planeswalker.** Needs `DeclareAttacker` to accept a

@@ -254,7 +254,7 @@ func TestUndoAcrossAnOptionalDiscardReplacementReplaysTheSameWay(t *testing.T) {
 		}
 	})
 	if len(g.PendingChoices) != 1 {
-		t.Fatalf("pending choices = %d, want the CR 614.10 prompt", len(g.PendingChoices))
+		t.Fatalf("pending choices = %d, want the \"may\" prompt", len(g.PendingChoices))
 	}
 
 	promptOpen := g.Clone()

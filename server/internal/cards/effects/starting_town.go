@@ -18,19 +18,14 @@ import (
 // reaches for it; the coloured half pays a life as a real COST (Mana
 // Confluence's shape — refused at 0 life without tapping), and prints
 // "any color", so no commander-identity narrowing.
-//
-// Sandbox simplification: "your first, second, or third turn" is read
-// as the game's first three ROUNDS (Turn.Number, which counts rounds
-// and only advances when the table wraps). Those are the same thing
-// until someone takes an extra turn, and no catalog card grants one.
 func init() {
 	Register(Spec{
 		OracleID:     "d04e0975-f401-41b8-a9db-9bcf9cbbce66",
 		Name:         "Starting Town",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Your first three turns are counted as the game's first three rounds, which only differs if someone takes an extra turn."},
-		Replacements: []game.ReplacementEffect{SelfEntersTappedUnless(func(g *game.Game, _ uuid.UUID) bool {
-			return g.Turn.Number <= 3
+		Completeness: CompletenessFull,
+		Replacements: []game.ReplacementEffect{SelfEntersTappedUnless(func(g *game.Game, controller uuid.UUID) bool {
+			return g.Turn.ActiveSeat >= 0 && g.Turn.ActiveSeat < len(g.Seats) &&
+				g.Seats[g.Turn.ActiveSeat].ID == controller && g.TurnsBegunFor(controller) <= 3
 		})},
 		ManaAbilities: []ManaAbility{
 			{

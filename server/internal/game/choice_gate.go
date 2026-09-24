@@ -163,11 +163,16 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	// find out what it points at; a table that could walk past the
 	// question would resolve the redirected spell at its old target,
 	// which is the question answered by doing.
-	PendingChoiceRetarget:        true,
-	PendingChoiceSacrifice:       true,
-	PendingChoiceScry:            true,
-	PendingChoiceSurveil:         true,
-	PendingChoiceLookAtTop:       true,
+	PendingChoiceRetarget:  true,
+	PendingChoiceSacrifice: true,
+	PendingChoiceScry:      true,
+	PendingChoiceSurveil:   true,
+	PendingChoiceLookAtTop: true,
+	// ADR 0088: the ordered placement. The effect that asked is
+	// paused mid-resolution with the pile still where it was, and the
+	// rest of the card (Brainstorm's nothing, Ponder-likes' draw)
+	// hangs off the answer.
+	PendingChoicePutInLibrary:    true,
 	PendingChoiceSearchLibrary:   true,
 	PendingChoiceMayCast:         true,
 	PendingChoiceCoinCall:        true,

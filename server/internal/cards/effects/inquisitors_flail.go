@@ -78,8 +78,14 @@ func init() {
 					if ev.DamageSource == ev.DamageTarget {
 						return false
 					}
-					dealer, ok := g.LookupCardForEffect(ev.DamageSource)
-					return ok && dealer.IsCreature()
+					// #1430, CR 608.2h: the dealer's type is read
+					// from the event's last-known characteristics,
+					// not a current-zone lookup — a creature that
+					// dealt its damage and then left (or was
+					// type-changed on the way out) is still judged
+					// by what it was when it dealt the damage.
+					ch, ok := damageSourceCharacteristics(ev, g)
+					return ok && hasFold(ch.Types, "Creature")
 				},
 				Replace:    b39DoubleTheDamage,
 				Controller: b39SourceController,

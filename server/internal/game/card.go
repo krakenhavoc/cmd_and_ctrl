@@ -393,7 +393,7 @@ type Card struct {
 	// sites and 389 Card{} literals, whereas leaving them as fields
 	// means all 74 Is*() call sites keep compiling and START being
 	// right, since "the characteristics of the face that's currently
-	// up" is exactly CR 712.8.
+	// up" is exactly CR 712.8a.
 	Faces []Face
 
 	// ActiveFace indexes Faces.
@@ -465,6 +465,24 @@ type Card struct {
 	// 7b "set" that meets a 7c "modify" is right by construction.
 	// Added in S24, per ADR 0036 decision 2.
 	AttachedAt int64
+
+	// FaceTurnedAt is the CR 613.7f timestamp: "a permanent receives
+	// a new timestamp each time it turns face up or face down". The
+	// layer engine orders this permanent's own static abilities by
+	// the LATEST of EnteredBattlefieldAt, AttachedAt and this
+	// (layerTimestamp), so a morph turned face up applies its statics
+	// after everything already on the battlefield.
+	//
+	// A third field rather than a re-stamp of EnteredBattlefieldAt,
+	// because that one is also the permanent's IDENTITY pin — every
+	// "until end of turn" and control effect is keyed on
+	// (InstanceID, EnteredBattlefieldAt), and CR 708.8 says turning
+	// face up is not a new object — and it drives summoning
+	// sickness's "entered this turn". Stamped by turnFaceUpLocked and
+	// TurnFaceDownForEffect (both directions, #1271), zeroed on
+	// battlefield exit, carried by clone and snapshot. Zero means
+	// "never turned since it entered".
+	FaceTurnedAt int64
 	// NamedTribe is the creature type chosen for this permanent by an
 	// "as this enters, choose a creature type" instruction (CR
 	// 614.12) — Cavern of Souls, Door of Destinies, Vanquisher's
@@ -624,6 +642,26 @@ type Card struct {
 	// else, and a restore that lost it would resurrect every clone
 	// on the board as a 0/0. Added in S16.5 (#159 / #335).
 	PrintedSelf *PrintedValues
+
+	// FaceDownListed is the CR 708.2 body an effect LISTED for this
+	// face-down object — Cyber Conversion's "It's a 2/2 Cyberman
+	// artifact creature", Yedora's "It's a Forest land". nil is
+	// CR 708.2a's default nameless 2/2 (FaceDownBody), which is every
+	// morph, manifest, cloak and every Ixidron'd permanent.
+	//
+	// It REPLACES the default body rather than decorating it: a
+	// face-down Forest is not a creature at all. So it is read in
+	// exactly one place, faceDownCharacteristic, the layer-0
+	// baseline, and every reader downstream sees it for free.
+	//
+	// Per-OBJECT data beside the per-kind FaceDownKind, set and
+	// cleared with it by SetFaceDownListed / ClearFaceDown — so
+	// MoveCard's CR 400.7 clear drops it on every zone change and
+	// turning the permanent face up drops it too. Never mutated
+	// through the pointer: a writer replaces it whole, and
+	// clone.go and the snapshot copy it anyway, PrintedSelf's
+	// posture. ADR 0082's second 2026-09-23 amendment (#1270).
+	FaceDownListed *FaceDownListing
 	// StartingDefense is the printed defense a battle enters the
 	// battlefield with (CR 310.4), parsed from Scryfall's `defense`
 	// string at deck-import time. Zero for every other card type.
@@ -633,7 +671,7 @@ type Card struct {
 	// like Power / Toughness / ManaCost, not card-effect data, and
 	// while the only source was the catalog every battle outside the
 	// opt-in catalog entered with zero defense counters and was
-	// swept into the graveyard by the CR 704.5v SBA before anyone
+	// swept into the graveyard by the CR 704.5v/w SBA before anyone
 	// could attack it. That was live on `main` for every battle a
 	// player could import. The catalog's BattleSpec.Defense survives
 	// as a fallback for cards with no printed data — tokens,
@@ -661,8 +699,11 @@ type Card struct {
 	// Added in S27.
 	ProtectorPlayerID uuid.UUID
 
-	// NextUntapSkips records one-shot next-untap-step effects on this
-	// permanent. It is battlefield state, not a copiable value.
+	// NextUntapSkips records the effects that keep this permanent from
+	// untapping during an untap step: one-shot next-untap-step markers
+	// (ADR 0058 Decision 2) and, since #1313, holds that last "for as
+	// long as" a CR 611.2 duration (UntapSkip.While). It is
+	// battlefield state, not a copiable value.
 	NextUntapSkips []UntapSkip
 
 	// ClassLevel is the CR 716.2 level designation on a Class
@@ -691,7 +732,45 @@ type Card struct {
 	// S46 (#757).
 	ClassLevel int
 
-	// Solved lives in the bool block at the end of Card, for alignment.
+	// PreparedBy is set on a CR 722.3c prepare copy only: the
+	// permanent OBJECT — instance and CR 400.7 epoch — whose prepared
+	// designation keeps this copy in exile and castable (ADR 0090).
+	// Zero on every other card, and zero on a prepare copy that has
+	// left exile: MoveCard clears it on every move, so a copy that is
+	// cast, countered or put anywhere else no longer names anything
+	// and can never become castable again.
+	//
+	// Read by prepareCopyPermissionLocked, which DERIVES the cast
+	// permission from it on every query rather than storing one, and
+	// by the CR 704.5e sweep that removes a copy whose permanent is
+	// gone or unprepared. Carried by the snapshot.
+	PreparedBy PermissionCardRef
+
+	// HiddenBy is set on a card exiled face down by HIDEAWAY (CR
+	// 702.75a, ADR 0091): the permanent OBJECT — instance and CR 400.7
+	// epoch — whose hideaway exiled it. Two rules read it:
+	//
+	//   - who may look (FaceDownHidden's viewer is that permanent's
+	//     controller, faceDownViewersLocked), and
+	//   - which card is "the exiled card" of that permanent's linked
+	//     ability (CR 607.2a, HiddenCardsForEffect).
+	//
+	// Card-carried rather than read back off the event log (the
+	// effects package's exiled-with record), because the first reader
+	// is the face-down viewer rule, which answers about a Card inside
+	// the engine and has no log walk to hand; and because the link is
+	// printed on the exiled card itself ("the permanent that exiled
+	// this card"). It is exact the same way that record is since #1239:
+	// the epoch pins the incarnation, so a hideaway land that is
+	// bounced and replayed is a new object with no claim on the card
+	// its earlier self hid.
+	//
+	// Cleared by MoveCard on every move, so a card that leaves exile
+	// names nothing ever again. Carried by the snapshot.
+	HiddenBy PermissionCardRef
+
+	// Solved, Prepared and PrepareCopy live in the bool block at the
+	// end of Card, for alignment.
 
 	// effective is the cached post-layer-resolution characteristic
 	// for this card on the battlefield. Populated by the layer
@@ -854,6 +933,45 @@ type Card struct {
 	// Carried by the snapshot. Added in S46 (#757).
 	Solved bool
 
+	// Harnessed is the CR 701.64 designation on a permanent — the
+	// marker that switches its printed "∞ — [ability]" clauses on
+	// (CR 702.186b, ADR 0071 amendment #1321).
+	//
+	// Set by HarnessForEffect, from the "Harness [this permanent]"
+	// activated ability's resolution, and by nothing else. Once set it
+	// STAYS set for as long as the permanent is on the battlefield
+	// (CR 701.64b: "it stays harnessed until it leaves the
+	// battlefield") — the same two sentences as Solved, for the same
+	// reasons: not copiable, cleared when the permanent leaves the
+	// battlefield (CR 400.7), carried by the snapshot.
+	Harnessed bool
+
+	// Prepared is the CR 722.3a designation on a permanent with a
+	// prepare spell (ADR 0090): while it is set, the permanent's
+	// controller may cast the CR 722.3c copy of its prepare spell that
+	// sits in exile, and casting that copy clears it (CR 601.2i).
+	//
+	// Set by becomePreparedLocked and by nothing else, which refuses a
+	// permanent with no prepare spell and one that is already prepared
+	// (both are CR 722.3a). A designation, not a counter and not a
+	// characteristic: not copiable, cleared when the permanent leaves
+	// the battlefield (CR 400.7) exactly as Solved is, and KEPT across
+	// phasing (CR 702.26d) — a permanent "phases in prepared" and makes
+	// a fresh copy as it does (CR 722.3c). Carried by the snapshot.
+	Prepared bool
+
+	// PrepareCopy marks the CR 722.3c copy of a prepare spell — the
+	// object created in exile as a permanent becomes prepared. It is
+	// NOT A CARD (CR 707.10, 722.3c), so the CR 704.5e sweep removes it
+	// from every zone but the stack, and from exile too once the
+	// permanent PreparedBy names is gone or unprepared; its spell, once
+	// cast, is a StackItem with IsCopy set and ceases to exist as it
+	// leaves the stack. It also keeps the copy wearing its prepare
+	// spell in every zone: CR 722.3c makes those characteristics its
+	// NORMAL ones, so MoveCard's CR 712.8a front-face reset skips it.
+	// Carried by the snapshot.
+	PrepareCopy bool
+
 	// PhasedOutIndirect records that this permanent phased out WITH
 	// the permanent it is attached to rather than on its own
 	// (CR 702.26g, "phasing out indirectly"), and so "won't phase in
@@ -879,6 +997,24 @@ type Card struct {
 	// nothing for a trigger to sit on. See phasing.go and ADR 0084.
 	// Added in S46 (#1199).
 	TapOnPhaseIn bool
+
+	// AbilitiesLostOnRestore marks a card that a restore brought back
+	// with FEWER catalog abilities than the restore point recorded
+	// (#522): the binary that wrote the file knew abilities for this
+	// card that the binary that read it does not — an entry removed,
+	// renamed or refactored between two deploys. The owner's decision
+	// on #515 is to restore the table anyway, say so loudly, and stop
+	// presenting the card as automated: Unimplemented answers true for
+	// it, so the client shows the `manual` chip, because whatever the
+	// engine still does for it is no longer what it did when the game
+	// was captured. A card that comes back with MORE abilities is not
+	// flagged — a new build adding abilities is normal.
+	//
+	// Set only by restoreCard (snapshot.go, abilityShortfallOf) and
+	// cleared by NOTHING. It survives zone changes, undo, and every
+	// later snapshot, and goes away only when the card itself leaves
+	// the game. Carried by the snapshot. Added in S33 (#522).
+	AbilitiesLostOnRestore bool
 }
 
 // AddKnower marks `viewerID` as having seen this card. No-op for
@@ -1195,11 +1331,17 @@ func (c Card) HasCardType(lowerType string) bool {
 // Changeling in a graveyard really is an Elf, which is what a tribal
 // reanimator or a lord counting from exile has to see.
 func (c Card) HasSubtype(subtype string) bool {
-	// CR 708.2: a face-down permanent has NO subtypes, so it is not a
-	// Human, not an Elf, and — the reason this guard precedes the
-	// changeling check below — not every creature type either.
+	// CR 708.2: a face-down permanent has no subtypes but the ones an
+	// effect LISTED for it (#1270) — Cyber Conversion's Cyberman,
+	// Yedora's Forest — so it is not a Human, not an Elf, and — the
+	// reason this branch precedes the changeling check below — not
+	// every creature type either: the card underneath's changeling is
+	// text the object does not have.
 	if c.FaceDownIsPermanent() {
-		return false
+		if c.effective != nil {
+			return typeListHas(c.effective.Subtypes, subtype)
+		}
+		return typeListHas(faceDownCharacteristic(c).Subtypes, subtype)
 	}
 	if c.effective == nil {
 		_, _, printed := ParseTypeLine(c.TypeLine)

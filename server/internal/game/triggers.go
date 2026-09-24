@@ -221,6 +221,23 @@ type TriggeredAbility struct {
 	// Added in S28.
 	FromStack bool
 
+	// Keyword is the machine-readable name of the KEYWORD ability this
+	// trigger is — "cascade" (CR 702.85), "storm" (CR 702.40),
+	// "prowess" (CR 702.108) — and empty for every hand-written
+	// trigger, which is almost all of them (#1258).
+	//
+	// Stamped by the keyword's constructor (effects.Cascade,
+	// effects.Storm) or by the engine's own keyword-trigger table
+	// (prowess.go), never by a card file, so it cannot disagree with
+	// what the ability does. It exists to be READ: the caveat drift
+	// guard (cards/coverage) asks "does this card have cascade" by
+	// walking the card's triggers for the name, the way it already
+	// asks about flashback through an alternative cost's key.
+	//
+	// Catalog data, not persisted, and not a behaviour switch —
+	// nothing in the harvest path branches on it.
+	Keyword string
+
 	// Zones is WHERE this ability watches from (CR 113.6, #925). Nil
 	// — the answer for all but a handful of cards — means the
 	// battlefield, which is where abilities live. {ZoneGraveyard} is
@@ -594,6 +611,7 @@ func (g *Game) buildOrPickTriggerLocked(tc TriggerContext, source Card, lki Char
 	item.modeSpec = t.Modes
 	item.DoubledBy, item.DoubledByName = doubledBy.id, doubledBy.name
 	stampTriggerContext(item, t, tc)
+	stampTriggerSource(item, source, tc)
 	g.queueHarvestedTriggerLocked(item)
 }
 
@@ -626,6 +644,39 @@ func stampTriggerContext(item *StackItem, t TriggeredAbility, tc TriggerContext)
 	item.Trigger = cloneTriggerContext(&tc)
 }
 
+// stampTriggerSource names the OBJECT a harvested trigger came from
+// on the item Build returned (#1418, CR 400.7) — the sibling of
+// stampTriggerContext, at the same two call sites and for the same
+// reason: ~2,200 catalog Builds would each have had to remember.
+//
+// `source` is the dispatch's VALUE copy of the source card, taken
+// when the ability triggered and carried through every prompt frame,
+// so its epoch is the object's even if the card has moved while an
+// optional or target prompt was open. The one case the copy cannot
+// answer is a trigger about its source's own departure ("when this
+// dies"): the harvest reads that card in its new zone, and the object
+// the ability belongs to is the permanent that left. The event's
+// object snapshot already names that permanent (objectSnapshotLocked
+// reads its battlefield epoch off the record), so when the event is
+// about the source, its ref is the answer.
+//
+// Left alone: an item that already names its source object (a
+// reflexive trigger inherits its parent's, a delayed trigger carries
+// the one it was scheduled with), and an item whose Build pointed it
+// at a card other than `source` — queueHarvestedTriggerLocked stamps
+// that one from the board.
+func stampTriggerSource(item *StackItem, source Card, tc TriggerContext) {
+	if item == nil || item.SourceObject.ID != uuid.Nil ||
+		source.InstanceID == uuid.Nil || item.SourceCardID != source.InstanceID {
+		return
+	}
+	if obj := tc.Object; obj != nil && obj.ID == source.InstanceID {
+		item.SourceObject = obj.Ref()
+		return
+	}
+	item.SourceObject = ObjectRef{ID: source.InstanceID, Epoch: source.ObjectEpoch}
+}
+
 // harvestLTB walks LTB triggers for a card whose battlefield exit
 // just emitted EventLTB. The card now lives in its destination zone;
 // look it up by ID and pull its battlefield characteristics from the
@@ -644,33 +695,35 @@ func (g *Game) harvestLTB(pass *harvestPass) {
 	if batch, ok := g.simultaneousExitCardLocked(ev.CardID); ok {
 		source = batch
 	}
-	oracle := CatalogKey(source)
-	if oracle == "" {
-		return
-	}
-	// TriggersForKey, not TriggersForCard: this path has already
-	// chosen its key (CatalogKey plus the AbilitiesRemoved read off
-	// the LKI snapshot below), and the designation gate is evaluated
-	// against the SNAPSHOT for the same CR 603.10 reason — a Case
-	// that was solved when it died has its solved dies-trigger, one
-	// that was not does not. ADR 0071.
-	triggers := TriggersForKey(oracle, source)
-	if len(triggers) == 0 {
-		return
-	}
 	lki, ok := g.lastKnownBattlefield[ev.CardID]
 	if batch, inBatch := g.simultaneousExitCardLocked(ev.CardID); inBatch {
 		lki, ok = batch.Effective(), true
 	}
-	// S24 layer 6: read the removal off the LKI SNAPSHOT, not off the
-	// card. CatalogAbilityKey cannot answer here — the permanent has
-	// already left the battlefield and clearEffectiveCacheLocked has
-	// dropped its layer cache — and CR 603.10 says an LTB trigger is
-	// judged on what the permanent looked like while it was still
-	// there. A creature that died under a Kenrith's Transformation
-	// has no dies-trigger, and that stays true for the beat between
-	// the death and the Aura falling off.
-	if ok && lki.AbilitiesRemoved {
+	// S24 layer 6 / ADR 0093 Decision 2: the key is read off the LKI
+	// SNAPSHOT, not off the card. CatalogAbilityKey cannot answer here
+	// — the permanent has already left the battlefield and
+	// clearEffectiveCacheLocked has dropped its layer cache — and
+	// CR 603.10a says an LTB trigger is judged on what the permanent
+	// looked like while it was still there. A creature that died under
+	// a Kenrith's Transformation has none of its OWN dies-triggers,
+	// and that stays true for the beat between the death and the Aura
+	// falling off; one that died carrying a granted "when this
+	// creature dies" still has that one (AbilityKeyFromLKI composes
+	// both halves).
+	oracle := CatalogKey(source)
+	if ok {
+		oracle = AbilityKeyFromLKI(source, lki)
+	}
+	if oracle == "" {
+		return
+	}
+	// TriggersForKey, not TriggersForCard: this path has already
+	// chosen its key, and the designation gate is evaluated against
+	// the SNAPSHOT for the same CR 603.10 reason — a Case that was
+	// solved when it died has its solved dies-trigger, one that was
+	// not does not. ADR 0071.
+	triggers := TriggersForKey(oracle, source)
+	if len(triggers) == 0 {
 		return
 	}
 	if !ok {
@@ -720,6 +773,10 @@ func (g *Game) queueHarvestedTriggerLocked(item *StackItem) {
 	if item.Kind == "" {
 		item.Kind = StackItemTriggered
 	}
+	// #1418: a trigger that reached the queue without naming its
+	// source object (a game-built item, or a Build that pointed it at
+	// another card) names the object its source is now.
+	g.stampSourceObjectLocked(item)
 	g.PendingTriggers = append(g.PendingTriggers, item)
 	g.EmitEvent(Event{
 		Kind:   EventTrigger,

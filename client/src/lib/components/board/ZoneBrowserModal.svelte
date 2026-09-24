@@ -32,6 +32,16 @@
   } from "../../zoneBrowser.logic";
   import { printedCostClaimable, type CastSourceZone } from "../../targeting";
   import ModalLayer from "../ModalLayer.svelte";
+  // #1406: the exile button's enabled state and price tag read the
+  // same verdict the castable-from-exile strip does — `castable_here`
+  // across every castable face, then the server's own move list —
+  // rather than a second, client-side timing guess. Reusing these
+  // rather than duplicating them is the point: both surfaces read the
+  // same server bits and must not drift into different opinions about
+  // the same card.
+  import { exileCostBadge, exileEntryFor, exileEntryLegality } from "../../exileStrip";
+  import ManaSymbol from "./ManaSymbol.svelte";
+  import type { Legality } from "../../timing";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -143,19 +153,38 @@
   //
   // S29 warp added a floor to the window: a warped creature's grant
   // is stamped the moment the end step exiles it and stays dark
-  // until the next turn, so the turn number rides both derivations.
-  const grantFor = (card: CardView) => impulseGrantFor(card, zoneKind, viewerID, view.turn.number);
+  // until the next turn, so the turn sequence rides both derivations.
+  const grantFor = (card: CardView) => impulseGrantFor(card, zoneKind, viewerID, view.turn.seq);
   // #874: the impulse button is gated on `onCastCard` for the reason
   // the graveyard one is — the click is a hand-off to the Board's cast
   // chain now, not a dispatch of its own, so without a handler there
   // is nothing behind the button.
   const labelFor = (card: CardView) =>
-    onCastCard === undefined
-      ? null
-      : impulseActionLabel(card, zoneKind, viewerID, view.turn.number);
+    onCastCard === undefined ? null : impulseActionLabel(card, zoneKind, viewerID, view.turn.seq);
   // S32: the name of the half the grant actually casts. Same as the
   // card's own name for every grant that names no face.
   const grantedName = (card: CardView) => grantedFace(card, grantFor(card)).name ?? "card";
+
+  // #1406: the impulse button's enabled state and tooltip. Only
+  // called for a card `labelFor` already showed a button for, which
+  // means `impulseGrantFor` already found a grant naming this viewer
+  // with an open not-before-turn floor — so `viewerID` is guaranteed
+  // non-null here, and `exileEntryFor` re-deriving "now / waiting /
+  // later" from the same `card.exile_play` agrees with it. A null
+  // entry (the grant's floor hasn't opened, or a cast-only land) reads
+  // as "not castable" rather than throwing — belt and braces, since
+  // `labelFor` already keeps those off the button entirely.
+  const exileLegalityFor = (card: CardView): Legality => {
+    const entry = exileEntryFor(card, viewerID ?? "", view.turn.seq);
+    if (!entry) return { legal: false, reason: "Not castable from exile right now" };
+    return exileEntryLegality(entry, view, viewerID);
+  };
+
+  // The price tag beside the button — the same badge the exile strip
+  // shows, null when the cheapest price IS the printed cost (the
+  // common case: an ordinary impulse-exiled card costs what it
+  // prints).
+  const exileBadgeFor = (card: CardView) => exileCostBadge(card);
 
   // S29: "cast from here" for the zones whose permission is printed
   // on the card rather than granted to an instance. Only the
@@ -163,6 +192,15 @@
   // vitest can exercise it without a renderer.
   const castableFor = (card: CardView) =>
     castableFromZone(card, zoneKind) && onCastCard !== undefined;
+
+  // #1440: the VERB for the graveyard button and its labels — "play"
+  // for a land (CR 305.1, CR 116.2a — a land is played, not cast) and
+  // "cast" for everything else. Kept separate from castLabelFor below,
+  // which may show a printed cost STRING in the button's own text
+  // ("Flashback {2}{R}"); the aria-label and title stay on the verb so
+  // they read as a sentence rather than repeating a mana cost.
+  const castVerbFor = (card: CardView) =>
+    (card.type_line ?? "").toLowerCase().includes("land") ? "play" : "cast";
 
   // The label is the printed clause when the card offers exactly one
   // way in ("Flashback {2}{R}"), so the button reads like the card.
@@ -173,10 +211,17 @@
   // under an Underworld Breach has one offer and the printed cost
   // beside it, and labelling that button "Escape" would name a price
   // the player has not chosen yet.
-  const castLabelFor = (card: CardView) =>
-    card.alternative_costs?.length === 1 && !printedCostClaimable(card)
+  //
+  // #1440: a LAND is played, not cast — checked first, because a land
+  // opened by a Crucible-shaped permission carries no alternative
+  // cost at all and would otherwise fall straight through to the
+  // "cast" default.
+  const castLabelFor = (card: CardView) => {
+    if ((card.type_line ?? "").toLowerCase().includes("land")) return "play";
+    return card.alternative_costs?.length === 1 && !printedCostClaimable(card)
       ? card.alternative_costs[0].label || "cast"
       : "cast";
+  };
 
   function castFromZone(card: CardView): void {
     if (!onCastCard || zoneKind !== "graveyard") return;
@@ -198,6 +243,10 @@
   function playFromExile(card: CardView): void {
     const grant = grantFor(card);
     if (!onCastCard || !grant) return;
+    // #1406: belt and braces — the button is `disabled` when this is
+    // false, but a disabled native <button> already swallows the
+    // click, so this only matters if that attribute is ever dropped.
+    if (!exileLegalityFor(card).legal) return;
     onCastCard(card, "exile", grantedFaceIndex(grant));
     onClose();
   }
@@ -312,16 +361,36 @@
               {sorcerySpeedBlocked}
             />
             {#if labelFor(card)}
+              {@const leg = exileLegalityFor(card)}
+              {@const badge = exileBadgeFor(card)}
               <!-- The impulse grant is the one action that shouldn't wait
                    for a hover: the thief needs to see that the card is
-                   theirs to play. -->
+                   theirs to play. #1406: enabled state and tooltip read
+                   the same castable_here + legal-move verdict the exile
+                   strip does, so a shut timing window (a sorcery in an
+                   end step, a plotted card outside its main phase, a
+                   cant_cast clause) greys the button instead of
+                   dispatching a cast the server would refuse. -->
+              {#if badge}
+                <span class="cost-tag" title={badge.title} aria-label={badge.label}>
+                  {#each badge.symbols as s, i (i)}
+                    <ManaSymbol symbol={s} size={15} />
+                  {/each}
+                  {#if badge.life}
+                    <span class="life">+{badge.life}♥</span>
+                  {/if}
+                </span>
+              {/if}
               <div class="actions always" aria-label="play from exile">
                 <button
                   type="button"
                   class="act impulse"
-                  title={grantFor(card)?.any_color
-                    ? "spend mana as though it were any colour"
-                    : "playable until end of turn"}
+                  disabled={!leg.legal}
+                  title={leg.legal
+                    ? grantFor(card)?.any_color
+                      ? "spend mana as though it were any colour"
+                      : "playable until end of turn"
+                    : (leg.reason ?? "Not castable from exile right now")}
                   aria-label={`${labelFor(card)} ${grantedName(card)} from exile`}
                   onclick={() => playFromExile(card)}
                 >
@@ -343,12 +412,12 @@
                    in the graveyard is a resource, and a player who
                    has to hover to discover that will not discover
                    it. -->
-              <div class="actions always" aria-label="cast from graveyard">
+              <div class="actions always" aria-label={`${castVerbFor(card)} from graveyard`}>
                 <button
                   type="button"
                   class="act impulse"
-                  title="cast from your graveyard"
-                  aria-label={`cast ${card.name || "card"} from graveyard`}
+                  title={`${castVerbFor(card)} from your graveyard`}
+                  aria-label={`${castVerbFor(card)} ${card.name || "card"} from graveyard`}
                   onclick={() => castFromZone(card)}
                 >
                   {castLabelFor(card)}
@@ -504,6 +573,39 @@
     border-color: rgba(217, 180, 92, 0.6);
     color: var(--gold-strong);
   }
+  /* #1406: a shut timing window (end step, wrong phase, a cant_cast
+     clause) greys the button instead of hiding it, so the reason is
+     still readable on hover. */
+  .act:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    filter: grayscale(0.4);
+  }
+  /* The price tag, same shape as ExileStrip's — top-right corner of
+     the cell, which is already position: relative. */
+  .cost-tag {
+    position: absolute;
+    top: -4px;
+    right: 4px;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    gap: 1px;
+    padding: 2px 3px;
+    border-radius: 999px;
+    background: #1c1503;
+    border: 1.5px solid var(--gold-strong);
+    box-shadow:
+      0 2px 8px rgba(0, 0, 0, 0.55),
+      0 0 0 1px rgba(0, 0, 0, 0.4);
+    cursor: help;
+  }
+  .life {
+    margin-left: 2px;
+    font-size: 9px;
+    font-weight: 700;
+    color: #ffb3b3;
+  }
   /* The back-face name on a "cast it transformed" grant. Rendered
      inside the pill rather than under it so the button stays one
      hit target, and truncated rather than wrapped so a long name
@@ -545,7 +647,7 @@
     letter-spacing: 0.1em;
     font-weight: 600;
   }
-  .act:hover {
+  .act:hover:not(:disabled) {
     color: var(--gold-strong);
     border-color: rgba(217, 180, 92, 0.5);
   }

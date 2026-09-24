@@ -149,7 +149,7 @@ func TestSecondMindControlWinsOnTimestamp(t *testing.T) {
 		t.Fatalf("first steal: controller %s, want %s", got, first.ID)
 	}
 
-	// Seat 1's copy arrives later, so it has the later CR 613.7d
+	// Seat 1's copy arrives later, so it has the later CR 613.7e
 	// attach timestamp.
 	secondAura := pushBattlefieldCardWithTimestamp(g, game.Card{
 		InstanceID: uuid.New(), Name: "Mind Control", TypeLine: auraTypeLine,

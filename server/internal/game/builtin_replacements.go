@@ -34,7 +34,7 @@ import "github.com/google/uuid"
 // would be put into a library, hand, graveyard, or exile from
 // anywhere, its owner may put it into the command zone instead."
 //
-// CR 614.10 "may" replacement — Optional=true triggers the apply-
+// "may" replacement — Optional=true triggers the apply-
 // loop's yes/no prompt path (PendingChoiceOptionalReplacement) so
 // the owner decides each time. Sub-PR 6 widened AppliesTo (dropped
 // the asCommanderMove gate) so this fires for every move that puts a
@@ -50,7 +50,7 @@ import "github.com/google/uuid"
 // (routeCardToZoneLocked, zone_route.go) rather than in the movers,
 // so "from anywhere" holds for every route that goes through it.
 //
-// Controlled by the commander's owner (drives both the CR 614.10
+// Controlled by the commander's owner (drives both the "may"
 // yes/no prompt and the CR 616 multi-replacement order prompt if
 // other commander-zone-touching replacements ever join).
 var commanderZoneReplacement = ReplacementEffect{
@@ -93,6 +93,8 @@ var commanderZoneReplacement = ReplacementEffect{
 		return card.Owner
 	},
 	Label: "Commander zone replacement",
+	// #1397: lets the gather honour an answer given before the move.
+	commanderZone: true,
 }
 
 // regenerationShieldReplacement implements CR 701.19a: "The next time

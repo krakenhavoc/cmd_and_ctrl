@@ -196,7 +196,7 @@ would need rewriting. Keeping them as fields makes the change **additive
 for all 74 non-test `Is*()` call sites, all 30 `.TypeLine` reads and all
 22 `.ManaCost` reads** — they keep compiling and start being *right*,
 because "the characteristics of the face that is currently up" is
-exactly what CR 711.2 says a transformed permanent has.
+exactly what CR 712.8 says a transformed permanent has.
 
 **Why not separate `game.Card`s per face.** A transform is not a zone
 change. The permanent keeps its counters, its damage, its
@@ -279,7 +279,7 @@ it has no frame for a half-validated cast and should not grow one.
 | Layout | Face chosen at announce? | Permanent's `ActiveFace` after resolution |
 |---|---|---|
 | `modal_dfc` | **yes** — the faces are independently playable | the chosen face; the other never returns |
-| `transform` | no — always face 0 (CR 712.4) | 0, until an effect calls `SetFace(1)` in place |
+| `transform` | no — always face 0 (CR 712.11) | 0, until an effect calls `SetFace(1)` in place |
 | `adventure` | **yes** — but only to pick the *spell* | **always 0**; the adventure half exists only on the stack |
 | `split`, `prepare` | (deferred) face 0 only | 0 |
 
@@ -558,6 +558,11 @@ its cost; the *mechanic* ("while it's prepared you may cast a copy of
 its spell") needs spell-copying, which does not exist. It is blocked on
 that, not on faces.
 
+> **2026-09-23 — built by [ADR 0090](0090-preparation-cards.md) (#1328).**
+> Front-face-only from hand turned out to be the rule (CR 722.3), not a
+> simplification; the prepared designation, the copy of the prepare spell
+> in exile and its cast are ADR 0090's.
+
 **Flip (26), meld (21), class (38, not multi-face) — out of scope.**
 
 ---
@@ -765,7 +770,7 @@ fusing. All are declared in the import banner
 ## Addendum (S32): a per-instance face on the exile-play grant
 
 This ADR's §4 table says a `transform` card is "always face 0
-(CR 712.4)" at announce and always face 0 as a permanent. The first
+(CR 712.11)" at announce and always face 0 as a permanent. The first
 half is right and stays. **The second half was wrong**, and it is what
 blocked S27's battles: a Siege prints *"When it's defeated, exile it,
 then **cast it transformed**"*, which is an effect casting a
@@ -797,7 +802,7 @@ Three changes, all small, all in the direction §4 already pointed:
    granted face is still refused, because clamping it would land on
    face 0 and hand the player a free cast of the battle.
 
-3. **`faceOnResolve` keeps a cast `transform` face.** CR 712.4 is a
+3. **`faceOnResolve` keeps a cast `transform` face.** CR 712.11 is a
    rule about casting and is enforced where it belongs, by
    `CastableFaces`. A non-zero cast face can now only have arrived
    through an effect that said "cast it transformed", and that
@@ -807,7 +812,7 @@ The catalog side needed nothing new: a Siege back face registers under
 `"<oracle_id>#1"`, which is §5's keyspace, and the sixty MDFC land
 backs were already living in it.
 
-**A fourth change the first three made necessary: CR 712.8.** A
+**A fourth change the first three made necessary: CR 712.8a.** A
 double-faced card is front face up in every zone except the
 battlefield and the stack, and the engine did not enforce it anywhere.
 That was latent while the only back faces on the battlefield were MDFC
@@ -878,7 +883,8 @@ the caller's `want`. The wire moved with it, `exile_play.face` →
 **Where the reroute went, and where it did not.** §4 pointed at
 `routeStackCardToGraveyardLocked`. It is not there: that helper also
 carries a spell that fizzled (CR 608.2b) and the defensive no-meta
-path, and both are CR 715.3e cards that must reach a graveyard. The
+path, and both are cards CR 715.3d's "instead of" does not redirect,
+so both must reach a graveyard. The
 branch is on the resolution path, one call above it, in
 `game/adventure.go`.
 

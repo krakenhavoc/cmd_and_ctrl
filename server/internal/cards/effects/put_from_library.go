@@ -155,29 +155,30 @@ func (p PutFromLibraryOntoBattlefield) Apply(ctx *Context) error {
 	cards := append([]uuid.UUID(nil), p.Cards...)
 	then := p.Then
 	opts := game.LibraryEntryOptions{Controller: player, Tapped: p.Tapped}
-	finish := func(g *game.Game, picked []uuid.UUID) error {
-		var entered []uuid.UUID
-		var putErr error
-		if len(picked) > 0 {
-			// An error still reports whatever did enter, and Then
-			// still runs: the revealed or looked-at rest must not be
-			// left on top (with its knowers) because one card of the
-			// batch failed.
-			entered, putErr = g.PutCardsFromLibraryOntoBattlefieldForEffect(picked, opts)
-		}
+	report := func(g *game.Game, entered []uuid.UUID) error {
 		if then == nil {
-			return putErr
+			return nil
 		}
-		thenErr := then(g, PutFromLibraryResult{
+		return then(g, PutFromLibraryResult{
 			Source:  source,
 			Player:  player,
 			Entered: entered,
 			Rest:    cardsStillInALibrary(g, cards),
 		})
-		if putErr != nil {
-			return putErr
+	}
+	finish := func(g *game.Game, picked []uuid.UUID) error {
+		if len(picked) == 0 {
+			return report(g, nil)
 		}
-		return thenErr
+		// Through the Then door (#1322): a card of the batch may stop
+		// to ask its own question (a shockland's life, a Clone's copy),
+		// and until it is answered the card is still in the library.
+		// "The rest" is computed when the entry is complete, so a card
+		// still waiting to enter is never put on the bottom with the
+		// pile. An error still reports whatever did enter and Then
+		// still runs, so the revealed or looked-at rest is never left
+		// on top with its knowers.
+		return g.PutCardsFromLibraryOntoBattlefieldThenForEffect(picked, opts, report)
 	}
 
 	candidates := libraryCardsMatching(ctx.Game, player, cards, p.Match)

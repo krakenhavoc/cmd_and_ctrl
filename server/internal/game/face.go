@@ -36,7 +36,7 @@ import "github.com/google/uuid"
 // Scryfall's top-level record. Everything that already reads
 // c.TypeLine / c.ManaCost / c.Power keeps compiling and starts being
 // right, because "the characteristics of the face that is currently
-// up" is exactly what CR 711.2 says a double-faced permanent has.
+// up" is exactly what CR 712.8 says a double-faced permanent has.
 
 // Face is one printed side of a multi-face card, in engine terms.
 // Values arrive already parsed — the deck importer does the Scryfall
@@ -111,7 +111,7 @@ const (
 	LayoutModalDFC = "modal_dfc"
 
 	// LayoutTransform is an ordinary double-faced card. It is always
-	// cast as its front face (CR 712.4); the back face is reached
+	// cast as its front face (CR 712.11); the back face is reached
 	// only by an effect that transforms the permanent in place.
 	// 401 oracle IDs.
 	LayoutTransform = "transform"
@@ -126,8 +126,12 @@ const (
 	LayoutAdventure = "adventure"
 
 	// LayoutSplit and LayoutPrepare carry a joined top-level cost.
-	// Out of scope: the spine makes them cost their LEFT half
-	// instead of being free, which is a strict improvement.
+	// The spine makes them cost their LEFT half instead of being
+	// free. For a split card that is still a simplification (fusing);
+	// for a preparation card it is the rule — CR 722.3, the card is
+	// only ever cast as its permanent half, and its prepare spell
+	// (face 1) is cast as a COPY out of exile while the permanent is
+	// prepared (CR 722.3c, ADR 0090, prepare.go).
 	LayoutSplit   = "split"
 	LayoutPrepare = "prepare"
 )
@@ -199,7 +203,7 @@ func (c Card) FaceCount() int {
 // This is where the per-layout semantics of "choose a face" live:
 //
 //	modal_dfc          both — the faces are independently playable
-//	                   (CR 712.12a), and this is the whole reason
+//	                   (CR 712.11b), and this is the whole reason
 //	                   the picker exists.
 //	adventure          both — CR 715.3 lets the caster choose whether
 //	                   to cast the creature or the Adventure, and the
@@ -210,10 +214,15 @@ func (c Card) FaceCount() int {
 //	                   and an impulse grant over the same card names
 //	                   none, so a zone rule here would be wrong for
 //	                   one of them.
-//	transform          front only (CR 712.4). The back is reached by
+//	transform          front only (CR 712.11). The back is reached by
 //	                   transforming the permanent, not by casting it.
-//	split/prepare      front only for now — split needs fusing.
+//	split              front only for now — split needs fusing.
 //	                   Deferred.
+//	prepare            front only, and that is CR 722.3 rather than
+//	                   a deferral: the prepare spell is never cast
+//	                   from the card. Its copy in exile is, through
+//	                   the permission prepare.go derives, which names
+//	                   face 1 (ADR 0090).
 //	anything else      front only.
 func (c Card) CastableFaces() []int {
 	if len(c.Faces) < 2 {
@@ -342,11 +351,11 @@ func faceForCastLocked(c Card, want int, grant *CastPermission, playerID uuid.UU
 //
 // A `transform` card keeps it too, and that is the S32 half of the
 // battle seam. The rule it was written to enforce — "a transform card
-// always enters front-up (CR 712.4)" — is really a rule about CASTING
+// always enters front-up (CR 712.11)" — is really a rule about CASTING
 // and it is already enforced where it belongs, by CastableFaces
 // refusing to offer the back. So face 1 can only ever arrive here
 // through an effect that said "cast it TRANSFORMED", and for such a
-// cast CR 712.4 does not apply: the object that was put on the stack
+// cast CR 712.11 does not apply: the object that was put on the stack
 // was the back face and the permanent it resolves into is the back
 // face. Returning 0 here was what made the Siege seam unfixable from
 // the grant side alone — the cast would have announced Refraction

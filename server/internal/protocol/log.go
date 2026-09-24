@@ -32,9 +32,15 @@ package protocol
 //     snapshot_drift_test.go already classifies `carried` — so the
 //     history survives an undo, a restore, and a deploy for free, and
 //     there is no second copy of the same facts to drift out of sync
-//     with the first. The cost is one forward pass over the event log
-//     per broadcast (not per viewer: ws.Room builds the view once and
-//     filters it per client).
+//     with the first. The forward pass is resumable (#1401): its state
+//     is memoised on the game (logFold) and each view folds only the
+//     events emitted since the last one, refolding from event 0 when
+//     the log is not an extension of what was folded — an undo, a new
+//     *Game. The memo is not a second copy of the facts: it is the
+//     same fold, stopped at a cursor, and it is thrown away rather
+//     than trusted whenever the log it folded might have changed.
+//     Names and text are still resolved against the current view on
+//     every call, and redaction is still per viewer (FilterViewFor).
 //
 // Introduced in S31 sub-PR 0.
 
@@ -121,15 +127,36 @@ const (
 	LogAttack LogKind = "attack"
 	// LogBlock — a creature was declared as a blocker.
 	LogBlock LogKind = "block"
+	// LogNoBlocks — a defending player completed their CR 509.1 block
+	// declaration with zero blockers (game.EventBlockersDeclared,
+	// Amount == 0; #1279, #1500). The blocks a defender DID make are
+	// already LogBlock lines above; this is the one fact those can't
+	// carry — that the defender was asked and chose to take the hit,
+	// rather than the silence a step with no combat at all produces.
+	// Amount > 0 (the defender blocked with N creatures) is still
+	// silent: those LogBlock lines already say it, and a second line
+	// for the same declaration would repeat them.
+	LogNoBlocks LogKind = "no_blocks"
 	// LogToken — a token was created.
 	LogToken LogKind = "token"
 	// LogSacrifice — a permanent was sacrificed. Distinct from the
 	// LogZone entry it replaces, because "sacrificed" and "destroyed"
 	// are different facts to a player reading the table.
 	LogSacrifice LogKind = "sacrifice"
-	// LogEliminated — a player left the game (concede, or any of the
-	// state-based losses).
+	// LogEliminated — a player left the game: a concession, a
+	// state-based loss or an effect loss. Cause says which (ADR 0057
+	// Decision 7), and the text says why.
 	LogEliminated LogKind = "eliminated"
+	// LogGameOver — the game ended with a result: a winner, or a draw
+	// (ADR 0057 Decision 7). Seat is the winner, NoSeat for a draw;
+	// Cause is "last_standing", "effect" or "all_lost"; CardID names
+	// the winning source for an effect win.
+	LogGameOver LogKind = "game_over"
+	// LogWinPrevented — an effect would have made Seat win the game
+	// and a "can't win the game" gate stopped it. CardID is the
+	// winning source, Target the gate's source. Once per prevented
+	// win (ADR 0057 Decision 7).
+	LogWinPrevented LogKind = "win_prevented"
 	// LogReveal — a player revealed cards (CR 701.20). The engine
 	// fires one EventRevealCards per card; every event sharing a
 	// RevealSeq collapses into ONE entry, with Amount the card count
@@ -258,6 +285,51 @@ const (
 	// rather than never left.
 	LogPhaseOut LogKind = "phase_out"
 	LogPhaseIn  LogKind = "phase_in"
+	// LogStorm — a storm trigger settled on its count (CR 702.40a).
+	// `card_id` is the storm spell and `amount` the count, which is
+	// how many copies of it are about to be created and is zero for
+	// the turn's first spell. #1238, ADR 0086.
+	//
+	// Narrated because nothing else narrates the number, and the
+	// number is the card. A spell copy is created and not cast
+	// (CR 707.10), so it emits no engine event and produces no line;
+	// the trigger's own resolution is a LogResolve naming the ability
+	// ("Grapeshot — storm resolved", #1257) and not the count. Without
+	// this entry the table watches N Grapeshots appear from nowhere.
+	// Same argument
+	// as LogSagaChapter and LogClassLevel: a mechanic whose number is
+	// otherwise unobservable gets a line.
+	LogStorm LogKind = "storm"
+	// LogTurnFaceDown — a permanent that was face up on the
+	// battlefield was turned face down (CR 708.2a). `card_id` is the
+	// permanent; `target` is the object that did it (Ixidron, Cyber
+	// Conversion), which is public where the permanent's identity no
+	// longer is. #1209, ADR 0082's 2026-09-23 amendment.
+	//
+	// Narrated for LogTransform's reason and LogPhaseOut's stronger
+	// one. Turning face down is not a zone change and not a
+	// transform, so no other line says it; the board simply stops
+	// showing a card the table could read a second ago and starts
+	// showing a nameless 2/2, which is indistinguishable from the
+	// creature having been exiled and replaced unless the log says
+	// which.
+	//
+	// IT NAMES NOBODY, and that is not this projection's decision. A
+	// CR 708.2 object has no name for ANY viewer, its controller
+	// included (ADR 0069 decision 6: `CardView.Name` is the effective
+	// characteristic's, and CR 708.2a leaves it empty; the controller
+	// gets the art through `scryfall_id` and `face_visible` instead).
+	// So resolveLogNames finds no name to put on the entry, and the
+	// house fallback "a card" is the honest rendering — there is
+	// nothing here to leak and nothing to withhold. `card_id` is
+	// still on the entry, so a client can point at the permanent on
+	// the board, which is the half of the identity that IS public.
+	//
+	// The reverse direction has no line at all: EventTurnedFaceUp's
+	// silence row says the CR 116.2g special action's own line
+	// already carries it, and there is no special action here to
+	// carry this one.
+	LogTurnFaceDown LogKind = "turn_face_down"
 )
 
 // The three choose-a-value kinds are separate rather than one "chose
@@ -304,11 +376,14 @@ type LogEvent struct {
 	Seq uint64 `json:"seq"`
 	// Kind is what happened.
 	Kind LogKind `json:"kind"`
-	// Turn is the turn number the entry happened on. Carried forward
+	// Turn is the turn sequence the entry happened on. Carried forward
 	// from the last LogStep entry rather than stamped by the engine,
 	// so entries that precede the first step announcement of a game
 	// (the opening draw) carry turn 0.
 	Turn int `json:"turn,omitempty"`
+	// Round is the table-facing rotation number. It is present on step
+	// entries; Turn is the per-turn identity used for grouping.
+	Round int `json:"round,omitempty"`
 	// Step is the step name (game.Step) — present ONLY on LogStep
 	// entries. Every other entry belongs to the step announced by the
 	// most recent LogStep entry before it; a consumer that needs the
@@ -333,10 +408,16 @@ type LogEvent struct {
 	Target string `json:"target,omitempty"`
 	// Amount is the signed or counting payload: life delta, damage
 	// dealt, cards drawn. On a LogEliminated entry it is 1 when the
-	// player conceded and 0 when they lost — a whole field for one
-	// bit, on an entry that happens at most three times a game, was
-	// not worth the wire bytes.
+	// player conceded and 0 when they lost — kept beside Cause for
+	// clients that predate it.
 	Amount int `json:"amount,omitempty"`
+	// Cause is why a LogEliminated player left ("life", "empty_draw",
+	// "poison", "commander_damage", "effect", "concede" — the engine's
+	// game.LossCause) or how a LogGameOver game ended
+	// ("last_standing", "effect", "all_lost"). ADR 0057 Decision 7.
+	// Empty on every other kind, and on an elimination recorded
+	// before the engine named its cause.
+	Cause string `json:"cause,omitempty"`
 	// LookedAt is the SIZE of a LogScry / LogSurveil entry's keyword
 	// action — the "2" in "scry 2" — where Amount is how many cards
 	// the table then watched move. Zero on every other kind, and
@@ -432,6 +513,43 @@ type LogEvent struct {
 	revealIDs   []string
 	revealNames []string
 	batchSeq    uint64
+	// ability marks a LogResolve / LogFizzle entry about a triggered
+	// or activated ABILITY rather than a spell (#1257). Its CardID is
+	// then the ability's SOURCE and its Label the stack item's label,
+	// and redactLogForViewer drops the two together when the viewer
+	// may not identify the source. Unexported because the wire already
+	// says it: only the ability path puts a label on these kinds.
+	ability bool
+	// cardFound says resolveLogNames found CardID in the view, which is
+	// what separates "the viewer may not identify this card" from "the
+	// card has ceased to exist" when cardKnowers is empty. Read only
+	// for ability entries; see redactLogForViewer.
+	cardFound bool
+}
+
+// projectAbilityItem fills a LogResolve / LogFizzle entry for an
+// ABILITY item (#1257). resolveTopAbilityLocked emits the event with
+// the item's source in Source, its label in Label and no CardID — an
+// ability has no card on the stack — while the spell branch sets
+// CardID and no Label. So a Label with no CardID is exactly "this was
+// an ability".
+//
+// The SOURCE goes in CardID for two reasons, and the second is the one
+// that matters. It makes the source nameable ("Viscera Seer — Sacrifice
+// a creature: scry 1 resolved", for an activation whose label does not
+// say the card), and it gives the entry a knower set. The label names
+// the card as loudly as the card's own name does ("Grapeshot —
+// storm"), and redactLogForViewer can only take it away from a viewer
+// who may not identify the source if the entry says which card the
+// source is. Without the ID, a face-down or hidden source's label
+// would ride to every seat.
+func projectAbilityItem(base *LogEvent, ev game.Event) {
+	if ev.CardID != uuid.Nil || ev.Label == "" {
+		return
+	}
+	base.ability = true
+	base.CardID = uuidStringOrEmpty(ev.Source)
+	base.Label = ev.Label
 }
 
 // hiddenZone reports whether a zone's contents are hidden from the
@@ -444,36 +562,163 @@ func hiddenZone(z game.ZoneKind) bool {
 // publicLogOf projects g.Events into the bounded public log, using v
 // (the already-assembled view) to resolve card names and knower sets.
 //
+// The projection is split in two, and only the first half is cached
+// (#1401). The FOLD — projectEvent over every event, the ring and its
+// collapses — depends on nothing but the events and the seat order, so
+// its state is kept on the game (logFold, in g.LogProjectionCache) and
+// resumed from where the last view stopped: a view pays for the events
+// emitted since the previous one, not for the whole game. The FINISH —
+// names, knower sets, text — depends on the current board, so it runs
+// on a copy of the ring's entries every time, exactly as before.
+//
 // Caller must hold the read lock ViewOfGame already holds.
 func publicLogOf(g *game.Game, v *GameView) []LogEvent {
-	seatOf := seatIndexer(v)
-	ring := newLogRing(PublicLogMax)
-	var turn int
-	var step string
+	seatIDs := seatIDsOf(v)
+	var out []LogEvent
+	g.LogProjectionCache().Do(func(slot *any) {
+		c, _ := (*slot).(*logCache)
+		if c == nil {
+			c = &logCache{}
+			*slot = c
+		}
+		if !c.fold.extends(g, seatIDs) {
+			c.fold = newLogFold(seatIDs, g.EventLogGeneration())
+		}
+		c.folded += c.fold.feed(g.Events)
+		out = c.fold.entries()
+	})
+	return finishLog(out, v)
+}
+
+// logCache is what publicLogOf keeps in the game's projection slot: the
+// current fold, and how many events every fold of this game has
+// projected. The count outlives a refold, which is what lets the cost
+// test see one (TestPublicLogViewFoldsOnlyNewEvents); production never
+// reads it.
+type logCache struct {
+	fold   *logFold
+	folded int
+}
+
+// finishLog resolves names and knower sets out of v and renders every
+// entry's text. entries must be the caller's own copy: both passes
+// write into it.
+func finishLog(out []LogEvent, v *GameView) []LogEvent {
+	if len(out) == 0 {
+		return nil
+	}
+	resolveLogNames(out, v)
+	for i := range out {
+		out[i].Text = renderLogText(out[i], out[i].cardName, out[i].targetName)
+	}
+	return out
+}
+
+// logFold is the public log's forward fold over g.Events, stopped at
+// `cursor` and resumable from there (#1401).
+//
+// Everything the loop in feed carries from one event to the next is a
+// field here, and nothing else is: that is what makes "fold 0..N, stop,
+// fold N..M" produce exactly what "fold 0..M" does.
+// TestPublicLogCacheMatchesAFreshFold is the property test that holds
+// it to that.
+//
+// A fold is valid for a game only while the game's log EXTENDS the log
+// it folded — see extends for the checks and why each is there.
+type logFold struct {
+	// gen is g.EventLogGeneration() when the fold began. RestoreFrom
+	// bumps it, which is the only way to tell an undone-and-regrown log
+	// from a grown one: eventSeq rewinds with the undo, so the regrown
+	// events carry the same Seq values as the ones they replaced.
+	gen uint64
+	// seatIDs is the seat order the fold's seat indices were computed
+	// against. A projected entry carries seat INDICES, so a different
+	// order would make every cached entry name the wrong player.
+	seatIDs []uuid.UUID
+	seatOf  func(uuid.UUID) int
+	// cursor is how many events have been folded; lastSeq is the Seq
+	// of the last of them, a cheap second witness that Events[:cursor]
+	// is still the list that was folded.
+	cursor  int
+	lastSeq uint64
+
+	// The loop state, exactly as the pre-#1401 publicLogOf kept it in
+	// locals.
+	ring *logRing
+	turn int
+	step string
 	// sacrificed remembers the card of the EventSacrifice we just
 	// emitted. game.EventSacrifice fires immediately before the
 	// battlefield → graveyard move it causes, so the very next zone
 	// move for that card is the same fact told twice.
-	var sacrificed uuid.UUID
+	sacrificed uuid.UUID
 	// revealAt maps a RevealSeq to the ring push that opened its
 	// entry. Keyed rather than adjacency-based for the reason
 	// game.Event.RevealSeq gives: two back-to-back reveals are two
 	// announcements, and a listener may emit between the per-card
-	// events of one.
-	revealAt := make(map[uint64]int)
-	randomAt := make(map[uint64]int)
+	// events of one. randomAt is the same for a roll / flip BatchSeq.
+	// Neither is pruned when its entry is evicted: a key still present
+	// is what stops the tail of an evicted reveal from reopening a new
+	// line (see feed).
+	revealAt map[uint64]int
+	randomAt map[uint64]int
+}
 
-	for _, ev := range g.Events {
-		e, ok := projectEvent(ev, seatOf, &turn, &step, &sacrificed)
+func newLogFold(seatIDs []uuid.UUID, gen uint64) *logFold {
+	return &logFold{
+		gen:      gen,
+		seatIDs:  seatIDs,
+		seatOf:   seatIndexerOf(seatIDs),
+		ring:     newLogRing(PublicLogMax),
+		revealAt: make(map[uint64]int),
+		randomAt: make(map[uint64]int),
+	}
+}
+
+// extends reports whether g's event log is the log f folded, possibly
+// grown since, under the same seat order. A nil fold extends nothing.
+//
+// The generation is the load-bearing check; the length and Seq checks
+// are cheap witnesses that catch a replacement the generation was not
+// told about (a list shorter than the cursor, or a different event
+// where the last folded one was). Neither witness alone is enough — an
+// undo followed by the same number of new events passes both, because
+// eventSeq rewinds with the undo — which is why RestoreFrom bumps the
+// generation.
+func (f *logFold) extends(g *game.Game, seatIDs []uuid.UUID) bool {
+	if f == nil || f.gen != g.EventLogGeneration() || len(g.Events) < f.cursor {
+		return false
+	}
+	if f.cursor > 0 && g.Events[f.cursor-1].Seq != f.lastSeq {
+		return false
+	}
+	if len(seatIDs) != len(f.seatIDs) {
+		return false
+	}
+	for i := range seatIDs {
+		if seatIDs[i] != f.seatIDs[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// feed folds events[f.cursor:] into the ring and reports how many it
+// folded. events must extend the list folded so far (see extends).
+func (f *logFold) feed(events []game.Event) int {
+	ring := f.ring
+	start := f.cursor
+	for i := start; i < len(events); i++ {
+		e, ok := projectEvent(events[i], f.seatOf, &f.turn, &f.step, &f.sacrificed)
 		if !ok {
 			continue
 		}
-		e.Turn = turn
+		e.Turn = f.turn
 		if e.Kind == LogStep {
-			e.Step = step
+			e.Step = f.step
 		}
 		if (e.Kind == LogRoll || e.Kind == LogFlip) && e.batchSeq != 0 {
-			if at, seen := randomAt[e.batchSeq]; seen {
+			if at, seen := f.randomAt[e.batchSeq]; seen {
 				if prev := ring.pushed(at); prev != nil {
 					prev.Results = append(prev.Results, e.Results...)
 					prev.Faces = append(prev.Faces, e.Faces...)
@@ -481,10 +726,10 @@ func publicLogOf(g *game.Game, v *GameView) []LogEvent {
 				}
 				continue
 			}
-			randomAt[e.batchSeq] = ring.total
+			f.randomAt[e.batchSeq] = ring.total
 		}
 		if e.Kind == LogReveal && e.revealSeq != 0 {
-			if at, seen := revealAt[e.revealSeq]; seen {
+			if at, seen := f.revealAt[e.revealSeq]; seen {
 				if prev := ring.pushed(at); prev != nil {
 					prev.Amount += e.Amount
 					// Only the IDs the text can name are kept; Amount
@@ -498,7 +743,7 @@ func publicLogOf(g *game.Game, v *GameView) []LogEvent {
 				// off the log is not worth a line of its own.
 				continue
 			}
-			revealAt[e.revealSeq] = ring.total
+			f.revealAt[e.revealSeq] = ring.total
 		}
 		// Collapse a run of single-card draws by one player into one
 		// "drew N cards" line. Draw is the only event the engine
@@ -529,14 +774,31 @@ func publicLogOf(g *game.Game, v *GameView) []LogEvent {
 		}
 		ring.push(e)
 	}
-
-	out := ring.drain()
-	if len(out) == 0 {
-		return nil
+	if len(events) > start {
+		f.cursor = len(events)
+		f.lastSeq = events[len(events)-1].Seq
 	}
-	resolveLogNames(out, v)
+	return len(events) - start
+}
+
+// entries returns the ring's entries oldest-first as the caller's own
+// copy. The slices a later feed can append to in place — a roll batch's
+// Results and Faces, a reveal's IDs — are copied too, so a view already
+// handed out never shares a backing array with the fold that goes on
+// growing. TargetSeat is shared: nothing writes through it.
+func (f *logFold) entries() []LogEvent {
+	out := f.ring.drain()
 	for i := range out {
-		out[i].Text = renderLogText(out[i], out[i].cardName, out[i].targetName)
+		e := &out[i]
+		if e.Results != nil {
+			e.Results = append([]int(nil), e.Results...)
+		}
+		if e.Faces != nil {
+			e.Faces = append([]string(nil), e.Faces...)
+		}
+		if e.revealIDs != nil {
+			e.revealIDs = append([]string(nil), e.revealIDs...)
+		}
 	}
 	return out
 }
@@ -588,6 +850,7 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		*turn = ev.Amount
 		*step = ev.Label
 		base.Kind = LogStep
+		base.Round = ev.Round
 		return base, true
 
 	case game.EventCast:
@@ -604,11 +867,13 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 	case game.EventResolve:
 		base.Kind = LogResolve
 		base.CardID = uuidStringOrEmpty(ev.CardID)
+		projectAbilityItem(&base, ev)
 		return base, true
 
 	case game.EventFizzle:
 		base.Kind = LogFizzle
 		base.CardID = uuidStringOrEmpty(ev.CardID)
+		projectAbilityItem(&base, ev)
 		return base, true
 
 	case game.EventCounterSpell:
@@ -616,6 +881,17 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		// Source is the counter; Target the countered item.
 		base.CardID = uuidStringOrEmpty(ev.Source)
 		base.Target = uuidStringOrEmpty(ev.Target)
+		// #1211, CR 701.6a: a countered ABILITY has no card of its
+		// own — its id names a StackMeta entry the client cannot look
+		// up, and its source permanent is still standing on the
+		// battlefield. So the item's label goes where the target name
+		// would have, which is what the stack overlay prints for the
+		// same item. Only the ability path sets Label, which is what
+		// tells the two apart here.
+		if ev.Label != "" {
+			base.Target = ""
+			base.Label = ev.Label
+		}
 		return base, true
 
 	case game.EventZoneMove:
@@ -700,18 +976,45 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Target = uuidStringOrEmpty(ev.Target)
 		return base, true
 
+	case game.EventBlockersDeclared:
+		// Amount > 0 is already said: every blocker that defender
+		// declared produced its own LogBlock line above, and repeating
+		// the count here would say the same combat twice. Amount == 0
+		// is the one fact no other line carries — the defender was
+		// asked and chose to take it (#1279, #1500).
+		if ev.Amount != 0 {
+			return LogEvent{}, false
+		}
+		base.Kind = LogNoBlocks
+		return base, true
+
 	case game.EventTokenCreated:
 		base.Kind = LogToken
 		base.CardID = uuidStringOrEmpty(ev.CardID)
 		return base, true
 
-	case game.EventConcede:
+	case game.EventPlayerEliminated:
+		// ADR 0057 Decision 7: the one line a departure writes, with
+		// its cause. A concession is this line too (EventConcede is
+		// silent), so one concession logs once.
 		base.Kind = LogEliminated
-		base.Amount = 1 // conceded, rather than lost
+		base.Cause = ev.Label
+		if ev.Label == string(game.LossConcede) {
+			base.Amount = 1 // conceded, rather than lost
+		}
+		base.CardID = uuidStringOrEmpty(ev.CardID)
 		return base, true
 
-	case game.EventPlayerEliminated:
-		base.Kind = LogEliminated
+	case game.EventGameOver:
+		base.Kind = LogGameOver
+		base.Cause = ev.Label
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		return base, true
+
+	case game.EventWinPrevented:
+		base.Kind = LogWinPrevented
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.setTarget(ev.Target, seatOf)
 		return base, true
 
 	case game.EventRevealCards:
@@ -918,6 +1221,25 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.CardID = uuidStringOrEmpty(ev.CardID)
 		return base, true
 
+	case game.EventTurnedFaceDown:
+		// CR 708.2a, #1209. Not a zone move and not a transform
+		// (CR 701.27b is explicit that the two are different game
+		// actions), so no other entry says it.
+		//
+		// The card reference is the permanent and is redacted for
+		// every seat but its controller, which is the rule (CR 708.5)
+		// arriving through the ordinary knower predicate. The SOURCE
+		// goes in Target instead of in Label, so that it is redacted
+		// on its own terms rather than travelling with the name it is
+		// not: Ixidron is a public permanent and stays named in a
+		// line that has stopped naming what it hit.
+		base.Kind = LogTurnFaceDown
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		if ev.Source != ev.CardID {
+			base.Target = uuidStringOrEmpty(ev.Source)
+		}
+		return base, true
+
 	case game.EventTransform:
 		// CR 701.27a. Not a zone move (CR 712.18), so no LogZone entry
 		// says it — this is the only line the table gets, and without
@@ -925,6 +1247,21 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Kind = LogTransform
 		base.CardID = uuidStringOrEmpty(ev.CardID)
 		base.Label = ev.Label
+		return base, true
+
+	case game.EventStorm:
+		// CR 702.40a, #1238. The count is the card, and nothing else
+		// says it: a spell copy emits no event (CR 707.10 — it is
+		// created, not cast) and the trigger's LogResolve names the
+		// ability but not the number, so N copies would otherwise
+		// arrive unexplained.
+		// Entered even at zero — "storm count 0" is the turn's first
+		// spell, and a reader counting copies wants to see that the
+		// trigger resolved and found nothing to copy rather than
+		// wonder whether it fired.
+		base.Kind = LogStorm
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.Amount = ev.Amount
 		return base, true
 
 	default:
@@ -1059,6 +1396,7 @@ func resolveLogNames(entries []LogEvent, v *GameView) {
 		if c, ok := cards[e.CardID]; ok {
 			e.cardName = c.Name
 			e.cardKnowers = c.knowers
+			e.cardFound = true
 		}
 		if c, ok := cards[e.Target]; ok {
 			e.targetName = c.Name
@@ -1083,23 +1421,42 @@ func resolveLogNames(entries []LogEvent, v *GameView) {
 
 // seatIndexer returns a player-UUID → seat-index lookup over the
 // view's seats, answering NoSeat for uuid.Nil and for anything not
-// seated. Built once per projection; g.Seats is at most four entries,
-// so a linear scan is cheaper than a map.
+// seated. g.Seats is a handful of entries, so a linear scan is
+// cheaper than a map.
 func seatIndexer(v *GameView) func(uuid.UUID) int {
+	return seatIndexerOf(seatIDsOf(v))
+}
+
+// seatIDsOf parses the view's seat IDs, in seat order.
+//
+// Parsed once, compared as UUIDs (#1261). The fold asks the indexer
+// about every event it projects, and formatting the event's actor as a
+// string to compare it was ~8% of a bot table's CPU. PlayerView.ID is
+// always a UUID's canonical String(), so the parsed comparison answers
+// exactly what the string one did; a seat ID that somehow did not
+// parse stays uuid.Nil, which nothing can match because of the early
+// return in seatIndexerOf.
+func seatIDsOf(v *GameView) []uuid.UUID {
 	if v == nil {
-		return func(uuid.UUID) int { return NoSeat }
+		return nil
 	}
-	ids := make([]string, len(v.Seats))
+	ids := make([]uuid.UUID, len(v.Seats))
 	for i, s := range v.Seats {
-		ids[i] = s.ID
+		if parsed, err := uuid.Parse(s.ID); err == nil {
+			ids[i] = parsed
+		}
 	}
+	return ids
+}
+
+// seatIndexerOf is seatIndexer over already-parsed seat IDs.
+func seatIndexerOf(ids []uuid.UUID) func(uuid.UUID) int {
 	return func(id uuid.UUID) int {
 		if id == uuid.Nil {
 			return NoSeat
 		}
-		s := id.String()
 		for i, seatID := range ids {
-			if seatID == s {
+			if seatID == id {
 				return i
 			}
 		}
@@ -1122,6 +1479,31 @@ func (e LogEvent) amountNamesTheCard() bool {
 		return true
 	}
 	return false
+}
+
+// renderEliminatedText is a LogEliminated line's sentence: who left
+// and why (ADR 0057 Decision 7). An entry with no cause predates the
+// field and keeps its old wording.
+func renderEliminatedText(e LogEvent, actor, cardName string) string {
+	if e.Cause == string(game.LossConcede) || (e.Cause == "" && e.Amount == 1) {
+		return fmt.Sprintf("%s conceded", actor)
+	}
+	why := ""
+	switch game.LossCause(e.Cause) {
+	case game.LossLife:
+		why = "0 or less life"
+	case game.LossEmptyDraw:
+		why = "drew from an empty library"
+	case game.LossPoison:
+		why = "10 poison counters"
+	case game.LossCommanderDamage:
+		why = "commander damage"
+	case game.LossEffect:
+		why = nameOr(cardName, "an effect")
+	default:
+		return fmt.Sprintf("%s was eliminated", actor)
+	}
+	return fmt.Sprintf("%s lost the game (%s)", actor, why)
 }
 
 // setTarget routes an event's Target onto the right field: a seated
@@ -1164,8 +1546,10 @@ func redactLogForViewer(src []LogEvent, isKnower func(CardView) bool) []LogEvent
 	out := make([]LogEvent, len(src))
 	for i, e := range src {
 		cardName, targetName := e.cardName, e.targetName
+		abilityHidden := false
 		if e.CardID != "" && !isKnower(CardView{knowers: e.cardKnowers}) {
 			cardName = ""
+			abilityHidden = e.ability
 		}
 		if e.Target != "" && !isKnower(CardView{knowers: e.targetKnowers}) {
 			targetName = ""
@@ -1195,12 +1579,49 @@ func redactLogForViewer(src []LogEvent, isKnower func(CardView) bool) []LogEvent
 			}
 			e.Text = renderLogText(e, cardName, targetName)
 		}
+		// #1257: an ABILITY entry is redacted off the source's knower
+		// set directly, not off a dropped name. The name-drop test
+		// above cannot see the case that matters most: a face-down
+		// permanent's name is "" on every view (CR 708.2 — the 2/2 has
+		// no name), so nothing drops, while the label ("Secret Sphinx —
+		// draw a card") names the card outright. And the ID goes with
+		// the label, because a source in a hidden zone (a hand, a
+		// library) has an instance ID the zone filter never hands a
+		// non-knower. A source the view cannot account for at all is a
+		// token or a copy that has ceased to exist — public objects —
+		// and keeps its line.
+		if abilityHidden && e.cardFound {
+			e.Label, e.CardID, e.cardName = "", "", ""
+			e.Text = renderLogText(e, "", e.targetName)
+		}
 		out[i] = e
 	}
 	return out
 }
 
 // --- rendering ---
+
+// abilityName is how a line names a triggered or activated ability
+// (#1257): its stack label — what the stack overlay printed for the
+// same item — prefixed with the source's name when the label does not
+// already start with it. Trigger labels mostly do ("Grapeshot —
+// storm"); activation labels mostly do not ("Sacrifice a creature:
+// scry 1"), and those were the anonymous ones.
+//
+// A redacted entry has lost both halves together and says only that
+// an ability resolved, which the stack view already showed the whole
+// table.
+func abilityName(label, cardName string) string {
+	switch {
+	case label == "" && cardName == "":
+		return "an ability"
+	case label == "":
+		return cardName + "'s ability"
+	case cardName == "" || strings.HasPrefix(label, cardName):
+		return label
+	}
+	return cardName + " — " + label
+}
 
 // renderLogText writes the human-readable line. cardName / targetName
 // are passed in rather than read off e so the same function serves
@@ -1222,17 +1643,34 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 	case LogRoll, LogFlip:
 		return renderRandomLogText(e, actor, card)
 	case LogStep:
-		return fmt.Sprintf("Turn %d — %s · %s", e.Turn, actor, prettyStep(e.Step))
+		round := e.Round
+		if round == 0 {
+			// Backward-compatible rendering for persisted pre-ADR-0059
+			// EventStepBegan entries, which carry only Amount.
+			round = e.Turn
+		}
+		return fmt.Sprintf("Turn %d — %s · %s", round, actor, prettyStep(e.Step))
 	case LogCast:
 		if e.OldZone != "" {
 			return fmt.Sprintf("%s cast %s from %s", actor, card, prettyZone(e.OldZone))
 		}
 		return fmt.Sprintf("%s cast %s", actor, card)
 	case LogResolve:
+		if e.ability {
+			return fmt.Sprintf("%s resolved", abilityName(e.Label, cardName))
+		}
 		return fmt.Sprintf("%s resolved", card)
 	case LogFizzle:
+		if e.ability {
+			return fmt.Sprintf("%s was countered by game rules (no legal targets)", abilityName(e.Label, cardName))
+		}
 		return fmt.Sprintf("%s was countered by game rules (no legal targets)", card)
 	case LogCounter:
+		if e.Target == "" && e.Label != "" {
+			// #1211: a countered ABILITY, named by its label — it has
+			// no card of its own for targetName to resolve.
+			return fmt.Sprintf("%s countered %s", card, e.Label)
+		}
 		return fmt.Sprintf("%s countered %s", card, target)
 	case LogZone:
 		return renderZoneText(e, card)
@@ -1258,13 +1696,26 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		return fmt.Sprintf("%s attacks %s", card, target)
 	case LogBlock:
 		return fmt.Sprintf("%s blocks %s", card, target)
+	case LogNoBlocks:
+		return fmt.Sprintf("%s declares no blockers", actor)
 	case LogToken:
 		return fmt.Sprintf("%s created %s", actor, card)
 	case LogEliminated:
-		if e.Amount == 1 {
-			return fmt.Sprintf("%s conceded", actor)
+		return renderEliminatedText(e, actor, cardName)
+	case LogGameOver:
+		switch e.Cause {
+		case game.OutcomeCauseAllLost:
+			return "The game is a draw"
+		case game.OutcomeCauseEffect:
+			if cardName != "" {
+				return fmt.Sprintf("%s won the game (%s)", actor, cardName)
+			}
+			return fmt.Sprintf("%s won the game", actor)
 		}
-		return fmt.Sprintf("%s was eliminated", actor)
+		return fmt.Sprintf("%s won the game: every opponent has left", actor)
+	case LogWinPrevented:
+		return fmt.Sprintf("%s would have won the game (%s), but can't (%s)",
+			actor, nameOr(cardName, "an effect"), nameOr(targetName, "an effect"))
 	case LogReveal:
 		return renderRevealText(e, actor)
 	case LogChooseColor:
@@ -1331,6 +1782,25 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		return renderSettingsText(e)
 	case LogSpawn:
 		return renderSpawnText(e, target)
+	case LogStorm:
+		// "Grapeshot — storm count 3". The em dash is the separator
+		// every storm-shaped stack label in the catalog already uses,
+		// so the log line and the stack overlay read the same way. A
+		// viewer who may not identify the card still gets the number:
+		// the count is public (it is a fact about the turn's casts,
+		// which every seat watched) and only the name is redacted.
+		return fmt.Sprintf("%s — storm count %d", card, e.Amount)
+	case LogTurnFaceDown:
+		// `card` is "a card" for everyone, because the permanent has
+		// stopped having a name (see LogTurnFaceDown's comment); it
+		// is still resolved through the ordinary path so the line
+		// improves on its own if that ever changes. `target` is the
+		// object that did it — public, and the half of this line that
+		// carries the information.
+		if e.Target == "" {
+			return fmt.Sprintf("%s was turned face down", card)
+		}
+		return fmt.Sprintf("%s turned %s face down", target, card)
 	case LogPhaseOut:
 		return fmt.Sprintf("%s phased out", card)
 	case LogPhaseIn:
@@ -1676,8 +2146,9 @@ func prettyZone(z string) string {
 
 // logRing is a fixed-capacity FIFO of log entries. A plain slice with
 // re-slicing would either grow without bound or copy the whole buffer
-// on every eviction, and the projection runs over every event in the
-// game on every broadcast — so the eviction has to be O(1).
+// on every eviction, and the fold pushes every event of the game
+// through it (once each since #1401, but every one) — so the eviction
+// has to be O(1).
 type logRing struct {
 	buf   []LogEvent
 	start int

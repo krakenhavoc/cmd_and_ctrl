@@ -9,7 +9,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 Flashback {3}{U}"
 //
 // The CR 611.2b turn-boundary card, and the reason "until your next
-// turn" could not be expressed before S38: `Turn.Number` counts
+// turn" could not be expressed before S38: `Turn.Round` counts
 // ROUNDS, so all four seats in a Commander game share one number and
 // there was nothing to compare against. The duration now ends on
 // `Player.TurnsBegun` (ADR 0063 Decision 3), so this really does sit

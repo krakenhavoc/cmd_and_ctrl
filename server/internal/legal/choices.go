@@ -16,12 +16,15 @@ import (
 // routes on which optional field is present, so each kind below
 // fills exactly the field(s) its resolver reads.
 type choiceParams struct {
-	ChoiceID    string        `json:"choice_id"`
-	CardIDs     []string      `json:"card_ids,omitempty"`
-	Color       string        `json:"color,omitempty"`
-	Call        string        `json:"call,omitempty"`
-	Order       []string      `json:"order,omitempty"`
-	Apply       *bool         `json:"apply,omitempty"`
+	ChoiceID string   `json:"choice_id"`
+	CardIDs  []string `json:"card_ids,omitempty"`
+	Color    string   `json:"color,omitempty"`
+	Call     string   `json:"call,omitempty"`
+	Order    []string `json:"order,omitempty"`
+	Apply    *bool    `json:"apply,omitempty"`
+	// TapIDs rides a pay_unless "pay" whose cost is a waterbend cost
+	// (#1311): the permanents tapped for part of the generic.
+	TapIDs      []string      `json:"tap_ids,omitempty"`
 	Assignments []assignParam `json:"assignments,omitempty"`
 	TrampleTo   int           `json:"trample_to_player,omitempty"`
 	Target      *targetWire   `json:"target,omitempty"`
@@ -203,12 +206,21 @@ func (e *enumerator) choiceMoves() bool {
 			// Paying is only a move if the cost is payable; the engine
 			// would silently treat an unpayable "yes" as a decline.
 			canPay := false
+			var taps []uuid.UUID
 			if cost, err := game.ParseCost(c.PayCost); err == nil {
-				// Zero spend context, matching payCostLocked: a
-				// pay-unless cost is neither a cast nor an
-				// activation, so restricted mana cannot fund it
-				// (#352).
-				canPay = e.canPay(cost, 0, game.ManaSpendContext{})
+				if c.PayTapCost().Empty() {
+					// Zero spend context, matching payCostLocked: a
+					// pay-unless cost is neither a cast nor an
+					// activation, so restricted mana cannot fund it
+					// (#352).
+					canPay = e.canPay(cost, 0, game.ManaSpendContext{})
+				} else {
+					// #1311, "Ward—Waterbend {4}": the payment may tap
+					// artifacts and creatures for the generic, so
+					// "can I pay" is asked with the taps the move will
+					// carry — see waterbend.go.
+					taps, canPay = e.waterbendPayUnlessPayment(c, cost)
+				}
 			}
 			for _, apply := range []bool{true, false} {
 				if apply && !canPay {
@@ -220,6 +232,10 @@ func (e *enumerator) choiceMoves() bool {
 				verb := "decline"
 				if apply {
 					verb = "pay " + c.PayCost
+					if len(taps) > 0 {
+						verb += fmt.Sprintf(" (waterbending with %d)", len(taps))
+						p.TapIDs = idStrings(taps)
+					}
 				}
 				e.addChoice(c, reason+": "+verb, p)
 			}
@@ -670,6 +686,86 @@ func (e *enumerator) choiceMoves() bool {
 					}
 				}
 				e.addChoice(c, reason+": put "+cardName(g, id)+" on top", p)
+			}
+
+		case game.PendingChoicePutInLibrary:
+			// ADR 0088. The answer is a permutation of the pile in the
+			// lane(s) the placement opens, so offer the answers that
+			// matter rather than N! of them: leave the order alone, and
+			// pull each card to the front of its lane — plus, when the
+			// choice is top OR bottom, bury all and bury each one. The
+			// first entry is always "leave it alone", which every
+			// placement accepts.
+			cards := c.ScryCards
+			all := idStrings(cards)
+			if n := c.LibraryTopCount; n > 0 && n < len(cards) {
+				// #1298: EXACTLY n on top (Cream of the Crop). "Leave
+				// it alone" is not an answer here, so the canonical
+				// set is: the first n on top and the rest under, then
+				// each card pulled to the top of the top lane with the
+				// first n-1 of the others beside it. Every one holds
+				// exactly n on top; the first is always offered.
+				for i := range cards {
+					p := base()
+					p.TopOrder = []string{cards[i].String()}
+					p.Bottom = []string{}
+					for j, other := range cards {
+						if j == i {
+							continue
+						}
+						if len(p.TopOrder) < n {
+							p.TopOrder = append(p.TopOrder, other.String())
+						} else {
+							p.Bottom = append(p.Bottom, other.String())
+						}
+					}
+					e.addChoice(c, reason+": "+cardName(g, cards[i])+" on top", p)
+				}
+				break
+			}
+			lane := func(p *choiceParams, ids []string) {
+				if c.LibraryPlacement == game.LibraryPlaceBottom {
+					p.Bottom = ids
+					p.TopOrder = []string{}
+				} else {
+					p.TopOrder = ids
+					p.Bottom = []string{}
+				}
+			}
+			p := base()
+			lane(&p, all)
+			e.addChoice(c, reason+": leave the order alone", p)
+			for i, id := range cards {
+				if i == 0 {
+					continue
+				}
+				p = base()
+				ids := []string{id.String()}
+				for j, other := range cards {
+					if j != i {
+						ids = append(ids, other.String())
+					}
+				}
+				lane(&p, ids)
+				e.addChoice(c, reason+": put "+cardName(g, id)+" first", p)
+			}
+			if c.LibraryPlacement == game.LibraryPlaceTopOrBottom {
+				p = base()
+				p.Bottom = all
+				p.TopOrder = []string{}
+				e.addChoice(c, reason+": all on the bottom", p)
+				if len(cards) > 1 {
+					for i, id := range cards {
+						p = base()
+						p.Bottom = []string{id.String()}
+						for j, other := range cards {
+							if j != i {
+								p.TopOrder = append(p.TopOrder, other.String())
+							}
+						}
+						e.addChoice(c, reason+": "+cardName(g, id)+" on the bottom", p)
+					}
+				}
 			}
 
 		case game.PendingChoiceMayCast:

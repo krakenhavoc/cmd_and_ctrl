@@ -54,32 +54,6 @@ func b02CreatureCardLeftYourGraveyard(ev game.Event, source *game.Card, g *game.
 	return ok && c.IsCreature() && c.Owner == source.Controller
 }
 
-// b02UntapLandsYouControl untaps up to n tapped lands `controller`
-// controls, in battlefield order. Snap's "untap up to two lands"
-// prints no "target" and no "you control" — it is a resolution-time
-// choice among every land at the table — but the only lands a
-// player ever wants untapped are their own tapped ones, and the
-// engine has no resolution-time pick-a-permanent prompt for a
-// spell. Auto-picking the first n is never stronger than printed
-// (the printed card allows exactly this outcome), only less
-// controllable, and it is declared on the card.
-func b02UntapLandsYouControl(ctx *Context, controller uuid.UUID, n int) error {
-	untapped := 0
-	for _, c := range ctx.Game.BattlefieldCardsForEffect() {
-		if untapped >= n {
-			break
-		}
-		if c.Controller != controller || !c.IsLand() || !c.Tapped {
-			continue
-		}
-		if err := (UntapTarget{Target: c.InstanceID}).Apply(ctx); err != nil {
-			return err
-		}
-		untapped++
-	}
-	return nil
-}
-
 // b02CountLandsControlledBy counts the lands a player controls —
 // Avenger of Zendikar's "for each land you control".
 func b02CountLandsControlledBy(g *game.Game, controller uuid.UUID) int {

@@ -2,13 +2,10 @@ package game
 
 import "testing"
 
-// infect_wither_toxic_test.go pins the half of ADR 0056 that landed
-// ahead of its wiring: the token grammar, the cumulative-append rule
-// and the two pure result functions. The engine-level tests from the
-// ADR's test plan are at the bottom, skipped, naming the seam each of
-// them waits on — they are the acceptance list for the change that
-// branches on any of this, and they are written down here so that
-// change has nothing left to decide.
+// infect_wither_toxic_test.go pins the pure half of ADR 0056: the
+// token grammar, the cumulative-append rule and the two result
+// functions. The engine-level tests — the damage tail actually placing
+// the counters — are in infect_wither_toxic_tail_test.go.
 //
 // Card fixtures come from cardWithAbilities (keywords_test.go), which
 // is the battlefield shape: a populated `effective`, so the tokens
@@ -278,61 +275,4 @@ func TestToxicIsNotScaledByTheDamageAmount(t *testing.T) {
 	if doubledLife != 4 || singleLife != 2 {
 		t.Errorf("life loss = %d and %d, want 4 and 2: toxic must not change the damage", doubledLife, singleLife)
 	}
-}
-
-// ---------------------------------------------------------------
-// ADR 0056 test plan, engine level. Skipped until the seams below
-// land — the reason is named on each skip so the next pass can delete
-// the line rather than rediscover the dependency.
-//
-// PR 1 (counters on players through the CR 614 window, and who put
-// them) has since landed, so the skips no longer name it: every one of
-// these five now waits on the SAME thing, ADR 0056's PR 2 — the three
-// keywords in the damage tail. The window they place their counters
-// through, the placer those counters are credited to, the resume that
-// sweeps when the placement pauses and the layer bump a poison count
-// needs are all in place and pinned by player_counters_test.go and
-// cards/effects/counter_placer_test.go.
-// ---------------------------------------------------------------
-
-// TestInfectCombatDamagePutsMinusOneCountersOnBlocker is ADR 0056
-// test plan item 1: a 2-power infect attacker blocked by a 2/2 puts
-// two -1/-1 counters on it, DamageMarked stays 0, the SBA destroys
-// the blocker, and the counters are still there after cleanup.
-func TestInfectCombatDamagePutsMinusOneCountersOnBlocker(t *testing.T) {
-	t.Skip("ADR 0056 Decision 3, PR 2: the counter window and its CounterPlacer landed in PR 1; what is left is the damageTail infect/wither fields and the -1/-1 placement through that window (damage_tail.go + permanent_damage.go)")
-}
-
-// TestInfectDamageToPlayerGivesPoisonNotLife is ADR 0056 test plan
-// item 3: poison goes up by the amount, life does not change, no
-// EventChangeLife fires, and EventDealDamage still fires with Combat
-// set.
-func TestInfectDamageToPlayerGivesPoisonNotLife(t *testing.T) {
-	t.Skip("ADR 0056 Decision 4, PR 2: ReplacementEvent.CounterPlayer and EventPlayerCounterPlaced landed in PR 1, so the poison has somewhere to go; what is left is the damageTail infect field and the player branch that places it (damage_tail.go)")
-}
-
-// TestToxicAddsPoisonOnCombatDamageToPlayerOnly is ADR 0056 test plan
-// item 5: 2 life and 1 poison from a 2/2 with toxic 1, nothing
-// against a blocker or a planeswalker, nothing on noncombat damage,
-// and two instances summing.
-func TestToxicAddsPoisonOnCombatDamageToPlayerOnly(t *testing.T) {
-	t.Skip("ADR 0056 Decision 4, PR 2: needs the tokens in canonicalKeywords and the toxicTotal field on damageTail")
-}
-
-// TestInfectSurvivesADamageAssignmentPause is ADR 0056 test plan item
-// 16: a multi-blocker infect attacker's CR 510.1c assignment prompt,
-// answered after the attacker has died to first-strike damage, still
-// puts counters — and a frame decoded from a snapshot written before
-// the fields existed resumes as ordinary damage.
-func TestInfectSurvivesADamageAssignmentPause(t *testing.T) {
-	t.Skip("ADR 0056 Decision 2, PR 2: needs SourceInfect/SourceWither/SourceToxic on DamageAssignmentFrame (pending_choice.go) and the fill in queueDamageAssignmentPromptLocked (mutations.go)")
-}
-
-// TestCounterReplacementsSeeTheDamageResult is ADR 0056 test plan
-// item 14: the Vizier of Remedies ruling. The damage event completes
-// (lifelink credited, the continuation run with the damage amount), a
-// CR 616 prompt is queued for the SEPARATE counter event, and
-// answering it lands the counters and sweeps.
-func TestCounterReplacementsSeeTheDamageResult(t *testing.T) {
-	t.Skip("ADR 0056 Decisions 3 and 5, PR 2: the counter-resume hardening and the placer fields landed in PR 1 (player_counters_test.go pins both); what is left is the damage tail placing the counters, so there is a damage RESULT for a counter replacement to see")
 }

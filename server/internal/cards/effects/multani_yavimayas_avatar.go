@@ -17,13 +17,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // graveyard (b17LandCardsInGraveyard), recomputed with the layer
 // cache.
 //
-// Sandbox simplification, declared (the Ketria Triome posture, one
-// whole ability omitted): the graveyard ability is not implemented.
-// An ability activated from the graveyard has no shape (the
-// Gravecrawler gap), and "return two lands you control to their
-// owner's hand" as a cost has none either. Weaker than printed,
-// never stronger — Multani is recast from the command zone or
-// reanimated like any other creature.
+// The last ability is a CR 602 activation from the GRAVEYARD
+// (CR 113.6) with a return-to-hand cost (#1381): Plus(ManaCost("{1}{G}"),
+// ReturnNToHand(2, "two lands you control", Land())) — the same
+// component Quirion Ranger's activated ability pays, reached from the
+// graveyard exactly as Reassembling Skeleton's mana-only ability is.
+// Multani returns to HAND, not the battlefield, so no Controller or
+// Tapped clause applies.
 //
 // With no land on the battlefield and none in the graveyard Multani
 // is the printed 0/0 he prints, and the next state-based check puts
@@ -41,8 +41,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "4b8bf64b-4800-45ff-81c6-2857f34999b5",
 		Name:            "Multani, Yavimaya's Avatar",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"The last ability isn't implemented — Multani can't be returned from your graveyard by bouncing two lands."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"reach", "trample"},
 		Static: []game.StaticAbility{{
 			Layer:    game.Layer7PT,
@@ -54,6 +53,23 @@ func init() {
 				n := b03LandsControlled(g, source.Controller) + b17LandCardsInGraveyard(g, source.Controller)
 				c.Power += n
 				c.Toughness += n
+			},
+		}},
+		Activated: []ActivatedAbility{{
+			Label: "{1}{G}, Return two lands you control to their owner's hand: Return this card from your graveyard to your hand.",
+			Cost:  Plus(ManaCost("{1}{G}"), ReturnNToHand(2, "two lands you control", Land())),
+			Zones: []game.ZoneKind{game.ZoneGraveyard},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				id := item.SourceCardID
+				// CR 602.5 / 608.2a: the card may have left the
+				// graveyard between activation and resolution.
+				if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneGraveyard {
+					return nil
+				}
+				return (ReturnFromGraveyard{
+					Target: id,
+					Dest:   game.ZoneHand,
+				}).Apply(NewContext(g, item))
 			},
 		}},
 	})

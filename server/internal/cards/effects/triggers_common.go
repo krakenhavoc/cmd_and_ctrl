@@ -104,7 +104,7 @@ func OnAny(kinds []game.EventKind, when When, label string, effect Effect) game.
 	}
 }
 
-// Optional makes a trigger a CR 603.4 "you may": the harvester asks
+// Optional makes a trigger a CR 603.5 "you may": the harvester asks
 // `question` before Build runs, and a "No" drops the trigger.
 func Optional(t game.TriggeredAbility, question string) game.TriggeredAbility {
 	t.OptionalPrompt = &game.TriggerOptionalPrompt{Question: question}
@@ -244,6 +244,23 @@ func YouCast(spell CardPredicate) When {
 		c, ok := g.LookupCardForEffect(ev.CardID)
 		return ok && (spell == nil || spell(g, source.Controller, c))
 	}
+}
+
+// AnOpponentSearchesTheirOwnLibrary — "Whenever an opponent searches
+// THEIR library" (Archivist of Oghma, Wan Shi Tong, Librarian). Watch
+// game.EventSearchLibrary.
+//
+// Two things this rules out, both load-bearing: a plain shuffle
+// (Label == "shuffle") is not a search, so a fetchland doesn't
+// double-trigger it; and Target — #1335's library-owner field — must
+// equal Actor, so Bribery-style search of a DIFFERENT player's
+// library (Actor searching, Target's library) does not read as "the
+// searcher's own", which is stronger than printed.
+func AnOpponentSearchesTheirOwnLibrary(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+	if ev.Label == "shuffle" {
+		return false
+	}
+	return ev.Actor != uuid.Nil && ev.Actor != source.Controller && ev.Actor == ev.Target
 }
 
 // AnOpponentCast — an opponent cast a spell matching `spell` (nil
@@ -634,6 +651,21 @@ func InGraveyard(t game.TriggeredAbility) game.TriggeredAbility {
 func InExile(t game.TriggeredAbility) game.TriggeredAbility {
 	t.Zones = []game.ZoneKind{game.ZoneExile}
 	return t
+}
+
+// WhenThisBecomesPlotted — "When this card becomes plotted, …"
+// (CR 702.170c/d; Longhorn Sharpshooter, Aloe Alchemist; #1382).
+//
+// A card becomes plotted in exile, so the ability watches from exile —
+// the plot special action from hand and an "it becomes plotted" effect
+// (Aven Interrupter) both end in Game.PlotExiledCardForEffect, which is
+// the one emitter of EventBecomesPlotted. A plain exile emits nothing,
+// so an exiled-but-not-plotted card does not trigger. The trigger's
+// controller is the card's owner (CR 108.4 — the harvest makes the
+// exiled source's Controller its Owner), even when an opponent's Aven
+// Interrupter did the plotting.
+func WhenThisBecomesPlotted(label string, effect Effect) game.TriggeredAbility {
+	return InExile(On(game.EventBecomesPlotted, Self, label, effect))
 }
 
 // ThisWasPutIntoYourGraveyardFromYourLibrary — "when this card is put

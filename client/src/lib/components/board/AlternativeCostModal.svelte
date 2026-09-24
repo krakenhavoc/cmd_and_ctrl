@@ -15,7 +15,7 @@
   // #1012: "leaves the printed cost available" is not true of every
   // cast, and the modal used to assume it was. A flashback cast out
   // of the graveyard may not be announced at the cost in the card's
-  // corner (CR 702.34b, rule 3 of validateCastPathLocked), so "Its
+  // corner (CR 702.34a, rule 3 of validateCastPathLocked), so "Its
   // mana cost" was a preselected default the server would refuse with
   // ErrCastCostRequired. The server now says so —
   // `alternative_cost_required` — and the row is dropped rather than
@@ -41,11 +41,18 @@
   // A card with optional costs and no alternative costs opens this
   // same modal with only the add-ons showing, which is why the
   // heading and the hint are written for both.
+  //
+  // #1267 (CR 702.174a): a gift offer is one more toggle, with one
+  // more question under it — WHICH opponent the gift is promised to.
+  // The radio list of opponents appears only while the toggle is on,
+  // and Cast stays disabled until one is picked, because the server
+  // refuses a gift announced with nobody to receive it.
   import { onDestroy } from "svelte";
-  import type { CardView } from "../../protocol";
+  import type { CardView, PlayerView } from "../../protocol";
   import {
     alternativeCostsOf,
     optionalCostMaxTimes,
+    optionalCostOpponentOptions,
     optionalCostPayOptions,
     optionalCostSelection,
     optionalCostsOf,
@@ -58,12 +65,20 @@
     card: CardView | null;
     // Fires with the chosen cost's key (or undefined for "pay the
     // printed mana cost") and the optional costs being paid, as
-    // repeated indices.
-    onConfirm: (key: string | undefined, optional: number[]) => void;
+    // repeated indices. #1267: plus the opponent a gift is promised
+    // to, present exactly when a gift offer is being paid.
+    onConfirm: (key: string | undefined, optional: number[], giftOpponent?: string) => void;
     onCancel: () => void;
+    // #1267: the table, so a gift's opponent picker can name players
+    // rather than print their IDs.
+    seats?: PlayerView[];
   }
 
-  const { card, onConfirm, onCancel }: Props = $props();
+  const { card, onConfirm, onCancel, seats = [] }: Props = $props();
+
+  function playerName(id: string): string {
+    return seats.find((s) => s.id === id)?.name ?? "Opponent";
+  }
 
   const offers = $derived(card ? alternativeCostsOf(card) : []);
   const addOns = $derived(card ? optionalCostsOf(card) : []);
@@ -84,8 +99,28 @@
     const offer = addOns[index];
     if (!offer) return true;
     const options = optionalCostPayOptions(offer);
-    return options !== undefined && options.length === 0;
+    if (options !== undefined && options.length === 0) return true;
+    // #1267: a gift with nobody left to promise it to.
+    const opponents = optionalCostOpponentOptions(offer);
+    return opponents !== undefined && opponents.length === 0;
   }
+
+  // #1267: the opponent the gift is promised to. Only read while the
+  // gift offer is being paid.
+  let giftTo = $state<string | undefined>(undefined);
+
+  // The gift offer being paid, if any. At most one per card.
+  const giftOffer = $derived(
+    addOns.find((o) => o.chooses_opponent === true && timesPaid(o.index) > 0),
+  );
+  // A drop of the toggle forgets the pick, and a pick that is no
+  // longer offered is not sent.
+  const giftOpponent = $derived(
+    giftOffer && giftTo !== undefined && (giftOffer.opponent_options ?? []).includes(giftTo)
+      ? giftTo
+      : undefined,
+  );
+  const canConfirm = $derived(giftOffer === undefined || giftOpponent !== undefined);
 
   function timesPaid(index: number): number {
     return paying.get(index) ?? 0;
@@ -120,11 +155,13 @@
       lastCardID = id;
       chosen = printedOK ? undefined : offers[0]?.key;
       paying = new Map();
+      giftTo = undefined;
     }
   });
 
   function confirm(): void {
-    onConfirm(chosen, optionalCostSelection(paying));
+    if (!canConfirm) return;
+    onConfirm(chosen, optionalCostSelection(paying), giftOpponent);
   }
 
   function handleKey(e: KeyboardEvent): void {
@@ -243,6 +280,32 @@
                     <span class="note cost">{offer.mana_cost}</span>
                   {/if}
                 </button>
+                {#if offer.chooses_opponent && timesPaid(offer.index) > 0}
+                  <div class="gift-picker" role="radiogroup" aria-label="Promise the gift to">
+                    <p class="prompt-hint gift-hint">
+                      Promise the gift to: <span class="prompt-src" aria-hidden="true"
+                        >CR 702.174a</span
+                      >
+                    </p>
+                    <ul class="prompt-options">
+                      {#each optionalCostOpponentOptions(offer) ?? [] as pid (pid)}
+                        <li>
+                          <button
+                            type="button"
+                            class="prompt-opt"
+                            role="radio"
+                            class:on={giftOpponent === pid}
+                            aria-checked={giftOpponent === pid}
+                            onclick={() => (giftTo = pid)}
+                          >
+                            <span class="prompt-radio" aria-hidden="true"></span>
+                            <span class="name">{playerName(pid)}</span>
+                          </button>
+                        </li>
+                      {/each}
+                    </ul>
+                  </div>
+                {/if}
               {/if}
             </li>
           {/each}
@@ -252,7 +315,13 @@
         <button type="button" class="ghost" onclick={onCancel}
           >Cancel <span class="kbd">Esc</span></button
         >
-        <button type="button" class="primary" onclick={confirm}>
+        <button
+          type="button"
+          class="primary"
+          disabled={!canConfirm}
+          title={canConfirm ? undefined : "Choose an opponent to promise the gift to"}
+          onclick={confirm}
+        >
           Cast <span class="kbd">↵</span>
         </button>
       </div>
@@ -272,6 +341,12 @@
   }
   .add-on-hint {
     margin-top: 12px;
+  }
+  .gift-picker {
+    margin: 6px 0 0 24px;
+  }
+  .gift-hint {
+    margin: 0 0 4px;
   }
   .stepper {
     display: flex;

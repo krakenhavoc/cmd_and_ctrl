@@ -75,40 +75,46 @@ func TestPhaseOfMapping(t *testing.T) {
 }
 
 func TestTurnAdvanceWithinTurn(t *testing.T) {
-	turn := Turn{Number: 1, ActiveSeat: 0, Phase: PhaseBeginning, Step: StepUntap}
-	turn = turn.advance(4)
+	turn := Turn{Seq: 1, Round: 1, ActiveSeat: 0, Phase: PhaseBeginning, Step: StepUntap}
+	turn = turn.advance(4, 0)
 	if turn.Step != StepUpkeep {
 		t.Errorf("after untap: got %q, want %q", turn.Step, StepUpkeep)
 	}
-	if turn.Number != 1 || turn.ActiveSeat != 0 {
-		t.Errorf("turn/seat changed mid-turn: number=%d seat=%d", turn.Number, turn.ActiveSeat)
+	if turn.Seq != 1 || turn.Round != 1 || turn.ActiveSeat != 0 {
+		t.Errorf("turn/seat changed mid-turn: number=%d seat=%d", turn.Round, turn.ActiveSeat)
 	}
 }
 
 func TestTurnAdvanceWrapsToNextSeat(t *testing.T) {
 	// Start at the last step of seat 0 on turn 1.
-	turn := Turn{Number: 1, ActiveSeat: 0, Phase: PhaseEnding, Step: StepCleanup}
-	turn = turn.advance(4)
+	turn := Turn{Seq: 1, Round: 1, ActiveSeat: 0, Phase: PhaseEnding, Step: StepCleanup}
+	turn = turn.advance(4, 0)
 	if turn.Step != StepUntap {
 		t.Errorf("after cleanup: got %q, want %q", turn.Step, StepUntap)
 	}
 	if turn.ActiveSeat != 1 {
 		t.Errorf("seat after wrap: got %d, want 1", turn.ActiveSeat)
 	}
-	if turn.Number != 1 {
-		t.Errorf("turn number: got %d, want 1 (still on turn 1 until all 4 seats play)", turn.Number)
+	if turn.Round != 1 {
+		t.Errorf("turn number: got %d, want 1 (still on turn 1 until all 4 seats play)", turn.Round)
+	}
+	if turn.Seq != 2 {
+		t.Errorf("turn sequence after wrap: got %d, want 2", turn.Seq)
 	}
 }
 
 func TestTurnAdvanceWrapsToNextRound(t *testing.T) {
 	// Last step of the last seat on turn 1 → seat 0, turn 2.
-	turn := Turn{Number: 1, ActiveSeat: 3, Phase: PhaseEnding, Step: StepCleanup}
-	turn = turn.advance(4)
+	turn := Turn{Seq: 4, Round: 1, ActiveSeat: 3, OrderSeat: 3, Phase: PhaseEnding, Step: StepCleanup}
+	turn = turn.advance(4, 0)
 	if turn.ActiveSeat != 0 {
 		t.Errorf("seat after full round: got %d, want 0", turn.ActiveSeat)
 	}
-	if turn.Number != 2 {
-		t.Errorf("turn number after full round: got %d, want 2", turn.Number)
+	if turn.Round != 2 {
+		t.Errorf("turn number after full round: got %d, want 2", turn.Round)
+	}
+	if turn.Seq != 5 {
+		t.Errorf("turn sequence after full round: got %d, want 5", turn.Seq)
 	}
 	if turn.Step != StepUntap {
 		t.Errorf("step after full round: got %q, want %q", turn.Step, StepUntap)
@@ -121,11 +127,21 @@ func TestIndexOfStepUnknownReturnsNegative(t *testing.T) {
 	}
 }
 
+func TestIsNewTurnUsesSequenceNotSeat(t *testing.T) {
+	current := Turn{Seq: 7, ActiveSeat: 2}
+	if current.IsNewTurn(Turn{Seq: 7, ActiveSeat: 3}) {
+		t.Error("a seat change inside the same turn identity reported a new turn")
+	}
+	if !current.IsNewTurn(Turn{Seq: 8, ActiveSeat: 2}) {
+		t.Error("a consecutive turn for the same seat did not report a new turn")
+	}
+}
+
 func TestTurnAdvanceIntoUntapSetsNoPriority(t *testing.T) {
 	// Cleanup → next seat's Untap must land with PriorityHolder set to
 	// the NoPriority sentinel — S13 no-priority-on-untap guarantee.
-	turn := Turn{Number: 1, ActiveSeat: 0, Phase: PhaseEnding, Step: StepCleanup}
-	turn = turn.advance(4)
+	turn := Turn{Seq: 1, Round: 1, ActiveSeat: 0, Phase: PhaseEnding, Step: StepCleanup}
+	turn = turn.advance(4, 0)
 	if turn.Step != StepUntap {
 		t.Fatalf("after cleanup: got %q, want %q", turn.Step, StepUntap)
 	}
@@ -135,8 +151,8 @@ func TestTurnAdvanceIntoUntapSetsNoPriority(t *testing.T) {
 }
 
 func TestTurnAdvanceIntoCleanupSetsNoPriority(t *testing.T) {
-	turn := Turn{Number: 1, ActiveSeat: 0, Phase: PhaseEnding, Step: StepEnd, PriorityHolder: 0}
-	turn = turn.advance(4)
+	turn := Turn{Seq: 1, Round: 1, ActiveSeat: 0, Phase: PhaseEnding, Step: StepEnd, PriorityHolder: 0}
+	turn = turn.advance(4, 0)
 	if turn.Step != StepCleanup {
 		t.Fatalf("after end: got %q, want %q", turn.Step, StepCleanup)
 	}
@@ -164,8 +180,8 @@ func TestTurnAdvanceIntoPriorityStepsSetsActiveSeat(t *testing.T) {
 		{StepPostcombatMain, StepEnd},
 	}
 	for _, c := range cases {
-		turn := Turn{Number: 1, ActiveSeat: 2, Phase: PhaseOf(c.from), Step: c.from}
-		got := turn.advance(4)
+		turn := Turn{Round: 1, ActiveSeat: 2, Phase: PhaseOf(c.from), Step: c.from}
+		got := turn.advance(4, 0)
 		if got.Step != c.want {
 			t.Errorf("advance from %q: got step %q, want %q", c.from, got.Step, c.want)
 		}

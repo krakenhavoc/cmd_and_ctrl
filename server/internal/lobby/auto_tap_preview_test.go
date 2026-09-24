@@ -70,6 +70,16 @@ func newPreviewFixture(t *testing.T) *previewFixture {
 	if _, err := l.Start(meta.ID); err != nil {
 		t.Fatalf("Start: %v", err)
 	}
+	// Production start rolls for first player. This fixture's "alice" is
+	// the casting seat, so bind that role to the roll winner rather than
+	// back to join order; the endpoint behavior under test is unchanged.
+	started, err := l.LookupGame(meta.ID)
+	if err != nil {
+		t.Fatalf("LookupGame: %v", err)
+	}
+	if started.Turn.ActiveSeat == 1 {
+		alice, bob = bob, alice
+	}
 	tok, _, err := a.Issue(context.Background(), auth.Principal{
 		Role: auth.RolePlayer, GameID: meta.ID, PlayerID: alice, Name: "Alice",
 	}, time.Hour)

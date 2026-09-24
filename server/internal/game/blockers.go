@@ -25,6 +25,14 @@ import "github.com/google/uuid"
 // carries it to the client, which refuses to auto-pass while it
 // holds. The server stays permissive, so no existing client, test, or
 // bot is broken by a new rejection.
+//
+// #1279 added the piece this header used to say was missing: a
+// COMPLETION POINT for each defending player's declaration
+// (block_completion.go). The step still grants the active player
+// priority on entry, but "the defender chose not to block" and "the
+// defender has not acted yet" are now two different states, and the
+// signal below stops holding for a defender whose declaration is
+// complete.
 
 // BlockerEligible reports whether card b could be declared as a
 // blocker by `seat` right now, ignoring which attacker it would be
@@ -65,6 +73,12 @@ func BlockerEligible(b *Card, seat uuid.UUID) bool {
 // the answer stays true while any eligible creature remains — "stop
 // once, then resume auto-passing" would slam the window shut on the
 // first block, which is the same bug wearing a different hat.
+//
+// It IS consumed by the declaration being COMPLETE (#1279): once the
+// defender has passed, sent finish_blocks, or had no legal block when
+// the step began, the generator offers them nothing and the answer is
+// false. Before #1279 a defender who had already declared was stopped
+// again every time priority came back to them in the step.
 //
 // Returns false outside the declare_blockers step, for an unknown or
 // eliminated seat, and for a seat with no legal block — in which case
@@ -156,15 +170,14 @@ func (g *Game) SeatsOwingBlockDecisionLocked() []int {
 // blocker from one attacker to another.
 //
 // So the verb only STAGES the pairing. Nothing is announced until
-// the declaration is locked in, which is the first point at which
-// play moves on inside the step:
-//
-//   - runStateChecksLocked, the engine's "a player would receive
-//     priority" boundary (a trick cast in the step, a resolution), and
-//   - the two places the cursor can leave the step — AdvanceStep and
-//     PassPriority's wrap — which call runStateChecksLocked
-//     themselves when a declaration is still pending, so the lock-in
-//     always happens INSIDE declare_blockers.
+// the declaration is locked in, and since #1279 that is the moment the
+// blocking player's declaration COMPLETES (block_completion.go): they
+// pass priority, send finish_blocks, or the cursor leaves the step —
+// AdvanceStep and PassPriority's wrap complete every pending defender
+// first, so the lock-in always happens INSIDE declare_blockers. The
+// lock-in still sits at the top of runStateChecksLocked, where it
+// announces blocks a defender adds AFTER completing (the sandbox's late
+// block); a pending defender's staged blocks wait for them.
 //
 // commitBlockDeclarationLocked is the one place block-declaration
 // triggers are harvested from: it emits the events, and the ordinary
@@ -185,7 +198,7 @@ func (g *Game) blockDeclarationPendingLocked() bool {
 	}
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
-		if c.BlockingTarget == uuid.Nil {
+		if c.BlockingTarget == uuid.Nil || !g.blockAnnounceableLocked(c) {
 			continue
 		}
 		if g.announcedBlocks[c.InstanceID] != c.BlockingTarget {
@@ -237,6 +250,14 @@ func (g *Game) commitBlockDeclarationLocked() {
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
 		if c.BlockingTarget == uuid.Nil || g.announcedBlocks[c.InstanceID] == c.BlockingTarget {
+			continue
+		}
+		// #1279: only a COMPLETED declaration announces. A defender
+		// still deciding keeps their staged blocks to themselves until
+		// they finish, pass, or the step ends — the priority boundaries
+		// the sandbox lets happen before that (a trick cast in the
+		// step) are not the end of their declaration.
+		if !g.blockAnnounceableLocked(c) {
 			continue
 		}
 		fresh = append(fresh, pairing{blocker: c.InstanceID, attacker: c.BlockingTarget, actor: c.Controller})
@@ -293,6 +314,8 @@ func (g *Game) commitBlockDeclarationLocked() {
 func (g *Game) clearBlockStateLocked() {
 	g.announcedBlocks = nil
 	g.blockedAttackers = nil
+	// #1279: and which defenders have completed it.
+	g.blocksDeclared = nil
 }
 
 // attackerBlockedLocked reports whether the attacker is blocked
@@ -305,4 +328,83 @@ func (g *Game) clearBlockStateLocked() {
 // Caller must hold g.mu (read or write).
 func (g *Game) attackerBlockedLocked(attacker uuid.UUID) bool {
 	return g.blockedAttackers[attacker]
+}
+
+// UnblockedAttackerForEffect reports whether `id` is an UNBLOCKED
+// ATTACKER right now — CR 509.1h's term, and the question ninjutsu's
+// "Return an unblocked attacker you control to hand" cost asks
+// (CR 702.49a, #1227). It is the only exported reader of the blocked
+// record; before it, `Game.blockedAttackers` was visible to the combat
+// damage steps and to nothing in `internal/cards/effects`.
+//
+// Three facts, and all three are load-bearing:
+//
+//   - the permanent is ATTACKING (Card.AttackingTarget). A creature
+//     removed from combat, or one whose combat has ended, is not —
+//     both of those clear the field.
+//   - the cursor is at the DECLARE BLOCKERS step or later in this
+//     combat. "Unblocked" is not a property an attacker has before
+//     blockers are declared; CR 509.1h decides it AS PART of that
+//     declaration, which is why the Gatherer ruling on Ninja of the
+//     Deep Hours says a ninjutsu ability can be activated only once
+//     blockers have been declared. Without this clause every attacker
+//     would read as unblocked in the declare-attackers step, because
+//     the blocked record is empty until the block lock-in writes it.
+//   - NOTHING is blocking it. That is two reads, not one: the blocked
+//     RECORD (written by commitBlockDeclarationLocked, and the fact
+//     that outlives a blocker which has since died, been bounced or
+//     been removed from combat — CR 510.1c, #715), and a block that
+//     is STAGED and not yet announced. The second matters because
+//     DeclareBlocker only stages the pairing and the lock-in runs at
+//     the next priority boundary (#830): between the defender's click
+//     and that boundary the record is still empty, and an attacker
+//     with a blocker already pointed at it must not read as unblocked.
+//
+// And a fourth, since #1279: in the declare-blockers step the
+// attacker's DEFENDING PLAYER must have completed their declaration
+// (block_completion.go). Before #1279 nothing marked the declaration
+// complete, so an attacker at the top of the step — before the
+// defender had clicked anything — read as unblocked, and ninjutsu was
+// available a beat early. It now waits for the defender to finish,
+// pass, or have no legal block at all.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) UnblockedAttackerForEffect(id uuid.UUID) bool {
+	if id == uuid.Nil || !g.blockersDeclaredStepLocked() {
+		return false
+	}
+	c := findBattlefieldCard(g, id)
+	if c == nil || c.AttackingTarget == uuid.Nil {
+		return false
+	}
+	// #1279: and its defending player has DECLARED. Before they have,
+	// the attacker is neither blocked nor unblocked.
+	if !g.blockDeclarationCompleteForAttackerLocked(c) {
+		return false
+	}
+	if g.attackerBlockedLocked(id) {
+		return false
+	}
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].BlockingTarget == id {
+			return false
+		}
+	}
+	return true
+}
+
+// blockersDeclaredStepLocked reports whether the cursor is at a step
+// by which CR 509.1's declare-blockers turn-based action has happened
+// — the declare-blockers step itself and the three combat steps after
+// it. Every other step of the turn, combat's own first two included,
+// answers false: there is no declaration yet, so no attacker is
+// blocked OR unblocked.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) blockersDeclaredStepLocked() bool {
+	switch g.Turn.Step {
+	case StepDeclareBlockers, StepFirstStrikeDamage, StepCombatDamage, StepEndCombat:
+		return true
+	}
+	return false
 }

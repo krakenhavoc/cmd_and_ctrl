@@ -203,7 +203,7 @@ Three deliberate limits:
   Scales → Season → Season (8) can reach. Collapsing would remove a
   legal outcome, which is worse than one extra prompt.
 - **An effect that asks its controller a question is never
-  collapsed** — a CR 614.10 "may", a shockland's pay-life, a copy
+  collapsed** — a "may", a shockland's pay-life, a copy
   selector. Skipping the ordering prompt would skip its question too.
   Shared by both exceptions as `asksItsOwnQuestion`.
 - **An effect whose `Replace` writes its own SOURCE into the event is
@@ -301,7 +301,7 @@ apply-loop settles without prompting:
   an eliminated chooser — one effect at a time, re-gathering after each
   (CR 616.1f; §5e);
 - anything that would ask its own question (`asksItsOwnQuestion`: a
-  CR 614.10 "may", a shockland's pay-life, a copy selector) is skipped
+  "may", a shockland's pay-life, a copy selector) is skipped
   un-applied, the weaker-never-stronger posture
   `optionalReplacementResumableLocked` takes for an entry with nothing
   to resume it.
@@ -481,7 +481,7 @@ life or damage event:
 - when the departed player is the one the event happens to (the CR 616
   chooser always is), nothing lands — CR 800.4a takes them out of the
   game — and the continuation runs with zero;
-- when they only owned a CR 614.10 "may" on somebody else's event, the
+- when they only owned a "may" on somebody else's event, the
   pipeline resumes and the existing gone-chooser escapes decide for them
   (the "may" is declined), and the event lands with its continuation.
 
@@ -528,7 +528,7 @@ Closes [#707](https://github.com/krakenhavoc/cmd_and_ctrl/issues/707),
 noticed while fixing [#605](https://github.com/krakenhavoc/cmd_and_ctrl/issues/605)
 (PR #701).*
 
-§8 makes the commander-zone rewrite a CR 614.10 "may", and #529 (see
+§8 makes the commander-zone rewrite a "may", and #529 (see
 the note in `zone_route.go`) moved the window that offers it down into
 the shared exit primitive so CR 903.9's "from ANYWHERE" holds for every
 route: countered, fizzled, exiled, bounced, tucked, milled. Asking is
@@ -646,6 +646,8 @@ Three things fell out of it:
   graveyard. Weaker than printed, never stronger; the same posture and
   the same rule (CR 601.2h) as `payLifeAsCostLocked` (§5b), which is
   the other half of the same cost line.
+  *(2026-09-24: superseded for a commander by §5af — the owner is now
+  asked BEFORE the payment, and the payment still settles.)*
 - **The undo snapshot needs its own copy of the route.**
   `cloneReplacementResume` shared the `zoneRoute` on the stated grounds
   that it is written once and only read afterwards. That stopped being
@@ -673,7 +675,7 @@ noticed by the #802/#801 agent in PR #845 and not fixed there.*
 never collapsed, "because skipping the ordering prompt would skip its
 question too". That was true of the two paths §5a was about. It was not
 true of the two paths that apply several effects once the prompt has
-been answered or ruled out, and both of them answered a CR 614.10 "may"
+been answered or ruled out, and both of them answered a "may"
 on its controller's behalf, in the direction that favours it.
 
 **1. The chosen-order loop asks.** `ResolveReplacementOrder` fires the
@@ -1115,7 +1117,7 @@ caveat Helm of Obedience carries, rewritten to say so.
 > diverted-card caveat both come off. What Helm still declares is the
 > OTHER half of its printed sentence: X bounds the cards the run takes
 > off the library, not the cards that arrive. That is the mill AMOUNT
-> (CR 701.13b counts cards moved, and it is the number Bruvac the
+> (CR 701.17b counts cards moved, and it is the number Bruvac the
 > Grandiloquent doubles), not the clause, and it is filed rather than
 > folded in here. *(Closed 2026-09-21 by
 > [#1161](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1161),
@@ -1450,6 +1452,13 @@ whose pipeline pauses stays where it was: weaker than printed, never
 stronger, and it is now the only site `optionalReplacementResumableLocked`
 and `offerEntryLifePaymentLocked` refuse to prompt for.
 
+*Superseded 2026-09-23 (#1322):* the batch is resumable now. It walks its
+cards' windows one at a time, carries itself across a question on
+`entryTail.batch`, and lands everything once the last answer is in, so
+simultaneity survives the pause. The one entry left unflagged is the
+sandbox `move_card` verb. See the
+[ADR 0061 amendment of 2026-09-23](0061-token-creation-and-discard-are-replaceable-events.md#amendment-2026-09-23-a-simultaneous-entry-can-ask-can-come-from-two-zones-and-the-exile-return-reports-what-arrived).
+
 **8. Nothing new is snapshotted.** `entryTail` rides the
 `replacementResume` frame the census already counts
 (`ChoiceResumeFrames`), and gets its own copy in
@@ -1525,7 +1534,7 @@ waits for the next destruction.
 battlefield goes through one exit primitive — destroy, sacrifice
 (CR 701.21a), the legend rule, an illegally attached Aura (CR 704.5m),
 zero toughness (CR 704.5f), zero loyalty (CR 704.5i), zero defense
-(CR 704.5v) — and every one of them ends in the same graveyard, so
+(CR 704.5v/w) — and every one of them ends in the same graveyard, so
 there was nothing a reader could have looked at to tell them apart.
 Indestructible sidesteps the question by filtering BEFORE the window
 opens; a replacement cannot. So the destroy route sets the flag
@@ -1542,7 +1551,7 @@ They still leave as one simultaneous event, each by its own route:
 it does not spend the shield.** `DestroyOptions{CantBeRegenerated}` →
 `zoneRoute` → `ReplacementEvent.CantBeRegenerated` → the built-in's
 `AppliesTo` declines. Gating `AppliesTo` rather than consuming the
-shield inside `Replace` is CR 701.19d: an ignored shield stays on the
+shield inside `Replace` is CR 701.19c: an ignored shield stays on the
 permanent for a later destruction that does not say this. The rider is
 VARIADIC on the destroy verbs (`DestroyPermanentForEffect(id, opts
 ...DestroyOptions)`) so that the ~120 existing "destroy this" call
@@ -1960,7 +1969,7 @@ instruction is the card's, so it runs inside the catalog's `OnResolve`,
 which is BEFORE the resolution frame decides where the spell goes next.
 All three of that frame's post-effect exits assume the spell is still
 on the stack: the battlefield entry for a permanent, CR 707.10's
-cease-to-exist for a copy, and CR 608.2m's "as the final part of an
+cease-to-exist for a copy, and CR 608.2n's "as the final part of an
 instant or sorcery spell's resolution, the spell is put into its
 owner's graveyard".
 
@@ -1979,7 +1988,7 @@ out loud**, and that is the general lesson worth recording beside §5f.
 **Decision: one check, in the resolution frame** —
 `spellMovedItselfLocked` (`game/mutations.go`), immediately after the
 card's own body and its chosen modes have run, before the three exits
-branch. CR 608.2m is the rule that licenses it: the thing put into a
+branch. CR 608.2n is the rule that licenses it: the thing put into a
 graveyard is the spell ON THE STACK, and there is none.
 
 It sits in the frame rather than in `routeStackCardToGraveyardLocked`
@@ -2062,14 +2071,14 @@ helper.** Two gates, and both are the rules' own:
 | Instruction | Window? |
 | --- | --- |
 | mill N into a graveyard | yes |
-| "exile the top N cards of your library" (the same helper, `dest` exile) | no — CR 701.13a defines the keyword action by where the cards go, and `millRoute` has honoured that distinction since #893 |
+| "exile the top N cards of your library" (the same helper, `dest` exile) | no — CR 701.17a defines the keyword action by where the cards go, and `millRoute` has honoured that distinction since #893 |
 | an unbounded `until` run (Helm of Obedience, `n <= 0` with a predicate) | no — it names no number to double |
 | a count of zero or less | no — "one or more cards" is the printed condition |
 
 Same posture §5s takes for a scry of zero: you would not scry, so there
 is nothing to replace, and the continuation still runs.
 
-**3. The count is the INSTRUCTION's, not the library's.** CR 701.13b
+**3. The count is the INSTRUCTION's, not the library's.** CR 701.17b
 makes a player told to mill more cards than they have mill as many as
 possible, and that clamp stays where it was, in `millPlanLocked`, AFTER
 the window. So Bruvac doubling a twenty-card mill against a twelve-card
@@ -2731,7 +2740,7 @@ open CR 903.9 prompt replays the same answer.
 mill amount. It is the opposite: X was only ever *modelled* as the
 amount, and that model is what made the two disagree.
 
-| | the AMOUNT (CR 701.13b) | the BOUND (this clause) |
+| | the AMOUNT (CR 701.17b) | the BOUND (this clause) |
 | --- | --- | --- |
 | what it counts | cards the instruction MOVES off the library | cards that are PUT INTO the named zone |
 | a diverted card | spends one (it was milled) | costs it nothing (it never arrived) |
@@ -2902,7 +2911,7 @@ three: `b14MillUntilLand` (Consuming Aberration) and Helm of Obedience
 into a graveyard, where the per-repetition window is the point, and
 `b27ExileTopUntilTotalManaValue` / Improvisation Capstone into EXILE,
 where no window opens at all because exiling the top N is not a mill
-(CR 701.13a). Every other mill in the catalog names a number and is
+(CR 701.17a). Every other mill in the catalog names a number and is
 untouched.
 
 ### 5z. Amendment, 2026-09-22: a CARD choice inside an entry replacement, and the third card-set pick
@@ -2913,7 +2922,7 @@ untouched.
 #### Context
 
 The entry pipeline could stop and ask three questions, and all three are
-yes/no-shaped: a CR 614.10 "may" (`Optional`, §5h), a shockland's
+yes/no-shaped: a "may" (`Optional`, §5h), a shockland's
 "you may pay 2 life" (`EntryLifeCost`, `entry_choice.go`) and a copy
 selector's "enter as a copy of what?" (`CopySelector`, §5o). None of them
 can express the one sentence twelve catalog-waiting cards print:
@@ -3139,7 +3148,7 @@ colour, so it cannot pay `{W}{U}`.
 #### Decision 2 — A production can never pause, and that is a rule
 
 Every `RepEventProduceMana` sets `mustSettleNow`. For the two halves of
-#793's cost line that flag is a cost argument; here it is CR 605.3a:
+#793's cost line that flag is a cost argument; here it is CR 605.3b:
 activating a mana ability is a single indivisible step with no stack and
 no priority window inside it, so there is no point between paying the
 cost and producing the mana at which anybody can be asked anything. The
@@ -3268,6 +3277,613 @@ also waits on.
   written decision rather than a fall-through — and the back-out for the
   fourth (`affectedPlayerForEvent`) is the gate test failing by name.
 
+### 5ac. Amendment, 2026-09-23: a counter placement carries its continuation
+
+**Issue [#1282](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1282).**
+Trackers [#882](https://github.com/krakenhavoc/cmd_and_ctrl/issues/882)
+(replacements) and [#879](https://github.com/krakenhavoc/cmd_and_ctrl/issues/879)
+(tables that wedge).
+
+#### The gap
+
+`AddCounterByForEffect` was the last pausable primitive with no
+continuation form. The RepEventCounter window queues the CR 616 ordering
+prompt when two different replacements apply (a Doubling Season beside a
+Hardened Scales) and returns nil with **nothing placed**; the placement
+lands from the resume, an action later. Every caller that did more work
+on the next line did it while the prompt was open. ADR 0081 and ADR 0087
+decision 7 both declared this for earthbend and amass. The sweep found
+three more:
+
+- **A Saga's entry lore counter** (CR 714.3a). The chapter check read the
+  lore count on the next line, saw zero, fired nothing. Then the resume
+  placed the counter and never asked again, so chapter I was lost.
+- **Dawn of a New Age** and **Gemstone Mine** remove a counter and then
+  check "if there are no … counters". Read too early, the check still
+  sees the counter, and the permanent is never sacrificed.
+
+#### Decision
+
+`AddCounterThenForEffect(cardID, name, delta, then)` and
+`AddCounterByThenForEffect(placer, …)` (`game/counter_tail.go`) use the
+shape `CreateTokensThenForEffect` and `ChangePlayerLifeThenForEffect`
+already have:
+
+1. **The event carries the tail.** `ReplacementEvent.counterTail` is set
+   before the window opens, because a pause returns with nothing placed
+   and the resume has nothing else to go on.
+2. **One settled exit.** `applyResolvedCounterThenLocked` lands the
+   counters and then runs the tail with the delta the window settled on.
+   The inline path uses it, and so does the CR 616 / "may" replacement resume
+   (`applyResolvedReplacementEventLocked`'s RepEventCounter arm). So a
+   paused placement and an unpaused one cannot disagree about when the
+   rest of the effect runs.
+3. **Every terminal outcome runs the tail.** A zero delta, a CR 614.10
+   cancellation (inline, or on the resume: `finishSettledReplacementLocked`
+   has its own RepEventCounter arm now, split from draw and mana), and a
+   target that left mid-prompt all pass the tail zero. A caller
+   sequenced behind the placement is always told.
+4. **The tail is cleared on the event**, the way the lifeTail is, not
+   through the pointer. `cloneReplacementResume` copies the event by
+   value, so an undo snapshot taken with the prompt open still carries
+   the continuation, and an undone-then-redone answer runs it again.
+5. **`AddCounterByForEffect` is the same body with nil**, so there is
+   one implementation and the ~20 fire-and-forget callers do not change.
+
+Earthbend and amass also detach their own continuation from the keyword
+action's tail **as a value** (`takeKeywordActionThen`, the amass
+`amassed` read) before they hand it to the placement. Their tail is
+cleared through a pointer the undo snapshot does not own. If a closure
+captured the tail instead of its value, a replayed answer would find it
+already cleared.
+
+`game.EarthbendThenForEffect` / `effects.Earthbend.Then` is new, because
+earthbend had no card-side way to say "then". Earthshape is its proof
+card.
+
+#### Found on the way: earthbend's placement read a stale layer cache
+
+`animateEarthbentLandLocked` registers three layer effects and the
+counters go on straight after. The cached characteristic still said
+"Land", so Hardened Scales' "a creature you control" check never matched
+an earthbend. `applyEarthbendLocked` now recomputes before placing, which
+is a no-op when nothing is stale. `TestHardenedScalesSeesAnEarthbend`
+covers it.
+
+#### Not closed here
+
+- **State-based actions run inside a paused resolution.** The resolution
+  bookend sweeps while the ordering prompt is open, so a fresh 0/0
+  (an earthbent land with no counters, a freshly created Army) dies to
+  CR 704.5f before its counters land. The tail then correctly runs with
+  zero. That is a different wrong answer with a different fix, and it has
+  its own follow-up issue:
+  [#1289](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1289).
+  **Closed by §5ae.**
+- **Card-side placements through the `AddCounter` primitive** that read
+  the counters on the next line: Assemble the Legion, Krenko Tin Street
+  Kingpin, Caldera Pyremaw, Invigorating Surge, Fangs of Kalonia, Insight
+  Engine, The One Ring, cumulative upkeep, Replicating Ring, Finneas Ace
+  Archer and Malcolm. The primitive is outside the ~20 direct callers #1282
+  counted, so these are filed as a follow-up:
+  [#1290](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1290). Each is now a mechanical
+  move onto `AddCounterThenForEffect`.
+- **Doubling Season, Hardened Scales and Branching Evolution apply to
+  counter REMOVALS.** They do not check the sign of the delta, so a
+  removal can also pause. That is
+  [#1291](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1291). The
+  Dawn of a New Age and Gemstone Mine tests use sourceless removal probes
+  so they do not depend on it.
+
+
+### 5ad. Amendment, 2026-09-23: a stack exit retires its record by source zone, and a move carries its cause
+
+**Issues [#1318](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1318)
+and [#1320](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1320).**
+Trackers [#879](https://github.com/krakenhavoc/cmd_and_ctrl/issues/879)
+(tables that wedge) and [#882](https://github.com/krakenhavoc/cmd_and_ctrl/issues/882)
+(replacements). Found by the *Aang is so flashy* deck triage,
+[#1306](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1306).
+
+#### 1. The gap: a spell exiled from the stack left its record behind
+
+A spell on the stack is two things: its card in `Game.Stack` and its
+`StackItem` in `Game.StackMeta`. The resolver reads them together. The
+shared exit primitive (`routeCardToZoneLocked`, §5f) moved the card, and
+retired the record only when the route said `DropStackMeta`. Two callers
+said it: the counter / return-to-hand body (`exitSpellFromStackLocked`,
+#1230) and the sandbox move. Every other exit that could reach a spell
+did not.
+
+Aang, Swift Savior, the deck's commander, airbends "up to one other
+target creature or SPELL". Airbend goes through the plain exile route.
+The spell's card went to exile and its record stayed. A record with no
+card is a spell the resolver can never finish, and 27 passes never left
+the step.
+
+#### Decision 1. The source zone decides, not a flag
+
+`zoneRoute.DropStackMeta` is gone. `executeZoneRouteLocked` retires the
+record when the card it moved came FROM the stack, and
+`routeCardToZoneLocked` takes the CR 608.2h last-known record
+(`rememberLeavingSpellLocked`, ADR 0043 decision 16) on the same
+condition. Whether a card is still a spell is a fact about where it is
+(CR 400.7). A flag that some callers set is how the gap got in: the
+exile route was never wrong about the card, it just never knew it had to
+say something. This is the same reasoning #529 used to move the CR 903.9
+window down into the primitive.
+
+A resolving spell's record is already out of `StackMeta` before its card
+is routed (`resolveTopOfStackLocked`), so the new condition changes
+nothing for resolution. Resolution is still not a writer of the
+last-known record.
+
+#### Decision 2. "Exile target spell" is its own verb
+
+`Game.ExileSpellForEffect(stackID)` and
+`Game.ExileSpellThenForEffect(stackID, then)` are the third verb over
+`exitSpellFromStackLocked`, beside the counter and the return to hand.
+`effects.ExileTargetSpell{StackID, Then}` is the card-side primitive.
+Three properties come from the shared body:
+
+- It is **not a counter** (CR 701.6). A spell that can't be countered is
+  exiled all the same, and no `EventCounterSpell` fires.
+- It **refuses anything that is not a spell on the stack**
+  (`ErrCardNotOnStack`), so a card that says "spell" cannot exile a
+  permanent by mistake.
+- The `Then` form hears **CR 400.7's answer**: `exiled` is true only if
+  the card is in exile once the move settles. A commander spell whose
+  owner takes CR 903.9's offer went to the command zone, so there is
+  nothing to plot. `exitSpellFromStackLocked` gained a `then` parameter
+  to carry the continuation onto the route. A spell that already left in
+  response is not an error; `then` hears false.
+
+The fix in Decision 1 is what un-wedges airbend. Decision 2 is what lets
+a card say "spell" and get a refusal when it points at something else.
+
+#### Decision 3. Plot, the effect half (CR 702.170c/d)
+
+`Game.PlotExiledCardForEffect(cardID, source)` (`game/plot.go`) makes a
+card in exile plotted. It grants a cast permission (ADR 0066):
+
+| Clause | Field |
+|---|---|
+| its owner may cast it | `Player` = owner, `CastOnly` |
+| from exile | `Zone` = exile, `ScopeCards` on the instance |
+| without paying its mana cost | `Cost: "{0}"` (the cascade idiom) |
+| main phase, stack empty | `Timing: TimingPlot` |
+| any turn after this one | `NotBeforeTurn` |
+
+`TimingPlot` is a new `GrantTiming` value. It is **not** `TimingSorcery`,
+because a per-player flash grant (Vedalken Orrery) overrides a
+permission's sorcery timing, and the plot window is the permission's own
+rule, not the card's speed. `CastTimingOpenLocked` answers it first and
+stops, so neither the card's own flash nor a grant widens it.
+
+`Turn.Number` counts ROUNDS, so "a later turn" is not `Number + 1`. The
+plot window only opens on the owner's turn, so the floor is the current
+round when the card is plotted on someone else's turn, and the next
+round when it is plotted on the owner's own turn. An extra turn the
+owner takes right after their own, in the same round, waits one round.
+That is weaker, never stronger.
+
+Not built: the plot KEYWORD's special action (CR 702.170a, "exile this
+card from your hand"). Aven Interrupter does not need it; it is
+[#1342](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1342).
+
+#### 2. The gap: nothing said what moved a card
+
+Ranar the Ever-Watchful triggers when "a spell or ability you control
+exiles one or more permanents". `EventZoneMove` said where a card went,
+and sometimes whose action it was (`Actor`) and which card asked
+(`Source`). The plain exile route left both empty. An airbend, an
+opponent's Swords to Plowshares and a sandbox drag into exile all looked
+the same.
+
+#### Decision 4. The route carries a cause, and the effect case is inferred
+
+`zoneRoute.Cause` is a `game.MoveCause{Kind, Controller, Item}`
+(`game/move_cause.go`). The zone-change events carry it as
+`Event.Cause` / `CauseController` / `CauseItem`: `EventZoneMove`,
+`EventMill`, `EventDiscardCard`, `EventCounterSpell`, and the `EventLTB`
+beside them. There are five kinds:
+
+| Kind | Named by | Controller |
+|---|---|---|
+| `effect` | inferred | the resolving item's controller |
+| `cost` | `exile_cost.go`, `return_cost.go`, a cost discard | the payer |
+| `special_action` | foretell, suspend | the player |
+| `rule` | a spell's own move off the stack (CR 608.2n), the cleanup discard | — |
+| `manual` | the sandbox move | — |
+
+The **effect** case is the one no route names. When the route leaves
+`Cause` zero, `routeCardToZoneLocked` fills it from `Game.resolving`
+(`resolving_item.go`, #920). That slot is set for spells and abilities
+alike, and it lasts through every paused continuation of the resolution
+that set it, because a resolution-time prompt blocks the table. That is
+about forty effect exits that need no change. The alternative was
+threading the item through every one of them, and a forty-first mover
+would forget.
+
+Two details make the inference sound:
+
+- **The cause is captured onto the route when the move is asked for**,
+  not when it lands. A commander exiled by an effect that pauses on
+  CR 903.9 keeps its cause through the answer, whatever the slot says by
+  then.
+- **The explicit kinds exist for the one window where the slot is
+  stale.** `Game.resolving` is cleared at the next batch boundary, not
+  when the resolution ends. So a cost paid, a special action taken or a
+  card moved by hand after a spell resolved, in the same priority
+  window, would otherwise be claimed by that spell.
+  `TestCostExileIsNotTheLastResolutionsDoing` pins it.
+
+`game.ExiledBySpellOrAbilityOf(ev, player)` is the reader Ranar uses. The
+protocol does not project the fields (`protocol/log.go`), so the wire is
+unchanged.
+
+#### Not closed here
+
+- **The destroy / sacrifice / SBA exit carries no cause.**
+  `executeBattlefieldLeaveLocked` keeps its own mover (the reason is at
+  the top of `zone_route.go`). A destruction that Rest in Peace turns into
+  an exile is therefore not recorded as "the spell exiled it". Weaker for
+  a reader like Ranar, never stronger.
+- **A cost is not counted as "a spell or ability exiles".** The engine
+  records a cost as its own kind. Ranar does not count it, because no
+  ruling settles whether paying a cost is the ability exiling. Not
+  counting it is the weaker reading.
+- ~~**Special actions share an event batch.**~~ **Closed by
+  [#1341](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1341).**
+  `PerformSpecialAction` now opens its own event batch (CR 116.2 is
+  itself an event), so two foretells with nothing resolving between
+  them are two occurrences, as CR 603.2c asks. Ranar's second caveat
+  is gone and `TestRanarTwoForetellsInOneWindowMakeTwoSpirits` pins
+  the fixed behaviour.
+- ~~**Ranar's foretell discount** waits on #1319.~~ **Closed by
+  [#1319](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1319)
+  (`SpecialActionCostsLess`, `TheFirstOneThisTurn`).** With #1341
+  also closed, Ranar the Ever-Watchful carries no caveat and is
+  `full`.
+- **The leaving-player cleanup** moves spells with a raw `MoveCard` and
+  deletes their records itself (`cleanupStackForEliminatedLocked`). It
+  emits no zone-change event, so it has no cause to carry.
+
+
+### 5ae. Amendment, 2026-09-23: a paused window is part of the resolution that opened it
+
+**Issue [#1289](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1289).**
+Trackers [#882](https://github.com/krakenhavoc/cmd_and_ctrl/issues/882)
+(replacements) and [#879](https://github.com/krakenhavoc/cmd_and_ctrl/issues/879)
+(tables that wedge). The state-based-action half is
+[ADR 0007 §7's amendment of the same date](0007-stack-foundation.md#7-five-sbas-in-one-loop-with-the-placeholder-creature-exemption).
+
+#### The gap
+
+§5ac made a paused counter placement carry its continuation, and
+listed what that did not fix: the resolution bookend swept while the
+CR 616 prompt was open. CR 616.1 has the affected player choose the
+order *during* the event, and the event is inside a resolving spell or
+ability, so the resolution has not finished. CR 704.3 checks nothing
+until it has. The sweep killed the fresh 0/0 the placement was for (an
+earthbent bare land, a newly created Army), and the tail then ran with
+zero.
+
+#### Decision
+
+Every CR 614 window that pauses mid-resolution queues its prompt
+through `QueueChoiceForEffect`, so every one of them is stamped
+`PendingChoice.midResolution`: the CR 616 ordering prompt, the "may"
+optional replacement, the entry payment and entry reveal, and the copy
+choice. While one is open the CR 704.3 boundary is held, and the answer
+that settles the event runs it (`finishReplacementResumeLocked`, and the
+RepEventCounter arm of `applyResolvedReplacementEventLocked`, already end
+in `runStateChecksLocked`). A second pause chained from the first answer
+(amass's choose-an-Army prompt and then its counter-order prompt) is
+queued while the resolution is still open and holds in turn.
+
+Nothing in the pipeline changed. The rule lives in
+`game/resolution_pause.go` and applies to every prompt kind a
+resolution can raise, not only this family; the replacement windows
+are the case that found it.
+
+What is observable on the two boards #1289 named:
+
+- **Earthbend onto a bare land** (Earthshape, Doubling Season, Hardened
+  Scales): the land is a 0/0 for the whole of the pause, and the same
+  object gets its 7 counters. `TestEarthshapeReadsTheLandAfterAPausedPlacement`
+  now uses the bare land; §5ac's version started the land with a counter
+  to step around this.
+- **Amass with no Army** (Widespread Brutality on the same board): the
+  doubled creation makes two 0/0 Armies, both survive to be chosen, the
+  chosen one gets its 5 counters and deals 5, and the other dies to
+  CR 704.5f once the resolution is over.
+
+#### §5ac's "Not closed here", updated
+
+The first bullet (state-based actions inside a paused resolution) is
+closed by this amendment. The other two (#1290, #1291) are unchanged.
+
+
+### 5af. Amendment, 2026-09-24: a commander paid as a COST is asked before the payment, not during it
+
+**Issue [#1397](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1397).**
+Trackers [#882](https://github.com/krakenhavoc/cmd_and_ctrl/issues/882)
+(replacements) and [#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887)
+(mana and costs). Supersedes the commander half of §5g's "the cost site
+settles instead of asking" and of
+[ADR 0062 Decision 3](0062-abilities-and-special-actions-from-the-hand.md#3-a-cost-settles-now--cr-6012h--cr-6022b--including-for-a-commander).
+
+#### The gap
+
+CR 903.9 gives a commander's OWNER the command zone whenever the
+commander would be put into a hand, library, graveyard or exile "from
+anywhere". Paying a cost moves cards, and any of them can be a
+commander. The engine answered that two incompatible ways:
+
+- **The discard, return and exile payers skipped the question.** Each
+  set `zoneRoute.MustSettleNow` for CR 601.2h / 602.2b (costs are one
+  indivisible step) and CR 605.3a (a mana ability has no window at all),
+  and `mustSettleNow` skips anything that asks. A commander discarded to
+  Thrill of Possibility or cycled, returned by ninjutsu or Quirion
+  Ranger, exiled to Cadaverous Bloom, Grim Lavamancer, a scavenge or a
+  Spirit Guide went to the graveyard, the hand or exile, and its owner
+  was never asked. Weaker than printed — and routinely, for ninjutsu,
+  whose whole point is returning an attacker, very often a commander.
+- **The sacrifice and alternative-cost payers PAUSED half way through
+  the payment.** Neither set the bit, so a sacrificed commander (Viscera
+  Seer, Ashnod's Altar, Village Rites) or a pitched / returned / escaped
+  one opened the ordinary CR 903.9 prompt mid-payment. The ability went
+  on the stack, or the mana into the pool, with the commander still
+  where it was — and it could be spent AGAIN. A second Ashnod's Altar
+  activation naming the same stolen commander was accepted and paid
+  while the first prompt was open. Stronger than printed, which is the
+  direction the engine never errs in.
+
+#### Decision
+
+**Ask first, then pay.** Every announcement that moves cards as a cost —
+`ActivateCatalogAbility`, `CastSpell`, `ActivateManaAbility` — validates
+its whole payload, then passes the one gate
+`askCostCommanderLocked` (`cost_commander_choice.go`) before anything is
+paid. The gate is handed every card the payment is about to move: the
+sacrifices, the returns, the discards, the exiles, an alternative cost's
+card(s), and the source itself when the cost moves it (sacrifice-this,
+discard-this, exile-this).
+
+- If one is a commander whose owner has not answered, the announcement
+  is **parked**: nothing is tapped, spent, moved or put on the stack,
+  and a CR 903.9 prompt is queued to the card's **owner** — the
+  opponent, when the commander was stolen.
+- The owner's answer **re-makes the whole announcement** with the answer
+  attached (`params.commanderAnswers`, unexported on all three params
+  types so no payload can answer for somebody else's commander). A
+  payment that moves two commanders asks twice, one card per prompt,
+  the first answer riding into the second.
+- The payment that follows is the ordinary indivisible one. The discard,
+  return and exile moves keep `MustSettleNow`; the sacrifice and
+  alternative-cost moves keep the posture they had. *(Superseded for
+  non-commander replacement questions by §5ag.)* Each commander's
+  move carries its owner's answer on `zoneRoute.commanderAnswer` onto
+  `ReplacementEvent.commanderAnswer`, and the gather reads it: a "no"
+  keeps the CR 903.9 built-in from being gathered; a "yes" gathers it as
+  a MANDATORY replacement for that one event, so a settle-now event
+  applies it rather than skipping it as a question, in the ordinary
+  CR 616 company of any other replacement (Rest in Peace still meets it,
+  and the command zone still wins because the owner chose it).
+
+**Why this is the rules-correct direction, not a default.** The two
+alternatives were a documented default (the old skip — weaker than
+printed and invisible to the player, so rejected) and a genuine
+mid-payment pause with a continuation. The continuation machinery can
+pause a *move* — the sacrifice path proved it — but the pause is the
+problem: it leaves a committed card in its old zone, available, while
+the question is open, and there is no cheap way to make "this card is
+already spent" true of every entry point that could reach it. Asking
+first has none of that. Nothing between the answer and the payment can
+change what the payment is, because the payment is re-validated from
+scratch when the announcement is re-made; if the payer spent the card,
+the mana or the source on something else meanwhile, the re-run is
+refused and nothing is paid. The owner's decision is the same decision
+paper asks for — where does this card go — made at the moment paper
+would make it known: when the payer names it.
+
+**The question is the existing `optional_replacement` prompt.** No new
+kind, so the client modal, the legal enumerator (yes / no) and the bot
+heuristic answer it unchanged, and it blocks the table like every
+CR 614.10 prompt. `ResolveOptionalReplacement` tells it apart by the
+frame it carries (`PendingChoice.costCommanderResume`) and routes the
+answer to `resolveCostCommanderChoiceLocked`. The frame is immutable and
+captures its arguments by value, so the undo snapshot shares it safely
+and a rewind into the open prompt replays the same announcement with
+either answer; the persisted snapshot drops it and counts it in the
+continuation census, as every other resume frame is.
+
+**A refused re-run goes back only to the payer.** When the payer is the
+one answering, the refusal is returned to them (they can act on it).
+When the owner is an opponent, the answer is accepted and the refusal
+is logged as an `EventEffectError` — an opponent is not handed
+"insufficient mana" for someone else's ability. An owner who has left
+the game (CR 800.4a) is not asked; their commander is recorded as a
+decline and the payment goes ahead.
+
+#### What it costs, stated
+
+- **The payer's intent is visible early.** The owner sees "Atraxa is
+  paying Viscera Seer's cost" before the payment exists. In paper the
+  payer names the card and the owner answers at once, so this is the
+  same information at the same moment.
+- **An unpayable announcement can still ask.** The gate runs after
+  validation and before the mana is spent, so a CR 602 activation whose
+  mana turns out to be short asks its question and is then refused on
+  the re-run. The mana ability path checks its mana before the gate and
+  does not have this.
+- **The payer keeps priority while the owner decides.** The engine does
+  not refuse the payer's other actions (it never has, for any prompt);
+  whatever they do is simply in the past when the announcement is
+  re-made, which is re-validated against it.
+
+#### Not closed here
+
+- **The auto-tapper's cost moves.** A mana source the auto-tapper cracks
+  (a Treasure's sacrifice, a Spirit Guide's exile from hand) is paid
+  with no answers, i.e. unasked, inside a cast. No commander carries
+  such a self-costed mana ability, so this is recorded rather than
+  built.
+- **Other questions on a sacrifice or alternative-cost move.** Those two
+  payers still do not set `MustSettleNow`, so a CR 616 ordering between
+  two OTHER replacements on a sacrificed permanent can still pause the
+  payment half way, with the double-spend exposure described above.
+  The commander no longer does. Filed as
+  [#1420](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1420).
+  **Closed by §5ag.**
+
+### 5ag. Amendment, 2026-09-24: every cost move settles its replacement window before the announcement commits
+
+**Issue [#1420](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1420).**
+Trackers [#882](https://github.com/krakenhavoc/cmd_and_ctrl/issues/882)
+(replacements) and [#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887)
+(mana and costs). Closes §5af's remaining non-commander replacement
+question.
+
+#### Decision
+
+The sacrifice and alternative-cost card payers set
+`zoneRoute.MustSettleNow`, matching every other card moved to pay a cost.
+The battlefield-exit bridge carries that bit from the sacrifice route to
+its `ReplacementEvent`; the alternative-cost payer sets it on each exile,
+return or escape route directly.
+
+This is the existing CR 601.2h / 602.2b policy, not a new default. A cost is
+one indivisible payment step: it cannot leave a spell or ability on the
+stack while a CR 616 ordering prompt holds the paying card in its old zone.
+When multiple mandatory replacements apply, their gathered order stands
+and the apply-loop re-gathers after each one, as every other settle-now
+cost already does. A replacement that asks its own optional question is
+skipped in the weaker direction under §5b's existing rule. CR 903.9 is
+unchanged: §5af asks the commander's owner before payment and carries that
+answer onto the settle-now move.
+
+Ordinary effect-driven and manual sacrifices remain prompt-capable. Only
+the `sacrificeAnsweredLocked` cost path sets the bit; the shared
+`sacrificePermanentLocked` effect path does not.
+
+#### Proof
+
+`cost_payment_settle_test.go` opens two genuinely different mandatory
+replacement effects over each of the two formerly pausing routes:
+
+- an activated ability paid by sacrificing a creature settles the move,
+  creates one stack item, queues no ordering prompt, and cannot spend that
+  creature again;
+- a spell paid by pitching a card to an alternative cost settles the move
+  before returning from `CastSpell`, with the spell on the stack and no
+  ordering prompt.
+
+No wire or client shape changes.
+
+#### Addendum, 2026-09-24: a card an EFFECT has paused cannot pay ([#1445](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1445))
+
+Asking first closed the double spend for a card a COST moves. An effect
+still pauses. A commander that Doom Blade destroys, that Bojuka Bog exiles
+out of a graveyard, or that Mind Rot discards waits where it is while its
+owner answers. Before this addendum, any cost could name it in that
+window. Ashnod's Altar would sacrifice the destroyed commander for
+{C}{C}, and the destroy's own prompt was then withdrawn as stale, so one
+object was both destroyed and spent.
+
+**Decision.** The three announcement sites hand the same `moving` list to
+a second gate, `refusePausedCostCardsLocked`, immediately before
+`askCostCommanderLocked`. A card whose exit is already paused
+(`zoneChangePausedLocked`, the read the SBA sweep has used since #605)
+refuses the whole announcement with `ErrChoicePending`. Nothing is paid
+and nothing is asked. It is a refusal rather than a park because the
+question blocking this payment belongs to someone else and is already on
+the table. Once it is answered, the card has gone.
+
+The auto-tapper never passes through those sites, so it asks the same
+thing itself. The planner (`gatherTapSources`, `gatherManaZoneSources`)
+does not offer a paused source whose ability would sacrifice or exile it.
+The executor (`materializePlanLocked` and its hand arm) drops one from a
+stale plan.
+
+Tapping a paused permanent (`{T}`, crew, convoke) does not move it and is
+not covered. That half is
+[#1427](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1427).
+
+#### Addendum, 2026-09-24: nor can a card an effect has paused be TAPPED to pay ([#1427](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1427))
+
+The case above was left open on purpose: a tap cost does not pay the same
+cost twice, and the destroy's prompt even survives it, since a tapped card
+goes nowhere. But the permanent has already left as far as the rules are
+concerned (CR 903.9 is a replacement, instantaneous in paper; the prompt
+is only the engine asking the owner). A destroyed commander Birds of
+Paradise tapping for {G} while its owner decides is mana from an object
+that is gone, and crewing or convoking with it is the same use after
+spend.
+
+**Decision.** Refuse it, through the same gate. `refusePausedCostCardsLocked`
+now takes two lists, `moving` and `tapping`, and refuses on either. They
+stay apart because only `moving` goes on to `askCostCommanderLocked`:
+tapping a live commander asks nothing. The `tapping` list is:
+
+- `ActivateCatalogAbility`: the source for `{T}`, the crew picks, the
+  tap-another picks (`TapIDs`) and the waterbend picks.
+- `ActivateManaAbility`: the source for `{T}` and the tap-another picks.
+- `CastSpell`: the convoke / waterbend picks (`TapIDs`).
+
+The auto-tapper's battlefield planner and executor extend #1445's
+sacrifice check to an ability that owes `{T}`, so a paused Birds is
+neither planned nor tapped from a stale plan.
+
+The exile-this-off-the-battlefield half of #1427 (a scavenge from the
+graveyard, a Spirit Guide from hand) needed nothing further: #1423's
+`moving` list already carries the source for `ExileSelf`, so the #1445
+gate above refuses it. Re-checked on develop at `4ef62c39`.
+
+#### Addendum, 2026-09-24: nor can a card an effect has paused be CAST, or activate ([#1474](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1474))
+
+Two uses of a paused card were still in neither list.
+
+- **Casting it.** CR 601.2a moves the spell to the stack before any cost
+  is paid, so the card being cast is not a cost card and was never in
+  `moving`. A commander `ExileCardForEffect` had paused in its owner's
+  hand went onto the stack while the exile's prompt was still open. The
+  same held for a cast out of the graveyard (Gravecrawler's own text, a
+  flashback, a permission) of a commander Bojuka Bog was exiling, and
+  for a land play of either.
+- **Activating one of its abilities** through a component that neither
+  moves nor taps it: removing a counter from it, putting a -1/-1 counter
+  on it, a loyalty cost, or no cost at all. Naming it as ANOTHER
+  permanent's counter-removal source (Heart of Kiran's "remove a loyalty
+  counter from a planeswalker you control") was the same hole one step
+  removed.
+
+**Decision.** Refuse both, still through the one gate, and key the
+activation half on the SOURCE rather than on one more component list.
+The issue offered the choice. The source is the right key because the
+object is gone whatever the ability costs: an ability of a paused
+permanent is a use of it even when nothing is paid.
+
+- `refusePausedCostCardsLocked` takes any number of lists and gives each
+  the same answer. `moving` stays a separate argument because it alone
+  goes on to `askCostCommanderLocked`.
+- `castSpellLocked` asks the gate about the card itself, right after
+  finding it in its source zone and before any other check, so the
+  refusal covers every source zone and the land play alike.
+- `ActivateCatalogAbility` and `ActivateManaAbility` pass a third list,
+  `spending`: the source, plus every permanent the counter-removal
+  component names (`counterPayment.cardIDs`). The sandbox
+  `ActivateLoyalty` verb asks the gate about the walker.
+- The view clears `castable_here` on a card the gate would refuse
+  (`castableNow` asks `CardExitPausedForEffect`), so the zone browser
+  shows no cast button the engine refuses. The enumerator already agreed:
+  the CR 903.9 prompt blocks the table, so it offers no seat anything
+  while it is open.
+
+The refusal is `ErrChoicePending` with nothing moved or paid. Once the
+owner answers, the card is wherever the answer sent it and is cast from
+there as usual (from the command zone, for a commander the owner kept).
 
 ### 6. Six pipeline integration points (five mutations + step transition)
 
@@ -3592,7 +4208,7 @@ the catalog.
 - **`Spec.Replacements []game.ReplacementEffect`** new field on the
   catalog spec; parallel to `Static`.
 - **Two new PendingChoiceKinds**: `replacement_order` (CR 616
-  multi-effect ordering) + `optional_replacement` (CR 614.10 yes/no).
+  multi-effect ordering) + `optional_replacement` (a "may" yes/no).
   Each has a resume method (`ResolveReplacementOrder`,
   `ResolveOptionalReplacement`) and a dispatcher leg. Wire
   projection adds `ReplacementOptions`.

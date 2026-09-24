@@ -233,7 +233,7 @@ func b41ZombieYouControlDealtCombatDamageToAnOpponent(ev game.Event, source *gam
 // `ev.Actor != source.Controller` is the "an opponent controls" half,
 // and it means your own Giant Growth on your own Sliver does not tax
 // you. Per target INSTANCE, because EventBecomesTarget is emitted per
-// target slot (CR 115.7) — a spell targeting two of your Slivers is
+// target slot (CR 115.3) — a spell targeting two of your Slivers is
 // taxed twice.
 func b41SliverYouControlBecameAnOpponentsTarget(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Actor == uuid.Nil || ev.Actor == source.Controller {
@@ -292,12 +292,9 @@ func b41OtherNonHumanCreaturesYouControlEnterWithACounter(label string) game.Rep
 // sentence run before the move settled. The engine now has a named
 // library-to-hand door and this goes through it.
 //
-// The rest go to the bottom in a RANDOM order. Ringleader prints "in
-// any order", which is the player's choice; the engine has no
-// ordering prompt for a pile headed to the bottom of a library, and
-// random is the strictly-less-informed version of that choice. Every
-// card that uses this must declare the caveat. (Horn of the Mark
-// prints "in a random order" and so carries none.)
+// The rest go to the bottom in an order the player chooses, as
+// Ringleader prints — a put_in_library prompt on the bottom lane
+// (#996, ADR 0088). Until then it was a RANDOM order and a caveat.
 func b41RevealTopThenTakeMatching(ctx *Context, player uuid.UUID, n int, match func(game.Card) bool, reason string) error {
 	return RevealTopThenTakeToHand(ctx, player, n,
 		func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return match(c) }, reason)

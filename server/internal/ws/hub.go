@@ -393,7 +393,7 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 			client.log.Error("build "+label+" snapshot failed", "err", err)
 			return 0, false
 		}
-		raw, marshalErr := marshalSnapshotFrame(seq, protocol.FilterViewFor(view, viewerIDForFilter(playerID)))
+		raw, marshalErr := marshalSnapshotFrame(seq, room.Generation(), protocol.FilterViewFor(view, viewerIDForFilter(playerID)))
 		if marshalErr != nil {
 			client.log.Error("marshal "+label+" snapshot failed", "err", marshalErr)
 			return 0, false
@@ -549,8 +549,25 @@ func viewerIDForFilter(playerID uuid.UUID) string {
 // the connected clients — without this call a player already sitting
 // on the game page renders pre-mutation state until the next WS
 // action happens to broadcast.
+//
+// This is the Broadcaster interface every caller outside this package
+// (lobby, aiseat) is written against, and none of them holds a *Room —
+// only a gameID and the seq their own Apply/ApplyExternal call
+// returned. Rather than widen that interface with a generation
+// parameter every implementation (including the test fakes in those
+// packages) would have to grow, the room's generation is looked up
+// here, from the one place that already has a manager. A gameID with
+// no live room (a race with deletion) broadcasts generation 0, which
+// is directly followed by a broadcast to no clients anyway — the
+// lookup miss and the fan-out miss are the same race.
 func (h *Hub) BroadcastState(gameID uuid.UUID, seq uint64, view protocol.GameView) {
-	h.broadcastToRoom(gameID, seq, view)
+	var generation uint64
+	if m := h.loadManager(); m != nil {
+		if room := m.Get(gameID); room != nil {
+			generation = room.Generation()
+		}
+	}
+	h.broadcastToRoom(gameID, seq, generation, view)
 }
 
 // BroadcastChat posts a server-originated chat line to every client on
@@ -606,14 +623,14 @@ func (h *Hub) BroadcastChat(gameID uuid.UUID, msg protocol.ChatPayload) {
 // keeps the filter logic strictly server-side. If we ever scale past
 // that, lift the marshalling outside this method and cache the bytes
 // by player ID.
-func (h *Hub) broadcastToRoom(gameID uuid.UUID, seq uint64, view protocol.GameView) {
+func (h *Hub) broadcastToRoom(gameID uuid.UUID, seq uint64, generation uint64, view protocol.GameView) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	for c := range h.clients {
 		if c.gameID != gameID {
 			continue
 		}
-		raw, err := marshalSnapshotFrame(seq, protocol.FilterViewFor(view, viewerIDForFilter(c.playerID)))
+		raw, err := marshalSnapshotFrame(seq, generation, protocol.FilterViewFor(view, viewerIDForFilter(c.playerID)))
 		if err != nil {
 			c.log.Error("marshal broadcast snapshot failed", "err", err)
 			continue
@@ -639,11 +656,11 @@ func (h *Hub) broadcastChat(gameID uuid.UUID, frame []byte) {
 }
 
 // marshalSnapshotFrame builds a ready-to-send JSON frame carrying the
-// given seq + view as a SnapshotPayload. Extracted so that both the
-// initial-snapshot-on-connect path and the broadcast-after-action path
-// can share a single frame construction.
-func marshalSnapshotFrame(seq uint64, view protocol.GameView) ([]byte, error) {
-	payload, err := json.Marshal(protocol.SnapshotPayload{Seq: seq, Game: view})
+// given seq/generation + view as a SnapshotPayload. Extracted so that
+// both the initial-snapshot-on-connect path and the
+// broadcast-after-action path can share a single frame construction.
+func marshalSnapshotFrame(seq uint64, generation uint64, view protocol.GameView) ([]byte, error) {
+	payload, err := json.Marshal(protocol.SnapshotPayload{Seq: seq, Generation: generation, Game: view})
 	if err != nil {
 		return nil, err
 	}
@@ -897,11 +914,21 @@ func (c *Client) handleAction(frame protocol.Frame) {
 	// budget remaining); admin sessions (playerID == uuid.Nil)
 	// bypass both.
 	if payload.Type == "undo" {
-		view, seq, err := room.Undo(c.playerID)
+		caller := c.playerID
+		// ADR 0057: once the game has ended only the admin may undo,
+		// and an admin bound to a seat is still the admin. The room
+		// reads uuid.Nil as the admin.
+		if c.admin && room.Game.CurrentState() == game.StateEnded {
+			caller = uuid.Nil
+		}
+		view, seq, err := room.Undo(caller)
 		if err != nil {
 			switch {
 			case errors.Is(err, ErrNothingToUndo):
 				c.sendError(frame.ID, protocol.CodeBadRequest, "nothing to undo")
+			case errors.Is(err, ErrGameOverUndo):
+				c.sendError(frame.ID, protocol.CodeBadRequest,
+					"the game is over — only the admin can undo past its end")
 			case errors.Is(err, ErrNotYourUndo):
 				c.sendError(frame.ID, protocol.CodeBadRequest,
 					"you can only undo your own most recent action")
@@ -913,7 +940,7 @@ func (c *Client) handleAction(frame protocol.Frame) {
 			}
 			return
 		}
-		c.hub.broadcastToRoom(room.Game.ID, seq, view)
+		c.hub.broadcastToRoom(room.Game.ID, seq, room.Generation(), view)
 		c.log.Debug("undo applied", "seq", seq, "caller", c.playerID)
 		return
 	}
@@ -955,7 +982,7 @@ func (c *Client) handleAction(frame protocol.Frame) {
 			c.sendError(frame.ID, code, msg)
 			return
 		}
-		c.hub.broadcastToRoom(room.Game.ID, seq, view)
+		c.hub.broadcastToRoom(room.Game.ID, seq, room.Generation(), view)
 		c.log.Debug("table settings changed", "type", payload.Type, "seq", seq)
 		return
 	}
@@ -990,7 +1017,7 @@ func (c *Client) handleAction(frame protocol.Frame) {
 			}
 			c.sendErrorPayload(frame.ID, protocol.ErrorPayload{
 				Code:    protocol.CodeInsufficientMana,
-				Message: "insufficient mana to cast",
+				Message: insufficientManaMessage(payload.Type),
 				Missing: im.Missing,
 				CardID:  cardID,
 			})
@@ -1003,11 +1030,17 @@ func (c *Client) handleAction(frame protocol.Frame) {
 			c.sendErrorPayload(frame.ID, body)
 			return
 		}
+		// #1507: an attack refused for a CR 508.1c count limit, with
+		// its sentence addressed to the caller.
+		if body, ok := attackLimitPayload(err, c.playerID); ok {
+			c.sendErrorPayload(frame.ID, body)
+			return
+		}
 		code, msg := classifyActionError(err)
 		c.sendError(frame.ID, code, msg)
 		return
 	}
-	c.hub.broadcastToRoom(room.Game.ID, seq, view)
+	c.hub.broadcastToRoom(room.Game.ID, seq, room.Generation(), view)
 	c.log.Debug("action dispatched", "type", payload.Type, "seq", seq)
 }
 
@@ -1055,6 +1088,9 @@ func classifyActionError(err error) (code, message string) {
 		return protocol.CodeBadRequest, "action is not legal in the current step"
 	case errors.Is(err, game.ErrNotACreature):
 		return protocol.CodeBadRequest, "card is not a creature"
+	case errors.Is(err, game.ErrNotDefending):
+		// #1279: finish_blocks from a seat nothing is attacking.
+		return protocol.CodeBadRequest, "you are not a defending player this combat"
 	case errors.Is(err, game.ErrUnparseableCost):
 		// #289: the card's cost is one the parser can't read. Split
 		// and adventure cards used to import the joined
@@ -1072,7 +1108,7 @@ func classifyActionError(err error) (code, message string) {
 		// does not offer. Either a stale client sending a face for a
 		// single-faced card, or an attempt at a transform card's
 		// back — which is reached by transforming the permanent, not
-		// by casting it (CR 712.4).
+		// by casting it (CR 712.11).
 		return protocol.CodeBadRequest,
 			"that isn't a face you can play on this card"
 	case errors.Is(err, game.ErrIllegalBlock):
@@ -1082,6 +1118,13 @@ func classifyActionError(err error) (code, message string) {
 		// any other caller, and for a bare ErrIllegalBlock with no
 		// refusal attached.
 		body, _ := blockRefusalPayload(err, uuid.Nil)
+		return body.Code, body.Message
+	case errors.Is(err, game.ErrAttackLimit):
+		// #1507. The hub sends the structured frame
+		// (attackLimitPayload) before reaching this classifier; this
+		// arm is the same code and a viewer-neutral sentence for any
+		// other caller.
+		body, _ := attackLimitPayload(err, uuid.Nil)
 		return body.Code, body.Message
 	case errors.Is(err, game.ErrAttackTaxUnpaid):
 		// ADR 0080. The hub sends the structured frame
@@ -1153,6 +1196,45 @@ func blockRefusalPayload(err error, viewer uuid.UUID) (protocol.ErrorPayload, bo
 	}
 	if br.Blocker != uuid.Nil {
 		body.CardID = br.Blocker.String()
+	}
+	return body, true
+}
+
+// insufficientManaMessage is the sentence an `insufficient_mana` frame
+// carries. An activated ability refused for want of mana (#1296: the
+// client now asks the engine to charge activations when the player
+// enforces mana) is not a cast, and "insufficient mana to cast" on an
+// Equip click reads as a bug of its own. The frame carries no card_id
+// for an activation, so the cast-only "Cast anyway" override stays
+// away from it.
+func insufficientManaMessage(actionType string) string {
+	if actionType == "activate_ability" {
+		return "insufficient mana to activate that ability"
+	}
+	return "insufficient mana to cast"
+}
+
+// attackLimitPayload builds the `illegal_attack` error frame for a
+// declaration refused by a CR 508.1c count limit (#1507, ADR 0045
+// Decision 45): reason `attack_limit`, a creature from the refused
+// declaration the limit counts in card_id, and the engine's sentence
+// addressed to `viewer` ("… can attack you each combat (Crawlspace)").
+// ok is false for any error that is not an attack-limit refusal.
+func attackLimitPayload(err error, viewer uuid.UUID) (protocol.ErrorPayload, bool) {
+	if !errors.Is(err, game.ErrAttackLimit) {
+		return protocol.ErrorPayload{}, false
+	}
+	body := protocol.ErrorPayload{
+		Code:    protocol.CodeIllegalAttack,
+		Message: "more creatures would attack than an effect allows this combat",
+		Reason:  protocol.AttackRefusalLimit,
+	}
+	var le *game.AttackLimitError
+	if errors.As(err, &le) {
+		body.Message = le.Sentence(viewer)
+		if le.Attacker != uuid.Nil {
+			body.CardID = le.Attacker.String()
+		}
 	}
 	return body, true
 }

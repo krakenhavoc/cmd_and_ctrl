@@ -178,6 +178,29 @@ a player would receive priority (CR 704.3) and no player does in the
 middle of one resolution, so the 0/0 the animation makes cannot die
 before the counters land.
 
+**Note, 2026-09-23 ([#1282](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1282), [ADR 0013 §5ac](0013-replacement-effects.md)).**
+The pause this decision works around now has a continuation. The placement
+is `AddCounterByThenForEffect`, and the rest of the sentence
+(`game.EarthbendThenForEffect`, `effects.Earthbend.Then`) runs when the
+counters actually land. That is after the CR 616 prompt is answered on a
+Doubling Season + Hardened Scales board, not when the call returns. The
+continuation is detached from the keyword action's tail as a value
+(`takeKeywordActionThen`) so an undone-then-redone answer replays it.
+The counters still go last, for the reason above.
+
+Two corrections. First, `applyEarthbendLocked` now recomputes the layer
+cache before placing. Without it, Hardened Scales' "a creature you
+control" read the stale cache, saw a plain land, and never applied. The
+"Hardened Scales sees the placement" engine test used a probe with no
+creature check, so it did not catch this. Second, the claim above that
+"the 0/0 the animation makes cannot die before the counters land" holds
+only when nothing pauses. The state-based sweep runs while a CR 616 prompt
+is open, so a bare land dies before its counters arrive. That is
+[#1289](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1289).
+*Closed 2026-09-23 (#1289):* state-based actions now wait for a
+resolution paused on its own prompt (ADR 0007 §7's amendment, ADR 0013
+§5ae), so the claim above holds on a pausing board too.
+
 ## Decision 5 — The return is a delayed trigger keyed to the OBJECT, with a derived identity
 
 This is the decision with nothing behind it, and the reason this is an
@@ -301,6 +324,7 @@ directly and keeps its own target read, because it needs the ID twice.
   Technique wants two target clauses; Sandbenders' Storm and Dai Li
   Indoctrination are modal with per-mode targets; Earthshape reads the
   animated land's power afterwards. They are ordinary card work now.
+  *(2026-09-23: Earthshape shipped with #1282, on `Earthbend.Then`.)*
 - **A per-instance return queue.** See Decision 5's declared
   divergence. It costs a field on `DelayedTrigger` and buys nothing
   until a "counter target triggered ability" card exists.

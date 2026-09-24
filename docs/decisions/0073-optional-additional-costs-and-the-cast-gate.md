@@ -83,7 +83,7 @@ Three separate kinds of "no" are waiting on one gate:
    of a battlefield permanent, read at cast time with the caster and the face
    already chosen — which is `CatalogCostModifiers` / `CostQuery`
    (`cost_modifier.go:197` / `:113`) exactly, one field different.
-2. **A spell's own condition.** CR 307.6's legendary sorcery ("you may cast
+2. **A spell's own condition.** CR 205.4e's legendary sorcery ("you may cast
    this spell only if you control a legendary creature or planeswalker",
    Urza's Ruinous Blast), and the "cast only if" family generally.
 3. **Bans with a duration** created by a resolving spell (Silence's "this
@@ -202,7 +202,7 @@ than pretending the seam closed.
 
 ### 6. Buyback replaces the resolution destination, and only that one
 
-CR 702.27b: "if the buyback cost was paid, put this card into its owner's
+CR 702.27a: "if the buyback cost was paid, put this card into its owner's
 hand as it resolves instead of putting it into that player's graveyard."
 
 `routeStackCardToGraveyardLocked` already takes the stack item because
@@ -261,7 +261,7 @@ It consults two sources, in this order:
 
 2. **The spell's own condition**, `Spec.CastCondition func(g *Game,
    controller uuid.UUID, card Card) bool`. The legendary-sorcery helper
-   `LegendarySorcery()` is one call of it (CR 307.6); Urza's Ruinous Blast is
+   `LegendarySorcery()` is one call of it (CR 205.4e); Urza's Ruinous Blast is
    the proof card.
 
 The gate returns `*CantCastError`, which wraps the new `ErrCantCast` sentinel
@@ -413,7 +413,7 @@ window on a field that is a week old, and it errs weaker than printed.
 
 §7 built one announce-time answer to "may this player cast this spell at
 all?". This amendment builds its twin — "may this player activate this
-ability at all?" (CR 602.5a) — in the same shape, in a new file beside it,
+ability at all?" (CR 602.5) — in the same shape, in a new file beside it,
 and adds the one piece of state §7 named as missing and then went without.
 
 ### Why a twin and not a widened `CastGateLocked`
@@ -686,6 +686,10 @@ Not a new kind of thing, and deliberately not folded into an existing one:
   "a discard paid as a COST"). A commander returned to its owner's hand as a
   cost goes to the hand without asking; CR 903.9 is a *may*, and a cost that
   cannot ask falls back to the ordinary result.
+  *(2026-09-24, [#1397](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1397):
+  no longer — the owner is asked before the payment begins and the return
+  carries the answer; see
+  [ADR 0013 §5af](0013-replacement-effects.md#5af-amendment-2026-09-24-a-commander-paid-as-a-cost-is-asked-before-the-payment-not-during-it).)*
 
 Paid with the sacrifices, BEFORE the stack item is built, so a leaves-the-
 battlefield trigger queued by the payment is drained by the closing
@@ -779,7 +783,276 @@ source; an auto-tapped one is not.
   both cards stronger than printed (#259), so they stay on the
   *Per-source activations-this-turn count* row, which the return row already
   cross-references.
-- **A variable TAP-others count.** "Tap X untapped artifacts you control"
-  (Secluded Starforge) is the same announcement question one component over.
-  #758 stated it out of scope and that row stays open; nothing here narrows it,
-  and `SacrificeCostBounds` is the shape it should copy when it lands.
+
+---
+
+## Amendment (2026-09-23, [#1227](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1227)): what the returned permanent was attacking is a paid-cost fact
+
+The #1213 amendment above shipped `AbilityCost.ReturnToHand` as
+`TapOthersCost` one verb over. Ninjutsu (CR 702.49a) is the first card family
+whose EFFECT has to know something about what the cost returned:
+
+> Return an unblocked attacker you control to hand: Put this card onto the
+> battlefield from your hand tapped and **attacking**.
+
+and CR 702.49a's next sentence says attacking *the same player or planeswalker
+that the returned creature was attacking*.
+
+### Decision 4 — `PaidCost.ReturnedAttacking`
+
+One field on the existing record, beside `CountersRemoved` (#789) and
+`Sacrificed` (#1213), read back through `Context.ReturnedAttacking()`.
+
+It is here rather than anywhere else because it is the same KIND of fact those
+two are, and it is unrecomputable for a stronger reason than either. The
+returned permanent's battlefield exit clears `Card.AttackingTarget`
+(`zone.go`), and LKI carries no combat state — so one line after the bounce,
+with the ability not yet even on the stack, nothing in the game can answer the
+question. `payReturnToHandCostLocked` therefore reads the field BEFORE it
+routes the card and hands the answer back to the announce path, which locks it
+onto the stack item with the rest of the payment.
+
+Three things that follow, and each is a decision rather than a detail:
+
+- **It is recorded for every return cost**, not only ninjutsu's. Quirion
+  Ranger's Forest is attacking nothing, so the field is `uuid.Nil` and the
+  record simply says so. "The engine charged N" and "the card prints N" are
+  different facts — `Sacrificed`'s own argument — and a record that only spoke
+  up for the interesting case would make every reader ask which it was looking
+  at.
+- **It is the FIRST returned permanent that was attacking**, in the order the
+  activator named them. No printed clause returns more than one, and the
+  alternative — a slice, mirrored into the snapshot and the clone — would be
+  shape for a card that does not exist.
+- **It is not a bit on `ReturnToHandCost`.** The narrowing to "an unblocked
+  attacker you control" is a PREDICATE on the clause's filter, so the one
+  candidate walk (`ReturnToHandOptionsForEffect`) narrows the client's picker,
+  the legal-move enumerator and the validator at once — the #544 invariant the
+  #1213 amendment built the component around. A second bit on the component
+  would have been a fourth reader with its own opinion.
+
+`PaidCost.IsZero` grows the field so the sparse common case stays sparse, and
+the record is copied by value like every other scalar on it.
+
+---
+
+## Note (2026-09-23, #1208): the activation TIMING read sits beside the activation gate
+
+The 2026-09-22 note above says of the cast pair that `CastGateLocked` and
+`CastTimingOpenLocked` stay apart because "banned" and "not yet" are different
+answers to the player. The activation side now has the same pair, in the same
+relationship: `game.ActivationTimingOpenLocked`
+(`server/internal/game/activation_timing.go`,
+[ADR 0066](0066-granted-cast-and-play-permissions.md)'s 2026-09-23 amendment)
+answers CR 602.5d's and CR 606.3's "may this player begin to activate this
+ability right now", and it is deliberately **not** folded into
+`ActivationGateLocked`. `cant_activate` means a ban — Cursed Totem, Linvala,
+Pithing Needle, Grand Abolisher — and putting a timing verdict there would put a
+printed clause on every equip ability on somebody else's turn.
+
+Three things in this amendment's own §1 changed to carry it, and all three are
+additions rather than edits:
+
+- **`ActivationAbility` grew `SorcerySpeed`, `Loyalty` and `Equip`.** `Loyalty`
+  is the bool **Scope, stated** predicted for a future restriction on loyalty
+  abilities as a class — *"a bool on `ActivationAbility`, not a second gate"* —
+  arriving for the timing read first, and derived from
+  `AbilityCost.Loyalty != nil` so a catalog entry still cannot forget CR 606.3.
+  The gate reads none of the three: a ban does not care how fast the ability is.
+- **`ActivationAbilityOf(shape)`** is now the one place an
+  `ActivatedAbilityShape` becomes the identity both reads take, so the two
+  cannot be handed different answers to "which ability is this". Both call sites
+  in `ActivateCatalogAbility` and in `legal.abilityMovesForSource` build it once
+  and pass it twice.
+- **`ActivationQuery` is unchanged**, and that is the point: the timing
+  statement's `Covers` predicate is handed the same query a restriction's
+  `Forbids` is, with the same read-only contract, so a card file writes one
+  vocabulary. `ActivationTiming` mirrors `ActivationRestriction` field for
+  field (a printed `Label`, a predicate, an `ActiveWhen` designation gate) and
+  `ActivationTimingsForCard` mirrors `ActivationRestrictionsForCard` line for
+  line.
+
+**The order at the announce is unchanged and still ours rather than the rules':**
+`ActivateCatalogAbility` asks the CR 113.6 zone check, then the GATE, then the
+timing read, then the exhaust record, then the CR 602.1b condition. The gate
+still runs first because "can't be activated" is the answer that will still be
+true next turn.
+
+**§2's caller list gains a fifth, for the timing read only.** `ActivateLoyalty`
+(`mutations.go`) is the sandbox manual loyalty verb — not a catalogued ability,
+skipped by `internal/legal` by design — and it is still CR 606.3's window. A
+statement about "loyalty abilities of planeswalkers you control" reaches a
+planeswalker the catalog has never heard of, which is exactly the seat that verb
+exists for, so it reads the same function. Its sorcery-speed check moved below
+the battlefield lookup because the read needs the object; nothing else about
+that verb's order changed.
+
+**The view stamp is a sibling of §3's, not a spelling of it.**
+`ActivatedAbilityView.timing_closed` is negative and `omitempty`, absent on
+every instant-speed row, and it is what the client greys on;
+`cant_activate` keeps its own meaning and its own reason string. The two
+recover differently — a shut window opens next main phase, a ban ends when
+somebody kills the artifact — which is the same argument §3 makes for
+`cant_activate` being distinct from `condition_unmet` and `exhausted`.
+
+## Amendment (2026-09-23, [#1310](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1310) / [#1311](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1311)): waterbend has three owners, and one of them is a prompt
+
+**Sprint:** S44 — mana and cost components. Tracker [#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887)
+(costs) and [#883](https://github.com/krakenhavoc/cmd_and_ctrl/issues/883) (protection, which owns ward).
+Deck tracker [#1306](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1306).
+
+This ADR owns the cost vocabulary, and the #1213 amendment's rule is that a
+component is ONE struct with one options walk, one budget, one validator and one
+payer, however many surfaces carry it. Waterbend (CR 701.67a) is the next
+component to test that rule, with two new surfaces at once. The activated
+ability is [ADR 0020](0020-activated-abilities.md)'s amendment of the same date
+(Decisions 32–34); this one records the vocabulary decision and the prompt.
+
+### Decision 5 — `TapPermanentsCost` is the component, and the surface decides only where the mana lives
+
+S22's `game.TapPermanentsCost` now has three owners — `Spec.TapCost` (a spell),
+`AbilityCost.Waterbend` (an activated ability) and
+`CounterUnlessPaidPrompt.Waterbend` (a pay-or-counter prompt) — and not a second
+struct. What differs is only whether the waterbend mana is ADDED to what is owed
+(a spell's additional cost) or already IS what is owed (an ability's cost, a
+prompt's payment); in the second case `Extra` names the part of the cost the
+taps may cover, which is CR 701.67b's rule written down. The shared arithmetic is
+`game.WaterbendBudget` (the clause's generic, capped by what the priced cost
+still charges) and `game.WaterbendReduced` (that many generic paid by tapping),
+and the shared walk is `Game.WaterbendOptionsForEffect` — read by the validator,
+the protocol view and the legal-move enumerator alike (#544).
+
+### Decision 6 — "Ward—Waterbend {N}" is the pay-unless prompt with a tap list
+
+The Unagi of Kyoshi Island's ward charged as a plain {4} would be HARDER to pay
+than printed — the card stronger than it is, #259's wrong direction — so it
+waited. `effects.WardWaterbend("{4}")` now queues the ordinary CR 118.12
+`pay_unless` (it halts the stack while open, #951, exactly as `Ward {N}` does)
+with the waterbend clause on its frame. `PendingChoice.PayTapCost()` reads it
+back; the view ships it as `PendingChoiceView.tap_cost` (the `TapCostView` a
+hand card's convoke already uses) and the "Pay" answer names the taps:
+`resolve_choice { choice_id, apply: true, tap_ids }`, resolved by
+`Game.ResolvePayUnlessWithTaps`. Four rules:
+
+1. **"You control" is the PAYER.** The clause is `effects.Waterbend` — the one a
+   spell uses — and the validator reads it for the chooser, so the taps come off
+   the targeting player's board, never the warded permanent's controller's.
+2. **The mana half is settled first; the taps happen only if it is.** A payment
+   whose remainder cannot be funded degrades to a decline with nothing tapped —
+   the CR 118.12 reading `ResolvePayUnless` already had for a "yes" that can't
+   pay.
+3. **The tapped permanents are out of the auto-tapper's reach**
+   (`payCostLocked`'s exclusion set), so a mana creature cannot waterbend for {1} and
+   then tap again for the rest (CR 118.3).
+4. **A malformed tap list is REFUSED with the prompt left open** — taps on a
+   prompt with no clause, on a decline, or naming a permanent that cannot pay. It
+   is not read as a decline: a client bug must not cost the payer their spell,
+   which is the posture every other cost validator already takes.
+
+The enumerator (`legal/waterbend.go`) offers the "Pay" move only when some tap
+list plus the pool can fund it, and the move carries that list — free artifacts
+first, then creatures, then mana sources, the same order the activation half
+uses. The client's pay-unless modal lists the chooser's waterbenders under the
+Pay button when `tap_cost` is present.
+
+### What this does NOT decide
+
+- A ward whose cost MIXES waterbend with another component — no printed card.
+- "Whenever a player waterbends" (CR 701.67c) — no catalog card asks; neither
+  payment path emits an event for it.
+
+
+---
+
+## Amendment (2026-09-23, [#1297](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1297)): the exile-cards component gets its second owner and a pile
+
+**Sprint:** S44 — mana and cost components. Tracker [#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887).
+The activation path is [ADR 0020](0020-activated-abilities.md)'s amendment of the
+same date (Decisions 35–37); this one records the vocabulary decision.
+
+### Decision 7 — `ExileCost` is one struct with two owners, and the pile is a field
+
+#1283 added `game.ExileCost` ("Exile N cards from your hand") with one owner, a
+mana ability. #1297 adds the CR 602 owner, `AbilityCost.ExileCards`, and applies
+the #1213 rule this ADR keeps: a component is ONE struct with one options walk,
+one validator and one payer, however many surfaces carry it. It is now the fifth
+component with that shape after `SacrificeOther`, `RemoveCounters`, `TapOthers`
+and `DiscardCards`.
+
+The printed CR 602 form reads the graveyard far more often than the hand, so the
+struct grew `From` — `ZoneHand` or `ZoneGraveyard` — rather than a sibling type.
+Three consequences, each a decision:
+
+- **The zero value is the hand.** `ExileCost.Zone()` reads an unset `From` as
+  `ZoneHand`, so Cadaverous Bloom's declaration is untouched and a client that
+  predates `exile_cost_zone` keeps resolving its options out of the hand.
+- **The boot check is shared.** `checkExileCardsClause` refuses a zero or
+  negative count and any pile but the hand and the graveyard, for both owners in
+  one function, so the two cannot drift.
+- **It is not a discard, in either pile.** The cards leave through the one exit
+  primitive, fire no `EventDiscardCard`, and madness never sees them. That is
+  why the wire keeps `exile_ids` apart from `discard_ids` on `activate_ability`
+  exactly as #1283 kept them apart on `activate_mana_ability`, and why the
+  validator refuses a card named to both (CR 118.3).
+
+What an announcement exiled is a paid-cost fact (`PaidCost.Exiled`), beside
+`Sacrificed` and `ReturnedAttacking` and for their reason: by resolution nothing
+on the board says which card paid. It is cloned with the record and omitted from
+the snapshot when empty.
+
+### What this does NOT decide
+
+- A variable exile count ("Exile X cards", "one or more", Capitoline Triad's
+  total-mana-value threshold) — `ExileCost.N` is fixed. It is the variable
+  sacrifice count's question (#1213 Decision 2), and should copy that shape when
+  a card asks.
+- An exile cost on a SPELL's additional cost (delve is not one — it is a cost
+  REDUCTION, CR 702.66). No printed spell needs `AdditionalCost` to carry it.
+
+---
+
+## Amendment (2026-09-24, [#1421](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1421)): "Tap X" is the same announced-count vocabulary
+
+Secluded Starforge and Apothecary White ask the question the #1213 amendment
+left open: "Tap X untapped … you control". This is not a new cost system. It is
+the fixed `TapOthersCost` from #758 using the announced-count convention that
+variable sacrifice already established.
+
+### Decision 8 — `TargetSpec.CountFromX` owns the variable width
+
+`TapOthersCost.Count` stays the fixed-count field. For the variable form it is
+zero and `TapOthersCost.Filter.CountFromX` is true. The shared
+`TapOthersCostBounds(cost, x)` returns `Count / Count` for the old form and
+`x / x` for the new one. The protocol view, payability check and validator all
+read that function; the candidate walk remains `TapOthersOptionsForEffect`.
+There is still one answer to which permanents are eligible, including the
+existing CR 118.3 checks that the source cannot also pay `{T}` and that one
+permanent cannot pay two cost components.
+
+`AbilityCost.DemandsX()` now includes this clause even when the mana component
+contains no `{X}`. `XSlots()` still counts mana symbols only, so picking three
+Foods for Apothecary White announces X=3 without adding three generic mana.
+The action carries both `tap_ids` and `x_value`; a mismatch refuses the whole
+activation before anything taps. At resolution the effect reads the immutable
+`StackItem.XValue`, never the current battlefield and never a recount of the
+objects paid.
+
+### Decision 9 — one announcement has one owner
+
+Registration refuses an ability that combines variable tap-others with `{X}`
+mana or with a variable sacrifice clause. Although those components could be
+forced to share one number, their printed choices are independent and a single
+`x_value` cannot express that honestly. Registration also refuses the variable
+form on a mana ability: CR 605.3b skips the announcement step and leaves no
+stack item to carry X.
+
+### Decision 10 — the picker supplies X; bots offer three useful counts
+
+The wire reuses `LegalTargetsView.count_from_x`, already understood by the
+sacrifice picker. A human selects one or more eligible permanents; the client
+sends the selection length as X and skips its separate numeric X prompt. X=0
+is legal in the abstract but is a no-op for both proof cards, so the UI asks
+for at least one pick and the legal-move enumerator omits zero. Bots offer the
+smallest three useful counts, using the existing
+`maxEnumeratedVariableCounts` cap, with nested cheapest-first payments so this
+new dimension cannot consume the target/mode expansion budget.

@@ -1,6 +1,6 @@
 # ADR 0057 — Winning and losing the game by effect, and "can't lose" / "can't win"
 
-**Status:** Accepted · 2026-09-17 · unscheduled (card-coverage audit, wave 2) · tracked on [#749](https://github.com/krakenhavoc/cmd_and_ctrl/issues/749). The owner's answers to the open questions are recorded in [Decided (2026-09-17)](#decided-2026-09-17).
+**Status:** Accepted · 2026-09-17 · unscheduled (card-coverage audit, wave 2) · tracked on [#749](https://github.com/krakenhavoc/cmd_and_ctrl/issues/749). The owner's answers to the open questions are recorded in [Decided (2026-09-17)](#decided-2026-09-17). Implemented 2026-09-24; what the implementation changed is in the [amendment](#amendment-2026-09-24-749-what-the-implementation-changed).
 **Numbering:** 0052 is reserved for the emblems ADR
 ([#623](https://github.com/krakenhavoc/cmd_and_ctrl/issues/623)); 0055 is
 the loop breaker on `develop`; 0056, 0058 and 0059 are being drafted in
@@ -1045,3 +1045,110 @@ are kept as they were proposed. The chosen one is marked.
    seam path ships with at least one real card, even with a declared
    weaker caveat. Applied in Decision 4 ("Built with its first card")
    and the card PRs.
+
+## Amendment (2026-09-24, #749): what the implementation changed
+
+Implemented in one pass rather than the four sub-PRs above, because the
+tree the ADR was written against has moved: #767 (sub-PR 1), #808,
+#769 (ADR 0060, leaving the game) and #766 / #753 (ADR 0059, the rotation
+seam and turn identity) all landed first, so the prerequisites Decision 3
+named are met and the rotation seam this ADR defers to exists
+(`game/rotation.go`). Everything in Decisions 1–7 is built as written
+except what follows. Line references are to the implementation branch.
+
+### A1. Granted gates ride `PlayerStatic`, not a registry of their own
+
+Decision 4 drew `Game.TurnScopedGameEndGates []ScopedGameEndGate`,
+stamped with `Seq`, swept by `ClearExpiredTurnScopedGameEndGatesLocked`,
+and said "#755 is expected to fold this registry in … its duration
+replaces `Seq`". #755 landed first (ADR 0063's CR 611.2 `Duration`), and
+since then #1195, #1200 and #1316 have folded every GRANTED statement
+about a player — a cast-timing grant, a life-total lock, a cast ban —
+onto the one `Player.Statics` slice, one payload per kind, precisely so
+there is one sweep, one `durationExpiredLocked` read, one clone and one
+snapshot field. #1195 shipped a registry of its own for a day and was
+folded onto it. So the fold happens at birth:
+
+- `PlayerStatic.GameEnd GameEndGrant` is the fifth payload
+  (`game/player_statics.go`). `GameEndGrant` is `GameEndGate` without
+  `While` — a granted gate has no permanent to read a condition off, and
+  `TestSnapshotMirrorsHaveNoFuncs` holds the snapshot to plain data —
+  and it lives on the CASTER's seat with the scope relative to them, so
+  "your opponents can't win this turn" is still one entry, as Decision 4
+  wanted.
+- `GrantGameEndGateForEffect(you, gate, label, source, d)` replaces
+  `RegisterTurnScopedGameEndGateForEffect`, and refuses a gate with a
+  `While` exactly as the registry would have. Angel's Grace passes
+  `g.UntilEndOfTurnDuration()`.
+- There is no new sweep: `sweepPlayerStaticsLocked` already runs in the
+  cleanup body `sweepTurnEndLocked` calls (through
+  `ClearEndOfTurnScopedStaticsLocked`) (so the gates end when the
+  active player leaves or `PassTurn` skips cleanup, which is what ADR 0059
+  Decision 6 asked of this ADR's sweep), and the reader tests the
+  duration too.
+- There is no new snapshot field and no drift row: `Statics` is already
+  `carried`. `rotation.go`'s file comment no longer names a registry.
+
+### A2. `ErrStopResolution` is filtered in `EmitEvent`, not at each site
+
+Decision 3 listed six sites that turn a catalog callback's error into
+`EventEffectError` and gave them one helper. There are now dozens,
+most of them prompt continuations added since. Threading a helper through all of them would miss the next one, so
+`EmitEvent` drops an effect-error event whose message carries the
+sentinel (`game/events.go`), and every site is covered by construction.
+The public mutators and choice resolvers still refuse an ended game.
+
+### A3. `leaveGameLocked(p, cause, source)`
+
+Decision 1's signature gains the source, because the log names it
+("Alice lost the game (Pact of Negation)") and `EventPlayerEliminated`
+carries it as `Source` / `CardID`. Concede passes `uuid.Nil`.
+
+### A4. ADR 0051's `outcome` column is deferred to #1520
+
+Decision 7 said the `games` row gains `outcome TEXT` and that this was "a
+column in a schema that has not shipped, not a migration". The user
+database shipped before this (`db/migrations/0002`–`0005`), so it is a
+migration now. The half that affects correctness is done here:
+`Game.WinnerSeat()` reads `Game.Outcome`, so `games.winner_seat` names
+the effect winner while several seats are still standing, and is NULL for
+a draw. Telling a draw from an abandoned table in "my games" is #1520.
+
+### A5. Smaller settlements
+
+- **The log's commander-damage text** is "(commander damage)", not "(21
+  commander damage)": the threshold is `Settings.CommanderDamage` and the
+  table can change it.
+- **The SBA pass that ends a game** still runs the permanent SBAs after
+  it, as the pass did before; only the rotation is skipped.
+- **Bots** read only the life clock (`SeatEval.CantLoseLife`): the
+  heuristic has no poison push or poison danger term to clamp yet (ADR
+  0056 Decision 7's readers are not in `aiseat/heuristic`), and no
+  commander-damage push. The model prompt's seat line names every cause
+  and every source.
+- **Laboratory Maniac** cancels the whole draw event it replaces (a
+  doubled draw included) before it tries to win, so a prevented win
+  leaves no CR 704.5b flag behind. The helper is
+  `effects.WinInsteadOfDrawingFromAnEmptyLibrary`, for Jace's static.
+- **Thassa's Oracle** keeps "up to one" with a reveal-pick of zero or one
+  and puts the rest on the bottom through `PutOnBottomInRandomOrderForEffect`,
+  so the printed random order holds.
+- **The seat badge** is a text badge in `KeywordBadgeRow`'s language,
+  appended after the keyword and `LIFE` badges (`playerKeywordBadges.ts`),
+  with the sources in its tooltip.
+
+### A6. The first wave that shipped, and Angel's Grace's second caveat
+
+Seven cards: Herald of Eternal Dawn (the Aang deck's, #1306 — in list (b)
+already), Platinum Angel, Abyssal Persecutor, Felidar Sovereign,
+Laboratory Maniac and Thassa's Oracle complete, and Angel's Grace
+declared incomplete as question 3 decided. Angel's Grace carries a
+SECOND caveat the ADR did not foresee: split second (CR 702.61) is not
+read from any card — only a sandbox cast flag sets the stack's gate — so
+players may respond to it. Weaker than printed, and #1519 is the seam.
+*(2026-09-24: #1519 closed that seam — split second is a canonical
+keyword read at announce, see ADR 0007's amendment of the same date —
+and Angel's Grace now declares it and carries only the life-floor
+caveat.)*
+The rest of list (b) no longer waits on this seam and is checked for
+other blockers in its own card PRs, as question 3 said.

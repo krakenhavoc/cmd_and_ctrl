@@ -47,6 +47,13 @@ func Level(n int) game.Designation { return game.ClassLevel(n) }
 // back off.
 func Solved() game.Designation { return game.CaseSolved() }
 
+// Harnessed is the CR 701.64 / 702.186b gate: this ability exists
+// while the permanent is harnessed — "∞ — [Ability]" (#1321). Once
+// harnessed a permanent stays harnessed for as long as it is on the
+// battlefield (CR 701.64b), so nothing that reads this has to worry
+// about it going back off.
+func Harnessed() game.Designation { return game.Harnessed() }
+
 // AtLevel stamps a CR 716.2 level gate onto a triggered ability built
 // with any of the ordinary trigger constructors, so the level line
 // reads as one thing:
@@ -75,7 +82,7 @@ func WhenSolved(t game.TriggeredAbility) game.TriggeredAbility {
 // could get any of them wrong:
 //
 //	CR 716.2d  sorcery speed
-//	CR 716.2e  "activate only if this Class is level N-1" — so the
+//	CR 716.2a  "activate only if this Class is level N-1" — so the
 //	           levels are climbed in order and none is skipped
 //	CR 716.2b  the effect is "this Class's level becomes N", not
 //	           "+1 level", so two copies of the ability on the stack
@@ -105,6 +112,9 @@ func LevelUp(level int, cost game.AbilityCost) ActivatedAbility {
 			return g.ClassLevelFor(source) == level-1
 		},
 		Effect: func(g *game.Game, item *game.StackItem) error {
+			if sourceIsNewObject(g, item) { // #1432: a new Class starts at level 1
+				return nil
+			}
 			return g.SetClassLevelForEffect(item.SourceCardID, level)
 		},
 	}
@@ -166,7 +176,7 @@ func ToSolve(label string, condition func(g *game.Game, controller, source uuid.
 				// CR 603.4: the intervening if is checked again on
 				// resolution. Nothing happens if it is false — the
 				// ability is simply removed from the stack.
-				if !condition(g, item.Controller, item.SourceCardID) {
+				if !condition(g, item.Controller, item.SourceCardID) || sourceIsNewObject(g, item) { // #1432
 					return nil
 				}
 				return g.SolveCaseForEffect(item.SourceCardID)
@@ -175,12 +185,52 @@ func ToSolve(label string, condition func(g *game.Game, controller, source uuid.
 	}
 }
 
+// --- Harness (CR 701.64) ----------------------------------------------
+
+// Harness is CR 701.64a's "Harness [this permanent]" activated
+// ability: "If this permanent isn't harnessed, it becomes harnessed."
+//
+// It carries no ActiveWhen and no Condition: CR 701.64a is worded as
+// an EFFECT ("if … isn't … it becomes …"), not a legality
+// restriction, so nothing stops a permanent already harnessed from
+// having the ability activated again — it simply does nothing the
+// second time, because HarnessForEffect is idempotent. A Condition
+// that refused the second activation would make the ability
+// unactivatable rather than a no-op, which is a stronger and wrong
+// restriction no printed Harness ability states.
+//
+// `label` is the printed line verbatim ("{5}{W}, {T}: Harness The
+// Mind Stone."), because the cost shapes vary card to card exactly as
+// LevelUp's do not, and there is only one card to generalise from so
+// far.
+func Harness(label string, cost game.AbilityCost) ActivatedAbility {
+	return ActivatedAbility{
+		Label: label,
+		Cost:  cost,
+		Effect: func(g *game.Game, item *game.StackItem) error {
+			if sourceIsNewObject(g, item) { // #1432
+				return nil
+			}
+			return g.HarnessForEffect(item.SourceCardID)
+		},
+	}
+}
+
 // specDesignations is every designation gate a Spec declares, across
-// all four gateable slots. One walk, so a guard (Register's door
-// check, and the catalog-wide test beside it) cannot cover three
-// slots and forget the fourth.
+// all five gateable slots. One walk, so a guard (Register's door
+// check, and the catalog-wide test beside it) cannot cover four slots
+// and forget the fifth.
+//
+// #1314 added GatedCastPermissions: a standing cast/play permission
+// can now be gated exactly like a static, a trigger, an activated
+// ability or a cost modifier (Fortune Teller's Talent's level-2 line),
+// and the door guard has to see it or a card could ship a door-gated
+// permission that silently never opens. Plain CastPermissions carries
+// no gate at all (game.CastPermission has none — see
+// game.CastPermissionGate's doc comment for why the gate lives on a
+// separate wrapper), so it is not walked here.
 func specDesignations(spec Spec) []game.Designation {
-	out := make([]game.Designation, 0, len(spec.Static)+len(spec.Triggered)+len(spec.Activated)+len(spec.CostModifiers))
+	out := make([]game.Designation, 0, len(spec.Static)+len(spec.Triggered)+len(spec.Activated)+len(spec.CostModifiers)+len(spec.GatedCastPermissions))
 	for _, a := range spec.Static {
 		out = append(out, a.ActiveWhen)
 	}
@@ -192,6 +242,9 @@ func specDesignations(spec Spec) []game.Designation {
 	}
 	for _, m := range spec.CostModifiers {
 		out = append(out, m.ActiveWhen)
+	}
+	for _, p := range spec.GatedCastPermissions {
+		out = append(out, p.ActiveWhen)
 	}
 	return out
 }

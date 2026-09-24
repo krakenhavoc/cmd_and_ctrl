@@ -18,6 +18,9 @@
     NO_COMMANDER_IDENTITY,
     chargedManaCostLabel,
     chargedManaCostNote,
+    returnShortfall,
+    tapOthersShortfall,
+    type ReturnOptionsShape,
   } from "../../contextMenu.logic";
   import { sacrificeShortfall } from "../../sacrificeCost";
   import { hasSatisfiableTargets } from "../../timing";
@@ -44,6 +47,10 @@
     // clickable all through combat and an opponent's turn and came
     // back rejected. The flag had been on the wire since S21.
     sorcerySpeedBlocked?: string;
+    // #1438: a left-click on a mana source taps it FOR mana now, so
+    // turning it sideways WITHOUT making mana lives here, labelled so
+    // nobody mistakes it for the mana row. Undefined hides it.
+    onRawTap?: () => void;
     onClose?: () => void;
   }
 
@@ -55,6 +62,7 @@
     onActivateAbility,
     summoningSick = false,
     sorcerySpeedBlocked = "",
+    onRawTap,
     onClose,
   }: Props = $props();
 
@@ -74,6 +82,15 @@
     tap_cost?: boolean;
     sacrifice_label?: string;
     sacrifice_options?: { players?: string[]; cards?: string[]; min?: number; max?: number };
+    // #1213 / #1227: a return-to-hand cost. Ninjutsu is the row this
+    // matters most for — it is payable only in the declare-blockers
+    // window, with an unblocked attacker on the board, so a hand card
+    // that never greyed would be clickable and refused nearly always.
+    return_label?: string;
+    return_options?: ReturnOptionsShape;
+    // #759: a tap-another cost (station), greyed the same way.
+    tap_others_label?: string;
+    tap_others_options?: ReturnOptionsShape;
     // #1157: `min` carries the clause's count, and an "up to N" clause
     // (min 0) is satisfied by an empty candidate list.
     legal_targets?: { players?: string[]; cards?: string[]; min?: number };
@@ -101,6 +118,12 @@
     // #747: count-aware — "needs three Foods (you have 2)".
     const sacrifice = sacrificeShortfall(a.sacrifice_options, a.sacrifice_label ?? "a permanent");
     if (sacrifice) return sacrifice;
+    // #1213 / #1227: the same question one verb over, off the one
+    // shared predicate the right-click menu asks.
+    const returned = returnShortfall(a.return_options, a.return_label);
+    if (returned) return returned;
+    const tapOthers = tapOthersShortfall(a.tap_others_options, a.tap_others_label);
+    if (tapOthers) return tapOthers;
     // #625: a "remove N counters" cost with nothing that can pay it.
     const counters = counterCostBlocked(a);
     if (counters) return counters;
@@ -163,7 +186,7 @@
       {/if}
       {#if a.life_cost}
         <!-- S22: a "Pay N life" cost component (Mana Confluence).
-             Advisory — the server does the CR 118.8 check. The
+             Advisory — the server does the CR 119.4 check. The
              painlands' "deals 1 damage to you" is a RIDER, not a
              cost, so it shows up in the label instead of here. -->
         <span class="cost" aria-label={`pay ${a.life_cost} life`}>♥{a.life_cost}</span>
@@ -203,6 +226,24 @@
         {/if}
       </button>
     {/each}
+  {/if}
+  {#if onRawTap}
+    <div class="divider" role="separator"></div>
+    <button
+      type="button"
+      class="menu-item"
+      role="menuitem"
+      title="Turn it sideways without adding mana"
+      data-raw-tap
+      onclick={(ev) => {
+        ev.stopPropagation();
+        onRawTap?.();
+        onClose?.();
+      }}
+    >
+      <span class="label">Tap (no mana)</span>
+      <span class="cost" aria-hidden="true">↻</span>
+    </button>
   {/if}
 </div>
 

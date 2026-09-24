@@ -57,7 +57,7 @@ func TestRecordCommanderDamage(t *testing.T) {
 	}
 }
 
-// TestCommanderDamageFromMultipleCommandersNotCombined is CR 903.14a
+// TestCommanderDamageFromMultipleCommandersNotCombined is CR 903.10a
 // and, since the S25 (#77) rekey from player IDs to commander
 // instance IDs, it finally covers the case it was named for: two
 // PARTNER commanders sharing one seat are two independent clocks.

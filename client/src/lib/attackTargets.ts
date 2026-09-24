@@ -73,3 +73,34 @@ export function attackTargetHint(view: GameView, row: AttackTargetRow): string {
   const loyalty = card.counters?.loyalty ?? 0;
   return seat ? `${seat.display_name || seat.name}'s · ${loyalty} loyalty` : `${loyalty} loyalty`;
 }
+
+// defendingPlayerOf is the seat defending against `attacker`'s attack
+// — the only seat whose creatures may block it (CR 802.4a, #1339): the
+// player attacked, the controller of the planeswalker attacked, or the
+// PROTECTOR of the battle attacked. The server computes it and ships it
+// as `defending_player`, so the client never re-derives who defends a
+// battle.
+//
+// A creature whose planeswalker or battle has left combat still carries
+// `defending_player` — the player who was defending it, who may still
+// block it (CR 506.4c, 802.2a; #1364) — with no attacking_target_kind.
+//
+// The fallback is for frames that predate the field (replays, bug
+// reports): a player attack's target IS its defender, and nothing else
+// can be read off the id without the rule. `undefined` means nobody
+// may block — not attacking, or (in a frame from before #1364)
+// attacking a planeswalker or battle that has left the battlefield.
+export function defendingPlayerOf(attacker: CardView): string | undefined {
+  if (!attacker.attacking_target) return undefined;
+  if (attacker.defending_player) return attacker.defending_player;
+  const kind = attacker.attacking_target_kind;
+  return kind === undefined || kind === "player" ? attacker.attacking_target : undefined;
+}
+
+// attackersDefendedBy lists the attackers on the battlefield `seatID`
+// defends against: the ones its creatures may be declared as blockers
+// for. The block pickers read this, so none of them offers a block the
+// server refuses with `not_defending`.
+export function attackersDefendedBy(view: GameView, seatID: string): CardView[] {
+  return (view.battlefield?.cards ?? []).filter((c) => defendingPlayerOf(c) === seatID);
+}

@@ -149,6 +149,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/github"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/lobby"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/roadmap"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/appenv"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/envflag"
@@ -373,9 +374,14 @@ func main() {
 	// recomputes it from the printing (game/snapshot_backfill.go).
 	// With no index it falls back to the pre-#683 rule.
 	game.PrintedVariableToughness = deck.PrintedVariableToughness(cardIdx)
-	if n := l.RestoreFromDisk(log); n > 0 {
-		log.Info("resumed games from the previous process", "count", n)
-	}
+	// Timed and logged unconditionally (#524): the strong hypothesis
+	// on #515 is that startup — not this restore pass — dominates the
+	// restart window, and that hypothesis needs a number rather than
+	// a guess. This is the boot-side half of the pair; the shutdown
+	// census logged below, at SIGTERM, is the other half.
+	restoreStart := time.Now()
+	n := l.RestoreFromDisk(log)
+	log.Info("restore from disk complete", "duration", time.Since(restoreStart).Round(time.Millisecond).String(), "resumed", n)
 
 	// Optional demo game for the gamecli dev path. Creates a game
 	// directly (bypassing the lobby's invite flow) so you can dial
@@ -412,6 +418,21 @@ func main() {
 	// below does not shadow them.
 	mux.Handle("GET /catalog", auth.Middleware(authenticator)(catalog.Handler(cardIdx, imgCache)))
 	mux.Handle("/catalog/", auth.Middleware(authenticator)(catalog.Handler(cardIdx, imgCache)))
+	// The engine roadmap: what the engine supports, keyword by keyword
+	// and seam by seam (ADR 0092).
+	//
+	// Deliberately NOT behind auth.Middleware, unlike /catalog above.
+	// ADR 0092 Decision 1: the roadmap carries card NAMES and caveat
+	// sentences this repo wrote, and never card art, an image URL, a
+	// Scryfall printing ID or oracle text, so it does not reopen the
+	// question the catalog's gate answers. roadmap's handler tests fail
+	// if any of those keys reaches the body. If you want to add one,
+	// it belongs on the catalog, not here.
+	//
+	// Mounted on the bare path (every method) so the handler's own
+	// "GET /roadmap" pattern answers a POST with 405 rather than the
+	// lobby catch-all below answering it.
+	mux.Handle("/roadmap", roadmap.Handler())
 	discordCfg := discord.ConfigFromEnv()
 	if discordCfg.Enabled() {
 		log.Info("discord oauth enabled", "redirect_uri", discordCfg.RedirectURI)
@@ -568,6 +589,19 @@ func main() {
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		log.Error("http shutdown", "err", err)
 	}
+
+	// Log what this restart costs each live table, before the hub
+	// closes any of them (ADR 0044 decision 1, #524). This is a read
+	// of already-held state — no disk writes, no capture — so it
+	// cannot make the shutdown grace period any less safe. archived
+	// looks the game up in the lobby (a fact ws itself does not know)
+	// so an archived table's line says so rather than reading as an
+	// abandoned live one.
+	ws.LogShutdownCensus(log, mgr.List(), func(id uuid.UUID) bool {
+		meta, err := l.Get(id)
+		return err == nil && meta.Archived()
+	})
+
 	hub.Shutdown(shutdownCtx)
 	bots.Shutdown()
 	if database != nil {
@@ -1027,7 +1061,7 @@ func seedDemoGame(log *slog.Logger) *game.Game {
 		}
 		log.Info("demo player seated", "name", name, "seat", p.Seat, "id", p.ID.String())
 	}
-	if err := g.Start(nil); err != nil {
+	if err := g.StartWithFirstPlayerRoll(nil); err != nil {
 		log.Error("seedDemoGame Start failed", "err", err)
 		os.Exit(1)
 	}

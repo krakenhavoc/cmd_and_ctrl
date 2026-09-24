@@ -14,8 +14,9 @@
 // Everything here is read-only and derived from data that is already
 // public: the Scryfall bulk dump and the contents of this
 // repository. No game, seat, session or player state is reachable
-// from this package, which is what makes the routes safe to serve
-// unauthenticated.
+// from this package. The routes are nonetheless served behind a
+// session (see Handler and main.go); internal/roadmap reads Build for
+// its completeness verdicts and publishes card names only.
 package catalog
 
 import (

@@ -31,14 +31,27 @@ import type { CounterPayment } from "./counterCost";
 //   "player"      — seated player only
 //   "creature"    — battlefield creature only
 //   "stack_spell" — a spell currently on the stack
+//   "stack_ability" — an activated or triggered ability on the stack
+//                     (Stifle, Strionic Resonator) — #1211
+//   "stack_item"  — either of those (Disallow, Deflecting Swat,
+//                   Bolt Bend, Tale's End) — #1211
 //   "card_in_graveyard" — a card in any graveyard (Regrowth, Eternal
 //                         Witness)
+//
+// The three stack modes differ only in the sentence the banner
+// writes. They light the same surface (the stack overlay, which draws
+// spells and abilities in one list) and obey the same legal set — an
+// ability is an ordinary card-kind ref carrying its STACK ITEM's id,
+// so nothing downstream had to learn a new shape. A picker that read
+// the mode for legality would be reading a hint as a rule.
 export type TargetingMode =
   | "any"
   | "player"
   | "creature"
   | "permanent"
   | "stack_spell"
+  | "stack_ability"
+  | "stack_item"
   | "card_in_graveyard";
 
 // CastChoices bundles every announce-time decision collected before
@@ -74,6 +87,11 @@ export interface CastChoices {
   // payment for a multikicker. Undefined and [] are the same thing
   // to the server: decline them all.
   optionalCosts?: number[];
+  // CR 702.174a (#1267): the opponent a gift is promised to — a
+  // player ID from the gift offer's `opponent_options`. Set exactly
+  // when `optionalCosts` claims the gift offer; the server rejects it
+  // on a cast that does not.
+  giftOpponent?: string;
   // S22: the untapped permanents tapped to help pay — convoke and
   // waterbend. Undefined and empty are the same thing to the server;
   // tapping nothing is always legal.
@@ -106,13 +124,26 @@ export interface CastChoices {
   // impulse button) fire bare payloads with no prompts at all, which
   // is why they never needed it.
   fromZone?: CastSourceZone;
+  // #1508: the cast was started by dragging the card out of the hand
+  // onto the table. It rides CastChoices for the reason fromZone does
+  // — a dragged cast walks the SAME prompt chain a click does, and the
+  // flag has to survive every hop of it — and applyCastChoices turns
+  // it into `strict: true, auto_tap: true` on the wire, whatever the
+  // viewer's strictMana setting says (owner decision 3). A click never
+  // sets it, so a clicked cast is byte-identical to before.
+  viaDrag?: boolean;
 }
 
 // CastSourceZone is the `from_zone` vocabulary the server's
 // castZoneFromWire accepts. "hand" is never sent — it is the server
 // default and omitting it keeps every pre-S29 client's payload
 // byte-identical.
-export type CastSourceZone = "command" | "exile" | "graveyard";
+//
+// #1440: "library" joins the set for the S42 library-top permissions
+// (Bolas's Citadel, Oracle of Mul Daya, Courser of Kruphix) — the same
+// wire word `castZoneFromWire` already accepts, sent by the PileBar
+// affordance on a visible, playable top card.
+export type CastSourceZone = "command" | "exile" | "graveyard" | "library";
 
 // applyCastChoices writes a CastChoices onto a cast_spell payload.
 // Undefined fields are omitted rather than sent as null — the server
@@ -132,6 +163,10 @@ export function applyCastChoices(
   // what every client that predates the kicker toggles sends.
   if (choices.optionalCosts !== undefined && choices.optionalCosts.length > 0)
     params.optional_costs = choices.optionalCosts;
+  // #1267: omitted unless a gift was promised — a stray one is an
+  // error server-side, not a no-op.
+  if (choices.giftOpponent !== undefined && choices.giftOpponent !== "")
+    params.gift_opponent = choices.giftOpponent;
   if (choices.tapIDs !== undefined && choices.tapIDs.length > 0) params.tap_ids = choices.tapIDs;
   // #916: omitted at 0, which is the server default and what every
   // client that predates the stepper sends.
@@ -143,6 +178,25 @@ export function applyCastChoices(
   if (choices.face !== undefined && choices.face > 0) params.face = choices.face;
   // S29: omitted for a hand cast, for the same reason face 0 is.
   if (choices.fromZone !== undefined) params.from_zone = choices.fromZone;
+  // #1508: a dragged cast always pays strictly and lets the engine tap
+  // the lands itself. Written as `strict`, which is also what tells
+  // manaEnforcement.ts's stamp to leave the payload alone.
+  if (choices.viaDrag) {
+    params.strict = true;
+    params.auto_tap = true;
+  }
+}
+
+// castChoicesBase is the CastChoices a cast STARTS with, before any
+// prompt has asked anything: the zone it comes out of (undefined is the
+// hand) and whether it was dragged. handlePlayCard seeds the chain with
+// it, and the face picker stashes it, so neither half is lost when a
+// modal DFC asks which face first.
+export function castChoicesBase(fromZone?: CastSourceZone, viaDrag = false): CastChoices {
+  const out: CastChoices = {};
+  if (fromZone) out.fromZone = fromZone;
+  if (viaDrag) out.viaDrag = true;
+  return out;
 }
 
 // TargetingState is the active prompt. `card` is the spell being
@@ -195,6 +249,10 @@ export interface TargetingState {
     // the targets, and it rides the one activate_ability the confirm
     // sends as `phyrexian_life`.
     phyrexianLife?: number;
+    // #1296: the ability's price per legal target, when its price
+    // reads the target (target_charged_mana_costs). The banner shows
+    // it, because an equip's one click is also its confirm.
+    prices?: Record<string, string>;
   };
   // Human-readable clause for the banner ("target artifact or
   // enchantment"); the server's TargetSpec label.
@@ -261,8 +319,9 @@ export const targeting: Writable<TargetingState | null> = guardedWritable(null, 
 // — the last cast wins. The caller has already verified the
 // card's target_mode is non-empty.
 //
-// `alt` is the alternative cost being paid, when one is (S22): its
-// clause replaces the card's, because the spell's targets are
+// `alt` is the alternative cost being paid, when one is (S22) — or,
+// since #1267, the claimed optional cost that rewrites the clause
+// (see castTargetOverride): its clause replaces the card's, because the spell's targets are
 // whatever the cost it was cast for says they are. Wash Away hard-cast
 // can only hit a spell that wasn't cast from its owner's hand;
 // cleaved it can hit any spell, and the legal set differs
@@ -271,7 +330,7 @@ export function begin(
   card: CardView,
   mode: TargetingMode,
   choices?: CastChoices,
-  alt?: AlternativeCostView,
+  alt?: TargetClauseOverride,
 ): void {
   const lt = alt ? alt.legal_targets : card.legal_targets;
   // #764: a card with more than one clause walks them in printed
@@ -467,7 +526,7 @@ export function beginForModes(card: CardView, modes: number[], choices?: CastCho
 
 // modeSteps is the walk a modal announcement asks for: every clause
 // of every chosen OCCURRENCE, in the order the modes were chosen
-// (CR 700.2c). A repeated mode (CR 700.2d) contributes its clauses
+// (CR 608.2c). A repeated mode (CR 700.2d) contributes its clauses
 // once per occurrence, each with its own modeIndex, which is what
 // gives each occurrence its own targets.
 export function modeSteps(card: CardView, modes: number[], choices?: CastChoices): TargetStep[] {
@@ -621,6 +680,53 @@ export function optionalCostSelection(counts: Map<number, number>): number[] {
   return out;
 }
 
+// optionalCostOpponentOptions returns the players a gift offer may be
+// promised to, or undefined when the offer is not a gift (#1267). An
+// empty array means the offer cannot be taken right now — nobody left
+// to promise it to.
+export function optionalCostOpponentOptions(offer: OptionalCostView): string[] | undefined {
+  if (!offer.chooses_opponent) return undefined;
+  return offer.opponent_options ?? [];
+}
+
+// TargetClauseOverride is the target-clause trio an offer carries when
+// paying it rewrites the spell's clause. AlternativeCostView and
+// OptionalCostView both satisfy it.
+export type TargetClauseOverride = Pick<
+  AlternativeCostView,
+  "target_mode" | "legal_targets" | "clauses"
+>;
+
+function carriesClause(offer: OptionalCostView): boolean {
+  return (
+    offer.target_mode !== undefined ||
+    offer.legal_targets !== undefined ||
+    (offer.clauses?.length ?? 0) > 0
+  );
+}
+
+// castTargetOverride is the clause that replaces the card's own for
+// THIS cast, or undefined when the card's printed clause stands.
+//
+// The alternative cost wins: it replaces the whole statement, and an
+// offer with no target_mode (overload) means "no targets" rather than
+// "fall back". Otherwise the first claimed optional cost that carries
+// a clause — a promised gift that widens Long River's Pull to any
+// spell, or adds a target to a card that prints none. No card has
+// both, so precedence is a guard rather than a rule anyone relies on.
+export function castTargetOverride(
+  card: CardView,
+  choices: CastChoices | undefined,
+): TargetClauseOverride | undefined {
+  const alt = alternativeCostByKey(card, choices?.altCost);
+  if (alt) return alt;
+  for (const index of choices?.optionalCosts ?? []) {
+    const offer = optionalCostsOf(card)[index];
+    if (offer && carriesClause(offer)) return offer;
+  }
+  return undefined;
+}
+
 // optionalCostPayOptions returns the permanents that can pay an
 // offer's sacrifice half, or undefined when it charges none — which
 // is every mana kicker. An empty array means the offer cannot be
@@ -759,7 +865,15 @@ export function beginForAbility(
       // CR 602.2b: X was announced before the targets were chosen and
       // cannot change now — it rides through to the one
       // activate_ability the confirm sends.
-      ability: { index: ability.index, sacrificeIDs, crewIDs, xValue, counter, phyrexianLife },
+      ability: {
+        index: ability.index,
+        sacrificeIDs,
+        crewIDs,
+        xValue,
+        counter,
+        phyrexianLife,
+        prices: ability.target_charged_mana_costs,
+      },
       modes,
     }),
   );
@@ -846,8 +960,40 @@ export function isTargetingCreature(mode: TargetingMode): boolean {
   return mode === "any" || mode === "creature" || mode === "permanent";
 }
 
+// opensTargetPicker answers the cast flow's one question about a
+// card's `target_mode`: does clicking this card open the picker, or
+// does it fire cast_spell straight away?
+//
+// An ALLOWLIST, and the typed narrowing is the point: a mode the
+// client does not recognise falls through to an immediate cast with
+// no targets, which the server refuses with nothing on screen to
+// explain it. That is exactly what happened to every "counter target
+// activated or triggered ability" card before #1211 added
+// `stack_ability` and `stack_item` here — so the list lives next to
+// the type that declares the vocabulary, where adding a mode and
+// forgetting this is one file rather than two.
+export function opensTargetPicker(mode: string | undefined | null): mode is TargetingMode {
+  switch (mode) {
+    case "any":
+    case "player":
+    case "creature":
+    case "permanent":
+    case "stack_spell":
+    case "stack_ability":
+    case "stack_item":
+    case "card_in_graveyard":
+      return true;
+    default:
+      return false;
+  }
+}
+
 export function isTargetingStack(mode: TargetingMode): boolean {
-  return mode === "stack_spell";
+  // #1211: all three stack modes route to the same surface. This is
+  // the FREE-FORM fallback ("no server legal set, so guess from the
+  // mode"); a structured clause never reaches it, which is why the
+  // widening cannot make an illegal target clickable.
+  return mode === "stack_spell" || mode === "stack_ability" || mode === "stack_item";
 }
 
 export function isTargetingGraveyard(mode: TargetingMode): boolean {

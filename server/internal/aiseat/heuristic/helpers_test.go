@@ -163,7 +163,7 @@ func withBattlefield(cards ...protocol.CardView) viewOpt {
 
 func withTurn(number, active int, step string) viewOpt {
 	return func(v *protocol.GameView) {
-		v.Turn = protocol.TurnView{Number: number, ActiveSeat: active, PriorityHolder: active, Step: step}
+		v.Turn = protocol.TurnView{Seq: number, Number: number, ActiveSeat: active, PriorityHolder: active, Step: step}
 	}
 }
 
@@ -185,7 +185,7 @@ func newView(seats []protocol.PlayerView, opts ...viewOpt) protocol.GameView {
 		Battlefield: protocol.ZoneView{Kind: "battlefield"},
 		Stack:       protocol.ZoneView{Kind: "stack"},
 		Exile:       protocol.ZoneView{Kind: "exile"},
-		Turn:        protocol.TurnView{Number: 1, Step: "precombat_main"},
+		Turn:        protocol.TurnView{Seq: 1, Number: 1, Step: "precombat_main"},
 	}
 	for _, o := range opts {
 		o(&v)

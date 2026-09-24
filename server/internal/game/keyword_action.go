@@ -99,6 +99,18 @@ const (
 	// It is also the first action in the family that DOES SOMETHING at
 	// a count of zero; see actsAtZeroCount.
 	KeywordActionEarthbend KeywordAction = "earthbend"
+
+	// KeywordActionAmass is amass (#1236, amass.go). Its count is the
+	// number of +1/+1 counters put on the chosen Army — earthbend's
+	// meaning of the count, and the second action in the family to
+	// carry it. What is new is the SUBTYPE riding beside the count on
+	// keywordActionTail: a replacement rewrites the count and never
+	// the creature type, because "amass Orcs 1" and "amass Zombies 1"
+	// are the same verb about different Armies.
+	//
+	// It is the second action that DOES SOMETHING at a count of zero;
+	// see actsAtZeroCount.
+	KeywordActionAmass KeywordAction = "amass"
 )
 
 // actsAtZeroCount reports whether the action still happens when its
@@ -117,7 +129,16 @@ const (
 // and it animates the land, gives it haste and schedules the return;
 // what it skips is only the counters. Collapsing that into "no count,
 // no action" would make a real card a no-op.
-func (a KeywordAction) actsAtZeroCount() bool { return a == KeywordActionEarthbend }
+//
+// True for amass for the same reason and on the same authority: "if
+// you're instructed to amass 0, you'll create an Army token if you
+// don't control one, but you won't put any counters on it" (War of the
+// Spark release notes, CR 701.47a read literally). Summons of Saruman
+// off an empty graveyard and Shagrat with no Equipment both amass
+// zero and both still leave an Army on the battlefield.
+func (a KeywordAction) actsAtZeroCount() bool {
+	return a == KeywordActionEarthbend || a == KeywordActionAmass
+}
 
 // maxKeywordActionRepeats caps how many times one settled instruction
 // may take its action. The CR 616.1 apply-loop is bounded at 32
@@ -169,6 +190,31 @@ type keywordActionTail struct {
 	// target, re-checked by CR 608.2b — and a replacement rewrites the
 	// COUNT, never which land.
 	land uuid.UUID
+
+	// armyToken and armySubtype are an amass's two printed parameters
+	// (#1236, CR 701.47a): the 0/0 black [subtype] Army creature token
+	// the find-or-create branch mints when the actor controls no Army,
+	// and the creature type the chosen Army ends up with.
+	//
+	// The template is built by the CATALOG (effects.ArmyToken) and
+	// carried here rather than built in this package, which owns no
+	// token templates. A replacement rewrites the COUNT on the event
+	// and never either of these.
+	armyToken   Card
+	armySubtype string
+
+	// amassed is CR 701.47c's "the Army you amassed" — the rest of the
+	// sentence, handed the creature that was chosen. It is a second
+	// continuation field beside `then` rather than a reuse of it,
+	// because eight printed cards need the Army's IDENTITY ("the
+	// amassed Army deals damage equal to its power") and `then` has
+	// no argument to give them. uuid.Nil means there was no Army to
+	// choose and none could be made; CR 701.47b still says the player
+	// amassed, so the clause still runs.
+	//
+	// Cleared through the pointer by runAmassThenLocked, exactly as
+	// `then` is by runKeywordActionThenLocked.
+	amassed func(g *Game, army uuid.UUID) error
 
 	// then is the rest of the sentence after the keyword action:
 	// Preordain's "then draw a card". It runs from wherever the
@@ -286,19 +332,35 @@ func (g *Game) applyResolvedKeywordActionLocked(ev *ReplacementEvent) (int, erro
 		return 0, nil
 	case KeywordActionScry, KeywordActionSurveil:
 		return g.lookAtTopForEffect(tail.choice, ev.Actor, ev.Source, n, tail.then), nil
+	case KeywordActionAmass:
+		// #1236. The count is a number of +1/+1 counters and the rest
+		// of the verb happens whatever it settled on, which is why
+		// this arm is reachable with n <= 0.
+		//
+		// Nothing is sequenced behind it HERE, unlike earthbend: the
+		// find-or-create can pause on a token-creation ordering prompt
+		// and the multi-Army choice is a prompt of its own, so "the
+		// rest of the sentence" runs from wherever the amass actually
+		// ends (runAmassThenLocked) rather than from this return.
+		return 0, g.applyAmassLocked(ev)
 	case KeywordActionEarthbend:
 		// #1178. The count is a number of +1/+1 counters and the rest
 		// of the verb happens whatever it settled on, which is why
 		// this arm is reachable with n <= 0 and the other two are not.
-		if err := g.applyEarthbendLocked(ev.Actor, ev.Source, tail.land, n); err != nil {
-			return 0, err
-		}
-		// "Earthbend 3. Then each creature you control … gains
-		// hexproof" (Earthshape) sequences behind the verb, so the
-		// continuation runs from here — the SAME door the abandoned
-		// path uses, so a settled earthbend and a cancelled one cannot
-		// drift apart about whether the rest of the sentence happened.
-		return 0, g.runKeywordActionThenLocked(ev)
+		//
+		// "Earthbend 3. Then each creature you control with power less
+		// than or equal to that land's power gains hexproof"
+		// (Earthshape) sequences behind the verb, and "that land's
+		// power" is only right once the counters have LANDED. #1282:
+		// the counter placement can pause on a CR 616 ordering prompt,
+		// so the continuation is detached from the tail HERE, as a
+		// value, and handed to the placement's own continuation rather
+		// than run on the next line. Taking it as a value (and clearing
+		// it off the tail) is what keeps it exactly-once and
+		// undo-safe: the counter event's snapshot carries the closure,
+		// and an undone-then-redone answer to the ordering prompt runs
+		// it again instead of finding a cleared pointer.
+		return 0, g.applyEarthbendLocked(ev.Actor, ev.Source, tail.land, n, takeKeywordActionThen(tail))
 	}
 	// An action kind nothing takes yet. Telling the caller is the only
 	// safe answer: a continuation nobody runs waits forever.
@@ -321,6 +383,21 @@ func (g *Game) abandonKeywordActionLocked(ev *ReplacementEvent) error {
 	return g.runKeywordActionThenLocked(ev)
 }
 
+// takeKeywordActionThen detaches the plain `then` continuation from a
+// keyword action's tail and returns it, so a verb whose last part can
+// itself pause (earthbend's counter placement, #1282) can hand it on
+// to that part's continuation. Clearing it off the tail is what makes
+// the abandoned path and the settled one mutually exclusive: whichever
+// takes it runs it, and nothing else can.
+func takeKeywordActionThen(tail *keywordActionTail) func(g *Game) error {
+	if tail == nil {
+		return nil
+	}
+	then := tail.then
+	tail.then = nil
+	return then
+}
+
 // runKeywordActionThenLocked runs the rest of the sentence after the
 // keyword action, exactly once.
 //
@@ -330,9 +407,22 @@ func (g *Game) abandonKeywordActionLocked(ev *ReplacementEvent) error {
 // was replaced away, so the two paths cannot disagree about whether
 // Preordain drew its card.
 //
+// An amass carries its continuation in `amassed` instead, because the
+// clause needs the Army (CR 701.47c). This runs that one too, with no
+// Army: the only way here for an amass is the abandoned path — the
+// window cancelled it, or nothing takes this action kind — and a card
+// sequencing work behind a cancelled amass still has to be told, for
+// the reason abandonKeywordActionLocked exists at all.
+//
 // Caller must hold g.mu.
 func (g *Game) runKeywordActionThenLocked(ev *ReplacementEvent) error {
-	if ev == nil || ev.keywordAction == nil || ev.keywordAction.then == nil {
+	if ev == nil || ev.keywordAction == nil {
+		return nil
+	}
+	if err := g.runAmassThenLocked(ev.keywordAction, uuid.Nil); err != nil {
+		return err
+	}
+	if ev.keywordAction.then == nil {
 		return nil
 	}
 	// Cleared THROUGH the pointer, so a continuation that re-enters

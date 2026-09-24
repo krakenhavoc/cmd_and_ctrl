@@ -289,17 +289,19 @@ func TestTeferisProtectionPhasesOutYourWholeBoard(t *testing.T) {
 	}
 }
 
-// The caveat list is the ADR 0037 coverage signal, and it is now one
-// shorter: phasing is built, the life lock is #1200.
+// The caveat list is the ADR 0037 coverage signal, and it is now
+// EMPTY: the protection shipped with #1197, phasing with #1199, and
+// the life-total lock with #1200. Three printed clauses, three ADRs,
+// no simplification left.
 func TestTeferisProtectionCaveatsNoLongerNamePhasing(t *testing.T) {
 	spec, ok := Lookup(teferisProtectionOracle)
 	if !ok {
 		t.Fatal("Teferi's Protection is in the catalog")
 	}
-	if len(spec.Caveats) != 1 {
-		t.Fatalf("one caveat left (#1200's), got %d: %v", len(spec.Caveats), spec.Caveats)
+	if len(spec.Caveats) != 0 {
+		t.Fatalf("no caveats left after #1200, got %d: %v", len(spec.Caveats), spec.Caveats)
 	}
-	if spec.Completeness != CompletenessCaveats {
-		t.Errorf("still `caveats` until #1200 lands, got %v", spec.Completeness)
+	if spec.Completeness != CompletenessFull {
+		t.Errorf("`full` since #1200 landed, got %v", spec.Completeness)
 	}
 }

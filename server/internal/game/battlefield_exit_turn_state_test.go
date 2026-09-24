@@ -140,12 +140,16 @@ func TestLoyaltyGateSurvivesAnotherPermanentLeaving(t *testing.T) {
 	me := g.Seats[0]
 	stays := printedWalker(t, g, me, 4, 1)
 	leaves := printedWalker(t, g, me, 4, 1)
+	// A different name, so the legend rule (CR 704.5j) does not hold
+	// priority with a prompt and the +1 can resolve: the second
+	// activation below must meet an EMPTY stack, or CR 307.1 refuses
+	// it before CR 606.3 is asked (#1352).
+	findBattlefieldCard(g, leaves).Name = "Another Test Planeswalker"
 
 	if err := g.ActivateCatalogAbility(me.ID, stays, 0, ActivateAbilityParams{}); err != nil {
 		t.Fatalf("activating the walker that stays: %v", err)
 	}
-	_ = g.PassPriority()
-	_ = g.PassPriority()
+	resolveWholeStackForTest(t, g)
 
 	g.WithWriteLock(func() {
 		if err := g.BounceToHandForEffect(leaves); err != nil {
@@ -220,7 +224,7 @@ func TestCombatAnnouncementsDoNotSurviveABattlefieldExit(t *testing.T) {
 	if err := g.DeclareBlocker(blocker, attacker); err != nil {
 		t.Fatalf("DeclareBlocker: %v", err)
 	}
-	g.WithWriteLock(func() { g.commitBlockDeclarationLocked() })
+	g.WithWriteLock(func() { g.completeAllBlockDeclarationsLocked(); g.commitBlockDeclarationLocked() })
 
 	if !g.announcedAttacks[attacker] {
 		t.Fatalf("setup: the attack was never announced")

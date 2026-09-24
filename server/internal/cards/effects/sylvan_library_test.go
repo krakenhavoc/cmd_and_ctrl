@@ -53,7 +53,7 @@ func sylvanOpening(t *testing.T, g *game.Game) (*game.Player, *game.PendingChoic
 
 	advanceToDrawStepOf(t, g, 1)
 	// Link 1: "you may draw two additional cards" — the trigger's own
-	// CR 603.4 prompt, offered before the trigger is even built.
+	// CR 603.5 prompt, offered before the trigger is even built.
 	offer := latestTriggerPromptFor(g, owner.ID)
 	if offer == nil {
 		t.Fatal("Sylvan Library offered no draw-step prompt")
@@ -202,5 +202,78 @@ func TestSylvanLibraryCannotPayLifeItDoesNotHave(t *testing.T) {
 		if owner.Hand.Contains(id) {
 			t.Error("a card that could not be paid for stayed in hand")
 		}
+	}
+}
+
+// TestSylvanLibraryPutsNothingBackWhenItsPickIsWithdrawn is #1225's
+// proof for the OTHER kind of mid-card choose_cards: one whose
+// continuation, run with nothing picked, has nothing to do.
+//
+// Sylvan Library's pick is "choose two cards in your hand drawn this
+// turn", and its continuation (sylvanLibrarySettle) asks about the
+// FIRST of the cards it was handed and queues itself again for the
+// rest. Handed none, it is done: there is no card to put back and no
+// life to pay for one.
+//
+// That is also the right answer under the rules. The cards the ability
+// operates on are ones DRAWN THIS TURN that are in hand (CR 121.1 —
+// the draw is what put them there, and a card that has since been
+// discarded is not one this ability can choose), and the put-back it
+// would otherwise perform is a move to a library, whose CR 616
+// replacement window — a drawn commander's CR 903.9 question, the
+// reason the chain hangs off the tuck's continuation (#783) — never
+// opens because nothing moves. So the ability finishes having done
+// nothing to a hand that no longer holds what it asked about.
+//
+// The behaviour is UNCHANGED by #1225: before it, the drop ran
+// nothing; after it, the drop runs a continuation that does nothing.
+// The test is here because "does nothing" now has to stay true by
+// construction rather than by the drop never reaching the frame.
+func TestSylvanLibraryPutsNothingBackWhenItsPickIsWithdrawn(t *testing.T) {
+	g := newCatalogGame(t)
+	owner, pick := sylvanOpening(t, g)
+	lifeBefore, libBefore := owner.Life, owner.Library.Size()
+	graveBefore := owner.Graveyard.Size()
+	drawn := append([]uuid.UUID(nil), pick.ChooseCards...)
+	handBefore := owner.Hand.Size()
+
+	// Every card the question is about leaves the hand while it is
+	// open — a Wheel, an opponent's coercive discard. No answer the
+	// resolver would accept is left, so the prompt is withdrawn
+	// (#1045).
+	g.WithWriteLock(func() {
+		if err := g.DiscardRandomForEffect(owner.ID, handBefore); err != nil {
+			t.Fatalf("DiscardRandomForEffect: %v", err)
+		}
+	})
+
+	if c := chooseCardsChoiceFor(g, owner.ID); c != nil {
+		t.Fatalf("the pick survives a hand with none of its candidates in it: %+v", c)
+	}
+	if c := confirmChoiceFor(g, owner.ID); c != nil {
+		t.Fatalf("a card that is no longer in hand is not offered for 4 life: %+v", c)
+	}
+	if len(g.PendingChoices) != 0 {
+		t.Errorf("%d prompts left open, want 0", len(g.PendingChoices))
+	}
+	if owner.Life != lifeBefore {
+		t.Errorf("life %d → %d: nothing was paid for a card that is not in hand",
+			lifeBefore, owner.Life)
+	}
+	if owner.Library.Size() != libBefore {
+		t.Errorf("library %d → %d: nothing was put back on top",
+			libBefore, owner.Library.Size())
+	}
+	if owner.Graveyard.Size() != graveBefore+handBefore {
+		t.Errorf("graveyard %d → %d: the discarded hand is where it went, not the library",
+			graveBefore, owner.Graveyard.Size())
+	}
+	for _, id := range drawn {
+		if owner.Library.Contains(id) {
+			t.Error("a discarded card was put back on top of the library")
+		}
+	}
+	if _, err := g.AdvanceStep(); err != nil {
+		t.Errorf("the table is still held behind the withdrawn prompt: %v", err)
 	}
 }

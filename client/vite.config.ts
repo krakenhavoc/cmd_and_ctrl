@@ -45,6 +45,9 @@ export default defineConfig({
       // answers /catalog with index.html, the JSON parse throws, and
       // the page renders "couldn't load" in dev only.
       "/catalog": { target: "http://localhost:8080", changeOrigin: true },
+      // The public engine roadmap (ADR 0092). The SPA's own #/roadmap
+      // is a hash route requested as `/`, so this never shadows it.
+      "/roadmap": { target: "http://localhost:8080", changeOrigin: true },
       "/me": { target: "http://localhost:8080", changeOrigin: true },
       // POST /logout and POST /logout/everywhere (ADR 0051 decision
       // 6). Missing before S34 sub-PR 7: without it Vite answered the

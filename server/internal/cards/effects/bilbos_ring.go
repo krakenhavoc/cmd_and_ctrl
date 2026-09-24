@@ -59,13 +59,8 @@ func init() {
 				Do(DrawCards{N: 1}, GainLife{Amount: -1})),
 		},
 		Activated: []ActivatedAbility{
-			{
-				Label:        "Equip Halfling {1}",
-				Cost:         ManaCost("{1}"),
-				Targets:      TargetCreature("target Halfling you control", YouControl(), Subtype("Halfling")),
-				SorcerySpeed: true,
-				Effect:       AttachSourceToTarget,
-			},
+			EquipOnlyAbility("Equip Halfling {1}", "{1}",
+				TargetCreature("target Halfling you control", YouControl(), Subtype("Halfling"))),
 			EquipAbility("{4}"),
 		},
 	})

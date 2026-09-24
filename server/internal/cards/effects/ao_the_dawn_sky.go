@@ -54,7 +54,7 @@ func init() {
 
 // aoTheDawnSkyDiesTrigger is the dies trigger and its two bullets.
 // Each bullet declares its own body (ModeDoing), so the engine runs
-// the chosen one at resolution (CR 700.2c) and this file writes no
+// the chosen one at resolution (CR 608.2c) and this file writes no
 // switch. Neither bullet targets.
 func aoTheDawnSkyDiesTrigger() game.TriggeredAbility {
 	t := WhenThisDies("Ao, the Dawn Sky — choose one",
@@ -107,7 +107,7 @@ func aoTwoCountersOnEachCreatureOrVehicle(ctx *Context, controller uuid.UUID) er
 		}
 	}
 	for _, id := range ids {
-		if err := (AddCounter{Target: id, Kind: "+1/+1", N: 2}).Apply(ctx); err != nil {
+		if err := (AddCounter{Target: id, Kind: "+1/+1", N: 2}).Apply(ctx.asGroupMember()); err != nil {
 			return err
 		}
 	}

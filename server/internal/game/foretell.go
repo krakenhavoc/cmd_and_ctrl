@@ -19,7 +19,7 @@ import (
 //     it.
 //  3. A PER-INSTANCE CAST PERMISSION over that one exiled card, priced
 //     at the foretell cost and live from a later turn (CR 702.143a).
-//     That is ADR 0066's model, with the same `NotBeforeTurn` floor
+//     That is ADR 0066's model, with the same `NotBeforeSeq` floor
 //     warp already uses for "on a later turn".
 //
 // So foretell adds no model. What it adds is the wiring, and one
@@ -83,11 +83,13 @@ const AltCostKeyForetell = "foretell"
 // Caller must hold g.mu (write).
 func (g *Game) foretellLocked(p *Player, cardID uuid.UUID, sa SpecialAction) error {
 	owner := p.ID
-	notBefore := g.Turn.Number + 1
+	notBefore := g.Turn.Seq + 1
 	return g.routeAllThenLocked(zoneRoute{
 		Dst:      ZoneExile,
 		Actor:    owner,
 		FaceDown: FaceDownForetold,
+		// #1320: a special action (CR 116.2h), not a spell or ability.
+		Cause: MoveCause{Kind: MoveCauseSpecialAction, Controller: owner},
 	}, []uuid.UUID{cardID}, func(g *Game, landed []uuid.UUID) error {
 		if len(landed) != 1 {
 			return nil
@@ -96,8 +98,18 @@ func (g *Game) foretellLocked(p *Player, cardID uuid.UUID, sa SpecialAction) err
 		if exiled == nil {
 			return nil
 		}
+		// #1319: the per-turn tally Ranar's "the first card you
+		// foretell each turn" reads. Bumped here, once the card has
+		// actually LANDED in exile, rather than at the top of
+		// foretellLocked — a leg that only paused (a replacement
+		// window) has not foretold anything yet, and a special action
+		// that never lands must not count as one.
+		if g.ForetoldThisTurn == nil {
+			g.ForetoldThisTurn = make(map[uuid.UUID]int)
+		}
+		g.ForetoldThisTurn[owner]++
 		// CR 702.143a: "Cast it on a LATER turn for its foretell
-		// cost." NotBeforeTurn is a FLOOR and composes with the
+		// cost." NotBeforeSeq is a FLOOR and composes with the
 		// Duration rather than replacing it (#945), which is exactly
 		// the pair warp already needs — the window opens next turn
 		// and stays open for as long as the card remains exiled, with
@@ -109,14 +121,14 @@ func (g *Game) foretellLocked(p *Player, cardID uuid.UUID, sa SpecialAction) err
 		// printed card is one; the flag is the rule rather than a
 		// guard against a card.
 		g.GrantCastPermissionToCardsForEffect(CastPermission{
-			Player:        owner,
-			Zone:          ZoneExile,
-			AltCostKey:    AltCostKeyForetell,
-			Cost:          sa.CastCost,
-			NotBeforeTurn: notBefore,
-			Duration:      WhileInZoneDuration(),
-			CastOnly:      true,
-			Label:         "Foretell",
+			Player:       owner,
+			Zone:         ZoneExile,
+			AltCostKey:   AltCostKeyForetell,
+			Cost:         sa.CastCost,
+			NotBeforeSeq: notBefore,
+			Duration:     WhileInZoneDuration(),
+			CastOnly:     true,
+			Label:        "Foretell",
 		}, []Card{*exiled})
 		return nil
 	})

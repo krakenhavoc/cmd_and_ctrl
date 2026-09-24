@@ -3,6 +3,7 @@
 **Status:** Accepted · 2026-04-21 · Sprint S13.1
 **Amended:** 2026-09-16 · Branch `fix/zero-toughness-683` — §7's placeholder-creature exemption ([#683](https://github.com/krakenhavoc/cmd_and_ctrl/issues/683))
 **Amended:** 2026-09-19 · Branch `fix/690-691-cda-toughness-sba-and-x-zero` — §7's exemption becomes one predicate, `Card.ToughnessIsKnown` ([#690](https://github.com/krakenhavoc/cmd_and_ctrl/issues/690), [#691](https://github.com/krakenhavoc/cmd_and_ctrl/issues/691))
+**Amended:** 2026-09-24 · Branch `fix/1519-split-second-keyword` — split second is read from the card (Decisions 11–12, [#1519](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1519))
 
 ## Context
 
@@ -129,7 +130,7 @@ canonical CR 704.5 SBAs:
   eliminated
 
 `runStateChecksLocked()` is the loop wrapper that pairs SBAs with
-APNAP trigger drain (CR 704.4 + 603.3b) and runs at every priority-
+APNAP trigger drain (CR 704.3 + 603.3b) and runs at every priority-
 grant boundary. Bounded at 32 iterations as a safety belt against
 unintended SBA / trigger ping-pong.
 
@@ -221,6 +222,92 @@ Counter-specific SBAs (planeswalker loyalty 0, battle defense 0,
 +1/+1 -1/-1 cancel, poison ≥ 10, saga final chapter) belong to
 S13.2 and inherit the same loop.
 
+*Amended 2026-09-23 (#1289): the loop does not run inside a
+resolution, including a resolution paused on one of its own prompts.*
+CR 704.3 checks state-based actions "whenever a player would receive
+priority", and nobody receives priority while a spell or ability is
+resolving. "Runs at every priority-grant boundary" was true of the
+call sites and false of one of them. `passPriorityLocked` runs the
+loop straight after `resolveTopOfStackLocked` returns, and a
+resolution that asks a question returns before it has finished: the
+prompt is queued, the function carries on, and the rest of the
+resolution runs later from the answer. So the sweep ran in the middle
+of the resolution. On a Doubling Season plus Hardened Scales board an
+earthbend makes a bare land a 0/0 creature and its counter placement
+then waits on the CR 616 ordering prompt; the sweep killed the land to
+CR 704.5f, the earthbend return brought it back as a new object, and
+the counters had nothing to land on. A fresh amass Army died the same
+way, and with a doubled creation both Armies died before either could
+be chosen.
+
+The decision is one rule with one enforcement point
+(`game/resolution_pause.go`):
+
+1. **A resolution is open** from the moment an item begins to resolve
+   (`beginResolutionLocked`, called by `resolveTopOfStackLocked` and
+   `resolveTopAbilityLocked`) until its CR 704.3 boundary runs.
+   `Game.resolutionOpen` records it.
+2. **A prompt queued while a resolution is open is stamped**
+   `PendingChoice.midResolution` by `QueueChoiceForEffect`, the one
+   place every prompt is queued. Two families are left unstamped,
+   because the rules place them after the resolution: putting a
+   triggered ability on the stack (the CR 603.3b order, the CR 603.5
+   optional yes/no, the CR 603.3c mode pick and the CR 603.3d target
+   pick, recognised by their resume frames), and the CR 726 loop
+   shortcut. Holding the boundary for a trigger's target pick would
+   pick targets before state-based actions, which is the order #809
+   fixed. A `pick_target` for a spell copy (CR 707.10c) is part of the
+   resolution that made the copy and is stamped.
+3. **`runStateChecksLocked` holds** while a resolution function is
+   still on the Go stack (`Game.resolutionDepth`), or while a stamped
+   prompt that blocks the table is open. It holds the whole boundary,
+   not only the sweep. CR 603.3 puts triggered abilities on the stack
+   "the next time a player would receive priority", which is the same
+   moment, and the #809 target refresh and the #864 eliminated-chooser
+   sweep belong to it too. When the hold does not apply it closes the
+   resolution and runs as before.
+4. **The answer that finishes the resolution runs the boundary.** Most
+   answer paths already end in `runStateChecksLocked`; it now finds
+   nothing to hold for and runs. `actions.Dispatch` calls
+   `Game.SettleResolution` after every action as the backstop for the
+   paths that do not (a colour pick, a blocking pay-unless), and
+   `Concede` settles too, because a departure can drop the last prompt
+   a resolution was waiting on.
+
+**Why this cannot wedge a table.** Only a stamped prompt that
+**blocks the table** holds (`ChoicePromptBlocksTable`, ADR 0018 §6). A
+blocking prompt already refuses every pass, so holding the boundary
+behind it stops nothing that was not already stopped, and every
+blocking kind is enumerated with an answer for the seat that owes it
+(`legal.choiceMoves`). A `pay_unless` asked of somebody else after the
+ability has left the stack does not block, so it does not hold, and
+the table plays on around it with state-based actions running as §6
+decided. A seat that leaves has its prompts settled by ADR 0018 §6's
+departure table: a dropped prompt holds nothing, and a reassigned one
+(CR 800.4g) holds until its new, seated chooser answers.
+`TestAPausedResolutionReleasesWhenItsChooserLeaves` runs that for every
+classified kind and exercises both columns.
+
+**Persistence.** `resolutionOpen` and `midResolution` are carried by
+Clone (an undo across the answer is paused again) and by the
+persisted snapshot (`resolutionOpen` / `midResolution`, omitempty, no
+schema bump; a file from before restores unpaused, which is the old
+behaviour). `resolutionDepth` is zero between actions and is not
+copied: a clone taken inside a resolution must not inherit a function
+it is not running.
+
+**One test changed its setup.** `TestEliminatedDuringOwnResolutionReachesDecidedState`
+(#864) killed its player by calling `runStateChecksLocked` inside the
+resolving ability's own effect. That call now holds, correctly, so the
+test takes the player out with `eliminatePlayerLocked` instead and
+keeps both of its assertions.
+
+**Out of scope.** The hold is about stack resolutions. A prompt raised
+while a spell is being cast or an ability activated, or by a
+turn-based action, is not stamped and behaves as before. CR 704.3
+applies there too in principle, but no card was found that is wrong
+because of it.
+
 ### 8. Per-commander cast tax (CR 903.8); per-commander damage deferred
 
 **Decision:** New `Player.CommanderCasts map[uuid.UUID]int` keyed by
@@ -302,3 +389,82 @@ actually matters. Less work, same outcome.
 - Static-ability continuous effects (CR 604)
 - Combat keyword effects
 - Per-commander damage map (deferred until partner-pair playtest)
+
+## Amendment 2026-09-24 — split second is read from the card (#1519)
+
+**Context.** Decision 1 put split second on `StackItem` and mirrored it
+on `Game.SplitSecondActive`, and every consumer was built against that
+cache: `CastSpell`, `ActivateAbility`, `ActivateCatalogAbility` and
+`ActivateLoyalty` refuse with `ErrSplitSecondActive`, the enumerator's
+`castMoves` and `activatedMoves` return early, suspend's special-action
+window shuts, and the wire carries `split_second_active`. The WRITER
+was the sandbox `split_second` flag on `cast_spell`, which no client
+sends. So nothing any card printed ever turned the rule on, and a
+Krosan Grip could be answered like any other instant. #749 found it
+while writing Angel's Grace.
+
+**Decision 11. Split second is a `canonicalKeywords` token, read off the
+spell at announce.** The #706 pattern (a token with an engine consumer,
+ADR 0014's amendment of the same date), for the same reason: about
+twenty-five cards print it, most with an ordinary effect behind it, and
+a token reaches every one of them through the deck importer with no
+card file. The consumer is `castHasSplitSecond`
+(`game/split_second.go`), which `castSpellLocked` asks once, before it
+builds the stack item, and whose answer is written both to
+`StackItem.SplitSecond` and to the cache. It reads `HasKeyword` off the
+announce copy — `Card.Keywords` for an imported card,
+`CatalogPrintedKeywords` for a catalog entry — so the chosen face of a
+multi-face card answers for itself.
+
+- **The sandbox flag is routed through the same function**, ORed with
+  the keyword, rather than retired: a table playing a card nobody has
+  data for can still say so. One writer, so the cache and
+  `recomputeSplitSecondLocked` never disagree about where a stamp came
+  from.
+- **A face-down spell has neither** (CR 708.2 / 708.4). The flag is
+  refused too — a face-down spell that shut the table down would name
+  itself.
+- **Copies keep it.** `spell_copy.go` already copied `SplitSecond`,
+  which is CR 707.2: split second is a copiable ability of the spell.
+- **Nothing grants it**, so there is no layer read. A spell off the
+  battlefield has no layer-6 list anyway.
+- **The importer confirms it against a keyword line** (it joins
+  `narrowVariantKeywords` beside hexproof). Scryfall tags The Fearsome
+  Flock "Split second" for its "split second level up {2}{U}", which is
+  a property of the level-up activation; stamping the card would make
+  casting the creature shut the table down, stronger than printed.
+  The split card Yeah Nah // Nah Yeah loses it the same way through the
+  existing front-face narrowing — weaker than printed on its back half,
+  never stronger, because `Card.Keywords` is card-level and the front
+  half does not print it.
+
+**Decision 12. The two timing reads refuse under split second, so the
+view agrees with the enumerator.** `CastTimingOpenLocked` and
+`ActivationTimingOpenLocked` (the latter after its mana-ability early
+return) now return false while the cache is set. Their other callers —
+`CastSpell`, the activation paths, the enumerator — already returned
+earlier with their own answer, so nothing changes for them. The caller
+that had no earlier return was the view: `castable_here` on a graveyard,
+exile or library-top card, and `timing_closed` on an INSTANT-speed
+ability row, both stayed lit under split second. Putting the check in
+the shared read rather than in two view stamps is ADR 0073 §7's
+argument again: one read, so a future stamp cannot forget it.
+
+This does not contradict ADR 0073's "split second stays out of the
+gate". That gate is the CR 101.2 "can't cast" restriction list, and the
+reason given was the land play; neither timing read is asked about a
+land (a land cannot be played with a non-empty stack in any case).
+
+**What split second still does not stop** (CR 702.61b), unchanged and
+now exercised by a printed spell rather than a hand-set cache: mana
+abilities, special actions (foretell and turning a face-down permanent
+face up; suspend is barred by its own CR 702.62c), and triggered
+abilities, which trigger and go on the stack above the split-second
+spell. A trigger whose resolution would CAST a spell cannot (Gatherer
+ruling on Sudden Shock, 2006-09-25), which `CastSpell`'s own check
+answers.
+
+**Proof cards.** Krosan Grip loses its caveat and ships `full`; Sudden
+Shock, Sudden Death, Sudden Edict and Sudden Spoiling join the catalog.
+Angel's Grace (#749, PR #1522, merged the same day) declares the
+keyword and drops its "Split second isn't enforced" caveat.

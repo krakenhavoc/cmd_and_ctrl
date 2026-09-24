@@ -225,7 +225,7 @@ func TestDazeReturnsTheIslandAtAnnounce(t *testing.T) {
 }
 
 // Solitude's evoke cost is a card, and paying it attaches the
-// sacrifice trigger (CR 702.74b) rather than killing it inline.
+// sacrifice trigger (CR 702.74a) rather than killing it inline.
 func TestSolitudeEvokePitchesAWhiteCard(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]

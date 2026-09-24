@@ -159,7 +159,39 @@ type PrintedValues struct {
 // Nothing from any other layer is read: no counters, no anthem, no
 // type-change, no status. That is why this reads `src.Power` and
 // not `src.Effective().Power`.
+//
+// A FACE-DOWN permanent or spell is the one exception, and it is
+// CR 708.2's second sentence: "any listed characteristics are the
+// copiable values of that object's characteristics". A Clone copying
+// a morph becomes a nameless 2/2 with no text, and one copying a
+// Cyber Conversion'd creature becomes a 2/2 Cyberman artifact
+// creature — never the card underneath, which the copier's controller
+// may not even be allowed to look at (CR 708.5). #1270.
 func CopiableValuesOf(src Card) PrintedValues {
+	if src.FaceDownIsPermanent() {
+		return faceDownCopiableValues(src)
+	}
+	return printedValuesOf(src)
+}
+
+// faceDownCopiableValues is CR 708.2's copiable values for a CR 708.2
+// object: its body — listed or CR 708.2a's default — and nothing else.
+// No name, no mana cost, no colour, no oracle ID (so no catalog
+// entry, which is "no text"), no art.
+func faceDownCopiableValues(src Card) PrintedValues {
+	body := faceDownCharacteristic(src)
+	return PrintedValues{
+		TypeLine:       composeTypeLine(body.Supertypes, body.Types, body.Subtypes),
+		Power:          body.Power,
+		Toughness:      body.Toughness,
+		PrintedPTKnown: typeListHas(body.Types, "creature"),
+	}
+}
+
+// printedValuesOf is the card's flat printed fields as PrintedValues,
+// with no face-down reading — what applyCopy stashes as the card's OWN
+// values, which are the card's whatever state the object is in.
+func printedValuesOf(src Card) PrintedValues {
 	return PrintedValues{
 		OracleID:          src.OracleID,
 		TokenKey:          src.TokenKey,
@@ -476,7 +508,7 @@ func (c Card) IsCopy() bool { return c.PrintedSelf != nil }
 // PrintedSelf, so it still reverts to the right card on death.
 func (c *Card) applyCopy(v PrintedValues, src Card) {
 	if c.PrintedSelf == nil {
-		own := CopiableValuesOf(*c)
+		own := printedValuesOf(*c)
 		c.PrintedSelf = &own
 	}
 	c.setPrintedValues(v)

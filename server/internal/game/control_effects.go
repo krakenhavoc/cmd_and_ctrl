@@ -202,6 +202,7 @@ func (g *Game) removeFromCombatLocked(c *Card) {
 	c.AttackingTarget = uuid.Nil
 	c.BlockingTarget = uuid.Nil
 	delete(g.announcedAttacks, c.InstanceID)
+	g.forgetAttackDefenderLocked(c.InstanceID)
 	delete(g.announcedBlocks, c.InstanceID)
 	// Its own blocked state only: an attacker removed from combat is
 	// no longer blocked because it is no longer in combat at all

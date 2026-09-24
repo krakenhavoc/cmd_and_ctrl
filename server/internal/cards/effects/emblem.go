@@ -64,12 +64,39 @@ type EmblemSpec struct {
 	// surrounding quotes. Shown on hover.
 	Text string
 
-	// Static and Triggered are the emblem's abilities. At least one
-	// of the two must be non-empty — an emblem with no abilities has
-	// no characteristics at all and would be an object nothing can
-	// observe.
+	// Static and Triggered are the emblem's abilities.
 	Static    []game.StaticAbility
 	Triggered []game.TriggeredAbility
+
+	// UntapStep and DrawStep are the emblem's contributions to the
+	// two turn-based actions CR 114.3 also runs from the command zone
+	// (#1315): "untap all permanents you control during each
+	// opponent's untap step" and "you draw a card during each
+	// opponent's draw step" (Teferi, Who Slows the Sunset). Neither
+	// uses the stack, which is why they are not Triggered entries —
+	// see game/untap.go and game/draw_step.go for the argument.
+	//
+	// At least one of Static, Triggered, UntapStep or DrawStep must
+	// be non-empty — an emblem with no abilities has no
+	// characteristics at all and would be an object nothing can
+	// observe.
+	UntapStep []game.UntapStepPermission
+	DrawStep  []game.DrawStepPermission
+
+	// ActivationTimings are the emblem's per-player activation-TIMING
+	// statements (#1275, CR 602.5d / CR 606.3 / CR 101.1) — the
+	// `Spec.ActivationTimings` slot one zone over. Teferi, Temporal
+	// Archmage's −10: "You may activate loyalty abilities of
+	// planeswalkers you control on any player's turn any time you
+	// could cast an instant."
+	//
+	// The same `game.ActivationTiming` a permanent declares, built by
+	// the same constructors and checked by the same Register guard.
+	// `Covers` receives the EMBLEM as `q.Source`, so "you" is
+	// `q.Source.Controller` — the emblem's owner, which never changes
+	// (CR 114.2) — exactly as it is the permanent's controller on
+	// Leonin Shikari.
+	ActivationTimings []game.ActivationTiming
 }
 
 // buildEmblemDef projects an EmblemSpec into the CardDef the engine
@@ -79,9 +106,12 @@ type EmblemSpec struct {
 // copied from the card that made it.
 func buildEmblemDef(e EmblemSpec) *game.CardDef {
 	return &game.CardDef{
-		Static:    e.Static,
-		Triggered: e.Triggered,
-		Emblem:    &game.EmblemDef{Label: e.Label, Text: e.Text},
+		Static:            e.Static,
+		Triggered:         e.Triggered,
+		UntapStep:         e.UntapStep,
+		DrawStep:          e.DrawStep,
+		ActivationTimings: e.ActivationTimings,
+		Emblem:            &game.EmblemDef{Label: e.Label, Text: e.Text},
 	}
 }
 
@@ -98,9 +128,11 @@ func checkEmblemSpec(name string, e *EmblemSpec) {
 	if e.Text == "" {
 		panic("effects.Register: " + name + " declares an Emblem with no Text — a player reading the chip learns nothing")
 	}
-	if len(e.Static) == 0 && len(e.Triggered) == 0 {
+	if len(e.Static) == 0 && len(e.Triggered) == 0 && len(e.UntapStep) == 0 && len(e.DrawStep) == 0 &&
+		len(e.ActivationTimings) == 0 {
 		panic("effects.Register: " + name + " declares an Emblem with no abilities — CR 114.1 says an emblem has nothing else")
 	}
+	checkActivationTimings(name+" emblem", e.ActivationTimings)
 }
 
 // CreateEmblem is CR 114.5's "you get an emblem". The emblem is the

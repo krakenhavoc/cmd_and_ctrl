@@ -49,11 +49,13 @@ type Config struct {
 	// streak means the board is changing under the bot. Default 3.
 	MaxConsecutiveRejects int
 	// BlockGrace is how long an ACTIVE bot holds its pass during the
-	// declare-blockers step while any defending seat still has a legal
-	// block to declare. The engine takes blocks during the step rather
-	// than as a turn-based action before priority, so without this a
-	// bot would pass, the table would wrap, and the step would end
-	// before a human (or a slower bot) had blocked. Zero disables;
+	// declare-blockers step while any defending seat is still declaring
+	// blockers with a legal block to make (the turn cursor's
+	// block_decision_seats). Before #1279 this was what stopped a bot's
+	// pass from ending the step before a human had blocked; the engine
+	// now completes each defender's declaration explicitly and hands the
+	// active player priority after the last one, so the grace only saves
+	// the extra round of passes that follows. Zero disables;
 	// DefaultConfig sets 4s.
 	BlockGrace time.Duration
 	// Narrate posts the policy's Decision.Reason for every non-pass
@@ -223,6 +225,10 @@ type Runner struct {
 	idleMu sync.Mutex
 	idle   bool
 	wake   <-chan struct{}
+
+	// stepped is set by NewStepped and never changes: the runner has
+	// no goroutine and acts only when Step is called (#1503).
+	stepped bool
 }
 
 // Start launches a runner goroutine for seat in room. bc may be nil.
@@ -423,8 +429,10 @@ func (r *Runner) step(ctx context.Context) bool {
 		// #687 / #1013: the policy may order the enumerator's target
 		// expansion and price the cards a cost would eat, and both are
 		// reads of the seat's own view — so for a policy with either
-		// opinion the view is built first and reused for the decision
-		// below. A policy with neither pays for nothing:
+		// opinion the view is built before the ordered enumeration and
+		// reused for the decision below — once the seat is known to
+		// have a decision at all (#1261). A policy with neither pays
+		// for nothing:
 		// enumerationOrder answers a zero Options without touching the
 		// projection, and the enumeration is byte-identical to what it
 		// was.
@@ -435,10 +443,34 @@ func (r *Runner) step(ctx context.Context) bool {
 		// therefore live on this seat's very next window, not cached
 		// from Start.
 		minThink, maxThink := r.pacingNow()
-		opts, ordering := r.enumerationOrder()
-		moves := legal.EnumerateForWithOptions(r.room.Game, r.seat, opts)
+		// #1261: whether the seat has a decision at all is asked
+		// BEFORE the view is built. Every commit wakes every seat, and
+		// most seats at a four-player table have nothing to do on most
+		// commits — no priority, no prompt, no declaration — so
+		// building the ordering view first meant a full projection per
+		// seat per commit, for a move list that came back empty. That
+		// was most of a heuristic table's CPU, and the nightly's
+		// twenty-game gate paid it on every one of ~2,500 commits.
+		//
+		// The zero-Options enumeration answers the same "is there
+		// anything?" question the ordered one does: an ordering hook
+		// ranks candidates and never adds or removes one (legal's
+		// TargetOrder / CostFuelOrder contract), so an empty list here
+		// is an empty list there. A policy with no hooks keeps this
+		// list and pays for no second enumeration.
+		moves := legal.EnumerateFor(r.room.Game, r.seat)
 		if len(moves) == 0 {
 			return true
+		}
+		opts, ordering := r.enumerationOrder()
+		if ordering.View.ID != "" {
+			// The policy ordered the expansion, so the list it decides
+			// over is the ordered one — enumerated after the view it
+			// was ordered from, exactly as before.
+			moves = legal.EnumerateForWithOptions(r.room.Game, r.seat, opts)
+			if len(moves) == 0 {
+				return true
+			}
 		}
 		// The decision, with the policy's view built from the seat's
 		// filtered projection only.
@@ -447,7 +479,7 @@ func (r *Runner) step(ctx context.Context) bool {
 			Seat:  r.seat,
 			Moves: moves,
 		}
-		if in.View.ID == "" {
+		if in.View.ID == "" && r.needsView() {
 			in.View = protocol.ViewOfGameFor(r.room.Game, r.seat.String())
 		}
 		if r.concede(ctx, in) {
@@ -549,8 +581,17 @@ func (r *Runner) step(ctx context.Context) bool {
 			}
 		}
 		r.pace(ctx, started, minThink)
-		if mv.Kind == legal.KindPass && r.shouldHoldForBlockers(in.View) {
-			r.holdForBlockers(ctx)
+		if mv.Kind == legal.KindPass && r.cfg.BlockGrace > 0 {
+			// A view-blind seat decided without one (#1261), so the
+			// block-grace check builds its own; it only reads the
+			// frame when there is a grace to hold for.
+			view := in.View
+			if view.ID == "" {
+				view = protocol.ViewOfGameFor(r.room.Game, r.seat.String())
+			}
+			if r.shouldHoldForBlockers(view) {
+				r.holdForBlockers(ctx)
+			}
 		}
 		if ctx.Err() != nil {
 			// The decision was made and paid for; the pacing hold
@@ -591,6 +632,46 @@ func (r *Runner) step(ctx context.Context) bool {
 		}
 	}
 	return true
+}
+
+// viewBlind is implemented by a policy whose Decide never reads
+// Input.View — RandomPolicy, which picks an index and nothing else.
+//
+// Unexported, so only a policy in this package can make the claim,
+// and asserted on the runner's OUTERMOST policy only, never through
+// Capability: a wrapper around a blind policy may read the view
+// itself (a model tier, an announcer), and Capability's unwrapping
+// would find the inner claim and starve the wrapper. A wrapper hides
+// the marker, which is the safe direction — the view gets built.
+type viewBlind interface {
+	decidesWithoutView()
+}
+
+// needsView reports whether this decision window must build the
+// seat's view before deciding (#1261). Only a blind policy with
+// nothing else reading the frame skips it: an Observer receives the
+// whole Input, and a Conceder or Improviser reads the view to decide
+// whether to act at all.
+//
+// It is worth a named rule because the view is the expensive half of
+// a window. A random seat decided every priority window on a frame it
+// never looked at, and on a four-random-bot table that was one full
+// projection per commit on the critical path, beside the one the room
+// builds to broadcast the commit — most of the nightly soak's runtime.
+func (r *Runner) needsView() bool {
+	if _, blind := r.policy.(viewBlind); !blind {
+		return true
+	}
+	if r.cfg.Observer != nil {
+		return true
+	}
+	if _, ok := Capability[Conceder](r.policy); ok {
+		return true
+	}
+	if _, ok := Capability[Improviser](r.policy); ok {
+		return true
+	}
+	return false
 }
 
 // outcome is what one call to decide produced: the index the runner
@@ -806,8 +887,8 @@ func (r *Runner) hold(ctx context.Context, d time.Duration) {
 }
 
 // holdForBlockers waits up to BlockGrace, re-checking every 100ms so
-// the pass goes through as soon as every defender has blocked or run
-// out of blocks.
+// the pass goes through as soon as every defender has finished
+// declaring blockers (#1279) or run out of blocks.
 func (r *Runner) holdForBlockers(ctx context.Context) {
 	deadline := time.Now().Add(r.cfg.BlockGrace)
 	for time.Now().Before(deadline) && ctx.Err() == nil {
@@ -818,12 +899,23 @@ func (r *Runner) holdForBlockers(ctx context.Context) {
 	}
 }
 
-// shouldHoldForBlockers reports whether passing now would end a
-// declare-blockers step that a defending seat may still want to act
-// in: this seat is the active player, attackers are declared, and
-// some other live seat has a legal block it has not made. Uses the
-// same enumerator the defenders do, so "may still want to" is exact
-// rather than a guess about untapped creatures.
+// shouldHoldForBlockers reports whether this seat should hold its pass
+// because a defending seat is still DECLARING blockers: this seat is
+// the active player, the cursor is in declare_blockers, and some other
+// seat is listed in the turn cursor's block_decision_seats.
+//
+// #1279 moved this onto the engine's completion signal. That list is
+// the defenders whose block declaration is still PENDING and who have a
+// legal block to make, so the hold ends the moment every such defender
+// has finished — sent finish_blocks, passed, or run out of blocks —
+// rather than, as before, holding for the whole grace while a defender
+// who had already chosen kept an untapped creature at home. The grace
+// is a courtesy now, not a correctness guard: a pass from here no
+// longer ends the step before a defender blocks, because the engine
+// returns priority to the active player once the last declaration
+// completes (block_completion.go). What it still buys is the active
+// player's window AFTER the declaration without a full extra round of
+// passes — the window ninjutsu is activated in.
 func (r *Runner) shouldHoldForBlockers(view protocol.GameView) bool {
 	if r.cfg.BlockGrace <= 0 || view.Turn.Step != string(game.StepDeclareBlockers) {
 		return false
@@ -832,19 +924,15 @@ func (r *Runner) shouldHoldForBlockers(view protocol.GameView) bool {
 	if as < 0 || as >= len(view.Seats) || view.Seats[as].ID != r.seat.String() {
 		return false
 	}
-	for _, seat := range view.Seats {
+	for _, idx := range view.Turn.BlockDecisionSeats {
+		if idx < 0 || idx >= len(view.Seats) {
+			continue
+		}
+		seat := view.Seats[idx]
 		if seat.ID == r.seat.String() || seat.Eliminated {
 			continue
 		}
-		id, err := uuid.Parse(seat.ID)
-		if err != nil {
-			continue
-		}
-		for _, m := range legal.EnumerateFor(r.room.Game, id) {
-			if m.Kind == legal.KindBlock {
-				return true
-			}
-		}
+		return true
 	}
 	return false
 }

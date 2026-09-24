@@ -23,13 +23,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, CreatureEnteredUnderYourControl, "Cathars' Crusade — a +1/+1 counter on each creature you control", func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				for _, id := range b04CreatureIDsControlledBy(g, item.Controller) {
-					if err := (AddCounter{Target: id, Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
-						return err
-					}
-				}
-				return nil
+				return b11PutCountersOnEachCreatureYouControl(g, item, 1)
 			}),
 		},
 	})

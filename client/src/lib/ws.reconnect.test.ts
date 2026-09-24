@@ -4,11 +4,14 @@ import { get } from "svelte/store";
 import {
   CLOSE_GOING_AWAY,
   CLOSE_NORMAL,
+  DEAD_SESSION_CHECK_AFTER_FAILURES,
   GameClient,
   isTerminalClose,
   withSessionToken,
 } from "./ws";
 import { session, type Session } from "./session";
+import { REWIND_NOTICE } from "./connectionBanner";
+import { PROTOCOL_VERSION } from "./protocol";
 
 // Cover for #518: a deploy must not disconnect the table permanently.
 //
@@ -127,7 +130,59 @@ afterEach(() => {
   session.set(null);
   vi.useRealTimers();
   (globalThis as Record<string, unknown>).WebSocket = realWebSocket;
+  vi.unstubAllGlobals();
 });
+
+// stubSessionCheck stands in for GET /me — the #1475 probe — answering
+// every call with `status`. Mirrors myGames.test.ts's stubFetch.
+function stubSessionCheck(status: number): ReturnType<typeof vi.fn> {
+  const fetchMock = vi.fn(async () => ({
+    ok: status >= 200 && status < 300,
+    status,
+    statusText: "stub",
+    json: async () => ({}),
+    clone() {
+      return this;
+    },
+  }));
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
+
+// stubSessionCheckNetworkError is the other kind of "not a definite
+// answer": the fetch itself never completes, the way an offline tab
+// or a timed-out request would reach authFetch.
+function stubSessionCheckNetworkError(): ReturnType<typeof vi.fn> {
+  const fetchMock = vi.fn(async () => {
+    throw new TypeError("network error");
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
+
+// flushMicrotasks lets the probe's fetch → authFetch → checkSessionAlive
+// → GameClient's own .then() chain settle. Fake timers only replace
+// timer-driven macrotasks (vi.useFakeTimers is sinon-based and never
+// touches Promise scheduling), so this is plain microtask draining, not
+// a timer advance — advancing the fake clock would not move it at all.
+async function flushMicrotasks(): Promise<void> {
+  for (let i = 0; i < 6; i++) {
+    await Promise.resolve();
+  }
+}
+
+// failDialsUpTo closes the live socket, then redials-and-closes again
+// until `count` consecutive failures have been recorded — the shape
+// "climbs the ladder while the server is still down" above already
+// established: advance past the scheduled reconnect, then fail the
+// socket it opened.
+function failDialsUpTo(count: number, firstSocket: FakeSocket): void {
+  closeFrom(firstSocket, CLOSE_ABNORMAL);
+  for (let i = 2; i <= count; i++) {
+    vi.advanceTimersByTime(LADDER_MS);
+    closeFrom(lastSocket(), CLOSE_ABNORMAL);
+  }
+}
 
 describe("isTerminalClose", () => {
   it("is true only for 1000 — the game is gone", () => {
@@ -291,5 +346,231 @@ describe("#518 — the dial reads the session store, not the mount-time URL", ()
   it("dials the captured URL unchanged when no session is stored", () => {
     connected();
     expect(lastSocket().url).toBe(WS_URL);
+  });
+});
+
+describe("#1475 — the dead-session probe after repeated failed dials", () => {
+  it("stops the ladder and reaches session_ended on a definite 401", async () => {
+    session.set(playerSession(FRESH_TOKEN));
+    const fetchMock = stubSessionCheck(401);
+    const { client, socket } = connected();
+
+    failDialsUpTo(DEAD_SESSION_CHECK_AFTER_FAILURES, socket);
+    expect(get(client.reconnectAttempt)).toBe(DEAD_SESSION_CHECK_AFTER_FAILURES);
+    // The probe fires alongside the ladder, not instead of it — a
+    // reconnect is already scheduled at this point.
+    expect(get(client.status)).toBe("reconnecting");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toBe("/me");
+
+    await flushMicrotasks();
+    expect(get(client.status)).toBe("session_ended");
+
+    // And it stays stopped — no further dials, however long we wait.
+    const dialsSoFar = FakeSocket.opened.length;
+    vi.advanceTimersByTime(LADDER_MS * 8);
+    expect(FakeSocket.opened).toHaveLength(dialsSoFar);
+    expect(get(client.status)).toBe("session_ended");
+  });
+
+  it("keeps the normal ladder on a 503 — a server that is only restarting", async () => {
+    session.set(playerSession(FRESH_TOKEN));
+    const fetchMock = stubSessionCheck(503);
+    const { client, socket } = connected();
+
+    failDialsUpTo(DEAD_SESSION_CHECK_AFTER_FAILURES, socket);
+    await flushMicrotasks();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(get(client.status)).toBe("reconnecting");
+
+    // The ladder keeps climbing past the threshold instead of stopping.
+    vi.advanceTimersByTime(LADDER_MS);
+    closeFrom(lastSocket(), CLOSE_ABNORMAL);
+    expect(get(client.reconnectAttempt)).toBe(DEAD_SESSION_CHECK_AFTER_FAILURES + 1);
+    expect(get(client.status)).not.toBe("session_ended");
+  });
+
+  it("keeps the normal ladder on a network error, and never lands on session_ended", async () => {
+    session.set(playerSession(FRESH_TOKEN));
+    const fetchMock = stubSessionCheckNetworkError();
+    const { client, socket } = connected();
+
+    failDialsUpTo(DEAD_SESSION_CHECK_AFTER_FAILURES + 2, socket);
+    await flushMicrotasks();
+
+    // One probe per failure streak, not one per failure past the
+    // threshold — and its "unknown" answer never stops the ladder.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(get(client.status)).toBe("reconnecting");
+    expect(get(client.status)).not.toBe("session_ended");
+
+    vi.advanceTimersByTime(LADDER_MS);
+    expect(FakeSocket.opened.length).toBeGreaterThan(DEAD_SESSION_CHECK_AFTER_FAILURES + 2);
+  });
+
+  it("reconnects with no session check at all once the server comes back first", async () => {
+    session.set(playerSession(FRESH_TOKEN));
+    const fetchMock = stubSessionCheck(401);
+    const { client, socket } = connected();
+
+    // One short of the threshold, then the server answers again.
+    failDialsUpTo(DEAD_SESSION_CHECK_AFTER_FAILURES - 1, socket);
+    vi.advanceTimersByTime(LADDER_MS);
+    lastSocket().emit("open", {});
+    await flushMicrotasks();
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(get(client.status)).toBe("connected");
+    expect(get(client.reconnectAttempt)).toBe(0);
+
+    // The counter really did reset: another run of failures needs the
+    // full threshold again before anything is probed.
+    closeFrom(lastSocket(), CLOSE_ABNORMAL);
+    expect(get(client.reconnectAttempt)).toBe(1);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("probes again on a fresh run of failures after recovering", async () => {
+    session.set(playerSession(FRESH_TOKEN));
+    const fetchMock = stubSessionCheck(503);
+    const { client, socket } = connected();
+
+    failDialsUpTo(DEAD_SESSION_CHECK_AFTER_FAILURES, socket);
+    await flushMicrotasks();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(LADDER_MS);
+    lastSocket().emit("open", {});
+    expect(get(client.status)).toBe("connected");
+
+    failDialsUpTo(DEAD_SESSION_CHECK_AFTER_FAILURES, lastSocket());
+    await flushMicrotasks();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(get(client.status)).not.toBe("session_ended");
+  });
+});
+
+// minimalView is just enough of a GameView for the "did it get
+// rendered" checks below to read something back — the shape of the
+// board is not what #523 is about. Untyped on purpose (mirrors
+// ws.freeze.test.ts's viewAt): these frames are JSON.stringify'd, not
+// assigned as a GameView, so nothing here needs to satisfy that
+// interface.
+function minimalView(turnNumber: number): unknown {
+  return {
+    id: "g",
+    state: "active",
+    seats: [],
+    battlefield: { kind: "battlefield", count: 0, cards: [] },
+    stack: { kind: "stack", count: 0, cards: [] },
+    exile: { kind: "exile", count: 0, cards: [] },
+    turn: { number: turnNumber, active_seat: 0, priority_holder: 0, phase: "main1", step: "main" },
+    mulligans_open: false,
+  };
+}
+
+// snapshotFrame builds the raw JSON text of a Kind == "snapshot"
+// frame carrying the given seq/generation, the same shape the server
+// actually sends (protocol.SnapshotPayload).
+function snapshotFrame(seq: number, generation: number): string {
+  return JSON.stringify({
+    v: PROTOCOL_VERSION,
+    kind: "snapshot",
+    id: "frame-" + seq + "-" + generation,
+    payload: { seq, generation, game: minimalView(seq) },
+  });
+}
+
+// #523 / ADR 0044 decision 5, and the 2026-09-24 owner decision on
+// #515 (decision 3): the restore generation on the snapshot frame is
+// what lets the client tell a genuine server-restart rewind apart
+// from an ordinary dropped or out-of-order frame, and what gates the
+// "table was restored" toast so it fires only when the table actually
+// moved backwards.
+describe("#523 — restore generation", () => {
+  it("accepts a lower seq under a NEW generation, discards tracking, and fires the toast", () => {
+    const { client, socket } = connected();
+
+    socket.emit("message", { data: snapshotFrame(50, 1) });
+    expect(get(client.lastSeq)).toBe(50);
+    expect(get(client.rewindNotice)).toBeNull();
+
+    // The server restarted and rewound: same room, new generation,
+    // lower seq than what this client already rendered.
+    socket.emit("message", { data: snapshotFrame(20, 2) });
+
+    expect(get(client.lastSeq)).toBe(20);
+    expect((get(client.snapshot) as { turn: { number: number } }).turn.number).toBe(20);
+    const notice = get(client.rewindNotice);
+    expect(notice).not.toBeNull();
+    expect(notice?.message).toBe(REWIND_NOTICE);
+  });
+
+  it("discards tracking on a generation change with the SAME seq and shows no toast", () => {
+    const { client, socket } = connected();
+
+    socket.emit("message", { data: snapshotFrame(50, 1) });
+    socket.emit("message", { data: snapshotFrame(50, 2) });
+
+    expect(get(client.lastSeq)).toBe(50);
+    expect(get(client.rewindNotice)).toBeNull();
+  });
+
+  it("does not fire the toast when a generation change lands at a HIGHER seq", () => {
+    const { client, socket } = connected();
+
+    socket.emit("message", { data: snapshotFrame(50, 1) });
+    socket.emit("message", { data: snapshotFrame(75, 2) });
+
+    expect(get(client.lastSeq)).toBe(75);
+    expect(get(client.rewindNotice)).toBeNull();
+  });
+
+  it("still ignores a lower seq within an UNCHANGED generation (today's guard)", () => {
+    const { client, socket } = connected();
+
+    socket.emit("message", { data: snapshotFrame(50, 1) });
+    socket.emit("message", { data: snapshotFrame(20, 1) });
+
+    // The stale frame is dropped: lastSeq stays at the higher value,
+    // and no rewind toast fires — this was never a rewind.
+    expect(get(client.lastSeq)).toBe(50);
+    expect(get(client.rewindNotice)).toBeNull();
+  });
+
+  it("does not treat the very first snapshot on a connection as a rewind", () => {
+    const { client, socket } = connected();
+
+    // The first frame ever, at a non-zero generation (a client
+    // dialling a table that has already been restored once). Nothing
+    // to compare against, so no toast.
+    socket.emit("message", { data: snapshotFrame(5, 3) });
+
+    expect(get(client.lastSeq)).toBe(5);
+    expect(get(client.rewindNotice)).toBeNull();
+  });
+
+  it("does not reset the seq watermark on a mere reconnect (no generation change)", () => {
+    // #523: highestSeq is no longer zeroed in the socket "open"
+    // handler. A reconnect at the SAME generation must still apply
+    // the ordinary stale-frame guard using the watermark from before
+    // the disconnect, not a freshly-reset one.
+    const { client, socket } = connected();
+    socket.emit("message", { data: snapshotFrame(50, 1) });
+
+    closeFrom(socket, CLOSE_ABNORMAL);
+    vi.advanceTimersByTime(LADDER_MS);
+    lastSocket().emit("open", {});
+
+    // Same generation, and a seq the client already holds: still
+    // ignored, exactly as if the connection had never dropped.
+    lastSocket().emit("message", { data: snapshotFrame(20, 1) });
+    expect(get(client.lastSeq)).toBe(50);
+
+    // A fresh, higher seq at the same generation is accepted as
+    // normal.
+    lastSocket().emit("message", { data: snapshotFrame(51, 1) });
+    expect(get(client.lastSeq)).toBe(51);
   });
 });

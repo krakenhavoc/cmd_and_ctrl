@@ -24,22 +24,22 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // is read off the event rather than assumed to be the defending player
 // of the combat, because a redirect could make them differ.
 //
-// Declared simplification, weaker than printed (#259): PROTECTION is
-// not modelled by the engine (#662), so the "protection from green and
-// from blue" clause does nothing. The equipped creature can be blocked
-// by green and blue creatures, targeted by green and blue spells, and
-// takes damage from them normally. Everything else — the +2/+2, the
-// Wolf, the ten-card mill and the equip cost — is exactly as printed.
+// PROTECTION FROM GREEN AND FROM BLUE is a layer-6 grant to the
+// equipped creature (GrantToAttached), enforced since #662 /
+// ADR 0072: a green or blue spell cannot target the wearer
+// (CR 702.16b), a green or blue Aura falls off it and a green or blue
+// Equipment unattaches (CR 702.16c-d), green or blue damage to it is
+// prevented (CR 702.16e), and a green or blue creature cannot block
+// it (CR 702.16f). Sword of Feast and Famine carries the identical
+// clause, just against different colours.
 func init() {
 	Register(Spec{
 		OracleID:     "fac42229-4f5f-4d04-85dd-5031d4e435aa",
 		Name:         "Sword of Body and Mind",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The equipped creature does not get protection from green or from blue — green and blue removal, blockers and damage all affect it normally.",
-		},
+		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
 			PumpAttached(2, 2),
+			GrantToAttached("protection from green", "protection from blue"),
 		},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventDealDamage},

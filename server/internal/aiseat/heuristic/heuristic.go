@@ -377,7 +377,7 @@ func (p *Policy) newState(in aiseat.Input) *state {
 		mine:      map[string]*protocol.CardView{},
 		stack:     make(map[string]*protocol.CardView, len(v.Stack.Cards)),
 		graveyard: map[string]*protocol.CardView{},
-		turn:      v.Turn.Number,
+		turn:      v.Turn.Seq,
 		step:      v.Turn.Step,
 	}
 	st.evals = st.w.Evaluate(*v)
@@ -434,7 +434,10 @@ func (p *Policy) newState(in aiseat.Input) *state {
 	}
 	as := v.Turn.ActiveSeat
 	st.myTurn = as >= 0 && as < len(v.Seats) && v.Seats[as].ID == st.me
-	st.sorcerySpeed = st.myTurn && len(v.Stack.Cards) == 0 &&
+	// CR 307.1's empty stack, read off the wire: an activated or
+	// triggered ability has no card in stack.cards and shows up only
+	// in stack_items (#1352).
+	st.sorcerySpeed = st.myTurn && len(v.Stack.Cards) == 0 && len(v.StackItems) == 0 &&
 		(st.step == "precombat_main" || st.step == "postcombat_main")
 	return st
 }

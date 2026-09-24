@@ -1,0 +1,281 @@
+name: cmd_and_ctrl main promotion issue closeout
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+# GitHub only applies native closing keywords when a pull request targets the
+# default branch. Feature work targets develop here and is squash-merged; a
+# later merge-commit PR promotes those squashes to main. Once that promotion
+# lands, find the original develop PRs and honor their explicit issue closure
+# directives.
+#
+# pull_request_target is intentional: this workflow must be read from main and
+# needs an issue-writing token. Keep it on a GitHub-hosted runner, never check
+# out or execute pull-request code, and keep untrusted PR text in env/data only.
+on:
+  pull_request_target:
+    branches: [main]
+    types: [closed]
+
+# Serialise retries of one promotion so their marker checks cannot race. The PR
+# number keeps unrelated promotions out of the lossy global pending queue.
+concurrency:
+  group: main-promotion-issue-closeout-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  close-promoted-issues:
+    if: >-
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'develop'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Close issues completed by promoted develop PRs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          API_BASE: ${{ github.api_url }}
+          REPOSITORY: ${{ github.repository }}
+          PROMOTION_PR: ${{ github.event.pull_request.number }}
+          PROMOTION_COMMITS: ${{ github.event.pull_request.commits }}
+        run: |
+          set -euo pipefail
+
+          # GitHub's pull-request commits endpoint is capped at 250. Failing is
+          # safer than silently leaving issues open; normal promotions here are
+          # a few dozen commits.
+          if [ "${PROMOTION_COMMITS}" -gt 250 ]; then
+            echo "::error::Promotion #${PROMOTION_PR} has ${PROMOTION_COMMITS} commits; the GitHub API can expose only 250. Split the promotion or close its issues manually."
+            exit 1
+          fi
+
+          api_get() {
+            curl --retry 3 --retry-all-errors -fsS \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "$1"
+          }
+
+          api_write() {
+            method="$1"
+            url="$2"
+            body="$3"
+            curl -sS -o /dev/null -w '%{http_code}' \
+              -X "${method}" \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              -d "${body}" "${url}"
+          }
+
+          # GitHub preserves the association between a develop PR and its
+          # squash commit. Promotion PRs use merge commits, so their commit list
+          # is the lossless bridge back to each original PR body.
+          declare -A source_pr_bodies=()
+          page=1
+          while :; do
+            commits_json=$(api_get "${API_BASE}/repos/${REPOSITORY}/pulls/${PROMOTION_PR}/commits?per_page=100&page=${page}")
+            commit_count=$(jq 'length' <<<"${commits_json}")
+            mapfile -t commit_shas < <(jq -r '.[].sha' <<<"${commits_json}")
+
+            for commit_sha in "${commit_shas[@]}"; do
+              pulls_json=$(api_get "${API_BASE}/repos/${REPOSITORY}/commits/${commit_sha}/pulls")
+              while IFS=$'\t' read -r source_pr body_base64; do
+                [ -n "${source_pr}" ] || continue
+                source_pr_bodies["${source_pr}"]="${body_base64}"
+              done < <(
+                jq -r \
+                  --arg repository "${REPOSITORY}" \
+                  --argjson promotion "${PROMOTION_PR}" \
+                  '.[]
+                    | select(
+                        .number != $promotion
+                        and .base.ref == "develop"
+                        and .head.repo.full_name == $repository
+                        and .merged_at != null
+                      )
+                    | [.number, ((.body // "") | @base64)]
+                    | @tsv' <<<"${pulls_json}"
+              )
+            done
+
+            if [ "${commit_count}" -lt 100 ]; then
+              break
+            fi
+            page=$((page + 1))
+          done
+
+          if [ "${#source_pr_bodies[@]}" -eq 0 ]; then
+            echo "Promotion PR #${PROMOTION_PR} contains no associated develop PRs."
+            exit 0
+          fi
+
+          extract_issue_numbers() {
+            local pr_body="$1"
+            local issues_section
+
+            # Track fences and comments across the whole body. That prevents a
+            # documentation example containing its own ## Issues heading from
+            # becoming the real automation section. Indented code and quotes
+            # are ignored for the same reason.
+            issues_section=$(
+              printf '%s\n' "${pr_body}" | awk '
+                function opens_fence(s,    text, char, n) {
+                  text = s
+                  sub(/^[ ]*/, "", text)
+                  char = substr(text, 1, 1)
+                  if (char != "`" && char != "~") { return 0 }
+                  n = 0
+                  while (substr(text, n + 1, 1) == char) { n++ }
+                  if (n < 3) { return 0 }
+                  fence_char = char
+                  fence_length = n
+                  return 1
+                }
+                function closes_fence(s,    text, n, rest) {
+                  if (s ~ /^    / || s ~ /^\t/) { return 0 }
+                  text = s
+                  sub(/^[ ]*/, "", text)
+                  n = 0
+                  while (substr(text, n + 1, 1) == fence_char) { n++ }
+                  rest = substr(text, n + 1)
+                  return n >= fence_length && rest ~ /^[[:space:]]*$/
+                }
+                BEGIN { active = 0; fenced = 0; comment = 0 }
+                {
+                  line = $0
+                  if (fenced) {
+                    if (closes_fence(line)) { fenced = 0 }
+                    next
+                  }
+                  if (comment) {
+                    if (line ~ /-->/) { comment = 0 }
+                    next
+                  }
+                  if (line ~ /^    / || line ~ /^\t/) { next }
+                  if (opens_fence(line)) {
+                    fenced = 1
+                    next
+                  }
+                  if (line ~ /<!--/) {
+                    if (line !~ /-->/) { comment = 1 }
+                    next
+                  }
+                  if (line ~ /^[[:space:]]*>/) { next }
+                  if (tolower(line) ~ /^[ ]*##[[:space:]]+issues[[:space:]]*$/) {
+                    active = 1
+                    next
+                  }
+                  if (active && line ~ /^[ ]*##[[:space:]]+/) { exit }
+                  if (active) { print line }
+                }
+              '
+            )
+
+            # A directive must begin the line. This accepts either
+            # "Closes #1, #2" or GitHub's "Closes #1, fixes #2" form, and
+            # stops before a later "Relates"/"Tracker" clause. The boundary
+            # check rejects prose, cross-repo references and malformed #12abc.
+            printf '%s\n' "${issues_section}" | perl -ne '
+              my $kw = qr/(?:close(?:s|d)?|fix(?:es|ed)?|resolve(?:s|d)?)/i;
+              if (/^\s*(?:[-*]\s*)?($kw(?:\s*:\s*|\s+)#[1-9]\d*(?:\s*,\s*(?:$kw(?:\s*:\s*|\s+))?#[1-9]\d*)*)(?=$|[\s,.;:·—–()])/) {
+                my $directives = $1;
+                while ($directives =~ /#([1-9]\d*)/g) { print "$1\n" }
+              }
+            '
+          }
+
+          declare -A issue_sources=()
+          mapfile -t source_pr_numbers < <(printf '%s\n' "${!source_pr_bodies[@]}" | sort -n)
+          for source_pr in "${source_pr_numbers[@]}"; do
+            pr_body=$(printf '%s' "${source_pr_bodies[${source_pr}]}" | base64 --decode)
+            while read -r issue_number; do
+              [ -n "${issue_number}" ] || continue
+              if [ -z "${issue_sources[${issue_number}]+present}" ]; then
+                issue_sources["${issue_number}"]="${source_pr}"
+              fi
+            done < <(extract_issue_numbers "${pr_body}")
+          done
+
+          if [ "${#issue_sources[@]}" -eq 0 ]; then
+            echo "The promoted develop PRs contain no explicit close directives in ## Issues sections."
+            exit 0
+          fi
+
+          failures=()
+          mapfile -t issue_numbers < <(printf '%s\n' "${!issue_sources[@]}" | sort -n)
+          for issue_number in "${issue_numbers[@]}"; do
+            source_pr="${issue_sources[${issue_number}]}"
+            issue_url="${API_BASE}/repos/${REPOSITORY}/issues/${issue_number}"
+
+            if ! issue_json=$(api_get "${issue_url}"); then
+              failures+=("read #${issue_number}")
+              continue
+            fi
+            if jq -e 'has("pull_request")' >/dev/null <<<"${issue_json}"; then
+              echo "Skipping #${issue_number}: it is a pull request, not an issue."
+              continue
+            fi
+            if [ "$(jq -r '.state' <<<"${issue_json}")" != "open" ]; then
+              echo "Skipping #${issue_number}: it is already closed."
+              continue
+            fi
+
+            marker="<!-- cmdctrl-main-closeout:promotion-${PROMOTION_PR}:issue-${issue_number} -->"
+            marker_found=0
+            comment_page=1
+            while :; do
+              if ! comments_json=$(api_get "${issue_url}/comments?per_page=100&page=${comment_page}"); then
+                failures+=("read comments for #${issue_number}")
+                marker_found=-1
+                break
+              fi
+              if jq -e --arg marker "${marker}" \
+                'any(.[]; .body | contains($marker))' \
+                >/dev/null <<<"${comments_json}"; then
+                marker_found=1
+                break
+              fi
+              if [ "$(jq 'length' <<<"${comments_json}")" -lt 100 ]; then
+                break
+              fi
+              comment_page=$((comment_page + 1))
+            done
+            if [ "${marker_found}" -lt 0 ]; then
+              continue
+            fi
+
+            if [ "${marker_found}" -eq 0 ]; then
+              comment_payload=$(jq -nc \
+                --arg marker "${marker}" \
+                --arg source "#${source_pr}" \
+                --arg promotion "#${PROMOTION_PR}" \
+                '{body: ($marker + "\nClosing automatically because feature PR " + $source + ", which explicitly marked this issue complete in its `## Issues` section, reached `main` in promotion PR " + $promotion + ".")}')
+              if ! code=$(api_write POST "${issue_url}/comments" "${comment_payload}"); then
+                failures+=("comment on #${issue_number}")
+                continue
+              fi
+              case "${code}" in
+                200|201) ;;
+                *) failures+=("comment on #${issue_number} (HTTP ${code})"); continue ;;
+              esac
+            fi
+
+            close_payload='{"state":"closed","state_reason":"completed"}'
+            if ! code=$(api_write PATCH "${issue_url}" "${close_payload}"); then
+              failures+=("close #${issue_number}")
+              continue
+            fi
+            case "${code}" in
+              200) echo "Closed #${issue_number}: PR #${source_pr} reached main in #${PROMOTION_PR}." ;;
+              *) failures+=("close #${issue_number} (HTTP ${code})") ;;
+            esac
+          done
+
+          if [ "${#failures[@]}" -gt 0 ]; then
+            printf '::error::Issue closeout failure: %s\n' "${failures[@]}"
+            exit 1
+          fi

@@ -19,7 +19,7 @@ import { render, cleanup } from "./test/render.svelte";
 
 afterEach(cleanup);
 
-const seat = (keywords?: PlayerView["keywords"]): PlayerView =>
+const seat = (keywords?: PlayerView["keywords"], lifeTotalLocked?: boolean): PlayerView =>
   ({
     id: "me",
     name: "Me",
@@ -32,6 +32,7 @@ const seat = (keywords?: PlayerView["keywords"]): PlayerView =>
     commander_damage: {},
     life_history: [],
     keywords,
+    life_total_locked: lifeTotalLocked,
   }) as unknown as PlayerView;
 
 const props = (s: PlayerView, over: Record<string, unknown> = {}) => ({
@@ -118,5 +119,29 @@ describe("the seat keyword badge", () => {
       props(seat(["hexproof"]), { isSelf: false }) as never,
     );
     expect(badges(container)).toHaveLength(1);
+  });
+
+  // #1200 (CR 119.7, CR 119.8): the life-total lock arrives as its own
+  // bool rather than as a keyword token, because it is not an ability
+  // the player has — see ADR 0085 Decision 7.
+  it("shows a life-total-lock badge on a locked seat", () => {
+    const { container } = render(PlayerIdentity as never, props(seat(undefined, true)) as never);
+    const got = badges(container);
+    expect(got).toHaveLength(1);
+    expect(got[0].text).toBe("LIFE");
+    expect(got[0].title).toContain("can't change");
+  });
+
+  it("shows no lock badge on a seat whose life total can change", () => {
+    const { container } = render(PlayerIdentity as never, props(seat(undefined, false)) as never);
+    expect(badges(container)).toHaveLength(0);
+  });
+
+  it("renders the lock alongside the protection Teferi's Protection grants with it", () => {
+    const { container } = render(
+      PlayerIdentity as never,
+      props(seat(["protection from everything"], true)) as never,
+    );
+    expect(badges(container).map((b) => b.text)).toEqual(["ALL", "LIFE"]);
   });
 });

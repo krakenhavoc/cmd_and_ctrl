@@ -89,7 +89,7 @@ func b33IslandsControlled(g *game.Game, controller uuid.UUID) int {
 
 // b33ResolutionsThisTurn counts how many times an ability of `source`
 // labelled `label` has resolved this turn — the per-turn tally's
-// per-object resolution count (Turn.Number is no use here: it counts
+// per-object resolution count (Turn.Round is no use here: it counts
 // rounds). Dalkovan Encampment's "whenever you
 // attack THIS TURN" is created once per activation, so the count is
 // how many copies of the delayed trigger exist.
@@ -401,8 +401,9 @@ func b33SacrificeLandsThenSearchBasicsTapped(item *game.StackItem, ctx *Context,
 
 // b33DoubleUnspentMana is Doubling Cube's ProducedFunc: one slot of
 // the same colour for every token in the controller's pool, read
-// AFTER the {3} was paid (CR 605.3a — the activation's cost is paid
-// before the ability's effect happens). The mana it adds is
+// AFTER the {3} was paid (CR 601.2h — the total cost is paid before
+// the ability is considered activated, and CR 605.3b — a mana
+// ability resolves immediately once activated). The mana it adds is
 // unrestricted, as the printed card's is: a restricted token in the
 // pool is doubled by a plain token of its colour.
 func b33DoubleUnspentMana(g *game.Game, controller, _ uuid.UUID) string {
@@ -717,36 +718,6 @@ func b33DistributeCountersRoundRobin(g *game.Game, item *game.StackItem) error {
 		}
 	}
 	return nil
-}
-
-// b33SacrificeChosenThenDrawThatMany is God-Eternal Bontu's entry
-// body: every announced permanent that is still legal and still the
-// controller's is sacrificed, then the controller draws one card per
-// permanent sacrificed. Bontu himself is never among them — the
-// target clause excludes his name.
-//
-// #910: one batch with the draw as its continuation, not a loop with a
-// tally. "That many" is a number about permanents that really left the
-// battlefield, and a sacrificed COMMANDER stops to answer CR 903.9 —
-// so counted on the line after the loop it was one card too many, drawn
-// on the strength of a question having been asked. The sacrifices are
-// also one simultaneous exit now, which is what a single instruction
-// should look like to a Blood Artist.
-func b33SacrificeChosenThenDrawThatMany(g *game.Game, item *game.StackItem) error {
-	var doomed []uuid.UUID
-	for _, t := range item.Targets {
-		if t.Kind != game.TargetCard || t.ID == item.SourceCardID || !g.TargetStillLegalForEffect(item, t) {
-			continue
-		}
-		c, ok := g.LookupCardForEffect(t.ID)
-		if !ok || c.Controller != item.Controller || !onBattlefield(g, t.ID) {
-			continue
-		}
-		doomed = append(doomed, t.ID)
-	}
-	return g.SacrificeAllThenForEffect(item.SourceCardID, doomed, func(g *game.Game, sacrificed []uuid.UUID) error {
-		return DrawCards{Player: item.Controller, N: len(sacrificed)}.Apply(NewContext(g, item))
-	})
 }
 
 // tuckSelfThirdFromTop is God-Eternal Bontu's return body —

@@ -46,7 +46,8 @@ func TestUnboundedExilePermissionIgnoresTheTurn(t *testing.T) {
 	for _, turns := range []int{0, 1, 5, 40} {
 		probe := g.Clone()
 		probe.Seats[0].TurnsBegun += turns
-		probe.Turn.Number += turns
+		probe.Turn.Seq += turns
+		probe.Turn.Round += turns
 		var live bool
 		probe.ReadSnapshot(func() { live = probe.CastPermissionActiveForEffect(&perm, me.ID) })
 		if !live {
@@ -89,7 +90,8 @@ func TestCleanupSpareUnboundedExilePermissions(t *testing.T) {
 	}
 	// Still there several turns later.
 	g.WithWriteLock(func() {
-		g.Turn.Number += 5
+		g.Turn.Seq += 5
+		g.Turn.Round += 5
 		for _, p := range g.Seats {
 			p.TurnsBegun += 5
 		}
@@ -248,7 +250,7 @@ func TestCastEventCarriesTheSourceZone(t *testing.T) {
 	}
 }
 
-// "Becomes the target of a spell or ability" (CR 115.7) fires at
+// "Becomes the target of a spell or ability" (CR 115.3) fires at
 // announce, once per slot, for spells and for abilities alike — and
 // for every VERB that announces one.
 //

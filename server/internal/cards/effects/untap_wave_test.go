@@ -14,7 +14,7 @@ func TestUntapWaveCardsAreRegisteredWithTheDeclaredSeam(t *testing.T) {
 		full         bool
 	}{
 		{"Tangle", "f627e125-15af-4e53-b34e-82b60e4ec87b", false, true},
-		{"Mana Vault", "736892cb-a34b-4bb9-b56c-e26e3db207a2", true, false},
+		{"Mana Vault", "736892cb-a34b-4bb9-b56c-e26e3db207a2", true, true}, // full since #1418
 		{"Basalt Monolith", "6b8cf2a0-b045-4d91-9d91-c602d40c6237", true, true},
 		{"Grim Monolith", "229d6627-1292-4ae1-8849-b0f956fa6540", true, true},
 		{"Goblin Sharpshooter", "d81285b7-a718-411a-8be3-ecc0cfe0bcb0", true, true},
@@ -22,7 +22,7 @@ func TestUntapWaveCardsAreRegisteredWithTheDeclaredSeam(t *testing.T) {
 		{"Meekstone", "5ba73182-30a7-4bad-9cb6-c0feecc2db33", true, true},
 		{"Back to Basics", "05c2dec2-d2f7-4036-b91f-4fccba10a8bb", true, true},
 		{"Intruder Alarm", "1e943e04-e213-4781-b1a7-935aad8790e1", true, true},
-		{"Claustrophobia", "62d8c8c8-bc24-42f2-9e2e-9efd08e47bb1", true, false},
+		{"Claustrophobia", "62d8c8c8-bc24-42f2-9e2e-9efd08e47bb1", true, true},
 		{"Wall of Frost", "741e4f32-0587-40fa-a73d-5bcf66b52348", false, true},
 		{"Kefnet's Monument", "b6294891-79e6-4f2a-a82d-6cffce968356", false, true},
 		{"Frost Breath", "382097b3-f753-493c-bde4-101c0538feb4", false, true},

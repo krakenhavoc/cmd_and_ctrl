@@ -442,3 +442,67 @@ draws no card. Pinned by
   declaration is per card rather than per ability.
 - **The auto-tapper planning a sacrifice-cost source.** A5, [#1215](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1215).
 - **Enforcing `{S}`.** A6.
+
+## Amendment (2026-09-23, [#1312](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1312)): X rides the permanent too (CR 107.3m)
+
+Found by the *Aang is so flashy* deck triage (#1306): Wan Shi Tong, Librarian
+prints "When Wan Shi Tong enters, put X +1/+1 counters on him. Then draw half
+X cards, rounded down" — an ordinary CR 603 enters TRIGGER, not a CR 614.1c
+"enters with N counters" replacement, so its counters land a beat after the
+permanent already exists and the whole clause is a card you can respond to.
+
+That put it on the wrong side of the exact wall A3 already named for mana:
+"an entry REPLACEMENT can read `StackItem.Paid`, because the item is still on
+the event… an entry TRIGGER cannot: by the time it resolves the spell has
+finished resolving and the item is gone." X has the identical shape — CR
+107.3m is its own clause of CR 400.7d, word for word the rule A3 built for —
+and until this amendment nothing carried it. Four catalog cards
+(Goose Mother, Farmer Cotton, Springleaf Parade, Spiteful Banditry) had
+already hit the wall and worked around it the only way available: moving
+their own X-read into `OnResolve`, a beat before the permanent exists, with a
+declared caveat that the effect arrives without a trigger on the stack to
+answer.
+
+### `CastProvenance.X`
+
+One more field, next to `Mana`, stamped in the same `stampCastProvenanceLocked`
+from `item.XValue` — the fourth thing taken off the item at the one moment it
+still exists, following `AltCost`, `FromZone` and `Mana` exactly. `Any()`
+gains `p.X != 0`, and the layout test decided where it goes: an `int` before
+`ManaOnPaper`'s trailing `bool` costs nothing, after it costs 7 bytes of
+alignment padding (`TestCardHasNoInteriorPadding`), so `X` sits above the bool
+block rather than below it — the one place in this ADR the type checker chose
+the field order instead of the read pattern.
+
+**The same documented ambiguity `CastCounts.X` already carries, on purpose.**
+Zero means "no `{X}` in the cost" and a real announced `X=0` both store the
+same zero, exactly as `entry_counters.go` already accepted for the CR 614.1c
+reader. It is harmless here for the reason it was harmless there: every
+printed clause that reads X computes the same answer at the boundary (draw
+zero cards, deal zero damage) whether X was truly zero or never announced.
+
+**The reader is `Card.CastX() int`**, the `Escaped()` / `ManaSpentToCast()`
+sibling: a triggered ability's `Build` is handed `source *Card` and nothing
+else, so the read has to go through the card. Unlike `ManaSpentToCast()`,
+which an intervening-if reads live inside `AppliesTo`, `CastX()` is meant to
+be read ONCE, inside `Build`, and closed over as a plain `int` in the
+`Effect` it returns — capturing the fact itself rather than a lookup, so the
+`Effect` still captures no `*Card` (ADR 0018's rule) and still resolves
+correctly if the permanent has since left the battlefield, exactly as the
+mana-spent tokens on this same record would.
+
+### Cards
+
+Wan Shi Tong, Librarian (`wan_shi_tong_librarian.go`) is the proof —
+`CompletenessFull`, no caveat, both halves of its first ability now share one
+`Build`/`Effect` pair with the real printed ordering: the trigger goes on the
+stack readable by every player before the counters land or the cards are
+drawn.
+
+**Left as a named follow-up, not fixed here.** Goose Mother, Farmer Cotton,
+Springleaf Parade and Spiteful Banditry's `OnResolve` workarounds are now
+stale — the wall their comments describe is gone — but converting all four is
+out of scope for the PR that closed the wall (#1312/#1335/#1323 is a
+three-seam PR, not a caveat sweep). Filed as a tech-debt follow-up per
+AGENTS.md §7's "a caveat goes stale the day someone else implements the
+mechanic" rule.

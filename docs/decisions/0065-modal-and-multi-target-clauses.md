@@ -47,7 +47,7 @@ at RESOLUTION (CR 608.2), is frequently addressed to somebody other
 than the controller, and its options carry cards — its own commit
 message says a modal spell's "choose one" is deliberately not that
 kind. `mode_pick` is answered with a bounded MULTISET of indices in
-the order chosen (CR 700.2c, and CR 700.2d lets one repeat), is asked
+the order chosen (CR 608.2c, and CR 700.2d lets one repeat), is asked
 as the ability is put on the stack (CR 603.3c), always goes to the
 ability's controller, and each option carries a target clause rather
 than a card list. If a later change gives `option_pick` bounds and an
@@ -90,7 +90,7 @@ Four gaps, one shape. Measured on `develop` at `11f4c3d5`:
    `TargetingState` (`client/src/lib/targeting.ts:131`) has one
    `legal` set, one `min`/`max`, one `picked`; `ModePickerModal`
    (`:63`) hard-refuses a second targeted mode and sorts the chosen
-   indices ascending, which destroys the order CR 700.2c resolves in.
+   indices ascending, which destroys the order CR 608.2c resolves in.
 
 The issue's audit counts 54 cards where this is the only core blocker
 and 58 where it is any core blocker, with a verified estimate of
@@ -241,7 +241,7 @@ The same struct is read by `Spec.Modes` (spells, unchanged),
   own target group (`ref.Mode == 0, 1, 2`). `ctx.HasMode(i)` keeps
   its meaning ("some occurrence chose option i"); `ctx.ModeCount(i)`
   is the count, and `ctx.Modes()` is the ordered multiset.
-- **Resolution order is announce order (CR 700.2c).** Options with an
+- **Resolution order is announce order (CR 608.2c).** Options with an
   `Effect` run in `item.Modes` order, once per occurrence. A card that
   prefers the old shape keeps writing `if ctx.HasMode(0) { … }` in
   `OnResolve`; both read the same data, and `Effect` exists so a
@@ -418,3 +418,192 @@ Costs:
 - The clause list is flat by construction and enforced at boot rather
   than by the type system, because the alias is what buys the
   compatibility.
+
+---
+
+## Amendment (2026-09-23, #1330): Spree — a mode with its own cost (CR 702.172a)
+
+**Sprint:** S45 — Modal spells, multi-target clauses and copy effects.
+Tracker [#888](https://github.com/krakenhavoc/cmd_and_ctrl/issues/888).
+
+§3 shipped one `ModeSpec`, three owners, and every option in it was free
+to choose beyond the spell's own printed cost. CR 702.172a's Spree keyword
+("Choose one or more modes. As an additional cost to cast this spell, pay
+the costs associated with those modes chosen this way.") is the first
+printed shape where choosing a bullet is not free, and it is why Three
+Steps Ahead — this issue's proof card — could not be registered at all:
+`game.ModeOption` had nowhere to put "+ {1}{U}".
+
+### Decision: `ModeOption.Cost string`, mana only
+
+```go
+type ModeOption struct {
+    Label   string
+    Targets *TargetSpec
+    Effect  func(g *Game, item *StackItem, occurrence int) error
+
+    // Cost is CR 702.172a's Spree: the additional mana cost paid IF
+    // AND ONLY IF this bullet is chosen, in brace notation, on top of
+    // the spell's own cost and every OTHER chosen bullet's. Empty for
+    // an ordinary modal bullet — every modal card before S45.
+    Cost string
+}
+```
+
+A bare `string`, not a reused `*AdditionalCost` (the shape ADR 0073 §1
+built for kicker and buyback), and that is the one decision in this
+amendment worth arguing. `AdditionalCost` carries `DiscardCards`,
+`Sacrifice`, `PayLifeX`, `Optional`, `Key` and `Repeat` alongside
+`ManaCost`, and every printed Spree card checked against the Scryfall
+dump at the time of writing — Three Steps Ahead, Explosive Derailment,
+Insatiable Avarice, Caught in the Crossfire, Phantom Interference,
+Requisition Raid, Lively Dirge, Rustler Rampage, Final Showdown, One
+Last Job, Getaway Glamer, Jailbreak Scheme, Metamorphic Blast, and
+Unfortunate Accident — prices every bullet in mana alone. Reusing
+`AdditionalCost` would have meant a boot-time panic disabling five of
+its six fields on every card that will ever declare one, which is
+worse than the honest field: the day a card needs "discard a card" per
+bullet (Duskmourn's own "Bake into a Pie" is exactly that shape), the
+change is `Cost string` → `Cost *AdditionalCost` in one place, not a
+retrofit of a struct that had been carrying dead weight the whole
+time.
+
+**Two constructors, both in `effects/modes.go`** (the card-file layer,
+not `game`), matching `Mode` / `ModeDoing`'s existing split:
+
+```go
+Modes: Spree(
+    SpreeModeDoing("Counter target spell.", "{1}{U}",
+        TargetSpell("target spell"), CounterTheModesTarget),
+    SpreeModeDoing("Create a token that's a copy of target artifact or creature you control.", "{3}",
+        TargetPermanent("target artifact or creature you control", And(Or(Artifact(), Creature()), YouControl())),
+        TokenCopyTheModesTarget),
+    SpreeModeDoing("Draw two cards, then discard a card.", "{2}", nil,
+        func(item *game.StackItem, ctx *Context, occ int) error {
+            if err := (DrawCards{Player: item.Controller, N: 2}).Apply(ctx); err != nil {
+                return err
+            }
+            ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+                Player: item.Controller, Source: item.SourceCardID, N: 1,
+            })
+            return nil
+        }),
+),
+```
+
+`Spree(options...)` is `Min: 1, Max: len(options)` and NOT
+`Repeatable` — CR 702.172a's "one or more" is not "the same one
+twice", and no printed Spree card says otherwise. `SpreeMode` /
+`SpreeModeDoing` are `Mode` / `ModeDoing` with `Cost` set; they exist
+so a card file reads like its oracle text ("+ {1}{U} — Counter target
+spell.") instead of a struct literal with a bare field assignment.
+
+`CounterTheModesTarget` and `TokenCopyTheModesTarget` are two NEW
+shared bullet bodies in `modes.go`, promoted from private closures
+that were about to be duplicated: Sublime Epiphany already had a
+"counter target spell" bullet and a "token copy of target creature you
+control" bullet, byte-for-byte the same body Three Steps Ahead needed
+one clause narrower. `internal/cards/coverage`'s exact-clone detector
+caught the duplication in review — the two cards now both call the
+shared functions, which is the `DestroyTheModesTarget` /
+`BounceTheModesTarget` pattern this ADR already established, applied
+to the two bodies that happened not to exist yet.
+
+### Decision: the price joins the total where ADR 0073 §3 already puts an extra
+
+`game.AddModeCostMana(cost ParsedCost, ms *ModeSpec, modes []int) (ParsedCost, error)`
+sums every chosen occurrence's `Cost` into the running total, called
+from `printedCostLocked` in the exact spot `AddOptionalCostMana` is —
+after the alternative-cost swap and the commander tax, before the cost
+modifiers (CR 601.2f: an additional cost joins the total before
+Thalia or Trinisphere read it). One function, so the cast path, the
+bot enumerator and the auto-tap preview cannot disagree about what a
+Spree selection costs (#544) — the identical invariant ADR 0073 §3
+states for kicker, reused rather than re-derived.
+
+No new `PaidCost` field. Kicker needed `PaidCost.OptionalCosts` because
+"was this kicked" is asked by a card's own resolution and by an
+entering permanent's ETB trigger, neither of which can be inferred any
+other way. A Spree bullet's price is not asked anywhere after the
+fact — `ctx.HasMode(i)` already answers "was this bullet chosen", and
+CR 702.172a is silent about anything reading the money afterward — so
+the modes multiset already carried on `StackItem.Modes` is the whole
+record.
+
+### Decision: the enumerator prices PER MODE SELECTION, not once for the card
+
+This is the one place the change reaches past the card layer. Every
+modal card before this amendment had ONE price regardless of which
+modes were chosen, so `legal/cast.go`'s `castMovesPayingOptional`
+priced the cast once, before `modeSets` was even computed, and searched
+X against that one number. A Spree selection's price depends on WHICH
+modes are in it, so that ordering is now backwards: `modeSpec` /
+`modeSets` are computed first, and `game.AddModeCostMana` is called
+**inside** the `for _, modes := range modeSets` loop to produce
+`modeCost`, which THEN feeds the `!perTarget` X search and the
+per-target repricing loop that already existed for §14's target-priced
+cards. A selection this seat cannot afford is `continue`d rather than
+crashing the whole card's enumeration — Explosive Derailment's two
+bullets are each individually affordable off three Mountains and never
+offered together, which
+[`spree_test.go`](../../server/internal/legal/spree_test.go) pins by
+funding a seat to exactly one bullet's price, then to both, and
+`dispatchAll`-ing every offered move against the real engine either
+way (#544).
+
+### Decision: no card-shaped mode cost, no repeatable mode cost, no owner but Spec.Modes
+
+Three refusals at boot, matching the "declare it when a card needs it"
+discipline this file already keeps:
+
+- **A trigger's or an activated ability's mode may not carry a Cost.**
+  CR 702.172a is a static ability printed on SPELLS. No trigger or
+  activated ability in Magic charges more for choosing one of its
+  modes, and `checkModeCost` panics if one tries — the same "the field
+  exists, using it wrong is a boot error" posture ADR 0073 §1 takes
+  with `AdditionalCost.Optional` on the mandatory slot.
+- **`Optional`, `Key`, `Repeat`, `DiscardCards` and `Sacrifice` have no
+  equivalent here**, because the field is a bare mana string. A future
+  non-mana Spree card is the trigger for widening it, not a reason to
+  guess its shape now.
+- **The `ModeSpec` itself is not marked `Repeatable`.** `Register`
+  already panics on `Repeatable` with `Max == 1`; nothing new was
+  needed to keep Spree off that combination, because `Spree()` never
+  sets the flag.
+
+### Consequences
+
+- Three Steps Ahead, Explosive Derailment, Insatiable Avarice and
+  Caught in the Crossfire ship at `CompletenessFull`. #1306's tracker
+  is updated.
+- The wire gains `ModeOptionView.Cost` (`cost`, omitempty, brace
+  notation) — printed text, scoped `surfacePublicPile` beside `label`
+  and `target_mode` exactly as ADR 0073's `AlternativeCostView.mana_cost`
+  is, never `surfacePrivate` like `legal_targets`. `docs/protocol.md`'s
+  `cast_spell` row says so.
+- `ModePickerModal.svelte` shows each bullet's own cost beside its
+  label and a running concatenation of the chosen bullets' costs
+  beside Confirm — a preview, not a computation; the server still
+  prices the real sum (#544).
+- Sublime Epiphany's two bullets that used to be private closures are
+  now `CounterTheModesTarget` / `TokenCopyTheModesTarget` in
+  `modes.go`, available to every future card that prints either
+  clause.
+
+### Out of scope, stated
+
+- **A card-shaped Spree cost** ("discard a card" per bullet — "Bake
+  into a Pie"'s real shape). `ModeOption.Cost` is a mana-only string on
+  purpose; widening it to `*AdditionalCost` is a follow-up, not a
+  speculative field sitting unused today.
+- **Escalate and entwine**, ADR 0073's Consequences named them as the
+  same family and left them for whoever built this. Entwine ("choose
+  both, pay the entwine cost") is closer to an `AlternativeCost` than
+  to a per-mode price — one flat surcharge for taking every mode,
+  not a sum of independently-priced bullets — and does not reuse this
+  shape without its own design. Escalate ("choose one, then pay
+  {cost} for each other mode you choose") is closer to what Spree
+  built, but "the SAME price for every mode after the first" is a
+  detail Spree's per-bullet `Cost` cannot express without a bullet
+  declaring a different cost depending on how many others are already
+  chosen — left for that card.

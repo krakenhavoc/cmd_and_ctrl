@@ -34,6 +34,7 @@ const (
 	choicePickTarget          = "pick_target"
 	choiceSacrifice           = "sacrifice_choice"
 	choiceScry                = "scry"
+	choicePutInLibrary        = "put_in_library"
 	choiceSearchLibrary       = "search_library"
 	choiceEntryPayLife        = "entry_pay_life"
 	choiceConfirm             = "confirm"
@@ -170,6 +171,42 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 			v += p.cfg.ScryKeep - st.cardValue(p.cfg, lookup(id))
 		}
 		return v, "scry"
+
+	case choicePutInLibrary:
+		// ADR 0088. Two things about an ordered placement matter to
+		// the bot, and the order of a pile under a library is not
+		// one of them:
+		//   - the card left on top of its OWN library is its next
+		//     draw, so the best of them should be first; and
+		//   - on "top or bottom", what it buries: its own cards the
+		//     way a scry does (ScryKeep is the indifference point),
+		//     and every card an opponent owns, which is how a Hinder
+		//     or an Aetherspouts is meant to be played.
+		//
+		// #1298's shapes need no branch of their own. An exact top count
+		// (Cream of the Crop): every offered answer holds the same
+		// number on top, so the two terms together rank them by the card
+		// left there. A look at an opponent's library (Jace's +2) and a
+		// counter (Hinder) are opponents' cards, which the bury term
+		// already sends down.
+		var v float64
+		if len(cp.TopOrder) > 0 {
+			if c := lookup(cp.TopOrder[0]); c != nil && c.Owner == st.me {
+				v += 0.1 * st.cardValue(p.cfg, c)
+			}
+		}
+		for _, id := range cp.Bottom {
+			if ch == nil || ch.Placement != "top_or_bottom" {
+				break
+			}
+			c := lookup(id)
+			if c != nil && c.Owner != "" && c.Owner != st.me {
+				v += st.cardValue(p.cfg, c)
+				continue
+			}
+			v += p.cfg.ScryKeep - st.cardValue(p.cfg, c)
+		}
+		return v, "order the library"
 
 	case choiceChooseCards:
 		// The chained-choice card-set pick, and the one kind whose

@@ -91,7 +91,7 @@ type CopySelector struct {
 //   - the chooser can't be identified or has left the game. Asking
 //     a question nobody can answer wedges the table (the same
 //     posture applyReplacementsLocked takes for the CR 616 and
-//     CR 614.10 prompts).
+//     "may" replacement prompts).
 //   - the entry site can't be resumed. Pausing there would strand
 //     the card in its old zone; declining the copy is weaker than
 //     printed and never stronger, which is the posture
@@ -234,10 +234,11 @@ func (g *Game) ResolveCopyTarget(choiceID, chooserID, cardID uuid.UUID) error {
 		return err
 	}
 	defer g.clearReplacementEventLocked(ev.ID)
-	if out == nil || out.Canceled {
-		return nil
-	}
-	return g.applyResolvedReplacementEventLocked(out)
+	// Through the shared finisher the other entry resumes use (#478),
+	// rather than returning nil for a CANCELLED entry: a cancelled
+	// entry still owes its caller an answer — a search its shuffle, a
+	// simultaneous entry (#1322) the rest of its batch.
+	return g.finishSettledReplacementLocked(ev, out)
 }
 
 // copyCandidateStillLegalLocked re-runs the selector against the

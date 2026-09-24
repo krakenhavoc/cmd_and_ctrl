@@ -8,6 +8,13 @@ shape as [the Pirates list](pirates-mary-read-anne-bonny.md): a deck is
 a better forcing function than a card count, because it says which
 gaps actually stop a game from being played.
 
+> **Superseded 2026-09-23.** The live per-card checklist is
+> [#1306](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1306), re-triaged
+> against `develop` @ `ecaab344`: every card, its bucket (full / caveated /
+> buildable / blocked) and the seam issue each blocked card waits on. The
+> text below is the 2026-09-11 triage, kept as a record; its numbers and
+> several of its blockers are out of date.
+
 **Re-triaged 2026-09-11** against `main` @ `0f82505` — re-run after
 [#267](https://github.com/krakenhavoc/cmd_and_ctrl/pull/267),
 [#268](https://github.com/krakenhavoc/cmd_and_ctrl/pull/268),
@@ -144,7 +151,7 @@ flight".
 | Meticulous Archive | [#258](https://github.com/krakenhavoc/cmd_and_ctrl/pull/258) | surveil land — enters tapped + duals; **surveil is not implemented** |
 | Aang, the Last Airbender | [#269](https://github.com/krakenhavoc/cmd_and_ctrl/pull/269) | first airbend — `ExileWithPermission` + an unbounded grant (`WhileExiled`) carrying a `CostOverride` |
 | Appa, Steadfast Guardian | [#269](https://github.com/krakenhavoc/cmd_and_ctrl/pull/269) | airbends **any number** of targets, and "whenever you cast a spell **from exile**" — `EventCast` now carries `OldZone` |
-| Monk Gyatso | [#269](https://github.com/krakenhavoc/cmd_and_ctrl/pull/269) | first `EventBecomesTarget` consumer (CR 115.7) — the trigger lands *above* the spell that targeted, so the removal fizzles |
+| Monk Gyatso | [#269](https://github.com/krakenhavoc/cmd_and_ctrl/pull/269) | first `EventBecomesTarget` consumer (CR 115.3) — the trigger lands *above* the spell that targeted, so the removal fizzles |
 | The Wandering Rescuer | [#271](https://github.com/krakenhavoc/cmd_and_ctrl/pull/271) | first convoke — `Spec.TapCost`, creatures tapped at cast time pay {1} or one mana of their colour |
 
 ### Corrections to batch 2's engine findings
@@ -209,7 +216,7 @@ previous revision had the old number.
   made the whole cycle a real CR 614 self-replacement with the decision
   inside it (`EntryLifeCost` → the apply-loop stops and asks before
   anything moves). Paying means the replacement never fires and the land
-  enters untapped; declining, or being unable to pay (CR 118.4), fires it
+  enters untapped; declining, or being unable to pay (CR 119.4), fires it
   and the land *enters* tapped. No tapped window, no untap event, no
   priority pass. One declared limit remains, and it is the fetch case
   below.
@@ -354,7 +361,7 @@ cards that motivated them:
 - **`EventCast` now carries the source zone** (`OldZone` / `NewZone`) —
   Appa's "whenever you cast a spell from exile", and anything else that
   cares where a spell came from.
-- **`EventBecomesTarget`** (CR 115.7,
+- **`EventBecomesTarget`** (CR 115.3,
   [events.go:196–225](../../server/internal/game/events.go)) — fires once
   per target **slot** at announce, from four sites (cast, two activated
   paths, and the triggered-ability target pick). Announce rather than
@@ -389,7 +396,10 @@ cards that motivated them:
   Waterbend {8} now transforms Aang through `TransformThis`, with a flat
   {8} mana cost standing in for the printed tap-artifacts-and-creatures
   discount (declared caveat — see `aang_swift_savior.go`), and the back
-  face's attack trigger ships in full (#343).
+  face's attack trigger ships in full (#343). **Updated 2026-09-23**: the
+  flat {8} is gone — #1310 made waterbend an activated-ability cost
+  (`WaterbendCost("{8}")`, ADR 0020 amendment), so artifacts and creatures
+  can be tapped to help pay and the card is `full`.
 - **Avatar's Wrath** — mass airbend, self-exile on resolution, and a
   continuous "opponents can't cast spells from anywhere other than their
   hands" restriction that would have to outlive its source.
@@ -474,14 +484,19 @@ of them is waiting on the cost component any more:
   piece still unshipped, and it is blocked twice over — see
   `avatar_kuruk.go` and the "Extra turns primitive" row in
   `docs/engine-seams.md`.
-- **Katara, Water Tribe's Hope** — its waterbend is on an **activated
-  ability**, which is a different seam: `Spec.TapCost` prices a *spell*,
+- ~~**Katara, Water Tribe's Hope**~~ — **updated 2026-09-23**: ships
+  `full` via #1310's activated-ability waterbend (`WaterbendCost("{X}")`
+  with `MinX(1)`, base X/X in layer 7b). The original note: its waterbend
+  is on an **activated ability**, which is a different seam: `Spec.TapCost` prices a *spell*,
   and `AbilityCost` still has only tap-this / sacrifice-self /
   sacrifice-other / mana / life
   ([activated.go:35–60](../../server/internal/game/activated.go)). Plus
   base P/T until end of turn.
-- **The Unagi of Kyoshi Island** — ward, which is a cost paid by the
-  *opponent*, not by the controller.
+- ~~**The Unagi of Kyoshi Island**~~ — **updated 2026-09-23**: ships
+  `full` via #1311 (`WardWaterbend("{4}")`: the ward's pay-or-counter
+  prompt lets the opponent tap their artifacts and creatures to help). The
+  original note: ward, which is a cost paid by the *opponent*, not by the
+  controller.
 
 ### Multi-face cards (7)
 
@@ -589,16 +604,19 @@ the keyword at all:
 - **indestructible** — Thassa, The Mind Stone, The Seriema. Only
   mentioned in comments explaining that *sacrifice* ignores it.
 - **ward** — The Unagi of Kyoshi Island. No implementation.
-- **prowess** — Ty Lee, Chi Blocker. No implementation.
+- **prowess** — Ty Lee, Chi Blocker. No implementation. *(2026-09-24: shipped in #706 as an enforced keyword; Ty Lee is full.)*
 
 The static half (printing the word) is cheap; the behaviour is the work.
 
 ### One-offs
 
-Herald of Eternal Dawn (can't-lose / can't-win replacement), Mandate of
+(Herald of Eternal Dawn left this list with #749: "you can't lose the
+game and your opponents can't win the game" is a gate the engine reads
+at every loss and win, [ADR 0057](../decisions/0057-win-and-lose-by-effect.md),
+and the card is in the catalog.) Mandate of
 Peace (end the combat phase + a cast restriction), Rabble Rousing (hideaway, plus
 "whenever you attack with **one or more** creatures", which over-fires
-against per-creature `EventAttack` — the CR 603.1 batching gap
+against per-creature `EventAttack` — the "one or more" batching gap
 `events.go` documents at `:162`), The Seriema (station), Misleading
 Signpost (re-select an attacker's target), Hullbreaker Horror (can't be
 countered, plus returning a **spell** from the stack to hand — no
@@ -608,7 +626,8 @@ implementation; its end-step flicker and its `{3}{U}` tap ability are
 both writable now), Enduring Curiosity (the graveyard return exists; "it
 returns as an enchantment, not a creature" needs a continuous effect
 conditioned on *how* the permanent got there), Ty Lee, Chi Blocker
-(prowess + a "doesn't untap for as long as you control this" lockdown),
+(prowess, #706; its "doesn't untap for as long as you control this"
+lockdown shipped with #1313, and prowess with #706 — the card is full),
 Meticulous Archive (in the catalog, but surveil is unimplemented), The
 Mind Stone (harness — a once-activated state gate), Deep Gnome
 Terramancer ("lands enter under an opponent's control **without being

@@ -40,15 +40,31 @@ func resumeClause(g *game.Game, item *game.StackItem, then func(ctx *Context) er
 	return then(NewContext(g, item))
 }
 
-// IsBasicLand reports whether a card's type line contains the
-// "basic land" supertype (case-insensitive substring). Used by
-// tutor / fetch primitives that need to match Forest / Island /
-// Mountain / Plains / Swamp / Wastes without enumerating each
-// subtype. Path to Exile, Cultivate, and Solemn Simulacrum share
-// this predicate; keep it here rather than duplicating the
-// lowercase loop per-card.
+// IsBasicLand reports whether a card carries the Basic supertype
+// (CR 205.4a) — read off Effective().Supertypes, not a "basic land"
+// type-line substring. A Snow-Covered basic's type line is "Basic
+// Snow Land — Plains": the word "Basic" and the word "Land" both
+// appear, but never adjacent, so a substring match on "basic land"
+// silently misses every snow basic. That was this function's
+// original body, and it shipped 16 tutor / fetch call sites weaker
+// than printed against a snow-basic-playing deck (#1334). Off the
+// battlefield the effective supertypes are the printed ones.
+//
+// Used by tutor / fetch primitives that need to match Forest /
+// Island / Mountain / Plains / Swamp / Wastes (and their snow
+// counterparts) without enumerating each subtype. Path to Exile,
+// Cultivate, and Solemn Simulacrum share this predicate; keep it
+// here rather than duplicating the loop per-card.
 func IsBasicLand(c game.Card) bool {
-	return containsFoldASCII(c.TypeLine, "basic land")
+	if !c.IsLand() {
+		return false
+	}
+	for _, s := range c.Effective().Supertypes {
+		if s == "Basic" {
+			return true
+		}
+	}
+	return false
 }
 
 // lookAtTargetPlayersHandThenDraw is "Look at target player's hand.
@@ -74,6 +90,23 @@ func lookAtTargetPlayersHandThenDraw(item *game.StackItem, ctx *Context) error {
 		}
 	}
 	return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
+}
+
+// returnTargetedCardToHand returns the resolving item's first
+// targeted card to hand — "return target artifact card from your
+// graveyard to your hand" (Buried Ruin) and every "return another
+// target X card in your graveyard to your hand" trigger (Junk Diver,
+// Myr Retriever) that has no clause beyond the return itself. The
+// target's zone is whatever TargetCardInGraveyard already restricted
+// it to; this is only the resolution half.
+func returnTargetedCardToHand(g *game.Game, item *game.StackItem) error {
+	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+		return nil
+	}
+	return ReturnFromGraveyard{
+		Target: item.Targets[0].ID,
+		Dest:   game.ZoneHand,
+	}.Apply(NewContext(g, item))
 }
 
 // IsBasicLandOfAnySubtype is "a basic <A>, <B>, or <C> card" — the
@@ -180,7 +213,7 @@ func damageToPlayerBy(ev game.Event, controller uuid.UUID, g *game.Game) bool {
 // condition shared by Reckless Fireweaver, Ingenious Artillerist and
 // Quicksmith Genius.
 //
-// Batching gap (CR 603.1): the real cards read "whenever one or more
+// Batching gap: the real cards read "whenever one or more
 // artifacts you control enter", one trigger for a simultaneous
 // batch. The engine emits one EventETB per card, so a mass token
 // creation fires the trigger once per artifact instead of once with
@@ -445,6 +478,20 @@ func destroyFirstLegalCardTarget(g *game.Game, item *game.StackItem) error {
 	return nil
 }
 
+// exileFirstLegalCardTarget is destroyFirstLegalCardTarget's sibling
+// for "Exile target [permanent]." — the first card target still legal
+// at resolution (CR 608.2b) is exiled, and nothing happens when none
+// is. Teysa, Orzhov Scion's and Hanged Executioner's activations.
+func exileFirstLegalCardTarget(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, ref := range ctx.LegalTargets() {
+		if ref.Kind == game.TargetCard {
+			return ExileTarget{Target: ref.ID}.Apply(ctx)
+		}
+	}
+	return nil
+}
+
 // targetOpponentLosesAndYouGain is "target opponent loses n life and
 // you gain n life" for a trigger whose target clause is a player. A
 // target that is no longer legal is skipped, and the gain happens only
@@ -494,6 +541,14 @@ func returnFirstLegalGraveyardTargetToBattlefield(g *game.Game, item *game.Stack
 // counterTheTargetSpell is the whole OnResolve of "Counter target
 // spell." — Cancel's body, named so a new card calls it rather than
 // adding another copy to that clone family.
+//
+// It is also the whole OnResolve of "Counter target spell, activated
+// ability, or triggered ability" (#1211): CounterTarget takes a STACK
+// ITEM id and has discriminated on item.Kind since S13.1, and a
+// picked ability arrives in the same TargetRef a picked spell does.
+// The name keeps the spell in it because the clause is what differs
+// between the two families and the body is not — see Disallow,
+// Voidslime, Stifle and Tale's End, which all call this.
 func counterTheTargetSpell(item *game.StackItem, ctx *Context) error {
 	if len(item.Targets) == 0 {
 		return nil
@@ -658,7 +713,7 @@ func damageToFirstTarget(amount int) func(item *game.StackItem, ctx *Context) er
 // Inquiry Dominus; Solphim, Mayhem Dominus): a no-op if something
 // killed the source before the ability resolves, otherwise a counter
 // on the source itself. Both cards pair it with b24KeywordCounterGrant
-// so the counter carries CR 122.1e's keyword.
+// so the counter carries CR 122.1b's keyword.
 // plusOneCountersOnThis is "Put N +1/+1 counters on this creature" —
 // the body most of the exhaust cards print (Prowcatcher Specialist,
 // Greenbelt Guardian, Afterburner Expert, Elvish Refueler, Boom
@@ -765,8 +820,10 @@ func firstLegalPlayerTarget(ctx *Context) (uuid.UUID, bool) {
 }
 
 // notACreature strips the Creature card type, and the creature
-// subtypes that rode on it (CR 205.1b), from a characteristic being
-// built in layer 4.
+// subtypes that rode on it, from a characteristic being built in
+// layer 4. Not a CR citation — the Comprehensive Rules don't mandate
+// erasing a permanent's printed creature subtypes when it stops being
+// a creature; this engine does it anyway, for the reason below.
 //
 // Shared by every "as long as <condition>, this isn't a creature"
 // clause — The Warring Triad's graveyard gate, impending's time
@@ -841,4 +898,49 @@ func untapTheTarget(g *game.Game, item *game.StackItem) error {
 		}
 	}
 	return nil
+}
+
+// destroyEachLegalTarget is "destroy target …" for a clause of any
+// count: every card target still legal at resolution is destroyed, and
+// one that left in response is skipped (CR 608.2b). Curtains' Call's
+// "two target creatures" and Wear Down's gift-promised "two target
+// artifacts and/or enchantments" — and the one-target unpromised Wear
+// Down, which is the same loop over one slot.
+func destroyEachLegalTarget(_ *game.StackItem, ctx *Context) error {
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetCard {
+			continue
+		}
+		if err := (DestroyTarget{Target: t.ID}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// plusOneCounterPlacementOnYourCreature is Hardened Scales' and
+// Branching Evolution's shared predicate: "if one or more +1/+1
+// counters would be PUT ON a creature you control" (CR 122.6 / CR
+// 614.1 — placement only, ev.CounterDelta > 0 excludes a removal,
+// #1291). Named here because both cards' AppliesTo bodies were
+// byte-identical and the clone gate found the third growing copy
+// before it could land.
+func plusOneCounterPlacementOnYourCreature(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
+	if ev.Kind != game.RepEventCounter {
+		return false
+	}
+	if ev.CounterDelta <= 0 {
+		return false
+	}
+	if ev.CounterName != "+1/+1" {
+		return false
+	}
+	target, ok := g.LookupCardForEffect(ev.CounterTarget)
+	if !ok {
+		return false
+	}
+	if !target.IsCreature() {
+		return false
+	}
+	return target.Controller == src.Controller
 }

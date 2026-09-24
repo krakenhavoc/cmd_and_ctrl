@@ -1,5 +1,6 @@
 {
   "seq": 4,
+  "generation": 0,
   "game": {
     "id": "\u003cuuid-001\u003e",
     "state": "active",
@@ -236,6 +237,7 @@
       "cards": []
     },
     "turn": {
+      "seq": 2,
       "number": 1,
       "active_seat": 1,
       "priority_holder": -1,
@@ -252,6 +254,15 @@
       "bot_pace": "normal",
       "allow_spawn": false
     },
-    "starting_seat": 0
+    "starting_seat": 0,
+    "log": [
+      {
+        "seq": 1,
+        "kind": "draw",
+        "seat": 0,
+        "amount": 1,
+        "text": "Player 1 drew a card"
+      }
+    ]
   }
 }

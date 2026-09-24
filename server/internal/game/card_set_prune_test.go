@@ -286,11 +286,18 @@ func TestAPartlyEmptiedDiscardPromptTrimsAndClampsItsBounds(t *testing.T) {
 
 // --- the same prune at the other zones --------------------------------
 
+// cardSetPickCall records what a card-set pick's continuation was run
+// with: how many times, and the last set of picks it was handed.
+type cardSetPickCall struct {
+	ran int
+	got []uuid.UUID
+}
+
 // queueGraveyardPick puts a "choose from your graveyard" prompt up over
 // `cards`, the shape Skullwinder and the batch-38 helpers queue.
-func queueGraveyardPick(t *testing.T, g *Game, chooser uuid.UUID, source uuid.UUID, cards []uuid.UUID) (uuid.UUID, *int) {
+func queueGraveyardPick(t *testing.T, g *Game, chooser uuid.UUID, source uuid.UUID, cards []uuid.UUID) (uuid.UUID, *cardSetPickCall) {
 	t.Helper()
-	ran := 0
+	call := &cardSetPickCall{}
 	var id uuid.UUID
 	g.WithWriteLock(func() {
 		id = g.QueueChooseCardsForEffect(ChooseCardsPrompt{
@@ -301,13 +308,17 @@ func queueGraveyardPick(t *testing.T, g *Game, chooser uuid.UUID, source uuid.UU
 			Min:      1,
 			Max:      1,
 			Zone:     ZoneGraveyard,
-			Then:     func(*Game, []uuid.UUID) error { ran++; return nil },
+			Then: func(_ *Game, picked []uuid.UUID) error {
+				call.ran++
+				call.got = picked
+				return nil
+			},
 		})
 	})
 	if id == uuid.Nil {
 		t.Fatal("setup: the graveyard pick was not queued")
 	}
-	return id, &ran
+	return id, call
 }
 
 // TestAGraveyardPickIsWithdrawnWhenItsCandidatesAreExiled — the same
@@ -327,7 +338,7 @@ func TestAGraveyardPickIsWithdrawnWhenItsCandidatesAreExiled(t *testing.T) {
 		}
 	})
 
-	id, ran := queueGraveyardPick(t, g, me.ID, source, binned)
+	id, call := queueGraveyardPick(t, g, me.ID, source, binned)
 
 	g.WithWriteLock(func() {
 		if err := g.ExileCardForEffect(binned[0]); err != nil {
@@ -350,10 +361,16 @@ func TestAGraveyardPickIsWithdrawnWhenItsCandidatesAreExiled(t *testing.T) {
 	if findChoice(g, id) != nil {
 		t.Error("the prompt survives a graveyard with none of its candidates in it")
 	}
-	// A pick that is no run's leg has no continuation to settle — the
-	// departure table's existing answer for the kind, unchanged here.
-	if *ran != 0 {
-		t.Errorf("the withdrawn pick ran its continuation %d times", *ran)
+	// #1225: a pick that is no run's leg has no run to settle, but it
+	// still holds the REST OF THE CARD in its frame, and the drop runs
+	// it with nothing picked — the same closure the empty-candidate
+	// path at queue time would have run with the same argument.
+	if call.ran != 1 {
+		t.Errorf("the withdrawn pick ran its continuation %d times, want 1 — "+
+			"the rest of the card went with the question", call.ran)
+	}
+	if len(call.got) != 0 {
+		t.Errorf("the continuation was handed %v; a drop chooses nothing on the chooser's behalf", call.got)
 	}
 	assertTableIsFree(t, g)
 }
@@ -513,5 +530,178 @@ func TestAPickWithNoZoneOnItsFrameIsLeftAlone(t *testing.T) {
 	}
 	if len(c.ChooseCards) != len(cards) {
 		t.Errorf("%d candidates, want the %d the effect froze", len(c.ChooseCards), len(cards))
+	}
+}
+
+// --- #1263: the two kinds this prune must never withdraw --------------
+//
+// untap_choice and entry_reveal_from_hand both carry the choose-cards
+// payload (isCardSetPickKind) and both set a real Zone on their frame
+// (ZoneBattlefield, ZoneHand), so — before this fix — the loop above
+// examined them exactly like a discard prompt and could WITHDRAW one
+// whose candidates all left. Neither kind's departure row can survive
+// that: untap_choice's is dropDiscard, which strands the untap step
+// forever, and entry_reveal_from_hand's paused replacementResume is
+// only settled by dropChoicesForPlayerLocked (a player's departure),
+// never by the plain withdrawal dropChoiceLocked performs here. The
+// doc comment on pruneCardSetChoicesLocked has always said both kinds
+// are "left alone" — these two tests are what makes that true rather
+// than aspirational.
+
+// TestAnUntapChoiceIsNotWithdrawnWhenItsCandidateLeavesTheBattlefield
+// is the untap_choice shape. The floor is 0 (a pure opt-out, no cap),
+// so once the fix holds the prompt survives AND the step can still
+// complete with nothing left to determine — proof this is not merely
+// "not silently dropped" but genuinely still answerable.
+func TestAnUntapChoiceIsNotWithdrawnWhenItsCandidateLeavesTheBattlefield(t *testing.T) {
+	g := newActiveGame(t)
+	const tick = "rust-tick"
+	seat := g.Seats[0].ID
+	id := pushTappedPermanent(g, seat, "Tick", tick, "Artifact Creature", true)
+	withCatalogUntapOptOuts(t, optOutSelf(tick))
+
+	g.WithWriteLock(func() { g.performUntapStepLocked(0) })
+	prompt := openUntapChoice(t, g)
+	if prompt.ChooseMin != 0 {
+		t.Fatalf("setup: floor = %d, want 0 (a pure opt-out is never mandatory)", prompt.ChooseMin)
+	}
+
+	// The only candidate leaves the battlefield while the
+	// determination is still open — an admin move or a concession, per
+	// finishUntapStepLocked's own doc comment on why that can happen
+	// mid-step.
+	g.WithWriteLock(func() {
+		if err := g.DestroyPermanentForEffect(id); err != nil {
+			t.Fatalf("DestroyPermanentForEffect: %v", err)
+		}
+		g.pruneCardSetChoicesLocked()
+	})
+
+	if findChoice(g, prompt.ID) == nil {
+		t.Fatal("the untap_choice prompt was withdrawn when its only candidate left the battlefield — " +
+			"its drop action is dropDiscard, which runs nothing, so the untap step could never exit")
+	}
+
+	// Still answerable: the floor is 0, so "nothing left to determine"
+	// is a legal answer and the step completes normally.
+	if err := g.ResolveUntapChoice(prompt.ID, seat, nil); err != nil {
+		t.Fatalf("ResolveUntapChoice with nothing left to choose: %v", err)
+	}
+	if g.Turn.Step != StepUpkeep {
+		t.Errorf("step after the answer = %q, want upkeep — the untap step must still exit", g.Turn.Step)
+	}
+}
+
+// stubEntryHandRevealLand registers a synthetic land carrying an
+// EntryHandReveal replacement — reveal_lands.go's real shape
+// (EntersTappedUnlessYouRevealFromHand), rebuilt directly here because
+// internal/game cannot import cards/effects and this test needs to
+// reach pruneCardSetChoicesLocked, which is unexported.
+func stubEntryHandRevealLand(t *testing.T, oracleID string) {
+	t.Helper()
+	stubCatalogReplacements(t, map[string][]ReplacementEffect{
+		oracleID: {{
+			Watches:         []EventKind{EventZoneMove},
+			SelfReplacement: true,
+			Label:           "Test Reveal Land",
+			PromptQuestion:  "Test Reveal Land — reveal a card so it enters untapped?",
+			// Matches excludes the entering land itself — it is still
+			// physically in the hand's slice at this pre-push point,
+			// and Nil would admit it right alongside the real
+			// candidate.
+			EntryHandReveal: &EntryHandReveal{Min: 0, Max: 1, Matches: func(c Card) bool { return c.Name == "Island" }},
+			AppliesTo: func(ev *ReplacementEvent, _ *Game, src *Card) bool {
+				return ev.Kind == RepEventMove && ev.NewZone == ZoneBattlefield &&
+					src != nil && ev.CardID == src.InstanceID
+			},
+			Controller: func(_ *ReplacementEvent, _ *Game, src *Card) uuid.UUID { return src.Controller },
+			Replace: func(ev *ReplacementEvent, _ *Game, _ *Card) error {
+				ev.EntersTapped = true
+				return nil
+			},
+		}},
+	})
+}
+
+// TestAnEntryRevealFromHandIsNotWithdrawnWhenItsCandidateLeavesTheHand
+// is the entry_reveal_from_hand shape: its floor is always 0 (#1198 —
+// "you may reveal", never "you must"), so once the fix holds, the
+// prompt survives AND the paused CR 614 entry can still be resumed by
+// declining — proof this is not merely "not silently dropped" but
+// genuinely still answerable.
+func TestAnEntryRevealFromHandIsNotWithdrawnWhenItsCandidateLeavesTheHand(t *testing.T) {
+	g := newActiveGame(t)
+	const oracleID = "test-reveal-land"
+	stubEntryHandRevealLand(t, oracleID)
+
+	active := g.Seats[g.Turn.ActiveSeat]
+	g.WithWriteLock(func() { active.Hand.Cards = nil })
+	landID := uuid.New()
+	active.Hand.PushTop(Card{
+		InstanceID: landID, Name: "Test Land", TypeLine: "Land",
+		OracleID: oracleID, Owner: active.ID, Controller: active.ID,
+	})
+	islandID := uuid.New()
+	active.Hand.PushTop(Card{
+		InstanceID: islandID, Name: "Island", TypeLine: "Basic Land — Island",
+		Owner: active.ID, Controller: active.ID,
+	})
+	for g.Turn.Step != StepPrecombatMain && g.Turn.Step != StepPostcombatMain {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+	active.LandDropsPerTurn++
+	if err := g.CastSpell(active.ID, landID, CastSpellParams{}); err != nil {
+		t.Fatalf("play the land: %v", err)
+	}
+
+	var prompt *PendingChoice
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == PendingChoiceEntryRevealFromHand && c.Chooser == active.ID {
+			prompt = c
+		}
+	}
+	if prompt == nil {
+		t.Fatal("setup: playing the land queued no entry_reveal_from_hand prompt")
+	}
+	if len(prompt.ChooseCards) != 1 || prompt.ChooseCards[0] != islandID {
+		t.Fatalf("setup: candidates = %v, want just the Island", prompt.ChooseCards)
+	}
+	if _, ok := battlefieldCardByID(g, landID); ok {
+		t.Fatal("setup: the land reached the battlefield before the choice was made")
+	}
+
+	// The only candidate leaves the hand while the entry is still
+	// paused — some other effect discards or exiles it. The entering
+	// land itself is still physically sitting in this same hand
+	// (pre-push — nothing has moved yet, see
+	// TestRevealLandPromptPausesTheEntry's twin assertion in
+	// cards/effects), so only the Island comes out.
+	g.WithWriteLock(func() {
+		if _, err := active.Hand.Remove(islandID); err != nil {
+			t.Fatalf("Hand.Remove(island): %v", err)
+		}
+		g.pruneCardSetChoicesLocked()
+	})
+
+	found := findChoice(g, prompt.ID)
+	if found == nil {
+		t.Fatal("the entry_reveal_from_hand prompt was withdrawn when its only candidate left the hand — " +
+			"the paused CR 614 entry is now stranded forever, since dropChoiceLocked does not settle a " +
+			"replacementResume the way a player's departure does")
+	}
+
+	// Still answerable: the floor is 0, so declining ("reveal
+	// nothing", the only real answer left) resumes the entry.
+	if err := g.ResolveEntryRevealFromHand(found.ID, active.ID, nil); err != nil {
+		t.Fatalf("ResolveEntryRevealFromHand with nothing left to reveal: %v", err)
+	}
+	bf, ok := battlefieldCardByID(g, landID)
+	if !ok {
+		t.Fatal("declining the reveal did not resume the entry — the land never reached the battlefield")
+	}
+	if !bf.Tapped {
+		t.Error("the land should have entered tapped — the reveal was declined")
 	}
 }

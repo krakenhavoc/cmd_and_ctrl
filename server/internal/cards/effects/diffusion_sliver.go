@@ -32,7 +32,7 @@ import (
 //
 //   - "An OPPONENT controls" is `ev.Actor != source.Controller`. Your
 //     own pump spell on your own Sliver does not tax you.
-//   - It fires per target INSTANCE (CR 115.7), because
+//   - It fires per target INSTANCE (CR 115.3), because
 //     EventBecomesTarget is emitted per target slot. A spell that
 //     targets two of your Slivers is taxed twice, and the controller
 //     pays twice or it is countered.

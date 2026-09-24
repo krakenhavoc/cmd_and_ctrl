@@ -8,7 +8,7 @@ import (
 
 // battles.go — the card-facing half of S27's battle support
 // (CR 310). The lifecycle is engine-side and keys off the card type:
-// defense counters on entry, the protector prompt, and the CR 704.5v
+// defense counters on entry, the protector prompt, and the CR 704.5v/w
 // sweep at zero defense are all in server/internal/game/battle.go and
 // apply to a battle the catalog has never heard of.
 //
@@ -62,7 +62,7 @@ const BattleSubtypeSiege = "Siege"
 // It is an ordinary triggered ability on an ordinary event, so it
 // uses the stack and can be responded to. What is NOT ordinary is
 // the timing: the engine announces the defeat from the state-based
-// action pass, immediately BEFORE the CR 704.5v move puts the battle
+// action pass, immediately BEFORE the CR 704.5v/w move puts the battle
 // in the graveyard. So Build runs with the battle still on the
 // battlefield and the Effect runs after it has left — which is why
 // the effect must read the battle by id off the item rather than
@@ -155,7 +155,7 @@ func SiegeDefeated() func(g *game.Game, item *game.StackItem) error {
 		}
 		// The battle is already in its owner's graveyard by the time
 		// this resolves: the defeat is announced from the SBA pass,
-		// and the CR 704.5v move runs in the same pass, before the
+		// and the CR 704.5v/w move runs in the same pass, before the
 		// trigger drains onto the stack. The exile helper finds it
 		// wherever it is, and drops the grant silently if a trigger
 		// off the move takes the card somewhere else first.

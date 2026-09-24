@@ -79,8 +79,10 @@ export function movesFor(
 }
 
 // hasNonPassMove reports whether the viewer's seat has anything to do
-// beyond yielding. This is the whole of the auto-pass question, and
-// it is the server's answer to it rather than a reconstruction.
+// beyond yielding, mana included. It is NOT the auto-pass question any
+// more: autopass ignores mana and lands and asks per category
+// (responseWindow.ts, #1307). This stays for UI that wants "is there
+// any move at all".
 //
 // Undefined move list → undefined answer, for the same reason as
 // movesFor: the caller decides what to do with "don't know".
@@ -271,7 +273,17 @@ export function canCastFromHand(
     const printedCounts = printedCostClaimable(face) && hasSatisfiableTargets(face.legal_targets);
     return (
       printedCounts ||
-      (face.alternative_costs ?? []).some((a) => hasSatisfiableTargets(a.legal_targets))
+      (face.alternative_costs ?? []).some((a) => hasSatisfiableTargets(a.legal_targets)) ||
+      // #1267: a promised gift can widen the clause (Long River's
+      // Pull counters any spell with it), so an optional cost that
+      // carries a satisfiable clause — and can itself be taken —
+      // keeps the card castable too.
+      (face.optional_costs ?? []).some(
+        (o) =>
+          o.legal_targets !== undefined &&
+          hasSatisfiableTargets(o.legal_targets) &&
+          !(o.chooses_opponent && (o.opponent_options?.length ?? 0) === 0),
+      )
     );
   };
   if (!faces.some(targetOK)) {
@@ -362,6 +374,19 @@ export function canCastFromHand(
 // the ability text between themselves — so `internal/legal` skips it
 // by design (see its package doc on sandbox verbs) and there is no
 // move list to look it up in.
+//
+// #1208 NARROWED that: a CATALOGUED ability row no longer asks this
+// whether it may be activated. The engine ships the verdict per row
+// as `activated_abilities[i].timing_closed`, because a per-player
+// timing statement — The Wandering Emperor's "you may activate her
+// loyalty abilities any time you could cast an instant", Leonin
+// Shikari's equip clause — is board state no client-side derivation
+// can see. What is left here is the SENTENCE: `abilityBlocked` asks
+// this for the WORDS ("Not your turn", "Stack isn't empty") once the
+// server has said the row is shut. The two remaining callers that
+// still ask it for the VERDICT are the ones with no server answer to
+// read — the sandbox `activate_loyalty` rows above, and the cast
+// path's last-resort hint.
 //
 // Advisory, like every predicate in this file: the server rejects
 // with ErrSorcerySpeedRequired regardless. This exists so the menu

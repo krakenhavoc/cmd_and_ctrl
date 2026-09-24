@@ -186,6 +186,29 @@ type StaticAbility struct {
 	// CR 613.6 keeps it applying after its source has been silenced.
 	// See ContinuousEffect.ContinuesAfterRemoval; ADR 0067 §2.
 	ContinuesAfterRemoval bool
+
+	// GrantAbilities names the catalog ability bundles this static
+	// GIVES every object it applies to (CR 113.10, ADR 0093) —
+	// Cryptolith Rite's "{T}: Add one mana of any color", Chromatic
+	// Lantern's the same for lands. Each name is a bundle key
+	// (effects.AbilityGrant.Key, either spelling of GrantKey).
+	//
+	// The engine does the writing: after this static's Apply runs on a
+	// target, one GrantedAbility per name is appended to the target's
+	// Characteristic, with this static's source as the grantor. It is a
+	// declaration rather than something Apply does itself for the
+	// reason RemovesAbilities is one: the grantor has to be the effect's
+	// source, and the bundle list has to be data a boot-time check can
+	// read (effects.TestEveryGrantKeyResolves). Build one with
+	// effects.GrantAbilities.
+	//
+	// Only meaningful on a Layer6Ability static; effects.Register
+	// refuses it anywhere else. It may sit beside RemovesAbilities —
+	// "loses all abilities and has '…'" is one effect, one timestamp
+	// (ADR 0046 §2), and the removal empties the slice before the grant
+	// appends to it.
+	GrantAbilities []string
+
 	// DependsOnHandSize declares that this ability's OUTPUT changes
 	// when somebody's hand does — Psychosis Crawler's "power and
 	// toughness are each equal to the number of cards in your hand".
@@ -245,6 +268,28 @@ type StaticAbility struct {
 	// is what keeps that free for the tables with no such card in
 	// play.
 	DependsOnAttackingStatus bool
+
+	// DependsOnSpellsCast is DependsOnHandSize for whether a player
+	// has cast a spell this turn — Stoic Sphinx's "This creature has
+	// hexproof as long as you haven't cast a spell this turn" (#1325).
+	//
+	// A per-turn cast count is not on the battlefield's shape and is
+	// not a counter, a tap or the turn identity itself (the turn's
+	// OWN advance already bumps unconditionally, in onTurnBeganLocked
+	// — that clears the tally back to zero, which is a different
+	// invalidation input than a spell being ADDED to it mid-turn). So
+	// nothing else invalidates the cached resolution the moment a
+	// spell is cast; without this flag the Sphinx keeps hexproof
+	// through the cast that should have turned it off, until some
+	// unrelated event happens to invalidate.
+	//
+	// Same contract as DependsOnHandSize, DependsOnLifeTotal and
+	// DependsOnAttackingStatus, and opt-in for the same reason: a
+	// spell is cast every turn at nearly every table, and gating the
+	// bump on this flag is what keeps that free for the tables with
+	// no such card in play. See layerVersionBump.OnEvent's EventCast
+	// arm.
+	DependsOnSpellsCast bool
 
 	// ActiveWhen is the CR 716 / 719 / 721 / 709.5 designation gate:
 	// this static exists only while its source permanent has the
@@ -331,10 +376,21 @@ func (e staticContinuousEffect) ContinuesAfterRemoval() bool {
 }
 
 func (e staticContinuousEffect) Apply(c *Characteristic, target *Card, g *Game) {
-	if e.ability.Apply == nil {
-		return
+	if e.ability.Apply != nil {
+		e.ability.Apply(c, target, g, e.source)
 	}
-	e.ability.Apply(c, target, g, e.source)
+	// ADR 0093: the declared grants, in this effect's own slot of the
+	// layer-6 bucket, so a removal sorted after it empties them and one
+	// sorted before it cannot reach them (CR 613.6).
+	if len(e.ability.GrantAbilities) > 0 {
+		var from uuid.UUID
+		if e.source != nil {
+			from = e.source.InstanceID
+		}
+		for _, key := range e.ability.GrantAbilities {
+			c.GrantAbility(key, from)
+		}
+	}
 }
 
 // activeStaticAbilitiesLocked collects every continuous effect in
@@ -418,16 +474,17 @@ func (g *Game) activeStaticAbilitiesLocked() []ContinuousEffect {
 		if len(abilities) == 0 {
 			continue
 		}
-		// CR 613.7d: an Equipment's or Aura's continuous effect
+		// CR 613.7e: an Equipment's or Aura's continuous effect
 		// takes a NEW timestamp when it becomes attached, not the
 		// one it got when it entered the battlefield. Unobservable
 		// for every card in the S24 catalog (layer 6 grants and 7c
 		// modifies are both commutative), and right by construction
 		// for the first 7b "set" that meets a 7c "modify".
-		ts := src.EnteredBattlefieldAt
-		if src.AttachedAt != 0 {
-			ts = src.AttachedAt
-		}
+		//
+		// CR 613.7f (#1271): and it takes a new one each time it
+		// turns face up or face down. layerTimestamp is the latest
+		// of the three.
+		ts := src.layerTimestamp()
 		for _, ab := range abilities {
 			// #1221 / CR 113.6: a static that declares another zone
 			// does not ALSO apply from the battlefield. The declared
@@ -582,6 +639,11 @@ func (g *Game) applyOneEffectLocked(eff ContinuousEffect, bucketIndex int, st *l
 			// printed — and so a card file cannot ship the
 			// removal without the engine learning about it.
 			target.effective.Abilities = nil
+			// ADR 0093 Decision 3: and every ability another effect
+			// granted it so far in this bucket. A grant sorted AFTER
+			// this removal appends to the emptied slice and survives
+			// (CR 613.6), exactly as a granted keyword does.
+			target.effective.GrantedAbilities = nil
 			target.effective.AbilitiesRemoved = true
 			st.recordRemoval(target, bucketIndex)
 		}
@@ -678,7 +740,9 @@ func DistinctCardTypesInAllGraveyards(g *Game) int {
 // write, not a read: it reassigns Card.effective on every
 // battlefield card and — since the S24 layer-2 control change —
 // Card.Controller, Card.SummonedThisTurn, Card.AttackingTarget and
-// Card.BlockingTarget on any permanent whose controller just moved.
+// Card.BlockingTarget on any permanent whose controller just moved,
+// and Card.AttackingTarget on any creature attacking a planeswalker or
+// battle that just stopped being one (#1387).
 //
 // This used to advertise itself as read-lock-safe on the strength of
 // a dedicated recompute mutex. That mutex serialised recomputes
@@ -740,7 +804,28 @@ func (g *Game) recomputeLayersLocked() {
 	g.ClearExpiredScopedStaticsLocked()
 	g.layerPassLocked()
 	changed := g.materialiseControlLocked()
+	// #1313: untap holds end with their CR 611.2b duration, and the
+	// board those durations read — who controls the source, whether it
+	// is still here — is settled only now, after layer 2 has been
+	// materialised. Sweeping here rather than with the scoped statics
+	// at the top of the pass is what lets the pass that moves control
+	// of a Dungeon Geists also end its hold, so a control change that
+	// is undone before the next pass cannot revive it. Holds are not
+	// layer inputs, so this does not touch the layer version.
+	g.sweepUntapHoldsLocked()
 	g.lastResolvedVersion.Store(g.layerVersion.Load())
+	// #1387 (ADR 0045 Decision 37): CR 506.4's type clause. An
+	// attacked permanent this pass left as neither a planeswalker nor
+	// a battle is removed from combat, and its attackers attack nothing
+	// from here on, so a type that comes back later in the combat does
+	// not bring the attack back with it. AFTER the store, unlike the
+	// control-change door inside materialiseControlLocked: the rewrite
+	// bumps the layer version when an attacking-status static is live
+	// (invalidateLayersForAttackChangeLocked), and a bump made before
+	// the store would be swallowed by it. The rewrite changes no type,
+	// so the pass that bump asks for finds nothing to rewrite and
+	// settles.
+	g.removeTypeLostAttackTargetsLocked()
 	// #930: the control deltas are EMITTED here, after the store, and
 	// not from inside the walk that found them. EmitEvent dispatches
 	// to the listeners synchronously — the trigger harvester among
@@ -844,6 +929,16 @@ func (g *Game) materialiseControlLocked() []controlChange {
 		c.Controller = c.effective.Controller
 		c.SummonedThisTurn = true
 		g.removeFromCombatLocked(c)
+		// #1376: CR 506.4 removes an ATTACKED planeswalker or battle
+		// from combat on a control change too, and its attackers then
+		// attack nothing (CR 506.4c) — no damage to it or to its new
+		// controller, and blockable only by the player who was
+		// defending it. Not inside removeFromCombatLocked, whose other
+		// caller is regeneration: CR 701.19a removes a regenerating
+		// permanent from combat only if it is an attacking or blocking
+		// CREATURE, so an attacked walker that regenerates stays
+		// attacked.
+		g.removeAttackedFromCombatLocked(c.InstanceID)
 	}
 	return changed
 }
@@ -875,4 +970,19 @@ func (g *Game) LayerRecomputeCountForTest() uint64 {
 // package, where the one narrowing function reads it.
 func CommanderIdentityForTest(g *Game, p *Player) []string {
 	return commanderIdentityFor(g, p).Colors
+}
+
+// layerTimestamp is the CR 613.7 timestamp this permanent's OWN
+// continuous effects are ordered by: the LATEST new timestamp it has
+// received — entering the battlefield (CR 613.7d), becoming attached
+// (CR 613.7e, Card.AttachedAt), or turning face up or face down
+// (CR 613.7f, Card.FaceTurnedAt, #1271).
+//
+// The latest rather than a fixed precedence, because each of the three
+// is the same statement — "the permanent receives a new timestamp" —
+// and a later one supersedes an earlier one whichever kind it is. A
+// morph that was equipped and then turned face up sorts at the turn;
+// an Aura moved onto a new host after turning up sorts at the move.
+func (c *Card) layerTimestamp() int64 {
+	return max(c.EnteredBattlefieldAt, c.AttachedAt, c.FaceTurnedAt)
 }

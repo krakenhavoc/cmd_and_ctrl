@@ -1513,3 +1513,719 @@ client greys them differently:
   cast this from here", and "not at this timing" is a reason it is false, not
   a second bit. A client that wants to distinguish "banned" from "not yet"
   already has `cant_cast` for the first.
+
+---
+
+## Amendment — 2026-09-23 (#1208): the ACTIVATION twin, and why it is a second type
+
+The 2026-09-22 amendment above built CR 307.1's per-player half for CASTS and
+named its sibling as out of scope: *"Activated abilities. …
+`ActivatedAbility.SorcerySpeed` is a per-ABILITY flag read by `activated.go`,
+and a per-player statement about activations would want the same two homes and
+the same one read this amendment builds for casts."* This amendment builds it,
+and it turns out to want the same SHAPE, one of the two homes, and a type of
+its own.
+
+### The cards, which are three and not the three the issue predicted
+
+`docs/engine-seams.md`'s closed row and issue #1208 both name Grand Abolisher
+and the "activate abilities only as a sorcery" family. **Both were stale by the
+time this was built.** Grand Abolisher's activation half — "During your turn,
+your opponents can't activate abilities of artifacts, creatures, or
+enchantments" — landed with #1210 as an `ActivationRestriction`, because it is a
+BAN and not a timing statement, and the card ships `full`. Every other printed
+restriction on somebody's activations says "can't be activated" (Cursed Totem,
+Linvala, Collector Ouphe, Pithing Needle, Karn, Damping Matrix) and goes through
+the same gate.
+
+What has no home is the GRANT, and the whole printed population is eight cards,
+of which three are in scope here:
+
+- **The Wandering Emperor** — "As long as The Wandering Emperor entered this
+  turn, you may activate her loyalty abilities any time you could cast an
+  instant." `caveats` since S14 for exactly this, and the seam's only caveated
+  card.
+- **Teferi, Master of Time** — "You may activate loyalty abilities of Teferi on
+  any player's turn any time you could cast an instant." The same clause with
+  no condition.
+- **Leonin Shikari** — "You may activate equip abilities any time you could
+  cast an instant."
+
+The other five are Forge Anew (the same equip clause plus a cost gap), Teferi,
+Temporal Archmage and Teferi's Talent (an EMBLEM carries the statement), Jace's
+Machinations, and an Un-set card. Two of those want a second home and are named
+under Scope below.
+
+### Decision 1 — two TYPES, one vocabulary
+
+`game.ActivationTiming` (`server/internal/game/activation_timing.go`) is not
+`CastTimingRule` with a "casts / activations / both" scope field, and the reason
+is the homes rather than taste:
+
+```go
+type ActivationTiming struct {
+    Label      string
+    Timing     GrantTiming                  // ADR 0066's enum, unchanged
+    Covers     func(q ActivationQuery) bool // #1210's query, unchanged
+    ActiveWhen Designation                  // ADR 0071's gate, unchanged
+}
+```
+
+A cast timing statement has a STORED home — Emergence Zone's "this turn",
+Teferi, Time Raveler's +1 — so it must be pure data, which is why its narrowing
+is a `PermissionFilter`, a `ZoneKind` and a `CastTimingAffects` enum. An
+activation timing statement has only a DERIVED home (Decision 5), so `Covers`
+can be a PREDICATE — and it has to be, because what the printed cards narrow on
+is the ability's SOURCE and the ABILITY, two things a filter over *the object
+being cast* says neither of. Folding both into one type would have given every
+field two meanings and made every read start by asking which half it was
+looking at, which is the argument ADR 0073's #1210 amendment already makes for
+`ActivationQuery` not being a widened `CastQuery`.
+
+So the shape is copied and the type is not. `GrantTiming` gains no value,
+`ActivationQuery` and `ActivationAbility` are #1210's, the collection walk is
+`ActivationRestrictionsForCard`'s line for line, and the fold order is this
+amendment's §3. There is no `Affects` enum here: "you" is
+`q.Controller == q.Source.Controller`, written once in the two constructors in
+`cards/effects/activation_timing.go`, which is the spelling
+`OpponentsSourcesCantActivate` next door already uses.
+
+### Decision 2 — the narrowing is asked of the query, not of a filter
+
+Issue #1208 asked what `PermissionFilter` would filter on here, and the answer
+is that it would filter on the wrong noun: on the cast side it narrows the
+object being cast, and on this side the two things a card narrows are
+
+- **which SOURCES** — "loyalty abilities of Teferi" (`q.Card`), and
+- **which ABILITIES** — "loyalty abilities", "equip abilities" (`q.Ability`).
+
+Both are already fields of `ActivationQuery`, so `Covers` asks them. What
+`ActivationAbility` gained is two bools and a third:
+
+```go
+SorcerySpeed bool // CR 602.5d, the ability's printed clause
+Loyalty      bool // CR 606.3, derived from AbilityCost.Loyalty
+Equip        bool // CR 702.6, set by EquipAbility
+```
+
+`Loyalty` is the field ADR 0073's #1210 scope note predicted — *"a restriction
+on LOYALTY abilities as a class … is a bool on `ActivationAbility`, not a second
+gate"* — arriving for the timing read first. `ActivationAbilityOf(shape)` is the
+one place a shape becomes an identity, so CR 606.3 cannot be spelled differently
+in the three callers. `Equip` names a KEYWORD rather than adding a kind: equip
+stays an ordinary activated ability, and `EquipOnlyAbility` plus
+`TestEveryEquipAbilityIsMarked` exist because three cards wrote their narrowed
+equip out by hand and a hand-written equip is one that can forget a field.
+
+### Decision 3 — a mana ability is not in this window at all
+
+Not a carve-out, and not #1210's answer. CR 605.3a gives a mana ability its own
+window — whenever its controller has priority, AND whenever a payment is being
+made, inside a cost, mid-resolution — and that is not the CR 602.5d window a
+timing statement opens or narrows. So `ActivationTimingOpenLocked` returns true
+for `Ability.Mana` before it walks anything: a fast POSITIVE, and a rule rather
+than a safety valve.
+
+The card the issue worried about is real and is already handled elsewhere: Grand
+Abolisher stops mana abilities too, with no "unless they're mana abilities"
+clause, and it does so through `ActivationGateLocked`, where #1210 put the mana
+decision **on the card** because half the printed cards exempt them and half do
+not. The two functions differ here because they answer different questions: the
+gate says an activation is BANNED and the card decides whether that reaches mana
+abilities; this read says an activation is not open YET, and for a mana ability
+the question does not arise.
+
+### Decision 4 — a grant DOES reach loyalty abilities
+
+Issue #1208 proposed the opposite, on the grounds that CR 606.3 is a rule and
+not a printed clause any effect overrides. CR 101.1 says otherwise, and so do
+the cards: both planeswalkers on this row print exactly "you may activate
+loyalty abilities … any time you could cast an instant". A read that refused to
+reach them would make the only two printed users of the seam unwritable.
+
+What must not happen is a statement about "abilities" generally silently opening
+a loyalty ability, and that falls out of the predicate rather than out of a rule
+anyone has to remember: both constructors test `q.Ability.Loyalty`, and a
+statement that does not ask is not about them. CR 606.3's OTHER half — one
+loyalty activation per turn per planeswalker — is untouched and keeps its own
+check, before this one.
+
+### Decision 5 — ONE home, because that is all the cards want
+
+The cast side has two homes because Emergence Zone sacrifices itself and the
+permission outlives it. Nothing on this side does: every card that prints an
+activation timing statement is a permanent whose static says it, for as long as
+it is there. So `Spec.ActivationTimings` → `CardDef.ActivationTimings` →
+`CatalogActivationTimings`, walked per query through **`CatalogAbilityKey`**,
+and nothing is stored — no `PlayerStatic` payload, no fourth kind of entry on
+#1197's slice, no sweep, no clone, no snapshot field. Two Shikari compose
+(harmlessly — the verdict is a bit), a source under a CR 613.1f ability-removing
+effect stops saying it, and one bounced in response shuts the window before the
+activation is validated.
+
+"As long as she entered this turn" rides the derivation rather than a duration:
+`game.EnteredThisTurn` (#1009's per-object entry tally), read live. It is
+deliberately **not** `Card.SummonedThisTurn`, which survives until its
+controller's untap step — and the Emperor has flash, so she lands on somebody
+else's turn nearly every time, and the marker would have given her instant-speed
+loyalty abilities for a whole turn cycle. `Designation` could not have expressed
+it either: `Designation.Active(c Card)` takes a Card and nothing else, and
+"entered this turn" lives on the Game.
+
+### Decision 6 — ONE read, and CR 101.2 decides the order inside it
+
+```go
+func (g *Game) ActivationTimingOpenLocked(activator uuid.UUID, card Card,
+    zone ZoneKind, ability ActivationAbility) bool
+```
+
+1. **Mana abilities are not asked about** (Decision 3).
+2. **The ability's own timing** — `SorcerySpeed` (CR 602.5d) or `Loyalty`
+   (CR 606.3) answer to the sorcery window; everything else is instant-speed
+   (CR 117.1b).
+3. **The per-player GRANTS.**
+4. **The per-player RESTRICTIONS, last, because CR 101.2 says "can't" beats
+   "can".** Nothing declares them today; the placement is the rule stated once
+   rather than a rule to be discovered the day a card does. `TimingYourTurnOnly`
+   refuses outright rather than narrowing, exactly as `CastTimingOpenLocked`
+   reads it.
+
+Then a shut window means `sorcerySpeedOpenLocked` must be open. It sits BESIDE
+`ActivationGateLocked` rather than inside it, for the reason ADR 0073's #1195
+note gives about the cast pair: "banned" and "not yet" are different answers and
+`cant_activate` means the first.
+
+### Decision 7 — four callers, and the wire grows one field
+
+`ActivateCatalogAbility`, `legal.abilityMovesForSource` (which dropped the
+`speed` parameter it threaded through two functions to keep a copy of the rule),
+`protocol.viewOfActivatedAbilities`, and **`ActivateLoyalty`** — the sandbox
+manual loyalty verb, which `internal/legal` skips by design but which is still
+CR 606.3's window, and which a statement about "loyalty abilities of
+planeswalkers you control" reaches on a walker the catalog has never heard of.
+The same argument `gatherTapSources` is the activation gate's fourth caller
+under. Its sorcery-speed check moved below the battlefield lookup, because the
+read needs the object.
+
+**The wire grows `activated_abilities[i].timing_closed`**, where the cast side
+needed nothing. `castable_here` already existed and already meant the engine's
+answer; the activation rows carried only `sorcery_speed`, the ability's PRINTED
+clause, and `client/src/lib/timing.ts` re-derived CR 307.1 to grey them — its
+own comment called it *"the LAST rules derivation left in this file"*. A
+per-player statement is board state the client cannot see, so the bit has to
+come from the server. It is NEGATIVE and `omitempty`, so it is absent on every
+instant-speed row; the client still writes the SENTENCE (no priority, split
+second, a non-empty stack, somebody else's turn) from the snapshot, because that
+is in the snapshot and is what a player wants to read. The sandbox loyalty rows,
+which have no ability row at all, keep the client-side predicate.
+
+### Scope, stated
+
+- **The EMBLEM home.** Teferi, Temporal Archmage's −10 and Teferi's Talent both
+  make an emblem that says "you may activate loyalty abilities of planeswalkers
+  you control on any player's turn any time you could cast an instant". An
+  emblem is an object that exists for as long as the statement does, so it is
+  the DERIVED home one zone over — the walk would gain `Player.Emblems` beside
+  the battlefield, and `EmblemSpec` a slot. Not built: `EmblemSpec` copies only
+  `Static` and `Triggered` today, the one card behind it also needs a
+  library-look prompt that does not exist for its +1, and a slot with no user is
+  a slot that drifts. **Built by #1275** — see the 2026-09-24 amendment at the
+  end of this ADR.
+- **A RESTRICTION with a duration**, and a restriction at all. No catalogued
+  card declares `TimingSorcery` or `TimingYourTurnOnly` on this side, because a
+  printed activation restriction says "can't be activated". The fold is written
+  and tested; the constructors are not, and a card that needs one should add the
+  constructor beside the two that exist.
+- **"During your turn" as a narrowing** exists on the constructor
+  (`EquipAbilitiesAtInstantSpeed`'s `onlyDuringYourTurn`) and is unused: Forge
+  Anew prints it, and also prints a `{0}` equip cost, which is the
+  "cost modification for activated abilities" row and not this one.
+- **Thousand-Year Elixir's "as though those creatures had haste"** is a
+  different seam — CR 302.6's tap-symbol restriction, not CR 602.5's window —
+  and nothing here touches it.
+
+## Amendment — 2026-09-23 (#1318): `TimingPlot`, a window no grant widens
+
+Aven Interrupter's "exile target spell. It becomes plotted." needs CR 702.170d:
+the owner may cast the card from exile without paying its mana cost "during
+their main phase while the stack is empty during any turn after the turn in
+which it became plotted". Every clause but one is a field this ADR already
+has: the owner as `Player`, exile as `Zone` under `ScopeCards`, `Cost: "{0}"`,
+`WhileInZone`, and a `NotBeforeTurn` floor. `game.PlotExiledCardForEffect`
+(`game/plot.go`) builds the permission. [ADR 0013 §5ad](0013-replacement-effects.md)
+records the rest of #1318.
+
+The one missing clause is the timing, and `TimingSorcery` is the wrong answer.
+Decision 3 of the 2026-09-22 amendment puts the per-player GRANTS after the
+permission's override, so Vedalken Orrery's "as though they had flash" beats
+a permission's `TimingSorcery`. That is right for a madness or suspend cast,
+where the timing is the card's. It is wrong for a plotted card. The plot rule is
+the permission's own window, so a plotted instant, a plotted card with flash,
+and a plotted card under an Orrery are all cast only in their owner's main
+phase with the stack empty.
+
+`TimingPlot` is a fourth `GrantTiming` value. `CastTimingOpenLocked` answers it
+before step 1 and returns `sorcerySpeedOpenLocked` without reading the card or
+the grants. The restrictions (step 4) cannot narrow it, because Dosan's "only
+during your turn" and Teferi's "only as a sorcery" are both already true of the
+window. Only a `CastPermission` may carry it. A per-player statement has no use
+for it, and `effects.Register`'s timing check does not offer it.
+
+The `NotBeforeTurn` floor is `Turn.Number` or `Turn.Number + 1`, depending on
+whether the card was plotted on its owner's own turn. `Turn.Number` counts
+rounds, and the window only opens on the owner's turn, so this gives exactly
+"any later turn". An extra turn the owner takes in the same round waits a round.
+That is weaker, never stronger. `plot.go` explains the floor.
+`TestAFlashGrantDoesNotWidenThePlotWindow` is the back-out proof: with
+`TimingSorcery` it fails.
+
+**Later amendment — 2026-09-23 (#1342): the plot keyword reuses this
+permission.** The hand special action (CR 702.170a) is now built as the fourth
+CR 116.2 kind. Its performer exiles the card face up and calls
+`PlotExiledCardForEffect` on it, so the permission, `TimingPlot` and the floor
+above are shared by both routes to the plotted state. A card can only be
+plotted from hand on its owner's own turn, so its floor is always
+`Turn.Number + 1`. [ADR 0062's 2026-09-23 plot
+amendment](0062-abilities-and-special-actions-from-the-hand.md) has the
+per-kind rows.
+
+---
+
+## Amendment — 2026-09-23 (#1314): a standing permission gated by a Class
+level or a condition
+
+Decision 1 and `standingCastPermissionsLocked` gave a permanent's printed
+"you may cast/play …" a home — derived from the battlefield, re-evaluated on
+every query — and never asked whether the permanent HAS the ability right
+now. Every other gateable slot in the catalog (`StaticAbility`,
+`TriggeredAbility`, `ActivatedAbilityShape`, `CostModifier`) carries an
+`ActiveWhen Designation` (ADR 0071) precisely so a Class's level-2 line, a
+solved Case's line, or a station's threshold line is not offered before it
+exists. `CastPermission` was the one slot ADR 0071 missed, and Fortune
+Teller's Talent's level 2 — "As long as you've cast a spell this turn, you
+may play cards from the top of your library" — needed it and something ADR
+0071 does not name at all: a card-specific "as long as …" clause that is not
+a Class level, a solved Case, or a charge-counter threshold.
+
+### Decision 1 — the gate is a SEPARATE type, not two more fields on `CastPermission`
+
+The obvious change is `ActiveWhen Designation` and `Condition func(...) bool`
+added directly to `CastPermission`. It compiles, and it fails
+`snapshot_drift_test.go`'s `TestSnapshotMirrorsHaveNoFuncs`: `CastPermission`
+is dual-purpose — a catalog declaration on one path (`CardDef.CastPermissions`,
+never snapshotted) and, on the other, the exact type STORED on
+`Player.CastPermissions` and mirrored verbatim into `GameSnapshot`. A func
+field on the shared type poisons the stored side even though no stored
+instance would ever set it: the guard reflects over the TYPE, not over which
+instances happen to be nil.
+
+So the gate lives on `CastPermissionGate`, a wrapper reachable only from
+`CardDef` and a new hook, never from anything a snapshot touches:
+
+```go
+type CastPermissionGate struct {
+    Permission CastPermission
+    ActiveWhen Designation
+    Condition  func(g *Game, controller, source uuid.UUID) bool
+}
+
+var CatalogGatedCastPermissions func(oracleID string) []CastPermissionGate
+```
+
+The same posture `ActivatedAbility.Condition` and `TriggeredAbility.AppliesTo`
+already have — both are catalog-only closures on catalog-only types — one
+struct over, because `CastPermission` is the one permission-shaped type that
+is also player state.
+
+**`CatalogCastPermissions`'s existing signature is untouched.** Seven test
+files across three packages stub it as `func(oracleID string) []CastPermission`;
+widening it (or wrapping every entry) would have meant migrating all seven for
+a gate exactly one card uses today. The new hook is additive:
+`standingCastPermissionsLocked` walks both, in order — the ordinary hook
+first (byte-for-byte the pre-#1314 loop), then, if `CatalogGatedCastPermissions`
+is non-nil, the gated one, `activeOnly`-filtered by `ActiveWhen` and then by
+`Condition` — and both funnel into one shared stamping step
+(`stampStandingPermissionLocked`) so a gated and an ungated permission from
+the same card cannot disagree about what Scope, ZoneOwner, Source or Duration
+a "standing" permission means.
+
+### Decision 2 — `ActiveWhen` and `Condition` are independent tests, in that order
+
+`ActiveWhen` is asked first, through the same `activeOnly` helper
+`StaticAbilitiesForCard` and `CostModifiersForCard` already use, for the same
+reason: it is the cheap, common-case test (almost every card has no gate at
+all) and it decides whether the entry is even a candidate. `Condition` runs
+only on what survives — Fortune Teller's Talent's level-2 line asks it
+exactly once the Class is level 2 or greater, never at level 1, which is
+observable: a test asserting the closure's call count pins it
+(`TestGatedStandingPermissionNeedsBothTheLevelAndTheCondition`,
+`cast_permission_test.go`).
+
+Two independent booleans rather than one merged predicate, because CR 716.2a
+gates the LINE ("as long as this Class is level 2 or greater, it has …") and
+"as long as you've cast a spell this turn" gates the CLAUSE printed on that
+line — two different rules, from two different parts of the Comprehensive
+Rules, and folding them into one closure would have made a future card that
+needs `ActiveWhen` alone (a Case's solved line that grants a plain permission)
+write a `Condition` that always returns `true` to get there.
+
+`Condition`'s signature mirrors `ActivatedAbility.Condition`
+(`func(g *Game, controller, source uuid.UUID) bool`) rather than inventing a
+third shape: `controller` is the permission-holder asking ("you" in "you've
+cast a spell"), `source` is the permanent contributing it — not necessarily
+the same seat if the permanent changes hands, which is why the walk passes
+the CURRENT controller rather than a captured one.
+
+### Decision 3 — the fast negative has to see BOTH hooks
+
+`AnyCastPermissionsForEffect` — the check the enumerator and the view take
+before walking every graveyard, every library and the whole of exile — used
+to answer only from `CatalogCastPermissions`. A card gated ENTIRELY behind
+`CatalogGatedCastPermissions` (Fortune Teller's Talent has no ungated
+permission at all) made this answer `false` regardless of whether the gate
+was open, which skipped the library walk outright — not "offered nothing
+because the gate is shut", but "never asked". `TestEnumeratorOffersAGatedLibraryTopPlayOnlyWhenBothHalvesHold`
+(`internal/legal`) and `TestCastableHereWaitsOnAGatedPermission`
+(`internal/protocol`) both caught this in the writing of this amendment — the
+first draft passed the game-package model test and failed both surface tests,
+because the model test calls `standingCastPermissionsLocked` directly and
+never goes through the fast negative at all.
+
+The fix does not evaluate the gate in the fast path: `AnyCastPermissionsForEffect`
+answers "could anything open one of the expensive zones", not "does one
+apply right now" — evaluating `ActiveWhen`/`Condition` there would just move
+the question the walk exists to ask into the wrong function, for a check
+whose entire purpose is being cheaper than the walk it guards.
+
+### Decision 4 — `Spec.GatedCastPermissions`, a slot beside `Spec.CastPermissions`
+
+Card files declare a gated entry through a new `Spec` slot rather than
+widening `Spec.CastPermissions`'s element type, for the same reason
+`CastPermissionGate` is a separate engine type: every existing card using
+`Spec.CastPermissions` (Realmwalker, Bolas's Citadel, Courser of Kruphix,
+Oracle of Mul Daya, Underworld Breach) keeps its literal unchanged.
+`gatedStandingCastPermissions` mirrors `standingCastPermissions`'s Scope/Duration
+normalisation one level down, into `CastPermissionGate.Permission`.
+
+`specDesignations` (the effects package's cross-slot walk that backs
+Register's Room-door-gate refusal, ADR 0071 decision 3) grew a fifth source —
+`spec.GatedCastPermissions[i].ActiveWhen` — so a card that gated a permission
+on a door the engine cannot yet honour fails at boot exactly as one gating a
+static or a trigger on it already does.
+
+**Cards shipped:** Fortune Teller's Talent (`caveats` → `full`; level 1's
+`LibraryTopVisible: game.LibraryTopOwner` and level 2's `GatedCastPermissions`
+entry together close both of the card's remaining gaps, since level 2's
+permission needs level 1's visibility to open anything at all).
+
+---
+
+## Amendment — 2026-09-23 (#1316): the CAST-BAN twin
+
+`cast_gate.go`'s `CastGateLocked` answers CR 101.2's "can beats can't" for a
+cast from two sources — a static on a permanent (`CastRestriction`) and the
+spell's own condition (`CastConditionFor`) — and its own doc comment named
+the gap this amendment closes: *"BANS WITH A DURATION. Silence's 'this turn'
+and Reflector Mage's 'until your next turn' want the turn-scoped and
+permanent-duration registries. A third source slots into `castRestrictionsLocked`
+without changing this function's signature; that is the extension point."*
+Avatar's Wrath ("Until your next turn, your opponents can't cast spells from
+anywhere other than their hands") and Mandate of Peace ("Your opponents
+can't cast spells this turn") are exactly that shape: a ban with a CR 611.2
+duration, created by a resolving spell that is gone — often exiled by its own
+text — a moment after it grants the ban.
+
+### Decision 1 — the fourth payload on `PlayerStatic`, not a new registry
+
+This ADR's own 2026-09-22 amendment built `CastTimingRule` for the sibling
+question — a per-player statement about WHEN a cast is legal — and put it on
+`PlayerStatic` rather than on a registry of its own, for the argument ADR
+0085 Decision 1 makes at length for the life-total lock one payload over: a
+statement about a PLAYER for a CR 611.2 duration wants the slice that already
+has a duration, a sweep, a clone and a snapshot field, not a fourth of each.
+A cast BAN is the same statement pointed the other way — CR 101.2's "can't"
+rather than "may" — so it takes the same home: `PlayerStatic.CastBan
+CastBanRule`, told apart from `Keyword`, `Timing` and `LifeTotalLocked` by its
+own presence bit (`CastBanRule.Kind`, zero value `CastBanNone`) for the reason
+those three doc comments already give and `CastBanRule`'s own repeats: its
+zero value otherwise ("no exception, no count") IS a real statement — Mandate
+of Peace's outright ban — not "nothing to say", so it cannot borrow a
+sentinel off an existing field the way `LifeTotalLocked`'s plain bool does.
+
+### Decision 2 — `CastBanRule`'s two shapes, and the third the issue named without a card
+
+```go
+type CastBanRule struct {
+    Kind           CastBanKind // CastBanOutright | CastBanMaxPerTurn
+    Filter         PermissionFilter
+    ExceptFromZone ZoneKind
+    MaxPerTurn     int
+}
+```
+
+`CastBanOutright` with `ExceptFromZone` zero is Mandate of Peace. With
+`ExceptFromZone: ZoneHand` it is Avatar's Wrath — "from anywhere other than
+their hands" is a ban that reaches every zone but one, which is why the field
+is an EXCEPTION rather than a target list the way `CastTimingRule.FromZone`
+narrows a GRANT to one zone: a grant naming a zone opens only that one, a ban
+naming an exception closes every other one, and reusing `FromZone`'s own
+meaning here would have inverted it silently on the read side.
+
+`CastBanMaxPerTurn` is the seam issue's third named shape — "each player
+can't cast more than one spell each turn," granted rather than printed on a
+permanent — with no catalogued card behind it yet. Built and tested
+(`TestMaxPerTurnBanReadsTheSameTallyTheStaticRestrictionDoes`,
+`internal/game`) against the model rather than a card, because the issue
+named it as a shape the storage has to support, not as a card to ship; it
+reads the identical `Game.CastTallyFor` tally `EachPlayerMaxSpellsPerTurn`
+(the printed, derived version, `cast_restriction.go`) already reads, so a
+granted cap and a printed one can never disagree about what "one spell this
+turn" counts.
+
+### Decision 3 — one reader, and it IS the third source `CastGateLocked` already reserved
+
+```go
+func (g *Game) castBanForbidsLocked(playerID uuid.UUID, card Card, zone ZoneKind) (label string, source uuid.UUID, forbidden bool)
+```
+
+Walks `p.Statics`, skips every entry that is not a `CastBan` or whose
+duration has expired (the same "test it here too, not only in the sweep"
+posture `playerLifeTotalCantChangeLocked` and `castTimingVerdictLocked` take,
+for the identical reason: the sweep is hygiene at known moments and the
+reader has to be right between them), and returns the first live entry that
+forbids — `CantCastError` carries one reason, and CR 101.2 does not ask which
+"can't" arrived first among several.
+
+`CastGateLocked` calls it once, between the battlefield's static
+`CastRestriction`s and the spell's own `CastConditionFor` — external "can't"s
+before the card's own, which is the order the function already documents for
+the two sources it had. **No new caller was needed anywhere else**: unlike
+`CastTimingRule`, which had to add itself to three separate call sites
+(`CastSpell`, `legal.castMovesPayingOptional`, `protocol.castStampsFor`)
+because CR 307.1 had no single existing choke point, `CastGateLocked` already
+IS the one function ADR 0073 §7 built for exactly this question, and it
+already has all three callers. Extending its insides extends all three at
+once, and the wire needs no new field: `cant_cast` already means "an effect
+prevents this cast", stamped from `CastGateLocked`'s own error, so a card
+silenced by Avatar's Wrath greys exactly the way one silenced by Rule of Law
+already does (`TestCantCastIsStampedFromAGrantedBan`, `internal/protocol`).
+
+`AnyCastRestrictionsForEffect` — the fast negative beside the gate — grew a
+matching check (`anyLiveCastBanForEffect`, one pass over the seats) for the
+same reason Decision 3 of the companion amendment above extended
+`AnyCastPermissionsForEffect`: a table with nothing on the battlefield but a
+live granted ban must not answer `false`.
+
+### Decision 4 — one primitive, `RestrictCasting`, one grant per opponent
+
+`effects.RestrictCasting{Player, Rule, Label, Duration}` is the card-facing
+wrapper, calling `GrantCastBanForEffect` — the same shape `LockLifeTotal` and
+`GainPlayerKeyword` already take for their own `PlayerStatic` payloads. "Your
+opponents can't cast spells" is granted once PER OPPONENT
+(`for _, opp := range ctx.Opponents()`), not as one table-wide statement:
+`PlayerStatic` is per-seat by construction, and a card that meant the
+CASTER too would say "each player", which neither proof card does.
+
+**Cards shipped:** Avatar's Wrath (`full`) and Mandate of Peace (`full` —
+CR 724.2's "end the combat phase" (#1317) landed alongside this seam via PR #1343, so
+the card ships with neither half caveated).
+
+---
+
+## Amendment (2026-09-23, [#1369](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1369)): a permanent's ability rows keep their hidden-zone lists for the controller
+
+Every amendment since #1055 drew one line through the announce surface of a
+card in a PILE: a fact about the card is public, and what one seat may
+announce or pay rides `castOffers` to that seat alone. The BATTLEFIELD never
+had the line drawn, because nothing there needed it. `stampActivatedAbilities`
+computes a permanent's `activated_abilities` and `mana_abilities` once, with
+the controller as "you", and a permanent is known to every seat — so every
+row reached every viewer intact, and `FilterViewFor`'s per-card redaction
+(#95) only ever removes them from a card the viewer cannot identify.
+
+That was true until three fields started reading the controller's HAND:
+
+- `activated_abilities[i].discard_cost_options` — "Discard a creature card"
+  (Fauna Shaman, #660);
+- `mana_abilities[i].discard_cost_options` — "Discard a card" (Skirge
+  Familiar, #1213);
+- `mana_abilities[i].exile_cost_options` — "Exile a card from your hand"
+  (Cadaverous Bloom, #1283);
+- and, since #1297 landed while this was in flight,
+  `activated_abilities[i].exile_cost_options` when its `exile_cost_zone` is
+  `"hand"` — "Exile a card from your hand" (Holistic Wisdom).
+
+For an unfiltered clause the list's LENGTH is the hand size, which is public
+(CR 402.3 hides the cards, not the count). For a filtered clause it is not:
+Fauna Shaman's list told every opponent how many creature cards its
+controller held, and its instance IDs were a handle on specific cards that
+had been revealed, bounced or seen in another zone — the "the ID alone is
+the leak" argument PR #513 made about pending-choice options, arriving on a
+permanent.
+
+### Decision 1 — the same carrier, one zone over
+
+`CardView.abilityOffers` is `castOffers`' twin for the battlefield: a map
+keyed by seat, holding that seat's WHOLE `activated_abilities` /
+`mana_abilities` rows. `CardView.fileAbilityOffers` runs last in
+`stampActivatedAbilities`, after every mana stamp that writes into the rows
+in place; it leaves the public half on the exported fields and files the
+controller's full rows under their seat. `FilterViewFor` promotes one seat's
+entry through `applyAbilityOffersFor`, which is `applyCastStampsFor`'s rules
+unchanged:
+
+- **Only the controller's seat has an entry.** A battlefield ability is
+  activated by its controller alone (CR 602.2), so no other seat has an
+  answer to file, and an opponent's frame keeps the public rows.
+- **The empty viewerID gets nothing private.** A spectator, an admin and a
+  replay reader get the public rows — the same posture `legal_moves` and the
+  cast surface take, and the one place this departs from the issue's text,
+  which proposed leaving spectators on "see everything". A spectator is not a
+  seat, and no seat's hand is theirs to count; the unseated viewer who most
+  needs this redaction is the one watching over a player's shoulder.
+- **Only a knower is promoted**, so a face-down permanent's rows that the
+  redaction has just cleared are never handed back to a non-knower. Its
+  controller is always a knower (CR 708.5).
+
+Promotion is two slice-header assignments on this viewer's copy of the card,
+and the public copies are ALLOCATED rather than blanked in place, because the
+controller's rows are the slice already on the card — #1172's "the copy is
+load-bearing", one surface over. Nothing is filed or allocated for a
+permanent whose rows carry no hidden list, which is nearly all of them.
+
+### Decision 2 — the line is "does this field read a zone the viewer cannot see"
+
+`publicActivatedAbilityRow` and `publicManaAbilityRow` are the one place the
+hidden fields are named, and a scope table in
+`ability_row_privacy_view_test.go` places EVERY field of both views
+(the embedded `CounterCostView` included) as public or hidden-zone, failing
+on a field nobody placed. The sweep that table records:
+
+- **Hidden-zone, now per seat:** the discard lists always, and the exile
+  lists whenever `exile_cost_zone` is not `"graveyard"`. Nothing on either
+  view reads a LIBRARY.
+- **Public by zone:** an exile list stamped `exile_cost_zone: "graveyard"`
+  (Grim Lavamancer, Moorland Haunt) lists cards in a pile every viewer may
+  pick up and read, so it stays on the public row on both views.
+- **Public, and why:** the counts (`discard_cost_n`, `exile_cost_n`,
+  `counter_cost_n`) are the numbers PRINTED in the clause; the labels are
+  the clause's words; `counter_cost_max` and every other option list —
+  `sacrifice_options`, `crew_options`, `return_options`,
+  `tap_others_options`, `waterbend.options`, `counter_cost_options` — is read
+  off the battlefield, which every viewer can count for themselves; the
+  verdicts (`condition_unmet`, `timing_closed`, `cant_activate`,
+  `exhausted`, `charged_mana_cost`) read public state, as their own field
+  comments already say; and an activated ability's `legal_targets` never
+  reaches a hand (`game.zonesOfKindLocked`'s hidden-zone caution: nothing in
+  the catalog targets a card in hand).
+
+`exile_cost_options` is split BY THE ZONE it names, through one predicate,
+`exileListIsHidden`, which both strips call. It is written as "anything but
+the graveyard" rather than "the hand", so a row stamped with no zone — or
+with a pile added tomorrow — is private until somebody decides otherwise.
+That is the direction that does not leak. The graveyard list stays public
+because this amendment's line is "does it read a zone the viewer cannot
+see", and a graveyard is not one. #1172 moved a graveyard `pay_options` onto
+the asking seat's frame for a different reason: a cast surface on a pile
+answers for whichever seat asks, and that seat varies. A battlefield ability
+has exactly one payer, and its graveyard is on the table for everyone.
+
+The battlefield-read option lists stay public on purpose. They are also only
+the controller's to pay with, and by #1172's rule they could move too; they
+name nothing an opponent cannot already see, and moving them would make every
+permanent with a sacrifice or crew clause file a per-seat copy for no
+information gain. The table is where that decision is written down, so the
+day one of them starts reading a hidden zone is a table edit somebody has to
+make.
+
+### Consequences
+
+- The wire moves only in the safe direction: three fields go out on fewer
+  frames and never on more, so `v` does not move. Every client reader of the
+  lists opens a picker on the viewer's OWN permanent, which reads the
+  viewer's own frame; nothing renders an opponent's cost options.
+- The enumerator is untouched — it reads the game, not the view — and
+  `TestControllerFrameAndEnumeratorAgreeOnHandCosts` pins that the
+  controller's frame still offers every card the enumerator would pay with,
+  for all three fields that read the hand on a fixture.
+- The catalog proof test covers Fauna Shaman, Skirge Familiar, Cadaverous
+  Bloom and Holistic Wisdom (hidden), with Grim Lavamancer as the control
+  (graveyard, public on every frame).
+- The crash-recovery dump and a pinned replay marshal the UNFILTERED view, so
+  they now carry the public rows: a replay reader sees no hand lists, which
+  is what an unseated viewer should see anyway.
+- #1297 (PR #1373) merged first and added `ExileCostN` / `ExileCostLabel` /
+  `ExileCostOptions` / `ExileCostZone` to the activated view and
+  `ExileCostZone` to the mana view. They are placed in the scope table:
+  the count, label and zone are public, and the options fall under the zone
+  rule above.
+
+## Amendment — 2026-09-24 (#1275): the activation twin's derived home, one zone over
+
+The #1208 amendment above built per-player activation timing with ONE home —
+a permanent on the battlefield, read through `CatalogAbilityKey` — and named
+the emblem as out of scope. Teferi, Temporal Archmage's −10 is the card:
+*"You get an emblem with 'You may activate loyalty abilities of planeswalkers
+you control on any player's turn any time you could cast an instant.'"*
+(Teferi's Talent grants a −12 that makes the same emblem.)
+
+### Decision 1 — it is still Decision 5's ONE home, at a second address
+
+An emblem exists in the command zone (CR 114.2), its abilities function there
+(CR 114.3), and nothing removes it but its owner leaving the game (CR 800.4a).
+So its presence IS the duration, which is the whole of Decision 5's argument
+for deriving rather than storing. Nothing new is stored: no `PlayerStatic`
+payload, no sweep, no clone or snapshot field (the emblem itself is already
+carried, ADR 0064 Decision 7). What changed is WHERE the derivation looks:
+`activationTimingVerdictLocked` folds the battlefield and then every seat's
+`Player.Emblems`, with the same fold closure, so the verdict is still three
+independent bits and the walk order still does not matter.
+
+The emblem half goes through `ActivationTimingsForCard` like the battlefield
+half. For an emblem `CatalogAbilityKey` is its `CatalogKey` — nothing can name
+an emblem to remove its abilities — so the ability-removal test costs a nil
+check and never fires. ADR 0064's #1315 amendment makes the same observation
+for the untap- and draw-step walks.
+
+### Decision 2 — the slot is `EmblemSpec.ActivationTimings`, guarded like the Spec's
+
+`EmblemSpec` gains `ActivationTimings []game.ActivationTiming`, projected by
+`buildEmblemDef` onto the emblem's `CardDef` and reachable through the
+synthetic `emblem:<oracle>` key by the existing `CatalogActivationTimings`
+hook. `Register`'s three refusals (a statement that says nothing, has no
+label, or covers nothing) moved into `checkActivationTimings`, which both
+`Spec.ActivationTimings` and `EmblemSpec.ActivationTimings` go through, so the
+two homes cannot drift in what they refuse. `checkEmblemSpec`'s "an emblem
+needs an ability" accepts a timing statement as one.
+
+`Covers` receives the emblem as `q.Source`, so "you" is `q.Source.Controller`
+— the emblem's owner, which never changes. The constructor is
+`effects.LoyaltyAbilitiesOfYourPlaneswalkersAtInstantSpeed`:
+`ThisSourcesLoyaltyAbilitiesAtInstantSpeed`'s three narrowings with the
+self-reference (CR 201.5) widened to "a planeswalker whose controller is the
+emblem's owner, activated by that player".
+
+### Decision 3 — no reader changes, and CR 606.3's count is not the window
+
+Decision 7's four callers — `ActivateCatalogAbility`,
+`legal.abilityMovesForSource`, `protocol.viewOfActivatedAbilities`
+(`timing_closed`) and the sandbox `ActivateLoyalty` — already ask
+`ActivationTimingOpenLocked`, so all four see the emblem without an edit. The
+wire does not change.
+
+The emblem opens the WINDOW. CR 606.3's other half, one loyalty ability per
+planeswalker per turn, is `Game.LoyaltyActivatedThisTurn`, read after the
+window in both activation paths and in the enumerator. It still holds on every
+turn the emblem opens, for each planeswalker separately.
+
+### Out of scope, stated
+
+- **Teferi's Talent's granted −12.** The emblem it makes is this one, but the
+  ability lives on the ENCHANTED planeswalker, and a static that grants an
+  activated ability to another permanent is the open "Abilities granted to
+  other permanents" seam. The card ships with its draw trigger and a caveat.
+- **Other emblem timing statements.** None is printed that is not this one;
+  the constructors cover what the cards say.
+
+Proof card: Teferi, Temporal Archmage (`full`). Tracker
+[#883](https://github.com/krakenhavoc/cmd_and_ctrl/issues/883).

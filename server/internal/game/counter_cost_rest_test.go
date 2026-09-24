@@ -535,7 +535,8 @@ func TestAddCounterCostIsPaidAtAnnounce(t *testing.T) {
 	}
 }
 
-// CR 121.1: paying a cost is not an effect, so a counter DOUBLER does
+// CR 614.16: a counter-doubling replacement applies only to a counter
+// placed by an effect, so a counter DOUBLER does
 // nothing to an add-a-counter cost. Doubling Season must not make
 // Devoted Druid's untapper cost two counters.
 func TestAddCounterCostIsNotReplaceable(t *testing.T) {

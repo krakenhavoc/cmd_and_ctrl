@@ -28,9 +28,11 @@
     LegalTargetsView,
     ManaAbilityView,
     PlayerView,
+    StackItemView,
     ZoneView,
   } from "../../protocol";
   import { seatPlacements, type SeatPosition } from "../../cardTypes";
+  import { isResponseWindowFor, responseWindowKey } from "../../considering";
   import PlayerPanel from "./PlayerPanel.svelte";
   import SeatSummary from "./SeatSummary.svelte";
   import {
@@ -47,6 +49,8 @@
   // damage readout now lives inside the card preview panel instead
   // of the lower-right corner.
   import StackOverlay from "./StackOverlay.svelte";
+  import StackLaneHost from "./StackLaneHost.svelte";
+  import { isStackStyle, stackLaneLive, type StackLaneStyle } from "../../stackLane";
   import CombatArrows from "./CombatArrows.svelte";
   import VotingPanel from "./VotingPanel.svelte";
   import ZoneBrowserModal from "./ZoneBrowserModal.svelte";
@@ -55,6 +59,9 @@
   import { canActivateSorcerySpeedAbility } from "../../timing";
   import CardContextMenu from "./CardContextMenu.svelte";
   import { cardMenu, closeCardMenu } from "../../contextMenu";
+  import ManaSourcePicker from "./ManaSourcePicker.svelte";
+  import { manaSourcePicker, closeManaSourcePicker } from "../../manaSourcePicker";
+  import { manaColorParams } from "../../manaSource";
   import type { MenuActivate } from "../../contextMenu.logic";
   import {
     targeting,
@@ -76,17 +83,19 @@
     tapCostLimit,
     alternativeCostsOf,
     alternativeCostByKey,
+    castTargetOverride,
     altCostPayOptions,
     applyCastChoices,
+    castChoicesBase,
     isLegalCardTarget,
     isLegalPlayerTarget,
     isMultiPick,
+    opensTargetPicker,
     togglePick,
     canConfirm,
     setConfirmHandler,
     type CastChoices,
     type CastSourceZone,
-    type TargetingMode,
     type TargetingState,
     type TargetRef,
   } from "../../targeting";
@@ -108,10 +117,13 @@
   import AltCostPaymentModal from "./AltCostPaymentModal.svelte";
   import ModePickerModal from "./ModePickerModal.svelte";
   import DiscardCostModal from "./DiscardCostModal.svelte";
+  import { manaAbilityNeedsPrompt, manaTapPayment } from "../../manaAbilityCost";
+  import { exileCostNote, exileCostOptionCards, exileCostWhere } from "../../exileCost";
   import AlternativeCostModal from "./AlternativeCostModal.svelte";
   import FacePickerModal from "./FacePickerModal.svelte";
   import { cardAsFace, needsFacePicker } from "../../faces";
   import TapCostModal from "./TapCostModal.svelte";
+  import { shouldAskAbilityWaterbend, waterbendLimit } from "../../waterbend";
   import PhyrexianCostModal from "./PhyrexianCostModal.svelte";
   import {
     phyrexianSymbolsForAbility,
@@ -264,6 +276,77 @@
   const monarchID = $derived(view.monarch ?? null);
   const initiativeID = $derived(view.initiative ?? null);
 
+  // ---- "considering a response…" chip (#1307) -----------------------
+  //
+  // See considering.ts's header for the rationale: the chip has to be
+  // derived from public state and elapsed time ALONE, so a real hold,
+  // a timed bluff, a manual bluff and someone away from the keyboard
+  // all read the same way to every other seat. Board owns the timer
+  // because it's the one place that sees every seat and mounts every
+  // panel; the pure predicate stays in considering.ts so it's testable
+  // without a component.
+  //
+  // Automatic passes land in about one round trip — milliseconds — so
+  // this delay is long enough that nothing ever gets a chip.
+  const CONSIDERING_DELAY_MS = 800;
+
+  let consideringSeatID = $state<string | null>(null);
+  let consideringTimer: ReturnType<typeof setTimeout> | null = null;
+  // Plain (non-reactive) watermark: `view` is a brand-new object on
+  // every snapshot, so an effect that merely reads it re-runs on every
+  // broadcast — a life total changing included. Comparing against the
+  // last key this effect actually acted on is what turns that into
+  // "only when the response window itself changed".
+  let lastConsideringKey = "";
+
+  $effect(() => {
+    const key = responseWindowKey(view);
+    if (key === lastConsideringKey) return;
+    lastConsideringKey = key;
+
+    consideringSeatID = null;
+    if (consideringTimer !== null) {
+      clearTimeout(consideringTimer);
+      consideringTimer = null;
+    }
+
+    const holderIdx = view.turn?.priority_holder ?? -1;
+    const holder = holderIdx >= 0 ? (view.seats[holderIdx] ?? null) : null;
+    // Never the viewer's own seat (nothing to signal to yourself),
+    // never a bot (which already has its own thinking chip), never an
+    // eliminated seat.
+    if (!holder || holder.id === viewerID || holder.is_bot === true || holder.eliminated) {
+      return;
+    }
+
+    consideringTimer = setTimeout(() => {
+      consideringTimer = null;
+      // Re-read fresh rather than trust the closure: the window this
+      // timer was scheduled for might have already moved on to the
+      // next one (which would have reset lastConsideringKey and
+      // cleared this very timer) — this check is the belt to that
+      // brace for a timer that somehow still fires anyway.
+      if (responseWindowKey(view) !== key) return;
+      if (!isResponseWindowFor(view, holderIdx)) return;
+      consideringSeatID = holder.id;
+    }, CONSIDERING_DELAY_MS);
+  });
+
+  // Teardown-only: clears an in-flight timer on unmount (leaving the
+  // game, switching tables). Kept dependency-free so it doesn't fire
+  // on every snapshot the way the effect above deliberately does.
+  $effect(() => {
+    return () => {
+      if (consideringTimer !== null) clearTimeout(consideringTimer);
+    };
+  });
+
+  // #1438: the mana picker's store is module-scoped, so leaving the
+  // table must not leave a picker waiting for the next one.
+  $effect(() => {
+    return () => closeManaSourcePicker();
+  });
+
   function handleTapToggle(card: CardView): void {
     guardedSendAction(card.tapped ? "untap" : "tap", { instance_id: card.instance_id });
   }
@@ -304,7 +387,11 @@
   // the vast majority of casts of these cards will be.
   let altCostPromptCard = $state<CardView | null>(null);
   let altCostPromptChoices: CastChoices = {};
-  function confirmAltCost(key: string | undefined, optional: number[]): void {
+  function confirmAltCost(
+    key: string | undefined,
+    optional: number[],
+    giftOpponent?: string,
+  ): void {
     const card = altCostPromptCard;
     const choices = altCostPromptChoices;
     altCostPromptCard = null;
@@ -316,6 +403,9 @@
     // branch of `key` drops the other.
     let next: CastChoices = key === undefined ? choices : { ...choices, altCost: key };
     if (optional.length > 0) next = { ...next, optionalCosts: optional };
+    // #1267: the gift's opponent is part of the same announcement; the
+    // modal only hands one back when the gift toggle is on.
+    if (giftOpponent !== undefined) next = { ...next, giftOpponent };
     afterAltCost(card, next);
   }
 
@@ -569,12 +659,14 @@
   // this one — costs, modes, targets, even whether the card touches
   // the stack at all — depends on which of them the player meant.
   let facePromptCard = $state<CardView | null>(null);
-  let facePromptZone: CastSourceZone | undefined;
+  // #1508: the choices the cast started with — its zone and whether it
+  // was dragged — so the face picker's confirm carries both on.
+  let facePromptBase: CastChoices = {};
   function confirmFace(face: number): void {
     const card = facePromptCard;
-    const fromZone = facePromptZone;
+    const base = facePromptBase;
     facePromptCard = null;
-    facePromptZone = undefined;
+    facePromptBase = {};
     if (!card) return;
     // Run the rest of the chain against the CHOSEN face, so the
     // prompts and the cast-timing checks see its type line, its cost
@@ -589,7 +681,7 @@
     // now, and face 0's block is the same answer the card's top-level
     // block carries, so the special case the old code needed is gone
     // — and one path is one path.
-    afterFace(cardAsFace(card, face), fromZone ? { face, fromZone } : { face });
+    afterFace(cardAsFace(card, face), { ...base, face });
   }
 
   function afterFace(card: CardView, choices: CastChoices): void {
@@ -635,17 +727,28 @@
   // choices object, so the zone has to be seeded here rather than at
   // the end — otherwise a modal DFC cast out of the graveyard would
   // lose it.
-  function handlePlayCard(card: CardView, fromZone?: CastSourceZone, face?: number): void {
+  //
+  // #1508: `viaDrag` is set only by the hand's drag-to-cast gesture. It
+  // rides CastChoices through every prompt and applyCastChoices turns
+  // it into `strict: true, auto_tap: true` on whichever cast_spell the
+  // chain finally sends.
+  function handlePlayCard(
+    card: CardView,
+    fromZone?: CastSourceZone,
+    face?: number,
+    viaDrag = false,
+  ): void {
+    const base = castChoicesBase(fromZone, viaDrag);
     if (face !== undefined) {
-      afterFace(cardAsFace(card, face), fromZone ? { face, fromZone } : { face });
+      afterFace(cardAsFace(card, face), { ...base, face });
       return;
     }
     if (needsFacePicker(card)) {
-      facePromptZone = fromZone;
+      facePromptBase = base;
       facePromptCard = card;
       return;
     }
-    afterFace(card, fromZone ? { fromZone } : {});
+    afterFace(card, base);
   }
 
   // S20 sub-PR 4: a modal spell asks for its mode(s) after X and
@@ -655,7 +758,7 @@
   let modePromptCard = $state<CardView | null>(null);
   let modePromptChoices: CastChoices = {};
   // #764: EVERY chosen bullet contributes its clauses to the walk,
-  // in the order they were chosen (CR 700.2c), and a repeated bullet
+  // in the order they were chosen (CR 608.2c), and a repeated bullet
   // (CR 700.2d) contributes them once per occurrence. The old shape
   // took the FIRST targeted option and dropped the rest, which is
   // why Kolaghan's Command could not be cast.
@@ -691,16 +794,22 @@
     // targeting flow and wait for a second click on a legal target.
     // Otherwise fire cast_spell immediately (lands, sorceries with
     // no targets, vanilla permanents).
-    const alt = alternativeCostByKey(card, choices.altCost);
-    const mode = (alt ? alt.target_mode : card.target_mode) as TargetingMode | undefined;
-    if (
-      mode === "any" ||
-      mode === "player" ||
-      mode === "creature" ||
-      mode === "permanent" ||
-      mode === "stack_spell" ||
-      mode === "card_in_graveyard"
-    ) {
+    //
+    // #1267: an alternative cost's clause replaces the card's, and so
+    // does a claimed optional cost's that carries one — a promised
+    // gift. That includes a card that prints no target at all but
+    // gains one with the gift, which is why this reads the override
+    // rather than the card first.
+    const alt = castTargetOverride(card, choices);
+    const mode = alt ? alt.target_mode : card.target_mode;
+    // #1211: the allowlist moved into targeting.ts as
+    // opensTargetPicker. It was written out here as a chain of `===`
+    // and a mode missing from it does not fall back to a picker — it
+    // falls THROUGH to an immediate cast_spell with no targets, which
+    // the server then refuses, with nothing on screen to say why. One
+    // list, next to the type that declares the vocabulary, and a unit
+    // test over it.
+    if (opensTargetPicker(mode)) {
       beginTargeting(card, mode, choices, alt);
       return;
     }
@@ -776,17 +885,31 @@
         discard_ids: abilityDiscardIDs,
         // #1213: same announcement, same message.
         return_ids: abilityReturnIDs,
+        // #759: and the station creature.
+        tap_ids: abilityTapIDs,
         ...state.ability.counter,
         targets,
       };
+      // #1297: the exile-N-cards picks, made at announce with the
+      // discard picks. Their own field — an exiled card is not
+      // discarded — and omitted when the cost has no such component.
+      if (abilityExileIDs.length > 0) params.exile_ids = abilityExileIDs;
       if (state.ability.xValue !== undefined) params.x_value = state.ability.xValue;
       // #916, CR 107.4f: announced with the rest of the cost, before
       // these targets, and sent in the same message.
       if (state.ability.phyrexianLife) params.phyrexian_life = state.ability.phyrexianLife;
       if (state.modes !== undefined) params.modes = state.modes;
+      // #1310: the waterbend taps chosen before the targeting step.
+      if (abilityWaterbendIDs && abilityWaterbendIDs.length > 0) {
+        params.waterbend_ids = abilityWaterbendIDs;
+      }
+      abilityWaterbendIDs = undefined;
       abilityDiscardIDs = [];
+      abilityExileIDs = [];
       abilityReturnIDs = [];
+      abilityTapIDs = [];
       abilitySacrificeX = undefined;
+      abilityTapX = undefined;
       guardedSendAction("activate_ability", params, viewerID ?? undefined);
       targeting.set(null);
       return;
@@ -849,11 +972,49 @@
     return orderSacrificeOptions(view.battlefield.cards, p.ability.return_options?.cards);
   });
 
+  // #759: "Tap another untapped creature you control" as a cost — the
+  // station ability (CR 702.184a). The same picker again with the verb
+  // "Tap", asked right after the return pick and for the same reason:
+  // it names permanents at announce (CR 602.2b). Skipped when the board
+  // offers exactly the creatures the clause needs.
+  let abilityTapPrompt = $state<{
+    card: CardView;
+    ability: ActivatedAbilityView;
+  } | null>(null);
+  let abilityTapIDs: string[] = [];
+
+  const abilityTapOptions = $derived.by(() => {
+    const p = abilityTapPrompt;
+    if (!p) return [];
+    return orderSacrificeOptions(view.battlefield.cards, p.ability.tap_others_options?.cards);
+  });
+
+  const abilityTapBounds = $derived(sacrificeRange(abilityTapPrompt?.ability.tap_others_options));
+
+  // #758: the same fixed-count TapOthers component on a MANA
+  // ability (Springleaf Drum). Kept beside the activated prompt but
+  // with its own state because the two actions finish through
+  // different payload builders.
+  let manaTapPrompt = $state<{
+    card: CardView;
+    ability: ManaAbilityView;
+  } | null>(null);
+  let manaTapIDs: string[] = [];
+
+  const manaTapOptions = $derived.by(() => {
+    const p = manaTapPrompt;
+    if (!p) return [];
+    return orderSacrificeOptions(view.battlefield.cards, p.ability.tap_others_options?.cards);
+  });
+
   // #1213: the X a "Sacrifice X Treasures" clause announces. It is
   // the SIZE of the payment rather than a number the player types, so
   // the X stepper is skipped for such an ability — asking twice could
   // only produce an announcement the server refuses.
   let abilitySacrificeX: number | undefined;
+  // #1421: the count picked for "Tap X" is the announcement, just
+  // as the sacrifice picker supplies X for "Sacrifice X".
+  let abilityTapX: number | undefined;
 
   // S27: a Vehicle's crew cost. Its own prompt rather than a reuse of
   // the sacrifice picker because crew is a many-pick with a POWER
@@ -924,6 +1085,27 @@
     return (me?.hand.cards ?? []).filter((c) => ids.has(c.instance_id));
   });
 
+  // #1297: the "Exile N cards from your graveyard / hand" component of
+  // an activated ability's cost (Grim Lavamancer, Holistic Wisdom),
+  // asked right after the discard — the order the engine validates in.
+  // Carried on the side for the reason the discard picks are.
+  let abilityExilePrompt = $state<{
+    card: CardView;
+    ability: ActivatedAbilityView;
+  } | null>(null);
+  let abilityExileIDs: string[] = [];
+
+  // The cards the clause admits, resolved out of whichever pile the
+  // server says they are in.
+  const abilityExileOptions = $derived.by(() => {
+    const p = abilityExilePrompt;
+    if (!p || !viewerID) return [];
+    return exileCostOptionCards(
+      view.seats.find((s) => s.id === viewerID),
+      p.ability,
+    );
+  });
+
   // #660: a card in hand projects its abilities on `zone_abilities`
   // and a permanent on `activated_abilities` — never both, because
   // the server filters by the zone the card is in (CR 113.6). One
@@ -947,6 +1129,12 @@
   function handleActivateAbility(card: CardView, index: number): void {
     const ability = abilitiesOf(card).find((a) => a.index === index);
     if (!ability) return;
+    // #1310: a fresh announcement asks its own waterbend question; a
+    // pick left over from one the player backed out of must not ride
+    // along with this one.
+    abilityWaterbendIDs = undefined;
+    abilitySacrificeX = undefined;
+    abilityTapX = undefined;
     // #660: the discard payment is asked FIRST, as the cast flow asks
     // its own — it is the cost most likely to make a player back out.
     // Skipped when the hand holds exactly the cards the clause
@@ -973,6 +1161,37 @@
     discardIDs: string[],
   ): void {
     abilityDiscardIDs = discardIDs;
+    // #1297: the exile pick next — the same card-shaped question one
+    // component over, skipped the same way when the pile holds exactly
+    // what the clause demands.
+    if (ability.exile_cost_n) {
+      const options = ability.exile_cost_options ?? [];
+      if (options.length > ability.exile_cost_n) {
+        abilityExilePrompt = { card, ability };
+        return;
+      }
+      afterAbilityExileCost(card, ability, options);
+      return;
+    }
+    afterAbilityExileCost(card, ability, []);
+  }
+
+  function confirmAbilityExileCost(ids: string[]): void {
+    const p = abilityExilePrompt;
+    abilityExilePrompt = null;
+    if (!p) return;
+    afterAbilityExileCost(p.card, p.ability, ids);
+  }
+
+  // afterAbilityExileCost is the rest of the announce chain once the
+  // card-shaped costs are answered: the return, sacrifice and crew
+  // pickers, the counter cost, then X and targeting.
+  function afterAbilityExileCost(
+    card: CardView,
+    ability: ActivatedAbilityView,
+    exileIDs: string[],
+  ): void {
+    abilityExileIDs = exileIDs;
     // #1213: the return-to-hand pick, in the same place the sacrifice
     // pick sits — both are announce-time cost choices (CR 602.2b) and
     // both name permanents. Skipped when the board offers exactly the
@@ -990,6 +1209,28 @@
     } else {
       abilityReturnIDs = [];
     }
+    askAbilityTapCost(card, ability);
+  }
+
+  // #759: the tap-another pick, then the rest of the chain.
+  function askAbilityTapCost(card: CardView, ability: ActivatedAbilityView): void {
+    if (ability.tap_others_options) {
+      const options = ability.tap_others_options.cards ?? [];
+      const need = ability.tap_others_options.max ?? ability.tap_others_options.min ?? 1;
+      if (ability.tap_others_options.count_from_x || options.length > need) {
+        abilityTapPrompt = { card, ability };
+        return;
+      }
+      abilityTapIDs = options;
+    } else {
+      abilityTapIDs = [];
+    }
+    afterAbilityPermanentPicks(card, ability);
+  }
+
+  // The chain once the permanent-naming picks (return, tap) are made:
+  // the sacrifice picker, the crew picker, the counter cost.
+  function afterAbilityPermanentPicks(card: CardView, ability: ActivatedAbilityView): void {
     if (ability.sacrifice_options) {
       sacrificePrompt = { kind: "ability", card, ability };
       return;
@@ -999,6 +1240,15 @@
       return;
     }
     askCounterCost(card, ability, [], []);
+  }
+
+  function confirmAbilityTapCost(ids: string[]): void {
+    const p = abilityTapPrompt;
+    abilityTapPrompt = null;
+    if (!p) return;
+    abilityTapIDs = ids;
+    abilityTapX = p.ability.tap_others_options?.count_from_x ? ids.length : undefined;
+    afterAbilityPermanentPicks(p.card, p.ability);
   }
 
   function confirmAbilityDiscardCost(ids: string[]): void {
@@ -1015,15 +1265,7 @@
     abilityReturnPrompt = null;
     if (!p) return;
     abilityReturnIDs = ids;
-    if (p.ability.sacrifice_options) {
-      sacrificePrompt = { kind: "ability", card: p.card, ability: p.ability };
-      return;
-    }
-    if (p.ability.crew_cost) {
-      crewPrompt = { card: p.card, ability: p.ability };
-      return;
-    }
-    askCounterCost(p.card, p.ability, [], []);
+    askAbilityTapCost(p.card, p.ability);
   }
 
   function askCounterCost(
@@ -1092,7 +1334,15 @@
   // answer, handed up by PlayerPanel because the pickers are
   // board-wide. Sacrifice first, then counters — the order the engine
   // validates and pays them in.
-  function handleManaAbilityCost(card: CardView, ability: ManaAbilityView): void {
+  function handleManaAbilityCost(
+    card: CardView,
+    ability: ManaAbilityView,
+    colors: string[] = [],
+  ): void {
+    // #1443: the colour the anchored picker already has, held for the
+    // one action at the end of the chain. Set at the chain's start, so
+    // a chain that was cancelled cannot leak its colour into the next.
+    manaColors = colors;
     // #1213: the discard pick first, as the CR 602 chain asks its own
     // — it is the cost most likely to make a player back out — and
     // skipped when the hand holds exactly what the clause demands.
@@ -1106,11 +1356,85 @@
     } else {
       manaDiscardIDs = [];
     }
+    askManaExileCost(card, ability);
+  }
+
+  // #1283: the exile-a-card pick (Cadaverous Bloom), after the discard
+  // and before the sacrifice — the order the engine validates in —
+  // and skipped the same way when the hand holds exactly what the
+  // clause demands. The same modal as the discard, with the verb
+  // changed, because the question is the same one; the answer rides
+  // its own field, `exile_ids`, because the component is not.
+  function askManaExileCost(card: CardView, ability: ManaAbilityView): void {
+    if (ability.exile_cost_n) {
+      const options = ability.exile_cost_options ?? [];
+      if (options.length > ability.exile_cost_n) {
+        manaExilePrompt = { card, ability };
+        return;
+      }
+      manaExileIDs = options;
+    } else {
+      manaExileIDs = [];
+    }
+    afterManaCardCosts(card, ability);
+  }
+
+  // The rest of the mana-ability chain once the card-shaped costs are
+  // answered: tap-another, sacrifice, then the counter cost.
+  function afterManaCardCosts(card: CardView, ability: ManaAbilityView): void {
+    if (ability.tap_others_options) {
+      const options = ability.tap_others_options.cards ?? [];
+      const need = ability.tap_others_options.max ?? ability.tap_others_options.min ?? 1;
+      if (options.length > need) {
+        manaTapPrompt = { card, ability };
+        return;
+      }
+      manaTapIDs = options;
+    } else {
+      manaTapIDs = [];
+    }
+    afterManaTapCost(card, ability);
+  }
+
+  function confirmManaTapCost(ids: string[]): void {
+    const p = manaTapPrompt;
+    manaTapPrompt = null;
+    if (!p) return;
+    manaTapIDs = ids;
+    afterManaTapCost(p.card, p.ability);
+  }
+
+  function afterManaTapCost(card: CardView, ability: ManaAbilityView): void {
     if (ability.sacrifice_options) {
       sacrificePrompt = { kind: "mana", card, ability };
       return;
     }
     askManaCounterCost(card, ability);
+  }
+
+  let manaExilePrompt = $state<{
+    card: CardView;
+    ability: ManaAbilityView;
+  } | null>(null);
+  let manaExileIDs: string[] = [];
+
+  const manaExileOptions = $derived.by(() => {
+    const p = manaExilePrompt;
+    if (!p || !viewerID) return [];
+    // #1297: out of whichever pile the clause reads, as the CR 602
+    // owner's picker does.
+    return exileCostOptionCards(
+      view.seats.find((s) => s.id === viewerID),
+      p.ability,
+    );
+  });
+
+  function confirmManaExileCost(ids: string[]): void {
+    const p = manaExilePrompt;
+    manaExilePrompt = null;
+    if (!p) return;
+    manaExileIDs = ids;
+    afterManaCardCosts(p.card, p.ability);
   }
 
   // #1213: the mana-ability half of #660's discard picker. The same
@@ -1121,6 +1445,9 @@
     ability: ManaAbilityView;
   } | null>(null);
   let manaDiscardIDs: string[] = [];
+  // #1443: the colours named at the card for the mana ability whose
+  // cost chain is open (see handleManaAbilityCost).
+  let manaColors: string[] = [];
 
   const manaDiscardOptions = $derived.by(() => {
     const p = manaDiscardPrompt;
@@ -1135,11 +1462,7 @@
     manaDiscardPrompt = null;
     if (!p) return;
     manaDiscardIDs = ids;
-    if (p.ability.sacrifice_options) {
-      sacrificePrompt = { kind: "mana", card: p.card, ability: p.ability };
-      return;
-    }
-    askManaCounterCost(p.card, p.ability);
+    askManaExileCost(p.card, p.ability);
   }
 
   // askManaCounterCost is askCounterCost's mana-ability twin: the same
@@ -1172,14 +1495,28 @@
         card_id: card.instance_id,
         ability_index: ability.index,
         ...(sacrificeIDs && sacrificeIDs.length > 0 ? { sacrifice_ids: sacrificeIDs } : {}),
+        // #758: absent on ordinary mana abilities, as every optional
+        // cost-payment field is.
+        ...manaTapPayment(manaTapIDs),
         // #1213: omitted when empty, so every payload a client sent
         // before this field existed is byte-for-byte unchanged.
         ...(manaDiscardIDs.length > 0 ? { discard_ids: manaDiscardIDs } : {}),
+        // #1283: the same posture — absent unless the ability exiles.
+        ...(manaExileIDs.length > 0 ? { exile_ids: manaExileIDs } : {}),
         ...counter,
+        // #1443: absent unless the picker named a colour.
+        ...manaColorParams(manaColors),
       },
       viewerID ?? undefined,
     );
+    resetManaCostPayment();
+  }
+
+  function resetManaCostPayment(): void {
     manaDiscardIDs = [];
+    manaExileIDs = [];
+    manaTapIDs = [];
+    manaColors = [];
   }
 
   // #170: an ability row picked from the admin context menu. Same two
@@ -1191,14 +1528,16 @@
       return;
     }
     const ability = (card.mana_abilities ?? []).find((a) => a.index === activate.index);
-    if (
-      ability &&
-      (ability.sacrifice_options || ability.discard_cost_n || counterCostNeedsPrompt(ability))
-    ) {
-      handleManaAbilityCost(card, ability);
+    if (ability && manaAbilityNeedsPrompt(ability)) {
+      handleManaAbilityCost(card, ability, activate.colors);
       return;
     }
-    const params = { card_id: card.instance_id, ability_index: activate.index };
+    // #1443: the anchored picker's colour rides the activation.
+    const params = {
+      card_id: card.instance_id,
+      ability_index: activate.index,
+      ...manaColorParams(activate.colors),
+    };
     guardedSendAction("activate_mana_ability", params, card.controller);
   }
 
@@ -1250,6 +1589,8 @@
       // #1213: unless the sacrifice payment already answered it.
       if (abilitySacrificeX !== undefined) {
         xValue = abilitySacrificeX;
+      } else if (abilityTapX !== undefined) {
+        xValue = abilityTapX;
       } else {
         xAbilityPrompt = { card, ability, sacrificeIDs, crewIDs, counter };
         return;
@@ -1264,6 +1605,24 @@
       shouldAskPhyrexianLife(phyrexianSymbolsForAbility(ability), viewerLife)
     ) {
       phyrexianAbilityPrompt = { card, ability, sacrificeIDs, crewIDs, xValue, counter, modes };
+      return;
+    }
+    // #1310, CR 701.67a: "Waterbend {N}:" — which untapped artifacts
+    // and creatures pay part of it. After X, because a Waterbend {X}
+    // has no size until X is announced; before the modes and targets,
+    // because it is a cost and the cast chain asks its own convoke /
+    // waterbend taps in the same place. Skipped when nothing could
+    // help: tapping none pays the whole cost with mana.
+    if (abilityWaterbendIDs === undefined && shouldAskAbilityWaterbend(ability, xValue)) {
+      abilityWaterbendPrompt = {
+        card,
+        ability,
+        sacrificeIDs,
+        crewIDs,
+        xValue,
+        counter,
+        phyrexianLife,
+      };
       return;
     }
     // #764, CR 602.2b: a modal activated ability chooses its modes
@@ -1300,15 +1659,27 @@
       // #1213: the return-to-hand picks, made at announce with the
       // rest of the cost and sent in the one activate_ability.
       return_ids: abilityReturnIDs,
+      // #759: the station creature, the same way.
+      tap_ids: abilityTapIDs,
       ...counter,
     };
     if (xValue !== undefined) params.x_value = xValue;
     // #916: omitted at 0, which is the server default.
     if (phyrexianLife) params.phyrexian_life = phyrexianLife;
     if (modes !== undefined) params.modes = modes;
+    // #1310: the waterbend taps, omitted when there are none.
+    if (abilityWaterbendIDs && abilityWaterbendIDs.length > 0) {
+      params.waterbend_ids = abilityWaterbendIDs;
+    }
+    // #1297: the exile picks, on their own field, omitted when none.
+    if (abilityExileIDs.length > 0) params.exile_ids = abilityExileIDs;
+    abilityWaterbendIDs = undefined;
     abilityDiscardIDs = [];
+    abilityExileIDs = [];
     abilityReturnIDs = [];
+    abilityTapIDs = [];
     abilitySacrificeX = undefined;
+    abilityTapX = undefined;
     guardedSendAction("activate_ability", params, viewerID ?? undefined);
   }
 
@@ -1337,6 +1708,46 @@
       p.counter,
       p.modes,
       n,
+    );
+  }
+
+  // #1310: the waterbend picker for an activated ability — the same
+  // TapCostModal a spell's convoke / waterbend opens, fed the
+  // ability's `waterbend` clause. The answer is held on the side
+  // (like the discard and return picks) until the one
+  // activate_ability goes out; undefined means "not asked yet".
+  let abilityWaterbendPrompt = $state<{
+    card: CardView;
+    ability: ActivatedAbilityView;
+    sacrificeIDs: string[];
+    crewIDs: string[];
+    xValue?: number;
+    counter?: CounterPayment;
+    phyrexianLife?: number;
+  } | null>(null);
+  let abilityWaterbendIDs: string[] | undefined = undefined;
+
+  const abilityWaterbendOptions = $derived.by(() => {
+    const p = abilityWaterbendPrompt;
+    if (!p?.ability.waterbend) return [];
+    const ids = new Set(p.ability.waterbend.options?.cards ?? []);
+    return view.battlefield.cards.filter((c) => ids.has(c.instance_id));
+  });
+
+  function confirmAbilityWaterbend(ids: string[]): void {
+    const p = abilityWaterbendPrompt;
+    abilityWaterbendPrompt = null;
+    if (!p) return;
+    abilityWaterbendIDs = ids;
+    continueActivation(
+      p.card,
+      p.ability,
+      p.sacrificeIDs,
+      p.crewIDs,
+      p.xValue,
+      p.counter,
+      undefined,
+      p.phyrexianLife,
     );
   }
 
@@ -1520,6 +1931,27 @@
   // board-relative coordinates (CombatArrows reads source/target
   // bounding rects against it) get the same node.
   let boardEl: HTMLDivElement | null = $state(null);
+
+  // ---- The stack's display style (#1467) -----------------------------
+  //
+  // `compact` is the docked card in the attention strip. Anything else
+  // mounts StackLaneHost, which floats over the middle of the table
+  // while the stack or pending triggers are live (the host keeps its
+  // aria-live announcer mounted in between). While the lane is showing
+  // the stack, the docked card is not rendered.
+  const floatingStackStyle = $derived.by((): StackLaneStyle | null => {
+    const s = $settings.display.stackStyle;
+    return s === "compact" || !isStackStyle(s) ? null : s;
+  });
+  const laneShowsStack = $derived(
+    floatingStackStyle !== null && stackLaneLive(view.stack_items, view.pending_triggers),
+  );
+
+  // Countering a stack item, from either surface.
+  function counterStackItem(item: StackItemView): void {
+    const verb = item.kind === "spell" ? "counter_spell" : "counter_ability";
+    guardedSendAction(verb, { instance_id: item.id });
+  }
 </script>
 
 <div
@@ -1555,6 +1987,7 @@
               onTargetPlayer={handleTargetPlayer}
               onTargetCard={handleTargetCard}
               onExpand={() => (pinnedSeatID = nextPinnedSeat(pinned, seat.id))}
+              considering={seat.id === consideringSeatID}
             />
           {:else}
             {#if decision.reason === "pinned"}
@@ -1604,6 +2037,7 @@
               {onToggleAutopass}
               onActivateAbility={handleActivateAbility}
               onManaAbilityCost={handleManaAbilityCost}
+              considering={seat.id === consideringSeatID}
             />
           {/if}
         </div>
@@ -1637,35 +2071,61 @@
           onDrawCard={handleDrawCard}
           onTargetPlayer={handleTargetPlayer}
           onTargetCard={handleTargetCard}
+          considering={seat.id === consideringSeatID}
         />
       </div>
     {/each}
   {/if}
 
-  <CombatArrows {view} {boardEl} {beatsPrimeKey} />
+  <!-- #1467: the fan lane draws its own stack-target arrows. -->
+  <CombatArrows
+    {view}
+    {boardEl}
+    {beatsPrimeKey}
+    stackTargets={!(laneShowsStack && floatingStackStyle === "fan")}
+  />
   <HoverZoomOverlay {view} />
   <!-- Attention strip: one column over the table (the middle
        opponent's hand row in the row layout, the top-left seat's
        hand row otherwise) that stacks every live prompt — the stack
        card first, then whatever Game.svelte renders in `attention`. -->
-  <div class="strip">
-    <StackOverlay
-      stack={view.stack}
-      battlefield={view.battlefield}
-      exile={view.exile}
-      stackItems={view.stack_items ?? []}
-      pendingTriggers={view.pending_triggers ?? []}
-      seats={view.seats}
-      viewerHasPriority={prioritySeatID === viewerID}
-      priorityHolderName={view.seats[view.turn.priority_holder]?.name ?? null}
-      splitSecondActive={view.split_second_active === true}
-      onCounter={(item) => {
-        const verb = item.kind === "spell" ? "counter_spell" : "counter_ability";
-        guardedSendAction(verb, { instance_id: item.id });
-      }}
+  <!-- #1467: a floating stack style replaces the docked card while
+       it has something to show. The docked card is not rendered at
+       all then (rather than hidden), so the stack is never on screen
+       twice and nothing in the strip is focusable behind the lane.
+       `compact` — the default — and the rare frame with a stack card
+       but no stack item record both keep the docked card. -->
+  {#if floatingStackStyle}
+    <StackLaneHost
+      {view}
+      {viewerID}
+      {boardEl}
+      style={floatingStackStyle}
+      considering={consideringSeatID !== null && consideringSeatID === prioritySeatID}
+      onCounter={counterStackItem}
       onTargetStackItem={(item) => completeTargetedCast("card", item.id)}
       onPass={onPassPriority}
     />
+  {/if}
+  <div class="strip">
+    {#if !laneShowsStack}
+      <StackOverlay
+        stack={view.stack}
+        battlefield={view.battlefield}
+        exile={view.exile}
+        stackItems={view.stack_items ?? []}
+        pendingTriggers={view.pending_triggers ?? []}
+        seats={view.seats}
+        viewerHasPriority={prioritySeatID === viewerID}
+        priorityHolderName={view.seats[view.turn.priority_holder]?.name ?? null}
+        priorityHolderConsidering={consideringSeatID !== null &&
+          consideringSeatID === prioritySeatID}
+        splitSecondActive={view.split_second_active === true}
+        onCounter={counterStackItem}
+        onTargetStackItem={(item) => completeTargetedCast("card", item.id)}
+        onPass={onPassPriority}
+      />
+    {/if}
     {@render attention?.()}
   </div>
   <VotingPanel {view} {viewerID} sendAction={guardedSendAction} />
@@ -1676,7 +2136,10 @@
     count={sacrificeBounds.max}
     min={sacrificeBounds.min}
     onConfirm={confirmSacrifice}
-    onCancel={() => (sacrificePrompt = null)}
+    onCancel={() => {
+      if (sacrificePrompt?.kind === "mana") resetManaCostPayment();
+      sacrificePrompt = null;
+    }}
   />
   <CrewCostModal
     card={crewPrompt?.card ?? null}
@@ -1691,6 +2154,7 @@
     board={view.battlefield.cards}
     onConfirm={confirmCounterCost}
     onCancel={() => {
+      if (manaCounterPrompt) resetManaCostPayment();
       counterPrompt = null;
       manaCounterPrompt = null;
     }}
@@ -1702,6 +2166,7 @@
   />
   <AlternativeCostModal
     card={altCostPromptCard}
+    seats={view.seats}
     onConfirm={confirmAltCost}
     onCancel={() => {
       altCostPromptCard = null;
@@ -1740,6 +2205,25 @@
       abilityDiscardIDs = [];
     }}
   />
+  <!-- #1297: "Exile two cards from your graveyard" (Grim Lavamancer),
+       "Exile a card from your hand" (Holistic Wisdom). The discard
+       picker with the verb changed and the pile named; the answer
+       rides exile_ids, never discard_ids. -->
+  <DiscardCostModal
+    card={abilityExilePrompt?.card ?? null}
+    options={abilityExileOptions}
+    need={abilityExilePrompt?.ability.exile_cost_n}
+    label={abilityExilePrompt?.ability.exile_cost_label}
+    verb="Exile"
+    note={abilityExilePrompt ? exileCostNote(abilityExilePrompt.ability) : undefined}
+    where={abilityExilePrompt ? exileCostWhere(abilityExilePrompt.ability) : undefined}
+    onConfirm={confirmAbilityExileCost}
+    onCancel={() => {
+      abilityExilePrompt = null;
+      abilityExileIDs = [];
+      abilityDiscardIDs = [];
+    }}
+  />
   <!-- #1213: the mana-ability half of the discard picker (Skirge
        Familiar). Same modal, same wire field, a different action. -->
   <DiscardCostModal
@@ -1750,6 +2234,24 @@
     onConfirm={confirmManaDiscardCost}
     onCancel={() => {
       manaDiscardPrompt = null;
+      manaDiscardIDs = [];
+    }}
+  />
+  <!-- #1283: "Exile a card from your hand" (Cadaverous Bloom). The
+       discard picker with the verb changed; the answer rides
+       exile_ids, never discard_ids. -->
+  <DiscardCostModal
+    card={manaExilePrompt?.card ?? null}
+    options={manaExileOptions}
+    need={manaExilePrompt?.ability.exile_cost_n}
+    label={manaExilePrompt?.ability.exile_cost_label}
+    verb="Exile"
+    note={manaExilePrompt ? exileCostNote(manaExilePrompt.ability) : undefined}
+    where={manaExilePrompt ? exileCostWhere(manaExilePrompt.ability) : undefined}
+    onConfirm={confirmManaExileCost}
+    onCancel={() => {
+      manaExilePrompt = null;
+      manaExileIDs = [];
       manaDiscardIDs = [];
     }}
   />
@@ -1765,6 +2267,37 @@
     onCancel={() => {
       abilityReturnPrompt = null;
       abilityReturnIDs = [];
+    }}
+  />
+  <!-- #759: station's "Tap another untapped creature you control".
+       The sacrifice picker once more, with the verb "Tap". -->
+  <SacrificeCostModal
+    source={abilityTapPrompt?.card ?? null}
+    label={abilityTapPrompt?.ability.tap_others_label ?? "another untapped creature you control"}
+    options={abilityTapOptions}
+    count={abilityTapPrompt?.ability.tap_others_options?.max ?? 1}
+    min={abilityTapBounds.min}
+    verb="Tap"
+    onConfirm={confirmAbilityTapCost}
+    onCancel={() => {
+      abilityTapPrompt = null;
+      abilityTapIDs = [];
+      abilityTapX = undefined;
+      abilityReturnIDs = [];
+    }}
+  />
+  <!-- #758: Springleaf Drum's mana-ability spelling of the same
+       TapOthers component. -->
+  <SacrificeCostModal
+    source={manaTapPrompt?.card ?? null}
+    label={manaTapPrompt?.ability.tap_others_label ?? "an untapped creature you control"}
+    options={manaTapOptions}
+    count={manaTapPrompt?.ability.tap_others_options?.max ?? 1}
+    verb="Tap"
+    onConfirm={confirmManaTapCost}
+    onCancel={() => {
+      manaTapPrompt = null;
+      resetManaCostPayment();
     }}
   />
   <SacrificeCostModal
@@ -1840,6 +2373,21 @@
       tapPromptChoices = {};
     }}
   />
+  <!-- #1310: the same picker for an activated ability's "Waterbend
+       {N}:" cost, fed the ability's own clause. -->
+  <TapCostModal
+    card={abilityWaterbendPrompt?.card ?? null}
+    cost={abilityWaterbendPrompt?.ability.waterbend ?? null}
+    options={abilityWaterbendOptions}
+    limit={abilityWaterbendPrompt?.ability.waterbend
+      ? waterbendLimit(abilityWaterbendPrompt.ability.waterbend, abilityWaterbendPrompt.xValue)
+      : 0}
+    onConfirm={confirmAbilityWaterbend}
+    onCancel={() => {
+      abilityWaterbendPrompt = null;
+      abilityWaterbendIDs = undefined;
+    }}
+  />
   <ModePickerModal
     card={modePromptCard}
     onConfirm={confirmModes}
@@ -1867,6 +2415,17 @@
       onCastCard={handlePlayCard}
       onActivateAbility={handleActivateAbility}
       sorcerySpeedBlocked={browsedZoneSorcerySpeedBlocked}
+    />
+  {/if}
+  {#if $manaSourcePicker}
+    <!-- #1438: the anchored "which mana?" picker a left-click on a
+         source with several mana abilities opens. Its pick routes
+         exactly as the right-click menu's mana row does. -->
+    <ManaSourcePicker
+      {view}
+      open={$manaSourcePicker}
+      onPick={(card, index, colors) => handleMenuActivate(card, { kind: "mana", index, colors })}
+      onClose={closeManaSourcePicker}
     />
   {/if}
   {#if $cardMenu}

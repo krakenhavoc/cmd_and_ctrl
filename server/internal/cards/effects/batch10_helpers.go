@@ -97,23 +97,14 @@ func b10LandYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool 
 }
 
 // b10AnotherLandPlayedByYou is City of Traitors' "when you play
-// another land". The engine emits no land-play event, so the trigger
-// watches the EventZoneMove that precedes every battlefield entry and
-// reads where the land came FROM: a land played from hand (or from an
-// impulse-exile grant, or a graveyard permission) arrives from that
-// zone, while the "put onto the battlefield" effects — Cultivate,
-// Rampant Growth, every fetchland — arrive from the LIBRARY, which is
-// the one origin a land play can never have.
-//
-// The residual gap runs the weaker way for the City's controller: a
-// land RETURNED from a graveyard or exile by an effect (Titania's ETB,
-// Splendid Reclamation, a flickered land) reads as a play and costs
-// the City too. Declared on the card.
+// another land". Since #1326 the engine stamps CR 305.4's distinction
+// on the settled entry itself (Event.Played), so the trigger reads
+// that directly rather than guessing from the zone the land came
+// from: a land RETURNED to the battlefield from a graveyard or exile
+// by an effect (Titania's ETB, Splendid Reclamation, a flickered
+// land) no longer reads as a play.
 func b10AnotherLandPlayedByYou(ev game.Event, source *game.Card, g *game.Game) bool {
-	if ev.Kind != game.EventZoneMove || ev.NewZone != game.ZoneBattlefield || ev.CardID == source.InstanceID {
-		return false
-	}
-	if ev.OldZone == game.ZoneLibrary || ev.OldZone == game.ZoneBattlefield || ev.OldZone == game.ZoneStack {
+	if ev.Kind != game.EventZoneMove || !ev.Played || ev.CardID == source.InstanceID {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
@@ -174,8 +165,8 @@ func b10CreatureOrPlaneswalker() CardPredicate { return Or(Creature(), Planeswal
 // among creatures and planeswalkers they control". The sacrifice
 // fan-out hands each affected player's own ID in as the `caster`, so
 // the comparison set is that player's board; ties all match, and the
-// player chooses among them (CR 700.3 — "the greatest" picks out a
-// set). Mana value is read off the battlefield, where X is zero (CR
+// player chooses among them ("the greatest" picks out a
+// set, not a single card). Mana value is read off the battlefield, where X is zero (CR
 // 202.3e) and a token with no mana cost is zero.
 func b10GreatestManaValueCreatureOrPlaneswalkerYouControl() CardPredicate {
 	return func(g *game.Game, player uuid.UUID, c game.Card) bool {
@@ -340,6 +331,12 @@ func b10ReturnAllLandCardsFromGraveyardTapped(ctx *Context, player uuid.UUID) er
 // prevention shield or a damage doubler sees it; lethal damage is the
 // SBA's business at the next check, as for every other effect.
 func b10Fight(ctx *Context, a, b uuid.UUID) error {
+	// #1432, CR 701.12b: a fighter that is no longer on the
+	// battlefield — including a source that left and came back as a
+	// new object — means no damage is dealt at all.
+	if ctx.isNewSourceObjectAsThis(a) || ctx.isNewSourceObjectAsThis(b) {
+		return nil
+	}
 	ctx.Game.RecomputeLayersIfStaleLocked()
 	ca, okA := ctx.Game.LookupCardForEffect(a)
 	cb, okB := ctx.Game.LookupCardForEffect(b)

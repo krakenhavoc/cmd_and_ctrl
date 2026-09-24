@@ -146,7 +146,39 @@ type StackItem struct {
 	// KIND rather than treating some value as a sentinel: zero is a
 	// real epoch, since a token created straight onto the
 	// battlefield has never changed zones.
+	//
+	// SourceObject below is the general form (#1418) and is stamped
+	// on every ability item. SourceEpoch stays for its readers
+	// (ninjutsu, hideaway), which want the POST-cost identity.
 	SourceEpoch int
+
+	// SourceObject names the OBJECT this ability came from (#1418,
+	// CR 400.7, CR 113.7a): the source's instance ID plus the
+	// Card.ObjectEpoch it had when the ability triggered or was
+	// activated. For a leaves-the-battlefield trigger of the source
+	// itself it is the epoch the permanent had ON THE BATTLEFIELD,
+	// the same object ObjectSnapshot.Ref() names, and for an
+	// activation it is read before the costs are paid, so a source
+	// that was sacrificed to its own ability is still named.
+	//
+	// It is how a resolving ability tells "this permanent" apart from
+	// a new object its card has become: PermanentForEffect(SourceObject)
+	// answers with the live permanent only while the epoch still
+	// matches, and with the last-known record otherwise.
+	// SourceObjectForEffect is the read; effects.Context.SourceRef()
+	// and SourcePermanent() are the card-side spellings.
+	//
+	// Stamped where the item is made rather than in catalog code:
+	// the trigger dispatch after Build (stampTriggerSourceLocked),
+	// queueHarvestedTriggerLocked for any trigger that reached the
+	// queue without one, the two activation announce paths,
+	// ScheduleDelayedTriggerForEffect (CR 603.7d: the resolving
+	// ability's own source object), the reflexive trigger (CR 603.12:
+	// its parent's) and the ability copy (CR 707.10). Zero on a spell,
+	// on a trigger with no source card (the monarch), and on an item
+	// restored from a snapshot written before the field existed; the
+	// ID is the "stamped" bit, since epoch zero is a real epoch.
+	SourceObject ObjectRef
 
 	// Label is a free-text caller-provided string for ability items
 	// ("Goblin Bombardment damage", "Counterspell ETB"). Empty for
@@ -342,7 +374,10 @@ type StackItem struct {
 	// instead and a phantom Lightning Bolt accumulates in somebody's
 	// yard, where it is countable by Tarmogoyf, castable by
 	// flashback, and returnable by Regrowth. See
-	// ceaseToExistLocked in spell_copy.go.
+	// ceaseToExistLocked in spell_copy.go. The same holds for every
+	// OTHER way off the stack — countered, bounced, exiled — and
+	// routeCardToZoneLocked reads this flag to end the copy there
+	// (#1340, CR 707.10a; spellCopyLeavesStackLocked).
 	//
 	// It is NOT a "don't fire triggers" flag. A resolving copy deals
 	// its damage, draws its cards and fires everything a cast spell
@@ -399,6 +434,26 @@ type StackItem struct {
 	// list. Meaningless once the item is on the stack. Added in S19
 	// sub-PR 8.
 	Ordered bool
+
+	// Commutes marks a pending trigger whose resolution commutes with
+	// every other Commutes item: whatever order a batch of them
+	// resolves in, the board afterwards is the same. seatNeedsTriggerOrder
+	// skips the CR 603.3b ordering prompt for a seat whose whole batch
+	// is Commutes items (#1511), because a question whose every answer
+	// gives the same game is a click, not a choice.
+	//
+	// The class is CLOSED and engine-owned. The only writer is the
+	// prowess trigger's Build (prowess.go), and ADR 0018's #1511
+	// amendment carries the argument for why prowess instances commute
+	// with each other. Commutativity is a property of an effect PAIR,
+	// not of one effect, so a new member has to be argued against every
+	// existing member there first — never set it from a card file.
+	// It says nothing about how an item orders against a trigger
+	// OUTSIDE the class: a batch with even one of those still prompts.
+	//
+	// Carried by Clone and the snapshot like Ordered. Meaningless once
+	// the item is on the stack.
+	Commutes bool
 
 	// modeSpec is the ModeSpec an ability item was announced under,
 	// so the CR 608.2b re-check can find the clause list of the mode

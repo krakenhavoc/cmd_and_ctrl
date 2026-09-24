@@ -20,6 +20,8 @@ import (
 //
 // AppliesTo gates on:
 //   - ev.Kind == RepEventCounter (pre-filter already does this via Watches)
+//   - ev.CounterDelta > 0 — "would be PUT ON" is a placement, not a
+//     removal (CR 122.6, CR 614.1); #1291 found this check missing.
 //   - ev.CounterName == "+1/+1"
 //   - target is a creature (via Effective().Types lookup — so future
 //     type-change effects compose correctly)
@@ -31,23 +33,8 @@ func init() {
 		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{
 			{
-				Watches: []game.EventKind{game.EventCounterPlaced},
-				AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
-					if ev.Kind != game.RepEventCounter {
-						return false
-					}
-					if ev.CounterName != "+1/+1" {
-						return false
-					}
-					target, ok := g.LookupCardForEffect(ev.CounterTarget)
-					if !ok {
-						return false
-					}
-					if !target.IsCreature() {
-						return false
-					}
-					return target.Controller == src.Controller
-				},
+				Watches:   []game.EventKind{game.EventCounterPlaced},
+				AppliesTo: plusOneCounterPlacementOnYourCreature,
 				Replace: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) error {
 					ev.CounterDelta += 1
 					return nil

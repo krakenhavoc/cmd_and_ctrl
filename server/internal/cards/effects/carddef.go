@@ -29,17 +29,61 @@ func activatedShapes(in []ActivatedAbility) []game.ActivatedAbilityShape {
 	out := make([]game.ActivatedAbilityShape, len(in))
 	for i, a := range in {
 		out[i] = game.ActivatedAbilityShape{
-			Label:        a.Label,
-			Cost:         a.Cost,
-			Targets:      a.Targets,
-			Modes:        a.Modes,
-			SorcerySpeed: a.SorcerySpeed,
-			Zones:        a.Zones,
-			Cycling:      a.Cycling,
-			Condition:    a.Condition,
-			ActiveWhen:   a.ActiveWhen,
-			Exhaust:      a.Exhaust,
-			Effect:       a.Effect,
+			Label:         a.Label,
+			Cost:          a.Cost,
+			Targets:       a.Targets,
+			Modes:         a.Modes,
+			SorcerySpeed:  a.SorcerySpeed,
+			Zones:         a.Zones,
+			Cycling:       a.Cycling,
+			Equip:         a.Equip,
+			Condition:     a.Condition,
+			ActiveWhen:    a.ActiveWhen,
+			Exhaust:       a.Exhaust,
+			CostModifiers: a.CostModifiers,
+			Effect:        a.Effect,
+		}
+	}
+	return out
+}
+
+// manaShapes projects declared mana abilities into the engine's
+// shapes. Shared by buildDef and by buildGrantDef, because a granted
+// mana ability (ADR 0093 — Cryptolith Rite's "{T}: Add one mana of any
+// color") is declared exactly as a card's own is. Nil in, nil out.
+func manaShapes(in []ManaAbility) []game.ManaAbilityShape {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]game.ManaAbilityShape, len(in))
+	for i, a := range in {
+		out[i] = game.ManaAbilityShape{
+			Zones:                     a.Zones,
+			ExileSelf:                 a.Cost.ExileSelf,
+			TapCost:                   a.Cost.Tap,
+			SacrificeCost:             a.Cost.Sacrifice,
+			SacrificeOther:            a.Cost.SacrificeOther,
+			TapOthers:                 a.Cost.TapOthers,
+			LifeCost:                  a.Cost.Life,
+			ManaCost:                  a.Cost.Mana,
+			RemoveCounters:            a.Cost.RemoveCounters,
+			AddCounter:                a.Cost.AddCounter,
+			DiscardCards:              a.Cost.DiscardCards,
+			ExileCards:                a.Cost.ExileCards,
+			Produced:                  a.Produced,
+			Label:                     a.Label,
+			Exhaust:                   a.Exhaust,
+			Rider:                     a.Rider,
+			PreRider:                  a.PreRider,
+			NarrowToCommanderIdentity: a.NarrowToCommanderIdentity,
+			Condition:                 a.Condition,
+			ProducedFunc:              a.ProducedFunc,
+			ProducedForPaid:           a.ProducedForPaid,
+			DerivesFromOtherSources:   a.DerivesFromOtherSources,
+			DerivedMatch:              a.DerivedMatch,
+			DerivedColorsOnly:         a.DerivedColorsOnly,
+			Restrictions:              a.Restrictions,
+			RestrictionsFunc:          a.RestrictionsFunc,
 		}
 	}
 	return out
@@ -66,26 +110,34 @@ func buildDef(spec Spec) *game.CardDef {
 		SelfCostModifiers:          spec.SelfCostModifiers,
 		ExhaustPermissions:         spec.ExhaustPermissions,
 		AttackTaxes:                spec.AttackTaxes,
+		BlockRules:                 spec.BlockRules,
+		AttackLimits:               spec.AttackLimits,
 		CastableZones:              spec.CastableZones,
 		SpecialActions:             spec.SpecialActions,
+		SpecialActionGrants:        spec.SpecialActionGrants,
 		UntapStep:                  spec.UntapStep,
 		UntapStepRestrictions:      spec.UntapStepRestrictions,
 		UntapCaps:                  spec.UntapCaps,
 		UntapOptOuts:               spec.UntapOptOuts,
+		DrawStep:                   spec.DrawStep,
 		CantBeCountered:            spec.CantBeCountered,
 		NoMaxHandSize:              spec.NoMaxHandSize,
 		PlayerKeywords:             spec.PlayerKeywords,
+		PlayerLifeTotalLocked:      spec.PlayerLifeTotalLocked,
+		GameEndGates:               spec.GameEndGates,
 		WantsDistinctColors:        spec.WantsDistinctColors,
 		WantsManaFrom:              spec.WantsManaFrom,
 		AdditionalLandPlays:        spec.AdditionalLandPlays,
 		XMatters:                   spec.XMatters,
 		CastPermissions:            standingCastPermissions(spec.CastPermissions),
+		GatedCastPermissions:       gatedStandingCastPermissions(spec.GatedCastPermissions),
 		CastTimings:                spec.CastTimings,
 		LibraryTopVisible:          spec.LibraryTopVisible,
 		CastCondition:              spec.CastCondition,
 		CastConditionLabel:         spec.CastConditionLabel,
 		CastRestrictions:           spec.CastRestrictions,
 		ActivationRestrictions:     spec.ActivationRestrictions,
+		ActivationTimings:          spec.ActivationTimings,
 	}
 	if spec.Battle != nil {
 		d.BattleDefense = spec.Battle.Defense
@@ -112,6 +164,17 @@ func buildDef(spec Spec) *game.CardDef {
 	// declaration for the reason suspend's pair is, and appended to
 	// whatever the card declares itself — Big Game Hunter has an ETB
 	// trigger of its own and keeps it.
+	// ADR 0089 / CR 702.174a–b: gift is a cost and a gift, and both
+	// belong to the KEYWORD. Grown here from the one declaration for
+	// the reason madness's pair is. The cost goes LAST so any printed
+	// optional cost keeps its index; the entry trigger is installed on
+	// every gift card and fires only for a permanent whose record says
+	// the gift was promised, and the resolve wrapper stands aside for a
+	// permanent spell — so neither half needs to know the card's type.
+	if gift := spec.Gift; gift != nil {
+		d.OptionalCosts = append(append([]game.AdditionalCost(nil), d.OptionalCosts...), gift.cost())
+		d.Triggered = append(append([]game.TriggeredAbility(nil), d.Triggered...), gift.entryTrigger(spec.Name))
+	}
 	if spec.Madness != "" {
 		d.Replacements = append(append([]game.ReplacementEffect(nil), d.Replacements...),
 			game.MadnessReplacement())
@@ -127,6 +190,11 @@ func buildDef(spec Spec) *game.CardDef {
 		d.Resolve = func(g *game.Game, item *game.StackItem) error {
 			return onResolve(item, NewContext(g, item))
 		}
+	}
+	// CR 702.174j: an instant or sorcery's gift happens before any of
+	// its other spell abilities.
+	if spec.Gift != nil {
+		d.Resolve = spec.Gift.wrapResolve(spec.OnResolve)
 	}
 	if asEnters := spec.AsEnters; asEnters != nil {
 		d.AsEnters = func(g *game.Game, cardID uuid.UUID) error {
@@ -145,32 +213,7 @@ func buildDef(spec Spec) *game.CardDef {
 		}
 	}
 	d.Activated = activatedShapes(spec.Activated)
-	if len(spec.ManaAbilities) > 0 {
-		d.ManaAbilities = make([]game.ManaAbilityShape, len(spec.ManaAbilities))
-		for i, a := range spec.ManaAbilities {
-			d.ManaAbilities[i] = game.ManaAbilityShape{
-				TapCost:                   a.Cost.Tap,
-				SacrificeCost:             a.Cost.Sacrifice,
-				SacrificeOther:            a.Cost.SacrificeOther,
-				LifeCost:                  a.Cost.Life,
-				ManaCost:                  a.Cost.Mana,
-				RemoveCounters:            a.Cost.RemoveCounters,
-				AddCounter:                a.Cost.AddCounter,
-				DiscardCards:              a.Cost.DiscardCards,
-				Produced:                  a.Produced,
-				Label:                     a.Label,
-				Exhaust:                   a.Exhaust,
-				Rider:                     a.Rider,
-				NarrowToCommanderIdentity: a.NarrowToCommanderIdentity,
-				Condition:                 a.Condition,
-				ProducedFunc:              a.ProducedFunc,
-				ProducedForPaid:           a.ProducedForPaid,
-				DerivesFromOtherSources:   a.DerivesFromOtherSources,
-				Restrictions:              a.Restrictions,
-				RestrictionsFunc:          a.RestrictionsFunc,
-			}
-		}
-	}
+	d.ManaAbilities = manaShapes(spec.ManaAbilities)
 	// S18 sub-PR 2: the printed keywords become one self-only Layer 6
 	// static, appended after the hand-written ones. Built here, once,
 	// rather than on every layer recompute.
@@ -211,6 +254,24 @@ func standingCastPermissions(in []game.CastPermission) []game.CastPermission {
 	for i := range out {
 		out[i].Scope = game.ScopeStanding
 		out[i].Duration = game.WhileInZoneDuration()
+	}
+	return out
+}
+
+// gatedStandingCastPermissions is standingCastPermissions for a
+// GATED entry (#1314): the same Scope/Duration normalisation, applied
+// to the embedded game.CastPermission of each game.CastPermissionGate
+// rather than to the gate wrapper itself, which carries no Scope or
+// Duration of its own.
+func gatedStandingCastPermissions(in []game.CastPermissionGate) []game.CastPermissionGate {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]game.CastPermissionGate, len(in))
+	copy(out, in)
+	for i := range out {
+		out[i].Permission.Scope = game.ScopeStanding
+		out[i].Permission.Duration = game.WhileInZoneDuration()
 	}
 	return out
 }

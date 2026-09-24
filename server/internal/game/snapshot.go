@@ -61,6 +61,7 @@ package game
 // stated in full and enforced by a predicate instead of a comment.
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -143,6 +144,41 @@ import (
 // "refuse this file if you do not know what phasing is", so the
 // version is it, and the cost is the one v2 and v5 accepted.
 //
+// THE COMPATIBILITY RULE, and what enforces it (#522, ADR 0044
+// decision 7). The paragraphs above are the judgement; these are the
+// tests that make somebody exercise it.
+//
+//   - Within a version, changes are ADDITIVE ONLY: a new key whose zero
+//     value is right for every older file AND whose absence a binary
+//     from before it can live with (the other direction — v2, v5 and
+//     v6 were all bumps for that half alone). Nothing else is.
+//   - A key renamed, removed or retyped, a unit changed, or an existing
+//     key given a new meaning FORCES A BUMP. So does an additive change
+//     that fails either half of the line above.
+//   - testdata/snapshot_shape/v<N>.txt records the on-disk shape of this
+//     version, every JSON path and its type, derived by reflection.
+//     TestSnapshotShapeIsRecorded fails on any difference. An additive
+//     one is recorded in the SAME change by re-running with
+//     -update-shape; a non-additive one cannot be recorded at all under
+//     the old number — -update-shape refuses — so it has to come with a
+//     bump, which writes v<N+1>.txt and freezes v<N>.txt.
+//   - testdata/snapshots/v<N>/ is a frozen set of restore points written
+//     by the binary that introduced version N, and testdata/snapshots/
+//     real/ holds scrubbed ones copied off cmd-dev. FIXTURES ARE NEVER
+//     EDITED OR REGENERATED; a bump adds a directory
+//     (TestWriteSnapshotCorpus) and every older one stays. On every CI
+//     run the corpus test in internal/cards/effects restores each
+//     fixture strictly and fails if any key or value in it is missing
+//     from a fresh capture of the restored game — which is exactly what
+//     a rename looks like to yesterday's file. A bump that migrates an
+//     old shape lists the migrated paths in that test's
+//     corpusMigrations; nothing else excuses a difference.
+//   - A card whose catalog entry lost abilities between the writing and
+//     the reading binary is not a schema question at all: restore flags
+//     it and reports it (abilityShortfallOf), and the corpus fails on it.
+//
+// AGENTS.md ("Snapshot compatibility") has the commands.
+//
 // Restore REFUSES anything it does not recognise rather than guessing.
 // See ErrSchemaTooNew / ErrSchemaUnsupported and ADR 0041 for the
 // version-skew policy this implements.
@@ -192,6 +228,11 @@ var (
 type GameSnapshot struct {
 	Schema int `json:"schema"`
 
+	// turnSeqPresent distinguishes a current pre-game snapshot (Seq is
+	// present and zero) from a pre-ADR-0059 snapshot (Seq is absent).
+	// Decode metadata only; not game state and never written.
+	turnSeqPresent bool
+
 	// TakenAt is when the snapshot was captured, for operator
 	// triage ("how stale is the restore point?"). Not game state.
 	TakenAt time.Time `json:"takenAt"`
@@ -227,6 +268,16 @@ type GameSnapshot struct {
 	StartingSeat      int           `json:"startingSeat"`
 	SplitSecondActive bool          `json:"splitSecondActive"`
 
+	// Outcome is the result of an ended game (ADR 0057 Decision 5):
+	// nil while active and for a table ended by End(). omitempty, so
+	// no schema bump. A restore point is removed once a game ends, so
+	// this matters for fixtures and forensics rather than restarts.
+	Outcome *GameOutcome `json:"outcome,omitempty"`
+	// ActiveSeatLeftPending is ADR 0057 Decision 3's deferred
+	// departure of an active player who lost by an effect
+	// mid-resolution, consumed by the next SBA loss pass.
+	ActiveSeatLeftPending bool `json:"activeSeatLeftPending,omitempty"`
+
 	// StackMeta is a SLICE, not a map: map iteration order is
 	// unspecified and the stack is ordered by Seq anyway. Sorted on
 	// capture so two snapshots of the same state are byte-identical.
@@ -236,6 +287,7 @@ type GameSnapshot struct {
 
 	LoyaltyActivatedThisTurn map[uuid.UUID]bool        `json:"loyaltyActivatedThisTurn,omitempty"`
 	SpellsCastThisTurn       map[uuid.UUID]CastTally   `json:"spellsCastThisTurn,omitempty"`
+	ForetoldThisTurn         map[uuid.UUID]int         `json:"foretoldThisTurn,omitempty"`
 	LandsPlayedThisTurn      map[uuid.UUID]int         `json:"landsPlayedThisTurn,omitempty"`
 	ExtraLandDropsThisTurn   map[uuid.UUID]int         `json:"extraLandDropsThisTurn,omitempty"`
 	DrawnThisTurn            map[uuid.UUID][]uuid.UUID `json:"drawnThisTurn,omitempty"`
@@ -278,6 +330,13 @@ type GameSnapshot struct {
 	EventBatch        uint64            `json:"eventBatch,omitempty"`
 	OncePerBatchFired map[string]uint64 `json:"oncePerBatchFired,omitempty"`
 
+	// ResolutionOpen is Game.resolutionOpen (#1289,
+	// resolution_pause.go): a resolution has begun and the CR 704.3
+	// boundary after it has not run. Read with each choice's
+	// MidResolution. A file written before it restores false, which is
+	// the old behaviour (the boundary is not held). No schema bump.
+	ResolutionOpen bool `json:"resolutionOpen,omitempty"`
+
 	// AnnouncedBlocks / BlockedAttackers are what the block
 	// declaration's lock-in produced (#830, #715, blockers.go): which
 	// blocker has had its EventBlock announced against which
@@ -307,6 +366,23 @@ type GameSnapshot struct {
 	// already carries. No schema bump.
 	AnnouncedAttacks map[uuid.UUID]bool `json:"announcedAttacks,omitempty"`
 
+	// BlocksDeclared is the set of defending players whose CR 509.1
+	// block declaration is complete this combat (#1279,
+	// Game.blocksDeclared). Empty outside the declare-blockers step's
+	// combat, and a file written before it restores as empty — which
+	// reads as "every defender still pending", the conservative
+	// direction: the defender is asked again and ninjutsu waits. No
+	// schema bump.
+	BlocksDeclared map[uuid.UUID]bool `json:"blocksDeclared,omitempty"`
+
+	// AttackDefenders is each attacker's defending player as its
+	// attack was last pointed (#1364, Game.attackDefenders) — what
+	// lets a creature whose planeswalker or battle has left still be
+	// blocked (CR 506.4c). Empty outside combat. A file written
+	// before it restores as empty, which is the old behaviour: such
+	// an attacker cannot be blocked until combat ends. No schema bump.
+	AttackDefenders map[uuid.UUID]uuid.UUID `json:"attackDefenders,omitempty"`
+
 	// FirstStrikeStepParticipants is the CR 510.4 / 702.7c
 	// participation record for the combat damage steps (#716): the
 	// combatants that had first strike or double strike as the first
@@ -327,6 +403,9 @@ type GameSnapshot struct {
 	// LastKnownCounters is lastKnownBattlefield's sibling for a card's
 	// counters (#1218) — see the field doc on game.go.
 	LastKnownCounters map[uuid.UUID]map[string]int `json:"lastKnownCounters,omitempty"`
+	// LastKnownPermanents is CR 608.2h LKI for permanents that left the
+	// battlefield this turn (#1379) — see permanent_lki.go.
+	LastKnownPermanents map[uuid.UUID][]PermanentInfo `json:"lastKnownPermanents,omitempty"`
 
 	RNG               rngSnapshot          `json:"rng"`
 	SourceOrdinals    map[uuid.UUID]uint64 `json:"sourceOrdinals,omitempty"`
@@ -338,6 +417,28 @@ type GameSnapshot struct {
 	// Continuations records what could not be represented. Empty
 	// census == full-fidelity restore point.
 	Continuations ContinuationCensus `json:"continuations"`
+}
+
+// UnmarshalJSON records whether the embedded Turn carried Seq without
+// changing the public snapshot shape. The distinction matters only at
+// zero: a current lobby snapshot legitimately has Seq 0, while an old
+// active-game snapshot has no Seq key and needs the identity backfill.
+func (s *GameSnapshot) UnmarshalJSON(data []byte) error {
+	type snapshotAlias GameSnapshot
+	if err := json.Unmarshal(data, (*snapshotAlias)(s)); err != nil {
+		return err
+	}
+	var envelope struct {
+		Turn map[string]json.RawMessage `json:"turn"`
+	}
+	if err := json.Unmarshal(data, &envelope); err != nil {
+		return err
+	}
+	_, s.turnSeqPresent = envelope.Turn["Seq"]
+	if !s.turnSeqPresent {
+		_, s.turnSeqPresent = envelope.Turn["seq"]
+	}
+	return nil
 }
 
 // playerSnapshot mirrors Player. Player is pure data today; it is
@@ -487,6 +588,8 @@ type cardSnapshot struct {
 	AttachedTo               TargetRef           `json:"attachedTo,omitempty"`
 	AttachedAt               int64               `json:"attachedAt,omitempty"`
 	BaseController           uuid.UUID           `json:"baseController,omitempty"`
+	FaceDownListed           *FaceDownListing    `json:"faceDownListed,omitempty"`
+	FaceTurnedAt             int64               `json:"faceTurnedAt,omitempty"`
 	// NamedTribe is the CR 614.12 "as this enters, choose a creature
 	// type" answer (S26). Carried rather than rebuilt: the choice was
 	// made by a player and nothing in the catalog can re-derive it, so
@@ -525,7 +628,15 @@ type cardSnapshot struct {
 	// Absent in a file written before the field existed, which decodes
 	// as the zero record: "not cast, or cast for its mana cost", the
 	// answer every permanent gave before #653.
-	Provenance CastProvenance `json:"provenance,omitzero"`
+	//
+	// No `omitzero`: `encoding/json` only honours that option from Go
+	// 1.24 (#1492), and CI's pinned 1.22 toolchain — the one that
+	// builds every fixture in testdata/snapshots and every deployed
+	// binary — silently ignores it and always writes the field. A
+	// contributor's newer local toolchain honouring the option is
+	// what produced the divergence; always writing it, on every Go
+	// version, is what removes it.
+	Provenance CastProvenance `json:"provenance"`
 	// ClassLevel is the CR 716.2 level designation and Solved the
 	// CR 719.3 solved designation (ADR 0071 decision 6). Both carried,
 	// for NamedTribe's reason and one more: they are legal zero
@@ -536,10 +647,34 @@ type cardSnapshot struct {
 	// have neither key, and their zero values read correctly as
 	// "level 1, unsolved", which is why snapshot_backfill.go needs no
 	// arm for them.
-	ClassLevel        int       `json:"classLevel,omitempty"`
-	Solved            bool      `json:"solved,omitempty"`
-	StartingDefense   int       `json:"startingDefense,omitempty"`
-	ProtectorPlayerID uuid.UUID `json:"protectorPlayerId,omitempty"`
+	ClassLevel int  `json:"classLevel,omitempty"`
+	Solved     bool `json:"solved,omitempty"`
+	// Harnessed is the CR 701.64 harnessed designation (ADR 0071
+	// amendment, #1321), carried for the same reason as ClassLevel /
+	// Solved: it is a legal zero value, and an old snapshot with no
+	// key decodes as "not harnessed", which is what every game before
+	// this amendment was.
+	Harnessed bool `json:"harnessed,omitempty"`
+	// Prepared, PrepareCopy and PreparedBy are ADR 0090's CR 722.3
+	// state: the designation on the permanent, and the not-a-card
+	// marker and permanent link on the copy it keeps in exile. Carried
+	// for Solved's reason — all three zero values are legal states, so
+	// a restore that dropped them would bring back an unprepared
+	// permanent beside a copy nobody may cast, or a copy that is a
+	// real card — and old snapshots decode as "not prepared, no copy",
+	// which is what every game before ADR 0090 was.
+	Prepared    bool `json:"prepared,omitempty"`
+	PrepareCopy bool `json:"prepareCopy,omitempty"`
+	// No `omitzero` on PreparedBy or HiddenBy below — see Provenance's
+	// comment above (#1492).
+	PreparedBy PermissionCardRef `json:"preparedBy"`
+	// HiddenBy is ADR 0091's hideaway link: the permanent object that
+	// exiled this card face down. Carried because nothing else records
+	// it — a restore that dropped it would leave the card unplayable by
+	// the land that hid it and unreadable by that land's controller.
+	HiddenBy          PermissionCardRef `json:"hiddenBy"`
+	StartingDefense   int               `json:"startingDefense,omitempty"`
+	ProtectorPlayerID uuid.UUID         `json:"protectorPlayerId,omitempty"`
 
 	// The CR 702.26 phased-out status (#1199, ADR 0084). Meaningful
 	// only for a card in GameSnapshot.PhasedOut, and carried for
@@ -555,9 +690,191 @@ type cardSnapshot struct {
 	// ManaAbilityCount / ActivatedAbilityCount record that the card
 	// HAD intrinsic ability closures, so restore can tell the
 	// difference between "none" and "some it must rebuild", and so
-	// the census can name the card.
+	// the census can name the card. Since #522 restore also COMPARES
+	// them against what the catalog handed back — see
+	// abilityShortfallOf.
 	ManaAbilityCount      int `json:"manaAbilityCount,omitempty"`
 	ActivatedAbilityCount int `json:"activatedAbilityCount,omitempty"`
+
+	// CatalogAbilities is the catalog entry this card resolved to at
+	// capture, measured: how many abilities of each kind the capturing
+	// binary's catalog held for it. Present only for a card that HAD an
+	// entry (IsAutoCard), and nil for nearly everything in a library.
+	// It is the other half of the #522 parity check: the instance
+	// counts above exist only for tokens and token copies, because a
+	// printed card reads its abilities from the catalog at use time, so
+	// without this record a card whose entry vanished between two
+	// binaries would come back silently inert.
+	//
+	// Additive, and no schema bump in either direction: a file written
+	// before it has no record and restore checks only the instance
+	// counts, which is what the binary before it did; a binary before
+	// it reading a newer file drops the key and does the same.
+	CatalogAbilities *AbilityCounts `json:"catalogAbilities,omitempty"`
+
+	// AbilitiesLostOnRestore is Card.AbilitiesLostOnRestore. Absent
+	// from every file written before #522, which reads as "not
+	// flagged" — the answer every card gave before the flag existed.
+	// No schema bump: a binary that predates it drops the key and
+	// shows the card as automated again, which is cosmetic, not a
+	// rules change.
+	AbilitiesLostOnRestore bool `json:"abilitiesLostOnRestore,omitempty"`
+}
+
+// AbilityCounts is how many catalog abilities of each kind a card
+// has, by the slot the engine reads them from (#522). It measures a
+// catalog ENTRY, not the card: two binaries can disagree about it, and
+// restore's parity check is where they are compared.
+type AbilityCounts struct {
+	Mana         int `json:"mana,omitempty"`
+	Activated    int `json:"activated,omitempty"`
+	Triggered    int `json:"triggered,omitempty"`
+	Static       int `json:"static,omitempty"`
+	Replacements int `json:"replacements,omitempty"`
+}
+
+// Total is every ability counted.
+func (a AbilityCounts) Total() int {
+	return a.Mana + a.Activated + a.Triggered + a.Static + a.Replacements
+}
+
+// fewerThan reports whether any slot of a is below the same slot of b.
+// A slot ABOVE is not a shortfall: a new build adding abilities to a
+// card is normal (owner decision on #515).
+func (a AbilityCounts) fewerThan(b AbilityCounts) bool {
+	return a.Mana < b.Mana || a.Activated < b.Activated ||
+		a.Triggered < b.Triggered || a.Static < b.Static ||
+		a.Replacements < b.Replacements
+}
+
+// catalogAbilityCounts measures the running binary's catalog entry
+// for key. It reads through the per-slot hooks rather than the
+// CardDef, so a test that stubs one slot is measured the way the
+// engine reads it.
+func catalogAbilityCounts(key string) AbilityCounts {
+	var n AbilityCounts
+	if key == "" {
+		return n
+	}
+	if CatalogManaAbilities != nil {
+		n.Mana = len(CatalogManaAbilities(key))
+	}
+	if CatalogActivatedAbilities != nil {
+		n.Activated = len(CatalogActivatedAbilities(key))
+	}
+	if CatalogTriggers != nil {
+		n.Triggered = len(CatalogTriggers(key))
+	}
+	if CatalogStaticAbilities != nil {
+		n.Static = len(CatalogStaticAbilities(key))
+	}
+	if CatalogReplacements != nil {
+		n.Replacements = len(CatalogReplacements(key))
+	}
+	return n
+}
+
+// AbilityShortfall is one card a restore brought back with fewer
+// catalog abilities than the restore point recorded (#522). Reported
+// by GameSnapshot.AbilityShortfalls and logged at ERROR by the boot
+// restore path; the restored card is flagged AbilitiesLostOnRestore.
+type AbilityShortfall struct {
+	CardID   uuid.UUID
+	Name     string
+	OracleID string
+	TokenKey string
+	Zone     ZoneKind
+	// Captured is what the file recorded: per slot, the larger of the
+	// instance count and the catalog-entry count.
+	Captured AbilityCounts
+	// Restored is what this binary's catalog hands back for the same
+	// key.
+	Restored AbilityCounts
+	// EntryMissing is the sharpest case: the capturing binary had a
+	// catalog entry for the card and this one has none, so a spell
+	// with no abilities at all — a Lightning Bolt — is caught too.
+	EntryMissing bool
+}
+
+// abilityShortfallOf is the #522 parity check for one decoded card:
+// did this binary's catalog hand back at least what the restore point
+// recorded? It is ONE function because restoreCard (which flags the
+// card) and AbilityShortfalls (which reports it) must never disagree
+// about which cards were short.
+//
+// "Recorded" is two measurements. The instance counts
+// (ManaAbilityCount / ActivatedAbilityCount) are the closures a token
+// or token copy carried, which restore re-derives by key; the
+// CatalogAbilities record is the entry a printed card reads at use
+// time. Both are compared against the running catalog under
+// abilityCatalogKey — the key capture measured under — so the two
+// sides ask one question.
+func abilityShortfallOf(c *cardSnapshot) (AbilityShortfall, bool) {
+	captured := AbilityCounts{Mana: c.ManaAbilityCount, Activated: c.ActivatedAbilityCount}
+	hadEntry := c.CatalogAbilities != nil
+	if hadEntry {
+		rec := *c.CatalogAbilities
+		captured.Mana = max(captured.Mana, rec.Mana)
+		captured.Activated = max(captured.Activated, rec.Activated)
+		captured.Triggered = max(captured.Triggered, rec.Triggered)
+		captured.Static = max(captured.Static, rec.Static)
+		captured.Replacements = max(captured.Replacements, rec.Replacements)
+	}
+	if !hadEntry && captured.Total() == 0 {
+		return AbilityShortfall{}, false
+	}
+	key := restoreAbilityKey(c)
+	restored := catalogAbilityCounts(key)
+	entryMissing := hadEntry && !IsAutoCard(key)
+	if !entryMissing && !restored.fewerThan(captured) {
+		return AbilityShortfall{}, false
+	}
+	return AbilityShortfall{
+		CardID:       c.InstanceID,
+		Name:         c.Name,
+		OracleID:     c.OracleID,
+		TokenKey:     c.TokenKey,
+		Captured:     captured,
+		Restored:     restored,
+		EntryMissing: entryMissing,
+	}, true
+}
+
+// AbilityShortfalls lists every card this binary restores with fewer
+// catalog abilities than the snapshot recorded (#522), in zone order:
+// battlefield, stack, exile, phased out, then each seat's library,
+// hand, graveyard, command zone and emblems.
+//
+// Restore flags each of them AbilitiesLostOnRestore through the same
+// check; this is the half the boot path logs. It reads the snapshot
+// and the running catalog and nothing else, so it gives the same
+// answer before or after Restore.
+func (s *GameSnapshot) AbilityShortfalls() []AbilityShortfall {
+	var out []AbilityShortfall
+	walk := func(z *zoneSnapshot) {
+		if z == nil {
+			return
+		}
+		for i := range z.Cards {
+			if sf, ok := abilityShortfallOf(&z.Cards[i]); ok {
+				sf.Zone = z.Kind
+				out = append(out, sf)
+			}
+		}
+	}
+	walk(s.Battlefield)
+	walk(s.Stack)
+	walk(s.Exile)
+	walk(s.PhasedOut)
+	for i := range s.Seats {
+		p := &s.Seats[i]
+		walk(p.Library)
+		walk(p.Hand)
+		walk(p.Graveyard)
+		walk(p.Command)
+		walk(p.Emblems)
+	}
+	return out
 }
 
 // stackItemSnapshot mirrors StackItem. Effect and targetSpec are both
@@ -569,6 +886,7 @@ type stackItemSnapshot struct {
 	Owner         uuid.UUID     `json:"owner"`
 	SourceCardID  uuid.UUID     `json:"sourceCardId"`
 	SourceEpoch   int           `json:"sourceEpoch,omitempty"`
+	SourceObject  *ObjectRef    `json:"sourceObject,omitempty"` // #1418; nil = unstamped
 	Label         string        `json:"label,omitempty"`
 	DoubledBy     uuid.UUID     `json:"doubledBy,omitempty"`
 	DoubledByName string        `json:"doubledByName,omitempty"`
@@ -601,6 +919,7 @@ type stackItemSnapshot struct {
 	IsCopy        bool         `json:"isCopy,omitempty"`
 	Seq           uint64       `json:"seq"`
 	Ordered       bool         `json:"ordered"`
+	Commutes      bool         `json:"commutes,omitempty"` // #1511
 
 	// Paid is what the announcement cost (#789 / #761). Carried: a
 	// restore that lost it would resolve a converge spell for zero
@@ -624,10 +943,12 @@ type delayedTriggerSnapshot struct {
 	ID                 uuid.UUID   `json:"id"`
 	Controller         uuid.UUID   `json:"controller"`
 	SourceCardID       uuid.UUID   `json:"sourceCardId"`
+	SourceObject       *ObjectRef  `json:"sourceObject,omitempty"` // #1418
 	Label              string      `json:"label,omitempty"`
 	At                 Step        `json:"at"`
 	ControllerTurnOnly bool        `json:"controllerTurnOnly"`
-	CreatedTurn        int         `json:"createdTurn"`
+	CreatedSeq         int         `json:"createdSeq,omitempty"`
+	CreatedTurn        int         `json:"createdTurn,omitempty"`
 	Cards              []uuid.UUID `json:"cards,omitempty"`
 	HasEffect          bool        `json:"hasEffect,omitempty"`
 	// #663: the event condition. On and ExpiresAfterTurn are data
@@ -690,14 +1011,19 @@ type pendingChoiceSnapshot struct {
 	SacrificeOptions []uuid.UUID    `json:"sacrificeOptions,omitempty"`
 	CopyOptions      []uuid.UUID    `json:"copyOptions,omitempty"`
 	ScryCards        []uuid.UUID    `json:"scryCards,omitempty"`
-	TriggerOrderIDs  []uuid.UUID    `json:"triggerOrderIds,omitempty"`
-	PayCost          string         `json:"payCost,omitempty"`
-	SearchCards      []uuid.UUID    `json:"searchCards,omitempty"`
-	SearchMax        int            `json:"searchMax"`
-	MayCastCard      uuid.UUID      `json:"mayCastCard,omitempty"`
-	AcceptLabel      string         `json:"acceptLabel,omitempty"`
-	LifeCost         int            `json:"lifeCost,omitempty"`
-	DeclineLabel     string         `json:"declineLabel,omitempty"`
+	// ADR 0088: which lanes a put_in_library answer may use.
+	LibraryPlacement LibraryPlacement `json:"libraryPlacement,omitempty"`
+	// #1298: the put_in_library top lane's exact count and depth.
+	LibraryTopCount int         `json:"libraryTopCount,omitempty"`
+	LibraryTopDepth int         `json:"libraryTopDepth,omitempty"`
+	TriggerOrderIDs []uuid.UUID `json:"triggerOrderIds,omitempty"`
+	PayCost         string      `json:"payCost,omitempty"`
+	SearchCards     []uuid.UUID `json:"searchCards,omitempty"`
+	SearchMax       int         `json:"searchMax"`
+	MayCastCard     uuid.UUID   `json:"mayCastCard,omitempty"`
+	AcceptLabel     string      `json:"acceptLabel,omitempty"`
+	LifeCost        int         `json:"lifeCost,omitempty"`
+	DeclineLabel    string      `json:"declineLabel,omitempty"`
 	// OwedInStep: the step a pay-or-else prompt has to be answered in
 	// (#997). Carried so a restored game gates the same way, cheap
 	// and honest even though every prompt that sets it today also
@@ -722,6 +1048,8 @@ type pendingChoiceSnapshot struct {
 	LoopShortcutKey    string `json:"loopShortcutKey,omitempty"`
 	LoopShortcutCount  int    `json:"loopShortcutCount,omitempty"`
 	LoopShortcutRepeat bool   `json:"loopShortcutRepeat,omitempty"`
+	// MidResolution is PendingChoice.midResolution (#1289).
+	MidResolution bool `json:"midResolution,omitempty"`
 
 	// ResumeFrames names the continuation slots that were populated.
 	// Diagnostic only — nothing rebuilds them in this schema.
@@ -916,25 +1244,31 @@ func (g *Game) CaptureSnapshot() *GameSnapshot {
 // captureSnapshotLocked is the unlocked variant. Caller must hold g.mu.
 func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	s := &GameSnapshot{
-		Schema:            SnapshotSchemaVersion,
-		TakenAt:           time.Now().UTC(),
-		ID:                g.ID,
-		CreatedAt:         g.CreatedAt,
-		State:             g.State,
-		Turn:              g.Turn,
-		MulligansOpen:     g.MulligansOpen,
-		Monarch:           g.Monarch,
-		Initiative:        g.Initiative,
-		Settings:          g.Settings,
-		StartingSeat:      g.StartingSeat,
-		SplitSecondActive: g.SplitSecondActive,
-		EventSeq:          g.eventSeq,
-		EventBatch:        g.eventBatch,
+		Schema:                SnapshotSchemaVersion,
+		TakenAt:               time.Now().UTC(),
+		ID:                    g.ID,
+		CreatedAt:             g.CreatedAt,
+		State:                 g.State,
+		Turn:                  g.Turn,
+		MulligansOpen:         g.MulligansOpen,
+		Monarch:               g.Monarch,
+		Initiative:            g.Initiative,
+		Settings:              g.Settings,
+		StartingSeat:          g.StartingSeat,
+		SplitSecondActive:     g.SplitSecondActive,
+		Outcome:               cloneGameOutcome(g.Outcome),
+		EventSeq:              g.eventSeq,
+		EventBatch:            g.eventBatch,
+		ResolutionOpen:        g.resolutionOpen,
+		ActiveSeatLeftPending: g.ActiveSeatLeftPending,
+		turnSeqPresent:        true,
 	}
 	s.OncePerBatchFired = copyStringUint64Map(g.oncePerBatchFired)
 	s.AnnouncedBlocks = copyUUIDPairMap(g.announcedBlocks)
 	s.BlockedAttackers = copyBoolMap(g.blockedAttackers)
 	s.AnnouncedAttacks = copyBoolMap(g.announcedAttacks)
+	s.AttackDefenders = copyUUIDPairMap(g.attackDefenders)
+	s.BlocksDeclared = copyBoolMap(g.blocksDeclared)
 	s.FirstStrikeStepParticipants = copyBoolMap(g.firstStrikeStepParticipants)
 	cen := &s.Continuations
 
@@ -980,6 +1314,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 
 	s.LoyaltyActivatedThisTurn = copyBoolMap(g.LoyaltyActivatedThisTurn)
 	s.SpellsCastThisTurn = copyTallyMap(g.SpellsCastThisTurn)
+	s.ForetoldThisTurn = copyIntMap(g.ForetoldThisTurn)
 	s.LandsPlayedThisTurn = copyIntMap(g.LandsPlayedThisTurn)
 	s.ExtraLandDropsThisTurn = copyIntMap(g.ExtraLandDropsThisTurn)
 	s.DrawnThisTurn = copyUUIDListMap(g.DrawnThisTurn)
@@ -1039,6 +1374,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 			s.LastKnownCounters[k] = copyStringIntMap(v)
 		}
 	}
+	s.LastKnownPermanents = cloneLastKnownPermanents(g.lastKnownPermanents)
 
 	// Turn-scoped registries: entirely closure-bearing, so only the
 	// census and the labels survive. Dropping a Fog silently would be
@@ -1211,6 +1547,8 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		RegenerationShields:      c.RegenerationShields,
 		FaceDown:                 c.FaceDown,
 		FaceDownKind:             c.FaceDownKind,
+		FaceDownListed:           c.FaceDownListed.clone(),
+		FaceTurnedAt:             c.FaceTurnedAt,
 		KnownBy:                  copyBoolMap(c.KnownBy),
 		EnteredBattlefieldAt:     c.EnteredBattlefieldAt,
 		ObjectEpoch:              c.ObjectEpoch,
@@ -1228,6 +1566,11 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ChosenName:               c.ChosenName,
 		ClassLevel:               c.ClassLevel,
 		Solved:                   c.Solved,
+		Harnessed:                c.Harnessed,
+		Prepared:                 c.Prepared,
+		PrepareCopy:              c.PrepareCopy,
+		PreparedBy:               c.PreparedBy,
+		HiddenBy:                 c.HiddenBy,
 		PhasedOutBy:              c.PhasedOutBy,
 		PhaseInLockedBy:          c.PhaseInLockedBy,
 		PhasedOutIndirect:        c.PhasedOutIndirect,
@@ -1236,6 +1579,13 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ProtectorPlayerID:        c.ProtectorPlayerID,
 		ManaAbilityCount:         len(c.ManaAbilities),
 		ActivatedAbilityCount:    len(c.ActivatedAbilities),
+		AbilitiesLostOnRestore:   c.AbilitiesLostOnRestore,
+	}
+	// #522: measure the catalog entry this card resolves to, so the
+	// binary that restores the file can tell whether it still has it.
+	if key := abilityCatalogKey(c.OracleID, c.TokenKey); IsAutoCard(key) {
+		counts := catalogAbilityCounts(key)
+		out.CatalogAbilities = &counts
 	}
 	// Intrinsic ability closures, censused only when the registry
 	// cannot give them back (#521). See intrinsicAbilitiesLost.
@@ -1306,6 +1656,7 @@ func snapshotStackItem(g *Game, s *StackItem, cen *ContinuationCensus) stackItem
 		Owner:         s.Owner,
 		SourceCardID:  s.SourceCardID,
 		SourceEpoch:   s.SourceEpoch,
+		SourceObject:  s.SourceObject.stamped(),
 		Label:         s.Label,
 		DoubledBy:     s.DoubledBy,
 		DoubledByName: s.DoubledByName,
@@ -1325,6 +1676,7 @@ func snapshotStackItem(g *Game, s *StackItem, cen *ContinuationCensus) stackItem
 		IsCopy:        s.IsCopy,
 		Seq:           s.Seq,
 		Ordered:       s.Ordered,
+		Commutes:      s.Commutes,
 		Paid:          clonePaidCost(s.Paid),
 		HasEffect:     s.Effect != nil,
 		HasTargetSpec: s.targetSpec != nil,
@@ -1378,10 +1730,11 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 		ID:                 d.ID,
 		Controller:         d.Controller,
 		SourceCardID:       d.SourceCardID,
+		SourceObject:       d.SourceObject.stamped(),
 		Label:              d.Label,
 		At:                 d.At,
 		ControllerTurnOnly: d.ControllerTurnOnly,
-		CreatedTurn:        d.CreatedTurn,
+		CreatedSeq:         d.CreatedSeq,
 		HasEffect:          d.Effect != nil,
 	}
 	if d.Duration != nil {
@@ -1439,6 +1792,9 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		SacrificeOptions:     copyUUIDs(c.SacrificeOptions),
 		CopyOptions:          copyUUIDs(c.CopyOptions),
 		ScryCards:            copyUUIDs(c.ScryCards),
+		LibraryPlacement:     c.LibraryPlacement,
+		LibraryTopCount:      c.LibraryTopCount,
+		LibraryTopDepth:      c.LibraryTopDepth,
 		TriggerOrderIDs:      copyUUIDs(c.TriggerOrderIDs),
 		PayCost:              c.PayCost,
 		SearchCards:          copyUUIDs(c.SearchCards),
@@ -1456,6 +1812,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		LoopShortcutKey:      c.LoopShortcutKey,
 		LoopShortcutCount:    c.LoopShortcutCount,
 		LoopShortcutRepeat:   c.LoopShortcutRepeat,
+		MidResolution:        c.midResolution,
 	}
 	if c.DamageAssignment != nil {
 		// Pure data (see the type), so a value copy with its own
@@ -1468,13 +1825,20 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 	// The continuation slots, one by one. Each is a paused effect.
 	for name, present := range map[string]bool{
 		"replacementResume": c.replacementResume != nil,
-		"pickTargetResume":  c.pickTargetResume != nil,
-		"copyResume":        c.copyResume != nil,
-		"triggerResume":     c.triggerResume != nil,
-		"payUnlessResume":   c.payUnlessResume != nil,
-		"mayCastResume":     c.mayCastResume != nil,
-		"searchResume":      c.searchResume != nil,
-		"scryResume":        c.scryResume != nil,
+		// #1397: a parked cost announcement waiting on a commander's
+		// owner. Dropping it drops the announcement, not half of it —
+		// nothing was paid — but the census still says so.
+		"costCommanderResume": c.costCommanderResume != nil,
+		"pickTargetResume":    c.pickTargetResume != nil,
+		"copyResume":          c.copyResume != nil,
+		"triggerResume":       c.triggerResume != nil,
+		"payUnlessResume":     c.payUnlessResume != nil,
+		"mayCastResume":       c.mayCastResume != nil,
+		"searchResume":        c.searchResume != nil,
+		"scryResume":          c.scryResume != nil,
+		// ADR 0088's ordered placement: handed the answer, then
+		// places the pile and runs the rest of the card.
+		"libraryOrderResume": c.libraryOrderResume != nil,
 		// The two chained-choice frames. A chain link is a
 		// continuation like any other, and an entry missing here
 		// would let the server write a restore point that silently
@@ -1593,6 +1957,14 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.CreatedAt = s.CreatedAt
 	g.State = s.State
 	g.Turn = s.Turn
+	legacyTurnIdentity := g.Turn.Seq == 0 && !s.turnSeqPresent
+	if legacyTurnIdentity {
+		// ADR 0059 deliberately keeps the legacy snapshot key "Number"
+		// for Round. Old files have no Seq, so rebuild the monotone turn
+		// identity from the RNG index they already used.
+		g.Turn.Seq = g.Turn.Round*MaxPlayers + g.Turn.ActiveSeat
+		g.Turn.OrderSeat = g.Turn.ActiveSeat
+	}
 	g.MulligansOpen = s.MulligansOpen
 	g.Monarch = s.Monarch
 	g.Initiative = s.Initiative
@@ -1602,12 +1974,17 @@ func (s *GameSnapshot) restoreGame() *Game {
 	}
 	g.StartingSeat = s.StartingSeat
 	g.SplitSecondActive = s.SplitSecondActive
+	g.Outcome = cloneGameOutcome(s.Outcome)
+	g.ActiveSeatLeftPending = s.ActiveSeatLeftPending
 	g.eventSeq = s.EventSeq
 	g.eventBatch = s.EventBatch
+	g.resolutionOpen = s.ResolutionOpen
 	g.oncePerBatchFired = copyStringUint64Map(s.OncePerBatchFired)
 	g.announcedBlocks = copyUUIDPairMap(s.AnnouncedBlocks)
 	g.blockedAttackers = copyBoolMap(s.BlockedAttackers)
 	g.announcedAttacks = copyBoolMap(s.AnnouncedAttacks)
+	g.attackDefenders = copyUUIDPairMap(s.AttackDefenders)
+	g.blocksDeclared = copyBoolMap(s.BlocksDeclared)
 	g.firstStrikeStepParticipants = copyBoolMap(s.FirstStrikeStepParticipants)
 
 	g.Battlefield = restoreZone(s.Battlefield, ZoneBattlefield)
@@ -1618,6 +1995,27 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.Seats = make([]*Player, len(s.Seats))
 	for i := range s.Seats {
 		g.Seats[i] = restorePlayer(&s.Seats[i])
+	}
+	if legacyTurnIdentity {
+		for seat, p := range g.Seats {
+			if p == nil {
+				continue
+			}
+			p.TurnsBegun = g.Turn.Round
+			if seat > g.Turn.ActiveSeat {
+				p.TurnsBegun--
+			}
+			if p.TurnsBegun < 0 {
+				p.TurnsBegun = 0
+			}
+			for i := range p.CastPermissions {
+				perm := &p.CastPermissions[i]
+				if perm.NotBeforeSeq == 0 && perm.LegacyNotBeforeTurn > g.Turn.Round {
+					perm.NotBeforeSeq = perm.LegacyNotBeforeTurn * MaxPlayers
+				}
+				perm.LegacyNotBeforeTurn = 0
+			}
+		}
 	}
 
 	if len(s.StackMeta) > 0 {
@@ -1637,11 +2035,15 @@ func (s *GameSnapshot) restoreGame() *Game {
 		g.DelayedTriggers = make([]*DelayedTrigger, len(s.DelayedTriggers))
 		for i := range s.DelayedTriggers {
 			g.DelayedTriggers[i] = restoreDelayedTrigger(&s.DelayedTriggers[i])
+			if legacyTurnIdentity && g.DelayedTriggers[i].CreatedSeq == 0 {
+				g.DelayedTriggers[i].CreatedSeq = s.DelayedTriggers[i].CreatedTurn * MaxPlayers
+			}
 		}
 	}
 
 	g.LoyaltyActivatedThisTurn = copyBoolMap(s.LoyaltyActivatedThisTurn)
 	g.SpellsCastThisTurn = copyTallyMap(s.SpellsCastThisTurn)
+	g.ForetoldThisTurn = copyIntMap(s.ForetoldThisTurn)
 	g.TurnTally = cloneTurnTally(s.TurnTally)
 	g.Activations = cloneActivationTally(s.Activations)
 	g.LoopNotice = cloneLoopNotice(s.LoopNotice)
@@ -1692,6 +2094,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 			g.lastKnownCounters[k] = copyStringIntMap(v)
 		}
 	}
+	g.lastKnownPermanents = cloneLastKnownPermanents(s.LastKnownPermanents)
 
 	restoreRNG(g, s.RNG)
 	g.sourceOrdinals = cloneSourceOrdinals(s.SourceOrdinals)
@@ -1789,6 +2192,8 @@ func restoreCard(c *cardSnapshot) Card {
 		RegenerationShields:      c.RegenerationShields,
 		FaceDown:                 c.FaceDown,
 		FaceDownKind:             c.FaceDownKind,
+		FaceDownListed:           c.FaceDownListed.clone(),
+		FaceTurnedAt:             c.FaceTurnedAt,
 		KnownBy:                  copyBoolMap(c.KnownBy),
 		EnteredBattlefieldAt:     c.EnteredBattlefieldAt,
 		ObjectEpoch:              c.ObjectEpoch,
@@ -1806,12 +2211,26 @@ func restoreCard(c *cardSnapshot) Card {
 		ChosenName:               c.ChosenName,
 		ClassLevel:               c.ClassLevel,
 		Solved:                   c.Solved,
+		Harnessed:                c.Harnessed,
+		Prepared:                 c.Prepared,
+		PrepareCopy:              c.PrepareCopy,
+		PreparedBy:               c.PreparedBy,
+		HiddenBy:                 c.HiddenBy,
 		PhasedOutBy:              c.PhasedOutBy,
 		PhaseInLockedBy:          c.PhaseInLockedBy,
 		PhasedOutIndirect:        c.PhasedOutIndirect,
 		TapOnPhaseIn:             c.TapOnPhaseIn,
 		StartingDefense:          c.StartingDefense,
 		ProtectorPlayerID:        c.ProtectorPlayerID,
+		AbilitiesLostOnRestore:   c.AbilitiesLostOnRestore,
+	}
+	// #522: the parity check. A card this binary's catalog hands back
+	// fewer abilities for than the file recorded is restored anyway
+	// and flagged, for the rest of the game, as not automated. The
+	// report half is GameSnapshot.AbilityShortfalls, through the same
+	// function.
+	if _, short := abilityShortfallOf(c); short {
+		out.AbilitiesLostOnRestore = true
 	}
 	if c.VariableToughness != nil {
 		out.VariableToughness = *c.VariableToughness
@@ -1935,6 +2354,7 @@ func restoreStackItem(s *stackItemSnapshot) *StackItem {
 		Owner:         s.Owner,
 		SourceCardID:  s.SourceCardID,
 		SourceEpoch:   s.SourceEpoch,
+		SourceObject:  s.SourceObject.value(),
 		Label:         s.Label,
 		DoubledBy:     s.DoubledBy,
 		DoubledByName: s.DoubledByName,
@@ -1954,6 +2374,7 @@ func restoreStackItem(s *stackItemSnapshot) *StackItem {
 		IsCopy:        s.IsCopy,
 		Seq:           s.Seq,
 		Ordered:       s.Ordered,
+		Commutes:      s.Commutes,
 		Paid:          clonePaidCost(s.Paid),
 		// Effect stays nil. A SPELL does not need one — resolution
 		// dispatches through EffectResolver by oracle ID — but an
@@ -1962,7 +2383,13 @@ func restoreStackItem(s *stackItemSnapshot) *StackItem {
 		// restore point.
 	}
 	if s.HasTargetSpec && spellSpecRederivable(*s) {
-		out.targetSpec = CatalogTargetSpec(s.OracleID)
+		// The clause the spell was ANNOUNCED under, not the printed
+		// one: an alternative cost (cleave) or a paid optional cost
+		// (a promised gift, ADR 0089 §3) may have rewritten it, and
+		// both are recorded on the item. castTargetSpecForItem is the
+		// one function that applies both rewrites, in the order the
+		// announce path does.
+		out.targetSpec = castTargetSpecForItem(s.OracleID, out)
 	}
 	if s.HasModeSpec && s.Kind == StackItemSpell && s.OracleID != "" && CatalogModeSpec != nil {
 		out.modeSpec = CatalogModeSpec(s.OracleID)
@@ -1975,10 +2402,11 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 		ID:                 d.ID,
 		Controller:         d.Controller,
 		SourceCardID:       d.SourceCardID,
+		SourceObject:       d.SourceObject.value(),
 		Label:              d.Label,
 		At:                 d.At,
 		ControllerTurnOnly: d.ControllerTurnOnly,
-		CreatedTurn:        d.CreatedTurn,
+		CreatedSeq:         d.CreatedSeq,
 		// Effect, AppliesTo and Optional stay nil; see the census.
 	}
 	if d.Duration != nil {
@@ -2032,6 +2460,9 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		SacrificeOptions:     copyUUIDs(c.SacrificeOptions),
 		CopyOptions:          copyUUIDs(c.CopyOptions),
 		ScryCards:            copyUUIDs(c.ScryCards),
+		LibraryPlacement:     c.LibraryPlacement,
+		LibraryTopCount:      c.LibraryTopCount,
+		LibraryTopDepth:      c.LibraryTopDepth,
 		TriggerOrderIDs:      copyUUIDs(c.TriggerOrderIDs),
 		PayCost:              c.PayCost,
 		SearchCards:          copyUUIDs(c.SearchCards),
@@ -2049,6 +2480,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		LoopShortcutKey:      c.LoopShortcutKey,
 		LoopShortcutCount:    c.LoopShortcutCount,
 		LoopShortcutRepeat:   c.LoopShortcutRepeat,
+		midResolution:        c.MidResolution,
 		// Every resume frame stays nil. This is the phase-1 line in
 		// the sand, and the census is how it is enforced rather than
 		// hoped for.
@@ -2127,6 +2559,9 @@ func copyCharacteristic(in *Characteristic) *Characteristic {
 	out.Supertypes = copyStrings(in.Supertypes)
 	out.Colors = copyStrings(in.Colors)
 	out.Abilities = copyStrings(in.Abilities)
+	if len(in.GrantedAbilities) > 0 {
+		out.GrantedAbilities = append([]GrantedAbility(nil), in.GrantedAbilities...)
+	}
 	return &out
 }
 

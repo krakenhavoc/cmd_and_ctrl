@@ -14,7 +14,7 @@ import (
 // What is here is the engine's own notion of a PRODUCTION: one CR 614
 // window per batch of mana about to reach a pool, opened at all four
 // production sites, carrying the colours rather than a bare count, and
-// never able to pause (CR 605.3a).
+// never able to pause (CR 605.3b).
 
 // manaProducedReplacement is "if <owner> taps a permanent for mana, it
 // produces `times` as much of that mana instead" as a test injection.
@@ -186,7 +186,7 @@ func TestTwoManaDoublersCompose(t *testing.T) {
 	}
 	for _, c := range g.PendingChoices {
 		if c != nil && c.Kind == PendingChoiceReplacementOrder {
-			t.Fatalf("a mana production must never queue a CR 616 ordering prompt (CR 605.3a)")
+			t.Fatalf("a mana production must never queue a CR 616 ordering prompt (CR 605.3b)")
 		}
 	}
 }

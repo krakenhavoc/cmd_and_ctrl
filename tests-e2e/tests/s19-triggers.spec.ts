@@ -115,8 +115,22 @@ test.describe("S19 ETB triggers", () => {
     // The stack overlay shows the trigger to both seats.
     // (The overlay renders the label twice — fallback art + title —
     // so anchor on the first match.)
-    await expect(caster.page.getByText(/Mulldrifter — draw two cards/i).first()).toBeVisible();
-    await expect(opponent.page.getByText(/Mulldrifter — draw two cards/i).first()).toBeVisible();
+    //
+    // 20s, not the project's 10s default (#1468): this assertion
+    // reads the OPPONENT's own browser, whose WS broadcast is a hop
+    // behind the admin snapshot we already confirmed the trigger
+    // against above — the same cross-socket lag waitForPickTarget
+    // documents higher up in this file, observed as a full 10s under
+    // load on the shared self-hosted runner. Waiting longer, not
+    // sleeping: this is still a polling `toBeVisible`, so a genuinely
+    // stuck broadcast still fails, just past a bound that survives
+    // load instead of racing it.
+    await expect(caster.page.getByText(/Mulldrifter — draw two cards/i).first()).toBeVisible({
+      timeout: 20_000,
+    });
+    await expect(
+      opponent.page.getByText(/Mulldrifter — draw two cards/i).first(),
+    ).toBeVisible({ timeout: 20_000 });
 
     await resolveStack(setup);
 

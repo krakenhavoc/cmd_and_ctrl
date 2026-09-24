@@ -189,6 +189,7 @@ var keywordTable = map[string]float64{
 	"fear":              0.80,
 	"intimidate":        0.80,
 	"horsemanship":      1.20,
+	"prowess":           0.40, // #706: low (the table can't see the spells in hand); counted per instance, CR 702.108b
 	"defender":          -1.50,
 	"decayed":           -0.80,
 	"cumulative upkeep": -0.60,
@@ -236,6 +237,14 @@ type SeatEval struct {
 	Hand       int
 	Library    int
 	Eliminated bool
+
+	// CantLoseLife is true while 0 or less life can't make this seat
+	// lose the game (PlayerView.cant_lose includes "life" — a
+	// Platinum Angel, a Herald of Eternal Dawn, an opponent's Abyssal
+	// Persecutor). ADR 0057 Decision 6: every life clock skips or
+	// clamps it — a seat damage can't finish is not a lethal target,
+	// is not hopeless, and is not in more danger at −10 than at 0.
+	CantLoseLife bool
 
 	// Creatures is the creature portion of Board; Board is every
 	// permanent this seat controls.
@@ -653,12 +662,13 @@ func (w Weights) Evaluate(v protocol.GameView) map[string]*SeatEval {
 	for i := range v.Seats {
 		s := &v.Seats[i]
 		out[s.ID] = &SeatEval{
-			ID:         s.ID,
-			Seat:       s.Seat,
-			Life:       s.Life,
-			Hand:       s.Hand.Count,
-			Library:    s.Library.Count,
-			Eliminated: s.Eliminated,
+			ID:           s.ID,
+			Seat:         s.Seat,
+			Life:         s.Life,
+			Hand:         s.Hand.Count,
+			Library:      s.Library.Count,
+			Eliminated:   s.Eliminated,
+			CantLoseLife: cantLoseTo(s, "life"),
 		}
 	}
 	ix := newAttachIndex(v.Battlefield.Cards)
@@ -691,14 +701,34 @@ func (w Weights) Evaluate(v protocol.GameView) map[string]*SeatEval {
 		for _, n := range s.CommanderCasts {
 			tax += float64(n)
 		}
+		// ADR 0057 Decision 6: the danger penalty is clamped at 0 life
+		// for a seat that can't lose to it. Otherwise the squared term
+		// keeps growing on a player it can't hurt, and a bot behind its
+		// own Platinum Angel plays as if it were losing.
+		danger := e.Life
+		if e.CantLoseLife && danger < 0 {
+			danger = 0
+		}
 		e.Strength = e.Board +
 			w.Life*float64(e.Life) +
 			w.Hand*float64(e.Hand) +
 			w.Library*float64(e.Library) -
 			w.CommanderTax*tax -
-			w.lifeDanger(e.Life)
+			w.lifeDanger(danger)
 	}
 	return out
+}
+
+// cantLoseTo reports whether a seat's PlayerView.cant_lose names
+// `cause` — whether that clock can finish them right now (ADR 0057
+// Decision 6).
+func cantLoseTo(s *protocol.PlayerView, cause string) bool {
+	for _, c := range s.CantLose {
+		if c == cause {
+			return true
+		}
+	}
+	return false
 }
 
 // eliminatedStrength is the standing of a seat that is out of the

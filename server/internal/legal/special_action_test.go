@@ -250,3 +250,155 @@ func TestTheSuspendFreeCastIsEnumeratedOutsideAMainPhase(t *testing.T) {
 	}
 	dispatchAll(t, g, active.ID, moves)
 }
+
+// withCostModifiers stubs the CR 601.2f catalog hook for one test.
+func withCostModifiers(t *testing.T, oracle string, mods []game.CostModifier) {
+	t.Helper()
+	prev := game.CatalogCostModifiers
+	game.CatalogCostModifiers = func(id string) []game.CostModifier {
+		if id != oracle {
+			return nil
+		}
+		return mods
+	}
+	t.Cleanup(func() { game.CatalogCostModifiers = prev })
+}
+
+// ranarStyleForetellDiscount is a CostModifier in Ranar the
+// Ever-Watchful's shape: "the first card you foretell each turn costs
+// {0} to foretell" (#1319).
+func ranarStyleForetellDiscount() game.CostModifier {
+	return game.CostModifier{
+		Kind:           game.CostReduction,
+		SpecialActions: true,
+		Label:          "The first card you foretell each turn costs {0} to foretell.",
+		AppliesTo: func(q game.CostQuery) bool {
+			return q.SpecialAction != nil && q.SpecialAction.Kind == game.SpecialActionForetell &&
+				q.Game.ForetoldCountThisTurn(q.Controller) == 0
+		},
+		Amount: func(game.CostQuery) int { return 2 },
+	}
+}
+
+// #1319: the enumerator prices a special action through the same
+// CR 601.2f pass the engine charges with, so a discount that empties
+// the cost out entirely offers the move to a seat with no mana at
+// all — #544's invariant, the special-action verb over.
+func TestForetellIsEnumeratedWhenACostModifierMakesItFree(t *testing.T) {
+	const cardOracle = "legal-foretell-discount-card"
+	const sourceOracle = "legal-foretell-discount-source"
+	g := newTable(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	clearHand(active)
+	withSpecialActions(t, cardOracle, []game.SpecialAction{{
+		Kind: game.SpecialActionForetell, Cost: "{2}", CastCost: "{1}{U}", Label: "Foretell {2}",
+	}})
+	withCostModifiers(t, sourceOracle, []game.CostModifier{ranarStyleForetellDiscount()})
+	card := handCard(active, foretellCard(cardOracle))
+	battlefieldCard(g, active, game.Card{Name: "Ranar the Ever-Watchful", TypeLine: "Legendary Creature — Spirit Warrior", OracleID: sourceOracle})
+	advanceTo(t, g, game.StepPrecombatMain)
+
+	// No land on the board at all: the {2} would refuse this move
+	// without the discount.
+	acts := specialActionsOf(legal.EnumerateFor(g, active.ID), card)
+	if len(acts) != 1 {
+		t.Fatalf("with the discount and no mana: want the foretell move offered, got %v",
+			labels(legal.EnumerateFor(g, active.ID)))
+	}
+	dispatchAll(t, g, active.ID, legal.EnumerateFor(g, active.ID))
+}
+
+// #1319's partition: a modifier written as an ordinary spell
+// reduction must never reach a special action, in either direction —
+// the same rule TestACastModifierDoesNotPriceAnActivation pins for
+// activations, one door over.
+func TestASpellCostModifierDoesNotMakeForetellFree(t *testing.T) {
+	const cardOracle = "legal-foretell-nodiscount-card"
+	const sourceOracle = "legal-foretell-nodiscount-source"
+	g := newTable(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	clearHand(active)
+	withSpecialActions(t, cardOracle, []game.SpecialAction{{
+		Kind: game.SpecialActionForetell, Cost: "{2}", CastCost: "{1}{U}", Label: "Foretell {2}",
+	}})
+	withCostModifiers(t, sourceOracle, []game.CostModifier{{
+		Kind:   game.CostReduction,
+		Label:  "Spells you cast cost {2} less to cast.",
+		Amount: func(game.CostQuery) int { return 2 },
+	}})
+	card := handCard(active, foretellCard(cardOracle))
+	battlefieldCard(g, active, game.Card{Name: "Goblin Electromancer", TypeLine: "Creature — Goblin Wizard", OracleID: sourceOracle})
+	advanceTo(t, g, game.StepPrecombatMain)
+
+	// No land on the board: a spell-shaped reduction must not reach
+	// the foretell special action, so the {2} is still unaffordable.
+	if acts := specialActionsOf(legal.EnumerateFor(g, active.ID), card); len(acts) != 0 {
+		t.Fatalf("a spell cost modifier discounted a foretell: %v", labels(legal.EnumerateFor(g, active.ID)))
+	}
+}
+
+// #1342 / CR 702.170a: plot is enumerated in its owner's main phase
+// with the stack empty, when the plot cost is payable — and not in
+// combat, not to another seat. The move the enumerator offers is one
+// the dispatcher accepts, and the plotted card's free cast is
+// enumerated on a later turn with no mana at all.
+func TestPlotIsEnumeratedInYourMainPhaseAndItsFreeCastLater(t *testing.T) {
+	const oracle = "legal-plot-oracle"
+	seed := func(t *testing.T, step game.Step) (*game.Game, *game.Player, uuid.UUID) {
+		t.Helper()
+		g := newTable(t)
+		active := g.Seats[g.Turn.ActiveSeat]
+		clearHand(active)
+		withSpecialActions(t, oracle, []game.SpecialAction{{
+			Kind: game.SpecialActionPlot, Cost: "{U}", Label: "Plot {U}",
+		}})
+		card := handCard(active, game.Card{
+			Name:     "Djinn of Fool's Fall",
+			TypeLine: "Creature — Djinn",
+			ManaCost: "{4}{U}",
+			Power:    4,
+			OracleID: oracle,
+		})
+		battlefieldCard(g, active, basic("Island", "Island"))
+		advanceTo(t, g, step)
+		return g, active, card
+	}
+
+	g, active, card := seed(t, game.StepBeginCombat)
+	if acts := specialActionsOf(legal.EnumerateFor(g, active.ID), card); len(acts) != 0 {
+		t.Errorf("plot offered in combat: %v", labels(acts))
+	}
+
+	g, active, card = seed(t, game.StepPrecombatMain)
+	for _, p := range g.Seats {
+		if p.ID == active.ID {
+			continue
+		}
+		if acts := specialActionsOf(legal.EnumerateFor(g, p.ID), card); len(acts) != 0 {
+			t.Errorf("plot offered to a seat that does not hold the card: %v", labels(acts))
+		}
+	}
+	moves := legal.EnumerateFor(g, active.ID)
+	acts := specialActionsOf(moves, card)
+	if len(acts) != 1 {
+		t.Fatalf("a main phase with {U} available: want one plot move, got %v", labels(acts))
+	}
+	if acts[0].Label != "Plot {U} Djinn of Fool's Fall" {
+		t.Errorf("plot move label = %q", acts[0].Label)
+	}
+	if err := g.PerformSpecialAction(active.ID, card, game.SpecialActionPlot, game.SpecialActionParams{Strict: true, AutoTap: true}); err != nil {
+		t.Fatalf("plot: %v", err)
+	}
+	if n := len(movesOfKindFor(legal.EnumerateFor(g, active.ID), legal.KindCast, card)); n != 0 {
+		t.Errorf("the plotted card is offered for casting on the turn it was plotted (%d moves)", n)
+	}
+
+	// A later turn of the same seat. The land stays tapped, so the
+	// only way the cast can be offered is for free.
+	g.WithWriteLock(func() { g.Turn.Seq++ })
+	moves = legal.EnumerateFor(g, active.ID)
+	if n := len(movesOfKindFor(moves, legal.KindCast, card)); n == 0 {
+		t.Fatalf("the plotted card's free cast is not enumerated on a later turn; moves = %v", labels(moves))
+	}
+	dispatchAll(t, g, active.ID, moves)
+}

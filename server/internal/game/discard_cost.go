@@ -202,11 +202,12 @@ func (g *Game) findHandCardLocked(p *Player, id uuid.UUID) *Card {
 // convention EventDiscardCard and EventCast already use.
 //
 // Caller must hold g.mu.
-func (g *Game) payAbilityDiscardsLocked(playerID, sourceID uuid.UUID, ab ActivatedAbilityShape, cards []uuid.UUID) error {
+func (g *Game) payAbilityDiscardsLocked(playerID, sourceID uuid.UUID, ab ActivatedAbilityShape, cards []uuid.UUID, answers map[uuid.UUID]bool) error {
 	if len(cards) > 0 {
 		if err := g.discardCardsLocked(playerID, cards, discardOptions{
-			cause:  DiscardCauseCost,
-			source: sourceID,
+			cause:            DiscardCauseCost,
+			source:           sourceID,
+			commanderAnswers: answers,
 		}); err != nil {
 			return err
 		}

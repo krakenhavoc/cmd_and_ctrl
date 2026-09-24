@@ -38,7 +38,7 @@ func DurationUntilEndOfTurn(ctx *Context) game.Duration {
 
 // DurationUntilYourNextTurn is "until <player>'s next turn"
 // (CR 611.2b). The effect ends as that player's next turn begins,
-// before anything untaps (CR 500.1, CR 502.1) — and, if that player
+// before anything untaps (CR 500.1, CR 502.3) — and, if that player
 // has left the game by then, at the moment their turn would have
 // begun (CR 800.4m).
 func DurationUntilYourNextTurn(ctx *Context, player uuid.UUID) game.Duration {
@@ -55,8 +55,15 @@ func DurationUntilYourNextTurn(ctx *Context, player uuid.UUID) game.Duration {
 // recompute.
 //
 // The condition is keyed on the source as the object it is NOW, so a
-// Sower flickered in response hands the creature back (CR 400.7).
+// Sower that leaves later — flickered, even — hands the creature back
+// (CR 400.7). One that left and came back BEFORE its trigger resolved
+// is not the Sower the trigger names, and nothing is taken at all.
 func DurationWhileSourceRemains(ctx *Context, source uuid.UUID) (game.Duration, bool) {
+	// #1432: a source that left and came back while the ability
+	// waited is not the object "~" names, so the effect never begins.
+	if ctx.isNewSourceObjectAsThis(source) {
+		return game.Duration{}, false
+	}
 	return ctx.Game.ForAsLongAsOnBattlefieldDuration(source)
 }
 
@@ -65,6 +72,9 @@ func DurationWhileSourceRemains(ctx *Context, source uuid.UUID) (game.Duration, 
 // control test — losing the source ends the effect even though the
 // source is still on the battlefield.
 func DurationWhileYouControlSource(ctx *Context, source, player uuid.UUID) (game.Duration, bool) {
+	if ctx.isNewSourceObjectAsThis(source) { // #1432, as above
+		return game.Duration{}, false
+	}
 	return ctx.Game.ForAsLongAsYouControlDuration(source, player)
 }
 

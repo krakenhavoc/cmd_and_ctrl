@@ -23,13 +23,20 @@ import (
 // already enumerated by the bot, rendered by the right-click menu
 // and validated at announce. An aura's enchant clause is an ordinary
 // `Spec.Targets`. Neither needed a new engine verb.
+//
+// That is still true after #1208, which gave the ABILITY a name for
+// its keyword (`ActivatedAbility.Equip`). It is not a kind and it
+// changes nothing about how an equip is validated, paid or
+// resolved; it exists so that a card which speaks about equip
+// abilities — Leonin Shikari — can pick them out of a permanent's
+// list. Set by the two constructors below and by no card file.
 
 // EquipAbility builds the CR 702.6 equip ability: "{cost}: Attach to
 // target creature you control. Equip only as a sorcery."
 //
 // Three clauses, all of them load-bearing and none of them new:
 //
-//   - SorcerySpeed is CR 702.6b's "any time you could cast a
+//   - SorcerySpeed is CR 702.6a's "any time you could cast a
 //     sorcery", gated by the engine's existing main-phase /
 //     empty-stack / active-player check.
 //   - The target clause is "creature you control", validated at
@@ -39,7 +46,7 @@ import (
 //     once attached, control of the creature may change and the
 //     Equipment stays put (see attachmentLegalLocked in the game
 //     package for the other half of that rule).
-//   - Re-activating moves the Equipment (CR 702.6d), which the
+//   - Re-activating moves the Equipment (CR 701.3a), which the
 //     attach primitive gets right by overwriting.
 func EquipAbility(cost string) ActivatedAbility {
 	return ActivatedAbility{
@@ -47,8 +54,34 @@ func EquipAbility(cost string) ActivatedAbility {
 		Cost:         ManaCost(cost),
 		Targets:      TargetCreature("target creature you control", YouControl()),
 		SorcerySpeed: true,
-		Effect:       AttachSourceToTarget,
+		// #1208: the keyword, named. Equip is still an ordinary
+		// activated ability — nothing above this line changed — but
+		// Leonin Shikari's "you may activate EQUIP abilities any
+		// time you could cast an instant" has to be able to pick
+		// them out, and matching on the label's spelling would be a
+		// rule written in string literals.
+		Equip:  true,
+		Effect: AttachSourceToTarget,
 	}
+}
+
+// EquipOnlyAbility is EquipAbility with a NARROWED target clause and
+// the card's own wording — "Equip Halfling {1}" (Bilbo's Ring),
+// "Equip legendary creature {3}" (Blackblade Reforged, Excalibur,
+// Sword of Eden).
+//
+// It exists because those three were written out by hand, and a
+// hand-written equip is one that can forget a field. It forgot one
+// the day #1208 added `Equip`: Leonin Shikari's "you may activate
+// equip abilities any time you could cast an instant" would have
+// opened Blackblade's {7} and not its {3}, which is a bug nobody
+// would find by reading either card. TestEveryEquipAbilityIsMarked
+// is the other half of that guarantee.
+func EquipOnlyAbility(label, cost string, targets *game.TargetSpec) ActivatedAbility {
+	ab := EquipAbility(cost)
+	ab.Label = label
+	ab.Targets = targets
+	return ab
 }
 
 // AttachSourceToTarget is the equip ability's resolution: attach the
@@ -125,9 +158,7 @@ func GrantToAttached(keywords ...string) game.StaticAbility {
 		AppliesTo: AttachedToSource,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			for _, kw := range keywords {
-				if !keywordSliceContains(c.Abilities, kw) {
-					c.Abilities = append(c.Abilities, kw)
-				}
+				c.Abilities = game.AppendKeywordAbility(c.Abilities, kw)
 			}
 		},
 	}
@@ -215,9 +246,7 @@ func LoseAllAbilities(keep ...string) game.StaticAbility {
 		AppliesTo:             AttachedToSource,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			for _, kw := range keep {
-				if !keywordSliceContains(c.Abilities, kw) {
-					c.Abilities = append(c.Abilities, kw)
-				}
+				c.Abilities = game.AppendKeywordAbility(c.Abilities, kw)
 			}
 		},
 	}
@@ -372,6 +401,14 @@ func EnchantLand(preds ...CardPredicate) *game.TargetSpec {
 	return TargetPermanent("enchant land", append([]CardPredicate{Land()}, preds...)...)
 }
 
+// EnchantPlaneswalker is "Enchant planeswalker" (Teferi's Talent).
+// The CR 704.5m re-check reruns it, so an enchanted planeswalker that
+// stops being one takes the Aura to the graveyard, the way EnchantLand
+// does for a land.
+func EnchantPlaneswalker(preds ...CardPredicate) *game.TargetSpec {
+	return TargetPermanent("enchant planeswalker", append([]CardPredicate{Planeswalker()}, preds...)...)
+}
+
 // EnchantPlayer is a Curse's "Enchant player" clause. The reason
 // Card.AttachedTo is a TargetRef and not a card ID.
 func EnchantPlayer(preds ...PlayerPredicate) *game.TargetSpec {
@@ -426,7 +463,7 @@ func untapAllLandsControlledBy(g *game.Game, controller uuid.UUID, ctx *Context)
 		}
 	}
 	for _, id := range ids {
-		if err := (UntapTarget{Target: id}.Apply(ctx)); err != nil {
+		if err := (UntapTarget{Target: id}.Apply(ctx.asGroupMember())); err != nil {
 			return err
 		}
 	}

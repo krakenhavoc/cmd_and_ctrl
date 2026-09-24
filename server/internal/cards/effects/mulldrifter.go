@@ -15,7 +15,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Both halves are real and they compose in the right order, which is
 // the point of modelling evoke's sacrifice as a triggered ability
-// (CR 702.74b) rather than as part of resolution. Evoked, Mulldrifter
+// (CR 702.74a) rather than as part of resolution. Evoked, Mulldrifter
 // enters, the ETB trigger and the evoke sacrifice trigger both go on
 // the stack, and the draw happens whichever order their controller
 // stacks them — because the creature genuinely entered.

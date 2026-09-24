@@ -48,7 +48,8 @@ func TestNoManaCostImportedCardIsRefusedFromHand(t *testing.T) {
 	moveTo(t, g, p, visionID, game.ZoneRef{Kind: game.ZoneHand, Owner: p.ID})
 	moveTo(t, g, p, thopterID, game.ZoneRef{Kind: game.ZoneHand, Owner: p.ID})
 	g.Turn = game.Turn{
-		Number:         3,
+		Seq:            3,
+		Round:          3,
 		ActiveSeat:     0,
 		PriorityHolder: 0,
 		Phase:          game.PhasePrecombatMain,

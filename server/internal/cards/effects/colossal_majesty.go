@@ -23,12 +23,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventBeginUpkeep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return ev.Actor == source.Controller && youControlPowerFourOrGreater(g, source.Controller)
-			}, "Colossal Majesty — draw a card", func(g *game.Game, item *game.StackItem) error {
-				if !youControlPowerFourOrGreater(g, item.Controller) {
-					return nil
-				}
-				return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-			}),
+			}, "Colossal Majesty — draw a card", drawIfYouControlPowerFourOrGreater),
 		},
 	})
 }
