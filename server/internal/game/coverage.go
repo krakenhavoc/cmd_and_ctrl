@@ -99,6 +99,14 @@ func Unimplemented(c Card) bool {
 	if c.FaceDownIsPermanent() {
 		return false
 	}
+	// #522: a restore brought this card back with fewer catalog
+	// abilities than were captured, so the engine is no longer
+	// running the rules the table saw it run. Flagged for the rest of
+	// the game, whatever the card prints and whatever is left of its
+	// entry — see Card.AbilitiesLostOnRestore.
+	if c.AbilitiesLostOnRestore {
+		return true
+	}
 	return c.NeedsEffect && !IsAutoCard(CatalogKey(c))
 }
 

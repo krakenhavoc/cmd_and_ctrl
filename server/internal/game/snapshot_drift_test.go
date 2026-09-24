@@ -387,6 +387,11 @@ var cardFields = plan(
 	// defends and everybody may attack.
 	"StartingDefense", carried, "",
 	"ProtectorPlayerID", carried, "",
+	// #522: a restore brought this card back with fewer catalog
+	// abilities than were captured. Carried, and it has to be: the
+	// owner's rule is that nothing but the card leaving the game
+	// clears it, and a later restore point is not the card leaving.
+	"AbilitiesLostOnRestore", carried, "",
 
 	"ManaAbilities", rebuilt, "closures; re-looked-up from the catalog by oracle ID, or by TokenKey for a token (#521), and censused only when the catalog cannot return them",
 	"ActivatedAbilities", rebuilt, "same as ManaAbilities",
