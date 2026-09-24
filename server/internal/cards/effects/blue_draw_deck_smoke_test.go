@@ -687,6 +687,18 @@ func TestBlueDrawDeckPlaysThreeTurns(t *testing.T) {
 	answerPayUnless(t, g, opponent.ID, false)
 	settleBlueStack(t, g, me.ID)
 
+	// #1565: declining opens a second, independent "draw a card?" for
+	// the Study's controller (MayChoice, #796) instead of drawing
+	// automatically.
+	ask := latestChoiceOfKind(g, game.PendingChoiceConfirm)
+	if ask == nil || ask.Chooser != me.ID {
+		t.Fatal("no 'draw a card?' prompt addressed to the Study's controller")
+	}
+	if err := g.ResolveConfirm(ask.ID, me.ID, true); err != nil {
+		t.Fatalf("ResolveConfirm(draw): %v", err)
+	}
+	settleBlueStack(t, g, me.ID)
+
 	if got := me.Hand.Size() - handBefore; got != 1 {
 		t.Errorf("cards drawn off the declined Rhystic tax = %d, want 1", got)
 	}

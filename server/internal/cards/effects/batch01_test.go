@@ -637,12 +637,20 @@ func TestArcaneDenialCountersAndBothPlayersDrawAtTheNextUpkeep(t *testing.T) {
 
 // --- Mana Drain ----------------------------------------------------
 
-func TestManaDrainRefundsOnlyOnYourOwnMainPhase(t *testing.T) {
+// TestManaDrainRefundsOnYourOwnPostcombatMainWhenCastDuringYourPrecombatMain
+// pins the fix for the closed caveat (#1565): a Drain cast during your
+// own precombat main pays out THIS turn's postcombat main, not the
+// next turn's precombat main — the "your next main phase" reading a
+// delayed trigger naming one step could not express before
+// manaDrainNextMainPhaseStep picked between the two at resolution.
+func TestManaDrainRefundsOnYourOwnPostcombatMainWhenCastDuringYourPrecombatMain(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	spell := batch01OpponentCasts(t, g, opp, "Big Bolt", lightningBoltOracle, "{2}{R}",
 		[]game.TargetRef{{Kind: game.TargetPlayer, ID: me.ID}})
 
+	// Cast during MY OWN precombat main (castCatalogSpell always casts
+	// as the active seat, and it's seat 0's turn 1).
 	castCatalogSpell(t, g, "Mana Drain", "Instant", manaDrainOracle,
 		[]game.TargetRef{{Kind: game.TargetCard, ID: spell}})
 	passPriorityAroundTable(t, g)
@@ -653,17 +661,63 @@ func TestManaDrainRefundsOnlyOnYourOwnMainPhase(t *testing.T) {
 	if n := len(g.DelayedTriggers); n != 1 || !g.DelayedTriggers[0].ControllerTurnOnly {
 		t.Fatalf("want one delayed trigger gated to the controller's turn, got %d", n)
 	}
+	if got := g.DelayedTriggers[0].At; got != game.StepPostcombatMain {
+		t.Fatalf("At = %s, want postcombat main (this turn's, not next turn's precombat)", got)
+	}
 
-	// The opponent's precombat main is NOT "your next main phase".
+	// This turn's postcombat main, same active seat: the refund fires.
+	batch01AdvanceToStepOf(t, g, 0, game.StepPostcombatMain)
+	if len(g.DelayedTriggers) != 0 {
+		t.Fatal("the refund did not fire on the caster's own postcombat main this turn")
+	}
+	passPriorityAroundTable(t, g)
+	if got := batch01PoolColors(me); len(got) != 3 || got[0] != "C" || got[1] != "C" || got[2] != "C" {
+		t.Errorf("pool %v, want [C C C] — the countered spell's mana value", got)
+	}
+}
+
+// TestManaDrainRefundsOnYourOwnNextPrecombatMainWhenCastOnAnOpponentsTurn
+// is the case that was already correct: countering a spell on someone
+// else's turn waits for the caster's own NEXT precombat main, however
+// many turns away — ControllerTurnOnly's whole reason to exist.
+func TestManaDrainRefundsOnYourOwnNextPrecombatMainWhenCastOnAnOpponentsTurn(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
 	batch01AdvanceToStepOf(t, g, 1, game.StepPrecombatMain)
-	if len(g.DelayedTriggers) != 1 || len(g.PendingTriggers)+len(g.StackMeta) != 0 {
+	spell := batch01OpponentCasts(t, g, opp, "Big Bolt", lightningBoltOracle, "{2}{R}",
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: me.ID}})
+
+	id := uuid.New()
+	me.Hand.PushTop(game.Card{InstanceID: id, Name: "Mana Drain", TypeLine: "Instant",
+		OracleID: manaDrainOracle, Owner: me.ID, Controller: me.ID})
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: spell}},
+	}); err != nil {
+		t.Fatalf("CastSpell Mana Drain: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+
+	if !opp.Graveyard.Contains(spell) {
+		t.Fatal("the spell was not countered")
+	}
+	if n := len(g.DelayedTriggers); n != 1 || !g.DelayedTriggers[0].ControllerTurnOnly {
+		t.Fatalf("want one delayed trigger gated to the controller's turn, got %d", n)
+	}
+	if got := g.DelayedTriggers[0].At; got != game.StepPrecombatMain {
+		t.Fatalf("At = %s, want precombat main (the caster's own next one)", got)
+	}
+
+	// The opponent's postcombat main this same turn is NOT "my next
+	// main phase".
+	batch01AdvanceToStepOf(t, g, 1, game.StepPostcombatMain)
+	if len(g.DelayedTriggers) != 1 {
 		t.Fatal("the refund fired on an opponent's main phase")
 	}
 
-	// The caster's own is.
+	// My own next precombat main is.
 	batch01AdvanceToStepOf(t, g, 0, game.StepPrecombatMain)
 	if len(g.DelayedTriggers) != 0 {
-		t.Fatal("the refund did not fire on the caster's main phase")
+		t.Fatal("the refund did not fire on the caster's own next precombat main")
 	}
 	passPriorityAroundTable(t, g)
 	if got := batch01PoolColors(me); len(got) != 3 || got[0] != "C" || got[1] != "C" || got[2] != "C" {
