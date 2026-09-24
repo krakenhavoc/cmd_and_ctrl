@@ -688,12 +688,15 @@ func (g *Game) payAlternativeCostLocked(playerID uuid.UUID, alt *AlternativeCost
 	// #1397: each card's move carries the CR 903.9 answer its owner
 	// gave before the cast was paid for (cost_commander_choice.go), so
 	// a pitched, returned or escaped commander no longer pauses the
-	// payment half way through it. The routes are otherwise the
-	// ExileCardForEffect / BounceToHandForEffect ones they always were.
+	// payment half way through it. #1420: MustSettleNow extends that
+	// indivisible-payment rule to CR 616 ordering prompts; a spell may
+	// not sit on the stack while the card paying for it is still in its
+	// old zone.
 	move := func(id uuid.UUID, dst ZoneKind) error {
 		_, err := g.routeCardToZoneLocked(zoneRoute{
 			CardID:          id,
 			Dst:             dst,
+			MustSettleNow:   true,
 			commanderAnswer: commanderAnswerFor(answers, id),
 		})
 		return err

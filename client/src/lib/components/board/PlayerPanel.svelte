@@ -46,7 +46,7 @@
   import { canActivateSorcerySpeedAbility } from "../../timing";
   import { manaAbilityNeedsPrompt } from "../../manaAbilityCost";
   import { openCardMenu } from "../../contextMenu";
-  import { manaClickPlan, type AnchorRect } from "../../manaSource";
+  import { manaClickPlan, manaColorParams, type AnchorRect } from "../../manaSource";
   import {
     closeManaSourcePicker,
     manaSourcePickerOpenFor,
@@ -105,7 +105,9 @@
     // many (Mage-Ring Network, Iron Spider's cousin on a land). Board
     // owns those modals, so the panel forwards the click instead of
     // sending the action. Only wired for the viewer's own panel.
-    onManaAbilityCost?: (card: CardView, ability: ManaAbilityView) => void;
+    // #1443: `colors` is the answer the anchored picker already has,
+    // carried through the cost pickers into the one action.
+    onManaAbilityCost?: (card: CardView, ability: ManaAbilityView, colors?: string[]) => void;
     // Priority controls forwarded to PhaseDisplay — only the
     // self panel mounts the widget, so these only matter when
     // isSelf=true but they're plumbed uniformly for prop typing.
@@ -278,7 +280,7 @@
   // the action as they always did.
   const activateManaAbility = $derived(
     isSelf
-      ? (card: CardView, abilityIndex: number) => {
+      ? (card: CardView, abilityIndex: number, colors?: string[]) => {
           // #1228: a permanent publishes `mana_abilities` and a card
           // in hand whose mana ability functions there publishes
           // `zone_mana_abilities` — never both. One lookup reads
@@ -286,12 +288,14 @@
           const rows = card.mana_abilities ?? card.zone_mana_abilities ?? [];
           const ability = rows.find((a) => a.index === abilityIndex);
           if (ability && onManaAbilityCost && manaAbilityNeedsPrompt(ability)) {
-            onManaAbilityCost(card, ability);
+            onManaAbilityCost(card, ability, colors);
             return;
           }
+          // #1443: a colour chosen at the card rides the activation,
+          // so the server produces it with no second question.
           sendAction(
             "activate_mana_ability",
-            { card_id: card.instance_id, ability_index: abilityIndex },
+            { card_id: card.instance_id, ability_index: abilityIndex, ...manaColorParams(colors) },
             seat.id,
           );
         }
@@ -380,7 +384,7 @@
     const plan = manaClickPlan(card);
     if (!plan || !activateManaAbility) return;
     if (plan.kind === "activate") {
-      activateManaAbility(card, plan.index);
+      activateManaAbility(card, plan.index, plan.colors);
       return;
     }
     openManaSourcePicker({ cardID: card.instance_id, anchor: anchorFor(card, ev) });
@@ -525,6 +529,7 @@
       {isSelf}
       {sendAction}
       onDrawCard={isSelf ? onDrawCard : undefined}
+      {onPlayCard}
       onActivateAbility={isSelf ? onActivateAbility : undefined}
       {sorcerySpeedBlocked}
     />

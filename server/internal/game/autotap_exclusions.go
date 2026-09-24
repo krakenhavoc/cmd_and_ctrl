@@ -68,6 +68,23 @@ func AbilityAutoTapExclusions(sourceID uuid.UUID, cost AbilityCost, tapIDs, sacr
 	return unionIDs(self, tapIDs, sacrificeIDs, discardIDs, exileIDs)
 }
 
+// ActivationAutoTapExclusions is the WHOLE set ActivateCatalogAbility's
+// auto-tap may not spend on the mana half of an activation announced
+// with `params`: AbilityAutoTapExclusions over the named components,
+// plus the permanents tapped to waterbend (#1310 — a Birds of Paradise
+// named to Katara's waterbend cannot also make the mana that pays the
+// rest). Nil when empty.
+//
+// #1422: ONE function for the activation and the auto-tap preview's
+// ?ability= branch, so the plan the preview shows is the plan the
+// payment makes. The preview used to exclude only the lock-tap
+// reservations and could plan the ability's own {T} source for mana.
+func ActivationAutoTapExclusions(sourceID uuid.UUID, cost AbilityCost, params ActivateAbilityParams) map[uuid.UUID]bool {
+	return WithAutoTapExclusions(
+		AbilityAutoTapExclusions(sourceID, cost, params.TapIDs, params.SacrificeIDs, params.DiscardIDs, params.ExileIDs),
+		params.WaterbendIDs)
+}
+
 // WithAutoTapExclusions returns `base` plus `ids`, copying rather than
 // writing into `base` — the legal-move enumerator keeps one base set
 // per ability and widens it per payment it offers.

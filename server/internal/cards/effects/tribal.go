@@ -188,17 +188,17 @@ func TribalKeywordGrant(f TribeFilter, keyword string) game.StaticAbility {
 // duplicate entry would render as two keyword badges and be counted
 // twice by anything that tallies. Three copies of the same eight-line
 // append-if-absent loop were in the tree before this existed.
+//
+// The dedupe is game.AppendKeywordAbility's (ADR 0056 Decision 1): a
+// redundant keyword is appended once, and a CUMULATIVE one — toxic —
+// every time, so Karumonix's "other Rats you control have toxic 1" on
+// a Rat that prints toxic 1 gives a total of 2 (CR 702.164b).
 func KeywordGrant(applies func(target *game.Card, g *game.Game, source *game.Card) bool, keyword string) game.StaticAbility {
 	return game.StaticAbility{
 		Layer:     game.Layer6Ability,
 		AppliesTo: applies,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-			for _, k := range c.Abilities {
-				if k == keyword {
-					return
-				}
-			}
-			c.Abilities = append(c.Abilities, keyword)
+			c.Abilities = game.AppendKeywordAbility(c.Abilities, keyword)
 		},
 	}
 }

@@ -2655,6 +2655,23 @@ type ManaAbilityView struct {
 	// every other ability, which is all but four cards. Stamped by
 	// stampManaIdentity, the pass with a game handle.
 	AddsNoMana bool `json:"adds_no_mana,omitempty"`
+	// ColorOptions is, for each slot of this ability's output that
+	// asks for a colour, the colours that pick would offer the
+	// controller if the ability were activated now (#1443): one list
+	// per PICKING slot, in output order. A painland's "{R|W}" ships
+	// [["R","W"]], Birds of Paradise all five with the commander's
+	// identity first (#843), Command Tower only the identity's colours
+	// (CR 903.4f), a filter land's "{W|U}{W|U}" two lists. Absent for
+	// an ability that picks nothing (a Forest, Sol Ring) and for one
+	// that adds no mana (AddsNoMana).
+	//
+	// The SAME list the `mana_pick` prompt would carry, from the same
+	// function (game.ManaAbilityColorOptions → manaPickOptions), so a
+	// client that draws these at the card and sends the pick back as
+	// `activate_mana_ability`'s `color` / `colors` offers exactly what
+	// the server accepts, in the server's order. Stamped by
+	// stampManaIdentity, the pass with a game handle.
+	ColorOptions [][]string `json:"color_options,omitempty"`
 	// CantActivate is ActivatedAbilityView.CantActivate for a mana
 	// ability (#1210): the printed clause of a board-wide "can't be
 	// activated" static that refuses this one. Cursed Totem's
@@ -3870,7 +3887,14 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// which is what makes Grafdigger's Cage answerable here at all —
 	// and, since #978, answerable for exile and the library top as
 	// well, because they reach this function too.
-	if haveLive {
+	//
+	// #1439: a LAND never asks this gate, matching CastSpell — a land
+	// play is a special action (CR 305.1), not a cast, and every
+	// clause the gate enforces is written about casting. Without this
+	// a Rule of Law or Grafdigger's Cage stamped `cant_cast` onto a
+	// land, which `castIsForbidden` and friends would then read as
+	// "this land can't be played" even though it always could.
+	if haveLive && !live.IsLand() {
 		if err := g.CastGateLocked(caster, live, kind, game.CastSpellParams{}); err != nil {
 			// A card the gate refuses is not a cast surface, whatever
 			// opened the zone — but the bit itself is derived below,
@@ -4707,6 +4731,11 @@ func stampManaIdentity(g *game.Game, card game.Card, controller uuid.UUID, views
 			continue
 		}
 		views[i].AddsNoMana = game.ManaAbilityAddsNoMana(g, controller, card.InstanceID, raw[i])
+		// #1443: the colour lists a pick would offer, from the same
+		// narrowing the prompt uses. Nil for a fixed output and for an
+		// ability that adds nothing, whose picking slots all narrowed
+		// away.
+		views[i].ColorOptions = game.ManaAbilityColorOptions(g, controller, card.InstanceID, raw[i])
 	}
 }
 

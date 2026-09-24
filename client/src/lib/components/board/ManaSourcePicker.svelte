@@ -2,9 +2,14 @@
   // ManaSourcePicker — the popover a left-click on a mana source with
   // more than one mana ability opens, anchored at that card (#1438).
   //
-  // One option per ability, in the server's order, each drawn as the
-  // mana it makes plus whatever else it does ("deals 1 damage to
-  // you"). Picking one hands the ability index to Board, which routes
+  // One option per final result, in the server's order, each drawn as
+  // the mana it makes plus whatever else it does ("deals 1 damage to
+  // you"). #1443: an ability whose output is a choice of colours is
+  // already expanded into one option per colour (manaAbilityOptions,
+  // from the server's `color_options`), so a painland is {C}, {R} and
+  // {W} here and Birds of Paradise its five colours — and nothing is
+  // tapped until one is picked. Picking one hands the ability index,
+  // and the colours it names, to Board, which routes
   // it exactly as the right-click menu's row would — straight to
   // `activate_mana_ability`, or first through the sacrifice / discard
   // / counter picker when the cost needs an answer. Escape, a click
@@ -25,7 +30,7 @@
   interface Props {
     view: GameView;
     open: ManaSourcePickerOpen;
-    onPick: (card: CardView, abilityIndex: number) => void;
+    onPick: (card: CardView, abilityIndex: number, colors?: string[]) => void;
     onClose: () => void;
   }
 
@@ -91,9 +96,15 @@
   });
 
   function pick(o: ManaPickOption): void {
-    if (!card || o.abilityIndex === undefined) return;
+    // Read the card BEFORE closing. Board mounts this picker off the
+    // store that onClose empties, so after it `open` is null and the
+    // derived `card` would throw re-reading `open.cardID` — the pick
+    // was lost in the real Board, which #1438's tests (mounting the
+    // picker alone, with a fixed `open`) could not see.
+    const source = card;
+    if (!source || o.abilityIndex === undefined) return;
     onClose();
-    onPick(card, o.abilityIndex);
+    onPick(source, o.abilityIndex, o.colors);
   }
 </script>
 
