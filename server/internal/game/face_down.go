@@ -86,7 +86,7 @@ const (
 	// It is also the kind an EFFECT gives an object it puts onto the
 	// battlefield face down without a keyword — Yedora's graveyard
 	// return, Cybership's library put (#1270). Those are not manifest
-	// (CR 701.40 is a keyword action, and CR 701.34d's "a creature
+	// (CR 701.40 is a keyword action, and CR 701.40b's "a creature
 	// card may be turned up for its mana cost" is manifest's alone),
 	// and every question this kind answers — CR 708.7's "only the
 	// card's own morph or disguise brings it back up", no ward, the
@@ -234,7 +234,7 @@ func faceDownWardLocked(c Card) []TriggeredAbility {
 }
 
 // FaceDownCast is the CR 708 half of morph (CR 702.37b), megamorph
-// (CR 702.109a) and disguise (CR 702.168a): the keyword's permission
+// (CR 702.37b) and disguise (CR 702.168a): the keyword's permission
 // to cast the card FACE DOWN, and the price of turning the permanent
 // it becomes back face up.
 //
@@ -266,7 +266,7 @@ type FaceDownCast struct {
 	FaceUpCost string
 
 	// FaceUpCounter is megamorph's "turn it face up, then put a
-	// +1/+1 counter on it" (CR 702.109b). False for morph and
+	// +1/+1 counter on it" (CR 702.37b). False for morph and
 	// disguise.
 	FaceUpCounter bool
 }
@@ -352,12 +352,12 @@ func castOfferKey(c Card) string {
 //
 //	morphed      the card declares a morph cast    its morph cost    CR 702.37b
 //	disguised    the card declares a disguise cast its disguise cost CR 702.168b
-//	manifested   the card is a CREATURE CARD       its mana cost     CR 701.34d
+//	manifested   the card is a CREATURE CARD       its mana cost     CR 701.40b
 //	cloaked      the card is a CREATURE CARD       its mana cost     CR 701.58b
 //	turned       the card declares EITHER cast     that cast's cost  CR 702.37e / CR 702.168d
 //
 // nil means "no", and the three ways to get one all matter: a
-// manifested Mountain (CR 701.34d — it stays face down forever), an
+// manifested Mountain (CR 701.40b — it stays face down forever), an
 // Ixidron'd Sheoldred (CR 708.7 — a permanent turned face down by an
 // effect that did not give it a way back up, and whose own card
 // prints no way either, can never be turned face up), and every
@@ -365,11 +365,11 @@ func castOfferKey(c Card) string {
 //
 // "Creature card" is PrintedIsCreature deliberately: that accessor is
 // the copiable-value surface (CR 707.2) and answers "what does this
-// CARD say", which is exactly what CR 701.34d asks. The face-down
+// CARD say", which is exactly what CR 701.40b asks. The face-down
 // projection would answer "yes, a 2/2 creature" for a manifested
 // Island.
 //
-// CR 701.34e — a manifested card that ALSO has morph may be turned up
+// CR 701.40c — a manifested card that ALSO has morph may be turned up
 // for either cost — is out of scope (ADR 0082 decision 5): this is one
 // offer per permanent, and no card in the catalog reaches the case.
 func TurnFaceUpOffer(c Card) *SpecialAction {
@@ -415,7 +415,7 @@ func TurnFaceUpOffer(c Card) *SpecialAction {
 		//
 		// So EITHER declared cast opens the door and the kind
 		// equality the arm above makes is deliberately absent here. A
-		// megamorph card re-hidden this way still gets CR 702.109b's
+		// megamorph card re-hidden this way still gets CR 702.37b's
 		// +1/+1 counter when its megamorph cost is paid to turn it
 		// up, because the counter rides the cost that was paid.
 		alt := FaceDownCastFor(faceUpCatalogKey(c))
@@ -429,7 +429,7 @@ func TurnFaceUpOffer(c Card) *SpecialAction {
 			Label:         turnFaceUpLabel(alt.FaceDown.FaceUpCost),
 		}
 	case FaceDownManifested, FaceDownCloaked:
-		// CR 701.34d / CR 701.58b: a manifested or cloaked CREATURE
+		// CR 701.40b / CR 701.58b: a manifested or cloaked CREATURE
 		// CARD may be turned face up for its mana cost. Anything else
 		// stays face down for as long as it is on the battlefield.
 		if !c.PrintedIsCreature() {
@@ -515,7 +515,7 @@ func (g *Game) turnFaceUpLocked(p *Player, cardID uuid.UUID, sa SpecialAction) e
 	// landing, which REPLACED the marking rather than adding to it.
 	g.markCardKnownInZoneLocked(g.Battlefield, cardID)
 	if sa.FaceUpCounter {
-		// CR 702.109b: megamorph turns it face up AND puts a +1/+1
+		// CR 702.37b: megamorph turns it face up AND puts a +1/+1
 		// counter on it — before the event, so a "when this is turned
 		// face up" trigger already sees it.
 		if err := g.applyCounterByLocked(cardID, "+1/+1", 1, p.ID, cardID); err != nil {

@@ -224,7 +224,7 @@ func TestCombatAnnouncementsDoNotSurviveABattlefieldExit(t *testing.T) {
 	if err := g.DeclareBlocker(blocker, attacker); err != nil {
 		t.Fatalf("DeclareBlocker: %v", err)
 	}
-	g.WithWriteLock(func() { g.commitBlockDeclarationLocked() })
+	g.WithWriteLock(func() { g.completeAllBlockDeclarationsLocked(); g.commitBlockDeclarationLocked() })
 
 	if !g.announcedAttacks[attacker] {
 		t.Fatalf("setup: the attack was never announced")

@@ -18,7 +18,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The observable difference from a card that returned itself in
 // OnResolve: a Capsize whose only target left in response is
 // countered by game rules, never resolves, and goes to the graveyard
-// — CR 702.27b returns it "as it resolves", and that is exactly the
+// — CR 702.27a returns it "as it resolves", and that is exactly the
 // case the `resolved` half of the stack-exit route exists for.
 func init() {
 	Register(Spec{

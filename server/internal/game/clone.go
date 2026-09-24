@@ -42,6 +42,11 @@ func (g *Game) cloneLocked() *Game {
 		Settings:          g.Settings,
 		StartingSeat:      g.StartingSeat,
 		SplitSecondActive: g.SplitSecondActive,
+		// ADR 0057: the result of an ended game (its own pointer, so an
+		// undo snapshot never shares it) and the deferred departure of
+		// an active player who lost mid-resolution.
+		Outcome:               cloneGameOutcome(g.Outcome),
+		ActiveSeatLeftPending: g.ActiveSeatLeftPending,
 		// #628: both halves of the CR 726 breaker. The threshold is
 		// configuration and copies by value; the notice is a per-turn
 		// fact an undo must be able to rewind past, so it gets its own
@@ -239,6 +244,14 @@ func (g *Game) cloneLocked() *Game {
 				frame := *c.coinFlipResume
 				cloned.coinFlipResume = &frame
 			}
+			// #1529: the CR 603.3d target walk. Answering a step
+			// MUTATES the frame (the cursor advances and the pick is
+			// appended), so a frame shared with the undo snapshot came
+			// back already answered: the restored prompt read a
+			// finished walk, and answering it again dropped the
+			// trigger. The snapshot gets its own cursor and picks;
+			// the steps, spec and source it only reads stay shared.
+			cloned.pickTargetResume = clonePickTargetFrame(c.pickTargetResume)
 			out.PendingChoices[i] = &cloned
 		}
 	}
@@ -295,6 +308,11 @@ func (g *Game) cloneLocked() *Game {
 	// #1364: the last-known defending players rewind with the attack
 	// declarations they describe.
 	out.attackDefenders = copyUUIDPairMap(g.attackDefenders)
+	// #1279: which defenders have completed their block declaration
+	// rewinds with the declaration — an undo back past a defender's
+	// finish_blocks reopens it, so the attacker they had not blocked
+	// is not "unblocked" to ninjutsu until they choose again.
+	out.blocksDeclared = copyBoolMap(g.blocksDeclared)
 	// #716: and the combat damage steps' participation record rewinds
 	// with the combat it belongs to. An undo back into the priority
 	// window between the two steps that dropped it would let every
@@ -658,6 +676,7 @@ func cloneStackItem(s *StackItem) *StackItem {
 		// resolves it against the restored game.
 		Effect:     s.Effect,
 		Ordered:    s.Ordered,
+		Commutes:   s.Commutes,
 		targetSpec: s.targetSpec,
 		// #764: catalog data, read-never-written, so the undo clone
 		// shares the pointer exactly as it shares targetSpec.
@@ -689,6 +708,22 @@ func cloneStackItem(s *StackItem) *StackItem {
 		}
 	}
 	return out
+}
+
+// clonePickTargetFrame gives an undo snapshot its own copy of a
+// trigger's CR 603.3d target walk (#1529). ResolvePickTargets advances
+// `step` and appends to `picked` in place, so those two — and the
+// chosen modes, for symmetry — are copied; everything else on the
+// frame is read-only once the walk starts and is shared like every
+// other server-only continuation on a PendingChoice.
+func clonePickTargetFrame(f *pickTargetFrame) *pickTargetFrame {
+	if f == nil {
+		return nil
+	}
+	out := *f
+	out.picked = append([]TargetRef(nil), f.picked...)
+	out.modes = append([]int(nil), f.modes...)
+	return &out
 }
 
 // cloneReplacementResume gives an undo snapshot its own copy of the
@@ -872,6 +907,8 @@ func (g *Game) RestoreFrom(src *Game) {
 	// restore is a different path (restoreGame) and does restore them.
 	g.StartingSeat = src.StartingSeat
 	g.SplitSecondActive = src.SplitSecondActive
+	g.Outcome = src.Outcome
+	g.ActiveSeatLeftPending = src.ActiveSeatLeftPending
 	g.StackMeta = src.StackMeta
 	g.PendingTriggers = src.PendingTriggers
 	g.DelayedTriggers = src.DelayedTriggers
@@ -928,6 +965,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.blockedAttackers = src.blockedAttackers
 	g.announcedAttacks = src.announcedAttacks
 	g.attackDefenders = src.attackDefenders
+	g.blocksDeclared = src.blocksDeclared
 	g.firstStrikeStepParticipants = src.firstStrikeStepParticipants
 	g.Listeners = src.Listeners
 	g.PendingChoices = src.PendingChoices
@@ -980,4 +1018,14 @@ func cloneSourceOrdinals(in map[uuid.UUID]uint64) map[uuid.UUID]uint64 {
 		out[id] = ordinal
 	}
 	return out
+}
+
+// cloneGameOutcome copies a game's outcome into its own pointer. Nil
+// stays nil (an active game, or one ended by End()).
+func cloneGameOutcome(in *GameOutcome) *GameOutcome {
+	if in == nil {
+		return nil
+	}
+	out := *in
+	return &out
 }

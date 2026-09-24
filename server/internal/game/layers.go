@@ -186,6 +186,29 @@ type StaticAbility struct {
 	// CR 613.6 keeps it applying after its source has been silenced.
 	// See ContinuousEffect.ContinuesAfterRemoval; ADR 0067 §2.
 	ContinuesAfterRemoval bool
+
+	// GrantAbilities names the catalog ability bundles this static
+	// GIVES every object it applies to (CR 113.10, ADR 0093) —
+	// Cryptolith Rite's "{T}: Add one mana of any color", Chromatic
+	// Lantern's the same for lands. Each name is a bundle key
+	// (effects.AbilityGrant.Key, either spelling of GrantKey).
+	//
+	// The engine does the writing: after this static's Apply runs on a
+	// target, one GrantedAbility per name is appended to the target's
+	// Characteristic, with this static's source as the grantor. It is a
+	// declaration rather than something Apply does itself for the
+	// reason RemovesAbilities is one: the grantor has to be the effect's
+	// source, and the bundle list has to be data a boot-time check can
+	// read (effects.TestEveryGrantKeyResolves). Build one with
+	// effects.GrantAbilities.
+	//
+	// Only meaningful on a Layer6Ability static; effects.Register
+	// refuses it anywhere else. It may sit beside RemovesAbilities —
+	// "loses all abilities and has '…'" is one effect, one timestamp
+	// (ADR 0046 §2), and the removal empties the slice before the grant
+	// appends to it.
+	GrantAbilities []string
+
 	// DependsOnHandSize declares that this ability's OUTPUT changes
 	// when somebody's hand does — Psychosis Crawler's "power and
 	// toughness are each equal to the number of cards in your hand".
@@ -353,10 +376,21 @@ func (e staticContinuousEffect) ContinuesAfterRemoval() bool {
 }
 
 func (e staticContinuousEffect) Apply(c *Characteristic, target *Card, g *Game) {
-	if e.ability.Apply == nil {
-		return
+	if e.ability.Apply != nil {
+		e.ability.Apply(c, target, g, e.source)
 	}
-	e.ability.Apply(c, target, g, e.source)
+	// ADR 0093: the declared grants, in this effect's own slot of the
+	// layer-6 bucket, so a removal sorted after it empties them and one
+	// sorted before it cannot reach them (CR 613.6).
+	if len(e.ability.GrantAbilities) > 0 {
+		var from uuid.UUID
+		if e.source != nil {
+			from = e.source.InstanceID
+		}
+		for _, key := range e.ability.GrantAbilities {
+			c.GrantAbility(key, from)
+		}
+	}
 }
 
 // activeStaticAbilitiesLocked collects every continuous effect in
@@ -605,6 +639,11 @@ func (g *Game) applyOneEffectLocked(eff ContinuousEffect, bucketIndex int, st *l
 			// printed — and so a card file cannot ship the
 			// removal without the engine learning about it.
 			target.effective.Abilities = nil
+			// ADR 0093 Decision 3: and every ability another effect
+			// granted it so far in this bucket. A grant sorted AFTER
+			// this removal appends to the emptied slice and survives
+			// (CR 613.6), exactly as a granted keyword does.
+			target.effective.GrantedAbilities = nil
 			target.effective.AbilitiesRemoved = true
 			st.recordRemoval(target, bucketIndex)
 		}

@@ -18,6 +18,17 @@ import (
 // cascade, and a permanent that GIVES cascade to other spells
 // (Maelstrom Nexus, Imoti).
 
+// KeywordCascade and KeywordStorm are the machine-readable names the
+// two keyword constructors stamp on game.TriggeredAbility.Keyword
+// (#1258), which is what cards/coverage reads to ask whether a card
+// has the keyword. Neither is a canonicalKeywords token: both are
+// catalog constructors, the pattern ADR 0014's 2026-09-24 amendment
+// keeps for a keyword trigger that is never granted by a static.
+const (
+	KeywordCascade = "cascade"
+	KeywordStorm   = "storm"
+)
+
 // Cascade is the keyword on the card that has it. Two copies in a
 // card's Triggered list is "cascade, cascade", which is Maelstrom
 // Wanderer exactly: two separate triggered abilities, and the player
@@ -28,6 +39,7 @@ import (
 // time before it would reach the battlefield the harvester scans.
 func Cascade() game.TriggeredAbility {
 	return game.TriggeredAbility{
+		Keyword:   KeywordCascade,
 		FromStack: true,
 		Watches:   []game.EventKind{game.EventCast},
 		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
@@ -57,6 +69,9 @@ func Cascade() game.TriggeredAbility {
 // spell; the triggering object is the enchantment watching it.
 func GrantsCascade(label string, when func(spell game.Card, source *game.Card, g *game.Game) bool) game.TriggeredAbility {
 	return game.TriggeredAbility{
+		// The granted cascade is still cascade (#1258): a caveat on
+		// Maelstrom Nexus that said otherwise would be false.
+		Keyword: KeywordCascade,
 		Watches: []game.EventKind{game.EventCast},
 		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 			if ev.Actor != source.Controller {

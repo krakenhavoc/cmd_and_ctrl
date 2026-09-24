@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
   import { GameClient } from "../lib/ws";
+  import { endCueFor, gameOverText } from "../lib/gameOutcome";
   import { recordClientError } from "../lib/clientErrors";
   import { describeThrown } from "../lib/guardedStore";
   import { navigate } from "../lib/router";
@@ -44,16 +45,26 @@
   import { stopKeyFor, type StepID } from "../lib/turn";
   import { armAudioOnFirstGesture, isMuted, play, toggleMuted } from "../lib/sounds";
   import { openSettings, settings } from "../lib/settings";
-  import { autopassSuspended, loopNoticeText, owesBlockDecision } from "../lib/priority";
+  import {
+    autopassSuspended,
+    blockDeclarationPending,
+    loopNoticeText,
+    owesBlockDecision,
+  } from "../lib/priority";
   import { hasPlay, hasResponse, keyWindow, type ResponseCategories } from "../lib/responseWindow";
   import {
     attackAllLabel,
     attackAllParams,
     attackAllTaxLabel,
+    attackLimitOn,
     attackTaxOn,
     blockedSummary,
+    bulkAttackRefusal,
+    offersAttackPicker,
     planAttackAll,
     seatLabel,
+    type AttackAllParams,
+    type BulkAttackAttempt,
   } from "../lib/attackAll";
   import { hasPassMove, stackEmpty } from "../lib/timing";
   import { consumeManualStop, manualStops } from "../lib/priorityStops";
@@ -593,9 +604,10 @@
   const viewerIsActive = $derived(viewerID !== null && activePlayer?.id === viewerID);
   const viewerEliminated = $derived(viewerSeat?.eliminated === true);
 
-  // Game-end state. The server transitions State to "ended" once
-  // exactly one non-eliminated seat remains; the survivor is the
-  // implicit winner.
+  // Game-end state. The server names the result on GameView.outcome
+  // (ADR 0057): an effect win ends the game with the other seats still
+  // seated, so the winner comes from there, and "the one seat left
+  // standing" is only the fallback for a view with no outcome.
   const gameEnded = $derived(view?.state === "ended");
   // #628 (CR 726): the server's loop notice. While it stands, nothing
   // on this table passes priority automatically — see the autopass
@@ -603,8 +615,8 @@
   // toggle.
   const loopSuspended = $derived(autopassSuspended(view));
   const loopNotice = $derived(loopNoticeText(view));
-  const survivors = $derived(seats.filter((s) => !s.eliminated));
-  const winner = $derived(gameEnded && survivors.length === 1 ? survivors[0] : null);
+  const gameOver = $derived(gameOverText(view));
+  const winner = $derived(gameOver.winner);
 
   // Mulligan window: open between Start and the moment everyone has
   // KeptHand. The dialog blocks the viewer's normal toolbar until
@@ -660,8 +672,9 @@
   let prevEnded = false;
   $effect(() => {
     const ended = gameEnded;
-    if (ended && !prevEnded && viewerID) {
-      play(winner?.id === viewerID ? "win" : "loss");
+    const cue = endCueFor(view, viewerID);
+    if (ended && !prevEnded && cue) {
+      play(cue);
     }
     prevEnded = ended;
   });
@@ -852,15 +865,24 @@
   // either, so this is the same optimistic-stash shape
   // lastCastByCardID uses for a cast retry, sized down to "the one
   // bulk attack that can be in flight at a time."
-  let lastAttackAllAttempt = $state<string | null>(null);
+  //
+  // #1533: with the action frame's id beside it, so only the server's
+  // answer to THAT frame opens a picker (bulkAttackRefusal). Under
+  // Silent Arbiter the common refusal is a single click-declared
+  // attacker, and it must stay the plain toast.
+  let lastAttackAllAttempt = $state<BulkAttackAttempt | null>(null);
+
+  function sendBulkAttack(defenderSeatID: string, params: AttackAllParams): void {
+    combatSelection = null;
+    const frameID = client.sendAction("declare_attackers", undefined, params);
+    lastAttackAllAttempt = frameID ? { defenderSeatID, frameID } : null;
+    play("attack");
+  }
 
   function attackAllAt(defenderSeatID: string): void {
     const params = attackAllParams(attackPlan, defenderSeatID);
     if (!params) return;
-    combatSelection = null;
-    lastAttackAllAttempt = defenderSeatID;
-    client.sendAction("declare_attackers", undefined, params);
-    play("attack");
+    sendBulkAttack(defenderSeatID, params);
   }
 
   // ADR 0080 (#1063): the button's tooltip names the CR 508.1a price
@@ -886,22 +908,37 @@
   // the rejection first.
   let attackPickerDefenderID = $state<string | null>(null);
 
-  // attackTaxRefusalDefenderID is non-null exactly when the LAST
-  // "attack with all" attempt is the thing $lastError is currently
-  // complaining about — a derived read rather than an effect that
-  // writes its own dependency, so there is nothing here to loop.
-  const attackTaxRefusalDefenderID = $derived.by(() => {
-    const err = $lastError;
-    if (!err || err.code !== "attack_tax_unpaid" || !lastAttackAllAttempt) return null;
-    return lastAttackAllAttempt;
-  });
+  // #1533: the server's sentence for the limit refusal the picker was
+  // opened from, shown at its top. Null for any other opening.
+  let attackPickerLimitReason = $state<string | null>(null);
+
+  // bulkRefusal is non-null exactly when $lastError is the server's
+  // answer to the LAST "attack with all" frame and is one the picker
+  // can answer: an unpaid tax (#1162) or a count limit (#1533). A
+  // derived read rather than an effect that writes its own dependency,
+  // so there is nothing here to loop.
+  const bulkRefusal = $derived(bulkAttackRefusal($lastError, lastAttackAllAttempt));
+  const attackTaxRefusalDefenderID = $derived(
+    bulkRefusal?.kind === "tax" ? bulkRefusal.defenderSeatID : null,
+  );
+  const attackLimitRefusalDefenderID = $derived(
+    bulkRefusal?.kind === "limit" ? bulkRefusal.defenderSeatID : null,
+  );
+  // A used-up limit (room 0) leaves nothing to pick; the toast then
+  // explains and offers no picker. An unpublished room (null) still
+  // offers it: the server refuses an over-full pick again and says so.
+  const attackLimitRefusalRoom = $derived(
+    attackLimitRefusalDefenderID ? attackLimitOn(view, attackLimitRefusalDefenderID) : null,
+  );
 
   function openAttackPicker(defenderSeatID: string): void {
+    attackPickerLimitReason = null;
     attackPickerDefenderID = defenderSeatID;
   }
   function openAttackPickerFromRefusal(): void {
-    if (!attackTaxRefusalDefenderID) return;
-    attackPickerDefenderID = attackTaxRefusalDefenderID;
+    if (!bulkRefusal) return;
+    attackPickerLimitReason = bulkRefusal.kind === "limit" ? ($lastError?.message ?? null) : null;
+    attackPickerDefenderID = bulkRefusal.defenderSeatID;
     client.lastError.set(null);
   }
   function dismissAttackTaxRefusal(): void {
@@ -911,18 +948,17 @@
     const defenderSeatID = attackPickerDefenderID;
     attackPickerDefenderID = null;
     if (!defenderSeatID) return;
+    attackPickerLimitReason = null;
     const params = attackAllParams(attackPlan, defenderSeatID, {
       only: attackerIDs,
       lockedSources,
     });
     if (!params) return;
-    combatSelection = null;
-    lastAttackAllAttempt = defenderSeatID;
-    client.sendAction("declare_attackers", undefined, params);
-    play("attack");
+    sendBulkAttack(defenderSeatID, params);
   }
   function cancelAttackPicker(): void {
     attackPickerDefenderID = null;
+    attackPickerLimitReason = null;
   }
 
   // The inverse of a wide declaration is undo, not a bulk "unattack":
@@ -937,6 +973,24 @@
   );
   function undoDeclaration(): void {
     client.sendAction("undo");
+  }
+
+  // #1279: the viewer is a defender whose block declaration is still
+  // open. The engine completes it when they pass priority, but a
+  // defender does not hold priority while the active player does —
+  // this is how they say "done" from there. Whatever they have staged
+  // is the declaration; nothing staged is "no blocks".
+  const viewerBlocksPending = $derived(blockDeclarationPending(view, viewerID));
+  const viewerStagedBlocks = $derived(
+    viewerID && view
+      ? view.battlefield.cards.filter((c) => c.controller === viewerID && !!c.blocking_target)
+          .length
+      : 0,
+  );
+  function finishBlocks(): void {
+    if (!viewerID) return;
+    combatSelection = null;
+    client.sendAction("finish_blocks", viewerID);
   }
 
   function declareBlockTarget(attackerCardID: string): void {
@@ -1528,15 +1582,18 @@
                         >
                       {/if}
                     </button>
-                    {#if attackTaxOn(view, attackPlan.defenders[0].id)}
+                    {#if offersAttackPicker(view, attackPlan, attackPlan.defenders[0].id)}
                       <!-- #1162: the seat can only afford SOME of a wide
                            swing under a tax — offered up front rather
                            than only after the full-batch button is
-                           refused. -->
+                           refused. #1533: likewise when a count limit
+                           lets only some of it attack. -->
                       <button
                         type="button"
                         class="ghost att-btn"
-                        title="pick which attackers to send, and lock a land against the auto-tapper"
+                        title={attackTaxOn(view, attackPlan.defenders[0].id)
+                          ? "pick which attackers to send, and lock a land against the auto-tapper"
+                          : "pick which attackers to send — an effect limits how many can attack"}
                         onclick={() => openAttackPicker(attackPlan.defenders[0].id)}
                       >
                         Choose attackers…
@@ -1560,11 +1617,13 @@
                           <span class="muted">{attackTaxOn(view, opp.id)}</span>
                         {/if}
                       </button>
-                      {#if attackTaxOn(view, opp.id)}
+                      {#if offersAttackPicker(view, attackPlan, opp.id)}
                         <button
                           type="button"
                           class="ghost att-btn"
-                          title={`pick which attackers to send at ${seatLabel(opp)}, and lock a land against the auto-tapper`}
+                          title={attackTaxOn(view, opp.id)
+                            ? `pick which attackers to send at ${seatLabel(opp)}, and lock a land against the auto-tapper`
+                            : `pick which attackers to send at ${seatLabel(opp)} — an effect limits how many can attack`}
                           onclick={() => openAttackPicker(opp.id)}
                           aria-label={`Choose attackers against ${seatLabel(opp)}`}
                         >
@@ -1584,6 +1643,35 @@
                     <Icon name="undo" size={12} /> Undo
                   </button>
                 {/if}
+              </div>
+            {/if}
+
+            <!-- #1279: a defender still declaring blockers can finish
+                 without holding priority. Present for the whole of
+                 their open declaration, so the count stays live as
+                 blocks are staged; gone once it is complete. -->
+            {#if viewerBlocksPending && !mulligansOpen && !gameEnded}
+              <div class="att block-finish" aria-label="declare blockers">
+                <span class="att-label">
+                  <Icon name="sword" size={12} />
+                  block
+                </span>
+                <span class="att-text">
+                  {#if viewerStagedBlocks > 0}
+                    <strong>{viewerStagedBlocks}</strong>
+                    {viewerStagedBlocks === 1 ? "blocker" : "blockers"} declared
+                  {:else}
+                    Choose blockers, or declare none
+                  {/if}
+                </span>
+                <button
+                  type="button"
+                  class="primary att-btn"
+                  title="finish declaring blockers — the attacking player gets priority once every defender is done"
+                  onclick={finishBlocks}
+                >
+                  {viewerStagedBlocks > 0 ? "Done blocking" : "No blocks"}
+                </button>
               </div>
             {/if}
 
@@ -1721,6 +1809,40 @@
                   <Icon name="x" size={12} />
                 </button>
               </div>
+            {:else if attackLimitRefusalDefenderID}
+              <!-- #1533: a wide swing refused by a CR 508.1c count limit
+                   (Silent Arbiter, Crawlspace — ADR 0045 Decision 45)
+                   offers the same attackers picker, capped at the room
+                   the server publishes. The server's sentence is the
+                   reason, shown verbatim. -->
+              <div class="att toast attack-limit-override" role="alert" aria-live="polite">
+                <span class="att-label gold">attack limit</span>
+                <span class="att-text">
+                  <strong>{$lastError?.message}</strong>
+                  {#if attackLimitRefusalRoom === 0}
+                    <span class="muted">· no more creatures can attack this combat</span>
+                  {/if}
+                </span>
+                {#if attackLimitRefusalRoom !== 0}
+                  <button
+                    type="button"
+                    class="primary att-btn"
+                    onclick={openAttackPickerFromRefusal}
+                  >
+                    {attackLimitRefusalRoom === null
+                      ? "Choose attackers…"
+                      : `Choose up to ${attackLimitRefusalRoom}…`}
+                  </button>
+                {/if}
+                <button
+                  type="button"
+                  class="ghost att-close"
+                  onclick={dismissAttackTaxRefusal}
+                  aria-label="dismiss"
+                >
+                  <Icon name="x" size={12} />
+                </button>
+              </div>
             {:else if $lastError}
               <div class="att toast error" role="alert" aria-live="polite">
                 <span class="att-label danger">rejected</span>
@@ -1745,9 +1867,10 @@
                 <span class="att-text">
                   {#if winner}
                     <span class="seat-dot" style="background:{seatColor(winner.seat)}"></span>
-                    <strong>{winner.name}</strong> wins the game.
+                    <strong>{winner.name}</strong>
+                    {gameOver.text}
                   {:else}
-                    Game ended — no survivors.
+                    {gameOver.text}
                   {/if}
                 </span>
                 <button type="button" class="primary att-btn" onclick={back}>
@@ -1862,6 +1985,7 @@
         {view}
         {viewerID}
         defenderSeatID={attackPickerDefenderID}
+        limitReason={attackPickerLimitReason}
         onConfirm={confirmAttackPicker}
         onCancel={cancelAttackPicker}
       />
@@ -2403,6 +2527,18 @@
     flex: 1;
     min-width: 0;
   }
+  /* #1533: the limit sentence is the server's and can run long
+     ("… can attack Player 3 each combat (Crawlspace)."). At phone
+     width the text takes the whole first line and the actions wrap
+     under it, rather than squeezing it into a column a word wide. */
+  @media (max-width: 599px) {
+    .attack-limit-override {
+      flex-wrap: wrap;
+    }
+    .attack-limit-override .att-text {
+      flex-basis: calc(100% - 110px);
+    }
+  }
   .att-text strong {
     color: var(--fg);
     font-weight: 700;
@@ -2451,6 +2587,7 @@
   .combat-hint,
   .mana-override,
   .attack-tax-override,
+  .attack-limit-override,
   .rewind-notice,
   .game-end {
     border-color: rgba(217, 180, 92, 0.45);

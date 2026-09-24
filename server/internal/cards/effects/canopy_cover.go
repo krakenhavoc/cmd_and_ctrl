@@ -23,25 +23,27 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // spells still work on the creature, which is the difference between
 // this and a Whispersilk Cloak's shroud.
 //
-// Declared simplification, weaker than printed (#259): the EVASION
-// clause is not implemented. The engine's restriction vocabulary has
-// "can't be blocked" and "can't block", and no way to say "can't be
-// blocked EXCEPT BY creatures with <keyword>" — a conditional block
-// restriction (#750). Shipping the unconditional "can't be blocked"
-// would be STRONGER than printed, which the #259 rule forbids, and
-// shipping nothing is weaker, which it allows. So the enchanted
-// creature is blockable by anything; only the hexproof half is real.
+// THE FIRST CLAUSE IS A BLOCK RULE on the enchanted creature (#750,
+// ADR 0045 addendum Decision 11): every blocker without flying or
+// reach is refused at declaration, with a sentence that names the
+// clause. Both keywords are read through the effective abilities, so
+// a creature granted reach this turn can block it. Until #750 the
+// clause was left out, because the only thing the engine could say
+// was the unconditional "can't be blocked" — stronger than printed.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "5b84101e-7e23-437d-835c-409bc061ecbb",
 		Name:         "Canopy Cover",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The enchanted creature can be blocked by anything — the printed \"can't be blocked except by creatures with flying or reach\" isn't enforced, so the Cover is protection only, not evasion.",
-		},
-		Targets: EnchantCreature(),
+		Completeness: CompletenessFull,
+		Targets:      EnchantCreature(),
 		Static: []game.StaticAbility{
 			GrantToAttached("hexproof"),
+		},
+		BlockRules: []game.BlockRule{
+			CantBeBlockedExceptBy(OnAttached(), Or(HasKeyword("flying"), HasKeyword("reach")),
+				"creatures with flying or reach"),
 		},
 	})
 }

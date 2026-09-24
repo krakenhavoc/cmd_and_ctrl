@@ -10,6 +10,7 @@ activations.ever	map:string
 activations.ever{}	number:int
 activations.turn	map:string
 activations.turn{}	number:int
+activeSeatLeftPending	bool
 announcedAttacks	map:array
 announcedAttacks{}	bool
 announcedBecameBlocked	map:array
@@ -193,6 +194,8 @@ battlefield.cards[].typeLine	string
 battlefield.cards[].variableToughness	bool
 battlefield.kind	string
 battlefield.owner	custom(uuid.UUID)
+blocksDeclared	map:array
+blocksDeclared{}	bool
 continuations	object
 continuations.choiceResumeFrames	number:int
 continuations.delayedTriggerEffects	number:int
@@ -471,6 +474,10 @@ lastKnownBattlefield{}.Colors	array
 lastKnownBattlefield{}.Colors[]	string
 lastKnownBattlefield{}.ControlSource	custom(uuid.UUID)
 lastKnownBattlefield{}.Controller	custom(uuid.UUID)
+lastKnownBattlefield{}.GrantedAbilities	array
+lastKnownBattlefield{}.GrantedAbilities[]	object
+lastKnownBattlefield{}.GrantedAbilities[].Key	string
+lastKnownBattlefield{}.GrantedAbilities[].Source	custom(uuid.UUID)
 lastKnownBattlefield{}.Name	string
 lastKnownBattlefield{}.PTDefined	bool
 lastKnownBattlefield{}.Power	number:int
@@ -502,6 +509,10 @@ lastKnownPermanents{}[].characteristic.Colors	array
 lastKnownPermanents{}[].characteristic.Colors[]	string
 lastKnownPermanents{}[].characteristic.ControlSource	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.Controller	custom(uuid.UUID)
+lastKnownPermanents{}[].characteristic.GrantedAbilities	array
+lastKnownPermanents{}[].characteristic.GrantedAbilities[]	object
+lastKnownPermanents{}[].characteristic.GrantedAbilities[].Key	string
+lastKnownPermanents{}[].characteristic.GrantedAbilities[].Source	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.Name	string
 lastKnownPermanents{}[].characteristic.PTDefined	bool
 lastKnownPermanents{}[].characteristic.Power	number:int
@@ -545,6 +556,11 @@ monarch	custom(uuid.UUID)
 mulligansOpen	bool
 oncePerBatchFired	map:string
 oncePerBatchFired{}	number:uint64
+outcome	object
+outcome.cause	string
+outcome.kind	string
+outcome.source	custom(uuid.UUID)
+outcome.winner	custom(uuid.UUID)
 pendingChoices	array
 pendingChoices[]	object
 pendingChoices[].acceptLabel	string
@@ -584,6 +600,10 @@ pendingChoices[].damageAssignment.SourceLKI.Colors	array
 pendingChoices[].damageAssignment.SourceLKI.Colors[]	string
 pendingChoices[].damageAssignment.SourceLKI.ControlSource	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.Controller	custom(uuid.UUID)
+pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities	array
+pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities[]	object
+pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities[].Key	string
+pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities[].Source	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.Name	string
 pendingChoices[].damageAssignment.SourceLKI.PTDefined	bool
 pendingChoices[].damageAssignment.SourceLKI.Power	number:int
@@ -668,6 +688,7 @@ pendingTriggers[]	object
 pendingTriggers[].altCost	string
 pendingTriggers[].altCostExiles	bool
 pendingTriggers[].castFromZone	string
+pendingTriggers[].commutes	bool
 pendingTriggers[].controller	custom(uuid.UUID)
 pendingTriggers[].distribution	map:array
 pendingTriggers[].distribution{}	number:int
@@ -1961,6 +1982,12 @@ seats[].statics[].duration.PinnedEnteredAt	number:int64
 seats[].statics[].duration.Player	custom(uuid.UUID)
 seats[].statics[].duration.Source	custom(uuid.UUID)
 seats[].statics[].duration.SourceEnteredAt	number:int64
+seats[].statics[].gameEnd	object
+seats[].statics[].gameEnd.cantLose	bool
+seats[].statics[].gameEnd.cantWin	bool
+seats[].statics[].gameEnd.causes	array
+seats[].statics[].gameEnd.causes[]	string
+seats[].statics[].gameEnd.scope	number:uint8
 seats[].statics[].keyword	string
 seats[].statics[].label	string
 seats[].statics[].lifeTotalLocked	bool
@@ -2176,6 +2203,7 @@ stackMeta[]	object
 stackMeta[].altCost	string
 stackMeta[].altCostExiles	bool
 stackMeta[].castFromZone	string
+stackMeta[].commutes	bool
 stackMeta[].controller	custom(uuid.UUID)
 stackMeta[].distribution	map:array
 stackMeta[].distribution{}	number:int

@@ -29,6 +29,16 @@ export const ErrorCode = {
   // the symbols the pool and the tapper together could not cover.
   // No `card_id`: the refusal is about the declaration, not one card.
   AttackTaxUnpaid: "attack_tax_unpaid",
+  // #1507 (ADR 0045 Decision 45): a declare_attacker / declare_attackers
+  // refused because the declaration breaks a CR 508.1c count limit
+  // (Silent Arbiter's "no more than one creature can attack each
+  // combat", Crawlspace's "… can attack you …"). `reason` is one of
+  // AttackRefusalReason, `message` a server-built sentence addressed to
+  // the caller, `card_id` a creature from the refused declaration.
+  // Nothing was declared, tapped or paid; a declare_attackers batch is
+  // refused whole. #1533: an "attack with all" refused this way offers
+  // the attackers picker, capped at `attack_targets[].attack_limit`.
+  IllegalAttack: "illegal_attack",
 } as const;
 
 export type ErrorCodeValue = (typeof ErrorCode)[keyof typeof ErrorCode];
@@ -65,31 +75,52 @@ export interface ErrorPayload {
   // string ("{2}{2}") when code === "attack_tax_unpaid" — a second
   // shape on the same key, not a second field, because the server's
   // ErrorPayload.Reason is a bare string on the wire either way.
-  reason?: BlockRefusalReason | string;
+  // #1507: and one of AttackRefusalReason when code === "illegal_attack".
+  reason?: BlockRefusalReason | AttackRefusalReason | string;
 }
 
-// BlockRefusalReason mirrors game.BlockReason (server/internal/game/
+// BLOCK_REFUSAL_REASONS mirrors game.BlockReason (server/internal/game/
 // block_legality.go): the tokens the server sends today. Stable once
-// shipped; new ones join in the change that first sends them.
-export type BlockRefusalReason =
-  | "cant_block"
-  | "cant_be_blocked"
-  | "flying"
-  | "landwalk"
-  | "fear"
-  | "intimidate"
-  | "shadow"
-  | "horsemanship"
-  | "skulk"
-  | "protection"
-  | "cant_be_blocked_by"
-  | "cant_be_blocked_except_by"
-  | "cant_block_attacker"
-  | "too_few_blockers"
-  | "too_many_blockers"
+// shipped; new ones join in the change that first sends them. A
+// runtime list rather than a bare union so refusalTokens.test.ts can
+// diff it against the Go const block (#1533) — the union below is
+// derived from it, so the two cannot drift apart.
+export const BLOCK_REFUSAL_REASONS = [
+  "cant_block",
+  "cant_be_blocked",
+  "flying",
+  "landwalk",
+  "fear",
+  "intimidate",
+  "shadow",
+  "horsemanship",
+  "skulk",
+  "protection",
+  "cant_be_blocked_by",
+  "cant_be_blocked_except_by",
+  "cant_block_attacker",
+  "too_few_blockers",
+  "too_many_blockers",
   // #1339: the blocker's controller is not defending against that
   // attacker (CR 802.4a).
-  | "not_defending";
+  "not_defending",
+  // #1507 (ADR 0045 Decision 43): one more blocker would break a
+  // whole-combat count limit — Silent Arbiter's "no more than one
+  // creature can block each combat" (CR 509.1b).
+  "declaration_limit",
+] as const;
+export type BlockRefusalReason = (typeof BLOCK_REFUSAL_REASONS)[number];
+
+// ATTACK_REFUSAL_REASONS mirrors the AttackRefusal* constants in
+// server/internal/protocol/protocol.go: the `reason` tokens an
+// `illegal_attack` frame carries today. Stable once shipped; new ones
+// join in the change that first sends them.
+export const ATTACK_REFUSAL_REASONS = [
+  // #1507 (ADR 0045 Decision 45): a CR 508.1c count limit refused the
+  // declaration.
+  "attack_limit",
+] as const;
+export type AttackRefusalReason = (typeof ATTACK_REFUSAL_REASONS)[number];
 
 // ActionType is the string-literal union of every action name this
 // client sends. Each literal is validated against the server's
@@ -117,6 +148,9 @@ export type ActionType =
   // entry, one broadcast, however wide the board.
   | "declare_attackers"
   | "declare_blocker"
+  // #1279: complete the caller's CR 509.1 block declaration — the
+  // "Done blocking" / "No blocks" button. Not priority-gated.
+  | "finish_blocks"
   // Set-shaped block declaration (#750). Not a batching convenience:
   // a block COUNT (menace's minimum of two) is a property of the whole
   // declaration, so a two-creature menace block is legal only as a
@@ -339,6 +373,39 @@ export interface GameView {
   // person has to ask for the next iteration, with the loop's trigger
   // still on the stack. Table-wide and identical for every seat.
   loop_notice?: LoopNoticeView;
+  // ADR 0057 (#749): the result of an ended game — who won, or a draw,
+  // and why. Absent while the game is active and for a table an admin
+  // closed with no result. An effect win ends the game with the other
+  // seats still seated, so read the winner from here; gameOutcome.ts
+  // falls back to "the one seat left standing" only when this is
+  // absent on an ended view.
+  outcome?: OutcomeView;
+}
+
+// OutcomeView is GameView.outcome (ADR 0057 Decisions 5 and 7).
+export interface OutcomeView {
+  kind: "win" | "draw";
+  // The winner of a win.
+  winner?: string;
+  winner_seat?: number;
+  // "last_standing" (every opponent left, CR 104.2a), "effect" (an
+  // effect said this player wins, CR 104.2b) or "all_lost" (everyone
+  // left lost at once, CR 104.4a — a draw).
+  cause: "last_standing" | "effect" | "all_lost";
+  // The object whose effect won, for an effect win.
+  source?: string;
+  source_name?: string;
+}
+
+// GameEndGateView is one "can't lose" / "can't win" gate on a seat
+// (ADR 0057 Decision 7): where it comes from and what it stops.
+export interface GameEndGateView {
+  source?: string;
+  source_name: string;
+  cant_lose?: string[];
+  cant_win?: boolean;
+  // A gate a resolved spell granted until end of turn (Angel's Grace).
+  this_turn?: boolean;
 }
 
 // LoopNoticeView is the CR 726 loop breaker's notice. `label` is the
@@ -490,9 +557,27 @@ export type LogKind =
   | "damage"
   | "attack"
   | "block"
+  // #1279 / #1500: a defending player completed their block
+  // declaration with zero blockers. The blocks a defender DID make
+  // are already `block` entries above; this is the one fact those
+  // can't carry — that the defender was asked and chose to take it.
+  // Carries no `card_id` — `seat` is the defender, and the same
+  // sentence for every viewer.
+  | "no_blocks"
   | "token"
   | "sacrifice"
+  // A player left the game. `cause` says why ("life", "empty_draw",
+  // "poison", "commander_damage", "effect", "concede"); `card_id` is
+  // the source of an effect loss. One line per departure (ADR 0057).
   | "eliminated"
+  // The game ended with a result: `seat` is the winner (-1 for a
+  // draw), `cause` the outcome cause, `card_id` the winning source of
+  // an effect win (ADR 0057).
+  | "game_over"
+  // An effect would have made `seat` win and a "can't win the game"
+  // gate stopped it: `card_id` is the winning source, `target` the
+  // gate's (ADR 0057).
+  | "win_prevented"
   // A player revealed cards (CR 701.20): one entry per reveal, however
   // many cards it showed. Never carries card_id; `amount` is the card
   // count, `old_zone` where they were revealed from, and `target_seat`
@@ -652,6 +737,9 @@ export interface LogEvent {
   // `counters` one. Redacted with the card's name exactly as `choice`
   // is: both price or characterise the card the line no longer names.
   label?: string;
+  // ADR 0057: why an `eliminated` player left, or how a `game_over`
+  // game ended. Absent on every other kind.
+  cause?: string;
   // ADR 0075 §2.4: the actor held the table when they took this
   // action. Set only on `spawn` entries, and stamped by the room
   // rather than the projection — the host is a room property, so the
@@ -1185,8 +1273,9 @@ export interface PlayerView {
   // (possibly empty); each entry is server-stamped at the moment of
   // change. Added in S08.
   life_history: LifeChangeView[];
-  // Set when the player has conceded (S08) or, in the future, lost
-  // to a state-based action. Eliminated players still appear in the
+  // Set when the player has left the game: a concession (S08), a
+  // state-based loss, or an effect loss (ADR 0057). An effect WIN
+  // eliminates nobody. Eliminated players still appear in the
   // seats list and may continue to spectate; the UI greys them out
   // and disables their action buttons. Omitempty on the wire — only
   // present when true.
@@ -1305,6 +1394,17 @@ export interface PlayerView {
   // Out are all off the table for this seat). Damage is still dealt
   // and still triggers; it just moves no life. Poison still lands.
   life_total_locked?: boolean;
+  // ADR 0057 (#749, CR 104.3): the "can't lose the game" / "can't win
+  // the game" gates on this seat. `cant_lose` lists the causes that
+  // can't make this player lose right now ("life", "empty_draw",
+  // "poison", "commander_damage", "effect") — all five under a
+  // Platinum Angel; concession is never in it. `cant_win` is true when
+  // an effect can't make this player win. `end_gates` names the
+  // sources for the badge's tooltip. Derived, public, and absent for
+  // nearly every seat.
+  cant_lose?: string[];
+  cant_win?: boolean;
+  end_gates?: GameEndGateView[];
 }
 
 // One emblem (CR 114). `label` is the board name ("Elspeth, Sun's
@@ -2531,6 +2631,14 @@ export interface AttackTargetView {
   // in the client re-derives what an attack costs, for the same
   // reason nothing re-derives who may attack (#429, ADR 0045 §6).
   tax?: string;
+  // #1533 (ADR 0045 Decision 46): how many MORE creatures may be
+  // declared attacking this target this combat under a CR 508.1c count
+  // limit (Silent Arbiter, Crawlspace), after the ones already
+  // attacking. Absent when no limit counts this target; 0 is a real
+  // answer (the limit is used up), so test with `!== undefined`, never
+  // truthiness. Engine-computed: n new attackers at this target are
+  // accepted exactly when n <= attack_limit. Read it, don't derive it.
+  attack_limit?: number;
 }
 
 export interface TurnView {
@@ -2552,7 +2660,20 @@ export interface TurnView {
   // must not re-derive in TypeScript. It exists because blocking is a
   // turn-based action rather than a response, so the auto-pass
   // "legal response?" predicate structurally could not see it.
+  //
+  // #1279: a seat leaves this list once its block declaration is
+  // COMPLETE (it passed, sent finish_blocks, or had no legal block as
+  // the step began), even while it still has a creature that could
+  // block.
   block_decision_seats?: number[];
+  // #1279: where each DEFENDING seat's block declaration stands.
+  // `block_pending_seats` — still declaring; `blocks_declared_seats` —
+  // finished, with or without blocks. A defending seat is in exactly
+  // one; a seat nothing is attacking is in neither. Both absent
+  // outside declare_blockers. The "Done blocking" / "No blocks"
+  // control shows while the viewer's seat is pending.
+  block_pending_seats?: number[];
+  blocks_declared_seats?: number[];
   // S27: what the ACTIVE player's creatures may attack right now —
   // the other seats, the planeswalkers they don't control, and the
   // battles they don't protect (CR 506.2, 508.1d). Present only

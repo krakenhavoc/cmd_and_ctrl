@@ -724,6 +724,11 @@ func TestB21EnchantressesDrawOnEnchantmentSpells(t *testing.T) {
 	castCatalogSpell(t, g, "Shrine", "Enchantment", "", nil)
 	// The Satyr's draw is mandatory; the Enchantress asks.
 	answerLatestTriggerPrompt(t, g, me.ID, true)
+	// #1529: accepted, the Enchantress's draw joins the Satyr's in one
+	// CR 603.3b batch.
+	if !answerTriggerOrderLastQueuedFirst(t, g) {
+		t.Error("the Satyr's and the Enchantress's draws were not offered for ordering")
+	}
 	passPriorityAroundTable(t, g)
 	if me.Hand.Size() != hand+2 {
 		t.Errorf("the seeded card was cast and two were drawn: hand %d, want %d", me.Hand.Size(), hand+2)

@@ -127,15 +127,36 @@ const (
 	LogAttack LogKind = "attack"
 	// LogBlock — a creature was declared as a blocker.
 	LogBlock LogKind = "block"
+	// LogNoBlocks — a defending player completed their CR 509.1 block
+	// declaration with zero blockers (game.EventBlockersDeclared,
+	// Amount == 0; #1279, #1500). The blocks a defender DID make are
+	// already LogBlock lines above; this is the one fact those can't
+	// carry — that the defender was asked and chose to take the hit,
+	// rather than the silence a step with no combat at all produces.
+	// Amount > 0 (the defender blocked with N creatures) is still
+	// silent: those LogBlock lines already say it, and a second line
+	// for the same declaration would repeat them.
+	LogNoBlocks LogKind = "no_blocks"
 	// LogToken — a token was created.
 	LogToken LogKind = "token"
 	// LogSacrifice — a permanent was sacrificed. Distinct from the
 	// LogZone entry it replaces, because "sacrificed" and "destroyed"
 	// are different facts to a player reading the table.
 	LogSacrifice LogKind = "sacrifice"
-	// LogEliminated — a player left the game (concede, or any of the
-	// state-based losses).
+	// LogEliminated — a player left the game: a concession, a
+	// state-based loss or an effect loss. Cause says which (ADR 0057
+	// Decision 7), and the text says why.
 	LogEliminated LogKind = "eliminated"
+	// LogGameOver — the game ended with a result: a winner, or a draw
+	// (ADR 0057 Decision 7). Seat is the winner, NoSeat for a draw;
+	// Cause is "last_standing", "effect" or "all_lost"; CardID names
+	// the winning source for an effect win.
+	LogGameOver LogKind = "game_over"
+	// LogWinPrevented — an effect would have made Seat win the game
+	// and a "can't win the game" gate stopped it. CardID is the
+	// winning source, Target the gate's source. Once per prevented
+	// win (ADR 0057 Decision 7).
+	LogWinPrevented LogKind = "win_prevented"
 	// LogReveal — a player revealed cards (CR 701.20). The engine
 	// fires one EventRevealCards per card; every event sharing a
 	// RevealSeq collapses into ONE entry, with Amount the card count
@@ -387,10 +408,16 @@ type LogEvent struct {
 	Target string `json:"target,omitempty"`
 	// Amount is the signed or counting payload: life delta, damage
 	// dealt, cards drawn. On a LogEliminated entry it is 1 when the
-	// player conceded and 0 when they lost — a whole field for one
-	// bit, on an entry that happens at most three times a game, was
-	// not worth the wire bytes.
+	// player conceded and 0 when they lost — kept beside Cause for
+	// clients that predate it.
 	Amount int `json:"amount,omitempty"`
+	// Cause is why a LogEliminated player left ("life", "empty_draw",
+	// "poison", "commander_damage", "effect", "concede" — the engine's
+	// game.LossCause) or how a LogGameOver game ended
+	// ("last_standing", "effect", "all_lost"). ADR 0057 Decision 7.
+	// Empty on every other kind, and on an elimination recorded
+	// before the engine named its cause.
+	Cause string `json:"cause,omitempty"`
 	// LookedAt is the SIZE of a LogScry / LogSurveil entry's keyword
 	// action — the "2" in "scry 2" — where Amount is how many cards
 	// the table then watched move. Zero on every other kind, and
@@ -854,7 +881,7 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		// Source is the counter; Target the countered item.
 		base.CardID = uuidStringOrEmpty(ev.Source)
 		base.Target = uuidStringOrEmpty(ev.Target)
-		// #1211, CR 701.5c: a countered ABILITY has no card of its
+		// #1211, CR 701.6a: a countered ABILITY has no card of its
 		// own — its id names a StackMeta entry the client cannot look
 		// up, and its source permanent is still standing on the
 		// battlefield. So the item's label goes where the target name
@@ -949,18 +976,45 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Target = uuidStringOrEmpty(ev.Target)
 		return base, true
 
+	case game.EventBlockersDeclared:
+		// Amount > 0 is already said: every blocker that defender
+		// declared produced its own LogBlock line above, and repeating
+		// the count here would say the same combat twice. Amount == 0
+		// is the one fact no other line carries — the defender was
+		// asked and chose to take it (#1279, #1500).
+		if ev.Amount != 0 {
+			return LogEvent{}, false
+		}
+		base.Kind = LogNoBlocks
+		return base, true
+
 	case game.EventTokenCreated:
 		base.Kind = LogToken
 		base.CardID = uuidStringOrEmpty(ev.CardID)
 		return base, true
 
-	case game.EventConcede:
+	case game.EventPlayerEliminated:
+		// ADR 0057 Decision 7: the one line a departure writes, with
+		// its cause. A concession is this line too (EventConcede is
+		// silent), so one concession logs once.
 		base.Kind = LogEliminated
-		base.Amount = 1 // conceded, rather than lost
+		base.Cause = ev.Label
+		if ev.Label == string(game.LossConcede) {
+			base.Amount = 1 // conceded, rather than lost
+		}
+		base.CardID = uuidStringOrEmpty(ev.CardID)
 		return base, true
 
-	case game.EventPlayerEliminated:
-		base.Kind = LogEliminated
+	case game.EventGameOver:
+		base.Kind = LogGameOver
+		base.Cause = ev.Label
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		return base, true
+
+	case game.EventWinPrevented:
+		base.Kind = LogWinPrevented
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.setTarget(ev.Target, seatOf)
 		return base, true
 
 	case game.EventRevealCards:
@@ -1427,6 +1481,31 @@ func (e LogEvent) amountNamesTheCard() bool {
 	return false
 }
 
+// renderEliminatedText is a LogEliminated line's sentence: who left
+// and why (ADR 0057 Decision 7). An entry with no cause predates the
+// field and keeps its old wording.
+func renderEliminatedText(e LogEvent, actor, cardName string) string {
+	if e.Cause == string(game.LossConcede) || (e.Cause == "" && e.Amount == 1) {
+		return fmt.Sprintf("%s conceded", actor)
+	}
+	why := ""
+	switch game.LossCause(e.Cause) {
+	case game.LossLife:
+		why = "0 or less life"
+	case game.LossEmptyDraw:
+		why = "drew from an empty library"
+	case game.LossPoison:
+		why = "10 poison counters"
+	case game.LossCommanderDamage:
+		why = "commander damage"
+	case game.LossEffect:
+		why = nameOr(cardName, "an effect")
+	default:
+		return fmt.Sprintf("%s was eliminated", actor)
+	}
+	return fmt.Sprintf("%s lost the game (%s)", actor, why)
+}
+
 // setTarget routes an event's Target onto the right field: a seated
 // player becomes TargetSeat, anything else is treated as a card.
 func (e *LogEvent) setTarget(id uuid.UUID, seatOf func(uuid.UUID) int) {
@@ -1617,13 +1696,26 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		return fmt.Sprintf("%s attacks %s", card, target)
 	case LogBlock:
 		return fmt.Sprintf("%s blocks %s", card, target)
+	case LogNoBlocks:
+		return fmt.Sprintf("%s declares no blockers", actor)
 	case LogToken:
 		return fmt.Sprintf("%s created %s", actor, card)
 	case LogEliminated:
-		if e.Amount == 1 {
-			return fmt.Sprintf("%s conceded", actor)
+		return renderEliminatedText(e, actor, cardName)
+	case LogGameOver:
+		switch e.Cause {
+		case game.OutcomeCauseAllLost:
+			return "The game is a draw"
+		case game.OutcomeCauseEffect:
+			if cardName != "" {
+				return fmt.Sprintf("%s won the game (%s)", actor, cardName)
+			}
+			return fmt.Sprintf("%s won the game", actor)
 		}
-		return fmt.Sprintf("%s was eliminated", actor)
+		return fmt.Sprintf("%s won the game: every opponent has left", actor)
+	case LogWinPrevented:
+		return fmt.Sprintf("%s would have won the game (%s), but can't (%s)",
+			actor, nameOr(cardName, "an effect"), nameOr(targetName, "an effect"))
 	case LogReveal:
 		return renderRevealText(e, actor)
 	case LogChooseColor:

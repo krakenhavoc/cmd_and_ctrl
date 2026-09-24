@@ -19,7 +19,7 @@ import (
 // with the controller as its only knower (CR 708.5). What was missing
 // was a card able to call it, and the answer to "may this be turned
 // face up" — which is `game.TurnFaceUpOffer`'s manifested row: a
-// CREATURE card for its mana cost (CR 701.34d), and nothing at all for
+// CREATURE card for its mana cost (CR 701.40b), and nothing at all for
 // anything else, which stays face down for as long as it is on the
 // battlefield.
 

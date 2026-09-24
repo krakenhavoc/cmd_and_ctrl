@@ -28,8 +28,14 @@
   // (abilities have no card of their own on the stack) — the same
   // card artCardFor() already draws the thumb from.
 
-  import type { CardView, PlayerView, StackItemView, ZoneView } from "../../protocol";
-  import { seatColor } from "../../colors";
+  // #1467: every derivation this card used to make for itself — the
+  // title, the art card, the caster, the "→ target" line, the chips,
+  // the order — now comes from lib/stackLane.ts, the model the
+  // floating lane styles read too, so the docked card and the lane
+  // cannot say different things about the same stack. The #322 hover
+  // bookkeeping is lib/stackHover.ts for the same reason.
+
+  import type { PlayerView, StackItemView, ZoneView } from "../../protocol";
   import { cardImageURL } from "../../cardImage";
   import { cardArt } from "../../cardArt";
   import Icon from "../Icon.svelte";
@@ -37,8 +43,8 @@
   import { hoveredCard } from "../../cardTypes";
   import { settings } from "../../settings";
   import { holdPriority, toggleHoldPriority } from "../../holdPriority";
-  import { doubledTriggerLabel } from "../../triggerDoubling";
-  import { previewableCard } from "../../stackPreview";
+  import { buildStackLane, type StackLaneItem } from "../../stackLane";
+  import { createStackHover } from "../../stackHover";
 
   interface Props {
     stack: ZoneView;
@@ -82,177 +88,58 @@
     onPass,
   }: Props = $props();
 
+  // The docked card never says "your", so it needs no viewer; the
+  // priority header keeps reading its own props, which Board computes
+  // from the same snapshot the lane's priority block is built from.
+  const model = $derived(
+    buildStackLane({
+      stack,
+      stackItems,
+      pendingTriggers,
+      seats,
+      battlefield,
+      exile,
+      viewerID: null,
+      priorityHolder: null,
+      splitSecondActive,
+    }),
+  );
+
   // S20: per-item legality — with a server legal set only the
   // matching spells light up (Negate can't point at a creature
   // spell); free-form prompts fall back to "any stack item".
-  function itemTargetable(item: StackItemView): boolean {
+  function itemTargetable(item: StackLaneItem): boolean {
     const t = $targeting;
     return t !== null && isLegalCardTarget(t, item.id);
   }
 
-  const cardByID = $derived.by(() => {
-    const out = new Map<string, CardView>();
-    for (const c of stack.cards) {
-      out.set(c.instance_id, c);
-    }
-    return out;
-  });
-
-  // Every card the overlay might need to name or draw: stack (spell
-  // items), battlefield (ability sources + most targets), exile and
-  // graveyards (dies-trigger sources, exiled targets).
-  const anyCardByID = $derived.by(() => {
-    const out = new Map<string, CardView>(cardByID);
-    for (const c of battlefield?.cards ?? []) out.set(c.instance_id, c);
-    for (const c of exile?.cards ?? []) out.set(c.instance_id, c);
-    for (const s of seats) {
-      for (const c of s.graveyard?.cards ?? []) out.set(c.instance_id, c);
-    }
-    return out;
-  });
-
-  // The card whose art represents an item: the spell itself, or an
-  // ability's source permanent.
-  function artCardFor(item: StackItemView): CardView | undefined {
-    if (item.kind === "spell") return cardByID.get(item.id);
-    return anyCardByID.get(item.source_card_id);
-  }
-
-  const seatBySeatID = $derived.by(() => {
-    const out = new Map<string, PlayerView>();
-    for (const s of seats) out.set(s.id, s);
-    return out;
-  });
-
-  function controllerName(item: StackItemView): string {
-    return seatBySeatID.get(item.controller)?.name ?? "?";
-  }
-
-  function controllerSeatNum(item: StackItemView): number {
-    return seatBySeatID.get(item.controller)?.seat ?? 0;
-  }
-
-  function targetLabel(item: StackItemView): string {
-    if (!item.targets || item.targets.length === 0) return "";
-    const parts = item.targets
-      .map((t) => {
-        if (t.kind === "self") return "self";
-        if (t.kind === "none") return "—";
-        if (t.kind === "player") {
-          return seatBySeatID.get(t.id ?? "")?.name ?? "player";
-        }
-        const c = anyCardByID.get(t.id ?? "");
-        return c?.name ?? "card";
-      })
-      .join(" / ");
-    return `→ ${parts}`;
-  }
-
-  function imgSrcFor(item: StackItemView): string | null {
-    return cardImageURL(artCardFor(item), "small");
-  }
-
-  function titleFor(item: StackItemView): string {
-    if (item.kind === "spell") {
-      const c = cardByID.get(item.id);
-      if (c?.name) return c.name;
-    }
-    if (item.label) return item.label;
-    const src = anyCardByID.get(item.source_card_id);
-    if (src?.name) return src.name;
-    return item.kind === "triggered" ? "trigger" : "ability";
-  }
-
-  // Wire delivers stack_items bottom..top (per viewOfStackItemsInStackOrder
-  // on the server). The user-facing convention is "top of stack resolves
-  // first", so we render in reverse — top entry in the overlay = top of
-  // the stack = next to resolve.
-  const displayItems = $derived([...(stackItems ?? [])].reverse());
-  const triggers = $derived(pendingTriggers ?? []);
+  const displayItems = $derived(model.stackItems);
+  const triggers = $derived(model.pendingTriggers);
   const visible = $derived(displayItems.length > 0 || triggers.length > 0 || stack.count > 0);
 
   // ---- #322 hover preview -------------------------------------
-  // Deliberately plain `let`, not `$state`: the cleanup effect below
-  // wants to react to the stack changing under the cursor, not to
-  // its own bookkeeping writes.
-  let hoverTimer: ReturnType<typeof setTimeout> | null = null;
-  let hoveredItemID: string | null = null;
-  let previewedInstanceID: string | null = null;
+  // The overlay pins top-right and the strip pins top-left, so the
+  // big preview lands beside the stack rather than over it.
+  const hover = createStackHover(hoveredCard);
 
-  function cancelHoverTimer(): void {
-    if (hoverTimer !== null) {
-      clearTimeout(hoverTimer);
-      hoverTimer = null;
-    }
+  function handleItemEnter(item: StackLaneItem): void {
+    hover.enter(item.id, item.previewCard, $settings.display.hoverDelayMs);
   }
 
-  // previewCardFor is the card the overlay should show for an item:
-  // the spell itself, or an ability's source permanent. Returns null
-  // for anything the viewer isn't allowed to read — the same rule
-  // Card.svelte applies before writing the store, shared through
-  // stackPreview.ts so the two cannot disagree.
-  //
-  // #697: this used to test `known_by_you === false`, which the server
-  // never sends (the field is omitempty), so the guard never fired and
-  // an unreadable card opened a blank zoom panel.
-  function previewCardFor(item: StackItemView): CardView | null {
-    return previewableCard(artCardFor(item));
-  }
-
-  // clearPreview drops our own write to the shared store, never
-  // anyone else's — a battlefield card hovered after us owns the
-  // slot and must survive.
-  function clearPreview(): void {
-    const inst = previewedInstanceID;
-    hoveredItemID = null;
-    previewedInstanceID = null;
-    if (!inst) return;
-    hoveredCard.update((c) => (c?.instance_id === inst ? null : c));
-  }
-
-  function handleItemEnter(item: StackItemView): void {
-    const c = previewCardFor(item);
-    if (!c) return;
-    cancelHoverTimer();
-    hoveredItemID = item.id;
-    const delay = $settings.display.hoverDelayMs;
-    if (delay <= 0) {
-      previewedInstanceID = c.instance_id;
-      hoveredCard.set(c);
-      return;
-    }
-    hoverTimer = setTimeout(() => {
-      hoverTimer = null;
-      previewedInstanceID = c.instance_id;
-      hoveredCard.set(c);
-    }, delay);
-  }
-
-  function handleItemLeave(item: StackItemView): void {
-    cancelHoverTimer();
-    if (hoveredItemID !== item.id) return;
-    clearPreview();
+  function handleItemLeave(item: StackLaneItem): void {
+    hover.leave(item.id);
   }
 
   // A stack item resolves out from under the cursor without ever
-  // firing pointerleave — the row is simply removed. Without this the
-  // preview of a resolved spell would hang around until the user
-  // hovered something else.
+  // firing pointerleave — the row is simply removed.
   $effect(() => {
-    const items = displayItems;
-    if (hoveredItemID === null) return;
-    if (items.some((it) => it.id === hoveredItemID)) return;
-    cancelHoverTimer();
-    clearPreview();
+    hover.sync(displayItems.map((it) => it.id));
   });
 
   // Unmount (last item resolved, game over, seat switch) is the other
   // way the row can vanish mid-hover.
   $effect(() => {
-    return () => {
-      cancelHoverTimer();
-      clearPreview();
-    };
+    return () => hover.destroy();
   });
 </script>
 
@@ -297,11 +184,9 @@
     </header>
     <div class="items">
       {#each displayItems as item, i (item.id)}
-        {@const seatNum = controllerSeatNum(item)}
-        {@const src = imgSrcFor(item)}
+        {@const src = cardImageURL(item.artCard, "small")}
         {@const stackTargetable = itemTargetable(item)}
-        {@const previewable = previewCardFor(item) !== null}
-        {@const doubledLabel = doubledTriggerLabel(item.doubled_by, item.doubled_by_name)}
+        {@const previewable = item.previewCard !== null}
         <div class="line">
           <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
           <div
@@ -309,18 +194,18 @@
             class:top={i === 0}
             class:cast-targetable={stackTargetable}
             class:previewable
-            style:--seat-color={seatColor(seatNum)}
+            style:--seat-color={item.casterColor}
             data-stack-item-id={item.id}
-            title={previewable ? `${titleFor(item)} — hover to preview` : titleFor(item)}
+            title={previewable ? `${item.name} — hover to preview` : item.name}
             onpointerenter={() => handleItemEnter(item)}
             onpointerleave={() => handleItemLeave(item)}
             onfocusin={() => handleItemEnter(item)}
             onfocusout={() => handleItemLeave(item)}
-            onclick={stackTargetable ? () => onTargetStackItem?.(item) : undefined}
+            onclick={stackTargetable ? () => onTargetStackItem?.(item.raw) : undefined}
             onkeydown={(e) => {
               if (stackTargetable && (e.key === "Enter" || e.key === " ")) {
                 e.preventDefault();
-                onTargetStackItem?.(item);
+                onTargetStackItem?.(item.raw);
               }
             }}
             role={stackTargetable ? "button" : undefined}
@@ -339,79 +224,27 @@
               {/if}
             </div>
             <div class="info">
-              <div class="title">{titleFor(item)}</div>
+              <div class="title">{item.name}</div>
               <div class="sub">
                 <span class="seat-dot"></span>
-                <span class="caster-name">{controllerName(item)}</span>
-                {#if item.targets && item.targets.length > 0}
-                  <span class="target-text">{targetLabel(item)}</span>
+                <span class="caster-name">{item.casterName}</span>
+                {#if item.targetText}
+                  <span class="target-text">{item.targetText}</span>
                 {/if}
-                {#if item.kind !== "spell"}
-                  <span class="chip">{item.kind}</span>
-                {/if}
-                {#if doubledLabel}
-                  <span class="chip flag">{doubledLabel}</span>
-                {/if}
-                {#if cardByID.get(item.id)?.auto}
+                <!-- The chips — kind, doubled trigger, auto / manual,
+                     X, alt cost, gift, chosen modes, split second, held
+                     priority — and why each exists are in
+                     lib/stackLane.ts (chipsFor). -->
+                {#each item.chips as chip, ci (ci)}
                   <span
-                    class="chip flag"
-                    title="this card auto-resolves — effect fires when priority passes to empty stack"
+                    class="chip"
+                    class:flag={chip.tone === "flag"}
+                    class:manual={chip.tone === "manual"}
+                    title={chip.title}
                   >
-                    auto
+                    {chip.label}
                   </span>
-                {/if}
-                <!-- The moment the expectation forms. The spell is on
-                     the stack, everyone is looking at it, and in a
-                     second it will resolve and appear to do nothing.
-                     Saying so here is what reports #321 / #324 /
-                     #325 / #332 / #333 each needed and none of them
-                     got. Transient by construction — the chip leaves
-                     with the stack item, so it never becomes board
-                     furniture. -->
-                {#if cardByID.get(item.id)?.unimplemented}
-                  <span
-                    class="chip manual"
-                    title="this card's rules aren't implemented yet — it resolves with no effect, so resolve it by hand"
-                  >
-                    manual
-                  </span>
-                {/if}
-                {#if item.x_value}
-                  <span class="chip">X = {item.x_value}</span>
-                {/if}
-                <!-- S22: an overloaded Rift wipes and a hard-cast one bounces one thing. -->
-                {#if item.alt_cost}
-                  <span class="chip flag">{item.alt_cost}</span>
-                {/if}
-                <!-- #1267 (CR 702.174): a promised gift changes what the
-                     spell does, and who gets it is public. -->
-                {#if item.gift_to}
-                  <span
-                    class="chip flag"
-                    title={`the gift was promised to ${seatBySeatID.get(item.gift_to)?.name ?? "an opponent"} — they get it before the spell's other effects`}
-                  >
-                    Gift → {seatBySeatID.get(item.gift_to)?.name ?? "opponent"}
-                  </span>
-                {/if}
-                <!-- #764: the chosen bullets, in announce order (CR
-                     608.2c) and with repeats (CR 700.2d). This used to
-                     print the raw indexes ("modes: 0, 2"), which nobody
-                     at the table could read: the caster's hand card is
-                     gone once the spell is on the stack, so the labels
-                     have to travel with the item. -->
-                {#if item.mode_labels && item.mode_labels.length > 0}
-                  {#each item.mode_labels as modeLabel, mi (mi)}
-                    <span class="chip">{modeLabel}</span>
-                  {/each}
-                {:else if item.modes && item.modes.length > 0}
-                  <span class="chip">modes: {item.modes.join(", ")}</span>
-                {/if}
-                {#if item.split_second}
-                  <span class="chip flag">split-second</span>
-                {/if}
-                {#if item.hold_priority}
-                  <span class="chip flag">held priority</span>
-                {/if}
+                {/each}
               </div>
             </div>
           </div>
@@ -421,7 +254,7 @@
             disabled={!viewerHasPriority}
             onclick={(e) => {
               e.stopPropagation();
-              onCounter(item);
+              onCounter(item.raw);
             }}
             title={viewerHasPriority ? "counter this item" : "you don't hold priority"}
           >
@@ -447,11 +280,11 @@
           {#each triggers as t (t.id)}
             <li
               class="trigger-row"
-              style:--seat-color={seatColor(controllerSeatNum(t))}
-              title={`from ${controllerName(t)}`}
+              style:--seat-color={t.casterColor}
+              title={`from ${t.casterName}`}
             >
               <span class="seat-dot"></span>
-              <span class="trigger-label">{t.label || "trigger"}</span>
+              <span class="trigger-label">{t.name}</span>
             </li>
           {/each}
         </ul>

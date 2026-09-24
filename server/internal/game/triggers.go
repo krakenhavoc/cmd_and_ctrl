@@ -221,6 +221,23 @@ type TriggeredAbility struct {
 	// Added in S28.
 	FromStack bool
 
+	// Keyword is the machine-readable name of the KEYWORD ability this
+	// trigger is — "cascade" (CR 702.85), "storm" (CR 702.40),
+	// "prowess" (CR 702.108) — and empty for every hand-written
+	// trigger, which is almost all of them (#1258).
+	//
+	// Stamped by the keyword's constructor (effects.Cascade,
+	// effects.Storm) or by the engine's own keyword-trigger table
+	// (prowess.go), never by a card file, so it cannot disagree with
+	// what the ability does. It exists to be READ: the caveat drift
+	// guard (cards/coverage) asks "does this card have cascade" by
+	// walking the card's triggers for the name, the way it already
+	// asks about flashback through an alternative cost's key.
+	//
+	// Catalog data, not persisted, and not a behaviour switch —
+	// nothing in the harvest path branches on it.
+	Keyword string
+
 	// Zones is WHERE this ability watches from (CR 113.6, #925). Nil
 	// — the answer for all but a handful of cards — means the
 	// battlefield, which is where abilities live. {ZoneGraveyard} is
@@ -678,33 +695,35 @@ func (g *Game) harvestLTB(pass *harvestPass) {
 	if batch, ok := g.simultaneousExitCardLocked(ev.CardID); ok {
 		source = batch
 	}
-	oracle := CatalogKey(source)
-	if oracle == "" {
-		return
-	}
-	// TriggersForKey, not TriggersForCard: this path has already
-	// chosen its key (CatalogKey plus the AbilitiesRemoved read off
-	// the LKI snapshot below), and the designation gate is evaluated
-	// against the SNAPSHOT for the same CR 603.10 reason — a Case
-	// that was solved when it died has its solved dies-trigger, one
-	// that was not does not. ADR 0071.
-	triggers := TriggersForKey(oracle, source)
-	if len(triggers) == 0 {
-		return
-	}
 	lki, ok := g.lastKnownBattlefield[ev.CardID]
 	if batch, inBatch := g.simultaneousExitCardLocked(ev.CardID); inBatch {
 		lki, ok = batch.Effective(), true
 	}
-	// S24 layer 6: read the removal off the LKI SNAPSHOT, not off the
-	// card. CatalogAbilityKey cannot answer here — the permanent has
-	// already left the battlefield and clearEffectiveCacheLocked has
-	// dropped its layer cache — and CR 603.10 says an LTB trigger is
-	// judged on what the permanent looked like while it was still
-	// there. A creature that died under a Kenrith's Transformation
-	// has no dies-trigger, and that stays true for the beat between
-	// the death and the Aura falling off.
-	if ok && lki.AbilitiesRemoved {
+	// S24 layer 6 / ADR 0093 Decision 2: the key is read off the LKI
+	// SNAPSHOT, not off the card. CatalogAbilityKey cannot answer here
+	// — the permanent has already left the battlefield and
+	// clearEffectiveCacheLocked has dropped its layer cache — and
+	// CR 603.10a says an LTB trigger is judged on what the permanent
+	// looked like while it was still there. A creature that died under
+	// a Kenrith's Transformation has none of its OWN dies-triggers,
+	// and that stays true for the beat between the death and the Aura
+	// falling off; one that died carrying a granted "when this
+	// creature dies" still has that one (AbilityKeyFromLKI composes
+	// both halves).
+	oracle := CatalogKey(source)
+	if ok {
+		oracle = AbilityKeyFromLKI(source, lki)
+	}
+	if oracle == "" {
+		return
+	}
+	// TriggersForKey, not TriggersForCard: this path has already
+	// chosen its key, and the designation gate is evaluated against
+	// the SNAPSHOT for the same CR 603.10 reason — a Case that was
+	// solved when it died has its solved dies-trigger, one that was
+	// not does not. ADR 0071.
+	triggers := TriggersForKey(oracle, source)
+	if len(triggers) == 0 {
 		return
 	}
 	if !ok {

@@ -150,7 +150,7 @@ type DestroyTarget struct {
 	// CantBeRegenerated is the clause printed on Mortify, Putrefy,
 	// Pongify, Terminate, Snuff Out and the rest: this destruction
 	// ignores regeneration shields (CR 701.19c). The shields are not
-	// spent — CR 701.19d leaves an ignored one on the permanent.
+	// spent — CR 701.19c leaves an ignored one on the permanent.
 	//
 	// It was cosmetic on every card that printed it until #667 gave
 	// the engine a shield to ignore. Set it wherever the oracle text
@@ -1308,7 +1308,7 @@ type MillToZone struct {
 	// both conditions in it, UntilAny(UntilCard(…), UntilCount(x)).
 	//
 	// A landed count is not N. N is the mill AMOUNT the instruction
-	// names (CR 701.13b), the number Bruvac the Grandiloquent doubles,
+	// names (CR 701.17b), the number Bruvac the Grandiloquent doubles,
 	// and it would be spent on a card a replacement diverted on the
 	// way; a bound that counts arrivals is the clause, and a card the
 	// CR 614 window sent elsewhere costs it nothing.
@@ -1430,7 +1430,7 @@ func UntilCard(pred func(c game.Card) bool) func([]game.Card) bool {
 // been put into their graveyard this way".
 //
 // #1161, and the reason it is a clause rather than MillToZone.N. N is
-// the mill AMOUNT: CR 701.13b counts the cards the instruction moves,
+// the mill AMOUNT: CR 701.17b counts the cards the instruction moves,
 // so a card a replacement diverts on the way to the graveyard (a
 // commander taking the command zone, Rest in Peace's "exile it
 // instead") spends one of it without ever arriving — and it is the

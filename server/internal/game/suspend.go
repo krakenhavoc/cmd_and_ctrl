@@ -25,7 +25,7 @@ import (
 //     `{0}` price, `TimingFlash` (a trigger resolving in an upkeep is
 //     not a main phase, and Rift Bolt is a sorcery) and the CR 107.3b
 //     X lock that comes free with a cost that is not the printed one.
-//  4. HASTE on the creature that results (CR 702.62e).
+//  4. HASTE on the creature that results (CR 702.62a).
 //
 // # What "suspended" is
 //
@@ -275,7 +275,7 @@ func (g *Game) offerSuspendedCastLocked(chooser, cardID uuid.UUID) error {
 //     UPKEEP and Rift Bolt is a sorcery. CR 608.2g lets the cast
 //     happen during that resolution whatever the card's own timing
 //     says, and the grant is how this engine spells that.
-//   - `GrantsHaste`, CR 702.62e.
+//   - `GrantsHaste`, CR 702.62a.
 //
 // Caller must hold g.mu (write).
 func (g *Game) grantSuspendedFreeCastLocked(player, cardID uuid.UUID) {
@@ -300,13 +300,13 @@ func (g *Game) grantSuspendedFreeCastLocked(player, cardID uuid.UUID) {
 	}, []Card{*c})
 }
 
-// grantHasteForCastLocked is CR 702.62e — "if the resulting spell is
+// grantHasteForCastLocked is CR 702.62a — "if the resulting spell is
 // a permanent spell, that permanent gains haste" — applied at the
 // moment the granted cast is announced.
 //
 // A layer-6 keyword grant scoped to the ONE object the permission
 // opened, and to its controller: losing control of the creature ends
-// it, which is the clause CR 702.62e actually writes ("until that
+// it, which is the clause CR 702.62a actually writes ("until that
 // player loses control of it").
 //
 // #990 RETIRED THE UNTIL-END-OF-TURN SIMPLIFICATION #659 shipped.
@@ -343,7 +343,7 @@ func (g *Game) grantHasteForCastLocked(player, cardID uuid.UUID) {
 			}
 			ch.Abilities = append(ch.Abilities, "haste")
 		},
-	}, cardID, "Suspend — haste (CR 702.62e)", UntilYouLoseControlOfDuration(cardID, player))
+	}, cardID, "Suspend — haste (CR 702.62a)", UntilYouLoseControlOfDuration(cardID, player))
 }
 
 // SuspendLabel is the printed keyword line — "Suspend 3—{R}" — built

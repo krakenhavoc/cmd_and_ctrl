@@ -48,6 +48,21 @@ type Game struct {
 	CreatedAt time.Time
 	State     State
 
+	// Outcome is the result of an ended game — who won, or a draw, and
+	// why (ADR 0057 Decision 5, game_end.go). Nil while the game is
+	// active, and nil for a game ended by End() with no result (an
+	// abandoned table). Written only by endGameLocked.
+	Outcome *GameOutcome
+
+	// ActiveSeatLeftPending is set when the ACTIVE player loses the
+	// game by an effect in the middle of a resolution (ADR 0057
+	// Decision 3). They leave at once, but the game-over check and the
+	// turn rotation wait for the next SBA loss pass, which consumes
+	// the flag: beginning the next turn must never run inside a
+	// resolving callback (ADR 0059 Decision 6). Plain data, carried by
+	// Clone and the snapshot.
+	ActiveSeatLeftPending bool
+
 	// Seats is the ordered list of players. Index matches Turn.ActiveSeat.
 	Seats []*Player
 
@@ -434,6 +449,24 @@ type Game struct {
 	// announcedAttacks, and carried by Clone / RestoreFrom and the
 	// persisted snapshot for the same reasons.
 	attackDefenders map[uuid.UUID]uuid.UUID
+
+	// blocksDeclared is the set of DEFENDING PLAYERS whose CR 509.1
+	// block declaration is complete this combat (#1279, ADR 0045
+	// Decision 38, block_completion.go). Written only by
+	// completeBlockDeclarationLocked — at the step's entry for a
+	// defender with no legal block, when the defender passes priority
+	// or sends finish_blocks, and for everyone still pending as the
+	// cursor leaves the step — and it is what tells "this defender has
+	// not declared yet" from "this defender declared no blocks", which
+	// an empty blockedAttackers cannot.
+	//
+	// Cleared with the rest of combat, and carried by Clone /
+	// RestoreFrom and the persisted snapshot for the reason
+	// announcedBlocks is: an undo across the declaration that kept the
+	// bit would make an attacker read unblocked to ninjutsu before the
+	// defender had chosen, and one that dropped it would reopen a
+	// declaration whose triggers have already fired.
+	blocksDeclared map[uuid.UUID]bool
 
 	// firstStrikeStepParticipants is THIS combat's CR 510.4 / 702.7c
 	// participation record: the attacking and blocking creatures that
@@ -1050,11 +1083,15 @@ const DefaultUndoLimit = 1
 
 // End transitions the game to the ended state. Idempotent: calling
 // End on an already-ended game is a no-op.
+//
+// An admin closing a table, not a result: Outcome stays nil, and the
+// wire has no winner for it (ADR 0057 Decision 5). Every rules-driven
+// end goes through endGameLocked instead.
 func (g *Game) End() {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateEnded {
-		// CR 702.143f, #658. The same sweep endGameIfDecidedLocked
+		// CR 702.143f, #658. The same sweep endGameLocked
 		// runs, on the other door out of an active game — an admin
 		// ending the table, and every caller that ends it outright.
 		g.revealForetoldAtGameEndLocked()
@@ -1110,7 +1147,12 @@ func (g *Game) AdvanceStep() (Turn, error) {
 	// Legion Loyalty's myriad) queues its yes/no here, and the gate
 	// then holds the cursor until it is answered rather than walking
 	// the table past it. No-op whenever nothing is staged.
-	if g.blockDeclarationPendingLocked() || g.attackDeclarationPendingLocked() {
+	//
+	// #1279: and every defender still declaring blockers completes
+	// here, as whatever they have staged — AdvanceStep is the cursor
+	// leaving the step (completion point 4, block_completion.go).
+	blocksCompleted := g.completeAllBlockDeclarationsLocked()
+	if blocksCompleted || g.blockDeclarationPendingLocked() || g.attackDeclarationPendingLocked() {
 		g.runStateChecksLocked()
 	}
 	// #730: an unanswered prompt gates the table. Checked before the
@@ -1536,6 +1578,15 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 	// step, so it waits for the following one. See delayed.go.
 	g.fireDelayedTriggersLocked(g.Turn.Step)
 	switch g.Turn.Step {
+	case StepDeclareBlockers:
+		// #1279 / CR 509.1: the declaration is taken as the step
+		// begins. A defending player with no legal block has nothing
+		// to decide, so their declaration — none — is complete now,
+		// and nothing that waits on it (ninjutsu, "attacks and isn't
+		// blocked", the bot's block grace) waits for a pass that means
+		// nothing. A defender with a block to make stays pending; see
+		// block_completion.go for how they finish.
+		g.autoCompleteBlockDeclarationsLocked()
 	case StepPrecombatMain:
 		// S27 / CR 714.3: "after your draw step, put a lore counter
 		// on each Saga you control" is a turn-based action performed
@@ -1750,17 +1801,29 @@ func (g *Game) CurrentState() State {
 	return g.State
 }
 
-// WinnerSeat returns the seat of the one player left standing in an
-// ended game. ok is false while the game is not over, and for an
-// ended game with no single survivor (a draw, or an ended table with
-// nobody seated). The engine keeps no winner field — the game ends
-// when exactly one seat is not Eliminated — so this derives it the
-// same way, under the read lock. Read by the lobby to fill
+// WinnerSeat returns the seat of the winner of an ended game, read
+// from Game.Outcome (ADR 0057 Decision 5) — which is what makes an
+// effect win, where several seats are still standing, name the right
+// player. ok is false while the game is not over, for a draw, and for
+// an ended game with no single survivor. Read by the lobby to fill
 // games.winner_seat (ADR 0051 decision 4).
+//
+// A game ended with no Outcome — End(), or a snapshot written before
+// the engine recorded one — falls back to the one seat left standing,
+// which is how the winner was derived before ADR 0057.
 func (g *Game) WinnerSeat() (seat int, ok bool) {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
 	if g.State != StateEnded {
+		return 0, false
+	}
+	if g.Outcome != nil {
+		if g.Outcome.Kind != OutcomeWin {
+			return 0, false
+		}
+		if p := g.playerByIDLocked(g.Outcome.Winner); p != nil {
+			return p.Seat, true
+		}
 		return 0, false
 	}
 	found := -1

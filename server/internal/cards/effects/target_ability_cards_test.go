@@ -120,7 +120,7 @@ func TestAbilityTargetingCardsAreWired(t *testing.T) {
 }
 
 // Stifle is the whole seam in one card: an opponent's trigger is a
-// legal target, it is countered, and CR 701.5c leaves its source
+// legal target, it is countered, and CR 701.6a leaves its source
 // permanent exactly where it was.
 func TestStifleCountersAnAbilityAndLeavesItsSource(t *testing.T) {
 	g := newCatalogGame(t)
@@ -149,7 +149,7 @@ func TestStifleCountersAnAbilityAndLeavesItsSource(t *testing.T) {
 		t.Error("the countered ability is still on the stack")
 	}
 	if !g.Battlefield.Contains(src) {
-		t.Error("CR 701.5c: a countered ability goes nowhere and its source does not move")
+		t.Error("CR 701.6a: a countered ability goes nowhere and its source does not move")
 	}
 	if opp.Graveyard.Contains(src) {
 		t.Error("the source permanent reached a graveyard")

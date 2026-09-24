@@ -14,9 +14,13 @@ import (
 // ability (ability_index set). Free-form S13.1 announcements are not
 // enumerated — nothing says what they do.
 type activateParams struct {
-	SourceCardID string       `json:"source_card_id"`
-	AbilityIndex int          `json:"ability_index"`
-	Targets      []targetWire `json:"targets,omitempty"`
+	SourceCardID string `json:"source_card_id"`
+	AbilityIndex int    `json:"ability_index"`
+	// Ref is the row's stable ref (ADR 0093 Decision 5), so a move
+	// enumerated before a grant appeared or vanished is refused as
+	// stale rather than fired on whatever moved to its index (#544).
+	Ref     string       `json:"ref,omitempty"`
+	Targets []targetWire `json:"targets,omitempty"`
 	// Modes is the CR 602.2b mode choice of a modal activated
 	// ability (#764), announced with the targets.
 	Modes        []int    `json:"modes,omitempty"`
@@ -175,7 +179,7 @@ func (e *enumerator) abilityZones() []abilityZone {
 // the activation path and the wire.
 func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind, restricted bool) {
 	g, p := e.g, e.p
-	abilities := game.ActivatedAbilitiesForCard(*source)
+	abilities, origins := game.ActivatedAbilitiesWithOrigins(*source)
 	// #662: an activated ability's source is the permanent — or, since
 	// #660, the HAND CARD — that has it, which is what CR 702.16b tests
 	// protection against. Never the seat: a red player's colourless
@@ -549,6 +553,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 								Params: mustJSON(activateParams{
 									SourceCardID:     source.InstanceID.String(),
 									AbilityIndex:     idx,
+									Ref:              origins.Ref(idx),
 									Targets:          wireTargets(targets),
 									Modes:            ann.modes,
 									SacrificeIDs:     idStrings(sacs),
@@ -1261,8 +1266,10 @@ func (e *enumerator) crewPayment(crew int) []uuid.UUID {
 }
 
 type manaParams struct {
-	CardID       string   `json:"card_id"`
-	AbilityIndex int      `json:"ability_index"`
+	CardID       string `json:"card_id"`
+	AbilityIndex int    `json:"ability_index"`
+	// Ref: see activateParams.Ref (ADR 0093 Decision 5).
+	Ref          string   `json:"ref,omitempty"`
 	SacrificeIDs []string `json:"sacrifice_ids,omitempty"`
 	// #758: permanents paying the mana ability's TapOthers component.
 	TapIDs []string `json:"tap_ids,omitempty"`
@@ -1363,7 +1370,7 @@ func (e *enumerator) manaMoves() {
 // a land sitting in a hand, which is exactly what should happen.
 func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, restricted bool) {
 	g := e.g
-	abilities := game.ManaAbilitiesForCard(*source)
+	abilities, origins := game.ManaAbilitiesWithOrigins(*source)
 	for idx, ab := range abilities {
 		// CR 113.6 (#1228): the ability has to function from the zone
 		// the card is in. Same predicate the engine gates on, so a
@@ -1526,6 +1533,7 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 						Params: mustJSON(manaParams{
 							CardID:           source.InstanceID.String(),
 							AbilityIndex:     idx,
+							Ref:              origins.Ref(idx),
 							SacrificeIDs:     idStrings(sacs),
 							TapIDs:           idStrings(taps),
 							CounterSourceIDs: cc.wireIDs(),

@@ -903,22 +903,24 @@ boteval arena --seats assisted,heuristic,heuristic,heuristic \
 
 There is no server, no websocket and no client: the arena builds a
 `game.Game`, wraps it in the same `ws.Room` the server uses, and
-starts one ordinary `aiseat.Runner` per chair. Every seat sees exactly
-the filtered `aiseat.Input` it would see at a real table.
+starts one ordinary `aiseat.Runner` per chair — one goroutine each,
+unless `--lockstep` asks for one goroutine in all (below). Every seat
+sees exactly the filtered `aiseat.Input` it would see at a real table.
 
 | Flag | What it does |
 |---|---|
 | `--seats` | one tier per chair, comma-separated. 2–4 chairs. |
 | `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump. |
 | `--names` | one tally name per chair. Use it when every chair is the same tier and the thing being compared is the deck or the configuration. |
-| `--games`, `--seed` | game *i* uses `seed+i`, so a run is exactly reproducible and two policies can be compared on the same deals. |
+| `--games`, `--seed` | game *i* uses `seed+i`, so two policies can be compared on the same deals. By default the seats run one goroutine each, so the seed fixes the deal and the policies' randomness, not the interleaving — a rerun is the same deals, not always the same games (#1409). Add `--lockstep` for the same games. |
+| `--lockstep` | plays each game on one goroutine, seat by seat, so the same `--seed` replays the same games move for move (#1503). Off by default — see "Lockstep runs" below for what it changes. |
 | `--rotate` | moves each contestant one chair along per game (contestant *k* sits at position `(k+i) mod n`). **Use it.** Turn order in Commander is worth real percentage points; without rotation you are measuring the chair. |
 | `--turn-budget`, `--wall`, `--stall` | when to stop a game that will not end (default 60 turns, 30 minutes, `3×max-think+15s` with no committed move). |
 | `--max-think`, `--model`, `--frontier-model`, `--endpoint` | the model tiers' deadline and transport. With an endpoint set and no `--max-think`, the deadline defaults to **20s**, the same local default `cmd/server` applies and for the same reason. |
 | `--out` | artifacts directory. Each run gets its own `<out>/<RFC3339 start>/`. |
 | `--decision-log`, `--decision-log-mode` | per-game decision logs under `<out>/decisions`. **Operator-only** — see the section above. |
 | `--replays` | per-game replay JSONL under `<out>/replays`. Off by default: a four-seat replay is ~320 MiB — and this flag hands the directory to `ws.Room`, which also writes `games/<id>.json` (the full authoritative state, rewritten on **every committed move**) and `restore/<id>.json` while a game is live. Budget for all three. |
-| `--block-grace` | how long an attacking bot holds its pass in declare-blockers while a defender still has a legal block. Defaults to production's value. `0` turns it off, which is faster and declares systematically fewer blocks than a real table — see below. |
+| `--block-grace` | how long an attacking bot holds its pass in declare-blockers while a defender is still declaring blockers with a legal block to make. Defaults to production's value. `0` turns it off — see below. |
 | `--md`, `--json` | what to print. Markdown by default. |
 
 Env fallbacks match the server's: `CMDCTRL_OPENAI_ENDPOINT`,
@@ -958,12 +960,54 @@ auditable on the point. Turn order in Commander is worth real
 percentage points, the same order as the differences being measured,
 so prefer 12 games over 10 on a four-seat table.
 
-**`--block-grace` is a fidelity knob, not a speed knob.** Without it
-an attacking bot re-steps the moment it commits, and the step can end
-before a slower seat has declared a block; combat is where policy
-differences actually show, so a run with it off understates every
-difference. It defaults to production's value and should stay there
-for any number that goes into an ADR.
+**`--block-grace` used to be a fidelity knob; since #1279 it is a
+speed knob.** Before #1279 an attacking bot that passed at once could
+let the step end before a slower seat had declared a block, so a run
+with it off understated every combat difference. The engine now
+completes each defender's declaration explicitly — their own pass, a
+`finish_blocks`, or having no legal block — and hands the attacker
+priority back after the last one ([ADR 0045](decisions/0045-combat-restrictions.md)
+Decision 38), so no block is lost either way; the grace only saves the
+extra round of passes. It still defaults to production's value, so a
+run matches what a live table does.
+
+#### Lockstep runs (#1503)
+
+By default an arena seat is a runner goroutine, exactly as at a live
+table, and after every commit the Go scheduler decides which seat acts
+first. That is where a seeded game forks: a defender's block lands
+before or after the attacker's pass depending on which goroutine woke
+first. `--lockstep` takes the goroutines away. The arena steps each
+seat in chair order, one wake's act-loop at a time
+(`aiseat.NewStepped` / `Runner.Step`), round after round — the same
+enumeration, policy, observer, forced answers and dispatch a woken
+runner runs; only *when* a seat acts is the arena's. The same seed then
+replays the same game, move for move, which is what you want when a
+run turns up a strange game and you need to watch it again with a
+decision log on.
+
+What else it changes, all of it following from "nobody else can act
+while a seat holds":
+
+- **No pacing and no block grace.** `--block-grace` is ignored: the
+  defenders it would wait for cannot act until the attacker's step
+  returns, so it would cost its full length on every combat and change
+  nothing.
+- **Stalls are exact, not timed.** A full round in which no seat
+  committed anything is a table nothing will move again, so the game is
+  marked stalled then and there; `--stall` is ignored. The dump says
+  `no move in a full lockstep round`.
+- **Model seats are only as reproducible as their endpoint.** Lockstep
+  removes the scheduler, not the model's own sampling, and a decision
+  that overruns `--max-think` falls back — the one place wall clock
+  still reaches a lockstep game.
+- **It is not how a live table runs.** Use it to reproduce and to
+  compare two policies move for move; keep the default for a run whose
+  numbers should reflect production's scheduling, races included. The
+  report's games line says `schedule lockstep` or `schedule concurrent`,
+  and `summary.json` carries `lockstep`, so two reports can be told
+  apart on the one point that decides whether their seeds are
+  comparable.
 
 #### Wall clock
 
@@ -1495,6 +1539,85 @@ The human client reads the same price from
 `turn.attack_targets[].tax` and labels its attack controls with it, so
 what the bot is refused and what a person is warned about come from one
 number.
+
+## Cashing an edge two turns out (#1409)
+
+The heuristic plans an attack one creature at a time, and two checks
+used to decide it: `lethalPush` ("does everything I have kill them
+now?") and `attackValue` ("is this one attack a good trade?"). Between
+them sat the board that stalled the S31 gate: two seats under 7 life
+behind full, even boards, one side a Drake up. All-in puts one Drake
+through for 3, which is not lethal, and every single attack is blocked
+at a loss, so neither seat declares the first attacker and the game
+waits for a library to run out.
+
+`heuristic/race.go` adds the two-turn race, three numbers computed
+with the same blocker matching `lethalPush` uses:
+
+- **now**: what the swing connects for after the defender blocks to
+  survive, losing as few creatures as it can;
+- **next**: what the bot's survivors connect for next turn into what
+  the defender kept;
+- **crack-back**: what every opponent's creatures connect for on the
+  turn in between, all of them swinging at the bot, into what it kept
+  home.
+
+The bot commits when now + next is at least the defender's life and
+the crack-back is less than its own. The swing is the smallest one that
+does it, tried evasive-first, and every creature outside it stays home,
+because that reserve is what the crack-back check counted on. The
+decision's reason says so in those numbers: `attack: two-turn race — 3
+now + 3 next turn ≥ their 6 life; crack-back 0 < my 6`.
+
+It is deliberately pessimistic wherever the estimate could make the bot
+suicidal: every blocked attacker of its own counts as dead, the
+defender counts as both attacking with everything and keeping
+everything home, a trampler is held only by a blocker that absorbs all
+of it, and menace counts as unblockable. A perfect mirror has no race —
+nothing is left over for next turn — and the bot does not invent one.
+
+### Trample overflow on the attacking side (#1504)
+
+`lethalPush` and the race's now and next count what a blocked trampler
+puts over its blockers. The defender assigns each blocker lethal damage
+(its toughness less the damage already on it, or 1 from a deathtouch
+source) and the rest goes to the player, exactly as the engine and the
+bot's own damage assignment do. So a Bear in front of a 7/7 trampler
+still lets 5 through, and a one-Wurm edge is cashed the way a one-Drake
+edge is. Before, a chumped Wurm counted as a Wurm that did nothing.
+
+The count is a lower bound, never an overestimate. Which blockers go on
+which trampler is a partition problem, so `heuristic/trample.go`
+relaxes it to a matching: each trampler has slots, and a blocker in
+slot j is credited with no more than it could absorb there. The bound
+takes the larger of that relaxation and the plain blocker matching, and
+a board with no trampler computes only the matching, so it is unchanged.
+A first-strike blocker counts as holding a trampler in full, because it
+may kill it before it deals any damage. `TestUnblockedPowerNeverOverestimates`
+checks the bound against every possible set of blocks on 3000 random
+small boards. On 2936 of them it is exact.
+
+The gate that measures this plays **lockstep** (next section), so a
+change to the race term moves the same forty games every time it runs.
+
+## Replaying a heuristic gate seed (#1409)
+
+`TestFourHeuristicBotsPlayToAWinner`, `TestTwoHeuristicBotsPlayToAWinner`
+and `TestHeuristicBeatsRandomHeadToHead` run their seats on one
+goroutine, in seat order: each seat's ordinary act-loop (the runner's
+own `step`, reached through `aiseat.NewStepped` / `Runner.Step` since
+#1503 — `lockstep_export_test.go` keeps #1409's names as one-line
+delegations), round after round. A seed is then a whole game rather than a deal, and a
+red night replays move for move. The soak (`TestRandomBotSoak`) keeps
+one goroutine per seat on purpose: it tests concurrent liveness, and the
+races lockstep removes are exactly what it exists to find (discussion
+#1390). `AISEAT_HEURISTIC_SCHEDULE=concurrent` plays the gate the old
+way, for comparing the two.
+
+The arena (`boteval arena`) starts one goroutine per seat by default,
+so its `--seed` fixes the deals and the policies' randomness but not the
+interleaving. `boteval arena --lockstep` plays the gate's schedule, so a
+seed is a whole game there too (#1503; see "Lockstep runs" above).
 
 ## Known limitations
 

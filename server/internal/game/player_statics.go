@@ -122,7 +122,14 @@ type PlayerStatic struct {
 	//
 	// Plain data, like everything else here — CastTimingRule is
 	// flags, two strings and a zone.
-	Timing CastTimingRule `json:"timing,omitzero"`
+	//
+	// No `omitzero`: `encoding/json` only honours that option from Go
+	// 1.24, and this field is part of GameSnapshot's graph
+	// (PlayerSnapshot.Statics[].Timing), so a build with an older
+	// toolchain (CI's pinned 1.22) always wrote it while a newer local
+	// one silently omitted it at its zero value — the divergence
+	// #1492 found. Always writing it is toolchain-independent.
+	Timing CastTimingRule `json:"timing"`
 
 	// LifeTotalLocked is "your life total can't change" (CR 119.7,
 	// CR 119.8) — Teferi's Protection, Teferi's Reproach. #1200,
@@ -170,7 +177,26 @@ type PlayerStatic struct {
 	// (CastRestriction, cast_gate.go), and nothing in the catalog needs
 	// a battlefield-derived ban with a DURATION, which is the one thing
 	// a permanent's continued presence already gives it for free.
-	CastBan CastBanRule `json:"castBan,omitzero"`
+	//
+	// No `omitzero`, for Timing's reason above (#1492).
+	CastBan CastBanRule `json:"castBan"`
+
+	// GameEnd is a granted "you can't lose the game this turn" /
+	// "your opponents can't win the game this turn" (CR 104.3,
+	// Angel's Grace). #749, ADR 0057's 2026-09-24 amendment,
+	// game_end_gates.go.
+	//
+	// The FIFTH payload, told apart like the others by its payload:
+	// a zero GameEndGate says nothing. Its Scope is relative to the
+	// player this entry is on — the caster — so "your opponents
+	// can't win" is one entry, not one per opponent. Its READER is
+	// forEachGameEndGateLocked. A GameEndGrant rather than a
+	// GameEndGate because it carries no While: a granted gate has no
+	// permanent to read a condition off.
+	//
+	// No `omitzero`, for Timing's reason above (#1492): it is always
+	// written, and a zero grant reads back as "says nothing".
+	GameEnd GameEndGrant `json:"gameEnd"`
 
 	// Source is the card that granted it, for the log and for the
 	// view's attribution. Never read by any rule: a granted ability

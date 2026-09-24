@@ -253,9 +253,14 @@ type CastPermission struct {
 	// Filter for ScopeStanding; the other is ignored rather than
 	// asserted, because a permission is data and a half-filled one
 	// should grant less, never panic.
+	//
+	// Filter carries no `omitzero`: it is part of GameSnapshot's graph
+	// (GameSnapshot.CastPermissions[].Filter), and that option's
+	// effect depends on the building Go toolchain below 1.24 (#1492)
+	// — CI is pinned to 1.22.
 	Scope  PermissionScope     `json:"scope,omitempty"`
 	Cards  []PermissionCardRef `json:"cards,omitempty"`
-	Filter PermissionFilter    `json:"filter,omitzero"`
+	Filter PermissionFilter    `json:"filter"`
 
 	// TopOfLibraryOnly restricts a ZoneLibrary permission to the card
 	// currently on top (CR 401.5). Every library permission sets it;
@@ -371,7 +376,9 @@ type CastPermission struct {
 	// caller who forgets gets the shortest window rather than an
 	// unbounded grant, which is the trap the old `UntilTurn int`
 	// sprang (0 was both the zero value and a turn number).
-	Duration Duration `json:"duration,omitzero"`
+	//
+	// No `omitzero`, for Filter's reason above (#1492).
+	Duration Duration `json:"duration"`
 
 	// NotBeforeSeq is the earliest turn sequence the permission is
 	// live on — warp's "you may cast it from exile ON A LATER TURN"
@@ -403,7 +410,7 @@ type CastPermission struct {
 	Timing GrantTiming `json:"timing,omitempty"`
 
 	// GrantsHaste gives the permanent this cast produces haste —
-	// suspend's CR 702.62e. A property of the PERMISSION rather than
+	// suspend's CR 702.62a. A property of the PERMISSION rather than
 	// of the card, because it is the effect that granted the cast
 	// that grants the haste: the same Rift Bolt hard-cast from hand
 	// has none.

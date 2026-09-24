@@ -268,6 +268,16 @@ type GameSnapshot struct {
 	StartingSeat      int           `json:"startingSeat"`
 	SplitSecondActive bool          `json:"splitSecondActive"`
 
+	// Outcome is the result of an ended game (ADR 0057 Decision 5):
+	// nil while active and for a table ended by End(). omitempty, so
+	// no schema bump. A restore point is removed once a game ends, so
+	// this matters for fixtures and forensics rather than restarts.
+	Outcome *GameOutcome `json:"outcome,omitempty"`
+	// ActiveSeatLeftPending is ADR 0057 Decision 3's deferred
+	// departure of an active player who lost by an effect
+	// mid-resolution, consumed by the next SBA loss pass.
+	ActiveSeatLeftPending bool `json:"activeSeatLeftPending,omitempty"`
+
 	// StackMeta is a SLICE, not a map: map iteration order is
 	// unspecified and the stack is ordered by Seq anyway. Sorted on
 	// capture so two snapshots of the same state are byte-identical.
@@ -355,6 +365,15 @@ type GameSnapshot struct {
 	// the next lock-in announces the declaration the battlefield
 	// already carries. No schema bump.
 	AnnouncedAttacks map[uuid.UUID]bool `json:"announcedAttacks,omitempty"`
+
+	// BlocksDeclared is the set of defending players whose CR 509.1
+	// block declaration is complete this combat (#1279,
+	// Game.blocksDeclared). Empty outside the declare-blockers step's
+	// combat, and a file written before it restores as empty — which
+	// reads as "every defender still pending", the conservative
+	// direction: the defender is asked again and ninjutsu waits. No
+	// schema bump.
+	BlocksDeclared map[uuid.UUID]bool `json:"blocksDeclared,omitempty"`
 
 	// AttackDefenders is each attacker's defending player as its
 	// attack was last pointed (#1364, Game.attackDefenders) — what
@@ -609,7 +628,15 @@ type cardSnapshot struct {
 	// Absent in a file written before the field existed, which decodes
 	// as the zero record: "not cast, or cast for its mana cost", the
 	// answer every permanent gave before #653.
-	Provenance CastProvenance `json:"provenance,omitzero"`
+	//
+	// No `omitzero`: `encoding/json` only honours that option from Go
+	// 1.24 (#1492), and CI's pinned 1.22 toolchain — the one that
+	// builds every fixture in testdata/snapshots and every deployed
+	// binary — silently ignores it and always writes the field. A
+	// contributor's newer local toolchain honouring the option is
+	// what produced the divergence; always writing it, on every Go
+	// version, is what removes it.
+	Provenance CastProvenance `json:"provenance"`
 	// ClassLevel is the CR 716.2 level designation and Solved the
 	// CR 719.3 solved designation (ADR 0071 decision 6). Both carried,
 	// for NamedTribe's reason and one more: they are legal zero
@@ -636,14 +663,16 @@ type cardSnapshot struct {
 	// permanent beside a copy nobody may cast, or a copy that is a
 	// real card — and old snapshots decode as "not prepared, no copy",
 	// which is what every game before ADR 0090 was.
-	Prepared    bool              `json:"prepared,omitempty"`
-	PrepareCopy bool              `json:"prepareCopy,omitempty"`
-	PreparedBy  PermissionCardRef `json:"preparedBy,omitzero"`
+	Prepared    bool `json:"prepared,omitempty"`
+	PrepareCopy bool `json:"prepareCopy,omitempty"`
+	// No `omitzero` on PreparedBy or HiddenBy below — see Provenance's
+	// comment above (#1492).
+	PreparedBy PermissionCardRef `json:"preparedBy"`
 	// HiddenBy is ADR 0091's hideaway link: the permanent object that
 	// exiled this card face down. Carried because nothing else records
 	// it — a restore that dropped it would leave the card unplayable by
 	// the land that hid it and unreadable by that land's controller.
-	HiddenBy          PermissionCardRef `json:"hiddenBy,omitzero"`
+	HiddenBy          PermissionCardRef `json:"hiddenBy"`
 	StartingDefense   int               `json:"startingDefense,omitempty"`
 	ProtectorPlayerID uuid.UUID         `json:"protectorPlayerId,omitempty"`
 
@@ -890,6 +919,7 @@ type stackItemSnapshot struct {
 	IsCopy        bool         `json:"isCopy,omitempty"`
 	Seq           uint64       `json:"seq"`
 	Ordered       bool         `json:"ordered"`
+	Commutes      bool         `json:"commutes,omitempty"` // #1511
 
 	// Paid is what the announcement cost (#789 / #761). Carried: a
 	// restore that lost it would resolve a converge spell for zero
@@ -1214,28 +1244,31 @@ func (g *Game) CaptureSnapshot() *GameSnapshot {
 // captureSnapshotLocked is the unlocked variant. Caller must hold g.mu.
 func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	s := &GameSnapshot{
-		Schema:            SnapshotSchemaVersion,
-		TakenAt:           time.Now().UTC(),
-		ID:                g.ID,
-		CreatedAt:         g.CreatedAt,
-		State:             g.State,
-		Turn:              g.Turn,
-		MulligansOpen:     g.MulligansOpen,
-		Monarch:           g.Monarch,
-		Initiative:        g.Initiative,
-		Settings:          g.Settings,
-		StartingSeat:      g.StartingSeat,
-		SplitSecondActive: g.SplitSecondActive,
-		EventSeq:          g.eventSeq,
-		EventBatch:        g.eventBatch,
-		ResolutionOpen:    g.resolutionOpen,
-		turnSeqPresent:    true,
+		Schema:                SnapshotSchemaVersion,
+		TakenAt:               time.Now().UTC(),
+		ID:                    g.ID,
+		CreatedAt:             g.CreatedAt,
+		State:                 g.State,
+		Turn:                  g.Turn,
+		MulligansOpen:         g.MulligansOpen,
+		Monarch:               g.Monarch,
+		Initiative:            g.Initiative,
+		Settings:              g.Settings,
+		StartingSeat:          g.StartingSeat,
+		SplitSecondActive:     g.SplitSecondActive,
+		Outcome:               cloneGameOutcome(g.Outcome),
+		EventSeq:              g.eventSeq,
+		EventBatch:            g.eventBatch,
+		ResolutionOpen:        g.resolutionOpen,
+		ActiveSeatLeftPending: g.ActiveSeatLeftPending,
+		turnSeqPresent:        true,
 	}
 	s.OncePerBatchFired = copyStringUint64Map(g.oncePerBatchFired)
 	s.AnnouncedBlocks = copyUUIDPairMap(g.announcedBlocks)
 	s.BlockedAttackers = copyBoolMap(g.blockedAttackers)
 	s.AnnouncedAttacks = copyBoolMap(g.announcedAttacks)
 	s.AttackDefenders = copyUUIDPairMap(g.attackDefenders)
+	s.BlocksDeclared = copyBoolMap(g.blocksDeclared)
 	s.FirstStrikeStepParticipants = copyBoolMap(g.firstStrikeStepParticipants)
 	cen := &s.Continuations
 
@@ -1643,6 +1676,7 @@ func snapshotStackItem(g *Game, s *StackItem, cen *ContinuationCensus) stackItem
 		IsCopy:        s.IsCopy,
 		Seq:           s.Seq,
 		Ordered:       s.Ordered,
+		Commutes:      s.Commutes,
 		Paid:          clonePaidCost(s.Paid),
 		HasEffect:     s.Effect != nil,
 		HasTargetSpec: s.targetSpec != nil,
@@ -1940,6 +1974,8 @@ func (s *GameSnapshot) restoreGame() *Game {
 	}
 	g.StartingSeat = s.StartingSeat
 	g.SplitSecondActive = s.SplitSecondActive
+	g.Outcome = cloneGameOutcome(s.Outcome)
+	g.ActiveSeatLeftPending = s.ActiveSeatLeftPending
 	g.eventSeq = s.EventSeq
 	g.eventBatch = s.EventBatch
 	g.resolutionOpen = s.ResolutionOpen
@@ -1948,6 +1984,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.blockedAttackers = copyBoolMap(s.BlockedAttackers)
 	g.announcedAttacks = copyBoolMap(s.AnnouncedAttacks)
 	g.attackDefenders = copyUUIDPairMap(s.AttackDefenders)
+	g.blocksDeclared = copyBoolMap(s.BlocksDeclared)
 	g.firstStrikeStepParticipants = copyBoolMap(s.FirstStrikeStepParticipants)
 
 	g.Battlefield = restoreZone(s.Battlefield, ZoneBattlefield)
@@ -2337,6 +2374,7 @@ func restoreStackItem(s *stackItemSnapshot) *StackItem {
 		IsCopy:        s.IsCopy,
 		Seq:           s.Seq,
 		Ordered:       s.Ordered,
+		Commutes:      s.Commutes,
 		Paid:          clonePaidCost(s.Paid),
 		// Effect stays nil. A SPELL does not need one — resolution
 		// dispatches through EffectResolver by oracle ID — but an
@@ -2521,6 +2559,9 @@ func copyCharacteristic(in *Characteristic) *Characteristic {
 	out.Supertypes = copyStrings(in.Supertypes)
 	out.Colors = copyStrings(in.Colors)
 	out.Abilities = copyStrings(in.Abilities)
+	if len(in.GrantedAbilities) > 0 {
+		out.GrantedAbilities = append([]GrantedAbility(nil), in.GrantedAbilities...)
+	}
 	return &out
 }
 

@@ -182,7 +182,7 @@ func TestAnAbilityIsAnnouncedAsAnOrdinaryCardRef(t *testing.T) {
 	}
 }
 
-// CR 701.5c: an ability that is countered does not GO anywhere. The
+// CR 701.6a: an ability that is countered does not GO anywhere. The
 // item leaves StackMeta, its source permanent is untouched, and
 // nothing lands in a graveyard.
 func TestCounteringAnAbilityDeletesTheItemAndLeavesItsSourceAlone(t *testing.T) {
@@ -202,7 +202,7 @@ func TestCounteringAnAbilityDeletesTheItemAndLeavesItsSourceAlone(t *testing.T) 
 		t.Error("the ability's SOURCE moved — a countered ability goes nowhere")
 	}
 	if opp.Graveyard.Contains(ability.ID) || opp.Graveyard.Contains(src) {
-		t.Error("something reached a graveyard; CR 701.5c says nothing does")
+		t.Error("something reached a graveyard; CR 701.6a says nothing does")
 	}
 	if g.Stack != nil && g.Stack.Contains(ability.ID) {
 		t.Error("an ability item has no card and must never be in the stack zone")

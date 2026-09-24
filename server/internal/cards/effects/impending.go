@@ -6,7 +6,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-// impending.go — impending (CR 702.175), the Duskmourn keyword the
+// impending.go — impending (CR 702.176), the Duskmourn keyword the
 // Overlord cycle prints.
 //
 //	"Impending N—[cost] (If you cast this spell for its impending
@@ -101,7 +101,7 @@ const AltCostKeyImpending = "impending"
 func Impending(n int, cost string, spec Spec) Spec {
 	if n < 1 {
 		panic("effects.Impending: " + spec.Name + " impends with " + strconv.Itoa(n) +
-			" time counters — impending N is at least one (CR 702.175a)")
+			" time counters — impending N is at least one (CR 702.176a)")
 	}
 	spec.AlternativeCosts = append(spec.AlternativeCosts, impendingCost(n, cost))
 	spec.Static = append(spec.Static, impendingNotACreature())
@@ -109,7 +109,7 @@ func Impending(n int, cost string, spec Spec) Spec {
 	return spec
 }
 
-// impendingCost is the CR 702.175a alternative cost: the cheaper
+// impendingCost is the CR 702.176a alternative cost: the cheaper
 // price, plus the time counters that are the price's real cost.
 //
 // The counters hang off the COST and not off the card, which is the
@@ -128,7 +128,7 @@ func impendingCost(n int, cost string) game.AlternativeCost {
 }
 
 // impendingNotACreature is "it isn't a creature until the last [time
-// counter] is removed" (CR 702.175b) — a continuous self-only layer 4
+// counter] is removed" (CR 702.176a) — a continuous self-only layer 4
 // rewrite read off the live counter pile, not a flag set at entry.
 //
 // Read off the counters rather than off "was this impended" on
@@ -149,7 +149,7 @@ func impendingNotACreature() game.StaticAbility {
 }
 
 // impendingCountdown is "at the beginning of your end step, remove a
-// time counter from it" (CR 702.175c).
+// time counter from it" (CR 702.176a).
 //
 // Gated on there being a counter to remove, so a woken permanent
 // stops putting an ability on the stack every end step for the rest

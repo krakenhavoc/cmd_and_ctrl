@@ -77,6 +77,14 @@ var gameFields = plan(
 	"ID", carried, "",
 	"CreatedAt", carried, "",
 	"State", carried, "",
+	// ADR 0057 Decision 5: the result of an ended game. Carried so a
+	// fixture or a forensic restore of an ended game still names its
+	// winner.
+	"Outcome", carried, "",
+	// ADR 0057 Decision 3: the active player's deferred departure,
+	// waiting on the next SBA loss pass. Carried: a restore between
+	// the effect loss and that pass must still move the turn on.
+	"ActiveSeatLeftPending", carried, "",
 	"Seats", carried, "",
 	"Battlefield", carried, "",
 	"Stack", carried, "",
@@ -166,6 +174,12 @@ var gameFields = plan(
 	// with announcedAttacks: a restore that dropped it would leave an
 	// attacker whose planeswalker has left unblockable (CR 506.4c).
 	"attackDefenders", carried, "",
+	// #1279: which defenders have completed their block declaration.
+	// Carried with the block maps above: a restore that dropped it
+	// would re-ask a defender who had already declared, and one that
+	// invented it would read an attacker unblocked before the
+	// defender chose.
+	"blocksDeclared", carried, "",
 	// #716 combat damage step participation. Carried for the reason
 	// the three above are, and for one more: the window between the
 	// two combat damage steps is a priority window, so an undo or a
@@ -549,6 +563,10 @@ var stackItemFields = plan(
 	"IsCopy", carried, "",
 	"Seq", carried, "",
 	"Ordered", carried, "",
+	// #1511: which pending triggers may skip the CR 603.3b prompt.
+	// Carried for Ordered's reason — it is a fact about a pending
+	// item that the restored drain reads.
+	"Commutes", carried, "",
 	// #789 / #761: what the announcement paid — the counters
 	// removed, the life, and the mana tokens that left the pool.
 	// Carried, and it has to be: the counters are off the board and

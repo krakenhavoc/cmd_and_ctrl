@@ -631,7 +631,7 @@ model, and adding one here for the single type that needs it would widen
 Decision 4 gave `ForAsLongAs` a closed vocabulary of conditions —
 `WhileSourceOnBattlefield` and `WhileYouControlSource` — and said a new
 one is "a new case in that switch and nothing else". Suspend's haste
-(CR 702.62e, "it gains haste until you lose control of it") is the
+(CR 702.62a, "it gains haste until you lose control of it") is the
 first clause that needs one, and the reason is a timing the two
 existing conditions cannot express.
 

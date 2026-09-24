@@ -63,8 +63,15 @@ const (
 	// ineligible entries, this is all-or-nothing — game.DeclareBlockers
 	// refuses the set whole and stores none of it.
 	TypeDeclareBlockers Type = "declare_blockers"
-	TypeClearCombat     Type = "clear_combat"
-	TypeAdvanceStep     Type = "advance_step"
+	// TypeFinishBlocks completes the caller's CR 509.1 block
+	// declaration — the "done blocking" / "no blocks" button (#1279,
+	// ADR 0045 Decision 38). Whatever the seat has staged is its
+	// declaration. Player-scoped and NOT priority-gated: the
+	// declaration is a turn-based action a defender takes while the
+	// active player still holds priority.
+	TypeFinishBlocks Type = "finish_blocks"
+	TypeClearCombat  Type = "clear_combat"
+	TypeAdvanceStep  Type = "advance_step"
 	// S10 Commander UX additions.
 	TypeSetMonarch    Type = "set_monarch"
 	TypeSetInitiative Type = "set_initiative"
@@ -397,6 +404,10 @@ var playerScopedActions = map[Type]struct{}{
 	// initiator is `Player`) but the "any caller may start a vote"
 	// posture matches set_monarch / set_initiative — not scoped.
 	TypeCastVote: {},
+	// #1279: a seat finishes its OWN block declaration, never
+	// another seat's — finishing a defender early would decide their
+	// blocks for them.
+	TypeFinishBlocks: {},
 }
 
 // Dispatch applies an action to a game. Returns nil on success, an
@@ -905,6 +916,12 @@ func dispatch(g *game.Game, a Action) error {
 		}
 		return g.DeclareBlockers(decls)
 
+	case TypeFinishBlocks:
+		if a.Player == uuid.Nil {
+			return ErrInvalidPlayer
+		}
+		return g.FinishBlocks(a.Player)
+
 	case TypeClearCombat:
 		return g.ClearCombat()
 
@@ -1119,7 +1136,12 @@ func dispatch(g *game.Game, a Action) error {
 			// S21 sub-PR 2 — catalog activated abilities. AbilityIndex
 			// selects the entry in Spec.Activated; sacrifice_ids names
 			// the permanents paid to a "Sacrifice a creature" cost.
-			AbilityIndex *int     `json:"ability_index,omitempty"`
+			AbilityIndex *int `json:"ability_index,omitempty"`
+			// ADR 0093 Decision 5 — the row's stable ref, from the
+			// view's ActivatedAbilityView.Ref or the legal move's
+			// params. Optional: a stale one is refused before anything
+			// is paid (ErrStaleAbilityRef), an absent one is accepted.
+			Ref          string   `json:"ref,omitempty"`
 			SacrificeIDs []string `json:"sacrifice_ids,omitempty"`
 			// #758 — the permanents paying a TapOthers component on this
 			// CR 602 activation (station, The Shire).
@@ -1268,6 +1290,7 @@ func dispatch(g *game.Game, a Action) error {
 				refs = append(refs, ref)
 			}
 			return g.ActivateCatalogAbility(a.Player, srcID, *p.AbilityIndex, game.ActivateAbilityParams{
+				Ref:              p.Ref,
 				SacrificeIDs:     sacIDs,
 				TapIDs:           tapIDs,
 				CrewIDs:          crewIDs,
@@ -1800,6 +1823,9 @@ func dispatch(g *game.Game, a Action) error {
 		var p struct {
 			CardID       string `json:"card_id"`
 			AbilityIndex int    `json:"ability_index"`
+			// ADR 0093 Decision 5 — the row's stable ref
+			// (ManaAbilityView.Ref). Optional, as on activate_ability.
+			Ref string `json:"ref,omitempty"`
 			// sacrifice_ids names the permanents paid to a
 			// sacrifice-another cost (Ashnod's Altar). Same field
 			// name and shape as activate_ability's, so the client
@@ -1898,6 +1924,7 @@ func dispatch(g *game.Game, a Action) error {
 			manaExileIDs = append(manaExileIDs, id)
 		}
 		return g.ActivateManaAbility(a.Player, cardID, p.AbilityIndex, game.ManaAbilityParams{
+			Ref:              p.Ref,
 			SacrificeIDs:     sacIDs,
 			TapIDs:           manaTapIDs,
 			CounterSourceIDs: manaCounterIDs,

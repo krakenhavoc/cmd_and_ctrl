@@ -290,7 +290,7 @@ var (
 	// ErrCantCast is the sentinel for a cast refused by the
 	// announce-time gate (CR 101.2, ADR 0073 §7): a "can't cast"
 	// static on a permanent (Rule of Law, Grafdigger's Cage, Rakdos)
-	// or the spell's own "cast only if" condition (CR 307.6's
+	// or the spell's own "cast only if" condition (CR 205.4e's
 	// legendary sorcery).
 	//
 	// The error actually returned is a *CantCastError carrying the
@@ -327,6 +327,16 @@ var (
 	// a new object (CR 400.7). Checked after the timing check and
 	// before the printed condition, so nothing is paid.
 	ErrAbilityExhausted = errors.New("game: this exhaust ability has already been activated")
+
+	// ErrStaleAbilityRef is returned by ActivateCatalogAbility and
+	// ActivateManaAbility when the announcement names an ability by a
+	// ref (ADR 0093 Decision 5) and the row at its index is no longer
+	// that ability — a granted ability appeared or vanished between
+	// the view and the announcement, and the positional index now
+	// points somewhere else. Checked before anything is validated or
+	// paid, so the move costs nothing; the next view carries fresh
+	// refs, so it is never a wedge (#544).
+	ErrStaleAbilityRef = errors.New("game: that ability is no longer at that position — the board changed")
 
 	// ErrIllegalManaColor is returned by ActivateManaAbility when the
 	// activator named the colour of a pipe slot up front (#1443,
@@ -407,6 +417,17 @@ var (
 	// drop is theirs, and the engine must not make it for them.
 	ErrAttackTaxUnpaid = errors.New("game: the attack tax for this declaration was not paid")
 
+	// ErrAttackLimit is returned by the declaration verbs when the
+	// declaration would put more creatures into the attack than a
+	// CR 508.1c count limit allows — Silent Arbiter's "no more than
+	// one creature can attack each combat", Crawlspace's "no more than
+	// two creatures can attack you each combat". The error actually
+	// returned is an *AttackLimitError naming the limit and the
+	// permanent that prints it; test with errors.Is. ALL OR NOTHING,
+	// like ErrAttackTaxUnpaid: nothing is staged, nothing is tapped and
+	// nothing is paid. #1507, ADR 0045 Decision 44.
+	ErrAttackLimit = errors.New("game: more creatures would attack than an effect allows this combat")
+
 	// ErrEmptyBlockerSet is returned by DeclareBlockers for a
 	// declaration with no entries. "Block with nobody" is the default
 	// state of the step, not an action — a defender who wants it
@@ -416,6 +437,12 @@ var (
 	// a set it cannot take whole, so this only ever means the caller
 	// sent an empty list. #750.
 	ErrEmptyBlockerSet = errors.New("game: a block declaration needs at least one blocker")
+
+	// ErrNotDefending is returned by FinishBlocks for a seat that is
+	// not a defending player this combat — nothing is attacking it, a
+	// planeswalker it controls or a battle it protects — so it has no
+	// block declaration to finish (CR 509.1, #1279).
+	ErrNotDefending = errors.New("game: this player is not a defending player")
 
 	// ErrIllegalAttackTarget is returned by DeclareAttacker when the
 	// named target is not something this player's creature may attack

@@ -230,6 +230,49 @@ func TestNinjutsuRefusesABlockedAttacker(t *testing.T) {
 	}
 }
 
+// #1279: while the defending player is still DECLARING — they have a
+// creature that could block and have not finished — the attacker is
+// neither blocked nor unblocked, so nothing can pay. Before #1279 this
+// was the window in which ninjutsu was available a beat early. Once the
+// defender finishes with no block, it pays.
+func TestNinjutsuWaitsForTheDefenderToFinishDeclaring(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	attacker := b12Creature(g, me.ID, "Sneaky Rat", "Creature — Rat", 1, 1)
+	b12Creature(g, opp.ID, "Wall", "Creature — Wall", 0, 4)
+	ninja := pushNinjaToHand(me, "Ninja of the Deep Hours", "Creature — Human Ninja", ninjaOfTheDeepHoursOracle, 2, 2)
+	declareAttack(t, g, opp.ID, attacker)
+	advanceTo(t, g, game.StepDeclareBlockers)
+	if err := g.AddManaForEffect(me.ID, uuid.Nil, "{U}{U}"); err != nil {
+		t.Fatalf("AddManaForEffect: %v", err)
+	}
+	if got := g.BlockDeclarationStatusOf(opp.ID); got != game.BlockDeclarationPending {
+		t.Fatalf("setup: the defender should still be declaring, status %q", got)
+	}
+
+	err := g.ActivateCatalogAbility(me.ID, ninja, 0, game.ActivateAbilityParams{
+		ReturnIDs: []uuid.UUID{attacker},
+	})
+	if !errors.Is(err, game.ErrIllegalTarget) {
+		t.Fatalf("activate while the defender is declaring: %v, want ErrIllegalTarget", err)
+	}
+	if !g.Battlefield.Contains(attacker) {
+		t.Fatal("the refused activation returned the attacker anyway")
+	}
+
+	if err := g.FinishBlocks(opp.ID); err != nil {
+		t.Fatalf("FinishBlocks: %v", err)
+	}
+	if err := g.ActivateCatalogAbility(me.ID, ninja, 0, game.ActivateAbilityParams{
+		ReturnIDs: []uuid.UUID{attacker},
+	}); err != nil {
+		t.Fatalf("activate once the defender declared none: %v", err)
+	}
+	if !me.Hand.Contains(attacker) {
+		t.Error("the unblocked attacker was not returned as the cost")
+	}
+}
+
 // The ninja is unblocked when it arrives, so it connects in the combat
 // damage step — and Ninja of the Deep Hours' own trigger draws.
 func TestNinjaOfTheDeepHoursConnectsAndDraws(t *testing.T) {

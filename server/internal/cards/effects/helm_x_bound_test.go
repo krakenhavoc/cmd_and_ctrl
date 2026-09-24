@@ -89,7 +89,7 @@ func TestHelmsXDoesNotCountACommanderThatTookTheCommandZone(t *testing.T) {
 // a graveyard from anywhere, exile it instead" means NOTHING is ever put
 // into that graveyard this way, so the run never reaches X and never
 // finds its creature card, and it ends where every mill ends — at the
-// bottom of the library (CR 701.13b, no loss).
+// bottom of the library (CR 701.17b, no loss).
 //
 // Before the fix X was the mill's amount and the Helm milled exactly
 // two cards with Rest in Peace on the battlefield.
@@ -124,7 +124,7 @@ func TestHelmUnderRestInPeaceMillsTheWholeLibrary(t *testing.T) {
 		t.Error("no creature card was put into that graveyard, so the Helm is not sacrificed")
 	}
 	if opp.Eliminated {
-		t.Error("milling a library out is not a draw and loses nobody the game (CR 701.13b)")
+		t.Error("milling a library out is not a draw and loses nobody the game (CR 701.17b)")
 	}
 }
 
@@ -132,7 +132,7 @@ func TestHelmUnderRestInPeaceMillsTheWholeLibrary(t *testing.T) {
 // two rules, on one board.
 //
 // "Mill three" names a NUMBER and Bruvac the Grandiloquent doubles it
-// (CR 701.13b, the RepEventMill window). Helm's X is not that number:
+// (CR 701.17b, the RepEventMill window). Helm's X is not that number:
 // it is a clause about cards that have been put into a graveyard, so
 // Bruvac cannot double the BOUND. Before #1161 X was the mill's amount
 // and Bruvac doubled it, and X=2 milled four cards.

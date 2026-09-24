@@ -1,6 +1,9 @@
 package game
 
-import "strings"
+import (
+	"strings"
+	"sync"
+)
 
 // copy_grants.go — CR 707.9a and CR 707.9b: a copy effect's "except"
 // clause may GRANT an ability or ADD a type, and what it grants is
@@ -55,8 +58,10 @@ import "strings"
 //
 // A granted ability is an ability of the object like any other, so
 // CR 613.1f ability removal takes it away with the rest:
-// `CatalogAbilityKey` returns "" for a permanent that has lost all
-// abilities, before this file is ever consulted. And a FACE-DOWN
+// `CatalogAbilityKey`'s OWN half is "" for a permanent whose abilities
+// were removed, copy grants included — only a later LAYER-6 grant (ADR
+// 0093, granted_abilities.go) survives, because it is not the object's
+// own. And a FACE-DOWN
 // permanent has no text at all (CR 708.2a), so `CatalogKey`'s empty
 // return wins over the grants too — a face-down copy is a 2/2 with
 // nothing, granted ability included.
@@ -143,32 +148,134 @@ func splitCatalogKeyGrants(key string) (base string, grants []string) {
 // own is the normal case, not an edge: a Phantasmal Image copying a
 // vanilla imported bear has the sacrifice trigger and nothing else.
 //
-// Deliberately NOT cached. The merge allocates, but only for an
-// object that actually carries a grant — a handful of permanents in
-// the rarest game — and a process-lifetime cache would go stale the
-// moment a test swapped CatalogLookup. The fast path, which is every
-// other card in the game, never reaches here at all.
-func mergedCatalogDef(base string, grants []string) *CardDef {
-	found := false
-	var merged CardDef
-	if d := CatalogLookup(base); d != nil {
-		merged = *d
-		found = true
+// The base may be EMPTY since ADR 0093: a layer-6 grant on an object
+// whose own abilities are gone, a face-down 2/2, or an uncatalogued
+// imported creature is the composite "|grant:<a>", and the answer is
+// the bundles alone.
+//
+// Memoised, since ADR 0093 made composite keys common — Cryptolith Rite
+// and twenty creatures is twenty composite lookups per trigger harvest
+// where #665 had a handful of copies in the rarest game. The memo is
+// VALIDATED rather than trusted: an entry records the exact *CardDef
+// each part resolved to when it was built, and a hit re-resolves the
+// parts (map reads) and compares the pointers before handing the
+// merged def back. So a test that swaps CatalogLookup — the objection
+// that kept #665 from caching at all — simply misses and re-merges,
+// and the one allocation it saves is the merge itself. See
+// mergedDefMemo.
+func mergedCatalogDef(key string) *CardDef {
+	if d, ok := mergedDefMemo.get(key); ok {
+		return d
 	}
-	for _, key := range grants {
-		g := CatalogLookup(key)
-		if g == nil {
-			continue
+	base, grants := splitCatalogKeyGrants(key)
+	parts := make([]*CardDef, 0, 1+len(grants))
+	parts = append(parts, lookupPart(base))
+	for _, g := range grants {
+		parts = append(parts, lookupPart(g))
+	}
+	d := mergeCatalogParts(parts)
+	mergedDefMemo.put(key, base, grants, parts, d)
+	return d
+}
+
+// lookupPart resolves one part of a composite key; the empty base of a
+// grant-only composite resolves to nothing.
+func lookupPart(key string) *CardDef {
+	if key == "" {
+		return nil
+	}
+	return CatalogLookup(key)
+}
+
+// mergeCatalogParts merges the resolved parts of a composite key: the
+// base definition (parts[0], possibly nil) with every bundle appended.
+// Nil when nothing resolved.
+func mergeCatalogParts(parts []*CardDef) *CardDef {
+	found := false
+	for _, p := range parts {
+		if p != nil {
+			found = true
+			break
 		}
-		found = true
-		merged.Triggered = concatTriggered(merged.Triggered, g.Triggered)
-		merged.Static = concatStatic(merged.Static, g.Static)
-		merged.Activated = concatActivated(merged.Activated, g.Activated)
 	}
 	if !found {
 		return nil
 	}
+	var merged CardDef
+	if parts[0] != nil {
+		merged = *parts[0]
+	}
+	for _, g := range parts[1:] {
+		if g == nil {
+			continue
+		}
+		merged.Triggered = concatTriggered(merged.Triggered, g.Triggered)
+		merged.Static = concatStatic(merged.Static, g.Static)
+		merged.Activated = concatActivated(merged.Activated, g.Activated)
+		// ADR 0093 Decision 2 §2: a layer-6 grant may carry a MANA
+		// ability (Cryptolith Rite), which #665's copy grants never
+		// did. Merged here for the composite lookups that go through
+		// the catalog whole; the mana ACCESSOR reads a grant's mana
+		// abilities per bundle instead, so it can tell each row's
+		// origin (manaAbilityRows).
+		merged.ManaAbilities = concatMana(merged.ManaAbilities, g.ManaAbilities)
+	}
 	return &merged
+}
+
+// mergedDefMemoLimit bounds the memo. The number of distinct composite
+// keys in a process is the number of distinct (card, grant set) pairs
+// ever seen, which is small; the bound is a backstop against a
+// pathological test, and hitting it clears the memo rather than
+// evicting, because a re-merge is cheap and correct.
+const mergedDefMemoLimit = 1024
+
+type mergedDefEntry struct {
+	base   string
+	grants []string
+	parts  []*CardDef
+	def    *CardDef
+}
+
+// mergedDefMemo is mergedCatalogDef's validated memo. Process-wide and
+// guarded by its own mutex: catalogDef runs under many games' read
+// locks at once. The merged *CardDef it hands out is shared and must be
+// treated as read-only, which is the contract every CardDef already has
+// (the catalog's own are shared by every card with that oracle ID).
+var mergedDefMemo = &mergedDefCache{}
+
+type mergedDefCache struct {
+	mu sync.RWMutex
+	m  map[string]mergedDefEntry
+}
+
+// get answers from the memo only when every part still resolves to the
+// very definition the entry was merged from. A hit allocates nothing.
+func (c *mergedDefCache) get(key string) (*CardDef, bool) {
+	c.mu.RLock()
+	e, ok := c.m[key]
+	c.mu.RUnlock()
+	if !ok {
+		return nil, false
+	}
+	if lookupPart(e.base) != e.parts[0] {
+		return nil, false
+	}
+	for i, g := range e.grants {
+		if lookupPart(g) != e.parts[i+1] {
+			return nil, false
+		}
+	}
+	return e.def, true
+}
+
+func (c *mergedDefCache) put(key, base string, grants []string, parts []*CardDef, d *CardDef) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.m == nil || len(c.m) >= mergedDefMemoLimit {
+		c.m = make(map[string]mergedDefEntry, 64)
+	}
+	c.m[key] = mergedDefEntry{base: base, grants: grants, parts: parts, def: d}
 }
 
 // The three concat helpers always allocate when there is something
@@ -191,6 +298,15 @@ func concatStatic(base, extra []StaticAbility) []StaticAbility {
 		return base
 	}
 	out := make([]StaticAbility, 0, len(base)+len(extra))
+	out = append(out, base...)
+	return append(out, extra...)
+}
+
+func concatMana(base, extra []ManaAbilityShape) []ManaAbilityShape {
+	if len(extra) == 0 {
+		return base
+	}
+	out := make([]ManaAbilityShape, 0, len(base)+len(extra))
 	out = append(out, base...)
 	return append(out, extra...)
 }

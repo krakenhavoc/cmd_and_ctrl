@@ -26,11 +26,11 @@ import "github.com/google/uuid"
 // DeclareBlocker (mutations.go) is exactly a one-entry DeclareBlockers
 // and keeps working for every ordinary block.
 //
-// Not here: BlockRule.Limit (Silent Arbiter's "no more than one
-// creature can block each combat"), which Decision 12 leaves unbuilt
-// until its first card, and the CR 509.1c blocking REQUIREMENTS of
-// Decision 15. The validator below is a list of set checks, so each
-// of those is one more entry in it.
+// The validator below is a list of set checks: the per-pair ones, the
+// per-attacker count bounds, and — #1507, Decision 43 — the
+// whole-combat BlockRule.Limit (Silent Arbiter's "no more than one
+// creature can block each combat"). Not here yet: the CR 509.1c
+// blocking REQUIREMENTS of Decision 15, which will be one more entry.
 
 // BlockDeclaration is one (blocker, attacker) pairing in a block
 // declaration. A declaration is a slice of them, applied as a unit.
@@ -70,7 +70,8 @@ type blockEntry struct {
 // ErrEmptyBlockerSet for an empty set, ErrCardNotFound when either
 // card is missing from the battlefield, ErrNotACreature for a
 // non-creature blocker, and a *BlockRefusedError (which wraps
-// ErrIllegalBlock) for a refused pair OR a refused count. Idempotent:
+// ErrIllegalBlock) for a refused pair, a refused count OR a broken
+// whole-combat limit (declaration_limit, #1507). Idempotent:
 // re-declaring a pairing that is already stored changes nothing and
 // is not re-judged.
 //
@@ -166,7 +167,10 @@ func (g *Game) currentBlockAssignmentLocked() map[uuid.UUID]uuid.UUID {
 //   - per attacker whose blocker set this action CHANGES: the count
 //     bounds (CR 509.1b). An attacker that LOSES a re-pointed blocker
 //     is changed too, so a defender cannot pull one creature out of a
-//     menace block and leave an illegal one behind.
+//     menace block and leave an illegal one behind;
+//   - over the whole combat: every BlockRule.Limit on the battlefield
+//     or in the turn-scoped registry (#1507), counted across every
+//     block stored, whoever made it (blockLimitRefusalLocked).
 //
 // Attackers the action does not touch are NOT re-judged. An attacker
 // that gains menace after a legal block keeps that block (CR 509.1b:
@@ -267,6 +271,13 @@ func (g *Game) checkBlockDeclarationLocked(base map[uuid.UUID]uuid.UUID, decls [
 		if err := g.blockCountRefusalLocked(atk, counts[atkID], decls); err != nil {
 			return nil, err
 		}
+	}
+	// #1507, CR 509.1b: the whole-combat limit. After the per-attacker
+	// bounds so a menace block that is short a creature reports
+	// too_few_blockers, the refusal about the declaration itself,
+	// rather than a combat-wide one about something else.
+	if err := g.blockLimitRefusalLocked(base, after, decls); err != nil {
+		return nil, err
 	}
 	return entries, nil
 }
@@ -380,7 +391,9 @@ type BlockOption struct {
 //
 // Every option is run through checkBlockDeclarationLocked before it is
 // returned, so a maximum — or any set check added later — can never
-// produce an option the engine refuses.
+// produce an option the engine refuses. That is how a whole-combat
+// limit (#1507) stops the generator offering a second blocker once the
+// first has used Silent Arbiter's one up: no line here knows about it.
 //
 // Completeness is not promised (legal.go's contract): perAttackerCap
 // bounds the groups per attacker, so on a wide board the best pair may
@@ -401,6 +414,14 @@ func (g *Game) BlockOptionsLocked(seat uuid.UUID, perAttackerCap int) []BlockOpt
 // away would put a combinatorial walk on that path.
 func (g *Game) blockOptionsLocked(seat uuid.UUID, perAttackerCap, maxTotal int) []BlockOption {
 	if g.Battlefield == nil || seat == uuid.Nil {
+		return nil
+	}
+	// #1279: a defender whose declaration is complete is offered
+	// nothing more. The verb still takes a late block (the sandbox
+	// allowance ADR 0045 Decision 38 records), but the enumerator, the
+	// bot and the #328 auto-pass signal stop asking — "has this seat
+	// still got a block to make" is now "is this seat still declaring".
+	if g.blocksDeclared[seat] {
 		return nil
 	}
 	if perAttackerCap <= 0 {

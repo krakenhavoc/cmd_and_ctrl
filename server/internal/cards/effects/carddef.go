@@ -47,6 +47,48 @@ func activatedShapes(in []ActivatedAbility) []game.ActivatedAbilityShape {
 	return out
 }
 
+// manaShapes projects declared mana abilities into the engine's
+// shapes. Shared by buildDef and by buildGrantDef, because a granted
+// mana ability (ADR 0093 — Cryptolith Rite's "{T}: Add one mana of any
+// color") is declared exactly as a card's own is. Nil in, nil out.
+func manaShapes(in []ManaAbility) []game.ManaAbilityShape {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]game.ManaAbilityShape, len(in))
+	for i, a := range in {
+		out[i] = game.ManaAbilityShape{
+			Zones:                     a.Zones,
+			ExileSelf:                 a.Cost.ExileSelf,
+			TapCost:                   a.Cost.Tap,
+			SacrificeCost:             a.Cost.Sacrifice,
+			SacrificeOther:            a.Cost.SacrificeOther,
+			TapOthers:                 a.Cost.TapOthers,
+			LifeCost:                  a.Cost.Life,
+			ManaCost:                  a.Cost.Mana,
+			RemoveCounters:            a.Cost.RemoveCounters,
+			AddCounter:                a.Cost.AddCounter,
+			DiscardCards:              a.Cost.DiscardCards,
+			ExileCards:                a.Cost.ExileCards,
+			Produced:                  a.Produced,
+			Label:                     a.Label,
+			Exhaust:                   a.Exhaust,
+			Rider:                     a.Rider,
+			PreRider:                  a.PreRider,
+			NarrowToCommanderIdentity: a.NarrowToCommanderIdentity,
+			Condition:                 a.Condition,
+			ProducedFunc:              a.ProducedFunc,
+			ProducedForPaid:           a.ProducedForPaid,
+			DerivesFromOtherSources:   a.DerivesFromOtherSources,
+			DerivedMatch:              a.DerivedMatch,
+			DerivedColorsOnly:         a.DerivedColorsOnly,
+			Restrictions:              a.Restrictions,
+			RestrictionsFunc:          a.RestrictionsFunc,
+		}
+	}
+	return out
+}
+
 // buildDef projects one Spec into the shape the engine reads.
 func buildDef(spec Spec) *game.CardDef {
 	d := &game.CardDef{
@@ -68,6 +110,8 @@ func buildDef(spec Spec) *game.CardDef {
 		SelfCostModifiers:          spec.SelfCostModifiers,
 		ExhaustPermissions:         spec.ExhaustPermissions,
 		AttackTaxes:                spec.AttackTaxes,
+		BlockRules:                 spec.BlockRules,
+		AttackLimits:               spec.AttackLimits,
 		CastableZones:              spec.CastableZones,
 		SpecialActions:             spec.SpecialActions,
 		SpecialActionGrants:        spec.SpecialActionGrants,
@@ -80,6 +124,7 @@ func buildDef(spec Spec) *game.CardDef {
 		NoMaxHandSize:              spec.NoMaxHandSize,
 		PlayerKeywords:             spec.PlayerKeywords,
 		PlayerLifeTotalLocked:      spec.PlayerLifeTotalLocked,
+		GameEndGates:               spec.GameEndGates,
 		WantsDistinctColors:        spec.WantsDistinctColors,
 		WantsManaFrom:              spec.WantsManaFrom,
 		AdditionalLandPlays:        spec.AdditionalLandPlays,
@@ -168,39 +213,7 @@ func buildDef(spec Spec) *game.CardDef {
 		}
 	}
 	d.Activated = activatedShapes(spec.Activated)
-	if len(spec.ManaAbilities) > 0 {
-		d.ManaAbilities = make([]game.ManaAbilityShape, len(spec.ManaAbilities))
-		for i, a := range spec.ManaAbilities {
-			d.ManaAbilities[i] = game.ManaAbilityShape{
-				Zones:                     a.Zones,
-				ExileSelf:                 a.Cost.ExileSelf,
-				TapCost:                   a.Cost.Tap,
-				SacrificeCost:             a.Cost.Sacrifice,
-				SacrificeOther:            a.Cost.SacrificeOther,
-				TapOthers:                 a.Cost.TapOthers,
-				LifeCost:                  a.Cost.Life,
-				ManaCost:                  a.Cost.Mana,
-				RemoveCounters:            a.Cost.RemoveCounters,
-				AddCounter:                a.Cost.AddCounter,
-				DiscardCards:              a.Cost.DiscardCards,
-				ExileCards:                a.Cost.ExileCards,
-				Produced:                  a.Produced,
-				Label:                     a.Label,
-				Exhaust:                   a.Exhaust,
-				Rider:                     a.Rider,
-				PreRider:                  a.PreRider,
-				NarrowToCommanderIdentity: a.NarrowToCommanderIdentity,
-				Condition:                 a.Condition,
-				ProducedFunc:              a.ProducedFunc,
-				ProducedForPaid:           a.ProducedForPaid,
-				DerivesFromOtherSources:   a.DerivesFromOtherSources,
-				DerivedMatch:              a.DerivedMatch,
-				DerivedColorsOnly:         a.DerivedColorsOnly,
-				Restrictions:              a.Restrictions,
-				RestrictionsFunc:          a.RestrictionsFunc,
-			}
-		}
-	}
+	d.ManaAbilities = manaShapes(spec.ManaAbilities)
 	// S18 sub-PR 2: the printed keywords become one self-only Layer 6
 	// static, appended after the hand-written ones. Built here, once,
 	// rather than on every layer recompute.

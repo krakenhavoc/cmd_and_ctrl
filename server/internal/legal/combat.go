@@ -78,6 +78,17 @@ func (e *enumerator) combatMoves() {
 			// seats. Enumerating only players would have left the bot
 			// unable to see a lethal swing at a planeswalker.
 			for _, t := range g.AttackTargetsForEffect(e.seat) {
+				decl := []game.AttackDeclaration{{Attacker: c.InstanceID, Target: t.ID}}
+				// #1507, CR 508.1c: a count limit (Silent Arbiter,
+				// Crawlspace) the declaration verb would refuse is
+				// not offered — the same function, so the two cannot
+				// disagree (#544). Moves are one creature at a time,
+				// so a seat under Silent Arbiter is offered attacks
+				// until one creature is attacking, then none; under
+				// Crawlspace, attacks at that player until two are.
+				if g.AttackLimitRefusalForEffect(decl) != nil {
+					continue
+				}
 				// ADR 0080 / #1063: the CR 508.1a attack tax. Priced
 				// through the SAME function the engine charges
 				// (PriceAttackDeclarationForEffect), so the price the
@@ -92,10 +103,7 @@ func (e *enumerator) combatMoves() {
 				// three separate attacks under Propaganda pay {2}
 				// three times, and each re-enumeration prices the next
 				// one against the mana the last one left.
-				price := g.PriceAttackDeclarationForEffect([]game.AttackDeclaration{{
-					Attacker: c.InstanceID,
-					Target:   t.ID,
-				}})
+				price := g.PriceAttackDeclarationForEffect(decl)
 				autoTap := false
 				if !price.IsFree() {
 					if !e.p.ManaPool.CanPayFor(price.Total, 0, game.ManaSpendContext{}) {

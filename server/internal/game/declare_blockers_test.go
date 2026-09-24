@@ -110,7 +110,7 @@ func TestDeclareBlockersAcceptsALegalMenaceSet(t *testing.T) {
 			t.Fatalf("a legal menace block was not stored: blocking %v, want %v", got, attacker)
 		}
 	}
-	g.WithWriteLock(func() { g.commitBlockDeclarationLocked() })
+	g.WithWriteLock(func() { g.completeAllBlockDeclarationsLocked(); g.commitBlockDeclarationLocked() })
 	if !g.blockedAttackers[attacker] {
 		t.Error("the legal menace block did not make the attacker blocked")
 	}
@@ -164,7 +164,7 @@ func TestDeclareBlockerStillBlocksAnOrdinaryAttacker(t *testing.T) {
 	if err := g.DeclareBlocker(blocker, attacker); err != nil {
 		t.Fatalf("re-declaring the same pair: %v", err)
 	}
-	g.WithWriteLock(func() { g.commitBlockDeclarationLocked() })
+	g.WithWriteLock(func() { g.completeAllBlockDeclarationsLocked(); g.commitBlockDeclarationLocked() })
 	if n := len(blockDeclEvents(g, EventBlock, blocker)); n != 1 {
 		t.Errorf("the block announced %d times, want 1", n)
 	}
@@ -251,10 +251,24 @@ func TestSeatOwesNoBlockDecisionWithoutEnoughBlockersForMenace(t *testing.T) {
 	}
 
 	// A second untapped creature makes the two-creature block
-	// available, and the decision is owed again.
-	pushCombatant(t, g, g.Seats[1], "Blocker B", 1, 4)
-	if !g.SeatOwesBlockDecision(g.Seats[1].ID) {
+	// available, and the decision is owed.
+	g2 := newActiveGame(t)
+	menaceBoard(t, g2, 2)
+	if !g2.SeatOwesBlockDecision(g2.Seats[1].ID) {
 		t.Error("two creatures CAN block a menace attacker, so the window must not be auto-passed")
+	}
+
+	// #1279: in the first game the defender had no legal block as the
+	// step began, so their declaration — none — completed then
+	// (CR 509.1). A creature that arrives afterwards does not reopen
+	// it; before #1279 it did, because nothing recorded that the
+	// declaration had happened.
+	pushCombatant(t, g, g.Seats[1], "Blocker B", 1, 4)
+	if g.SeatOwesBlockDecision(g.Seats[1].ID) {
+		t.Error("a declaration completed at the step's start was reopened by a creature arriving after it")
+	}
+	if got := g.BlockDeclarationStatusOf(g.Seats[1].ID); got != BlockDeclarationDeclared {
+		t.Errorf("status = %q, want declared", got)
 	}
 }
 

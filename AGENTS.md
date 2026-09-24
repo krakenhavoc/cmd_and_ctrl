@@ -307,7 +307,8 @@ A restore point written by yesterday's binary has to restore in today's. Three t
 - **The arena lives OUTSIDE `aiseat/`**, at `server/internal/botarena/`, and that is not a style choice: `heuristic/imports_test.go` bans `internal/game` from every subpackage of `aiseat/` — including their `_test.go` files, over Imports, TestImports *and* XTestImports — because a **policy** holding authoritative state could read an opponent's hand. An arena has to hold the `*game.Game` and the `*ws.Room`, so it sits above the ban and hands each policy nothing but the filtered `aiseat.Input` a runner would. `botarena.BattleDeck` is the whole-game tests' deck moved here verbatim; the copy in `heuristic_game_test.go` stays where it is, because those tests may not import this package.
 - **The whole-game tests are gated off by default** and the package owns the longest tests in the tree (CI runs `go test` with a 30m timeout because of them):
   - `AISEAT_GAME_TESTS=1` — the master gate. Without it every whole-game test in `internal/aiseat` skips. The nightly `bot-games` job runs `go test ./internal/aiseat/... -race -timeout 30m -skip 'TestFourRandomBotsPlayToAWinner|TestFourHeuristicBotsPlayToAWinner'`, then the random-table step. The catalog soak is its own job, `catalog-soak` (#1456; it needs `CMDCTRL_SCRYFALL_DUMP` from disk, which is why it is the one bot job that stays self-hosted while `bot-games` and `bot-soak` run on GitHub-hosted runners). The two skipped tests are the `bot-soak` job's, which runs them without `-race` (`.github/workflows/e2e-nightly.yml`).
-  - `AISEAT_HEURISTIC_GAMES=N` / `AISEAT_H2H_GAMES=N` — widen the four-heuristic and heuristic-vs-random samples (defaults 3 and small, for CI). The nightly `bot-soak` job sets `AISEAT_HEURISTIC_GAMES=20`, which is S31 exit criterion 2 (#685); the seeds are fixed at 101..120, so it plays the same twenty tables every night. It sets no `AISEAT_H2H_GAMES`.
+  - `AISEAT_HEURISTIC_GAMES=N` / `AISEAT_H2H_GAMES=N` — widen the four-heuristic and heuristic-vs-random samples (defaults 3 and small, for CI). The nightly `bot-soak` job sets `AISEAT_HEURISTIC_GAMES=20`, which is S31 exit criterion 2 (#685); the seeds are fixed at 101..120, so it plays the same twenty tables every night. It sets no `AISEAT_H2H_GAMES`. Both tests play **lockstep** since #1409 (`playLockstepGame` in `heuristic_game_test.go`: the seats' ordinary act-loop called in seat order on one goroutine, through `aiseat.NewStepped` / `Runner.Step` since #1503), so a seed replays move for move — and `boteval arena --lockstep` plays the same schedule; the soak keeps the production one-goroutine-per-seat schedule, because concurrent liveness is what it tests (discussion #1390).
+  - `AISEAT_HEURISTIC_SCHEDULE=concurrent` — plays the heuristic gate the old way, one runner goroutine per seat. For comparing the two schedules; the nightly does not set it.
   - `AISEAT_RANDOM_GAMES=N` / `AISEAT_RANDOM_SEED=<uint64>` — `TestFourRandomBotsPlayToAWinner`, S31's four-`random`-bots test: N consecutive games to a winner, default 3, from base seed 31000. The nightly runs it at `AISEAT_RANDOM_GAMES=20` in its own step without `-race`.
   - `AISEAT_REPLAY_DIR=<path>` — where that test writes each game's replay JSONL. It sets the location only, not whether replays are kept. Unset uses a temp dir. Either way a passing game's replay is deleted and a failing one kept, since one game is hundreds of MiB. The nightly points it at the workspace and uploads it on failure.
   - `AISEAT_FUNNEL_GAMES=N` — widen the Layer A absorption / model-funnel whole-game run.
@@ -647,12 +648,32 @@ surface tiny.
    (which uses `PushBottom` so the "first match" sandbox pick is
    deterministic).
 
-6. **Verify.** `cd server && go test ./internal/cards/effects/...` and
+6. **Add the card's oracle-text file.** Every catalogued card needs its
+   own generated file, `server/internal/cards/coverage/testdata/oracle/<oracle_id>.json`
+   (one per base oracle ID, whether or not the card has an activated
+   ability). `TestAbilitiesMatchOracleText` checks ability labels
+   against it, and `TestOracleFixtureCoversRegistry` fails in plain PR CI
+   when a registered card has no file. Generate only your cards' files,
+   never by hand, with the Scryfall dump (from `server/`):
+   ```bash
+   CMDCTRL_SCRYFALL_DUMP=$PWD/../data/scryfall/default-cards.json \
+     go test ./internal/cards/coverage/ -run TestOracleFixtureIsCurrent \
+     -update-oracle -oracle-ids=<oracle_id>,<oracle_id>
+   ```
+   Commit only the files for the cards you added. Two card PRs never
+   share a file, so they no longer conflict here
+   ([#1542](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1542)).
+   Dropping `-oracle-ids` regenerates every file and deletes the files
+   of cards that left the catalog. That is the nightly's job, and a
+   card PR should not do it: if files for other cards change, your dump
+   is older or newer than the one the fixture came from.
+
+7. **Verify.** `cd server && go test ./internal/cards/effects/... ./internal/cards/coverage/...` and
    `gofmt -l internal/cards/effects/` should both be clean. The
    `TestNonCatalogSpellStaysSandbox` canary should still pass — it's the
    opt-in invariant.
 
-7. **Manual smoke-test.** `CMDCTRL_DEV_SKIP_DECK_VALIDATION=1 make server-dev`
+8. **Manual smoke-test.** `CMDCTRL_DEV_SKIP_DECK_VALIDATION=1 make server-dev`
    plus a small deck (`make dev-skip-validation` target on the top-level
    Makefile) so the library is small enough to find your card quickly.
    Cast it, verify the AUTO badge renders, verify the effect resolves.
@@ -918,6 +939,38 @@ Reach for `BoostUntilEOT` / `GrantKeywordUntilEOT` / `StaticUntilEOT` for the fi
 
 **Control from effects (CR 613.1b, CR 701.12, S38).** "Gain control of target permanent" is `GainControl{Target, Controller, Duration, Label}` and "exchange control" is `ExchangeControl{A, B}`. Both are layer-2 scoped statics in the same bucket Mind Control's Aura uses, which is what makes control revert by itself (`Card.BaseController`) and makes two control effects sort by timestamp (CR 613.7) with no card-side work. Do NOT write `Card.Controller`. Three things ride along and are why the printed cards look the way they do: the permanent leaves combat (CR 506.4, declaration and announcement both), it is summoning-sick under its new controller however long it has been in play (CR 302.6 — which is why Act of Treason also grants haste), and ownership never changes (CR 108.3). An exchange is ONE effect: both objects are checked before either half is registered and the two halves share a timestamp, so it fails whole (CR 701.12b). `Controller` defaults to the effect's controller; pass it explicitly for "target opponent gains control of ~" — that card still waits on the choose-a-player prompt, not on this primitive.
 
+### Granting an ability to another permanent (ADR 0093, #754)
+
+"Creatures you control have '{T}: Add one mana of any color.'" is a
+layer-6 grant of a catalog BUNDLE, never a closure on the recipient.
+Declare the bundle in `Spec.Grants` (the #665 `AbilityGrant`, now with
+`Mana` and a required `Text`) and name it from a static built with
+`GrantAbilities(appliesTo, key)`:
+
+```go
+Grants: []AbilityGrant{{
+    Key:  "cryptolith-rite/any-color",
+    Mana: []ManaAbility{{Cost: ManaAbilityCost{Tap: true}, Produced: "{W|U|B|R|G}", Label: "Add one mana of any color"}},
+    Text: "{T}: Add one mana of any color.",
+}},
+Static: []game.StaticAbility{GrantAbilities(creaturesYouControl, "cryptolith-rite/any-color")},
+```
+
+The engine does the rest: the grant lands on the recipient's
+`Characteristic.GrantedAbilities` in the static's timestamp slot, the
+ability readers return it after the recipient's own abilities with a
+`grant:` ref, and "this creature" is the recipient everywhere (its
+controller activates it, `{T}` taps it, CR 302.6 reads it). A removal
+on the recipient takes an earlier grant and not a later one (CR
+613.6); a removal on the GRANTOR takes the grant from everything
+(CR 613.8a). A layer-6 grant is not copied (CR 707.2). `Register`
+refuses a bundle ability with `ActiveWhen` (gate the grantor's static
+instead) or a non-battlefield zone, and `TestEveryGrantKeyResolves`
+refuses a grant naming an unregistered bundle or a bundle with a
+`Static` slot. Attached / tribal constructors, the client picker and
+the auto-tapper's handling arrive with the first cards (ADR 0093 PR 2);
+duration grants from a resolving spell are PR 4 and have no shape yet.
+
 ### Adding a replacement effect (S17+)
 
 Replacement effects ("enters tapped", "if that would place counters,
@@ -1052,7 +1105,7 @@ func init() {
 | Token creation (CR 701.7b) | `RepEventCreateTokens` | `TokenController`, `TokenGroups`, `TokenAttacking` |
 | Discard (CR 701.8) | `RepEventDiscard` | `DiscardPlayer`, `DiscardCause`, `CardID`, `NewZone`, `NewZoneOwner` |
 | Keyword action with a count — proliferate (CR 701.34), scry (CR 701.22), surveil (CR 701.25) | `RepEventKeywordAction` | `KeywordAction`, `KeywordActionCount`, `Actor`, `Source` |
-| Mill amount (CR 701.13a) | `RepEventMill` | `MillPlayer`, `MillCount` |
+| Mill amount (CR 701.17a) | `RepEventMill` | `MillPlayer`, `MillCount` |
 | Mana produced (CR 106.12b) | `RepEventProduceMana` | `ManaPlayer`, `ManaSource`, `ManaColors`, `ManaFromTap` |
 | Step entry (skip-step) | `RepEventStepTransition` | `StepTransitionStep`, `StepTransitionSeat` |
 
@@ -1243,11 +1296,11 @@ one is `graveyard_replacements.go`; this one is
 and `OpponentsMillPlus(n, label)` as the named wrappers.
 
 The window opens only for something the rules call a mill: a
-GRAVEYARD destination (CR 701.13a defines the keyword action by where
+GRAVEYARD destination (CR 701.17a defines the keyword action by where
 the cards go, so `MillToZone{To: game.ZoneExile}` is not a mill and
 opens none) and a POSITIVE count (an unbounded `until` run names no
 number to double). The count a replacement sees is the one the
-INSTRUCTION named, not what the library can supply — CR 701.13b's
+INSTRUCTION named, not what the library can supply — CR 701.17b's
 "mill as many as possible" clamp happens afterwards. A surveil's
 graveyard leg is NOT a mill (CR 701.14a) and no mill replacement
 touches it.
@@ -1432,7 +1485,7 @@ Wrath of God, Winds of Rath, Shatterstorm do — and leave it off the
 printings that don't (Day of Judgment, Supreme Verdict, Vanquish the
 Horde). The rider rides the route onto the event and gates the
 built-in's `AppliesTo`, so an ignored shield is NOT spent
-(CR 701.19d). `"regenerate"` is still not a keyword and is not in
+(CR 701.19c). `"regenerate"` is still not a keyword and is not in
 `canonicalKeywords`: it is a keyword ACTION, and the closed keyword
 list is for keyword abilities.
 
@@ -1644,6 +1697,17 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"infect"` | Infect (CR 702.90) — #748, the damage tail: -1/-1 counters on a creature, poison on a player |
 | `"wither"` | Wither (CR 702.80) — #748, the damage tail: -1/-1 counters on a creature |
 | `"toxic N"` | Toxic (CR 702.164) — #748, N extra poison on combat damage to a player. Numbered AND cumulative: read it with `game.ToxicTotal`, never `HasKeyword`, and grant it through `game.AppendKeywordAbility` so a second instance adds up ([ADR 0056](docs/decisions/0056-infect-wither-toxic.md)) |
+| `"prowess"` | Prowess (CR 702.108) — #706, the first TRIGGERED keyword in the table: `TriggersForCard` turns each instance on the effective ability list into one trigger (`game/prowess.go`). Cumulative like toxic, so grant it through `game.AppendKeywordAbility`. Never write a prowess trigger by hand — declare the token ([ADR 0014 amendment 2026-09-24](docs/decisions/0014-combat-keywords.md)) |
+| `"split second"` | Split second (CR 702.61) — #1519, a SPELL's keyword: `castHasSplitSecond` (`game/split_second.go`) stamps `StackItem.SplitSecond` at announce, and while it is on the stack nobody casts or activates a non-mana ability. Declare it on an instant or sorcery exactly like flash; never pass the sandbox `SplitSecond` cast flag from a card ([ADR 0007 amendment 2026-09-24](docs/decisions/0007-stack-foundation.md)) |
+
+**A keyword that is a trigger** has two shapes, and ADR 0014's
+2026-09-24 amendment says which to use. A constructor on
+`Spec.Triggered` (`Cascade()`, `Storm()`, `Ward(...)`) when the keyword
+carries a parameter a bare token cannot hold or triggers from the
+stack; a token here with an engine-side trigger (prowess) when it lives
+on permanents, is granted and printed on tokens, and needs to work on a
+card with no catalog entry. Either way the trigger carries its name in
+`game.TriggeredAbility.Keyword`, which `cards/coverage` reads (#1258).
 
 Hexproof, shroud, indestructible and changeling are not combat
 keywords, but they ride the same `PrintedKeywords` slot and the same
@@ -1868,11 +1932,10 @@ A creature pacified after attackers were declared keeps attacking.
 
 [ADR 0045](docs/decisions/0045-combat-restrictions.md) has the
 taxonomy, including what the vocabulary deliberately cannot say:
-Silent Arbiter's and Crawlspace's count limits, which belong beside
-`Game.blockerBoundsLocked` as set-shaped predicates rather than as
-bits — one more entry in `checkBlockDeclarationLocked`, the validator
-`DeclareBlockers` runs over a whole declaration before it stores any
-of it.
+Silent Arbiter's and Crawlspace's count limits, which are set-shaped
+predicates rather than bits — shipped in #1507 as `BlockRule.Limit`
+(one more entry in `checkBlockDeclarationLocked`) and `game.AttackLimit`
+(judged by both attack declaration verbs and the enumerator).
 
 **Propaganda's attack cost used to be on that list and is not any
 more** ([ADR 0080](docs/decisions/0080-attack-taxes.md), #1063). A
@@ -1931,6 +1994,67 @@ around, and almost every ability should carry on from last known
 information — "{T}: this deals 2 damage to any target" deals its damage
 from the graveyard. Consult it only where the effect genuinely cannot
 be performed without the source as a permanent.
+
+### Adding a block-rule card (S37+, #750)
+
+"Can't be blocked except by Walls", "can't be blocked by creatures with
+power 2 or less", "creatures with power less than this creature's power
+can't block creatures you control", "can't be blocked by more than one
+creature" are CR 509.1b block rules with a PARAMETER. They go in
+`Spec.BlockRules`, built from
+[block_rules.go](server/internal/cards/effects/block_rules.go): a
+**scope** (whose creatures the rule binds, relative to this permanent)
+plus a **rule**.
+
+```go
+BlockRules: []game.BlockRule{
+    CantBeBlockedExceptBy(OnAttached(), OfCreatureType("Wall"), "Walls"),     // Prowler's Helm
+    CantBeBlockedBy(OnSelf(), PowerLE(2), "creatures with power 2 or less"),   // Legolas Greenleaf
+    CantBlockAttackers(PowerLessThanSource(), ControlledBySourceController(),
+        "creatures with power less than Champion of Lambholt's can't block creatures its controller controls"),
+    CantBeBlockedWhile(OnAttached(), PowerLE(3)),                             // Thieves' Tools
+    MaxBlockers(OnAttached(), 1),                                             // Vorrac Battlehorns
+    MinBlockers(OnSelf(), 3),                                                 // Rampaging Ceratops
+},
+```
+
+- **The scope is never optional.** A rule is read off every permanent
+  for every pair the engine checks, so a hand-written `Pair` that
+  forgets "is this attacker mine?" binds the whole table.
+- **The label is the printed parameter.** The player reads it in the
+  refusal sentence ("can't be blocked except by Walls, and Llanowar
+  Elves is not one").
+- **Flat "can't block" / "can't be blocked" is still a `Restriction`
+  bit** (`RestrictSelf`, `RestrictAttached`). A rule is for a clause
+  with a parameter.
+- **"This turn"** is `BlockRuleUntilEOT{Target: id, Rule: func(s
+  BlockScope) game.BlockRule { … }}` (Gingerbrute, Departed Deckhand).
+  It snapshots the set at resolution (CR 611.2c).
+- **A token that prints one** declares it on its `tokenTemplate`'s
+  `BlockRules` slot (Avatar Kuruk's Spirit).
+- **"No more than N creatures can block each combat"** (Silent Arbiter,
+  Dueling Grounds, Caverns of Despair) is `NoMoreThanNCanBlockEachCombat(n)`
+  — `BlockRule.Limit`, judged over every block in the combat and refused
+  as `declaration_limit` (#1507). It takes no scope: the printed line
+  binds every creature at the table.
+- **The attack half** — "no more than N creatures can attack each
+  combat" / "…can attack you each combat" (Crawlspace) — is not a block
+  rule. It goes in `Spec.AttackLimits`, built with
+  `NoMoreThanNCanAttackEachCombat(n)` or
+  `NoMoreThanNCanAttackYouEachCombat(n)` from
+  [attack_limits.go](server/internal/cards/effects/attack_limits.go).
+  "You" is the card's controller, the player — an attack on their
+  planeswalker does not count. Both declaration verbs and the
+  enumerator read the same check, so a bot is never offered a refused
+  attack ([ADR 0045](docs/decisions/0045-combat-restrictions.md)
+  Decisions 43-45).
+
+Tests: [block_rules_test.go](server/internal/cards/effects/block_rules_test.go)
+pins every shape through the verb, `legal.EnumerateFor` and
+`block_decision_seats`;
+[combat_limits_test.go](server/internal/cards/effects/combat_limits_test.go)
+pins the whole-combat limits, checking the enumerator against the verb
+on a clone for every candidate.
 
 ### Adding a triggered ability (S19+)
 
@@ -2368,7 +2492,7 @@ dies and is reanimated is not kicked.
 **Buyback's return is the engine's, not the card's.** Declare the cost
 and stop. `routeStackCardToGraveyardLocked` reads the paid record and
 routes the resolving spell to its owner's hand through the same
-stack-exit primitive flashback uses (CR 702.27b) — only on a
+stack-exit primitive flashback uses (CR 702.27a) — only on a
 RESOLUTION, so a bought-back spell countered by game rules still goes
 to the graveyard. A card that also returned itself in `OnResolve`
 would be moving a card that is still on the stack.
@@ -2400,7 +2524,7 @@ printed clause beside it — `Register` refuses either half alone,
 because the clause is the message the player is shown:
 
 ```go
-CastCondition:      LegendarySorcery(),      // Urza's Ruinous Blast, CR 307.6
+CastCondition:      LegendarySorcery(),      // Urza's Ruinous Blast, CR 205.4e
 CastConditionLabel: LegendarySorceryLabel,
 ```
 
@@ -4623,6 +4747,41 @@ is gone. In its place:
   The `file.go:closure@line` locations are still printed in the
   failure report, where a human wants them.
 
+### Winning, losing, and "can't lose" (S40, ADR 0057)
+
+A card that says "you win the game" or "<player> loses the game" calls
+the primitive and **returns its error** — nothing else:
+
+```go
+return WinTheGame{}.Apply(ctx)                    // "you win the game" (Felidar Sovereign)
+return LoseTheGame{Player: target}.Apply(ctx)     // "that player loses the game" (Strixhaven Stadium)
+```
+
+Both are immediate (CR 104.2b, CR 104.3e), and both return
+`game.ErrStopResolution` when the rest of the effect must not happen —
+the game ended, or the resolving item's own controller left. The engine
+treats that error as a clean stop, so a card never swallows it, and a
+card **never** calls the rotation or the game-over check itself. A
+draw-replacement win is `WinInsteadOfDrawingFromAnEmptyLibrary(name)`
+(Laboratory Maniac), which cancels the draw before it tries to win.
+
+"You can't lose the game" / "your opponents can't win the game" on a
+permanent is a declaration, not code:
+
+```go
+GameEndGates: YouCantLoseOpponentsCantWin(),   // Platinum Angel, Herald of Eternal Dawn
+GameEndGates: YouCantWinOpponentsCantLose(),   // Abyssal Persecutor
+```
+
+The engine reads it off the battlefield through `CatalogAbilityKey` at
+every loss and every win, so two copies compose and an ability-stripped
+copy gates nothing. The "this turn" version from a spell is
+`CantLoseAndOpponentsCantWinThisTurn{Label: name}` (Angel's Grace),
+stored on the caster as a `PlayerStatic` with an until-end-of-turn
+duration. Concession is never gated, and the last player standing always
+wins (CR 104.2a). See [ADR 0057](docs/decisions/0057-win-and-lose-by-effect.md)
+and its 2026-09-24 amendment.
+
 ### When NOT to add a catalog entry
 
 The registry of known seams — what is missing, which cards wait on
@@ -4832,7 +4991,7 @@ target — so do not write one.
 
 **Use the constructors for the lifecycle, too.** `LevelUp(n, cost)`
 is the whole "{cost}: Level N" ability, carrying CR 716.2d's sorcery
-timing and CR 716.2e's "only from level N-1"; `ToSolve(label, cond)`
+timing and CR 716.2a's "only from level N-1"; `ToSolve(label, cond)`
 is the whole "To solve —" clause, an end-step trigger whose condition
 is re-checked on resolution (CR 603.4). `SpacecraftAt(n, p, t)` and
 `ThresholdKeywords(n, kw…)` are the two station threshold shapes.

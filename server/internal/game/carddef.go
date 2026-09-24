@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"strings"
+
+	"github.com/google/uuid"
+)
 
 // carddef.go — the one place the engine reads the card catalog
 // (#622, Discussion #561 option A).
@@ -87,7 +91,21 @@ type CardDef struct {
 	// controller pays {N}" statics this permanent contributes
 	// (CR 508.1a, ADR 0080) — Propaganda, Ghostly Prison, Windborn
 	// Muse. Read from the battlefield through AttackTaxesForCard.
-	AttackTaxes   []AttackTax
+	AttackTaxes []AttackTax
+	// BlockRules are the CR 509.1b block restrictions with a
+	// parameter this permanent imposes while it is on the battlefield
+	// — "can't be blocked except by Walls" (Prowler's Helm), "can't
+	// be blocked by more than one creature" (Vorrac Battlehorns). Read
+	// through CatalogBlockRules, keyed by CatalogAbilityKey; see
+	// block_rules.go and ADR 0045's addendum, Decision 11.
+	BlockRules []BlockRule
+	// AttackLimits are the CR 508.1c count limits this permanent
+	// imposes on an attack declaration — "no more than one creature
+	// can attack each combat" (Silent Arbiter), "no more than two
+	// creatures can attack you each combat" (Crawlspace). Read through
+	// CatalogAttackLimits, keyed by CatalogAbilityKey; see
+	// attack_limits.go and ADR 0045 Decision 44 (#1507).
+	AttackLimits  []AttackLimit
 	CastableZones []ZoneKind
 
 	// SpecialActions are the CR 116.2 special actions the card offers
@@ -119,7 +137,7 @@ type CardDef struct {
 	DrawStep []DrawStepPermission
 
 	// CastCondition is the card's own "you may cast this only if …"
-	// (CR 307.6's legendary sorcery, and the "cast only if" family),
+	// (CR 205.4e's legendary sorcery, and the "cast only if" family),
 	// checked by CastGateLocked at announce and never at resolution.
 	// Nil for every card that prints no such clause. ADR 0073 §7.
 	CastCondition func(g *Game, controller uuid.UUID, card Card) bool
@@ -167,6 +185,12 @@ type CardDef struct {
 	// CatalogAbilityKey, never from a card's own zone; see
 	// game.CatalogPlayerLifeTotalLocked and ADR 0085 (#1200).
 	PlayerLifeTotalLocked bool
+	// GameEndGates are this permanent's printed "you can't lose the
+	// game" / "your opponents can't win the game" statics (CR 104.3),
+	// scoped relative to its CONTROLLER. Read from the battlefield
+	// through CatalogAbilityKey; see game.CatalogGameEndGates and
+	// ADR 0057 Decision 4 (#749).
+	GameEndGates []GameEndGate
 	// Emblem is the presentation half of an EMBLEM's catalog entry
 	// (CR 114) — its board label and its printed ability text. Set
 	// only on an emblem's own def, the one effects.Register files
@@ -188,6 +212,19 @@ type CardDef struct {
 	// through CatalogTokenText / TokenTextForCard; see token_key.go
 	// and ADR 0083.
 	TokenText string
+
+	// GrantText is a granted ability BUNDLE's printed text (ADR 0093
+	// Decision 8) — the quoted ability as the granting card prints it,
+	// "{T}: Add one mana of any color." Set only on a bundle's own def,
+	// the one effects files under GrantKey(name), from
+	// effects.AbilityGrant.Text.
+	//
+	// It is here for TokenText's reason: the recipient has no printing
+	// that says it has the ability, and a granted trigger has no row on
+	// the wire at all, so this string is the only thing that tells a
+	// player what their permanent can now do. Read through
+	// GrantTextFor.
+	GrantText string
 
 	// XMatters says everything the card does scales with the
 	// announced X, so X=0 does nothing at all. Read only by the
@@ -279,8 +316,11 @@ func catalogDef(key string) *CardDef {
 	// is why every existing reader — the trigger harvest, the layer
 	// pass, the activation path, the view — needed no change of its
 	// own. See copy_grants.go.
-	if base, grants := splitCatalogKeyGrants(key); len(grants) > 0 {
-		return mergedCatalogDef(base, grants)
+	//
+	// Since ADR 0093 the same composite carries LAYER-6 grants too
+	// (CatalogAbilityKey), and its base may be empty ("|grant:<a>").
+	if strings.IndexByte(key, grantKeySeparator[0]) >= 0 {
+		return mergedCatalogDef(key)
 	}
 	return CatalogLookup(key)
 }
@@ -437,6 +477,18 @@ func init() {
 		}
 		return nil
 	}
+	CatalogBlockRules = func(key string) []BlockRule {
+		if d := catalogDef(key); d != nil {
+			return d.BlockRules
+		}
+		return nil
+	}
+	CatalogAttackLimits = func(key string) []AttackLimit {
+		if d := catalogDef(key); d != nil {
+			return d.AttackLimits
+		}
+		return nil
+	}
 	CatalogCastableZones = func(key string) []ZoneKind {
 		if d := catalogDef(key); d != nil {
 			return d.CastableZones
@@ -508,6 +560,12 @@ func init() {
 	CatalogPlayerLifeTotalLocked = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.PlayerLifeTotalLocked
+	}
+	CatalogGameEndGates = func(key string) []GameEndGate {
+		if d := catalogDef(key); d != nil {
+			return d.GameEndGates
+		}
+		return nil
 	}
 	CatalogWantsDistinctColors = func(key string) bool {
 		d := catalogDef(key)

@@ -61,7 +61,7 @@ func TestTurnFaceUpRowReachesTheControllerAlone(t *testing.T) {
 		// without a cast. What is under test is the ROW, and the
 		// MORPHED state is the one that prices it off the card's own
 		// morph cost rather than off its mana cost (CR 708.6 vs
-		// CR 701.34d) — which is also the arm that proves the
+		// CR 701.40b) — which is also the arm that proves the
 		// projection reads the engine's per-kind rule rather than
 		// guessing.
 		for i := range g.Battlefield.Cards {

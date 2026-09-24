@@ -68,9 +68,18 @@ const LOG_TONE: Record<LogKind, string> = {
   damage: "tone-damage",
   attack: "tone-damage",
   block: "tone-combat",
+  // #1279 / #1500: the completion of a block declaration with nothing
+  // to show for it. Toned like the blocks it sits beside rather than
+  // like a whisper — a defender choosing to take a hit is a beat of
+  // combat, not bookkeeping.
+  no_blocks: "tone-combat",
   token: "tone-zone",
   sacrifice: "tone-bad",
   eliminated: "tone-bad",
+  // ADR 0057: the end of the game is the spine of the log, not a
+  // whisper; a prevented win is a swing that didn't happen.
+  game_over: "tone-step",
+  win_prevented: "tone-bad",
   reveal: "tone-cast",
   roll: "tone-cast",
   flip: "tone-cast",

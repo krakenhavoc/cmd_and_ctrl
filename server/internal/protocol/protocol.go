@@ -58,7 +58,22 @@ const (
 	// override, because a tax waived is the card played as a blank.
 	// ADR 0080 (#1063).
 	CodeAttackTaxUnpaid = "attack_tax_unpaid"
+	// CodeIllegalAttack — a declare_attacker or declare_attackers was
+	// refused because the declaration breaks a CR 508.1c restriction
+	// on the whole declaration: today only a count limit (Silent
+	// Arbiter's "no more than one creature can attack each combat",
+	// Crawlspace's "… can attack you …"), whose ErrorPayload.Reason is
+	// AttackRefusalLimit. The message is a server-built sentence
+	// addressed to the caller; CardID is a creature from the refused
+	// declaration. Nothing was declared, tapped or paid. #1507.
+	CodeIllegalAttack = "illegal_attack"
 )
+
+// AttackRefusalLimit is the ErrorPayload.Reason of an `illegal_attack`
+// frame refused by a CR 508.1c count limit (#1507). A stable token,
+// like the illegal_block reasons; it is the only attack refusal reason
+// today, and a second joins in the change that first sends it.
+const AttackRefusalLimit = "attack_limit"
 
 // Frame is the envelope around every message. Payload is left as raw JSON
 // and decoded by whichever handler owns the Kind.
@@ -115,6 +130,10 @@ type ErrorPayload struct {
 	// for two attackers into Propaganda) rather than a token. One
 	// field, two codes, because both answer "why" in the shape their
 	// own code documents. ADR 0080 (#1063).
+	//
+	// And `code: "illegal_attack"`, where it is AttackRefusalLimit
+	// ("attack_limit") for a declaration a CR 508.1c count limit
+	// refused (#1507).
 	Reason string `json:"reason,omitempty"`
 }
 

@@ -542,7 +542,7 @@ type ActivatedAbilityShape struct {
 	//
 	// The level-up ability itself takes a Condition, not this: "{3}{U}:
 	// Level 2" is printed on the Class from the moment it enters, and
-	// CR 716.2e's "activate only if this Class is level 1" is an
+	// CR 716.2a's "activate only if this Class is level 1" is an
 	// activation instruction word for word.
 	//
 	// See designations.go and ADR 0071.
@@ -621,63 +621,45 @@ type ActivatedAbilityShape struct {
 var CatalogActivatedAbilities func(oracleID string) []ActivatedAbilityShape
 
 // ActivatedAbilitiesForCard returns the activated abilities a card
-// offers right now. Catalog-only: unlike mana abilities there's no
-// synthetic fallback, because there's no ability every card of some
-// type implicitly has.
+// offers right now: its OWN (the instance-carried list, else its
+// catalog entry's, designation-gated), then every ability a layer-6
+// effect granted it (ADR 0093), in layer-6 order. Catalog-only: unlike
+// mana abilities there's no synthetic fallback, because there's no
+// ability every card of some type implicitly has.
+//
+// This one accessor is why internal/legal needs no change of its own:
+// legal.Move enumeration, the client's context menu
+// (protocol.CardView), the lobby's ability lookup and
+// ActivateCatalogAbility itself all read through here, so the
+// enumerator can never offer a bot a move the engine will refuse — the
+// #544 hung-table failure mode. A permanent a CR 613.1f removal applies
+// to offers none of its OWN abilities (a Clue token's crack is an
+// activated ability like any other, and Darksteel Mutation takes it as
+// it takes Sol Ring's) but keeps a grant the layer pass let survive.
+//
+// ADR 0071: an ability gated on a designation the permanent does not
+// have is not on the permanent. Because every consumer reads through
+// this one accessor, a Case's "Solved — {1}{B}, Sacrifice this Case: …"
+// is absent from the activation path, the legal-move enumerator, the
+// lobby lookup and the wire together.
+//
+// The body, and each row's stable ref, is activatedAbilityRows in
+// granted_abilities.go.
 func ActivatedAbilitiesForCard(c Card) []ActivatedAbilityShape {
-	// S24 layer 6: a permanent an ability-removing effect applies to
-	// offers nothing, and that has to be checked BEFORE the
-	// instance-carried list as well as before the catalog. A Clue
-	// token's "{2}, Sacrifice this: Draw a card" is an activated
-	// ability like any other, and Darksteel Mutation takes it away
-	// exactly as it takes away Sol Ring's.
-	//
-	// This one accessor is why internal/legal needs no change:
-	// legal.Move enumeration, the client's context menu
-	// (protocol.CardView), the lobby's ability lookup and
-	// ActivateCatalogAbility itself all read through here, so the
-	// enumerator can never offer a bot a move the engine will refuse
-	// — the #544 hung-table failure mode.
-	if c.HasLostAllAbilities() {
-		return nil
-	}
-	// S21 sub-PR 4: intrinsic abilities win — a token has no oracle
-	// ID for the catalog to key on, and Food / Clue / Blood ARE
-	// their activated ability.
-	if len(c.ActivatedAbilities) > 0 {
-		return c.ActivatedAbilities
-	}
-	if CatalogActivatedAbilities == nil {
-		return nil
-	}
-	// #521: the guard used to be `c.OracleID == ""` as well, which
-	// made a token unreachable here by construction. A token now has
-	// a catalog key of its own, so the question is the one the key
-	// already answers — an object with no entry has the empty key,
-	// whether because it is uncatalogued or because CR 708.2a has
-	// silenced it.
-	key := CatalogAbilityKey(c)
-	if key == "" {
-		return nil
-	}
-	// ADR 0071: an ability gated on a designation the permanent does
-	// not have is not on the permanent. Because every consumer reads
-	// through this one accessor, a Case's "Solved — {1}{B}, Sacrifice
-	// this Case: …" is absent from the activation path, the legal-move
-	// enumerator, the lobby lookup and the wire together — greying it
-	// in one of them and offering it in another is not representable.
-	//
-	// The intrinsic list above is deliberately NOT gated: a token
-	// carries its own abilities and has no catalog entry to print a
-	// designation on.
-	return activeOnly(c, CatalogActivatedAbilities(key), func(a ActivatedAbilityShape) Designation {
-		return a.ActiveWhen
-	})
+	abs, _ := activatedAbilityRows(c, false)
+	return abs
 }
 
 // ActivateAbilityParams carries the announce-time choices for a
 // catalog activated ability.
 type ActivateAbilityParams struct {
+	// Ref is the stable ref of the row the activator meant (ADR 0093
+	// Decision 5): "own:<i>", "grant:<bundle>:<i>:<n>". Checked against
+	// the row at the index BEFORE anything is validated or paid; a
+	// mismatch is ErrStaleAbilityRef and costs nothing. Empty is
+	// accepted, as every client that predates it sends.
+	Ref string
+
 	// SacrificeIDs names the permanents paid to a SacrificeOther
 	// cost: exactly the clause's count (SacrificeCostCount), each
 	// once. Their order does not matter — the permanents leave as
@@ -928,7 +910,15 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		// nothing to say about a card in a hand.
 		return ErrCardCallerMismatch
 	}
-	abilities := ActivatedAbilitiesForCard(*source)
+	abilities, origins := ActivatedAbilitiesWithOrigins(*source)
+	// ADR 0093 Decision 5: the row the activator meant, named by its
+	// ref, before anything else about it is asked. A grant appearing or
+	// vanishing between the view and this announcement moves the rows
+	// under their indexes; a stale move is REFUSED, never fired on
+	// whatever sits at that index now (#544). Nothing is paid.
+	if staleAbilityRef(params.Ref, index, len(abilities), origins) {
+		return ErrStaleAbilityRef
+	}
 	if index < 0 || index >= len(abilities) {
 		return ErrInvalidParam
 	}

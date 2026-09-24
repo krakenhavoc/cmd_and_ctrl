@@ -240,7 +240,7 @@ type AlternativeCost struct {
 
 	// FaceDown is CR 708.4: paying this cost casts the card FACE
 	// DOWN. Morph's "you may cast this card as a 2/2 face-down
-	// creature spell for {3}" (CR 702.37b), megamorph's (CR 702.109a)
+	// creature spell for {3}" (CR 702.37b), megamorph's (CR 702.37b)
 	// and disguise's (CR 702.168a) — nil for every other alternative
 	// cost in the game.
 	//

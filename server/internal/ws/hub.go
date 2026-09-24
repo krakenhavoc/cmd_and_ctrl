@@ -914,11 +914,21 @@ func (c *Client) handleAction(frame protocol.Frame) {
 	// budget remaining); admin sessions (playerID == uuid.Nil)
 	// bypass both.
 	if payload.Type == "undo" {
-		view, seq, err := room.Undo(c.playerID)
+		caller := c.playerID
+		// ADR 0057: once the game has ended only the admin may undo,
+		// and an admin bound to a seat is still the admin. The room
+		// reads uuid.Nil as the admin.
+		if c.admin && room.Game.CurrentState() == game.StateEnded {
+			caller = uuid.Nil
+		}
+		view, seq, err := room.Undo(caller)
 		if err != nil {
 			switch {
 			case errors.Is(err, ErrNothingToUndo):
 				c.sendError(frame.ID, protocol.CodeBadRequest, "nothing to undo")
+			case errors.Is(err, ErrGameOverUndo):
+				c.sendError(frame.ID, protocol.CodeBadRequest,
+					"the game is over — only the admin can undo past its end")
 			case errors.Is(err, ErrNotYourUndo):
 				c.sendError(frame.ID, protocol.CodeBadRequest,
 					"you can only undo your own most recent action")
@@ -1020,6 +1030,12 @@ func (c *Client) handleAction(frame protocol.Frame) {
 			c.sendErrorPayload(frame.ID, body)
 			return
 		}
+		// #1507: an attack refused for a CR 508.1c count limit, with
+		// its sentence addressed to the caller.
+		if body, ok := attackLimitPayload(err, c.playerID); ok {
+			c.sendErrorPayload(frame.ID, body)
+			return
+		}
 		code, msg := classifyActionError(err)
 		c.sendError(frame.ID, code, msg)
 		return
@@ -1072,6 +1088,9 @@ func classifyActionError(err error) (code, message string) {
 		return protocol.CodeBadRequest, "action is not legal in the current step"
 	case errors.Is(err, game.ErrNotACreature):
 		return protocol.CodeBadRequest, "card is not a creature"
+	case errors.Is(err, game.ErrNotDefending):
+		// #1279: finish_blocks from a seat nothing is attacking.
+		return protocol.CodeBadRequest, "you are not a defending player this combat"
 	case errors.Is(err, game.ErrUnparseableCost):
 		// #289: the card's cost is one the parser can't read. Split
 		// and adventure cards used to import the joined
@@ -1099,6 +1118,13 @@ func classifyActionError(err error) (code, message string) {
 		// any other caller, and for a bare ErrIllegalBlock with no
 		// refusal attached.
 		body, _ := blockRefusalPayload(err, uuid.Nil)
+		return body.Code, body.Message
+	case errors.Is(err, game.ErrAttackLimit):
+		// #1507. The hub sends the structured frame
+		// (attackLimitPayload) before reaching this classifier; this
+		// arm is the same code and a viewer-neutral sentence for any
+		// other caller.
+		body, _ := attackLimitPayload(err, uuid.Nil)
 		return body.Code, body.Message
 	case errors.Is(err, game.ErrAttackTaxUnpaid):
 		// ADR 0080. The hub sends the structured frame
@@ -1186,6 +1212,31 @@ func insufficientManaMessage(actionType string) string {
 		return "insufficient mana to activate that ability"
 	}
 	return "insufficient mana to cast"
+}
+
+// attackLimitPayload builds the `illegal_attack` error frame for a
+// declaration refused by a CR 508.1c count limit (#1507, ADR 0045
+// Decision 45): reason `attack_limit`, a creature from the refused
+// declaration the limit counts in card_id, and the engine's sentence
+// addressed to `viewer` ("… can attack you each combat (Crawlspace)").
+// ok is false for any error that is not an attack-limit refusal.
+func attackLimitPayload(err error, viewer uuid.UUID) (protocol.ErrorPayload, bool) {
+	if !errors.Is(err, game.ErrAttackLimit) {
+		return protocol.ErrorPayload{}, false
+	}
+	body := protocol.ErrorPayload{
+		Code:    protocol.CodeIllegalAttack,
+		Message: "more creatures would attack than an effect allows this combat",
+		Reason:  protocol.AttackRefusalLimit,
+	}
+	var le *game.AttackLimitError
+	if errors.As(err, &le) {
+		body.Message = le.Sentence(viewer)
+		if le.Attacker != uuid.Nil {
+			body.CardID = le.Attacker.String()
+		}
+	}
+	return body, true
 }
 
 // attackTaxPayload builds the `attack_tax_unpaid` error frame for a
