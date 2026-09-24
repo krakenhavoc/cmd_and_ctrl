@@ -319,6 +319,19 @@ type Game struct {
 	// the sequence rather than restarting at 1.
 	eventSeq uint64
 
+	// eventLogGen names the history Events holds (#1401): bumped by
+	// RestoreFrom, which replaces the log with a shorter one that the
+	// next emit regrows under the same Seq values. Never copied — it
+	// belongs to this *Game, not to the history — so it only moves
+	// forward. See projection_cache.go.
+	eventLogGen uint64
+
+	// logProjection is the public log's fold state between views
+	// (#1401). Opaque to this package; see projection_cache.go. Not
+	// cloned, not restored, not snapshotted: a fresh *Game starts with
+	// an empty slot and the first view refolds from event 0.
+	logProjection ProjectionCache
+
 	// eventBatch is the monotonic counter stamped into Event.Batch on
 	// each EmitEvent: the identity of the run of events the engine is
 	// emitting as ONE occurrence (CR 603.2c). It advances at exactly

@@ -129,8 +129,9 @@ func TestViewWalksTheBoardForUntapRestrictionsOncePerView(t *testing.T) {
 }
 
 // TestSeatIndexerDoesNotAllocate pins the constant-factor half of
-// #1261: publicLogOf asks the seat indexer for every event of the game
-// on every frame, and it used to format the actor's UUID as a string
+// #1261: publicLogOf asked the seat indexer for every event of the game
+// on every frame (since #1401, for every event it folds), and it used
+// to format the actor's UUID as a string
 // to compare it — one allocation per event per view, ~8% of a bot
 // table's CPU. Comparing UUIDs allocates nothing.
 func TestSeatIndexerDoesNotAllocate(t *testing.T) {

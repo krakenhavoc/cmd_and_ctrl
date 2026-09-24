@@ -126,6 +126,12 @@ var gameFields = plan(
 	// what "carried" means here.
 	"Events", carried, "shared with the live log by Clone, copied by the persisted snapshot",
 	"eventSeq", carried, "",
+	// #1401: the public log's projection cache and the generation it
+	// validates against. A restored game is a NEW *Game — zero
+	// generation, empty slot — and its first view refolds the carried
+	// Events from scratch, so there is nothing to serialise.
+	"eventLogGen", rebuilt, "names this *Game's log history; a restored game is a new receiver and starts a new one",
+	"logProjection", rebuilt, "derived cache of the public log; the first view of a restored game refolds Events",
 	// #829 event batches. Carried for the same reason the per-turn
 	// tallies are, and carried TOGETHER: the counter names the batch
 	// the marks are recorded against, so a restore that kept one and
