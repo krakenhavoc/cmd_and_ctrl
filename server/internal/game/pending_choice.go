@@ -1039,6 +1039,22 @@ type DamageAssignmentFrame struct {
 	// by owning player, AttackerID is already the key and a cached
 	// owner had no remaining reader.)
 	SourceIsCommander bool
+
+	// SourceInfect, SourceWither and SourceToxic are the attacker's
+	// ADR 0056 damage-result keywords at prompt-queue time (CR 702.90,
+	// 702.80, and the CR 702.164b toxic total), cached for the same
+	// died-before-resume reason as SourceLifelink: an infect attacker
+	// killed by first-strike damage before its assignment is answered
+	// still puts -1/-1 counters and gives poison. Copied onto the tail
+	// by damageTailFromFrame.
+	//
+	// Zero in a frame restored from a snapshot written before the
+	// fields existed, which resumes as ordinary damage — the fallback
+	// CombatStep has, and why there is no schema bump. Server-side
+	// only: not projected onto DamageAssignmentView.
+	SourceInfect bool `json:",omitempty"`
+	SourceWither bool `json:",omitempty"`
+	SourceToxic  int  `json:",omitempty"`
 }
 
 // replacementResumeFrame is the unexported per-prompt continuation

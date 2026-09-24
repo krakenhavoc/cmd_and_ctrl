@@ -83,6 +83,8 @@
     flash: "Flash",
     hexproof: "Hexproof",
     shroud: "Shroud",
+    infect: "Infect",
+    wither: "Wither",
   };
 
   function labelFor(kw: string): string {

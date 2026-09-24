@@ -50,6 +50,15 @@ const shroud = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill
 // mid-change rather than a weapon or a shield.
 const changeling = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 C 8 3 6 6 6 9 C 6 12 8 13 8 16 L 8 21"/><path d="M12 3 C 16 3 18 6 18 9 C 18 12 16 13 16 16 L 16 21"/><path d="M8 18 L 16 18"/><circle cx="12" cy="9" r="2.2"/></svg>`;
 
+// #748 infect and wither (CR 702.90, 702.80, ADR 0056). Infect is a
+// drop of ichor with a -1 bar through it — its damage is poison and
+// -1/-1 counters; wither is a drooping leaf, because its damage is
+// the counters that stay after the turn ends. Toxic carries a number
+// ("toxic 2") and keeps the three-letter text badge.
+const infect = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 C 9 8 6 11 6 15 A 6 6 0 0 0 18 15 C 18 11 15 8 12 3 Z"/><path d="M9 15 L 15 15"/></svg>`;
+
+const wither = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5 C 12 4 17 8 16 14 C 15 18 11 20 8 21"/><path d="M5 5 C 4 11 7 16 12 17"/><path d="M5 5 L 13 15"/></svg>`;
+
 export const KEYWORD_ICONS: Record<string, string> = {
   flying,
   reach,
@@ -67,4 +76,6 @@ export const KEYWORD_ICONS: Record<string, string> = {
   shroud,
   indestructible,
   changeling,
+  infect,
+  wither,
 };
