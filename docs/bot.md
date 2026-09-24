@@ -1536,6 +1536,27 @@ everything home, a trampler is held only by a blocker that absorbs all
 of it, and menace counts as unblockable. A perfect mirror has no race —
 nothing is left over for next turn — and the bot does not invent one.
 
+### Trample overflow on the attacking side (#1504)
+
+`lethalPush` and the race's now and next count what a blocked trampler
+puts over its blockers. The defender assigns each blocker lethal damage
+(its toughness less the damage already on it, or 1 from a deathtouch
+source) and the rest goes to the player, exactly as the engine and the
+bot's own damage assignment do. So a Bear in front of a 7/7 trampler
+still lets 5 through, and a one-Wurm edge is cashed the way a one-Drake
+edge is. Before, a chumped Wurm counted as a Wurm that did nothing.
+
+The count is a lower bound, never an overestimate. Which blockers go on
+which trampler is a partition problem, so `heuristic/trample.go`
+relaxes it to a matching: each trampler has slots, and a blocker in
+slot j is credited with no more than it could absorb there. The bound
+takes the larger of that relaxation and the plain blocker matching, and
+a board with no trampler computes only the matching, so it is unchanged.
+A first-strike blocker counts as holding a trampler in full, because it
+may kill it before it deals any damage. `TestUnblockedPowerNeverOverestimates`
+checks the bound against every possible set of blocks on 3000 random
+small boards. On 2936 of them it is exact.
+
 The gate that measures this plays **lockstep** (next section), so a
 change to the race term moves the same forty games every time it runs.
 
