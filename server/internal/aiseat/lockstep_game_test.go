@@ -3,6 +3,7 @@ package aiseat_test
 import (
 	"fmt"
 	"math/rand/v2"
+	"strings"
 	"testing"
 	"time"
 
@@ -65,6 +66,23 @@ func TestLockstepSeedReplaysMoveForMove(t *testing.T) {
 // edge turning it into damage.
 func mirrorRoom(t *testing.T, seed uint64, edgeSeat int) *ws.Room {
 	t.Helper()
+	return mirrorRoomWith(t, seed, edgeSeat, mirrorSpec{edge: "Drake", life: 6, board: [4]int{6, 5, 6, 5}})
+}
+
+// mirrorSpec is the shape of a mirror table.
+type mirrorSpec struct {
+	// edge names the one creature the edge seat has one more of.
+	edge string
+	// life is both players' starting life.
+	life int
+	// board is each seat's Drakes, Wurms, Ogres and Bears, before the
+	// edge.
+	board [4]int
+}
+
+// mirrorRoomWith is mirrorRoom with the table's shape as a parameter.
+func mirrorRoomWith(t *testing.T, seed uint64, edgeSeat int, spec mirrorSpec) *ws.Room {
+	t.Helper()
 	g := game.NewGame()
 	for i := 0; i < 2; i++ {
 		cmdr := game.NewCommander("Commander Bear", uuid.Nil)
@@ -85,21 +103,20 @@ func mirrorRoom(t *testing.T, seed uint64, edgeSeat int) *ws.Room {
 		t.Fatalf("Start: %v", err)
 	}
 	for i, p := range g.Seats {
-		p.Life = 6
+		p.Life = spec.life
 		proto := map[string]game.Card{}
 		for _, c := range battleDeck(p.ID) {
 			if _, ok := proto[c.Name]; !ok {
 				proto[c.Name] = c
 			}
 		}
-		drakes := 6
-		if i == edgeSeat {
-			drakes++
-		}
 		for _, n := range []struct {
 			name  string
 			count int
-		}{{"Mountain", 12}, {"Drake", drakes}, {"Wurm", 5}, {"Ogre", 6}, {"Bear", 5}} {
+		}{{"Mountain", 12}, {"Drake", spec.board[0]}, {"Wurm", spec.board[1]}, {"Ogre", spec.board[2]}, {"Bear", spec.board[3]}} {
+			if i == edgeSeat && n.name == spec.edge {
+				n.count++
+			}
 			for j := 0; j < n.count; j++ {
 				c := proto[n.name]
 				c.InstanceID = uuid.New()
@@ -149,5 +166,58 @@ func TestHeuristicMirrorResolvesInsideTheTurnBudget(t *testing.T) {
 			}
 			assertNoEnumeratorBugs(t, res)
 		})
+	}
+}
+
+// TestHeuristicWurmEdgeResolvesInsideTheTurnBudget is #1504: the same
+// mirror at seed 1409 with the edge a Wurm (7/7 trample) instead of a
+// Drake, on two scaled-down boards.
+//
+//   - Wurms and Bears, both players on 6. Every Bear in front of a Wurm
+//     lets 5 over, so swinging everything is lethal whatever the
+//     defender does: lethalPush.
+//   - Wurms and Ogres, both players on 8. The all-in is not lethal (two
+//     Ogres on the spare Wurm absorb all of it), so the edge has to be
+//     cashed over turns: the two-turn race.
+//
+// Before the attacker's estimates counted trample overflow, a blocked
+// Wurm connected for nothing, the spare Wurm was invisible, and all
+// four games stopped at the turn budget (51 turns, lives [6 6] and
+// [8 4]).
+func TestHeuristicWurmEdgeResolvesInsideTheTurnBudget(t *testing.T) {
+	requireGameTests(t)
+	const (
+		turnBudget = 25
+		wall       = 120 * time.Second
+		seed       = 1409
+	)
+	for _, spec := range []mirrorSpec{
+		{edge: "Wurm", life: 6, board: [4]int{0, 5, 0, 5}},
+		{edge: "Wurm", life: 8, board: [4]int{0, 5, 6, 0}},
+	} {
+		for _, edge := range []int{0, 1} {
+			t.Run(fmt.Sprintf("life=%d/board=%v/edge=seat%d", spec.life, spec.board, edge), func(t *testing.T) {
+				res := playGameWith(t, mirrorRoomWith(t, seed, edge, spec), seed, heuristicSeats(2), turnBudget, wall, true)
+				race, push := 0, 0
+				for _, m := range res.moves {
+					if strings.Contains(m, "two-turn race") {
+						race++
+					}
+					if strings.Contains(m, "all-in for the kill") {
+						push++
+					}
+				}
+				t.Logf("edge seat %d: state=%s turns=%d winner=%d lives=%v in %v; %d race and %d all-in attacks",
+					edge, res.state, res.turns, res.winner, res.lives, res.elapsed, race, push)
+				if res.state != game.StateEnded {
+					t.Fatalf("the Wurm edge was not cashed inside %d turns (state %s, lives %v); the board it stopped on:%s",
+						turnBudget, res.state, res.lives, res.board)
+				}
+				if res.winner != edge {
+					t.Errorf("seat %d won; the seat with the extra Wurm is seat %d (lives %v)", res.winner, edge, res.lives)
+				}
+				assertNoEnumeratorBugs(t, res)
+			})
+		}
 	}
 }
