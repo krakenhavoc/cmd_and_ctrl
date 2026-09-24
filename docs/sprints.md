@@ -2563,9 +2563,12 @@ The parallel track: no dependency on the reconnect chain, and the item that deci
 
 ### Sub-PR 8 — deploy observability ([#524](https://github.com/krakenhavoc/cmd_and_ctrl/issues/524))
 
-- [ ] On SIGTERM, one line per live game: clean boundary or not, the census labels if not, and how far back its restore point is. **No new writes** — the shutdown path deliberately stays write-free
-- [ ] Boot: restore duration and restore-point age alongside the existing summary
-- [ ] Measure the restart window from `journalctl` — both `"shutdown signal received"` and `"server listening"` already exist and are timestamped. The hypothesis is that startup dominates and is mostly the Scryfall index load before bind; confirm with a number and record it on [#515](https://github.com/krakenhavoc/cmd_and_ctrl/issues/515)
+Order set by the owner decisions of 2026-09-24 on #515, recorded as an
+amendment on [ADR 0044](decisions/0044-surviving-a-deploy.md).
+
+- [x] On SIGTERM, one line per live game: clean boundary or not, the census labels if not, and how far back its restore point is (`ws.LogShutdownCensus`, called from `main.go` between `srv.Shutdown` and `hub.Shutdown`). **No new writes** — the shutdown path deliberately stays write-free; each line is a `CaptureSnapshot` read plus the room's own restore-point bookkeeping
+- [x] Boot: `RestoreFromDisk` timed and logged, each restored game's line grows `restore_point_age`, and `LogRestoreSummary` tallies *why* a table was abandoned (`abandoned_reasons`). See [docs/environments.md](environments.md#operating-notes) for the exact lines
+- [ ] Measure the restart window from `journalctl` — both `"shutdown signal received"` and `"server listening"` already exist and are timestamped. **Deliberately not done in this sub-PR's code**: it is a live measurement on cmd-dev after this merges, not something a unit test can produce. Record the number and its attribution on [#515](https://github.com/krakenhavoc/cmd_and_ctrl/issues/515)
 
 **Exit criteria:**
 
