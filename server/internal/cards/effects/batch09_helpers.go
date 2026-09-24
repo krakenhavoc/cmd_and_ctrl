@@ -176,8 +176,12 @@ func b09ArchonOfCrueltyPayout(g *game.Game, item *game.StackItem, victim uuid.UU
 // b09SourceStillOnBattlefield is the guard every "put a counter on
 // this creature" trigger needs: the source may have left between
 // the trigger going on the stack and resolving, and AddCounter does
-// not gate on zone.
+// not gate on zone. "Still" means the same OBJECT (#1432, CR 400.7):
+// a source that left and came back while the trigger waited is a new
+// permanent, and the clauses behind this guard — the counter, the
+// untap, the fight, the mana for the counters it removed — are about
+// the one that triggered.
 func b09SourceStillOnBattlefield(g *game.Game, item *game.StackItem) bool {
 	z := g.FindCardZoneForEffect(item.SourceCardID)
-	return z != nil && z.Kind == game.ZoneBattlefield
+	return z != nil && z.Kind == game.ZoneBattlefield && !sourceIsNewObject(g, item)
 }

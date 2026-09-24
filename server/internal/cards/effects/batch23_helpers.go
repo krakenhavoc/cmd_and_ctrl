@@ -260,7 +260,9 @@ func b23DamageEachCreatureAndEachPlayer(ctx *Context, n int) error {
 // which the counter LKI on the event log supplies.
 func b23ChargeThenDrawPerCharge(g *game.Game, item *game.StackItem) error {
 	id := item.SourceCardID
-	if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneBattlefield {
+	// #1432: an Engine that left and came back is a new object — it
+	// takes no counter, and the draw is the departed Engine's count.
+	if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneBattlefield || sourceIsNewObject(g, item) {
 		charges := b13LastKnownCounters(g, id, "charge")
 		return DrawCards{Player: item.Controller, N: charges}.Apply(NewContext(g, item))
 	}

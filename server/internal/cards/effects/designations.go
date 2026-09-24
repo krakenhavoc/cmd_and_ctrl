@@ -112,6 +112,9 @@ func LevelUp(level int, cost game.AbilityCost) ActivatedAbility {
 			return g.ClassLevelFor(source) == level-1
 		},
 		Effect: func(g *game.Game, item *game.StackItem) error {
+			if sourceIsNewObject(g, item) { // #1432: a new Class starts at level 1
+				return nil
+			}
 			return g.SetClassLevelForEffect(item.SourceCardID, level)
 		},
 	}
@@ -173,7 +176,7 @@ func ToSolve(label string, condition func(g *game.Game, controller, source uuid.
 				// CR 603.4: the intervening if is checked again on
 				// resolution. Nothing happens if it is false — the
 				// ability is simply removed from the stack.
-				if !condition(g, item.Controller, item.SourceCardID) {
+				if !condition(g, item.Controller, item.SourceCardID) || sourceIsNewObject(g, item) { // #1432
 					return nil
 				}
 				return g.SolveCaseForEffect(item.SourceCardID)
@@ -205,6 +208,9 @@ func Harness(label string, cost game.AbilityCost) ActivatedAbility {
 		Label: label,
 		Cost:  cost,
 		Effect: func(g *game.Game, item *game.StackItem) error {
+			if sourceIsNewObject(g, item) { // #1432
+				return nil
+			}
 			return g.HarnessForEffect(item.SourceCardID)
 		},
 	}

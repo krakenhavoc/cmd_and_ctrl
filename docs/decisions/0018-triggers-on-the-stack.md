@@ -2554,6 +2554,7 @@ Craft were already `full` and now honour CR 400.7, one test each
   pick-target and trigger-prompt frames carry the source `Card` by value,
   which is why the stamp can be taken from them. Frames are not persisted
   anyway (`ChoiceResumeFrames` in the census).
+
 ### Note 2026-09-24 — the record's second engine reader: the CR 608.2b re-check (#1429)
 
 Decision 12's record now also answers the CR 608.2b target re-check
@@ -2579,3 +2580,192 @@ a snapshot of the record, found by `departedAbilitySourceLocked`:
 Spells never consult the record. The decision belongs to ADR 0072
 (protection's targeting source, §2), so the amendment lives there:
 [ADR 0072 amendment 2026-09-24 (#1429)](0072-protection.md).
+
+## Amendment 2026-09-24 — the primitives that act on "this" ask for the object (CR 400.7) · Accepted · S38
+
+Issue [#1432](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1432),
+the follow-on Decision 16 left open. Decisions 14–16 gave every ability
+item its source's OBJECT and gave two readers (`AbilitySourceGoneForEffect`
+for attach and station, `SourcePermanent()` for "this" as data). The
+primitives that ACT on "this" did not ask.
+
+### What was missing
+
+About a hundred catalog files resolve an ability with its source's
+instance ID as the target: `AddCounter{Target: item.SourceCardID}` (64
+literals), `SacrificePermanent` (13), `UntapTarget` (12),
+`BoostUntilEOT` / `GrantKeywordUntilEOT` (9), `BounceToHand`,
+`ExileTarget`, `Transform`, `BecomePrepared`, crew's
+`BecomeCreatureUntilEOT{}` (a zero target means the source), and a
+further ~20 bodies that call a game mutator on the source directly
+(`AddCounterThenForEffect`, `UntapTargetForEffect`,
+`TuckToLibraryForEffect`, `SetClassLevelForEffect`, …). An instance ID
+survives a zone change. A source that left and came back under the same
+ID while its ability waited — bounced and replayed, died and
+reanimated — is a NEW object (CR 400.7) with no memory of the ability,
+and every one of those acts landed on it anyway: the counter, the
+untap, the sacrifice that removed the wrong permanent. Stronger than
+printed, the #259 direction. (The engine's own exile-and-return mints a
+fresh instance ID, so `Flicker` itself never reached this; every route
+that keeps the ID did.)
+
+### Decision 17. The question lives in the primitive, keyed on "target == this item's source"
+
+```go
+func (g *Game) AbilitySourceIsNewObjectForEffect(item *StackItem) bool // game/ability_source.go
+func (c *Context) isNewSourceObject(target uuid.UUID) bool             // effects/source_object_guard.go
+func sourceIsNewObject(g *game.Game, item *game.StackItem) bool        // same, for (g, item) bodies
+```
+
+Every effects primitive that acts on a permanent asks
+`ctx.isNewSourceObject(target)` before it acts and does nothing when
+the answer is yes: `AddCounter` (both signs), `SacrificePermanent`,
+`TapTarget`, `UntapTarget`, `BounceToHand`, `ExileTarget` (so `Flicker`
+and `ExileThenIfItWas`), `DestroyTarget`, `Regenerate`, `GainControl`,
+`Transform` (so `TransformThis`), `ExileAndReturnTransformed`,
+`PreventNextDamage`, `PutIntoLibrary`, `PutIntoLibraryAtDepthOrBottom`,
+`ExileWithPermission`, `Airbend` / `AirbendAll`, `Earthbend`,
+`BecomePrepared`, `BecomeCreatureUntilEOT` / `BecomeArtifactCreature`,
+the pinned-target path of `eotSnapshot` (so `BoostUntilEOT`,
+`GrantKeywordUntilEOT`, `GrantAllCreatureTypesUntilEOT`,
+`RestrictUntilEOT` and every card-local caller), the list primitives
+through `withoutNewSourceObject` (`TurnFaceDown`, `PhaseOut`,
+`PhaseOutUntilLeaves` — which also refuses an `Until` that is a new
+object — `DoesntUntapNextUntapStep`, `TapAndFreeze`,
+`DoesntUntapWhile`), fight (`b10Fight`, CR 701.12b: no damage at all),
+and the "for as long as ~" duration builders (`DurationWhileSourceRemains`,
+`DurationWhileYouControlSource`, the hold in
+`TapAndHoldWhileThisRemainsTapped`: CR 611.2b, the effect never begins).
+A skipped act with a `Then` tells it `false`: nothing was sacrificed,
+exiled or bounced, so "if you do" does not pay.
+
+`b09SourceStillOnBattlefield(g, item)`, the "is this still here" guard
+~20 bodies put in front of an act on the source and its payoff
+(Coalition Relic's mana, Caldera Pyremaw's damage), now means the same
+object. The direct-mutator bodies ask `sourceIsNewObject(g, item)`
+themselves, and the two "sacrifice it. When you do / If you do" bodies
+that only checked the zone (`b08OverlookSacrifice`,
+`b27SacrificeSelfThenTutorColorlessCreature`) ask before the payoff.
+Devoted Druid moved onto `UntapTarget`. The engine's own evoke trigger
+(`queueAltCostEntryTriggerLocked`) now asks `AbilitySourceGoneForEffect`,
+so an evoked creature that left and came back is not sacrificed.
+
+**Why the primitive and not a `Self()` target.** A `Self()` helper that
+carries the ref is exact — it knows the card MEANT "this" — but it only
+reaches the call sites someone edits: 109 literals in 103 files, plus
+the direct-mutator bodies, plus every card written after. Keying on "the
+target is this item's own source" reaches all of them with no card edit,
+including the ones not written yet, and the regression tests below make
+a new primitive decide. **Why not the game mutators**, keyed on the
+resolving slot: the slot outlives its resolution until the next event
+batch (resolving_item.go), so a mana ability of the new object activated
+in that window would be misjudged, and engine-internal calls made during
+a resolution would be caught with it.
+
+**The cost, stated.** The ID cannot tell "this" from "each creature you
+control" when the loop happens to reach the source. A card that loops
+over its own "each" set with a per-permanent primitive, whose source
+left and came back in response to that very ability, skips the new
+object. That is weaker than printed, never stronger, and it needs both
+halves at once. Mass primitives that select with a `Match` predicate are
+not asked, so they are not affected.
+
+### Decision 18. The card-following rule: the check governs a PERMANENT that came back without this effect's help
+
+`AbilitySourceIsNewObjectForEffect` is true only when all four hold: the
+item is a stamped ability (never a spell; an unstamped pre-#1418 item
+keeps today's behaviour), the target is its source card, that card is
+**on the battlefield** as an object other than the stamp, and **this
+resolution did not put it there**. The last two are the exceptions, and
+they are one rule — *text that follows the card is not asked*:
+
+1. **Off the battlefield, the primitive follows the card.** "When this
+   dies, return it to its owner's hand", "put it on the bottom of its
+   owner's library", "return this card from your graveyard", suspend's
+   time counters in exile. The first two name the card in the zone it
+   went to (the CR 400.7 exception for a leaves-the-battlefield
+   trigger); the rest name a card that was never a permanent. None of
+   them is a permanent that left and came back, and the primitive keeps
+   its own rule for that zone.
+2. **A move this resolution made is followed.** CR 400.7 lets the rest
+   of an effect find the object the effect itself moved: unearth returns
+   the card and then gives IT haste; "return this card from your
+   graveyard to the battlefield, then put a +1/+1 counter on it" puts
+   the counter on. `beginResolvingLocked` records the source's epoch as
+   the item starts to resolve (`resolvingItem.sourceEpoch`). Nothing
+   else can move a card while an item resolves, so a source whose epoch
+   has changed since was moved by the effect. A source that was already
+   a new object when the resolution began is the case the guard exists
+   for.
+
+A game restored from a snapshot in the middle of a paused resolution has
+no resolving slot, and falls back to the stamp alone.
+
+### Decision 19. A delayed or reflexive trigger follows a source its creator put onto the battlefield
+
+Decision 14 made a delayed trigger (CR 603.7d) and a reflexive trigger
+(CR 603.12) inherit their creator's stamp. With Decision 17 that stamp
+is acted on, and unearth shows why inheriting it verbatim is wrong: the
+ability is activated from the graveyard, so its stamp is the graveyard
+card, and the "exile it at the beginning of the next end step" it
+schedules is about the creature it has just returned. Inherited as-is,
+the returned creature would be a stranger to its own delayed trigger
+and never be exiled.
+
+`followedSourceObjectLocked(item)` is the stamp, unless the resolving
+item's own resolution has moved its source ONTO THE BATTLEFIELD — then
+the permanent that move made. Only a battlefield arrival is followed: a
+source the resolution moved anywhere else keeps its stamp, so a "when
+you do" after "exile this" still reads the permanent it was through
+`SourcePermanent()`. A creature that leaves and comes back before the
+delayed trigger fires is, correctly, a new object to it (CR 603.7c).
+
+### Cards
+
+Proof, one test each (`cards/effects/source_object_primitives_test.go`),
+each with its no-flicker control:
+
+- **Bartolomé del Presidio** (`AddCounter` on self, activated): no
+  counter on a Bartolomé that came back.
+- **Underworld Breach** (`SacrificePermanent` on self, end-step
+  trigger): a Breach that came back is not sacrificed.
+- **Devoted Druid** (untap self, activated): the new Druid stays tapped.
+- **Mulldrifter**, evoked (the engine's sacrifice-on-entry trigger): the
+  new Mulldrifter stays, and the draw still happens.
+- **Krenko, Tin Street Kingpin** ships `full`: a Krenko that is not the
+  attacker any more (removed, or back as a new object) takes no counter,
+  and the Goblins are its last-known power through `SourcePermanent()`.
+  Its caveat — the counter landing on the card in the graveyard — was
+  this issue.
+
+Exceptions: the unearth pair (`TestDregscapeZombieUnearthsWithHaste`,
+`TestUnearthedCreatureIsExiledAtTheNextEndStep`) are the regression for
+Decisions 18.2 and 19, and two test-only specs pin Decision 18
+(`TestAnEffectThatMovedItsOwnSourceStillFindsIt`,
+`TestADiesTriggerStillActsOnTheCardInTheZoneItWentTo`).
+
+Regression: `TestEveryPrimitiveThatActsOnACardAsksAboutItsSource` parses
+the package and fails for any `Apply` on a type with a `Target`, `Card`
+or `Targets` uuid field that neither asks nor delegates to a primitive
+that does, unless the type is in the test's exemption table with its
+reason (`DealDamage`: damage FROM the source reads last-known
+information, and damage TO it is dealt by loops as often as by "this";
+`ReturnFromGraveyard`, `ReturnFromExile`, `GrantFlashbackToCard`,
+`PlotExiled`: the card is in another zone; `CreateTokenCopy`: copiable
+values, for which last-known information is the answer).
+`TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking` does the
+same for a card body that calls a game mutator on `item.SourceCardID` /
+`ctx.Source()` directly. It is best effort: an ID copied into a variable
+first is not followed, and a spell moving itself is allowed.
+
+### Still not covered
+
+- **The "each" loop corner** (Decision 17, the cost). Weaker, never
+  stronger, and it needs the source to leave and return in response to
+  its own "each" ability.
+- **Durations keyed on the source outside the builders.** A card that
+  builds a `game.Duration` by hand from `ctx.Source()` instead of
+  `DurationWhileSourceRemains` is not asked.
+- **Damage to "this".** `DealDamage` with the source as its target is
+  exempt (above), so "deals N damage to itself" is not refused on a new
+  object.

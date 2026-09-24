@@ -131,7 +131,11 @@ rather than for deck coverage:
   (CR 608.2h) and would still make Goblins equal to its last power.
   The engine's LKI snapshot (`lastKnownBattlefield`) is scoped to the
   dying card's own LTB triggers and is not reachable from a resolution
-  callback.
+  callback. **Closed 2026-09-24 (#1432, [ADR 0018](0018-triggers-on-the-stack.md)
+  Decision 17):** a Krenko that is not the attacker any more — removed,
+  or back as a new object — takes no counter, and the Goblins are its
+  last-known power through `Context.SourcePermanent()` (#1379, #1418).
+  Krenko ships `full`.
 
 ## Out of scope (explicit deferrals)
 

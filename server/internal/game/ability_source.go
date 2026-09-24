@@ -100,6 +100,89 @@ func (g *Game) AbilitySourceGoneForEffect(item *StackItem) bool {
 	return g.cardObjectEpochLocked(item.SourceCardID) != item.SourceEpoch
 }
 
+// AbilitySourceIsNewObjectForEffect reports whether the card `item`'s
+// ability came from is on the battlefield right now as a DIFFERENT
+// object from the one the ability names (#1432, CR 400.7): it left and
+// came back while the ability waited — flickered in response, most
+// often — so "put a +1/+1 counter on this creature", "sacrifice it" and
+// "untap it" have nothing to act on, and must not act on the permanent
+// the card has become.
+//
+// It is the ONE read behind every effects primitive that acts on its
+// own source (effects.Context.isNewSourceObject), and it answers a
+// narrower question than AbilitySourceGoneForEffect on purpose:
+//
+//   - It is about the BATTLEFIELD. A source that is not on the
+//     battlefield reads false, and the primitive keeps its own
+//     behaviour for that zone. That is the rule that keeps the card-
+//     following text working: "when this dies, return it to its
+//     owner's hand" names the card in the zone it went to, and "return
+//     this card from your graveyard" names a card that was never a
+//     permanent. Neither is a permanent that left and came back.
+//   - A move this very resolution made is not "left and came back".
+//     CR 400.7's exception lets the rest of an effect find the object
+//     it moved: unearth returns the card and then gives IT haste, a
+//     self-flicker returns it and then puts a counter on it. The
+//     resolving slot's epoch (resolving_item.go) tells the two apart —
+//     nothing else can move a card while an item resolves, so a source
+//     whose epoch changed since the resolution began was moved by it.
+//
+// False for a nil item, a spell (a spell's "this" is the spell), an
+// item with no source, and an item with no stamp — restored from a
+// snapshot written before #1418 — which keeps today's behaviour.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) AbilitySourceIsNewObjectForEffect(item *StackItem) bool {
+	if item == nil || item.Kind == StackItemSpell || item.SourceCardID == uuid.Nil {
+		return false
+	}
+	ref := item.SourceObject
+	if ref.ID != item.SourceCardID {
+		return false
+	}
+	c := findBattlefieldCard(g, item.SourceCardID)
+	if c == nil || c.ObjectEpoch == ref.Epoch {
+		return false
+	}
+	if start, ok := g.resolvingSourceEpochLocked(item); ok && start != c.ObjectEpoch {
+		return false
+	}
+	return true
+}
+
+// followedSourceObjectLocked is the object `item`'s source is as
+// `item`'s own resolution sees it (#1432): its stamp, unless this very
+// resolution has moved the card ONTO THE BATTLEFIELD — then the
+// permanent the move made, which CR 400.7 lets the rest of the effect
+// find.
+//
+// Only a move onto the battlefield is followed, because that is the
+// only case AbilitySourceIsNewObjectForEffect would otherwise misjudge.
+// A source the resolution moved anywhere else keeps its stamp, so a
+// "when you do" after "exile this" still reads the permanent it was
+// as last-known information through SourcePermanent.
+//
+// The delayed and reflexive triggers a resolution creates inherit it
+// (CR 603.7d, CR 603.12). Unearth is why: it is activated from the
+// graveyard, so its stamp is the graveyard card, and the "exile it at
+// the beginning of the next end step" it schedules is about the
+// creature it has just returned. Inheriting the stamp would make the
+// returned creature a stranger to its own delayed trigger, and it
+// would never be exiled.
+//
+// Caller must hold g.mu.
+func (g *Game) followedSourceObjectLocked(item *StackItem) ObjectRef {
+	ref := item.SourceObject
+	start, ok := g.resolvingSourceEpochLocked(item)
+	if !ok || ref.ID != item.SourceCardID {
+		return ref
+	}
+	if c := findBattlefieldCard(g, item.SourceCardID); c != nil && c.ObjectEpoch != start {
+		return ObjectRef{ID: item.SourceCardID, Epoch: c.ObjectEpoch}
+	}
+	return ref
+}
+
 // sourceObjectRefLocked names the object card `cardID` is at this
 // moment, for an ability that is being put on the stack from it
 // (#1418):

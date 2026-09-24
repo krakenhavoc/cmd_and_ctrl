@@ -36,7 +36,7 @@ type DoesntUntapNextUntapStep struct {
 }
 
 func (d DoesntUntapNextUntapStep) Apply(ctx *Context) error {
-	for _, id := range d.Targets {
+	for _, id := range ctx.withoutNewSourceObject(d.Targets) { // #1432
 		if err := ctx.Game.SkipNextUntapForEffect(id, d.Player); err != nil {
 			return err
 		}
@@ -53,12 +53,13 @@ type TapAndFreeze struct {
 }
 
 func (t TapAndFreeze) Apply(ctx *Context) error {
-	for _, id := range t.Targets {
+	targets := ctx.withoutNewSourceObject(t.Targets) // #1432
+	for _, id := range targets {
 		if err := ctx.Game.TapTargetForEffect(id); err != nil {
 			return err
 		}
 	}
-	return (DoesntUntapNextUntapStep{Targets: t.Targets, Player: t.Player, Label: t.Label}).Apply(ctx)
+	return (DoesntUntapNextUntapStep{Targets: targets, Player: t.Player, Label: t.Label}).Apply(ctx)
 }
 
 // DoesntUntapWhile records "it doesn't untap during its controller's
@@ -76,7 +77,7 @@ type DoesntUntapWhile struct {
 }
 
 func (d DoesntUntapWhile) Apply(ctx *Context) error {
-	for _, id := range d.Targets {
+	for _, id := range ctx.withoutNewSourceObject(d.Targets) { // #1432
 		if err := ctx.Game.HoldUntappedForEffect(id, d.Duration); err != nil {
 			return err
 		}
@@ -113,7 +114,7 @@ func TapAndHoldWhileThisRemainsTapped(ctx *Context, targets []uuid.UUID) error {
 		return err
 	}
 	d, ok := ctx.Game.ForAsLongAsSourceTappedDuration(ctx.Source())
-	if !ok {
+	if !ok || ctx.isNewSourceObject(ctx.Source()) { // #1432
 		return nil
 	}
 	return DoesntUntapWhile{Targets: targets, Duration: d}.Apply(ctx)

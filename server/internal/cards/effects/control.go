@@ -50,7 +50,7 @@ type GainControl struct {
 }
 
 func (c GainControl) Apply(ctx *Context) error {
-	if c.Target == uuid.Nil {
+	if c.Target == uuid.Nil || ctx.isNewSourceObject(c.Target) { // #1432
 		return nil
 	}
 	controller := c.Controller

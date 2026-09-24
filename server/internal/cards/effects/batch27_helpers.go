@@ -458,7 +458,9 @@ func b27SacrificeChosenThenDraw(g *game.Game, item *game.StackItem) error {
 // Sanctum is sacrificed if it is still on the battlefield, and the
 // search happens only if it was.
 func b27SacrificeSelfThenTutorColorlessCreature(g *game.Game, item *game.StackItem) error {
-	if !onBattlefield(g, item.SourceCardID) {
+	// #1432: "if you do" — a Sanctum that left and came back is not
+	// sacrificed, so it tutors nothing.
+	if !onBattlefield(g, item.SourceCardID) || sourceIsNewObject(g, item) {
 		return nil
 	}
 	ctx := NewContext(g, item)

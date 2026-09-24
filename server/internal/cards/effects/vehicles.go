@@ -125,7 +125,7 @@ func (b BecomeCreatureUntilEOT) applyFor(ctx *Context, duration game.Duration) e
 	if target == uuid.Nil {
 		target = ctx.Source()
 	}
-	if target == uuid.Nil {
+	if target == uuid.Nil || ctx.isNewSourceObject(target) { // #1432
 		return nil
 	}
 	// CR 400.7: pin to the instance AND the battlefield-entry stamp,

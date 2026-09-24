@@ -124,7 +124,7 @@ type PreventNextDamage struct {
 }
 
 func (p PreventNextDamage) Apply(ctx *Context) error {
-	if p.Target == uuid.Nil || p.Amount < 0 {
+	if p.Target == uuid.Nil || p.Amount < 0 || ctx.isNewSourceObject(p.Target) { // #1432
 		return nil
 	}
 	label := p.Label

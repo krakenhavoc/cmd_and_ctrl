@@ -40,7 +40,10 @@ func init() {
 							}
 							return CreateToken{Controller: item.Controller, Template: TokenCard("1/1 red and white Soldier with haste"), N: n}.Apply(NewContext(g, item))
 						}
-						if !b15OnBattlefield(g, item.SourceCardID) {
+						// #1432: a new object the card became is not
+						// "this enchantment" — it gets no counter, and
+						// the muster reads the one that triggered.
+						if !b15OnBattlefield(g, item.SourceCardID) || sourceIsNewObject(g, item) {
 							return muster(g, lastKnown)
 						}
 						// #1290: the count that matters is what the

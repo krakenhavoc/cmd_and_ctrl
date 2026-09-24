@@ -43,10 +43,11 @@ type TurnFaceDown struct {
 }
 
 func (t TurnFaceDown) Apply(ctx *Context) error {
-	if len(t.Targets) == 0 {
+	targets := ctx.withoutNewSourceObject(t.Targets) // #1432
+	if len(targets) == 0 {
 		return nil
 	}
-	ctx.Game.TurnFaceDownListedForEffect(t.Source, t.Listed, t.Targets...)
+	ctx.Game.TurnFaceDownListedForEffect(t.Source, t.Listed, targets...)
 	return nil
 }
 

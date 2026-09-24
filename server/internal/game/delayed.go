@@ -219,7 +219,10 @@ func (g *Game) ScheduleDelayedTriggerForEffect(dt DelayedTrigger) uuid.UUID {
 func (g *Game) delayedSourceObjectLocked(cardID uuid.UUID) ObjectRef {
 	if r := g.resolving; r != nil && r.item != nil && r.item.SourceCardID == cardID &&
 		r.item.SourceObject.ID == cardID {
-		return r.item.SourceObject
+		// #1432: the stamp, or the permanent this resolution has just
+		// put onto the battlefield (unearth) — see
+		// followedSourceObjectLocked.
+		return g.followedSourceObjectLocked(r.item)
 	}
 	return g.sourceObjectRefLocked(cardID)
 }
