@@ -13,6 +13,9 @@
   import { canLinkDiscord, linkDiscordLabel, signedInUserID } from "../lib/myGames";
   import { castPreviewParamsFromPayload } from "../lib/castPreview";
   import { stampManaEnforcement } from "../lib/manaEnforcement";
+  import { isStaleAbilityRefError } from "../lib/abilityRef";
+  import { closeCardMenu } from "../lib/contextMenu";
+  import { closeManaSourcePicker } from "../lib/manaSourcePicker";
   import {
     canManageTable,
     canSpawn,
@@ -503,6 +506,19 @@
       return;
     }
     manaOverride = { cardID: err.cardID, missing: err.missing ?? [] };
+  });
+  // ADR 0093 Decision 5: a stale ability ref. The row the player
+  // clicked moved because a granted ability appeared or vanished since
+  // the snapshot they clicked on — the board has already changed and
+  // the newer snapshot is the one on screen. Close whatever surface was
+  // built from the old one (the anchored mana picker, the card menu) so
+  // the next click is made against the current rows, and say so plainly
+  // in the rejected toast (staleAbilityRefToast below).
+  const staleAbilityRef = $derived(isStaleAbilityRefError($lastError?.message));
+  $effect(() => {
+    if (!staleAbilityRef) return;
+    closeManaSourcePicker();
+    closeCardMenu();
   });
   function castAnyway(): void {
     if (!manaOverride) return;
@@ -1847,7 +1863,12 @@
               <div class="att toast error" role="alert" aria-live="polite">
                 <span class="att-label danger">rejected</span>
                 <span class="att-text">
-                  {$lastError.message}
+                  {#if staleAbilityRef}
+                    That ability moved — the board changed. Nothing was paid; try again from the
+                    updated card.
+                  {:else}
+                    {$lastError.message}
+                  {/if}
                   <span class="muted mono">({$lastError.code})</span>
                 </span>
                 <button
