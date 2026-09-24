@@ -422,14 +422,29 @@ func (p *Policy) lethalPush(st *state, def *SeatEval) bool {
 // best, never a guess in either direction. Boards are a few dozen
 // creatures a side, so the cubic worst case is nothing.
 //
-// Still deliberately simple about the rest of combat: one blocker per
-// attacker (menace would only make the defender's job harder), no
-// trample overflow and no damage prevention, so it errs toward "not
-// lethal" wherever it errs.
+// Trample (#1504): a blocked trampler still connects for whatever its
+// blockers do not absorb (CR 702.19b), and a matching that counts it
+// as stopped never sees a one-Wurm edge — a Bear in front of a 7/7 is
+// 5 to the face, every turn. When the swing has a trampler, the answer
+// is the larger of two lower bounds: the matching's (every block holds
+// in full, which a blocked trampler's overflow can only add to) and
+// trampleBound's (the overflow, with the defender's blocks relaxed so
+// that it can only be undercounted). Both are lower bounds on the
+// defender's true best, so their maximum is too, and a swing without a
+// trampler never computes the second.
+//
+// Still deliberately simple about the rest of combat: menace would
+// only make the defender's job harder, and damage prevention is not
+// modelled, so it errs toward "not lethal" wherever it errs.
 func unblockedPower(st *state, defender string, attackers, blockers []*protocol.CardView) int {
 	through, _ := matchBlocks(attackers, blockers, func(a, b *protocol.CardView) bool {
 		return couldBlock(st, defender, a, b)
 	})
+	for _, a := range attackers {
+		if hasKeyword(a, "trample") && a.Power > 0 {
+			return max(through, trampleBound(st, defender, attackers, blockers))
+		}
+	}
 	return through
 }
 
