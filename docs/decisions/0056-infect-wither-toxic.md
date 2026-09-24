@@ -1017,11 +1017,12 @@ response to its enter trigger and then dies:
 
 ### Still not covered
 
-- **Target re-checks at resolution.** `stackItemSourceLocked`
-  (`game/targets.go`) re-checks an ability's targets (CR 608.2b)
-  against its source's current-zone card, not its last-known one, so
-  protection's targeting half (CR 702.16b) can disagree with the
-  damage half for a departed source.
+- ~~**Target re-checks at resolution.**~~ **Closed by #1429**
+  ([ADR 0072 amendment 2026-09-24 (#1429)](0072-protection.md)).
+  `stackItemSourceLocked` (`game/targets.go`) re-checked an ability's
+  targets (CR 608.2b) against its source's current-zone card, not its
+  last-known one. It now reads the same `lastKnownPermanents` record,
+  by the item's `SourceObject`.
   [#1429](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1429).
 - **Controller and type matchers.** Four catalog damage replacements
   that test only the source's controller or type (Angrath's

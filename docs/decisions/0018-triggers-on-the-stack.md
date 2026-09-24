@@ -2554,3 +2554,28 @@ Craft were already `full` and now honour CR 400.7, one test each
   pick-target and trigger-prompt frames carry the source `Card` by value,
   which is why the stamp can be taken from them. Frames are not persisted
   anyway (`ChoiceResumeFrames` in the census).
+### Note 2026-09-24 — the record's second engine reader: the CR 608.2b re-check (#1429)
+
+Decision 12's record now also answers the CR 608.2b target re-check
+for an ability whose source has left the battlefield.
+`stackItemSourceLocked` (`server/internal/game/targets.go`) used to
+look the source up in whatever zone held it, which is its graveyard
+card, so protection was tested against the wrong object. It now returns
+a snapshot of the record, found by `departedAbilitySourceLocked`:
+
+- **A stamped item** (every ability item since Decision 14) names its
+  object through `SourceObjectForEffect`. The object is read live while
+  it is on the battlefield. Once it has left, its record is used. An
+  object that was never a permanent (a graveyard trigger) has no record,
+  and its card is read where it is. This is Decision 14's stamp doing
+  what it was built for: a graveyard trigger from a card that died
+  earlier this turn is judged as the graveyard card, and an activation
+  that sacrificed its own source is judged as that source even after
+  the card comes back.
+- **An unstamped item**, restored from a snapshot written before
+  Decision 14, keeps ADR 0056 Decision 10's instance-ID rule ("current
+  epoch = recorded + 1").
+
+Spells never consult the record. The decision belongs to ADR 0072
+(protection's targeting source, §2), so the amendment lives there:
+[ADR 0072 amendment 2026-09-24 (#1429)](0072-protection.md).
