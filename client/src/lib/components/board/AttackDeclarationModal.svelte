@@ -31,10 +31,29 @@
   // derived) and a manual lock affordance, same interaction shape as
   // that modal's per-row lock toggle, sourced locally instead of from
   // a preview response.
+  //
+  // #1533 adds the THIRD reason to open it: a CR 508.1c count limit
+  // (Silent Arbiter, Crawlspace, ADR 0045 Decisions 44-46). The bulk
+  // verb refuses an over-full swing whole, exactly as it refuses an
+  // unaffordable one, so the answer is the same subset picker, capped
+  // at `attack_targets[].attack_limit`, the room the server publishes
+  // for the defender. Rows past the cap are disabled, the selection
+  // opens at the first N, and the reason is at the top: the server's
+  // own sentence when the picker opens from the refusal, a sentence
+  // built from the published number otherwise. Tax and limit can apply
+  // together, and the picker then shows both.
 
   import { onDestroy } from "svelte";
   import type { CardView, GameView } from "../../protocol";
-  import { attackTaxLabelForCount, attackTaxOn, planAttackAll } from "../../attackAll";
+  import {
+    attackLimitOn,
+    attackLimitSentence,
+    attackTaxLabelForCount,
+    attackTaxOn,
+    planAttackAll,
+    seedAttackSelection,
+    toggleAttackSelection,
+  } from "../../attackAll";
   import { usableManaAbilities } from "../../seatSummary";
   import ModalLayer from "../ModalLayer.svelte";
 
@@ -44,15 +63,32 @@
     // Doubles as open/closed, like AutoTapPreviewModal's `cardID` —
     // null means the modal is unmounted.
     defenderSeatID: string | null;
+    // #1533: the server's sentence for the limit refusal that opened the
+    // picker ("No more than one creature can attack each combat (Silent
+    // Arbiter)."). Null when the picker opened some other way.
+    limitReason?: string | null;
     onConfirm: (attackerIDs: string[], lockedSources: string[]) => void;
     onCancel: () => void;
   }
 
-  const { view, viewerID, defenderSeatID, onConfirm, onCancel }: Props = $props();
+  const {
+    view,
+    viewerID,
+    defenderSeatID,
+    limitReason = null,
+    onConfirm,
+    onCancel,
+  }: Props = $props();
 
   const plan = $derived(planAttackAll(view, viewerID));
   const defender = $derived(plan.defenders.find((s) => s.id === defenderSeatID) ?? null);
+  const defenderName = $derived(defender ? defender.display_name || defender.name : "");
   const each = $derived(defenderSeatID ? attackTaxOn(view, defenderSeatID) : "");
+  // #1533: the most creatures this declaration may add at the defender
+  // under a count limit. null means no limit applies, or the server
+  // does not publish one; the server still refuses an over-full pick
+  // then, and its refusal says why.
+  const cap = $derived(defenderSeatID ? attackLimitOn(view, defenderSeatID) : null);
 
   let selected = $state<string[]>([]);
   let lockedSources = $state<string[]>([]);
@@ -65,7 +101,7 @@
   $effect(() => {
     if (defenderSeatID !== lastDefenderSeatID) {
       lastDefenderSeatID = defenderSeatID;
-      selected = plan.eligible.map((c) => c.instance_id);
+      selected = seedAttackSelection(plan.eligible, cap);
       lockedSources = [];
     }
   });
@@ -79,6 +115,8 @@
     const eligibleIDs = new Set(plan.eligible.map((c) => c.instance_id));
     return selected.filter((id) => eligibleIDs.has(id));
   });
+  const atCap = $derived(cap !== null && liveSelected.length >= cap);
+  const overCap = $derived(cap !== null && liveSelected.length > cap);
 
   const lockCandidates = $derived.by((): CardView[] => {
     if (!viewerID) return [];
@@ -88,7 +126,10 @@
   });
 
   function toggleAttacker(id: string): void {
-    selected = selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id];
+    // Judged on the LIVE selection, so a stale id cannot hold a slot.
+    selected = selected.includes(id)
+      ? selected.filter((x) => x !== id)
+      : toggleAttackSelection(liveSelected, id, cap);
   }
 
   function toggleLock(id: string): void {
@@ -98,14 +139,14 @@
   }
 
   function selectAll(): void {
-    selected = plan.eligible.map((c) => c.instance_id);
+    selected = seedAttackSelection(plan.eligible, cap);
   }
   function selectNone(): void {
     selected = [];
   }
 
   function confirm(): void {
-    if (liveSelected.length === 0) return;
+    if (liveSelected.length === 0 || overCap) return;
     onConfirm(liveSelected.slice(), lockedSources.slice());
   }
 
@@ -130,18 +171,28 @@
     <div class="prompt-modal">
       <h2 id="attack-pick-title">
         Choose attackers
-        <span class="prompt-src" aria-hidden="true">{defender.display_name || defender.name}</span>
+        <span class="prompt-src" aria-hidden="true">{defenderName}</span>
       </h2>
+      {#if cap !== null}
+        <!-- #1533: why the picker is capped, in the server's words when
+             it opened from the refusal. -->
+        <p class="limit-reason" role="note">
+          <span class="limit-tag">attack limit</span>
+          <span>{limitReason || attackLimitSentence(cap, defenderName)}</span>
+          {#if limitReason}
+            <span class="limit-cap">Choose up to {cap}.</span>
+          {/if}
+        </p>
+      {/if}
       <p class="prompt-hint">
         {#if each}
-          Attacking {defender.display_name || defender.name} costs {each} per creature. Pick which ones
-          to send.
+          Attacking {defenderName} costs {each} per creature. Pick which ones to send.
           {#if attackTaxLabelForCount(each, liveSelected.length)}
             <strong>{attackTaxLabelForCount(each, liveSelected.length)}</strong> for the
             {liveSelected.length} checked below.
           {/if}
         {:else}
-          Pick which creatures to send at {defender.display_name || defender.name}.
+          Pick which creatures to send at {defenderName}.
         {/if}
       </p>
       <ul class="prompt-options" role="group" aria-label="attackers">
@@ -154,6 +205,7 @@
               class:on
               role="checkbox"
               aria-checked={on}
+              disabled={!on && atCap}
               onclick={() => toggleAttacker(c.instance_id)}
             >
               <span class="prompt-radio" aria-hidden="true"></span>
@@ -163,11 +215,21 @@
         {/each}
       </ul>
       <div class="prompt-foot">
-        <span class="prompt-count">{liveSelected.length} / {plan.eligible.length} attacking</span>
-        <button type="button" class="ghost" onclick={selectAll}>All</button>
+        <span class="prompt-count">
+          {#if cap !== null}
+            {liveSelected.length} / {cap} allowed
+          {:else}
+            {liveSelected.length} / {plan.eligible.length} attacking
+          {/if}
+        </span>
+        <button type="button" class="ghost" onclick={selectAll}
+          >{cap !== null && cap < plan.eligible.length ? "First " + cap : "All"}</button
+        >
         <button type="button" class="ghost" onclick={selectNone}>None</button>
       </div>
-      {#if lockCandidates.length > 0}
+      <!-- The lock-a-land toggle only matters when a tax is paid from
+           lands; a picker opened for a limit alone has nothing to pay. -->
+      {#if each && lockCandidates.length > 0}
         <p class="prompt-hint locked-label">
           lock a land — reserved sources the auto-tapper won't reach for
         </p>
@@ -198,7 +260,7 @@
           type="button"
           class="primary"
           onclick={confirm}
-          disabled={liveSelected.length === 0}
+          disabled={liveSelected.length === 0 || overCap}
         >
           Attack with {liveSelected.length}
         </button>
@@ -208,6 +270,34 @@
 {/if}
 
 <style>
+  .limit-reason {
+    margin: 0;
+    padding: 8px 10px;
+    border: 1px solid rgba(217, 180, 92, 0.45);
+    border-radius: 10px;
+    background: var(--gold-soft);
+    color: var(--fg);
+    font-size: 13px;
+    line-height: 1.4;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 8px;
+    /* A long sentence wraps at phone width instead of widening the
+       modal past the viewport. */
+    overflow-wrap: anywhere;
+  }
+  .limit-cap {
+    color: var(--fg-muted);
+  }
+  .limit-tag {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--gold);
+    font-weight: 700;
+  }
   .src-row {
     justify-content: space-between;
     padding: 6px 6px 6px 12px;
