@@ -55,6 +55,7 @@ var escapeCatalogCards = []struct {
 	{"Phlage, Titan of Fire's Fury", "3407eb6e-b74d-4159-a801-d7163937953c", "{R}{R}{W}{W}", 5, 0},
 	{"Uro, Titan of Nature's Wrath", "ee302659-59ed-4eef-babe-451b9ccf7f14", "{G}{G}{U}{U}", 5, 0},
 	{"Pharika's Spawn", "a44955e7-f1ad-41b9-b93d-0a980ac341d8", "{5}{B}", 3, 2},
+	{"Woe Strider", woeStriderOracle, "{3}{B}{B}", 4, 2},
 }
 
 // The declaration test. Catches a card file that named the cost but
