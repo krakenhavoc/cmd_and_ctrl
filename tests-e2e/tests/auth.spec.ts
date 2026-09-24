@@ -44,7 +44,7 @@ test.describe("admin login", () => {
     await page.getByRole("button", { name: "log in" }).click();
     await expect(page).toHaveURL(/#\/lobby$/);
 
-    await page.getByRole("button", { name: "log out" }).click();
+    await page.getByRole("button", { name: "log out", exact: true }).click();
     await expect(page).toHaveURL(/#\/login$/);
 
     // Visiting the lobby directly should now redirect us back to
