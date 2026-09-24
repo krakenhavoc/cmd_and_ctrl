@@ -147,22 +147,29 @@ func TestCyclingFeedsADiscardWatcher(t *testing.T) {
 	}
 }
 
-// Magmakin Artillerist: cycling it deals 1 to each opponent through
-// the DISCARD trigger. Its own "when you cycle this card" trigger is
-// the declared caveat (ADR 0062 Decision 7), so the total is 1 rather
-// than 2 — asserted so the day the cycle trigger lands, this test says
-// so.
-func TestMagmakinArtilleristCyclesForOneDamage(t *testing.T) {
+// Magmakin Artillerist: cycling it deals 2 to each opponent — 1 from
+// the DISCARD trigger on a copy left on the battlefield (the cycling
+// activation's cost is a discard), and 1 from the cycled copy's own
+// "when you cycle this card" trigger, which fires from the graveyard
+// via InGraveyard (#925, closing the ADR 0062 Decision 7 gap #1392
+// asked about).
+func TestMagmakinArtilleristCyclesForTwoDamage(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	pushCatalogPermanent(g, me.ID, "Magmakin Artillerist", "Creature — Elemental Pirate", magmakinArtilleristOracl, false)
 	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
 	before := opp.Life
 
-	cycleFromHand(t, g, "Magmakin Artillerist", "Creature — Elemental Pirate", magmakinArtilleristOracl, "{C}{R}")
+	id, _ := cycleFromHand(t, g, "Magmakin Artillerist", "Creature — Elemental Pirate", magmakinArtilleristOracl, "{C}{R}")
+	if !me.Graveyard.Contains(id) {
+		t.Fatal("the cycled Artillerist is not in the graveyard")
+	}
+	// Both triggers are the same player's (CR 603.3b), so they queue a
+	// trigger_order prompt before either goes on the stack.
+	answerAnyTriggerOrderPrompt(t, g, me.ID)
 	passPriorityAroundTable(t, g)
-	if got := before - opp.Life; got != 1 {
-		t.Errorf("opponent lost %d life, want 1 (the discard trigger; the cycle trigger is a declared caveat)", got)
+	if got := before - opp.Life; got != 2 {
+		t.Errorf("opponent lost %d life, want 2 (1 from the discard trigger, 1 from the cycled copy's own cycle trigger)", got)
 	}
 }
 

@@ -11,6 +11,7 @@
   import { discordAuthEnabled, discordLinkHref, fetchBugReportConfig } from "../lib/api";
   import { canLinkDiscord, linkDiscordLabel, signedInUserID } from "../lib/myGames";
   import { castPreviewParamsFromPayload } from "../lib/castPreview";
+  import { stampManaEnforcement } from "../lib/manaEnforcement";
   import {
     canManageTable,
     canSpawn,
@@ -426,7 +427,9 @@
   // preference auto-stamped onto the params unless the caller has
   // already set `strict` (e.g. the override toast injects
   // force_cast=true and we want to skip the auto-stamp on that
-  // path). Other action types pass through unchanged.
+  // path). #1296: a catalog activate_ability is stamped from the same
+  // setting (strict + auto_tap), so an equip is charged like a cast;
+  // see manaEnforcement.ts. Other action types pass through unchanged.
   // lastCastByCardID stashes the most recent cast_spell payload per
   // instance_id so retry dispatchers (castAnyway after insufficient_mana,
   // confirmAutoTap) can replay the ORIGINAL payload with added flags.
@@ -438,12 +441,15 @@
   const sendAction = (type: ActionType, params?: unknown, player?: string): void => {
     // Acting ends a bluff: the viewer has taken the window.
     cancelBluff();
+    // #1296: activate_ability is stamped too — see manaEnforcement.ts.
+    if (type === "cast_spell" || type === "activate_ability") {
+      params = stampManaEnforcement(
+        type,
+        (params ?? {}) as Record<string, unknown>,
+        $settings.gameplay.strictMana,
+      );
+    }
     if (type === "cast_spell") {
-      const strict = $settings.gameplay.strictMana;
-      const incoming = (params ?? {}) as Record<string, unknown>;
-      if (incoming.strict === undefined) {
-        params = { ...incoming, strict };
-      }
       // Stash by instance_id so retry paths can replay targets etc.
       const stash = params as Record<string, unknown>;
       const instanceID = stash.instance_id;
@@ -1448,7 +1454,7 @@
                combat hint, opening-hand roll-call, toasts, game end.
                Nothing here pushes the table around. -->
           {#snippet attention()}
-            <TargetingBanner />
+            <TargetingBanner {view} />
 
             <!-- Bot disclosures. Improvisation announcements always
                  show; per-move reasoning only with the S11.5 "show bot

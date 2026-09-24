@@ -1912,7 +1912,8 @@ matter.
   COMMAND ZONE. `putOntoBattlefieldFromZoneLocked` is generic in its source
   zone, so the entry itself would work; what is unexamined is the commander
   bookkeeping around a command-zone exit that is not a cast. See ADR 0020's
-  amendment.
+  amendment. *Shipped by #1278 (ADR 0020's 2026-09-24 amendment): the entry
+  above is used unchanged, from the command zone.*
 
 ---
 

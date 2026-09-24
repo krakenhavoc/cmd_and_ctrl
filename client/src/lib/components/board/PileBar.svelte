@@ -12,7 +12,7 @@
   // (GameView.exile), so callers pass a pre-filtered ZoneView containing
   // just this player's owned exiled cards.
 
-  import type { ActionPayload, ActionType, PlayerView, ZoneView } from "../../protocol";
+  import type { ActionPayload, ActionType, CardView, PlayerView, ZoneView } from "../../protocol";
   import PileButton from "./PileButton.svelte";
   import CommandZone from "./CommandZone.svelte";
   import { openZoneBrowser } from "../../zoneBrowser";
@@ -26,9 +26,22 @@
     isSelf: boolean;
     sendAction: ActionSender;
     onDrawCard?: () => void;
+    // #1278: activated abilities that function from the command zone
+    // (commander ninjutsu), and the sorcery-speed reason their popover
+    // greys with. Passed straight through to CommandZone.
+    onActivateAbility?: (card: CardView, abilityIndex: number) => void;
+    sorcerySpeedBlocked?: string;
   }
 
-  const { seat, exile, isSelf, sendAction, onDrawCard }: Props = $props();
+  const {
+    seat,
+    exile,
+    isSelf,
+    sendAction,
+    onDrawCard,
+    onActivateAbility,
+    sorcerySpeedBlocked = "",
+  }: Props = $props();
 
   // S42 / CR 401.5: "you may look at the top card of your library any
   // time" and "play with the top card of your library revealed" both
@@ -66,6 +79,8 @@
     {isSelf}
     {sendAction}
     commanderCasts={seat.commander_casts}
+    onActivateAbility={isSelf ? onActivateAbility : undefined}
+    {sorcerySpeedBlocked}
   />
 </div>
 

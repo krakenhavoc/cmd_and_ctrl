@@ -2399,12 +2399,10 @@ tail reads lifelink and deathtouch off the battlefield only.
 
 ### Still not covered
 
-- **Damage-source keywords from a departed source.** This is ADR 0056
-  Decision 2 step 4 and Decision 8. The record now holds what that
-  step needs: the characteristics and controller of the object that
-  left. Wiring it into `effectDamageTailLocked` changes every "when
-  this dies, it deals damage" card, so it is its own change:
-  [#1396](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1396).
+- ~~**Damage-source keywords from a departed source.**~~ **Closed by
+  [#1396](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1396)**
+  (see the 2026-09-24 note below and
+  [ADR 0056's 2026-09-24 amendment](0056-infect-wither-toxic.md)).
 - **An exit that bypasses `battlefieldExitLocked`.** A player leaving
   the game takes their permanents with them (CR 800.4a), and those
   permanents get no record. The read answers false, and each card
@@ -2413,3 +2411,25 @@ tail reads lifelink and deathtouch off the battlefield only.
   HARVEST ("a creature with power equal to the power of the creature
   that died") can now read `PermanentForEffect(snapshot.Ref())` while
   it builds. No card needs it yet.
+
+### Note 2026-09-24 — the record's first engine reader (#1396)
+
+The non-combat damage tail now reads Decision 12's record when the
+damage source has left the battlefield: `deathtouch` from the recorded
+abilities and `lifelinkTo` from the recorded controller. The decision
+belongs to [ADR 0056](0056-infect-wither-toxic.md) (its Decision 2 step
+4), so the amendment lives there as Decisions 9-11. Two things it
+changed here:
+
+- **`PermanentInfo` gains `Tapped`** (ADR 0056 Decision 11). A status,
+  not a characteristic, and last-known information all the same: Mana
+  Vault's "if this artifact is tapped" is re-checked at resolution.
+  It is written with the rest of the record, from the live card, before
+  `MoveCard` clears the flag.
+- **An object ref can now name a damage source.**
+  `Game.DealDamageFromObjectForEffect(ObjectRef, target, amount)` and
+  `effects.DealDamage{SourceObject: &ref}` read the named object's
+  record, never a new object the card has become (Decision 13's rule,
+  applied to the damage source). A bare instance ID reads the last
+  object the card was, and only while the card has not moved since it
+  left (ADR 0056 Decision 10).

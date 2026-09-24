@@ -21,26 +21,24 @@ import (
 // return uses, over a candidate set filtered to creature-or-
 // planeswalker.
 //
-// Otawara's own comment declared its "{1} less per legendary
-// creature" clause unreachable because activated-ability pricing did
-// not exist. It does now (#1184, cost_modifier.go's `Activations`
-// partition and `CostQuery.Ability`) — Boom Scholar is the first
-// card to use it, and this is the second: a `CostModifier` scoped to
-// Takenuma's own channel ability (`q.Card.InstanceID ==
-// q.Source.InstanceID`) with a per-legendary-creature `Amount`.
+// The "{1} less per legendary creature" clause is the channel
+// ability's OWN cost clause (ActivatedAbility.CostModifiers, #1296),
+// shared with Otawara and Boseiju through
+// ChannelDiscountPerLegendaryCreature.
 //
-// DECLARED SIMPLIFICATION, weaker than printed, and Boom Scholar's
-// own: the discount is REAL at payment, but the ability's menu row
-// still advertises the printed {3}{B} — the announce-time cost
-// preview does not yet read CostModifiers for an activation.
+// It used to be a board modifier (Spec.CostModifiers with the
+// #1184 `Activations` bit, scoped to its own ability), and a caveat
+// said "the discount applies when you pay for it". It did not: a board
+// modifier is gathered from the BATTLEFIELD (CR 113.6), and a channel
+// ability is activated from the HAND, so the scan never found it and
+// the channel always cost the printed {3}{B}. The ability's own slot
+// travels with the ability, which is where CR 113.6 says it works.
+// TestChannelDiscountAppliesFromTheHand pins it.
 func init() {
 	Register(Spec{
 		OracleID:     "ac2dd694-d2f1-4025-8400-12332bdc882a",
 		Name:         "Takenuma, Abandoned Mire",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The activation discount applies when you pay for it, but the ability's menu row still lists the printed {3}{B}.",
-		},
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{
 			{
 				Cost:     ManaAbilityCost{Tap: true},
@@ -48,23 +46,11 @@ func init() {
 				Label:    "Add {B}",
 			},
 		},
-		CostModifiers: []game.CostModifier{
-			{
-				Kind:        game.CostReduction,
-				Activations: true,
-				Label:       "This ability costs {1} less to activate for each legendary creature you control.",
-				AppliesTo: func(q game.CostQuery) bool {
-					return q.Ability != nil && q.Card.InstanceID == q.Source.InstanceID
-				},
-				Amount: func(q game.CostQuery) int {
-					return takenumaLegendaryCreaturesControlledBy(q.Game, q.Controller)
-				},
-			},
-		},
 		Activated: []ActivatedAbility{{
-			Label: "Channel — {3}{B}, Discard this card: Mill three cards, then return a creature or planeswalker card from your graveyard to your hand.",
-			Cost:  game.AbilityCost{Mana: "{3}{B}", DiscardSelf: true},
-			Zones: []game.ZoneKind{game.ZoneHand},
+			Label:         "Channel — {3}{B}, Discard this card: Mill three cards, then return a creature or planeswalker card from your graveyard to your hand.",
+			Cost:          game.AbilityCost{Mana: "{3}{B}", DiscardSelf: true},
+			Zones:         []game.ZoneKind{game.ZoneHand},
+			CostModifiers: []game.CostModifier{ChannelDiscountPerLegendaryCreature()},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				if err := (MillCards{Player: item.Controller, N: 3}).Apply(ctx); err != nil {
@@ -105,17 +91,4 @@ func takenumaGraveyardCandidates(g *game.Game, owner uuid.UUID) []uuid.UUID {
 		}
 	}
 	return out
-}
-
-// takenumaLegendaryCreaturesControlledBy counts the legendary
-// creatures a player controls — the channel ability's cost
-// reduction.
-func takenumaLegendaryCreaturesControlledBy(g *game.Game, controller uuid.UUID) int {
-	n := 0
-	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == controller && c.IsCreature() && c.IsLegendary() {
-			n++
-		}
-	}
-	return n
 }

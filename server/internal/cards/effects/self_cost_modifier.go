@@ -116,6 +116,68 @@ func ItTargets(match CardPredicate) CostPredicate {
 	}
 }
 
+// CostsLessForTheCardItTargets is "This ability costs {1} less to
+// activate for each [thing about] the creature it targets" — Dragonfire
+// Blade's colours, Warrior's Blades' +1/+1 counters (#1296). `per`
+// reads the targeted card, as it stands when the cost is determined
+// (CR 602.2b: 601.2c's targets come before 601.2f's total), and says
+// how many generic mana come off.
+//
+// It reads the FIRST card target, because every printed clause of
+// this family says "the creature it targets" on an ability with one
+// target. No card target — a query priced before one is chosen, or a
+// target that has left — reads zero, which for a reduction is the
+// printed cost: the direction #259 prefers when there is nothing to
+// count.
+//
+// Sets ReadsTargets, so the engine hands it the announced targets and
+// the enumerator and the view price per target. Declare it on
+// ActivatedAbility.CostModifiers; nothing stops it pricing a spell
+// from Spec.SelfCostModifiers, but no printed spell says this.
+func CostsLessForTheCardItTargets(label string, per func(c game.Card) int) game.CostModifier {
+	return game.CostModifier{
+		Kind:  game.CostReduction,
+		Label: label,
+		Amount: func(q game.CostQuery) int {
+			if q.Game == nil {
+				return 0
+			}
+			for _, t := range q.Targets {
+				if t.Kind != game.TargetCard {
+					continue
+				}
+				c, ok := q.Game.LookupCardForEffect(t.ID)
+				if !ok {
+					return 0
+				}
+				if n := per(c); n > 0 {
+					return n
+				}
+				return 0
+			}
+			return 0
+		},
+		ReadsTargets: true,
+	}
+}
+
+// ColorsOf counts a card's colours as they are right now (layer 5 on
+// the battlefield, CR 105.2): a Vivi Ornitier is two, an artifact
+// creature none. Dragonfire Blade's "for each color of the creature it
+// targets".
+func ColorsOf(c game.Card) int {
+	return len(c.EffectiveColors())
+}
+
+// CountersOf returns a counter-counting reader for
+// CostsLessForTheCardItTargets — Warrior's Blades' "for each +1/+1
+// counter on the creature it targets".
+func CountersOf(kind string) func(c game.Card) int {
+	return func(c game.Card) int {
+		return c.Counters[kind]
+	}
+}
+
 // --- counting amounts -------------------------------------------------
 
 // PermanentsYouControl counts the permanents the CASTER controls that

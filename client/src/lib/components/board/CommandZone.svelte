@@ -34,9 +34,32 @@
     // Server-side per-commander cast counts (PlayerView.commander_casts),
     // keyed by commander instance UUID. Drives the "+N tax" badge.
     commanderCasts?: Record<string, number>;
+    // #1278: a commander can print an activated ability that functions
+    // FROM the command zone — commander ninjutsu (CR 702.49c). The
+    // server ships those rows on `zone_abilities`, owner-only, exactly
+    // as it does for a hand card, so the tile hands them to its Card
+    // the way Hand.svelte does: right-click opens the same popover
+    // (with the same greying), and the choice goes up to Board's
+    // announce chain. Undefined suppresses the popover entirely.
+    onActivateAbility?: (card: CardView, abilityIndex: number) => void;
+    // Why the CR 307.1 sorcery-speed window is shut, or "" when open —
+    // passed through to the popover as the hand passes it.
+    sorcerySpeedBlocked?: string;
   }
 
-  const { seat, zone, isSelf, sendAction, commanderCasts }: Props = $props();
+  const {
+    seat,
+    zone,
+    isSelf,
+    sendAction,
+    commanderCasts,
+    onActivateAbility,
+    sorcerySpeedBlocked = "",
+  }: Props = $props();
+
+  // The card slot, so the "ability" hint can open the Card's own
+  // popover rather than a second copy of it.
+  let cardSlot: HTMLDivElement | undefined = $state();
 
   let visibleIndex = $state(0);
   const commanders = $derived(zone.cards);
@@ -82,6 +105,33 @@
     castVisible();
   }
 
+  // #1278: the rows the visible commander offers from THIS zone. Only
+  // the owner's frame carries any (the server scopes them), and isSelf
+  // is checked anyway so a stale frame can never wire an opponent's.
+  const visibleAbilities = $derived(isSelf ? (visibleCard?.zone_abilities ?? []) : []);
+  const activateVisible = $derived.by(() => {
+    const c = visibleCard;
+    if (!c || !onActivateAbility || visibleAbilities.length === 0) return undefined;
+    return (abilityIndex: number) => onActivateAbility(c, abilityIndex);
+  });
+
+  // The hint opens the Card's own popover — the one right-click opens —
+  // so there is one menu, one set of greying rules and one path into
+  // Board's announce chain.
+  function openAbilities(): void {
+    const el = cardSlot?.querySelector<HTMLElement>(".card");
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    el.dispatchEvent(
+      new MouseEvent("contextmenu", {
+        bubbles: true,
+        cancelable: true,
+        clientX: r.left + r.width / 2,
+        clientY: r.top + r.height / 2,
+      }),
+    );
+  }
+
   // S18.5 — "browse" affordance opens the ZoneBrowserModal for this
   // player's command zone. Wired on both self (secondary to the
   // cast button) and opponents (whose command zones previously had
@@ -97,9 +147,14 @@
   class:empty={commanders.length === 0}
   aria-label={`${seat.name} command zone, ${zone.count} card${zone.count === 1 ? "" : "s"}`}
 >
-  <div class="card-slot">
+  <div class="card-slot" bind:this={cardSlot}>
     {#if visibleCard}
-      <Card card={visibleCard} onClick={isSelf ? handleClick : openBrowser} />
+      <Card
+        card={visibleCard}
+        onClick={isSelf ? handleClick : openBrowser}
+        onActivateAbility={activateVisible}
+        {sorcerySpeedBlocked}
+      />
       {#if visibleTax > 0}
         <span class="tax-badge" title={`commander tax · +${visibleTax} mana`}>+{visibleTax}</span>
       {/if}
@@ -140,6 +195,17 @@
         aria-label="cast commander"
       >
         cast
+      </button>
+    {/if}
+    {#if activateVisible}
+      <button
+        type="button"
+        class="ability-hint"
+        onclick={openAbilities}
+        title="abilities this commander can use from the command zone"
+        aria-label="commander abilities"
+      >
+        ability
       </button>
     {/if}
     <button
@@ -247,6 +313,7 @@
   }
   .cycle,
   .cast-hint,
+  .ability-hint,
   .browse-hint {
     background: transparent;
     color: var(--gold-strong);
@@ -273,7 +340,8 @@
     border-color: var(--border);
   }
   .cycle:hover,
-  .cast-hint:hover {
+  .cast-hint:hover,
+  .ability-hint:hover {
     background: var(--accent-soft);
     color: var(--gold-strong);
     border-color: var(--gold);
@@ -284,6 +352,7 @@
     border-color: var(--accent);
   }
   .cast-hint:focus-visible,
+  .ability-hint:focus-visible,
   .cycle:focus-visible {
     outline: 1px solid var(--gold);
     outline-offset: 1px;

@@ -2109,6 +2109,11 @@ Activated: []ActivatedAbility{{
 ```
 
 Compose multi-part costs with `Plus(ManaCost("{2}"), TapCost())`.
+"This ability costs {1} less to activate …" is the ability's own
+`CostModifiers` slot (#1296), not `Spec.CostModifiers` — the slot
+prices that one ability wherever it functions (a channel land's hand
+included), and `CostsLessForTheCardItTargets(label, ColorsOf)` is the
+clause that reads the ability's target (Dragonfire Blade).
 The engine validates every component before paying any of them, and
 pays at announce — so a sacrifice cost's dies-triggers land on the
 stack above the ability and resolve first. Mana abilities do NOT go
@@ -3791,6 +3796,11 @@ capture a power in `Build` or look the card up by ID at resolution.
 Check `info.Left` before acting ON the permanent: last-known
 information is read, never written to. See
 [ADR 0018's 2026-09-24 amendment](docs/decisions/0018-triggers-on-the-stack.md).
+When that permanent is also the DAMAGE SOURCE ("it deals damage equal
+to its power"), name it by object — `ref := ctx.Trigger().Object.Ref()`
+then `DealDamage{SourceObject: &ref, …}` — so a departed source keeps
+its lifelink and deathtouch and a returned card's new object is never
+mistaken for it (#1396, [ADR 0056's 2026-09-24 amendment](docs/decisions/0056-infect-wither-toxic.md)).
 
 **Tests** — `castCatalogSpell` + `passPriorityAroundTable` settles
 the spell *and* the trigger it queues (the helper waits for

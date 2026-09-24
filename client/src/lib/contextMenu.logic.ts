@@ -33,6 +33,7 @@ import { isCreature, isLand, isPlaneswalker } from "./cardTypes";
 import { counterCostBlocked } from "./counterCost";
 import type { ActionType, CardView, GameView } from "./protocol";
 import { sacrificeRangeShortfall } from "./sacrificeCost";
+import { targetPriceRange } from "./targetPrices";
 import {
   canActivateLoyalty,
   canActivateSorcerySpeedAbility,
@@ -720,10 +721,16 @@ function abilityItems(card: CardView, view: GameView, viewerID: string | null): 
   // engine either way.
   for (const a of card.activated_abilities ?? card.zone_abilities ?? []) {
     const blocked = restricted || abilityBlocked(a, tapped, sick, loyalty);
+    // #1296: a price that depends on the target (Dragonfire Blade)
+    // says its range here; the targeting banner names each target's.
     items.push({
       id: `ability-${a.index}`,
       label: a.label || "activate",
-      hint: blocked || chargedManaCostNote(a) || undefined,
+      hint:
+        blocked ||
+        targetPriceRange(a.target_charged_mana_costs) ||
+        chargedManaCostNote(a) ||
+        undefined,
       disabled: !!blocked,
       activate: { kind: "ability", index: a.index },
     });

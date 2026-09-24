@@ -990,7 +990,7 @@ func (c *Client) handleAction(frame protocol.Frame) {
 			}
 			c.sendErrorPayload(frame.ID, protocol.ErrorPayload{
 				Code:    protocol.CodeInsufficientMana,
-				Message: "insufficient mana to cast",
+				Message: insufficientManaMessage(payload.Type),
 				Missing: im.Missing,
 				CardID:  cardID,
 			})
@@ -1155,6 +1155,20 @@ func blockRefusalPayload(err error, viewer uuid.UUID) (protocol.ErrorPayload, bo
 		body.CardID = br.Blocker.String()
 	}
 	return body, true
+}
+
+// insufficientManaMessage is the sentence an `insufficient_mana` frame
+// carries. An activated ability refused for want of mana (#1296: the
+// client now asks the engine to charge activations when the player
+// enforces mana) is not a cast, and "insufficient mana to cast" on an
+// Equip click reads as a bug of its own. The frame carries no card_id
+// for an activation, so the cast-only "Cast anyway" override stays
+// away from it.
+func insufficientManaMessage(actionType string) string {
+	if actionType == "activate_ability" {
+		return "insufficient mana to activate that ability"
+	}
+	return "insufficient mana to cast"
 }
 
 // attackTaxPayload builds the `attack_tax_unpaid` error frame for a
