@@ -139,6 +139,42 @@ func TestTyLeeHoldsItsTargetForAsLongAsYouControlTyLee(t *testing.T) {
 	}
 }
 
+// TestTyLeeETBTriggerFiresOnCastFromHand is the regression guard for
+// #339 ("[in-app] Ty Lee ETB Not Firing"). The reported bug was a
+// coverage gap, not an engine defect: Ty Lee had no Spec at all, so
+// harvestFromZone (server/internal/game/triggers.go) queued nothing
+// on entry — see the issue's 2026-09-14 triage comment. Fixed by
+// #1351 (#1313), which registered the card; the extended hold
+// behaviour (several untap steps, releasing when Ty Lee leaves) is
+// covered above by TestTyLeeHoldsItsTargetForAsLongAsYouControlTyLee.
+// This test pins the original complaint on its own: casting Ty Lee
+// from hand and resolving her the way a player would must put her
+// ETB trigger on the stack and resolve it per the printed text —
+// tapping the chosen target and starting the "for as long as you
+// control ~" hold (#1313).
+func TestTyLeeETBTriggerFiresOnCastFromHand(t *testing.T) {
+	g := newCatalogGame(t)
+	opp := g.Seats[1]
+	target := pushCreatureToBattlefieldForTest(g, opp.ID, "Target")
+
+	castHoldCreature(t, g, "Ty Lee, Chi Blocker", "Legendary Creature — Human Performer Ally", oracleTyLee, 2, 1)
+
+	// The ETB trigger fired: there is a target prompt open rather
+	// than a vanilla body sitting on the battlefield with nothing
+	// queued.
+	answerPickTarget(t, g, target)
+	passPriorityAroundTable(t, g)
+
+	// It resolved per the printed text: the target is tapped, and
+	// the untap-lock hold (#1313) has started.
+	if !tappedForTest(t, g, target) {
+		t.Fatal("Ty Lee's ETB trigger did not tap its target")
+	}
+	if holdCount(t, g, target) != 1 {
+		t.Fatal("Ty Lee's ETB trigger did not start the untap-lock hold (#1313)")
+	}
+}
+
 // Dungeon Geists ruling (2019-07-12): "If Dungeon Geists leaves the
 // battlefield before its triggered ability has resolved, the target
 // creature will be tapped, but it will be able to untap as normal."
