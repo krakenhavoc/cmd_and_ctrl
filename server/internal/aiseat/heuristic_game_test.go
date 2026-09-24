@@ -326,6 +326,15 @@ func playGameWith(t *testing.T, room *ws.Room, seed uint64, policies []aiseat.Po
 		if n == 1 {
 			res.winner = live
 		}
+		// ADR 0057: the engine names the winner, and an effect win
+		// leaves several seats standing.
+		if o := g.Outcome; o != nil && o.Kind == game.OutcomeWin {
+			for i, p := range g.Seats {
+				if p.ID == o.Winner {
+					res.winner = i
+				}
+			}
+		}
 		if res.state != game.StateEnded {
 			res.board = describeBoardLocked(g)
 		}

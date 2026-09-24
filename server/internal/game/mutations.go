@@ -3677,42 +3677,58 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 		}
 	}
 
-	// Player-loss SBAs. CR 704.3 performs them all at once, so every
-	// loser leaves first and play moves on once, after the batch
-	// (#766): moving the turn on per player would begin the turn of a
-	// seat that is leaving in this same pass.
+	// Player-loss SBAs (ADR 0057 Decision 2). CR 704.3 performs them
+	// all at once, so the pass COLLECTS every loser first and only then
+	// takes them out of the game, and the game-over check runs once,
+	// after the whole batch: CR 104.3f's "win and lose at once is a
+	// loss" is this order, and a player counted as the last survivor
+	// can no longer be eliminated a line later in the same pass.
 	//
-	// Ending the turn clears marked damage, so runStateChecksLocked
-	// waits until repeated SBA passes settle before rotating. One pass
-	// is not enough: a lord dying here can make another creature's
-	// marked damage lethal on the next pass. The game-over check still
-	// runs immediately after every loser in this pass has left.
+	// Every gate is read here, against the board as it is now. A
+	// player at 0 life whose Platinum Angel just died loses at this
+	// check with no window to respond (the Abyssal Persecutor ruling);
+	// life, poison and commander damage are re-read every pass, so
+	// nothing has to be stored for them.
+	//
+	// Play moves on once, after the batch (#766): moving the turn on
+	// per player would begin the turn of a seat that is leaving in this
+	// same pass. Ending the turn clears marked damage, so
+	// runStateChecksLocked waits until repeated SBA passes settle
+	// before rotating.
+	type lossEntry struct {
+		p     *Player
+		cause LossCause
+	}
+	var losers []lossEntry
 	for _, p := range g.Seats {
 		if p.Eliminated {
 			continue
 		}
-		if p.Life <= 0 || p.AttemptedEmptyDraw || p.IsDeadByCommanderDamage(g.Settings.CommanderDamage) {
-			left = g.leaveGameLocked(p) || left
-			fired = true
-			continue
+		// CR 704.5b looks only at draws "since the last time
+		// state-based actions were checked", so the flag is consumed
+		// by every pass, whether or not a gate stops the loss.
+		drew := p.AttemptedEmptyDraw
+		p.AttemptedEmptyDraw = false
+		if cause, ok := g.sbaLossCauseLocked(p, drew); ok {
+			losers = append(losers, lossEntry{p: p, cause: cause})
 		}
-		// 704.5c: poison ≥ 10. Player.Counters is the S13.2 map;
-		// the legacy single-int Player.Poison field stays in sync
-		// via SetPoison so old action paths keep working.
-		poison := 0
-		if p.Counters != nil {
-			poison = p.Counters[CounterPoison]
-		}
-		if poison < p.Poison {
-			poison = p.Poison
-		}
-		if poison >= PoisonLethal {
-			left = g.leaveGameLocked(p) || left
+	}
+	for _, l := range losers {
+		if g.leaveGameLocked(l.p, l.cause, uuid.Nil) {
+			left = true
 			fired = true
 		}
 	}
+	// ADR 0057 Decision 3: an active player who lost by an effect in
+	// the middle of a resolution has already left; the game-over
+	// check and the rotation were deferred to this pass.
+	if g.ActiveSeatLeftPending {
+		g.ActiveSeatLeftPending = false
+		left = true
+		fired = true
+	}
 	if left {
-		g.endGameIfDecidedLocked()
+		g.checkGameOverLocked()
 	}
 
 	// CR 800.4c (#769) — a permanent whose controller has left the
@@ -3988,13 +4004,48 @@ func (g *Game) runStateChecksLocked() (sbaFired bool) {
 	return sbaFired
 }
 
-// eliminatePlayerLocked is one player leaving the game on their own:
-// leaveGameLocked, then settleDeparturesLocked. Used by Concede. The
+// sbaLossCauseLocked is the player half of CR 704.5a–c and CR
+// 704.6c: the first state-based loss that holds for p AND that no
+// "can't lose the game" gate stops, in CR 704.5 order — life, the
+// empty-library draw, poison, commander damage. A player who is both
+// at 0 life and at 10 poison while something stops only the life loss
+// (Phyrexian Unlife) falls through to poison and loses to it.
+//
+// `drew` is the CR 704.5b fact, already consumed from the player by
+// the caller. Caller must hold g.mu.
+func (g *Game) sbaLossCauseLocked(p *Player, drew bool) (LossCause, bool) {
+	if p.Life <= 0 && g.canLoseLocked(p, LossLife) {
+		return LossLife, true
+	}
+	if drew && g.canLoseLocked(p, LossEmptyDraw) {
+		return LossEmptyDraw, true
+	}
+	// 704.5c: poison ≥ 10. Player.Counters is the S13.2 map; the
+	// legacy single-int Player.Poison field stays in sync via
+	// SetPoison so old action paths keep working.
+	poison := 0
+	if p.Counters != nil {
+		poison = p.Counters[CounterPoison]
+	}
+	if poison < p.Poison {
+		poison = p.Poison
+	}
+	if poison >= PoisonLethal && g.canLoseLocked(p, LossPoison) {
+		return LossPoison, true
+	}
+	if p.IsDeadByCommanderDamage(g.Settings.CommanderDamage) && g.canLoseLocked(p, LossCommanderDamage) {
+		return LossCommanderDamage, true
+	}
+	return "", false
+}
+
+// eliminatePlayerLocked is one player leaving the game on their own
+// (a concession): leaveGameLocked, then settleDeparturesLocked. The
 // SBA settling loop calls the two halves separately so a batch of
-// losers moves play on once, after repeated checks settle.
-// Caller must hold g.mu.
+// losers moves play on once, after repeated checks settle. Never
+// gated — CR 104.3a. Caller must hold g.mu.
 func (g *Game) eliminatePlayerLocked(p *Player) {
-	if !g.leaveGameLocked(p) {
+	if !g.leaveGameLocked(p, LossConcede, uuid.Nil) {
 		return
 	}
 	g.settleDeparturesLocked()
@@ -4002,15 +4053,17 @@ func (g *Game) eliminatePlayerLocked(p *Player) {
 
 // leaveGameLocked transitions a seated player to eliminated state,
 // cleans up their stack items, pending triggers and prompts, emits
-// EventPlayerEliminated, and then takes their objects out of the game
-// (CR 800.4a, leave_game.go). It does not move the turn on or check
+// EventPlayerEliminated (Label = the LossCause, Source = the object
+// whose effect made them lose, if any), and then takes their objects
+// out of the game (CR 800.4a, leave_game.go). It reads no gate — that
+// is loseGameLocked's job — and it does not move the turn on or check
 // whether the game is over; settleDeparturesLocked does both, once
 // per batch. Reports whether the player left (false when they had
 // already). Caller must hold g.mu.
 //
 // The elimination event is emitted BEFORE the objects go, so anything
 // watching a player lose the game sees the board they lost with.
-func (g *Game) leaveGameLocked(p *Player) bool {
+func (g *Game) leaveGameLocked(p *Player, cause LossCause, source uuid.UUID) bool {
 	if p.Eliminated {
 		return false
 	}
@@ -4018,8 +4071,11 @@ func (g *Game) leaveGameLocked(p *Player) bool {
 	p.AttemptedEmptyDraw = false
 	g.cleanupStackForEliminatedLocked(p.ID)
 	g.EmitEvent(Event{
-		Kind:  EventPlayerEliminated,
-		Actor: p.ID,
+		Kind:   EventPlayerEliminated,
+		Actor:  p.ID,
+		Source: source,
+		CardID: source,
+		Label:  string(cause),
 	})
 	// #769 / CR 800.4a: everything they own leaves the game, their
 	// control effects end, and anything still controlled by them is
@@ -4031,7 +4087,7 @@ func (g *Game) leaveGameLocked(p *Player) bool {
 	// the board is not stripped: nothing can observe the objects
 	// leaving, no rule reads the table again, and the last board is
 	// what the winner, the post-game screen and the replay look at.
-	// endGameIfDecidedLocked leaves the turn cursor where it was for
+	// checkGameOverLocked leaves the turn cursor where it was for
 	// exactly the same reason. See ADR 0060 Decision 5.
 	if g.survivingSeatsLocked() > 1 {
 		g.leaveGameObjectsLocked(p.ID)
@@ -4044,35 +4100,18 @@ func (g *Game) leaveGameLocked(p *Player) bool {
 // moves on (advancePastEliminatedLocked — the rest of a departed
 // active player's turn ends through the rotation seam, #766).
 //
-// Used where the departures are the whole event (Concede). The SBA
+// Used where the departures are the whole event (Concede, and an
+// effect loss by a player who is not the active one). The SBA
 // settling loop calls the two halves separately, because the SBA
-// settling must finish before the turn ends — see runStateChecksLocked.
+// settling must finish before the turn ends — see
+// runStateChecksLocked.
 //
 // Caller must hold g.mu.
 func (g *Game) settleDeparturesLocked() {
-	if g.endGameIfDecidedLocked() {
+	if g.checkGameOverLocked() {
 		return
 	}
 	g.advancePastEliminatedLocked()
-}
-
-// endGameIfDecidedLocked ends the game when one player or none is
-// left, and reports whether it did.
-//
-// A game that has ended keeps its cursor where it was: its caller does
-// not move play on. Ending the last turn would sweep marked damage and
-// pull attackers out of combat on the board the game ended with, and
-// begin a turn nobody takes. Caller must hold g.mu.
-func (g *Game) endGameIfDecidedLocked() bool {
-	if g.survivingSeatsLocked() <= 1 {
-		// CR 702.143f, #658: all face-down foretold cards are
-		// revealed as the game ends. Before the state flips, so the
-		// reveal listeners still see an active game.
-		g.revealForetoldAtGameEndLocked()
-		g.State = StateEnded
-		return true
-	}
-	return false
 }
 
 // cleanupStackForEliminatedLocked implements the stack half of
@@ -7938,10 +7977,17 @@ func (g *Game) clearCombatLocked() {
 	g.firstStrikeStepParticipants = nil
 }
 
-// Concede marks the given player as eliminated. If exactly one
-// non-eliminated player remains after the mutation, the game's State
-// transitions to StateEnded — derived state, no separate Winner field
-// is stored (the surviving seat is the implicit winner).
+// Concede marks the given player as eliminated (CR 104.3a). If one
+// non-eliminated player remains after the mutation, the game ends and
+// Game.Outcome names that player the winner (CR 104.2a,
+// OutcomeCauseLastStanding); if none remains, it is a draw.
+//
+// Never gated: a player who "can't lose the game" can still concede
+// (CR 104.3a; the Platinum Angel and Everybody Lives! rulings).
+// EventConcede is still emitted for its listeners, but the log
+// projects only the EventPlayerEliminated that follows it, whose
+// Label is "concede" — one concession, one log line (ADR 0057
+// Decision 1).
 //
 // Idempotent on already-eliminated players returns ErrPlayerEliminated
 // rather than silently swallowing — clients should disable the
@@ -7967,7 +8013,8 @@ func (g *Game) Concede(playerID uuid.UUID) error {
 	g.EmitEvent(Event{Kind: EventConcede, Actor: playerID})
 	// S13.1: delegate to the unified elimination path so concede
 	// fires the same stack cleanup + cursor advance + game-end
-	// check as an SBA-driven loss.
+	// check as an SBA-driven loss. eliminatePlayerLocked leaves with
+	// LossConcede and reads no gate.
 	g.eliminatePlayerLocked(p)
 	// #1289: the departure may have dropped the last prompt a paused
 	// resolution was waiting on (ADR 0018 §6's departure table), which

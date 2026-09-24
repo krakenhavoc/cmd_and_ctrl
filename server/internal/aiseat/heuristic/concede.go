@@ -73,6 +73,13 @@ func (p *Policy) hopeless(st *state) bool {
 	if me.Life > p.cfg.ConcedeLife {
 		return false
 	}
+	// ADR 0057 Decision 6: hopeless is judged on life, and a seat
+	// behind a "can't lose the game" gate can't be finished on life.
+	// Conceding is the one loss its gate can't stop, so a bot at −10
+	// behind a Platinum Angel must never be the one to take it.
+	if me.CantLoseLife {
+		return false
+	}
 	if me.Hand > 0 || me.CreatureCount > 0 {
 		return false
 	}

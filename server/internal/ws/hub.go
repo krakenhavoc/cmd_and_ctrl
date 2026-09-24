@@ -914,11 +914,21 @@ func (c *Client) handleAction(frame protocol.Frame) {
 	// budget remaining); admin sessions (playerID == uuid.Nil)
 	// bypass both.
 	if payload.Type == "undo" {
-		view, seq, err := room.Undo(c.playerID)
+		caller := c.playerID
+		// ADR 0057: once the game has ended only the admin may undo,
+		// and an admin bound to a seat is still the admin. The room
+		// reads uuid.Nil as the admin.
+		if c.admin && room.Game.CurrentState() == game.StateEnded {
+			caller = uuid.Nil
+		}
+		view, seq, err := room.Undo(caller)
 		if err != nil {
 			switch {
 			case errors.Is(err, ErrNothingToUndo):
 				c.sendError(frame.ID, protocol.CodeBadRequest, "nothing to undo")
+			case errors.Is(err, ErrGameOverUndo):
+				c.sendError(frame.ID, protocol.CodeBadRequest,
+					"the game is over — only the admin can undo past its end")
 			case errors.Is(err, ErrNotYourUndo):
 				c.sendError(frame.ID, protocol.CodeBadRequest,
 					"you can only undo your own most recent action")
