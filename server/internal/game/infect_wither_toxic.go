@@ -1,46 +1,22 @@
 package game
 
-// infect_wither_toxic.go is the READ side of ADR 0056: the grammar of
-// the three damage-result keywords, and the arithmetic of what damage
-// from a source that has them DOES to its target (CR 120.3). It lands
-// ahead of the engine wiring that will call it.
+// infect_wither_toxic.go is ADR 0056's grammar and arithmetic for the
+// three damage-result keywords: what the tokens look like, and what
+// damage from a source that has them DOES to its target (CR 120.3).
 //
-// WHY IT ARRIVES ON ITS OWN, AND WHAT IT DELIBERATELY DOES NOT DO.
-// ADR 0056's PR 2 puts `infect`, `wither` and `toxicTotal` on the
-// damage tail (damage_tail.go) and branches on them in two functions.
-// Two seams change hands there that this change cannot reach:
+// It landed first as the READ side (#1082), ahead of the wiring. The
+// wiring is now in: damage_tail.go snapshots the three facts onto the
+// tail through damageSourceTraitsOfCard, and its two landing functions
+// call DamageToCreature and DamageToPlayer below and put the counters
+// that come out through the CR 614 counter window
+// (placeDamageResultCountersLocked), so a Vorinclex, a Solemnity or
+// the Vizier of Remedies ruling sees them as the RESULTS they are.
 //
-//   - `DamageAssignmentFrame` (pending_choice.go) has to cache the
-//     same three facts, because the CR 510.1c assignment prompt is
-//     answered after the attacker may have died and
-//     `damageTailFromFrame` can only copy what the frame holds.
-//   - The counters are a RESULT, not a write: ADR 0056 Decisions 3
-//     to 5 put them through the CR 614 counter window, which needs
-//     `ReplacementEvent.CounterPlayer` / `CounterPlacer` /
-//     `CounterFromCombatDamage` (replacements.go),
-//     `EventPlayerCounterPlaced` (events.go) and the placer on
-//     `applyCounterLocked` (mutations.go) — ADR 0056's PR 1.
-//
-// Branching without those would give poison that no replacement can
-// see (Vorinclex, Solemnity, Melira, and the Vizier of Remedies
-// ruling ADR 0056 quotes), counters credited to nobody, and combat
-// damage that silently loses its result the moment a multi-blocker
-// assignment prompt pauses. So the two branches are NOT wired here
-// and the tail is unchanged; what is here is every part of the
-// decision that carries no such dependency, pinned by tests so the
-// wiring PR has one thing left to do and nothing left to decide.
-//
-// THE TOKENS ARE NOT IN canonicalKeywords YET, ON PURPOSE. That table
-// is closed, and "a keyword joins this table in the same change that
-// teaches the engine to honour it" (keywords.go). The deck importer
-// stamps what the table admits and the ADR 0037 coverage signal reads
-// the same list through CanonicalKeywords, so admitting `infect`
-// today would mark the 47 cards that print it — and the 30
-// keyword-only creatures ADR 0056 lists — as fully playable while
-// damage from them still just marked damage. That is a badge
-// promising a rule the engine does not keep, the half-a-card failure
-// ADR 0037 §5 forbids, and it errs STRONGER than printed. The three
-// tokens join the table in the change that branches on them.
+// The three tokens joined canonicalKeywords in the same change
+// (keywords.go), which is the rule that table states: the deck
+// importer stamps what the table admits, and admitting `infect` before
+// the tail branched would have badged 47 cards with a rule the engine
+// did not keep.
 
 import (
 	"strconv"
@@ -53,20 +29,20 @@ import (
 // importer, the coverage scan and the client's icon map, and a typo
 // in any one of them would silently turn an infect creature back
 // into a vanilla one.
-//
-// Neither is in canonicalKeywords yet — see the file comment.
 const (
 	KeywordInfect = "infect"
 	KeywordWither = "wither"
 )
 
-// keywordToxic is the bare word CR 702.164 spells with a number after
+// KeywordToxic is the bare word CR 702.164 spells with a number after
 // it. It is NOT a token on its own: a bare "toxic" names no amount,
 // and Scryfall's `keywords` array carries exactly that bare word with
-// the N living only in the oracle line. ToxicValue is the only thing
-// that reads this constant, and it refuses the bare word for the same
-// reason CanonicalKeywords refuses a bare "protection".
-const keywordToxic = "toxic"
+// the N living only in the oracle line. It is the FAMILY key
+// canonicalKeywords stores, the way KeywordProtection is: the wire
+// tokens are "toxic N", minted by CanonicalToxicToken, and
+// CanonicalKeywords refuses the bare word for the same reason it
+// refuses a bare "protection".
+const KeywordToxic = "toxic"
 
 // maxToxicValue bounds what ToxicValue will accept. Printed toxic
 // tops out at 4 (Tyrranax Rex), so anything past three digits is a
@@ -90,7 +66,7 @@ const maxToxicValue = 999
 // plus trim CanonicalKeywords applies, so a raw oracle line can be
 // handed straight in.
 func ToxicValue(token string) (int, bool) {
-	rest, ok := strings.CutPrefix(strings.ToLower(strings.TrimSpace(token)), keywordToxic)
+	rest, ok := strings.CutPrefix(strings.ToLower(strings.TrimSpace(token)), KeywordToxic)
 	if !ok {
 		return 0, false
 	}
@@ -121,16 +97,15 @@ func ToxicValue(token string) (int, bool) {
 //
 // The sibling of CanonicalKeyword for the one keyword in ADR 0056
 // that carries a parameter, and, like ProtectionTokens, the only
-// thing that mints the token. CanonicalKeywords will call it in the
-// change that admits toxic to the table; until then nothing in the
-// importer path reaches it, which is what keeps the token out of
-// Characteristic.Abilities.
+// thing that mints the token. CanonicalKeywords calls it, so the deck
+// importer, its keyword-line scan and the coverage scan all agree on
+// what a printed toxic line is.
 func CanonicalToxicToken(s string) (string, bool) {
 	n, ok := ToxicValue(s)
 	if !ok {
 		return "", false
 	}
-	return keywordToxic + " " + strconv.Itoa(n), true
+	return KeywordToxic + " " + strconv.Itoa(n), true
 }
 
 // ToxicTotal is the card's total toxic value: the sum of the N of
@@ -168,8 +143,14 @@ func ToxicTotal(c *Card) int {
 // grant helpers all dedupe on apply and why nothing noticed. Toxic is
 // the first keyword where the second instance is the whole point, so
 // the dedupe has to become a decision instead of a habit: ADR 0056
-// Decision 1 gives it one home, and the grant sites move onto it in
-// the change that admits the token.
+// Decision 1 gives it one home, and the catalog's keyword GRANT
+// helpers (GrantToAttached, KeywordGrant, GrantKeywordUntilEOT and
+// their siblings) append through it.
+//
+// The one place that must NOT use it is the synthesised static that
+// re-applies a card's own PRINTED keywords: printedCharacteristic has
+// already put them in the baseline, and re-appending a printed
+// "toxic 1" through here would count it twice.
 //
 // An empty token is dropped: an ability list with "" in it renders as
 // a blank badge.
@@ -250,6 +231,29 @@ func SourceDamageResultTraits(c *Card) DamageResultSource {
 		Wither:     HasKeyword(c, KeywordWither),
 		ToxicTotal: ToxicTotal(c),
 	}
+}
+
+// DamageResultTraitsOfAbilities is SourceDamageResultTraits over a bare
+// ability list — a departed permanent's last-known Characteristic
+// (#1396, CR 608.2h: a source that has left deals its damage with the
+// keywords it had as it last existed). The record holds Effective() as
+// it last stood, so its tokens are exactly what HasKeyword and
+// ToxicTotal read off the live card, and this answers the same way.
+func DamageResultTraitsOfAbilities(abilities []string) DamageResultSource {
+	var s DamageResultSource
+	for _, a := range abilities {
+		switch a {
+		case KeywordInfect:
+			s.Infect = true
+		case KeywordWither:
+			s.Wither = true
+		default:
+			if n, ok := ToxicValue(a); ok {
+				s.ToxicTotal += n
+			}
+		}
+	}
+	return s
 }
 
 // Any reports whether this source changes the result of its damage at

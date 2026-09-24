@@ -7694,6 +7694,10 @@ func (g *Game) queueDamageAssignmentPromptLocked(atk *Card, blockerIDs []uuid.UU
 		// assigned, for the same reason lifelink and deathtouch are.
 		SourceLKI: SourceCharacteristics(atk),
 	}
+	// ADR 0056 Decision 2: the damage-result keywords are snapshotted
+	// by the same reader the direct combat paths use.
+	res := SourceDamageResultTraits(atk)
+	frame.SourceInfect, frame.SourceWither, frame.SourceToxic = res.Infect, res.Wither, res.ToxicTotal
 	g.QueueChoiceForEffect(PendingChoice{
 		Kind:             PendingChoiceDamageAssignment,
 		Chooser:          atk.Controller,
