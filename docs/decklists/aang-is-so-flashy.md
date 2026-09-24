@@ -604,7 +604,7 @@ the keyword at all:
 - **indestructible** — Thassa, The Mind Stone, The Seriema. Only
   mentioned in comments explaining that *sacrifice* ignores it.
 - **ward** — The Unagi of Kyoshi Island. No implementation.
-- **prowess** — Ty Lee, Chi Blocker. No implementation.
+- **prowess** — Ty Lee, Chi Blocker. No implementation. *(2026-09-24: shipped in #706 as an enforced keyword; Ty Lee is full.)*
 
 The static half (printing the word) is cheap; the behaviour is the work.
 
@@ -624,7 +624,7 @@ both writable now), Enduring Curiosity (the graveyard return exists; "it
 returns as an enchantment, not a creature" needs a continuous effect
 conditioned on *how* the permanent got there), Ty Lee, Chi Blocker
 (prowess, #706; its "doesn't untap for as long as you control this"
-lockdown shipped with #1313),
+lockdown shipped with #1313, and prowess with #706 — the card is full),
 Meticulous Archive (in the catalog, but surveil is unimplemented), The
 Mind Stone (harness — a once-activated state gate), Deep Gnome
 Terramancer ("lands enter under an opponent's control **without being

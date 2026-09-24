@@ -120,6 +120,7 @@ var tokenTable = map[string]game.Card{
 	"1/1 red Warrior":                               {Name: "Warrior", TypeLine: "Token Creature — Warrior", Power: 1, Toughness: 1, Colors: []string{"R"}},
 	"1/1 red and white Soldier with haste":          {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 1, Toughness: 1, Colors: []string{"R", "W"}, Keywords: []string{"haste"}},
 	"1/1 white Bird with flying":                    {Name: "Bird", TypeLine: "Token Creature — Bird", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"flying"}},
+	"1/1 white Monk with prowess":                   {Name: "Monk", TypeLine: "Token Creature — Monk", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"prowess"}},
 	"1/1 white Cat":                                 {Name: "Cat", TypeLine: "Token Creature — Cat", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"1/1 white Cat Soldier with vigilance":          {Name: "Cat Soldier", TypeLine: "Token Creature — Cat Soldier", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
 	"1/1 white Cat with lifelink":                   {Name: "Cat", TypeLine: "Token Creature — Cat", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"lifelink"}},
@@ -190,4 +191,7 @@ var tokenTable = map[string]game.Card{
 	// A key longer than every row above: kept in its own block so gofmt
 	// does not re-align the whole table (and every open PR's rows) for it.
 	"6/12 colorless Construct artifact with trample": {Name: "Construct", TypeLine: "Token Artifact Creature — Construct", Power: 6, Toughness: 12, Keywords: []string{"trample"}},
+
+	// Same reason, and longer again (#706: Elemental Eruption).
+	"4/4 red Dragon Elemental with flying and prowess": {Name: "Dragon Elemental", TypeLine: "Token Creature — Dragon Elemental", Power: 4, Toughness: 4, Colors: []string{"R"}, Keywords: []string{"flying", "prowess"}},
 }

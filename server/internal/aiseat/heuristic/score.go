@@ -189,6 +189,7 @@ var keywordTable = map[string]float64{
 	"fear":              0.80,
 	"intimidate":        0.80,
 	"horsemanship":      1.20,
+	"prowess":           0.40, // #706: low (the table can't see the spells in hand); counted per instance, CR 702.108b
 	"defender":          -1.50,
 	"decayed":           -0.80,
 	"cumulative upkeep": -0.60,

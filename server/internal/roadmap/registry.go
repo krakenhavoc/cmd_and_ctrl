@@ -303,6 +303,16 @@ var items = []Item{
 		Printed:  printedLine("Toxic"),
 		Examples: []string{"Karumonix, the Rat King"},
 	},
+	{
+		Slug: "prowess", Name: "Prowess", Kind: KindKeyword, Status: StatusImplemented,
+		Summary:  "Whenever you cast a noncreature spell, a creature with prowess gets +1/+1 until end of turn, once for each instance of prowess it has.",
+		Rules:    []string{"702.108"},
+		ADR:      "0014-combat-keywords.md",
+		Keywords: []string{game.KeywordProwess},
+		Mechanic: "prowess",
+		Printed:  printedKeyword("prowess"),
+		Examples: []string{"Ty Lee, Chi Blocker"},
+	},
 
 	// ── Mechanics from the coverage table ────────────────────────
 	//
@@ -565,6 +575,7 @@ var items = []Item{
 		Slug: "cascade", Name: "Cascade", Kind: KindMechanic, Status: StatusImplemented,
 		Summary:  "When you cast a spell with cascade, reveal cards from your library until you hit a cheaper nonland card, which you may cast for free.",
 		Rules:    []string{"702.85"},
+		Mechanic: "cascade",
 		Printed:  printedKeyword("cascade"),
 		Examples: []string{"Bloodbraid Elf"},
 	},
@@ -573,6 +584,7 @@ var items = []Item{
 		Summary:  "When you cast a spell with storm, copy it for each spell cast before it this turn.",
 		Rules:    []string{"702.40"},
 		ADR:      "0086-storm-and-the-turns-cast-order.md",
+		Mechanic: "storm",
 		Printed:  printedKeyword("storm"),
 		Examples: []string{"Grapeshot"},
 	},

@@ -82,6 +82,14 @@ var adoptableGaps = map[string]string{
 		a permanent that is not its source. That is the "granted
 		keyword" seam, not this one, and the caveat stays true until it
 		lands.`,
+	"Damping Sphere / storm": `A phrase collision, pinned rather than dodged
+		(#1258 added the storm row). The caveat's "storm tax" is Damping
+		Sphere's own "each spell costs {1} more for each other spell
+		that player has cast this turn", which works; the gap it
+		describes is the land-mana half. Damping Sphere has no storm and
+		never will, so there is nothing to adopt — but narrowing the row's
+		phrases to dodge one caveat would blind it to "storm isn't
+		implemented" on the next card.`,
 }
 
 // TestAdoptableGapsArePinned fails on any movement in that set.
