@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"os"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -131,6 +132,9 @@ type gameResult struct {
 	// NOT end — the one case where the numbers above do not say what
 	// happened (#1261).
 	board string
+	// moves is a lockstep game's move log (#1409); nil for a
+	// concurrent one, whose move order is the scheduler's.
+	moves []string
 }
 
 func (r gameResult) totals() aiseat.Stats {
@@ -150,9 +154,29 @@ func (r gameResult) totals() aiseat.Stats {
 // budget, or the wall clock. It fails the test on a stall, which is
 // the failure mode that matters: a bot that cannot decide leaves a
 // table frozen and nobody to tell about it.
+//
+// The seats run concurrently, one runner goroutine each, exactly as a
+// production table does — which is what a liveness test wants and
+// what makes the game a seed deals different from run to run. A test
+// that measures PLAY rather than liveness wants playLockstepGame.
 func playGame(t *testing.T, seed uint64, policies []aiseat.Policy, turnBudget int, wall time.Duration) gameResult {
 	t.Helper()
 	return playGameIn(t, newBattleRoom(t, len(policies), seed), seed, policies, turnBudget, wall)
+}
+
+// playLockstepGame is playGame on one goroutine: the seats act in seat
+// order, one wake's act-loop each, round after round, so a seed deals
+// AND plays one game — the same moves in the same order on every run
+// (#1409). Stalls are exact rather than timed: a full round in which
+// no seat committed anything is a table nothing will ever move again.
+//
+// It is the harness for the gates that measure the heuristic's play
+// (discussion #1390, question 3: deterministic heuristic quality and
+// concurrent liveness are different gates). It does NOT replace the
+// concurrent soak, which exists to find the races this one removes.
+func playLockstepGame(t *testing.T, seed uint64, policies []aiseat.Policy, turnBudget int, wall time.Duration) gameResult {
+	t.Helper()
+	return playGameWith(t, newBattleRoom(t, len(policies), seed), seed, policies, turnBudget, wall, true)
 }
 
 // playGameIn is playGame against a caller-supplied room, so a caller
@@ -160,6 +184,15 @@ func playGame(t *testing.T, seed uint64, policies []aiseat.Policy, turnBudget in
 // with an on-disk replay log — reuses this loop rather than forking
 // it. playGame is the ordinary entry point.
 func playGameIn(t *testing.T, room *ws.Room, seed uint64, policies []aiseat.Policy, turnBudget int, wall time.Duration) gameResult {
+	t.Helper()
+	return playGameWith(t, room, seed, policies, turnBudget, wall, false)
+}
+
+// playGameWith is the loop behind both schedules. lockstep false starts
+// one runner goroutine per seat and watches the room; lockstep true
+// drives stepped runners itself, in seat order, and records the move
+// log that makes two runs of a seed comparable.
+func playGameWith(t *testing.T, room *ws.Room, seed uint64, policies []aiseat.Policy, turnBudget int, wall time.Duration, lockstep bool) gameResult {
 	t.Helper()
 	g := room.Game
 	if len(g.Seats) != len(policies) {
@@ -174,7 +207,8 @@ func playGameIn(t *testing.T, room *ws.Room, seed uint64, policies []aiseat.Poli
 	//
 	// The stall detector reads AISEAT_STALL directly: 5s of no
 	// sequence movement is a deadlock by any reading, and the only
-	// question is how long to wait to be sure.
+	// question is how long to wait to be sure. A lockstep game does
+	// not need it — see playLockstepGame.
 	//
 	// The wall clock is a FLOOR, not a replacement. Each caller picks
 	// its own — 120s for a 50-turn heuristic table, 25 turns in the
@@ -196,8 +230,9 @@ func playGameIn(t *testing.T, room *ws.Room, seed uint64, policies []aiseat.Poli
 	// games. Unset (the default, and CI) costs nothing — the runner
 	// builds no event without an observer.
 	cfg := aiseat.Config{}
+	var observers []aiseat.DecisionObserver
 	if gl := openTestDecisionLog(t, g.ID); gl != nil {
-		cfg.Observer = gl
+		observers = append(observers, gl)
 		defer func() {
 			if err := gl.Close(); err != nil {
 				t.Errorf("close decision log: %v", err)
@@ -205,27 +240,69 @@ func playGameIn(t *testing.T, room *ws.Room, seed uint64, policies []aiseat.Poli
 			t.Logf("decision log: %+v", gl.Stats())
 		}()
 	}
+	var moves *moveLog
+	if lockstep {
+		moves = newMoveLog(g)
+		observers = append(observers, moves)
+	}
+	switch len(observers) {
+	case 0:
+	case 1:
+		cfg.Observer = observers[0]
+	default:
+		cfg.Observer = aiseat.ObserverFunc(func(ev aiseat.DecisionEvent) {
+			for _, o := range observers {
+				o.Observe(ev)
+			}
+		})
+	}
 	runners := make([]*aiseat.Runner, 0, len(policies))
 	for i, p := range g.Seats {
-		runners = append(runners, aiseat.Start(ctx, room, p.ID, policies[i], cfg, nil, testLogger()))
+		if lockstep {
+			runners = append(runners, aiseat.NewSteppedRunner(room, p.ID, policies[i], cfg, testLogger()))
+		} else {
+			runners = append(runners, aiseat.Start(ctx, room, p.ID, policies[i], cfg, nil, testLogger()))
+		}
 	}
 
-	lastSeq, lastMove := room.Seq(), time.Now()
-	for {
-		snap := g.Snapshot()
-		if snap.State != game.StateActive || snap.Turn.Round > turnBudget {
-			break
+	if lockstep {
+		for {
+			snap := g.Snapshot()
+			if snap.State != game.StateActive || snap.Turn.Round > turnBudget {
+				break
+			}
+			if ctx.Err() != nil {
+				t.Fatalf("wall clock exhausted (seed %d) at turn %d", seed, snap.Turn.Round)
+			}
+			before := room.Seq()
+			for _, r := range runners {
+				if !r.StepForTest(ctx) {
+					break
+				}
+			}
+			if room.Seq() == before && g.CurrentState() == game.StateActive {
+				t.Fatalf("table stalled (seed %d, a full lockstep round committed nothing) at turn %d step %s priority=%d pending=%d\n%s",
+					seed, snap.Turn.Round, snap.Turn.Step, snap.Turn.PriorityHolder, len(g.PendingChoices), describeSeats(g))
+			}
 		}
-		if seq := room.Seq(); seq != lastSeq {
-			lastSeq, lastMove = seq, time.Now()
-		} else if time.Since(lastMove) > stall {
-			t.Fatalf("table stalled (seed %d, no seq movement in %s) at turn %d step %s priority=%d pending=%d\n%s",
-				seed, stall, snap.Turn.Round, snap.Turn.Step, snap.Turn.PriorityHolder, len(g.PendingChoices), describeSeats(g))
+	} else {
+		lastSeq, lastMove := room.Seq(), time.Now()
+		for {
+			snap := g.Snapshot()
+			if snap.State != game.StateActive || snap.Turn.Round > turnBudget {
+				break
+			}
+			if seq := room.Seq(); seq != lastSeq {
+				lastSeq, lastMove = seq, time.Now()
+			} else if time.Since(lastMove) > stall {
+				t.Fatalf("table stalled (seed %d, no seq movement in %s) at turn %d step %s priority=%d pending=%d\n%s",
+					seed, stall, snap.Turn.Round, snap.Turn.Step, snap.Turn.PriorityHolder, len(g.PendingChoices), describeSeats(g))
+			}
+			if ctx.Err() != nil {
+				t.Fatalf("wall clock exhausted (seed %d) at turn %d", seed, snap.Turn.Round)
+			}
+			time.Sleep(2 * time.Millisecond)
 		}
-		if ctx.Err() != nil {
-			t.Fatalf("wall clock exhausted (seed %d) at turn %d", seed, snap.Turn.Round)
-		}
-		time.Sleep(2 * time.Millisecond)
 	}
 	cancel()
 	for _, r := range runners {
@@ -234,6 +311,9 @@ func playGameIn(t *testing.T, room *ws.Room, seed uint64, policies []aiseat.Poli
 
 	snap := g.Snapshot()
 	res := gameResult{seed: seed, turns: snap.Turn.Round, state: snap.State, winner: -1, elapsed: time.Since(started)}
+	if moves != nil {
+		res.moves = moves.lines()
+	}
 	g.ReadSnapshot(func() {
 		live := -1
 		n := 0
@@ -256,6 +336,60 @@ func playGameIn(t *testing.T, room *ws.Room, seed uint64, policies []aiseat.Poli
 	return res
 }
 
+// moveLog records a lockstep game move by move, in a form two runs of
+// the same seed can be compared in (#1409): seat index, the room
+// sequence the move committed at, the label, the move's parameters and
+// the policy's reason. Card instance IDs are fresh UUIDs on every run,
+// so raw parameters never compare equal even when the games do; each
+// ID is replaced by the order it first appeared in, which is the same
+// exactly when the games are. Seat IDs become seat indexes.
+//
+// The lockstep loop feeds it from one goroutine, but it locks anyway,
+// because DecisionObserver's contract says it may not be.
+type moveLog struct {
+	mu    sync.Mutex
+	seats map[string]int
+	ids   map[string]string
+	out   []string
+}
+
+func newMoveLog(g *game.Game) *moveLog {
+	l := &moveLog{seats: map[string]int{}, ids: map[string]string{}}
+	for i, p := range g.Seats {
+		l.seats[p.ID.String()] = i
+	}
+	return l
+}
+
+var uuidPattern = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
+
+func (l *moveLog) Observe(ev aiseat.DecisionEvent) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	params := ""
+	if ev.Index >= 0 && ev.Index < len(ev.Input.Moves) {
+		params = uuidPattern.ReplaceAllStringFunc(string(ev.Input.Moves[ev.Index].Params), func(id string) string {
+			if i, ok := l.seats[id]; ok {
+				return fmt.Sprintf("seat%d", i)
+			}
+			if c, ok := l.ids[id]; ok {
+				return c
+			}
+			c := fmt.Sprintf("#%d", len(l.ids))
+			l.ids[id] = c
+			return c
+		})
+	}
+	l.out = append(l.out, fmt.Sprintf("seat%d seq=%d applied=%v %q %s {%s}",
+		l.seats[ev.Seat.String()], ev.Seq, ev.Applied, ev.Label, params, ev.Reason))
+}
+
+func (l *moveLog) lines() []string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return append([]string(nil), l.out...)
+}
+
 // describeBoardLocked summarises a table the turn budget stopped: per
 // seat, life and the cards left in each zone, and the creatures it
 // controls tallied by name and size.
@@ -263,13 +397,15 @@ func playGameIn(t *testing.T, room *ws.Room, seed uint64, policies []aiseat.Poli
 // #1261: the 2026-09-23 nightly's seed 104 stopped at turn 51 with two
 // seats alive, and the artifact said only "lives [-4 6 8 -1]" — not
 // whether that was a deadlocked engine, a bot that would not act, or
-// two full boards staring at each other. Seeded tables are not
-// replayable (four runner goroutines interleave differently every
-// run), so the artifact is the only look anyone gets at that board.
-// The locally reproduced one was the third: 22 lands and 22 untapped
-// creatures a side, libraries at 9, both players under 7 life — and a
-// lethal swing on the board that lethalPush could not see until
-// unblockedPower (#1261). #1409 is what a mirror can still do.
+// two full boards staring at each other. Seeded tables were not
+// replayable then (four runner goroutines interleaved differently
+// every run), so the artifact was the only look anyone got at that
+// board. The locally reproduced one was the third: 22 lands and 22
+// untapped creatures a side, libraries at 9, both players under 7
+// life — and a lethal swing on the board that lethalPush could not see
+// until unblockedPower (#1261). Since #1409 the heuristic gate plays
+// lockstep, so the seed in the artifact replays the game exactly; the
+// board is still printed because it is the fastest read of a stop.
 //
 // Caller holds g's read lock.
 func describeBoardLocked(g *game.Game) string {
@@ -386,15 +522,31 @@ func heuristicGateAtSeats(t *testing.T, seats int, firstSeed uint64) {
 	for i := 0; i < games; i++ {
 		seeds = append(seeds, firstSeed+uint64(i))
 	}
+	// #1409: the gate plays lockstep, so a seed is a whole game and a
+	// red night replays move for move with the same seed. It measures
+	// the heuristic's PLAY; concurrent liveness is the soak's job
+	// (AISEAT_SOAK_POLICY=heuristic), and discussion #1390 made them
+	// separate gates. AISEAT_HEURISTIC_SCHEDULE=concurrent plays the
+	// gate the old way, one goroutine per seat — for comparing the two,
+	// not for the nightly.
+	schedule := "lockstep"
+	if os.Getenv("AISEAT_HEURISTIC_SCHEDULE") == "concurrent" {
+		schedule = "concurrent"
+	}
 	// Logged before the games rather than only per game, so a nightly
 	// artifact names the whole sample even when every game passes: the
 	// seeds are fixed, so "which twenty" is reproducible from the log
 	// alone.
-	t.Logf("heuristic gate: %d games at %d seats, seeds %d..%d, turn budget %d, wall %s (AISEAT_WALLCLOCK raises it)",
-		games, seats, seeds[0], seeds[len(seeds)-1], turnBudget, wall)
+	t.Logf("heuristic gate: %d games at %d seats, seeds %d..%d, turn budget %d, wall %s (AISEAT_WALLCLOCK raises it), %s schedule",
+		games, seats, seeds[0], seeds[len(seeds)-1], turnBudget, wall, schedule)
 	for _, seed := range seeds {
 		t.Run(fmt.Sprintf("seed=%d", seed), func(t *testing.T) {
-			res := playGame(t, seed, heuristicSeats(seats), turnBudget, wall)
+			var res gameResult
+			if schedule == "concurrent" {
+				res = playGame(t, seed, heuristicSeats(seats), turnBudget, wall)
+			} else {
+				res = playLockstepGame(t, seed, heuristicSeats(seats), turnBudget, wall)
+			}
 			total := res.totals()
 			t.Logf("seed %d: seats=%d state=%s turns=%d winner=%d lives=%v applied=%d passes=%d rejected=%d in %v",
 				seed, seats, res.state, res.turns, res.winner, res.lives, total.Applied, total.Passes, total.Rejected, res.elapsed)
@@ -416,7 +568,9 @@ func heuristicGateAtSeats(t *testing.T, seats int, firstSeed uint64) {
 //
 // Heads-up, alternating seats so the turn-order advantage cancels.
 // AISEAT_H2H_GAMES raises the sample; the default is small enough to
-// live in the ordinary test run.
+// live in the ordinary test run. Lockstep, like the gate above: it is
+// a measurement of play, and a measurement that moves between runs of
+// the same seeds is two measurements (#1409).
 func TestHeuristicBeatsRandomHeadToHead(t *testing.T) {
 	requireGameTests(t)
 	games := 8
@@ -434,7 +588,7 @@ func TestHeuristicBeatsRandomHeadToHead(t *testing.T) {
 		policies := make([]aiseat.Policy, 2)
 		policies[heuristicSeat] = heuristic.New()
 		policies[1-heuristicSeat] = aiseat.NewRandomPolicy(rand.NewPCG(seed, 7))
-		res := playGame(t, seed, policies, turnBudget, wall)
+		res := playLockstepGame(t, seed, policies, turnBudget, wall)
 		switch {
 		case res.winner == heuristicSeat:
 			wins++

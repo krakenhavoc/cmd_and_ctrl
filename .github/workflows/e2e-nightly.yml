@@ -397,18 +397,23 @@ jobs:
           fi
           df -h / /tmp | sed 's/^/after: /'
 
-      # Every game in this job is seeded, and every seed is printed, so
-      # a failure is replayable from the artifact alone.
+      # Every game in this job is seeded, and every seed is printed.
       #
-      # The heuristic gate's seeds are fixed in the test (101..120), so
-      # it DEALS the same twenty tables every night. It does not play
-      # the same twenty games: four runner goroutines interleave
-      # differently on every run (a defender's late block can land or
-      # miss the step): one binary played seed 107 to a winner on turn
-      # 13 eight times out of nine and stopped at turn 51 on the ninth
-      # (#1261, #1409). A game the turn budget stops
-      # prints the board it stopped on, because the artifact is the
-      # only look anyone gets at it. The soak's base seed is derived from the
+      # The heuristic gate's seeds are fixed in the test (101..120), and
+      # since #1409 the gate plays its seats in LOCKSTEP — one
+      # goroutine, seat order — so a seed is a whole game, not just a
+      # deal: the same twenty games every night, and a red one replays
+      # move for move with `AISEAT_HEURISTIC_GAMES` covering its seed.
+      # (Before, four runner goroutines interleaved differently on every
+      # run: one binary played seed 107 to a winner on turn 13 eight
+      # times out of nine and stopped at turn 51 on the ninth, #1261.) A
+      # game the turn budget stops still prints the board it stopped on.
+      #
+      # The soak below is the other half of that split (discussion
+      # #1390): it keeps the production schedule, one goroutine per
+      # seat, because concurrent liveness is what it is for — so its
+      # seed fixes the deal and the policies' randomness, and the
+      # interleaving is the scheduler's. The soak's base seed is derived from the
       # UTC date instead, the way the catalog soak's is (#601): a fixed
       # soak seed would fuzz the same hundred tables for ever and stop
       # finding anything after the first green night. The x1000 is what
