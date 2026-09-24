@@ -28,6 +28,7 @@
     LegalTargetsView,
     ManaAbilityView,
     PlayerView,
+    StackItemView,
     ZoneView,
   } from "../../protocol";
   import { seatPlacements, type SeatPosition } from "../../cardTypes";
@@ -48,6 +49,8 @@
   // damage readout now lives inside the card preview panel instead
   // of the lower-right corner.
   import StackOverlay from "./StackOverlay.svelte";
+  import StackLaneHost from "./StackLaneHost.svelte";
+  import { isStackStyle, stackLaneLive, type StackLaneStyle } from "../../stackLane";
   import CombatArrows from "./CombatArrows.svelte";
   import VotingPanel from "./VotingPanel.svelte";
   import ZoneBrowserModal from "./ZoneBrowserModal.svelte";
@@ -1914,6 +1917,27 @@
   // board-relative coordinates (CombatArrows reads source/target
   // bounding rects against it) get the same node.
   let boardEl: HTMLDivElement | null = $state(null);
+
+  // ---- The stack's display style (#1467) -----------------------------
+  //
+  // `compact` is the docked card in the attention strip. Anything else
+  // mounts StackLaneHost, which floats over the middle of the table
+  // while the stack or pending triggers are live (the host keeps its
+  // aria-live announcer mounted in between). While the lane is showing
+  // the stack, the docked card is not rendered.
+  const floatingStackStyle = $derived.by((): StackLaneStyle | null => {
+    const s = $settings.display.stackStyle;
+    return s === "compact" || !isStackStyle(s) ? null : s;
+  });
+  const laneShowsStack = $derived(
+    floatingStackStyle !== null && stackLaneLive(view.stack_items, view.pending_triggers),
+  );
+
+  // Countering a stack item, from either surface.
+  function counterStackItem(item: StackItemView): void {
+    const verb = item.kind === "spell" ? "counter_spell" : "counter_ability";
+    guardedSendAction(verb, { instance_id: item.id });
+  }
 </script>
 
 <div
@@ -2045,25 +2069,43 @@
        opponent's hand row in the row layout, the top-left seat's
        hand row otherwise) that stacks every live prompt — the stack
        card first, then whatever Game.svelte renders in `attention`. -->
-  <div class="strip">
-    <StackOverlay
-      stack={view.stack}
-      battlefield={view.battlefield}
-      exile={view.exile}
-      stackItems={view.stack_items ?? []}
-      pendingTriggers={view.pending_triggers ?? []}
-      seats={view.seats}
-      viewerHasPriority={prioritySeatID === viewerID}
-      priorityHolderName={view.seats[view.turn.priority_holder]?.name ?? null}
-      priorityHolderConsidering={consideringSeatID !== null && consideringSeatID === prioritySeatID}
-      splitSecondActive={view.split_second_active === true}
-      onCounter={(item) => {
-        const verb = item.kind === "spell" ? "counter_spell" : "counter_ability";
-        guardedSendAction(verb, { instance_id: item.id });
-      }}
+  <!-- #1467: a floating stack style replaces the docked card while
+       it has something to show. The docked card is not rendered at
+       all then (rather than hidden), so the stack is never on screen
+       twice and nothing in the strip is focusable behind the lane.
+       `compact` — the default — and the rare frame with a stack card
+       but no stack item record both keep the docked card. -->
+  {#if floatingStackStyle}
+    <StackLaneHost
+      {view}
+      {viewerID}
+      {boardEl}
+      style={floatingStackStyle}
+      considering={consideringSeatID !== null && consideringSeatID === prioritySeatID}
+      onCounter={counterStackItem}
       onTargetStackItem={(item) => completeTargetedCast("card", item.id)}
       onPass={onPassPriority}
     />
+  {/if}
+  <div class="strip">
+    {#if !laneShowsStack}
+      <StackOverlay
+        stack={view.stack}
+        battlefield={view.battlefield}
+        exile={view.exile}
+        stackItems={view.stack_items ?? []}
+        pendingTriggers={view.pending_triggers ?? []}
+        seats={view.seats}
+        viewerHasPriority={prioritySeatID === viewerID}
+        priorityHolderName={view.seats[view.turn.priority_holder]?.name ?? null}
+        priorityHolderConsidering={consideringSeatID !== null &&
+          consideringSeatID === prioritySeatID}
+        splitSecondActive={view.split_second_active === true}
+        onCounter={counterStackItem}
+        onTargetStackItem={(item) => completeTargetedCast("card", item.id)}
+        onPass={onPassPriority}
+      />
+    {/if}
     {@render attention?.()}
   </div>
   <VotingPanel {view} {viewerID} sendAction={guardedSendAction} />

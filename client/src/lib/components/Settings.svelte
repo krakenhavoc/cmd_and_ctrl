@@ -14,6 +14,7 @@
   } from "../settings";
   import { STEP_IDS, STEP_LABELS, hasOwnStop, type StepID } from "../turn";
   import { BLUFF_MAX_MS, BLUFF_MIN_MS } from "../bluff";
+  import type { StackStyle } from "../stackLane";
   import {
     SHORTCUTS,
     GROUP_ORDER,
@@ -597,6 +598,29 @@
               </select>
               {#if isFresh("display.handLayout")}<span class="saved">✓</span>{/if}
             </label>
+
+            <!-- #1467: four ways to draw the stack, shipped side by side
+                 so they can be compared on a live table. -->
+            <label class="slider-row">
+              <span>Stack <span class="experimental">experimental</span></span>
+              <select
+                value={$settings.display.stackStyle}
+                onchange={(e) =>
+                  change("display", "stackStyle", e.currentTarget.value as StackStyle)}
+              >
+                <option value="compact">Compact (default)</option>
+                <option value="fan">Fan</option>
+                <option value="spotlight">Spotlight</option>
+                <option value="ribbon">Ribbon</option>
+              </select>
+              {#if isFresh("display.stackStyle")}<span class="saved">✓</span>{/if}
+            </label>
+            <p class="help">
+              Compact keeps the stack in the small card at the top left. The others show it across
+              the middle of the table while something is on it: Fan lays the cards out with arrows
+              to what they target, Spotlight shows the next spell large with the rest queued beside
+              it, and Ribbon is a numbered row. The table itself never moves to make room.
+            </p>
 
             <label class="slider-row">
               <span>Hover preview delay (ms)</span>
