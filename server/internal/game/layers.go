@@ -876,6 +876,16 @@ func (g *Game) materialiseControlLocked() []controlChange {
 		c.Controller = c.effective.Controller
 		c.SummonedThisTurn = true
 		g.removeFromCombatLocked(c)
+		// #1376: CR 506.4 removes an ATTACKED planeswalker or battle
+		// from combat on a control change too, and its attackers then
+		// attack nothing (CR 506.4c) — no damage to it or to its new
+		// controller, and blockable only by the player who was
+		// defending it. Not inside removeFromCombatLocked, whose other
+		// caller is regeneration: CR 701.19a removes a regenerating
+		// permanent from combat only if it is an attacking or blocking
+		// CREATURE, so an attacked walker that regenerates stays
+		// attacked.
+		g.removeAttackedFromCombatLocked(c.InstanceID)
 	}
 	return changed
 }
