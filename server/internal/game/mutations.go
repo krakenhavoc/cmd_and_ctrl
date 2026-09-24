@@ -320,7 +320,13 @@ type CastSpellParams struct {
 	XValue       int
 	Distribution map[uuid.UUID]int
 	HoldPriority bool
-	SplitSecond  bool
+	// SplitSecond is the S13.1 sandbox flag: "treat this spell as
+	// having split second". Since #1519 a spell that PRINTS split
+	// second has it without the flag (castHasSplitSecond reads the
+	// card's keywords); the flag survives for a card the catalog and
+	// the importer know nothing about, and is ignored on a face-down
+	// cast.
+	SplitSecond bool
 
 	// DiscardIDs names the cards paid to an additional cost of the
 	// form "As an additional cost to cast this spell, discard a
@@ -1257,6 +1263,12 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	if g.StackMeta == nil {
 		g.StackMeta = make(map[uuid.UUID]*StackItem)
 	}
+	// CR 702.61a (#1519): the spell's own split second, or the
+	// sandbox flag — one writer for both, so the cache below and
+	// recomputeSplitSecondLocked can never disagree about where the
+	// fact came from. Read off the announce copy, which carries the
+	// chosen face and, for a face-down cast, has no text at all.
+	splitSecond := castHasSplitSecond(&card, faceDown, params.SplitSecond)
 	g.StackMeta[cardID] = &StackItem{
 		ID:           cardID,
 		Kind:         StackItemSpell,
@@ -1268,7 +1280,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		XValue:       params.XValue,
 		Distribution: cloneDistributionLocked(params.Distribution),
 		HoldPriority: params.HoldPriority,
-		SplitSecond:  params.SplitSecond,
+		SplitSecond:  splitSecond,
 		AltCost:      params.AlternativeCost,
 		// CR 702.143c, #658: a spell cast from a foretold card is a
 		// foretold spell, whatever cost paid for it. Read off the
@@ -1371,7 +1383,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// above it. The mana side of the payment was already folded into
 	// the cost gate above; this is the board half.
 	g.payTapPermanentsCostLocked(playerID, params.TapIDs)
-	if params.SplitSecond {
+	if splitSecond {
 		g.SplitSecondActive = true
 	}
 	// Commander tax bookkeeping (CR 903.8). Increment AFTER the
@@ -4872,15 +4884,33 @@ func (g *Game) drainPendingTriggersAPNAPLocked() bool {
 
 // seatNeedsTriggerOrder reports whether a seat's batch of pending
 // triggers needs a CR 603.3b ordering prompt: at least two items,
-// not all identical (same source card + same label — two Bident
-// draws are interchangeable and asking would be noise), and at
-// least one not yet Ordered by an answered prompt.
+// at least one not yet Ordered by an answered prompt, and an order
+// that could change the game. Two shapes are known not to:
+//
+//   - all identical — same source card and same label. Two Bident
+//     draws are interchangeable and asking would be noise.
+//   - all commutative — every item is a StackItem.Commutes item, so
+//     any order leaves the same board (#1511: a board of prowess
+//     creatures, which would otherwise ask on every noncreature
+//     spell). An item that commutes still counts only while it has
+//     no targets and no modes; Commutes is engine-owned and no such
+//     item has either today, so that check is a belt, not the rule.
+//
+// Anything else prompts, including a batch that is all commutative
+// items plus ONE other trigger: where that trigger sits among the
+// pumps is a real choice whenever it reads what they change. See
+// ADR 0018's #1511 amendment.
+//
+// An auto-ordered batch keeps its queue order, which is harvest
+// order; the drain below places it exactly as it places an answered
+// prompt.
 func seatNeedsTriggerOrder(items []*StackItem) bool {
 	if len(items) < 2 {
 		return false
 	}
 	allOrdered := true
 	allSame := true
+	allCommute := true
 	for _, t := range items {
 		if !t.Ordered {
 			allOrdered = false
@@ -4888,8 +4918,19 @@ func seatNeedsTriggerOrder(items []*StackItem) bool {
 		if t.SourceCardID != items[0].SourceCardID || t.Label != items[0].Label {
 			allSame = false
 		}
+		if !commutesForOrdering(t) {
+			allCommute = false
+		}
 	}
-	return !allOrdered && !allSame
+	return !allOrdered && !allSame && !allCommute
+}
+
+// commutesForOrdering is the per-item half of the #1511 skip: the
+// item declares it commutes, and it carries nothing a CR 603.3b
+// order could interact with — no chosen targets and no chosen
+// modes.
+func commutesForOrdering(t *StackItem) bool {
+	return t.Commutes && len(t.Targets) == 0 && len(t.Modes) == 0
 }
 
 // hasTriggerOrderPromptLocked reports whether chooser already has a
@@ -7058,8 +7099,10 @@ func (g *Game) stackHasItemsLocked() bool {
 // ErrNotACreature for non-creature cards, ErrPlayerNotFound for an
 // unknown target player, ErrCardNotFound for an unknown attacker
 // card, ErrSummoningSick for a creature that entered this turn
-// without haste (CR 302.6, 702.10), and ErrDefender for a defender
-// creature (CR 702.3). Re-declaring the same attacker against a
+// without haste (CR 302.6, 702.10), ErrDefender for a defender
+// creature (CR 702.3), and an *AttackLimitError (wrapping
+// ErrAttackLimit) when one more attacker would break a CR 508.1c
+// count limit such as Silent Arbiter's (#1507). Re-declaring the same attacker against a
 // different target overwrites the previous target.
 //
 // Caller authorization (was-it-the-controller) is intentionally
@@ -7153,6 +7196,16 @@ func (g *Game) DeclareAttackerWith(attackerID, targetPlayerID uuid.UUID, params 
 			// refuses — and it is also what the enumerator would then
 			// be offering, since it emits this verb (#544).
 			decl := []AttackDeclaration{{Attacker: attackerID, Target: targetPlayerID}}
+			// CR 508.1c, #1507: a count limit — Silent Arbiter's "no
+			// more than one creature can attack each combat",
+			// Crawlspace's two "attacking you". Judged against every
+			// creature already attacking, and before the tax: a
+			// declaration the limit refuses owes nothing. Not relaxed
+			// for the sandbox's hand-forcing, for the reason
+			// "can't attack" above is not — see attack_limits.go.
+			if err := g.attackLimitRefusalLocked(decl); err != nil {
+				return err
+			}
 			price := g.priceAttackDeclarationLocked(decl)
 			if err := g.payAttackTaxLocked(card.Controller, price, params); err != nil {
 				return err
@@ -7240,6 +7293,9 @@ type AttackDeclaration struct {
 //
 // ADR 0080 adds the one exception to "skip what doesn't fit": the
 // CR 508.1a attack tax is ALL OR NOTHING. See DeclareAttackersWith.
+// #1507 adds the second, for the same reason: a CR 508.1c count limit
+// (Silent Arbiter, Crawlspace) refuses the whole eligible set with an
+// *AttackLimitError rather than choosing which creatures to drop.
 func (g *Game) DeclareAttackers(decls []AttackDeclaration) ([]uuid.UUID, error) {
 	return g.DeclareAttackersWith(decls, DeclareAttackersParams{})
 }
@@ -7318,6 +7374,15 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 	}
 	if len(eligible) == 0 {
 		return nil, ErrNoLegalAttackers
+	}
+	// CR 508.1c, #1507: the count limits, ALL OR NOTHING. Every entry
+	// here is individually eligible, so there is no "ineligible" one to
+	// skip — which creatures to leave home under Silent Arbiter is the
+	// attacking player's choice, made by submitting a smaller set, as
+	// ADR 0080 has it for a tax the seat can only partly afford.
+	// Judged before the tax so a refused declaration is not priced.
+	if err := g.attackLimitRefusalLocked(eligible); err != nil {
+		return nil, err
 	}
 	// CR 508.1a, before anything is staged and before the CR 508.1f
 	// taps: the declaration's attack tax, all or nothing.

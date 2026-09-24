@@ -559,6 +559,10 @@ var stackItemFields = plan(
 	"IsCopy", carried, "",
 	"Seq", carried, "",
 	"Ordered", carried, "",
+	// #1511: which pending triggers may skip the CR 603.3b prompt.
+	// Carried for Ordered's reason — it is a fact about a pending
+	// item that the restored drain reads.
+	"Commutes", carried, "",
 	// #789 / #761: what the announcement paid — the counters
 	// removed, the life, and the mana tokens that left the pool.
 	// Carried, and it has to be: the counters are off the board and

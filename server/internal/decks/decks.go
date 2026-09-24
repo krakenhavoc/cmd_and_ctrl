@@ -89,7 +89,6 @@
 //     still ramps.
 //   - Filigree Familiar — the sacrifice-for-mana ability is missing;
 //     the ETB life and the dies-draw are what it is here for.
-//   - Krosan Grip — no split second. Still destroys the artifact.
 //   - Path of Ancestry, Raffine's Tower — scry rider and cycling
 //     missing. Both still tap for the colours.
 //   - Exotic Orchard, Reflecting Pool — one colour short when chained

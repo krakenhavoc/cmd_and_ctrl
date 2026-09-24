@@ -13,9 +13,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // engine-honoured: an attacker with it stays untapped.
 //
 // Sandbox simplification, declared: the second ability is not
-// modelled. A blocker holds exactly one BlockingTarget, and there is
-// no block-count seam for a static to widen — the same hole Silent
-// Arbiter and Crawlspace were skipped for, from the other side.
+// modelled. A blocker holds exactly one BlockingTarget, so no static
+// can let it block a second attacker. (The combat-wide COUNT limits
+// that were once skipped beside it — Silent Arbiter, Crawlspace —
+// shipped with #1507; this is the other side, and still open.)
 // Every creature still blocks one attacker. Weaker than printed,
 // never stronger, and the vigilance half is the half the card is
 // played for.

@@ -1646,6 +1646,7 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"wither"` | Wither (CR 702.80) — #748, the damage tail: -1/-1 counters on a creature |
 | `"toxic N"` | Toxic (CR 702.164) — #748, N extra poison on combat damage to a player. Numbered AND cumulative: read it with `game.ToxicTotal`, never `HasKeyword`, and grant it through `game.AppendKeywordAbility` so a second instance adds up ([ADR 0056](docs/decisions/0056-infect-wither-toxic.md)) |
 | `"prowess"` | Prowess (CR 702.108) — #706, the first TRIGGERED keyword in the table: `TriggersForCard` turns each instance on the effective ability list into one trigger (`game/prowess.go`). Cumulative like toxic, so grant it through `game.AppendKeywordAbility`. Never write a prowess trigger by hand — declare the token ([ADR 0014 amendment 2026-09-24](docs/decisions/0014-combat-keywords.md)) |
+| `"split second"` | Split second (CR 702.61) — #1519, a SPELL's keyword: `castHasSplitSecond` (`game/split_second.go`) stamps `StackItem.SplitSecond` at announce, and while it is on the stack nobody casts or activates a non-mana ability. Declare it on an instant or sorcery exactly like flash; never pass the sandbox `SplitSecond` cast flag from a card ([ADR 0007 amendment 2026-09-24](docs/decisions/0007-stack-foundation.md)) |
 
 **A keyword that is a trigger** has two shapes, and ADR 0014's
 2026-09-24 amendment says which to use. A constructor on
@@ -1879,11 +1880,10 @@ A creature pacified after attackers were declared keeps attacking.
 
 [ADR 0045](docs/decisions/0045-combat-restrictions.md) has the
 taxonomy, including what the vocabulary deliberately cannot say:
-Silent Arbiter's and Crawlspace's count limits, which belong beside
-`Game.blockerBoundsLocked` as set-shaped predicates rather than as
-bits — one more entry in `checkBlockDeclarationLocked`, the validator
-`DeclareBlockers` runs over a whole declaration before it stores any
-of it.
+Silent Arbiter's and Crawlspace's count limits, which are set-shaped
+predicates rather than bits — shipped in #1507 as `BlockRule.Limit`
+(one more entry in `checkBlockDeclarationLocked`) and `game.AttackLimit`
+(judged by both attack declaration verbs and the enumerator).
 
 **Propaganda's attack cost used to be on that list and is not any
 more** ([ADR 0080](docs/decisions/0080-attack-taxes.md), #1063). A
@@ -1980,12 +1980,29 @@ BlockRules: []game.BlockRule{
   It snapshots the set at resolution (CR 611.2c).
 - **A token that prints one** declares it on its `tokenTemplate`'s
   `BlockRules` slot (Avatar Kuruk's Spirit).
-- **Not yet:** "no more than one creature can block each combat"
-  (Silent Arbiter) has no shape. That is `BlockRule.Limit`, #1507.
+- **"No more than N creatures can block each combat"** (Silent Arbiter,
+  Dueling Grounds, Caverns of Despair) is `NoMoreThanNCanBlockEachCombat(n)`
+  — `BlockRule.Limit`, judged over every block in the combat and refused
+  as `declaration_limit` (#1507). It takes no scope: the printed line
+  binds every creature at the table.
+- **The attack half** — "no more than N creatures can attack each
+  combat" / "…can attack you each combat" (Crawlspace) — is not a block
+  rule. It goes in `Spec.AttackLimits`, built with
+  `NoMoreThanNCanAttackEachCombat(n)` or
+  `NoMoreThanNCanAttackYouEachCombat(n)` from
+  [attack_limits.go](server/internal/cards/effects/attack_limits.go).
+  "You" is the card's controller, the player — an attack on their
+  planeswalker does not count. Both declaration verbs and the
+  enumerator read the same check, so a bot is never offered a refused
+  attack ([ADR 0045](docs/decisions/0045-combat-restrictions.md)
+  Decisions 43-45).
 
 Tests: [block_rules_test.go](server/internal/cards/effects/block_rules_test.go)
 pins every shape through the verb, `legal.EnumerateFor` and
-`block_decision_seats`.
+`block_decision_seats`;
+[combat_limits_test.go](server/internal/cards/effects/combat_limits_test.go)
+pins the whole-combat limits, checking the enumerator against the verb
+on a clone for every candidate.
 
 ### Adding a triggered ability (S19+)
 

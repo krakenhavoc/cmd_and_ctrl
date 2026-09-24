@@ -313,6 +313,16 @@ var items = []Item{
 		Printed:  printedKeyword("prowess"),
 		Examples: []string{"Ty Lee, Chi Blocker"},
 	},
+	{
+		Slug: "split-second", Name: "Split second", Kind: KindKeyword, Status: StatusImplemented,
+		Summary:  "While a spell with split second is on the stack, nobody can cast spells or activate abilities other than mana abilities. Triggered abilities and special actions still happen.",
+		Rules:    []string{"702.61"},
+		ADR:      "0007-stack-foundation.md",
+		Keywords: []string{game.KeywordSplitSecond},
+		Mechanic: "split second",
+		Printed:  printedKeyword("split second"),
+		Examples: []string{"Krosan Grip"},
+	},
 
 	// ── Mechanics from the coverage table ────────────────────────
 	//
@@ -834,15 +844,14 @@ var items = []Item{
 		Phrases:  []string{"can't be blocked except", "can't block"},
 	},
 	{
-		Slug: "combat-wide-limits", Name: "Combat-wide attack and block limits", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Rules that limit how many creatures can attack or block in a whole combat, such as Silent Arbiter's \"no more than one creature can block each combat\".",
-		Missing:     "No card can limit the number of attackers or blockers across a whole combat yet.",
-		Rules:       []string{"508.1c", "509.1b"},
-		Issue:       1507,
-		ADR:         "0045-combat-restrictions.md",
-		Waiting:     []string{"Silent Arbiter", "Crawlspace"},
-		Phrases:     []string{"no more than one creature can", "no more than two creatures can"},
-		EngineNotes: "Split out of #750 when its card half closed the conditional-blocking row. `game.BlockRule` has `Pair` and `Count`; `Limit`, the whole-declaration bound ADR 0045's addendum Decision 12 reserves for Silent Arbiter, is unbuilt, and would be one more set check in `checkBlockDeclarationLocked` plus a stop in `blockOptionsLocked`. The attack-side twin (Crawlspace, Silent Arbiter's first line) is Decision 18's out-of-scope item: `DeclareAttackers` already receives the set, so the same all-or-nothing shape works.",
+		Slug: "combat-wide-limits", Name: "Combat-wide attack and block limits", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Rules that limit how many creatures can attack or block in a whole combat, such as Silent Arbiter's \"no more than one creature can block each combat\" and Crawlspace's \"no more than two creatures can attack you each combat\".",
+		Rules:    []string{"508.1c", "509.1b"},
+		Issue:    1507,
+		ADR:      "0045-combat-restrictions.md",
+		Probe:    func(s effects.Spec) bool { return len(s.AttackLimits) > 0 },
+		Examples: []string{"Silent Arbiter", "Crawlspace"},
+		Phrases:  []string{"no more than one creature can", "no more than two creatures can"},
 	},
 	{
 		Slug: "extra-turns", Name: "Extra turns", Kind: KindSeam, Status: StatusPartial,

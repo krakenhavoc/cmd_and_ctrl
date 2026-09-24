@@ -30,6 +30,9 @@ import (
 //     pair — which attackers a creature may not block
 //     (CantBlockAttackers).
 //
+// One rule has no scope, because its printed line has none:
+// NoMoreThanNCanBlockEachCombat, the whole-combat limit (#1507).
+//
 //	BlockRules: []game.BlockRule{
 //	    CantBeBlockedExceptBy(OnAttached(), OfCreatureType("Wall"), "Walls"),   // Prowler's Helm
 //	    CantBeBlockedBy(OnSelf(), PowerLE(2), "creatures with power 2 or less"), // Legolas Greenleaf
@@ -224,6 +227,26 @@ func MinBlockers(attackers BlockScope, n int) game.BlockRule {
 			}
 			return n, 0
 		},
+	}
+}
+
+// --- whole-combat limit -----------------------------------------
+
+// NoMoreThanNCanBlockEachCombat — "No more than N creatures can block
+// each combat" (Silent Arbiter and Dueling Grounds: one; Caverns of
+// Despair: two). BlockRule.Limit, the whole-combat bound ADR 0045's
+// Decision 12 reserved and #1507 built: every blocker in the combat
+// counts, whoever controls it and whichever attacker it blocks, and
+// DeclareBlockers refuses a declaration that would go past it with
+// declaration_limit (Decision 43).
+//
+// No scope argument, unlike every rule above, because the printed
+// line has none: it binds every creature at the table, the Arbiter's
+// own controller's included. The attack half of the same card is an
+// AttackLimit (attack_limits.go), not a BlockRule.
+func NoMoreThanNCanBlockEachCombat(n int) game.BlockRule {
+	return game.BlockRule{
+		Limit: func(_ *game.Game, _, _ *game.Card) int { return n },
 	}
 }
 

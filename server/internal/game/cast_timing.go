@@ -356,6 +356,17 @@ func castTimingAffects(a CastTimingAffects, controller, caster uuid.UUID) bool {
 //     past your Teferi, and that falls out of the placement rather
 //     than needing a rule of its own.
 //
+// SPLIT SECOND SHUTS IT (#1519, CR 702.61a), ahead of all four steps:
+// while a split-second spell is on the stack nobody may begin a cast,
+// whatever the card, the permission or an Orrery says. CastSpell and
+// the enumerator each return earlier on the same cache with their own
+// answer (ErrSplitSecondActive, no moves); the check is here as well
+// so `castable_here` — the third caller, which has no earlier return
+// — cannot light a graveyard, exile or library-top card the engine
+// would refuse. It is a statement about CASTING, so it belongs to
+// this function and not to the land branch below: a land cannot be
+// played with a non-empty stack in the first place.
+//
 // A LAND PLAY IS NOT HERE. CR 305.1 and CR 116.2a make playing a land
 // a special action rather than a cast, and every card this function
 // exists for writes about casting SPELLS. CastSpell's land branch
@@ -367,6 +378,10 @@ func castTimingAffects(a CastTimingAffects, controller, caster uuid.UUID) bool {
 //
 // Caller must hold g.mu (read or write).
 func (g *Game) CastTimingOpenLocked(playerID uuid.UUID, card Card, zone ZoneKind, perm *CastPermission) bool {
+	// CR 702.61a — no cast begins under split second.
+	if g.SplitSecondActive {
+		return false
+	}
 	// 0. A plotted card (CR 702.170d, #1318) is cast in its owner's
 	// main phase with the stack empty and at no other time: the window
 	// belongs to the permission, so neither the card's own flash nor a
