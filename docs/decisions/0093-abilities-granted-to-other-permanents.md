@@ -332,6 +332,13 @@ classifies every field as `carried`. The census gains no row. A grant's object s
 long as that land has a blight counter" needs one more `DurationCondition`, on the pinned object's
 counters, added in PR 4.
 
+**Amended 2026-09-24 (#1497, owner decision 1 on ADR 0041's phase 3 amendment):** `ScopedGrant` is
+not a registry of its own. It is the `grantAbilities` mod of ADR 0041 phase 3's `ScopedEffect`
+record (`server/internal/game/scoped_effects.go`), which landed first and already gives it the pinned
+set, the timestamp, the `Duration`, the sweep, the layer-pass adapter and `carried` in the drift
+plan. PR 4 adds the `grantAbilities` kind to that vocabulary; see
+[ADR 0041](0041-game-persistence.md), "Amendment, 2026-09-24 — phase 3: effects as data".
+
 **Not a delayed trigger.** The issue offered #663's event-conditioned delayed trigger as an
 alternative route for "until end of turn, target creature gains 'When this creature dies …'". It is
 the wrong model. A granted trigger is an **ability of the creature**: a later Darksteel Mutation
