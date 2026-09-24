@@ -137,6 +137,10 @@ export type MenuPrompt = "custom_counter" | "mark_damage";
 export interface MenuActivate {
   kind: "mana" | "ability";
   index: number;
+  // #1443: a mana ability's colours, named up front by the anchored
+  // picker so the server queues no mana_pick. Absent from the menu's
+  // own rows, which keep the two-step activation.
+  colors?: string[];
 }
 
 export interface MenuItem {
