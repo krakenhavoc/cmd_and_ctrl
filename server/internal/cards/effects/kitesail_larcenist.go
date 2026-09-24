@@ -46,9 +46,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // permanent's OWN oracle ID (game.CatalogManaAbilities via
 // CatalogAbilityKey); Characteristic carries granted KEYWORDS as
 // strings and has nowhere to put an ability with a cost and a
-// production. That is the "Ability granted to another permanent by a
-// static" seam (#754), which twelve other cards already wait on —
-// Chromatic Lantern, Cryptolith Rite, Gemhide Sliver and friends.
+// production. That is the "Ability granted to another permanent" seam
+// (#754). Since ADR 0093 a STATIC can grant one (Chromatic Lantern,
+// Cryptolith Rite, Gemhide Sliver and friends ship on it), but this
+// grant is made by a resolving ability for a duration, which is the
+// ADR's PR 4 and still has no shape.
 //
 // # Why there is no partial
 //

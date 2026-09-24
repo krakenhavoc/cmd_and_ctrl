@@ -520,6 +520,21 @@ type ManaAbilityShape struct {
 	// under g.mu. Added in S26.
 	RestrictionsFunc func(g *Game, controller, source uuid.UUID) []string
 
+	// SpendRiders are what this ability's mana does WHEN IT IS SPENT
+	// (#1547, mana_spend_rider.go): "and that spell can't be countered"
+	// (Cavern of Souls), "if that mana is spent on a creature spell, it
+	// gains haste" (Hall of the Bandit Lord), "when that mana is spent to
+	// cast a red instant or sorcery spell, copy that spell" (Pyromancer's
+	// Goggles). Copied onto every token the ability mints — through the
+	// colour pick too, on PendingChoice.ManaRiders — with one Production
+	// id per activation.
+	//
+	// Unlike Restrictions, a rider does NOT hide the ability from the
+	// auto-tapper: it constrains nothing about where the mana may go, so
+	// a planned Goggles is still a red source, and its rider fires on the
+	// spend exactly as it would for a hand-tapped one.
+	SpendRiders []ManaSpendRider
+
 	Produced string
 	Label    string
 

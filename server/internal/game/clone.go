@@ -180,6 +180,9 @@ func (g *Game) cloneLocked() *Game {
 			if len(c.ManaRestrictions) > 0 {
 				cloned.ManaRestrictions = append([]string(nil), c.ManaRestrictions...)
 			}
+			// #1547: the spend riders ride the choice too, and are
+			// game state for the same reason.
+			cloned.ManaRiders = copyManaRiders(c.ManaRiders)
 			// #742: the per-colour amounts of a one-pick-N-mana
 			// choice. A map, so it needs its own copy for the same
 			// reason the slices do.
@@ -356,6 +359,9 @@ func (g *Game) cloneLocked() *Game {
 		out.ScopedStatics = make([]ScopedStatic, len(g.ScopedStatics))
 		copy(out.ScopedStatics, g.ScopedStatics)
 	}
+	// ADR 0041 phase 3's data twin: same immutability contract, same
+	// fresh backing array.
+	out.ScopedEffects = cloneScopedEffects(g.ScopedEffects)
 	// CR 603.10 LKI snapshots (S19). Values are Characteristic copies
 	// that are never mutated after being stored, so a per-entry value
 	// copy is sufficient. Usually empty — entries live only for the
@@ -591,11 +597,9 @@ func clonePlayer(p *Player) *Player {
 	if len(p.ManaPool) > 0 {
 		out.ManaPool = make(ManaPool, len(p.ManaPool))
 		for i, t := range p.ManaPool {
-			cloned := t
-			if len(t.Restrictions) > 0 {
-				cloned.Restrictions = append([]string(nil), t.Restrictions...)
-			}
-			out.ManaPool[i] = cloned
+			// ManaToken.clone: the restrictions and (#1547) the
+			// spend riders, each with its own backing array.
+			out.ManaPool[i] = t.clone()
 		}
 	}
 	// ADR 0066: granted cast and play permissions. Deep-copied for the
@@ -973,6 +977,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.TurnScopedReplacements = src.TurnScopedReplacements
 	g.TurnScopedBlockRules = src.TurnScopedBlockRules
 	g.ScopedStatics = src.ScopedStatics
+	g.ScopedEffects = src.ScopedEffects
 	g.lastKnownBattlefield = src.lastKnownBattlefield
 	g.lastKnownTriggerIdentity = src.lastKnownTriggerIdentity
 	g.lastKnownCounters = src.lastKnownCounters

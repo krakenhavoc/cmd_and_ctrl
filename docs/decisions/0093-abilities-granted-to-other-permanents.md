@@ -333,6 +333,13 @@ classifies every field as `carried`. The census gains no row. A grant's object s
 long as that land has a blight counter" needs one more `DurationCondition`, on the pinned object's
 counters, added in PR 4.
 
+**Amended 2026-09-24 (#1497, owner decision 1 on ADR 0041's phase 3 amendment):** `ScopedGrant` is
+not a registry of its own. It is the `grantAbilities` mod of ADR 0041 phase 3's `ScopedEffect`
+record (`server/internal/game/scoped_effects.go`), which landed first and already gives it the pinned
+set, the timestamp, the `Duration`, the sweep, the layer-pass adapter and `carried` in the drift
+plan. PR 4 adds the `grantAbilities` kind to that vocabulary; see
+[ADR 0041](0041-game-persistence.md), "Amendment, 2026-09-24 — phase 3: effects as data".
+
 **Not a delayed trigger.** The issue offered #663's event-conditioned delayed trigger as an
 alternative route for "until end of turn, target creature gains 'When this creature dies …'". It is
 the wrong model. A granted trigger is an **ability of the creature**: a later Darksteel Mutation
@@ -553,6 +560,30 @@ PR 1 (the seam, no cards) shipped as planned, with four differences.
    at #754 until the owner files an issue for each.
 
 Every other part of the PR 1 list is as written above.
+
+## Amendment 2026-09-24 — what PR 2 built
+
+PR 2 was split at its natural seam: the server half (constructors, the auto-tapper and the cards) is
+one PR, and the client picker is the next.
+
+- **Constructors:** `TribalAbilityGrant` and `GrantAbilitiesToAttached` as planned, plus two bundle
+  helpers, `AnyColorManaGrant` and `TapForManaGrant`.
+- **Auto-tapper (Decision 6):** a permanent contributes one candidate per acceptable mana ability,
+  as mutually exclusive alternatives. The plan entry carries the booked ability's ref, and the
+  executor re-finds that ability through the same picker. A creature's granted mana shares the
+  last-resort tier with sacrifice-self sources. Inside the tier it is a peer of a Treasure and
+  comes ahead of an Eldrazi Spawn. The per-ability change also finds payments for permanents that
+  already had two plannable abilities: an uncatalogued dual land, whose two intrinsic land types
+  used to plan as its first colour only.
+- **Cards:** Cryptolith Rite, Chromatic Lantern, Gemhide Sliver, Manaweft Sliver, Necrotic Sliver,
+  Rishkar, Jaheira (caveat: no Background, like Ganax), Insidious Roots, Great Divide Guide, The
+  World Tree, Paradise Mantle, Squirrel Nest, and Springleaf Parade.
+- **Springleaf Parade:** its Shapeshifter token template (slug `springleaf-shapeshifter`) is
+  deleted, and the token is now a plain row. A live game saved with one of those tokens restores it
+  flagged `AbilitiesLostOnRestore`. That path is the #522 rule; the snapshot corpus holds no such
+  token.
+- **Coverage:** a new mechanic row, "an ability granted to another permanent", with an exact probe
+  on `StaticAbility.GrantAbilities`. It is the row the roadmap seam borrows.
 
 ## Open questions for the owner
 

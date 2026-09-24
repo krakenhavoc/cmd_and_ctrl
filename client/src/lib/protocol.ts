@@ -1676,6 +1676,16 @@ export type ExileCostZone = "hand" | "graveyard";
 export interface ActivatedAbilityView {
   index: number;
   label?: string;
+  // ADR 0093 Decision 5: the row's stable ref ("own:<i>",
+  // "grant:<bundle>:<i>:<n>"). Sent back as activate_ability's `ref`
+  // so a grant that appeared or vanished since this snapshot is
+  // refused rather than fired on whatever moved to `index`. Optional
+  // only because a server older than #1551 sends none.
+  ref?: string;
+  // ADR 0093 Decision 8: present on a row ANOTHER permanent granted
+  // this one (Necrotic Sliver's "{3}, Sacrifice this permanent: …" on
+  // every Sliver). Absent on the permanent's own abilities.
+  granted_by?: GrantedByView;
   tap_cost?: boolean;
   sacrifice_self?: boolean;
   mana_cost?: string;
@@ -2420,6 +2430,12 @@ export interface CardView extends CastSurfaceView {
   // control, so without this the text would be invisible. Newlines
   // separate printed lines.
   token_text?: string;
+  // ADR 0093 Decision 8 — the abilities OTHER effects gave this
+  // permanent, each with the granting card's printed text: Cryptolith
+  // Rite's "{T}: Add one mana of any color." on a creature, a copy's
+  // CR 707.9a grant (no source). The one place a granted TRIGGER is
+  // visible at all — it has no menu row. One entry per grantor.
+  granted_abilities?: GrantedAbilityView[];
   // #662 — this permanent's CR 702.16 protections, already PARSED by
   // the server. The raw "protection from red" tokens are in
   // `abilities` like every other keyword; this is the same list with
@@ -2465,6 +2481,22 @@ export interface CardView extends CastSurfaceView {
 // exactly one closed grammar for it (server/internal/game/
 // protection.go); a second copy here would be free to disagree about
 // what "protection from Demons" means.
+// GrantedByView names the permanent that granted an ability row (ADR
+// 0093). `name` is absent when the grantor is no longer there to name.
+export interface GrantedByView {
+  id: string;
+  name?: string;
+}
+
+// GrantedAbilityView is one ability another effect gave a permanent,
+// as its granting card prints it (ADR 0093 Decision 8). A copy's
+// CR 707.9a grant has no source.
+export interface GrantedAbilityView {
+  text: string;
+  source_id?: string;
+  source_name?: string;
+}
+
 export interface ProtectionView {
   // The quality as the CARD prints it — "red", "Demons",
   // "artifacts", "everything". Badge tooltip text.
@@ -2493,6 +2525,14 @@ export interface ProtectionView {
 export interface ManaAbilityView {
   index: number;
   label?: string;
+  // ADR 0093 Decision 5: the row's stable ref ("own:<i>",
+  // "land:<colour>", "grant:<bundle>:<i>:<n>"), sent back as
+  // activate_mana_ability's `ref`. See ActivatedAbilityView.ref.
+  ref?: string;
+  // ADR 0093 Decision 8: present on a mana ability another permanent
+  // granted this one (Cryptolith Rite's "{T}: Add one mana of any
+  // color." on every creature you control).
+  granted_by?: GrantedByView;
   tap_cost?: boolean;
   sacrifice_cost?: boolean;
   // #1228: the "Exile this card from your hand" component of a mana

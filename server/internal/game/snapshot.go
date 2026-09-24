@@ -144,6 +144,29 @@ import (
 // "refuse this file if you do not know what phasing is", so the
 // version is it, and the cost is the one v2 and v5 accepted.
 //
+// v7 is #1497 (ADR 0041 phase 3), and it is the emblem shape of the
+// argument once more. `scopedEffects` is new and zero-values correctly
+// for every older file: a v6 restore point never held a live scoped
+// continuous effect, because the census kept every one of them out.
+// What forces the bump is the other direction. A v6 binary handed a v7
+// file would drop the key it does not know and restore an earthbent
+// land as a plain land, an Agent of Treachery's theft as nothing — and
+// v7 files hold these routinely, because making them restore points is
+// the whole change. v7 also READS the tier-2 keys (`body` and
+// `condition` on a delayed trigger, `body` on a stack item) before any
+// binary writes them, and refuses a file naming an effect key it
+// cannot interpret (ErrUnknownEffectKey) — which is what lets the mod
+// vocabulary and, later, the effect bodies grow within v7 without a
+// bump each (ADR 0041 P4). The refusal covers every way a newer v7
+// vocabulary can appear in a scoped effect, so each is additive within
+// v7: a mod KIND, a duration KIND or CONDITION (bare ints on disk,
+// checked against DurationKind.Known / DurationCondition.Known), and a
+// JSON FIELD on the record, an affected member, a mod or its duration
+// (unknownScopedEffectFields, which encoding/json would otherwise drop
+// in silence). Anything else about a scoped effect that would change
+// what an older v7 file means — a kind whose meaning changes, a field
+// repurposed — is a new kind or a bump, never an edit.
+//
 // THE COMPATIBILITY RULE, and what enforces it (#522, ADR 0044
 // decision 7). The paragraphs above are the judgement; these are the
 // tests that make somebody exercise it.
@@ -182,7 +205,7 @@ import (
 // Restore REFUSES anything it does not recognise rather than guessing.
 // See ErrSchemaTooNew / ErrSchemaUnsupported and ADR 0041 for the
 // version-skew policy this implements.
-const SnapshotSchemaVersion = 6
+const SnapshotSchemaVersion = 7
 
 // settingsSchemaVersion is the first schema that carries
 // GameSnapshot.Settings. Older files are migrated from UndoLimit.
@@ -209,6 +232,13 @@ var (
 	// snapshot whose continuation census is non-empty — it holds live
 	// Go closures that this build cannot rebuild. See ContinuationCensus.
 	ErrSnapshotNotRestorable = errors.New("game: snapshot holds continuations that cannot be rebuilt")
+
+	// ErrUnknownEffectKey means the file names an effect key — a
+	// ScopedEffect mod kind, or an ADR 0041 P2 body or condition key —
+	// that this binary cannot interpret. Every key a binary writes is
+	// one it registered, so this is the rollback case, and the answer
+	// is ErrSchemaTooNew's: refuse, keep the file (ADR 0041 P4).
+	ErrUnknownEffectKey = errors.New("game: snapshot names an effect this server cannot interpret")
 )
 
 // ---------------------------------------------------------------
@@ -232,6 +262,13 @@ type GameSnapshot struct {
 	// present and zero) from a pre-ADR-0059 snapshot (Seq is absent).
 	// Decode metadata only; not game state and never written.
 	turnSeqPresent bool
+
+	// unknownEffectFields lists JSON keys on a scopedEffects record, an
+	// affected member, a mod or a duration that this binary's types do
+	// not have (#1497 review, ADR 0041 P4). encoding/json would drop
+	// them silently; checkEffectKeys refuses them instead. Decode
+	// metadata only; not game state and never written.
+	unknownEffectFields []string
 
 	// TakenAt is when the snapshot was captured, for operator
 	// triage ("how stale is the restore point?"). Not game state.
@@ -284,6 +321,11 @@ type GameSnapshot struct {
 	StackMeta       []stackItemSnapshot      `json:"stackMeta,omitempty"`
 	PendingTriggers []stackItemSnapshot      `json:"pendingTriggers,omitempty"`
 	DelayedTriggers []delayedTriggerSnapshot `json:"delayedTriggers,omitempty"`
+
+	// ScopedEffects is ADR 0041 phase 3's data-backed continuous
+	// effects (scoped_effects.go, #1497): carried verbatim, because a
+	// record holds nothing but data. v7.
+	ScopedEffects []ScopedEffect `json:"scopedEffects,omitempty"`
 
 	LoyaltyActivatedThisTurn map[uuid.UUID]bool        `json:"loyaltyActivatedThisTurn,omitempty"`
 	SpellsCastThisTurn       map[uuid.UUID]CastTally   `json:"spellsCastThisTurn,omitempty"`
@@ -438,6 +480,11 @@ func (s *GameSnapshot) UnmarshalJSON(data []byte) error {
 	if !s.turnSeqPresent {
 		_, s.turnSeqPresent = envelope.Turn["seq"]
 	}
+	fields, err := unknownScopedEffectFields(data)
+	if err != nil {
+		return err
+	}
+	s.unknownEffectFields = fields
 	return nil
 }
 
@@ -937,6 +984,13 @@ type stackItemSnapshot struct {
 	// can re-derive a SPELL's target spec from the catalog without
 	// having to find the card again (it may have moved zones).
 	OracleID string `json:"oracleId,omitempty"`
+
+	// Body is ADR 0041 P2's effect-body key: what a fired delayed
+	// trigger resolves through once delayed triggers are data (tier 2,
+	// #1497). This binary writes none; it READS the key so that a file
+	// from a later v7 build that does is refused (ErrUnknownEffectKey)
+	// rather than restored with its effect silently missing.
+	Body string `json:"body,omitempty"`
 }
 
 type delayedTriggerSnapshot struct {
@@ -959,6 +1013,14 @@ type delayedTriggerSnapshot struct {
 	// marked unrestorable and nothing here double-counts it.
 	On       []EventKind `json:"on,omitempty"`
 	Duration *Duration   `json:"duration,omitempty"`
+
+	// Body and Condition are ADR 0041 P2's effect-body and
+	// event-condition keys (tier 2, #1497). Read-only in this binary,
+	// for the reason stackItemSnapshot.Body gives: the v7 reader is in
+	// place before the writer, so a later v7 file is refused rather
+	// than misread.
+	Body      string `json:"body,omitempty"`
+	Condition string `json:"condition,omitempty"`
 }
 
 // pendingChoiceSnapshot mirrors PendingChoice's DATA. Its seven
@@ -981,6 +1043,7 @@ type pendingChoiceSnapshot struct {
 	ColorOptions         []string               `json:"colorOptions,omitempty"`
 	ColorPurpose         ColorPurpose           `json:"colorPurpose,omitempty"`
 	ManaRestrictions     []string               `json:"manaRestrictions,omitempty"`
+	ManaRiders           []ManaSpendRider       `json:"manaRiders,omitempty"`
 	ManaSourceKinds      ManaSourceKinds        `json:"manaSourceKinds,omitempty"`
 	ManaAmounts          map[string]int         `json:"manaAmounts,omitempty"`
 	ManaTapped           bool                   `json:"manaTapped,omitempty"`
@@ -1206,6 +1269,33 @@ func (c ContinuationCensus) Total() int {
 	return n
 }
 
+// Kinds returns the counters that are non-zero, keyed by each
+// counter's JSON key — the name an operator already reads in a
+// restore point's `continuations` (ADR 0041 P7, #1497): the per-kind
+// skip tally the shutdown census logs is keyed by these. ScopedStatics
+// is therefore "turnScopedStatics", its JSON key since before S38.
+func (c ContinuationCensus) Kinds() map[string]int {
+	out := map[string]int{}
+	for name, n := range map[string]int{
+		"stackEffects":           c.StackEffects,
+		"stackTargetSpecs":       c.StackTargetSpecs,
+		"delayedTriggerEffects":  c.DelayedTriggerEffects,
+		"choiceResumeFrames":     c.ChoiceResumeFrames,
+		"turnScopedStatics":      c.ScopedStatics,
+		"turnScopedReplacements": c.TurnScopedReplacements,
+		"turnScopedBlockRules":   c.TurnScopedBlockRules,
+		"intrinsicAbilityCards":  c.IntrinsicAbilityCards,
+	} {
+		if n > 0 {
+			out[name] = n
+		}
+	}
+	if c.UnpersistableRNG {
+		out["unpersistableRng"] = 1
+	}
+	return out
+}
+
 func (c *ContinuationCensus) note(format string, args ...any) {
 	if len(c.Labels) >= censusLabelCap {
 		return
@@ -1311,6 +1401,9 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 			s.DelayedTriggers[i] = snapshotDelayedTrigger(d, cen)
 		}
 	}
+	// ADR 0041 phase 3 (#1497): data, so carried whole and never
+	// counted by the census.
+	s.ScopedEffects = deepCopyScopedEffects(g.ScopedEffects)
 
 	s.LoyaltyActivatedThisTurn = copyBoolMap(g.LoyaltyActivatedThisTurn)
 	s.SpellsCastThisTurn = copyTallyMap(g.SpellsCastThisTurn)
@@ -1635,9 +1728,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 	if len(p.ManaPool) > 0 {
 		out.ManaPool = make(ManaPool, len(p.ManaPool))
 		for i, t := range p.ManaPool {
-			cloned := t
-			cloned.Restrictions = copyStrings(t.Restrictions)
-			out.ManaPool[i] = cloned
+			out.ManaPool[i] = t.clone()
 		}
 	}
 	out.CastPermissions = cloneCastPermissions(p.CastPermissions)
@@ -1770,6 +1861,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		ColorOptions:         copyStrings(c.ColorOptions),
 		ColorPurpose:         c.ColorPurpose,
 		ManaRestrictions:     copyStrings(c.ManaRestrictions),
+		ManaRiders:           copyManaRiders(c.ManaRiders),
 		ManaSourceKinds:      c.ManaSourceKinds,
 		ManaAmounts:          copyManaAmounts(c.ManaAmounts),
 		ManaTapped:           c.ManaTapped,
@@ -1889,6 +1981,9 @@ func (s *GameSnapshot) Restore() (*Game, error) {
 	if err := s.checkSchema(); err != nil {
 		return nil, err
 	}
+	if err := s.checkEffectKeys(); err != nil {
+		return nil, err
+	}
 	return s.restoreGame(), nil
 }
 
@@ -1900,6 +1995,9 @@ func (s *GameSnapshot) Restore() (*Game, error) {
 // This is the call the boot-time restore path makes.
 func (s *GameSnapshot) RestoreStrict() (*Game, error) {
 	if err := s.checkSchema(); err != nil {
+		return nil, err
+	}
+	if err := s.checkEffectKeys(); err != nil {
 		return nil, err
 	}
 	if !s.Restorable() {
@@ -2031,6 +2129,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 			g.PendingTriggers[i] = restoreStackItem(&s.PendingTriggers[i])
 		}
 	}
+	g.ScopedEffects = deepCopyScopedEffects(s.ScopedEffects)
 	if len(s.DelayedTriggers) > 0 {
 		g.DelayedTriggers = make([]*DelayedTrigger, len(s.DelayedTriggers))
 		for i := range s.DelayedTriggers {
@@ -2336,9 +2435,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 	if len(p.ManaPool) > 0 {
 		out.ManaPool = make(ManaPool, len(p.ManaPool))
 		for i, t := range p.ManaPool {
-			cloned := t
-			cloned.Restrictions = copyStrings(t.Restrictions)
-			out.ManaPool[i] = cloned
+			out.ManaPool[i] = t.clone()
 		}
 	}
 	out.CastPermissions = cloneCastPermissions(p.CastPermissions)
@@ -2438,6 +2535,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		ColorOptions:         copyStrings(c.ColorOptions),
 		ColorPurpose:         c.ColorPurpose,
 		ManaRestrictions:     copyStrings(c.ManaRestrictions),
+		ManaRiders:           copyManaRiders(c.ManaRiders),
 		ManaSourceKinds:      c.ManaSourceKinds,
 		ManaAmounts:          copyManaAmounts(c.ManaAmounts),
 		ManaTapped:           c.ManaTapped,

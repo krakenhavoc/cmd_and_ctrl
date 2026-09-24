@@ -52,8 +52,9 @@ import (
 //  4. the restored game round-trips exactly through this binary;
 //  5. it is a working game: layers recompute and it accepts an action.
 //
-// Fixtures are APPEND-ONLY. The generated set for a version is written
-// once, by TestWriteSnapshotCorpus, and never regenerated: rewriting a
+// Fixtures are APPEND-ONLY. Each generated file is written once, by
+// TestWriteSnapshotCorpus, and never regenerated (a later board under
+// the same version may ADD a file, never change one): rewriting a
 // fixture to make this test pass converts the guard back into the
 // comment it replaced (ADR 0044 decision 7). A schema bump gets a NEW
 // directory; the old ones stay and keep being restored.
@@ -114,7 +115,8 @@ const (
 )
 
 // corpusBoards is the generated half of the corpus. A board added here
-// is written into the NEXT version's set, never into a frozen one.
+// is written as a NEW file in the current version's set, or in the next
+// version's; a file already written is never touched.
 func corpusBoards() []corpusBoard {
 	return []corpusBoard{
 		{"fresh", func(t *testing.T) *game.Game { return newCorpusGame(t) }},
@@ -125,6 +127,11 @@ func corpusBoards() []corpusBoard {
 		{"attached", corpusAttached},
 		{"combat", corpusCombat},
 		{"clone", corpusClone},
+		// v7 (#1497): ADR 0041 phase 3's data-backed scoped effects.
+		{"control", corpusControl},
+		{"amass", corpusAmass},
+		{"scoped_effect_kinds", corpusScopedEffectKinds},
+		{"mass_diminish", corpusMassDiminish},
 	}
 }
 
@@ -288,6 +295,121 @@ func corpusClone(t *testing.T) *game.Game {
 }
 
 // ---------------------------------------------------------------
+// v7 boards: ADR 0041 phase 3's data-backed scoped effects (#1497)
+// ---------------------------------------------------------------
+
+// corpusControl is the two control shapes: a Sower-of-Temptation-style
+// theft that lasts while its source remains, and a Switcheroo exchange
+// (two records, one timestamp, indefinite and pinned).
+func corpusControl(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me, opp := g.Seats[0].ID, g.Seats[1].ID
+	sower := pushBattlefieldCardWithTimestamp(g, corpusCreature(me, "Sower of Temptation", 2, 2))
+	stolen := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp, "Grizzly Bears", 2, 2))
+	mine := pushBattlefieldCardWithTimestamp(g, corpusCreature(me, "Runeclaw Bear", 2, 2))
+	theirs := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp, "Balduvian Bears", 2, 2))
+	g.WithWriteLock(func() {
+		d, ok := g.ForAsLongAsOnBattlefieldDuration(sower)
+		if !ok {
+			t.Fatal("setup: the Sower is not on the battlefield")
+		}
+		if !g.GainControlForEffect(sower, stolen, me, d, "Sower of Temptation — gain control") {
+			t.Fatal("GainControlForEffect registered nothing")
+		}
+		if !g.ExchangeControlForEffect(uuid.Nil, mine, theirs, "Switcheroo — exchange control") {
+			t.Fatal("ExchangeControlForEffect registered nothing")
+		}
+	})
+	return g
+}
+
+// corpusAmass is amass's "it's also an Orc" on a Zombie Army: the
+// indefinite, pinned addSubtypes record.
+func corpusAmass(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[0].ID
+	g.WithWriteLock(func() {
+		for _, subtype := range []string{"Zombie", "Orc"} {
+			if err := g.AmassForEffect(me, uuid.Nil, ArmyToken("Zombie"), subtype, 1, nil); err != nil {
+				t.Fatalf("amass %s: %v", subtype, err)
+			}
+		}
+	})
+	if len(g.ScopedEffects) != 1 {
+		t.Fatalf("setup: the Orc amass registered %d scoped effects, want 1", len(g.ScopedEffects))
+	}
+	return g
+}
+
+// corpusScopedEffectKinds freezes every mod kind and every duration
+// kind the v7 vocabulary has, registered through the one write path so
+// the file is exactly what a live game would write. One record per
+// kind, all on one creature; the suspend-shaped member (EnteredAt 0,
+// a controller) is on a second.
+func corpusScopedEffectKinds(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me, opp := g.Seats[0].ID, g.Seats[1].ID
+	target := pushBattlefieldCardWithTimestamp(g, corpusCreature(me, "Grizzly Bears", 2, 2))
+	hasty := pushBattlefieldCardWithTimestamp(g, corpusCreature(me, "Rift Bolt Bear", 3, 3))
+	g.WithWriteLock(func() {
+		pinned := g.PinnedObjectsLocked(target)
+		type entry struct {
+			mods []game.Mod
+			d    game.Duration
+		}
+		whileOnBattlefield, ok := g.ForAsLongAsOnBattlefieldDuration(target)
+		if !ok {
+			t.Fatal("setup: the target is not on the battlefield")
+		}
+		entries := []entry{
+			{[]game.Mod{game.SetControllerMod(opp)}, g.UntilEndOfTurnDuration()},
+			{[]game.Mod{game.AddTypesMod("Artifact")}, g.UntilYourNextTurnDuration(me)},
+			{[]game.Mod{game.RemoveTypesMod("Creature")}, whileOnBattlefield},
+			{[]game.Mod{game.AddSubtypesMod("Island")}, g.PinnedTo(game.IndefiniteDuration(), target)},
+			{[]game.Mod{game.AllCreatureTypesMod()}, g.UntilEndOfYourNextTurnDuration(me)},
+			{[]game.Mod{game.SetColorsMod("U")}, g.UntilEndOfTurnDuration()},
+			{[]game.Mod{game.AddKeywordsMod("flying", "toxic 1")}, g.UntilEndOfTurnDuration()},
+			{[]game.Mod{game.RemoveKeywordsMod("hexproof")}, g.UntilEndOfTurnDuration()},
+			{[]game.Mod{game.LoseAllAbilitiesMod("defender")}, g.UntilEndOfTurnDuration()},
+			{[]game.Mod{game.AddRestrictionsMod(game.CantAttackOrBlock)}, g.UntilEndOfTurnDuration()},
+			{game.SetBasePTMods(0, 2), g.UntilEndOfTurnDuration()},
+			{[]game.Mod{game.ModifyPTMod(3, -1)}, g.UntilEndOfTurnDuration()},
+		}
+		for i, e := range entries {
+			if !g.RegisterScopedEffectForEffect(uuid.Nil, pinned, e.mods, e.d,
+				fmt.Sprintf("corpus scoped effect %d", i)) {
+				t.Fatalf("entry %d registered nothing", i)
+			}
+		}
+		// Suspend's shape: any entry of the object, while its caster
+		// controls it.
+		if !g.RegisterScopedEffectForEffect(hasty,
+			[]game.AffectedObject{{ID: hasty, Controller: me}},
+			[]game.Mod{game.AddKeywordsMod("haste")},
+			game.UntilYouLoseControlOfDuration(hasty, me), "Suspend — haste (CR 702.62a)") {
+			t.Fatal("the suspend-shaped entry registered nothing")
+		}
+	})
+	return g
+}
+
+// corpusMassDiminish casts the real card, so the file holds what the
+// catalog writes rather than what a test registered by hand.
+func corpusMassDiminish(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	other := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	pushBattlefieldCardWithTimestamp(g, corpusCreature(other.ID, "Craw Wurm", 6, 4))
+	pushBattlefieldCardWithTimestamp(g, corpusCreature(other.ID, "Grizzly Bears", 2, 2))
+	castCatalogSpell(t, g, "Mass Diminish", "Sorcery", massDiminishOracle,
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: other.ID}})
+	passPriorityAroundTable(t, g)
+	if len(g.ScopedEffects) != 1 {
+		t.Fatalf("setup: Mass Diminish registered %d scoped effects, want 1", len(g.ScopedEffects))
+	}
+	return g
+}
+
+// ---------------------------------------------------------------
 // Rendering a board deterministically
 // ---------------------------------------------------------------
 
@@ -359,10 +481,15 @@ func firstDifferingLine(a, b []byte) string {
 //
 //	go test ./internal/cards/effects -run TestWriteSnapshotCorpus -args -write-corpus
 //
-// A version's set is written ONCE. If the directory already exists the
-// writer does not touch it: it re-renders every board and fails if any
-// would come out different, because a frozen set is never rewritten —
-// a changed shape is a new version, in a new directory.
+// The writer NEVER TOUCHES AN EXISTING FILE (ADR 0041's 2026-09-24
+// phase 3 amendment, owner decision 6 — narrowed from "never touches an
+// existing directory"). For a version whose directory already exists it
+// re-renders every board and fails if any file already there would come
+// out different, because a fixture is never rewritten: a changed shape
+// is a new version, in a new directory. A board with no file yet — one a
+// later change under the same version added — is written beside the
+// others, which is how a shape that becomes a restore point after its
+// version was introduced gets frozen without a bump.
 func TestWriteSnapshotCorpus(t *testing.T) {
 	if !*writeCorpus {
 		t.Skip("writes fixtures; run with -args -write-corpus")
@@ -378,21 +505,21 @@ func TestWriteSnapshotCorpus(t *testing.T) {
 		rendered[b.name] = first
 	}
 
-	if _, err := os.Stat(dir); err == nil {
-		var changed []string
-		for name, raw := range rendered {
-			existing, err := os.ReadFile(filepath.Join(dir, name+".json"))
-			if err != nil {
-				changed = append(changed, name+".json (not in the frozen set)")
-				continue
-			}
-			if !bytes.Equal(existing, raw) {
-				changed = append(changed, name+".json: "+firstDifferingLine(existing, raw))
-			}
+	var changed []string
+	fresh := map[string][]byte{}
+	for name, raw := range rendered {
+		existing, err := os.ReadFile(filepath.Join(dir, name+".json"))
+		if err != nil {
+			fresh[name] = raw
+			continue
 		}
-		if len(changed) > 0 {
-			sort.Strings(changed)
-			t.Fatalf(`%s is frozen: it was written by an earlier build of schema v%d and
+		if !bytes.Equal(existing, raw) {
+			changed = append(changed, name+".json: "+firstDifferingLine(existing, raw))
+		}
+	}
+	if len(changed) > 0 {
+		sort.Strings(changed)
+		t.Fatalf(`%s holds fixtures written by an earlier build of schema v%d, and
 fixtures are never rewritten. The writer would now produce:
 
   %s
@@ -400,22 +527,35 @@ fixtures are never rewritten. The writer would now produce:
 If the snapshot's shape changed, that is a new schema version: bump
 SnapshotSchemaVersion (see its comment for when that is required) and
 run this again to write v%d beside the old set. If only the scripted
-boards changed, nothing needs doing — the frozen set is still the
-fixture, and the new boards go in the next version's set.`,
-				dir, game.SnapshotSchemaVersion, strings.Join(changed, "\n  "), game.SnapshotSchemaVersion+1)
-		}
+boards changed, nothing needs doing — the file on disk is still the
+fixture. Nothing was written.`,
+			dir, game.SnapshotSchemaVersion, strings.Join(changed, "\n  "), game.SnapshotSchemaVersion+1)
+	}
+	if len(fresh) == 0 {
 		t.Logf("%s already holds this build's output; nothing to write", dir)
 		return
 	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	for name, raw := range rendered {
-		if err := os.WriteFile(filepath.Join(dir, name+".json"), raw, 0o644); err != nil {
+	for name, raw := range fresh {
+		path := filepath.Join(dir, name+".json")
+		// O_EXCL: the one guarantee this function makes is that it
+		// never overwrites a fixture, so it asks the filesystem to
+		// refuse rather than trusting the read above.
+		f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := f.Write(raw); err != nil {
+			f.Close()
+			t.Fatal(err)
+		}
+		if err := f.Close(); err != nil {
 			t.Fatal(err)
 		}
 	}
-	t.Logf("wrote %d fixtures to %s", len(rendered), dir)
+	t.Logf("wrote %d new fixtures to %s", len(fresh), dir)
 }
 
 // TestSnapshotCorpusBoardsStillBuild keeps the writer honest between

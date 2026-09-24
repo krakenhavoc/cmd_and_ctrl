@@ -217,6 +217,7 @@ var gameFields = plan(
 	"mu", rebuilt, "a fresh receiver owns its own lock, exactly as Clone does",
 
 	"ScopedStatics", dropped, "StaticAbility is two closures; counted in ContinuationCensus.ScopedStatics",
+	"ScopedEffects", carried, "GameSnapshot.ScopedEffects — ADR 0041 phase 3's data twin of ScopedStatics (#1497)",
 	"TurnScopedReplacements", dropped, "ReplacementEffect is three closures; counted in ContinuationCensus.TurnScopedReplacements",
 	"TurnScopedBlockRules", dropped, "BlockRule is two closures; counted in ContinuationCensus.TurnScopedBlockRules",
 	"testReplacements", dropped, "test-only injection slot; production has no path to it",
@@ -492,6 +493,21 @@ var scopedStaticFields = plan(
 	"Label", dropped, "reaches the operator through ContinuationCensus.Labels",
 )
 
+// scopedEffectFields classifies ADR 0041 phase 3's data record
+// (#1497). Every field is carried: the record exists precisely so that
+// nothing about a continuous effect from a resolution has to be
+// dropped.
+var scopedEffectFields = plan(
+	"Affected", carried, "",
+	"Mods", carried, "",
+	"Source", carried, "",
+	"SourceName", carried, "",
+	"Controller", carried, "",
+	"Timestamp", carried, "",
+	"Duration", carried, "",
+	"Label", carried, "",
+)
+
 var zoneFields = plan(
 	"Kind", carried, "",
 	"Owner", carried, "",
@@ -627,6 +643,10 @@ var pendingChoiceFields = plan(
 	// game would let the player spend restricted mana on anything.
 	"ManaRestrictions", carried, "",
 	"ManaSourceKinds", carried, "",
+	// #1547: the spend riders the pick's token will carry (Cavern of
+	// Souls' "that spell can't be countered"). Without it a restored
+	// pick mints mana that does nothing when it is spent.
+	"ManaRiders", carried, "",
 	// #742: how many tokens each colour of a one-pick-N-mana choice
 	// mints (Gilded Lotus). Without it a restored pick adds one.
 	"ManaAmounts", carried, "",
@@ -755,6 +775,7 @@ var driftPlans = []struct {
 	{DelayedTrigger{}, delayedTriggerFields},
 	{PendingChoice{}, pendingChoiceFields},
 	{ScopedStatic{}, scopedStaticFields},
+	{ScopedEffect{}, scopedEffectFields},
 }
 
 // driftPlanName is the type name a plan is keyed and reported under.

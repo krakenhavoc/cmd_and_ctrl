@@ -1126,3 +1126,27 @@ with, taking each recommendation.
    existing directory" to "the writer never touches an existing
    **file**" — a fixture is still never edited, regenerated or
    deleted.
+
+### Implementation notes (PR 1, #1555)
+
+Three things the first slice settled that the decisions above left open.
+
+- **P4 covers durations and fields, not just mod kinds.** A duration's
+  `Kind` and `Condition` are bare ints on disk, so an unknown one would
+  have restored as an effect that never ends, or fallen through to a
+  bare "source on battlefield" test. Restore refuses both with
+  `ErrUnknownEffectKey`, and it refuses an unknown JSON field on a
+  record, an affected member, a mod or its duration, which
+  `encoding/json` would otherwise drop without a word. So a new field on
+  any of those four types, like a new mod kind, is additive within v7:
+  an older v7 binary refuses the file rather than misreading it.
+  Changing what an existing kind or field means is still a new kind or a
+  bump.
+- **The pin sees a phased-out permanent.** `Duration.Pinned` is garbage
+  collection for an object that is gone, and a phased-out permanent is
+  not gone (CR 702.26d). The pin also looks in `g.PhasedOut`, so an
+  indefinite effect applies again when its object phases in. A
+  ForAsLongAs condition still reads the battlefield alone, because
+  CR 702.26f ends a duration that tracks a phased-out permanent.
+- **`grantAbilities` is not declared yet.** It lands with ADR 0093's PR 4,
+  together with the grant seam it adapts into.

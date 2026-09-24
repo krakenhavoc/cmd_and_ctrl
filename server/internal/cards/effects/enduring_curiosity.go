@@ -27,14 +27,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     trigger would resolve.
 //
 // "It's an enchantment. (It's not a creature.)" is a CR 613.3 type
-// change with no stated duration but an implicit one: it is about
-// THIS RETURN, so it lasts for as long as the permanent that came
-// back stays on the battlefield (CR 611.2b), exactly Sower of
-// Temptation's shape one layer over (2 there, 4 here). It is built
-// with the same `StaticForDuration` + `DurationWhileSourceRemains`
-// pair Sower uses, pinned to the returned permanent's own instance ID
-// so it cannot leak onto some other Enduring Curiosity at the table or
-// onto a fresh hard-cast of this one.
+// change with no stated duration (CR 611.2a): it is about THIS
+// RETURN, so it follows the permanent that came back and ends with
+// it. That is an indefinite duration PINNED to the returned object
+// (ADR 0041 phase 3's data record, #1497) — not a "for as long as"
+// duration, which CR 702.26f would end the moment the permanent phases
+// out; the pin survives a phase cycle (CR 702.26d) and is swept only
+// when the object is gone. Pinned to the returned permanent's own
+// instance and entry stamp, so it cannot leak onto some other Enduring
+// Curiosity at the table or onto a fresh hard-cast of this one.
 //
 // The effect removes ONLY "Creature" from Types and leaves Subtypes
 // untouched — the printed text doesn't say "loses all other types"
@@ -95,30 +96,22 @@ func enduringCuriosityReturnAsEnchantment(g *game.Game, item *game.StackItem) er
 	if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneBattlefield}).Apply(ctx); err != nil {
 		return err
 	}
-	d, ok := DurationWhileSourceRemains(ctx, id)
-	if !ok {
+	affected := ctx.Game.PinnedObjectsLocked(id)
+	if len(affected) == 0 {
 		// It didn't actually take the battlefield — a replacement or a
 		// state-based action swept it away the instant it entered —
 		// so there is nothing left to keep from being a creature.
 		return nil
 	}
-	return StaticForDuration{
-		Ability: game.StaticAbility{
-			Layer: game.Layer4Type,
-			AppliesTo: func(target *game.Card, _ *game.Game, _ *game.Card) bool {
-				return target.InstanceID == id
-			},
-			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-				kept := c.Types[:0]
-				for _, t := range c.Types {
-					if t != "Creature" {
-						kept = append(kept, t)
-					}
-				}
-				c.Types = kept
-			},
-		},
-		Duration: d,
-		Label:    "Enduring Curiosity — it's an enchantment (it's not a creature)",
-	}.Apply(ctx)
+	// A data record (ADR 0041 phase 3, #1497): the effect lasts as long
+	// as the permanent does, and as a closure it kept the table off the
+	// restore path for all of it. Registered straight onto the game,
+	// not through ScopedEffectFor: the permanent IS this trigger's
+	// source, returned as a new object, which ScopedEffectFor's "this"
+	// guard (#1432) would rightly refuse to call "this".
+	ctx.Game.RegisterScopedEffectForEffect(ctx.Source(), affected,
+		[]game.Mod{game.RemoveTypesMod("Creature")},
+		ctx.Game.PinnedTo(game.IndefiniteDuration(), id),
+		"Enduring Curiosity — it's an enchantment (it's not a creature)")
+	return nil
 }

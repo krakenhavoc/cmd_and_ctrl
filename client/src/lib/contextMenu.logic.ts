@@ -28,6 +28,7 @@ import {
   planAttackAll,
   seatLabel,
 } from "./attackAll";
+import { grantedFromLabel, hasGrantedActivatedAbility } from "./abilityRef";
 import { attackersDefendedBy, attackTargetHint, permanentAttackTargets } from "./attackTargets";
 import { isCreature, isLand, isPlaneswalker } from "./cardTypes";
 import { counterCostBlocked } from "./counterCost";
@@ -307,6 +308,14 @@ export function battlefieldClickIntent(
   if (!canOverride(card, viewerID, isAdmin)) return "none";
   if (opts.rawTap) return "tap";
   if (isPlaneswalker(card)) return "abilities";
+  // ADR 0093 Decision 8 (owner decision, 2026-09-24): a permanent that
+  // another permanent granted an ACTIVATED ability is clicked for its
+  // abilities — a land under Squirrel Nest, a Sliver under Necrotic
+  // Sliver. #368's rule, extended to granted abilities on any
+  // permanent; the sandbox tap stays in the menu this opens. A granted
+  // MANA ability goes through the mana branch below, whose picker never
+  // chooses silently between two abilities (manaClickPlan).
+  if (hasGrantedActivatedAbility(card)) return "abilities";
   if (opts.manaClick && !card.tapped && (card.mana_abilities?.length ?? 0) > 0) {
     return "mana";
   }
@@ -711,6 +720,14 @@ function timingReason(loyalty: LoyaltyContext): string {
   return timing.reason ?? "Can't activate right now";
 }
 
+// withGrantor labels a row another permanent granted (ADR 0093
+// Decision 8): "Add one mana of any color (from Cryptolith Rite)".
+// One row per grantor, so two Rites read as two labelled rows.
+function withGrantor(label: string, row: { granted_by?: { name?: string } }): string {
+  const from = grantedFromLabel(row);
+  return from ? `${label} (${from})` : label;
+}
+
 // abilityItems folds the permanent's mana abilities and CR 602
 // activated abilities into the menu. Right-click used to open the
 // dedicated ManaAbilityMenu popover; with the admin menu bound to
@@ -747,7 +764,8 @@ function abilityItems(card: CardView, view: GameView, viewerID: string | null): 
     // this greyed" reason never loses to a price note.
     items.push({
       id: `mana-${a.index}`,
-      label: a.label || a.produced || "add mana",
+      // ADR 0093: a row another permanent granted says so.
+      label: withGrantor(a.label || a.produced || "add mana", a),
       hint: blocked || chargedManaCostNote(a) || undefined,
       disabled: !!blocked,
       activate: { kind: "mana", index: a.index },
@@ -764,7 +782,7 @@ function abilityItems(card: CardView, view: GameView, viewerID: string | null): 
     // says its range here; the targeting banner names each target's.
     items.push({
       id: `ability-${a.index}`,
-      label: a.label || "activate",
+      label: withGrantor(a.label || "activate", a),
       hint:
         blocked ||
         targetPriceRange(a.target_charged_mana_costs) ||

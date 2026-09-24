@@ -29,6 +29,7 @@
 // components are ManaSymbolPicker (the row of symbols, shared with the
 // mana_pick prompt) and ManaSourcePicker (the anchored popover).
 
+import { grantedFromLabel } from "./abilityRef";
 import {
   ABILITY_EXHAUSTED,
   ACTIVATION_CONDITION_UNMET,
@@ -68,6 +69,13 @@ export interface ManaPickOption {
    * activation, so no `mana_pick` follows.
    */
   colors?: string[];
+  /**
+   * ADR 0093: set when another permanent GRANTED this ability
+   * ("from Cryptolith Rite"). A granted option is never activated
+   * silently on click — the picker opens, so the player sees what
+   * they are tapping for and where it came from.
+   */
+  granted?: string;
 }
 
 // The server's own "can't" flags on a mana ability, in words. These
@@ -142,7 +150,9 @@ export function manaAbilityOption(card: CardView, a: ManaAbilityView): ManaPickO
   const slots = manaSymbols(produced);
   const choice = slots.some((s) => s.includes("|"));
   const symbols = slots.flatMap((s) => s.split("|"));
-  const rider = manaAbilityRider(a);
+  // ADR 0093: a granted row names its grantor beside the cost rider.
+  const granted = grantedFromLabel(a);
+  const rider = [manaAbilityRider(a), granted].filter(Boolean).join(" · ");
   const caption = captionFor(symbols, choice) || a.label || "Add mana";
   const disabled = blockedReason(card, a);
   const what = a.label || (produced ? `Add ${produced}` : "Add mana");
@@ -155,6 +165,7 @@ export function manaAbilityOption(card: CardView, a: ManaAbilityView): ManaPickO
     title: disabled ? `${what} — ${disabled}` : what,
     disabled: disabled || undefined,
     abilityIndex: a.index,
+    granted: granted || undefined,
   };
 }
 
@@ -236,6 +247,7 @@ export function manaAbilityOptionsFor(card: CardView, a: ManaAbilityView): ManaP
       title: base.rider ? `${adds} — ${base.rider}` : adds,
       abilityIndex: a.index,
       colors,
+      granted: base.granted,
     };
   });
 }
@@ -278,12 +290,19 @@ export type ManaClickPlan =
  * Command Tower whose identity names one colour. A lone ability the
  * server has greyed still opens the picker, so the player reads WHY
  * instead of seeing nothing happen.
+ *
+ * ADR 0093 (owner decision, 2026-09-24): a GRANTED option never goes
+ * out on its own. A creature under Cryptolith Rite, a Birds with its
+ * own ability and the granted one, and a Forest under Chromatic
+ * Lantern all open the picker — there is never a silent default
+ * between two abilities, and a lone granted one is shown with its
+ * grantor before it is used.
  */
 export function manaClickPlan(card: CardView): ManaClickPlan | null {
   const options = manaAbilityOptions(card);
   if (options.length === 0) return null;
   const [only] = options;
-  if (options.length === 1 && !only.disabled && only.abilityIndex !== undefined) {
+  if (options.length === 1 && !only.disabled && !only.granted && only.abilityIndex !== undefined) {
     return only.colors
       ? { kind: "activate", index: only.abilityIndex, colors: only.colors }
       : { kind: "activate", index: only.abilityIndex };
