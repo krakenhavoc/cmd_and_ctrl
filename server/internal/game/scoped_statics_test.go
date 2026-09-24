@@ -170,7 +170,7 @@ func TestScopedStaticFromEndStepExpiresSameTurn(t *testing.T) {
 	}
 
 	// One step: end step → cleanup, which sweeps and auto-advances
-	// to the next seat's untap. (Turn.Number counts rounds, so the
+	// to the next seat's untap. (Turn.Round counts rounds, so the
 	// seat is what changes here, not the number.)
 	if _, err := g.AdvanceStep(); err != nil {
 		t.Fatalf("AdvanceStep: %v", err)
@@ -381,7 +381,7 @@ func TestClearExpiredScopedStaticsIsIdempotent(t *testing.T) {
 }
 
 // advancePastScopedCleanup walks the cursor until the active seat changes,
-// which means this seat's cleanup step ran. (Turn.Number counts
+// which means this seat's cleanup step ran. (Turn.Round counts
 // rounds, not seat-turns, so the seat is the reliable marker.)
 func advancePastScopedCleanup(t *testing.T, g *Game) {
 	t.Helper()

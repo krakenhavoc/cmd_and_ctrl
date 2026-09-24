@@ -74,6 +74,7 @@ function snap(o: Opts = {}): GameView {
     stack: zone("stack"),
     exile: zone("exile"),
     turn: {
+      seq: 1,
       number: 1,
       active_seat: o.active ?? 0,
       priority_holder: o.holder ?? 0,

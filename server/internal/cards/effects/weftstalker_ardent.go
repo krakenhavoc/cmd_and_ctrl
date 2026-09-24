@@ -23,7 +23,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // AlternativeCost (#257), the take-back is a CR 603.7 delayed
 // trigger (#255), and the later cast is an ordinary cast from exile
 // under the granted permission impulse exile introduced (#269) with
-// S29's NotBeforeTurn floor carrying "on a later turn".
+// S29's NotBeforeSeq floor carrying "on a later turn".
 //
 // This card was the one exception ADR 0037 §5 named — a Spec that
 // shipped knowingly omitting a printed clause. The omission is gone.

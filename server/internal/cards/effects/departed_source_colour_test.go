@@ -25,6 +25,15 @@ import (
 // response, destroys it, and resolves the trigger.
 func redcapTurnedBlueThenKilled(t *testing.T, g *game.Game, target game.TargetRef) {
 	t.Helper()
+	redcapTurnedBlueAndKilled(t, g, target)
+	passPriorityAroundTable(t, g)
+}
+
+// redcapTurnedBlueAndKilled is redcapTurnedBlueThenKilled without the
+// final resolution: the trigger is still on the stack, so a test can
+// respond to it once more (#1429). Returns the Redcap's instance ID.
+func redcapTurnedBlueAndKilled(t *testing.T, g *game.Game, target game.TargetRef) uuid.UUID {
+	t.Helper()
 	me := g.Seats[g.Turn.ActiveSeat]
 	redcap := uuid.New()
 	me.Hand.PushTop(game.Card{
@@ -72,7 +81,7 @@ func redcapTurnedBlueThenKilled(t *testing.T, g *game.Game, target game.TargetRe
 	if !inYard.HasColor("R") {
 		t.Fatal("setup: the Redcap card in the graveyard must be red, or these tests prove nothing")
 	}
-	passPriorityAroundTable(t, g)
+	return redcap
 }
 
 // Protection from blue prevents the departed BLUE Redcap's damage.

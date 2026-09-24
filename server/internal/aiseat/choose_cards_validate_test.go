@@ -120,9 +120,9 @@ func validatedChooseCardsRun(t *testing.T, pickCandidates func([]game.Card) []uu
 
 	p := heuristic.New()
 	rejects := map[uuid.UUID]int{}
-	startTurn := g.Turn.Number
+	startTurn := g.Turn.Round
 	for step := 1; step <= 600; step++ {
-		if g.Turn.Number >= startTurn+2 {
+		if g.Turn.Round >= startTurn+2 {
 			if answers != 1 {
 				t.Fatalf("the table advanced but the prompt's continuation ran %d times", answers)
 			}

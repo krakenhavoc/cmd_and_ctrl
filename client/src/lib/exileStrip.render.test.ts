@@ -30,7 +30,7 @@ function snap(cards: CardView[], moves?: LegalMoveView[]): GameView {
     battlefield: { kind: "battlefield", count: 0, cards: [] },
     stack: { kind: "stack", count: 0, cards: [] },
     exile: { kind: "exile", count: cards.length, cards },
-    turn: { number: 4, active_seat: 0, priority_holder: 0, phase: "main1", step: "main" },
+    turn: { seq: 4, number: 4, active_seat: 0, priority_holder: 0, phase: "main1", step: "main" },
     legal_moves: moves,
   } as unknown as GameView;
 }
@@ -130,7 +130,7 @@ describe("ExileStrip — #1389", () => {
       owner: ME,
       controller: ME,
       type_line: "Creature — Drake",
-      exile_play: { player: ME, cast_only: true, not_before_turn: 5 },
+      exile_play: { player: ME, cast_only: true, not_before_seq: 5 },
     };
     const { container, handed } = mount(snap([warped]));
     expect(container.querySelector(".strip-slot.later")).not.toBeNull();

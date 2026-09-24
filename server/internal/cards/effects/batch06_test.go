@@ -491,9 +491,32 @@ func TestB06StartingTownEntersUntappedEarlyAndTappedLater(t *testing.T) {
 	top100AssertEnteredUntapped(t, g, early, "Starting Town (turn 1)")
 
 	g2 := newCatalogGame(t)
-	g2.Turn.Number = 4
+	g2.Seats[g2.Turn.ActiveSeat].TurnsBegun = 4
 	late := playLandFromHand(t, g2, "Starting Town", b06StartingTownOracle)
 	top100AssertEnteredTapped(t, g2, late, "Starting Town (turn 4)")
+}
+
+func TestB06StartingTownPutInDuringAnOpponentsTurnEntersTapped(t *testing.T) {
+	g := newCatalogGame(t)
+	owner := g.Seats[0]
+	id := uuid.New()
+	owner.Hand.PushTop(game.Card{
+		InstanceID: id,
+		Name:       "Starting Town",
+		TypeLine:   "Land — Town",
+		OracleID:   b06StartingTownOracle,
+		Owner:      owner.ID,
+		Controller: owner.ID,
+	})
+	g.WithWriteLock(func() {
+		g.Turn.Seq++
+		g.Turn.ActiveSeat = 1
+		g.Turn.PriorityHolder = 1
+		if _, err := g.PutFromHandOntoBattlefieldForEffect(id, game.HandEntryOptions{Controller: owner.ID}); err != nil {
+			t.Fatalf("put Starting Town onto the battlefield: %v", err)
+		}
+	})
+	top100AssertEnteredTapped(t, g, id, "Starting Town on an opponent's turn")
 }
 
 func TestB06StartingTownColouredHalfCostsALife(t *testing.T) {

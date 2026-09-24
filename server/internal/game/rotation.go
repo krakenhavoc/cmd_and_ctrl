@@ -49,10 +49,10 @@ package game
 // pass can make another creature lethally damaged on the next pass;
 // runStateChecksLocked waits for that before rotating.
 //
-// Must run BEFORE the cursor moves to the next turn: the impulse
-// grants compare their stamp against the current Turn.Number, and an
-// "until end of turn" continuous effect ends at the cleanup step of
-// the turn it was made in, not at the start of the next one.
+// Must run BEFORE the cursor moves to the next turn: every per-turn
+// duration must assess the turn that is ending, and an "until end of
+// turn" continuous effect ends at that turn's cleanup step, not at the
+// start of the next one.
 //
 // Caller must hold g.mu.
 func (g *Game) sweepTurnEndLocked() {
@@ -132,7 +132,7 @@ func (g *Game) sweepTurnEndLocked() {
 //
 // The next turn belongs to the next seat after the current active seat
 // that is still in the game. A seat that has left is passed over (CR
-// 800.4k: that player's turn doesn't begin), and Turn.Number still
+// 800.4k: that player's turn doesn't begin), and Turn.Round still
 // goes up when the rotation passes seat 0, so it keeps counting rounds
 // whether or not seat 0 is still playing.
 //
@@ -162,6 +162,12 @@ func (g *Game) beginNextTurnLocked() {
 		skipped.Step = StepCleanup
 		next = skipped.advance(n)
 	}
+	// Seats skipped under CR 800.4k never take a turn. advance is also
+	// the fixed-sequence cursor helper, so it tentatively increments Seq
+	// while walking them; collapse that walk to the one turn that really
+	// begins. TurnsBegun above still records each turn that would have
+	// begun for duration purposes.
+	next.Seq = g.Turn.Seq + 1
 	g.Turn = next
 	g.DiscardPending = nil
 	g.noteTurnBegunLocked(next.ActiveSeat)
@@ -173,7 +179,7 @@ func (g *Game) beginNextTurnLocked() {
 // ADR 0063 / #755).
 //
 // It is the counter "until your next turn" ends on, and the reason it
-// exists rather than arithmetic on `Turn.Number` is that Turn.Number
+// exists rather than arithmetic on `Turn.Round` is that Turn.Round
 // counts ROUNDS: all four seats in a Commander game share one number,
 // so "your next turn" cannot be expressed with it.
 //
@@ -231,6 +237,29 @@ func (g *Game) onTurnBeganLocked() {
 	// backstop for a turn that ended without one (ADR 0059
 	// Decision 6).
 	g.sweepCastPermissionsLocked(false)
+	if g.Turn.ActiveSeat >= 0 && g.Turn.ActiveSeat < len(g.Seats) && g.Seats[g.Turn.ActiveSeat] != nil {
+		active := g.Seats[g.Turn.ActiveSeat]
+		active.UndosRemaining = g.Settings.UndoLimit
+		// CR 302.6 keys summoning sickness to the controller's most
+		// recent turn beginning, not to the untap action. A skipped or
+		// canceled untap step (Stasis) must not leave last turn's
+		// creatures sick.
+		// Phased-out permanents are still permanents and keep their
+		// state (CR 702.26d). Clear both slices here so one that phases
+		// in during the upcoming untap step does not retain last turn's
+		// marker merely because it was temporarily absent from the
+		// battlefield slice at this boundary.
+		for _, zone := range []*Zone{g.Battlefield, g.PhasedOut} {
+			if zone == nil {
+				continue
+			}
+			for i := range zone.Cards {
+				if zone.Cards[i].Controller == active.ID {
+					zone.Cards[i].SummonedThisTurn = false
+				}
+			}
+		}
+	}
 	if g.LoyaltyActivatedThisTurn != nil {
 		g.LoyaltyActivatedThisTurn = nil
 	}
@@ -266,6 +295,16 @@ func (g *Game) onTurnBeganLocked() {
 	// each exhaust ability only once" is a claim about the whole game,
 	// which is the reason the two scopes are separate maps.
 	g.resetActivationTurnTallyLocked()
+	label := ""
+	if g.Turn.Extra {
+		label = "extra"
+	}
+	g.EmitEvent(Event{
+		Kind:   EventTurnBegan,
+		Actor:  g.Seats[g.Turn.ActiveSeat].ID,
+		Amount: g.Turn.Seq,
+		Label:  label,
+	})
 }
 
 // advancePastEliminatedLocked moves play on after a player has left

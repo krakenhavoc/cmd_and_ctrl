@@ -41,23 +41,13 @@ import "github.com/google/uuid"
 //	                                 {X} locks at 0 (CR 107.3b)
 //	"during their main phase while   Timing = TimingPlot, which no flash
 //	 the stack is empty"             grant widens (cast_timing.go)
-//	"any turn after the turn in      NotBeforeTurn — see below
+//	"any turn after the turn in      NotBeforeSeq — see below
 //	 which it became plotted"
 //
 // # The floor
 //
-// Turn.Number is a ROUND counter, not a turn counter, so "a later
-// turn" cannot be written as Number+1 without taking away the owner's
-// own turn later in this same round. It does not have to be: the plot
-// window only ever opens on the OWNER's turn, so
-//
-//   - plotted on somebody else's turn, every owner turn from here on is
-//     a later turn, and the floor is the current round;
-//   - plotted on the owner's own turn, the next owner turn is in the
-//     next round, and the floor is the round after.
-//
-// Declared: an extra turn the owner takes straight after their own, in
-// the same round, waits for the next round. Weaker, never stronger.
+// Turn.Seq changes at every turn boundary, so the printed "any turn
+// after the turn in which it became plotted" is the next sequence.
 
 // PlotExiledCardForEffect makes a card in exile plotted: its owner may
 // cast it without paying its mana cost, in their main phase with the
@@ -95,20 +85,17 @@ func (g *Game) plotExiledCardLocked(cardID, source, plotter uuid.UUID) {
 	if plotter == uuid.Nil {
 		plotter = owner
 	}
-	notBefore := g.Turn.Number
-	if g.activeSeatIDLocked() == owner {
-		notBefore++
-	}
+	notBefore := g.Turn.Seq + 1
 	g.GrantCastPermissionToCardsForEffect(CastPermission{
-		Player:        owner,
-		Zone:          ZoneExile,
-		Cost:          "{0}",
-		Timing:        TimingPlot,
-		NotBeforeTurn: notBefore,
-		Duration:      WhileInZoneDuration(),
-		CastOnly:      true,
-		Source:        source,
-		Label:         "Plotted — cast it without paying its mana cost",
+		Player:       owner,
+		Zone:         ZoneExile,
+		Cost:         "{0}",
+		Timing:       TimingPlot,
+		NotBeforeSeq: notBefore,
+		Duration:     WhileInZoneDuration(),
+		CastOnly:     true,
+		Source:       source,
+		Label:        "Plotted — cast it without paying its mana cost",
 	}, []Card{*exiled})
 	// #1382: CR 702.170c/d — the card has now become plotted. Emitted
 	// AFTER the grant so a watcher sees a card that is already

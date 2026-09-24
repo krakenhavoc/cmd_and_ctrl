@@ -272,9 +272,9 @@ func TestAdvanceStepStopsOnALoopNotice(t *testing.T) {
 	if g.LoopNotice == nil {
 		t.Fatal("the drive ran a real loop without the breaker firing")
 	}
-	if turn.Step != start.Step || turn.Number != start.Number {
+	if turn.Step != start.Step || turn.Round != start.Round {
 		t.Errorf("cursor moved to %s on turn %d; the notice should have stopped the drive at %s",
-			turn.Step, turn.Number, start.Step)
+			turn.Step, turn.Round, start.Step)
 	}
 	if !g.stackHasItemsLocked() {
 		t.Error("the loop's trigger is gone from the stack")

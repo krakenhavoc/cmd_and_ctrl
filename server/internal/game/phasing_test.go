@@ -236,6 +236,35 @@ func TestPhasingKeepsEverythingABattlefieldExitWouldClear(t *testing.T) {
 	}
 }
 
+// A phased-out permanent is absent from the battlefield slice when its
+// controller's next turn begins, but CR 702.26d still treats it as the
+// same permanent. The turn boundary must retire last turn's sickness
+// marker before the untap action phases it back in.
+func TestTurnBoundaryClearsSummoningSicknessWhilePermanentIsPhasedOut(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	me := g.Seats[0].ID
+	bear := pushPhasingTestCard(g, me, "Patient Bear", "Creature — Bear")
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == bear {
+				g.Battlefield.Cards[i].SummonedThisTurn = true
+			}
+		}
+		_ = g.PhaseOutForEffect(uuid.Nil, bear)
+		g.Turn.Seq++
+		g.onTurnBeganLocked()
+		g.performPhasingLocked(me)
+	})
+
+	in, ok := battlefieldCardByID(g, bear)
+	if !ok {
+		t.Fatal("permanent did not phase in during its controller's untap action")
+	}
+	if in.SummonedThisTurn {
+		t.Fatal("phased-out permanent retained last turn's summoning-sickness marker")
+	}
+}
+
 // CR 702.26d again, from the other side: control and ownership do not
 // change, and CR 702.26a's phase-in reads the controller AT PHASE-OUT
 // rather than the live one.

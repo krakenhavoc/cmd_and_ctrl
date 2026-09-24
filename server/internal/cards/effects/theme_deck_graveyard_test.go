@@ -194,9 +194,9 @@ func TestGraveyardThemeDeckCastsFromTheGraveyardAcrossTurns(t *testing.T) {
 
 	// --- turn 1: fill the graveyard, flash back the loot -------------
 	advanceToMainOf(t, g, themeSeat)
-	// Turn.Number counts rounds of the table, so it goes up by one
+	// Turn.Round counts rounds of the table, so it goes up by one
 	// between each of the theme seat's turns.
-	firstRound := g.Turn.Number
+	firstRound := g.Turn.Round
 	if me.Graveyard.Size() != 0 {
 		t.Fatalf("graveyard before the first cast = %d cards, want 0", me.Graveyard.Size())
 	}
@@ -264,8 +264,8 @@ func TestGraveyardThemeDeckCastsFromTheGraveyardAcrossTurns(t *testing.T) {
 	}
 
 	advanceToMainOf(t, g, themeSeat)
-	if g.Turn.Number != firstRound+1 {
-		t.Fatalf("round at the second main phase = %d, want %d", g.Turn.Number, firstRound+1)
+	if g.Turn.Round != firstRound+1 {
+		t.Fatalf("round at the second main phase = %d, want %d", g.Turn.Round, firstRound+1)
 	}
 	// Flashback is {1}{B}, off a table with no white source: the
 	// printed {2}{W} could not have been paid.
@@ -319,8 +319,8 @@ func TestGraveyardThemeDeckCastsFromTheGraveyardAcrossTurns(t *testing.T) {
 	// this seat's precombat main, which would replay turn 2.
 	advanceToStepOf(t, g, themeSeat, game.StepUpkeep)
 	advanceToMainOf(t, g, themeSeat)
-	if g.Turn.Number != firstRound+2 {
-		t.Fatalf("round at the third main phase = %d, want %d", g.Turn.Number, firstRound+2)
+	if g.Turn.Round != firstRound+2 {
+		t.Fatalf("round at the third main phase = %d, want %d", g.Turn.Round, firstRound+2)
 	}
 
 	// The flashed-back cards are in exile, a zone neither declares

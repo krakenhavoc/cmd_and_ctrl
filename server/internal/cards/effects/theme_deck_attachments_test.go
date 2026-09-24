@@ -162,7 +162,7 @@ func TestAttachmentThemeDeckPlaysThreeTurns(t *testing.T) {
 
 	// --- turn 1: the pile goes together ------------------------------
 	advanceToMainOf(t, g, themeSeat)
-	firstRound := g.Turn.Number
+	firstRound := g.Turn.Round
 
 	// The opponent's body. Placed, not cast: see the file comment.
 	theirs := seedThemeCreature(g, opponent.ID, "Pikeman", "Creature — Human Soldier", 3, 3)
@@ -280,8 +280,8 @@ func TestAttachmentThemeDeckPlaysThreeTurns(t *testing.T) {
 	}
 
 	advanceToMainOf(t, g, themeSeat)
-	if g.Turn.Number != firstRound+1 {
-		t.Fatalf("round at the second main phase = %d, want %d", g.Turn.Number, firstRound+1)
+	if g.Turn.Round != firstRound+1 {
+		t.Fatalf("round at the second main phase = %d, want %d", g.Turn.Round, firstRound+1)
 	}
 
 	castThemeSpell(t, g, me, hand["Darksteel Plate"])
@@ -360,8 +360,8 @@ func TestAttachmentThemeDeckPlaysThreeTurns(t *testing.T) {
 	// --- turn 3: Mind Control, then the two SBAs ---------------------
 	advanceToStepOf(t, g, themeSeat, game.StepUpkeep)
 	advanceToMainOf(t, g, themeSeat)
-	if g.Turn.Number != firstRound+2 {
-		t.Fatalf("round at the third main phase = %d, want %d", g.Turn.Number, firstRound+2)
+	if g.Turn.Round != firstRound+2 {
+		t.Fatalf("round at the third main phase = %d, want %d", g.Turn.Round, firstRound+2)
 	}
 
 	castThemeSpellTargeting(t, g, me, mindControl,

@@ -646,25 +646,10 @@ func (g *Game) untapStepSetLocked(activePlayer uuid.UUID) []uuid.UUID {
 }
 
 // performUntapStepLocked is the untap step's turn-based action
-// (CR 502.1-502.3): the active seat's permanents untap, plus
-// whatever an UntapStepPermission adds, and the active seat's
-// permanents stop being summoning-sick.
-//
-// The sickness clear and the untap are SEPARATE walks on purpose,
-// and this is the one place the difference is visible. CR 302.6 ends
-// summoning sickness for permanents their controller has controlled
-// continuously since THEIR most recent turn began — it is about
-// whose turn it is, not about untapping. A Seedborn Muse controller
-// untapping on an opponent's turn unquestionably untaps; their
-// creatures are just as unquestionably still sick. The old code
-// could write one loop because the two sets were the same set; they
-// are not any more.
-//
-// The clear stays unconditional (rather than creature-gated) because
-// SummonedThisTurn is the raw "entered this turn" marker and CR
-// 302.6's creature test is applied at read time in
-// HasSummoningSickness — see #537, which moved the test there and
-// must not be undone by re-adding one here.
+// (CR 502.1-502.3): the active seat's permanents untap, plus whatever
+// an UntapStepPermission adds. Summoning sickness is reset at the turn-
+// began boundary in onTurnBeganLocked, not here: CR 302.6 keys it to
+// the turn beginning, even when an effect skips or cancels untapping.
 //
 // The set is read off FRESH layers. The step-entry hook recomputes
 // before it gets here, but this is the read that went wrong when it
@@ -688,12 +673,9 @@ func (g *Game) untapStepSetLocked(activePlayer uuid.UUID) []uuid.UUID {
 // set untaps in one loop from the prompt's continuation
 // (finishUntapStepLocked). See untap_choice.go.
 //
-// The summoning-sickness clear and the marker sweep stay eager, and
-// deliberately so. The first is a different turn-based action that does
-// not depend on the answer (CR 302.6, above). The second is used up by
-// the step that happened rather than by the permanents that untapped
-// (ADR 0058 Decision 2), and re-running it after a pause would consume
-// twice.
+// The marker sweep stays eager: it is used up by the step that happened
+// rather than by the permanents that untapped (ADR 0058 Decision 2), and
+// re-running it after a pause would consume twice.
 //
 // Returns whether the step PAUSED. A paused step has not moved the
 // cursor either; the caller must not advance it. See
@@ -708,9 +690,9 @@ func (g *Game) performUntapStepLocked(seat int) (paused bool) {
 	activePlayer := g.Seats[seat].ID
 	// CR 502.1, the FIRST of this step's three turn-based actions and
 	// the one this function is not named after: phasing (#1199, ADR
-	// 0084, phasing.go). Ahead of the CR 302.6 sickness clear and well
-	// ahead of untapStepSetLocked, because a permanent phasing in has
-	// to be in the untap set and one phasing out has to be out of it.
+	// 0084, phasing.go). Ahead of untapStepSetLocked, because a
+	// permanent phasing in has to be in the untap set and one phasing
+	// out has to be out of it.
 	//
 	// HERE RATHER THAN IN THE STEP-ENTRY ARM, for the reason this
 	// file's contract gives about consumeUntapSkipsLocked: the step
@@ -726,13 +708,6 @@ func (g *Game) performUntapStepLocked(seat int) (paused bool) {
 	// a board that no longer has the phased-out permanents in it.
 	g.performPhasingLocked(activePlayer)
 	g.RecomputeLayersIfStaleLocked()
-	if g.Battlefield != nil {
-		for i := range g.Battlefield.Cards {
-			if g.Battlefield.Cards[i].Controller == activePlayer {
-				g.Battlefield.Cards[i].SummonedThisTurn = false
-			}
-		}
-	}
 	ids := g.untapStepSetLocked(activePlayer)
 	// Markers are consumed for the actual step even when their card was
 	// already upright and therefore absent from this set. Kept before any

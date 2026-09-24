@@ -66,7 +66,7 @@ func TestStartCountsTheFirstTurn(t *testing.T) {
 // TestUntilYourNextTurnSurvivesEveryOpponentsTurn is the headline for
 // #755: an effect that lasts until seat 0's next turn must sit through
 // seats 1, 2 and 3 and end only when seat 0 comes back round. A
-// duration expressed on Turn.Number could not tell those four turns
+// duration expressed on Turn.Round could not tell those four turns
 // apart — they share one round number.
 func TestUntilYourNextTurnSurvivesEveryOpponentsTurn(t *testing.T) {
 	g := newFourPlayerActiveGame(t)

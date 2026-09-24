@@ -735,9 +735,17 @@ const (
 	// do (ADR 0071 amendment, #1321).
 	EventHarnessed EventKind = "harnessed"
 
+	// EventTurnBegan — one real (not skipped) turn began. Actor is the
+	// active player, Amount is Turn.Seq, and Label is "extra" for an
+	// extra turn. Emitted after every per-turn reset and before the new
+	// turn's first EventStepBegan. It is an engine boundary event, not a
+	// second public-log line beside the step spine (ADR 0059).
+	EventTurnBegan EventKind = "turn_began"
+
 	// EventStepBegan — the turn cursor entered a step. Actor is the
-	// active player, Step the step (typed), Amount the turn number and
-	// Label the step name. Emitted from runStepEntryHooksLocked AFTER
+	// active player, Step the step (typed), Amount the turn sequence,
+	// Round the table-facing rotation, and Label the step name. Emitted
+	// from runStepEntryHooksLocked AFTER
 	// the S17 skip-step replacement window has had its say, so a step
 	// that Stasis cancelled never announces, and never while the
 	// mulligan window holds the cursor at Untap, so it fires exactly
@@ -1045,6 +1053,12 @@ type Event struct {
 	// Amount is the signed / count payload: damage dealt, life
 	// delta, number of cards, counter count after the change.
 	Amount int `json:"amount,omitempty"`
+
+	// Round is the table-facing round for EventStepBegan. Amount carries
+	// the turn sequence on EventStepBegan and EventTurnBegan; keeping the
+	// display value separate lets same-seat and extra turns retain distinct
+	// identities.
+	Round int `json:"round,omitempty"`
 
 	// LookedAt is the SIZE of a finished keyword action that looks at
 	// the top of a library — the "2" in "scry 2" — on EventScry and

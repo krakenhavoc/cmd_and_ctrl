@@ -195,17 +195,20 @@ func TestVigilantAttackerDoesNotTap(t *testing.T) {
 
 	moveTo(t, g, p, bird, game.ZoneRef{Kind: game.ZoneBattlefield})
 	// Put the cursor where the reporter was — their own declare-
-	// attackers step — and clear summoning sickness the way the
-	// untap step they passed through would have.
+	// attackers step — and mark the creature as one they controlled
+	// when this turn began.
 	g.Turn = game.Turn{
-		Number:         3,
+		Seq:            3,
+		Round:          3,
 		ActiveSeat:     0,
 		PriorityHolder: 0,
 		Phase:          game.PhaseCombat,
 		Step:           game.StepDeclareAttackers,
 	}
-	if err := g.UntapAll(p.ID); err != nil {
-		t.Fatalf("UntapAll: %v", err)
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == bird {
+			g.Battlefield.Cards[i].SummonedThisTurn = false
+		}
 	}
 
 	if err := g.DeclareAttacker(bird, opponent); err != nil {
@@ -233,7 +236,8 @@ func TestFlashFromHandCastsAtInstantSpeed(t *testing.T) {
 	// window in the #319 log (seq 95, declare_blockers on seat 0's
 	// turn).
 	g.Turn = game.Turn{
-		Number:         4,
+		Seq:            4,
+		Round:          4,
 		ActiveSeat:     1,
 		PriorityHolder: 0,
 		Phase:          game.PhaseCombat,
@@ -267,7 +271,8 @@ func TestFlashCommanderCastsFromCommandZone(t *testing.T) {
 		t.Fatalf("commander not in the command zone: %+v", p.Command.Cards)
 	}
 	g.Turn = game.Turn{
-		Number:         4,
+		Seq:            4,
+		Round:          4,
 		ActiveSeat:     1,
 		PriorityHolder: 0,
 		Phase:          game.PhaseCombat,

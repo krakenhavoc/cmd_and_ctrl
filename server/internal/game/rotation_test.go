@@ -220,10 +220,30 @@ func TestPerTurnCachesClearWhenActiveSeatConcedes(t *testing.T) {
 // turn" effects end with it (#766, ADR 0059 Decision 6).
 func TestPassTurnSweepsTheTurn(t *testing.T) {
 	p := newRotationProbe(t)
+	cut := len(p.g.Events)
 	if err := p.g.PassTurn(); err != nil {
 		t.Fatalf("PassTurn: %v", err)
 	}
 	p.assertCleanNextTurn(t)
+	var began, firstStep *Event
+	for i := cut; i < len(p.g.Events); i++ {
+		ev := &p.g.Events[i]
+		if ev.Kind == EventTurnBegan && began == nil {
+			began = ev
+		}
+		if ev.Kind == EventStepBegan && firstStep == nil {
+			firstStep = ev
+		}
+	}
+	if began == nil {
+		t.Fatal("next turn began without EventTurnBegan")
+	}
+	if began.Actor != p.n.ID || began.Amount != p.g.Turn.Seq || began.Label != "" {
+		t.Errorf("turn-began event = %+v, want normal turn for next seat at seq %d", *began, p.g.Turn.Seq)
+	}
+	if firstStep == nil || began.Seq >= firstStep.Seq {
+		t.Errorf("turn-began event must precede the first step: began=%+v step=%+v", began, firstStep)
+	}
 }
 
 // TestSimultaneousLossesMoveTheTurnOnOnce: two players lose in one SBA

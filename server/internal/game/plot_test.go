@@ -64,7 +64,7 @@ func TestPlottedOnItsOwnersTurnWaitsForALaterTurn(t *testing.T) {
 	if perm, _ := plotLive(g, me, id); perm != nil {
 		t.Fatal("a card plotted on its owner's turn is castable that same turn")
 	}
-	g.WithWriteLock(func() { g.Turn.Number++ }) // the owner's next turn
+	g.WithWriteLock(func() { g.Turn.Seq++ }) // the owner's next turn
 	perm, open := plotLive(g, me, id)
 	if perm == nil || !open {
 		t.Fatalf("plot not castable on a later main phase: perm=%v open=%v", perm, open)
@@ -77,8 +77,8 @@ func TestPlottedOnItsOwnersTurnWaitsForALaterTurn(t *testing.T) {
 	}
 }
 
-// TestPlottedOnAnotherTurnOpensOnTheOwnersNextTurn: Turn.Number counts
-// rounds, so the owner's own turn later in this round IS a later turn.
+// TestPlottedOnAnotherTurnOpensOnTheOwnersNextTurn: Turn.Seq changes at
+// the boundary, so the owner's turn later in this round IS a later turn.
 func TestPlottedOnAnotherTurnOpensOnTheOwnersNextTurn(t *testing.T) {
 	g := newActiveGame(t)
 	opp := g.Seats[1]
@@ -89,6 +89,7 @@ func TestPlottedOnAnotherTurnOpensOnTheOwnersNextTurn(t *testing.T) {
 		t.Fatal("a plotted card is castable on somebody else's turn")
 	}
 	g.WithWriteLock(func() {
+		g.Turn.Seq++
 		g.Turn.ActiveSeat = 1
 		g.Turn.PriorityHolder = 1
 	})
@@ -106,7 +107,7 @@ func TestPlottedInstantIsCastOnlyInTheMainPhase(t *testing.T) {
 	toMainPhase(t, g)
 	id := plotASpell(t, g, me, "Instant", "{U}")
 	g.WithWriteLock(func() {
-		g.Turn.Number++
+		g.Turn.Seq++
 		g.Turn.Step = StepUpkeep
 		g.Turn.Phase = PhaseBeginning
 	})
@@ -139,7 +140,7 @@ func TestAFlashGrantDoesNotWidenThePlotWindow(t *testing.T) {
 	withCatalogCastTimings(t, "test-orrery-1318", CastTimingRule{Timing: TimingFlash, Label: "as though they had flash"})
 	timingSource(g, me, "Orrery", "test-orrery-1318")
 	g.WithWriteLock(func() {
-		g.Turn.Number++
+		g.Turn.Seq++
 		g.Turn.Step = StepUpkeep
 		g.Turn.Phase = PhaseBeginning
 	})

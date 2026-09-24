@@ -57,14 +57,14 @@ func TestManagerPlaysALobbySeatedTable(t *testing.T) {
 	deadline := time.Now().Add(envDuration("AISEAT_WALLCLOCK", 300*time.Second))
 	for time.Now().Before(deadline) {
 		snap := room.Game.Snapshot()
-		if snap.State != game.StateActive || snap.Turn.Number > 60 {
+		if snap.State != game.StateActive || snap.Turn.Round > 60 {
 			break
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
 	snap := room.Game.Snapshot()
-	if snap.State == game.StateActive && snap.Turn.Number <= 60 {
-		t.Fatalf("table did not finish: turn %d step %s", snap.Turn.Number, snap.Turn.Step)
+	if snap.State == game.StateActive && snap.Turn.Round <= 60 {
+		t.Fatalf("table did not finish: turn %d step %s", snap.Turn.Round, snap.Turn.Step)
 	}
 	// The runners exited on their own when the game ended …
 	//

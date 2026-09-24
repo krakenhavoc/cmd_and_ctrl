@@ -104,7 +104,7 @@ func (g *Game) QueueUpkeepPayUnlessForEffect(p UpkeepPayUnlessPrompt) error {
 // currentTurnStepLocked freezes the cursor as an anchor a later read
 // can compare itself against. Caller must hold g.mu.
 func (g *Game) currentTurnStepLocked() TurnStep {
-	return TurnStep{Turn: g.Turn.Number, Step: g.Turn.Step}
+	return TurnStep{Turn: g.Turn.Seq, Step: g.Turn.Step}
 }
 
 // choiceOwedBeforeTheStepEnds reports whether `c` is a prompt the

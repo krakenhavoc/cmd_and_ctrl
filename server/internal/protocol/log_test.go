@@ -58,7 +58,7 @@ func TestPublicLogProjectsTableEvents(t *testing.T) {
 			Controller: caster.ID,
 		})
 		g.EmitEvent(game.Event{
-			Kind: game.EventStepBegan, Actor: caster.ID, Amount: 3, Label: string(game.StepPrecombatMain),
+			Kind: game.EventStepBegan, Actor: caster.ID, Amount: 3, Round: 2, Label: string(game.StepPrecombatMain),
 		})
 		g.EmitEvent(game.Event{
 			Kind: game.EventCast, Actor: caster.ID, Source: boltID, CardID: boltID,
@@ -80,10 +80,10 @@ func TestPublicLogProjectsTableEvents(t *testing.T) {
 	}
 
 	step := findLog(t, log, LogStep)
-	if step.Turn != 3 || step.Step != "precombat_main" {
+	if step.Turn != 3 || step.Round != 2 || step.Step != "precombat_main" {
 		t.Errorf("step entry: turn %d step %q, want 3 / precombat_main", step.Turn, step.Step)
 	}
-	if want := "Turn 3 — P1 · precombat main"; step.Text != want {
+	if want := "Turn 2 — P1 · precombat main"; step.Text != want {
 		t.Errorf("step text: got %q, want %q", step.Text, want)
 	}
 

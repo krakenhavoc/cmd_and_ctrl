@@ -377,7 +377,7 @@ func (p *Policy) newState(in aiseat.Input) *state {
 		mine:      map[string]*protocol.CardView{},
 		stack:     make(map[string]*protocol.CardView, len(v.Stack.Cards)),
 		graveyard: map[string]*protocol.CardView{},
-		turn:      v.Turn.Number,
+		turn:      v.Turn.Seq,
 		step:      v.Turn.Step,
 	}
 	st.evals = st.w.Evaluate(*v)
