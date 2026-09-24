@@ -328,6 +328,14 @@ var (
 	// before the printed condition, so nothing is paid.
 	ErrAbilityExhausted = errors.New("game: this exhaust ability has already been activated")
 
+	// ErrIllegalManaColor is returned by ActivateManaAbility when the
+	// activator named the colour of a pipe slot up front (#1443,
+	// ManaAbilityParams.Colors) and the naming is not one the slot
+	// offers right now: a colour outside ManaAbilityColorOptions, or a
+	// list whose length is not the number of slots that pick. Checked
+	// before anything is validated or paid, so the source is untouched.
+	ErrIllegalManaColor = errors.New("game: that colour is not one this mana ability can add")
+
 	// ErrDefender is returned by DeclareAttacker when the creature
 	// has the defender keyword (CR 702.3). Added in S18 sub-PR 2.
 	ErrDefender = errors.New("game: creature has defender and cannot attack")

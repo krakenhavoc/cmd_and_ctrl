@@ -195,6 +195,7 @@ func (g *Game) createAbilityCopyLocked(item *StackItem, controller uuid.UUID, ta
 		Owner:        controller,
 		SourceCardID: item.SourceCardID,
 		SourceEpoch:  item.SourceEpoch,
+		SourceObject: item.SourceObject,
 		Label:        item.Label,
 		Targets:      append([]TargetRef(nil), targets...),
 		Payload:      append([]TargetRef(nil), item.Payload...),

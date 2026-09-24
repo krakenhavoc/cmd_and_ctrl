@@ -2634,3 +2634,89 @@ Endures** (`full`, via `effects.ChannelDiscountPerLegendaryCreature`).
   `Game.PriceActivation`, which calls `AbilityManaCostForTargetsForEffect`,
   so it applies board modifiers and the ability's own clause. It also takes an
   optional `targets=<kind>:<uuid>,…` for the target-keyed price.
+
+## Amendment (2026-09-24, [#1404](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1404)): "Exile this <permanent>" paid from the battlefield
+
+**Sprint:** S44 — Mana and cost components. Tracker [#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887).
+
+Decision 25 made `AbilityCost.ExileSelf` a graveyard component: scavenge,
+embalm and eternalize all print "Exile this card from your graveyard", and both
+`effects.Register` and `validateExileSelfCostLocked` hard-coded the graveyard.
+The same words appear on permanents, paid from the battlefield:
+
+```
+Perpetual Timepiece   {2}, Exile this artifact: Shuffle any number of target cards from your graveyard into your library.
+Hanged Executioner    {3}{W}, Exile this creature: Exile target creature.
+Nyx Weaver            {1}{B}{G}, Exile this creature: Return target card from your graveyard to your hand.
+Feldon's Cane         {T}, Exile this artifact: Shuffle your graveyard into your library.
+```
+
+Perpetual Timepiece shipped with its second ability left out (#1381), and its
+pin in `knownOracleMismatches` named this gap. The scan behind this amendment
+found about 40 printed cards with the clause and none in the catalog apart from
+the Timepiece.
+
+### Decision 45: `ExileSelf` follows the ability's zone
+
+The component is the same bit on the same struct. What changed is where the
+source is exiled FROM: the zone the ability was activated from, which the
+activation path has already checked is one the ability functions from (CR 113.6).
+`game.ExileSelfZoneSupported` lists the zones the component can be paid from,
+the graveyard and the battlefield. `effects.Register` checks every zone the
+ability declares against it at boot (nil `Zones` means the battlefield), and
+`validateExileSelfCostLocked` checks the activation zone against it at runtime.
+Because both use the one predicate, the boot check and the runtime check cannot
+disagree. The HAND is not in the list: the only printed "exile this card from
+your hand" is a mana ability (the Spirit Guides, #1228), which has its own
+owner.
+
+A new bit, `ExileSelfFromBattlefield`, was not needed. The printed clause is the
+same clause, the source is the payment in both zones, and nothing goes on the
+wire in either. A second bit would give a card file two ways to say one thing
+and the validator two places to be wrong.
+
+### Decision 46: the battlefield leg is a battlefield exit, asked about first like every other cost
+
+The payment is the same `payAbilityExileSelfLocked` call the graveyard leg
+makes. `routeCardToZoneLocked` finds the zone itself, and for a battlefield
+source it takes its battlefield arm (`battlefieldExitLocked`: CR 603.10
+last-known information and the CR 400.7 forget) and emits one `EventLTB` naming
+exile. So:
+
+- **Leaves-the-battlefield watchers fire, and dies watchers do not.** Every dies
+  predicate reads `NewZone == ZoneGraveyard`, and the card went to exile.
+- **It is not a sacrifice.** No `EventSacrifice` fires, so "whenever you
+  sacrifice" payoffs never see it. This is why the Timepiece could not be
+  shipped as `SacrificeThis()`.
+- **It is paid last and before the stack item is built.** The leaves-triggers it
+  queues are drained ABOVE the ability (CR 603.3b), which is the sacrifice
+  cost's order.
+- **The auto-tapper excludes the source.** `AbilityAutoTapExclusions` adds the
+  source when the cost exiles it, for the reason #1242 gave for a sacrifice: a
+  planner that cracked the permanent for the mana half would leave the exile
+  with nothing to pay. The legal enumerator builds from the same list, so the
+  bot is offered only activations the engine accepts.
+- **A commander is asked BEFORE the payment**, by the gate [ADR 0013
+  §5af](0013-replacement-effects.md) put in front of every cost (#1397,
+  `askCostCommanderLocked`). The activation path already lists the source among
+  the cards the payment moves whenever the cost has `ExileSelf`, so the
+  battlefield leg needed nothing new. The announcement parks with nothing paid;
+  the owner's answer makes it again, and the move then settles with
+  `MustSettleNow` and the answer on the route. Both legs therefore behave the
+  same way: neither pauses mid-payment, and a commander cannot be spent twice
+  while its owner decides.
+
+### Cards
+
+**Perpetual Timepiece** (caveat and pin removed, `full`), **Hanged
+Executioner**, **Nyx Weaver**, **Feldon's Cane**, all `full`.
+
+### Still out of scope
+
+- **Exile this AND other permanents in one cost.** Mechtitan Core prints "Exile
+  this Vehicle and four other artifact creatures and/or Vehicles you control",
+  and craft (CR 702.167) prints "Exile this artifact, Exile a creature you
+  control or a creature card from your graveyard". Both need a
+  battlefield-picking exile clause with a count. Neither is `ExileSelf`, and one
+  cost that moves several permanents would need the simultaneous-exit batch
+  `payCostSacrificesLocked` uses. The exile-self leg is a single-card exit.

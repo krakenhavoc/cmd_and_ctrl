@@ -973,3 +973,13 @@ a Goblin Bombardment that was sacrificed in response still deals its
 damage. `AbilitySourceGoneForEffect` is documented as being for the
 minority whose effect cannot be performed without the source as a
 permanent, and attaching it is the whole of that set today.
+
+### Note 2026-09-24 (#1418): the kind gate now reads a stamp
+
+Every ability item now names its source object
+(`StackItem.SourceObject`, [ADR 0018 amendment 2026-09-24](0018-triggers-on-the-stack.md),
+Decisions 14-16), so `AbilitySourceGoneForEffect` asks the CR 400.7
+question of any stamped item, triggers included. An item with no stamp
+(from a snapshot written before #1418) keeps the kind gate above. A
+living-weapon or Hero's Blade trigger whose Equipment was flickered in
+response now attaches nothing, just as an equip does.

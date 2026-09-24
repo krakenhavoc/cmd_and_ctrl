@@ -146,7 +146,39 @@ type StackItem struct {
 	// KIND rather than treating some value as a sentinel: zero is a
 	// real epoch, since a token created straight onto the
 	// battlefield has never changed zones.
+	//
+	// SourceObject below is the general form (#1418) and is stamped
+	// on every ability item. SourceEpoch stays for its readers
+	// (ninjutsu, hideaway), which want the POST-cost identity.
 	SourceEpoch int
+
+	// SourceObject names the OBJECT this ability came from (#1418,
+	// CR 400.7, CR 113.7a): the source's instance ID plus the
+	// Card.ObjectEpoch it had when the ability triggered or was
+	// activated. For a leaves-the-battlefield trigger of the source
+	// itself it is the epoch the permanent had ON THE BATTLEFIELD,
+	// the same object ObjectSnapshot.Ref() names, and for an
+	// activation it is read before the costs are paid, so a source
+	// that was sacrificed to its own ability is still named.
+	//
+	// It is how a resolving ability tells "this permanent" apart from
+	// a new object its card has become: PermanentForEffect(SourceObject)
+	// answers with the live permanent only while the epoch still
+	// matches, and with the last-known record otherwise.
+	// SourceObjectForEffect is the read; effects.Context.SourceRef()
+	// and SourcePermanent() are the card-side spellings.
+	//
+	// Stamped where the item is made rather than in catalog code:
+	// the trigger dispatch after Build (stampTriggerSourceLocked),
+	// queueHarvestedTriggerLocked for any trigger that reached the
+	// queue without one, the two activation announce paths,
+	// ScheduleDelayedTriggerForEffect (CR 603.7d: the resolving
+	// ability's own source object), the reflexive trigger (CR 603.12:
+	// its parent's) and the ability copy (CR 707.10). Zero on a spell,
+	// on a trigger with no source card (the monarch), and on an item
+	// restored from a snapshot written before the field existed; the
+	// ID is the "stamped" bit, since epoch zero is a real epoch.
+	SourceObject ObjectRef
 
 	// Label is a free-text caller-provided string for ability items
 	// ("Goblin Bombardment damage", "Counterspell ETB"). Empty for

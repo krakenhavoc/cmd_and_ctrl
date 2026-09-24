@@ -29,20 +29,6 @@ var knownOracleMismatches = map[string]string{
 	// also the string the bot's counter-cost test keys on.
 	"Heart of Kiran | cost not printed | crew — remove a loyalty counter from a planeswalker you control": "alternative crew cost; the card prints it as prose, not a cost line",
 
-	// #1381: ExileThis() (AbilityCost.ExileSelf) is scavenge's and
-	// embalm's "exile this card from your GRAVEYARD" component —
-	// effects.Register hard-refuses it on any ability that does not
-	// declare ZoneGraveyard (registry.go), and the engine's
-	// validateExileSelfCostLocked hardcodes the same zone at
-	// activation time regardless of what Zones an ability declares.
-	// Perpetual Timepiece's ability exiles the artifact FROM THE
-	// BATTLEFIELD as a cost — a different rule (CR 406, not "from your
-	// graveyard") with no shape yet. Confirmed by trying it: Register
-	// panics with "does not function from the graveyard". Left for the
-	// sprint that gives a battlefield permanent an exile-self cost
-	// component.
-	"Perpetual Timepiece | printed ability not registered | {2}, exile ~": "no cost shape for exiling THIS permanent from the battlefield as a cost — ExileSelf is graveyard-only (registry.go, exile_cost.go)",
-
 	// No cost shape yet (#1381 lists them).
 	"Jarad, Golgari Lich Lord | printed ability not registered | sacrifice a swamp and a forest":                           "two differently-typed sacrifice clauses in one cost",
 	"Kozilek, the Great Distortion | printed ability not registered | discard a card with mana value x":                    "X is read off the discarded card",

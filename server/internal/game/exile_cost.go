@@ -43,42 +43,61 @@ import "github.com/google/uuid"
 // its owner's graveyard still gets its CR 903.9 answer: the owner is
 // asked BEFORE the payment (#1397, cost_commander_choice.go) and the
 // move carries what they said.
+//
+// #1404 gave the CR 602 owner a second zone: "Exile this artifact:"
+// (Perpetual Timepiece, Feldon's Cane), "Exile this creature:"
+// (Hanged Executioner, Nyx Weaver) — the component paid by a PERMANENT
+// leaving the battlefield. The bit is the same and so is the rule it
+// states (the source is the payment, nothing is picked, nothing goes on
+// the wire); what the ability's declared zone decides is where the card
+// is exiled FROM. On the battlefield leg the one exit primitive takes
+// its battlefield arm (battlefieldExitLocked: the CR 603.10 last-known
+// information and the CR 400.7 forget) and emits the ordinary
+// leaves-the-battlefield event. It is not a sacrifice (no
+// EventSacrifice) and it does not die (exile is not a graveyard), so
+// "whenever a creature dies" never sees it and "whenever a permanent
+// leaves the battlefield" always does. A commander paid this way is
+// asked exactly as a scavenged one is — before the payment, by the
+// #1397 gate, which already lists the source among the cards the
+// payment moves — so both legs settle now and neither pauses.
 
-// validateExileSelfFromLocked checks an ExileSelf component without
-// moving anything — the validate-all-then-pay discipline both
-// activation paths keep, so a refused activation never leaves a
-// half-paid cost behind.
+// ExileSelfZoneSupported reports whether a CR 602 activated ability's
+// ExileSelf component can be paid from `z` (#1404): the graveyard
+// (scavenge, embalm and eternalize's "Exile this card from your
+// graveyard", #1221) or the battlefield (Perpetual Timepiece's "Exile
+// this artifact", #1404). effects.Register refuses the component on an
+// ability that functions from anywhere else, at boot, and the validator
+// below refuses an activation from anywhere else at runtime — one
+// predicate, so the two cannot disagree.
 //
-// What it enforces is one rule: the source has to be in the zone the
-// ability says the card is exiled FROM. Every card that prints the
-// component names a zone in the same breath ("from your graveyard"
-// for scavenge, embalm and eternalize; "from your hand" for the
-// Spirit Guides), and both activation paths have already checked that
-// a non-battlefield source is the activator's own card (CR 108.4), so
-// "your" needs no second test here.
-//
-// srcZone is the zone the activation was validated against and `want`
-// the zone the component is printed against, so this is a free check
-// rather than a second lookup.
-//
-// Caller must hold g.mu.
-func (g *Game) validateExileSelfFromLocked(srcZone, want ZoneKind, exileSelf bool) error {
-	if !exileSelf {
-		return nil
-	}
-	if srcZone != want {
-		return ErrActivationZoneNotAllowed
-	}
-	return nil
+// The HAND is not here, and not by accident: the only printed "Exile
+// this card from your hand" is a MANA ability (the Spirit Guides,
+// #1228), which has its own owner and its own validator below.
+func ExileSelfZoneSupported(z ZoneKind) bool {
+	return z == ZoneBattlefield || z == ZoneGraveyard
 }
 
-// validateExileSelfCostLocked is validateExileSelfFromLocked for a
-// CR 602 activated ability's cost: scavenge, embalm and eternalize
-// all print "Exile this card from your GRAVEYARD".
+// validateExileSelfCostLocked checks a CR 602 activated ability's
+// ExileSelf component without moving anything — the validate-all-then-
+// pay discipline, so a refused activation never leaves a half-paid
+// cost behind.
+//
+// The component FOLLOWS THE ABILITY'S ZONE (#1404): the source is
+// exiled from wherever the ability was activated, which the activation
+// path has already checked is a zone the ability functions from (CR
+// 113.6), and whose non-battlefield arm has already checked the card is
+// the activator's own (CR 108.4). So the one rule left here is that the
+// zone is one the component can be paid from.
 //
 // Caller must hold g.mu.
 func (g *Game) validateExileSelfCostLocked(srcZone ZoneKind, cost AbilityCost) error {
-	return g.validateExileSelfFromLocked(srcZone, ZoneGraveyard, cost.ExileSelf)
+	if !cost.ExileSelf {
+		return nil
+	}
+	if !ExileSelfZoneSupported(srcZone) {
+		return ErrActivationZoneNotAllowed
+	}
+	return nil
 }
 
 // validateManaExileSelfCostLocked is the same check for a CR 605 mana
@@ -138,7 +157,10 @@ func (g *Game) payExileSelfCostLocked(playerID, sourceID uuid.UUID, exileSelf bo
 }
 
 // payAbilityExileSelfLocked is payExileSelfCostLocked for a CR 602
-// activated ability. Caller must hold g.mu.
+// activated ability, exiling the source from the zone the ability was
+// activated from — its graveyard (#1221) or the battlefield (#1404).
+// routeCardToZoneLocked finds the zone itself, so the two legs are one
+// call. Caller must hold g.mu.
 func (g *Game) payAbilityExileSelfLocked(playerID, sourceID uuid.UUID, ab ActivatedAbilityShape, answers map[uuid.UUID]bool) error {
 	return g.payExileSelfCostLocked(playerID, sourceID, ab.Cost.ExileSelf, answers)
 }

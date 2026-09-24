@@ -21,9 +21,11 @@
 // face-down card, so an opponent's foretold card cannot reach the
 // strip at all.
 
+import { manaSymbols } from "./manaSymbol";
 import { castableFaces } from "./faces";
 import type { CardView, CastPriceView, GameView } from "./protocol";
 import { grantedFace, grantedFaceIndex } from "./zoneBrowser.logic";
+import { canCastFromHand, type Legality } from "./timing";
 
 /**
  * now     — castable (or, for a land, playable) this instant.
@@ -80,6 +82,45 @@ export function pendingHint(card: CardView, turn: number | undefined): string | 
 const ORDER: Record<ExileStripState, number> = { now: 0, waiting: 1, later: 2 };
 
 /**
+ * exileEntryFor computes the strip's entry for ONE exiled card, or
+ * null when the viewer has nothing to do with it — no permission of
+ * their own and no live server answer either (a bystander's read of
+ * somebody else's grant), or a land a cast-only grant strands (CR
+ * 305.1: a land is played, not cast, so there is nothing to offer).
+ *
+ * Pulled out of `exileStripEntries` (#1406) so the zone browser's
+ * exile button can ask the same question about a single card without
+ * re-deriving "now / waiting / later" a second way: both surfaces
+ * read `castable_here`, `cast_prices` and `exile_play` and must not
+ * drift into different opinions about the same card.
+ */
+export function exileEntryFor(
+  card: CardView,
+  viewerID: string,
+  turn: number | undefined,
+): ExileStripEntry | null {
+  const grant = card.exile_play;
+  const mine = grant?.player === viewerID;
+  const live = castableNow(card) || hasLivePrice(card);
+  if (!mine && !live) return null;
+  const played = grantedFace(card, mine ? (grant ?? null) : null);
+  const isLand = (played.type_line ?? "").toLowerCase().includes("land");
+  if (isLand && grant?.cast_only) return null;
+  const later = pendingHint(card, turn);
+  let state: ExileStripState;
+  if (castableNow(card)) state = "now";
+  else if (later !== undefined && !live) state = "later";
+  else state = "waiting";
+  return {
+    card,
+    face: mine ? grantedFaceIndex(grant ?? null) : undefined,
+    state,
+    verb: isLand ? "play" : "cast",
+    hint: state === "later" ? later : undefined,
+  };
+}
+
+/**
  * exileStripEntries is the strip's contents for `viewerID`, castable
  * cards first, then the ones waiting on their window, then the ones
  * waiting on a later turn — each group in exile order, so a card does
@@ -99,32 +140,44 @@ export function exileStripEntries(
   const turn = view.turn?.number;
   const out: ExileStripEntry[] = [];
   for (const card of view.exile?.cards ?? []) {
-    const grant = card.exile_play;
-    const mine = grant?.player === viewerID;
-    const live = castableNow(card) || hasLivePrice(card);
-    if (!mine && !live) continue;
-    // CR 305.1: a land is played, not cast, so a cast-only grant
-    // (Ragavan) strands it — there is nothing to offer.
-    const played = grantedFace(card, mine ? (grant ?? null) : null);
-    const isLand = (played.type_line ?? "").toLowerCase().includes("land");
-    if (isLand && grant?.cast_only) continue;
-    const later = pendingHint(card, turn);
-    let state: ExileStripState;
-    if (castableNow(card)) state = "now";
-    else if (later !== undefined && !live) state = "later";
-    else state = "waiting";
-    out.push({
-      card,
-      face: mine ? grantedFaceIndex(grant ?? null) : undefined,
-      state,
-      verb: isLand ? "play" : "cast",
-      hint: state === "later" ? later : undefined,
-    });
+    const e = exileEntryFor(card, viewerID, turn);
+    if (e) out.push(e);
   }
   return out
     .map((e, i) => ({ e, i }))
     .sort((a, b) => ORDER[a.e.state] - ORDER[b.e.state] || a.i - b.i)
     .map(({ e }) => e);
+}
+
+/**
+ * exileEntryLegality is the verdict a click should obey — the same
+ * one the strip reads to grey a card and caption it (#1406, shared
+ * with the zone browser's exile button so the two surfaces can't
+ * disagree about the same card):
+ *
+ *   - "later": the grant's own floor hasn't been reached. Named with
+ *     the hint rather than treated as a generic denial.
+ *   - "waiting": a live permission whose window is shut right now — a
+ *     plotted card outside its owner's main phase, a sorcery in an
+ *     end step, a card its own `cant_cast` clause refuses. Named with
+ *     the printed clause when there is one.
+ *   - "now": defers to `canCastFromHand` — the server's own move
+ *     list, mana included — which is a NARROWER answer than
+ *     `castable_here` alone: the bit says timing is open, the move
+ *     list says the viewer can actually afford it right now.
+ */
+export function exileEntryLegality(
+  entry: ExileStripEntry,
+  view: GameView,
+  viewerID: string | null,
+): Legality {
+  if (entry.state === "later") {
+    return { legal: false, reason: `Castable from exile ${entry.hint}` };
+  }
+  if (entry.state === "waiting") {
+    return { legal: false, reason: entry.card.cant_cast || "Not castable from exile right now" };
+  }
+  return canCastFromHand(entry.card, view, viewerID);
 }
 
 /** The corner badge: the cheapest price, as mana symbols. */
@@ -139,10 +192,14 @@ export interface ExileCostBadge {
   label: string;
 }
 
-/** manaSymbols splits a brace-notation cost into its symbols. */
-export function manaSymbols(cost: string): string[] {
-  return Array.from(cost.matchAll(/\{([^}]+)\}/g), (m) => m[1]);
-}
+// manaSymbols moved to manaSymbol.ts with the symbol component
+// (#1438); re-exported so this module's callers and tests keep their
+// import.
+export { manaSymbols };
+
+// symbolClass (#1406) is gone: the strip and the zone browser's exile
+// badge both draw ManaSymbol now (#1438), which is what keeps a price
+// tag looking the same wherever it appears.
 
 function priceText(p: CastPriceView): string {
   const life = p.life ? ` + ${p.life} life` : "";

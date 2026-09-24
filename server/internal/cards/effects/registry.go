@@ -456,15 +456,24 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q ability %d has {X} in its mana cost %q AND sacrifices X permanents — one announced X cannot pay both",
 				spec.Name, i, ab.Cost.Mana))
 		}
-		// #1221: the same rule one zone over. ExileSelf is scavenge's
-		// and embalm's "Exile this card from YOUR GRAVEYARD"
-		// (CR 702.96a, CR 702.128a), so an ability that declares it
-		// without declaring the graveyard could never pay it — and
-		// would look complete on the catalog page while refusing
-		// every activation.
-		if ab.Cost.ExileSelf && !zoneDeclared(ab.Zones, game.ZoneGraveyard) {
-			panic(fmt.Sprintf("effects.Register: %q ability %d declares an exile-this cost but does not function from the graveyard — build it with Scavenge / Embalm / Eternalize",
-				spec.Name, i))
+		// #1221 / #1404: the same rule one zone over. ExileSelf
+		// follows the ability's zone — scavenge's and embalm's
+		// "Exile this card from YOUR GRAVEYARD" (CR 702.96a,
+		// CR 702.128a) from the graveyard, Perpetual Timepiece's
+		// "Exile this artifact" from the battlefield (the default
+		// when Zones is nil). Every zone the ability functions from
+		// has to be one the component can be paid from
+		// (game.ExileSelfZoneSupported); an ability that declares
+		// the hand or exile could never pay it, and would look
+		// complete on the catalog page while refusing every
+		// activation.
+		if ab.Cost.ExileSelf {
+			for _, z := range game.AbilityZones(game.ActivatedAbilityShape{Zones: ab.Zones}) {
+				if !game.ExileSelfZoneSupported(z) {
+					panic(fmt.Sprintf("effects.Register: %q ability %d declares an exile-this cost but functions from the %s — the component is paid from the battlefield or the graveyard",
+						spec.Name, i, z))
+				}
+			}
 		}
 		// #1310, CR 701.67b: a waterbend clause names part of the
 		// mana component — the part its taps may cover — so the mana

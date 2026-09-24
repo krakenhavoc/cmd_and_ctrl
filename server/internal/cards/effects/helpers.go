@@ -478,6 +478,20 @@ func destroyFirstLegalCardTarget(g *game.Game, item *game.StackItem) error {
 	return nil
 }
 
+// exileFirstLegalCardTarget is destroyFirstLegalCardTarget's sibling
+// for "Exile target [permanent]." — the first card target still legal
+// at resolution (CR 608.2b) is exiled, and nothing happens when none
+// is. Teysa, Orzhov Scion's and Hanged Executioner's activations.
+func exileFirstLegalCardTarget(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, ref := range ctx.LegalTargets() {
+		if ref.Kind == game.TargetCard {
+			return ExileTarget{Target: ref.ID}.Apply(ctx)
+		}
+	}
+	return nil
+}
+
 // targetOpponentLosesAndYouGain is "target opponent loses n life and
 // you gain n life" for a trigger whose target clause is a player. A
 // target that is no longer legal is skipped, and the gain happens only

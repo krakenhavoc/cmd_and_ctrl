@@ -39,7 +39,8 @@ func CastAutoTapExclusions(params CastSpellParams) map[uuid.UUID]bool {
 }
 
 // AbilityAutoTapExclusions is the same set for a CR 602 activation's
-// mana component: the source when the cost taps or sacrifices it, and
+// mana component: the source when the cost taps, sacrifices or exiles
+// it, and
 // the permanents and cards named to its TapOthers, sacrifice, discard
 // and exile-N-cards components. Nil when empty.
 //
@@ -50,9 +51,18 @@ func CastAutoTapExclusions(params CastSpellParams) map[uuid.UUID]bool {
 // is a mana source today (supportedManaAbilityZones is the hand alone),
 // so for the graveyard form this is the list being right in advance
 // rather than a live exclusion.
+//
+// #1404: and the source when the cost EXILES it. From the battlefield
+// that is the sacrifice-this reason exactly: a permanent that is also
+// a mana source — a land with "{1}, Exile this land:", a mana rock
+// with an exile-to-shuffle ability — could otherwise be cracked by the
+// planner for the mana half (a Treasure-shaped sacrifice-for-mana
+// source is plannable since #1242), and the exile would then find
+// nothing to pay with, after the mana had been made. From the
+// graveyard it is the list being right in advance, as above.
 func AbilityAutoTapExclusions(sourceID uuid.UUID, cost AbilityCost, tapIDs, sacrificeIDs, discardIDs, exileIDs []uuid.UUID) map[uuid.UUID]bool {
 	var self []uuid.UUID
-	if cost.Tap || cost.SacrificeSelf {
+	if cost.Tap || cost.SacrificeSelf || cost.ExileSelf {
 		self = []uuid.UUID{sourceID}
 	}
 	return unionIDs(self, tapIDs, sacrificeIDs, discardIDs, exileIDs)
