@@ -175,8 +175,10 @@ func TestBatch43CardsAreRegistered(t *testing.T) {
 	}
 }
 
-// The four vanilla / near-vanilla bodies are registered so they resolve
-// automatically, and the two that print keywords declare them.
+// The two vanilla bodies are registered so they resolve automatically
+// and declare no abilities. Agonasaur Rex used to be a third row here
+// — #1412 gave it cycling and its cycle trigger, so it is no longer
+// vanilla and is covered by its own tests below instead.
 func TestB43VanillaBodiesDeclareOnlyWhatTheyPrint(t *testing.T) {
 	for _, row := range []struct {
 		name, oracle string
@@ -184,7 +186,6 @@ func TestB43VanillaBodiesDeclareOnlyWhatTheyPrint(t *testing.T) {
 	}{
 		{"Gigantosaurus", b43GigantosaurusOracle, nil},
 		{"Indomitable Ancients", b43IndomitableAncientsOracl, nil},
-		{"Agonasaur Rex", b43AgonasaurRexOracle, []string{"trample"}},
 	} {
 		spec, ok := Lookup(row.oracle)
 		if !ok {
@@ -1457,5 +1458,64 @@ func TestB43LostJitteBanksACounterAndSpendsItOnAMode(t *testing.T) {
 	}
 	if counterOn(g, jitte, "charge") != 0 {
 		t.Errorf("the counter was the cost and is gone: %d", counterOn(g, jitte, "charge"))
+	}
+}
+
+// --- #1412: cycling ---------------------------------------------------
+
+// Agonasaur Rex: cycling {2}{G} discards the Rex and draws a card,
+// and the "when you cycle this card" trigger fires from the
+// graveyard (CR 702.29c) to put two +1/+1 counters on the chosen
+// creature or Vehicle and grant it trample and indestructible until
+// end of turn.
+func TestB43AgonasaurRexCyclesForACardAndTriggersItsBonus(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	target := b43Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+
+	id, _ := cycleFromHand(t, g, "Agonasaur Rex", "Creature — Dinosaur", b43AgonasaurRexOracle, "{C}{C}{G}")
+	if !me.Graveyard.Contains(id) {
+		t.Fatal("the cycled Rex is not in the graveyard")
+	}
+	handBefore := len(me.Hand.Cards)
+
+	// The cycle trigger's target prompt is already open by the time
+	// activation returns — building a targeted trigger runs
+	// synchronously with the event that fires it, the same way the
+	// trigger_order prompt appears synchronously for Magmakin
+	// Artillerist's two triggers.
+	answerAnyPendingTargetPrompts(t, g)
+	passPriorityAroundTable(t, g)
+
+	if got := len(me.Hand.Cards); got != handBefore+1 {
+		t.Errorf("hand %d -> %d, want the cycling draw", handBefore, got)
+	}
+	if got := counterOn(g, target, game.CounterPlusOne); got != 2 {
+		t.Errorf("+1/+1 counters on the target: got %d, want 2", got)
+	}
+	if !hasEffectiveKeyword(t, g, target, "trample") {
+		t.Error("the cycle trigger did not grant trample")
+	}
+	if !hasEffectiveKeyword(t, g, target, "indestructible") {
+		t.Error("the cycle trigger did not grant indestructible")
+	}
+}
+
+// Cycling is refused without the mana to pay for it — the discard and
+// the draw never happen.
+func TestB43AgonasaurRexCyclingRefusedWithoutMana(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	for g.Turn.Step != game.StepPrecombatMain {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+	id := pushCatalogHandCard(me, "Agonasaur Rex", "Creature — Dinosaur", b43AgonasaurRexOracle)
+	if err := g.ActivateCatalogAbility(me.ID, id, 0, game.ActivateAbilityParams{Strict: true}); err == nil {
+		t.Fatal("{2}{G} must be paid to cycle")
+	}
+	if !me.Hand.Contains(id) {
+		t.Error("the Rex was discarded despite the unpaid cost")
 	}
 }
