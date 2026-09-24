@@ -208,7 +208,7 @@ func riderGiveImportedCommander(g *game.Game, p *game.Player, name, manaCost str
 // narrow. Adding a card here needs the printed clause, which
 // TestNarrowToCommanderIdentityMatchesOracleText checks against the
 // real dump.
-var identityNarrowingCards = []string{"Arcane Signet", "Command Tower", "Commander's Sphere", "Path of Ancestry"}
+var identityNarrowingCards = []string{"Arcane Signet", "Command Tower", "Commander's Sphere", "Opal Palace", "Path of Ancestry"}
 
 func TestOnlyCommanderIdentityCardsNarrow(t *testing.T) {
 	var got []string
