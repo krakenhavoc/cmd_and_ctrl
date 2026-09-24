@@ -1645,6 +1645,16 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"infect"` | Infect (CR 702.90) — #748, the damage tail: -1/-1 counters on a creature, poison on a player |
 | `"wither"` | Wither (CR 702.80) — #748, the damage tail: -1/-1 counters on a creature |
 | `"toxic N"` | Toxic (CR 702.164) — #748, N extra poison on combat damage to a player. Numbered AND cumulative: read it with `game.ToxicTotal`, never `HasKeyword`, and grant it through `game.AppendKeywordAbility` so a second instance adds up ([ADR 0056](docs/decisions/0056-infect-wither-toxic.md)) |
+| `"prowess"` | Prowess (CR 702.108) — #706, the first TRIGGERED keyword in the table: `TriggersForCard` turns each instance on the effective ability list into one trigger (`game/prowess.go`). Cumulative like toxic, so grant it through `game.AppendKeywordAbility`. Never write a prowess trigger by hand — declare the token ([ADR 0014 amendment 2026-09-24](docs/decisions/0014-combat-keywords.md)) |
+
+**A keyword that is a trigger** has two shapes, and ADR 0014's
+2026-09-24 amendment says which to use. A constructor on
+`Spec.Triggered` (`Cascade()`, `Storm()`, `Ward(...)`) when the keyword
+carries a parameter a bare token cannot hold or triggers from the
+stack; a token here with an engine-side trigger (prowess) when it lives
+on permanents, is granted and printed on tokens, and needs to work on a
+card with no catalog entry. Either way the trigger carries its name in
+`game.TriggeredAbility.Keyword`, which `cards/coverage` reads (#1258).
 
 Hexproof, shroud, indestructible and changeling are not combat
 keywords, but they ride the same `PrintedKeywords` slot and the same

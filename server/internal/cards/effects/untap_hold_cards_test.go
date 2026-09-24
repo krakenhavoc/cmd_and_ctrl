@@ -80,7 +80,7 @@ func TestUntapHoldCardsAreRegistered(t *testing.T) {
 		name, oracle string
 		full         bool
 	}{
-		{"Ty Lee, Chi Blocker", oracleTyLee, false},
+		{"Ty Lee, Chi Blocker", oracleTyLee, true},
 		{"Dungeon Geists", oracleDungeonGeists, true},
 		{"Tidebinder Mage", oracleTidebinderMage, true},
 		{"Rust Tick", oracleRustTick, true},
@@ -94,10 +94,12 @@ func TestUntapHoldCardsAreRegistered(t *testing.T) {
 			t.Errorf("%s completeness = %v, want full %v", tc.name, spec.Completeness, tc.full)
 		}
 	}
-	// Ty Lee's only remaining gap is prowess (#706).
+	// Ty Lee's last gap was prowess, closed by #706: no caveat left,
+	// and both her printed keywords declared.
 	spec, _ := Lookup(oracleTyLee)
-	if len(spec.Caveats) != 1 || !slices.Contains(spec.PrintedKeywords, "flash") {
-		t.Errorf("Ty Lee caveats %q keywords %q, want the prowess caveat and flash", spec.Caveats, spec.PrintedKeywords)
+	if len(spec.Caveats) != 0 || !slices.Contains(spec.PrintedKeywords, "flash") ||
+		!slices.Contains(spec.PrintedKeywords, "prowess") {
+		t.Errorf("Ty Lee caveats %q keywords %q, want no caveat and flash + prowess", spec.Caveats, spec.PrintedKeywords)
 	}
 }
 

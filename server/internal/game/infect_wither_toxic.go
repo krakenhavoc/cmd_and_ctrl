@@ -145,7 +145,8 @@ func ToxicTotal(c *Card) int {
 // the dedupe has to become a decision instead of a habit: ADR 0056
 // Decision 1 gives it one home, and the catalog's keyword GRANT
 // helpers (GrantToAttached, KeywordGrant, GrantKeywordUntilEOT and
-// their siblings) append through it.
+// their siblings) append through it. Prowess is the second (#706, CR
+// 702.108b): each instance is its own trigger.
 //
 // The one place that must NOT use it is the synthesised static that
 // re-applies a card's own PRINTED keywords: printedCharacteristic has
@@ -169,11 +170,17 @@ func AppendKeywordAbility(abilities []string, kw string) []string {
 }
 
 // keywordIsCumulative reports whether repeating this token means
-// something. Toxic (CR 702.164b) is the only one today, and it is
+// something: prowess, by name, and toxic (CR 702.164b), which is
 // recognised by its grammar rather than by a second table, so a
 // `toxic 2` that nothing has taught this file about still counts
 // twice when it is granted twice.
 func keywordIsCumulative(kw string) bool {
+	// Prowess (CR 702.108b, #706): "if a creature has multiple
+	// instances of prowess, each triggers separately", so a second
+	// grant is a second trigger and must survive the append.
+	if kw == KeywordProwess {
+		return true
+	}
 	_, ok := ToxicValue(kw)
 	return ok
 }

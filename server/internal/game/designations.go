@@ -303,16 +303,27 @@ func TriggersForCard(c Card) []TriggeredAbility {
 	if ward := faceDownWardLocked(c); len(ward) > 0 {
 		return ward
 	}
+	// #706: keyword triggers the engine derives from the ability LIST
+	// rather than from the catalog — prowess (prowess.go). Read off the
+	// effective abilities, so a printed, token or granted instance all
+	// count, one trigger per instance (CR 702.108b), and an object
+	// with no key at all (an uncatalogued Monastery Swiftspear, a Monk
+	// token) still has them.
+	keyword := keywordTriggersFor(&c)
 	if CatalogTriggers == nil {
-		return nil
+		return keyword
 	}
 	key := CatalogAbilityKey(c)
 	if key == "" {
-		return nil
+		return keyword
 	}
-	return activeOnly(c, CatalogTriggers(key), func(t TriggeredAbility) Designation {
+	printed := activeOnly(c, CatalogTriggers(key), func(t TriggeredAbility) Designation {
 		return t.ActiveWhen
 	})
+	if len(keyword) == 0 {
+		return printed
+	}
+	return append(keyword, printed...)
 }
 
 // TriggersForKey is TriggersForCard for a harvest that holds a

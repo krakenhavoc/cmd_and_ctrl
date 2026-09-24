@@ -201,6 +201,18 @@ var canonicalKeywords = map[string]bool{
 	KeywordInfect: true,
 	KeywordWither: true,
 	KeywordToxic:  true,
+	// prowess (CR 702.108) joins with #706, in the same change that
+	// teaches the engine to honour it — and it is the table's first
+	// TRIGGERED keyword. Its consumer is keywordTriggersFor
+	// (prowess.go), which TriggersForCard asks for one trigger per
+	// instance in the effective ability list, so a printed prowess
+	// (stamped by the deck importer, no catalog entry needed), a
+	// token's and a layer-6 grant all fire. It is CUMULATIVE, like
+	// toxic (CR 702.108b: each instance triggers separately), so
+	// AppendKeywordAbility keeps every granted instance. ADR 0014
+	// amendment 2026-09-24 records why it is a token and not a
+	// constructor like ward and cascade.
+	KeywordProwess: true,
 }
 
 // KeywordChangeling is the canonical token for changeling (CR
@@ -368,8 +380,8 @@ func CanonicalKeywords(s string) ([]string, bool) {
 // "first strike", "double strike", "deathtouch", "lifelink",
 // "trample", "vigilance", "menace", "defender", "haste", "flash",
 // "hexproof", "shroud", "indestructible", "changeling", fear,
-// intimidate, shadow, horsemanship, skulk, infect, wither, and the
-// landwalk tokens ("islandwalk", "nonbasic landwalk", …). Toxic is NOT
+// intimidate, shadow, horsemanship, skulk, infect, wither, prowess,
+// and the landwalk tokens ("islandwalk", "nonbasic landwalk", …). Toxic is NOT
 // asked through here: its token carries an amount, so it is read with
 // ToxicTotal.
 //
