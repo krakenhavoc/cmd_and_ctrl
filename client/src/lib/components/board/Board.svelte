@@ -2063,7 +2063,13 @@
     {/each}
   {/if}
 
-  <CombatArrows {view} {boardEl} {beatsPrimeKey} />
+  <!-- #1467: the fan lane draws its own stack-target arrows. -->
+  <CombatArrows
+    {view}
+    {boardEl}
+    {beatsPrimeKey}
+    stackTargets={!(laneShowsStack && floatingStackStyle === "fan")}
+  />
   <HoverZoomOverlay {view} />
   <!-- Attention strip: one column over the table (the middle
        opponent's hand row in the row layout, the top-left seat's

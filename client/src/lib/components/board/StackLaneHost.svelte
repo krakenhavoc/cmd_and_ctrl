@@ -41,6 +41,7 @@
   import { metaFor } from "../../cardMetaCache";
   import Icon from "../Icon.svelte";
   import StackLanePlaceholder from "./StackLanePlaceholder.svelte";
+  import StackLaneFan from "./StackLaneFan.svelte";
 
   interface Props {
     view: GameView;
@@ -70,7 +71,7 @@
   // PRs swap their entry; nothing else here changes.
   type StyleBody = Component<StackLaneStyleProps & { styleName: StackLaneStyle }>;
   const STYLE_BODIES: Record<StackLaneStyle, StyleBody> = {
-    fan: StackLanePlaceholder,
+    fan: StackLaneFan,
     spotlight: StackLanePlaceholder,
     ribbon: StackLanePlaceholder,
   };
