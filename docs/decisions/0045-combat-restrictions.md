@@ -2115,8 +2115,8 @@ means. The second is **weaker than printed** for the defender: CR 506.4c says
 such a creature "may be blocked", and in a multiplayer game the natural reading
 (CR 802.2a's last-known defender) is the walker's former controller. The engine
 keeps no record of that player once the walker is gone, so nobody may block it
-— the answer the generator gave before this change too. Filed separately
-rather than widened here.
+— the answer the generator gave before this change too. Filed as
+[#1364](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1364) rather than widened here.
 
 **A standing pairing is not re-judged.** The check is skipped when the pairing
 is already in the declaration's `base`. CR 508.7a and 509.1h: an attacker
@@ -2142,7 +2142,7 @@ the field falls back to a player attack's target and to nothing otherwise.
 
 - **CR 506.4c's "it may be blocked"** for an attacker whose planeswalker or
   battle has left: see above. It needs the last-known defending player
-  recorded when the permanent leaves.
+  recorded when the permanent leaves ([#1364](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1364)).
 - **CR 506.3e**, a creature put onto the battlefield blocking an attacker that
   is not attacking its controller: the engine has no "enters blocking" path
   yet, so there is nothing to gate.
