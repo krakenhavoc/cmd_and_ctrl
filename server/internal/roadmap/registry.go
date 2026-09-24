@@ -880,6 +880,22 @@ var items = []Item{
 		Phrases:  []string{"no more than one creature can", "no more than two creatures can"},
 	},
 	{
+		Slug: "conditional-combat-limits", Name: "Conditional and per-player combat limits", Kind: KindSeam, Status: StatusImplemented,
+		Summary: "Combat limits that apply only under a condition or to one player or permanent, such as Mirri, Weatherlight Duelist's \"each opponent can't block with more than one creature this combat\" and The Eternal Wanderer's \"no more than one creature can attack The Eternal Wanderer each combat\".",
+		Rules:   []string{"508.1c", "509.1b"},
+		Issue:   1534,
+		ADR:     "0045-combat-restrictions.md",
+		Probe: func(s effects.Spec) bool {
+			for _, l := range s.AttackLimits {
+				if l.While != nil || l.Scope == game.AttackLimitAttackingThis {
+					return true
+				}
+			}
+			return false
+		},
+		Examples: []string{"Mirri, Weatherlight Duelist"},
+	},
+	{
 		Slug: "extra-turns", Name: "Extra turns", Kind: KindSeam, Status: StatusPartial,
 		Summary:          "Spells and abilities that let a player take an extra turn.",
 		Missing:          "The turn plan cannot queue or insert extra turns yet.",
