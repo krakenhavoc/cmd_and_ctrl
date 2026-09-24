@@ -21,8 +21,8 @@
 //  1. Table- and viewer-level blocks that are not questions about
 //     what the viewer *may* do: no priority, mulligans open, game
 //     over, eliminated, an open pending choice, an owed
-//     declare-blockers decision (#328), the CR 726 loop breaker
-//     (#628). None of these can be out-voted by any toggle.
+//     declare-blockers decision (#328), an owed attack requirement
+//     (#1571), the CR 726 loop breaker (#628). None of these can be out-voted by any toggle.
 //  2. The autopass safety belt (ADR 0009 §7): entering the viewer's
 //     own precombat_main clears the toggle instead of passing.
 //  3. A manual one-time stop on this step → hold (#526). Beats the
@@ -61,6 +61,9 @@ export interface AutopassGates {
   hasPendingChoice: boolean;
   // #328: the viewer owes a declare-blockers decision they can act on.
   owesBlockDecision: boolean;
+  // #1571: the viewer owes an attack a CR 508.1d requirement asks for
+  // (a creature stamped must_attack); the server refuses their pass.
+  owesAttackRequirement: boolean;
   // #628 / CR 726: the server suspended automatic passing table-wide.
   loopSuspended: boolean;
   // The snapshot's current step, or null/undefined if unknown.
@@ -133,6 +136,7 @@ export function autopassDecision(g: AutopassGates): AutopassVerdict {
   if (g.tableBusy) return "hold";
   if (g.hasPendingChoice) return "hold";
   if (g.owesBlockDecision) return "hold";
+  if (g.owesAttackRequirement) return "hold";
   if (g.loopSuspended) return "hold";
   if (!g.step) return "hold";
 

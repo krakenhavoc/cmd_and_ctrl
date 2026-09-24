@@ -116,6 +116,23 @@ export function hasDeclaredAttackers(
   );
 }
 
+// owesAttackRequirement reports whether the viewer is the active player
+// in their declare-attackers step with a creature the server marks
+// `must_attack` (#1571, CR 508.1d). The server refuses their pass then,
+// so an automatic pass would only bounce — the attack is a decision
+// the player owes, like #328's block decision. Read off the server's
+// stamp; the client never derives a requirement.
+export function owesAttackRequirement(
+  snap: GameView | null | undefined,
+  viewerID: string | null,
+): boolean {
+  if (!snap || !viewerID) return false;
+  if (snap.turn?.step !== "declare_attackers") return false;
+  const active = snap.turn?.active_seat ?? -1;
+  if (active < 0 || snap.seats?.[active]?.id !== viewerID) return false;
+  return (snap.battlefield?.cards ?? []).some((c) => c.controller === viewerID && !!c.must_attack);
+}
+
 // autopassSuspended reports whether the server has told this table to
 // stop passing AUTOMATICALLY (#628, CR 726).
 //

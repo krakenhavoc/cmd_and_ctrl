@@ -430,6 +430,11 @@
     {#if card.goaded_by}
       <span class="badge goad" title="goaded" aria-label="goaded">GOAD</span>
     {/if}
+    {#if card.must_attack}
+      <span class="badge must-attack" title="must attack this combat" aria-label="must attack"
+        >MUST ATTACK</span
+      >
+    {/if}
     {#if enchantedPlayer}
       <span
         class="badge curse"
@@ -513,6 +518,11 @@
     {/if}
     {#if card.goaded_by}
       <span class="badge goad" title="goaded" aria-label="goaded">GOAD</span>
+    {/if}
+    {#if card.must_attack}
+      <span class="badge must-attack" title="must attack this combat" aria-label="must attack"
+        >MUST ATTACK</span
+      >
     {/if}
     {#if enchantedPlayer}
       <span
@@ -775,6 +785,19 @@
        commanders that get goaded back at their owner. */
     left: auto;
     right: 3px;
+    color: var(--danger);
+    background: rgba(60, 0, 0, 0.85);
+    border-color: rgba(255, 122, 122, 0.5);
+  }
+  .badge.must-attack {
+    /* #1571: a requirement the declaration still owes. Bottom edge, so
+       it clears the CMD and GOAD badges on the top corners. */
+    top: auto;
+    bottom: 3px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    white-space: nowrap;
     color: var(--danger);
     background: rgba(60, 0, 0, 0.85);
     border-color: rgba(255, 122, 122, 0.5);

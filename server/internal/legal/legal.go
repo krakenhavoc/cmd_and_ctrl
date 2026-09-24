@@ -413,13 +413,23 @@ func enumerateLocked(g *game.Game, seat uuid.UUID, opts Options) []Move {
 
 	holds := holdsPriority(g, seat)
 	if holds {
-		e.out = append(e.out, Move{
-			Type:        TypePassPriority,
-			Player:      seat,
-			Kind:        KindPass,
-			Label:       "Pass priority",
-			AlwaysLegal: true,
-		})
+		// #1571 / CR 508.1d: the active player's pass in
+		// declare_attackers is the attack declaration's checkpoint,
+		// and the engine refuses it while a free addition would obey
+		// another requirement (a goaded creature at home, Zurgo not
+		// yet declared). So it is not offered then — the same
+		// function answers both sides (#544) — and the attack moves
+		// that would answer the requirement are marked AlwaysLegal
+		// in combatMoves, so a seat that declines has one to take.
+		if !attackRequirementOwed(g, seat) {
+			e.out = append(e.out, Move{
+				Type:        TypePassPriority,
+				Player:      seat,
+				Kind:        KindPass,
+				Label:       "Pass priority",
+				AlwaysLegal: true,
+			})
+		}
 		e.castMoves()
 		e.activatedMoves()
 		e.specialActionMoves()

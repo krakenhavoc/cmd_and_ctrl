@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -1177,6 +1178,25 @@ func TestB33AlelaGoadsACreatureOfThePlayerHerFaeriesHit(t *testing.T) {
 	}
 	if b33Goaded(t, g, theirs) != me.ID {
 		t.Fatal("the chosen creature is goaded by you")
+	}
+	// #1571: the goad is enforced (CR 701.15b). On the victim's turn
+	// the Bear must attack, and a player other than you: the pass that
+	// ends the declaration is refused while it stays home, an attack
+	// on you is refused while another opponent is open, and one on the
+	// other opponent is the answer.
+	for i := 0; i < 40 && (g.Turn.Step != game.StepDeclareAttackers || g.Turn.ActiveSeat != 1); i++ {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep toward the victim's declare attackers: %v", err)
+		}
+	}
+	if err := g.PassPriority(); !errors.Is(err, game.ErrAttackRequirement) {
+		t.Fatalf("pass with the goaded Bear at home = %v, want ErrAttackRequirement", err)
+	}
+	if err := g.DeclareAttacker(theirs, me.ID); !errors.Is(err, game.ErrAttackRequirement) {
+		t.Fatalf("the goaded Bear at its goader = %v, want ErrAttackRequirement", err)
+	}
+	if err := g.DeclareAttacker(theirs, other.ID); err != nil {
+		t.Fatalf("the goaded Bear at the other opponent: %v", err)
 	}
 	// Until your next turn: still goaded through the opponents'
 	// turns, cleared at your upkeep.
