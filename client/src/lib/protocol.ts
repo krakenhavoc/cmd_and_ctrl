@@ -2094,7 +2094,11 @@ export interface CardView extends CastSurfaceView {
   // nothing is declared. #1364: once the attacked planeswalker or
   // battle has left, it still names the player who was defending it
   // (CR 506.4c "it may be blocked"), and attacking_target_kind is
-  // absent. Read it through defendingPlayerOf (attackTargets.ts), which
+  // absent. #1376: the same holds when the planeswalker or battle is
+  // removed from combat WITHOUT leaving — a control change or phasing
+  // out — and attacking_target is then the reserved id
+  // "00000000-0000-0000-0000-000000000506", which names no seat or
+  // card. Read it through defendingPlayerOf (attackTargets.ts), which
   // covers older frames.
   defending_player?: string;
   // S27: the seat protecting this battle (CR 310.9a). Absent for every
