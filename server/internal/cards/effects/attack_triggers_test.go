@@ -185,6 +185,49 @@ func TestKrenkoCounterThenGoblinsEqualToItsNewPower(t *testing.T) {
 	}
 }
 
+// TestKrenkoCounterThenGoblinsAfterAPausedPlacement is #1290's real-
+// card exit criterion: with Doubling Season AND Hardened Scales both
+// on the board, the +1/+1 counter placement pauses on a CR 616
+// ordering prompt, and the Goblin count has to read Krenko's power
+// AFTER the counter lands — not on the next line, which is where it
+// used to be read before the fix moved it onto
+// AddCounterThenForEffect.
+func TestKrenkoCounterThenGoblinsAfterAPausedPlacement(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	hs := seedReplacementPermanent(g, hardenedScalesOracle, "Hardened Scales", me.ID)
+	ds := seedReplacementPermanent(g, doublingSeasonOracle, "Doubling Season", me.ID)
+	krenko := pushDiesCreatureForTest(g, me.ID, "Krenko, Tin Street Kingpin", krenkoKingpinOrcl,
+		"Legendary Creature — Goblin", 1, 2)
+
+	declareAttack(t, g, opp.ID, krenko)
+	passPriorityAroundTable(t, g)
+
+	if got := countBattlefieldNamed(g, me.ID, "Goblin"); got != 0 {
+		t.Fatalf("%d Goblins made with the +1/+1 counter still owed to the CR 616 prompt", got)
+	}
+
+	// Doubling Season first: 1 → 2 → 3.
+	answerOrderBySource(t, g, ds, hs)
+
+	c, ok := battlefieldCard(g, krenko)
+	if !ok {
+		t.Fatalf("Krenko left the battlefield")
+	}
+	if c.Counters["+1/+1"] != 3 {
+		t.Errorf("Krenko +1/+1 counters = %d, want 3 ((1*2)+1 with Doubling Season first)", c.Counters["+1/+1"])
+	}
+	// Krenko's power is 1 (base) + 3 (counters) = 4, and Doubling
+	// Season's OTHER half doubles the token creation itself, so the
+	// real exit criterion is 8, not 4: the same board that proves the
+	// counter read is correct also proves CreateToken still sees
+	// Krenko's post-placement power rather than a stale pre-placement
+	// one.
+	if got := countBattlefieldNamed(g, me.ID, "Goblin"); got != 8 {
+		t.Errorf("Goblins = %d, want 8 (4 power × 2 from Doubling Season's token half) — Goblins were made from Krenko's power before the paused placement landed", got)
+	}
+}
+
 // "Whenever THIS creature attacks" — another attacker does nothing.
 func TestKrenkoIgnoresOtherAttackers(t *testing.T) {
 	g := newCatalogGame(t)

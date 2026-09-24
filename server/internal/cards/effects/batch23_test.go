@@ -238,6 +238,46 @@ func TestB23FangsOfKaloniaGrowsThenDoubles(t *testing.T) {
 	}
 }
 
+// TestB23FangsOfKaloniaDoublesAfterAPausedPlacement is #1290's real-
+// card exit criterion for the batch shape: with Doubling Season AND
+// Hardened Scales both on the board, the first +1/+1 counter's
+// placement pauses on a CR 616 ordering prompt, and "had a +1/+1
+// counter put on it this way" — the gate on whether the second,
+// doubling placement happens at all — has to be read AFTER that
+// placement lands. Before the fix, the growth check ran on the next
+// line while the placement was still owed to the prompt, always saw
+// no growth, and silently skipped the doubling.
+func TestB23FangsOfKaloniaDoublesAfterAPausedPlacement(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	hs := seedReplacementPermanent(g, hardenedScalesOracle, "Hardened Scales", me.ID)
+	ds := seedReplacementPermanent(g, doublingSeasonOracle, "Doubling Season", me.ID)
+	bare := b16Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2, "G")
+
+	castCatalogSpell(t, g, "Fangs of Kalonia", "Sorcery", b23FangsOfKaloniaOracle, b16TargetCard(bare))
+	passPriorityAroundTable(t, g)
+
+	if n := counterCount(g, bare, "+1/+1"); n != 0 {
+		t.Fatalf("counters landed with the first placement still owed to a CR 616 prompt: %d", n)
+	}
+
+	// Doubling Season first each time: the first placement's window
+	// (1 → 2 → 3) and, once that settles and growth is detected, the
+	// doubling placement's own window (3 → 6 → 7) — the doubling adds
+	// however many the creature has, and that add is itself subject
+	// to the same two replacements.
+	for i := 0; len(g.PendingChoices) > 0; i++ {
+		if i >= 5 {
+			t.Fatalf("still answering CR 616 prompts after %d rounds — counters = %d", i, counterCount(g, bare, "+1/+1"))
+		}
+		answerOrderBySource(t, g, ds, hs)
+	}
+
+	if n := counterCount(g, bare, "+1/+1"); n != 10 {
+		t.Errorf("+1/+1 counters = %d, want 10 (3 from the first placement's window, then 7 more from doubling those 3 through the same two replacements)", n)
+	}
+}
+
 // --- the creatures: statics and ETB --------------------------------
 
 func TestB23RegisaurAlphaMakesAHastyDinosaur(t *testing.T) {

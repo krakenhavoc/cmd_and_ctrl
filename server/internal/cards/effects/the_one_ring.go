@@ -112,17 +112,21 @@ func theOneRingUpkeepBurden(g *game.Game, item *game.StackItem) error {
 // for each burden counter on it" — the counter first, so the draw is
 // for the new total. Reversing the two would cost a card on every
 // activation.
+//
+// #1290: the draw reads the count AFTER the counter LANDS, via
+// AddCounterThenForEffect's continuation, not on the next line — a
+// Doubling Season / Hardened Scales board pauses the placement on a
+// CR 616 prompt, and reading before it resumes would draw for the
+// pre-placement count.
 func theOneRingTapDraw(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
 	if !onBattlefield(g, item.SourceCardID) {
 		return nil
 	}
-	if err := (AddCounter{Target: item.SourceCardID, Kind: theOneRingBurden, N: 1}).Apply(ctx); err != nil {
-		return err
-	}
-	c, ok := g.LookupCardForEffect(item.SourceCardID)
-	if !ok {
-		return nil
-	}
-	return DrawCards{Player: item.Controller, N: c.Counters[theOneRingBurden]}.Apply(ctx)
+	return g.AddCounterThenForEffect(item.SourceCardID, theOneRingBurden, 1, func(g *game.Game, _ int) error {
+		c, ok := g.LookupCardForEffect(item.SourceCardID)
+		if !ok {
+			return nil
+		}
+		return DrawCards{Player: item.Controller, N: c.Counters[theOneRingBurden]}.Apply(NewContext(g, item))
+	})
 }

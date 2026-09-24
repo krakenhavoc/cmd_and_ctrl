@@ -36,55 +36,6 @@ func answerOrderBySource(t *testing.T, g *game.Game, sources ...uuid.UUID) {
 	}
 }
 
-// answerOrderByLabel is answerOrderBySource for sourceless probes.
-func answerOrderByLabel(t *testing.T, g *game.Game, labels ...string) {
-	t.Helper()
-	if len(g.PendingChoices) != 1 {
-		t.Fatalf("pending choices = %d, want the one CR 616 prompt", len(g.PendingChoices))
-	}
-	p := g.PendingChoices[0]
-	byLabel := map[string]game.ReplacementEffectID{}
-	for _, id := range p.ReplacementEffectIDs {
-		label, _ := g.ReplacementOptionMetaForEffect(id)
-		byLabel[label] = id
-	}
-	order := make([]game.ReplacementEffectID, 0, len(labels))
-	for _, l := range labels {
-		id, ok := byLabel[l]
-		if !ok {
-			t.Fatalf("no replacement labelled %q in the prompt", l)
-		}
-		order = append(order, id)
-	}
-	if err := g.ResolveReplacementOrder(p.ID, p.Chooser, order); err != nil {
-		t.Fatalf("ResolveReplacementOrder: %v", err)
-	}
-}
-
-// removalProbe is a sourceless replacement on REMOVALS of one counter
-// kind. Two of them is a pausing board for a card that removes a
-// counter and then checks what is left.
-func removalProbe(label, name string, rewrite func(int) int) game.ReplacementEffect {
-	return game.ReplacementEffect{
-		Watches: []game.EventKind{game.EventCounterPlaced},
-		AppliesTo: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) bool {
-			return ev.Kind == game.RepEventCounter && ev.CounterName == name && ev.CounterDelta < 0
-		},
-		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
-			ev.CounterDelta = rewrite(ev.CounterDelta)
-			return nil
-		},
-		Label: label,
-	}
-}
-
-func registerPausingRemovalBoard(g *game.Game, name string) {
-	g.WithWriteLock(func() {
-		g.RegisterReplacementForTest(removalProbe("remove twice as many", name, func(n int) int { return n * 2 }))
-		g.RegisterReplacementForTest(removalProbe("remove one more", name, func(n int) int { return n - 1 }))
-	})
-}
-
 func hasKeywordOnBattlefield(t *testing.T, g *game.Game, id uuid.UUID, kw string) bool {
 	t.Helper()
 	g.WithWriteLock(func() { g.RecomputeLayersIfStaleLocked() })
@@ -220,11 +171,20 @@ func TestWidespreadBrutalityDealsThePowerTheCountersLandedAt(t *testing.T) {
 
 // --- Dawn of a New Age -----------------------------------------------
 
-// TestDawnOfANewAgeCashesInAfterAPausedRemoval: the end-step removal
-// pauses on a CR 616 prompt, so the draw and the "if there are no hope
-// counters" check wait with it. Read on the next line, the check saw
-// the counters still there and the enchantment was never cashed in.
-func TestDawnOfANewAgeCashesInAfterAPausedRemoval(t *testing.T) {
+// TestDawnOfANewAgeRemovalNeverPausesWithDoublingSeasonInPlay is
+// #1291's real-card exit criterion, superseding the test-only removal
+// probes this used before the fix. Two Doubling Seasons — the only
+// real catalog counter-doubler that isn't gated to "+1/+1 on a
+// creature" — are exactly the board that would have queued a CR 616
+// ordering prompt on the hope-counter removal before #1291: both
+// AppliesTo predicates lacked the ev.CounterDelta > 0 check, so a
+// removal (a negative delta) looked like a placement to double. With
+// the check in place, neither replacement is even ACTIVE for a
+// removal, so the counter comes off in one uninterrupted step and the
+// end step's later clauses ("if you do, draw"; "then if no hope
+// counters, cash in") read the right count without ever seeing a
+// pause.
+func TestDawnOfANewAgeRemovalNeverPausesWithDoublingSeasonInPlay(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	dawn := pushBattlefieldCardWithTimestamp(g, game.Card{
@@ -232,7 +192,8 @@ func TestDawnOfANewAgeCashesInAfterAPausedRemoval(t *testing.T) {
 		OracleID: b39DawnOfANewAgeOracle, Counters: map[string]int{"hope": 2},
 		Owner: me.ID, Controller: me.ID,
 	})
-	registerPausingRemovalBoard(g, "hope")
+	seedReplacementPermanent(g, doublingSeasonOracle, "Doubling Season", me.ID)
+	seedReplacementPermanent(g, doublingSeasonOracle, "Doubling Season II", me.ID)
 	hand, life := me.Hand.Size(), me.Life
 
 	g.WithWriteLock(func() {
@@ -241,45 +202,57 @@ func TestDawnOfANewAgeCashesInAfterAPausedRemoval(t *testing.T) {
 			t.Fatalf("end step: %v", err)
 		}
 	})
-	if me.Hand.Size() != hand || !g.Battlefield.Contains(dawn) {
-		t.Fatal("the rest of the end step ran with the removal still owed to the CR 616 prompt")
-	}
-	// ×2 then one more: −1 → −2 → −3, every hope counter gone.
-	answerOrderByLabel(t, g, "remove twice as many", "remove one more")
 
+	if len(g.PendingChoices) != 0 {
+		t.Fatalf(`%d pending choice(s) after the removal with two Doubling Seasons in play.
+
+A removal is not a placement (CR 122.6, CR 614.1) — Doubling Season's
+"if AN EFFECT WOULD PUT" never applies to it, so even with two of them
+on the board there is nothing to order and no prompt to pause on.`, len(g.PendingChoices))
+	}
+	if got := countersOn(g, dawn, b39HopeCounter); got != 1 {
+		t.Errorf("hope counters = %d, want 1 (removed exactly one — Doubling Season does not double a removal)", got)
+	}
+	if !g.Battlefield.Contains(dawn) {
+		t.Fatal("the enchantment was sacrificed with a hope counter still on it")
+	}
 	if me.Hand.Size() != hand+1 {
 		t.Errorf("hand %d → %d, want one draw", hand, me.Hand.Size())
 	}
-	if g.Battlefield.Contains(dawn) {
-		t.Error("no hope counters left and the enchantment was not sacrificed")
-	}
-	if me.Life != life+4 {
-		t.Errorf("life %d → %d, want +4", life, me.Life)
+	if me.Life != life {
+		t.Errorf("life %d → %d, want unchanged — a hope counter is still on the enchantment, so it has not cashed in", life, me.Life)
 	}
 }
 
 // --- Gemstone Mine -----------------------------------------------------
 
-// TestGemstoneMineIsSacrificedAfterAPausedRemoval: the rider removes a
-// mining counter and sacrifices the Mine when none is left. With the
-// removal paused, the check has to wait for it.
-func TestGemstoneMineIsSacrificedAfterAPausedRemoval(t *testing.T) {
+// TestGemstoneMineRemovalNeverPausesWithDoublingSeasonInPlay is
+// #1291's real-card counterpart for the Mine's rider. Two Doubling
+// Seasons in play would have paused the mining-counter removal on a
+// CR 616 ordering prompt before the fix; with it, neither replacement
+// is active for a removal, so the rider's "if none left, sacrifice"
+// check runs against the true post-removal count in one step.
+func TestGemstoneMineRemovalNeverPausesWithDoublingSeasonInPlay(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	mine := b31Push(g, me.ID, "Gemstone Mine", "Land", b31GemstoneMineOracle, "", 0, 0)
 	findBattlefieldCardByID(g, mine).Counters = map[string]int{"mining": 2}
-	registerPausingRemovalBoard(g, "mining")
+	seedReplacementPermanent(g, doublingSeasonOracle, "Doubling Season", me.ID)
+	seedReplacementPermanent(g, doublingSeasonOracle, "Doubling Season II", me.ID)
 
 	g.WithWriteLock(func() {
 		if err := b31RemoveMiningCounterOrSacrifice(g, me.ID, mine); err != nil {
 			t.Fatalf("rider: %v", err)
 		}
 	})
-	if !g.Battlefield.Contains(mine) {
-		t.Fatal("the Mine was sacrificed before the removal it depends on")
+
+	if len(g.PendingChoices) != 0 {
+		t.Fatalf("%d pending choice(s) after the removal with two Doubling Seasons in play — a removal must never pause", len(g.PendingChoices))
 	}
-	answerOrderByLabel(t, g, "remove twice as many", "remove one more")
-	if g.Battlefield.Contains(mine) {
-		t.Error("no mining counters left and the Mine was not sacrificed — the check ran before the removal landed")
+	if got := countersOn(g, mine, "mining"); got != 1 {
+		t.Errorf("mining counters = %d, want 1 (removed exactly one — not doubled)", got)
+	}
+	if !g.Battlefield.Contains(mine) {
+		t.Error("the Mine was sacrificed with a mining counter still on it")
 	}
 }

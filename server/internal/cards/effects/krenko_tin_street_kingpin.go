@@ -34,23 +34,23 @@ func init() {
 		Caveats:      []string{"If Krenko is removed in response to its attack trigger, the +1/+1 counter still lands on the card in the graveyard and you get two Goblins — one more than the real card's last known power would make."},
 		Triggered: []game.TriggeredAbility{
 			WheneverThisAttacks("Krenko, Tin Street Kingpin — +1/+1 counter, then Goblins", func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				if err := (AddCounter{
-					Target: item.SourceCardID,
-					Kind:   game.CounterPlusOne,
-					N:      1,
-				}).Apply(ctx); err != nil {
-					return err
-				}
-				krenko, ok := g.LookupCardForEffect(item.SourceCardID)
-				if !ok {
-					return nil
-				}
-				return CreateToken{
-					Controller: item.Controller,
-					Template:   RedGoblinToken(),
-					N:          krenko.CurrentPower(),
-				}.Apply(ctx)
+				// #1290: the power that matters is Krenko's power AFTER
+				// the +1/+1 counter LANDS, not on the next line — a
+				// Doubling Season / Hardened Scales board pauses the
+				// placement on a CR 616 prompt, and reading power
+				// before that resumes would make Goblins equal to the
+				// pre-placement power.
+				return g.AddCounterThenForEffect(item.SourceCardID, game.CounterPlusOne, 1, func(g *game.Game, _ int) error {
+					krenko, ok := g.LookupCardForEffect(item.SourceCardID)
+					if !ok {
+						return nil
+					}
+					return CreateToken{
+						Controller: item.Controller,
+						Template:   RedGoblinToken(),
+						N:          krenko.CurrentPower(),
+					}.Apply(NewContext(g, item))
+				})
 			}),
 		},
 	})
