@@ -80,7 +80,7 @@ func TestCastPermissionActive(t *testing.T) {
 		{"while in zone outlasts every turn", CastPermission{Player: me.ID, Duration: WhileInZoneDuration()}, me.ID, true, true},
 		{"somebody else", CastPermission{Player: me.ID, Duration: thisTurn}, you.ID, false, false},
 		{"the floor is not reached yet", CastPermission{
-			Player: me.ID, Duration: WhileInZoneDuration(), NotBeforeTurn: g.Turn.Number + 1,
+			Player: me.ID, Duration: WhileInZoneDuration(), NotBeforeSeq: g.Turn.Seq + 1,
 		}, me.ID, false, false},
 	}
 	for _, tc := range cases {
@@ -184,7 +184,7 @@ func TestExilePermissionLapsesWithTheTurn(t *testing.T) {
 		_, _ = MoveCard(g.Stack, g.Exile, loot)
 		g.GrantCastPermissionOverCardForEffect(loot, CastPermission{Player: me.ID, Duration: g.UntilEndOfTurnDuration()})
 		delete(g.StackMeta, loot)
-		g.Turn.Number++
+		g.Turn.Seq++
 		// #945: the window is a seat-turn, not a round, so this is
 		// what makes it a LATER turn for the grant's holder.
 		me.TurnsBegun++

@@ -79,7 +79,7 @@ describe("impulse exile — cast vs play", () => {
 // the creature away.
 
 describe("impulse exile — warp's not-before-turn floor", () => {
-  const warped = { player: "thief", not_before_turn: 5 };
+  const warped = { player: "thief", not_before_seq: 5 };
 
   it("withholds the button on the turn the grant was made", () => {
     expect(impulseGrantFor(exiled({ exile_play: warped }), "exile", "thief", 4)).toBeNull();

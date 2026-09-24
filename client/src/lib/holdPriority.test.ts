@@ -20,6 +20,7 @@ function emptyZone(kind: string, owner = ""): ZoneView {
 
 function turn(): TurnView {
   return {
+    seq: 1,
     number: 1,
     active_seat: 0,
     priority_holder: 0,

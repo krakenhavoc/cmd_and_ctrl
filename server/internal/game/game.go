@@ -1031,7 +1031,8 @@ func (g *Game) End() {
 // player has passed in succession with an empty stack — so whatever
 // the step owed resolves INSIDE the step instead of after the next
 // one's turn-based actions (#914). After the cleanup step the cursor
-// wraps to the next seat's untap step and the turn number increments.
+// wraps to the next seat's untap step, the turn sequence increments,
+// and the round increments on a rotation.
 // Returns the Turn the call ends on.
 //
 // Side effects on step transitions:
@@ -1183,7 +1184,7 @@ func (g *Game) driveStepToEndLocked() driveResult {
 			return driveHalted
 		}
 		if g.Turn.Step != start.Step ||
-			g.Turn.Number != start.Number ||
+			g.Turn.Seq != start.Seq ||
 			g.Turn.ActiveSeat != start.ActiveSeat {
 			return driveStepEnded
 		}
@@ -1483,7 +1484,8 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 		g.EmitEvent(Event{
 			Kind:   EventStepBegan,
 			Actor:  g.Seats[g.Turn.ActiveSeat].ID,
-			Amount: g.Turn.Number,
+			Amount: g.Turn.Seq,
+			Round:  g.Turn.Round,
 			Label:  string(g.Turn.Step),
 			Step:   g.Turn.Step,
 		})
@@ -1542,9 +1544,8 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 		}
 	case StepUntap:
 		if g.Turn.ActiveSeat >= 0 && g.Turn.ActiveSeat < len(g.Seats) {
-			g.Seats[g.Turn.ActiveSeat].UndosRemaining = g.Settings.UndoLimit
 			// CR 502.1-502.3, in untap.go: the active seat's
-			// permanents untap and stop being summoning-sick, plus
+			// permanents untap, plus
 			// whatever an UntapStepPermission (Seedborn Muse)
 			// adds. Each untap emits EventUntapCard, so the
 			// harvester sees "whenever a permanent becomes
@@ -1577,7 +1578,7 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 		// 4-player table's starting seat draws like everyone else.
 		// (CR 103.8b's Two-Headed Giant case does not apply — the
 		// engine has no team format.) Subsequent turns are normal.
-		if g.Turn.Number == 1 && g.Turn.ActiveSeat == g.StartingSeat &&
+		if g.Turn.Seq == 1 && g.Turn.ActiveSeat == g.StartingSeat &&
 			g.startingPlayerCountLocked() == 2 {
 			return
 		}

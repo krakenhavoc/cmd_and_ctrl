@@ -65,6 +65,7 @@ function view(seats: PlayerView[], opts: ViewOpts = {}): GameView {
     stack: zone("stack", undefined, opts.stack ?? []),
     exile: zone("exile", undefined, opts.exile ?? []),
     turn: {
+      seq: 1,
       number: 1,
       active_seat: 0,
       priority_holder: 0,

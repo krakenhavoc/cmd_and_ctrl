@@ -854,13 +854,13 @@ type StackItemView struct {
 // (Label is what the client renders). See
 // server/internal/game/delayed.go. Added in S22.
 type DelayedTriggerView struct {
-	ID          string   `json:"id"`
-	Controller  string   `json:"controller"`
-	Source      string   `json:"source,omitempty"`
-	Label       string   `json:"label,omitempty"`
-	At          string   `json:"at"`
-	CreatedTurn int      `json:"created_turn,omitempty"`
-	Cards       []string `json:"cards,omitempty"`
+	ID         string   `json:"id"`
+	Controller string   `json:"controller"`
+	Source     string   `json:"source,omitempty"`
+	Label      string   `json:"label,omitempty"`
+	At         string   `json:"at"`
+	CreatedSeq int      `json:"created_seq,omitempty"`
+	Cards      []string `json:"cards,omitempty"`
 	// On is the #663 EVENT condition — "when you next cast an
 	// instant or sorcery spell this turn". Present instead of a
 	// meaningful `at` for such a trigger, so a client can tell "owed
@@ -2048,13 +2048,13 @@ type ExilePlayView struct {
 	// cost. The card's `mana_cost` field still carries the printed
 	// value, so a client that ignores this shows the wrong price.
 	CostOverride string `json:"cost_override,omitempty"`
-	// NotBeforeTurn is the earliest turn number the grant is live on
+	// NotBeforeSeq is the earliest turn sequence the grant is live on
 	// — warp's "you may cast it from exile ON A LATER TURN" (S29).
 	// Absent for every grant that is live as soon as it is made,
 	// which is all of impulse exile and airbend. The client compares
-	// it against `turn.number` and withholds the button until then;
+	// it against `turn.seq` and withholds the button until then;
 	// the server rejects an early cast regardless.
-	NotBeforeTurn int `json:"not_before_turn,omitempty"`
+	NotBeforeSeq int `json:"not_before_seq,omitempty"`
 	// Faces are the printed faces this grant opens, when it names any
 	// (S32). Absent — every impulse, airbend, warp and cascade grant
 	// — means the grant does not speak about faces and the card's own
@@ -2647,6 +2647,7 @@ type ManaAbilityView struct {
 // (S07+); it equals ActiveSeat at every step boundary and rotates on
 // pass_priority.
 type TurnView struct {
+	Seq            int    `json:"seq"`
 	Number         int    `json:"number"`
 	ActiveSeat     int    `json:"active_seat"`
 	PriorityHolder int    `json:"priority_holder"`
@@ -2757,7 +2758,8 @@ func ViewOfGame(g *game.Game) GameView {
 			Exile:       viewOfZone(g.Exile),
 			PhasedOut:   viewOfZone(g.PhasedOut),
 			Turn: TurnView{
-				Number:         g.Turn.Number,
+				Seq:            g.Turn.Seq,
+				Number:         g.Turn.Round,
 				ActiveSeat:     g.Turn.ActiveSeat,
 				PriorityHolder: g.Turn.PriorityHolder,
 				Phase:          string(g.Turn.Phase),
@@ -5198,12 +5200,12 @@ func viewOfDelayedTriggers(queue []*game.DelayedTrigger) []DelayedTriggerView {
 			continue
 		}
 		view := DelayedTriggerView{
-			ID:          dt.ID.String(),
-			Controller:  uuidStringOrEmpty(dt.Controller),
-			Source:      uuidStringOrEmpty(dt.SourceCardID),
-			Label:       dt.Label,
-			At:          string(dt.At),
-			CreatedTurn: dt.CreatedTurn,
+			ID:         dt.ID.String(),
+			Controller: uuidStringOrEmpty(dt.Controller),
+			Source:     uuidStringOrEmpty(dt.SourceCardID),
+			Label:      dt.Label,
+			At:         string(dt.At),
+			CreatedSeq: dt.CreatedSeq,
 		}
 		for _, kind := range dt.On {
 			view.On = append(view.On, string(kind))
@@ -6502,12 +6504,12 @@ func stampGrantedPermissions(g *game.Game, seats []PlayerView, zone *ZoneView, l
 // engine names first, and privately for each holder's own (#1037).
 func exilePlayViewOf(card game.Card, perm *game.CastPermission) *ExilePlayView {
 	return &ExilePlayView{
-		Player:        perm.Player.String(),
-		CastOnly:      perm.CastOnly,
-		AnyColor:      perm.AnyColor,
-		CostOverride:  perm.Cost,
-		NotBeforeTurn: perm.NotBeforeTurn,
-		Faces:         append([]int(nil), perm.Faces...),
+		Player:       perm.Player.String(),
+		CastOnly:     perm.CastOnly,
+		AnyColor:     perm.AnyColor,
+		CostOverride: perm.Cost,
+		NotBeforeSeq: perm.NotBeforeSeq,
+		Faces:        append([]int(nil), perm.Faces...),
 		// CR 107.3b (#831): a cascade hit is granted at {0}, so
 		// its printed {X} is not being paid and the only legal
 		// announcement is 0. Through CastCostFor rather than a

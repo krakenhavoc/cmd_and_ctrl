@@ -44,7 +44,7 @@ import (
 //     turn (CR 702.143a), which no card-level declaration can say.
 //     What foretell actually rides is a per-instance CastPermission
 //     (ADR 0066) over that one exiled object, carrying the
-//     NotBeforeTurn floor, plus ADR 0069's face-down kind for the
+//     NotBeforeSeq floor, plus ADR 0069's face-down kind for the
 //     owner-only look.
 //
 // A dying COMMANDER is saved too, and its owner decides. The old

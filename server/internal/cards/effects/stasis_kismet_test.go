@@ -52,15 +52,15 @@ func TestStasisCancelsUntapStep(t *testing.T) {
 	// Upkeep → ... → seat 0 Upkeep. 10 observable steps per seat
 	// × 4 seats = 40; leave headroom for any off-by-one.
 	for i := 0; i < 80; i++ {
-		if g.Turn.ActiveSeat == 0 && g.Turn.Step == game.StepUpkeep && g.Turn.Number >= 2 {
+		if g.Turn.ActiveSeat == 0 && g.Turn.Step == game.StepUpkeep && g.Turn.Round >= 2 {
 			break
 		}
 		if _, err := g.AdvanceStep(); err != nil {
 			t.Fatalf("AdvanceStep iter %d: %v", i, err)
 		}
 	}
-	if !(g.Turn.ActiveSeat == 0 && g.Turn.Step == game.StepUpkeep && g.Turn.Number >= 2) {
-		t.Fatalf("failed to reach p0 Upkeep after walking turn cursor: turn=%d seat=%d step=%v", g.Turn.Number, g.Turn.ActiveSeat, g.Turn.Step)
+	if !(g.Turn.ActiveSeat == 0 && g.Turn.Step == game.StepUpkeep && g.Turn.Round >= 2) {
+		t.Fatalf("failed to reach p0 Upkeep after walking turn cursor: turn=%d seat=%d step=%v", g.Turn.Round, g.Turn.ActiveSeat, g.Turn.Step)
 	}
 
 	// The step we just landed on is Upkeep, NOT Untap. Stasis
@@ -280,7 +280,7 @@ func TestKismetLeavesOwnCreatureUntapped(t *testing.T) {
 func walkToUpkeepOfSeat0(t *testing.T, g *game.Game) {
 	t.Helper()
 	for i := 0; i < 80; i++ {
-		if g.Turn.ActiveSeat == 0 && g.Turn.Step == game.StepUpkeep && g.Turn.Number >= 2 {
+		if g.Turn.ActiveSeat == 0 && g.Turn.Step == game.StepUpkeep && g.Turn.Round >= 2 {
 			return
 		}
 		if _, err := g.AdvanceStep(); err != nil {
@@ -288,7 +288,32 @@ func walkToUpkeepOfSeat0(t *testing.T, g *game.Game) {
 		}
 	}
 	t.Fatalf("never reached seat 0 upkeep: turn=%d seat=%d step=%v",
-		g.Turn.Number, g.Turn.ActiveSeat, g.Turn.Step)
+		g.Turn.Round, g.Turn.ActiveSeat, g.Turn.Step)
+}
+
+// CR 302.6 measures continuous control from the beginning of the
+// controller's most recent turn. Stasis skips the untap action, but it
+// does not stop the turn from beginning, so a creature from the prior
+// turn must no longer be summoning sick at that boundary.
+func TestStasisDoesNotKeepLastTurnsCreatureSummoningSick(t *testing.T) {
+	g := newCatalogGame(t)
+	p0 := g.Seats[0].ID
+	creatureID := seedPermanentWithOracle(g, p0, "Patient Bear", "Creature — Bear", "test-patient-bear")
+	seedReplacementPermanent(g, stasisOracle, "Stasis", p0)
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == creatureID {
+				g.Battlefield.Cards[i].SummonedThisTurn = true
+			}
+		}
+	})
+
+	walkToUpkeepOfSeat0(t, g)
+	for _, c := range g.Battlefield.Cards {
+		if c.InstanceID == creatureID && c.SummonedThisTurn {
+			t.Fatal("Stasis kept a creature summoning sick after its controller's next turn began")
+		}
+	}
 }
 
 // TestStasisUpkeepSacrificeOnDecline — #338 stale-simplification

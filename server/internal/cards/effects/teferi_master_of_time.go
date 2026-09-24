@@ -51,10 +51,9 @@ import (
 // WHAT IS NOT WIRED
 //
 //   - The −10. "Take two extra turns after this one" is the extra
-//     turns seam (docs/engine-seams.md): the turn machinery has no
-//     way to insert one, `Turn.IsNewTurn` compares seats so a seat
-//     taking two in a row would not reset its per-turn state, and
-//     `Turn.Number` counts rounds rather than turns. The ability is
+//     turns seam (docs/engine-seams.md): turn identity now handles a
+//     seat taking two turns in a row, but the machinery still has no
+//     queue or way to insert those turns. The ability is
 //     registered with no effect rather than omitted, so the row is
 //     visible, the loyalty is charged and the players resolve the
 //     extra turns between themselves — the sandbox posture #259

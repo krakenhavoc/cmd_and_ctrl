@@ -89,7 +89,7 @@ func b33IslandsControlled(g *game.Game, controller uuid.UUID) int {
 
 // b33ResolutionsThisTurn counts how many times an ability of `source`
 // labelled `label` has resolved this turn — the per-turn tally's
-// per-object resolution count (Turn.Number is no use here: it counts
+// per-object resolution count (Turn.Round is no use here: it counts
 // rounds). Dalkovan Encampment's "whenever you
 // attack THIS TURN" is created once per activation, so the count is
 // how many copies of the delayed trigger exist.

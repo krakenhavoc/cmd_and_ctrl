@@ -73,7 +73,7 @@ func b25CastIsMulticolored(ev game.Event, g *game.Game) bool {
 // by that player this turn was multicolored. The engine's per-turn
 // cast tally counts creature and noncreature casts only, so the
 // answer is scanned off g.EventsThisTurn(), the bounded slice that
-// starts at the real turn boundary. Turn.Number is NOT a per-turn
+// starts at the real turn boundary. Turn.Round is NOT a per-turn
 // boundary — it counts rounds of the table, so a scan bounded on it
 // would reach back through every other player's turn in the round.
 // The cast being asked about is itself excluded.

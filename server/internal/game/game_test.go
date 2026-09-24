@@ -117,7 +117,7 @@ func TestStartTransitionsAndShuffles(t *testing.T) {
 	if g.State != StateActive {
 		t.Errorf("state: got %q, want %q", g.State, StateActive)
 	}
-	if g.Turn.Number != 1 || g.Turn.ActiveSeat != 0 || g.Turn.Step != StepUntap {
+	if g.Turn.Round != 1 || g.Turn.ActiveSeat != 0 || g.Turn.Step != StepUntap {
 		t.Errorf("starting turn: got %+v", g.Turn)
 	}
 
@@ -263,8 +263,8 @@ func TestFullFourPlayerTurnCycle(t *testing.T) {
 		if turn.ActiveSeat != 0 {
 			t.Errorf("seat drifted off 0 mid-turn at step %d: seat=%d", i, turn.ActiveSeat)
 		}
-		if turn.Number != 1 {
-			t.Errorf("turn number drifted off 1 mid-turn at step %d: number=%d", i, turn.Number)
+		if turn.Round != 1 {
+			t.Errorf("turn number drifted off 1 mid-turn at step %d: number=%d", i, turn.Round)
 		}
 	}
 
@@ -277,8 +277,8 @@ func TestFullFourPlayerTurnCycle(t *testing.T) {
 	if turn.ActiveSeat != 1 {
 		t.Errorf("seat after wrap: got %d, want 1", turn.ActiveSeat)
 	}
-	if turn.Number != 1 {
-		t.Errorf("turn number after 1→2 seat wrap: got %d, want 1", turn.Number)
+	if turn.Round != 1 {
+		t.Errorf("turn number after 1→2 seat wrap: got %d, want 1", turn.Round)
 	}
 	if turn.Step != StepUpkeep {
 		t.Errorf("step after wrap: got %q, want %q (S13 auto-advance through Untap)",
@@ -305,8 +305,8 @@ func TestFullFourPlayerTurnCycle(t *testing.T) {
 		}
 	}
 
-	if g.Turn.Number != 2 {
-		t.Errorf("turn number after full round: got %d, want 2", g.Turn.Number)
+	if g.Turn.Round != 2 {
+		t.Errorf("turn number after full round: got %d, want 2", g.Turn.Round)
 	}
 	if g.Turn.ActiveSeat != 0 {
 		t.Errorf("seat after full round: got %d, want 0", g.Turn.ActiveSeat)
@@ -418,7 +418,7 @@ func TestS13AutoDrawOnStepEntry(t *testing.T) {
 
 	// Seat 0's second turn (turn 2) — should draw normally because
 	// the skip is turn-1-only.
-	for !(g.Turn.ActiveSeat == 0 && g.Turn.Number == 2) {
+	for !(g.Turn.ActiveSeat == 0 && g.Turn.Round == 2) {
 		if _, err := g.AdvanceStep(); err != nil {
 			t.Fatalf("AdvanceStep: %v", err)
 		}
@@ -427,8 +427,8 @@ func TestS13AutoDrawOnStepEntry(t *testing.T) {
 	if _, err := g.AdvanceStep(); err != nil {
 		t.Fatalf("AdvanceStep into seat 0 turn 2 Draw: %v", err)
 	}
-	if g.Turn.Step != StepDraw || g.Turn.Number != 2 {
-		t.Fatalf("expected seat 0 turn-2 Draw, got turn=%d step=%q", g.Turn.Number, g.Turn.Step)
+	if g.Turn.Step != StepDraw || g.Turn.Round != 2 {
+		t.Fatalf("expected seat 0 turn-2 Draw, got turn=%d step=%q", g.Turn.Round, g.Turn.Step)
 	}
 	if g.Seats[0].Hand.Size() != seat0Turn2HandBefore+1 {
 		t.Errorf("seat 0 turn-2 auto-draw: hand %d → %d, want +1 (skip is turn-1-only)",
@@ -454,9 +454,9 @@ func TestTurn1DrawSkipIsTwoPlayerOnly(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			g := newActiveGameWithSeats(t, tc.seats)
-			if g.Turn.Number != 1 || g.Turn.ActiveSeat != g.StartingSeat {
+			if g.Turn.Round != 1 || g.Turn.ActiveSeat != g.StartingSeat {
 				t.Fatalf("harness did not park on the starting seat's first turn: turn=%d seat=%d starting=%d",
-					g.Turn.Number, g.Turn.ActiveSeat, g.StartingSeat)
+					g.Turn.Round, g.Turn.ActiveSeat, g.StartingSeat)
 			}
 			before := g.Seats[g.StartingSeat].Hand.Size()
 			if _, err := g.AdvanceStep(); err != nil {

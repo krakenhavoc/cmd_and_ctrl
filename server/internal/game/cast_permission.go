@@ -373,7 +373,7 @@ type CastPermission struct {
 	// sprang (0 was both the zero value and a turn number).
 	Duration Duration `json:"duration,omitzero"`
 
-	// NotBeforeTurn is the earliest turn NUMBER the permission is
+	// NotBeforeSeq is the earliest turn sequence the permission is
 	// live on — warp's "you may cast it from exile ON A LATER TURN"
 	// (CR 702.185a), and the same clause foretell prints
 	// (CR 702.143a). Zero means "from now".
@@ -388,12 +388,12 @@ type CastPermission struct {
 	// it applies whatever the Duration says: "for as long as it
 	// remains exiled" does not weaken "on a later turn".
 	//
-	// Turn.Number is a ROUND counter, so this reads as "not before
-	// round N" rather than "not on the turn it was granted". Every
-	// printed warp card is cast at sorcery speed on its controller's
-	// own turn, where the two agree; see #945's PR for the case where
-	// they do not.
-	NotBeforeTurn int `json:"notBeforeTurn,omitempty"`
+	NotBeforeSeq int `json:"notBeforeSeq,omitempty"`
+
+	// LegacyNotBeforeTurn is populated only while decoding a snapshot
+	// written before ADR 0059. restoreGame converts the old round unit
+	// to NotBeforeSeq and clears it before the game can be captured again.
+	LegacyNotBeforeTurn int `json:"notBeforeTurn,omitempty"`
 
 	// --- what, and when --------------------------------------------
 
@@ -474,8 +474,8 @@ func (g *Game) CastPermissionActiveForEffect(p *CastPermission, playerID uuid.UU
 		return false
 	}
 	// The floor is checked first because it applies to an unbounded
-	// window too (see NotBeforeTurn).
-	if p.NotBeforeTurn > 0 && g.Turn.Number < p.NotBeforeTurn {
+	// window too (see NotBeforeSeq).
+	if p.NotBeforeSeq > 0 && g.Turn.Seq < p.NotBeforeSeq {
 		return false
 	}
 	// `false`: this is a query, not the cleanup sweep. An
@@ -1232,7 +1232,7 @@ func (g *Game) CastPermissionOnCardForEffect(card Card, zone ZoneKind) *CastPerm
 			// of the turn the creature was warped in, and a client
 			// that could not see it until the next turn would show a
 			// blank card in exile with no explanation. The client
-			// reads NotBeforeTurn and greys the button.
+			// reads NotBeforeSeq and greys the button.
 			if fallback == nil {
 				out := *perm
 				fallback = &out

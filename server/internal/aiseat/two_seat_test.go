@@ -18,7 +18,7 @@ import (
 //     succession" (CR 117.4) is reached after two passes rather than
 //     four, and the pass that reaches it must advance the step rather
 //     than hand priority back to the player who just passed.
-//   - the TURN WRAPS between the same two seats. `Turn.Number` counts
+//   - the TURN WRAPS between the same two seats. `Turn.Round` counts
 //     ROUNDS rather than turns (see game/turn.go), so at two seats it
 //     advances every SECOND turn, and the seat that follows seat 1 is
 //     seat 0 — the rotation the four-seat soak can never exercise,
@@ -62,7 +62,7 @@ func TestTwoSeatPriorityCursorHasExactlyTwoPositions(t *testing.T) {
 			g.Turn.PriorityHolder, active)
 	}
 	other := 1 - active
-	step, turn := g.Turn.Step, g.Turn.Number
+	step, turn := g.Turn.Step, g.Turn.Round
 
 	if err := g.PassPriority(); err != nil {
 		t.Fatalf("first pass: %v", err)
@@ -78,14 +78,14 @@ func TestTwoSeatPriorityCursorHasExactlyTwoPositions(t *testing.T) {
 	if err := g.PassPriority(); err != nil {
 		t.Fatalf("second pass: %v", err)
 	}
-	if g.Turn.Step == step && g.Turn.Number == turn {
+	if g.Turn.Step == step && g.Turn.Round == turn {
 		t.Errorf("after both seats passed in succession the game is still in %s of turn %d; "+
 			"the round never completed", step, turn)
 	}
 }
 
 // TestTwoSeatTurnWrapsBetweenTheSameTwoSeats pins the second: the
-// rotation alternates, and Turn.Number — a ROUND counter — advances
+// rotation alternates, and Turn.Round — a ROUND counter — advances
 // every second turn rather than every turn.
 func TestTwoSeatTurnWrapsBetweenTheSameTwoSeats(t *testing.T) {
 	room := newRoom(t, 2, 4242)
@@ -101,7 +101,7 @@ func TestTwoSeatTurnWrapsBetweenTheSameTwoSeats(t *testing.T) {
 		seat  int
 		round int
 	}
-	seen := []observed{{g.Turn.ActiveSeat, g.Turn.Number}}
+	seen := []observed{{g.Turn.ActiveSeat, g.Turn.Round}}
 	for len(seen) < 4 {
 		before := g.Turn.ActiveSeat
 		for i := 0; g.Turn.ActiveSeat == before; i++ {
@@ -112,7 +112,7 @@ func TestTwoSeatTurnWrapsBetweenTheSameTwoSeats(t *testing.T) {
 				t.Fatalf("AdvanceStep: %v", err)
 			}
 		}
-		seen = append(seen, observed{g.Turn.ActiveSeat, g.Turn.Number})
+		seen = append(seen, observed{g.Turn.ActiveSeat, g.Turn.Round})
 	}
 
 	for i := 1; i < len(seen); i++ {
@@ -128,7 +128,7 @@ func TestTwoSeatTurnWrapsBetweenTheSameTwoSeats(t *testing.T) {
 	// Rounds: seats 0,1 are round N; the next 0,1 are round N+1.
 	if seen[1].round != seen[0].round {
 		t.Errorf("the round number moved from %d to %d inside one round (seat %d → seat %d); "+
-			"Turn.Number counts rounds, not turns",
+			"Turn.Round counts rounds, not turns",
 			seen[0].round, seen[1].round, seen[0].seat, seen[1].seat)
 	}
 	if seen[2].round != seen[0].round+1 {

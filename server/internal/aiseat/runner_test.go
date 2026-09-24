@@ -274,7 +274,7 @@ func botLandsLocked(g *game.Game, seat uuid.UUID) int {
 }
 
 // turnKey names one player's turn: the round number plus whose turn it
-// is inside that round, because Turn.Number counts rounds and
+// is inside that round, because Turn.Round counts rounds and
 // Turn.ActiveSeat rotates within one.
 type turnKey struct{ number, activeSeat int }
 
@@ -317,7 +317,7 @@ func (l *landDrops) Observe(ev aiseat.DecisionEvent) {
 	if l.byTurn == nil {
 		l.byTurn = map[turnKey]int{}
 	}
-	l.byTurn[turnKey{ev.Input.View.Turn.Number, ev.Input.View.Turn.ActiveSeat}]++
+	l.byTurn[turnKey{ev.Input.View.Turn.Seq, ev.Input.View.Turn.ActiveSeat}]++
 	l.total++
 }
 
@@ -548,17 +548,17 @@ func TestFourRandomBotsPlay(t *testing.T) {
 			lastSeq, lastMove := room.Seq(), time.Now()
 			for {
 				snap := g.Snapshot()
-				if snap.State != game.StateActive || snap.Turn.Number > turnBudget {
+				if snap.State != game.StateActive || snap.Turn.Round > turnBudget {
 					break
 				}
 				if seq := room.Seq(); seq != lastSeq {
 					lastSeq, lastMove = seq, time.Now()
 				} else if time.Since(lastMove) > stall {
 					t.Fatalf("table stalled at turn %d step %s priority=%d pending=%d\n%s",
-						snap.Turn.Number, snap.Turn.Step, snap.Turn.PriorityHolder, len(g.PendingChoices), describeSeats(g))
+						snap.Turn.Round, snap.Turn.Step, snap.Turn.PriorityHolder, len(g.PendingChoices), describeSeats(g))
 				}
 				if ctx.Err() != nil {
-					t.Fatalf("wall clock exhausted at turn %d", snap.Turn.Number)
+					t.Fatalf("wall clock exhausted at turn %d", snap.Turn.Round)
 				}
 				time.Sleep(5 * time.Millisecond)
 			}
@@ -574,7 +574,7 @@ func TestFourRandomBotsPlay(t *testing.T) {
 			}
 			snap := g.Snapshot()
 			t.Logf("seed %d: state=%s turns=%d applied=%d passes=%d rejected=%d fallbacks=%d",
-				seed, snap.State, snap.Turn.Number, total.Applied, total.Passes, total.Rejected, total.Fallbacks)
+				seed, snap.State, snap.Turn.Round, total.Applied, total.Passes, total.Rejected, total.Fallbacks)
 			// The one rejection the engine's combat model permits: a
 			// defender's block enumerated during declare_blockers and
 			// dispatched after the step wrapped (BlockGrace is 0 here,
@@ -586,17 +586,17 @@ func TestFourRandomBotsPlay(t *testing.T) {
 					}
 				}
 			}
-			if total.Rejected > int64(snap.Turn.Number) {
-				t.Errorf("too many step-race rejections for %d turns: %d", snap.Turn.Number, total.Rejected)
+			if total.Rejected > int64(snap.Turn.Round) {
+				t.Errorf("too many step-race rejections for %d turns: %d", snap.Turn.Round, total.Rejected)
 			}
 			if total.Fallbacks != 0 {
 				t.Errorf("random policy should never need the fallback: %d", total.Fallbacks)
 			}
-			if snap.State == game.StateActive && snap.Turn.Number <= turnBudget {
-				t.Errorf("game neither ended nor reached the turn budget: turn %d", snap.Turn.Number)
+			if snap.State == game.StateActive && snap.Turn.Round <= turnBudget {
+				t.Errorf("game neither ended nor reached the turn budget: turn %d", snap.Turn.Round)
 			}
 			if total.Applied < 40 {
-				t.Errorf("suspiciously few moves for %d turns: %d", snap.Turn.Number, total.Applied)
+				t.Errorf("suspiciously few moves for %d turns: %d", snap.Turn.Round, total.Applied)
 			}
 		})
 	}

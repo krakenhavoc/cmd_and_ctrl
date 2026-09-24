@@ -37,9 +37,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     `tokenTemplate` away.
 //   - "Exhaust — Waterbend {20}: Take an extra turn after this one."
 //     is not registered, and the reason is now ONE, not two: extra
-//     turns have no primitive anywhere in this engine (Turn.IsNewTurn
-//     compares seats and Turn.Number counts rounds, not turns — the
-//     "Extra turns primitive" seam, docs/engine-seams.md, #753). The
+//     turns have no queue/insertion primitive anywhere in this engine
+//     (the identity foundation is present, but the "Extra turns
+//     primitive" seam remains in docs/engine-seams.md, #753). The
 //     COST is expressible since #1310: `WaterbendCost("{20}")`
 //     with `Exhaust: true` is the whole declaration, the same
 //     component Aang's "Waterbend {8}" and Katara's "Waterbend {X}"

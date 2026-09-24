@@ -1169,8 +1169,8 @@ func TestPassTurnWrapsToNextRound(t *testing.T) {
 	// Only 2 players; two PassTurns should wrap to seat 0 turn 2.
 	_ = g.PassTurn()
 	_ = g.PassTurn()
-	if g.Turn.Number != 2 {
-		t.Errorf("turn number: got %d, want 2", g.Turn.Number)
+	if g.Turn.Round != 2 {
+		t.Errorf("turn number: got %d, want 2", g.Turn.Round)
 	}
 	if g.Turn.ActiveSeat != 0 {
 		t.Errorf("seat: got %d, want 0", g.Turn.ActiveSeat)
@@ -3565,7 +3565,7 @@ func TestReadSnapshotConsistency(t *testing.T) {
 	if life != StartingLife {
 		t.Errorf("life: got %d, want %d", life, StartingLife)
 	}
-	if turn.Number != 1 || turn.Step != StepUpkeep {
+	if turn.Round != 1 || turn.Step != StepUpkeep {
 		t.Errorf("turn: %+v (want number=1 step=upkeep after S13 auto-advance from Untap)", turn)
 	}
 }

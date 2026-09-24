@@ -252,10 +252,10 @@ func TestS21ThemeDeckAristocratsPlaysThreeTurns(t *testing.T) {
 	if n := countBattlefieldNamed(g, me.ID, "Goblin"); n != 0 {
 		t.Errorf("both Goblins should have been eaten, %d left", n)
 	}
-	// Turn.Number counts rounds, not seats, so seat 0's third turn
+	// Turn.Round counts rounds, not seats, so seat 0's third turn
 	// is round 3 — and the cursor is still on seat 0, which is what
 	// "played three of its own turns" means.
-	if g.Turn.Number != 3 || g.Turn.ActiveSeat != 0 {
-		t.Errorf("ended on round %d seat %d, want round 3 seat 0", g.Turn.Number, g.Turn.ActiveSeat)
+	if g.Turn.Round != 3 || g.Turn.ActiveSeat != 0 {
+		t.Errorf("ended on round %d seat %d, want round 3 seat 0", g.Turn.Round, g.Turn.ActiveSeat)
 	}
 }

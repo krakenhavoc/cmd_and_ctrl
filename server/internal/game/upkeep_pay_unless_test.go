@@ -60,7 +60,7 @@ func TestAnUpkeepPayUnlessHaltsTheTurn(t *testing.T) {
 	}
 	// Anchored to the step it was asked in, read off the cursor. The
 	// card said nothing about blocking (#997): the engine did.
-	want := TurnStep{Turn: g.Turn.Number, Step: StepUpkeep}
+	want := TurnStep{Turn: g.Turn.Seq, Step: StepUpkeep}
 	if prompt.OwedInStep != want {
 		t.Errorf("OwedInStep = %v, want %v", prompt.OwedInStep, want)
 	}
@@ -196,7 +196,7 @@ func TestTheUpkeepHaltLiftsWhenTheCursorLeavesTheStep(t *testing.T) {
 
 // The next turn's upkeep is a DIFFERENT step, so an anchor that
 // somehow outlived its own turn does not hold the table hostage a
-// rotation later. The turn number is why the anchor is a TurnStep
+// rotation later. The turn sequence is why the anchor is a TurnStep
 // rather than a bare Step.
 func TestTheUpkeepHaltDoesNotFollowTheGameIntoTheNextTurn(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
@@ -204,7 +204,7 @@ func TestTheUpkeepHaltDoesNotFollowTheGameIntoTheNextTurn(t *testing.T) {
 	source := departureTestSource(g, active.ID, "Stasis")
 	prompt := queueUpkeepTax(t, g, active.ID, source, nil)
 
-	g.WithWriteLock(func() { g.Turn.Number++ })
+	g.WithWriteLock(func() { g.Turn.Seq++ })
 	if g.ChoicePromptBlocksTable(prompt) {
 		t.Error("a tax owed in turn 1's upkeep still blocks turn 2's")
 	}

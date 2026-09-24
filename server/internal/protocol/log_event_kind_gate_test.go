@@ -87,6 +87,7 @@ var silentEventKinds = map[string]string{
 	"EventKeywordAction":   silentImpliedByAnotherLine,
 
 	// --- the step spine ----------------------------------------------
+	"EventTurnBegan":          "the first EventStepBegan announces the same boundary to the table; this kind exists for engine consumers after per-turn resets",
 	"EventStepTransition":     silentStepSpine,
 	"EventBeginUpkeep":        silentStepSpine,
 	"EventBeginDrawStep":      silentStepSpine,

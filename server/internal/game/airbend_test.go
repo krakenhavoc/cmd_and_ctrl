@@ -46,7 +46,8 @@ func TestUnboundedExilePermissionIgnoresTheTurn(t *testing.T) {
 	for _, turns := range []int{0, 1, 5, 40} {
 		probe := g.Clone()
 		probe.Seats[0].TurnsBegun += turns
-		probe.Turn.Number += turns
+		probe.Turn.Seq += turns
+		probe.Turn.Round += turns
 		var live bool
 		probe.ReadSnapshot(func() { live = probe.CastPermissionActiveForEffect(&perm, me.ID) })
 		if !live {
@@ -89,7 +90,8 @@ func TestCleanupSpareUnboundedExilePermissions(t *testing.T) {
 	}
 	// Still there several turns later.
 	g.WithWriteLock(func() {
-		g.Turn.Number += 5
+		g.Turn.Seq += 5
+		g.Turn.Round += 5
 		for _, p := range g.Seats {
 			p.TurnsBegun += 5
 		}

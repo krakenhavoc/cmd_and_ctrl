@@ -50,7 +50,7 @@ func TestMassDiminishLastsUntilYourNextTurn(t *testing.T) {
 		t.Errorf("the caster's own creature: power %d, want 2 (only the target player's are diminished)", got)
 	}
 
-	// Through every opponent's turn: a duration keyed on Turn.Number
+	// Through every opponent's turn: a duration keyed on Turn.Round
 	// would have ended here, because all four seats share one round.
 	for seat := 1; seat <= 3; seat++ {
 		advancePastCleanupForTest(t, g)
@@ -84,7 +84,7 @@ func TestMassDiminishLocksInItsAffectedSet(t *testing.T) {
 }
 
 // advancePastCleanupForTest walks the cursor until the active seat
-// changes — the marker that this seat's cleanup step ran (Turn.Number
+// changes — the marker that this seat's cleanup step ran (Turn.Round
 // counts rounds, not seat-turns, so the seat is the reliable signal).
 func advancePastCleanupForTest(t *testing.T, g *game.Game) {
 	t.Helper()

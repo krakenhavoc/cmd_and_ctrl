@@ -87,11 +87,11 @@ type DelayedTrigger struct {
 	// queued instead of firing it.
 	ControllerTurnOnly bool
 
-	// CreatedTurn is the turn number the trigger was scheduled on.
+	// CreatedSeq identifies the turn the trigger was scheduled on.
 	// Not used for firing (see the "next is free" note above) —
 	// it's there for the wire view and for debugging a queue that
 	// somehow never drains.
-	CreatedTurn int
+	CreatedSeq int
 
 	// Cards is the trigger's payload: the card instances the effect
 	// acts on, captured when the trigger was created. Stamped onto
@@ -179,7 +179,7 @@ func (g *Game) ScheduleDelayedTriggerForEffect(dt DelayedTrigger) uuid.UUID {
 	if dt.ID == uuid.Nil {
 		dt.ID = uuid.New()
 	}
-	dt.CreatedTurn = g.Turn.Number
+	dt.CreatedSeq = g.Turn.Seq
 	// #663: "this turn" is the printed duration of every
 	// event-conditioned delayed trigger there is, and CR 514.2 ends
 	// it at cleanup whether or not it fired. A caller that means
@@ -272,7 +272,7 @@ func cloneDelayedTrigger(dt *DelayedTrigger) *DelayedTrigger {
 		Label:              dt.Label,
 		At:                 dt.At,
 		ControllerTurnOnly: dt.ControllerTurnOnly,
-		CreatedTurn:        dt.CreatedTurn,
+		CreatedSeq:         dt.CreatedSeq,
 		Effect:             dt.Effect,
 		// #663: the event condition. AppliesTo and Optional are
 		// shared, not copied, on exactly the contract Effect above

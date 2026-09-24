@@ -590,9 +590,12 @@ export interface LogEvent {
   // use it as the keyed-each key.
   seq: number;
   kind: LogKind;
-  // Turn number the entry happened on. Absent (0) for entries that
+  // Turn sequence the entry happened on. Absent (0) for entries that
   // precede the first step announcement of a game.
   turn?: number;
+  // Table-facing round, present on step entries. `turn` is the
+  // per-turn sequence identity; this is the number shown to people.
+  round?: number;
   // Step name — present ONLY on `step` entries. Everything after a
   // step entry belongs to that step until the next one.
   step?: string;
@@ -1076,7 +1079,7 @@ export interface DelayedTriggerView {
   source?: string;
   label?: string;
   at: string;
-  created_turn?: number;
+  created_seq?: number;
   cards?: string[];
   on?: string[];
 }
@@ -1521,11 +1524,11 @@ export interface ExilePlayView {
   // impulse exile, which charges the printed cost. Note that
   // `mana_cost` on the card still carries the printed value.
   cost_override?: string;
-  // S29 warp: the earliest turn number the grant is live on — "you
+  // S29 warp: the earliest turn sequence the grant is live on — "you
   // may cast it from exile ON A LATER TURN". Absent for every grant
   // that is live as soon as it is made, which is all of impulse
   // exile and airbend.
-  not_before_turn?: number;
+  not_before_seq?: number;
   // S32: the printed faces this grant opens, when it opens any.
   // Absent for every grant that does not speak about faces (impulse
   // exile, airbend, warp, cascade), which is all of them before S32.
@@ -2471,6 +2474,7 @@ export interface AttackTargetView {
 }
 
 export interface TurnView {
+  seq: number;
   number: number;
   active_seat: number;
   // priority_holder is the seat index that currently holds priority

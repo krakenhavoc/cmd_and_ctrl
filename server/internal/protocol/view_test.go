@@ -390,6 +390,10 @@ func TestViewOfGameJSONRoundTrip(t *testing.T) {
 	if !reflect.DeepEqual(back.Turn, v.Turn) {
 		t.Errorf("turn: got %+v, want %+v", back.Turn, v.Turn)
 	}
+	if back.Turn.Seq != g.Turn.Seq || back.Turn.Number != g.Turn.Round {
+		t.Errorf("turn identity/display = seq %d number %d, want seq %d round %d",
+			back.Turn.Seq, back.Turn.Number, g.Turn.Seq, g.Turn.Round)
+	}
 	if len(back.Seats) != len(v.Seats) {
 		t.Errorf("seats: got %d, want %d", len(back.Seats), len(v.Seats))
 	}

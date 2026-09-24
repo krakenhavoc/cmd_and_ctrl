@@ -27,7 +27,7 @@ func TestEnumeratorOffersAPlottedCastOnlyInTheMainPhase(t *testing.T) {
 	g.Exile.PushTop(c)
 	g.WithWriteLock(func() {
 		g.PlotExiledCardForEffect(c.InstanceID, uuid.Nil)
-		g.Turn.Number++ // a later turn
+		g.Turn.Seq++ // a later turn
 	})
 
 	// An instant, and it is the owner's turn — but the upkeep is not

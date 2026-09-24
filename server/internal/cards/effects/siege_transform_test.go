@@ -117,7 +117,7 @@ func battlefieldCardFor(g *game.Game, id uuid.UUID) *game.Card {
 // the next turn would test the expiry rather than the cast.
 func toMainPhaseSameTurn(t *testing.T, g *game.Game) {
 	t.Helper()
-	turn := g.Turn.Number
+	turn := g.Turn.Seq
 	for i := 0; i < 12; i++ {
 		if g.Turn.Step == game.StepPrecombatMain || g.Turn.Step == game.StepPostcombatMain {
 			return
@@ -125,7 +125,7 @@ func toMainPhaseSameTurn(t *testing.T, g *game.Game) {
 		if _, err := g.AdvanceStep(); err != nil {
 			t.Fatalf("AdvanceStep: %v", err)
 		}
-		if g.Turn.Number != turn {
+		if g.Turn.Seq != turn {
 			t.Fatal("crossed a turn boundary before reaching a main phase")
 		}
 	}

@@ -274,14 +274,14 @@ func (n *normalizer) delayedTriggers(in []protocol.DelayedTriggerView) []protoco
 			cards[j] = n.id(c)
 		}
 		out[i] = protocol.DelayedTriggerView{
-			ID:          d.ID,
-			Controller:  n.id(d.Controller),
-			Source:      n.id(d.Source),
-			Label:       d.Label,
-			At:          d.At,
-			CreatedTurn: d.CreatedTurn,
-			Cards:       cards,
-			On:          d.On,
+			ID:         d.ID,
+			Controller: n.id(d.Controller),
+			Source:     n.id(d.Source),
+			Label:      d.Label,
+			At:         d.At,
+			CreatedSeq: d.CreatedSeq,
+			Cards:      cards,
+			On:         d.On,
 		}
 	}
 	return out

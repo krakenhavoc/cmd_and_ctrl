@@ -110,7 +110,7 @@ func TestPlotExilesFaceUpAndGrantsTheFreeCastOnALaterTurn(t *testing.T) {
 		t.Fatal("cast the plotted card on the turn it was plotted")
 	}
 
-	g.WithWriteLock(func() { g.Turn.Number++ }) // the owner's next turn
+	g.WithWriteLock(func() { g.Turn.Seq++ }) // the owner's next turn
 	perm, open := plotLive(g, me, card.InstanceID)
 	if perm == nil || !open {
 		t.Fatalf("plotted card not castable on a later main phase: perm=%v open=%v", perm, open)

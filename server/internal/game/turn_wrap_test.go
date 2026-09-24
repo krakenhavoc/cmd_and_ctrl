@@ -63,7 +63,7 @@ func passUntilNewTurn(t *testing.T, g *Game) {
 			continue
 		}
 		if g.Turn.PriorityHolder == NoPriority {
-			t.Fatalf("cursor parked with no priority at %s (turn %d seat %d)", g.Turn.Step, g.Turn.Number, g.Turn.ActiveSeat)
+			t.Fatalf("cursor parked with no priority at %s (turn %d seat %d)", g.Turn.Step, g.Turn.Round, g.Turn.ActiveSeat)
 		}
 		if err := g.PassPriority(); err != nil {
 			t.Fatalf("PassPriority at %s: %v", g.Turn.Step, err)
@@ -120,7 +120,7 @@ func TestTurnRotationSkipsEliminatedSeats(t *testing.T) {
 	for _, seat := range want {
 		passUntilNewTurn(t, g)
 		if g.Turn.ActiveSeat != seat {
-			t.Fatalf("active seat %d, want %d (turn %d)", g.Turn.ActiveSeat, seat, g.Turn.Number)
+			t.Fatalf("active seat %d, want %d (turn %d)", g.Turn.ActiveSeat, seat, g.Turn.Round)
 		}
 		if g.Seats[g.Turn.ActiveSeat].Eliminated {
 			t.Fatalf("turn dealt to eliminated seat %d", g.Turn.ActiveSeat)
@@ -138,8 +138,8 @@ func TestTurnRotationSkipsEliminatedSeats(t *testing.T) {
 		t.Errorf("PassTurn from seat 0 should land on seat 3, got %d", g.Turn.ActiveSeat)
 	}
 	// The turn number still advances when the wrap passes seat 0.
-	if g.Turn.Number < 3 {
-		t.Errorf("turn number should have advanced past the skipped seats: %d", g.Turn.Number)
+	if g.Turn.Round < 3 {
+		t.Errorf("turn number should have advanced past the skipped seats: %d", g.Turn.Round)
 	}
 }
 

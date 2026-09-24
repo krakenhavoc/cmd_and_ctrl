@@ -11,6 +11,7 @@ function emptyZone(kind: string, owner = ""): ZoneView {
 
 function turn(opts: Partial<TurnView> = {}): TurnView {
   return {
+    seq: 1,
     number: 1,
     active_seat: 0,
     priority_holder: 0,
@@ -41,7 +42,7 @@ function pendingChoice(): PendingChoiceView {
 
 interface SnapOpts {
   step?: string;
-  turnNumber?: number;
+  turnSeq?: number;
   activeSeat?: number;
   priorityHolder?: number;
   stackDepth?: number;
@@ -58,7 +59,8 @@ function snap(o: SnapOpts = {}): GameView {
     stack: { ...emptyZone("stack"), cards: [] },
     exile: emptyZone("exile"),
     turn: turn({
-      number: o.turnNumber ?? 1,
+      seq: o.turnSeq ?? 1,
+      number: 1,
       step: o.step ?? "precombat_main",
       active_seat: o.activeSeat ?? 0,
       priority_holder: o.priorityHolder ?? 0,
@@ -122,9 +124,9 @@ describe("responseWindowKey", () => {
     expect(responseWindowKey(null)).toBe("");
   });
 
-  it("changes when the turn number changes", () => {
-    const a = responseWindowKey(snap({ turnNumber: 1 }));
-    const b = responseWindowKey(snap({ turnNumber: 2 }));
+  it("changes when the turn sequence changes within one displayed round", () => {
+    const a = responseWindowKey(snap({ turnSeq: 1 }));
+    const b = responseWindowKey(snap({ turnSeq: 2 }));
     expect(a).not.toBe(b);
   });
 

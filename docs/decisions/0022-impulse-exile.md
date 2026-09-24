@@ -2,6 +2,10 @@
 
 **Status:** accepted (S21 sub-PR 6)
 **Extends:** [ADR 0021](0021-additional-costs.md) (announce-time gates on `CastSpell`).
+**Turn-identity amendment:** [ADR 0059](0059-turn-machinery.md) sub-PR 1
+separates the per-turn `Seq` from display `Round`; the surviving
+later-turn floor on `CastPermission` is `NotBeforeSeq` and compares
+against `Turn.Seq`. ADR 0066 supersedes this ADR's permission shape.
 
 ## Context
 

@@ -102,6 +102,67 @@ func restorePre683FixtureWith(t *testing.T, edit func(*GameSnapshot)) *Game {
 	return g
 }
 
+func TestPre683RestorePointBackfillsTurnIdentity(t *testing.T) {
+	g := restorePre683Fixture(t)
+	wantSeq := g.Turn.Round*MaxPlayers + g.Turn.ActiveSeat
+	if g.Turn.Seq != wantSeq {
+		t.Fatalf("restored Turn.Seq = %d, want legacy RNG index %d", g.Turn.Seq, wantSeq)
+	}
+	if g.Turn.OrderSeat != g.Turn.ActiveSeat || g.Turn.Extra || g.Turn.ExtraRef != 0 {
+		t.Errorf("legacy turn provenance = %+v, want a normal turn ordered at the active seat", g.Turn)
+	}
+	for seat, p := range g.Seats {
+		want := g.Turn.Round
+		if seat > g.Turn.ActiveSeat {
+			want--
+		}
+		if want < 0 {
+			want = 0
+		}
+		if p.TurnsBegun != want {
+			t.Errorf("seat %d TurnsBegun = %d, want %d", seat, p.TurnsBegun, want)
+		}
+	}
+
+	before := g.Turn.Seq
+	if err := g.PassTurn(); err != nil {
+		t.Fatalf("PassTurn after legacy restore: %v", err)
+	}
+	if g.Turn.Seq != before+1 {
+		t.Errorf("next turn Seq = %d, want %d", g.Turn.Seq, before+1)
+	}
+}
+
+func TestPre683RestorePointConvertsLegacyTurnStamps(t *testing.T) {
+	var oldRound int
+	g := restorePre683FixtureWith(t, func(s *GameSnapshot) {
+		oldRound = s.Turn.Round
+		s.Seats[0].CastPermissions = append(s.Seats[0].CastPermissions, CastPermission{
+			Player:              s.Seats[0].ID,
+			Duration:            WhileInZoneDuration(),
+			LegacyNotBeforeTurn: oldRound + 1,
+		})
+		s.DelayedTriggers = append(s.DelayedTriggers, delayedTriggerSnapshot{
+			ID:          uuid.New(),
+			Controller:  s.Seats[0].ID,
+			At:          StepEnd,
+			CreatedTurn: oldRound,
+		})
+	})
+
+	perm := g.Seats[0].CastPermissions[len(g.Seats[0].CastPermissions)-1]
+	if want := (oldRound + 1) * MaxPlayers; perm.NotBeforeSeq != want {
+		t.Errorf("legacy not-before floor = %d, want Seq %d", perm.NotBeforeSeq, want)
+	}
+	if perm.LegacyNotBeforeTurn != 0 {
+		t.Errorf("legacy not-before stamp survived migration: %+v", perm)
+	}
+	delayed := g.DelayedTriggers[len(g.DelayedTriggers)-1]
+	if want := oldRound * MaxPlayers; delayed.CreatedSeq != want {
+		t.Errorf("legacy delayed-trigger stamp = %d, want Seq %d", delayed.CreatedSeq, want)
+	}
+}
+
 // With the printings known, the backfill gives each card the flag a
 // fresh import would have: the `*` creature, the Clone copying it and
 // the transform card's `*` front are variable; the printed 0/0 and the

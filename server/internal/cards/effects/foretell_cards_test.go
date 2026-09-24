@@ -83,7 +83,7 @@ func TestSawItComingIsForetoldAndCastLaterForItsForetellCost(t *testing.T) {
 
 	// A later turn. The permission's floor is a turn NUMBER, which
 	// counts rounds, so this is the seat's next turn.
-	g.WithWriteLock(func() { g.Turn.Number++ })
+	g.WithWriteLock(func() { g.Turn.Seq++ })
 
 	// Something to counter.
 	victim := castCatalogSpell(t, g, "Filler Bolt", "Instant", "test-foretell-victim", nil)

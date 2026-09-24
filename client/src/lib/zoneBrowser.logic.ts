@@ -88,11 +88,11 @@ export function buildMovePayload(
 // impulseGrantFor returns the grant on `card` if the viewer is the
 // one it names AND its window is open, or null.
 //
-// `turn` is the current turn number, for S29 warp's "you may cast it
+// `turn` is the current turn sequence, for S29 warp's "you may cast it
 // from exile on a LATER turn": the grant is stamped on the permanent
 // the moment it is exiled, at the end step of the turn it was warped
 // in, and stays dark until the next turn begins. Callers that have
-// no turn number to hand pass undefined and get the pre-S29
+// no turn sequence to hand pass undefined and get the pre-S29
 // behaviour, which is correct for every grant that carries no floor.
 export function impulseGrantFor(
   card: CardView,
@@ -103,7 +103,7 @@ export function impulseGrantFor(
   if (zoneKind !== "exile" || !viewerID) return null;
   const grant = card.exile_play;
   if (!grant || grant.player !== viewerID) return null;
-  if (grant.not_before_turn !== undefined && turn !== undefined && turn < grant.not_before_turn) {
+  if (grant.not_before_seq !== undefined && turn !== undefined && turn < grant.not_before_seq) {
     return null;
   }
   return grant;
