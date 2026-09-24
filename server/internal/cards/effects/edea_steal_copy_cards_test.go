@@ -211,7 +211,7 @@ func TestGogoCopiesAnAbilityXTimes(t *testing.T) {
 	}
 }
 
-func TestGogoRefusesXZeroAndAGogoActivation(t *testing.T) {
+func TestGogoRefusesXZero(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	advanceToMain(t, g)
@@ -227,26 +227,8 @@ func TestGogoRefusesXZeroAndAGogoActivation(t *testing.T) {
 	}); err == nil {
 		t.Fatal("X = 0 was accepted — \"X can't be 0\"")
 	}
-
-	// "This ability can't be copied": once a Gogo activation is on the
-	// stack, Gogo's own clause does not offer it.
-	floatForTest(g, me, "CC")
-	if err := g.ActivateCatalogAbility(me.ID, gogo, 0, game.ActivateAbilityParams{
-		XValue:  1,
-		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: activation}},
-	}); err != nil {
-		t.Fatalf("ActivateCatalogAbility X=1: %v", err)
-	}
-	gogoItem := acItemOnStack(g, "{X}{X}, {T}: Copy target")
-	if gogoItem == nil {
-		t.Fatal("Gogo's activation is not on the stack")
-	}
-	if acLegalAbilityTargets(g, me.ID, gogoMasterOfMimicryOracleID, 0)[gogoItem.ID] {
-		t.Error("a Gogo activation is offered as a target — it can't be copied")
-	}
-	if !acLegalAbilityTargets(g, me.ID, gogoMasterOfMimicryOracleID, 0)[activation] {
-		t.Error("the ordinary activation stopped being offered")
-	}
+	// "This ability can't be copied" is #1574's Uncopyable bit; its
+	// tests are in gogo_sephiroth_hooks_test.go.
 }
 
 // --- Sephiroth, Fabled SOLDIER // Sephiroth, One-Winged Angel ---------
