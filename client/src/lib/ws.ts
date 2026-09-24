@@ -241,6 +241,12 @@ export class GameClient {
     // the error frame's `reason` field carries for this code. See
     // ErrorPayload.reason (protocol.ts).
     reason?: string;
+    // #1533: the id of the action frame this error answers — the
+    // server echoes the refused frame's id on its error frame, and
+    // sendAction returns it. Lets a caller claim the refusal of ITS
+    // action rather than whatever was refused last (the attack-with-all
+    // pickers). Absent for a client-side error (offline).
+    replyTo?: string;
   } | null> = guardedWritable(null, "lastError");
   // reconnectAttempt is how many automatic reconnects have been
   // scheduled since the last successful open, and 0 whenever the
@@ -636,7 +642,7 @@ export class GameClient {
   private raiseError(
     code: string,
     message: string,
-    extra: { missing?: string[]; cardID?: string; reason?: string } = {},
+    extra: { missing?: string[]; cardID?: string; reason?: string; replyTo?: string } = {},
   ): void {
     this.lastError.set({ code, message, at: new Date(), ...extra });
     if (this.errorClearTimer !== null) {
@@ -876,6 +882,7 @@ export class GameClient {
           missing: p?.missing,
           cardID: p?.card_id,
           reason: p?.reason,
+          replyTo: frame.id || undefined,
         });
         break;
       }
