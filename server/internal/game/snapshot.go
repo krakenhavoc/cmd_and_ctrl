@@ -1268,9 +1268,11 @@ func (c ContinuationCensus) Total() int {
 	return n
 }
 
-// Kinds returns the counters that are non-zero, by the names an
-// operator reads them under (ADR 0041 P7, #1497): the per-kind skip
-// tally the shutdown census logs is keyed by these.
+// Kinds returns the counters that are non-zero, keyed by each
+// counter's JSON key — the name an operator already reads in a
+// restore point's `continuations` (ADR 0041 P7, #1497): the per-kind
+// skip tally the shutdown census logs is keyed by these. ScopedStatics
+// is therefore "turnScopedStatics", its JSON key since before S38.
 func (c ContinuationCensus) Kinds() map[string]int {
 	out := map[string]int{}
 	for name, n := range map[string]int{
@@ -1278,7 +1280,7 @@ func (c ContinuationCensus) Kinds() map[string]int {
 		"stackTargetSpecs":       c.StackTargetSpecs,
 		"delayedTriggerEffects":  c.DelayedTriggerEffects,
 		"choiceResumeFrames":     c.ChoiceResumeFrames,
-		"scopedStatics":          c.ScopedStatics,
+		"turnScopedStatics":      c.ScopedStatics,
 		"turnScopedReplacements": c.TurnScopedReplacements,
 		"turnScopedBlockRules":   c.TurnScopedBlockRules,
 		"intrinsicAbilityCards":  c.IntrinsicAbilityCards,
