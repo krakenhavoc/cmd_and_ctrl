@@ -3,6 +3,7 @@
 **Status:** Accepted · 2026-04-21 · Sprint S13.1
 **Amended:** 2026-09-16 · Branch `fix/zero-toughness-683` — §7's placeholder-creature exemption ([#683](https://github.com/krakenhavoc/cmd_and_ctrl/issues/683))
 **Amended:** 2026-09-19 · Branch `fix/690-691-cda-toughness-sba-and-x-zero` — §7's exemption becomes one predicate, `Card.ToughnessIsKnown` ([#690](https://github.com/krakenhavoc/cmd_and_ctrl/issues/690), [#691](https://github.com/krakenhavoc/cmd_and_ctrl/issues/691))
+**Amended:** 2026-09-24 · Branch `fix/1519-split-second-keyword` — split second is read from the card (Decisions 11–12, [#1519](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1519))
 
 ## Context
 
@@ -465,7 +466,5 @@ answers.
 
 **Proof cards.** Krosan Grip loses its caveat and ships `full`; Sudden
 Shock, Sudden Death, Sudden Edict and Sudden Spoiling join the catalog.
-Angel's Grace (#749, PR #1522) was still open when this landed — its
-"Split second isn't enforced" caveat goes stale the moment both have
-merged, and it should declare `PrintedKeywords: {"split second"}`
-instead.
+Angel's Grace (#749, PR #1522, merged the same day) declares the
+keyword and drops its "Split second isn't enforced" caveat.

@@ -10,7 +10,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-// split_second_test.go — #1519, CR 702.61. The five proof cards, each
+// split_second_test.go — #1519, CR 702.61. The six proof cards, each
 // cast from its catalog entry with no sandbox flag: the keyword the
 // entry declares is what turns split second on.
 
@@ -205,5 +205,24 @@ func TestSuddenSpoilingSilencesAndShrinksTheTargetPlayersCreatures(t *testing.T)
 	})
 	if effectivePower(t, g, late) != 5 || !slices.Contains(effectiveAbilities(t, g, late), "flying") {
 		t.Error("a creature that arrived after Sudden Spoiling resolved was spoiled too (CR 611.2c)")
+	}
+}
+
+// Angel's Grace (#749) shipped with "Split second isn't enforced"; the
+// declaration clears it. The point of the card is that the lethal spell
+// it answers can't be followed by another one.
+func TestAngelsGraceHasSplitSecond(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	grace := castCatalogSpell(t, g, "Angel's Grace", "Instant", angelsGraceOracle, nil)
+	requireSplitSecondOn(t, g, grace)
+	bolt := uuid.New()
+	opp.Hand.PushTop(game.Card{InstanceID: bolt, Name: "Lightning Bolt", TypeLine: "Instant",
+		OracleID: lightningBoltOracle, Owner: opp.ID, Controller: opp.ID})
+	err := g.CastSpell(opp.ID, bolt, game.CastSpellParams{
+		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: me.ID}},
+	})
+	if !errors.Is(err, game.ErrSplitSecondActive) {
+		t.Errorf("Lightning Bolt in response to Angel's Grace: got %v, want ErrSplitSecondActive", err)
 	}
 }
