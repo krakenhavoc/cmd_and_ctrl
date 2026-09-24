@@ -59,3 +59,55 @@ func TestProwessIsCumulativeAndCanonical(t *testing.T) {
 		t.Errorf("a second flying grant was kept: %v", got)
 	}
 }
+
+// TestPrintedProwessTwiceIsTwoInstances — #1510, CR 702.108b: a card
+// that PRINTS prowess twice ("Prowess, prowess" — Thor Odinson, Ruric
+// Thar, Biomagus) has two instances, whether or not the object has a
+// catalog entry. The deck importer's half of this (counting the
+// repeat off the oracle line rather than taking Scryfall's `keywords`
+// set at its word) is tested in deck.TestRepeatedPrintedCumulativeKeywordImportsAsTwoInstances;
+// this is the engine's half — printedCharacteristic's merge of
+// Card.Keywords with the catalog's own PrintedKeywords must not
+// collapse a cumulative keyword's repeats back down to one the way it
+// legitimately collapses a repeated "flying".
+func TestPrintedProwessTwiceIsTwoInstances(t *testing.T) {
+	// Off the battlefield, a card whose OWN Keywords already carries
+	// prowess twice (what the deck importer now stamps for a doubled
+	// oracle line) reports two triggers with no catalog entry at all.
+	printedTwice := Card{
+		Name:     "Thor Odinson",
+		TypeLine: "Legendary Creature — God",
+		Keywords: []string{"flying", "vigilance", KeywordProwess, KeywordProwess},
+	}
+	if n := len(TriggersForCard(printedTwice)); n != 2 {
+		t.Fatalf("a card printing prowess twice has %d triggers, want 2", n)
+	}
+	if !HasKeyword(&printedTwice, "flying") || !HasKeyword(&printedTwice, "vigilance") {
+		t.Errorf("the ordinary printed keywords were lost: %v", printedTwice.Keywords)
+	}
+
+	// On the battlefield: printedCharacteristic's merge (layer 0) is
+	// what Effective() starts from, and it must keep both instances
+	// rather than deduping the second "prowess" against the first the
+	// way containsKeyword would have before #1510's mergePrintedKeywords.
+	eff := printedTwice.printedCharacteristic()
+	onBattlefield := printedTwice
+	onBattlefield.effective = &eff
+	if n := ProwessCount(&onBattlefield); n != 2 {
+		t.Errorf("printedCharacteristic merge: %d instances of prowess, want 2 (%v)", n, eff.Abilities)
+	}
+
+	// A catalog entry that ALSO declares prowess once must not turn
+	// the import's two into three — the merge takes the higher of the
+	// two sources' own counts, never their sum.
+	merged := mergePrintedKeywords([]string{KeywordProwess}, []string{"flying", "vigilance", KeywordProwess, KeywordProwess})
+	count := 0
+	for _, kw := range merged {
+		if kw == KeywordProwess {
+			count++
+		}
+	}
+	if count != 2 {
+		t.Errorf("catalog prowess x1 + imported prowess x2 merged to %d, want 2 (%v)", count, merged)
+	}
+}
