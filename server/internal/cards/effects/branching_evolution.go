@@ -11,8 +11,10 @@ import (
 // are put on it instead."
 //
 // Same predicate shape as Hardened Scales (+1/+1 only, creatures
-// only, own permanents) but multiplies rather than adds.
-// Architecturally a narrower Doubling Season.
+// only, own permanents, and gated to ev.CounterDelta > 0 — "would be
+// PUT ON" is not a removal, CR 122.6 / CR 614.1, #1291) but
+// multiplies rather than adds. Architecturally a narrower Doubling
+// Season.
 //
 // All three of Doubling Season / Hardened Scales / Branching
 // Evolution on the battlefield together → three-way CR 616 prompt.
@@ -27,23 +29,8 @@ func init() {
 		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{
 			{
-				Watches: []game.EventKind{game.EventCounterPlaced},
-				AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
-					if ev.Kind != game.RepEventCounter {
-						return false
-					}
-					if ev.CounterName != "+1/+1" {
-						return false
-					}
-					target, ok := g.LookupCardForEffect(ev.CounterTarget)
-					if !ok {
-						return false
-					}
-					if !target.IsCreature() {
-						return false
-					}
-					return target.Controller == src.Controller
-				},
+				Watches:   []game.EventKind{game.EventCounterPlaced},
+				AppliesTo: plusOneCounterPlacementOnYourCreature,
 				Replace: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) error {
 					ev.CounterDelta *= 2
 					return nil

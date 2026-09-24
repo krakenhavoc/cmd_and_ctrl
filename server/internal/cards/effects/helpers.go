@@ -903,3 +903,30 @@ func destroyEachLegalTarget(_ *game.StackItem, ctx *Context) error {
 	}
 	return nil
 }
+
+// plusOneCounterPlacementOnYourCreature is Hardened Scales' and
+// Branching Evolution's shared predicate: "if one or more +1/+1
+// counters would be PUT ON a creature you control" (CR 122.6 / CR
+// 614.1 — placement only, ev.CounterDelta > 0 excludes a removal,
+// #1291). Named here because both cards' AppliesTo bodies were
+// byte-identical and the clone gate found the third growing copy
+// before it could land.
+func plusOneCounterPlacementOnYourCreature(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
+	if ev.Kind != game.RepEventCounter {
+		return false
+	}
+	if ev.CounterDelta <= 0 {
+		return false
+	}
+	if ev.CounterName != "+1/+1" {
+		return false
+	}
+	target, ok := g.LookupCardForEffect(ev.CounterTarget)
+	if !ok {
+		return false
+	}
+	if !target.IsCreature() {
+		return false
+	}
+	return target.Controller == src.Controller
+}

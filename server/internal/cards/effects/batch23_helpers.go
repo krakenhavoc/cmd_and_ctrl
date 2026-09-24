@@ -181,16 +181,25 @@ func b23DoublePlusOneCountersOn(ctx *Context, target uuid.UUID) error {
 
 // b23GrowThenDoubleEach is Fangs of Kalonia's body for a set of
 // creatures: a +1/+1 counter on each, THEN the +1/+1 counters on
-// each creature that actually received one are doubled. The two
-// passes are separate, as the printed "then" says, so every first
-// counter — and whatever a doubler did to it — is on the board
-// before any doubling is read. "Had a +1/+1 counter put on it this
-// way" is measured, not assumed: a creature whose count did not
-// rise (it left the battlefield, or something prevented the
-// counter) is skipped by the second pass.
+// each creature that actually received one are doubled. "Had a
+// +1/+1 counter put on it this way" is measured, not assumed: a
+// creature whose count did not rise (it left the battlefield, or
+// something prevented the counter) is not doubled.
+//
+// #1290: the growth check and the doubling both read the count
+// AFTER the first counter LANDS, via AddCounterThenForEffect's
+// continuation, rather than on the next line — a Doubling Season /
+// Hardened Scales board pauses that placement on a CR 616 prompt,
+// and reading before it resumes would see the pre-placement count
+// (and, worse, wrongly conclude a creature that WILL grow did not).
+// Each creature's own counter — and whatever a doubler did to it —
+// is on the board before that same creature's doubling is read;
+// nothing here depends on a different creature's placement having
+// settled first.
 func b23GrowThenDoubleEach(ctx *Context, ids []uuid.UUID) error {
-	var grew []uuid.UUID
+	item := ctx.Item
 	for _, id := range ids {
+		id := id
 		if z := ctx.Game.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneBattlefield {
 			continue
 		}
@@ -198,15 +207,13 @@ func b23GrowThenDoubleEach(ctx *Context, ids []uuid.UUID) error {
 		if c, ok := ctx.Game.LookupCardForEffect(id); ok {
 			before = c.Counters["+1/+1"]
 		}
-		if err := (AddCounter{Target: id, Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
-			return err
-		}
-		if c, ok := ctx.Game.LookupCardForEffect(id); ok && c.Counters["+1/+1"] > before {
-			grew = append(grew, id)
-		}
-	}
-	for _, id := range grew {
-		if err := b23DoublePlusOneCountersOn(ctx, id); err != nil {
+		if err := ctx.Game.AddCounterThenForEffect(id, "+1/+1", 1, func(g *game.Game, _ int) error {
+			c, ok := g.LookupCardForEffect(id)
+			if !ok || c.Counters["+1/+1"] <= before {
+				return nil
+			}
+			return b23DoublePlusOneCountersOn(NewContext(g, item), id)
+		}); err != nil {
 			return err
 		}
 	}
@@ -252,20 +259,23 @@ func b23DamageEachCreatureAndEachPlayer(ctx *Context, n int) error {
 // the counter, and the draw reads its last-known count (CR 113.7a),
 // which the counter LKI on the event log supplies.
 func b23ChargeThenDrawPerCharge(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
 	id := item.SourceCardID
-	charges := 0
-	if z := g.FindCardZoneForEffect(id); z != nil && z.Kind == game.ZoneBattlefield {
-		if err := (AddCounter{Target: id, Kind: "charge", N: 1}).Apply(ctx); err != nil {
-			return err
-		}
+	if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneBattlefield {
+		charges := b13LastKnownCounters(g, id, "charge")
+		return DrawCards{Player: item.Controller, N: charges}.Apply(NewContext(g, item))
+	}
+	// #1290: the draw reads the charge count AFTER the counter
+	// LANDS, not on the next line — a Doubling Season / Hardened
+	// Scales board pauses the placement on a CR 616 prompt, and
+	// reading before it resumes would draw for the pre-placement
+	// count.
+	return g.AddCounterThenForEffect(id, "charge", 1, func(g *game.Game, _ int) error {
+		charges := 0
 		if c, ok := g.LookupCardForEffect(id); ok {
 			charges = c.Counters["charge"]
 		}
-	} else {
-		charges = b13LastKnownCounters(g, id, "charge")
-	}
-	return DrawCards{Player: item.Controller, N: charges}.Apply(ctx)
+		return DrawCards{Player: item.Controller, N: charges}.Apply(NewContext(g, item))
+	})
 }
 
 // b23TotalManaValueAtMost is Protean Hulk's set constraint: the

@@ -160,6 +160,73 @@ func watchesCounters(watches []game.EventKind) bool {
 	return false
 }
 
+// --- #1291: no counter-count replacement fires on a REMOVAL --------
+
+// counterRemovalOptIns is countersOnOptIns' sibling for the other
+// direction: a card that deliberately reacts to counters coming OFF a
+// permanent, rather than going on. Empty today — CR 122.6 / CR 614.1
+// only replace a counter being PUT ON, and nothing in the catalog
+// prints "if a counter would be removed…". A card that genuinely does
+// belongs here with its printed clause, exactly like countersOnOptIns.
+var counterRemovalOptIns = map[string]string{}
+
+// TestNoCounterCountReplacementAppliesToARemoval is #1291's registry
+// sweep. Doubling Season, Hardened Scales and Branching Evolution all
+// shipped without a sign check on ev.CounterDelta, so a "remove N
+// counters" cost or effect was getting doubled (or bumped) — and two
+// of them on the same board could pause a plain removal on a CR 616
+// ordering prompt CR 122.6 says a removal should never reach. This
+// holds every registered counter-count replacement to the same rule:
+// "would be PUT ON" is a placement, and a negative delta never is.
+func TestNoCounterCountReplacementAppliesToARemoval(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0].ID
+
+	// One target that is both a creature and an artifact, so every
+	// predicate's type check (creature-only, artifact-or-creature, or
+	// no restriction at all) sees a permanent it would otherwise match.
+	target := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Removal Target",
+		TypeLine: "Artifact Creature — Construct",
+		Power:    3, Toughness: 3,
+		Owner: me, Controller: me,
+	})
+
+	for _, spec := range All() {
+		for i, r := range spec.Replacements {
+			if r.AppliesTo == nil || !watchesCounters(r.Watches) {
+				continue
+			}
+			src := &game.Card{
+				InstanceID: uuid.New(), Name: spec.Name, OracleID: spec.OracleID,
+				Owner: me, Controller: me,
+			}
+			for _, counterName := range []string{"+1/+1", game.CounterPoison, "charge"} {
+				ev := &game.ReplacementEvent{
+					Kind:          game.RepEventCounter,
+					CounterTarget: target,
+					CounterName:   counterName,
+					CounterDelta:  -1,
+				}
+				if !r.AppliesTo(ev, g, src) {
+					continue
+				}
+				if _, ok := counterRemovalOptIns[spec.Name]; ok {
+					continue
+				}
+				t.Errorf(`%s replacement #%d (%q) applies to a counter REMOVAL (CounterDelta < 0).
+
+CR 122.6 / CR 614.1: a replacement worded "would be PUT ON" only
+replaces counters being PLACED, never counters coming off. Add a
+"if ev.CounterDelta <= 0 { return false }" guard to AppliesTo — or, if
+the card genuinely reacts to a removal, add it to
+counterRemovalOptIns with the printed clause.`,
+					spec.Name, i, r.Label)
+			}
+		}
+	}
+}
+
 // --- item 13: the placer -------------------------------------------
 
 // TestVorinclexReadsThePlacerNotTheTargetsController is the halving

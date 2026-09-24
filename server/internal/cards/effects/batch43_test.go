@@ -988,6 +988,44 @@ func TestB43FinneasGrowsTokensAndRabbitsThenDrawsOnTenPower(t *testing.T) {
 	}
 }
 
+// TestB43FinneasDrawsAfterAPausedPlacement is #1290's real-card exit
+// criterion: with Doubling Season AND Hardened Scales both on the
+// board, the Rabbit's +1/+1 counter placement pauses on a CR 616
+// ordering prompt, and "total power 10 or greater" has to be read
+// AFTER the placement lands — not while it is still owed to the
+// prompt, which is where b13PutCounterOnEach used to leave it before
+// the fix chained the batch through AddCounterThenForEffect.
+func TestB43FinneasDrawsAfterAPausedPlacement(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	hs := seedReplacementPermanent(g, hardenedScalesOracle, "Hardened Scales", me.ID)
+	ds := seedReplacementPermanent(g, doublingSeasonOracle, "Doubling Season", me.ID)
+	finneas := b43Catalog(g, me.ID, "Finneas, Ace Archer", "Legendary Creature — Rabbit Archer", b43FinneasOracle, 2, 2)
+	rabbit := b43Creature(g, me.ID, "Regal Bunnicorn", "Creature — Rabbit", 5, 5)
+	hand := me.Hand.Size()
+
+	// declareAttack (not attackWith) stops at the declare-attackers
+	// step rather than advancing on through it, which is what lets us
+	// answer the CR 616 prompt before anything tries to walk past it.
+	declareAttack(t, g, opp.ID, finneas)
+	passPriorityAroundTable(t, g)
+
+	if me.Hand.Size() != hand {
+		t.Fatalf("the draw happened with the Rabbit's +1/+1 counter still owed to the CR 616 prompt")
+	}
+
+	// Doubling Season first: 1 → 2 → 3.
+	answerOrderBySource(t, g, ds, hs)
+
+	if counterOn(g, rabbit, game.CounterPlusOne) != 3 {
+		t.Errorf("Rabbit +1/+1 counters = %d, want 3 ((1*2)+1 with Doubling Season first)", counterOn(g, rabbit, game.CounterPlusOne))
+	}
+	// finneas 2 (excluded from its own ability) + rabbit (5+3=8) = 10.
+	if me.Hand.Size() != hand+1 {
+		t.Errorf("total power 10 or more draws a card once the paused placement lands: hand %d → %d", hand, me.Hand.Size())
+	}
+}
+
 func TestB43CalderaPyremawGrowsThenBurnsForItsNewPower(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
@@ -1001,6 +1039,38 @@ func TestB43CalderaPyremawGrowsThenBurnsForItsNewPower(t *testing.T) {
 	}
 	if opp.Life != before-4 {
 		t.Errorf("a 3/3 with a fresh counter deals 4: %d → %d", before, opp.Life)
+	}
+}
+
+// TestB43CalderaPyremawBurnsAfterAPausedPlacement is #1290's real-card
+// exit criterion: with Doubling Season AND Hardened Scales both on the
+// board, the +1/+1 counter placement pauses on a CR 616 ordering
+// prompt, and the damage has to be measured off the power the Dragon
+// has AFTER the counter lands.
+func TestB43CalderaPyremawBurnsAfterAPausedPlacement(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	hs := seedReplacementPermanent(g, hardenedScalesOracle, "Hardened Scales", me.ID)
+	ds := seedReplacementPermanent(g, doublingSeasonOracle, "Doubling Season", me.ID)
+	pyremaw := b43Catalog(g, me.ID, "Caldera Pyremaw", "Creature — Dragon", b43CalderaPyremawOracle, 3, 3)
+	before := opp.Life
+
+	castCatalogSpell(t, g, "Opt", "Instant", "", nil)
+	b16PickPlayer(t, g, me.ID, opp.ID)
+	passPriorityAroundTable(t, g)
+
+	if opp.Life != before {
+		t.Fatalf("Caldera Pyremaw dealt damage with its +1/+1 counter still owed to the CR 616 prompt")
+	}
+
+	// Doubling Season first: 1 → 2 → 3.
+	answerOrderBySource(t, g, ds, hs)
+
+	if counterOn(g, pyremaw, game.CounterPlusOne) != 3 {
+		t.Errorf("Caldera Pyremaw +1/+1 counters = %d, want 3 ((1*2)+1 with Doubling Season first)", counterOn(g, pyremaw, game.CounterPlusOne))
+	}
+	if opp.Life != before-6 {
+		t.Errorf("opponent life %d → %d, want -6 (3 base + 3 counters) — damage was measured before the paused placement landed", before, opp.Life)
 	}
 }
 
