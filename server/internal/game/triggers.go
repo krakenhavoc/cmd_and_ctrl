@@ -378,6 +378,23 @@ func (triggerHarvester) OnEvent(g *Game, ev Event) {
 	if ev.Kind == EventTrigger {
 		return
 	}
+	// ADR 0093 PR 3, CR 603.6a: an enters-the-battlefield ability
+	// "triggers when a permanent enters", looking at the permanent as it
+	// exists on the battlefield — with the continuous effects that apply
+	// to it. The one that matters here is a layer-6 GRANT: a creature
+	// entering under Cryptolith Rite or Dionus already has the granted
+	// abilities, including a granted "when this creature enters", and
+	// its layer cache is still unset (nil — printed) at the moment the
+	// entry announces itself. So the ETB harvest catches the layers up
+	// first. Only for EventETB, and only when something is stale: the
+	// entry has already landed every card it moves, so the board the
+	// pass reads is the one the next reader would have recomputed
+	// anyway. The recompute's own control-change events are emitted
+	// after its store (recomputeLayersLocked), so a nested harvest finds
+	// the cache clean.
+	if ev.Kind == EventETB {
+		g.RecomputeLayersIfStaleLocked()
+	}
 	pass := g.newHarvestPassLocked(ev)
 	g.harvestFromZone(&pass, g.Battlefield)
 	// #623 / CR 114.3: an emblem's triggered abilities function in the
