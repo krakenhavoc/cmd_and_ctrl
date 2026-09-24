@@ -478,6 +478,43 @@ func TestRunnerExitsOnCancelAndOnGameEnd(t *testing.T) {
 	}
 }
 
+// TestRunnerExitsWhenAnEffectWinsTheGame is ADR 0057's bot half: a
+// game won by an effect ends with every seat still seated, and the
+// runners must stop on the state, not on being eliminated. Both bots
+// run; seat 1 wins by effect mid-game; both runners exit and the
+// outcome names seat 1.
+func TestRunnerExitsWhenAnEffectWinsTheGame(t *testing.T) {
+	room := newRoom(t, 2, 5)
+	g := room.Game
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var runners []*aiseat.Runner
+	for i, p := range g.Seats {
+		runners = append(runners, aiseat.Start(ctx, room, p.ID,
+			aiseat.NewRandomPolicy(rand.NewPCG(uint64(10+i), 1)), aiseat.Config{}, nil, testLogger()))
+	}
+	winner := g.Seats[1]
+	if _, _, err := room.ApplyExternal(func() error {
+		var err error
+		g.WithWriteLock(func() { _, err = g.WinTheGameForEffect(winner.ID, uuid.Nil) })
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range runners {
+		waitForRunner(t, "a runner to stop after an effect win", r)
+	}
+	o := g.Result()
+	if o == nil || o.Winner != winner.ID || o.Cause != game.OutcomeCauseEffect {
+		t.Fatalf("outcome %+v", o)
+	}
+	for _, p := range g.Seats {
+		if p.Eliminated {
+			t.Errorf("%s eliminated by an effect win", p.Name)
+		}
+	}
+}
+
 func TestRunnerPacesDecisions(t *testing.T) {
 	room := newRoom(t, 2, 4)
 	g := room.Game

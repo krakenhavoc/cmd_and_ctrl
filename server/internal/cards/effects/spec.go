@@ -762,6 +762,25 @@ type Spec struct {
 	// Issue #1200, ADR 0085.
 	PlayerLifeTotalLocked bool
 
+	// GameEndGates declares a printed static "you can't lose the
+	// game" / "your opponents can't win the game" (CR 104.3 —
+	// Platinum Angel, Herald of Eternal Dawn, Abyssal Persecutor).
+	// True while the permanent is on the battlefield and nowhere else.
+	//
+	//	GameEndGates: YouCantLoseOpponentsCantWin(),
+	//
+	// Scopes are relative to the permanent's CONTROLLER. DERIVED
+	// rather than written, for the reasons PlayerLifeTotalLocked
+	// above gives: the engine asks the battlefield at every loss and
+	// every win through game.CatalogGameEndGates, keyed by
+	// CatalogAbilityKey, so two Angels compose, one leaving can't
+	// revoke the other's gate, and an Angel that lost its abilities
+	// gates nothing. The GRANTED half — "you can't lose the game this
+	// turn" (Angel's Grace) — is game.Game.GrantGameEndGateForEffect.
+	//
+	// Issue #749, ADR 0057 Decision 4.
+	GameEndGates []game.GameEndGate
+
 	// WantsDistinctColors declares a spell that READS the colours of
 	// the mana that paid for it: converge (CR 702.86 — Painful
 	// Truths, Bring to Light) and sunburst (CR 702.44 — Etched

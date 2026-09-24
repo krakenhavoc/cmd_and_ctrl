@@ -378,6 +378,11 @@ func (p *Policy) lethalPush(st *state, def *SeatEval) bool {
 	if def.Life <= 0 {
 		return false
 	}
+	// ADR 0057 Decision 6: damage can't finish a seat whose life
+	// can't make it lose, so an all-in swing at it is never lethal.
+	if def.CantLoseLife {
+		return false
+	}
 	blockers := defenderBlockers(st, def.ID)
 	// The swing is what is already committed to this seat plus
 	// everything still able to join it.
