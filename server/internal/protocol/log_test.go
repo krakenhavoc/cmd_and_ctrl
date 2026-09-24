@@ -441,14 +441,31 @@ func deflatedLen(t *testing.T, b []byte) int {
 }
 
 // BenchmarkPublicLogProjection isolates what the log adds to a
-// broadcast: the projection runs once per frame (not once per viewer),
-// over every event the game has ever emitted.
+// broadcast: the projection runs once per frame (not once per viewer).
+// Since #1401 a frame with no new events folds nothing and pays only
+// for copying and naming the ring; BenchmarkPublicLogProjectionCold is
+// the cost of a full refold, which is what every frame paid before.
 func BenchmarkPublicLogProjection(b *testing.B) {
 	g := buildFourPlayerBoardB(b)
 	v := ViewOfGame(g)
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
+		_ = publicLogOf(g, &v)
+	}
+}
+
+// BenchmarkPublicLogProjectionCold drops the fold before every call, so
+// each iteration projects every event the game has emitted — the
+// pre-#1401 cost of every frame, and today's cost of the first view
+// after an undo.
+func BenchmarkPublicLogProjectionCold(b *testing.B) {
+	g := buildFourPlayerBoardB(b)
+	v := ViewOfGame(g)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		g.LogProjectionCache().Do(func(slot *any) { *slot = nil })
 		_ = publicLogOf(g, &v)
 	}
 }
