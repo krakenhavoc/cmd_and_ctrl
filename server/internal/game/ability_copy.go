@@ -136,9 +136,16 @@ func (g *Game) stackAbilityLocked(itemID uuid.UUID) (*StackItem, bool) {
 //
 // A bare Card is not a hole: an ability whose source has left still
 // resolves (CR 608.2), and the copy's re-target prompt judges its
-// picks against a source with no qualities — which is the same
-// declared limitation stackItemSourceLocked already carries for the
-// CR 608.2b re-check, written down in ADR 0072 §2.
+// picks against a source with no qualities.
+//
+// DECLARED LIMITATION: a source that has left but is still FINDABLE
+// (its graveyard card) is returned as that card, so the copy's
+// re-target prompt judges protection against the graveyard card's
+// characteristics, not the permanent's as it last existed (CR 608.2h).
+// The CR 608.2b re-check of the ORIGINAL item reads the last-known
+// record since #1429 (stackItemSourceLocked); the copy frame carries a
+// Card, not a Characteristic, so it does not yet. ADR 0072 amendment
+// 2026-09-24 (#1429); follow-up #1449.
 //
 // Caller must hold g.mu.
 func (g *Game) abilitySourceCardLocked(item *StackItem) Card {

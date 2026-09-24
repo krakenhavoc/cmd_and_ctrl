@@ -385,12 +385,7 @@ func (g *Game) effectDamageTailLocked(kind damageTailKind, sourceID uuid.UUID, o
 	// about which object dealt the damage — and a card that has moved
 	// on (bounced and then cast, so a SPELL now) has no matching
 	// record and keeps the current-zone read above.
-	t.sourceLKI = copyCharacteristic(&rec.Characteristic)
-	if t.sourceLKI.Controller == uuid.Nil {
-		// SourceCharacteristics' rule: the controller rides the
-		// snapshot (CR 702.16k reads it), and the record has it.
-		t.sourceLKI.Controller = rec.Controller
-	}
+	t.sourceLKI = lastKnownSourceCharacteristics(rec)
 	// The record's Characteristic is Effective() as it last stood, so
 	// its ability tokens are exactly what HasKeyword read off the live
 	// card — infect, wither and toxic included, which is the reader
