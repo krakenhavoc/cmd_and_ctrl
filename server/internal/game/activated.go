@@ -1219,9 +1219,16 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if ab.Cost.ExileSelf {
 		moving = append(moving, cardID)
 	}
-	// #1445: a card an EFFECT has already paused on its way out
-	// cannot pay. See refusePausedCostCardsLocked.
-	if err := g.refusePausedCostCardsLocked(moving); err != nil {
+	// #1427: every permanent the payment TAPS — the {T}, the crew,
+	// the tap-another and waterbend picks. Not asked CR 903.9 (a
+	// tapped card goes nowhere), only checked below.
+	tapping := append(append(append([]uuid.UUID(nil), crew...), params.TapIDs...), params.WaterbendIDs...)
+	if ab.Cost.Tap {
+		tapping = append(tapping, cardID)
+	}
+	// #1445 / #1427: a card an EFFECT has already paused on its way
+	// out cannot pay. See refusePausedCostCardsLocked.
+	if err := g.refusePausedCostCardsLocked(moving, tapping); err != nil {
 		return err
 	}
 	asked, answers := g.askCostCommanderLocked(playerID, moving, params.commanderAnswers, source.Name,
