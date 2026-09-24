@@ -317,7 +317,7 @@ func representativeInput(idx *cards.Index, deckID string) (aiseat.Input, error) 
 			return aiseat.Input{}, fmt.Errorf("add player: %w", err)
 		}
 	}
-	if err := g.Start(rand.New(rand.NewPCG(31, 32))); err != nil {
+	if err := g.StartWithFirstPlayerRoll(rand.New(rand.NewPCG(31, 32))); err != nil {
 		return aiseat.Input{}, fmt.Errorf("start: %w", err)
 	}
 

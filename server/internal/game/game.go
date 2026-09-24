@@ -887,9 +887,10 @@ func (g *Game) ReplaceDeck(playerID uuid.UUID, deck []Card) error {
 	return nil
 }
 
-// Start transitions the game from lobby to active, initialises the
-// turn cursor at seat 0 / turn 1 / untap step, and shuffles each
-// player's library.
+// Start transitions the game from lobby to active with seat 0 as the starting
+// player and shuffles each player's library. It is the stable fixture/replay
+// entry point retained for callers that already chose a starting seat.
+// Production game creation uses StartWithFirstPlayerRoll instead.
 //
 // The RNG argument no longer IS the game's source; it seeds the
 // game's secret key (ADR 0054 Decision 2). A caller-supplied source
@@ -905,10 +906,22 @@ func (g *Game) ReplaceDeck(playerID uuid.UUID, deck []Card) error {
 // and ErrGameAlreadyStarted if the game is not in lobby.
 func (g *Game) Start(r *rand.Rand) error {
 	if r == nil {
-		return g.start(nil)
+		return g.start(nil, false)
 	}
 	key := rngKeyFrom(r)
-	return g.start(&key)
+	return g.start(&key, false)
+}
+
+// StartWithFirstPlayerRoll is Start plus the real-table pregame procedure:
+// every seat rolls a d20, tied leaders reroll, and the winner takes turn 1.
+// The rolls use the same seeded, persisted RNG as card effects and are emitted
+// to the public log. Production callers should use this entry point.
+func (g *Game) StartWithFirstPlayerRoll(r *rand.Rand) error {
+	if r == nil {
+		return g.start(nil, true)
+	}
+	key := rngKeyFrom(r)
+	return g.start(&key, true)
 }
 
 // StartWithSource is Start on a caller-supplied PCG source. It used
@@ -920,15 +933,16 @@ func (g *Game) Start(r *rand.Rand) error {
 // Pass nil to get the same crypto-minted key Start(nil) mints.
 func (g *Game) StartWithSource(src *rand.PCG) error {
 	if src == nil {
-		return g.start(nil)
+		return g.start(nil, false)
 	}
 	key := rngKeyFrom(src)
-	return g.start(&key)
+	return g.start(&key, false)
 }
 
-// start is the shared body. key is the game's RNG key, or nil to keep
-// a key already set and otherwise mint one.
-func (g *Game) start(key *[32]byte) error {
+// start is the shared body. key is the game's RNG key, or nil to keep a key
+// already set and otherwise mint one. rollForFirst selects whether this caller
+// already chose seat 0 or wants the table's public opening roll.
+func (g *Game) start(key *[32]byte, rollForFirst bool) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
@@ -984,8 +998,11 @@ func (g *Game) start(key *[32]byte) error {
 			p.Command.Cards[i].AddKnowersAll(allSeatedIDs)
 		}
 	}
-	g.Turn = newStartingTurn()
-	g.StartingSeat = g.Turn.ActiveSeat
+	g.StartingSeat = 0
+	if rollForFirst {
+		g.StartingSeat = g.rollStartingSeatLocked()
+	}
+	g.Turn = newStartingTurn(g.StartingSeat)
 	// The one turn that does not begin through the rotation seam
 	// still counts as a turn begun (ADR 0063 Decision 3).
 	g.noteTurnBegunLocked(g.StartingSeat)
@@ -1237,7 +1254,7 @@ func (g *Game) advanceCursorLocked() {
 		g.beginNextTurnLocked()
 		return
 	}
-	g.Turn = g.Turn.advance(len(g.Seats))
+	g.Turn = g.Turn.advance(len(g.Seats), g.StartingSeat)
 }
 
 // CardsDrawnThisTurnFor returns the instance IDs playerID has drawn
