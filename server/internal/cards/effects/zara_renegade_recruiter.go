@@ -150,22 +150,22 @@ func zaraPutAttacking(g *game.Game, item *game.StackItem, card, attacking uuid.U
 		if !ok {
 			return nil
 		}
-		epoch := c.ObjectEpoch
 		return ScheduleDelayedTrigger{
-			Label: "Zara, Renegade Recruiter — return that creature to its owner's hand",
-			Cards: []uuid.UUID{entered},
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				return zaraReturnToHand(g, item, entered, epoch)
-			},
+			Label:  "Zara, Renegade Recruiter — return that creature to its owner's hand",
+			Cards:  []uuid.UUID{entered},
+			Body:   zaraReturnToHandBody,
+			Params: game.EffectParams{Object: game.ObjectRef{ID: entered, Epoch: c.ObjectEpoch}},
 		}.Apply(NewContext(g, item))
 	})
 }
 
-// zaraReturnToHand is the delayed trigger's body: bounce the creature
-// if it is still the object that entered.
-func zaraReturnToHand(g *game.Game, item *game.StackItem, id uuid.UUID, epoch int) error {
+// zaraReturnToHand is the delayed trigger's body (zaraReturnToHandBody,
+// delayed_bodies.go): bounce the creature if it is still the object
+// that entered, which p.Object names.
+func zaraReturnToHand(g *game.Game, item *game.StackItem, p game.EffectParams) error {
+	id := p.Object.ID
 	c, ok := g.LookupCardForEffect(id)
-	if !ok || c.ObjectEpoch != epoch {
+	if !ok || c.ObjectEpoch != p.Object.Epoch {
 		return nil
 	}
 	if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneBattlefield {
