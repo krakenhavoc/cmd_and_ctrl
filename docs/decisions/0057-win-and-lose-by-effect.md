@@ -1146,5 +1146,9 @@ declared incomplete as question 3 decided. Angel's Grace carries a
 SECOND caveat the ADR did not foresee: split second (CR 702.61) is not
 read from any card — only a sandbox cast flag sets the stack's gate — so
 players may respond to it. Weaker than printed, and #1519 is the seam.
+*(2026-09-24: #1519 closed that seam — split second is a canonical
+keyword read at announce, see ADR 0007's amendment of the same date —
+and Angel's Grace now declares it and carries only the life-floor
+caveat.)*
 The rest of list (b) no longer waits on this seam and is checked for
 other blockers in its own card PRs, as question 3 said.

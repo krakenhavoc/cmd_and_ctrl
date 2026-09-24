@@ -313,6 +313,16 @@ var items = []Item{
 		Printed:  printedKeyword("prowess"),
 		Examples: []string{"Ty Lee, Chi Blocker"},
 	},
+	{
+		Slug: "split-second", Name: "Split second", Kind: KindKeyword, Status: StatusImplemented,
+		Summary:  "While a spell with split second is on the stack, nobody can cast spells or activate abilities other than mana abilities. Triggered abilities and special actions still happen.",
+		Rules:    []string{"702.61"},
+		ADR:      "0007-stack-foundation.md",
+		Keywords: []string{game.KeywordSplitSecond},
+		Mechanic: "split second",
+		Printed:  printedKeyword("split second"),
+		Examples: []string{"Krosan Grip"},
+	},
 
 	// ── Mechanics from the coverage table ────────────────────────
 	//
