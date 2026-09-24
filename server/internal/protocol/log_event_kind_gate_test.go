@@ -70,13 +70,6 @@ var silentEventKinds = map[string]string{
 	"EventDiscardCard":    silentAlreadyToldAsAZoneMove,
 	"EventBecomesTarget":  "the cast or activation line already named the spell; targeting is announce-time bookkeeping the stack view carries",
 	"EventBecomesBlocked": "the LogBlock entry for the blocker is the same fact from the other side",
-	// #1279. The blocks a declaration made are LogBlock lines; what
-	// this adds is only that the defender has FINISHED, which the turn
-	// cursor carries live (block_pending_seats / blocks_declared_seats)
-	// and the next line — a block, a resolution, the next step — makes
-	// obvious in the history. A "declares no blockers" line is a
-	// reasonable follow-up; it needs a log kind and client copy.
-	"EventBlockersDeclared": "the declaration's blocks are its LogBlock lines, and its completion is on the turn cursor (block_pending_seats / blocks_declared_seats)",
 	// #1257: this reason was not true when it was written. The
 	// ability's LogResolve carried no card and no label and rendered
 	// as "a card resolved". It now names the ability by its stack

@@ -105,6 +105,7 @@ describe("logTone", () => {
       "damage",
       "attack",
       "block",
+      "no_blocks",
       "token",
       "sacrifice",
       "eliminated",

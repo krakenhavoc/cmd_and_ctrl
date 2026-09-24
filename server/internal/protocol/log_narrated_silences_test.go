@@ -558,3 +558,82 @@ func TestLogNarratesATransform(t *testing.T) {
 	}
 	assertNoUUID(t, entry.Text)
 }
+
+// --- 7. no blockers (#1279, #1500) -----------------------------------
+//
+// #1279 gave a defending player's CR 509.1 block declaration a
+// completion point, EventBlockersDeclared, and left the log
+// deliberately silent about it: the blocks a declaration makes are
+// already LogBlock lines, and the completion itself lives on the turn
+// cursor (block_pending_seats / blocks_declared_seats). That argument
+// holds for a defender who blocked. It does not hold for one who
+// declared NONE — read back, that looks exactly like a defender who
+// was never asked at all.
+
+// A defender who declares zero blockers gets the one line no other
+// entry can say.
+func TestLogNarratesNoBlockers(t *testing.T) {
+	g := buildActiveGame(t)
+	defender := g.Seats[1]
+
+	g.WithWriteLock(func() {
+		g.EmitEvent(game.Event{Kind: game.EventBlockersDeclared, Actor: defender.ID, Amount: 0})
+	})
+
+	entry := findLog(t, ViewOfGame(g).Log, LogNoBlocks)
+	if want := "P2 declares no blockers"; entry.Text != want {
+		t.Errorf("text: got %q, want %q", entry.Text, want)
+	}
+	if entry.Seat != 1 {
+		t.Errorf("seat: got %d, want 1 — the defender", entry.Seat)
+	}
+	if entry.CardID != "" || entry.Target != "" {
+		t.Errorf("a no-blocks entry names a card: card_id %q target %q", entry.CardID, entry.Target)
+	}
+	assertNoUUID(t, entry.Text)
+}
+
+// A defender who DID block gets no second line about it: the blocks
+// themselves are already LogBlock entries, and repeating the count at
+// completion would say the same combat twice.
+func TestLogStaysSilentWhenBlockersAreDeclared(t *testing.T) {
+	g := buildActiveGame(t)
+	defender := g.Seats[1]
+
+	g.WithWriteLock(func() {
+		g.EmitEvent(game.Event{Kind: game.EventBlockersDeclared, Actor: defender.ID, Amount: 2})
+	})
+
+	for _, e := range ViewOfGame(g).Log {
+		if e.Kind == LogNoBlocks {
+			t.Errorf("a defender who blocked with 2 creatures produced a no-blocks line: %q", e.Text)
+		}
+	}
+}
+
+// The line is public: who was asked to block and chose not to is a
+// fact the whole table watched happen, exactly like an attack
+// declaration. It carries no card, so no knower predicate has
+// anything to redact — every viewer, including a spectator, reads the
+// identical sentence.
+func TestNoBlockersReadsTheSameForEveryViewer(t *testing.T) {
+	g := buildActiveGame(t)
+	defender := g.Seats[1]
+
+	g.WithWriteLock(func() {
+		g.EmitEvent(game.Event{Kind: game.EventBlockersDeclared, Actor: defender.ID, Amount: 0})
+	})
+
+	v := ViewOfGame(g)
+	want := findLog(t, v.Log, LogNoBlocks).Text
+	viewers := []string{spectatorID}
+	for _, s := range v.Seats {
+		viewers = append(viewers, s.ID)
+	}
+	for _, viewer := range viewers {
+		got := findLog(t, FilterViewFor(v, viewer).Log, LogNoBlocks).Text
+		if got != want {
+			t.Errorf("viewer %s: text %q, want %q (public — same for everyone)", viewer, got, want)
+		}
+	}
+}
