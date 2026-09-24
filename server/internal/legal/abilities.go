@@ -303,12 +303,6 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 					continue
 				}
 			}
-		} else if ab.Cost.DemandsX() {
-			// Unreachable — DemandsX reads the same string — but
-			// a cost that demanded X with no mana component
-			// would be an unannouncable ability, so refuse it
-			// rather than emit an activation at X=0.
-			continue
 		}
 		// Crew (CR 702.122a). The engine rejects a crew
 		// activation that names no creatures, so an enumerator
@@ -360,7 +354,12 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// payable means no move at all (#544, CR 118.3).
 		tapSets := [][]uuid.UUID{nil}
 		if tc := ab.Cost.TapOthers; !tc.Empty() {
-			tapSets = e.tapOthersPayments(g.TapOthersOptionsForEffect(e.seat, source.InstanceID, tc), tc, source.InstanceID, ab.Cost.Tap)
+			pool := g.TapOthersOptionsForEffect(e.seat, source.InstanceID, tc)
+			if game.TapOthersCountFromX(tc) {
+				tapSets = e.variableTapOthersPayments(pool, tc, source.InstanceID, ab.Cost.Tap)
+			} else {
+				tapSets = e.tapOthersPayments(pool, tc, source.InstanceID, ab.Cost.Tap)
+			}
 			if len(tapSets) == 0 {
 				continue
 			}
@@ -492,13 +491,17 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 				}
 				for _, rets := range returnSets {
 					for _, taps := range tapSets {
+						tapXValue := xValue
+						if game.TapOthersCountFromX(ab.Cost.TapOthers) {
+							tapXValue = len(taps)
+						}
 						// #759: the same #1242 rule for the tapped
 						// permanents — the auto-tapper will not spend a
 						// creature the payment has already named, so a
 						// mana creature that is both the tap and the mana
 						// is a move the engine refuses.
 						if ab.Cost.Mana != "" && len(taps) > 0 &&
-							!e.payableExcluding(abilityMana, xValue, phyrexianLife, game.ManaSpendForAbility(*source),
+							!e.payableExcluding(abilityMana, tapXValue, phyrexianLife, game.ManaSpendForAbility(*source),
 								game.WithAutoTapExclusions(abilityExcluded, sacs, discardIDs, exileIDs, taps)) {
 							continue
 						}
@@ -508,8 +511,8 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 							}
 							budget--
 							label := source.Name + ": " + ab.Label
-							if xValue > 0 {
-								label += fmt.Sprintf(" for X=%d", xValue)
+							if tapXValue > 0 {
+								label += fmt.Sprintf(" for X=%d", tapXValue)
 							}
 							if phyrexianLife > 0 {
 								label += fmt.Sprintf(" paying %d life for Phyrexian mana",
@@ -559,7 +562,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 									ReturnIDs:        idStrings(rets),
 									WaterbendIDs:     idStrings(waterbendIDs),
 									TapIDs:           idStrings(taps),
-									XValue:           xValue,
+									XValue:           tapXValue,
 									PhyrexianLife:    phyrexianLife,
 									Strict:           true,
 									AutoTap:          true,
@@ -653,7 +656,8 @@ func (e *enumerator) abilityManaPayment(source *game.Card, zone game.ZoneKind, a
 // maxEnumeratedVariableCounts caps how many different COUNTS the
 // enumerator offers for one variable-count cost — "Sacrifice one or
 // more artifacts" (Radiant Lotus), "Sacrifice X Treasures" (Grim
-// Hireling). Not a rule; a policy, documented in docs/bot.md beside
+// Hireling), or "Tap X untapped Foods" (Apothecary White). Not a
+// rule; a policy, documented in docs/bot.md beside
 // maxEnumeratedCostPayments and maxEnumeratedRepeats.
 //
 // THREE, and the reason is maxEnumeratedCostPayments' corollary
@@ -775,6 +779,35 @@ func (e *enumerator) tapOthersPayments(pool []uuid.UUID, tc *game.TapOthersCost,
 		return [][]uuid.UUID{pool[:tc.Count]}
 	}
 	return combinations(pool, 1, 1, e.opts.MaxExpansionPerSource)
+}
+
+// variableTapOthersPayments offers one nested payment for each of the
+// first three useful X values. X=0 is legal but omitted as a no-op,
+// matching variableSacrificePayments and enumeratedXFloor. The same
+// policy-supplied fuel price orders each nested prefix, so a bounded
+// enumeration taps what the seat would miss least.
+func (e *enumerator) variableTapOthersPayments(pool []uuid.UUID, tc *game.TapOthersCost, sourceID uuid.UUID, alsoTapsSource bool) [][]uuid.UUID {
+	if tc.Empty() || !game.TapOthersCountFromX(tc) {
+		return nil
+	}
+	if alsoTapsSource {
+		kept := pool[:0:0]
+		for _, id := range pool {
+			if id != sourceID {
+				kept = append(kept, id)
+			}
+		}
+		pool = kept
+	}
+	pool = e.g.SacrificePaymentOrderForEffect(e.cheapestFuelFirst(pool), sourceID)
+	var out [][]uuid.UUID
+	for n := 1; n <= len(pool) && len(out) < maxEnumeratedVariableCounts; n++ {
+		if !game.TapOthersCountLegal(tc, n, n) {
+			break
+		}
+		out = append(out, pool[:n])
+	}
+	return out
 }
 
 // tapLabel is sacrificeLabel one verb over (#759).

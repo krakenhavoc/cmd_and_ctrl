@@ -1386,12 +1386,14 @@ type ManaAbilityCost struct {
 	// mana rocks" — they are all live now.
 	SacrificeOther *game.TargetSpec
 
-	// TapOthers taps a fixed number of untapped permanents the
+	// TapOthers taps a fixed or X-announced number of untapped permanents the
 	// activator controls as part of the cost (#758) — Springleaf
 	// Drum's "Tap an untapped creature you control" and Heritage
 	// Druid's three Elves. It is the same component an ordinary
-	// activated ability carries; build it with TapAnotherUntapped (or
-	// a game.TapOthersCost for a count above one) and copy the field.
+	// activated ability carries; build fixed counts with
+	// TapAnotherUntapped (or a game.TapOthersCost above one). A
+	// variable count is refused here because mana abilities have no X
+	// announcement (CR 605.3b).
 	//
 	// This is not the {T} symbol, so summoning sickness does not stop
 	// a creature paying it. The auto-tapper never chooses one of these

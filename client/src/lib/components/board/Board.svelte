@@ -892,6 +892,7 @@
       abilityReturnIDs = [];
       abilityTapIDs = [];
       abilitySacrificeX = undefined;
+      abilityTapX = undefined;
       guardedSendAction("activate_ability", params, viewerID ?? undefined);
       targeting.set(null);
       return;
@@ -971,6 +972,8 @@
     return orderSacrificeOptions(view.battlefield.cards, p.ability.tap_others_options?.cards);
   });
 
+  const abilityTapBounds = $derived(sacrificeRange(abilityTapPrompt?.ability.tap_others_options));
+
   // #758: the same fixed-count TapOthers component on a MANA
   // ability (Springleaf Drum). Kept beside the activated prompt but
   // with its own state because the two actions finish through
@@ -992,6 +995,9 @@
   // the X stepper is skipped for such an ability — asking twice could
   // only produce an announcement the server refuses.
   let abilitySacrificeX: number | undefined;
+  // #1421: the count picked for "Tap X" is the announcement, just
+  // as the sacrifice picker supplies X for "Sacrifice X".
+  let abilityTapX: number | undefined;
 
   // S27: a Vehicle's crew cost. Its own prompt rather than a reuse of
   // the sacrifice picker because crew is a many-pick with a POWER
@@ -1110,6 +1116,8 @@
     // pick left over from one the player backed out of must not ride
     // along with this one.
     abilityWaterbendIDs = undefined;
+    abilitySacrificeX = undefined;
+    abilityTapX = undefined;
     // #660: the discard payment is asked FIRST, as the cast flow asks
     // its own — it is the cost most likely to make a player back out.
     // Skipped when the hand holds exactly the cards the clause
@@ -1192,7 +1200,7 @@
     if (ability.tap_others_options) {
       const options = ability.tap_others_options.cards ?? [];
       const need = ability.tap_others_options.max ?? ability.tap_others_options.min ?? 1;
-      if (options.length > need) {
+      if (ability.tap_others_options.count_from_x || options.length > need) {
         abilityTapPrompt = { card, ability };
         return;
       }
@@ -1222,6 +1230,7 @@
     abilityTapPrompt = null;
     if (!p) return;
     abilityTapIDs = ids;
+    abilityTapX = p.ability.tap_others_options?.count_from_x ? ids.length : undefined;
     afterAbilityPermanentPicks(p.card, p.ability);
   }
 
@@ -1563,6 +1572,8 @@
       // #1213: unless the sacrifice payment already answered it.
       if (abilitySacrificeX !== undefined) {
         xValue = abilitySacrificeX;
+      } else if (abilityTapX !== undefined) {
+        xValue = abilityTapX;
       } else {
         xAbilityPrompt = { card, ability, sacrificeIDs, crewIDs, counter };
         return;
@@ -1651,6 +1662,7 @@
     abilityReturnIDs = [];
     abilityTapIDs = [];
     abilitySacrificeX = undefined;
+    abilityTapX = undefined;
     guardedSendAction("activate_ability", params, viewerID ?? undefined);
   }
 
@@ -2202,11 +2214,13 @@
     label={abilityTapPrompt?.ability.tap_others_label ?? "another untapped creature you control"}
     options={abilityTapOptions}
     count={abilityTapPrompt?.ability.tap_others_options?.max ?? 1}
+    min={abilityTapBounds.min}
     verb="Tap"
     onConfirm={confirmAbilityTapCost}
     onCancel={() => {
       abilityTapPrompt = null;
       abilityTapIDs = [];
+      abilityTapX = undefined;
       abilityReturnIDs = [];
     }}
   />

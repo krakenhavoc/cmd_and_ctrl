@@ -14,10 +14,10 @@ import "github.com/google/uuid"
 //	optional, its size is bounded by the cost, and tapping nothing is
 //	a legal cast.
 //
-//	TapOthersCost (#758) answers "what does this ACTIVATION owe". It
-//	is a component of AbilityCost in the sense ADR 0020 §2 means:
-//	a fixed number of permanents must be tapped or the ability cannot
-//	be activated at all (CR 118.3).
+//	TapOthersCost (#758, #1421) answers "what does this ACTIVATION
+//	owe". It is a component of AbilityCost in the sense ADR 0020 §2
+//	means: the fixed or announced number of permanents must be tapped
+//	or the ability cannot be activated at all (CR 118.3).
 //
 // Earthcraft, Opposition, Azami, Springleaf Drum, Heritage Druid and
 // the station ability (CR 702.184a) all print it. ADR 0071 §2 names
@@ -68,10 +68,8 @@ type TapOthersCost struct {
 	// Earthcraft and Springleaf Drum; 2 for Clock of Omens; 3 for
 	// Heritage Druid; 4 for Nullmage Shepherd.
 	//
-	// Fixed. A VARIABLE count ("tap X untapped Foods you control",
-	// Apothecary White) is not modelled here and is not a matter of
-	// reading this field differently: it would need the announce
-	// path MinX uses, and it is stated out of scope on #758.
+	// Fixed unless Filter.CountFromX is set. In that variable form
+	// Count is zero and the announced X is the payment width (#1421).
 	Count int
 
 	// Filter is what may be tapped ("an untapped creature you
@@ -113,7 +111,41 @@ type TapOthersCost struct {
 // Empty reports whether the cost demands nothing. Nil-safe, so the
 // activation path can ask without a guard.
 func (c *TapOthersCost) Empty() bool {
-	return c == nil || c.Count < 1 || c.Filter == nil
+	return c == nil || c.Filter == nil || (c.Count < 1 && !c.Filter.CountFromX)
+}
+
+// TapOthersCountFromX reports the "Tap X untapped ..." form. The
+// count belongs to the announcement, while Filter remains the one
+// candidate walk shared by the view, validator and enumerator.
+func TapOthersCountFromX(c *TapOthersCost) bool {
+	return c != nil && c.Filter != nil && c.Filter.CountFromX
+}
+
+// TapOthersCostBounds is the payment width at an announced X. A
+// fixed clause returns Count / Count; a CountFromX clause returns X /
+// X. Negative X is clamped to zero because the announce path rejects
+// it separately.
+func TapOthersCostBounds(c *TapOthersCost, x int) (lo, hi int) {
+	if c == nil || c.Filter == nil {
+		return 0, 0
+	}
+	if TapOthersCountFromX(c) {
+		if x < 0 {
+			x = 0
+		}
+		return x, x
+	}
+	return c.Count, c.Count
+}
+
+// TapOthersCountLegal is the single count predicate used by the
+// validator, protocol view and legal enumerator (#544).
+func TapOthersCountLegal(c *TapOthersCost, x, named int) bool {
+	if c == nil || c.Filter == nil {
+		return named == 0
+	}
+	lo, hi := TapOthersCostBounds(c, x)
+	return named >= lo && named <= hi
 }
 
 // TapOthersOptionsForEffect is the set of permanents that could pay
@@ -161,10 +193,16 @@ func (g *Game) TapOthersOptionsForEffect(playerID, sourceID uuid.UUID, tc *TapOt
 //
 // Caller must hold g.mu (read or write).
 func (g *Game) TapOthersPayable(playerID, sourceID uuid.UUID, tc *TapOthersCost) bool {
+	return g.TapOthersPayableAtX(playerID, sourceID, tc, 0)
+}
+
+// TapOthersPayableAtX is TapOthersPayable for an announced X.
+func (g *Game) TapOthersPayableAtX(playerID, sourceID uuid.UUID, tc *TapOthersCost, x int) bool {
 	if tc.Empty() {
 		return true
 	}
-	return len(g.TapOthersOptionsForEffect(playerID, sourceID, tc)) >= tc.Count
+	lo, _ := TapOthersCostBounds(tc, x)
+	return len(g.TapOthersOptionsForEffect(playerID, sourceID, tc)) >= lo
 }
 
 // validateTapOthersCostLocked checks that every permanent the
@@ -195,13 +233,19 @@ func (g *Game) TapOthersPayable(playerID, sourceID uuid.UUID, tc *TapOthersCost)
 //
 // Caller must hold g.mu.
 func (g *Game) validateTapOthersCostLocked(playerID, sourceID uuid.UUID, tc *TapOthersCost, ids []uuid.UUID) error {
+	return g.validateTapOthersCostAtXLocked(playerID, sourceID, tc, ids, 0)
+}
+
+// validateTapOthersCostAtXLocked validates the component against the
+// X announced for this activation. Fixed costs ignore x.
+func (g *Game) validateTapOthersCostAtXLocked(playerID, sourceID uuid.UUID, tc *TapOthersCost, ids []uuid.UUID, x int) error {
 	if tc.Empty() {
 		if len(ids) > 0 {
 			return ErrInvalidParam
 		}
 		return nil
 	}
-	if len(ids) != tc.Count {
+	if !TapOthersCountLegal(tc, x, len(ids)) {
 		return ErrInvalidParam
 	}
 	seen := make(map[uuid.UUID]bool, len(ids))

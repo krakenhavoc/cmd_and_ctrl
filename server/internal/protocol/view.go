@@ -7407,7 +7407,8 @@ func tapOthersCostOptions(g *game.Game, controller, sourceID uuid.UUID, tc *game
 		return nil
 	}
 	ids := g.TapOthersOptionsForEffect(controller, sourceID, tc)
-	out := &LegalTargetsView{Min: tc.Count, Max: tc.Count}
+	lo, hi := game.TapOthersCostBounds(tc, 0)
+	out := &LegalTargetsView{Min: lo, Max: hi, CountFromX: game.TapOthersCountFromX(tc)}
 	for _, id := range g.SacrificePaymentOrderForEffect(ids, sourceID) {
 		if alsoTapsSource && id == sourceID {
 			continue

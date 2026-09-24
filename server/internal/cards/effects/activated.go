@@ -260,6 +260,20 @@ func TapAnotherUntapped(label string, preds ...CardPredicate) game.AbilityCost {
 	}}
 }
 
+// TapXUntapped is "Tap X untapped <permanents> you control" as a
+// cost (#1421). The picked count is the activation's announced X;
+// there is no {X} mana symbol and therefore no extra mana demand.
+func TapXUntapped(label string, preds ...CardPredicate) game.AbilityCost {
+	filter := TargetPermanent(label, preds...)
+	filter.Min = 0
+	filter.Max = 0
+	filter.CountFromX = true
+	return game.AbilityCost{TapOthers: &game.TapOthersCost{
+		Filter: filter,
+		Label:  label,
+	}}
+}
+
 // ReturnAPermanentToHand is "Return a <permanent> you control to its
 // owner's hand" as a COST (#1213) — Quirion Ranger's
 //

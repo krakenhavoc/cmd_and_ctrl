@@ -14,14 +14,9 @@ func TestRegisterRefusesMalformedTapOthersCostsOnBothAbilityKinds(t *testing.T) 
 		cost *game.TapOthersCost
 		want string
 	}{
-		{name: "zero count", cost: &game.TapOthersCost{Filter: validFilter, Label: "a creature"}, want: "positive fixed count"},
+		{name: "zero count", cost: &game.TapOthersCost{Filter: validFilter, Label: "a creature"}, want: "positive count"},
 		{name: "missing filter", cost: &game.TapOthersCost{Count: 1, Label: "a creature"}, want: "clause and label"},
 		{name: "missing label", cost: &game.TapOthersCost{Count: 1, Filter: validFilter}, want: "clause and label"},
-		{name: "variable count", cost: &game.TapOthersCost{
-			Count:  1,
-			Filter: &game.TargetSpec{CountFromX: true},
-			Label:  "X permanents",
-		}, want: "#1421"},
 		{name: "same permanent twice", cost: &game.TapOthersCost{
 			Count:  2,
 			Filter: &game.TargetSpec{AllowSame: true},
@@ -48,5 +43,27 @@ func TestRegisterRefusesMalformedTapOthersCostsOnBothAbilityKinds(t *testing.T) 
 				}
 			})
 		}
+	}
+}
+
+func TestRegisterAllowsTapXOnlyOnAnOrdinaryActivatedAbility(t *testing.T) {
+	variable := &game.TapOthersCost{
+		Filter: &game.TargetSpec{CountFromX: true},
+		Label:  "X permanents",
+	}
+	// No panic: a CR 602 activation has an X announcement and a stack
+	// item to carry it.
+	checkTapOthersClause("Variable Tapper", "ability 0", variable, true)
+
+	spec := Spec{
+		OracleID: "test-variable-tap-mana",
+		Name:     "Bad Variable Mana Tapper",
+		ManaAbilities: []ManaAbility{{
+			Cost:     ManaAbilityCost{TapOthers: variable},
+			Produced: "{G}",
+		}},
+	}
+	if msg := registerPanics(spec); !strings.Contains(msg, "mana ability has no X announcement") {
+		t.Fatalf("Register panic = %q, want the mana-ability X refusal", msg)
 	}
 }

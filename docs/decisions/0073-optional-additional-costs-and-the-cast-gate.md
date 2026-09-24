@@ -783,10 +783,6 @@ source; an auto-tapped one is not.
   both cards stronger than printed (#259), so they stay on the
   *Per-source activations-this-turn count* row, which the return row already
   cross-references.
-- **A variable TAP-others count.** "Tap X untapped artifacts you control"
-  (Secluded Starforge) is the same announcement question one component over.
-  #758 stated it out of scope and that row stays open; nothing here narrows it,
-  and `SacrificeCostBounds` is the shape it should copy when it lands.
 
 ---
 
@@ -1012,3 +1008,51 @@ the snapshot when empty.
   a card asks.
 - An exile cost on a SPELL's additional cost (delve is not one — it is a cost
   REDUCTION, CR 702.66). No printed spell needs `AdditionalCost` to carry it.
+
+---
+
+## Amendment (2026-09-24, [#1421](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1421)): "Tap X" is the same announced-count vocabulary
+
+Secluded Starforge and Apothecary White ask the question the #1213 amendment
+left open: "Tap X untapped … you control". This is not a new cost system. It is
+the fixed `TapOthersCost` from #758 using the announced-count convention that
+variable sacrifice already established.
+
+### Decision 8 — `TargetSpec.CountFromX` owns the variable width
+
+`TapOthersCost.Count` stays the fixed-count field. For the variable form it is
+zero and `TapOthersCost.Filter.CountFromX` is true. The shared
+`TapOthersCostBounds(cost, x)` returns `Count / Count` for the old form and
+`x / x` for the new one. The protocol view, payability check and validator all
+read that function; the candidate walk remains `TapOthersOptionsForEffect`.
+There is still one answer to which permanents are eligible, including the
+existing CR 118.3 checks that the source cannot also pay `{T}` and that one
+permanent cannot pay two cost components.
+
+`AbilityCost.DemandsX()` now includes this clause even when the mana component
+contains no `{X}`. `XSlots()` still counts mana symbols only, so picking three
+Foods for Apothecary White announces X=3 without adding three generic mana.
+The action carries both `tap_ids` and `x_value`; a mismatch refuses the whole
+activation before anything taps. At resolution the effect reads the immutable
+`StackItem.XValue`, never the current battlefield and never a recount of the
+objects paid.
+
+### Decision 9 — one announcement has one owner
+
+Registration refuses an ability that combines variable tap-others with `{X}`
+mana or with a variable sacrifice clause. Although those components could be
+forced to share one number, their printed choices are independent and a single
+`x_value` cannot express that honestly. Registration also refuses the variable
+form on a mana ability: CR 605.3b skips the announcement step and leaves no
+stack item to carry X.
+
+### Decision 10 — the picker supplies X; bots offer three useful counts
+
+The wire reuses `LegalTargetsView.count_from_x`, already understood by the
+sacrifice picker. A human selects one or more eligible permanents; the client
+sends the selection length as X and skips its separate numeric X prompt. X=0
+is legal in the abstract but is a no-op for both proof cards, so the UI asks
+for at least one pick and the legal-move enumerator omits zero. Bots offer the
+smallest three useful counts, using the existing
+`maxEnumeratedVariableCounts` cap, with nested cheapest-first payments so this
+new dimension cannot consume the target/mode expansion budget.

@@ -555,6 +555,7 @@ export interface ReturnOptionsShape {
   cards?: string[];
   min?: number;
   max?: number;
+  count_from_x?: boolean;
 }
 
 // returnShortfall is the reason a return-to-hand cost can't be paid
@@ -583,7 +584,8 @@ export function returnShortfall(opts: ReturnOptionsShape | undefined, label?: st
 export function tapOthersShortfall(opts: ReturnOptionsShape | undefined, label?: string): string {
   if (!opts) return "";
   const have = opts.cards?.length ?? 0;
-  if (have >= (opts.min ?? 1)) return "";
+  const need = opts.count_from_x ? 1 : (opts.min ?? 1);
+  if (have >= need) return "";
   return `nothing to tap (${label ?? "another untapped creature you control"})`;
 }
 

@@ -360,22 +360,23 @@ type AbilityCost struct {
 // {X}, and is therefore an ability the activator announces a value
 // for at CR 602.2b.
 //
-// X used to live in the MANA component and nowhere else. #1213 added
-// the second place, and it is the same second place the cast path has
-// always had: a spell grows an X outside its printed cost with Toxic
+// X used to live in the MANA component and nowhere else. #1213 and
+// #1421 added two cost-component owners, the same shape the cast path
+// has always had: a spell grows an X outside its printed cost with Toxic
 // Deluge's "pay X life" (AdditionalCost.PayLifeX) and with waterbend
-// (TapPermanentsCost), and Grim Hireling's "{B}, Sacrifice X
-// Treasures" is that on an ability. So the question is asked of the
-// COST rather than of the cost string, and every consumer — the view,
+// (TapPermanentsCost); Grim Hireling's "{B}, Sacrifice X Treasures"
+// and Apothecary White's "Tap X untapped Foods" are that on an
+// ability. So the question is asked of the COST rather than of the
+// cost string, and every consumer — the view,
 // the enumerator, the client — still derives "does this prompt for X"
 // from the declared components rather than from a flag a card file
 // could forget to set.
 //
-// XSlots is deliberately NOT widened with it: a sacrifice clause's X
-// buys permanents, not generic mana, so Grim Hireling's {B} stays {B}
-// at every announced X.
+// XSlots is deliberately NOT widened with them: a sacrifice or tap
+// clause's X buys permanents, not generic mana, so the mana component
+// stays the same at every announced X.
 func (c AbilityCost) DemandsX() bool {
-	return c.XSlots() > 0 || SacrificeCountFromX(c.SacrificeOther)
+	return c.XSlots() > 0 || SacrificeCountFromX(c.SacrificeOther) || TapOthersCountFromX(c.TapOthers)
 }
 
 // XSlots is how many {X} tokens the mana component carries. Usually
@@ -690,9 +691,10 @@ type ActivateAbilityParams struct {
 	CrewIDs []uuid.UUID
 
 	// TapIDs names the permanents tapped to pay a TapOthers cost
-	// (#758): exactly the clause's Count, each once, each untapped
-	// and controlled by the activator, and never the source when
-	// the clause prints "another". Their order does not matter.
+	// (#758, #1421): exactly the clause's fixed Count, or exactly
+	// XValue when its filter says CountFromX; each once, each untapped
+	// and controlled by the activator, and never the source when the
+	// clause prints "another". Their order does not matter.
 	//
 	// On the wire as `tap_ids`, the same name the cast path's
 	// convoke taps ride under (CastSpellParams.TapIDs) — the same
@@ -708,9 +710,9 @@ type ActivateAbilityParams struct {
 	//
 	// Its own field and its own wire name (`waterbend_ids`) rather
 	// than `tap_ids`, because the two are different questions:
-	// TapIDs is a fixed count a TapOthers cost DEMANDS, this is an
-	// optional discount a waterbend cost OFFERS, and an ability
-	// printing both would need to say which tap paid which.
+	// TapIDs is a count a TapOthers cost DEMANDS (fixed or announced
+	// as X), this is an optional discount a waterbend cost OFFERS, and
+	// an ability printing both would need to say which tap paid which.
 	WaterbendIDs []uuid.UUID
 
 	// CounterSourceIDs names the permanents a RemoveCounters cost
@@ -1089,7 +1091,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// #758: the tap-another component. Validated here with every
 	// other cost and paid at the foot of the announce, so a refusal
 	// leaves the board entirely untapped (ADR 0020 §3).
-	if err := g.validateTapOthersCostLocked(playerID, cardID, ab.Cost.TapOthers, params.TapIDs); err != nil {
+	if err := g.validateTapOthersCostAtXLocked(playerID, cardID, ab.Cost.TapOthers, params.TapIDs, params.XValue); err != nil {
 		return err
 	}
 	// CR 118.3: the source can only be tapped once. A cost that

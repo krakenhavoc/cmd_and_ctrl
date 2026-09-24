@@ -10,9 +10,33 @@ import (
 
 const secludedStarforgeOracle = "69f55a7c-6ddf-412e-b63b-b395731a1ff2"
 
-// Two of three abilities ship: the colorless tap and the Robot. The
-// middle one is not declared at all, which is what keeps the land
-// from being a two-mana pump with no price.
+func TestSecludedStarforgeTapXArtifactsPumpsByTheAnnouncedCount(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	forge := b12Push(g, me.ID, "Secluded Starforge", "Land", secludedStarforgeOracle, 0, 0)
+	one := b12Permanent(g, me.ID, "Rock One", "Artifact")
+	two := b12Permanent(g, me.ID, "Rock Two", "Artifact")
+	target := b12Creature(g, me.ID, "Target", "Creature — Bear", 2, 2)
+	advanceToMain(t, g)
+
+	abilities := game.ActivatedAbilitiesForCard(game.Card{OracleID: secludedStarforgeOracle})
+	if len(abilities) != 2 || !game.TapOthersCountFromX(abilities[0].Cost.TapOthers) || !abilities[0].Cost.DemandsX() {
+		t.Fatalf("tap-X and Robot abilities = %+v", abilities)
+	}
+
+	b16Activate(t, g, me.ID, forge, 0, game.ActivateAbilityParams{
+		XValue:  2,
+		TapIDs:  []uuid.UUID{one, two},
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: target}},
+	})
+	if !b16Tapped(t, g, one) || !b16Tapped(t, g, two) {
+		t.Error("the two artifacts were not tapped as the cost")
+	}
+	if got := effectivePower(t, g, target); got != 4 {
+		t.Errorf("target power = %d, want 4 after +2/+0", got)
+	}
+}
+
 func TestSecludedStarforgeTapsForColorlessAndBuildsRobots(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
@@ -23,17 +47,8 @@ func TestSecludedStarforgeTapsForColorlessAndBuildsRobots(t *testing.T) {
 	if len(manas) != 1 || manas[0].Produced != "{C}" {
 		t.Fatalf("one colorless mana ability, got %+v", manas)
 	}
-	abilities := game.ActivatedAbilitiesForCard(game.Card{OracleID: secludedStarforgeOracle})
-	if len(abilities) != 1 {
-		t.Fatalf("exactly one CR 602 ability ships, got %d", len(abilities))
-	}
-	for _, a := range abilities {
-		if a.Cost.TapOthers != nil {
-			t.Error("the tap-X-artifacts ability is deferred, not half-declared")
-		}
-	}
 
-	b16Activate(t, g, me.ID, forge, 0, game.ActivateAbilityParams{})
+	b16Activate(t, g, me.ID, forge, 1, game.ActivateAbilityParams{})
 	robot := findBattlefieldByName(g, "Robot")
 	if robot == uuid.Nil {
 		t.Fatal("the {5} ability creates a Robot token")
