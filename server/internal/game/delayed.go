@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"fmt"
+
+	"github.com/google/uuid"
+)
 
 // delayed.go — S22: CR 603.7 delayed triggered abilities.
 //
@@ -43,11 +47,15 @@ import "github.com/google/uuid"
 // Serialisation / undo: the queue is deep-copied by cloneLocked and
 // swapped wholesale by RestoreFrom, and it is projected onto the wire
 // as GameView.DelayedTriggers so a client (and the replay log built
-// from those snapshots) can see what is still owed. The Effect func
-// is shared rather than copied on Clone, on exactly the contract
-// StackItem.Effect already documents: it takes the live *Game and its
-// own item at fire time and captures neither, so an item restored
-// into a different *Game resolves against that one.
+// from those snapshots) can see what is still owed.
+//
+// A delayed trigger is DATA (ADR 0041 phase 3, tier 2, #1497): what it
+// does is a Body KEY into the registry in effect_bodies.go plus plain
+// EffectParams, and an event condition is a Condition key plus
+// CondParams. So the queue snapshots verbatim and a table with a
+// trigger waiting is still a restore point — where a closure here
+// froze the restore point for as long as the trigger was owed, which
+// for an earthbent land was as long as the land lived.
 
 // DelayedTrigger is one pending "at the beginning of the next
 // <step>, do X" instruction. Created by ScheduleDelayedTriggerForEffect
@@ -117,15 +125,18 @@ type DelayedTrigger struct {
 	// erroring.
 	Cards []uuid.UUID
 
-	// Effect is what the trigger does when its stack item resolves.
-	// Same contract as StackItem.Effect: it receives the live game
-	// and the item, and MUST NOT capture a *Game or a pointer into
-	// a zone slice — undo restores a cloned game and the closure has
-	// to resolve against that one. Read the payload from
-	// item.Targets and the controller from item.Controller.
-	//
-	// Runs under g.mu held in write mode.
-	Effect func(g *Game, item *StackItem) error
+	// Body is the key of what the trigger does when its stack item
+	// resolves — a function registered with DelayedBody
+	// (effect_bodies.go). It reads the payload from item.Targets, the
+	// controller from item.Controller and anything else from Params.
+	// Required: ScheduleDelayedTriggerForEffect drops a trigger with
+	// none and panics on a key that is not registered.
+	Body string
+
+	// Params is the body's plain data: the factory arguments a closure
+	// used to capture (Mana Drain's mana value, Arcane Denial's
+	// victim, a madness card's epoch).
+	Params EffectParams
 
 	// On is the EVENT condition, the #663 alternative to At: "when
 	// you NEXT CAST an instant or sorcery spell this turn, copy that
@@ -140,22 +151,24 @@ type DelayedTrigger struct {
 	// for this case and says why.
 	On []EventKind
 
-	// AppliesTo narrows On to the event the card actually names — the
-	// delayed sibling of TriggeredAbility.AppliesTo, with a
-	// DelayedTrigger in the source's place because there is no source
-	// card to hand it. Nil means every event of a watched kind
-	// matches.
-	//
-	// Runs under g.mu held in write mode. MUST NOT call public
-	// locking mutators. A closure, so it does not survive a snapshot
-	// — see the census note on Effect.
-	AppliesTo func(ev Event, dt *DelayedTrigger, g *Game) bool
+	// Condition narrows On to the event the card actually names — the
+	// key of a function registered with DelayedCondition, the delayed
+	// sibling of TriggeredAbility.AppliesTo with a DelayedTrigger in
+	// the source's place because there is no source card to hand it.
+	// Empty means every event of a watched kind matches.
+	Condition string
 
-	// Optional is the CR 603.5 "you may" on a fired trigger, asked
-	// through the harvester's own prompt because the dispatch is the
-	// harvester's. Nil for the mandatory case, which is every card on
-	// this seam today.
-	Optional *TriggerOptionalPrompt
+	// CondParams is the condition's plain data: the spell filter a
+	// "when you next cast" reads, for instance.
+	CondParams EffectParams
+
+	// OptionalQuestion is the CR 603.5 "you may" on a fired trigger,
+	// asked of the trigger's controller through the harvester's own
+	// prompt, because the dispatch is the harvester's. Empty for the
+	// mandatory case, which is every card on this seam today. A
+	// question, not a TriggerOptionalPrompt: the prompt's Chooser is a
+	// closure, and the controller is who a delayed trigger asks.
+	OptionalQuestion string
 
 	// Duration is how long this trigger is owed for — the SAME CR
 	// 611.2 duration model the scoped statics use (ADR 0063,
@@ -175,8 +188,13 @@ type DelayedTrigger struct {
 
 // ScheduleDelayedTriggerForEffect registers a delayed triggered
 // ability. Returns the trigger's ID, or uuid.Nil when the request is
-// malformed (no Effect, or no step to fire at) — a malformed trigger
-// is dropped rather than queued, so it can never wedge the queue.
+// malformed (no Body, or no step or event to fire at) — a malformed
+// trigger is dropped rather than queued, so it can never wedge the
+// queue.
+//
+// It PANICS on a Body or Condition key that is not registered: that is
+// a programming error in the caller, caught by the first test that
+// schedules it, and a key that could never be restored.
 //
 // Caller must hold g.mu. Deliberately emits no event: the common
 // caller is a resolving effect that has already emitted its own
@@ -184,8 +202,14 @@ type DelayedTrigger struct {
 // CR 614 replacement pipeline, where an EmitEvent would re-enter the
 // trigger harvester in the middle of replacing an event.
 func (g *Game) ScheduleDelayedTriggerForEffect(dt DelayedTrigger) uuid.UUID {
-	if dt.Effect == nil || (dt.At == "" && len(dt.On) == 0) {
+	if dt.Body == "" || (dt.At == "" && len(dt.On) == 0) {
 		return uuid.Nil
+	}
+	if !KnownEffectBody(dt.Body) {
+		panic(fmt.Sprintf("game: delayed trigger %q names unregistered body %q", dt.Label, dt.Body))
+	}
+	if dt.Condition != "" && !KnownEffectCondition(dt.Condition) {
+		panic(fmt.Sprintf("game: delayed trigger %q names unregistered condition %q", dt.Label, dt.Condition))
 	}
 	if dt.ID == uuid.Nil {
 		dt.ID = uuid.New()
@@ -279,7 +303,9 @@ func (dt *DelayedTrigger) stackItem() *StackItem {
 		SourceCardID: dt.SourceCardID,
 		SourceObject: dt.SourceObject,
 		Label:        dt.Label,
-		Effect:       dt.Effect,
+		Effect:       bodyEffect(dt.Body, dt.Params),
+		Body:         dt.Body,
+		Params:       dt.Params,
 	}
 	for _, cardID := range dt.Cards {
 		if cardID == uuid.Nil {
@@ -290,9 +316,9 @@ func (dt *DelayedTrigger) stackItem() *StackItem {
 	return item
 }
 
-// cloneDelayedTrigger deep-copies one queued trigger. Cards is
-// reallocated; Effect is shared, on the same contract cloneStackItem
-// documents for StackItem.Effect. Returns nil for nil input.
+// cloneDelayedTrigger deep-copies one queued trigger. Cards and the
+// params' filter are reallocated; everything else is a value. Returns
+// nil for nil input.
 func cloneDelayedTrigger(dt *DelayedTrigger) *DelayedTrigger {
 	if dt == nil {
 		return nil
@@ -306,13 +332,11 @@ func cloneDelayedTrigger(dt *DelayedTrigger) *DelayedTrigger {
 		At:                 dt.At,
 		ControllerTurnOnly: dt.ControllerTurnOnly,
 		CreatedSeq:         dt.CreatedSeq,
-		Effect:             dt.Effect,
-		// #663: the event condition. AppliesTo and Optional are
-		// shared, not copied, on exactly the contract Effect above
-		// carries — they read the live *Game handed to them and
-		// capture neither it nor a pointer into a zone slice.
-		AppliesTo: dt.AppliesTo,
-		Optional:  dt.Optional,
+		Body:               dt.Body,
+		Params:             cloneEffectParams(dt.Params),
+		Condition:          dt.Condition,
+		CondParams:         cloneEffectParams(dt.CondParams),
+		OptionalQuestion:   dt.OptionalQuestion,
 	}
 	if dt.Duration != nil {
 		d := *dt.Duration
@@ -395,7 +419,11 @@ func (dt *DelayedTrigger) matchesEventLocked(ev Event, g *Game) bool {
 	if len(dt.On) == 0 || !triggerWatches(dt.On, ev.Kind) {
 		return false
 	}
-	return dt.AppliesTo == nil || dt.AppliesTo(ev, dt, g)
+	if dt.Condition == "" {
+		return true
+	}
+	fn, ok := lookupCondition(dt.Condition)
+	return ok && fn(ev, dt, g, dt.CondParams)
 }
 
 // dispatchEventDelayedTriggerLocked hands a fired trigger to the
@@ -416,17 +444,24 @@ func (dt *DelayedTrigger) matchesEventLocked(ev Event, g *Game) bool {
 // Caller must hold g.mu in write mode.
 func (g *Game) dispatchEventDelayedTriggerLocked(ev Event, dt *DelayedTrigger) {
 	source, lki := g.triggerSourceLocked(dt.SourceCardID, dt.Controller)
-	label, effect := dt.Label, dt.Effect
+	label, body, params := dt.Label, dt.Body, cloneEffectParams(dt.Params)
 	cards := append([]uuid.UUID(nil), dt.Cards...)
 	sourceObject := dt.SourceObject
+	var optional *TriggerOptionalPrompt
+	if dt.OptionalQuestion != "" {
+		optional = &TriggerOptionalPrompt{Question: dt.OptionalQuestion}
+	}
 	ability := TriggeredAbility{
 		// Watches / AppliesTo stay empty for the same reason a
 		// reflexive trigger leaves them empty: the dispatch is handed
 		// the match rather than asked to find one.
 		Key:            label,
-		OptionalPrompt: dt.Optional,
+		OptionalPrompt: optional,
 		Build: func(ev Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-			item := NewTriggeredItem(source, label, effect)
+			item := NewTriggeredItem(source, label, bodyEffect(body, params))
+			// The item is data too: a restore re-derives Effect from
+			// Body (ADR 0041 P2).
+			item.Body, item.Params = body, params
 			item.SourceObject = sourceObject
 			for _, cardID := range cards {
 				if cardID != uuid.Nil {
@@ -479,4 +514,10 @@ func (g *Game) clearExpiredDelayedTriggersLocked(endOfTurn bool) {
 		kept = nil
 	}
 	g.DelayedTriggers = kept
+}
+
+// cloneEffectParams copies the one slice EffectParams holds.
+func cloneEffectParams(p EffectParams) EffectParams {
+	p.Filter.Types = copyStrings(p.Filter.Types)
+	return p
 }

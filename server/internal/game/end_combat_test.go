@@ -187,10 +187,10 @@ func TestEndCombatPhaseDropsPendingTriggersAndSkipsEndOfCombat(t *testing.T) {
 			Controller: g.Seats[0].ID,
 			Label:      "at end of combat",
 			At:         StepEndCombat,
-			Effect: func(*Game, *StackItem) error {
+			Body: testBody(func(*Game, *StackItem) error {
 				fired = true
 				return nil
-			},
+			}),
 		})
 		g.PendingTriggers = append(g.PendingTriggers, &StackItem{
 			ID: uuid.New(), Kind: StackItemTriggered, Controller: g.Seats[0].ID,

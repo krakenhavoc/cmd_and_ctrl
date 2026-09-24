@@ -2941,6 +2941,7 @@ ships with the world-rule caveat Concordant Crossroads already declares.
   attack The Eternal Wanderer") would need a third `AttackLimitScope`. Each
   is one field, and none of them is built without its card:
   [#1534](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1534).
+  **Built** with both cards, Decision 47 below.
 - **Turn-scoped attack limits.** No printed card needs one, so there is no
   `TurnScopedAttackLimits` registry.
 - **Reselection** (CR 508.7, `game/attack_reselect.go`) does not go through
@@ -3028,3 +3029,139 @@ that.
   picker. A seat that knows beforehand uses the up-front control.
 - **Spreading one swing across seats.** The picker aims at one seat, as
   attack-with-all always has (#318).
+
+## Amendment (2026-09-24, [#1534](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1534)): conditional, per-player and per-planeswalker combat limits
+
+Builds the three variants the #1507 amendment listed under "What this does NOT
+decide", each with its card. Decisions 1-46 stand, and Decisions 43-44's
+raise-the-count rule and single check are unchanged. Sprint S37 (combat
+correctness), tracker [#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880).
+
+### The cards
+
+- **Mirri, Weatherlight Duelist**: "Whenever Mirri attacks, each opponent
+  can't block with more than one creature this combat. As long as Mirri is
+  tapped, no more than one creature can attack you each combat."
+- **The Eternal Wanderer**: "No more than one creature can attack The Eternal
+  Wanderer each combat."
+
+### Decision 47: one field per variant, read by the existing checks
+
+**`AttackLimit.While func(g *Game, source *Card) bool`** is the condition gate.
+`activeAttackLimitsLocked` skips a limit whose `While` reports false, so a
+gated limit simply does not exist while its condition is false. It is read
+live at every check, like the rest of the limit, and never cached. A condition
+that turns true after attackers are declared is a limit that arrives late,
+and Decision 44's raise-the-count rule means it unmakes nothing. Nil means
+"always", which is every card before Mirri. The card side is
+`effects.AsLongAs(ThisIsTapped, NoMoreThanNCanAttackYouEachCombat(1))`.
+
+**`AttackLimitAttackingThis`** is the third `AttackLimitScope`. It counts only
+attacks whose target is the limit's own SOURCE PERMANENT (by `InstanceID`). An
+attack on the controller, or on another planeswalker they control, does not
+count. It is appended after the other two scopes, so the zero value is still
+Decision 44's narrower "attacking you". A Wanderer that leaves and returns is
+a new object (CR 400.7) with a fresh count. The refusal sentence names the
+permanent and reads the same for every viewer: "No more than one creature can
+attack The Eternal Wanderer each combat." `AttackLimitError.Defender` is
+`uuid.Nil` for this scope, because the protected object is `Source`. The
+constructor is `effects.NoMoreThanNCanAttackThisEachCombat(n)`.
+
+**`BlockRule.LimitPerDefender bool`** splits a `Limit` rule's count by
+defending player. `blockLimitRefusalLocked` groups the counted blockers by
+their controller (`uuid.Nil` for every blocker when the flag is off, which is
+Decision 43 unchanged) and judges each group on its own: over its bound AND
+over its count before the action. One opponent's block therefore never uses
+up another's, and the Decision 38 staging order stops mattering for this
+rule. The blocker's controller is the right key because the declaration's
+`not_defending` check (#1339) has already made it the defending player whose
+block it is. The refusal names the first entry in the declaration that falls
+in a broken group.
+
+Mirri's trigger registers the rule through
+`effects.EachOpponentCantBlockWithMoreThanN{N, Label}` into
+`Game.TurnScopedBlockRules`, the registry `BlockRuleUntilEOT` uses:
+
+- **No snapshot.** The line is a rule about players, not a change to any
+  creature's characteristics, so CR 611.2c does not lock the affected set.
+  A creature an opponent flashes in after the trigger resolves is bound too,
+  which a `BlockRuleUntilEOT` snapshot would miss.
+- **"Each opponent"** is read at resolution against the ability's
+  controller: the rule's `Limit` returns 0 for that player's blockers. It
+  outlives Mirri (CR 611.2b).
+- **"This combat"** is the turn's combat, because the engine has no extra
+  combats yet ([#753](https://github.com/krakenhavoc/cmd_and_ctrl/issues/753)).
+  When extra combats land, this rule must end at the end of combat, or it will
+  bind the next combat too. The primitive's comment says so.
+- **The sentence is the rule's `Label`**, card name included, because a
+  turn-scoped rule has no source permanent to name: "Each opponent can't
+  block with more than one creature this combat (Mirri, Weatherlight
+  Duelist)."
+
+**The enumerator needs no change.** It asks `AttackLimitRefusalForEffect` of
+every candidate (attacker, target) move, and planeswalker targets are already
+among them. The block option generator, the enumerator and the #328 signal all
+run the block validator (Decision 14). So all three follow the new scope, the
+new gate and the new grouping with no new code, and a bot is never offered a
+refused move.
+
+**The room on the wire (Decision 46) follows too.**
+`AttackLimitRoomForEffect` reads the same active-limit list and the same
+counter. So The Eternal Wanderer's own `attack_targets` row carries
+`attack_limit` (and her controller's row does not), and Mirri's limit puts a
+number on her controller's row only while she is tapped.
+
+**The wire** is unchanged: the same `illegal_attack` / `attack_limit` and
+`illegal_block` / `declaration_limit` tokens, with new sentences.
+
+### Proof cards
+
+- **Mirri, Weatherlight Duelist** ships `full`.
+- **The Eternal Wanderer** ships with one caveat, on the +1 only. "Return that
+  card … at the beginning of that player's next end step" needs a CR 603.7
+  delayed trigger bound to a THIRD player's turn. `DelayedTrigger` can wait
+  for its own controller's turn (`ControllerTurnOnly`) but not for another
+  player's. Making the owner the trigger's controller would get around that,
+  but it would misstate CR 603.7d. So the card returns the exiled card at the
+  next end step: weaker than printed for an opponent's card, and exact for the
+  controller's own. The 0 (a double-strike Samurai) and the −4 (Tragic
+  Arrogance's `ChoosePermanents` shape, one pick per player, the rest
+  sacrificed as one event) are exact.
+
+### Tests
+
+- `game/conditional_combat_limits_test.go` tests the engine with the hooks
+  stubbed:
+  - The `While` gate switches on and off live, and a gate that switches on
+    late unmakes nothing.
+  - The per-permanent scope refuses only a second attack on the permanent,
+    with its controller and another planeswalker left open, a re-point onto
+    the permanent refused and one off it allowed, and the same sentence for
+    every viewer.
+  - The per-defender block limit gives each of two defenders in a four-seat
+    game their own one, and the generator and the #328 signal agree per seat.
+  - A late per-defender limit unmakes nothing.
+  - Decision 46's room follows both attack shapes: the Wanderer's row has a
+    room and her controller's does not, and a gated limit has a room only
+    while its condition holds.
+- `cards/effects/conditional_combat_limits_test.go` runs the proof cards and
+  checks at each step that the enumerator offers exactly what the verb
+  accepts. The planeswalker variant also tries every planeswalker target.
+  - Mirri's trigger limits each opponent to one blocker, counted on their
+    own, in a four-seat game.
+  - Mirri's rule is gone on the next player's turn.
+  - Tapped Mirri limits attacks on her controller, and untapped Mirri does
+    not.
+  - The Wanderer's static, 0, +1 (with and without a target) and −4.
+- `aiseat/conditional_combat_limits_test.go` drives one combat under Mirri
+  and one under the Wanderer, with the heuristic, the aggressive scripted
+  policy and a policy that aims every attack at the Wanderer first. The
+  combat ends, every enumerated move is accepted, and the limits hold.
+
+### What this does NOT decide
+
+- **A delayed trigger on a named player's turn** (the Wanderer's +1). That is
+  a `DelayedTrigger` field, not a combat-limit shape.
+- **Tomik, Orzhov Lawmage** grants the Wanderer's line to other planeswalkers.
+  It needs the granted-abilities seam as well, and it is not Commander-legal.
+- **Extra combats.** See "This combat" above.

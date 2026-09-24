@@ -67,7 +67,8 @@ func init() {
 			return ScheduleDelayedTrigger{
 				At:     game.StepUpkeep,
 				Label:  "Arcane Denial — its controller draws two cards, you draw a card",
-				Effect: arcaneDenialDraws(victim),
+				Body:   arcaneDenialDrawsBody,
+				Params: game.EffectParams{Player: victim},
 			}.Apply(ctx)
 		},
 	})
@@ -79,14 +80,13 @@ func init() {
 // closure survives Clone / undo — see the card comment. A victim who
 // has left the table, or who was never a player (a countered
 // ability), is skipped.
-func arcaneDenialDraws(victim uuid.UUID) func(g *game.Game, item *game.StackItem) error {
-	return func(g *game.Game, item *game.StackItem) error {
-		ctx := NewContext(g, item)
-		if victim != uuid.Nil && g.PlayerByIDForEffect(victim) != nil {
-			if err := (DrawCards{Player: victim, N: 2}).Apply(ctx); err != nil {
-				return err
-			}
+func arcaneDenialDraws(g *game.Game, item *game.StackItem, p game.EffectParams) error {
+	ctx := NewContext(g, item)
+	victim := p.Player
+	if victim != uuid.Nil && g.PlayerByIDForEffect(victim) != nil {
+		if err := (DrawCards{Player: victim, N: 2}).Apply(ctx); err != nil {
+			return err
 		}
-		return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
 	}
+	return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
 }

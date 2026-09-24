@@ -47,6 +47,7 @@
   import { manaAbilityNeedsPrompt } from "../../manaAbilityCost";
   import { openCardMenu } from "../../contextMenu";
   import { manaClickPlan, manaColorParams, type AnchorRect } from "../../manaSource";
+  import { manaAbilityRef } from "../../abilityRef";
   import {
     closeManaSourcePicker,
     manaSourcePickerOpenFor,
@@ -301,7 +302,13 @@
           // so the server produces it with no second question.
           sendAction(
             "activate_mana_ability",
-            { card_id: card.instance_id, ability_index: abilityIndex, ...manaColorParams(colors) },
+            {
+              card_id: card.instance_id,
+              ability_index: abilityIndex,
+              // ADR 0093: the row this click meant, so a stale one is refused.
+              ...manaAbilityRef(card, abilityIndex),
+              ...manaColorParams(colors),
+            },
             seat.id,
           );
         }

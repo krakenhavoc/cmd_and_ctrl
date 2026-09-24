@@ -180,6 +180,9 @@ func (g *Game) cloneLocked() *Game {
 			if len(c.ManaRestrictions) > 0 {
 				cloned.ManaRestrictions = append([]string(nil), c.ManaRestrictions...)
 			}
+			// #1547: the spend riders ride the choice too, and are
+			// game state for the same reason.
+			cloned.ManaRiders = copyManaRiders(c.ManaRiders)
 			// #742: the per-colour amounts of a one-pick-N-mana
 			// choice. A map, so it needs its own copy for the same
 			// reason the slices do.
@@ -594,11 +597,9 @@ func clonePlayer(p *Player) *Player {
 	if len(p.ManaPool) > 0 {
 		out.ManaPool = make(ManaPool, len(p.ManaPool))
 		for i, t := range p.ManaPool {
-			cloned := t
-			if len(t.Restrictions) > 0 {
-				cloned.Restrictions = append([]string(nil), t.Restrictions...)
-			}
-			out.ManaPool[i] = cloned
+			// ManaToken.clone: the restrictions and (#1547) the
+			// spend riders, each with its own backing array.
+			out.ManaPool[i] = t.clone()
 		}
 	}
 	// ADR 0066: granted cast and play permissions. Deep-copied for the
@@ -678,6 +679,8 @@ func cloneStackItem(s *StackItem) *StackItem {
 		// snapshot is safe — an undo that restores this item
 		// resolves it against the restored game.
 		Effect:     s.Effect,
+		Body:       s.Body,
+		Params:     cloneEffectParams(s.Params),
 		Ordered:    s.Ordered,
 		Commutes:   s.Commutes,
 		targetSpec: s.targetSpec,

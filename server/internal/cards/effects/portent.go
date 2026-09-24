@@ -36,9 +36,9 @@ func init() {
 		Targets:      TargetPlayer("target player"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if err := (ScheduleDelayedTrigger{
-				At:     game.StepUpkeep,
-				Label:  "Portent — draw a card",
-				Effect: portentDraw,
+				At:    game.StepUpkeep,
+				Label: "Portent — draw a card",
+				Body:  portentDrawBody,
 			}).Apply(ctx); err != nil {
 				return err
 			}

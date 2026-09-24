@@ -425,6 +425,15 @@ type StackItem struct {
 	// "triggers actually use the stack" completeness fix.
 	Effect func(g *Game, item *StackItem) error
 
+	// Body and Params are the DATA twin of Effect for an item whose
+	// behaviour is a registered body (ADR 0041 phase 3, tier 2, #1497):
+	// a fired delayed trigger. When Body is set, Effect is derived from
+	// it, and a snapshot carries Body/Params instead of counting Effect
+	// as a closure it cannot keep — restore re-derives Effect through
+	// the running binary. Empty for every other item.
+	Body   string
+	Params EffectParams
+
 	// Ordered marks a pending trigger whose controller has already
 	// answered a CR 603.3b ordering prompt covering it. The APNAP
 	// drain re-prompts a seat only when it holds ≥2 differing

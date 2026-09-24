@@ -515,6 +515,10 @@ var zoneFields = plan(
 )
 
 var stackItemFields = plan(
+	// A fired delayed trigger's data twin of Effect (#1497): restore
+	// re-derives Effect from Body through the running binary.
+	"Body", carried, "",
+	"Params", carried, "",
 	"ID", carried, "",
 	"Kind", carried, "",
 	"Controller", carried, "",
@@ -618,9 +622,15 @@ var delayedTriggerFields = plan(
 	"On", carried, "",
 	"Duration", carried, "",
 
-	"Effect", dropped, "a closure; counted in ContinuationCensus.DelayedTriggerEffects",
-	"AppliesTo", dropped, "a closure; its trigger is counted once in ContinuationCensus.DelayedTriggerEffects through Effect beside it",
-	"Optional", dropped, "a prompt declaration holding a Chooser closure; its trigger is counted once in ContinuationCensus.DelayedTriggerEffects through Effect beside it",
+	// ADR 0041 phase 3, tier 2 (#1497): what the trigger does and
+	// which event fires it are registered KEYS plus plain params, so the
+	// whole trigger is carried. ContinuationCensus.DelayedTriggerEffects
+	// is retired for every real path.
+	"Body", carried, "",
+	"Params", carried, "",
+	"Condition", carried, "",
+	"CondParams", carried, "",
+	"OptionalQuestion", carried, "",
 )
 
 var pendingChoiceFields = plan(
@@ -643,6 +653,10 @@ var pendingChoiceFields = plan(
 	// game would let the player spend restricted mana on anything.
 	"ManaRestrictions", carried, "",
 	"ManaSourceKinds", carried, "",
+	// #1547: the spend riders the pick's token will carry (Cavern of
+	// Souls' "that spell can't be countered"). Without it a restored
+	// pick mints mana that does nothing when it is spent.
+	"ManaRiders", carried, "",
 	// #742: how many tokens each colour of a one-pick-N-mana choice
 	// mints (Gilded Lotus). Without it a restored pick adds one.
 	"ManaAmounts", carried, "",

@@ -27,16 +27,16 @@ func scheduleOnCast(g *Game, controller uuid.UUID, fired *int, match func(Event)
 			Controller: controller,
 			Label:      "probe — when you next cast",
 			On:         []EventKind{EventCast},
-			AppliesTo: func(ev Event, dt *DelayedTrigger, _ *Game) bool {
+			Condition: testCondition(func(ev Event, dt *DelayedTrigger, _ *Game) bool {
 				if ev.Actor != dt.Controller {
 					return false
 				}
 				return match == nil || match(ev)
-			},
-			Effect: func(_ *Game, _ *StackItem) error {
+			}),
+			Body: testBody(func(_ *Game, _ *StackItem) error {
 				*fired++
 				return nil
-			},
+			}),
 		})
 	})
 	return id
@@ -191,14 +191,14 @@ func TestEventDelayedTriggerGoesThroughTheHarvesterDispatch(t *testing.T) {
 	fired := 0
 	g.WithWriteLock(func() {
 		g.ScheduleDelayedTriggerForEffect(DelayedTrigger{
-			Controller: me.ID,
-			Label:      "probe — you may copy that spell",
-			On:         []EventKind{EventCast},
-			Optional:   &TriggerOptionalPrompt{Question: "Copy it?"},
-			AppliesTo: func(ev Event, dt *DelayedTrigger, _ *Game) bool {
+			Controller:       me.ID,
+			Label:            "probe — you may copy that spell",
+			On:               []EventKind{EventCast},
+			OptionalQuestion: "Copy it?",
+			Condition: testCondition(func(ev Event, dt *DelayedTrigger, _ *Game) bool {
 				return ev.Actor == dt.Controller
-			},
-			Effect: func(*Game, *StackItem) error { fired++; return nil },
+			}),
+			Body: testBody(func(*Game, *StackItem) error { fired++; return nil }),
 		})
 	})
 
@@ -236,13 +236,13 @@ func TestEventDelayedTriggerCarriesTheTriggeringSpellAsPayload(t *testing.T) {
 			Controller: me.ID,
 			Label:      "probe — copy that spell",
 			On:         []EventKind{EventCast},
-			AppliesTo: func(ev Event, dt *DelayedTrigger, _ *Game) bool {
+			Condition: testCondition(func(ev Event, dt *DelayedTrigger, _ *Game) bool {
 				return ev.Actor == dt.Controller
-			},
-			Effect: func(_ *Game, item *StackItem) error {
+			}),
+			Body: testBody(func(_ *Game, item *StackItem) error {
 				seen = append([]TargetRef(nil), item.Payload...)
 				return nil
-			},
+			}),
 		})
 	})
 
@@ -254,10 +254,11 @@ func TestEventDelayedTriggerCarriesTheTriggeringSpellAsPayload(t *testing.T) {
 	}
 }
 
-// TestEventDelayedTriggerSnapshotRoundTrip: the data half of the
-// condition survives a snapshot so a restored game still knows WHAT
-// was owed and until when; the closures do not, and the census says
-// so rather than the snapshot pretending it is a restore point.
+// TestEventDelayedTriggerSnapshotRoundTrip: since ADR 0041 phase 3's
+// tier 2 (#1497) the whole trigger is data — the condition and the body
+// are registered keys — so a game owing one is a full restore point, a
+// restored game still knows WHAT was owed and until when, and a cast
+// in the restored game fires it.
 func TestEventDelayedTriggerSnapshotRoundTrip(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
@@ -265,17 +266,13 @@ func TestEventDelayedTriggerSnapshotRoundTrip(t *testing.T) {
 	scheduleOnCast(g, me.ID, &fired, nil)
 
 	snap := g.CaptureSnapshot()
-	if snap.Continuations.DelayedTriggerEffects != 1 {
-		t.Fatalf("census counted %d delayed-trigger effects, want 1",
-			snap.Continuations.DelayedTriggerEffects)
-	}
-	if snap.Restorable() {
-		t.Error("a snapshot holding a live delayed-trigger closure claims to be restorable")
+	if !snap.Restorable() {
+		t.Fatalf("a game owing an event-conditioned delayed trigger is not a restore point: %+v", snap.Continuations)
 	}
 
-	restored, err := snap.Restore()
+	restored, err := snap.RestoreStrict()
 	if err != nil {
-		t.Fatalf("Restore: %v", err)
+		t.Fatalf("RestoreStrict: %v", err)
 	}
 	if len(restored.DelayedTriggers) != 1 {
 		t.Fatalf("restored %d delayed triggers, want 1", len(restored.DelayedTriggers))
@@ -287,8 +284,15 @@ func TestEventDelayedTriggerSnapshotRoundTrip(t *testing.T) {
 	if got.Duration == nil || got.Duration.Kind != UntilEndOfTurn {
 		t.Errorf("restored Duration = %+v, want an UntilEndOfTurn stamp", got.Duration)
 	}
-	if got.Effect != nil || got.AppliesTo != nil {
-		t.Error("a restored trigger came back with live closures — the census says they are dropped")
+	if got.Body == "" || got.Condition == "" {
+		t.Errorf("restored Body %q / Condition %q, want both keys carried", got.Body, got.Condition)
+	}
+
+	castID := uuid.New()
+	emitCast(restored, me.ID, castID)
+	settleStack(t, restored)
+	if fired != 1 {
+		t.Errorf("the restored trigger fired %d times on a cast, want 1", fired)
 	}
 }
 
@@ -331,7 +335,7 @@ func TestScheduleRefusesATriggerWithNeitherConditional(t *testing.T) {
 		id = g.ScheduleDelayedTriggerForEffect(DelayedTrigger{
 			Controller: g.Seats[0].ID,
 			Label:      "probe — no condition",
-			Effect:     func(*Game, *StackItem) error { return nil },
+			Body:       testBody(func(*Game, *StackItem) error { return nil }),
 		})
 	})
 	if id != uuid.Nil {

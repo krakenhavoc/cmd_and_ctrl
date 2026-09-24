@@ -731,28 +731,26 @@ var items = []Item{
 	// that turned out fully closed stays here as implemented and its
 	// prose moved to that doc's Closed seams list.
 	{
-		Slug: "abilities-granted-to-other-permanents", Name: "Abilities granted to other permanents", Kind: KindSeam, Status: StatusMissing,
+		Slug: "abilities-granted-to-other-permanents", Name: "Abilities granted to other permanents", Kind: KindSeam, Status: StatusPartial,
 		Summary:  "Effects that give other permanents a new activated, triggered or mana ability, such as Cryptolith Rite letting your creatures tap for mana.",
-		Missing:  "A permanent can't yet give another permanent an ability to activate or a trigger; only keywords can be granted.",
+		Missing:  "Permanents can give other permanents mana and activated abilities, but not triggered abilities, and a spell can't grant an ability for a while yet.",
 		Issue:    754,
 		Tracked:  "#754 (related: #665, #669)",
-		Unblocks: 82,
+		ADR:      "0093-abilities-granted-to-other-permanents.md",
+		Mechanic: "an ability granted to another permanent",
+		Examples: []string{"Cryptolith Rite", "Chromatic Lantern", "Necrotic Sliver"},
 		Waiting: []string{
-			"Chromatic Lantern", "Urza's Saga", "Cryptolith Rite",
-			"Rishkar, Peema Renegade", "Jaheira, Friend of the Forest",
-			"Insidious Roots", "Great Divide Guide", "Gemhide Sliver", "Ultima, Origin of Oblivion",
-			"Teferi's Talent",
+			"Urza's Saga", "Ultima, Origin of Oblivion", "Teferi's Talent",
 		},
 		Phrases:     []string{"gains the ability", "have the ability"},
-		ADR:         "0093-abilities-granted-to-other-permanents.md",
-		EngineNotes: "**the engine seam is built (ADR 0093 PR 1); no card uses it yet.** A layer-6 static declares `StaticAbility.GrantAbilities` (card side: `effects.GrantAbilities(appliesTo, key)`) naming an `effects.AbilityGrant` bundle, which now has `Mana` and `Text` slots; the engine appends a `GrantedAbility{Key, Source}` to the recipient's `Characteristic.GrantedAbilities` in the static's timestamp slot. `CatalogAbilityKey` composes own + layered grants (an empty own half — removed, face down, uncatalogued — keeps the grants), `ActivatedAbilitiesForCard` / `ManaAbilitiesForCard` return own + intrinsic + granted with a stable `ref` per row (`ErrStaleAbilityRef` refuses a stale announcement), a removal clears layered grants in its own slot, and a removal on the GRANTOR is ordered first in the layer-6 bucket (CR 613.8a). The wire carries `ref`, `granted_by` and `granted_abilities`. What is still missing: the client's left-click picker and the auto-tapper's per-ability candidates (PR 2, with the static and attached cards), granted-trigger cards and the Dionus / Agent of the Iron Throne migration (PR 3), and duration grants from a resolving spell (PR 4, Urza's Saga, Ultima).",
+		EngineNotes: "**static and attached grants of mana and activated abilities ship (ADR 0093 PRs 1-2).** A layer-6 static declares `StaticAbility.GrantAbilities` (card side: `effects.GrantAbilities`, `TribalAbilityGrant`, `GrantAbilitiesToAttached`) naming an `effects.AbilityGrant` bundle; the recipient carries `Characteristic.GrantedAbilities`, `CatalogAbilityKey` composes own + layered grants, the ability readers return own + intrinsic + granted with a stable `ref` per row, and the auto-tapper offers every acceptable ability of a permanent as mutually exclusive candidates with a creature's granted mana in the last-resort tier. Shipped on Cryptolith Rite, Chromatic Lantern, Gemhide and Manaweft Sliver, Necrotic Sliver, Rishkar, Jaheira, Insidious Roots, Great Divide Guide, The World Tree, Paradise Mantle, Squirrel Nest and Springleaf Parade. Still missing: granted-trigger cards and the Dionus / Agent of the Iron Throne migration (PR 3, the LKI harvest is already wired), duration grants from a resolving spell (PR 4 — Urza's Saga, Ultima; waits on #1545's ScopedEffect decision), and the client's left-click picker (the rows reach the existing ability menus already).",
 	},
 	{
 		Slug: "riot", Name: "Riot", Kind: KindSeam, Status: StatusMissing,
 		Summary:     "Riot lets a creature enter with a +1/+1 counter or with haste, its controller's choice.",
 		Missing:     "Riot isn't implemented yet, so a creature with it gets neither the counter nor haste.",
-		Issue:       754,
-		Tracked:     "#754 (moved off by ADR 0093; needs its own issue)",
+		Issue:       1556,
+		Tracked:     "#1556 (moved off #754 by ADR 0093)",
 		Waiting:     []string{"Rhythm of the Wild"},
 		Phrases:     []string{"riot"},
 		Rules:       []string{"702.136a"},
@@ -764,8 +762,8 @@ var items = []Item{
 		Slug: "all-activated-abilities-of", Name: "Having another card's activated abilities", Kind: KindSeam, Status: StatusMissing,
 		Summary:     "Effects that give a permanent all the activated abilities of other cards, such as Marvin, Murderous Mimic.",
 		Missing:     "A permanent can't yet gain all the activated abilities of another card.",
-		Issue:       754,
-		Tracked:     "#754 (moved off by ADR 0093 Decision 10; needs its own ADR and issue)",
+		Issue:       1557,
+		Tracked:     "#1557 (moved off #754 by ADR 0093 Decision 10; needs its own ADR)",
 		Waiting:     []string{"Marvin, Murderous Mimic"},
 		Phrases:     []string{"all activated abilities"},
 		ADR:         "0093-abilities-granted-to-other-permanents.md",
@@ -809,19 +807,18 @@ var items = []Item{
 	},
 	{
 		Slug: "mana-spend-riders", Name: "Mana that does something when it's spent", Kind: KindSeam, Status: StatusPartial,
-		Summary:  "Cards that read the mana spent on a spell: converge, sunburst, adamant, and \"if it was paid with Treasure\" all work.",
-		Missing:  "Mana with a rider doesn't work yet: \"when that mana is spent\" bonuses, spells cast with it becoming uncounterable, and granted sunburst.",
-		Issue:    1212,
-		Tracked:  "#761 (record shipped), #1212 (source snapshot + entry-side read shipped); riders open",
-		ADR:      "0068-the-mana-spent-on-a-spell.md",
-		Unblocks: 20,
+		Summary:  "Cards that read the mana spent on a spell work: converge, sunburst, adamant, \"if it was paid with Treasure\", and mana that does something when it's spent — Cavern of Souls, Pyromancer's Goggles, Hall of the Bandit Lord.",
+		Missing:  "Other permanents can't yet grant a spell something based on the mana spent on it: Lux Artillery's granted sunburst and Coin of Mastery's extra counters. Satoru, the Infiltrator doesn't yet count a creature cast without spending mana.",
+		Issue:    1552,
+		Tracked:  "#761 (record shipped), #1212 (source snapshot + entry-side read shipped), #1547 (spend riders shipped); granted readers open in #1552",
+		ADR:      "0040-mana-pipeline.md",
+		Unblocks: 0,
 		Waiting: []string{
-			"Scaled Nurturer", "Path of Ancestry", "Cavern of Souls", "Delighted Halfling",
 			"Lux Artillery", "Satoru, the Infiltrator", "Coin of Mastery",
 		},
 		Phrases:          []string{"which mana you spent", "spend its mana", "mana spent"},
-		NoCatalogExample: "Every catalogued card that reads spent mana carries a caveat, so none is listed as fully automated yet.",
-		EngineNotes:      "primitive: **the record shipped in #761** — `StackItem.Paid` carries the tokens that paid, and converge, sunburst, adamant and \"if no mana was spent\" all read it (see Closed seams). Still missing: SPEND RIDERS — a tag on the token fired after a payment, for \"when that mana is spent\" (Pyromancer's Goggles, Scaled Nurturer), entry riders (Biophagus, Opal Palace), haste grants (Hall of the Bandit Lord) and per-spell \"can't be countered\" (Cavern of Souls, Delighted Halfling) — and sunburst GRANTED by another permanent (Lux Artillery). **The SOURCE snapshot shipped in #1212**: `ManaToken.SourceKinds` records snow / Treasure / creature / land / artifact / enchantment at mint time — before the cost that sacrifices the source runs — the tokens ride `Card.Provenance` onto the permanent (CR 400.7d) so an enters trigger can read them, and `game.ManaSpent` is the one vocabulary both homes hand out (`Count`, `Colors`, `Total`, `CountFrom`, `FromTreasure`, `Snow`). Shipped on Hired Hexblade, Gruul Scrapper and Ribbons of Night. Re-checked 2026-09-24: no spend rider on `ManaToken`.",
+		NoCatalogExample: "Every catalogued card that reads spent mana carries the strict-mana caveat, so none is listed as fully automated yet.",
+		EngineNotes:      "primitive: **the record shipped in #761** — `StackItem.Paid` carries the tokens that paid, and converge, sunburst, adamant and \"if no mana was spent\" all read it (see Closed seams). **The SOURCE snapshot shipped in #1212** — `ManaToken.SourceKinds`, carried onto the permanent by `Card.Provenance` (CR 400.7d) and read through `game.ManaSpent`. **SPEND RIDERS shipped in #1547** (ADR 0040 amendment 2026-09-24): `ManaToken.Riders []ManaSpendRider` — data (kind, a spend filter in the restriction vocabulary, a production id), copied from `ManaAbilityShape.SpendRiders` at mint (through `PendingChoice.ManaRiders` for a pick), fired by `applyManaSpendRidersLocked` where a payment becomes a stack object (cast and activation, manual and auto-tap alike) and stamped `Applied` on `StackItem.Paid.Mana`. Readers: `spellCantBeCounteredLocked` (Cavern of Souls, Delighted Halfling, Boseiju), `applyCastEntryCountersLocked` (Biophagus), a layer-6 gather over `Card.Provenance` (Hall of the Bandit Lord), and trigger riders queued at the spend from a key registry (Pyromancer's Goggles, Scaled Nurturer, Path of Ancestry). Still missing: a rider GRANTED by another permanent over someone else's cast — Lux Artillery's sunburst, Coin of Mastery's per-artifact-mana counters — and Satoru's \"no mana was spent to cast them\" read on an entering creature. Not catalogued and one small step away: Opal Palace (an entry rider whose count reads the command-zone tally and whose filter is \"your commander\") and Generator Servant (haste until end of turn, a duration the haste rider does not carry).",
 	},
 	{
 		Slug: "tap-another-permanent-cost", Name: "Tapping your other permanents as a cost", Kind: KindSeam, Status: StatusImplemented,
@@ -878,6 +875,22 @@ var items = []Item{
 		Probe:    func(s effects.Spec) bool { return len(s.AttackLimits) > 0 },
 		Examples: []string{"Silent Arbiter", "Crawlspace"},
 		Phrases:  []string{"no more than one creature can", "no more than two creatures can"},
+	},
+	{
+		Slug: "conditional-combat-limits", Name: "Conditional and per-player combat limits", Kind: KindSeam, Status: StatusImplemented,
+		Summary: "Combat limits that apply only under a condition or to one player or permanent, such as Mirri, Weatherlight Duelist's \"each opponent can't block with more than one creature this combat\" and The Eternal Wanderer's \"no more than one creature can attack The Eternal Wanderer each combat\".",
+		Rules:   []string{"508.1c", "509.1b"},
+		Issue:   1534,
+		ADR:     "0045-combat-restrictions.md",
+		Probe: func(s effects.Spec) bool {
+			for _, l := range s.AttackLimits {
+				if l.While != nil || l.Scope == game.AttackLimitAttackingThis {
+					return true
+				}
+			}
+			return false
+		},
+		Examples: []string{"Mirri, Weatherlight Duelist"},
 	},
 	{
 		Slug: "extra-turns", Name: "Extra turns", Kind: KindSeam, Status: StatusPartial,

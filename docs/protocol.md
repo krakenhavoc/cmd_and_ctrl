@@ -208,7 +208,7 @@ player other than the defending player reads the defender's name instead of
 | `cant_block_attacker` | a block rule on the blocker's side refuses this attacker (Champion of Lambholt, #750) |
 | `too_few_blockers` | the declaration would leave fewer creatures blocking the attacker than its minimum — menace's 2 (CR 702.111b), Pathrazer of Ulamog's 3. `n` is that minimum |
 | `too_many_blockers` | the declaration would put more creatures on the attacker than its maximum (Hungering Hydra's "can't be blocked by more than one creature"). `n` is that maximum |
-| `declaration_limit` | the declaration would put more creatures into blocks in this COMBAT than a whole-combat limit allows — Silent Arbiter's "no more than one creature can block each combat" (CR 509.1b, #1507). Every stored block counts, whichever attacker it is on and whichever defender made it, so in a multiplayer combat the first defender to block can use the limit up. The sentence names the limit and its card: "No more than one creature can block each combat (Silent Arbiter)." `card_id` is a blocker from the refused declaration |
+| `declaration_limit` | the declaration would put more creatures into blocks in this COMBAT than a whole-combat limit allows — Silent Arbiter's "no more than one creature can block each combat" (CR 509.1b, #1507). Every stored block counts, whichever attacker it is on and whichever defender made it, so in a multiplayer combat the first defender to block can use the limit up. The sentence names the limit and its card: "No more than one creature can block each combat (Silent Arbiter)." A per-player limit counts each defending player's blocks on their own (Mirri, Weatherlight Duelist's "each opponent can't block with more than one creature this combat", #1534) and reads "Each opponent can't block with more than one creature this combat (Mirri, Weatherlight Duelist)." `card_id` is a blocker from the refused declaration |
 | `not_defending` | the blocker's controller is not defending against that attacker: it is attacking another player, a planeswalker another player controls or a battle another player protects — or nothing at all (CR 802.4a / 509.1a, #1339). A creature whose planeswalker or battle has left is still defended by the player who was defending it (#1364, CR 506.4c): "Grizzly Bears is still attacking, though what it attacked is gone, so only P3 can block it." Like the count reasons it comes only from the declaration verbs. The sentence names where the attacker is pointed ("Grizzly Bears is attacking P3, so only P3 can block it."). A pairing the declaration already holds is not re-judged, so an attacker reselected after it was blocked (CR 508.7a) keeps its blockers |
 
 The tokens are stable once shipped. The addendum reserves more
@@ -232,7 +232,11 @@ Crawlspace's "no more than two creatures can attack you each combat"
 from the refused declaration that the limit counts. `message` is a sentence
 the server builds and addresses to the caller: the seat a Crawlspace
 protects reads "No more than two creatures can attack you each combat
-(Crawlspace).", and anyone else reads that seat's name.
+(Crawlspace).", and anyone else reads that seat's name. A limit on one
+planeswalker reads the same for everyone: "No more than one creature can
+attack The Eternal Wanderer each combat." (#1534). A limit with a condition
+(Mirri, Weatherlight Duelist's "as long as Mirri is tapped") is refused the
+same way while the condition holds, and not at all otherwise.
 
 Nothing was declared. No creature is tapped, no attack is announced and no
 attack tax is charged, because the limit is judged first. A `declare_attackers`

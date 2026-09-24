@@ -863,6 +863,27 @@ weaker-than-printed answer. Converge counts no colours, adamant does not
 turn on, and "if no mana was spent" is false. Say so in a caveat, as
 Painful Truths and Vexing Bauble do.
 
+**Mana that does something when it's spent (#1547)** — "and that
+spell can't be countered", "if that mana is spent on a creature
+spell, it gains haste", "when that mana is spent to cast …, copy
+that spell" — goes in `ManaAbility.SpendRiders`, built with the
+constructors in
+[mana_spend_rider.go](server/internal/cards/effects/mana_spend_rider.go):
+
+```go
+SpendRiders: []game.ManaSpendRider{SpentSpellCantBeCountered(ManaRestrictCast)},         // Cavern of Souls
+SpendRiders: []game.ManaSpendRider{SpentCreatureGainsHaste()},                           // Hall of the Bandit Lord
+SpendRiders: []game.ManaSpendRider{WhenManaSpent("Pyromancer's Goggles", game.ManaSpendTrigger{
+    Label: "Pyromancer's Goggles — copy that spell", Effect: copyTheSpellYouJustCast,
+}, ManaRestrictCast, ManaRestrictColor("R"), ManaRestrictAnyType("Instant", "Sorcery"))},
+```
+
+The trailing tags are the rider's filter — whether it FIRES — and are
+not a spend restriction: Hall's {C} still pays for anything. A card
+whose mana is also restricted (Cavern) declares both. Riders fire only
+on a recorded payment, so every rider card carries the strict-mana
+caveat. See ADR 0040's 2026-09-24 amendment.
+
 For non-mana, non-static activated abilities (planeswalker +1/-1,
 equip, cycling, etc.), wait — see the deferral list below.
 
@@ -970,9 +991,20 @@ on the recipient takes an earlier grant and not a later one (CR
 refuses a bundle ability with `ActiveWhen` (gate the grantor's static
 instead) or a non-battlefield zone, and `TestEveryGrantKeyResolves`
 refuses a grant naming an unregistered bundle or a bundle with a
-`Static` slot. Attached / tribal constructors, the client picker and
-the auto-tapper's handling arrive with the first cards (ADR 0093 PR 2);
-duration grants from a resolving spell are PR 4 and have no shape yet.
+`Static` slot.
+
+The other constructors: `TribalAbilityGrant(TribeFilter{…}, key)` for
+"All Slivers have …" / "Sliver creatures you control have …", and
+`GrantAbilitiesToAttached(key)` for "Equipped creature has …" /
+"Enchanted land has …". `AnyColorManaGrant(key)` and
+`TapForManaGrant(key, produced, label, text)` build the common mana
+bundles. The auto-tapper plans every acceptable mana ability of a
+permanent (not only the first) and keeps a CREATURE's granted mana for
+last, so an auto-paid cast does not tap your attackers; a land's
+granted mana is an ordinary source. See `cryptolith_rite.go`,
+`chromatic_lantern.go`, `necrotic_sliver.go` and `squirrel_nest.go`.
+Duration grants from a resolving spell are ADR 0093 PR 4 and have no
+shape yet.
 
 ### Adding a replacement effect (S17+)
 
@@ -2051,13 +2083,25 @@ BlockRules: []game.BlockRule{
   enumerator read the same check, so a bot is never offered a refused
   attack ([ADR 0045](docs/decisions/0045-combat-restrictions.md)
   Decisions 43-45).
+- **The narrower and conditional variants** (#1534, Decision 47):
+  "no more than N creatures can attack <this planeswalker>" (The
+  Eternal Wanderer) is `NoMoreThanNCanAttackThisEachCombat(n)`; "as
+  long as <this> is tapped, …" (Mirri, Weatherlight Duelist) wraps any
+  limit as `AsLongAs(ThisIsTapped, …)`, read live; "each opponent
+  can't block with more than N creatures this combat" is the
+  `EachOpponentCantBlockWithMoreThanN{N, Label}` primitive in a
+  trigger's effect, a turn-scoped `BlockRule.Limit` with
+  `LimitPerDefender`, so each defending player is counted on their
+  own.
 
 Tests: [block_rules_test.go](server/internal/cards/effects/block_rules_test.go)
 pins every shape through the verb, `legal.EnumerateFor` and
 `block_decision_seats`;
 [combat_limits_test.go](server/internal/cards/effects/combat_limits_test.go)
 pins the whole-combat limits, checking the enumerator against the verb
-on a clone for every candidate.
+on a clone for every candidate, and
+[conditional_combat_limits_test.go](server/internal/cards/effects/conditional_combat_limits_test.go)
+does the same for the #1534 variants, planeswalker targets included.
 
 ### Adding a triggered ability (S19+)
 
@@ -3611,11 +3655,31 @@ now:
 
 ```go
 ScheduleDelayedTrigger{
-    Label:  "Waterbender's Restoration — return the exiled creatures",
-    Cards:  exiled,                      // instance IDs, stamped onto the fired item's Targets
-    Effect: returnExiledCardsToOwners,   // a package-level func, NOT a closure
+    Label: "Waterbender's Restoration — return the exiled creatures",
+    Cards: exiled,                    // instance IDs, stamped onto the fired item's Targets
+    Body:  returnExiledToOwnersBody,  // a registered game.BodyRef (delayed_bodies.go)
+}.Apply(ctx)
+
+ScheduleDelayedTrigger{              // a body with data: what a factory used to capture
+    Label:  "Mana Drain — add {C} × 3", At: game.StepPrecombatMain, ControllerTurnOnly: true,
+    Body:   manaDrainRefundBody,
+    Params: game.EffectParams{Amount: mv},
 }.Apply(ctx)
 ```
+
+**What a delayed trigger does is DATA** ([ADR 0041](docs/decisions/0041-game-persistence.md)
+phase 3, tier 2, #1497). `Body` is a `game.BodyRef` — a key into the
+registry in `game/effect_bodies.go` — never a function, so a func
+literal there does not compile. Register a new body ONCE, in
+[delayed_bodies.go](server/internal/cards/effects/delayed_bodies.go),
+as `game.SimpleDelayedBody("<area>/<name>", fn)` (or `game.DelayedBody`
+for one that reads `game.EffectParams`: `Player`, `Object`, `Amount`,
+`Cost`, `Name`, `Filter`), and append the key to the ledger with
+`cd server && go test ./internal/cards/effects -run TestEveryPersistedEffectKeyResolves -args -update-effect-keys`.
+Keys are on-disk identities, like token slugs: never renamed, never
+deleted — `game.EffectAlias(old, new)` keeps an old one resolving. A
+table with a delayed trigger waiting is therefore a restore point, and
+so is one whose fired trigger is on the stack.
 
 `At` defaults to `game.StepEnd`; the queue is drained on step **entry**,
 so an ability scheduled during an end step waits for the following one.
@@ -3627,21 +3691,23 @@ upkeep at the table satisfies.
 The instruction lives on the `Game`, not on a card — the spell that
 created it is usually in a graveyard by the time it fires — and it goes
 on the stack when the step begins, so every player gets a response
-window. Declare `Effect` as a package-level func so it captures nothing:
-a delayed trigger survives `Clone` / undo by sharing its `Effect` with
-the snapshot, and reads its payload off the item it is handed.
+window. The body reads its payload off the item it is handed
+(`item.Targets`, `item.Controller`) and its data off its params, and
+captures nothing — it cannot.
 
 **Event-conditioned delayed triggers (#663, CR 603.7b):** "When you
 next cast an instant or sorcery spell this turn, copy that spell"
 (Doublecast, Galvanic Iteration) waits for a THING TO HAPPEN rather
 than for a step, and it is the same queue with a different condition —
-`WhenYouNextCast(label, pred, effect)`, or the general
-`DelayedOnEvent{Label, On, Matches, Effect}`, both in
-[delayed_on_event.go](server/internal/cards/effects/delayed_on_event.go):
+`WhenYouNextCast(label, filter, body)`, or the general
+`DelayedOnEvent{Label, On, Condition, CondParams, Body, Params}`, both in
+[delayed_on_event.go](server/internal/cards/effects/delayed_on_event.go).
+The condition is a registered `game.ConditionRef` and the spell filter is
+DATA, a `game.CastFilter` — not a `CardPredicate`, which is a closure:
 
 ```go
 return WhenYouNextCast("Doublecast — copy that spell",
-    Or(Instant(), Sorcery()), copyTheSpellYouJustCast).Apply(ctx)
+    game.CastFilter{Types: []string{"Instant", "Sorcery"}}, copyTheSpellBody).Apply(ctx)
 ```
 
 Four things it gets for free and must not re-implement. It fires
@@ -3655,8 +3721,8 @@ before the resolution that scheduled it. And the fired trigger goes
 through `dispatchTriggerLocked`, the harvester's own dispatch, so the
 CR 603.5 "you may", the CR 603.3d drop and the APNAP drain are the same
 code an ETB uses. The triggering event's object rides on the item as
-`Payload` — `ctx.PayloadCards()[0]` is "that spell" — so the `Effect`
-stays a package-level func that captures nothing. This reverses
+`Payload` — `ctx.PayloadCards()[0]` is "that spell" — so the body
+reads it off the item and captures nothing. This reverses
 [ADR 0026](docs/decisions/0026-delayed-triggers.md) §1-2 for this one
 case; the 2026-09-18 amendment there is the record.
 
