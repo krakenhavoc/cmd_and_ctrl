@@ -124,6 +124,14 @@ export interface CastChoices {
   // impulse button) fire bare payloads with no prompts at all, which
   // is why they never needed it.
   fromZone?: CastSourceZone;
+  // #1508: the cast was started by dragging the card out of the hand
+  // onto the table. It rides CastChoices for the reason fromZone does
+  // — a dragged cast walks the SAME prompt chain a click does, and the
+  // flag has to survive every hop of it — and applyCastChoices turns
+  // it into `strict: true, auto_tap: true` on the wire, whatever the
+  // viewer's strictMana setting says (owner decision 3). A click never
+  // sets it, so a clicked cast is byte-identical to before.
+  viaDrag?: boolean;
 }
 
 // CastSourceZone is the `from_zone` vocabulary the server's
@@ -170,6 +178,25 @@ export function applyCastChoices(
   if (choices.face !== undefined && choices.face > 0) params.face = choices.face;
   // S29: omitted for a hand cast, for the same reason face 0 is.
   if (choices.fromZone !== undefined) params.from_zone = choices.fromZone;
+  // #1508: a dragged cast always pays strictly and lets the engine tap
+  // the lands itself. Written as `strict`, which is also what tells
+  // manaEnforcement.ts's stamp to leave the payload alone.
+  if (choices.viaDrag) {
+    params.strict = true;
+    params.auto_tap = true;
+  }
+}
+
+// castChoicesBase is the CastChoices a cast STARTS with, before any
+// prompt has asked anything: the zone it comes out of (undefined is the
+// hand) and whether it was dragged. handlePlayCard seeds the chain with
+// it, and the face picker stashes it, so neither half is lost when a
+// modal DFC asks which face first.
+export function castChoicesBase(fromZone?: CastSourceZone, viaDrag = false): CastChoices {
+  const out: CastChoices = {};
+  if (fromZone) out.fromZone = fromZone;
+  if (viaDrag) out.viaDrag = true;
+  return out;
 }
 
 // TargetingState is the active prompt. `card` is the spell being

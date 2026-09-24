@@ -18,11 +18,33 @@
   import { play } from "../../sounds";
   import { settings } from "../../settings";
   import { canCastFromHand, type Legality } from "../../timing";
+  import { fetchAutoTapPreview, type AutoTapPreview } from "../../api";
+  import { cardImageURL } from "../../cardImage";
+  import {
+    CAST_ZONE_MARGIN_PX,
+    IDLE,
+    SNAP_REASON_MS,
+    autoTapHighlight,
+    clearAutoTapHighlight,
+    dragVerdict,
+    previewSourceIDs,
+    step as stepDrag,
+    wantsPreview,
+    type DragInput,
+    type DragOutcome,
+    type DragState,
+  } from "../../dragCast";
 
   interface Props {
     hand: ZoneView;
     isSelf: boolean;
     onPlayCard?: (card: CardView) => void;
+    // #1508: drag a card out of the hand onto the table to cast it.
+    // Called once the card is released past the line while castable;
+    // the parent runs the same cast chain a click does, with the drag
+    // flag (strict + auto-tap). Undefined turns the gesture off, which
+    // it is for every hand but the viewer's own.
+    onDragCast?: (card: CardView) => void;
     // #660: a card in hand can have activated abilities that function
     // THERE — cycling, typecycling (CR 702.29a/e). They ride
     // `zone_abilities` on the wire and open the same popover a
@@ -53,6 +75,7 @@
     hand,
     isSelf,
     onPlayCard,
+    onDragCast,
     onActivateAbility,
     onActivateManaAbility,
     sorcerySpeedBlocked = "",
@@ -131,6 +154,260 @@
       },
     };
   };
+
+  // ---- #1508: drag to cast ---------------------------------------
+  //
+  // dragCast.ts owns every decision (the activation distance, the
+  // line, the gold / red verdict, cast vs snap back); this block owns
+  // the DOM: pointer listeners, the ghost that follows the pointer,
+  // the drop zone over the table, the auto-tap preview fetch and the
+  // board highlight it drives.
+  //
+  // Clicking and the keyboard are untouched. A press that never
+  // travels DRAG_ACTIVATION_PX is a click and the Card's own handler
+  // casts it; only a real drag swallows the click that follows it.
+
+  let drag = $state<DragState>(IDLE);
+  // The card being dragged. The verdict re-reads the LIVE card from
+  // the hand, so a snapshot that lands mid-drag (priority moving on, a
+  // spell resolving) re-colours the ghost.
+  let dragCardID = $state<string | null>(null);
+  let preview = $state<AutoTapPreview | null>(null);
+  let previewToken = 0;
+  // The ghost: the card, where it is, its size, and the hand slot it
+  // snaps back to.
+  let ghost = $state<{
+    card: CardView;
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    originX: number;
+    originY: number;
+    snapping: boolean;
+  } | null>(null);
+  // Where inside the card the pointer grabbed it.
+  let grabX = 0;
+  let grabY = 0;
+  let snapReason = $state<{ text: string; x: number; y: number } | null>(null);
+  let snapReasonTimer: ReturnType<typeof setTimeout> | null = null;
+  let snapTimer: ReturnType<typeof setTimeout> | null = null;
+  let dragSlot: HTMLElement | null = null;
+  let dragPointerID: number | null = null;
+  // A drag that ended (cast, snapped back or cancelled) swallows the
+  // one click the browser may still deliver for the same press.
+  let swallowClick = false;
+
+  const dragEnabled = $derived(isSelf && !!onDragCast);
+  const dragging = $derived(drag.phase === "dragging");
+  const liveDragCard = $derived(
+    dragCardID ? (cards.find((c) => c.instance_id === dragCardID) ?? null) : null,
+  );
+  const verdict = $derived(
+    liveDragCard
+      ? dragVerdict(liveDragCard, legalityFor(liveDragCard), preview)
+      : { castable: false, reason: "That card left your hand" },
+  );
+
+  // The ghost, the drop zone and the reason are position: fixed, and a
+  // transformed ancestor (the fan's rotated slot, the hand's hover
+  // lift) would make "fixed" mean "fixed to that ancestor". So they
+  // are moved to <body>.
+  function portal(node: HTMLElement): { destroy(): void } {
+    document.body.appendChild(node);
+    return {
+      destroy() {
+        node.remove();
+      },
+    };
+  }
+
+  function listen(): void {
+    window.addEventListener("pointermove", onWindowMove);
+    window.addEventListener("pointerup", onWindowUp);
+    window.addEventListener("pointercancel", onWindowCancel);
+    window.addEventListener("keydown", onWindowKey, true);
+  }
+
+  function unlisten(): void {
+    window.removeEventListener("pointermove", onWindowMove);
+    window.removeEventListener("pointerup", onWindowUp);
+    window.removeEventListener("pointercancel", onWindowCancel);
+    window.removeEventListener("keydown", onWindowKey, true);
+  }
+
+  function samePointer(ev: PointerEvent): boolean {
+    return dragPointerID === null || ev.pointerId === undefined || ev.pointerId === dragPointerID;
+  }
+
+  function onSlotPointerDown(ev: PointerEvent, c: CardView): void {
+    swallowClick = false;
+    if (!dragEnabled || drag.phase !== "idle") return;
+    if (ev.button !== 0 || ev.isPrimary === false) return;
+    // A press inside the card's ability popover belongs to the popover.
+    if ((ev.target as Element | null)?.closest?.('[role="menu"]')) return;
+    const slot = ev.currentTarget as HTMLElement;
+    const handEl = slot.closest(".hand") as HTMLElement | null;
+    const handTop = (handEl ?? slot).getBoundingClientRect().top;
+    const cardEl = (slot.querySelector(".card") as HTMLElement | null) ?? slot;
+    const r = cardEl.getBoundingClientRect();
+    grabX = ev.clientX - r.left;
+    grabY = ev.clientY - r.top;
+    dragSlot = slot;
+    dragPointerID = ev.pointerId ?? null;
+    dragCardID = c.instance_id;
+    ghost = {
+      card: c,
+      x: r.left,
+      y: r.top,
+      w: cardEl.offsetWidth || r.width,
+      h: cardEl.offsetHeight || r.height,
+      originX: r.left,
+      originY: r.top,
+      snapping: false,
+    };
+    apply({ type: "down", cardID: c.instance_id, x: ev.clientX, y: ev.clientY, handTop });
+    listen();
+  }
+
+  function onWindowMove(ev: PointerEvent): void {
+    if (!samePointer(ev)) return;
+    const was = drag.phase;
+    apply({ type: "move", x: ev.clientX, y: ev.clientY });
+    if (drag.phase !== "dragging") return;
+    ev.preventDefault();
+    if (was === "pressed") startDrag();
+    if (ghost) ghost = { ...ghost, x: ev.clientX - grabX, y: ev.clientY - grabY };
+  }
+
+  function onWindowUp(ev: PointerEvent): void {
+    if (!samePointer(ev)) return;
+    const card = liveDragCard;
+    const out = apply({ type: "up", x: ev.clientX, y: ev.clientY, verdict });
+    finish(out, card, ev.clientX, ev.clientY);
+  }
+
+  function onWindowCancel(): void {
+    finish(apply({ type: "cancel" }), null, 0, 0);
+  }
+
+  function onWindowKey(ev: KeyboardEvent): void {
+    if (ev.key !== "Escape") return;
+    if (drag.phase === "dragging") {
+      // The Escape belongs to the drag, not to whatever else on the
+      // page listens for it (a modal, the targeting banner).
+      ev.preventDefault();
+      ev.stopPropagation();
+    }
+    onWindowCancel();
+  }
+
+  function apply(input: DragInput): DragOutcome {
+    const res = stepDrag(drag, input);
+    drag = res.state;
+    return res.outcome;
+  }
+
+  // startDrag runs once, as a press becomes a drag: capture the pointer
+  // so the gesture keeps its events wherever it goes, and ask the
+  // auto-tapper which sources it would spend — once per drag, never per
+  // move.
+  function startDrag(): void {
+    if (dragSlot && dragPointerID !== null) {
+      try {
+        dragSlot.setPointerCapture?.(dragPointerID);
+      } catch {
+        // A pointer that is already gone cannot be captured; the
+        // window listeners still see its events.
+      }
+    }
+    const card = liveDragCard;
+    if (!card || !snap?.id || !wantsPreview(card, legalityFor(card))) return;
+    const token = ++previewToken;
+    fetchAutoTapPreview(snap.id, card.instance_id)
+      .then((p) => {
+        if (token !== previewToken || drag.phase !== "dragging") return;
+        preview = p;
+        autoTapHighlight.set(new Set(previewSourceIDs(p)));
+      })
+      .catch(() => {
+        // No preview, no highlight: the drag works without one, and the
+        // server is the real answer on release.
+      });
+  }
+
+  function finish(out: DragOutcome, card: CardView | null, x: number, y: number): void {
+    unlisten();
+    if (dragSlot && dragPointerID !== null) {
+      try {
+        dragSlot.releasePointerCapture?.(dragPointerID);
+      } catch {
+        // Already released.
+      }
+    }
+    dragSlot = null;
+    dragPointerID = null;
+    dragCardID = null;
+    previewToken++;
+    preview = null;
+    clearAutoTapHighlight();
+
+    if (out.kind === "click" || out.kind === "none") {
+      ghost = null;
+      return;
+    }
+    swallowClick = true;
+    if (out.kind === "cast") {
+      ghost = null;
+      if (card) onDragCast?.(card);
+      return;
+    }
+    if (out.reason) showSnapReason(out.reason, x, y);
+    snapBack();
+  }
+
+  // snapBack returns the ghost to the card's place in the hand, or just
+  // removes it under reduced motion.
+  function snapBack(): void {
+    const g = ghost;
+    if (!g || $settings.accessibility.reduceMotion) {
+      ghost = null;
+      return;
+    }
+    ghost = { ...g, snapping: true, x: g.originX, y: g.originY };
+    if (snapTimer !== null) clearTimeout(snapTimer);
+    snapTimer = setTimeout(() => {
+      snapTimer = null;
+      ghost = null;
+    }, 180);
+  }
+
+  function showSnapReason(text: string, x: number, y: number): void {
+    snapReason = { text, x, y };
+    if (snapReasonTimer !== null) clearTimeout(snapReasonTimer);
+    snapReasonTimer = setTimeout(() => {
+      snapReasonTimer = null;
+      snapReason = null;
+    }, SNAP_REASON_MS);
+  }
+
+  function onSlotClickCapture(ev: MouseEvent): void {
+    if (!swallowClick) return;
+    swallowClick = false;
+    ev.preventDefault();
+    ev.stopPropagation();
+  }
+
+  // Unmounted mid-drag (leaving the table): drop the listeners and the
+  // board highlight so neither outlives the hand.
+  $effect(() => {
+    return () => {
+      unlisten();
+      clearAutoTapHighlight();
+      if (snapTimer !== null) clearTimeout(snapTimer);
+      if (snapReasonTimer !== null) clearTimeout(snapReasonTimer);
+    };
+  });
 </script>
 
 <div
@@ -142,10 +419,18 @@
 >
   {#each cards as c, i (c.instance_id)}
     {@const leg = legalityFor(c)}
+    <!-- #1508: the pointer handler is the drag-to-cast gesture, a
+         pointer-only enhancement. The Card inside is the button, and
+         clicking or pressing Enter on it casts exactly as before. -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
       class="hand-slot"
       class:timing-disabled={isSelf && !leg.legal}
+      class:draggable={dragEnabled}
+      class:drag-source={dragging && dragCardID === c.instance_id}
       title={isSelf && !leg.legal ? leg.reason : undefined}
+      onpointerdown={dragEnabled ? (ev) => onSlotPointerDown(ev, c) : undefined}
+      onclickcapture={dragEnabled ? onSlotClickCapture : undefined}
       style:transform={layout === "stacked"
         ? "none"
         : `rotate(${fanAngle(i, cards.length)}deg) translateY(${fanLift(i, cards.length)}px)`}
@@ -174,6 +459,58 @@
     <span class="empty">empty</span>
   {/if}
 </div>
+
+{#if dragging && drag.inCastZone}
+  <!-- #1508: the faint "release to cast" zone over the table, shown
+       once the dragged card has crossed the line. -->
+  <div
+    class="drag-cast-zone"
+    class:castable={verdict.castable}
+    class:blocked={!verdict.castable}
+    style:height="{Math.max(0, drag.handTop - CAST_ZONE_MARGIN_PX - 12)}px"
+    use:portal
+    aria-hidden="true"
+  >
+    <span class="drag-cast-label">
+      {verdict.castable ? "Release to cast" : verdict.reason}
+    </span>
+  </div>
+{/if}
+{#if ghost && (dragging || ghost.snapping)}
+  {@const art = cardImageURL(ghost.card, "small")}
+  <div
+    class="drag-ghost"
+    class:castable={dragging && verdict.castable}
+    class:blocked={dragging && !verdict.castable}
+    class:snapping={ghost.snapping}
+    style:left="{ghost.x}px"
+    style:top="{ghost.y}px"
+    style:width="{ghost.w}px"
+    style:height="{ghost.h}px"
+    use:portal
+    aria-hidden="true"
+  >
+    {#if art}
+      <img src={art} alt="" draggable="false" />
+    {:else}
+      <span class="drag-ghost-name">{ghost.card.name}</span>
+    {/if}
+    {#if dragging && !verdict.castable && verdict.reason}
+      <span class="drag-ghost-reason">{verdict.reason}</span>
+    {/if}
+  </div>
+{/if}
+{#if snapReason}
+  <div
+    class="drag-snap-reason"
+    role="status"
+    style:left="{snapReason.x}px"
+    style:top="{snapReason.y}px"
+    use:portal
+  >
+    {snapReason.text}
+  </div>
+{/if}
 
 <style>
   .hand {
@@ -266,5 +603,136 @@
   .hand-slot.timing-disabled {
     opacity: 0.5;
     filter: grayscale(0.5) brightness(0.85);
+  }
+
+  /* #1508: drag to cast. A self hand card takes the whole gesture —
+     nothing in the hand scrolls, and a vertical drag handed to the
+     browser as a pan would cancel the pointer mid-drag. Taps still
+     click. */
+  .hand-slot.draggable {
+    touch-action: none;
+  }
+  /* The card being dragged keeps its place, dimmed, so the fan does
+     not reflow under the pointer and the snap-back has somewhere to
+     land. */
+  .hand-slot.drag-source {
+    opacity: 0.3;
+  }
+  /* The ghost, the zone and the reason are portalled to <body>. Scoped
+     rules still reach them: the scoping class is on the element, and
+     moving it does not take it off. */
+  .drag-ghost {
+    position: fixed;
+    z-index: 1000;
+    pointer-events: none;
+    border-radius: 8px;
+    transform: rotate(-3deg) scale(1.04);
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.55);
+  }
+  .drag-ghost img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 8px;
+    object-fit: cover;
+  }
+  .drag-ghost-name {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    padding: 6px;
+    box-sizing: border-box;
+    border-radius: 8px;
+    background: var(--surface-2, #222);
+    color: var(--fg, #eee);
+    font-size: 12px;
+    text-align: center;
+  }
+  .drag-ghost.castable {
+    box-shadow:
+      0 0 0 2px var(--gold),
+      0 0 26px rgba(255, 208, 122, 0.75),
+      0 14px 30px rgba(0, 0, 0, 0.55);
+  }
+  .drag-ghost.blocked {
+    box-shadow:
+      0 0 0 2px var(--danger),
+      0 0 22px rgba(255, 107, 107, 0.6),
+      0 14px 30px rgba(0, 0, 0, 0.55);
+  }
+  .drag-ghost.blocked img {
+    filter: grayscale(0.5) brightness(0.65);
+  }
+  .drag-ghost-reason {
+    position: absolute;
+    left: 50%;
+    bottom: -8px;
+    transform: translate(-50%, 100%);
+    white-space: nowrap;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: rgba(40, 10, 10, 0.92);
+    color: #ffd6d6;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .drag-ghost.snapping {
+    transition:
+      left 180ms var(--ease, ease),
+      top 180ms var(--ease, ease),
+      opacity 180ms var(--ease, ease);
+    opacity: 0.4;
+  }
+  .drag-cast-zone {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    top: 12px;
+    z-index: 999;
+    pointer-events: none;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 14px;
+    box-sizing: border-box;
+    border: 2px dashed rgba(217, 180, 92, 0.35);
+    border-radius: 14px;
+    background: rgba(217, 180, 92, 0.05);
+  }
+  .drag-cast-zone.blocked {
+    border-color: rgba(255, 107, 107, 0.35);
+    background: rgba(255, 107, 107, 0.05);
+  }
+  .drag-cast-label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--gold-strong, #f1d38a);
+  }
+  .drag-cast-zone.blocked .drag-cast-label {
+    color: #ffb3b3;
+  }
+  .drag-snap-reason {
+    position: fixed;
+    z-index: 1001;
+    pointer-events: none;
+    transform: translate(-50%, -140%);
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: rgba(40, 10, 10, 0.94);
+    color: #ffd6d6;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .drag-ghost,
+    .drag-ghost.snapping {
+      transition: none;
+      transform: none;
+    }
   }
 </style>
