@@ -90,10 +90,10 @@ func pheliaExile(g *game.Game, item *game.StackItem) error {
 			return nil
 		}
 		return ScheduleDelayedTrigger{
-			At:     game.StepEnd,
-			Label:  "Phelia, Exuberant Shepherd — return the exiled card",
-			Cards:  exiled,
-			Effect: pheliaReturn,
+			At:    game.StepEnd,
+			Label: "Phelia, Exuberant Shepherd — return the exiled card",
+			Cards: exiled,
+			Body:  pheliaReturnBody,
 		}.Apply(NewContext(g, item))
 	})
 }

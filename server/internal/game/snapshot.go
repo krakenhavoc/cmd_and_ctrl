@@ -985,12 +985,12 @@ type stackItemSnapshot struct {
 	// having to find the card again (it may have moved zones).
 	OracleID string `json:"oracleId,omitempty"`
 
-	// Body is ADR 0041 P2's effect-body key: what a fired delayed
-	// trigger resolves through once delayed triggers are data (tier 2,
-	// #1497). This binary writes none; it READS the key so that a file
-	// from a later v7 build that does is refused (ErrUnknownEffectKey)
-	// rather than restored with its effect silently missing.
-	Body string `json:"body,omitempty"`
+	// Body is ADR 0041 P2's effect-body key (tier 2, #1497): what a
+	// fired delayed trigger resolves through. Restore re-derives the
+	// item's Effect from it, and refuses a key this binary does not
+	// have (ErrUnknownEffectKey). Params is the body's plain data.
+	Body   string        `json:"body,omitempty"`
+	Params *EffectParams `json:"params,omitempty"` // nil when zero: most items are spells
 }
 
 type delayedTriggerSnapshot struct {
@@ -1014,13 +1014,16 @@ type delayedTriggerSnapshot struct {
 	On       []EventKind `json:"on,omitempty"`
 	Duration *Duration   `json:"duration,omitempty"`
 
-	// Body and Condition are ADR 0041 P2's effect-body and
-	// event-condition keys (tier 2, #1497). Read-only in this binary,
-	// for the reason stackItemSnapshot.Body gives: the v7 reader is in
-	// place before the writer, so a later v7 file is refused rather
-	// than misread.
-	Body      string `json:"body,omitempty"`
-	Condition string `json:"condition,omitempty"`
+	// Body, Condition and their params are ADR 0041 P2's data form
+	// of what the trigger does and which event fires it (tier 2,
+	// #1497). The v7 reader was in place before this writer (PR 1), so
+	// no bump: a v7 binary without a key refuses the file
+	// (ErrUnknownEffectKey) rather than misreading it.
+	Body             string        `json:"body,omitempty"`
+	Params           *EffectParams `json:"params,omitempty"` // nil when zero
+	Condition        string        `json:"condition,omitempty"`
+	CondParams       *EffectParams `json:"condParams,omitempty"` // nil when zero
+	OptionalQuestion string        `json:"optionalQuestion,omitempty"`
 }
 
 // pendingChoiceSnapshot mirrors PendingChoice's DATA. Its seven
@@ -1773,8 +1776,13 @@ func snapshotStackItem(g *Game, s *StackItem, cen *ContinuationCensus) stackItem
 		HasTargetSpec: s.targetSpec != nil,
 		HasModeSpec:   s.modeSpec != nil,
 		OracleID:      oracleIDOfLocked(g, s.SourceCardID),
+		Body:          s.Body,
+		Params:        effectParamsOrNil(s.Params),
 	}
-	if s.Effect != nil {
+	// A KEYED item (a fired delayed trigger, ADR 0041 P2) is data:
+	// restore re-derives its Effect from Body. Only an item whose
+	// Effect is a bare closure still blocks the restore point.
+	if s.Effect != nil && s.Body == "" {
 		cen.StackEffects++
 		cen.note("stack effect: %s", labelOr(s.Label, string(s.Kind)))
 	}
@@ -1826,7 +1834,12 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 		At:                 d.At,
 		ControllerTurnOnly: d.ControllerTurnOnly,
 		CreatedSeq:         d.CreatedSeq,
-		HasEffect:          d.Effect != nil,
+		HasEffect:          d.Body != "",
+		Body:               d.Body,
+		Params:             effectParamsOrNil(d.Params),
+		Condition:          d.Condition,
+		CondParams:         effectParamsOrNil(d.CondParams),
+		OptionalQuestion:   d.OptionalQuestion,
 	}
 	if d.Duration != nil {
 		dur := *d.Duration
@@ -1838,9 +1851,14 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 	if len(d.Cards) > 0 {
 		out.Cards = append([]uuid.UUID(nil), d.Cards...)
 	}
-	if d.Effect != nil {
+	// ADR 0041 P2 (#1497): a delayed trigger is data, so this counter
+	// is RETIRED — ScheduleDelayedTriggerForEffect refuses a trigger
+	// with no Body, and no other path builds one. The only way to meet
+	// one here is a hand-built test fixture, and it is still counted,
+	// because a trigger with nothing to do cannot be restored exactly.
+	if d.Body == "" {
 		cen.DelayedTriggerEffects++
-		cen.note("delayed trigger: %s", labelOr(d.Label, d.ID.String()))
+		cen.note("delayed trigger without a body: %s", labelOr(d.Label, d.ID.String()))
 	}
 	return out
 }
@@ -2473,11 +2491,16 @@ func restoreStackItem(s *stackItemSnapshot) *StackItem {
 		Ordered:       s.Ordered,
 		Commutes:      s.Commutes,
 		Paid:          clonePaidCost(s.Paid),
-		// Effect stays nil. A SPELL does not need one — resolution
-		// dispatches through EffectResolver by oracle ID — but an
-		// ability does, which is why a stack item with an Effect is
-		// counted in the census and keeps the snapshot from being a
-		// restore point.
+		Body:          s.Body,
+		Params:        effectParamsValue(s.Params),
+		// Effect stays nil unless the item is keyed. A SPELL does not
+		// need one — resolution dispatches through EffectResolver by
+		// oracle ID — but an ability does, which is why a stack item
+		// with an unkeyed Effect is counted in the census and keeps
+		// the snapshot from being a restore point.
+	}
+	if s.Body != "" {
+		out.Effect = bodyEffect(s.Body, out.Params)
 	}
 	if s.HasTargetSpec && spellSpecRederivable(*s) {
 		// The clause the spell was ANNOUNCED under, not the printed
@@ -2504,7 +2527,11 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 		At:                 d.At,
 		ControllerTurnOnly: d.ControllerTurnOnly,
 		CreatedSeq:         d.CreatedSeq,
-		// Effect, AppliesTo and Optional stay nil; see the census.
+		Body:               d.Body,
+		Params:             effectParamsValue(d.Params),
+		Condition:          d.Condition,
+		CondParams:         effectParamsValue(d.CondParams),
+		OptionalQuestion:   d.OptionalQuestion,
 	}
 	if d.Duration != nil {
 		dur := *d.Duration

@@ -60,8 +60,9 @@ const closureFieldsFile = "closure_fields.txt"
 
 // retiredCensusCounters are the counters a landed phase-3 tier has
 // retired. A closure field charged to one of them fails the build.
-// Empty until tier 2 retires DelayedTriggerEffects.
-var retiredCensusCounters = map[string]string{}
+var retiredCensusCounters = map[string]string{
+	"DelayedTriggerEffects": "ADR 0041 phase 3 tier 2 (#1497): a delayed trigger is a registered body key plus plain params",
+}
 
 // closureField is one line of the ratchet: a field that can hold a
 // closure, and the first route by which Game reaches it (for the

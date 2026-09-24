@@ -56,7 +56,8 @@ func init() {
 				At:                 game.StepUpkeep,
 				ControllerTurnOnly: true,
 				Label:              "Pact of Negation — pay {3}{U}{U} or lose the game",
-				Effect:             pactPayment("{3}{U}{U}", "Pact of Negation"),
+				Body:               pactPaymentBody,
+				Params:             game.EffectParams{Cost: "{3}{U}{U}", Name: "Pact of Negation"},
 			}.Apply(ctx)
 		},
 	})
@@ -77,16 +78,14 @@ func init() {
 // until then, and a table could take the turn — and the Pact's
 // controller could untap, draw and attack — with the {3}{U}{U} still
 // unpaid and the loss still pending.
-func pactPayment(cost, name string) func(g *game.Game, item *game.StackItem) error {
-	return func(g *game.Game, item *game.StackItem) error {
-		payer := item.Controller
-		return UpkeepPayUnless{
-			Chooser:  payer,
-			Cost:     cost,
-			Question: name + " — pay " + cost + " or lose the game",
-			OnDecline: func(ctx *Context) error {
-				return LoseTheGame{Player: payer}.Apply(ctx)
-			},
-		}.Apply(NewContext(g, item))
-	}
+func pactPayment(g *game.Game, item *game.StackItem, p game.EffectParams) error {
+	payer := item.Controller
+	return UpkeepPayUnless{
+		Chooser:  payer,
+		Cost:     p.Cost,
+		Question: p.Name + " — pay " + p.Cost + " or lose the game",
+		OnDecline: func(ctx *Context) error {
+			return LoseTheGame{Player: payer}.Apply(ctx)
+		},
+	}.Apply(NewContext(g, item))
 }

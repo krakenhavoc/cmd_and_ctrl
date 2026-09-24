@@ -1150,3 +1150,37 @@ Three things the first slice settled that the decisions above left open.
   CR 702.26f ends a duration that tracks a phased-out permanent.
 - **`grantAbilities` is not declared yet.** It lands with ADR 0093's PR 4,
   together with the grant seam it adapts into.
+
+### Implementation notes (PR 2, tier 2: delayed triggers as data)
+
+- **No schema bump.** v7's reader has had the `body` and `condition` keys
+  since PR 1. The `params`, `condParams` and `optionalQuestion` keys are
+  additive, and are omitted when zero. A PR 1 binary handed a PR 2 file
+  meets a delayed trigger or a fired item with a `body` it cannot resolve,
+  and refuses the file (`ErrUnknownEffectKey`), which is the rollback case
+  P4 designed for.
+- **The registry lives in `game/effect_bodies.go`.** Bodies and conditions
+  are registered at init. The catalog registers its keys in one place,
+  `cards/effects/delayed_bodies.go`, rather than one line beside each
+  function, so that a reviewer adding a key sees all of them.
+  - The engine registers its four bodies (warp, madness, cascade and
+    earthbend's return) in `init` functions, because a package-level var
+    would be an initialisation cycle through the exit primitives.
+  - The registry has a lock, because tests register throwaway `test/…`
+    bodies while other tests' games resolve. The ledger ignores that
+    namespace.
+- **`ConditionFunc` receives its params.** Its signature is
+  `func(ev, dt, g, EffectParams) bool`. The params duplicate
+  `dt.CondParams`, and are passed so that a condition never has to
+  unpack them.
+- **A delayed trigger's "you may" is a question, not a prompt.**
+  `DelayedTrigger.OptionalQuestion` replaces the `Optional`
+  `*TriggerOptionalPrompt`, because that prompt's `Chooser` is a closure
+  and a delayed trigger always asks its controller.
+- **A fired item is data too.** `StackItem.Body` and `Params` are set on
+  the item a delayed trigger puts on the stack. The snapshot counts only
+  an unkeyed `Effect`, and restore re-derives the `Effect` from `Body`.
+- **`ContinuationCensus.DelayedTriggerEffects` is retired.**
+  `ScheduleDelayedTriggerForEffect` refuses a trigger with no body. The
+  counter now fires only for a hand-built trigger with nothing to do. The
+  closure ratchet lists the counter in `retiredCensusCounters`.
