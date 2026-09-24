@@ -5223,10 +5223,17 @@ func (g *Game) TapCard(cardID uuid.UUID, tapped bool) error {
 //   - ManaAbilityShape.Rider, everything the oracle text says after
 //     the "Add …" clause, run once the produced mana is in the pool.
 //
-// Any activation that pays life, sacrifices, or fires a rider runs a
-// state-based-action pass on the way out, so a player who taps
-// Ancient Tomb at 2 life loses here rather than at the next priority
-// boundary.
+// #1370 adds Rider's mirror image, ManaAbilityShape.PreRider:
+// everything the oracle text says BEFORE the "Add …" clause, run
+// once the cost is paid and before the produced string is computed —
+// Empowered Autogenerator's "Put a charge counter on this artifact,"
+// so its own "X is the number of charge counters" reads the count
+// after the placement rather than guessing at it.
+//
+// Any activation that pays life, sacrifices, or fires a rider (either
+// direction) runs a state-based-action pass on the way out, so a
+// player who taps Ancient Tomb at 2 life loses here rather than at
+// the next priority boundary.
 //
 // Added in S15 sub-PR 2.
 // ManaAbilityParams carries the choices a mana ability's cost needs
@@ -5738,11 +5745,42 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		Label:   ab.Label,
 		Exhaust: ab.Exhaust,
 	})
+	// --- pre-rider ------------------------------------------------
+	//
+	// #1370: PreRider is everything the oracle text says BEFORE the
+	// "Add …" clause — Empowered Autogenerator's "Put a charge counter
+	// on this artifact." It runs here, after the cost is paid and
+	// before the produced string is computed, so a ProducedFunc that
+	// reads the board (Empowered Autogenerator's charge-counter count)
+	// sees the placement already landed, counter doublers and all.
+	// This is Rider's mirror image: Rider is the tail of the printed
+	// sentence, PreRider is its head, and a card declares whichever
+	// one its own printed order actually needs — never both.
+	//
+	// Runs under g.mu held for write, exactly like Rider, and any
+	// mutation it makes (a counter placement) goes through a
+	// mustSettleNow entry point: CR 605.3a leaves no priority window
+	// inside a mana ability's resolution for a CR 616 ordering prompt
+	// to occupy, so a Doubling Season beside a Hardened Scales settles
+	// on the gathered order instead of asking (see
+	// AddCounterMustSettleNowForEffect in counter_tail.go).
+	if ab.PreRider != nil {
+		needStateChecks = true
+		if err := ab.PreRider(g, playerID, cardID); err != nil {
+			g.EmitEvent(Event{
+				Kind:     EventEffectError,
+				Actor:    playerID,
+				Source:   cardID,
+				ErrorMsg: err.Error(),
+			})
+		}
+	}
 	// Materialise the produced mana. An ability with a ProducedFunc
 	// computes its output now, from the board as it stands AFTER the
-	// cost was paid — which is what CR 605.3b's "resolves
-	// immediately" means, and what makes Cabal Coffers count the
-	// Swamps that are still there.
+	// cost was paid AND after any PreRider has landed — which is what
+	// CR 605.3b's "resolves immediately" means, and what makes Cabal
+	// Coffers count the Swamps that are still there and Empowered
+	// Autogenerator count the charge counter it just placed.
 	produced := ab.Produced
 	if ab.DerivedMatch != nil {
 		// #1323: same seeded visited set as manaAbilityProducedLocked

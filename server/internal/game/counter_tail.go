@@ -176,3 +176,75 @@ func (g *Game) AddCounterByThenForEffect(placer, cardID uuid.UUID, name string, 
 	}
 	return g.applyResolvedCounterThenLocked(out)
 }
+
+// AddCounterMustSettleNowForEffect is AddCounterForEffect for a
+// caller that CANNOT pause — a mana ability's PreRider (#1370) — and
+// that needs the settled count back synchronously rather than through
+// a continuation.
+//
+// CR 605.3a: activating a mana ability is one indivisible step with no
+// priority window inside it, so a CR 616 ordering prompt (a Doubling
+// Season beside a Hardened Scales both watching this placement) cannot
+// be raised here any more than it can inside produce_mana.go's own
+// window on the mana itself. The event is marked mustSettleNow, which
+// forecloses errReplacementPending: the apply-loop applies the
+// gathered order in place of asking (the same escape an eliminated
+// chooser already takes, CR 616.1f), and an effect that would ask its
+// own question is skipped un-applied — weaker than printed, never
+// stronger, the posture every other mustSettleNow path takes.
+//
+// Returns the delta that actually landed — doubled, incremented, or
+// zero for a placement replaced away entirely (CR 614.10) or whose
+// target has left the game. A caller that computes its own output from
+// the board (Empowered Autogenerator's ProducedFunc reading the
+// counters back) wants the READ, not this return value, so most
+// callers can ignore it; it exists for a caller that wants to know
+// without a second lookup.
+//
+// Caller must hold g.mu.
+func (g *Game) AddCounterMustSettleNowForEffect(cardID uuid.UUID, name string, delta int) (int, error) {
+	return g.AddCounterByMustSettleNowForEffect(uuid.Nil, cardID, name, delta)
+}
+
+// AddCounterByMustSettleNowForEffect is
+// AddCounterMustSettleNowForEffect with the CR 120.3d placer named —
+// AddCounterByForEffect's mustSettleNow twin.
+//
+// Caller must hold g.mu.
+func (g *Game) AddCounterByMustSettleNowForEffect(placer, cardID uuid.UUID, name string, delta int) (int, error) {
+	if delta == 0 {
+		return 0, nil
+	}
+	if name == "" {
+		return 0, ErrInvalidParam
+	}
+	ev := &ReplacementEvent{
+		Kind:          RepEventCounter,
+		CounterTarget: cardID,
+		CounterName:   name,
+		CounterDelta:  delta,
+		CounterPlacer: placer,
+		mustSettleNow: true,
+	}
+	out, err := g.applyReplacementsLocked(ev)
+	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
+		// mustSettleNow forecloses errReplacementPending, so the only
+		// way here is a genuinely broken pipeline. Land the counters
+		// unreplaced rather than losing them — weaker than printed,
+		// never stronger, matching replaceProducedManaLocked's own
+		// fallback in produce_mana.go.
+		g.clearReplacementEventLocked(ev.ID)
+		if err := g.applyCounterByLocked(cardID, name, delta, placer, uuid.Nil); err != nil {
+			return 0, err
+		}
+		return delta, nil
+	}
+	defer g.clearReplacementEventLocked(ev.ID)
+	if out == nil || out.Canceled {
+		return 0, nil
+	}
+	if err := g.applyResolvedCounterLocked(out); err != nil {
+		return 0, err
+	}
+	return out.CounterDelta, nil
+}

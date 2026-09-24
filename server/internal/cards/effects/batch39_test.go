@@ -719,6 +719,70 @@ func TestB39AutogeneratorAddsOneOnItsFirstTapAndGrows(t *testing.T) {
 	}
 }
 
+// #1370: with a Doubling Season on the same board, the counter
+// placement lands doubled — 2 charge counters on the first tap, not
+// 1 — and X has to read that, not guess "existing + 1". Before the
+// fix, ProducedFunc computed the pre-doubler guess while the Rider
+// placed the doubled count afterward, so the pool got 1 mana for a
+// card carrying 2 charge counters.
+func TestB39AutogeneratorReadsCounterCountAfterDoublingSeason(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	_ = seedReplacementPermanent(g, doublingSeasonOracle, "Doubling Season", me.ID)
+	gen := castCatalogSpell(t, g, "Empowered Autogenerator", "Artifact", b39AutogeneratorOracle, nil)
+	passPriorityAroundTable(t, g)
+	g.WithWriteLock(func() { _ = g.UntapTargetForEffect(gen) })
+
+	b28TapForMana(t, g, me.ID, gen, "U")
+	if got := counterOn(g, gen, game.CounterCharge); got != 2 {
+		t.Fatalf("first tap places 1×2 (Doubling Season) = 2 charge counters, got %d", got)
+	}
+	if got := poolColors(me); len(got) != 2 {
+		t.Errorf("X must read the doubled count: pool %v, want 2 mana", got)
+	}
+
+	g.WithWriteLock(func() { _ = g.UntapTargetForEffect(gen) })
+	b28TapForMana(t, g, me.ID, gen, "U")
+	if got := counterOn(g, gen, game.CounterCharge); got != 4 {
+		t.Fatalf("second tap places 1×2 more = 4 charge counters total, got %d", got)
+	}
+	if got := poolColors(me); len(got) != 6 {
+		t.Errorf("second activation adds 4 more mana on top of the first 2: pool %v, want 6", got)
+	}
+}
+
+// #1370: Hardened Scales only replaces a +1/+1 counter placed on a
+// creature (see hardened_scales.go's AppliesTo). The Autogenerator
+// places a CHARGE counter on an ARTIFACT, so Hardened Scales alone on
+// the board must be a complete no-op — the card behaves exactly as it
+// does with no doubler in play, pinning that the ordering fix did not
+// accidentally widen what counts as a doubler here.
+func TestB39AutogeneratorUnaffectedByHardenedScalesAlone(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	_ = seedReplacementPermanent(g, hardenedScalesOracle, "Hardened Scales", me.ID)
+	gen := castCatalogSpell(t, g, "Empowered Autogenerator", "Artifact", b39AutogeneratorOracle, nil)
+	passPriorityAroundTable(t, g)
+	g.WithWriteLock(func() { _ = g.UntapTargetForEffect(gen) })
+
+	b28TapForMana(t, g, me.ID, gen, "U")
+	if got := counterOn(g, gen, game.CounterCharge); got != 1 {
+		t.Fatalf("Hardened Scales does not touch a charge counter on an artifact: got %d charge counters, want 1", got)
+	}
+	if got := poolColors(me); len(got) != 1 {
+		t.Errorf("unaffected first tap still adds exactly one mana: pool %v", got)
+	}
+
+	g.WithWriteLock(func() { _ = g.UntapTargetForEffect(gen) })
+	b28TapForMana(t, g, me.ID, gen, "U")
+	if got := counterOn(g, gen, game.CounterCharge); got != 2 {
+		t.Fatalf("two charge counters after the second tap, want 2, got %d", got)
+	}
+	if got := poolColors(me); len(got) != 3 {
+		t.Errorf("unaffected second tap adds two more: pool %v, want 3 total", got)
+	}
+}
+
 // --- Anara, Wolvid Familiar -----------------------------------------
 
 func TestB39AnaraGrantsIndestructibleOnlyOnYourOwnTurn(t *testing.T) {

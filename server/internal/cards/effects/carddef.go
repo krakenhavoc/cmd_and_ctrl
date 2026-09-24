@@ -185,6 +185,7 @@ func buildDef(spec Spec) *game.CardDef {
 				Label:                     a.Label,
 				Exhaust:                   a.Exhaust,
 				Rider:                     a.Rider,
+				PreRider:                  a.PreRider,
 				NarrowToCommanderIdentity: a.NarrowToCommanderIdentity,
 				Condition:                 a.Condition,
 				ProducedFunc:              a.ProducedFunc,

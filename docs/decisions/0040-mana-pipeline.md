@@ -818,3 +818,88 @@ about abstractly, and it needed the identical guard.
 the guard's own back-out proof — it still passes, because a genuine
 3-permanent circle still resolves to nothing, which is now documented as the
 rule's own answer rather than an engine limitation.
+
+## Amendment — 2026-09-23 (#1370): `PreRider`, for a printed order Rider cannot express
+
+**The bug.** Empowered Autogenerator — "{T}: Put a charge counter on this
+artifact. Add X mana of any one color, where X is the number of charge
+counters on this artifact." — computed X as `existing charge counters + 1`,
+a guess at what its own counter placement was about to do, and placed the
+counter through `Rider`, which this pipeline runs AFTER `ProducedFunc`
+(§5's "evaluated after the cost is paid"). With no counter doubler in play
+the guess and the read agree by arithmetic accident: `existing + 1` and
+`(existing + 1 placed, then read)` are the same number. With a Doubling
+Season on the board they diverge — the placement lands doubled, the guess
+does not — and the ability added less mana than the charge counters on the
+card, at the moment it finished resolving, actually justify.
+
+**Rider's contract only covers half the printed sentences.** Every mana
+ability that has used `Rider` so far — the painland cycle's "Add {C}. This
+land deals 1 damage to you," Ancient Tomb's "Add {C}{C}. This land deals 2
+damage to you" — prints the "Add …" clause FIRST and the side effect
+SECOND, so "compute output, mint mana, then run the rest" is exactly
+printed order. Empowered Autogenerator prints the other order: the
+non-mana instruction comes first and the output depends on its result.
+`Rider` has no way to say that, because by the time it runs the output is
+already computed and the mana is already in the pool.
+
+**`ManaAbilityShape.PreRider` / `effects.ManaAbility.PreRider`** is Rider's
+mirror image: the same signature (`func(g *Game, controller, source
+uuid.UUID) error`), run at the same point in `ActivateManaAbility` `Rider`
+occupies, just BEFORE the produced string is computed instead of after. A
+card declares one or the other for a given clause, matching whichever side
+of "Add …" its own printed sentence puts the instruction on — never both,
+and nothing in the catalog needs both today.
+
+**The mutation a PreRider makes cannot go through the ordinary counter
+path.** `AddCounterForEffect` / `AddCounterThenForEffect` open a real CR 614
+window that can PAUSE on a CR 616 ordering prompt when two different
+counter replacements apply (Doubling Season beside a Hardened Scales) — the
+`#1282` continuation shape this file's sibling ADRs already lean on
+elsewhere. A mana ability's resolution has no such pause available
+(CR 605.3a: one indivisible step, no stack, no priority window inside it) —
+exactly the reasoning §6's `Condition` / `ProducedFunc` read-only contract
+and `produce_mana.go`'s `mustSettleNow` on `RepEventProduceMana` already
+rest on for the mana side of the same activation. `PreRider` needs the
+identical guarantee on the COUNTER side, and there was no synchronous,
+non-pausing counter-placement entry point to give it one.
+
+**`AddCounterMustSettleNowForEffect` / `AddCounterByMustSettleNowForEffect`**
+(`counter_tail.go`) are that entry point: the same `RepEventCounter` window
+every other counter placement opens, with `mustSettleNow` set. Two or more
+applicable counter doublers settle on the gathered order instead of
+queuing a prompt — the same escape an eliminated chooser already takes
+(CR 616.1f) and the same posture `payLifeAsCostLocked` takes for a life
+payment as a cost. Unlike the `...ThenForEffect` continuation shape, this
+returns the settled delta SYNCHRONOUSLY, because `mustSettleNow` forecloses
+the one case (`errReplacementPending`) a continuation exists to survive.
+
+**Hardened Scales was never the risk here, and that is worth stating
+precisely rather than assuming.** It replaces placement of a `+1/+1`
+counter on a creature (`hardened_scales.go`'s `AppliesTo`); Empowered
+Autogenerator places a `charge` counter on an artifact, so Hardened Scales'
+predicate never matches this card at all, with or without the fix.
+Doubling Season has no such name or type restriction — CR-uncategorised
+"counters" — and is the doubler that actually interacts.
+
+**Where the fix lands, precisely:**
+
+- `game.ManaAbilityShape.PreRider` (`effect_hooks.go`) and
+  `effects.ManaAbility.PreRider` (`spec.go`), wired through in
+  `carddef.go`.
+- `ActivateManaAbility` (`mutations.go`) runs `ab.PreRider` right after
+  `EventManaAbilityActivated` and before `Produced` / `ProducedFunc` /
+  `ProducedForPaid` is evaluated, marking `needStateChecks` exactly as
+  `Rider` does.
+- `game.AddCounterMustSettleNowForEffect` /
+  `AddCounterByMustSettleNowForEffect` (`counter_tail.go`).
+- `empowered_autogenerator.go`: `b39AutogeneratorCharge` moves from
+  `Rider` to `PreRider` and calls the new settle-now entry point;
+  `b39AutogeneratorOutput` drops the `+ 1` guess and reads the board.
+
+No card moves off `CompletenessFull` and none gains a caveat — this
+corrects what "no simplification" already claimed rather than narrowing it.
+`TestB39AutogeneratorReadsCounterCountAfterDoublingSeason` and
+`TestB39AutogeneratorUnaffectedByHardenedScalesAlone`
+(`batch39_test.go`) are the proof, alongside the unchanged
+`TestB39AutogeneratorAddsOneOnItsFirstTapAndGrows` for the no-doubler case.
