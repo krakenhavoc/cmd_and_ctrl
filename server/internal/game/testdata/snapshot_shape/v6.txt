@@ -670,6 +670,7 @@ pendingTriggers[]	object
 pendingTriggers[].altCost	string
 pendingTriggers[].altCostExiles	bool
 pendingTriggers[].castFromZone	string
+pendingTriggers[].commutes	bool
 pendingTriggers[].controller	custom(uuid.UUID)
 pendingTriggers[].distribution	map:array
 pendingTriggers[].distribution{}	number:int
@@ -2178,6 +2179,7 @@ stackMeta[]	object
 stackMeta[].altCost	string
 stackMeta[].altCostExiles	bool
 stackMeta[].castFromZone	string
+stackMeta[].commutes	bool
 stackMeta[].controller	custom(uuid.UUID)
 stackMeta[].distribution	map:array
 stackMeta[].distribution{}	number:int

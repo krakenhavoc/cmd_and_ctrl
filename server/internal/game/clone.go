@@ -663,6 +663,7 @@ func cloneStackItem(s *StackItem) *StackItem {
 		// resolves it against the restored game.
 		Effect:     s.Effect,
 		Ordered:    s.Ordered,
+		Commutes:   s.Commutes,
 		targetSpec: s.targetSpec,
 		// #764: catalog data, read-never-written, so the undo clone
 		// shares the pointer exactly as it shares targetSpec.

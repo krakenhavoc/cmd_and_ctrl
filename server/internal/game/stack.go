@@ -435,6 +435,26 @@ type StackItem struct {
 	// sub-PR 8.
 	Ordered bool
 
+	// Commutes marks a pending trigger whose resolution commutes with
+	// every other Commutes item: whatever order a batch of them
+	// resolves in, the board afterwards is the same. seatNeedsTriggerOrder
+	// skips the CR 603.3b ordering prompt for a seat whose whole batch
+	// is Commutes items (#1511), because a question whose every answer
+	// gives the same game is a click, not a choice.
+	//
+	// The class is CLOSED and engine-owned. The only writer is the
+	// prowess trigger's Build (prowess.go), and ADR 0018's #1511
+	// amendment carries the argument for why prowess instances commute
+	// with each other. Commutativity is a property of an effect PAIR,
+	// not of one effect, so a new member has to be argued against every
+	// existing member there first — never set it from a card file.
+	// It says nothing about how an item orders against a trigger
+	// OUTSIDE the class: a batch with even one of those still prompts.
+	//
+	// Carried by Clone and the snapshot like Ordered. Meaningless once
+	// the item is on the stack.
+	Commutes bool
+
 	// modeSpec is the ModeSpec an ability item was announced under,
 	// so the CR 608.2b re-check can find the clause list of the mode
 	// OCCURRENCE a TargetRef names. Nil for a spell (looked up by

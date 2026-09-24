@@ -4832,15 +4832,33 @@ func (g *Game) drainPendingTriggersAPNAPLocked() bool {
 
 // seatNeedsTriggerOrder reports whether a seat's batch of pending
 // triggers needs a CR 603.3b ordering prompt: at least two items,
-// not all identical (same source card + same label — two Bident
-// draws are interchangeable and asking would be noise), and at
-// least one not yet Ordered by an answered prompt.
+// at least one not yet Ordered by an answered prompt, and an order
+// that could change the game. Two shapes are known not to:
+//
+//   - all identical — same source card and same label. Two Bident
+//     draws are interchangeable and asking would be noise.
+//   - all commutative — every item is a StackItem.Commutes item, so
+//     any order leaves the same board (#1511: a board of prowess
+//     creatures, which would otherwise ask on every noncreature
+//     spell). An item that commutes still counts only while it has
+//     no targets and no modes; Commutes is engine-owned and no such
+//     item has either today, so that check is a belt, not the rule.
+//
+// Anything else prompts, including a batch that is all commutative
+// items plus ONE other trigger: where that trigger sits among the
+// pumps is a real choice whenever it reads what they change. See
+// ADR 0018's #1511 amendment.
+//
+// An auto-ordered batch keeps its queue order, which is harvest
+// order; the drain below places it exactly as it places an answered
+// prompt.
 func seatNeedsTriggerOrder(items []*StackItem) bool {
 	if len(items) < 2 {
 		return false
 	}
 	allOrdered := true
 	allSame := true
+	allCommute := true
 	for _, t := range items {
 		if !t.Ordered {
 			allOrdered = false
@@ -4848,8 +4866,19 @@ func seatNeedsTriggerOrder(items []*StackItem) bool {
 		if t.SourceCardID != items[0].SourceCardID || t.Label != items[0].Label {
 			allSame = false
 		}
+		if !commutesForOrdering(t) {
+			allCommute = false
+		}
 	}
-	return !allOrdered && !allSame
+	return !allOrdered && !allSame && !allCommute
+}
+
+// commutesForOrdering is the per-item half of the #1511 skip: the
+// item declares it commutes, and it carries nothing a CR 603.3b
+// order could interact with — no chosen targets and no chosen
+// modes.
+func commutesForOrdering(t *StackItem) bool {
+	return t.Commutes && len(t.Targets) == 0 && len(t.Modes) == 0
 }
 
 // hasTriggerOrderPromptLocked reports whether chooser already has a

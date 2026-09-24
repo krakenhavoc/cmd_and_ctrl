@@ -425,8 +425,11 @@ How the engine honours it (`server/internal/game/prowess.go`):
    0056 Decision 1), because CR 702.108b says each instance triggers
    separately. Ty Lee under Sokka has two instances and gets +2/+2.
    Every instance carries the same label, so a creature's own
-   instances never raise a CR 603.3b ordering prompt; triggers from
-   different sources on the same cast still do, as for any triggers.
+   instances never raise a CR 603.3b ordering prompt. Since #1511,
+   prowess triggers from DIFFERENT creatures don't raise one either
+   when nothing else triggered alongside them: a batch of nothing but
+   prowess commutes (ADR 0018 amendment 2026-09-24, #1511). Prowess
+   beside any other trigger still asks, as for any triggers.
 5. The trigger goes through the ordinary harvest path, so trigger
    doublers (Harmonic Prodigy, Wizard's Staff) and the response window
    apply to it unchanged.
