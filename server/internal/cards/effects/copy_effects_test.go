@@ -117,6 +117,60 @@ func TestCloneEntersAsACopyOfTheChosenCreature(t *testing.T) {
 	}
 }
 
+// TestCloneOfACommanderIsNotACommander — #1363, CR 903.3. The Clone
+// permanent is its own physical card; entering as a copy of a
+// commander's copiable values (CR 707.2) does not make it that
+// commander, because the designation is not one of the values CR
+// 707.2 lists. PrintedValues (copy.go) carries no IsCommander field at
+// all, and applyCopy/setPrintedValues never touch the Clone's own
+// flag, so this is a straight-line pin of "already correct by
+// construction" rather than a regression this PR introduced — added
+// alongside the spell-copy fix because the issue asked every copy
+// path to be checked the same way.
+func TestCloneOfACommanderIsNotACommander(t *testing.T) {
+	g := newCatalogGame(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	// Deliberately NOT "Legendary Creature": a Clone that copies a
+	// legendary commander's name would also trip the CR 704.5j legend
+	// rule, which is a real and separate interaction this test is not
+	// about — isolating IsCommander from it keeps the assertions below
+	// about that one flag rather than about which legendary the player
+	// chooses to keep.
+	cmdr := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID:  uuid.New(),
+		Name:        "Fixture Commander",
+		TypeLine:    "Creature — Test",
+		Power:       2,
+		Toughness:   2,
+		Owner:       active.ID,
+		Controller:  active.ID,
+		IsCommander: true,
+	})
+
+	cloneID := castCatalogSpell(t, g, "Clone", "Creature — Shapeshifter", oracleClone, nil)
+	resolveWithCopyChoice(t, g, cmdr)
+
+	got := copyBattlefieldCard(t, g, cloneID)
+	if got.Name != "Fixture Commander" {
+		t.Fatalf("name = %q, want %q — the copy did not land", got.Name, "Fixture Commander")
+	}
+	if got.IsCommander {
+		t.Error("Clone entering as a copy of a commander carries IsCommander")
+	}
+
+	// Kill the Clone and confirm nothing asks to send it to the
+	// command zone — it is Clone's owner's card, not the commander's.
+	if err := g.DestroyPermanentForEffect(cloneID); err != nil {
+		t.Fatalf("DestroyPermanentForEffect: %v", err)
+	}
+	if n := len(g.PendingChoices); n != 0 {
+		t.Errorf("%d prompts queued destroying the Clone, want none: %+v", n, g.PendingChoices)
+	}
+	if n := active.CommanderDamage[cloneID]; n != 0 {
+		t.Errorf("CommanderDamage[cloneID] = %d, want 0 — the Clone is not a commander source", n)
+	}
+}
+
 // TestCloneOffersOnlyCreatures — the candidate list is the card's
 // own restriction, and it is what the client renders.
 func TestCloneOffersOnlyCreatures(t *testing.T) {

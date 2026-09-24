@@ -307,6 +307,17 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 	copyCard.LostLastCounter = false
 	copyCard.AttachedTo = TargetRef{}
 	copyCard.effective = nil
+	// CR 903.3: the commander designation is an attribute of the
+	// physical card, not a copiable characteristic (CR 707.2), so a
+	// copy is never a commander — issue #1363. Left uncleared, a copy
+	// of a commander spell would carry `is_commander` onto the stack
+	// object, which is wrong even though the CR 903.9 command-zone
+	// prompt is separately skipped for every copy leaving the stack
+	// (#1340, zone_route.go's stackCopyLocked check): anything else
+	// that reads IsCommander off a stack object — commander damage
+	// attribution, tax, a future "commander spell" check — would see
+	// the copy as one.
+	copyCard.IsCommander = false
 	g.Stack.PushTop(copyCard)
 	// A spell on the stack is public information, copy or not.
 	g.markCardKnownInZoneLocked(g.Stack, copyCard.InstanceID)

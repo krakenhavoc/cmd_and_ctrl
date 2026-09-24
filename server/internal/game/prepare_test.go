@@ -112,6 +112,37 @@ func TestBecomingPreparedMakesACopyOfThePrepareSpellInExile(t *testing.T) {
 	}
 }
 
+// TestPrepareCopyOfACommanderIsNotACommander — #1363, CR 903.3. The
+// exile copy createPrepareCopyLocked builds is a fresh Card built
+// field by field from CopiableValuesOf(perm), which — like
+// PrintedValues generally — carries no IsCommander at all, so a
+// prepared commander's exiled prepare-spell copy is never itself
+// flagged as a commander. Pinned here for the same reason the Clone
+// and token-copy siblings are: the issue asked every copy path to be
+// checked, even where the answer was already right by construction.
+func TestPrepareCopyOfACommanderIsNotACommander(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	fixture := preparationFixture(me.ID)
+	fixture.IsCommander = true
+	permID := pushTypedTestCard(g, fixture)
+
+	g.WithWriteLock(func() {
+		ok, err := g.BecomePreparedForEffect(permID)
+		if err != nil || !ok {
+			t.Fatalf("BecomePreparedForEffect = %v, %v; want true", ok, err)
+		}
+	})
+
+	copies := prepareCopiesIn(g.Exile)
+	if len(copies) != 1 {
+		t.Fatalf("exile holds %d prepare copies, want 1", len(copies))
+	}
+	if copies[0].IsCommander {
+		t.Error("the prepare copy of a commander carries IsCommander")
+	}
+}
+
 // CR 722.3a's two refusals: a permanent with no prepare spell cannot
 // become prepared, and a prepared permanent cannot become prepared
 // again — so no second copy.
