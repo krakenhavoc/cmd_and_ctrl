@@ -59,6 +59,7 @@ import (
 //     rest and gets no prompts.
 func Storm() game.TriggeredAbility {
 	return game.TriggeredAbility{
+		Keyword:   KeywordStorm,
 		FromStack: true,
 		Watches:   []game.EventKind{game.EventCast},
 		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

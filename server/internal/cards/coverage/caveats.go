@@ -446,6 +446,72 @@ var mechanics = []Mechanic{
 		Confidence: Exact,
 		Adopt:      `Gift: GiftACard() / GiftAFood() / GiftATappedFish() / GiftATreasure(), plus .Instead(clause) when the promise swaps the target — see effects/gift.go`,
 	},
+	{
+		// #1258: a keyword TRIGGER had no machine-readable name, so
+		// nothing could ask whether a card has cascade. The
+		// constructors now stamp game.TriggeredAbility.Keyword, and
+		// this reads it back through the same catalog hook the
+		// harvester uses.
+		Name:       "cascade",
+		Phrases:    []string{"cascade"},
+		Implements: keywordTrigger(effects.KeywordCascade),
+		Evidence:   `a trigger in game.CatalogTriggers(oracleID) is named "cascade"`,
+		Confidence: Exact,
+		Adopt:      `Triggered: []game.TriggeredAbility{Cascade()} — or GrantsCascade(label, when) for a permanent that gives it`,
+	},
+	{
+		Name:       "storm",
+		Phrases:    []string{"storm"},
+		Implements: keywordTrigger(effects.KeywordStorm),
+		Evidence:   `a trigger in game.CatalogTriggers(oracleID) is named "storm"`,
+		Confidence: Exact,
+		Adopt:      `Triggered: []game.TriggeredAbility{Storm()}`,
+	},
+	{
+		// #706: prowess is a canonicalKeywords token, not a
+		// constructor — the engine derives the trigger from the
+		// ability list (game/prowess.go). A card that DECLARES it in
+		// PrintedKeywords has it; the probe reads that declaration
+		// through the hook printedCharacteristic reads. A card that
+		// relies on the deck importer alone is invisible here, which
+		// is the direction a curated table is allowed to miss in.
+		Name:    "prowess",
+		Phrases: []string{"prowess"},
+		Implements: func(s effects.Spec) bool {
+			if game.CatalogPrintedKeywords == nil {
+				return false
+			}
+			for _, kw := range game.CatalogPrintedKeywords(s.OracleID) {
+				if kw == game.KeywordProwess {
+					return true
+				}
+			}
+			return false
+		},
+		Evidence:   `game.CatalogPrintedKeywords(oracleID) contains "prowess"`,
+		Confidence: Exact,
+		Adopt:      `PrintedKeywords: []string{"prowess"} — the engine does the rest`,
+	},
+}
+
+// keywordTrigger builds the exact probe for a keyword that ships as a
+// triggered-ability constructor (#1258): does any of this card's
+// catalog triggers carry that keyword's name? Routed through the
+// game.CatalogTriggers hook, not spec.Triggered, for the reason altCost
+// gives — if the wiring breaks, the probe goes quiet and
+// TestEveryExactMechanicHasAnImplementor notices.
+func keywordTrigger(name string) func(effects.Spec) bool {
+	return func(s effects.Spec) bool {
+		if game.CatalogTriggers == nil {
+			return false
+		}
+		for _, t := range game.CatalogTriggers(s.OracleID) {
+			if t.Keyword == name {
+				return true
+			}
+		}
+		return false
+	}
 }
 
 // Mechanics returns the curated table. Exported so a card author can
