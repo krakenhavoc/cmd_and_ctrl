@@ -1014,7 +1014,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// one. CR 305's "during your main phase, when the stack is empty"
 	// is the whole of its window.
 	if card.IsLand() {
-		if !g.sorcerySpeedOpenLocked(playerID) {
+		if !g.SorcerySpeedOpenLocked(playerID) {
 			return ErrSorcerySpeedRequired
 		}
 	} else if !g.CastTimingOpenLocked(playerID, card, src.Kind, grant) {
@@ -2495,15 +2495,32 @@ func (g *Game) foreignPileForCastLocked(p *Player, cardID uuid.UUID, kind ZoneKi
 	return nil, ErrCardNotFound
 }
 
-// sorcerySpeedOpenLocked reports whether the sorcery-speed gate is
+// SorcerySpeedOpenLocked reports whether the sorcery-speed gate is
 // currently open for the given player: caller is the active seat,
 // the cursor is on a main phase, and the stack is empty (CR 307.1).
+//
+// THE ONE sorcery-timing read. Every "any time you could cast a
+// sorcery" in the engine comes through here — a sorcery or creature
+// cast (CastTimingOpenLocked), a land play (CR 305.1), an "activate
+// only as a sorcery" or loyalty ability (ActivationTimingOpenLocked),
+// the plot and suspend special actions (SpecialActionTimingOKLocked)
+// — and the bot enumerator asks it too, so none of them can hold a
+// private copy of the rule.
+//
+// "Empty" means EMPTY (CR 117.1a, CR 405.1): an activated or
+// triggered ability is an object on the stack exactly as a spell is.
+// Abilities have no card in g.Stack — they live only in g.StackMeta —
+// so this asks stackHasItemsLocked, the same question the priority
+// wrap asks, rather than looking at the stack zone alone. Before
+// #1352 it looked at the zone alone, and a sorcery, an equip or a
+// plot went through over a pending upkeep trigger.
+//
 // Caller must hold g.mu.
-func (g *Game) sorcerySpeedOpenLocked(playerID uuid.UUID) bool {
+func (g *Game) SorcerySpeedOpenLocked(playerID uuid.UUID) bool {
 	if g.Turn.Step != StepPrecombatMain && g.Turn.Step != StepPostcombatMain {
 		return false
 	}
-	if g.Stack != nil && len(g.Stack.Cards) > 0 {
+	if g.stackHasItemsLocked() {
 		return false
 	}
 	if g.activeSeatIDLocked() != playerID {

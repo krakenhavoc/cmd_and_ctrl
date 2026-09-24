@@ -123,7 +123,11 @@ func (e *enumerator) castMoves() {
 	if g.SplitSecondActive {
 		return
 	}
-	speed := sorcerySpeedOpen(g, e.seat)
+	// CR 305.1's land window, asked of the engine's one sorcery-timing
+	// read rather than a copy of it (#1352: the copy that used to live
+	// here was right about abilities on the stack while the engine was
+	// not, and a copy that is right today is the one that drifts).
+	speed := g.SorcerySpeedOpenLocked(e.seat)
 	// #500: the allowance is the player's, not a literal one — a
 	// controlled Exploration or a one-turn grant raises it. Same
 	// helper the engine's own refusal reads, so the enumerator can

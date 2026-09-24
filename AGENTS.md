@@ -209,6 +209,14 @@ Closes #<n>, relates to #<n>
 
 If a PR does not belong to the active sprint, say so explicitly and justify it.
 
+Feature PRs target `develop`, so GitHub does not apply their closing keywords
+directly (it only does that for PRs targeting the default branch). After a
+`develop` → `main` promotion merges, `main-promotion-issue-close.yml` maps the
+promoted squash commits back to their original PRs and honors line-leading
+`Closes`, `Fixes`, and `Resolves` directives from the `## Issues` section. Keep
+each closing directive explicit in that section; prose such as "does not close"
+and references outside it are deliberately ignored.
+
 ---
 
 ## 5. Commands you'll actually run
@@ -3690,6 +3698,7 @@ and still unimplemented: that is CR 613 layer 1, deferred to S16.5.
 | "When you lose control of ~" (Khârn the Betrayer) | `EventControlChanged` | `ThisChangedController` — `WhenYouLoseControlOfThis`. The event names the permanent in `CardID`, the player who LOST control in `Target` and the one who GAINED it in `Actor`; the item goes on the stack for `ev.Target`, because by the time the event lands the permanent belongs to somebody else. Emitted from the one materialise step at the end of the layer pass (#930), so a theft, an exchange, an Aura being destroyed and a duration expiring all reach it |
 | "When you gain control of ~ from another player" (Risky Move) | `EventControlChanged` | `ThisChangedController` — `WhenYouGainControlOfThis`; the gaining player already controls the permanent, so the ordinary item is theirs |
 | "Whenever an opponent gains control of a permanent you own" | `EventControlChanged` | `AnOpponentGainedControlOfAPermanentYouOwn` — `WheneverAnOpponentGainsControlOfAPermanentYouOwn`. The watcher is one permanent and the permanent that moved is another, linked by OWNERSHIP (CR 108.3), which no theft changes |
+| "When this card becomes plotted" (Longhorn Sharpshooter, Aloe Alchemist) | `EventBecomesPlotted` | `WhenThisBecomesPlotted(label, effect)` — `Self`, watched from **exile** (`InExile`, #925). One emitter, `Game.PlotExiledCardForEffect`, so the plot special action and an "it becomes plotted" effect (Aven Interrupter) both fire it and a plain exile never does. `ev.Actor` is the plotter (the owner for the special action, the resolving item's controller for an effect), `ev.Source` what did it; the trigger is the card's OWNER's either way (CR 108.4). #1382 |
 | "…its controller may draw" (Edric) | `EventDealDamage` | `ev.Actor` is the dealing creature's controller; use it for both `OptionalPrompt.Chooser` and the draw |
 
 **What a batch is** (#829, CR 603.2c) — **a batch is every event the
@@ -3772,6 +3781,16 @@ untapped sources. Capture the payer's ID in `Build` (it's
 characteristics as the third `Build` argument — the card is already
 in the graveyard when `Build` runs, so read power / toughness /
 types from `sourceLKI`, not `source`.
+
+**"Where X is that creature's power"** (and any other read of the
+event's permanent at RESOLUTION) is `ctx.TriggeringPermanent()`
+(#1379, CR 608.2h): live while that object is still on the
+battlefield, its last-known information — counters included — once
+it has left, and never the new object a returned card became. Don't
+capture a power in `Build` or look the card up by ID at resolution.
+Check `info.Left` before acting ON the permanent: last-known
+information is read, never written to. See
+[ADR 0018's 2026-09-24 amendment](docs/decisions/0018-triggers-on-the-stack.md).
 
 **Tests** — `castCatalogSpell` + `passPriorityAroundTable` settles
 the spell *and* the trigger it queues (the helper waits for

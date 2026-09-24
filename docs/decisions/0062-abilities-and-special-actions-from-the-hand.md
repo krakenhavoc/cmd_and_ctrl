@@ -642,3 +642,67 @@ Plan the Heist, all `full`. Still open on this family (#1382): "when this card b
 plotted" triggers (Longhorn Sharpshooter, Aloe Alchemist) need an event for the
 plotted state. Fblthp, Lost on the Range, which plots from the top of the
 library, needs the special action to reach a zone other than the hand.
+
+## Amendment — 2026-09-24: "when this card becomes plotted" is an event (#1382)
+
+The plot amendment above left one clause of the keyword's family unbuilt:
+Longhorn Sharpshooter's "When this card becomes plotted, it deals 2 damage to
+any target" and Aloe Alchemist's "When this card becomes plotted, target
+creature gets +3/+2 and gains trample until end of turn". Nothing was emitted
+when a card became plotted, so both cards were left out: shipping them with
+the trigger dropped would have made them weaker than printed. The fresh
+Scryfall dump has no third card with the clause.
+
+**One emitter.** `game.EventBecomesPlotted` is emitted in exactly one place,
+`Game.PlotExiledCardForEffect` (`game/plot.go`), and only after the card is
+confirmed in exile and its plotted `CastPermission` is granted. Both ways a
+card becomes plotted end there, so both fire it:
+
+- the plot special action (CR 702.170a) — `plotLocked` routes the card to
+  exile and calls the shared body on what landed;
+- an "it becomes plotted" effect (CR 702.170c) — Aven Interrupter's
+  `effects.PlotExiled`.
+
+A plain exile never reaches the function, and a card that did not land in
+exile (a commander whose owner took the CR 903.9 offer) returns before the
+emit. That is the same guard that stops the permission from being granted.
+
+**The payload.** `CardID` (and `Target`) is the plotted card. `Source` is
+what plotted it: the card itself for the keyword, the effect's source card
+otherwise. `Actor` is the **plotter**: the owner for the special action, and
+the resolving item's controller for an effect. Aven Interrupter plots an
+opponent's spell, so plotter and owner really do differ. The special action
+passes its actor explicitly (`plotExiledCardLocked`) and does not infer it
+from `Game.resolving`. `move_cause.go` names the window where that slot is
+stale: after a resolution and before play moves on. That window is exactly
+when a special action is taken.
+
+**The trigger watches from exile.** `effects.WhenThisBecomesPlotted(label,
+effect)` is `InExile(On(EventBecomesPlotted, Self, …))`. It uses #925's
+`TriggeredAbility.Zones`, the zone dimension suspend already watches from, so
+it needed no harvester change. The harvest makes the exiled source's
+`Controller` its `Owner` (CR 108.4), so the trigger is the owner's. That holds
+even when an opponent's Aven Interrupter did the plotting, which is the
+printed result.
+
+**The log is silent on it, on purpose.** The special action's
+`LogSpecialAction` line already says "Plot {3}{R}". An effect's plot is told
+by the effect's `LogResolve` plus the `LogZone` exile. The plotted state is on
+the wire as the card's cast permission. The row in `silentEventKinds`
+(`protocol/log_event_kind_gate_test.go`) records that decision.
+
+Proof cards: **Longhorn Sharpshooter** and **Aloe Alchemist**, both `full`.
+
+**Still open: Fblthp, Lost on the Range.** "The top card of your library has
+plot. The plot cost is equal to its mana cost. You may plot nonland cards from
+the top of your library." This is not a row in the per-kind tables. It needs
+three things:
+
+- a **granted** special action on an arbitrary card, where
+  `SpecialActionOffered(c Card)` today reads only the card's own declaration
+  and takes no `*Game`;
+- a kind whose zone depends on what a permanent grants (`specialActionZone`
+  answers per kind, with no game state);
+- a wire and client surface for a special action on the library's top card.
+
+Filed as #1391 rather than done here.

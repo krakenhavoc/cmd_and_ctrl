@@ -157,6 +157,78 @@ func (g *Game) setAttackTargetLocked(c *Card, target uuid.UUID) {
 	g.attackDefenders[c.InstanceID] = defender
 }
 
+// AttackingNothing is the Card.AttackingTarget of a creature that is
+// still attacking though what it attacked has been removed from
+// combat without leaving the battlefield (CR 506.4c, #1376, ADR 0045
+// Decision 36): the planeswalker or battle changed control or phased
+// out.
+//
+// WHY A SENTINEL RATHER THAN A FLAG. A creature attacking nothing must
+// still read as attacking (every `AttackingTarget != uuid.Nil` check —
+// dozens of them, in the engine, the enumerator, the view, the bots
+// and the catalog), and must read as attacking NOTHING everywhere the
+// target is resolved: combat damage, the card-side "attacking you"
+// readers, the view's attacking_target_kind, the reselect label. Both
+// are true of an id that names no seat and no card, with no edit at
+// any of those readers. That is the shape a creature whose walker DIED
+// has had all along — its target is the id of a card no longer on the
+// battlefield — and it is the shape Decision 35's block fallback
+// already handles. A flag beside a live walker id would have had to
+// be consulted by every reader that resolves the id, and one that
+// forgot would deal the damage.
+//
+// The value is a version-0 uuid, so it cannot collide with a seat or
+// instance id (both uuid.New, version 4).
+var AttackingNothing = uuid.MustParse("00000000-0000-0000-0000-000000000506")
+
+// removeAttackedFromCombatLocked is CR 506.4 for the ATTACKED side: the
+// planeswalker or battle `target` has been removed from combat while
+// staying on the battlefield, so every creature attacking it "continues
+// to be an attacking creature, although it is not attacking any player,
+// planeswalker, or battle" (CR 506.4c).
+//
+// Each such attacker is re-pointed at AttackingNothing. Nothing else
+// about it changes: it stays announced (it attacked, CR 508.7a's
+// reasoning), stays blocked or unblocked, and keeps its
+// Game.attackDefenders row — which is why this writes the field
+// directly rather than through setAttackTargetLocked, whose Nil-defender
+// arm would drop that row. The row still names the player who was
+// defending "before it was removed from combat" (CR 802.2a), so the
+// block path needs no change; damage resolves the sentinel to nothing.
+//
+// Only ANNOUNCED attackers. A creature merely staged in the
+// declare-attackers step is not in combat yet, and its declaration is
+// still the active player's to change (the reselect verb refuses it
+// for the same reason).
+//
+// Called from materialiseControlLocked (a control change) and
+// phaseOutLocked. Not from removeFromCombatLocked, whose other caller
+// is regeneration — CR 701.19a removes only an attacking or blocking
+// CREATURE from combat. A permanent LEAVING the battlefield needs no call:
+// its instance id stops resolving on its own, and a return is a new
+// object (CR 400.7).
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) removeAttackedFromCombatLocked(target uuid.UUID) {
+	if target == uuid.Nil || g.Battlefield == nil {
+		return
+	}
+	changed := false
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.AttackingTarget != target || c.InstanceID == target || !g.announcedAttacks[c.InstanceID] {
+			continue
+		}
+		c.AttackingTarget = AttackingNothing
+		changed = true
+	}
+	if changed {
+		// "Is this creature attacking player P" just changed for every
+		// one of them (#1218's reasoning).
+		g.invalidateLayersForAttackChangeLocked()
+	}
+}
+
 // forgetAttackDefenderLocked drops one attacker's last-known defending
 // player. Caller must hold g.mu.
 func (g *Game) forgetAttackDefenderLocked(id uuid.UUID) {

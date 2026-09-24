@@ -29,12 +29,19 @@ var knownOracleMismatches = map[string]string{
 	// also the string the bot's counter-cost test keys on.
 	"Heart of Kiran | cost not printed | crew — remove a loyalty counter from a planeswalker you control": "alternative crew cost; the card prints it as prose, not a cost line",
 
-	// #1381: the cost shape exists; the ability is just not registered.
-	"Cauldron Familiar | printed ability not registered | sacrifice a food":                                                    "#1381 — graveyard Zones + SacrificeOther exist",
-	"Chivalric Alliance | printed ability not registered | {2}, discard a card":                                                "#1381 — DiscardACard() exists",
-	"Multani, Yavimaya's Avatar | printed ability not registered | {1}{g}, return two lands you control to their owner's hand": "#1381 — ReturnToHand + graveyard Zones exist",
-	"Perpetual Timepiece | printed ability not registered | {2}, exile ~":                                                      "#1381 — ExileThis() exists",
-	"The Shire | printed ability not registered | {1}{g}, {t}, tap an untapped creature you control":                           "#1381 — TapOthers exists",
+	// #1381: ExileThis() (AbilityCost.ExileSelf) is scavenge's and
+	// embalm's "exile this card from your GRAVEYARD" component —
+	// effects.Register hard-refuses it on any ability that does not
+	// declare ZoneGraveyard (registry.go), and the engine's
+	// validateExileSelfCostLocked hardcodes the same zone at
+	// activation time regardless of what Zones an ability declares.
+	// Perpetual Timepiece's ability exiles the artifact FROM THE
+	// BATTLEFIELD as a cost — a different rule (CR 406, not "from your
+	// graveyard") with no shape yet. Confirmed by trying it: Register
+	// panics with "does not function from the graveyard". Left for the
+	// sprint that gives a battlefield permanent an exile-self cost
+	// component.
+	"Perpetual Timepiece | printed ability not registered | {2}, exile ~": "no cost shape for exiling THIS permanent from the battlefield as a cost — ExileSelf is graveyard-only (registry.go, exile_cost.go)",
 
 	// No cost shape yet (#1381 lists them).
 	"Jarad, Golgari Lich Lord | printed ability not registered | sacrifice a swamp and a forest":                           "two differently-typed sacrifice clauses in one cost",

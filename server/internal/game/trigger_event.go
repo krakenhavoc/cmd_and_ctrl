@@ -90,6 +90,12 @@ type ObjectSnapshot struct {
 	// what lets "return it to its owner's hand" find the thing.
 	ID uuid.UUID
 
+	// Epoch is the object's Card.ObjectEpoch (CR 400.7) — for an
+	// object that left the battlefield, the epoch it had THERE, not
+	// the one its card has now. With ID it names the object, which is
+	// what Ref hands to PermanentForEffect (#1379).
+	Epoch int
+
 	// OracleID is the catalog identity, for a clause that compares
 	// card identity rather than characteristics.
 	OracleID string
@@ -133,6 +139,11 @@ type ObjectSnapshot struct {
 	// into the snapshot, and neither is this seam's to decide — see
 	// docs/decisions/0072-protection.md §2 on the cost of a second
 	// store.
+	//
+	// #1379 added that store for the RESOLUTION: an effect that wants
+	// the object's power reads PermanentForEffect(snapshot.Ref()),
+	// which answers live while the permanent is still there and with
+	// its last-known power, counters included, once it has gone.
 
 	// Controller is who controlled the object, and Owner who owned
 	// it. Both as they were: control can change on the way out and
@@ -144,6 +155,15 @@ type ObjectSnapshot struct {
 	// reads it here, because a token that has left the battlefield
 	// has ceased to exist and there is nothing to ask.
 	Token bool
+}
+
+// Ref names the object the snapshot describes, for PermanentForEffect.
+// The zero ref for a nil snapshot, which names nothing.
+func (o *ObjectSnapshot) Ref() ObjectRef {
+	if o == nil {
+		return ObjectRef{}
+	}
+	return ObjectRef{ID: o.ID, Epoch: o.Epoch}
 }
 
 // HasType reports whether the object had the lowercase card type
@@ -316,6 +336,7 @@ func (g *Game) objectSnapshotLocked(cardID uuid.UUID) *ObjectSnapshot {
 	}
 	out := &ObjectSnapshot{
 		ID:         cardID,
+		Epoch:      card.ObjectEpoch,
 		OracleID:   card.OracleID,
 		Name:       card.Name,
 		ManaValue:  card.ManaValue(),
@@ -326,6 +347,11 @@ func (g *Game) objectSnapshotLocked(cardID uuid.UUID) *ObjectSnapshot {
 	ch, ok := g.lastKnownBattlefield[cardID]
 	if !ok {
 		ch = card.Effective()
+	} else if recs := g.lastKnownPermanents[cardID]; len(recs) > 0 {
+		// The event is about the object that LEFT, written down in the
+		// same beat as lastKnownBattlefield; the card has moved on to a
+		// new epoch since (#1379).
+		out.Epoch = recs[len(recs)-1].Epoch
 	}
 	out.Types = copyStrings(ch.Types)
 	out.Subtypes = copyStrings(ch.Subtypes)

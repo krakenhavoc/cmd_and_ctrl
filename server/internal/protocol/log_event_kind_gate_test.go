@@ -125,6 +125,15 @@ var silentEventKinds = map[string]string{
 	// face up without a special action — this row stops being true
 	// and the kind needs an arm.
 	"EventTurnedFaceUp": "the CR 116.2g special action that turns a permanent face up is the only emitter, and its LogSpecialAction line already names the card and the price",
+	// #1382. A card becomes plotted two ways and the table is told
+	// both: the plot special action's LogSpecialAction line names the
+	// card and the price ("Plot {3}{R}"), and an "it becomes plotted"
+	// effect is the resolution of a spell or ability whose LogResolve
+	// names it, with the LogZone line for the exile beside it. The
+	// plotted state itself is on the wire as the card's cast
+	// permission. The kind exists for "when this card becomes plotted"
+	// to watch, not for the log to say a third time.
+	"EventBecomesPlotted": "the plot special action's LogSpecialAction line, or the LogResolve of the effect that plotted it plus its LogZone exile, already tells the table (#1382)",
 
 	// --- visible board state -------------------------------------------
 	"EventTapCard":        silentBoardStateIsVisible,

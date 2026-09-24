@@ -16,15 +16,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // without one it is four mana for four damage spread over two bodies.
 //
 // The ETB works fully. "Damage equal to ITS power" is read at
-// RESOLUTION off the Redcap's CURRENT power — CurrentPower(), which
-// layers an anthem on top of printed power AND adds/subtracts
-// +1/+1 / -1/-1 counters, not Effective().Power alone (#1281: that
-// field excludes counters, which is exactly what persist would put on
-// this creature the moment it existed) — so an anthem, a counter
-// effect, or persist itself once it lands all count, and a Redcap
-// that has left the battlefield before the trigger resolves deals
-// nothing — the printed card would use its last-known power, which
-// the engine has no way to read here. Weaker, never stronger.
+// RESOLUTION (CR 608.2h) off the Redcap's power, counters included —
+// not Effective().Power alone (#1281: that field excludes counters,
+// which is exactly what persist would put on this creature the moment
+// it existed) — so an anthem, a counter effect, or persist itself once
+// it lands all count. A Redcap that has left the battlefield before the
+// trigger resolves still deals the damage, equal to its last-known power
+// (#1379).
+//
+// Declared simplification: a Redcap that has LEFT deals that damage as
+// a plain source — the damage tail reads lifelink and deathtouch off
+// the battlefield only (ADR 0056 Decision 2, step 4; #1396), so a Redcap
+// wearing a Basilisk Collar that is sacrificed in response pings
+// without deathtouch or lifelink. Weaker than printed.
 //
 // "Any target" is the full CR 115.4 slot: a player, a creature, a
 // planeswalker or a battle.
@@ -49,20 +53,17 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
 			"Persist is not implemented — the Redcap does not come back with a -1/-1 counter when it dies, which is the half of the card most decks play it for.",
-			"If the Redcap has left the battlefield before its enters trigger resolves, it deals no damage rather than damage equal to its last-known power.",
+			"If the Redcap has left the battlefield before its enters trigger resolves, it still deals damage equal to its last power, but without any lifelink or deathtouch it had.",
 		},
 		Triggered: []game.TriggeredAbility{
 			Targeting(
 				WhenThisEnters("Murderous Redcap — damage equal to its power to any target", func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
-					src, ok := g.LookupCardForEffect(item.SourceCardID)
-					if !ok {
+					redcap, ok := ctx.TriggeringPermanent()
+					if !ok || len(item.Targets) == 0 {
 						return nil
 					}
-					power := src.CurrentPower()
-					if power <= 0 || len(item.Targets) == 0 {
-						return nil
-					}
+					power := redcap.Power
 					return DealDamage{
 						Source: item.SourceCardID,
 						Target: item.Targets[0].ID,

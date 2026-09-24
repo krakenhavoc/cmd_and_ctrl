@@ -343,6 +343,9 @@ type GameSnapshot struct {
 	// LastKnownCounters is lastKnownBattlefield's sibling for a card's
 	// counters (#1218) — see the field doc on game.go.
 	LastKnownCounters map[uuid.UUID]map[string]int `json:"lastKnownCounters,omitempty"`
+	// LastKnownPermanents is CR 608.2h LKI for permanents that left the
+	// battlefield this turn (#1379) — see permanent_lki.go.
+	LastKnownPermanents map[uuid.UUID][]PermanentInfo `json:"lastKnownPermanents,omitempty"`
 
 	RNG               rngSnapshot          `json:"rng"`
 	SourceOrdinals    map[uuid.UUID]uint64 `json:"sourceOrdinals,omitempty"`
@@ -1089,6 +1092,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 			s.LastKnownCounters[k] = copyStringIntMap(v)
 		}
 	}
+	s.LastKnownPermanents = cloneLastKnownPermanents(g.lastKnownPermanents)
 
 	// Turn-scoped registries: entirely closure-bearing, so only the
 	// census and the labels survive. Dropping a Fog silently would be
@@ -1759,6 +1763,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 			g.lastKnownCounters[k] = copyStringIntMap(v)
 		}
 	}
+	g.lastKnownPermanents = cloneLastKnownPermanents(s.LastKnownPermanents)
 
 	restoreRNG(g, s.RNG)
 	g.sourceOrdinals = cloneSourceOrdinals(s.SourceOrdinals)
