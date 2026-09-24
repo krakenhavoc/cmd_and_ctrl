@@ -1641,9 +1641,12 @@ against it, and a test reads it. That is #544's rule with the sign
 reversed — an enumerator pricing at the printed cost would silently
 HIDE legal moves rather than offer illegal ones.
 `payAbilityManaCostLocked` therefore takes a `ParsedCost` now; the
-attack tax (CR 508.1a is a cost to attack) and the special-action path
-(CR 116.2 is not an activation) parse their own strings and stay
-unpriced.
+attack tax (CR 508.1a is a cost to attack) still parses its own string
+and stays unpriced. **The special-action path is priced too, since
+#1319** — CR 116.2 is not an activation, so it does not share
+`CostQuery.Ability`'s door, but it wanted the identical third one; see
+[ADR 0062](0062-abilities-and-special-actions-from-the-hand.md)'s
+2026-09-23 note.
 
 ### Cards
 

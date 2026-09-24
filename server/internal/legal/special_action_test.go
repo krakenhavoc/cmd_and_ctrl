@@ -250,3 +250,89 @@ func TestTheSuspendFreeCastIsEnumeratedOutsideAMainPhase(t *testing.T) {
 	}
 	dispatchAll(t, g, active.ID, moves)
 }
+
+// withCostModifiers stubs the CR 601.2f catalog hook for one test.
+func withCostModifiers(t *testing.T, oracle string, mods []game.CostModifier) {
+	t.Helper()
+	prev := game.CatalogCostModifiers
+	game.CatalogCostModifiers = func(id string) []game.CostModifier {
+		if id != oracle {
+			return nil
+		}
+		return mods
+	}
+	t.Cleanup(func() { game.CatalogCostModifiers = prev })
+}
+
+// ranarStyleForetellDiscount is a CostModifier in Ranar the
+// Ever-Watchful's shape: "the first card you foretell each turn costs
+// {0} to foretell" (#1319).
+func ranarStyleForetellDiscount() game.CostModifier {
+	return game.CostModifier{
+		Kind:           game.CostReduction,
+		SpecialActions: true,
+		Label:          "The first card you foretell each turn costs {0} to foretell.",
+		AppliesTo: func(q game.CostQuery) bool {
+			return q.SpecialAction != nil && q.SpecialAction.Kind == game.SpecialActionForetell &&
+				q.Game.ForetoldCountThisTurn(q.Controller) == 0
+		},
+		Amount: func(game.CostQuery) int { return 2 },
+	}
+}
+
+// #1319: the enumerator prices a special action through the same
+// CR 601.2f pass the engine charges with, so a discount that empties
+// the cost out entirely offers the move to a seat with no mana at
+// all — #544's invariant, the special-action verb over.
+func TestForetellIsEnumeratedWhenACostModifierMakesItFree(t *testing.T) {
+	const cardOracle = "legal-foretell-discount-card"
+	const sourceOracle = "legal-foretell-discount-source"
+	g := newTable(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	clearHand(active)
+	withSpecialActions(t, cardOracle, []game.SpecialAction{{
+		Kind: game.SpecialActionForetell, Cost: "{2}", CastCost: "{1}{U}", Label: "Foretell {2}",
+	}})
+	withCostModifiers(t, sourceOracle, []game.CostModifier{ranarStyleForetellDiscount()})
+	card := handCard(active, foretellCard(cardOracle))
+	battlefieldCard(g, active, game.Card{Name: "Ranar the Ever-Watchful", TypeLine: "Legendary Creature — Spirit Warrior", OracleID: sourceOracle})
+	advanceTo(t, g, game.StepPrecombatMain)
+
+	// No land on the board at all: the {2} would refuse this move
+	// without the discount.
+	acts := specialActionsOf(legal.EnumerateFor(g, active.ID), card)
+	if len(acts) != 1 {
+		t.Fatalf("with the discount and no mana: want the foretell move offered, got %v",
+			labels(legal.EnumerateFor(g, active.ID)))
+	}
+	dispatchAll(t, g, active.ID, legal.EnumerateFor(g, active.ID))
+}
+
+// #1319's partition: a modifier written as an ordinary spell
+// reduction must never reach a special action, in either direction —
+// the same rule TestACastModifierDoesNotPriceAnActivation pins for
+// activations, one door over.
+func TestASpellCostModifierDoesNotMakeForetellFree(t *testing.T) {
+	const cardOracle = "legal-foretell-nodiscount-card"
+	const sourceOracle = "legal-foretell-nodiscount-source"
+	g := newTable(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	clearHand(active)
+	withSpecialActions(t, cardOracle, []game.SpecialAction{{
+		Kind: game.SpecialActionForetell, Cost: "{2}", CastCost: "{1}{U}", Label: "Foretell {2}",
+	}})
+	withCostModifiers(t, sourceOracle, []game.CostModifier{{
+		Kind:   game.CostReduction,
+		Label:  "Spells you cast cost {2} less to cast.",
+		Amount: func(game.CostQuery) int { return 2 },
+	}})
+	card := handCard(active, foretellCard(cardOracle))
+	battlefieldCard(g, active, game.Card{Name: "Goblin Electromancer", TypeLine: "Creature — Goblin Wizard", OracleID: sourceOracle})
+	advanceTo(t, g, game.StepPrecombatMain)
+
+	// No land on the board: a spell-shaped reduction must not reach
+	// the foretell special action, so the {2} is still unaffordable.
+	if acts := specialActionsOf(legal.EnumerateFor(g, active.ID), card); len(acts) != 0 {
+		t.Fatalf("a spell cost modifier discounted a foretell: %v", labels(legal.EnumerateFor(g, active.ID)))
+	}
+}

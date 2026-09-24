@@ -201,6 +201,26 @@ type CostQuery struct {
 	// spell" — would have started taxing every activated ability in
 	// the game the day this field appeared.
 	Ability *AbilityCostSubject
+
+	// SpecialAction names the CR 116.2 special action being priced
+	// when this query is about a foretell, suspend or turn-face-up
+	// rather than a cast or an activation (#1319), and is nil for
+	// every cast and every activation.
+	//
+	// A special action is neither of the other two (CR 116.2 — it
+	// uses no stack and passes no priority), so it gets the same
+	// third door Ability opened for activations rather than being
+	// squeezed into either: Ranar the Ever-Watchful's "The first card
+	// you foretell each turn costs {0} to foretell" prices a SPECIAL
+	// ACTION, and a card written as "spells cost {1} more" or
+	// "abilities cost {2} less to activate" must never reach it, in
+	// either direction.
+	//
+	// Nil-ness is the same SELECTOR discipline Ability's comment
+	// describes: CostModifier.SpecialActions is the partition, and
+	// activeCostModifiersLocked shows a special action's modifiers
+	// only special actions.
+	SpecialAction *SpecialActionCostSubject
 }
 
 // AbilityCostSubject is the ability an activation-pricing CostQuery
@@ -224,6 +244,19 @@ type AbilityCostSubject struct {
 	// widened the day the other path joins. See ADR 0020's exhaust
 	// addendum, note of 2026-09-22.
 	Mana bool
+}
+
+// SpecialActionCostSubject is the CR 116.2 special action a
+// special-action-pricing CostQuery is about (#1319) — AbilityCostSubject
+// one door over. A value rather than the SpecialAction struct itself,
+// for the same reason: a predicate has no business reaching the
+// offer's Label prose or its CastCost, only the printed KIND it is.
+type SpecialActionCostSubject struct {
+	// Kind is which special action this is — foretell, suspend,
+	// turn_face_up. Ranar's clause names foretell specifically
+	// ("the first card you foretell"), so a predicate reads this
+	// rather than assuming the only special action with a cost.
+	Kind SpecialActionKind
 }
 
 // CostModifier is one "spells cost {N} more / less to cast" static
@@ -325,6 +358,20 @@ type CostModifier struct {
 	// negative-amount refusal are the same rules, applied to the
 	// ability's mana component.
 	Activations bool
+
+	// SpecialActions declares that this modifier prices a CR 116.2
+	// SPECIAL ACTION's cost — Ranar the Ever-Watchful's "The first
+	// card you foretell each turn costs {0} to foretell" (#1319) —
+	// rather than a cast or an activation.
+	//
+	// The same partition Activations is, one door over: a modifier
+	// prices special actions, activations or casts and never two of
+	// the three, because a printed clause always says which. Read in
+	// activeCostModifiersLocked against CostQuery.SpecialAction's
+	// nil-ness, so a card written as "spells cost {1} more" can never
+	// start taxing a foretell, and Ranar's clause can never start
+	// discounting an ordinary cast.
+	SpecialActions bool
 }
 
 // UnitProblem says why a modifier's Unit cannot be applied, or ""
@@ -460,23 +507,38 @@ func (g *Game) activeCostModifiersLocked(q CostQuery) []boundCostModifier {
 			// Talent below level 3 — is not there at all (ADR 0071).
 			mods := CostModifiersForCard(src)
 			for _, m := range mods {
-				// #1184: casts are priced by the cast modifiers and
-				// activations by the activation ones, and never the
-				// other way. See CostModifier.Activations.
-				if m.Activations != (q.Ability != nil) {
-					continue
+				// #1184, widened by #1319: a cast, an activation and a
+				// special action are three different announcements,
+				// and a modifier prices exactly one of them — never
+				// the other two. See CostModifier.Activations and
+				// CostModifier.SpecialActions.
+				switch {
+				case q.Ability != nil:
+					if !m.Activations {
+						continue
+					}
+				case q.SpecialAction != nil:
+					if !m.SpecialActions {
+						continue
+					}
+				default:
+					if m.Activations || m.SpecialActions {
+						continue
+					}
 				}
 				out = append(out, boundCostModifier{modifier: m, source: src})
 			}
 		}
 	}
-	// #1184: an ability's cost is not its source's cost. The self
-	// slot is "THIS SPELL costs {N} less to cast" (CR 113.6d) and is
-	// about the card as a spell on the stack; a permanent's activated
-	// ability is a different announcement by a different object, so
-	// an affinity-carrying artifact does not discount its own tap
-	// ability.
-	if q.Ability != nil {
+	// #1184: an ability's cost is not its source's cost, and #1319
+	// widens the same fact to a special action's. The self slot is
+	// "THIS SPELL costs {N} less to cast" (CR 113.6d) and is about the
+	// card as a spell on the stack; a permanent's activated ability or
+	// a hand card's special action is a different announcement by a
+	// different object, so an affinity-carrying artifact does not
+	// discount its own tap ability, and nothing discounts its own
+	// foretell.
+	if q.Ability != nil || q.SpecialAction != nil {
 		return out
 	}
 	if self := SelfCostModifiersFor(q.Card); len(self) > 0 {
@@ -654,6 +716,62 @@ func (g *Game) AbilityManaCostForEffect(activator uuid.UUID, source Card, zone Z
 		return base, nil
 	}
 	return g.applyCostModifiersLocked(base, g.abilityCostQueryLocked(activator, source, zone, ab))
+}
+
+// specialActionCostQueryLocked builds the CostQuery for one CR 116.2
+// special action of `kind` on `card`, taken by `actor` — the special
+// action twin of abilityCostQueryLocked (#1319), for the same reason:
+// the manual PerformSpecialAction path and the legal-move enumerator
+// must ask the board the same shaped question about the same click.
+//
+// `card` is always the hand (or, for turn_face_up, battlefield) card
+// the action is taken on — specialActionZone tells the caller which,
+// exactly as it tells PerformSpecialAction where to look for it.
+//
+// Caller must hold g.mu.
+func (g *Game) specialActionCostQueryLocked(actor uuid.UUID, card Card, kind SpecialActionKind) CostQuery {
+	return CostQuery{
+		Game:       g,
+		Card:       card,
+		Controller: actor,
+		FromZone:   specialActionZone(kind),
+		SpecialAction: &SpecialActionCostSubject{
+			Kind: kind,
+		},
+	}
+}
+
+// SpecialActionManaCostForEffect is what taking `sa` (a CR 116.2
+// special action of `kind` on `card`) will actually charge in mana:
+// the printed component, priced through every special-action-scoped
+// cost modifier on the battlefield in CR 601.2f order (#1319).
+//
+// ONE function and three readers, mirroring AbilityManaCostForEffect's:
+//
+//  1. PerformSpecialAction, which pays this and no other number;
+//  2. internal/legal's specialActionMovesForCard, so a bot is never
+//     offered a foretell the engine then refuses for want of mana;
+//  3. the special-action view, rendered through ParsedCost.String()
+//     into SpecialActionView.ChargedCost, so the row a player reads
+//     and the number the engine takes can never disagree.
+//
+// Errors exactly where the cast and activation paths error: an
+// unparseable printed cost, or a modifier that returns a nonsensical
+// amount. It does not clamp and does not fall back to the printed
+// cost — #289's lesson, two paths over.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) SpecialActionManaCostForEffect(actor uuid.UUID, card Card, kind SpecialActionKind, sa SpecialAction) (ParsedCost, error) {
+	base, err := ParseCost(sa.Cost)
+	if err != nil {
+		return ParsedCost{}, err
+	}
+	if sa.Cost == "" {
+		// Nothing to discount and nothing to tax: a cost with no mana
+		// component is not made of mana, so the pass has no subject.
+		return base, nil
+	}
+	return g.applyCostModifiersLocked(base, g.specialActionCostQueryLocked(actor, card, kind))
 }
 
 // manaAbilityCostQueryLocked builds the CostQuery for one activation of

@@ -38,12 +38,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // "Only once for each time", however many cards: OncePerBatch, since a
 // batch is one resolution's worth of events (CR 603.2c).
 //
+// The foretell discount is #1319's proof card: SpecialActionCostsLess
+// partitions the CR 601.2f pass a third way (CostModifier.SpecialActions,
+// beside .Activations for CR 602 and the bare default for a cast), and
+// TheFirstOneThisTurn reads the per-turn tally
+// (Game.ForetoldThisTurn / ForetoldCountThisTurn) that
+// PerformSpecialAction now bumps once a foretold card actually lands
+// in exile. ASpecialActionOfKind(SpecialActionForetell) is what keeps
+// the clause off suspend and turn_face_up, which this card doesn't
+// even print but a shared predicate has to get right regardless.
+//
 // # Not implemented
 //
-//   - "The first card you foretell each turn costs {0} to foretell"
-//     waits on #1319: the foretell special action pays its printed {2}
-//     directly and nothing counts foretells per turn. Weaker than
-//     printed.
 //   - Two foretells back to back, with nothing resolving between them,
 //     are one event batch today (event_batch.go: only a resolution and
 //     a step change open a batch), so they make one Spirit rather than
@@ -58,10 +64,13 @@ func init() {
 		Name:         "Ranar the Ever-Watchful",
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
-			"The foretell discount isn't implemented — foretelling a card still costs {2}.",
 			"Foretelling two cards in a row, before anything resolves, makes only one Spirit.",
 		},
 		PrintedKeywords: []string{"flying", "vigilance"},
+		CostModifiers: []game.CostModifier{
+			SpecialActionCostsLess(2, "The first card you foretell each turn costs {0} to foretell.",
+				ASpecialActionOfKind(game.SpecialActionForetell), TheFirstOneThisTurn()),
+		},
 		Triggered: []game.TriggeredAbility{{
 			OncePerBatch: true,
 			Watches:      []game.EventKind{game.EventZoneMove, game.EventDiscardCard},

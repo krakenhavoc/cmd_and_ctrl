@@ -236,6 +236,7 @@ type GameSnapshot struct {
 
 	LoyaltyActivatedThisTurn map[uuid.UUID]bool        `json:"loyaltyActivatedThisTurn,omitempty"`
 	SpellsCastThisTurn       map[uuid.UUID]CastTally   `json:"spellsCastThisTurn,omitempty"`
+	ForetoldThisTurn         map[uuid.UUID]int         `json:"foretoldThisTurn,omitempty"`
 	LandsPlayedThisTurn      map[uuid.UUID]int         `json:"landsPlayedThisTurn,omitempty"`
 	ExtraLandDropsThisTurn   map[uuid.UUID]int         `json:"extraLandDropsThisTurn,omitempty"`
 	DrawnThisTurn            map[uuid.UUID][]uuid.UUID `json:"drawnThisTurn,omitempty"`
@@ -995,6 +996,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 
 	s.LoyaltyActivatedThisTurn = copyBoolMap(g.LoyaltyActivatedThisTurn)
 	s.SpellsCastThisTurn = copyTallyMap(g.SpellsCastThisTurn)
+	s.ForetoldThisTurn = copyIntMap(g.ForetoldThisTurn)
 	s.LandsPlayedThisTurn = copyIntMap(g.LandsPlayedThisTurn)
 	s.ExtraLandDropsThisTurn = copyIntMap(g.ExtraLandDropsThisTurn)
 	s.DrawnThisTurn = copyUUIDListMap(g.DrawnThisTurn)
@@ -1666,6 +1668,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 
 	g.LoyaltyActivatedThisTurn = copyBoolMap(s.LoyaltyActivatedThisTurn)
 	g.SpellsCastThisTurn = copyTallyMap(s.SpellsCastThisTurn)
+	g.ForetoldThisTurn = copyIntMap(s.ForetoldThisTurn)
 	g.TurnTally = cloneTurnTally(s.TurnTally)
 	g.Activations = cloneActivationTally(s.Activations)
 	g.LoopNotice = cloneLoopNotice(s.LoopNotice)

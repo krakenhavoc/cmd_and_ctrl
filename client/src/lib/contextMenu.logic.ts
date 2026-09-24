@@ -1091,18 +1091,35 @@ function moveItems(card: CardView, location: CardLocation): MenuItem[] {
 // not (CR 702.62c) — and a row that disagreed with the engine would
 // be a rejection toast. An unavailable row is greyed rather than
 // dropped, so a player can still see the card has the keyword.
+//
+// #1319: `sa.label` bakes the printed price in by hand ("Foretell
+// {2}"), which goes stale the moment a cost modifier reaches the
+// action — Ranar's "the first card you foretell each turn costs {0}".
+// The hint is the ONE place that discount is visible, reusing the
+// same chargedManaCostNote the activated-ability menu shows its own
+// discount in, since the two fields are named for the same contract
+// one level up (`cost` / `charged_cost` vs. `mana_cost` /
+// `charged_mana_cost`). Availability still wins the hint slot when
+// the row is greyed — a player needs to know it's not their turn
+// more than they need the price note.
 function specialActionItems(card: CardView, actor: string): MenuItem[] {
-  return (card.special_actions ?? []).map((sa) => ({
-    id: `special-${sa.kind}`,
-    label: sa.label || sa.kind,
-    hint: sa.available ? undefined : "not right now",
-    disabled: !sa.available,
-    action: {
-      type: "special_action" as ActionType,
-      params: { card_id: card.instance_id, kind: sa.kind, strict: true, auto_tap: true },
-      player: actor,
-    },
-  }));
+  return (card.special_actions ?? []).map((sa) => {
+    const costNote = chargedManaCostNote({
+      mana_cost: sa.cost,
+      charged_mana_cost: sa.charged_cost,
+    });
+    return {
+      id: `special-${sa.kind}`,
+      label: sa.label || sa.kind,
+      hint: sa.available ? costNote || undefined : "not right now",
+      disabled: !sa.available,
+      action: {
+        type: "special_action" as ActionType,
+        params: { card_id: card.instance_id, kind: sa.kind, strict: true, auto_tap: true },
+        player: actor,
+      },
+    };
+  });
 }
 
 // buildMenuSections is the whole menu for one card, in render order.

@@ -644,6 +644,47 @@ describe("buildMenuSections — non-battlefield zones", () => {
     expect(row?.hint).toBe("not right now");
   });
 
+  // #1319: Ranar the Ever-Watchful's "the first card you foretell
+  // each turn costs {0} to foretell" is a cost modifier, not a
+  // rewrite of the row's static label — "Foretell {2}" stays the
+  // label, and the discount surfaces as the hint, exactly as an
+  // activated ability's charged_mana_cost does.
+  it("notes the printed cost as a hint when a discount makes charged_cost differ", () => {
+    const c = {
+      ...card("h1", "a"),
+      special_actions: [
+        { kind: "foretell", label: "Foretell {2}", cost: "{2}", charged_cost: "", available: true },
+      ],
+    };
+    const v = view([seat("a", "Alice", { hand: [c] })]);
+    const sections = buildMenuSections(v, c, "a", false);
+    const row = itemById(sections, "special-foretell");
+    expect(row?.label).toBe("Foretell {2}");
+    expect(row?.disabled).toBeFalsy();
+    expect(row?.hint).toBe("printed cost {2}");
+  });
+
+  // The common case: no modifier reached this action, charged_cost
+  // equals cost, and there is nothing worth a hint.
+  it("shows no cost hint when charged_cost matches the printed cost", () => {
+    const c = {
+      ...card("h1", "a"),
+      special_actions: [
+        {
+          kind: "foretell",
+          label: "Foretell {2}",
+          cost: "{2}",
+          charged_cost: "{2}",
+          available: true,
+        },
+      ],
+    };
+    const v = view([seat("a", "Alice", { hand: [c] })]);
+    const sections = buildMenuSections(v, c, "a", false);
+    const row = itemById(sections, "special-foretell");
+    expect(row?.hint).toBeUndefined();
+  });
+
   it("gives a graveyard card a route back to hand and battlefield", () => {
     const c = card("g1", "a");
     const v = view([seat("a", "Alice", { graveyard: [c] })]);

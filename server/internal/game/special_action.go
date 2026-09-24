@@ -345,11 +345,15 @@ func (g *Game) PerformSpecialAction(playerID, cardID uuid.UUID, kind SpecialActi
 	// either ("spend this mana only to cast creature spells") cannot
 	// pay for it. Conservative in the direction #259 requires.
 	if sa.Cost != "" {
-		// #1184: the helper takes a parsed cost now. A special action
-		// is not an activation (CR 116.2), so nothing prices it
-		// through the CR 601.2f pass — it parses its printed string
-		// and pays that, exactly as before.
-		saCost, perr := ParseCost(sa.Cost)
+		// #1319: a special action IS priced through the CR 601.2f pass
+		// now — Ranar the Ever-Watchful's "The first card you foretell
+		// each turn costs {0} to foretell" is a cost modifier on the
+		// special action, not a performer-side special case, so it has
+		// to be visible wherever a foretell cost is quoted: the charge
+		// below and the legal-move enumerator's affordability check
+		// alike. CostModifier.SpecialActions keeps this pass from also
+		// reaching an ordinary cast or activation.
+		saCost, perr := g.SpecialActionManaCostForEffect(playerID, card, kind, *sa)
 		if perr != nil {
 			return ErrInvalidParam
 		}

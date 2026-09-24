@@ -156,6 +156,47 @@ func OfAnotherPermanentYouControl() CostPredicate {
 	}
 }
 
+// --- special actions, not spells or abilities (#1319) -------------
+
+// SpecialActionCostsLess is "<matching> [special action] costs {n}
+// less" — Ranar the Ever-Watchful's "The first card you foretell each
+// turn costs {0} to foretell." The special-action twin of
+// ActivationCostsLess, one door further: the SpecialActions bit
+// partitions the board's modifiers a third way, so a card written for
+// spells or for activated abilities can never reach a CR 116.2 action,
+// and vice versa.
+//
+// Note the predicates below read q.SpecialAction, not q.Card as a
+// spell or q.Ability as an activation: a spell-shaped or
+// ability-shaped predicate means nothing here and should not be
+// reached for.
+func SpecialActionCostsLess(n int, label string, when ...CostPredicate) game.CostModifier {
+	m := CostsLessEach(func(game.CostQuery) int { return n }, label, when...)
+	m.SpecialActions = true
+	return m
+}
+
+// ASpecialActionOfKind passes when the special action being priced is
+// exactly `kind` — "the first card you foretell" names foretell and
+// not suspend or turn_face_up, even from the same permanent.
+func ASpecialActionOfKind(kind game.SpecialActionKind) CostPredicate {
+	return func(q game.CostQuery) bool {
+		return q.SpecialAction != nil && q.SpecialAction.Kind == kind
+	}
+}
+
+// TheFirstOneThisTurn passes when the controller taking the special
+// action hasn't foretold anything yet this turn — Ranar's "the FIRST
+// card you foretell each turn". Reads Game.ForetoldThisTurn, which
+// SpecialActionManaCostForEffect's caller (PerformSpecialAction) bumps
+// only once the card has actually landed in exile, so a refused or
+// paused foretell never counts as the one that used up the discount.
+func TheFirstOneThisTurn() CostPredicate {
+	return func(q game.CostQuery) bool {
+		return q.Game != nil && q.Game.ForetoldCountThisTurn(q.Controller) == 0
+	}
+}
+
 // --- who cast it -------------------------------------------------
 
 // YourSpell passes on a spell cast by the modifier source's own

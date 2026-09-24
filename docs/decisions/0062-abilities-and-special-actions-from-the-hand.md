@@ -551,3 +551,60 @@ was answered by #925 before either keyword needed it, and suspend's
 upkeep countdown rides `TriggeredAbility.Zones = {ZoneExile}` exactly
 as that issue predicted. Open question 2 (per-instance activation
 grants, Greater Gargadon) is still open.
+
+## Amendment — 2026-09-23: the special action's cost is priced through CR 601.2f (#1319)
+
+The amendment above built the verb's payment as a bare parse-and-pay:
+`sa.Cost` in, `payAbilityManaCostLocked` charges it, and the doc
+comment on that call said outright that "a special action is not an
+activation … nothing prices it through the CR 601.2f pass." Ranar the
+Ever-Watchful's "The first card you foretell each turn costs {0} to
+foretell" (deck tracker #1306) needed exactly that pass, and this is
+the third door it opens — [ADR 0020](0020-activated-abilities.md)'s
+2026-09-22 `#1184` note already opened the second one, for activated
+abilities, in the identical shape.
+
+**`CostQuery.SpecialAction` (`*SpecialActionCostSubject`, one field:
+`Kind`)** is `CostQuery.Ability`'s twin, naming which CR 116.2 action
+is being priced. **`CostModifier.SpecialActions`** is the third
+partition bit, beside `.Activations`: `activeCostModifiersLocked` now
+switches on which of `q.Ability` / `q.SpecialAction` is set (or
+neither, for a cast) and shows a modifier only the announcements its
+own bit claims. A card written as "spells cost {1} more" — Sphere of
+Resistance's `AppliesTo` is nil, meaning "every spell" — could not
+otherwise be trusted not to start taxing every foretell in the game
+the day the field appeared, exactly the risk the #1184 note names for
+activations.
+
+**`Game.SpecialActionManaCostForEffect(actor, card, kind, sa)`** is
+`AbilityManaCostForEffect`'s special-action twin and the one function
+three readers share: `PerformSpecialAction` pays it,
+`legal.specialActionMovesForCard` prices affordability against it
+(replacing a bare `game.ParseCost(sa.Cost)` that could have offered a
+move the engine then refused, #544's rule again), and
+`SpecialActionView.ChargedCost` renders it on the wire beside the
+printed `Cost` — `ActivatedAbilityView.ChargedManaCost`'s shape,
+one door over, so a discounted row and its real price can never
+disagree.
+
+**The per-turn tally the clause reads** is `Game.ForetoldThisTurn` /
+`ForetoldCountThisTurn(player)`, `Game.SpellsCastThisTurn`'s shape one
+zone over. It is bumped inside `foretellLocked`, after the card has
+actually landed in exile — a special action a replacement window only
+PAUSED has not foretold anything yet, and one that never lands must
+not spend the discount a player never got to use.
+
+**Self modifiers stay cast-only.** `activeCostModifiersLocked`'s self
+slot ("THIS SPELL costs {N} less to cast", CR 113.6d) is skipped
+whenever `q.Ability` OR `q.SpecialAction` is set, for the reason the
+#1184 note gives for activations: a spell's own printed reduction is
+about the card as a spell on the stack, and neither a permanent's
+ability nor a card's own special action is that.
+
+`effects.SpecialActionCostsLess` (`ASpecialActionOfKind`,
+`TheFirstOneThisTurn`) is the card-file constructor, `ActivationCostsLess`'s
+shape one door over. Shipped on **Ranar the Ever-Watchful** (its
+"create a Spirit" trigger stays a caveat, waiting on the exile-cause
+event #1320 brings). See
+[docs/engine-seams.md](../engine-seams.md)'s "Special actions from the
+hand, and foretell" entry for the closed-seam summary.

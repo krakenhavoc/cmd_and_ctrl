@@ -181,6 +181,18 @@ type Game struct {
 	// ID. Added in S19 sub-PR 6.
 	SpellsCastThisTurn map[uuid.UUID]CastTally
 
+	// ForetoldThisTurn tallies, per player, how many cards that
+	// player has foretold this turn (CR 702.143a's special action,
+	// not a cast) — SpellsCastThisTurn's shape, one zone over.
+	// Bumped in foretellLocked once the card has actually landed in
+	// exile, so a special action refused before payment never counts.
+	// Read by SpecialActionManaCostForEffect's cost modifiers —
+	// Ranar the Ever-Watchful's "The first card you foretell each
+	// turn costs {0} to foretell" (#1319) is FirstForetellEachTurn()
+	// asking whether this count is still zero. Cleared on
+	// Turn.advance to a new turn, alongside SpellsCastThisTurn.
+	ForetoldThisTurn map[uuid.UUID]int
+
 	// LandsPlayedThisTurn counts, per player, the lands that player
 	// has played this turn via CastSpell's land branch. Cleared on
 	// Turn.advance to a new turn. Keyed by player ID. Added in S31
@@ -1234,6 +1246,18 @@ func (g *Game) CastTallyFor(playerID uuid.UUID) CastTally {
 		return CastTally{}
 	}
 	return g.SpellsCastThisTurn[playerID]
+}
+
+// ForetoldCountThisTurn returns how many cards p has foretold this
+// turn (zero when they haven't foretold anything) — CastTallyFor's
+// shape, one zone over. Read by SpecialAction cost modifiers deciding
+// whether "the first card you foretell each turn" still applies.
+// Caller must hold g.mu.
+func (g *Game) ForetoldCountThisTurn(playerID uuid.UUID) int {
+	if g.ForetoldThisTurn == nil {
+		return 0
+	}
+	return g.ForetoldThisTurn[playerID]
 }
 
 // stepExistsLocked reports whether the step the cursor has landed on
