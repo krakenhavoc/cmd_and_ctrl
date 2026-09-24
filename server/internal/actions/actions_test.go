@@ -66,6 +66,60 @@ func TestDispatchDrawCard(t *testing.T) {
 	}
 }
 
+func TestDispatchActivateManaAbilityCarriesTapOthersPayment(t *testing.T) {
+	g := newGame(t)
+	p := g.Seats[0]
+	drumID, bearID := uuid.New(), uuid.New()
+	g.Battlefield.PushTop(game.Card{
+		InstanceID: drumID, Name: "Springleaf Drum", TypeLine: "Artifact",
+		Owner: p.ID, Controller: p.ID,
+		ManaAbilities: []game.ManaAbilityShape{{
+			TapCost: true,
+			TapOthers: &game.TapOthersCost{
+				Count: 1,
+				Filter: &game.TargetSpec{
+					Mode: "permanent", Zones: []game.ZoneKind{game.ZoneBattlefield}, Min: 1, Max: 1,
+					CardOK: func(_ *game.Game, _ uuid.UUID, c game.Card, _ game.ZoneKind) bool { return c.IsCreature() },
+				},
+			},
+			Produced: "{G}", Label: "Add {G}",
+		}},
+	})
+	g.Battlefield.PushTop(game.Card{
+		InstanceID: bearID, Name: "Bear", TypeLine: "Creature — Bear", Power: 2, Toughness: 2,
+		Owner: p.ID, Controller: p.ID,
+	})
+
+	a, err := Decode(string(TypeActivateManaAbility), p.ID.String(), params(t, map[string]any{
+		"card_id":       drumID.String(),
+		"ability_index": 0,
+		"tap_ids":       []string{bearID.String()},
+	}))
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if err := Dispatch(g, a); err != nil {
+		t.Fatalf("Dispatch: %v", err)
+	}
+	for _, id := range []uuid.UUID{drumID, bearID} {
+		found := false
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == id {
+				found = true
+				if !g.Battlefield.Cards[i].Tapped {
+					t.Errorf("%s was not tapped", g.Battlefield.Cards[i].Name)
+				}
+			}
+		}
+		if !found {
+			t.Errorf("payment permanent %s left the battlefield", id)
+		}
+	}
+	if len(p.ManaPool) != 1 {
+		t.Errorf("mana pool = %d, want 1", len(p.ManaPool))
+	}
+}
+
 func TestDispatchPlayCard(t *testing.T) {
 	g := newGame(t)
 	p := g.Seats[0]

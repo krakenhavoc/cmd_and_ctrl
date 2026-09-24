@@ -176,6 +176,7 @@ func buildDef(spec Spec) *game.CardDef {
 				TapCost:                   a.Cost.Tap,
 				SacrificeCost:             a.Cost.Sacrifice,
 				SacrificeOther:            a.Cost.SacrificeOther,
+				TapOthers:                 a.Cost.TapOthers,
 				LifeCost:                  a.Cost.Life,
 				ManaCost:                  a.Cost.Mana,
 				RemoveCounters:            a.Cost.RemoveCounters,

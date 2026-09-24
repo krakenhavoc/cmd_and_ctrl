@@ -1119,6 +1119,9 @@ func dispatch(g *game.Game, a Action) error {
 			// the permanents paid to a "Sacrifice a creature" cost.
 			AbilityIndex *int     `json:"ability_index,omitempty"`
 			SacrificeIDs []string `json:"sacrifice_ids,omitempty"`
+			// #758 — the permanents paying a TapOthers component on this
+			// CR 602 activation (station, The Shire).
+			TapIDs []string `json:"tap_ids,omitempty"`
 			// S27 — crew_ids names the creatures tapped to pay a
 			// Vehicle's crew cost (CR 702.122a). Any number of them;
 			// what the server checks is the total power.
@@ -1791,6 +1794,10 @@ func dispatch(g *game.Game, a Action) error {
 			// name and shape as activate_ability's, so the client
 			// reuses one picker for both ability kinds.
 			SacrificeIDs []string `json:"sacrifice_ids,omitempty"`
+			// #758 — the permanents paying a TapOthers component on a
+			// mana ability (Springleaf Drum). Same field as the CR 602
+			// activation path because it is the same cost component.
+			TapIDs []string `json:"tap_ids,omitempty"`
 			// #789 — the counter component of a mana ability's cost,
 			// with exactly the field names and shapes
 			// activate_ability uses. One component, one payload
@@ -1830,6 +1837,14 @@ func dispatch(g *game.Game, a Action) error {
 			}
 			sacIDs = append(sacIDs, id)
 		}
+		manaTapIDs := make([]uuid.UUID, 0, len(p.TapIDs))
+		for _, raw := range p.TapIDs {
+			id, err := uuid.Parse(raw)
+			if err != nil {
+				return fmt.Errorf("activate_mana_ability tap_ids: %w", err)
+			}
+			manaTapIDs = append(manaTapIDs, id)
+		}
 		manaCounterIDs := make([]uuid.UUID, 0, len(p.CounterSourceIDs))
 		for _, raw := range p.CounterSourceIDs {
 			id, err := uuid.Parse(raw)
@@ -1856,6 +1871,7 @@ func dispatch(g *game.Game, a Action) error {
 		}
 		return g.ActivateManaAbility(a.Player, cardID, p.AbilityIndex, game.ManaAbilityParams{
 			SacrificeIDs:     sacIDs,
+			TapIDs:           manaTapIDs,
 			CounterSourceIDs: manaCounterIDs,
 			CounterCounts:    p.CounterCounts,
 			CounterKind:      p.CounterKind,

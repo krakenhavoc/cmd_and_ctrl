@@ -112,7 +112,7 @@
   import AltCostPaymentModal from "./AltCostPaymentModal.svelte";
   import ModePickerModal from "./ModePickerModal.svelte";
   import DiscardCostModal from "./DiscardCostModal.svelte";
-  import { manaAbilityNeedsPrompt } from "../../manaAbilityCost";
+  import { manaAbilityNeedsPrompt, manaTapPayment } from "../../manaAbilityCost";
   import { exileCostNote, exileCostOptionCards, exileCostWhere } from "../../exileCost";
   import AlternativeCostModal from "./AlternativeCostModal.svelte";
   import FacePickerModal from "./FacePickerModal.svelte";
@@ -970,6 +970,22 @@
     return orderSacrificeOptions(view.battlefield.cards, p.ability.tap_others_options?.cards);
   });
 
+  // #758: the same fixed-count TapOthers component on a MANA
+  // ability (Springleaf Drum). Kept beside the activated prompt but
+  // with its own state because the two actions finish through
+  // different payload builders.
+  let manaTapPrompt = $state<{
+    card: CardView;
+    ability: ManaAbilityView;
+  } | null>(null);
+  let manaTapIDs: string[] = [];
+
+  const manaTapOptions = $derived.by(() => {
+    const p = manaTapPrompt;
+    if (!p) return [];
+    return orderSacrificeOptions(view.battlefield.cards, p.ability.tap_others_options?.cards);
+  });
+
   // #1213: the X a "Sacrifice X Treasures" clause announces. It is
   // the SIZE of the payment rather than a number the player types, so
   // the X stepper is skipped for such an ability — asking twice could
@@ -1329,8 +1345,31 @@
   }
 
   // The rest of the mana-ability chain once the card-shaped costs are
-  // answered: the sacrifice picker, then the counter cost.
+  // answered: tap-another, sacrifice, then the counter cost.
   function afterManaCardCosts(card: CardView, ability: ManaAbilityView): void {
+    if (ability.tap_others_options) {
+      const options = ability.tap_others_options.cards ?? [];
+      const need = ability.tap_others_options.max ?? ability.tap_others_options.min ?? 1;
+      if (options.length > need) {
+        manaTapPrompt = { card, ability };
+        return;
+      }
+      manaTapIDs = options;
+    } else {
+      manaTapIDs = [];
+    }
+    afterManaTapCost(card, ability);
+  }
+
+  function confirmManaTapCost(ids: string[]): void {
+    const p = manaTapPrompt;
+    manaTapPrompt = null;
+    if (!p) return;
+    manaTapIDs = ids;
+    afterManaTapCost(p.card, p.ability);
+  }
+
+  function afterManaTapCost(card: CardView, ability: ManaAbilityView): void {
     if (ability.sacrifice_options) {
       sacrificePrompt = { kind: "mana", card, ability };
       return;
@@ -1418,6 +1457,9 @@
         card_id: card.instance_id,
         ability_index: ability.index,
         ...(sacrificeIDs && sacrificeIDs.length > 0 ? { sacrifice_ids: sacrificeIDs } : {}),
+        // #758: absent on ordinary mana abilities, as every optional
+        // cost-payment field is.
+        ...manaTapPayment(manaTapIDs),
         // #1213: omitted when empty, so every payload a client sent
         // before this field existed is byte-for-byte unchanged.
         ...(manaDiscardIDs.length > 0 ? { discard_ids: manaDiscardIDs } : {}),
@@ -1427,8 +1469,13 @@
       },
       viewerID ?? undefined,
     );
+    resetManaCostPayment();
+  }
+
+  function resetManaCostPayment(): void {
     manaDiscardIDs = [];
     manaExileIDs = [];
+    manaTapIDs = [];
   }
 
   // #170: an ability row picked from the admin context menu. Same two
@@ -1995,7 +2042,10 @@
     count={sacrificeBounds.max}
     min={sacrificeBounds.min}
     onConfirm={confirmSacrifice}
-    onCancel={() => (sacrificePrompt = null)}
+    onCancel={() => {
+      if (sacrificePrompt?.kind === "mana") resetManaCostPayment();
+      sacrificePrompt = null;
+    }}
   />
   <CrewCostModal
     card={crewPrompt?.card ?? null}
@@ -2010,6 +2060,7 @@
     board={view.battlefield.cards}
     onConfirm={confirmCounterCost}
     onCancel={() => {
+      if (manaCounterPrompt) resetManaCostPayment();
       counterPrompt = null;
       manaCounterPrompt = null;
     }}
@@ -2137,6 +2188,20 @@
       abilityTapPrompt = null;
       abilityTapIDs = [];
       abilityReturnIDs = [];
+    }}
+  />
+  <!-- #758: Springleaf Drum's mana-ability spelling of the same
+       TapOthers component. -->
+  <SacrificeCostModal
+    source={manaTapPrompt?.card ?? null}
+    label={manaTapPrompt?.ability.tap_others_label ?? "an untapped creature you control"}
+    options={manaTapOptions}
+    count={manaTapPrompt?.ability.tap_others_options?.max ?? 1}
+    verb="Tap"
+    onConfirm={confirmManaTapCost}
+    onCancel={() => {
+      manaTapPrompt = null;
+      resetManaCostPayment();
     }}
   />
   <SacrificeCostModal

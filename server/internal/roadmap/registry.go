@@ -751,16 +751,33 @@ var items = []Item{
 		EngineNotes:      "primitive: **the record shipped in #761** — `StackItem.Paid` carries the tokens that paid, and converge, sunburst, adamant and \"if no mana was spent\" all read it (see Closed seams). Still missing: SPEND RIDERS — a tag on the token fired after a payment, for \"when that mana is spent\" (Pyromancer's Goggles, Scaled Nurturer), entry riders (Biophagus, Opal Palace), haste grants (Hall of the Bandit Lord) and per-spell \"can't be countered\" (Cavern of Souls, Delighted Halfling) — and sunburst GRANTED by another permanent (Lux Artillery). **The SOURCE snapshot shipped in #1212**: `ManaToken.SourceKinds` records snow / Treasure / creature / land / artifact / enchantment at mint time — before the cost that sacrifices the source runs — the tokens ride `Card.Provenance` onto the permanent (CR 400.7d) so an enters trigger can read them, and `game.ManaSpent` is the one vocabulary both homes hand out (`Count`, `Colors`, `Total`, `CountFrom`, `FromTreasure`, `Snow`). Shipped on Hired Hexblade, Gruul Scrapper and Ribbons of Night. Re-checked 2026-09-24: no spend rider on `ManaToken`.",
 	},
 	{
-		Slug: "tap-another-permanent-cost", Name: "Tapping your other permanents as a cost", Kind: KindSeam, Status: StatusPartial,
-		Summary:  "Costs that tap other untapped permanents you control, such as station's \"tap another creature\".",
-		Missing:  "Mana abilities with this cost, like Springleaf Drum's, and costs that tap a number you choose, can't be activated yet.",
-		Issue:    758,
-		Unblocks: 21,
-		Probe:    activated(func(ab effects.ActivatedAbility) bool { return ab.Cost.TapOthers != nil }),
-		Waiting: []string{
-			"Relic of Legends", "Springleaf Drum", "Survivors' Encampment", "Holdout Settlement", "Secluded Starforge",
+		Slug: "tap-another-permanent-cost", Name: "Tapping your other permanents as a cost", Kind: KindSeam, Status: StatusImplemented,
+		Summary: "Fixed-count costs that tap other untapped permanents work on activated abilities and mana abilities.",
+		Issue:   758,
+		Rules:   []string{"118.3", "602.2b"},
+		Probe: func(s effects.Spec) bool {
+			for _, ab := range s.Activated {
+				if ab.Cost.TapOthers != nil {
+					return true
+				}
+			}
+			for _, ab := range s.ManaAbilities {
+				if ab.Cost.TapOthers != nil {
+					return true
+				}
+			}
+			return false
 		},
-		EngineNotes: "cost component: **the engine half shipped** (#1092 / #1102: `AbilityCost.TapOthers`, `ManaAbilityShape.TapOthers`, validate-then-pay), and **the ACTIVATED-ability wire shipped with #759**: `activated_abilities[i].tap_others_label` / `tap_others_options`, `tap_ids` on `activate_ability`, the enumerator's one-move-per-creature payment, the client's Tap picker, the tapped permanents on the payment record (`PaidCost.TappedOthers`) and the `effects.TapAnotherUntapped` constructor. What is still missing: the MANA-ability wire (\"tap an untapped creature you control: add one mana\", Springleaf Drum — `tap_ids` on `activate_mana_ability` has no view options, no enumerator payment and no picker; re-checked 2026-09-24, `protocol/view.go` stamps `tap_others_*` on activated abilities only), and a VARIABLE count (\"Tap X untapped artifacts you control\", Secluded Starforge), which needs the announce path `MinX` uses. Clock of Omens (\"Tap two untapped artifacts you control: Untap target artifact\") is a fixed count on an ACTIVATED ability, so it is buildable today and is no longer listed. Unblocks is the audit's 27 less the six Station cards it filed here, which have shipped.",
+		Examples: []string{"Springleaf Drum", "Heritage Druid", "Relic of Legends", "The Seriema"},
+	},
+	{
+		Slug: "variable-count-tap-others-cost", Name: "Variable-count tap-others cost", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Costs that tap a fixed number of other permanents work, but a cost that taps X of them does not.",
+		Missing:     "The chosen value of X needs to determine how many permanents the payment picker, validator and bot require.",
+		Issue:       1421,
+		Unblocks:    2,
+		Waiting:     []string{"Secluded Starforge", "Apothecary White"},
+		EngineNotes: "announcement shape: fixed-count `TapOthersCost` is closed by #758, but \"Tap X untapped … you control\" must announce X and derive the payment width from it, as variable sacrifice costs do. It must preserve the fixed component's one candidate walk, CR 118.3 overlap checks, wire picker and bot enumeration.",
 	},
 	{
 		Slug: "blocking-restrictions", Name: "Conditional blocking restrictions", Kind: KindSeam, Status: StatusMissing,

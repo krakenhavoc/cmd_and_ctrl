@@ -2397,6 +2397,12 @@ export interface ManaAbilityView {
   // on ActivatedAbilityView.
   sacrifice_label?: string;
   sacrifice_options?: LegalTargetsView;
+  // #758: "Tap an untapped creature you control" on a mana ability
+  // (Springleaf Drum). Same fields as an activated ability's
+  // TapOthers component; the answer rides activate_mana_ability as
+  // `tap_ids`.
+  tap_others_label?: string;
+  tap_others_options?: LegalTargetsView;
   // #1213: a "Discard N cards" component on a MANA ability — Skirge
   // Familiar's "Discard a card: Add {B}". Exactly the three fields
   // ActivatedAbilityView carries under exactly the same names,

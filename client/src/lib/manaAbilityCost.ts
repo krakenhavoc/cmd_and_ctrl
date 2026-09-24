@@ -16,8 +16,16 @@ import type { ManaAbilityView } from "./protocol";
 export function manaAbilityNeedsPrompt(ability: ManaAbilityView): boolean {
   return (
     !!ability.sacrifice_options ||
+    !!ability.tap_others_options ||
     !!ability.discard_cost_n ||
     !!ability.exile_cost_n ||
     counterCostNeedsPrompt(ability)
   );
+}
+
+// The optional payment fragment carried by activate_mana_ability.
+// Kept beside the prompt predicate so both click paths use and test
+// the exact wire name (#758).
+export function manaTapPayment(tapIDs: string[]): { tap_ids?: string[] } {
+  return tapIDs.length > 0 ? { tap_ids: [...tapIDs] } : {};
 }

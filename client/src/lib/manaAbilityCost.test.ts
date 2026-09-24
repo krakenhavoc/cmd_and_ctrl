@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { manaAbilityNeedsPrompt } from "./manaAbilityCost";
+import { manaAbilityNeedsPrompt, manaTapPayment } from "./manaAbilityCost";
 import type { ManaAbilityView } from "./protocol";
 
 function ability(extra: Partial<ManaAbilityView>): ManaAbilityView {
@@ -25,5 +25,23 @@ describe("manaAbilityNeedsPrompt", () => {
     expect(
       manaAbilityNeedsPrompt(ability({ discard_cost_n: 1, discard_cost_options: ["a"] })),
     ).toBe(true);
+  });
+
+  // #758: Springleaf Drum asks which untapped creature pays the
+  // second half of its activation cost.
+  it("asks before a tap-another cost", () => {
+    expect(
+      manaAbilityNeedsPrompt(ability({ tap_others_options: { cards: ["bear"], min: 1, max: 1 } })),
+    ).toBe(true);
+  });
+});
+
+describe("manaTapPayment", () => {
+  it("sends the chosen permanents as tap_ids", () => {
+    expect(manaTapPayment(["bear", "elf"])).toEqual({ tap_ids: ["bear", "elf"] });
+  });
+
+  it("keeps ordinary mana-ability payloads unchanged", () => {
+    expect(manaTapPayment([])).toEqual({});
   });
 });

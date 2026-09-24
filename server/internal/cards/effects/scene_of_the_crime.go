@@ -17,26 +17,34 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // entered tapped can still be cracked at once — declared as a CR 602
 // ability with a mana-and-sacrifice-self cost.
 //
-// DECLARED SIMPLIFICATION, weaker than printed: the coloured mana
-// ability is not offered. "Tap an untapped creature you control" is
-// a cost that taps ANOTHER permanent, and neither ManaAbilityCost nor
-// AbilityCost has a tap-another component (the Springleaf Drum seam —
-// The Shire's posture); a cost with no shape is left out rather than
-// priced at nothing (#259). The land is still recognisably itself
-// without it: an artifact land that taps for colourless and cracks
-// for a card.
+// #758 supplies the coloured mana ability's second cost component.
+// The creature tap is not the {T} symbol, so a creature that entered
+// this turn may pay it; the land itself still pays the printed {T}.
 func init() {
 	Register(Spec{
 		OracleID:     "ba11a517-1dbd-4797-9f5e-46ce0f6c77c0",
 		Name:         "Scene of the Crime",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The coloured mana ability isn't available — tapping a creature alongside this land for a mana of any color isn't a cost the engine can pay."},
+		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
-		ManaAbilities: []ManaAbility{{
-			Cost:     ManaAbilityCost{Tap: true},
-			Produced: "{C}",
-			Label:    "Add {C}",
-		}},
+		ManaAbilities: []ManaAbility{
+			{
+				Cost:     ManaAbilityCost{Tap: true},
+				Produced: "{C}",
+				Label:    "Add {C}",
+			},
+			{
+				Cost: ManaAbilityCost{
+					Tap: true,
+					TapOthers: &game.TapOthersCost{
+						Count:  1,
+						Filter: TargetPermanent("an untapped creature you control", Creature()),
+						Label:  "an untapped creature you control",
+					},
+				},
+				Produced: "{W|U|B|R|G}",
+				Label:    "Add one mana of any color",
+			},
+		},
 		Activated: []ActivatedAbility{{
 			Label: "{2}, Sacrifice this land: Draw a card.",
 			Cost:  Plus(ManaCost("{2}"), SacrificeThis()),
