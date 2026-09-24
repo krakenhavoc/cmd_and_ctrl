@@ -284,18 +284,9 @@ func Register(spec Spec) {
 	// Spec slot carrying one is a card file that meant to say
 	// something and failed SILENTLY. The Label is what the next
 	// reader matches against the oracle text; a nil Covers is a
-	// statement about nothing.
-	for i, t := range spec.ActivationTimings {
-		if t.Timing == game.TimingNormal {
-			panic(fmt.Sprintf("effects.Register: %q activation timing %d says nothing — set TimingFlash, TimingSorcery or TimingYourTurnOnly", spec.Name, i))
-		}
-		if t.Label == "" {
-			panic(fmt.Sprintf("effects.Register: %q activation timing %d has no printed Label", spec.Name, i))
-		}
-		if t.Covers == nil {
-			panic(fmt.Sprintf("effects.Register: %q activation timing %q covers nothing", spec.Name, t.Label))
-		}
-	}
+	// statement about nothing. The emblem slot (#1275) runs the same
+	// guard from checkEmblemSpec.
+	checkActivationTimings(spec.Name, spec.ActivationTimings)
 	// #1195: the same bargain for a timing statement. TimingNormal is
 	// the zero value and says nothing, so a Spec slot carrying one is
 	// a card file that meant to say something and did not — and the
@@ -383,6 +374,15 @@ func Register(spec Spec) {
 		if sa.Kind == game.SpecialActionSuspend && sa.Counters <= 0 {
 			panic(fmt.Sprintf("effects.Register: %q suspends with %d time counters — suspend N is at least one (CR 702.62a)",
 				spec.Name, sa.Counters))
+		}
+	}
+	// #1391: a grant the engine cannot carry out would put a row on a
+	// card and then refuse it, so it fails at boot. Only plot from the
+	// top of the library is built (game.SpecialActionGrantBuilt).
+	for i, gr := range spec.SpecialActionGrants {
+		if !game.SpecialActionGrantBuilt(gr.Kind, gr.Zone) {
+			panic(fmt.Sprintf("effects.Register: %q special action grant %d gives %q in zone %q, which the engine cannot carry out (ADR 0062 amendment 2026-09-24, #1391)",
+				spec.Name, i, gr.Kind, gr.Zone))
 		}
 	}
 	// #657 / CR 702.35a: the madness cost is the price of a cast the
@@ -670,6 +670,24 @@ func checkStaticZones(card, what string, statics []game.StaticAbility) {
 				panic(fmt.Sprintf("effects.Register: %q %s %d functions from %s — %s",
 					card, what, i, zone, why))
 			}
+		}
+	}
+}
+
+// checkActivationTimings is #1208's guard for a list of activation
+// timing statements, shared by Spec.ActivationTimings and
+// EmblemSpec.ActivationTimings (#1275) so the two homes cannot drift
+// in what they refuse. `card` names the declarer in the panic.
+func checkActivationTimings(card string, timings []game.ActivationTiming) {
+	for i, t := range timings {
+		if t.Timing == game.TimingNormal {
+			panic(fmt.Sprintf("effects.Register: %q activation timing %d says nothing — set TimingFlash, TimingSorcery or TimingYourTurnOnly", card, i))
+		}
+		if t.Label == "" {
+			panic(fmt.Sprintf("effects.Register: %q activation timing %d has no printed Label", card, i))
+		}
+		if t.Covers == nil {
+			panic(fmt.Sprintf("effects.Register: %q activation timing %q covers nothing", card, t.Label))
 		}
 	}
 }

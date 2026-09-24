@@ -719,6 +719,7 @@ var items = []Item{
 			"Chromatic Lantern", "Rhythm of the Wild", "Urza's Saga", "Cryptolith Rite",
 			"Rishkar, Peema Renegade", "Jaheira, Friend of the Forest", "Marvin, Murderous Mimic",
 			"Insidious Roots", "Great Divide Guide", "Gemhide Sliver", "Ultima, Origin of Oblivion",
+			"Teferi's Talent",
 		},
 		Phrases:     []string{"gains the ability", "have the ability"},
 		EngineNotes: "primitive: `ManaAbilitiesForCard` (and the activated/triggered equivalents) reads only a permanent's own list or catalog entry; nothing lets a static grant an ability to another permanent. Re-checked 2026-09-24: `Characteristic` still carries keywords only (`Abilities []string`), and the one catalog-level grant (`Spec.Grants`, #665) is a copy's except clause, not a static on another permanent.",
@@ -956,12 +957,15 @@ var items = []Item{
 		Examples: []string{"Yuriko, the Tiger's Shadow"},
 	},
 	{
-		Slug: "emblem-activation-timing", Name: "Emblems that change when you can activate", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Effects that let you activate loyalty abilities at other times, including ones that come from an emblem.",
-		Missing:     "An emblem can't yet change when you may activate abilities.",
-		Issue:       1275,
-		Waiting:     []string{"Teferi, Temporal Archmage", "Teferi's Talent"},
-		EngineNotes: "primitive: per-player activation timing (#1208) is derived from permanents on the battlefield; an emblem lives in the command zone and nothing derives a timing rule from it. Added from #1275 (2026-09-24).",
+		Slug: "emblem-activation-timing", Name: "Emblems that change when you can activate", Kind: KindSeam, Status: StatusImplemented,
+		Summary: "An emblem can let you activate loyalty abilities of your planeswalkers at instant speed, on any player's turn.",
+		Issue:   1275,
+		Rules:   []string{"114.3", "606.3"},
+		ADR:     "0066-granted-cast-and-play-permissions.md",
+		Probe: func(s effects.Spec) bool {
+			return s.Emblem != nil && len(s.Emblem.ActivationTimings) > 0
+		},
+		Examples: []string{"Teferi, Temporal Archmage"},
 	},
 
 	// Seams that have fully closed. They stay so the page can say so;

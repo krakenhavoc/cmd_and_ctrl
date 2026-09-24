@@ -860,17 +860,23 @@ func (g *Game) AbilityPriceReadsTargetsForEffect(ab ActivatedAbilityShape) bool 
 // the manual PerformSpecialAction path and the legal-move enumerator
 // must ask the board the same shaped question about the same click.
 //
-// `card` is always the hand (or, for turn_face_up, battlefield) card
-// the action is taken on — specialActionZone tells the caller which,
-// exactly as it tells PerformSpecialAction where to look for it.
+// `card` is the hand (or, for turn_face_up, battlefield) card the
+// action is taken on. specialActionZone tells the caller which, exactly
+// as it tells PerformSpecialAction where to look for it. #1391: an
+// offer a grant opened in another zone carries that zone
+// (SpecialAction.Zone), and the query reports it, so a plot from the
+// top of a library is not priced as a plot from the hand.
 //
 // Caller must hold g.mu.
-func (g *Game) specialActionCostQueryLocked(actor uuid.UUID, card Card, kind SpecialActionKind) CostQuery {
+func (g *Game) specialActionCostQueryLocked(actor uuid.UUID, card Card, kind SpecialActionKind, zone ZoneKind) CostQuery {
+	if zone == "" {
+		zone = specialActionZone(kind)
+	}
 	return CostQuery{
 		Game:       g,
 		Card:       card,
 		Controller: actor,
-		FromZone:   specialActionZone(kind),
+		FromZone:   zone,
 		SpecialAction: &SpecialActionCostSubject{
 			Kind: kind,
 		},
@@ -907,7 +913,7 @@ func (g *Game) SpecialActionManaCostForEffect(actor uuid.UUID, card Card, kind S
 		// component is not made of mana, so the pass has no subject.
 		return base, nil
 	}
-	return g.applyCostModifiersLocked(base, g.specialActionCostQueryLocked(actor, card, kind))
+	return g.applyCostModifiersLocked(base, g.specialActionCostQueryLocked(actor, card, kind, sa.Zone))
 }
 
 // manaAbilityCostQueryLocked builds the CostQuery for one activation of

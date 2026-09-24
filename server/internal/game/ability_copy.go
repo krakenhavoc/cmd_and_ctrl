@@ -95,7 +95,9 @@ func (g *Game) CopyAbilityForEffect(itemID, controller uuid.UUID, mayChooseNewTa
 	// CR 702.16b are its source's (docs/decisions/0072-protection.md
 	// §2), and a value copy of it because the permanent can leave
 	// between the prompt and the answer — the copy still resolves
-	// (CR 608.2), and it is judged on what the source was.
+	// (CR 608.2), and it is judged on what the source was. When the
+	// source has ALREADY left, copyTargetSourceLocked judges against
+	// its last-known record rather than this card (#1449).
 	src := g.abilitySourceCardLocked(item)
 	g.offerCopyTargetsLocked(src, item, controller, item.targetSpec, mayChooseNewTargets)
 	return nil
@@ -138,14 +140,13 @@ func (g *Game) stackAbilityLocked(itemID uuid.UUID) (*StackItem, bool) {
 // resolves (CR 608.2), and the copy's re-target prompt judges its
 // picks against a source with no qualities.
 //
-// DECLARED LIMITATION: a source that has left but is still FINDABLE
-// (its graveyard card) is returned as that card, so the copy's
-// re-target prompt judges protection against the graveyard card's
-// characteristics, not the permanent's as it last existed (CR 608.2h).
-// The CR 608.2b re-check of the ORIGINAL item reads the last-known
-// record since #1429 (stackItemSourceLocked); the copy frame carries a
-// Card, not a Characteristic, so it does not yet. ADR 0072 amendment
-// 2026-09-24 (#1429); follow-up #1449.
+// A source that has left but is still FINDABLE (its graveyard card) is
+// returned as that card, and the card is NOT what the copy's targets
+// are judged against: copyTargetSourceLocked (spell_copy.go) reads the
+// source's last-known record instead (CR 608.2h), the same read the
+// CR 608.2b re-check of the original makes (stackItemSourceLocked,
+// #1429). The Card here only fills the frame's `src` and the prompt's
+// Source id. ADR 0072 amendment 2026-09-24 (#1449).
 //
 // Caller must hold g.mu.
 func (g *Game) abilitySourceCardLocked(item *StackItem) Card {

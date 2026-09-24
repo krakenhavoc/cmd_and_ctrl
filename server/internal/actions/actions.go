@@ -129,7 +129,9 @@ const (
 	// priority. Params carry `{card_id, kind}` plus the usual
 	// `{strict, auto_tap}` payment pair; `kind` is one of `foretell`
 	// (CR 702.143a) and `suspend` (CR 702.62a), with `turn_face_up`
-	// (CR 116.2g) reserved for #95.
+	// (CR 116.2g) reserved for #95. An optional `cost` picks between two
+	// offers of the same kind on one card (#1391: a plot card on top of
+	// the library under Fblthp, Lost on the Range).
 	//
 	// ONE verb rather than one per keyword, because CR 116 groups
 	// these actions precisely because their contract is identical —
@@ -1938,6 +1940,9 @@ func dispatch(g *game.Game, a Action) error {
 			Kind    string `json:"kind"`
 			Strict  bool   `json:"strict,omitempty"`
 			AutoTap bool   `json:"auto_tap,omitempty"`
+			// #1391: which offer of this kind, by its printed cost,
+			// when the card has two (a plot card under Fblthp).
+			Cost string `json:"cost,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -1949,6 +1954,7 @@ func dispatch(g *game.Game, a Action) error {
 		return g.PerformSpecialAction(a.Player, cardID, game.SpecialActionKind(p.Kind), game.SpecialActionParams{
 			Strict:  p.Strict,
 			AutoTap: p.AutoTap,
+			Cost:    p.Cost,
 		})
 
 	case TypeSacrificePermanent:

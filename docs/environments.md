@@ -375,6 +375,53 @@ name. The server logs a boot line naming its environment and, on dev, a
 WARN listing the enabled features. If the journal and the browser badge
 disagree, the browser is talking to a different backend than you think.
 
+**What a restart cost.** [ADR 0044](decisions/0044-surviving-a-deploy.md)
+decision 1 and its 2026-09-24 amendment (#524): the server logs what a
+deploy costs each live table on the way down and the way back up, so
+"did that restart rewind anybody" is a `journalctl` search rather than
+a question for the players.
+
+At SIGTERM, after the HTTP listener closes and before the hub drops any
+connection, one line per live game:
+
+```
+level=INFO msg="shutdown census: game" game_id=d3b53ef1-… archived=false clean=true seq=1 has_restore_point=true restore_seq=1 seq_behind=0 restore_age=0s
+level=WARN msg="shutdown census: game" game_id=761b8df2-… archived=true clean=false seq=2 has_restore_point=true restore_seq=1 seq_behind=1 restore_age=0s continuations=1 continuation_labels="[stack effect: named continuation for the log test]"
+level=INFO msg="shutdown census: summary" games=2 clean=1 would_rewind=1 actions_rewound=1
+```
+
+`clean=true` means the table's CURRENT state is itself a usable restore
+point — a restart right now would not rewind it at all. `clean=false`
+names what's blocking it (`continuation_labels`, the same census the
+catalog census tooling uses) and `seq_behind` is how many actions have
+happened since the last state a restart CAN rebuild exactly. `WARN`
+level is what makes `journalctl -u cmd-and-ctrl -p warning` after a
+deploy answer "which tables rewound" directly. `archived=true` is a
+retired table (`GET /games?archived=1`) — expected to show up here,
+since archiving keeps the room registered.
+
+At boot, `RestoreFromDisk` is timed (the number [ADR 0044](decisions/0044-surviving-a-deploy.md)'s
+measurement task asks for, to confirm or refute that startup rather
+than this pass dominates the restart window) and each restored game's
+line grows a `restore_point_age`:
+
+```
+level=ERROR msg="restore point written by a newer server; game abandoned (file kept for roll-forward)" game_id=87516ae4-… path=/var/lib/cmd_and_ctrl/data/restore/87516ae4-….json err="game: snapshot schema is newer than this server understands: file is v7, this server reads up to v6"
+level=INFO msg="game restored" game_id=b151d7c9-… seq=1 state=active turn=1 seats=2 captured_at=2026-09-24T16:14:11.919Z restore_point_age=0s
+level=INFO msg="restore pass complete" restored=1 ended=0 abandoned=1 abandoned_reasons=map[schema_too_new:1]
+level=INFO msg="restore from disk complete" duration=118ms resumed=1
+```
+
+`restore_point_age` is how stale that table's restore point was — how
+long it had been since a clean boundary, at the moment the PREVIOUS
+process wrote it. It is deliberately not paired with "how far this
+table rewound": that number is the restored seq against the seq the
+previous process was showing to clients right before it died, and the
+only record of that is the previous process's own shutdown census line
+above — this process has no reliable way to read that back. The
+shutdown line already carries the true rewind delta (`seq_behind`) for
+the process that is about to stop.
+
 **Resetting preview state.** Preview games are disposable:
 
 ```sh

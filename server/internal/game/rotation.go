@@ -133,8 +133,9 @@ func (g *Game) sweepTurnEndLocked() {
 // The next turn belongs to the next seat after the current active seat
 // that is still in the game. A seat that has left is passed over (CR
 // 800.4k: that player's turn doesn't begin), and Turn.Round still
-// goes up when the rotation passes seat 0, so it keeps counting rounds
-// whether or not seat 0 is still playing.
+// goes up when the rotation returns to the game's starting seat, so it
+// keeps counting full table rotations whether or not that seat is still
+// playing.
 //
 // A cleanup-discard pause cannot outlive its turn: the discard belongs
 // to the turn that ended, so DiscardPending is dropped. In ordinary
@@ -149,7 +150,7 @@ func (g *Game) beginNextTurnLocked() {
 	}
 	from := g.Turn
 	from.Step = StepCleanup
-	next := from.advance(n)
+	next := from.advance(n, g.StartingSeat)
 	for i := 0; i < n && next.ActiveSeat >= 0 && next.ActiveSeat < n && g.Seats[next.ActiveSeat].Eliminated; i++ {
 		// CR 800.4m: an effect that lasts "until that player's next
 		// turn" lasts until the turn that WOULD have begun. Counting
@@ -160,7 +161,7 @@ func (g *Game) beginNextTurnLocked() {
 		// Wrap again from this seat's (never-taken) cleanup.
 		skipped := next
 		skipped.Step = StepCleanup
-		next = skipped.advance(n)
+		next = skipped.advance(n, g.StartingSeat)
 	}
 	// Seats skipped under CR 800.4k never take a turn. advance is also
 	// the fixed-sequence cursor helper, so it tentatively increments Seq

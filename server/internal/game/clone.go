@@ -911,6 +911,12 @@ func (g *Game) RestoreFrom(src *Game) {
 	// restored end.
 	g.Events = src.Events
 	g.eventSeq = src.eventSeq
+	// #1401: the log is now a different HISTORY, not a longer one —
+	// the next emit regrows it under the Seq values the undone events
+	// carried. Anything that folded the old log (the public log's
+	// projection cache) must see that, and a length or Seq check
+	// cannot. See projection_cache.go.
+	g.eventLogGen++
 	// #829: batch identity rewinds with the log it is stamped into,
 	// and the once-per-batch marks rewind with the counter — see
 	// cloneLocked.

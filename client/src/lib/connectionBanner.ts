@@ -20,6 +20,7 @@
 // build time. That matters: ws.ts imports OFFLINE_ERROR_CODE and
 // offlineSendMessage from HERE, so turning this into a value import
 // would close a genuine runtime cycle. It stays `import type`.
+import { SIGNED_IN_RETURN_LINK } from "./joinRecovery";
 import type { ConnectionStatus } from "./ws";
 
 // OFFLINE_ERROR_CODE is the `code` on the lastError entry raised when
@@ -74,8 +75,11 @@ export function offlineSendMessage(what: string): string {
 }
 
 // A banner's tone. "retrying" is the client still working the backoff
-// ladder; "lost" is a connection that will not come back on its own.
-export type BannerTone = "retrying" | "lost";
+// ladder; "lost" is a connection that will not come back on its own
+// but might, later, with no action from the player; "ended" (#1475)
+// is the one banner that will NEVER clear itself — the session is
+// gone and only signing in again fixes it.
+export type BannerTone = "retrying" | "lost" | "ended";
 
 export interface ConnectionBannerState {
   tone: BannerTone;
@@ -83,8 +87,14 @@ export interface ConnectionBannerState {
   headline: string;
   /** What is on screen and what is not happening. */
   detail: string;
-  /** Label for the manual retry control. */
+  /** Label for the manual retry control. Empty when `link` is set instead. */
   retryLabel: string;
+  /**
+   * Where to send the player instead of retrying (#1475's "ended"
+   * tone only). A dead session cannot be fixed by dialling harder, so
+   * this replaces the retry button with a real navigation.
+   */
+  link?: { href: string; label: string };
 }
 
 // boardIsStale reports whether what is rendered may be out of date —
@@ -95,7 +105,7 @@ export interface ConnectionBannerState {
 // its own "waiting for snapshot…" state for that. Marking it stale
 // would put a scary banner on every normal page load.
 export function boardIsStale(status: ConnectionStatus): boolean {
-  return status === "reconnecting" || status === "disconnected";
+  return status === "reconnecting" || status === "disconnected" || status === "session_ended";
 }
 
 // actionsDisabled reports whether action affordances should be shown
@@ -124,9 +134,16 @@ function attemptPhrase(attempt: number): string {
 // connectionBanner returns what the banner should say, or null when
 // there is nothing to say. Pure — the component renders this and holds
 // no copy of its own.
+//
+// `signedIn` only matters for the "session_ended" status (#1475): by
+// the time that status lands, the dead session itself has usually
+// already been cleared (authFetch's own 401 handling), so the caller
+// passes what it last knew about who was signed in rather than this
+// module reading a session store that may already be empty.
 export function connectionBanner(
   status: ConnectionStatus,
   attempt: number,
+  signedIn = false,
 ): ConnectionBannerState | null {
   if (!boardIsStale(status)) return null;
   if (status === "reconnecting") {
@@ -135,6 +152,17 @@ export function connectionBanner(
       headline: "Connection lost — reconnecting",
       detail: `${STALE_BOARD_SENTENCE} ${attemptPhrase(attempt)}`,
       retryLabel: "Try now",
+    };
+  }
+  if (status === "session_ended") {
+    return {
+      tone: "ended",
+      headline: "Your session ended — sign in again",
+      detail: signedIn
+        ? `${STALE_BOARD_SENTENCE} Head to My games to get back to an open table.`
+        : `${STALE_BOARD_SENTENCE} Nothing you do will reach the game until you sign in again.`,
+      retryLabel: "",
+      link: signedIn ? SIGNED_IN_RETURN_LINK : { href: "#/login", label: "Sign in" },
     };
   }
   return {
@@ -147,7 +175,7 @@ export function connectionBanner(
 
 // connectionAnnouncement is the line read into the aria-live region on
 // a status change. Separate from the banner copy because it covers all
-// four states, not just the two that render a banner: a screen-reader
+// five states, not just the three that render a banner: a screen-reader
 // user needs to be told the table came BACK at least as much as they
 // need to be told it went away, and the banner says that by vanishing
 // silently.
@@ -161,5 +189,7 @@ export function connectionAnnouncement(status: ConnectionStatus, attempt: number
       return `Connection lost. ${attemptPhrase(attempt)} The board is not live.`;
     case "disconnected":
       return "Disconnected from the table. The board is not live.";
+    case "session_ended":
+      return "Your session ended. Sign in again to get back to the table.";
   }
 }

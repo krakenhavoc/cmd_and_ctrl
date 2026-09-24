@@ -332,3 +332,105 @@ work is eventually done in.
   classification (decision 7).
 - The shutdown path gains observability and, deliberately, no new
   writes (decision 1).
+
+## Amendment 2026-09-24: owner decisions for the rest of S33
+
+Recorded on [#515](https://github.com/krakenhavoc/cmd_and_ctrl/issues/515)
+to settle the design questions left open in S33's sub-issues, and
+implemented starting with [#524](https://github.com/krakenhavoc/cmd_and_ctrl/issues/524)
+(this PR). Decisions 1-7 are the owner's, verbatim in substance;
+"#524's own design" at the end is this PR's.
+
+1. **#522 ability check** — when a card is restored with FEWER
+   abilities than were captured, restore the table anyway and report
+   it loudly: an ERROR naming the game and the card, counted in the
+   census, and the card flagged as not automated for the game (the
+   `manual` chip). A card restored with MORE abilities than captured
+   is not a mismatch — a new build adding abilities to a card is the
+   ordinary case, not a schema problem.
+2. **#522 fixtures** — both kinds belong in the corpus decision 7
+   (above) calls for:
+   - generated fixtures, written by a tool from scripted boards,
+     append-only, never regenerated, one frozen set per schema
+     version;
+   - a few real restore files pulled from cmd-dev, scrubbed of player
+     data.
+3. **#523 restore generation** — a counter saved in the restore file,
+   bumped on every restore. The client drops its cached view when the
+   value changes. Players see a toast only when the table actually
+   rewound ("The table was restored to an earlier point after a
+   server restart"); a restore with no rewind shows nothing.
+4. **Exit criterion 3 is amended to match #520's design.** A player
+   who cleared their storage and opens the invite link on a started
+   table is told how to get back: signed in, "My Games" rejoins in
+   one click; as a guest, ask the host for a seat-reclaim link.
+   `Join.svelte` stops telling them to "ask your host for a spectator
+   link".
+5. **Dead session on reconnect** — after a few failed dials, the
+   client checks whether the session is still valid. On a 401 it
+   stops retrying and shows "Your session ended — sign in again",
+   linking to Login, or to My Games for a signed-in identity. A server
+   that is only restarting keeps the normal retry ladder.
+6. **Order.**
+   1. a live restart check on cmd-dev, then close #518;
+   2. #524 (this PR);
+   3. #522 (the ability check, then the fixtures);
+   4. #523, together with the reconnect and rewind sections of
+      `protocol.md`;
+   5. the return-path fixes (decisions 4 and 5), tracked as their own
+      issue.
+7. **Next sprint: ADR 0041 phase 3, "effects as data."** It starts
+   with the effects that freeze a restore point for longest (earthbend,
+   amass, control exchange, Sower-style control) and reuses
+   [ADR 0093](0093-abilities-granted-to-other-permanents.md)'s
+   `ScopedGrant` record. #524's census numbers set the priorities.
+
+**#524's own design.** `ws.Room` gains `lastRestorePoint`
+(`{Seq uint64; At time.Time}`), a small bookkeeping struct guarded by
+the room's own mutex and set only inside `writeRestorePointLocked` on
+a successful write — and seeded at boot, in `restoreOne`, from the
+restore file's own `Seq` and `Snapshot.TakenAt`, since at that instant
+the file IS the room's last-written point. `Room.ShutdownReport()`
+pairs that bookkeeping with a fresh `CaptureSnapshot()` — a read, no
+disk write — to answer, per room: whether the CURRENT state is itself
+a clean boundary (`Clean`), the `ContinuationCensus` when it is not,
+and (when a restore point has ever been written) that point's `seq`,
+its age, and how many actions have happened since (`SeqBehind`,
+`LiveSeq - RestoreSeq`).
+
+`ws.LogShutdownCensus(log, rooms, archived)` calls that once per live
+room and logs one line each — `Info` for a clean table, `Warn` for one
+that would rewind, naming its census labels — plus one `Info` summary
+line with totals (`games`, `clean`, `would_rewind`,
+`actions_rewound`). `archived` is a predicate the caller supplies
+(main.go looks it up via `lobby.Lobby.Get`), because `ws` does not
+otherwise know about `lobby.GameMeta.ArchivedAt` and importing it
+would invert the dependency; this is also what keeps the function
+testable with a fake. `main.go` calls it once, at SIGTERM, after the
+HTTP listener closes and before `hub.Shutdown` — a read of state the
+process already holds, so it adds no measurable time to the 5s
+shutdown grace period and cannot block it (decision 1's "log line, not
+a write").
+
+On the boot side, `RestoreFromDisk`'s own call is now timed in
+`main.go` and logged (`"restore from disk complete"`,
+`duration`, `resumed`) — the number decision 1's "measurement task"
+asked for, to confirm or refute the "startup dominates, not this
+pass" hypothesis. Each per-game `"game restored"` line grows a
+`restore_point_age` field (`time.Since(Snapshot.TakenAt)`), and
+`RestoreOutcome` grows a `Reason` field so `LogRestoreSummary` can
+tally *why* a table was abandoned (`abandoned_reasons`) rather than
+only how many were.
+
+**Deliberately not computed here: how far a restored table rewound,
+at boot.** That number is the restored seq against the seq the
+*previous* process was showing to clients right before it died — and
+the only place that fact is recorded is the previous process's own
+shutdown census line, in its own log stream, which this process has no
+reliable way to read back (log rotation, a crashed process that never
+reached the shutdown handler, a multi-host log aggregator that is not
+this codebase's concern). Inventing a number here would be worse than
+not having one. The shutdown line already carries the true rewind
+delta — `seq_behind` — for the process that is about to stop; the
+boot line carries only what boot can honestly know, the restore
+point's own age.

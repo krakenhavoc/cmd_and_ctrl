@@ -3,7 +3,7 @@ import { recordClientError } from "./clientErrors";
 import { OFFLINE_ERROR_CODE, offlineSendMessage } from "./connectionBanner";
 import { describeThrown, guardedWritable } from "./guardedStore";
 import { redactSecrets, redactURL } from "./redact";
-import { currentSession } from "./session";
+import { checkSessionAlive, currentSession } from "./session";
 import {
   PROTOCOL_VERSION,
   uuid,
@@ -21,7 +21,19 @@ import {
 // "reconnecting" is the automatic-retry state after a non-deliberate
 // close (network blip, server restart). Deliberate teardown via
 // disconnect() lands on "disconnected" and never retries.
-export type ConnectionStatus = "connecting" | "connected" | "reconnecting" | "disconnected";
+//
+// "session_ended" is the other terminal state (#1475, per the
+// owner's 2026-09-24 decision 5 on #515): the backoff ladder gave up
+// asking "is the server just restarting?" and asked the server
+// directly instead — GET /me came back 401, so the credential this
+// socket is dialling with is gone, not merely unreachable. Nothing
+// redials from here; the player has to sign in again.
+export type ConnectionStatus =
+  | "connecting"
+  | "connected"
+  | "reconnecting"
+  | "disconnected"
+  | "session_ended";
 
 export type LogDirection = "sent" | "received" | "error" | "info";
 
@@ -114,6 +126,15 @@ export function reconnectDelayMs(attempt: number, rand: () => number = Math.rand
   const nominal = Math.min(RECONNECT_CAP_MS, RECONNECT_BASE_MS * 2 ** attempt);
   return Math.floor(nominal / 2 + rand() * (nominal / 2));
 }
+
+// DEAD_SESSION_CHECK_AFTER_FAILURES is how many consecutive failed
+// dials the ladder serves before it stops guessing and asks the
+// server directly whether this session is still good (#1475, per the
+// owner's 2026-09-24 decision 5 on #515). Small enough to catch a
+// revoked or expired session quickly; large enough that one ordinary
+// drop — the close that opens every reconnect, deploy included —
+// never fires a network call nobody asked for.
+export const DEAD_SESSION_CHECK_AFTER_FAILURES = 3;
 
 // Close codes the server sends on purpose. They used to share one
 // terminal branch, which is the whole of #518: hub.Shutdown writes
@@ -245,6 +266,23 @@ export class GameClient {
   // reconnectAttempts counts consecutive failed opens since the last
   // successful one — the exponent for the backoff ladder.
   private reconnectAttempts = 0;
+  // reconnectGeneration increments every time the backoff ladder is
+  // reset for real — a successful open, or a deliberate connect() /
+  // disconnect() — never on a mere failed dial. A dead-session check
+  // captures it before making its network call; if it no longer
+  // matches when the check resolves, the world has moved on (the
+  // socket came back, or the client was torn down) and the stale
+  // verdict is discarded rather than acted on.
+  private reconnectGeneration = 0;
+  // sessionCheckDone / sessionCheckInFlight bound the dead-session
+  // probe to ONE per failure streak: done once a probe has resolved
+  // (so a long outage doesn't keep hitting the server), and in-flight
+  // while its fetch is still out (so two probes never race). Both are
+  // cleared alongside reconnectAttempts on the next successful open,
+  // so a fresh run of failures after a healthy stretch gets a fresh
+  // probe.
+  private sessionCheckDone = false;
+  private sessionCheckInFlight = false;
   // actionsSent counts action frames that left the socket. A timed
   // bluff (#1307) reads it to tell whether the viewer did anything
   // while it was waiting, whichever of the many send paths they used.
@@ -402,6 +440,7 @@ export class GameClient {
     this.reconnectAttempts += 1;
     this.reconnectAttempt.set(this.reconnectAttempts);
     this.append("info", `reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
+    this.maybeCheckDeadSession();
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       // A deliberate connect() may have raced the timer; don't stack
@@ -411,12 +450,61 @@ export class GameClient {
     }, delay);
   }
 
+  // maybeCheckDeadSession fires the #1475 probe once a streak of
+  // failed dials reaches DEAD_SESSION_CHECK_AFTER_FAILURES, and runs
+  // ALONGSIDE the backoff ladder rather than instead of it — a server
+  // that is only restarting must keep being retried at full speed
+  // while the probe is in flight, so this never delays or cancels the
+  // reconnect timer scheduleReconnect just set. Only a definite "dead"
+  // verdict changes anything, from inside the probe's own resolution.
+  private maybeCheckDeadSession(): void {
+    if (this.sessionCheckDone || this.sessionCheckInFlight) return;
+    if (this.reconnectAttempts < DEAD_SESSION_CHECK_AFTER_FAILURES) return;
+    this.sessionCheckInFlight = true;
+    const generation = this.reconnectGeneration;
+    void checkSessionAlive().then((result) => {
+      this.sessionCheckInFlight = false;
+      this.sessionCheckDone = true;
+      // Stale: a successful open or a deliberate connect()/disconnect()
+      // happened while the fetch was out. Whatever it found no longer
+      // describes the world this client is in.
+      if (generation !== this.reconnectGeneration) return;
+      if (result === "dead") {
+        this.append("info", "session check: server says 401 — the session is gone");
+        this.enterSessionEnded();
+        return;
+      }
+      this.append("info", `session check: ${result} — keeping the reconnect ladder`);
+    });
+  }
+
+  // enterSessionEnded stops the reconnect ladder for good and moves to
+  // the terminal "session_ended" status the connection banner reads as
+  // "sign in again" (#1475). It closes any live socket the same way
+  // disconnect() does, so a close event that socket still delivers is
+  // ignored (isCurrent() below is keyed off `this.socket`) rather than
+  // scheduling one more reconnect on top of this.
+  private enterSessionEnded(): void {
+    this.cancelReconnect();
+    const socket = this.socket;
+    this.socket = null;
+    this.status.set("session_ended");
+    socket?.close();
+  }
+
   // resetReconnectAttempts zeroes the backoff exponent and the store
-  // the UI reads off it. The two must move together — a stale attempt
-  // count on a healthy connection is a banner that lies.
+  // the UI reads off it, and — since #1475 — the dead-session probe's
+  // own bookkeeping and generation counter. The three must move
+  // together: a stale attempt count on a healthy connection is a
+  // banner that lies, and a probe left "in flight" or "done" from a
+  // previous failure streak would either never fire again or fire on
+  // top of a connection that has since recovered.
   private resetReconnectAttempts(): void {
     this.reconnectAttempts = 0;
     this.reconnectAttempt.set(0);
+    this.sessionCheckDone = false;
+    this.sessionCheckInFlight = false;
+    this.reconnectGeneration += 1;
   }
 
   // dialURL is the URL to dial right now: the target this client was

@@ -46,14 +46,14 @@ func init() {
 }
 
 // damageSourceControlledBy reports whether the damage event's source
-// is a permanent (or spell) controlled by the given player. A source
-// that has already left the battlefield — a Bolt in the graveyard by
-// the time damage resolves — is looked up wherever it now is, which
-// keeps its controller readable.
+// is a permanent (or spell) controlled by the given player, read
+// through damageSourceCharacteristics (#1430) — the event's
+// last-known controller (CR 608.2h) for a source that has already
+// left the battlefield, not whoever the card in its new zone belongs
+// to now. A stolen creature's "when this dies" damage is still
+// attributed to the player who controlled it when it died, even
+// though the graveyard card goes home to its owner.
 func damageSourceControlledBy(ev *game.ReplacementEvent, g *game.Game, controller uuid.UUID) bool {
-	if ev.DamageSource == uuid.Nil {
-		return false
-	}
-	c, ok := g.LookupCardForEffect(ev.DamageSource)
-	return ok && c.Controller == controller
+	ch, ok := damageSourceCharacteristics(ev, g)
+	return ok && ch.Controller == controller
 }

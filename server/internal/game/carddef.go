@@ -97,6 +97,12 @@ type CardDef struct {
 	// Decision 4.
 	SpecialActions []SpecialAction
 
+	// SpecialActionGrants are the special actions this PERMANENT gives
+	// to other cards (#1391, Fblthp, Lost on the Range's plot from the
+	// top of your library). Read through CatalogSpecialActionGrants;
+	// see special_action_grant.go.
+	SpecialActionGrants []SpecialActionGrant
+
 	UntapStep             []UntapStepPermission
 	UntapStepRestrictions []UntapStepRestriction
 	UntapCaps             []UntapCap
@@ -440,6 +446,12 @@ func init() {
 	CatalogSpecialActions = func(key string) []SpecialAction {
 		if d := catalogDef(key); d != nil {
 			return d.SpecialActions
+		}
+		return nil
+	}
+	CatalogSpecialActionGrants = func(key string) []SpecialActionGrant {
+		if d := catalogDef(key); d != nil {
+			return d.SpecialActionGrants
 		}
 		return nil
 	}

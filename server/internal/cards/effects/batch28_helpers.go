@@ -217,14 +217,26 @@ func b28OtherCreaturesYouControlGetAnExtraCounter(label string) game.Replacement
 // b28DamageSourceControlledBy resolves the card a damage replacement
 // event names as its source and reports whether `controller`
 // controls it — a permanent on the battlefield, or a spell on the
-// stack whose Controller is its caster. A source that cannot be found
-// (it left every tracked zone) is nobody's, which errs weaker.
+// stack whose Controller is its caster. The "controls it" test reads
+// damageSourceCharacteristics (#1430), so a source that has already
+// left the battlefield is judged by the controller it had there (CR
+// 608.2h), not by whoever the card in its new zone belongs to now.
+// The Card itself is still the current-zone lookup, for callers that
+// need live-only fields (instance ID, counters); those are only ever
+// read after also confirming the source is presently on the
+// battlefield, so a departed source never reaches them under the
+// wrong identity. A source that cannot be found (it left every
+// tracked zone) is nobody's, which errs weaker.
 func b28DamageSourceControlledBy(ev *game.ReplacementEvent, g *game.Game, controller uuid.UUID) (game.Card, bool) {
 	if ev.Kind != game.RepEventDamage || ev.DamageAmount <= 0 || ev.DamageSource == uuid.Nil {
 		return game.Card{}, false
 	}
 	c, ok := g.LookupCardForEffect(ev.DamageSource)
-	if !ok || c.Controller != controller {
+	if !ok {
+		return game.Card{}, false
+	}
+	ch, chOk := damageSourceCharacteristics(ev, g)
+	if !chOk || ch.Controller != controller {
 		return game.Card{}, false
 	}
 	return c, true

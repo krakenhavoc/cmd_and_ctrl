@@ -3811,6 +3811,36 @@ Tapping a paused permanent (`{T}`, crew, convoke) does not move it and is
 not covered. That half is
 [#1427](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1427).
 
+#### Addendum, 2026-09-24: nor can a card an effect has paused be TAPPED to pay ([#1427](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1427))
+
+The case above was left open on purpose: a tap cost does not pay the same
+cost twice, and the destroy's prompt even survives it, since a tapped card
+goes nowhere. But the permanent has already left as far as the rules are
+concerned (CR 903.9 is a replacement, instantaneous in paper; the prompt
+is only the engine asking the owner). A destroyed commander Birds of
+Paradise tapping for {G} while its owner decides is mana from an object
+that is gone, and crewing or convoking with it is the same use after
+spend.
+
+**Decision.** Refuse it, through the same gate. `refusePausedCostCardsLocked`
+now takes two lists, `moving` and `tapping`, and refuses on either. They
+stay apart because only `moving` goes on to `askCostCommanderLocked`:
+tapping a live commander asks nothing. The `tapping` list is:
+
+- `ActivateCatalogAbility`: the source for `{T}`, the crew picks, the
+  tap-another picks (`TapIDs`) and the waterbend picks.
+- `ActivateManaAbility`: the source for `{T}` and the tap-another picks.
+- `CastSpell`: the convoke / waterbend picks (`TapIDs`).
+
+The auto-tapper's battlefield planner and executor extend #1445's
+sacrifice check to an ability that owes `{T}`, so a paused Birds is
+neither planned nor tapped from a stale plan.
+
+The exile-this-off-the-battlefield half of #1427 (a scavenge from the
+graveyard, a Spirit Guide from hand) needed nothing further: #1423's
+`moving` list already carries the source for `ExileSelf`, so the #1445
+gate above refuses it. Re-checked on develop at `4ef62c39`.
+
 ### 6. Six pipeline integration points (five mutations + step transition)
 
 The core five mutations named in the sprint plan are the rules-

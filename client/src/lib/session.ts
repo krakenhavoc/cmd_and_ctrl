@@ -235,6 +235,32 @@ export async function authFetch(input: string, init: RequestInit = {}): Promise<
   return res;
 }
 
+// SessionCheckResult is the answer to "is this session still good, as
+// far as the server is concerned?" (#1475). "dead" is a definite
+// answer — a 401, the server's own word that the credential is gone —
+// and everything else is "unknown": a 5xx, a network failure, a
+// timeout. ws.ts's reconnect ladder treats "unknown" exactly like
+// "still trying", never like "dead", because a server that is merely
+// restarting must not be mistaken for a revoked session.
+export type SessionCheckResult = "alive" | "dead" | "unknown";
+
+// checkSessionAlive asks GET /me — the cheapest authenticated route
+// there is, and the one the server doc-comments "for client bootstrap"
+// (server/cmd/server/main.go) — whether the session this tab is
+// holding is one the server will still accept. authFetch already
+// clears a 401'd session locally as a side effect; this just reports
+// which of the three outcomes happened so a caller (ws.ts's dead-
+// session probe) can act on the DEFINITE case only.
+export async function checkSessionAlive(): Promise<SessionCheckResult> {
+  try {
+    await authFetch("/me");
+    return "alive";
+  } catch (err) {
+    if (err instanceof LobbyApiError && err.status === 401) return "dead";
+    return "unknown";
+  }
+}
+
 // ApiViolation mirrors deck.Violation on the server. Kept here (not
 // in api.ts) so LobbyApiError can carry the structured list without
 // a circular import between session and api.

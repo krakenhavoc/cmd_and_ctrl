@@ -594,11 +594,12 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 		if manaSourceTappedOut(&c, picked) {
 			continue
 		}
-		// #1445: a source this ability would SACRIFICE is not one while
-		// an effect has its exit paused on a CR 903.9 prompt — the
-		// card is already spent. See refusePausedCostCardsLocked; the
-		// executor asks the same question.
-		if picked.SacrificeCost && g.zoneChangePausedLocked(c.InstanceID) {
+		// #1445 / #1427: a source this ability would SACRIFICE or TAP
+		// is not one while an effect has its exit paused on a CR 903.9
+		// prompt — the card is already spent. See
+		// refusePausedCostCardsLocked; the executor asks the same
+		// question.
+		if (picked.SacrificeCost || picked.TapCost) && g.zoneChangePausedLocked(c.InstanceID) {
 			continue
 		}
 		// #540: CR 302.6. A mana creature that entered this turn

@@ -1489,10 +1489,13 @@ export interface TapCostView {
 }
 
 // SpecialActionView is one CR 116.2 special action offered on a card
-// in the viewer's own hand — foretell, suspend, plot. A row and nothing
+// in the viewer's own hand — foretell, suspend, plot — and, since
+// #1391, on the top card of their own library when a permanent grants
+// one there (Fblthp, Lost on the Range's plot). A row and nothing
 // more: no targets, no modes, no cost picker, so the client sends
 // `special_action { card_id, kind, strict, auto_tap }` straight from
-// it. `available` is the server's own per-kind timing answer, so the
+// it, plus `cost` when the card offers the same kind twice (a plot
+// card under Fblthp: its own plot cost or its mana cost). `available` is the server's own per-kind timing answer, so the
 // client greys the row rather than re-deriving a rule it would get
 // backwards (foretell is legal under split second; suspend is not).
 export interface SpecialActionView {

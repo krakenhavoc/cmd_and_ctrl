@@ -74,7 +74,8 @@ import (
 // player is whoever the predicate admits, measured against
 // `q.Source.Controller` exactly as a cast timing statement's
 // `Affects` clause is; and the duration is the source's presence on
-// the battlefield, which is what derivation MEANS (the argument
+// the battlefield — or, for an emblem's statement (#1275), in its
+// owner's command zone — which is what derivation MEANS (the argument
 // `standingCastPermissionsLocked` and `CatalogPlayerKeywords` both
 // make at length — two sources compose, and one leaving cannot revoke
 // the other's grant).
@@ -147,7 +148,7 @@ func (t ActivationTiming) Restricts() bool {
 var CatalogActivationTimings func(oracleID string) []ActivationTiming
 
 // ActivationTimingsForCard returns the timing statements a permanent
-// makes right now: none for a permanent under a CR 613.1f
+// (or, since #1275, an emblem) makes right now: none for a permanent under a CR 613.1f
 // ability-removing effect (CatalogAbilityKey returns the empty key),
 // and none for one whose designation gate is unsatisfied.
 //
@@ -182,7 +183,8 @@ type activationTimingVerdict struct {
 }
 
 // activationTimingVerdictLocked folds every statement on the
-// battlefield that speaks about this activation.
+// battlefield, and on every seat's emblems (#1275), that speaks about
+// this activation.
 //
 // THE ORDER OF THE WALK DOES NOT MATTER, deliberately: the verdict is
 // three independent bits and CR 101.2's precedence is applied by the
@@ -196,11 +198,10 @@ type activationTimingVerdict struct {
 // Caller must hold g.mu (read or write).
 func (g *Game) activationTimingVerdictLocked(q ActivationQuery) activationTimingVerdict {
 	var v activationTimingVerdict
-	if g == nil || g.Battlefield == nil || CatalogActivationTimings == nil {
+	if g == nil || CatalogActivationTimings == nil {
 		return v
 	}
-	for i := range g.Battlefield.Cards {
-		src := g.Battlefield.Cards[i]
+	fold := func(src Card) {
 		for _, t := range ActivationTimingsForCard(src) {
 			// A statement that says nothing, or covers nothing, is
 			// skipped before the predicate runs — the cheapest way
@@ -220,6 +221,33 @@ func (g *Game) activationTimingVerdictLocked(q ActivationQuery) activationTiming
 			case TimingYourTurnOnly:
 				v.YourTurnOnly = true
 			}
+		}
+	}
+	if g.Battlefield != nil {
+		for i := range g.Battlefield.Cards {
+			fold(g.Battlefield.Cards[i])
+		}
+	}
+	// #1275, CR 114.3: an emblem's abilities function in the command
+	// zone, so the derived home has a second address — each seat's
+	// `Player.Emblems`, beside the battlefield. Teferi, Temporal
+	// Archmage's −10 makes an emblem whose whole text is one of these
+	// statements, and an emblem leaves only with its owner
+	// (CR 800.4a), so its presence IS the duration and nothing is
+	// stored here either. The fifth emblem walk, beside the layer
+	// pass's, the trigger harvest's and the two turn-based-action
+	// gathers (ADR 0064).
+	//
+	// ActivationTimingsForCard reads CatalogAbilityKey, which for an
+	// emblem is its CatalogKey: nothing in the game can name an
+	// emblem to remove its abilities, so the removal test it makes is
+	// always false here and costs one nil check.
+	for _, p := range g.Seats {
+		if p == nil || p.Emblems == nil {
+			continue
+		}
+		for i := range p.Emblems.Cards {
+			fold(p.Emblems.Cards[i])
 		}
 	}
 	return v
