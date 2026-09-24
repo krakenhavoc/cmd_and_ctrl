@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"slices"
+
+	"github.com/google/uuid"
+)
 
 // attack_target.go is S27's polymorphic attack declaration: an
 // attacking creature may be declared against a PLAYER, a
@@ -160,8 +164,8 @@ func (g *Game) setAttackTargetLocked(c *Card, target uuid.UUID) {
 // AttackingNothing is the Card.AttackingTarget of a creature that is
 // still attacking though what it attacked has been removed from
 // combat without leaving the battlefield (CR 506.4c, #1376, ADR 0045
-// Decision 36): the planeswalker or battle changed control or phased
-// out.
+// Decisions 36-37): the planeswalker or battle changed control, phased
+// out, or stopped being a planeswalker or battle.
 //
 // WHY A SENTINEL RATHER THAN A FLAG. A creature attacking nothing must
 // still read as attacking (every `AttackingTarget != uuid.Nil` check —
@@ -201,8 +205,9 @@ var AttackingNothing = uuid.MustParse("00000000-0000-0000-0000-000000000506")
 // still the active player's to change (the reselect verb refuses it
 // for the same reason).
 //
-// Called from materialiseControlLocked (a control change) and
-// phaseOutLocked. Not from removeFromCombatLocked, whose other caller
+// Called from materialiseControlLocked (a control change),
+// phaseOutLocked, and removeTypeLostAttackTargetsLocked (a planeswalker
+// or battle that stopped being one, #1387). Not from removeFromCombatLocked, whose other caller
 // is regeneration — CR 701.19a removes only an attacking or blocking
 // CREATURE from combat. A permanent LEAVING the battlefield needs no call:
 // its instance id stops resolving on its own, and a return is a new
@@ -226,6 +231,61 @@ func (g *Game) removeAttackedFromCombatLocked(target uuid.UUID) {
 		// "Is this creature attacking player P" just changed for every
 		// one of them (#1218's reasoning).
 		g.invalidateLayersForAttackChangeLocked()
+	}
+}
+
+// removeTypeLostAttackTargetsLocked is CR 506.4's TYPE clause for the
+// attacked side (#1387, ADR 0045 Decision 37): "a planeswalker that
+// stops being a planeswalker or a battle that stops being a battle" is
+// removed from combat. Run once per layer recompute, after the pass,
+// because the pass is the only place an effective type changes; any
+// attacked permanent that the pass left as neither a planeswalker nor a
+// battle has its announced attackers re-pointed at AttackingNothing
+// through removeAttackedFromCombatLocked, exactly as a control change
+// or a phase-out does.
+//
+// WHY THE REWRITE AND NOT THE LIVE READ. classifyAttackTargetLocked
+// already reads effective types, so while the permanent is not a
+// planeswalker its attackers resolve to nothing. That is right only
+// until the type comes back: an "until end of turn" or "for as long
+// as" effect that ends inside the same combat made it a planeswalker
+// again, and the attackers, still naming it, resumed attacking it and
+// dealt it damage. CR 506.4 removed it for good. Rewriting the target
+// at the moment of loss is what makes the removal stick.
+//
+// CHEAP BY CONSTRUCTION. Outside combat announcedAttacks is empty and
+// this returns at once. Inside combat it looks only at what announced
+// attackers name: a seat, the sentinel, or an id that no longer
+// resolves costs nothing but the lookup, and each attacked permanent
+// is classified once however many creatures attack it.
+//
+// A permanent that has LEFT the battlefield is skipped: its id stops
+// resolving on its own (CR 400.7), which is Decision 35's shape.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) removeTypeLostAttackTargetsLocked() {
+	if len(g.announcedAttacks) == 0 || g.Battlefield == nil {
+		return
+	}
+	var checked, lost []uuid.UUID
+	for i := range g.Battlefield.Cards {
+		a := &g.Battlefield.Cards[i]
+		target := a.AttackingTarget
+		if target == uuid.Nil || target == AttackingNothing || !g.announcedAttacks[a.InstanceID] {
+			continue
+		}
+		if slices.Contains(checked, target) {
+			continue
+		}
+		checked = append(checked, target)
+		c := findBattlefieldCard(g, target)
+		if c == nil || c.IsPlaneswalker() || c.IsBattle() {
+			continue
+		}
+		lost = append(lost, target)
+	}
+	for _, id := range lost {
+		g.removeAttackedFromCombatLocked(id)
 	}
 }
 

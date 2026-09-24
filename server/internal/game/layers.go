@@ -701,7 +701,9 @@ func DistinctCardTypesInAllGraveyards(g *Game) int {
 // write, not a read: it reassigns Card.effective on every
 // battlefield card and — since the S24 layer-2 control change —
 // Card.Controller, Card.SummonedThisTurn, Card.AttackingTarget and
-// Card.BlockingTarget on any permanent whose controller just moved.
+// Card.BlockingTarget on any permanent whose controller just moved,
+// and Card.AttackingTarget on any creature attacking a planeswalker or
+// battle that just stopped being one (#1387).
 //
 // This used to advertise itself as read-lock-safe on the strength of
 // a dedicated recompute mutex. That mutex serialised recomputes
@@ -773,6 +775,18 @@ func (g *Game) recomputeLayersLocked() {
 	// layer inputs, so this does not touch the layer version.
 	g.sweepUntapHoldsLocked()
 	g.lastResolvedVersion.Store(g.layerVersion.Load())
+	// #1387 (ADR 0045 Decision 37): CR 506.4's type clause. An
+	// attacked permanent this pass left as neither a planeswalker nor
+	// a battle is removed from combat, and its attackers attack nothing
+	// from here on, so a type that comes back later in the combat does
+	// not bring the attack back with it. AFTER the store, unlike the
+	// control-change door inside materialiseControlLocked: the rewrite
+	// bumps the layer version when an attacking-status static is live
+	// (invalidateLayersForAttackChangeLocked), and a bump made before
+	// the store would be swallowed by it. The rewrite changes no type,
+	// so the pass that bump asks for finds nothing to rewrite and
+	// settles.
+	g.removeTypeLostAttackTargetsLocked()
 	// #930: the control deltas are EMITTED here, after the store, and
 	// not from inside the walk that found them. EmitEvent dispatches
 	// to the listeners synchronously — the trigger harvester among
