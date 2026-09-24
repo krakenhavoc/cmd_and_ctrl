@@ -1046,6 +1046,7 @@ type pendingChoiceSnapshot struct {
 	ColorOptions         []string               `json:"colorOptions,omitempty"`
 	ColorPurpose         ColorPurpose           `json:"colorPurpose,omitempty"`
 	ManaRestrictions     []string               `json:"manaRestrictions,omitempty"`
+	ManaRiders           []ManaSpendRider       `json:"manaRiders,omitempty"`
 	ManaSourceKinds      ManaSourceKinds        `json:"manaSourceKinds,omitempty"`
 	ManaAmounts          map[string]int         `json:"manaAmounts,omitempty"`
 	ManaTapped           bool                   `json:"manaTapped,omitempty"`
@@ -1730,9 +1731,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 	if len(p.ManaPool) > 0 {
 		out.ManaPool = make(ManaPool, len(p.ManaPool))
 		for i, t := range p.ManaPool {
-			cloned := t
-			cloned.Restrictions = copyStrings(t.Restrictions)
-			out.ManaPool[i] = cloned
+			out.ManaPool[i] = t.clone()
 		}
 	}
 	out.CastPermissions = cloneCastPermissions(p.CastPermissions)
@@ -1880,6 +1879,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		ColorOptions:         copyStrings(c.ColorOptions),
 		ColorPurpose:         c.ColorPurpose,
 		ManaRestrictions:     copyStrings(c.ManaRestrictions),
+		ManaRiders:           copyManaRiders(c.ManaRiders),
 		ManaSourceKinds:      c.ManaSourceKinds,
 		ManaAmounts:          copyManaAmounts(c.ManaAmounts),
 		ManaTapped:           c.ManaTapped,
@@ -2453,9 +2453,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 	if len(p.ManaPool) > 0 {
 		out.ManaPool = make(ManaPool, len(p.ManaPool))
 		for i, t := range p.ManaPool {
-			cloned := t
-			cloned.Restrictions = copyStrings(t.Restrictions)
-			out.ManaPool[i] = cloned
+			out.ManaPool[i] = t.clone()
 		}
 	}
 	out.CastPermissions = cloneCastPermissions(p.CastPermissions)
@@ -2564,6 +2562,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		ColorOptions:         copyStrings(c.ColorOptions),
 		ColorPurpose:         c.ColorPurpose,
 		ManaRestrictions:     copyStrings(c.ManaRestrictions),
+		ManaRiders:           copyManaRiders(c.ManaRiders),
 		ManaSourceKinds:      c.ManaSourceKinds,
 		ManaAmounts:          copyManaAmounts(c.ManaAmounts),
 		ManaTapped:           c.ManaTapped,

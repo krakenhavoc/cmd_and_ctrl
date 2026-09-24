@@ -337,6 +337,15 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q declares an empty caveat", spec.Name))
 		}
 	}
+	// #1547: a spend rider that could never fire is a card that says
+	// something the engine silently does not do.
+	for i, ma := range spec.ManaAbilities {
+		for _, r := range ma.SpendRiders {
+			if err := validateManaSpendRider(r); err != nil {
+				panic(fmt.Sprintf("effects.Register: %q mana ability %d: %v", spec.Name, i, err))
+			}
+		}
+	}
 	// ADR 0071 decision 3: the Room door gate is RESERVED, not built.
 	// game.Card has no unlocked state, so Designation.Active answers
 	// false for it — a card that declared one would ship with that

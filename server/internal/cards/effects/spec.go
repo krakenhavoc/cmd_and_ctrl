@@ -1416,6 +1416,21 @@ type ManaAbility struct {
 	// instead, so the mana is unspendable rather than free: weaker
 	// than printed is acceptable, stronger is not. Added in S26.
 	RestrictionsFunc func(g *game.Game, controller, source uuid.UUID) []string
+
+	// SpendRiders are what this ability's mana does WHEN IT IS SPENT
+	// (#1547): "and that spell can't be countered" (Cavern of Souls),
+	// "if that mana is spent on a creature spell, it gains haste" (Hall
+	// of the Bandit Lord), "when that mana is spent to cast a red instant
+	// or sorcery spell, copy that spell" (Pyromancer's Goggles). Build
+	// them with the constructors in mana_spend_rider.go —
+	// SpentSpellCantBeCountered, SpentCreatureGainsHaste,
+	// SpentEntersWithCounters, WhenManaSpent — never by hand: the
+	// trigger constructor is also what registers the effect.
+	//
+	// Not a restriction. A rider decides nothing about where the mana
+	// may go and so does not hide the ability from the auto-tapper; its
+	// filter only decides whether it FIRES.
+	SpendRiders []game.ManaSpendRider
 }
 
 // ManaAbilityCost names the activation cost of one mana ability.

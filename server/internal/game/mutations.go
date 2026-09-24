@@ -1319,6 +1319,15 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		targetSpec: spec,
 		modeSpec:   modeSpec,
 	}
+	// #1547, CR 601.2h: the mana is spent, so what it does when it is
+	// spent happens now — Cavern of Souls' "that spell can't be
+	// countered", Pyromancer's Goggles' copy trigger. Against the SAME
+	// spend context applyCastCostLocked solved the payment under, so a
+	// rider's filter and the restriction that let the token pay can
+	// never disagree about what the spell is. A trigger queued here is
+	// placed by the runStateChecksLocked at the bottom of the cast,
+	// above the spell.
+	g.applyManaSpendRidersLocked(g.StackMeta[cardID], ManaSpendForCast(card), card)
 	// CR 702.62a (#659): the permanent this cast produces has haste.
 	// Registered here rather than at resolution because the grant that
 	// says so has been consumed by now — the card has left exile and
@@ -1974,6 +1983,7 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 				p, cardID,
 				repeatColor(color, slot.AmountFor(color)),
 				restrictionsFor(g, ab, p.ID, cardID),
+				ab.SpendRiders,
 				// #1212: what the source WAS, snapshotted off the copy
 				// taken before the tap — the same copy the triggered
 				// mana abilities below use, so the two can never
@@ -2188,6 +2198,7 @@ func (g *Game) materializeExiledManaSourceLocked(
 			p, cardID,
 			repeatColor(color, slot.AmountFor(color)),
 			restrictionsFor(g, ab, p.ID, cardID),
+			ab.SpendRiders,
 			srcKinds,
 			// CR 106.12a: not a tap for mana. The card was never
 			// tapped and was never a permanent.
@@ -6151,6 +6162,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 				p, cardID,
 				[]string{options[0]},
 				restrictionsFor(g, &ab, playerID, cardID),
+				ab.SpendRiders,
 				srcKinds,
 				ab.TapCost,
 				nil,
@@ -6173,6 +6185,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 					p, cardID,
 					repeatColor(color, slot.AmountFor(color)),
 					restrictionsFor(g, &ab, playerID, cardID),
+					ab.SpendRiders,
 					srcKinds,
 					ab.TapCost,
 					nil,
@@ -6203,6 +6216,10 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 			// one source every "mana from a Treasure" card is printed
 			// about would be the one source that records nothing.
 			ManaSourceKinds: srcKinds,
+			// #1547: and the spend riders, for the reason the
+			// restrictions ride here — a Cavern of Souls pick answered
+			// without them would mint mana whose spell CAN be countered.
+			ManaRiders: copyManaRiders(ab.SpendRiders),
 			// #742: "N mana of any one color" — one pick, N tokens.
 			ManaAmounts: copyManaAmounts(slot.Amounts),
 			// #763: this pick is part of TAPPING A PERMANENT FOR MANA
