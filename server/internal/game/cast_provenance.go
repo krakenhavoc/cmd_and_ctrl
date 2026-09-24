@@ -202,16 +202,10 @@ func (p CastProvenance) Clone() CastProvenance {
 	if len(p.OptionalCosts) > 0 {
 		p.OptionalCosts = append([]int(nil), p.OptionalCosts...)
 	}
-	if len(p.Mana) > 0 {
-		mana := make([]ManaToken, len(p.Mana))
-		for i, t := range p.Mana {
-			mana[i] = t
-			if len(t.Restrictions) > 0 {
-				mana[i].Restrictions = append([]string(nil), t.Restrictions...)
-			}
-		}
-		p.Mana = mana
-	}
+	// ManaToken.clone: the restrictions and (#1547) the spend riders,
+	// whose Applied stamps are what a Hall of the Bandit Lord's haste
+	// reads off this permanent.
+	p.Mana = cloneManaTokens(p.Mana)
 	return p
 }
 
@@ -317,15 +311,7 @@ func (g *Game) stampCastProvenanceLocked(cardID uuid.UUID, item *StackItem) {
 		// last moment.
 		X: item.XValue,
 	}
-	if len(item.Paid.Mana) > 0 {
-		prov.Mana = make([]ManaToken, len(item.Paid.Mana))
-		for i, t := range item.Paid.Mana {
-			prov.Mana[i] = t
-			if len(t.Restrictions) > 0 {
-				prov.Mana[i].Restrictions = append([]string(nil), t.Restrictions...)
-			}
-		}
-	}
+	prov.Mana = cloneManaTokens(item.Paid.Mana)
 	if !prov.Any() {
 		// Nothing to say. Left zero rather than written, so a
 		// permanent whose cast recorded nothing at all is

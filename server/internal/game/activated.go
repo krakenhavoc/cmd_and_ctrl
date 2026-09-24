@@ -1255,7 +1255,13 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// below. The effect reads the paid counter count back out of it
 	// (Context.CountersRemoved), the same way it reads X.
 	paid := PaidCost{}
+	// #1547: the object the mana paid for, as the payment saw it —
+	// taken here because a sacrifice-this cost below ends the source,
+	// and the spend riders are judged on what the payment was FOR.
+	var riderCtx ManaSpendContext
+	var riderSource Card
 	if ab.Cost.Mana != "" {
+		riderCtx, riderSource = ManaSpendForAbility(*source), *source
 		// S32 (#352): "activate abilities of colorless Eldrazi" is a
 		// restriction on the SOURCE permanent, so the spend context
 		// is built from it.
@@ -1291,7 +1297,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		// owed and a tap pays part of what is owed — CR 601.2f
 		// before 601.2h, the order the cast path already follows.
 		manaCost = WaterbendReduced(manaCost, params.XValue, len(params.WaterbendIDs))
-		spent, err := g.payAbilityManaCostLocked(p, cardID, source.Name, manaCost, params, ManaSpendForAbility(*source), excluded)
+		spent, err := g.payAbilityManaCostLocked(p, cardID, source.Name, manaCost, params, riderCtx, excluded)
 		if err != nil {
 			return err
 		}
@@ -1461,6 +1467,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		Seq:        g.nextStackSeqLocked(),
 	}
 	g.StackMeta[itemID] = item
+	// #1547: what the mana did when it was spent. The cast path's
+	// call, for an ability: a rider whose filter admits an activation
+	// fires here, against the context the payment was solved under.
+	g.applyManaSpendRidersLocked(item, riderCtx, riderSource)
 	// #628: activating an ability is a player decision, so it
 	// restarts the CR 726 loop run. The announce emits EventTrigger
 	// rather than an event of its own — the same kind a triggered
