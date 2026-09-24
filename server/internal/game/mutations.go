@@ -907,6 +907,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// may belong to a MODE (Heliod's Intervention); the steps hold
 	// clause copies, so nothing mutates the shared catalog entry.
 	xSteps := resolveStepCountsFromX(steps, params.XValue)
+	// #1559: "with mana value X or less" — X is announced before
+	// targets (CR 601.2b / 602.2b), so the bound is known here.
+	bindStepsX(steps, params.XValue)
 	params.Targets = assignAnnouncedSlots(steps, params.Targets)
 	for _, i := range xSteps {
 		// Max 0 reads as "unbounded" to the ordinary count check, so

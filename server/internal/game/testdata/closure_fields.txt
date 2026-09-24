@@ -86,6 +86,7 @@ SearchLibrarySpec.Validate                   census:ChoiceResumeFrames          
 StackItem.Effect                             census:StackEffects                # Game.StackMeta.Effect
 StaticAbility.AppliesTo                      census:ScopedStatics               # Game.ScopedStatics.Ability.AppliesTo
 StaticAbility.Apply                          census:ScopedStatics               # Game.ScopedStatics.Ability.Apply
+TargetDifference.Key                         census:StackTargetSpecs            # Game.StackMeta.targetSpec.Different.Key
 TargetSpec.AbilityOK                         census:StackTargetSpecs            # Game.StackMeta.targetSpec.AbilityOK
 TargetSpec.CardOK                            census:StackTargetSpecs            # Game.StackMeta.targetSpec.CardOK
 TargetSpec.PlayerOK                          census:StackTargetSpecs            # Game.StackMeta.targetSpec.PlayerOK
