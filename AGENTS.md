@@ -208,6 +208,14 @@ Closes #<n>, relates to #<n>
 
 If a PR does not belong to the active sprint, say so explicitly and justify it.
 
+Feature PRs target `develop`, so GitHub does not apply their closing keywords
+directly (it only does that for PRs targeting the default branch). After a
+`develop` → `main` promotion merges, `main-promotion-issue-close.yml` maps the
+promoted squash commits back to their original PRs and honors line-leading
+`Closes`, `Fixes`, and `Resolves` directives from the `## Issues` section. Keep
+each closing directive explicit in that section; prose such as "does not close"
+and references outside it are deliberately ignored.
+
 ---
 
 ## 5. Commands you'll actually run
