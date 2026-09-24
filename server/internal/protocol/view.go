@@ -518,6 +518,14 @@ type ModeOptionView struct {
 	// Per viewer with `legal_targets`, and for the same reason
 	// (#1172): each entry is a legal set.
 	Clauses []LegalTargetsView `json:"clauses,omitempty"`
+	// Cost is CR 702.172a's Spree: this bullet's own additional mana
+	// cost, in brace notation, paid only if it is chosen — on top of
+	// the card's printed cost and every OTHER chosen bullet's. Empty
+	// for an ordinary modal bullet, which is every modal card before
+	// S45. Public alongside `label`: it is the printed clause, the
+	// same reason `target_mode` is public while `legal_targets` is
+	// not. Added by ADR 0065's 2026-09-23 amendment.
+	Cost string `json:"cost,omitempty"`
 }
 
 // AdditionalCostView is the wire shape of game.AdditionalCost — the
@@ -3964,7 +3972,7 @@ func viewOfModeSpec(g *game.Game, src game.TargetSource, ms *game.ModeSpec) *Mod
 		Options:    make([]ModeOptionView, 0, len(ms.Options)),
 	}
 	for _, o := range ms.Options {
-		ov := ModeOptionView{Label: o.Label}
+		ov := ModeOptionView{Label: o.Label, Cost: o.Cost}
 		if o.Targets != nil {
 			ov.TargetMode = o.Targets.Mode
 			ov.LegalTargets = viewOfLegalTargets(g.LegalTargetsForEffect(src, o.Targets), o.Targets)

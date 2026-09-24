@@ -1739,6 +1739,12 @@ export interface ModeOptionView {
   // that is nearly every bullet, where legal_targets is the whole
   // answer.
   clauses?: LegalTargetsView[];
+  // Spree (CR 702.172a, ADR 0065's 2026-09-23 amendment): this
+  // bullet's own additional mana cost, in brace notation, paid only
+  // if it is chosen — on top of the card's printed cost and every
+  // OTHER chosen bullet's. Absent for an ordinary modal bullet, which
+  // is every modal card before S45.
+  cost?: string;
 }
 
 // LegalTargetsView is a clause's legal set right now plus its

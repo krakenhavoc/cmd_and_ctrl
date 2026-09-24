@@ -695,32 +695,19 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// sweep). Both live in x.go.
 	xFloor := enumeratedXFloor(game.CatalogKey(card), 0)
 	xLifeCeiling := xCeilingFromCost(addCost, p.Life)
-	x := 0
-	// #1242: the priced cost the X was solved against, kept for the
-	// per-payment affordability check in the expansion below.
-	var pricedAll game.ParsedCost
-	if !perTarget {
-		priced, err := e.g.ApplyCostModifiersForEffect(cost, game.CostQuery{
-			Card:       card,
-			Controller: e.seat,
-			FromZone:   fromZone,
-		})
-		if err != nil {
-			return
-		}
-		var ok bool
-		x, ok = e.announcedX(priced, spend, xFloor, xLifeCeiling)
-		if !ok {
-			return
-		}
-		pricedAll = priced
-	}
 
 	// Modes → each choice of modes yields its own clause list, and
 	// each clause its own picks (#764). Options with no legal target
 	// are dropped before any combination is built, so the budget is
 	// never spent on selections the engine would refuse (ADR 0065
 	// §6).
+	//
+	// Computed BEFORE the price search below, which used to run once
+	// for the whole card: ADR 0065's 2026-09-23 amendment lets a mode
+	// carry its own cost (CR 702.172a, Spree), so — unlike every modal
+	// card before it — the price this cast owes can depend on WHICH
+	// modes are chosen, and the search has to run once per mode
+	// selection rather than once for the card.
 	modeSpec := game.ModeSpecFor(game.CatalogKey(card))
 	modeSets := [][]int{nil}
 	if modeSpec != nil {
@@ -817,6 +804,39 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// ALTERNATIVE cost payments can be offered against it below.
 	var first *announcedCast
 	for _, modes := range modeSets {
+		// Spree (CR 702.172a): this selection's own mana joins the
+		// base cost at the same point printedCostLocked adds it
+		// (ADR 0073 §3's precedence), so the price this candidate is
+		// judged against is exactly what CastSpell will charge for it
+		// (#544). A no-op — modeCost equals cost — for a ModeSpec with
+		// no Cost on any option, which is every modal card before S45.
+		modeCost, err := game.AddModeCostMana(cost, modeSpec, modes)
+		if err != nil {
+			continue
+		}
+		x := 0
+		// #1242: the priced cost the X was solved against, kept for the
+		// per-payment affordability check in the expansion below. Solved
+		// per MODE SELECTION now rather than once for the card, because
+		// modeCost — and so this price — can differ between selections
+		// (Spree, S45).
+		var pricedAll game.ParsedCost
+		if !perTarget {
+			priced, err := e.g.ApplyCostModifiersForEffect(modeCost, game.CostQuery{
+				Card:       card,
+				Controller: e.seat,
+				FromZone:   fromZone,
+			})
+			if err != nil {
+				continue
+			}
+			var ok bool
+			x, ok = e.announcedX(priced, spend, xFloor, xLifeCeiling)
+			if !ok {
+				continue
+			}
+			pricedAll = priced
+		}
 		// The budget is spent MODES-outermost: every mode selection
 		// gets at least one target set before any gets a second, so a
 		// bot is never offered only the first bullet of a charm
@@ -830,7 +850,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		// and the X it announces is how many it picked.
 		xSteps := stepsCountedByX(steps)
 		if len(xSteps) > 0 {
-			if cost.XSlots == 0 {
+			if modeCost.XSlots == 0 {
 				// The step's X is announced by a cost this package
 				// cannot price — Waterbender's Restoration's
 				// waterbend {X}, paid by tapping artifacts and
@@ -869,7 +889,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 				// set is skipped before any budget is spent on it, so
 				// a Fireball the seat can pay for at one target is not
 				// crowded out by the three-target sets it cannot.
-				priced, err := e.g.ApplyCostModifiersForEffect(cost, game.CostQuery{
+				priced, err := e.g.ApplyCostModifiersForEffect(modeCost, game.CostQuery{
 					Card:       card,
 					Controller: e.seat,
 					FromZone:   fromZone,

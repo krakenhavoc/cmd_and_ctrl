@@ -199,6 +199,41 @@ func castPriceCases() []castPriceCase {
 			want: "generic=3 x=0 colors=[G R R]",
 		},
 		{
+			// ADR 0065's 2026-09-23 amendment, CR 702.172a: Spree — the
+			// sum of every CHOSEN mode's own cost joins the base at the
+			// same point an optional cost's mana does (ADR 0073 §3), so
+			// a two-bullet Spree spell prices as printed cost + both
+			// bullets, not just one of them.
+			name: "spree: two chosen modes sum their own costs",
+			setup: func(t *testing.T) (*Game, *Player, uuid.UUID, CastSpellParams) {
+				g := newActiveGame(t)
+				me := g.Seats[0]
+				const spree = "test-price-spree"
+				withCatalogModeSpec(t, func(id string) *ModeSpec {
+					if id != spree {
+						return nil
+					}
+					return &ModeSpec{
+						Prompt: "Spree", Min: 1, Max: 2,
+						Options: []ModeOption{
+							{Label: "bullet one", Cost: "{1}{U}"},
+							{Label: "bullet two", Cost: "{3}"},
+						},
+					}
+				})
+				id := spellInHand(t, g, me, "Test Spree", "Instant", "{U}")
+				g.WithWriteLock(func() {
+					for i := range me.Hand.Cards {
+						if me.Hand.Cards[i].InstanceID == id {
+							me.Hand.Cards[i].OracleID = spree
+						}
+					}
+				})
+				return g, me, id, CastSpellParams{Modes: []int{0, 1}}
+			},
+			want: "generic=4 x=0 colors=[U U]",
+		},
+		{
 			// CR 903.8, layered on the cost being PAID.
 			name: "commander tax on a third cast",
 			setup: func(t *testing.T) (*Game, *Player, uuid.UUID, CastSpellParams) {
