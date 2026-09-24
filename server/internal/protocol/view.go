@@ -1852,12 +1852,15 @@ type CastSurfaceView struct {
 	TargetCostNotes []string `json:"target_cost_notes,omitempty"`
 	// CastableHere is the S29 "this card can be cast from the zone
 	// you are looking at it in" bit, for the zones where that is not
-	// already implied by the surface: the graveyard, today. Hand and
-	// command-zone cards never carry it — every card in a hand is a
-	// cast candidate, and the command zone has its own button.
+	// already implied by the surface: the graveyard, a library top
+	// and (since #1389) exile. Hand and command-zone cards never carry
+	// it — every card in a hand is a cast candidate, and the command
+	// zone has its own button.
 	//
-	// It is the flag the zone browser keys its cast button off, the
-	// way exile keys its impulse button off `exile_play`. The cost
+	// It is the flag the zone browser keys its cast button off, and
+	// in exile the one the castable-from-exile strip lights a card
+	// by (#1389): "you may cast it NOW", timing included, where
+	// `exile_play` only says who holds the grant. The cost
 	// to pay rides `alternative_costs`, already filtered to the
 	// offers claimable from this zone — so a Faithless Looting in
 	// the graveyard carries flashback and nothing else, while the
@@ -1922,6 +1925,46 @@ type CastSurfaceView struct {
 	// is not hidden information. Cleared with the other announce
 	// hints on the non-knower redaction.
 	CantCast string `json:"cant_cast,omitempty"`
+	// CastPrices is what THIS viewer would be charged to cast the card
+	// out of EXILE right now, one entry per price the cast may claim,
+	// cheapest first (#1389). Each is the total after every CR 601.2f
+	// cost modifier, from game.PriceCastForEffect — the pricer the
+	// cast path, the auto-tap preview and the bot enumerator already
+	// share — so the badge on the client's castable-from-exile strip
+	// is the number the auto-tapper will then tap for.
+	//
+	// Exile only, and only on the frame of a seat holding a LIVE
+	// permission over the card: a warp or foretell grant whose later
+	// turn has not come yet has no price, because the engine would
+	// not accept the cast at any. PER VIEWER, like `castable_here`: a
+	// cost modifier can be scoped to one player ("spells you cast
+	// cost {1} less"), so one seat's price is not another's.
+	CastPrices []CastPriceView `json:"cast_prices,omitempty"`
+}
+
+// CastPriceView is one price a cast may claim, as the engine will
+// charge it (#1389).
+type CastPriceView struct {
+	// AlternativeCost is the `alternative_costs[i].key` this price
+	// claims, and the value the cast sends as `alternative_cost`.
+	// Empty for the path that claims none: the printed mana cost, or
+	// the flat price a permission charges in its place (airbend's
+	// {2}, a plotted card's {0}).
+	AlternativeCost string `json:"alternative_cost,omitempty"`
+	// Label names the price for a tooltip — the offer's own label
+	// ("Foretell"), or empty for the unclaimed path.
+	Label string `json:"label,omitempty"`
+	// Cost is the mana charged, in Scryfall brace notation, after
+	// every cost modifier. Never empty: a cast that charges no mana
+	// reads "{0}", so a free cast is a value rather than an absence.
+	Cost string `json:"cost"`
+	// Life is the life a Bolas's-Citadel-shaped price charges on top
+	// (CR 119.4). Absent for every exile price today.
+	Life int `json:"life,omitempty"`
+	// Printed is true when this price IS the card's printed mana cost,
+	// untouched: no alternative cost, no permission's own price, and
+	// no modifier moved it. The client shows no badge for it.
+	Printed bool `json:"printed,omitempty"`
 }
 
 // CardFaceView is one printed face on the wire (ADR 0034). Enough
@@ -3339,6 +3382,9 @@ func (s castStamps) publicIn(kind game.ZoneKind) castStamps {
 	s.CastableHere = false
 	s.LegalTargets = nil
 	s.Clauses = nil
+	// #1389: a price is one seat's answer — a cost modifier may be
+	// scoped to one player.
+	s.CastPrices = nil
 	// #1221: an activation row is the same kind of answer as
 	// `castable_here` — "what may YOU announce from here" — and it
 	// carries legal sets of its own. None of it is public.
@@ -3871,9 +3917,9 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	//
 	// Hand and the command zone never carry the bit: every card in
 	// them is a cast candidate and an always-true flag would be noise
-	// the client had to ignore. Exile keys its button off `exile_play`
-	// instead, whose per-viewer stamps this bit — public since S29 —
-	// is not part of.
+	// the client had to ignore. Exile carries it since #1389, for the
+	// castable-from-exile strip, with a land answered by the land-play
+	// rule rather than the cast gate (exileCastableNow).
 	//
 	// #1195: and the THIRD input, game.CastTimingOpenLocked — the one
 	// CR 307.1 read CastSpell and the bot enumerator also call. Until
@@ -3889,6 +3935,15 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	case game.ZoneGraveyard, game.ZoneLibrary:
 		out.CastableHere = out.CantCast == "" && len(offers) > 0 &&
 			haveLive && g.CastTimingOpenLocked(caster, live, kind, grant)
+	case game.ZoneExile:
+		// #1389: exile joins them, for the castable-from-exile strip.
+		// A seat reaches this only through stampGrantedPermissions,
+		// which asks the engine for a LIVE permission first, so warp's
+		// and foretell's "on a later turn" never gets here early.
+		if haveLive {
+			out.CastableHere = exileCastableNow(g, caster, live, grant, out.CantCast, offers)
+			out.CastPrices = viewOfCastPrices(g, caster, live, offers)
+		}
 	}
 	if spec == nil {
 		return out
@@ -3917,6 +3972,86 @@ func phyrexianSymbolsIn(costStr string) int {
 		return 0
 	}
 	return cost.PhyrexianSymbols()
+}
+
+// exileCastableNow is `castable_here` for a card in exile (#1389):
+// the graveyard's three inputs — no cast gate refuses it, a price is
+// claimable, and game.CastTimingOpenLocked says the window is open —
+// with a LAND answered by the land rule instead. A land is played,
+// not cast (CR 305.1): a cast-only grant (Ragavan) strands it, and a
+// play grant (Breeches) opens it only when CastSpell's land branch
+// would accept it.
+//
+// Caller must hold g.mu.
+func exileCastableNow(g *game.Game, caster uuid.UUID, card game.Card, grant *game.CastPermission, cantCast string, offers []*game.AlternativeCost) bool {
+	if card.IsLand() {
+		return grant != nil && !grant.CastOnly && g.LandPlayOpenForEffect(caster)
+	}
+	return cantCast == "" && len(offers) > 0 && g.CastTimingOpenLocked(caster, card, game.ZoneExile, grant)
+}
+
+// viewOfCastPrices prices every offer a cast out of exile may claim,
+// through game.PriceCastForEffect (#1389) — the pricer CastSpell's
+// payment, the auto-tap preview and the bot enumerator read, so the
+// strip's badge cannot name a number the auto-tapper then disagrees
+// with. `offers` is castStampsFor's own game.CastOffersForLocked list;
+// a nil entry is the path that claims no alternative cost.
+//
+// Priced with no targets and X = 0, as the auto-tap preview's first
+// readout is: a per-target surcharge (strive) reads as its one-target
+// price, and an {X} stays in the string.
+//
+// Cheapest first by mana value, then by life, so the client's badge is
+// entry 0. A land has no price (it is played, not cast) and gets nil.
+//
+// Caller must hold g.mu.
+func viewOfCastPrices(g *game.Game, caster uuid.UUID, card game.Card, offers []*game.AlternativeCost) []CastPriceView {
+	if card.IsLand() {
+		return nil
+	}
+	type priced struct {
+		v  CastPriceView
+		mv int
+	}
+	var rows []priced
+	for _, o := range offers {
+		params := game.CastSpellParams{FromZone: "exile", Face: card.ActiveFace}
+		var v CastPriceView
+		if o != nil {
+			params.AlternativeCost = o.Key
+			v.AlternativeCost = o.Key
+			v.Label = o.Label
+			v.Life = o.Life
+		}
+		price, err := g.PriceCastForEffect(caster, card, params)
+		if err != nil {
+			// A price the engine cannot compute is a cast it would
+			// refuse; showing a guess would be worse than no badge.
+			continue
+		}
+		v.Cost = price.Total.String()
+		if v.Cost == "" {
+			v.Cost = "{0}"
+		}
+		// The printed cost, untouched: the cost string this cast pays
+		// is the one in the corner (an airbend {2} on a two-drop is;
+		// a granted flashback at "its mana cost" is), no modifier
+		// moved it, and no life rides on top.
+		v.Printed = price.Paid == price.Printed && v.Life == 0 &&
+			price.Total.String() == price.Base.String()
+		rows = append(rows, priced{v: v, mv: price.Total.ManaValue()})
+	}
+	sort.SliceStable(rows, func(i, j int) bool {
+		if rows[i].mv != rows[j].mv {
+			return rows[i].mv < rows[j].mv
+		}
+		return rows[i].v.Life < rows[j].v.Life
+	})
+	var out []CastPriceView
+	for _, r := range rows {
+		out = append(out, r.v)
+	}
+	return out
 }
 
 // ProtectionView is one "protection from <quality>" on a permanent,
@@ -5992,6 +6127,9 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// card the same weak way `unimplemented` does. Cleared with the
 	// rest of the cost surface.
 	out.CastableHere = false
+	// #1389: a foretold card's price is its foretell cost, which names
+	// the card as loudly as its mana cost does.
+	out.CastPrices = nil
 	// ADR 0073 §7: "Cast this spell only if you control a legendary
 	// creature or planeswalker" says the card is a legendary sorcery,
 	// which is more than its mana cost gives away. CR 708.2 also

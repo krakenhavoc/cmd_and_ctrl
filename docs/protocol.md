@@ -1662,6 +1662,72 @@ seats that disagree about timing are told different things about the
 same card, which is what the rules say.
 
 
+## Casting from exile: `castable_here` and `cast_prices` (#1389, 2026-09-24)
+
+Additive, `v` unmoved. Two answers reach the frame of a seat that holds
+a LIVE cast permission over a card in `exile`, for the client's
+castable-from-exile strip beside the hand.
+
+- **`castable_here` is now stamped in exile too.** Same bit, same
+  meaning as in a graveyard: "YOU may cast this from here right now" —
+  no `cant_cast`, a claimable price, and `game.CastTimingOpenLocked`
+  (so a plotted card is `false` outside its owner's main phase, and a
+  sorcery is `false` in an end step). A LAND under a "you may play it"
+  grant (Breeches) is answered by the land rule instead — the owner's
+  main phase, an empty stack, a land drop left — and a land under a
+  cast-only grant (Ragavan) is never `true` (CR 305.1). The note in
+  #1195 that "exile keys its button off `exile_play`" is retired:
+  `exile_play` still names the grant's holder, its face and its
+  `not_before_turn`, and `castable_here` is the "now" half.
+- **`cast_prices`** is a new `CastPriceView[]` on the cast surface
+  (card and castable faces), exile only:
+
+  ```
+  { alternative_cost?: string, label?: string, cost: string, life?: number, printed?: boolean }
+  ```
+
+  One entry per price the cast may claim, **cheapest first**. `cost` is
+  the total AFTER every CR 601.2f cost modifier, computed by
+  `game.PriceCastForEffect` — the pricer `CastSpell`, the auto-tap
+  preview and the bot enumerator share — so it is the number the
+  auto-tapper will tap for. It is never empty: a free cast reads
+  `"{0}"`. `alternative_cost` is the key the cast sends to claim that
+  price (`"foretell"`, a granted `"flashback"`), empty for the path
+  that claims none — the printed cost, or a permission's own flat
+  price (airbend's `{2}`, a plotted card's `{0}`). `printed` is true
+  when the price IS the card's printed mana cost, untouched; the client
+  draws no badge for it. Priced with no targets and X = 0, as the
+  auto-tap preview's first readout is.
+
+  | Mechanic | `cast_prices[0].cost` | `printed` | when `castable_here` |
+  |---|---|---|---|
+  | impulse exile | the printed cost | yes | the card's own timing |
+  | airbend | `{2}` | only on a card that prints `{2}` | the card's own timing |
+  | warp | the printed cost | yes | from `not_before_turn` |
+  | plot | `{0}` | no | a later turn, owner's main phase, empty stack |
+  | foretell | the foretell cost, `alternative_cost: "foretell"` | no | a later turn |
+  | adventure (CR 715.4) | the creature half's printed cost | yes | the creature's timing |
+  | prepare (ADR 0090) | the prepare spell's printed cost | yes | the spell's timing |
+  | ADR 0066 grants | per the grant | per the grant | per the grant |
+
+  Cascade, discover and hideaway cast during resolution rather than
+  under a lingering permission, so they never reach the strip.
+
+**Whose answer it is (#1055).** Both are per viewer and ride the same
+per-seat carrier as `legal_targets`: the holder's frame gets them and
+nobody else's does, spectators and admin frames included. A cost
+modifier can be scoped to one player, so one seat's price is not
+another's. Both are cleared on the non-knower redaction, so a
+face-down FORETOLD card still reads as a card back with no price to
+anybody but its owner — the foretell cost would name the card.
+
+**Before the window opens.** A warp, plot or foretell grant on the turn
+it was made is not live, so the holder gets the public `exile_play`
+(with `not_before_turn`) and neither `castable_here` nor
+`cast_prices`: the engine would not accept the cast at any price. The
+client shows such a card dimmed with a "next turn" hint and no badge.
+
+
 ## Schema evolution rules
 
 - **Breaking changes** bump `v` and require updating both server and client
