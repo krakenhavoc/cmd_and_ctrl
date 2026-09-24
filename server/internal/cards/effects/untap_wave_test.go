@@ -14,7 +14,7 @@ func TestUntapWaveCardsAreRegisteredWithTheDeclaredSeam(t *testing.T) {
 		full         bool
 	}{
 		{"Tangle", "f627e125-15af-4e53-b34e-82b60e4ec87b", false, true},
-		{"Mana Vault", "736892cb-a34b-4bb9-b56c-e26e3db207a2", true, false},
+		{"Mana Vault", "736892cb-a34b-4bb9-b56c-e26e3db207a2", true, true}, // full since #1418
 		{"Basalt Monolith", "6b8cf2a0-b045-4d91-9d91-c602d40c6237", true, true},
 		{"Grim Monolith", "229d6627-1292-4ae1-8849-b0f956fa6540", true, true},
 		{"Goblin Sharpshooter", "d81285b7-a718-411a-8be3-ecc0cfe0bcb0", true, true},

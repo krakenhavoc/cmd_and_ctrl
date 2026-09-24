@@ -483,6 +483,10 @@ var stackItemFields = plan(
 	// it, and a restore that lost it would let a bounced-and-replayed
 	// Equipment be equipped by the old ability.
 	"SourceEpoch", carried, "",
+	// #1418: the same reading for EVERY ability item, triggers
+	// included — the object "this" names. Carried for SourceEpoch's
+	// reason: it is a reading of a card that has since moved.
+	"SourceObject", carried, "",
 	"Label", carried, "",
 	"DoubledBy", carried, "",
 	"DoubledByName", carried, "",
@@ -554,6 +558,7 @@ var delayedTriggerFields = plan(
 	"ID", carried, "",
 	"Controller", carried, "",
 	"SourceCardID", carried, "",
+	"SourceObject", carried, "", // #1418, CR 603.7d
 	"Label", carried, "",
 	"At", carried, "",
 	"ControllerTurnOnly", carried, "",

@@ -63,6 +63,24 @@ type ObjectRef struct {
 	Epoch int       `json:"epoch"`
 }
 
+// stamped is the ref as a snapshot field: nil for the zero ref, so an
+// unstamped item writes nothing and an old snapshot reads back as
+// unstamped (#1418). The ID is the "stamped" bit; epoch zero is real.
+func (r ObjectRef) stamped() *ObjectRef {
+	if r.ID == uuid.Nil {
+		return nil
+	}
+	return &r
+}
+
+// value is the inverse of stamped.
+func (r *ObjectRef) value() ObjectRef {
+	if r == nil {
+		return ObjectRef{}
+	}
+	return *r
+}
+
 // PermanentInfo is one battlefield permanent's state, live or as it last
 // existed there.
 type PermanentInfo struct {
