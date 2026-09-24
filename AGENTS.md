@@ -863,6 +863,27 @@ weaker-than-printed answer. Converge counts no colours, adamant does not
 turn on, and "if no mana was spent" is false. Say so in a caveat, as
 Painful Truths and Vexing Bauble do.
 
+**Mana that does something when it's spent (#1547)** — "and that
+spell can't be countered", "if that mana is spent on a creature
+spell, it gains haste", "when that mana is spent to cast …, copy
+that spell" — goes in `ManaAbility.SpendRiders`, built with the
+constructors in
+[mana_spend_rider.go](server/internal/cards/effects/mana_spend_rider.go):
+
+```go
+SpendRiders: []game.ManaSpendRider{SpentSpellCantBeCountered(ManaRestrictCast)},         // Cavern of Souls
+SpendRiders: []game.ManaSpendRider{SpentCreatureGainsHaste()},                           // Hall of the Bandit Lord
+SpendRiders: []game.ManaSpendRider{WhenManaSpent("Pyromancer's Goggles", game.ManaSpendTrigger{
+    Label: "Pyromancer's Goggles — copy that spell", Effect: copyTheSpellYouJustCast,
+}, ManaRestrictCast, ManaRestrictColor("R"), ManaRestrictAnyType("Instant", "Sorcery"))},
+```
+
+The trailing tags are the rider's filter — whether it FIRES — and are
+not a spend restriction: Hall's {C} still pays for anything. A card
+whose mana is also restricted (Cavern) declares both. Riders fire only
+on a recorded payment, so every rider card carries the strict-mana
+caveat. See ADR 0040's 2026-09-24 amendment.
+
 For non-mana, non-static activated abilities (planeswalker +1/-1,
 equip, cycling, etc.), wait — see the deferral list below.
 

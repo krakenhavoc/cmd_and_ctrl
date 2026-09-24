@@ -15,25 +15,23 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // distinction the Temple cycle pinned. The mana half is Command
 // Tower's identity-narrowed pipe.
 //
-// SANDBOX SIMPLIFICATION — the scry rider is NOT implemented.
-// "When THAT MANA is spent to cast …" is a delayed trigger keyed to
-// the provenance of one mana in the pool: the engine's ManaPool
-// records colour and nothing about which permanent produced it, so
-// there is no seam to hang the trigger on. Wiring it needs
-// per-source mana tagging (which also unlocks Cavern of Souls'
-// "can't be countered" and Delighted Halfling's spend-restriction),
-// and that is a mana-pipeline change, not a card change.
+// The scry is a spend rider (#1547): a triggered ability that fires
+// when the token pays for a creature spell and goes on the stack above
+// it. "Shares a creature type with your commander" is the rider's
+// Condition rather than a tag, because it reads the board — any
+// commander the controller owns, wherever it is, partners included
+// (sharesCreatureTypeWithYourCommander) — and SharesCreatureType is the
+// one place that question is answered, changelings and all.
 //
-// The direction is WEAKER than printed: the land still enters tapped
-// and still produces the same mana; it just never scries. A player
-// who wants the scry can take it manually — the automation simply
-// does not grant it.
+// One declared simplification, weaker than printed: with strict mana
+// off the pool is never spent (ADR 0068 §3), so no token pays and the
+// scry never happens.
 func init() {
 	Register(Spec{
 		OracleID:     "b473e293-59e3-4e04-acf2-622604aeb25f",
 		Name:         "Path of Ancestry",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The scry 1 never happens when you spend its mana on a creature that shares a type with your commander."},
+		Caveats:      []string{"With strict mana off, the game doesn't see which mana you spent, so the scry 1 never happens."},
 		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
@@ -41,6 +39,17 @@ func init() {
 			Label:    "Add one mana of any color in your commander's color identity",
 			// The printed text asks for the narrowing (manaPickOptionsFor).
 			NarrowToCommanderIdentity: true,
+			SpendRiders: []game.ManaSpendRider{WhenManaSpent("Path of Ancestry", game.ManaSpendTrigger{
+				Label:     "Path of Ancestry — scry 1",
+				Condition: sharesCreatureTypeWithYourCommander,
+				Effect:    pathOfAncestryScry,
+			}, ManaRestrictCast, ManaRestrictType("Creature"))},
 		}},
 	})
+}
+
+// pathOfAncestryScry is the rider's effect: the player who spent the
+// mana scries 1.
+func pathOfAncestryScry(g *game.Game, item *game.StackItem) error {
+	return Scry{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
 }

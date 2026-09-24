@@ -643,6 +643,10 @@ var pendingChoiceFields = plan(
 	// game would let the player spend restricted mana on anything.
 	"ManaRestrictions", carried, "",
 	"ManaSourceKinds", carried, "",
+	// #1547: the spend riders the pick's token will carry (Cavern of
+	// Souls' "that spell can't be countered"). Without it a restored
+	// pick mints mana that does nothing when it is spent.
+	"ManaRiders", carried, "",
 	// #742: how many tokens each colour of a one-pick-N-mana choice
 	// mints (Gilded Lotus). Without it a restored pick adds one.
 	"ManaAmounts", carried, "",

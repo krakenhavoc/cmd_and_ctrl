@@ -435,7 +435,9 @@ draws no card. Pinned by
   (Pyromancer's Goggles, Scaled Nurturer), entry riders (Biophagus, Opal Palace),
   haste grants (Hall of the Bandit Lord) and per-spell "can't be countered"
   (Cavern of Souls, Delighted Halfling) need a fire point after a payment as well
-  as this snapshot. The seams row stays open for them.
+  as this snapshot. The seams row stays open for them. *(Shipped in
+  [#1547](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1547): see
+  [ADR 0040's 2026-09-24 amendment](0040-mana-pipeline.md#amendment--2026-09-24-1547-mana-spend-riders).)*
 - **Source kinds read off an ACTIVATION's record.** Forsworn Paladin and Jetmir's
   Fixer print "if mana from a Treasure was spent to activate this ability". The
   tokens carry the kinds there already; nothing reads them, and the catalog
