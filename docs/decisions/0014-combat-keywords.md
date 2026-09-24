@@ -113,10 +113,11 @@ to the next. S18 adds a fifth `PendingChoiceKind` alongside S13's
 `discard_from_hand` / S15's `mana_pick` / S17's
 `replacement_order` / `optional_replacement`.
 
-**Single-stage prompt** (versus two-stage). The CR 509.2 blocker
-ordering step is merged into the same prompt: the client can
-reorder blockers *and* assign amounts in one panel; server
-validates the ordered prefix-lethal rule atomically.
+**Single-stage prompt** (versus two-stage). The CR 510.1c / 510.1d
+damage-assignment order among multiple blockers is merged into the
+same prompt: the client can reorder blockers *and* assign amounts
+in one panel; server validates the ordered prefix-lethal rule
+atomically.
 
 **Why one stage:** two-stage doubles the client round-trips
 without adding any info the server needs earlier. If a user

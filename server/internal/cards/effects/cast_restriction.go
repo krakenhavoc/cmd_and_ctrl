@@ -135,14 +135,14 @@ func matchCastCard(g *game.Game, pred CardPredicate, caster uuid.UUID, card game
 	return pred(g, caster, card)
 }
 
-// LegendarySorcery is CR 307.6: "You may cast a legendary sorcery
+// LegendarySorcery is CR 205.4e: "You may cast a legendary sorcery
 // only if you control a legendary creature or planeswalker." Urza's
 // Ruinous Blast, Jaya's Immolating Inferno, The Antiquities War's
 // siblings.
 //
 // Checked at announce and never at resolution: a legendary creature
 // that dies while the sorcery is on the stack does not counter it
-// (CR 307.6 restricts the cast, and nothing re-checks it).
+// (CR 205.4e restricts the cast, and nothing re-checks it).
 func LegendarySorcery() func(g *game.Game, controller uuid.UUID, card game.Card) bool {
 	return func(g *game.Game, controller uuid.UUID, _ game.Card) bool {
 		for _, c := range g.BattlefieldCardsForEffect() {
@@ -157,7 +157,7 @@ func LegendarySorcery() func(g *game.Game, controller uuid.UUID, card game.Card)
 	}
 }
 
-// LegendarySorceryLabel is the clause CR 307.6 prints in the rules
+// LegendarySorceryLabel is the clause CR 205.4e prints in the rules
 // text box of every legendary sorcery, verbatim, so ten card files
 // cannot spell it ten ways.
 const LegendarySorceryLabel = "Cast this spell only if you control a legendary creature or planeswalker."

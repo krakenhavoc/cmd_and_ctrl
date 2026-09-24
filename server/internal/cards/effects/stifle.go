@@ -17,7 +17,7 @@ package effects
 // and "mana abilities can't be targeted" is a description of the
 // object model rather than a restriction on top of it.
 //
-// CR 701.5c is the other half: an ability that is countered does not
+// CR 701.6a is the other half: an ability that is countered does not
 // go anywhere. It has no card to route, its source permanent stays on
 // the battlefield untouched, and `counterAbilityLocked` deletes the
 // item — which is why a Stifled fetchland is still in play and still

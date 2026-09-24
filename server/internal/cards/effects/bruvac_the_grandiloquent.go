@@ -30,7 +30,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // payoffs firing over six cards.
 //
 // The count doubled is the one the instruction NAMED, not what the
-// library holds. CR 701.13b makes a player mill as many as possible,
+// library holds. CR 701.17b makes a player mill as many as possible,
 // so Bruvac doubling a twenty-card mill against a twelve-card library
 // mills twelve — and doubles twenty, which is observable the moment a
 // "plus N" shares the window.

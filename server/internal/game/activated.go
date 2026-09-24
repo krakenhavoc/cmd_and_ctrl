@@ -542,7 +542,7 @@ type ActivatedAbilityShape struct {
 	//
 	// The level-up ability itself takes a Condition, not this: "{3}{U}:
 	// Level 2" is printed on the Class from the moment it enters, and
-	// CR 716.2e's "activate only if this Class is level 1" is an
+	// CR 716.2a's "activate only if this Class is level 1" is an
 	// activation instruction word for word.
 	//
 	// See designations.go and ADR 0071.
