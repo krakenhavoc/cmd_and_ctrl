@@ -22,7 +22,9 @@ const card = (id: string, name: string) => ({
   controller: "me",
 });
 
-const snapWith = (placement: "top" | "bottom" | "top_or_bottom"): GameView =>
+type Extra = { top_count?: number; top_depth?: number; owner?: string; cards?: number };
+
+const snapWith = (placement: "top" | "bottom" | "top_or_bottom", extra: Extra = {}): GameView =>
   ({
     id: "g",
     state: "active",
@@ -41,10 +43,14 @@ const snapWith = (placement: "top" | "bottom" | "top_or_bottom"): GameView =>
         kind: "put_in_library",
         chooser: "me",
         from_player: "me",
-        count: 3,
+        count: extra.cards ?? 3,
         placement,
+        top_count: extra.top_count,
+        top_depth: extra.top_depth,
         reason: "Impulse — put the rest on the bottom of your library in any order",
-        options: [card("a", "Alpha"), card("b", "Beta"), card("c", "Gamma")],
+        options: [card("a", "Alpha"), card("b", "Beta"), card("c", "Gamma")]
+          .slice(0, extra.cards ?? 3)
+          .map((c) => ({ ...c, owner: extra.owner ?? c.owner })),
       },
     ],
   }) as unknown as GameView;
@@ -54,12 +60,12 @@ interface Sent {
   params?: unknown;
 }
 
-function mount(placement: "top" | "bottom" | "top_or_bottom") {
+function mount(placement: "top" | "bottom" | "top_or_bottom", extra: Extra = {}) {
   const sent: Sent[] = [];
   const view = render(
     ChoicePromptModal as never,
     {
-      snap: snapWith(placement),
+      snap: snapWith(placement, extra),
       viewerID: "me",
       sendAction: (type: ActionType, params?: unknown) => sent.push({ type, params }),
       lastError: null,
@@ -111,5 +117,45 @@ describe("ChoicePromptModal — put_in_library", () => {
     click(button(container, (b) => b.getAttribute("aria-label") === "put Alpha on the bottom")!);
     click(done(container));
     expect(sent[0].params).toMatchObject({ top_order: ["b", "c"], bottom: ["a"] });
+  });
+
+  // #1298: Cream of the Crop — exactly one card stays on top. The seed
+  // is already a legal answer, and Done waits while the count is off.
+  it("an exact top count seeds a legal answer and holds Done until it holds", () => {
+    const { container, sent } = mount("top_or_bottom", { top_count: 1 });
+    const labels = [...container.querySelectorAll(".lane-label")].map((h) => h.textContent ?? "");
+    expect(labels.some((l) => /On top \(1 of 1\)/.test(l))).toBe(true);
+    expect(done(container).disabled).toBe(false);
+
+    click(button(container, (b) => b.getAttribute("aria-label") === "keep Beta on top")!);
+    expect(done(container).disabled).toBe(true);
+    click(done(container));
+    expect(sent).toHaveLength(0);
+
+    click(button(container, (b) => b.getAttribute("aria-label") === "put Alpha on the bottom")!);
+    expect(done(container).disabled).toBe(false);
+    click(done(container));
+    expect(sent[0].params).toMatchObject({ top_order: ["b"], bottom: ["c", "a"] });
+  });
+
+  // #1298: Temporal Cleansing — the top lane is "second from the top".
+  it("a top depth names the lane by its position", () => {
+    const { container, sent } = mount("top_or_bottom", { top_depth: 2, cards: 1, owner: "them" });
+    const labels = [...container.querySelectorAll(".lane-label")].map((h) => h.textContent ?? "");
+    expect(labels.some((l) => /Second from the top \(1\)/.test(l))).toBe(true);
+    expect(container.textContent ?? "").toMatch(
+      /second from the top, or on the bottom of its owner's library/,
+    );
+    click(done(container));
+    expect(sent[0].params).toMatchObject({ top_order: ["a"], bottom: [] });
+  });
+
+  // #1298: Jace's +2 and Portent order ANOTHER player's library — the
+  // hint must not call its top card "your next draw".
+  it("another player's library is not your next draw", () => {
+    const { container } = mount("top", { owner: "them" });
+    const text = container.textContent ?? "";
+    expect(text).toMatch(/that player's next draw/);
+    expect(text).not.toMatch(/your next draw/);
   });
 });

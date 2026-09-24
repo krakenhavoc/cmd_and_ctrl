@@ -75,6 +75,31 @@ type PutInLibrarySpec struct {
 	// Placement is which lanes the answer may use.
 	Placement LibraryPlacement
 
+	// TopCount, when positive, is EXACTLY how many cards the top lane
+	// takes — Cream of the Crop's "put one of those cards on top of your
+	// library and the rest on the bottom of your library in any order".
+	// Only with LibraryPlaceTopOrBottom. A pile no bigger than TopCount
+	// has no lane left to choose, so it is placed as LibraryPlaceTop.
+	// Zero is "any number", which is every other card. #1298.
+	TopCount int
+
+	// TopDepth moves the top lane down the library: 2 is "second from
+	// the top" — Temporal Cleansing's and Lost Days' "second from the
+	// top or on the bottom". 0 and 1 are the top. The lane stays
+	// top-first: its first card lands at TopDepth, the next one under
+	// it. A library shorter than the depth takes the card on the
+	// bottom, as the tuck route does. #1298.
+	TopDepth int
+
+	// Counter makes each leg a COUNTER (CR 701.6a) to its position
+	// rather than a plain move: the cards are spells on the stack, and
+	// the instruction is "if that spell is countered this way, put it
+	// on <your choice of> the top or bottom of its owner's library" —
+	// Hinder, Spell Crumple. From is forced to ZoneStack, and a spell
+	// that can't be countered is neither asked about nor moved: it was
+	// not countered this way. #1298.
+	Counter bool
+
 	// Reason is the prompt banner — "<card> — <the printed clause>".
 	Reason string
 
@@ -93,7 +118,9 @@ type PutInLibrarySpec struct {
 //     where the card says, since a pile of one has no order.
 //
 // A top_or_bottom placement always asks, even about one card — "top or
-// bottom" is the choice.
+// bottom" is the choice. With a TopCount the pile must be BIGGER than
+// the count for there to be a lane to choose; a pile that fits is put
+// on top, and asked only for its order.
 //
 // The chooser is made a knower of every card in the prompt, because
 // ordering cards you cannot see is not a choice; nobody else is. See
@@ -101,10 +128,17 @@ type PutInLibrarySpec struct {
 //
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) PutInLibraryInChosenOrderThenForEffect(spec PutInLibrarySpec) error {
-	if !spec.Placement.valid() {
+	if !spec.Placement.valid() || spec.TopCount < 0 || spec.TopDepth < 0 {
 		return ErrInvalidParam
 	}
-	cards := g.libraryOrderLiveCardsLocked(spec.From, spec.Cards)
+	if spec.TopCount > 0 && spec.Placement != LibraryPlaceTopOrBottom {
+		return ErrInvalidParam
+	}
+	if spec.Counter {
+		spec.From = ZoneStack
+	}
+	how := libraryOrderHow{from: spec.From, depth: spec.TopDepth, counter: spec.Counter}
+	cards := g.libraryOrderLiveCardsLocked(how, spec.Cards)
 	then := spec.Then
 	finish := func(g *Game) error {
 		if then == nil {
@@ -115,7 +149,12 @@ func (g *Game) PutInLibraryInChosenOrderThenForEffect(spec PutInLibrarySpec) err
 	if len(cards) == 0 {
 		return finish(g)
 	}
-	chooser, from, placement := spec.Chooser, spec.From, spec.Placement
+	chooser, placement, topCount := spec.Chooser, spec.Placement, spec.TopCount
+	if topCount > 0 && topCount >= len(cards) {
+		// "Put one of those cards on top" over a pile of one: every
+		// card is on top, and the only thing left to ask is the order.
+		placement, topCount = LibraryPlaceTop, 0
+	}
 	if len(cards) == 1 && placement != LibraryPlaceTopOrBottom {
 		var top, bottom []uuid.UUID
 		if placement == LibraryPlaceTop {
@@ -123,7 +162,7 @@ func (g *Game) PutInLibraryInChosenOrderThenForEffect(spec PutInLibrarySpec) err
 		} else {
 			bottom = cards
 		}
-		return g.placeInLibraryInOrderLocked(chooser, from, top, bottom, finish)
+		return g.placeInLibraryInOrderLocked(chooser, how, top, bottom, finish)
 	}
 	for _, id := range cards {
 		if c := g.findCardByIDLocked(id); c != nil {
@@ -143,8 +182,10 @@ func (g *Game) PutInLibraryInChosenOrderThenForEffect(spec PutInLibrarySpec) err
 		Reason:           reason,
 		ScryCards:        cards,
 		LibraryPlacement: placement,
+		LibraryTopCount:  topCount,
+		LibraryTopDepth:  spec.TopDepth,
 		libraryOrderResume: func(g *Game, top, bottom []uuid.UUID) error {
-			return g.placeInLibraryInOrderLocked(chooser, from, top, bottom, finish)
+			return g.placeInLibraryInOrderLocked(chooser, how, top, bottom, finish)
 		},
 	})
 	if id == uuid.Nil {
@@ -166,11 +207,23 @@ func defaultPutInLibraryReason(p LibraryPlacement) string {
 	return "Put each card on the top or the bottom of its owner's library"
 }
 
+// libraryOrderHow is the part of a PutInLibrarySpec that says HOW the
+// cards move once the answer is in, carried by the prompt's
+// continuation. Scalars only, so the continuation survives Clone.
+type libraryOrderHow struct {
+	// from is the zone kind the cards must still be in (CR 400.7).
+	from ZoneKind
+	// depth is where the top lane starts (TopDepth).
+	depth int
+	// counter makes each leg a counter to its position (Hinder).
+	counter bool
+}
+
 // libraryOrderLiveCardsLocked is `ids` with repeats dropped and every
-// card no longer in a zone of kind `from` removed, in the order given.
+// card the instruction no longer refers to removed, in the order given.
 //
 // Caller must hold g.mu.
-func (g *Game) libraryOrderLiveCardsLocked(from ZoneKind, ids []uuid.UUID) []uuid.UUID {
+func (g *Game) libraryOrderLiveCardsLocked(how libraryOrderHow, ids []uuid.UUID) []uuid.UUID {
 	seen := make(map[uuid.UUID]bool, len(ids))
 	out := make([]uuid.UUID, 0, len(ids))
 	for _, id := range ids {
@@ -178,23 +231,28 @@ func (g *Game) libraryOrderLiveCardsLocked(from ZoneKind, ids []uuid.UUID) []uui
 			continue
 		}
 		seen[id] = true
-		if g.libraryOrderCardLiveLocked(from, id) {
+		if g.libraryOrderCardLiveLocked(how, id) {
 			out = append(out, id)
 		}
 	}
 	return out
 }
 
-// libraryOrderCardLiveLocked reports whether card `id` is still in a
-// zone of kind `from` (any zone, when `from` is empty).
+// libraryOrderCardLiveLocked reports whether card `id` is still one the
+// instruction refers to: in a zone of kind `how.from` (any zone, when
+// it is empty), and — for a counter — still a spell on the stack that a
+// counter would counter.
 //
 // Caller must hold g.mu.
-func (g *Game) libraryOrderCardLiveLocked(from ZoneKind, id uuid.UUID) bool {
+func (g *Game) libraryOrderCardLiveLocked(how libraryOrderHow, id uuid.UUID) bool {
+	if how.counter {
+		return g.counterableSpellOnStackLocked(id)
+	}
 	z := g.findCardZoneLocked(id)
 	if z == nil {
 		return false
 	}
-	return from == "" || z.Kind == from
+	return how.from == "" || z.Kind == how.from
 }
 
 // ResolvePutInLibrary answers a PendingChoicePutInLibrary: `topOrder`
@@ -230,7 +288,7 @@ func (g *Game) ResolvePutInLibrary(choiceID, chooserID uuid.UUID, bottom, topOrd
 	if choice.Chooser != chooserID {
 		return ErrNotTheChooser
 	}
-	if err := checkPutInLibraryAnswer(choice.LibraryPlacement, choice.ScryCards, bottom, topOrder); err != nil {
+	if err := checkPutInLibraryAnswer(choice.LibraryPlacement, choice.LibraryTopCount, choice.ScryCards, bottom, topOrder); err != nil {
 		return err
 	}
 	g.dequeueChoiceLocked(idx)
@@ -253,12 +311,17 @@ func (g *Game) ResolvePutInLibrary(choiceID, chooserID uuid.UUID, bottom, topOrd
 }
 
 // checkPutInLibraryAnswer validates an answer's shape: the lanes the
-// placement opens, and every card exactly once.
-func checkPutInLibraryAnswer(p LibraryPlacement, cards, bottom, topOrder []uuid.UUID) error {
+// placement opens, the top lane's exact count when the prompt has one
+// (#1298 — Cream of the Crop's "put ONE of those cards on top"), and
+// every card exactly once.
+func checkPutInLibraryAnswer(p LibraryPlacement, topCount int, cards, bottom, topOrder []uuid.UUID) error {
 	if len(topOrder) > 0 && !p.allowsTop() {
 		return ErrInvalidParam
 	}
 	if len(bottom) > 0 && !p.allowsBottom() {
+		return ErrInvalidParam
+	}
+	if topCount > 0 && len(topOrder) != topCount {
 		return ErrInvalidParam
 	}
 	_, err := partitionChoiceCards(cards, bottom, topOrder)
@@ -294,36 +357,40 @@ func partitionChoiceCards(cards, away, topOrder []uuid.UUID) (map[uuid.UUID]bool
 type libraryOrderLeg struct {
 	id       uuid.UUID
 	toBottom bool
+	// depth is where a top-lane card is inserted, counted from the top
+	// (TopDepth); 0 and 1 are the top. Unused on the bottom lane.
+	depth    int
 	laneSize int
 }
 
 // placeInLibraryInOrderLocked puts `top` on top of their owners'
-// libraries and `bottom` under them, each lane top-first, then runs
-// `then`.
+// libraries — or `how.depth` down from it — and `bottom` under them,
+// each lane top-first, then runs `then`.
 //
 // The legs go in PILE ORDER so the positions come out right: the
 // bottom lane first card first (each PushBottom goes under the one
 // before, so the first entry ends nearest the top of the pile), then
-// the top lane last card first (each PushTop lands above, so the first
-// entry ends on top).
+// the top lane last card first (each insert at the lane's depth lands
+// above the one before, so the first entry ends at the depth).
 //
-// A card already in its owner's library is lifted and re-pushed — a
+// A card already in its owner's library is lifted and re-inserted — a
 // reorder, not a zone change, so no window opens and no event fires. A
-// card anywhere else goes through the tuck route, so the CR 614 window
-// opens and a commander is offered the command zone (CR 903.9); the
-// next leg runs from that leg's continuation, so a paused leg pauses
-// the pile rather than letting the rest overtake it.
+// card anywhere else goes through the tuck route, or — for a counter —
+// the stack exit as a counter (CounterSpellToLibraryThenForEffect), so
+// the CR 614 window opens and a commander is offered the command zone
+// (CR 903.9); the next leg runs from that leg's continuation, so a
+// paused leg pauses the pile rather than letting the rest overtake it.
 //
 // Caller must hold g.mu in write mode.
-func (g *Game) placeInLibraryInOrderLocked(chooser uuid.UUID, from ZoneKind, top, bottom []uuid.UUID, then func(g *Game) error) error {
+func (g *Game) placeInLibraryInOrderLocked(chooser uuid.UUID, how libraryOrderHow, top, bottom []uuid.UUID, then func(g *Game) error) error {
 	legs := make([]libraryOrderLeg, 0, len(top)+len(bottom))
 	for _, id := range bottom {
 		legs = append(legs, libraryOrderLeg{id: id, toBottom: true, laneSize: len(bottom)})
 	}
 	for i := len(top) - 1; i >= 0; i-- {
-		legs = append(legs, libraryOrderLeg{id: top[i], laneSize: len(top)})
+		legs = append(legs, libraryOrderLeg{id: top[i], depth: how.depth, laneSize: len(top)})
 	}
-	return g.placeLibraryOrderLegsLocked(chooser, from, legs, then)
+	return g.placeLibraryOrderLegsLocked(chooser, how, legs, then)
 }
 
 // placeLibraryOrderLegsLocked places the head of `legs` and continues
@@ -331,8 +398,8 @@ func (g *Game) placeInLibraryInOrderLocked(chooser uuid.UUID, from ZoneKind, top
 // base case.
 //
 // Caller must hold g.mu in write mode.
-func (g *Game) placeLibraryOrderLegsLocked(chooser uuid.UUID, from ZoneKind, legs []libraryOrderLeg, then func(g *Game) error) error {
-	for len(legs) > 0 && !g.libraryOrderCardLiveLocked(from, legs[0].id) {
+func (g *Game) placeLibraryOrderLegsLocked(chooser uuid.UUID, how libraryOrderHow, legs []libraryOrderLeg, then func(g *Game) error) error {
+	for len(legs) > 0 && !g.libraryOrderCardLiveLocked(how, legs[0].id) {
 		legs = legs[1:]
 	}
 	if len(legs) == 0 {
@@ -343,15 +410,16 @@ func (g *Game) placeLibraryOrderLegsLocked(chooser uuid.UUID, from ZoneKind, leg
 	}
 	leg, rest := legs[0], legs[1:]
 	next := func(g *Game) error {
-		return g.placeLibraryOrderLegsLocked(chooser, from, rest, then)
+		return g.placeLibraryOrderLegsLocked(chooser, how, rest, then)
 	}
 	src := g.findCardZoneLocked(leg.id)
 	card, ok := g.cardInZoneLocked(src, leg.id)
 	if !ok {
 		return next(g)
 	}
-	knowers := libraryOrderKnowers(card, chooser, leg.laneSize)
-	if src.Kind == ZoneLibrary && src.Owner == card.Owner {
+	knowers := libraryOrderKnowers(card, g.publicKnowersOfLocked(src), chooser, leg.laneSize)
+	at := TuckOptions{ToBottom: leg.toBottom, Depth: leg.depth}
+	if !how.counter && src.Kind == ZoneLibrary && src.Owner == card.Owner {
 		c, err := src.Remove(leg.id)
 		if err != nil {
 			return next(g)
@@ -360,32 +428,61 @@ func (g *Game) placeLibraryOrderLegsLocked(chooser uuid.UUID, from ZoneKind, leg
 		if leg.toBottom {
 			src.PushBottom(c)
 		} else {
-			src.PushTop(c)
+			src.InsertFromTop(c, leg.depth)
 		}
 		return next(g)
 	}
-	err := g.TuckToLibraryThenForEffect(leg.id, TuckOptions{ToBottom: leg.toBottom}, func(g *Game, tucked bool) error {
-		if tucked {
+	landed := func(g *Game, placed bool) error {
+		if placed {
 			if c := g.findCardByIDLocked(leg.id); c != nil {
 				c.KnownBy = copyKnowers(knowers)
 			}
 		}
 		return next(g)
-	})
-	return err
+	}
+	if how.counter {
+		return g.CounterSpellToLibraryThenForEffect(leg.id, at, landed)
+	}
+	return g.TuckToLibraryThenForEffect(leg.id, at, landed)
+}
+
+// publicKnowersOfLocked is everyone who can see a card in `z` by virtue
+// of where it is: every seat for a public zone (CR 400.2 — the
+// battlefield, the stack, a graveyard, exile, the command zone), nobody
+// for a hidden one. A card that has been sitting in a public zone was
+// seen by the table whether or not anything stamped a knower mark on
+// it, and that is what a card placed ALONE in its lane keeps: a
+// Hinder'd spell put on top of its owner's library was watched going
+// there.
+//
+// Caller must hold g.mu.
+func (g *Game) publicKnowersOfLocked(z *Zone) []uuid.UUID {
+	if z == nil || !isPublicZone(z.Kind) {
+		return nil
+	}
+	out := make([]uuid.UUID, 0, len(g.Seats))
+	for _, p := range g.Seats {
+		out = append(out, p.ID)
+	}
+	return out
 }
 
 // libraryOrderKnowers is who knows a card after it is placed (ADR 0088
 // Decision 3, CR 401.4): the chooser always; everyone who knew it
-// before only when it is ALONE in its lane, because the order of two
-// or more is not revealed and a knower mark is per card at a position.
-func libraryOrderKnowers(c Card, chooser uuid.UUID, laneSize int) map[uuid.UUID]bool {
+// before — its knower marks, and the whole table when it was in a
+// public zone — only when it is ALONE in its lane, because the order of
+// two or more is not revealed and a knower mark is per card at a
+// position.
+func libraryOrderKnowers(c Card, public []uuid.UUID, chooser uuid.UUID, laneSize int) map[uuid.UUID]bool {
 	out := map[uuid.UUID]bool{}
 	if laneSize <= 1 {
 		for id, known := range c.KnownBy {
 			if known {
 				out[id] = true
 			}
+		}
+		for _, id := range public {
+			out[id] = true
 		}
 	}
 	if chooser != uuid.Nil {

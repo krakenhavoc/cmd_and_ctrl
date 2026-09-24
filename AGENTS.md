@@ -2899,6 +2899,19 @@ scry" payoffs. A position with no choice in it ("second from the top") is
 `PutIntoLibrary{Depth: 2}`, and after a search it is
 `SearchLibrary{ToTop: true, Depth: 3}`.
 
+The same prompt covers four more shapes (#1298, ADR 0088's 2026-09-23
+amendment), each with a sentence helper in the same file:
+`LookAtLibraryThenPlace{Owner, N, Placement}` for a look at ANOTHER
+player's library (Jace, the Mind Sculptor's +2, Portent — only the
+looker learns the cards); `PutIntoLibraryAtDepthOrBottom{Card, Depth}`
+for "its owner puts it second from the top or on the bottom" (Temporal
+Cleansing — the OWNER chooses); `TopCount: 1` for "put one of those
+cards on top and the rest on the bottom" (Cream of the Crop); and
+`CounterToLibrary{StackID, Placement}` for "if that spell is countered
+this way, put it on the top or bottom of its owner's library" (Hinder,
+Spell Crumple). The last one asks FIRST and counters second; do not
+write it as a counter to the top followed by a prompt.
+
 **A rule about the chosen cards as a set (#624):** when a card-set
 pick says something no count and no per-card list can ("discard two
 cards unless you discard a creature card", "two lands that share a land

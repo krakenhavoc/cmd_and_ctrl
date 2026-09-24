@@ -1513,6 +1513,72 @@ func (g *Game) CounterTargetToZoneForEffect(stackID uuid.UUID, dst ZoneRef) erro
 	}
 }
 
+// CounterSpellToLibraryThenForEffect is "counter target spell. If that
+// spell is countered this way, put it on the bottom of / on top of its
+// owner's library instead of into that player's graveyard" — Spell
+// Crumple's bottom, and each leg of Hinder's "your choice of the top or
+// bottom" once the choice is made (#1298, ADR 0088's 2026-09-23
+// amendment). `at` is the position: ToBottom, or Depth from the top.
+//
+// It is a COUNTER (CR 701.6a) with a destination, so it has
+// CounterTargetToZoneForEffect's gates: a spell that can't be countered
+// is untouched, and a countered ability simply ceases to exist
+// (CR 701.6b) — neither reaches a library. The move is the shared stack
+// exit, so CR 903.9 offers a commander the command zone and
+// flashback's CR 702.34a exile still wins.
+//
+// `then` hears whether the card is in its owner's library once the
+// move settles (CR 400.7) — false for every outcome above, and for a
+// commander whose owner took the command zone. Nil is allowed.
+//
+// Caller must hold g.mu in write mode (resolution frame).
+func (g *Game) CounterSpellToLibraryThenForEffect(stackID uuid.UUID, at TuckOptions, then func(g *Game, placed bool) error) error {
+	tell := func(g *Game, placed bool) error {
+		if then == nil {
+			return nil
+		}
+		return then(g, placed)
+	}
+	item, ok := g.StackMeta[stackID]
+	if !ok || item == nil {
+		return tell(g, false)
+	}
+	if item.Kind == StackItemActivated || item.Kind == StackItemTriggered {
+		if err := g.counterAbilityLocked(stackID); err != nil {
+			return err
+		}
+		return tell(g, false)
+	}
+	if !g.counterableSpellOnStackLocked(stackID) {
+		if item.Kind == StackItemSpell {
+			slog.Info("counter had no effect: spell can't be countered", "spell_id", stackID)
+		}
+		return tell(g, false)
+	}
+	return g.exitSpellFromStackAtLocked(stackID, &ZoneRef{Kind: ZoneLibrary, Owner: item.Owner}, ZoneGraveyard, true, at,
+		func(g *Game) error {
+			return tell(g, g.landedInZoneLocked(stackID, ZoneLibrary, uuid.Nil))
+		})
+}
+
+// counterableSpellOnStackLocked reports whether `stackID` is a spell on
+// the stack that a counter would actually counter — what "if that
+// spell is countered this way" can be true of. The put_in_library
+// prompt asks it before offering a Hinder'd spell's position, so a
+// spell that can't be countered is never asked about.
+//
+// Caller must hold g.mu.
+func (g *Game) counterableSpellOnStackLocked(stackID uuid.UUID) bool {
+	item, ok := g.StackMeta[stackID]
+	if !ok || item == nil || item.Kind != StackItemSpell {
+		return false
+	}
+	if g.Stack == nil || !g.Stack.Contains(stackID) {
+		return false
+	}
+	return !g.spellCantBeCounteredLocked(stackID)
+}
+
 // ReturnSpellToHandForEffect returns a spell on the stack to its
 // owner's hand WITHOUT countering it: CR 701.6 never applies, so a
 // spell printed "can't be countered" is unaffected and nothing
@@ -1631,6 +1697,21 @@ func (g *Game) counterSpellLocked(spellID uuid.UUID, dst *ZoneRef) error {
 //
 // Caller must hold g.mu.
 func (g *Game) exitSpellFromStackLocked(spellID uuid.UUID, dst *ZoneRef, fallback ZoneKind, countered bool, then func(*Game) error) error {
+	return g.exitSpellFromStackAtLocked(spellID, dst, fallback, countered, TuckOptions{}, then)
+}
+
+// exitSpellFromStackAtLocked is exitSpellFromStackLocked with a library
+// POSITION: `at` rides the route exactly as it does on a tuck, so a
+// library destination can be the bottom or N from the top. It exists
+// for #1298's counters — Spell Crumple's "put it on the bottom of its
+// owner's library" and Hinder's "your choice of the top or bottom" —
+// and is ignored for every other destination. The position rides the
+// route rather than being applied afterwards for the reason
+// zoneRoute.Depth gives: a commander whose owner declines CR 903.9's
+// offer still lands where the counter said.
+//
+// Caller must hold g.mu.
+func (g *Game) exitSpellFromStackAtLocked(spellID uuid.UUID, dst *ZoneRef, fallback ZoneKind, countered bool, at TuckOptions, then func(*Game) error) error {
 	item, ok := g.StackMeta[spellID]
 	if !ok || item == nil || item.Kind != StackItemSpell {
 		return ErrCardNotOnStack
@@ -1668,13 +1749,17 @@ func (g *Game) exitSpellFromStackLocked(spellID uuid.UUID, dst *ZoneRef, fallbac
 			break
 		}
 	}
-	_, err := g.routeCardToZoneLocked(zoneRoute{
+	r := zoneRoute{
 		CardID:    spellID,
 		Dst:       destKind,
 		DstOwner:  destOwner,
 		Countered: countered,
 		then:      then,
-	})
+	}
+	if destKind == ZoneLibrary {
+		r.ToBottom, r.Depth = at.ToBottom, at.Depth
+	}
+	_, err := g.routeCardToZoneLocked(r)
 	return err
 }
 

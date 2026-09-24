@@ -182,6 +182,13 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		//     way a scry does (ScryKeep is the indifference point),
 		//     and every card an opponent owns, which is how a Hinder
 		//     or an Aetherspouts is meant to be played.
+		//
+		// #1298's shapes need no branch of their own. An exact top count
+		// (Cream of the Crop): every offered answer holds the same
+		// number on top, so the two terms together rank them by the card
+		// left there. A look at an opponent's library (Jace's +2) and a
+		// counter (Hinder) are opponents' cards, which the bury term
+		// already sends down.
 		var v float64
 		if len(cp.TopOrder) > 0 {
 			if c := lookup(cp.TopOrder[0]); c != nil && c.Owner == st.me {

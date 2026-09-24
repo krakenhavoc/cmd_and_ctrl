@@ -37,6 +37,20 @@ type PutInLibraryInAnyOrder struct {
 	// game.LibraryPlaceBottom or game.LibraryPlaceTopOrBottom.
 	Placement game.LibraryPlacement
 
+	// TopCount, when positive, is exactly how many cards go on top —
+	// "put ONE of those cards on top of your library and the rest on
+	// the bottom" (Cream of the Crop). Only with top-or-bottom.
+	TopCount int
+
+	// TopDepth is where the top lane lands: 2 is "second from the top"
+	// (Temporal Cleansing). Zero is the top.
+	TopDepth int
+
+	// Counter makes the move a COUNTER to that position: Cards are
+	// spells on the stack (Hinder, Spell Crumple). Prefer CounterToLibrary,
+	// which says so.
+	Counter bool
+
 	// Label is the prompt banner, "<card> — <the printed clause>".
 	Label string
 
@@ -55,9 +69,166 @@ func (p PutInLibraryInAnyOrder) Apply(ctx *Context) error {
 		Cards:     p.Cards,
 		From:      p.From,
 		Placement: p.Placement,
+		TopCount:  p.TopCount,
+		TopDepth:  p.TopDepth,
+		Counter:   p.Counter,
 		Reason:    p.Label,
 		Then:      p.Then,
 	})
+}
+
+// LookAtLibraryThenPlace is "look at the top N cards of <a player's>
+// library" followed by where the looker puts them (#1298):
+//
+//   - Jace, the Mind Sculptor's +2 — "look at the top card of target
+//     player's library. You may put that card on the bottom of that
+//     player's library": Owner = the target, N 1, top-or-bottom.
+//   - Portent — "look at the top three cards of target player's
+//     library, then put them back in any order": N 3, top.
+//   - Cream of the Crop — "look at the top X cards of your library …
+//     put one of those cards on top of your library and the rest on the
+//     bottom of your library in any order": top-or-bottom, TopCount 1.
+//
+// A LOOK (CR 701.20): only the looker learns the cards — the library's
+// owner too sees nothing it did not already know (CR 401.2). The
+// placement is ADR 0088's put_in_library with the looker as chooser,
+// and it puts each card back in its OWNER's library; CR 401.4 decides
+// who knows the order afterwards.
+//
+// Like Scry it only QUEUES: anything after the placement goes in Then.
+type LookAtLibraryThenPlace struct {
+	// Looker looks and chooses. Zero means the controller.
+	Looker uuid.UUID
+	// Owner is whose library. Zero means the looker's own.
+	Owner uuid.UUID
+	// N is how many cards from the top.
+	N int
+	// Placement, TopCount and TopDepth are PutInLibraryInAnyOrder's.
+	Placement game.LibraryPlacement
+	TopCount  int
+	TopDepth  int
+	// Label is "<card> — <clause>".
+	Label string
+	// Then runs once the cards are placed (or at once, when the library
+	// was empty).
+	Then func(g *game.Game) error
+}
+
+func (l LookAtLibraryThenPlace) Apply(ctx *Context) error {
+	looker := l.Looker
+	if looker == uuid.Nil {
+		looker = ctx.Controller()
+	}
+	owner := l.Owner
+	if owner == uuid.Nil {
+		owner = looker
+	}
+	return PutInLibraryInAnyOrder{
+		Chooser:   looker,
+		Cards:     ctx.Game.LookAtTopOfPlayersLibraryForEffect(looker, owner, l.N),
+		From:      game.ZoneLibrary,
+		Placement: l.Placement,
+		TopCount:  l.TopCount,
+		TopDepth:  l.TopDepth,
+		Label:     l.Label,
+		Then:      l.Then,
+	}.Apply(ctx)
+}
+
+// PutIntoLibraryAtDepthOrBottom is "the owner of target nonland
+// permanent puts it into their library second from the top or on the
+// bottom" — Temporal Cleansing, Lost Days, Wan Shi Tong, All-Knowing
+// (#1298). One card, a two-way choice whose top lane is a DEPTH, and a
+// chooser who is the card's OWNER, not the caster: that is the whole of
+// the difference from PutIntoLibrary, which has no choice in it.
+//
+// The move is the tuck route either way, so the CR 614 window opens and
+// a commander is offered the command zone.
+type PutIntoLibraryAtDepthOrBottom struct {
+	// Card is what moves.
+	Card uuid.UUID
+	// Depth is the top lane's position — 2 for "second from the top".
+	Depth int
+	// Chooser picks. Zero means the card's OWNER, which is what every
+	// printed variant says.
+	Chooser uuid.UUID
+	// Label is "<card> — <clause>".
+	Label string
+	// Then runs once the card is placed.
+	Then func(g *game.Game) error
+}
+
+func (p PutIntoLibraryAtDepthOrBottom) Apply(ctx *Context) error {
+	c, ok := ctx.Game.LookupCardForEffect(p.Card)
+	z := ctx.Game.FindCardZoneForEffect(p.Card)
+	if !ok || z == nil {
+		if p.Then != nil {
+			return p.Then(ctx.Game)
+		}
+		return nil
+	}
+	chooser := p.Chooser
+	if chooser == uuid.Nil {
+		chooser = c.Owner
+	}
+	return PutInLibraryInAnyOrder{
+		Chooser:   chooser,
+		Cards:     []uuid.UUID{p.Card},
+		From:      z.Kind,
+		Placement: game.LibraryPlaceTopOrBottom,
+		TopDepth:  p.Depth,
+		Label:     p.Label,
+		Then:      p.Then,
+	}.Apply(ctx)
+}
+
+// CounterToLibrary is "counter target spell. If that spell is
+// countered this way, put it on the bottom of its owner's library"
+// (Spell Crumple: LibraryPlaceBottom) and "… put that card on your
+// choice of the top or bottom of its owner's library instead" (Hinder:
+// LibraryPlaceTopOrBottom) — #1298.
+//
+// The choice comes FIRST and the counter second, because that is the
+// order the card resolves in: the counterer picks the position, then
+// the spell is countered to it through the shared stack exit, so CR
+// 903.9 offers a commander's owner the command zone knowing where the
+// card was headed, and flashback's exile still wins. A spell that can't
+// be countered is not asked about and does not move; a countered
+// ability ceases to exist (CR 701.6b) — use CounterTarget for a target
+// that may be either.
+type CounterToLibrary struct {
+	// StackID is the spell.
+	StackID uuid.UUID
+	// Placement is LibraryPlaceBottom, LibraryPlaceTop or
+	// LibraryPlaceTopOrBottom.
+	Placement game.LibraryPlacement
+	// Chooser picks the position. Zero means the controller — "your
+	// choice".
+	Chooser uuid.UUID
+	// Label is "<card> — <clause>".
+	Label string
+	// Then runs once the spell is placed (or was not countered).
+	Then func(g *game.Game) error
+}
+
+func (c CounterToLibrary) Apply(ctx *Context) error {
+	if item := ctx.Game.StackItemForEffect(c.StackID); item != nil && item.Kind != game.StackItemSpell {
+		if err := ctx.Game.CounterTargetForEffect(c.StackID); err != nil {
+			return err
+		}
+		if c.Then != nil {
+			return c.Then(ctx.Game)
+		}
+		return nil
+	}
+	return PutInLibraryInAnyOrder{
+		Chooser:   c.Chooser,
+		Cards:     []uuid.UUID{c.StackID},
+		Placement: c.Placement,
+		Counter:   true,
+		Label:     c.Label,
+		Then:      c.Then,
+	}.Apply(ctx)
 }
 
 // TakeRestOnBottomInAnyOrder is the Then for "put the rest on the
