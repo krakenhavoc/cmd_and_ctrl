@@ -150,6 +150,54 @@ func (g *Game) PutFromLibraryOntoBattlefieldForEffect(cardID uuid.UUID, opts Lib
 	return entered[0], nil
 }
 
+// PutFromCommandZoneOntoBattlefieldForEffect puts a card from a
+// command zone onto the battlefield without casting it — commander
+// ninjutsu's "Put this card onto the battlefield from your hand or the
+// command zone tapped and attacking" (CR 702.49c, #1278).
+//
+// It is the hand door with the command zone for the hand: one body
+// (putOntoBattlefieldFromZoneLocked), the controller stamped in the
+// source zone, the CR 614 window before the card leaves, then
+// EventZoneMove, EventETB and the AsEnters hook. Before it, nothing in
+// the engine moved a commander OUT of the command zone by any route
+// but casting it, so what the door has to say is mostly what a
+// non-cast exit does NOT do:
+//
+//   - No commander tax, and nothing written towards the next one.
+//     CR 903.8 taxes CASTING a commander from the command zone; the
+//     tally (Player.CommanderCasts) is bumped by the cast path alone,
+//     and this is not a cast (CR 702.49c puts the card, and CR 601
+//     never starts). The card keeps its instance ID for the same
+//     reason — the tally is keyed by it, and a new ID would forget
+//     every earlier cast.
+//   - No CR 903.9 prompt. That replacement is about a commander being
+//     put into a library, hand, graveyard or exile; an arrival on the
+//     battlefield is none of the four, and commanderZoneReplacement's
+//     AppliesTo says so on the destination. It is still the replacement
+//     window that runs — the ordinary CR 614 entry window, so an
+//     "enters tapped" or a Clone-style question on the card is asked —
+//     and the commander designation (Card.IsCommander) rides the card
+//     untouched, so when the permanent LEAVES the battlefield later the
+//     shared exit primitive (routeCardToZoneLocked, zone_route.go)
+//     offers CR 903.9 exactly as it would for a cast one.
+//   - Colour identity is not consulted. CR 903.4 is a deck-construction
+//     and mana rule; it says nothing about which card may leave the
+//     command zone.
+//
+// Returns the entering permanent's ID, or uuid.Nil with a nil error
+// when a replacement canceled, redirected or paused the entry. Refuses
+// a card not in a command zone with ErrCardNotFound, and a
+// nonpermanent card (CR 110.4) with ErrInvalidParam, moving nothing.
+//
+// Caller must hold g.mu.
+func (g *Game) PutFromCommandZoneOntoBattlefieldForEffect(cardID uuid.UUID, opts ZoneEntryOptions) (uuid.UUID, error) {
+	entered, err := g.putOntoBattlefieldFromZoneLocked([]uuid.UUID{cardID}, ZoneCommand, opts)
+	if err != nil || len(entered) == 0 {
+		return uuid.Nil, err
+	}
+	return entered[0], nil
+}
+
 // PutCardsFromLibraryOntoBattlefieldForEffect puts several library
 // cards onto the battlefield as ONE simultaneous entry — Genesis
 // Wave's "any number of permanent cards", Animist's Awakening's "all
