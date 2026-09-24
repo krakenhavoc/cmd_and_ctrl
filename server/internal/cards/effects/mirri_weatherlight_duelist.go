@@ -12,7 +12,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 you each combat."
 //
 // The proof card for #1534's two engine shapes (ADR 0045 amendment of
-// 2026-09-24, Decision 46), one per line:
+// 2026-09-24, Decision 47), one per line:
 //
 //   - The attack trigger registers a per-defender block limit
 //     (EachOpponentCantBlockWithMoreThanN, BlockRule.LimitPerDefender):

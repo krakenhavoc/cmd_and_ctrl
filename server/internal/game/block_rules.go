@@ -40,7 +40,7 @@ import "github.com/google/uuid"
 //     amendment of 2026-09-24, Decision 43). Every stored block
 //     counts, whichever attacker it is on and whichever defender made
 //     it — unless the rule is LimitPerDefender (Mirri, #1534,
-//     Decision 46), which counts each defending player's blocks on
+//     Decision 47), which counts each defending player's blocks on
 //     their own.
 //
 // Rules come from two registries, both walked on every check: the
@@ -99,7 +99,7 @@ type BlockRule struct {
 	// each player's blockers are counted and bounded on their own
 	// rather than all together — Mirri, Weatherlight Duelist's "each
 	// opponent can't block with more than one creature this combat"
-	// (#1534, ADR 0045 amendment of 2026-09-24, Decision 46). The
+	// (#1534, ADR 0045 amendment of 2026-09-24, Decision 47). The
 	// group is the blocker's controller, which the declaration's
 	// not_defending check has already made the defending player whose
 	// block it is. False, the zero value, is Silent Arbiter's one

@@ -13,7 +13,7 @@ import (
 // conditional_combat_limits_test.go — the bot half of #1534: Mirri,
 // Weatherlight Duelist's per-opponent block limit and The Eternal
 // Wanderer's per-planeswalker attack limit must not wedge a bot table
-// (ADR 0045 amendment of 2026-09-24, Decision 46). Same drive as
+// (ADR 0045 amendment of 2026-09-24, Decision 47). Same drive as
 // combat_limits_test.go — one combat, move by move, through the
 // enumerator and actions.Dispatch — and deliberately not behind
 // AISEAT_GAME_TESTS.

@@ -255,7 +255,7 @@ func NoMoreThanNCanBlockEachCombat(n int) game.BlockRule {
 // attack trigger: one). A Limit rule with LimitPerDefender, so each
 // opponent's blockers are counted on their own: in a four-player game
 // every opponent may block with one creature, and one opponent's
-// block never uses up another's (#1534, ADR 0045 Decision 46).
+// block never uses up another's (#1534, ADR 0045 Decision 47).
 //
 // Registered on resolution into the turn-scoped registry, as
 // BlockRuleUntilEOT's rules are, but WITHOUT a snapshot: the line is

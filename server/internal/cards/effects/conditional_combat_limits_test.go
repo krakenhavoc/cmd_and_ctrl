@@ -9,7 +9,7 @@ import (
 )
 
 // conditional_combat_limits_test.go — #1534's proof cards (ADR 0045
-// amendment of 2026-09-24, Decision 46). Mirri, Weatherlight Duelist
+// amendment of 2026-09-24, Decision 47). Mirri, Weatherlight Duelist
 // carries the per-defender block limit (her attack trigger) and the
 // While-gated attack limit (her static); The Eternal Wanderer carries
 // the per-permanent attack scope and three loyalty abilities.

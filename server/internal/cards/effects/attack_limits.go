@@ -6,7 +6,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // count limits on an attack declaration (#1507, #1534). The engine
 // half — the one check both declaration verbs and the legal-move
 // enumerator run — is game/attack_limits.go; see ADR 0045 Decisions 44
-// and 46.
+// and 47.
 //
 //	AttackLimits: []game.AttackLimit{NoMoreThanNCanAttackEachCombat(1)},    // Silent Arbiter
 //	AttackLimits: []game.AttackLimit{NoMoreThanNCanAttackYouEachCombat(2)}, // Crawlspace

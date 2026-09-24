@@ -6,7 +6,7 @@ import "github.com/google/uuid"
 // declaration: "no more than one creature can attack each combat"
 // (Silent Arbiter, Dueling Grounds), "no more than two creatures can
 // attack you each combat" (Crawlspace). #1507, ADR 0045 amendment of
-// 2026-09-24, Decisions 43-45. #1534 (Decision 46) added the
+// 2026-09-24, Decisions 43-45. #1534 (Decision 47) added the
 // per-permanent scope — "no more than one creature can attack The
 // Eternal Wanderer each combat" — and the While gate for Mirri,
 // Weatherlight Duelist's "as long as Mirri is tapped".
@@ -79,7 +79,7 @@ const (
 
 	// AttackLimitAttackingThis is "no more than N creatures can attack
 	// <this permanent> each combat" — The Eternal Wanderer (#1534, ADR
-	// 0045 amendment of 2026-09-24, Decision 46). Only a creature whose
+	// 0045 amendment of 2026-09-24, Decision 47). Only a creature whose
 	// attack NAMES THE SOURCE PERMANENT counts: an attack on its
 	// controller, or on another planeswalker they control, does not.
 	// Keyed to the source's InstanceID, so a Wanderer that leaves and
@@ -104,7 +104,7 @@ type AttackLimit struct {
 	// While, when set, gates the limit: it exists only while While
 	// reports true of its source — "As long as Mirri is tapped, no
 	// more than one creature can attack you each combat" (#1534,
-	// Decision 46). Nil is "always", which is every card before Mirri.
+	// Decision 47). Nil is "always", which is every card before Mirri.
 	//
 	// Read LIVE at every check and never cached: a limit that switches
 	// on after attackers are declared is a limit arriving late, and the

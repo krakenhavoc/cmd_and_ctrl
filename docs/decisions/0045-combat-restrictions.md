@@ -3141,6 +3141,9 @@ number on her controller's row only while she is tapped.
   - The per-defender block limit gives each of two defenders in a four-seat
     game their own one, and the generator and the #328 signal agree per seat.
   - A late per-defender limit unmakes nothing.
+  - Decision 46's room follows both attack shapes: the Wanderer's row has a
+    room and her controller's does not, and a gated limit has a room only
+    while its condition holds.
 - `cards/effects/conditional_combat_limits_test.go` runs the proof cards and
   checks at each step that the enumerator offers exactly what the verb
   accepts. The planeswalker variant also tries every planeswalker target.

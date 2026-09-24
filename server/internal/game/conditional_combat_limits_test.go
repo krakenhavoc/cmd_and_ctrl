@@ -8,7 +8,7 @@ import (
 
 // conditional_combat_limits_test.go — #1534, the three shapes ADR
 // 0045's #1507 amendment left for their cards (amendment of
-// 2026-09-24, Decision 46): the While gate on AttackLimit (Mirri's "as
+// 2026-09-24, Decision 47): the While gate on AttackLimit (Mirri's "as
 // long as Mirri is tapped"), the per-permanent scope
 // AttackLimitAttackingThis (The Eternal Wanderer), and
 // BlockRule.LimitPerDefender (Mirri's "each opponent can't block with
@@ -107,6 +107,52 @@ func TestAttackLimitAttackingThisCountsOnlyThePermanent(t *testing.T) {
 	if err := g.DeclareAttacker(bears[1], wanderer); err != nil {
 		t.Fatalf("with the slot free the re-point is legal: %v", err)
 	}
+}
+
+// TestAttackLimitRoomFollowsTheNewShapes — #1533's room on the wire
+// (Decision 46) reads the same active limits and counter, so the
+// per-permanent scope puts a number on the planeswalker's row and not
+// on its controller's, and a While-gated limit has room only while its
+// condition holds.
+func TestAttackLimitRoomFollowsTheNewShapes(t *testing.T) {
+	t.Run("attacking this", func(t *testing.T) {
+		stubCombatLimits(t, []AttackLimit{{Scope: AttackLimitAttackingThis, Max: 1}}, nil)
+		g := newActiveGame(t)
+		opp := g.Seats[1]
+		wanderer := pushPlaneswalkerForTest(g, opp.ID, "The Eternal Wanderer", 5)
+		findCard(g, wanderer).OracleID = combatLimitOracle
+		bear := pushCombatant(t, g, g.Seats[0], "Bear", 2, 2)
+		advanceIntoStep(t, g, StepDeclareAttackers)
+		if room, limited := g.AttackLimitRoomForEffect(wanderer); !limited || room != 1 {
+			t.Errorf("the Wanderer's room = %d, %v; want 1, true", room, limited)
+		}
+		if _, limited := g.AttackLimitRoomForEffect(opp.ID); limited {
+			t.Error("the Wanderer's controller has a room; the limit is on the Wanderer alone")
+		}
+		if err := g.DeclareAttacker(bear, wanderer); err != nil {
+			t.Fatal(err)
+		}
+		if room, limited := g.AttackLimitRoomForEffect(wanderer); !limited || room != 0 {
+			t.Errorf("after one attacker the room = %d, %v; want 0, true", room, limited)
+		}
+	})
+	t.Run("while", func(t *testing.T) {
+		stubCombatLimits(t, []AttackLimit{{
+			Scope: AttackLimitAttackingYou, Max: 1,
+			While: func(_ *Game, source *Card) bool { return source.Tapped },
+		}}, nil)
+		g := newActiveGame(t)
+		mirri := g.Seats[1]
+		src := pushLimitSource(t, g, mirri, "Mirri")
+		advanceIntoStep(t, g, StepDeclareAttackers)
+		if _, limited := g.AttackLimitRoomForEffect(mirri.ID); limited {
+			t.Error("an untapped source reports a room")
+		}
+		findCard(g, src).Tapped = true
+		if room, limited := g.AttackLimitRoomForEffect(mirri.ID); !limited || room != 1 {
+			t.Errorf("a tapped source's room = %d, %v; want 1, true", room, limited)
+		}
+	})
 }
 
 // perDefenderBlockLimit is effects.EachOpponentCantBlockWithMoreThanN

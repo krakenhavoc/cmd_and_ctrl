@@ -20,7 +20,7 @@ import (
 //
 // The proof card for #1534's per-permanent attack scope
 // (AttackLimitAttackingThis, ADR 0045 amendment of 2026-09-24,
-// Decision 46): only an attack that names the Wanderer herself counts,
+// Decision 47): only an attack that names the Wanderer herself counts,
 // so her controller — and any other planeswalker they control — may
 // still be attacked by any number of creatures in the same combat.
 //
