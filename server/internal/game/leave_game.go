@@ -619,9 +619,16 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	PendingChoiceScry:          {},
 	PendingChoiceSurveil:       {},
 	PendingChoiceLookAtTop:     {},
-	// ADR 0088. Every printed chooser owns the pile, and CR 800.4a
+	// ADR 0088. Most printed choosers own the pile, and CR 800.4a
 	// takes it out of the game with them; the cards stay where the
-	// effect left them.
+	// effect left them. #1298 added three whose chooser does NOT own
+	// the cards, and the drop is still right for each: Jace, the Mind
+	// Sculptor's +2 and Portent leave the looked-at cards on top of
+	// the other player's library, untouched (the looker's knowledge
+	// leaves with them); Hinder's spell was never countered — the
+	// choice comes before the counter, and a counter nobody finished
+	// did not happen — so it stays on the stack; and a Temporal
+	// Cleansing whose OWNER leaves took the permanent with them.
 	PendingChoicePutInLibrary:  {},
 	PendingChoiceSearchLibrary: {},
 	PendingChoiceMayCast:       {},

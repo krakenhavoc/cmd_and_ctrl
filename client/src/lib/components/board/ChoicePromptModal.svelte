@@ -663,12 +663,38 @@
   // Unused when there is no away lane.
   const awayLabel = $derived(isSurveil ? "graveyard" : "bottom");
 
+  // #1298: the put_in_library top lane's refinements. `topCount` is
+  // EXACTLY how many cards stay on top (Cream of the Crop: one), and
+  // Done waits for it; `topDepth` is where that lane lands (Temporal
+  // Cleansing: second from the top), which only changes its name.
+  const topCount = $derived(isPutInLibrary ? (active?.top_count ?? 0) : 0);
+  const topDepth = $derived(isPutInLibrary ? (active?.top_depth ?? 0) : 0);
+  const topLaneLabel = $derived(topDepth > 1 ? `${ordinal(topDepth)} from the top` : "On top");
+
+  // Whose library the cards go back to, for the hint's wording: Jace's
+  // +2 and Portent order ANOTHER player's library, so "your next draw"
+  // would be wrong there.
+  const ownLibrary = $derived(
+    (active?.options ?? []).every((c) => !c.owner || !viewerID || c.owner === viewerID),
+  );
+  const nextDraw = $derived(ownLibrary ? "your next draw" : "that player's next draw");
+
+  function ordinal(n: number): string {
+    const words = ["", "", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh"];
+    return words[n] ?? `#${n}`;
+  }
+
   let scryTop = $state<string[]>([]);
   let scryBottom = $state<string[]>([]);
 
+  // An exact top count holds Done until the top lane has that many.
+  const canSubmitLookAtTop = $derived(topCount === 0 || scryTop.length === topCount);
+
   // Seed the default whenever a scry / surveil prompt opens:
   // everything stays on top, in the order the server listed it (which
-  // is current library order).
+  // is current library order) — or, with an exact top count, the first
+  // that many stay and the rest start on the bottom, so the seed is
+  // already an answer the server accepts.
   let lastScryID: string | null = null;
   $effect(() => {
     if (!isLookAtTop || !active) {
@@ -678,8 +704,9 @@
     if (active.id === lastScryID) return;
     lastScryID = active.id;
     const all = (active.options ?? []).map((c) => c.instance_id);
-    scryTop = isBottomOnly ? [] : all;
-    scryBottom = isBottomOnly ? all : [];
+    const keep = isBottomOnly ? 0 : topCount > 0 ? topCount : all.length;
+    scryTop = all.slice(0, keep);
+    scryBottom = all.slice(keep);
   });
 
   function scryToBottom(id: string): void {
@@ -728,6 +755,7 @@
     if (!active || !viewerID) return;
     const total = (active.options ?? []).length;
     if (scryTop.length + scryBottom.length !== total) return;
+    if (!canSubmitLookAtTop) return;
     // put_in_library sends both lanes whatever its placement; the one
     // the placement does not open is empty, which the server accepts.
     const away = isPutInLibrary
@@ -933,24 +961,39 @@
           {#if isBottomOnly}
             Put them on the bottom of the library in any order — the last one listed is the very
             bottom card.
+          {:else if isReorderOnly && topDepth > 1}
+            Put them in any order, the first {topLaneLabel.toLowerCase()}.
           {:else if isReorderOnly}
-            Put them {isPutInLibrary ? "on top" : "back"} in any order — the topmost is your next draw.
+            Put them {isPutInLibrary ? "on top" : "back"} in any order — the topmost is {nextDraw}.
+          {:else if topCount > 0}
+            Keep exactly {topCount} on top — the topmost is {nextDraw} — and put the rest on the bottom
+            in any order.
+          {:else if scryTop.length + scryBottom.length === 1 && topDepth > 1}
+            Put it {topLaneLabel.toLowerCase()}, or on the bottom of {ownLibrary
+              ? "your library"
+              : "its owner's library"}.
           {:else if scryTop.length + scryBottom.length === 1}
             Keep it on top, or put it {isSurveil
               ? "into your graveyard"
-              : "on the bottom of your library"}.
+              : ownLibrary
+                ? "on the bottom of your library"
+                : "on the bottom of its owner's library"}.
           {:else}
-            Keep any of these on top — the topmost is your next draw — and put the rest {isSurveil
+            Keep any of these on top — the topmost is {nextDraw} — and put the rest {isSurveil
               ? "into your graveyard"
               : "on the bottom"}.
           {/if}
-          Only you can see them.
+          {isPutInLibrary ? "Nobody else learns the order." : "Only you can see them."}
         </p>
         {#if !isBottomOnly}
           <div class="scry-lane">
-            <h3 class="lane-label">On top ({scryTop.length})</h3>
+            <h3 class="lane-label">
+              {topLaneLabel} ({scryTop.length}{topCount > 0 ? ` of ${topCount}` : ""})
+            </h3>
             {#if scryTop.length === 0}
-              <p class="lane-empty">Nothing — your next draw comes from under these.</p>
+              <p class="lane-empty">
+                {ownLibrary ? "Nothing — your next draw comes from under these." : "Nothing."}
+              </p>
             {:else}
               <ol class="scry-list">
                 {#each scryTop as id, i (id)}
@@ -1011,7 +1054,8 @@
                         type="button"
                         class="lane-btn"
                         onclick={() => scryToTop(id)}
-                        aria-label={`keep ${scryCardName(id)} on top`}>Keep on top</button
+                        aria-label={`keep ${scryCardName(id)} on top`}
+                        >{topDepth > 1 ? topLaneLabel : "Keep on top"}</button
                       >
                     {/if}
                   </li>
@@ -1034,11 +1078,18 @@
             {:else if isReorderOnly}
               {scryTop.length} {isPutInLibrary ? "on top" : "back on top"}
             {:else}
-              {scryTop.length} on top · {scryBottom.length}
+              {scryTop.length}{topCount > 0 ? ` of ${topCount}` : ""}
+              {topDepth > 1 ? topLaneLabel.toLowerCase() : "on top"} · {scryBottom.length}
               {isSurveil ? "in the graveyard" : "on the bottom"}
             {/if}
           </span>
-          <button type="button" class="primary" onclick={submitScry}>Done</button>
+          <button
+            type="button"
+            class="primary"
+            disabled={!canSubmitLookAtTop}
+            title={canSubmitLookAtTop ? undefined : `Keep exactly ${topCount} on top`}
+            onclick={submitScry}>Done</button
+          >
         </div>
       {:else if isManaPick}
         <h2 id="choice-title">

@@ -698,6 +698,31 @@ func (e *enumerator) choiceMoves() bool {
 			// placement accepts.
 			cards := c.ScryCards
 			all := idStrings(cards)
+			if n := c.LibraryTopCount; n > 0 && n < len(cards) {
+				// #1298: EXACTLY n on top (Cream of the Crop). "Leave
+				// it alone" is not an answer here, so the canonical
+				// set is: the first n on top and the rest under, then
+				// each card pulled to the top of the top lane with the
+				// first n-1 of the others beside it. Every one holds
+				// exactly n on top; the first is always offered.
+				for i := range cards {
+					p := base()
+					p.TopOrder = []string{cards[i].String()}
+					p.Bottom = []string{}
+					for j, other := range cards {
+						if j == i {
+							continue
+						}
+						if len(p.TopOrder) < n {
+							p.TopOrder = append(p.TopOrder, other.String())
+						} else {
+							p.Bottom = append(p.Bottom, other.String())
+						}
+					}
+					e.addChoice(c, reason+": "+cardName(g, cards[i])+" on top", p)
+				}
+				break
+			}
 			lane := func(p *choiceParams, ids []string) {
 				if c.LibraryPlacement == game.LibraryPlaceBottom {
 					p.Bottom = ids

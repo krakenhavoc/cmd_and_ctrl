@@ -193,6 +193,10 @@ prints "in any order".
 
 ## Out of scope (explicit deferrals) — tracked on #1298
 
+> The first four of these shipped on 2026-09-23 — see the
+> [amendment](#amendment-2026-09-23-1298-the-library-positions-put_in_library-did-not-cover) at
+> the end. Library of Leng's batch order is still out of scope.
+
 - **A look at ANOTHER player's library top** (#996 item 5 — Jace, the Mind Sculptor's +2, Chaos
   Wand's look). `put_in_library` can order cards in anyone's library, but the LOOK that precedes it
   (`lookAtTopForEffect`) still takes the looker and the library owner as one player.
@@ -236,3 +240,176 @@ prints "in any order".
 - `client/src/lib/putInLibraryModal.render.test.ts` — the three placements' lanes and payloads.
 - One card test per proof card (`cards/effects/library_order_test.go`, the updated Aetherspouts and
   Brainstorm tests, the existing Vampiric Tutor test).
+
+---
+
+## Amendment (2026-09-23, #1298): the library positions put_in_library did not cover
+
+**Trackers:** [#888](https://github.com/krakenhavoc/cmd_and_ctrl/issues/888) (S45) and
+[#879](https://github.com/krakenhavoc/cmd_and_ctrl/issues/879) (S36: the prompt still owes the
+table an answer, now sometimes from a player who does not own the cards). No new ADR number. The
+prompt kind, its wire keys and its table obligations are unchanged. What changes is who may
+choose, which positions the top lane can mean, and what one leg of the move is.
+
+The first four "Out of scope" items above, in order.
+
+### A1 — The looker and the library's owner are two players
+
+"Look at the top card of target player's library. You may put that card on the bottom of that
+player's library" (Jace, the Mind Sculptor's +2). "Look at the top three cards of target player's
+library, then put them back in any order" (Portent). The placement half already worked: a
+put_in_library places each card in its OWNER's library, and a card already there is reordered in
+place. The look is what was missing. `lookAtTopForEffect` treats the looker and the owner as one
+player, and so did `LookAtTopOfLibraryForEffect`.
+
+`Game.LookAtTopOfPlayersLibraryForEffect(looker, owner, n)` (`game/random_bottom.go`) is the look
+with the two split. `LookAtTopOfLibraryForEffect(p, n)` is now `(p, p, n)`. Only the looker is
+marked a knower. The library's owner learns nothing: CR 401.2 keeps a library face down to its
+owner too, and a look (CR 701.20) is not a reveal. The card side is
+`effects.LookAtLibraryThenPlace{Owner, N, Placement}`, which is that look followed by a
+put_in_library whose chooser is the looker.
+
+`lookAtTopForEffect` itself is **not** split. Scry, surveil and "look at the top N of your library,
+then put them back" are the chooser's own library by definition (the keyword or the printed "your"
+says so). Their resolvers check that the chooser owns the cards, and that check is correct.
+put_in_library was already the family member that makes no such claim.
+
+**Visibility after the move** is Decision 3 unchanged. A card alone in its lane keeps its knowers.
+Jace's buried card was known to Jace's controller and stays known only to them. A lane of two or
+more is known to the chooser alone. Portent's three cards are known only to the caster afterwards,
+even when their owner had scryed them first, because the order is new and CR 401.4 does not reveal
+it.
+
+### A2 — A top lane at a depth, chosen by the card's owner
+
+"The owner of target nonland permanent puts it into their library second from the top or on the
+bottom" (Temporal Cleansing, Lost Days, Wan Shi Tong, All-Knowing). The out-of-scope note guessed
+at a `ConfirmPrompt` over `PutIntoLibrary`. We did not do that, because a confirm has no library
+position on the wire, the enumerator and the bot would score it as a bare yes/no, and the client
+would render it without the card. The choice is top-or-bottom with the top lane moved down.
+
+`PutInLibrarySpec.TopDepth` (`PendingChoice.LibraryTopDepth`) is where the top lane starts, counted
+from the top. 2 means "second from the top", and 0 or 1 means the top. The lane stays top-first:
+its legs run last-first, each inserted at the depth, so the first card of the answer ends at the
+depth. A reorder uses `Zone.InsertFromTop`, and the tuck route uses `TuckOptions.Depth`. As on
+the tuck route, a library shorter than the depth takes the card on the bottom.
+
+The chooser is the permanent's owner. `effects.PutIntoLibraryAtDepthOrBottom{Card, Depth}` defaults
+`Chooser` to the owner, because every printed variant names the owner.
+
+### A3 — An exact count on the top lane
+
+"Put one of those cards on top of your library and the rest on the bottom of your library in any
+order" (Cream of the Crop). `PutInLibrarySpec.TopCount` (`PendingChoice.LibraryTopCount`) is
+exactly how many cards the answer's `top_order` must hold. It is allowed only with
+`top_or_bottom`, and `ResolvePutInLibrary` refuses any other count. A pile no bigger than the
+count has no lane left to choose: it is placed as `top`, is asked only for its order, and is not
+asked at all when it is one card. That is Cream of the Crop off a 1-power creature.
+
+### A4 — A counter to a position, chosen by the counterer
+
+"Counter target spell. If that spell is countered this way, put that card on your choice of the
+top or bottom of its owner's library" (Hinder). "…put it on the bottom of its owner's library"
+(Spell Crumple). The out-of-scope note had the order backwards. It assumed counter first, then
+ask, and found no continuation to ask from. The card resolves the other way round: the counterer
+picks the end, then the spell is countered to it. Asking first also means:
+
+- the spell is still on the stack while its fate is decided, so nothing is momentarily on top of
+  a library that the answer then moves;
+- a commander's owner is offered CR 903.9 knowing which end the card was headed for;
+- a spell that can't be countered is never asked about. It was not "countered this way", so it
+  stays on the stack and the effect goes on.
+
+`PutInLibrarySpec.Counter` makes each leg a counter. `From` is forced to the stack, a card is live
+only while it is a spell a counter would counter (`counterableSpellOnStackLocked`), and the leg is
+`Game.CounterSpellToLibraryThenForEffect(stackID, TuckOptions, then)` (`game/effect_api.go`). That
+is `CounterTargetToZoneForEffect` with a library position. Underneath it,
+`exitSpellFromStackAtLocked` is the shared stack exit with the position riding the route, so
+flashback's CR 702.34a exile still wins, EventCounterSpell fires, and the stack record retires. A
+countered ability ceases to exist (CR 701.6b) and is never offered. The card side is
+`effects.CounterToLibrary{StackID, Placement}`. Spell Crumple uses `bottom` with no choice, so it
+raises no prompt.
+
+**Visibility.** A card that was in a public zone (the stack, the battlefield) was watched by the
+table, whether or not anything had stamped a knower mark on it. `libraryOrderKnowers` now counts
+every seat as a prior knower of a card whose source zone is public (`publicKnowersOfLocked`,
+CR 400.2). Placed alone in its lane, a Hinder'd spell or a Temporal Cleansing'd permanent is known
+to the whole table on top of the library. That is what Decision 3 already said it should be. A
+pile of two or more is still the chooser's alone.
+
+### A5 — Leaving the game
+
+The departure row stays `{}` (dropped, and the drop does nothing more). Decision 5 assumed every
+chooser owns the pile. That is no longer true, but the drop is still right in each new case:
+
+- **Jace / Portent.** The looked-at cards stay on top of the other player's library, untouched,
+  and the looker's knowledge leaves with the looker.
+- **Hinder.** Because the choice comes before the counter, a Hinder whose controller leaves
+  mid-prompt countered nothing, and the spell stays on the stack. This replaces Decision 5's guess
+  that the card would be "where the effect had already put them — on top".
+- **Temporal Cleansing.** The chooser is the owner, and CR 800.4a took the permanent with them.
+
+### A6 — Enumerator, bot, wire, client
+
+- **Enumerator** (`legal/choices.go`). With a `TopCount` there is no "leave it alone" answer. The
+  canonical set is one answer per card, with that card first on top, the next `TopCount-1` beside
+  it and the rest under. Every answer holds exactly the count, and every one dispatches. The other
+  new shapes need nothing new: a depth changes where the top lane lands, not which answers are
+  legal.
+- **Bot** (`aiseat/heuristic/choices.go`). No new branch. With an exact count every answer holds
+  the same number on top, so the existing terms rank the answers by the card left on top. An
+  opponent's card on a top-or-bottom (Jace, Hinder) is buried by the existing opponent term.
+- **Wire.** `PendingChoiceView.TopCount` / `TopDepth` (`top_count`, `top_depth`) are public, like
+  `placement`. Options still reach the chooser alone.
+- **Client** (`ChoicePromptModal.svelte`, the existing reorder dialog). With a count, the seed is
+  already a legal answer (the first N on top), the top lane reads "On top (k of N)", and Done is
+  disabled until the count holds. With a depth, the top lane is named "Second from the top". When
+  the cards are not the viewer's (Jace, Portent, Hinder), the hint no longer calls the top card
+  "your next draw".
+
+### Cards
+
+| Card | Shape | Completeness |
+|---|---|---|
+| Jace, the Mind Sculptor | A1 (+2). The 0 is Brainstorm's sentence, the −1 a bounce, the −12 exile-library then tuck-hand-and-shuffle | `full` (all four abilities) |
+| Portent | A1 with an ordered top, then "you may have that player shuffle", then a CR 603.7 draw at the next upkeep | `full` |
+| Temporal Cleansing | A2 (convoke is `Spec.TapCost`) | `full` |
+| Cream of the Crop | A3 | `caveats`: X falls back to the creature's power when the ability triggered if the creature has left by resolution. The engine keeps no last-known power past the trigger's own dispatch. |
+| Hinder | A4, top or bottom | `full` |
+| Spell Crumple | A4, bottom, then the card's own "put Spell Crumple on the bottom" | `full` |
+
+Spell Crumple's second sentence runs on the line after the counter, not in the counter's `Then`.
+The resolution frame routes a still-resolving spell to the graveyard as soon as `OnResolve`
+returns, so a `Then` that ran later would tuck the card back out of the graveyard. That would
+happen after a countered commander's owner answered CR 903.9. The cost is one ordering corner: if
+you counter your *own* commander with Spell Crumple and decline the command zone, the commander
+ends up under Spell Crumple instead of over it.
+
+### Still out of scope
+
+- Library of Leng's multi-card discard order (unchanged, above).
+- Lost Days and Wan Shi Tong, All-Knowing are A2 card work. Wan Shi Tong's "whenever one or more
+  cards are put into a library from anywhere" has no batched event yet.
+
+### Test plan (amendment)
+
+- `game/library_order_leftovers_test.go`:
+  - the looker is the only knower;
+  - another player's library is reordered in place, and its owner does not learn the order;
+  - depth through the tuck route, as a pile, and as a reorder;
+  - the exact count is enforced, and a count that fits the pile becomes a top placement;
+  - a malformed spec is refused;
+  - a counter to each end: EventCounterSpell fires, the card lands in its owner's library, and
+    the table knows it;
+  - an uncounterable spell is not asked about;
+  - a countered commander is offered CR 903.9 and, on decline, lands at the bottom.
+- `legal/put_in_library_leftovers_test.go` — the exact-count answers, and a chooser who is not
+  the owner (a look, a counter): offered answers dispatch, and nobody else is offered anything.
+- `protocol/put_in_library_leftovers_view_test.go` — a look at another player's library reaches
+  the looker's wire only, and `top_count` / `top_depth` are public.
+- `aiseat/heuristic/choices_test.go` — the exact count keeps the best card on top, and the top of
+  an opponent's library is buried.
+- `client/src/lib/putInLibraryModal.render.test.ts` — the count seeds a legal answer and holds
+  Done, the depth names the lane, and another player's library is not "your next draw".
+- `cards/effects/library_top_leftovers_test.go` — one test per proof card, and all four of Jace's
+  abilities.

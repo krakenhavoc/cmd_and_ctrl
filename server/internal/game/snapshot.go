@@ -732,14 +732,17 @@ type pendingChoiceSnapshot struct {
 	ScryCards        []uuid.UUID    `json:"scryCards,omitempty"`
 	// ADR 0088: which lanes a put_in_library answer may use.
 	LibraryPlacement LibraryPlacement `json:"libraryPlacement,omitempty"`
-	TriggerOrderIDs  []uuid.UUID      `json:"triggerOrderIds,omitempty"`
-	PayCost          string           `json:"payCost,omitempty"`
-	SearchCards      []uuid.UUID      `json:"searchCards,omitempty"`
-	SearchMax        int              `json:"searchMax"`
-	MayCastCard      uuid.UUID        `json:"mayCastCard,omitempty"`
-	AcceptLabel      string           `json:"acceptLabel,omitempty"`
-	LifeCost         int              `json:"lifeCost,omitempty"`
-	DeclineLabel     string           `json:"declineLabel,omitempty"`
+	// #1298: the put_in_library top lane's exact count and depth.
+	LibraryTopCount int         `json:"libraryTopCount,omitempty"`
+	LibraryTopDepth int         `json:"libraryTopDepth,omitempty"`
+	TriggerOrderIDs []uuid.UUID `json:"triggerOrderIds,omitempty"`
+	PayCost         string      `json:"payCost,omitempty"`
+	SearchCards     []uuid.UUID `json:"searchCards,omitempty"`
+	SearchMax       int         `json:"searchMax"`
+	MayCastCard     uuid.UUID   `json:"mayCastCard,omitempty"`
+	AcceptLabel     string      `json:"acceptLabel,omitempty"`
+	LifeCost        int         `json:"lifeCost,omitempty"`
+	DeclineLabel    string      `json:"declineLabel,omitempty"`
 	// OwedInStep: the step a pay-or-else prompt has to be answered in
 	// (#997). Carried so a restored game gates the same way, cheap
 	// and honest even though every prompt that sets it today also
@@ -1494,6 +1497,8 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		CopyOptions:          copyUUIDs(c.CopyOptions),
 		ScryCards:            copyUUIDs(c.ScryCards),
 		LibraryPlacement:     c.LibraryPlacement,
+		LibraryTopCount:      c.LibraryTopCount,
+		LibraryTopDepth:      c.LibraryTopDepth,
 		TriggerOrderIDs:      copyUUIDs(c.TriggerOrderIDs),
 		PayCost:              c.PayCost,
 		SearchCards:          copyUUIDs(c.SearchCards),
@@ -2108,6 +2113,8 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		CopyOptions:          copyUUIDs(c.CopyOptions),
 		ScryCards:            copyUUIDs(c.ScryCards),
 		LibraryPlacement:     c.LibraryPlacement,
+		LibraryTopCount:      c.LibraryTopCount,
+		LibraryTopDepth:      c.LibraryTopDepth,
 		TriggerOrderIDs:      copyUUIDs(c.TriggerOrderIDs),
 		PayCost:              c.PayCost,
 		SearchCards:          copyUUIDs(c.SearchCards),

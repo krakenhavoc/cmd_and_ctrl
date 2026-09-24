@@ -581,6 +581,17 @@ type PendingChoice struct {
 	// other kind.
 	LibraryPlacement LibraryPlacement
 
+	// LibraryTopCount / LibraryTopDepth refine a put_in_library's top
+	// lane (#1298, ADR 0088's 2026-09-23 amendment): the count is
+	// EXACTLY how many cards the answer's top lane must hold (Cream of
+	// the Crop's "put one of those cards on top"; zero is any number),
+	// and the depth is where that lane starts, counted from the top
+	// (Temporal Cleansing's "second from the top"; zero and one are
+	// the top). Plain data, carried by the clone and the snapshot like
+	// LibraryPlacement. Zero on every other kind.
+	LibraryTopCount int
+	LibraryTopDepth int
+
 	// TriggerOrderIDs is the set of pending-trigger item IDs a
 	// PendingChoiceTriggerOrder entry asks the chooser to order.
 	// Wire-serialised (with label + source per ID) so the client

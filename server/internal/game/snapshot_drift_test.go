@@ -623,6 +623,8 @@ var pendingChoiceFields = plan(
 	"CopyOptions", carried, "",
 	"ScryCards", carried, "",
 	"LibraryPlacement", carried, "",
+	"LibraryTopCount", carried, "",
+	"LibraryTopDepth", carried, "",
 	"TriggerOrderIDs", carried, "",
 	"PayCost", carried, "",
 	// #997: the step a pay-or-else prompt has to be answered in

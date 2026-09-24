@@ -1006,7 +1006,7 @@ Ordered by "unlocks alone", because that is the column that answers
 | 4 | Until-end-of-turn continuous effects (turn-scoped statics) | **59** | 232 | 171 | #279 — **shipped** (S32) |
 | 5 | Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse) | **59** | 106 | 95 | — |
 | 6 | Attachments — Equipment and Auras | **47** | 105 | 104 | #280 — **shipped** (S33) |
-| 7 | Library-top placement and ordered look (Brainstorm / tutors / Ponder) | **45** | 98 | 61 | #996 — placement **shipped** (ADR 0088); rest #1298 |
+| 7 | Library-top placement and ordered look (Brainstorm / tutors / Ponder) | **45** | 98 | 61 | #996 — placement **shipped** (ADR 0088); #1298 leftovers **shipped** (ADR 0088 amendment) |
 | 8 | Player-scoped and game-rule effects (hand size, extra turns / combats / land drops, command zone) | **39** | 95 | 45 | — |
 | 9 | Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling…) | **28** | 96 | 28 | #705 / #706 / #748 ¹ |
 | 10 | Keyword actions with no primitive (proliferate, surveil, explore, connive, amass…) | **24** | 54 | 28 | — |
@@ -1128,7 +1128,7 @@ Same detectors, ranks 2,235–4,253.
 | 6 | Mana pipeline — restricted / derived mana, mana from a spell, gated or scaled mana abilities | **47** | 113 | 59 | #352 — **shipped** (S32) |
 | 7 | Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse) | **40** | 116 | 93 | — |
 | 8 | Player-scoped and game-rule effects (hand size, extra turns / combats / land drops, command zone) | **35** | 86 | 46 | — |
-| 9 | Library-top placement and ordered look (Brainstorm / tutors / Ponder) | **31** | 91 | 40 | #996 — placement **shipped** (ADR 0088); rest #1298 |
+| 9 | Library-top placement and ordered look (Brainstorm / tutors / Ponder) | **31** | 91 | 40 | #996 — placement **shipped** (ADR 0088); #1298 leftovers **shipped** (ADR 0088 amendment) |
 | 10 | Attack / block restrictions and taxes (can't be blocked, attack taxes, must attack) | **30** | 105 | 42 | — |
 | 11 | Card-type completeness — planeswalkers, sagas, vehicles, battles, classes | **26** | 87 | 72 | #92 — **shipped** (S27) |
 | 12 | Exile-and-return (blink) and exile-until-leaves | **23** | 58 | 32 | — |
@@ -1176,7 +1176,7 @@ Same detectors, ranks 4,254–6,289.
 | 4 | Protection / hexproof / ward / indestructible / shroud, damage prevention, copying | **57** | 216 | 106 | #662 / #665 / #666 ¹ |
 | 5 | Attachments — Equipment and Auras | **49** | 114 | 111 | #280 — **shipped** (S33) |
 | 6 | Mana pipeline — restricted / derived mana, mana from a spell, gated or scaled mana abilities | **40** | 98 | 60 | #352 — **shipped** (S32) |
-| 7 | Library-top placement and ordered look (Brainstorm / tutors / Ponder) | **37** | 108 | 53 | #996 — placement **shipped** (ADR 0088); rest #1298 |
+| 7 | Library-top placement and ordered look (Brainstorm / tutors / Ponder) | **37** | 108 | 53 | #996 — placement **shipped** (ADR 0088); #1298 leftovers **shipped** (ADR 0088 amendment) |
 | 8 | Attack / block restrictions and taxes (can't be blocked, attack taxes, must attack) | **35** | 114 | 44 | — |
 | 9 | Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse) | **31** | 111 | 85 | — |
 | 10 | Keyword actions with no primitive (proliferate, surveil, explore, connive, amass…) | **26** | 67 | 30 | — |

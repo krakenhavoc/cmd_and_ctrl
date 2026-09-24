@@ -945,6 +945,13 @@ export interface PendingChoiceView {
   // the answer may use. "top" answers {top_order} alone, "bottom"
   // answers {bottom} alone (top-first), "top_or_bottom" answers both.
   placement?: "top" | "bottom" | "top_or_bottom";
+  // #1298: refine a put_in_library's top lane. `top_count` is EXACTLY
+  // how many cards `top_order` must hold (Cream of the Crop's "put one
+  // of those cards on top"; absent is any number). `top_depth` is where
+  // the top lane lands, counted from the top (2 is Temporal Cleansing's
+  // "second from the top"; absent is the top). Both public.
+  top_count?: number;
+  top_depth?: number;
   // #74: populated for kind "confirm" — the card's own words for the
   // accept and decline branches. Absent means the client renders Yes /
   // No, which is right for a prompt that really is a yes/no.

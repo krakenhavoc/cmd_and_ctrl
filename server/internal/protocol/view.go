@@ -381,6 +381,14 @@ type PendingChoiceView struct {
 	// ({bottom} alone, top-first) or "top_or_bottom" (both). Absent
 	// for other kinds.
 	Placement string `json:"placement,omitempty"`
+	// TopCount / TopDepth refine a put_in_library's top lane (#1298):
+	// TopCount is EXACTLY how many cards the answer's top_order must
+	// hold (Cream of the Crop's "put one of those cards on top";
+	// absent is any number), and TopDepth is where that lane lands,
+	// counted from the top (2 is Temporal Cleansing's "second from the
+	// top"; absent is the top). Public, like placement.
+	TopCount int `json:"top_count,omitempty"`
+	TopDepth int `json:"top_depth,omitempty"`
 	// LoopCount / LoopMaxIterations populate the #804 "loop_shortcut"
 	// kind (CR 726): how many times the repeating ability has already
 	// resolved this turn, and the ceiling the engine will accept on
@@ -4823,6 +4831,10 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// public, which is correct — "scry 2" is a printed number.
 		if c.Kind == game.PendingChoicePutInLibrary {
 			v.Placement = string(c.LibraryPlacement)
+			v.TopCount = c.LibraryTopCount
+			if c.LibraryTopDepth > 1 {
+				v.TopDepth = c.LibraryTopDepth
+			}
 		}
 		if game.IsLookAtTopKind(c.Kind) && len(c.ScryCards) > 0 {
 			v.Options = make([]CardView, 0, len(c.ScryCards))

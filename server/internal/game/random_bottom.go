@@ -136,10 +136,27 @@ func (g *Game) PutOnBottomInRandomOrderForEffect(actor uuid.UUID, from ZoneKind,
 //
 // Caller must hold g.mu.
 func (g *Game) LookAtTopOfLibraryForEffect(playerID uuid.UUID, n int) []uuid.UUID {
+	return g.LookAtTopOfPlayersLibraryForEffect(playerID, playerID, n)
+}
+
+// LookAtTopOfPlayersLibraryForEffect is the same look with the LOOKER
+// and the library's OWNER named separately — "look at the top card of
+// target player's library" (Jace, the Mind Sculptor's +2), "look at the
+// top three cards of target player's library" (Portent). #1298.
+//
+// Only `looker` is marked a knower. The library's owner learns nothing
+// they did not already know: CR 401.2 keeps a library face down to its
+// own owner too, and "look at" (CR 701.20) is not "reveal". What the
+// card then does with the cards — put them back in an order, or on the
+// bottom — is a put_in_library prompt whose chooser is the looker
+// (ADR 0088), which already places a card in its OWNER's library.
+//
+// Caller must hold g.mu.
+func (g *Game) LookAtTopOfPlayersLibraryForEffect(looker, owner uuid.UUID, n int) []uuid.UUID {
 	if n <= 0 {
 		return nil
 	}
-	p := g.playerByIDLocked(playerID)
+	p := g.playerByIDLocked(owner)
 	if p == nil || p.Library == nil {
 		return nil
 	}
@@ -150,7 +167,7 @@ func (g *Game) LookAtTopOfLibraryForEffect(playerID uuid.UUID, n int) []uuid.UUI
 	ids := make([]uuid.UUID, 0, n)
 	for i := 0; i < n; i++ {
 		idx := size - 1 - i
-		p.Library.Cards[idx].AddKnower(playerID)
+		p.Library.Cards[idx].AddKnower(looker)
 		ids = append(ids, p.Library.Cards[idx].InstanceID)
 	}
 	return ids
