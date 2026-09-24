@@ -210,8 +210,8 @@ func TestDoublecastExpiresWithTheTurn(t *testing.T) {
 		t.Fatalf("Doublecast left %d delayed triggers, want 1", len(g.DelayedTriggers))
 	}
 
-	startTurn := g.Turn.Number
-	for i := 0; i < 64 && g.Turn.Number == startTurn && g.Turn.ActiveSeat == 0; i++ {
+	startTurn := g.Turn.Seq
+	for i := 0; i < 64 && g.Turn.Seq == startTurn; i++ {
 		if _, err := g.AdvanceStep(); err != nil {
 			t.Fatalf("AdvanceStep: %v", err)
 		}

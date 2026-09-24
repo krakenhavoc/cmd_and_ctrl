@@ -20,7 +20,7 @@ const (
 )
 
 // advanceToNextSeatsTurn walks the cursor past this seat's cleanup
-// step. Turn.Number counts rounds, so the active seat is the
+// step. Turn.Round counts rounds, so the active seat is the
 // reliable "the turn ended" marker.
 func advanceToNextSeatsTurn(t *testing.T, g *game.Game) {
 	t.Helper()

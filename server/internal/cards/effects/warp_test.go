@@ -149,7 +149,7 @@ func TestWarpExilesAtTheNextEndStep(t *testing.T) {
 func TestWarpGrantIsDarkUntilTheNextTurn(t *testing.T) {
 	g := newCatalogGame(t)
 	id, active := warpCreature(t, g)
-	warpTurn := g.Turn.Number
+	warpTurn := g.Turn.Seq
 	advanceThroughEndStep(t, g)
 
 	var grant game.CastPermission
@@ -169,17 +169,17 @@ func TestWarpGrantIsDarkUntilTheNextTurn(t *testing.T) {
 	if grant.Duration.Kind != game.WhileInZone {
 		t.Errorf("warp's grant is %v, want CR 611.2b's \"for as long as it remains exiled\"", grant.Duration.Kind)
 	}
-	if grant.NotBeforeTurn != warpTurn+1 {
-		t.Errorf("NotBeforeTurn: got %d, want %d", grant.NotBeforeTurn, warpTurn+1)
+	if grant.NotBeforeSeq != warpTurn+1 {
+		t.Errorf("NotBeforeSeq: got %d, want %d", grant.NotBeforeSeq, warpTurn+1)
 	}
 	if permissionLive(g, &grant, active.ID) {
 		t.Errorf("the grant is live on the turn the creature was warped")
 	}
 	// CR 702.185a's floor is a round number, so a later round opens
 	// it — the one thing Duration cannot say, and the reason
-	// NotBeforeTurn survived #945.
+	// NotBeforeSeq survived #945.
 	later := g.Clone()
-	later.Turn.Number = warpTurn + 1
+	later.Turn.Seq = warpTurn + 1
 	if !permissionLive(later, &grant, active.ID) {
 		t.Errorf("the grant is not live on the next turn")
 	}

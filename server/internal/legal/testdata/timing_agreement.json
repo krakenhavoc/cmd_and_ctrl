@@ -279,6 +279,7 @@
         "cards": []
       },
       "turn": {
+        "seq": 1,
         "number": 1,
         "active_seat": 0,
         "priority_holder": 0,
@@ -425,6 +426,7 @@
           "seq": 1,
           "kind": "step",
           "turn": 1,
+          "round": 1,
           "step": "untap",
           "seat": 0,
           "text": "Turn 1 — Seat 1 · untap"
@@ -433,6 +435,7 @@
           "seq": 2,
           "kind": "step",
           "turn": 1,
+          "round": 1,
           "step": "upkeep",
           "seat": 0,
           "text": "Turn 1 — Seat 1 · upkeep"
@@ -441,6 +444,7 @@
           "seq": 4,
           "kind": "step",
           "turn": 1,
+          "round": 1,
           "step": "draw",
           "seat": 0,
           "text": "Turn 1 — Seat 1 · draw"
@@ -449,6 +453,7 @@
           "seq": 5,
           "kind": "step",
           "turn": 1,
+          "round": 1,
           "step": "precombat_main",
           "seat": 0,
           "text": "Turn 1 — Seat 1 · precombat main"
@@ -723,6 +728,7 @@
         "cards": []
       },
       "turn": {
+        "seq": 1,
         "number": 1,
         "active_seat": 0,
         "priority_holder": 0,
@@ -838,6 +844,7 @@
           "seq": 1,
           "kind": "step",
           "turn": 1,
+          "round": 1,
           "step": "untap",
           "seat": 0,
           "text": "Turn 1 — Seat 1 · untap"
@@ -846,6 +853,7 @@
           "seq": 2,
           "kind": "step",
           "turn": 1,
+          "round": 1,
           "step": "upkeep",
           "seat": 0,
           "text": "Turn 1 — Seat 1 · upkeep"
@@ -854,6 +862,7 @@
           "seq": 4,
           "kind": "step",
           "turn": 1,
+          "round": 1,
           "step": "draw",
           "seat": 0,
           "text": "Turn 1 — Seat 1 · draw"
@@ -862,6 +871,7 @@
           "seq": 5,
           "kind": "step",
           "turn": 1,
+          "round": 1,
           "step": "precombat_main",
           "seat": 0,
           "text": "Turn 1 — Seat 1 · precombat main"
@@ -1148,6 +1158,7 @@
         "cards": []
       },
       "turn": {
+        "seq": 1,
         "number": 1,
         "active_seat": 0,
         "priority_holder": 0,
@@ -1268,6 +1279,7 @@
           "seq": 1,
           "kind": "step",
           "turn": 1,
+          "round": 1,
           "step": "untap",
           "seat": 0,
           "text": "Turn 1 — Seat 1 · untap"
@@ -1276,6 +1288,7 @@
           "seq": 2,
           "kind": "step",
           "turn": 1,
+          "round": 1,
           "step": "upkeep",
           "seat": 0,
           "text": "Turn 1 — Seat 1 · upkeep"
@@ -1284,6 +1297,7 @@
           "seq": 4,
           "kind": "step",
           "turn": 1,
+          "round": 1,
           "step": "draw",
           "seat": 0,
           "text": "Turn 1 — Seat 1 · draw"
@@ -1292,6 +1306,7 @@
           "seq": 5,
           "kind": "step",
           "turn": 1,
+          "round": 1,
           "step": "precombat_main",
           "seat": 0,
           "text": "Turn 1 — Seat 1 · precombat main"
@@ -1300,6 +1315,7 @@
           "seq": 7,
           "kind": "step",
           "turn": 1,
+          "round": 1,
           "step": "begin_combat",
           "seat": 0,
           "text": "Turn 1 — Seat 1 · begin combat"
@@ -1308,6 +1324,7 @@
           "seq": 8,
           "kind": "step",
           "turn": 1,
+          "round": 1,
           "step": "declare_attackers",
           "seat": 0,
           "text": "Turn 1 — Seat 1 · declare attackers"
@@ -1607,6 +1624,7 @@
         "cards": []
       },
       "turn": {
+        "seq": 1,
         "number": 1,
         "active_seat": 0,
         "priority_holder": 0,
@@ -1721,6 +1739,7 @@
           "seq": 1,
           "kind": "step",
           "turn": 1,
+          "round": 1,
           "step": "untap",
           "seat": 0,
           "text": "Turn 1 — Seat 1 · untap"
@@ -1729,6 +1748,7 @@
           "seq": 2,
           "kind": "step",
           "turn": 1,
+          "round": 1,
           "step": "upkeep",
           "seat": 0,
           "text": "Turn 1 — Seat 1 · upkeep"
@@ -1737,6 +1757,7 @@
           "seq": 4,
           "kind": "step",
           "turn": 1,
+          "round": 1,
           "step": "draw",
           "seat": 0,
           "text": "Turn 1 — Seat 1 · draw"
@@ -1745,6 +1766,7 @@
           "seq": 5,
           "kind": "step",
           "turn": 1,
+          "round": 1,
           "step": "precombat_main",
           "seat": 0,
           "text": "Turn 1 — Seat 1 · precombat main"
@@ -2025,6 +2047,7 @@
         "cards": []
       },
       "turn": {
+        "seq": 1,
         "number": 1,
         "active_seat": 0,
         "priority_holder": 0,
@@ -2047,6 +2070,7 @@
           "seq": 1,
           "kind": "step",
           "turn": 1,
+          "round": 1,
           "step": "untap",
           "seat": 0,
           "text": "Turn 1 — Seat 1 · untap"
@@ -2055,6 +2079,7 @@
           "seq": 2,
           "kind": "step",
           "turn": 1,
+          "round": 1,
           "step": "upkeep",
           "seat": 0,
           "text": "Turn 1 — Seat 1 · upkeep"
@@ -2063,6 +2088,7 @@
           "seq": 4,
           "kind": "step",
           "turn": 1,
+          "round": 1,
           "step": "draw",
           "seat": 0,
           "text": "Turn 1 — Seat 1 · draw"
@@ -2071,6 +2097,7 @@
           "seq": 5,
           "kind": "step",
           "turn": 1,
+          "round": 1,
           "step": "precombat_main",
           "seat": 0,
           "text": "Turn 1 — Seat 1 · precombat main"
@@ -2287,6 +2314,7 @@
         "cards": []
       },
       "turn": {
+        "seq": 1,
         "number": 1,
         "active_seat": 0,
         "priority_holder": 0,
@@ -2354,6 +2382,7 @@
           "seq": 1,
           "kind": "step",
           "turn": 1,
+          "round": 1,
           "step": "untap",
           "seat": 0,
           "text": "Turn 1 — Seat 1 · untap"
@@ -2362,6 +2391,7 @@
           "seq": 2,
           "kind": "step",
           "turn": 1,
+          "round": 1,
           "step": "upkeep",
           "seat": 0,
           "text": "Turn 1 — Seat 1 · upkeep"
@@ -2370,6 +2400,7 @@
           "seq": 4,
           "kind": "step",
           "turn": 1,
+          "round": 1,
           "step": "draw",
           "seat": 0,
           "text": "Turn 1 — Seat 1 · draw"
@@ -2378,6 +2409,7 @@
           "seq": 5,
           "kind": "step",
           "turn": 1,
+          "round": 1,
           "step": "precombat_main",
           "seat": 0,
           "text": "Turn 1 — Seat 1 · precombat main"
@@ -2592,6 +2624,7 @@
         "cards": []
       },
       "turn": {
+        "seq": 1,
         "number": 1,
         "active_seat": 0,
         "priority_holder": 0,
@@ -2659,6 +2692,7 @@
           "seq": 1,
           "kind": "step",
           "turn": 1,
+          "round": 1,
           "step": "untap",
           "seat": 0,
           "text": "Turn 1 — Seat 1 · untap"
@@ -2667,6 +2701,7 @@
           "seq": 2,
           "kind": "step",
           "turn": 1,
+          "round": 1,
           "step": "upkeep",
           "seat": 0,
           "text": "Turn 1 — Seat 1 · upkeep"
@@ -2675,6 +2710,7 @@
           "seq": 4,
           "kind": "step",
           "turn": 1,
+          "round": 1,
           "step": "draw",
           "seat": 0,
           "text": "Turn 1 — Seat 1 · draw"
@@ -2683,6 +2719,7 @@
           "seq": 5,
           "kind": "step",
           "turn": 1,
+          "round": 1,
           "step": "precombat_main",
           "seat": 0,
           "text": "Turn 1 — Seat 1 · precombat main"
@@ -2916,6 +2953,7 @@
         "cards": []
       },
       "turn": {
+        "seq": 1,
         "number": 1,
         "active_seat": 0,
         "priority_holder": 0,
@@ -2999,6 +3037,7 @@
           "seq": 1,
           "kind": "step",
           "turn": 1,
+          "round": 1,
           "step": "untap",
           "seat": 0,
           "text": "Turn 1 — Seat 1 · untap"
@@ -3007,6 +3046,7 @@
           "seq": 2,
           "kind": "step",
           "turn": 1,
+          "round": 1,
           "step": "upkeep",
           "seat": 0,
           "text": "Turn 1 — Seat 1 · upkeep"
@@ -3015,6 +3055,7 @@
           "seq": 4,
           "kind": "step",
           "turn": 1,
+          "round": 1,
           "step": "draw",
           "seat": 0,
           "text": "Turn 1 — Seat 1 · draw"
@@ -3023,6 +3064,7 @@
           "seq": 5,
           "kind": "step",
           "turn": 1,
+          "round": 1,
           "step": "precombat_main",
           "seat": 0,
           "text": "Turn 1 — Seat 1 · precombat main"

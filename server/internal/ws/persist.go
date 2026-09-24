@@ -257,7 +257,7 @@ func (m *RoomManager) restoreOne(path string) RestoreOutcome {
 		"game_id", g.ID,
 		"seq", file.Seq,
 		"state", file.Snapshot.State,
-		"turn", file.Snapshot.Turn.Number,
+		"turn", file.Snapshot.Turn.Round,
 		"seats", len(file.Snapshot.Seats),
 		"captured_at", file.Snapshot.TakenAt,
 	)

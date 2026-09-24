@@ -73,7 +73,8 @@ func TestRNGKnownAnswer(t *testing.T) {
 
 	g := NewGame()
 	g.SetRNGKeyForTest(testRNGKey())
-	g.Turn.ActiveSeat = 3 // turn index 0*MaxPlayers + 3 = 3
+	g.Turn.Seq = 3
+	g.Turn.ActiveSeat = 3
 	var got []uint64
 	g.WithWriteLock(func() {
 		for i := 0; i < 3; i++ {
@@ -217,22 +218,22 @@ func TestRNGFishingIsRewound(t *testing.T) {
 // TestRNGTurnScoping: the counters belong to one turn. On the next turn
 // they are cleared, and the same stream gives a different value even
 // at counter 0. "Next turn" includes the next SEAT's turn in the same
-// round: Turn.Number only counts rounds.
+// round: Turn.Round only counts rounds.
 func TestRNGTurnScoping(t *testing.T) {
 	g := NewGame()
 	g.SetRNGKeyForTest(testRNGKey())
 	s := rngStream{kind: "roll", player: rngTestPlayer, source: rngTestOgre}
 	var t1, t2 uint64
 	g.WithWriteLock(func() {
-		g.Turn.Number = 1
+		g.Turn.Seq = 1
 		t1 = g.randForLocked(s).Uint64()
 		g.randForLocked(rngStream{kind: rngStreamPick, player: rngTestPlayer}).Uint64()
 		if len(g.rngCounters) != 2 {
 			t.Errorf("turn 1 counters = %v, want two streams", g.rngCounters)
 		}
-		g.Turn.Number = 2
+		g.Turn.Seq = 2
 		t2 = g.randForLocked(s).Uint64()
-		if want := 2 * MaxPlayers; g.rngTurn != want {
+		if want := 2; g.rngTurn != want {
 			t.Errorf("rngTurn = %d, want %d", g.rngTurn, want)
 		}
 		if len(g.rngCounters) != 1 {
@@ -247,6 +248,7 @@ func TestRNGTurnScoping(t *testing.T) {
 	var t3 uint64
 	g.WithWriteLock(func() {
 		g.Turn.ActiveSeat = 1
+		g.Turn.Seq++
 		t3 = g.randForLocked(s).Uint64()
 		if len(g.rngCounters) != 1 {
 			t.Errorf("seat 1's turn counters = %v, want only the stream drawn this turn", g.rngCounters)
@@ -574,7 +576,7 @@ func TestDiscardRandomDoesNotAlwaysTakeTheFirstCard(t *testing.T) {
 	notFirst := 0
 	for i := 0; i < 20; i++ {
 		g.WithWriteLock(func() {
-			g.Turn.Number = i // a fresh turn: counter 0 on a new stream each time
+			g.Turn.Seq = i // a fresh turn: counter 0 on a new stream each time
 			for p.Hand.Size() < 5 {
 				if _, err := MoveCard(p.Library, p.Hand, p.Library.Cards[0].InstanceID); err != nil {
 					t.Fatalf("MoveCard: %v", err)

@@ -395,7 +395,7 @@ func TestPlotIsEnumeratedInYourMainPhaseAndItsFreeCastLater(t *testing.T) {
 
 	// A later turn of the same seat. The land stays tapped, so the
 	// only way the cast can be offered is for free.
-	g.WithWriteLock(func() { g.Turn.Number++ })
+	g.WithWriteLock(func() { g.Turn.Seq++ })
 	moves = legal.EnumerateFor(g, active.ID)
 	if n := len(movesOfKindFor(moves, legal.KindCast, card)); n == 0 {
 		t.Fatalf("the plotted card's free cast is not enumerated on a later turn; moves = %v", labels(moves))

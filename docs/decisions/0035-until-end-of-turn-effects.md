@@ -1,6 +1,10 @@
 # ADR 0035 — "Until end of turn" continuous effects (S32)
 
 **Status:** Accepted · 2026-09-11 · Sprint S32 · Issue #279
+**Turn-identity note:** [ADR 0059](0059-turn-machinery.md) sub-PR 1
+renames the table's round counter to `Turn.Round` and adds `Turn.Seq`.
+ADR 0063 has since replaced this ADR's turn stamps with the shared
+`Duration` vocabulary and per-seat `TurnsBegun` counters.
 
 ## Context
 

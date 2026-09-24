@@ -235,7 +235,7 @@ func TestTurnScopedIndestructibleGrantProtectsUntilItExpires(t *testing.T) {
 	// Cleanup sweeps the grant (CR 514.2); the creature is plain
 	// cardboard again.
 	g.WithWriteLock(func() {
-		g.Turn.Number++
+		g.Turn.Seq++
 		g.ClearEndOfTurnScopedStaticsLocked()
 		if err := g.DestroyPermanentForEffect(id); err != nil {
 			t.Fatalf("DestroyPermanentForEffect after expiry: %v", err)

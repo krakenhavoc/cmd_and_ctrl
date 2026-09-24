@@ -333,7 +333,7 @@ func playCatalogGame(t *testing.T, room *ws.Room, policies []aiseat.Policy, turn
 	lastSeq, lastMove := room.Seq(), time.Now()
 	for {
 		snap := g.Snapshot()
-		if snap.State != game.StateActive || snap.Turn.Number > turnBudget {
+		if snap.State != game.StateActive || snap.Turn.Round > turnBudget {
 			break
 		}
 		if seq := room.Seq(); seq != lastSeq {
@@ -361,12 +361,12 @@ func playCatalogGame(t *testing.T, room *ws.Room, policies []aiseat.Policy, turn
 			// called outside the block above rather than inside it.
 			out.stalled = true
 			out.dump = fmt.Sprintf("turn %d step %s priority=%d pending=%d kinds=[%s]\n%s",
-				snap.Turn.Number, snap.Turn.Step, snap.Turn.PriorityHolder, pending, out.stallKinds, describeSeats(g))
+				snap.Turn.Round, snap.Turn.Step, snap.Turn.PriorityHolder, pending, out.stallKinds, describeSeats(g))
 			break
 		}
 		if ctx.Err() != nil {
 			out.stalled = true
-			out.dump = fmt.Sprintf("wall clock (%s) exhausted at turn %d", wall, snap.Turn.Number)
+			out.dump = fmt.Sprintf("wall clock (%s) exhausted at turn %d", wall, snap.Turn.Round)
 			break
 		}
 		time.Sleep(2 * time.Millisecond)
@@ -377,7 +377,7 @@ func playCatalogGame(t *testing.T, room *ws.Room, policies []aiseat.Policy, turn
 		out.applied += r.Stats().Applied
 	}
 	snap := g.Snapshot()
-	out.state, out.turns, out.elapsed = snap.State, snap.Turn.Number, time.Since(started)
+	out.state, out.turns, out.elapsed = snap.State, snap.Turn.Round, time.Since(started)
 	return out
 }
 

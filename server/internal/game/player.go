@@ -145,7 +145,7 @@ type Player struct {
 	// (CR 800.4k / CR 800.4m).
 	//
 	// It is the counter an "until your next turn" continuous effect
-	// ends on (ADR 0063 Decision 3, #755): `Turn.Number` counts
+	// ends on (ADR 0063 Decision 3, #755): `Turn.Round` counts
 	// ROUNDS, so all four seats in a Commander game share one number
 	// and "your next turn" cannot be expressed with it. Defined by
 	// ADR 0059 Decision 1, which reserves the rest of that decision

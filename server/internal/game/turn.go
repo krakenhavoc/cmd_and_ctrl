@@ -116,22 +116,26 @@ func PhaseOf(s Step) Phase {
 const NoPriority = -1
 
 // Turn is the cursor into the game's turn/phase/step state machine.
-// It says whose turn it is, which phase and step we're in, and the
-// turn number since the game started (turn 1 = the first player's
-// first turn). PriorityHolder tracks which seat currently holds
+// Seq identifies one turn and advances for every turn that begins.
+// Round is the table-facing rotation count shared by each seat's turn
+// in a round. PriorityHolder tracks which seat currently holds
 // priority within the step — added in S07 so the per-seat priority
 // indicator is meaningful. PriorityHolder equals ActiveSeat at the
 // start of every step that grants priority, or NoPriority during
 // Untap and Cleanup.
 type Turn struct {
-	Number         int // 1-indexed
+	Seq            int // 1-indexed identity; increments every turn
+	Round          int `json:"Number"` // 1-indexed table rotation; legacy snapshot key
 	ActiveSeat     int // 0-indexed seat
 	PriorityHolder int // 0-indexed seat or NoPriority during Untap/Cleanup
 	Phase          Phase
 	Step           Step
+	Extra          bool // created by an effect (CR 500.7)
+	ExtraRef       int  // queued extra-turn identity; zero on normal turns
+	OrderSeat      int  // normal-rotation seat this turn follows
 }
 
-// TurnStep names ONE step of ONE turn — the cursor's Turn.Number and
+// TurnStep names ONE step of ONE turn — the cursor's Turn.Seq and
 // Turn.Step frozen together, so a later read can ask "is the game
 // still standing there?" rather than only "which step is this?".
 //
@@ -140,8 +144,9 @@ type Turn struct {
 // PendingChoice.OwedInStep, the step a pay-or-else prompt must be
 // answered in (upkeep_pay_unless.go, CR 500.4).
 type TurnStep struct {
-	// Turn is the turn number this anchor is about, 1-indexed like
-	// Turn.Number. Zero means the anchor names no step.
+	// Turn is the turn sequence this anchor is about, 1-indexed like
+	// Turn.Seq. Zero means the anchor names no step. The field keeps its
+	// legacy name because it is already persisted inside prompt state.
 	Turn int
 	// Step is the step within that turn.
 	Step Step
@@ -157,7 +162,7 @@ func (ts TurnStep) NamesAStep() bool { return ts.Turn > 0 }
 // so an unanchored caller gets "no" rather than an accidental match
 // on turn zero.
 func (ts TurnStep) IsCurrent(cursor Turn) bool {
-	return ts.NamesAStep() && cursor.Number == ts.Turn && cursor.Step == ts.Step
+	return ts.NamesAStep() && cursor.Seq == ts.Turn && cursor.Step == ts.Step
 }
 
 // stepGrantsPriority reports whether the given step grants priority
@@ -185,11 +190,13 @@ func initialPriorityHolder(s Step, activeSeat int) int {
 // untaps and advances the cursor into Upkeep.
 func newStartingTurn() Turn {
 	return Turn{
-		Number:         1,
+		Seq:            1,
+		Round:          1,
 		ActiveSeat:     0,
 		PriorityHolder: initialPriorityHolder(StepUntap, 0),
 		Phase:          PhaseOf(StepUntap),
 		Step:           StepUntap,
+		OrderSeat:      0,
 	}
 }
 
@@ -204,17 +211,15 @@ func indexOfStep(s Step) int {
 	return -1
 }
 
-// IsNewTurn reports whether the Turn `next` belongs to a different
-// active seat than `t` — i.e. whether the priority cursor wrapped
-// past Cleanup into another seat's Untap. Used by callers that need
-// to fire "new turn" hooks (clearing the per-turn loyalty-activation
-// flag, refreshing land-drops-this-turn budgets, etc.).
+// IsNewTurn reports whether next identifies a different turn. Comparing
+// identities rather than seats is what makes consecutive turns by the
+// same player reset per-turn state correctly.
 func (t Turn) IsNewTurn(next Turn) bool {
-	return t.ActiveSeat != next.ActiveSeat
+	return t.Seq != next.Seq
 }
 
 // advance returns the Turn cursor one step after t, wrapping to the
-// next seat (and incrementing Number) after the cleanup step. numSeats
+// next seat (and incrementing Seq, plus Round on a wrap) after the cleanup step. numSeats
 // must be > 0; callers are responsible for passing a valid count.
 //
 // PriorityHolder is set via initialPriorityHolder so that landing on
@@ -226,26 +231,32 @@ func (t Turn) advance(numSeats int) Turn {
 	if next < len(turnSequence) {
 		nextStep := turnSequence[next]
 		return Turn{
-			Number:         t.Number,
+			Seq:            t.Seq,
+			Round:          t.Round,
 			ActiveSeat:     t.ActiveSeat,
 			PriorityHolder: initialPriorityHolder(nextStep, t.ActiveSeat),
 			Phase:          PhaseOf(nextStep),
 			Step:           nextStep,
+			Extra:          t.Extra,
+			ExtraRef:       t.ExtraRef,
+			OrderSeat:      t.OrderSeat,
 		}
 	}
 	// Wrap: past cleanup, move to the next seat's untap. In Commander
 	// with four players, after seat 3's cleanup we wrap to seat 0 and
-	// the turn number goes up.
+	// the table-facing round goes up.
 	nextSeat := (t.ActiveSeat + 1) % numSeats
-	nextNumber := t.Number
-	if nextSeat == 0 {
-		nextNumber++
+	nextRound := t.Round
+	if nextSeat <= t.OrderSeat {
+		nextRound++
 	}
 	return Turn{
-		Number:         nextNumber,
+		Seq:            t.Seq + 1,
+		Round:          nextRound,
 		ActiveSeat:     nextSeat,
 		PriorityHolder: initialPriorityHolder(StepUntap, nextSeat),
 		Phase:          PhaseOf(StepUntap),
 		Step:           StepUntap,
+		OrderSeat:      nextSeat,
 	}
 }

@@ -200,7 +200,7 @@ func enrich(t *testing.T, g *Game) {
 			Label:              "return the exiled creature",
 			At:                 StepEnd,
 			ControllerTurnOnly: true,
-			CreatedTurn:        1,
+			CreatedSeq:         1,
 			Cards:              []uuid.UUID{uuid.New()},
 		}}
 
@@ -540,6 +540,9 @@ func TestRNGNoneRoundTrips(t *testing.T) {
 	}
 	if restored.rngKey != ([32]byte{}) {
 		t.Error("a \"none\" record restored with a key")
+	}
+	if restored.Turn.Seq != 0 || restored.Turn.Round != 0 {
+		t.Errorf("current lobby turn was mistaken for a legacy active turn: %+v", restored.Turn)
 	}
 }
 

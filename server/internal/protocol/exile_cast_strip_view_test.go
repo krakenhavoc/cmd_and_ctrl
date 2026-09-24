@@ -140,7 +140,7 @@ func TestExileStripWarpWaitsForTheLaterTurn(t *testing.T) {
 	g, me, _ := stripTable(t)
 	id := exileWithGrant(t, g, exiledSpell(me.ID, "Warped Drake", "Creature — Drake", "{3}{U}"),
 		game.CastPermission{
-			Player: me.ID, NotBeforeTurn: g.Turn.Number + 1,
+			Player: me.ID, NotBeforeSeq: g.Turn.Seq + 1,
 			Duration: game.WhileInZoneDuration(), CastOnly: true,
 		})
 
@@ -149,11 +149,11 @@ func TestExileStripWarpWaitsForTheLaterTurn(t *testing.T) {
 		t.Errorf("warp before its turn: castable_here=%v cast_prices=%+v, want neither",
 			c.CastableHere, c.CastPrices)
 	}
-	if c.ExilePlay == nil || c.ExilePlay.NotBeforeTurn != g.Turn.Number+1 {
+	if c.ExilePlay == nil || c.ExilePlay.NotBeforeSeq != g.Turn.Seq+1 {
 		t.Fatalf("exile_play = %+v, want the pending grant with its floor", c.ExilePlay)
 	}
 
-	g.Turn.Number++
+	g.Turn.Seq++
 	c = stripCard(t, g, me.ID.String(), id)
 	if !c.CastableHere {
 		t.Error("warp on the later turn: castable now")
@@ -178,7 +178,7 @@ func TestExileStripPlotIsFreeOnALaterTurnInTheMainPhase(t *testing.T) {
 		t.Errorf("plotted this turn: castable_here=%v cast_prices=%+v, want neither", c.CastableHere, c.CastPrices)
 	}
 
-	g.Turn.Number++
+	g.Turn.Seq++
 	c := stripCard(t, g, me.ID.String(), id)
 	if !c.CastableHere {
 		t.Error("a plotted card on a later turn, main phase, empty stack: castable now")
@@ -221,7 +221,7 @@ func TestExileStripForetellChargesTheForetellCostAndStaysHidden(t *testing.T) {
 		t.Errorf("foretold this turn: castable_here=%v cast_prices=%+v, want neither", c.CastableHere, c.CastPrices)
 	}
 
-	g.Turn.Number++
+	g.Turn.Seq++
 	mine := stripCard(t, g, me.ID.String(), id)
 	if !mine.FaceVisible || mine.Name != "Saw It Coming" {
 		t.Errorf("the owner knows their foretold card: face_visible=%v name=%q", mine.FaceVisible, mine.Name)

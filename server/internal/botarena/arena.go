@@ -542,7 +542,7 @@ func Play(ctx context.Context, cfg Config, seed uint64, order []int) (GameResult
 	}
 
 	snap := g.Snapshot()
-	res.State, res.Turns, res.Elapsed = snap.State, snap.Turn.Number, time.Since(started)
+	res.State, res.Turns, res.Elapsed = snap.State, snap.Turn.Round, time.Since(started)
 	g.ReadSnapshot(func() {
 		live, alive := -1, 0
 		for i, p := range g.Seats {
@@ -685,7 +685,7 @@ func watchTable(ctx context.Context, room *ws.Room, g *game.Game, cfg Config, re
 	defer tick.Stop()
 	for {
 		snap := g.Snapshot()
-		if snap.State != game.StateActive || snap.Turn.Number > cfg.TurnBudget {
+		if snap.State != game.StateActive || snap.Turn.Round > cfg.TurnBudget {
 			return
 		}
 		if seq := room.Seq(); seq != lastSeq {
@@ -698,7 +698,7 @@ func watchTable(ctx context.Context, room *ws.Room, g *game.Game, cfg Config, re
 		if ctx.Err() != nil {
 			if errors.Is(context.Cause(ctx), errWallClock) {
 				res.Stalled = true
-				res.StallDump = fmt.Sprintf("wall clock (%s) exhausted at turn %d", cfg.Wall, snap.Turn.Number)
+				res.StallDump = fmt.Sprintf("wall clock (%s) exhausted at turn %d", cfg.Wall, snap.Turn.Round)
 				return
 			}
 			// The RUN was cancelled — a Ctrl-C, or a caller's own
@@ -733,7 +733,7 @@ func stallDump(g *game.Game, turn game.Turn, after time.Duration) string {
 	})
 	sort.Strings(kinds)
 	return fmt.Sprintf("no move for %s at turn %d step %s priority=%v pending=%d kinds=[%s]\n%s",
-		after, turn.Number, turn.Step, turn.PriorityHolder,
+		after, turn.Round, turn.Step, turn.PriorityHolder,
 		pending, strings.Join(kinds, ", "), describeSeats(g))
 }
 

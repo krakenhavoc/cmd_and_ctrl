@@ -13,7 +13,7 @@
 //     CR 601.2f modifier, cheapest first. Per viewer.
 //   - `exile_play` — the grant, public: who holds it, the face it
 //     opens, `cast_only`, and warp's / foretell's / plot's
-//     `not_before_turn`. The only input a PENDING card has, because
+//     `not_before_seq`. The only input a PENDING card has, because
 //     the engine prices nothing it would not accept yet.
 //
 // A card the viewer may not read never arrives with any of these: the
@@ -70,13 +70,13 @@ function hasLivePrice(card: CardView): boolean {
 
 /**
  * pendingHint is the caption for a grant whose window opens on a later
- * turn, or undefined when it is open already. `turn` is the round
- * counter the server floors on (CastPermission.NotBeforeTurn).
+ * turn, or undefined when it is open already. `turn` is the turn
+ * sequence the server floors on (CastPermission.NotBeforeSeq).
  */
 export function pendingHint(card: CardView, turn: number | undefined): string | undefined {
-  const floor = card.exile_play?.not_before_turn;
+  const floor = card.exile_play?.not_before_seq;
   if (floor === undefined || turn === undefined || turn >= floor) return undefined;
-  return floor === turn + 1 ? "next turn" : `turn ${floor}`;
+  return floor === turn + 1 ? "next turn" : "a later turn";
 }
 
 const ORDER: Record<ExileStripState, number> = { now: 0, waiting: 1, later: 2 };
@@ -137,7 +137,7 @@ export function exileStripEntries(
   viewerID: string | null,
 ): ExileStripEntry[] {
   if (!view || !viewerID) return [];
-  const turn = view.turn?.number;
+  const turn = view.turn?.seq;
   const out: ExileStripEntry[] = [];
   for (const card of view.exile?.cards ?? []) {
     const e = exileEntryFor(card, viewerID, turn);

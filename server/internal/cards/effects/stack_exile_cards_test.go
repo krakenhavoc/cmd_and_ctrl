@@ -118,7 +118,7 @@ func TestAvenInterrupterExilesAndPlotsASpell(t *testing.T) {
 
 	// Its owner's later turn, main phase: free.
 	g.WithWriteLock(func() {
-		g.Turn.Number++
+		g.Turn.Seq++
 		g.Turn.ActiveSeat = 0
 		g.Turn.PriorityHolder = 0
 		g.Turn.Step = game.StepPrecombatMain

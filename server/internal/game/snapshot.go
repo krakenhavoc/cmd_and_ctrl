@@ -61,6 +61,7 @@ package game
 // stated in full and enforced by a predicate instead of a comment.
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -191,6 +192,11 @@ var (
 // GameSnapshot is a complete, serialisable *Game.
 type GameSnapshot struct {
 	Schema int `json:"schema"`
+
+	// turnSeqPresent distinguishes a current pre-game snapshot (Seq is
+	// present and zero) from a pre-ADR-0059 snapshot (Seq is absent).
+	// Decode metadata only; not game state and never written.
+	turnSeqPresent bool
 
 	// TakenAt is when the snapshot was captured, for operator
 	// triage ("how stale is the restore point?"). Not game state.
@@ -357,6 +363,28 @@ type GameSnapshot struct {
 	// Continuations records what could not be represented. Empty
 	// census == full-fidelity restore point.
 	Continuations ContinuationCensus `json:"continuations"`
+}
+
+// UnmarshalJSON records whether the embedded Turn carried Seq without
+// changing the public snapshot shape. The distinction matters only at
+// zero: a current lobby snapshot legitimately has Seq 0, while an old
+// active-game snapshot has no Seq key and needs the identity backfill.
+func (s *GameSnapshot) UnmarshalJSON(data []byte) error {
+	type snapshotAlias GameSnapshot
+	if err := json.Unmarshal(data, (*snapshotAlias)(s)); err != nil {
+		return err
+	}
+	var envelope struct {
+		Turn map[string]json.RawMessage `json:"turn"`
+	}
+	if err := json.Unmarshal(data, &envelope); err != nil {
+		return err
+	}
+	_, s.turnSeqPresent = envelope.Turn["Seq"]
+	if !s.turnSeqPresent {
+		_, s.turnSeqPresent = envelope.Turn["seq"]
+	}
+	return nil
 }
 
 // playerSnapshot mirrors Player. Player is pure data today; it is
@@ -672,7 +700,8 @@ type delayedTriggerSnapshot struct {
 	Label              string      `json:"label,omitempty"`
 	At                 Step        `json:"at"`
 	ControllerTurnOnly bool        `json:"controllerTurnOnly"`
-	CreatedTurn        int         `json:"createdTurn"`
+	CreatedSeq         int         `json:"createdSeq,omitempty"`
+	CreatedTurn        int         `json:"createdTurn,omitempty"`
 	Cards              []uuid.UUID `json:"cards,omitempty"`
 	HasEffect          bool        `json:"hasEffect,omitempty"`
 	// #663: the event condition. On and ExpiresAfterTurn are data
@@ -983,6 +1012,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 		EventSeq:          g.eventSeq,
 		EventBatch:        g.eventBatch,
 		ResolutionOpen:    g.resolutionOpen,
+		turnSeqPresent:    true,
 	}
 	s.OncePerBatchFired = copyStringUint64Map(g.oncePerBatchFired)
 	s.AnnouncedBlocks = copyUUIDPairMap(g.announcedBlocks)
@@ -1446,7 +1476,7 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 		Label:              d.Label,
 		At:                 d.At,
 		ControllerTurnOnly: d.ControllerTurnOnly,
-		CreatedTurn:        d.CreatedTurn,
+		CreatedSeq:         d.CreatedSeq,
 		HasEffect:          d.Effect != nil,
 	}
 	if d.Duration != nil {
@@ -1669,6 +1699,14 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.CreatedAt = s.CreatedAt
 	g.State = s.State
 	g.Turn = s.Turn
+	legacyTurnIdentity := g.Turn.Seq == 0 && !s.turnSeqPresent
+	if legacyTurnIdentity {
+		// ADR 0059 deliberately keeps the legacy snapshot key "Number"
+		// for Round. Old files have no Seq, so rebuild the monotone turn
+		// identity from the RNG index they already used.
+		g.Turn.Seq = g.Turn.Round*MaxPlayers + g.Turn.ActiveSeat
+		g.Turn.OrderSeat = g.Turn.ActiveSeat
+	}
 	g.MulligansOpen = s.MulligansOpen
 	g.Monarch = s.Monarch
 	g.Initiative = s.Initiative
@@ -1697,6 +1735,27 @@ func (s *GameSnapshot) restoreGame() *Game {
 	for i := range s.Seats {
 		g.Seats[i] = restorePlayer(&s.Seats[i])
 	}
+	if legacyTurnIdentity {
+		for seat, p := range g.Seats {
+			if p == nil {
+				continue
+			}
+			p.TurnsBegun = g.Turn.Round
+			if seat > g.Turn.ActiveSeat {
+				p.TurnsBegun--
+			}
+			if p.TurnsBegun < 0 {
+				p.TurnsBegun = 0
+			}
+			for i := range p.CastPermissions {
+				perm := &p.CastPermissions[i]
+				if perm.NotBeforeSeq == 0 && perm.LegacyNotBeforeTurn > g.Turn.Round {
+					perm.NotBeforeSeq = perm.LegacyNotBeforeTurn * MaxPlayers
+				}
+				perm.LegacyNotBeforeTurn = 0
+			}
+		}
+	}
 
 	if len(s.StackMeta) > 0 {
 		g.StackMeta = make(map[uuid.UUID]*StackItem, len(s.StackMeta))
@@ -1715,6 +1774,9 @@ func (s *GameSnapshot) restoreGame() *Game {
 		g.DelayedTriggers = make([]*DelayedTrigger, len(s.DelayedTriggers))
 		for i := range s.DelayedTriggers {
 			g.DelayedTriggers[i] = restoreDelayedTrigger(&s.DelayedTriggers[i])
+			if legacyTurnIdentity && g.DelayedTriggers[i].CreatedSeq == 0 {
+				g.DelayedTriggers[i].CreatedSeq = s.DelayedTriggers[i].CreatedTurn * MaxPlayers
+			}
 		}
 	}
 
@@ -2073,7 +2135,7 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 		Label:              d.Label,
 		At:                 d.At,
 		ControllerTurnOnly: d.ControllerTurnOnly,
-		CreatedTurn:        d.CreatedTurn,
+		CreatedSeq:         d.CreatedSeq,
 		// Effect, AppliesTo and Optional stay nil; see the census.
 	}
 	if d.Duration != nil {

@@ -42,7 +42,7 @@ function view(battlefield: CardView[], step = "precombat_main"): GameView {
     battlefield: zone("battlefield", undefined, battlefield),
     stack: zone("stack", undefined, []),
     exile: zone("exile", undefined, []),
-    turn: { number: 1, active_seat: 0, priority_holder: 0, phase: "main1", step },
+    turn: { seq: 1, number: 1, active_seat: 0, priority_holder: 0, phase: "main1", step },
     mulligans_open: false,
   };
 }

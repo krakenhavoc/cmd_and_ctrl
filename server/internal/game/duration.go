@@ -180,8 +180,8 @@ type Duration struct {
 	// player's next turn whether the effect was made on their turn
 	// or on somebody else's.
 	//
-	// Counting seat-turns rather than reading Turn.Number is the
-	// whole point: Turn.Number counts ROUNDS, so all four seats in a
+	// Counting seat-turns rather than reading Turn.Round is the
+	// whole point: Turn.Round counts ROUNDS, so all four seats in a
 	// Commander game share one number and "your next turn" cannot be
 	// expressed with it (ADR 0035 §3's caveat, retired by ADR 0063
 	// Decision 3). Player.TurnsBegun also goes up for a seat the

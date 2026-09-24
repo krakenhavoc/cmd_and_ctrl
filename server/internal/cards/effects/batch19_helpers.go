@@ -101,7 +101,7 @@ func b19EntersWithCountersCounted(kind string, count func(g *game.Game, src *gam
 // cards."
 //
 // One line, because the duration is a duration (#945). It used to be
-// two: the engine's permission expired by ROUND number (Turn.Number
+// two: the engine's permission expired by ROUND number (Turn.Round
 // advances when the table wraps to seat 0) and no single round meant
 // "the end of your next turn" for every seat, so the grant was
 // stamped two rounds out as a backstop and a CR 603.7 delayed trigger

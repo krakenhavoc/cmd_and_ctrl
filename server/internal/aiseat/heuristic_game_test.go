@@ -213,17 +213,17 @@ func playGameIn(t *testing.T, room *ws.Room, seed uint64, policies []aiseat.Poli
 	lastSeq, lastMove := room.Seq(), time.Now()
 	for {
 		snap := g.Snapshot()
-		if snap.State != game.StateActive || snap.Turn.Number > turnBudget {
+		if snap.State != game.StateActive || snap.Turn.Round > turnBudget {
 			break
 		}
 		if seq := room.Seq(); seq != lastSeq {
 			lastSeq, lastMove = seq, time.Now()
 		} else if time.Since(lastMove) > stall {
 			t.Fatalf("table stalled (seed %d, no seq movement in %s) at turn %d step %s priority=%d pending=%d\n%s",
-				seed, stall, snap.Turn.Number, snap.Turn.Step, snap.Turn.PriorityHolder, len(g.PendingChoices), describeSeats(g))
+				seed, stall, snap.Turn.Round, snap.Turn.Step, snap.Turn.PriorityHolder, len(g.PendingChoices), describeSeats(g))
 		}
 		if ctx.Err() != nil {
-			t.Fatalf("wall clock exhausted (seed %d) at turn %d", seed, snap.Turn.Number)
+			t.Fatalf("wall clock exhausted (seed %d) at turn %d", seed, snap.Turn.Round)
 		}
 		time.Sleep(2 * time.Millisecond)
 	}
@@ -233,7 +233,7 @@ func playGameIn(t *testing.T, room *ws.Room, seed uint64, policies []aiseat.Poli
 	}
 
 	snap := g.Snapshot()
-	res := gameResult{seed: seed, turns: snap.Turn.Number, state: snap.State, winner: -1, elapsed: time.Since(started)}
+	res := gameResult{seed: seed, turns: snap.Turn.Round, state: snap.State, winner: -1, elapsed: time.Since(started)}
 	g.ReadSnapshot(func() {
 		live := -1
 		n := 0
@@ -652,7 +652,7 @@ func TestHeuristicDoesNotConcedeAWinnableGame(t *testing.T) {
 		var turn int
 		g.ReadSnapshot(func() {
 			conceded = g.Seats[0].Eliminated && g.Seats[0].Life > 0
-			turn, over = g.Turn.Number, g.State != game.StateActive
+			turn, over = g.Turn.Round, g.State != game.StateActive
 		})
 		if conceded {
 			t.Fatalf("the bot scooped a game it still had cards for, on turn %d", turn)

@@ -31,6 +31,16 @@ func (g *Game) PlayerByIDForEffect(id uuid.UUID) *Player {
 	return g.playerByIDLocked(id)
 }
 
+// TurnsBegunFor reports the per-seat turn count from an already-locked
+// effect callback. It is the card-facing meaning of "your Nth turn".
+func (g *Game) TurnsBegunFor(player uuid.UUID) int {
+	return g.turnsBegunForLocked(player)
+}
+
+// IsExtraTurn reports whether the current turn came from an effect.
+// Like the rest of this file, it is for already-locked card callbacks.
+func (g *Game) IsExtraTurn() bool { return g.Turn.Extra }
+
 // StackItemForEffect looks up a stack item by its ID. Returns nil
 // if no such item is on the stack. Used by effects that need to
 // peek at a countered spell's controller / owner before

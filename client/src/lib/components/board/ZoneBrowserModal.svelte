@@ -153,16 +153,14 @@
   //
   // S29 warp added a floor to the window: a warped creature's grant
   // is stamped the moment the end step exiles it and stays dark
-  // until the next turn, so the turn number rides both derivations.
-  const grantFor = (card: CardView) => impulseGrantFor(card, zoneKind, viewerID, view.turn.number);
+  // until the next turn, so the turn sequence rides both derivations.
+  const grantFor = (card: CardView) => impulseGrantFor(card, zoneKind, viewerID, view.turn.seq);
   // #874: the impulse button is gated on `onCastCard` for the reason
   // the graveyard one is — the click is a hand-off to the Board's cast
   // chain now, not a dispatch of its own, so without a handler there
   // is nothing behind the button.
   const labelFor = (card: CardView) =>
-    onCastCard === undefined
-      ? null
-      : impulseActionLabel(card, zoneKind, viewerID, view.turn.number);
+    onCastCard === undefined ? null : impulseActionLabel(card, zoneKind, viewerID, view.turn.seq);
   // S32: the name of the half the grant actually casts. Same as the
   // card's own name for every grant that names no face.
   const grantedName = (card: CardView) => grantedFace(card, grantFor(card)).name ?? "card";
@@ -177,7 +175,7 @@
   // as "not castable" rather than throwing — belt and braces, since
   // `labelFor` already keeps those off the button entirely.
   const exileLegalityFor = (card: CardView): Legality => {
-    const entry = exileEntryFor(card, viewerID ?? "", view.turn.number);
+    const entry = exileEntryFor(card, viewerID ?? "", view.turn.seq);
     if (!entry) return { legal: false, reason: "Not castable from exile right now" };
     return exileEntryLegality(entry, view, viewerID);
   };

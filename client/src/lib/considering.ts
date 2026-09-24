@@ -60,7 +60,7 @@ export function isResponseWindowFor(view: GameView | null | undefined, seat: num
 }
 
 // responseWindowKey identifies "the same priority window" across
-// frames — turn number, step, who holds priority, and the stack
+// frames — turn sequence, step, who holds priority, and the stack
 // depth. Board.svelte restarts its timer whenever this changes, so a
 // seat holding through several of its own decisions in one window
 // doesn't get a fresh timer for each of them, and a genuinely new
@@ -68,5 +68,5 @@ export function isResponseWindowFor(view: GameView | null | undefined, seat: num
 // landing on the stack) always does.
 export function responseWindowKey(view: GameView | null | undefined): string {
   if (!view?.turn) return "";
-  return [view.turn.number, view.turn.step, view.turn.priority_holder, stackDepth(view)].join("|");
+  return [view.turn.seq, view.turn.step, view.turn.priority_holder, stackDepth(view)].join("|");
 }

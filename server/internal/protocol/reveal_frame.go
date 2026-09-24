@@ -101,7 +101,7 @@ type RevealView struct {
 	// stamped with. Monotonic and stable across frames, so a client
 	// dedupes and orders on it. It names an event, not a card.
 	Seq uint64 `json:"seq"`
-	// Turn is the turn number the reveal happened on. Present so a
+	// Turn is the turn sequence the reveal happened on. Present so a
 	// reconnecting client can tell a live announcement from one it is
 	// seeing for the first time only because it just joined.
 	Turn int `json:"turn,omitempty"`
@@ -210,7 +210,7 @@ func publicRevealsOf(g *game.Game, v *GameView) []RevealView {
 	// four the table is most likely still looking at.
 	out := make([]RevealView, 0, PublicRevealMax)
 	for i := len(groups) - 1; i >= 0 && len(out) < PublicRevealMax; i-- {
-		if groups[i].Turn != g.Turn.Number {
+		if groups[i].Turn != g.Turn.Seq {
 			break
 		}
 		out = append(out, groups[i])

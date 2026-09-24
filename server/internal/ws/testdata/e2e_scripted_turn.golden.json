@@ -236,6 +236,7 @@
       "cards": []
     },
     "turn": {
+      "seq": 2,
       "number": 1,
       "active_seat": 1,
       "priority_holder": -1,

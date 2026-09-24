@@ -227,17 +227,17 @@ func TestExiledCardBeforeItsFloorCarriesNoOffers(t *testing.T) {
 	warped.ManaCost = "{2}{R}"
 	warped.OracleID = oracle
 	id := exileWithGrant(t, g, warped, game.CastPermission{
-		Player:        me.ID,
-		Duration:      game.WhileInZoneDuration(),
-		NotBeforeTurn: g.Turn.Number + 1,
+		Player:       me.ID,
+		Duration:     game.WhileInZoneDuration(),
+		NotBeforeSeq: g.Turn.Seq + 1,
 	})
 
 	mine := cardInZone(ViewOfGameFor(g, me.ID.String()).Exile, id)
 	if mine == nil || mine.ExilePlay == nil {
 		t.Fatalf("the grant is still shown, so the client can grey it: %+v", mine)
 	}
-	if mine.ExilePlay.NotBeforeTurn != g.Turn.Number+1 {
-		t.Errorf("not_before_turn = %d, want %d", mine.ExilePlay.NotBeforeTurn, g.Turn.Number+1)
+	if mine.ExilePlay.NotBeforeSeq != g.Turn.Seq+1 {
+		t.Errorf("not_before_seq = %d, want %d", mine.ExilePlay.NotBeforeSeq, g.Turn.Seq+1)
 	}
 	if mine.LegalTargets != nil {
 		t.Errorf("a window that has not opened carries no target set: %+v", mine.LegalTargets)

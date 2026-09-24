@@ -20,7 +20,14 @@ function snap(cards: CardView[], turn = 5): GameView {
     battlefield: { kind: "battlefield", count: 0, cards: [] },
     stack: { kind: "stack", count: 0, cards: [] },
     exile: { kind: "exile", count: cards.length, cards },
-    turn: { number: turn, active_seat: 0, priority_holder: 0, phase: "main1", step: "main" },
+    turn: {
+      seq: turn,
+      number: turn,
+      active_seat: 0,
+      priority_holder: 0,
+      phase: "main1",
+      step: "main",
+    },
   } as unknown as GameView;
 }
 
@@ -95,21 +102,21 @@ describe("exileStripEntries — which cards appear", () => {
   it("dims a warp / plot / foretell grant before its later turn, with a hint", () => {
     const v = snap(
       [
-        exiled("warped", { exile_play: grant({ not_before_turn: 6 }) }),
-        exiled("far", { exile_play: grant({ not_before_turn: 8 }) }),
+        exiled("warped", { exile_play: grant({ not_before_seq: 6 }) }),
+        exiled("far", { exile_play: grant({ not_before_seq: 8 }) }),
       ],
       5,
     );
     const got = exileStripEntries(v, ME);
     expect(got.map((e) => [e.card.instance_id, e.state, e.hint])).toEqual([
       ["warped", "later", "next turn"],
-      ["far", "later", "turn 8"],
+      ["far", "later", "a later turn"],
     ]);
   });
 
   it("orders castable cards first, then waiting, then later — each in exile order", () => {
     const v = snap([
-      exiled("later", { exile_play: grant({ not_before_turn: 9 }) }),
+      exiled("later", { exile_play: grant({ not_before_seq: 9 }) }),
       exiled("waiting", { exile_play: grant(), cast_prices: [price("{2}")] }),
       exiled("now-1", { exile_play: grant(), castable_here: true }),
       exiled("now-2", { exile_play: grant(), castable_here: true }),
@@ -219,10 +226,10 @@ describe("pendingHint", () => {
   it("is silent for a grant with no floor, or once the floor is reached", () => {
     expect(pendingHint(exiled("a", { exile_play: grant() }), 5)).toBeUndefined();
     expect(
-      pendingHint(exiled("a", { exile_play: grant({ not_before_turn: 5 }) }), 5),
+      pendingHint(exiled("a", { exile_play: grant({ not_before_seq: 5 }) }), 5),
     ).toBeUndefined();
     expect(
-      pendingHint(exiled("a", { exile_play: grant({ not_before_turn: 6 }) }), undefined),
+      pendingHint(exiled("a", { exile_play: grant({ not_before_seq: 6 }) }), undefined),
     ).toBeUndefined();
   });
 });

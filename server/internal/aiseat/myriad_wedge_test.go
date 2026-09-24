@@ -247,9 +247,9 @@ func myriadWedgeRun(t *testing.T, forests, islands int) {
 	}
 	p := heuristic.New()
 	rejects := map[uuid.UUID]int{}
-	startTurn := g.Turn.Number
+	startTurn := g.Turn.Round
 	for step := 1; step <= 400; step++ {
-		if g.Turn.Number >= startTurn+2 {
+		if g.Turn.Round >= startTurn+2 {
 			t.Logf("step %d: the table advanced two turns past the fetch; no wedge", step)
 			return
 		}

@@ -349,11 +349,14 @@ type LogEvent struct {
 	Seq uint64 `json:"seq"`
 	// Kind is what happened.
 	Kind LogKind `json:"kind"`
-	// Turn is the turn number the entry happened on. Carried forward
+	// Turn is the turn sequence the entry happened on. Carried forward
 	// from the last LogStep entry rather than stamped by the engine,
 	// so entries that precede the first step announcement of a game
 	// (the opening draw) carry turn 0.
 	Turn int `json:"turn,omitempty"`
+	// Round is the table-facing rotation number. It is present on step
+	// entries; Turn is the per-turn identity used for grouping.
+	Round int `json:"round,omitempty"`
 	// Step is the step name (game.Step) — present ONLY on LogStep
 	// entries. Every other entry belongs to the step announced by the
 	// most recent LogStep entry before it; a consumer that needs the
@@ -670,6 +673,7 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		*turn = ev.Amount
 		*step = ev.Label
 		base.Kind = LogStep
+		base.Round = ev.Round
 		return base, true
 
 	case game.EventCast:
@@ -1399,7 +1403,13 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 	case LogRoll, LogFlip:
 		return renderRandomLogText(e, actor, card)
 	case LogStep:
-		return fmt.Sprintf("Turn %d — %s · %s", e.Turn, actor, prettyStep(e.Step))
+		round := e.Round
+		if round == 0 {
+			// Backward-compatible rendering for persisted pre-ADR-0059
+			// EventStepBegan entries, which carry only Amount.
+			round = e.Turn
+		}
+		return fmt.Sprintf("Turn %d — %s · %s", round, actor, prettyStep(e.Step))
 	case LogCast:
 		if e.OldZone != "" {
 			return fmt.Sprintf("%s cast %s from %s", actor, card, prettyZone(e.OldZone))
