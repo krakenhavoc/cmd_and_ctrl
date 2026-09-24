@@ -23,6 +23,15 @@ describe("parseHash", () => {
     expect(parseHash("#/my-games")).toEqual({ name: "myGames" });
   });
 
+  it("carries the catalogue's ?q= search, decoded", () => {
+    expect(parseHash("#/catalog?q=Sol%20Ring")).toEqual({ name: "catalog", query: "Sol Ring" });
+    expect(parseHash("#/catalog?q=Borrowing%20100%2C000%20Arrows")).toEqual({
+      name: "catalog",
+      query: "Borrowing 100,000 Arrows",
+    });
+    expect(parseHash("#/catalog?q=")).toEqual({ name: "catalog" });
+  });
+
   it("falls back to login for an empty or unknown hash", () => {
     expect(parseHash("")).toEqual({ name: "login" });
     expect(parseHash("#/nowhere")).toEqual({ name: "login" });

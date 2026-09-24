@@ -201,6 +201,83 @@ are stripped from the embedded `game`.
 | 404 | game not found |
 | 409 | the table has been archived |
 
+### `GET /roadmap`
+
+The public engine roadmap ([ADR 0092](decisions/0092-public-roadmap-and-site-portal.md)):
+every keyword, mechanic and engine gap in `server/internal/roadmap`'s
+registry, with a status a player can read. The client's `#/roadmap`
+page renders it. No session is needed, and none is read.
+
+It is public, while `GET /catalog` is not, because of what the body
+holds (ADR 0092 Decision 1): card **names** and caveat sentences this
+repository wrote. It never holds card art, an image URL, a Scryfall
+printing ID or oracle text. `roadmap`'s handler tests fail if an
+`image`, `oracle_text`, `scryfall_id` or `engine_notes` key appears
+anywhere in the body.
+
+The body is fixed for the life of the binary, so the server encodes it
+once. `Cache-Control: public, max-age=300`, the same as `/catalog`.
+`GET` and `HEAD` only; any other method gets 405.
+
+**Response 200**
+
+```json
+{
+  "counts": {
+    "implemented": 90,
+    "partial": 13,
+    "missing": 9,
+    "cards": { "total": 2378, "full": 2039, "caveats": 282, "unreviewed": 57 }
+  },
+  "next": ["abilities-granted-to-other-permanents", "extra-combats"],
+  "items": [
+    {
+      "slug": "extra-combats",
+      "name": "Extra combat and main phases",
+      "kind": "seam",
+      "status": "missing",
+      "summary": "Spells and abilities that give you an additional combat phase, ...",
+      "missing": "The turn's phases are fixed, so nothing can add another combat or main phase yet.",
+      "issue": 753,
+      "unblocks": 28,
+      "waiting": ["Relentless Assault", "Aggravated Assault", "Seize the Day"]
+    },
+    {
+      "slug": "cascade",
+      "name": "Cascade",
+      "kind": "mechanic",
+      "status": "implemented",
+      "summary": "When you cast a spell with cascade, reveal cards ...",
+      "rules": ["702.85"],
+      "examples": [
+        {
+          "name": "Bloodbraid Elf",
+          "oracle_id": "3f0c9466-5ab9-4205-a84f-b4b27b5a678e"
+        }
+      ]
+    }
+  ]
+}
+```
+
+- `counts.implemented` / `partial` / `missing` count registry items.
+  `counts.cards` is the card catalogue's own tally by declared
+  completeness: the numbers the signed-in `#/catalog` page shows,
+  published as bare numbers.
+- `next` is the "up next" list, as slugs in order: pinned items first,
+  then unfinished items ranked by `unblocks` plus the number of
+  `waiting` cards, at most six.
+- `kind` is `keyword`, `mechanic` or `seam` (an engine gap). `status`
+  is `implemented`, `partial` or `missing`.
+- `missing` says what does not work yet; absent on an implemented item.
+- `examples` (at most three) are fully automated cards that use the
+  item. `partial_examples` (at most three) are cards that work with a
+  gap this item explains, each with its first caveat. `waiting` are
+  cards known to be blocked on it.
+- `issue` is the tracking issue on the public repository and `adr` the
+  decision record's file name. Either may be absent, as may `rules`,
+  `pin` and `unblocks`.
+
 ## Authenticated routes
 
 ### `POST /games` *(admin only)*
