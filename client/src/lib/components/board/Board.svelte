@@ -111,6 +111,7 @@
   import ModePickerModal from "./ModePickerModal.svelte";
   import DiscardCostModal from "./DiscardCostModal.svelte";
   import { manaAbilityNeedsPrompt } from "../../manaAbilityCost";
+  import { exileCostNote, exileCostOptionCards, exileCostWhere } from "../../exileCost";
   import AlternativeCostModal from "./AlternativeCostModal.svelte";
   import FacePickerModal from "./FacePickerModal.svelte";
   import { cardAsFace, needsFacePicker } from "../../faces";
@@ -863,6 +864,10 @@
         ...state.ability.counter,
         targets,
       };
+      // #1297: the exile-N-cards picks, made at announce with the
+      // discard picks. Their own field — an exiled card is not
+      // discarded — and omitted when the cost has no such component.
+      if (abilityExileIDs.length > 0) params.exile_ids = abilityExileIDs;
       if (state.ability.xValue !== undefined) params.x_value = state.ability.xValue;
       // #916, CR 107.4f: announced with the rest of the cost, before
       // these targets, and sent in the same message.
@@ -874,6 +879,7 @@
       }
       abilityWaterbendIDs = undefined;
       abilityDiscardIDs = [];
+      abilityExileIDs = [];
       abilityReturnIDs = [];
       abilityTapIDs = [];
       abilitySacrificeX = undefined;
@@ -1031,6 +1037,27 @@
     return (me?.hand.cards ?? []).filter((c) => ids.has(c.instance_id));
   });
 
+  // #1297: the "Exile N cards from your graveyard / hand" component of
+  // an activated ability's cost (Grim Lavamancer, Holistic Wisdom),
+  // asked right after the discard — the order the engine validates in.
+  // Carried on the side for the reason the discard picks are.
+  let abilityExilePrompt = $state<{
+    card: CardView;
+    ability: ActivatedAbilityView;
+  } | null>(null);
+  let abilityExileIDs: string[] = [];
+
+  // The cards the clause admits, resolved out of whichever pile the
+  // server says they are in.
+  const abilityExileOptions = $derived.by(() => {
+    const p = abilityExilePrompt;
+    if (!p || !viewerID) return [];
+    return exileCostOptionCards(
+      view.seats.find((s) => s.id === viewerID),
+      p.ability,
+    );
+  });
+
   // #660: a card in hand projects its abilities on `zone_abilities`
   // and a permanent on `activated_abilities` — never both, because
   // the server filters by the zone the card is in (CR 113.6). One
@@ -1084,6 +1111,37 @@
     discardIDs: string[],
   ): void {
     abilityDiscardIDs = discardIDs;
+    // #1297: the exile pick next — the same card-shaped question one
+    // component over, skipped the same way when the pile holds exactly
+    // what the clause demands.
+    if (ability.exile_cost_n) {
+      const options = ability.exile_cost_options ?? [];
+      if (options.length > ability.exile_cost_n) {
+        abilityExilePrompt = { card, ability };
+        return;
+      }
+      afterAbilityExileCost(card, ability, options);
+      return;
+    }
+    afterAbilityExileCost(card, ability, []);
+  }
+
+  function confirmAbilityExileCost(ids: string[]): void {
+    const p = abilityExilePrompt;
+    abilityExilePrompt = null;
+    if (!p) return;
+    afterAbilityExileCost(p.card, p.ability, ids);
+  }
+
+  // afterAbilityExileCost is the rest of the announce chain once the
+  // card-shaped costs are answered: the return, sacrifice and crew
+  // pickers, the counter cost, then X and targeting.
+  function afterAbilityExileCost(
+    card: CardView,
+    ability: ActivatedAbilityView,
+    exileIDs: string[],
+  ): void {
+    abilityExileIDs = exileIDs;
     // #1213: the return-to-hand pick, in the same place the sacrifice
     // pick sits — both are announce-time cost choices (CR 602.2b) and
     // both name permanents. Skipped when the board offers exactly the
@@ -1281,9 +1339,12 @@
   const manaExileOptions = $derived.by(() => {
     const p = manaExilePrompt;
     if (!p || !viewerID) return [];
-    const ids = new Set(p.ability.exile_cost_options ?? []);
-    const me = view.seats.find((s) => s.id === viewerID);
-    return (me?.hand.cards ?? []).filter((c) => ids.has(c.instance_id));
+    // #1297: out of whichever pile the clause reads, as the CR 602
+    // owner's picker does.
+    return exileCostOptionCards(
+      view.seats.find((s) => s.id === viewerID),
+      p.ability,
+    );
   });
 
   function confirmManaExileCost(ids: string[]): void {
@@ -1507,8 +1568,11 @@
     if (abilityWaterbendIDs && abilityWaterbendIDs.length > 0) {
       params.waterbend_ids = abilityWaterbendIDs;
     }
+    // #1297: the exile picks, on their own field, omitted when none.
+    if (abilityExileIDs.length > 0) params.exile_ids = abilityExileIDs;
     abilityWaterbendIDs = undefined;
     abilityDiscardIDs = [];
+    abilityExileIDs = [];
     abilityReturnIDs = [];
     abilityTapIDs = [];
     abilitySacrificeX = undefined;
@@ -1988,6 +2052,25 @@
       abilityDiscardIDs = [];
     }}
   />
+  <!-- #1297: "Exile two cards from your graveyard" (Grim Lavamancer),
+       "Exile a card from your hand" (Holistic Wisdom). The discard
+       picker with the verb changed and the pile named; the answer
+       rides exile_ids, never discard_ids. -->
+  <DiscardCostModal
+    card={abilityExilePrompt?.card ?? null}
+    options={abilityExileOptions}
+    need={abilityExilePrompt?.ability.exile_cost_n}
+    label={abilityExilePrompt?.ability.exile_cost_label}
+    verb="Exile"
+    note={abilityExilePrompt ? exileCostNote(abilityExilePrompt.ability) : undefined}
+    where={abilityExilePrompt ? exileCostWhere(abilityExilePrompt.ability) : undefined}
+    onConfirm={confirmAbilityExileCost}
+    onCancel={() => {
+      abilityExilePrompt = null;
+      abilityExileIDs = [];
+      abilityDiscardIDs = [];
+    }}
+  />
   <!-- #1213: the mana-ability half of the discard picker (Skirge
        Familiar). Same modal, same wire field, a different action. -->
   <DiscardCostModal
@@ -2010,7 +2093,8 @@
     need={manaExilePrompt?.ability.exile_cost_n}
     label={manaExilePrompt?.ability.exile_cost_label}
     verb="Exile"
-    note="exiled from your hand · not a discard"
+    note={manaExilePrompt ? exileCostNote(manaExilePrompt.ability) : undefined}
+    where={manaExilePrompt ? exileCostWhere(manaExilePrompt.ability) : undefined}
     onConfirm={confirmManaExileCost}
     onCancel={() => {
       manaExilePrompt = null;

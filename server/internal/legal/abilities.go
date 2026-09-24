@@ -38,6 +38,10 @@ type activateParams struct {
 	// Cycling's "Discard this card" sends none — the source is the
 	// payment.
 	DiscardIDs []string `json:"discard_ids,omitempty"`
+	// #1297: the cards paid to an "Exile two cards from your
+	// graveyard" / "Exile a card from your hand" cost. Its own field,
+	// because an exiled card is not discarded.
+	ExileIDs []string `json:"exile_ids,omitempty"`
 	// #1213: the permanents paid to a "Return a permanent you
 	// control to its owner's hand" cost. Omitted for every ability
 	// that does not print the clause.
@@ -317,7 +321,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 			// about to sacrifice anyway. The per-payment half (the
 			// permanents and cards the move names) is checked
 			// below, once those payments are chosen.
-			excluded := game.AbilityAutoTapExclusions(source.InstanceID, ab.Cost, nil, nil, nil)
+			excluded := game.AbilityAutoTapExclusions(source.InstanceID, ab.Cost, nil, nil, nil, nil)
 			abilityMana, abilityExcluded = cost, excluded
 			floor := enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX())
 			// #917, CR 107.4f: the announcement has TWO numbers
@@ -448,6 +452,18 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 			}
 			discardIDs = opts[:dc.N]
 		}
+		// #1297: an "Exile N cards from your graveyard / hand" cost,
+		// solved as the discard above is — ONE payment, not one move
+		// per subset — out of the engine's own candidate walk, minus
+		// whatever the discard took (one card pays one component,
+		// CR 118.3). The cards the seat would miss least go first when
+		// a policy has an opinion (Options.OrderCostFuel, the price
+		// escape's graveyard is already paid by), zone order when it
+		// has none. Nothing payable means no move at all — #544.
+		exileIDs, ok := e.exileCardsPayment(ab.Cost.ExileCards, source.InstanceID, discardIDs)
+		if !ok {
+			continue
+		}
 		budget := e.opts.MaxExpansionPerSource
 		// #764: a modal activated ability announces its modes with
 		// its targets (CR 602.2b), so the enumerator expands the
@@ -502,9 +518,9 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 				// has to hold with these named too. An Eldrazi Spawn
 				// that is both the sacrifice and the mana is a move the
 				// engine refuses; offering it is #544.
-				if ab.Cost.Mana != "" && (len(sacs) > 0 || len(discardIDs) > 0) &&
+				if ab.Cost.Mana != "" && (len(sacs) > 0 || len(discardIDs) > 0 || len(exileIDs) > 0) &&
 					!e.payableExcluding(abilityMana, xValue, phyrexianLife, game.ManaSpendForAbility(*source),
-						game.WithAutoTapExclusions(abilityExcluded, sacs, discardIDs)) {
+						game.WithAutoTapExclusions(abilityExcluded, sacs, discardIDs, exileIDs)) {
 					continue
 				}
 				for _, rets := range returnSets {
@@ -516,7 +532,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 						// is a move the engine refuses.
 						if ab.Cost.Mana != "" && len(taps) > 0 &&
 							!e.payableExcluding(abilityMana, xValue, phyrexianLife, game.ManaSpendForAbility(*source),
-								game.WithAutoTapExclusions(abilityExcluded, sacs, discardIDs, taps)) {
+								game.WithAutoTapExclusions(abilityExcluded, sacs, discardIDs, exileIDs, taps)) {
 							continue
 						}
 						for _, cc := range counterChoices {
@@ -572,6 +588,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 									CounterKind:      cc.wireKind(),
 									CounterKinds:     cc.wireKinds(),
 									DiscardIDs:       idStrings(discardIDs),
+									ExileIDs:         idStrings(exileIDs),
 									ReturnIDs:        idStrings(rets),
 									WaterbendIDs:     idStrings(waterbendIDs),
 									TapIDs:           idStrings(taps),
@@ -1371,26 +1388,14 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 			manaDiscardIDs = opts[:dc.N]
 		}
 		// #1283: an "Exile a card from your hand" cost (Cadaverous
-		// Bloom), solved exactly as the discard above — ONE payment,
-		// in hand order, out of the engine's own walk — and from what
-		// the discard left, because one card pays one component.
-		var manaExileIDs []uuid.UUID
-		if ec := ab.ExileCards; ec != nil && ec.N > 0 {
-			taken := make(map[uuid.UUID]bool, len(manaDiscardIDs))
-			for _, id := range manaDiscardIDs {
-				taken[id] = true
-			}
-			for _, id := range g.ExileCostOptionsForEffect(e.seat, source.InstanceID, ec) {
-				if len(manaExileIDs) == ec.N {
-					break
-				}
-				if !taken[id] {
-					manaExileIDs = append(manaExileIDs, id)
-				}
-			}
-			if len(manaExileIDs) < ec.N {
-				continue
-			}
+		// Bloom), solved exactly as the discard above — ONE payment
+		// out of the engine's own walk — and from what the discard
+		// left, because one card pays one component. The same solver
+		// the CR 602 path uses (#1297), so the two owners of the
+		// component cannot pay it two ways.
+		manaExileIDs, ok := e.exileCardsPayment(ab.ExileCards, source.InstanceID, manaDiscardIDs)
+		if !ok {
+			continue
 		}
 		// #789: the counter components, enumerated by the SAME
 		// functions the activated path uses, because it is the
@@ -1445,4 +1450,42 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 			}
 		}
 	}
+}
+
+// exileCardsPayment solves an ExileCards cost component (#1283, #1297)
+// into ONE payment: exactly N cards out of the engine's own candidate
+// walk (ExileCostOptionsForEffect — the same list the view stamps and
+// the validator accepts, #544), skipping any card another component of
+// the same payment already names (`taken`, the discards — CR 118.3).
+//
+// The order is the seat's CostFuelOrder when it has one, cheapest to
+// keep first, and pile order otherwise. For the graveyard form that is
+// the difference between a Grim Lavamancer eating two lands and one
+// eating the flashback spell the seat was saving; the policy prices it
+// exactly as it prices escape's exiled graveyard (#1013), which is the
+// same resource spent the same way.
+//
+// A nil component is a payment of nothing and ok. ok is false when the
+// pile cannot cover the count, which means the ability is not offered.
+func (e *enumerator) exileCardsPayment(ec *game.ExileCost, sourceID uuid.UUID, taken []uuid.UUID) ([]uuid.UUID, bool) {
+	if ec == nil || ec.N <= 0 {
+		return nil, true
+	}
+	skip := make(map[uuid.UUID]bool, len(taken))
+	for _, id := range taken {
+		skip[id] = true
+	}
+	var out []uuid.UUID
+	for _, id := range e.cheapestFuelFirst(e.g.ExileCostOptionsForEffect(e.seat, sourceID, ec)) {
+		if len(out) == ec.N {
+			break
+		}
+		if !skip[id] {
+			out = append(out, id)
+		}
+	}
+	if len(out) < ec.N {
+		return nil, false
+	}
+	return out, true
 }

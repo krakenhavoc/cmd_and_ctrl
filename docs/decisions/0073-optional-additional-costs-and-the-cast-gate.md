@@ -961,3 +961,50 @@ Pay button when `tap_cost` is present.
 - "Whenever a player waterbends" (CR 701.67c) — no catalog card asks; neither
   payment path emits an event for it.
 
+
+---
+
+## Amendment (2026-09-23, [#1297](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1297)): the exile-cards component gets its second owner and a pile
+
+**Sprint:** S44 — mana and cost components. Tracker [#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887).
+The activation path is [ADR 0020](0020-activated-abilities.md)'s amendment of the
+same date (Decisions 35–37); this one records the vocabulary decision.
+
+### Decision 7 — `ExileCost` is one struct with two owners, and the pile is a field
+
+#1283 added `game.ExileCost` ("Exile N cards from your hand") with one owner, a
+mana ability. #1297 adds the CR 602 owner, `AbilityCost.ExileCards`, and applies
+the #1213 rule this ADR keeps: a component is ONE struct with one options walk,
+one validator and one payer, however many surfaces carry it. It is now the fifth
+component with that shape after `SacrificeOther`, `RemoveCounters`, `TapOthers`
+and `DiscardCards`.
+
+The printed CR 602 form reads the graveyard far more often than the hand, so the
+struct grew `From` — `ZoneHand` or `ZoneGraveyard` — rather than a sibling type.
+Three consequences, each a decision:
+
+- **The zero value is the hand.** `ExileCost.Zone()` reads an unset `From` as
+  `ZoneHand`, so Cadaverous Bloom's declaration is untouched and a client that
+  predates `exile_cost_zone` keeps resolving its options out of the hand.
+- **The boot check is shared.** `checkExileCardsClause` refuses a zero or
+  negative count and any pile but the hand and the graveyard, for both owners in
+  one function, so the two cannot drift.
+- **It is not a discard, in either pile.** The cards leave through the one exit
+  primitive, fire no `EventDiscardCard`, and madness never sees them. That is
+  why the wire keeps `exile_ids` apart from `discard_ids` on `activate_ability`
+  exactly as #1283 kept them apart on `activate_mana_ability`, and why the
+  validator refuses a card named to both (CR 118.3).
+
+What an announcement exiled is a paid-cost fact (`PaidCost.Exiled`), beside
+`Sacrificed` and `ReturnedAttacking` and for their reason: by resolution nothing
+on the board says which card paid. It is cloned with the record and omitted from
+the snapshot when empty.
+
+### What this does NOT decide
+
+- A variable exile count ("Exile X cards", "one or more", Capitoline Triad's
+  total-mana-value threshold) — `ExileCost.N` is fixed. It is the variable
+  sacrifice count's question (#1213 Decision 2), and should copy that shape when
+  a card asks.
+- An exile cost on a SPELL's additional cost (delve is not one — it is a cost
+  REDUCTION, CR 702.66). No printed spell needs `AdditionalCost` to carry it.

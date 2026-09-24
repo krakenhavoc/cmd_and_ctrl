@@ -40,14 +40,22 @@ func CastAutoTapExclusions(params CastSpellParams) map[uuid.UUID]bool {
 
 // AbilityAutoTapExclusions is the same set for a CR 602 activation's
 // mana component: the source when the cost taps or sacrifices it, and
-// the permanents and cards named to its TapOthers, sacrifice and
-// discard components. Nil when empty.
-func AbilityAutoTapExclusions(sourceID uuid.UUID, cost AbilityCost, tapIDs, sacrificeIDs, discardIDs []uuid.UUID) map[uuid.UUID]bool {
+// the permanents and cards named to its TapOthers, sacrifice, discard
+// and exile-N-cards components. Nil when empty.
+//
+// #1297: the exile ids are here for the hand form. A Spirit Guide named
+// to Holistic Wisdom's "Exile a card from your hand" is also a mana
+// source (#1228), and the planner would otherwise exile it for mana
+// first and leave the cost with nothing to pay. No card in a GRAVEYARD
+// is a mana source today (supportedManaAbilityZones is the hand alone),
+// so for the graveyard form this is the list being right in advance
+// rather than a live exclusion.
+func AbilityAutoTapExclusions(sourceID uuid.UUID, cost AbilityCost, tapIDs, sacrificeIDs, discardIDs, exileIDs []uuid.UUID) map[uuid.UUID]bool {
 	var self []uuid.UUID
 	if cost.Tap || cost.SacrificeSelf {
 		self = []uuid.UUID{sourceID}
 	}
-	return unionIDs(self, tapIDs, sacrificeIDs, discardIDs)
+	return unionIDs(self, tapIDs, sacrificeIDs, discardIDs, exileIDs)
 }
 
 // WithAutoTapExclusions returns `base` plus `ids`, copying rather than

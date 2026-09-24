@@ -138,36 +138,44 @@ func (g *Game) payAbilityExileSelfLocked(playerID, sourceID uuid.UUID, ab Activa
 	return g.payExileSelfCostLocked(playerID, sourceID, ab.Cost.ExileSelf)
 }
 
-// ExileCost is "Exile N cards from your hand" as a cost component
-// (#1283) — the clause the activator picks the cards for:
+// ExileCost is "Exile N cards from your hand" or "Exile N cards from
+// your graveyard" as a cost component (#1283, #1297) — the clause the
+// activator picks the cards for:
 //
 //	Cadaverous Bloom   "Exile a card from your hand: Add {B}{B} or {G}{G}."
+//	Grim Lavamancer    "{R}, {T}, Exile two cards from your graveyard: …"
+//	Moorland Haunt     "{W}{U}, {T}, Exile a creature card from your graveyard: …"
+//	Holistic Wisdom    "{2}, Exile a card from your hand: …"
 //
 // It is DiscardCost's sibling one keyword action over (discard_cost.go)
 // and deliberately NOT DiscardCost with a destination bolted on. The
 // two share a shape — a count, a printed label, a predicate — and
 // differ in the one way that matters: discarding is a CR 701.8 keyword
 // action with its own event, its own cause and a CR 614 window that
-// madness (CR 702.35a) watches; exiling a card from a hand as a cost is
-// a plain CR 406 zone change with none of that. A card exiled to
-// Cadaverous Bloom is not discarded, fires no EventDiscardCard and is
-// invisible to madness — what a reused DiscardCost routed to exile
-// would have got wrong the first time a Marauding Mako sat beside it.
+// madness (CR 702.35a) watches; exiling a card as a cost is a plain
+// CR 406 zone change with none of that. A card exiled to Cadaverous
+// Bloom is not discarded, fires no EventDiscardCard and is invisible
+// to madness — what a reused DiscardCost routed to exile would have
+// got wrong the first time a Marauding Mako sat beside it.
 //
 // It is ExileSelf's sibling too, and not the same thing either:
 // ExileSelf names the SOURCE (a Spirit Guide exiles itself), asks no
 // question and sends nothing on the wire; this names OTHER cards, and
 // the activator chooses them.
 //
-// The HAND is the only zone it reads. "Exile a creature card from your
-// graveyard:" is the same component one pile over, and a `From` field
-// is the change the day a card asks for it.
+// Two owners: ManaAbilityShape.ExileCards (#1283, the mana ability —
+// Cadaverous Bloom) and AbilityCost.ExileCards (#1297, the CR 602
+// ability — Grim Lavamancer). The candidate walk, the validator and the
+// payer below take the component, not the owner, so the second owner is
+// a second caller and not a second implementation — the posture
+// SacrificeOther, RemoveCounters, TapOthers and DiscardCards each keep.
 //
-// One owner today, ManaAbilityShape.ExileCards. The CR 602 owner
-// (AbilityCost.ExileCards) is the same plumbing on the activated path
-// and is tracked on #1297 — the candidate walk, the validator
-// and the payer below take the component, not the owner, so it will be
-// a second caller and not a second implementation.
+// The ZONE is a field, not a second type, because the two printed
+// forms are one rule read against two piles of the activator's own
+// cards: both are CR 406 moves with no keyword action, both name "your"
+// cards (CR 108.4 — no other player's pile is ever readable here), and
+// neither targets (CR 601.2h pays a cost, it does not choose one). What
+// differs is only where the walk looks.
 type ExileCost struct {
 	// N is how many cards the clause exiles. At least one;
 	// effects.Register refuses a zero or negative count, for the
@@ -175,13 +183,38 @@ type ExileCost struct {
 	N int
 
 	// Label is the clause as printed, without the verb — "a card",
-	// "a creature card". Shown in the client's picker.
+	// "a creature card", "two cards". Shown in the client's picker.
 	Label string
 
-	// Match is the clause's predicate. Nil matches any card in hand.
-	// READ-ONLY and runs under g.mu; it sees the card as it sits in the
-	// hand (printed characteristics — a card in a hand has no layers).
+	// From is the pile the cards are exiled FROM: ZoneHand or
+	// ZoneGraveyard, always the activator's own. The zero value reads
+	// as the hand, which is what every #1283 declaration meant before
+	// the field existed; read it through Zone(). effects.Register
+	// refuses any other zone at boot.
+	From ZoneKind
+
+	// Match is the clause's predicate. Nil matches any card in the
+	// pile. READ-ONLY and runs under g.mu; it sees the card as it sits
+	// in that pile — printed characteristics, because a card in a hand
+	// or a graveyard has no layers applied.
 	Match func(Card) bool
+}
+
+// Zone is the pile the clause exiles from: ZoneHand when From is unset,
+// otherwise From. Nil-safe.
+func (e *ExileCost) Zone() ZoneKind {
+	if e == nil || e.From == "" {
+		return ZoneHand
+	}
+	return e.From
+}
+
+// ExileCostZoneSupported reports whether an ExileCost may name `z`.
+// The hand and the graveyard are the two piles printed cards exile
+// from; effects.Register refuses the rest at boot rather than shipping
+// a clause the candidate walk would never find a card for.
+func ExileCostZoneSupported(z ZoneKind) bool {
+	return z == ZoneHand || z == ZoneGraveyard
 }
 
 // Matches reports whether `c` could pay this clause. Nil-safe on both
@@ -196,25 +229,43 @@ func (e *ExileCost) Matches(c Card) bool {
 	return e.Match(c)
 }
 
-// ExileCostOptionsForEffect lists the cards in `playerID`'s hand that
-// could pay `cost` right now, in hand order, excluding `sourceID` (a
-// card in hand cannot pay its own ability's cost twice). The view
-// stamps it and the legal enumerator pays out of it, so the set a bot
-// pays from and the set the engine accepts are computed once — the
-// posture DiscardCostOptionsForEffect keeps next door.
+// exileCostPile is the zone of `p` the clause reads — the hand or the
+// graveyard — or nil for a zone the component does not support.
+// Caller must hold g.mu.
+func exileCostPile(p *Player, cost *ExileCost) *Zone {
+	if p == nil {
+		return nil
+	}
+	switch cost.Zone() {
+	case ZoneHand:
+		return p.Hand
+	case ZoneGraveyard:
+		return p.Graveyard
+	}
+	return nil
+}
+
+// ExileCostOptionsForEffect lists the cards in `playerID`'s hand or
+// graveyard (whichever the clause names) that could pay `cost` right
+// now, in pile order, excluding `sourceID` — a card cannot pay its own
+// ability's cost twice, and a graveyard ability's "Exile another
+// creature card from your graveyard" (Scrapheap Scrounger) says so in
+// print. The view stamps it and the legal enumerator pays out of it, so
+// the set a bot pays from and the set the engine accepts are computed
+// once — the posture DiscardCostOptionsForEffect keeps next door.
 //
 // CALLER MUST ALREADY HOLD g.mu (read or write).
 func (g *Game) ExileCostOptionsForEffect(playerID, sourceID uuid.UUID, cost *ExileCost) []uuid.UUID {
 	if cost == nil || cost.N <= 0 {
 		return nil
 	}
-	p := g.playerByIDLocked(playerID)
-	if p == nil || p.Hand == nil {
+	pile := exileCostPile(g.playerByIDLocked(playerID), cost)
+	if pile == nil {
 		return nil
 	}
 	var out []uuid.UUID
-	for i := range p.Hand.Cards {
-		c := p.Hand.Cards[i]
+	for i := range pile.Cards {
+		c := pile.Cards[i]
 		if c.InstanceID == sourceID || !cost.Matches(c) {
 			continue
 		}
@@ -229,12 +280,14 @@ func (g *Game) ExileCostOptionsForEffect(playerID, sourceID uuid.UUID, cost *Exi
 //
 // What it enforces, one rule per line of validateDiscardCostLocked:
 //
-//   - exactly cost.N ids, each distinct, each in the activator's hand,
-//     each matching the clause, none of them the source;
+//   - exactly cost.N ids, each distinct, each in the activator's own
+//     hand or graveyard (the pile the clause names), each matching the
+//     clause, none of them the source;
 //   - none of them ALSO named to another component of the same payment
 //     (`alsoSpent`, the discards) — one card pays one component
-//     (CR 118.3). No printed card has both clauses, so a client that
-//     sends the same card twice is confused rather than clever;
+//     (CR 118.3). No printed card has both clauses on one ability, so a
+//     client that sends the same card twice is confused rather than
+//     clever;
 //   - ids arriving for a cost with no exile component are rejected
 //     rather than ignored, exactly as an unexpected discard_ids is.
 //
@@ -253,6 +306,10 @@ func (g *Game) validateExileCardsCostLocked(playerID, sourceID uuid.UUID, cost *
 	if len(chosen) != cost.N {
 		return nil, ErrInvalidParam
 	}
+	pile := exileCostPile(p, cost)
+	if pile == nil {
+		return nil, ErrInvalidParam
+	}
 	spent := make(map[uuid.UUID]bool, len(alsoSpent))
 	for _, id := range alsoSpent {
 		spent[id] = true
@@ -263,7 +320,7 @@ func (g *Game) validateExileCardsCostLocked(playerID, sourceID uuid.UUID, cost *
 			return nil, ErrInvalidParam
 		}
 		seen[id] = true
-		c := g.findHandCardLocked(p, id)
+		c := findZoneCard(pile, id)
 		if c == nil {
 			return nil, ErrCardNotFound
 		}
@@ -274,12 +331,26 @@ func (g *Game) validateExileCardsCostLocked(playerID, sourceID uuid.UUID, cost *
 	return append([]uuid.UUID(nil), chosen...), nil
 }
 
+// findZoneCard returns the card with `id` in `z`, or nil. A pointer
+// into the live slice; the caller reads it and lets it go.
+func findZoneCard(z *Zone, id uuid.UUID) *Card {
+	if z == nil {
+		return nil
+	}
+	for i := range z.Cards {
+		if z.Cards[i].InstanceID == id {
+			return &z.Cards[i]
+		}
+	}
+	return nil
+}
+
 // payExileCardsCostLocked pays an ExileCards component: each named card
-// leaves its owner's hand for exile through the one exit primitive with
-// MustSettleNow — a commander exiled to Cadaverous Bloom still gets its
-// CR 903.9 answer, and the CR 601.2h / CR 602.2b indivisible step
-// cannot pause on a prompt. NOT through discardCardsLocked: this is not
-// a discard (see ExileCost).
+// leaves its owner's hand or graveyard for exile through the one exit
+// primitive with MustSettleNow — a commander exiled to Cadaverous Bloom
+// or to Grim Lavamancer still gets its CR 903.9 answer, and the CR
+// 601.2h / CR 602.2b indivisible step cannot pause on a prompt. NOT
+// through discardCardsLocked: this is not a discard (see ExileCost).
 //
 // Caller must hold g.mu and have validated the list.
 func (g *Game) payExileCardsCostLocked(playerID, sourceID uuid.UUID, ids []uuid.UUID) error {

@@ -256,6 +256,11 @@ func MatchLand(c game.Card) bool { return c.IsLand() }
 // metalcraft.
 func MatchArtifact(c game.Card) bool { return c.IsArtifact() }
 
+// MatchInstantOrSorcery matches an instant or sorcery card — Tome
+// Shredder's "Exile an instant or sorcery card from your graveyard"
+// (#1297).
+func MatchInstantOrSorcery(c game.Card) bool { return c.IsInstant() || c.IsSorcery() }
+
 // hasFold is a case-insensitive membership test over a type-line
 // slice.
 func hasFold(xs []string, want string) bool {

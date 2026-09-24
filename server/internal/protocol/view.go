@@ -2229,6 +2229,29 @@ type ActivatedAbilityView struct {
 	DiscardCostN       int      `json:"discard_cost_n,omitempty"`
 	DiscardCostLabel   string   `json:"discard_cost_label,omitempty"`
 	DiscardCostOptions []string `json:"discard_cost_options,omitempty"`
+	// ExileCostN / Label / Options / Zone describe an "Exile N cards
+	// from your graveyard" or "… from your hand" cost component
+	// (#1297): Grim Lavamancer's "Exile two cards from your
+	// graveyard", Moorland Haunt's "Exile a creature card from your
+	// graveyard", Holistic Wisdom's "Exile a card from your hand".
+	// The same four fields a mana ability's exile cost ships (#1283),
+	// off the same candidate walk, so the client's picker is one
+	// component for both ability kinds.
+	//
+	//   - ExileCostLabel is the clause as printed, without the verb
+	//     ("a creature card").
+	//   - ExileCostOptions is what could pay right now: the matching
+	//     cards in the activator's own hand or graveyard, in pile
+	//     order, the source excluded. Absent when nothing can pay.
+	//   - ExileCostZone is that pile, "hand" or "graveyard".
+	//
+	// NOT the discard triple: an exiled card is not discarded, so the
+	// picks ride back as `exile_ids`, never `discard_ids`. The client
+	// skips its picker when the options number exactly ExileCostN.
+	ExileCostN       int      `json:"exile_cost_n,omitempty"`
+	ExileCostLabel   string   `json:"exile_cost_label,omitempty"`
+	ExileCostOptions []string `json:"exile_cost_options,omitempty"`
+	ExileCostZone    string   `json:"exile_cost_zone,omitempty"`
 	// ReturnLabel / ReturnOptions describe a "Return a permanent you
 	// control to its owner's hand" cost component (#1213) — Quirion
 	// Ranger's Forest, Master Transmuter's artifact, Meloku's land.
@@ -2489,9 +2512,15 @@ type ManaAbilityView struct {
 	// see). The chosen cards go back as `exile_ids`, and the client
 	// skips its picker when the options are exactly ExileCostN.
 	// Absent for every other mana ability.
+	//
+	// ExileCostZone (#1297) is the pile the options are in — "hand" or
+	// "graveyard" — so the picker resolves the ids out of the right
+	// zone and says where they come from. Stamped with ExileCostN,
+	// absent without it.
 	ExileCostN       int      `json:"exile_cost_n,omitempty"`
 	ExileCostLabel   string   `json:"exile_cost_label,omitempty"`
 	ExileCostOptions []string `json:"exile_cost_options,omitempty"`
+	ExileCostZone    string   `json:"exile_cost_zone,omitempty"`
 	// ConditionUnmet is ActivatedAbilityView.ConditionUnmet for a
 	// mana ability: true while the ability's "Activate only if …"
 	// condition is false — Temple of the False God with four lands,
@@ -4556,6 +4585,7 @@ func stampManaSacrificeOptions(g *game.Game, card game.Card, controller uuid.UUI
 			views[i].ExileCostN = ec.N
 			views[i].ExileCostLabel = ec.Label
 			views[i].ExileCostOptions = cardIDStrings(g.ExileCostOptionsForEffect(controller, card.InstanceID, ec))
+			views[i].ExileCostZone = string(ec.Zone())
 		}
 	}
 }
@@ -6573,6 +6603,15 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			v.DiscardCostN = dc.N
 			v.DiscardCostLabel = dc.Label
 			v.DiscardCostOptions = cardIDStrings(g.DiscardCostOptionsForEffect(caster, c.InstanceID, dc))
+		}
+		// #1297: the exile-N-cards component, off the walk the engine
+		// validates against — the mana view's four fields, one ability
+		// kind over.
+		if ec := a.Cost.ExileCards; ec != nil && ec.N > 0 {
+			v.ExileCostN = ec.N
+			v.ExileCostLabel = ec.Label
+			v.ExileCostOptions = cardIDStrings(g.ExileCostOptionsForEffect(caster, c.InstanceID, ec))
+			v.ExileCostZone = string(ec.Zone())
 		}
 		// #1213: the return-to-hand component, stamped from the same
 		// walk the engine validates against.

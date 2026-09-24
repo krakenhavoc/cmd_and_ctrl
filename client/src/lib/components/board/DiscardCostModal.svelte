@@ -38,6 +38,10 @@
     // header's small print; both default to the discard wording.
     verb?: string;
     note?: string;
+    // #1297: where the cards have to be, for the shortfall message —
+    // "in your graveyard" for Grim Lavamancer's "Exile two cards from
+    // your graveyard". Defaults to the hand, which is every discard.
+    where?: string;
   }
 
   const {
@@ -49,6 +53,7 @@
     label: labelOverride,
     verb = "Discard",
     note = "additional cost · CR 601.2f",
+    where = "in hand",
   }: Props = $props();
 
   const need = $derived(needOverride ?? card?.additional_cost?.discard_cards ?? 0);
@@ -112,7 +117,8 @@
       <p class="prompt-hint">{label}</p>
       {#if short}
         <p class="prompt-hint error">
-          You need {need} card{need === 1 ? "" : "s"} in hand to pay this cost.
+          You need {need} card{need === 1 ? "" : "s"}
+          {where} to pay this cost.
         </p>
       {:else}
         <ul class="prompt-options">

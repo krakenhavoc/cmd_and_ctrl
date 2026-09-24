@@ -1429,7 +1429,11 @@ type ManaAbilityCost struct {
 	// ExileCards is an "Exile N cards from your hand" component of the
 	// activation cost (#1283) — Cadaverous Bloom's "Exile a card from
 	// your hand: Add {B}{B} or {G}{G}". Build it with ExileACardFromHand
-	// or ExileCardsFromHand.
+	// or ExileCardsFromHand; ExileCardsFromGraveyard is the same
+	// component one pile over (#1297), for Molt Tender's "{T}, Exile a
+	// card from your graveyard: Add one mana of any color." when it
+	// lands. A CR 602 ability declares the component through
+	// ExileFromGraveyard / ExileFromHand instead.
 	//
 	// DiscardCards' sibling and NOT a discard: the cards go to exile
 	// through the one exit primitive, fire no discard event and are

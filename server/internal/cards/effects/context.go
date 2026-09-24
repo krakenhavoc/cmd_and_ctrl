@@ -145,6 +145,17 @@ func (c *Context) TappedPower() (power int, ok bool) {
 	return c.Game.PaidTapPowerForEffect(taps[0]), true
 }
 
+// Exiled is the cards the announcement's ExileCards cost exiled, in the
+// order the activator named them — "the card exiled this way" (Holistic
+// Wisdom), "the exiled card's power" (Dread Defiler). A fact about the
+// ANNOUNCEMENT, read back the way Sacrificed and ReturnedAttacking are
+// (#1297). The cards themselves are in exile under the same instance
+// IDs, so an effect looks them up with LookupCardForEffect; nil when the
+// cost exiled nothing. The returned slice is a copy.
+func (c *Context) Exiled() []uuid.UUID {
+	return append([]uuid.UUID(nil), c.Paid().Exiled...)
+}
+
 // ManaSpent is what the payment for THIS stack item can be asked
 // about: Colors(), Count("R"), Total(), FromTreasure(), Snow() and
 // the rest of game.ManaSpent's vocabulary.

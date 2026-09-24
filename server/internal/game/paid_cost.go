@@ -124,6 +124,19 @@ type PaidCost struct {
 	// Context.ReturnedAttacking().
 	ReturnedAttacking uuid.UUID
 
+	// Exiled is the cards an ExileCards component exiled (#1297), in
+	// the order the activator named them — "the card exiled this way"
+	// (Holistic Wisdom: "if it shares a card type with the card exiled
+	// this way"; Dread Defiler: "the exiled card's power"). Nil when
+	// the cost exiled nothing, which is almost every payment.
+	//
+	// A LIST of instance IDs rather than a count, because every reader
+	// printed so far asks about the card itself, and the card is still
+	// findable: it is in exile, by the same instance ID, because the
+	// cost put it there. A count would be Sacrificed's shape answering
+	// a question nobody on this component asks.
+	Exiled []uuid.UUID `json:"exiled,omitempty"`
+
 	// OptionalCosts is which of the card's optional additional costs
 	// the caster chose to pay (CR 601.2b), as positions in the card's
 	// OptionalCosts slice, ascending. A cost paid N times appears N
@@ -303,7 +316,7 @@ func (p PaidCost) IsZero() bool {
 	return len(p.Mana) == 0 && !p.OnPaper &&
 		p.CountersRemoved == 0 && p.CountersAdded == 0 && p.LifePaid == 0 &&
 		p.Sacrificed == 0 && p.ReturnedAttacking == uuid.Nil && len(p.OptionalCosts) == 0 &&
-		len(p.TappedOthers) == 0
+		len(p.TappedOthers) == 0 && len(p.Exiled) == 0
 }
 
 // clonePaidCost deep-copies the record. The ManaToken slice is
@@ -326,6 +339,9 @@ func clonePaidCost(p PaidCost) PaidCost {
 	}
 	if len(p.TappedOthers) > 0 {
 		out.TappedOthers = append([]PaidTap(nil), p.TappedOthers...)
+	}
+	if len(p.Exiled) > 0 {
+		out.Exiled = append([]uuid.UUID(nil), p.Exiled...)
 	}
 	return out
 }

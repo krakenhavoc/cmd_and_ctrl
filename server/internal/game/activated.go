@@ -328,6 +328,28 @@ type AbilityCost struct {
 	// out of EXILE by instance ID (LookupCardForEffect), which is
 	// where the cost has just put it.
 	ExileSelf bool
+
+	// ExileCards is "Exile N <kind> cards from your graveyard" or
+	// "… from your hand" as a cost (#1297) — Grim Lavamancer's
+	// "Exile two cards from your graveyard", Moorland Haunt's "a
+	// creature card", Holistic Wisdom's "a card from your hand". Nil
+	// means no such component. See ExileCost in exile_cost.go, which
+	// #1283 built for the mana ability's owner (Cadaverous Bloom);
+	// this is the CR 602 owner of the same component, with the same
+	// candidate walk, validator and payer.
+	//
+	// ExileSelf's sibling and not the same thing: ExileSelf names the
+	// source and asks nothing, this names OTHER cards and the
+	// activator chooses them. DiscardCards' sibling and not the same
+	// thing either: an exiled card is not discarded, fires no
+	// EventDiscardCard, and madness never sees it.
+	//
+	// The activator names the cards in ActivateAbilityParams.ExileIDs
+	// at announce (CR 602.2b), beside the discard picks. Paid with the
+	// discards, after every component that needs the source where it
+	// was, and recorded on PaidCost.Exiled so an effect that reads
+	// "the exiled card" (Holistic Wisdom, Dread Defiler) finds it.
+	ExileCards *ExileCost
 }
 
 // DemandsX reports whether the ability's mana component contains
@@ -693,6 +715,17 @@ type ActivateAbilityParams struct {
 	// (CR 602.2b), on the wire as `discard_ids`, exactly as a cast's
 	// additional discard cost rides CastSpellParams.DiscardIDs.
 	DiscardIDs []uuid.UUID
+
+	// ExileIDs names the cards paid to an ExileCards cost (#1297):
+	// exactly the clause's count, each once, each in the activator's
+	// own hand or graveyard (the pile the clause names), each matching
+	// the clause, never the source and never a card also named in
+	// DiscardIDs (CR 118.3).
+	//
+	// Its own field and its own wire name (`exile_ids`) rather than
+	// riding `discard_ids`, because the component is not a discard —
+	// the same split activate_mana_ability made in #1283.
+	ExileIDs []uuid.UUID
 
 	// ReturnIDs names the permanents paid to a ReturnToHand cost
 	// (#1213): exactly the clause's Count, each once, each on the
@@ -1077,6 +1110,16 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	if err != nil {
 		return err
 	}
+	// #1297: "Exile two cards from your graveyard" (Grim Lavamancer)
+	// and "Exile a card from your hand" (Holistic Wisdom). The SAME
+	// validator the mana ability's owner uses (#1283), against the
+	// discards — a card named to both would pay two components
+	// (CR 118.3) — and against the source, so a graveyard ability can
+	// never pay its "exile another card" with itself.
+	exiles, err := g.validateExileCardsCostLocked(playerID, cardID, ab.Cost.ExileCards, params.ExileIDs, discards)
+	if err != nil {
+		return err
+	}
 	// #1221: the discard component's sibling one zone over —
 	// scavenge's and embalm's "Exile this card from your graveyard".
 	// Nothing to resolve (the source IS the payment), so this is the
@@ -1134,7 +1177,7 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		// The auto-tapper must not spend what this activation has already
 		// spent: see AbilityAutoTapExclusions, which the legal-move
 		// enumerator calls too, so the two exclude one list.
-		excluded := AbilityAutoTapExclusions(cardID, ab.Cost, params.TapIDs, params.SacrificeIDs, params.DiscardIDs)
+		excluded := AbilityAutoTapExclusions(cardID, ab.Cost, params.TapIDs, params.SacrificeIDs, params.DiscardIDs, exiles)
 		// #1310: a permanent tapped to waterbend is spent on the
 		// cost already, so the auto-tapper may not also tap it for
 		// the mana half (CR 118.3) — a Birds of Paradise named to
@@ -1269,6 +1312,16 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	if err := g.payAbilityDiscardsLocked(playerID, cardID, ab, discards); err != nil {
 		return err
 	}
+	// #1297: the exile-N-cards component, beside the discards and for
+	// the same reason — it moves cards, never the source. The one exit
+	// primitive with MustSettleNow (exile_cost.go), not the discard
+	// door: nothing here is discarded. Recorded on the payment so an
+	// effect that reads "the card exiled this way" can find it in exile
+	// by instance ID, where this just put it.
+	if err := g.payExileCardsCostLocked(playerID, cardID, exiles); err != nil {
+		return err
+	}
+	paid.Exiled = exiles
 	// #1221: and the graveyard half. Last of all, because it moves
 	// the source out of the graveyard and the effect that follows
 	// reads it back out of exile. See exile_cost.go.

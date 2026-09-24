@@ -419,6 +419,9 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q ability %d discards %d cards — a discard cost discards at least one",
 				spec.Name, i, dc.N))
 		}
+		// #1297: the exile-N-cards component, held to the rules its
+		// mana owner is held to (checkExileCardsClause).
+		checkExileCardsClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ExileCards)
 		// CR 113.6 / ADR 0062 Decision 1: an ability that functions
 		// somewhere other than the battlefield has no permanent to
 		// tap, sacrifice, crew or put loyalty counters on. Such a
@@ -496,10 +499,7 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d discards %d cards — a discard cost discards at least one",
 				spec.Name, i, dc.N))
 		}
-		if ec := ma.Cost.ExileCards; ec != nil && ec.N <= 0 {
-			panic(fmt.Sprintf("effects.Register: %q mana ability %d exiles %d cards from hand — an exile cost exiles at least one",
-				spec.Name, i, ec.N))
-		}
+		checkExileCardsClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.ExileCards)
 		if ma.Cost.Mana != "" {
 			if _, err := game.ParseCost(ma.Cost.Mana); err != nil {
 				panic(fmt.Sprintf("effects.Register: %q mana ability %d declares an unparseable mana cost %q: %v",
@@ -1014,5 +1014,28 @@ func checkAbilityWaterbend(name string, i int, cost game.AbilityCost) {
 	if err != nil || cost.Mana == "" || clause.Generic > mana.Generic || clause.XSlots > mana.XSlots {
 		panic(fmt.Sprintf("effects.Register: %q ability %d waterbends %q but its mana component %q does not contain it — CR 701.67b lets the taps pay only mana the ability charges",
 			name, i, wb.Extra, cost.Mana))
+	}
+}
+
+// checkExileCardsClause is the boot-time refusal for an ExileCards cost
+// component, shared by its two owners (#1283's mana ability, #1297's CR
+// 602 ability) so the rules cannot drift between them:
+//
+//   - a clause that exiles no cards makes the ability free, the refusal
+//     a zero-card discard gets;
+//   - a clause that names a pile other than the hand or the graveyard
+//     would never find a card to pay with, and would look complete on
+//     the catalogue page while refusing every activation.
+func checkExileCardsClause(name, where string, ec *game.ExileCost) {
+	if ec == nil {
+		return
+	}
+	if ec.N <= 0 {
+		panic(fmt.Sprintf("effects.Register: %q %s exiles %d cards — an exile cost exiles at least one",
+			name, where, ec.N))
+	}
+	if !game.ExileCostZoneSupported(ec.Zone()) {
+		panic(fmt.Sprintf("effects.Register: %q %s exiles cards from the %s — an exile cost reads the hand or the graveyard",
+			name, where, ec.Zone()))
 	}
 }
