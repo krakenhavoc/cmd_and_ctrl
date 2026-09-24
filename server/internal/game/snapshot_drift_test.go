@@ -140,6 +140,10 @@ var gameFields = plan(
 	// Events from scratch, so there is nothing to serialise.
 	"eventLogGen", rebuilt, "names this *Game's log history; a restored game is a new receiver and starts a new one",
 	"logProjection", rebuilt, "derived cache of the public log; the first view of a restored game refolds Events",
+	// #1479: the card-location hint table. Every answer it gives is
+	// checked against the live zones, so a restored game's first lookup
+	// simply builds a new one.
+	"cardIndex", rebuilt, "derived hint table over the zones; the first lookup of a restored game builds it",
 	// #829 event batches. Carried for the same reason the per-turn
 	// tallies are, and carried TOGETHER: the counter names the batch
 	// the marks are recorded against, so a restore that kept one and
