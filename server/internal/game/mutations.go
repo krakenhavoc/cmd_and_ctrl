@@ -1163,9 +1163,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// the card still where it was; the answer casts it again. See
 	// cost_commander_choice.go.
 	moving := append(append(append([]uuid.UUID(nil), params.DiscardIDs...), params.SacrificeIDs...), params.AltCostIDs...)
-	// #1445: a card an EFFECT has already paused on its way out
-	// cannot pay. See refusePausedCostCardsLocked.
-	if err := g.refusePausedCostCardsLocked(moving); err != nil {
+	// #1445 / #1427: a card an EFFECT has already paused on its way
+	// out cannot pay — moved, or tapped to convoke / waterbend
+	// (TapIDs). See refusePausedCostCardsLocked.
+	if err := g.refusePausedCostCardsLocked(moving, params.TapIDs); err != nil {
 		return err
 	}
 	asked, answers := g.askCostCommanderLocked(playerID, moving, params.commanderAnswers, card.Name,
@@ -1727,9 +1728,9 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 		if manaSourceTappedOut(card, ab) {
 			continue
 		}
-		// #1445: the planner's paused-exit check, re-asked because a
-		// plan can arrive stale.
-		if ab.SacrificeCost && g.zoneChangePausedLocked(cardID) {
+		// #1445 / #1427: the planner's paused-exit check, re-asked
+		// because a plan can arrive stale.
+		if (ab.SacrificeCost || ab.TapCost) && g.zoneChangePausedLocked(cardID) {
 			continue
 		}
 		// #540: CR 302.6, enforced here as well as in the planner.
@@ -5669,9 +5670,15 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	if ab.ExileSelf {
 		moving = append(moving, cardID)
 	}
-	// #1445: a card an EFFECT has already paused on its way out
-	// cannot pay. See refusePausedCostCardsLocked.
-	if err := g.refusePausedCostCardsLocked(moving); err != nil {
+	// #1427: every permanent the cost TAPS — the source's {T} and
+	// the tap-another picks.
+	tapping := append([]uuid.UUID(nil), params.TapIDs...)
+	if ab.TapCost {
+		tapping = append(tapping, cardID)
+	}
+	// #1445 / #1427: a card an EFFECT has already paused on its way
+	// out cannot pay. See refusePausedCostCardsLocked.
+	if err := g.refusePausedCostCardsLocked(moving, tapping); err != nil {
 		return err
 	}
 	asked, answers := g.askCostCommanderLocked(playerID, moving, params.commanderAnswers, card.Name,
