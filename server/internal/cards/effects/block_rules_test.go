@@ -233,7 +233,8 @@ func TestLegolasCantBeBlockedByPowerTwoOrLess(t *testing.T) {
 	small := b12Creature(g, opp.ID, "Grizzly Bears", "Creature — Bear", 2, 2)
 	pumped := b12Creature(g, opp.ID, "Pumped Bears", "Creature — Bear", 2, 2)
 	big := b12Creature(g, opp.ID, "Hill Giant", "Creature — Giant", 3, 3)
-	brAttack(t, g, legolas)
+	companion := b12Creature(g, me.ID, "Elvish Archer", "Creature — Elf Archer", 2, 2)
+	brAttack(t, g, legolas, companion)
 	// Power is read live at declaration, counters included.
 	g.WithWriteLock(func() { _ = g.AddCounterForEffect(pumped, game.CounterPlusOne, 1) })
 
@@ -247,6 +248,13 @@ func TestLegolasCantBeBlockedByPowerTwoOrLess(t *testing.T) {
 	}
 	if err := g.DeclareBlocker(pumped, legolas); err != nil {
 		t.Fatalf("a 2/2 with a +1/+1 counter has power 3 and blocks: %v", err)
+	}
+	// The rule is about Legolas, not about every attacker at the table.
+	if !brOffers(offered, small, companion) {
+		t.Error("the enumerator withholds a block on the attacker beside Legolas")
+	}
+	if err := g.DeclareBlocker(small, companion); err != nil {
+		t.Fatalf("the rule bound the attacker beside Legolas: %v", err)
 	}
 }
 
@@ -300,6 +308,25 @@ func TestChampionOfLambholtStopsSmallerCreaturesBlockingYours(t *testing.T) {
 	// "Less than" is strict: equal power blocks.
 	if err := g.DeclareBlocker(equal, bear); err != nil {
 		t.Fatalf("a creature with power equal to the Champion's blocks: %v", err)
+	}
+}
+
+// "Creatures YOU control": a Champion on the DEFENDER's side does not
+// stop its controller's small creatures blocking an opponent's
+// attacker.
+func TestChampionOfLambholtDoesNotBindTheOpponentsAttackers(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	champion := b12Push(g, opp.ID, "Champion of Lambholt", "Creature — Human Warrior", championOfLambholtOracle, 1, 1)
+	g.WithWriteLock(func() { _ = g.AddCounterForEffect(champion, game.CounterPlusOne, 2) }) // power 3
+	bear := b12Creature(g, me.ID, "Grizzly Bears", "Creature — Bear", 2, 2)
+	small := b12Creature(g, opp.ID, "Llanowar Elves", "Creature — Elf Druid", 2, 2)
+	brAttack(t, g, bear)
+	if !brOffers(brOffered(t, g, opp.ID), small, bear) {
+		t.Error("the enumerator withholds a block the Champion does not forbid")
+	}
+	if err := g.DeclareBlocker(small, bear); err != nil {
+		t.Fatalf("the Champion bound an attacker its controller does not control: %v", err)
 	}
 }
 
