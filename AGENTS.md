@@ -921,6 +921,38 @@ Reach for `BoostUntilEOT` / `GrantKeywordUntilEOT` for the first row and `Scoped
 
 **Control from effects (CR 613.1b, CR 701.12, S38).** "Gain control of target permanent" is `GainControl{Target, Controller, Duration, Label}` and "exchange control" is `ExchangeControl{A, B}`. Both are layer-2 scoped statics in the same bucket Mind Control's Aura uses, which is what makes control revert by itself (`Card.BaseController`) and makes two control effects sort by timestamp (CR 613.7) with no card-side work. Do NOT write `Card.Controller`. Three things ride along and are why the printed cards look the way they do: the permanent leaves combat (CR 506.4, declaration and announcement both), it is summoning-sick under its new controller however long it has been in play (CR 302.6 — which is why Act of Treason also grants haste), and ownership never changes (CR 108.3). An exchange is ONE effect: both objects are checked before either half is registered and the two halves share a timestamp, so it fails whole (CR 701.12b). `Controller` defaults to the effect's controller; pass it explicitly for "target opponent gains control of ~" — that card still waits on the choose-a-player prompt, not on this primitive.
 
+### Granting an ability to another permanent (ADR 0093, #754)
+
+"Creatures you control have '{T}: Add one mana of any color.'" is a
+layer-6 grant of a catalog BUNDLE, never a closure on the recipient.
+Declare the bundle in `Spec.Grants` (the #665 `AbilityGrant`, now with
+`Mana` and a required `Text`) and name it from a static built with
+`GrantAbilities(appliesTo, key)`:
+
+```go
+Grants: []AbilityGrant{{
+    Key:  "cryptolith-rite/any-color",
+    Mana: []ManaAbility{{Cost: ManaAbilityCost{Tap: true}, Produced: "{W|U|B|R|G}", Label: "Add one mana of any color"}},
+    Text: "{T}: Add one mana of any color.",
+}},
+Static: []game.StaticAbility{GrantAbilities(creaturesYouControl, "cryptolith-rite/any-color")},
+```
+
+The engine does the rest: the grant lands on the recipient's
+`Characteristic.GrantedAbilities` in the static's timestamp slot, the
+ability readers return it after the recipient's own abilities with a
+`grant:` ref, and "this creature" is the recipient everywhere (its
+controller activates it, `{T}` taps it, CR 302.6 reads it). A removal
+on the recipient takes an earlier grant and not a later one (CR
+613.6); a removal on the GRANTOR takes the grant from everything
+(CR 613.8a). A layer-6 grant is not copied (CR 707.2). `Register`
+refuses a bundle ability with `ActiveWhen` (gate the grantor's static
+instead) or a non-battlefield zone, and `TestEveryGrantKeyResolves`
+refuses a grant naming an unregistered bundle or a bundle with a
+`Static` slot. Attached / tribal constructors, the client picker and
+the auto-tapper's handling arrive with the first cards (ADR 0093 PR 2);
+duration grants from a resolving spell are PR 4 and have no shape yet.
+
 ### Adding a replacement effect (S17+)
 
 Replacement effects ("enters tapped", "if that would place counters,

@@ -92,7 +92,37 @@ type Characteristic struct {
 	// granted KEYWORDS ride in `Abilities` and are governed by the
 	// layer-6 bucket's timestamp sort, which clears the slice in the
 	// removal's slot and lets a later grant append after it.
+	//
+	// Since ADR 0093 it means "its OWN abilities are gone" — printed,
+	// copy-granted (CR 707.9a) and token-template — and not "it has no
+	// abilities": a layer-6 grant sorted after the removal survives in
+	// GrantedAbilities below, and every reader keeps that half.
 	AbilitiesRemoved bool
+
+	// GrantedAbilities are the abilities OTHER effects gave this
+	// object in layer 6 (CR 113.10, CR 613.1f) — Cryptolith Rite's
+	// "{T}: Add one mana of any color" on every creature you control,
+	// Chromatic Lantern's on every land. ADR 0093 Decision 1.
+	//
+	// Each entry names a catalog bundle by key, never a closure: a
+	// grant is static catalog data (effects.AbilityGrant), registered
+	// under GrantKey, and the reader that wants the abilities asks the
+	// catalog for that key exactly as it asks for a card's own. So the
+	// last-known-information copy of this struct (the dies harvest)
+	// and a snapshot of it both carry nothing but strings and IDs.
+	//
+	// Written only by GrantAbility, from a layer-6 effect's Apply, in
+	// that effect's timestamp slot — the order of this slice IS the
+	// layer-6 order. A CR 613.1f removal empties it in its own slot,
+	// which is what lets a grant with a LATER timestamp survive the
+	// removal (CR 613.6), exactly as a granted keyword does in
+	// Abilities above.
+	//
+	// NOT copiable (CR 707.2): a copy effect reads PrintedValues, never
+	// the layered result, so nothing has to remember to leave these
+	// out. The copiable grant is Card.GrantedAbilities, a different
+	// field on a different struct (#665).
+	GrantedAbilities []GrantedAbility
 
 	// Controller is the post-layer-2 controller (CR 613.1b). It is
 	// the one field here that is NOT a characteristic in the CR 109.3
@@ -291,6 +321,7 @@ func (c Characteristic) clone() Characteristic {
 	out.Supertypes = append([]string(nil), c.Supertypes...)
 	out.Colors = append([]string(nil), c.Colors...)
 	out.Abilities = append([]string(nil), c.Abilities...)
+	out.GrantedAbilities = append([]GrantedAbility(nil), c.GrantedAbilities...)
 	return out
 }
 
