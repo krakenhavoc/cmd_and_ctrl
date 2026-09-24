@@ -28,7 +28,10 @@ package game
 //
 // Added in S18 sub-PR 2.
 
-import "strings"
+import (
+	"sort"
+	"strings"
+)
 
 // canonicalKeywords is the set of keyword abilities this engine
 // actually enforces — the S18 table, one entry per consumer in the
@@ -258,6 +261,25 @@ func CanBeTargetedBy(c *Card, zone ZoneKind, src TargetSource) bool {
 		return false
 	}
 	return true
+}
+
+// CanonicalKeywordTable returns every entry of canonicalKeywords,
+// sorted. It is a copy: the table stays closed, and nothing outside
+// this file can add to it.
+//
+// The entries are the table's KEYS, which is not quite the set of
+// wire tokens: protection is stored as its bare family name
+// (KeywordProtection) and every real token is "protection from
+// <quality>" (see CanonicalKeywords). The public roadmap
+// (internal/roadmap) reads this to prove that every keyword the
+// engine enforces has an entry on the page.
+func CanonicalKeywordTable() []string {
+	out := make([]string, 0, len(canonicalKeywords))
+	for kw := range canonicalKeywords {
+		out = append(out, kw)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // CanonicalKeyword normalises one printed keyword string to the

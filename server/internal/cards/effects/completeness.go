@@ -1,5 +1,10 @@
 package effects
 
+import (
+	"strconv"
+	"strings"
+)
+
 // completeness.go — the machine-readable half of the catalog's
 // long-standing "declared simplification" convention (AGENTS.md §7).
 //
@@ -104,4 +109,38 @@ func (c Completeness) String() string {
 	default:
 		return "unreviewed"
 	}
+}
+
+// playerFacingJargon is the engine vocabulary a player-facing sentence
+// must not contain. The list is the tone rule's whole content, so it
+// lives here, beside the field it polices, rather than in a test.
+var playerFacingJargon = []string{
+	"OnResolve", "OnETB", "AsEnters", "TargetSpec", "InstanceID", "StackItem",
+	"ctx.", "*Game", "Locked", "sub-PR",
+}
+
+// PlayerFacingProblems reports why text is not a player-facing
+// sentence, or nil when it is. It is the tone rule every published
+// Caveat is held to (AGENTS.md §7: "Write Caveats for a player, not
+// for the next engineer"): long enough to say something, a sentence,
+// and free of the engine vocabulary a card file's doc comment is for.
+//
+// Exported because a Caveat is not the only sentence a player reads
+// about the engine: the public roadmap's summaries (internal/roadmap)
+// are held to the same rule by the same function, so the two cannot
+// drift apart.
+func PlayerFacingProblems(text string) []string {
+	var out []string
+	if len(text) < 20 {
+		out = append(out, "too terse to be useful")
+	}
+	if !strings.HasSuffix(text, ".") {
+		out = append(out, "not a sentence")
+	}
+	for _, j := range playerFacingJargon {
+		if strings.Contains(text, j) {
+			out = append(out, "leaks engine jargon "+strconv.Quote(j))
+		}
+	}
+	return out
 }

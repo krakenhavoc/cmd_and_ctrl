@@ -112,28 +112,27 @@ func TestRegisterAcceptsAnUndeclaredSpec(t *testing.T) {
 // Every caveat the catalog publishes is read by a player deciding
 // whether to sleeve the card, so it has to be a sentence rather than
 // a keyword, and it must not leak the engine vocabulary the file's
-// doc comment is for.
+// doc comment is for. The rule itself is PlayerFacingProblems, which
+// the public roadmap's summaries share.
 func TestDeclaredCaveatsReadAsPlayerFacingSentences(t *testing.T) {
-	jargon := []string{
-		"OnResolve", "OnETB", "AsEnters", "TargetSpec", "InstanceID", "StackItem",
-		"ctx.", "*Game", "Locked", "sub-PR",
-	}
 	for _, s := range All() {
 		if s.Completeness != CompletenessCaveats {
 			continue
 		}
 		for _, cv := range s.Caveats {
-			if len(cv) < 20 {
-				t.Errorf("%s: caveat too terse to be useful: %q", s.Name, cv)
-			}
-			if !strings.HasSuffix(cv, ".") {
-				t.Errorf("%s: caveat is not a sentence: %q", s.Name, cv)
-			}
-			for _, j := range jargon {
-				if strings.Contains(cv, j) {
-					t.Errorf("%s: caveat leaks engine jargon %q: %q", s.Name, j, cv)
-				}
+			for _, p := range PlayerFacingProblems(cv) {
+				t.Errorf("%s: caveat %s: %q", s.Name, p, cv)
 			}
 		}
+	}
+}
+
+func TestPlayerFacingProblemsNamesEachFailure(t *testing.T) {
+	if got := PlayerFacingProblems("Flashback isn't implemented yet."); got != nil {
+		t.Fatalf("a good sentence was refused: %v", got)
+	}
+	got := PlayerFacingProblems("OnResolve skips it")
+	if len(got) != 3 {
+		t.Fatalf("want terse, no full stop and jargon; got %v", got)
 	}
 }
