@@ -1030,6 +1030,12 @@ func (c *Client) handleAction(frame protocol.Frame) {
 			c.sendErrorPayload(frame.ID, body)
 			return
 		}
+		// #1507: an attack refused for a CR 508.1c count limit, with
+		// its sentence addressed to the caller.
+		if body, ok := attackLimitPayload(err, c.playerID); ok {
+			c.sendErrorPayload(frame.ID, body)
+			return
+		}
 		code, msg := classifyActionError(err)
 		c.sendError(frame.ID, code, msg)
 		return
@@ -1112,6 +1118,13 @@ func classifyActionError(err error) (code, message string) {
 		// any other caller, and for a bare ErrIllegalBlock with no
 		// refusal attached.
 		body, _ := blockRefusalPayload(err, uuid.Nil)
+		return body.Code, body.Message
+	case errors.Is(err, game.ErrAttackLimit):
+		// #1507. The hub sends the structured frame
+		// (attackLimitPayload) before reaching this classifier; this
+		// arm is the same code and a viewer-neutral sentence for any
+		// other caller.
+		body, _ := attackLimitPayload(err, uuid.Nil)
 		return body.Code, body.Message
 	case errors.Is(err, game.ErrAttackTaxUnpaid):
 		// ADR 0080. The hub sends the structured frame
@@ -1199,6 +1212,31 @@ func insufficientManaMessage(actionType string) string {
 		return "insufficient mana to activate that ability"
 	}
 	return "insufficient mana to cast"
+}
+
+// attackLimitPayload builds the `illegal_attack` error frame for a
+// declaration refused by a CR 508.1c count limit (#1507, ADR 0045
+// Decision 45): reason `attack_limit`, a creature from the refused
+// declaration the limit counts in card_id, and the engine's sentence
+// addressed to `viewer` ("… can attack you each combat (Crawlspace)").
+// ok is false for any error that is not an attack-limit refusal.
+func attackLimitPayload(err error, viewer uuid.UUID) (protocol.ErrorPayload, bool) {
+	if !errors.Is(err, game.ErrAttackLimit) {
+		return protocol.ErrorPayload{}, false
+	}
+	body := protocol.ErrorPayload{
+		Code:    protocol.CodeIllegalAttack,
+		Message: "more creatures would attack than an effect allows this combat",
+		Reason:  protocol.AttackRefusalLimit,
+	}
+	var le *game.AttackLimitError
+	if errors.As(err, &le) {
+		body.Message = le.Sentence(viewer)
+		if le.Attacker != uuid.Nil {
+			body.CardID = le.Attacker.String()
+		}
+	}
+	return body, true
 }
 
 // attackTaxPayload builds the `attack_tax_unpaid` error frame for a

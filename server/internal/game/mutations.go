@@ -7057,8 +7057,10 @@ func (g *Game) stackHasItemsLocked() bool {
 // ErrNotACreature for non-creature cards, ErrPlayerNotFound for an
 // unknown target player, ErrCardNotFound for an unknown attacker
 // card, ErrSummoningSick for a creature that entered this turn
-// without haste (CR 302.6, 702.10), and ErrDefender for a defender
-// creature (CR 702.3). Re-declaring the same attacker against a
+// without haste (CR 302.6, 702.10), ErrDefender for a defender
+// creature (CR 702.3), and an *AttackLimitError (wrapping
+// ErrAttackLimit) when one more attacker would break a CR 508.1c
+// count limit such as Silent Arbiter's (#1507). Re-declaring the same attacker against a
 // different target overwrites the previous target.
 //
 // Caller authorization (was-it-the-controller) is intentionally
@@ -7152,6 +7154,16 @@ func (g *Game) DeclareAttackerWith(attackerID, targetPlayerID uuid.UUID, params 
 			// refuses — and it is also what the enumerator would then
 			// be offering, since it emits this verb (#544).
 			decl := []AttackDeclaration{{Attacker: attackerID, Target: targetPlayerID}}
+			// CR 508.1c, #1507: a count limit — Silent Arbiter's "no
+			// more than one creature can attack each combat",
+			// Crawlspace's two "attacking you". Judged against every
+			// creature already attacking, and before the tax: a
+			// declaration the limit refuses owes nothing. Not relaxed
+			// for the sandbox's hand-forcing, for the reason
+			// "can't attack" above is not — see attack_limits.go.
+			if err := g.attackLimitRefusalLocked(decl); err != nil {
+				return err
+			}
 			price := g.priceAttackDeclarationLocked(decl)
 			if err := g.payAttackTaxLocked(card.Controller, price, params); err != nil {
 				return err
@@ -7239,6 +7251,9 @@ type AttackDeclaration struct {
 //
 // ADR 0080 adds the one exception to "skip what doesn't fit": the
 // CR 508.1a attack tax is ALL OR NOTHING. See DeclareAttackersWith.
+// #1507 adds the second, for the same reason: a CR 508.1c count limit
+// (Silent Arbiter, Crawlspace) refuses the whole eligible set with an
+// *AttackLimitError rather than choosing which creatures to drop.
 func (g *Game) DeclareAttackers(decls []AttackDeclaration) ([]uuid.UUID, error) {
 	return g.DeclareAttackersWith(decls, DeclareAttackersParams{})
 }
@@ -7317,6 +7332,15 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 	}
 	if len(eligible) == 0 {
 		return nil, ErrNoLegalAttackers
+	}
+	// CR 508.1c, #1507: the count limits, ALL OR NOTHING. Every entry
+	// here is individually eligible, so there is no "ineligible" one to
+	// skip — which creatures to leave home under Silent Arbiter is the
+	// attacking player's choice, made by submitting a smaller set, as
+	// ADR 0080 has it for a tax the seat can only partly afford.
+	// Judged before the tax so a refused declaration is not priced.
+	if err := g.attackLimitRefusalLocked(eligible); err != nil {
+		return nil, err
 	}
 	// CR 508.1a, before anything is staged and before the CR 508.1f
 	// taps: the declaration's attack tax, all or nothing.

@@ -94,7 +94,14 @@ type CardDef struct {
 	// be blocked by more than one creature" (Vorrac Battlehorns). Read
 	// through CatalogBlockRules, keyed by CatalogAbilityKey; see
 	// block_rules.go and ADR 0045's addendum, Decision 11.
-	BlockRules    []BlockRule
+	BlockRules []BlockRule
+	// AttackLimits are the CR 508.1c count limits this permanent
+	// imposes on an attack declaration — "no more than one creature
+	// can attack each combat" (Silent Arbiter), "no more than two
+	// creatures can attack you each combat" (Crawlspace). Read through
+	// CatalogAttackLimits, keyed by CatalogAbilityKey; see
+	// attack_limits.go and ADR 0045 Decision 44 (#1507).
+	AttackLimits  []AttackLimit
 	CastableZones []ZoneKind
 
 	// SpecialActions are the CR 116.2 special actions the card offers
@@ -453,6 +460,12 @@ func init() {
 	CatalogBlockRules = func(key string) []BlockRule {
 		if d := catalogDef(key); d != nil {
 			return d.BlockRules
+		}
+		return nil
+	}
+	CatalogAttackLimits = func(key string) []AttackLimit {
+		if d := catalogDef(key); d != nil {
+			return d.AttackLimits
 		}
 		return nil
 	}

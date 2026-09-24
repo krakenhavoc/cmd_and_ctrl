@@ -407,6 +407,17 @@ var (
 	// drop is theirs, and the engine must not make it for them.
 	ErrAttackTaxUnpaid = errors.New("game: the attack tax for this declaration was not paid")
 
+	// ErrAttackLimit is returned by the declaration verbs when the
+	// declaration would put more creatures into the attack than a
+	// CR 508.1c count limit allows — Silent Arbiter's "no more than
+	// one creature can attack each combat", Crawlspace's "no more than
+	// two creatures can attack you each combat". The error actually
+	// returned is an *AttackLimitError naming the limit and the
+	// permanent that prints it; test with errors.Is. ALL OR NOTHING,
+	// like ErrAttackTaxUnpaid: nothing is staged, nothing is tapped and
+	// nothing is paid. #1507, ADR 0045 Decision 44.
+	ErrAttackLimit = errors.New("game: more creatures would attack than an effect allows this combat")
+
 	// ErrEmptyBlockerSet is returned by DeclareBlockers for a
 	// declaration with no entries. "Block with nobody" is the default
 	// state of the step, not an action — a defender who wants it
