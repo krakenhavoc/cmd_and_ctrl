@@ -254,7 +254,7 @@ func (g *Game) describePlanLocked(controller uuid.UUID, plan tapPlan) []AutoTapP
 		entry := AutoTapPlanEntry{CardID: planned.CardID}
 		if c, ok := g.cardInZoneLocked(g.Battlefield, planned.CardID); ok {
 			entry.Name, entry.Zone = c.Name, ZoneBattlefield
-			if ab := g.autoTapAbilityFor(controller, c, ManaAbilitiesForCard(c)); ab != nil {
+			if ab := g.autoTapAbilityForRef(controller, c, planned.Ref); ab != nil {
 				entry.Taps, entry.Sacrifices = ab.TapCost, ab.SacrificeCost
 			}
 			out = append(out, entry)
@@ -292,6 +292,12 @@ func (g *Game) describePlanLocked(controller uuid.UUID, plan tapPlan) []AutoTapP
 type plannedTap struct {
 	CardID   uuid.UUID
 	OneColor string
+	// Ref names the mana ability the solver booked (ADR 0093 Decision
+	// 6): a permanent may offer several since the planner stopped
+	// taking only the first, and the executor must fire the one the
+	// plan was built on. Empty is "the first acceptable ability",
+	// every plan's meaning before ADR 0093 and a hand source's now.
+	Ref string
 }
 
 // tapPlan is the auto-tapper's answer: the sources to spend, in the
@@ -422,8 +428,9 @@ func (g *Game) autoTapPreferringLocked(
 		if sources[i].LeavesHand != sources[j].LeavesHand {
 			return !sources[i].LeavesHand
 		}
-		if sources[i].Sacrifices != sources[j].Sacrifices {
-			return !sources[i].Sacrifices
+		// ADR 0093: a creature's granted mana ability shares the tier.
+		if sources[i].lastResort() != sources[j].lastResort() {
+			return !sources[i].lastResort()
 		}
 		// #1242: inside the sacrifice tier, a creature body last. It is
 		// only ever set alongside Sacrifices, so among ordinary sources
@@ -541,17 +548,42 @@ type tapSource struct {
 	// stale, and a bit carried on the plan would be a second opinion
 	// about where a card is.
 	LeavesHand bool
+
+	// Ref names the mana ability this candidate books (ADR 0093
+	// Decision 6) — one permanent contributes one candidate per
+	// acceptable ability, as mutually exclusive alternatives. Carried
+	// onto the plan so the executor fires the ability the solver
+	// priced, re-validated through the same picker. Empty for a hand
+	// source, which has one.
+	Ref string
+
+	// GrantedCreature marks a candidate that is a CREATURE's GRANTED
+	// mana ability (ADR 0093 Decision 6, owner decision 2026-09-24) —
+	// every creature under Cryptolith Rite. It is planned only as a
+	// last resort, in the tier #1215 gave the self-sacrificing
+	// sources: an auto-paid cast must not tap the creatures the player
+	// meant to attack or block with, and a Rite would otherwise turn
+	// every body on the board into the first source the planner
+	// reached for. A creature's OWN mana ability (Llanowar Elves) is an
+	// ordinary source, as it always was, and so is a noncreature's
+	// grant (a Forest under Chromatic Lantern).
+	GrantedCreature bool
 }
+
+// lastResort is the tier #1215 opened for the sources a plan should
+// spend only when nothing else can pay: one the cost eats, and — ADR
+// 0093 — a creature's granted mana ability. Read by both comparators.
+func (s tapSource) lastResort() bool { return s.Sacrifices || s.GrantedCreature }
 
 // gatherTapSources walks the battlefield and collects every mana
 // ability the controller has access to. Foreign or excluded
 // permanents are skipped, and so is a TAPPED one whose picked ability
 // owes a {T} — a tapped Gold or Eldrazi Spawn is still a source
 // (#1242), because its cost never asks it to be untapped. A card with
-// multiple mana abilities contributes only the first ability the
-// picker accepts; multi-ability mana sources (Mox Diamond, City of
-// Brass with activations) need a richer model that lands in a later
-// sprint.
+// several mana abilities the picker accepts contributes one candidate
+// per ability (ADR 0093 Decision 6), as mutually exclusive
+// alternatives — a Forest under Chromatic Lantern is both a {G} source
+// and an any-colour one, and the solver books whichever the cost needs.
 func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool, prefer ManaSourceKinds) []tapSource {
 	if g.Battlefield == nil {
 		return nil
@@ -581,99 +613,106 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 		if !CanActivateManaAbilities(&c) {
 			continue
 		}
-		picked := g.autoTapAbilityFor(controller, c, ManaAbilitiesForCard(c))
-		if picked == nil {
-			continue
+		// ADR 0093 Decision 6: every acceptable ability is a candidate,
+		// not only the first. The candidates of one permanent are
+		// alternatives — tapPlan.hasCard keeps the solver from booking
+		// two of them — and each carries the ref the executor fires by.
+		for _, cand := range g.autoTapAbilitiesFor(controller, c) {
+			picked := &cand.ab
+			// #1242: the tapped check lives AFTER the pick and asks only of
+			// an ability that owes a {T}. It used to open the loop, which
+			// was right while every planned ability tapped; a Gold that
+			// something else tapped can still be sacrificed for mana. The
+			// executor asks the same question through the same helper, so
+			// the two cannot disagree.
+			if manaSourceTappedOut(&c, picked) {
+				continue
+			}
+			// #1445 / #1427: a source this ability would SACRIFICE or TAP
+			// is not one while an effect has its exit paused on a CR 903.9
+			// prompt — the card is already spent. See
+			// refusePausedCostCardsLocked; the executor asks the same
+			// question.
+			if (picked.SacrificeCost || picked.TapCost) && g.zoneChangePausedLocked(c.InstanceID) {
+				continue
+			}
+			// #540: CR 302.6. A mana creature that entered this turn
+			// cannot pay a {T} cost, and the auto-tapper is not a way
+			// around the rule the hand-click path enforces — a Delighted
+			// Halfling played this turn is not a mana source, and
+			// planning it would produce a plan the executor now refuses,
+			// stranding whatever it had already tapped.
+			if manaTapBlockedBySickness(&c, picked) {
+				continue
+			}
+			// #1210, CR 602.5: the board-wide "can't be activated"
+			// gate — Cursed Totem does not exempt mana abilities, so a
+			// Birds of Paradise under one is not a mana source. THE
+			// caller the cast gate has no equivalent of: the auto-tapper
+			// never goes through ActivateManaAbility at all
+			// (materializePlanLocked taps the permanent and mints its
+			// mana directly), so this is not the usual "planning it would
+			// produce a plan the executor refuses" — without it the plan
+			// would SUCCEED and produce mana the rule forbids.
+			if g.ActivationGateLocked(controller, c, ZoneBattlefield,
+				ActivationAbility{Label: picked.Label, Mana: true}) != nil {
+				continue
+			}
+			// S32 (#352): a gated ability is only a source while its
+			// gate holds. Temple of the False God with four lands out
+			// is not a mana source, and planning it would produce a
+			// plan the executor then refuses with ErrConditionNotMet,
+			// stranding whatever it had already tapped.
+			if picked.Condition != nil && !picked.Condition(g, controller, c.InstanceID) {
+				continue
+			}
+			// #789: a counter cost the planner can neither decide nor
+			// afford. A Vivid land with no charge counters left is not a
+			// mana source — planning it would produce a plan the
+			// executor refuses, stranding whatever it had already
+			// tapped, which is the same failure mode the sickness and
+			// gate checks above exist to prevent.
+			if !manaCounterCostPlannable(&c, picked) {
+				continue
+			}
+			// What this source would really add — the derived or scaled
+			// output, the activation's own option list (identity-first,
+			// or the CR 903.4f narrowing) and the CR 106.12b window on
+			// the amount, in that order. One helper since #1228, so the
+			// hand walk below prices a source exactly as this one does;
+			// see manaPlannableSlotsLocked for what each step is for.
+			//
+			// BEFORE the #1212 wish below, because this is the branch
+			// that can still drop the source: a permanent the window
+			// leaves with nothing to add is not a mana source, wished-for
+			// or not, and tapping a land for no mana is worse than not
+			// tapping it.
+			slots := manaPlannableSlotsLocked(g, controller, c, picked, identity, priceProduction, true)
+			if len(slots) == 0 {
+				continue
+			}
+			// #1212: the wish, answered off the same snapshot the mana
+			// this permanent produces will carry (manaSourceKindsOf), so
+			// the planner and the record can never disagree about what
+			// this source is. The AMOUNT it produces is priced above and
+			// the KINDS it produces are unaffected by that — CR 106.12b
+			// replaces how much mana is produced, not what produced it.
+			wanted := prefer != 0 && manaSourceKindsOf(c).HasAny(prefer)
+			out = appendTapSource(out, tapSource{
+				CardID: c.InstanceID,
+				// #1242: Frozen is a claim about an UNTAP the source would
+				// miss, so it is asked only of a source this plan taps. A
+				// sacrifice-only source is gone, not tapped.
+				Frozen:             picked.TapCost && (untapStepRestrictedBy(&c, g, restrictions) || g.untapSkippedForLocked(&c, controller)),
+				Wanted:             wanted,
+				Sacrifices:         picked.SacrificeCost,
+				SacrificesCreature: picked.SacrificeCost && c.IsCreature(),
+				Ref:                cand.ref,
+				// ADR 0093 Decision 6 (owner decision): a creature's
+				// GRANTED mana is a last resort.
+				GrantedCreature: cand.granted && c.IsCreature(),
+			}, slots)
 		}
-		// #1242: the tapped check lives AFTER the pick and asks only of
-		// an ability that owes a {T}. It used to open the loop, which
-		// was right while every planned ability tapped; a Gold that
-		// something else tapped can still be sacrificed for mana. The
-		// executor asks the same question through the same helper, so
-		// the two cannot disagree.
-		if manaSourceTappedOut(&c, picked) {
-			continue
-		}
-		// #1445 / #1427: a source this ability would SACRIFICE or TAP
-		// is not one while an effect has its exit paused on a CR 903.9
-		// prompt — the card is already spent. See
-		// refusePausedCostCardsLocked; the executor asks the same
-		// question.
-		if (picked.SacrificeCost || picked.TapCost) && g.zoneChangePausedLocked(c.InstanceID) {
-			continue
-		}
-		// #540: CR 302.6. A mana creature that entered this turn
-		// cannot pay a {T} cost, and the auto-tapper is not a way
-		// around the rule the hand-click path enforces — a Delighted
-		// Halfling played this turn is not a mana source, and
-		// planning it would produce a plan the executor now refuses,
-		// stranding whatever it had already tapped.
-		if manaTapBlockedBySickness(&c, picked) {
-			continue
-		}
-		// #1210, CR 602.5: the board-wide "can't be activated"
-		// gate — Cursed Totem does not exempt mana abilities, so a
-		// Birds of Paradise under one is not a mana source. THE
-		// caller the cast gate has no equivalent of: the auto-tapper
-		// never goes through ActivateManaAbility at all
-		// (materializePlanLocked taps the permanent and mints its
-		// mana directly), so this is not the usual "planning it would
-		// produce a plan the executor refuses" — without it the plan
-		// would SUCCEED and produce mana the rule forbids.
-		if g.ActivationGateLocked(controller, c, ZoneBattlefield,
-			ActivationAbility{Label: picked.Label, Mana: true}) != nil {
-			continue
-		}
-		// S32 (#352): a gated ability is only a source while its
-		// gate holds. Temple of the False God with four lands out
-		// is not a mana source, and planning it would produce a
-		// plan the executor then refuses with ErrConditionNotMet,
-		// stranding whatever it had already tapped.
-		if picked.Condition != nil && !picked.Condition(g, controller, c.InstanceID) {
-			continue
-		}
-		// #789: a counter cost the planner can neither decide nor
-		// afford. A Vivid land with no charge counters left is not a
-		// mana source — planning it would produce a plan the
-		// executor refuses, stranding whatever it had already
-		// tapped, which is the same failure mode the sickness and
-		// gate checks above exist to prevent.
-		if !manaCounterCostPlannable(&c, picked) {
-			continue
-		}
-		// What this source would really add — the derived or scaled
-		// output, the activation's own option list (identity-first,
-		// or the CR 903.4f narrowing) and the CR 106.12b window on
-		// the amount, in that order. One helper since #1228, so the
-		// hand walk below prices a source exactly as this one does;
-		// see manaPlannableSlotsLocked for what each step is for.
-		//
-		// BEFORE the #1212 wish below, because this is the branch
-		// that can still drop the source: a permanent the window
-		// leaves with nothing to add is not a mana source, wished-for
-		// or not, and tapping a land for no mana is worse than not
-		// tapping it.
-		slots := manaPlannableSlotsLocked(g, controller, c, picked, identity, priceProduction, true)
-		if len(slots) == 0 {
-			continue
-		}
-		// #1212: the wish, answered off the same snapshot the mana
-		// this permanent produces will carry (manaSourceKindsOf), so
-		// the planner and the record can never disagree about what
-		// this source is. The AMOUNT it produces is priced above and
-		// the KINDS it produces are unaffected by that — CR 106.12b
-		// replaces how much mana is produced, not what produced it.
-		wanted := prefer != 0 && manaSourceKindsOf(c).HasAny(prefer)
-		out = appendTapSource(out, tapSource{
-			CardID: c.InstanceID,
-			// #1242: Frozen is a claim about an UNTAP the source would
-			// miss, so it is asked only of a source this plan taps. A
-			// sacrifice-only source is gone, not tapped.
-			Frozen:             picked.TapCost && (untapStepRestrictedBy(&c, g, restrictions) || g.untapSkippedForLocked(&c, controller)),
-			Wanted:             wanted,
-			Sacrifices:         picked.SacrificeCost,
-			SacrificesCreature: picked.SacrificeCost && c.IsCreature(),
-		}, slots)
 	}
 	return gatherManaZoneSources(g, controller, excluded, prefer, identity, priceProduction, out)
 }
@@ -1026,9 +1065,12 @@ func appendTapSource(out []tapSource, proto tapSource, slots []ProducedManaEntry
 // activation. Auto-tapping it costs the printed point of damage,
 // which is the right answer.
 //
-// S15's other standing limitation is unchanged: one ability per card,
-// because a tapSource that offered two would let the solver tap the
-// same permanent twice.
+// S15's other standing limitation — one ability per card — is gone
+// since ADR 0093 (Decision 6): the planner offers every acceptable
+// ability through autoTapAbilitiesFor, as mutually exclusive
+// alternatives (tapPlan.hasCard keeps the solver from tapping one
+// permanent twice). This function is now the "first acceptable" pick,
+// kept for a plan entry that booked no particular ability.
 //
 // `source` is the permanent itself, not just its ID (#1191): pricing
 // a ManaCost component through the CR 601.2f pass needs a Card to
@@ -1038,92 +1080,158 @@ func appendTapSource(out []tapSource, proto tapSource, slots []ProducedManaEntry
 // Caller must hold g.mu.
 func (g *Game) autoTapAbilityFor(asker uuid.UUID, source Card, abilities []ManaAbilityShape) *ManaAbilityShape {
 	for i := range abilities {
-		a := abilities[i]
-		// CR 113.6 (#1228): an ability that functions only from a
-		// HAND is not a battlefield permanent's mana ability, even
-		// when the card somehow reaches the battlefield — a Simian
-		// Spirit Guide cast as a creature is a 2/2 Ape with no
-		// abilities, which is the paper card. Its own picker is
-		// autoManaExileAbilityFor.
-		if !ManaAbilityFunctionsFromZone(a, ZoneBattlefield) {
-			continue
+		if g.autoTapAbilityAccepts(asker, source, abilities[i]) {
+			a := abilities[i]
+			return &a
 		}
-		// #1242: a {T} OR the source itself. A sacrifice-ONLY ability
-		// (a Gold token, an Eldrazi Spawn) is a plan entry like any
-		// other now — the executor reads ab.TapCost to decide whether
-		// to tap it. See the demand in the doc above.
-		if !a.TapCost && !a.SacrificeCost {
-			continue
-		}
-		// #1215: the sacrifice-OTHER half only. Sacrificing the source
-		// itself is plannable — see the bullet above.
-		if a.SacrificeOther != nil {
-			continue
-		}
-		// #1183: "Activate each exhaust ability only once", and this
-		// object has. Not a decision the planner is declining — the
-		// activation path would refuse it with ErrAbilityExhausted,
-		// so planning it would strand whatever the plan had already
-		// tapped, which is the failure mode every check around this
-		// one exists to prevent.
-		if g.ManaAbilityExhausted(asker, source.InstanceID, a) {
-			continue
-		}
-		if a.LifeCost > 0 || a.Rider != nil {
-			continue
-		}
-		if len(a.Restrictions) > 0 || a.RestrictionsFunc != nil {
-			continue
-		}
-		if a.ManaCost != "" {
-			// #1191: priced rather than read off the printed string —
-			// see the file header's MANA-cost bullet. Spending the
-			// controller's floated mana on THIS activation is still a
-			// decision the planner cannot make, so anything left to
-			// pay after the CR 601.2f pass still drops the source; an
-			// unparseable cost or a modifier error is the same
-			// refusal a printed cost would have given the activation
-			// path, so it is treated as "still owes something" rather
-			// than plannable.
-			priced, err := g.ManaAbilityManaCostForEffect(asker, source, a)
-			if err != nil || !priced.Empty() {
-				continue
-			}
-		}
-		// #789: a cost that PUTS a counter on the source spends a
-		// resource the player never agreed to spend, exactly as a
-		// life cost does — Devoted Druid's -1/-1 is permanent and
-		// the planner must not decide to take it. A cost that
-		// REMOVES counters may be plannable; whether this particular
-		// one is depends on the permanent, so it is asked separately
-		// by manaCounterCostPlannable.
-		if a.AddCounter != nil {
-			continue
-		}
-		// #758: a cost that taps OTHER permanents spends a resource
-		// the player was never asked about — auto-tapping Springleaf
-		// Drum would tap a creature that was being kept back to
-		// block. The same bar the life cost fails, and the planner
-		// has no way to weigh it.
-		if !a.TapOthers.Empty() {
-			continue
-		}
-		// #1213: a discard cost, on the same ground one zone over —
-		// auto-tapping Skirge Familiar would pitch a card the player
-		// never offered, and WHICH card is a decision the planner
-		// makes none of. A hand-clicked Skirge Familiar is a mana
-		// source; an auto-tapped one is not.
-		if a.DiscardCards != nil {
-			continue
-		}
-		// #1283: the exile-a-card clause, on the discard's ground one
-		// verb over — Cadaverous Bloom asks which card leaves the hand.
-		if a.ExileCards != nil {
-			continue
-		}
-		return &a
 	}
 	return nil
+}
+
+// autoTapCandidate is one mana ability of a permanent the auto-tapper
+// is willing to fire, with the ref that names it (ADR 0093 Decision 5).
+type autoTapCandidate struct {
+	ab      ManaAbilityShape
+	ref     string
+	granted bool
+}
+
+// autoTapAbilitiesFor is every mana ability of a permanent the
+// auto-tapper is willing to fire, in ability-list order (ADR 0093
+// Decision 6). Before ADR 0093 the planner took only the FIRST: a
+// Llanowar Elves under Cryptolith Rite was only ever planned for {G}
+// and a Forest under Chromatic Lantern only for {G}, so a payment that
+// existed was not found. The planner now offers one candidate per
+// ability, and the candidates of one permanent are mutually exclusive
+// alternatives (tapPlan.hasCard), exactly as #779's per-colour
+// candidates of one Gilded Lotus are.
+//
+// The executor re-finds the ability the plan booked by its ref
+// (autoTapAbilityForRef), so the two halves still read one picker.
+//
+// Caller must hold g.mu.
+func (g *Game) autoTapAbilitiesFor(asker uuid.UUID, source Card) []autoTapCandidate {
+	abilities, origins := ManaAbilitiesWithOrigins(source)
+	var out []autoTapCandidate
+	for i := range abilities {
+		if !g.autoTapAbilityAccepts(asker, source, abilities[i]) {
+			continue
+		}
+		o := origins.At(i)
+		out = append(out, autoTapCandidate{ab: abilities[i], ref: o.Ref, granted: o.Granted()})
+	}
+	return out
+}
+
+// autoTapAbilityForRef is the executor's (and the preview's) half of
+// autoTapAbilitiesFor: the ability the plan booked, by its ref, still
+// acceptable to the same picker — or nil. An empty ref is a plan entry
+// that booked no particular ability (a hand-built plan, or a source
+// whose planner has one ability) and gets the first acceptable one,
+// which is what every plan meant before ADR 0093.
+//
+// Caller must hold g.mu.
+func (g *Game) autoTapAbilityForRef(asker uuid.UUID, source Card, ref string) *ManaAbilityShape {
+	if ref == "" {
+		return g.autoTapAbilityFor(asker, source, ManaAbilitiesForCard(source))
+	}
+	for _, cand := range g.autoTapAbilitiesFor(asker, source) {
+		if cand.ref == ref {
+			ab := cand.ab
+			return &ab
+		}
+	}
+	return nil
+}
+
+// autoTapAbilityAccepts is autoTapAbilityFor's test for ONE ability —
+// the demand and the exclusions documented above.
+//
+// Caller must hold g.mu.
+func (g *Game) autoTapAbilityAccepts(asker uuid.UUID, source Card, a ManaAbilityShape) bool {
+	// CR 113.6 (#1228): an ability that functions only from a
+	// HAND is not a battlefield permanent's mana ability, even
+	// when the card somehow reaches the battlefield — a Simian
+	// Spirit Guide cast as a creature is a 2/2 Ape with no
+	// abilities, which is the paper card. Its own picker is
+	// autoManaExileAbilityFor.
+	if !ManaAbilityFunctionsFromZone(a, ZoneBattlefield) {
+		return false
+	}
+	// #1242: a {T} OR the source itself. A sacrifice-ONLY ability
+	// (a Gold token, an Eldrazi Spawn) is a plan entry like any
+	// other now — the executor reads ab.TapCost to decide whether
+	// to tap it. See the demand in the doc above.
+	if !a.TapCost && !a.SacrificeCost {
+		return false
+	}
+	// #1215: the sacrifice-OTHER half only. Sacrificing the source
+	// itself is plannable — see the bullet above.
+	if a.SacrificeOther != nil {
+		return false
+	}
+	// #1183: "Activate each exhaust ability only once", and this
+	// object has. Not a decision the planner is declining — the
+	// activation path would refuse it with ErrAbilityExhausted,
+	// so planning it would strand whatever the plan had already
+	// tapped, which is the failure mode every check around this
+	// one exists to prevent.
+	if g.ManaAbilityExhausted(asker, source.InstanceID, a) {
+		return false
+	}
+	if a.LifeCost > 0 || a.Rider != nil {
+		return false
+	}
+	if len(a.Restrictions) > 0 || a.RestrictionsFunc != nil {
+		return false
+	}
+	if a.ManaCost != "" {
+		// #1191: priced rather than read off the printed string —
+		// see the file header's MANA-cost bullet. Spending the
+		// controller's floated mana on THIS activation is still a
+		// decision the planner cannot make, so anything left to
+		// pay after the CR 601.2f pass still drops the source; an
+		// unparseable cost or a modifier error is the same
+		// refusal a printed cost would have given the activation
+		// path, so it is treated as "still owes something" rather
+		// than plannable.
+		priced, err := g.ManaAbilityManaCostForEffect(asker, source, a)
+		if err != nil || !priced.Empty() {
+			return false
+		}
+	}
+	// #789: a cost that PUTS a counter on the source spends a
+	// resource the player never agreed to spend, exactly as a
+	// life cost does — Devoted Druid's -1/-1 is permanent and
+	// the planner must not decide to take it. A cost that
+	// REMOVES counters may be plannable; whether this particular
+	// one is depends on the permanent, so it is asked separately
+	// by manaCounterCostPlannable.
+	if a.AddCounter != nil {
+		return false
+	}
+	// #758: a cost that taps OTHER permanents spends a resource
+	// the player was never asked about — auto-tapping Springleaf
+	// Drum would tap a creature that was being kept back to
+	// block. The same bar the life cost fails, and the planner
+	// has no way to weigh it.
+	if !a.TapOthers.Empty() {
+		return false
+	}
+	// #1213: a discard cost, on the same ground one zone over —
+	// auto-tapping Skirge Familiar would pitch a card the player
+	// never offered, and WHICH card is a decision the planner
+	// makes none of. A hand-clicked Skirge Familiar is a mana
+	// source; an auto-tapped one is not.
+	if a.DiscardCards != nil {
+		return false
+	}
+	// #1283: the exile-a-card clause, on the discard's ground one
+	// verb over — Cadaverous Bloom asks which card leaves the hand.
+	if a.ExileCards != nil {
+		return false
+	}
+	return true
 }
 
 // autoManaExileAbilityFor is autoTapAbilityFor for a source that is
@@ -1357,7 +1465,7 @@ func solveColored(
 		wasUsed := used[i]
 		if !wasUsed {
 			used[i] = true
-			*plan = append(*plan, plannedTap{CardID: sources[i].CardID, OneColor: sources[i].OneColor})
+			*plan = append(*plan, plannedTap{CardID: sources[i].CardID, OneColor: sources[i].OneColor, Ref: sources[i].Ref})
 		}
 		consumed[i]++
 		if solveColored(sources, used, consumed, plan, reqs, reqIdx+1, budget) {
@@ -1433,7 +1541,7 @@ func recruitGeneric(
 			continue
 		}
 		used[i] = true
-		*plan = append(*plan, plannedTap{CardID: sources[i].CardID, OneColor: sources[i].OneColor})
+		*plan = append(*plan, plannedTap{CardID: sources[i].CardID, OneColor: sources[i].OneColor, Ref: sources[i].Ref})
 		deficit -= len(sources[i].Slots)
 		if deficit <= 0 {
 			return true
@@ -1466,6 +1574,9 @@ func recruitGeneric(
 //
 // #1242: and inside the sacrifice tier, a creature body comes after a
 // Treasure or a Gold.
+//
+// ADR 0093: a creature's GRANTED mana ability (Cryptolith Rite) sits in
+// the sacrifice tier too — see tapSource.GrantedCreature.
 func orderUnusedByGenericPreference(sources []tapSource, used []bool) []int {
 	type rank struct {
 		idx        int
@@ -1487,7 +1598,7 @@ func orderUnusedByGenericPreference(sources []tapSource, used []bool) []int {
 			idx:        i,
 			wanted:     s.Wanted,
 			leavesHand: s.LeavesHand,
-			sacrifices: s.Sacrifices,
+			sacrifices: s.lastResort(),
 			creature:   s.SacrificesCreature,
 			frozen:     s.Frozen,
 			tier:       t,

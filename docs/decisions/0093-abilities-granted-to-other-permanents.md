@@ -554,6 +554,30 @@ PR 1 (the seam, no cards) shipped as planned, with four differences.
 
 Every other part of the PR 1 list is as written above.
 
+## Amendment 2026-09-24 — what PR 2 built
+
+PR 2 was split at its natural seam: the server half (constructors, the auto-tapper and the cards) is
+one PR, and the client picker is the next.
+
+- **Constructors:** `TribalAbilityGrant` and `GrantAbilitiesToAttached` as planned, plus two bundle
+  helpers, `AnyColorManaGrant` and `TapForManaGrant`.
+- **Auto-tapper (Decision 6):** a permanent contributes one candidate per acceptable mana ability,
+  as mutually exclusive alternatives. The plan entry carries the booked ability's ref, and the
+  executor re-finds that ability through the same picker. A creature's granted mana shares the
+  last-resort tier with sacrifice-self sources. Inside the tier it is a peer of a Treasure and
+  comes ahead of an Eldrazi Spawn. The per-ability change also finds payments for permanents that
+  already had two plannable abilities: an uncatalogued dual land, whose two intrinsic land types
+  used to plan as its first colour only.
+- **Cards:** Cryptolith Rite, Chromatic Lantern, Gemhide Sliver, Manaweft Sliver, Necrotic Sliver,
+  Rishkar, Jaheira (caveat: no Background, like Ganax), Insidious Roots, Great Divide Guide, The
+  World Tree, Paradise Mantle, Squirrel Nest, and Springleaf Parade.
+- **Springleaf Parade:** its Shapeshifter token template (slug `springleaf-shapeshifter`) is
+  deleted, and the token is now a plain row. A live game saved with one of those tokens restores it
+  flagged `AbilitiesLostOnRestore`. That path is the #522 rule; the snapshot corpus holds no such
+  token.
+- **Coverage:** a new mechanic row, "an ability granted to another permanent", with an exact probe
+  on `StaticAbility.GrantAbilities`. It is the row the roadmap seam borrows.
+
 ## Open questions for the owner
 
 This is a product decision the code and the rules do not settle. The ADR does not answer it.
