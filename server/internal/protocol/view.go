@@ -1334,6 +1334,15 @@ type CardView struct {
 	// what AttackingTarget names. Omitted when nothing is declared.
 	// Added in S27.
 	AttackingTargetKind string `json:"attacking_target_kind,omitempty"`
+	// DefendingPlayer is the seat defending against this attack — the
+	// only seat whose creatures may block it (CR 802.4a, #1339): the
+	// player attacked, the controller of the planeswalker attacked, or
+	// the PROTECTOR of the battle attacked. Computed by the server so
+	// the client's block picker never re-derives who defends a battle.
+	// Omitted when nothing is declared, and for an attacker whose
+	// planeswalker or battle has left the battlefield (CR 506.4c —
+	// nobody can block it).
+	DefendingPlayer string `json:"defending_player,omitempty"`
 	// ProtectorPlayer is the seat protecting this battle (CR 310.9a),
 	// or omitted for every other card type and for a battle whose
 	// protector prompt has not been answered yet. Public information:
@@ -4391,6 +4400,9 @@ func stampCombatTargets(g *game.Game, view *GameView) {
 		}
 		if kind := g.ClassifyAttackTargetForEffect(id); kind != "" {
 			c.AttackingTargetKind = string(kind)
+		}
+		if d := g.DefendingPlayerForAttackForEffect(id); d != uuid.Nil {
+			c.DefendingPlayer = d.String()
 		}
 	}
 	if g.Turn.Step != game.StepDeclareAttackers {

@@ -63,6 +63,9 @@ var redactedCardKeys = map[string]bool{
 	"goaded_by":             true,
 	"attached_to":           true,
 	"no_untap":              true,
+	// #1339: who is defending against an attack is as public as what
+	// it is attacking — it is derived from it.
+	"defending_player": true,
 }
 
 // assertRedacted fails on any key outside redactedCardKeys and on a
@@ -221,6 +224,7 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		BattleY:             &y,
 		AttackingTarget:     "defender",
 		AttackingTargetKind: "player",
+		DefendingPlayer:     "defender",
 		ProtectorPlayer:     "protector",
 		Defense:             4,
 		BlockingTarget:      "attacker",

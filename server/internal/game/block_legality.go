@@ -29,13 +29,9 @@ import (
 // spelling once shipped. The zero value means the block is legal.
 //
 // Only the reasons some check actually produces are declared. The
-// addendum reserves more (too_few_blockers, too_many_blockers,
-// declaration_limit, not_defending, tapped); each joins
-// this list in the PR that first returns it, so the wire never
-// advertises a refusal nothing can send. The count reasons are still
-// reserved on purpose: a bound is judged on a whole declaration, and
-// this engine's per-pair DeclareBlocker has no set to judge, so
-// nothing can send them yet (see blockers.go).
+// addendum reserves more (declaration_limit, tapped); each joins this
+// list in the PR that first returns it, so the wire never advertises
+// a refusal nothing can send.
 type BlockReason string
 
 const (
@@ -99,6 +95,15 @@ const (
 	// (Hungering Hydra's "can't be blocked by more than one
 	// creature"). BlockRefusal.N carries that maximum. #750.
 	BlockReasonTooManyBlockers BlockReason = "too_many_blockers"
+
+	// BlockReasonNotDefending — the blocker's controller is not the
+	// defending player of the attack: the attacker is attacking
+	// another player, a planeswalker another player controls, or a
+	// battle another player protects (CR 802.4a, 509.1a) — or it is
+	// attacking nothing at all. Like the count reasons it is the
+	// declaration's business rather than the pair's, so it comes from
+	// DeclareBlockers and never from BlockPairRefusalLocked. #1339.
+	BlockReasonNotDefending BlockReason = "not_defending"
 )
 
 // BlockReasons lists every reason the engine can return today, in the
@@ -121,6 +126,7 @@ func BlockReasons() []BlockReason {
 		BlockReasonCantBlockAttacker,
 		BlockReasonTooFewBlockers,
 		BlockReasonTooManyBlockers,
+		BlockReasonNotDefending,
 	}
 }
 
@@ -297,6 +303,12 @@ type BlockRefusedError struct {
 	// the attacker's token prints it: "red", "Demons". Empty for
 	// every other reason. #662.
 	Quality string
+	// TargetKind and TargetName say what the attacker is attacking,
+	// for not_defending: a player (TargetName empty — DefenderName
+	// is the player), or the planeswalker or battle by name. Empty
+	// for every other reason. #1339.
+	TargetKind AttackTargetKind
+	TargetName string
 }
 
 // Error is the debug form. It is the sentence as a third party would
@@ -368,8 +380,38 @@ func (e *BlockRefusedError) Sentence(viewer uuid.UUID) string {
 		return attacker + " can't be blocked by fewer than " + blockerCountPhrase(e.N) + "."
 	case BlockReasonTooManyBlockers:
 		return attacker + " can't be blocked by more than " + blockerCountPhrase(e.N) + "."
+	case BlockReasonNotDefending:
+		// #1339, CR 802.4a. The sentence says where the attacker IS
+		// pointed, because that is what tells the player whose
+		// creatures could block it.
+		return e.notDefendingSentence(attacker, viewer)
 	}
 	return blocker + " can't block " + attacker + "."
+}
+
+// notDefendingSentence is Sentence's not_defending arm: "Grizzly Bears
+// is attacking P3, so only P3 can block it." The defending player
+// reads "you"; an attack on a planeswalker or battle names the
+// permanent and its controller or protector.
+func (e *BlockRefusedError) notDefendingSentence(attacker string, viewer uuid.UUID) string {
+	if e.Defender == uuid.Nil {
+		return attacker + " isn't attacking anything, so no one can block it."
+	}
+	who, controls, protects := "another player", "another player controls", "another player protects"
+	switch {
+	case e.Defender == viewer:
+		who, controls, protects = "you", "you control", "you protect"
+	case e.DefenderName != "":
+		who, controls, protects = e.DefenderName, e.DefenderName+" controls", e.DefenderName+" protects"
+	}
+	target := who
+	switch e.TargetKind {
+	case AttackTargetPlaneswalker:
+		target = nameOr(e.TargetName, "a planeswalker") + ", a planeswalker " + controls
+	case AttackTargetBattle:
+		target = nameOr(e.TargetName, "a battle") + ", a battle " + protects
+	}
+	return attacker + " is attacking " + target + ", so only " + who + " can block it."
 }
 
 // blockRefusedErrorLocked builds the error for a refused pair. Caller
@@ -403,6 +445,13 @@ func (g *Game) blockRefusedErrorLocked(attacker, blocker *Card, r BlockRefusal) 
 		e.Keyword = string(r.Reason)
 		if q, ok := MatchedProtection(attacker, SourceCharacteristics(blocker)); ok {
 			e.Quality = q.Printed
+		}
+	case BlockReasonNotDefending:
+		e.TargetKind = g.classifyAttackTargetLocked(attacker.AttackingTarget)
+		if e.TargetKind == AttackTargetPlaneswalker || e.TargetKind == AttackTargetBattle {
+			if c := findBattlefieldCard(g, attacker.AttackingTarget); c != nil {
+				e.TargetName = c.Effective().Name
+			}
 		}
 	}
 	return e

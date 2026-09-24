@@ -7077,8 +7077,10 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 // the lone block here and undo it later, after the defender had been
 // told it was good.
 //
-// The attacker need not currently have AttackingTarget set — the
-// sandbox accepts pre-emptive blocker declarations.
+// #1339: the attacker must be attacking the blocker's controller, a
+// planeswalker they control or a battle they protect (CR 802.4a);
+// anything else — including a creature that is not attacking at all —
+// is refused with not_defending.
 func (g *Game) DeclareBlocker(blockerID, attackerID uuid.UUID) error {
 	return g.DeclareBlockers([]BlockDeclaration{{Blocker: blockerID, Attacker: attackerID}})
 }

@@ -52,7 +52,9 @@ type blockEntry struct {
 //
 // ALL OR NOTHING. Every entry is checked before any of them is
 // stored: the blocker is a creature on the battlefield, the attacker
-// is on the battlefield, the pair passes BlockPairRefusalLocked
+// is on the battlefield, the blocker's controller is the attack's
+// defending player (CR 802.4a, #1339), the pair passes
+// BlockPairRefusalLocked
 // (CR 509.1b's restrictions and evasion keywords), and — once the
 // whole proposed set is known — every attacker whose set of blockers
 // this action CHANGES is within its block-count bounds
@@ -79,8 +81,12 @@ type blockEntry struct {
 // this same validator, which is what keeps the stored declaration
 // legal at every moment, not just at the end.
 //
-// The attacker need not currently have AttackingTarget set: the
-// sandbox accepts pre-emptive blocker declarations, as it always has.
+// The attacker must be attacking the blocker's controller, a
+// planeswalker they control or a battle they protect. The sandbox used
+// to accept a "pre-emptive" block on a creature that was not attacking
+// at all, and — the bug #1339 closed — a block on a creature attacking
+// somebody else; both are refused with not_defending now, which is
+// the answer the option generator has always given.
 func (g *Game) DeclareBlockers(decls []BlockDeclaration) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -153,7 +159,10 @@ func (g *Game) currentBlockAssignmentLocked() map[uuid.UUID]uuid.UUID {
 // What is checked, in order:
 //
 //   - per entry: both cards are on the battlefield, the blocker is a
-//     creature, and the pair passes BlockPairRefusalLocked;
+//     creature, its controller is the attack's defending player
+//     (CR 802.4a, blockDefenderRefusalLocked — skipped for a pairing
+//     `base` already holds), and the pair passes
+//     BlockPairRefusalLocked;
 //   - per attacker whose blocker set this action CHANGES: the count
 //     bounds (CR 509.1b). An attacker that LOSES a re-pointed blocker
 //     is changed too, so a defender cannot pull one creature out of a
@@ -203,6 +212,24 @@ func (g *Game) checkBlockDeclarationLocked(base map[uuid.UUID]uuid.UUID, decls [
 		if !blocker.IsCreature() {
 			return nil, ErrNotACreature
 		}
+		// CR 802.4a / 509.1a (#1339): a defending player blocks only
+		// creatures attacking THEM, a planeswalker they control or a
+		// battle they protect. defendingPlayerForAttackLocked is the
+		// same resolution blockOptionsLocked uses to decide which
+		// attackers a seat is offered, so the verb and the generator
+		// give one answer (Decision 14).
+		//
+		// A pairing already in `base` is not re-judged. CR 508.7a /
+		// 509.1h: an attacker reselected onto another player after it
+		// was blocked (#1343) stays blocked by the same creatures, and
+		// a declaration that repeats that pairing — alone or beside a
+		// new one — must not be refused for a block the rules say is
+		// still standing.
+		if base[d.Blocker] != d.Attacker {
+			if r := g.blockDefenderRefusalLocked(attacker, blocker); !r.Legal() {
+				return nil, g.blockRefusedErrorLocked(attacker, blocker, r)
+			}
+		}
 		// CR 509.1b, per pair: restrictions, evasion keywords and the
 		// block rules with a parameter (#750). BlockPairRefusalLocked
 		// is the ONE pair check the enumerator and the #328 signal
@@ -241,6 +268,40 @@ func (g *Game) checkBlockDeclarationLocked(base map[uuid.UUID]uuid.UUID, decls [
 		}
 	}
 	return entries, nil
+}
+
+// blockDefenderRefusalLocked reports whether `blocker`'s controller is
+// the defending player of `attacker`'s attack (CR 802.4a, 509.1a), and
+// a not_defending refusal when it is not (#1339).
+//
+// The defending player is defendingPlayerForAttackLocked's: the player
+// attacked, the controller of the planeswalker attacked, or the
+// protector of the battle attacked. An attacker with no resolvable
+// target — not attacking at all, or attacking a planeswalker or battle
+// that has left the battlefield (CR 506.4c) — has no defending player,
+// so nobody may block it. That is the answer blockOptionsLocked has
+// always given; before #1339 the verb disagreed and took the block.
+//
+// Separate from BlockPairRefusalLocked on purpose: that function is
+// the per-pair CR 509.1b answer about the two CREATURES, and its
+// contract says "who controls the blocker" is the declaration's
+// business. Its callers other than the declaration (the enumerator,
+// the #328 signal) already restrict the blocker set to the seat the
+// attack is aimed at.
+//
+// Source is the attacker: the thing the player needs to look at is
+// where it is pointed.
+//
+// Caller must hold g.mu. Reads only.
+func (g *Game) blockDefenderRefusalLocked(attacker, blocker *Card) BlockRefusal {
+	if attacker == nil || blocker == nil {
+		return BlockRefusal{Reason: BlockReasonNotDefending}
+	}
+	defender := g.defendingPlayerForAttackLocked(attacker.AttackingTarget)
+	if defender != uuid.Nil && defender == blocker.Controller {
+		return BlockOK
+	}
+	return BlockRefusal{Reason: BlockReasonNotDefending, Source: attacker.InstanceID}
 }
 
 // blockCountRefusalLocked reports why `n` creatures blocking

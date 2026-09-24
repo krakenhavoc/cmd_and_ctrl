@@ -485,6 +485,61 @@ describe("buildMenuSections — combat", () => {
     });
   });
 
+  // #1339, CR 802.4a: at a four-seat table a creature may block only
+  // what its controller is defending against. The server names that
+  // seat on each attacker as defending_player — for a battle it is the
+  // PROTECTOR, not the controller.
+  it("offers only the attackers the blocker's controller defends against", () => {
+    const mine = card("c1", "b");
+    const atB = card("x-b", "a", {
+      attacking_target: "b",
+      attacking_target_kind: "player",
+      defending_player: "b",
+    });
+    const atC = card("x-c", "a", {
+      attacking_target: "c",
+      attacking_target_kind: "player",
+      defending_player: "c",
+    });
+    const atMyWalker = card("x-w", "a", {
+      attacking_target: "walker",
+      attacking_target_kind: "planeswalker",
+      defending_player: "b",
+    });
+    // Seat d controls the battle; seat b protects it.
+    const atBattle = card("x-s", "a", {
+      attacking_target: "siege",
+      attacking_target_kind: "battle",
+      defending_player: "b",
+    });
+    const atTheirBattle = card("x-t", "a", {
+      attacking_target: "siege2",
+      attacking_target_kind: "battle",
+      defending_player: "d",
+    });
+    const v = view([seat("a", "Alice"), seat("b", "Bob"), seat("c", "Carol"), seat("d", "Dan")], {
+      battlefield: [mine, atB, atC, atMyWalker, atBattle, atTheirBattle],
+      step: "declare_blockers",
+    });
+    const sections = buildMenuSections(v, mine, "b", false);
+    const offered = (itemById(sections, "combat-block")?.items ?? []).map((i) => i.id);
+    expect(offered.sort()).toEqual(["combat-block-x-b", "combat-block-x-s", "combat-block-x-w"]);
+  });
+
+  it("offers no block row when every attacker is aimed at somebody else", () => {
+    const mine = card("c1", "b");
+    const atC = card("x-c", "a", {
+      attacking_target: "c",
+      attacking_target_kind: "player",
+      defending_player: "c",
+    });
+    const v = view([seat("a", "Alice"), seat("b", "Bob"), seat("c", "Carol")], {
+      battlefield: [mine, atC],
+      step: "declare_blockers",
+    });
+    expect(itemById(buildMenuSections(v, mine, "b", false), "combat-block")).toBeUndefined();
+  });
+
   // #318: the bulk affordance sits next to the per-card one and
   // reuses its "pick a defender" submenu shape.
   it("offers attack-with-all per opponent, aiming the whole board at one seat", () => {
