@@ -48,6 +48,8 @@
   import BattlefieldRow from "./BattlefieldRow.svelte";
   import PileBar from "./PileBar.svelte";
   import Hand from "./Hand.svelte";
+  import ExileStrip from "./ExileStrip.svelte";
+  import type { CastSourceZone } from "../../targeting";
   import PlayerIdentity from "./PlayerIdentity.svelte";
   import PhaseDisplay from "./PhaseDisplay.svelte";
   import PromisesRow from "./PromisesRow.svelte";
@@ -75,7 +77,9 @@
     onDeclareAttack: (targetPlayerID: string) => void;
     onDeclareBlock: (attackerCardID: string) => void;
     onTapToggle: (card: CardView) => void;
-    onPlayCard: (card: CardView) => void;
+    // `fromZone` / `face` ride along for a cast out of the #1389
+    // exile strip; a hand cast passes the card alone.
+    onPlayCard: (card: CardView, fromZone?: CastSourceZone, face?: number) => void;
     onDrawCard: () => void;
     onTargetPlayer?: (targetPlayerID: string) => void;
     // onTargetCard returns true when a cast-targeting prompt
@@ -418,6 +422,11 @@
         {viewerID}
       />
     </div>
+    {#if isSelf}
+      <!-- #1389: the exiled cards this seat may cast, as a second
+           hand. Renders nothing when there are none. -->
+      <ExileStrip {view} {viewerID} onCastCard={onPlayCard} />
+    {/if}
     {#if !isSelf}
       <PromisesRow {view} {viewerID} opponentID={seat.id} {sendAction} />
     {/if}

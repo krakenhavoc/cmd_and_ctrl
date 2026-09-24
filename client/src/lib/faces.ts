@@ -84,6 +84,7 @@ export function castSurfaceOf(s: CastSurfaceView) {
     target_cost_notes: s.target_cost_notes,
     phyrexian_symbols: s.phyrexian_symbols,
     castable_here: s.castable_here,
+    cast_prices: s.cast_prices,
   } satisfies Record<keyof CastSurfaceView, unknown>;
 }
 

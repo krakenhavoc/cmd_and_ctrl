@@ -318,6 +318,8 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 		// of the cost surface — a legendary-sorcery clause says more
 		// about a face-down card than its mana cost does.
 		CantCast: "Each player can't cast more than one spell each turn.",
+		// #1389: the viewer's own exile price list.
+		CastPrices: []CastPriceView{{AlternativeCost: "foretell", Label: "Foretell", Cost: "{1}{U}", Life: 1, Printed: true}},
 	}
 }
 
@@ -673,6 +675,9 @@ var castSurfaceScopes = map[string]castSurfaceScope{
 	"CastableHere": surfacePrivate,
 	"LegalTargets": surfacePrivate,
 	"Clauses":      surfacePrivate,
+	// #1389: what the asking seat would be charged. A cost modifier
+	// may be scoped to one player, so it is theirs alone.
+	"CastPrices": surfacePrivate,
 	// #1169: cost-shaped facts about the card. Public on a public
 	// pile — an escape offer is priced by a graveyard everybody can
 	// count — and not on a hand card the viewer was shown one of.
