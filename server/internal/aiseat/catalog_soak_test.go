@@ -16,6 +16,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/heuristic"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
@@ -398,12 +399,56 @@ func soakBaseSeed(now time.Time) uint64 {
 	return uint64(y*10000+int(m)*100+d) * 100
 }
 
+// catalogSoakPolicy validates AISEAT_CATALOG_POLICY once, up front, and
+// returns it — defaulting to "random". Modelled on soakPolicy
+// (soak_test.go), with one difference: soakPolicy silently falls back
+// to "random" on an unrecognised value, but a catalog soak run is
+// expensive enough (the Scryfall dump, a whole-game table) that a
+// misspelled flag deserves a loud failure rather than a night of
+// "random" nobody asked for. `catalogSoakPolicy` is called once so
+// every game in the run fails the same clear way, not once per seed.
+func catalogSoakPolicy(t *testing.T) string {
+	t.Helper()
+	switch policy := os.Getenv("AISEAT_CATALOG_POLICY"); policy {
+	case "":
+		return "random"
+	case "random", "heuristic", "mixed":
+		return policy
+	default:
+		t.Fatalf("AISEAT_CATALOG_POLICY=%q: want random, heuristic or mixed", policy)
+		return ""
+	}
+}
+
+// catalogPolicy builds seat s's policy for the catalog soak, per the
+// validated policy string from catalogSoakPolicy:
+//
+//	random     (default) every seat random — the widest exploration of the catalog
+//	heuristic  every seat heuristic — reaches board states (blockers up,
+//	           equipment attached, auras out) random play rarely sets up
+//	mixed      even seats heuristic, odd seats random
+//
+// Modelled on soakPolicy (soak_test.go); see that doc comment for why
+// "mixed" is the interesting one for bug-hunting.
+func catalogPolicy(policy string, seed uint64, seat int) aiseat.Policy {
+	switch policy {
+	case "heuristic":
+		return heuristic.New()
+	case "mixed":
+		if seat%2 == 0 {
+			return heuristic.New()
+		}
+	}
+	return aiseat.NewRandomPolicy(rand.NewPCG(seed, uint64(seat)))
+}
+
 // TestCatalogSoak plays N four-bot games on decks dealt from the
 // catalog, fails on any effect error, and reports what the bots
 // reached.
 //
 // Count: AISEAT_CATALOG_GAMES (default 1). Seed: AISEAT_CATALOG_SEED,
 // defaulting to one derived from today's UTC date (see soakBaseSeed).
+// Policy: AISEAT_CATALOG_POLICY (default "random"; see catalogPolicy).
 // Report: AISEAT_CATALOG_REPORT, a path to write the per-card JSON to.
 func TestCatalogSoak(t *testing.T) {
 	requireGameTests(t)
@@ -430,7 +475,8 @@ func TestCatalogSoak(t *testing.T) {
 	if v, err := strconv.ParseUint(os.Getenv("AISEAT_CATALOG_SEED"), 10, 64); err == nil {
 		base = v
 	}
-	t.Logf("catalog soak: %d game(s) from base seed %d", games, base)
+	policy := catalogSoakPolicy(t)
+	t.Logf("catalog soak: %d game(s) from base seed %d, policy %s", games, base, policy)
 
 	const seats, turnBudget = 4, 200
 	wall := envDuration("AISEAT_WALLCLOCK", 300*time.Second)
@@ -442,7 +488,7 @@ func TestCatalogSoak(t *testing.T) {
 			room := newCatalogRoom(t, seats, seed, idx, pool)
 			policies := make([]aiseat.Policy, seats)
 			for s := range policies {
-				policies[s] = aiseat.NewRandomPolicy(rand.NewPCG(seed, uint64(s)))
+				policies[s] = catalogPolicy(policy, seed, s)
 			}
 			res := playCatalogGame(t, room, policies, turnBudget, wall)
 			// Unconditional, and before any assertion: a game that
