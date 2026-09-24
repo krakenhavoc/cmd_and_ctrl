@@ -36,7 +36,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     counting it is the weaker reading.
 //
 // "Only once for each time", however many cards: OncePerBatch, since a
-// batch is one resolution's worth of events (CR 603.2c).
+// batch is one resolution's worth of events (CR 603.2c). #1341 closed
+// the last gap in that reading: a special action (foretell, suspend,
+// turning a permanent face up) is CR 116.2's own instance of "play
+// moving on", so PerformSpecialAction now opens its own event batch
+// and two foretells taken back to back — nothing resolving between
+// them — are two occurrences, as CR 603.2c asks, not one.
 //
 // The foretell discount is #1319's proof card: SpecialActionCostsLess
 // partitions the CR 601.2f pass a third way (CostModifier.SpecialActions,
@@ -48,24 +53,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the clause off suspend and turn_face_up, which this card doesn't
 // even print but a shared predicate has to get right regardless.
 //
-// # Not implemented
-//
-//   - Two foretells back to back, with nothing resolving between them,
-//     are one event batch today (event_batch.go: only a resolution and
-//     a step change open a batch), so they make one Spirit rather than
-//     two. Weaker than printed. The batch boundary for special actions
-//     is #1341.
-//   - A destruction that a replacement turns into an exile (Rest in
-//     Peace) carries no cause, so it does not count as "a spell you
-//     control exiled it". Weaker than printed.
+// Both printed simplifications are closed as of #1341 and #1319, so
+// this card carries no caveat. One general engine limitation remains,
+// tracked at the engine level rather than here (ADR 0013 "Not closed
+// here", docs/engine-seams.md): a destruction that a replacement turns
+// into an exile (Rest in Peace) carries no cause, so it does not count
+// as "a spell you control exiled it". That is a gap in the move-cause
+// system every reader of it shares, not a Ranar-specific simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "c73a9939-0742-4919-94d6-c3b537697f17",
-		Name:         "Ranar the Ever-Watchful",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Foretelling two cards in a row, before anything resolves, makes only one Spirit.",
-		},
+		OracleID:        "c73a9939-0742-4919-94d6-c3b537697f17",
+		Name:            "Ranar the Ever-Watchful",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying", "vigilance"},
 		CostModifiers: []game.CostModifier{
 			SpecialActionCostsLess(2, "The first card you foretell each turn costs {0} to foretell.",

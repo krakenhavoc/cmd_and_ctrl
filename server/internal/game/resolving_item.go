@@ -35,14 +35,17 @@ import "github.com/google/uuid"
 //     that difference is spelled).
 //
 // The slot is SET when an item begins to resolve and CLEARED by
-// beginEventBatchLocked — which runs at exactly the two points where
-// play moves on (#829, CR 603.2c): the next resolution, and the cursor
-// entering a step. That is the terminal outcome, and it is the right
-// one for a pause: a resolution-time prompt BLOCKS the table
-// (choice_gate.go), so the cursor cannot walk past an open copy
-// decision and nothing else can resolve under it. The slot therefore
-// survives any number of paused continuations belonging to the
-// resolution that opened it, and not one event past it.
+// beginEventBatchLocked — which runs at exactly the points where play
+// moves on (#829, CR 603.2c; #1341 added a third): the next
+// resolution, the cursor entering a step, and a special action being
+// taken. That is the terminal outcome, and it is the right one for a
+// pause: a resolution-time prompt BLOCKS the table (choice_gate.go),
+// so the cursor cannot walk past an open copy decision, nothing else
+// can resolve under it, and no special action can be taken under it
+// either — so clearing the slot at that third point never races a
+// paused continuation. The slot therefore survives any number of
+// paused continuations belonging to the resolution that opened it,
+// and not one event past it.
 //
 // Nothing else reads it. stackSpellLocked consults it only when the
 // requested ID is not on the stack AND is this item's own — so an

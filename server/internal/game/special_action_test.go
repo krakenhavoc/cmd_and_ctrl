@@ -194,3 +194,65 @@ func TestADesignedButUnbuiltKindIsNotOffered(t *testing.T) {
 		}
 	}
 }
+
+// --- #1341: a special action is its own event batch ------------------
+
+// TestPerformSpecialActionOpensItsOwnEventBatch is the engine-side
+// proof for #1341: CR 116.2 makes each special action its own event,
+// so two of them taken back to back — nothing resolving and no step
+// change between them — must be two batches, not one. Ranar the
+// Ever-Watchful (cards/effects/ranar_the_ever_watchful.go) is the
+// card-facing proof; this is the boundary itself, the same shape as
+// TestEventBatchAdvancesAtStepEntryAndResolutionOnly in
+// event_batch_test.go.
+func TestPerformSpecialActionOpensItsOwnEventBatch(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	withForetellCard(t, "{1}{U}")
+	advanceTo(t, g, StepPrecombatMain)
+
+	before := lastEventBatch(g)
+
+	first := foretellIt(t, g, me)
+	afterFirst := lastEventBatch(g)
+	if afterFirst <= before {
+		t.Fatalf("batch %d after the first foretell, want greater than %d — a special action must open a batch", afterFirst, before)
+	}
+
+	// Nothing resolved and no step changed between the two foretells —
+	// exactly the shape #1341 was filed against.
+	second := foretellIt(t, g, me)
+	afterSecond := lastEventBatch(g)
+	if afterSecond <= afterFirst {
+		t.Errorf("batch %d after the second foretell, want greater than %d — two special actions in one priority window are two occurrences (CR 603.2c)", afterSecond, afterFirst)
+	}
+	if first == second {
+		t.Fatal("foretellIt returned the same card twice")
+	}
+}
+
+// TestRefusedSpecialActionOpensNoBatch: a special action that fails
+// before it acts (wrong window, not offered) must not consume a
+// batch boundary — nothing happened that CR 603.2c would count as an
+// event. Reads the counter directly (currentEventBatchLocked) rather
+// than through the last emitted event, since a refused action emits
+// no event to read the counter off.
+func TestRefusedSpecialActionOpensNoBatch(t *testing.T) {
+	g := newActiveGame(t)
+	opp := g.Seats[1]
+	withForetellCard(t, "{1}{U}")
+	// Foretell is "during your turn" (CR 702.143a); seat 1 is not the
+	// active seat, so the timing check refuses it.
+	card := seedHandCard(opp, "Saw It Coming", foretellOracle, "Instant", "{1}{U}{U}")
+
+	var before uint64
+	g.WithWriteLock(func() { before = g.currentEventBatchLocked() })
+	if err := g.PerformSpecialAction(opp.ID, card.InstanceID, SpecialActionForetell, SpecialActionParams{Strict: true}); !errors.Is(err, ErrSpecialActionTiming) {
+		t.Fatalf("PerformSpecialAction off-turn: got %v, want ErrSpecialActionTiming", err)
+	}
+	var after uint64
+	g.WithWriteLock(func() { after = g.currentEventBatchLocked() })
+	if after != before {
+		t.Errorf("batch %d after a refused special action, want unchanged %d", after, before)
+	}
+}

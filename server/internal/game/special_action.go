@@ -335,6 +335,15 @@ func (g *Game) PerformSpecialAction(playerID, cardID uuid.UUID, kind SpecialActi
 	if !g.SpecialActionTimingOKLocked(playerID, card, kind) {
 		return ErrSpecialActionTiming
 	}
+	// #1341: a special action is its own CR 116.2 event, so it opens
+	// its own event batch exactly as a resolution or a step entry
+	// does (event_batch.go) — everything IT emits (the payment, the
+	// performer's zone move, EventSpecialAction below) is one
+	// occurrence, and the next special action, however soon after, is
+	// a different one. Placed after the checks above so a refused
+	// special action (wrong window, not offered) opens no batch and
+	// costs the caller nothing to retry with correct timing.
+	g.beginEventBatchLocked()
 	// CR 116.2: taking a special action means paying its cost. The
 	// mana goes through the same helper an activated ability's mana
 	// component uses, so auto-tap, permissive mode and the
