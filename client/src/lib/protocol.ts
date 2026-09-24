@@ -165,8 +165,16 @@ export interface ActionPayload {
 
 // SnapshotPayload is the server's authoritative view of the game,
 // broadcast after every successful action and sent once on connect.
+//
+// `seq` is non-decreasing only WITHIN one `generation` (#523, ADR
+// 0044 decision 5) — a restart that rewinds the room to an earlier
+// restore point bumps `generation` and can hand out a `seq` lower
+// than one this client already rendered. ws.ts tracks `generation`
+// and treats a change as "discard and re-render", never as a dropped
+// or out-of-order frame. See docs/protocol.md.
 export interface SnapshotPayload {
   seq: number;
+  generation: number;
   game: GameView;
 }
 

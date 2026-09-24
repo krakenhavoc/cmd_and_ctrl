@@ -191,11 +191,28 @@ const MaxChatTextLen = 1000
 // deltas. Bandwidth is not a concern at four clients; diff-based
 // delta frames can be added later without a protocol version bump.
 type SnapshotPayload struct {
-	// Seq is a monotonically increasing per-game sequence number,
-	// incremented before each broadcast. Clients can use it to detect
-	// dropped or out-of-order frames.
-	Seq  uint64   `json:"seq"`
-	Game GameView `json:"game"`
+	// Seq is a per-game sequence number, incremented before each
+	// broadcast, monotonically increasing WITHIN one Generation
+	// (#523, ADR 0044 decision 5). Clients use it to detect dropped
+	// or out-of-order frames — but only against another frame of the
+	// same Generation; a lower Seq under a NEW Generation is not a
+	// dropped frame, it is a deliberate rewind (see Generation below)
+	// and must be accepted.
+	Seq uint64 `json:"seq"`
+	// Generation is this room's restore generation: 0 for a room
+	// that has never been rebuilt from disk, and bumped by one every
+	// time the server restarts and restores it from its last written
+	// restore point. Because a restore point is only ever written
+	// from a state with no live continuations (see
+	// internal/game/snapshot.go), a restart can rewind Seq to an
+	// earlier value than a connected client already rendered — the
+	// game ran on through states the restart cannot rebuild exactly.
+	// A client that tracks Generation can tell that apart from an
+	// out-of-order delivery: same Generation, Seq must not decrease;
+	// a Generation change means "discard what you were tracking and
+	// render this frame regardless of its Seq". See docs/protocol.md.
+	Generation uint64   `json:"generation"`
+	Game       GameView `json:"game"`
 	// Annotation tags the replay line this payload produced with an
 	// out-of-band note about what caused it. Set only on the replay /
 	// crash-dump path (ws.Room.captureLocked); the WebSocket snapshot

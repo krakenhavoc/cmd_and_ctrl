@@ -1,6 +1,6 @@
 import { type Writable } from "svelte/store";
 import { recordClientError } from "./clientErrors";
-import { OFFLINE_ERROR_CODE, offlineSendMessage } from "./connectionBanner";
+import { OFFLINE_ERROR_CODE, offlineSendMessage, REWIND_NOTICE } from "./connectionBanner";
 import { describeThrown, guardedWritable } from "./guardedStore";
 import { redactSecrets, redactURL } from "./redact";
 import { checkSessionAlive, currentSession } from "./session";
@@ -249,16 +249,39 @@ export class GameClient {
   // number a "reconnecting (attempt 3)" banner reads (#518, rendered
   // by #519).
   readonly reconnectAttempt: Writable<number> = guardedWritable(0, "reconnectAttempt");
+  // rewindNotice publishes the "the table rewound" toast (#523, ADR
+  // 0044 decision 5): set only when a snapshot's restore generation
+  // changed AND its seq is lower than the highest seq this client had
+  // already rendered — a real rewind, never an ordinary generation
+  // bump that landed at or after what was already shown. Auto-clears
+  // on its own timer, same shape as lastError, so it never lingers.
+  readonly rewindNotice: Writable<{ message: string; at: Date } | null> = guardedWritable(
+    null,
+    "rewindNotice",
+  );
   private errorClearTimer: ReturnType<typeof setTimeout> | null = null;
+  private rewindNoticeClearTimer: ReturnType<typeof setTimeout> | null = null;
 
   private socket: WebSocket | null = null;
-  // highestSeq tracks the largest `seq` seen so far. The protocol
-  // guarantees monotonically non-decreasing seq; a duplicate is
-  // possible during a join-while-action race and is treated as a
-  // no-op state refresh (same state, same seq). Reset on setURL /
-  // connect / socket open — the watermark only orders frames within
-  // one connection to one server incarnation.
+  // highestSeq tracks the largest `seq` seen so far, WITHIN the
+  // current restore generation (#523, ADR 0044 decision 5). The
+  // protocol guarantees seq is monotonically non-decreasing only
+  // within one generation; a duplicate is possible during a
+  // join-while-action race and is treated as a no-op state refresh
+  // (same state, same seq). Reset on setURL / connect (a deliberate
+  // switch to a different game or a fresh mount) and, within
+  // dispatchFrame, explicitly whenever a snapshot's `generation`
+  // differs from `this.generation` — NOT reset on every socket open
+  // any more. See `generation` below for why.
   private highestSeq = 0;
+  // generation is the restore generation of the last snapshot this
+  // client rendered, or null before the first one. It persists across
+  // a reconnect to the SAME game (unlike highestSeq's old behaviour)
+  // so that when the first post-reconnect snapshot arrives, dispatchFrame
+  // can tell a genuine rewind (generation changed, seq went backwards)
+  // apart from an ordinary resumed connection (generation unchanged).
+  // Reset only by resetSnapshotTracking, i.e. a deliberate setURL/connect.
+  private generation: number | null = null;
   // reconnectTimer is the pending automatic-reconnect timeout, or
   // null when none is scheduled. Non-null doubles as the "we are in
   // a retry loop" flag; deliberate disconnect()/connect() cancel it.
@@ -391,13 +414,26 @@ export class GameClient {
       if (!isCurrent()) return;
       this.status.set("connected");
       this.resetReconnectAttempts();
-      // Reset the seq watermark on every open, including automatic
-      // reconnects to the same URL: a server restart restarts seq from
-      // scratch, and keeping the old watermark would silently drop
-      // every snapshot on the new connection. Snapshots are idempotent
-      // full states, so re-accepting one duplicate frame after a
-      // same-incarnation reconnect is harmless — a frozen board is not.
-      this.highestSeq = 0;
+      // #523: this used to unconditionally zero highestSeq here, on
+      // every open including automatic reconnects to the same URL —
+      // because a server restart restarts seq from an earlier value,
+      // and without SOME reset a rewound snapshot would look like a
+      // dropped frame and get ignored. That masking worked, but only
+      // by accident: it also meant the guard below was toothless for
+      // one whole connection after every reconnect, and "fixing" that
+      // by making the watermark durable would have permanently wedged
+      // every rewound game against a stale board (see docs/protocol.md
+      // and ADR 0044 decision 5).
+      //
+      // The real fix is explicit: dispatchFrame now tracks `generation`
+      // (persists across a reconnect, unlike the old highestSeq reset)
+      // and treats a generation CHANGE as the signal to discard and
+      // re-render, regardless of highestSeq. That is a correct trigger
+      // even when highestSeq is left exactly as it was — a genuine
+      // rewind always shows up as a generation change, and within an
+      // UNCHANGED generation seq is guaranteed non-decreasing, so there
+      // is nothing left for a blind reset here to protect against.
+      // Deliberately not resetting highestSeq on open any more.
       this.append("info", connectLogLine(url));
     });
 
@@ -547,13 +583,17 @@ export class GameClient {
     this.open();
   }
 
-  // resetSnapshotTracking clears the seq watermark and the rendered
-  // snapshot — used on deliberate retarget (setURL) / connect so a
-  // new game's frames are never compared against an old game's seqs.
-  // NOT used on automatic reconnect: the stale board stays rendered
-  // under the "reconnecting" tag until the fresh snapshot lands.
+  // resetSnapshotTracking clears the seq watermark, the tracked
+  // generation, and the rendered snapshot — used on deliberate
+  // retarget (setURL) / connect so a new game's frames are never
+  // compared against an old game's seqs or generation. NOT used on
+  // automatic reconnect: the stale board stays rendered under the
+  // "reconnecting" tag until the fresh snapshot lands, and a rewind on
+  // an automatic reconnect is handled explicitly by dispatchFrame's
+  // generation check instead (#523).
   private resetSnapshotTracking(): void {
     this.highestSeq = 0;
+    this.generation = null;
     this.snapshot.set(null);
     this.lastSeq.set(0);
   }
@@ -605,6 +645,23 @@ export class GameClient {
     this.errorClearTimer = setTimeout(() => {
       this.lastError.set(null);
       this.errorClearTimer = null;
+    }, ERROR_TOAST_TTL_MS);
+  }
+
+  // raiseRewindNotice publishes the "the table rewound" toast (#523)
+  // and (re)starts its own auto-clear timer. Deliberately its own
+  // store and its own timer rather than reusing lastError: a rewind
+  // is not a rejection of anything the player did, and a real error
+  // arriving moments later must not be starved of the toast slot by
+  // a rewind notice that is still counting down.
+  private raiseRewindNotice(): void {
+    this.rewindNotice.set({ message: REWIND_NOTICE, at: new Date() });
+    if (this.rewindNoticeClearTimer !== null) {
+      clearTimeout(this.rewindNoticeClearTimer);
+    }
+    this.rewindNoticeClearTimer = setTimeout(() => {
+      this.rewindNotice.set(null);
+      this.rewindNoticeClearTimer = null;
     }, ERROR_TOAST_TTL_MS);
   }
 
@@ -731,17 +788,43 @@ export class GameClient {
           this.append("error", "snapshot frame had no payload");
           break;
         }
-        // Protocol guarantees seq is monotonically non-decreasing.
+        // #523 / ADR 0044 decision 5: seq is monotonically
+        // non-decreasing only WITHIN one restore generation. A
+        // generation this client has not seen before means the
+        // server rebuilt the room from an earlier restore point on
+        // purpose (a restart), and the frame must be accepted
+        // regardless of its seq — that is a deliberate rewind, not a
+        // dropped or out-of-order frame. `this.generation === null`
+        // is "no snapshot rendered yet on this connection lifetime"
+        // (a fresh connect/setURL), which is never itself a change.
+        const generationChanged = this.generation !== null && p.generation !== this.generation;
+
         // Duplicate seqs can legitimately occur during a join-while-
-        // action race (same state captured twice); only older seqs
-        // indicate a real out-of-order delivery.
-        if (p.seq < this.highestSeq) {
+        // action race (same state captured twice); only an older seq
+        // under the SAME generation indicates a real out-of-order
+        // delivery. Skip the guard entirely on a generation change —
+        // that is exactly the case it must not catch.
+        if (!generationChanged && p.seq < this.highestSeq) {
           this.append(
             "error",
             `snapshot seq=${p.seq} older than highest=${this.highestSeq}; ignored`,
           );
           break;
         }
+
+        // The rewind toast fires only when the generation change
+        // actually moved the table backwards from what this client
+        // had already rendered — not on every restart, since most
+        // restore points land at or after the last thing a connected
+        // client saw. `highestSeq` here is still the PRE-this-frame
+        // watermark (it is not reset on open any more, see the "open"
+        // listener above), so it is exactly "the highest seq this
+        // client held" the owner decision asks for.
+        if (generationChanged && p.seq < this.highestSeq) {
+          this.raiseRewindNotice();
+        }
+        this.generation = p.generation;
+
         // Log the frame BEFORE applying it. #266: with the log line
         // last, a frame whose application throws is never logged, so
         // the attached log ends at the last frame that worked and the
@@ -751,7 +834,7 @@ export class GameClient {
         // out the log line that would have named the malformed frame.
         this.append(
           "received",
-          `snapshot seq=${p.seq} turn=${p.game?.turn?.number} seat=${p.game?.turn?.active_seat} step=${p.game?.turn?.step}`,
+          `snapshot seq=${p.seq} generation=${p.generation} turn=${p.game?.turn?.number} seat=${p.game?.turn?.active_seat} step=${p.game?.turn?.step}`,
         );
         this.highestSeq = p.seq;
         this.snapshot.set(p.game);

@@ -309,6 +309,16 @@ The room's `seq` travels with the snapshot: a restored room that
 restarted its counter would hand reconnecting clients a sequence number
 they had already seen.
 
+**Superseded in part by [ADR 0044](0044-surviving-a-deploy.md) decision
+5 (#523).** That covers only restarting the counter *at zero*; it does
+not cover restarting it at some other value LOWER than what a connected
+client already held — which is exactly what happens whenever the
+restore point named above is not the game's current state (the
+`ContinuationCensus` case just below). 0044 adds a restore generation
+alongside `seq` so the client can tell that rewind apart from a dropped
+frame, and corrects `docs/protocol.md`'s "monotonically non-decreasing"
+claim to "non-decreasing within a generation" to match.
+
 Both new artifacts are removed when a game ends and when it is deleted,
 so no boot rebuilds a dead table.
 

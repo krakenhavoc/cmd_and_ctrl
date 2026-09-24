@@ -43,6 +43,22 @@ type Room struct {
 	mu  sync.Mutex
 	seq uint64
 
+	// generation is this room's restore generation (#523, ADR 0044
+	// decision 5): the zero value for a room that has never been
+	// rebuilt from disk, bumped once by restoreOne every time it IS
+	// rebuilt from a restore point, and otherwise constant for the
+	// rest of the room's in-memory life — every action just advances
+	// seq within the generation the room already has. Guarded by mu
+	// like seq, though in practice nothing but restoreOne ever writes
+	// it (before the room is registered, so no lock is needed there).
+	// Carried on every snapshot frame (protocol.SnapshotPayload) and
+	// in every later restore-point write, so a client can tell a
+	// server restart's rewind apart from an ordinary dropped frame:
+	// within one generation seq is non-decreasing; a generation change
+	// means the server rebuilt this room from an earlier point on
+	// purpose and the client must discard and re-render.
+	generation uint64
+
 	// dumpDir is the root for crash-recovery snapshots. Empty string
 	// disables disk writes entirely. Each snapshot lands at
 	//   <dumpDir>/games/<game-id>.json
@@ -472,6 +488,16 @@ func (r *Room) Seq() uint64 {
 	return r.seq
 }
 
+// Generation returns the room's current restore generation (#523).
+// Cheap, like Seq — a plain field read under the same mutex — and
+// safe to call on every broadcast: the value only ever changes once,
+// at restore, before the room is registered and visible to callers.
+func (r *Room) Generation() uint64 {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.generation
+}
+
 // captureLocked is the common state-capture path used by both Apply
 // and Snapshot. Caller MUST hold r.mu.
 //
@@ -504,6 +530,7 @@ func (r *Room) captureLocked(advanceSeq bool) (protocol.GameView, uint64, error)
 	if r.dumpDir != "" {
 		payload, err := json.Marshal(protocol.SnapshotPayload{
 			Seq:        nextSeq,
+			Generation: r.generation,
 			Game:       view,
 			Annotation: annotation,
 		})

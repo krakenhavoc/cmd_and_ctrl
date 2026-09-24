@@ -55,9 +55,23 @@ func restorePointPath(dumpDir string, id uuid.UUID) string {
 // Seq is here because the client resyncs by it. A restored room that
 // restarted its counter at zero would hand reconnecting clients a seq
 // lower than the one they already hold.
+//
+// Generation is the restore generation this file's Seq belongs to
+// (#523, ADR 0044 decision 5). It is bumped by restoreOne every time
+// this file is actually used to rebuild a room, then carried forward
+// verbatim by every later write until the next restore bumps it
+// again — so it answers "how many times has this room been rebuilt
+// from disk", not "how many times has this file been written". A
+// file with no Generation field decodes it as the Go zero value, 0,
+// which is exactly right for every restore point ever written before
+// this field existed: those rooms have never been restored, so
+// generation 0 is their true generation too. See TestRestorePointFileFields
+// for the field-drift guard this struct sits outside of
+// (snapshot_drift_test.go only covers game.GameSnapshot).
 type restorePointFile struct {
-	Seq      uint64             `json:"seq"`
-	Snapshot *game.GameSnapshot `json:"snapshot"`
+	Seq        uint64             `json:"seq"`
+	Generation uint64             `json:"generation"`
+	Snapshot   *game.GameSnapshot `json:"snapshot"`
 }
 
 // writeRestorePointLocked captures the game and publishes it as this
@@ -77,7 +91,13 @@ func (r *Room) writeRestorePointLocked(seq uint64) (bool, error) {
 		return false, nil
 	}
 
-	payload, err := json.Marshal(restorePointFile{Seq: seq, Snapshot: snap})
+	// r.generation is read under r.mu (the caller already holds it) —
+	// every later write in this room's life carries forward the
+	// generation the room is CURRENTLY serving, so the file always
+	// answers "if the process died and came back right now, what
+	// generation would clients already holding this room's frames be
+	// told about". Only restoreOne ever advances it.
+	payload, err := json.Marshal(restorePointFile{Seq: seq, Generation: r.generation, Snapshot: snap})
 	if err != nil {
 		return false, fmt.Errorf("marshal restore point: %w", err)
 	}
@@ -308,6 +328,15 @@ func (m *RoomManager) restoreOne(path string) RestoreOutcome {
 
 	room := NewRoom(g, m.log, m.dumpDir)
 	room.seq = file.Seq
+	// This IS a restore: the room this process is about to serve is
+	// one generation past what the file recorded, whether the file's
+	// own Generation is a real prior value or the zero-valued
+	// "never restored before" default (#523, ADR 0044 decision 5).
+	// Every client dialling in gets this generation on its first
+	// snapshot frame, and any client that already held a HIGHER seq
+	// under a lower generation number knows — from the generation
+	// change alone — that it just got rewound.
+	room.generation = file.Generation + 1
 	// Seed the bookkeeping this restore point itself represents (#524)
 	// — nothing has run yet, so the room's own last-written restore
 	// point IS this file, and its age is read straight off the
@@ -319,6 +348,7 @@ func (m *RoomManager) restoreOne(path string) RestoreOutcome {
 	m.log.Info("game restored",
 		"game_id", g.ID,
 		"seq", file.Seq,
+		"generation", room.generation,
 		"state", file.Snapshot.State,
 		"turn", file.Snapshot.Turn.Round,
 		"seats", len(file.Snapshot.Seats),

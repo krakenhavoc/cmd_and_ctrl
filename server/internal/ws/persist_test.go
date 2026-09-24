@@ -6,6 +6,7 @@ import (
 	"math/rand/v2"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/google/uuid"
@@ -134,6 +135,150 @@ func TestRestartPreservesALiveGame(t *testing.T) {
 		t.Errorf("restored room rejected an action: %v", err)
 	} else if seq != wantSeq+1 {
 		t.Errorf("post-restore seq = %d, want %d", seq, wantSeq+1)
+	}
+}
+
+// TestRestoreBumpsGeneration is #523's server-side contract (ADR 0044
+// decision 5). A room that has never been restored is generation 0; a
+// restore always leaves the room one generation past what the file on
+// disk recorded; and every restore-point write AFTER that carries the
+// room's own current generation forward, not the file's original
+// value and not zero.
+func TestRestoreBumpsGeneration(t *testing.T) {
+	dir := t.TempDir()
+	mgr := restoreTestManager(t, dir)
+
+	g := newPersistGame(t)
+	room := mgr.Create(g)
+	seat0 := g.Seats[0].ID
+
+	if _, _, err := room.Apply(seat0, func() error { return g.DrawCard(seat0) }); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if got := room.Generation(); got != 0 {
+		t.Fatalf("a never-restored room reports generation %d, want 0", got)
+	}
+	assertFileGeneration(t, dir, g.ID, 0)
+
+	// --- first restart: the restored room is one generation ahead
+	// of what the file said.
+	mgr = restoreTestManager(t, dir)
+	outcomes := mgr.RestoreRooms()
+	if len(outcomes) != 1 || !outcomes[0].Restored() {
+		t.Fatalf("restore failed: %+v", outcomes)
+	}
+	back := mgr.Get(g.ID)
+	if got := back.Generation(); got != 1 {
+		t.Fatalf("generation after first restore = %d, want 1", got)
+	}
+
+	// A write on the restored room carries ITS generation forward —
+	// not the file's original 0.
+	if _, _, err := back.Apply(back.Game.Seats[0].ID, func() error {
+		return back.Game.DrawCard(back.Game.Seats[0].ID)
+	}); err != nil {
+		t.Fatalf("Apply on restored room: %v", err)
+	}
+	assertFileGeneration(t, dir, g.ID, 1)
+
+	// --- second restart: one generation further still.
+	mgr = restoreTestManager(t, dir)
+	outcomes = mgr.RestoreRooms()
+	if len(outcomes) != 1 || !outcomes[0].Restored() {
+		t.Fatalf("second restore failed: %+v", outcomes)
+	}
+	if got := mgr.Get(g.ID).Generation(); got != 2 {
+		t.Errorf("generation after second restore = %d, want 2", got)
+	}
+}
+
+// assertFileGeneration reads the on-disk restore point and checks its
+// Generation field, independent of whatever the in-memory room
+// reports — the two are supposed to agree, and this is what catches
+// them if they don't.
+func assertFileGeneration(t *testing.T, dir string, gameID uuid.UUID, want uint64) {
+	t.Helper()
+	raw, err := os.ReadFile(restorePointPath(dir, gameID))
+	if err != nil {
+		t.Fatalf("read restore point: %v", err)
+	}
+	var file restorePointFile
+	if err := json.Unmarshal(raw, &file); err != nil {
+		t.Fatalf("decode restore point: %v", err)
+	}
+	if file.Generation != want {
+		t.Errorf("restore point file generation = %d, want %d", file.Generation, want)
+	}
+}
+
+// TestOldRestorePointWithNoGenerationRestoresAsGenerationOne — a
+// restore-point file written before this field existed decodes
+// Generation as the JSON-missing-field zero value, 0, which is
+// exactly right: that room has never been restored either. Restoring
+// such a file must still bump the room to generation 1, the same as
+// any other file recording generation 0 — an old file must not be
+// treated as some special "no generation" state that behaves
+// differently.
+func TestOldRestorePointWithNoGenerationRestoresAsGenerationOne(t *testing.T) {
+	dir := t.TempDir()
+	mgr := restoreTestManager(t, dir)
+
+	g := newPersistGame(t)
+	room := mgr.Create(g)
+	if _, _, err := room.Apply(g.Seats[0].ID, func() error { return nil }); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+
+	// Rewrite the file exactly the way a pre-#523 server would have
+	// left it: no "generation" key in the JSON at all.
+	path := restorePointPath(dir, g.ID)
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read restore point: %v", err)
+	}
+	var asMap map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &asMap); err != nil {
+		t.Fatalf("decode as map: %v", err)
+	}
+	delete(asMap, "generation")
+	oldShaped, err := json.Marshal(asMap)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if err := os.WriteFile(path, oldShaped, 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	mgr = restoreTestManager(t, dir)
+	outcomes := mgr.RestoreRooms()
+	if len(outcomes) != 1 || !outcomes[0].Restored() {
+		t.Fatalf("restore failed: %+v", outcomes)
+	}
+	if got := mgr.Get(g.ID).Generation(); got != 1 {
+		t.Errorf("generation restoring a pre-generation file = %d, want 1", got)
+	}
+}
+
+// TestRestorePointFileFieldsAreDeclared is the guard ADR 0044 decision
+// 7 and #523 ask for: restorePointFile sits OUTSIDE
+// snapshot_drift_test.go, which only classifies game.GameSnapshot's
+// own fields, so nothing else in the tree notices when this envelope
+// changes shape. A field added, removed, or renamed here fails this
+// test until the golden list below is updated to match — which is the
+// point where a human should stop and think about whether an
+// already-written file on disk still decodes correctly under the new
+// shape (a renamed or repurposed field decodes silently, with no
+// error, into the wrong meaning; see ADR 0044 decision 7).
+func TestRestorePointFileFieldsAreDeclared(t *testing.T) {
+	want := []string{"Seq uint64", "Generation uint64", "Snapshot *game.GameSnapshot"}
+	typ := reflect.TypeOf(restorePointFile{})
+	got := make([]string, 0, typ.NumField())
+	for i := 0; i < typ.NumField(); i++ {
+		f := typ.Field(i)
+		got = append(got, f.Name+" "+f.Type.String())
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("restorePointFile fields = %v, want %v", got, want)
 	}
 }
 
