@@ -78,12 +78,6 @@ func bontuSacrificeThenDraw(g *game.Game, item *game.StackItem) error {
 			}
 			return out, 0, 0 // "any number" — 0 min, uncapped max
 		},
-		Then: func(ctx *Context, picked game.PromptedPicks) error {
-			n := picked.Count()
-			if n == 0 {
-				return nil
-			}
-			return DrawCards{Player: controller, N: n}.Apply(ctx)
-		},
+		Then: drawOnePerPicked(controller),
 	}.Apply(ctx)
 }
