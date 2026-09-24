@@ -500,6 +500,27 @@ func (g *Game) routeCardToZoneLocked(r zoneRoute) (paused bool, err error) {
 		// the resume rather than reading the slot again later.
 		r.Cause = g.resolutionCauseLocked()
 	}
+	if src.Kind == ZoneStack && g.stackCopyLocked(r.CardID) {
+		// #1340, CR 707.10a / 704.5e: a COPY of a spell leaving the
+		// stack goes nowhere, whichever verb moved it. It skips the
+		// replacement window as well as the landing: no replacement
+		// has a card to act on (a copy is not a commander, not a
+		// flashback card, not anything Rest in Peace can exile), and
+		// a copy must never pause on a prompt about a zone it will
+		// not reach. The last-known record above is already taken.
+		// executeZoneRouteLocked owns the drop, so the resume path and
+		// this one cannot drift, and the caller's continuation runs
+		// from its terminal outcome as it does for every other exit.
+		return false, g.executeZoneRouteLocked(&ReplacementEvent{
+			Kind:         RepEventMove,
+			Actor:        r.Actor,
+			CardID:       r.CardID,
+			OldZone:      ZoneStack,
+			NewZone:      r.Dst,
+			NewZoneOwner: r.DstOwner,
+			zoneRoute:    &r,
+		})
+	}
 	dstZone, _, err := g.routeDestinationLocked(r.CardID, r.Dst, r.DstOwner)
 	if err != nil {
 		return false, err
@@ -600,6 +621,15 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 	src := g.findCardZoneLocked(ev.CardID)
 	if src == nil {
 		return ErrCardNotFound
+	}
+	if src.Kind == ZoneStack && g.stackCopyLocked(ev.CardID) {
+		// #1340: a copy of a spell ceases to exist instead of landing
+		// (CR 707.10a) — spell_copy.go. Checked before the destination
+		// resolves, because a copy has no destination to resolve: its
+		// owner's hand or graveyard is never reached, and a seat that
+		// has left the table must not turn this into an error.
+		g.spellCopyLeavesStackLocked(ev.CardID, r)
+		return nil
 	}
 	dstZone, actor, err := g.routeDestinationLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner)
 	if err != nil {

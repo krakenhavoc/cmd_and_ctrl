@@ -61,6 +61,17 @@ func passUntilPickTarget(t *testing.T, g *game.Game, chooser uuid.UUID) *game.Pe
 // lost in total.
 func breechesRun(t *testing.T, burn int) (won bool, lifeLost int) {
 	t.Helper()
+	return breechesPlay(t, burn, nil)
+}
+
+// breechesPlay is breechesRun with a hook that runs once the coin has
+// been called and before either reflexive payoff resolves — the window
+// in which the table can still answer "that spell". The hook is told
+// the Bolt's ID and whether the flip was won. With a hook set, a payoff
+// that asks for no target is not a failure: countering the spell is
+// exactly how a copy effect can end up with nothing to ask about.
+func breechesPlay(t *testing.T, burn int, afterFlip func(g *game.Game, bolt uuid.UUID, won bool)) (won bool, lifeLost int) {
+	t.Helper()
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	breeches := pushCatalogPermanent(g, me.ID, "Breeches, the Blastmaker",
@@ -81,7 +92,7 @@ func breechesRun(t *testing.T, burn int) (won bool, lifeLost int) {
 	}
 
 	before := opp.Life
-	castSpellWithCost(t, g, "Lightning Bolt", "Instant", lightningBoltOracle, "{R}",
+	bolt := castSpellWithCost(t, g, "Lightning Bolt", "Instant", lightningBoltOracle, "{R}",
 		[]game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}})
 	passPriorityAroundTable(t, g)
 
@@ -111,12 +122,19 @@ func breechesRun(t *testing.T, burn int) (won bool, lifeLost int) {
 		t.Fatalf("one flip for the trigger on top of %d burned, got %d", burn, len(flips))
 	}
 	won = flips[len(flips)-1].Won
+	if afterFlip != nil {
+		afterFlip(g, bolt, won)
+	}
 
 	// Either payoff is a reflexive trigger that goes on the stack and
 	// asks for a target: the copy's "you may choose new targets", or
 	// the blast's "any target". Both point back at the same opponent.
 	pick := passUntilPickTarget(t, g, me.ID)
 	if pick == nil {
+		if afterFlip != nil {
+			passPriorityAroundTable(t, g)
+			return won, before - opp.Life
+		}
 		t.Fatalf("the flip's payoff is a trigger that targets: %+v", g.PendingChoices)
 	}
 	if err := g.ResolvePickTarget(pick.ID, me.ID,
@@ -150,6 +168,36 @@ func TestBreechesCopiesOnAWinAndBlastsOnALoss(t *testing.T) {
 	if !sawWin || !sawLoss {
 		t.Fatalf("both faces must be exercised: saw a win=%v, saw a loss=%v", sawWin, sawLoss)
 	}
+}
+
+// TestBreechesCopiesASpellCounteredBeforeTheCopyResolves — #1288,
+// CR 608.2h. "When you win the flip, copy that spell" NAMES the spell;
+// it does not target it. So when the Bolt is countered after the flip
+// is won and before the reflexive trigger resolves, the copy is still
+// made — from the Bolt as it last stood on the stack, with its target —
+// the way storm and Doublecast copy a countered spell since #1255. The
+// Bolt itself deals nothing; its copy deals 3.
+func TestBreechesCopiesASpellCounteredBeforeTheCopyResolves(t *testing.T) {
+	for burn := 0; burn < 12; burn++ {
+		countered := false
+		won, lost := breechesPlay(t, burn, func(g *game.Game, bolt uuid.UUID, won bool) {
+			if won {
+				counterNow(t, g, bolt)
+				countered = true
+			}
+		})
+		if !won {
+			continue
+		}
+		if !countered {
+			t.Fatal("the hook did not counter the Bolt — the fixture is wrong")
+		}
+		if lost != 3 {
+			t.Errorf("opponent lost %d life, want 3: the countered Bolt deals nothing, its last-known copy deals 3 (CR 608.2h)", lost)
+		}
+		return
+	}
+	t.Fatal("no won flip in 12 burns — the fixture cannot reach the copy")
 }
 
 // Declining the sacrifice ends the ability: no flip, no payoff, and

@@ -794,3 +794,97 @@ Breeches, the Blastmaker's reflexive "copy that spell" is the same
 non-targeting shape and has not opted in; it is one field and a test,
 filed as #1288. A spell that left the stack on an EARLIER turn cannot
 be copied from last-known information — nothing in the catalog can ask.
+
+*Note, 2026-09-23 (#1288):* Breeches has since opted in — Decision 19
+below.
+
+## Amendment 2026-09-23 (#1340, #1288): a copy that leaves the stack goes nowhere, and Breeches copies from last-known information
+
+Issues [#1340](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1340)
+(found while building [ADR 0090](0090-preparation-cards.md)) and
+[#1288](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1288) (the
+"Still not covered" line of the #1255 amendment above). Tracker #888.
+No new ADR number: both are this ADR's copy path.
+
+### Decision 18. The stack exit ends a copy; it does not land it
+
+CR 707.10a: "If a copy of a spell is in a zone other than the stack, it
+ceases to exist." CR 704.5e says the same as a state-based action. The
+resolution frame has honoured that on both of ITS exits since S30
+(resolve, and the CR 608.2b fizzle → `ceaseToExistLocked`). The OTHER
+exits — counter, Remand-style return, "exile target spell", airbend,
+the sandbox move — all reach `routeCardToZoneLocked`
+(`server/internal/game/zone_route.go`) since #1318 / #1345, and it never
+asked whether the spell was a copy. A countered Twincast copy was a real
+Lightning Bolt in its controller's graveyard, and nothing removed it:
+the CR 704.5d sweep looks at tokens, and the CR 704.5e sweep ADR 0090
+added looks only at `Card.PrepareCopy`.
+
+The fix is at the choke point, not in a sweep:
+
+- `routeCardToZoneLocked` takes the last-known record (Decision 16) as
+  before, fills the move's cause, and then — for a stack object whose
+  item says `IsCopy` — goes straight to `executeZoneRouteLocked`
+  **without opening the replacement window**. No replacement has a card
+  to act on, and a copy must not pause on a prompt about a zone it will
+  never reach. The concrete case is CR 903.9: `createSpellCopyLocked`
+  copies the whole `Card`, `IsCommander` included, so a countered copy
+  of a commander spell used to ask its owner about the command zone.
+- `executeZoneRouteLocked` owns the drop (`spellCopyLeavesStackLocked`,
+  `spell_copy.go`), before it resolves a destination, so the inline path
+  and the resume path cannot drift and a departed owner cannot turn a
+  drop into an error. The copy leaves the stack and its `StackMeta`
+  record, and the route's continuation runs from the terminal outcome as
+  it does for every exit — `ExileSpellThenForEffect`'s caller hears
+  "not exiled", so Aven Interrupter plots nothing.
+- **The event is the route's, minus the landing.** A counter still
+  countered the copy (CR 701.6a), so a `Countered` route emits
+  `EventCounterSpell` exactly as it does for a card. Every other route
+  emits the ceasing-to-exist shape `ceaseToExistLocked` and
+  `prepareCopyCeasesLocked` already use: `EventZoneMove` out of the
+  stack with no `NewZone`. Never a move into a graveyard, hand or exile.
+- **"Is this a copy" reads the resolving slot too** (`stackCopyLocked`).
+  A copy whose own effect moves it has already had its `StackMeta` entry
+  taken by the resolver while its card still stands on the stack; only
+  #920's `Game.resolving` still knows it is a copy.
+
+Why not the issue's other suggestion — mark the copy's `Card` and let a
+CR 704.5e sweep remove it, the way ADR 0090 does for prepare copies: the
+brief landing is observable. A copy that sits in a graveyard until the
+next state-based check is seen by every "put into a graveyard from
+anywhere" watcher in between, and by a `then` that reads the board. The
+prepare copy keeps its sweep, because a prepare copy legitimately lives
+outside the stack (in exile, CR 722.3c); a spell copy never does. A cast
+prepare copy is `IsCopy` on the stack, so it now ceases at the exit too,
+and the sweep stays its backstop for the other zones.
+
+`exileStackObjectLocked` (`end_combat.go`, CR 724.2b) loses the `IsCopy`
+branch it carried for the same reason: both of its routes end at
+`routeCardToZoneLocked`, which now ends a copy — the resolving one
+included — so the branch was a second copy of the rule.
+
+### Decision 19. Breeches opts in to last-known information
+
+Breeches, the Blastmaker's "when you win the flip, copy that spell"
+names the spell and does not target it, so CR 608.2h governs, as
+Decision 17 describes. `breechesCopyThatSpell` sets
+`CopySpell.FromLastKnown`. A Bolt countered after the flip is won and
+before the reflexive trigger resolves is copied from the record, with
+its target, and the copy deals 3.
+
+### Cards
+
+Twincast, Grapeshot (storm), Aven Interrupter and Breeches, the
+Blastmaker — `server/internal/cards/effects/spell_copy_exit_test.go` and
+`breeches_the_blastmaker_test.go`. The engine shape is
+`server/internal/game/spell_copy_exit_test.go`; the prepare copy is
+`TestACounteredPrepareCopyCeasesToExist`.
+
+### Still not covered
+
+A copy of a commander spell still carries `IsCommander` on the stack
+(`createSpellCopyLocked` copies the whole `Card`). CR 903.3 makes the
+commander designation an attribute of the card, not a copiable value.
+The one engine reader that mattered, the CR 903.9 exit, no longer sees
+the copy; clearing the field on the copy is
+[#1363](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1363).

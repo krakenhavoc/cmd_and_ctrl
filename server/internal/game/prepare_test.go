@@ -251,9 +251,11 @@ func TestUnpreparingRemovesTheCopy(t *testing.T) {
 	}
 }
 
-// A countered copy is still not a card: it goes to the graveyard for
-// the moment CR 608.2b / 701.6a puts it there, wearing its prepare
-// spell (not the creature face, CR 722.3c), and CR 704.5e removes it.
+// A countered copy is still not a card. Since #1340 it never reaches
+// the graveyard at all: the stack exit sees StackItem.IsCopy and the
+// copy ceases to exist there (CR 707.10a), the counter still announced
+// so counter watchers see it. The CR 704.5e sweep remains the backstop
+// for a prepare copy in any other zone.
 func TestACounteredPrepareCopyCeasesToExist(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
@@ -266,13 +268,16 @@ func TestACounteredPrepareCopyCeasesToExist(t *testing.T) {
 		if err := g.counterSpellLocked(copyID, nil); err != nil {
 			t.Fatalf("counter: %v", err)
 		}
-		if c, ok := prepZoneCard(me.Graveyard, copyID); ok && c.Name != "Fixture Idea" {
-			t.Errorf("the countered copy landed as %q, want its prepare spell", c.Name)
+		if _, ok := prepZoneCard(me.Graveyard, copyID); ok {
+			t.Error("the countered copy landed in the graveyard; it ceases to exist as it leaves the stack")
 		}
 		g.runStateChecksLocked()
 	})
 	if z := zoneOfCard(g, copyID); z != "" {
 		t.Errorf("the countered copy is in %q, want nowhere", z)
+	}
+	if countered, _ := copyEvents(g, copyID); !countered {
+		t.Error("countering the prepare copy emitted no EventCounterSpell")
 	}
 }
 

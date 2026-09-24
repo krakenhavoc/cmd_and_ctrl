@@ -143,7 +143,10 @@ func (g *Game) exileEntireStackLocked() {
 
 // exileStackObjectLocked exiles one spell card on the stack, whichever
 // of the three states it is in: an ordinary stack item, the spell that
-// is resolving right now (no StackMeta entry), or a copy.
+// is resolving right now (no StackMeta entry), or a copy. The copy
+// needs no branch of its own any more (#1340): both routes below end at
+// routeCardToZoneLocked, which ends a copy instead of exiling it
+// (CR 707.10a) — a resolving copy included, through the #920 slot.
 //
 // A route that PAUSES — a commander, whose owner is offered the
 // command zone instead (CR 903.9) — leaves the card on the stack under
@@ -158,11 +161,6 @@ func (g *Game) exileStackObjectLocked(id uuid.UUID) {
 		if _, resolving, ok := g.resolvingSpellLocked(id); ok {
 			item = resolving
 		}
-	}
-	if item != nil && item.IsCopy {
-		delete(g.StackMeta, id)
-		g.ceaseToExistLocked(id)
-		return
 	}
 	if item != nil && g.StackMeta[id] != nil {
 		_ = g.exitSpellFromStackLocked(id, nil, ZoneExile, false, nil)
