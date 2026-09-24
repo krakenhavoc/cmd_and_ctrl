@@ -755,6 +755,16 @@ func (r *Runner) decide(ctx context.Context, in Input, maxThink time.Duration) o
 			out.index, out.reason, out.fallback = pi, "decline → pass", FallbackDeclinePass
 			return out
 		}
+		// #1571: no pass, but an answer the enumerator promises the
+		// engine will take. That is a declaration this seat owes with
+		// priority in hand — an attack a CR 508.1d requirement asks
+		// for — and a decline would sleep holding the table. A
+		// defender with only block moves has no always-legal answer
+		// and still declines, as before.
+		if si := SafeIndex(in.Moves); si >= 0 {
+			out.index, out.reason, out.fallback = si, "decline → always-legal answer", FallbackDeclineAlwaysLegal
+			return out
+		}
 		out.index, out.reason = Decline, d.Reason
 		return out
 	case d.Index < 0 || d.Index >= len(in.Moves):

@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"slices"
+
+	"github.com/google/uuid"
+)
 
 // layer_dependency.go is CR 613.8 — dependency ordering WITHIN one
 // layer — and CR 613.6 — what happens to an effect whose source
@@ -485,7 +489,8 @@ func sameCharacteristic(a, b Characteristic) bool {
 		sameStringSlice(a.Supertypes, b.Supertypes) &&
 		sameStringSlice(a.Colors, b.Colors) &&
 		sameStringSlice(a.Abilities, b.Abilities) &&
-		sameGrants(a.GrantedAbilities, b.GrantedAbilities)
+		sameGrants(a.GrantedAbilities, b.GrantedAbilities) &&
+		slices.Equal(a.AttackRequirements, b.AttackRequirements)
 }
 
 // sameGrants compares two layered-grant lists; nil equals empty, for

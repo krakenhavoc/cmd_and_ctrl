@@ -225,6 +225,8 @@ var carriedFixture = map[string]any{
 	"StackItem.Params":          carriedTestParams("StackItem.Params", "Artifact"),
 	"StackItem.Body":            carriedTestBodyKey.Key(),
 	"ScopedEffect.Mods":         []Mod{AddSubtypesMod("drift-ScopedEffect.Mods"), ModifyPTMod(4, 2)},
+	// #1571: a scope is a closed vocabulary too, refused when unknown.
+	"ScopedEffect.Scope": ScopeOpponentsCreatures,
 	// A duration's kind and condition are closed sets too (#1497
 	// review): restore refuses an unknown one, so an invented 4242
 	// would fail the restore rather than test the carry. Every other

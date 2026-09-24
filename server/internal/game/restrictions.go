@@ -73,11 +73,10 @@ import "github.com/google/uuid"
 //     checkBlockDeclarationLocked, and the attack half is
 //     game.AttackLimit (attack_limits.go), judged by both attack
 //     declaration verbs and the enumerator. ADR 0045 Decisions 43-45.
-//   - Goad's "can't attack you or a planeswalker you control" is
-//     CONDITIONAL on the other side of the pairing. It is not a
-//     property of one permanent, so it is not a bit: its home is
-//     canAttackTargetLocked, which already takes (attacker's
-//     controller, target). Landwalk's "can't be blocked as long as
+//   - Goad is not a restriction at all: CR 701.15b makes it two
+//     REQUIREMENTS ("attacks each combat if able and attacks a player
+//     other than the goading player if able"), judged over the whole
+//     declaration since #1571 (attack_requirements.go). Landwalk's "can't be blocked as long as
 //     defending player controls an Island" is the same shape on the
 //     block side, and since #705 it lives where ADR 0045's addendum
 //     put it: a keyword read by Game.BlockPairRefusalLocked, which

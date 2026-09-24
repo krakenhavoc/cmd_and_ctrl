@@ -748,10 +748,10 @@ const b33AlelaGoadLabel = "Alela, Cunning Conqueror — goad a creature that pla
 // b33Goad stamps the engine's goad marker on a battlefield creature:
 // `by` is the goading player. The engine surfaces the marker (the
 // client badges the creature and the context menu offers to clear
-// it) but does not enforce the must-attack constraint for anyone —
-// SetGoaded says so — so this is exactly the sandbox's goad, written
-// from an effect under the lock the effect already holds. Nothing to
-// stamp is not an error.
+// it) and, since #1571, enforces goad's two CR 701.15b requirements
+// from it (game/attack_requirements.go) — so this is exactly the
+// sandbox's goad, written from an effect under the lock the effect
+// already holds. Nothing to stamp is not an error.
 func b33Goad(g *game.Game, cardID, by uuid.UUID) {
 	if g.Battlefield == nil {
 		return

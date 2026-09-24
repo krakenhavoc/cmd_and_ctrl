@@ -143,6 +143,13 @@ const (
 	// FallbackDeclinePass — the policy declined while holding
 	// priority, so the decline became the pass it stood in for.
 	FallbackDeclinePass = "decline-pass"
+	// FallbackDeclineAlwaysLegal — the policy declined in a window
+	// with no pass on offer but an always-legal answer, so the decline
+	// became that answer. The window is a declaration the seat owes
+	// while it holds priority: the CR 508.1d attack requirement, whose
+	// checkpoint withholds the active player's pass (#1571). Declining
+	// there would sleep with priority held and stop the table.
+	FallbackDeclineAlwaysLegal = "decline-always-legal"
 )
 
 // Forced causes: what the runner did INSTEAD of dispatching the

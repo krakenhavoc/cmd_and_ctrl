@@ -118,6 +118,13 @@ func TestEveryModKindAppliesInItsLayer(t *testing.T) {
 				t.Errorf("P/T = %d/%d, want %d/%d", c.Power, c.Toughness, b.Power+3, b.Toughness-1)
 			}
 		}},
+		// #1571: one requirement per mod, attributed to the source.
+		{"addAttackRequirement", []Mod{AddAttackRequirementMod(uuid.Nil), AddAttackRequirementMod(attackRequirementTestPlayer)}, func(t *testing.T, _, c Characteristic, _ *Game) {
+			if len(c.AttackRequirements) != 2 || c.AttackRequirements[0].OtherThan != uuid.Nil ||
+				c.AttackRequirements[1].OtherThan != attackRequirementTestPlayer {
+				t.Errorf("attack requirements = %+v, want a plain one and one naming the player", c.AttackRequirements)
+			}
+		}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -140,6 +147,11 @@ func TestEveryModKindAppliesInItsLayer(t *testing.T) {
 	}
 }
 
+// attackRequirementTestPlayer is the "other than" player the
+// addAttackRequirement case names — any ID will do, the mod only
+// carries it.
+var attackRequirementTestPlayer = uuid.MustParse("00000000-0000-0000-0000-000000001571")
+
 // TestEveryModKindHasATestCase keeps the table above honest: a kind
 // added to the vocabulary without a case is a kind nothing checks.
 func TestEveryModKindHasATestCase(t *testing.T) {
@@ -147,7 +159,7 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		ModSetController: true, ModAddTypes: true, ModRemoveTypes: true, ModAddSubtypes: true,
 		ModAllCreatureTypes: true, ModSetColors: true, ModAddKeywords: true, ModRemoveKeywords: true,
 		ModLoseAllAbilities: true, ModAddRestrictions: true, ModSetBasePower: true,
-		ModSetBaseToughness: true, ModModifyPT: true,
+		ModSetBaseToughness: true, ModModifyPT: true, ModAddAttackRequirement: true,
 	}
 	for _, k := range ModKinds() {
 		if !covered[k] {

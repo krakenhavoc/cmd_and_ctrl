@@ -64,7 +64,40 @@ const (
 	ModSetBasePower     ModKind = "setBasePower"     // layer 7b
 	ModSetBaseToughness ModKind = "setBaseToughness" // layer 7b
 	ModModifyPT         ModKind = "modifyPT"         // layer 7c
+	// ModAddAttackRequirement is a CR 508.1d attack requirement
+	// (#1571): "attacks … if able", or — with Player set — "attacks a
+	// player other than Player if able". Layer 6 for the reason
+	// ModAddRestrictions is: not a characteristic, written where the
+	// text sits, only ever appended to (attack_requirements.go).
+	ModAddAttackRequirement ModKind = "addAttackRequirement" // layer 6
 )
+
+// AffectedScope is a ScopedEffect's affected set as a RULE read live at
+// every layer pass, instead of a set of objects locked when the effect
+// began (#1571). CR 611.2c locks the set only for an effect that
+// changes characteristics or control; an effect that does neither
+// "modifies the rules of the game, so it can affect objects that
+// weren't affected when that continuous effect began" — Bident of
+// Thassa's "creatures your opponents control attack this turn if able"
+// reaches a creature an opponent casts after it resolved.
+//
+// A closed vocabulary like ModKind, and an on-disk identity for the
+// same reason: never renamed, never reused. A restore point naming a
+// scope this binary does not know is refused (ErrUnknownEffectKey).
+type AffectedScope string
+
+const (
+	// ScopeNone is the ordinary record: Affected is the set.
+	ScopeNone AffectedScope = ""
+	// ScopeOpponentsCreatures is "creatures your opponents control",
+	// the "you" being the record's Controller.
+	ScopeOpponentsCreatures AffectedScope = "opponentsCreatures"
+)
+
+// KnownAffectedScope reports whether this binary can interpret s.
+func KnownAffectedScope(s AffectedScope) bool {
+	return s == ScopeNone || s == ScopeOpponentsCreatures
+}
 
 // Mod is one operation of a ScopedEffect, with its plain parameters.
 // Which fields a kind reads is documented on its constructor; the rest
@@ -117,6 +150,13 @@ type ScopedEffect struct {
 	// Affected is the CR 611.2c set, locked when the effect began.
 	Affected []AffectedObject `json:"affected"`
 
+	// Scope, when set, replaces Affected with a rule read live at
+	// every pass (#1571): the record affects whatever the rule matches
+	// now, including objects that did not exist when it began. Only
+	// for an effect that changes neither characteristics nor control
+	// (CR 611.2c) — today, an attack requirement.
+	Scope AffectedScope `json:"scope,omitempty"`
+
 	// Mods are applied each in its own layer, all at Timestamp. One
 	// record may span several layers — earthbend is layer 4, 6 and 7b
 	// — and that is what makes it ONE effect for CR 613.7.
@@ -167,6 +207,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModSetBasePower:     {layer: Layer7PT, subLayer: SubLayer7B_Set},
 	ModSetBaseToughness: {layer: Layer7PT, subLayer: SubLayer7B_Set},
 	ModModifyPT:         {layer: Layer7PT, subLayer: SubLayer7C_Modify},
+	// #1571
+	ModAddAttackRequirement: {layer: Layer6Ability},
 }
 
 // KnownModKind reports whether this binary can interpret k.
@@ -248,6 +290,14 @@ func SetBasePowerMod(n int) Mod { return Mod{Kind: ModSetBasePower, Power: n} }
 // SetBaseToughnessMod sets base toughness (layer 7b). Reads Toughness.
 func SetBaseToughnessMod(n int) Mod { return Mod{Kind: ModSetBaseToughness, Toughness: n} }
 
+// AddAttackRequirementMod is a CR 508.1d attack requirement (#1571):
+// "attacks … if able" with otherThan uuid.Nil, "attacks a player other
+// than otherThan if able" with it set. The requirement is attributed to
+// the record's source, so a refusal names the card.
+func AddAttackRequirementMod(otherThan uuid.UUID) Mod {
+	return Mod{Kind: ModAddAttackRequirement, Player: otherThan}
+}
+
 // SetBasePTMods is "has base power and toughness P/T" — both 7b
 // halves.
 func SetBasePTMods(power, toughness int) []Mod {
@@ -303,6 +353,29 @@ func (g *Game) registerScopedEffectLocked(sourceID uuid.UUID, affected []Affecte
 	if len(affected) == 0 || len(mods) == 0 {
 		return false
 	}
+	return g.appendScopedEffectLocked(sourceID, affected, ScopeNone, uuid.Nil, mods, d, label, ts)
+}
+
+// RegisterScopedRuleEffectForEffect installs a record whose affected
+// set is a live RULE (AffectedScope) rather than a locked set of
+// objects — CR 611.2c's "modifies the rules of the game" case, #1571.
+// `controller` is the effect's "you" (the controller of the resolving
+// spell or ability), which the scope reads. Reports false, registering
+// nothing, for an unknown scope or no mods.
+//
+// Caller must hold g.mu (write).
+func (g *Game) RegisterScopedRuleEffectForEffect(sourceID uuid.UUID, scope AffectedScope, controller uuid.UUID, mods []Mod, d Duration, label string) bool {
+	if scope == ScopeNone || !KnownAffectedScope(scope) || len(mods) == 0 {
+		return false
+	}
+	return g.appendScopedEffectLocked(sourceID, nil, scope, controller, mods, d, label, timeNowUnixNano())
+}
+
+// appendScopedEffectLocked is the one body both registrations share.
+// A non-nil `controller` overrides the one read off the source.
+//
+// Caller must hold g.mu (write).
+func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedObject, scope AffectedScope, controller uuid.UUID, mods []Mod, d Duration, label string, ts int64) bool {
 	for _, m := range mods {
 		if !KnownModKind(m.Kind) {
 			panic(fmt.Sprintf("game: scoped effect %q uses unknown mod kind %q", label, m.Kind))
@@ -310,6 +383,7 @@ func (g *Game) registerScopedEffectLocked(sourceID uuid.UUID, affected []Affecte
 	}
 	e := ScopedEffect{
 		Affected:  append([]AffectedObject(nil), affected...),
+		Scope:     scope,
 		Mods:      cloneMods(mods),
 		Source:    ObjectRef{ID: sourceID},
 		Timestamp: ts,
@@ -320,6 +394,9 @@ func (g *Game) registerScopedEffectLocked(sourceID uuid.UUID, affected []Affecte
 		e.Source.Epoch = src.ObjectEpoch
 		e.SourceName = src.Name
 		e.Controller = src.Controller
+	}
+	if controller != uuid.Nil {
+		e.Controller = controller
 	}
 	g.ScopedEffects = append(g.ScopedEffects, e)
 	g.layerVersion.Add(1)
@@ -409,6 +486,9 @@ func (g *Game) scopedEffectContinuousEffectsLocked() []ContinuousEffect {
 		// ControlSource, which wants the instance ID.
 		src := &Card{InstanceID: e.Source.ID, Name: e.SourceName, Controller: e.Controller}
 		applies := affectedPredicate(e.Affected)
+		if e.Scope != ScopeNone {
+			applies = scopePredicate(e.Scope, e.Controller)
+		}
 		for _, m := range e.Mods {
 			spec, ok := modKinds[m.Kind]
 			if !ok {
@@ -450,6 +530,19 @@ func affectedPredicate(set []AffectedObject) func(*Card, *Game, *Card) bool {
 		}
 		return false
 	}
+}
+
+// scopePredicate is the AppliesTo for a live-rule record (#1571). An
+// unknown scope matches nothing — unreachable, since registration and
+// restore both refuse one.
+func scopePredicate(scope AffectedScope, controller uuid.UUID) func(*Card, *Game, *Card) bool {
+	switch scope {
+	case ScopeOpponentsCreatures:
+		return func(target *Card, _ *Game, _ *Card) bool {
+			return target != nil && target.IsCreature() && target.Controller != controller
+		}
+	}
+	return func(*Card, *Game, *Card) bool { return false }
 }
 
 // modApply is the interpreter: what each kind does to a
@@ -544,6 +637,15 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 	case ModSetBaseToughness:
 		n := m.Toughness
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) { ch.Toughness = n }
+	case ModAddAttackRequirement:
+		otherThan := m.Player
+		return func(ch *Characteristic, _ *Card, _ *Game, src *Card) {
+			r := AttackRequirement{OtherThan: otherThan}
+			if src != nil {
+				r.Source, r.SourceName = src.InstanceID, src.Name
+			}
+			ch.AttackRequirements = append(ch.AttackRequirements, r)
+		}
 	case ModModifyPT:
 		p, t := m.Power, m.Toughness
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
