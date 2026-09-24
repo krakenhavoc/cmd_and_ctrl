@@ -1256,14 +1256,13 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		// is built from it.
 		// The auto-tapper must not spend what this activation has already
 		// spent: see AbilityAutoTapExclusions, which the legal-move
-		// enumerator calls too, so the two exclude one list.
-		excluded := AbilityAutoTapExclusions(cardID, ab.Cost, params.TapIDs, params.SacrificeIDs, params.DiscardIDs, exiles)
-		// #1310: a permanent tapped to waterbend is spent on the
-		// cost already, so the auto-tapper may not also tap it for
-		// the mana half (CR 118.3) — a Birds of Paradise named to
-		// Aang's waterbend cannot also make the {G} that pays the
-		// rest.
-		excluded = WithAutoTapExclusions(excluded, params.WaterbendIDs)
+		// enumerator calls too, so the two exclude one list. #1310:
+		// that includes a permanent tapped to waterbend (CR 118.3).
+		// #1422: ActivationAutoTapExclusions is also what the auto-tap
+		// preview's ?ability= branch excludes, so the plan it shows is
+		// this one. params.ExileIDs is `exiles`: the validator above
+		// refused anything else.
+		excluded := ActivationAutoTapExclusions(cardID, ab.Cost, params)
 		// #1184: the CR 601.2f pass over the ability's mana component
 		// — "Exhaust abilities of other permanents you control cost
 		// {2} less to activate" (Boom Scholar). The same function the

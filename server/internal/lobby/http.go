@@ -1409,7 +1409,9 @@ func gameCreator(c Config, w http.ResponseWriter, r *http.Request) error {
 //	                            (Helm of Obedience's "{X}", not the
 //	                            "{4}" in the card's corner). Every
 //	                            cast-shaped param above is ignored on
-//	                            this branch — an ability is not a cast.
+//	                            this branch — an ability is not a cast
+//	                            (tap_ids, sacrifice_ids and discard_ids
+//	                            are read, as the activation's own).
 //	                            Priced as ActivateCatalogAbility
 //	                            charges it (#1405): board modifiers
 //	                            and the ability's own clause.
@@ -1420,6 +1422,17 @@ func gameCreator(c Config, w http.ResponseWriter, r *http.Request) error {
 //	                            color of the creature it targets") is
 //	                            previewed at the target's price.
 //	                            Omitted, the no-target price.
+//	?tap_ids= ?sacrifice_ids= — with ?ability= (#1422), optional.
+//	?discard_ids= ?exile_ids=    The permanents and cards the
+//	?waterbend_ids=              activation names to its TapOthers,
+//	                            sacrifice, discard, exile-cards and
+//	                            waterbend components, as the
+//	                            activate_ability payload names them.
+//	                            The plan never spends them, nor the
+//	                            source when the cost taps or
+//	                            sacrifices it (the set
+//	                            ActivateCatalogAbility excludes);
+//	                            each waterbend tap also pays {1}.
 //	?exclude=<uuid>,<uuid>... — optional. Comma-separated lock-tap
 //	                            permanent IDs the auto-tapper must
 //	                            NOT consider; lets the client
@@ -1541,6 +1554,10 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 		if err != nil {
 			return err
 		}
+		params, err := abilityParamsFromPreviewQuery(r, xValue)
+		if err != nil {
+			return err
+		}
 		price, err := g.PriceActivation(p.PlayerID, cardID, idx, targets)
 		switch {
 		case errors.Is(err, game.ErrCardNotFound):
@@ -1550,8 +1567,23 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 		case err != nil:
 			return httpError(http.StatusBadRequest, "this activation cannot be priced: "+err.Error())
 		}
+		// #1422: what the activation has already SPENT is not the
+		// plan's to spend again — the source itself when the cost
+		// taps or sacrifices it, the permanents and cards named to
+		// its other components, and the waterbend taps. The same
+		// function ActivateCatalogAbility excludes with, so the preview
+		// can no longer plan a Castle Vantress's own {T} for the
+		// {2}{U}{U} of "{2}{U}{U}, {T}: Scry 2".
+		for eid := range game.ActivationAutoTapExclusions(cardID, price.Ability.Cost, params) {
+			excluded[eid] = true
+		}
+		// #1422, CR 701.67a: each waterbend tap pays {1} instead of
+		// mana — subtracted after pricing and before the Phyrexian
+		// strike, the activation's own order, by the activation's own
+		// function.
+		total := game.WaterbendReduced(price.Total, xValue, len(params.WaterbendIDs))
 		spend := game.ManaSpendForAbility(price.Source)
-		cost := strikePhyrexianForPreview(g, p.PlayerID, price.Total, spend, phyrexian)
+		cost := strikePhyrexianForPreview(g, p.PlayerID, total, spend, phyrexian)
 		// #1212: no source wish for an ability. "If mana from a
 		// Treasure was spent to activate this ability" (Forsworn
 		// Paladin, Jetmir's Fixer) is real printed text and is
@@ -1669,6 +1701,34 @@ func castParamsFromPreviewQuery(r *http.Request, xValue int) (game.CastSpellPara
 	}
 	if params.DiscardIDs, err = uuidListParam(q.Get("discard_ids"), "discard_ids"); err != nil {
 		return params, err
+	}
+	return params, nil
+}
+
+// abilityParamsFromPreviewQuery reads the ?ability= branch's named
+// cost payments off the query string (#1422), under the field names
+// the activate_ability payload uses for them. None changes the price
+// except waterbend_ids, which pays {1} per tap; all of them change
+// what the auto-tapper may spend on the mana half, exactly as they do
+// in ActivateCatalogAbility.
+func abilityParamsFromPreviewQuery(r *http.Request, xValue int) (game.ActivateAbilityParams, error) {
+	q := r.URL.Query()
+	params := game.ActivateAbilityParams{XValue: xValue}
+	for _, f := range []struct {
+		name string
+		dst  *[]uuid.UUID
+	}{
+		{"tap_ids", &params.TapIDs},
+		{"sacrifice_ids", &params.SacrificeIDs},
+		{"discard_ids", &params.DiscardIDs},
+		{"exile_ids", &params.ExileIDs},
+		{"waterbend_ids", &params.WaterbendIDs},
+	} {
+		ids, err := uuidListParam(q.Get(f.name), f.name)
+		if err != nil {
+			return params, err
+		}
+		*f.dst = ids
 	}
 	return params, nil
 }
