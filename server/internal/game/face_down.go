@@ -94,6 +94,24 @@ const (
 	// So the kind reads "an effect, not a keyword, did this", and
 	// where the object was a moment earlier is not part of it.
 	FaceDownTurned FaceDownKind = "turned"
+
+	// FaceDownHidden is CR 702.75a's hideaway exile (ADR 0091): the
+	// card "gains 'The player who controls the permanent that exiled
+	// this card may look at this card in the exile zone.'" An EXILE
+	// kind, like the first two — no CR 708.2 body, and it keeps its
+	// catalog entry for the free play that is the whole point of it.
+	//
+	// Its viewer is the one rule no other kind has: not the owner and
+	// not the card's own controller, but the CONTROLLER OF ANOTHER
+	// OBJECT, the permanent Card.HiddenBy names. So the answer follows
+	// that permanent — a Windbrisk Heights that changes hands hands the
+	// look over with it (hideawayKnowersSweepLocked) — and a player who
+	// has looked keeps looking until the card leaves exile, which is
+	// CR 406.3's "may continue to look at that card until it leaves the
+	// exile zone … even if the instruction allowing the player to do so
+	// no longer applies". A seventh reuse would get one of those wrong:
+	// `foretold` names the owner, `exiled` names nobody.
+	FaceDownHidden FaceDownKind = "hideaway"
 )
 
 // FaceDownListing is CR 708.2's LISTED characteristics: "face-down
@@ -816,6 +834,12 @@ func (g *Game) faceDownViewersLocked(c Card) []uuid.UUID {
 		return nil
 	case FaceDownForetold:
 		viewer = c.Owner
+	case FaceDownHidden:
+		// CR 702.75a: the controller of the permanent that exiled it,
+		// while that permanent is still the object that did. Gone, it
+		// names nobody new — anyone who already looked is kept by the
+		// caller's CR 406.3 rule, not re-derived here.
+		viewer = g.hiddenByControllerLocked(c)
 	default:
 		// CR 708.5: the controller of a face-down permanent may look
 		// at it. Falls back to the owner for a card that has no

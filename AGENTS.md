@@ -4293,6 +4293,28 @@ file says only WHEN the permanent becomes prepared —
 from a trigger or an ability — and what the prepare spell does. Read
 `g.IsPreparedForEffect(id)` for "if this creature isn't prepared".
 
+### Adding a hideaway card (S43+, ADR 0091)
+
+Hideaway is two linked abilities (CR 607.2a), and a card file writes
+both with shared words from
+[hideaway.go](server/internal/cards/effects/hideaway.go):
+
+```go
+Triggered: []game.TriggeredAbility{Hideaway("Windbrisk Heights", 4)},  // CR 702.75a whole
+Activated: []ActivatedAbility{{ …, Effect: func(g *game.Game, item *game.StackItem) error {
+    if !condition(g, item.Controller) { return nil }                  // "… if <condition>" — asked at RESOLUTION
+    return PlayHiddenCard{Source: HiddenRefOfActivation(item)}.Apply(NewContext(g, item))
+}}},
+```
+
+`Hideaway` looks, asks for the one card, exiles it face down as
+`FaceDownHidden` linked to the permanent OBJECT and bottoms the rest at
+random; `PlayHiddenCard` grants the free play of the card THAT object
+hid. The link is an object reference, so a triggered payoff captures
+`game.ObjectRefOf(*source)` in its `Build` (Rabble Rousing) rather than
+re-reading the source at resolution. The three Lorwyn lands are a table
+in `hideaway_lands.go`; a new land of the same shape is a row.
+
 ### Adding a creature-type card (S26+)
 
 Tribal cards come in three shapes, and the shared builders live in

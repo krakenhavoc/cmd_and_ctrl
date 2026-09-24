@@ -353,6 +353,10 @@ var cardFields = plan(
 	"Prepared", carried, "",
 	"PrepareCopy", carried, "",
 	"PreparedBy", carried, "",
+	// ADR 0091 (#1331): the hideaway link. Carried — the zero value is
+	// a legal state ("not hidden by anything"), so a restore that
+	// dropped it would say nothing and leave the card orphaned.
+	"HiddenBy", carried, "",
 	// #1199 / CR 702.26, ADR 0084. All four are the phased-out status
 	// and all four are legal zero values, so a restore that dropped
 	// them would bring a phased board back under the wrong player's

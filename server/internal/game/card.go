@@ -746,6 +746,29 @@ type Card struct {
 	// gone or unprepared. Carried by the snapshot.
 	PreparedBy PermissionCardRef
 
+	// HiddenBy is set on a card exiled face down by HIDEAWAY (CR
+	// 702.75a, ADR 0091): the permanent OBJECT — instance and CR 400.7
+	// epoch — whose hideaway exiled it. Two rules read it:
+	//
+	//   - who may look (FaceDownHidden's viewer is that permanent's
+	//     controller, faceDownViewersLocked), and
+	//   - which card is "the exiled card" of that permanent's linked
+	//     ability (CR 607.2a, HiddenCardsForEffect).
+	//
+	// Card-carried rather than read back off the event log (the
+	// effects package's exiled-with record), because the first reader
+	// is the face-down viewer rule, which answers about a Card inside
+	// the engine and has no log walk to hand; and because the link is
+	// printed on the exiled card itself ("the permanent that exiled
+	// this card"). It is exact the same way that record is since #1239:
+	// the epoch pins the incarnation, so a hideaway land that is
+	// bounced and replayed is a new object with no claim on the card
+	// its earlier self hid.
+	//
+	// Cleared by MoveCard on every move, so a card that leaves exile
+	// names nothing ever again. Carried by the snapshot.
+	HiddenBy PermissionCardRef
+
 	// Solved, Prepared and PrepareCopy live in the bool block at the
 	// end of Card, for alignment.
 

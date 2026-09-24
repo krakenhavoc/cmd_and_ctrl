@@ -345,6 +345,10 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// the link is dropped on every move, unconditionally, and a copy
 	// that came back to exile by some route names nothing.
 	c.PreparedBy = PermissionCardRef{}
+	// ADR 0091, CR 400.7: the hideaway link names the card as it sat in
+	// exile. Any move ends that object, and a card that comes back to
+	// exile by some other route was not exiled by the hideaway.
+	c.HiddenBy = PermissionCardRef{}
 	// CR 712.8: a double-faced card is FRONT face up in every zone
 	// except the battlefield and the stack. Keyed on the DESTINATION
 	// rather than the source, because that is how the rule is written
