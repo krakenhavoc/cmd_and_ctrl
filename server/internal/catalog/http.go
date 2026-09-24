@@ -14,39 +14,41 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 )
 
-// Handler returns the public catalog routes:
+// Handler returns the catalog routes:
 //
 //	GET /catalog              — every automated card + its completeness
 //	GET /catalog/image/{id}   — card art, for catalog cards only
 //
-// # These routes are deliberately unauthenticated
+// # These routes need a session
 //
-// Mounted on the top-level mux WITHOUT auth.Middleware, unlike
-// /cards/, and not behind requireDev either: the page is a public
-// showcase of what the engine does, so it has to work for somebody
-// who has never logged in. main.go mounts it; check there before
-// assuming otherwise.
+// main.go mounts both behind auth.Middleware, like /cards/. They were
+// built unauthenticated as a public showcase, and are gated because
+// AGENTS.md §1 and §8 describe the project as private and personal-use:
+// serving card art to anonymous visitors is a different posture from
+// the one the repository states. main.go's comment at the mount is the
+// record; check there before assuming otherwise. The public roadmap
+// (internal/roadmap, ADR 0092) is the page that answers "what does the
+// engine do?" without a session, and it publishes card names only.
 //
-// What makes that safe is the scope, not the content. Everything
-// served here is derived from the Scryfall bulk dump and this
-// repository's own card files, both already public. The handler
-// holds no *Lobby, no *Game and no authenticator, so there is no
-// game, seat or session state it could leak even by accident.
+// The handler itself stays free of session state. Everything served
+// here is derived from the Scryfall bulk dump and this repository's own
+// card files; the handler holds no *Lobby, no *Game and no
+// authenticator, so there is no game, seat or session state it could
+// leak even by accident.
 //
 // # Why the image route is not just /cards/{id}/image
 //
-// That route is session-gated (main.go wraps cards.Handler), and the
-// gate is worth keeping: it accepts any Scryfall UUID in the dump,
-// so unauthenticated it would be a general-purpose image proxy for
-// all ~35k cards, fetching and caching arbitrary art on demand.
+// That route accepts any Scryfall UUID in the dump, so it is a
+// general-purpose image proxy for all ~35k cards, fetching and caching
+// arbitrary art on demand.
 //
 // This route accepts only the representative printing of a card the
 // catalog registers — a few hundred UUIDs, fixed at build time and
 // already published by GET /catalog. That is exactly the set the page
-// renders and nothing beyond it, so opening it up adds no reachable
-// surface. It reuses the same ImageCache, so the two routes share one
-// disk cache and one SSRF-guarded fetch path rather than growing a
-// second.
+// renders and nothing beyond it, which still matters behind the session
+// gate, since a session is cheap to obtain. It reuses the same
+// ImageCache, so the two routes share one disk cache and one
+// SSRF-guarded fetch path rather than growing a second.
 //
 // A nil idx serves an empty catalog and 404s images — the honest
 // answer on a deployment whose dump has not been downloaded yet. A

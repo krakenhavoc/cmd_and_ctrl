@@ -1,10 +1,13 @@
 <script lang="ts">
-  // Catalog — the public list of every card this engine automates.
+  // Catalog — the list of every card this engine automates.
   //
-  // Public on purpose: no session, no dev gate, and the server route
-  // behind it is mounted outside auth.Middleware. App.svelte's auth
-  // effect lists "catalog" as a public route; without that entry a
-  // signed-out visitor would be bounced to /login.
+  // Signed-in only. The server mounts GET /catalog behind
+  // auth.Middleware (main.go says why: the repository describes itself
+  // as private and personal-use, and this page serves card art), and
+  // App.svelte's auth effect does not list "catalog" as a public route,
+  // so a signed-out visitor is sent to /login. It is not behind the dev
+  // gate: it ships in production. The public page about what the engine
+  // supports is the roadmap (ADR 0092), which carries card names only.
   //
   // The page's one job is to be honest. A card is shown as Complete
   // only where a human declared it so in the card file; anything

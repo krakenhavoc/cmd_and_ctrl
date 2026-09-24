@@ -2,7 +2,6 @@ package coverage
 
 import (
 	"fmt"
-	"regexp"
 	"sort"
 	"strings"
 
@@ -453,27 +452,25 @@ var mechanics = []Mechanic{
 // read the coverage without reading the tests.
 func Mechanics() []Mechanic { return mechanics }
 
-// matcher caches the compiled word-boundary patterns for one
-// mechanic's phrases.
-var matchers = func() map[string][]*regexp.Regexp {
-	out := map[string][]*regexp.Regexp{}
+// matchers caches the compiled word-boundary patterns for each
+// mechanic's phrases (see PhraseMatcher).
+var matchers = func() map[string]func(string) bool {
+	out := map[string]func(string) bool{}
 	for _, m := range mechanics {
-		for _, p := range m.Phrases {
-			out[m.Name] = append(out[m.Name], regexp.MustCompile(`(?i)\b`+regexp.QuoteMeta(p)+`\b`))
-		}
+		out[m.Name] = PhraseMatcher(m.Phrases)
 	}
 	return out
 }()
 
 // names reports whether a caveat names this mechanic.
 func (m Mechanic) names(caveat string) bool {
-	for _, re := range matchers[m.Name] {
-		if re.MatchString(caveat) {
-			return true
-		}
-	}
-	return false
+	match, ok := matchers[m.Name]
+	return ok && match(caveat)
 }
+
+// Names is names, exported: whether a caveat names this mechanic,
+// under the same word-boundary rule the guards apply.
+func (m Mechanic) Names(caveat string) bool { return m.names(caveat) }
 
 // Finding is one (card, mechanic, caveat) triple the guards object
 // to.
