@@ -423,8 +423,10 @@ func (r *Runner) step(ctx context.Context) bool {
 		// #687 / #1013: the policy may order the enumerator's target
 		// expansion and price the cards a cost would eat, and both are
 		// reads of the seat's own view — so for a policy with either
-		// opinion the view is built first and reused for the decision
-		// below. A policy with neither pays for nothing:
+		// opinion the view is built before the ordered enumeration and
+		// reused for the decision below — once the seat is known to
+		// have a decision at all (#1261). A policy with neither pays
+		// for nothing:
 		// enumerationOrder answers a zero Options without touching the
 		// projection, and the enumeration is byte-identical to what it
 		// was.
@@ -435,10 +437,34 @@ func (r *Runner) step(ctx context.Context) bool {
 		// therefore live on this seat's very next window, not cached
 		// from Start.
 		minThink, maxThink := r.pacingNow()
-		opts, ordering := r.enumerationOrder()
-		moves := legal.EnumerateForWithOptions(r.room.Game, r.seat, opts)
+		// #1261: whether the seat has a decision at all is asked
+		// BEFORE the view is built. Every commit wakes every seat, and
+		// most seats at a four-player table have nothing to do on most
+		// commits — no priority, no prompt, no declaration — so
+		// building the ordering view first meant a full projection per
+		// seat per commit, for a move list that came back empty. That
+		// was most of a heuristic table's CPU, and the nightly's
+		// twenty-game gate paid it on every one of ~2,500 commits.
+		//
+		// The zero-Options enumeration answers the same "is there
+		// anything?" question the ordered one does: an ordering hook
+		// ranks candidates and never adds or removes one (legal's
+		// TargetOrder / CostFuelOrder contract), so an empty list here
+		// is an empty list there. A policy with no hooks keeps this
+		// list and pays for no second enumeration.
+		moves := legal.EnumerateFor(r.room.Game, r.seat)
 		if len(moves) == 0 {
 			return true
+		}
+		opts, ordering := r.enumerationOrder()
+		if ordering.View.ID != "" {
+			// The policy ordered the expansion, so the list it decides
+			// over is the ordered one — enumerated after the view it
+			// was ordered from, exactly as before.
+			moves = legal.EnumerateForWithOptions(r.room.Game, r.seat, opts)
+			if len(moves) == 0 {
+				return true
+			}
 		}
 		// The decision, with the policy's view built from the seat's
 		// filtered projection only.
@@ -447,7 +473,7 @@ func (r *Runner) step(ctx context.Context) bool {
 			Seat:  r.seat,
 			Moves: moves,
 		}
-		if in.View.ID == "" {
+		if in.View.ID == "" && r.needsView() {
 			in.View = protocol.ViewOfGameFor(r.room.Game, r.seat.String())
 		}
 		if r.concede(ctx, in) {
@@ -549,8 +575,17 @@ func (r *Runner) step(ctx context.Context) bool {
 			}
 		}
 		r.pace(ctx, started, minThink)
-		if mv.Kind == legal.KindPass && r.shouldHoldForBlockers(in.View) {
-			r.holdForBlockers(ctx)
+		if mv.Kind == legal.KindPass && r.cfg.BlockGrace > 0 {
+			// A view-blind seat decided without one (#1261), so the
+			// block-grace check builds its own; it only reads the
+			// frame when there is a grace to hold for.
+			view := in.View
+			if view.ID == "" {
+				view = protocol.ViewOfGameFor(r.room.Game, r.seat.String())
+			}
+			if r.shouldHoldForBlockers(view) {
+				r.holdForBlockers(ctx)
+			}
 		}
 		if ctx.Err() != nil {
 			// The decision was made and paid for; the pacing hold
@@ -591,6 +626,46 @@ func (r *Runner) step(ctx context.Context) bool {
 		}
 	}
 	return true
+}
+
+// viewBlind is implemented by a policy whose Decide never reads
+// Input.View — RandomPolicy, which picks an index and nothing else.
+//
+// Unexported, so only a policy in this package can make the claim,
+// and asserted on the runner's OUTERMOST policy only, never through
+// Capability: a wrapper around a blind policy may read the view
+// itself (a model tier, an announcer), and Capability's unwrapping
+// would find the inner claim and starve the wrapper. A wrapper hides
+// the marker, which is the safe direction — the view gets built.
+type viewBlind interface {
+	decidesWithoutView()
+}
+
+// needsView reports whether this decision window must build the
+// seat's view before deciding (#1261). Only a blind policy with
+// nothing else reading the frame skips it: an Observer receives the
+// whole Input, and a Conceder or Improviser reads the view to decide
+// whether to act at all.
+//
+// It is worth a named rule because the view is the expensive half of
+// a window. A random seat decided every priority window on a frame it
+// never looked at, and on a four-random-bot table that was one full
+// projection per commit on the critical path, beside the one the room
+// builds to broadcast the commit — most of the nightly soak's runtime.
+func (r *Runner) needsView() bool {
+	if _, blind := r.policy.(viewBlind); !blind {
+		return true
+	}
+	if r.cfg.Observer != nil {
+		return true
+	}
+	if _, ok := Capability[Conceder](r.policy); ok {
+		return true
+	}
+	if _, ok := Capability[Improviser](r.policy); ok {
+		return true
+	}
+	return false
 }
 
 // outcome is what one call to decide produced: the index the runner
