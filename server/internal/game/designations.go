@@ -439,7 +439,7 @@ func (g *Game) IsSolved(cardID uuid.UUID) bool {
 
 // ClassLevelFor is the current level of the named battlefield
 // permanent, or 0 when it is not on the battlefield. Read by the
-// level-up ability's CR 716.2e condition and by the wire view.
+// level-up ability's CR 716.2a condition and by the wire view.
 //
 // Zero rather than 1 for "not found" on purpose: the caller asking is
 // asking about a permanent, and "there is no permanent" is not

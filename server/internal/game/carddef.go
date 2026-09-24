@@ -137,7 +137,7 @@ type CardDef struct {
 	DrawStep []DrawStepPermission
 
 	// CastCondition is the card's own "you may cast this only if …"
-	// (CR 307.6's legendary sorcery, and the "cast only if" family),
+	// (CR 205.4e's legendary sorcery, and the "cast only if" family),
 	// checked by CastGateLocked at announce and never at resolution.
 	// Nil for every card that prints no such clause. ADR 0073 §7.
 	CastCondition func(g *Game, controller uuid.UUID, card Card) bool

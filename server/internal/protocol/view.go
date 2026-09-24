@@ -2896,6 +2896,21 @@ type AttackTargetView struct {
 	// IS per creature — is the honest reading for a client that needs
 	// one. The field would go then, rather than grow a caveat.
 	Tax string `json:"tax,omitempty"`
+
+	// AttackLimit is how many MORE creatures may be declared attacking
+	// this target this combat under a CR 508.1c count limit — Silent
+	// Arbiter's "no more than one creature can attack each combat",
+	// Crawlspace's "no more than two creatures can attack you each
+	// combat" — after the creatures already attacking. Nil (absent)
+	// when no limit counts an attack on this target; 0 is a real
+	// answer (the limit is used up). #1533, ADR 0045 Decision 46.
+	//
+	// The engine's number (game.AttackLimitRoomForEffect), the smallest
+	// allowance among every limit that counts this target, so the
+	// client's "attack with all" picker caps its selection without
+	// re-deriving a rule (ADR 0045 §6). A pointer, not a bare int,
+	// because omitempty would otherwise drop the 0.
+	AttackLimit *int `json:"attack_limit,omitempty"`
 }
 
 // ViewOfGameFor builds a per-viewer wire snapshot. Same shape as
@@ -5021,6 +5036,10 @@ func stampCombatTargets(g *game.Game, view *GameView) {
 				Attacker: probe,
 				Target:   t.ID,
 			}}).Cost
+		}
+		// #1533: the CR 508.1c room left under any attack limit.
+		if room, limited := g.AttackLimitRoomForEffect(t.ID); limited {
+			row.AttackLimit = &room
 		}
 		view.Turn.AttackTargets = append(view.Turn.AttackTargets, row)
 	}

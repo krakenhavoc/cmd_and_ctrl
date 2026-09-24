@@ -27,7 +27,7 @@ import (
 //     IS the duration: the source leaving stops the restriction on
 //     the next query.
 //
-//  2. THE SPELL'S OWN CONDITION. CR 307.6's legendary sorcery ("you
+//  2. THE SPELL'S OWN CONDITION. CR 205.4e's legendary sorcery ("you
 //     may cast this spell only if you control a legendary creature
 //     or planeswalker"), and the "cast only if" family generally. It
 //     is declared on the card because it is printed on the card, and
@@ -153,7 +153,7 @@ func CastRestrictionsForCard(c Card) []CastRestriction {
 }
 
 // CastConditionFor returns the card's own "you may cast this only
-// if …" condition (CR 307.6 and the "cast only if" family), or nil.
+// if …" condition (CR 205.4e and the "cast only if" family), or nil.
 // Read off the CardDef under CatalogKey, so a multi-face card answers
 // for the face being cast and no other.
 func CastConditionFor(card Card) func(g *Game, controller uuid.UUID, card Card) bool {
@@ -264,7 +264,7 @@ func (g *Game) CastGateLocked(caster uuid.UUID, card Card, zone ZoneKind, params
 	if label, banSource, ok := g.castBanForbidsLocked(caster, card, zone); ok {
 		return &CantCastError{Reason: label, Source: banSource}
 	}
-	// Then the spell's own condition (CR 307.6). Last because a card
+	// Then the spell's own condition (CR 205.4e). Last because a card
 	// that is legal to cast on its own terms is still stopped by the
 	// board, and reporting the board's reason is the more useful
 	// message when both apply.

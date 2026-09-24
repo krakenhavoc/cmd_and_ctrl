@@ -225,6 +225,10 @@ type Runner struct {
 	idleMu sync.Mutex
 	idle   bool
 	wake   <-chan struct{}
+
+	// stepped is set by NewStepped and never changes: the runner has
+	// no goroutine and acts only when Step is called (#1503).
+	stepped bool
 }
 
 // Start launches a runner goroutine for seat in room. bc may be nil.

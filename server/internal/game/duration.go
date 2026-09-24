@@ -115,7 +115,7 @@ const (
 	WhileYouControlSource
 
 	// WhileYouControlSourceOnceItLands — "until that player loses
-	// control of it" (CR 702.62e, suspend's haste), said of an
+	// control of it" (CR 702.62a, suspend's haste), said of an
 	// object that is still a SPELL ON THE STACK when the effect is
 	// created.
 	//
@@ -331,7 +331,7 @@ func (g *Game) ForAsLongAsSourceTappedDuration(source uuid.UUID) (Duration, bool
 }
 
 // UntilYouLoseControlOfDuration is "until that player loses control
-// of it" (CR 611.2b, and CR 702.62e's haste), for an effect created
+// of it" (CR 611.2b, and CR 702.62a's haste), for an effect created
 // while `source` is still a spell on the stack. See
 // WhileYouControlSourceOnceItLands for the grace period that makes
 // that legal and for the CR 400.7 reading of a permanent that leaves.

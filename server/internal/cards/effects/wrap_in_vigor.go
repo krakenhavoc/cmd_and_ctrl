@@ -18,7 +18,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // What beats it, as printed: Damnation, Wrath of God and Damn say the
 // creatures can't be regenerated (CR 701.19c), which ignores every
-// shield this made and does not even spend them (CR 701.19d); a
+// shield this made and does not even spend them (CR 701.19c); a
 // sacrifice is not a destruction (CR 701.21a); and an effect that
 // exiles rather than destroys never opens the window at all. A
 // creature that regenerates is TAPPED afterwards, which is the real

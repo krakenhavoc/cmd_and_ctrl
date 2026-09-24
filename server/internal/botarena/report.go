@@ -210,6 +210,7 @@ type ConfigSummary struct {
 	Games       int           `json:"games"`
 	Seed        uint64        `json:"seed"`
 	Rotate      bool          `json:"rotate"`
+	Lockstep    bool          `json:"lockstep"` // Config.Lockstep: did the seeds fix the games, or only the deals?
 	TurnBudget  int           `json:"turn_budget"`
 	Wall        time.Duration `json:"wall_ns"`
 	Stall       time.Duration `json:"stall_ns"`
@@ -241,7 +242,7 @@ type ConfigSummary struct {
 func describeConfig(cfg Config) ConfigSummary {
 	c := ConfigSummary{
 		Seats: append([]SeatSpec(nil), cfg.Seats...), Games: cfg.Games, Seed: cfg.Seed,
-		Rotate: cfg.Rotate, TurnBudget: cfg.TurnBudget, Wall: cfg.Wall, Stall: cfg.Stall,
+		Rotate: cfg.Rotate, Lockstep: cfg.Lockstep, TurnBudget: cfg.TurnBudget, Wall: cfg.Wall, Stall: cfg.Stall,
 		MaxThink: cfg.MaxThink, Routine: cfg.Models.Routine, Frontier: frontierOf(cfg),
 		HasIndex: cfg.Index != nil, ReplayDir: cfg.ReplayDir, Revision: revision(), Note: cfg.Note,
 	}
@@ -252,6 +253,16 @@ func describeConfig(cfg Config) ConfigSummary {
 		c.Endpoint = u.URL()
 	}
 	return c
+}
+
+// Schedule names a run's seat schedule the way the report and
+// `boteval arena` print it: "lockstep" (a seed is a game) or
+// "concurrent" (a seed is a deal).
+func Schedule(lockstep bool) string {
+	if lockstep {
+		return "lockstep"
+	}
+	return "concurrent"
 }
 
 // frontierOf mirrors tiers.Models' own rule: a deployment that set
@@ -516,8 +527,8 @@ func (s Summary) Markdown() string {
 	c := s.Config
 	fmt.Fprintf(&b, "## Arena — %d games, %d seats\n\n", len(s.Games), len(c.Seats))
 	fmt.Fprintf(&b, "- **seats**: %s\n", seatLine(c.Seats))
-	fmt.Fprintf(&b, "- **games**: %d, seed %d, rotation %s, turn budget %d\n",
-		c.Games, c.Seed, onOff(c.Rotate), c.TurnBudget)
+	fmt.Fprintf(&b, "- **games**: %d, seed %d, rotation %s, turn budget %d, schedule %s\n",
+		c.Games, c.Seed, onOff(c.Rotate), c.TurnBudget, Schedule(c.Lockstep))
 	if c.Routine != "" || c.Endpoint != "" {
 		fmt.Fprintf(&b, "- **model**: %s (frontier %s) at %s, max think %s\n",
 			orDash(c.Routine), orDash(c.Frontier), orDash(c.Endpoint), c.MaxThink)

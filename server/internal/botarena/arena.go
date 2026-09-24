@@ -89,10 +89,27 @@ type Config struct {
 	Seats []SeatSpec
 	// Games is how many to play. At least one.
 	Games int
-	// Seed is the first game's seed; game i uses Seed+i, so a run is
-	// exactly reproducible and two runs with different policies can
-	// be played on the same deals.
+	// Seed is the first game's seed; game i uses Seed+i, so two runs
+	// with different policies are played on the same deals. The seed
+	// fixes the deal and the policies' randomness; whether it also
+	// fixes the GAME is Lockstep's question.
 	Seed uint64
+	// Lockstep plays every game on one goroutine: each seat's ordinary
+	// act-loop (aiseat.NewStepped / Runner.Step) in seat order, round
+	// after round, so a seed replays move for move (#1503). Off — the
+	// default — runs one runner goroutine per seat exactly as a live
+	// table does, and the scheduler picks which seat acts first after
+	// each commit, so a rerun is the same deals and not always the
+	// same games.
+	//
+	// Lockstep also drops the runner's wall-clock holds (MinThink,
+	// BlockGrace — see aiseat.NewStepped), because nobody else can act
+	// while one seat holds, and it detects a stall exactly rather than
+	// on a timer: a full round in which no seat committed anything is a
+	// table nothing will move again. Stall is unused.
+	//
+	// A model seat is still only as reproducible as its endpoint.
+	Lockstep bool
 	// Rotate moves each spec one chair along per game: spec k sits at
 	// position (k+i)%n in game i. On with more than two seats it is
 	// the difference between measuring a policy and measuring a
@@ -516,12 +533,20 @@ func Play(ctx context.Context, cfg Config, seed uint64, order []int) (GameResult
 			obs = append(obs, cfg.Runner.Observer)
 		}
 		rc.Observer = obs
-		runners = append(runners, aiseat.Start(ctx, room, p.ID, pol, rc, nil, cfg.Log))
+		if cfg.Lockstep {
+			runners = append(runners, aiseat.NewStepped(room, p.ID, pol, rc, cfg.Log))
+		} else {
+			runners = append(runners, aiseat.Start(ctx, room, p.ID, pol, rc, nil, cfg.Log))
+		}
 		seats = append(seats, SeatResult{Spec: spec, Position: pos, Policy: pol.Name(), raw: raw})
 		metersAndFunnels = append(metersAndFunnels, inst)
 	}
 
-	watchTable(ctx, room, g, cfg, &res)
+	if cfg.Lockstep {
+		stepTable(ctx, room, g, runners, cfg, &res)
+	} else {
+		watchTable(ctx, room, g, cfg, &res)
+	}
 
 	cancel()
 	for _, r := range runners {
@@ -694,20 +719,11 @@ func watchTable(ctx context.Context, room *ws.Room, g *game.Game, cfg Config, re
 			lastSeq, lastMove = seq, time.Now()
 		} else if time.Since(lastMove) > cfg.Stall {
 			res.Stalled = true
-			res.StallDump = stallDump(g, snap.Turn, cfg.Stall)
+			res.StallDump = stallDump(g, snap.Turn, fmt.Sprintf("no move for %s", cfg.Stall))
 			return
 		}
 		if ctx.Err() != nil {
-			if errors.Is(context.Cause(ctx), errWallClock) {
-				res.Stalled = true
-				res.StallDump = fmt.Sprintf("wall clock (%s) exhausted at turn %d", cfg.Wall, snap.Turn.Round)
-				return
-			}
-			// The RUN was cancelled — a Ctrl-C, or a caller's own
-			// deadline. This game neither stalled nor finished: it is
-			// a fragment, and the only honest thing to say about it
-			// is that it was interrupted.
-			res.Aborted = true
+			stopped(ctx, cfg, snap.Turn.Round, res)
 			return
 		}
 		select {
@@ -717,9 +733,77 @@ func watchTable(ctx context.Context, room *ws.Room, g *game.Game, cfg Config, re
 	}
 }
 
+// stopped classifies a game whose context ended before the game did:
+// its own wall clock ran out (a stall, reported) or the RUN was
+// cancelled (an abort, dropped). Both watchTable and stepTable end
+// this way, and the two must not disagree about which is which.
+func stopped(ctx context.Context, cfg Config, round int, res *GameResult) {
+	if errors.Is(context.Cause(ctx), errWallClock) {
+		res.Stalled = true
+		res.StallDump = fmt.Sprintf("wall clock (%s) exhausted at turn %d", cfg.Wall, round)
+		return
+	}
+	// The RUN was cancelled — a Ctrl-C, or a caller's own deadline.
+	// This game neither stalled nor finished: it is a fragment, and the
+	// only honest thing to say about it is that it was interrupted.
+	res.Aborted = true
+}
+
+// stepTable is watchTable for a lockstep game (Config.Lockstep): it
+// does not watch the seats, it IS their schedule. Each round steps
+// every seat once, in seat order, on this goroutine; the game ends at
+// the turn budget, the wall clock, or a stall.
+//
+// The stall is exact rather than timed. Every commit at the table is
+// made inside some seat's Step, so a round in which the room's
+// sequence did not move is a round in which no seat had anything it
+// was willing to do — and the next round would be the same round.
+// Waiting Config.Stall to be sure would buy nothing.
+//
+// The wall clock still bounds it: Step checks ctx before every action,
+// and a policy's decision is bounded by MaxThink.
+func stepTable(ctx context.Context, room *ws.Room, g *game.Game, runners []*aiseat.Runner, cfg Config, res *GameResult) {
+	// retired marks a seat whose Step said "exit" while the game went
+	// on — a concession. A concurrent runner's loop ends there, so a
+	// stepped one is not stepped again either.
+	retired := make([]bool, len(runners))
+	for {
+		snap := g.Snapshot()
+		if snap.State != game.StateActive || snap.Turn.Round > cfg.TurnBudget {
+			return
+		}
+		if ctx.Err() != nil {
+			stopped(ctx, cfg, snap.Turn.Round, res)
+			return
+		}
+		before := room.Seq()
+		for i, r := range runners {
+			if retired[i] || r.Step(ctx) {
+				continue
+			}
+			if ctx.Err() != nil || g.CurrentState() != game.StateActive {
+				// The game ended or ctx is done: the top of the loop
+				// says which.
+				break
+			}
+			retired[i] = true
+		}
+		if ctx.Err() != nil || g.CurrentState() != game.StateActive {
+			continue
+		}
+		if room.Seq() == before {
+			res.Stalled = true
+			res.StallDump = stallDump(g, g.Snapshot().Turn, "no move in a full lockstep round")
+			return
+		}
+	}
+}
+
 // stallDump is everything a reader needs to file the stall: where the
 // table froze, what it was waiting for, and every seat's legal moves.
-func stallDump(g *game.Game, turn game.Turn, after time.Duration) string {
+// cause is the stall's own first words — "no move for 45s", or the
+// lockstep schedule's "no move in a full lockstep round".
+func stallDump(g *game.Game, turn game.Turn, cause string) string {
 	var pending int
 	var kinds []string
 	g.ReadSnapshot(func() {
@@ -734,8 +818,8 @@ func stallDump(g *game.Game, turn game.Turn, after time.Duration) string {
 		}
 	})
 	sort.Strings(kinds)
-	return fmt.Sprintf("no move for %s at turn %d step %s priority=%v pending=%d kinds=[%s]\n%s",
-		after, turn.Round, turn.Step, turn.PriorityHolder,
+	return fmt.Sprintf("%s at turn %d step %s priority=%v pending=%d kinds=[%s]\n%s",
+		cause, turn.Round, turn.Step, turn.PriorityHolder,
 		pending, strings.Join(kinds, ", "), describeSeats(g))
 }
 

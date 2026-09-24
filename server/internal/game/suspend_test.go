@@ -304,7 +304,7 @@ func TestTheFreeCastLocksXAtZero(t *testing.T) {
 	}
 }
 
-// CR 702.62e: a creature cast this way has haste. The grant carries
+// CR 702.62a: a creature cast this way has haste. The grant carries
 // the fact and CastSpell registers the layer-6 keyword against the
 // one object it opened.
 func TestASuspendedCreatureHasHaste(t *testing.T) {
@@ -336,7 +336,7 @@ func TestASuspendedCreatureHasHaste(t *testing.T) {
 		t.Fatal("the suspended creature is not on the battlefield")
 	}
 	if !HasKeyword(&c, "haste") {
-		t.Error("a creature cast from a suspended card has no haste (CR 702.62e)")
+		t.Error("a creature cast from a suspended card has no haste (CR 702.62a)")
 	}
 	if HasSummoningSickness(&c) {
 		t.Error("the suspended creature is summoning sick despite its haste")
@@ -598,7 +598,7 @@ func hasteOn(t *testing.T, g *Game, id uuid.UUID) bool {
 	return HasKeyword(&c, "haste")
 }
 
-// CR 702.62e: "it gains haste until you lose control of it" — not
+// CR 702.62a: "it gains haste until you lose control of it" — not
 // until end of turn, which is what #659 shipped and #990 retired. The
 // cleanup step sweeps every UntilEndOfTurn effect there is, and this
 // one is still standing on the far side of it.
@@ -613,7 +613,7 @@ func TestSuspendHasteOutlivesTheTurn(t *testing.T) {
 	}
 	advancePastScopedCleanup(t, g)
 	if !hasteOn(t, g, id) {
-		t.Error("the haste was swept at the cleanup step; CR 702.62e ends it on a control change, not on a turn")
+		t.Error("the haste was swept at the cleanup step; CR 702.62a ends it on a control change, not on a turn")
 	}
 }
 
@@ -640,7 +640,7 @@ func TestSuspendHasteEndsWhenControlIsLost(t *testing.T) {
 		t.Fatal("the theft did not take")
 	}
 	if hasteOn(t, g, id) {
-		t.Error("the creature kept its suspend haste under a new controller (CR 702.62e)")
+		t.Error("the creature kept its suspend haste under a new controller (CR 702.62a)")
 	}
 
 	// Give it back. The grant is gone for good.
@@ -651,10 +651,10 @@ func TestSuspendHasteEndsWhenControlIsLost(t *testing.T) {
 		t.Fatal("the creature did not come back")
 	}
 	if hasteOn(t, g, id) {
-		t.Error("the suspend haste came back with the creature; CR 702.62e ended it the first time control left")
+		t.Error("the suspend haste came back with the creature; CR 702.62a ended it the first time control left")
 	}
 	for _, s := range g.ScopedStatics {
-		if s.Label == "Suspend — haste (CR 702.62e)" {
+		if s.Label == "Suspend — haste (CR 702.62a)" {
 			t.Error("the ended haste grant is still in the registry")
 		}
 	}

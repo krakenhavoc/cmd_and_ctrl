@@ -224,6 +224,9 @@ func TestS21ThemeDeckAristocratsPlaysThreeTurns(t *testing.T) {
 		}
 	}
 	pickPlayer(t, g, me.ID, victim.ID)
+	// #1529: Korvold's sacrifice trigger and the targeted drain are
+	// one CR 603.3b batch.
+	answerTriggerOrderLastQueuedFirst(t, g)
 	passPriorityAroundTable(t, g)
 
 	if got := counterCount(g, korvold, game.CounterPlusOne); got != 1 {

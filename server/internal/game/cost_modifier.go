@@ -180,7 +180,7 @@ type CostQuery struct {
 	Cost ParsedCost
 
 	// Ability names the ACTIVATED ABILITY being priced when this
-	// query is about an activation (CR 602.2f) rather than a cast,
+	// query is about an activation (CR 602.2b) rather than a cast,
 	// and is nil for every cast (#1184).
 	//
 	// It is the whole of what a cost modifier could not previously

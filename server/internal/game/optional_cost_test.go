@@ -181,7 +181,7 @@ func TestKickerAddsItsManaToTheCost(t *testing.T) {
 	}
 }
 
-// TestBuybackRoutesOnlyOnResolution is CR 702.27b's "as it resolves",
+// TestBuybackRoutesOnlyOnResolution is CR 702.27a's "as it resolves",
 // stated as the difference between the two exits a spell has.
 func TestBuybackRoutesOnlyOnResolution(t *testing.T) {
 	buyback := []AdditionalCost{

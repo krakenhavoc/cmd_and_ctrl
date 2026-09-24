@@ -21,7 +21,7 @@ import (
 // impending.go exists — the keyword ships as a shared constructor, so
 // the other nine Overlords and the rest of the cycle are one line
 // each. Register(Impending(5, "{1}{B}", Spec{…})) attaches all three
-// halves of CR 702.175 at once; see impending.go for why they cannot
+// halves of CR 702.176 at once; see impending.go for why they cannot
 // be declared separately.
 //
 // The trigger is one printed ability with two conditions, so it is one

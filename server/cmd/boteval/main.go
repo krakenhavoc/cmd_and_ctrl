@@ -86,7 +86,7 @@ subcommands:
 
           boteval arena --seats heuristic,heuristic [--decks a,b]
                         [--names a,b]
-                        [--games N] [--seed N] [--rotate]
+                        [--games N] [--seed N] [--rotate] [--lockstep]
                         [--turn-budget N] [--wall 30m] [--stall 0]
                         [--max-think 20s] [--model ID] [--frontier-model ID]
                         [--endpoint URL] [--out DIR] [--decision-log]

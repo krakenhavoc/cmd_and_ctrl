@@ -46,6 +46,13 @@ import (
 // counts as unblockable. An estimate that is wrong errs toward not
 // racing, which leaves the bot exactly where it was before #1409.
 //
+// NOW and NEXT count trample the other way round (#1504): a blocked
+// trampler connects for whatever its blockers do not absorb, so a Bear
+// in front of my Wurm still lets 5 through. Without it a one-Wurm edge
+// was invisible, where a one-Drake edge was not. Where that count has
+// to guess at the defender's blocks it takes a lower bound
+// (trampleBound), so it too errs toward not racing.
+//
 // The swing it sends is the SMALLEST that wins: attackers are tried
 // evasive-first (fewest possible blockers, then biggest), and the plan
 // is the shortest prefix of that order that races. Everything outside
@@ -239,73 +246,116 @@ func (p *Policy) raceNumbers(st *state, def *SeatEval, swing, blockers []*protoc
 // still getting through would kill it, the cheapest blocks it does not
 // survive, biggest attacker first, until it would live. It returns the
 // damage that connects, the defender's creatures that die blocking,
-// and every attacker of mine that was blocked at all.
+// and every attacker of mine that was blocked at all. A blocked
+// trampler connects for what its blockers do not absorb (#1504), so a
+// chump in front of one saves only the chump's toughness.
 //
 // It is an estimate of a player trying to lose as little as possible,
 // not a proof: where the greedy second step cannot get the defender
-// below lethal but the exact matching (unblockedPower) can, the answer
-// falls back to the pessimistic one — the defender loses nothing and
-// every attacker is blocked.
+// below lethal but unblockedPower — exact without trample, a lower
+// bound with it — says it might live, the answer falls back to the
+// pessimistic one: the defender loses nothing and every attacker is
+// blocked.
 func (p *Policy) blockToSurvive(st *state, def *SeatEval, swing, blockers []*protocol.CardView) (through int, deadDef, blockedMine map[string]bool) {
 	deadDef, blockedMine = map[string]bool{}, map[string]bool{}
 	survives := func(a, b *protocol.CardView) bool {
 		return couldBlock(st, def.ID, a, b) && !kills(a, b)
 	}
-	through, blockerOf := matchBlocks(swing, blockers, survives)
+	_, blockerOf := matchBlocks(swing, blockers, survives)
 	used := make([]bool, len(blockers))
-	for ai, bi := range blockerOf {
-		if bi >= 0 {
+	// left is what each attacker still connects for under the blocks
+	// chosen so far. A blocked attacker connects for nothing — unless
+	// it tramples (#1504), when it connects for whatever its blockers
+	// do not absorb. A block the blocker survives usually absorbs all
+	// of a trampler, but not when it survives by being indestructible
+	// or protected: those take lethal assignment like anything else,
+	// and the rest goes over.
+	left := make([]int, len(swing))
+	for ai, a := range swing {
+		left[ai] = a.Power
+		if bi := blockerOf[ai]; bi >= 0 {
 			used[bi] = true
-			blockedMine[swing[ai].InstanceID] = true
+			blockedMine[a.InstanceID] = true
+			left[ai] = overflowPast(a, blockers[bi], left[ai])
 		}
+		through += left[ai]
 	}
 	if through < def.Life {
 		return through, deadDef, blockedMine
 	}
-	// Chump or trade, biggest unblocked attacker first, with the least
-	// the defender can spare.
+	// Chump or trade until the defender would live: each time the one
+	// block that saves the most, biggest attacker first on a tie, with
+	// the least the defender can spare. An attacker without trample
+	// takes one blocker and stops; a trampler can take a second and a
+	// third while its overflow is still what kills.
 	order := byPower(swing)
-	for _, ai := range order {
-		if through < def.Life {
-			break
-		}
-		if blockerOf[ai] >= 0 {
-			continue
-		}
-		a := swing[ai]
-		pick := -1
-		for bi, b := range blockers {
-			if used[bi] || !couldBlock(st, def.ID, a, b) {
+	for through >= def.Life {
+		bestA, bestB, bestSave := -1, -1, 0
+		for _, ai := range order {
+			if left[ai] <= 0 {
 				continue
 			}
-			if pick < 0 || b.Power < blockers[pick].Power ||
-				(b.Power == blockers[pick].Power && st.w.CombatValue(b) < st.w.CombatValue(blockers[pick])) {
-				pick = bi
+			a := swing[ai]
+			for bi, b := range blockers {
+				if used[bi] || !couldBlock(st, def.ID, a, b) {
+					continue
+				}
+				save := left[ai] - overflowPast(a, b, left[ai])
+				switch {
+				case save > bestSave:
+				case save == bestSave && ai == bestA && cheaperBlocker(st, b, blockers[bestB]):
+				default:
+					continue
+				}
+				bestA, bestB, bestSave = ai, bi, save
 			}
 		}
-		if pick < 0 {
-			continue
+		if bestA < 0 {
+			break
 		}
-		used[pick] = true
+		a, b := swing[bestA], blockers[bestB]
+		used[bestB] = true
 		blockedMine[a.InstanceID] = true
-		if kills(a, blockers[pick]) {
-			deadDef[blockers[pick].InstanceID] = true
+		// The blocker dies only when it is assigned lethal damage: all
+		// of a non-trampler's power, or its share of a trampler's —
+		// and not when it strikes first at a trampler, since that
+		// block is counted as killing the trampler before it deals any.
+		dies := kills(a, b)
+		if hasKeyword(a, "trample") {
+			need := effectiveToughness(b)
+			if hasKeyword(a, "deathtouch") {
+				need = 1
+			}
+			dies = dies && bestSave >= need && !(firstStrikes(b) && !firstStrikes(a))
 		}
-		through -= a.Power
+		if dies {
+			deadDef[b.InstanceID] = true
+		}
+		left[bestA] -= bestSave
+		through -= bestSave
 	}
 	if through >= def.Life {
-		exact := unblockedPower(st, def.ID, swing, blockers)
-		if exact < def.Life {
-			// The greedy missed a way to live that the matching found:
-			// assume the defender finds it and loses nothing doing so.
+		best := unblockedPower(st, def.ID, swing, blockers)
+		if best < def.Life {
+			// The greedy missed a way to live that the defender may
+			// have: assume it finds one and loses nothing doing so.
 			all := map[string]bool{}
 			for _, a := range swing {
 				all[a.InstanceID] = true
 			}
-			return exact, map[string]bool{}, all
+			return best, map[string]bool{}, all
 		}
 	}
 	return through, deadDef, blockedMine
+}
+
+// cheaperBlocker is the defender's tie-break between two blocks that
+// save the same damage: the smaller body, then the one it values less.
+func cheaperBlocker(st *state, b, than *protocol.CardView) bool {
+	if b.Power != than.Power {
+		return b.Power < than.Power
+	}
+	return st.w.CombatValue(b) < st.w.CombatValue(than)
 }
 
 // crackBackPower is unblockedPower from the other side of the table,

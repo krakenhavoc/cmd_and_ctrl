@@ -290,7 +290,7 @@ var (
 	// ErrCantCast is the sentinel for a cast refused by the
 	// announce-time gate (CR 101.2, ADR 0073 §7): a "can't cast"
 	// static on a permanent (Rule of Law, Grafdigger's Cage, Rakdos)
-	// or the spell's own "cast only if" condition (CR 307.6's
+	// or the spell's own "cast only if" condition (CR 205.4e's
 	// legendary sorcery).
 	//
 	// The error actually returned is a *CantCastError carrying the

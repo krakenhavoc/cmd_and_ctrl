@@ -234,13 +234,7 @@ func (g *Game) attackLimitRefusalLocked(decls []AttackDeclaration) *AttackLimitE
 	if len(limits) == 0 || len(decls) == 0 {
 		return nil
 	}
-	before := map[uuid.UUID]uuid.UUID{}
-	for i := range g.Battlefield.Cards {
-		c := &g.Battlefield.Cards[i]
-		if c.AttackingTarget != uuid.Nil {
-			before[c.InstanceID] = c.AttackingTarget
-		}
-	}
+	before := g.currentAttackAssignmentLocked()
 	after := make(map[uuid.UUID]uuid.UUID, len(before)+len(decls))
 	for a, t := range before {
 		after[a] = t
@@ -248,23 +242,82 @@ func (g *Game) attackLimitRefusalLocked(decls []AttackDeclaration) *AttackLimitE
 	for _, d := range decls {
 		after[d.Attacker] = d.Target
 	}
-	count := func(l attackLimitSource, assign map[uuid.UUID]uuid.UUID) int {
-		n := 0
-		for _, target := range assign {
-			if l.limit.counts(target, l.source) {
-				n++
-			}
-		}
-		return n
-	}
 	for _, l := range limits {
-		nAfter := count(l, after)
-		if nAfter <= l.limit.Max || nAfter <= count(l, before) {
+		nAfter := l.countIn(after)
+		if nAfter <= l.limit.Max || nAfter <= l.countIn(before) {
 			continue
 		}
 		return g.attackLimitErrorLocked(l, decls)
 	}
 	return nil
+}
+
+// currentAttackAssignmentLocked maps every creature attacking now to
+// what it attacks — the "before" both attackLimitRefusalLocked and
+// AttackLimitRoomForEffect count against.
+//
+// Caller must hold g.mu. Reads only.
+func (g *Game) currentAttackAssignmentLocked() map[uuid.UUID]uuid.UUID {
+	out := map[uuid.UUID]uuid.UUID{}
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.AttackingTarget != uuid.Nil {
+			out[c.InstanceID] = c.AttackingTarget
+		}
+	}
+	return out
+}
+
+// countIn is how many of the attacks in `assign` this limit counts.
+func (l attackLimitSource) countIn(assign map[uuid.UUID]uuid.UUID) int {
+	n := 0
+	for _, target := range assign {
+		if l.limit.counts(target, l.source) {
+			n++
+		}
+	}
+	return n
+}
+
+// AttackLimitRoomForEffect is how many MORE creatures may be declared
+// attacking `target` this combat before an attack limit refuses the
+// declaration — the smallest allowance among every limit on the
+// battlefield that counts an attack on `target` — and whether any
+// limit counts it at all (limited == false means no limit applies, and
+// room is meaningless). #1533, ADR 0045 Decision 46.
+//
+// It is attackLimitRefusalLocked's arithmetic read the other way
+// round, for creatures that are not attacking yet: k new attackers at
+// `target` are accepted exactly when k <= room. A limit already over
+// its Max (one that arrived late, Decision 44) leaves room 0, because
+// every new attacker raises the count. It says nothing about
+// re-pointing a creature that is already attacking, which the client's
+// "attack with all" never does.
+//
+// The client's attack-with-all picker caps its selection at this
+// number, so the cap is the engine's and never re-derived (ADR 0045
+// §6).
+//
+// Caller must hold g's lock (read is enough) with fresh layers.
+func (g *Game) AttackLimitRoomForEffect(target uuid.UUID) (room int, limited bool) {
+	limits := g.activeAttackLimitsLocked()
+	if len(limits) == 0 {
+		return 0, false
+	}
+	before := g.currentAttackAssignmentLocked()
+	for _, l := range limits {
+		if !l.limit.counts(target, l.source) {
+			continue
+		}
+		r := l.limit.Max - l.countIn(before)
+		if r < 0 {
+			r = 0
+		}
+		if !limited || r < room {
+			room, limited = r, true
+		}
+	}
+	return room, limited
 }
 
 // attackLimitErrorLocked builds the refusal for a broken limit, naming
