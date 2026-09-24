@@ -142,11 +142,24 @@ type costCommanderFrame struct {
 // once it is answered the card has gone and the payment is simply no
 // longer available.
 //
+// #1427: the same holds for a payment that only TAPS a card — its own
+// {T}, a crew, a convoke or waterbend tap, "tap an untapped creature
+// you control". Nothing moves, so the destroy's prompt would even
+// survive it, but the permanent being tapped has already left as far
+// as the rules are concerned: a destroyed commander Birds of Paradise
+// tapping for {G} while its owner decides is mana from an object that
+// is gone. So the callers pass a second list, `tapping`, and it gets
+// the same answer. It is kept apart from `moving` because only a card
+// that moves is asked CR 903.9 by askCostCommanderLocked; tapping a
+// live commander asks nothing.
+//
 // Caller must hold g.mu.
-func (g *Game) refusePausedCostCardsLocked(moving []uuid.UUID) error {
-	for _, id := range moving {
-		if g.zoneChangePausedLocked(id) {
-			return ErrChoicePending
+func (g *Game) refusePausedCostCardsLocked(moving, tapping []uuid.UUID) error {
+	for _, ids := range [][]uuid.UUID{moving, tapping} {
+		for _, id := range ids {
+			if g.zoneChangePausedLocked(id) {
+				return ErrChoicePending
+			}
 		}
 	}
 	return nil

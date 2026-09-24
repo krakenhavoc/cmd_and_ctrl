@@ -1729,7 +1729,8 @@ which have no ability row at all, keep the client-side predicate.
   the battlefield, and `EmblemSpec` a slot. Not built: `EmblemSpec` copies only
   `Static` and `Triggered` today, the one card behind it also needs a
   library-look prompt that does not exist for its +1, and a slot with no user is
-  a slot that drifts.
+  a slot that drifts. **Built by #1275** — see the 2026-09-24 amendment at the
+  end of this ADR.
 - **A RESTRICTION with a duration**, and a restriction at all. No catalogued
   card declares `TimingSorcery` or `TimingYourTurnOnly` on this side, because a
   printed activation restriction says "can't be activated". The fold is written
@@ -2158,3 +2159,73 @@ make.
   `ExileCostZone` to the mana view. They are placed in the scope table:
   the count, label and zone are public, and the options fall under the zone
   rule above.
+
+## Amendment — 2026-09-24 (#1275): the activation twin's derived home, one zone over
+
+The #1208 amendment above built per-player activation timing with ONE home —
+a permanent on the battlefield, read through `CatalogAbilityKey` — and named
+the emblem as out of scope. Teferi, Temporal Archmage's −10 is the card:
+*"You get an emblem with 'You may activate loyalty abilities of planeswalkers
+you control on any player's turn any time you could cast an instant.'"*
+(Teferi's Talent grants a −12 that makes the same emblem.)
+
+### Decision 1 — it is still Decision 5's ONE home, at a second address
+
+An emblem exists in the command zone (CR 114.2), its abilities function there
+(CR 114.3), and nothing removes it but its owner leaving the game (CR 800.4a).
+So its presence IS the duration, which is the whole of Decision 5's argument
+for deriving rather than storing. Nothing new is stored: no `PlayerStatic`
+payload, no sweep, no clone or snapshot field (the emblem itself is already
+carried, ADR 0064 Decision 7). What changed is WHERE the derivation looks:
+`activationTimingVerdictLocked` folds the battlefield and then every seat's
+`Player.Emblems`, with the same fold closure, so the verdict is still three
+independent bits and the walk order still does not matter.
+
+The emblem half goes through `ActivationTimingsForCard` like the battlefield
+half. For an emblem `CatalogAbilityKey` is its `CatalogKey` — nothing can name
+an emblem to remove its abilities — so the ability-removal test costs a nil
+check and never fires. ADR 0064's #1315 amendment makes the same observation
+for the untap- and draw-step walks.
+
+### Decision 2 — the slot is `EmblemSpec.ActivationTimings`, guarded like the Spec's
+
+`EmblemSpec` gains `ActivationTimings []game.ActivationTiming`, projected by
+`buildEmblemDef` onto the emblem's `CardDef` and reachable through the
+synthetic `emblem:<oracle>` key by the existing `CatalogActivationTimings`
+hook. `Register`'s three refusals (a statement that says nothing, has no
+label, or covers nothing) moved into `checkActivationTimings`, which both
+`Spec.ActivationTimings` and `EmblemSpec.ActivationTimings` go through, so the
+two homes cannot drift in what they refuse. `checkEmblemSpec`'s "an emblem
+needs an ability" accepts a timing statement as one.
+
+`Covers` receives the emblem as `q.Source`, so "you" is `q.Source.Controller`
+— the emblem's owner, which never changes. The constructor is
+`effects.LoyaltyAbilitiesOfYourPlaneswalkersAtInstantSpeed`:
+`ThisSourcesLoyaltyAbilitiesAtInstantSpeed`'s three narrowings with the
+self-reference (CR 201.5) widened to "a planeswalker whose controller is the
+emblem's owner, activated by that player".
+
+### Decision 3 — no reader changes, and CR 606.3's count is not the window
+
+Decision 7's four callers — `ActivateCatalogAbility`,
+`legal.abilityMovesForSource`, `protocol.viewOfActivatedAbilities`
+(`timing_closed`) and the sandbox `ActivateLoyalty` — already ask
+`ActivationTimingOpenLocked`, so all four see the emblem without an edit. The
+wire does not change.
+
+The emblem opens the WINDOW. CR 606.3's other half, one loyalty ability per
+planeswalker per turn, is `Game.LoyaltyActivatedThisTurn`, read after the
+window in both activation paths and in the enumerator. It still holds on every
+turn the emblem opens, for each planeswalker separately.
+
+### Out of scope, stated
+
+- **Teferi's Talent's granted −12.** The emblem it makes is this one, but the
+  ability lives on the ENCHANTED planeswalker, and a static that grants an
+  activated ability to another permanent is the open "Abilities granted to
+  other permanents" seam. The card ships with its draw trigger and a caveat.
+- **Other emblem timing statements.** None is printed that is not this one;
+  the constructors cover what the cards say.
+
+Proof card: Teferi, Temporal Archmage (`full`). Tracker
+[#883](https://github.com/krakenhavoc/cmd_and_ctrl/issues/883).

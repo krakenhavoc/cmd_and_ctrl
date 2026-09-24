@@ -47,9 +47,10 @@ package game
 //     the ability is removed and does nothing, so the prompt is
 //     dropped and no item reaches the stack.
 //   - the CR 707.10c "you may choose new targets for the copy"
-//     re-target (copyResume). Empty set ⇒ the choice has become
-//     impossible, which is the same state CopySpellForEffect handles
-//     at queue time: the copy is created keeping the original's
+//     re-target (copyResume), for a spell copy or an ability copy.
+//     Empty set ⇒ the choice has become impossible, which is the same
+//     state offerCopyTargetsLocked handles at queue time: the copy is
+//     created keeping the original's
 //     targets. It is NOT dropped — the copy exists either way, and
 //     losing it would be a second bug in place of the first.
 //
@@ -89,7 +90,7 @@ func (g *Game) refreshTargetChoicesLocked() {
 			src = SourceObject(c.pickTargetResume.source.Controller, &c.pickTargetResume.source)
 		case c.copyResume != nil:
 			spec = c.copyResume.spec
-			src = SourceSnapshot(c.copyResume.controller, SourceCharacteristics(&c.copyResume.src))
+			src = g.copyTargetSourceLocked(c.copyResume)
 		}
 		if spec == nil {
 			continue
@@ -106,6 +107,10 @@ func (g *Game) refreshTargetChoicesLocked() {
 	}
 	for _, cf := range keepOriginalTargets {
 		item := cf.item
-		g.createSpellCopyLocked(cf.src, &item, cf.controller, item.Targets)
+		// createCopyLocked, not the spell builder: the frame may be an
+		// ABILITY copy's (#1223), whose `src` is the source permanent,
+		// and the spell builder would put a spell copy of that card on
+		// the stack (#1449).
+		g.createCopyLocked(cf.src, &item, cf.controller, item.Targets)
 	}
 }

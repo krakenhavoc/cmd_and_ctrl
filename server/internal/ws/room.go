@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -81,6 +82,25 @@ type Room struct {
 	// can set it from inside an ApplyExternal fn. See host.go.
 	hostMu sync.Mutex
 	host   uuid.UUID
+
+	// lastRestorePoint is the seq and wall time of this room's most
+	// recently WRITTEN restore point (persist.go), so that a shutdown
+	// census (#524) can report how far a live table has drifted from
+	// what disk holds without re-reading or re-marshalling the file.
+	// Guarded by mu, like seq: set only inside writeRestorePointLocked
+	// on a successful write, and by restoreOne at boot (before the
+	// room is registered, so no lock is needed there). The zero value
+	// (a zero At) means "no restore point has ever been written" —
+	// legitimate for a brand-new room and read that way by
+	// ShutdownReport.
+	lastRestorePoint restorePointRecord
+}
+
+// restorePointRecord is Room's bookkeeping about its own last written
+// restore point. See the lastRestorePoint field comment above.
+type restorePointRecord struct {
+	Seq uint64
+	At  time.Time
 }
 
 // undoEntry is one slot on Room.undoStack — the pre-action game

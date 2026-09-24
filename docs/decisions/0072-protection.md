@@ -766,11 +766,92 @@ instance-ID rule alone gets wrong are right, and each has a test:
 - **Unstamped items** from a pre-#1418 snapshot keep the instance-ID
   rule, and with it both of the imprecisions above. That is a
   compatibility path, not a new gap.
-- **The re-target prompt for a COPY of an ability**
+- ~~**The re-target prompt for a COPY of an ability**
   (`abilitySourceCardLocked`, `server/internal/game/ability_copy.go`)
   still judges its picks against the source's current-zone card. The
   copy frame carries a `Card`, not a `Characteristic`. Its comment
-  now says so. Filed as [#1449](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1449).
+  now says so. Filed as [#1449](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1449).~~
+  **Closed by #1449**, the amendment below.
 - **Hexproof from a quality** is not implemented as a keyword. When it
   is, it reads `TargetSource.Characteristics()` like protection does,
   so it will get the last-known source for free.
+
+## Amendment (2026-09-24, #1449): an ability copy's new targets are judged against the departed source as it last existed
+
+Issue [#1449](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1449),
+the copy half the #1429 amendment above left open. When an ability is
+copied and the copy's controller may choose new targets (CR 707.10c,
+which is CR 115.7c by reference), three places judge the new targets:
+
+1. the **offer**, which computes the prompt's legal set
+   (`offerCopyTargetsLocked`, `server/internal/game/spell_copy.go`);
+2. the **#809 refresh**, which re-reads an open prompt's legal set at
+   every state check (`refreshTargetChoicesLocked`,
+   `server/internal/game/trigger_target_timing.go`);
+3. the **answer**, the CR 115.7 check on the chosen targets
+   (`resolveCopyTargetsLocked`, `spell_copy.go`).
+
+All three judged against the copy frame's `src`. For an ability copy
+that is `abilitySourceCardLocked(item)`: the source looked up in its
+current zone. Once the source had left the battlefield, that was its
+graveyard card, a new object with printed characteristics (CR 400.7),
+not the source as it last existed (CR 608.2h). So a copy of an ability
+whose source was painted red and then died could be pointed at a
+pro-red creature, and a copy whose printed-red source was made
+colourless before it died could not. The original's CR 608.2b re-check
+had been right since #1429, so the two disagreed about the same source.
+
+**Decision.** One function, `copyTargetSourceLocked(cf *copyFrame)`
+(`spell_copy.go`), is the `TargetSource` for all three places. For an
+ABILITY copy whose source `departedAbilitySourceLocked` finds a record
+for, it returns `SourceSnapshot(controller,
+lastKnownSourceCharacteristics(rec))`. That is the read
+`stackItemSourceLocked` makes for the original, from the same
+`StackItem.SourceObject` (#1418): the frame keeps a value copy of the
+original's item, and `createAbilityCopyLocked` gives the copy that same
+`SourceObject`, so the prompt, the answer and the copy's own CR 608.2b
+re-check at resolution all name the same object. Otherwise it returns a
+snapshot of the frame's `src`, as before. A new field on `copyFrame`
+(the issue's suggested `srcChars`) was not needed.
+
+The read happens at each check rather than being frozen at the offer.
+So a source that leaves while the prompt is open is judged as it last
+existed when the prompt is refreshed and answered.
+
+What does not change:
+
+- **A spell copy** is judged against the copied spell. The guard is
+  `cf.item.Kind != StackItemSpell`, the same one `stackItemSourceLocked`
+  has, for the same reason: a spell's source is the spell, and a spell
+  item carries no `SourceObject`, so without the guard it would reach
+  `departedAbilitySourceLocked`'s unstamped instance-ID fallback and
+  could be read as the permanent its card was earlier in the turn.
+- **A live source**, and an ability whose source has no record, keep
+  the snapshot of `src`. At the offer that replaces
+  `SourceObject(controller, &src)`. The two are the same for legality:
+  `TargetSource.Characteristics()` answers `SourceCharacteristics(Object)`
+  for the one and the snapshot for the other, and nothing else reads
+  `TargetSource.Object`.
+
+**Fixed along the way.** When the #809 refresh finds an open copy prompt
+with nothing left to offer, it withdraws the prompt and creates the copy
+with the original's targets. It called `createSpellCopyLocked` for every
+copy frame, so an ability copy's frame put a SPELL copy of the source
+permanent's card on the stack. The refresh now calls `createCopyLocked`,
+the one branch on `item.Kind` that the offer and the answer already use.
+The LKI read above makes this path easier to reach, because the refresh
+can now narrow a set that the old read left open.
+
+**Proof.** No catalog caveat named this gap. The proof is #1429's line
+through real cards, with a real copy effect: Murderous Redcap's enter
+trigger targets a creature, Cerulean Wisps turns the Redcap blue in
+response, the Redcap dies (black-red again in the graveyard), and
+Strionic Resonator copies the trigger.
+
+| Copy's new target | Before (graveyard card, black-red) | After (last known, blue) |
+|---|---|---|
+| a creature with protection from red | not offered, refused | offered, 2 damage |
+| a creature with protection from blue | offered | not offered, refused |
+
+**Still open.** Nothing on this path. Hexproof from a quality is still
+not a keyword (the #1429 amendment's last bullet).

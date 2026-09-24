@@ -357,3 +357,59 @@ func TestSandboxActivateLoyaltyReadsTheTimingStatement(t *testing.T) {
 		t.Errorf("with the statement live: got %v, want nil", err)
 	}
 }
+
+// --- the emblem home (#1275) ------------------------------------------
+
+// giveTimingEmblem puts an emblem keyed `EmblemKey(sourceOracle)` into
+// `owner`'s command zone directly — the object CreateEmblemForEffect
+// would make, without a catalog source card to resolve from.
+func giveTimingEmblem(g *Game, owner *Player, sourceOracle string) {
+	if owner.Emblems == nil {
+		owner.Emblems = newZone(ZoneCommand, owner.ID)
+	}
+	owner.Emblems.PushTop(Card{
+		InstanceID: uuid.New(),
+		Name:       "Test emblem",
+		OracleID:   EmblemKey(sourceOracle),
+		Owner:      owner.ID,
+		Controller: owner.ID,
+	})
+}
+
+// CR 114.3: an emblem's statement speaks from the command zone. The
+// walk used to visit the battlefield only, so the same statement a
+// permanent makes was silent on an emblem — Teferi, Temporal
+// Archmage's −10 had nowhere to put its text.
+func TestActivationTimingGrantFromAnEmblem(t *testing.T) {
+	g := newActiveGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	advanceTo(t, g, StepUpkeep)
+	const source = "test-activation-timing-emblem-source"
+
+	// "Loyalty abilities of planeswalkers you control": the emblem's
+	// owner is its controller and the "you".
+	withCatalogActivationTimings(t, EmblemKey(source), ActivationTiming{
+		Label:  "You may activate loyalty abilities of planeswalkers you control on any player's turn any time you could cast an instant.",
+		Timing: TimingFlash,
+		Covers: func(q ActivationQuery) bool {
+			return q.Ability.Loyalty && q.Card.Controller == q.Source.Controller &&
+				q.Controller == q.Source.Controller
+		},
+	})
+	mine := activationTimingSource(g, me, "My Walker", "test-activation-timing-emblem-mine")
+	theirs := activationTimingSource(g, opp, "Their Walker", "test-activation-timing-emblem-theirs")
+	loyalty := ActivationAbility{Label: "+1: …", Loyalty: true}
+
+	if activationOpen(t, g, me, mine, loyalty) {
+		t.Fatal("setup: a loyalty ability is open in upkeep with no emblem")
+	}
+	giveTimingEmblem(g, me, source)
+	if !activationOpen(t, g, me, mine, loyalty) {
+		t.Error("CR 114.3: the emblem's statement did not open its owner's loyalty ability")
+	}
+	// The emblem is its OWNER's: it says nothing about an opponent's
+	// planeswalker, activated by that opponent.
+	if activationOpen(t, g, opp, theirs, loyalty) {
+		t.Error("an emblem opened a loyalty ability for a player who does not have it")
+	}
+}
