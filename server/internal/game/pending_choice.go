@@ -2877,6 +2877,7 @@ func (g *Game) finishPickTargetLocked(f *pickTargetFrame) {
 		return
 	}
 	stampTriggerContext(item, TriggeredAbility{Watches: f.watches}, f.tc)
+	stampTriggerSource(item, f.source, f.tc)
 	item.Targets = append([]TargetRef(nil), f.picked...)
 	item.Modes = append([]int(nil), f.modes...)
 	item.targetSpec = f.spec

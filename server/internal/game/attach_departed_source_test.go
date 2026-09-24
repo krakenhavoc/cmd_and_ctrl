@@ -138,9 +138,10 @@ func TestAttachSourceForEffectRefusesANewObjectWithTheSameID(t *testing.T) {
 	}
 }
 
-// The epoch half is asked only of an ACTIVATED item, because those are
-// the only items whose announce path stamps one. A trigger reaching
-// the same primitive gets the presence test and nothing worse.
+// A trigger with NO source-object stamp — restored from a snapshot
+// written before #1418, the only way one exists now — keeps the rule it
+// was put on the stack under: the presence test and nothing worse. A
+// stamped trigger gets the full CR 400.7 check (source_object_test.go).
 func TestAttachSourceForEffectAsksTheEpochOnlyOfAnActivatedItem(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
