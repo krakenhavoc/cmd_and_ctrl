@@ -120,6 +120,52 @@ func TestDispatchActivateManaAbilityCarriesTapOthersPayment(t *testing.T) {
 	}
 }
 
+func TestDispatchActivateAbilityCarriesTapOthersPayment(t *testing.T) {
+	g := newGame(t)
+	p := g.Seats[g.Turn.PriorityHolder]
+	sourceID, bearID := uuid.New(), uuid.New()
+	g.Battlefield.PushTop(game.Card{
+		InstanceID: sourceID, Name: "Station", TypeLine: "Artifact",
+		Owner: p.ID, Controller: p.ID,
+		ActivatedAbilities: []game.ActivatedAbilityShape{{
+			Label: "Tap a creature: do something",
+			Cost: game.AbilityCost{TapOthers: &game.TapOthersCost{
+				Count: 1,
+				Filter: &game.TargetSpec{
+					Mode: "permanent", Zones: []game.ZoneKind{game.ZoneBattlefield}, Min: 1, Max: 1,
+					CardOK: func(_ *game.Game, _ uuid.UUID, c game.Card, _ game.ZoneKind) bool { return c.IsCreature() },
+				},
+			}},
+			Effect: func(*game.Game, *game.StackItem) error { return nil },
+		}},
+	})
+	g.Battlefield.PushTop(game.Card{
+		InstanceID: bearID, Name: "Bear", TypeLine: "Creature — Bear", Power: 2, Toughness: 2,
+		Owner: p.ID, Controller: p.ID,
+	})
+	abilityIndex := 0
+
+	a, err := Decode(string(TypeActivateAbility), p.ID.String(), params(t, map[string]any{
+		"source_card_id": sourceID.String(),
+		"ability_index":  abilityIndex,
+		"tap_ids":        []string{bearID.String()},
+	}))
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if err := Dispatch(g, a); err != nil {
+		t.Fatalf("Dispatch: %v", err)
+	}
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == bearID && !g.Battlefield.Cards[i].Tapped {
+			t.Error("tap-others payment was not tapped")
+		}
+	}
+	if len(g.StackMeta) != 1 {
+		t.Errorf("stack metadata has %d items, want 1", len(g.StackMeta))
+	}
+}
+
 func TestDispatchPlayCard(t *testing.T) {
 	g := newGame(t)
 	p := g.Seats[0]

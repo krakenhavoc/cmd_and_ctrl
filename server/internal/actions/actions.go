@@ -1201,6 +1201,14 @@ func dispatch(g *game.Game, a Action) error {
 				}
 				sacIDs = append(sacIDs, id)
 			}
+			tapIDs := make([]uuid.UUID, 0, len(p.TapIDs))
+			for _, raw := range p.TapIDs {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("activate_ability tap_ids: %w", err)
+				}
+				tapIDs = append(tapIDs, id)
+			}
 			crewIDs := make([]uuid.UUID, 0, len(p.CrewIDs))
 			for _, raw := range p.CrewIDs {
 				id, err := uuid.Parse(raw)
@@ -1259,6 +1267,7 @@ func dispatch(g *game.Game, a Action) error {
 			}
 			return g.ActivateCatalogAbility(a.Player, srcID, *p.AbilityIndex, game.ActivateAbilityParams{
 				SacrificeIDs:     sacIDs,
+				TapIDs:           tapIDs,
 				CrewIDs:          crewIDs,
 				CounterSourceIDs: counterIDs,
 				CounterCounts:    p.CounterCounts,
