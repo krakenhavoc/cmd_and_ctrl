@@ -285,6 +285,15 @@ it. The DEBT-signal argument held: `canonicalKeywords` gained
 quality the grammar cannot parse still mints no token and still
 flags the card.
 
+*Update, 2026-09-24 (#1417):* the damage half of protection now
+judges a source that left the battlefield *before* its damage event
+by the characteristics it had as it last existed there. It no longer
+uses its graveyard card. See
+[ADR 0072's 2026-09-24 amendment](0072-protection.md) and
+[ADR 0056 Decision 12](0056-infect-wither-toxic.md). This settles
+the "needs a last-known-information lookup" half of Decision 7's
+damage paragraph.
+
 **Indestructible joined the table separately, in S25**
 ([#380](https://github.com/krakenhavoc/cmd_and_ctrl/pull/380),
 `server/internal/game/indestructible.go`). It is in this family by

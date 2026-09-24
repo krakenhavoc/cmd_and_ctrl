@@ -22,8 +22,10 @@ import (
 // A CR 614 replacement, and three of its four clauses are the whole
 // card:
 //
-//   - "red or artifact SOURCE YOU CONTROL" — read off the source
-//     permanent's post-layer characteristic, so an artifact creature
+//   - "red or artifact SOURCE YOU CONTROL" — read off the source's
+//     post-layer characteristics as the damage event snapshotted them
+//     (as it last existed, for a permanent that has already left —
+//     #1417, CR 608.2h), so an artifact creature
 //     an effect has made blue still qualifies (it is an artifact) and
 //     a creature an effect has made red qualifies too. A source you
 //     do not control never does, which is what keeps the enchantment

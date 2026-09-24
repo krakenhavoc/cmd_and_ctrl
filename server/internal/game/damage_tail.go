@@ -279,11 +279,11 @@ func (g *Game) effectDamageTailLocked(kind damageTailKind, sourceID uuid.UUID, o
 	if sourceID == uuid.Nil {
 		return t
 	}
-	// #662: unlike deathtouch and lifelink, the LKI is read from
-	// WHATEVER ZONE holds the source. A Lightning Bolt is on the
-	// stack while it deals its damage and has never been on the
-	// battlefield, and its colour is exactly what CR 702.16e asks
-	// about.
+	// #662: the LKI starts from WHATEVER ZONE holds the source. A
+	// Lightning Bolt is on the stack while it deals its damage and has
+	// never been on the battlefield, and its colour is exactly what
+	// CR 702.16e asks about. A departed permanent overrides it below
+	// (#1417).
 	t.sourceLKI = g.damageSourceLKILocked(sourceID)
 	if src := findBattlefieldCard(g, sourceID); src != nil && (obj == nil || src.ObjectEpoch == obj.Epoch) {
 		t.deathtouch = HasKeyword(src, "deathtouch")
@@ -295,6 +295,21 @@ func (g *Game) effectDamageTailLocked(kind damageTailKind, sourceID uuid.UUID, o
 	rec, ok := g.departedDamageSourceLocked(sourceID, obj)
 	if !ok {
 		return t
+	}
+	// #1417, CR 608.2h: the characteristics CR 702.16e protection and
+	// every "damage from a <colour> source" matcher read are the
+	// departed object's too, not the card's in the zone it went to. A
+	// creature painted red that dies deals red damage; a printed-red
+	// creature made colourless deals colourless damage. The same
+	// record the keywords come from, so the two can never disagree
+	// about which object dealt the damage — and a card that has moved
+	// on (bounced and then cast, so a SPELL now) has no matching
+	// record and keeps the current-zone read above.
+	t.sourceLKI = copyCharacteristic(&rec.Characteristic)
+	if t.sourceLKI.Controller == uuid.Nil {
+		// SourceCharacteristics' rule: the controller rides the
+		// snapshot (CR 702.16k reads it), and the record has it.
+		t.sourceLKI.Controller = rec.Controller
 	}
 	// The record's Characteristic is Effective() as it last stood, so
 	// its ability tokens are exactly what HasKeyword read off the live
