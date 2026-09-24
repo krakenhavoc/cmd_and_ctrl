@@ -649,6 +649,14 @@ func (g *Game) DealDamageToPlayerForEffect(source, playerID uuid.UUID, amount in
 // dealt and `then` runs with zero (CR 800.4a, #808). The batch form
 // skips both rather than failing on them.
 func (g *Game) DealDamageToPlayerThenForEffect(source, playerID uuid.UUID, amount int, then func(g *Game, dealt int) error) error {
+	return g.dealDamageToPlayerLocked(source, nil, playerID, amount, then)
+}
+
+// dealDamageToPlayerLocked is DealDamageToPlayerThenForEffect's body,
+// with the source OBJECT when the caller knows it (#1396,
+// DealDamageFromObjectForEffect). obj only changes where the tail reads
+// the source's lifelink from; see effectDamageTailLocked.
+func (g *Game) dealDamageToPlayerLocked(source uuid.UUID, obj *ObjectRef, playerID uuid.UUID, amount int, then func(g *Game, dealt int) error) error {
 	if amount <= 0 {
 		// Not an event at all — "deals 0 damage" deals no damage
 		// (CR 120.8) and fires no window. The continuation is still an
@@ -697,7 +705,7 @@ func (g *Game) DealDamageToPlayerThenForEffect(source, playerID uuid.UUID, amoun
 		// answered after the source has left still credits the life
 		// it dealt. Still no actor and no CR 903.10a commander tally:
 		// those are combat-damage business.
-		damageTail: g.effectDamageTailLocked(damageTailPlayer, source),
+		damageTail: g.effectDamageTailLocked(damageTailPlayer, source, obj),
 	}
 	ev.damageTail.then = then
 	_, err := g.damageThroughReplacementsLocked(ev)
@@ -760,6 +768,13 @@ func (g *Game) DealDamageToCreatureForEffect(source, cardID uuid.UUID, amount in
 // much life" is the sentence this exists for; a card that only deals
 // the damage keeps using DealDamageToCreatureForEffect.
 func (g *Game) DealDamageToCreatureThenForEffect(source, cardID uuid.UUID, amount int, then func(g *Game, dealt int) error) error {
+	return g.dealDamageToPermanentLocked(source, nil, cardID, amount, then)
+}
+
+// dealDamageToPermanentLocked is DealDamageToCreatureThenForEffect's
+// body, with the source OBJECT when the caller knows it (#1396). The
+// sibling of dealDamageToPlayerLocked.
+func (g *Game) dealDamageToPermanentLocked(source uuid.UUID, obj *ObjectRef, cardID uuid.UUID, amount int, then func(g *Game, dealt int) error) error {
 	if amount <= 0 {
 		if then != nil {
 			return then(g, 0)
@@ -781,7 +796,7 @@ func (g *Game) DealDamageToCreatureThenForEffect(source, cardID uuid.UUID, amoun
 		// #711: it carries the source's CR 702.2b deathtouch and
 		// CR 702.15b lifelink, snapshotted here so a prompt answered
 		// after the source has died still applies what it dealt with.
-		damageTail: g.effectDamageTailLocked(damageTailPermanent, source),
+		damageTail: g.effectDamageTailLocked(damageTailPermanent, source, obj),
 	}
 	ev.damageTail.then = then
 	// Through the permanent-aware tail: a creature marks damage, a
@@ -791,6 +806,38 @@ func (g *Game) DealDamageToCreatureThenForEffect(source, cardID uuid.UUID, amoun
 	// planeswalker.
 	_, err := g.damageThroughReplacementsLocked(ev)
 	return err
+}
+
+// DealDamageFromObjectForEffect deals damage from a named permanent
+// OBJECT (#1396, CR 400.7 / 608.2h) to a player or to a battlefield
+// permanent — the target is dispatched exactly as the effects package's
+// DealDamage primitive does, and a target that is neither deals nothing.
+//
+// The difference from the instance-ID entry points is only where the
+// source's lifelink and deathtouch come from. While `source` is still
+// on the battlefield as that object, they are read live. Once it has
+// left, they are read off that object's last-known record — even if
+// the card has since come back, because the permanent on the
+// battlefield then is a new object that dealt nothing. Warstorm Surge
+// is the case: the creature that entered is blinked in response, and
+// the damage is the departed creature's, with the departed creature's
+// keywords.
+//
+// Use it whenever the damage source is an object the effect already
+// names by ref (effects.Context.Trigger().Object.Ref()). An instance ID
+// alone keeps using DealDamageToPlayerForEffect /
+// DealDamageToCreatureForEffect, which read the most recent departed
+// object instead (departedDamageSourceLocked).
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) DealDamageFromObjectForEffect(source ObjectRef, target uuid.UUID, amount int) error {
+	if g.playerByIDLocked(target) != nil {
+		return g.dealDamageToPlayerLocked(source.ID, &source, target, amount, nil)
+	}
+	if findBattlefieldCard(g, target) != nil {
+		return g.dealDamageToPermanentLocked(source.ID, &source, target, amount, nil)
+	}
+	return nil
 }
 
 // DealDamageEachThenForEffect is the batch form: `source` deals

@@ -22,13 +22,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // it existed) — so an anthem, a counter effect, or persist itself once
 // it lands all count. A Redcap that has left the battlefield before the
 // trigger resolves still deals the damage, equal to its last-known power
-// (#1379).
-//
-// Declared simplification: a Redcap that has LEFT deals that damage as
-// a plain source — the damage tail reads lifelink and deathtouch off
-// the battlefield only (ADR 0056 Decision 2, step 4; #1396), so a Redcap
-// wearing a Basilisk Collar that is sacrificed in response pings
-// without deathtouch or lifelink. Weaker than printed.
+// (#1379), and with the deathtouch and lifelink it had as it last
+// existed (#1396): a Redcap wearing a Basilisk Collar that is sacrificed
+// in response still pings with both. The damage names the Redcap by
+// OBJECT (DealDamage.SourceObject), so a Redcap that has already come
+// back (a blink in response, or persist once it exists) is a new object
+// whose keywords are not the departed one's (CR 400.7).
 //
 // "Any target" is the full CR 115.4 slot: a player, a creature, a
 // planeswalker or a battle.
@@ -53,7 +52,6 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
 			"Persist is not implemented — the Redcap does not come back with a -1/-1 counter when it dies, which is the half of the card most decks play it for.",
-			"If the Redcap has left the battlefield before its enters trigger resolves, it still deals damage equal to its last power, but without any lifelink or deathtouch it had.",
 		},
 		Triggered: []game.TriggeredAbility{
 			Targeting(
@@ -63,11 +61,11 @@ func init() {
 					if !ok || len(item.Targets) == 0 {
 						return nil
 					}
-					power := redcap.Power
+					ref := ctx.Trigger().Object.Ref()
 					return DealDamage{
-						Source: item.SourceCardID,
-						Target: item.Targets[0].ID,
-						Amount: power,
+						SourceObject: &ref,
+						Target:       item.Targets[0].ID,
+						Amount:       redcap.Power,
 					}.Apply(ctx)
 				}),
 				TargetAny(),

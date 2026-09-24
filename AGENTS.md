@@ -3790,6 +3790,11 @@ capture a power in `Build` or look the card up by ID at resolution.
 Check `info.Left` before acting ON the permanent: last-known
 information is read, never written to. See
 [ADR 0018's 2026-09-24 amendment](docs/decisions/0018-triggers-on-the-stack.md).
+When that permanent is also the DAMAGE SOURCE ("it deals damage equal
+to its power"), name it by object — `ref := ctx.Trigger().Object.Ref()`
+then `DealDamage{SourceObject: &ref, …}` — so a departed source keeps
+its lifelink and deathtouch and a returned card's new object is never
+mistaken for it (#1396, [ADR 0056's 2026-09-24 amendment](docs/decisions/0056-infect-wither-toxic.md)).
 
 **Tests** — `castCatalogSpell` + `passPriorityAroundTable` settles
 the spell *and* the trigger it queues (the helper waits for

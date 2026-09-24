@@ -27,15 +27,27 @@ import (
 // (player eliminated, card moved off the battlefield) silently
 // emits EventEffectError and returns nil so the rest of a composed
 // effect can still run.
+//
+// SourceObject, when set, names the source as an OBJECT rather than a
+// card (#1396, CR 400.7) and Source is ignored. Set it when the source
+// is a permanent the effect already holds a ref for — the creature a
+// trigger was about, `ctx.Trigger().Object.Ref()` — so that a source
+// that has left deals its damage with the lifelink and deathtouch it
+// had, and a source that left and came back is not mistaken for the new
+// object. See game.DealDamageFromObjectForEffect.
 type DealDamage struct {
-	Source uuid.UUID
-	Target uuid.UUID
-	Amount int
+	Source       uuid.UUID
+	SourceObject *game.ObjectRef
+	Target       uuid.UUID
+	Amount       int
 }
 
 func (d DealDamage) Apply(ctx *Context) error {
 	if d.Amount <= 0 {
 		return nil
+	}
+	if d.SourceObject != nil {
+		return ctx.Game.DealDamageFromObjectForEffect(*d.SourceObject, d.Target, d.Amount)
 	}
 	if p := ctx.Game.PlayerByIDForEffect(d.Target); p != nil {
 		return ctx.Game.DealDamageToPlayerForEffect(d.Source, d.Target, d.Amount)

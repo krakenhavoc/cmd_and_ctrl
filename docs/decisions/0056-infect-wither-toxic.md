@@ -269,6 +269,9 @@ looks for the source in this order:
    this dies, it deals 2 damage" from a creature with infect deals ordinary
    damage. A card with that shape ships with a caveat or waits.
    *In scope:* the stack read. *Out of scope:* durable LKI.
+   **Since 2026-09-24 (#1396, amendment at the end of this ADR) the
+   engine has durable LKI, and the non-combat tail reads lifelink and
+   deathtouch off it; this step is closed for those two.**
 
 A source that is a stack **ability** reads its source permanent, which is
 what "this creature deals damage" means. An ability whose source has left
@@ -553,6 +556,9 @@ No legal-move enumerator changes. None of this adds a move or a prompt kind.
 ## Decision 8 — Out of scope, stated
 
 - Durable post-departure LKI for damage sources (Decision 2, step 4).
+  **Closed for lifelink and deathtouch by the
+  [2026-09-24 amendment](#amendment-2026-09-24--decision-2-step-4-is-closed-a-departed-source-keeps-its-lifelink-and-deathtouch-1396--accepted--s38)
+  (#1396).**
 - Batched counter replacements across simultaneous damage (Decision 5).
 - Damage dealt "as though its source had wither" or "as though its source
   had infect" when the source has neither keyword: game-level (Everlasting
@@ -833,3 +839,124 @@ this ADR's: [ADR 0057](0057-win-and-lose-by-effect.md) Decision 7 gives
 every elimination its cause, and for poison that cause is `"poison"`,
 shown as "(10 poison counters)", whether or not this ADR ships. No
 reveal-strip cue.
+
+## Amendment 2026-09-24 — Decision 2 step 4 is closed: a departed source keeps its lifelink and deathtouch (#1396) · Accepted · S38
+
+Issue [#1396](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1396).
+Decision 2 step 4 and Decision 8's first bullet deferred "durable
+post-departure LKI for damage sources", because the engine had no store
+to read it from. [ADR 0018's 2026-09-24 amendment](0018-triggers-on-the-stack.md)
+(#1379, Decisions 12-13) added one: `Game.lastKnownPermanents`, one
+`PermanentInfo` per departed permanent OBJECT for the rest of the turn,
+holding its post-layer `Characteristic` (abilities included) and its
+controller. This amendment wires it into the non-combat damage tail.
+Infect, wither and toxic are not wired into the tail on `develop` yet
+(PR 2 of this ADR), so the amendment covers lifelink and deathtouch
+only; the reader it adds is the one PR 2 extends.
+
+### What was wrong
+
+`effectDamageTailLocked` (`server/internal/game/damage_tail.go`) read
+the source's keywords through `findBattlefieldCard` and nothing else. A
+source that had left carried neither keyword. "When this creature dies,
+it deals 2 damage to any target" from a creature wearing a Basilisk
+Collar dealt plain damage. A lifelinker killed in response to Warstorm
+Surge dealt its last-known power (#1379) and gained nobody anything.
+Weaker than printed (CR 608.2h, CR 702.15b, CR 702.2b).
+
+### Decision 9. The tail reads the departed object's record
+
+`effectDamageTailLocked(kind, sourceID, obj *ObjectRef)` now reads, in
+order:
+
+1. **The live permanent**, exactly as before, while the source is on
+   the battlefield — and, when `obj` is given, only if the live card is
+   that object (same `ObjectEpoch`).
+2. **Otherwise the departed object's record**
+   (`departedDamageSourceLocked`): `deathtouch` from its
+   `Characteristic.Abilities`, and `lifelinkTo` = its recorded
+   `Controller`. The controller that is credited is the one the object
+   had, not the card's owner and not whoever controls the card now.
+3. **Otherwise nothing**, as before: a spell, an emblem, a card that
+   was never on the battlefield this turn.
+
+The combat tail is unchanged. A combat damage source is on the
+battlefield when its tail is built, or has a CR 510.1c frame that
+snapshotted it already.
+
+### Decision 10. Which object a source names
+
+A damage call names its source two ways, and the record is keyed by
+object (CR 400.7), so each way needs a rule.
+
+- **By object** — the new `Game.DealDamageFromObjectForEffect(ObjectRef,
+  target, amount)`, reached from the catalog as
+  `effects.DealDamage{SourceObject: &ref}`. The answer is that object's
+  record and nothing else. A card that left and came back is a new
+  object; the permanent on the battlefield is not read, because it
+  dealt nothing. Warstorm Surge and Murderous Redcap take the ref from
+  `ctx.Trigger().Object.Ref()`, the #1379 object snapshot, so the
+  damage is the departed creature's even after a blink in response.
+- **By instance ID** — every existing caller. The source is the LAST
+  battlefield object the card was, and only while the card has not moved
+  since it left: its current epoch is exactly one past the record's.
+  That is the dies trigger's case (the creature is in the graveyard it
+  went to). It excludes a card that has moved on — bounced and then cast,
+  died and then exiled from the graveyard — and it can never answer for
+  an older object once the card has been on the battlefield again,
+  because the newer record is the last one. A token that died is in no
+  zone at all (CR 704.5d) and cannot come back (CR 111.8), so its last
+  record answers.
+
+The instance-ID rule is what #1396 proposed. The by-object entry point
+is added because the instance-ID rule cannot tell "the creature the
+trigger was about" from "the same card, back as a new object, now on
+the battlefield": the live read answers first. Warstorm Surge's
+creature blinked in response would otherwise deal the old object's
+damage with the new object's keywords, which is stronger than printed
+whenever the new object has a keyword the old one lacked.
+
+### Decision 11. Tapped status rides the record
+
+`PermanentInfo` gains `Tapped`. Tapped is a status (CR 110.5), not a
+characteristic, but it is last-known information all the same, and one
+card needs it: Mana Vault's draw-step trigger re-checks "if this
+artifact is tapped" when it resolves (CR 603.4). A Vault destroyed in
+response is judged tapped or untapped as it last existed, and deals its
+damage from the departed object. The field rides Clone, RestoreFrom and
+the persisted snapshot with the rest of the record, and adds no wire
+field.
+
+### Cards
+
+- **Warstorm Surge** ships `full`: the caveat about lifelink and
+  deathtouch is gone.
+- **Murderous Redcap** loses the same caveat. Persist is still not
+  implemented and its caveat stands.
+- **Mana Vault**'s caveat narrows. A Vault that left now deals its
+  damage. A triggered item carries its source's card and not its object
+  epoch (`StackItem.SourceEpoch` is stamped on activated items only), so
+  a Vault that leaves and comes back before the trigger resolves is
+  judged as the new Vault, which normally enters untapped.
+
+No other catalog card declared this gap. Every "when this dies, it
+deals damage" card now carries the departed creature's lifelink and
+deathtouch through the instance-ID rule with no change to its file.
+
+### Still not covered
+
+- **The source's other last-known characteristics on the damage
+  event.** `damageSourceLKILocked` still reads the source from whatever
+  zone holds it, so a departed creature's colour for CR 702.16e
+  protection is its graveyard card's printed colour, not the colour it
+  had on the battlefield. It is the same CR 608.2h question about a
+  different field, and the record already holds the answer.
+  [#1417](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1417).
+- **A trigger's source object.** Triggered items do not carry
+  `SourceEpoch`, so "this" in a trigger whose event is not about its
+  own source (Mana Vault's draw step) cannot name the object. It reads
+  the most recent object through `PermanentRefForEffect`.
+  [#1418](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1418).
+- **Infect, wither and toxic** join the same reader when PR 2 wires them
+  into the tail. `departedDamageSourceLocked` returns the whole record,
+  so they need no new lookup.
