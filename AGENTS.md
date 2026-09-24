@@ -1943,6 +1943,50 @@ information — "{T}: this deals 2 damage to any target" deals its damage
 from the graveyard. Consult it only where the effect genuinely cannot
 be performed without the source as a permanent.
 
+### Adding a block-rule card (S37+, #750)
+
+"Can't be blocked except by Walls", "can't be blocked by creatures with
+power 2 or less", "creatures with power less than this creature's power
+can't block creatures you control", "can't be blocked by more than one
+creature" are CR 509.1b block rules with a PARAMETER. They go in
+`Spec.BlockRules`, built from
+[block_rules.go](server/internal/cards/effects/block_rules.go): a
+**scope** (whose creatures the rule binds, relative to this permanent)
+plus a **rule**.
+
+```go
+BlockRules: []game.BlockRule{
+    CantBeBlockedExceptBy(OnAttached(), OfCreatureType("Wall"), "Walls"),     // Prowler's Helm
+    CantBeBlockedBy(OnSelf(), PowerLE(2), "creatures with power 2 or less"),   // Legolas Greenleaf
+    CantBlockAttackers(PowerLessThanSource(), ControlledBySourceController(),
+        "creatures with power less than Champion of Lambholt's can't block creatures its controller controls"),
+    CantBeBlockedWhile(OnAttached(), PowerLE(3)),                             // Thieves' Tools
+    MaxBlockers(OnAttached(), 1),                                             // Vorrac Battlehorns
+    MinBlockers(OnSelf(), 3),                                                 // Rampaging Ceratops
+},
+```
+
+- **The scope is never optional.** A rule is read off every permanent
+  for every pair the engine checks, so a hand-written `Pair` that
+  forgets "is this attacker mine?" binds the whole table.
+- **The label is the printed parameter.** The player reads it in the
+  refusal sentence ("can't be blocked except by Walls, and Llanowar
+  Elves is not one").
+- **Flat "can't block" / "can't be blocked" is still a `Restriction`
+  bit** (`RestrictSelf`, `RestrictAttached`). A rule is for a clause
+  with a parameter.
+- **"This turn"** is `BlockRuleUntilEOT{Target: id, Rule: func(s
+  BlockScope) game.BlockRule { … }}` (Gingerbrute, Departed Deckhand).
+  It snapshots the set at resolution (CR 611.2c).
+- **A token that prints one** declares it on its `tokenTemplate`'s
+  `BlockRules` slot (Avatar Kuruk's Spirit).
+- **Not yet:** "no more than one creature can block each combat"
+  (Silent Arbiter) has no shape. That is `BlockRule.Limit`, #1507.
+
+Tests: [block_rules_test.go](server/internal/cards/effects/block_rules_test.go)
+pins every shape through the verb, `legal.EnumerateFor` and
+`block_decision_seats`.
+
 ### Adding a triggered ability (S19+)
 
 Triggered abilities ("when ~ enters", "when ~ dies", "at the
