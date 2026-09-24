@@ -478,3 +478,124 @@ allowlist, which is an allowlist and would otherwise have fired
 - **A per-KIND target mode on the wire.** `stack_ability` and
   `stack_item` are hints for the banner's sentence, not legality; the
   legal set is still the only thing the picker obeys.
+
+## Amendment (2026-09-24, #1559): rules over the chosen SET of targets (CR 601.2c)
+
+Everything above judges ONE candidate at a time: the clause's zones,
+its `CardOK` / `PlayerOK` predicate, and the CR 702 keyword gate. Some
+printed clauses constrain the picks against each other — "any number
+of target creature cards that each have a **different mana value**"
+(Agadeem's Awakening), "two target creatures **controlled by different
+players**" (Run Away Together), "up to six target creature cards with
+**different names**" (Behold the Sinister Six!). Whether such a pick is
+legal depends on what else was picked, so no per-candidate predicate
+can say it. Before this amendment every such card either skipped the
+catalog or shipped a caveat that enforced the rule at resolution — a
+mis-picked cast accepted and then wasted.
+
+### 1. The rule is a pairwise-distinct KEY, not a predicate over the set
+
+`TargetSpec.Different *TargetDifference{Label, Key}`: no two picks of
+the clause may share the value `Key` reads off each card. The issue
+proposed a `GroupOK func(chosen []Card) bool`; this is narrower on
+purpose, because four readers have to answer the same question and
+only one of them can run a Go predicate over a set:
+
+| Reader | What it does with the key |
+|---|---|
+| announce gate (`validateAnnouncedTargetsWithLocked`) | refuses a set with a repeated key |
+| CR 608.2b re-check (`TargetStillLegalForEffect`) | re-judges the surviving picks |
+| enumerator (`internal/legal`) | never builds a set with a repeated key |
+| client picker | greys a candidate whose key a pick already holds |
+
+A key is evaluable by all four from one shipped map
+(`LegalTargetsView.different.keys`); an arbitrary predicate would have
+made the enumerator search subsets and left the client unable to grey
+anything. Every printed "different X" clause found in the dump is a
+pairwise-distinct key: mana value, controller, name. The catalog builds
+them with `effects.EachDifferentManaValue()`, `EachDifferentController()`
+and `EachDifferentName()`, attached with `.EachDifferent(…)`.
+
+### 2. Announce: refused with the rule in the message
+
+A set that breaks the rule is `ErrIllegalTarget` wrapped with the
+printed rule — `illegal target: those targets must each have a
+different mana value` — so the toast says which rule was broken
+rather than "illegal target" about a set whose members are each fine.
+The check runs over the whole list; under a CR 115.7 retarget, two
+UNCHANGED slots that already collide are left alone (CR 115.7c lets
+them stay even if illegal), but a changed slot may not land on a key
+another slot holds, and the retarget offer leaves such cards out.
+
+### 3. Resolution: judged over the survivors, and a collision drops BOTH
+
+CR 608.2b says a target must still meet the targeting requirements; it
+does not say how a requirement BETWEEN targets is apportioned. The
+choice, stated so nobody reopens it:
+
+- a pick that became illegal on its own (it left, it stopped being a
+  creature) is dropped first and conflicts with nothing — so one card
+  exiled in response to Agadeem's Awakening costs exactly that card;
+- among the picks still individually legal, two that now share a key
+  are **both** illegal. Neither is preferred: the constraint is
+  symmetric, "the first one you named" is not a rule of the game, and
+  it is the weaker of the available readings, never the stronger. A
+  Run Away Together whose two creatures end up under one controller
+  returns neither.
+
+The re-check is `setRuleConflictLocked`, reached from
+`TargetStillLegalForEffect`, so `Context.LegalTargets()`,
+`IsTargetLegal` and the all-illegal fizzle all see it with no card-side
+code.
+
+### 4. Fillability counts keys, not candidates
+
+"Two target creatures controlled by different players" with every
+creature on one side of the table has two candidates and no legal
+pair. The CR 603.3d check and the cast offer (`anyClauseUnfillableLocked`,
+`queuePickTargetStepLocked`) count distinct keys, so such a trigger is
+removed rather than prompting for an answer nobody can give.
+
+### 5. "Mana value X or less" is a flag the engine binds, like CountFromX
+
+Agadeem's Awakening's other half reads the X announced at CR 601.2b,
+and a `CardOK` predicate is handed the game, the caster and the
+candidate — never the announcement. `TargetSpec.ManaValueAtMostX` is
+resolved exactly as `CountFromX` is: `bindStepsX` writes the announced
+X onto the per-announcement clause COPY at cast, and
+`itemAnnouncedClauses` binds it again from `StackItem.XValue` for the
+CR 608.2b re-check. An unbound copy (the hand snapshot, built before X
+exists) does not apply it; the view ships each candidate's mana value
+beside `mana_value_at_most_x` and the client narrows by the X it
+collected. `effects.Register` refuses the flag on a trigger's or an
+activated ability's clause: a trigger announces no X, and the bot's
+activation enumerator does not bind one.
+
+### 6. What is NOT this seam
+
+**"For each opponent, up to one target creature that player
+controls"** (Molten Primordial) was filed against #1559 and triaged out
+of it: it is one clause PER OPPONENT, each binding its pick to a
+player, and `TriggeredAbility.TargetsFrom` already builds that list.
+The difference is observable — a creature that changes hands in
+response is an illegal target under the binding, even when its new
+controller is another opponent — so Molten Primordial ships on
+per-opponent clauses, not on `EachDifferentController`. **Windgrace's
+Judgment** prints the same sentence on a SPELL, whose clause list is
+static; it uses `EachDifferentController` and keeps a narrowed caveat
+for exactly that difference.
+
+### Out of scope
+
+- **A set rule on a COST** — Transmutation Font's "sacrifice three
+  artifact tokens with different names". The sacrifice validator is a
+  separate walk (`docs/engine-seams.md`'s set-of-sacrificed-permanents
+  row); `TargetDifference` is the shape it could reuse, and it does not
+  read it yet.
+- **Rules that are not pairwise-distinct** — "total mana value 4 or
+  less" over a set of targets. `ChooseCardsPrompt.Validate` covers it
+  for a non-targeting pick (#998); no printed TARGET clause in the
+  catalog's reach needs it.
+- **Binding a spell's pick to a chosen player** (Windgrace's Judgment's
+  remaining caveat) — a per-target record on the stack item nothing
+  else needs yet.
