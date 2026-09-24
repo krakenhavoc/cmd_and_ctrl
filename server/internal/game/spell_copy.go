@@ -146,9 +146,10 @@ func (g *Game) copySpellFromLocked(src Card, item *StackItem, controller uuid.UU
 // characteristics, so protection is tested against the original's
 // colour and type), and the ability's SOURCE PERMANENT for an ability
 // copy (CR 702.16b tests an ability's quality against the permanent
-// it came from). `item` decides which copy gets built on the far
-// side, off its Kind, which is the only thing the two paths do
-// differently.
+// it came from; when that permanent has left, the copy is judged
+// against its last-known record instead, see copyTargetSourceLocked,
+// #1449). `item` decides which copy gets built on the far side, off
+// its Kind, which is the only thing the two paths do differently.
 //
 // Creating the copy NOW is the right answer in three cases and they
 // are all the printed outcome rather than a shortcut: the card does
@@ -165,7 +166,13 @@ func (g *Game) offerCopyTargetsLocked(src Card, item *StackItem, controller uuid
 		g.createCopyLocked(src, item, controller, item.Targets)
 		return
 	}
-	lt := g.legalTargetsLocked(SourceObject(controller, &src), spec)
+	frame := &copyFrame{
+		src:        src,
+		item:       *item,
+		controller: controller,
+		spec:       spec,
+	}
+	lt := g.legalTargetsLocked(g.copyTargetSourceLocked(frame), spec)
 	if len(lt.Players) == 0 && len(lt.Cards) == 0 {
 		g.createCopyLocked(src, item, controller, item.Targets)
 		return
@@ -184,12 +191,7 @@ func (g *Game) offerCopyTargetsLocked(src Card, item *StackItem, controller uuid
 		PickTargetCards:   lt.Cards,
 		PickTargetMin:     spec.Min,
 		PickTargetMax:     spec.Max,
-		copyResume: &copyFrame{
-			src:        src,
-			item:       *item,
-			controller: controller,
-			spec:       spec,
-		},
+		copyResume:        frame,
 	})
 }
 
@@ -212,6 +214,41 @@ type copyFrame struct {
 	item       StackItem
 	controller uuid.UUID
 	spec       *TargetSpec
+}
+
+// copyTargetSourceLocked is the TargetSource a copy's new targets are
+// judged under (CR 707.10c), at all three places that judge them: the
+// offer above, the answer (resolveCopyTargetsLocked) and the #809
+// refresh of an open prompt (refreshTargetChoicesLocked).
+//
+// Ordinarily that is a snapshot of the frame's `src`: the copied spell
+// for a spell copy, the source permanent for an ability copy.
+//
+// The exception is an ABILITY whose source permanent has left the
+// battlefield (#1449). Then `src` is whatever card the lookup found in
+// the zone it went to — its graveyard card, a new object with printed
+// characteristics (CR 400.7) — and the copy's targets are judged
+// against the source as it LAST EXISTED on the battlefield (CR 608.2h),
+// read the way the CR 608.2b re-check of the original reads it
+// (stackItemSourceLocked, #1429): departedAbilitySourceLocked on the
+// frame's item, whose SourceObject is the original's (#1418) and is the
+// copy's too (createAbilityCopyLocked carries it).
+//
+// It is read afresh at each check rather than frozen at the offer, so
+// a source that leaves while the prompt is open is judged as it last
+// existed by the answer. A spell never takes the branch: a spell's
+// source is the spell, and a card that was a permanent earlier in the
+// turn is a different object now — the same guard stackItemSourceLocked
+// carries, for the same reason.
+//
+// Caller must hold g.mu.
+func (g *Game) copyTargetSourceLocked(cf *copyFrame) TargetSource {
+	if cf.item.Kind != StackItemSpell && cf.item.SourceCardID != uuid.Nil {
+		if rec, ok := g.departedAbilitySourceLocked(&cf.item); ok {
+			return SourceSnapshot(cf.controller, lastKnownSourceCharacteristics(rec))
+		}
+	}
+	return SourceSnapshot(cf.controller, SourceCharacteristics(&cf.src))
 }
 
 // createCopyLocked puts the copy on the stack: a new spell object for
@@ -397,8 +434,10 @@ func (g *Game) resolveCopyTargetsLocked(idx int, cf *copyFrame, targets []Target
 	// A SNAPSHOT, deliberately: the original spell can be countered
 	// between the prompt and the answer, and the copy's
 	// characteristics are the original's as they were (CR 707.10).
-	// cf.src is the value copy the frame kept for exactly this.
-	src := SourceSnapshot(cf.controller, SourceCharacteristics(&cf.src))
+	// cf.src is the value copy the frame kept for exactly this — or,
+	// for an ability whose source has left, the source's last-known
+	// record (#1449).
+	src := g.copyTargetSourceLocked(cf)
 	steps := AnnouncedClauses(cf.spec, nil, nil)
 	stamped := assignAnnouncedSlots(steps, targets)
 	if err := g.retargetCheckLocked(src, steps, cf.item.Targets, stamped, RetargetChooseNew); err != nil {
