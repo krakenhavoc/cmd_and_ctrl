@@ -70,6 +70,7 @@ func buildDef(spec Spec) *game.CardDef {
 		AttackTaxes:                spec.AttackTaxes,
 		CastableZones:              spec.CastableZones,
 		SpecialActions:             spec.SpecialActions,
+		SpecialActionGrants:        spec.SpecialActionGrants,
 		UntapStep:                  spec.UntapStep,
 		UntapStepRestrictions:      spec.UntapStepRestrictions,
 		UntapCaps:                  spec.UntapCaps,
