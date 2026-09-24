@@ -7,6 +7,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -126,6 +127,10 @@ type gameResult struct {
 	lives   []int
 	stats   []aiseat.Stats
 	elapsed time.Duration
+	// board is describeBoard's summary, taken only when the game did
+	// NOT end — the one case where the numbers above do not say what
+	// happened (#1261).
+	board string
 }
 
 func (r gameResult) totals() aiseat.Stats {
@@ -241,11 +246,67 @@ func playGameIn(t *testing.T, room *ws.Room, seed uint64, policies []aiseat.Poli
 		if n == 1 {
 			res.winner = live
 		}
+		if res.state != game.StateEnded {
+			res.board = describeBoardLocked(g)
+		}
 	})
 	for _, r := range runners {
 		res.stats = append(res.stats, r.Stats())
 	}
 	return res
+}
+
+// describeBoardLocked summarises a table the turn budget stopped: per
+// seat, life and the cards left in each zone, and the creatures it
+// controls tallied by name and size.
+//
+// #1261: the 2026-09-23 nightly's seed 104 stopped at turn 51 with two
+// seats alive, and the artifact said only "lives [-4 6 8 -1]" — not
+// whether that was a deadlocked engine, a bot that would not act, or
+// two full boards staring at each other. Seeded tables are not
+// replayable (four runner goroutines interleave differently every
+// run), so the artifact is the only look anyone gets at that board.
+// The locally reproduced one was the third: 22 lands and 22 untapped
+// creatures a side, libraries at 9, both players under 7 life — and a
+// lethal swing on the board that lethalPush could not see until
+// unblockedPower (#1261). #1409 is what a mirror can still do.
+//
+// Caller holds g's read lock.
+func describeBoardLocked(g *game.Game) string {
+	var b strings.Builder
+	for _, p := range g.Seats {
+		fmt.Fprintf(&b, "\n  %s life=%d eliminated=%v hand=%d library=%d graveyard=%d:",
+			p.Name, p.Life, p.Eliminated, p.Hand.Size(), p.Library.Size(), p.Graveyard.Size())
+		tally := map[string]int{}
+		var names []string
+		lands, tapped := 0, 0
+		for _, c := range g.Battlefield.Cards {
+			if c.Controller != p.ID {
+				continue
+			}
+			if c.IsLand() {
+				lands++
+				continue
+			}
+			if !c.IsCreature() {
+				continue
+			}
+			if c.Tapped {
+				tapped++
+			}
+			key := fmt.Sprintf("%s %d/%d", c.Name, c.CurrentPower(), c.CurrentToughness())
+			if tally[key] == 0 {
+				names = append(names, key)
+			}
+			tally[key]++
+		}
+		sort.Strings(names)
+		fmt.Fprintf(&b, " %d lands, %d tapped creatures;", lands, tapped)
+		for _, n := range names {
+			fmt.Fprintf(&b, " %dx %s", tally[n], n)
+		}
+	}
+	return b.String()
 }
 
 // assertNoEnumeratorBugs holds the "zero engine-rejected actions"
@@ -338,7 +399,8 @@ func heuristicGateAtSeats(t *testing.T, seats int, firstSeed uint64) {
 			t.Logf("seed %d: seats=%d state=%s turns=%d winner=%d lives=%v applied=%d passes=%d rejected=%d in %v",
 				seed, seats, res.state, res.turns, res.winner, res.lives, total.Applied, total.Passes, total.Rejected, res.elapsed)
 			if res.state != game.StateEnded {
-				t.Errorf("game did not finish inside %d turns (state %s, lives %v)", turnBudget, res.state, res.lives)
+				t.Errorf("game did not finish inside %d turns (state %s, lives %v); the board it stopped on:%s",
+					turnBudget, res.state, res.lives, res.board)
 			}
 			if res.winner < 0 {
 				t.Errorf("game ended with no single survivor: lives %v", res.lives)

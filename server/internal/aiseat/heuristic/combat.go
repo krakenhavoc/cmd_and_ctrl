@@ -384,28 +384,76 @@ func (p *Policy) lethalPush(st *state, def *SeatEval) bool {
 		}
 	}
 
-	through := 0
-	var stoppable []int
-	for _, a := range attackers {
-		n := 0
-		for _, b := range blockers {
-			if couldBlock(st, def.ID, a, b) {
-				n++
+	return unblockedPower(st, def.ID, attackers, blockers) >= def.Life
+}
+
+// unblockedPower is the damage that connects when the defender blocks
+// as well as it can: each blocker stops at most one attacker, and only
+// an attacker it could legally block (couldBlock).
+//
+// The defender stops the biggest threats it is ABLE to stop. That is a
+// matching, not a count, and #1261 is what counting got wrong: the old
+// model let every untapped creature stand in front of any attacker, so
+// 22 attackers into 22 defenders connected for nothing even when seven
+// of the attackers were Drakes and five of the defenders could fly. A
+// Bear cannot block a Drake. Two heuristic seats sat behind exactly
+// that board, each with lethal on it, until the turn budget ran out.
+//
+// Greedy over attackers by power, keeping one only if the blocks
+// chosen so far can be re-matched to make room for it (Kuhn's
+// augmenting path). With the weight on the attacker side alone this
+// is exact — the blockable sets form a transversal matroid, where
+// greedy by weight is optimal — so the answer is the defender's true
+// best, never a guess in either direction. Boards are a few dozen
+// creatures a side, so the cubic worst case is nothing.
+//
+// Still deliberately simple about the rest of combat: one blocker per
+// attacker (menace would only make the defender's job harder), no
+// trample overflow and no damage prevention, so it errs toward "not
+// lethal" wherever it errs.
+func unblockedPower(st *state, defender string, attackers, blockers []*protocol.CardView) int {
+	order := make([]int, len(attackers))
+	for i := range order {
+		order[i] = i
+	}
+	// Biggest threat first; stable so equal powers keep board order and
+	// the answer never depends on a sort's whim.
+	sort.SliceStable(order, func(i, j int) bool {
+		return attackers[order[i]].Power > attackers[order[j]].Power
+	})
+	can := make([][]int, len(attackers))
+	for ai, a := range attackers {
+		for bi, b := range blockers {
+			if couldBlock(st, defender, a, b) {
+				can[ai] = append(can[ai], bi)
 			}
 		}
-		if n == 0 {
-			through += a.Power // nothing they have can stand in its way
-			continue
+	}
+	blockerOf := make([]int, len(blockers)) // blocker index → attacker it stops, or -1
+	for i := range blockerOf {
+		blockerOf[i] = -1
+	}
+	var augment func(ai int, seen []bool) bool
+	augment = func(ai int, seen []bool) bool {
+		for _, bi := range can[ai] {
+			if seen[bi] {
+				continue
+			}
+			seen[bi] = true
+			if blockerOf[bi] < 0 || augment(blockerOf[bi], seen) {
+				blockerOf[bi] = ai
+				return true
+			}
 		}
-		stoppable = append(stoppable, a.Power)
+		return false
 	}
-	// The defender spends its blockers on the biggest threats first;
-	// whatever is left over connects.
-	sort.Sort(sort.Reverse(sort.IntSlice(stoppable)))
-	for i := len(blockers); i < len(stoppable); i++ {
-		through += stoppable[i]
+	through := 0
+	for _, ai := range order {
+		if !augment(ai, make([]bool, len(blockers))) {
+			through += attackers[ai].Power
+		}
 	}
-	return through >= def.Life
+	return through
 }
 
 // attackValue prices one attacker against one defending seat. The
