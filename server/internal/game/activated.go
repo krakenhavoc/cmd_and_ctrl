@@ -1188,6 +1188,9 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		return ErrInvalidParam
 	}
 	xSteps := resolveStepCountsFromX(steps, params.XValue)
+	// #1559: "with mana value X or less" — X is announced before
+	// targets (CR 601.2b / 602.2b), so the bound is known here.
+	bindStepsX(steps, params.XValue)
 	params.Targets = assignAnnouncedSlots(steps, params.Targets)
 	for _, i := range xSteps {
 		if n := stepTargetCount(steps[i], params.Targets); n != params.XValue {

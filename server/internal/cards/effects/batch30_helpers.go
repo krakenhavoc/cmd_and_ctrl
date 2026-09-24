@@ -312,36 +312,6 @@ func b30PutCounterOnEachArtifactCreatureOrVehicleYouControl(g *game.Game, item *
 	return nil
 }
 
-// b30DestroyOnePerController is Windgrace's Judgment: of the
-// announced targets still legal, the first named for each
-// controller is destroyed and any later one under the same
-// controller is skipped — "for any number of opponents, destroy
-// target nonland permanent THAT PLAYER controls" enforced at
-// resolution, since the target clause cannot say "one per
-// opponent" at announce. Controllers are read as the spell
-// resolves.
-func b30DestroyOnePerController(ctx *Context) error {
-	var ids []uuid.UUID
-	seen := map[uuid.UUID]bool{}
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind != game.TargetCard {
-			continue
-		}
-		c, ok := ctx.Game.LookupCardForEffect(t.ID)
-		if !ok || seen[c.Controller] {
-			continue
-		}
-		seen[c.Controller] = true
-		ids = append(ids, t.ID)
-	}
-	for _, id := range ids {
-		if err := (DestroyTarget{Target: id}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // b30SourceFightsFirstLegalTarget is "this creature fights up to one
 // target creature you don't control" (Surly Badgersaur): the source,
 // if it is still on the battlefield, fights the announced target if

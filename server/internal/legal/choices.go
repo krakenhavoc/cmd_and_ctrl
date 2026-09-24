@@ -278,7 +278,11 @@ func (e *enumerator) choiceMoves() bool {
 				}
 				continue
 			}
-			for _, set := range combinationsRefs(cands, lo, hi, e.opts.MaxExpansionPerSource) {
+			// #1559: a clause with a set rule offers only the sets the
+			// engine accepts, pruned inside the expansion so the budget
+			// is never spent on a refused set.
+			_, setKeys := g.PickTargetSetRuleForEffect(c)
+			for _, set := range combinationsRefs(cands, lo, hi, e.opts.MaxExpansionPerSource, setKeys) {
 				p := base()
 				p.Targets = wireTargets(set)
 				if p.Targets == nil {
@@ -1174,8 +1178,10 @@ func (e *enumerator) canonicalDamageAssignment(c *game.PendingChoice, p choicePa
 }
 
 // combinationsRefs is combinations over TargetRefs, including the
-// empty set when lo is 0.
-func combinationsRefs(cands []game.TargetRef, lo, hi, limit int) [][]game.TargetRef {
+// empty set when lo is 0. `keys` is a clause's set-rule keys (#1559):
+// no set with two picks sharing a key is built. Nil for every clause
+// without a rule.
+func combinationsRefs(cands []game.TargetRef, lo, hi, limit int, keys map[uuid.UUID]string) [][]game.TargetRef {
 	var out [][]game.TargetRef
 	if lo == 0 {
 		out = append(out, nil)
@@ -1198,6 +1204,9 @@ func combinationsRefs(cands []game.TargetRef, lo, hi, limit int) [][]game.Target
 				return
 			}
 			for i := s; i < len(cands); i++ {
+				if keys != nil && sharesSetKey(keys, cur, cands[i]) {
+					continue
+				}
 				rec(i+1, append(cur, cands[i]))
 			}
 		}

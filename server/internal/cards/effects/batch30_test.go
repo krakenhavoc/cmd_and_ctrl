@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"errors"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -309,21 +311,29 @@ func TestB30WindgracesJudgmentDestroysOnePermanentPerOpponent(t *testing.T) {
 	if legal[mine] || legal[bLand] || !legal[aBear] || !legal[bAura] {
 		t.Fatal("only nonland permanents opponents control are legal")
 	}
-	castCatalogSpell(t, g, "Windgrace's Judgment", "Instant", b30WindgracesJudgmentOracle, []game.TargetRef{
+	// #1559: one per opponent is the clause's set rule — two of one
+	// opponent's permanents are refused at announce (CR 601.2c).
+	err := castCatalogSpellErr(t, g, "Windgrace's Judgment", "Instant", b30WindgracesJudgmentOracle, []game.TargetRef{
 		{Kind: game.TargetCard, ID: aBear}, {Kind: game.TargetCard, ID: aRock}, {Kind: game.TargetCard, ID: bAura},
+	})
+	if !errors.Is(err, game.ErrIllegalTarget) || !strings.Contains(err.Error(), "controlled by different players") {
+		t.Fatalf("two of one opponent's permanents are refused naming the rule, got %v", err)
+	}
+	castCatalogSpell(t, g, "Windgrace's Judgment", "Instant", b30WindgracesJudgmentOracle, []game.TargetRef{
+		{Kind: game.TargetCard, ID: aBear}, {Kind: game.TargetCard, ID: bAura},
 	})
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(aBear) || g.Battlefield.Contains(bAura) {
-		t.Error("the first permanent named for each opponent is destroyed")
+		t.Error("one permanent of each opponent's is destroyed")
 	}
 	if !g.Battlefield.Contains(aRock) {
-		t.Error("a second permanent of the same opponent's is skipped — one per opponent")
+		t.Error("the permanent nobody named stays")
 	}
 	if !g.Battlefield.Contains(mine) {
 		t.Error("your own permanents are untouched")
 	}
 	if spec, _ := Lookup(b30WindgracesJudgmentOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the one-per-opponent enforcement at resolution is a declared gap")
+		t.Error("judging a target by its controller at resolution, not by its bound opponent, is a declared gap")
 	}
 }
 

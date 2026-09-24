@@ -127,6 +127,7 @@ func TestZoneCardsAreWrittenOnlyAtKnownPoints(t *testing.T) {
 		"reassignChoiceLocked":                "a pick option's Cards",
 		"withoutPicked":                       "a pick option's Cards",
 		"retargetAlternatives":                "a retarget option's Cards",
+		"withoutSetRuleConflictsLocked":       "a retarget option's Cards, narrowed by a set rule (#1559)",
 		"specMatchesLocked":                   "a target match's Cards",
 	}
 	for name, why := range notZones {

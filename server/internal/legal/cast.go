@@ -881,6 +881,15 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 			}
 			steps = openXCountedSteps(steps, bound)
 		}
+		// #1559: "with mana value X or less" is judged under the X
+		// the cast will announce. Bound to the largest X the seat can
+		// pay, so the sets built below are ones the engine accepts at
+		// that X; a set priced lower per target is re-checked in the
+		// loop against its own X.
+		xBound := game.StepsBoundByX(steps)
+		if xBound {
+			game.BindStepsXForEffect(steps, x)
+		}
 		targetSets := e.legalStepSets(castSrc, steps, budget)
 		if len(targetSets) == 0 {
 			continue
@@ -920,6 +929,9 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 					continue
 				}
 				setX = k
+			}
+			if xBound && setX != x && !e.g.TargetsWithinXForEffect(steps, targets, setX) {
+				continue
 			}
 			for _, discards := range discardSets {
 				for _, sacs := range sacrificeSets {
@@ -1377,6 +1389,10 @@ func (e *enumerator) legalTargetSets(src game.TargetSource, spec *game.TargetSpe
 		cands = append(cands, game.TargetRef{Kind: game.TargetCard, ID: id})
 	}
 	e.orderCandidates(cands)
+	// #1559: a clause with a set rule ("each with a different mana
+	// value") never yields a set two of whose picks share a key — the
+	// engine refuses that set at announce, and offering it is #544.
+	keys := e.g.TargetDifferenceKeysForEffect(spec, lt.Cards)
 	lo, hi := spec.Min, spec.Max
 	if hi <= 0 || hi > len(cands) {
 		hi = len(cands)
@@ -1402,12 +1418,30 @@ func (e *enumerator) legalTargetSets(src game.TargetSource, spec *game.TargetSpe
 				return
 			}
 			for i := start; i < len(cands); i++ {
+				if keys != nil && sharesSetKey(keys, cur, cands[i]) {
+					continue
+				}
 				rec(i+1, append(cur, cands[i]))
 			}
 		}
 		rec(0, nil)
 	}
 	return out
+}
+
+// sharesSetKey reports whether cand's set-rule key is already held by
+// a pick in cur (#1559). A pick with no key shares nothing.
+func sharesSetKey(keys map[uuid.UUID]string, cur []game.TargetRef, cand game.TargetRef) bool {
+	k, ok := keys[cand.ID]
+	if !ok {
+		return false
+	}
+	for _, p := range cur {
+		if pk, ok := keys[p.ID]; ok && pk == k {
+			return true
+		}
+	}
+	return false
 }
 
 // orderCandidates sorts a clause's candidates so the ones the seat's

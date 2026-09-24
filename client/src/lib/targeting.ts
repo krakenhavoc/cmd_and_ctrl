@@ -282,6 +282,17 @@ export interface TargetingState {
   steps: TargetStep[];
   step: number;
   done: TargetRef[];
+  // #1559: the CURRENT step's rule over its chosen set, when it has
+  // one — like `legal`, it always describes the step being asked.
+  different?: SetRule;
+}
+
+// SetRule is a clause's rule over the chosen SET of its picks (#1559,
+// CR 601.2c): no two picks may share a key. `label` completes "those
+// targets must …". A card missing from `keys` collides with nothing.
+export interface SetRule {
+  label: string;
+  keys: Record<string, string>;
 }
 
 // TargetStep is one clause of an announcement: which mode occurrence
@@ -301,6 +312,8 @@ export interface TargetStep {
   // distinct marks a clause whose picks must differ from every
   // EARLIER clause's ("a second target permanent you control").
   distinct: boolean;
+  // #1559: the clause's set rule, when it prints one.
+  different?: SetRule;
 }
 
 export interface TargetRef {
@@ -356,13 +369,28 @@ export function stepsFor(
   }
   return list.map((c, slot) => ({
     mode,
-    legal: { players: new Set(c.players ?? []), cards: new Set(c.cards ?? []) },
+    legal: { players: new Set(c.players ?? []), cards: new Set(withinX(c, choices)) },
     label: c.label,
     ...countOf(c, choices),
     modeIndex,
     slot,
     distinct: c.distinct === true,
+    different: c.different ? { label: c.different.label, keys: c.different.keys ?? {} } : undefined,
   }));
+}
+
+// withinX narrows an X-bounded clause's cards ("with mana value X or
+// less", #1559) to the ones the announced X admits. The server built
+// the legal set before X was chosen, exactly as it does for
+// count_from_x, so the bound is applied here from the mana values it
+// shipped; a card with no entry has an unreadable cost and meets no
+// bound. Every other clause passes through untouched.
+function withinX(lt: LegalTargetsView, choices?: CastChoices): string[] {
+  const cards = lt.cards ?? [];
+  if (!lt.mana_value_at_most_x) return cards;
+  const x = choices?.xValue ?? 0;
+  const mvs = lt.mana_values ?? {};
+  return cards.filter((id) => mvs[id] !== undefined && mvs[id] <= x);
 }
 
 // openWalk builds the state for the FIRST step of a walk. Extra
@@ -385,6 +413,7 @@ export function openWalk(
     steps,
     step: 0,
     done: [],
+    different: first.different,
     ...extra,
   };
 }
@@ -430,6 +459,7 @@ export function advance(t: TargetingState): TargetingState | null {
     picked: [],
     step: next,
     done,
+    different: s.different,
   };
 }
 
@@ -493,6 +523,9 @@ export function togglePick(t: TargetingState, ref: TargetRef): TargetingState {
     return { ...t, picked: t.picked.filter((p) => p.id !== ref.id) };
   }
   if (t.max > 0 && t.picked.length >= t.max) return t;
+  // #1559: the server would refuse the set, so the pick is refused
+  // here — the card is already greyed by isLegalCardTarget.
+  if (breaksSetRule(t, ref.id)) return t;
   return { ...t, picked: [...t.picked, ref] };
 }
 
@@ -901,13 +934,26 @@ export function abilityModeSteps(ability: ActivatedAbilityView, modes: number[])
 // S13.1 cards) it's the mode heuristic and the caller's zone
 // routing.
 export function isLegalCardTarget(t: TargetingState, instanceID: string): boolean {
-  if (t.legal) return t.legal.cards.has(instanceID);
+  if (t.legal) return t.legal.cards.has(instanceID) && !breaksSetRule(t, instanceID);
   return isTargetingCreature(t.mode) || isTargetingStack(t.mode) || isTargetingGraveyard(t.mode);
 }
 
 export function isLegalPlayerTarget(t: TargetingState, playerID: string): boolean {
   if (t.legal) return t.legal.players.has(playerID);
   return isTargetingPlayer(t.mode);
+}
+
+// breaksSetRule reports whether picking `id` would give the current
+// step two picks that share its set rule's key (#1559) — "each have a
+// different mana value" with a 2-drop already picked, for another
+// 2-drop. A card already picked never breaks the rule against itself,
+// so it stays clickable to un-pick.
+export function breaksSetRule(t: TargetingState, id: string): boolean {
+  const rule = t.different;
+  if (!rule) return false;
+  const key = rule.keys[id];
+  if (key === undefined) return false;
+  return t.picked.some((p) => p.id !== id && rule.keys[p.id] === key);
 }
 
 // legalTargetCount is the banner's "N legal targets" figure; -1 when

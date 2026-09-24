@@ -70,14 +70,7 @@ func init() {
 // the battlefield under your control."
 func thassaEndStepBlink() game.TriggeredAbility {
 	t := AtYourEndStep("Thassa, Deep-Dwelling — blink another creature you control",
-		func(g *game.Game, item *game.StackItem) error {
-			ctx := NewContext(g, item)
-			id, ok := b16FirstLegalTargetCard(ctx)
-			if !ok {
-				return nil
-			}
-			return Flicker{Target: id, Controller: item.Controller}.Apply(ctx)
-		})
+		flickerFirstLegalTarget)
 	t.TargetsFrom = AnotherTarget(func(other CardPredicate) *game.TargetSpec {
 		return TargetCreature("up to one other target creature you control", YouControl(), other).WithCount(0, 1)
 	})

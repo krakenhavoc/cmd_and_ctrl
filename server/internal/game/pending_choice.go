@@ -2857,6 +2857,14 @@ func (g *Game) queuePickTargetStepLocked(f *pickTargetFrame) {
 		// prompt, and its qualities then are what count.
 		lt := g.legalTargetsLocked(SourceObject(f.source.Controller, &f.source), clause)
 		lt = withoutPicked(lt, f.picked, clause.Distinct)
+		// #1559: a clause with a set rule can have candidates and
+		// still no legal SET of Min picks ("two target creatures
+		// controlled by different players" with every creature on one
+		// side). That is CR 603.3d's "no legal targets" too, and a
+		// prompt for it could never be answered.
+		if clause.Different != nil && clause.Min > 0 && g.fillableCountLocked(clause, lt) < clause.Min {
+			return
+		}
 		if len(lt.Players) == 0 && len(lt.Cards) == 0 {
 			if clause.Min > 0 {
 				// The whole ability is removed (CR 603.3d), together

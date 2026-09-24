@@ -434,6 +434,7 @@ func (g *Game) queueRetargetStepLocked(offer RetargetOffer, from int) {
 		}
 		alt := g.legalTargetsLocked(src, clause)
 		alt = retargetAlternatives(alt, item.Targets, i, clause)
+		alt = g.withoutSetRuleConflictsLocked(clause, alt, item.Targets, i)
 		if len(alt.Players) == 0 && len(alt.Cards) == 0 {
 			continue
 		}
