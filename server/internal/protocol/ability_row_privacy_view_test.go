@@ -106,6 +106,9 @@ var manaRowScopes = map[string]rowScope{
 	"TapOthersLabel": rowPublic, "TapOthersOptions": rowPublic,
 	"ChargedManaCost": rowPublic, "ConditionUnmet": rowPublic, "Exhausted": rowPublic,
 	"CantActivate": rowPublic, "AddsNoMana": rowPublic,
+	// #1443: the commander identity it is narrowed and ordered by is
+	// public (the command zone, and CR 903.4a fixes it before the game).
+	"ColorOptions": rowPublic,
 	"DiscardCostN": rowPublic, "DiscardCostLabel": rowPublic,
 	"ExileCostN": rowPublic, "ExileCostLabel": rowPublic, "ExileCostZone": rowPublic,
 	"CounterCostN": rowPublic, "CounterCostKind": rowPublic, "CounterCostSelf": rowPublic,

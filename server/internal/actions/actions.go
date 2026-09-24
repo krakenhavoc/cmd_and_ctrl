@@ -1821,6 +1821,16 @@ func dispatch(g *game.Game, a Action) error {
 			// than discard_ids, because it is its own component: an
 			// exiled card is not discarded.
 			ExileIDs []string `json:"exile_ids,omitempty"`
+			// #1443 — the colour a pipe slot adds, named BEFORE the
+			// source is tapped, so no mana_pick is queued. `color` is
+			// the one-slot spelling (a painland, Birds of Paradise,
+			// Command Tower); `colors` names one per picking slot of
+			// a multi-slot output ("{W|U}{W|U}"), in output order.
+			// Never both. Each must be in the ability's published
+			// `color_options`; absent is the ordinary two-step
+			// activation, which the auto-tapper and the bots use.
+			Color  string   `json:"color,omitempty"`
+			Colors []string `json:"colors,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -1828,6 +1838,13 @@ func dispatch(g *game.Game, a Action) error {
 		cardID, err := uuid.Parse(p.CardID)
 		if err != nil {
 			return fmt.Errorf("activate_mana_ability card_id: %w", err)
+		}
+		manaColors := p.Colors
+		if p.Color != "" {
+			if len(p.Colors) > 0 {
+				return fmt.Errorf("activate_mana_ability: send color or colors, not both: %w", game.ErrInvalidParam)
+			}
+			manaColors = []string{p.Color}
 		}
 		sacIDs := make([]uuid.UUID, 0, len(p.SacrificeIDs))
 		for _, raw := range p.SacrificeIDs {
@@ -1878,6 +1895,7 @@ func dispatch(g *game.Game, a Action) error {
 			CounterKinds:     p.CounterKinds,
 			DiscardIDs:       manaDiscardIDs,
 			ExileIDs:         manaExileIDs,
+			Colors:           manaColors,
 		})
 
 	case TypeSetMaxHandSize:
