@@ -184,19 +184,19 @@ func initialPriorityHolder(s Step, activeSeat int) int {
 }
 
 // newStartingTurn returns the turn cursor at the start of a game:
-// turn 1, seat 0, beginning phase, untap step. PriorityHolder is
+// turn 1, the seat that won the opening roll, beginning phase, untap step. PriorityHolder is
 // NoPriority because Untap doesn't grant priority. After the mulligan
 // window closes, KeepHand fires runStepEntryHooksLocked which auto-
 // untaps and advances the cursor into Upkeep.
-func newStartingTurn() Turn {
+func newStartingTurn(startingSeat int) Turn {
 	return Turn{
 		Seq:            1,
 		Round:          1,
-		ActiveSeat:     0,
-		PriorityHolder: initialPriorityHolder(StepUntap, 0),
+		ActiveSeat:     startingSeat,
+		PriorityHolder: initialPriorityHolder(StepUntap, startingSeat),
 		Phase:          PhaseOf(StepUntap),
 		Step:           StepUntap,
-		OrderSeat:      0,
+		OrderSeat:      startingSeat,
 	}
 }
 
@@ -219,13 +219,14 @@ func (t Turn) IsNewTurn(next Turn) bool {
 }
 
 // advance returns the Turn cursor one step after t, wrapping to the
-// next seat (and incrementing Seq, plus Round on a wrap) after the cleanup step. numSeats
-// must be > 0; callers are responsible for passing a valid count.
+// next seat (and incrementing Seq, plus Round when the rotation returns to
+// roundStartSeat) after the cleanup step. numSeats must be > 0; callers are
+// responsible for passing a valid count and roundStartSeat.
 //
 // PriorityHolder is set via initialPriorityHolder so that landing on
 // Untap or Cleanup yields NoPriority (S13 — those steps don't grant
 // priority per CR 502.4 / 514.3).
-func (t Turn) advance(numSeats int) Turn {
+func (t Turn) advance(numSeats, roundStartSeat int) Turn {
 	idx := indexOfStep(t.Step)
 	next := idx + 1
 	if next < len(turnSequence) {
@@ -242,12 +243,12 @@ func (t Turn) advance(numSeats int) Turn {
 			OrderSeat:      t.OrderSeat,
 		}
 	}
-	// Wrap: past cleanup, move to the next seat's untap. In Commander
-	// with four players, after seat 3's cleanup we wrap to seat 0 and
-	// the table-facing round goes up.
+	// Wrap: past cleanup, move to the next seat's untap. A table-facing
+	// round is one full rotation from the player who started the game,
+	// not from seat 0; join order must not leak back into turn display.
 	nextSeat := (t.ActiveSeat + 1) % numSeats
 	nextRound := t.Round
-	if nextSeat <= t.OrderSeat {
+	if nextSeat == roundStartSeat {
 		nextRound++
 	}
 	return Turn{

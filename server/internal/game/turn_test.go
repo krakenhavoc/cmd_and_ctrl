@@ -76,7 +76,7 @@ func TestPhaseOfMapping(t *testing.T) {
 
 func TestTurnAdvanceWithinTurn(t *testing.T) {
 	turn := Turn{Seq: 1, Round: 1, ActiveSeat: 0, Phase: PhaseBeginning, Step: StepUntap}
-	turn = turn.advance(4)
+	turn = turn.advance(4, 0)
 	if turn.Step != StepUpkeep {
 		t.Errorf("after untap: got %q, want %q", turn.Step, StepUpkeep)
 	}
@@ -88,7 +88,7 @@ func TestTurnAdvanceWithinTurn(t *testing.T) {
 func TestTurnAdvanceWrapsToNextSeat(t *testing.T) {
 	// Start at the last step of seat 0 on turn 1.
 	turn := Turn{Seq: 1, Round: 1, ActiveSeat: 0, Phase: PhaseEnding, Step: StepCleanup}
-	turn = turn.advance(4)
+	turn = turn.advance(4, 0)
 	if turn.Step != StepUntap {
 		t.Errorf("after cleanup: got %q, want %q", turn.Step, StepUntap)
 	}
@@ -106,7 +106,7 @@ func TestTurnAdvanceWrapsToNextSeat(t *testing.T) {
 func TestTurnAdvanceWrapsToNextRound(t *testing.T) {
 	// Last step of the last seat on turn 1 → seat 0, turn 2.
 	turn := Turn{Seq: 4, Round: 1, ActiveSeat: 3, OrderSeat: 3, Phase: PhaseEnding, Step: StepCleanup}
-	turn = turn.advance(4)
+	turn = turn.advance(4, 0)
 	if turn.ActiveSeat != 0 {
 		t.Errorf("seat after full round: got %d, want 0", turn.ActiveSeat)
 	}
@@ -141,7 +141,7 @@ func TestTurnAdvanceIntoUntapSetsNoPriority(t *testing.T) {
 	// Cleanup → next seat's Untap must land with PriorityHolder set to
 	// the NoPriority sentinel — S13 no-priority-on-untap guarantee.
 	turn := Turn{Seq: 1, Round: 1, ActiveSeat: 0, Phase: PhaseEnding, Step: StepCleanup}
-	turn = turn.advance(4)
+	turn = turn.advance(4, 0)
 	if turn.Step != StepUntap {
 		t.Fatalf("after cleanup: got %q, want %q", turn.Step, StepUntap)
 	}
@@ -152,7 +152,7 @@ func TestTurnAdvanceIntoUntapSetsNoPriority(t *testing.T) {
 
 func TestTurnAdvanceIntoCleanupSetsNoPriority(t *testing.T) {
 	turn := Turn{Seq: 1, Round: 1, ActiveSeat: 0, Phase: PhaseEnding, Step: StepEnd, PriorityHolder: 0}
-	turn = turn.advance(4)
+	turn = turn.advance(4, 0)
 	if turn.Step != StepCleanup {
 		t.Fatalf("after end: got %q, want %q", turn.Step, StepCleanup)
 	}
@@ -181,7 +181,7 @@ func TestTurnAdvanceIntoPriorityStepsSetsActiveSeat(t *testing.T) {
 	}
 	for _, c := range cases {
 		turn := Turn{Round: 1, ActiveSeat: 2, Phase: PhaseOf(c.from), Step: c.from}
-		got := turn.advance(4)
+		got := turn.advance(4, 0)
 		if got.Step != c.want {
 			t.Errorf("advance from %q: got step %q, want %q", c.from, got.Step, c.want)
 		}

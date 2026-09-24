@@ -452,7 +452,7 @@ func Play(ctx context.Context, cfg Config, seed uint64, order []int) (GameResult
 	// The same two-stream seeding the whole-game tests use, so an
 	// arena game and a test game on the same seed deal the same
 	// cards.
-	if err := g.Start(rand.New(rand.NewPCG(seed, seed+1))); err != nil {
+	if err := g.StartWithFirstPlayerRoll(rand.New(rand.NewPCG(seed, seed+1))); err != nil {
 		return GameResult{}, fmt.Errorf("botarena: start: %w", err)
 	}
 

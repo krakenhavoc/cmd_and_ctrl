@@ -65,6 +65,7 @@
   import ModalLayer from "../lib/components/ModalLayer.svelte";
   import { devFeature } from "../lib/env";
   import { gameWSURL } from "../lib/gameURL";
+  import { openingRollText, openingRollWinner } from "../lib/startingPlayer";
   import DevDock from "../lib/components/dev/DevDock.svelte";
   import type { ReplayFrame } from "../lib/replay";
 
@@ -608,6 +609,7 @@
   // KeptHand. The dialog blocks the viewer's normal toolbar until
   // they commit. The viewer can still see the table, chat, etc.
   const mulligansOpen = $derived(view?.mulligans_open === true);
+  const openingRoll = $derived(openingRollWinner(view));
   const viewerNeedsToDecide = $derived(
     mulligansOpen && !!viewerSeat && !viewerSeat.eliminated && !viewerSeat.hand_kept,
   );
@@ -1612,6 +1614,12 @@
             {#if mulligansOpen && !gameEnded}
               <div class="att mulligan-banner" aria-label="opening hand decisions">
                 <span class="att-label">Opening hands</span>
+                {#if openingRoll}
+                  <span class="opening-roll" style="--seat-color: {seatColor(openingRoll.seat)}">
+                    <span class="seat-dot" style="background:{seatColor(openingRoll.seat)}"></span>
+                    <strong>{openingRollText(openingRoll)}</strong>
+                  </span>
+                {/if}
                 {#each seats as seat (seat.id)}
                   <span
                     class="mull"
@@ -1779,6 +1787,12 @@
         >
           <header>
             <h2>Your opening hand</h2>
+            {#if openingRoll}
+              <p class="opening-roll-copy">
+                <span class="seat-dot" style="background:{seatColor(openingRoll.seat)}"></span>
+                {openingRollText(openingRoll)}.
+              </p>
+            {/if}
             {#if (viewerSeat?.mulligans_taken ?? 0) > 0}
               <p class="muted">
                 Mulligans taken: {viewerSeat?.mulligans_taken}. You'll redraw 7 cards (simplified
@@ -2445,6 +2459,17 @@
     flex-wrap: wrap;
     gap: 8px;
   }
+  .opening-roll {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 9px;
+    border: 1px solid color-mix(in srgb, var(--seat-color) 58%, var(--border));
+    border-radius: 999px;
+    color: var(--fg);
+    background: color-mix(in srgb, var(--seat-color) 12%, transparent);
+    font-size: 12px;
+  }
   .mull {
     display: inline-flex;
     align-items: center;
@@ -2520,6 +2545,13 @@
   .mulligan-dialog header p {
     margin: 0;
     font-size: 14px;
+  }
+  .mulligan-dialog header .opening-roll-copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--gold-strong);
+    font-weight: 600;
   }
   .mulligan-cards {
     display: grid;
