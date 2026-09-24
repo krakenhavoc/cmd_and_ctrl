@@ -28,6 +28,12 @@ type Context struct {
 	// Nil for AsEnters callbacks (which fire after the spell has
 	// already resolved and routed to the battlefield).
 	Item *game.StackItem
+
+	// groupMember marks a Context the text reaches its permanents
+	// through as members of a set ("each creature you control"), not
+	// as "this" — so the #1432 new-object question is not asked of
+	// them. Set only by asGroupMember (source_object_guard.go, #1463).
+	groupMember bool
 }
 
 // NewContext constructs a Context bound to a game + stack item.

@@ -269,7 +269,7 @@ func teferiAkosaTapThenShuffle(g *game.Game, item *game.StackItem, picked []uuid
 		if !ok || c.Tapped || !c.IsCreature() || c.Controller != item.Controller {
 			continue
 		}
-		if err := (TapTarget{Target: id}).Apply(ctx); err != nil {
+		if err := (TapTarget{Target: id}).Apply(ctx.asGroupMember()); err != nil {
 			return err
 		}
 		tapped = append(tapped, id)

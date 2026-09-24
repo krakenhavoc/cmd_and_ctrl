@@ -67,7 +67,7 @@ func init() {
 				if !c.IsCreature() || c.InstanceID == spared {
 					continue
 				}
-				if err := (Airbend{Target: c.InstanceID}).Apply(ctx); err != nil {
+				if err := (Airbend{Target: c.InstanceID}).Apply(ctx.asGroupMember()); err != nil {
 					return err
 				}
 			}

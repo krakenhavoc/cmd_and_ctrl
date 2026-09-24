@@ -391,7 +391,7 @@ func b28PutCountersOnEachCreatureYouControl(g *game.Game, item *game.StackItem, 
 		}
 	}
 	for _, id := range ids {
-		if err := (AddCounter{Target: id, Kind: "+1/+1", N: n}).Apply(ctx); err != nil {
+		if err := (AddCounter{Target: id, Kind: "+1/+1", N: n}).Apply(ctx.asGroupMember()); err != nil {
 			return err
 		}
 	}

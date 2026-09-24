@@ -122,10 +122,14 @@ func (b BecomeArtifactCreature) Apply(ctx *Context) error {
 // applyFor is the shared body: one registration, two durations.
 func (b BecomeCreatureUntilEOT) applyFor(ctx *Context, duration game.Duration) error {
 	target := b.Target
+	newObject := ctx.isNewSourceObject
 	if target == uuid.Nil {
+		// A zero Target is "this" by construction, whatever Context
+		// it was handed (#1463).
 		target = ctx.Source()
+		newObject = ctx.isNewSourceObjectAsThis
 	}
-	if target == uuid.Nil || ctx.isNewSourceObject(target) { // #1432
+	if target == uuid.Nil || newObject(target) { // #1432
 		return nil
 	}
 	// CR 400.7: pin to the instance AND the battlefield-entry stamp,

@@ -455,7 +455,7 @@ func untapAllLandsControlledBy(g *game.Game, controller uuid.UUID, ctx *Context)
 		}
 	}
 	for _, id := range ids {
-		if err := (UntapTarget{Target: id}.Apply(ctx)); err != nil {
+		if err := (UntapTarget{Target: id}.Apply(ctx.asGroupMember())); err != nil {
 			return err
 		}
 	}

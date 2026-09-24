@@ -114,7 +114,7 @@ func TapAndHoldWhileThisRemainsTapped(ctx *Context, targets []uuid.UUID) error {
 		return err
 	}
 	d, ok := ctx.Game.ForAsLongAsSourceTappedDuration(ctx.Source())
-	if !ok || ctx.isNewSourceObject(ctx.Source()) { // #1432
+	if !ok || ctx.isNewSourceObjectAsThis(ctx.Source()) { // #1432
 		return nil
 	}
 	return DoesntUntapWhile{Targets: targets, Duration: d}.Apply(ctx)

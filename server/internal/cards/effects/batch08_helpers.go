@@ -149,7 +149,7 @@ func b08DoubleCountersOnEachCreatureYouControl(g *game.Game, item *game.StackIte
 		}
 	}
 	for _, t := range todo {
-		if err := (AddCounter{Target: t.id, Kind: "+1/+1", N: t.n}).Apply(ctx); err != nil {
+		if err := (AddCounter{Target: t.id, Kind: "+1/+1", N: t.n}).Apply(ctx.asGroupMember()); err != nil {
 			return err
 		}
 	}
@@ -243,7 +243,7 @@ func b08OverlookSacrifice(fetchLabel, reason string, pred func(game.Card) bool) 
 		// #1432: a land that left and came back is a new object — the
 		// sacrifice does nothing, so there is no "when you do" either.
 		if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneBattlefield ||
-			ctx.isNewSourceObject(item.SourceCardID) {
+			ctx.isNewSourceObjectAsThis(item.SourceCardID) {
 			return nil
 		}
 		if err := (SacrificePermanent{Target: item.SourceCardID}).Apply(ctx); err != nil {

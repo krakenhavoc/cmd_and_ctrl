@@ -279,7 +279,7 @@ func b11PutCountersOnEachCreatureYouControl(g *game.Game, item *game.StackItem, 
 		if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneBattlefield {
 			continue
 		}
-		if err := (AddCounter{Target: id, Kind: "+1/+1", N: n}).Apply(ctx); err != nil {
+		if err := (AddCounter{Target: id, Kind: "+1/+1", N: n}).Apply(ctx.asGroupMember()); err != nil {
 			return err
 		}
 	}

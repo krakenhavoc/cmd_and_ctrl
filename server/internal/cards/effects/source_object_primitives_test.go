@@ -468,6 +468,47 @@ func TestEveryPrimitiveThatActsOnACardAsksAboutItsSource(t *testing.T) {
 		"PlotExiled":           "a card in exile",
 		"CreateTokenCopy":      "reads copiable values; last-known information is the answer for a source that left (CR 707.4)",
 	}
+	ps := scanPrimitives(t)
+	structs, applies, guarded := ps.structs, ps.applies, ps.guarded
+	var missing []string
+	for name, body := range applies {
+		_ = body
+		st, ok := structs[name]
+		if !ok || !actsOnACard(st) || guarded[name] {
+			continue
+		}
+		if _, ok := exempt[name]; ok {
+			continue
+		}
+		missing = append(missing, name)
+	}
+	sort.Strings(missing)
+	if len(missing) > 0 {
+		t.Errorf("these primitives act on a card by ID and never ask whether it is their source as a NEW object (#1432, CR 400.7): %v\n"+
+			"Guard the act with ctx.isNewSourceObject(target) (source_object_guard.go), or add the type to the exemption table with the reason it follows the card.", missing)
+	}
+	for name := range exempt {
+		if _, ok := applies[name]; !ok {
+			t.Errorf("exempt primitive %s no longer exists — drop it from the table", name)
+		}
+		if guarded[name] {
+			t.Errorf("exempt primitive %s asks the question now — drop it from the table", name)
+		}
+	}
+}
+
+// primitiveScan is the package parsed once for the #1432 / #1463
+// regressions: every struct type, every Apply body, and the set of
+// primitives that ask the new-object question — directly, or by
+// delegating to one that does.
+type primitiveScan struct {
+	structs map[string]*ast.StructType
+	applies map[string]*ast.BlockStmt
+	guarded map[string]bool
+}
+
+func scanPrimitives(t *testing.T) primitiveScan {
+	t.Helper()
 	fset := token.NewFileSet()
 	files, err := filepath.Glob("*.go")
 	if err != nil {
@@ -511,21 +552,7 @@ func TestEveryPrimitiveThatActsOnACardAsksAboutItsSource(t *testing.T) {
 			}
 		}
 	}
-	actsOnACard := func(st *ast.StructType) bool {
-		for _, f := range st.Fields.List {
-			typ := exprString(f.Type)
-			if typ != "uuid.UUID" && typ != "[]uuid.UUID" {
-				continue
-			}
-			for _, n := range f.Names {
-				if n.Name == "Target" || n.Name == "Card" || n.Name == "Targets" {
-					return true
-				}
-			}
-		}
-		return false
-	}
-	markers := map[string]bool{"isNewSourceObject": true, "withoutNewSourceObject": true, "eotSnapshot": true, "applyFor": true}
+	markers := map[string]bool{"isNewSourceObject": true, "isNewSourceObjectAsThis": true, "withoutNewSourceObject": true, "eotSnapshot": true, "applyFor": true}
 	guarded := map[string]bool{}
 	for changed := true; changed; {
 		changed = false
@@ -557,31 +584,24 @@ func TestEveryPrimitiveThatActsOnACardAsksAboutItsSource(t *testing.T) {
 			}
 		}
 	}
-	var missing []string
-	for name, body := range applies {
-		_ = body
-		st, ok := structs[name]
-		if !ok || !actsOnACard(st) || guarded[name] {
+	return primitiveScan{structs: structs, applies: applies, guarded: guarded}
+}
+
+// actsOnACard reports whether a primitive's struct names a card to act
+// on: a `Target`, `Card` or `Targets` field of uuid type.
+func actsOnACard(st *ast.StructType) bool {
+	for _, f := range st.Fields.List {
+		typ := exprString(f.Type)
+		if typ != "uuid.UUID" && typ != "[]uuid.UUID" {
 			continue
 		}
-		if _, ok := exempt[name]; ok {
-			continue
-		}
-		missing = append(missing, name)
-	}
-	sort.Strings(missing)
-	if len(missing) > 0 {
-		t.Errorf("these primitives act on a card by ID and never ask whether it is their source as a NEW object (#1432, CR 400.7): %v\n"+
-			"Guard the act with ctx.isNewSourceObject(target) (source_object_guard.go), or add the type to the exemption table with the reason it follows the card.", missing)
-	}
-	for name := range exempt {
-		if _, ok := applies[name]; !ok {
-			t.Errorf("exempt primitive %s no longer exists — drop it from the table", name)
-		}
-		if guarded[name] {
-			t.Errorf("exempt primitive %s asks the question now — drop it from the table", name)
+		for _, n := range f.Names {
+			if n.Name == "Target" || n.Name == "Card" || n.Name == "Targets" {
+				return true
+			}
 		}
 	}
+	return false
 }
 
 // And the card files that skip the primitive: a game mutator called
@@ -604,7 +624,7 @@ func TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking(t *testing.T) 
 	}
 	// SourcePermanent answers the same question: its Left is true for a
 	// source that left and came back (#1418).
-	asks := map[string]bool{"sourceIsNewObject": true, "isNewSourceObject": true, "b09SourceStillOnBattlefield": true, "SourcePermanent": true}
+	asks := map[string]bool{"sourceIsNewObject": true, "isNewSourceObject": true, "isNewSourceObjectAsThis": true, "b09SourceStillOnBattlefield": true, "SourcePermanent": true}
 	// A SPELL moving itself — "Exile Teferi's Protection" — is not a
 	// permanent's ability; a spell item is never judged.
 	spells := map[string]bool{
