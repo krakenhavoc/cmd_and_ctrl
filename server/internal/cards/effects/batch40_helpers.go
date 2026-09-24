@@ -115,23 +115,18 @@ func b40NotActivatedForManaThisTurn() func(g *game.Game, controller, source uuid
 // b40RedOrArtifactSourceControlledBy is the first half of Mechanized
 // Warfare's condition: "a red or artifact source you control".
 //
-// The source is looked up wherever it now is — a burn spell is in its
-// owner's graveyard by the time its damage resolves — so its colour
-// and its controller stay readable. Effective characteristics, so an
+// The source is the damage event's snapshot of it
+// (damageSourceCharacteristics): a burn spell as it stands on the
+// stack, and a permanent that has left the battlefield as it last
+// existed there (#1417, CR 608.2h). Effective characteristics, so an
 // artifact creature an effect has turned blue still qualifies as an
-// artifact, and a creature an effect has turned red qualifies as red.
+// artifact, and a creature an effect had turned red qualifies as red
+// even after it dies.
 //
-// A source the engine cannot look up at all is not boosted, which is
+// A source the engine cannot read at all is not boosted, which is
 // weaker than printed and never stronger.
 func b40RedOrArtifactSourceControlledBy(ev *game.ReplacementEvent, g *game.Game, controller uuid.UUID) bool {
-	if ev.DamageSource == uuid.Nil {
-		return false
-	}
-	c, ok := g.LookupCardForEffect(ev.DamageSource)
-	if !ok || c.Controller != controller {
-		return false
-	}
-	return c.HasColor("R") || c.IsArtifact()
+	return damageSourceIsRedControlledBy(ev, g, controller, true)
 }
 
 // b40DamageHitsAnOpponentOf is the second half: "to an opponent or a

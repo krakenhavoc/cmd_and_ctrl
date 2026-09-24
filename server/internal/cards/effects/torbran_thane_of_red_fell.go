@@ -16,8 +16,10 @@ import (
 // The mono-red go-wide commander: every 1/1 Goblin hits for three.
 // Twinflame Tyrant's replacement with an addition in place of a
 // doubling and one more gate — the source must be RED, read off the
-// source card wherever it is (a red creature that dies mid-combat is
-// still red in the graveyard when its damage event arrives). Combat
+// damage event's snapshot of the source (a creature that has left the
+// battlefield is read as it last existed there, #1417 / CR 608.2h, so
+// a creature an effect had turned red that dies and then deals its
+// damage is still a red source you control). Combat
 // and non-combat damage alike, as printed; damage to yourself or to
 // your own permanents is untouched. Torbran is himself a red source.
 //
@@ -33,8 +35,10 @@ func init() {
 				if ev.Kind != game.RepEventDamage || ev.DamageAmount <= 0 || ev.DamageSource == uuid.Nil {
 					return false
 				}
-				dealer, ok := g.LookupCardForEffect(ev.DamageSource)
-				if !ok || dealer.Controller != src.Controller || !dealer.HasColor("R") {
+				// The source as the damage event snapshotted it: a
+				// creature that has left deals its damage as the
+				// red (or not) source it last was (#1417).
+				if !damageSourceIsRedControlledBy(ev, g, src.Controller, false) {
 					return false
 				}
 				return damageHitsAnOpponentOf(ev, g, src.Controller)

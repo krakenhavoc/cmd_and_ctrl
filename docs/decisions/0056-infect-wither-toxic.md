@@ -945,12 +945,9 @@ deathtouch through the instance-ID rule with no change to its file.
 
 ### Still not covered
 
-- **The source's other last-known characteristics on the damage
-  event.** `damageSourceLKILocked` still reads the source from whatever
-  zone holds it, so a departed creature's colour for CR 702.16e
-  protection is its graveyard card's printed colour, not the colour it
-  had on the battlefield. It is the same CR 608.2h question about a
-  different field, and the record already holds the answer.
+- ~~**The source's other last-known characteristics on the damage
+  event.**~~ **Closed by #1417**, Decision 12 below. The damage
+  event's `SourceLKI` now comes from the same record.
   [#1417](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1417).
 - **A trigger's source object.** Triggered items do not carry
   `SourceEpoch`, so "this" in a trigger whose event is not about its
@@ -960,3 +957,77 @@ deathtouch through the instance-ID rule with no change to its file.
 - **Infect, wither and toxic** join the same reader when PR 2 wires them
   into the tail. `departedDamageSourceLocked` returns the whole record,
   so they need no new lookup.
+
+## Amendment 2026-09-24 (follow-up) — the damage event's source characteristics come from the same record (#1417) · Accepted · S38
+
+Issue [#1417](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1417),
+the first "Still not covered" bullet above. Decision 9 read a departed
+source's lifelink and deathtouch from its `lastKnownPermanents` record.
+The same tail also takes `sourceLKI`, the characteristics CR 702.16e
+protection reads, and that still came from `damageSourceLKILocked`,
+which reads the card in whatever zone holds it now. A creature painted
+red that died dealt colourless damage through protection from red. A
+printed-red creature made colourless had its damage prevented. Both are
+wrong under CR 608.2h. The first is stronger than printed for the
+damage.
+
+### Decision 12. One record answers every source question
+
+When `departedDamageSourceLocked` answers in `effectDamageTailLocked`
+(`server/internal/game/damage_tail.go`), `t.sourceLKI` becomes a copy
+of `rec.Characteristic` (colours, types, abilities, controller). The
+controller comes from `rec.Controller` when the characteristic has
+none, which is the rule `SourceCharacteristics` uses. The epoch rules
+are Decision 10's, unchanged:
+
+- **By object** (`DealDamageFromObjectForEffect`, `DealDamage{SourceObject}`):
+  the named object's record. A card that came back is a new object,
+  and its colour is never read for damage the old object dealt.
+- **By instance ID**: the card's last record, and only while its
+  current epoch is exactly one past it.
+
+Everything else keeps the current-zone read from #662:
+
+- a spell on the stack, which has no record;
+- a card that has moved on, for example bounced and then cast, which
+  is two zone changes past its record;
+- a live permanent.
+
+The keywords and the characteristics now come from the same record,
+so they cannot describe different objects.
+
+The catalog's colour-testing damage replacements read the same value.
+`effects.damageSourceCharacteristics` (`server/internal/cards/effects/damage_source.go`)
+returns `ReplacementEvent.SourceLKI`, and falls back to a lookup only for
+an event created without one, which no engine entry point does. Torbran,
+Thane of Red Fell, Ojer Axonil, Deepest Might and Mechanized Warfare
+use it for "a red (or artifact) source you control". Before this they
+looked the card up in its current zone.
+
+### Cards
+
+No catalog caveat named this gap. The proof is played through real
+cards (`server/internal/cards/effects/departed_source_colour_test.go`).
+A black-red Murderous Redcap is turned blue by Cerulean Wisps in
+response to its enter trigger and then dies:
+
+- a creature with protection from blue takes none of its damage;
+- Torbran, Ojer Axonil and Mechanized Warfare do not raise it.
+
+### Still not covered
+
+- **Target re-checks at resolution.** `stackItemSourceLocked`
+  (`game/targets.go`) re-checks an ability's targets (CR 608.2b)
+  against its source's current-zone card, not its last-known one, so
+  protection's targeting half (CR 702.16b) can disagree with the
+  damage half for a departed source.
+  [#1429](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1429).
+- **Controller and type matchers.** Four catalog damage replacements
+  that test only the source's controller or type (Angrath's
+  Marauders, the batch 28 helper, Gratuitous Violence, Inquisitor's
+  Flail) still look the card up. So do `EventDealDamage` triggers,
+  whose event carries no snapshot.
+  [#1430](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1430).
+- **Combat and the manual mark.** These keep `damageSourceLKILocked`.
+  A combat source is on the battlefield or has a CR 510.1c frame, and
+  the sandbox mark is not a rules path.
