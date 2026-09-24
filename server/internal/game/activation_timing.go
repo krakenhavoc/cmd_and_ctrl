@@ -300,6 +300,9 @@ func (g *Game) activationTimingVerdictLocked(q ActivationQuery) activationTiming
 //     put the mana decision on the CARD because half the cards print
 //     the exemption and half do not. Here there is no decision to
 //     put anywhere: the rules give a mana ability its own window.
+//     SPLIT SECOND comes straight after it (#1519, CR 702.61a): it
+//     shuts every window that is NOT a mana ability's, so it is
+//     asked of exactly the abilities step 1 lets through.
 //
 //  2. THE ABILITY'S OWN TIMING. "Activate only as a sorcery"
 //     (CR 602.5d, `ActivationAbility.SorcerySpeed`) and a loyalty
@@ -331,6 +334,14 @@ func (g *Game) ActivationTimingOpenLocked(activator uuid.UUID, card Card, zone Z
 	// 1. CR 605.3a — not this window's business.
 	if ability.Mana {
 		return true
+	}
+	// CR 702.61a (#1519): split second stops every activation that is
+	// not a mana ability, which is exactly the set step 1 let through.
+	// The activation paths and the enumerator return earlier on the
+	// same cache; this is here for `timing_closed`, so the view greys
+	// an instant-speed row the engine would refuse.
+	if g.SplitSecondActive {
+		return false
 	}
 	// 2. The ability's own timing.
 	instantSpeed := !ability.SorcerySpeed && !ability.Loyalty

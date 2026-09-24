@@ -1646,6 +1646,7 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"wither"` | Wither (CR 702.80) — #748, the damage tail: -1/-1 counters on a creature |
 | `"toxic N"` | Toxic (CR 702.164) — #748, N extra poison on combat damage to a player. Numbered AND cumulative: read it with `game.ToxicTotal`, never `HasKeyword`, and grant it through `game.AppendKeywordAbility` so a second instance adds up ([ADR 0056](docs/decisions/0056-infect-wither-toxic.md)) |
 | `"prowess"` | Prowess (CR 702.108) — #706, the first TRIGGERED keyword in the table: `TriggersForCard` turns each instance on the effective ability list into one trigger (`game/prowess.go`). Cumulative like toxic, so grant it through `game.AppendKeywordAbility`. Never write a prowess trigger by hand — declare the token ([ADR 0014 amendment 2026-09-24](docs/decisions/0014-combat-keywords.md)) |
+| `"split second"` | Split second (CR 702.61) — #1519, a SPELL's keyword: `castHasSplitSecond` (`game/split_second.go`) stamps `StackItem.SplitSecond` at announce, and while it is on the stack nobody casts or activates a non-mana ability. Declare it on an instant or sorcery exactly like flash; never pass the sandbox `SplitSecond` cast flag from a card ([ADR 0007 amendment 2026-09-24](docs/decisions/0007-stack-foundation.md)) |
 
 **A keyword that is a trigger** has two shapes, and ADR 0014's
 2026-09-24 amendment says which to use. A constructor on
