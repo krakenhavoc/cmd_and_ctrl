@@ -94,8 +94,50 @@ func TestRhysticStudyOpponentCastDeclineDraws(t *testing.T) {
 	if prompt.PayCost != "{1}" {
 		t.Errorf("PayCost = %q, want {1}", prompt.PayCost)
 	}
+	// #1565: the decline no longer draws automatically — it opens a
+	// second, independent "you may draw a card?" for the Study's
+	// controller (MayChoice, #796).
+	if owner.Hand.Size() != handBefore {
+		t.Fatalf("Study drew before its controller answered 'draw a card?'")
+	}
+	ask := latestChoiceOfKind(g, game.PendingChoiceConfirm)
+	if ask == nil || ask.Chooser != owner.ID {
+		t.Fatalf("no 'draw a card?' prompt addressed to the Study's controller")
+	}
+	if err := g.ResolveConfirm(ask.ID, owner.ID, true); err != nil {
+		t.Fatalf("ResolveConfirm(draw): %v", err)
+	}
 	if got := owner.Hand.Size() - handBefore; got != 1 {
-		t.Errorf("Rhystic Study on decline: owner hand delta %d, want 1", got)
+		t.Errorf("Rhystic Study on decline, then 'yes': owner hand delta %d, want 1", got)
+	}
+}
+
+// TestRhysticStudyControllerMayDeclineTheDraw closes the caveat
+// #1565 audited: "you may draw a card" really is optional now, not a
+// forced draw — the controller can say "no" instead of being handed
+// a card (or, on an empty library, the loss CR 704.5b would give
+// them for drawing from nothing).
+func TestRhysticStudyControllerMayDeclineTheDraw(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	owner := g.Seats[1]
+	pushPermanentForTest(g, owner.ID, "Rhystic Study", rhysticStudyOracle, "Enchantment")
+	handBefore := owner.Hand.Size()
+
+	castCatalogSpell(t, g, "Lightning Bolt", "Instant", lightningBoltOracle,
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: owner.ID}})
+	passPriorityAroundTable(t, g)
+	answerPayUnless(t, g, caster.ID, false)
+
+	ask := latestChoiceOfKind(g, game.PendingChoiceConfirm)
+	if ask == nil || ask.Chooser != owner.ID {
+		t.Fatalf("no 'draw a card?' prompt addressed to the Study's controller")
+	}
+	if err := g.ResolveConfirm(ask.ID, owner.ID, false); err != nil {
+		t.Fatalf("ResolveConfirm(decline): %v", err)
+	}
+	if owner.Hand.Size() != handBefore {
+		t.Errorf("owner hand changed by %d after declining the draw, want 0", owner.Hand.Size()-handBefore)
 	}
 }
 

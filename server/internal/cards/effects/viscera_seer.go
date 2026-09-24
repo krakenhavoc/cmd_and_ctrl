@@ -19,10 +19,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // It can eat itself (Sacrifice a creature, and it is a creature), so
 // the last activation is always available.
+//
+// Audited for #1565: one activated ability, one cost, one effect —
+// the whole printed card. See scry_test.go (the scry itself, and that
+// declining to bottom leaves the library untouched) and
+// paused_exit_cost_test.go / cost_commander_cards_test.go (a
+// commander named as the sacrifice pauses for its owner's CR 903.9
+// answer before the Seer is paid).
 func init() {
 	Register(Spec{
-		OracleID: "f82a4e85-526d-4456-b700-7760043a31be",
-		Name:     "Viscera Seer",
+		OracleID:     "f82a4e85-526d-4456-b700-7760043a31be",
+		Name:         "Viscera Seer",
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label: "Sacrifice a creature: Scry 1.",
 			Cost:  SacrificeACreature(),

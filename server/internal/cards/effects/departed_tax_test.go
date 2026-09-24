@@ -35,8 +35,10 @@ func sacrificedInLog(g *game.Game, id uuid.UUID) bool {
 }
 
 // Rhystic Study: the caster concedes owing the {1}. The cost is not
-// paid, so the Study's controller draws — the same card they would
-// have drawn off a plain "no".
+// paid, which opens the Study's controller's own "draw a card?"
+// (#1565, MayChoice) exactly as a plain "no" would; answering it
+// draws the same card they would have drawn before that choice
+// existed.
 func TestRhysticStudyDrawsWhenTheTaxedPlayerConcedes(t *testing.T) {
 	g := newCatalogGame(t)
 	caster, owner := g.Seats[0], g.Seats[1]
@@ -53,11 +55,18 @@ func TestRhysticStudyDrawsWhenTheTaxedPlayerConcedes(t *testing.T) {
 	if err := g.Concede(caster.ID); err != nil {
 		t.Fatalf("Concede: %v", err)
 	}
-	if got := owner.Hand.Size() - handBefore; got != 1 {
-		t.Errorf("cards drawn off the conceding caster's unpaid tax = %d, want 1", got)
-	}
 	if hasPayUnlessFor(g, caster.ID) {
 		t.Errorf("the tax is still queued for a player who has left the game")
+	}
+	ask := latestChoiceOfKind(g, game.PendingChoiceConfirm)
+	if ask == nil || ask.Chooser != owner.ID {
+		t.Fatalf("no 'draw a card?' prompt addressed to the Study's controller")
+	}
+	if err := g.ResolveConfirm(ask.ID, owner.ID, true); err != nil {
+		t.Fatalf("ResolveConfirm(draw): %v", err)
+	}
+	if got := owner.Hand.Size() - handBefore; got != 1 {
+		t.Errorf("cards drawn off the conceding caster's unpaid tax = %d, want 1", got)
 	}
 }
 

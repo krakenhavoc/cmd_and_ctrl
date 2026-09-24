@@ -19,25 +19,22 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the opponent picked at the prompt and the dead legend's power read
 // as the trigger resolves.
 //
-// Two shape notes, neither a caveat:
+// One shape note, not a caveat: the counters land a beat AFTER the
+// entry rather than as part of it (the reanimation path carries no
+// counter option). Nothing in the catalog reads a creature's counters
+// between its arrival and the next event, and Doubling Season doubles
+// them either way.
 //
-//   - The counters land a beat AFTER the entry rather than as part
-//     of it (the reanimation path carries no counter option). Nothing
-//     in the catalog reads a creature's counters between its arrival
-//     and the next event, and Doubling Season doubles them either way.
-//   - The dead legend's power is its printed value plus its +1/+1 and
-//     -1/-1 counters read off the log (b17LastKnownPowerOffBattlefield);
-//     the harvester hands only a card's OWN dies-trigger the LKI
-//     characteristic, so an anthem's bonus is not in it — weaker
-//     than printed for a pumped legend, never stronger.
+// The dead legend's power — previously a declared gap — is closed by
+// #1379's resolution-time LKI: ctx.TriggeringPermanent() reads
+// PermanentInfo.Power, PowerForComparison as the legend last existed
+// on the battlefield, layers (an anthem's bonus) and counters both
+// included. See b33DamageChosenOpponentByDeadCreaturesPower.
 func init() {
 	Register(Spec{
 		OracleID:     "6a47865c-8fa2-4cb2-aebf-8009c065395f",
 		Name:         "Rakdos Joins Up",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The damage a dying legendary creature deals counts its counters but not bonuses from other permanents like anthems.",
-		},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			{
 				Watches:   []game.EventKind{game.EventETB},
