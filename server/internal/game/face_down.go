@@ -112,6 +112,27 @@ const (
 	// no longer applies". A seventh reuse would get one of those wrong:
 	// `foretold` names the owner, `exiled` names nobody.
 	FaceDownHidden FaceDownKind = "hideaway"
+
+	// FaceDownPermitted is a face-down exile whose viewer is whoever
+	// holds a cast permission over it (ADR 0066's 2026-09-24
+	// amendment, #1573): "exiles it face down. They may play that card
+	// for as long as it remains exiled" (Gonti, Night Minister), "exiles
+	// the top X cards of their library face down. You may look at and
+	// play those cards" (Outrageous Robbery). An EXILE kind, like
+	// `exiled` and `hideaway` — no CR 708.2 body, and it keeps its
+	// catalog entry, because casting it is the whole point.
+	//
+	// The viewer is not a seat the kind can name on its own — not the
+	// owner (`foretold`), not another object's controller (`hideaway`)
+	// — but the PLAYER of each stored CastPermission that names this
+	// object (castPermissionHoldersLocked). The permission is granted
+	// after the card lands, so the grant itself stamps the look
+	// (GrantCastPermissionForEffect); the kind is what lets it, and
+	// what keeps Necropotence's `exiled` card unreadable to a grant
+	// that happens to name it. Nobody else may look (CR 406.3), and
+	// the card turns face up as it leaves exile — cast, played, or
+	// moved any other way (CR 400.7, MoveCard's ClearFaceDown).
+	FaceDownPermitted FaceDownKind = "permitted"
 )
 
 // FaceDownListing is CR 708.2's LISTED characteristics: "face-down
@@ -811,6 +832,8 @@ func FaceDownBody(kind FaceDownKind) (Characteristic, bool) {
 //
 //	exiled                              nobody         CR 406.3
 //	foretold                            the owner      CR 702.143d
+//	hideaway                            the hider's controller CR 702.75a
+//	permitted                           each permission holder  #1573
 //	manifested/morphed/disguised/cloaked the controller CR 708.5
 //
 // The result is written into KnownBy (replacing whatever was there,
@@ -840,6 +863,11 @@ func (g *Game) faceDownViewersLocked(c Card) []uuid.UUID {
 		// names nobody new — anyone who already looked is kept by the
 		// caller's CR 406.3 rule, not re-derived here.
 		viewer = g.hiddenByControllerLocked(c)
+	case FaceDownPermitted:
+		// #1573: every holder of a stored permission naming this
+		// object. Usually empty at the landing itself — the grant is
+		// made once the card is in exile, and stamps its holder then.
+		return g.castPermissionHoldersLocked(c)
 	default:
 		// CR 708.5: the controller of a face-down permanent may look
 		// at it. Falls back to the owner for a card that has no

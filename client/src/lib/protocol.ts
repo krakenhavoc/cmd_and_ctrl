@@ -1630,6 +1630,11 @@ export interface ExilePlayView {
   cast_only?: boolean;
   // "Spend mana as though it were mana of any color" (Breeches).
   any_color?: boolean;
+  // #1573: "mana of any TYPE can be spent" (Hostage Taker) — colorless
+  // counts too, so a {C} in the cost is payable with anything. Set
+  // with `any_color` alongside it. A label only: `cast_prices` and
+  // `castable_here` already reflect it.
+  any_type?: boolean;
   // S22 airbend: the mana cost the holder pays INSTEAD of the card's
   // printed one ("{2} rather than its mana cost"). Absent for
   // impulse exile, which charges the printed cost. Note that
@@ -2216,7 +2221,9 @@ export interface CardView extends CastSurfaceView {
   face_down?: boolean;
   // WHY it is face down (ADR 0069): "exiled" (CR 406.3, Necropotence),
   // "foretold" (CR 702.143b), "hideaway" (CR 702.75a, ADR 0091 — the
-  // controller of the permanent that hid it may look), or one of the
+  // controller of the permanent that hid it may look), "permitted"
+  // (#1573 — the holder of the cast permission over it may look:
+  // Gonti, Night Minister; Outrageous Robbery), or one of the
   // CR 708.2 permanent states
   // "manifested" / "morphed" / "disguised" / "cloaked". PUBLIC —
   // everyone can see that a permanent is a morph — so it survives the
