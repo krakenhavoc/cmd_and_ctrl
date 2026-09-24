@@ -122,7 +122,14 @@ type PlayerStatic struct {
 	//
 	// Plain data, like everything else here — CastTimingRule is
 	// flags, two strings and a zone.
-	Timing CastTimingRule `json:"timing,omitzero"`
+	//
+	// No `omitzero`: `encoding/json` only honours that option from Go
+	// 1.24, and this field is part of GameSnapshot's graph
+	// (PlayerSnapshot.Statics[].Timing), so a build with an older
+	// toolchain (CI's pinned 1.22) always wrote it while a newer local
+	// one silently omitted it at its zero value — the divergence
+	// #1492 found. Always writing it is toolchain-independent.
+	Timing CastTimingRule `json:"timing"`
 
 	// LifeTotalLocked is "your life total can't change" (CR 119.7,
 	// CR 119.8) — Teferi's Protection, Teferi's Reproach. #1200,
@@ -170,7 +177,9 @@ type PlayerStatic struct {
 	// (CastRestriction, cast_gate.go), and nothing in the catalog needs
 	// a battlefield-derived ban with a DURATION, which is the one thing
 	// a permanent's continued presence already gives it for free.
-	CastBan CastBanRule `json:"castBan,omitzero"`
+	//
+	// No `omitzero`, for Timing's reason above (#1492).
+	CastBan CastBanRule `json:"castBan"`
 
 	// Source is the card that granted it, for the log and for the
 	// view's attribution. Never read by any rule: a granted ability

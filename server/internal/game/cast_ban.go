@@ -86,7 +86,12 @@ type CastBanRule struct {
 	// card narrows a granted ban by type yet, but the field costs
 	// nothing to have (PermissionFilter's zero value already matches
 	// everything, so an unset Filter is not a second thing to test).
-	Filter PermissionFilter `json:"filter,omitzero"`
+	//
+	// No `omitzero`: this is part of GameSnapshot's serialization
+	// graph (PlayerStatic.CastBan.Filter), and that option's
+	// behaviour depends on the building Go toolchain below 1.24
+	// (#1492) — CI is pinned to 1.22.
+	Filter PermissionFilter `json:"filter"`
 
 	// ExceptFromZone is the one zone this ban does NOT reach — Avatar's
 	// Wrath's "from anywhere other than their hands" is
