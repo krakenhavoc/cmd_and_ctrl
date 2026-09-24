@@ -130,6 +130,82 @@ func (g *Game) defendingPlayerForAttackLocked(target uuid.UUID) uuid.UUID {
 	return uuid.Nil
 }
 
+// setAttackTargetLocked points `c`'s attack at `target` and records
+// the defending player that attack has right now (#1364). Every write
+// that makes a creature attack something goes through it — the two
+// declaration verbs, an entry "attacking" (CR 506.3c) and a reselect
+// (CR 508.7) — so the record cannot lag the target it describes.
+//
+// A target with no defending player (uuid.Nil, or one that no longer
+// resolves) drops the record rather than keeping the previous one: a
+// record names the attack the creature is making, never an older one.
+//
+// Caller must hold g.mu.
+func (g *Game) setAttackTargetLocked(c *Card, target uuid.UUID) {
+	if c == nil {
+		return
+	}
+	c.AttackingTarget = target
+	defender := g.defendingPlayerForAttackLocked(target)
+	if defender == uuid.Nil {
+		g.forgetAttackDefenderLocked(c.InstanceID)
+		return
+	}
+	if g.attackDefenders == nil {
+		g.attackDefenders = map[uuid.UUID]uuid.UUID{}
+	}
+	g.attackDefenders[c.InstanceID] = defender
+}
+
+// forgetAttackDefenderLocked drops one attacker's last-known defending
+// player. Caller must hold g.mu.
+func (g *Game) forgetAttackDefenderLocked(id uuid.UUID) {
+	delete(g.attackDefenders, id)
+	if len(g.attackDefenders) == 0 {
+		g.attackDefenders = nil
+	}
+}
+
+// defendingPlayerForAttackerLocked is the defending player of
+// `attacker`'s attack FOR BLOCKING (CR 802.4a, 509.1a): the live
+// defendingPlayerForAttackLocked answer while the target resolves, and
+// the player recorded when the attack was pointed once it does not.
+//
+// The fallback is CR 506.4c plus CR 802.2a. A creature attacking a
+// planeswalker or battle that has been removed from combat "continues
+// to be an attacking creature … It may be blocked", and the player who
+// may block it is the one it was attacking "before it was removed from
+// combat" — the walker's controller or the battle's protector at the
+// time. The live read cannot name that player once the permanent has
+// gone; attackDefenders can.
+//
+// BLOCKING ONLY. Combat damage keeps reading the live target through
+// dealCombatDamageToAttackTargetLocked, so an unblocked creature whose
+// target left still deals its damage to nothing (CR 506.4c, 510.1b);
+// and the card-side "attacking you" readers keep the live answer,
+// because such a creature "is not attacking any player".
+//
+// Returns uuid.Nil for a creature not attacking, and when the recorded
+// player has left the game (CR 800.4a).
+//
+// Caller must hold g.mu. Reads only.
+func (g *Game) defendingPlayerForAttackerLocked(attacker *Card) uuid.UUID {
+	if attacker == nil || attacker.AttackingTarget == uuid.Nil {
+		return uuid.Nil
+	}
+	if d := g.defendingPlayerForAttackLocked(attacker.AttackingTarget); d != uuid.Nil {
+		return d
+	}
+	d, ok := g.attackDefenders[attacker.InstanceID]
+	if !ok {
+		return uuid.Nil
+	}
+	if p := g.playerByIDLocked(d); p == nil || p.Eliminated {
+		return uuid.Nil
+	}
+	return d
+}
+
 // canAttackTargetLocked reports whether `attacker`'s controller may
 // declare an attack at `target`, and why not when they may not.
 //
@@ -245,6 +321,22 @@ func (g *Game) dealCombatDamageToAttackTargetLocked(target, source uuid.UUID, am
 // caller runs inside ReadSnapshot or the enumerator's own frame.
 func (g *Game) DefendingPlayerForAttackForEffect(target uuid.UUID) uuid.UUID {
 	return g.defendingPlayerForAttackLocked(target)
+}
+
+// DefendingPlayerForAttackerForEffect is the exported read of
+// defendingPlayerForAttackerLocked: the seat whose creatures may block
+// the attacking creature `attacker` — including one whose planeswalker
+// or battle has left combat (CR 506.4c, #1364). The view's
+// defending_player and the enumerator's block pre-filter read it, so
+// they agree with the declaration verb. uuid.Nil when nobody may.
+//
+// For "is this creature attacking player P" use
+// DefendingPlayerForAttackForEffect on its target instead: a creature
+// whose target left is not attacking any player.
+//
+// Read-only. Caller must hold g.mu (read or write).
+func (g *Game) DefendingPlayerForAttackerForEffect(attacker uuid.UUID) uuid.UUID {
+	return g.defendingPlayerForAttackerLocked(findBattlefieldCard(g, attacker))
 }
 
 // ClassifyAttackTargetForEffect is the exported read of

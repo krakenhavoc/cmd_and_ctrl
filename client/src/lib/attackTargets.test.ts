@@ -180,6 +180,15 @@ describe("defendingPlayerOf", () => {
     ).toBe(them.id);
   });
 
+  // #1364, CR 506.4c: the walker left combat, so the creature attacks
+  // nothing (no kind), but it may still be blocked by the player who was
+  // defending it — the server keeps naming that seat.
+  it("keeps the recorded defender for a creature whose walker left combat", () => {
+    expect(
+      defendingPlayerOf(attacker({ attacking_target: "c-gone", defending_player: third.id })),
+    ).toBe(third.id);
+  });
+
   it("names nobody for a creature that is not attacking or whose walker is gone", () => {
     expect(defendingPlayerOf(bear)).toBeUndefined();
     expect(

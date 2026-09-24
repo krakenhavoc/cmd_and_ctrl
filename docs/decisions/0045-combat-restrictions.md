@@ -2143,6 +2143,7 @@ the field falls back to a player attack's target and to nothing otherwise.
 - **CR 506.4c's "it may be blocked"** for an attacker whose planeswalker or
   battle has left: see above. It needs the last-known defending player
   recorded when the permanent leaves ([#1364](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1364)).
+  *Closed by the amendment below, Decision 35.*
 - **CR 506.3e**, a creature put onto the battlefield blocking an attacker that
   is not attacking its controller: the engine has no "enters blocking" path
   yet, so there is nothing to gate.
@@ -2152,3 +2153,99 @@ the field falls back to a player attack's target and to nothing otherwise.
   19) announces the whole table's blocks at once. Legality does not depend on
   the order (CR 802.4b: a defending player's blocks are judged ignoring the
   attackers aimed at other players), which is why this check is enough.
+
+## Amendment (2026-09-23, [#1364](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1364)): an attacker whose planeswalker or battle has left may still be blocked
+
+Decision 34 left one shape weaker than printed on purpose: a creature attacking
+a planeswalker or battle that has left combat could be blocked by nobody,
+because the engine could not say who had been defending it. This closes it.
+Decisions 1-34 stand. Sprint S37 (combat correctness), tracker
+[#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880). CR numbers
+checked against the pinned edition (`MagicCompRules 20260819.txt`).
+
+### The rules
+
+- **CR 506.4c** — "If a creature is attacking a planeswalker or battle,
+  removing that planeswalker or battle from combat doesn't remove that
+  creature from combat. It continues to be an attacking creature, although it
+  is not attacking any player, planeswalker, or battle. It may be blocked. If
+  it is unblocked, it will deal no combat damage."
+- **CR 802.2a** — the defending player of such a creature is the player it was
+  attacking, the controller of the planeswalker, or the protector of the battle
+  it was attacking **before that permanent was removed from combat**.
+- **CR 802.4a** (Decision 34) — only that player's creatures may block it.
+
+### Decision 35: the defending player is recorded when the attack is pointed, and only the block path reads it
+
+**The record.** `Game.attackDefenders`, attacker → defending player, written
+by one helper, `setAttackTargetLocked` (`server/internal/game/attack_target.go`),
+which every write that makes a creature attack something now goes through:
+the two declaration verbs (`DeclareAttackerWith`, `DeclareAttackersWith`), the
+CR 506.3c entry door (`stampEntryAttackerLocked` — ninjutsu, tokens created
+attacking) and the CR 508.7 reselect (`ReselectAttackTargetForEffect`, #1343).
+It stores `defendingPlayerForAttackLocked(target)` as it resolves at that
+moment. A target with no defending player drops the row rather than keeping an
+older one, so the record always describes the attack the creature is making.
+
+**Why at pointing time, not when the permanent leaves.** CR 802.2a wants the
+defender "before it was removed from combat", and CR 506.4 removes an attacked
+planeswalker or battle from combat on every change that could alter that
+answer — leaving the battlefield, phasing out, a control change, ceasing to be
+a planeswalker or battle. So the defender at the last pointing IS the defender
+at removal, and there is no exit hook to keep in sync with every door a
+permanent can leave through (the battlefield exit, phasing, a type change that
+is only a layer result). The one engine gap this leans on is noted below.
+
+**The read.** `defendingPlayerForAttackerLocked(attacker)` returns the live
+`defendingPlayerForAttackLocked` answer while the target resolves and the
+recorded player once it does not — unless that player has left the game
+(CR 800.4a). It replaces the live read at **every block-side caller and no
+other**:
+
+| Caller | File |
+|---|---|
+| the one option generator (Decision 14), and so the #328 signal | `block_declaration.go` `blockOptionsLocked` |
+| the declaration's defender check (Decision 34) | `block_declaration.go` `blockDefenderRefusalLocked` |
+| the refusal's `Defender` | `block_legality.go` `blockRefusedErrorLocked` |
+| landwalk's "defending player controls a land" (CR 702.14c) | `landwalk.go` `landwalkBlockingLandLocked` |
+| the enumerator's pre-filter | `legal/combat.go`, via `DefendingPlayerForAttackerForEffect` |
+| the wire's `defending_player` | `protocol/view.go` `stampCombatTargets` |
+
+Combat damage keeps its live read (`dealCombatDamageToAttackTargetLocked`), so
+an unblocked creature whose target left still deals its damage to nothing
+(CR 506.4c, 510.1b). The card-side "is this creature attacking you" readers
+(`b17AttackersAllAvoid`, Horn of the Mark, the opponent-politics helpers) keep
+theirs too: such a creature "is not attacking any player", and the fallback
+would make it one.
+
+**The refusal sentence.** `not_defending` for such an attacker says why the
+player may be surprised: "Grizzly Bears is still attacking, though what it
+attacked is gone, so only P3 can block it." (`TargetKind` is
+`AttackTargetNone` with a `Defender` set — the new shape.)
+
+**Lifetime.** Combat-scoped, like `announcedAttacks` (Decision 23): cleared by
+`clearCombatLocked`, dropped per object by `removeFromCombatLocked`,
+`forgetCombatRecordLocked` (phasing) and `forgetPerObjectTurnStateLocked` (the
+battlefield exit), and carried by `Clone` / `RestoreFrom` and the persisted
+snapshot (`attackDefenders`, omitempty — a file written before it restores
+empty, which is the old behaviour until combat ends; no schema bump).
+
+**The wire and the client.** No new field. `defending_player` is now present
+on such an attacker, with `attacking_target_kind` absent; the client's block
+pickers already read `defending_player` first (`defendingPlayerOf`), so they
+offer the block with no code change beyond the comments and a test.
+
+### What this does NOT decide
+
+- **A control change of an attacked planeswalker** (or a protector change of
+  a battle) mid-combat. CR 506.4 removes that permanent from combat, but the
+  engine does not: the live read keeps resolving it, now to the new
+  controller. That is a separate gap in removal-from-combat, not in this
+  record, and the record would give the right answer the day the removal is
+  modelled ([#1376](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1376)).
+- **A planeswalker that phases back in** in the same combat still resolves
+  live as the attack's target — the same removal-from-combat gap (#1376).
+- **The bot's pressure estimate** (`aiseat/heuristic` `decideBlock`) counts
+  only attacks aimed at its seat as incoming damage, which is right for such a
+  creature (it deals none). The block moves themselves come from the
+  enumerator, so a bot is offered and may take the block.

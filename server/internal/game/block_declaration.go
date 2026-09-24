@@ -214,10 +214,11 @@ func (g *Game) checkBlockDeclarationLocked(base map[uuid.UUID]uuid.UUID, decls [
 		}
 		// CR 802.4a / 509.1a (#1339): a defending player blocks only
 		// creatures attacking THEM, a planeswalker they control or a
-		// battle they protect. defendingPlayerForAttackLocked is the
+		// battle they protect. defendingPlayerForAttackerLocked is the
 		// same resolution blockOptionsLocked uses to decide which
 		// attackers a seat is offered, so the verb and the generator
-		// give one answer (Decision 14).
+		// give one answer (Decision 14) — including for an attacker
+		// whose planeswalker or battle has left (CR 506.4c, #1364).
 		//
 		// A pairing already in `base` is not re-judged. CR 508.7a /
 		// 509.1h: an attacker reselected onto another player after it
@@ -274,13 +275,14 @@ func (g *Game) checkBlockDeclarationLocked(base map[uuid.UUID]uuid.UUID, decls [
 // the defending player of `attacker`'s attack (CR 802.4a, 509.1a), and
 // a not_defending refusal when it is not (#1339).
 //
-// The defending player is defendingPlayerForAttackLocked's: the player
-// attacked, the controller of the planeswalker attacked, or the
-// protector of the battle attacked. An attacker with no resolvable
-// target — not attacking at all, or attacking a planeswalker or battle
-// that has left the battlefield (CR 506.4c) — has no defending player,
-// so nobody may block it. That is the answer blockOptionsLocked has
-// always given; before #1339 the verb disagreed and took the block.
+// The defending player is defendingPlayerForAttackerLocked's: the
+// player attacked, the controller of the planeswalker attacked, or the
+// protector of the battle attacked — and, for an attacker whose
+// planeswalker or battle has left the battlefield, the player that was
+// when the attack was pointed (CR 506.4c "it may be blocked", CR
+// 802.2a; #1364). A creature not attacking at all has no defending
+// player, so nobody may block it. blockOptionsLocked reads the same
+// function; before #1339 the verb disagreed and took any block.
 //
 // Separate from BlockPairRefusalLocked on purpose: that function is
 // the per-pair CR 509.1b answer about the two CREATURES, and its
@@ -297,7 +299,7 @@ func (g *Game) blockDefenderRefusalLocked(attacker, blocker *Card) BlockRefusal 
 	if attacker == nil || blocker == nil {
 		return BlockRefusal{Reason: BlockReasonNotDefending}
 	}
-	defender := g.defendingPlayerForAttackLocked(attacker.AttackingTarget)
+	defender := g.defendingPlayerForAttackerLocked(attacker)
 	if defender != uuid.Nil && defender == blocker.Controller {
 		return BlockOK
 	}
@@ -407,14 +409,15 @@ func (g *Game) blockOptionsLocked(seat uuid.UUID, perAttackerCap, maxTotal int) 
 	// Attackers this seat defends. S27: "attacking this seat" is the
 	// DEFENDING player of the attack, not a bare id match — an attack
 	// on a planeswalker names the walker and is defended by whoever
-	// controls it.
+	// controls it. #1364: and one whose walker has since left is still
+	// defended by that player (CR 506.4c).
 	var attackers []*Card
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
 		if c.AttackingTarget == uuid.Nil {
 			continue
 		}
-		if g.defendingPlayerForAttackLocked(c.AttackingTarget) == seat {
+		if g.defendingPlayerForAttackerLocked(c) == seat {
 			attackers = append(attackers, c)
 		}
 	}

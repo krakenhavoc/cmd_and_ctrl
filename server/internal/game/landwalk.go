@@ -105,7 +105,9 @@ func (s landwalkSpec) describe() string {
 // Each landwalk ability is checked on its own; two don't cancel
 // (CR 702.14d). The defending player is derived from the attack, one
 // attacker at a time: the attacked player, a planeswalker's controller,
-// or a battle's protector (CR 506.2, 509.1a).
+// or a battle's protector (CR 506.2, 509.1a) — or, once that
+// planeswalker or battle has left, the player who was defending it
+// (CR 506.4c, 802.2a; #1364), since landwalk is a blocking rule.
 //
 // Read-only. Caller holds g.mu (read or write) with fresh layers.
 func (g *Game) landwalkBlockingLandLocked(attacker *Card) (string, *Card) {
@@ -118,7 +120,7 @@ func (g *Game) landwalkBlockingLandLocked(attacker *Card) (string, *Card) {
 			continue
 		}
 		if defender == uuid.Nil {
-			if defender = g.defendingPlayerForAttackLocked(attacker.AttackingTarget); defender == uuid.Nil {
+			if defender = g.defendingPlayerForAttackerLocked(attacker); defender == uuid.Nil {
 				return "", nil
 			}
 		}

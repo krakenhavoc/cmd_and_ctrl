@@ -6858,7 +6858,10 @@ func (g *Game) DeclareAttackerWith(attackerID, targetPlayerID uuid.UUID, params 
 			// EventAttack the creature is owed has to name the
 			// defender it ENDS on. Both halves are the lock-in's job
 			// — see commitAttackDeclarationLocked.
-			card.AttackingTarget = targetPlayerID
+			// #1364: setAttackTargetLocked also records the defending
+			// player, for CR 506.4c's "it may be blocked" after the
+			// planeswalker or battle it attacks has left.
+			g.setAttackTargetLocked(card, targetPlayerID)
 			// CR 508.1f: declaring an attacker taps it, unless the
 			// attacker has vigilance (CR 702.20). Vigilance is the
 			// one keyword whose job is specifically to skip this
@@ -7040,7 +7043,7 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 			// nil here would take the whole declaration down with it.
 			continue
 		}
-		card.AttackingTarget = d.Target
+		g.setAttackTargetLocked(card, d.Target)
 		// CR 508.1f: declaring an attacker taps it unless it has
 		// vigilance (CR 702.20).
 		if !HasKeyword(card, "vigilance") {
@@ -7084,7 +7087,9 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 // #1339: the attacker must be attacking the blocker's controller, a
 // planeswalker they control or a battle they protect (CR 802.4a);
 // anything else — including a creature that is not attacking at all —
-// is refused with not_defending.
+// is refused with not_defending. #1364: a creature whose planeswalker
+// or battle has left combat is still blockable, by the player who was
+// defending it (CR 506.4c).
 func (g *Game) DeclareBlocker(blockerID, attackerID uuid.UUID) error {
 	return g.DeclareBlockers([]BlockDeclaration{{Blocker: blockerID, Attacker: attackerID}})
 }
