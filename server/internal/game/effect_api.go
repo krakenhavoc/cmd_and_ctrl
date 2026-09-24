@@ -3476,7 +3476,7 @@ func (g *Game) addManaSlotsLocked(
 			// own output (ADR 0074), and neither taps a permanent for
 			// mana, so neither is doubled by Mana Reflection. That is
 			// what the card says, not a simplification.
-			g.produceManaLocked(p, source, []string{colorOptions[0]}, nil, srcKinds, false, pending)
+			g.produceManaLocked(p, source, []string{colorOptions[0]}, nil, nil, srcKinds, false, pending)
 			continue
 		}
 		if pending != nil {
@@ -3489,7 +3489,7 @@ func (g *Game) addManaSlotsLocked(
 			for k := 1; k < slot.AmountFor(color); k++ {
 				bookColorRequirement(color, pending)
 			}
-			g.produceManaLocked(p, source, repeatColor(color, slot.AmountFor(color)), nil, srcKinds, false, pending)
+			g.produceManaLocked(p, source, repeatColor(color, slot.AmountFor(color)), nil, nil, srcKinds, false, pending)
 			continue
 		}
 		g.QueueChoiceForEffect(PendingChoice{
