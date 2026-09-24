@@ -21,7 +21,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     creature that player casts afterwards is a normal creature; the
 //     ones on the battlefield when this resolved are 1/1s, and one
 //     that leaves and comes back is a new object (CR 400.7) and is
-//     not affected either. `SnapshotAffected` is that key.
+//     not affected either. `ScopedEffectFor`'s `Match` is that key.
 //   - **Layer 7b, not 7c.** "Base power and toughness" SETS the
 //     value, so it applies before every +1/+1 anthem and after every
 //     CDA, and a lord's +1/+1 still makes these 2/2s. A 7c "-X/-X"
@@ -47,20 +47,12 @@ func init() {
 				return nil
 			}
 			victim := item.Targets[0].ID
-			applies := SnapshotAffected(ctx, And(Creature(), ControlledBy(victim)))
-			if applies == nil {
-				return nil
-			}
-			return StaticForDuration{
-				Ability: game.StaticAbility{
-					Layer:     game.Layer7PT,
-					SubLayer:  game.SubLayer7B_Set,
-					AppliesTo: applies,
-					Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-						c.Power = 1
-						c.Toughness = 1
-					},
-				},
+			// A data record (ADR 0041 phase 3, #1497): the effect lasts
+			// a whole round, and as a closure it kept the table off
+			// the restore path for all of it.
+			return ScopedEffectFor{
+				Match:    And(Creature(), ControlledBy(victim)),
+				Mods:     game.SetBasePTMods(1, 1),
 				Duration: DurationUntilYourNextTurn(ctx, ctx.Controller()),
 				Label:    "Mass Diminish — base 1/1 until your next turn",
 			}.Apply(ctx)

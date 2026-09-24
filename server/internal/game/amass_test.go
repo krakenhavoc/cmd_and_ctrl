@@ -343,26 +343,26 @@ func TestAmassRegistersNoSubtypeEffectWhenItAlreadyHasOne(t *testing.T) {
 	me := g.Seats[0]
 
 	amass(t, g, me, "Zombie", 1)
-	if n := len(g.ScopedStatics); n != 0 {
+	if n := len(g.ScopedEffects); n != 0 {
 		t.Fatalf("%d layer effects after the first amass, want 0 — the token is created AS a Zombie", n)
 	}
 	for i := 0; i < 5; i++ {
 		amass(t, g, me, "Zombie", 1)
 	}
-	if n := len(g.ScopedStatics); n != 0 {
+	if n := len(g.ScopedEffects); n != 0 {
 		t.Errorf("%d layer effects after six amasses, want 0", n)
 	}
 
 	// One Orc amass on the same Zombie Army registers exactly one, and
 	// the next five register none.
 	amass(t, g, me, "Orc", 1)
-	if n := len(g.ScopedStatics); n != 1 {
+	if n := len(g.ScopedEffects); n != 1 {
 		t.Fatalf("%d layer effects after the first Orc amass, want 1", n)
 	}
 	for i := 0; i < 5; i++ {
 		amass(t, g, me, "Orc", 1)
 	}
-	if n := len(g.ScopedStatics); n != 1 {
+	if n := len(g.ScopedEffects); n != 1 {
 		t.Errorf("%d layer effects after six Orc amasses, want 1 — the guard reads the EFFECTIVE subtype", n)
 	}
 }
@@ -377,7 +377,7 @@ func TestTheAmassSubtypeEndsWhenTheArmyLeaves(t *testing.T) {
 	existing := seedArmy(g, me.ID, "Zombie")
 
 	amass(t, g, me, "Orc", 1)
-	if n := len(g.ScopedStatics); n != 1 {
+	if n := len(g.ScopedEffects); n != 1 {
 		t.Fatalf("%d layer effects registered, want 1", n)
 	}
 
@@ -386,7 +386,7 @@ func TestTheAmassSubtypeEndsWhenTheArmyLeaves(t *testing.T) {
 		t.Fatalf("MoveCardByID: %v", err)
 	}
 	g.WithWriteLock(func() { g.RecomputeLayersIfStaleLocked() })
-	if n := len(g.ScopedStatics); n != 0 {
+	if n := len(g.ScopedEffects); n != 0 {
 		t.Errorf("%d layer effects survive the Army leaving, want 0 (PinnedTo + CR 400.7)", n)
 	}
 }
