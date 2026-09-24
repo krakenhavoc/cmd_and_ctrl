@@ -56,6 +56,8 @@
   import { canActivateSorcerySpeedAbility } from "../../timing";
   import CardContextMenu from "./CardContextMenu.svelte";
   import { cardMenu, closeCardMenu } from "../../contextMenu";
+  import ManaSourcePicker from "./ManaSourcePicker.svelte";
+  import { manaSourcePicker, closeManaSourcePicker } from "../../manaSourcePicker";
   import type { MenuActivate } from "../../contextMenu.logic";
   import {
     targeting,
@@ -332,6 +334,12 @@
     return () => {
       if (consideringTimer !== null) clearTimeout(consideringTimer);
     };
+  });
+
+  // #1438: the mana picker's store is module-scoped, so leaving the
+  // table must not leave a picker waiting for the next one.
+  $effect(() => {
+    return () => closeManaSourcePicker();
   });
 
   function handleTapToggle(card: CardView): void {
@@ -2246,6 +2254,17 @@
       onCastCard={handlePlayCard}
       onActivateAbility={handleActivateAbility}
       sorcerySpeedBlocked={browsedZoneSorcerySpeedBlocked}
+    />
+  {/if}
+  {#if $manaSourcePicker}
+    <!-- #1438: the anchored "which mana?" picker a left-click on a
+         source with several mana abilities opens. Its pick routes
+         exactly as the right-click menu's mana row does. -->
+    <ManaSourcePicker
+      {view}
+      open={$manaSourcePicker}
+      onPick={(card, index) => handleMenuActivate(card, { kind: "mana", index })}
+      onClose={closeManaSourcePicker}
     />
   {/if}
   {#if $cardMenu}

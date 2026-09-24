@@ -21,6 +21,7 @@
 // face-down card, so an opponent's foretold card cannot reach the
 // strip at all.
 
+import { manaSymbols } from "./manaSymbol";
 import { castableFaces } from "./faces";
 import type { CardView, CastPriceView, GameView } from "./protocol";
 import { grantedFace, grantedFaceIndex } from "./zoneBrowser.logic";
@@ -191,10 +192,10 @@ export interface ExileCostBadge {
   label: string;
 }
 
-/** manaSymbols splits a brace-notation cost into its symbols. */
-export function manaSymbols(cost: string): string[] {
-  return Array.from(cost.matchAll(/\{([^}]+)\}/g), (m) => m[1]);
-}
+// manaSymbols moved to manaSymbol.ts with the symbol component
+// (#1438); re-exported so this module's callers and tests keep their
+// import.
+export { manaSymbols };
 
 /**
  * symbolClass maps one mana symbol to the CSS class that colours its

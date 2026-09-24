@@ -26,6 +26,7 @@
 
   import type { CardView, GameView } from "../../protocol";
   import Card from "./Card.svelte";
+  import ManaSymbol from "./ManaSymbol.svelte";
   import { dealIn, dealOut } from "../../animations";
   import { handOverlap } from "../../handFan";
   import {
@@ -108,7 +109,7 @@
               {#if badge}
                 <span class="cost-tag" title={badge.title} aria-label={badge.label}>
                   {#each badge.symbols as s, i (i)}
-                    <span class="sym {symbolClass(s)}">{s}</span>
+                    <ManaSymbol symbol={s} size={15} />
                   {/each}
                   {#if badge.life}
                     <span class="life">+{badge.life}♥</span>
@@ -255,40 +256,6 @@
       0 2px 8px rgba(0, 0, 0, 0.55),
       0 0 0 1px rgba(0, 0, 0, 0.4);
     cursor: help;
-  }
-  .sym {
-    display: inline-grid;
-    place-items: center;
-    min-width: 15px;
-    height: 15px;
-    padding: 0 2px;
-    box-sizing: border-box;
-    border-radius: 999px;
-    font-family: ui-monospace, Menlo, monospace;
-    font-size: 10px;
-    font-weight: 800;
-    line-height: 1;
-    color: #111;
-    background: #cfd6e2;
-  }
-  .sym-W {
-    background: #f4ead5;
-  }
-  .sym-U {
-    background: #aad4ff;
-  }
-  .sym-B {
-    background: #7a7390;
-    color: #f4f0ff;
-  }
-  .sym-R {
-    background: #ff9a85;
-  }
-  .sym-G {
-    background: #92c493;
-  }
-  .sym-C {
-    background: #c6cfdd;
   }
   .life {
     margin-left: 2px;
