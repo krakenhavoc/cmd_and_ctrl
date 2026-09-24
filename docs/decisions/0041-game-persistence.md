@@ -572,7 +572,9 @@ games, all on 2026-09-24 between 16:47 and 19:24 UTC. Every line reads
 `"clean":true` and `"seq_behind":0`. Every table was idle at all 19
 deploys, so the census had no blocker to see. The prod journal
 (`192.168.200.33`) could not be read, because the deploy user needs a
-sudo password there to read the unit's logs.
+sudo password there to read the unit's logs. The owner is adding the
+deploy user to `systemd-journal` on both hosts by hand (owner decision
+5).
 
 So there is no ranking from real tables yet. The order below rests on
 static reasoning: how long each blocker holds a restore point back,
@@ -922,12 +924,12 @@ and a warped creature with nothing left to exile it.
 | 2 | Several turns | Delayed triggers as data (P2): 14 card bodies, 3 factories, 4 engine sites, `WhenYouNextCast` | `DelayedTriggerEffects` |
 | 3a | Until cleanup | Move the until-end-of-turn builders onto `ScopedEffect`: `BoostUntilEOT`, `GrantKeywordUntilEOT`, `RestrictUntilEOT`, `GrantAllCreatureTypesUntilEOT`, `BecomeArtifactCreature` / crew, and prowess. Their signatures do not change. Counting tier 1's `GainControl` and `ExchangeControl` users, **105 card files move without an edit**. Rewrite the six remaining raw-ability files as mods. Delete the old registry | `ScopedStatics` |
 | 3b | Until cleanup | `ScopedReplacement` and `ScopedBlockRule` records, on the P1 pattern, each with its own closed set of kinds: prevent all combat damage (to everyone, or to one player), prevent the next N damage, exile instead of leaving, and the two block-rule shapes. Needs v8 | `TurnScopedReplacements`, `TurnScopedBlockRules` |
-| 4 | While open | An ability's stack item carries ADR 0093 D5's stable ability `ref` (catalog key, slot, index). Restore reads `Effect`, `targetSpec` and `modeSpec` back from the catalog, as it already does for a spell. Triggers the engine owns (prowess, ward, cascade and the rest) use P2 body keys. Resume frames come last, and may stay (open question 4) | `StackEffects`, `StackTargetSpecs` |
+| 4 | While open | An ability's stack item carries ADR 0093 D5's stable ability `ref` (catalog key, slot, index). Restore reads `Effect`, `targetSpec` and `modeSpec` back from the catalog, as it already does for a spell. Triggers the engine owns (prowess, ward, cascade and the rest) use P2 body keys. Resume frames are out of scope (owner decision 4): `ChoiceResumeFrames` stays the one allowed counter | `StackEffects`, `StackTargetSpecs` |
 
 **Tier 3a is cheap for its size.** Crew and prowess probably make it
 the most frequent blocker on a real table, yet it changes only seven
-builder bodies. The owner may want it moved ahead of tier 2 (open
-question 3).
+builder bodies. It still follows tier 2 (owner decision 3), and the
+order is revisited once P7's numbers are in.
 
 #### The first slice
 
@@ -973,7 +975,7 @@ This amendment is the ADR PR. The code comes after it.
 It retires `DelayedTriggerEffects`. It needs no bump, because v7
 already reads these fields.
 
-PRs 3a, 3b and 4 follow in that order unless the owner changes it.
+PRs 3a, 3b and 4 follow in that order (owner decision 3).
 
 ### Decision P6 — what a card file writes afterwards
 
@@ -1053,8 +1055,9 @@ ScheduleDelayedTrigger{
 mod of a `ScopedEffect`, not a second registry. It keeps everything
 0093 D7 asks for: the pinned object set, the timestamp, the
 `Duration`, the sweep, and `carried` in the drift plan. It gets them
-through the same record and the same adapter. Open question 1 asks
-which should land first.
+through the same record and the same adapter. The record lands first
+(owner decision 1): phase 3's PR 1 adds a one-line amendment to 0093
+D7 pointing here, and 0093's PR 4 builds `ScopedGrant` as this mod.
 
 ### Decision P7 — measure before tiers 3 and 4
 
@@ -1093,57 +1096,33 @@ cheap sources of evidence.
     cover creatures that enter later.
   - The engine models restrictions as layer-6 bits, so pinning is
     today's behaviour. Tier 3a keeps it exactly.
-- **It does not change any card's behaviour**, except one case that
-  needs the owner's approval (open question 2).
+- **It does not change any card's behaviour**, except Shadowspear,
+  whose affected set is pinned at resolution (owner decision 2). The
+  PR that migrates it calls the change out.
 
-### Open questions for the owner
+### Owner decisions (2026-09-24)
 
-1. **Order against ADR 0093 PR 4.** Should phase 3's PR 1 land
-   `ScopedEffect` first, with 0093's `ScopedGrant` then built as its
-   `grantAbilities` mod? Or should 0093 PR 4 go first with its own
-   registry, and be folded in afterwards?
-   *Recommendation:* PR 1 first, with `ScopedGrant` as a mod. That
-   gives one record, one sweep, one adapter and one snapshot key. PR 1
-   then adds a one-line amendment to 0093 D7 pointing here.
-2. **Shadowspear's affected set.** Today Shadowspear re-reads
-   "permanents your opponents control" on every layer pass, so a
-   permanent that enters after the activation also loses hexproof.
-   Losing an ability modifies characteristics, so CR 611.2c pins the
-   set at resolution, and a permanent that enters later keeps
-   hexproof. Moving Shadowspear to the mod vocabulary pins it.
-   *Recommendation:* pin it. That is the rules-correct behaviour, and
-   the PR should call out the change. The alternative, a dynamic
-   `Selector` on `ScopedEffect` for this one card, is the wrong trade.
-3. **Tier 3a before tier 2?** Until-end-of-turn effects are probably
-   the most frequent blocker: every crewed Vehicle and every prowess
-   trigger freezes the restore point until cleanup. They are also the
-   cheapest to move: seven builder bodies and no card files. Delayed
-   triggers are rarer, but they last longer.
-   *Recommendation:* keep the issue's order, tier 2 then 3a. Effects
-   that last all game or several turns are the ones that make a
-   deploy rewind by turns rather than minutes. Revisit if the P7
-   numbers show until-end-of-turn blockers dominating real tables.
-4. **Resume frames: in scope, or accepted as what remains?** A pending
-   prompt holds its continuation for as long as it is open. The
-   rewind is usually one action, back to before the prompt was
-   raised. Turning all 17 frame kinds and the prompt runs into data is
-   the largest and least uniform piece of phase 3.
-   *Recommendation:* leave them out of this sprint. After tier 4,
-   treat `ChoiceResumeFrames` as the one census counter that is still
-   allowed, and say so in the ratchet file. Reopen it only if P7 shows
-   tables sitting on an open prompt at deploy time.
-5. **Access to the prod journal.** The deploy user needs a sudo
-   password to read `cmd-and-ctrl`'s journal on prod. So the #524
-   census cannot be read there the way it is read on dev. Should
-   `krkn` be added to the `systemd-journal` group on both hosts?
-   *Recommendation:* yes. The access is read-only, and it is the only
-   way phase 3's order gets evidence from the tables that matter.
-6. **One bump for every two tiers.** P4 bumps to v7 once for tiers 1
-   and 2, then to v8 for tiers 3b and 4. Each bump costs what v2, v5
-   and v6 cost: rolling the binary back across it abandons every table
-   whose restore point was written after it, though the files are kept.
-   P4 also narrows the corpus rule from "never touch an existing
-   directory" to "never touch an existing file".
-   *Recommendation:* accept both. The alternative to the bumps is a
-   list of features in each file, which would change the compatibility
-   rule that #522 has only just made enforceable.
+The owner answered all six open questions this amendment was proposed
+with, taking each recommendation.
+
+1. **The general record comes first.** Phase 3's PR 1 lands
+   `ScopedEffect`. ADR 0093's `ScopedGrant` becomes its
+   `grantAbilities` mod rather than a registry of its own, and PR 1
+   adds the one-line amendment to 0093 D7 pointing here.
+2. **Shadowspear is pinned at resolution** (CR 611.2c): a permanent
+   that enters after the activation keeps hexproof and
+   indestructible. The PR that migrates it calls out the behaviour
+   change. No dynamic `Selector` is added to `ScopedEffect`.
+3. **The order stays:** tier 2 (delayed triggers) before tier 3a
+   (until end of turn). It is revisited once P7's numbers are in.
+4. **Resume frames are out of scope for this sprint.**
+   `ChoiceResumeFrames` is the one census counter that stays allowed
+   after tier 4, and `closure_fields.txt` says so on its lines.
+5. **Journal access is an owner action, not a CD step.** The owner adds
+   `krkn` to `systemd-journal` on both hosts, so the #524 shutdown
+   census can be read on prod as well as dev.
+6. **v7 now, v8 later.** v7 covers tiers 1 and 2; v8 comes with tiers
+   3b and 4. The corpus rule narrows from "the writer never touches an
+   existing directory" to "the writer never touches an existing
+   **file**" — a fixture is still never edited, regenerated or
+   deleted.
