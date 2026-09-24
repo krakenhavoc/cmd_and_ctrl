@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { libraryTopActionLabel, libraryTopPlayable, visibleLibraryTop } from "./libraryTop";
+import {
+  libraryTopActionLabel,
+  libraryTopPlayable,
+  libraryTopSpecialActions,
+  visibleLibraryTop,
+} from "./libraryTop";
 import type { CardView, ZoneView } from "./protocol";
 
 function card(over: Partial<CardView> = {}): CardView {
@@ -122,5 +127,65 @@ describe("libraryTopActionLabel", () => {
       castable_here: true,
     });
     expect(libraryTopActionLabel(library([spell]))).toBe("cast");
+  });
+});
+
+// #1391: Fblthp, Lost on the Range's plot from the top of the library.
+// The server stamps the rows; this only picks the available ones and
+// builds the `special_action` params.
+describe("libraryTopSpecialActions", () => {
+  it("is empty when the top isn't visible or offers nothing available", () => {
+    expect(libraryTopSpecialActions(undefined)).toEqual([]);
+    expect(libraryTopSpecialActions(library([], 40))).toEqual([]);
+    const hidden = card({
+      special_actions: [{ kind: "plot", label: "Plot {1}{G}", cost: "{1}{G}", available: true }],
+    });
+    expect(libraryTopSpecialActions(library([hidden]))).toEqual([]);
+    const notNow = card({
+      name: "Grizzly Bears",
+      known_by_you: true,
+      special_actions: [{ kind: "plot", label: "Plot {1}{G}", cost: "{1}{G}", available: false }],
+    });
+    expect(libraryTopSpecialActions(library([notNow]))).toEqual([]);
+  });
+
+  it("turns one available row into a 'plot' pill with the special_action params", () => {
+    const bears = card({
+      instance_id: "bears",
+      name: "Grizzly Bears",
+      known_by_you: true,
+      special_actions: [{ kind: "plot", label: "Plot {1}{G}", cost: "{1}{G}", available: true }],
+    });
+    expect(libraryTopSpecialActions(library([bears]))).toEqual([
+      {
+        key: "plot:{1}{G}",
+        text: "plot",
+        label: "Plot {1}{G}",
+        params: { card_id: "bears", kind: "plot", strict: true, auto_tap: true, cost: "{1}{G}" },
+      },
+    ]);
+  });
+
+  it("names the price on each pill when the card offers the kind twice", () => {
+    const djinn = card({
+      instance_id: "djinn",
+      name: "Djinn of Fool's Fall",
+      known_by_you: true,
+      special_actions: [
+        { kind: "plot", label: "Plot {3}{U}", cost: "{3}{U}", available: true },
+        {
+          kind: "plot",
+          label: "Plot {4}{U}",
+          cost: "{4}{U}",
+          charged_cost: "{2}{U}",
+          available: true,
+        },
+      ],
+    });
+    const pills = libraryTopSpecialActions(library([djinn]));
+    expect(pills.map((p) => p.text)).toEqual(["plot {3}{U}", "plot {2}{U}"]);
+    // The price shown is the charged one; the price SENT is the
+    // printed one, which is what the server matches on.
+    expect(pills.map((p) => p.params.cost)).toEqual(["{3}{U}", "{4}{U}"]);
   });
 });

@@ -957,7 +957,7 @@ func (l *Lobby) Start(id uuid.UUID) (GameMeta, error) {
 	}
 	var err error
 	if broadcast, err = l.applyLocked(id, entry, func() error {
-		return entry.room.Game.Start(nil)
+		return entry.room.Game.StartWithFirstPlayerRoll(nil)
 	}); err != nil {
 		// Most likely ErrNotEnoughPlayers — surface as-is; the HTTP
 		// handler turns it into 409.

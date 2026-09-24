@@ -135,6 +135,15 @@ type SpecialAction struct {
 	// Label is the menu row and the log line: "Foretell {2}",
 	// "Suspend 1—{R}", "Turn face up {1}{U}".
 	Label string
+
+	// Zone is where this OFFER is taken from when that is not the
+	// kind's own zone (specialActionZone). Empty on every declared or
+	// derived offer. Set only on an offer that a permanent's
+	// SpecialActionGrant opened somewhere else, such as Fblthp, Lost on
+	// the Range's plot from the top of your library (#1391, ADR 0062
+	// amendment 2026-09-24). The cost query reads it, so a cost
+	// modifier sees where the action is taken from.
+	Zone ZoneKind
 }
 
 // CatalogSpecialActions is the catalog hook the effects package wires
@@ -209,6 +218,10 @@ func SpecialActionOffered(c Card, kind SpecialActionKind) *SpecialAction {
 // switch, and the only thing a kind that is not a hand keyword
 // forks — ADR 0062 Decision 4's "one verb" survives intact.
 //
+// It is the kind's OWN zone. A permanent can grant one more zone for a
+// kind (SpecialActionGrant, #1391), and that zone is not in this table
+// because it belongs to the grant rather than to the kind.
+//
 // The empty zone is a kind the engine does not carry out.
 func specialActionZone(kind SpecialActionKind) ZoneKind {
 	switch kind {
@@ -223,8 +236,17 @@ func specialActionZone(kind SpecialActionKind) ZoneKind {
 // SpecialActionParams is the announce-time payload. A special action
 // has no targets, no modes and no choices — the only thing the caller
 // can say is how the mana is found, which is the same pair every
-// other payment on the wire carries.
+// other payment on the wire carries. When a card offers the same kind
+// twice, it can also say which offer it means.
 type SpecialActionParams struct {
+	// Cost picks between two offers of the SAME kind on one card, by
+	// the offer's printed cost (SpecialAction.Cost). Empty takes the
+	// first. #1391: under Fblthp, Lost on the Range, a Djinn of Fool's
+	// Fall on top of your library may be plotted for its own plot cost
+	// ({3}{U}) or for its mana cost ({4}{U}). Every other card offers
+	// each kind at most once, so nothing else needs to send it.
+	Cost string
+
 	// Strict refuses the action when the pool cannot cover the cost,
 	// rather than waving it through with an EventCostWarning.
 	Strict bool
@@ -339,7 +361,11 @@ func (g *Game) PerformSpecialAction(playerID, cardID uuid.UUID, kind SpecialActi
 	// BATTLEFIELD permanent, which holds everybody's cards, so that
 	// arm checks CONTROL instead — CR 708.6 names the controller, and
 	// a stolen morph is turned up by the thief.
-	card, err := g.specialActionCardLocked(p, cardID, kind)
+	//
+	// #1391: a GRANT can open one more zone for a kind (Fblthp's plot
+	// from the top of your library), so the lookup reports where it
+	// found the card and the offer is asked about that zone.
+	card, zone, err := g.specialActionCardLocked(p, cardID, kind)
 	if err != nil {
 		return err
 	}
@@ -347,7 +373,7 @@ func (g *Game) PerformSpecialAction(playerID, cardID uuid.UUID, kind SpecialActi
 	// window, and whether it has flash. Fast-path no-op when nothing
 	// changed.
 	g.RecomputeLayersIfStaleLocked()
-	sa := SpecialActionOffered(card, kind)
+	sa := g.specialActionOfferLocked(playerID, card, zone, kind, params.Cost)
 	if sa == nil {
 		return ErrSpecialActionNotOffered
 	}
@@ -438,23 +464,28 @@ func specialActionPerformer(kind SpecialActionKind) func(*Game, *Player, uuid.UU
 
 // specialActionCardLocked finds the card a special action would be
 // taken on, in the zone its kind names, and refuses it when the actor
-// has no claim to it.
+// has no claim to it. It also reports the zone it found the card in.
+//
+// #1391: after the kind's own zone it tries every zone that a
+// permanent the actor controls GRANTS the kind in
+// (SpecialActionGrant.Zone), and only those. A card on top of the
+// library of a player who controls no Fblthp is "not found", exactly
+// as it was before grants existed.
 //
 // Caller must hold g.mu.
-func (g *Game) specialActionCardLocked(p *Player, cardID uuid.UUID, kind SpecialActionKind) (Card, error) {
-	switch specialActionZone(kind) {
+func (g *Game) specialActionCardLocked(p *Player, cardID uuid.UUID, kind SpecialActionKind) (Card, ZoneKind, error) {
+	switch zone := specialActionZone(kind); zone {
 	case ZoneHand:
-		if p.Hand == nil {
-			return Card{}, ErrCardNotFound
-		}
-		for _, c := range p.Hand.Cards {
-			if c.InstanceID == cardID {
-				return c, nil
+		if p.Hand != nil {
+			for _, c := range p.Hand.Cards {
+				if c.InstanceID == cardID {
+					return c, zone, nil
+				}
 			}
 		}
 	case ZoneBattlefield:
 		if g.Battlefield == nil {
-			return Card{}, ErrCardNotFound
+			return Card{}, "", ErrCardNotFound
 		}
 		for _, c := range g.Battlefield.Cards {
 			if c.InstanceID != cardID {
@@ -465,12 +496,18 @@ func (g *Game) specialActionCardLocked(p *Player, cardID uuid.UUID, kind Special
 			// not theirs — a face-down permanent's identity is not
 			// theirs to probe.
 			if c.Controller != p.ID {
-				return Card{}, ErrCardNotFound
+				return Card{}, "", ErrCardNotFound
 			}
-			return c, nil
+			return c, zone, nil
+		}
+		return Card{}, "", ErrCardNotFound
+	}
+	for _, zone := range g.specialActionGrantZonesLocked(p.ID, kind) {
+		if c, ok := grantedZoneCard(p, zone); ok && c.InstanceID == cardID {
+			return c, zone, nil
 		}
 	}
-	return Card{}, ErrCardNotFound
+	return Card{}, "", ErrCardNotFound
 }
 
 // SpecialActionKindBuilt reports whether the engine can carry out

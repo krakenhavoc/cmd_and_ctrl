@@ -376,6 +376,15 @@ func Register(spec Spec) {
 				spec.Name, sa.Counters))
 		}
 	}
+	// #1391: a grant the engine cannot carry out would put a row on a
+	// card and then refuse it, so it fails at boot. Only plot from the
+	// top of the library is built (game.SpecialActionGrantBuilt).
+	for i, gr := range spec.SpecialActionGrants {
+		if !game.SpecialActionGrantBuilt(gr.Kind, gr.Zone) {
+			panic(fmt.Sprintf("effects.Register: %q special action grant %d gives %q in zone %q, which the engine cannot carry out (ADR 0062 amendment 2026-09-24, #1391)",
+				spec.Name, i, gr.Kind, gr.Zone))
+		}
+	}
 	// #657 / CR 702.35a: the madness cost is the price of a cast the
 	// engine will offer, so an unparseable one is refused at boot
 	// rather than at the moment the offer is taken — which is after

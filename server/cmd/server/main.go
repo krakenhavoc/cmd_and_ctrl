@@ -1061,7 +1061,7 @@ func seedDemoGame(log *slog.Logger) *game.Game {
 		}
 		log.Info("demo player seated", "name", name, "seat", p.Seat, "id", p.ID.String())
 	}
-	if err := g.Start(nil); err != nil {
+	if err := g.StartWithFirstPlayerRoll(nil); err != nil {
 		log.Error("seedDemoGame Start failed", "err", err)
 		os.Exit(1)
 	}

@@ -647,7 +647,10 @@ this route.
 ### `POST /games/{id}/start`
 
 Transition the game from `lobby` → `active`. Only admins and players
-seated in the game may call this.
+seated in the game may call this. The server has every seated player roll a
+d20, rerolling only tied leaders until one winner remains; that seat takes the
+first turn. The rolls and winner are public in the opening-hand view and game
+log, and use the game's persisted RNG so reconnects and replay agree.
 
 **Errors**
 

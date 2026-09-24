@@ -159,6 +159,23 @@ func TestStartHappyPath(t *testing.T) {
 	if after.State != string(game.StateActive) {
 		t.Errorf("state: got %q, want %q", after.State, game.StateActive)
 	}
+	started, err := l.LookupGame(meta.ID)
+	if err != nil {
+		t.Fatalf("LookupGame: %v", err)
+	}
+	view := protocol.ViewOfGame(started)
+	if view.Turn.ActiveSeat != view.StartingSeat {
+		t.Errorf("active seat %d, rolled starting seat %d", view.Turn.ActiveSeat, view.StartingSeat)
+	}
+	rolls := 0
+	for _, entry := range view.Log {
+		if entry.Kind == protocol.LogRoll && entry.Sides == 20 && entry.Turn == 0 {
+			rolls++
+		}
+	}
+	if rolls < 2 {
+		t.Errorf("pregame d20 log entries = %d, want at least one per seat", rolls)
+	}
 	// Idempotent: second Start is a no-op.
 	again, err := l.Start(meta.ID)
 	if err != nil {

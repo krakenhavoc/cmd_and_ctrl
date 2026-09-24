@@ -715,7 +715,8 @@ three things:
   answers per kind, with no game state);
 - a wire and client surface for a special action on the library's top card.
 
-Filed as #1391 rather than done here.
+Filed as #1391 rather than done here. Closed by the "special action granted to
+another card" amendment below.
 
 ## Amendment — 2026-09-24: Magmakin Artillerist's own cycle trigger fires from the graveyard (#1392)
 
@@ -746,3 +747,105 @@ written; that is ordinary catalog work, not a seam.
 
 Proof card: **Magmakin Artillerist**, still `caveats` (the batching note),
 never `full` — it never had only the one caveat this amendment closes.
+
+## Amendment — 2026-09-24: a special action granted to another card (#1391)
+
+The 2026-09-24 plotted-event amendment above filed Fblthp, Lost on the Range
+as #1391 because it is not a row in Decision 4's per-kind tables:
+
+> The top card of your library has plot. The plot cost is equal to its mana
+> cost.
+> You may plot nonland cards from the top of your library.
+
+Every special action before it belonged to the card it acts on. It was either
+printed (foretell, suspend, plot) or derived from the card's face-down state
+(turn face up). Fblthp is a permanent that gives one to a **different** card,
+in a zone the kind does not work from, at a price the permanent sets. This
+amendment adds that one shape and changes nothing else about the verb.
+
+**The shape: `game.SpecialActionGrant`** (`game/special_action_grant.go`).
+Pure data, like `SpecialAction`, carried on `CardDef.SpecialActionGrants` and
+read through `CatalogSpecialActionGrants`:
+
+| field | meaning | Fblthp |
+|---|---|---|
+| `Kind` | the special action granted | `plot` |
+| `Zone` | the extra zone it may be taken from. `ZoneLibrary` means the **top card** of the controller's own library and no other card in it | `library` |
+| `Nonland` | only nonland cards | yes |
+| `CostIsManaCost` | also **gives** the card the kind, at a cost equal to its own mana cost | yes |
+
+Fblthp's two sentences are two separate things, and the fields keep them
+separate. The second sentence is the **zone**: plot works from the hand
+(CR 702.170a), and Fblthp adds the top of your library for *any* plot the card
+has, including one it prints itself. The first sentence is the **offer**: plot
+at the card's mana cost. On its own that would do nothing, because plot works
+only from the hand. It matters only because of the second sentence.
+
+So a Djinn of Fool's Fall (plot {3}{U}, mana cost {4}{U}) on top of the library
+offers **two** plots. That is the one new wire field: `special_action` takes an
+optional `cost`, which picks an offer by its printed price
+(`SpecialActionParams.Cost`). Empty takes the first offer, so every existing
+caller is unchanged. A card that offers each kind once never needs it.
+
+**Where each of the issue's four gaps went:**
+
+1. *A granted special action.* `SpecialActionOffered(c Card, kind)` could not
+   see a grant, because it has no `*Game`. The engine, the enumerator and the
+   view now ask `Game.SpecialActionsOfferedLocked(actor, card, zone)`. In the
+   kind's own zone it returns exactly what `SpecialActionsOfferedByCard`
+   returned, so no existing card changes. In a granted zone it returns the
+   card's own offers of the granted kind, moved to that zone, plus the grant's
+   mana-cost offer when that price is not already offered. The grant sources
+   are the permanents the actor controls, read through `CatalogAbilityKey`, so
+   a Fblthp that has lost its abilities grants nothing. Two grants make one
+   offer. The pure `SpecialActionOffered` and `SpecialActionsOfferedByCard`
+   stay as the card's-own-offers half.
+2. *A zone that depends on the grant.* `specialActionZone` is unchanged: it is
+   still the kind's **own** zone. `specialActionCardLocked` tries that zone
+   first and then every zone a permanent the actor controls grants the kind
+   in. A card on top of the library of a player with no Fblthp is still "card
+   not found", exactly as before. The lookup reports the zone it found the card
+   in, and the offer is asked about that zone. An offer from a granted zone
+   carries `SpecialAction.Zone`, and the CR 601.2f cost query reports that zone
+   as `FromZone`, so a cost modifier sees a plot from the library as one.
+3. *A plot cost equal to the card's mana cost.* `manaCostOffer`. A card with no
+   mana cost is offered nothing (CR 118.6: a cost based on the mana cost of an
+   object with no mana cost is unpayable). {X} is 0: nothing lets the player
+   choose it, and the plotted cast is free, so paying more would buy nothing. A
+   split card costs both halves combined (CR 709.4b). The deck import
+   materialises face 0, so `Card.ManaCost` alone would have plotted Fire // Ice
+   for {1}{R}, cheaper than printed. A {0} card's offer is written `"{0}"`
+   rather than `""`, so `cost` can still name it.
+4. *Wire and client.* The view stamps `special_actions` on the top card of each
+   seat's library (`stampLibraryTopSpecialActions`), from the same engine
+   accessor. It reveals nothing: the rows sit on the projected card, so the
+   owner sees them only while they can see the card, and an opponent never
+   gets the card unless it is revealed. When it *is* revealed (Courser of
+   Kruphix), `FilterViewFor` still drops the rows from every other seat's
+   frame, because they are the owner's to take. On the client, #1447's
+   library-top pill became a row of pills: the cast pill, and one pill per
+   available special-action row (`libraryTopSpecialActions`), which fires
+   `special_action` exactly as the hand menu's row does. The enumerator walks
+   the seat's library top beside its hand and face-down permanents, and a
+   granted-zone move carries `cost`.
+
+**What did not change.** The timing table is the kind's: plot is sorcery-speed
+wherever the card is. The performer is the kind's: `plotLocked` routes the card
+to exile from any zone through the ordinary zone route, and
+`PlotExiledCardForEffect` makes it plotted and fires `EventBecomesPlotted`. The
+cost is paid through the same CR 601.2f pass. Decision 4's "one verb" still
+holds. What a grant adds is only **where** and **at what price**.
+
+**Deliberately narrow.** `SpecialActionGrantBuilt` accepts plot from the
+library and nothing else. `effects.Register` panics at boot on any other grant.
+Foretell's and suspend's performers take the card from a hand, so granting them
+elsewhere needs performer work first. No other printed card grants a special
+action to another card today.
+
+The catalog line is `SpecialActionGrants: []game.SpecialActionGrant{effects.PlotFromTopOfLibrary()}`.
+It is one constructor, because Fblthp's two sentences always come together.
+
+Proof card: **Fblthp, Lost on the Range**, `full`. Scryfall lists Plot among
+its keywords, but Fblthp itself does not have plot. It gives plot to the top
+card of your library. So it declares no `Plot(...)` of its own, and a Fblthp in
+hand cannot be plotted.

@@ -32,9 +32,15 @@ package protocol
 //     snapshot_drift_test.go already classifies `carried` — so the
 //     history survives an undo, a restore, and a deploy for free, and
 //     there is no second copy of the same facts to drift out of sync
-//     with the first. The cost is one forward pass over the event log
-//     per broadcast (not per viewer: ws.Room builds the view once and
-//     filters it per client).
+//     with the first. The forward pass is resumable (#1401): its state
+//     is memoised on the game (logFold) and each view folds only the
+//     events emitted since the last one, refolding from event 0 when
+//     the log is not an extension of what was folded — an undo, a new
+//     *Game. The memo is not a second copy of the facts: it is the
+//     same fold, stopped at a cursor, and it is thrown away rather
+//     than trusted whenever the log it folded might have changed.
+//     Names and text are still resolved against the current view on
+//     every call, and redaction is still per viewer (FilterViewFor).
 //
 // Introduced in S31 sub-PR 0.
 
@@ -529,36 +535,163 @@ func hiddenZone(z game.ZoneKind) bool {
 // publicLogOf projects g.Events into the bounded public log, using v
 // (the already-assembled view) to resolve card names and knower sets.
 //
+// The projection is split in two, and only the first half is cached
+// (#1401). The FOLD — projectEvent over every event, the ring and its
+// collapses — depends on nothing but the events and the seat order, so
+// its state is kept on the game (logFold, in g.LogProjectionCache) and
+// resumed from where the last view stopped: a view pays for the events
+// emitted since the previous one, not for the whole game. The FINISH —
+// names, knower sets, text — depends on the current board, so it runs
+// on a copy of the ring's entries every time, exactly as before.
+//
 // Caller must hold the read lock ViewOfGame already holds.
 func publicLogOf(g *game.Game, v *GameView) []LogEvent {
-	seatOf := seatIndexer(v)
-	ring := newLogRing(PublicLogMax)
-	var turn int
-	var step string
+	seatIDs := seatIDsOf(v)
+	var out []LogEvent
+	g.LogProjectionCache().Do(func(slot *any) {
+		c, _ := (*slot).(*logCache)
+		if c == nil {
+			c = &logCache{}
+			*slot = c
+		}
+		if !c.fold.extends(g, seatIDs) {
+			c.fold = newLogFold(seatIDs, g.EventLogGeneration())
+		}
+		c.folded += c.fold.feed(g.Events)
+		out = c.fold.entries()
+	})
+	return finishLog(out, v)
+}
+
+// logCache is what publicLogOf keeps in the game's projection slot: the
+// current fold, and how many events every fold of this game has
+// projected. The count outlives a refold, which is what lets the cost
+// test see one (TestPublicLogViewFoldsOnlyNewEvents); production never
+// reads it.
+type logCache struct {
+	fold   *logFold
+	folded int
+}
+
+// finishLog resolves names and knower sets out of v and renders every
+// entry's text. entries must be the caller's own copy: both passes
+// write into it.
+func finishLog(out []LogEvent, v *GameView) []LogEvent {
+	if len(out) == 0 {
+		return nil
+	}
+	resolveLogNames(out, v)
+	for i := range out {
+		out[i].Text = renderLogText(out[i], out[i].cardName, out[i].targetName)
+	}
+	return out
+}
+
+// logFold is the public log's forward fold over g.Events, stopped at
+// `cursor` and resumable from there (#1401).
+//
+// Everything the loop in feed carries from one event to the next is a
+// field here, and nothing else is: that is what makes "fold 0..N, stop,
+// fold N..M" produce exactly what "fold 0..M" does.
+// TestPublicLogCacheMatchesAFreshFold is the property test that holds
+// it to that.
+//
+// A fold is valid for a game only while the game's log EXTENDS the log
+// it folded — see extends for the checks and why each is there.
+type logFold struct {
+	// gen is g.EventLogGeneration() when the fold began. RestoreFrom
+	// bumps it, which is the only way to tell an undone-and-regrown log
+	// from a grown one: eventSeq rewinds with the undo, so the regrown
+	// events carry the same Seq values as the ones they replaced.
+	gen uint64
+	// seatIDs is the seat order the fold's seat indices were computed
+	// against. A projected entry carries seat INDICES, so a different
+	// order would make every cached entry name the wrong player.
+	seatIDs []uuid.UUID
+	seatOf  func(uuid.UUID) int
+	// cursor is how many events have been folded; lastSeq is the Seq
+	// of the last of them, a cheap second witness that Events[:cursor]
+	// is still the list that was folded.
+	cursor  int
+	lastSeq uint64
+
+	// The loop state, exactly as the pre-#1401 publicLogOf kept it in
+	// locals.
+	ring *logRing
+	turn int
+	step string
 	// sacrificed remembers the card of the EventSacrifice we just
 	// emitted. game.EventSacrifice fires immediately before the
 	// battlefield → graveyard move it causes, so the very next zone
 	// move for that card is the same fact told twice.
-	var sacrificed uuid.UUID
+	sacrificed uuid.UUID
 	// revealAt maps a RevealSeq to the ring push that opened its
 	// entry. Keyed rather than adjacency-based for the reason
 	// game.Event.RevealSeq gives: two back-to-back reveals are two
 	// announcements, and a listener may emit between the per-card
-	// events of one.
-	revealAt := make(map[uint64]int)
-	randomAt := make(map[uint64]int)
+	// events of one. randomAt is the same for a roll / flip BatchSeq.
+	// Neither is pruned when its entry is evicted: a key still present
+	// is what stops the tail of an evicted reveal from reopening a new
+	// line (see feed).
+	revealAt map[uint64]int
+	randomAt map[uint64]int
+}
 
-	for _, ev := range g.Events {
-		e, ok := projectEvent(ev, seatOf, &turn, &step, &sacrificed)
+func newLogFold(seatIDs []uuid.UUID, gen uint64) *logFold {
+	return &logFold{
+		gen:      gen,
+		seatIDs:  seatIDs,
+		seatOf:   seatIndexerOf(seatIDs),
+		ring:     newLogRing(PublicLogMax),
+		revealAt: make(map[uint64]int),
+		randomAt: make(map[uint64]int),
+	}
+}
+
+// extends reports whether g's event log is the log f folded, possibly
+// grown since, under the same seat order. A nil fold extends nothing.
+//
+// The generation is the load-bearing check; the length and Seq checks
+// are cheap witnesses that catch a replacement the generation was not
+// told about (a list shorter than the cursor, or a different event
+// where the last folded one was). Neither witness alone is enough — an
+// undo followed by the same number of new events passes both, because
+// eventSeq rewinds with the undo — which is why RestoreFrom bumps the
+// generation.
+func (f *logFold) extends(g *game.Game, seatIDs []uuid.UUID) bool {
+	if f == nil || f.gen != g.EventLogGeneration() || len(g.Events) < f.cursor {
+		return false
+	}
+	if f.cursor > 0 && g.Events[f.cursor-1].Seq != f.lastSeq {
+		return false
+	}
+	if len(seatIDs) != len(f.seatIDs) {
+		return false
+	}
+	for i := range seatIDs {
+		if seatIDs[i] != f.seatIDs[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// feed folds events[f.cursor:] into the ring and reports how many it
+// folded. events must extend the list folded so far (see extends).
+func (f *logFold) feed(events []game.Event) int {
+	ring := f.ring
+	start := f.cursor
+	for i := start; i < len(events); i++ {
+		e, ok := projectEvent(events[i], f.seatOf, &f.turn, &f.step, &f.sacrificed)
 		if !ok {
 			continue
 		}
-		e.Turn = turn
+		e.Turn = f.turn
 		if e.Kind == LogStep {
-			e.Step = step
+			e.Step = f.step
 		}
 		if (e.Kind == LogRoll || e.Kind == LogFlip) && e.batchSeq != 0 {
-			if at, seen := randomAt[e.batchSeq]; seen {
+			if at, seen := f.randomAt[e.batchSeq]; seen {
 				if prev := ring.pushed(at); prev != nil {
 					prev.Results = append(prev.Results, e.Results...)
 					prev.Faces = append(prev.Faces, e.Faces...)
@@ -566,10 +699,10 @@ func publicLogOf(g *game.Game, v *GameView) []LogEvent {
 				}
 				continue
 			}
-			randomAt[e.batchSeq] = ring.total
+			f.randomAt[e.batchSeq] = ring.total
 		}
 		if e.Kind == LogReveal && e.revealSeq != 0 {
-			if at, seen := revealAt[e.revealSeq]; seen {
+			if at, seen := f.revealAt[e.revealSeq]; seen {
 				if prev := ring.pushed(at); prev != nil {
 					prev.Amount += e.Amount
 					// Only the IDs the text can name are kept; Amount
@@ -583,7 +716,7 @@ func publicLogOf(g *game.Game, v *GameView) []LogEvent {
 				// off the log is not worth a line of its own.
 				continue
 			}
-			revealAt[e.revealSeq] = ring.total
+			f.revealAt[e.revealSeq] = ring.total
 		}
 		// Collapse a run of single-card draws by one player into one
 		// "drew N cards" line. Draw is the only event the engine
@@ -614,14 +747,31 @@ func publicLogOf(g *game.Game, v *GameView) []LogEvent {
 		}
 		ring.push(e)
 	}
-
-	out := ring.drain()
-	if len(out) == 0 {
-		return nil
+	if len(events) > start {
+		f.cursor = len(events)
+		f.lastSeq = events[len(events)-1].Seq
 	}
-	resolveLogNames(out, v)
+	return len(events) - start
+}
+
+// entries returns the ring's entries oldest-first as the caller's own
+// copy. The slices a later feed can append to in place — a roll batch's
+// Results and Faces, a reveal's IDs — are copied too, so a view already
+// handed out never shares a backing array with the fold that goes on
+// growing. TargetSeat is shared: nothing writes through it.
+func (f *logFold) entries() []LogEvent {
+	out := f.ring.drain()
 	for i := range out {
-		out[i].Text = renderLogText(out[i], out[i].cardName, out[i].targetName)
+		e := &out[i]
+		if e.Results != nil {
+			e.Results = append([]int(nil), e.Results...)
+		}
+		if e.Faces != nil {
+			e.Faces = append([]string(nil), e.Faces...)
+		}
+		if e.revealIDs != nil {
+			e.revealIDs = append([]string(nil), e.revealIDs...)
+		}
 	}
 	return out
 }
@@ -1217,25 +1367,36 @@ func resolveLogNames(entries []LogEvent, v *GameView) {
 
 // seatIndexer returns a player-UUID → seat-index lookup over the
 // view's seats, answering NoSeat for uuid.Nil and for anything not
-// seated. Built once per projection; g.Seats is at most four entries,
-// so a linear scan is cheaper than a map.
+// seated. g.Seats is a handful of entries, so a linear scan is
+// cheaper than a map.
 func seatIndexer(v *GameView) func(uuid.UUID) int {
+	return seatIndexerOf(seatIDsOf(v))
+}
+
+// seatIDsOf parses the view's seat IDs, in seat order.
+//
+// Parsed once, compared as UUIDs (#1261). The fold asks the indexer
+// about every event it projects, and formatting the event's actor as a
+// string to compare it was ~8% of a bot table's CPU. PlayerView.ID is
+// always a UUID's canonical String(), so the parsed comparison answers
+// exactly what the string one did; a seat ID that somehow did not
+// parse stays uuid.Nil, which nothing can match because of the early
+// return in seatIndexerOf.
+func seatIDsOf(v *GameView) []uuid.UUID {
 	if v == nil {
-		return func(uuid.UUID) int { return NoSeat }
+		return nil
 	}
-	// Parsed once, compared as UUIDs (#1261). publicLogOf asks this
-	// for every event of the game on every frame, and formatting the
-	// event's actor as a string to compare it was ~8% of a bot table's
-	// CPU. PlayerView.ID is always a UUID's canonical String(), so the
-	// parsed comparison answers exactly what the string one did; a seat
-	// ID that somehow did not parse stays uuid.Nil, which nothing can
-	// match because of the early return below.
 	ids := make([]uuid.UUID, len(v.Seats))
 	for i, s := range v.Seats {
 		if parsed, err := uuid.Parse(s.ID); err == nil {
 			ids[i] = parsed
 		}
 	}
+	return ids
+}
+
+// seatIndexerOf is seatIndexer over already-parsed seat IDs.
+func seatIndexerOf(ids []uuid.UUID) func(uuid.UUID) int {
 	return func(id uuid.UUID) int {
 		if id == uuid.Nil {
 			return NoSeat
@@ -1893,8 +2054,9 @@ func prettyZone(z string) string {
 
 // logRing is a fixed-capacity FIFO of log entries. A plain slice with
 // re-slicing would either grow without bound or copy the whole buffer
-// on every eviction, and the projection runs over every event in the
-// game on every broadcast — so the eviction has to be O(1).
+// on every eviction, and the fold pushes every event of the game
+// through it (once each since #1401, but every one) — so the eviction
+// has to be O(1).
 type logRing struct {
 	buf   []LogEvent
 	start int

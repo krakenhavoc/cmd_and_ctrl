@@ -500,9 +500,8 @@ func TestTurn1DrawSkipIgnoresEliminations(t *testing.T) {
 	}
 }
 
-// TestS13StartingSeatRecorded verifies Start() captures the starting
-// seat (0 in the standard case) and exposes it via Snapshot / Clone
-// for the protocol view to surface.
+// TestS13StartingSeatRecorded verifies Start() captures the starting seat and
+// exposes it via Snapshot / Clone for the protocol view to surface.
 func TestS13StartingSeatRecorded(t *testing.T) {
 	g := NewGame()
 	for i := 0; i < 4; i++ {
@@ -516,8 +515,8 @@ func TestS13StartingSeatRecorded(t *testing.T) {
 	}
 	// Clone must preserve StartingSeat (replay/undo round-trip).
 	clone := g.Clone()
-	if clone.StartingSeat != 0 {
-		t.Errorf("cloned StartingSeat: got %d, want 0", clone.StartingSeat)
+	if clone.StartingSeat != g.StartingSeat {
+		t.Errorf("cloned StartingSeat: got %d, want %d", clone.StartingSeat, g.StartingSeat)
 	}
 }
 

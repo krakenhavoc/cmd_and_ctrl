@@ -146,3 +146,79 @@ describe("the library-top play affordance — #1440", () => {
     expect(handed[0].card.instance_id).toBe("land2");
   });
 });
+
+// #1391: Fblthp, Lost on the Range's plot from the top of the library.
+// A special-action pill beside the cast pill, fired as `special_action`
+// for the pile's owner.
+interface Sent {
+  type: string;
+  params: unknown;
+  player?: string;
+}
+
+function mountSpecial(libraryCards: CardView[], isSelf: boolean) {
+  const sent: Sent[] = [];
+  const view = render(
+    PileBar as never,
+    {
+      seat: seatWith(libraryCards),
+      exile: emptyZone("exile"),
+      isSelf,
+      sendAction: (type: string, params: unknown, player?: string) =>
+        sent.push({ type, params, player }),
+      onPlayCard: () => {},
+    } as never,
+  );
+  return { container: view.container, sent };
+}
+
+const specialButtons = (c: HTMLElement): HTMLElement[] =>
+  Array.from(c.querySelectorAll<HTMLElement>(".pile-action.special"));
+
+describe("the library-top special-action pill — #1391", () => {
+  const plotted = card({
+    instance_id: "bears",
+    name: "Grizzly Bears",
+    type_line: "Creature — Bear",
+    special_actions: [{ kind: "plot", label: "Plot {1}{G}", cost: "{1}{G}", available: true }],
+  });
+
+  it("fires special_action for the pile's owner", () => {
+    const { container, sent } = mountSpecial([plotted], true);
+    const buttons = specialButtons(container);
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0].textContent?.trim()).toBe("plot");
+
+    click(buttons[0]);
+    expect(sent).toEqual([
+      {
+        type: "special_action",
+        params: { card_id: "bears", kind: "plot", strict: true, auto_tap: true, cost: "{1}{G}" },
+        player: "them",
+      },
+    ]);
+  });
+
+  it("is not shown on another seat's pile", () => {
+    const { container } = mountSpecial([plotted], false);
+    expect(specialButtons(container)).toHaveLength(0);
+  });
+
+  it("is not shown outside the action's window", () => {
+    const notNow = card({
+      ...plotted,
+      special_actions: [{ kind: "plot", label: "Plot {1}{G}", cost: "{1}{G}", available: false }],
+    });
+    const { container } = mountSpecial([notNow], true);
+    expect(specialButtons(container)).toHaveLength(0);
+  });
+
+  it("sits beside the cast pill when the card has both", () => {
+    const both = card({ ...plotted, castable_here: true });
+    const { container } = mountSpecial([both], true);
+    const pills = Array.from(container.querySelectorAll<HTMLElement>(".pile-action")).map((b) =>
+      b.textContent?.trim(),
+    );
+    expect(pills).toEqual(["cast", "plot"]);
+  });
+});

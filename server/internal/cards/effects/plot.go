@@ -33,3 +33,25 @@ func Plot(cost string) game.SpecialAction {
 		Label: "Plot " + cost,
 	}
 }
+
+// PlotFromTopOfLibrary is Fblthp, Lost on the Range's two plot
+// sentences, which always come together (#1391):
+//
+//	"The top card of your library has plot. The plot cost is equal to
+//	 its mana cost.
+//	 You may plot nonland cards from the top of your library."
+//
+// The controller may plot the nonland card on top of their own library
+// for its mana cost, or for its own printed plot cost if it has one.
+// Either way it is the ordinary plot special action: sorcery timing,
+// face-up exile, and a free cast on a later turn.
+//
+//	SpecialActionGrants: []game.SpecialActionGrant{PlotFromTopOfLibrary()},
+func PlotFromTopOfLibrary() game.SpecialActionGrant {
+	return game.SpecialActionGrant{
+		Kind:           game.SpecialActionPlot,
+		Zone:           game.ZoneLibrary,
+		Nonland:        true,
+		CostIsManaCost: true,
+	}
+}
