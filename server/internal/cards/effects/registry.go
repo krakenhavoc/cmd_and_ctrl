@@ -284,18 +284,9 @@ func Register(spec Spec) {
 	// Spec slot carrying one is a card file that meant to say
 	// something and failed SILENTLY. The Label is what the next
 	// reader matches against the oracle text; a nil Covers is a
-	// statement about nothing.
-	for i, t := range spec.ActivationTimings {
-		if t.Timing == game.TimingNormal {
-			panic(fmt.Sprintf("effects.Register: %q activation timing %d says nothing — set TimingFlash, TimingSorcery or TimingYourTurnOnly", spec.Name, i))
-		}
-		if t.Label == "" {
-			panic(fmt.Sprintf("effects.Register: %q activation timing %d has no printed Label", spec.Name, i))
-		}
-		if t.Covers == nil {
-			panic(fmt.Sprintf("effects.Register: %q activation timing %q covers nothing", spec.Name, t.Label))
-		}
-	}
+	// statement about nothing. The emblem slot (#1275) runs the same
+	// guard from checkEmblemSpec.
+	checkActivationTimings(spec.Name, spec.ActivationTimings)
 	// #1195: the same bargain for a timing statement. TimingNormal is
 	// the zero value and says nothing, so a Spec slot carrying one is
 	// a card file that meant to say something and did not — and the
@@ -662,6 +653,24 @@ func checkStaticZones(card, what string, statics []game.StaticAbility) {
 				panic(fmt.Sprintf("effects.Register: %q %s %d functions from %s — %s",
 					card, what, i, zone, why))
 			}
+		}
+	}
+}
+
+// checkActivationTimings is #1208's guard for a list of activation
+// timing statements, shared by Spec.ActivationTimings and
+// EmblemSpec.ActivationTimings (#1275) so the two homes cannot drift
+// in what they refuse. `card` names the declarer in the panic.
+func checkActivationTimings(card string, timings []game.ActivationTiming) {
+	for i, t := range timings {
+		if t.Timing == game.TimingNormal {
+			panic(fmt.Sprintf("effects.Register: %q activation timing %d says nothing — set TimingFlash, TimingSorcery or TimingYourTurnOnly", card, i))
+		}
+		if t.Label == "" {
+			panic(fmt.Sprintf("effects.Register: %q activation timing %d has no printed Label", card, i))
+		}
+		if t.Covers == nil {
+			panic(fmt.Sprintf("effects.Register: %q activation timing %q covers nothing", card, t.Label))
 		}
 	}
 }

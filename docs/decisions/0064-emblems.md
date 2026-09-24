@@ -468,3 +468,17 @@ before this card.
 Proof card: Teferi, Who Slows the Sunset
 ([teferi_who_slows_the_sunset.go](../../server/internal/cards/effects/teferi_who_slows_the_sunset.go)).
 Tracker: [#884](https://github.com/krakenhavoc/cmd_and_ctrl/issues/884).
+
+## Note (2026-09-24, #1275): a fifth slot — activation timing
+
+`EmblemSpec` gains `ActivationTimings []game.ActivationTiming`, the emblem-side
+mirror of `Spec.ActivationTimings` (#1208), and the per-player activation
+timing walk (`activationTimingVerdictLocked`, game/activation_timing.go) walks
+every seat's `p.Emblems` after the battlefield. That is the fifth emblem walk,
+beside the layer pass's, the trigger harvest's and #1315's two turn-based-action
+gathers, and it does not change what an emblem IS: the object, its key, its
+zone, its persistence and its wire are all as Decisions 1–8 left them. The
+design is recorded where the type lives, in
+[ADR 0066's 2026-09-24 amendment](0066-granted-cast-and-play-permissions.md).
+
+Proof card: Teferi, Temporal Archmage's −10.
