@@ -65,6 +65,10 @@ var (
 	pheliaReturnBody        = game.SimpleDelayedBody("phelia/return", pheliaReturn)
 	teferiUntapLandsBody    = game.SimpleDelayedBody("teferi-hero/untap-two-lands", teferiHeroUntapTwoLands)
 
+	// Zara, Renegade Recruiter: return the creature <Object> to its
+	// owner's hand at the next end step, if it is still that object.
+	zaraReturnToHandBody = game.DelayedBody("zara/return-to-hand", zaraReturnToHand)
+
 	// Copy the spell the event-conditioned trigger fired on (Doublecast,
 	// Galvanic Iteration).
 	copyTheSpellBody = game.SimpleDelayedBody("copy/the-spell-you-just-cast", copyTheSpellYouJustCast)

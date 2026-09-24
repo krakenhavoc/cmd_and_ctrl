@@ -963,3 +963,37 @@ func plusOneCounterPlacementOnYourCreature(ev *game.ReplacementEvent, g *game.Ga
 	}
 	return target.Controller == src.Controller
 }
+
+// drawOnePerPicked is the "if you do, draw that many cards" tail of a
+// resolution-time sacrifice pick: `player` draws one card for each
+// permanent chosen, and nothing when none was. God-Eternal Bontu's and
+// Sephiroth's shared Then (the clone gate found the second copy).
+func drawOnePerPicked(player uuid.UUID) func(ctx *Context, picked game.PromptedPicks) error {
+	return func(ctx *Context, picked game.PromptedPicks) error {
+		n := picked.Count()
+		if n == 0 {
+			return nil
+		}
+		return DrawCards{Player: player, N: n}.Apply(ctx)
+	}
+}
+
+// drainTargetOpponentOne is "target opponent loses 1 life and you gain
+// 1 life" as a trigger's resolution: the first still-legal player
+// target loses 1, then the item's controller gains 1. A target that
+// left the game has already countered the ability (CR 608.2b), so
+// nothing happens. Shared by Vengeful Bloodwitch, Sephiroth, Fabled
+// SOLDIER and Sephiroth's Super Nova emblem.
+func drainTargetOpponentOne(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetPlayer {
+			continue
+		}
+		if err := g.ChangePlayerLifeForEffect(item.SourceCardID, t.ID, -1); err != nil {
+			return err
+		}
+		return GainLife{Player: item.Controller, Amount: 1}.Apply(ctx)
+	}
+	return nil
+}
