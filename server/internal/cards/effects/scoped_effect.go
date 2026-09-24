@@ -78,7 +78,10 @@ func (s ScopedEffectFor) Apply(ctx *Context) error {
 func (s eotAffected) affectedObjects() []game.AffectedObject {
 	out := make([]game.AffectedObject, 0, len(s))
 	for id, stamp := range s {
-		out = append(out, game.AffectedObject{ID: id, EnteredAt: stamp})
+		// PinObject, not a bare stamp: an unstamped permanent is pinned
+		// exactly, the way appliesTo's `==` pins it, and not as the 0
+		// wildcard that would follow it through a flicker (#1558).
+		out = append(out, game.PinObject(id, stamp))
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].ID.String() < out[j].ID.String() })
 	return out

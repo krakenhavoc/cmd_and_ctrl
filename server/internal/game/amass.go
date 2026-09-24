@@ -383,7 +383,7 @@ func (g *Game) grantAmassSubtypeLocked(source, army uuid.UUID, subtype string) {
 	// on the battlefield for the rest of the game, and as a closure
 	// this grant kept its table off the restore path for all of it.
 	g.RegisterScopedEffectForEffect(source,
-		[]AffectedObject{{ID: army, EnteredAt: c.EnteredBattlefieldAt}},
+		[]AffectedObject{PinObject(army, c.EnteredBattlefieldAt)},
 		[]Mod{AddSubtypesMod(subtype)}, g.PinnedTo(IndefiniteDuration(), army),
 		amassLabel+" — it's also a "+subtype)
 }

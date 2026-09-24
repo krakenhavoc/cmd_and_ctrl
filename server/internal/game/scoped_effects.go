@@ -130,6 +130,18 @@ type Mod struct {
 // suspend's haste follows its card from the stack onto the battlefield
 // (CR 702.62a), and it is safe only because that record's Duration
 // ends the effect the moment the card stops being the object it named.
+// Nothing else may write it: pin a permanent with PinObject.
+//
+// Unstamped is the other side of that line (#1558): a permanent that
+// carries no entry stamp — a fixture's seeded card, one put onto the
+// battlefield without the zone-move event — pinned EXACTLY. It matches
+// that instance only while it is still unstamped, so a flicker, which
+// stamps the new object, ends it (CR 400.7), the way the legacy
+// closure's `== stamp` comparison always did. Before #1558 such a
+// permanent was written as the wildcard and stayed matched. A new
+// field rather than a sentinel stamp, so an older v7 binary refuses a
+// file carrying one (ADR 0041 P4) instead of reading it as a stamp no
+// object has.
 //
 // Controller, when set, narrows the member further: the object is
 // affected only while that player controls it. Suspend's haste again —
@@ -137,7 +149,27 @@ type Mod struct {
 type AffectedObject struct {
 	ID         uuid.UUID `json:"id"`
 	EnteredAt  int64     `json:"enteredAt,omitempty"`
+	Unstamped  bool      `json:"unstamped,omitempty"`
 	Controller uuid.UUID `json:"controller,omitempty"`
+}
+
+// PinObject is the affected-set member for the permanent `id` that
+// entered the battlefield at `stamp`: pinned to that stamp, or — for an
+// unstamped permanent — to being unstamped. Never the wildcard.
+func PinObject(id uuid.UUID, stamp int64) AffectedObject {
+	return AffectedObject{ID: id, EnteredAt: stamp, Unstamped: stamp == 0}
+}
+
+// entryMatches reports whether a permanent whose entry stamp is now
+// `stamp` is the object an (enteredAt, unstamped) pin names: an exact
+// "still unstamped" when unstamped is set, otherwise the 0 wildcard or
+// an exact stamp. The one reading of a pin, shared by the affected set
+// and Duration.Pinned.
+func entryMatches(enteredAt int64, unstamped bool, stamp int64) bool {
+	if unstamped {
+		return stamp == 0
+	}
+	return enteredAt == 0 || stamp == enteredAt
 }
 
 // ScopedEffect is a continuous effect created by a resolving spell or
@@ -316,13 +348,14 @@ func ModifyPTMod(power, toughness int) Mod {
 
 // PinnedObjectsLocked returns the affected set for the given
 // battlefield permanents, each keyed on the entry stamp it carries
-// now. IDs not on the battlefield are skipped, so the result may be
-// empty. Caller must hold g.mu.
+// now (PinObject: an unstamped permanent is pinned exactly, not as the
+// wildcard — #1558). IDs not on the battlefield are skipped, so the
+// result may be empty. Caller must hold g.mu.
 func (g *Game) PinnedObjectsLocked(ids ...uuid.UUID) []AffectedObject {
 	out := make([]AffectedObject, 0, len(ids))
 	for _, id := range ids {
 		if c, ok := g.battlefieldCardLocked(id); ok {
-			out = append(out, AffectedObject{ID: id, EnteredAt: c.EnteredBattlefieldAt})
+			out = append(out, PinObject(id, c.EnteredBattlefieldAt))
 		}
 	}
 	return out
@@ -470,18 +503,128 @@ func (g *Game) sweepScopedEffectsLocked(endOfTurn bool) bool {
 // running binary, from the record's data — so they are REBUILT on
 // every pass and never persisted, which is the whole point.
 //
-// Built per pass rather than memoised: a pass already allocates its
-// effect list, and a table holds a handful of records. If a profile
-// ever says otherwise, the memo belongs here, keyed by layerVersion.
+// MEMOISED (#1558). Rebuilding a stub source, a predicate and one
+// closure per mod on every recompute cost 100 records on one creature
+// about 300 allocations per pass over the legacy closure statics they
+// replace — before tier 3a moves Giant Growth and crew onto this path.
+// The adaptation depends on nothing but the records (every closure
+// reads the board it is handed at call time), so the output is reused
+// for as long as the registry holds the same records in the same
+// order: see scopedEffectAdapterMemo for what "the same" means and why
+// it is record identity rather than the layer version.
+//
+// The slice returned is capped at its length, so a caller that appends
+// to it — activeStaticAbilitiesLocked does — copies rather than
+// writing into the memo's backing array.
 //
 // Caller must hold g.mu in write mode (the recompute pass does).
 func (g *Game) scopedEffectContinuousEffectsLocked() []ContinuousEffect {
 	if len(g.ScopedEffects) == 0 {
+		g.scopedEffectMemo = scopedEffectAdapterMemo{}
 		return nil
 	}
-	var out []ContinuousEffect
-	for i := range g.ScopedEffects {
-		e := g.ScopedEffects[i]
+	if !g.scopedEffectMemo.matches(g.ScopedEffects) {
+		g.scopedEffectMemo = scopedEffectAdapterMemo{
+			keys:    scopedEffectKeys(g.ScopedEffects),
+			effects: adaptScopedEffects(g.ScopedEffects),
+		}
+	}
+	out := g.scopedEffectMemo.effects
+	return out[:len(out):len(out)]
+}
+
+// scopedEffectAdapterMemo is the adapter's output and the identity of
+// every record it was built from, position by position.
+//
+// WHY IDENTITY AND NOT layerVersion. The layer version is bumped by
+// every registration and sweep, but it is not monotone: an undo stores
+// the snapshot's version plus one (restoreFromLocked), so the same
+// number can name two different registries, and a memo keyed on it
+// could hand back a record the undo took away. A record's identity
+// cannot collide that way. Records are immutable once registered and
+// every registration and restore allocates its Mods afresh
+// (cloneMods, deepCopyScopedEffects), so &Mods[0] names one record for
+// as long as anything points at it — and the memo's own key keeps it
+// alive, so the address cannot be reused while the memo holds it.
+// Clone shares the inner slices, which is fine: the same address is
+// the same immutable record, in either game.
+//
+// A cloned Game does not copy the memo (cloneLocked lists its fields
+// and this is not one of them), and nothing mutates a memo in place —
+// a rebuild assigns new slices — so two games can never write through
+// a shared one.
+type scopedEffectAdapterMemo struct {
+	keys    []scopedEffectMemoKey
+	effects []ContinuousEffect
+}
+
+// scopedEffectMemoKey is one record's identity. The pointers do the
+// work; the scalars are the fields the adapter reads that are not
+// behind them, compared so a key is never trusted on the pointers
+// alone.
+type scopedEffectMemoKey struct {
+	mods       *Mod
+	affected   *AffectedObject
+	nMods      int
+	nAffected  int
+	scope      AffectedScope
+	controller uuid.UUID
+	source     uuid.UUID
+	sourceName string
+	timestamp  int64
+}
+
+func scopedEffectKeyOf(e *ScopedEffect) scopedEffectMemoKey {
+	k := scopedEffectMemoKey{
+		nMods:      len(e.Mods),
+		nAffected:  len(e.Affected),
+		scope:      e.Scope,
+		controller: e.Controller,
+		source:     e.Source.ID,
+		sourceName: e.SourceName,
+		timestamp:  e.Timestamp,
+	}
+	if len(e.Mods) > 0 {
+		k.mods = &e.Mods[0]
+	}
+	if len(e.Affected) > 0 {
+		k.affected = &e.Affected[0]
+	}
+	return k
+}
+
+func scopedEffectKeys(records []ScopedEffect) []scopedEffectMemoKey {
+	out := make([]scopedEffectMemoKey, len(records))
+	for i := range records {
+		out[i] = scopedEffectKeyOf(&records[i])
+	}
+	return out
+}
+
+// matches reports whether the memo was built from exactly these
+// records, in this order.
+func (m *scopedEffectAdapterMemo) matches(records []ScopedEffect) bool {
+	if m.keys == nil || len(m.keys) != len(records) {
+		return false
+	}
+	for i := range records {
+		if m.keys[i] != scopedEffectKeyOf(&records[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+// adaptScopedEffects is the adaptation itself: one ContinuousEffect
+// per mod, every closure built from the record's data.
+func adaptScopedEffects(records []ScopedEffect) []ContinuousEffect {
+	n := 0
+	for i := range records {
+		n += len(records[i].Mods)
+	}
+	out := make([]ContinuousEffect, 0, n)
+	for i := range records {
+		e := records[i]
 		// A stub source: the one reader is setController's
 		// ControlSource, which wants the instance ID.
 		src := &Card{InstanceID: e.Source.ID, Name: e.SourceName, Controller: e.Controller}
@@ -520,7 +663,7 @@ func affectedPredicate(set []AffectedObject) func(*Card, *Game, *Card) bool {
 			if a.ID != target.InstanceID {
 				continue
 			}
-			if a.EnteredAt != 0 && target.EnteredBattlefieldAt != a.EnteredAt {
+			if !entryMatches(a.EnteredAt, a.Unstamped, target.EnteredBattlefieldAt) {
 				continue
 			}
 			if a.Controller != uuid.Nil && target.Controller != a.Controller {

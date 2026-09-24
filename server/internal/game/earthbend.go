@@ -259,7 +259,7 @@ func (g *Game) animateEarthbentLandLocked(source, land uuid.UUID, stamp int64) {
 	mods := []Mod{AddTypesMod("Creature"), AddKeywordsMod("haste")}
 	mods = append(mods, SetBasePTMods(0, 0)...)
 	g.RegisterScopedEffectForEffect(source,
-		[]AffectedObject{{ID: land, EnteredAt: stamp}}, mods,
+		[]AffectedObject{PinObject(land, stamp)}, mods,
 		g.PinnedTo(IndefiniteDuration(), land),
 		earthbendLabel+" — becomes a 0/0 creature with haste that's still a land")
 }

@@ -110,6 +110,7 @@ battlefield.cards[].nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 battlefield.cards[].nextUntapSkips[].while.Kind	number:int
 battlefield.cards[].nextUntapSkips[].while.Pinned	custom(uuid.UUID)
 battlefield.cards[].nextUntapSkips[].while.PinnedEnteredAt	number:int64
+battlefield.cards[].nextUntapSkips[].while.PinnedUnstamped	bool
 battlefield.cards[].nextUntapSkips[].while.Player	custom(uuid.UUID)
 battlefield.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 battlefield.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
@@ -249,6 +250,7 @@ delayedTriggers[].duration.ExpiresAtTurnsBegun	number:int
 delayedTriggers[].duration.Kind	number:int
 delayedTriggers[].duration.Pinned	custom(uuid.UUID)
 delayedTriggers[].duration.PinnedEnteredAt	number:int64
+delayedTriggers[].duration.PinnedUnstamped	bool
 delayedTriggers[].duration.Player	custom(uuid.UUID)
 delayedTriggers[].duration.Source	custom(uuid.UUID)
 delayedTriggers[].duration.SourceEnteredAt	number:int64
@@ -405,6 +407,7 @@ exile.cards[].nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 exile.cards[].nextUntapSkips[].while.Kind	number:int
 exile.cards[].nextUntapSkips[].while.Pinned	custom(uuid.UUID)
 exile.cards[].nextUntapSkips[].while.PinnedEnteredAt	number:int64
+exile.cards[].nextUntapSkips[].while.PinnedUnstamped	bool
 exile.cards[].nextUntapSkips[].while.Player	custom(uuid.UUID)
 exile.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 exile.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
@@ -993,6 +996,7 @@ phasedOut.cards[].nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 phasedOut.cards[].nextUntapSkips[].while.Kind	number:int
 phasedOut.cards[].nextUntapSkips[].while.Pinned	custom(uuid.UUID)
 phasedOut.cards[].nextUntapSkips[].while.PinnedEnteredAt	number:int64
+phasedOut.cards[].nextUntapSkips[].while.PinnedUnstamped	bool
 phasedOut.cards[].nextUntapSkips[].while.Player	custom(uuid.UUID)
 phasedOut.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 phasedOut.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
@@ -1109,6 +1113,7 @@ scopedEffects[].affected[]	object
 scopedEffects[].affected[].controller	custom(uuid.UUID)
 scopedEffects[].affected[].enteredAt	number:int64
 scopedEffects[].affected[].id	custom(uuid.UUID)
+scopedEffects[].affected[].unstamped	bool
 scopedEffects[].controller	custom(uuid.UUID)
 scopedEffects[].duration	object
 scopedEffects[].duration.Condition	number:int
@@ -1117,6 +1122,7 @@ scopedEffects[].duration.ExpiresAtTurnsBegun	number:int
 scopedEffects[].duration.Kind	number:int
 scopedEffects[].duration.Pinned	custom(uuid.UUID)
 scopedEffects[].duration.PinnedEnteredAt	number:int64
+scopedEffects[].duration.PinnedUnstamped	bool
 scopedEffects[].duration.Player	custom(uuid.UUID)
 scopedEffects[].duration.Source	custom(uuid.UUID)
 scopedEffects[].duration.SourceEnteredAt	number:int64
@@ -1164,6 +1170,7 @@ seats[].castPermissions[].duration.ExpiresAtTurnsBegun	number:int
 seats[].castPermissions[].duration.Kind	number:int
 seats[].castPermissions[].duration.Pinned	custom(uuid.UUID)
 seats[].castPermissions[].duration.PinnedEnteredAt	number:int64
+seats[].castPermissions[].duration.PinnedUnstamped	bool
 seats[].castPermissions[].duration.Player	custom(uuid.UUID)
 seats[].castPermissions[].duration.Source	custom(uuid.UUID)
 seats[].castPermissions[].duration.SourceEnteredAt	number:int64
@@ -1284,6 +1291,7 @@ seats[].command.cards[].nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 seats[].command.cards[].nextUntapSkips[].while.Kind	number:int
 seats[].command.cards[].nextUntapSkips[].while.Pinned	custom(uuid.UUID)
 seats[].command.cards[].nextUntapSkips[].while.PinnedEnteredAt	number:int64
+seats[].command.cards[].nextUntapSkips[].while.PinnedUnstamped	bool
 seats[].command.cards[].nextUntapSkips[].while.Player	custom(uuid.UUID)
 seats[].command.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 seats[].command.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
@@ -1480,6 +1488,7 @@ seats[].emblems.cards[].nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 seats[].emblems.cards[].nextUntapSkips[].while.Kind	number:int
 seats[].emblems.cards[].nextUntapSkips[].while.Pinned	custom(uuid.UUID)
 seats[].emblems.cards[].nextUntapSkips[].while.PinnedEnteredAt	number:int64
+seats[].emblems.cards[].nextUntapSkips[].while.PinnedUnstamped	bool
 seats[].emblems.cards[].nextUntapSkips[].while.Player	custom(uuid.UUID)
 seats[].emblems.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 seats[].emblems.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
@@ -1666,6 +1675,7 @@ seats[].graveyard.cards[].nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 seats[].graveyard.cards[].nextUntapSkips[].while.Kind	number:int
 seats[].graveyard.cards[].nextUntapSkips[].while.Pinned	custom(uuid.UUID)
 seats[].graveyard.cards[].nextUntapSkips[].while.PinnedEnteredAt	number:int64
+seats[].graveyard.cards[].nextUntapSkips[].while.PinnedUnstamped	bool
 seats[].graveyard.cards[].nextUntapSkips[].while.Player	custom(uuid.UUID)
 seats[].graveyard.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 seats[].graveyard.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
@@ -1851,6 +1861,7 @@ seats[].hand.cards[].nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 seats[].hand.cards[].nextUntapSkips[].while.Kind	number:int
 seats[].hand.cards[].nextUntapSkips[].while.Pinned	custom(uuid.UUID)
 seats[].hand.cards[].nextUntapSkips[].while.PinnedEnteredAt	number:int64
+seats[].hand.cards[].nextUntapSkips[].while.PinnedUnstamped	bool
 seats[].hand.cards[].nextUntapSkips[].while.Player	custom(uuid.UUID)
 seats[].hand.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 seats[].hand.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
@@ -2040,6 +2051,7 @@ seats[].library.cards[].nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 seats[].library.cards[].nextUntapSkips[].while.Kind	number:int
 seats[].library.cards[].nextUntapSkips[].while.Pinned	custom(uuid.UUID)
 seats[].library.cards[].nextUntapSkips[].while.PinnedEnteredAt	number:int64
+seats[].library.cards[].nextUntapSkips[].while.PinnedUnstamped	bool
 seats[].library.cards[].nextUntapSkips[].while.Player	custom(uuid.UUID)
 seats[].library.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 seats[].library.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
@@ -2187,6 +2199,7 @@ seats[].statics[].duration.ExpiresAtTurnsBegun	number:int
 seats[].statics[].duration.Kind	number:int
 seats[].statics[].duration.Pinned	custom(uuid.UUID)
 seats[].statics[].duration.PinnedEnteredAt	number:int64
+seats[].statics[].duration.PinnedUnstamped	bool
 seats[].statics[].duration.Player	custom(uuid.UUID)
 seats[].statics[].duration.Source	custom(uuid.UUID)
 seats[].statics[].duration.SourceEnteredAt	number:int64
@@ -2321,6 +2334,7 @@ stack.cards[].nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 stack.cards[].nextUntapSkips[].while.Kind	number:int
 stack.cards[].nextUntapSkips[].while.Pinned	custom(uuid.UUID)
 stack.cards[].nextUntapSkips[].while.PinnedEnteredAt	number:int64
+stack.cards[].nextUntapSkips[].while.PinnedUnstamped	bool
 stack.cards[].nextUntapSkips[].while.Player	custom(uuid.UUID)
 stack.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 stack.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64

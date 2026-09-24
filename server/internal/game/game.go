@@ -758,6 +758,12 @@ type Game struct {
 	// scoped_effects.go.
 	ScopedEffects []ScopedEffect
 
+	// scopedEffectMemo is the layer-pass adapter's output for
+	// ScopedEffects, reused while the records it was built from are
+	// the records still here (#1558). Derived, never persisted, never
+	// cloned: see scopedEffectAdapterMemo.
+	scopedEffectMemo scopedEffectAdapterMemo
+
 	// testReplacements is the test-only replacement injection slot
 	// populated by RegisterReplacementForTest. Unexported so
 	// production code has no path to it. Walked after built-ins +
