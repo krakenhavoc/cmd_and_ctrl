@@ -1987,7 +1987,8 @@ one `Ninjutsu(cost)` entry plus an ordinary combat-damage trigger.
   `putOntoBattlefieldFromZoneLocked` is already generic in its source zone, so
   the ENTRY is free. What is not free is the commander bookkeeping around a
   command-zone exit that is not a cast, which nothing in the engine does today;
-  it did not fall out, so it is not here.
+  it did not fall out, so it is not here. *Shipped by #1278 — see the
+  2026-09-24 amendment below.*
 - **Ninjutsu on a card whose other half needs machinery.** Fallen Shinobi
   ("you may play those cards without paying their mana costs" over another
   player's exiled cards) and Silent-Blade Oni (cast a spell from an opponent's
@@ -2390,3 +2391,103 @@ Haunt**, **Tome Shredder** and **Holistic Wisdom**, all `full`.
   Palace). The component expresses it (`ExileCardsFromGraveyard`) and the view
   ships the zone; no catalog card declares one yet, and the auto-tapper already
   refuses any source with an exile-cards cost.
+
+## Amendment (2026-09-24, [#1278](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1278)): commander ninjutsu, a non-cast exit from the command zone
+
+**Sprint:** S42 — casting from non-hand zones. Tracker
+[#885](https://github.com/krakenhavoc/cmd_and_ctrl/issues/885) (the issue's own
+tracker; the keyword is also hand-special-action adjacent, #886, and a combat
+entry, #880).
+
+The #1227 amendment above left **commander ninjutsu** (CR 702.49c) out with one
+sentence: the entry from the command zone would work, but "the commander
+bookkeeping around a command-zone exit that is not a cast" was unexamined.
+Examined, it is almost entirely things that already do not happen:
+
+> Commander ninjutsu [cost] means "[cost], Return an unblocked attacker you
+> control to hand: Put this card onto the battlefield from your hand **or the
+> command zone** tapped and attacking."
+
+### Decision 38: the keyword is Ninjutsu with a second zone
+
+`effects.CommanderNinjutsu(cost)` is `Ninjutsu(cost)` with
+`Zones: {ZoneHand, ZoneCommand}` and CR 702.49c's reminder text, and shares its
+effect body (`ninjutsuEnter`). As with #1227, **not one line of
+`ActivateCatalogAbility` changed**: `findCardAndZoneLocked` has scanned the
+command zone since #660, `AbilityFunctionsFromZone` is the CR 113.6 gate, and
+the CR 108.4 "you" off the command zone is the card's owner — the same
+`source.Owner != playerID` arm the hand takes. The timing restriction is still
+the COST (Decision 30); nothing about the command zone changes that.
+
+### Decision 39: one more door into the shared entry batch, keeping the ID
+
+`Game.PutFromCommandZoneOntoBattlefieldForEffect(cardID, ZoneEntryOptions)` is
+the hand door with `ZoneCommand` for `ZoneHand`: `startEntryBatchLocked` now
+admits the command zone as a `BatchEntry.From`, so the arrival runs the one
+CR 614 entry window, lands through `landEntryLocked`, stamps the CR 506.3c
+attacker, and announces `EventZoneMove` / `EventETB` like every other put. The
+card **keeps its instance ID**, as a hand or library card does, and here the
+reason is load-bearing: `Player.CommanderCasts` is keyed by it, so a fresh ID
+would quietly reset the CR 903.8 tax.
+
+What the door does NOT do is the answer to the issue's question:
+
+- **No commander tax, and nothing added to the next one.** CR 903.8 taxes
+  CASTING from the command zone. The tally is bumped by the cast path alone
+  (`mutations.go`, after `CastSpell` succeeds); a put never reaches it, and an
+  activation's cost is not a spell's cost, so no tax is priced either.
+- **No CR 903.9 prompt on the way in.** `commanderZoneReplacement`'s
+  `AppliesTo` is destination-only (library, hand, graveyard, exile), so an
+  arrival on the battlefield is none of its business. PR #539 moved that window
+  into the shared exit primitive (`routeCardToZoneLocked`), and it applies on
+  the way OUT: `Card.IsCommander` rides the card through the non-cast exit, so
+  a ninjutsu'd Yuriko that is bounced, killed or exiled is offered the command
+  zone exactly as a cast one is, and deals commander damage while she is out
+  (CR 903.10a).
+- **No colour-identity check.** CR 903.4 is deck construction and mana; it
+  says nothing about which card may leave the command zone.
+
+The return cost's bounce was already on the shared exit primitive (#1227) with
+`MustSettleNow`, so returning a COMMANDER as the ninjutsu cost does not stop
+for CR 903.9 — a cost cannot pause (the posture `payLifeAsCostLocked` and the
+discard cost take). That is unchanged and not new here.
+
+### Decision 40: the effect checks the OBJECT, not just the zone
+
+With two zones, `ninjutsuEnter`'s old "is it still in its owner's hand"
+check stopped being enough. A commander discarded in response to her own hand
+ninjutsu takes CR 903.9's command zone — a zone the same ability also names,
+with the same instance ID. By CR 400.7 she is a new object and the ability has
+lost her. The effect now compares `Card.ObjectEpoch` against
+`StackItem.SourceEpoch` (stamped at announce for every catalog activation) and
+does nothing on a mismatch, which also guarantees the zone it reads is the zone
+the ability was activated from — so plain ninjutsu can never reach the
+command-zone arm. This tightens plain ninjutsu too (a ninja discarded and
+returned to hand in response no longer enters), which is the printed rule.
+
+### The rest is already built
+
+The enumerator's `abilityZones()` has walked the command zone since #1221, and
+the view's `stampZoneAbilities` ships its rows on `zone_abilities`, owner-only.
+No wire change. The client's one change is where the command zone's actions
+live: `CommandZone.svelte` hands `zone_abilities` to its `Card` the way
+`Hand.svelte` does, so right-clicking the commander opens the same popover
+(with #1227's shortfall greying) that a hand card and the zone browser open,
+and the tile shows an `ability` hint beside `cast` while a row is present.
+
+### Cards
+
+**Yuriko, the Tiger's Shadow** (`full`) — the only non-joke printing of the
+keyword. Her trigger is Dark Confidant's flip with the life lost by each
+opponent, on Ingenious Infiltrator's per-Ninja combat-damage condition. The two
+"Fixed commander ninjutsu" cards (The Multifaceted Phyrexian, Monet) are
+playtest / Un printings whose whole point is that the tax DOES apply; neither is
+catalogued.
+
+### Still out of scope
+
+- **"Put onto the battlefield blocking"** — unchanged from #1227.
+- **A commander returned as a ninjutsu COST** goes to hand without the CR 903.9
+  offer, because costs cannot pause (see Decision 39). Weaker for the player
+  than printed in the rare case it matters; the same posture every cost exit
+  takes. Filed as [#1397](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1397).

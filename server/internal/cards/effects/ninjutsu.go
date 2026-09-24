@@ -106,26 +106,54 @@ func Ninjutsu(cost string) ActivatedAbility {
 	}
 }
 
-// ninjutsuEnter is the ability body. The source is its own target in
-// everything but name — "this card" — so it comes off the stack item
-// rather than off a target clause, which is also why ninjutsu cannot
-// fizzle.
+// CommanderNinjutsu is "Commander ninjutsu <cost>" — CR 702.49c:
+//
+//	"[cost], Return an unblocked attacker you control to hand: Put
+//	 this card onto the battlefield from your hand or the command zone
+//	 tapped and attacking."
+//
+// Ninjutsu with a second zone, and nothing else (#1278). The cost, the
+// timing-is-the-cost posture and the attacking entry are Ninjutsu's
+// unchanged; the ability also functions from the command zone
+// (CR 113.6), and the effect body puts the card from whichever of the
+// two zones it is actually in when the ability resolves.
+//
+// What the command zone brings is bookkeeping, and all of it is a
+// negative the engine already answers:
+//
+//   - No commander tax. CR 903.8 taxes CASTING the commander, and
+//     this puts it; Player.CommanderCasts is bumped by the cast path
+//     alone, so it neither charges the tax nor adds to the next one.
+//   - The designation stays. Card.IsCommander rides the card out of
+//     the command zone, so the permanent deals commander damage
+//     (CR 903.10a) and, when it leaves the battlefield, the shared
+//     exit primitive offers CR 903.9's "command zone instead" as it
+//     would for a cast commander.
+//   - Activating it is not something only the ability's owner can
+//     see: the command zone is public, but the ability ROW rides
+//     zone_abilities, which the wire gives only to the card's owner
+//     (the CR 108.4 "you") — the same scoping the graveyard has.
+func CommanderNinjutsu(cost string) ActivatedAbility {
+	return ActivatedAbility{
+		Label: "Commander ninjutsu " + cost + " (" + cost + ", Return an unblocked attacker you control to hand: " +
+			"Put this card onto the battlefield from your hand or the command zone tapped and attacking.)",
+		Cost:   Plus(ManaCost(cost), ReturnAnUnblockedAttacker()),
+		Zones:  []game.ZoneKind{game.ZoneHand, game.ZoneCommand},
+		Effect: ninjutsuEnter,
+	}
+}
+
+// ninjutsuEnter is the ability body, for both keywords. The source is
+// its own target in everything but name — "this card" — so it comes
+// off the stack item rather than off a target clause, which is also
+// why ninjutsu cannot fizzle.
 //
 // Package-level rather than a closure, for the reason every delayed
 // trigger body is: nothing may be captured, because undo resolves
 // these against a cloned game.
 func ninjutsuEnter(g *game.Game, item *game.StackItem) error {
 	id := item.SourceCardID
-	// CR 608.2a: the card may have left the hand while the ability was
-	// on the stack — a discard in response, a Thoughtseize. The ability
-	// does as much as it can, which is nothing. Checked rather than
-	// assumed, and the OWNER is checked with it: the entry door refuses
-	// a card that is not in a hand, but a card now in somebody else's
-	// hand is not this ability's card any more (CR 400.7).
-	if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneHand || z.Owner != item.Controller {
-		return nil
-	}
-	_, err := g.PutFromHandOntoBattlefieldForEffect(id, game.HandEntryOptions{
+	opts := game.ZoneEntryOptions{
 		// CR 108.4 made the activator the card's owner, so "under your
 		// control" and "under its owner's control" are the same player
 		// here — named anyway, because the rule the card prints is the
@@ -137,6 +165,39 @@ func ninjutsuEnter(g *game.Game, item *game.StackItem) error {
 		// paid-cost record, because the return that paid for this has
 		// already cleared the answer off the board.
 		Attacking: NewContext(g, item).ReturnedAttacking(),
-	})
-	return err
+	}
+	// CR 608.2a: the card may have left its zone while the ability was
+	// on the stack — a discard in response, a Thoughtseize. The ability
+	// does as much as it can, which is nothing. Checked rather than
+	// assumed, and the OWNER is checked with it: the entry door refuses
+	// a card that is not in the zone it names, but a card now in
+	// somebody else's hand is not this ability's card any more
+	// (CR 400.7).
+	z := g.FindCardZoneForEffect(id)
+	if z == nil || z.Owner != item.Controller {
+		return nil
+	}
+	// #1278, and CR 400.7 again: the card must still be the OBJECT
+	// whose ability this is. A commander discarded in response goes to
+	// the command zone under CR 903.9 — so it is back in a zone this
+	// ability names, with the same instance ID, and a zone check alone
+	// would put it onto the battlefield anyway. StackItem.SourceEpoch is
+	// the announce-time identity; every zone change bumps the card's, so
+	// a mismatch means the card moved and this ability lost it. It also
+	// means the zone below is the zone the ability was ACTIVATED from,
+	// which CR 113.6 already checked, so plain ninjutsu can never reach
+	// the command-zone arm.
+	if c, ok := g.LookupCardForEffect(id); !ok || c.ObjectEpoch != item.SourceEpoch {
+		return nil
+	}
+	switch z.Kind {
+	case game.ZoneHand:
+		_, err := g.PutFromHandOntoBattlefieldForEffect(id, opts)
+		return err
+	case game.ZoneCommand:
+		// CR 702.49c.
+		_, err := g.PutFromCommandZoneOntoBattlefieldForEffect(id, opts)
+		return err
+	}
+	return nil
 }
