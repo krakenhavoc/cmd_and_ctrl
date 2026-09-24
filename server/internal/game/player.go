@@ -156,11 +156,11 @@ type Player struct {
 	// seam.
 	TurnsBegun int
 
-	// Eliminated is set when the player concedes (S08) or, in the
-	// future, loses to a state-based action (S13+ rules graft). An
-	// eliminated player still occupies their seat for spectating; the
-	// game's State transitions to StateEnded once exactly one
-	// non-eliminated seat remains.
+	// Eliminated is set when the player leaves the game: a concession,
+	// a state-based loss or an effect loss (ADR 0057, game_end.go). An
+	// eliminated player still occupies their seat for spectating. The
+	// game ends when one non-eliminated seat or none remains — or when
+	// an effect wins it (CR 104.2b), which eliminates nobody.
 	Eliminated bool
 
 	// HandKept is true once the player has committed to their opening
@@ -216,17 +216,22 @@ type Player struct {
 	// AttemptedEmptyDraw records the one fact CR 704.5b reads: this
 	// player has attempted to draw a card from an empty library since
 	// the last state-based-action check. The SBA loop eliminates a
-	// player with it set. Set by actuallyDrawCardLocked (every draw
-	// path: the draw step, the DrawCard action, draw effects) when
-	// PopTop returns ErrZoneEmpty; cleared on elimination. A mill,
-	// an "exile the top N" or any other run off the bottom of the
+	// player with it set unless a "can't lose the game" gate stops
+	// the loss. Set by actuallyDrawCardLocked (every draw path: the
+	// draw step, the DrawCard action, draw effects) when PopTop
+	// returns ErrZoneEmpty, and that is its only writer. A mill, an
+	// "exile the top N" or any other run off the bottom of the
 	// library never sets it (CR 701.17b, #767).
 	//
+	// CLEARED ON EVERY SBA PASS, gated or not (ADR 0057 Decision 2):
+	// CR 704.5b reads only draws "since the last time state-based
+	// actions were checked", so a flag left set under a Platinum
+	// Angel would kill the player the moment the Angel left, long
+	// after the draw.
+	//
 	// Named LosesAtNextSBA until ADR 0057 sub-PR 1; the JSON tag
-	// keeps the old name so snapshots need no schema bump. One other
-	// writer remains until ADR 0057 sub-PR 2 makes an effect loss
-	// immediate: LoseTheGameForEffect (the Pact cycle) borrows the
-	// flag to defer its loss to the next SBA check. Added in S13.1.
+	// keeps the old name so snapshots need no schema bump. Added in
+	// S13.1.
 	AttemptedEmptyDraw bool
 
 	// CommanderCasts tracks the per-commander cast count from the

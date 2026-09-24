@@ -181,6 +181,23 @@ type PlayerStatic struct {
 	// No `omitzero`, for Timing's reason above (#1492).
 	CastBan CastBanRule `json:"castBan"`
 
+	// GameEnd is a granted "you can't lose the game this turn" /
+	// "your opponents can't win the game this turn" (CR 104.3,
+	// Angel's Grace). #749, ADR 0057's 2026-09-24 amendment,
+	// game_end_gates.go.
+	//
+	// The FIFTH payload, told apart like the others by its payload:
+	// a zero GameEndGate says nothing. Its Scope is relative to the
+	// player this entry is on — the caster — so "your opponents
+	// can't win" is one entry, not one per opponent. Its READER is
+	// forEachGameEndGateLocked. A GameEndGrant rather than a
+	// GameEndGate because it carries no While: a granted gate has no
+	// permanent to read a condition off.
+	//
+	// No `omitzero`, for Timing's reason above (#1492): it is always
+	// written, and a zero grant reads back as "says nothing".
+	GameEnd GameEndGrant `json:"gameEnd"`
+
 	// Source is the card that granted it, for the log and for the
 	// view's attribution. Never read by any rule: a granted ability
 	// outlives its source, which is the whole reason it is stored

@@ -268,6 +268,16 @@ type GameSnapshot struct {
 	StartingSeat      int           `json:"startingSeat"`
 	SplitSecondActive bool          `json:"splitSecondActive"`
 
+	// Outcome is the result of an ended game (ADR 0057 Decision 5):
+	// nil while active and for a table ended by End(). omitempty, so
+	// no schema bump. A restore point is removed once a game ends, so
+	// this matters for fixtures and forensics rather than restarts.
+	Outcome *GameOutcome `json:"outcome,omitempty"`
+	// ActiveSeatLeftPending is ADR 0057 Decision 3's deferred
+	// departure of an active player who lost by an effect
+	// mid-resolution, consumed by the next SBA loss pass.
+	ActiveSeatLeftPending bool `json:"activeSeatLeftPending,omitempty"`
+
 	// StackMeta is a SLICE, not a map: map iteration order is
 	// unspecified and the stack is ordered by Seq anyway. Sorted on
 	// capture so two snapshots of the same state are byte-identical.
@@ -1233,22 +1243,24 @@ func (g *Game) CaptureSnapshot() *GameSnapshot {
 // captureSnapshotLocked is the unlocked variant. Caller must hold g.mu.
 func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	s := &GameSnapshot{
-		Schema:            SnapshotSchemaVersion,
-		TakenAt:           time.Now().UTC(),
-		ID:                g.ID,
-		CreatedAt:         g.CreatedAt,
-		State:             g.State,
-		Turn:              g.Turn,
-		MulligansOpen:     g.MulligansOpen,
-		Monarch:           g.Monarch,
-		Initiative:        g.Initiative,
-		Settings:          g.Settings,
-		StartingSeat:      g.StartingSeat,
-		SplitSecondActive: g.SplitSecondActive,
-		EventSeq:          g.eventSeq,
-		EventBatch:        g.eventBatch,
-		ResolutionOpen:    g.resolutionOpen,
-		turnSeqPresent:    true,
+		Schema:                SnapshotSchemaVersion,
+		TakenAt:               time.Now().UTC(),
+		ID:                    g.ID,
+		CreatedAt:             g.CreatedAt,
+		State:                 g.State,
+		Turn:                  g.Turn,
+		MulligansOpen:         g.MulligansOpen,
+		Monarch:               g.Monarch,
+		Initiative:            g.Initiative,
+		Settings:              g.Settings,
+		StartingSeat:          g.StartingSeat,
+		SplitSecondActive:     g.SplitSecondActive,
+		Outcome:               cloneGameOutcome(g.Outcome),
+		EventSeq:              g.eventSeq,
+		EventBatch:            g.eventBatch,
+		ResolutionOpen:        g.resolutionOpen,
+		ActiveSeatLeftPending: g.ActiveSeatLeftPending,
+		turnSeqPresent:        true,
 	}
 	s.OncePerBatchFired = copyStringUint64Map(g.oncePerBatchFired)
 	s.AnnouncedBlocks = copyUUIDPairMap(g.announcedBlocks)
@@ -1960,6 +1972,8 @@ func (s *GameSnapshot) restoreGame() *Game {
 	}
 	g.StartingSeat = s.StartingSeat
 	g.SplitSecondActive = s.SplitSecondActive
+	g.Outcome = cloneGameOutcome(s.Outcome)
+	g.ActiveSeatLeftPending = s.ActiveSeatLeftPending
 	g.eventSeq = s.EventSeq
 	g.eventBatch = s.EventBatch
 	g.resolutionOpen = s.ResolutionOpen

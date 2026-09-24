@@ -189,6 +189,12 @@ type GameView struct {
 	// is something the whole table can see running. Added for #628
 	// (ADR 0055).
 	LoopNotice *LoopNoticeView `json:"loop_notice,omitempty"`
+	// Outcome is the result of an ended game: who won, or a draw, and
+	// why (ADR 0057 Decisions 5 and 7). Absent while the game is
+	// active and for a table an admin ended with no result. The client
+	// reads the winner from here; "the one seat left standing" is
+	// only its fallback for a view with no outcome.
+	Outcome *OutcomeView `json:"outcome,omitempty"`
 }
 
 // LoopNoticeView is the wire shape of game.LoopNotice. Label is the
@@ -1081,6 +1087,52 @@ type PlayerView struct {
 	// belong to. See ADR 0085 Decision 7 and game/life_lock.go.
 	// Added in S39 (#1200, ADR 0085).
 	LifeTotalLocked bool `json:"life_total_locked,omitempty"`
+
+	// CantLose lists the causes that can't make this player lose the
+	// game right now ("life", "empty_draw", "poison",
+	// "commander_damage", "effect") — all five under a Platinum Angel.
+	// Concession is never in it: a player can always concede
+	// (CR 104.3a). CantWin reports that an effect can't make this
+	// player win (an opponent's Platinum Angel). EndGates names the
+	// sources, for the seat badge's tooltip and the model prompt.
+	//
+	// DERIVED from public state (battlefield statics and resolved
+	// spells) on every projection, and not redacted. All omitempty:
+	// absent for nearly every seat in nearly every game. ADR 0057
+	// Decision 7 (#749).
+	CantLose []string          `json:"cant_lose,omitempty"`
+	CantWin  bool              `json:"cant_win,omitempty"`
+	EndGates []GameEndGateView `json:"end_gates,omitempty"`
+}
+
+// GameEndGateView is one "can't lose" / "can't win" gate that applies
+// to a seat: where it comes from and what it stops. ThisTurn marks a
+// granted gate that ends at cleanup (Angel's Grace). ADR 0057
+// Decision 7.
+type GameEndGateView struct {
+	Source     string   `json:"source,omitempty"`
+	SourceName string   `json:"source_name"`
+	CantLose   []string `json:"cant_lose,omitempty"`
+	CantWin    bool     `json:"cant_win,omitempty"`
+	ThisTurn   bool     `json:"this_turn,omitempty"`
+}
+
+// OutcomeView is the result of an ended game (ADR 0057 Decisions 5
+// and 7). Kind is "win" or "draw"; Winner and WinnerSeat are set for a
+// win; Cause is "last_standing", "effect" or "all_lost"; Source and
+// SourceName name the object whose effect won, for an effect win.
+//
+// A winning source is public: every card that wins by effect does so
+// from the battlefield, the stack or a public trigger, so no knower
+// check applies. The name is resolved from the assembled view's
+// public zones, and omitted when the object is not in one.
+type OutcomeView struct {
+	Kind       string `json:"kind"`
+	Winner     string `json:"winner,omitempty"`
+	WinnerSeat *int   `json:"winner_seat,omitempty"`
+	Cause      string `json:"cause"`
+	Source     string `json:"source,omitempty"`
+	SourceName string `json:"source_name,omitempty"`
 }
 
 // EmblemView is one emblem on the wire (CR 114). Label is what the
@@ -2923,6 +2975,9 @@ func ViewOfGame(g *game.Game) GameView {
 		// lock. Unlike the log it needs no knower sets — see
 		// reveal_frame.go.
 		view.Reveals = publicRevealsOf(g, &view)
+		// ADR 0057: the result, resolved out of the same assembled
+		// view the log names its cards from.
+		view.Outcome = viewOfOutcome(g.Outcome, &view)
 	})
 	return view
 }
@@ -5643,7 +5698,87 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		Emblems:             emblems,
 		Keywords:            g.PlayerAbilitiesForEffect(p),
 		LifeTotalLocked:     g.PlayerLifeTotalCantChangeLocked(p),
+		CantLose:            lossCauseStrings(g.CantLoseCausesForEffect(p)),
+		CantWin:             g.CantWinForEffect(p),
+		EndGates:            viewOfGameEndGates(g.GameEndGatesForEffect(p)),
 	}
+}
+
+// lossCauseStrings projects engine loss causes onto the wire. Nil for
+// none, so omitempty drops the field.
+func lossCauseStrings(in []game.LossCause) []string {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]string, len(in))
+	for i, c := range in {
+		out[i] = string(c)
+	}
+	return out
+}
+
+// viewOfGameEndGates projects the gates that apply to one seat.
+func viewOfGameEndGates(in []game.GameEndGateSource) []GameEndGateView {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]GameEndGateView, len(in))
+	for i, gs := range in {
+		out[i] = GameEndGateView{
+			Source:     uuidStringOrEmpty(gs.Source),
+			SourceName: gs.SourceName,
+			CantLose:   lossCauseStrings(gs.CantLose),
+			CantWin:    gs.CantWin,
+			ThisTurn:   gs.ThisTurn,
+		}
+	}
+	return out
+}
+
+// viewOfOutcome projects Game.Outcome, resolving the winner's seat
+// and the winning source's name out of the assembled view. Nil for an
+// active game and for a table ended by End().
+func viewOfOutcome(o *game.GameOutcome, v *GameView) *OutcomeView {
+	if o == nil {
+		return nil
+	}
+	out := &OutcomeView{
+		Kind:   o.Kind,
+		Winner: uuidStringOrEmpty(o.Winner),
+		Cause:  o.Cause,
+		Source: uuidStringOrEmpty(o.Source),
+	}
+	if out.Winner != "" {
+		for i := range v.Seats {
+			if v.Seats[i].ID == out.Winner {
+				seat := v.Seats[i].Seat
+				out.WinnerSeat = &seat
+				break
+			}
+		}
+	}
+	if out.Source != "" {
+		out.SourceName = publicCardName(v, out.Source)
+	}
+	return out
+}
+
+// publicCardName finds a card by instance ID in the view's PUBLIC
+// zones — the battlefield, the stack, exile, graveyards and command
+// zones — and returns its name, or "" when it is in none of them.
+func publicCardName(v *GameView, id string) string {
+	zones := []ZoneView{v.Battlefield, v.Stack, v.Exile}
+	for _, s := range v.Seats {
+		zones = append(zones, s.Graveyard, s.Command)
+	}
+	for _, z := range zones {
+		for _, c := range z.Cards {
+			if c.InstanceID == id {
+				return c.Name
+			}
+		}
+	}
+	return ""
 }
 
 // cloneStringIntMap returns nil for an empty input so json.Marshal's
@@ -5897,6 +6032,9 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// #628: public, and identical for every seat — see the field
 		// comment. Nothing in it names a card in a hidden zone.
 		LoopNotice: v.LoopNotice,
+		// ADR 0057: public, and identical for every seat. The source
+		// name was resolved from public zones only.
+		Outcome: v.Outcome,
 	}
 }
 

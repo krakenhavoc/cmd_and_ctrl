@@ -174,6 +174,12 @@ type CardDef struct {
 	// CatalogAbilityKey, never from a card's own zone; see
 	// game.CatalogPlayerLifeTotalLocked and ADR 0085 (#1200).
 	PlayerLifeTotalLocked bool
+	// GameEndGates are this permanent's printed "you can't lose the
+	// game" / "your opponents can't win the game" statics (CR 104.3),
+	// scoped relative to its CONTROLLER. Read from the battlefield
+	// through CatalogAbilityKey; see game.CatalogGameEndGates and
+	// ADR 0057 Decision 4 (#749).
+	GameEndGates []GameEndGate
 	// Emblem is the presentation half of an EMBLEM's catalog entry
 	// (CR 114) — its board label and its printed ability text. Set
 	// only on an emblem's own def, the one effects.Register files
@@ -521,6 +527,12 @@ func init() {
 	CatalogPlayerLifeTotalLocked = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.PlayerLifeTotalLocked
+	}
+	CatalogGameEndGates = func(key string) []GameEndGate {
+		if d := catalogDef(key); d != nil {
+			return d.GameEndGates
+		}
+		return nil
 	}
 	CatalogWantsDistinctColors = func(key string) bool {
 		d := catalogDef(key)

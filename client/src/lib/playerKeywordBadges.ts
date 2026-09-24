@@ -23,6 +23,7 @@
 // copy of either would be free to drift from the card badge's.
 
 import { KEYWORD_ICONS } from "./keywordIcons";
+import type { GameEndGateView } from "./protocol";
 
 export interface PlayerKeywordBadge {
   // The raw wire token — also the {#each} key, since two Leylines
@@ -79,6 +80,70 @@ const LIFE_LOCK_BADGE: PlayerKeywordBadge = {
   kind: "protection",
 };
 
+// ADR 0057 (#749, CR 104.3): "can't lose the game" / "can't win the
+// game" on a seat, decided on 2026-09-17 (option (b)): a small badge,
+// with the sources in its tooltip. A player at -8 life who is still in
+// the game is confusing unless the seat says why.
+//
+// The gates arrive as PlayerView.cant_lose (the causes that can't make
+// this seat lose), cant_win, and end_gates (the sources). Like the
+// life-total lock they are not ability tokens, so they get their own
+// badges here in the same visual language, after everything else.
+export interface SeatEndGates {
+  cant_lose?: string[];
+  cant_win?: boolean;
+  end_gates?: GameEndGateView[];
+}
+
+const LOSS_CAUSE_TEXT: Record<string, string> = {
+  life: "0 or less life",
+  empty_draw: "drawing from an empty library",
+  poison: "poison",
+  commander_damage: "commander damage",
+  effect: "an effect",
+};
+
+// sourcesText names the gates' sources for a tooltip, marking a
+// until-end-of-turn grant: "Platinum Angel, Angel's Grace (this turn)".
+function sourcesText(gates: GameEndGateView[], pick: (g: GameEndGateView) => boolean): string {
+  const names: string[] = [];
+  for (const g of gates) {
+    if (!pick(g)) continue;
+    const name = g.this_turn ? `${g.source_name} (this turn)` : g.source_name;
+    if (!names.includes(name)) names.push(name);
+  }
+  return names.join(", ");
+}
+
+/**
+ * The "can't lose" / "can't win" badges for one seat, in that order,
+ * or none. A seat whose gate stops only some causes (Phyrexian Unlife's
+ * "0 or less life") gets a tooltip that says which.
+ */
+export function endGateBadges(gates?: SeatEndGates): PlayerKeywordBadge[] {
+  if (!gates) return [];
+  const all = gates.end_gates ?? [];
+  const badges: PlayerKeywordBadge[] = [];
+  const causes = gates.cant_lose ?? [];
+  if (causes.length > 0) {
+    const whole = Object.keys(LOSS_CAUSE_TEXT).every((c) => causes.includes(c));
+    const what = whole
+      ? "Can't lose the game"
+      : `Can't lose the game to ${causes.map((c) => LOSS_CAUSE_TEXT[c] ?? c).join(", ")}`;
+    const from = sourcesText(all, (g) => (g.cant_lose?.length ?? 0) > 0);
+    const title = from
+      ? `${what} — ${from}. Conceding still loses.`
+      : `${what}. Conceding still loses.`;
+    badges.push({ key: "cant-lose", short: "CAN'T LOSE", title, kind: "protection" });
+  }
+  if (gates.cant_win) {
+    const from = sourcesText(all, (g) => g.cant_win === true);
+    const title = from ? `Can't win the game — ${from}` : "Can't win the game";
+    badges.push({ key: "cant-win", short: "CAN'T WIN", title, kind: "plain" });
+  }
+  return badges;
+}
+
 /**
  * Turns PlayerView.keywords (and #1200's life_total_locked) into the
  * badges the seat tile renders, one per distinct token, in wire order
@@ -88,6 +153,7 @@ const LIFE_LOCK_BADGE: PlayerKeywordBadge = {
 export function playerKeywordBadges(
   keywords?: string[],
   lifeTotalLocked?: boolean,
+  endGates?: SeatEndGates,
 ): PlayerKeywordBadge[] {
   const seen = new Set<string>();
   const badges: PlayerKeywordBadge[] = [];
@@ -128,5 +194,6 @@ export function playerKeywordBadges(
     });
   }
   if (lifeTotalLocked) badges.push(LIFE_LOCK_BADGE);
+  badges.push(...endGateBadges(endGates));
   return badges;
 }

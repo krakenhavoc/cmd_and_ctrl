@@ -162,6 +162,14 @@ var ErrNothingToUndo = errSentinel("ws: nothing to undo")
 // (caller == uuid.Nil) bypasses the check. Added in S11.
 var ErrNotYourUndo = errSentinel("ws: top of undo stack is another seat's action")
 
+// ErrGameOverUndo is returned by Undo when the game has ended and the
+// caller is a seated player: the end is final (ADR 0057 Decision 5,
+// the owner's answer to question 1). A game that has announced a
+// winner, played the win sound and been written to the database does
+// not come back. The admin (caller == uuid.Nil) can still undo, for
+// mistakes.
+var ErrGameOverUndo = errSentinel("ws: the game is over; only the admin can undo past its end")
+
 type errSentinel string
 
 func (e errSentinel) Error() string { return string(e) }
@@ -390,8 +398,10 @@ func (r *Room) notify() {
 // and so does any entry flagged freeUndo — a bot improvisation, which
 // a human undoes as maintenance rather than as a take-back.
 //
-// Returns ErrNothingToUndo (empty stack), ErrNotYourUndo (top entry
-// belongs to another seat), or game.ErrNoUndosRemaining (budget at 0).
+// Returns ErrNothingToUndo (empty stack), ErrGameOverUndo (the game
+// has ended and the caller is not the admin — ADR 0057), ErrNotYourUndo
+// (top entry belongs to another seat), or game.ErrNoUndosRemaining
+// (budget at 0).
 // Bumps seq on success so connected clients see a regular snapshot
 // frame and don't have to special-case the rewind. The undo itself
 // is NOT pushed onto the stack — no redo at v1.
@@ -410,6 +420,14 @@ func (r *Room) undo(caller uuid.UUID) (protocol.GameView, uint64, error) {
 		return protocol.GameView{}, 0, ErrNothingToUndo
 	}
 	top := r.undoStack[len(r.undoStack)-1]
+
+	// ADR 0057: the end is final for everyone but the admin. Checked
+	// before the caller gate, because whoever took the last action —
+	// often the loser, passing priority into an effect win — owns the
+	// entry that ended the game.
+	if caller != uuid.Nil && r.Game.CurrentState() == game.StateEnded {
+		return protocol.GameView{}, 0, ErrGameOverUndo
+	}
 
 	// Caller gate. Admin (uuid.Nil) bypasses; otherwise the top
 	// entry's caller must match.

@@ -77,6 +77,14 @@ var gameFields = plan(
 	"ID", carried, "",
 	"CreatedAt", carried, "",
 	"State", carried, "",
+	// ADR 0057 Decision 5: the result of an ended game. Carried so a
+	// fixture or a forensic restore of an ended game still names its
+	// winner.
+	"Outcome", carried, "",
+	// ADR 0057 Decision 3: the active player's deferred departure,
+	// waiting on the next SBA loss pass. Carried: a restore between
+	// the effect loss and that pass must still move the turn on.
+	"ActiveSeatLeftPending", carried, "",
 	"Seats", carried, "",
 	"Battlefield", carried, "",
 	"Stack", carried, "",

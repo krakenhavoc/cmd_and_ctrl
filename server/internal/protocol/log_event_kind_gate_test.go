@@ -64,6 +64,7 @@ const (
 // rows that remain are the ones whose silence survived being read.
 var silentEventKinds = map[string]string{
 	// --- already told, by another line -------------------------------
+	"EventConcede":        "the EventPlayerEliminated that follows it (Label \"concede\") is the one line a concession writes (ADR 0057 Decision 1)",
 	"EventETB":            silentAlreadyToldAsAZoneMove,
 	"EventLTB":            silentAlreadyToldAsAZoneMove,
 	"EventMill":           silentAlreadyToldAsAZoneMove,

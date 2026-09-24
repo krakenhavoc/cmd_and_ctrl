@@ -30,10 +30,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // to a decline server-side, which is exactly the printed outcome: if
 // you don't pay, you lose.
 //
-// Losing goes through LoseTheGameForEffect, which today borrows the
-// AttemptedEmptyDraw flag so the loss lands at the next state-based
-// check. ADR 0057 sub-PR 2 makes an effect loss immediate (CR 104.3e)
-// and rewrites this comment.
+// Losing goes through LoseTheGame, and it is IMMEDIATE (CR 104.3e —
+// an effect loss has no state-based-action clause; ADR 0057
+// Decision 3): the player leaves the moment they decline, and a
+// "can't lose the game" gate (Platinum Angel) read at that moment
+// stops it. The loser is the active player — the debt is collected
+// in their own upkeep — so the turn moves on at the next state-based
+// check rather than inside the answer.
 func init() {
 	Register(Spec{
 		OracleID:     "f3e213a4-ba5a-468a-93b3-c0a34e1bd725",
@@ -82,7 +85,7 @@ func pactPayment(cost, name string) func(g *game.Game, item *game.StackItem) err
 			Cost:     cost,
 			Question: name + " — pay " + cost + " or lose the game",
 			OnDecline: func(ctx *Context) error {
-				return ctx.Game.LoseTheGameForEffect(payer)
+				return LoseTheGame{Player: payer}.Apply(ctx)
 			},
 		}.Apply(NewContext(g, item))
 	}

@@ -2,6 +2,7 @@ package game
 
 import (
 	"log/slog"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -317,14 +318,35 @@ const (
 	EventCounterSpell EventKind = "counter_spell"
 
 	// EventConcede — Actor conceded the game. Precedes the
-	// eliminate-via-SBA path.
+	// EventPlayerEliminated (Label "concede") the concession causes;
+	// the public log projects only that one, so a concession is one
+	// line (ADR 0057 Decision 1).
 	EventConcede EventKind = "concede"
 
-	// EventPlayerEliminated — Actor was eliminated from the game
-	// (0 life, empty library draw, 21+ commander damage, poison >= 10,
-	// concede, or manual eliminate). The single terminating event
-	// for a player's participation in the game.
+	// EventPlayerEliminated — Actor left the game. The single
+	// terminating event for a player's participation in the game.
+	// Label is the game.LossCause ("life", "empty_draw", "poison",
+	// "commander_damage", "effect", "concede"); Source and CardID name
+	// the object whose effect made them lose, for an "effect" loss
+	// (ADR 0057 Decisions 1 and 7).
 	EventPlayerEliminated EventKind = "player_eliminated"
+
+	// EventGameOver — the game ended with a result (ADR 0057
+	// Decision 5). Actor is the winner (uuid.Nil for a draw); Label is
+	// the outcome cause ("last_standing", "effect", "all_lost");
+	// Source and CardID name the object whose effect won the game, for
+	// an "effect" win. Not emitted by Game.End(), which records no
+	// result.
+	EventGameOver EventKind = "game_over"
+
+	// EventWinPrevented — an effect said Actor wins the game, and a
+	// "can't win the game" gate stopped it (CR 104.2b, CR 104.3 —
+	// an opponent's Platinum Angel). Source and CardID are the object
+	// whose effect would have won; Target is the gate's source (a
+	// permanent, or the spell that granted a "this turn" gate). The
+	// game goes on, and nothing is remembered for later. Once per
+	// prevented win (ADR 0057 Decision 7).
+	EventWinPrevented EventKind = "win_prevented"
 
 	// EventETB — a permanent entered the battlefield. CardID is the
 	// new permanent. Distinct from ZoneMove so listeners can key
@@ -1328,6 +1350,15 @@ func (g *Game) emitBecameTargetLocked(actor, source, itemID uuid.UUID, targets [
 // trigger a follow-on event sees state consistent with the event
 // it's reacting to.
 func (g *Game) EmitEvent(ev Event) {
+	// ADR 0057 Decision 3: ErrStopResolution is a clean stop — the
+	// game ended, or the resolving item's controller left the game —
+	// not a failure. Every site that turns a catalog callback's error
+	// into an EventEffectError reaches here, so the one filter covers
+	// all of them (the 2026-09-24 amendment: there are dozens now, not
+	// the six the ADR listed).
+	if ev.Kind == EventEffectError && strings.Contains(ev.ErrorMsg, ErrStopResolution.Error()) {
+		return
+	}
 	if ev.Kind == EventTokenCreated {
 		g.noteCreatedSourceLocked(ev.CardID)
 	}

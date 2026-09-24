@@ -465,6 +465,10 @@ func (st *state) targetsValue(cfg Config, targets []targetRef) float64 {
 			v += cfg.DamageToPlayer * st.leaderBoost(cfg, t.ID)
 			switch {
 			case e == nil:
+			case e.CantLoseLife:
+				// ADR 0057 Decision 6: nothing finishes a seat that
+				// can't lose to its life total, so no finishing bonus
+				// and no danger premium — just the base damage value.
 			case e.Life <= cfg.FinishLife:
 				// The bot cannot read how much damage the spell
 				// deals — no oracle text reaches a policy — so this

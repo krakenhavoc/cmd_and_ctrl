@@ -42,6 +42,11 @@ func (g *Game) cloneLocked() *Game {
 		Settings:          g.Settings,
 		StartingSeat:      g.StartingSeat,
 		SplitSecondActive: g.SplitSecondActive,
+		// ADR 0057: the result of an ended game (its own pointer, so an
+		// undo snapshot never shares it) and the deferred departure of
+		// an active player who lost mid-resolution.
+		Outcome:               cloneGameOutcome(g.Outcome),
+		ActiveSeatLeftPending: g.ActiveSeatLeftPending,
 		// #628: both halves of the CR 726 breaker. The threshold is
 		// configuration and copies by value; the notice is a per-turn
 		// fact an undo must be able to rewind past, so it gets its own
@@ -877,6 +882,8 @@ func (g *Game) RestoreFrom(src *Game) {
 	// restore is a different path (restoreGame) and does restore them.
 	g.StartingSeat = src.StartingSeat
 	g.SplitSecondActive = src.SplitSecondActive
+	g.Outcome = src.Outcome
+	g.ActiveSeatLeftPending = src.ActiveSeatLeftPending
 	g.StackMeta = src.StackMeta
 	g.PendingTriggers = src.PendingTriggers
 	g.DelayedTriggers = src.DelayedTriggers
@@ -986,4 +993,14 @@ func cloneSourceOrdinals(in map[uuid.UUID]uint64) map[uuid.UUID]uint64 {
 		out[id] = ordinal
 	}
 	return out
+}
+
+// cloneGameOutcome copies a game's outcome into its own pointer. Nil
+// stays nil (an active game, or one ended by End()).
+func cloneGameOutcome(in *GameOutcome) *GameOutcome {
+	if in == nil {
+		return nil
+	}
+	out := *in
+	return &out
 }

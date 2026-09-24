@@ -76,6 +76,10 @@ const LOG_TONE: Record<LogKind, string> = {
   token: "tone-zone",
   sacrifice: "tone-bad",
   eliminated: "tone-bad",
+  // ADR 0057: the end of the game is the spine of the log, not a
+  // whisper; a prevented win is a swing that didn't happen.
+  game_over: "tone-step",
+  win_prevented: "tone-bad",
   reveal: "tone-cast",
   roll: "tone-cast",
   flip: "tone-cast",
