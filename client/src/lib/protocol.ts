@@ -1575,6 +1575,14 @@ export interface ActivatedAbilityView {
   // show mana_cost as a tooltip only when the two differ (see
   // chargedCostNote in contextMenu.logic.ts).
   charged_mana_cost?: string;
+  // #1296: what the mana component costs if the ability targets each
+  // legal target, keyed by the target's ID (card instance or player),
+  // valued as charged_mana_cost is ("" = free). Present only when the
+  // PRICE reads the target — Dragonfire Blade's "{1} less for each
+  // color of the creature it targets" — on a one-target, non-modal
+  // ability; charged_mana_cost is then the price before a target is
+  // chosen. See targetPrices.ts.
+  target_charged_mana_costs?: Record<string, string>;
   life_cost?: number;
   sorcery_speed?: boolean;
   // #1208: true when the engine will refuse this activation RIGHT NOW

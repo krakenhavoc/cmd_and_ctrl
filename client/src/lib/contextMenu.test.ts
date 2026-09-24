@@ -393,6 +393,26 @@ describe("buildMenuSections — battlefield", () => {
     expect(itemById(sections, "mana-0")?.disabled).toBe(false);
   });
 
+  // #1296: Dragonfire Blade's equip has no single price — it is {1}
+  // cheaper for each colour of the creature it targets — so the row
+  // names the range, not a printed-cost note that would read {4}/{4}.
+  it("hints the price range on an ability whose price reads its target", () => {
+    const blade = card("c13", "a", {
+      activated_abilities: [
+        {
+          index: 0,
+          label: "Equip {4}",
+          mana_cost: "{4}",
+          charged_mana_cost: "{4}",
+          target_charged_mana_costs: { vivi: "{2}", golem: "{4}", queen: "" },
+        },
+      ],
+    });
+    const v2 = view([seat("a", "Alice")], { battlefield: [blade] });
+    const sections = buildMenuSections(v2, blade, "a", false);
+    expect(itemById(sections, "ability-0")?.hint).toBe("free–{4} depending on the target");
+  });
+
   it("is silent about the cost on an undiscounted ability", () => {
     const plain = card("c12", "a", {
       activated_abilities: [
