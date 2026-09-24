@@ -706,3 +706,33 @@ three things:
 - a wire and client surface for a special action on the library's top card.
 
 Filed as #1391 rather than done here.
+
+## Amendment — 2026-09-24: Magmakin Artillerist's own cycle trigger fires from the graveyard (#1392)
+
+Decision 7 and its Consequences deliberately left Magmakin Artillerist with
+one caveat: "When you cycle this card, it deals 1 damage to each opponent"
+does not fire, because the ability lives in the graveyard (CR 702.29c) and the
+harvester's zone scan did not reach there. #925 built exactly that scan —
+`TriggeredAbility.Zones` plus `effects.InGraveyard` — after this ADR but
+before either keyword needed it (the 2026-09-18 amendment above already notes
+this for Decision 7's open question 1 in general terms). #1392 is the card
+that cashes it in.
+
+The card's trigger is now `InGraveyard(On(game.EventCycle, Self, …))`, the same
+shape Bloodghast's landfall and Narcomoeba's arrival use. Cycling the
+Artillerist deals 2 total: 1 from the discard trigger (unchanged, and it is
+what "the discard IS the cost" already made fire before this amendment) and 1
+from the card's own cycle trigger, now that it can see itself in the
+graveyard. The remaining caveat — CR 603.1 batching, "one or more cards…
+that much damage" resolving as separate 1s per discarded card — is unrelated
+to this gap and stays.
+
+`docs/engine-seams.md`'s "Triggered abilities that watch from another zone"
+and "Abilities from the hand, and a discard cost component" rows are updated
+to say so. Decree of Pain, "nothing but a cycle trigger," is unaffected by
+this amendment and is still not added — its gap was `EventCycle` itself
+(closed by #660), not the zone scan, so it is now unblocked but not yet
+written; that is ordinary catalog work, not a seam.
+
+Proof card: **Magmakin Artillerist**, still `caveats` (the batching note),
+never `full` — it never had only the one caveat this amendment closes.
