@@ -137,12 +137,12 @@ func clone() cards.Card {
 	}
 }
 
-// theSeriema — #337. Four printed lines. Since S46 (#759, ADR 0071)
-// three of them work: the ETB tutor (SearchLibrary takes an arbitrary
-// predicate), the 7+ threshold and the artifact-creature type change
-// it implies (a charge-counter gate over layers 4, 6 and 7b), and the
-// indestructible grant. Station itself is still a caveat — its cost
-// taps another creature, which is #758.
+// theSeriema — #337. Four printed lines, all working: the ETB tutor
+// (SearchLibrary takes an arbitrary predicate), the 7+ threshold and
+// the artifact-creature type change it implies (a charge-counter gate
+// over layers 4, 6 and 7b, S46 / ADR 0071), the indestructible grant,
+// and since #759 the station ability itself, on #758's tap-another
+// cost.
 //
 // It stays in this table for fortuneTellersTalent's reason: this
 // fixture pins the Scryfall half of the predicate, which does not

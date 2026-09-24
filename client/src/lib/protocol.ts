@@ -1611,6 +1611,17 @@ export interface ActivatedAbilityView {
   // tapping none pays the whole cost with mana. The picks ride
   // activate_ability as `waterbend_ids`.
   waterbend?: TapCostView;
+  // #759: a "Tap another untapped creature you control" cost — the
+  // station ability's (CR 702.184a), #758's tap-another component.
+  // `tap_others_label` is the clause without the verb and
+  // `tap_others_options` the untapped permanents that could pay it
+  // right now, min / max the clause's count. Not the {T} symbol, so a
+  // creature that arrived this turn is on the list; not a target, so
+  // a hexproof one is too. The picks ride activate_ability as
+  // `tap_ids`; fewer options than `min` means the server refuses
+  // (CR 118.3).
+  tap_others_label?: string;
+  tap_others_options?: LegalTargetsView;
   // #660: the discard cost components (CR 702.29a and the general
   // "Discard a creature card" clause). `discard_self` is cycling's
   // "Discard this card" — advisory only, there is nothing to pick,

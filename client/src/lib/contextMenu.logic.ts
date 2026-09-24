@@ -395,6 +395,10 @@ interface AbilityCost {
   // before.
   return_label?: string;
   return_options?: { players?: string[]; cards?: string[]; min?: number; max?: number };
+  // #759: a tap-another cost (station). Greyed on the same terms as
+  // the return cost: fewer untapped creatures than the clause needs.
+  tap_others_label?: string;
+  tap_others_options?: { players?: string[]; cards?: string[]; min?: number; max?: number };
   // #1157: `min` is part of the clause and not decoration. "Up to one
   // target creature you control" is min 0, and a clause with min 0 is
   // satisfied by an empty candidate list — see hasSatisfiableTargets.
@@ -533,6 +537,18 @@ export function returnShortfall(opts: ReturnOptionsShape | undefined, label?: st
   return `nothing to return (${label ?? "a permanent you control"})`;
 }
 
+// tapOthersShortfall is returnShortfall for a tap-another cost (#759):
+// the reason it can't be paid right now, or "" when it can. The
+// server's option list already excludes tapped creatures, other
+// players' creatures and — for "another" — the source, so its length
+// against `min` is the whole of CR 118.3.
+export function tapOthersShortfall(opts: ReturnOptionsShape | undefined, label?: string): string {
+  if (!opts) return "";
+  const have = opts.cards?.length ?? 0;
+  if (have >= (opts.min ?? 1)) return "";
+  return `nothing to tap (${label ?? "another untapped creature you control"})`;
+}
+
 // abilityBlocked returns the reason an ability can't be activated
 // right now, or "" when it can. Advisory only — the server re-checks
 // every cost; this just greys the row and explains why.
@@ -554,6 +570,9 @@ export function abilityBlocked(
   // #1213: the same question one verb over.
   const returned = returnShortfall(a.return_options, a.return_label);
   if (returned) return returned;
+  // #759: and the tap-another cost.
+  const tapOthers = tapOthersShortfall(a.tap_others_options, a.tap_others_label);
+  if (tapOthers) return tapOthers;
   // CR 702.122a: a crew cost with no untapped creature to pay it is
   // unpayable. Only the empty case is judged here — whether the
   // creatures that DO exist add up to the crew number is arithmetic

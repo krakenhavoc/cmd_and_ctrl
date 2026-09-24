@@ -109,22 +109,29 @@ func TestSeriemaGrantsIndestructibleToOtherTappedLegends(t *testing.T) {
 	}
 }
 
-// TestSeriemaDeclaresItsStationCaveat — the station ability waits on
-// #758's tap-another cost component, and the card says so rather than
-// approximating it.
-func TestSeriemaDeclaresItsStationCaveat(t *testing.T) {
+// TestSeriemaIsCompleteWithItsStationAbility — #759 gave The Seriema
+// the station ability it was caveated for, so the card is whole: one
+// activated ability, the station one, with #758's tap-another cost
+// and sorcery timing. station_ability_test.go plays it.
+func TestSeriemaIsCompleteWithItsStationAbility(t *testing.T) {
 	spec, ok := Lookup(theSeriemaOracle)
 	if !ok {
 		t.Fatal("The Seriema is not registered")
 	}
-	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
-		t.Fatalf("want CompletenessCaveats with 1 caveat, got %s with %d", spec.Completeness, len(spec.Caveats))
+	if spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Fatalf("want CompletenessFull with no caveats, got %s with %d", spec.Completeness, len(spec.Caveats))
 	}
-	if !containsFoldASCII(spec.Caveats[0], "station") {
-		t.Errorf("the caveat should name Station: %q", spec.Caveats[0])
+	if len(spec.Activated) != 1 {
+		t.Fatalf("The Seriema declares %d activated abilities, want 1 (station)", len(spec.Activated))
 	}
-	if len(spec.Activated) != 0 {
-		t.Error("The Seriema has no activated ability until #758 gives station its cost")
+	st := spec.Activated[0]
+	if st.Label != StationLabel || !st.SorcerySpeed || st.ActiveWhen.IsGate() {
+		t.Errorf("station = %q sorcery=%v gated=%v — want the keyword, sorcery speed, and no threshold (CR 721.4)",
+			st.Label, st.SorcerySpeed, st.ActiveWhen.IsGate())
+	}
+	tc := st.Cost.TapOthers
+	if tc.Empty() || tc.Count != 1 || !tc.ExcludeSource {
+		t.Errorf("station's cost = %+v, want one ANOTHER creature", tc)
 	}
 }
 

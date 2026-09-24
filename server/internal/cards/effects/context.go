@@ -122,6 +122,29 @@ func (c *Context) ReturnedAttacking() uuid.UUID {
 	return c.Paid().ReturnedAttacking
 }
 
+// TappedPower is the power of the permanent the announcement's
+// tap-another cost tapped (#759) — station's "charge counters equal
+// to the tapped creature's power" (CR 702.184a). ok is false when
+// the cost tapped nothing, which is every ability without the
+// component.
+//
+// NOT a number off the payment record: CR 608.2h reads the tapped
+// creature AS THE ABILITY RESOLVES if it is still on the battlefield
+// (pump it in response and more counters go on), and as it last
+// existed there if it is not — game.PaidTapPowerForEffect answers
+// both. The one printed clause taps a single permanent; for a cost
+// that taps more this is the first one named.
+//
+// Not clamped: a negative power is returned as negative, and the
+// caller decides what "that many counters" means for it.
+func (c *Context) TappedPower() (power int, ok bool) {
+	taps := c.Paid().TappedOthers
+	if len(taps) == 0 || c.Game == nil {
+		return 0, false
+	}
+	return c.Game.PaidTapPowerForEffect(taps[0]), true
+}
+
 // ManaSpent is what the payment for THIS stack item can be asked
 // about: Colors(), Count("R"), Total(), FromTreasure(), Snow() and
 // the rest of game.ManaSpent's vocabulary.

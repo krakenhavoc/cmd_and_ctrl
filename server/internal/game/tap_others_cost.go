@@ -101,9 +101,12 @@ type TapOthersCost struct {
 	// because of a rule of its own.
 	ExcludeSource bool
 
-	// Label is the clause as printed, shown above the client's
-	// picker so the prompt reads like the card. "Tap three untapped
-	// Elves you control", not "choose 3".
+	// Label is the clause as printed WITHOUT the verb, shown in the
+	// client's picker so the prompt reads like the card — "another
+	// untapped creature you control", which the picker renders as
+	// "Tap another untapped creature you control to pay for this
+	// ability" (#759), exactly as a return clause's label is. Not
+	// "choose 1".
 	Label string
 }
 
@@ -270,4 +273,101 @@ func (g *Game) payTapOthersCostLocked(playerID uuid.UUID, ids []uuid.UUID) []Car
 		g.EmitEvent(Event{Kind: EventTapCard, Actor: playerID, CardID: id})
 	}
 	return paid
+}
+
+// --- The payment record (#759) ----------------------------------------
+
+// paidTapsFrom turns payTapOthersCostLocked's snapshot into the
+// payment record's entries: which object was tapped, and its power as
+// it was tapped.
+//
+// The power is the FALLBACK, not the answer — see PaidTap. It is kept
+// because the object may leave the battlefield by a route that never
+// reaches battlefieldExitLocked (a player leaving the game takes their
+// permanents with them, CR 800.4a), and then the power it was tapped
+// with is the best last-known value the engine has.
+//
+// The cards must be the as-tapped snapshot, read with a fresh layer
+// cache — ActivateCatalogAbility recomputes at the top of the
+// activation, and nothing between there and the payment changes a
+// characteristic.
+func paidTapsFrom(cards []Card) []PaidTap {
+	if len(cards) == 0 {
+		return nil
+	}
+	out := make([]PaidTap, 0, len(cards))
+	for _, c := range cards {
+		out = append(out, PaidTap{ID: c.InstanceID, Epoch: c.ObjectEpoch, Power: c.PowerForComparison()})
+	}
+	return out
+}
+
+// freezePaidTapsOnExitLocked is the CR 608.2h half of the record:
+// as a permanent leaves the battlefield, every stack item whose
+// payment tapped THAT object has its power rewritten to the power the
+// object has right now — its last-known power — and is marked Left,
+// so the resolution reads the number instead of looking for a
+// creature that is gone (or, worse, finding the new object a recast
+// made under the same instance ID).
+//
+// Called from battlefieldExitLocked, the one place every battlefield
+// exit passes through, with the card still on the battlefield — so
+// its layer cache and its counters are still the ones it had. That is
+// the same moment, and the same Effective() read, as the CR 603.10
+// snapshot the leave-the-battlefield triggers are judged on.
+//
+// The stack is a handful of items and almost none of them carry a
+// tap record, so the walk costs nothing on the common exit.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) freezePaidTapsOnExitLocked(cardID uuid.UUID) {
+	if len(g.StackMeta) == 0 {
+		return
+	}
+	c := findBattlefieldCard(g, cardID)
+	if c == nil {
+		return
+	}
+	for _, item := range g.StackMeta {
+		if item == nil {
+			continue
+		}
+		for i := range item.Paid.TappedOthers {
+			t := &item.Paid.TappedOthers[i]
+			if t.ID != cardID || t.Left || t.Epoch != c.ObjectEpoch {
+				continue
+			}
+			t.Power = c.PowerForComparison()
+			t.Left = true
+		}
+	}
+}
+
+// PaidTapPowerForEffect is the power a resolving effect reads for a
+// permanent its cost tapped (#759) — station's "charge counters equal
+// to the tapped creature's power" (CR 702.184a).
+//
+// CR 608.2h, and the Edge of Eternities release notes on station:
+// the tapped creature's power AS THE ABILITY RESOLVES if it is still
+// on the battlefield as the same object, and its power as it last
+// existed there if it is not. The first half is a live read; the
+// second is the number freezePaidTapsOnExitLocked wrote as it left.
+//
+// NOT clamped. A negative power is a real answer and the reader
+// decides what it means — for station, "no charge counters are put
+// onto or removed from" the permanent.
+//
+// Caller must hold g.mu in write mode (the live half may recompute
+// the layer cache).
+func (g *Game) PaidTapPowerForEffect(t PaidTap) int {
+	if t.Left {
+		return t.Power
+	}
+	g.RecomputeLayersIfStaleLocked()
+	if c := findBattlefieldCard(g, t.ID); c != nil && c.ObjectEpoch == t.Epoch {
+		return c.PowerForComparison()
+	}
+	// Gone by a route that never reached the exit choke point. The
+	// power it was tapped with is the last value the engine saw.
+	return t.Power
 }

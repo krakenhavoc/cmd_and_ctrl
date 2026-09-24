@@ -858,6 +858,8 @@
         discard_ids: abilityDiscardIDs,
         // #1213: same announcement, same message.
         return_ids: abilityReturnIDs,
+        // #759: and the station creature.
+        tap_ids: abilityTapIDs,
         ...state.ability.counter,
         targets,
       };
@@ -873,6 +875,7 @@
       abilityWaterbendIDs = undefined;
       abilityDiscardIDs = [];
       abilityReturnIDs = [];
+      abilityTapIDs = [];
       abilitySacrificeX = undefined;
       guardedSendAction("activate_ability", params, viewerID ?? undefined);
       targeting.set(null);
@@ -934,6 +937,23 @@
     const p = abilityReturnPrompt;
     if (!p) return [];
     return orderSacrificeOptions(view.battlefield.cards, p.ability.return_options?.cards);
+  });
+
+  // #759: "Tap another untapped creature you control" as a cost — the
+  // station ability (CR 702.184a). The same picker again with the verb
+  // "Tap", asked right after the return pick and for the same reason:
+  // it names permanents at announce (CR 602.2b). Skipped when the board
+  // offers exactly the creatures the clause needs.
+  let abilityTapPrompt = $state<{
+    card: CardView;
+    ability: ActivatedAbilityView;
+  } | null>(null);
+  let abilityTapIDs: string[] = [];
+
+  const abilityTapOptions = $derived.by(() => {
+    const p = abilityTapPrompt;
+    if (!p) return [];
+    return orderSacrificeOptions(view.battlefield.cards, p.ability.tap_others_options?.cards);
   });
 
   // #1213: the X a "Sacrifice X Treasures" clause announces. It is
@@ -1081,6 +1101,28 @@
     } else {
       abilityReturnIDs = [];
     }
+    askAbilityTapCost(card, ability);
+  }
+
+  // #759: the tap-another pick, then the rest of the chain.
+  function askAbilityTapCost(card: CardView, ability: ActivatedAbilityView): void {
+    if (ability.tap_others_options) {
+      const options = ability.tap_others_options.cards ?? [];
+      const need = ability.tap_others_options.max ?? ability.tap_others_options.min ?? 1;
+      if (options.length > need) {
+        abilityTapPrompt = { card, ability };
+        return;
+      }
+      abilityTapIDs = options;
+    } else {
+      abilityTapIDs = [];
+    }
+    afterAbilityPermanentPicks(card, ability);
+  }
+
+  // The chain once the permanent-naming picks (return, tap) are made:
+  // the sacrifice picker, the crew picker, the counter cost.
+  function afterAbilityPermanentPicks(card: CardView, ability: ActivatedAbilityView): void {
     if (ability.sacrifice_options) {
       sacrificePrompt = { kind: "ability", card, ability };
       return;
@@ -1090,6 +1132,14 @@
       return;
     }
     askCounterCost(card, ability, [], []);
+  }
+
+  function confirmAbilityTapCost(ids: string[]): void {
+    const p = abilityTapPrompt;
+    abilityTapPrompt = null;
+    if (!p) return;
+    abilityTapIDs = ids;
+    afterAbilityPermanentPicks(p.card, p.ability);
   }
 
   function confirmAbilityDiscardCost(ids: string[]): void {
@@ -1106,15 +1156,7 @@
     abilityReturnPrompt = null;
     if (!p) return;
     abilityReturnIDs = ids;
-    if (p.ability.sacrifice_options) {
-      sacrificePrompt = { kind: "ability", card: p.card, ability: p.ability };
-      return;
-    }
-    if (p.ability.crew_cost) {
-      crewPrompt = { card: p.card, ability: p.ability };
-      return;
-    }
-    askCounterCost(p.card, p.ability, [], []);
+    askAbilityTapCost(p.card, p.ability);
   }
 
   function askCounterCost(
@@ -1453,6 +1495,8 @@
       // #1213: the return-to-hand picks, made at announce with the
       // rest of the cost and sent in the one activate_ability.
       return_ids: abilityReturnIDs,
+      // #759: the station creature, the same way.
+      tap_ids: abilityTapIDs,
       ...counter,
     };
     if (xValue !== undefined) params.x_value = xValue;
@@ -1466,6 +1510,7 @@
     abilityWaterbendIDs = undefined;
     abilityDiscardIDs = [];
     abilityReturnIDs = [];
+    abilityTapIDs = [];
     abilitySacrificeX = undefined;
     guardedSendAction("activate_ability", params, viewerID ?? undefined);
   }
@@ -1984,6 +2029,21 @@
     onConfirm={confirmAbilityReturnCost}
     onCancel={() => {
       abilityReturnPrompt = null;
+      abilityReturnIDs = [];
+    }}
+  />
+  <!-- #759: station's "Tap another untapped creature you control".
+       The sacrifice picker once more, with the verb "Tap". -->
+  <SacrificeCostModal
+    source={abilityTapPrompt?.card ?? null}
+    label={abilityTapPrompt?.ability.tap_others_label ?? "another untapped creature you control"}
+    options={abilityTapOptions}
+    count={abilityTapPrompt?.ability.tap_others_options?.max ?? 1}
+    verb="Tap"
+    onConfirm={confirmAbilityTapCost}
+    onCancel={() => {
+      abilityTapPrompt = null;
+      abilityTapIDs = [];
       abilityReturnIDs = [];
     }}
   />

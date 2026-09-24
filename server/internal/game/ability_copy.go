@@ -240,6 +240,13 @@ func copiedPaidCost(p PaidCost) PaidCost {
 		CountersAdded:   p.CountersAdded,
 		LifePaid:        p.LifePaid,
 		OptionalCosts:   append([]int(nil), p.OptionalCosts...),
+		// #759: a copy of a station ability reads the SAME tapped
+		// creature the original does — what to tap was chosen when
+		// the original was put on the stack, which is what CR 707.10
+		// says a copy carries. Its own slice, so the exit hook's
+		// rewrite of one record never reaches the other through a
+		// shared backing array; both are rewritten, independently.
+		TappedOthers: append([]PaidTap(nil), p.TappedOthers...),
 	}
 }
 

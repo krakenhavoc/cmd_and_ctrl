@@ -129,6 +129,13 @@ func (p *Policy) costValue(st *state, src *protocol.CardView, c legal.MoveCost) 
 // spent, which is exactly what a cost that removes it does.
 const genericCounterValue = 0.25
 
+// stationPowerPayoff is what one point of a tapped creature's power is
+// worth to an ability whose cost taps it (#759) — station's charge
+// counters, one per point (CR 702.184a). Small: a tenth of what the
+// same point is worth swinging (Weights.Power), so the attack always
+// wins before combat and the counters win after it.
+const stationPowerPayoff = 0.1
+
 // zeroXActivation prices an activation of an {X} ability announced at
 // X=0 (#810). Below passing, which scores 0, because the X-sized half
 // of what the ability does is nothing at X=0 — and a repeatable
@@ -237,6 +244,35 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		for _, id := range cp.WaterbendIDs {
 			if c := st.bf[id]; c != nil && !c.Tapped && isCreature(c) {
 				v -= 0.3
+			}
+		}
+		// #759: a tap-another cost (station) taps a creature the
+		// same way, so it costs the same blocker — and before combat
+		// on our own turn it also costs that creature's ATTACK, which
+		// is the trade station actually asks about. Priced as the
+		// power it would have swung with, so a bot stations with the
+		// creatures that did not attack (main phase 2) or could not
+		// (summoning sick), rather than tapping its army down before
+		// combat for a Spacecraft it cannot use this turn.
+		//
+		// The other side of the trade is what the ability buys, which
+		// the policy cannot read. Station buys charge counters equal
+		// to the tapped creature's power, and that power is the one
+		// number on the move that measures it, so it is priced as a
+		// small payoff per point (stationPowerPayoff). Without it the
+		// blocker price alone sinks every activation below
+		// PassThreshold and a bot never stations at all.
+		for _, id := range cp.TapIDs {
+			c := st.bf[id]
+			if c == nil || c.Tapped {
+				continue
+			}
+			v -= 0.3
+			if c.Power > 0 {
+				v += stationPowerPayoff * float64(c.Power)
+			}
+			if st.myTurn && st.step == "precombat_main" && !c.SummoningSick && c.Power > 0 {
+				v -= st.w.Power * float64(c.Power)
 			}
 		}
 		return v, "activate"

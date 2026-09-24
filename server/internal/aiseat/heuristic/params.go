@@ -51,7 +51,10 @@ type activateParams struct {
 	// WaterbendIDs are the artifacts and creatures a "Waterbend {N}"
 	// cost taps (#1310) — like crew, blockers the move spends.
 	WaterbendIDs []string `json:"waterbend_ids"`
-	XValue       int      `json:"x_value"`
+	// TapIDs are the creatures a "Tap another untapped creature you
+	// control" cost taps — station's (#759).
+	TapIDs []string `json:"tap_ids"`
+	XValue int      `json:"x_value"`
 }
 
 type specialActionParams struct {
