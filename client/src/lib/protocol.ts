@@ -2458,6 +2458,16 @@ export interface ManaAbilityView {
   // tapping the land would just lose it. Absent for every other
   // ability.
   adds_no_mana?: boolean;
+  // #1443: for each slot of the output that asks for a colour, the
+  // colours that pick would offer — one list per picking slot, in
+  // output order, narrowed (Command Tower, CR 903.4f) and ordered
+  // (#843, commander identity first) by the SAME server function the
+  // `mana_pick` prompt uses. A painland's "{R|W}" is [["R","W"]], a
+  // filter land's "{W|U}{W|U}" two lists. Absent when nothing is
+  // picked. The picker at the card offers these directly and sends the
+  // answer up front as `activate_mana_ability`'s `color` / `colors`, so
+  // nothing is tapped until the player has chosen.
+  color_options?: string[][];
   // S32 (#352): spend restrictions the produced mana will carry —
   // Ancient Ziggurat's "only to cast a creature spell", Eldrazi
   // Temple's "only colorless Eldrazi". Informational; the server's
