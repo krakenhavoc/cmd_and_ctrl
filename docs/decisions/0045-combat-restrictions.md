@@ -2939,11 +2939,12 @@ ships with the world-rule caveat Concordant Crossroads already declares.
   need a `While` gate on `AttackLimit` and a per-player group on
   `BlockRule.Limit`. The Eternal Wanderer ("no more than one creature can
   attack The Eternal Wanderer") would need a third `AttackLimitScope`. Each
-  is one field, and none of them is built without its card.
+  is one field, and none of them is built without its card:
+  [#1534](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1534).
 - **Turn-scoped attack limits.** No printed card needs one, so there is no
   `TurnScopedAttackLimits` registry.
 - **Reselection** (CR 508.7, `game/attack_reselect.go`) does not go through
   the declaration verbs and does not consult the limits.
 - **The client's "attack with all"** under a limit is refused whole with the
-  sentence. It does not offer the tax picker's "choose attackers…" flow. See
-  the follow-up issue.
+  sentence. It does not offer the tax picker's "choose attackers…" flow:
+  [#1533](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1533).
