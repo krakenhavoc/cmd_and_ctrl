@@ -19,8 +19,10 @@ there if the seam has none, and regenerates the table with
 `go test ./internal/roadmap/ -update`. Do not edit the table by hand:
 `TestSeamsTableIsCurrent` fails a PR whose table and registry disagree. A
 seam moves to Closed on the day the engine PR that closes it lands — flip its
-`Status` to implemented in the registry and move its prose into the
-hand-written Closed seams list below. `TestWaitingCardsAreNotComplete` fails
+`Status` to implemented in the registry and write its prose as a new fragment
+under [`engine-seams/closed/`](engine-seams/closed/) (see
+[Closed seams](#closed-seams) below; do not edit that list).
+`TestWaitingCardsAreNotComplete` fails
 the day a waiting card is registered complete, which is usually the first
 sign that a seam has closed.
 
@@ -81,6 +83,31 @@ list itself.
 <!-- END GENERATED OPEN SEAMS -->
 
 ## Closed seams
+
+This list is generated, one entry per file in
+[`engine-seams/closed/`](engine-seams/closed/) (#1461, Discussion #1231). A
+PR that closes a seam adds one file, `<issue>-<slug>.md`, and does not touch
+this list: CI regenerates it on every push to `develop` and `main`, so two
+PRs never edit the same lines. A fragment looks like this:
+
+```
+---
+title: "Phasing"
+date: 2026-09-23
+issues: [1199]
+pr: 1251
+---
+**Phasing** (#1199, [ADR 0084](decisions/0084-phasing.md)) — what closed, and what is still open.
+```
+
+`title` is double-quoted and must match the bold heading the entry starts
+with; `issues` is a list (`[]` when the entry names none); `pr` is optional,
+since the number is not known until the PR is open. Write links relative to
+`docs/`, as they render here. Newer fragments list first, by date. The
+entries migrated from the hand-written list keep their old order after them
+(`legacy_order`), because many of them say "the row above"; a new entry
+should name the issue it means instead. `TestClosedSeamsAreCurrent` fails a
+PR whose fragment is malformed or that writes an entry into the list by hand.
 
 <!-- BEGIN GENERATED CLOSED SEAMS — generated from docs/engine-seams/closed/*.md and refreshed by CI on every push to develop and main; add a fragment there instead of editing this list (manual refresh: go test ./internal/roadmap/ -run TestClosedSeamsAreCurrent -update-closed) -->
 
