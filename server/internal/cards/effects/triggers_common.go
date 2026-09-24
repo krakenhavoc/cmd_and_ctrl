@@ -763,3 +763,21 @@ func SelfTargetedByASpell(ev game.Event, source *game.Card, _ game.Characteristi
 	}
 	return b40TargetedByASpell(ev, g)
 }
+
+// PutChosenTargetOnTopOfLibrary is the Effect body behind "put target
+// <card> from your graveyard on top of your library" — Mystic
+// Sanctuary's instant or sorcery, Mortuary Mire's creature. It tucks
+// the chosen target to the top of its owner's library through the
+// shared exit primitive, so a commander card gets the CR 903.9 offer
+// on the way. A target that left in response (CR 608.2b) is skipped
+// rather than errored.
+func PutChosenTargetOnTopOfLibrary(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetCard {
+			continue
+		}
+		return g.TuckToLibraryForEffect(t.ID, false)
+	}
+	return nil
+}

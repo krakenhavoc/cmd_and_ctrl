@@ -50,24 +50,11 @@ func init() {
 				Optional(
 					On(game.EventETB, selfEnteredUntapped,
 						"Mystic Sanctuary — put an instant or sorcery on top of your library",
-						mysticSanctuaryPutOnTop),
+						PutChosenTargetOnTopOfLibrary),
 					"Mystic Sanctuary — put target instant or sorcery card from your graveyard on top of your library?"),
 				TargetCardInGraveyard("target instant or sorcery card from your graveyard",
 					Or(Instant(), Sorcery()), YouOwn()),
 			),
 		},
 	})
-}
-
-// mysticSanctuaryPutOnTop tucks the chosen card to the top of its
-// owner's library. A target that has gone is not an error.
-func mysticSanctuaryPutOnTop(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind != game.TargetCard {
-			continue
-		}
-		return g.TuckToLibraryForEffect(t.ID, false)
-	}
-	return nil
 }
