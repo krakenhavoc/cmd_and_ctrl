@@ -85,11 +85,11 @@ func (d DelayedOnEvent) Apply(ctx *Context) error {
 		SourceCardID:     ctx.Source(),
 		Label:            d.Label,
 		On:               d.On,
-		Condition:        d.Condition.Key(),
+		Condition:        d.Condition,
 		CondParams:       d.CondParams,
 		OptionalQuestion: d.OptionalQuestion,
 		Cards:            d.Cards,
-		Body:             d.Body.Key(),
+		Body:             d.Body,
 		Params:           d.Params,
 	})
 	return nil

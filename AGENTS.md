@@ -1003,7 +1003,24 @@ permanent (not only the first) and keeps a CREATURE's granted mana for
 last, so an auto-paid cast does not tap your attackers; a land's
 granted mana is an ordinary source. See `cryptolith_rite.go`,
 `chromatic_lantern.go`, `necrotic_sliver.go` and `squirrel_nest.go`.
-Duration grants from a resolving spell are ADR 0093 PR 4 and have no
+
+A granted TRIGGER goes in the bundle's `Triggered` slot, written with the
+ordinary trigger shapes, and `source` in its `AppliesTo` / `Build` is the
+HOST — so "this creature" is `ev.CardID == source.InstanceID`
+(`ThisBecameTapped`, `ThisDied`), "you" is the host's controller, and the
+trigger goes on the stack under the host's controller. "Only once each
+turn" is `b11TriggeredThisTurn(g, source.InstanceID, label)` with a FIXED
+label (the tally is per object and per label). A granted dies trigger
+fires from last-known information, the ETB harvest sees a grant on the
+creature that is entering, and a later ability removal on the host takes
+the grant. Never write a granted trigger on the GRANTOR watching the
+recipients: the controller, the removal and the LKI all come out wrong.
+See `dionus_elvish_archdruid.go`, `agent_of_the_iron_throne.go` and
+`thornbite_staff.go`.
+
+Duration grants from a resolving spell or ability ("until end of turn,
+target creature gains …") are ADR 0093 PR 4, which lands as a
+`grantAbilities` mod on ADR 0041 phase 3's ScopedEffect; they have no
 shape yet.
 
 ### Adding a replacement effect (S17+)

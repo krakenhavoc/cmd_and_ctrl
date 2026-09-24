@@ -882,6 +882,7 @@ pendingTriggers[].trigger.Object.Supertypes[]	string
 pendingTriggers[].trigger.Object.Token	bool
 pendingTriggers[].trigger.Object.Types	array
 pendingTriggers[].trigger.Object.Types[]	string
+pendingTriggers[].uncopyable	bool
 pendingTriggers[].xValue	number:int
 phasedOut	object
 phasedOut.cards	array
@@ -1129,6 +1130,7 @@ seats[].castPermissions	array
 seats[].castPermissions[]	object
 seats[].castPermissions[].altCostKey	string
 seats[].castPermissions[].anyColor	bool
+seats[].castPermissions[].anyType	bool
 seats[].castPermissions[].cards	array
 seats[].castPermissions[].cards[]	object
 seats[].castPermissions[].cards[].epoch	number:int
@@ -2538,6 +2540,7 @@ stackMeta[].trigger.Object.Supertypes[]	string
 stackMeta[].trigger.Object.Token	bool
 stackMeta[].trigger.Object.Types	array
 stackMeta[].trigger.Object.Types[]	string
+stackMeta[].uncopyable	bool
 stackMeta[].xValue	number:int
 startingSeat	number:int
 state	string

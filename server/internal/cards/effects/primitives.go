@@ -557,7 +557,7 @@ func (s ScheduleDelayedTrigger) Apply(ctx *Context) error {
 		At:                 at,
 		ControllerTurnOnly: s.ControllerTurnOnly,
 		Cards:              s.Cards,
-		Body:               s.Body.Key(),
+		Body:               s.Body,
 		Params:             s.Params,
 	})
 	return nil

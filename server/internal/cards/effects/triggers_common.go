@@ -221,6 +221,28 @@ func ThisAttacked(ev game.Event, source *game.Card, _ game.Characteristic, _ *ga
 	return attackDeclared(ev, source)
 }
 
+// ThisBecameTapped — "whenever this creature becomes tapped" (CR
+// 701.26a). Two event kinds, for the reason b11DwarfYouControlBecameTapped
+// gives: the engine taps an attacker without an EventTapCard, so an
+// EventAttack naming the source while it is now tapped is "became
+// tapped", and a vigilance attacker did not become tapped.
+//
+// Watch both game.EventTapCard and game.EventAttack. Written for a
+// GRANTED trigger (ADR 0093 — Dionus's "this creature"), where
+// `source` is the host that has the ability.
+func ThisBecameTapped(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+	if ev.CardID != source.InstanceID {
+		return false
+	}
+	switch ev.Kind {
+	case game.EventTapCard:
+		return true
+	case game.EventAttack:
+		return source.Tapped
+	}
+	return false
+}
+
 // YouCastYourSecondSpellEachTurn — "Whenever you cast your second
 // spell each turn" (Breeches, the Blastmaker; Avatar Yangchen). The
 // cast path bumps the per-turn tally BEFORE it emits EventCast, so a

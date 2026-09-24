@@ -23,16 +23,26 @@ import (
 // because playing a land is not casting.
 //
 // AnyColor mirrors "you may spend mana as though it were mana of
-// any color to cast those spells".
+// any color to cast those spells"; AnyType the wider "mana of any
+// TYPE", which pays {C} too (#1573).
+//
+// FaceDown is "exiles it face down. They may look at and play it"
+// (Gonti, Night Minister; Outrageous Robbery, #1573): the cards land
+// as game.FaceDownPermitted, and only GrantTo may look at them.
+// WhileExiled makes the grant last for as long as each card stays in
+// exile rather than until end of turn.
 type ExileTopWithPermission struct {
 	// From is whose library is exiled off. Often an opponent's.
 	From uuid.UUID
 	// GrantTo is who may play the cards. Usually the controller of
 	// the effect, and usually NOT the owner.
-	GrantTo  uuid.UUID
-	N        int
-	CastOnly bool
-	AnyColor bool
+	GrantTo     uuid.UUID
+	N           int
+	CastOnly    bool
+	AnyColor    bool
+	AnyType     bool
+	FaceDown    bool
+	WhileExiled bool
 }
 
 func (e ExileTopWithPermission) Apply(ctx *Context) error {
@@ -40,10 +50,20 @@ func (e ExileTopWithPermission) Apply(ctx *Context) error {
 	if n <= 0 {
 		n = 1
 	}
-	_, err := ctx.Game.ExileTopWithPermissionForEffect(e.From, e.GrantTo, n, game.CastPermission{
+	perm := game.CastPermission{
 		CastOnly: e.CastOnly,
-		AnyColor: e.AnyColor,
-	})
+		// AnyType implies AnyColor, and saying both keeps the grant
+		// any-colour for a binary that predates AnyType (#1573).
+		AnyColor: e.AnyColor || e.AnyType,
+		AnyType:  e.AnyType,
+	}
+	if e.WhileExiled {
+		perm.Duration = game.WhileInZoneDuration()
+	}
+	if e.FaceDown {
+		return ctx.Game.ExileTopFaceDownWithPermissionForEffect(e.From, e.GrantTo, n, perm)
+	}
+	_, err := ctx.Game.ExileTopWithPermissionForEffect(e.From, e.GrantTo, n, perm)
 	return err
 }
 

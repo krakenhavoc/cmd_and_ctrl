@@ -667,6 +667,7 @@ func cloneStackItem(s *StackItem) *StackItem {
 		AltCostExiles: s.AltCostExiles,
 		CastFromZone:  s.CastFromZone,
 		IsCopy:        s.IsCopy,
+		Uncopyable:    s.Uncopyable,
 		Seq:           s.Seq,
 		// #789 / #761: what the announcement paid. Deep-copied
 		// (clonePaidCost reallocates the token slice and each

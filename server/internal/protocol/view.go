@@ -2184,6 +2184,12 @@ type ExilePlayView struct {
 	// AnyColor marks "you may spend mana as though it were mana of
 	// any color" (Breeches).
 	AnyColor bool `json:"any_color,omitempty"`
+	// AnyType marks the wider "mana of any TYPE can be spent" (Hostage
+	// Taker, #1573): colorless mana counts too, so a {C} in the cost is
+	// payable with anything. Implies AnyColor, which is set alongside
+	// it so a client that reads only the older field still says
+	// "any colour".
+	AnyType bool `json:"any_type,omitempty"`
 	// CostOverride is the mana cost the holder pays INSTEAD of the
 	// card's printed one — airbend's "{2} rather than its mana
 	// cost". Empty for impulse exile, which charges the printed
@@ -7088,7 +7094,8 @@ func exilePlayViewOf(card game.Card, perm *game.CastPermission) *ExilePlayView {
 	return &ExilePlayView{
 		Player:       perm.Player.String(),
 		CastOnly:     perm.CastOnly,
-		AnyColor:     perm.AnyColor,
+		AnyColor:     perm.AnyColor || perm.AnyType,
+		AnyType:      perm.AnyType,
 		CostOverride: perm.Cost,
 		NotBeforeSeq: perm.NotBeforeSeq,
 		Faces:        append([]int(nil), perm.Faces...),

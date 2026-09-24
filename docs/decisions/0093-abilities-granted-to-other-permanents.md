@@ -585,6 +585,36 @@ one PR, and the client picker is the next.
 - **Coverage:** a new mechanic row, "an ability granted to another permanent", with an exact probe
   on `StaticAbility.GrantAbilities`. It is the row the roadmap seam borrows.
 
+## Amendment 2026-09-24 — what PR 3 built
+
+- **Granted triggers.** PR 1 had already wired the mechanics: the battlefield walk and the
+  simultaneous-exit walk read the composed key, and the dies harvest reads `AbilityKeyFromLKI`.
+  PR 3 pins them with engine tests:
+  - a single death and a wipe that takes the grantor with it (CR 603.10a);
+  - the trigger belongs to the host's controller.
+- **One engine change.** The trigger harvest now catches the layers up
+  (`RecomputeLayersIfStaleLocked`) before it harvests an `EventETB`.
+  - Why: a creature entering under a grant has a nil layer cache when its entry announces itself,
+    so its granted "when this creature enters" was missed. CR 603.6a looks at the permanent as it
+    exists on the battlefield.
+  - Scope: ETB events only, and only when the cache is stale. By then the entry has landed every
+    card it moves.
+  - Side effect: other ETB triggers now also see the entering permanent's layered
+    characteristics, where before they saw its printed ones. That is the rules answer.
+- **Cards.**
+  - Thornbite Staff is new, with two granted bundles: the ping and the untap-on-death trigger.
+  - Dionus, Elvish Archdruid is now a real grant to Elves you control. "Only once each turn" reads
+    the per-object trigger tally instead of walking the event log.
+  - Agent of the Iron Throne is now a real grant to commander creatures you own. Its
+    stolen-commander caveat is gone, and it is now `CompletenessFull`.
+  - Both used to carry the trigger on the grantor. The tests pin the two behaviour changes the PR
+    plan names: after a control change the trigger is the recipient controller's, and a later
+    ability removal on a recipient takes the grant.
+- **Declared, unchanged.** Two instances of one bundle share one tally key (Decision 5). This is
+  reachable for Dionus only through a legend-rule-exempt copy.
+- **Out of scope.** PR 4 (duration grants) is no longer this ADR's registry. Per the #1545
+  decision, it lands as a `grantAbilities` mod on ADR 0041 phase 3's `ScopedEffect`.
+
 ## Open questions for the owner
 
 This is a product decision the code and the rules do not settle. The ADR does not answer it.

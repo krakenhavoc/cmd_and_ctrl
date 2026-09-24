@@ -191,6 +191,19 @@ func ProducedFromLegendaryPermanents() func(*game.Game, uuid.UUID, uuid.UUID) st
 	}
 }
 
+// SourcePower is "X is this creature's power" (Mona Lisa, Science
+// Geek; Kami of Whispered Hopes) — X read at ACTIVATION from the
+// ability's own source, current power (counters and anthems
+// included). Pair with ProducedOneColor. A source that can't be found
+// or has non-positive power adds nothing.
+func SourcePower(g *game.Game, _, source uuid.UUID) int {
+	c, ok := g.LookupCardForEffect(source)
+	if !ok {
+		return 0
+	}
+	return c.CurrentPower()
+}
+
 // ProducedPerPermanent is the scaled shape: "Add {SYMBOL} for each
 // permanent you control matching `match`". Cabal Coffers is
 // ProducedPerPermanent("B", ControlsLandSubtype("Swamp")); Gaea's

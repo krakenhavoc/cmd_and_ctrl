@@ -430,6 +430,8 @@ Each of these stays on the seam registry's transform row after this ADR lands.
    is a stack-item stamp, not a card field.
 7. **"As this permanent transforms …"** (CR 712.20). No `AsTransforms` slot on
    `Spec`; the printed cards that use it are all day/night or meld.
+   **Closed by the 2026-09-24 amendment below** (#1574): Sephiroth, One-Winged
+   Angel prints one, and `Spec.AsTransformsInto` now exists.
 8. **A named `WhenThisTransforms` trigger constructor.** The event is emitted and
    harvestable; the constructor lands with the first card that prints the trigger,
    per the append-only rule for `triggers_common.go`.
@@ -461,3 +463,69 @@ front face's ETB triggers fire, and the back face's do not — and it is exactly
 "stronger or weaker than printed for no stated reason" failure #259 is about. Those
 are entry-time face choices and belong with decision 5's mechanism, not with the
 in-place verb.
+
+---
+
+## Amendment 2026-09-24 (#1574): "As this permanent transforms into …" is a face hook the verb runs
+
+Issue [#1574](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1574),
+found by slice E2 of the Edea deck ([#1565](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1565),
+PR [#1577](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1577)). Out of
+scope item 7 above said no card needed this slot. Sephiroth, One-Winged Angel
+needs it:
+
+> Super Nova — As this creature transforms into Sephiroth, One-Winged Angel,
+> you get an emblem with "Whenever a creature dies, target opponent loses 1
+> life and you gain 1 life."
+
+E2 made the emblem in the front face's own transform clause, the fourth drain,
+so a Sephiroth turned over by anything else (Moonmist transforms every Human,
+and the front face is a Human) made no emblem. The clause belongs to the back
+FACE, not to the effect that turns the card over.
+
+### Decision 9. `CardDef.AsTransformsInto`, run by `TransformPermanentForEffect` for the face now up
+
+- **The declaration** is `Spec.AsTransformsInto func(card *game.Card, ctx
+  *Context) error`, on the Spec of the face being turned TO. For a back face
+  that is its `"<oracle_id>#1"` entry. It has AsEnters's contract: off the
+  stack, `ctx.Item` nil, controller read off the card. Both slots share one
+  live-card wrapper in `effects/carddef.go` (`liveCardHook`).
+- **The engine runs it in the verb**, `runAsTransformsIntoLocked`
+  (`game/transform.go`), right after `EventTransform`. It is the one in-place
+  transform in the engine, so every card that transforms a permanent (its own
+  clause, `Transform{Target}`, `TransformThis`, and anything later) reaches it.
+  After the event rather than before it, for the reason `AsEnters` runs after
+  `EventETB`: the event bumps the layer version, and the lookup has to see the
+  new face.
+- **It is a static ability, not a trigger.** Nothing goes on the stack and
+  nobody gets a response window. A "Whenever this transforms" trigger already
+  works through `EventTransform` (decision 3) and is a different sentence.
+- **The key is `CatalogAbilityKey`, read after `RecomputeLayersIfStaleLocked`.**
+  CR 712.18 keeps every effect that applied to the permanent applying after it
+  turns over, so a Darksteel Mutation that removed its abilities has removed
+  the new face's clause too. The `AsEnters` hook reads `CatalogKey` instead,
+  because at entry there is no layered characteristic yet. A transforming
+  permanent is on the battlefield the whole time, so it has one.
+- **An error is published as `EventEffectError`**, as `fireETBHookLocked` does
+  for `AsEnters`. The transform has already happened and cannot be unwound.
+
+### What does not run it
+
+`ExileAndReturnTransformedForEffect` (decision 5). That permanent ENTERS on its
+back face, and a permanent that enters transformed did not transform. It is a
+new object that was never on its front face, so an "as this transforms" clause
+has nothing to apply to. A back face that wants something as it enters
+declares `AsEnters`, as any other face does.
+
+### Snapshots and undo
+
+Nothing is stored. The hook is catalog data found by key, and what it does is
+ordinary state (Sephiroth's emblem is a card in the command zone, carried as
+every emblem is), so `Clone` / `RestoreFrom` and the snapshot need no change.
+
+### Cards
+
+Sephiroth, One-Winged Angel comes off its caveat and ships `full`. Its front
+face's fourth-drain clause now just transforms, and the emblem comes from the
+back face's hook. The tests are in
+`server/internal/cards/effects/gogo_sephiroth_hooks_test.go`.

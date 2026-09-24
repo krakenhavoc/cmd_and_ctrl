@@ -2229,3 +2229,137 @@ turn the emblem opens, for each planeswalker separately.
 
 Proof card: Teferi, Temporal Archmage (`full`). Tracker
 [#883](https://github.com/krakenhavoc/cmd_and_ctrl/issues/883).
+
+## Amendment — 2026-09-24 (#1573): a face-down exile the holder may look at, and "mana of any TYPE"
+
+Two gaps in the exile-and-cast family, both found building the Edea deck
+(#1565, slice E2). Each left a card weaker than printed or showed the table
+more than it should see, so three cards shipped with caveats: Hostage Taker
+(gap 2), Gonti, Night Minister and Outrageous Robbery (both gaps).
+
+### Decision 1 — `FaceDownPermitted`, an exile kind whose viewer is the permission holder
+
+*"… exiles it face down. They may play that card for as long as it remains
+exiled"* (Gonti); *"… exiles the top X cards of their library face down. You
+may look at and play those cards"* (Outrageous Robbery). ADR 0069's viewers
+table had no row for this. `exiled` is nobody, `foretold` is the owner, and
+`hideaway` (ADR 0091) is the controller of another object. The viewer here is
+**whoever the cast permission names**. So there is a new exile-side kind,
+`FaceDownPermitted` (`"permitted"`). Like the other two exile kinds it has no
+CR 708.2 body and keeps its catalog entry, because casting it is the point.
+
+**The grant stamps the look.** The primitive lands the card face down with
+no knowers and grants the permission once the card is in exile. The grant has
+to come second, because it names the object's post-move epoch (Decision 2).
+`GrantCastPermissionForEffect` is the one write path for every permission. It
+now adds the holder as a knower of any `permitted` card the new ScopeCards
+exile grant names (`stampPermittedViewersLocked`). So the rule sits with the
+write, not with one primitive, and a later grant over the same card gets the
+look too. It touches **only** this kind. Necropotence's `exiled` card stays
+unreadable even if a permission happens to name it. That is pinned by
+`TestAGrantDoesNotOpenAPlainFaceDownExile`. `faceDownViewersLocked` answers
+the same set, derived from the stored permissions
+(`castPermissionHoldersLocked`), so the kind table stays the only place that
+defines who may look.
+
+A **knower stamp rather than a live derivation**, for CR 406.3's reason: a
+player who may look keeps looking until the card leaves exile, and every
+permission that makes this kind lasts exactly that long. Nothing needs a sweep
+like hideaway's, because a permission's holder cannot change hands. The card
+turns face up when it leaves exile by any route (MoveCard's `ClearFaceDown`).
+A cast puts it on the stack face up, known to every seat.
+
+**The primitive** is `Game.ExileTopFaceDownWithPermissionForEffect(from,
+grantTo, n, perm)`, reached from the catalog as `effects.ExileTopWithPermission{FaceDown:
+true, WhileExiled: true}`. It picks the top n cards **up front** and moves each
+one by ID through the shared exit primitive, chained through the route's
+continuation. That is `millPlanLocked`'s argument: a commander among the cards
+is offered the command zone (CR 903.9), the question leaves it on top of the
+library, and re-reading the top would return the same card. Granting from the
+continuation also means a commander whose owner declines is exiled and granted
+when the answer arrives. It does not land with no grant, which was #1336's
+defect. A card that went anywhere but exile gets nothing.
+
+**Nothing downstream changed.** The cast path, the enumerator and the view
+already cast a face-down exiled card under a permission (foretell, hideaway).
+The view's non-knower redaction already strips `exile_play` and the whole cast
+surface off a card the viewer cannot read, and the log already names a card
+only to its knowers. So the owner and every other seat get a card back
+labelled `permitted` and nothing about casting it. The holder gets the card,
+`exile_play`, `castable_here` and `cast_prices`.
+
+**The unseated frame is not a leak.** The spectator frame (`viewerID == ""`)
+knows every card by FilterViewFor's documented contract (#191). That holds for
+every face-down exile the engine makes, Necropotence's and a foretold card
+included, and this kind follows it. What the unseated frame never gets is a
+cast surface: `castable_here` and `cast_prices` are per seat (#1055), and the
+view test pins that.
+
+### Decision 2 — `CastPermission.AnyType`, folded in the one pricer
+
+`AnyColor` is *"as though it were mana of any color"*, and `asAnyColorCost`
+deliberately leaves `{C}` alone because colorless is not a color (CR 106.1b).
+Hostage Taker, Gonti and Outrageous Robbery print *"mana of any TYPE"*, and
+colorless IS a type. So a stolen Thought-Knot Seer or Reality Smasher needs
+no real colorless mana. `CastPermission.AnyType` is a separate bool rather
+than a widened `AnyColor`, for two reasons. Breeches and the rest of the
+any-colour family must keep their `{C}` exception. And a stored field that
+changed meaning would reprice every snapshot already on disk. `AnyType`
+implies `AnyColor`, and a permission setting both is read as `AnyType`.
+
+`spendAsThoughAny(grant, cost)` is the one reading. It applies the any-type
+fold (every requirement, `{C}` included, into generic), the any-colour fold,
+or nothing. It is called in `printedCostLocked`, which is where the any-colour
+fold always lived. That makes it ADR 0066's one pricer (the #696 amendment):
+the hand payment, the auto-tapper (`applyAutoTapLocked` →
+`effectiveCostLocked`), the auto-tap preview, the bot enumerator's
+affordability probe and the view's `cast_prices` all read the same folded
+cost. None of them needed an edit.
+
+**One inherited trade, stated.** A Phyrexian slot folds to generic under
+either clause, so its "or 2 life" half is lost. `asAnyColorCost` has always
+done this. It is weaker than printed, never stronger, and no card this
+amendment touches has a Phyrexian symbol.
+
+### Decision 3 — the wire grows `exile_play.any_type`
+
+`ExilePlayView.AnyType` (`any_type`) is a label beside `any_color`. When it
+is set, `any_color` is set too, so a client that reads only the older key
+still says "any colour". Neither key changes what the client may do.
+`castable_here` and `cast_prices` already reflect the fold. The zone
+browser's tooltip reads the new key. [protocol.md](../protocol.md) documents
+both the key and the `permitted` kind.
+
+### Undo, clone and persistence
+
+Nothing new is stored. The kind rides `Card.FaceDownKind`, the look rides
+`Card.KnownBy`, and `AnyType` is a field of the stored `CastPermission`. All
+three were already cloned and snapshotted verbatim (Decision 9;
+`TestEmbeddedDomainTypesStayPureData` still holds). The game tests pin the
+round trip and an undo of both the exile and the cast.
+
+The on-disk shape grows one key, `seats[].castPermissions[].anyType`,
+recorded in `testdata/snapshot_shape/v7.txt` with no schema bump. Both
+directions degrade safely. A file written before the key restores it as
+false. A binary from before the key drops it and restores an any-colour
+grant, because every card that sets `AnyType` also sets `AnyColor`. So an old
+binary makes the card weaker (a `{C}` needs real colorless mana again), never
+stronger.
+
+### Out of scope, stated
+
+- **The face-up impulse primitive's raw `MoveCard`.**
+  `ExileTopWithPermissionForEffect` still skips the CR 903.9 window, so a
+  commander impulse-exiled off the top of its owner's library is not offered
+  the command zone. The face-down primitive above goes through the route. The
+  face-up one is unchanged because it returns the exiled IDs synchronously to
+  callers that read them on the next line.
+- **A permission-holder look that outlives a SHORTER grant.** Every card that
+  makes this kind grants "for as long as it remains exiled". A future card
+  that exiles face down with an until-end-of-turn grant would keep its
+  holder's look after the grant lapsed. That is CR 406.3's rule, not a bug,
+  but no card needs it yet.
+
+Proof cards: Hostage Taker, Gonti, Night Minister and Outrageous Robbery, all
+`full`. Tracker [#885](https://github.com/krakenhavoc/cmd_and_ctrl/issues/885);
+deck tracker [#1565](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1565).

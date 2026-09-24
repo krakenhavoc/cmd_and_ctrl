@@ -212,19 +212,19 @@ func (g *Game) scheduleCascadeBottomLocked(controller, source, cardID uuid.UUID,
 		Label:        "Cascade — put " + name + " on the bottom of its owner's library",
 		At:           StepEnd,
 		Cards:        []uuid.UUID{cardID},
-		Body:         cascadeBottomBodyKey,
+		Body:         cascadeBottomBody,
 	})
 }
 
 // cascadeBottomBody is the delayed trigger's body, a registered key
 // (ADR 0041 phase 3, #1497). The card rides on the item's Targets and
 // the controller is the item's, so it reads no params.
-const cascadeBottomBodyKey = "cascade/bottom-if-not-cast"
+// cascadeBottomBody is assigned in init rather than by a var
+// initialiser: the body reaches the exit primitives, which reach the
+// scheduler, and an initialiser would be an initialisation cycle.
+var cascadeBottomBody BodyRef
 
-// Registered in init rather than a package var: the body reaches the
-// exit primitives, which reach the scheduler, and a var initialiser
-// would be an initialisation cycle.
-func init() { SimpleDelayedBody(cascadeBottomBodyKey, cascadeBottom) }
+func init() { cascadeBottomBody = SimpleDelayedBody("cascade/bottom-if-not-cast", cascadeBottom) }
 
 func cascadeBottom(g *Game, item *StackItem) error {
 	controller := item.Controller

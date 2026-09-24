@@ -227,9 +227,10 @@ func TestCloneAndRestorePreserveDelayedTriggers(t *testing.T) {
 func TestScheduleDelayedTriggerRejectsMalformed(t *testing.T) {
 	g := newActiveGame(t)
 	g.WithWriteLock(func() {
-		if id := g.ScheduleDelayedTriggerForEffect(DelayedTrigger{At: StepEnd}); id != uuid.Nil {
-			t.Errorf("queued a trigger with no Effect: %v", id)
-		}
+		// A trigger with no body is a programming error: in a test
+		// binary effectKeyFault panics (see
+		// TestAForgottenBodyFailsATestAndDropsInProduction), so it is
+		// not exercised here.
 		if id := g.ScheduleDelayedTriggerForEffect(DelayedTrigger{
 			Body: testBody(func(_ *Game, _ *StackItem) error { return nil }),
 		}); id != uuid.Nil {

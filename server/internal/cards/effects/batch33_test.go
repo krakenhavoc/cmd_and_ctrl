@@ -983,6 +983,40 @@ func TestB33RakdosJoinsUpReanimatesWithTwoCountersAndPunishesLegendaryDeaths(t *
 	}
 }
 
+// TestB33RakdosJoinsUpDamageIncludesAnthemBonusOnTheDeadLegend closes
+// the caveat #1565 audited: the dead legend's power now comes from
+// #1379's resolution-time LKI (ctx.TriggeringPermanent,
+// PowerForComparison), which folds in a static bonus from another
+// permanent — not just printed power and counters, as the old
+// b17LastKnownPowerOffBattlefield-only read did.
+func TestB33RakdosJoinsUpDamageIncludesAnthemBonusOnTheDeadLegend(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	castCatalogSpell(t, g, "Rakdos Joins Up", "Legendary Enchantment", b33RakdosJoinsUpOracle, nil)
+	passPriorityAroundTable(t, g)
+
+	pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Glorious Anthem", TypeLine: "Enchantment",
+		OracleID: gloriousAnthemOracle, Owner: me.ID, Controller: me.ID,
+	})
+	legend := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Legend", TypeLine: "Legendary Creature — Human",
+		Power: 2, Toughness: 2, Owner: me.ID, Controller: me.ID,
+	})
+	if got := effectivePower(t, g, legend); got != 3 {
+		t.Fatalf("effective power before death = %d, want 3 (the anthem's +1/+1 applied)", got)
+	}
+
+	life := opp.Life
+	b25Destroy(g, legend)
+	b04WaitForPick(t, g, me.ID)
+	b16PickPlayer(t, g, me.ID, opp.ID)
+	passPriorityAroundTable(t, g)
+	if opp.Life != life-3 {
+		t.Errorf("a 2/2 with an anthem's +1/+1 should deal 3, not just its printed 2: %d → %d", life, opp.Life)
+	}
+}
+
 // #1337: the sacrifice is a resolution-time choice (ChoosePermanents,
 // Sacrifice mode), not a target picked when the trigger goes on the
 // stack, so the prompt is an own_permanents choose-cards pick rather

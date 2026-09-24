@@ -1184,3 +1184,8 @@ Three things the first slice settled that the decisions above left open.
   `ScheduleDelayedTriggerForEffect` refuses a trigger with no body. The
   counter now fires only for a hand-built trigger with nothing to do. The
   closure ratchet lists the counter in `retiredCensusCounters`.
+- **Review fixes (#1568):**
+  - **Unknown fields are refused wherever params live.** The P4 refusal of unknown JSON fields now covers every `params` and `condParams` on a delayed trigger or a stack item, down through `filter` and `object`, not only scoped effects.
+  - **`CastFilter.Types` is a closed set.** It must be one of CR 205.2a's card types, spelled exactly, and it is matched against the card's type list as whole words, never as a substring. It is refused both where it is scheduled and at restore.
+  - **The engine's `DelayedTrigger.Body` and `.Condition` are typed refs.** They are `BodyRef` and `ConditionRef`, so an unregistered key cannot be written at all. A zero ref is a programming fault (`effectKeyFault`): it panics in a test binary, and in production it is logged and the trigger is dropped. It never crashes the server.
+  - **An ability copy of a keyed item is keyed too.**

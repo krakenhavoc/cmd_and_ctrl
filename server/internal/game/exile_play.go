@@ -80,6 +80,77 @@ func (g *Game) ExileTopWithPermissionForEffect(fromPlayer, grantTo uuid.UUID, n 
 	return out, nil
 }
 
+// ExileTopFaceDownWithPermissionForEffect is ExileTopWithPermissionForEffect
+// for the cards that exile FACE DOWN (#1573, ADR 0066's 2026-09-24
+// amendment): "its controller looks at the top card of that opponent's
+// library and exiles it face down. They may play that card for as
+// long as it remains exiled" (Gonti, Night Minister); "target opponent
+// exiles the top X cards of their library face down. You may look at
+// and play those cards" (Outrageous Robbery).
+//
+// Each card lands as FaceDownPermitted, with nobody able to look at
+// it, and is granted `perm` on the way in; the grant is what makes
+// `grantTo` its one viewer (stampPermittedViewersLocked). So the
+// table sees card backs, the owner included, and the holder sees the
+// card and a cast surface on it.
+//
+// The cards are chosen UP FRONT, top first, and moved by ID through
+// the shared exit primitive, one at a time through its continuation:
+// the millPlanLocked argument, for the same reason. A commander among
+// them is offered the command zone (CR 903.9), the question leaves it
+// ON the library, and re-reading the top would hand back the same
+// commander; the continuation also means a commander whose owner
+// declines is exiled and granted when the answer comes, rather than
+// landing with no grant at all (#1336's defect, which the face-up
+// primitive above still has for its raw MoveCard). A card that went
+// anywhere but exile was not exiled "this way" and gets nothing.
+//
+// Caller must hold g.mu (write).
+func (g *Game) ExileTopFaceDownWithPermissionForEffect(fromPlayer, grantTo uuid.UUID, n int, perm CastPermission) error {
+	owner := g.playerByIDLocked(fromPlayer)
+	if owner == nil {
+		return ErrPlayerNotFound
+	}
+	if g.Exile == nil || grantTo == uuid.Nil || n <= 0 || owner.Library == nil {
+		return nil
+	}
+	avail := len(owner.Library.Cards)
+	if n > avail {
+		n = avail
+	}
+	plan := make([]uuid.UUID, 0, n)
+	for i := 0; i < n; i++ {
+		// The top is the LAST element.
+		plan = append(plan, owner.Library.Cards[avail-1-i].InstanceID)
+	}
+	perm.Player = grantTo
+	perm.Zone = ZoneExile
+	return g.exileFaceDownPermittedLocked(plan, grantTo, perm)
+}
+
+// exileFaceDownPermittedLocked moves the first card of `ids` into
+// exile face down and, from the move's continuation, grants `perm`
+// over it if it landed there and moves the rest. Caller must hold g.mu.
+func (g *Game) exileFaceDownPermittedLocked(ids []uuid.UUID, actor uuid.UUID, perm CastPermission) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	id, rest := ids[0], ids[1:]
+	_, err := g.routeCardToZoneLocked(zoneRoute{
+		CardID:   id,
+		Dst:      ZoneExile,
+		Actor:    actor,
+		FaceDown: FaceDownPermitted,
+		then: func(g *Game) error {
+			if z := g.findCardZoneLocked(id); z != nil && z.Kind == ZoneExile {
+				g.GrantCastPermissionOverCardForEffect(id, perm)
+			}
+			return g.exileFaceDownPermittedLocked(rest, actor, perm)
+		},
+	})
+	return err
+}
+
 // ExileCardWithPermissionForEffect exiles one specific card —
 // typically a targeted battlefield permanent — and grants `perm` over
 // it in its new home. The airbend half of the exile-play primitives,
