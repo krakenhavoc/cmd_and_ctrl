@@ -257,7 +257,9 @@ func TestB18DreamstoneHedronTapsForThreeAndCashesInForThree(t *testing.T) {
 	}
 }
 
-func TestB18PerpetualTimepieceMillsTwoAndDeclaresTheShuffleGap(t *testing.T) {
+// The mill half. The exile-to-shuffle half landed with #1404 and is
+// tested in exile_this_permanent_test.go.
+func TestB18PerpetualTimepieceMillsTwo(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	piece := b12Push(g, me.ID, "Perpetual Timepiece", "Artifact", b18PerpetualTimepieceOracle, 0, 0)
@@ -269,10 +271,6 @@ func TestB18PerpetualTimepieceMillsTwoAndDeclaresTheShuffleGap(t *testing.T) {
 	}
 	if !b16Tapped(t, g, piece) {
 		t.Error("the Timepiece taps as its cost")
-	}
-	spec, _ := Lookup(b18PerpetualTimepieceOracle)
-	if spec.Completeness != CompletenessCaveats || len(spec.Activated) != 1 {
-		t.Error("the exile-to-shuffle gap must be declared, and only the mill ships")
 	}
 }
 

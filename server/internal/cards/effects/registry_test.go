@@ -136,12 +136,12 @@ func TestAllReturnsSnapshot(t *testing.T) {
 	}
 }
 
-// TestRegisterExileSelfOffTheGraveyardPanics pins #1221's boot check:
-// scavenge's and embalm's "Exile this card from YOUR GRAVEYARD" can
-// only be paid by a card in a graveyard, so an ability that declares
-// the component without declaring the zone could never be activated
-// — and would look complete on the catalog page while refusing every
-// activation. The symmetric check DiscardSelf has had since #660.
+// TestRegisterExileSelfOffTheGraveyardPanics pins #1221's boot check,
+// as #1404 widened it: the exile-this component is paid from the
+// graveyard or the battlefield, so an ability that functions from the
+// HAND could never be activated — and would look complete on the
+// catalog page while refusing every activation. The symmetric check
+// DiscardSelf has had since #660.
 func TestRegisterExileSelfOffTheGraveyardPanics(t *testing.T) {
 	defer func() {
 		if r := recover(); r == nil {
@@ -173,6 +173,25 @@ func TestRegisterExileSelfFromTheGraveyardIsFine(t *testing.T) {
 	})
 	if !Has("test-registry-exile-self-ok") {
 		t.Error("a graveyard exile-this ability did not register")
+	}
+}
+
+// #1404: and the battlefield, which is the default zone — Perpetual
+// Timepiece's "{2}, Exile this artifact:" registers with no Zones at
+// all. Before #1404 this panicked with "does not function from the
+// graveyard"; the hand test above still panics, because no CR 602
+// ability prints "exile this card from your hand".
+func TestRegisterExileSelfFromTheBattlefieldIsFine(t *testing.T) {
+	registerForTest(t, Spec{
+		OracleID: "test-registry-exile-self-battlefield",
+		Name:     "Proper Timepiece",
+		Activated: []ActivatedAbility{{
+			Label: "{2}, Exile this artifact: do nothing",
+			Cost:  Plus(ManaCost("{2}"), ExileThis()),
+		}},
+	})
+	if !Has("test-registry-exile-self-battlefield") {
+		t.Error("a battlefield exile-this ability did not register")
 	}
 }
 

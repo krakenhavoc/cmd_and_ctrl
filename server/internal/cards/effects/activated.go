@@ -293,12 +293,21 @@ func ReturnNToHand(n int, label string, preds ...CardPredicate) game.AbilityCost
 	}}
 }
 
-// ExileThis is scavenge's and embalm's "Exile this card from your
-// graveyard" cost component (CR 702.96a, CR 702.128a). Like
-// DiscardThis it only means anything on an ability that functions
-// from the zone it names, and Register refuses it anywhere but the
-// graveyard — build the ability with Scavenge / Embalm / Eternalize
-// rather than composing this by hand.
+// ExileThis is the "Exile this <permanent/card>" cost component, and
+// it exiles the source from the zone the ability functions from:
+//
+//   - from the BATTLEFIELD (the default, #1404) — Perpetual
+//     Timepiece's "{2}, Exile this artifact:", Hanged Executioner's
+//     "{3}{W}, Exile this creature:". The permanent leaves the
+//     battlefield, so leaves-the-battlefield triggers see it; it does
+//     not die and it is not sacrificed. Compose it with Plus like any
+//     other component.
+//   - from the GRAVEYARD — scavenge's and embalm's "Exile this card
+//     from your graveyard" (CR 702.96a, CR 702.128a). Build those with
+//     Scavenge / Embalm / Eternalize rather than by hand.
+//
+// Register refuses it on an ability that functions from any other
+// zone (game.ExileSelfZoneSupported).
 func ExileThis() game.AbilityCost { return game.AbilityCost{ExileSelf: true} }
 
 // DiscardThis is cycling's "Discard this card" cost component
