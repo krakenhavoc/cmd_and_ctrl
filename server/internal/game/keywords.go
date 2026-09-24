@@ -352,7 +352,7 @@ func CanonicalKeyword(s string) (string, bool) {
 // Protection (CR 702.16) is the only keyword that can yield more than
 // one token, and the only one whose token carries a parameter. The
 // three readers that scan printed TEXT — deck.printedKeywords,
-// deck.keywordLines and coverage.keywordOnlyLine — call this, so what
+// deck.keywordLineCounts and coverage.keywordOnlyLine — call this, so what
 // the importer stamps and what the ADR 0037 coverage signal believes
 // can never drift. A quality protection.go's closed grammar cannot
 // parse yields NOTHING, which leaves the card flagged unimplemented
