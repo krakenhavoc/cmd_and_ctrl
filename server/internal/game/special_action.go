@@ -270,7 +270,7 @@ func (g *Game) SpecialActionTimingOKLocked(playerID uuid.UUID, card Card, kind S
 		if card.IsInstant() || HasKeyword(&card, "flash") {
 			return true
 		}
-		return g.sorcerySpeedOpenLocked(playerID)
+		return g.SorcerySpeedOpenLocked(playerID)
 
 	case SpecialActionTurnFaceUp:
 		// CR 702.37c / CR 708.6: "any time you have priority". No
@@ -303,7 +303,7 @@ func (g *Game) SpecialActionTimingOKLocked(playerID uuid.UUID, card Card, kind S
 		// Split second needs no clause of its own: it only ever
 		// matters while a split-second spell is ON the stack, and
 		// this window requires the stack to be empty.
-		return g.sorcerySpeedOpenLocked(playerID)
+		return g.SorcerySpeedOpenLocked(playerID)
 	}
 	return false
 }

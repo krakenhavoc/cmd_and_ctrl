@@ -926,7 +926,7 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	// opens the window (The Wandering Emperor, Leonin Shikari) or
 	// narrows it, then the sorcery-speed gate. It replaced the
 	// inline `(ab.SorcerySpeed || ab.Cost.Loyalty != nil) &&
-	// !g.sorcerySpeedOpenLocked(playerID)` that used to live here
+	// !g.SorcerySpeedOpenLocked(playerID)` that used to live here
 	// and in two other files.
 	if !g.ActivationTimingOpenLocked(playerID, *source, srcZone, abilityID) {
 		return ErrSorcerySpeedRequired
