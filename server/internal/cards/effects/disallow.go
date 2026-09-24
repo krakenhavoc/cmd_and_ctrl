@@ -15,7 +15,7 @@ package effects
 // a countered SPELL goes to its owner's graveyard (CR 701.5a, through
 // the shared stack-exit primitive, so a flashed-back one is exiled and
 // a countered commander gets its CR 903.9 offer); a countered
-// ACTIVATED or TRIGGERED ability goes NOWHERE (CR 701.5c — the item is
+// ACTIVATED or TRIGGERED ability goes NOWHERE (CR 701.6a — the item is
 // deleted, its source permanent stays in play, and nothing it paid is
 // refunded); and a MANA ability cannot be reached at all, because
 // CR 605.3b keeps it off the stack, so the parenthetical needs no code.

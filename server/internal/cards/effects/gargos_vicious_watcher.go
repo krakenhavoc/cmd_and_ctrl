@@ -46,7 +46,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Gargos not being on the battlefield when the trigger resolves means
 // no fight, since there is nothing to deal the damage; that is CR
-// 701.13a and the shared fight body handles it.
+// 701.17a and the shared fight body handles it.
 //
 // No simplification.
 func init() {

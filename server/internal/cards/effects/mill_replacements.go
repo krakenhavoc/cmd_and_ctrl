@@ -57,7 +57,7 @@ const (
 // effect, and #792's identical-window skip applies.
 //
 // The count is the one the INSTRUCTION named, not what the library can
-// supply: CR 701.13b's "mill as many as possible" clamp happens after
+// supply: CR 701.17b's "mill as many as possible" clamp happens after
 // this window settles, so Bruvac doubles a mill of twenty against a
 // twelve-card library.
 type MillBecomes struct {

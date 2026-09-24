@@ -23,7 +23,7 @@ import (
 // (ADR 0066's 2026-09-23 amendment). Both land here together, so the
 // card ships full with neither half caveated.
 //
-// "CAST THIS SPELL ONLY DURING COMBAT" is CR 307.6's family read off
+// "CAST THIS SPELL ONLY DURING COMBAT" is CR 205.4e's family read off
 // the PHASE rather than the step: any of the five combat steps
 // satisfies it, which game.PhaseOf(g.Turn.Step) == game.PhaseCombat
 // answers without a five-way switch.

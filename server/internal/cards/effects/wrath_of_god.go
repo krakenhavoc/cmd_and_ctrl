@@ -12,7 +12,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // "They can't be regenerated" is ENFORCED as of #667
 // (CR 701.19c): a creature with a regeneration shield on it is
-// destroyed anyway, and CR 701.19d leaves the shield unspent. The
+// destroyed anyway, and CR 701.19c leaves the shield unspent. The
 // rider is where this card and Day of Judgment differ, which is why
 // they no longer share one helper.
 func init() {

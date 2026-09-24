@@ -202,7 +202,7 @@ func LevelUp(level int, cost game.AbilityCost) ActivatedAbility
 ```
 
 It produces `SorcerySpeed: true` (CR 716.2d) and a `Condition` that reads the
-source's current level and demands exactly `level-1` (CR 716.2e). Nothing else
+source's current level and demands exactly `level-1` (CR 716.2a). Nothing else
 is special: it is announced, paid and put on the stack by the same
 `ActivateCatalogAbility` path every other activation uses, its cost is an
 ordinary `AbilityCost` (mana, since #958 also counters), the legal-move

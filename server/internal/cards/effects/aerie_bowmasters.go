@@ -7,7 +7,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	"Reach. Megamorph {5}{G}"
 //
 // Megamorph is morph plus one clause — "put a +1/+1 counter on it"
-// when the permanent is turned face up (CR 702.109b) — and that clause
+// when the permanent is turned face up (CR 702.37b) — and that clause
 // rides the keyword rather than this file: the counter is placed by
 // the turn-face-up special action, before the CR 708.8 event, so
 // anything watching the permanent turn over already sees the 4/5.

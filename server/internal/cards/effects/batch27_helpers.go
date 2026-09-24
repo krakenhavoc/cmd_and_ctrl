@@ -379,7 +379,7 @@ func b27DealDamageWithExcess(ctx *Context, target uuid.UUID, amount int) (int, e
 //
 // #1176 makes each repetition its own instruction, which changes
 // nothing here: exiling the top card of a library is not a mill
-// (CR 701.13a), so no repetition opens a mill-amount window and
+// (CR 701.17a), so no repetition opens a mill-amount window and
 // nothing can double one.
 func b27ExileTopUntilTotalManaValue(ctx *Context, player uuid.UUID, threshold int) error {
 	if ctx.PlayerByID(player) == nil {

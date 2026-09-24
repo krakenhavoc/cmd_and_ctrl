@@ -10,7 +10,7 @@ import (
 // abilities (CR 724.2), not a sticker. Combat damage to the monarch
 // hands the crown to the attacker's controller, and the monarch draws
 // at the beginning of their own end step. Both go through the stack,
-// and CR 724.4 keeps the crown on the table when its holder leaves.
+// and CR 725.4 keeps the crown on the table when its holder leaves.
 
 // settleMonarchStack passes priority until nothing is on, or headed
 // for, the stack — answering any CR 603.3b trigger-ordering prompt in
@@ -177,7 +177,7 @@ func TestMonarchNoTransferWithoutAMonarch(t *testing.T) {
 }
 
 // TestMonarchMultipleAttackersInOneStep: two creatures connecting is
-// two triggers (CR 724.3 — the crown changes hands once per creature),
+// two triggers (CR 725.3 — the crown changes hands once per creature),
 // and they share a controller so the table is not asked to order a
 // choice with one outcome.
 func TestMonarchMultipleAttackersInOneStep(t *testing.T) {
@@ -269,9 +269,9 @@ func TestMonarchEndStepDrawFollowsTheCrownWithinTheTurn(t *testing.T) {
 }
 
 // TestMonarchCrownPassesToActivePlayerWhenItsHolderIsEliminated is
-// CR 724.4. Lethal combat damage is the case that matters: the
+// CR 725.4. Lethal combat damage is the case that matters: the
 // transfer trigger is controlled by the dying monarch, so CR 800.4a
-// takes it off the stack with them — without 724.4 the crown would be
+// takes it off the stack with them — without 725.4 the crown would be
 // stuck on an empty seat forever.
 func TestMonarchCrownPassesToActivePlayerWhenItsHolderIsEliminated(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
@@ -286,7 +286,7 @@ func TestMonarchCrownPassesToActivePlayerWhenItsHolderIsEliminated(t *testing.T)
 		t.Fatalf("setup: monarch survived 10 damage at 3 life")
 	}
 	if g.Monarch != attacker.ID {
-		t.Errorf("monarch = %v, want the active player %v (CR 724.4)", g.Monarch, attacker.ID)
+		t.Errorf("monarch = %v, want the active player %v (CR 725.4)", g.Monarch, attacker.ID)
 	}
 }
 

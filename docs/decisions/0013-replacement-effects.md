@@ -1117,7 +1117,7 @@ caveat Helm of Obedience carries, rewritten to say so.
 > diverted-card caveat both come off. What Helm still declares is the
 > OTHER half of its printed sentence: X bounds the cards the run takes
 > off the library, not the cards that arrive. That is the mill AMOUNT
-> (CR 701.13b counts cards moved, and it is the number Bruvac the
+> (CR 701.17b counts cards moved, and it is the number Bruvac the
 > Grandiloquent doubles), not the clause, and it is filed rather than
 > folded in here. *(Closed 2026-09-21 by
 > [#1161](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1161),
@@ -1551,7 +1551,7 @@ They still leave as one simultaneous event, each by its own route:
 it does not spend the shield.** `DestroyOptions{CantBeRegenerated}` →
 `zoneRoute` → `ReplacementEvent.CantBeRegenerated` → the built-in's
 `AppliesTo` declines. Gating `AppliesTo` rather than consuming the
-shield inside `Replace` is CR 701.19d: an ignored shield stays on the
+shield inside `Replace` is CR 701.19c: an ignored shield stays on the
 permanent for a later destruction that does not say this. The rider is
 VARIADIC on the destroy verbs (`DestroyPermanentForEffect(id, opts
 ...DestroyOptions)`) so that the ~120 existing "destroy this" call
@@ -2071,14 +2071,14 @@ helper.** Two gates, and both are the rules' own:
 | Instruction | Window? |
 | --- | --- |
 | mill N into a graveyard | yes |
-| "exile the top N cards of your library" (the same helper, `dest` exile) | no — CR 701.13a defines the keyword action by where the cards go, and `millRoute` has honoured that distinction since #893 |
+| "exile the top N cards of your library" (the same helper, `dest` exile) | no — CR 701.17a defines the keyword action by where the cards go, and `millRoute` has honoured that distinction since #893 |
 | an unbounded `until` run (Helm of Obedience, `n <= 0` with a predicate) | no — it names no number to double |
 | a count of zero or less | no — "one or more cards" is the printed condition |
 
 Same posture §5s takes for a scry of zero: you would not scry, so there
 is nothing to replace, and the continuation still runs.
 
-**3. The count is the INSTRUCTION's, not the library's.** CR 701.13b
+**3. The count is the INSTRUCTION's, not the library's.** CR 701.17b
 makes a player told to mill more cards than they have mill as many as
 possible, and that clamp stays where it was, in `millPlanLocked`, AFTER
 the window. So Bruvac doubling a twenty-card mill against a twelve-card
@@ -2740,7 +2740,7 @@ open CR 903.9 prompt replays the same answer.
 mill amount. It is the opposite: X was only ever *modelled* as the
 amount, and that model is what made the two disagree.
 
-| | the AMOUNT (CR 701.13b) | the BOUND (this clause) |
+| | the AMOUNT (CR 701.17b) | the BOUND (this clause) |
 | --- | --- | --- |
 | what it counts | cards the instruction MOVES off the library | cards that are PUT INTO the named zone |
 | a diverted card | spends one (it was milled) | costs it nothing (it never arrived) |
@@ -2911,7 +2911,7 @@ three: `b14MillUntilLand` (Consuming Aberration) and Helm of Obedience
 into a graveyard, where the per-repetition window is the point, and
 `b27ExileTopUntilTotalManaValue` / Improvisation Capstone into EXILE,
 where no window opens at all because exiling the top N is not a mill
-(CR 701.13a). Every other mill in the catalog names a number and is
+(CR 701.17a). Every other mill in the catalog names a number and is
 untouched.
 
 ### 5z. Amendment, 2026-09-22: a CARD choice inside an entry replacement, and the third card-set pick
