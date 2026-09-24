@@ -686,6 +686,25 @@ describe("buildMenuSections — non-battlefield zones", () => {
   // player has to be able to see the card has the keyword, and the
   // client must not re-derive a rule (split second differs per kind)
   // it would get backwards.
+  // #1342: plot (CR 702.170a) is one more kind on the same surface -
+  // the row is the plot button, fired with the kind the server sent.
+  it("offers plot as a special-action row", () => {
+    const c = {
+      ...card("h1", "a"),
+      special_actions: [{ kind: "plot", label: "Plot {3}{U}", cost: "{3}{U}", available: true }],
+    };
+    const v = view([seat("a", "Alice", { hand: [c] })]);
+    const sections = buildMenuSections(v, c, "a", false);
+    const row = itemById(sections, "special-plot");
+    expect(row?.label).toBe("Plot {3}{U}");
+    expect(row?.disabled).toBeFalsy();
+    expect(row?.action).toEqual({
+      type: "special_action",
+      params: { card_id: "h1", kind: "plot", strict: true, auto_tap: true },
+      player: "a",
+    });
+  });
+
   it("greys a special action the server says is unavailable", () => {
     const c = {
       ...card("h1", "a"),

@@ -3103,9 +3103,13 @@ The `Key` is the wire contract: it rides `cast_spell` as
 `OnResolve` branches on `ctx.PaidAltCost("overload")`. Keys must be
 non-empty and unique per card; `Register` panics otherwise. Only
 overload / evoke / cleave / flashback / warp / escape exist —
-foretell, plot, spree and "prepare" have no shape yet, and a card
-carrying one of those ships without it (say so in the card comment, as
-Cosmic Intervention does).
+spree has no shape yet, and a card carrying it ships without it (say
+so in the card comment). Preparation cards are a layout, not a cost —
+see "Adding a preparation card" below. Foretell,
+suspend and plot are not alternative costs at all: they are CR 116.2
+special actions, declared in `Spec.SpecialActions` with
+`effects.Foretell`, `effects.Suspend` and `effects.Plot` (ADR 0062
+Decision 4).
 
 **Casting from somewhere other than hand (S29):** a card whose text
 opens another cast zone declares it in `Spec.CastableZones`, and the

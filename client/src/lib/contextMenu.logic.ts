@@ -1071,9 +1071,9 @@ function moveItems(card: CardView, location: CardLocation): MenuItem[] {
 }
 
 // specialActionItems is the CR 116.2 special-action rows on one card —
-// "Foretell {2}" and "Suspend 1—{R}" in the viewer's own hand (#658,
-// #659, ADR 0062 Decision 4), "Turn face up {1}{U}" on a face-down
-// permanent they control (#1194, ADR 0082).
+// "Foretell {2}", "Suspend 1—{R}" and "Plot {3}{U}" in the viewer's
+// own hand (#658, #659, #1342, ADR 0062 Decision 4), "Turn face up
+// {1}{U}" on a face-down permanent they control (#1194, ADR 0082).
 //
 // A row fires the `special_action` verb DIRECTLY, with no targeting
 // or cost picker in between, because no kind has a choice to make:

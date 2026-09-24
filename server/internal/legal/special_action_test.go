@@ -336,3 +336,69 @@ func TestASpellCostModifierDoesNotMakeForetellFree(t *testing.T) {
 		t.Fatalf("a spell cost modifier discounted a foretell: %v", labels(legal.EnumerateFor(g, active.ID)))
 	}
 }
+
+// #1342 / CR 702.170a: plot is enumerated in its owner's main phase
+// with the stack empty, when the plot cost is payable — and not in
+// combat, not to another seat. The move the enumerator offers is one
+// the dispatcher accepts, and the plotted card's free cast is
+// enumerated on a later turn with no mana at all.
+func TestPlotIsEnumeratedInYourMainPhaseAndItsFreeCastLater(t *testing.T) {
+	const oracle = "legal-plot-oracle"
+	seed := func(t *testing.T, step game.Step) (*game.Game, *game.Player, uuid.UUID) {
+		t.Helper()
+		g := newTable(t)
+		active := g.Seats[g.Turn.ActiveSeat]
+		clearHand(active)
+		withSpecialActions(t, oracle, []game.SpecialAction{{
+			Kind: game.SpecialActionPlot, Cost: "{U}", Label: "Plot {U}",
+		}})
+		card := handCard(active, game.Card{
+			Name:     "Djinn of Fool's Fall",
+			TypeLine: "Creature — Djinn",
+			ManaCost: "{4}{U}",
+			Power:    4,
+			OracleID: oracle,
+		})
+		battlefieldCard(g, active, basic("Island", "Island"))
+		advanceTo(t, g, step)
+		return g, active, card
+	}
+
+	g, active, card := seed(t, game.StepBeginCombat)
+	if acts := specialActionsOf(legal.EnumerateFor(g, active.ID), card); len(acts) != 0 {
+		t.Errorf("plot offered in combat: %v", labels(acts))
+	}
+
+	g, active, card = seed(t, game.StepPrecombatMain)
+	for _, p := range g.Seats {
+		if p.ID == active.ID {
+			continue
+		}
+		if acts := specialActionsOf(legal.EnumerateFor(g, p.ID), card); len(acts) != 0 {
+			t.Errorf("plot offered to a seat that does not hold the card: %v", labels(acts))
+		}
+	}
+	moves := legal.EnumerateFor(g, active.ID)
+	acts := specialActionsOf(moves, card)
+	if len(acts) != 1 {
+		t.Fatalf("a main phase with {U} available: want one plot move, got %v", labels(acts))
+	}
+	if acts[0].Label != "Plot {U} Djinn of Fool's Fall" {
+		t.Errorf("plot move label = %q", acts[0].Label)
+	}
+	if err := g.PerformSpecialAction(active.ID, card, game.SpecialActionPlot, game.SpecialActionParams{Strict: true, AutoTap: true}); err != nil {
+		t.Fatalf("plot: %v", err)
+	}
+	if n := len(movesOfKindFor(legal.EnumerateFor(g, active.ID), legal.KindCast, card)); n != 0 {
+		t.Errorf("the plotted card is offered for casting on the turn it was plotted (%d moves)", n)
+	}
+
+	// A later turn of the same seat. The land stays tapped, so the
+	// only way the cast can be offered is for free.
+	g.WithWriteLock(func() { g.Turn.Number++ })
+	moves = legal.EnumerateFor(g, active.ID)
+	if n := len(movesOfKindFor(moves, legal.KindCast, card)); n == 0 {
+		t.Fatalf("the plotted card's free cast is not enumerated on a later turn; moves = %v", labels(moves))
+	}
+	dispatchAll(t, g, active.ID, moves)
+}

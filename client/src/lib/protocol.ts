@@ -1479,7 +1479,7 @@ export interface TapCostView {
 }
 
 // SpecialActionView is one CR 116.2 special action offered on a card
-// in the viewer's own hand — foretell, suspend. A row and nothing
+// in the viewer's own hand — foretell, suspend, plot. A row and nothing
 // more: no targets, no modes, no cost picker, so the client sends
 // `special_action { card_id, kind, strict, auto_tap }` straight from
 // it. `available` is the server's own per-kind timing answer, so the

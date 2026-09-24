@@ -1778,6 +1778,16 @@ That is weaker, never stronger. `plot.go` explains the floor.
 `TestAFlashGrantDoesNotWidenThePlotWindow` is the back-out proof: with
 `TimingSorcery` it fails.
 
+**Later amendment — 2026-09-23 (#1342): the plot keyword reuses this
+permission.** The hand special action (CR 702.170a) is now built as the fourth
+CR 116.2 kind. Its performer exiles the card face up and calls
+`PlotExiledCardForEffect` on it, so the permission, `TimingPlot` and the floor
+above are shared by both routes to the plotted state. A card can only be
+plotted from hand on its owner's own turn, so its floor is always
+`Turn.Number + 1`. [ADR 0062's 2026-09-23 plot
+amendment](0062-abilities-and-special-actions-from-the-hand.md) has the
+per-kind rows.
+
 ---
 
 ## Amendment — 2026-09-23 (#1314): a standing permission gated by a Class
