@@ -122,7 +122,11 @@ type CastTimingRule struct {
 	// rejected: a land PLAY is not a cast (CR 305.1) and never
 	// reaches this read at all, so a filter that named one would
 	// simply match nothing a cast can be.
-	Filter PermissionFilter `json:"filter,omitzero"`
+	//
+	// No `omitzero`: this is part of GameSnapshot's serialization
+	// graph (PlayerStatic.Timing.Filter) and its presence would
+	// otherwise depend on the building Go toolchain (#1492).
+	Filter PermissionFilter `json:"filter"`
 
 	// FromZone narrows the statement to casts out of one zone. Zero
 	// (`ZoneKind("")`) is "from anywhere", which is every card on the
