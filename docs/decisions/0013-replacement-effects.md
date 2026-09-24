@@ -3841,6 +3841,50 @@ graveyard, a Spirit Guide from hand) needed nothing further: #1423's
 `moving` list already carries the source for `ExileSelf`, so the #1445
 gate above refuses it. Re-checked on develop at `4ef62c39`.
 
+#### Addendum, 2026-09-24: nor can a card an effect has paused be CAST, or activate ([#1474](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1474))
+
+Two uses of a paused card were still in neither list.
+
+- **Casting it.** CR 601.2a moves the spell to the stack before any cost
+  is paid, so the card being cast is not a cost card and was never in
+  `moving`. A commander `ExileCardForEffect` had paused in its owner's
+  hand went onto the stack while the exile's prompt was still open. The
+  same held for a cast out of the graveyard (Gravecrawler's own text, a
+  flashback, a permission) of a commander Bojuka Bog was exiling, and
+  for a land play of either.
+- **Activating one of its abilities** through a component that neither
+  moves nor taps it: removing a counter from it, putting a -1/-1 counter
+  on it, a loyalty cost, or no cost at all. Naming it as ANOTHER
+  permanent's counter-removal source (Heart of Kiran's "remove a loyalty
+  counter from a planeswalker you control") was the same hole one step
+  removed.
+
+**Decision.** Refuse both, still through the one gate, and key the
+activation half on the SOURCE rather than on one more component list.
+The issue offered the choice. The source is the right key because the
+object is gone whatever the ability costs: an ability of a paused
+permanent is a use of it even when nothing is paid.
+
+- `refusePausedCostCardsLocked` takes any number of lists and gives each
+  the same answer. `moving` stays a separate argument because it alone
+  goes on to `askCostCommanderLocked`.
+- `castSpellLocked` asks the gate about the card itself, right after
+  finding it in its source zone and before any other check, so the
+  refusal covers every source zone and the land play alike.
+- `ActivateCatalogAbility` and `ActivateManaAbility` pass a third list,
+  `spending`: the source, plus every permanent the counter-removal
+  component names (`counterPayment.cardIDs`). The sandbox
+  `ActivateLoyalty` verb asks the gate about the walker.
+- The view clears `castable_here` on a card the gate would refuse
+  (`castableNow` asks `CardExitPausedForEffect`), so the zone browser
+  shows no cast button the engine refuses. The enumerator already agreed:
+  the CR 903.9 prompt blocks the table, so it offers no seat anything
+  while it is open.
+
+The refusal is `ErrChoicePending` with nothing moved or paid. Once the
+owner answers, the card is wherever the answer sent it and is cast from
+there as usual (from the command zone, for a commander the owner kept).
+
 ### 6. Six pipeline integration points (five mutations + step transition)
 
 The core five mutations named in the sprint plan are the rules-
