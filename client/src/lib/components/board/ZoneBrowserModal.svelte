@@ -39,7 +39,8 @@
   // rather than duplicating them is the point: both surfaces read the
   // same server bits and must not drift into different opinions about
   // the same card.
-  import { exileCostBadge, exileEntryFor, exileEntryLegality, symbolClass } from "../../exileStrip";
+  import { exileCostBadge, exileEntryFor, exileEntryLegality } from "../../exileStrip";
+  import ManaSymbol from "./ManaSymbol.svelte";
   import type { Legality } from "../../timing";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
@@ -194,6 +195,15 @@
   const castableFor = (card: CardView) =>
     castableFromZone(card, zoneKind) && onCastCard !== undefined;
 
+  // #1440: the VERB for the graveyard button and its labels — "play"
+  // for a land (CR 305.1, CR 116.2a — a land is played, not cast) and
+  // "cast" for everything else. Kept separate from castLabelFor below,
+  // which may show a printed cost STRING in the button's own text
+  // ("Flashback {2}{R}"); the aria-label and title stay on the verb so
+  // they read as a sentence rather than repeating a mana cost.
+  const castVerbFor = (card: CardView) =>
+    (card.type_line ?? "").toLowerCase().includes("land") ? "play" : "cast";
+
   // The label is the printed clause when the card offers exactly one
   // way in ("Flashback {2}{R}"), so the button reads like the card.
   // Two or more ways in, or none, fall back to the verb — the Board's
@@ -203,10 +213,17 @@
   // under an Underworld Breach has one offer and the printed cost
   // beside it, and labelling that button "Escape" would name a price
   // the player has not chosen yet.
-  const castLabelFor = (card: CardView) =>
-    card.alternative_costs?.length === 1 && !printedCostClaimable(card)
+  //
+  // #1440: a LAND is played, not cast — checked first, because a land
+  // opened by a Crucible-shaped permission carries no alternative
+  // cost at all and would otherwise fall straight through to the
+  // "cast" default.
+  const castLabelFor = (card: CardView) => {
+    if ((card.type_line ?? "").toLowerCase().includes("land")) return "play";
+    return card.alternative_costs?.length === 1 && !printedCostClaimable(card)
       ? card.alternative_costs[0].label || "cast"
       : "cast";
+  };
 
   function castFromZone(card: CardView): void {
     if (!onCastCard || zoneKind !== "graveyard") return;
@@ -359,7 +376,7 @@
               {#if badge}
                 <span class="cost-tag" title={badge.title} aria-label={badge.label}>
                   {#each badge.symbols as s, i (i)}
-                    <span class="sym {symbolClass(s)}">{s}</span>
+                    <ManaSymbol symbol={s} size={15} />
                   {/each}
                   {#if badge.life}
                     <span class="life">+{badge.life}♥</span>
@@ -397,12 +414,12 @@
                    in the graveyard is a resource, and a player who
                    has to hover to discover that will not discover
                    it. -->
-              <div class="actions always" aria-label="cast from graveyard">
+              <div class="actions always" aria-label={`${castVerbFor(card)} from graveyard`}>
                 <button
                   type="button"
                   class="act impulse"
-                  title="cast from your graveyard"
-                  aria-label={`cast ${card.name || "card"} from graveyard`}
+                  title={`${castVerbFor(card)} from your graveyard`}
+                  aria-label={`${castVerbFor(card)} ${card.name || "card"} from graveyard`}
                   onclick={() => castFromZone(card)}
                 >
                   {castLabelFor(card)}
@@ -584,40 +601,6 @@
       0 2px 8px rgba(0, 0, 0, 0.55),
       0 0 0 1px rgba(0, 0, 0, 0.4);
     cursor: help;
-  }
-  .sym {
-    display: inline-grid;
-    place-items: center;
-    min-width: 15px;
-    height: 15px;
-    padding: 0 2px;
-    box-sizing: border-box;
-    border-radius: 999px;
-    font-family: ui-monospace, Menlo, monospace;
-    font-size: 10px;
-    font-weight: 800;
-    line-height: 1;
-    color: #111;
-    background: #cfd6e2;
-  }
-  .sym-W {
-    background: #f4ead5;
-  }
-  .sym-U {
-    background: #aad4ff;
-  }
-  .sym-B {
-    background: #7a7390;
-    color: #f4f0ff;
-  }
-  .sym-R {
-    background: #ff9a85;
-  }
-  .sym-G {
-    background: #92c493;
-  }
-  .sym-C {
-    background: #c6cfdd;
   }
   .life {
     margin-left: 2px;

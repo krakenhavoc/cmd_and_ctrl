@@ -63,6 +63,11 @@
     // suppresses the menu entirely (opponent permanents, zones where
     // activations aren't meaningful).
     onActivateManaAbility?: (abilityIndex: number) => void;
+    // #1438: a left-click on a mana source now taps it FOR mana, so
+    // the menu carries the plain tap as "Tap (no mana)". Set by
+    // BattlefieldRow on the viewer's own permanents; undefined hides
+    // the row (hand cards, opponents).
+    onRawTap?: () => void;
     // S21 sub-PR 2: same menu, CR 602 activated abilities. Set by
     // parents for battlefield permanents the viewer controls, and
     // since #660 by Hand.svelte for the viewer's own hand — a card in
@@ -115,6 +120,7 @@
     size = "small",
     showManaCost = false,
     onActivateManaAbility,
+    onRawTap,
     onActivateAbility,
     sorcerySpeedBlocked = "",
     enchantedPlayer,
@@ -582,6 +588,9 @@
         onActivateAbility={(idx) => onActivateAbility?.(idx)}
         summoningSick={!!card.summoning_sick}
         {sorcerySpeedBlocked}
+        onRawTap={onRawTap && onActivateManaAbility && menuManaAbilities.length > 0 && !card.tapped
+          ? onRawTap
+          : undefined}
         onClose={() => (manaMenuOpen = false)}
       />
     </div>

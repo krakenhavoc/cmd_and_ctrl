@@ -3782,6 +3782,35 @@ replacement effects over each of the two formerly pausing routes:
 
 No wire or client shape changes.
 
+#### Addendum, 2026-09-24: a card an EFFECT has paused cannot pay ([#1445](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1445))
+
+Asking first closed the double spend for a card a COST moves. An effect
+still pauses. A commander that Doom Blade destroys, that Bojuka Bog exiles
+out of a graveyard, or that Mind Rot discards waits where it is while its
+owner answers. Before this addendum, any cost could name it in that
+window. Ashnod's Altar would sacrifice the destroyed commander for
+{C}{C}, and the destroy's own prompt was then withdrawn as stale, so one
+object was both destroyed and spent.
+
+**Decision.** The three announcement sites hand the same `moving` list to
+a second gate, `refusePausedCostCardsLocked`, immediately before
+`askCostCommanderLocked`. A card whose exit is already paused
+(`zoneChangePausedLocked`, the read the SBA sweep has used since #605)
+refuses the whole announcement with `ErrChoicePending`. Nothing is paid
+and nothing is asked. It is a refusal rather than a park because the
+question blocking this payment belongs to someone else and is already on
+the table. Once it is answered, the card has gone.
+
+The auto-tapper never passes through those sites, so it asks the same
+thing itself. The planner (`gatherTapSources`, `gatherManaZoneSources`)
+does not offer a paused source whose ability would sacrifice or exile it.
+The executor (`materializePlanLocked` and its hand arm) drops one from a
+stale plan.
+
+Tapping a paused permanent (`{T}`, crew, convoke) does not move it and is
+not covered. That half is
+[#1427](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1427).
+
 ### 6. Six pipeline integration points (five mutations + step transition)
 
 The core five mutations named in the sprint plan are the rules-

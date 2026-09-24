@@ -949,11 +949,12 @@ deathtouch through the instance-ID rule with no change to its file.
   event.**~~ **Closed by #1417**, Decision 12 below. The damage
   event's `SourceLKI` now comes from the same record.
   [#1417](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1417).
-- **A trigger's source object.** Triggered items do not carry
-  `SourceEpoch`, so "this" in a trigger whose event is not about its
-  own source (Mana Vault's draw step) cannot name the object. It reads
-  the most recent object through `PermanentRefForEffect`.
-  [#1418](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1418).
+- ~~**A trigger's source object.**~~ **Closed by
+  [#1418](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1418)**:
+  every ability item carries `StackItem.SourceObject`, and Mana Vault
+  reads its draw-step "this artifact" through
+  `effects.Context.SourceRef()`. See
+  [ADR 0018's 2026-09-24 source-object amendment](0018-triggers-on-the-stack.md).
 - **Infect, wither and toxic** join the same reader when PR 2 wires them
   into the tail. `departedDamageSourceLocked` returns the whole record,
   so they need no new lookup.

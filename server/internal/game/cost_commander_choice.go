@@ -118,6 +118,40 @@ type costCommanderFrame struct {
 	announce func(g *Game, answers map[uuid.UUID]bool) error
 }
 
+// refusePausedCostCardsLocked is the other half of that gate (#1445),
+// asked of the same `moving` list immediately before
+// askCostCommanderLocked.
+//
+// Paying a cost no longer pauses — that is what the ask-first model
+// above bought. But an EFFECT still can: a commander destroyed by Doom
+// Blade, exiled out of a graveyard by Bojuka Bog or discarded by Mind
+// Rot opens its owner's CR 903.9 prompt and waits where it was, on the
+// battlefield, in the graveyard or in the hand, until the owner
+// answers. That card is already on its way out. Naming it to a cost in
+// the meantime — an Ashnod's Altar crack, a Village Rites, a Force of
+// Will pitch, a scavenge — would spend an object the effect has
+// already taken, and the destroy's own prompt would then be withdrawn
+// as stale. Before this, one commander could be both destroyed and
+// sacrificed for mana (CR 118.3: one object pays one cost).
+//
+// So a payment that would move a card whose exit is paused is refused
+// outright with ErrChoicePending — the same answer the table gives any
+// other action that needs a prompt answered first — and nothing is
+// paid or asked. It is a refusal rather than a park: the question
+// blocking this payment is somebody else's, already on the table, and
+// once it is answered the card has gone and the payment is simply no
+// longer available.
+//
+// Caller must hold g.mu.
+func (g *Game) refusePausedCostCardsLocked(moving []uuid.UUID) error {
+	for _, id := range moving {
+		if g.zoneChangePausedLocked(id) {
+			return ErrChoicePending
+		}
+	}
+	return nil
+}
+
 // askCostCommanderLocked is the one gate every cost-paying
 // announcement passes after it has validated its payload and before it
 // pays anything.

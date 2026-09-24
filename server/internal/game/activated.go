@@ -1219,6 +1219,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if ab.Cost.ExileSelf {
 		moving = append(moving, cardID)
 	}
+	// #1445: a card an EFFECT has already paused on its way out
+	// cannot pay. See refusePausedCostCardsLocked.
+	if err := g.refusePausedCostCardsLocked(moving); err != nil {
+		return err
+	}
 	asked, answers := g.askCostCommanderLocked(playerID, moving, params.commanderAnswers, source.Name,
 		func(g *Game, answers map[uuid.UUID]bool) error {
 			again := params
@@ -1229,6 +1234,14 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		return nil
 	}
 	params.commanderAnswers = answers
+
+	// #1418: the OBJECT this ability comes from, read BEFORE any cost
+	// is paid. A source sacrificed or discarded to its own ability
+	// has ended that object by the time the item is built, and
+	// "this permanent" at resolution is the one that paid (its
+	// last-known record), not the card in its new zone. SourceEpoch
+	// below keeps the post-cost reading its readers want.
+	sourceObject := g.sourceObjectRefLocked(cardID)
 
 	// --- pay ----------------------------------------------------
 	//
@@ -1422,10 +1435,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		// cost that moved the source (sacrifice, discard) has already
 		// ended the object the ability belonged to and the stamp must
 		// say so. See StackItem.SourceEpoch.
-		SourceEpoch: g.cardObjectEpochLocked(cardID),
-		Label:       ab.Label,
-		Targets:     append([]TargetRef(nil), params.Targets...),
-		Modes:       append([]int(nil), params.Modes...),
+		SourceEpoch:  g.cardObjectEpochLocked(cardID),
+		SourceObject: sourceObject,
+		Label:        ab.Label,
+		Targets:      append([]TargetRef(nil), params.Targets...),
+		Modes:        append([]int(nil), params.Modes...),
 		// CR 602.2b: X was announced above and is locked here. The
 		// effect reads it back through Context.X(), the same
 		// accessor an X spell's OnResolve uses, and the wire ships

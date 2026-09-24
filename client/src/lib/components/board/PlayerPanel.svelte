@@ -26,7 +26,8 @@
   // tap-toggle logic stays in one place. The router mirrors the old
   // Pixi wireTapClick: combat select on your own creature, declare-
   // block on an incoming attacker, otherwise tap/untap — except for
-  // planeswalkers, whose click opens the card menu (#329). The
+  // planeswalkers, whose click opens the card menu (#329), and mana
+  // sources, whose click taps them FOR mana (#1438). The
   // decision itself is battlefieldClickIntent, in contextMenu.logic,
   // so it is testable without rendering Svelte.
 
@@ -45,6 +46,12 @@
   import { canActivateSorcerySpeedAbility } from "../../timing";
   import { manaAbilityNeedsPrompt } from "../../manaAbilityCost";
   import { openCardMenu } from "../../contextMenu";
+  import { manaClickPlan, manaColorParams, type AnchorRect } from "../../manaSource";
+  import {
+    closeManaSourcePicker,
+    manaSourcePickerOpenFor,
+    openManaSourcePicker,
+  } from "../../manaSourcePicker";
   import BattlefieldRow from "./BattlefieldRow.svelte";
   import PileBar from "./PileBar.svelte";
   import Hand from "./Hand.svelte";
@@ -98,7 +105,9 @@
     // many (Mage-Ring Network, Iron Spider's cousin on a land). Board
     // owns those modals, so the panel forwards the click instead of
     // sending the action. Only wired for the viewer's own panel.
-    onManaAbilityCost?: (card: CardView, ability: ManaAbilityView) => void;
+    // #1443: `colors` is the answer the anchored picker already has,
+    // carried through the cost pickers into the one action.
+    onManaAbilityCost?: (card: CardView, ability: ManaAbilityView, colors?: string[]) => void;
     // Priority controls forwarded to PhaseDisplay — only the
     // self panel mounts the widget, so these only matter when
     // isSelf=true but they're plumbed uniformly for prop typing.
@@ -271,7 +280,7 @@
   // the action as they always did.
   const activateManaAbility = $derived(
     isSelf
-      ? (card: CardView, abilityIndex: number) => {
+      ? (card: CardView, abilityIndex: number, colors?: string[]) => {
           // #1228: a permanent publishes `mana_abilities` and a card
           // in hand whose mana ability functions there publishes
           // `zone_mana_abilities` — never both. One lookup reads
@@ -279,12 +288,14 @@
           const rows = card.mana_abilities ?? card.zone_mana_abilities ?? [];
           const ability = rows.find((a) => a.index === abilityIndex);
           if (ability && onManaAbilityCost && manaAbilityNeedsPrompt(ability)) {
-            onManaAbilityCost(card, ability);
+            onManaAbilityCost(card, ability, colors);
             return;
           }
+          // #1443: a colour chosen at the card rides the activation,
+          // so the server produces it with no second question.
           sendAction(
             "activate_mana_ability",
-            { card_id: card.instance_id, ability_index: abilityIndex },
+            { card_id: card.instance_id, ability_index: abilityIndex, ...manaColorParams(colors) },
             seat.id,
           );
         }
@@ -339,15 +350,62 @@
     // renders activated abilities (ADR 0028), and it carries the
     // manual loyalty rows for the planeswalkers with no catalog
     // entry — which is still most of them.
-    switch (battlefieldClickIntent(card, viewerID, isAdmin)) {
+    //
+    // #1438: a mana source is clicked FOR mana. Only this seat's own
+    // panel wires the activation, so an admin clicking somebody
+    // else's Forest still just turns it sideways.
+    const intent = battlefieldClickIntent(card, viewerID, isAdmin, {
+      manaClick: !!activateManaAbility,
+      rawTap: !!ev?.altKey,
+    });
+    switch (intent) {
       case "none":
         return;
       case "abilities":
         openCardMenu({ card, x: ev?.clientX ?? 0, y: ev?.clientY ?? 0 });
         return;
+      case "mana":
+        clickForMana(card, ev);
+        return;
       case "tap":
         onTapToggle(card);
     }
+  }
+
+  // clickForMana is the "mana" branch of the click router (#1438): one
+  // ability goes out now, several open the anchored picker. Clicking
+  // the card whose picker is already open closes it instead, so the
+  // card is its own toggle.
+  function clickForMana(card: CardView, ev?: MouseEvent): void {
+    if (manaSourcePickerOpenFor(card.instance_id)) {
+      closeManaSourcePicker();
+      return;
+    }
+    const plan = manaClickPlan(card);
+    if (!plan || !activateManaAbility) return;
+    if (plan.kind === "activate") {
+      activateManaAbility(card, plan.index, plan.colors);
+      return;
+    }
+    openManaSourcePicker({ cardID: card.instance_id, anchor: anchorFor(card, ev) });
+  }
+
+  // The clicked card's box: the element the click landed on, or the
+  // tile found by its instance ID (a keyboard activation has no
+  // pointer), or failing both a point at the cursor.
+  function anchorFor(card: CardView, ev?: MouseEvent): AnchorRect {
+    const target = ev?.currentTarget ?? ev?.target;
+    let el = target instanceof Element ? target.closest("[data-instance-id]") : null;
+    if (!el && typeof document !== "undefined") {
+      el = document.querySelector(`[data-instance-id="${CSS.escape(card.instance_id)}"]`);
+    }
+    if (el) {
+      const r = el.getBoundingClientRect();
+      return { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
+    }
+    const x = ev?.clientX ?? 0;
+    const y = ev?.clientY ?? 0;
+    return { left: x, top: y, right: x, bottom: y };
   }
 </script>
 
@@ -370,6 +428,7 @@
       {selectedCombatCardID}
       onCardClick={handleCardClick}
       onActivateManaAbility={activateManaAbility}
+      onRawTap={activateManaAbility ? onTapToggle : undefined}
       {onActivateAbility}
       {sorcerySpeedBlocked}
     />
@@ -389,6 +448,7 @@
       {selectedCombatCardID}
       onCardClick={handleCardClick}
       onActivateManaAbility={activateManaAbility}
+      onRawTap={activateManaAbility ? onTapToggle : undefined}
       {onActivateAbility}
       {sorcerySpeedBlocked}
     />
@@ -402,6 +462,7 @@
       {selectedCombatCardID}
       onCardClick={handleCardClick}
       onActivateManaAbility={activateManaAbility}
+      onRawTap={activateManaAbility ? onTapToggle : undefined}
       {onActivateAbility}
       {sorcerySpeedBlocked}
     />
@@ -468,6 +529,7 @@
       {isSelf}
       {sendAction}
       onDrawCard={isSelf ? onDrawCard : undefined}
+      {onPlayCard}
       onActivateAbility={isSelf ? onActivateAbility : undefined}
       {sorcerySpeedBlocked}
     />

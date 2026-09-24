@@ -2655,6 +2655,23 @@ type ManaAbilityView struct {
 	// every other ability, which is all but four cards. Stamped by
 	// stampManaIdentity, the pass with a game handle.
 	AddsNoMana bool `json:"adds_no_mana,omitempty"`
+	// ColorOptions is, for each slot of this ability's output that
+	// asks for a colour, the colours that pick would offer the
+	// controller if the ability were activated now (#1443): one list
+	// per PICKING slot, in output order. A painland's "{R|W}" ships
+	// [["R","W"]], Birds of Paradise all five with the commander's
+	// identity first (#843), Command Tower only the identity's colours
+	// (CR 903.4f), a filter land's "{W|U}{W|U}" two lists. Absent for
+	// an ability that picks nothing (a Forest, Sol Ring) and for one
+	// that adds no mana (AddsNoMana).
+	//
+	// The SAME list the `mana_pick` prompt would carry, from the same
+	// function (game.ManaAbilityColorOptions → manaPickOptions), so a
+	// client that draws these at the card and sends the pick back as
+	// `activate_mana_ability`'s `color` / `colors` offers exactly what
+	// the server accepts, in the server's order. Stamped by
+	// stampManaIdentity, the pass with a game handle.
+	ColorOptions [][]string `json:"color_options,omitempty"`
 	// CantActivate is ActivatedAbilityView.CantActivate for a mana
 	// ability (#1210): the printed clause of a board-wide "can't be
 	// activated" static that refuses this one. Cursed Totem's
@@ -3868,7 +3885,14 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// which is what makes Grafdigger's Cage answerable here at all —
 	// and, since #978, answerable for exile and the library top as
 	// well, because they reach this function too.
-	if haveLive {
+	//
+	// #1439: a LAND never asks this gate, matching CastSpell — a land
+	// play is a special action (CR 305.1), not a cast, and every
+	// clause the gate enforces is written about casting. Without this
+	// a Rule of Law or Grafdigger's Cage stamped `cant_cast` onto a
+	// land, which `castIsForbidden` and friends would then read as
+	// "this land can't be played" even though it always could.
+	if haveLive && !live.IsLand() {
 		if err := g.CastGateLocked(caster, live, kind, game.CastSpellParams{}); err != nil {
 			// A card the gate refuses is not a cast surface, whatever
 			// opened the zone — but the bit itself is derived below,
@@ -3918,8 +3942,12 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// Hand and the command zone never carry the bit: every card in
 	// them is a cast candidate and an always-true flag would be noise
 	// the client had to ignore. Exile carries it since #1389, for the
-	// castable-from-exile strip, with a land answered by the land-play
-	// rule rather than the cast gate (exileCastableNow).
+	// castable-from-exile strip.
+	//
+	// #1407: in EVERY zone that carries it, a LAND is answered by the
+	// land-play rule rather than by the spell rules (castableNow). A
+	// land is played, not cast (CR 305.1, CR 116.2a): the land drop
+	// is part of its window and no timing statement reaches it.
 	//
 	// #1195: and the THIRD input, game.CastTimingOpenLocked — the one
 	// CR 307.1 read CastSpell and the bot enumerator also call. Until
@@ -3933,15 +3961,14 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// out of a rule it reimplemented.
 	switch kind {
 	case game.ZoneGraveyard, game.ZoneLibrary:
-		out.CastableHere = out.CantCast == "" && len(offers) > 0 &&
-			haveLive && g.CastTimingOpenLocked(caster, live, kind, grant)
+		out.CastableHere = haveLive && castableNow(g, caster, live, kind, grant, out.CantCast, offers)
 	case game.ZoneExile:
 		// #1389: exile joins them, for the castable-from-exile strip.
 		// A seat reaches this only through stampGrantedPermissions,
 		// which asks the engine for a LIVE permission first, so warp's
 		// and foretell's "on a later turn" never gets here early.
 		if haveLive {
-			out.CastableHere = exileCastableNow(g, caster, live, grant, out.CantCast, offers)
+			out.CastableHere = castableNow(g, caster, live, kind, grant, out.CantCast, offers)
 			out.CastPrices = viewOfCastPrices(g, caster, live, offers)
 		}
 	}
@@ -3974,20 +4001,37 @@ func phyrexianSymbolsIn(costStr string) int {
 	return cost.PhyrexianSymbols()
 }
 
-// exileCastableNow is `castable_here` for a card in exile (#1389):
-// the graveyard's three inputs — no cast gate refuses it, a price is
-// claimable, and game.CastTimingOpenLocked says the window is open —
-// with a LAND answered by the land rule instead. A land is played,
-// not cast (CR 305.1): a cast-only grant (Ragavan) strands it, and a
-// play grant (Breeches) opens it only when CastSpell's land branch
-// would accept it.
+// castableNow is `castable_here` for a card in a graveyard, on a
+// library top or in exile: no cast gate refuses it, a price is
+// claimable, and game.CastTimingOpenLocked says the window is open.
+//
+// A LAND is answered by the land-play rule instead (#1389 for exile,
+// #1407 for the graveyard and the library top). Playing a land is a
+// special action, not a cast (CR 305.1, CR 116.2a), so the inputs are
+// the ones CastSpell's land branch refuses with. Whether the zone is
+// open at all is the caller's gate: a graveyard or library card
+// reaches castStampsFor only under a permission or its own text, and
+// an exiled one only under a live permission.
+//
+//   - a cast-only grant strands it (Ragavan, Realmwalker) —
+//     ErrNoPlayPermission;
+//   - CR 305.1's window and a land drop left (CR 305.2), through
+//     game.LandPlayOpenForEffect — never CastTimingOpenLocked, whose
+//     timing statements (an Orrery, Dosan) are written about casting
+//     and must not reach a land. The drop is the half the spell rules
+//     missed: a land a Courser opens stayed lit after the turn's land
+//     was played, and the button was refused with
+//     ErrLandDropUnavailable.
 //
 // Caller must hold g.mu.
-func exileCastableNow(g *game.Game, caster uuid.UUID, card game.Card, grant *game.CastPermission, cantCast string, offers []*game.AlternativeCost) bool {
+func castableNow(g *game.Game, caster uuid.UUID, card game.Card, kind game.ZoneKind, grant *game.CastPermission, cantCast string, offers []*game.AlternativeCost) bool {
 	if card.IsLand() {
-		return grant != nil && !grant.CastOnly && g.LandPlayOpenForEffect(caster)
+		if grant != nil && grant.CastOnly {
+			return false
+		}
+		return g.LandPlayOpenForEffect(caster)
 	}
-	return cantCast == "" && len(offers) > 0 && g.CastTimingOpenLocked(caster, card, game.ZoneExile, grant)
+	return cantCast == "" && len(offers) > 0 && g.CastTimingOpenLocked(caster, card, kind, grant)
 }
 
 // viewOfCastPrices prices every offer a cast out of exile may claim,
@@ -4685,6 +4729,11 @@ func stampManaIdentity(g *game.Game, card game.Card, controller uuid.UUID, views
 			continue
 		}
 		views[i].AddsNoMana = game.ManaAbilityAddsNoMana(g, controller, card.InstanceID, raw[i])
+		// #1443: the colour lists a pick would offer, from the same
+		// narrowing the prompt uses. Nil for a fixed output and for an
+		// ability that adds nothing, whose picking slots all narrowed
+		// away.
+		views[i].ColorOptions = game.ManaAbilityColorOptions(g, controller, card.InstanceID, raw[i])
 	}
 }
 
