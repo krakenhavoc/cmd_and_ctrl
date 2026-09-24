@@ -365,3 +365,57 @@ mana, silently. There is no per-field way to say "refuse this file if
 you do not know what a token key is", so the version is it, and the
 cost is the one v2 accepted: a pre-#521 binary refuses every post-#521
 restore point rather than restoring one wrong.
+
+## Amendment, 2026-09-24 — `rebuilt` is checked, and compatibility has fixtures (#522)
+
+ADR 0044 decision 7 names two gaps in this ADR. This amendment records how
+they were closed.
+
+**A card restored with fewer abilities than captured.** Decision 2 marks a
+card's ability closures `rebuilt`: restore looks them up in the catalog
+again. Until this change nothing checked that it got back what was
+captured. Two things are compared now, by one function,
+`abilityShortfallOf`:
+
+- the instance counts capture always wrote (`manaAbilityCount`,
+  `activatedAbilityCount`), which only tokens and token copies carry;
+- a new per-card record, `catalogAbilities`. For every card that had a
+  catalog entry at capture, it stores the entry's mana, activated,
+  triggered, static and replacement counts. Printed cards need it
+  because they read their abilities from the catalog when used, so a
+  vanished entry was invisible to the instance counts.
+
+A shortfall in any slot, or an entry that no longer exists, is not a
+reason to abandon the game (owner decision on #515). This is a deliberate
+exception to Decision 5's abandon policy. That policy is for a file the
+binary cannot read. Here the binary reads the file correctly, and the one
+card it cannot automate stays playable by hand.
+
+When a card falls short:
+
+- the table is restored;
+- the card is flagged `Card.AbilitiesLostOnRestore`, which `Unimplemented`
+  reads, so the client shows the `manual` chip;
+- the boot log gets one ERROR line per card, and the restore summary
+  counts the affected games and cards.
+
+The flag is carried by every later snapshot. Nothing clears it except the
+card leaving the game. More abilities than captured is not a shortfall.
+
+Both fields are additive and zero-value correctly in both directions, so
+this is not a schema bump.
+
+**Compatibility has fixtures.** Three things now enforce the rule next to
+`SnapshotSchemaVersion`:
+
+- a reflected shape file per schema version, which any non-additive
+  change must bump past;
+- a frozen set of generated restore points per version;
+- scrubbed real restore points from cmd-dev, added by
+  `cmd/snapshotscrub`.
+
+Every CI run restores every fixture. A key in a fixture that a fresh
+capture no longer carries fails the build, and that is what a rename looks
+like from yesterday's file. Fixtures are never rewritten. A bump adds a
+directory, and a bump that migrates a field lists the migrated paths in
+the corpus test.

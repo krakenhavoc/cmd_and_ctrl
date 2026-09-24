@@ -52,9 +52,11 @@ cmd_and_ctrl/
 ├── server/              # Go game server (authoritative state, WebSocket + HTTP API)
 │   ├── cmd/
 │   │   ├── server/      # main package — serves :8080 with lobby + hub + cards routes
-│   │   └── gamecli/     # dev WebSocket client for driving a game via v0 actions
+│   │   ├── gamecli/     # dev WebSocket client for driving a game via v0 actions
+│   │   └── snapshotscrub/ # strips player data from a restore point before it joins the snapshot corpus (#522)
 │   ├── internal/
 │   │   ├── game/        # authoritative domain: Game, Player, Zone, Card, Turn, mutations
+│   │   │   └── testdata/snapshots/ # the restore-point fixture corpus: v<N>/ generated and frozen per schema version, real/ scrubbed from cmd-dev (#522)
 │   │   ├── protocol/    # v0 wire format types + ViewOfGame + FilterViewFor
 │   │   ├── actions/     # action type enum + Dispatch(Game, Action) router
 │   │   ├── legal/       # legal-move enumerator — the closed move list a bot picks from and the client's timing lookup (ADR 0033 §1)
@@ -68,6 +70,7 @@ cmd_and_ctrl/
 │   │   ├── roadmap/     # the curated registry of keywords, mechanics and engine seams behind the public roadmap; generates docs/engine-seams.md's open table (ADR 0092)
 │   │   ├── bugstore/    # bug-report artifacts: reporter screenshots (public, Camo-reachable) + pinned replays (admin-only)
 │   │   ├── deck/        # decklist parsers (Moxfield, plain text) + Commander validation
+│   │   ├── snapshotscrub/ # the scrubber behind cmd/snapshotscrub: generic-JSON rewrite, refuses snowflakes and emails (#522)
 │   │   └── db/          # persistent SQLite store (ADR 0051): open/WAL/migrate/backup (S34 sub-PR 1); users/games/decks land in later sub-PRs
 │   ├── Makefile
 │   └── .golangci.yml
@@ -280,6 +283,17 @@ unused — they can be removed in a later cleanup PR.)
   - `CMDCTRL_BOT_DECISION_LOG_MODE` — `escalated` (default: full board view only for windows that left Layer A) | `all` | `model` (only the windows a model answered). An unrecognised value fails the boot **when the log is on**, like `CMDCTRL_BOT_MAX_THINK`; with the log off it is a warning, because refusing to start over a variable that changes nothing is a server that does not come back after a rollback.
 - Cron: `scripts/scryfall-refresh.sh` — weekly refresh of the Scryfall default-cards dump (suggested cron: `0 5 * * 0`)
 - Off-site backup: `scripts/backup-offsite.sh`, run nightly by `deploy/cmd-and-ctrl-backup.service` + `.timer` (as `cmdctrl`, data dir read-only) on both hosts. It uses restic to back up the data dir to a per-host Cloudflare R2 bucket, taking `db/cmdctrl.backup.sqlite` but never the live db, and skipping the `scryfall/`, `images/` and `avatars/` caches. Credentials are in `/etc/cmd_and_ctrl/backup.env` (`root:cmdctrl 0640`, separate from the server's env), written by the CD step "Ensure off-site backup" from the `CMDCTRL_R2_*` and `CMDCTRL_RESTIC_PASSWORD` values in the `prod` / `dev` GitHub environments. A missing value, or one still containing `REPLACE_ME`, is a `::warning::` and a disabled timer, never a failed deploy. **The restic password must never change once a repository exists**; its recovery copy is the owner's password manager. Runbook, including the restore: [docs/environments.md](docs/environments.md#backups) (#1031).
+
+### Snapshot compatibility (#522)
+
+A restore point written by yesterday's binary has to restore in today's. Three tests hold that line, and the rule they enforce is written next to `SnapshotSchemaVersion` in `server/internal/game/snapshot.go`: changes within a version are additive only, anything else is a bump, and fixtures are never edited.
+
+- **The shape guard.** `TestSnapshotShapeIsRecorded` (`internal/game`) compares the snapshot structs' JSON shape with `internal/game/testdata/snapshot_shape/v<N>.txt`. If you add a snapshot field, record it in the same change: `cd server && go test ./internal/game -run TestSnapshotShapeIsRecorded -args -update-shape`. The tool refuses a non-additive change (a key renamed, removed or retyped) under the current number. Bump `SnapshotSchemaVersion`, say why in its comment, and rerun it. It writes `v<N+1>.txt` and leaves the old file frozen.
+- **The fixture corpus.** `TestSnapshotCorpusRestores` (`internal/cards/effects`, because restoring tokens, Clones and Equipment needs the real catalog) restores every file under `internal/game/testdata/snapshots/` with `RestoreStrict`. It fails if any key or value in a fixture is missing from a fresh capture of the restored game, if a card comes back with fewer catalog abilities than the file recorded, or if the game will not round-trip or take an action.
+  - `v<N>/` is the generated set for schema N. It is written once, when N is introduced: `cd server && go test ./internal/cards/effects -run TestWriteSnapshotCorpus -args -write-corpus`. The writer never touches an existing directory. It fails if the current build would render a frozen set differently, and tells you to bump instead. CI fails if the current version has no directory.
+  - `real/` holds scrubbed restore points from cmd-dev. Add one with `cd server && go run ./cmd/snapshotscrub -in <restore/id.json> -out internal/game/testdata/snapshots/real/<name>.json`. The tool replaces names and player IDs, drops Discord IDs and avatar hashes, and refuses to write if a snowflake, an email or an original player name is left anywhere. It never overwrites a file.
+  - **Never edit, regenerate or delete a fixture to make the test pass.** If a bump migrates an old shape, list the migrated paths in `corpusMigrations` in `snapshot_corpus_test.go`, with the reason. Nothing else may excuse a difference.
+- **The ability check.** A card whose catalog entry lost abilities between the writing and the reading binary is restored anyway. It is flagged `Card.AbilitiesLostOnRestore`, which shows it as `manual` for the rest of the game, and the boot log has an ERROR line naming the game, the card and the counts. More abilities than captured is not a mismatch.
 
 ### AI bot seat (Go, `server/internal/aiseat/`)
 

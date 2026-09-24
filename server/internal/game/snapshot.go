@@ -144,6 +144,41 @@ import (
 // "refuse this file if you do not know what phasing is", so the
 // version is it, and the cost is the one v2 and v5 accepted.
 //
+// THE COMPATIBILITY RULE, and what enforces it (#522, ADR 0044
+// decision 7). The paragraphs above are the judgement; these are the
+// tests that make somebody exercise it.
+//
+//   - Within a version, changes are ADDITIVE ONLY: a new key whose zero
+//     value is right for every older file AND whose absence a binary
+//     from before it can live with (the other direction — v2, v5 and
+//     v6 were all bumps for that half alone). Nothing else is.
+//   - A key renamed, removed or retyped, a unit changed, or an existing
+//     key given a new meaning FORCES A BUMP. So does an additive change
+//     that fails either half of the line above.
+//   - testdata/snapshot_shape/v<N>.txt records the on-disk shape of this
+//     version, every JSON path and its type, derived by reflection.
+//     TestSnapshotShapeIsRecorded fails on any difference. An additive
+//     one is recorded in the SAME change by re-running with
+//     -update-shape; a non-additive one cannot be recorded at all under
+//     the old number — -update-shape refuses — so it has to come with a
+//     bump, which writes v<N+1>.txt and freezes v<N>.txt.
+//   - testdata/snapshots/v<N>/ is a frozen set of restore points written
+//     by the binary that introduced version N, and testdata/snapshots/
+//     real/ holds scrubbed ones copied off cmd-dev. FIXTURES ARE NEVER
+//     EDITED OR REGENERATED; a bump adds a directory
+//     (TestWriteSnapshotCorpus) and every older one stays. On every CI
+//     run the corpus test in internal/cards/effects restores each
+//     fixture strictly and fails if any key or value in it is missing
+//     from a fresh capture of the restored game — which is exactly what
+//     a rename looks like to yesterday's file. A bump that migrates an
+//     old shape lists the migrated paths in that test's
+//     corpusMigrations; nothing else excuses a difference.
+//   - A card whose catalog entry lost abilities between the writing and
+//     the reading binary is not a schema question at all: restore flags
+//     it and reports it (abilityShortfallOf), and the corpus fails on it.
+//
+// AGENTS.md ("Snapshot compatibility") has the commands.
+//
 // Restore REFUSES anything it does not recognise rather than guessing.
 // See ErrSchemaTooNew / ErrSchemaUnsupported and ADR 0041 for the
 // version-skew policy this implements.

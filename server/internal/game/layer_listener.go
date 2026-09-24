@@ -588,3 +588,15 @@ func findCardInNonBattlefieldZoneLocked(g *Game, cardID uuid.UUID) *Card {
 // ever produces same-nanosecond entries, the stable sort in the
 // layer engine resolves the tie deterministically.
 var timeNowUnixNano = func() int64 { return time.Now().UnixNano() }
+
+// SetClockForTest replaces the clock the engine stamps battlefield
+// entries, attachments and layer timestamps with, and returns the
+// function that puts the previous one back. It exists for the #522
+// snapshot corpus writer, which has to produce byte-identical fixtures
+// from a scripted board, and it is never called by production code.
+// Not safe to call while another goroutine is driving a game.
+func SetClockForTest(now func() int64) (restore func()) {
+	prev := timeNowUnixNano
+	timeNowUnixNano = now
+	return func() { timeNowUnixNano = prev }
+}
