@@ -78,6 +78,52 @@ func ThisSourcesLoyaltyAbilitiesAtInstantSpeed(label string, when func(g *game.G
 	}
 }
 
+// LoyaltyAbilitiesOfYourPlaneswalkersAtInstantSpeed is the EMBLEM
+// shape (#1275): "You may activate loyalty abilities of planeswalkers
+// you control on any player's turn any time you could cast an
+// instant" — Teferi, Temporal Archmage's −10, and the −12 Teferi's
+// Talent grants.
+//
+// ThisSourcesLoyaltyAbilitiesAtInstantSpeed with the self-reference
+// widened to a control test, because that is the whole difference in
+// the text: Teferi, Master of Time names HIMSELF, the emblem names
+// every planeswalker its owner controls. Declared on
+// `EmblemSpec.ActivationTimings`, so `q.Source` is the emblem and
+// `q.Source.Controller` is its owner (CR 114.2 — an emblem's
+// controller is the player who has it, and it never changes).
+//
+// THREE NARROWINGS again, each a clause on the card:
+//
+//   - LOYALTY abilities — an equip ability on a planeswalker-turned-
+//     creature stays at its printed window.
+//   - PLANESWALKERS — the object activating must be one right now.
+//   - YOU CONTROL — the planeswalker's controller is the emblem's
+//     owner, and so is the activator. A planeswalker you steal is
+//     opened for you; one an opponent steals from you is not opened
+//     for them, because the emblem is still yours.
+//
+// "Only one loyalty ability per planeswalker per turn" (CR 606.3's
+// other half) is untouched: this opens the WINDOW, and the tally in
+// `Game.LoyaltyActivatedThisTurn` is read after it.
+func LoyaltyAbilitiesOfYourPlaneswalkersAtInstantSpeed(label string) game.ActivationTiming {
+	return game.ActivationTiming{
+		Label:  label,
+		Timing: game.TimingFlash,
+		Covers: func(q game.ActivationQuery) bool {
+			if !q.Ability.Loyalty {
+				return false
+			}
+			if !q.Card.IsPlaneswalker() {
+				return false
+			}
+			if q.Card.Controller != q.Source.Controller {
+				return false
+			}
+			return q.Controller == q.Source.Controller
+		},
+	}
+}
+
 // EquipAbilitiesAtInstantSpeed is Leonin Shikari: "You may activate
 // equip abilities any time you could cast an instant."
 //

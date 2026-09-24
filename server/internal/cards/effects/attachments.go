@@ -401,6 +401,14 @@ func EnchantLand(preds ...CardPredicate) *game.TargetSpec {
 	return TargetPermanent("enchant land", append([]CardPredicate{Land()}, preds...)...)
 }
 
+// EnchantPlaneswalker is "Enchant planeswalker" (Teferi's Talent).
+// The CR 704.5m re-check reruns it, so an enchanted planeswalker that
+// stops being one takes the Aura to the graveyard, the way EnchantLand
+// does for a land.
+func EnchantPlaneswalker(preds ...CardPredicate) *game.TargetSpec {
+	return TargetPermanent("enchant planeswalker", append([]CardPredicate{Planeswalker()}, preds...)...)
+}
+
 // EnchantPlayer is a Curse's "Enchant player" clause. The reason
 // Card.AttachedTo is a TargetRef and not a card ID.
 func EnchantPlayer(preds ...PlayerPredicate) *game.TargetSpec {
