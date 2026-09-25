@@ -959,7 +959,7 @@ func init() {
 | "for as long as ~ remains on the battlefield" / "for as long as you control ~" | `DurationWhileSourceRemains(ctx, src)` / `DurationWhileYouControlSource(ctx, src, p)` | when the condition goes false, checked at the top of every layer pass (CR 611.2b) |
 | no duration printed at all | `game.IndefiniteDuration()` | never (CR 611.2a) |
 
-Reach for `BoostUntilEOT` / `GrantKeywordUntilEOT` for the first row and `ScopedEffectFor{Target|Match, Mods, Duration, Label}` for everything else — a DATA record over the closed `game.*Mod` vocabulary (`SetBasePTMods`, `AddSubtypesMod`, `RemoveTypesMod`, `SetControllerMod`, … in `game/scoped_effects.go`), which the snapshot carries, so a table holding one is still a restore point ([ADR 0041](docs/decisions/0041-game-persistence.md) phase 3, #1497). Every other until-end-of-turn builder (`RestrictUntilEOT`, `GrantAllCreatureTypesUntilEOT`, `BecomeCreatureUntilEOT` / crew) and prowess write the same record. The closure-taking registry (`StaticForDuration`, `StaticUntilEOT`, `RegisterScopedStaticForEffect`, `Game.ScopedStatics`) was deleted in tier 3a, so nothing accepts a closure for one any more; an effect none of the mods can say is a new mod kind, not a closure. There is deliberately no `StaticUntilYourNextTurn` wrapper. A one-shot continuous effect from a resolving spell must pin its affected set at resolution (CR 611.2c): `ScopedEffectFor` does that itself — its `Match` is resolved once, into `(InstanceID, EnteredBattlefieldAt)` pairs, so a permanent flickered in response is correctly a new object (CR 400.7). An indefinite effect pinned to its object survives that object phasing out and in (CR 702.26d); a "for as long as" duration that tracks a source ends when the source phases out (CR 702.26f). The two "for as long as" builders return `(Duration, bool)` and the bool is load-bearing: CR 611.2b says an effect whose condition is already false as it would begin never begins, so register nothing. See [ADR 0063](docs/decisions/0063-durations-and-control.md) and [ADR 0035](docs/decisions/0035-until-end-of-turn-effects.md).
+Reach for `BoostUntilEOT` / `GrantKeywordUntilEOT` for the first row and `ScopedEffectFor{Target|Match, Mods, Duration, Label}` for everything else — a DATA record over the closed `game.*Mod` vocabulary (`SetBasePTMods`, `AddSubtypesMod`, `RemoveTypesMod`, `SetControllerMod`, … in `game/scoped_effects.go`), which the snapshot carries, so a table holding one is still a restore point ([ADR 0041](docs/decisions/0041-game-persistence.md) phase 3, #1497). Every other until-end-of-turn builder (`RestrictUntilEOT`, `GrantAllCreatureTypesUntilEOT`, `BecomeCreatureUntilEOT` / crew) and prowess write the same record. So does a granted ABILITY for a duration, `GrantAbilitiesFor` (the `grantAbilities` mod; see "Granting an ability to another permanent" below). The closure-taking registry (`StaticForDuration`, `StaticUntilEOT`, `RegisterScopedStaticForEffect`, `Game.ScopedStatics`) was deleted in tier 3a, so nothing accepts a closure for one any more; an effect none of the mods can say is a new mod kind, not a closure. There is deliberately no `StaticUntilYourNextTurn` wrapper. A one-shot continuous effect from a resolving spell must pin its affected set at resolution (CR 611.2c): `ScopedEffectFor` does that itself — its `Match` is resolved once, into `(InstanceID, EnteredBattlefieldAt)` pairs, so a permanent flickered in response is correctly a new object (CR 400.7). An indefinite effect pinned to its object survives that object phasing out and in (CR 702.26d); a "for as long as" duration that tracks a source ends when the source phases out (CR 702.26f). The two "for as long as" builders return `(Duration, bool)` and the bool is load-bearing: CR 611.2b says an effect whose condition is already false as it would begin never begins, so register nothing. See [ADR 0063](docs/decisions/0063-durations-and-control.md) and [ADR 0035](docs/decisions/0035-until-end-of-turn-effects.md).
 
 **Control from effects (CR 613.1b, CR 701.12, S38).** "Gain control of target permanent" is `GainControl{Target, Controller, Duration, Label}` and "exchange control" is `ExchangeControl{A, B}`. Both are layer-2 scoped effects — data records with one `setController` mod (#1497) — in the same bucket Mind Control's Aura uses, which is what makes control revert by itself (`Card.BaseController`) and makes two control effects sort by timestamp (CR 613.7) with no card-side work. Do NOT write `Card.Controller`. Three things ride along and are why the printed cards look the way they do: the permanent leaves combat (CR 506.4, declaration and announcement both), it is summoning-sick under its new controller however long it has been in play (CR 302.6 — which is why Act of Treason also grants haste), and ownership never changes (CR 108.3). An exchange is ONE effect: both objects are checked before either half is registered and the two halves share a timestamp, so it fails whole (CR 701.12b). `Controller` defaults to the effect's controller; pass it explicitly for "target opponent gains control of ~" — that card still waits on the choose-a-player prompt, not on this primitive.
 
@@ -1018,10 +1018,35 @@ recipients: the controller, the removal and the LKI all come out wrong.
 See `dionus_elvish_archdruid.go`, `agent_of_the_iron_throne.go` and
 `thornbite_staff.go`.
 
-Duration grants from a resolving spell or ability ("until end of turn,
-target creature gains …") are ADR 0093 PR 4, which lands as a
-`grantAbilities` mod on ADR 0041 phase 3's ScopedEffect; they have no
-shape yet.
+A grant from a RESOLVING spell or ability ("until end of turn, target
+creature gains '…'", Urza's Saga's "this Saga gains '…'") is the same
+bundle, given with `GrantAbilitiesFor` (ADR 0093 PR 4, #1584):
+
+```go
+Grants: []AbilityGrant{{Key: feignDeathReturn, Triggered: …, Text: "When this creature dies, …"}},
+OnResolve: func(_ *game.StackItem, ctx *Context) error {
+    return GrantAbilitiesFor{Target: t, Keys: []string{feignDeathReturn}, Label: "Feign Death — …"}.Apply(ctx)
+},
+// "gets +2/+0 and gains …" is ONE effect: Also: []game.Mod{game.ModifyPTMod(2, 0)}
+// no stated duration (CR 611.2a): Duration: g.PinnedTo(game.IndefiniteDuration(), id)
+```
+
+It registers ADR 0041 phase 3's ScopedEffect record with a
+`grantAbilities` mod (`game.GrantAbilitiesMod`), which the layer pass
+turns into the same layer-6 declaration a static makes — so every
+reader, ref, removal and copy rule is the static grant's. It is data, so
+the table stays a restore point. A zero `Duration` is "until end of
+turn"; the affected set is pinned at resolution (CR 611.2c), so a
+creature that dies and returns is a new object without the grant. Keys
+must name a registered bundle with no `Static` slot: `Apply` refuses
+one at resolution, `TestEveryDurationGrantKeyResolves` scans the
+catalog's source for literal and constant keys, and a restore point
+naming an unregistered bundle is refused with `ErrUnknownEffectKey`. A
+"return it to the battlefield tapped [with a counter]" dies trigger is
+`returnThisCreatureFromGraveyard`. See `feign_death.go`,
+`fake_your_own_death.go`, `retraction_helix.go` and `urzas_saga.go`.
+Still no shape: a duration that lasts "for as long as it has a <kind>
+counter on it" (Ultima, Origin of Oblivion).
 
 ### Adding a replacement effect (S17+)
 

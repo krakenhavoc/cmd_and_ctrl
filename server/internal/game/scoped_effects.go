@@ -47,9 +47,8 @@ type ModKind string
 // The kinds. The layer each belongs to is fixed by modKinds below, so
 // a record cannot put an operation in the wrong layer.
 //
-// `grantAbilities` (ADR 0093's ScopedGrant) joins this list with
-// ADR 0093's PR 4, which is where the layer-6 grant seam it adapts
-// into lands; it is not declared before something can interpret it.
+// `grantAbilities` (ADR 0093's ScopedGrant) is the last block below:
+// ADR 0093 PR 4, #1584.
 const (
 	ModSetController    ModKind = "setController"    // layer 2
 	ModAddTypes         ModKind = "addTypes"         // layer 4
@@ -71,6 +70,29 @@ const (
 	// text sits, only ever appended to (attack_requirements.go).
 	ModAddAttackRequirement ModKind = "addAttackRequirement" // layer 6
 )
+
+// ModGrantAbilities gives each affected object the named catalog
+// ability BUNDLES (effects.AbilityGrant) for the record's duration —
+// ADR 0093 Decision 7's ScopedGrant, as a mod (#1584; ADR 0041 phase 3
+// owner decision 1). "Until end of turn, target creature gains 'When
+// this creature dies, return it to the battlefield tapped …'" (Feign
+// Death), "gains '{T}: Return target nonland permanent …'" (Retraction
+// Helix), Urza's Saga's chapters with no duration at all.
+//
+// Layer 6, in the record's timestamp slot: the adapter builds the very
+// StaticAbility.GrantAbilities declaration a granting permanent's
+// static makes, so the recipient's Characteristic.GrantedAbilities,
+// the `grant:` refs, the auto-tapper's tiering, CR 613.6's "a later
+// removal takes it, an earlier one does not", and CR 707.2's "a copy
+// does not copy it" are all the SAME code a static grant runs. The
+// grantor recorded on the recipient is the record's source.
+//
+// Reads Grants. Each entry is a bundle key (either spelling of
+// GrantKey); a restore point naming a bundle this binary's catalog does
+// not register is refused (ErrUnknownEffectKey), exactly as an unknown
+// kind is — the bundle is as much a part of the effect's meaning as the
+// kind is.
+const ModGrantAbilities ModKind = "grantAbilities" // layer 6
 
 // AffectedScope is a ScopedEffect's affected set as a RULE read live at
 // every layer pass, instead of a set of objects locked when the effect
@@ -117,6 +139,8 @@ type Mod struct {
 	Power        int         `json:"power,omitempty"`
 	Toughness    int         `json:"toughness,omitempty"`
 	Player       uuid.UUID   `json:"player,omitempty"`
+	// Grants is ModGrantAbilities' bundle keys, in GrantKey form.
+	Grants []string `json:"grants,omitempty"`
 }
 
 // AffectedObject is one member of a ScopedEffect's affected set: the
@@ -241,6 +265,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModModifyPT:         {layer: Layer7PT, subLayer: SubLayer7C_Modify},
 	// #1571
 	ModAddAttackRequirement: {layer: Layer6Ability},
+	// #1584, ADR 0093 PR 4
+	ModGrantAbilities: {layer: Layer6Ability},
 }
 
 // KnownModKind reports whether this binary can interpret k.
@@ -330,6 +356,21 @@ func AddAttackRequirementMod(otherThan uuid.UUID) Mod {
 	return Mod{Kind: ModAddAttackRequirement, Player: otherThan}
 }
 
+// GrantAbilitiesMod is "gains '<ability>'" (layer 6, ADR 0093 PR 4):
+// each affected object gets the named catalog bundles, with the
+// record's source as the grantor. Reads Grants. Keys are stored in
+// GrantKey form; an empty key is dropped, and a mod with no key left
+// is refused at registration.
+func GrantAbilitiesMod(keys ...string) Mod {
+	out := make([]string, 0, len(keys))
+	for _, k := range keys {
+		if k = GrantKey(k); k != "" {
+			out = append(out, k)
+		}
+	}
+	return Mod{Kind: ModGrantAbilities, Grants: out}
+}
+
 // SetBasePTMods is "has base power and toughness P/T" — both 7b
 // halves.
 func SetBasePTMods(power, toughness int) []Mod {
@@ -413,6 +454,9 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 		if !KnownModKind(m.Kind) {
 			panic(fmt.Sprintf("game: scoped effect %q uses unknown mod kind %q", label, m.Kind))
 		}
+		if m.Kind == ModGrantAbilities && len(m.Grants) == 0 {
+			panic(fmt.Sprintf("game: scoped effect %q grants no ability bundle", label))
+		}
 	}
 	e := ScopedEffect{
 		Affected:  append([]AffectedObject(nil), affected...),
@@ -446,6 +490,7 @@ func cloneMods(mods []Mod) []Mod {
 		m.Subtypes = copyStrings(m.Subtypes)
 		m.Colors = copyStrings(m.Colors)
 		m.Keywords = copyStrings(m.Keywords)
+		m.Grants = copyStrings(m.Grants)
 		out[i] = m
 	}
 	return out
@@ -644,6 +689,12 @@ func adaptScopedEffects(records []ScopedEffect) []ContinuousEffect {
 					RemovesAbilities: spec.removes,
 					AppliesTo:        applies,
 					Apply:            modApply(m),
+					// ModGrantAbilities (ADR 0093 PR 4): the same
+					// declaration a granting static makes, so the
+					// engine writes the grant in this slot with the
+					// record's source as the grantor. Nil for every
+					// other kind.
+					GrantAbilities: m.Grants,
 				},
 				source:    src,
 				timestamp: e.Timestamp,

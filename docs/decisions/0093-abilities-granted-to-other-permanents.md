@@ -3,6 +3,7 @@
 **Status:** Proposed · 2026-09-24 · S38 — Layers: dependency ordering, ability grants, ability removal
 **Amended:** 2026-09-24 — the owner answered four of the five open questions; see "Owner decisions".
 2026-09-24 — PR 1's implementation notes; see "Amendment 2026-09-24 — what PR 1 built".
+2026-09-24 — PR 4 (duration grants, #1584); see "Amendment 2026-09-24 — what PR 4 built".
 **Issue:** [#754](https://github.com/krakenhavoc/cmd_and_ctrl/issues/754) (this seam — the public roadmap's
 top missing seam, `abilities-granted-to-other-permanents` in `server/internal/roadmap/registry.go`)
 **Numbering:** swept with the AGENTS.md §4 check on 2026-09-24 — `git fetch origin`, then every
@@ -614,6 +615,71 @@ one PR, and the client picker is the next.
   reachable for Dionus only through a legend-rule-exempt copy.
 - **Out of scope.** PR 4 (duration grants) is no longer this ADR's registry. Per the #1545
   decision, it lands as a `grantAbilities` mod on ADR 0041 phase 3's `ScopedEffect`.
+
+## Amendment 2026-09-24 — what PR 4 built
+
+PR 4 is [#1584](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1584). Per the #1545 decision it
+is not a `ScopedGrant` registry. It is one more mod kind on ADR 0041 phase 3's `ScopedEffect`.
+
+- **The mod.** `grantAbilities` (`game.ModGrantAbilities`), layer 6, built with
+  `game.GrantAbilitiesMod(keys...)`. It reads a new `Mod.Grants []string` (JSON `grants`, omitted
+  when empty), which holds keys in `GrantKey` form. ADR 0041's sketch called the field `keys`; the
+  shipped name is `grants`, so it cannot be mistaken for keyword strings.
+  - The kind string is an on-disk identity: it is never renamed and never reused.
+  - The field is additive within v7, and the shape file records it. A v7 binary from before PR 4
+    meets an unknown kind and an unknown `grants` key, and refuses the file (ADR 0041 P4). So no
+    schema bump.
+- **The adapter.** `adaptScopedEffects` gives the record's layer-6 `StaticAbility` a
+  `GrantAbilities` list. That is the declaration a granting static makes (PR 1, amendment item 1),
+  so the engine writes `GrantedAbility{Key, Source}` in the record's timestamp slot, with the
+  record's source as the grantor. Every downstream reader is the static grant's code, unchanged:
+  - `CatalogAbilityKey` and the `grant:` refs;
+  - the ability rows and the auto-tapper's tiering;
+  - the trigger harvest, including LKI dies triggers;
+  - CR 613.6: a later removal takes the grant, an earlier one does not;
+  - CR 707.2: the copiable values never read the layered result.
+
+  The adapter memo (#1558) needs nothing new: the grant keys hang off the record's `Mods`, whose
+  address is already part of the memo key.
+- **The affected set and the duration.** Both come from the record: the set is pinned at resolution
+  (CR 611.2c), and the duration is an ADR 0063 `Duration`.
+  - A flickered or reanimated recipient is a new object without the grant (CR 400.7). Feign Death's
+    returned creature does not return again.
+  - A grant with no stated duration (CR 611.2a, Urza's Saga) is `IndefiniteDuration` pinned to its
+    object, so the record is swept when the object leaves.
+- **Validation, three places.**
+  1. At resolution, the card-side builder refuses a bundle the catalog does not register, or one
+     with a `Static` slot (Decision 10). `ScopedEffectFor` applies the same check to a hand-built
+     mod.
+  2. At build time, `TestEveryDurationGrantKeyResolves` scans the catalog's source for every
+     `GrantAbilitiesFor{Keys: …}` literal and every `game.GrantAbilitiesMod(…)` call. It resolves
+     each key from a string literal or a package-level constant and holds it to the same rule. A
+     boot-time walk cannot see these keys, because they live in `OnResolve` closures.
+  3. At restore, a `grantAbilities` mod naming an unregistered bundle, or naming none, is refused
+     with `ErrUnknownEffectKey`, and the file is kept. This is the same refusal an unknown kind gets.
+- **Card-side vocabulary.** Decision 9 planned two constructors. PR 4 ships one:
+  `effects.GrantAbilitiesFor{Target | Match, Keys, Also, Duration, Label}`.
+  - A zero `Duration` is "until end of turn".
+  - `Also` carries the rest of the same effect at the same timestamp. Fake Your Own Death's
+    "gets +2/+0 and gains …" is one record. The grant is applied after `Also`, so a removal in
+    `Also` empties the list before the grant is written (ADR 0046 §2).
+  - `game.GrantAbilitiesMod` inside a `ScopedEffectFor` works too.
+- **One engine addition.** `Game.ReturnFromGraveyardWithCountersForEffect` carries "with a +1/+1
+  counter on it" as a CR 614.1c "enters with" clause on the entry event, beside `tapped`.
+  - Why: Hardened Scales sees the counter, and an ETB trigger finds it already there.
+  - Shared body: the granted "return it to the battlefield tapped" dies trigger is
+    `effects.returnThisCreatureFromGraveyard`.
+- **Cards.** Feign Death, Fake Your Own Death, Malakir Rebirth (the spell face), Retraction Helix
+  and Urza's Saga. All are `CompletenessFull`. The corpus gains `v7/duration_grants.json`, a new
+  file holding Feign Death's grant and Fake Your Own Death's two-mod record.
+- **Not built.** Ultima, Origin of Oblivion needs two more pieces:
+  - a `DurationCondition` held by a counter on the pinned object ("for as long as that land has a
+    blight counter on it");
+  - a layer-4 "loses all land types" mod, which needs CR 205.3i's list of land types in the engine.
+
+  Both are small, but neither is a grant, so they are left for their own change. The registry's
+  `Waiting` list keeps Ultima. Teferi's Talent (granted loyalty abilities) stays out of scope per
+  Decision 10.
 
 ## Open questions for the owner
 

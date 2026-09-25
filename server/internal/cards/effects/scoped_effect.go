@@ -63,6 +63,11 @@ func (s ScopedEffectFor) Apply(ctx *Context) error {
 	if len(s.Mods) == 0 {
 		return nil
 	}
+	// ADR 0093 PR 4: a grantAbilities mod must name a bundle the
+	// catalog registers (duration_grants.go).
+	if err := checkGrantMods(s.Mods); err != nil {
+		return err
+	}
 	set := eotSnapshot(ctx, s.Target, s.Match)
 	if set == nil {
 		return nil

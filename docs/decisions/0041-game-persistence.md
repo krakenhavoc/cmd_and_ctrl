@@ -1156,7 +1156,8 @@ Three things the first slice settled that the decisions above left open.
   ForAsLongAs condition still reads the battlefield alone, because
   CR 702.26f ends a duration that tracks a phased-out permanent.
 - **`grantAbilities` is not declared yet.** It lands with ADR 0093's PR 4,
-  together with the grant seam it adapts into.
+  together with the grant seam it adapts into. *(Landed with #1584: see
+  ADR 0093's "Amendment 2026-09-24 — what PR 4 built".)*
 
 ### Implementation notes (PR 2, tier 2: delayed triggers as data)
 
@@ -1268,3 +1269,23 @@ Three things the first slice settled that the decisions above left open.
   `v7/crewed_vehicle.json` (a real crew of Smuggler's Copter) are new
   files under the "never touch an existing file" rule. No existing
   fixture changed.
+
+### Implementation notes (ADR 0093 PR 4: `grantAbilities`)
+
+- **The thirteenth operation is declared.** `grantAbilities` (#1584) is
+  a layer-6 kind that reads a new `Mod.Grants` list of catalog bundle
+  keys (JSON `grants`, omitted when empty; the sketch above called it
+  `keys`). The adapter gives the record's layer-6 `StaticAbility` a
+  `GrantAbilities` list, so the grant is the same declaration a
+  granting static makes, written in the record's timestamp slot.
+- **No schema bump.** The kind and the field are additive within v7
+  and recorded in the shape file. A v7 binary from before them meets an
+  unknown kind and an unknown key, and refuses the file (P4).
+- **The bundle is part of the key.** A restore point whose
+  `grantAbilities` mod names a bundle this binary's catalog does not
+  register, or names none, is refused with `ErrUnknownEffectKey`, like
+  an unknown kind.
+- **Fixture.** `v7/duration_grants.json` (a real Feign Death, and Fake
+  Your Own Death's `modifyPT` plus `grantAbilities` record) is a new
+  file. No existing fixture changed, and `closure_fields.txt` is
+  unchanged.
