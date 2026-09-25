@@ -44,12 +44,9 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return ev.Source == source.InstanceID && combatDamageToPlayerBy(ev, source.Controller, g)
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				victim := ev.Target
-				return game.NewTriggeredItem(source, "Cybership — put the top two cards of that player's library onto the battlefield face down as Cybermen",
-					func(g *game.Game, item *game.StackItem) error {
-						return cybershipTakeTopTwo(g, item.Controller, victim)
-					})
+			Key: "Cybership — put the top two cards of that player's library onto the battlefield face down as Cybermen",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return cybershipTakeTopTwo(g, item.Controller, item.Trigger.Event.Target)
 			},
 		}},
 		Activated: []ActivatedAbility{{

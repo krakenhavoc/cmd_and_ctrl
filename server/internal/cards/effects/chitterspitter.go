@@ -47,9 +47,8 @@ func init() {
 			},
 			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Chitterspitter — sacrifice a token to put an acorn counter on it?"},
 			Targets:        TargetPermanent("a token you control", IsTokenPredicate(), YouControl()),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Chitterspitter — sacrifice a token, put an acorn counter on it", b29SacrificeChosenTokenThenAcorn)
-			},
+			Key:            "Chitterspitter — sacrifice a token, put an acorn counter on it",
+			Effect:         b29SacrificeChosenTokenThenAcorn,
 		}},
 		Activated: []ActivatedAbility{{
 			Label: "{G}, {T}: Create a 1/1 green Squirrel creature token.",

@@ -28,10 +28,8 @@ func init() {
 			TargetsFrom: AnotherTarget(func(other CardPredicate) *game.TargetSpec {
 				return TargetCreature("another target creature you control", YouControl(), other)
 			}),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Deputy of Acquittals — return a creature to hand",
-					bounceChosenTarget)
-			},
+			Key:    "Deputy of Acquittals — return a creature to hand",
+			Effect: bounceChosenTarget,
 			OptionalPrompt: &game.TriggerOptionalPrompt{
 				Question: "Deputy of Acquittals — return another creature you control to its owner's hand?",
 			},

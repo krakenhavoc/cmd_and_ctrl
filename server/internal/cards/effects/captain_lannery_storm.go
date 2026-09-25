@@ -51,15 +51,13 @@ func init() {
 					c, ok := g.LookupCardForEffect(ev.CardID)
 					return ok && hasSubtype(c, "Treasure")
 				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Captain Lannery Storm — +1/+0 until end of turn",
-						func(g *game.Game, item *game.StackItem) error {
-							return BoostUntilEOT{
-								Target: item.SourceCardID,
-								Power:  1,
-								Label:  "Captain Lannery Storm — +1/+0 until end of turn",
-							}.Apply(NewContext(g, item))
-						})
+				Key: "Captain Lannery Storm — +1/+0 until end of turn",
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					return BoostUntilEOT{
+						Target: item.SourceCardID,
+						Power:  1,
+						Label:  "Captain Lannery Storm — +1/+0 until end of turn",
+					}.Apply(NewContext(g, item))
 				},
 			},
 		},

@@ -30,7 +30,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
-			Key:     "Cream of the Crop — look at the top X cards",
+			Key:     "Cream of the Crop — look at the top X cards of your library",
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				c, ok := enteredUnderYourControl(ev, source, g, false)
 				return ok && c.IsCreature()
@@ -38,10 +38,7 @@ func init() {
 			OptionalPrompt: &game.TriggerOptionalPrompt{
 				Question: "Cream of the Crop — look at the top X cards of your library, where X is that creature's power?",
 			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Cream of the Crop — look at the top X cards of your library",
-					creamOfTheCropLook)
-			},
+			Effect: creamOfTheCropLook,
 		}},
 	})
 }

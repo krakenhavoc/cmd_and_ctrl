@@ -40,12 +40,8 @@ func init() {
 		Triggered: []game.TriggeredAbility{{
 			Watches:   []game.EventKind{game.EventETB},
 			AppliesTo: cloudstoneNonartifactEntered,
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				entered := ev.CardID
-				return game.NewTriggeredItem(source,
-					"Cloudstone Curio — return another permanent you control to its owner's hand",
-					cloudstoneReturnAnother(entered))
-			},
+			Key:       "Cloudstone Curio — return another permanent you control to its owner's hand",
+			Effect:    cloudstoneReturnAnother,
 		}},
 	})
 }
@@ -68,38 +64,38 @@ func cloudstoneNonartifactEntered(ev game.Event, source *game.Card, _ game.Chara
 
 // cloudstoneReturnAnother is the resolution effect: "you may return
 // another permanent you control that shares a permanent type with
-// it". `entered` is the permanent that triggered this, captured at
-// Build time as a plain instance ID.
+// it". The entering permanent is read off item.Trigger.Event.CardID
+// rather than a closure (ADR 0041 P9), so a restored item asks again
+// about the same object.
 //
 // If the entered permanent has since left the battlefield — bounced,
 // destroyed, or otherwise, in response to the trigger — nothing can
 // share a type with a permanent that is not there any more, so there
 // is nothing to offer (CR 608.2c: only as much of the ability as
 // possible).
-func cloudstoneReturnAnother(entered uuid.UUID) func(g *game.Game, item *game.StackItem) error {
-	return func(g *game.Game, item *game.StackItem) error {
-		ctx := NewContext(g, item)
-		enteredCard, ok := g.LookupCardForEffect(entered)
-		if !ok {
-			return nil
-		}
-		return ChoosePermanents{
-			Question: "Cloudstone Curio — return another permanent you control to its owner's hand",
-			Candidates: func(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
-				var out []uuid.UUID
-				for _, c := range g.BattlefieldCardsForEffect() {
-					if c.Controller != of || c.InstanceID == entered {
-						continue
-					}
-					if cloudstoneSharesAPermanentType(enteredCard, c) {
-						out = append(out, c.InstanceID)
-					}
-				}
-				return out, 0, 1
-			},
-			Then: bouncePickedToHand,
-		}.Apply(ctx)
+func cloudstoneReturnAnother(g *game.Game, item *game.StackItem) error {
+	entered := item.Trigger.Event.CardID
+	ctx := NewContext(g, item)
+	enteredCard, ok := g.LookupCardForEffect(entered)
+	if !ok {
+		return nil
 	}
+	return ChoosePermanents{
+		Question: "Cloudstone Curio — return another permanent you control to its owner's hand",
+		Candidates: func(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
+			var out []uuid.UUID
+			for _, c := range g.BattlefieldCardsForEffect() {
+				if c.Controller != of || c.InstanceID == entered {
+					continue
+				}
+				if cloudstoneSharesAPermanentType(enteredCard, c) {
+					out = append(out, c.InstanceID)
+				}
+			}
+			return out, 0, 1
+		},
+		Then: bouncePickedToHand,
+	}.Apply(ctx)
 }
 
 // cloudstoneSharesAPermanentType is CR 110.4a's six permanent types,

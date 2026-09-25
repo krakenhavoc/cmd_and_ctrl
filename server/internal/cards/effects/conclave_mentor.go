@@ -17,10 +17,10 @@ import (
 // Hardened Scales on a body. The replacement is the Scales' exactly:
 // +1/+1 counters only, creatures the controller controls only, the
 // Mentor itself included, CounterDelta bumped by one. The dies
-// trigger reads the Mentor's last-known power — the harvester's LKI
-// characteristic carries the layer-computed P/T, and the +1/+1
-// counters it grew (its own effect makes those common) are read back
-// off the log, b13LastKnownPower's job.
+// trigger reads the Mentor's last-known power at RESOLUTION
+// (CR 608.2h, #1379) through ctx.TriggeringPermanent(), which carries
+// the +1/+1 counters it grew (its own effect makes those common) —
+// floored at zero, since the primitive gain-life amount is not.
 //
 // No simplification.
 func init() {
@@ -51,12 +51,18 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return cardDied(ev, source)
 			},
-			Build: func(_ game.Event, source *game.Card, lki game.Characteristic, g *game.Game) *game.StackItem {
-				power := b13LastKnownPower(g, source.InstanceID, lki)
-				return game.NewTriggeredItem(source, "Conclave Mentor — gain life equal to its power",
-					func(g *game.Game, item *game.StackItem) error {
-						return GainLife{Player: item.Controller, Amount: power}.Apply(NewContext(g, item))
-					})
+			Key: "Conclave Mentor — gain life equal to its power",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				mentor, ok := ctx.TriggeringPermanent()
+				if !ok {
+					return nil
+				}
+				power := mentor.Power
+				if power < 0 {
+					power = 0
+				}
+				return GainLife{Player: item.Controller, Amount: power}.Apply(ctx)
 			},
 		}},
 	})

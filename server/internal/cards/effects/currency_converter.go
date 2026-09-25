@@ -31,11 +31,12 @@ import (
 //
 // The trigger is Bag of Holding's exile trigger with ONE difference:
 // "you may" here, unconditional there — Optional wraps the same
-// AppliesTo/Build shape (bag_of_holding.go), and both read ev.CardID
-// captured at Build time since a discard names exactly one card. The
-// resolution body itself, exileFromGraveyardIfStillThere, is shared
-// verbatim (helpers.go) rather than copied — the two were an exact
-// duplicate before that extraction.
+// AppliesTo shape (bag_of_holding.go). This one reads the discarded
+// card off item.Trigger.Event.CardID at resolution (ADR 0041 P9)
+// rather than a Build-time capture, since a discard names exactly
+// one card. The resolution body itself, exileFromGraveyardIfStillThere,
+// is shared verbatim (helpers.go) rather than copied — the two were
+// an exact duplicate before that extraction.
 //
 // The third ability is what Bag of Holding and its siblings did not
 // need: a CHOICE among the exiled-with pile rather than "all of them"
@@ -66,11 +67,9 @@ func init() {
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 					return discardedByYou(ev, source)
 				},
-				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					discarded := ev.CardID
-					return game.NewTriggeredItem(source, currencyConverterExileLabel, func(g *game.Game, item *game.StackItem) error {
-						return exileFromGraveyardIfStillThere(g, item, discarded)
-					})
+				Key: currencyConverterExileLabel,
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					return exileFromGraveyardIfStillThere(g, item, item.Trigger.Event.CardID)
 				},
 			}, "Currency Converter — exile that card from your graveyard?"),
 		},

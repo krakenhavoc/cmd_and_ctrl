@@ -48,9 +48,8 @@ func init() {
 			AppliesTo:      b06SelfETB,
 			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Duplicant — exile target nontoken creature?"},
 			Targets:        TargetCreature("target nontoken creature", Not(IsTokenPredicate())),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, b27DuplicantLabel, b27ExileChosenTarget)
-			},
+			Key:            b27DuplicantLabel,
+			Effect:         b27ExileChosenTarget,
 		}},
 	})
 }

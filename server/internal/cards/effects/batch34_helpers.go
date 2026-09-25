@@ -340,16 +340,13 @@ func b34AttackingVampiresHaveDeathtouchAndLifelink(name string) game.TriggeredAb
 		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 			return b34VampireYouControlAttacked(ev, source, g)
 		},
-		Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-			attacker := ev.CardID
-			return game.NewTriggeredItem(source, name+" — the attacking Vampire has deathtouch and lifelink",
-				func(g *game.Game, item *game.StackItem) error {
-					return GrantKeywordUntilEOT{
-						Target:   attacker,
-						Keywords: []string{"deathtouch", "lifelink"},
-						Label:    name + " — deathtouch and lifelink",
-					}.Apply(NewContext(g, item))
-				})
+		Key: name + " — the attacking Vampire has deathtouch and lifelink",
+		Effect: func(g *game.Game, item *game.StackItem) error {
+			return GrantKeywordUntilEOT{
+				Target:   item.Trigger.Event.CardID,
+				Keywords: []string{"deathtouch", "lifelink"},
+				Label:    name + " — deathtouch and lifelink",
+			}.Apply(NewContext(g, item))
 		},
 	}
 }

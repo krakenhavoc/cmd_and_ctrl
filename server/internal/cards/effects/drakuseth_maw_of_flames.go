@@ -32,24 +32,22 @@ func init() {
 				return attackDeclared(ev, source)
 			},
 			Targets: b10DrakusethTargets(),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Drakuseth — 4 damage to the first target, 3 to each other",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						for i, t := range item.Targets {
-							if !ctx.IsTargetLegal(t) {
-								continue
-							}
-							amount := 3
-							if i == 0 {
-								amount = 4
-							}
-							if err := (DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: amount}).Apply(ctx); err != nil {
-								return err
-							}
-						}
-						return nil
-					})
+			Key:     "Drakuseth — 4 damage to the first target, 3 to each other",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				for i, t := range item.Targets {
+					if !ctx.IsTargetLegal(t) {
+						continue
+					}
+					amount := 3
+					if i == 0 {
+						amount = 4
+					}
+					if err := (DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: amount}).Apply(ctx); err != nil {
+						return err
+					}
+				}
+				return nil
 			},
 		}},
 	})

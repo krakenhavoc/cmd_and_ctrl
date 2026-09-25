@@ -16,9 +16,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The draw is a CR 603.4 "you may": one yes/no prompt, and a yes draws
 // the whole amount — "that many" is the damage dealt, not an upper
-// bound to choose under. The amount is captured from the damage event
-// as the trigger is built, so a pump or shrink after damage doesn't
-// change it: "that many" is the damage that was dealt.
+// bound to choose under. The amount is read off the triggering event
+// (item.Trigger.Event.Amount, ADR 0041 P9), fixed as of the moment the
+// trigger fired, so a pump or shrink after damage doesn't change it:
+// "that many" is the damage that was dealt.
 //
 // No simplification.
 func init() {
@@ -32,12 +33,8 @@ func init() {
 				Watches:   []game.EventKind{game.EventDealDamage},
 				AppliesTo: ThisDealtCombatDamageToAPlayer,
 				Key:       "Cold-Eyed Selkie — draw that many cards",
-				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					amount := ev.Amount
-					return game.NewTriggeredItem(source, "Cold-Eyed Selkie — draw that many cards",
-						func(g *game.Game, item *game.StackItem) error {
-							return DrawCards{Player: item.Controller, N: amount}.Apply(NewContext(g, item))
-						})
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					return DrawCards{Player: item.Controller, N: item.Trigger.Event.Amount}.Apply(NewContext(g, item))
 				},
 			}, "Cold-Eyed Selkie — draw that many cards?"),
 		},
