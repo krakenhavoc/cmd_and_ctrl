@@ -52,10 +52,8 @@ func init() {
 			Watches:        []game.EventKind{game.EventETB},
 			AppliesTo:      b06SelfETB,
 			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Springbloom Druid — sacrifice a land to search for up to two basic lands?"},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Springbloom Druid — sacrifice a land, then fetch up to two basic lands tapped",
-					springbloomDruidSacrificeThenSearch)
-			},
+			Key:            "Springbloom Druid — sacrifice a land, then fetch up to two basic lands tapped",
+			Effect:         springbloomDruidSacrificeThenSearch,
 		}},
 	})
 }

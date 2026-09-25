@@ -60,9 +60,8 @@ func init() {
 					return attackDeclared(ev, source) && b25GraveyardHasLandCard(g, source.Controller)
 				},
 				Targets: TargetCardInGraveyard("up to one land card in your graveyard to return tapped", YouOwn(), Land()).WithCount(0, 1),
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, b25TevalAttackLabel, b25MillThreeThenReturnChosenLandTapped)
-				},
+				Key:     b25TevalAttackLabel,
+				Effect:  b25MillThreeThenReturnChosenLandTapped,
 			},
 			On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return attackDeclared(ev, source) && !b25GraveyardHasLandCard(g, source.Controller)

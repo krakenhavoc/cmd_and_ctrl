@@ -39,9 +39,8 @@ func init() {
 				return ev.Actor == source.Controller
 			},
 			Targets: TargetPlayer("target opponent", Opponent()),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, b35TutelageLabel, b35TutelageMill)
-			},
+			Key:     b35TutelageLabel,
+			Effect:  b35TutelageMill,
 		}},
 	})
 }

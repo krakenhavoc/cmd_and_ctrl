@@ -48,24 +48,26 @@ func init() {
 		Triggered: []game.TriggeredAbility{{
 			Watches:   []game.EventKind{game.EventETB},
 			AppliesTo: Self,
+			Key:       "Springleaf Parade — create X Shapeshifters",
+			// #1312/#1357: read once, here (ADR 0041 P9's fill-in
+			// Build), and stamp the plain int on Params.Amount rather
+			// than closing over the card, which the Effect must not
+			// capture.
 			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				// #1312/#1357: read once, here, and close over the
-				// plain int — not the card, which the Effect below
-				// must not capture (AGENTS.md: undo restores a
-				// cloned game and the closure has to resolve
-				// against that one).
-				x := source.CastX()
-				return game.NewTriggeredItem(source, "Springleaf Parade — create X Shapeshifters",
-					func(g *game.Game, item *game.StackItem) error {
-						if x <= 0 {
-							return nil
-						}
-						return CreateToken{
-							Controller: item.Controller,
-							Template:   TokenCard("1/1 colorless Shapeshifter with changeling"),
-							N:          x,
-						}.Apply(NewContext(g, item))
-					})
+				item := game.NewTriggeredItem(source, "Springleaf Parade — create X Shapeshifters", nil)
+				item.Params.Amount = source.CastX()
+				return item
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				x := item.Params.Amount
+				if x <= 0 {
+					return nil
+				}
+				return CreateToken{
+					Controller: item.Controller,
+					Template:   TokenCard("1/1 colorless Shapeshifter with changeling"),
+					N:          x,
+				}.Apply(NewContext(g, item))
 			},
 		}},
 	})

@@ -26,15 +26,13 @@ func init() {
 			Watches:   []game.EventKind{game.EventETB},
 			AppliesTo: b06SelfETB,
 			Targets:   targetPlayerOrPlaneswalker("target player or planeswalker"),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Sunscorched Desert — 1 damage to target player or planeswalker",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						for _, t := range ctx.LegalTargets() {
-							return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 1}.Apply(ctx)
-						}
-						return nil
-					})
+			Key:       "Sunscorched Desert — 1 damage to target player or planeswalker",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				for _, t := range ctx.LegalTargets() {
+					return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 1}.Apply(ctx)
+				}
+				return nil
 			},
 		}},
 		ManaAbilities: []ManaAbility{{

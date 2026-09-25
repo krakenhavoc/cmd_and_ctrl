@@ -65,11 +65,8 @@ func init() {
 				return attachedCreatureDealtCombatDamageToPlayer(ev, source, g)
 			},
 			Targets: TargetCreature("up to one target creature you own", YouOwn()).WithCount(0, 1),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source,
-					"Sword of Hearth and Home — exile a creature you own, then put it and a basic land onto the battlefield",
-					swordOfHearthAndHomeResolve)
-			},
+			Key:     "Sword of Hearth and Home — exile a creature you own, then put it and a basic land onto the battlefield",
+			Effect:  swordOfHearthAndHomeResolve,
 		}},
 		Activated: []ActivatedAbility{
 			EquipAbility("{2}"),

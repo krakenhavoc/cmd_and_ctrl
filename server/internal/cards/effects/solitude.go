@@ -42,40 +42,37 @@ func init() {
 				return ev.CardID == source.InstanceID
 			},
 			Targets: TargetCreature("up to one other target creature").WithCount(0, 1),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				self := source.InstanceID
-				return game.NewTriggeredItem(source, "Solitude — exile a creature, its controller gains life",
-					func(g *game.Game, item *game.StackItem) error {
-						if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-							return nil
-						}
-						victim := item.Targets[0].ID
-						if victim == self {
-							// "OTHER target creature" — the picker
-							// should never offer Solitude itself, and
-							// refusing here costs one comparison.
-							return nil
-						}
-						ctx := NewContext(g, item)
-						// Power is read BEFORE the exile: once the
-						// card leaves the battlefield its layered
-						// characteristics are gone, and "life equal
-						// to its power" means its power as it last
-						// existed (CR 608.2h / LKI).
-						card, ok := g.LookupCardForEffect(victim)
-						if !ok {
-							return nil
-						}
-						power := card.CurrentPower()
-						controller := card.Controller
-						if err := (ExileTarget{Target: victim}).Apply(ctx); err != nil {
-							return err
-						}
-						if power <= 0 {
-							return nil
-						}
-						return GainLife{Player: controller, Amount: power}.Apply(ctx)
-					})
+			Key:     "Solitude — exile a creature, its controller gains life",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+					return nil
+				}
+				victim := item.Targets[0].ID
+				if victim == item.SourceCardID {
+					// "OTHER target creature" — the picker
+					// should never offer Solitude itself, and
+					// refusing here costs one comparison.
+					return nil
+				}
+				ctx := NewContext(g, item)
+				// Power is read BEFORE the exile: once the
+				// card leaves the battlefield its layered
+				// characteristics are gone, and "life equal
+				// to its power" means its power as it last
+				// existed (CR 608.2h / LKI).
+				card, ok := g.LookupCardForEffect(victim)
+				if !ok {
+					return nil
+				}
+				power := card.CurrentPower()
+				controller := card.Controller
+				if err := (ExileTarget{Target: victim}).Apply(ctx); err != nil {
+					return err
+				}
+				if power <= 0 {
+					return nil
+				}
+				return GainLife{Player: controller, Amount: power}.Apply(ctx)
 			},
 		}},
 	})
