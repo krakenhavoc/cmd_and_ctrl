@@ -124,5 +124,10 @@ func init() {
 // EventBecomesTarget this trigger fired on — instead of a captured
 // closure. The mana cost is the state's own constant, never a card's.
 var facedownWardBody = game.SimpleDelayedBody("facedown/ward", func(g *game.Game, item *game.StackItem) error {
+	// An item with no trigger record (a copy, or a hand-built item) names
+	// no targeting spell and no payer, so there is nothing to tax.
+	if item.Trigger == nil {
+		return nil
+	}
 	return wardPayOrCounter(g, item, item.Trigger.Event.StackItemID, item.Trigger.Event.Actor, WardMana(faceDownWardCost))
 })
