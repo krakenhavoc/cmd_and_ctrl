@@ -1,8 +1,9 @@
 // Package github is a deliberately minimal GitHub REST client scoped
-// to the single call the server makes today: creating an issue in the
-// project repository (the in-app "report a bug" button). It is NOT a
-// general GitHub SDK — no pagination, no retries, no rate-limit
-// bookkeeping. If the server ever needs a second endpoint, grow this
+// to the calls the server makes: creating an issue in the project
+// repository (the in-app "report a bug" button), and, for ADR 0095's
+// deck requests, reading an issue's state and commenting on it. It is
+// NOT a general GitHub SDK — no pagination, no retries, no rate-limit
+// bookkeeping. If the server ever needs another endpoint, grow this
 // package call-by-call rather than importing a third-party client
 // (same outbound-HTTP posture as the S06.5 deck importers: stdlib
 // only, explicit timeout, descriptive User-Agent).
@@ -43,18 +44,27 @@ const (
 // was definitively NOT created) from "the call didn't complete" (a
 // timeout, a 5xx), without parsing the error string.
 //
-// The lobby uses it for exactly one decision: an issue whose labels
-// GitHub refuses is re-filed unlabelled rather than lost (ADR 0017
-// §8). It satisfies the unexported statusCoder interface lobby
-// declares, so the BugReporter seam stays one method wide and this
-// package stays un-imported there.
+// The lobby uses it for two decisions: an issue whose labels GitHub
+// refuses is re-filed unlabelled rather than lost (ADR 0017 §8), and
+// a deck request whose issue answers 404 or 410 is treated as closed
+// (ADR 0095 §3). It satisfies the unexported statusCoder interface
+// lobby declares, so the reporter seams stay narrow and a test fake
+// can satisfy them without this package.
 type APIError struct {
+	// Op names the call that failed ("create issue", "get issue",
+	// "create comment"). Empty reads as "create issue", the only call
+	// this package made before ADR 0095.
+	Op     string
 	Status int
 	Body   string // already truncated
 }
 
 func (e *APIError) Error() string {
-	return fmt.Sprintf("github: create issue: status %d: %s", e.Status, e.Body)
+	op := e.Op
+	if op == "" {
+		op = "create issue"
+	}
+	return fmt.Sprintf("github: %s: status %d: %s", op, e.Status, e.Body)
 }
 
 // StatusCode reports the HTTP status GitHub answered with.
@@ -110,44 +120,99 @@ func (c *Client) CreateIssue(ctx context.Context, title, body string, labels []s
 		Labels []string `json:"labels,omitempty"`
 	}{Title: title, Body: body, Labels: labels}
 
-	buf, err := json.Marshal(payload)
-	if err != nil {
-		return "", 0, fmt.Errorf("github: encode issue: %w", err)
+	var out struct {
+		Number  int    `json:"number"`
+		HTMLURL string `json:"html_url"`
 	}
+	path := fmt.Sprintf("/repos/%s/issues", c.repo)
+	if err := c.do(ctx, "create issue", http.MethodPost, path, payload, http.StatusCreated, &out); err != nil {
+		return "", 0, err
+	}
+	return out.HTMLURL, out.Number, nil
+}
 
-	url := fmt.Sprintf("%s/repos/%s/issues", c.baseURL, c.repo)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(buf))
+// Issue is the part of a GitHub issue ADR 0095's deck requests read:
+// whether it is still open, and where it lives.
+type Issue struct {
+	Number  int    `json:"number"`
+	State   string `json:"state"` // "open" | "closed"
+	HTMLURL string `json:"html_url"`
+}
+
+// Open reports whether the issue is open.
+func (i Issue) Open() bool { return i.State == "open" }
+
+// GetIssue reads one issue by number. A deleted issue answers 404 or
+// 410, surfaced as an *APIError carrying that status so the caller
+// can tell "gone" from "GitHub is down".
+func (c *Client) GetIssue(ctx context.Context, number int) (Issue, error) {
+	var out Issue
+	path := fmt.Sprintf("/repos/%s/issues/%d", c.repo, number)
+	if err := c.do(ctx, "get issue", http.MethodGet, path, nil, http.StatusOK, &out); err != nil {
+		return Issue{}, err
+	}
+	return out, nil
+}
+
+// CreateComment adds a comment to an issue and returns the comment's
+// html_url.
+func (c *Client) CreateComment(ctx context.Context, number int, body string) (string, error) {
+	payload := struct {
+		Body string `json:"body"`
+	}{Body: body}
+	var out struct {
+		HTMLURL string `json:"html_url"`
+	}
+	path := fmt.Sprintf("/repos/%s/issues/%d/comments", c.repo, number)
+	if err := c.do(ctx, "create comment", http.MethodPost, path, payload, http.StatusCreated, &out); err != nil {
+		return "", err
+	}
+	return out.HTMLURL, nil
+}
+
+// do performs one API call: payload (nil for none) is sent as JSON, a
+// status other than want is an *APIError, and the response body —
+// capped at maxResponseBytes — is decoded into out. op names the call
+// in error strings. The Authorization header never reaches an error:
+// http.Client errors carry the URL only.
+func (c *Client) do(ctx context.Context, op, method, path string, payload any, want int, out any) error {
+	var body io.Reader
+	if payload != nil {
+		buf, err := json.Marshal(payload)
+		if err != nil {
+			return fmt.Errorf("github: %s: encode: %w", op, err)
+		}
+		body = bytes.NewReader(buf)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, body)
 	if err != nil {
-		return "", 0, fmt.Errorf("github: build request: %w", err)
+		return fmt.Errorf("github: build request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+c.token)
 	req.Header.Set("Accept", "application/vnd.github+json")
 	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
-	req.Header.Set("Content-Type", "application/json")
+	if payload != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 	req.Header.Set("User-Agent", userAgent)
 
 	resp, err := c.http.Do(req)
 	if err != nil {
 		// err carries the URL but never the Authorization header,
 		// so it is safe to propagate verbatim.
-		return "", 0, fmt.Errorf("github: create issue: %w", err)
+		return fmt.Errorf("github: %s: %w", op, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	lim := io.LimitReader(resp.Body, maxResponseBytes)
-	if resp.StatusCode != http.StatusCreated {
+	if resp.StatusCode != want {
 		slurp, _ := io.ReadAll(lim)
-		return "", 0, &APIError{Status: resp.StatusCode, Body: truncate(string(slurp), 300)}
+		return &APIError{Op: op, Status: resp.StatusCode, Body: truncate(string(slurp), 300)}
 	}
-
-	var out struct {
-		Number  int    `json:"number"`
-		HTMLURL string `json:"html_url"`
+	if err := json.NewDecoder(lim).Decode(out); err != nil {
+		return fmt.Errorf("github: decode response: %w", err)
 	}
-	if err := json.NewDecoder(lim).Decode(&out); err != nil {
-		return "", 0, fmt.Errorf("github: decode response: %w", err)
-	}
-	return out.HTMLURL, out.Number, nil
+	return nil
 }
 
 // truncate clips s to at most n bytes, appending an ellipsis marker

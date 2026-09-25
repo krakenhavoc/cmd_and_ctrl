@@ -16,6 +16,16 @@ describe("parseHash", () => {
     expect(parseHash("#/roadmap")).toEqual({ name: "roadmap" });
   });
 
+  it("parses #/deck-check, with and without ?url=", () => {
+    expect(parseHash("#/deck-check")).toEqual({ name: "deckCheck" });
+    expect(parseHash("#/deck-check?url=https%3A%2F%2Fmoxfield.com%2Fdecks%2FAbC123")).toEqual({
+      name: "deckCheck",
+      url: "https://moxfield.com/decks/AbC123",
+    });
+    // An empty ?url= is the same as none — no half-populated route.
+    expect(parseHash("#/deck-check?url=")).toEqual({ name: "deckCheck" });
+  });
+
   it("still parses the pre-existing routes", () => {
     expect(parseHash("#/login")).toEqual({ name: "login" });
     expect(parseHash("#/lobby")).toEqual({ name: "lobby" });
