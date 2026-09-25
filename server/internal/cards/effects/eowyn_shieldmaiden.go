@@ -50,30 +50,32 @@ func init() {
 					return b43AnotherHumanEnteredThisTurn(g, source)
 				},
 			),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Éowyn, Shieldmaiden — two 2/2 Human Knights, then draw on six Humans",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						src, ok := g.LookupCardForEffect(item.SourceCardID)
-						if !ok || !b43AnotherHumanEnteredThisTurn(g, &src) {
-							// CR 603.4: the intervening if is re-checked
-							// as the ability resolves, and a false answer
-							// removes it from the stack doing nothing.
-							return nil
-						}
-						if err := (CreateToken{
-							Controller: item.Controller,
-							Template:   TokenCard("2/2 red Human Knight with trample and haste"),
-							N:          2,
-						}).Apply(ctx); err != nil {
-							return err
-						}
-						if b43CreaturesOfSubtypeControlled(g, item.Controller, "Human") < 6 {
-							return nil
-						}
-						return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
-					})
-			},
+			Key:    "Éowyn, Shieldmaiden — two 2/2 Human Knights, then draw on six Humans",
+			Effect: eowynShieldmaidenKnights,
 		}},
 	})
+}
+
+// eowynShieldmaidenKnights is the combat trigger's resolution: the
+// intervening if again, two Knights, then the draw on six Humans.
+func eowynShieldmaidenKnights(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	src, ok := g.LookupCardForEffect(item.SourceCardID)
+	if !ok || !b43AnotherHumanEnteredThisTurn(g, &src) {
+		// CR 603.4: the intervening if is re-checked as the ability
+		// resolves, and a false answer removes it from the stack doing
+		// nothing.
+		return nil
+	}
+	if err := (CreateToken{
+		Controller: item.Controller,
+		Template:   TokenCard("2/2 red Human Knight with trample and haste"),
+		N:          2,
+	}).Apply(ctx); err != nil {
+		return err
+	}
+	if b43CreaturesOfSubtypeControlled(g, item.Controller, "Human") < 6 {
+		return nil
+	}
+	return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
 }

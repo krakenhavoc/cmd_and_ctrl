@@ -2297,7 +2297,10 @@ only shrinks; see "Snapshot compatibility"). Do not add one. A
 `TargetsFrom` that reads anything but its trigger context and the
 source's identity (`NotSelf`, `AnotherTarget`) must set
 `TargetsFromReadsBoard`, because restore calls it again on the
-restored board; that row is listed too (Molten Primordial).
+restored board; that row is listed too. The seat list is not the
+board — a seat is permanent once the game starts — and "opponent" is
+relative to the controller the trigger context recorded, so Molten
+Primordial's one clause per opponent needs no flag.
 
 **Combat declarations (#830, #859):** BOTH combat declarations
 announce once, at their **lock-in** — the first priority boundary of

@@ -12,8 +12,4 @@
 # which deletes stale lines and never adds one. A new hand-written Build
 # fails the test instead of being added here.
 
-Molten Primordial | 8d8c9f7b-92c7-4284-ad9c-304ce42edba5 | 0
 Resourceful Defense | 83e78565-e61f-4bbc-b834-f47941f7e3ec | 0
-The Ozolith | 1946ded1-5f53-409f-b0a6-5433bb0357d2 | 0
-Valakut Exploration | d6861319-ae16-4e6c-af87-a264f667d694 | 1
-Éowyn, Shieldmaiden | 98a2a642-a30a-43e7-b47f-4776c22d1cb0 | 0

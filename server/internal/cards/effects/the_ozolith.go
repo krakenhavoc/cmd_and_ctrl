@@ -74,32 +74,8 @@ func init() {
 					}
 					return len(g.LastKnownCountersForEffect(ev.CardID)) > 0
 				},
-				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-					counters := g.LastKnownCountersForEffect(ev.CardID)
-					if len(counters) == 0 {
-						return nil
-					}
-					frozen := make(map[string]int, len(counters))
-					for kind, n := range counters {
-						frozen[kind] = n
-					}
-					return game.NewTriggeredItem(source, "The Ozolith — put those counters on it", func(g *game.Game, item *game.StackItem) error {
-						// #1432: an Ozolith that left and came back is
-						// not "it".
-						if sourceIsNewObject(g, item) {
-							return nil
-						}
-						for kind, n := range frozen {
-							if n <= 0 {
-								continue
-							}
-							if err := g.AddCounterForEffect(item.SourceCardID, kind, n); err != nil {
-								return err
-							}
-						}
-						return nil
-					})
-				},
+				Key:    "The Ozolith — put those counters on it",
+				Effect: ozolithCollectCounters,
 			},
 			{
 				Watches: []game.EventKind{game.EventStepBegan},
@@ -119,6 +95,37 @@ func init() {
 			},
 		},
 	})
+}
+
+// ozolithCollectCounters is the first ability's resolution: every
+// counter the departed creature had, kind by kind, onto The Ozolith.
+//
+// "Those counters" is read at RESOLUTION off the departed object's
+// last-known information (ctx.TriggeringPermanent, #1379, CR 608.2h)
+// rather than frozen into a closure as the ability triggered (ADR 0041
+// P9, #1497). It is the same reading: battlefieldExitLocked writes the
+// CR 603.10 counters AppliesTo checks (lastKnownCounters) and the
+// #1379 record read here in consecutive calls, each a copy of the same
+// Card.Counters, and the record is keyed by the object's epoch, so a
+// card that has come back since is never read in its place.
+func ozolithCollectCounters(g *game.Game, item *game.StackItem) error {
+	// #1432: an Ozolith that left and came back is not "it".
+	if sourceIsNewObject(g, item) {
+		return nil
+	}
+	left, ok := NewContext(g, item).TriggeringPermanent()
+	if !ok {
+		return nil
+	}
+	for kind, n := range left.Counters {
+		if n <= 0 {
+			continue
+		}
+		if err := g.AddCounterForEffect(item.SourceCardID, kind, n); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // ozolithMoveCounters is the second ability's resolution: every kind
