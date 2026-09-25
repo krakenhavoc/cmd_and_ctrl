@@ -87,6 +87,13 @@ func (c *censusTally) note(present map[string]int) {
 	}
 }
 
+// newGame ends every in-progress run without recording a capture. A
+// stale run is a fact about ONE table: the last blocked capture of one
+// game and the first of the next are two tables, not one run.
+func (c *censusTally) newGame() {
+	clear(c.runByKind)
+}
+
 // TestCensusTally pins note's bookkeeping against synthetic census
 // data — no Scryfall dump, no game, no bot. TestCatalogSoak (gated on
 // CMDCTRL_SCRYFALL_DUMP) is the only thing that feeds it real data.
@@ -154,6 +161,15 @@ func TestCensusTally(t *testing.T) {
 		if got := tally.LongestRunByKind[kind]; got != want {
 			t.Errorf("LongestRunByKind[%q] = %d, want %d", kind, got, want)
 		}
+	}
+
+	// A run does not carry across a game boundary: stackEffects was
+	// blocking when the last game ended, and blocks the first capture
+	// of the next, but that is two tables, not a run of four.
+	tally.newGame()
+	tally.note(map[string]int{"stackEffects": 1})
+	if got, want := tally.LongestRunByKind["stackEffects"], 3; got != want {
+		t.Errorf("LongestRunByKind across a game boundary = %d, want %d", got, want)
 	}
 
 	// A count in Kinds() above 1 (Doubling Season territory) still

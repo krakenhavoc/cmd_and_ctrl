@@ -342,6 +342,9 @@ func playCatalogGame(t *testing.T, room *ws.Room, policies []aiseat.Policy, turn
 	stall := envDuration("AISEAT_STALL", 15*time.Second)
 	lastSeq, lastMove := room.Seq(), time.Now()
 	lastCaptured := lastSeq
+	if census != nil {
+		census.newGame()
+	}
 	for {
 		if seq := room.Seq(); seq != lastCaptured {
 			noteCatalogCapture(census, g)
