@@ -264,8 +264,8 @@ func TestRoguesPassageUnblockableLastsOnlyTheTurn(t *testing.T) {
 
 	advanceToNextSeatsTurn(t, g)
 	assertRestrictions(t, g, bear, 0)
-	if n := len(g.ScopedStatics); n != 0 {
-		t.Errorf("TurnScopedStatics = %d after cleanup, want 0", n)
+	if n := len(g.ScopedEffects); n != 0 {
+		t.Errorf("ScopedEffects = %d after cleanup, want 0", n)
 	}
 }
 

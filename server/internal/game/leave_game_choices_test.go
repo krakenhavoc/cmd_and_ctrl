@@ -821,7 +821,7 @@ func TestUntilThatPlayersNextTurnWhenTheyLeaveOnTheirOwnTurn(t *testing.T) {
 	if err := g.Concede(active.ID); err != nil {
 		t.Fatalf("Concede: %v", err)
 	}
-	if n := len(g.ScopedStatics); n != 1 {
+	if n := len(g.ScopedEffects); n != 1 {
 		t.Fatalf("the effect ended with the turn it was made in (%d entries); CR 800.4m says it waits", n)
 	}
 	for seat := 2; seat <= 3; seat++ {
@@ -829,7 +829,7 @@ func TestUntilThatPlayersNextTurnWhenTheyLeaveOnTheirOwnTurn(t *testing.T) {
 		if g.Turn.ActiveSeat != seat {
 			t.Fatalf("expected seat %d's turn, got %d", seat, g.Turn.ActiveSeat)
 		}
-		if n := len(g.ScopedStatics); n != 1 {
+		if n := len(g.ScopedEffects); n != 1 {
 			t.Fatalf("the effect ended during seat %d's turn (%d entries)", seat, n)
 		}
 	}
@@ -839,7 +839,7 @@ func TestUntilThatPlayersNextTurnWhenTheyLeaveOnTheirOwnTurn(t *testing.T) {
 	if g.Turn.ActiveSeat != 1 {
 		t.Fatalf("expected the rotation to step over seat 0 onto seat 1, got %d", g.Turn.ActiveSeat)
 	}
-	if n := len(g.ScopedStatics); n != 0 {
+	if n := len(g.ScopedEffects); n != 0 {
 		t.Errorf("the departed player's turn would have begun and the effect is still live (%d entries)", n)
 	}
 }

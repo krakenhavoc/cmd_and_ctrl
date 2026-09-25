@@ -13,7 +13,7 @@ import (
 // resolving spell or ability, written as operations from a closed
 // vocabulary rather than as a raw `game.StaticAbility`.
 //
-// It replaces `StaticForDuration` for every card that has moved. The
+// It replaced `StaticForDuration`, deleted in tier 3a. The
 // difference a player never sees and an operator does: a
 // `ScopedEffectFor` is data, so a table holding one is still a restore
 // point, where a `StaticForDuration` froze the restore point for as

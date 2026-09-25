@@ -552,7 +552,9 @@ func scanPrimitives(t *testing.T) primitiveScan {
 			}
 		}
 	}
-	markers := map[string]bool{"isNewSourceObject": true, "isNewSourceObjectAsThis": true, "withoutNewSourceObject": true, "eotSnapshot": true, "applyFor": true}
+	// untilEndOfTurn (until_end_of_turn.go) is ScopedEffectFor with an
+	// until-end-of-turn duration, and so eotSnapshot underneath (#1497).
+	markers := map[string]bool{"isNewSourceObject": true, "isNewSourceObjectAsThis": true, "withoutNewSourceObject": true, "eotSnapshot": true, "applyFor": true, "untilEndOfTurn": true}
 	guarded := map[string]bool{}
 	for changed := true; changed; {
 		changed = false

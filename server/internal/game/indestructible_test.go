@@ -212,15 +212,9 @@ func TestTurnScopedIndestructibleGrantProtectsUntilItExpires(t *testing.T) {
 	id := pushVanillaGolem(g, owner, "Cardboard Golem")
 
 	g.WithWriteLock(func() {
-		g.RegisterScopedStaticForEffect(StaticAbility{
-			Layer: Layer6Ability,
-			AppliesTo: func(target *Card, _ *Game, _ *Card) bool {
-				return target.InstanceID == id
-			},
-			Apply: func(c *Characteristic, _ *Card, _ *Game, _ *Card) {
-				c.Abilities = append(c.Abilities, "indestructible")
-			},
-		}, uuid.New(), "test — indestructible until end of turn", g.UntilEndOfTurnDuration())
+		g.RegisterScopedEffectForEffect(uuid.New(), g.PinnedObjectsLocked(id),
+			[]Mod{AddKeywordsMod("indestructible")}, g.UntilEndOfTurnDuration(),
+			"test — indestructible until end of turn")
 
 		// No explicit recompute here on purpose: the destroy path
 		// owes us one.
@@ -330,15 +324,9 @@ func TestMassDestroySeesAGrantFromTheSameResolutionFrame(t *testing.T) {
 
 	var destroyed int
 	g.WithWriteLock(func() {
-		g.RegisterScopedStaticForEffect(StaticAbility{
-			Layer: Layer6Ability,
-			AppliesTo: func(target *Card, _ *Game, _ *Card) bool {
-				return target.Controller == owner.ID
-			},
-			Apply: func(c *Characteristic, _ *Card, _ *Game, _ *Card) {
-				c.Abilities = append(c.Abilities, "indestructible")
-			},
-		}, uuid.New(), "test — Heroic Intervention", g.UntilEndOfTurnDuration())
+		g.RegisterScopedEffectForEffect(uuid.New(), g.PinnedObjectsLocked(first, second),
+			[]Mod{AddKeywordsMod("indestructible")}, g.UntilEndOfTurnDuration(),
+			"test — Heroic Intervention")
 
 		destroyed = g.DestroyPermanentsForEffect([]uuid.UUID{first, second})
 	})

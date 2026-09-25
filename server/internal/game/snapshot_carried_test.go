@@ -153,10 +153,6 @@ func carriedProbes() []carriedProbe {
 				return reflect.ValueOf(&g.ScopedEffects[0]).Elem()
 			},
 		},
-		// ScopedStatic has no probe on purpose: the whole entry is
-		// `dropped` and censused, so its one `carried` row (Duration) is
-		// carried by CLONE and not by the snapshot — see
-		// carriedNotRoundTrippable.
 	}
 }
 
@@ -327,11 +323,6 @@ var carriedNotRoundTrippable = map[string]string{
 		"its characteristics instead of serving the cache it dropped (restoreGame). " +
 		"TestSnapshotRoundTripIsExact asserts the bump, and TestSnapshotRoundTripKeepsGameUsable " +
 		"asserts the recompute it buys.",
-	"ScopedStatic.Duration": "ScopedStatic is `dropped` as a whole — it is two closures, counted in " +
-		"ContinuationCensus.ScopedStatics — so nothing about it reaches a snapshot. `Duration` is " +
-		"marked carried because it is plain data that CLONE carries (undo) and that the snapshot " +
-		"could carry the day #515 makes the ability re-derivable. TestUndoKeepsScopedStatics is " +
-		"the coverage it has today.",
 }
 
 // TestEveryCarriedFieldSurvivesTheSnapshot is the enforcement.
@@ -426,11 +417,10 @@ func TestCarriedExemptionsAreLiveAndExplained(t *testing.T) {
 // NOT probe, with the reason. Everything else in driftPlans must have a
 // probe, so a domain type added to the drift plan cannot arrive with its
 // `carried` rows unenforced.
-var carriedProbeless = map[string]string{
-	"ScopedStatic": "the whole entry is `dropped` and counted in ContinuationCensus.ScopedStatics — " +
-		"it never reaches a snapshot at all. Its one `carried` row, Duration, is carried by CLONE; " +
-		"see carriedNotRoundTrippable.",
-}
+//
+// Empty since ADR 0041 phase 3 tier 3a deleted ScopedStatic, the one
+// type it used to name.
+var carriedProbeless = map[string]string{}
 
 // TestEveryPlannedTypeHasACarriedProbe is the half of the enforcement
 // that survives somebody adding a domain type rather than a field.
@@ -541,8 +531,6 @@ func planFor(rt reflect.Type) fieldPlan {
 		return delayedTriggerFields
 	case reflect.TypeOf(PendingChoice{}):
 		return pendingChoiceFields
-	case reflect.TypeOf(ScopedStatic{}):
-		return scopedStaticFields
 	}
 	return nil
 }

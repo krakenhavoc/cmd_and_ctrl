@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Sudden Spoiling — Instant {1}{B}{B}:
 //
@@ -13,10 +17,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // A combat trick for the whole of one player's board, behind split
 // second (#1519) so they can't pump, sacrifice or flicker in response.
 //
-// Two continuous effects from one resolution, both pinned to the same
-// CR 611.2c set — the creatures that player controls as this
-// resolves; one cast afterwards is untouched, and one that blinks is a
-// new object (CR 400.7):
+// One continuous effect in two layers — one data record (ADR 0041
+// phase 3), one timestamp — pinned to one CR 611.2c set: the
+// creatures that player controls as this resolves; one cast
+// afterwards is untouched, and one that blinks is a new object
+// (CR 400.7):
 //
 //   - layer 6, "lose all abilities" (CR 613.1f) — RemovesAbilities,
 //     so catalogued triggered, activated, static and mana abilities
@@ -38,36 +43,9 @@ func init() {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
 				return nil
 			}
-			applies := SnapshotAffected(ctx, And(Creature(), ControlledBy(item.Targets[0].ID)))
-			if applies == nil {
-				return nil
-			}
-			duration := DurationUntilEndOfTurn(ctx)
-			if err := (StaticForDuration{
-				Ability: game.StaticAbility{
-					Layer:            game.Layer6Ability,
-					RemovesAbilities: true,
-					AppliesTo:        applies,
-					Apply:            func(*game.Characteristic, *game.Card, *game.Game, *game.Card) {},
-				},
-				Duration: duration,
-				Label:    "Sudden Spoiling — loses all abilities",
-			}).Apply(ctx); err != nil {
-				return err
-			}
-			return StaticForDuration{
-				Ability: game.StaticAbility{
-					Layer:     game.Layer7PT,
-					SubLayer:  game.SubLayer7B_Set,
-					AppliesTo: applies,
-					Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-						c.Power = 0
-						c.Toughness = 2
-					},
-				},
-				Duration: duration,
-				Label:    "Sudden Spoiling — base 0/2",
-			}.Apply(ctx)
+			return untilEndOfTurn(ctx, uuid.Nil, And(Creature(), ControlledBy(item.Targets[0].ID)),
+				"Sudden Spoiling — lose all abilities and have base 0/2",
+				game.LoseAllAbilitiesMod(), game.SetBasePowerMod(0), game.SetBaseToughnessMod(2))
 		},
 	})
 }

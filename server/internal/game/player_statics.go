@@ -32,12 +32,12 @@ import "github.com/google/uuid"
 //     protection from everything until your next turn" (Teferi's
 //     Protection, The One Ring). This one HAS to be stored: the source
 //     is in a graveyard a moment after it resolves, which is the same
-//     reason ScopedStatic exists. It carries a CR 611.2 Duration and
+//     reason ScopedEffect exists. It carries a CR 611.2 Duration and
 //     is swept through durationExpiredLocked, the one function ADR
 //     0063 says decides when any continuous effect in this game ends.
 //
-// WHY NOT A ScopedStatic. The registry next door looks like the
-// obvious home and is the wrong one: a ScopedStatic is adapted into a
+// WHY NOT A ScopedEffect. The registry next door looks like the
+// obvious home and is the wrong one: a ScopedEffect is adapted into a
 // ContinuousEffect and applied by the CR 613 layer pass, whose Apply
 // signature is (*Characteristic, *Card) — a characteristic of an
 // OBJECT. A player has no Characteristic and no layer, exactly as
@@ -71,10 +71,10 @@ import "github.com/google/uuid"
 const KeywordHexproof = "hexproof"
 
 // PlayerStatic is ONE ability a player has, with the duration it has
-// it for. The player-level twin of ScopedStatic, and deliberately
+// it for. The player-level twin of ScopedEffect, and deliberately
 // much less: no closure, no layer, no timestamp.
 //
-// IMMUTABILITY CONTRACT, the same one ScopedStatic and CastPermission
+// IMMUTABILITY CONTRACT, the same one ScopedEffect and CastPermission
 // carry: every field is written once at registration and never
 // mutated. Clone copies the slice into a fresh backing array and the
 // sweep replaces the slice rather than compacting it, so an undo

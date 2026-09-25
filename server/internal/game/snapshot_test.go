@@ -632,13 +632,6 @@ func TestCensusCountsEveryContinuationKind(t *testing.T) {
 			expect: func(c ContinuationCensus) int { return c.ChoiceResumeFrames },
 		},
 		{
-			name: "turn-scoped static",
-			set: func(g *Game) {
-				g.ScopedStatics = []ScopedStatic{{Label: "Giant Growth +3/+3"}}
-			},
-			expect: func(c ContinuationCensus) int { return c.ScopedStatics },
-		},
-		{
 			name: "turn-scoped replacement",
 			set: func(g *Game) {
 				g.TurnScopedReplacements = []ReplacementEffect{{Label: "Fog"}}

@@ -140,6 +140,10 @@ func corpusBoards() []corpusBoard {
 		{"queued_mana_drain", corpusQueuedManaDrain},
 		{"queued_doublecast", corpusQueuedDoublecast},
 		{"fired_arcane_denial", corpusFiredArcaneDenial},
+		// v7, added by tier 3a (#1497) as new files: until-end-of-turn
+		// effects, which only became restore points with it.
+		{"until_eot_pump", corpusUntilEOTPump},
+		{"crewed_vehicle", corpusCrewedVehicle},
 	}
 }
 
@@ -558,6 +562,51 @@ func corpusFiredArcaneDenial(t *testing.T) *game.Game {
 }
 
 const corpusJudoonOracle = "ca04089c-24b6-465e-9303-ea28c0d6f3c7"
+
+// ---------------------------------------------------------------
+// v7 boards added by ADR 0041 phase 3's tier 3a (#1497)
+// ---------------------------------------------------------------
+//
+// NEW files in v7/: an until-end-of-turn effect held the restore point
+// back until cleanup before tier 3a, so neither shape could be a
+// fixture until now.
+
+// corpusUntilEOTPump is a real Giant Growth cast on a prowess creature:
+// the spell's +3/+3 and the prowess trigger's +1/+1, two modifyPT
+// records ending at this turn's cleanup — what the catalog and the
+// engine write, not what a test registered by hand.
+func corpusUntilEOTPump(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	monk := pushProwessCreature(g, me, "Monastery Swiftspear", 1, 2)
+	castCatalogSpell(t, g, "Giant Growth", "Instant", giantGrowthOracle,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: monk}})
+	passPriorityAroundTable(t, g)
+	if len(g.ScopedEffects) != 2 {
+		t.Fatalf("setup: Giant Growth on a prowess creature registered %d scoped effects, want 2", len(g.ScopedEffects))
+	}
+	return g
+}
+
+// corpusCrewedVehicle is a real crew activation: Smuggler's Copter
+// crewed, one record adding Artifact Creature until end of turn.
+func corpusCrewedVehicle(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	copter := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Smuggler's Copter", OracleID: smugglersCopterOracle,
+		TypeLine: "Artifact — Vehicle", Power: 3, Toughness: 3, Owner: me, Controller: me,
+	})
+	crewer := pushBattlefieldCardWithTimestamp(g, corpusCreature(me, "Grizzly Bears", 2, 2))
+	if err := g.ActivateCatalogAbility(me, copter, 0, game.ActivateAbilityParams{CrewIDs: []uuid.UUID{crewer}}); err != nil {
+		t.Fatalf("crew: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if len(g.ScopedEffects) != 1 {
+		t.Fatalf("setup: crew registered %d scoped effects, want 1", len(g.ScopedEffects))
+	}
+	return g
+}
 
 // ---------------------------------------------------------------
 // Rendering a board deterministically

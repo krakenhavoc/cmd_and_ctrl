@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Shadowspear — Legendary Artifact — Equipment for {1} (EDHREC rank
 // 314, the highest-ranked Equipment in this batch):
@@ -15,67 +19,52 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // that otherwise blank removal. It is played in decks that own no
 // other Equipment purely for the second line.
 //
-// THE SECOND LINE IS A TURN-SCOPED LAYER 6 STATIC THAT TAKES THINGS
-// AWAY — StaticUntilEOT (the #279 escape hatch) wrapping the same
-// shape RemoveFromAttached has, with the attachment predicate swapped
-// for "permanents your opponents control". Three notes on it:
+// THE SECOND LINE IS A TURN-SCOPED LAYER 6 EFFECT THAT TAKES THINGS
+// AWAY — a `removeKeywords` data record (ADR 0041 phase 3, #1497)
+// over the permanents your opponents control as it resolves. Three
+// notes on it:
 //
-//   - The affected SET is re-evaluated on every recompute, not
-//     snapshotted, which is what the printed wording means: a
-//     permanent that changes control mid-turn changes sides.
-//   - "Your opponents" is fixed at ACTIVATION (CR 611.2), because the
-//     turn-scoped registration clones the source card as it was; the
-//     effect keeps working if the Shadowspear itself is destroyed in
-//     response, which is also correct.
+//   - The affected SET is locked when the ability resolves (CR
+//     611.2c: an effect from a resolving ability that changes
+//     characteristics — and abilities are characteristics, CR 109.3 —
+//     affects only the objects it found then). A permanent that
+//     enters afterwards keeps its hexproof and indestructible, and a
+//     permanent that changes control afterwards stays as it was.
+//     Before tier 3a the set was re-read on every recompute and a
+//     late entrant slipped past only by timestamp, which this card
+//     declared as a caveat; ADR 0041's phase 3 amendment (owner
+//     decision 2) pins it, which is the printed behaviour.
+//   - "Your opponents" is read at resolution, from the ability's
+//     controller, so the effect keeps working if the Shadowspear
+//     itself is destroyed in response, which is also correct.
 //   - It costs {1} and is not a one-shot: activate it once and every
 //     removal spell you cast for the rest of the turn connects.
 //
-// ONE SIMPLIFICATION, strictly weaker: a permanent that ENTERS the
-// battlefield after the ability resolves keeps its hexproof and
-// indestructible. This engine models a card's printed keywords as a
-// layer-6 static stamped with that card's own battlefield timestamp,
-// so a permanent arriving later sorts AFTER this removal and its
-// grant survives it — the same CR 613.7 ordering Colossus Hammer's
-// "loses flying" declares. Everything already on the battlefield when
-// you pay the {1} is stripped correctly, which is the case the card
-// is activated for.
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "8b27326f-e7b8-4a4d-b589-df459246d19a",
 		Name:         "Shadowspear",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Permanents that enter after the ability resolves keep their hexproof and indestructible."},
+		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
 			PumpAttached(1, 1),
 			GrantToAttached("trample", "lifelink"),
 		},
 		Activated: []ActivatedAbility{
 			{
-				Label: "{1}: Permanents your opponents control lose hexproof and indestructible until end of turn",
-				Cost:  ManaCost("{1}"),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					return StaticUntilEOT{
-						Label: "Shadowspear — opponents' permanents lose hexproof and indestructible",
-						Ability: game.StaticAbility{
-							Layer: game.Layer6Ability,
-							AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
-								return target.Controller != source.Controller
-							},
-							Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-								kept := c.Abilities[:0]
-								for _, a := range c.Abilities {
-									if a == "hexproof" || a == "indestructible" {
-										continue
-									}
-									kept = append(kept, a)
-								}
-								c.Abilities = kept
-							},
-						},
-					}.Apply(NewContext(g, item))
-				},
+				Label:  "{1}: Permanents your opponents control lose hexproof and indestructible until end of turn",
+				Cost:   ManaCost("{1}"),
+				Effect: shadowspearStrip,
 			},
 			EquipAbility("{2}"),
 		},
 	})
+}
+
+// shadowspearStrip is "permanents your opponents control lose hexproof
+// and indestructible until end of turn".
+func shadowspearStrip(g *game.Game, item *game.StackItem) error {
+	return untilEndOfTurn(NewContext(g, item), uuid.Nil, OpponentControls(),
+		"Shadowspear — opponents' permanents lose hexproof and indestructible",
+		game.RemoveKeywordsMod("hexproof", "indestructible"))
 }

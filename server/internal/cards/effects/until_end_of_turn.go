@@ -7,29 +7,31 @@ import (
 )
 
 // until_end_of_turn.go — the card-facing primitives for S32's
-// turn-scoped continuous effects (CR 611.2, CR 514.2). The registry
-// they install into lives in server/internal/game/scoped_statics.go;
-// ADR 0035 has the design, and ADR 0063 gave the registry the other
-// three CR 611.2 durations.
+// turn-scoped continuous effects (CR 611.2, CR 514.2). ADR 0035 has
+// the design, and ADR 0063 gave the registry the other three CR 611.2
+// durations.
 //
-// Three primitives, one per shape a catalog card actually wants:
+// Since ADR 0041 phase 3 tier 3a (#1497) every one of them registers a
+// DATA record — a `game.ScopedEffect` over the closed `game.*Mod`
+// vocabulary (server/internal/game/scoped_effects.go) — so a table
+// holding a Giant Growth is still a restore point. Their names and
+// fields did not change, so no card calling them did either.
+//
+// Two primitives for the two shapes most cards want:
 //
 //	BoostUntilEOT         "gets +X/+Y until end of turn"     layer 7c
 //	GrantKeywordUntilEOT  "gains <keyword> until end of turn" layer 6
-//	StaticUntilEOT        anything else, raw StaticAbility
 //
-// For any duration OTHER than until end of turn — "until your next
-// turn", "for as long as ~ remains on the battlefield", no stated
-// duration — reach for `StaticForDuration` in control.go, which is
-// the same escape hatch with the duration spelled out.
+// Anything else — another duration, another operation, several
+// operations at one timestamp — is `ScopedEffectFor` (scoped_effect.go)
+// with the mods spelled out.
 //
 // Each takes EITHER a pinned `Target` instance ID (Giant Growth,
 // a loyalty ability's "target creature") OR a `Match` predicate
 // evaluated once across the battlefield (Overrun's "creatures you
 // control"). A card that does both a pump and a grant — Overrun,
-// The Wandering Emperor's -2 — applies two primitives, because the
-// P/T change and the ability grant genuinely live in different
-// layers and a single entry could not sort into both.
+// The Wandering Emperor's -2 — applies two primitives; they are two
+// records with two timestamps, in different layers.
 //
 // WHY THE AFFECTED SET IS SNAPSHOTTED. CR 611.2c: a one-shot
 // continuous effect from a resolving spell affects only the
@@ -91,9 +93,11 @@ func eotSnapshot(ctx *Context, target uuid.UUID, match CardPredicate) eotAffecte
 	return out
 }
 
-// appliesTo builds the `StaticAbility.AppliesTo` predicate for a
-// snapshotted set. Captures only the map — no pointers into game
-// state — per the closure contract on game.ScopedStatic.
+// appliesTo builds a closure predicate for a snapshotted set. Captures
+// only the map — no pointers into game state. Only the turn-scoped
+// block rules (BlockRuleUntilEOT, tier 3b of ADR 0041 phase 3) still
+// need one; every continuous effect pins the set as data instead
+// (affectedObjects, scoped_effect.go).
 func (s eotAffected) appliesTo() func(*game.Card, *game.Game, *game.Card) bool {
 	return func(target *game.Card, _ *game.Game, _ *game.Card) bool {
 		stamp, ok := s[target.InstanceID]
@@ -135,22 +139,22 @@ func (b BoostUntilEOT) Apply(ctx *Context) error {
 	if b.Power == 0 && b.Toughness == 0 {
 		return nil
 	}
-	set := eotSnapshot(ctx, b.Target, b.Match)
-	if set == nil {
-		return nil
-	}
-	power, toughness := b.Power, b.Toughness
-	ctx.Game.RegisterScopedStaticForEffect(game.StaticAbility{
-		Layer:     game.Layer7PT,
-		SubLayer:  game.SubLayer7C_Modify,
-		AppliesTo: set.appliesTo(),
-		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-			c.Power += power
-			c.Toughness += toughness
-		},
-	}, ctx.Source(), eotLabel(b.Label, "pump until end of turn"),
-		ctx.Game.UntilEndOfTurnDuration())
-	return nil
+	return untilEndOfTurn(ctx, b.Target, b.Match,
+		eotLabel(b.Label, "pump until end of turn"),
+		game.ModifyPTMod(b.Power, b.Toughness))
+}
+
+// untilEndOfTurn is the one body every until-end-of-turn primitive
+// shares: `mods` over the set `target` / `match` names, locked now
+// (CR 611.2c), ending in this turn's cleanup step (CR 514.2).
+func untilEndOfTurn(ctx *Context, target uuid.UUID, match CardPredicate, label string, mods ...game.Mod) error {
+	return ScopedEffectFor{
+		Target:   target,
+		Match:    match,
+		Mods:     mods,
+		Duration: DurationUntilEndOfTurn(ctx),
+		Label:    label,
+	}.Apply(ctx)
 }
 
 // GrantKeywordUntilEOT is "target creature gains <keyword> until end
@@ -212,48 +216,9 @@ func (k GrantKeywordUntilEOT) Apply(ctx *Context) error {
 	if len(k.Keywords) == 0 {
 		return nil
 	}
-	set := eotSnapshot(ctx, k.Target, k.Match)
-	if set == nil {
-		return nil
-	}
-	granted := append([]string(nil), k.Keywords...)
-	ctx.Game.RegisterScopedStaticForEffect(game.StaticAbility{
-		Layer:     game.Layer6Ability,
-		AppliesTo: set.appliesTo(),
-		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-			for _, kw := range granted {
-				c.Abilities = game.AppendKeywordAbility(c.Abilities, kw)
-			}
-		},
-	}, ctx.Source(), eotLabel(k.Label, "keyword grant until end of turn"),
-		ctx.Game.UntilEndOfTurnDuration())
-	return nil
-}
-
-// StaticUntilEOT is the escape hatch: any `game.StaticAbility`,
-// given a turn-scoped duration. Use it for shapes the two named
-// primitives don't cover — "target creature has base power and
-// toughness 1/1 until end of turn" (layer 7b), "target creature
-// becomes an artifact in addition to its other types" (layer 4).
-//
-// The ability's `AppliesTo` is used verbatim and is therefore
-// re-evaluated on every recompute pass, unlike the snapshotted
-// primitives above. That is the right default for a duration effect
-// that is genuinely board-sensitive, and the wrong one for a
-// one-shot from a resolving spell — for the latter, pin the
-// predicate to the instance IDs yourself (CR 611.2c) or reach for
-// BoostUntilEOT / GrantKeywordUntilEOT instead.
-type StaticUntilEOT struct {
-	Ability game.StaticAbility
-	Label   string
-}
-
-func (s StaticUntilEOT) Apply(ctx *Context) error {
-	return StaticForDuration{
-		Ability:  s.Ability,
-		Duration: DurationUntilEndOfTurn(ctx),
-		Label:    eotLabel(s.Label, "static until end of turn"),
-	}.Apply(ctx)
+	return untilEndOfTurn(ctx, k.Target, k.Match,
+		eotLabel(k.Label, "keyword grant until end of turn"),
+		game.AddKeywordsMod(k.Keywords...))
 }
 
 // eotHasAbility reports whether the keyword is already present.

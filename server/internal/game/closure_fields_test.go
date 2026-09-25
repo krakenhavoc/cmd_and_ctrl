@@ -74,6 +74,7 @@ const closureFieldsFile = "closure_fields.txt"
 // retired. A closure field charged to one of them fails the build.
 var retiredCensusCounters = map[string]string{
 	"DelayedTriggerEffects": "ADR 0041 phase 3 tier 2 (#1497): a delayed trigger is a registered body key plus plain params",
+	"ScopedStatics":         "ADR 0041 phase 3 tier 3a (#1497): a continuous effect with a duration is a ScopedEffect record over the closed Mod vocabulary",
 }
 
 // closureClassCeilings is the ratchet's second half (#1558): how many
@@ -85,7 +86,6 @@ var retiredCensusCounters = map[string]string{
 var closureClassCeilings = map[string]int{
 	"census:ChoiceResumeFrames":     98,
 	"census:IntrinsicAbilityCards":  45,
-	"census:ScopedStatics":          5,
 	"census:StackEffects":           6,
 	"census:StackTargetSpecs":       11,
 	"census:TurnScopedBlockRules":   4,

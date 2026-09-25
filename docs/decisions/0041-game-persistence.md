@@ -1229,3 +1229,42 @@ Three things the first slice settled that the decisions above left open.
   v7 and omitted when false. An older v7 binary refuses a scoped
   effect that carries one (P4's unknown-field refusal). Anywhere else
   it drops the flag, which gives back the old wildcard.
+
+### Implementation notes (tier 3a: until end of turn)
+
+- **The closure registry is gone.** `ScopedStatic`, `Game.ScopedStatics`,
+  `RegisterScopedStaticForEffect`, `registerScopedStaticLocked`,
+  `StaticForDuration`, `StaticUntilEOT` and `SnapshotAffected` are
+  deleted, not deprecated (P3's retirement at compile time). The two
+  interim source-scan guards went with them, since nothing is left for
+  them to find. `ContinuationCensus.ScopedStatics` stays as a field so
+  an old census still decodes, nothing increments it, and the closure
+  ratchet lists it in `retiredCensusCounters`. Its five
+  `closure_fields.txt` lines are deleted and its ceiling with them:
+  `StaticAbility` is no longer reachable from `Game` at all.
+- **No new mod kind and no schema change.** Every migrated site is one
+  of the kinds PR 1 declared. `BoostUntilEOT` is `modifyPT`,
+  `GrantKeywordUntilEOT` is `addKeywords`, `RestrictUntilEOT` is
+  `addRestrictions`, `GrantAllCreatureTypesUntilEOT` is
+  `allCreatureTypes`, and prowess is `modifyPT`. The six raw-ability
+  files became `setColors` (Cerulean Wisps), `addSubtypes` (Coercive
+  Recruiter), `setBasePower` (PuPu UFO), `setBasePower` plus
+  `setBaseToughness` (Katara), `loseAllAbilities` plus both 7b kinds
+  (Sudden Spoiling) and `removeKeywords` (Shadowspear). The builders
+  keep their names and fields, so no card calling them changed.
+- **One record per effect.** Crew's type change and its base P/T, and
+  Sudden Spoiling's ability loss and its 0/2, were two registrations
+  with two clock reads. Each is now one record with one timestamp,
+  which is what CR 613.7 means by one effect. The halves sit in
+  different layers, so no board can tell the difference.
+- **Shadowspear is pinned at resolution** (owner decision 2). A
+  permanent that enters after the ability resolves keeps hexproof and
+  indestructible, and one that changes control afterwards keeps the
+  state it had. That is CR 611.2c, since abilities are characteristics
+  (CR 109.3), so the card's caveat is dropped and it is declared
+  `CompletenessFull`.
+- **Fixtures.** `v7/until_eot_pump.json` (a real Giant Growth on a
+  prowess creature, which gives two `modifyPT` records) and
+  `v7/crewed_vehicle.json` (a real crew of Smuggler's Copter) are new
+  files under the "never touch an existing file" rule. No existing
+  fixture changed.

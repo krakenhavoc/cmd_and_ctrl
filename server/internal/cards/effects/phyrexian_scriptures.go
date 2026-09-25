@@ -18,7 +18,7 @@ import (
 // The grant is a continuous effect with no duration — it lasts for
 // as long as the creature is on the battlefield, outliving the Saga
 // that made it — and the engine's only floating-continuous-effect
-// registry (game.TurnScopedStatics, ADR 0035) expires at cleanup.
+// registry (game.ScopedEffects, ADR 0035) expires at cleanup.
 // Registering it there would end the protection one turn later and
 // silently, which is worse than not having it; a permanent-duration
 // registry is its own piece of work.
