@@ -317,7 +317,16 @@ type catalogRun struct {
 // the abort, not a fact about the game. And a stall whose cause is a
 // filed, known enumerator gap is not this test going red; it is this
 // test telling you the gap is still there.
-func playCatalogGame(t *testing.T, room *ws.Room, policies []aiseat.Policy, turnBudget int, wall time.Duration) catalogRun {
+//
+// census, when non-nil, is fed one capture attempt (ADR 0041 P7,
+// #1497) per OBSERVED change of room.Seq(). That is a sample, not a
+// guarantee of one capture per action: two actions landing inside one
+// poll tick (below) coalesce into a single observation, so a busy
+// burst can undercount. It is not this test's job to close that gap —
+// #1558 item 4 asks only whether the tail is worth hurrying, and a
+// sampled undercount only ever makes a stale run look SHORTER than it
+// was, never longer.
+func playCatalogGame(t *testing.T, room *ws.Room, policies []aiseat.Policy, turnBudget int, wall time.Duration, census *censusTally) catalogRun {
 	t.Helper()
 	g := room.Game
 	ctx, cancel := context.WithTimeout(context.Background(), wall)
@@ -332,7 +341,12 @@ func playCatalogGame(t *testing.T, room *ws.Room, policies []aiseat.Policy, turn
 	var out catalogRun
 	stall := envDuration("AISEAT_STALL", 15*time.Second)
 	lastSeq, lastMove := room.Seq(), time.Now()
+	lastCaptured := lastSeq
 	for {
+		if seq := room.Seq(); seq != lastCaptured {
+			noteCatalogCapture(census, g)
+			lastCaptured = seq
+		}
 		snap := g.Snapshot()
 		if snap.State != game.StateActive || snap.Turn.Round > turnBudget {
 			break
@@ -377,9 +391,31 @@ func playCatalogGame(t *testing.T, room *ws.Room, policies []aiseat.Policy, turn
 		<-r.Done()
 		out.applied += r.Stats().Applied
 	}
+	// The loop's termination check runs BEFORE its own seq check, so
+	// the action that ended the game (or the last one before a stall
+	// or wall-clock cutoff) is never observed inside the loop. One
+	// more capture here closes that gap.
+	if seq := room.Seq(); seq != lastCaptured {
+		noteCatalogCapture(census, g)
+	}
 	snap := g.Snapshot()
 	out.state, out.turns, out.elapsed = snap.State, snap.Turn.Round, time.Since(started)
 	return out
+}
+
+// noteCatalogCapture takes one restore-point capture attempt and
+// feeds its outcome to census — the same engine calls
+// ws.Room.writeRestorePointLocked makes (game.Game.CaptureSnapshot,
+// game.GameSnapshot.Restorable, game.ContinuationCensus.Kinds), run
+// here instead of inside a Room so the measurement costs nothing on
+// any production path. No-op when census is nil, which is every
+// caller that isn't TestCatalogSoak.
+func noteCatalogCapture(census *censusTally, g *game.Game) {
+	if census == nil {
+		return
+	}
+	snap := g.CaptureSnapshot()
+	census.note(snap.Continuations.Kinds())
 }
 
 // soakBaseSeed is the default first seed: the UTC date as YYYYMMDD,
@@ -481,6 +517,7 @@ func TestCatalogSoak(t *testing.T) {
 	const seats, turnBudget = 4, 200
 	wall := envDuration("AISEAT_WALLCLOCK", 300*time.Second)
 	stats := map[string]*cardStat{}
+	census := newCensusTally()
 
 	for i := 0; i < games; i++ {
 		seed := base + uint64(i)
@@ -490,7 +527,7 @@ func TestCatalogSoak(t *testing.T) {
 			for s := range policies {
 				policies[s] = catalogPolicy(policy, seed, s)
 			}
-			res := playCatalogGame(t, room, policies, turnBudget, wall)
+			res := playCatalogGame(t, room, policies, turnBudget, wall, census)
 			// Unconditional, and before any assertion: a game that
 			// stalled still exercised every card it managed to play,
 			// and those counts are the report.
@@ -544,16 +581,24 @@ func TestCatalogSoak(t *testing.T) {
 		})
 	}
 
-	reportCatalogSoak(t, stats, len(pool))
+	reportCatalogSoak(t, stats, len(pool), census)
+}
+
+// catalogSoakReport is the whole JSON file AISEAT_CATALOG_REPORT
+// writes: the per-card table reportCatalogSoak always built, plus
+// ADR 0041 P7's census tally (#1497, #1558 item 4) beside it.
+type catalogSoakReport struct {
+	Cards  []*cardStat  `json:"cards"`
+	Census *censusTally `json:"census,omitempty"`
 }
 
 // reportCatalogSoak logs the summary and, when asked, writes the whole
-// per-card table out as JSON.
+// per-card table (plus the census tally) out as JSON.
 //
 // The two lists worth acting on are the cards that errored (bugs) and
 // the cards nothing reached (where a unit test is worth more than
 // another bot game).
-func reportCatalogSoak(t *testing.T, stats map[string]*cardStat, pool int) {
+func reportCatalogSoak(t *testing.T, stats map[string]*cardStat, pool int, census *censusTally) {
 	t.Helper()
 	rows := make([]*cardStat, 0, len(stats))
 	for _, s := range stats {
@@ -587,6 +632,23 @@ func reportCatalogSoak(t *testing.T, stats map[string]*cardStat, pool int) {
 		t.Logf("  %-34s cast=%d resolved=%d etb=%d trig=%d err=%d", s.Name, s.Cast, s.Resolved, s.Entered, s.Triggered, s.Errors)
 	}
 
+	// ADR 0041 P7 (#1497, #1558 item 4): what this run's captures say
+	// about how far behind a restore point a table gets. A run with no
+	// blocked captures at all (census.Actions == census.Captured) is
+	// worth logging too — it is the measurement saying tier 4 is not
+	// urgent, not a no-op.
+	if census != nil && census.Actions > 0 {
+		t.Logf("catalog soak: census %d/%d captures restorable", census.Captured, census.Actions)
+		kinds := make([]string, 0, len(census.ByKind))
+		for kind := range census.ByKind {
+			kinds = append(kinds, kind)
+		}
+		sort.Strings(kinds)
+		for _, kind := range kinds {
+			t.Logf("  %-24s blocked=%d longest_run=%d", kind, census.ByKind[kind], census.LongestRunByKind[kind])
+		}
+	}
+
 	path := os.Getenv("AISEAT_CATALOG_REPORT")
 	if path == "" {
 		return
@@ -595,7 +657,8 @@ func reportCatalogSoak(t *testing.T, stats map[string]*cardStat, pool int) {
 		t.Errorf("create report dir: %v", err)
 		return
 	}
-	b, err := json.MarshalIndent(rows, "", "  ")
+	report := catalogSoakReport{Cards: rows, Census: census}
+	b, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
 		t.Errorf("marshal report: %v", err)
 		return
@@ -604,7 +667,7 @@ func reportCatalogSoak(t *testing.T, stats map[string]*cardStat, pool int) {
 		t.Errorf("write report %s: %v", path, err)
 		return
 	}
-	t.Logf("catalog soak: per-card report written to %s", path)
+	t.Logf("catalog soak: report (cards + census) written to %s", path)
 }
 
 // TestSoakBaseSeedRollsDaily pins the two properties the nightly
