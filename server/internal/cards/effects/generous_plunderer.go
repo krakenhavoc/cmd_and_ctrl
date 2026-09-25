@@ -54,7 +54,7 @@ func init() {
 				// the attack's target to a player once, when the attack was
 				// declared, and the resolving item cannot re-derive it later.
 				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-					item := game.NewTriggeredItem(source, "Generous Plunderer — damage to defending player equal to their artifacts", nil)
+					item := game.NewTriggeredItem(source, "Generous Plunderer — damage to defending player equal to their artifacts")
 					item.Params.Player = b17DefendingPlayer(g, ev)
 					return item
 				},

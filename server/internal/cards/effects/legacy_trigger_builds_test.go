@@ -42,8 +42,10 @@ import (
 //
 // Tail batches (tier 4-3 … 4-10) each convert a run of cards and delete
 // their lines; the file is sorted by card name so parallel batches
-// touch different lines. Once it is empty, NewTriggeredItem loses its
-// effect parameter (4-final).
+// touch different lines. Tier 4-final emptied it (Resourceful Defense
+// was the last row) and took NewTriggeredItem's effect parameter away;
+// the file stays, header only, so the lint still has a list to hold
+// the catalog to.
 //
 // Delete the stale lines with
 //

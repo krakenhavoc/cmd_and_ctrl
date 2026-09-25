@@ -28,7 +28,7 @@ func init() {
 			},
 			Key: "Revenge of Ravens — the attacker's controller loses 1 life, you gain 1 life",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, "Revenge of Ravens — the attacker's controller loses 1 life, you gain 1 life", nil)
+				item := game.NewTriggeredItem(source, "Revenge of Ravens — the attacker's controller loses 1 life, you gain 1 life")
 				item.Params.Player = ev.Actor
 				return item
 			},

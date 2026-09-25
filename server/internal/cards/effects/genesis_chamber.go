@@ -38,7 +38,7 @@ func init() {
 			// item.Params.Player.
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 				entered, _ := b26NontokenCreatureEntered(ev, g)
-				item := game.NewTriggeredItem(source, "Genesis Chamber — that creature's controller creates a Myr", nil)
+				item := game.NewTriggeredItem(source, "Genesis Chamber — that creature's controller creates a Myr")
 				item.Params.Player = entered.Controller
 				return item
 			},

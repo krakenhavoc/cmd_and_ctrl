@@ -45,7 +45,7 @@ func init() {
 			// P9's fill-in Build): it is the CR 603.10 fallback X if the
 			// source has since left the battlefield.
 			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, "Esper Sentinel — draw unless caster pays {X}", nil)
+				item := game.NewTriggeredItem(source, "Esper Sentinel — draw unless caster pays {X}")
 				item.Params.Amount = source.CurrentPower()
 				return item
 			},

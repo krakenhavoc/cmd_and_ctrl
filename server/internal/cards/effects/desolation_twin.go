@@ -57,7 +57,7 @@ func init() {
 			// (ev.Actor), a fact of the moment the spell was cast, not the
 			// spell card's own Controller field.
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, "Desolation Twin — create a 10/10 colorless Eldrazi", nil)
+				item := game.NewTriggeredItem(source, "Desolation Twin — create a 10/10 colorless Eldrazi")
 				item.Controller, item.Owner = ev.Actor, ev.Actor
 				return item
 			},

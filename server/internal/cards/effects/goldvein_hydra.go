@@ -50,7 +50,7 @@ func init() {
 			// The last-known power is a board read at trigger time
 			// (ADR 0041 P9's fill-in Build), carried as item.Params.Amount.
 			Build: func(_ game.Event, source *game.Card, lki game.Characteristic, g *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, "Goldvein Hydra — create tapped Treasures equal to its power", nil)
+				item := game.NewTriggeredItem(source, "Goldvein Hydra — create tapped Treasures equal to its power")
 				item.Params.Amount = b13LastKnownPower(g, source.InstanceID, lki)
 				return item
 			},

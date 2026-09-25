@@ -58,7 +58,7 @@ func init() {
 			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Legion Loyalty — myriad: create token copies of the attacker tapped and attacking each other opponent?"},
 			Key:            b27LegionLoyaltyLabel,
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, b27LegionLoyaltyLabel, nil)
+				item := game.NewTriggeredItem(source, b27LegionLoyaltyLabel)
 				item.Params.Object = game.ObjectRef{ID: ev.CardID}
 				item.Params.Player = b17DefendingPlayer(g, ev)
 				return item

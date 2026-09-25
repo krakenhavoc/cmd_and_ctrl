@@ -81,7 +81,7 @@ func curseOfOpulenceEachAttackingOpponent() game.TriggeredAbility {
 		// A fill-in Build (ADR 0041 P9): the attacking opponent becomes
 		// the item's controller, a fact of the moment the trigger fired.
 		Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-			item := game.NewTriggeredItem(source, label, nil)
+			item := game.NewTriggeredItem(source, label)
 			item.Controller, item.Owner = ev.Actor, ev.Actor
 			return item
 		},

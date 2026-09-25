@@ -69,7 +69,7 @@ func init() {
 				if !ok {
 					return nil
 				}
-				item := game.NewTriggeredItem(source, selvalaDrawLabel, nil)
+				item := game.NewTriggeredItem(source, selvalaDrawLabel)
 				item.Params.Player = entered.Controller
 				item.Params.Object.ID = entered.InstanceID
 				return item

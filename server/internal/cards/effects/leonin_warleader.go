@@ -41,7 +41,7 @@ func init() {
 			},
 			Key: "Leonin Warleader — two 1/1 lifelink Cats, tapped and attacking",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, "Leonin Warleader — two 1/1 lifelink Cats, tapped and attacking", nil)
+				item := game.NewTriggeredItem(source, "Leonin Warleader — two 1/1 lifelink Cats, tapped and attacking")
 				item.Params.Player = b17DefendingPlayer(g, ev)
 				return item
 			},

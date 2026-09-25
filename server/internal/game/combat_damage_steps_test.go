@@ -225,7 +225,7 @@ func TestFirstStrikeDamageTriggerResolvesBeforeRegularDamage(t *testing.T) {
 			},
 			Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
 				victim := bear
-				return NewTriggeredItem(source, "destroy the other attacker", func(g *Game, _ *StackItem) error {
+				return newTriggeredItemForTest(source, "destroy the other attacker", func(g *Game, _ *StackItem) error {
 					return g.DestroyPermanentForEffect(victim)
 				})
 			},

@@ -75,7 +75,7 @@ func init() {
 			// fact of the moment the trigger fired, so it is captured
 			// into Params.Amount rather than a closure.
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, "Vilis, Broker of Blood — draw that many cards", nil)
+				item := game.NewTriggeredItem(source, "Vilis, Broker of Blood — draw that many cards")
 				item.Params.Amount, _ = s22PlayerLostLife(ev, source.Controller, g)
 				return item
 			},

@@ -37,7 +37,7 @@ func init() {
 			// than closing over the card, which the Effect must not
 			// capture.
 			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, "Farmer Cotton — create X Halflings and X Food", nil)
+				item := game.NewTriggeredItem(source, "Farmer Cotton — create X Halflings and X Food")
 				item.Params.Amount = source.CastX()
 				return item
 			},

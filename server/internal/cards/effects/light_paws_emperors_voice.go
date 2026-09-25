@@ -53,7 +53,7 @@ func init() {
 				if aura, ok := g.LookupCardForEffect(ev.CardID); ok {
 					maxMV = aura.ManaValue()
 				}
-				item := game.NewTriggeredItem(source, b29LightPawsLabel, nil)
+				item := game.NewTriggeredItem(source, b29LightPawsLabel)
 				item.Params.Amount = maxMV
 				return item
 			},

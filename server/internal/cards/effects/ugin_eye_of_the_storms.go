@@ -76,7 +76,7 @@ func init() {
 				// permanent exists, so the controller is the caster
 				// (ev.Actor) rather than the default source.Controller.
 				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					item := game.NewTriggeredItem(source, "Ugin, Eye of the Storms — exile a colored permanent", nil)
+					item := game.NewTriggeredItem(source, "Ugin, Eye of the Storms — exile a colored permanent")
 					item.Controller, item.Owner = ev.Actor, ev.Actor
 					return item
 				},

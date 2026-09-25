@@ -60,7 +60,7 @@ func init() {
 			Key:     "Shalai and Hallar — that much damage to target opponent",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 				amount, _ := b39PlusOneCountersOnCreatureYouControl(ev, source, g)
-				item := game.NewTriggeredItem(source, "Shalai and Hallar — that much damage to target opponent", nil)
+				item := game.NewTriggeredItem(source, "Shalai and Hallar — that much damage to target opponent")
 				item.Params.Amount = amount
 				return item
 			},

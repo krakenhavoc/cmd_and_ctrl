@@ -56,7 +56,7 @@ func init() {
 				},
 				Key: rabbleRousingLabel,
 				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-					item := game.NewTriggeredItem(source, rabbleRousingLabel, nil)
+					item := game.NewTriggeredItem(source, rabbleRousingLabel)
 					item.Params.Object = game.ObjectRef(game.ObjectRefOf(*source))
 					item.Params.Amount = len(b13AttackingCreaturesYouControl(g, source.Controller))
 					return item

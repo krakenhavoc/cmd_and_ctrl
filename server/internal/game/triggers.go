@@ -41,24 +41,27 @@ import "github.com/google/uuid"
 
 // NewTriggeredItem builds the StackItem for a triggered ability
 // whose source is `source`: Kind StackItemTriggered, controller and
-// owner = source.Controller, Label for the stack overlay, and an
-// Effect callback that runs at resolution. Targets / Modes / X are
-// left empty — a targeted trigger sets item.Targets on the returned
-// value before handing it back from Build so the CR 608.2b re-check
-// applies at resolve time.
+// owner = source.Controller, and Label for the stack overlay.
+// Targets / Modes / X are left empty — a targeted trigger sets
+// item.Targets on the returned value before handing it back from
+// Build so the CR 608.2b re-check applies at resolve time.
 //
-// The ID is left Nil; queueHarvestedTriggerLocked mints one. The
-// effect must read the controller / source / targets off the item
-// it receives (not off `source`, which is a pointer into a zone
-// slice that may have been reallocated or moved by resolve time).
-func NewTriggeredItem(source *Card, label string, effect func(g *Game, item *StackItem) error) *StackItem {
+// It takes NO effect (ADR 0041 P9, #1497, tier 4-final): what the
+// item does is always data. A catalog row declares its Effect and
+// the engine installs it and names the row on the item
+// (buildTriggerItemLocked); an engine trigger with no row names a
+// registered body (NewKeyedTriggeredItem). A catalog Build that calls
+// this is a fill-in: it sets a label, a controller or Params and
+// leaves item.Effect nil.
+//
+// The ID is left Nil; queueHarvestedTriggerLocked mints one.
+func NewTriggeredItem(source *Card, label string) *StackItem {
 	return &StackItem{
 		Kind:         StackItemTriggered,
 		Controller:   source.Controller,
 		Owner:        source.Controller,
 		SourceCardID: source.InstanceID,
 		Label:        label,
-		Effect:       effect,
 	}
 }
 
@@ -70,7 +73,8 @@ func NewTriggeredItem(source *Card, label string, effect func(g *Game, item *Sta
 // the stack is still a restore point — the same shape
 // dt.stackItem() stamps for a fired delayed trigger.
 func NewKeyedTriggeredItem(source *Card, label string, body BodyRef, params EffectParams) *StackItem {
-	item := NewTriggeredItem(source, label, bodyEffect(body.key, params))
+	item := NewTriggeredItem(source, label)
+	item.Effect = bodyEffect(body.key, params)
 	item.Body, item.Params = body.key, params
 	return item
 }
@@ -131,8 +135,8 @@ type TriggeredAbility struct {
 
 	// Effect is what the ability does when its item resolves, declared
 	// on the row itself (ADR 0041 P9, #1497, tier 4-2). When it is set
-	// the engine builds the item — NewTriggeredItem(source, Key,
-	// Effect), or Build's item with Effect installed — and, for a row
+	// the engine builds the item — NewTriggeredItem(source, Key) with
+	// Effect installed, or Build's item with Effect installed — and, for a row
 	// the catalog registered, stamps it with the row's name
 	// (Body "catalog/triggered" plus Params.Ability), so a table with
 	// the trigger waiting on the stack is still a restore point:

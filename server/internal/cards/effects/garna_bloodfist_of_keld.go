@@ -45,7 +45,7 @@ func init() {
 				if attacking {
 					label = "Garna, Bloodfist of Keld — draw a card (it was attacking)"
 				}
-				item := game.NewTriggeredItem(source, label, nil)
+				item := game.NewTriggeredItem(source, label)
 				if attacking {
 					item.Params.Amount = 1
 				}

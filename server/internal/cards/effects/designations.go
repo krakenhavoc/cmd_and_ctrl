@@ -171,7 +171,7 @@ func ToSolve(label string, condition func(g *game.Game, controller, source uuid.
 		},
 		// No fill-in Build (ADR 0041 P9): `condition` and `label` are
 		// catalog data fixed at registration, so the engine can build
-		// the item itself (NewTriggeredItem(source, Key, Effect)).
+		// the item itself from the row's Key and Effect.
 		Effect: func(g *game.Game, item *game.StackItem) error {
 			// CR 603.4: the intervening if is checked again on
 			// resolution. Nothing happens if it is false — the

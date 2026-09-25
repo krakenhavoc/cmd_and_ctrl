@@ -78,7 +78,7 @@ func init() {
 				// which is CR 603.10's battlefield-exit snapshot and
 				// answers the epoch it had THERE, before it left.
 				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-					item := game.NewTriggeredItem(source, edeaReturnLabel, nil)
+					item := game.NewTriggeredItem(source, edeaReturnLabel)
 					epoch := -1
 					if c, ok := g.LookupCardForEffect(ev.CardID); ok {
 						epoch = c.ObjectEpoch

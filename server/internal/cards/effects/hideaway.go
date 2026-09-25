@@ -46,7 +46,7 @@ func Hideaway(name string, n int) game.TriggeredAbility {
 		AppliesTo: Self,
 		Key:       label,
 		Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-			item := game.NewTriggeredItem(source, label, nil)
+			item := game.NewTriggeredItem(source, label)
 			item.Params.Object = game.ObjectRef(game.ObjectRefOf(*source))
 			item.Params.Amount = n
 			item.Params.Name = name

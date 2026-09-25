@@ -66,7 +66,7 @@ func tt809Game(t *testing.T) (*Game, *Player, uuid.UUID) {
 			},
 			Targets: tt809StackSpellSpec(),
 			Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-				return NewTriggeredItem(source, "copy target instant or sorcery spell",
+				return newTriggeredItemForTest(source, "copy target instant or sorcery spell",
 					func(_ *Game, _ *StackItem) error { return nil })
 			},
 		}}

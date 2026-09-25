@@ -43,7 +43,7 @@ func init() {
 			},
 			Key: "Quietus Spike — halve that player's life",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, "Quietus Spike — halve that player's life", nil)
+				item := game.NewTriggeredItem(source, "Quietus Spike — halve that player's life")
 				item.Params.Player = ev.Target
 				return item
 			},

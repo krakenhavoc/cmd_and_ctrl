@@ -45,7 +45,7 @@ func init() {
 			},
 			Key: "Kozilek, the Great Distortion — draw up to seven cards in hand",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, "Kozilek, the Great Distortion — draw up to seven cards in hand", nil)
+				item := game.NewTriggeredItem(source, "Kozilek, the Great Distortion — draw up to seven cards in hand")
 				item.Controller, item.Owner = ev.Actor, ev.Actor
 				return item
 			},

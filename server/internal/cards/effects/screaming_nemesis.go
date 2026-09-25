@@ -54,7 +54,7 @@ func init() {
 			Targets: b35TargetAnyOther(),
 			Key:     "Screaming Nemesis — deal that much damage to any other target",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, "Screaming Nemesis — deal that much damage to any other target", nil)
+				item := game.NewTriggeredItem(source, "Screaming Nemesis — deal that much damage to any other target")
 				item.Params.Amount = ev.Amount
 				return item
 			},

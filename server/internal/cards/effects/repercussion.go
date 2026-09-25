@@ -39,7 +39,7 @@ func init() {
 				if !ok {
 					return nil
 				}
-				item := game.NewTriggeredItem(source, "Repercussion — that much damage to the creature's controller", nil)
+				item := game.NewTriggeredItem(source, "Repercussion — that much damage to the creature's controller")
 				item.Params.Player = c.Controller
 				item.Params.Amount = ev.Amount
 				return item

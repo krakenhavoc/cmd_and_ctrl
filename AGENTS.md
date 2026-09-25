@@ -97,7 +97,7 @@ cmd_and_ctrl/
     ├── bot.md           # AI bot seat — user-facing guide (S31)
     ├── engine-seams/closed/ # one fragment per closed seam; CI generates engine-seams.md's Closed list from them (#1461)
     ├── sprints.md       # sprint plan
-    └── decisions/       # ADRs (0001 WS library … 0093 granted abilities) — see §4 on numbering
+    └── decisions/       # ADRs (0001 WS library … 0095 deck coverage and requests) — see §4 on numbering
 ```
 
 When you create a new top-level directory, add it here.
@@ -303,7 +303,7 @@ A restore point written by yesterday's binary has to restore in today's. Three t
   - It does not, and exactly one row in the same list has that label (a deploy reordered the card's abilities): that row is used and the ref is rewritten.
   - No row, or more than one, has the label: the game is restored anyway. The item stays on the stack as a manual item with no effect, like a sandbox-announced one. Its source card is flagged `Card.AbilitiesLostOnRestore`, and the boot log has one ERROR line naming the game, the card, the label and the ref (`GameSnapshot.LostStackAbilities`). Never abandon the game and never drop the item.
 
-  A binary from before slice 4-2 does not register `catalog/triggered`, so it refuses a file that names it (the rollback case). An ability carried on a card instance (`Card.ActivatedAbilities`) is never stamped and is still counted by the census. Neither is a trigger whose row computes its effect in a hand-written `Build` with no `Effect` beside it, nor one whose `TargetsFrom` reads the board (`TriggeredAbility.TargetsFromReadsBoard`): those rows are listed in `server/internal/cards/effects/testdata/legacy_trigger_builds.txt`, which `TestLegacyTriggerBuildsOnlyShrink` holds to shrinking — it fails on a listed row that no longer needs listing (delete the line, or run `cd server && go test ./internal/cards/effects -run TestLegacyTriggerBuildsOnlyShrink -args -update-legacy-triggers`, which never adds one) and on a new hand-written `Build` that is not listed (declare the `Effect` instead). A `Build` that makes a keyed item (`game.NewKeyedTriggeredItem` over a tier-2 body, as suspend and madness do) is data already and is not listed. Since this change, every stack-item field (on the stack, queued, or in `lastKnownStack`) is refused if this binary does not know it, for a file of the current schema. So a new stack-item field is refused by every binary from here on and needs no bump. `lastKnownStack`, the CR 608.2h record of spells countered this turn, is carried too. The census counts a stack item once, in `StackEffects`, when its effect is an unkeyed closure or when it has a target or mode clause with neither an oracle ID nor an ability ref behind it. `StackTargetSpecs` is retired.
+  A binary from before slice 4-2 does not register `catalog/triggered`, so it refuses a file that names it (the rollback case). An ability carried on a card instance (`Card.ActivatedAbilities`) is never stamped and is still counted by the census. Neither is a trigger whose row computes its effect in a hand-written `Build` with no `Effect` beside it, nor one whose `TargetsFrom` reads the board (`TriggeredAbility.TargetsFromReadsBoard`): such rows would be listed in `server/internal/cards/effects/testdata/legacy_trigger_builds.txt`, which is EMPTY since tier 4-final and which `TestLegacyTriggerBuildsOnlyShrink` holds to shrinking — it fails on a listed row that no longer needs listing (delete the line, or run `cd server && go test ./internal/cards/effects -run TestLegacyTriggerBuildsOnlyShrink -args -update-legacy-triggers`, which never adds one) and on a new hand-written `Build` that is not listed (declare the `Effect` instead). A `Build` that makes a keyed item (`game.NewKeyedTriggeredItem` over a tier-2 body, as suspend and madness do) is data already and is not listed. Since this change, every stack-item field (on the stack, queued, or in `lastKnownStack`) is refused if this binary does not know it, for a file of the current schema. So a new stack-item field is refused by every binary from here on and needs no bump. `lastKnownStack`, the CR 608.2h record of spells countered this turn, is carried too. The census counts a stack item once, in `IntrinsicAbilityCards`, when its effect is a closure with no `Body` or when it has a target or mode clause with neither an oracle ID nor an ability ref behind it. In production the only such item is an ability carried on a card instance, which is that counter's own subject; a test that hand-builds an item (`newTriggeredItemForTest` in `internal/game`) lands there too. `StackTargetSpecs` and `StackEffects` are both retired (tier 4-final, owner decision 2026-09-25): `game.NewTriggeredItem(source, label)` takes no effect, because what a stack item does is always a catalog row or a registered body.
 - **The closure ratchet.** `TestClosureFieldsReachableFromGame` (`internal/game`) lists every ROUTE from `Game` to something that can hold a func or an interface — every field of every reachable struct whose type reaches one, directly or through another struct — in `internal/game/testdata/closure_fields.txt`, each classified `rebuilt`, `keyed`, `transient`, `test-only` or `census:<Counter>`. A new route fails until it is classified, including a new field whose type is a struct already on the list (#1558): `cd server && go test ./internal/game -run TestClosureFieldsReachableFromGame -args -update-closure-fields` keeps the existing classes and marks new routes `unclassified`. The number of lines in each `census:` class and in `transient` is pinned by `closureClassCeilings` in the test and may only fall: phase 3's tiers delete lines and lower the ceiling; nothing raises one. The one exception is ADR 0041 P11: when a tier retires a counter, its lines may move to the class of the route they still have, in the same PR, and the PR lists those lines and the new ceiling.
 
 ### AI bot seat (Go, `server/internal/aiseat/`)
@@ -2283,7 +2283,7 @@ is `item.Trigger.Event.Actor`, "the creature that died" is
 `ctx.Trigger().Object`. Anything else read off the board when the
 ability triggers — a label that names a player, a mana value, a
 controller override — is filled in by a `Build` kept BESIDE the
-`Effect`: it returns `game.NewTriggeredItem(source, label, nil)` with
+`Effect`: it returns `game.NewTriggeredItem(source, label)` with
 the value in `item.Params` (`Player`, `Object`, `Amount`, `Cost`,
 `Name`), a controller or a label set, and **leaves `item.Effect`
 nil** — the engine installs the row's `Effect`. A `Build` that sets
@@ -2292,10 +2292,11 @@ test binary panics at the first trigger. Cascade, storm, gift and
 `WhenYouLoseControlOfThis` are the worked examples.
 
 A `Build` with no `Effect` beside it — the old shape, which computed
-the effect at trigger time — still works, but its item is an unkeyed
-closure that holds the restore point back while it waits, and the
-row must be listed in `testdata/legacy_trigger_builds.txt` (the list
-only shrinks; see "Snapshot compatibility"). Do not add one. A
+the effect at trigger time — is gone from the catalog.
+`testdata/legacy_trigger_builds.txt` is empty and only shrinks (see
+"Snapshot compatibility"), so a new one fails the build, and
+`game.NewTriggeredItem` takes no effect at all (ADR 0041 tier
+4-final). A
 `TargetsFrom` that reads anything but its trigger context and the
 source's identity (`NotSelf`, `AnotherTarget`) must set
 `TargetsFromReadsBoard`, because restore calls it again on the
@@ -4143,7 +4144,7 @@ resolution (`item.Trigger.Event.Actor` for cast / draw events — not
 captured in a `Build`, which would put the row on the legacy list) and
 read the controller off the `Context` inside `OnDecline`. See
 [rhystic_study.go](server/internal/cards/effects/rhystic_study.go),
-which still captures it and is on the tail's list.
+whose `Effect` reads the payer as `ctx.Trigger().Event.Actor`.
 
 **Dies triggers** get the CR 603.10 last-known-information
 characteristics as the third `AppliesTo` / `Build` argument — the card

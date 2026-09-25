@@ -41,8 +41,8 @@ func TestTheSkipTallyCountsByKindAndResetsTheRun(t *testing.T) {
 		}
 	}
 	rep := room.ShutdownReport()
-	if got := rep.SkippedByKind["stackEffects"]; got != 3 {
-		t.Errorf("skipped stackEffects = %d, want 3 (by kind: %v)", got, rep.SkippedByKind)
+	if got := rep.SkippedByKind["intrinsicAbilityCards"]; got != 3 {
+		t.Errorf("skipped intrinsicAbilityCards = %d, want 3 (by kind: %v)", got, rep.SkippedByKind)
 	}
 	if rep.SkipRun != 3 || rep.LongestSkipRun != 3 {
 		t.Errorf("run = %d, longest = %d, want 3 and 3", rep.SkipRun, rep.LongestSkipRun)
@@ -57,14 +57,14 @@ func TestTheSkipTallyCountsByKindAndResetsTheRun(t *testing.T) {
 	if rep.SkipRun != 0 {
 		t.Errorf("run = %d after a restore point was written, want 0", rep.SkipRun)
 	}
-	if rep.LongestSkipRun != 3 || rep.SkippedByKind["stackEffects"] != 3 {
-		t.Errorf("longest = %d, by kind %v; want 3 and stackEffects 3 kept", rep.LongestSkipRun, rep.SkippedByKind)
+	if rep.LongestSkipRun != 3 || rep.SkippedByKind["intrinsicAbilityCards"] != 3 {
+		t.Errorf("longest = %d, by kind %v; want 3 and intrinsicAbilityCards 3 kept", rep.LongestSkipRun, rep.SkippedByKind)
 	}
 
 	var buf bytes.Buffer
 	LogShutdownCensus(slog.New(slog.NewTextHandler(&buf, nil)), []*Room{room}, nil)
 	out := buf.String()
-	for _, want := range []string{"skipped_by_kind", "stackEffects:3", "longest_skip_run=3", "skip_run=0"} {
+	for _, want := range []string{"skipped_by_kind", "intrinsicAbilityCards:3", "longest_skip_run=3", "skip_run=0"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("the shutdown census line does not carry %q:\n%s", want, out)
 		}

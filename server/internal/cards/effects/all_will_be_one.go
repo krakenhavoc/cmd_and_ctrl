@@ -49,7 +49,7 @@ func init() {
 			Key:     "All Will Be One — that much damage",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 				amount, _ := b12CountersPlacedByYou(ev, source, g)
-				item := game.NewTriggeredItem(source, "All Will Be One — that much damage", nil)
+				item := game.NewTriggeredItem(source, "All Will Be One — that much damage")
 				item.Params.Amount = amount
 				return item
 			},

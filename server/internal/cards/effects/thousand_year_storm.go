@@ -36,7 +36,7 @@ func init() {
 			// moment the spell was cast, not something the Effect can
 			// recompute later.
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, thousandYearStormLabel, nil)
+				item := game.NewTriggeredItem(source, thousandYearStormLabel)
 				item.Params.Amount = b12InstantsAndSorceriesCastBeforeThisTurn(g, source.Controller, ev.CardID)
 				return item
 			},

@@ -605,7 +605,7 @@ func (t TriggeredAbility) builds() bool { return t.Build != nil || t.Effect != n
 // a declaration into an item (ADR 0041 P9, tier 4-2).
 //
 //   - A declared Effect and no Build: the engine builds it,
-//     NewTriggeredItem(source, Key, Effect).
+//     NewTriggeredItem(source, Key) with the row's Effect installed.
 //   - A declared Effect and a Build: Build fills in what the engine
 //     cannot know (a controller, a label, Params) and must leave
 //     item.Effect nil; the engine installs the row's Effect. A Build
@@ -638,7 +638,8 @@ func (g *Game) buildTriggerItemLocked(t TriggeredAbility, ev Event, source Card,
 		}
 		item.Effect = t.Effect
 	case t.Effect != nil:
-		item = NewTriggeredItem(&source, t.Key, t.Effect)
+		item = NewTriggeredItem(&source, t.Key)
+		item.Effect = t.Effect
 	default:
 		return nil
 	}

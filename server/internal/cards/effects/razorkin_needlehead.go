@@ -50,7 +50,7 @@ func init() {
 			},
 			Key: "Razorkin Needlehead — 1 damage to the player who drew",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, "Razorkin Needlehead — 1 damage to the player who drew", nil)
+				item := game.NewTriggeredItem(source, "Razorkin Needlehead — 1 damage to the player who drew")
 				item.Params.Player = ev.Actor
 				return item
 			},

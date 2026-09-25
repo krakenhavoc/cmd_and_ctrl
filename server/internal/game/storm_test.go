@@ -180,7 +180,7 @@ func TestATriggerIsNotASpell(t *testing.T) {
 				return ev.CardID == source.InstanceID
 			},
 			Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-				return NewTriggeredItem(source, "storm-test trigger",
+				return newTriggeredItemForTest(source, "storm-test trigger",
 					func(*Game, *StackItem) error { return nil })
 			},
 		}}

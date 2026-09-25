@@ -86,7 +86,7 @@ func TestDoubledOptionalTriggerTargetPromptProjection(t *testing.T) {
 				Mode: "player", Label: "target player", Players: true, Min: 1, Max: 1,
 			},
 			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "targeted trigger", nil)
+				return game.NewTriggeredItem(source, "targeted trigger")
 			},
 		}}
 	}

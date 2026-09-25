@@ -1206,11 +1206,18 @@ const (
 // drops to a permanent zero as the corresponding continuation becomes
 // data-driven.
 type ContinuationCensus struct {
-	// StackEffects is stack items (on the stack, queued, or remembered
-	// in lastKnownStack) that restore could not rebuild: an Effect that
-	// is a bare closure, or — since ADR 0041 P9's census fold — a target
-	// or mode clause with neither an oracle ID nor a catalog ability ref
-	// behind it. Each item is counted once.
+	// StackEffects counted stack items (on the stack, queued, or
+	// remembered in lastKnownStack) that restore could not rebuild: an
+	// Effect that is a bare closure, or a target or mode clause with
+	// neither an oracle ID nor a catalog ability ref behind it. RETIRED
+	// by ADR 0041 phase 3 tier 4-final (#1497): every production path
+	// names its item's body — a catalog row (catalog/activated,
+	// catalog/triggered), a tier-2 body or a reflexive body — and the
+	// one kind of item that still cannot (an ability carried on the
+	// card instance, or a hand-built item) is folded into
+	// IntrinsicAbilityCards. Nothing increments this. The field stays
+	// so a census written by an older binary still decodes, and still
+	// reads as not restorable.
 	StackEffects int `json:"stackEffects,omitempty"`
 
 	// StackTargetSpecs counted items whose CR 608.2b re-check clause is
@@ -1274,6 +1281,14 @@ type ContinuationCensus struct {
 	// instance ability with no entry behind it — a closure stamped
 	// onto one object at runtime — still counts, and must: the
 	// counter is meant to become accurate, not unreachable.
+	//
+	// Since ADR 0041 tier 4-final (#1497) it also counts, once each, the
+	// stack items (on the stack, queued, or in lastKnownStack) that
+	// restore cannot rebuild: an Effect that is a closure with no Body,
+	// or a target or mode clause nothing re-derives. In production the
+	// only such item is an ability carried on a card instance, which is
+	// this counter's own subject — and StackEffects, which used to count
+	// them, is retired.
 	IntrinsicAbilityCards int `json:"intrinsicAbilityCards,omitempty"`
 
 	// UnpersistableRNG marked a game whose random source belonged to
@@ -1821,9 +1836,8 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		Params:        effectParamsOrNil(s.Params),
 	}
 	// ADR 0041 P9 (#1497, tier 4): the census fold. An item is counted
-	// ONCE, in StackEffects, whatever it holds, because the question is
-	// one question — can restore rebuild this item — and it has one of
-	// two answers:
+	// ONCE, whatever it holds, because the question is one question —
+	// can restore rebuild this item — and it has one of two answers:
 	//
 	//   - an Effect that is a bare closure cannot be rebuilt;
 	//   - a target or mode clause can be rebuilt only when the item
@@ -1836,12 +1850,21 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 	// activated ability, or a reflexive trigger, P9) is data: restore
 	// re-derives its Effect. StackTargetSpecs is retired: nothing
 	// increments it.
+	//
+	// Tier 4-final (owner decision, 2026-09-25) retired StackEffects
+	// too and folded what is left into IntrinsicAbilityCards: every
+	// production path keys its item, and the one that cannot — an
+	// ability carried on a card instance (Card.ActivatedAbilities),
+	// which activatedAbilityRefFor never stamps — is that counter's own
+	// subject. A hand-built item with a closure and no body (a test
+	// fixture, a stubbed catalog row) lands here as well, so the census
+	// still refuses to call a game holding one restorable.
 	switch {
 	case s.Effect != nil && s.Body == "":
-		cen.StackEffects++
+		cen.IntrinsicAbilityCards++
 		cen.note("stack effect: %s", labelOr(s.Label, string(s.Kind)))
 	case (s.targetSpec != nil || s.modeSpec != nil) && !stackSpecsRederivable(out):
-		cen.StackEffects++
+		cen.IntrinsicAbilityCards++
 		cen.note("stack clause: %s", labelOr(s.Label, string(s.Kind)))
 	}
 	return out

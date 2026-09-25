@@ -61,7 +61,7 @@ func init() {
 				// rather than closing over the card, which the
 				// Effect must not capture.
 				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					item := game.NewTriggeredItem(source, "The Goose Mother — create half X Food, rounded up", nil)
+					item := game.NewTriggeredItem(source, "The Goose Mother — create half X Food, rounded up")
 					item.Params.Amount = source.CastX()
 					return item
 				},
