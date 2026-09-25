@@ -25,11 +25,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // which it could not while they went onto a card still on the stack.
 //
 // "For each +1/+1 counter on this creature" on death is last-known
-// information (CR 603.10). The card's Counters are cleared by the
-// move and the LKI characteristic the harvester hands the trigger
-// carries no counter math, so the total is read back off the event
-// log — b13LastKnownCounters — which is the count at the moment it
-// died, a Corpsejack doubling included.
+// information (CR 603.10), read at RESOLUTION through
+// ctx.TriggeringPermanent() (#1379, CR 608.2h): counters included, and
+// keyed by the object's epoch, so a reanimation in response before the
+// trigger resolves is a new object and cannot leak new counters into
+// this reading — the count is the one the creature had when it died, a
+// Corpsejack doubling included.
 //
 // Cast for X=0 the Walker enters as the printed 0/0 it is and the
 // next state-based check puts it into its owner's graveyard (CR
@@ -51,15 +52,15 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return cardDied(ev, source)
 			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				n := b13LastKnownCounters(g, source.InstanceID, "+1/+1")
-				return game.NewTriggeredItem(source, "Hangarback Walker — create a Thopter for each +1/+1 counter it had",
-					func(g *game.Game, item *game.StackItem) error {
-						if n <= 0 {
-							return nil
-						}
-						return CreateToken{Controller: item.Controller, Template: TokenCard("1/1 colorless Thopter artifact with flying"), N: n}.Apply(NewContext(g, item))
-					})
+			Key: "Hangarback Walker — create a Thopter for each +1/+1 counter it had",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				info, _ := ctx.TriggeringPermanent()
+				n := info.Counters["+1/+1"]
+				if n <= 0 {
+					return nil
+				}
+				return CreateToken{Controller: item.Controller, Template: TokenCard("1/1 colorless Thopter artifact with flying"), N: n}.Apply(ctx)
 			},
 		}},
 		Activated: []ActivatedAbility{{

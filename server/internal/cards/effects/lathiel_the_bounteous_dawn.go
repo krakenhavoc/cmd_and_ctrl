@@ -46,10 +46,8 @@ func init() {
 			},
 			Targets: TargetCreature("any number of other target creatures",
 				b03NotNamed("Lathiel, the Bounteous Dawn")).WithCount(0, 0),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Lathiel, the Bounteous Dawn — distribute +1/+1 counters among the chosen creatures",
-					b33DistributeCountersRoundRobin)
-			},
+			Key:    "Lathiel, the Bounteous Dawn — distribute +1/+1 counters among the chosen creatures",
+			Effect: b33DistributeCountersRoundRobin,
 		}},
 	})
 }

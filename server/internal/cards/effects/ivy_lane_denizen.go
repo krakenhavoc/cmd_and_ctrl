@@ -29,17 +29,15 @@ func init() {
 				return b23AnotherGreenCreatureYouControlEntered(ev, source, g)
 			},
 			Targets: TargetCreature("target creature"),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Ivy Lane Denizen — put a +1/+1 counter on target creature",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						for _, t := range ctx.LegalTargets() {
-							if err := (AddCounter{Target: t.ID, Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
-								return err
-							}
-						}
-						return nil
-					})
+			Key:     "Ivy Lane Denizen — put a +1/+1 counter on target creature",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				for _, t := range ctx.LegalTargets() {
+					if err := (AddCounter{Target: t.ID, Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
+						return err
+					}
+				}
+				return nil
 			},
 		}},
 	})

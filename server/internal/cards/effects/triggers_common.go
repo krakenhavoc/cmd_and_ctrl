@@ -814,6 +814,20 @@ func SelfTargetedByASpell(ev game.Event, source *game.Card, _ game.Characteristi
 	return b40TargetedByASpell(ev, g)
 }
 
+// DealAmountFromParamsToFirstTarget is the Effect body for "…deals
+// that much damage to target X", where the amount was computed once
+// at trigger time and carried on item.Params.Amount by a fill-in
+// Build — Kaervek the Merciless's spell mana value, All Will Be One's
+// counters placed — rather than baked into a per-instance closure. A
+// target that left in response (CR 608.2b) leaves the ability to do
+// nothing rather than error.
+func DealAmountFromParamsToFirstTarget(g *game.Game, item *game.StackItem) error {
+	if len(item.Targets) == 0 {
+		return nil
+	}
+	return DealDamage{Source: item.SourceCardID, Target: item.Targets[0].ID, Amount: item.Params.Amount}.Apply(NewContext(g, item))
+}
+
 // PutChosenTargetOnTopOfLibrary is the Effect body behind "put target
 // <card> from your graveyard on top of your library" — Mystic
 // Sanctuary's instant or sorcery, Mortuary Mire's creature. It tucks

@@ -17,9 +17,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // fewer than seven cards in hand" is an intervening-if (CR 603.4):
 // checked as the spell is cast — Kozilek is on the stack by then, not
 // in the hand — and again as the trigger resolves, with the
-// difference recomputed then, so a card drawn in response shrinks the
-// draw. The {C}{C} in the cost wants colorless mana, which the cost
-// engine enforces.
+// difference recomputed then (read live off the item's Controller, so
+// a card drawn in response shrinks the draw). The {C}{C} in the cost
+// wants colorless mana, which the cost engine enforces.
 //
 // Sandbox simplification, declared — one whole ability omitted, the
 // Stoneforge Mystic posture: the counter ability is NOT implemented.
@@ -43,21 +43,18 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return ev.CardID == source.InstanceID && b14HandSize(g, ev.Actor) < 7
 			},
+			Key: "Kozilek, the Great Distortion — draw up to seven cards in hand",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return &game.StackItem{
-					Kind:         game.StackItemTriggered,
-					Controller:   ev.Actor,
-					Owner:        ev.Actor,
-					SourceCardID: source.InstanceID,
-					Label:        "Kozilek, the Great Distortion — draw up to seven cards in hand",
-					Effect: func(g *game.Game, item *game.StackItem) error {
-						n := 7 - b14HandSize(g, item.Controller)
-						if n <= 0 {
-							return nil
-						}
-						return DrawCards{Player: item.Controller, N: n}.Apply(NewContext(g, item))
-					},
+				item := game.NewTriggeredItem(source, "Kozilek, the Great Distortion — draw up to seven cards in hand", nil)
+				item.Controller, item.Owner = ev.Actor, ev.Actor
+				return item
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				n := 7 - b14HandSize(g, item.Controller)
+				if n <= 0 {
+					return nil
 				}
+				return DrawCards{Player: item.Controller, N: n}.Apply(NewContext(g, item))
 			},
 		}},
 	})

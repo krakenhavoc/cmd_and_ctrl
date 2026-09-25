@@ -467,24 +467,27 @@ func b35DreadSummonsMillStep(ctx *Context, item *game.StackItem, players []uuid.
 	}.Apply(ctx)
 }
 
-// b35GainLifeEqualToToughness is Ikra Shidiqi's body: life equal to
-// the dealing creature's toughness, read live at resolution when it
-// is still on the battlefield (so a pump in response counts) and
-// otherwise the toughness it had when the damage was dealt, captured
-// in Build — Righteous Valkyrie's fallback.
-func b35GainLifeEqualToToughness(dealer uuid.UUID, fallback int) func(g *game.Game, item *game.StackItem) error {
-	return func(g *game.Game, item *game.StackItem) error {
-		toughness := fallback
-		if onBattlefield(g, dealer) {
-			if c, ok := g.LookupCardForEffect(dealer); ok {
-				toughness = c.CurrentToughness()
-			}
+// b35GainLifeEqualToToughness is Ikra Shidiqi's declared Effect: life
+// equal to the dealing creature's toughness, read live at resolution
+// when it is still on the battlefield (so a pump in response counts)
+// and otherwise the toughness it had when the damage was dealt — the
+// fallback, carried on item.Params.Amount by a fill-in Build, along
+// with the dealer's ID on item.Params.Object — Righteous Valkyrie's
+// fallback. Only Ikra Shidiqi uses this body, so it is declared as
+// the row's Effect directly rather than as a per-instance closure
+// (ADR 0041 P9).
+func b35GainLifeEqualToToughness(g *game.Game, item *game.StackItem) error {
+	dealer := item.Params.Object.ID
+	toughness := item.Params.Amount
+	if onBattlefield(g, dealer) {
+		if c, ok := g.LookupCardForEffect(dealer); ok {
+			toughness = c.CurrentToughness()
 		}
-		if toughness <= 0 {
-			return nil
-		}
-		return GainLife{Player: item.Controller, Amount: toughness}.Apply(NewContext(g, item))
 	}
+	if toughness <= 0 {
+		return nil
+	}
+	return GainLife{Player: item.Controller, Amount: toughness}.Apply(NewContext(g, item))
 }
 
 // b35RedirectDamageToChosen is Screaming Nemesis's body: the Nemesis

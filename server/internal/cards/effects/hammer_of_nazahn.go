@@ -22,12 +22,12 @@ import (
 //
 // The effect attaches the ENTERING Equipment, which is not
 // necessarily this permanent (a second Equipment entering later
-// attaches itself, not the Hammer) — `ev.CardID`, read inside Build
-// and carried into the closure as a scalar, is the entering card's
-// instance ID, the same shape Build is allowed to compute a target
-// spec from. AttachForEffect is the "attach an Equipment that isn't
-// the ability's own source" primitive TwoSlotAttachTargets already
-// uses for Brass Squire and Magnetic Theft.
+// attaches itself, not the Hammer) — the entering card's instance ID
+// is read at resolution off the item's carried trigger context
+// (item.Trigger.Event.CardID, #1223) rather than captured at trigger
+// time. AttachForEffect is the "attach an Equipment that isn't the
+// ability's own source" primitive TwoSlotAttachTargets already uses
+// for Brass Squire and Magnetic Theft.
 //
 // "You may" + a target clause is Eternal Witness's shape: the
 // controller answers yes/no, and on yes picks the creature.
@@ -48,13 +48,10 @@ func init() {
 				c, ok := enteredUnderYourControl(ev, source, g, false)
 				return ok && c.HasSubtype("Equipment")
 			},
+			Key:     "Hammer of Nazahn — attach that Equipment to target creature you control",
 			Targets: TargetCreature("target creature you control", YouControl()),
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				entering := ev.CardID
-				return game.NewTriggeredItem(source, "Hammer of Nazahn — attach that Equipment to target creature you control",
-					func(g *game.Game, item *game.StackItem) error {
-						return hammerOfNazahnAttachEnteringEquipment(g, item, entering)
-					})
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return hammerOfNazahnAttachEnteringEquipment(g, item, item.Trigger.Event.CardID)
 			},
 			OptionalPrompt: &game.TriggerOptionalPrompt{
 				Question: "Hammer of Nazahn — attach that Equipment to target creature you control?",

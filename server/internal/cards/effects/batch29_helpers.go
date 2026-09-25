@@ -317,19 +317,22 @@ func b29ReturnZombieCardsTappedThenDestroyHumans(ctx *Context) error {
 // b29LightPawsLabel is the stack label of Light-Paws' Aura trigger.
 const b29LightPawsLabel = "Light-Paws, Emperor's Voice — search for an Aura to attach to it"
 
-// b29SearchAuraAttachedToSource is Light-Paws' search: an Aura card
-// with mana value at most `maxMV` and a name no Aura the controller
-// controls has, put onto the battlefield attached to the source. The
-// "may" was answered when the trigger fired. Nothing is searched
-// when the source has left the battlefield — there is nothing to
-// attach the card to, and printed it would stay in the library. The
-// names are read at resolution, as printed; the attach runs in the
-// search's continuation, once the card is actually on the
-// battlefield.
-func b29SearchAuraAttachedToSource(g *game.Game, item *game.StackItem, maxMV int) error {
+// b29SearchAuraAttachedToSource is Light-Paws' declared Effect: an
+// Aura card with mana value at most the entering Aura's — carried on
+// item.Params.Amount by a fill-in Build, since it is read at trigger
+// time and the entering Aura may be gone by resolution — and a name
+// no Aura the controller controls has, put onto the battlefield
+// attached to the source. The "may" was answered when the trigger
+// fired. Nothing is searched when the source has left the
+// battlefield — there is nothing to attach the card to, and printed
+// it would stay in the library. The names are read at resolution, as
+// printed; the attach runs in the search's continuation, once the
+// card is actually on the battlefield.
+func b29SearchAuraAttachedToSource(g *game.Game, item *game.StackItem) error {
 	if !onBattlefield(g, item.SourceCardID) {
 		return nil
 	}
+	maxMV := item.Params.Amount
 	taken := b29AuraNamesControlled(g, item.Controller)
 	source := item.SourceCardID
 	return SearchLibrary{

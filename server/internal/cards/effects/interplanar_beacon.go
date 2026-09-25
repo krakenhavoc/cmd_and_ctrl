@@ -56,11 +56,9 @@ func init() {
 				c, ok := g.LookupCardForEffect(ev.CardID)
 				return ok && c.IsPlaneswalker()
 			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Interplanar Beacon — you gain 1 life",
-					func(g *game.Game, item *game.StackItem) error {
-						return GainLife{Player: item.Controller, Amount: 1}.Apply(NewContext(g, item))
-					})
+			Key: "Interplanar Beacon — you gain 1 life",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return GainLife{Player: item.Controller, Amount: 1}.Apply(NewContext(g, item))
 			},
 		}},
 	})
