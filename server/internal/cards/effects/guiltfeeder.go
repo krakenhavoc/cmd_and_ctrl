@@ -26,7 +26,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"fear"},
 		Triggered: []game.TriggeredAbility{
-			WhenAttacksAndIsNotBlocked("Guiltfeeder — defending player loses 1 life for each card in their graveyard", guiltfeederDrain),
+			WhenAttacksAndIsNotBlockedEffect("Guiltfeeder — defending player loses 1 life for each card in their graveyard", guiltfeederDrain),
 		},
 	})
 }

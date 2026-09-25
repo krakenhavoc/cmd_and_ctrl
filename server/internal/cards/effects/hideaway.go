@@ -31,11 +31,14 @@ import (
 // Hideaway is "Hideaway N" (CR 702.75a) — the permanent's own ETB
 // trigger. `name` labels the stack item and the prompt.
 //
-// Build captures the permanent OBJECT the trigger belongs to, so the
-// card it hides is linked to this incarnation and no other, and a
-// hideaway permanent that left the battlefield before the trigger
-// resolved still hides a card (CR 603.10 — the ability exists
-// independently of its source) that nothing can ever play.
+// Build stamps the permanent OBJECT the trigger belongs to onto
+// Params (ADR 0041 P9, #1497, tier 4), so the card it hides is linked
+// to this incarnation and no other, and a hideaway permanent that
+// left the battlefield before the trigger resolved still hides a card
+// (CR 603.10 — the ability exists independently of its source) that
+// nothing can ever play. Effect reads the object and the printed N
+// and name back off the item rather than a captured value, so a
+// hideaway trigger waiting on the stack is a restore point.
 func Hideaway(name string, n int) game.TriggeredAbility {
 	label := name + " — hideaway"
 	return game.TriggeredAbility{
@@ -43,12 +46,22 @@ func Hideaway(name string, n int) game.TriggeredAbility {
 		AppliesTo: Self,
 		Key:       label,
 		Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-			ref := game.ObjectRefOf(*source)
-			return game.NewTriggeredItem(source, label, func(g *game.Game, item *game.StackItem) error {
-				return hideawayLookAndExile(g, item.Controller, ref, n, name)
-			})
+			item := game.NewTriggeredItem(source, label, nil)
+			item.Params.Object = game.ObjectRef(game.ObjectRefOf(*source))
+			item.Params.Amount = n
+			item.Params.Name = name
+			return item
 		},
+		Effect: hideawayEffect,
 	}
+}
+
+// hideawayEffect is Hideaway's resolution: the look-and-exile, over
+// the permanent object and printed N and name Build stamped onto
+// Params.
+func hideawayEffect(g *game.Game, item *game.StackItem) error {
+	ref := game.PermissionCardRef(item.Params.Object)
+	return hideawayLookAndExile(g, item.Controller, ref, item.Params.Amount, item.Params.Name)
 }
 
 // hideawayLookAndExile is CR 702.75a's two sentences. "Look at", not

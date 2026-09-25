@@ -49,31 +49,15 @@ func attacksAndIsNotBlocked(ev game.Event, source *game.Card, g *game.Game) bool
 	return g.UnblockedAttackerForEffect(source.InstanceID)
 }
 
-// WhenAttacksAndIsNotBlocked builds the triggered ability. `effect`
-// runs at resolution with the DEFENDING PLAYER — the player whose
-// declaration fired it, captured as a value in Build — because every
-// printed payoff of this trigger names that player ("defending player
-// discards a card", "…gets a poison counter").
-func WhenAttacksAndIsNotBlocked(label string, effect func(g *game.Game, item *game.StackItem, defender uuid.UUID) error) game.TriggeredAbility {
-	return game.TriggeredAbility{
-		Watches: []game.EventKind{game.EventBlockersDeclared},
-		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-			return attacksAndIsNotBlocked(ev, source, g)
-		},
-		Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-			defender := ev.Actor
-			return game.NewTriggeredItem(source, label, func(g *game.Game, item *game.StackItem) error {
-				return effect(g, item, defender)
-			})
-		},
-	}
-}
-
-// WhenAttacksAndIsNotBlockedEffect is WhenAttacksAndIsNotBlocked with
-// its Effect declared on the row (ADR 0041 P9, #1497, tier 4-3): the
-// defending player is read back from the item's carried trigger event
-// (triggeringActor) rather than captured in a hand-written Build, so a
-// table with the trigger waiting on the stack is a restore point.
+// WhenAttacksAndIsNotBlockedEffect builds the triggered ability, with
+// its Effect declared on the row (ADR 0041 P9, #1497, tier 4-3):
+// `effect` runs at resolution with the DEFENDING PLAYER — the player
+// whose declaration fired it, read back from the item's carried
+// trigger event (triggeringActor) rather than captured in a
+// hand-written Build, so a table with the trigger waiting on the
+// stack is a restore point. Every printed payoff of this trigger
+// names that player ("defending player discards a card", "…gets a
+// poison counter").
 func WhenAttacksAndIsNotBlockedEffect(label string, effect func(g *game.Game, item *game.StackItem, defender uuid.UUID) error) game.TriggeredAbility {
 	return game.TriggeredAbility{
 		Watches: []game.EventKind{game.EventBlockersDeclared},

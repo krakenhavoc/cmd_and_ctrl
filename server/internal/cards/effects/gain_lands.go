@@ -53,12 +53,8 @@ func init() {
 			Triggered: []game.TriggeredAbility{{
 				Watches:   []game.EventKind{game.EventETB},
 				AppliesTo: b06SelfETB,
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, source.Name+" — you gain 1 life",
-						func(g *game.Game, item *game.StackItem) error {
-							return GainLife{Player: item.Controller, Amount: 1}.Apply(NewContext(g, item))
-						})
-				},
+				Key:       land.name + " — you gain 1 life",
+				Effect:    Do(GainLife{Amount: 1}),
 			}},
 		})
 	}

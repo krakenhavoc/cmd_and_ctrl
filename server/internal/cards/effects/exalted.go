@@ -33,19 +33,22 @@ func Exalted() game.TriggeredAbility {
 		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 			return attackDeclaredByYou(ev, source.Controller) && attackedAlone(g)
 		},
-		Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-			attacker := ev.CardID
-			return game.NewTriggeredItem(source, "Exalted — +1/+1 until end of turn",
-				func(g *game.Game, item *game.StackItem) error {
-					return BoostUntilEOT{
-						Target:    attacker,
-						Power:     1,
-						Toughness: 1,
-						Label:     "Exalted — +1/+1",
-					}.Apply(NewContext(g, item))
-				})
-		},
+		Key:    "Exalted — +1/+1 until end of turn",
+		Effect: exaltedPumpTheLoneAttacker,
 	}
+}
+
+// exaltedPumpTheLoneAttacker reads the lone attacker off the
+// triggering EventAttack (item.Trigger.Event.CardID, ADR 0041 P9)
+// rather than a captured value — Exalted's item is a restore point
+// while it waits on the stack.
+func exaltedPumpTheLoneAttacker(g *game.Game, item *game.StackItem) error {
+	return BoostUntilEOT{
+		Target:    item.Trigger.Event.CardID,
+		Power:     1,
+		Toughness: 1,
+		Label:     "Exalted — +1/+1",
+	}.Apply(NewContext(g, item))
 }
 
 // attackedAlone reports whether exactly one creature carries
