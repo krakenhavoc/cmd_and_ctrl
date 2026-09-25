@@ -278,8 +278,76 @@ func TestDeckCoverageText(t *testing.T) {
 	}
 	var r deckcoverage.Report
 	_ = json.Unmarshal([]byte(raw), &r)
-	if r.Source != "text" || r.DeckKey != "" || r.Counts[deckcoverage.Manual] != 1 {
+	if r.Source != "text" || !deckcoverage.IsListKey(r.DeckKey) || r.SourceURL != "" || r.Counts[deckcoverage.Manual] != 1 {
 		t.Errorf("report = %+v", r)
+	}
+
+	// The same list in another format is the same key.
+	other := fmt.Sprintf("Commander\n1 %s (TST) 12\nDeck\n97 %s\n1 %s (ABC) 3\n1 %s\n", s.tc.Commander, s.tc.Basic, s.tc.Manual, s.tc.Basic)
+	code, raw = s.post(t, "/deck-coverage", "", map[string]string{"text": other})
+	if code != http.StatusOK {
+		t.Fatalf("status %d: %s", code, raw)
+	}
+	var r2 deckcoverage.Report
+	_ = json.Unmarshal([]byte(raw), &r2)
+	if r2.DeckKey != r.DeckKey {
+		t.Errorf("reformatted list: key %q, want %q", r2.DeckKey, r.DeckKey)
+	}
+
+	huge := fmt.Sprintf("%d %s\n", deckcoverage.MaxListCopies+1, s.tc.Basic)
+	if code, raw := s.post(t, "/deck-coverage", "", map[string]string{"text": huge}); code != http.StatusBadRequest {
+		t.Errorf("an over-long list: status %d: %s", code, raw)
+	}
+}
+
+// Moxfield blocks the server (ADR 0095, amendment 2026-09-25): any
+// fetch error for a Moxfield link says to paste the list instead, and
+// keeps its own status and code.
+func TestDeckCoverageMoxfieldHint(t *testing.T) {
+	s := newDeckStack(t, true, nil)
+	blocked := "https://moxfield.com/decks/walled"
+	s.source.errs[blocked] = fmt.Errorf("%w: moxfield", deck.ErrUpstreamBlocked)
+	archBlocked := "https://archidekt.com/decks/77"
+	s.source.errs[archBlocked] = fmt.Errorf("%w: archidekt", deck.ErrUpstreamBlocked)
+
+	type errBody struct {
+		Error string `json:"error"`
+		Code  string `json:"code"`
+		Hint  string `json:"hint"`
+	}
+	for _, tc := range []struct {
+		url        string
+		wantStatus int
+		wantCode   string
+		wantHint   bool
+	}{
+		{blocked, http.StatusBadGateway, deck.CodeUpstreamBlocked, true},
+		{"https://moxfield.com/decks/gone", http.StatusNotFound, deck.CodeDeckNotFound, true},
+		{archBlocked, http.StatusBadGateway, deck.CodeUpstreamBlocked, false},
+		{"https://example.com/decks/1", http.StatusBadRequest, deck.CodeUnknownSource, false},
+	} {
+		code, raw := s.post(t, "/deck-coverage", "", map[string]string{"url": tc.url})
+		var body errBody
+		_ = json.Unmarshal([]byte(raw), &body)
+		if code != tc.wantStatus || body.Code != tc.wantCode {
+			t.Errorf("%s: status %d code %q, want %d %q", tc.url, code, body.Code, tc.wantStatus, tc.wantCode)
+		}
+		gotHint := body.Hint == deckFetchHintPasteList && body.Error == moxfieldBlockedMessage
+		if gotHint != tc.wantHint {
+			t.Errorf("%s: hint %q, error %q; want the Moxfield hint: %v", tc.url, body.Hint, body.Error, tc.wantHint)
+		}
+	}
+	if !strings.Contains(moxfieldBlockedMessage, "Export → Copy plain text") {
+		t.Errorf("hint sentence = %q", moxfieldBlockedMessage)
+	}
+
+	// The request route says the same.
+	tok := s.discordUser(t, "111", "Alice")
+	code, _, raw := s.request(t, tok, map[string]string{"url": blocked})
+	var body errBody
+	_ = json.Unmarshal([]byte(raw), &body)
+	if code != http.StatusBadGateway || body.Hint != deckFetchHintPasteList || body.Code != deck.CodeUpstreamBlocked {
+		t.Errorf("request for a blocked Moxfield deck: %d %s", code, raw)
 	}
 }
 
@@ -597,15 +665,137 @@ func TestDeckRequestWhoMayAsk(t *testing.T) {
 	}
 }
 
-func TestDeckRequestRefusesText(t *testing.T) {
+func TestDeckRequestBodyShape(t *testing.T) {
 	s := newDeckStack(t, true, nil)
 	tok := s.discordUser(t, "111", "Alice")
-	code, _, raw := s.request(t, tok, map[string]string{"text": "1 Forest"})
-	if code != http.StatusBadRequest || !strings.Contains(raw, "link") {
-		t.Errorf("status %d: %s", code, raw)
+	for _, bad := range []map[string]string{
+		{},
+		{"url": " ", "text": " "},
+		{"url": needyDeckURL, "text": "1 Forest"},
+	} {
+		if code, _, raw := s.request(t, tok, bad); code != http.StatusBadRequest {
+			t.Errorf("%v: %d %s", bad, code, raw)
+		}
 	}
 	if code, _, raw := s.request(t, tok, map[string]string{"url": "https://example.com/decks/1"}); code != http.StatusBadRequest {
 		t.Errorf("unsupported host: %d %s", code, raw)
+	}
+	if issues, _ := s.filer.snapshot(); len(issues) != 0 {
+		t.Errorf("%d issues filed by bad bodies", len(issues))
+	}
+}
+
+// pastedNeedyList is the needy deck as a pasted list, in two
+// formats: a sectioned export with set codes, and a flat one with a
+// *CMDR* marker, split rows and another order.
+func pastedNeedyList(tc deckcoverage.TestingCards, flat bool) string {
+	if flat {
+		return fmt.Sprintf("1x %s\n90 %s\n1 %s\n5 %s\n1 %s\n1 %s *CMDR*\n1 %s\n1 Mystery [Card](https://evil.example)\n",
+			tc.Automated, tc.Basic, tc.Unreviewed, tc.Basic, tc.Caveated, tc.Commander, tc.Manual)
+	}
+	return fmt.Sprintf("Commander\n1 %s (TST) 1 *F*\n\nDeck\n1 %s (TST) 2\n1 %s (TST) 3\n1 %s (TST) 4\n1 %s (TST) 5\n95 %s (TST) 280\n1 Mystery [Card](https://evil.example)\n",
+		tc.Commander, tc.Manual, tc.Unreviewed, tc.Caveated, tc.Automated, tc.Basic)
+}
+
+// A pasted list is requestable (ADR 0095, amendment 2026-09-25): it
+// files under its list key, and the same deck pasted in another format
+// joins that issue.
+func TestDeckRequestFromAPastedList(t *testing.T) {
+	s := newDeckStack(t, true, nil)
+	alice := s.discordUser(t, "111", "Alice")
+
+	code, out, raw := s.request(t, alice, map[string]string{"text": pastedNeedyList(s.tc, false)})
+	if code != http.StatusCreated || out.Status != deckRequestFiled || out.IssueNumber != 1 || out.Report == nil {
+		t.Fatalf("file: %d %s", code, raw)
+	}
+	key := out.Report.DeckKey
+	if !deckcoverage.IsListKey(key) || out.Report.Source != "text" {
+		t.Fatalf("report key %q source %q", key, out.Report.Source)
+	}
+	row, err := s.store.Lookup(context.Background(), key)
+	if err != nil || row.IssueNumber != 1 {
+		t.Errorf("row = %+v, %v", row, err)
+	}
+
+	issues, _ := s.filer.snapshot()
+	iss := issues[1]
+	if iss.title != "[deck-request] "+s.tc.Commander {
+		t.Errorf("title = %q, want the commander", iss.title)
+	}
+	for _, want := range []string{
+		"**Deck:** Pasted list",
+		"- [ ] " + s.tc.Manual + " (",
+		"<details>",
+		"<summary>The list (100 cards)</summary>",
+		"1 " + s.tc.Commander + " *CMDR*\n",
+		"95 " + s.tc.Basic + "\n",
+		"1 " + s.tc.Manual + "\n",
+		"</details>",
+		// The unresolved name is published escaped, never as a link.
+		"Mystery \\[Card\\]\\(https://evil.example\\)",
+	} {
+		if !strings.Contains(iss.body, want) {
+			t.Errorf("issue body lacks %q:\n%s", want, iss.body)
+		}
+	}
+	// The list block is the index's names, never the raw paste.
+	for _, banned := range []string{"(TST)", "*F*", "](https://evil.example)"} {
+		if strings.Contains(iss.body, banned) {
+			t.Errorf("issue body carries raw paste %q:\n%s", banned, iss.body)
+		}
+	}
+
+	// Bob pastes the same deck from another export: he joins.
+	bob := s.discordUser(t, "222", "Bob")
+	code, out, raw = s.request(t, bob, map[string]string{"text": pastedNeedyList(s.tc, true)})
+	if code != http.StatusOK || out.Status != deckRequestJoined || out.IssueNumber != 1 {
+		t.Fatalf("join: %d %s", code, raw)
+	}
+	issues, comments := s.filer.snapshot()
+	if len(issues) != 1 || len(comments) != 1 || !strings.Contains(comments[0].body, "Also requested by Bob") {
+		t.Errorf("issues %d, comments %+v", len(issues), comments)
+	}
+
+	// A different commander is a different deck: a second issue.
+	other := strings.Replace(pastedNeedyList(s.tc, true), s.tc.Commander+" *CMDR*", s.tc.Commander, 1)
+	other += fmt.Sprintf("1 %s *CMDR*\n", s.tc.Vanilla)
+	code, out, raw = s.request(t, bob, map[string]string{"text": other})
+	if code != http.StatusCreated || out.IssueNumber != 2 || out.Report.DeckKey == key {
+		t.Errorf("another commander: %d %s", code, raw)
+	}
+}
+
+// The per-requester limit comes before the join for a pasted list,
+// exactly as it does for a link: a requester at the limit is refused
+// without a comment, and one under it joins.
+func TestDeckRequestPastedListLimitBeforeJoin(t *testing.T) {
+	s := newDeckStack(t, true, nil)
+	alice := s.discordUser(t, "111", "Alice")
+	if code, _, raw := s.request(t, alice, map[string]string{"text": pastedNeedyList(s.tc, false)}); code != http.StatusCreated {
+		t.Fatalf("file: %d %s", code, raw)
+	}
+
+	now := time.Now().UTC()
+	carol := s.discordUser(t, "333", "Carol")
+	for i, k := range []string{"moxfield:a", "moxfield:b"} {
+		_ = s.store.RecordAsk(context.Background(), k, "discord:333", now.Add(-time.Duration(i+1)*time.Hour))
+	}
+	// Two asks today: the third, on the pasted list, joins.
+	code, out, raw := s.request(t, carol, map[string]string{"text": pastedNeedyList(s.tc, true)})
+	if code != http.StatusOK || out.Status != deckRequestJoined || out.AlreadyRequested {
+		t.Fatalf("join under the limit: %d %s", code, raw)
+	}
+
+	dave := s.discordUser(t, "444", "Dave")
+	for i, k := range []string{"moxfield:a", "moxfield:b", "archidekt:1"} {
+		_ = s.store.RecordAsk(context.Background(), k, "discord:444", now.Add(-time.Duration(i+1)*time.Hour))
+	}
+	code, out, raw = s.request(t, dave, map[string]string{"text": pastedNeedyList(s.tc, true)})
+	if code != http.StatusTooManyRequests || out.Status != deckRequestRateLimited {
+		t.Fatalf("at the limit: %d %s", code, raw)
+	}
+	if _, comments := s.filer.snapshot(); len(comments) != 1 {
+		t.Errorf("%d comments, want Carol's alone", len(comments))
 	}
 }
 
