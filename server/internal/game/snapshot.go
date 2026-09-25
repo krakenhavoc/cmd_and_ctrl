@@ -32,9 +32,8 @@ package game
 //   - DelayedTrigger.Effect — "at the beginning of the next end step"
 //   - PendingChoice's six resume frames + scryResume — a paused
 //     game literally holds the rest of the effect as a continuation
-//   - TurnScopedBlockRules' Pair / Count / Limit — Gingerbrute
-//     (the replacement twin, Fog's, is a ScopedEffect record since
-//     ADR 0041 tier 3b)
+//   - (RETIRED by ADR 0041 phase 3 tier 3b: Gingerbrute's and Fog's
+//     block rules and replacements are both ScopedEffect records now)
 //   - Card.ManaAbilities / ActivatedAbilities, when an ability
 //     closure was stamped onto the INSTANCE and the catalog cannot
 //     hand it back. #521 emptied the large and ordinary case of
@@ -1250,8 +1249,12 @@ type ContinuationCensus struct {
 	// census written by an older binary still decodes.
 	TurnScopedReplacements int `json:"turnScopedReplacements,omitempty"`
 
-	// TurnScopedBlockRules is floating until-end-of-turn block rules
-	// (Gingerbrute's "can't block this turn"). #750.
+	// TurnScopedBlockRules counted floating until-end-of-turn block
+	// rules held as closures (Gingerbrute's "can't block this turn",
+	// #750). RETIRED by ADR 0041 phase 3 tier 3b (#1497): each is a
+	// ScopedEffect record now, which the snapshot carries, and nothing
+	// increments this. The field stays so a census written by an older
+	// binary still decodes.
 	TurnScopedBlockRules int `json:"turnScopedBlockRules,omitempty"`
 
 	// IntrinsicAbilityCards is cards holding an ability closure on
@@ -1513,15 +1516,10 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	s.LastKnownPermanents = cloneLastKnownPermanents(g.lastKnownPermanents)
 	s.LastKnownStack = snapshotLastKnownStack(g.lastKnownStack, cen)
 
-	// The turn-scoped block-rule registry is entirely closure-bearing,
-	// so only the census and the labels survive. Dropping a rule
-	// silently would be worse than refusing the restore point, which
-	// is what this does. (Its replacement twin retired with ADR 0041
-	// tier 3b: a Fog is a ScopedEffect record, carried above.)
-	for _, br := range g.TurnScopedBlockRules {
-		cen.TurnScopedBlockRules++
-		cen.note("turn-scoped block rule: %s", labelOr(br.Label, "unnamed"))
-	}
+	// The turn-scoped block-rule registry retired with ADR 0041 tier
+	// 3b, alongside its replacement twin: a Gingerbrute is a
+	// ScopedEffect record now, carried above. Nothing increments
+	// cen.TurnScopedBlockRules any more.
 	// BuiltinReplacements and Listeners are deliberately NOT counted:
 	// both are process-lifetime singletons installed by NewGame, so
 	// the new binary rebuilds them itself. See restoreGame.

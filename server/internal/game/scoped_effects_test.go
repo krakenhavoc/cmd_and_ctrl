@@ -168,6 +168,10 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// and in cards/effects.
 		ModPreventCombatDamage: true, ModPreventDamage: true,
 		ModExileInsteadOfLeaving: true, ModExileInsteadOfGraveyard: true,
+		// ADR 0041 P8 (tier 3b-2, #1497): block-rule kinds, which no
+		// layer applies either. Their cases are in
+		// scoped_block_rules_test.go here and in cards/effects.
+		ModCantBeBlockedExceptBy: true, ModLimitBlockersPerDefender: true,
 	}
 	for _, k := range ModKinds() {
 		if !covered[k] {

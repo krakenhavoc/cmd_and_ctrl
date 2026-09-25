@@ -335,19 +335,11 @@ func (g *Game) cloneLocked() *Game {
 		out.BuiltinReplacements = make([]ReplacementEffect, len(g.BuiltinReplacements))
 		copy(out.BuiltinReplacements, g.BuiltinReplacements)
 	}
-	// #750: the same reasoning for the until-end-of-turn block rules.
-	// A BlockRule is written once at registration and never mutated,
-	// so a fresh backing array is all the isolation an undo needs —
-	// what must not be shared is the array, because the cleanup sweep
-	// replaces the slice rather than compacting it.
-	if len(g.TurnScopedBlockRules) > 0 {
-		out.TurnScopedBlockRules = make([]BlockRule, len(g.TurnScopedBlockRules))
-		copy(out.TurnScopedBlockRules, g.TurnScopedBlockRules)
-	}
-	// Scoped effects (ADR 0041 phase 3) — the layer-engine twin of the
-	// slice above, and the same reasoning: a record is written once at
-	// registration and never mutated (see the immutability contract on
-	// the type), so a fresh backing array is enough. What must not be
+	// Scoped effects (ADR 0041 phase 3) — the data twin of the slice
+	// above (and, since tier 3b, of the until-end-of-turn block rules
+	// too — #750): a record is written once at registration and never
+	// mutated (see the immutability contract on the type), so a fresh
+	// backing array is enough. What must not be
 	// shared is the array itself — the cleanup-step sweeps replace the
 	// slice rather than compacting in place precisely so an undo
 	// snapshot taken mid-turn still holds the effects that were live
@@ -970,7 +962,6 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.Listeners = src.Listeners
 	g.PendingChoices = src.PendingChoices
 	g.BuiltinReplacements = src.BuiltinReplacements
-	g.TurnScopedBlockRules = src.TurnScopedBlockRules
 	g.ScopedEffects = src.ScopedEffects
 	g.scopedEffectSeq = src.scopedEffectSeq
 	g.lastKnownBattlefield = src.lastKnownBattlefield

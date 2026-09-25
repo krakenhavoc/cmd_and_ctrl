@@ -167,6 +167,12 @@ func corpusBoards() []corpusBoard {
 		{"mending_hands_partial", corpusMendingHandsPartial},
 		{"whip_redirect", corpusWhipRedirect},
 		{"cosmic_intervention", corpusCosmicIntervention},
+		// v7, added by tier 3b-2 (#1497) as new files: block-rule
+		// effects a spell or ability creates, which only became restore
+		// points with it — the cantBeBlockedExceptBy and
+		// limitBlockersPerDefender mods, and Text, on disk.
+		{"gingerbrute", corpusGingerbrute},
+		{"mirri_limit", corpusMirriLimit},
 		// v7, added by tier 4's second slice (#1497, ADR 0041 P9) as new
 		// files: declared triggered abilities waiting to resolve, named
 		// by their catalog row — a card's own row, a granted bundle's,
@@ -261,6 +267,44 @@ func corpusCosmicIntervention(t *testing.T) *game.Game {
 	})
 	if !g.Exile.Contains(bear) || len(g.DelayedTriggers) != 1 {
 		t.Fatalf("setup: exiled %v, delayed triggers %d", g.Exile.Contains(bear), len(g.DelayedTriggers))
+	}
+	return g
+}
+
+// ---------------------------------------------------------------
+// v7 boards added by ADR 0041 phase 3's tier 3b-2 (#1497)
+// ---------------------------------------------------------------
+//
+// NEW files in v7/: a block rule a spell or ability created held the
+// restore point back until cleanup before tier 3b-2, so neither of
+// these could be a fixture.
+
+// corpusGingerbrute is a real Gingerbrute activation: the
+// cantBeBlockedExceptBy record pinned to it, Keywords ["haste"] and
+// Text on disk.
+func corpusGingerbrute(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	brute := pushCatalogPermanent(g, me, "Gingerbrute", "Artifact Creature — Food Golem", gingerbruteOracle, false)
+	gingerbruteActivate(t, g, me, brute)
+	if n := scopedBlockRuleCount(g); n != 1 {
+		t.Fatalf("setup: Gingerbrute registered %d scoped block rules, want 1", n)
+	}
+	return g
+}
+
+// corpusMirriLimit is a real Mirri, Weatherlight Duelist attack: the
+// limitBlockersPerDefender record (ScopeOpponentsCreatures) her attack
+// trigger registered.
+func corpusMirriLimit(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	seat := g.Turn.ActiveSeat
+	me, opp := g.Seats[seat], g.Seats[(seat+1)%len(g.Seats)]
+	mirri := b12Push(g, me.ID, "Mirri, Weatherlight Duelist", "Legendary Creature — Cat Warrior", mirriWeatherlightDuelistOracle, 3, 2)
+	declareAttack(t, g, opp.ID, mirri)
+	passPriorityAroundTable(t, g)
+	if n := scopedBlockRuleCount(g); n != 1 {
+		t.Fatalf("setup: Mirri's trigger registered %d scoped block rules, want 1", n)
 	}
 	return g
 }

@@ -82,7 +82,8 @@ var retiredCensusCounters = map[string]string{
 	"DelayedTriggerEffects":  "ADR 0041 phase 3 tier 2 (#1497): a delayed trigger is a registered body key plus plain params",
 	"ScopedStatics":          "ADR 0041 phase 3 tier 3a (#1497): a continuous effect with a duration is a ScopedEffect record over the closed Mod vocabulary",
 	"StackTargetSpecs":       "ADR 0041 phase 3 tier 4 (#1497, P9): a stack item's target and mode clauses are re-derived from its oracle ID or its catalog ability ref, and an item that can be neither is counted once, in StackEffects",
-	"TurnScopedReplacements": "ADR 0041 phase 3 tier 3b (#1497): a replacement effect a spell creates is a ScopedEffect record with a replacement-reader mod",
+	"TurnScopedReplacements": "ADR 0041 phase 3 tier 3b-1 (#1497): a replacement effect a spell creates is a ScopedEffect record with a replacement-reader mod",
+	"TurnScopedBlockRules":   "ADR 0041 phase 3 tier 3b-2 (#1497): a block rule a spell or ability creates is a ScopedEffect record with a block-rule-reader mod",
 }
 
 // closureClassCeilings is the ratchet's second half (#1558): how many
@@ -99,7 +100,12 @@ var retiredCensusCounters = map[string]string{
 // deleting the route that set its class drops it to the next one —
 // usually a paused prompt's resume frame. Tier 4-1 moved eleven lines
 // that way and tier 3b-1 nine (ReplacementEffect.*, CopySelector.*,
-// EntryHandReveal.*): ChoiceResumeFrames 98 → 118.
+// EntryHandReveal.*): ChoiceResumeFrames 98 → 118. Tier 3b-2 deleted
+// census:TurnScopedBlockRules outright rather than moving its lines:
+// BlockRule.{Pair,Count,Limit} and Game.TurnScopedBlockRules had no
+// other route reaching them — a block declaration never pauses on a
+// resume frame the way replacement ordering can — so all four lines
+// are simply gone, and the ceiling with them.
 var closureClassCeilings = map[string]int{
 	// 98 + the 11 census:StackTargetSpecs lines tier 4's first slice
 	// moved here under ADR 0041 P11 (ModeOption.Effect,
@@ -111,7 +117,6 @@ var closureClassCeilings = map[string]int{
 	"census:ChoiceResumeFrames":    118,
 	"census:IntrinsicAbilityCards": 45,
 	"census:StackEffects":          6,
-	"census:TurnScopedBlockRules":  4,
 	"transient":                    1,
 }
 

@@ -2128,9 +2128,14 @@ BlockRules: []game.BlockRule{
 - **Flat "can't block" / "can't be blocked" is still a `Restriction`
   bit** (`RestrictSelf`, `RestrictAttached`). A rule is for a clause
   with a parameter.
-- **"This turn"** is `BlockRuleUntilEOT{Target: id, Rule: func(s
-  BlockScope) game.BlockRule { … }}` (Gingerbrute, Departed Deckhand).
-  It snapshots the set at resolution (CR 611.2c).
+- **"This turn"** is `CantBeBlockedThisTurnExceptBy{Target: id,
+  Keywords: []string{"haste"}, Text: "creatures with haste"}`
+  (Gingerbrute; Departed Deckhand's granted evasion uses `Subtypes:
+  []string{"Spirit"}` instead). It registers a `cantBeBlockedExceptBy`
+  `ScopedEffect` record pinned to `Target` at resolution (CR 611.2c,
+  ADR 0041 phase 3 tier 3b, #1497) — `Keywords` and `Subtypes` are each
+  an any-of, and `Text` is the allowed set as the card prints it, read
+  by the refusal sentence.
 - **A token that prints one** declares it on its `tokenTemplate`'s
   `BlockRules` slot (Avatar Kuruk's Spirit).
 - **"No more than N creatures can block each combat"** (Silent Arbiter,
