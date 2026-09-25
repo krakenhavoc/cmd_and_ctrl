@@ -896,11 +896,13 @@ type mayCastFrame struct {
 // #764 — is that walk with one step, which is one prompt, which is
 // exactly what it was.
 type pickTargetFrame struct {
-	// watches is the ability's declared event kinds, kept only so
-	// the finished item can be stamped with its triggering event —
-	// see stampTriggerContext on why an ability that watches nothing
-	// (a CR 603.12 reflexive trigger) must not be.
-	watches []EventKind
+	// ability is the declaration being put on the stack: its Build
+	// and Effect make the item once every step is answered, its
+	// Watches decide whether the item is stamped with its triggering
+	// event (see stampTriggerContext on why an ability that watches
+	// nothing — a CR 603.12 reflexive trigger — must not be), and its
+	// catalog row names the item (ADR 0041 P9, tier 4-2).
+	ability TriggeredAbility
 	// tc is the triggering event (#1223), carried rather than
 	// re-derived: the CR 603.10 snapshot it holds is deleted from
 	// lastKnownBattlefield as the harvest ends, which is before this
@@ -909,7 +911,6 @@ type pickTargetFrame struct {
 	tc     TriggerContext
 	source Card
 	lki    Characteristic
-	build  func(ev Event, source *Card, sourceLKI Characteristic, g *Game) *StackItem
 	// spec is the ability's card-level clause statement (nil for a
 	// modal ability, whose clauses come from the chosen options).
 	spec *TargetSpec
@@ -947,10 +948,10 @@ type triggerResumeFrame struct {
 	tc     TriggerContext
 	source Card
 	lki    Characteristic
-	build  func(ev Event, source *Card, sourceLKI Characteristic, g *Game) *StackItem
 	// ability is the full declaration so a "yes" on a TARGETED
 	// optional trigger can continue into the pick_target step
-	// (S20 sub-PR 2) instead of building straight away.
+	// (S20 sub-PR 2) instead of building straight away — and so the
+	// item it builds can be named by its catalog row (ADR 0041 P9).
 	ability   TriggeredAbility
 	doubledBy doublerRef
 }
@@ -2806,7 +2807,6 @@ func (g *Game) queueTriggerPromptLocked(
 			tc:        tc,
 			source:    source,
 			lki:       lki,
-			build:     ability.Build,
 			ability:   ability,
 			doubledBy: doubledBy,
 		},
@@ -2825,8 +2825,7 @@ func (g *Game) queuePickTargetLocked(tc TriggerContext, source Card, lki Charact
 		tc:        tc,
 		source:    source,
 		lki:       lki,
-		build:     t.Build,
-		watches:   t.Watches,
+		ability:   t,
 		spec:      spec,
 		modeSpec:  t.Modes,
 		modes:     append([]int(nil), modes...),
@@ -2904,15 +2903,14 @@ func (g *Game) queuePickTargetStepLocked(f *pickTargetFrame) {
 //
 // Caller must hold g.mu.
 func (g *Game) finishPickTargetLocked(f *pickTargetFrame) {
-	if f.build == nil {
+	if !f.ability.builds() {
 		return
 	}
-	source := f.source
-	item := f.build(f.tc.Event, &source, f.lki, g)
+	item := g.buildTriggerItemLocked(f.ability, f.tc.Event, f.source, f.lki)
 	if item == nil {
 		return
 	}
-	stampTriggerContext(item, TriggeredAbility{Watches: f.watches}, f.tc)
+	stampTriggerContext(item, f.ability, f.tc)
 	stampTriggerSource(item, f.source, f.tc)
 	item.Targets = append([]TargetRef(nil), f.picked...)
 	item.Modes = append([]int(nil), f.modes...)
@@ -3005,7 +3003,7 @@ func (g *Game) ResolvePickTargets(choiceID, chooserID uuid.UUID, targets []Targe
 	}
 	frame := choice.pickTargetResume
 	step := frame.currentClause()
-	if frame == nil || frame.build == nil || step == nil {
+	if frame == nil || !frame.ability.builds() || step == nil {
 		g.dequeueChoiceLocked(idx)
 		// #1529: the batch this trigger belonged to was held for it.
 		g.runStateChecksLocked()
@@ -3089,7 +3087,7 @@ func (g *Game) ResolveTriggerPrompt(choiceID, chooserID uuid.UUID, apply bool) e
 	}
 	frame := choice.triggerResume
 	g.dequeueChoiceLocked(idx)
-	if !apply || frame == nil || frame.build == nil {
+	if !apply || frame == nil || !frame.ability.builds() {
 		// #1529: declining still releases the batch the drain was
 		// holding for this trigger (CR 603.3b).
 		g.runStateChecksLocked()

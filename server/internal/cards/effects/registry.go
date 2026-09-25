@@ -587,7 +587,7 @@ func Register(spec Spec) {
 	checkGrants(spec.Name, spec.Grants)
 	registry[spec.OracleID] = spec
 	def := buildDef(spec)
-	defs[spec.OracleID] = def
+	fileDef(spec.OracleID, def)
 	// #925 + #659: the index has to see the triggers the ENGINE will
 	// harvest, not the ones the card file wrote. A suspend
 	// declaration grows the exile countdown in buildDef — the keyword
@@ -606,7 +606,7 @@ func Register(spec Spec) {
 	// census keeps counting cards — an emblem is not a card
 	// (CR 114.4). See emblem.go and ADR 0064.
 	if spec.Emblem != nil {
-		defs[game.EmblemKey(spec.OracleID)] = buildEmblemDef(*spec.Emblem)
+		fileDef(game.EmblemKey(spec.OracleID), buildEmblemDef(*spec.Emblem))
 	}
 	// #665 / CR 707.9a: a card whose copy effect GRANTS an ability
 	// files that ability's own def, under "grant:<key>". Same map,
@@ -615,7 +615,7 @@ func Register(spec Spec) {
 	// ordinary CatalogLookup, while the census keeps counting cards —
 	// a granted ability is not one.
 	for _, gr := range spec.Grants {
-		defs[game.GrantKey(gr.Key)] = buildGrantDef(gr)
+		fileDef(game.GrantKey(gr.Key), buildGrantDef(gr))
 	}
 }
 

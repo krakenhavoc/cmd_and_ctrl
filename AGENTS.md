@@ -296,12 +296,12 @@ A restore point written by yesterday's binary has to restore in today's. Three t
   - **Never edit, regenerate or delete a fixture to make the test pass.** If a bump migrates an old shape, list the migrated paths in `corpusMigrations` in `snapshot_corpus_test.go`, with the reason. Nothing else may excuse a difference.
 - **The ability check.** A card whose catalog entry lost abilities between the writing and the reading binary is restored anyway. It is flagged `Card.AbilitiesLostOnRestore`, which shows it as `manual` for the rest of the game, and the boot log has an ERROR line naming the game, the card and the counts. More abilities than captured is not a mismatch.
 - **Effect keys (#1497, [ADR 0041](docs/decisions/0041-game-persistence.md) phase 3).** A `ScopedEffect` mod kind is an on-disk identity, like a token slug: never renamed, never reused. A restore point naming a kind (or a delayed-trigger / stack-item effect key) this binary cannot interpret is refused with `ErrUnknownEffectKey` and the file is KEPT — only a newer build can have written it, so it is the rollback case. That refusal is what lets the vocabulary grow within a schema version.
-- **Abilities on the stack (#1497, ADR 0041 P9, tier 4).** An activated ability's stack item names the catalog row it came from: `Body: "catalog/activated"` plus `Params.Ability`, an `AbilityRef` of `{key, slot, ref, name}`. The `ref` is ADR 0093's `own:<i>` or `grant:<bundle>:<i>:<n>`, and `name` is the row's label. `ActivateCatalogAbility` stamps it, so a table with an ability waiting is a restore point, and no card file does anything. Restore rebuilds the item's effect, target clause and mode clause from that row, in the running binary. Three outcomes, set by the owner's answers of 2026-09-25:
+- **Abilities on the stack (#1497, ADR 0041 P9, tier 4).** An ability's stack item names the catalog row it came from: `Body: "catalog/activated"` or `"catalog/triggered"`, plus `Params.Ability`, an `AbilityRef` of `{key, slot, ref, name}`. The `ref` is ADR 0093's `own:<i>` or `grant:<bundle>:<i>:<n>`, and `name` is the row's label (an activated row's `Label`, a triggered row's `Key`). `ActivateCatalogAbility` stamps every catalog activated ability. The trigger harvest stamps a triggered row that DECLARES its `Effect` (slice 4-2): the registry gives each row its identity as it files the definition (`game.IdentifyCatalogRows`), so no card file names its own row. A table with either waiting — queued or on the stack — is a restore point. Restore rebuilds the item's effect, target clause and mode clause from that row, in the running binary; a `TargetsFrom` clause is built again from the item's carried `Trigger` and its source. Three outcomes, set by the owner's answers of 2026-09-25:
   - The row at the ref has the same label: restored.
   - It does not, and exactly one row in the same list has that label (a deploy reordered the card's abilities): that row is used and the ref is rewritten.
   - No row, or more than one, has the label: the game is restored anyway. The item stays on the stack as a manual item with no effect, like a sandbox-announced one. Its source card is flagged `Card.AbilitiesLostOnRestore`, and the boot log has one ERROR line naming the game, the card, the label and the ref (`GameSnapshot.LostStackAbilities`). Never abandon the game and never drop the item.
 
-  `catalog/triggered` is not registered until triggers are stamped (slice 4-2), so this binary refuses a file that names it. An ability carried on a card instance (`Card.ActivatedAbilities`) is never stamped and is still counted by the census. Since this change, every stack-item field (on the stack, queued, or in `lastKnownStack`) is refused if this binary does not know it, for a file of the current schema. So a new stack-item field is refused by every binary from here on and needs no bump. `lastKnownStack`, the CR 608.2h record of spells countered this turn, is carried too. The census counts a stack item once, in `StackEffects`, when its effect is an unkeyed closure or when it has a target or mode clause with neither an oracle ID nor an ability ref behind it. `StackTargetSpecs` is retired.
+  A binary from before slice 4-2 does not register `catalog/triggered`, so it refuses a file that names it (the rollback case). An ability carried on a card instance (`Card.ActivatedAbilities`) is never stamped and is still counted by the census. Neither is a trigger whose row computes its effect in a hand-written `Build` with no `Effect` beside it, nor one whose `TargetsFrom` reads the board (`TriggeredAbility.TargetsFromReadsBoard`): those rows are listed in `server/internal/cards/effects/testdata/legacy_trigger_builds.txt`, which `TestLegacyTriggerBuildsOnlyShrink` holds to shrinking — it fails on a listed row that no longer needs listing (delete the line, or run `cd server && go test ./internal/cards/effects -run TestLegacyTriggerBuildsOnlyShrink -args -update-legacy-triggers`, which never adds one) and on a new hand-written `Build` that is not listed (declare the `Effect` instead). A `Build` that makes a keyed item (`game.NewKeyedTriggeredItem` over a tier-2 body, as suspend and madness do) is data already and is not listed. Since this change, every stack-item field (on the stack, queued, or in `lastKnownStack`) is refused if this binary does not know it, for a file of the current schema. So a new stack-item field is refused by every binary from here on and needs no bump. `lastKnownStack`, the CR 608.2h record of spells countered this turn, is carried too. The census counts a stack item once, in `StackEffects`, when its effect is an unkeyed closure or when it has a target or mode clause with neither an oracle ID nor an ability ref behind it. `StackTargetSpecs` is retired.
 - **The closure ratchet.** `TestClosureFieldsReachableFromGame` (`internal/game`) lists every ROUTE from `Game` to something that can hold a func or an interface — every field of every reachable struct whose type reaches one, directly or through another struct — in `internal/game/testdata/closure_fields.txt`, each classified `rebuilt`, `keyed`, `transient`, `test-only` or `census:<Counter>`. A new route fails until it is classified, including a new field whose type is a struct already on the list (#1558): `cd server && go test ./internal/game -run TestClosureFieldsReachableFromGame -args -update-closure-fields` keeps the existing classes and marks new routes `unclassified`. The number of lines in each `census:` class and in `transient` is pinned by `closureClassCeilings` in the test and may only fall: phase 3's tiers delete lines and lower the ceiling; nothing raises one. The one exception is ADR 0041 P11: when a tier retires a counter, its lines may move to the class of the route they still have, in the same PR, and the PR lists those lines and the new ceiling.
 
 ### AI bot seat (Go, `server/internal/aiseat/`)
@@ -2184,7 +2184,14 @@ sacrifice in response). See [ADR 0018](docs/decisions/0018-triggers-on-the-stack
 [triggers_common.go](server/internal/cards/effects/triggers_common.go)
 (#579). The label is the whole stack label, "<card> — <what
 happens>", and `Do(...)` sequences primitive values whose `Player` /
-`Controller` field defaults to the item's controller:
+`Controller` field defaults to the item's controller. Every
+constructor DECLARES the effect on the row (`TriggeredAbility.Effect`,
+ADR 0041 P9, #1497): the engine builds the item from the row and names
+the row on it, so a table with the trigger waiting on the stack is a
+restore point. That is why the effect must not capture anything that
+was only true when the ability triggered — a restored item runs the
+row's `Effect` again, and reads the triggering event off
+`item.Trigger`:
 
 ```go
 Triggered: []game.TriggeredAbility{
@@ -2235,9 +2242,9 @@ per-event-kind index at `Register`
 ([trigger_zones.go](server/internal/game/trigger_zones.go)), so an
 event kind nothing declares costs one map lookup and no walk.
 
-An effect that needs the item (targets, X, the source ID) or must
-capture something off the event is a closure with the `Effect`
-signature, exactly as before:
+An effect that needs the item (targets, X, the source ID, the
+triggering event on `item.Trigger`) is a closure with the `Effect`
+signature. It reads everything off the item and the `g` it is handed:
 
 ```go
 WhenThisEnters("Mulldrifter — draw two cards",
@@ -2247,9 +2254,8 @@ WhenThisEnters("Mulldrifter — draw two cards",
 ```
 
 Every constructor returns an ordinary `game.TriggeredAbility`. The
-long form below is exactly what it builds, and is still the right
-tool when `Build` itself has to do something — capture `ev.Actor` for
-a PayUnless payer, read the event to decide whether to return nil:
+long form below is exactly what it builds — a `Key` that is the stack
+label, and the `Effect` declared beside it:
 
 ```go
 Triggered: []game.TriggeredAbility{{
@@ -2257,14 +2263,36 @@ Triggered: []game.TriggeredAbility{{
     AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
         return ev.CardID == source.InstanceID
     },
-    Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-        return game.NewTriggeredItem(source, "Mulldrifter — draw two cards",
-            func(g *game.Game, item *game.StackItem) error {
-                return DrawCards{Player: item.Controller, N: 2}.Apply(NewContext(g, item))
-            })
+    Key: "Mulldrifter — draw two cards",
+    Effect: func(g *game.Game, item *game.StackItem) error {
+        return DrawCards{Player: item.Controller, N: 2}.Apply(NewContext(g, item))
     },
 }},
 ```
+
+**A value from trigger time goes on the item, not in a closure.** The
+triggering event is on `item.Trigger` already (#1223) — "that player"
+is `item.Trigger.Event.Actor`, "the creature that died" is
+`ctx.Trigger().Object`. Anything else read off the board when the
+ability triggers — a label that names a player, a mana value, a
+controller override — is filled in by a `Build` kept BESIDE the
+`Effect`: it returns `game.NewTriggeredItem(source, label, nil)` with
+the value in `item.Params` (`Player`, `Object`, `Amount`, `Cost`,
+`Name`), a controller or a label set, and **leaves `item.Effect`
+nil** — the engine installs the row's `Effect`. A `Build` that sets
+`item.Effect` while `Effect` is declared is an `effectKeyFault`: the
+test binary panics at the first trigger. Cascade, storm, gift and
+`WhenYouLoseControlOfThis` are the worked examples.
+
+A `Build` with no `Effect` beside it — the old shape, which computed
+the effect at trigger time — still works, but its item is an unkeyed
+closure that holds the restore point back while it waits, and the
+row must be listed in `testdata/legacy_trigger_builds.txt` (the list
+only shrinks; see "Snapshot compatibility"). Do not add one. A
+`TargetsFrom` that reads anything but its trigger context and the
+source's identity (`NotSelf`, `AnotherTarget`) must set
+`TargetsFromReadsBoard`, because restore calls it again on the
+restored board; that row is listed too (Molten Primordial).
 
 **Combat declarations (#830, #859):** BOTH combat declarations
 announce once, at their **lock-in** — the first priority boundary of
@@ -4062,17 +4090,18 @@ it.
 
 **The two rules that matter:**
 
-1. **`Build` builds; it does not resolve.** Do the work inside the
-   `Effect` closure passed to `NewTriggeredItem`, never in `Build`
-   itself. Applying the effect in `Build` skips the stack and denies
+1. **Nothing resolves before the stack says so.** Do the work in the
+   `Effect`, never in `Build` itself. Applying the effect in `Build` skips the stack and denies
    every player their response window. The only game reads `Build`
    should do are the ones that pick targets.
-2. **The `Effect` closure reads everything off `item` and the `g` it
+2. **The `Effect` reads everything off `item` and the `g` it
    receives.** Don't capture `source *game.Card` (a pointer into a
-   zone slice) or the `*game.Game` from `Build`'s arguments — undo
-   restores a cloned game and the closure has to resolve against
-   that one. `item.Controller`, `item.SourceCardID`, `item.Targets`
-   carry what you need.
+   zone slice), the `*game.Game`, or anything from the triggering
+   event — undo restores a cloned game, and a restore point rebuilds
+   the item from the row, so the effect has to resolve against what
+   the item carries. `item.Controller`, `item.SourceCardID`,
+   `item.Targets`, `item.Trigger` and `item.Params` carry what you
+   need.
 
 **Targeted triggers** declare the clause on the ability, exactly
 like a spell's `Spec.Targets`:
@@ -4099,15 +4128,18 @@ Esper Sentinel) is a `PayUnless` primitive the trigger's `Effect`
 applies: it queues a `pay_unless` prompt for the taxed player and
 returns; the "unless" consequence runs later as `OnDecline` when
 they answer "Don't pay" — or "Pay" without the mana in pool +
-untapped sources. Capture the payer's ID in `Build` (it's
-`ev.Actor` for cast / draw events) and read the controller off the
-`Context` inside `OnDecline`. See
-[rhystic_study.go](server/internal/cards/effects/rhystic_study.go).
+untapped sources. Read the payer's ID off the triggering event at
+resolution (`item.Trigger.Event.Actor` for cast / draw events — not
+captured in a `Build`, which would put the row on the legacy list) and
+read the controller off the `Context` inside `OnDecline`. See
+[rhystic_study.go](server/internal/cards/effects/rhystic_study.go),
+which still captures it and is on the tail's list.
 
 **Dies triggers** get the CR 603.10 last-known-information
-characteristics as the third `Build` argument — the card is already
-in the graveyard when `Build` runs, so read power / toughness /
-types from `sourceLKI`, not `source`.
+characteristics as the third `AppliesTo` / `Build` argument — the card
+is already in the graveyard when they run, so read power / toughness /
+types from `sourceLKI`, not `source`. At resolution the same facts are
+`ctx.Trigger().Object` and `ctx.TriggeringPermanent()` (below).
 
 **"Where X is that creature's power"** (and any other read of the
 event's permanent at RESOLUTION) is `ctx.TriggeringPermanent()`

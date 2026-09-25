@@ -144,7 +144,10 @@ func TestDoStopsAtTheFirstError(t *testing.T) {
 func TestConstructorsBuildOrdinaryAbilities(t *testing.T) {
 	noop := func(*game.Game, *game.StackItem) error { return nil }
 	t1 := WhenThisEnters("x", noop)
-	if len(t1.Watches) != 1 || t1.Watches[0] != game.EventETB || t1.AppliesTo == nil || t1.Build == nil {
+	// ADR 0041 P9 (tier 4-2): the effect is declared on the row and
+	// the engine builds the item, so a constructor carries no Build.
+	if len(t1.Watches) != 1 || t1.Watches[0] != game.EventETB || t1.AppliesTo == nil ||
+		t1.Effect == nil || t1.Build != nil || t1.Key != "x" {
 		t.Errorf("WhenThisEnters: %+v", t1)
 	}
 	if t1.OptionalPrompt != nil || t1.Targets != nil {
