@@ -28,19 +28,16 @@ func init() {
 				c, ok := g.LookupCardForEffect(ev.CardID)
 				return ok && c.IsCreature() && c.Controller != source.Controller
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				c, ok := g.LookupCardForEffect(ev.CardID)
-				if !ok {
+			Key: "Blood Seeker — that player loses 1 life",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if item.Trigger == nil || item.Trigger.Object == nil {
 					return nil
 				}
-				victim := c.Controller
-				return game.NewTriggeredItem(source, "Blood Seeker — that player loses 1 life",
-					func(g *game.Game, item *game.StackItem) error {
-						if g.PlayerByIDForEffect(victim) == nil {
-							return nil
-						}
-						return g.ChangePlayerLifeForEffect(item.SourceCardID, victim, -1)
-					})
+				victim := item.Trigger.Object.Controller
+				if g.PlayerByIDForEffect(victim) == nil {
+					return nil
+				}
+				return g.ChangePlayerLifeForEffect(item.SourceCardID, victim, -1)
 			},
 			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Blood Seeker — that player loses 1 life?"},
 		}},

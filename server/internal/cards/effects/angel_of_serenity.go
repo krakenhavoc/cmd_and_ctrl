@@ -51,9 +51,8 @@ func init() {
 				AppliesTo:      b06SelfETB,
 				OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Angel of Serenity — exile up to three other target creatures?"},
 				Targets:        TargetCreature("up to three other target creatures", b03NotNamed("Angel of Serenity")).WithCount(0, 3),
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, b36AngelOfSerenityExileLabel, b36ExileChosenCreatures)
-				},
+				Key:            b36AngelOfSerenityExileLabel,
+				Effect:         b36ExileChosenCreatures,
 			},
 			On(game.EventLTB, Self, "Angel of Serenity — return the exiled cards to their owners' hands", b36ReturnCardsExiledWithToOwnersHands),
 		},

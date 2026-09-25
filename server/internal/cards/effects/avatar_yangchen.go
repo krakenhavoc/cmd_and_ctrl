@@ -41,10 +41,8 @@ func init() {
 			TargetsFrom: AnotherTarget(func(other CardPredicate) *game.TargetSpec {
 				return TargetPermanent("up to one other target nonland permanent", Nonland(), other).WithCount(0, 1)
 			}),
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Avatar Yangchen — airbend a nonland permanent",
-					AirbendOtherTarget)
-			},
+			Key:    "Avatar Yangchen — airbend a nonland permanent",
+			Effect: AirbendOtherTarget,
 		}},
 	})
 }

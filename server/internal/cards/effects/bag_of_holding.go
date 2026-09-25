@@ -50,12 +50,12 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return discardedByYou(ev, source)
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				discarded := ev.CardID
-				return game.NewTriggeredItem(source, bagOfHoldingExileLabel,
-					func(g *game.Game, item *game.StackItem) error {
-						return exileFromGraveyardIfStillThere(g, item, discarded)
-					})
+			Key: bagOfHoldingExileLabel,
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if item.Trigger == nil {
+					return nil
+				}
+				return exileFromGraveyardIfStillThere(g, item, item.Trigger.Event.CardID)
 			},
 		}},
 		Activated: []ActivatedAbility{
