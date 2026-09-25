@@ -54,7 +54,7 @@ func init() {
 				// rather than closing over the card, which the
 				// Effect must not capture.
 				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					item := game.NewTriggeredItem(source, "Spiteful Banditry — deal X damage to each creature", nil)
+					item := game.NewTriggeredItem(source, "Spiteful Banditry — deal X damage to each creature")
 					item.Params.Amount = source.CastX()
 					return item
 				},

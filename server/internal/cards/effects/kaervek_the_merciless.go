@@ -38,7 +38,7 @@ func init() {
 				if spell, ok := g.LookupCardForEffect(ev.CardID); ok {
 					amount, _ = g.ManaValueForEffect(spell)
 				}
-				item := game.NewTriggeredItem(source, "Kaervek the Merciless — deal damage equal to that spell's mana value to any target", nil)
+				item := game.NewTriggeredItem(source, "Kaervek the Merciless — deal damage equal to that spell's mana value to any target")
 				item.Params.Amount = amount
 				return item
 			},

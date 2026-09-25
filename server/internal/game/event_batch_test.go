@@ -46,7 +46,7 @@ func seedBatchProbe(t *testing.T, g *Game, optional bool) uuid.UUID {
 			return ev.CardID != source.InstanceID
 		},
 		Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-			return NewTriggeredItem(source, batchProbeLabel, func(*Game, *StackItem) error { return nil })
+			return newTriggeredItemForTest(source, batchProbeLabel, func(*Game, *StackItem) error { return nil })
 		},
 	}
 	if optional {
@@ -385,7 +385,7 @@ func seedPerTargetBatchProbe(t *testing.T, g *Game) uuid.UUID {
 				return ev.CardID != source.InstanceID
 			},
 			Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-				return NewTriggeredItem(source, batchProbeLabel, func(*Game, *StackItem) error { return nil })
+				return newTriggeredItemForTest(source, batchProbeLabel, func(*Game, *StackItem) error { return nil })
 			},
 		}}
 	})

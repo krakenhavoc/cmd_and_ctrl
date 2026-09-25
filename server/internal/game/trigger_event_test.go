@@ -97,7 +97,7 @@ func TestATriggersItemCarriesTheTriggeringEvent(t *testing.T) {
 		Watches:   []EventKind{EventDealDamage},
 		AppliesTo: func(Event, *Card, Characteristic, *Game) bool { return true },
 		Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-			return NewTriggeredItem(source, "watcher", nil)
+			return NewTriggeredItem(source, "watcher")
 		},
 	})
 	watcherNamed(g, me.ID, "Watcher")
@@ -134,7 +134,7 @@ func TestADiesTriggerCarriesTheObjectAsItWas(t *testing.T) {
 		Watches:   []EventKind{EventLTB},
 		AppliesTo: func(Event, *Card, Characteristic, *Game) bool { return true },
 		Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-			return NewTriggeredItem(source, "watcher", nil)
+			return NewTriggeredItem(source, "watcher")
 		},
 	})
 	watcherNamed(g, me.ID, "Watcher")
@@ -266,7 +266,7 @@ func TestATargetClauseCanReadTheTriggeringEvent(t *testing.T) {
 			}
 		},
 		Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-			return NewTriggeredItem(source, "watcher", nil)
+			return NewTriggeredItem(source, "watcher")
 		},
 	})
 	watcherNamed(g, me.ID, "Watcher")
@@ -321,7 +321,7 @@ func TestAnUnfillableEventBuiltClauseRemovesTheTrigger(t *testing.T) {
 			}
 		},
 		Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-			return NewTriggeredItem(source, "watcher", nil)
+			return NewTriggeredItem(source, "watcher")
 		},
 	})
 	watcherNamed(g, me.ID, "Watcher")

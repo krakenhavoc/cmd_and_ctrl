@@ -38,7 +38,9 @@ func TestBotOrdersATargetedTriggerWithItsBatch(t *testing.T) {
 				PlayerOK: func(_ *game.Game, caster uuid.UUID, p *game.Player) bool { return p.ID != caster },
 			},
 			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Burn — target opponent", func(*game.Game, *game.StackItem) error { return nil })
+				item := game.NewTriggeredItem(source, "Burn — target opponent")
+				item.Effect = func(*game.Game, *game.StackItem) error { return nil }
+				return item
 			},
 		}}
 	}

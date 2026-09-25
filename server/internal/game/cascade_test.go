@@ -298,7 +298,7 @@ func TestFromStackTriggerFiresOnCastAndOthersDoNot(t *testing.T) {
 					return ev.CardID == source.InstanceID
 				},
 				Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-					return NewTriggeredItem(source, "cascade", func(*Game, *StackItem) error { return nil })
+					return newTriggeredItemForTest(source, "cascade", func(*Game, *StackItem) error { return nil })
 				},
 			}}
 		case bystander:
@@ -310,7 +310,7 @@ func TestFromStackTriggerFiresOnCastAndOthersDoNot(t *testing.T) {
 					return ev.CardID == source.InstanceID
 				},
 				Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-					return NewTriggeredItem(source, "bystander", func(*Game, *StackItem) error { return nil })
+					return newTriggeredItemForTest(source, "bystander", func(*Game, *StackItem) error { return nil })
 				},
 			}}
 		}

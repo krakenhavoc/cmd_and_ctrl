@@ -128,7 +128,7 @@ func valakutExplorationRecordExiled(_ game.Event, source *game.Card, _ game.Char
 	if len(ids) == 0 {
 		return nil
 	}
-	item := game.NewTriggeredItem(source, valakutExplorationSweepLabel, nil)
+	item := game.NewTriggeredItem(source, valakutExplorationSweepLabel)
 	item.Payload = make([]game.TargetRef, 0, len(ids))
 	for _, id := range ids {
 		item.Payload = append(item.Payload, game.TargetRef{Kind: game.TargetCard, ID: id})

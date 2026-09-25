@@ -236,7 +236,7 @@ func TestFillInBuildParamsSurviveARestore(t *testing.T) {
 		AppliesTo: trigYourUpkeep,
 		Key:       "Trig Probe — lose the amount",
 		Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-			item := NewTriggeredItem(source, "Trig Probe — lose 3", nil)
+			item := NewTriggeredItem(source, "Trig Probe — lose 3")
 			item.Params.Amount = 3
 			return item
 		},
@@ -269,7 +269,7 @@ func TestLegacyTriggerBuildIsNotStamped(t *testing.T) {
 	effect := row.Effect
 	row.Effect = nil
 	row.Build = func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-		return NewTriggeredItem(source, trigDrainKey, effect)
+		return newTriggeredItemForTest(source, trigDrainKey, effect)
 	}
 	withTrigCatalog(t, row)
 	g := newActiveGame(t)
@@ -277,8 +277,11 @@ func TestLegacyTriggerBuildIsNotStamped(t *testing.T) {
 	if item.Body != "" || item.Params.Ability != nil {
 		t.Errorf("a legacy Build was stamped: %q %+v", item.Body, item.Params.Ability)
 	}
-	if snap := g.CaptureSnapshot(); snap.Continuations.StackEffects != 1 {
-		t.Errorf("census = %+v, want the unkeyed item counted once in StackEffects", snap.Continuations)
+	// ADR 0041 tier 4-final (#1497): StackEffects is retired and the
+	// unkeyed item is folded into IntrinsicAbilityCards — still
+	// counted once, so the game is still not a restore point.
+	if snap := g.CaptureSnapshot(); snap.Continuations.StackEffects != 0 || snap.Continuations.IntrinsicAbilityCards != 1 {
+		t.Errorf("census = %+v, want the unkeyed item counted once in IntrinsicAbilityCards", snap.Continuations)
 	}
 }
 
@@ -313,7 +316,7 @@ func TestFillInBuildThatSetsTheEffectIsAFault(t *testing.T) {
 	row := trigDrainRow(trigDrainKey)
 	effect := row.Effect
 	row.Build = func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-		return NewTriggeredItem(source, trigDrainKey, effect)
+		return newTriggeredItemForTest(source, trigDrainKey, effect)
 	}
 	withTrigCatalog(t, row)
 	g := newActiveGame(t)

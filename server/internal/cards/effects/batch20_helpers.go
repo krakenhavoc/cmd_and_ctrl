@@ -212,7 +212,7 @@ func b20EachPlayerDrawsAndGainsOne(g *game.Game, item *game.StackItem) error {
 // is fine.
 func b20GainLifeEqualToToughnessBuild(label string) func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) *game.StackItem {
 	return func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-		item := game.NewTriggeredItem(source, label, nil)
+		item := game.NewTriggeredItem(source, label)
 		if c, ok := g.LookupCardForEffect(ev.CardID); ok {
 			item.Params.Amount = c.CurrentToughness()
 		}

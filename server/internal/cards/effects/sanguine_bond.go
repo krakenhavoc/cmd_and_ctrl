@@ -37,7 +37,7 @@ func init() {
 			Targets: TargetPlayer("target opponent", Opponent()),
 			Key:     "Sanguine Bond — target opponent loses that much life",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, "Sanguine Bond — target opponent loses that much life", nil)
+				item := game.NewTriggeredItem(source, "Sanguine Bond — target opponent loses that much life")
 				item.Params.Amount = ev.Amount
 				return item
 			},

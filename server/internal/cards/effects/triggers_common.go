@@ -21,8 +21,8 @@ import (
 // Every constructor returns an ordinary game.TriggeredAbility —
 // Watches, an AppliesTo, a Key that is the stack label, and the Effect
 // DECLARED on the row (ADR 0041 P9, #1497, tier 4-2). The engine builds
-// the item from the row itself (NewTriggeredItem(source, Key, Effect))
-// and names the row on it, so a table with the trigger waiting on the
+// the item from the row itself (its Key and its Effect) and names the
+// row on it, so a table with the trigger waiting on the
 // stack is still a restore point. The S19 rules (ADR 0018) hold
 // unchanged: nothing resolves before the stack says so, and the Effect
 // reads the controller, source, targets and triggering event
@@ -99,8 +99,8 @@ func On(kind game.EventKind, when When, label string, effect Effect) game.Trigge
 // two kinds, not two abilities (Sun Titan).
 //
 // The effect is declared on the row (ADR 0041 P9): the engine builds
-// the item as NewTriggeredItem(source, label, effect) and stamps it with
-// the row's catalog name. A nil effect keeps the old hand-built item
+// the item from the label and the effect and stamps it with the row's
+// catalog name. A nil effect keeps the old hand-built item
 // with no Effect, for the one card that replaces the Build afterwards
 // (Forum Familiar) — a row with neither would never trigger at all.
 func OnAny(kinds []game.EventKind, when When, label string, effect Effect) game.TriggeredAbility {
@@ -112,7 +112,7 @@ func OnAny(kinds []game.EventKind, when When, label string, effect Effect) game.
 	}
 	if effect == nil {
 		t.Build = func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-			return game.NewTriggeredItem(source, label, nil)
+			return game.NewTriggeredItem(source, label)
 		}
 	}
 	return t
@@ -764,7 +764,7 @@ func WhenThisIsPutIntoYourGraveyardFromYourLibrary(label string, effect Effect) 
 func WhenYouLoseControlOfThis(label string, effect Effect) game.TriggeredAbility {
 	t := On(game.EventControlChanged, ThisChangedController, label, effect)
 	t.Build = func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-		item := game.NewTriggeredItem(source, label, nil)
+		item := game.NewTriggeredItem(source, label)
 		item.Controller, item.Owner = ev.Target, ev.Target
 		return item
 	}

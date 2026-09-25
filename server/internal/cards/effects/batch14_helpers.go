@@ -109,50 +109,21 @@ func b14OpponentsEndStepBegan(ev game.Event, source *game.Card) bool {
 
 // b14PermanentYouControlLeft is Resourceful Defense's condition: a
 // permanent the source's controller controlled left the battlefield,
-// for anywhere. The card is read post-move — the Controller field
-// survives the move — so a token that ceased to exist on leaving is
-// not seen, which is the diedCreature posture and weaker than
-// printed. Returns the last-known counters it carried, keyed by
-// kind, so the "if it had counters on it" intervening-if and the
-// effect read one snapshot.
-func b14PermanentYouControlLeft(ev game.Event, source *game.Card, g *game.Game) (map[string]int, bool) {
+// for anywhere, with counters on it. The card is read post-move — the
+// Controller field survives the move — so a token that ceased to exist
+// on leaving is not seen, which is the diedCreature posture and weaker
+// than printed. "If it had counters on it" is the CR 603.10 record the
+// engine writes as the permanent leaves (LastKnownCountersForEffect),
+// the reading The Ozolith's condition makes.
+func b14PermanentYouControlLeft(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventLTB || ev.CardID == uuid.Nil || ev.CardID == source.InstanceID {
-		return nil, false
+		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
 	if !ok || c.Controller != source.Controller {
-		return nil, false
+		return false
 	}
-	counters := b14LastKnownCounterKinds(g, ev.CardID)
-	if len(counters) == 0 {
-		return nil, false
-	}
-	return counters, true
-}
-
-// --- counters read back off the log ------------------------------
-
-// b14LastKnownCounterKinds is every kind of counter `cardID` had when
-// it last left the battlefield, with its count — Resourceful
-// Defense's "those counters". Batch 13's b13LastKnownCounterWalk
-// (the walk that stops at the card's arrival on the battlefield, but
-// still reads the "enters with" placements a beat before it), taking
-// the most recent total per kind and dropping kinds that were removed
-// to nothing. The single-kind reader is b13LastKnownCounters.
-func b14LastKnownCounterKinds(g *game.Game, cardID uuid.UUID) map[string]int {
-	out := map[string]int{}
-	seen := map[string]bool{}
-	b13LastKnownCounterWalk(g, cardID, func(ev game.Event) bool {
-		if seen[ev.Label] {
-			return true
-		}
-		seen[ev.Label] = true
-		if ev.Amount > 0 {
-			out[ev.Label] = ev.Amount
-		}
-		return true
-	})
-	return out
+	return len(g.LastKnownCountersForEffect(ev.CardID)) > 0
 }
 
 // --- predicates --------------------------------------------------

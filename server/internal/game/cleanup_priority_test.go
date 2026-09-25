@@ -123,7 +123,7 @@ func TestCleanupDiscardTriggerGetsPriorityAndASecondCleanupStep(t *testing.T) {
 				return true
 			},
 			Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-				return NewTriggeredItem(source, "Test Discard Watcher — gain 3 life",
+				return newTriggeredItemForTest(source, "Test Discard Watcher — gain 3 life",
 					func(g *Game, item *StackItem) error {
 						return g.ChangePlayerLifeForEffect(item.SourceCardID, item.Controller, 3)
 					})
@@ -211,7 +211,7 @@ func TestTriggerInTheSecondCleanupGivesAThird(t *testing.T) {
 			},
 			Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
 				fired++
-				return NewTriggeredItem(source, "Test Cleanup Watcher — gain 1 life",
+				return newTriggeredItemForTest(source, "Test Cleanup Watcher — gain 1 life",
 					func(g *Game, item *StackItem) error {
 						return g.ChangePlayerLifeForEffect(item.SourceCardID, item.Controller, 1)
 					})
@@ -332,7 +332,7 @@ func TestUndoAcrossTheCleanupPriorityWindow(t *testing.T) {
 				return true
 			},
 			Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-				return NewTriggeredItem(source, "Test Undo Watcher — gain 2 life",
+				return newTriggeredItemForTest(source, "Test Undo Watcher — gain 2 life",
 					func(g *Game, item *StackItem) error {
 						return g.ChangePlayerLifeForEffect(item.SourceCardID, item.Controller, 2)
 					})
@@ -416,7 +416,7 @@ func TestUntilEndOfTurnEffectMadeInCleanupExpiresInTheSecondCleanup(t *testing.T
 				return true
 			},
 			Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-				return NewTriggeredItem(source, "Test Pump Watcher — +2/+2 until end of turn",
+				return newTriggeredItemForTest(source, "Test Pump Watcher — +2/+2 until end of turn",
 					func(g *Game, item *StackItem) error {
 						self := item.SourceCardID
 						g.RegisterScopedEffectForEffect(self, g.PinnedObjectsLocked(self),

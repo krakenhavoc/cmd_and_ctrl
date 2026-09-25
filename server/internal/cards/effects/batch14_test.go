@@ -1139,6 +1139,72 @@ func TestB14ResourcefulDefenseMovesCountersWhenAPermanentLeaves(t *testing.T) {
 	}
 }
 
+// CR 704.5q: a +1/+1 and a −1/−1 counter on one permanent cancel as a
+// state-based action, and the permanent then HAS no counters. A
+// creature that dies after the cancel did not "have counters on it",
+// so Resourceful Defense does not trigger (#1497, tier 4-final). The
+// old event-log walk still saw the +1/+1 placement and triggered.
+func TestB14ResourcefulDefenseIgnoresCountersCancelledByCR7045q(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	b12Push(g, me.ID, "Resourceful Defense", "Enchantment", b14ResourcefulDefenseOracle, 0, 0)
+	cancelled := b12Creature(g, me.ID, "Cancelled Bear", "Creature — Bear", 2, 2)
+	keeper := b12Creature(g, me.ID, "Keeper", "Creature — Bear", 2, 2)
+	if err := g.AddCounter(cancelled, "+1/+1", 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := g.AddCounter(cancelled, "-1/-1", 1); err != nil {
+		t.Fatal(err)
+	}
+	runStateChecksViaDraw(t, g)
+	if p, m := b12Counter(t, g, cancelled, "+1/+1"), b12Counter(t, g, cancelled, "-1/-1"); p != 0 || m != 0 {
+		t.Fatalf("the pair cancels (CR 704.5q): +1/+1 %d, -1/-1 %d", p, m)
+	}
+
+	b14Kill(g, cancelled)
+	if len(g.PendingTriggers) != 0 || latestPickTarget(g, me.ID) != nil {
+		t.Fatal("a creature whose counters cancelled had none as it died: no trigger")
+	}
+	if got := b12Counter(t, g, keeper, "+1/+1"); got != 0 {
+		t.Errorf("no +1/+1 counter moves: %d", got)
+	}
+	if got := b12Counter(t, g, keeper, "-1/-1"); got != 0 {
+		t.Errorf("no -1/-1 counter moves: %d", got)
+	}
+}
+
+// A creature with an uneven pair keeps the remainder after CR 704.5q,
+// and Resourceful Defense moves exactly that remainder — what the
+// permanent had as it left, not what was ever placed on it.
+func TestB14ResourcefulDefenseMovesTheCountersLeftAfterCR7045q(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	b12Push(g, me.ID, "Resourceful Defense", "Enchantment", b14ResourcefulDefenseOracle, 0, 0)
+	grown := b12Creature(g, me.ID, "Grown Bear", "Creature — Bear", 2, 2)
+	keeper := b12Creature(g, me.ID, "Keeper", "Creature — Bear", 2, 2)
+	if err := g.AddCounter(grown, "+1/+1", 3); err != nil {
+		t.Fatal(err)
+	}
+	if err := g.AddCounter(grown, "-1/-1", 1); err != nil {
+		t.Fatal(err)
+	}
+	runStateChecksViaDraw(t, g)
+	if p, m := b12Counter(t, g, grown, "+1/+1"), b12Counter(t, g, grown, "-1/-1"); p != 2 || m != 0 {
+		t.Fatalf("CR 704.5q leaves the remainder: +1/+1 %d, -1/-1 %d", p, m)
+	}
+
+	b14Kill(g, grown)
+	b04WaitForPick(t, g, me.ID)
+	pickCard(t, g, me.ID, keeper)
+	passPriorityAroundTable(t, g)
+	if got := b12Counter(t, g, keeper, "+1/+1"); got != 2 {
+		t.Errorf("the +1/+1 counters left after the cancel move: %d, want 2", got)
+	}
+	if got := b12Counter(t, g, keeper, "-1/-1"); got != 0 {
+		t.Errorf("the cancelled -1/-1 counter does not move: %d", got)
+	}
+}
+
 func TestB14ResourcefulDefenseMovesAllCountersForFiveMana(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]

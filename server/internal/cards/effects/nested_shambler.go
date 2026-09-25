@@ -45,7 +45,7 @@ func init() {
 			},
 			Key: "Nested Shambler — a tapped Squirrel for each point of its power",
 			Build: func(_ game.Event, source *game.Card, lki game.Characteristic, g *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, "Nested Shambler — a tapped Squirrel for each point of its power", nil)
+				item := game.NewTriggeredItem(source, "Nested Shambler — a tapped Squirrel for each point of its power")
 				item.Params.Amount = b13LastKnownPower(g, source.InstanceID, lki)
 				return item
 			},

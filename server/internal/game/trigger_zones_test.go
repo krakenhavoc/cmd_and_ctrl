@@ -59,7 +59,7 @@ func (w *zoneWatch) ability(zone ZoneKind, kind EventKind) TriggeredAbility {
 		},
 		Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
 			w.fired++
-			return NewTriggeredItem(source, "Zone watcher", func(*Game, *StackItem) error { return nil })
+			return newTriggeredItemForTest(source, "Zone watcher", func(*Game, *StackItem) error { return nil })
 		},
 	}
 }
@@ -286,7 +286,7 @@ func TestGraveyardTriggerPromptSurvivesUndo(t *testing.T) {
 		OptionalPrompt: &TriggerOptionalPrompt{Question: "Return it?"},
 		Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
 			built++
-			return NewTriggeredItem(source, "Graveyard prompt", func(*Game, *StackItem) error { return nil })
+			return newTriggeredItemForTest(source, "Graveyard prompt", func(*Game, *StackItem) error { return nil })
 		},
 	}})
 	owner.Graveyard.PushTop(Card{

@@ -44,7 +44,7 @@ func init() {
 				},
 				Key: "Scrawling Crawler — that player loses 1 life",
 				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					item := game.NewTriggeredItem(source, "Scrawling Crawler — that player loses 1 life", nil)
+					item := game.NewTriggeredItem(source, "Scrawling Crawler — that player loses 1 life")
 					item.Params.Player = ev.Actor
 					return item
 				},

@@ -31,7 +31,7 @@ func init() {
 			},
 			Key: "Seizan, Perverter of Truth — that player loses 2 life and draws two cards",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, "Seizan, Perverter of Truth — that player loses 2 life and draws two cards", nil)
+				item := game.NewTriggeredItem(source, "Seizan, Perverter of Truth — that player loses 2 life and draws two cards")
 				item.Params.Player = ev.Actor
 				return item
 			},

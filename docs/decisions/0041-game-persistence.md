@@ -2456,3 +2456,89 @@ own.
   rules answer. The trigger would not fire at all. But it changes play,
   so the change is left to its own PR. That PR also moves the walk out
   of `AppliesTo`.
+
+### Implementation notes (tier 4-final)
+
+The last slice of P9. It converts the last listed row, audits every
+source of an unkeyed stack item, and retires `StackEffects`. This is
+the retirement that closes #1497 under the owner's answer to Q4.
+
+- **Resourceful Defense (row 0), a deliberate rules fix.** Both the
+  trigger's condition and its effect now read the CR 603.10 record,
+  the way The Ozolith does. The condition "if it had counters on it"
+  reads `g.LastKnownCountersForEffect`. The effect "those counters"
+  reads `ctx.TriggeringPermanent().Counters` at resolution. The
+  event-log walk `b14LastKnownCounterKinds` is deleted.
+  - **What changes in play.** CR 704.5q's +1/+1 / −1/−1 cancel emits
+    no counter event, so the walk reported counters the permanent no
+    longer had. Take a creature that had one +1/+1 counter, was given a
+    −1/−1 counter, lost both to the cancel, and then died. It no longer
+    triggers the card.
+  - **What does not change.** A creature left with an uneven remainder
+    after the cancel moves exactly that remainder.
+  - Both cases are pinned in `batch14_test.go`. The first test fails
+    on the old code.
+  - `testdata/legacy_trigger_builds.txt` now holds only its header.
+    `TestLegacyTriggerBuildsOnlyShrink` is unchanged, and it still
+    fails on any row that would need listing.
+  - Follow-up: `b13LastKnownCounters`, the single-kind walk that
+    batches 17, 22, 23 and 29 use, has the same CR 704.5q blind spot.
+    The owner is filing it separately, and this slice does not touch
+    it.
+- **The audit.** Every source that can put an `Effect` on a stack item
+  was checked.
+  - Catalog trigger rows are keyed through `catalog/triggered`. The
+    catalog has 1247 declared rows, and all 1247 are stampable. Ten
+    more are keyed by a tier-2 `Build`.
+  - Catalog activations are keyed through `catalog/activated`.
+  - The engine triggers (prowess, suspend, madness, face-down ward,
+    monarch, evoke, mana-spend riders) are keyed through tier-2 bodies.
+  - Reflexive triggers are keyed through reflexive bodies, and delayed
+    triggers, fired or event-conditioned, through their bodies.
+  - Ability copies inherit `Body` and `Params` from the original.
+  - Sandbox-announced items carry no `Effect` at all.
+  - That leaves three unkeyed sources, and none of them is reachable
+    in production:
+    1. **An ability carried on the card instance
+       (`Card.ActivatedAbilities`).** `activatedAbilityRefFor` never
+       stamps one. Nothing in production writes a non-empty list:
+       `checkTokenTemplate` forbids it, and the copy paths copy an
+       empty one.
+    2. **A declared trigger row with no catalog identity.** This only
+       happens with a stubbed `CatalogTriggers`.
+    3. **A test that hand-builds an item with a closure.**
+- **Owner decision (2026-09-25): fold.** An item whose `Effect` is a
+  closure with no `Body` is counted once in `IntrinsicAbilityCards`.
+  So is an item whose target or mode clause nothing re-derives.
+  `IntrinsicAbilityCards` is the counter that already owns instance
+  closures, and it stays censused. `StackEffects` joins
+  `retiredCensusCounters`. The field stays so that an older census
+  still decodes. This is the same kind of fold that tier 4-1 did when
+  it folded `StackTargetSpecs` into `StackEffects`.
+- **`NewTriggeredItem(source, label)` takes no effect.** The effect
+  parameter is gone, as P9 planned for when the list emptied.
+  - Engine sites that need an `Effect` install it from a row or a body
+    on the next line: `buildTriggerItemLocked`, the event-conditioned
+    delayed dispatch, and `NewKeyedTriggeredItem`.
+  - Tests that need an unkeyed item use `newTriggeredItemForTest` in
+    `internal/game`. In the aiseat and legal tests the two sites set
+    `item.Effect` directly.
+  - `StackItem.Effect` is still an exported field, because the
+    resolver needs it at runtime. That is why the census still counts
+    an item that carries a closure and no body.
+- **P11.** `StackEffects`' six ratchet lines moved in this PR:
+  - `StackItem.Effect` → `census:ChoiceResumeFrames`. Its remaining
+    route is `resolving.item`, the same route that `targetSpec` and
+    `modeSpec` took in 4-1. The ceiling goes from 118 to 119.
+  - `Game.StackMeta`, `Game.PendingTriggers`, `Game.lastKnownStack` and
+    `lastKnownSpell.card` → `census:IntrinsicAbilityCards`. For the
+    first three, the fold is what counts an unkeyed item there. The
+    fourth is a `Card`. The ceiling goes from 45 to 49.
+  - `lastKnownSpell.item` → `keyed`. A countered spell's clauses come
+    back by oracle ID, and no ability is ever recorded there.
+  - The `census:StackEffects` ceiling is deleted.
+  - With this, the only live census classes are
+    `census:ChoiceResumeFrames` (owner decision 4) and
+    `census:IntrinsicAbilityCards`.
+- **No schema or fixture change.** The snapshot shape is unchanged.
+  This PR adds no fixture and edits none.

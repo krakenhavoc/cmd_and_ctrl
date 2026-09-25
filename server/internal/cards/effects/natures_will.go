@@ -37,7 +37,7 @@ func init() {
 				return combatDamageToPlayerBy(ev, source.Controller, g)
 			},
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, b24NaturesWillLabel(g, ev.Target), nil)
+				return game.NewTriggeredItem(source, b24NaturesWillLabel(g, ev.Target))
 			},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)

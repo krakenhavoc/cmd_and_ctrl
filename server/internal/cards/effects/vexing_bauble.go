@@ -52,7 +52,7 @@ func init() {
 			// A fill-in Build (ADR 0041 P9): the item's own label
 			// differs from the row's Key, exactly as before.
 			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Vexing Bauble — counter that spell", nil)
+				return game.NewTriggeredItem(source, "Vexing Bauble — counter that spell")
 			},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				spell := item.Trigger.Event.CardID

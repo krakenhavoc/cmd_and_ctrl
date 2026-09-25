@@ -49,7 +49,7 @@ func init() {
 			// the time this resolves.
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 				victim, _ := b43ALandAnOpponentControlsEntered(ev, source, g)
-				item := game.NewTriggeredItem(source, "Nightshade Harvester — that player loses 1 life, a +1/+1 counter on this creature", nil)
+				item := game.NewTriggeredItem(source, "Nightshade Harvester — that player loses 1 life, a +1/+1 counter on this creature")
 				item.Params.Player = victim
 				return item
 			},

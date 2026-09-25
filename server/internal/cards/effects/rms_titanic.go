@@ -33,7 +33,7 @@ func init() {
 			AppliesTo: ThisDealtCombatDamageToAPlayer,
 			Key:       "RMS Titanic — sacrifice it and create that many Treasure tokens",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, "RMS Titanic — sacrifice it and create that many Treasure tokens", nil)
+				item := game.NewTriggeredItem(source, "RMS Titanic — sacrifice it and create that many Treasure tokens")
 				item.Params.Amount = ev.Amount
 				return item
 			},

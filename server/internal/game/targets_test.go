@@ -271,7 +271,7 @@ func targetedETB(t *testing.T, oracle string, optional bool, destroyed *[]uuid.U
 			},
 			Targets: opponentArtifactSpec(),
 			Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-				return NewTriggeredItem(source, "destroy target artifact", func(g *Game, item *StackItem) error {
+				return newTriggeredItemForTest(source, "destroy target artifact", func(g *Game, item *StackItem) error {
 					if len(item.Targets) == 0 {
 						return nil
 					}
@@ -620,7 +620,7 @@ func TestPickTargetsMultiSlot(t *testing.T) {
 			},
 			Targets: opponentArtifactSpec().WithCount(2, 2),
 			Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-				return NewTriggeredItem(source, "destroy two artifacts", func(g *Game, item *StackItem) error {
+				return newTriggeredItemForTest(source, "destroy two artifacts", func(g *Game, item *StackItem) error {
 					for _, t := range item.Targets {
 						destroyed = append(destroyed, t.ID)
 						_ = g.DestroyPermanentForEffect(t.ID)

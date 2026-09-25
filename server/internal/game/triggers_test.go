@@ -628,7 +628,7 @@ func TestTriggeredItemEffectRunsOnResolutionNotOnBuild(t *testing.T) {
 				return ev.CardID == source.InstanceID
 			},
 			Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-				return NewTriggeredItem(source, "gain 3 life", func(g *Game, item *StackItem) error {
+				return newTriggeredItemForTest(source, "gain 3 life", func(g *Game, item *StackItem) error {
 					effectCalls++
 					effectController = item.Controller
 					return g.ChangePlayerLifeForEffect(item.SourceCardID, item.Controller, 3)
@@ -722,7 +722,7 @@ func TestTriggeredItemFizzlesWhenTargetGone(t *testing.T) {
 				return ev.CardID == source.InstanceID
 			},
 			Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-				item := NewTriggeredItem(source, "destroy target artifact", func(_ *Game, _ *StackItem) error {
+				item := newTriggeredItemForTest(source, "destroy target artifact", func(_ *Game, _ *StackItem) error {
 					effectCalls++
 					return nil
 				})
@@ -796,7 +796,7 @@ func TestTriggeredItemEffectErrorSurfacesAndClearsStack(t *testing.T) {
 				return ev.CardID == source.InstanceID
 			},
 			Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-				return NewTriggeredItem(source, "explode", func(_ *Game, _ *StackItem) error {
+				return newTriggeredItemForTest(source, "explode", func(_ *Game, _ *StackItem) error {
 					return ErrInvalidParam
 				})
 			},
@@ -842,7 +842,7 @@ func TestTriggeredItemEffectSurvivesCloneAndRestore(t *testing.T) {
 				return ev.CardID == source.InstanceID
 			},
 			Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-				return NewTriggeredItem(source, "gain 5 life", func(g *Game, item *StackItem) error {
+				return newTriggeredItemForTest(source, "gain 5 life", func(g *Game, item *StackItem) error {
 					return g.ChangePlayerLifeForEffect(item.SourceCardID, item.Controller, 5)
 				})
 			},
@@ -915,7 +915,7 @@ func TestSandboxMoveDrainsTriggerOntoStack(t *testing.T) {
 				return ev.CardID == source.InstanceID
 			},
 			Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-				return NewTriggeredItem(source, "dropped ETB", func(_ *Game, _ *StackItem) error { return nil })
+				return newTriggeredItemForTest(source, "dropped ETB", func(_ *Game, _ *StackItem) error { return nil })
 			},
 		}}
 	})

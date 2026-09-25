@@ -64,7 +64,7 @@ func init() {
 				Targets: TargetPlayer("target opponent", Opponent()),
 				Key:     "Rapacious Guest — target opponent loses life equal to its power",
 				Build: func(_ game.Event, source *game.Card, lki game.Characteristic, g *game.Game) *game.StackItem {
-					item := game.NewTriggeredItem(source, "Rapacious Guest — target opponent loses life equal to its power", nil)
+					item := game.NewTriggeredItem(source, "Rapacious Guest — target opponent loses life equal to its power")
 					item.Params.Amount = b13LastKnownPower(g, source.InstanceID, lki)
 					return item
 				},

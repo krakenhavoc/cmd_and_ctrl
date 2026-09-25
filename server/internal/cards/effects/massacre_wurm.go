@@ -74,7 +74,7 @@ func init() {
 					if !ok {
 						return nil
 					}
-					item := game.NewTriggeredItem(source, "Massacre Wurm — that player loses 2 life", nil)
+					item := game.NewTriggeredItem(source, "Massacre Wurm — that player loses 2 life")
 					item.Params.Player = dead.Controller
 					return item
 				},

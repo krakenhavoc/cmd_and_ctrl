@@ -56,7 +56,7 @@ func init() {
 				// capture (AGENTS.md: undo restores a cloned game and
 				// the closure has to resolve against that one).
 				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					item := game.NewTriggeredItem(source, "Wan Shi Tong, Librarian — enters: counters and draw", nil)
+					item := game.NewTriggeredItem(source, "Wan Shi Tong, Librarian — enters: counters and draw")
 					item.Params.Amount = source.CastX()
 					return item
 				},

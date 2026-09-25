@@ -375,7 +375,7 @@ func TestTurningFaceUpFiresTheTurnedFaceUpTrigger(t *testing.T) {
 			},
 			Key: "turned face up",
 			Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-				return NewTriggeredItem(source, "turned face up", nil)
+				return NewTriggeredItem(source, "turned face up")
 			},
 		}}
 	})

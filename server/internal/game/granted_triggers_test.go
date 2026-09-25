@@ -30,7 +30,7 @@ func stubGrantedTriggers(t *testing.T) {
 				return ev.CardID == source.InstanceID && extra(ev)
 			},
 			Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-				return NewTriggeredItem(source, label, noop)
+				return newTriggeredItemForTest(source, label, noop)
 			},
 		}
 	}

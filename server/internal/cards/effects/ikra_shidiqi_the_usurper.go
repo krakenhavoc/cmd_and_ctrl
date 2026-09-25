@@ -42,7 +42,7 @@ func init() {
 				if c, ok := g.LookupCardForEffect(dealer); ok {
 					fallback = c.CurrentToughness()
 				}
-				item := game.NewTriggeredItem(source, "Ikra Shidiqi, the Usurper — gain life equal to that creature's toughness", nil)
+				item := game.NewTriggeredItem(source, "Ikra Shidiqi, the Usurper — gain life equal to that creature's toughness")
 				item.Params.Object = game.ObjectRef{ID: dealer}
 				item.Params.Amount = fallback
 				return item

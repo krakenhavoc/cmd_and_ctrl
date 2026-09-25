@@ -66,7 +66,7 @@ func init() {
 				if ev.Actor == uuid.Nil {
 					return nil
 				}
-				return game.NewTriggeredItem(source, gixPayOneLifeLabel, nil)
+				return game.NewTriggeredItem(source, gixPayOneLifeLabel)
 			},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				payer := item.Trigger.Event.Actor

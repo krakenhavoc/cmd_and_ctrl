@@ -45,7 +45,7 @@ func init() {
 			// rather than being closed over; the entering creature's
 			// identity is on item.Trigger.Event.CardID already.
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, "Terror of the Peaks — damage equal to that creature's power to any target", nil)
+				item := game.NewTriggeredItem(source, "Terror of the Peaks — damage equal to that creature's power to any target")
 				if c, ok := g.LookupCardForEffect(ev.CardID); ok {
 					item.Params.Amount = c.CurrentPower()
 				}

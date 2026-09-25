@@ -65,7 +65,7 @@ func init() {
 				// fixed when the trigger goes on the stack, not re-derived
 				// at resolution if the creature has since changed hands.
 				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-					item := game.NewTriggeredItem(source, "Gonti, Night Minister — exile the top card of that opponent's library", nil)
+					item := game.NewTriggeredItem(source, "Gonti, Night Minister — exile the top card of that opponent's library")
 					if c, ok := g.LookupCardForEffect(ev.Source); ok {
 						item.Params.Player = c.Controller
 					}

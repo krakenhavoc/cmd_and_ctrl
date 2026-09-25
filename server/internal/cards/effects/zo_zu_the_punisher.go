@@ -51,7 +51,7 @@ func init() {
 			// since left, or changed controller, is still attributed
 			// correctly.
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, "Zo-Zu the Punisher — 2 damage to that land's controller", nil)
+				item := game.NewTriggeredItem(source, "Zo-Zu the Punisher — 2 damage to that land's controller")
 				item.Params.Player, _ = b39LandEnteredController(ev, g)
 				return item
 			},

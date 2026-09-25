@@ -51,7 +51,7 @@ func init() {
 				if ev.Actor == uuid.Nil {
 					return nil
 				}
-				return game.NewTriggeredItem(source, "Edric — attacking creature's controller draws a card", nil)
+				return game.NewTriggeredItem(source, "Edric — attacking creature's controller draws a card")
 			},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return DrawCards{Player: item.Trigger.Event.Actor, N: 1}.Apply(NewContext(g, item))

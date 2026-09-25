@@ -28,7 +28,7 @@ func init() {
 			},
 			Key: "Scytheclaw Raptor — 4 damage to the player who cast a spell on another player's turn",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, "Scytheclaw Raptor — 4 damage to the player who cast a spell on another player's turn", nil)
+				item := game.NewTriggeredItem(source, "Scytheclaw Raptor — 4 damage to the player who cast a spell on another player's turn")
 				item.Params.Player = ev.Actor
 				return item
 			},

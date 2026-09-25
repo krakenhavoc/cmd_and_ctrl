@@ -58,7 +58,7 @@ func init() {
 			// effect reads the same value back off item.Trigger.Event.
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 				n, _ := b43YouWereDealtDamage(ev, source, g)
-				return game.NewTriggeredItem(source, "Darien, King of Kjeldor — you may create "+strconv.Itoa(n)+" Soldiers", nil)
+				return game.NewTriggeredItem(source, "Darien, King of Kjeldor — you may create "+strconv.Itoa(n)+" Soldiers")
 			},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
