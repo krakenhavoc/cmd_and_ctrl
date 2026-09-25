@@ -23,6 +23,16 @@ export type Route =
   // Public like /catalog was meant to be closed — see ADR 0092 for why
   // this one is the opposite call.
   | { name: "roadmap" }
+  // The public deck coverage checker (ADR 0095 §5, PR 3 of the same
+  // plan): how much of a decklist the engine automates, plus a
+  // "Request these cards" filing button for a signed-in Discord
+  // session. Public like the roadmap — the body carries names, oracle
+  // IDs and caveat sentences, never art or oracle text.
+  //
+  // `url` is #/deck-check?url=<link>, which pre-fills the link field
+  // and runs the check on load. The bot's `/c2-deck-check` reply and
+  // the "up to about 15 names" summary link here for the full report.
+  | { name: "deckCheck"; url?: string }
   | { name: "lobby" }
   | { name: "join"; gameID: string; inviteToken: string; spectator: boolean }
   // Seat reclaim: an admin-minted, single-use, short-lived link that
@@ -87,6 +97,10 @@ export function parseHash(hash: string): Route {
       return { name: "home" };
     case "roadmap":
       return { name: "roadmap" };
+    case "deck-check": {
+      const u = params.get("url");
+      return u ? { name: "deckCheck", url: u } : { name: "deckCheck" };
+    }
     case "lobby":
       return { name: "lobby" };
     case "catalog": {

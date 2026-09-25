@@ -48,6 +48,14 @@ export default defineConfig({
       // The public engine roadmap (ADR 0092). The SPA's own #/roadmap
       // is a hash route requested as `/`, so this never shadows it.
       "/roadmap": { target: "http://localhost:8080", changeOrigin: true },
+      // The public deck coverage checker + deck requests (ADR 0095
+      // §5, #1631). Same silent failure as /catalog above without
+      // these: Vite answers with index.html, the JSON parse throws,
+      // and #/deck-check renders "couldn't check that deck" in dev
+      // only. The SPA's own #/deck-check hash route is unaffected,
+      // same reasoning as /roadmap.
+      "/deck-coverage": { target: "http://localhost:8080", changeOrigin: true },
+      "/deck-requests": { target: "http://localhost:8080", changeOrigin: true },
       "/me": { target: "http://localhost:8080", changeOrigin: true },
       // POST /logout and POST /logout/everywhere (ADR 0051 decision
       // 6). Missing before S34 sub-PR 7: without it Vite answered the
