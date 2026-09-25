@@ -28,10 +28,8 @@ func init() {
 				return ev.CardID == source.InstanceID
 			},
 			Targets: TargetCardInGraveyard("target card from a graveyard"),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Soul-Guide Lantern — exile target card from a graveyard",
-					ExileFirstTarget)
-			},
+			Key:     "Soul-Guide Lantern — exile target card from a graveyard",
+			Effect:  ExileFirstTarget,
 		}},
 		Activated: []ActivatedAbility{
 			{

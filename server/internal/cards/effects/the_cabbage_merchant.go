@@ -45,8 +45,7 @@ func init() {
 				if !ev.Combat {
 					return false
 				}
-				_, ok := b13CreatureDealtDamageToYou(ev, source, g)
-				return ok
+				return b13CreatureDealtDamageToYou(ev, source, g)
 			}, "The Cabbage Merchant — sacrifice a Food token", func(g *game.Game, item *game.StackItem) error {
 				g.PlayerSacrificesForEffect(item.SourceCardID, item.Controller,
 					sacrificeSpec("a Food token", Subtype("Food"), IsTokenPredicate()),

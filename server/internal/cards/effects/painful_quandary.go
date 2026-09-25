@@ -44,19 +44,12 @@ func init() {
 				Watches:   []game.EventKind{game.EventCast},
 				AppliesTo: AnOpponentCast(nil),
 				Key:       painfulQuandaryLabel,
-				// The caster is captured in Build — ev.Actor for a
-				// cast event, the same read Rhystic Study makes —
-				// because a trigger's effect is handed the item and
-				// not the event that fired it.
-				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					caster := ev.Actor
-					if caster == uuid.Nil {
-						return nil
-					}
-					return game.NewTriggeredItem(source, painfulQuandaryLabel,
-						func(g *game.Game, item *game.StackItem) error {
-							return painfulQuandaryAsk(g, item, caster)
-						})
+				// The caster is read off the item's Trigger at
+				// resolution (ev.Actor for a cast event) rather than
+				// captured — AnOpponentCast already refused a nil
+				// Actor before this ability's item was ever built.
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					return painfulQuandaryAsk(g, item, item.Trigger.Event.Actor)
 				},
 			},
 		},

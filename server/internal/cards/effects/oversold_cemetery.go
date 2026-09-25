@@ -31,17 +31,15 @@ func init() {
 			},
 			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Oversold Cemetery — return a creature card from your graveyard to your hand?"},
 			Targets:        TargetCardInGraveyard("target creature card in your graveyard", Creature(), YouOwn()),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Oversold Cemetery — return a creature card to your hand",
-					func(g *game.Game, item *game.StackItem) error {
-						if b11CreatureCardsInGraveyard(g, item.Controller) < 4 {
-							return nil
-						}
-						if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-							return nil
-						}
-						return ReturnFromGraveyard{Target: item.Targets[0].ID, Dest: game.ZoneHand}.Apply(NewContext(g, item))
-					})
+			Key:            "Oversold Cemetery — return a creature card to your hand",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if b11CreatureCardsInGraveyard(g, item.Controller) < 4 {
+					return nil
+				}
+				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+					return nil
+				}
+				return ReturnFromGraveyard{Target: item.Targets[0].ID, Dest: game.ZoneHand}.Apply(NewContext(g, item))
 			},
 		}},
 	})

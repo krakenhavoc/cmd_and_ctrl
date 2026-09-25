@@ -39,12 +39,9 @@ func init() {
 				AppliesTo: func(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
 					return ev.Actor != uuid.Nil
 				},
-				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					drawer := ev.Actor
-					return game.NewTriggeredItem(source, "Spiteful Visions — that player draws an additional card",
-						func(g *game.Game, item *game.StackItem) error {
-							return DrawCards{Player: drawer, N: 1}.Apply(NewContext(g, item))
-						})
+				Key: "Spiteful Visions — that player draws an additional card",
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					return DrawCards{Player: item.Trigger.Event.Actor, N: 1}.Apply(NewContext(g, item))
 				},
 			},
 			{
@@ -52,12 +49,9 @@ func init() {
 				AppliesTo: func(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
 					return ev.Actor != uuid.Nil
 				},
-				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					drawer := ev.Actor
-					return game.NewTriggeredItem(source, "Spiteful Visions — 1 damage to the player who drew",
-						func(g *game.Game, item *game.StackItem) error {
-							return DealDamage{Source: item.SourceCardID, Target: drawer, Amount: 1}.Apply(NewContext(g, item))
-						})
+				Key: "Spiteful Visions — 1 damage to the player who drew",
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					return DealDamage{Source: item.SourceCardID, Target: item.Trigger.Event.Actor, Amount: 1}.Apply(NewContext(g, item))
 				},
 			},
 		},

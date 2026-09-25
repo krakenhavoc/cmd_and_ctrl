@@ -36,15 +36,13 @@ func init() {
 				return cardDied(ev, source) || b25AnotherGoblinYouControlDied(ev, source, g)
 			},
 			Targets: TargetAny(),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Pashalik Mons — deal 1 damage to any target",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						for _, t := range ctx.LegalTargets() {
-							return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 1}.Apply(ctx)
-						}
-						return nil
-					})
+			Key:     "Pashalik Mons — deal 1 damage to any target",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				for _, t := range ctx.LegalTargets() {
+					return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 1}.Apply(ctx)
+				}
+				return nil
 			},
 		}},
 		Activated: []ActivatedAbility{{

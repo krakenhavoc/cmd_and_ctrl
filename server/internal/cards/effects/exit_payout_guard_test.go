@@ -103,7 +103,7 @@ import (
 // exitPayoutAllowlist exempts one "<file>:<line>" finding, with the
 // reason it is not the bug.
 var exitPayoutAllowlist = map[string]string{
-	"solitude.go:74": "Solitude's `if power <= 0` is a guard against gaining zero life, not a gate " +
+	"solitude.go:72": "Solitude's `if power <= 0` is a guard against gaining zero life, not a gate " +
 		"on the exile: \"its controller gains life equal to its power\" is an unconditional clause " +
 		"about a player, which ADR 0013 §5m item 5 declared ungated and §5t left ungated.",
 	"dark_confidant.go:91": "Dark Confidant's `if life == 0` is Solitude's guard with a different " +

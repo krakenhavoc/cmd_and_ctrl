@@ -39,12 +39,9 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.Amount > 0 && source.IsAttachedTo(ev.Source)
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				amount := ev.Amount
-				return game.NewTriggeredItem(source, "Spirit Link — gain that much life",
-					func(g *game.Game, item *game.StackItem) error {
-						return GainLife{Player: item.Controller, Amount: amount}.Apply(NewContext(g, item))
-					})
+			Key: "Spirit Link — gain that much life",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return GainLife{Player: item.Controller, Amount: item.Trigger.Event.Amount}.Apply(NewContext(g, item))
 			},
 		}},
 	})

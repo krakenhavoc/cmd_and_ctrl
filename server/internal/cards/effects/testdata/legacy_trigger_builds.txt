@@ -34,54 +34,9 @@ History of Benalia | c15bb7eb-aaaa-4468-9641-8f706d6137e8 | 2
 Ignoble Hierarch | c8de43a3-ebd3-4000-b343-a6ffed11d34d | 0
 Jagged Barrens | 64ee02f1-afdb-474b-a893-31538ad7219a | 0
 Jungle Hollow | 6de714e1-446d-4fb9-9e3d-bcd3ec6af9ca | 0
-Manglehorn | b67db32b-30a9-49d2-b4c2-90a9f80c36eb | 0
-Mari, the Killing Quill | 5f1fdc23-9af0-41a1-aeba-7288f9642734 | 0
-Mari, the Killing Quill | 5f1fdc23-9af0-41a1-aeba-7288f9642734 | 1
-Marketback Walker | 0405e0a9-6d02-4691-bdb8-59c72b824dab | 0
-Massacre Wurm | 93cf50cf-0ecc-4d3e-abea-778c1ebacec4 | 1
-Mayhem Devil | 4709f11c-aef8-45ac-b2bf-e640c568dfac | 0
-Megrim | 633ad9e2-9f55-4a1c-9248-661ad4b0e1dc | 0
-Memory Erosion | f4a96881-586d-44ad-b427-5cdf8988f9a1 | 0
-Mesmeric Orb | 03efb4f3-b8e2-4441-824f-886dc40712c4 | 0
-Meteor Golem | d9f11aa1-9219-42a8-85a9-a8f204160706 | 0
-Mindcrank | c73c1d91-0163-49c6-832a-b9327e7a2c9b | 0
 Molten Primordial | 8d8c9f7b-92c7-4284-ad9c-304ce42edba5 | 0
-Monk Gyatso | ff92fa60-f0fe-496e-8155-d9d6f5af651b | 0
 Mosswort Bridge | 7cb9e29f-835f-4155-a2a5-4b778866c773 | 0
-Myr Retriever | d07d3be3-f69d-4484-8467-cffd43871788 | 0
-Mystic Remora | 8a52f3c0-2552-4425-b2e3-5496eb2232a7 | 1
-Nature's Will | 9837287b-d821-4655-8f01-93fc6c7f0ecc | 0
-Necropolis Regent | 33c3a6be-8cae-4de8-9d9b-43216d727e93 | 0
-Necropotence | 94a844d2-0574-45a7-b347-e0e329767c42 | 0
-Nekusar, the Mindrazer | 8a5e3c8e-8e22-49b9-8ee5-4a36361f0da6 | 0
-Nekusar, the Mindrazer | 8a5e3c8e-8e22-49b9-8ee5-4a36361f0da6 | 1
-Nemesis of Reason | b1d70845-869b-45f7-b4bf-1549bac51d58 | 0
-Nest of Scarabs | 1f21cf59-6390-44b4-ab2e-ef290dfd8c85 | 0
-Nested Shambler | bfa882ee-de18-4ef8-8957-3e04ed6e3c1e | 0
-Nightshade Harvester | 875c3db1-2752-48e7-9664-bbb12120c032 | 0
-Niv-Mizzet, the Firemind | 959acb66-84ca-4535-bca2-ad591895735e | 0
-No Mercy | b9538d53-480b-481a-abbf-83ab17e1a45b | 0
 Noble Hierarch | 98aa9424-5912-4bd6-9300-b3972a31d8af | 0
-Noxious Gearhulk | a77b5be2-f361-4135-ba25-670a74d268ac | 0
-Nykthos Paragon | 367ac7e2-5056-48f3-a296-87d6cb1f7b54 | 0
-Ob Nixilis, the Fallen | 154104b7-4125-4276-8bc7-9a6edfe48cb9 | 0
-Ob Nixilis, the Hate-Twisted | 88cd12e5-ca89-4176-96fd-320fe2ccd087 | 0
-Oblivion Sower | d39b9f64-dc9b-413f-8d05-e21ef46d6756 | 0
-Old Gnawbone | dff3f4c7-f792-4ca3-9b0a-0738e70664d9 | 0
-Omnath, Locus of Rage | 1816eede-c5bd-49df-958f-a3af64cb2932 | 1
-Omnath, Locus of the Roil | ffd34151-457a-4a93-82db-24b18319a06b | 0
-Omnath, Locus of the Roil | ffd34151-457a-4a93-82db-24b18319a06b | 1
-Oppression | f488f679-f5d5-4e61-b0c8-0b0eb622df0d | 0
-Ossification | e29bfd62-286f-4982-813f-7086573c333b | 0
-Oubliette | c753e9e3-9374-4e3c-8622-94576a8c1da3 | 0
-Overseer of the Damned | c1f085ce-5b52-45b3-aef0-f77f36b3da36 | 0
-Oversold Cemetery | ed4cd3a1-688b-4c05-948d-39d3336e00c0 | 0
-Painful Quandary | c37051cc-6683-4dbb-b5ff-5c3a5bdab1df | 0
-Parhelion II | 24d22bcb-8a77-4c47-a508-6f4bc093c1d0 | 0
-Pashalik Mons | bdb94ccd-1bb5-4bb7-9539-e1b1c97c19c5 | 0
-Patron of the Vein | 8dbc8fdb-36ce-4f30-b679-9c2029fcd9c6 | 0
-Patron of the Vein | 8dbc8fdb-36ce-4f30-b679-9c2029fcd9c6 | 1
-Phelia, Exuberant Shepherd | 5d86a59a-ba1f-45f7-b829-dca6f9f3e624 | 0
 Phyrexian Scriptures | 11173ad3-c007-478f-bce0-d756eac07ccb | 0
 Phyrexian Scriptures | 11173ad3-c007-478f-bce0-d756eac07ccb | 1
 Phyrexian Scriptures | 11173ad3-c007-478f-bce0-d756eac07ccb | 2
@@ -89,36 +44,9 @@ Rabble Rousing | 2e420001-2b3d-4eb7-b01c-3a49d5e241c2 | 0
 Resourceful Defense | 83e78565-e61f-4bbc-b834-f47941f7e3ec | 0
 Rugged Highlands | 6c922206-6e68-4dcd-9559-88da1074f2c4 | 0
 Scoured Barrens | d37f858e-03c8-4594-9b92-cd03699a1591 | 0
-Solitude | dcb9c2a7-ae54-4ddc-a567-640bf4bf4366 | 0
-Soul-Guide Lantern | 1b5e6560-ff2e-4475-96cb-63f64c8a86db | 0
-Sower of Temptation | 5881aac2-4f31-45cb-bdb5-64a29ec23316 | 0
-Spawnbed Protector | 256a7f54-0e8e-4d22-a0f7-ff2830e8884e | 0
-Sphinx's Tutelage | 158db438-52ba-4c30-b7bf-d1c4f76da917 | 0
-Spine of Ish Sah | 02f062f5-8012-4440-ac12-49fc49822106 | 0
 Spinerock Knoll | 690c7f8e-fea2-4920-afa7-02ff120701a1 | 0
-Spirit Link | c77ff526-c0a8-45c7-9730-2e306a0d01b8 | 0
-Spiteful Banditry | fde2653f-5270-4b8f-9642-0835dbb076c2 | 0
-Spiteful Visions | 922cf963-2b1b-43ad-819e-6e49133e6aae | 0
-Spiteful Visions | 922cf963-2b1b-43ad-819e-6e49133e6aae | 1
-Springbloom Druid | 788a4896-3414-40bf-b391-d2efea2fb5f9 | 0
-Springleaf Parade | b1305916-53cc-4021-897e-bbefc65dce78 | 0
-Sun Titan | b2e950fb-cb7e-40a0-a311-5bbdd0477b29 | 0
-Sunscorched Desert | 256b8c23-589e-429d-9e6e-433d55079eb4 | 0
-Surly Badgersaur | 0209dc74-ac49-4deb-907a-e9fa49d27a0f | 2
-Suture Priest | c4d36522-3ace-4bfb-bf2d-1a366f458698 | 1
 Swamp Mosquito | 4bb4844c-2678-45c7-8f5e-9cf185fd484b | 0
 Swiftwater Cliffs | 2f4ad084-2062-44c0-9975-15f100204531 | 0
-Sword of Body and Mind | fac42229-4f5f-4d04-85dd-5031d4e435aa | 0
-Sword of Feast and Famine | d0901053-6de0-46d0-9ee3-8d40510236c1 | 0
-Sword of Fire and Ice | 2ccdc60a-49a9-44b9-a7af-0ebf18b26785 | 0
-Sword of Hearth and Home | 913e6182-706a-4872-8c8a-e146b0ae0738 | 0
-Tarrian's Soulcleaver | 2ffb38ec-5852-4e91-85a5-cfccd1f23556 | 0
-Terastodon | 17975a20-2c13-4325-be1e-0bcda5063a2d | 0
-Terror of the Peaks | f8e17f4f-080d-4bba-bd05-ca27e94ccecc | 0
-Teshar, Ancestor's Apostle | d4193f50-33b5-4201-ba03-eb135eced7ff | 0
-Teval, the Balanced Scale | c8cbf0ec-ec98-4cb3-8068-60e92bbd740d | 0
-Thassa's Oracle | 1de1b591-a73f-4974-b507-8c63e07a0868 | 0
-The Aetherspark | 483c747a-b602-4747-95bc-72c2c17ed509 | 0
 The Akroan War | 8c0b9596-c44f-44fb-89c9-056da0db33d3 | 0
 The Akroan War | 8c0b9596-c44f-44fb-89c9-056da0db33d3 | 1
 The Akroan War | 8c0b9596-c44f-44fb-89c9-056da0db33d3 | 2
@@ -135,9 +63,6 @@ The First Iroan Games | 58934f6d-1aa2-414c-85c6-955a1e26d675 | 0
 The First Iroan Games | 58934f6d-1aa2-414c-85c6-955a1e26d675 | 1
 The First Iroan Games | 58934f6d-1aa2-414c-85c6-955a1e26d675 | 2
 The First Iroan Games | 58934f6d-1aa2-414c-85c6-955a1e26d675 | 3
-The Goose Mother | de595f1b-3f7d-45e0-a31b-ed23e5d1ee48 | 0
-The Goose Mother | de595f1b-3f7d-45e0-a31b-ed23e5d1ee48 | 1
-The Great Henge | 78427103-9543-41fb-b6d4-72963fe87275 | 0
 The Legend of Kuruk | 201b8936-18f4-4881-a1d4-c308cf3832bf | 0
 The Legend of Kuruk | 201b8936-18f4-4881-a1d4-c308cf3832bf | 1
 The Legend of Kuruk | 201b8936-18f4-4881-a1d4-c308cf3832bf | 2
@@ -151,9 +76,6 @@ The Legend of Yangchen | 521a63cf-5e83-4649-9800-c62b2fc474d6 | 0
 The Legend of Yangchen | 521a63cf-5e83-4649-9800-c62b2fc474d6 | 1
 The Legend of Yangchen | 521a63cf-5e83-4649-9800-c62b2fc474d6 | 2
 The Ozolith | 1946ded1-5f53-409f-b0a6-5433bb0357d2 | 0
-The Ozolith | 1946ded1-5f53-409f-b0a6-5433bb0357d2 | 1
-The Reaver Cleaver | 37a2a31d-51e6-4c07-b4c2-b206ad40eb42 | 0
-Thornbite Staff | dae4815e-9025-4993-ab46-52a3f1a7219e | 0
 Thornwood Falls | ec96cde2-f1e6-495c-94e2-3e8ae79e556c | 0
 Thousand-Year Storm | dd4cf149-2fae-40e5-b50b-639f6bcec65e | 0
 Thunderbreak Regent | bb04f927-0348-4a14-9e74-381f18083f6a | 0

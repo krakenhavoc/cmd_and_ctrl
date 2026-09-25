@@ -38,17 +38,15 @@ func init() {
 				"target permanent card with mana value 3 or less in your graveyard",
 				YouOwn(), Permanent(), ManaValueLE(3),
 			),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Sun Titan — return a permanent card to the battlefield",
-					func(g *game.Game, item *game.StackItem) error {
-						if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-							return nil
-						}
-						return ReturnFromGraveyard{
-							Target: item.Targets[0].ID,
-							Dest:   game.ZoneBattlefield,
-						}.Apply(NewContext(g, item))
-					})
+			Key: "Sun Titan — return a permanent card to the battlefield",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+					return nil
+				}
+				return ReturnFromGraveyard{
+					Target: item.Targets[0].ID,
+					Dest:   game.ZoneBattlefield,
+				}.Apply(NewContext(g, item))
 			},
 			OptionalPrompt: &game.TriggerOptionalPrompt{
 				Question: "Sun Titan — return a permanent card from your graveyard to the battlefield?",

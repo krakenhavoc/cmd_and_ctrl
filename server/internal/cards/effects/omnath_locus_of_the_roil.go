@@ -33,10 +33,8 @@ func init() {
 				Watches:   []game.EventKind{game.EventETB},
 				AppliesTo: b06SelfETB,
 				Targets:   TargetAny(),
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Omnath, Locus of the Roil — damage equal to the Elementals you control to any target",
-						b34DamageChosenTargetPerElemental)
-				},
+				Key:       "Omnath, Locus of the Roil — damage equal to the Elementals you control to any target",
+				Effect:    b34DamageChosenTargetPerElemental,
 			},
 			{
 				Watches: []game.EventKind{game.EventETB},
@@ -44,10 +42,8 @@ func init() {
 					return b33LandYouControlEntered(ev, source, g)
 				},
 				Targets: TargetCreature("target Elemental you control", YouControl(), Subtype("Elemental")),
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Omnath, Locus of the Roil — a +1/+1 counter on target Elemental; draw at eight lands",
-						b34CounterOnChosenElementalThenDrawAtEightLands)
-				},
+				Key:     "Omnath, Locus of the Roil — a +1/+1 counter on target Elemental; draw at eight lands",
+				Effect:  b34CounterOnChosenElementalThenDrawAtEightLands,
 			},
 		},
 	})

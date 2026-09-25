@@ -46,22 +46,17 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return attachedCreatureDealtCombatDamageToPlayer(ev, source, g)
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				// Only the damaged player's ID is captured, per the
-				// closure contract on every trigger Build.
-				victim := ev.Target
-				return game.NewTriggeredItem(source, "Sword of Body and Mind — a 2/2 Wolf, and that player mills ten",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						if err := (CreateToken{
-							Controller: item.Controller,
-							Template:   TokenCard("2/2 green Wolf"),
-							N:          1,
-						}).Apply(ctx); err != nil {
-							return err
-						}
-						return MillCards{Player: victim, N: 10}.Apply(ctx)
-					})
+			Key: "Sword of Body and Mind — a 2/2 Wolf, and that player mills ten",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				if err := (CreateToken{
+					Controller: item.Controller,
+					Template:   TokenCard("2/2 green Wolf"),
+					N:          1,
+				}).Apply(ctx); err != nil {
+					return err
+				}
+				return MillCards{Player: item.Trigger.Event.Target, N: 10}.Apply(ctx)
 			},
 		}},
 		Activated: []ActivatedAbility{
