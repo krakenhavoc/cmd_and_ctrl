@@ -11,6 +11,7 @@ import {
   formatRetryAfter,
   groupCardsByBucket,
   requestDeck,
+  shouldOfferPaste,
   type CoverageCard,
   type CoverageReport,
 } from "./deckcheck";
@@ -85,12 +86,22 @@ describe("canRequestCards", () => {
     expect(canRequestCards(undefined)).toBe(false);
   });
 
-  it("is false for a pasted-text check, whatever the counts", () => {
+  it("is true for a pasted-list check with a manual card (ADR 0095 amendment)", () => {
     const r = report({
       source: "text",
       source_url: undefined,
-      deck_key: undefined,
+      deck_key: "list:0123456789abcdef",
       counts: { manual: 3, unreviewed: 0, caveats: 0, automated: 0, no_effect: 0 },
+    });
+    expect(canRequestCards(r)).toBe(true);
+  });
+
+  it("is false for a pasted-list check with nothing to add", () => {
+    const r = report({
+      source: "text",
+      source_url: undefined,
+      deck_key: "list:0123456789abcdef",
+      counts: { manual: 0, unreviewed: 0, caveats: 2, automated: 5, no_effect: 3 },
     });
     expect(canRequestCards(r)).toBe(false);
   });
@@ -183,6 +194,34 @@ describe("checkDeck", () => {
     expect(dce.violations).toHaveLength(1);
   });
 
+  it("carries the paste_list hint on a Moxfield error", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 502,
+        statusText: "Bad Gateway",
+        json: async () => ({
+          error:
+            "Moxfield blocks our server. On Moxfield, open the deck → Export → Copy plain text, then paste the list here instead.",
+          code: "upstream_blocked",
+          hint: "paste_list",
+          violations: [{ code: "upstream_blocked", card: "<the url>", message: "…" }],
+        }),
+      }),
+    );
+    const err = await checkDeck({ url: "https://moxfield.com/decks/x" }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(DeckCheckError);
+    expect((err as DeckCheckError).code).toBe("upstream_blocked");
+    expect((err as DeckCheckError).message).toMatch(/Moxfield blocks our server/);
+    expect(shouldOfferPaste(err)).toBe(true);
+  });
+
+  it("offers no paste on an error without the hint", () => {
+    expect(shouldOfferPaste(new DeckCheckError(502, "x", "upstream_blocked"))).toBe(false);
+    expect(shouldOfferPaste(new Error("x"))).toBe(false);
+  });
+
   it("rewrites a bare 429 (no status field) to the friendly sentence", async () => {
     vi.stubGlobal(
       "fetch",
@@ -215,12 +254,25 @@ describe("requestDeck", () => {
       }),
     });
     vi.stubGlobal("fetch", fetchMock);
-    const res = await requestDeck("https://moxfield.com/decks/AbC123");
+    const res = await requestDeck({ url: "https://moxfield.com/decks/AbC123" });
     expect(res.status).toBe("filed");
     expect(res.issue_number).toBe(1700);
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     const headers = init.headers as Headers;
     expect(headers.get("Authorization")).toBe("Bearer tok-123");
+  });
+
+  it("sends a pasted list as {text}", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: async () => ({ status: "filed", issue_number: 1701, report: report() }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    await requestDeck({ text: "1 Sol Ring" });
+    const [path, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(path).toBe("/deck-requests");
+    expect(JSON.parse(init.body as string)).toEqual({ text: "1 Sol Ring" });
   });
 
   it("returns rate_limited as a normal outcome, not a throw", async () => {
@@ -232,7 +284,7 @@ describe("requestDeck", () => {
         json: async () => ({ status: "rate_limited", retry_after: 3600 }),
       }),
     );
-    const res = await requestDeck("https://moxfield.com/decks/AbC123");
+    const res = await requestDeck({ url: "https://moxfield.com/decks/AbC123" });
     expect(res).toEqual({ status: "rate_limited", retry_after: 3600 });
   });
 
@@ -246,7 +298,7 @@ describe("requestDeck", () => {
         json: async () => ({ error: "too many requests" }),
       }),
     );
-    await expect(requestDeck("https://moxfield.com/decks/AbC123")).rejects.toThrow(
+    await expect(requestDeck({ url: "https://moxfield.com/decks/AbC123" })).rejects.toThrow(
       "Too many checks — try again in a few seconds.",
     );
   });
@@ -264,7 +316,7 @@ describe("requestDeck", () => {
         json: async () => ({ error: "session expired" }),
       }),
     );
-    await expect(requestDeck("https://moxfield.com/decks/AbC123")).rejects.toBeInstanceOf(
+    await expect(requestDeck({ url: "https://moxfield.com/decks/AbC123" })).rejects.toBeInstanceOf(
       DeckCheckError,
     );
     expect(currentSession()).toBeNull();
@@ -281,7 +333,9 @@ describe("requestDeck", () => {
         json: async () => ({ error: "your account has no Discord identity" }),
       }),
     );
-    const err = await requestDeck("https://moxfield.com/decks/AbC123").catch((e: unknown) => e);
+    const err = await requestDeck({ url: "https://moxfield.com/decks/AbC123" }).catch(
+      (e: unknown) => e,
+    );
     expect(err).toBeInstanceOf(DeckCheckError);
     expect((err as DeckCheckError).status).toBe(403);
     expect((err as DeckCheckError).message).toMatch(/discord identity/i);
