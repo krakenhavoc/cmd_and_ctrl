@@ -148,14 +148,17 @@ type TriggeredAbility struct {
 	Effect func(g *Game, item *StackItem) error
 
 	// TargetsFromReadsBoard declares that TargetsFrom reads more than
-	// its trigger context and the source's identity — the board, the
-	// seats, the source's controller (ADR 0041 P9's TargetsFrom audit,
+	// its trigger context and the source's identity — the board, or the
+	// source's CURRENT controller (ADR 0041 P9's TargetsFrom audit,
 	// tier 4-2). Restore re-derives a stamped trigger's clause by
 	// calling TargetsFrom again on the RESTORED board, which is exact
 	// only for a clause that reads nothing the board can change, so a
 	// row that sets this is never stamped: its item stays a census
-	// closure, and the row is on the legacy list. Molten Primordial's
-	// one-clause-per-opponent is the case.
+	// closure, and the row is on the legacy list. The seat list is not
+	// the board (a seat is permanent once the game starts), and the
+	// controller as the ability triggered is on the trigger context
+	// (tc.Object), which is how Molten Primordial's one clause per
+	// opponent stopped needing the flag. No catalog row sets it today.
 	TargetsFromReadsBoard bool
 
 	// row is the catalog identity the registry stamped on this row

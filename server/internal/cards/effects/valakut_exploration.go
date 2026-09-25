@@ -62,7 +62,11 @@ import (
 //
 // The end-step ability's Build freezes the exiled-with list (CR
 // 603.3d: the condition names the object as it is when the ability
-// triggers), but valakutExplorationSweep still confirms each card is
+// triggers). It freezes it as DATA — the item's Payload, the carrier a
+// reflexive trigger's "cards revealed this way" already uses — so the
+// row declares its Effect and a table with the ability waiting is a
+// restore point (ADR 0041 P9, #1497). valakutExplorationSweep still
+// confirms each card is
 // STILL IN EXILE before moving it — a card someone cast in the
 // priority window between the trigger and its resolution is not
 // double-counted or yanked off the stack (CR 608.2b).
@@ -78,6 +82,10 @@ const valakutExplorationOracle = "d6861319-ae16-4e6c-af87-a264f667d694"
 // discipline Bag of Holding's own label follows.
 const valakutExplorationExileLabel = "Valakut Exploration — exile the top card of your library"
 
+// valakutExplorationSweepLabel is the end-step ability's stack label
+// and its row's Key.
+const valakutExplorationSweepLabel = "Valakut Exploration — graveyard and damage"
+
 func init() {
 	Register(Spec{
 		OracleID:     valakutExplorationOracle,
@@ -91,16 +99,9 @@ func init() {
 					return ev.Actor == source.Controller &&
 						len(b27ExiledWith(g, source.InstanceID, valakutExplorationExileLabel)) > 0
 				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-					ids := b27ExiledWith(g, source.InstanceID, valakutExplorationExileLabel)
-					if len(ids) == 0 {
-						return nil
-					}
-					frozen := append([]uuid.UUID(nil), ids...)
-					return game.NewTriggeredItem(source, "Valakut Exploration — graveyard and damage", func(g *game.Game, item *game.StackItem) error {
-						return valakutExplorationSweep(g, item, frozen)
-					})
-				},
+				Key:    valakutExplorationSweepLabel,
+				Build:  valakutExplorationRecordExiled,
+				Effect: valakutExplorationSweep,
 			},
 		},
 	})
@@ -117,7 +118,26 @@ func valakutExplorationLandfall(g *game.Game, item *game.StackItem) error {
 	return err
 }
 
-// valakutExplorationSweep is the end-step half: every card in `ids`
+// valakutExplorationRecordExiled is the end-step ability's fill-in
+// Build: it writes the cards exiled with this enchantment, as they are
+// when the ability triggers, onto the item's Payload and leaves the
+// Effect to the row. No cards (the AppliesTo gate makes that
+// unreachable in play) is no trigger, as before.
+func valakutExplorationRecordExiled(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
+	ids := b27ExiledWith(g, source.InstanceID, valakutExplorationExileLabel)
+	if len(ids) == 0 {
+		return nil
+	}
+	item := game.NewTriggeredItem(source, valakutExplorationSweepLabel, nil)
+	item.Payload = make([]game.TargetRef, 0, len(ids))
+	for _, id := range ids {
+		item.Payload = append(item.Payload, game.TargetRef{Kind: game.TargetCard, ID: id})
+	}
+	return item
+}
+
+// valakutExplorationSweep is the end-step half: every card the item's
+// Payload names that is
 // still sitting in exile goes to its owner's graveyard, and the
 // controller's opponents each take one damage per card that actually
 // landed there.
@@ -127,9 +147,9 @@ func valakutExplorationLandfall(g *game.Game, item *game.StackItem) error {
 // doc explains why: a leg can pause mid-move (CR 903.9), and reading
 // a pre-move tally would pay out for a move the window has not
 // answered yet (#1218, ADR 0013 §5t).
-func valakutExplorationSweep(g *game.Game, item *game.StackItem, ids []uuid.UUID) error {
+func valakutExplorationSweep(g *game.Game, item *game.StackItem) error {
 	var stillExiled []uuid.UUID
-	for _, id := range ids {
+	for _, id := range NewContext(g, item).PayloadCards() {
 		if z := g.FindCardZoneForEffect(id); z != nil && z.Kind == game.ZoneExile {
 			stillExiled = append(stillExiled, id)
 		}

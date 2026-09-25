@@ -198,10 +198,12 @@ type StackItem struct {
 
 	// Payload is what the effect that CREATED this item had to tell
 	// it — the cards that were revealed, the creature that was
-	// sacrificed, the player that was chosen. Only a reflexive
-	// trigger (CR 603.12, reflexive.go) carries one today; it is
-	// empty on every cast spell and every harvested trigger, whose
-	// Build reads the event instead.
+	// sacrificed, the player that was chosen. A reflexive trigger
+	// (CR 603.12, reflexive.go) and an event-conditioned delayed
+	// trigger (delayed.go) carry one; so does a harvested trigger whose
+	// fill-in Build records what it saw as the ability triggered
+	// (Valakut Exploration's "cards exiled with this enchantment",
+	// ADR 0041 P9). It is empty on every cast spell.
 	//
 	// Separate from Targets because the two mean different things
 	// and one of them is rewritten: Targets is the announce-time
