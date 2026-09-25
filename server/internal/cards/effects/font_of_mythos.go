@@ -29,12 +29,9 @@ func init() {
 			AppliesTo: func(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.Actor != uuid.Nil
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				drawer := ev.Actor
-				return game.NewTriggeredItem(source, "Font of Mythos — draw two additional cards",
-					func(g *game.Game, item *game.StackItem) error {
-						return DrawCards{Player: drawer, N: 2}.Apply(NewContext(g, item))
-					})
+			Key: "Font of Mythos — draw two additional cards",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return DrawCards{Player: item.Trigger.Event.Actor, N: 2}.Apply(NewContext(g, item))
 			},
 		}},
 	})

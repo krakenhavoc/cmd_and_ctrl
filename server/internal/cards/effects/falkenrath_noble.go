@@ -27,18 +27,16 @@ func init() {
 				return ok
 			},
 			Targets: TargetPlayer("target player"),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Falkenrath Noble — drain 1",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
-							return nil
-						}
-						if err := g.ChangePlayerLifeForEffect(ctx.Source(), item.Targets[0].ID, -1); err != nil {
-							return err
-						}
-						return GainLife{Player: item.Controller, Amount: 1}.Apply(ctx)
-					})
+			Key:     "Falkenrath Noble — drain 1",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
+					return nil
+				}
+				if err := g.ChangePlayerLifeForEffect(ctx.Source(), item.Targets[0].ID, -1); err != nil {
+					return err
+				}
+				return GainLife{Player: item.Controller, Amount: 1}.Apply(ctx)
 			},
 		}},
 	})

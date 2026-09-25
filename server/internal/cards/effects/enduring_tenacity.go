@@ -49,10 +49,9 @@ func init() {
 			Watches:   []game.EventKind{game.EventChangeLife},
 			AppliesTo: YouGainedLife,
 			Targets:   TargetPlayer("target opponent", Opponent()),
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source,
-					"Enduring Tenacity — target opponent loses that much life",
-					drainTargetedOpponent(ev.Amount))
+			Key:       "Enduring Tenacity — target opponent loses that much life",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return drainTargetedOpponent(item.Trigger.Event.Amount)(g, item)
 			},
 		}},
 	})

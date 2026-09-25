@@ -50,9 +50,8 @@ func init() {
 			Watches:   []game.EventKind{game.EventETB},
 			AppliesTo: b06SelfETB,
 			Targets:   b32TargetSpellOrAnotherCreatureOrPlaneswalker("up to one target spell, or another target creature or planeswalker"),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, b32ErtaiLabel, b32CounterOrDestroyChosenThenControllerDraws)
-			},
+			Key:       b32ErtaiLabel,
+			Effect:    b32CounterOrDestroyChosenThenControllerDraws,
 		}},
 	})
 }

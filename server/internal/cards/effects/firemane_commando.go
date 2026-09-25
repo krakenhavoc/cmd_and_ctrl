@@ -47,15 +47,13 @@ func init() {
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 					return ev.Actor != source.Controller && b16PlayerAttackedWithAtLeast(ev, source, g, 2, b17FiremaneOtherLabel)
 				},
-				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					attacker := ev.Actor
-					return game.NewTriggeredItem(source, b17FiremaneOtherLabel,
-						func(g *game.Game, item *game.StackItem) error {
-							if !b17AttackersAllAvoid(g, attacker, item.Controller) {
-								return nil
-							}
-							return DrawCards{Player: attacker, N: 1}.Apply(NewContext(g, item))
-						})
+				Key: b17FiremaneOtherLabel,
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					attacker := item.Trigger.Event.Actor
+					if !b17AttackersAllAvoid(g, attacker, item.Controller) {
+						return nil
+					}
+					return DrawCards{Player: attacker, N: 1}.Apply(NewContext(g, item))
 				},
 			},
 		},

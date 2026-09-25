@@ -40,18 +40,21 @@ func init() {
 				src, ok := g.LookupCardForEffect(ev.Source)
 				return ok && src.IsCreature()
 			},
+			Key: "Edric — attacking creature's controller draws a card",
+			// Actor is the dealing creature's controller, stamped at
+			// emit time and carried on item.Trigger.Event — still
+			// valid if the creature has since died to simultaneous
+			// combat damage. CR 603.3d: no controller to draw for
+			// suppresses the trigger, so the fill-in Build keeps that
+			// check; the draw itself is the row's Effect.
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				// Actor is the dealing creature's controller, stamped
-				// at emit time — still valid if the creature has since
-				// died to simultaneous combat damage.
-				drawer := ev.Actor
-				if drawer == uuid.Nil {
+				if ev.Actor == uuid.Nil {
 					return nil
 				}
-				return game.NewTriggeredItem(source, "Edric — attacking creature's controller draws a card",
-					func(g *game.Game, item *game.StackItem) error {
-						return DrawCards{Player: drawer, N: 1}.Apply(NewContext(g, item))
-					})
+				return game.NewTriggeredItem(source, "Edric — attacking creature's controller draws a card", nil)
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return DrawCards{Player: item.Trigger.Event.Actor, N: 1}.Apply(NewContext(g, item))
 			},
 			OptionalPrompt: &game.TriggerOptionalPrompt{
 				Question: "Edric, Spymaster of Trest — draw a card?",
