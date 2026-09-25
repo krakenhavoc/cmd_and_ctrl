@@ -81,7 +81,8 @@ const closureFieldsFile = "closure_fields.txt"
 var retiredCensusCounters = map[string]string{
 	"DelayedTriggerEffects":  "ADR 0041 phase 3 tier 2 (#1497): a delayed trigger is a registered body key plus plain params",
 	"ScopedStatics":          "ADR 0041 phase 3 tier 3a (#1497): a continuous effect with a duration is a ScopedEffect record over the closed Mod vocabulary",
-	"StackTargetSpecs":       "ADR 0041 phase 3 tier 4 (#1497, P9): a stack item's target and mode clauses are re-derived from its oracle ID or its catalog ability ref, and an item that can be neither is counted once, in StackEffects",
+	"StackEffects":           "ADR 0041 phase 3 tier 4-final (#1497, P9): a stack item names its catalog row or a registered body, NewTriggeredItem takes no effect, and the one item that can do neither (an ability carried on a card instance) is folded into IntrinsicAbilityCards",
+	"StackTargetSpecs":       "ADR 0041 phase 3 tier 4 (#1497, P9): a stack item's target and mode clauses are re-derived from its oracle ID or its catalog ability ref, and an item that can be neither is counted once — in StackEffects until tier 4-final, in IntrinsicAbilityCards since",
 	"TurnScopedReplacements": "ADR 0041 phase 3 tier 3b-1 (#1497): a replacement effect a spell creates is a ScopedEffect record with a replacement-reader mod",
 	"TurnScopedBlockRules":   "ADR 0041 phase 3 tier 3b-2 (#1497): a block rule a spell or ability creates is a ScopedEffect record with a block-rule-reader mod",
 }
@@ -113,10 +114,16 @@ var closureClassCeilings = map[string]int{
 	// StackItem.targetSpec, TargetDifference.Key and
 	// TargetSpec.{AbilityOK, CardOK, Different, PlayerOK, Rest}) + the 9
 	// census:TurnScopedReplacements lines tier 3b-1 moved
-	// (ReplacementEffect.*, CopySelector.*, EntryHandReveal.*).
-	"census:ChoiceResumeFrames":    118,
-	"census:IntrinsicAbilityCards": 45,
-	"census:StackEffects":          6,
+	// (ReplacementEffect.*, CopySelector.*, EntryHandReveal.*) + the
+	// one census:StackEffects line tier 4-final moved here
+	// (StackItem.Effect, through resolving.item).
+	"census:ChoiceResumeFrames": 119,
+	// 45 + the four census:StackEffects lines tier 4-final moved here
+	// under ADR 0041 P11, the counter an unkeyed stack item is folded
+	// into (owner decision, 2026-09-25): Game.StackMeta,
+	// Game.PendingTriggers, Game.lastKnownStack and lastKnownSpell.card.
+	// The sixth line, lastKnownSpell.item, became keyed.
+	"census:IntrinsicAbilityCards": 49,
 	"transient":                    1,
 }
 
@@ -464,7 +471,13 @@ const closureFieldsHeader = `# closure_fields.txt — ADR 0041 phase 3's ratchet
 # (pickTargetFrame.spec, modePickFrame.ability.Modes, resolving.item),
 # so census:ChoiceResumeFrames went from 98 to 109. Tier 3b-1 moved
 # nine census:TurnScopedReplacements lines the same way, through
-# replacementResume.applicable.effect, so the ceiling is now 118.
+# replacementResume.applicable.effect, so the ceiling reached 118.
+# Tier 4-final retired census:StackEffects and moved its six lines:
+# StackItem.Effect to census:ChoiceResumeFrames (resolving.item, now
+# 119); Game.StackMeta, Game.PendingTriggers, Game.lastKnownStack and
+# lastKnownSpell.card to census:IntrinsicAbilityCards (now 49), the
+# counter an unkeyed stack item is folded into; and lastKnownSpell.item
+# to keyed (a countered spell's clauses come back by oracle ID).
 #
 # Owner decision 4 (2026-09-24): census:ChoiceResumeFrames is the one
 # counter that stays allowed after tier 4 — resume frames are out of

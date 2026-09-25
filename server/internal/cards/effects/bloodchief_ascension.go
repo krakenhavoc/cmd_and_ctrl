@@ -69,7 +69,7 @@ func init() {
 				Key:            "Bloodchief Ascension — that player loses 2 life and you gain 2 life",
 				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 					victim, _ := b06CardInOpponentsGraveyard(ev, source.Controller, g)
-					item := game.NewTriggeredItem(source, "Bloodchief Ascension — that player loses 2 life and you gain 2 life", nil)
+					item := game.NewTriggeredItem(source, "Bloodchief Ascension — that player loses 2 life and you gain 2 life")
 					item.Params.Player = victim
 					return item
 				},

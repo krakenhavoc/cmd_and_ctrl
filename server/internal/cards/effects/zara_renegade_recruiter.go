@@ -60,7 +60,7 @@ func init() {
 			// Params.Player rather than a closure — a control change
 			// after the trigger fires must not retarget it.
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, zaraLabel, nil)
+				item := game.NewTriggeredItem(source, zaraLabel)
 				item.Params.Player = b17DefendingPlayer(g, ev)
 				return item
 			},

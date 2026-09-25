@@ -30,7 +30,7 @@ func init() {
 			},
 			Key: "Raid Bombardment — deal 1 damage to the player that creature is attacking",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, "Raid Bombardment — deal 1 damage to the player that creature is attacking", nil)
+				item := game.NewTriggeredItem(source, "Raid Bombardment — deal 1 damage to the player that creature is attacking")
 				item.Params.Player = ev.Target
 				return item
 			},

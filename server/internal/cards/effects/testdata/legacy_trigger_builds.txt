@@ -12,4 +12,3 @@
 # which deletes stale lines and never adds one. A new hand-written Build
 # fails the test instead of being added here.
 
-Resourceful Defense | 83e78565-e61f-4bbc-b834-f47941f7e3ec | 0

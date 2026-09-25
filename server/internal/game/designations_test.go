@@ -185,7 +185,7 @@ func TestGatedTriggersDoNotFire(t *testing.T) {
 			Watches:    []EventKind{EventTapCard},
 			AppliesTo:  func(Event, *Card, Characteristic, *Game) bool { return true },
 			Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-				return NewTriggeredItem(source, "gated", func(*Game, *StackItem) error { return nil })
+				return newTriggeredItemForTest(source, "gated", func(*Game, *StackItem) error { return nil })
 			},
 		}
 	}

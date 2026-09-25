@@ -32,7 +32,7 @@ func init() {
 			},
 			Key: "Assemble the Legion — add a muster counter, then muster the Soldiers",
 			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, "Assemble the Legion — add a muster counter, then muster the Soldiers", nil)
+				item := game.NewTriggeredItem(source, "Assemble the Legion — add a muster counter, then muster the Soldiers")
 				item.Params.Amount = source.Counters["muster"]
 				return item
 			},

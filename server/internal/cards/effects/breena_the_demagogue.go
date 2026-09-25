@@ -83,7 +83,7 @@ func init() {
 			// resolution rather than closing over it.
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 				opp := b17DefendingPlayer(g, ev)
-				return game.NewTriggeredItem(source, b17BreenaLabel(g, opp), nil)
+				return game.NewTriggeredItem(source, b17BreenaLabel(g, opp))
 			},
 			Effect: breenaEffect,
 		}},

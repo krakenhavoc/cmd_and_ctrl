@@ -196,7 +196,7 @@ func (g *Gift) entryTrigger(cardName string) game.TriggeredAbility {
 		},
 		Key: label,
 		Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-			item := game.NewTriggeredItem(source, label, nil)
+			item := game.NewTriggeredItem(source, label)
 			item.Params.Player = source.Provenance.GiftOpponent
 			return item
 		},

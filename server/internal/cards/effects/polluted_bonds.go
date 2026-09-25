@@ -30,7 +30,7 @@ func init() {
 			Key: "Polluted Bonds — that player loses 2 life, you gain 2 life",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 				land, _ := b34LandAnOpponentControlsEntered(ev, source, g)
-				item := game.NewTriggeredItem(source, "Polluted Bonds — that player loses 2 life, you gain 2 life", nil)
+				item := game.NewTriggeredItem(source, "Polluted Bonds — that player loses 2 life, you gain 2 life")
 				item.Params.Player = land.Controller
 				return item
 			},

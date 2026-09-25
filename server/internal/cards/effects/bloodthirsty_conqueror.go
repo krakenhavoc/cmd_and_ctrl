@@ -36,7 +36,7 @@ func init() {
 			Key: "Bloodthirsty Conqueror — you gain that much life",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 				amount, _ := b04OpponentLostLife(ev, source.Controller, g)
-				item := game.NewTriggeredItem(source, "Bloodthirsty Conqueror — you gain that much life", nil)
+				item := game.NewTriggeredItem(source, "Bloodthirsty Conqueror — you gain that much life")
 				item.Params.Amount = amount
 				return item
 			},

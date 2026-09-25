@@ -38,7 +38,7 @@ func init() {
 				},
 				Key: "Sheoldred, the Apocalypse — an opponent loses 2 life",
 				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					item := game.NewTriggeredItem(source, "Sheoldred, the Apocalypse — an opponent loses 2 life", nil)
+					item := game.NewTriggeredItem(source, "Sheoldred, the Apocalypse — an opponent loses 2 life")
 					item.Params.Player = ev.Actor
 					return item
 				},

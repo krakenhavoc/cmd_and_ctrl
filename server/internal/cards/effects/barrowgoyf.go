@@ -74,7 +74,7 @@ func init() {
 			AppliesTo: ThisDealtCombatDamageToAPlayer,
 			Key:       "Barrowgoyf — you may mill that many cards",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, "Barrowgoyf — you may mill that many cards", nil)
+				item := game.NewTriggeredItem(source, "Barrowgoyf — you may mill that many cards")
 				item.Params.Amount = ev.Amount
 				return item
 			},

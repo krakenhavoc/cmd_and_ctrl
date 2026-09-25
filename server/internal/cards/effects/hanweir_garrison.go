@@ -51,7 +51,7 @@ func init() {
 			AppliesTo: ThisAttacked,
 			Key:       "Hanweir Garrison — two tapped and attacking Humans",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, "Hanweir Garrison — two tapped and attacking Humans", nil)
+				item := game.NewTriggeredItem(source, "Hanweir Garrison — two tapped and attacking Humans")
 				item.Params.Player = b17DefendingPlayer(g, ev)
 				return item
 			},

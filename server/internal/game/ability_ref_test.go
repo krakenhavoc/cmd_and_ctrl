@@ -313,8 +313,12 @@ func TestInstanceAbilityIsNotStamped(t *testing.T) {
 			}
 		}
 	})
-	if snap := g.CaptureSnapshot(); snap.Continuations.StackEffects != 1 {
-		t.Errorf("census = %+v, want the unkeyed item counted once in StackEffects", snap.Continuations)
+	// ADR 0041 tier 4-final (#1497): StackEffects is retired; an item
+	// carrying an instance ability's closure is counted under
+	// IntrinsicAbilityCards, beside the card that carries it: two, the
+	// card and the item.
+	if snap := g.CaptureSnapshot(); snap.Continuations.StackEffects != 0 || snap.Continuations.IntrinsicAbilityCards != 2 {
+		t.Errorf("census = %+v, want the card and the unkeyed item counted under IntrinsicAbilityCards", snap.Continuations)
 	}
 }
 

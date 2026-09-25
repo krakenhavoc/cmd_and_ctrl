@@ -41,7 +41,7 @@ func loopTrigger(watch, label, make string) TriggeredAbility {
 			// Capture the controller by value: `source` points into a
 			// zone slice that may have moved by resolution time.
 			controller, owner := source.Controller, source.Owner
-			return NewTriggeredItem(source, label, func(g *Game, _ *StackItem) error {
+			return newTriggeredItemForTest(source, label, func(g *Game, _ *StackItem) error {
 				g.pushLoopToken(make, controller, owner)
 				return nil
 			})

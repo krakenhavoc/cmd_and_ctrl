@@ -209,7 +209,7 @@ func TestAttackTriggerReachesTheStackAtDeclarationTime(t *testing.T) {
 			Build: func(ev Event, source *Card, _ Characteristic, _ *Game) *StackItem {
 				buildCalls++
 				sawDefender = ev.Target
-				return NewTriggeredItem(source, "Test attack trigger", nil)
+				return NewTriggeredItem(source, "Test attack trigger")
 			},
 		}}
 	})

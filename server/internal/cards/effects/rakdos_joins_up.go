@@ -51,7 +51,7 @@ func init() {
 				Targets: TargetPlayer("target opponent", Opponent()),
 				Key:     "Rakdos Joins Up — deal damage equal to the legend's power to target opponent",
 				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					item := game.NewTriggeredItem(source, "Rakdos Joins Up — deal damage equal to the legend's power to target opponent", nil)
+					item := game.NewTriggeredItem(source, "Rakdos Joins Up — deal damage equal to the legend's power to target opponent")
 					item.Params.Object.ID = ev.CardID
 					return item
 				},

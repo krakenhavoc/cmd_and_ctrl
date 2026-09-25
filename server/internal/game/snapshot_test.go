@@ -590,7 +590,7 @@ func TestCensusCountsEveryContinuationKind(t *testing.T) {
 					{}: {ID: uuid.New(), Kind: StackItemActivated, Label: "ability", Effect: noop},
 				}
 			},
-			expect: func(c ContinuationCensus) int { return c.StackEffects },
+			expect: func(c ContinuationCensus) int { return c.IntrinsicAbilityCards },
 		},
 		{
 			name: "pending trigger effect",
@@ -599,19 +599,20 @@ func TestCensusCountsEveryContinuationKind(t *testing.T) {
 					{ID: uuid.New(), Kind: StackItemTriggered, Label: "trigger", Effect: noop},
 				}
 			},
-			expect: func(c ContinuationCensus) int { return c.StackEffects },
+			expect: func(c ContinuationCensus) int { return c.IntrinsicAbilityCards },
 		},
 		{
 			// ADR 0041 P9 (#1497): the census fold. An ability's clause
-			// with no catalog ref to rebuild it from is counted once, in
-			// StackEffects; StackTargetSpecs is retired.
+			// with no catalog ref to rebuild it from is counted once;
+			// StackTargetSpecs is retired, and since tier 4-final so is
+			// StackEffects — the item is counted in IntrinsicAbilityCards.
 			name: "ability target spec with no catalog ref",
 			set: func(g *Game) {
 				g.StackMeta = map[uuid.UUID]*StackItem{
 					{}: {ID: uuid.New(), Kind: StackItemActivated, targetSpec: &TargetSpec{}},
 				}
 			},
-			expect: func(c ContinuationCensus) int { return c.StackEffects },
+			expect: func(c ContinuationCensus) int { return c.IntrinsicAbilityCards },
 		},
 		{
 			// Tier 2 (#1497) retired this counter for every real path:

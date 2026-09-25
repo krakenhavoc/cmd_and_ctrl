@@ -64,10 +64,15 @@ func botLoopTrigger(watch, label, make string) game.TriggeredAbility {
 		},
 		Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
 			controller, owner := source.Controller, source.Owner
-			return game.NewTriggeredItem(source, label, func(g *game.Game, _ *game.StackItem) error {
+			// A hand-built, unkeyed item (ADR 0041 tier 4-final): the
+			// census counts it in IntrinsicAbilityCards, which this test
+			// does not read.
+			item := game.NewTriggeredItem(source, label)
+			item.Effect = func(g *game.Game, _ *game.StackItem) error {
 				pushLoopToken(g, make, controller, owner)
 				return nil
-			})
+			}
+			return item
 		},
 	}
 }

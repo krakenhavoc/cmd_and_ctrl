@@ -37,7 +37,7 @@ func init() {
 			},
 			Key: "Ragavan — Treasure, and exile their top card",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, "Ragavan — Treasure, and exile their top card", nil)
+				item := game.NewTriggeredItem(source, "Ragavan — Treasure, and exile their top card")
 				item.Params.Player = ev.Target
 				return item
 			},

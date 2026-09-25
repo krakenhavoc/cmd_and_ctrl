@@ -74,7 +74,7 @@ func init() {
 			// Build), not something the resolving item can re-derive
 			// from a board the permanent has already left.
 			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, "Marketback Walker — draw a card for each +1/+1 counter on it", nil)
+				item := game.NewTriggeredItem(source, "Marketback Walker — draw a card for each +1/+1 counter on it")
 				item.Params.Amount = b13LastKnownCounters(g, source.InstanceID, game.CounterPlusOne)
 				return item
 			},

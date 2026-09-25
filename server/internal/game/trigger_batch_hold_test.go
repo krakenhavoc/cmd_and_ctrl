@@ -28,7 +28,7 @@ func batchAbility(oracle string) TriggeredAbility {
 		Watches:   []EventKind{EventCast},
 		AppliesTo: func(Event, *Card, Characteristic, *Game) bool { return true },
 		Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-			return NewTriggeredItem(source, oracle, func(*Game, *StackItem) error { return nil })
+			return newTriggeredItemForTest(source, oracle, func(*Game, *StackItem) error { return nil })
 		},
 	}
 	switch oracle {

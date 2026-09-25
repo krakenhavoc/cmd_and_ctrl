@@ -42,7 +42,7 @@ func init() {
 			// battle the attacker is going after — so it is read once,
 			// in Build, off the board as it stood then.
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, "Nemesis of Reason — defending player mills ten cards", nil)
+				item := game.NewTriggeredItem(source, "Nemesis of Reason — defending player mills ten cards")
 				item.Params.Player = b17DefendingPlayer(g, ev)
 				return item
 			},

@@ -38,7 +38,7 @@ func init() {
 			},
 			Key: "Phyrexian Obliterator — the source's controller sacrifices that many permanents",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, "Phyrexian Obliterator — the source's controller sacrifices that many permanents", nil)
+				item := game.NewTriggeredItem(source, "Phyrexian Obliterator — the source's controller sacrifices that many permanents")
 				item.Params.Player = b17DamageSourceController(ev, g)
 				item.Params.Amount = ev.Amount
 				return item

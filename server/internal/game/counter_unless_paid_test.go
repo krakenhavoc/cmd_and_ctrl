@@ -320,7 +320,7 @@ func TestAWardTaxOutlivesAFailedTriggerResolution(t *testing.T) {
 	boom := errors.New("ward trigger blew up after queueing its tax")
 	g.WithWriteLock(func() {
 		card := g.Battlefield.Cards[len(g.Battlefield.Cards)-1]
-		item := NewTriggeredItem(&card, "Ward — pay {2} or the spell is countered",
+		item := newTriggeredItemForTest(&card, "Ward — pay {2} or the spell is countered",
 			func(g *Game, _ *StackItem) error {
 				if err := g.QueueCounterUnlessPaidForEffect(CounterUnlessPaidPrompt{
 					StackItem: spell,

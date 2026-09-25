@@ -463,7 +463,8 @@ func (g *Game) dispatchEventDelayedTriggerLocked(ev Event, dt *DelayedTrigger) {
 		Key:            label,
 		OptionalPrompt: optional,
 		Build: func(ev Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-			item := NewTriggeredItem(source, label, bodyEffect(body, params))
+			item := NewTriggeredItem(source, label)
+			item.Effect = bodyEffect(body, params)
 			// The item is data too: a restore re-derives Effect from
 			// Body (ADR 0041 P2).
 			item.Body, item.Params = body, params

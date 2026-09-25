@@ -33,7 +33,13 @@
 # (pickTargetFrame.spec, modePickFrame.ability.Modes, resolving.item),
 # so census:ChoiceResumeFrames went from 98 to 109. Tier 3b-1 moved
 # nine census:TurnScopedReplacements lines the same way, through
-# replacementResume.applicable.effect, so the ceiling is now 118.
+# replacementResume.applicable.effect, so the ceiling reached 118.
+# Tier 4-final retired census:StackEffects and moved its six lines:
+# StackItem.Effect to census:ChoiceResumeFrames (resolving.item, now
+# 119); Game.StackMeta, Game.PendingTriggers, Game.lastKnownStack and
+# lastKnownSpell.card to census:IntrinsicAbilityCards (now 49), the
+# counter an unkeyed stack item is folded into; and lastKnownSpell.item
+# to keyed (a countered spell's clauses come back by oracle ID).
 #
 # Owner decision 4 (2026-09-24): census:ChoiceResumeFrames is the one
 # counter that stays allowed after tier 4 — resume frames are out of
@@ -73,13 +79,13 @@ Game.BuiltinReplacements                     rebuilt                            
 Game.Exile                                   census:IntrinsicAbilityCards       # Game.Exile
 Game.Listeners                               rebuilt                            # Game.Listeners
 Game.PendingChoices                          census:ChoiceResumeFrames          # Game.PendingChoices
-Game.PendingTriggers                         census:StackEffects                # Game.PendingTriggers
+Game.PendingTriggers                         census:IntrinsicAbilityCards       # Game.PendingTriggers
 Game.PhasedOut                               census:IntrinsicAbilityCards       # Game.PhasedOut
 Game.Seats                                   census:IntrinsicAbilityCards       # Game.Seats
 Game.Stack                                   census:IntrinsicAbilityCards       # Game.Stack
-Game.StackMeta                               census:StackEffects                # Game.StackMeta
+Game.StackMeta                               census:IntrinsicAbilityCards       # Game.StackMeta
 Game.enteringTokens                          census:ChoiceResumeFrames          # Game.enteringTokens
-Game.lastKnownStack                          census:StackEffects                # Game.lastKnownStack
+Game.lastKnownStack                          census:IntrinsicAbilityCards       # Game.lastKnownStack
 Game.logProjection                           rebuilt                            # Game.logProjection
 Game.promptRuns                              census:ChoiceResumeFrames          # Game.promptRuns
 Game.resolving                               census:ChoiceResumeFrames          # Game.resolving
@@ -142,7 +148,7 @@ ReturnToHandCost.Filter                      census:IntrinsicAbilityCards       
 SearchLibrarySpec.Pred                       census:ChoiceResumeFrames          # Game.PendingChoices.searchResume.spec.Pred
 SearchLibrarySpec.Then                       census:ChoiceResumeFrames          # Game.PendingChoices.searchResume.spec.Then
 SearchLibrarySpec.Validate                   census:ChoiceResumeFrames          # Game.PendingChoices.searchResume.spec.Validate
-StackItem.Effect                             census:StackEffects                # Game.StackMeta.Effect
+StackItem.Effect                             census:ChoiceResumeFrames          # Game.StackMeta.Effect
 StackItem.modeSpec                           census:ChoiceResumeFrames          # Game.StackMeta.modeSpec
 StackItem.targetSpec                         census:ChoiceResumeFrames          # Game.StackMeta.targetSpec
 TapOthersCost.Filter                         census:IntrinsicAbilityCards       # Game.simultaneousExit.ManaAbilities.TapOthers.Filter
@@ -188,8 +194,8 @@ entryTail.then                               census:ChoiceResumeFrames          
 keywordActionTail.amassed                    census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.keywordAction.amassed
 keywordActionTail.armyToken                  census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.keywordAction.armyToken
 keywordActionTail.then                       census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.keywordAction.then
-lastKnownSpell.card                          census:StackEffects                # Game.lastKnownStack.card
-lastKnownSpell.item                          census:StackEffects                # Game.lastKnownStack.item
+lastKnownSpell.card                          census:IntrinsicAbilityCards       # Game.lastKnownStack.card
+lastKnownSpell.item                          keyed                              # Game.lastKnownStack.item
 lifeTail.then                                census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.lifeTail.then
 mayCastFrame.onAccept                        census:ChoiceResumeFrames          # Game.PendingChoices.mayCastResume.onAccept
 mayCastFrame.onDecline                       census:ChoiceResumeFrames          # Game.PendingChoices.mayCastResume.onDecline
