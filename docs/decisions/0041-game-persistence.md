@@ -1156,7 +1156,8 @@ Three things the first slice settled that the decisions above left open.
   ForAsLongAs condition still reads the battlefield alone, because
   CR 702.26f ends a duration that tracks a phased-out permanent.
 - **`grantAbilities` is not declared yet.** It lands with ADR 0093's PR 4,
-  together with the grant seam it adapts into.
+  together with the grant seam it adapts into. *(Landed with #1584: see
+  ADR 0093's "Amendment 2026-09-24 — what PR 4 built".)*
 
 ### Implementation notes (PR 2, tier 2: delayed triggers as data)
 

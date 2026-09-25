@@ -140,6 +140,9 @@ func corpusBoards() []corpusBoard {
 		{"queued_mana_drain", corpusQueuedManaDrain},
 		{"queued_doublecast", corpusQueuedDoublecast},
 		{"fired_arcane_denial", corpusFiredArcaneDenial},
+		// v7, added by ADR 0093 PR 4 (#1584) as a new file: duration
+		// grants — the grantAbilities mod on disk.
+		{"duration_grants", corpusDurationGrants},
 	}
 }
 
@@ -553,6 +556,25 @@ func corpusFiredArcaneDenial(t *testing.T) *game.Game {
 	}
 	if len(g.StackMeta)+len(g.PendingTriggers) == 0 {
 		t.Fatal("setup: the delayed trigger did not fire at the end step")
+	}
+	return g
+}
+
+// corpusDurationGrants is two real duration grants (ADR 0093 PR 4,
+// #1584): Feign Death's lone grantAbilities mod, and Fake Your Own
+// Death's "+2/+0 and gains …" — a modifyPT and a grantAbilities mod in
+// one record. The file holds `grants` keys a restore must resolve.
+func corpusDurationGrants(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	bear := pushBattlefieldCardWithTimestamp(g, corpusCreature(me, "Grizzly Bears", 2, 2))
+	wurm := pushBattlefieldCardWithTimestamp(g, corpusCreature(me, "Craw Wurm", 6, 4))
+	castCatalogSpell(t, g, "Feign Death", "Instant", feignDeathOracle, dgCardRef(bear))
+	passPriorityAroundTable(t, g)
+	castCatalogSpell(t, g, "Fake Your Own Death", "Instant", fakeYourOwnDeathOracle, dgCardRef(wurm))
+	passPriorityAroundTable(t, g)
+	if len(g.ScopedEffects) != 2 {
+		t.Fatalf("setup: the two spells registered %d scoped effects, want 2", len(g.ScopedEffects))
 	}
 	return g
 }

@@ -1131,6 +1131,8 @@ scopedEffects[].mods	array
 scopedEffects[].mods[]	object
 scopedEffects[].mods[].colors	array
 scopedEffects[].mods[].colors[]	string
+scopedEffects[].mods[].grants	array
+scopedEffects[].mods[].grants[]	string
 scopedEffects[].mods[].keywords	array
 scopedEffects[].mods[].keywords[]	string
 scopedEffects[].mods[].kind	string

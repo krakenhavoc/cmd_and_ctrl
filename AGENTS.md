@@ -1018,10 +1018,35 @@ recipients: the controller, the removal and the LKI all come out wrong.
 See `dionus_elvish_archdruid.go`, `agent_of_the_iron_throne.go` and
 `thornbite_staff.go`.
 
-Duration grants from a resolving spell or ability ("until end of turn,
-target creature gains …") are ADR 0093 PR 4, which lands as a
-`grantAbilities` mod on ADR 0041 phase 3's ScopedEffect; they have no
-shape yet.
+A grant from a RESOLVING spell or ability ("until end of turn, target
+creature gains '…'", Urza's Saga's "this Saga gains '…'") is the same
+bundle, given with `GrantAbilitiesFor` (ADR 0093 PR 4, #1584):
+
+```go
+Grants: []AbilityGrant{{Key: feignDeathReturn, Triggered: …, Text: "When this creature dies, …"}},
+OnResolve: func(_ *game.StackItem, ctx *Context) error {
+    return GrantAbilitiesFor{Target: t, Keys: []string{feignDeathReturn}, Label: "Feign Death — …"}.Apply(ctx)
+},
+// "gets +2/+0 and gains …" is ONE effect: Also: []game.Mod{game.ModifyPTMod(2, 0)}
+// no stated duration (CR 611.2a): Duration: g.PinnedTo(game.IndefiniteDuration(), id)
+```
+
+It registers ADR 0041 phase 3's ScopedEffect record with a
+`grantAbilities` mod (`game.GrantAbilitiesMod`), which the layer pass
+turns into the same layer-6 declaration a static makes — so every
+reader, ref, removal and copy rule is the static grant's. It is data, so
+the table stays a restore point. A zero `Duration` is "until end of
+turn"; the affected set is pinned at resolution (CR 611.2c), so a
+creature that dies and returns is a new object without the grant. Keys
+must name a registered bundle with no `Static` slot: `Apply` refuses
+one at resolution, `TestEveryDurationGrantKeyResolves` scans the
+catalog's source for literal and constant keys, and a restore point
+naming an unregistered bundle is refused with `ErrUnknownEffectKey`. A
+"return it to the battlefield tapped [with a counter]" dies trigger is
+`returnThisCreatureFromGraveyard`. See `feign_death.go`,
+`fake_your_own_death.go`, `retraction_helix.go` and `urzas_saga.go`.
+Still no shape: a duration that lasts "for as long as it has a <kind>
+counter on it" (Ultima, Origin of Oblivion).
 
 ### Adding a replacement effect (S17+)
 

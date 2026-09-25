@@ -160,6 +160,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		ModAllCreatureTypes: true, ModSetColors: true, ModAddKeywords: true, ModRemoveKeywords: true,
 		ModLoseAllAbilities: true, ModAddRestrictions: true, ModSetBasePower: true,
 		ModSetBaseToughness: true, ModModifyPT: true, ModAddAttackRequirement: true,
+		// ADR 0093 PR 4 (#1584): its cases are in scoped_grants_test.go,
+		// because a grant needs a catalog bundle to mean anything.
+		ModGrantAbilities: true,
 	}
 	for _, k := range ModKinds() {
 		if !covered[k] {

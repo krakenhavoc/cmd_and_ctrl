@@ -34,6 +34,9 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if !KnownModKind(m.Kind) {
 				unknown = append(unknown, "mod kind "+string(m.Kind))
 			}
+			if m.Kind == ModGrantAbilities {
+				unknown = append(unknown, unknownGrantBundles(m.Grants)...)
+			}
 		}
 		if !KnownAffectedScope(e.Scope) {
 			unknown = append(unknown, "scoped-effect scope "+string(e.Scope))
@@ -75,6 +78,27 @@ func (s *GameSnapshot) checkEffectKeys() error {
 		return nil
 	}
 	return fmt.Errorf("%w: %s", ErrUnknownEffectKey, strings.Join(unknown, ", "))
+}
+
+// unknownGrantBundles is the grantAbilities half of checkEffectKeys
+// (ADR 0093 PR 4, #1584): every bundle a grant names must be one this
+// binary's catalog registers, because the bundle IS the ability the
+// effect gives. A newer build's bundle restored here would put a grant
+// on the recipient that composes into a key nothing answers — an
+// ability that silently does nothing — so it is refused like an
+// unknown mod kind. A mod naming no bundle at all is refused too:
+// registration never writes one.
+func unknownGrantBundles(keys []string) []string {
+	if len(keys) == 0 {
+		return []string{"grantAbilities mod with no bundle"}
+	}
+	var out []string
+	for _, k := range keys {
+		if k == "" || catalogDef(GrantKey(k)) == nil {
+			out = append(out, "ability-grant bundle "+fmt.Sprintf("%q", k))
+		}
+	}
+	return out
 }
 
 // deepCopyScopedEffects copies records and their inner slices, for the
