@@ -456,6 +456,26 @@ that already has a row, the row wins, so a change the older binary made
 to that game's seats in the meantime is not carried forward. A game
 created during the rollback is imported as new.
 
+**Rolling back past a database migration.** Migrations are forward-only
+and an older binary refuses a schema newer than it knows
+(`db.ErrSchemaTooNew`): it will not start. When the migrations it does
+not know only ADD tables, undo them by hand before starting the older
+binary. Migration 0006 (ADR 0095, the deck-request tables) is that
+shape:
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "DROP TABLE deck_request_asks; DROP TABLE deck_requests; DELETE FROM schema_migrations WHERE version = 6;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+It costs only the deck-request dedup rows and the per-person request
+history; rolling forward recreates the empty tables. A migration that
+changes an existing table cannot be undone this way — restore
+`db/cmdctrl.backup.sqlite` (or the nightly off-site copy) instead.
+
 **Session lifetimes.** A Discord sign-in from the login page mints an
 identity session that lasts `CMDCTRL_IDENTITY_TTL` (default `720h`, 30
 days; [ADR 0051](decisions/0051-user-database.md) decision 3). Seat,
