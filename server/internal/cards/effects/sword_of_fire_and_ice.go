@@ -53,21 +53,19 @@ func init() {
 				return attachedCreatureDealtCombatDamageToPlayer(ev, source, g)
 			},
 			Targets: TargetAny(),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Sword of Fire and Ice — 2 damage, draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						for _, t := range ctx.LegalTargets() {
-							if err := (DealDamage{Target: t.ID, Amount: 2, Source: item.SourceCardID}.Apply(ctx)); err != nil {
-								return err
-							}
-						}
-						// The draw is not conditional on the damage
-						// landing — "and you draw a card" is a
-						// separate clause, so a fizzled target still
-						// draws.
-						return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
-					})
+			Key:     "Sword of Fire and Ice — 2 damage, draw a card",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				for _, t := range ctx.LegalTargets() {
+					if err := (DealDamage{Target: t.ID, Amount: 2, Source: item.SourceCardID}.Apply(ctx)); err != nil {
+						return err
+					}
+				}
+				// The draw is not conditional on the damage
+				// landing — "and you draw a card" is a
+				// separate clause, so a fizzled target still
+				// draws.
+				return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
 			},
 		}},
 		Activated: []ActivatedAbility{

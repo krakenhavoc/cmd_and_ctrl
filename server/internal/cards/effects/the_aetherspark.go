@@ -103,16 +103,13 @@ func init() {
 		Triggered: []game.TriggeredAbility{{
 			Watches:   []game.EventKind{game.EventDealDamage},
 			AppliesTo: equippedCreatureDealtCombatDamageOnYourTurn,
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				amount := ev.Amount
-				return game.NewTriggeredItem(source, "The Aetherspark — put that many loyalty counters on it",
-					func(g *game.Game, item *game.StackItem) error {
-						return AddCounter{
-							Target: item.SourceCardID,
-							Kind:   game.CounterLoyalty,
-							N:      amount,
-						}.Apply(NewContext(g, item))
-					})
+			Key:       "The Aetherspark — put that many loyalty counters on it",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return AddCounter{
+					Target: item.SourceCardID,
+					Kind:   game.CounterLoyalty,
+					N:      item.Trigger.Event.Amount,
+				}.Apply(NewContext(g, item))
 			},
 		}},
 		Activated: []ActivatedAbility{

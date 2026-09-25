@@ -65,19 +65,16 @@ func init() {
 		Triggered: []game.TriggeredAbility{{
 			Watches:   []game.EventKind{game.EventETB},
 			AppliesTo: nontokenCreatureEnteredUnderYourControl,
-			Key:       "The Great Henge — counter and a card",
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				entered := ev.CardID
-				return game.NewTriggeredItem(source, "The Great Henge — put a +1/+1 counter on it and draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						if onBattlefield(g, entered) {
-							if err := (AddCounter{Target: entered, Kind: "+1/+1", N: 1}.Apply(ctx)); err != nil {
-								return err
-							}
-						}
-						return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
-					})
+			Key:       "The Great Henge — put a +1/+1 counter on it and draw a card",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				entered := item.Trigger.Event.CardID
+				if onBattlefield(g, entered) {
+					if err := (AddCounter{Target: entered, Kind: "+1/+1", N: 1}.Apply(ctx)); err != nil {
+						return err
+					}
+				}
+				return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
 			},
 		}},
 	})

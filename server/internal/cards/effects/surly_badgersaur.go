@@ -42,9 +42,8 @@ func init() {
 					return b30YouDiscardedCardWhere(ev, source, g, func(c game.Card) bool { return !c.IsCreature() && !c.IsLand() })
 				},
 				Targets: TargetCreature("up to one target creature you don't control", OpponentControls()).WithCount(0, 1),
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Surly Badgersaur — fights up to one target creature you don't control", b30SourceFightsFirstLegalTarget)
-				},
+				Key:     "Surly Badgersaur — fights up to one target creature you don't control",
+				Effect:  b30SourceFightsFirstLegalTarget,
 			},
 		},
 	})

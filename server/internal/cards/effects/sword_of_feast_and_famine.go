@@ -46,18 +46,15 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return attachedCreatureDealtCombatDamageToPlayer(ev, source, g)
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				damaged := ev.Target
-				return game.NewTriggeredItem(source, "Sword of Feast and Famine — discard, untap your lands",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
-							Player: damaged,
-							Source: item.SourceCardID,
-							N:      1,
-						})
-						return untapAllLandsControlledBy(g, item.Controller, ctx)
-					})
+			Key: "Sword of Feast and Famine — discard, untap your lands",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+					Player: item.Trigger.Event.Target,
+					Source: item.SourceCardID,
+					N:      1,
+				})
+				return untapAllLandsControlledBy(g, item.Controller, ctx)
 			},
 		}},
 		Activated: []ActivatedAbility{

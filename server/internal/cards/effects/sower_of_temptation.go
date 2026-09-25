@@ -42,28 +42,24 @@ func init() {
 				return ev.CardID == source.InstanceID
 			},
 			Targets: TargetCreature("target creature"),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				sower := source.InstanceID
-				return game.NewTriggeredItem(source,
-					"Sower of Temptation — gain control of target creature for as long as this remains",
-					func(g *game.Game, item *game.StackItem) error {
-						if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-							return nil
-						}
-						ctx := NewContext(g, item)
-						d, ok := DurationWhileSourceRemains(ctx, sower)
-						if !ok {
-							// CR 611.2b: the Sower is already gone, so
-							// the effect never begins.
-							return nil
-						}
-						return GainControl{
-							Target:     item.Targets[0].ID,
-							Controller: item.Controller,
-							Duration:   d,
-							Label:      "Sower of Temptation — control for as long as the Sower remains",
-						}.Apply(ctx)
-					})
+			Key:     "Sower of Temptation — gain control of target creature for as long as this remains",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+					return nil
+				}
+				ctx := NewContext(g, item)
+				d, ok := DurationWhileSourceRemains(ctx, item.SourceCardID)
+				if !ok {
+					// CR 611.2b: the Sower is already gone, so
+					// the effect never begins.
+					return nil
+				}
+				return GainControl{
+					Target:     item.Targets[0].ID,
+					Controller: item.Controller,
+					Duration:   d,
+					Label:      "Sower of Temptation — control for as long as the Sower remains",
+				}.Apply(ctx)
 			},
 		}},
 	})
