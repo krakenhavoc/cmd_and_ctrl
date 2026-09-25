@@ -1,11 +1,11 @@
 package lobby
 
 // creator_http_test.go covers issue #1098, closing out the two
-// TODO(#1044) markers #1057 (rotate) and #1058 (/cc-end) left behind:
+// TODO(#1044) markers #1057 (rotate) and #1058 (/c2-end) left behind:
 //
 //   - the creator half of POST /games/{id}/invites/rotate's "host or
 //     admin" rule — CanRotateInvites, creator.go — at the HTTP layer.
-//   - GET /games/{id}/creator, the Discord bot's /cc-end host check,
+//   - GET /games/{id}/creator, the Discord bot's /c2-end host check,
 //     which needs a real users/identities row so it exercises
 //     against a database rather than the in-memory store the rest of
 //     this package tests against.
@@ -176,7 +176,7 @@ func TestListGamesIsCreatorPerViewer(t *testing.T) {
 	}
 }
 
-// --- GET /games/{id}/creator — the bot's /cc-end host check ---------
+// --- GET /games/{id}/creator — the bot's /c2-end host check ---------
 
 func adminOnlyToken(t *testing.T, srv *httptest.Server) string {
 	t.Helper()

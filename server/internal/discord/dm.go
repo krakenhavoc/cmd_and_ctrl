@@ -9,7 +9,7 @@ package discord
 // (cmd/cmd_and_ctrl-bot) holds a websocket session for slash
 // commands; this is two plain REST calls made by the SERVER process,
 // so there is exactly one place that builds and sends an invite DM.
-// The `/cc-invite-dm` slash command (#613) is a client of the route
+// The `/c2-invite-dm` slash command (#613) is a client of the route
 // that calls this, not a second sender.
 //
 // The bot token never leaves this file's Authorization header: it is

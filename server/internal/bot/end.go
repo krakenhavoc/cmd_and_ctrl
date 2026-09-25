@@ -16,16 +16,16 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/lobby"
 )
 
-// confirmTTL is how long a /cc-end confirmation stays valid. Chosen
+// confirmTTL is how long a /c2-end confirmation stays valid. Chosen
 // to be long enough to read the prompt and click, short enough that
 // a forgotten prompt doesn't sit around as a standing "archive this
 // table" button someone could stumble into.
 const confirmTTL = 60 * time.Second
 
-// ccEndCustomIDPrefix namespaces this command's button CustomIDs so
-// dispatchComponent can ignore any other component this bot might
-// grow later without guessing at its shape.
-const ccEndCustomIDPrefix = "cc-end:"
+// c2EndCustomIDPrefix namespaces this command's button CustomIDs so
+// dispatchComponent can route by prefix rather than guessing at a
+// component's shape.
+const c2EndCustomIDPrefix = "c2-end:"
 
 // errGameAmbiguous is returned by matchGameByName when more than one
 // active game's name starts with the given prefix. Bot-side only —
@@ -33,7 +33,7 @@ const ccEndCustomIDPrefix = "cc-end:"
 // sentinel like ErrGameNotFound.
 var errGameAmbiguous = errors.New("more than one game matches that name")
 
-// pendingEnd is a live /cc-end confirmation awaiting a button press.
+// pendingEnd is a live /c2-end confirmation awaiting a button press.
 type pendingEnd struct {
 	GameID    uuid.UUID
 	GameName  string
@@ -41,7 +41,7 @@ type pendingEnd struct {
 	ExpiresAt time.Time
 }
 
-// endConfirmations holds outstanding /cc-end confirmations, keyed by
+// endConfirmations holds outstanding /c2-end confirmations, keyed by
 // a random token embedded in the button CustomIDs. A token, not the
 // message ID, is the correlation key because InteractionRespond
 // doesn't hand the created message back to the caller.
@@ -82,14 +82,14 @@ func (e *endConfirmations) delete(token string) {
 	delete(e.pending, token)
 }
 
-// randomToken returns a URL-safe token for a /cc-end button CustomID.
+// randomToken returns a URL-safe token for a /c2-end button CustomID.
 // Not a security boundary by itself (the invoker check is), just
-// enough entropy that two concurrent /cc-end calls never collide.
+// enough entropy that two concurrent /c2-end calls never collide.
 func randomToken() string {
 	b := make([]byte, 16)
 	if _, err := rand.Read(b); err != nil {
 		// crypto/rand.Read failing means the OS RNG is broken; fall
-		// back to a timestamp so /cc-end degrades to "usually fine"
+		// back to a timestamp so /c2-end degrades to "usually fine"
 		// rather than panicking a slash command.
 		return fmt.Sprintf("fallback-%d", time.Now().UnixNano())
 	}
@@ -114,7 +114,7 @@ func interactionInvoker(i *discordgo.Interaction) (userID string, roles []string
 	return "", nil
 }
 
-// handleEnd runs /cc-end: authorize, resolve the game, and (if it's
+// handleEnd runs /c2-end: authorize, resolve the game, and (if it's
 // not already archived) show a Confirm/Cancel prompt.
 //
 // Authorization is "host or admin" (#1098, closing out #1044 and
@@ -124,21 +124,21 @@ func interactionInvoker(i *discordgo.Interaction) (userID string, roles []string
 // before authorization rather than after it — an unauthorized caller
 // costs one HTTP call it didn't before. That is not a new leak: the
 // same active/lobby listing this resolves against is already public
-// to anyone in the guild via /cc-games and this command's own
+// to anyone in the guild via /c2-games and this command's own
 // autocomplete (see dispatchAutocomplete), so nothing is learned here
 // that a rejected caller couldn't already see.
 func (h *Handler) handleEnd(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate, data discordgo.ApplicationCommandInteractionData) {
 	raw := stringOption(data.Options, "game")
 	meta, err := h.resolveGame(ctx, raw)
 	if err != nil {
-		h.log.Warn("cc-end resolve game failed", "input", raw, "error", err.Error())
+		h.log.Warn("c2-end resolve game failed", "input", raw, "error", err.Error())
 		_ = s.InteractionRespond(i.Interaction, ephemeralResponse(resolveGameErrorMessage(err)))
 		return
 	}
 
 	allowed, err := h.mayEnd(ctx, meta.ID, i.Interaction)
 	if err != nil {
-		h.log.Warn("cc-end host check failed", "game_id", meta.ID.String(), "error", err.Error())
+		h.log.Warn("c2-end host check failed", "game_id", meta.ID.String(), "error", err.Error())
 		_ = s.InteractionRespond(i.Interaction, ephemeralResponse(resolveGameErrorMessage(err)))
 		return
 	}
@@ -168,7 +168,7 @@ func (h *Handler) handleEnd(ctx context.Context, s *discordgo.Session, i *discor
 	_ = s.InteractionRespond(i.Interaction, endConfirmResponse(meta, token))
 }
 
-// mayEnd reports whether i's invoker may run /cc-end against game id:
+// mayEnd reports whether i's invoker may run /c2-end against game id:
 // a configured admin (cheap, no HTTP call), or — only when they are
 // not — the Discord user the server says created that table (#1098).
 // A game with no creator (an admin session created it, or it was
@@ -188,12 +188,12 @@ func (h *Handler) mayEnd(ctx context.Context, id uuid.UUID, i *discordgo.Interac
 	return h.client.IsCreator(ctx, id, uid)
 }
 
-// dispatchAutocomplete answers the /cc-end "game" option's
-// autocomplete requests by reusing the /cc-games listing — active
+// dispatchAutocomplete answers the /c2-end "game" option's
+// autocomplete requests by reusing the /c2-games listing — active
 // and lobby games only, same as the channel command, so a typed
-// prefix suggests exactly what /cc-games would have shown. Not
+// prefix suggests exactly what /c2-games would have shown. Not
 // authorization-gated: the same information is already visible to
-// anyone who can run /cc-games in this guild.
+// anyone who can run /c2-games in this guild.
 func (h *Handler) dispatchAutocomplete(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
 	data := i.ApplicationCommandData()
 	if data.Name != CmdEnd {
@@ -210,36 +210,43 @@ func (h *Handler) dispatchAutocomplete(ctx context.Context, s *discordgo.Session
 
 	games, err := h.client.ListGames(ctx)
 	if err != nil {
-		h.log.Warn("cc-end autocomplete list failed", "error", err.Error())
+		h.log.Warn("c2-end autocomplete list failed", "error", err.Error())
 		_ = s.InteractionRespond(i.Interaction, autocompleteResponse(nil))
 		return
 	}
 	_ = s.InteractionRespond(i.Interaction, autocompleteResponse(gameChoices(games, focused)))
 }
 
-// dispatchComponent handles a Confirm/Cancel button click. Any
-// CustomID this bot doesn't recognize is ignored — discordgo fans
-// InteractionMessageComponent events out to every registered
-// handler, and this bot may grow other components later.
-func (h *Handler) dispatchComponent(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
-	customID := i.MessageComponentData().CustomID
-	if !strings.HasPrefix(customID, ccEndCustomIDPrefix) {
-		return
+// dispatchComponent routes a message-component click by its
+// CustomID's namespace prefix. Any CustomID this bot doesn't
+// recognize is ignored — discordgo fans InteractionMessageComponent
+// events out to every registered handler, and this bot has more than
+// one kind of button now.
+func (h *Handler) dispatchComponent(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate, customID string) {
+	switch {
+	case strings.HasPrefix(customID, c2EndCustomIDPrefix):
+		h.dispatchEndComponent(ctx, s, i, customID)
+	case strings.HasPrefix(customID, deckRequestCustomIDPrefix):
+		h.dispatchDeckRequestComponent(ctx, s, i, customID)
 	}
+}
+
+// dispatchEndComponent handles a /c2-end Confirm/Cancel button click.
+func (h *Handler) dispatchEndComponent(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate, customID string) {
 	clickerID, _ := interactionInvoker(i.Interaction)
 	outcome, pending, token := h.evaluateComponentClick(customID, clickerID, h.now())
 
 	switch outcome {
 	case outcomeInvalidCustomID:
-		h.log.Warn("malformed cc-end custom id", "custom_id", customID)
+		h.log.Warn("malformed c2-end custom id", "custom_id", customID)
 	case outcomeNotFound:
-		_ = s.InteractionRespond(i.Interaction, ephemeralResponse("This confirmation is no longer available. Run `/cc-end` again."))
+		_ = s.InteractionRespond(i.Interaction, ephemeralResponse("This confirmation is no longer available. Run `/c2-end` again."))
 	case outcomeWrongUser:
-		_ = s.InteractionRespond(i.Interaction, ephemeralResponse("Only the person who ran `/cc-end` can respond to this confirmation."))
+		_ = s.InteractionRespond(i.Interaction, ephemeralResponse("Only the person who ran `/c2-end` can respond to this confirmation."))
 	case outcomeExpired:
 		h.confirmations.delete(token)
 		_ = s.InteractionRespond(i.Interaction, updateMessageResponse(fmt.Sprintf(
-			"This confirmation for **%s** expired after %ds. Run `/cc-end` again.", pending.GameName, int(confirmTTL.Seconds()),
+			"This confirmation for **%s** expired after %ds. Run `/c2-end` again.", pending.GameName, int(confirmTTL.Seconds()),
 		)))
 	case outcomeCancel:
 		h.confirmations.delete(token)
@@ -281,13 +288,13 @@ const (
 	outcomeConfirm
 )
 
-// evaluateComponentClick resolves one cc-end:<action>:<token>
+// evaluateComponentClick resolves one c2-end:<action>:<token>
 // CustomID click into an outcome. It does NOT mutate
 // h.confirmations — callers decide what to delete based on the
 // outcome, so a wrong-user or malformed click leaves the real
 // confirmation alone for the actual invoker to still use.
 func (h *Handler) evaluateComponentClick(customID, clickerID string, now time.Time) (componentOutcome, pendingEnd, string) {
-	rest := strings.TrimPrefix(customID, ccEndCustomIDPrefix)
+	rest := strings.TrimPrefix(customID, c2EndCustomIDPrefix)
 	action, token, ok := strings.Cut(rest, ":")
 	if !ok || token == "" {
 		return outcomeInvalidCustomID, pendingEnd{}, ""
@@ -313,13 +320,13 @@ func (h *Handler) evaluateComponentClick(customID, clickerID string, now time.Ti
 	}
 }
 
-// resolveGame turns the /cc-end "game" option's value into a
+// resolveGame turns the /c2-end "game" option's value into a
 // GameMeta. Autocomplete always hands back a game ID, but a manually
 // typed value (autocomplete is a suggestion, not a constraint) may
 // be a name instead, so a value that doesn't parse as a UUID is
 // matched by name prefix against the active/lobby listing —
 // deliberately the same fallback ADR 0004 already documents for
-// /cc-invite-style flexibility.
+// /c2-invite-style flexibility.
 //
 // Resolving by ID goes through GetGame, not ListGames, specifically
 // because GetGame still finds an archived game — needed so
@@ -362,15 +369,15 @@ func matchGameByName(games []lobby.GameMeta, name string) (lobby.GameMeta, error
 	return match, nil
 }
 
-// adminRefusalMessage explains why /cc-end refused the caller. An
+// adminRefusalMessage explains why /c2-end refused the caller. An
 // empty configuration gets a different message than "you specifically
 // aren't on the list" — an operator seeing this for the first time
 // should learn immediately which env vars to set, per issue #614.
 func adminRefusalMessage(cfg Config) string {
 	if !cfg.HasAdmins() {
-		return "No admins are configured for /cc-end. Set CMDCTRL_DISCORD_ADMIN_USER_IDS and/or CMDCTRL_DISCORD_ADMIN_ROLE_IDS on the bot to allow it."
+		return "No admins are configured for /c2-end. Set CMDCTRL_DISCORD_ADMIN_USER_IDS and/or CMDCTRL_DISCORD_ADMIN_ROLE_IDS on the bot to allow it."
 	}
-	return "You're not authorized to run /cc-end. Ask an admin, or check CMDCTRL_DISCORD_ADMIN_USER_IDS / CMDCTRL_DISCORD_ADMIN_ROLE_IDS."
+	return "You're not authorized to run /c2-end. Ask an admin, or check CMDCTRL_DISCORD_ADMIN_USER_IDS / CMDCTRL_DISCORD_ADMIN_ROLE_IDS."
 }
 
 // resolveGameErrorMessage maps a resolveGame error to a user-visible
@@ -378,9 +385,9 @@ func adminRefusalMessage(cfg Config) string {
 func resolveGameErrorMessage(err error) string {
 	switch {
 	case errors.Is(err, ErrGameNotFound):
-		return "No game matches that. Try `/cc-games` for the active list, or paste the id."
+		return "No game matches that. Try `/c2-games` for the active list, or paste the id."
 	case errors.Is(err, errGameAmbiguous):
-		return "More than one game name starts with that. Try a longer prefix, or paste the id from `/cc-games`."
+		return "More than one game name starts with that. Try a longer prefix, or paste the id from `/c2-games`."
 	case errors.Is(err, ErrServerUnreachable):
 		return "Game server is not reachable right now."
 	case errors.Is(err, ErrUnauthorized):
@@ -403,11 +410,11 @@ func archiveErrorMessage(err error) string {
 	case errors.Is(err, ErrUnauthorized):
 		return "Bot is not authorized against the game server — check CMDCTRL_ADMIN_TOKEN. Nothing was archived."
 	default:
-		return "Something went wrong archiving the game — check `/cc-games` before retrying."
+		return "Something went wrong archiving the game — check `/c2-games` before retrying."
 	}
 }
 
-// gameChoices builds the /cc-end autocomplete choices from the
+// gameChoices builds the /c2-end autocomplete choices from the
 // active/lobby listing, filtered by a case-insensitive substring
 // match on name so a partial word anywhere in the table name works,
 // not just a prefix. Discord caps autocomplete results at 25 and
@@ -460,12 +467,12 @@ func endConfirmResponse(meta lobby.GameMeta, token string) *discordgo.Interactio
 						discordgo.Button{
 							Label:    "Confirm",
 							Style:    discordgo.DangerButton,
-							CustomID: ccEndCustomIDPrefix + "confirm:" + token,
+							CustomID: c2EndCustomIDPrefix + "confirm:" + token,
 						},
 						discordgo.Button{
 							Label:    "Cancel",
 							Style:    discordgo.SecondaryButton,
-							CustomID: ccEndCustomIDPrefix + "cancel:" + token,
+							CustomID: c2EndCustomIDPrefix + "cancel:" + token,
 						},
 					},
 				},

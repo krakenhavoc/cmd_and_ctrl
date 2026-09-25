@@ -292,7 +292,7 @@ Create a new game.
 
 `host_discord_id` is optional. It names the table host by Discord user ID
 ([ADR 0075 §2.1](decisions/0075-table-settings-and-host-controls.md)). The
-Discord bot's `/cc-invite` sends the user who ran it. The ID is held on the
+Discord bot's `/c2-invite` sends the user who ran it. The ID is held on the
 table, unserved, until that Discord identity claims a seat through the OAuth
 join. That seat then becomes host. See [The table host](#the-table-host).
 
@@ -362,7 +362,7 @@ Discord sign-ins, other seats, and the host of a different table.
 **Not the same thing as the game's creator.** `games.created_by` (ADR
 0051 decision 2) is whoever called `POST /games` while signed in, and
 is a *different* predicate, `lobby.CanRotateInvites` — used only by
-`POST /games/{id}/invites/rotate` and the Discord bot's `/cc-end` host
+`POST /games/{id}/invites/rotate` and the Discord bot's `/c2-end` host
 check, below. A table's creator need not ever sit down (no seat, no
 `is_host`), and a seated host need not be the creator — the first
 human to join hosts by default regardless of who created the table.
@@ -381,7 +381,7 @@ Transfer hosting to another seat. Host or admin only.
 `is_host` flags moved. Connected clients get a fresh snapshot with the new
 `is_host`.
 
-An explicit transfer also clears a pending named host, so a late `/cc-invite`
+An explicit transfer also clears a pending named host, so a late `/c2-invite`
 claimant does not take the table back.
 
 **Errors**
@@ -1280,7 +1280,7 @@ Send one person this table's invite link as a Discord direct message
 6). The server opens the DM itself, with a bot token and two plain
 REST calls — `POST /users/@me/channels` then `POST
 /channels/{id}/messages`. The gateway bot binary is not involved. The
-`/cc-invite-dm` slash command ([#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613))
+`/c2-invite-dm` slash command ([#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613))
 is a thin client of this route, so there is exactly one place that
 builds and sends an invite DM.
 
@@ -1308,7 +1308,7 @@ appears on the wire in neither direction.
 
 `discord_id` is accepted as an alternative — a raw Discord snowflake,
 exactly one of the two fields — but **only for an admin session**. It
-exists for #613's `/cc-invite-dm @user`, which holds a mention and
+exists for #613's `/c2-invite-dm @user`, which holds a mention and
 nothing else: its target may never have signed in here, so there is no
 user id to send. Letting every caller pass one would turn this route
 into "DM any Discord user who shares a server with the bot", which is
@@ -1369,7 +1369,7 @@ link the table has already shared, which is a startling side effect of
 
 ### `GET /games/{id}/creator` *(admin only)*
 
-The Discord bot's `/cc-end` host check ([#1098](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1098)):
+The Discord bot's `/c2-end` host check ([#1098](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1098)):
 does the Discord user named by `?discord_id=<snowflake>` match this
 game's creator. The bot calls the server with its own admin
 credentials (same as every other bot call — see

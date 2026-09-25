@@ -6,7 +6,7 @@ package lobby
 // need not ever sit down at the table, and a seated host need not be
 // the creator. #1098 is the first thing to read it: the creator may
 // rotate their own game's invites (POST /games/{id}/invites/rotate),
-// same as the admin, and the Discord bot's /cc-end host check
+// same as the admin, and the Discord bot's /c2-end host check
 // (GET /games/{id}/creator) answers a boolean against it without
 // naming the creator to anyone but an admin caller who already
 // guessed right.

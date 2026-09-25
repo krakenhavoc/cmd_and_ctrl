@@ -63,25 +63,41 @@ func TestStringOption(t *testing.T) {
 
 func TestCommandDefinitions(t *testing.T) {
 	defs := commandDefinitions()
-	if len(defs) != 3 {
-		t.Fatalf("want 3 definitions, got %d", len(defs))
+	if len(defs) != 5 {
+		t.Fatalf("want 5 definitions, got %d", len(defs))
 	}
 	names := make([]string, len(defs))
 	for i, d := range defs {
 		names[i] = d.Name
 	}
-	if !contains(names, CmdInvite) || !contains(names, CmdGames) || !contains(names, CmdEnd) {
-		t.Errorf("missing expected command names: %v", names)
+	for _, want := range []string{CmdInvite, CmdGames, CmdEnd, CmdDeckCheck, CmdDeckReq} {
+		if !contains(names, want) {
+			t.Errorf("missing expected command name %q: %v", want, names)
+		}
 	}
-	// /cc-invite must have an optional string "name" option so
-	// users can type /cc-invite friday-commander.
-	var invite, end *discordgo.ApplicationCommand
+	// Every command must carry the c2- prefix and none of the old
+	// cc- names (#1631, ADR 0095).
+	for _, n := range names {
+		if !strings.HasPrefix(n, "c2-") {
+			t.Errorf("command %q does not carry the c2- prefix", n)
+		}
+		if strings.HasPrefix(n, "cc-") {
+			t.Errorf("command %q still carries the old cc- prefix", n)
+		}
+	}
+	// /c2-invite must have an optional string "name" option so
+	// users can type /c2-invite friday-commander.
+	var invite, end, deckCheck, deckReq *discordgo.ApplicationCommand
 	for _, d := range defs {
 		switch d.Name {
 		case CmdInvite:
 			invite = d
 		case CmdEnd:
 			end = d
+		case CmdDeckCheck:
+			deckCheck = d
+		case CmdDeckReq:
+			deckReq = d
 		}
 	}
 	if invite == nil {
@@ -90,12 +106,85 @@ func TestCommandDefinitions(t *testing.T) {
 	if len(invite.Options) != 1 || invite.Options[0].Required {
 		t.Errorf("invite should have one optional option, got %+v", invite.Options)
 	}
-	// /cc-end must have a required, autocompleting "game" option.
+	// /c2-end must have a required, autocompleting "game" option.
 	if end == nil {
 		t.Fatal("missing end command")
 	}
 	if len(end.Options) != 1 || !end.Options[0].Required || !end.Options[0].Autocomplete {
 		t.Errorf("end should have one required, autocompleting option, got %+v", end.Options)
+	}
+	// Both deck commands take a single required "link" string.
+	if deckCheck == nil {
+		t.Fatal("missing deck-check command")
+	}
+	if len(deckCheck.Options) != 1 || deckCheck.Options[0].Name != "link" || !deckCheck.Options[0].Required {
+		t.Errorf("deck-check should have one required \"link\" option, got %+v", deckCheck.Options)
+	}
+	if deckReq == nil {
+		t.Fatal("missing deck-req command")
+	}
+	if len(deckReq.Options) != 1 || deckReq.Options[0].Name != "link" || !deckReq.Options[0].Required {
+		t.Errorf("deck-req should have one required \"link\" option, got %+v", deckReq.Options)
+	}
+}
+
+// fakeRegistrar is a commandRegistrar test double: RegisterCommands
+// is tested against this small interface (#1631) instead of a live
+// discordgo.Session, which is how ApplicationCommandBulkOverwrite —
+// the bulk-overwrite registration path — gets exercised without a
+// Discord connection.
+type fakeRegistrar struct {
+	// calls records each ApplicationCommandBulkOverwrite call as
+	// (guildID, command names).
+	calls []struct {
+		guildID string
+		names   []string
+	}
+	failGuild string // guildID that should error, if any
+}
+
+func (f *fakeRegistrar) ApplicationCommandBulkOverwrite(appID, guildID string, commands []*discordgo.ApplicationCommand, _ ...discordgo.RequestOption) ([]*discordgo.ApplicationCommand, error) {
+	if guildID == f.failGuild {
+		return nil, errors.New("boom")
+	}
+	names := make([]string, len(commands))
+	for i, c := range commands {
+		names[i] = c.Name
+	}
+	f.calls = append(f.calls, struct {
+		guildID string
+		names   []string
+	}{guildID, names})
+	return commands, nil
+}
+
+func TestRegisterCommands_BulkOverwrite(t *testing.T) {
+	reg := &fakeRegistrar{}
+	RegisterCommands(reg, "app1", []string{"g1", "g2"}, discardLogger())
+
+	if len(reg.calls) != 2 {
+		t.Fatalf("want 2 bulk-overwrite calls (one per guild), got %d", len(reg.calls))
+	}
+	if reg.calls[0].guildID != "g1" || reg.calls[1].guildID != "g2" {
+		t.Errorf("guild order: got %+v", reg.calls)
+	}
+	for _, call := range reg.calls {
+		if len(call.names) != len(commandDefinitions()) {
+			t.Errorf("guild %s: want %d commands in one overwrite call, got %d (%v)",
+				call.guildID, len(commandDefinitions()), len(call.names), call.names)
+		}
+		if !contains(call.names, CmdDeckCheck) || !contains(call.names, CmdDeckReq) {
+			t.Errorf("guild %s: bulk overwrite missing deck commands: %v", call.guildID, call.names)
+		}
+	}
+}
+
+func TestRegisterCommands_SkipsFailedGuildButContinues(t *testing.T) {
+	reg := &fakeRegistrar{failGuild: "bad-guild"}
+	RegisterCommands(reg, "app1", []string{"bad-guild", "g2"}, discardLogger())
+
+	if len(reg.calls) != 1 || reg.calls[0].guildID != "g2" {
+		t.Errorf("want only the good guild to have registered, got %+v", reg.calls)
 	}
 }
 

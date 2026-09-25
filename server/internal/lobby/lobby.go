@@ -98,7 +98,7 @@ type GameMeta struct {
 	HostPlayerID uuid.UUID `json:"host_player_id,omitempty"`
 
 	// HostDiscordID is a named host still waiting to sit down: the
-	// Discord user POST /games was told should host (the /cc-invite
+	// Discord user POST /games was told should host (the /c2-invite
 	// invoker). Cleared once that identity claims a seat, or by an
 	// explicit transfer. Persisted with the meta but never served:
 	// copyMeta, which every outbound meta passes through, blanks it.
@@ -1196,7 +1196,7 @@ func (l *Lobby) List() []GameMeta { return l.list(false) }
 
 // ListArchived is List's mirror: only the retired tables. Separate
 // method rather than a bool parameter so the default call site —
-// every existing caller, including the Discord bot's /cc-games —
+// every existing caller, including the Discord bot's /c2-games —
 // keeps meaning "the tables you can actually play at".
 func (l *Lobby) ListArchived() []GameMeta { return l.list(true) }
 
