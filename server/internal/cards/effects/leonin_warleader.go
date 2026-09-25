@@ -17,6 +17,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // can be blocked and deal their damage this combat. The Cat is Regal
 // Caracal's lifelink Cat with the tapped stamp.
 //
+// The defending player is read off the attack EVENT, at trigger time,
+// and carried on the item's Params — not recomputed live at
+// resolution, because a live re-derivation could answer differently
+// if the attacked planeswalker or battle changed hands in response,
+// and CR 506.4's defending player is fixed at declaration.
+//
 // Sandbox simplification, declared: the printed card lets the
 // controller choose which player (or planeswalker) each token
 // attacks; here both attack the player the Warleader was declared
@@ -33,12 +39,14 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return attackDeclared(ev, source)
 			},
+			Key: "Leonin Warleader — two 1/1 lifelink Cats, tapped and attacking",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				defender := b17DefendingPlayer(g, ev)
-				return game.NewTriggeredItem(source, "Leonin Warleader — two 1/1 lifelink Cats, tapped and attacking",
-					func(g *game.Game, item *game.StackItem) error {
-						return g.CreateTokensAttackingForEffect(item.Controller, b31TappedCatLifelinkToken(), 2, defender)
-					})
+				item := game.NewTriggeredItem(source, "Leonin Warleader — two 1/1 lifelink Cats, tapped and attacking", nil)
+				item.Params.Player = b17DefendingPlayer(g, ev)
+				return item
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return g.CreateTokensAttackingForEffect(item.Controller, b31TappedCatLifelinkToken(), 2, item.Params.Player)
 			},
 		}},
 	})

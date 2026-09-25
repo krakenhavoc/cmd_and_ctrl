@@ -14,7 +14,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // and fires when the source is a land that is now tapped
 // (b20LandTappedForMana). Every player, the controller included; the
 // damage is dealt by the enchantment, so it is noncombat damage from
-// a noncreature source, and the victim is the event's Actor.
+// a noncreature source, and the victim is the event's Actor, read at
+// resolution off the item's carried trigger context
+// (item.Trigger.Event.Actor, #1223).
 //
 // No simplification.
 func init() {
@@ -27,12 +29,9 @@ func init() {
 			AppliesTo: func(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b20LandTappedForMana(ev, g)
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				victim := ev.Actor
-				return game.NewTriggeredItem(source, "Manabarbs — deal 1 damage to that player",
-					func(g *game.Game, item *game.StackItem) error {
-						return DealDamage{Source: item.SourceCardID, Target: victim, Amount: 1}.Apply(NewContext(g, item))
-					})
+			Key: "Manabarbs — deal 1 damage to that player",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return DealDamage{Source: item.SourceCardID, Target: item.Trigger.Event.Actor, Amount: 1}.Apply(NewContext(g, item))
 			},
 		}},
 	})

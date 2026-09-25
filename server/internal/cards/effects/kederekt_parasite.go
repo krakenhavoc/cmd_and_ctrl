@@ -18,9 +18,10 @@ import (
 // checked again as the trigger resolves, so a red permanent that
 // left in response makes the ability do nothing. Once per card
 // drawn, as printed: a wheel is one prompt per card. "That player"
-// is the draw event's Actor, captured when the trigger is built;
-// the damage comes from the Parasite, so it is Parasite damage
-// whether or not it is still on the battlefield.
+// is the draw event's Actor, read at resolution off the item's
+// carried trigger context (item.Trigger.Event.Actor, #1223); the
+// damage comes from the Parasite, so it is Parasite damage whether or
+// not it is still on the battlefield.
 //
 // No simplification.
 func init() {
@@ -37,15 +38,12 @@ func init() {
 				return b18ControlsPermanentOfColor(g, source.Controller, "R")
 			},
 			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Kederekt Parasite — deal 1 damage to the player who drew?"},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				drawer := ev.Actor
-				return game.NewTriggeredItem(source, "Kederekt Parasite — 1 damage to the player who drew",
-					func(g *game.Game, item *game.StackItem) error {
-						if !b18ControlsPermanentOfColor(g, item.Controller, "R") {
-							return nil
-						}
-						return DealDamage{Source: item.SourceCardID, Target: drawer, Amount: 1}.Apply(NewContext(g, item))
-					})
+			Key:            "Kederekt Parasite — 1 damage to the player who drew",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if !b18ControlsPermanentOfColor(g, item.Controller, "R") {
+					return nil
+				}
+				return DealDamage{Source: item.SourceCardID, Target: item.Trigger.Event.Actor, Amount: 1}.Apply(NewContext(g, item))
 			},
 		}},
 	})

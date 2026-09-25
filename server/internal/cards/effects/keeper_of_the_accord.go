@@ -21,9 +21,11 @@ import (
 // an intervening-if against the player whose end step it is. Both
 // watch EventBeginEndStep for an actor other than the controller —
 // every other seat is an opponent — and re-check their condition at
-// resolution as well as at trigger time (CR 603.4). The land search
-// is "you may", so the S22 chooser can decline it and the shuffle
-// with it; the Soldier is not.
+// resolution as well as at trigger time (CR 603.4), reading the
+// player whose end step it was off the item's carried trigger context
+// (item.Trigger.Event.Actor, #1223). The land search is "you may", so
+// the S22 chooser can decline it and the shuffle with it; the Soldier
+// is not.
 //
 // No simplification.
 func init() {
@@ -38,15 +40,13 @@ func init() {
 					return ev.Actor != uuid.Nil && ev.Actor != source.Controller &&
 						b11OpponentControlsMoreThanYou(g, source.Controller, ev.Actor, game.Card.IsCreature)
 				},
-				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					opp := ev.Actor
-					return game.NewTriggeredItem(source, "Keeper of the Accord — create a Soldier",
-						func(g *game.Game, item *game.StackItem) error {
-							if !b11OpponentControlsMoreThanYou(g, item.Controller, opp, game.Card.IsCreature) {
-								return nil
-							}
-							return CreateToken{Controller: item.Controller, Template: TokenCard("1/1 white Soldier"), N: 1}.Apply(NewContext(g, item))
-						})
+				Key: "Keeper of the Accord — create a Soldier",
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					opp := item.Trigger.Event.Actor
+					if !b11OpponentControlsMoreThanYou(g, item.Controller, opp, game.Card.IsCreature) {
+						return nil
+					}
+					return CreateToken{Controller: item.Controller, Template: TokenCard("1/1 white Soldier"), N: 1}.Apply(NewContext(g, item))
 				},
 			},
 			{
@@ -55,27 +55,25 @@ func init() {
 					return ev.Actor != uuid.Nil && ev.Actor != source.Controller &&
 						b11OpponentControlsMoreThanYou(g, source.Controller, ev.Actor, game.Card.IsLand)
 				},
-				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					opp := ev.Actor
-					return game.NewTriggeredItem(source, "Keeper of the Accord — you may search for a basic Plains",
-						func(g *game.Game, item *game.StackItem) error {
-							if !b11OpponentControlsMoreThanYou(g, item.Controller, opp, game.Card.IsLand) {
-								return nil
-							}
-							return SearchLibrary{
-								Player: item.Controller,
-								Predicate: func(c game.Card) bool {
-									return IsBasicLand(c) && c.HasSubtype("Plains")
-								},
-								Dest:          game.ZoneBattlefield,
-								Limit:         1,
-								Reveal:        true,
-								Shuffle:       true,
-								TappedOnEntry: true,
-								Optional:      true,
-								Reason:        "Keeper of the Accord — a basic Plains card, onto the battlefield tapped",
-							}.Apply(NewContext(g, item))
-						})
+				Key: "Keeper of the Accord — you may search for a basic Plains",
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					opp := item.Trigger.Event.Actor
+					if !b11OpponentControlsMoreThanYou(g, item.Controller, opp, game.Card.IsLand) {
+						return nil
+					}
+					return SearchLibrary{
+						Player: item.Controller,
+						Predicate: func(c game.Card) bool {
+							return IsBasicLand(c) && c.HasSubtype("Plains")
+						},
+						Dest:          game.ZoneBattlefield,
+						Limit:         1,
+						Reveal:        true,
+						Shuffle:       true,
+						TappedOnEntry: true,
+						Optional:      true,
+						Reason:        "Keeper of the Accord — a basic Plains card, onto the battlefield tapped",
+					}.Apply(NewContext(g, item))
 				},
 			},
 		},

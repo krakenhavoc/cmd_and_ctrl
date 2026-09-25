@@ -21,8 +21,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // blocker that ate four of the eight, a Fog that prevented half, a
 // damage doubler, a creature pumped after damage was already dealt —
 // in every one of those the trigger deals what LANDED on the first
-// opponent, which is what the event carries. The amount is captured
-// in Build, at trigger time, because by resolution the Hydra's power
+// opponent, which is what the event carries. The amount is read at
+// resolution off the item's carried trigger context
+// (item.Trigger.Event, #1223), because by resolution the Hydra's power
 // may be anything.
 //
 // # "Each OTHER opponent"
@@ -49,24 +50,22 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b38ThisDealtCombatDamageToAnOpponent(ev, source, g)
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				// Captured by value at trigger time: how much landed,
-				// and on whom. Both are gone by resolution.
-				amount, hit := ev.Amount, ev.Target
-				return game.NewTriggeredItem(source,
-					"Hydra Omnivore — that much damage to each other opponent",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						for _, opp := range ctx.Opponents() {
-							if opp == hit {
-								continue
-							}
-							if err := (DealDamage{Source: ctx.Source(), Target: opp, Amount: amount}).Apply(ctx); err != nil {
-								return err
-							}
-						}
-						return nil
-					})
+			Key: "Hydra Omnivore — that much damage to each other opponent",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				// How much landed, and on whom: both facts about what
+				// happened, carried on the item rather than gone by
+				// resolution.
+				amount, hit := item.Trigger.Event.Amount, item.Trigger.Event.Target
+				ctx := NewContext(g, item)
+				for _, opp := range ctx.Opponents() {
+					if opp == hit {
+						continue
+					}
+					if err := (DealDamage{Source: ctx.Source(), Target: opp, Amount: amount}).Apply(ctx); err != nil {
+						return err
+					}
+				}
+				return nil
 			},
 		}},
 	})

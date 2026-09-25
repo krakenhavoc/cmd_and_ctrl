@@ -27,6 +27,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the end of combat step. At a two-player table, or once every
 // other opponent has left, the trigger is not queued at all.
 //
+// The attacker and the defending player are read off the attack
+// EVENT, at trigger time, and carried on the item's Params — not
+// recomputed live at resolution; see b27MyriadCopies.
+//
 // Two declared simplifications, both weaker than printed:
 //
 //   - One yes/no covers every other opponent; the printed card lets
@@ -52,14 +56,14 @@ func init() {
 				return b27AttackedAndAnotherOpponentRemains(ev, source, g)
 			},
 			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Legion Loyalty — myriad: create token copies of the attacker tapped and attacking each other opponent?"},
+			Key:            b27LegionLoyaltyLabel,
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				attacker := ev.CardID
-				defender := b17DefendingPlayer(g, ev)
-				return game.NewTriggeredItem(source, b27LegionLoyaltyLabel,
-					func(g *game.Game, item *game.StackItem) error {
-						return b27MyriadCopies(g, item, attacker, defender)
-					})
+				item := game.NewTriggeredItem(source, b27LegionLoyaltyLabel, nil)
+				item.Params.Object = game.ObjectRef{ID: ev.CardID}
+				item.Params.Player = b17DefendingPlayer(g, ev)
+				return item
 			},
+			Effect: b27MyriadCopies,
 		}},
 	})
 }

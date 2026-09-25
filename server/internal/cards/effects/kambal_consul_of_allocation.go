@@ -23,6 +23,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // "That player loses 2 life and YOU gain 2 life" is two separate life
 // changes rather than a drain, which matters for anything watching
 // life gain and for a Platinum Angel-shaped effect on either side.
+// The caster is read at resolution off the item's carried trigger
+// context (item.Trigger.Event.Actor, #1223) rather than captured when
+// the trigger fired.
 func init() {
 	Register(Spec{
 		OracleID: "4987c458-604a-4727-b360-170616e91e67",
@@ -36,20 +39,17 @@ func init() {
 				spell, ok := g.LookupCardForEffect(ev.CardID)
 				return ok && !spell.IsCreature()
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				caster := ev.Actor
-				return game.NewTriggeredItem(source, "Kambal — that player loses 2 life, you gain 2 life",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						// Losing life is a negative GainLife, not
-						// damage: Kambal's text says "loses 2 life",
-						// so nothing that prevents or redirects
-						// damage touches it.
-						if err := (GainLife{Player: caster, Amount: -2}).Apply(ctx); err != nil {
-							return err
-						}
-						return GainLife{Player: item.Controller, Amount: 2}.Apply(ctx)
-					})
+			Key: "Kambal — that player loses 2 life, you gain 2 life",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				// Losing life is a negative GainLife, not
+				// damage: Kambal's text says "loses 2 life",
+				// so nothing that prevents or redirects
+				// damage touches it.
+				if err := (GainLife{Player: item.Trigger.Event.Actor, Amount: -2}).Apply(ctx); err != nil {
+					return err
+				}
+				return GainLife{Player: item.Controller, Amount: 2}.Apply(ctx)
 			},
 		}},
 	})

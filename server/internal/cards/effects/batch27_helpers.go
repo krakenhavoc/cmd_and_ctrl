@@ -404,7 +404,15 @@ const b27LegionLoyaltyLabel = "Legion Loyalty — myriad: token copies attacking
 // wherever it now sits — a creature that died in response is copied
 // from the graveyard, its last-known printed values (CR 702.116a
 // makes the copies regardless).
-func b27MyriadCopies(g *game.Game, item *game.StackItem, attacker, defender uuid.UUID) error {
+//
+// The attacker and the defending player are computed once, at trigger
+// (Build) time, and carried on the item's Params (Object, Player)
+// rather than baked into a per-instance closure (ADR 0041 P9): the
+// defending player is fixed at declaration (CR 506.4) and a live
+// re-derivation at resolution could answer differently if the
+// attacked planeswalker or battle changed hands in response.
+func b27MyriadCopies(g *game.Game, item *game.StackItem) error {
+	attacker, defender := item.Params.Object.ID, item.Params.Player
 	ctx := NewContext(g, item)
 	tmpl, ok := TokenCopyTemplate(g, attacker)
 	if !ok {

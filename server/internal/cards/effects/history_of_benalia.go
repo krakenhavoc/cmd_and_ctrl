@@ -19,17 +19,40 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // other Knight on the board, and it expires at cleanup (CR 514.2).
 // CR 611.2c: the affected set is snapshotted at resolution, so a
 // Knight cast after the chapter resolves is not pumped.
+//
+// Written out longhand rather than through the shared ChapterTrigger
+// constructor (saga.go) so each row can declare its Effect directly
+// (ADR 0041 P9): ChapterTrigger's own Build only wraps a fixed label
+// and a fixed effect function in a closure with nothing captured from
+// the event, so declaring Effect changes nothing about how any of
+// these chapters resolve — it only lets the engine name the row on
+// its stack item. ChapterTrigger itself is left alone; other Sagas
+// still use it.
 func init() {
 	Register(Spec{
 		OracleID:     "c15bb7eb-aaaa-4468-9641-8f706d6137e8",
 		Name:         "History of Benalia",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			ChapterTrigger(1, "History of Benalia — I: create a 2/2 Knight", benaliaKnight),
-			ChapterTrigger(2, "History of Benalia — II: create a 2/2 Knight", benaliaKnight),
-			ChapterTrigger(3, "History of Benalia — III: Knights get +2/+1", benaliaPumpKnights),
+			benaliaChapter(1, "History of Benalia — I: create a 2/2 Knight", benaliaKnight),
+			benaliaChapter(2, "History of Benalia — II: create a 2/2 Knight", benaliaKnight),
+			benaliaChapter(3, "History of Benalia — III: Knights get +2/+1", benaliaPumpKnights),
 		},
 	})
+}
+
+// benaliaChapter is ChapterTrigger's shape with Effect declared
+// directly on the row, for this card only.
+func benaliaChapter(n int, label string, effect Effect) game.TriggeredAbility {
+	return game.TriggeredAbility{
+		Chapter: n,
+		Watches: []game.EventKind{game.EventSagaChapter},
+		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+			return ev.CardID == source.InstanceID && ev.Amount == n
+		},
+		Key:    label,
+		Effect: effect,
+	}
 }
 
 func benaliaKnight(g *game.Game, item *game.StackItem) error {

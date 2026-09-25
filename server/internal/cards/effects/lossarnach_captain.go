@@ -33,10 +33,8 @@ func init() {
 					return b36SelfOrAnotherHumanYouControlEntered(ev, source, g)
 				},
 				Targets: TargetCreature("target creature an opponent controls", OpponentControls()),
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Lossarnach Captain — tap target creature an opponent controls",
-						b36TapChosenCreature)
-				},
+				Key:     "Lossarnach Captain — tap target creature an opponent controls",
+				Effect:  b36TapChosenCreature,
 			},
 			AtYourUpkeep("Lossarnach Captain — create a 1/1 white Human Soldier", b34CreateTokens(b36WhiteHumanSoldierToken, 1)),
 		},

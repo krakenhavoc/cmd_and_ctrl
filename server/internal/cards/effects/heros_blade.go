@@ -18,14 +18,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // resolve, at any time a legendary creature enters under the
 // controller's control).
 //
-// The entering creature's ID is captured in Build off the event, not
-// re-derived in the Effect: undo restores a cloned game, so the
-// Effect closure captures the ID value rather than a *Card, and reads
-// everything else off the item it is handed (ADR 0018).
-// AttachSourceForEffect does the rest, including the two quiet ways
-// this can do nothing instead of erroring — the entering creature left
-// the battlefield before the trigger resolved, or this Equipment did
-// — exactly as the equip ability's own resolution does.
+// The entering creature's ID is read at resolution off the item's
+// carried trigger context (item.Trigger.Event.CardID, #1223) rather
+// than captured at trigger time: undo restores a cloned game, so the
+// Effect closure reads everything off the item it is handed (ADR
+// 0018). AttachSourceForEffect does the rest, including the two quiet
+// ways this can do nothing instead of erroring — the entering creature
+// left the battlefield before the trigger resolved, or this Equipment
+// did — exactly as the equip ability's own resolution does.
 //
 // No simplification.
 func init() {
@@ -40,12 +40,9 @@ func init() {
 				c, ok := enteredUnderYourControl(ev, source, g, false)
 				return ok && c.IsCreature() && c.HasSupertype("Legendary")
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				enteredID := ev.CardID
-				return game.NewTriggeredItem(source, "Hero's Blade — attach to the legendary creature",
-					func(g *game.Game, item *game.StackItem) error {
-						return g.AttachSourceForEffect(item, game.TargetRef{Kind: game.TargetCard, ID: enteredID})
-					})
+			Key: "Hero's Blade — attach to the legendary creature",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return g.AttachSourceForEffect(item, game.TargetRef{Kind: game.TargetCard, ID: item.Trigger.Event.CardID})
 			},
 			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Hero's Blade — attach to it?"},
 		}},

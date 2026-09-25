@@ -45,6 +45,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // #762 a created token runs the ordinary entry pipeline, so a copied
 // card's Spec.AsEnters clause fires on the token along with its ETB
 // triggers.
+//
+// The discarded card's instance ID is a fact about what happened, so
+// it rides item.Trigger.Event.CardID (#1223) rather than a value
+// captured when the trigger fired.
 func init() {
 	Register(Spec{
 		OracleID:     "db266661-f783-4907-9e52-6963eec05431",
@@ -56,28 +60,22 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return discardedByYou(ev, source) && eventCardHasType(ev, g, "creature")
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				// Capture the discarded card's ID, not the card and
-				// not the game: undo resolves this closure against a
-				// cloned game, and an instance ID is stable across
-				// the clone while a *Card pointer is not.
-				discarded := ev.CardID
-				return game.NewTriggeredItem(source, "Hashaton, Scarab's Fist — pay {2}{U} to copy the discarded creature",
-					func(g *game.Game, item *game.StackItem) error {
-						return MayPay{
-							Chooser:  item.Controller,
-							Cost:     "{2}{U}",
-							Question: "Hashaton, Scarab's Fist — pay {2}{U} to create a tapped 4/4 black Zombie copy?",
-							OnPay: func(ctx *Context) error {
-								return CreateTokenCopy{
-									Controller: item.Controller,
-									Copy:       discarded,
-									N:          1,
-									Except:     hashatonZombieException,
-								}.Apply(ctx)
-							},
-						}.Apply(NewContext(g, item))
-					})
+			Key: "Hashaton, Scarab's Fist — pay {2}{U} to copy the discarded creature",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				discarded := item.Trigger.Event.CardID
+				return MayPay{
+					Chooser:  item.Controller,
+					Cost:     "{2}{U}",
+					Question: "Hashaton, Scarab's Fist — pay {2}{U} to create a tapped 4/4 black Zombie copy?",
+					OnPay: func(ctx *Context) error {
+						return CreateTokenCopy{
+							Controller: item.Controller,
+							Copy:       discarded,
+							N:          1,
+							Except:     hashatonZombieException,
+						}.Apply(ctx)
+					},
+				}.Apply(NewContext(g, item))
 			},
 		}},
 	})

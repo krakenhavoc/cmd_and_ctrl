@@ -150,54 +150,8 @@ Greenwarden of Murasa | 2facb1b3-4522-4610-a0ab-29ac53ca7fcd | 0
 Greenwarden of Murasa | 2facb1b3-4522-4610-a0ab-29ac53ca7fcd | 1
 Guild Artisan | aceac269-5100-428a-a4a3-bac57031e30b | 0
 Guiltfeeder | 0285bd20-f49e-48f7-8c8c-960f9fbe4d34 | 0
-Hammer of Nazahn | e3955573-3db5-490e-903e-65e0172a9202 | 0
-Hangarback Walker | dde55256-5259-44e7-a267-fca45a7f0d04 | 0
-Hanweir Garrison | 7cb29569-48e1-4782-9906-fad155ebfafe | 0
-Hashaton, Scarab's Fist | db266661-f783-4907-9e52-6963eec05431 | 0
-Hazel's Brewmaster | e8180024-1979-4677-9a0d-e08d4b7c825a | 0
-Heartwood Storyteller | 82e6da87-f8a4-4897-bf0f-c0f2cd06b8b1 | 0
-Hedron Crab | 7216f974-3c84-40ef-b904-82019900c204 | 0
-Hedron Detonator | 9221b29b-9351-4f70-9af4-8b9a33b43138 | 0
-Hellrider | f02557b0-f422-48cb-875e-2c814c39967d | 0
-Hero's Blade | e6bcd25d-39b6-4619-8a27-9f3d87f4a17b | 0
-History of Benalia | c15bb7eb-aaaa-4468-9641-8f706d6137e8 | 0
-History of Benalia | c15bb7eb-aaaa-4468-9641-8f706d6137e8 | 1
-History of Benalia | c15bb7eb-aaaa-4468-9641-8f706d6137e8 | 2
-Horn of Greed | b8181d53-1954-4f46-8670-8696440208e8 | 0
-Hostage Taker | c5c2d209-e3ef-4b0d-85f5-e7402dcf09eb | 0
-Howling Mine | d26b27db-a567-4631-b4b6-7294222fbdd1 | 0
-Hydra Omnivore | 8f504855-f3df-4284-a189-e799bcddf620 | 0
-Hydroid Krasis | 6bd872b2-5c40-4e11-9a7f-0136a51b0642 | 0
-Ichor Wellspring | 5b5ef43b-13fd-4461-8d2d-18be65e9a790 | 0
-Ichor Wellspring | 5b5ef43b-13fd-4461-8d2d-18be65e9a790 | 1
 Ignoble Hierarch | c8de43a3-ebd3-4000-b343-a6ffed11d34d | 0
-Ikra Shidiqi, the Usurper | a1a1761c-88e5-40b4-ba4c-60735c054b09 | 0
-Interplanar Beacon | 073169f2-da3a-4a93-8c01-b3fd8558d225 | 0
-Invasion of Innistrad | a3c1af66-63c8-41ec-a401-a3da1131dc67 | 0
-Ivy Lane Denizen | a5da5ad6-4ed2-4041-a983-76a8c87fa109 | 0
 Jagged Barrens | 64ee02f1-afdb-474b-a893-31538ad7219a | 0
-Jungle Hollow | 6de714e1-446d-4fb9-9e3d-bcd3ec6af9ca | 0
-Junk Diver | 08c595da-9305-42a9-b72f-5ccc546edc01 | 0
-Juri, Master of the Revue | 3364bad6-6d0a-4141-b410-86e3d9e1916e | 1
-Kaervek the Merciless | c7b72d38-0aa0-4e17-9dd5-9276d7cb21ec | 0
-Kambal, Consul of Allocation | 4987c458-604a-4727-b360-170616e91e67 | 0
-Kazuul, Tyrant of the Cliffs | f8bf3d91-cb50-48ce-88c6-cdcb37b64b57 | 0
-Kederekt Parasite | fc7b46af-6c07-455a-99c7-f1bccaa2a5f4 | 0
-Kediss, Emberclaw Familiar | d9c87cc2-943e-49b6-becc-748857549617 | 0
-Keeper of the Accord | 49b9a3ac-d245-431a-bf40-64d1b8dc2b91 | 0
-Keeper of the Accord | 49b9a3ac-d245-431a-bf40-64d1b8dc2b91 | 1
-Korvold, Fae-Cursed King | 9ae669dd-7e60-4649-b96e-35da28be641a | 0
-Kozilek, the Great Distortion | 4c1c1537-e519-4e2f-9bc2-d34b289d4487 | 0
-Lathiel, the Bounteous Dawn | d3c56fc4-3611-41b1-952e-4c5311b1510b | 0
-Legion Loyalty | 24e39d26-6a2b-461e-b194-bda575bcf898 | 0
-Leonin Warleader | 8b1351e6-165e-4ca3-96d5-4774b3176362 | 0
-Liesa, Forgotten Archangel | efcaadbe-24e3-4dfc-b08c-a910f003d427 | 0
-Lifeblood Hydra | b14d05c0-fe10-4079-a90e-0aea1a8fd375 | 0
-Light-Paws, Emperor's Voice | 1718a442-b878-4690-b608-a013de3d79fc | 0
-Liliana's Caress | a4aec0d6-13fa-4709-b1a9-2f483f032744 | 0
-Loran of the Third Path | b3d81980-76f2-44e2-b1c9-01e30c726312 | 0
-Lossarnach Captain | 1251691e-3c4c-4e45-9f59-f156852f2268 | 0
-Manabarbs | 0f1afedd-c60f-454f-b84a-c8117aec0128 | 0
 Manglehorn | b67db32b-30a9-49d2-b4c2-90a9f80c36eb | 0
 Mari, the Killing Quill | 5f1fdc23-9af0-41a1-aeba-7288f9642734 | 0
 Mari, the Killing Quill | 5f1fdc23-9af0-41a1-aeba-7288f9642734 | 1

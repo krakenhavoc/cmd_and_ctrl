@@ -21,10 +21,14 @@ import (
 //     the counter finds nothing to land on; the dies trigger is the
 //     one that matters then.
 //   - The dies trigger is Omnath's any-target shape, with the damage
-//     read as last-known power: the harvester's LKI characteristic
-//     (layers applied) plus the counters Juri carried when he left,
-//     which b13LastKnownPower reads back off the event log because
-//     the LKI carries no counter math.
+//     read as last-known power (CR 608.2h) through
+//     ctx.TriggeringPermanent() (#1379) at resolution: its Power is
+//     the same layers-applied power plus counters the harvester's LKI
+//     characteristic and the counter log would have given Build at
+//     trigger time, because both are stamped from the same live card
+//     in the same beat (battlefieldExitLocked), just read back later
+//     instead of captured in a closure. Clamped at zero, since a
+//     negative power deals no damage.
 //
 // No simplification.
 func init() {
@@ -47,16 +51,18 @@ func init() {
 					return cardDied(ev, source)
 				},
 				Targets: TargetAny(),
-				Build: func(_ game.Event, source *game.Card, lki game.Characteristic, g *game.Game) *game.StackItem {
-					power := b13LastKnownPower(g, source.InstanceID, lki)
-					return game.NewTriggeredItem(source, "Juri, Master of the Revue — damage equal to its power to any target",
-						func(g *game.Game, item *game.StackItem) error {
-							ctx := NewContext(g, item)
-							for _, t := range ctx.LegalTargets() {
-								return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: power}.Apply(ctx)
-							}
-							return nil
-						})
+				Key:     "Juri, Master of the Revue — damage equal to its power to any target",
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					ctx := NewContext(g, item)
+					info, _ := ctx.TriggeringPermanent()
+					power := info.Power
+					if power < 0 {
+						power = 0
+					}
+					for _, t := range ctx.LegalTargets() {
+						return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: power}.Apply(ctx)
+					}
+					return nil
 				},
 			},
 		},
