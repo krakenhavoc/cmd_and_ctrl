@@ -23,9 +23,8 @@ func init() {
 				return ev.CardID == source.InstanceID
 			},
 			Targets: TargetPermanent("target artifact, enchantment, or land", Or(Artifact(), Enchantment(), Land())),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return destroyChosenTargetTrigger(source, "Acidic Slime — destroy target permanent")
-			},
+			Key:     "Acidic Slime — destroy target permanent",
+			Effect:  destroyChosenPermanent,
 		}},
 	})
 }

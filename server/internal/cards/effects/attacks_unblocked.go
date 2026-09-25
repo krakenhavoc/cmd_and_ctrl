@@ -69,6 +69,24 @@ func WhenAttacksAndIsNotBlocked(label string, effect func(g *game.Game, item *ga
 	}
 }
 
+// WhenAttacksAndIsNotBlockedEffect is WhenAttacksAndIsNotBlocked with
+// its Effect declared on the row (ADR 0041 P9, #1497, tier 4-3): the
+// defending player is read back from the item's carried trigger event
+// (triggeringActor) rather than captured in a hand-written Build, so a
+// table with the trigger waiting on the stack is a restore point.
+func WhenAttacksAndIsNotBlockedEffect(label string, effect func(g *game.Game, item *game.StackItem, defender uuid.UUID) error) game.TriggeredAbility {
+	return game.TriggeredAbility{
+		Watches: []game.EventKind{game.EventBlockersDeclared},
+		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			return attacksAndIsNotBlocked(ev, source, g)
+		},
+		Key: label,
+		Effect: func(g *game.Game, item *game.StackItem) error {
+			return effect(g, item, triggeringActor(item))
+		},
+	}
+}
+
 // defendingPlayerStillIn reports whether the defending player a trigger
 // captured is still in the game, which every payoff here checks before
 // touching them (CR 800.4a: a player who has left is not affected).

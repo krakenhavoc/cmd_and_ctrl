@@ -104,10 +104,8 @@ func init() {
 			Targets: targetOtherCreatureOrSpell(
 				"up to one other target creature or spell",
 			),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Aang, Swift Savior — airbend a creature or spell",
-					AirbendOtherTarget)
-			},
+			Key:    "Aang, Swift Savior — airbend a creature or spell",
+			Effect: AirbendOtherTarget,
 			OptionalPrompt: &game.TriggerOptionalPrompt{
 				Question: "Aang, Swift Savior — airbend a creature or spell? " +
 					"(Exile it; its owner may cast it for {2}.)",

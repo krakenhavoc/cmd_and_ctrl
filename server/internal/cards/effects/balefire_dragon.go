@@ -29,12 +29,12 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return ev.Source == source.InstanceID && combatDamageToPlayerBy(ev, source.Controller, g)
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				victim, amount := ev.Target, ev.Amount
-				return game.NewTriggeredItem(source, "Balefire Dragon — that much damage to each creature that player controls",
-					func(g *game.Game, item *game.StackItem) error {
-						return b11DamageEachCreatureControlledBy(g, item, victim, amount)
-					})
+			Key: "Balefire Dragon — that much damage to each creature that player controls",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if item.Trigger == nil {
+					return nil
+				}
+				return b11DamageEachCreatureControlledBy(g, item, item.Trigger.Event.Target, item.Trigger.Event.Amount)
 			},
 		}},
 	})

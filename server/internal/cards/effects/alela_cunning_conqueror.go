@@ -68,9 +68,8 @@ func init() {
 					return b33FaerieYouControlDealtCombatDamageToPlayer(ev, source, g)
 				},
 				Targets: TargetCreature("target creature that player controls", b33CreatureOfPlayerHitByYourFaeries),
-				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, b33AlelaGoadLabel, b33GoadChosenIfControlledBy(ev.Target))
-				},
+				Key:     b33AlelaGoadLabel,
+				Effect:  b33AlelaGoadChosen,
 			},
 		},
 	})

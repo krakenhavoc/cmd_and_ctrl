@@ -155,20 +155,14 @@ func TestAttackLimitRoomFollowsTheNewShapes(t *testing.T) {
 	})
 }
 
-// perDefenderBlockLimit is effects.EachOpponentCantBlockWithMoreThanN
-// without importing effects: every blocker not controlled by `you`
-// counts toward n, each defending player on their own.
-func perDefenderBlockLimit(you uuid.UUID, n int) BlockRule {
-	return BlockRule{
-		Limit: func(_ *Game, blocker, _ *Card) int {
-			if blocker.Controller == you {
-				return 0
-			}
-			return n
-		},
-		LimitPerDefender: true,
-		Label:            "each opponent can't block with more than one creature this combat (Mirri)",
-	}
+// registerPerDefenderBlockLimit is effects.EachOpponentCantBlockWithMoreThanN
+// without importing effects: a limitBlockersPerDefender ScopedEffect
+// record over ScopeOpponentsCreatures, so every blocker not controlled
+// by `you` counts toward n, each defending player on their own.
+func registerPerDefenderBlockLimit(g *Game, you uuid.UUID, n int) {
+	g.RegisterScopedRuleEffectForEffect(uuid.Nil, ScopeOpponentsCreatures, you,
+		[]Mod{LimitBlockersPerDefenderMod(n)}, g.UntilEndOfTurnDuration(),
+		"each opponent can't block with more than one creature this combat (Mirri)")
 }
 
 // TestBlockLimitPerDefenderCountsEachPlayerOnTheirOwn — four seats.
@@ -193,7 +187,7 @@ func TestBlockLimitPerDefenderCountsEachPlayerOnTheirOwn(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	g.RegisterTurnScopedBlockRuleLocked(perDefenderBlockLimit(me.ID, 1))
+	registerPerDefenderBlockLimit(g, me.ID, 1)
 	advanceIntoStep(t, g, StepDeclareBlockers)
 
 	refused := blockLimitRefusal(t, g.DeclareBlockers([]BlockDeclaration{
@@ -246,7 +240,7 @@ func TestBlockLimitPerDefenderArrivingLateUnmakesNothing(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("no limit yet: %v", err)
 	}
-	g.RegisterTurnScopedBlockRuleLocked(perDefenderBlockLimit(g.Seats[0].ID, 1))
+	registerPerDefenderBlockLimit(g, g.Seats[0].ID, 1)
 
 	if err := g.DeclareBlocker(blkB, atkB); err != nil {
 		t.Errorf("re-pointing a standing blocker raises no count: %v", err)

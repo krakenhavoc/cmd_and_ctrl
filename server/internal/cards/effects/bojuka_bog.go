@@ -46,10 +46,8 @@ func init() {
 				return ev.CardID == source.InstanceID
 			},
 			Targets: TargetPlayer("target player"),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Bojuka Bog — exile target player's graveyard",
-					exileTargetPlayersGraveyard)
-			},
+			Key:     "Bojuka Bog — exile target player's graveyard",
+			Effect:  exileTargetPlayersGraveyard,
 		}},
 	})
 }
